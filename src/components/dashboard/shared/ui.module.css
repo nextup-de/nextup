@@ -68,6 +68,15 @@
 .listRow[data-click="true"] { cursor: pointer; }
 .listTitle { font-size: 13.5px; font-weight: 700; color: var(--nh-ink); line-height: 1.35; }
 
+/* roomy list: opt-in per view. More air in every row and a darker hairline, so one item visibly
+   ends before the next begins. Collaboration and the manager overview keep the tight version. */
+.list[data-roomy="true"] .row { gap: 16px; padding: 22px 0 20px; border-top-color: var(--nh-line); }
+.list[data-roomy="true"] .rowTitle { font-size: 15.5px; }
+.list[data-roomy="true"] .rowSub { margin-top: 6px; font-size: 13px; }
+.list[data-roomy="true"] .listRow { padding: 17px 0 16px; border-top-color: var(--nh-line); }
+.list[data-roomy="true"] .listTitle { font-size: 14px; }
+.list[data-roomy="true"] .personRow { padding: 13px 0; border-top-color: var(--nh-line); }
+
 /* spark bars */
 .bars { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
 .bars[data-size="lg"] { height: 30px; gap: 4px; }

@@ -69,7 +69,7 @@ export function IdeasView({ initialId }: { initialId?: string }) {
               {filtered && <button type="button" className={ui.ghost} onClick={clearAll}>Clear search and filters</button>}
             </Empty>
           )}
-          <div className={ui.list}>
+          <div className={ui.list} data-roomy="true">
             {sorted.map((i) => (
               <div key={i.id} className={ui.row} data-active={si?.id === i.id ? "true" : undefined} onClick={() => setIid(i.id)}>
                 <div className={ui.mark} />

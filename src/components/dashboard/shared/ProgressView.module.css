@@ -1,4 +1,4 @@
-.funnel { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+.funnel { display: flex; flex-direction: column; gap: 18px; margin-top: 22px; }
 .funnelHead { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; }
 .funnelN { font-family: var(--nh-mono); font-size: 15px; font-weight: 800; color: var(--nh-ink); min-width: 42px; }
 .funnelLabel { font-size: 13.5px; font-weight: 700; color: var(--nh-ink); }
@@ -7,15 +7,15 @@
 .funnelFill[data-gate="true"] { background: var(--nh-accent); }
 .funnelNote { font-size: 11.5px; color: #b23c07; margin-top: 6px; line-height: 1.5; }
 
-.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: start; }
-.outcomeMeta { gap: 14px; margin-top: 8px; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+.outcomeMeta { gap: 14px; margin-top: 10px; }
 .promised { font-family: var(--nh-mono); color: var(--nh-ink-2); }
 .measured { font-family: var(--nh-mono); color: var(--nh-ink); font-weight: 600; }
-.stuckAt { margin-top: 7px; }
+.stuckAt { margin-top: 9px; }
 .bigV { font-size: 22px; font-weight: 800; color: var(--nh-ink); letter-spacing: -0.025em; }
 .bigV[data-hot="true"] { color: #b23c07; }
-.contrib { padding: 9px 0; }
+.contrib { padding: 12px 0; }
 .contribName { font-size: 12.5px; font-weight: 700; color: var(--nh-ink); }
-.contribMeta { font-size: 11px; color: var(--nh-on-dark-mute); margin-top: 2px; }
+.contribMeta { font-size: 11px; color: var(--nh-on-dark-mute); margin-top: 3px; }
 .credit { font-size: 11.5px; color: var(--nh-ink-2); white-space: nowrap; }
 .anonNote { margin-top: 11px; }

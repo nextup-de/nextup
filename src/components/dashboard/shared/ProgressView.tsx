@@ -53,7 +53,7 @@ export function ProgressView() {
             <div className={ui.h}>Did the shipped ones deliver</div>
             <div className={ui.sub}>Promised at approval, measured {O} days after launch.</div>
             {D.outcomes.length === 0 && <div className={ui.emptyLine}>Nothing shipped yet. The first outcome is measured {O} days after the first launch.</div>}
-            <div className={`${ui.list} ${ui.mt}`}>
+            <div className={`${ui.list} ${ui.mt14}`} data-roomy="true">
               {D.outcomes.map((o) => (
                 <div key={o.title} className={ui.listRow}>
                   <div className={ui.between}>
@@ -73,7 +73,7 @@ export function ProgressView() {
             <div className={ui.h}>Stuck the longest</div>
             <div className={ui.sub}>Nothing here is blocked by money or by effort.</div>
             {stuck.length === 0 && <div className={ui.emptyLine}>Nothing is stuck yet.</div>}
-            <div className={`${ui.list} ${ui.mt}`}>
+            <div className={`${ui.list} ${ui.mt14}`} data-roomy="true">
               {stuck.map((i) => (
                 <div key={i.id} className={ui.listRow}>
                   <div className={ui.between}>
@@ -98,7 +98,7 @@ export function ProgressView() {
 
             <div className={`${ui.eyebrow} ${ui.mt20}`}>Most relied-on contributors</div>
             {top.length === 0 && <div className={ui.emptyLine}>Nobody has contributed yet.</div>}
-            <div className={`${ui.list} ${ui.mt8}`}>
+            <div className={`${ui.list} ${ui.mt8}`} data-roomy="true">
               {top.map((r) => (
                 <div key={r.name} className={`${ui.personRow} ${styles.contrib}`}>
                   <Avatar name={r.name} />

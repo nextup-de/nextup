@@ -84,7 +84,7 @@ export function ProblemsView({ initialId }: { initialId?: string }) {
                 {filtered && <button type="button" className={ui.ghost} onClick={clearAll}>Clear search and filters</button>}
               </Empty>
             )}
-            <div className={ui.list}>
+            <div className={ui.list} data-roomy="true">
               {sorted.map((p) => (
                 <div key={p.id} className={ui.row} data-active={sp?.id === p.id ? "true" : undefined} onClick={() => setPid(p.id)}>
                   <div className={ui.mark} />

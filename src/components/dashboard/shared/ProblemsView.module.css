@@ -1,5 +1,5 @@
 /* Head of the list card, not a card of its own: the row hairline below separates it. */
-.discovery { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 0 14px; }
+.discovery { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 0 18px; }
 .discoveryDone { font-size: 12.5px; color: var(--nh-ink); font-weight: 700; margin-top: 5px; }
 .discoveryBar { flex: 1; min-width: 150px; }
 .discoveryTrack { height: 7px; border-radius: 999px; background: var(--nh-line-soft); overflow: hidden; }
@@ -13,7 +13,7 @@
 .people { text-align: right; }
 .peopleN { font-family: var(--nh-mono); font-size: 15px; font-weight: 800; color: var(--nh-ink); }
 .peopleL { font-size: 10.5px; color: var(--nh-on-dark-mute); }
-.rowChips { margin-top: 10px; }
+.rowChips { margin-top: 14px; row-gap: 9px; }
 
 .tiles { margin-top: 16px; }
 .quotes { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }

@@ -1,28 +1,28 @@
 /* One surface for all cases; a hairline between them. The step bar gives each its shape. */
-.cases { padding: 4px 20px 6px; }
+.cases { padding: 6px 22px 8px; }
 .emptyCase { padding: 22px 2px; }
-.caseItem { padding: 18px 0 16px; border-top: 1px solid #f0efea; }
+.caseItem { padding: 26px 0 24px; border-top: 1px solid var(--nh-line); }
 .caseItem:first-child { border-top: 0; }
 .caseHead { min-width: 0; }
-.caseTitle { font-size: 15px; font-weight: 800; color: var(--nh-ink); letter-spacing: -0.015em; line-height: 1.3; }
-.submitted { font-size: 12px; color: var(--nh-on-dark-mute); margin-top: 5px; }
+.caseTitle { font-size: 16px; font-weight: 800; color: var(--nh-ink); letter-spacing: -0.015em; line-height: 1.3; }
+.submitted { font-size: 12px; color: var(--nh-on-dark-mute); margin-top: 6px; }
 
-.steps { display: flex; gap: 4px; margin-top: 16px; }
+.steps { display: flex; gap: 6px; margin-top: 20px; }
 .step { flex: 1; min-width: 0; }
 .stepBar { height: 4px; border-radius: 999px; background: #dedcd5; }
 .stepBar[data-tone="done"] { background: var(--nh-ink); }
 .stepBar[data-tone="now"], .stepBar[data-tone="late"] { background: var(--nh-accent); }
-.stepLabel { font-size: 11.5px; font-weight: 700; margin-top: 7px; line-height: 1.3; color: #b23c07; }
+.stepLabel { font-size: 12px; font-weight: 700; margin-top: 9px; line-height: 1.3; color: #b23c07; }
 .stepLabel[data-tone="done"] { color: var(--nh-ink); }
 .stepLabel[data-tone="todo"] { color: var(--nh-on-dark-mute); }
-.stepWhen { font-size: 10.5px; color: var(--nh-on-dark-mute); margin-top: 2px; line-height: 1.35; }
+.stepWhen { font-size: 11px; color: var(--nh-on-dark-mute); margin-top: 3px; line-height: 1.35; }
 
-.clock { font-size: 12.5px; font-weight: 600; line-height: 1.5; margin-top: 14px; color: var(--nh-ink-2); }
+.clock { font-size: 12.5px; font-weight: 600; line-height: 1.5; margin-top: 18px; color: var(--nh-ink-2); }
 .clock[data-overdue="true"] { color: #b23c07; }
-.reply { margin-top: 8px; }
+.reply { margin-top: 10px; }
 .replyText { font-size: 12.5px; color: var(--nh-ink-2); line-height: 1.55; }
 .replyBy { font-size: 11px; color: var(--nh-on-dark-mute); margin-top: 4px; }
-.outcome { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0efea; }
+.outcome { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--nh-line-soft); }
 .outcomeV { font-size: 12.5px; font-weight: 700; color: var(--nh-ink); }
 
 .intakeSub { margin-top: 6px; line-height: 1.55; }

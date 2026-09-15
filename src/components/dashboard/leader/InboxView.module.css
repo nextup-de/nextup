@@ -1,24 +1,24 @@
 .rowTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .rowMain { flex: 1 1 220px; min-width: 170px; }
-.caseTitle { font-size: 14px; font-weight: 700; color: var(--nh-ink); line-height: 1.35; }
+.caseTitle { font-size: 15.5px; font-weight: 700; color: var(--nh-ink); line-height: 1.35; }
 .rowRight { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .clock { font-family: var(--nh-mono); font-size: 11px; font-weight: 700; white-space: nowrap; border-radius: 6px; padding: 4px 8px; background: #f0efea; color: var(--nh-ink-2); }
 .clock[data-tone="soon"] { background: #ffe7dc; color: #b23c07; }
 .clock[data-tone="late"] { background: var(--nh-accent); color: #1a1a17; }
 .clock[data-tone="paused"] { background: transparent; color: var(--nh-on-dark-mute); border: 1px dashed #dedcd5; }
 .open { font-family: var(--nh-mono); font-size: 11px; color: var(--nh-on-dark-mute); }
-.why { margin-top: 9px; }
+.why { margin-top: 14px; row-gap: 8px; }
 .whyLabel { font-size: 11px; color: var(--nh-on-dark-mute); }
 
-.cleared { margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--nh-line); }
-.clearedRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #f0efea; padding: 10px 0; }
+.cleared { margin-top: 14px; padding-top: 18px; border-top: 1px solid var(--nh-line); }
+.clearedRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--nh-line); padding: 13px 0; }
 .clearedTitle { font-size: 12.5px; font-weight: 600; color: var(--nh-ink-2); line-height: 1.35; }
 
-.waitingCard { padding: 18px 18px 10px; }
-.waitRow { border-top: 1px solid #f0efea; padding: 11px 0 10px; }
-.waitTitle { font-size: 13px; font-weight: 700; color: var(--nh-ink); line-height: 1.35; }
+.waitingCard { padding: 20px 20px 12px; }
+.waitRow { border-top: 1px solid var(--nh-line); padding: 16px 0 15px; }
+.waitTitle { font-size: 14px; font-weight: 700; color: var(--nh-ink); line-height: 1.35; }
 .waitAge { font-family: var(--nh-mono); font-size: 12px; font-weight: 700; color: var(--nh-ink); white-space: nowrap; }
-.waitMeta { margin-top: 6px; gap: 8px; }
+.waitMeta { margin-top: 8px; gap: 8px; }
 .waitWith { font-size: 11.5px; color: var(--nh-ink-2); }
 .waitState { font-family: var(--nh-mono); font-size: 10.5px; font-weight: 600; color: var(--nh-on-dark-mute); }
 .waitState[data-hot="true"] { color: #b23c07; }

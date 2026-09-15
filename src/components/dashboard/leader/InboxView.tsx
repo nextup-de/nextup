@@ -71,7 +71,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
                 <Empty title={demo ? "Inbox empty" : "Nothing addressed to you yet"}
                   sub={demo ? "Nothing is waiting on you. That is the goal by the end of every day." : "When someone on your team, or in a neighbouring one, raises a problem the map routes to you, it lands here with a " + P + "-day clock."} />
               )}
-              <div className={ui.list}>
+              <div className={ui.list} data-roomy="true">
                 {inbox.map((c) => {
                   const paused = c.status === "asked";
                   const toMe = !!(c.escalated && c.escalated.to === who.name && c.assignee !== who.name);
@@ -126,7 +126,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
                 <span className={ui.rowMeta}>the other end of the same problems</span>
               </div>
               {waitingOn.length === 0 && <div className={ui.emptyLine}>Nothing your team raised is sitting with another department.</div>}
-              <div className={`${ui.list} ${ui.mt8}`}>
+              <div className={`${ui.list} ${ui.mt8}`} data-roomy="true">
                 {waitingOn.map((w) => (
                   <div key={w.key} className={styles.waitRow}>
                     <div className={ui.between}>

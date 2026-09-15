@@ -1,9 +1,9 @@
 .rowTop { display: flex; align-items: flex-start; gap: 14px; }
 .rowMain { flex: 1 1 200px; min-width: 160px; }
-.criteria { gap: 5px; margin-bottom: 7px; }
+.criteria { gap: 6px; margin-bottom: 10px; }
 .rowRight { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .effort { font-size: 11.5px; color: var(--nh-on-dark-mute); text-align: right; }
-.rowMeta { margin-top: 10px; }
+.rowMeta { margin-top: 14px; row-gap: 8px; }
 .expected { font-size: 11.5px; color: var(--nh-ink-2); font-weight: 600; }
 
 .selMeta { margin-top: 11px; gap: 9px; }
