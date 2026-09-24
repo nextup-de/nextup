@@ -6,37 +6,48 @@
 //            Retention follows the AWS account's Bedrock settings - check both before a pilot
 //            (docs/ASSISTANT.md). Credentials come from the AWS chain (env, profile, instance
 //            role) - no key in this repo.
+//   anthropic  Claude through the Anthropic API directly (ANTHROPIC_API_KEY). Processed in the US,
+//            so features/assist/gate.ts allows it for the demo stage (made-up data) only.
 //   mock     No model: features/assist/mock.ts strings tool results together. Demo, e2e, dev.
 //
 // The one outside call this app makes. Server only - the browser talks to /api/<company>/assist,
 // and the CSP keeps connect-src at 'self'.
+import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicBedrockMantle } from "@anthropic-ai/bedrock-sdk";
-import type { MessageParam, Tool, ToolResultBlockParam } from "@anthropic-ai/sdk/resources/messages";
-import type { Provider, ProviderRun, ProviderResult } from "@/features/assist";
+import type { MessageParam, Messages, Tool, ToolResultBlockParam } from "@anthropic-ai/sdk/resources/messages";
+import type { Provider, ProviderId, ProviderRun, ProviderResult } from "@/features/assist";
 import { mockProvider } from "@/features/assist/mock";
 
 const MAX_ROUNDS = 4; // tool round trips per answer - the tools are cheap lookups, four is plenty
 const MAX_TOKENS = 4000; // a 150-word answer plus thinking; streaming, so no timeout concern
 
-export type ProviderConfig = { id: "bedrock" | "mock"; region: string; model: string };
+export type ProviderConfig = { id: ProviderId; region: string; model: string };
 
-/** What the environment asks for. Bedrock only when a model is named; otherwise the mock. */
+/**
+ * What the environment asks for. Bedrock only when a model is named; the Anthropic API only with a
+ * key (model defaults to claude-opus-5); otherwise the mock.
+ */
 export function providerConfig(env: NodeJS.ProcessEnv = process.env): ProviderConfig {
   const region = env.LLM_REGION || "eu-central-1";
-  const model = env.LLM_MODEL || "";
-  const id = env.LLM_PROVIDER === "bedrock" && model ? "bedrock" : "mock";
-  return { id, region, model: id === "bedrock" ? model : "mock" };
+  if (env.LLM_PROVIDER === "bedrock" && env.LLM_MODEL) return { id: "bedrock", region, model: env.LLM_MODEL };
+  if (env.LLM_PROVIDER === "anthropic" && env.ANTHROPIC_API_KEY) return { id: "anthropic", region: "anthropic-api", model: env.LLM_MODEL || "claude-opus-5" };
+  return { id: "mock", region, model: "mock" };
 }
 
-let client: AnthropicBedrockMantle | null = null;
+let bedrockClient: AnthropicBedrockMantle | null = null;
+let anthropicClient: Anthropic | null = null;
 
-function bedrock(cfg: ProviderConfig): Provider {
-  client ??= new AnthropicBedrockMantle({ awsRegion: cfg.region, maxRetries: 1, timeout: 30_000 });
-  const c = client;
+function clientFor(cfg: ProviderConfig): { messages: Messages } {
+  if (cfg.id === "anthropic") return (anthropicClient ??= new Anthropic({ maxRetries: 1, timeout: 30_000 }));
+  return (bedrockClient ??= new AnthropicBedrockMantle({ awsRegion: cfg.region, maxRetries: 1, timeout: 30_000 }));
+}
+
+function claude(cfg: ProviderConfig): Provider {
+  const c = clientFor(cfg);
   const tools = (defs: ProviderRun["tools"]): Tool[] => defs.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema }));
 
   return {
-    id: "bedrock",
+    id: cfg.id,
     async run(r: ProviderRun): Promise<ProviderResult> {
       const messages: MessageParam[] = [
         ...r.history.map((m) => ({ role: m.role, content: m.text }) satisfies MessageParam),
@@ -93,5 +104,5 @@ function bedrock(cfg: ProviderConfig): Provider {
 }
 
 export function providerFor(cfg: ProviderConfig): Provider {
-  return cfg.id === "bedrock" ? bedrock(cfg) : mockProvider;
+  return cfg.id === "mock" ? mockProvider : claude(cfg);
 }

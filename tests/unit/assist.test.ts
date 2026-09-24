@@ -167,3 +167,35 @@ describe("assistGate", () => {
     expect(assistGate({ stage: "live", hasDatabase: false, configured: "bedrock", enabled: true, dpaSignedAt: new Date() }).on).toBe(false);
   });
 });
+
+describe("demo knowledge", () => {
+  it("finds the right demo document and never the confidential one under the default ceiling", async () => {
+    const { searchDemoDocuments } = await import("@/features/demo/knowledge");
+    const internal = (c: string) => canUse(c, "internal");
+    expect(searchDemoDocuments("where do I get a spare pressure sensor for the rig?", internal)[0].title).toBe("Spare pressure sensors for test rigs");
+    expect(searchDemoDocuments("supplier price agreements", internal).map((d) => d.title)).not.toContain("Supplier price agreements 2026");
+    expect(searchDemoDocuments("how does the", internal)).toEqual([]);
+  });
+
+  it("fills goals and roles with KPIs and decision rights", async () => {
+    const { withDemoDetail } = await import("@/features/demo/knowledge");
+    const k = withDemoDetail(knowledge);
+    expect(k.goals.every((g) => g.kpi && g.target)).toBe(true);
+    expect(k.roles.find((r) => r.title === "Team lead, 4-series")?.spendLimitEur).toBe(5000);
+  });
+
+  it("uses the Anthropic API for the demo stage only", async () => {
+    const { assistGate } = await import("@/features/assist/gate");
+    const base = { hasDatabase: true, configured: "anthropic" as const, enabled: true, dpaSignedAt: new Date() };
+    expect(assistGate({ ...base, stage: "demo" })).toEqual({ on: true, provider: "anthropic" });
+    expect(assistGate({ ...base, stage: "live" })).toEqual({ on: true, provider: "mock" });
+  });
+});
+
+describe("mock answer", () => {
+  it("quotes a document in whole words", async () => {
+    const out = await assist({ question: "spare pressure sensor for the rig", history: [], ctx: { ...ctx(), searchDocuments: async () => [{ id: "x", title: "Spare sensors", snippet: "test rig keeps two spare sensors in cabinet B2", classification: "internal", source: "erp" }] }, prompt, redaction: {}, provider: mockProvider });
+    if (out.blocked) throw new Error("blocked");
+    expect(out.answer.text).toContain('"Spare sensors" says: test rig keeps two spare sensors in cabinet B2');
+  });
+});

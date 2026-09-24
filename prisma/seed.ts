@@ -17,6 +17,8 @@ import { GOALS } from "../src/features/evaluate";
 import { rowsFromSeed } from "../src/features/knowledge";
 import { getDb } from "../src/lib/db/client";
 import { replaceKnowledge } from "../src/lib/db/knowledge";
+import { DEMO_COMPLIANCE_RULES, DEMO_DOCUMENTS, DEMO_PROFILE, withDemoDetail } from "../src/features/demo/knowledge";
+import { upsertDocuments } from "../src/lib/db/assist";
 
 // Same rule as prisma7.config.ts: .env.local on a laptop, the environment everywhere else.
 try {
@@ -53,7 +55,13 @@ async function main() {
 
   // The org units, roles, routing table and goals as rows (docs/COMPANY_KNOWLEDGE.md). Replaced
   // wholesale on every run: nobody edits acme's structure by hand yet.
-  await replaceKnowledge(company.id, rowsFromSeed(seedTemplate("demo"), GOALS, () => crypto.randomUUID()), "seed");
+  await replaceKnowledge(company.id, withDemoDetail(rowsFromSeed(seedTemplate("demo"), GOALS, () => crypto.randomUUID())), "seed");
+
+  // What the raise-page assistant answers from (docs/ASSISTANT.md): the profile and compliance
+  // rules, and the documents an ERP import would bring. Made up, like everything in acme.
+  const profile = { ...DEMO_PROFILE, complianceRules: DEMO_COMPLIANCE_RULES, updatedBy: "seed" };
+  await db.companyProfile.upsert({ where: { companyId: company.id }, create: { companyId: company.id, ...profile }, update: profile });
+  await upsertDocuments(company.id, DEMO_DOCUMENTS);
 
   const printed: string[] = [];
   for (const u of demo.users) {
@@ -80,7 +88,7 @@ async function main() {
   }
 
   const created = !(await db.caseEvent.count({ where: { companyId: company.id } }));
-  console.log(`seeded ${company.slug} (${demo.users.length} people, event log ${created ? "empty" : "left as it was"})`);
+  console.log(`seeded ${company.slug} (${demo.users.length} people, ${DEMO_DOCUMENTS.length} documents, event log ${created ? "empty" : "left as it was"})`);
   if (printed.length) {
     console.log("login codes (shown once; only hashes are stored - new ones any time in /admin):");
     for (const line of printed) console.log(line);

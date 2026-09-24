@@ -48,7 +48,9 @@ export async function searchDocuments(companyId: string, ceiling: Level, text: s
   const allowed = LEVELS.filter((l) => rank(l) <= rank(ceilingOf(ceiling)));
   return getDb().$queryRaw<DocRow[]>`
     SELECT "id", "title", "classification", "source",
-           ts_headline('simple', "body", to_tsquery('simple', ${q}), 'MaxWords=40, MinWords=15, StartSel="", StopSel=""') AS "snippet"
+           -- a short document goes whole (the model reads it in context); a long one as the best-matching passage
+           CASE WHEN length("body") <= 700 THEN "body"
+                ELSE ts_headline('simple', "body", to_tsquery('simple', ${q}), 'MaxWords=60, MinWords=30, StartSel="", StopSel=""') END AS "snippet"
     FROM "Document"
     WHERE "companyId" = ${companyId}
       AND "classification" = ANY(${allowed}::text[])

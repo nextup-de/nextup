@@ -32,12 +32,14 @@ n8n ── POST /api/<company>/knowledge/documents (Bearer, knowledge:write) ─
 - **Provider** (`src/server/assist/provider.ts`): `bedrock` is Claude on Amazon Bedrock through the
   `AnthropicBedrockMantle` client in `LLM_REGION` (default `eu-central-1`). `mock` has no model. It
   strings the tool results into an answer, and it is what demo, e2e and local dev use. The mock is
-  chosen whenever `LLM_PROVIDER`/`LLM_MODEL` are unset.
+  chosen whenever `LLM_PROVIDER`/`LLM_MODEL` are unset. `anthropic` (`LLM_PROVIDER=anthropic` +
+  `ANTHROPIC_API_KEY`) calls the Anthropic API directly, which processes in the US - so the gate
+  allows it for demo-stage companies (made-up data) only; real companies get the mock instead.
 - **Gate** (`features/assist/gate.ts`), which fails closed:
 
   | Situation | What answers |
   |---|---|
-  | demo stage | configured provider |
+  | demo stage | configured provider (bedrock, anthropic or mock) |
   | real stage, assistant switched off | nobody (the page raises directly, as before) |
   | real stage, on, no DPA date | mock only, no model call |
   | real stage, on, DPA date recorded | configured provider |
@@ -71,6 +73,16 @@ retention, sub-processors and incident handling (see *Before a pilot*).
 For the customer's records: the processing record names AWS (Bedrock, EU regions per the chosen routing) as sub-processor
 for redacted question text and knowledge snippets. The DPA date in `/admin` is the switch that
 allows model calls for real people.
+
+## Demo data
+
+`src/features/demo/knowledge.ts` is Acme's made-up company knowledge beyond the org chart: profile
+and vision, compliance rules, KPIs and targets for the goals, decision rights and spending limits
+per role, and 12 documents an ERP import would bring (ordering, spare parts, rig booking,
+changeover, tolerances, IT onboarding, overtime, safety, change notes, facilities, goals - and one
+confidential supplier price list the assistant must never cite). `npm run db:seed` writes it all
+into the database; without a database the assist route searches the same documents in memory.
+Only demo-stage companies ever get these facts.
 
 ## Operating it
 

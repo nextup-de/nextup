@@ -7,6 +7,13 @@ import type { Provider } from ".";
 const first = (out: string) => out.split("\n").find((l) => /^\[S\d+\]/.test(l)) ?? null;
 const body = (line: string) => line.replace(/^\[S\d+\]\s*/, "").replace(/[.\s…]+$/, "");
 const tagOf = (line: string) => line.match(/^\[(S\d+)\]/)?.[0] ?? "";
+/** The first two whole sentences of a search snippet (starting after a cut-off fragment, if any). */
+const sentences = (snippet: string) => {
+  const brk = snippet.search(/[.!?]\s+[A-ZÄÖÜ]/);
+  const start = /^[A-ZÄÖÜ0-9]/.test(snippet) || brk < 0 ? 0 : brk + 2;
+  const parts = snippet.slice(start).match(/[^.!?]+[.!?]+(\s|$)/g) ?? [snippet.slice(start)];
+  return parts.slice(0, 2).join("").trim();
+};
 
 export const mockProvider: Provider = {
   id: "mock",
@@ -19,7 +26,10 @@ export const mockProvider: Provider = {
     ]);
     const lines: string[] = [];
     const d = first(doc), rt = first(route), g = first(goal);
-    if (d) lines.push(`There is something written down on this: ${body(d)} ${tagOf(d)}.`);
+    if (d) {
+      const [head, ...rest] = body(d).split(": ");
+      lines.push(`"${head.replace(/ \((?:erp|n8n|upload)\)$/, "")}" says: ${sentences(rest.join(": ")).replace(/[.\s]+$/, "")} ${tagOf(d)}.`);
+    }
     if (rt) {
       const [type, rest] = body(rt).split(": ");
       lines.push(`This sounds like ${type.toLowerCase()}. ${rest?.split(";")[0].replace(/^owner /, "It is owned by the ")} ${tagOf(rt)}.`);

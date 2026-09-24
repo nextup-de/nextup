@@ -15,7 +15,9 @@ import { GOALS } from "@/features/evaluate";
 import { companyBrief, hasKnowledge, rowsFromSeed, type Knowledge, type Profile } from "@/features/knowledge";
 import { getViewerFor } from "@/features/auth/session";
 import { assist, ASSIST_PROMPT_VERSION, MAX_HISTORY, MAX_QUESTION, type Source } from "@/features/assist";
-import { DEFAULT_CEILING } from "@/features/assist/classify";
+import { DEFAULT_CEILING, canUse } from "@/features/assist/classify";
+import { policyFor } from "@/features/admin/stages";
+import { DEMO_COMPLIANCE_RULES, DEMO_PROFILE, searchDemoDocuments, withDemoDetail } from "@/features/demo/knowledge";
 import { assistGate } from "@/features/assist/gate";
 import { stripTags } from "@/features/assist/check";
 import { hasDatabase } from "@/lib/db/client";
@@ -75,19 +77,24 @@ export async function POST(request: Request, { params }: Ctx) {
   const gate = assistGate({ stage: tenant.stage ?? "demo", hasDatabase: audited, configured: cfg.id, enabled: settings.enabled, dpaSignedAt: settings.dpaSignedAt });
   if (!gate.on) return json({ error: gate.why, off: true }, 403);
 
+  // A demo company's made-up knowledge fills whatever the database does not have (or all of it,
+  // without a database). A real company never gets demo facts: it answers from its own rows only.
+  const demo = policyFor(tenant.stage ?? "demo").demoData;
   const seed = await seedFor(tenant.slug);
   let knowledge: Knowledge | null = audited ? await loadKnowledge(viewer.companyId) : null;
   if (!knowledge || !hasKnowledge(knowledge)) {
     let n = 0;
     knowledge = rowsFromSeed(seed, GOALS, () => "k" + ++n);
+    if (demo) knowledge = withDemoDetail(knowledge);
   }
-  const profile: Profile | null = audited ? await loadProfile(viewer.companyId) : null;
+  const profile: Profile | null = (audited ? await loadProfile(viewer.companyId) : null) ?? (demo ? DEMO_PROFILE : null);
+  const rules = settings.rules || (demo && !audited ? DEMO_COMPLIANCE_RULES : "");
   const people = [
     ...seed.people.map((p) => ({ name: p.name, role: p.role })),
     ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" })),
   ];
   const redaction = { people, patterns: settings.patterns };
-  const provider = providerFor(gate.provider === "bedrock" ? cfg : { ...cfg, id: "mock", model: "mock" });
+  const provider = providerFor(gate.provider === cfg.id ? cfg : { ...cfg, id: "mock", model: "mock" });
 
   const started = Date.now();
   const encoder = new TextEncoder();
@@ -102,9 +109,11 @@ export async function POST(request: Request, { params }: Ctx) {
             knowledge: knowledge!,
             profile,
             ceiling: settings.ceiling,
-            searchDocuments: audited ? (q, k) => searchDocuments(viewer.companyId, settings.ceiling, q, k) : async () => [],
+            searchDocuments: audited
+              ? (q, k) => searchDocuments(viewer.companyId, settings.ceiling, q, k)
+              : async (q, k) => (demo ? searchDemoDocuments(q, (c) => canUse(c, settings.ceiling), k) : []),
           },
-          prompt: { companyName: tenant.name, brief: companyBrief(knowledge!, profile), rules: settings.rules },
+          prompt: { companyName: tenant.name, brief: companyBrief(knowledge!, profile), rules },
           redaction,
           provider,
           onChecked: (c) => send("text", { text: c.text, sources: shown(c.cited) }),

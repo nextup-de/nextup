@@ -65,6 +65,8 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # Demo boxes: LLM_PROVIDER=anthropic, demo-stage companies only (features/assist/gate.ts).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
