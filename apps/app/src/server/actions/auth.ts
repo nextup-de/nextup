@@ -108,7 +108,7 @@ export async function findCompany(_prev: FindState, form: FormData): Promise<Fin
         : "We don't know that email domain. Try your company's NextUp name instead.",
     };
   }
-  redirect(tenantMode() === "subdomain" ? `${companyUrl(tenant.slug)}/login` : `/${tenant.slug}/login`);
+  redirect(tenantMode() === "subdomain" ? `${companyUrl(tenant.slug)}/login` : `${companyPrefix(tenant.slug)}/login`);
 }
 
 export async function signOut(slug: string) {

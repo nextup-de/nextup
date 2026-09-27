@@ -1,25 +1,83 @@
 // Where a surface lives, as a URL. Path mode hangs everything off one host (/acme, /admin);
 // subdomain mode gives each company its own host - which is why /admin cannot simply link to "/"
 // for the landing page: in subdomain mode the admin area *is* a host of its own, and "/" is
-// admin's own root. Read the env here and nowhere else.
-export function tenantMode(): "subdomain" | "path" {
-  return process.env.TENANT_MODE === "subdomain" ? "subdomain" : "path";
+// admin's own root. Single mode is one company per deployment, served at the host's root, with
+// /admin as a path next to it. Read the env here and nowhere else.
+import type { TenantMode } from "@/features/auth/request";
+
+type Env = Record<string, string | undefined>;
+
+export function tenantMode(env: Env = process.env): TenantMode {
+  const m = env.TENANT_MODE;
+  return m === "subdomain" || m === "single" ? m : "path";
 }
 
-function origin(host: string): string {
-  return `${process.env.PUBLIC_SCHEME ?? "http"}://${host}`;
+/**
+ * The public origin this deployment answers on, without a trailing slash. APP_ORIGIN wins
+ * ("https://nextup.bigcorp.local" - on-prem hosts are arbitrary); without it the older pair
+ * PUBLIC_SCHEME + APP_DOMAIN still works.
+ */
+export function appOrigin(env: Env = process.env): string {
+  if (env.APP_ORIGIN) return env.APP_ORIGIN.replace(/\/+$/, "");
+  return `${env.PUBLIC_SCHEME ?? "http"}://${env.APP_DOMAIN ?? "localhost"}`;
 }
 
-/** The marketing site: the bare domain in subdomain mode, the app root in path mode. */
-export function landingUrl(): string {
-  return tenantMode() === "subdomain" ? origin(process.env.APP_DOMAIN ?? "localhost") : "/";
+/** The host part of appOrigin(), e.g. for a default sender address. */
+export function appHost(env: Env = process.env): string {
+  try {
+    return new URL(appOrigin(env)).hostname;
+  } catch {
+    return "localhost";
+  }
 }
 
-/** A company's home. Absolute in subdomain mode so it works from admin.<domain>. */
-export function companyUrl(slug: string): string {
-  return tenantMode() === "subdomain"
-    ? origin(`${slug}.${process.env.APP_DOMAIN ?? "localhost"}`)
-    : `${origin(process.env.APP_DOMAIN ?? "localhost")}/${slug}`;
+/** True when people reach this deployment over https. */
+export function servedOverHttps(env: Env = process.env): boolean {
+  return appOrigin(env).startsWith("https://");
+}
+
+/** The company this deployment serves in single mode, else null. */
+export function singleCompany(env: Env = process.env): string | null {
+  return tenantMode(env) === "single" ? env.COMPANY_SLUG?.trim() || null : null;
+}
+
+/** A company's paths as links see them: "/acme" in path mode, "" where the company is the host. */
+export function companyPrefix(slug: string, env: Env = process.env): string {
+  return tenantMode(env) === "path" ? "/" + slug : "";
+}
+
+/** Where /admin lives: the host root on the admin subdomain, "/admin" otherwise. */
+export function adminBase(env: Env = process.env): string {
+  return tenantMode(env) === "subdomain" ? "" : "/admin";
+}
+
+function hostOrigin(host: string, env: Env): string {
+  const scheme = env.APP_ORIGIN ? new URL(appOrigin(env)).protocol.replace(":", "") : env.PUBLIC_SCHEME ?? "http";
+  return `${scheme}://${host}`;
+}
+
+/** The domain companies hang off in subdomain mode (host:port of the origin). */
+export function rootDomain(env: Env = process.env): string {
+  return env.APP_ORIGIN ? new URL(appOrigin(env)).host : env.APP_DOMAIN ?? "localhost";
+}
+
+/**
+ * The marketing site. Subdomain mode: the bare domain. Path mode: the app root. Single mode: the
+ * public site lives elsewhere (nextup-landing), so LANDING_URL, or the company's own root.
+ */
+export function landingUrl(env: Env = process.env): string {
+  const mode = tenantMode(env);
+  if (mode === "subdomain") return hostOrigin(rootDomain(env), env);
+  if (mode === "single") return env.LANDING_URL || "/";
+  return "/";
+}
+
+/** A company's home, absolute - it is used in e-mails and from admin.<domain>. */
+export function companyUrl(slug: string, env: Env = process.env): string {
+  const mode = tenantMode(env);
+  if (mode === "subdomain") return hostOrigin(`${slug}.${rootDomain(env)}`, env);
+  if (mode === "single") return appOrigin(env);
+  return `${appOrigin(env)}/${slug}`;
 }
 
 /**
@@ -35,6 +93,9 @@ export function safeNextPath(next: string): string | null {
 }
 
 /** One company's dashboard - the page a visitor should land on when they want to see the product. */
-export function dashboardUrl(slug: string): string {
-  return tenantMode() === "subdomain" ? `${companyUrl(slug)}/dashboard` : `/${slug}/dashboard`;
+export function dashboardUrl(slug: string, env: Env = process.env): string {
+  const mode = tenantMode(env);
+  if (mode === "subdomain") return `${companyUrl(slug, env)}/dashboard`;
+  if (mode === "single") return "/dashboard";
+  return `/${slug}/dashboard`;
 }

@@ -54,7 +54,7 @@ function RailShell({ children }: { children: React.ReactNode }) {
         <div className={styles.railLabel}>Views</div>
         <nav className={styles.nav}>
           {navFor(role).map((n) => {
-            const href = "/" + tenant.slug + n.href;
+            const href = tenant.prefix + n.href;
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} onClick={() => { setPop(null); setMenu(false); }}>

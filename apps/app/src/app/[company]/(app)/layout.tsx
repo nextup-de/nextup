@@ -9,6 +9,7 @@
 // The proxy already redirects an unauthenticated visitor, but the check is repeated here: a proxy
 // is routing, not a security boundary, and this layout is what actually hands over the data.
 import { notFound, redirect } from "next/navigation";
+import { companyPrefix } from "@/features/tenant/urls";
 import { findTenant } from "@/features/tenant";
 import { seedFor } from "@/features/demo";
 import { getViewerFor } from "@/features/auth/session";
@@ -62,6 +63,7 @@ export default async function AppLayout({
     <DemoProvider
       tenant={{
         slug: tenant.slug,
+        prefix: prefixFor(tenant.slug),
         name: tenant.name,
         users: people.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
         demoTools,
@@ -75,7 +77,7 @@ export default async function AppLayout({
   );
 }
 
-/** In subdomain mode the company IS the host, so links carry no slug. */
+/** Where the company IS the host (subdomain, single), links carry no slug. */
 function prefixFor(slug: string): string {
-  return process.env.TENANT_MODE === "subdomain" ? "" : "/" + slug;
+  return companyPrefix(slug);
 }

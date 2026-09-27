@@ -76,6 +76,36 @@ describe("path mode", () => {
   });
 });
 
+describe("single mode", () => {
+  const single = (path: string, company = "acme", host = "nextup.bigcorp.local") =>
+    resolveRequest(host, path, "single", ROOT, company);
+
+  it("serves the one company at the root of any host", () => {
+    expect(single("/")).toEqual({ kind: "tenant", slug: "acme", appPath: "/", rewriteTo: "/acme" });
+    expect(single("/leader", "acme", "10.0.0.5:8443")).toEqual({
+      kind: "tenant", slug: "acme", appPath: "/leader", rewriteTo: "/acme/leader",
+    });
+  });
+
+  it("puts login on the company, not on the find-your-company page", () => {
+    expect(single("/login")).toMatchObject({ kind: "tenant", appPath: "/login", rewriteTo: "/acme/login" });
+  });
+
+  it("keeps /admin as a path", () => {
+    expect(single("/admin/companies")).toEqual({ kind: "admin", appPath: "/companies", rewriteTo: null });
+  });
+
+  it("lets e-mail links for invites and password resets through", () => {
+    for (const p of ["/invite/abc", "/signup", "/forgot-password"]) expect(single(p).kind).toBe("pass");
+  });
+
+  it("serves nothing without a valid COMPANY_SLUG", () => {
+    expect(single("/leader", "").kind).toBe("pass");
+    expect(single("/leader", "admin").kind).toBe("pass");
+    expect(single("/leader", "Not A Slug").kind).toBe("pass");
+  });
+});
+
 describe("slug rules", () => {
   it("accepts ordinary company slugs", () => {
     for (const s of ["acme", "globex", "a1", "bosch-rexroth", "x".repeat(32)]) {

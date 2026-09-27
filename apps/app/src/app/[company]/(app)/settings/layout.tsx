@@ -1,9 +1,10 @@
 // Settings sub-navigation. Manager only (guard arrives with sessions in Phase 2).
 import Link from "next/link";
+import { companyPrefix } from "@/features/tenant/urls";
 
 export default async function SettingsLayout({ children, params }: { children: React.ReactNode; params: Promise<{ company: string }> }) {
   const { company } = await params;
-  const base = `/${company}/settings`;
+  const base = `${companyPrefix(company)}/settings`;
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <nav aria-label="Settings" style={{ display: "flex", gap: 16, fontSize: 14 }}>

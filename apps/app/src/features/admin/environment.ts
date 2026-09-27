@@ -1,6 +1,7 @@
 // What the server is configured with, as /admin/connections shows it. Pure: takes the env, returns
 // rows, never a secret's value - only whether it is set and whether it is still the placeholder
 // from .env.example. tests/unit/admin-environment.test.ts.
+import { appOrigin, servedOverHttps, tenantMode } from "@/features/tenant/urls";
 import type { Tone } from "./nav";
 
 export type EnvRow = { label: string; value: string; tone: Tone; hint?: string };
@@ -18,20 +19,28 @@ function secret(env: Env, key: string, label: string, why: string): EnvRow {
 }
 
 export function describeEnvironment(env: Env): EnvRow[] {
-  const subdomain = env.TENANT_MODE === "subdomain";
-  const https = env.PUBLIC_SCHEME === "https";
+  const mode = tenantMode(env);
+  const origin = appOrigin(env);
+  const https = servedOverHttps(env);
+  const addressing =
+    mode === "single"
+      ? `single - ${env.COMPANY_SLUG || "COMPANY_SLUG not set"} at ${origin}`
+      : mode === "subdomain"
+        ? `subdomain - acme.${new URL(origin).host}`
+        : `path - ${new URL(origin).host}/acme`;
   return [
     secret(env, "AUTH_SECRET", "AUTH_SECRET", "Signs every session and the admin cookie."),
     secret(env, "ADMIN_ACCESS_CODE", "ADMIN_ACCESS_CODE", "The code that opens this page."),
     {
       label: "Addressing",
-      value: subdomain ? `subdomain - acme.${env.APP_DOMAIN ?? "localhost"}` : `path - ${env.APP_DOMAIN ?? "localhost"}/acme`,
-      tone: "ok",
+      value: addressing,
+      tone: mode === "single" && !env.COMPANY_SLUG ? "bad" : "ok",
+      hint: mode === "single" && !env.COMPANY_SLUG ? "Single mode serves one company: set COMPANY_SLUG." : undefined,
     },
     {
       label: "Secure cookies",
       // Mirrors secureCookies() in src/server/issue-session.ts: https turns it on by itself.
-      value: env.COOKIE_SECURE === "true" ? "on" : https ? "on - PUBLIC_SCHEME is https" : "off",
+      value: env.COOKIE_SECURE === "true" ? "on" : https ? "on - served over https" : "off",
       tone: "ok",
       hint: env.COOKIE_SECURE !== "true" && !https ? "Fine on a laptop over http. Anywhere public, serve https." : undefined,
     },
