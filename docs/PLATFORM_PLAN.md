@@ -32,7 +32,7 @@ That gives two stages:
 | Backups | Nightly encrypted backup + a restore test | Backups to storage the customer owns, weekly automatic restore test |
 | Tickets | Bug icon + screenshot → stack + email to reporter → ops ticket board | GitHub link, AI triage, screenshot policy per company, ideas voting |
 | AI | Existing provider interface: mock or Bedrock, inside the stack | Job queue, AI gateway, own AI server. *Trigger: usage numbers show the need.* |
-| n8n | `n8n-dev` on the ops server; workflows in git | Fixture tests in CI, drift detection |
+| n8n | `automation.sellux.ch` for building and testing, with fake data; workflows in git | Fixture tests in CI, drift detection |
 | Security | CodeQL, gitleaks, `npm audit`, Trivy in CI; stacks reachable only through nginx; 2FA on GitHub/Hetzner | Own servers with only 80/443 open and SSH over a VPN; ZAP scans, agent config checks, image signing, pentest, AI-fix bot |
 | On-prem | Not yet — but the stack must install from `install.sh` alone | Offline bundle, install rehearsal on a locked-down server |
 
@@ -46,6 +46,20 @@ The stack does not care where it runs:
 - on a customer's machine
 
 Only the `install.sh` options differ.
+
+## Addresses
+
+| Address | What | Where it runs |
+|---|---|---|
+| `sellux.ch` (+ `www`) | the public landing page | Vercel, repo `nextup-landing` |
+| `<company>.sellux.ch` | one company's NextUp, e.g. `acme.sellux.ch` | that company's stack |
+| `admin.sellux.ch` | our developer tool: companies, tickets, releases, security | `apps/ops` (steps 7+) |
+| `automation.sellux.ch` | n8n for building and testing workflows | our n8n, behind two logins |
+
+`<company>` is the stack's slug: lowercase letters, digits and dashes, 2-32 characters. Names
+the platform itself uses (`www`, `admin`, `automation`, `api`, `mail`, `n8n`, ...) are reserved
+and can never be a company. On the real domain later, the same four addresses move over
+unchanged.
 
 ## Decisions this plan is built on
 
@@ -76,12 +90,14 @@ Only the `install.sh` options differ.
   acme.sellux.ch      ──▶ ┐
   globex.sellux.ch    ──▶ │  The existing Hetzner box (178.104.253.90)
   demo.sellux.ch      ──▶ │  nginx + certbot on 80/443 (also serves ~30 other sites)
-  ops.sellux.ch       ──▶ ┘    │  one nginx site per host, TLS ends here
+  admin.sellux.ch     ──▶ │  one nginx site per host, TLS ends here
+  automation.sellux.ch──▶ ┘    │
                                ▼
                           127.0.0.1:3101 ─▶ stack nextup-acme    (Caddy · app · db · mailpit)
                           127.0.0.1:3111 ─▶ stack nextup-globex  (Caddy · app · db)
                           127.0.0.1:3121 ─▶ stack nextup-demo    (reserved)
-                          127.0.0.1:3131 ─▶ ops app + n8n-dev    (steps 7 and 8, next free block)
+                          127.0.0.1:3131 ─▶ admin: ops app       (step 7, next free block)
+                          127.0.0.1:3141 ─▶ automation: n8n      (step 8, behind nginx login)
 
   ports: each stack owns ten, starting at its Caddy port P (acme 3101-3110, globex 3111-3120):
          P Caddy, P+1 mailpit, P+2 n8n, P+9 the unused 443 mapping
@@ -103,7 +119,7 @@ The stack itself stays the same.
 
 | Repo | Contents | Deploys to |
 |---|---|---|
-| `nextup` (today's repo, restructured) | `apps/app` (dashboard + company admin), `apps/ops` (our developer admin + ticket board), `packages/*`, `stack/`, `n8n/` | Images on GHCR → stacks and ops server |
+| `nextup` (today's repo, restructured) | `apps/app` (dashboard + company admin), `apps/ops` (our developer admin + ticket board), `packages/*`, `stack/`, `n8n/` | Images on GHCR → company stacks and admin.sellux.ch |
 | `nextup-landing` | Marketing site (moved out of `src/app/(marketing)`) | Vercel |
 | `nextup-infra` | Starter kit: scripts + runbook for the existing box now, OpenTofu/Ansible later; backup templates, reusable CI workflows; secrets in sops/age | Nothing; run by CI or an engineer |
 
@@ -208,7 +224,7 @@ is used by our deploy and, later, by a company installing on its own server.
 
   ```
   browser → app (stack): stores Ticket + screenshot, emails the reporter
-                      → POST ops.sellux.ch/api/intake (per-stack token, HTTPS, outbound)
+                      → POST admin.sellux.ch/api/intake (per-stack token, HTTPS, outbound)
   ops: ticket board — list, filters, detail with screenshot + context, status, comments
   ```
 
@@ -249,8 +265,13 @@ data.
 
 ## n8n
 
-- **Stage 1:** `n8n-dev` on the shared box, on a loopback port, reached over an SSH tunnel
-  (or Tailscale), with fake data only. It replaces the Cloudflare quick tunnel to the laptop.
+- **Stage 1:** `automation.sellux.ch`, one n8n on the shared box for building and testing, with
+  fake data only. It replaces the Cloudflare quick tunnel to the laptop.
+  - **Two logins:** nginx basic auth (or an IP allow-list) in front, then n8n's own user
+    accounts. The colleague gets their own n8n account, never a shared one.
+  - **Its own encryption key**, kept with the backups, so stored credentials survive a restore.
+  - **Not the companies' n8n.** Each company stack keeps its own n8n on a loopback port.
+    Workflows reach it through a release, never by hand.
   - The colleague builds there and exports to `nextup/n8n/`; a PR brings it into the stacks.
   - The existing rule stays: **the app answers, n8n acts**, through the events API, never
     Postgres.
@@ -312,8 +333,8 @@ Each step has a learning goal and a check that proves it works.
 | 4 | Deploy `acme`, `globex`, `demo` stacks + ops app to that box via GitHub Actions; images on GHCR | CI/CD, container registries | A merge to `main` updates the stacks in minutes; the old Vercel demo is retired |
 | 5 | Backups + a written restore test | Backups that actually work | A deleted `acme` database is restored from backup |
 | 6 | Security checks in CI; fix the carried-over audit items | Supply-chain and secret scanning | All checks green on every repo |
-| 7 | Tickets stage 1: bug icon, screenshot, stack storage, reporter email, ops board | Full-stack feature across two apps | A report from `acme` shows up in ops with its screenshot; a reply reaches the reporter |
-| 8 | `n8n-dev` on the ops server; colleague ships one workflow via PR | Team workflow for non-core code | A workflow change reaches the stacks without anyone touching n8n by hand |
+| 7 | `admin.sellux.ch` (apps/ops) + tickets stage 1: bug icon, screenshot, stack storage, reporter email, ticket board | Full-stack feature across two apps | A report from `acme` shows up on admin.sellux.ch with its screenshot; a reply reaches the reporter |
+| 8 | `automation.sellux.ch` (n8n behind nginx login); colleague ships one workflow via PR | Team workflow for non-core code | A workflow change reaches the stacks without anyone touching n8n by hand |
 
 After step 8, NextUp runs the way it will run for customers, just smaller. `nextup-infra` is also
 ready to reuse for the next project.
