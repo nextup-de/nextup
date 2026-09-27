@@ -121,6 +121,8 @@ describe("slug rules", () => {
 
   it("keeps the reserved list and the validator in agreement", () => {
     expect(isReservedSlug("admin")).toBe(true);
+    expect(isReservedSlug("automation")).toBe(true);
+    expect(isValidSlug("automation")).toBe(false);
     expect(isReservedSlug("acme")).toBe(false);
   });
 });

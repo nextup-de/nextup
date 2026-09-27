@@ -11,6 +11,8 @@ import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
  */
 export const RESERVED_SLUGS = [
   "www", "admin", "api", "n8n", "mail", "app", "static", "assets", "_next",
+  // Platform hosts on the same domain as the companies (docs/PLATFORM_PLAN.md, "Addresses").
+  "automation", "ops", "status",
   "login", "signup", "pricing", "contact", "imprint", "privacy", "forgot-password", "invite",
 ] as const;
 
