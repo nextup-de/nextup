@@ -78,11 +78,14 @@ Only the `install.sh` options differ.
   demo.sellux.ch      ──▶ │  nginx + certbot on 80/443 (also serves ~30 other sites)
   ops.sellux.ch       ──▶ ┘    │  one nginx site per host, TLS ends here
                                ▼
-                          127.0.0.1:81xx ─▶ stack nextup-acme    (Caddy · app · db · mailpit)
-                          127.0.0.1:81xx ─▶ stack nextup-globex  (Caddy · app · db)
-                          127.0.0.1:81xx ─▶ stack nextup-demo    ...
-                          127.0.0.1:81xx ─▶ ops app + n8n-dev    (steps 7 and 8)
+                          127.0.0.1:3101 ─▶ stack nextup-acme    (Caddy · app · db · mailpit)
+                          127.0.0.1:3111 ─▶ stack nextup-globex  (Caddy · app · db)
+                          127.0.0.1:3121 ─▶ stack nextup-demo    (reserved)
+                          127.0.0.1:3131 ─▶ ops app + n8n-dev    (steps 7 and 8, next free block)
 
+  ports: each stack owns ten, starting at its Caddy port P (acme 3101-3110, globex 3111-3120):
+         P Caddy, P+1 mailpit, P+2 n8n, P+9 the unused 443 mapping
+         (registry: stack/nginx/ports.md, later nextup-infra)
   every stack: its own compose project, network, volumes and secrets; only nginx is public
   deploys: GitHub Actions → SSH → stack/ctl.sh <slug> pull && up
 ```
@@ -144,7 +147,7 @@ Those last two steps are the process overhead we are avoiding now.
 ```
 nextup-infra/
   hosts/sellux-box/     stage 1: the existing server - RUNBOOK.md, an nginx site template per
-                        stack, add-stack.sh / remove-stack.sh, a port registry (which 81xx is whose)
+                        stack, add-stack.sh / remove-stack.sh, a port registry (ports.md)
   templates/backup/     restic sidecar + restore-test script
   .github/workflows/    reusable: build image, scan, deploy-over-SSH
   projects/nextup/      NextUp's stacks, domains, secrets (sops)
