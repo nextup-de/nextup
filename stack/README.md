@@ -19,6 +19,30 @@ password, `AUTH_SECRET`, admin code and n8n key. The folder is gitignored and ne
 machine. Later runs keep that file and only start the stack again. It prints the URL, the admin
 code and, for the demo, everyone's login code.
 
+### Behind an existing nginx (the shared Hetzner server)
+
+When 80/443 already belong to nginx + certbot, the stack's Caddy serves plain http on a
+loopback port and nginx terminates TLS. Give each stack its own block of ten ports:
+
+```bash
+stack/push-images.sh hetzner --build            # from the laptop, until CI publishes images
+# on the server, in ~/nextup:
+NEXTUP_INSTANCES=~/nextup/instances stack/install.sh --slug acme \
+  --origin https://acme.sellux.ch --stage demo --behind-proxy 3101
+stack/nginx/site.sh acme.sellux.ch 3101 | sudo tee /etc/nginx/sites-available/nextup-acme
+sudo ln -s /etc/nginx/sites-available/nextup-acme /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx && sudo certbot --nginx -d acme.sellux.ch
+```
+
+Mailpit is on `127.0.0.1:PORT+1` and n8n on `PORT+2`. Reach them with `ssh -L`. Caddy trusts the
+nginx hop (`TRUSTED_PROXIES=private_ranges`), so the app's rate limiter sees the client's IP.
+
+| Stack | Port block |
+|---|---|
+| acme | 3101 |
+| globex | 3111 |
+| demo | 3121 |
+
 `--stage real` starts with an empty database. Open `/admin` and create the company with the
 same slug.
 

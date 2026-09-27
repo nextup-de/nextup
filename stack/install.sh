@@ -3,6 +3,7 @@
 #
 #   stack/install.sh --slug acme --origin http://localhost:8080 --stage demo --build
 #   stack/install.sh --slug globex --origin https://globex.sellux.ch --stage real
+#   stack/install.sh --slug acme --origin https://acme.sellux.ch --stage demo --behind-proxy 3101
 #
 # First run: creates the instance folder with a .env holding freshly generated secrets.
 # Later runs: keep that .env as it is (secrets are never regenerated) and start the stack again.
@@ -17,12 +18,15 @@
 #   --n8n              also run n8n inside this stack (editor on 127.0.0.1)
 #   --build            build the images from this repo first (until CI publishes them)
 #   --dir DIR          instance folder (default: stack/instances/SLUG, or $NEXTUP_INSTANCES/SLUG)
+#   --behind-proxy PORT  a server whose 80/443 already belong to a reverse proxy (nginx) that
+#                      terminates TLS: Caddy serves plain http on 127.0.0.1:PORT, mailpit on
+#                      PORT+1, n8n on PORT+2. Point the proxy at PORT (stack/nginx/site.sh).
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-slug="" origin="" stage="demo" landing="" n8n=false build=false dir=""
+slug="" origin="" stage="demo" landing="" n8n=false build=false dir="" proxy_port=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="$2"; shift 2 ;;
@@ -32,7 +36,8 @@ while [ $# -gt 0 ]; do
     --n8n) n8n=true; shift ;;
     --build) build=true; shift ;;
     --dir) dir="$2"; shift 2 ;;
-    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
+    --behind-proxy) proxy_port="$2"; shift 2 ;;
+    -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -47,6 +52,10 @@ esac
 [[ "$origin" =~ ^(https?)://([a-zA-Z0-9.-]+)(:([0-9]+))?$ ]] || die "--origin must look like http://host[:port] or https://host[:port]"
 scheme="${BASH_REMATCH[1]}" host="${BASH_REMATCH[2]}" port="${BASH_REMATCH[4]}"
 [ "$stage" = demo ] || [ "$stage" = real ] || die "--stage is demo or real"
+if [ -n "$proxy_port" ]; then
+  [[ "$proxy_port" =~ ^[0-9]{4,5}$ ]] && [ "$proxy_port" -le 65000 ] || die "--behind-proxy takes a port, e.g. 3101"
+  [ "$scheme" = https ] || die "--behind-proxy expects an https --origin (the proxy terminates TLS)"
+fi
 command -v docker >/dev/null || die "docker is not installed"
 command -v openssl >/dev/null || die "openssl is not installed"
 
@@ -60,7 +69,15 @@ else
   mkdir -p "$dir"
   rand() { openssl rand -hex "$1"; }
 
-  if [ "$scheme" = http ]; then
+  # Only the laptop and proxy cases trust X-Forwarded-For from a private address; a public Caddy
+  # sees clients directly and must not believe what they send.
+  trusted="127.0.0.1/32" mail_port=8025 n8n_port=5678
+  if [ -n "$proxy_port" ]; then
+    # Everything on the loopback: only the proxy on this machine reaches Caddy. 443 stays unused
+    # but needs a valid mapping, so it gets a loopback port of its own.
+    site=":80"; http_port="127.0.0.1:$proxy_port"; https_port="127.0.0.1:$((proxy_port + 9))"
+    secure=true; trusted="private_ranges"; mail_port=$((proxy_port + 1)); n8n_port=$((proxy_port + 2))
+  elif [ "$scheme" = http ]; then
     site=":80"; http_port="${port:-80}"; https_port="8443"; secure=false
   else
     # Let's Encrypt needs the real 80/443; a different https port only makes sense behind NAT.
@@ -88,6 +105,9 @@ SITE_ADDRESS=$site
 HTTP_PORT=$http_port
 HTTPS_PORT=$https_port
 COOKIE_SECURE=$secure
+TRUSTED_PROXIES=$trusted
+MAILPIT_PORT=$mail_port
+N8N_PORT=$n8n_port
 COMPOSE_PROFILES=$profiles
 SEED_DEMO=$seed
 LOGIN_DEMO_FILL=$demo_login
@@ -130,5 +150,5 @@ echo "  Admin:        $(get APP_ORIGIN)/admin   code: $(get ADMIN_ACCESS_CODE)"
 if [ "$(get SEED_DEMO)" = true ]; then
   "${compose[@]}" logs --no-log-prefix migrate 2>/dev/null | sed -n '/^login codes/,$p' | sed 's/^/  /' || true
 fi
-case "$(get COMPOSE_PROFILES)" in *demo*) echo "  Mail inbox:   http://127.0.0.1:${MAILPIT_PORT:-8025}" ;; esac
+case "$(get COMPOSE_PROFILES)" in *demo*) echo "  Mail inbox:   http://127.0.0.1:$(get MAILPIT_PORT || echo 8025)" ;; esac
 echo "  Manage:       stack/ctl.sh $slug ps | logs -f app | down"

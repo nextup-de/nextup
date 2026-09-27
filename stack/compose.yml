@@ -106,6 +106,7 @@ services:
       - caddyconfig:/config
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:?}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
     depends_on:
       app:
         condition: service_healthy

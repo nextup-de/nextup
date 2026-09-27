@@ -2,6 +2,16 @@
 #   :80                   plain http on any host name - a laptop
 #   acme.sellux.ch        automatic https (Let's Encrypt), http redirects to it - a public server
 # On-prem with the company's own certificate: see stack/README.md.
+#
+# TRUSTED_PROXIES: behind nginx (install.sh --behind-proxy) the peer is the Docker gateway, so
+# private_ranges lets the client IP from nginx through to the app's rate limiter. Otherwise it
+# trusts nobody who can actually connect.
+{
+	servers {
+		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+	}
+}
+
 {$SITE_ADDRESS} {
 	encode zstd gzip
 	header -Server
