@@ -18,6 +18,9 @@
 #   --n8n              also run n8n inside this stack (editor on 127.0.0.1)
 #   --build            build the images from this repo first (until CI publishes them)
 #   --dir DIR          instance folder (default: stack/instances/SLUG, or $NEXTUP_INSTANCES/SLUG)
+#   --images TAG       run the images CI publishes to GHCR (docs: .github/workflows/images.yml):
+#                      main, or a commit's 7-char short sha. 'local' goes back to local builds. Also
+#                      works on an existing instance: only the two image lines change.
 #   --behind-proxy PORT  a server whose 80/443 already belong to a reverse proxy (nginx) that
 #                      terminates TLS: Caddy serves plain http on 127.0.0.1:PORT, mailpit on
 #                      PORT+1, n8n on PORT+2. Point the proxy at PORT (stack/nginx/site.sh).
@@ -26,7 +29,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-slug="" origin="" stage="demo" landing="" n8n=false build=false dir="" proxy_port=""
+slug="" origin="" stage="demo" landing="" n8n=false build=false dir="" proxy_port="" images=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="$2"; shift 2 ;;
@@ -37,7 +40,8 @@ while [ $# -gt 0 ]; do
     --build) build=true; shift ;;
     --dir) dir="$2"; shift 2 ;;
     --behind-proxy) proxy_port="$2"; shift 2 ;;
-    -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
+    --images) images="$2"; shift 2 ;;
+    -h|--help) sed -n '2,31p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -56,6 +60,15 @@ if [ -n "$proxy_port" ]; then
   [[ "$proxy_port" =~ ^[0-9]{4,5}$ ]] && [ "$proxy_port" -le 65000 ] || die "--behind-proxy takes a port, e.g. 3101"
   [ "$scheme" = https ] || die "--behind-proxy expects an https --origin (the proxy terminates TLS)"
 fi
+registry="${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}"
+case "$images" in
+  ""|local) app_image=nextup-app:local; migrate_image=nextup-migrate:local ;;
+  *) [[ "$images" =~ ^(main|[0-9a-f]{7})$ ]] || die "--images is main, a 7-char commit sha or local"
+     $build && die "--images and --build exclude each other"
+     # images.yml tags each build as :main and :sha-<7-char sha>.
+     tag="$images"; [ "$images" = main ] || tag="sha-$images"
+     app_image="$registry/nextup-app:$tag"; migrate_image="$registry/nextup-migrate:$tag" ;;
+esac
 command -v docker >/dev/null || die "docker is not installed"
 command -v openssl >/dev/null || die "openssl is not installed"
 
@@ -65,6 +78,11 @@ compose=(docker compose -f "$here/compose.yml" --env-file "$env_file")
 
 if [ -f "$env_file" ]; then
   echo "Keeping $env_file (secrets are never regenerated)."
+  if [ -n "$images" ]; then
+    # Only the image lines change; sed -i keeps the file's owner and mode.
+    sed -i -e "s|^NEXTUP_APP_IMAGE=.*|NEXTUP_APP_IMAGE=$app_image|"            -e "s|^NEXTUP_MIGRATE_IMAGE=.*|NEXTUP_MIGRATE_IMAGE=$migrate_image|" "$env_file"
+    echo "Images: $app_image, $migrate_image"
+  fi
 else
   mkdir -p "$dir"
   rand() { openssl rand -hex "$1"; }
@@ -118,9 +136,9 @@ AUTH_SECRET=$(rand 32)
 ADMIN_ACCESS_CODE=$(rand 16)
 N8N_ENCRYPTION_KEY=$(rand 32)
 
-# Images. Local builds until CI publishes them to GHCR (stage 1, step 4).
-NEXTUP_APP_IMAGE=nextup-app:local
-NEXTUP_MIGRATE_IMAGE=nextup-migrate:local
+# Images: local builds, or GHCR with --images (change them with install.sh --images TAG).
+NEXTUP_APP_IMAGE=$app_image
+NEXTUP_MIGRATE_IMAGE=$migrate_image
 ENV
   )
   echo "Wrote $env_file with new secrets."
@@ -132,6 +150,11 @@ if $build; then
   docker build -q -f "$repo/ops/Dockerfile" --target run -t nextup-app:local "$repo" >/dev/null
 fi
 
+if grep -q '^NEXTUP_APP_IMAGE=nextup-app:local$' "$env_file"; then
+  :   # local images: nothing to pull
+else
+  "${compose[@]}" pull --quiet app migrate
+fi
 "${compose[@]}" up -d --remove-orphans
 
 echo -n "Waiting for the app to be healthy "

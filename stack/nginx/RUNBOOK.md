@@ -58,13 +58,32 @@ Running `add-stack.sh` again restarts the stack. It keeps the secrets and picks 
 
 ## Update to new images
 
+CI publishes `ghcr.io/selluxhenner/nextup-app` and `nextup-migrate` on every push to `main`
+(`.github/workflows/images.yml`), tagged `main` and `sha-<7-char sha>`. Scripts take the plain sha and add the `sha-` prefix. On the box:
+
 ```bash
-stack/push-images.sh hetzner --build                             # laptop
-ssh hetzner '~/nextup/stack/nginx/add-stack.sh acme 3101 demo && ~/nextup/stack/nginx/add-stack.sh globex 3111 demo'
+~/nextup/stack/nginx/deploy.sh deploy main       # every installed stack in ports.md
+~/nextup/stack/nginx/deploy.sh deploy a16bc06    # pin (or roll back to) one commit
+~/nextup/stack/nginx/deploy.sh status
 ```
 
-Each stack uses the port from its row in `ports.md`. The `migrate`
-service applies new migrations before the app starts.
+`deploy.sh` runs `add-stack.sh ... --images TAG` for each stack. That rewrites only the two image
+lines in the stack's `.env`, pulls the images and restarts. `migrate` applies new migrations
+before the app starts. For one stack only: `add-stack.sh acme 3101 demo --images main`.
+`--images local` goes back to images copied with `stack/push-images.sh`.
+
+### Deploy from CI (restricted key)
+
+The box hosts other sites, so the CI key never gets a shell. Put this one line in
+`~/.ssh/authorized_keys` (the key's private half goes into a GitHub secret, nowhere else):
+
+```
+command="~/nextup/stack/nginx/deploy.sh",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA... nextup-deploy
+```
+
+That key can then only run `ssh hetzner deploy <tag>` or `ssh hetzner status`. Everything else
+is refused. Deploys are logged in `~/nextup/deploy.log`. The admin code and login codes never
+reach the CI log.
 
 ## Day to day
 
