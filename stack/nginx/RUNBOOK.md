@@ -59,7 +59,7 @@ Running `add-stack.sh` again restarts the stack. It keeps the secrets and picks 
 ## Update to new images
 
 CI publishes `ghcr.io/selluxhenner/nextup-app` and `nextup-migrate` on every push to `main`
-(`.github/workflows/images.yml`), tagged `main` and with the commit's short sha. On the box:
+(`.github/workflows/images.yml`), tagged `main` and `sha-<7-char sha>`. Scripts take the plain sha and add the `sha-` prefix. On the box:
 
 ```bash
 ~/nextup/stack/nginx/deploy.sh deploy main       # every installed stack in ports.md

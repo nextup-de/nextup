@@ -5,7 +5,7 @@
 #   ~/.ssh/authorized_keys (one line):
 #   command="~/nextup/stack/nginx/deploy.sh",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA... nextup-deploy
 #
-# CI then runs:   ssh hetzner deploy <tag>     (tag: main or a short commit sha)
+# CI then runs:   ssh hetzner deploy <tag>     (tag: main or a 7-char commit sha)
 #                 ssh hetzner status
 # By hand:        ~/nextup/stack/nginx/deploy.sh deploy main
 #
@@ -32,7 +32,7 @@ case "$action" in
       "$here/../ctl.sh" "$s" ps --format '  {{.Service}} {{.Status}}'
     done ;;
   deploy)
-    [[ "$tag" =~ ^(main|[0-9a-f]{7,40})$ ]] || { echo "deploy: tag must be main or a short sha" >&2; exit 2; }
+    [[ "$tag" =~ ^(main|[0-9a-f]{7})$ ]] || { echo "deploy: tag must be main or a 7-char commit sha" >&2; exit 2; }
     echo "$(date -u +%FT%TZ) deploy $tag by ${SSH_CONNECTION%% *}" >> "$log"
     failed=0
     while read -r s p st; do

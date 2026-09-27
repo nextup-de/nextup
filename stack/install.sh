@@ -19,7 +19,7 @@
 #   --build            build the images from this repo first (until CI publishes them)
 #   --dir DIR          instance folder (default: stack/instances/SLUG, or $NEXTUP_INSTANCES/SLUG)
 #   --images TAG       run the images CI publishes to GHCR (docs: .github/workflows/images.yml):
-#                      main, or a commit's short sha. 'local' goes back to local builds. Also
+#                      main, or a commit's 7-char short sha. 'local' goes back to local builds. Also
 #                      works on an existing instance: only the two image lines change.
 #   --behind-proxy PORT  a server whose 80/443 already belong to a reverse proxy (nginx) that
 #                      terminates TLS: Caddy serves plain http on 127.0.0.1:PORT, mailpit on
@@ -63,9 +63,11 @@ fi
 registry="${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}"
 case "$images" in
   ""|local) app_image=nextup-app:local; migrate_image=nextup-migrate:local ;;
-  *) [[ "$images" =~ ^(main|[0-9a-f]{7,40})$ ]] || die "--images is main, a short commit sha or local"
+  *) [[ "$images" =~ ^(main|[0-9a-f]{7})$ ]] || die "--images is main, a 7-char commit sha or local"
      $build && die "--images and --build exclude each other"
-     app_image="$registry/nextup-app:$images"; migrate_image="$registry/nextup-migrate:$images" ;;
+     # images.yml tags each build as :main and :sha-<7-char sha>.
+     tag="$images"; [ "$images" = main ] || tag="sha-$images"
+     app_image="$registry/nextup-app:$tag"; migrate_image="$registry/nextup-migrate:$tag" ;;
 esac
 command -v docker >/dev/null || die "docker is not installed"
 command -v openssl >/dev/null || die "openssl is not installed"
