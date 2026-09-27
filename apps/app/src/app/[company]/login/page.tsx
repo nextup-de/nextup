@@ -1,6 +1,7 @@
 // STEP 2 of login: company-branded login. Your personal code or your Microsoft account says who
 // you are (src/server/actions/auth.ts, src/server/microsoft-login.ts); a demo box adds a
 // clearly-labelled "open the demo" button for demo-stage companies (src/server/demo-login.ts).
+import { tenantMode } from "@/features/tenant/urls";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuthShell, AuthTitle, AuthFoot, AuthStats } from "@/components/auth/AuthShell";
@@ -54,7 +55,8 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
         <div>
           <strong>{tenant.name}</strong>
         </div>
-        <Link className={styles.switch} href="/login">Not your company?</Link>
+        {/* A single-company stack has no other company to switch to - its /login is this page. */}
+        {tenantMode() !== "single" && <Link className={styles.switch} href="/login">Not your company?</Link>}
       </div>
 
       {hasDatabase() ? (
@@ -78,7 +80,7 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
         // `?as=member`: through the login you always arrive as the employee (RoleRouter).
         <>
           <AuthTitle title="Demo mode" sub="No database is connected, so there is nothing to log in to. The built-in demo works without one." />
-          <Button href={`/${tenant.slug}?as=member`} block>Open the {short} demo</Button>
+          <Button href={`${companyPrefix(tenant.slug) || "/"}?as=member`} block>Open the {short} demo</Button>
         </>
       )}
 

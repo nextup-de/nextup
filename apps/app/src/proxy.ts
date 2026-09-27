@@ -1,6 +1,7 @@
 // Request proxy (Next 16's name for middleware; it runs on the Node.js runtime and the runtime is
 // not configurable). Three jobs, in order:
-//   1. Tenant: with TENANT_MODE=subdomain, rewrite acme.<domain>/* -> /acme/*  (path mode is a no-op).
+//   1. Tenant: TENANT_MODE=subdomain rewrites acme.<domain>/* -> /acme/*; TENANT_MODE=single
+//      rewrites /* -> /<COMPANY_SLUG>/* on any host; path mode is a no-op.
 //   2. Auth: any company path without a session -> /[company]/login?next=...
 //   3. Role: ROLE_ACCESS from src/config/roles.ts.
 //
@@ -10,25 +11,29 @@
 // so it verifies a cookie signature and never touches the database. The layouts re-check.
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, ADMIN_COOKIE, verifyAdmin, verifySession } from "@/features/auth/cookie";
-import { decide, resolveRequest, type TenantMode } from "@/features/auth/request";
+import { decide, resolveRequest } from "@/features/auth/request";
+import { rootDomain, singleCompany, tenantMode } from "@/features/tenant/urls";
 import { hasDatabase } from "@/lib/db/mode";
 
 export function proxy(request: NextRequest) {
-  const secret = process.env.AUTH_SECRET;
-  // No secret configured: behave exactly as this file did before sessions existed. That is what
-  // keeps `next build`, `npm test` and a database-less `npm run dev` working.
-  // No database (unset, or set but not answering): sessions cannot be issued, so demanding one
-  // would only lock everyone out of the demo. mode.ts, not client.ts - no Prisma in the proxy.
-  if (!secret || !hasDatabase()) return NextResponse.next();
-
   const url = request.nextUrl;
   const host = request.headers.get("host") ?? "";
-  const mode = (process.env.TENANT_MODE === "subdomain" ? "subdomain" : "path") as TenantMode;
-  const resolved = resolveRequest(host, url.pathname, mode, process.env.APP_DOMAIN ?? "localhost");
+  const mode = tenantMode();
+  const resolved = resolveRequest(host, url.pathname, mode, rootDomain(), singleCompany() ?? undefined);
 
   if (resolved.kind === "pass") return NextResponse.next();
 
   const rewrite = (to: string) => NextResponse.rewrite(new URL(to + url.search, url));
+
+  // No secret configured, or no database (unset, or set but not answering): sessions cannot be
+  // issued, so demanding one would only lock everyone out of the demo. Still map the host/path
+  // onto the company, or a subdomain/single deployment would serve nothing. That is what keeps
+  // `next build`, `npm test` and a database-less `npm run dev` working. mode.ts, not client.ts -
+  // no Prisma in the proxy.
+  const secret = process.env.AUTH_SECRET;
+  if (!secret || !hasDatabase()) {
+    return resolved.rewriteTo ? rewrite(resolved.rewriteTo) : NextResponse.next();
+  }
 
   if (resolved.kind === "admin") {
     const open = resolved.appPath === "/login" || resolved.appPath.startsWith("/login/");
@@ -47,9 +52,9 @@ export function proxy(request: NextRequest) {
     resolved.slug,
   );
 
-  // Redirects must stay on the host the request arrived on: in subdomain mode the company is the
-  // host, so the path carries no slug; in path mode it must.
-  const base = mode === "subdomain" ? "" : "/" + resolved.slug;
+  // Redirects must stay on the host the request arrived on: in subdomain and single mode the
+  // company is the host, so the path carries no slug; in path mode it must.
+  const base = mode === "path" ? "/" + resolved.slug : "";
 
   if (verdict.kind === "login") {
     const to = new URL(base + verdict.to, url);

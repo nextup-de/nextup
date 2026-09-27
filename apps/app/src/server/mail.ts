@@ -5,6 +5,7 @@
 // which catches everything, so nothing leaves the box until a real relay is configured. Unset, a
 // raise still saves but notifies nobody, and the admin panel falls back to "open in your mail app"
 // and logs the reply by hand.
+import { appHost } from "@/features/tenant/urls";
 import nodemailer from "nodemailer";
 
 export type MailResult = { ok: true } | { ok: false; error: string };
@@ -24,7 +25,7 @@ export function mailConfigured(): boolean {
 }
 
 export function mailFrom(): string {
-  return process.env.MAIL_FROM || `NextUp <hello@${(process.env.APP_DOMAIN || "localhost").split(":")[0]}>`;
+  return process.env.MAIL_FROM || `NextUp <hello@${appHost()}>`;
 }
 
 function target(url: string): string | null {

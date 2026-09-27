@@ -7,6 +7,7 @@
 // The note is an ordinary case.commented event with the idempotency key notify:<raiseId>, the same
 // key the old n8n workflow wrote back with, so /admin pairs a raise with its notice exactly and a
 // second attempt finds the first instead of emailing the owner twice.
+import { companyUrl } from "@/features/tenant/urls";
 import { appendEventRow } from "@/lib/db/events";
 import { getDb } from "@/lib/db/client";
 import { sendMail, mailConfigured } from "@/server/mail";
@@ -72,9 +73,5 @@ export function notifyCaseRaised(companyId: string, notice: RaisedNotice): void 
 
 /** Where this company lives, for the links in the message. */
 export function companyBaseUrl(slug: string): string {
-  const domain = process.env.APP_DOMAIN ?? "localhost";
-  const scheme = process.env.PUBLIC_SCHEME ?? "http";
-  return process.env.TENANT_MODE === "subdomain"
-    ? `${scheme}://${slug}.${domain}`
-    : `${scheme}://${domain}/${slug}`;
+  return companyUrl(slug);
 }

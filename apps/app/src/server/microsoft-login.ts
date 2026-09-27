@@ -29,13 +29,10 @@ import {
   type MicrosoftError,
 } from "@/features/auth/entra";
 import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
-import { safeNextPath } from "@/features/tenant/urls";
+import { companyPrefix, safeNextPath } from "@/features/tenant/urls";
 import { issueSession, secureCookies } from "@/server/issue-session";
 
-/** In subdomain mode the company IS the host, so its paths carry no slug. */
-export function companyPrefix(slug: string): string {
-  return process.env.TENANT_MODE === "subdomain" ? "" : "/" + slug;
-}
+export { companyPrefix };
 
 /** Where Microsoft sends people back to. Must match the app registration exactly. */
 export function microsoftCallbackUrl(origin: string, slug: string): string {

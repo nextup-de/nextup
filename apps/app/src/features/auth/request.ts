@@ -11,10 +11,25 @@ import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
  */
 export const RESERVED_SLUGS = [
   "www", "admin", "api", "n8n", "mail", "app", "static", "assets", "_next",
+  // Platform hosts on the same domain as the companies (docs/PLATFORM_PLAN.md, "Addresses").
+  "automation", "ops", "status",
   "login", "signup", "pricing", "contact", "imprint", "privacy", "forgot-password", "invite",
 ] as const;
 
-export type TenantMode = "path" | "subdomain";
+/**
+ * path      - one host, companies as the first segment: example.com/acme/leader
+ * subdomain - one host per company:                    acme.example.com/leader
+ * single    - one company per deployment (docs/PLATFORM_PLAN.md: one stack per company). The
+ *             company is fixed by COMPANY_SLUG and served at the root of whatever host the
+ *             stack runs on: nextup.bigcorp.local/leader.
+ */
+export type TenantMode = "path" | "subdomain" | "single";
+
+/**
+ * Pages outside the company segment that a single-company stack still serves as they are:
+ * accepting an invite and resetting a password start from a link in an e-mail.
+ */
+const SINGLE_PASSTHROUGH = ["invite", "signup", "forgot-password"] as const;
 
 export function isReservedSlug(slug: string): boolean {
   return (RESERVED_SLUGS as readonly string[]).includes(slug);
@@ -48,14 +63,32 @@ function subdomainOf(host: string, rootDomain: string): string | null {
  *
  *   subdomain: acme.example.com/leader -> tenant acme, appPath /leader, rewrite /acme/leader
  *   path:      example.com/acme/leader -> tenant acme, appPath /leader, no rewrite
+ *   single:    any.host/leader         -> tenant <company>, appPath /leader, rewrite /acme/leader
+ *
+ * `company` is only read in single mode; an invalid one serves nothing ("pass").
  */
 export function resolveRequest(
   host: string,
   pathname: string,
   mode: TenantMode,
   rootDomain: string,
+  company?: string,
 ): Resolved {
   const path = pathname.startsWith("/") ? pathname : "/" + pathname;
+
+  if (mode === "single") {
+    const [, first = "", ...rest] = path.split("/");
+    // /admin stays a path of its own until it moves to apps/ops.
+    if (first === "admin") return { kind: "admin", appPath: "/" + rest.join("/"), rewriteTo: null };
+    if ((SINGLE_PASSTHROUGH as readonly string[]).includes(first)) return { kind: "pass" };
+    if (!company || !isValidSlug(company)) return { kind: "pass" };
+    return {
+      kind: "tenant",
+      slug: company,
+      appPath: path,
+      rewriteTo: "/" + company + (path === "/" ? "" : path),
+    };
+  }
 
   if (mode === "subdomain") {
     const label = subdomainOf(host.split(":")[0], rootDomain);

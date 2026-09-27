@@ -57,14 +57,14 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
       <Ground />
       <header className={styles.bar}>
         {/* The blue wordmark carries the name; the company only shows on hover (the mockup keeps the bar to three things). */}
-        <Link href={"/" + tenant.slug + "/raise"} className={styles.brand} title={tenant.name} onClick={() => setPop(null)}>
+        <Link href={tenant.prefix + "/raise"} className={styles.brand} title={tenant.name} onClick={() => setPop(null)}>
           <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} className={styles.logo} priority />
         </Link>
 
         <nav ref={navRef} className={styles.nav} aria-label="Main">
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
           {NAV_SIMPLE[role].map((n) => {
-            const href = "/" + tenant.slug + n.href;
+            const href = tenant.prefix + n.href;
             const active = pathname === href || pathname.startsWith(href + "/");
             const n1 = n.count ? counts[n.count] : 0;
             return (
@@ -102,7 +102,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
                 </div>
               )}
               <div className={styles.meFoot} data-single={sent ? undefined : "true"}>
-                {sent && <Link href={"/" + tenant.slug + "/team"} className={styles.meLink} onClick={() => setPop(null)}>What happened to what I sent →</Link>}
+                {sent && <Link href={tenant.prefix + "/team"} className={styles.meLink} onClick={() => setPop(null)}>What happened to what I sent →</Link>}
                 <button type="button" className={styles.logout} onClick={logout}>Log out</button>
               </div>
             </div>

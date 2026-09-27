@@ -5,15 +5,16 @@
 import { cookies } from "next/headers";
 import type { Role } from "@/config/roles";
 import { SESSION_COOKIE, SESSION_TTL_SECONDS, signSession } from "@/features/auth/cookie";
+import { servedOverHttps } from "@/features/tenant/urls";
 import { getDb } from "@/lib/db/client";
 
 /**
  * Send login cookies over https only. COOKIE_SECURE=true forces it; a public https scheme turns it
- * on by itself, so a production box cannot end up sending sessions in the clear because one of
+ * on by itself (APP_ORIGIN, or the older PUBLIC_SCHEME), so a production box cannot end up sending sessions in the clear because one of
  * two env vars was forgotten.
  */
 export function secureCookies(): boolean {
-  return process.env.COOKIE_SECURE === "true" || process.env.PUBLIC_SCHEME === "https";
+  return process.env.COOKIE_SECURE === "true" || servedOverHttps();
 }
 
 export type SessionUser = { id: string; name: string; handle: string | null; role: string };

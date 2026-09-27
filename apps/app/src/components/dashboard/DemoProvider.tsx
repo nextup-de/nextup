@@ -103,6 +103,12 @@ const iniOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(
 // email in the profile menu, and (in server mode) to switch person from the dev panel.
 export type TenantInfo = {
   slug: string;
+  /**
+   * What links put in front of a company path: "/acme" in path mode, "" where the company is the
+   * host (subdomain, single). Computed on the server (features/tenant/urls companyPrefix) - the
+   * browser does not see TENANT_MODE.
+   */
+  prefix: string;
   name: string;
   users?: { id?: string; name: string; email: string; role?: Role }[];
   /** False for a company with real people: no dev panel, and `users` is only the viewer. */
@@ -128,7 +134,8 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   const router_refresh = router.refresh;
   const pathname = usePathname();
   const slug = tenant.slug;
-  const appPath = pathname.startsWith("/" + slug) ? pathname.slice(slug.length + 1) || "/" : pathname;
+  const prefix = tenant.prefix;
+  const appPath = prefix && pathname.startsWith(prefix) ? pathname.slice(prefix.length) || "/" : pathname;
 
   // What this browser remembers: the dev-panel settings, and (local mode only) the event log.
   const persisted = useSyncExternalStore(subscribe, () => getSnapshot(slug), getServerSnapshot);
@@ -186,8 +193,8 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
 
   // Roles are data: a role that may not open this path is sent home.
   useEffect(() => {
-    if (ready && !leaving.current && !canAccess(role, appPath)) router.replace("/" + slug + ROLE_HOME[role]);
-  }, [ready, role, appPath, router, slug]);
+    if (ready && !leaving.current && !canAccess(role, appPath)) router.replace(prefix + ROLE_HOME[role]);
+  }, [ready, role, appPath, router, prefix]);
 
   // Server mode: pick up what other people did. Without this, two testers each see only their
   // own writes until they reload by hand - which is the whole thing this change exists to fix.
@@ -319,7 +326,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     advanceDay: (by) => emit("day.advanced", null, { by: by ?? 1 }),
   }), [emit, S.ideas, actor, slug, serverMode, log]);
 
-  const href = useCallback((path: string) => "/" + slug + path, [slug]);
+  const href = useCallback((path: string) => prefix + path, [prefix]);
   // Close the popovers and the mobile menu; the dev panel stays open so settings can be changed in a row.
   const closeAll = useCallback(() => { setPop(null); setQ(""); setMenu(false); }, []);
 
