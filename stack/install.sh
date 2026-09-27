@@ -46,7 +46,7 @@ die() { echo "install: $*" >&2; exit 1; }
 
 # Same rules as isValidSlug() in apps/app/src/features/auth/request.ts.
 [[ "$slug" =~ ^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$ ]] || die "--slug must be 2-32 of a-z, 0-9, '-' (got '$slug')"
-case " www admin api n8n mail app static assets _next login signup pricing contact imprint privacy forgot-password invite " in
+case " www admin api n8n mail automation ops status app static assets _next login signup pricing contact imprint privacy forgot-password invite " in
   *" $slug "*) die "'$slug' is reserved by the app" ;;
 esac
 [[ "$origin" =~ ^(https?)://([a-zA-Z0-9.-]+)(:([0-9]+))?$ ]] || die "--origin must look like http://host[:port] or https://host[:port]"
