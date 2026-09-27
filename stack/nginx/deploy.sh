@@ -22,7 +22,10 @@ action="${args[0]:-}" tag="${args[1]:-}"
 
 stacks() {  # slug port stage, for every installed stack in the registry
   awk -F'|' 'NF>5 { for (i=2;i<=4;i++) gsub(/ /,"",$i); if ($4=="demo"||$4=="real") print $2, $3, $4 }' \
-    "$here/ports.md" | while read -r s p st; do [ -f "$NEXTUP_INSTANCES/$s/.env" ] && echo "$s $p $st"; done
+    "$here/ports.md" | while read -r s p st; do
+      # Reserved rows (not installed) are skipped without failing the loop.
+      if [ -f "$NEXTUP_INSTANCES/$s/.env" ]; then echo "$s $p $st"; fi
+    done
 }
 
 case "$action" in
