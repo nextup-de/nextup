@@ -1,0 +1,128 @@
+# Roll the company stacks on the shared Hetzner box to the images just published
+# (docs/PLATFORM_PLAN.md, stage 1 step 4; stack/nginx/RUNBOOK.md, "Deploy from CI").
+#
+# Runs after `images` succeeds on main, or by hand with a tag (main or a 7-char short sha - a
+# rollback is "run this workflow with an older sha").
+#
+# The key can do nothing but this: on the box it is a forced command (stack/nginx/deploy.sh), so
+# it accepts only `deploy <tag>` and `status`, never a shell - the box hosts other sites too.
+# deploy.sh keeps the admin code and login codes out of its output, so this log stays clean.
+#
+# Configuration lives in the GitHub environment `hetzner` (Settings -> Environments), so it can
+# also require an approval before each deploy:
+#   secret DEPLOY_SSH_KEY      private half of the forced-command key (ed25519)
+#   secret DEPLOY_KNOWN_HOSTS  the box's host key line(s), from `ssh-keyscan 178.104.253.90`
+#   var    DEPLOY_HOST         178.104.253.90
+#   var    DEPLOY_USER         kschmid
+#   var    DEPLOY_HEALTH_URLS  space-separated, e.g. https://acme.sellux.ch/api/health https://globex.sellux.ch/api/health
+# Until DEPLOY_SSH_KEY is set the job skips itself with a notice instead of failing.
+#
+# Kevin owns this file.
+
+name: deploy
+
+on:
+  workflow_run:
+    workflows: [images]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag: main, or a 7-char short commit sha (rollback)"
+        required: true
+        default: main
+
+# One deploy at a time, and never cancel one halfway: a stack mid-migration must finish.
+concurrency:
+  group: deploy-hetzner
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: deploy · Hetzner box
+    # Only after a successful image build of a push (not of a PR build-only run).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: hetzner
+    env:
+      KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      HOST: ${{ vars.DEPLOY_HOST }}
+      USER_NAME: ${{ vars.DEPLOY_USER }}
+      HEALTH_URLS: ${{ vars.DEPLOY_HEALTH_URLS }}
+    steps:
+      - name: Tag
+        id: tag
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then tag="$INPUT_TAG"; else tag="${HEAD_SHA::7}"; fi
+          [[ "$tag" =~ ^(main|[0-9a-f]{7})$ ]] || { echo "::error::tag must be main or a 7-char short sha, got '$tag'"; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Deploying image tag: $tag"
+
+      - name: Configured?
+        id: ready
+        shell: bash
+        run: |
+          if [ -z "$KEY" ] || [ -z "$KNOWN_HOSTS" ] || [ -z "$HOST" ] || [ -z "$USER_NAME" ]; then
+            echo "::notice::Deploy skipped: the 'hetzner' environment is not configured yet (see the header of deploy.yml)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: SSH key and pinned host key
+        if: steps.ready.outputs.ok == 'true'
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy
+        if: steps.ready.outputs.ok == 'true'
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=15 -o BatchMode=yes \
+              "$USER_NAME@$HOST" deploy "${{ steps.tag.outputs.tag }}"
+
+      - name: Status
+        if: always() && steps.ready.outputs.ok == 'true'
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=15 -o BatchMode=yes \
+              "$USER_NAME@$HOST" status
+
+      # From outside, through nginx - the way people reach it.
+      - name: Health
+        if: steps.ready.outputs.ok == 'true' && env.HEALTH_URLS != ''
+        shell: bash
+        run: |
+          failed=0
+          for url in $HEALTH_URLS; do
+            code=000
+            for _ in 1 2 3 4 5 6; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url") && [ "$code" = 200 ] && break
+              sleep 10
+            done
+            echo "$url -> $code"
+            [ "$code" = 200 ] || failed=1
+          done
+          exit $failed
+
+      - name: Forget the key
+        if: always()
+        shell: bash
+        run: rm -f ~/.ssh/deploy_key
