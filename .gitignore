@@ -174,3 +174,6 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# One company stack per folder: holds that stack's secrets (stack/install.sh).
+stack/instances/

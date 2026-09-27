@@ -1,0 +1,9 @@
+# One company, one site. SITE_ADDRESS comes from the instance's .env (stack/install.sh):
+#   :80                   plain http on any host name - a laptop
+#   acme.sellux.ch        automatic https (Let's Encrypt), http redirects to it - a public server
+# On-prem with the company's own certificate: see stack/README.md.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	header -Server
+	reverse_proxy app:3000
+}
