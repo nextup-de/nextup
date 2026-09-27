@@ -1,0 +1,102 @@
+# Publish the stack images to GHCR (docs/PLATFORM_PLAN.md, stage 1 step 4).
+#
+# Every push to main builds ops/Dockerfile twice and pushes:
+#   ghcr.io/selluxhenner/nextup-app      target `run`   - what each company stack runs
+#   ghcr.io/selluxhenner/nextup-migrate  target `build` - the one-shot prisma migrate (+ demo seed)
+# tagged `main` (moves with every merge) and `sha-<short>` (pinned, for rollbacks).
+#
+# The images hold this public repo's code and no secrets: .dockerignore keeps every .env out, and
+# the build needs no DATABASE_URL (same condition as the CI build job). Servers pull them instead of
+# getting them copied from a laptop (stack/push-images.sh, the stage-1 bridge).
+#
+# Kevin owns this file.
+
+name: images
+
+on:
+  push:
+    branches: [main]
+  # On a PR the images are built but not pushed - proof that a change still builds a stack image.
+  pull_request:
+    branches: [main]
+    paths: ["apps/**", "packages/**", "ops/Dockerfile", ".dockerignore", "package.json", "package-lock.json", ".github/workflows/images.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: build and push · app + migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags
+        id: tags
+        shell: bash
+        run: |
+          short="${GITHUB_SHA::7}"
+          echo "app=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-app" >> "$GITHUB_OUTPUT"
+          echo "migrate=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-migrate" >> "$GITHUB_OUTPUT"
+          echo "short=sha-$short" >> "$GITHUB_OUTPUT"
+
+      # Built first: `run` copies from the `build` stage, so the second build is a cache hit.
+      - name: nextup-migrate (target build)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ops/Dockerfile
+          target: build
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ steps.tags.outputs.migrate }}:main
+            ${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=NextUp one-shot migrate (prisma migrate deploy + demo seed)
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: nextup-app (target run)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ops/Dockerfile
+          target: run
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ steps.tags.outputs.app }}:main
+            ${{ steps.tags.outputs.app }}:${{ steps.tags.outputs.short }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=NextUp app, one company per stack (TENANT_MODE=single)
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          {
+            echo "### Published"
+            echo "- \`${{ steps.tags.outputs.app }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
+            echo "- \`${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
