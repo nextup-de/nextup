@@ -66,7 +66,19 @@ stack/ctl.sh acme down -v     # stop and delete the database (asks for the slug 
 | `mailpit` | profile `demo`: catches all mail, inbox on `127.0.0.1:8025` |
 | `n8n` | profile `n8n` (`--n8n`): editor on `127.0.0.1:5678`, own encryption key |
 
-Not yet: backups (step 5), images from GHCR (step 4), an agent (stage 2).
+## Backups
+
+```bash
+stack/backup.sh acme backup          # encrypted restic snapshot: database, .env, n8n data
+stack/backup.sh acme restore-test    # restore into a throwaway container and check it
+stack/backup.sh acme restore ID      # replace the live database (asks for the slug)
+```
+
+The repository and password are per stack, in its `.env` (`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`).
+Keep the password outside the machine as well. On the shared box, cron runs it nightly (see
+`nginx/RUNBOOK.md`).
+
+Not yet: an agent (stage 2).
 
 ## On-prem with the company's own certificate
 
