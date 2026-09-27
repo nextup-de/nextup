@@ -1,8 +1,9 @@
 # Architecture
 
-One Next.js app at the repo root. No monorepo: three people, one deployable. If a second
-deployable ever appears (a separate marketing site, a worker, a mobile app) this folder moves
-to `apps/web/` and shared code to `packages/` in one commit - nothing inside changes.
+An npm-workspaces monorepo driven by Turborepo (`turbo.json`). The Next.js app lives in
+`apps/app/`; shared code will go to `packages/` as it appears, and the developer admin moves to
+`apps/ops/` (docs/PLATFORM_PLAN.md). Every `src/`, `prisma/` and `tests/` path in this document
+is relative to `apps/app/`. Root scripts (`npm run dev`, `npm test`, ...) run the app's own.
 
 ## Layers
 

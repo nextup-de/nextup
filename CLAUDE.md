@@ -13,6 +13,9 @@ first, then `docs/ARCHITECTURE.md` for the folder rules. The product idea is
 in `docs/PLAN.md`; routes in `docs/ROUTES.md`; the data model in
 `docs/DATA_MODEL.md`.
 
+The app lives in `apps/app/` (npm workspaces + Turborepo); every `src/`, `prisma/` and `tests/`
+path in this file is relative to it. Run commands from the repo root.
+
 ```
 src/app/            routes only: layouts, pages, route handlers. Thin.
 src/components/     React. Props in, JSX out. No fetching, no business rules.

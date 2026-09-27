@@ -4,7 +4,7 @@
 #   ops/test-db.sh                 - against a local Postgres on :5432
 #   DATABASE_URL=... ops/test-db.sh - against anything else, as long as it names a *_test database
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../apps/app"
 
 export DATABASE_URL="${DATABASE_URL:-postgresql://nextup:nextup@127.0.0.1:5432/nextup_test}"
 

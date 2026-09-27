@@ -58,6 +58,8 @@ services:
       # catches both; point at a real relay to deliver.
       SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-}
+      # The public site forwards /contact here (POST /api/pilot-requests). Unset = endpoint off.
+      PILOT_INTAKE_TOKEN: ${PILOT_INTAKE_TOKEN:-}
       # The raise-page assistant (docs/ASSISTANT.md). Unset = answers built from lookups, no model.
       # bedrock = Claude on Amazon Bedrock in LLM_REGION; AWS credentials from the usual chain.
       LLM_PROVIDER: ${LLM_PROVIDER:-}

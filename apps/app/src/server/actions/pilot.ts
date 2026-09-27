@@ -15,7 +15,8 @@ import {
   type PilotErrors,
   type PilotRequest,
 } from "@/features/pilot/request";
-import { getDb, hasDatabase } from "@/lib/db/client";
+import { hasDatabase } from "@/lib/db/client";
+import { savePilotRequest } from "@/lib/db/pilot";
 import { clientKey, throttle } from "@/server/throttle";
 
 export type PilotState =
@@ -45,19 +46,7 @@ export async function requestPilot(_prev: PilotState, form: FormData): Promise<P
   if (throttle("pilotRequest", await clientKey())) return { status: "failed", values };
 
   try {
-    const row = await getDb().pilotRequest.create({
-      data: {
-        name: values.name,
-        company: values.company,
-        email: values.email,
-        decision: values.decision,
-        council: values.council,
-        message: values.message,
-      },
-      select: { id: true },
-    });
-    // The server log is the second copy: if the database row is ever lost, the request is not.
-    console.info(`[pilot] request ${row.id} from ${values.email} (${values.company}): ${values.decision}`);
+    await savePilotRequest(values);
     return { status: "sent", email: values.email };
   } catch (err) {
     console.error("[pilot] could not save a request", err);

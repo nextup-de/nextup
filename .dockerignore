@@ -1,12 +1,18 @@
 # Keep the build context small and free of anything host-specific.
-node_modules
-.next
+# Patterns match from the context root only, so every one that can occur inside apps/ or
+# packages/ needs a **/ prefix - above all the .env files, or a laptop's secrets end up in the image.
+**/node_modules
+**/.next
+**/.turbo
 .git
 .github
-tests
+**/tests
+**/test-results
+**/playwright-report
 docs
 data
-*.local.*
-.env
-.env.*
-!.env.example
+uploads
+**/*.local.*
+**/.env
+**/.env.*
+!**/.env.example

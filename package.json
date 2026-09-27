@@ -1,46 +1,24 @@
 {
   "name": "nextup",
-  "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "packageManager": "npm@11.2.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui",
-    "e2e:db": "playwright test -c playwright.db.config.ts",
-    "db:migrate": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
-  },
-  "dependencies": {
-    "@anthropic-ai/bedrock-sdk": "^0.33.8",
-    "@anthropic-ai/sdk": "^0.128.0",
-    "@prisma/adapter-pg": "7.10.0",
-    "@prisma/client": "7.10.0",
-    "next": "16.3.5",
-    "nodemailer": "^9.1.1",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "thinking-orbs": "^0.3.2",
-    "zod": "^4"
+    "dev": "npm run dev -w @nextup/app --",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "e2e": "npm run e2e -w @nextup/app --",
+    "e2e:db": "npm run e2e:db -w @nextup/app --",
+    "db:migrate": "npm run db:migrate -w @nextup/app",
+    "db:seed": "npm run db:seed -w @nextup/app"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
-    "@types/node": "^22",
-    "@types/nodemailer": "^8.0.2",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.5",
-    "prisma": "7.10.0",
-    "tsx": "^4.23.15",
-    "typescript": "^5",
-    "vitest": "^5"
+    "turbo": "^2.11.4"
   },
   "overrides": {
     "mysql2": "^3.24.4",

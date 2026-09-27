@@ -8,9 +8,12 @@ FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 # Schema and config first: postinstall runs `prisma generate`, which needs them. It does NOT need
 # a database, which is what keeps this layer cacheable and the CI build honest.
+# npm workspaces: the root manifest + lockfile, and each workspace's package.json. The app's
+# postinstall runs from apps/app, so its schema and Prisma config have to be there as well.
 COPY package.json package-lock.json ./
-COPY prisma ./prisma
-COPY prisma7.config.ts ./
+COPY apps/app/package.json ./apps/app/
+COPY apps/app/prisma ./apps/app/prisma
+COPY apps/app/prisma7.config.ts ./apps/app/
 RUN npm ci --no-audit --no-fund
 
 # ── build ────────────────────────────────────────────────────────────────────
@@ -21,7 +24,9 @@ WORKDIR /app
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 # No DATABASE_URL here, on purpose: the build must not need one. Same condition as CI.
-RUN npm run build
+RUN npm run build -w @nextup/app
+# The migrate service runs `npx prisma migrate deploy` in this stage; prisma7.config.ts lives here.
+WORKDIR /app/apps/app
 
 # ── runtime ──────────────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS run
@@ -34,13 +39,14 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 
-# standalone brings its own traced node_modules and server.js. `public` and `.next/static` are
-# NOT part of it - server.js only serves them once they are placed here.
-COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=build --chown=nextjs:nodejs /app/public ./public
+# standalone brings its own traced node_modules and server.js. In a workspace it mirrors the repo:
+# node_modules at the top, the server at apps/app/server.js. `public` and `.next/static` are NOT
+# part of it - server.js only serves them once they are placed next to it.
+COPY --from=build --chown=nextjs:nodejs /app/apps/app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/apps/app/.next/static ./apps/app/.next/static
+COPY --from=build --chown=nextjs:nodejs /app/apps/app/public ./apps/app/public
 
 USER nextjs
 EXPOSE 3000
 # server.js reads PORT and HOSTNAME from the environment (Next docs, output: "standalone").
-CMD ["node", "server.js"]
+CMD ["node", "apps/app/server.js"]
