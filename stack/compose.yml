@@ -1,0 +1,153 @@
+# One company's NextUp stack (docs/PLATFORM_PLAN.md, "One stack").
+#
+# Never run this file by hand with a bare `docker compose up`: stack/install.sh writes the
+# instance's .env (secrets, slug, origin) and stack/ctl.sh passes it in. Every instance is its own
+# compose project, nextup-<slug>, so two companies on one machine share no network, volume or
+# secret.
+#
+#   stack/install.sh --slug acme --origin http://localhost:8080 --stage demo --build
+#   stack/ctl.sh acme ps | logs -f app | down
+#
+# Images: built from this repo with --build (nextup-app:local, nextup-migrate:local) until CI
+# publishes them (stage 1, step 4); then NEXTUP_APP_IMAGE / NEXTUP_MIGRATE_IMAGE point at GHCR.
+
+name: nextup-${COMPANY_SLUG:?set COMPANY_SLUG - run stack/install.sh}
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+
+services:
+  db:
+    <<: *hardening
+    image: postgres:17
+    environment:
+      POSTGRES_USER: nextup
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: nextup
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No ports: only this stack's app and migrate reach it, by service name.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextup -d nextup"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # One-shot: schema first, then (demo stage only) the demo company and its people. `app` waits
+  # for this to finish, so code can never start ahead of its schema.
+  migrate:
+    image: ${NEXTUP_MIGRATE_IMAGE:-nextup-migrate:local}
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - npx prisma migrate deploy && if [ "$$SEED_DEMO" = "true" ]; then npx tsx prisma/seed.ts; fi
+    environment:
+      DATABASE_URL: postgresql://nextup:${POSTGRES_PASSWORD}@db:5432/nextup
+      SEED_DEMO: ${SEED_DEMO:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    <<: *hardening
+    image: ${NEXTUP_APP_IMAGE:-nextup-app:local}
+    # Nothing in the image may change at runtime. Next only writes its cache, which lives in memory.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/apps/app/.next/cache:uid=1001,gid=1001
+    cap_drop: [ALL]
+    environment:
+      DATABASE_URL: postgresql://nextup:${POSTGRES_PASSWORD}@db:5432/nextup
+      AUTH_SECRET: ${AUTH_SECRET:?}
+      ADMIN_ACCESS_CODE: ${ADMIN_ACCESS_CODE:?}
+      TENANT_MODE: single
+      COMPANY_SLUG: ${COMPANY_SLUG}
+      APP_ORIGIN: ${APP_ORIGIN:?}
+      LANDING_URL: ${LANDING_URL:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      LOGIN_DEMO_FILL: ${LOGIN_DEMO_FILL:-false}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      # The raise-page assistant (docs/ASSISTANT.md). Unset = answers from lookups, no model.
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_REGION: ${LLM_REGION:-eu-central-1}
+      LLM_MODEL: ${LLM_MODEL:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+
+  # The only thing that listens outside the stack. SITE_ADDRESS decides TLS: ":80" is plain http
+  # (laptop), a bare host name gets a Let's Encrypt certificate (public server).
+  caddy:
+    <<: *hardening
+    image: caddy:2
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # Demo stage only (COMPOSE_PROFILES=demo): catches every mail so nothing leaves the stack.
+  # Inbox on the loopback of the machine running the stack.
+  mailpit:
+    <<: *hardening
+    image: axllent/mailpit:latest
+    profiles: [demo]
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
+    volumes:
+      - maildata:/data
+    environment:
+      MP_DATABASE: /data/mailpit.db
+
+  # Optional (COMPOSE_PROFILES=...,n8n). Editor on the loopback only - reach it over the VPN or an
+  # SSH tunnel, never through Caddy. Its key encrypts stored credentials: keep it with the backups.
+  n8n:
+    <<: *hardening
+    image: n8nio/n8n:latest
+    profiles: [n8n]
+    ports:
+      - "127.0.0.1:${N8N_PORT:-5678}:5678"
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      GENERIC_TIMEZONE: ${TZ:-Europe/Zurich}
+      # Workflows call the app inside the stack; the events API authenticates by bearer token.
+      NEXTUP_APP_URL: http://app:3000
+    volumes:
+      - n8ndata:/home/node/.n8n
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  caddydata:
+  caddyconfig:
+  maildata:
+  n8ndata:
