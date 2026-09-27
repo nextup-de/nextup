@@ -1,4 +1,4 @@
-# CI for NextUp (Next.js app at the root).
+# CI for NextUp (npm workspaces: the Next.js app lives in apps/app, root scripts run it via turbo).
 #
 # Four jobs, all must pass before a PR can merge:
 #   guard   — no secrets / forbidden files / oversized files / Kevin-owned paths
@@ -148,7 +148,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-demo
-          path: playwright-report/
+          path: apps/app/playwright-report/
           retention-days: 14
 
   e2e-db:
@@ -203,5 +203,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-db
-          path: playwright-report/
+          path: apps/app/playwright-report/
           retention-days: 14

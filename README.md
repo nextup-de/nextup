@@ -41,6 +41,9 @@ on a box with `LOGIN_DEMO_FILL=true` - from the "View the demo as…" list. New 
 
 ## Layout
 
+npm workspaces + Turborepo. The app is `apps/app/`; the paths below are inside it. `docs/`,
+`ops/`, `compose.yml` and `.github/` stay at the repo root. Plan: `docs/PLATFORM_PLAN.md`.
+
 ```
 src/app/            routes - (marketing) · (auth) · [company]/login · [company]/(app)/{manager,leader,team,...} · api
 src/components/     React: ui · marketing · auth · shell · dashboard/{manager,leader,team,shared}
