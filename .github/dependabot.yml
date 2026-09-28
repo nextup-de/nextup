@@ -1,0 +1,29 @@
+# Dependency updates as PRs (docs/PLATFORM_PLAN.md, stage 1 step 6). Each PR runs the full CI and
+# the image build + Trivy gate, and Kevin merges. Security fixes arrive on their own, right away;
+# this file adds the routine weekly updates, grouped so they don't flood the PR list.
+#
+# Kevin owns this file.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    # Major versions (Next, React, Prisma, ...) change behaviour: those are upgraded by hand.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: docker
+    directory: /ops
+    schedule: { interval: weekly, day: monday }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      actions:
+        patterns: ["*"]
