@@ -20,6 +20,9 @@ export const TENANT_MODELS = new Set([
   // Raise-page assistant - docs/ASSISTANT.md
   "Document",
   "AssistTurn",
+  // Idea studio - docs/IDEAS.md
+  "IdeaDraft",
+  "IdeaTurn",
   // Bug reports - docs/PLATFORM_PLAN.md, "Tickets"
   "Ticket",
   "TicketReply",
