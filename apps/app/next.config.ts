@@ -38,7 +38,11 @@ const nextConfig: NextConfig = {
   // only the node_modules it actually traced, so the runtime image needs no npm install.
   // `public` and `.next/static` are NOT included by this - ops/Dockerfile copies them itself.
   output: "standalone",
+  // Workspace packages ship as TypeScript source (packages/*); Next compiles them with the app.
+  transpilePackages: ["@nextup/contracts"],
   poweredByHeader: false,
+  // Dev only: bottom-left is the bug icon's place (components/report), bottom-right the dev panel.
+  devIndicators: { position: "top-left" },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

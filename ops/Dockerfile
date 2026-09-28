@@ -39,10 +39,14 @@ RUN groupadd --system --gid 1001 nodejs \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
            /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 
+# The commit this image was built from - bug reports carry it, so a developer knows which code the
+# reporter saw. CI passes it (images.yml); a local build just leaves it empty.
+ARG NEXTUP_COMMIT=""
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    NEXTUP_COMMIT=$NEXTUP_COMMIT
 
 # standalone brings its own traced node_modules and server.js. In a workspace it mirrors the repo:
 # node_modules at the top, the server at apps/app/server.js. `public` and `.next/static` are NOT

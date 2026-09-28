@@ -73,6 +73,10 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       LOGIN_DEMO_FILL: ${LOGIN_DEMO_FILL:-false}
       SMTP_URL: ${SMTP_URL:-}
+      # Bug reports go to admin.sellux.ch and replies come back (docs/PLATFORM_PLAN.md, "Tickets").
+      # Unset = reports stay in this stack. The token is issued in admin.sellux.ch -> Stacks.
+      OPS_URL: ${OPS_URL:-}
+      OPS_TOKEN: ${OPS_TOKEN:-}
       MAIL_FROM: ${MAIL_FROM:-}
       # The raise-page assistant (docs/ASSISTANT.md). Unset = answers from lookups, no model.
       LLM_PROVIDER: ${LLM_PROVIDER:-}
