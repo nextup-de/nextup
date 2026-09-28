@@ -28,3 +28,7 @@
   .status { margin-left: 0; }
   .shotLink { max-width: 100%; }
 }
+
+/* Who of the NextUp team is on it. */
+.assignee { font-weight: 600; color: var(--nh-ink); }
+.assignee[data-assigned="no"] { font-weight: 400; color: var(--nh-mute); }

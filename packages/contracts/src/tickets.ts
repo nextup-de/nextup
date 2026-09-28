@@ -3,6 +3,8 @@
 //
 //   stack ──POST /api/intake──────────▶ ops      one ticket, with its screenshot
 //   stack ──GET  /api/replies?since=──▶ ops      replies meant for the reporter, oldest first
+//   stack ──GET  /api/ticket-state───▶ ops      who at NextUp is on each ticket (added later;
+//                                                an older admin answers 404, which a stack ignores)
 //
 // Both calls carry `Authorization: Bearer <stack token>`; the token names the stack, so no message
 // needs to say which stack it comes from. Every body carries `contractVersion`.
@@ -97,3 +99,17 @@ export type RepliesResponse = z.infer<typeof RepliesResponse>;
 export function ticketLabel(n: number): string {
   return `NU-${n}`;
 }
+
+/** One of this stack's tickets as admin sees it: who of the NextUp team is on it ("" = nobody yet). */
+export const TicketState = z.object({
+  stackTicketId: z.string().min(1).max(40),
+  assignee: z.string().max(40),
+});
+export type TicketState = z.infer<typeof TicketState>;
+
+/** GET /api/ticket-state response: every ticket admin has from this stack, newest first. */
+export const TicketStateResponse = z.object({
+  contractVersion: z.literal(TICKETS_CONTRACT_VERSION),
+  tickets: z.array(TicketState).max(500),
+});
+export type TicketStateResponse = z.infer<typeof TicketStateResponse>;
