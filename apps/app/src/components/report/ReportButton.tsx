@@ -1,12 +1,13 @@
 "use client";
 // The bug icon (docs/PLATFORM_PLAN.md, "Tickets"). Click: the screenshot is taken FIRST, of the page
 // as it is, then the dialog opens with it as a preview. The person says what happened; the page,
-// browser, recent errors and failed requests come along on their own. Send stores it in this stack
+// browser, the last pages visited, recent errors and failed requests come along on their own. Send stores it in this stack
 // (server/actions/tickets.ts) and hands it to the NextUp team.
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { ReportResult } from "@/server/actions/tickets";
-import { installCapture, recentErrors, recentFailures, takeScreenshot } from "./capture";
+import { installCapture, recentErrors, recentFailures, recentPages, recordPage, takeScreenshot } from "./capture";
 import styles from "./ReportButton.module.css";
 
 type Kind = "bug" | "idea" | "question";
@@ -36,6 +37,8 @@ export function ReportButton({ submit, reportsHref }: Props) {
   const first = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => installCapture(), []);
+  const pathname = usePathname();
+  useEffect(() => recordPage(pathname), [pathname]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -83,6 +86,7 @@ export function ReportButton({ submit, reportsHref }: Props) {
           viewport: `${window.innerWidth}x${window.innerHeight}`,
           consoleErrors: recentErrors(),
           failedRequests: recentFailures(),
+          recentPages: recentPages(),
         },
       });
       if (res.ok) setSent(res.label);

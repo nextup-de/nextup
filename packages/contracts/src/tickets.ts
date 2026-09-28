@@ -25,9 +25,13 @@ export const SCREENSHOT_MIMES = ["image/webp", "image/png", "image/jpeg"] as con
 /** Decoded bytes. The widget downsizes to fit; the intake refuses anything larger. */
 export const SCREENSHOT_MAX_BYTES = 2_500_000;
 
-export const LIMITS = { description: 4000, expected: 2000, reply: 4000, logLine: 500, logLines: 20 } as const;
+export const LIMITS = { description: 4000, expected: 2000, reply: 4000, logLine: 500, logLines: 20, recentPages: 10 } as const;
 
 const line = z.string().max(LIMITS.logLine);
+
+/** One page the person was on before reporting: path only (no query string), and when they got there. */
+export const PageVisit = z.object({ path: z.string().max(500), at: z.string().datetime() });
+export type PageVisit = z.infer<typeof PageVisit>;
 
 /** What the browser and the stack know about where the report was made. No names, no emails. */
 export const TicketContext = z.object({
@@ -38,6 +42,8 @@ export const TicketContext = z.object({
   appCommit: z.string().max(40).nullable(),
   consoleErrors: z.array(line).max(LIMITS.logLines),
   failedRequests: z.array(line).max(LIMITS.logLines),
+  /** The last pages in this tab, oldest first; the last one is where the report was made. Stacks before this field send none. */
+  recentPages: z.array(PageVisit).max(LIMITS.recentPages).optional(),
 });
 export type TicketContext = z.infer<typeof TicketContext>;
 
