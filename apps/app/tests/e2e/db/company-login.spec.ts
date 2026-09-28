@@ -5,7 +5,7 @@
 // It makes its own company in /admin ("e2e-<time>", sandbox stage = real-people rules) and
 // deletes it afterwards, so it leaves acme and everyone's codes alone on a shared dev database.
 import type { Browser, Page } from "@playwright/test";
-import { confirmSheet, expect, raiseProblem, test } from "../helpers";
+import { confirmSheet, expect, publishIdea, test } from "../helpers";
 
 const SLUG = `e2e-${Date.now().toString(36)}`;
 // Names from the demo seed, so the router and the inboxes have someone to match.
@@ -106,7 +106,7 @@ test.describe.serial("a new company, from /admin to a decided case", () => {
   test("raised by one person, answered by another, seen by the first", async ({ browser }) => {
     const title = "Changeover on line 3 needs a second fitter on Fridays";
     const member = await signIn(browser, "J. Schmidt");
-    await raiseProblem(member, title);
+    await publishIdea(member, title);
 
     const leader = await signIn(browser, "T. Vogel");
     const row = leader.getByRole("main").getByText(title).first();

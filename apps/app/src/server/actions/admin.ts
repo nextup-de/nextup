@@ -26,6 +26,7 @@ import {
 } from "@/features/tenant/create";
 import { databaseOutage, getDb, hasDatabase } from "@/lib/db/client";
 import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
+import { adminScope } from "@/features/admin/nav";
 import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
 import { replaceKnowledge } from "@/lib/db/knowledge";
 import { createToken } from "@/lib/db/tokens";
@@ -46,6 +47,21 @@ import type { Role } from "@/config/roles";
 
 // The row shapes live in features/admin/rows.ts, next to the demo rows that mirror them.
 export type { CompanyRow, PilotRequestRow };
+
+// A company stack's /admin is the company's own (features/admin/nav.ts, adminScope). The pages hide
+// the platform tools there; these two checks are the rule, because a server action can be called
+// without its page.
+const PLATFORM_ONLY = "That is done by the NextUp team on admin.sellux.ch, not in a company's own admin.";
+
+/** True in a company stack, where adding, deleting, staging companies and pilot requests are not ours to do. */
+function platformOnly(): boolean {
+  return adminScope() === "company";
+}
+
+/** True when a company stack's admin is asked to touch any company but its own. */
+function foreignCompany(slug: string): boolean {
+  return adminScope() === "company" && slug !== process.env.COMPANY_SLUG?.trim();
+}
 
 const ADMIN_TTL_SECONDS = 8 * 60 * 60;
 
@@ -174,6 +190,7 @@ export type IssuedCode = { name: string; email: string; code: string };
 
 export async function createCompanyAction(_prev: CreateState, form: FormData): Promise<CreateState> {
   if (!(await isAdmin())) return { status: "error", problems: ["Not signed in to the admin area."] };
+  if (platformOnly()) return { status: "error", problems: [PLATFORM_ONLY] };
   if (!hasDatabase()) return { status: "error", problems: ["No database is configured."] };
 
   const input: NewCompany = {
@@ -249,6 +266,7 @@ export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData
   if (!hasDatabase()) return { error: "No database is configured." };
 
   const slug = String(form.get("slug") ?? "");
+  if (foreignCompany(slug)) return { error: "No such company." };
   const userId = String(form.get("userId") ?? "");
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
   const user = company
@@ -273,6 +291,7 @@ export async function setEntraTenantAction(_prev: TenantState, form: FormData): 
   if (!hasDatabase()) return { error: "No database is configured." };
 
   const slug = String(form.get("slug") ?? "");
+  if (foreignCompany(slug)) return { error: "No such company." };
   const raw = String(form.get("tenantId") ?? "").trim().toLowerCase();
   if (raw && !isTenantId(raw)) {
     return { slug, error: "That isn't an Entra tenant ID. It looks like 72f988bf-86f1-41af-91ab-2d7cd011db47 (Entra admin center → Overview)." };
@@ -286,6 +305,7 @@ export async function setEntraTenantAction(_prev: TenantState, form: FormData): 
 /** Destructive and irreversible: the cascade takes the people and the whole event log with it. */
 export async function deleteCompanyAction(_prev: RotateState, form: FormData): Promise<RotateState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (platformOnly()) return { error: PLATFORM_ONLY };
   if (!hasDatabase()) return { error: "No database is configured." };
 
   const slug = String(form.get("slug") ?? "");
@@ -302,6 +322,7 @@ export type TokenState = { slug?: string; token?: string; error?: string };
 /** An API token for this company's integration endpoints. Shown once; only its hash is stored. */
 export async function createApiTokenAction(_prev: TokenState, form: FormData): Promise<TokenState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (platformOnly()) return { error: PLATFORM_ONLY };
   if (!hasDatabase()) return { error: "No database is configured." };
 
   const slug = String(form.get("slug") ?? "");
@@ -369,6 +390,7 @@ export type HandledState = { error?: string };
 /** Replied / reopened. Toggles, so a slip can be undone. */
 export async function markPilotRequestHandled(_prev: HandledState, form: FormData): Promise<HandledState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (platformOnly()) return { error: PLATFORM_ONLY };
   if (!hasDatabase()) return { error: "No database is configured." };
 
   const id = String(form.get("id") ?? "");
@@ -383,6 +405,7 @@ export type EditRequestState = { saved?: number; problems?: string[] };
 /** Correct what the form captured, and keep internal notes next to it. */
 export async function updatePilotRequestAction(_prev: EditRequestState, form: FormData): Promise<EditRequestState> {
   if (!(await isAdmin())) return { problems: ["Not signed in to the admin area."] };
+  if (platformOnly()) return { problems: [PLATFORM_ONLY] };
   if (!hasDatabase()) return { problems: ["No database is configured."] };
 
   const id = String(form.get("id") ?? "");
@@ -410,6 +433,7 @@ export type ReplyState = {
  */
 export async function replyPilotRequestAction(_prev: ReplyState, form: FormData): Promise<ReplyState> {
   if (!(await isAdmin())) return { problems: ["Not signed in to the admin area."] };
+  if (platformOnly()) return { problems: [PLATFORM_ONLY] };
   if (!hasDatabase()) return { problems: ["No database is configured."] };
 
   const id = String(form.get("id") ?? "");
@@ -440,6 +464,7 @@ export type DeleteRequestState = { deleted?: boolean; error?: string };
 /** Gone for good, replies included. The panel asks twice; the second ask sets confirm=yes. */
 export async function deletePilotRequestAction(_prev: DeleteRequestState, form: FormData): Promise<DeleteRequestState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (platformOnly()) return { error: PLATFORM_ONLY };
   if (!hasDatabase()) return { error: "No database is configured." };
   if (form.get("confirm") !== "yes") return { error: "Confirm the delete first." };
 
@@ -478,6 +503,7 @@ export type RetryState = { eventId?: string; ok?: boolean; error?: string };
  */
 export async function retryNoticeAction(_prev: RetryState, form: FormData): Promise<RetryState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (platformOnly()) return { error: PLATFORM_ONLY };
   if (!hasDatabase()) return { error: "No database is configured." };
 
   const eventId = String(form.get("eventId") ?? "");
@@ -538,6 +564,7 @@ export type StageState = { slug?: string; stage?: string; error?: string };
  */
 export async function setCompanyStageAction(_prev: StageState, form: FormData): Promise<StageState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (platformOnly()) return { error: PLATFORM_ONLY };
   if (!hasDatabase()) return { error: "No database is configured." };
 
   const slug = String(form.get("slug") ?? "");

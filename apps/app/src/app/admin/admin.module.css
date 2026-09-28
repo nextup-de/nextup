@@ -375,6 +375,9 @@ a.count[data-tone="bad"] { border-color: #f5c2bf; background: var(--nh-danger-ti
 
 .quick { display: flex; flex-wrap: wrap; gap: 8px; }
 
+/* Company overview: the address line between the name and the tiles. */
+.lead { margin: 4px 0 14px; }
+
 /* ── Requests: list + panel ───────────────────────────────────────────────────────────────── */
 .split {
   display: grid;

@@ -1,17 +1,27 @@
 // Overview: what needs you right now, and the numbers at a glance. Every detail lives on its own
 // page (Requests, Companies, Connections); this one only points at them.
+//
+// In a company stack this is the company's own front page instead (CompanyOverview).
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
 import { adminBase, connectionProblems } from "@/features/admin/nav";
 import { STAGES } from "@/features/admin/stages";
 import { RequestList } from "@/components/admin/RequestList";
+import { CompanyMissing, CompanyOverview } from "@/components/admin/CompanyOverview";
+import { assistantView } from "@/server/admin-insight";
 import styles from "./admin.module.css";
 
 export default async function AdminOverview() {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
   const ctx = await adminContext();
   const base = adminBase();
+
+  if (ctx.scope === "company") {
+    if (!ctx.company) return <CompanyMissing />;
+    const assistant = await assistantView(ctx.live ? ctx.company.id : null);
+    return <CompanyOverview company={ctx.company} assistant={assistant} base={base} />;
+  }
 
   const problems = connectionProblems({
     database: ctx.database.state,

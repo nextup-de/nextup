@@ -1,14 +1,25 @@
 "use server";
-// /admin/knowledge: the assistant's switches for one company - on/off (the kill switch), the
+// /admin/assistant (company stack) or /admin/knowledge (platform): the assistant's switches for one company - on/off (the kill switch), the
 // classification ceiling, retention, the data-processing agreement date, compliance rules and
 // extra redaction patterns. Admin only; the company comes from the form's slug and is looked up.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ceilingOf } from "@/features/assist/classify";
-import { adminBase } from "@/features/admin/nav";
+import { adminBase, adminScope } from "@/features/admin/nav";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { deleteDocument } from "@/lib/db/assist";
 import { isAdmin } from "@/server/actions/admin";
+
+/** A company stack's admin only ever reaches its own company (features/admin/nav.ts, adminScope). */
+function foreignCompany(slug: string): boolean {
+  return adminScope() === "company" && slug !== process.env.COMPANY_SLUG?.trim();
+}
+
+/** Where the assistant card is shown - both, so neither page keeps a stale copy. */
+function revalidateAssistant() {
+  revalidatePath(adminBase() + "/assistant");
+  revalidatePath(adminBase() + "/knowledge");
+}
 
 export type AssistSettingsState = { ok?: boolean; error?: string };
 
@@ -27,6 +38,7 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
   if (!hasDatabase()) return { error: "No database is configured." };
   const p = Form.safeParse(Object.fromEntries(form));
   if (!p.success) return { error: "Check the fields: retention 1-365 days, date as YYYY-MM-DD." };
+  if (foreignCompany(p.data.slug)) return { error: "No such company." };
   const f = p.data;
 
   const patterns = f.patterns.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 20);
@@ -49,7 +61,7 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
     db.companyConfig.upsert({ where: { companyId }, create: { companyId, ...config }, update: config }),
     db.companyProfile.upsert({ where: { companyId }, create: { companyId, complianceRules: f.rules.trim(), principles: [] }, update: { complianceRules: f.rules.trim() } }),
   ]);
-  revalidatePath(adminBase() + "/knowledge");
+  revalidateAssistant();
   return { ok: true };
 }
 
@@ -57,9 +69,9 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
 export async function deleteDocumentAction(form: FormData): Promise<void> {
   if (!(await isAdmin()) || !hasDatabase()) return;
   const slug = String(form.get("slug") ?? ""), id = String(form.get("id") ?? "");
-  if (!slug || !id) return;
+  if (!slug || !id || foreignCompany(slug)) return;
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
   if (!company) return;
   await deleteDocument(company.id, id);
-  revalidatePath(adminBase() + "/knowledge");
+  revalidateAssistant();
 }

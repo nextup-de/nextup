@@ -13,7 +13,8 @@
 | `/[company]` | `[company]/(app)/page.tsx` | yes | any | Redirect to `ROLE_HOME[role]` |
 | `/[company]/manager` | `.../(app)/manager/page.tsx` | yes | manager | Overview |
 | `/[company]/leader` | `.../(app)/leader/page.tsx` | yes | leader, manager | Inbox |
-| `/[company]/raise` | `.../(app)/raise/page.tsx` | yes | any | Raise a problem or an idea (member home) |
+| `/[company]/raise` | `.../(app)/raise/page.tsx` | yes | any | Idea studio: develop an idea with the coach, publish at the threshold (member home, docs/IDEAS.md) |
+| `/api/[company]/ideas/turn` | `app/api/[company]/ideas/turn/route.ts` | yes | any | One message in the idea studio: server score + coach reply (SSE) |
 | `/[company]/dashboard` | `.../(app)/dashboard/page.tsx` | yes | any | Every problem and idea: open since, on whose desk, stage, score |
 | `/[company]/team` | `.../(app)/team/page.tsx` | yes | any | What happened to what I sent (one card per case) |
 | `/[company]/problems` | `.../(app)/problems/page.tsx` | yes | any | Problems |
@@ -26,7 +27,7 @@
 
 Role rules are data in `src/config/roles.ts` (`ROLE_HOME`, `ROLE_ACCESS`, `canAccess()`, `SHELL`) and nav
 per role in `src/config/nav.ts`. `SHELL[role]` picks the chrome: members get the simple bar
-(logo, Raise | Dashboard, profile - `SimpleShell`), leaders and managers the rail + top bar. Enforcement (`src/proxy.ts` + the `(app)` layout) arrives with
+(logo, Ideas | Dashboard, profile - `SimpleShell`), leaders and managers the rail + top bar. Enforcement (`src/proxy.ts` + the `(app)` layout) arrives with
 sessions in Phase 2; until then every app page renders with the demo tenant as manager.
 
 Layouts nest: `app/layout.tsx` (html, fonts) -> `(marketing)/layout.tsx` (header, footer) or
