@@ -1,7 +1,7 @@
 // Bug reports in this stack's database. Every query names its company (the tenant guard in
 // client.ts refuses anything else). Pure rules live in features/tickets.
 import { Prisma } from "@prisma/client";
-import type { TicketReplyMessage, TicketStatus } from "@nextup/contracts";
+import type { TicketReplyMessage, TicketState, TicketStatus } from "@nextup/contracts";
 import type { ReportInput, Screenshot } from "@/features/tickets";
 import { getDb } from "@/lib/db/client";
 
@@ -60,6 +60,10 @@ export type TicketListRow = {
   description: string;
   expected: string;
   reporterRole: string;
+  /** Who filed it: their name; null when filed from /admin or the person was deleted. */
+  reporterName: string | null;
+  /** Who of the NextUp team is on it ("" = nobody yet). */
+  assignee: string;
   hasScreenshot: boolean;
   forwarded: boolean;
   createdAt: Date;
@@ -75,6 +79,8 @@ const listSelect = {
   description: true,
   expected: true,
   reporterRole: true,
+  reporter: { select: { name: true } },
+  assignee: true,
   screenshotMime: true,
   forwardedAt: true,
   createdAt: true,
@@ -82,8 +88,8 @@ const listSelect = {
 } satisfies Prisma.TicketSelect;
 
 function toRow(r: Prisma.TicketGetPayload<{ select: typeof listSelect }>): TicketListRow {
-  const { screenshotMime, forwardedAt, ...rest } = r;
-  return { ...rest, hasScreenshot: screenshotMime !== null, forwarded: forwardedAt !== null };
+  const { screenshotMime, forwardedAt, reporter, ...rest } = r;
+  return { ...rest, reporterName: reporter?.name ?? null, hasScreenshot: screenshotMime !== null, forwarded: forwardedAt !== null };
 }
 
 /** "My reports": what this person filed, newest first. */
@@ -204,4 +210,12 @@ export async function saveReplies(companyId: string, replies: TicketReplyMessage
 
 export async function markEmailed(companyId: string, replyId: string): Promise<void> {
   await getDb().ticketReply.updateMany({ where: { companyId, id: replyId }, data: { emailedAt: new Date() } });
+}
+
+/** Store who admin.sellux.ch says is on each ticket. Tickets not in this stack (any more) are skipped. */
+export async function saveAssignees(companyId: string, tickets: TicketState[]): Promise<void> {
+  const db = getDb();
+  for (const t of tickets) {
+    await db.ticket.updateMany({ where: { companyId, id: t.stackTicketId, NOT: { assignee: t.assignee } }, data: { assignee: t.assignee } });
+  }
 }

@@ -15,7 +15,7 @@ type Props = {
   /** "/api/acme/tickets" - the screenshot is at `${base}/${id}/screenshot`. Null = don't show them. */
   screenshotBase: string | null;
   offline: boolean;
-  /** /admin shows who filed it (the role) and whether it reached admin.sellux.ch. */
+  /** /admin shows who filed it (name and role) and whether it reached admin.sellux.ch. */
   admin?: boolean;
 };
 
@@ -52,7 +52,12 @@ export function ReportsView({ tickets, screenshotBase, offline, admin = false }:
                 {t.expected && <p className={styles.expected}><strong>Expected:</strong> {t.expected}</p>}
                 <div className={styles.meta}>
                   {when(t.createdAt)}
-                  {admin ? ` · from ${t.reporterRole}` : ""}
+                  {" · Created by "}
+                  {admin ? `${t.reporterName ?? "an admin"} (${t.reporterRole})` : "you"}
+                  {" · "}
+                  <span className={styles.assignee} data-assigned={t.assignee ? "yes" : "no"}>
+                    {t.assignee ? `Assigned to ${t.assignee}, NextUp team` : "Not assigned yet"}
+                  </span>
                   {admin ? (t.forwarded ? " · at admin.sellux.ch" : " · not forwarded yet") : ""}
                 </div>
                 {t.hasScreenshot && screenshotBase ? (

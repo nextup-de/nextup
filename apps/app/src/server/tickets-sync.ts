@@ -12,6 +12,7 @@
 import {
   IntakeAccepted,
   RepliesResponse,
+  TicketStateResponse,
   TICKETS_CONTRACT_VERSION,
   ticketLabel,
 } from "@nextup/contracts";
@@ -22,6 +23,7 @@ import {
   lastReplyAt,
   markEmailed,
   markForwarded,
+  saveAssignees,
   saveReplies,
   ticketsToForward,
 } from "@/lib/db/tickets";
@@ -92,6 +94,16 @@ async function pullReplies(ops: Ops, company: { id: string; slug: string }): Pro
   }
 }
 
+/** Who of the NextUp team is on each ticket. An admin from before this endpoint answers 404: nothing to do. */
+async function pullState(ops: Ops, company: { id: string; slug: string }): Promise<void> {
+  const res = await call(ops, "/api/ticket-state");
+  if (res.status === 404) return;
+  if (!res.ok) throw new Error(`ticket-state answered ${res.status}`);
+  const body = TicketStateResponse.parse(await res.json());
+  if (body.contractVersion !== TICKETS_CONTRACT_VERSION) return;
+  await saveAssignees(company.id, body.tickets);
+}
+
 let running: Promise<void> | null = null;
 
 /** One round for every company in this deployment. Overlapping calls share the round in flight. */
@@ -105,6 +117,9 @@ export function syncTickets(): Promise<void> {
         await forward(ops, c);
         await pullReplies(ops, c).catch((e) =>
           console.warn(`[tickets] ${c.slug} replies: ${e instanceof Error ? e.message : String(e)}`),
+        );
+        await pullState(ops, c).catch((e) =>
+          console.warn(`[tickets] ${c.slug} ticket state: ${e instanceof Error ? e.message : String(e)}`),
         );
       }
     } catch (e) {
