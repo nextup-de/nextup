@@ -42,6 +42,6 @@
     "prisma": "7.10.0",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "vitest": "^5"
+    "vitest": "^5.0.2"
   }
 }
