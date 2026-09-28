@@ -2,7 +2,7 @@
 // Nothing here is stored - every string is rebuilt from the reduced case at render time.
 import { days } from "@/lib/utils/format";
 import { scoreCase, type Score } from "@/features/scoring";
-import type { CaseKind, EventLog } from "./events";
+import type { CaseKind, EventLog, Visibility } from "./events";
 import type { ReducedCase, ReducedIdea } from "./reducer";
 import { affectedOn, rescoresOn } from "./selectors";
 
@@ -126,10 +126,11 @@ export type DashRow = {
   openDays: number; open: boolean; overdue: boolean; stage: DashStage; chain: string[]; escalated: boolean; affected: string[]; attachments: number; score: Score; sortDay: number;
 };
 
-// What the raise event carried beyond the case fields: who else is affected, how many screenshots.
-export function raisedWith(c: ReducedCase): { affected: string[]; attachments: number } {
+// What the raise event carried beyond the case fields: who else is affected, how many screenshots,
+// and who the raiser lets see it (none = the old rule).
+export function raisedWith(c: ReducedCase): { affected: string[]; attachments: number; visibility: Visibility | null; seenBy: string[] } {
   const p = c.history.find((e) => e.type === "case.raised")?.payload;
-  return { affected: p?.affected ?? [], attachments: p?.attachments ?? 0 };
+  return { affected: p?.affected ?? [], attachments: p?.attachments ?? 0, visibility: p?.visibility ?? null, seenBy: p?.seenBy ?? [] };
 }
 
 export function dashboardRow(c: ReducedCase, promiseDays: number, viewer: { name: string; handle: string | null }, log?: EventLog): DashRow {

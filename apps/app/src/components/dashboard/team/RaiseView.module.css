@@ -67,6 +67,13 @@
 /* The affected picker: a search, the org chart and the departments, Clear / Done. */
 .pickRoot { position: relative; }
 .picker { position: absolute; top: calc(100% + 10px); left: 0; z-index: 20; width: 296px; background: var(--nh-card); border: 1px solid #e7edf1; border-radius: 18px; box-shadow: 0 22px 44px -18px rgb(25 50 70 / 0.28), 0 4px 10px rgb(25 50 70 / 0.06); overflow: hidden; }
+/* View: everyone / private / custom as one switch above the list, what the choice means under it. */
+.viewHead { display: flex; flex-direction: column; gap: 7px; padding: 12px 14px 10px; border-bottom: 1px solid #eef2f5; }
+.viewOpts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px; border-radius: 11px; background: #eff1f3; }
+.viewOpt { border: 0; border-radius: 8px; padding: 7px 4px; background: transparent; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--nh-ink-2); cursor: pointer; }
+.viewOpt[data-on="true"] { background: var(--nh-ink); color: #fff; }
+.viewOpt:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.picker[data-view="true"] .pickList { max-height: 180px; } /* the switch takes some of the height */
 .pickSearch { padding: 12px 14px 10px; border-bottom: 1px solid #eef2f5; }
 .pickSearch input { width: 100%; box-sizing: border-box; border: 1px solid #e6edf1; border-radius: 10px; padding: 8px 10px; font-family: inherit; font-size: 13px; color: var(--nh-ink); outline: 0; }
 .pickSearch input:focus { border-color: var(--nh-brand-line); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
@@ -231,13 +238,15 @@
   .line { align-items: flex-start; }
   .field { min-height: calc(2.8em + 4px); padding-top: 4px; } /* two lines, so the whole placeholder shows next to the idea/problem switch */
   .pill { padding: 6px 10px; font-size: 13px; }
+  .attach .pillText { display: none; } /* the icon alone; the chips name the files */
+  .adds { gap: 6px; }
   /* The picker hangs from the whole box, not the pill: the pill sits mid-row, so a panel anchored to it ran off the screen. */
   .pickRoot { position: static; }
   .picker { left: 0; right: 0; width: auto; top: auto; bottom: calc(100% + 8px); } /* opens upward: the box is at the bottom */
   /* The picker never grows past the space above the box (top bar 56px + the gaps): the list takes what is left and scrolls. */
   .picker { display: flex; flex-direction: column; max-height: calc(var(--vv-h, 600px) - var(--box-h, 140px) - 136px); }
   .picker > * { flex: none; }
-  .pickList { flex: 1 1 auto; min-height: 60px; max-height: 236px; }
+  .pickList, .picker[data-view="true"] .pickList { flex: 1 1 auto; min-height: 60px; max-height: 236px; }
   .pickSearch input { font-size: 16px; } /* under 16px iOS zooms the page in on focus */
   .state:not([data-on="true"]) { display: none; } /* "How it works" stacks tall here; each state takes its own height */
 }

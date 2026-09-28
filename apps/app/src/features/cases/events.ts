@@ -2,7 +2,7 @@
 // Port of legacy/demo/js/store.js - types here, reducer in reducer.ts, selectors in selectors.ts.
 // Never store display text as state: store who / which day / which route; build sentences at render.
 export type CaseEventType =
-  | "case.raised" // { title, body, routeId, assignee, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal? }
+  | "case.raised" // { title, body, routeId, assignee, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy? }
   | "case.read" // -
   | "case.decided" // { answer: 'yes'|'no', reason?, note? }
   | "case.handed" // { to, why? }
@@ -23,6 +23,11 @@ export type CaseEventType =
 
 // What an employee raises: something that hurts, or something that could be. Missing = problem.
 export type CaseKind = "problem" | "idea";
+
+// Who the raiser lets see it in the lists: the whole company, only them and the desk it lands on,
+// or those plus the people and departments in seenBy. Missing = the old rule (derive.visibleTo).
+// Applied in the browser only for now: the events endpoint still sends every event to every viewer.
+export type Visibility = "everyone" | "private" | "custom";
 
 // What the router proposed when the case was raised, kept so /admin/decisions can compare it with
 // what people then chose (docs/COMPANY_KNOWLEDGE.md). The reducer never reads it.
@@ -48,6 +53,8 @@ export type EventPayload = {
   rescore?: boolean; // on case.commented: the comment is new information, the score is re-evaluated with it
   by?: number;
   proposal?: RouteProposal; // on case.raised
+  visibility?: Visibility; // on case.raised
+  seenBy?: string[]; // on case.raised with visibility "custom": people and department names
 };
 
 export type CaseEvent = {
