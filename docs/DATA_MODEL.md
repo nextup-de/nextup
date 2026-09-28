@@ -17,6 +17,7 @@ Phase 2 target (`prisma/schema.prisma`), each table with `companyId`:
 | `ROUTES` | `Route` | the routing table: `label, ownerUserId, deputyUserId, buddyUserId?, keys[]` |
 | `CASES` | `Case` | `title, body, fromUserId, routeId, assigneeUserId, raisedAt, reason, upside` - status/assignee/clock are **derived** from events |
 | `store.js` log | `CaseEvent` | append-only: `caseId, actorUserId, type, payload, at` |
+| - | `IdeaDraft` / `IdeaTurn` | the idea studio (docs/IDEAS.md): a draft per author, its chat turns and score snapshot; private to the author, `caseId` once published |
 | `PROBLEMS` / `IDEAS` / `INITIATIVES` | `Problem` / `Idea` / `Initiative` | |
 | `METRICS` | - | computed by `features/metrics`; baseline values become `Company.baseline` |
 
