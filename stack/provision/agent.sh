@@ -80,10 +80,11 @@ mem_mb() {  # MemAvailable, else MemFree (Git Bash), else 0
   m="$(awk '/^MemAvailable:/ { a = $2 } /^MemFree:/ { f = $2 } END { printf "%d", (a ? a : f) / 1024 }' /proc/meminfo 2>/dev/null || true)"
   echo "${m:-0}"
 }
+helper_ok() { [ "$SITE_HELPER" != none ] && [ -x "$SITE_HELPER" ] && sudo -n -l "$SITE_HELPER" >/dev/null 2>&1 && echo yes || echo no; }
 installed() { local d; for d in "$NEXTUP_INSTANCES"/*/; do [ -f "$d.env" ] && basename "$d"; done 2>/dev/null | paste -sd, -; }
 
 # ── Ask for work ─────────────────────────────────────────────────────────────────────────────────
-code="$(curl_admin -o "$work/job" -w '%{http_code}' -H "X-Agent-Info: mem_mb=$(mem_mb) stacks=$(installed)" "$ADMIN_URL/api/provision/next" || true)"
+code="$(curl_admin -o "$work/job" -w '%{http_code}' -H "X-Agent-Info: mem_mb=$(mem_mb) stacks=$(installed) helper=$(helper_ok)" "$ADMIN_URL/api/provision/next" || true)"
 case "$code" in
   204) exit 0 ;;
   200) ;;
@@ -240,6 +241,8 @@ case "$action" in
       free="$(mem_mb)"
       [ "$free" -ge "$MIN_MEM_MB" ] || fail "only ${free} MB memory available, need $MIN_MEM_MB MB for a new stack"
     fi
+    # `IFS='=' read` above drops one trailing "=", which is base64 padding here: put it back.
+    while (( ${#name_b64} % 4 )); do name_b64+="="; done
     name="$(printf '%s' "$name_b64" | base64 -d 2>/dev/null)" || fail "bad name"
     [[ "$ops_token" =~ ^nxs_[A-Za-z0-9_-]{20,100}$ ]] || fail "the job carries no ticket token"
     mkdir -p "$dir"
@@ -287,9 +290,23 @@ case "$action" in
     ;;
 
   purge)
+    if [ ! -f "$env_file" ]; then
+      # A create that failed before install.sh wrote the .env: no containers, no data. Clear what
+      # the agent itself left (stack.conf, an nginx site) so admin can forget the company.
+      if [ -d "$dir" ] && [ -n "$(ls -A "$dir" | grep -vx stack.conf)" ]; then
+        fail "$dir holds more than stack.conf but no .env - look at it by hand"
+      fi
+      rm -f "$conf"; [ -d "$dir" ] && rmdir "$dir"
+      if [ "$SITE_HELPER" != none ] && [ -x "$SITE_HELPER" ] && nginx_serves; then
+        sudo -n "$SITE_HELPER" remove "$slug" >> "$log" 2>&1 || echo "!! nginx helper failed" >> "$log"
+      fi
+      rm -f "$NEXTUP_SITES/nextup-$slug"
+      echo "$slug was never installed on this box - nothing to delete." >> "$log"
+      report done
+      exit 0
+    fi
     # Stage 1: only demo stacks, whatever admin says.
     [ "$(box_stage)" = demo ] || fail "$slug is not a demo stack on this box - refusing to delete it"
-    [ -f "$env_file" ] || fail "$slug is not installed on this box"
     printf '%s\n' "$slug" > "$work/confirm"
     echo "\$ remove-stack.sh $slug --purge" >> "$log"
     "$stack/nginx/remove-stack.sh" "$slug" --purge < "$work/confirm" >> "$log" 2>&1 || fail "remove-stack.sh --purge failed"
