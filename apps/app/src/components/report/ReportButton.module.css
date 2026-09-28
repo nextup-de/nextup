@@ -37,3 +37,7 @@
   .sheet { top: auto; bottom: 0; left: 0; right: 0; transform: none; width: auto; max-height: 88dvh; border-radius: 16px 16px 0 0; padding-bottom: 22px; }
   .textarea { font-size: 16px; }
 }
+
+/* Demo stacks: "Opened by" / "Assign to" - the area after the name, quieter. */
+.chipNote { font-weight: 500; opacity: 0.7; }
+.optional { font-weight: 400; color: var(--nh-mute); margin-left: 6px; font-size: 0.9em; }

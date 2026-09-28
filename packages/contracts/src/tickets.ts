@@ -49,6 +49,20 @@ export const TicketContext = z.object({
 });
 export type TicketContext = z.infer<typeof TicketContext>;
 
+/** The NextUp team - who a ticket can be assigned to. Changing it: both copies of this file. */
+export const TEAM_NAMES = ["Kevin", "Sam", "Victor"] as const;
+/** Who can open a ticket on a demo stack: the team and Marc. Nobody picked = somebody unknown. */
+export const OPENER_NAMES = [...TEAM_NAMES, "Marc"] as const;
+export type TeamName = (typeof TEAM_NAMES)[number];
+export type OpenerName = (typeof OPENER_NAMES)[number];
+export const PERSON_AREA: Record<OpenerName, string> = { Kevin: "Back-End", Sam: "Front-End", Victor: "AI Automation", Marc: "Sales" };
+
+/** "Kevin (Back-End)"; a name we don't know stays as it is. */
+export function personLabel(name: string): string {
+  const area = (PERSON_AREA as Record<string, string>)[name];
+  return area ? `${name} (${area})` : name;
+}
+
 /** POST /api/intake body. Re-sending the same stackTicketId updates, never duplicates. */
 export const TicketIntake = z.object({
   contractVersion: z.literal(TICKETS_CONTRACT_VERSION),
@@ -68,6 +82,10 @@ export const TicketIntake = z.object({
     .object({ mime: z.enum(SCREENSHOT_MIMES), base64: z.string().max(Math.ceil((SCREENSHOT_MAX_BYTES * 4) / 3) + 4) })
     .nullable(),
   createdAt: z.string().datetime(),
+  /** Demo stacks only: who of us opened it (left out = somebody unknown). Admins before this field ignore it. */
+  openedBy: z.enum(OPENER_NAMES).optional(),
+  /** Demo stacks only: who it was assigned to when filed. Admin keeps it only when the ticket is new there. */
+  assignee: z.enum(TEAM_NAMES).optional(),
 });
 export type TicketIntake = z.infer<typeof TicketIntake>;
 

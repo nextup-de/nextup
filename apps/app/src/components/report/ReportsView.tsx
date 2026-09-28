@@ -1,5 +1,6 @@
 // A list of bug reports with their replies - "My reports", and the same rows in /admin -> Tickets.
 // Props in, JSX out.
+import { personLabel } from "@nextup/contracts";
 import { STATUS_LABEL, isTicketStatus, ticketLabel } from "@/features/tickets";
 import type { TicketListRow } from "@/lib/db/tickets";
 import styles from "./ReportsView.module.css";
@@ -53,10 +54,10 @@ export function ReportsView({ tickets, screenshotBase, offline, admin = false }:
                 <div className={styles.meta}>
                   {when(t.createdAt)}
                   {" · Created by "}
-                  {admin ? `${t.reporterName ?? "an admin"} (${t.reporterRole})` : "you"}
+                  {t.openedBy ? personLabel(t.openedBy) : admin ? `${t.reporterName ?? "an admin"} (${t.reporterRole})` : "you"}
                   {" · "}
                   <span className={styles.assignee} data-assigned={t.assignee ? "yes" : "no"}>
-                    {t.assignee ? `Assigned to ${t.assignee}, NextUp team` : "Not assigned yet"}
+                    {t.assignee ? `Assigned to ${personLabel(t.assignee)}` : "Not assigned yet"}
                   </span>
                   {admin ? (t.forwarded ? " · at admin.sellux.ch" : " · not forwarded yet") : ""}
                 </div>

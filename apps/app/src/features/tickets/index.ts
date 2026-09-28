@@ -5,6 +5,8 @@ import { createHmac } from "node:crypto";
 import { z } from "zod";
 import {
   LIMITS,
+  OPENER_NAMES,
+  TEAM_NAMES,
   SCREENSHOT_MAX_BYTES,
   TICKET_IMPACTS,
   TICKET_KINDS,
@@ -26,6 +28,9 @@ export const ReportInput = z.object({
   context: TicketContext.pick({ path: true, userAgent: true, viewport: true, consoleErrors: true, failedRequests: true, recentPages: true }),
   /** A data: URL from the widget, or null when the person left the screenshot out. */
   screenshot: z.string().max(4_000_000).nullable(),
+  /** Demo stacks only (the server drops them elsewhere): who of us opened it, and who should take it. "" = unknown / nobody. */
+  openedBy: z.enum(["", ...OPENER_NAMES]).default(""),
+  assignee: z.enum(["", ...TEAM_NAMES]).default(""),
 });
 export type ReportInput = z.infer<typeof ReportInput>;
 
@@ -86,6 +91,8 @@ export type TicketForIntake = {
   screenshot: Uint8Array | null;
   screenshotMime: string | null;
   createdAt: Date;
+  openedBy: string;
+  assignee: string;
 };
 
 /** A stored ticket as the contract message. Throws if the row no longer fits the contract. */
@@ -107,6 +114,8 @@ export function toIntake(t: TicketForIntake, companySlug: string, secret: string
     context: TicketContext.parse(t.context),
     screenshot: shot,
     createdAt: t.createdAt.toISOString(),
+    ...(isOpener(t.openedBy) ? { openedBy: t.openedBy } : {}),
+    ...(isTeam(t.assignee) ? { assignee: t.assignee } : {}),
   };
 }
 
@@ -134,3 +143,6 @@ export function replyMail(label: string, status: TicketStatus, body: string, rep
     text: [`${label} - ${STATUS_LABEL[status]}`, "", body, "", `All your reports: ${reportsUrl}`].join("\n"),
   };
 }
+
+const isOpener = (s: string): s is (typeof OPENER_NAMES)[number] => (OPENER_NAMES as readonly string[]).includes(s);
+const isTeam = (s: string): s is (typeof TEAM_NAMES)[number] => (TEAM_NAMES as readonly string[]).includes(s);
