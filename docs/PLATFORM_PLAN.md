@@ -299,7 +299,7 @@ data.
   - old `uploads/` still in git history
   - `ADMIN_DEMO_FILL` leaking the admin code
   - n8n encryption key and backups
-  - broken `Caddyfile.ondemand` (becomes obsolete)
+  - ~~broken `Caddyfile.ondemand`~~ removed with `/api/tls-check` (28 Sep 2026)
 
 ### Stage 2 — what a customer audit asks for
 

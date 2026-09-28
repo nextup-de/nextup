@@ -87,9 +87,3 @@ export async function loadSeed(slug: string): Promise<Seed | null> {
 export async function companySeed(row: { id: string; seedJson: unknown }): Promise<Seed> {
   return overlayKnowledge(parseSeed(row.seedJson), await loadKnowledge(row.id));
 }
-
-/** Slugs that exist, for the Caddy on-demand TLS check and the admin list. */
-export async function companySlugs(): Promise<string[]> {
-  const rows = await getDb().company.findMany({ select: { slug: true }, orderBy: { slug: "asc" } });
-  return rows.map((r) => r.slug);
-}

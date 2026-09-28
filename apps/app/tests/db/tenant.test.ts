@@ -5,7 +5,7 @@
 // came from.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDb } from "@/lib/db/client";
-import { findCompanyByEmailDomain, findCompanyBySlug, companySlugs, loadSeed } from "@/lib/db/companies";
+import { findCompanyByEmailDomain, findCompanyBySlug, loadSeed } from "@/lib/db/companies";
 import { seedTemplate } from "@/features/demo";
 import { toSeedJson } from "@/features/demo/parse";
 import { SEED } from "@/features/demo/seed";
@@ -102,11 +102,5 @@ describe("loadSeed", () => {
     expect(seed?.people).toEqual([]);
     // ...but it keeps the rules, not just the rows.
     expect(seed?.promiseDays).toBe(SEED.promiseDays);
-  });
-});
-
-describe("companySlugs", () => {
-  it("lists every tenant, for /admin and the TLS check", async () => {
-    await expect(companySlugs()).resolves.toEqual(["acme", "globex"]);
   });
 });
