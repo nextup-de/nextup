@@ -5,8 +5,8 @@
 # *.nextup.serviweb.ch means a company created in /admin is reachable over HTTPS immediately,
 # with no per-host issuance.
 #
-# No hosttech API token? Use Caddyfile.ondemand instead - see docs/DEPLOY.md. That path needs no
-# credentials at all and issues a normal cert per subdomain on first visit.
+# Company stacks (stack/) don't use this image: each has plain caddy:2, and on the shared box
+# nginx + certbot do TLS (stack/nginx/RUNBOOK.md).
 FROM caddy:2-builder AS build
 RUN xcaddy build --with github.com/caddy-dns/hosttech
 

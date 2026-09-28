@@ -75,19 +75,16 @@ behind that login nobody else can reach the setup screen first.
 ssh <box> 'cd /srv/nextup && ops/deploy.sh'
 ```
 
-### TLS: two ways, pick one
+### TLS
 
-**`CADDYFILE=Caddyfile` (default).** One wildcard certificate for `*.nextup.serviweb.ch` via the
-DNS-01 challenge, using the `caddy-dns/hosttech` plugin baked into `ops/caddy/Dockerfile`. Needs
+**`CADDYFILE=Caddyfile`.** One wildcard certificate for `*.nextup.serviweb.ch` via the DNS-01
+challenge, using the `caddy-dns/hosttech` plugin baked into `ops/caddy/Dockerfile`. Needs
 `HOSTTECH_API_TOKEN`. A company created in `/admin` is reachable over HTTPS immediately.
 Let's Encrypt **cannot** issue a wildcard over HTTP-01, which is why the token is needed at all.
 
-**`CADDYFILE=Caddyfile.ondemand`.** No credentials whatsoever. Caddy issues an ordinary
-certificate per subdomain on first visit, asking `/api/tls-check` first so that only real
-companies get one. The trade-off: the first hit on a new subdomain pauses while the cert is
-issued.
-
-Start with whichever is less friction — swapping is a one-line `.env` change and a restart.
+The on-demand variant (`Caddyfile.ondemand` + `/api/tls-check`) is gone (28 Sep 2026): it no
+longer parsed on current `caddy:2`, and the endpoint told anyone which company names exist. Company
+stacks (`stack/`, docs/PLATFORM_PLAN.md) get their certificates from Caddy or nginx+certbot.
 
 ## The database
 
