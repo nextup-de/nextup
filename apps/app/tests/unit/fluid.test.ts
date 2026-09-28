@@ -44,6 +44,13 @@ describe("fluid UI", () => {
     expect(bad, "size things in real pixels instead of zoom (see docs/RESPONSIVE.md)").toEqual([]);
   });
 
+  it("text is never smaller than 12px", () => {
+    const bad = files(SRC, [".css"]).flatMap(lines)
+      .filter((l) => [...l.text.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].some((m) => Number(m[1]) < 12) && !l.text.includes(OPT_OUT))
+      .map((l) => l.at + "  " + l.text.trim());
+    expect(bad, "use 12px or more (see docs/RESPONSIVE.md)").toEqual([]);
+  });
+
   it("the screen tokens are still defined", () => {
     const tokens = readFileSync(join(ROOT, TOKENS), "utf8");
     for (const name of ["--nh-screen-h:", "--nh-screen-w:"]) expect(tokens).toContain(name);

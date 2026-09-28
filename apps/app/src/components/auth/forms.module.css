@@ -28,7 +28,7 @@
 .demoHead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .demoHead strong { font-size: 13px; }
 .demoTag {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--nh-mute);

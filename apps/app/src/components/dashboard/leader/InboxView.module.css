@@ -137,7 +137,7 @@
 .badge[data-tone="paused"] { color: var(--c-mute); background: var(--c-fill); }
 .page[data-open="true"] .rowTitle { font-size: 14px; }
 .page[data-open="true"] :is(.rowWho, .rowSolves, .sent) { font-size: 12.5px; }
-.page[data-open="true"] .badge { font-size: 11px; padding: 2px 7px; }
+.page[data-open="true"] .badge { font-size: 12px; padding: 2px 7px; }
 /* The picked row sits on the blue highlight: white text. */
 .row[data-active="true"] :is(.rowTitle, .rowWho) { color: #fff; }
 .row[data-active="true"] :is(.rowRole, .rowSolves, .sent) { color: rgb(255 255 255 / 0.85); }

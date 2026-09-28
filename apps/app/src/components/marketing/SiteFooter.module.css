@@ -12,5 +12,5 @@
   display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; justify-content: space-between;
   padding-top: 16px; border-top: 1px solid var(--nh-line-soft); font-size: 12px;
 }
-.note { font-size: 11px; }
+.note { font-size: 12px; }
 @media (max-width: 640px) { .legal { margin-left: 0; } }

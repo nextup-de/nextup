@@ -30,7 +30,7 @@ how it does that and the rules that keep it that way. Two checks enforce them: `
 6. **Phones: thumb and keyboard.** Keep inputs near the top - the on-screen keyboard covers the
    bottom half. Inputs use 16px text (smaller makes iOS zoom in on focus). Popovers open where
    there is room.
-7. **Text stays readable.** Nothing below 11px.
+7. **Text stays readable.** Nothing below 12px.
 
 ## Before you say a change is done
 
