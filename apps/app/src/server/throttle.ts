@@ -24,6 +24,10 @@ export const RULES = {
   assistAsk: { limit: 20, windowMs: 10 * 60_000 },
   /** Raise-page assistant, per company from everyone: caps what one company can spend. */
   assistAskAll: { limit: 600, windowMs: 10 * 60_000 },
+  /** Idea studio, per person: one message is one scoring and at most one model call. */
+  ideaTurn: { limit: 40, windowMs: 10 * 60_000 },
+  /** Idea studio, per company from everyone. */
+  ideaTurnAll: { limit: 800, windowMs: 10 * 60_000 },
   /** The bug icon, per person: a few reports in a row is a bad day, dozens is a script. */
   ticketReport: { limit: 10, windowMs: 10 * 60_000 },
 } satisfies Record<string, Rule>;

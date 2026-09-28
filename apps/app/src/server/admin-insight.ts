@@ -13,6 +13,7 @@ import { decisionInputs } from "@/lib/db/decisions";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
 import { assistStats, listDocuments, loadAssistSettings, type AssistSettings, type AssistStats } from "@/lib/db/assist";
 import { providerConfig, type ProviderConfig } from "@/server/assist/provider";
+import { ideaStats, loadPublishThreshold } from "@/lib/db/ideas";
 
 export type KnowledgeView = { knowledge: Knowledge; profile: Profile | null; brief: string; source: "tables" | "demo" | "none" };
 
@@ -75,4 +76,13 @@ export async function assistantView(companyId: string | null): Promise<Assistant
   const since = new Date(Date.now() - 30 * 86_400_000);
   const [settings, stats, documents] = await Promise.all([loadAssistSettings(companyId), assistStats(companyId, since), listDocuments(companyId)]);
   return { settings, provider: providerConfig(), stats, documents };
+}
+
+export type IdeasView = { threshold: number; drafts: number; published: number } | null;
+
+/** The idea studio for one company: its publish line and how many drafts exist - counts only, never whose (docs/IDEAS.md). */
+export async function ideasView(companyId: string | null): Promise<IdeasView> {
+  if (!(await isAdmin()) || !hasDatabase() || !companyId) return null;
+  const [threshold, stats] = await Promise.all([loadPublishThreshold(companyId), ideaStats(companyId)]);
+  return { threshold, ...stats };
 }

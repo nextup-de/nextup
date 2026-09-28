@@ -1,10 +1,11 @@
 // Connections: everything the app talks to, on one page - Postgres, the case notices and what they
 // did, the mail relay, and the server's own configuration. The strip at the top is the verdict for each; the
 // cards below are the detail.
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
-import { adminBase, type Tone } from "@/features/admin/nav";
+import { connectionChecks } from "@/features/admin/connections";
+import { adminBase, adminScope, type Tone } from "@/features/admin/nav";
 import { describeEnvironment } from "@/features/admin/environment";
 import { DatabaseCard } from "@/components/admin/DatabaseCard";
 import { Automation } from "@/components/admin/Automation";
@@ -15,46 +16,19 @@ import styles from "../admin.module.css";
 
 export default async function ConnectionsPage() {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
+  // Platform admin only; a company stack's /admin never shows it (features/admin/nav.ts).
+  if (adminScope() === "company") notFound();
   const ctx = await adminContext();
   const env = describeEnvironment(process.env);
 
-  const automationState = ctx.automation?.summary.state ?? null;
-  const strip: { id: string; label: string; value: string; tone: Tone }[] = [
-    {
-      id: "database",
-      label: "Database",
-      value: ctx.database.state === "up" ? "answering" : ctx.database.state === "off" ? "not set" : "down",
-      tone: ctx.database.state === "up" ? "ok" : "bad",
-    },
-    {
-      id: "automation",
-      label: "Notices",
-      value: automationState ?? "needs the database",
-      tone: automationState === "live" ? "ok" : automationState === "idle" || automationState === "off" ? "warn" : "bad",
-    },
-    {
-      id: "tasks",
-      label: "Tasks",
-      value: !ctx.taskCounts
-        ? "needs the database"
-        : ctx.taskCounts.failed
-          ? `${ctx.taskCounts.failed} stuck`
-          : `${ctx.tasks.length} recent`,
-      tone: !ctx.taskCounts ? "bad" : ctx.taskCounts.failed ? "bad" : ctx.taskCounts.pending ? "warn" : "ok",
-    },
-    {
-      id: "mail",
-      label: "Mail",
-      value: ctx.mailState === "up" ? "answering" : ctx.mailState === "off" ? "not set" : "down",
-      tone: ctx.mailState === "up" ? "ok" : ctx.mailState === "off" ? "warn" : "bad",
-    },
-    {
-      id: "environment",
-      label: "Environment",
-      value: env.some((r) => r.tone === "bad") ? "needs fixing" : env.some((r) => r.tone === "warn") ? "demo settings on" : "ok",
-      tone: env.some((r) => r.tone === "bad") ? "bad" : env.some((r) => r.tone === "warn") ? "warn" : "ok",
-    },
-  ];
+  const strip = connectionChecks({
+    database: ctx.database.state,
+    automation: ctx.automation?.summary.state ?? null,
+    taskCounts: ctx.taskCounts,
+    taskTotal: ctx.tasks.length,
+    mail: ctx.mailState,
+    environment: env,
+  });
 
   return (
     <>

@@ -16,20 +16,30 @@ export const test = base.extend<{ failOnPageError: void }>({
 });
 export { expect };
 
+// What the second message adds so any one-line idea clears the publish line (docs/IDEAS.md): a
+// goal, a number, who it reaches, why, and a first step with no spend.
+export const DEVELOP = "It serves the changeover goal: setup waits cost about 20 minutes per changeover on every shift, because the team waits for a slot. First step: a one-week pilot on line 3, no spend needed.";
+
 /**
- * Raise a problem from the member home and wait until the evaluation has placed it. ↑ asks the
- * assistant first (docs/ASSISTANT.md); where it answers, "Raise it anyway" goes on to the raise.
- * Where it is off for the company, ↑ raises directly.
+ * Publish an idea from the member home (the idea studio): the one line, then DEVELOP as the answer
+ * to the coach, then Publish once the score allows it. On a phone the actions live in a bottom
+ * sheet opened from the score. Waits until the route is shown.
  */
-export async function raiseProblem(page: Page, title: string) {
-  await page.getByRole("button", { name: /Raising idea/ }).click();
-  await page.getByRole("textbox", { name: "Problem" }).fill(title);
-  await page.getByRole("button", { name: /Ask NextUp first|Raise this problem/ }).click();
-  const anyway = page.getByRole("button", { name: "Raise it anyway" });
-  const placed = page.getByRole("link", { name: "Open the case" });
-  await expect(anyway.or(placed)).toBeVisible({ timeout: 30_000 });
-  if (await anyway.isVisible()) await anyway.click();
-  await expect(placed).toBeVisible({ timeout: 30_000 });
+export async function publishIdea(page: Page, title: string) {
+  const box = page.getByRole("textbox", { name: "Your idea" });
+  await box.fill(title);
+  await box.press("Enter");
+  await expect(page.getByRole("region", { name: "Benchmarks" })).toBeVisible({ timeout: 30_000 });
+  await box.fill(DEVELOP);
+  await box.press("Enter");
+  await expect(page.getByText(/^Up \d+ to \d+/)).toBeVisible({ timeout: 30_000 });
+  const publish = page.getByRole("button", { name: "Publish idea" });
+  // Phones: the panel is a bottom sheet, parked off-screen (still "visible" to Playwright) until the score opens it.
+  const sheet = page.getByRole("button", { name: /— actions$/ });
+  if (await sheet.isVisible()) await sheet.click();
+  await expect(publish).toBeEnabled();
+  await publish.click();
+  await expect(page.getByRole("dialog", { name: "Publishing your idea" }).getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
 }
 
 /** The sheet that opens for "No, and why", "Ask a question", "Answer …". */

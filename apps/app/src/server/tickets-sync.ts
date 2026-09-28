@@ -6,7 +6,8 @@
 //   OPS_URL    https://admin.sellux.ch        unset = tickets stay in this stack only
 //   OPS_TOKEN  this stack's token, issued in admin.sellux.ch -> Stacks
 //
-// Runs once a minute from instrumentation.ts, and right after someone files a report.
+// Runs once a minute from instrumentation.ts, and right after someone files a report. The same timer
+// sends this stack's health (server/health-report.ts).
 // Not a "use server" module.
 import {
   IntakeAccepted,
@@ -25,10 +26,12 @@ import {
   ticketsToForward,
 } from "@/lib/db/tickets";
 import { mailConfigured, sendMail } from "@/server/mail";
+import { reportHealth } from "@/server/health-report";
 
-type Ops = { url: string; token: string; secret: string };
+export type Ops = { url: string; token: string; secret: string };
 
-function opsConfig(): Ops | null {
+/** OPS_URL + OPS_TOKEN, or null: then nothing leaves this stack. Also read by server/health-report.ts. */
+export function opsConfig(): Ops | null {
   const url = process.env.OPS_URL?.replace(/\/+$/, "");
   const token = process.env.OPS_TOKEN;
   const secret = process.env.AUTH_SECRET;
@@ -40,7 +43,7 @@ export function ticketSyncConfigured(): boolean {
   return opsConfig() !== null;
 }
 
-async function call(ops: Ops, path: string, init: RequestInit = {}): Promise<Response> {
+export async function call(ops: Ops, path: string, init: RequestInit = {}): Promise<Response> {
   return fetch(ops.url + path, {
     ...init,
     headers: { ...init.headers, authorization: `Bearer ${ops.token}`, "content-type": "application/json" },
@@ -118,6 +121,10 @@ const globalForSync = globalThis as unknown as { __nextupTicketSync?: ReturnType
 /** Start the once-a-minute round. Idempotent (dev reloads this module). */
 export function startTicketSync(): void {
   if (!opsConfig() || globalForSync.__nextupTicketSync) return;
-  globalForSync.__nextupTicketSync = setInterval(() => void syncTickets(), 60_000);
-  void syncTickets();
+  const round = () => {
+    void syncTickets();
+    void reportHealth();
+  };
+  globalForSync.__nextupTicketSync = setInterval(round, 60_000);
+  round();
 }

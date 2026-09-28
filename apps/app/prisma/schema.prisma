@@ -75,6 +75,9 @@ model Company {
   documents   Document[]
   assistTurns AssistTurn[]
 
+  ideaDrafts IdeaDraft[]
+  ideaTurns  IdeaTurn[]
+
   tickets       Ticket[]
   ticketReplies TicketReply[]
 }
@@ -251,6 +254,9 @@ model CompanyConfig {
   dpaSignedAt           DateTime?
   // Company patterns masked before anything reaches the model (regex source), e.g. prototype codes.
   redactPatterns        String[]
+
+  // The idea studio (docs/IDEAS.md): the benchmark score an idea needs before it can be published.
+  publishThreshold Int @default(70)
 }
 
 // A person who can sign in. `role` is a plain String, not an enum, because the three roles are
@@ -286,6 +292,7 @@ model User {
   company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   events      CaseEvent[]
   assistTurns AssistTurn[]
+  ideaDrafts  IdeaDraft[]
   tickets     Ticket[]
 
   @@unique([companyId, email])
@@ -444,6 +451,55 @@ model AssistTurn {
 
   @@index([companyId, createdAt])
   @@index([companyId, sessionId])
+}
+
+// ── Idea studio (docs/IDEAS.md) ──────────────────────────────────────────────────────────────────
+// An idea being developed in the chat on /raise. Private to its author until published: nobody
+// else - no lead, no admin - reads a draft; /admin sees counts only (BetrVG §87). Publishing
+// appends the usual case.raised event and records the case here, the way AssistTurn.raisedCaseId
+// links a conversation to its case. The score is a snapshot of features/ideas/benchmarks.ts; the
+// server recomputes it from the turns before it lets anything publish.
+model IdeaDraft {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String   @default("")
+  status      String   @default("draft") // draft | published | discarded
+  overall     Int      @default(0)
+  scores      Json     @default("[]") // BenchmarkPart[] at the last turn
+  affected    String[]
+  attachments Int      @default(0)
+  caseId      String? // the case it became
+
+  turns IdeaTurn[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  @@index([companyId, userId, updatedAt])
+}
+
+// One message in an idea's chat. The author's own words are kept as written (they become the
+// case); only redacted text is ever sent to a model.
+model IdeaTurn {
+  id        String    @id @default(cuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  draftId   String
+  draft     IdeaDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  role          String // user | assistant
+  text          String
+  overall       Int? // on assistant turns: the score this reply was about
+  model         String   @default("")
+  promptVersion String   @default("")
+  createdAt     DateTime @default(now())
+
+  @@index([companyId, draftId, createdAt])
 }
 
 // ── Bug reports (docs/PLATFORM_PLAN.md, "Tickets") ────────────────────────────────────────────────

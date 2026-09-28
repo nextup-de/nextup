@@ -5,7 +5,9 @@
 #   ~/nextup/stack/nginx/add-stack.sh acme 3101 demo
 #   ~/nextup/stack/nginx/add-stack.sh globex 3111 demo
 #
-# PORT must be the stack's row in stack/nginx/ports.md. Extra args go to install.sh (e.g. --n8n).
+# PORT must be the stack's row in stack/nginx/ports.md, or - for a stack started from admin.sellux.ch
+# by the box agent (stack/provision/agent.sh) - the PORT line of its $NEXTUP_INSTANCES/SLUG/stack.conf,
+# which lives outside ~/nextup/stack (every deploy replaces that). Extra args go to install.sh.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 slug="${1:?usage: add-stack.sh SLUG PORT demo|real [install.sh args]}"
@@ -17,8 +19,9 @@ host="$slug.$domain"
 export NEXTUP_INSTANCES="${NEXTUP_INSTANCES:-$HOME/nextup/instances}"
 sites="${NEXTUP_SITES:-$HOME/nextup/nginx}"
 
-grep -qE "^\| *$slug *\| *$port *\|" "$here/ports.md" \
-  || { echo "add-stack: '$slug $port' is not in stack/nginx/ports.md - add the row first." >&2; exit 1; }
+conf="$NEXTUP_INSTANCES/$slug/stack.conf"
+grep -qE "^\| *$slug *\| *$port *\|" "$here/ports.md" || { [ -f "$conf" ] && grep -qx "PORT=$port" "$conf"; } \
+  || { echo "add-stack: '$slug $port' is neither in stack/nginx/ports.md nor in $conf - add the row first." >&2; exit 1; }
 
 "$here/../install.sh" --slug "$slug" --origin "https://$host" --stage "$stage" --behind-proxy "$port" "$@"
 

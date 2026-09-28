@@ -1,22 +1,26 @@
 // Knowledge: one company's org units, roles, routing table and goals as stored in the knowledge
 // tables, plus the brief a model would be handed. Read-only - editing comes in step 2
 // (docs/COMPANY_KNOWLEDGE.md). ?company=<slug> picks the company.
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
-import { assistantView, knowledgeView } from "@/server/admin-insight";
-import { adminBase } from "@/features/admin/nav";
+import { assistantView, ideasView, knowledgeView } from "@/server/admin-insight";
+import { adminBase, adminScope } from "@/features/admin/nav";
 import { KnowledgeView } from "@/components/admin/KnowledgeView";
 import { AssistantAdmin } from "@/components/admin/AssistantAdmin";
+import { IdeaStudioAdmin } from "@/components/admin/IdeaStudioAdmin";
 import styles from "../admin.module.css";
 
 export default async function KnowledgePage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
+  // Platform admin only; a company stack's /admin never shows it (features/admin/nav.ts).
+  if (adminScope() === "company") notFound();
   const ctx = await adminContext();
   const { company } = await searchParams;
   const current = ctx.companies.find((c) => c.slug === company) ?? ctx.companies[0] ?? null;
   const view = await knowledgeView(ctx.live ? current?.id ?? null : null);
   const assistant = await assistantView(ctx.live ? current?.id ?? null : null);
+  const ideas = await ideasView(ctx.live ? current?.id ?? null : null);
 
   return (
     <>
@@ -41,6 +45,7 @@ export default async function KnowledgePage({ searchParams }: { searchParams: Pr
       </section>
       {view.source === "none" ? null : <KnowledgeView knowledge={view.knowledge} profile={view.profile} brief={view.brief} />}
       {assistant && current ? <AssistantAdmin slug={current.slug} view={assistant} /> : null}
+      {ideas && current ? <IdeaStudioAdmin slug={current.slug} {...ideas} /> : null}
     </>
   );
 }

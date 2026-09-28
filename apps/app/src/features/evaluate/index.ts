@@ -34,10 +34,10 @@ export const GOALS: { goal: string; keys: string[] }[] = [
 ];
 export const SPEND_RULE = { limit: "€5k", text: "team-level authority up to €5k, no controlling sign-off" };
 
-const words = (s: string) => s.toLowerCase().match(/[a-zäöüß€0-9]{4,}/g) ?? [];
+export const words = (s: string) => s.toLowerCase().match(/[a-zäöüß€0-9]{4,}/g) ?? [];
 
 // The closest of `items` by shared words (4+ letters), or null under two shared words.
-function closest<T>(text: string, items: readonly T[], of: (t: T) => string): T | null {
+export function closest<T>(text: string, items: readonly T[], of: (t: T) => string): T | null {
   const w = new Set(words(text));
   let best: T | null = null, bestHits = 0;
   for (const it of items) {

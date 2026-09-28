@@ -1,6 +1,11 @@
 // The admin sidebar. Pure, so the badge rules are unit-tested.
 //
-// /admin is seven pages, not one long scroll: Overview, Requests, Tickets, Companies, Knowledge,
+// Two admins share this route. In a one-company stack (TENANT_MODE=single, e.g. acme.sellux.ch)
+// /admin belongs to the company: Overview, People, Assistant - nothing about other companies, the
+// servers or our own tooling. Those live on admin.sellux.ch. Everywhere else (local dev, the
+// path-mode demo) it is still the platform admin below.
+//
+// The platform admin is seven pages, not one long scroll: Overview, Requests, Tickets, Companies, Knowledge,
 // Decisions, Connections. Knowledge and Decisions are read-only views for the software team. The nav
 // carries state, not just names - the badge is the answer, the link is only how you get to the
 // detail. Connections folds the database, case notices, their tasks and mail into one badge:
@@ -8,10 +13,28 @@
 import type { DatabaseState } from "./health";
 import type { AutomationState } from "@/features/integrations/automation";
 import type { TaskCounts } from "@/features/integrations/tasks";
+import type { CompanyRow } from "./rows";
 
 export type Tone = "ok" | "warn" | "bad";
 
-export type AdminPage = "overview" | "requests" | "tickets" | "companies" | "knowledge" | "decisions" | "connections";
+export type AdminPage =
+  | "overview"
+  | "people"
+  | "assistant"
+  | "requests"
+  | "tickets"
+  | "companies"
+  | "knowledge"
+  | "decisions"
+  | "connections";
+
+/** "company": this stack's own admin. "platform": the multi-company admin of dev and the demo. */
+export type AdminScope = "company" | "platform";
+
+/** A one-company stack gets the company admin; anything that serves several gets the platform one. */
+export function adminScope(env: Record<string, string | undefined> = process.env): AdminScope {
+  return env.TENANT_MODE === "single" && env.COMPANY_SLUG?.trim() ? "company" : "platform";
+}
 
 export type NavItem = {
   id: AdminPage;
@@ -54,6 +77,32 @@ export function adminNav(f: NavFacts): NavItem[] {
     { id: "knowledge", label: "Knowledge", path: "/knowledge", badge: null, tone: null },
     { id: "decisions", label: "Decisions", path: "/decisions", badge: null, tone: null },
     { id: "connections", label: "Connections", path: "/connections", ...connectionBadge(f) },
+  ];
+}
+
+export type CompanyNavFacts = {
+  people: number;
+  /** People who have neither a login code nor a Microsoft account bound - they cannot get in. */
+  locked: number;
+};
+
+/** Nobody can get in: no login code, and no Microsoft account the company's tenant still lets in. */
+export function lockedOut(company: Pick<CompanyRow, "persons" | "entraTenantId">): CompanyRow["persons"] {
+  return company.persons.filter((p) => !p.codeIssuedAt && !(p.microsoft && company.entraTenantId));
+}
+
+/** The company admin: three pages, and People only speaks up when someone cannot sign in. */
+export function companyNav(f: CompanyNavFacts): NavItem[] {
+  return [
+    { id: "overview", label: "Overview", path: "", badge: null, tone: null },
+    {
+      id: "people",
+      label: "People",
+      path: "/people",
+      badge: f.locked ? `${f.locked} no access` : String(f.people),
+      tone: f.locked ? "warn" : null,
+    },
+    { id: "assistant", label: "Assistant", path: "/assistant", badge: null, tone: null },
   ];
 }
 

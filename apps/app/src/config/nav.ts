@@ -19,11 +19,11 @@ export const NAV: NavItem[] = [
 export type SimpleNavItem = { label: string; href: string; count?: "inbox" | "decisions" };
 export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
   member: [
-    { label: "Raise", href: "/raise" },
+    { label: "Ideas", href: "/raise" },
     { label: "Dashboard", href: "/dashboard" },
   ],
   leader: [
-    { label: "Raise", href: "/raise" },
+    { label: "Ideas", href: "/raise" },
     { label: "Inbox", href: "/leader", count: "inbox" },
     { label: "Dashboard", href: "/dashboard" },
   ],

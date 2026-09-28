@@ -3,7 +3,7 @@
 // asks one question -> the employee answers -> the leader says no, with a reason -> the employee
 // sees the no, the reason and the name. Demo mode: one browser plays every person via the dev panel.
 import type { Page } from "@playwright/test";
-import { confirmSheet, expect, raiseProblem, sheet, test } from "../helpers";
+import { confirmSheet, expect, publishIdea, sheet, test } from "../helpers";
 
 const TITLE = "The Friday shift plan leaves line 3 with no overtime hours for the changeover";
 
@@ -21,8 +21,8 @@ test.beforeEach(async ({ page }) => {
 test("a raised problem goes round the whole loop", async ({ page }) => {
   await test.step("employee raises it; the router puts it on T. Vogel's desk", async () => {
     await expect(page).toHaveURL(/\/acme\/raise$/);
-    await raiseProblem(page, TITLE);
-    await expect(page.getByText("On T. Vogel’s desk.")).toBeVisible();
+    await publishIdea(page, TITLE);
+    await expect(page.getByText(/On T\. Vogel’s desk/)).toBeVisible();
   });
 
   await test.step("it is in the team leader's inbox at 0 days", async () => {
@@ -38,7 +38,8 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
     // Confirm stays a hint until there is a question to send.
     await expect(sheet(page).getByRole("button", { name: "Type the question" })).toBeVisible();
     await confirmSheet(page, "Which shift - early or late?", "Send the question");
-    await expect(page.getByText(/Waiting for .+ to answer · clock paused at 0 d\./)).toBeVisible();
+    // The inbox detail (#102) says "Waiting for <who> · clock paused at 0 d" under "Your question is out".
+    await expect(page.getByText(/Waiting for .+ · clock paused at 0 d/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Yes, do it" })).toHaveCount(0);
   });
 
@@ -84,7 +85,7 @@ test("each person lands on their own home page", async ({ page }) => {
 });
 
 test("an answer that is late moves to the deputy on its own", async ({ page }) => {
-  await raiseProblem(page, "Holiday roster for the late shift is still missing for October");
+  await publishIdea(page, "Holiday roster for the late shift is still missing for October");
   await page.getByRole("button", { name: "Dev" }).click();
   const panel = page.getByRole("dialog", { name: "Demo controls" });
   // The promise is five days; on day six it belongs to the deputy as well.

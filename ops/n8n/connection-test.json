@@ -1,0 +1,145 @@
+{
+  "id": "nextupConnectionTest",
+  "name": "NextUp — connection test",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c3000000-0000-4000-8000-000000000001",
+      "name": "Run by hand",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "slug",
+              "name": "slug",
+              "value": "acme",
+              "type": "string"
+            },
+            {
+              "id": "apiBase",
+              "name": "apiBase",
+              "value": "https://acme.sellux.ch",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000002",
+      "name": "Which company",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -380,
+        0
+      ],
+      "notes": "The company's public address from automation.sellux.ch; http://app:3000 from an n8n inside the company's own stack (install.sh --n8n)."
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBase }}/api/{{ $json.slug }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "since",
+              "value": "0"
+            },
+            {
+              "name": "limit",
+              "value": "5"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "c3000000-0000-4000-8000-000000000003",
+      "name": "Read events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        0
+      ],
+      "credentials": {},
+      "notes": "Credential <slug>-nextup (Header Auth: Authorization = Bearer <token>). Read-only: writes nothing to the company."
+    },
+    {
+      "parameters": {
+        "jsCode": "// 200 = n8n reaches the app and the token is accepted. The error text says which part failed.\nconst r = $input.first().json;\nreturn [{ json: {\n  result: r.statusCode === 200 ? 'PASS' : 'FAIL',\n  status: r.statusCode,\n  events: r.body?.count,\n  cursor: r.body?.cursor,\n  error: r.body?.error,\n} }];"
+      },
+      "id": "c3000000-0000-4000-8000-000000000004",
+      "name": "Verdict",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Run by hand": {
+      "main": [
+        [
+          {
+            "node": "Which company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Which company": {
+      "main": [
+        [
+          {
+            "node": "Read events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read events": {
+      "main": [
+        [
+          {
+            "node": "Verdict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "nextup-pilot"
+  },
+  "tags": [
+    {
+      "name": "nextup"
+    }
+  ]
+}

@@ -38,12 +38,25 @@ sync_stack() {
   echo "stack/ now at $ref (previous in $stack_root.prev)"
 }
 
-stacks() {  # slug port stage, for every installed stack in the registry
-  awk -F'|' 'NF>5 { for (i=2;i<=4;i++) gsub(/ /,"",$i); if ($4=="demo"||$4=="real") print $2, $3, $4 }' \
-    "$here/ports.md" | while read -r s p st; do
-      # Reserved rows (not installed) are skipped without failing the loop.
-      if [ -f "$NEXTUP_INSTANCES/$s/.env" ]; then echo "$s $p $st"; fi
+stacks() {  # slug port stage, for every installed, running stack: ports.md rows + stack.conf files
+  {
+    awk -F'|' 'NF>5 { for (i=2;i<=4;i++) gsub(/ /,"",$i); if ($4=="demo"||$4=="real") print $2, $3, $4 }' "$here/ports.md"
+    # Stacks started from admin.sellux.ch (stack/provision/agent.sh) are registered on the box only.
+    for conf in "$NEXTUP_INSTANCES"/*/stack.conf; do
+      [ -f "$conf" ] || continue
+      s="$(basename "$(dirname "$conf")")"
+      grep -qE "^\| *$s *\|" "$here/ports.md" && continue
+      p="$(sed -n -E 's/^PORT=([0-9]{4,5})$/\1/p' "$conf")"
+      st="$(sed -n -E 's/^STAGE=(demo|real)$/\1/p' "$conf")"
+      [ -n "$p" ] && [ -n "$st" ] && echo "$s $p $st"
     done
+  } | while read -r s p st; do
+    # Reserved rows (not installed) are skipped without failing the loop; so is a stack stopped on
+    # purpose from admin (stack.conf STOPPED=true) - a deploy must not start it again.
+    [ -f "$NEXTUP_INSTANCES/$s/.env" ] || continue
+    grep -qx 'STOPPED=true' "$NEXTUP_INSTANCES/$s/stack.conf" 2>/dev/null && continue
+    echo "$s $p $st"
+  done
 }
 
 case "$action" in

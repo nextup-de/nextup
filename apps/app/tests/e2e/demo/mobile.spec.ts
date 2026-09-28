@@ -1,6 +1,6 @@
 // Phone width (runs in the "phone" project only, Pixel 7): every page a person reaches fits the
-// screen - nothing scrolls sideways - and raising works with a thumb.
-import { expect, raiseProblem, test } from "../helpers";
+// screen - nothing scrolls sideways - and publishing an idea works with a thumb.
+import { expect, publishIdea, test } from "../helpers";
 
 const PAGES = ["/acme/raise", "/acme/team", "/acme/dashboard", "/acme/leader", "/acme/manager", "/acme/ideas", "/acme/problems"];
 
@@ -14,8 +14,8 @@ for (const path of PAGES) {
   });
 }
 
-test("raising a problem works on a phone", async ({ page }) => {
+test("publishing an idea works on a phone", async ({ page }) => {
   await page.goto("/acme/raise");
-  await raiseProblem(page, "Locker room on line 2 has no working light since Monday");
-  await expect(page.getByText(/desk\./).first()).toBeVisible();
+  await publishIdea(page, "Locker room on line 2 has no working light since Monday");
+  await expect(page.getByText(/’s desk/).first()).toBeVisible();
 });

@@ -36,6 +36,15 @@
   --nh-idea: #6d4fc2;         /* violet: something could be */
   --nh-idea-tint: #f2eefb;
   --nh-idea-line: #cfc2f0;
+  /* The idea studio's four benchmarks (features/ideas/benchmarks.ts): one colour per bar. */
+  --nh-bench-fit: #6d4fc2;       /* strategic fit: the idea violet */
+  --nh-bench-fit-tint: #f2eefb;
+  --nh-bench-impact: #e8590c;    /* impact & reach */
+  --nh-bench-impact-tint: #fff1e8;
+  --nh-bench-feas: #2f8f5b;      /* feasibility */
+  --nh-bench-feas-tint: #edf7f0;
+  --nh-bench-clarity: #0b70d1;   /* novelty & clarity: Decision Blue */
+  --nh-bench-clarity-tint: #eaf3ff;
 
   --nh-font: var(--font-sans, "Manrope"), system-ui, -apple-system, "Segoe UI", sans-serif;   /* --font-sans set by next/font in layout.tsx */
   --nh-mono: var(--font-mono, "IBM Plex Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;
