@@ -15,6 +15,10 @@
 #   --stage demo|real  demo seeds the demo company, turns on the demo login list and mailpit;
 #                      real starts empty - create the company in /admin with the same slug
 #   --landing URL      the public site, linked from /admin (optional)
+#   --name NAME        the company's display name; a demo stack is seeded under it (default: slug)
+#   --ops-url URL      admin.sellux.ch, where the bug icon sends tickets. The stack's token comes
+#                      from the environment variable NEXTUP_OPS_TOKEN, never from the command line
+#                      (ps and cron logs would show it). Both only on the first run.
 #   --n8n              also run n8n inside this stack (editor on 127.0.0.1)
 #   --build            build the images from this repo first (until CI publishes them)
 #   --dir DIR          instance folder (default: stack/instances/SLUG, or $NEXTUP_INSTANCES/SLUG)
@@ -29,19 +33,21 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-slug="" origin="" stage="demo" landing="" n8n=false build=false dir="" proxy_port="" images=""
+slug="" origin="" stage="demo" landing="" n8n=false build=false dir="" proxy_port="" images="" name="" ops_url=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="$2"; shift 2 ;;
     --origin) origin="${2%/}"; shift 2 ;;
     --stage) stage="$2"; shift 2 ;;
     --landing) landing="$2"; shift 2 ;;
+    --name) name="$2"; shift 2 ;;
+    --ops-url) ops_url="${2%/}"; shift 2 ;;
     --n8n) n8n=true; shift ;;
     --build) build=true; shift ;;
     --dir) dir="$2"; shift 2 ;;
     --behind-proxy) proxy_port="$2"; shift 2 ;;
     --images) images="$2"; shift 2 ;;
-    -h|--help) sed -n '2,31p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,35p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -56,6 +62,17 @@ esac
 [[ "$origin" =~ ^(https?)://([a-zA-Z0-9.-]+)(:([0-9]+))?$ ]] || die "--origin must look like http://host[:port] or https://host[:port]"
 scheme="${BASH_REMATCH[1]}" host="${BASH_REMATCH[2]}" port="${BASH_REMATCH[4]}"
 [ "$stage" = demo ] || [ "$stage" = real ] || die "--stage is demo or real"
+# The name lands in a compose env file: no $ (interpolation), quotes, backslashes or backticks.
+name="${name:-$slug}"
+case "$name" in
+  *'$'* | *'`'* | *'"'* | *\\* | *$'\n'* | *$'\r'*) die "--name must not contain \$, a backtick, a double quote, a backslash or a line break" ;;
+esac
+[ "${#name}" -le 80 ] || die "--name: at most 80 characters"
+ops_token="${NEXTUP_OPS_TOKEN:-}"
+if [ -n "$ops_url" ]; then
+  [[ "$ops_url" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]] || die "--ops-url must look like https://admin.sellux.ch"
+  [[ "$ops_token" =~ ^nxs_[A-Za-z0-9_-]{20,100}$ ]] || die "--ops-url needs the stack's token in NEXTUP_OPS_TOKEN (nxs_...)"
+fi
 if [ -n "$proxy_port" ]; then
   [[ "$proxy_port" =~ ^[0-9]{4,5}$ ]] && [ "$proxy_port" -le 65000 ] || die "--behind-proxy takes a port, e.g. 3101"
   [ "$scheme" = https ] || die "--behind-proxy expects an https --origin (the proxy terminates TLS)"
@@ -110,10 +127,9 @@ else
 
   profiles=""; seed=false; demo_login=false; smtp=""
   if [ "$stage" = demo ]; then
-    profiles="demo"; demo_login=true; smtp="smtp://mailpit:1025"
-    if [ "$slug" = acme ]; then seed=true
-    else echo "Note: only 'acme' has demo data to seed. Create '$slug' in /admin after the start."
-    fi
+    # Every demo stack is seeded: acme as acme, any other slug with the same demo people and
+    # content under its own name (apps/app/prisma/seed.ts).
+    profiles="demo"; demo_login=true; smtp="smtp://mailpit:1025"; seed=true
   fi
   if $n8n; then profiles="${profiles:+$profiles,}n8n"; fi
 
@@ -123,6 +139,7 @@ else
 # NextUp stack for "$slug" - written by stack/install.sh on $(date -u +%Y-%m-%dT%H:%MZ).
 # Holds this stack's secrets. Never commit it, never copy it to another stack.
 COMPANY_SLUG=$slug
+COMPANY_NAME=$name
 APP_ORIGIN=$origin
 LANDING_URL=$landing
 SITE_ADDRESS=$site
@@ -136,6 +153,10 @@ COMPOSE_PROFILES=$profiles
 SEED_DEMO=$seed
 LOGIN_DEMO_FILL=$demo_login
 SMTP_URL=$smtp
+
+# Tickets from the bug icon go to admin.sellux.ch with this stack's own token (Stacks page there).
+OPS_URL=$ops_url
+OPS_TOKEN=$ops_token
 
 POSTGRES_PASSWORD=$(rand 24)
 AUTH_SECRET=$(rand 32)

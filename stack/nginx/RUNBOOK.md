@@ -43,15 +43,19 @@ git archive HEAD stack | ssh hetzner 'cd ~/nextup && rm -rf stack && tar x'
 
 ## Add a stack
 
+**Usually from admin.sellux.ch → Companies.** The box agent does the steps below itself and
+stores the passwords in admin's vault; see `stack/provision/README.md`. By hand:
+
 1. Add a row to `ports.md` and commit it.
 2. On the server:
    ```bash
    ~/nextup/stack/nginx/add-stack.sh globex 3111 demo
    ```
    It writes `.env` with new secrets on the first run, starts the stack and waits until it's
-   healthy. It prints the admin code, and for `acme` the demo login codes.
+   healthy. It prints the admin code, and on the demo stage the demo login codes: every demo
+   stack is seeded with the demo people under its own slug (`--name "Initech GmbH"` sets the name).
 3. The first time only, run the three `sudo` lines it prints (nginx site + certificate).
-4. **Non-acme slugs:** open `https://<slug>.sellux.ch/admin` and create the company with the
+4. **Real stage:** open `https://<slug>.sellux.ch/admin` and create the company with the
    same slug.
 
 Running `add-stack.sh` again restarts the stack. It keeps the secrets and picks up new images.
