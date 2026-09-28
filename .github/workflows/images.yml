@@ -1,6 +1,7 @@
 # Publish the stack images to GHCR (docs/PLATFORM_PLAN.md, stage 1 step 4).
 #
-# Every push to main builds ops/Dockerfile twice and pushes:
+# When CI has passed on main (lint, typecheck, tests, build, both e2e suites), this builds the very
+# commit CI tested from ops/Dockerfile twice and pushes:
 #   ghcr.io/selluxhenner/nextup-app      target `run`   - what each company stack runs
 #   ghcr.io/selluxhenner/nextup-migrate  target `build` - the one-shot prisma migrate (+ demo seed)
 # tagged `main` (moves with every merge) and `sha-<short>` (pinned, for rollbacks).
@@ -9,12 +10,19 @@
 # the build needs no DATABASE_URL (same condition as the CI build job). Servers pull them instead of
 # getting them copied from a laptop (stack/push-images.sh, the stage-1 bridge).
 #
+# Then it calls deploy.yml with that exact tag, so the box only ever runs code that passed CI - a red
+# CI on main means no new image and no deploy. (Until 28 Sep this ran on every push, and a failing
+# e2e suite still reached the box.)
+#
 # Kevin owns this file.
 
 name: images
 
 on:
-  push:
+  # After CI, not after the push: only a green main is built and deployed.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   # On a PR the images are built but not pushed - proof that a change still builds a stack image.
   pull_request:
@@ -24,7 +32,8 @@ on:
 
 concurrency:
   group: images-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer PR push may cancel the older build; on main never - the deploy job may be migrating.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -33,10 +42,22 @@ permissions:
 jobs:
   publish:
     name: build and push · app + migrate
+    # A workflow_run fires for every CI run on main, red ones too: build only the green pushes.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      commit: ${{ steps.tags.outputs.commit }}
+    env:
+      # The commit CI tested. On a workflow_run, github.sha is main's tip at trigger time - which a
+      # later merge may already have moved - so it is never used for what gets built.
+      COMMIT: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.COMMIT }}
 
       - uses: docker/setup-buildx-action@v4
 
@@ -51,7 +72,8 @@ jobs:
         id: tags
         shell: bash
         run: |
-          short="${GITHUB_SHA::7}"
+          short="${COMMIT::7}"
+          echo "commit=$short" >> "$GITHUB_OUTPUT"
           echo "app=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-app" >> "$GITHUB_OUTPUT"
           echo "migrate=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-migrate" >> "$GITHUB_OUTPUT"
           echo "short=sha-$short" >> "$GITHUB_OUTPUT"
@@ -69,7 +91,7 @@ jobs:
             ${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ env.COMMIT }}
             org.opencontainers.image.description=NextUp one-shot migrate (prisma migrate deploy + demo seed)
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -82,7 +104,7 @@ jobs:
           context: .
           file: ops/Dockerfile
           target: run
-          build-args: NEXTUP_COMMIT=${{ github.sha }}
+          build-args: NEXTUP_COMMIT=${{ env.COMMIT }}
           load: true
           tags: nextup-app:scan
           cache-from: type=gha
@@ -104,14 +126,14 @@ jobs:
           context: .
           file: ops/Dockerfile
           target: run
-          build-args: NEXTUP_COMMIT=${{ github.sha }}
+          build-args: NEXTUP_COMMIT=${{ env.COMMIT }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ${{ steps.tags.outputs.app }}:main
             ${{ steps.tags.outputs.app }}:${{ steps.tags.outputs.short }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ env.COMMIT }}
             org.opencontainers.image.description=NextUp app, one company per stack (TENANT_MODE=single)
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -138,3 +160,13 @@ jobs:
             echo "- \`${{ steps.tags.outputs.app }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
             echo "- \`${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Put exactly this build live. deploy.yml is also the manual rollback (Actions -> deploy).
+  deploy:
+    name: deploy
+    needs: publish
+    if: github.event_name == 'workflow_run' && needs.publish.result == 'success'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      tag: ${{ needs.publish.outputs.commit }}
+    secrets: inherit

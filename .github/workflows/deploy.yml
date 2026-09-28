@@ -1,8 +1,8 @@
 # Roll the company stacks on the shared Hetzner box to the images just published
 # (docs/PLATFORM_PLAN.md, stage 1 step 4; stack/nginx/RUNBOOK.md, "Deploy from CI").
 #
-# Runs after `images` succeeds on main, or by hand with a tag (main or a 7-char short sha - a
-# rollback is "run this workflow with an older sha").
+# Called by images.yml once CI passed on main and that commit's images were pushed; or run by hand
+# with a tag (main or a 7-char short sha - a rollback is "run this workflow with an older sha").
 #
 # The key can do nothing but this: on the box it is a forced command (stack/nginx/deploy.sh), so
 # it accepts only `deploy <tag>` and `status`, never a shell - the box hosts other sites too.
@@ -22,10 +22,14 @@
 name: deploy
 
 on:
-  workflow_run:
-    workflows: [images]
-    types: [completed]
-    branches: [main]
+  # Called by images.yml after CI passed and the images were pushed - with that commit's tag.
+  workflow_call:
+    inputs:
+      tag:
+        description: "Image tag: main, or a 7-char short commit sha"
+        required: true
+        type: string
+  # By hand: a rollback to an older short sha, or `main`.
   workflow_dispatch:
     inputs:
       tag:
@@ -33,21 +37,17 @@ on:
         required: true
         default: main
 
-# One deploy at a time, and never cancel one halfway: a stack mid-migration must finish.
-concurrency:
-  group: deploy-hetzner
-  cancel-in-progress: false
-
 permissions:
   contents: read
 
 jobs:
   deploy:
     name: deploy · Hetzner box
-    # Only after a successful image build of a push (not of a PR build-only run).
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    # One deploy at a time, and never cancel one halfway: a stack mid-migration must finish.
+    # Job-level, so it also holds when images.yml calls this workflow.
+    concurrency:
+      group: deploy-hetzner
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: hetzner
@@ -63,9 +63,8 @@ jobs:
         shell: bash
         env:
           INPUT_TAG: ${{ inputs.tag }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then tag="$INPUT_TAG"; else tag="${HEAD_SHA::7}"; fi
+          tag="$INPUT_TAG"
           [[ "$tag" =~ ^(main|[0-9a-f]{7})$ ]] || { echo "::error::tag must be main or a 7-char short sha, got '$tag'"; exit 1; }
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Deploying image tag: $tag"

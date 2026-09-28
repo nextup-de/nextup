@@ -169,6 +169,32 @@ certificate exists. For a new host, run `sudo certbot certonly --nginx -d <host>
 - **Webhooks** are behind the login page too, so nothing outside the box can call them. Open
   individual `/webhook/` paths in `nginx-https.conf` only on purpose.
 
+## Health checks and alerts
+
+`stack/health.sh` runs from cron every 5 minutes and pushes to Kevin's phone through
+[ntfy](https://ntfy.sh). The topic is in `~/nextup/health.env` (mode 600); subscribe to it in the
+ntfy app.
+
+| Check | Fails when |
+|---|---|
+| web | a stack's `APP_ORIGIN/api/health`, automation's login page or a `HEALTH_URLS` entry isn't 200 |
+| cert | an https certificate has 14 days or less left (checked hourly) |
+| backup | no `<name>: backup done` in `backup.log` for 26 h, for each stack, automation and `BACKUP_NAMES` |
+| restore-test | the latest weekly restore test of a name logged a failure |
+| disk / memory | `/` is 85% full or more / less than 400 MB available |
+
+- A check must fail **twice in a row** before it alerts, so a deploy doesn't page anyone.
+- A recovered check sends one "Recovered" push. On Mondays at 08:00 UTC a summary arrives, so a
+  silent week means the checks are still running.
+- Alerts never contain secrets.
+- If the box itself is down, nothing can push: an outside uptime check is still to do.
+
+```bash
+~/nextup/stack/health.sh --list      # state of every check now
+~/nextup/stack/health.sh install     # once: health.env, cron, a test push (keeps an existing health.env)
+tail ~/nextup/health.log             # every alert and recovery
+```
+
 ## Day to day
 
 ```bash
