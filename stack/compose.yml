@@ -13,10 +13,18 @@
 
 name: nextup-${COMPANY_SLUG:?set COMPANY_SLUG - run stack/install.sh}
 
+# Docker keeps container logs forever by default; on a shared box that fills the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 x-hardening: &hardening
   security_opt:
     - no-new-privileges:true
   restart: unless-stopped
+  logging: *logging
 
 services:
   db:
@@ -42,6 +50,7 @@ services:
     security_opt:
       - no-new-privileges:true
     restart: "no"
+    logging: *logging
     command:
       - sh
       - -c
