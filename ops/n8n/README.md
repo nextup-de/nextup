@@ -52,6 +52,24 @@ Activate it in the UI, or with `n8n update:workflow --id=<id> --active=true` fol
 **Strip credential ids and data before committing.** gitleaks runs on every PR, and n8n exports
 carry a `credentials` block on every node - attach credentials by hand after importing.
 
+## `connection-test.json`
+
+Run it first on every new n8n, before any real workflow. It asks the company's event log for five
+events and says PASS (200) or FAIL with the app's error. It only reads, so it is safe on any stack.
+
+1. Set `slug` and `apiBase` in *Which company*: `https://<slug>.sellux.ch` from
+   automation.sellux.ch, `http://app:3000` from the n8n inside that company's stack.
+2. Attach the `<slug>-nextup` credential to *Read events*, then **Execute workflow**.
+
+| Status | Cause |
+|---|---|
+| 401 | Token wrong, expired, or the value lacks the `Bearer ` prefix |
+| 403 | Token belongs to another company, or lacks `events:read` |
+| 503 | The app has no database configured |
+| *Read events* turns red | n8n can't reach `apiBase` (timeout, DNS, certificate) |
+
+First run, 28 Sep 2026: automation.sellux.ch → acme answered 200.
+
 ## `erp-knowledge-sync.json`
 
 Feeds the raise-page assistant (`docs/ASSISTANT.md`). Nightly: read the customer's ERP export, map
