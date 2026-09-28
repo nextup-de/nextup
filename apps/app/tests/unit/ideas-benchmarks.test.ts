@@ -94,3 +94,17 @@ describe("coach", () => {
     expect(toGo(70, 70)).toBe("Ready to publish");
   });
 });
+
+describe("coach mode in the system prompt", () => {
+  it("swaps the answer rules for the coach rules and carries the brief", async () => {
+    const { buildSystem } = await import("@/features/assist/prompt");
+    const base = { companyName: "Acme", brief: "roles", rules: "", ceiling: "internal" as const };
+    const brief = coachBrief(benchmark(oneLiner, ctx), T);
+    const coach = buildSystem({ ...base, coach: brief });
+    expect(coach).toContain("How you coach");
+    expect(coach).toContain(brief);
+    expect(coach).not.toContain("How you answer");
+    expect(buildSystem(base)).toContain("How you answer");
+    expect(buildSystem(base)).not.toContain("How you coach");
+  });
+});

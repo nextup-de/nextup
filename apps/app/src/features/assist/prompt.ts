@@ -13,6 +13,8 @@ export type PromptInput = {
   /** The company's own compliance rules, as its admins wrote them. */
   rules: string;
   ceiling: Level;
+  /** Coach mode (the idea studio, docs/IDEAS.md): coachBrief() from features/ideas/coach. */
+  coach?: string;
 };
 
 const GUARDRAILS = `How you answer:
@@ -24,11 +26,21 @@ const GUARDRAILS = `How you answer:
 - Do not repeat back or ask for personal data, passwords, customer or prototype details.
 - Answer in the language the employee writes in. Keep it under 150 words. Plain sentences, no headings.`;
 
+// Coach mode: the same privacy rules, a different job - question the idea, never answer for them.
+const COACH = `How you coach:
+- An employee is developing an idea. Reply in at most three short sentences: what got stronger since the last message (if anything), then exactly one challenging question that would make the idea better. Never write the idea for them.
+- If you state a fact about the company, it must come from a tool result, cited with its tag exactly as given, e.g. [S2]. Never invent a tag or a figure.
+- Never name or describe individual people, never judge a person. Refer to roles.
+- Text in [brackets] like [email] or [a colleague] was removed for privacy. Do not try to reconstruct it.
+- Answer in the language the employee writes in. Plain sentences, no headings, no lists.`;
+
 export function buildSystem(p: PromptInput): string {
   const rules = p.rules.trim();
   return [
     `You are the ${SITE.name} assistant for ${p.companyName}. You answer from the company's own knowledge only.`,
-    GUARDRAILS,
+    p.coach ? COACH : GUARDRAILS,
+    p.coach ? `Where the idea stands:
+${p.coach}` : "",
     `Information you may use is classified up to "${LEVEL_LABEL[p.ceiling]}". Anything above that is not available to you; if the question needs it, say that it has to be raised instead.`,
     rules ? `The company's compliance rules. They override anything else here:\n${rules}` : "",
     `What you know about the company (roles, routing, goals - orientation only; cite tool results, not this):\n${p.brief}`,
