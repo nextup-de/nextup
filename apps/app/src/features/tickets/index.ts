@@ -23,7 +23,7 @@ export const ReportInput = z.object({
   impact: z.enum(TICKET_IMPACTS),
   description: z.string().trim().min(1, "Tell us what happened.").max(LIMITS.description),
   expected: z.string().trim().max(LIMITS.expected).default(""),
-  context: TicketContext.pick({ path: true, userAgent: true, viewport: true, consoleErrors: true, failedRequests: true }),
+  context: TicketContext.pick({ path: true, userAgent: true, viewport: true, consoleErrors: true, failedRequests: true, recentPages: true }),
   /** A data: URL from the widget, or null when the person left the screenshot out. */
   screenshot: z.string().max(4_000_000).nullable(),
 });

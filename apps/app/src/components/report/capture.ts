@@ -62,7 +62,40 @@ export function recentFailures(): string[] {
   return [...failures];
 }
 
-const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+// The last pages in this tab, so a report shows how the person got where they are. Kept in
+// sessionStorage so a full reload (login, a hard refresh) doesn't wipe it; paths only, like above.
+const PAGES_KEY = "nextup.report.pages";
+const PAGES_MAX = 10;
+type Visit = { path: string; at: string };
+
+function readPages(): Visit[] {
+  try {
+    const v: unknown = JSON.parse(sessionStorage.getItem(PAGES_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is Visit => typeof x?.path === "string" && typeof x?.at === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Note that the person is on `path` now. The same page twice in a row counts once. */
+export function recordPage(path: string): void {
+  if (typeof window === "undefined") return;
+  const pages = readPages();
+  if (pages.at(-1)?.path === path) return;
+  pages.push({ path: path.slice(0, 500), at: new Date().toISOString() });
+  try {
+    sessionStorage.setItem(PAGES_KEY, JSON.stringify(pages.slice(-PAGES_MAX)));
+  } catch {
+    // Storage blocked (private mode): the report just goes without a trail.
+  }
+}
+
+/** Oldest first; the last entry is the page the report is made on. */
+export function recentPages(): Visit[] {
+  return readPages().slice(-PAGES_MAX);
+}
+
+const BLANK ="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 
 function isSamePageFragment(url: string): boolean {
   try {

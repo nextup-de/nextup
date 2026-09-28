@@ -52,6 +52,15 @@ describe("ReportInput", () => {
     const flood = { ...context, consoleErrors: Array.from({ length: 21 }, () => "err") };
     expect(ReportInput.safeParse({ kind: "bug", impact: "blocks", description: "x", context: flood, screenshot: null }).success).toBe(false);
   });
+
+  it("takes up to ten recent pages, and still takes a report without them", () => {
+    const visit = (path: string) => ({ path, at: "2026-09-28T10:00:00.000Z" });
+    const ten = { ...context, recentPages: Array.from({ length: 10 }, (_, i) => visit(`/acme/p${i}`)) };
+    expect(ReportInput.safeParse({ kind: "bug", impact: "blocks", description: "x", context: ten, screenshot: null }).success).toBe(true);
+    const eleven = { ...context, recentPages: Array.from({ length: 11 }, (_, i) => visit(`/acme/p${i}`)) };
+    expect(ReportInput.safeParse({ kind: "bug", impact: "blocks", description: "x", context: eleven, screenshot: null }).success).toBe(false);
+    expect(ReportInput.safeParse({ kind: "bug", impact: "blocks", description: "x", context, screenshot: null }).success).toBe(true);
+  });
 });
 
 describe("reporterRef", () => {
