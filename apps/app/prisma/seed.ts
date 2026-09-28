@@ -6,11 +6,15 @@
 // Idempotent: re-running updates the company in place and leaves its event rows alone, so it is
 // safe against a database people are already clicking around in.
 //
+// A stack started for another test company (stack/install.sh --name, COMPANY_SLUG/COMPANY_NAME in
+// the migrate container) gets the same demo people and content under its own slug and name, so
+// every test company opens with something to click. Without those variables it is acme, as before.
+//
 // It ports src/features/demo/seed.ts (itself the port of legacy/demo/js/data.js) into acme's
 // seedJson, and creates that company's people from the demo table - each with a personal login
 // code (printed once). Set SEED_NEW_CODES=true to replace codes people already have.
 import { generateLoginCode, hashLoginCode } from "../src/features/auth/login-code";
-import { DEMO_COMPANIES } from "../src/features/tenant/demo-companies";
+import { DEMO_COMPANIES, type DemoCompany } from "../src/features/tenant/demo-companies";
 import { seedTemplate } from "../src/features/demo";
 import { toSeedJson } from "../src/features/demo/parse";
 import { GOALS } from "../src/features/evaluate";
@@ -25,11 +29,25 @@ try {
   /* no .env.local - DATABASE_URL is already in the environment (Docker, CI) */
 }
 
+/** The acme demo, re-labelled for another slug: its own name, mark and example.com addresses. */
+function forCompany(base: DemoCompany, slug: string | undefined, name: string | undefined): DemoCompany {
+  const s = slug?.trim();
+  if (!s || s === base.slug) return base;
+  const n = name?.trim() || s;
+  return {
+    ...base,
+    slug: s,
+    name: n,
+    mark: n.replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "N",
+    users: base.users.map((u) => ({ ...u, email: u.email.replace(`@${base.slug}.example`, `@${s}.example`) })),
+  };
+}
+
 const iniOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2);
 
 async function main() {
   const db = getDb();
-  const demo = DEMO_COMPANIES[0];
+  const demo = forCompany(DEMO_COMPANIES[0], process.env.COMPANY_SLUG, process.env.COMPANY_NAME);
   const newCodes = process.env.SEED_NEW_CODES === "true";
 
   const company = await db.company.upsert({

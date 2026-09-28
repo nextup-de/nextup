@@ -70,8 +70,11 @@ check() { results+=("$1|$2|$3"); }
 
 # --- web + cert -----------------------------------------------------------------------------
 urls=()
+# A stack stopped on purpose from admin.sellux.ch (stack.conf STOPPED=true) is not "down".
+stopped() { grep -qx 'STOPPED=true' "$(dirname "$1")/stack.conf" 2>/dev/null; }
 for env in "$instances"/*/.env; do
   [ -f "$env" ] || continue
+  stopped "$env" && continue
   o="$(get APP_ORIGIN "$env")"; [ -n "$o" ] && urls+=("$o/api/health")
 done
 auto_host="$(get N8N_HOST "$base/automation/.env")"
@@ -98,7 +101,7 @@ done
 
 # --- backups ----------------------------------------------------------------------------------
 names=()
-for env in "$instances"/*/.env; do [ -f "$env" ] && names+=("$(basename "$(dirname "$env")")"); done
+for env in "$instances"/*/.env; do [ -f "$env" ] && ! stopped "$env" && names+=("$(basename "$(dirname "$env")")"); done
 [ -f "$base/automation/.env" ] && names+=(automation)
 for n in $(get BACKUP_NAMES "$conf"); do names+=("$n"); done
 limit=$(( $(date +%s) - 26 * 3600 ))
