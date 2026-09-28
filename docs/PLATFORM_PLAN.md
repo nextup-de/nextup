@@ -51,7 +51,7 @@ Only the `install.sh` options differ.
 
 | Address | What | Where it runs |
 |---|---|---|
-| `sellux.ch` (+ `www`) | the public landing page | Vercel, repo `nextup-landing` |
+| `sellux.ch` (+ `www`) | the public landing page | the Hetzner box (container on :3151), repo `nextup-landing` |
 | `<company>.sellux.ch` | one company's NextUp, e.g. `acme.sellux.ch` | that company's stack |
 | `admin.sellux.ch` | our developer tool: companies, tickets, releases, security | `apps/ops` (steps 7+) |
 | `automation.sellux.ch` | n8n for building and testing workflows | our n8n, behind two logins |
@@ -85,9 +85,8 @@ unchanged.
 **Stage 1:**
 
 ```
-  sellux.ch / www     ──▶ Vercel: nextup-landing
-
-  acme.sellux.ch      ──▶ ┐
+  sellux.ch / www     ──▶ ┐
+  acme.sellux.ch      ──▶ │
   globex.sellux.ch    ──▶ │  The existing Hetzner box (178.104.253.90)
   demo.sellux.ch      ──▶ │  nginx + certbot on 80/443 (also serves ~30 other sites)
   admin.sellux.ch     ──▶ │  one nginx site per host, TLS ends here
@@ -98,6 +97,7 @@ unchanged.
                           127.0.0.1:3121 ─▶ stack nextup-demo    (reserved)
                           127.0.0.1:3131 ─▶ admin: ops app       (step 7, next free block)
                           127.0.0.1:3141 ─▶ automation: n8n      (step 8, behind nginx login)
+                          127.0.0.1:3151 ─▶ landing: nextup-landing (one container; off Vercel 28 Sep)
 
   ports: each stack owns ten, starting at its Caddy port P (acme 3101-3110, globex 3111-3120):
          P Caddy, P+1 mailpit, P+2 n8n, P+9 the unused 443 mapping
@@ -120,7 +120,7 @@ The stack itself stays the same.
 | Repo | Contents | Deploys to |
 |---|---|---|
 | `nextup` (today's repo, restructured) | `apps/app` (dashboard + company admin), `apps/ops` (our developer admin + ticket board), `packages/*`, `stack/`, `n8n/` | Images on GHCR → company stacks and admin.sellux.ch |
-| `nextup-landing` | Marketing site (moved out of `src/app/(marketing)`) | Vercel |
+| `nextup-landing` | Marketing site (moved out of `src/app/(marketing)`) | Hetzner box: image on GHCR, `deploy/` in that repo |
 | `nextup-infra` | Starter kit: scripts + runbook for the existing box now, OpenTofu/Ansible later; backup templates, reusable CI workflows; secrets in sops/age | Nothing; run by CI or an engineer |
 
 ### Layout of `nextup`
