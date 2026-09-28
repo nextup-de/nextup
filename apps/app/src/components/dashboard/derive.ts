@@ -1,7 +1,8 @@
 // Lists derived from the demo context that more than one component needs (rail counts, the
 // decisions dropdown, the inbox and My cases views). Pure over the context value.
-import { cosignRow, mineRow, type MineRow } from "@/features/cases/rows";
+import { cosignRow, mineRow, raisedWith, type MineRow } from "@/features/cases/rows";
 import { onDesk } from "@/features/cases/selectors";
+import { seesByChoice } from "@/features/cases/visibility";
 import type { DemoContext } from "./DemoProvider";
 
 // Live cases on someone's desk (open) - the number the rail shows as "Inbox" and the dev panel
@@ -33,17 +34,24 @@ export function mineRows(ctx: DemoContext): MineRow[] {
     .sort((a, b) => b.sortDay - a.sortDay);
 }
 
-// Who sees which case in the lists. An employee: only what they raised. A team leader: what they
-// raised and what the people who report to them raised (by name or by their anonymous handle) -
-// not the rest of the company; what merely sits on their desk is the inbox's job. A manager: everything.
+// Who sees which case in the lists. First the raiser's choice (View on the raise page: everyone,
+// private, or the people and departments they picked - features/cases/visibility). Without one: an
+// employee sees only what they raised. A team leader: what they raised and what the people who report
+// to them raised (by name or by their anonymous handle) - not the rest of the company; what merely
+// sits on their desk is the inbox's job. A manager: everything.
 export function visibleTo(ctx: DemoContext, c: ReducedCase): boolean {
   const { name, handle } = ctx.persona.who;
   const own = c.from === name || (handle !== null && c.from === handle);
-  if (ctx.role === "member") return own;
+  if (own) return true;
+  const { visibility, seenBy } = raisedWith(c);
+  const deptId = ctx.seed.people.find((p) => p.name === name)?.dept;
+  const chosen = seesByChoice(visibility, seenBy, { name, dept: ctx.seed.depts.find((d) => d.id === deptId)?.name ?? null });
+  if (chosen !== null) return chosen;
+  if (ctx.role === "member") return false;
   if (ctx.role !== "leader") return true;
   const reports = ctx.seed.people.filter((p) => p.reportsTo === name).map((p) => p.name);
   const handles = ctx.seed.personas.filter((r) => reports.includes(r.who.name) && r.who.handle).map((r) => r.who.handle as string);
-  return own || reports.includes(c.from) || handles.includes(c.from);
+  return reports.includes(c.from) || handles.includes(c.from);
 }
 
 // Who may open a case by its link: what they see in the lists, plus what sits on their desk (a

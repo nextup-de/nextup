@@ -1,6 +1,6 @@
 "use client";
 // TEAM MEMBER home: the raise box, after the collaborator's NextUp mockup. Idea or problem, one line,
-// optional screenshots and the people or departments it also hits, then ↑. NextUp evaluates it
+// optional screenshots, the people or departments it also hits and who can see it (View), then ↑. NextUp evaluates it
 // against the company context (org chart, routing map, goals, spend rule, known problems) -
 // features/evaluate - and the lower card shows that evaluation step by step before the case is raised.
 // While nothing is typed the lower card explains how NextUp works; while typing it takes context.
@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
 import { SITE } from "@/config/site";
-import type { CaseKind } from "@/features/cases/events";
+import type { CaseKind, Visibility } from "@/features/cases/events";
 import { evaluate, type Evaluation } from "@/features/evaluate";
 import { draftRaise } from "@/features/assist/draft";
 import { saveShots, shrinkImage, type Shot } from "@/lib/shots";
@@ -33,6 +33,12 @@ const MAX_SHOTS = 4;
 const MIN_CHARS = 8;
 const PICK_PAGE = 5; // rows per page in the affected picker; longer lists page instead of scrolling
 const PROMPTS = ["Impact", "Who's blocked", "Already tried", "Deadline"];
+// Who can see it (the View pill). Only applied in the browser for now - see features/cases/visibility.
+const VIEWS: { id: Visibility; label: string; note: string }[] = [
+  { id: "everyone", label: "Everyone", note: "The whole company, on the dashboard" },
+  { id: "private", label: "Private", note: "Only you and the desk it lands on" },
+  { id: "custom", label: "Custom", note: "You, the desk, and who you pick" },
+];
 const ORB_PX = 96;
 const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: string }[] = [
   { id: "raise", title: "Raise it", text: "Anyone, from any team, submits an idea or a problem in one line." },
@@ -53,7 +59,9 @@ export function RaiseView() {
   const [context, setContext] = useState("");
   const [shots, setShots] = useState<Shot[]>([]);
   const [affected, setAffected] = useState<string[]>([]);
-  const [pickOpen, setPickOpen] = useState(false);
+  const [pick, setPick] = useState<"affected" | "view" | null>(null); // the open picker: who else is affected, or who can see it
+  const [view, setView] = useState<Visibility>("everyone");
+  const [seenBy, setSeenBy] = useState<string[]>([]); // View → Custom: the people and departments who may see it
   const [pickQuery, setPickQuery] = useState("");
   const [pickPages, setPickPages] = useState<Record<string, number>>({}); // page per group, keyed by group label or dept id
   const [openDept, setOpenDept] = useState<string | null>(null); // department row expanded to its people
@@ -111,14 +119,14 @@ export function RaiseView() {
     return () => { if (timer.current) clearTimeout(timer.current); };
   }, [phase, act, shots, tenant.slug, showToast, reduced]); // shots cannot change while thinking: the box is locked
 
-  // The affected picker closes on a click outside it or on Escape.
+  // A picker closes on a click outside the pills or on Escape.
   useEffect(() => {
-    if (!pickOpen) return;
-    const onDown = (e: MouseEvent) => { if (pickRef.current && !pickRef.current.contains(e.target as Node)) setPickOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPickOpen(false); };
+    if (!pick) return;
+    const onDown = (e: MouseEvent) => { if (pickRef.current && !pickRef.current.contains(e.target as Node)) setPick(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPick(null); };
     document.addEventListener("mousedown", onDown); document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
-  }, [pickOpen]);
+  }, [pick]);
 
   if (!ready) return <PageSkeleton kind="raise" delay />;
 
@@ -158,11 +166,15 @@ export function RaiseView() {
       .finally(() => setReading((n) => n - 1)));
   };
   const toggleKind = () => { setKind(other); setSwitches((n) => n + 1); };
-  const toggleAffected = (id: string) => setAffected((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+  const toggleIn = (set: typeof setAffected) => (id: string) => set((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+  const toggleAffected = toggleIn(setAffected), toggleSeen = toggleIn(setSeenBy);
+  // Both pickers share one list: it ticks and toggles whichever selection is open.
+  const sel = pick === "view" ? seenBy : affected, toggleSel = pick === "view" ? toggleSeen : toggleAffected;
+  const openPick = (p: "affected" | "view") => { setPick((cur) => (cur === p ? null : p)); setPickQuery(""); setPickPages({}); setOpenDept(null); };
   const addPrompt = (label: string) => setContext((c) => (c.trim() ? c.replace(/\s*$/, "") + "\n" + label + ": " : label + ": "));
   const evaluateNow = (text: string, ctxText: string) => {
-    setPickOpen(false);
-    const ev = evaluate({ kind, text, context: ctxText, affected, attachments: shots.length, who }, { ...seed, cases: S.cases });
+    setPick(null);
+    const ev = evaluate({ kind, text, context: ctxText, affected, attachments: shots.length, who, visibility: view, seenBy }, { ...seed, cases: S.cases });
     setPhase({ at: "thinking", ev, done: 0 });
   };
   const send = () => { if (canSend) evaluateNow(draft, context); };
@@ -170,7 +182,7 @@ export function RaiseView() {
   const primary = () => {
     if (!canSend) return;
     if (!ai.available) return send();
-    setPickOpen(false);
+    setPick(null);
     void ask(draft.trim()).then((r) => { if (r === "off") send(); });
   };
   const raiseAnyway = () => {
@@ -182,7 +194,7 @@ export function RaiseView() {
     evaluateNow(text, ctxText);
   };
   const reset = () => {
-    setDraft(""); setContext(""); setShots([]); setAffected([]); setPickQuery(""); setPickPages({}); setOpenDept(null); setPickOpen(false); setPhase({ at: "edit" });
+    setDraft(""); setContext(""); setShots([]); setAffected([]); setView("everyone"); setSeenBy([]); setPickQuery(""); setPickPages({}); setOpenDept(null); setPick(null); setPhase({ at: "edit" });
     resetAi();
   };
   const solved = () => {
@@ -193,9 +205,9 @@ export function RaiseView() {
   const askMore = () => { setDraft(""); fieldRef.current?.focus(); };
 
   const pickRow = (it: Pick) => {
-    const on = affected.includes(it.id);
+    const on = sel.includes(it.id);
     return (
-      <button key={it.id} type="button" className={styles.pickRow} onClick={() => toggleAffected(it.id)} aria-pressed={on}>
+      <button key={it.id} type="button" className={styles.pickRow} onClick={() => toggleSel(it.id)} aria-pressed={on}>
         <span className={styles.pickMark} data-on={on ? "true" : undefined} aria-hidden="true">{on ? "✓" : ""}</span>
         <span className={styles.pickText}><span className={styles.pickLabel}>{it.label}</span><span className={styles.pickMeta}>{it.meta}</span></span>
       </button>
@@ -213,6 +225,77 @@ export function RaiseView() {
     ...affected.map((n) => ({ key: "a:" + n, label: n, remove: () => toggleAffected(n) })),
     ...shots.map((s) => ({ key: "s:" + s.url, label: s.name, thumb: s.url, remove: () => setShots((x) => x.filter((y) => y.url !== s.url)) })),
   ];
+  const attachLabel = reading > 0 ? "Adding…" : shots.length ? "Attached · " + shots.length : "Attach";
+  const viewLabel = view === "custom" ? "Custom · " + seenBy.length : VIEWS.find((v) => v.id === view)?.label ?? "";
+
+  // One picker for Affected and View: View puts its three choices on top, and the list (search,
+  // people, departments) shows for Affected and for View → Custom.
+  const listOn = pick === "affected" || view === "custom";
+  const picker = (
+    <div className={styles.picker} role="dialog" aria-label={pick === "view" ? "Who can see it" : "Who else is affected"} data-view={pick === "view" ? "true" : undefined}>
+      {pick === "view" && (
+        <div className={styles.viewHead}>
+          <div className={styles.viewOpts} role="radiogroup" aria-label="Who can see it">
+            {VIEWS.map((v) => (
+              <button key={v.id} type="button" role="radio" aria-checked={view === v.id} className={styles.viewOpt} data-on={view === v.id ? "true" : undefined} onClick={() => setView(v.id)}>{v.label}</button>
+            ))}
+          </div>
+          <span className={styles.pickMeta}>{VIEWS.find((v) => v.id === view)?.note}</span>
+        </div>
+      )}
+      {listOn && (
+        <>
+          <div className={styles.pickSearch}>
+            <input value={pickQuery} onChange={(e) => { setPickQuery(e.target.value); setPickPages({}); }} placeholder="Search people, departments" aria-label="Search people and departments" autoFocus={pick === "affected"} />
+          </div>
+          <div className={styles.pickList}>
+            {groups.map((g) => {
+              const { page, pages, rows } = pageOf(g.label, g.items);
+              return (
+                <div key={g.label}>
+                  <span className={styles.pickGroup}>{g.label}</span>
+                  {rows.map((it) => {
+                    if (!it.dept) return pickRow(it);
+                    // A department row: the checkbox picks the whole department, the small button opens its people.
+                    const open = openDept === it.dept, members = inDept(it.dept), picked = members.filter((m) => sel.includes(m.id)).length;
+                    const sub = pageOf("dept:" + it.dept, members);
+                    return (
+                      <div key={it.id} className={styles.pickDept} data-open={open ? "true" : undefined}>
+                        <div className={styles.pickDeptRow}>
+                          {pickRow(it)}
+                          {members.length > 0 && (
+                            <button type="button" className={styles.pickSub} onClick={() => setOpenDept(open ? null : it.dept ?? null)} aria-expanded={open} aria-label={(open ? "Hide" : "Pick") + " people in " + it.label} title={open ? "Hide people" : "Pick people in " + it.label}>
+                              <span className={styles.pickSubN}>{(picked ? picked + "/" : "") + members.length}</span>
+                              <span className={styles.pickSubChev} aria-hidden="true">›</span>
+                            </button>
+                          )}
+                        </div>
+                        {open && (
+                          <div className={styles.pickNest}>
+                            {sub.rows.map(pickRow)}
+                            {pager("dept:" + it.dept, sub.page, sub.pages)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {pager(g.label, page, pages)}
+                </div>
+              );
+            })}
+            {groups.length === 0 && <div className={styles.pickEmpty}>No matches</div>}
+          </div>
+        </>
+      )}
+      <div className={styles.pickFoot}>
+        <span className={styles.pickCount}>{listOn ? sel.length + " selected" : ""}</span>
+        <span className={styles.pickBtns}>
+          {listOn && <button type="button" className={styles.pickClear} onClick={() => (pick === "view" ? setSeenBy([]) : setAffected([]))}>Clear</button>}
+          <button type="button" className={styles.pickDone} onClick={() => setPick(null)}>Done</button>
+        </span>
+      </div>
+    </div>
+  );
 
   return (
     <div className={styles.page} ref={pageRef} data-kind={kind} data-phase={phase.at}>
@@ -252,68 +335,26 @@ export function RaiseView() {
             )}
 
             <div className={styles.foot}>
-              <div className={styles.adds}>
+              <div className={styles.adds} ref={pickRef}>
                 <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => addShots(e.target.files)} />
-                <button type="button" className={styles.pill} data-on={shots.length > 0 ? "true" : undefined} onClick={() => fileRef.current?.click()} disabled={locked || shots.length + reading >= MAX_SHOTS} aria-busy={reading > 0 || undefined}>
+                {/* On phones only the icon shows (the chips name the files), so Attach, Affected, View and ↑ fit one row. */}
+                <button type="button" className={`${styles.pill} ${styles.attach}`} data-on={shots.length > 0 ? "true" : undefined} onClick={() => fileRef.current?.click()} disabled={locked || shots.length + reading >= MAX_SHOTS} aria-busy={reading > 0 || undefined} aria-label={attachLabel}>
                   <span className={styles.pillIcon} aria-hidden="true">⎘</span>
-                  {reading > 0 ? "Adding…" : shots.length ? "Attached · " + shots.length : "Attach"}
+                  <span className={styles.pillText}>{attachLabel}</span>
                 </button>
-                <div className={styles.pickRoot} ref={pickRef}>
-                  <button type="button" className={styles.pill} data-on={affected.length > 0 || pickOpen ? "true" : undefined} onClick={() => setPickOpen((v) => !v)} disabled={locked} aria-expanded={pickOpen} aria-haspopup="dialog">
+                <div className={styles.pickRoot}>
+                  <button type="button" className={styles.pill} data-on={affected.length > 0 || pick === "affected" ? "true" : undefined} onClick={() => openPick("affected")} disabled={locked} aria-expanded={pick === "affected"} aria-haspopup="dialog">
                     <span className={styles.dot} data-on={affected.length > 0 ? "true" : undefined} aria-hidden="true" />
                     {affected.length ? "Affected · " + affected.length : "Affected"}
                   </button>
-                  {pickOpen && (
-                    <div className={styles.picker} role="dialog" aria-label="Who else is affected">
-                      <div className={styles.pickSearch}>
-                        <input value={pickQuery} onChange={(e) => { setPickQuery(e.target.value); setPickPages({}); }} placeholder="Search people, departments" aria-label="Search people and departments" autoFocus />
-                      </div>
-                      <div className={styles.pickList}>
-                        {groups.map((g) => {
-                          const { page, pages, rows } = pageOf(g.label, g.items);
-                          return (
-                            <div key={g.label}>
-                              <span className={styles.pickGroup}>{g.label}</span>
-                              {rows.map((it) => {
-                                if (!it.dept) return pickRow(it);
-                                // A department row: the checkbox picks the whole department, the small button opens its people.
-                                const open = openDept === it.dept, members = inDept(it.dept), picked = members.filter((m) => affected.includes(m.id)).length;
-                                const sub = pageOf("dept:" + it.dept, members);
-                                return (
-                                  <div key={it.id} className={styles.pickDept} data-open={open ? "true" : undefined}>
-                                    <div className={styles.pickDeptRow}>
-                                      {pickRow(it)}
-                                      {members.length > 0 && (
-                                        <button type="button" className={styles.pickSub} onClick={() => setOpenDept(open ? null : it.dept ?? null)} aria-expanded={open} aria-label={(open ? "Hide" : "Pick") + " people in " + it.label} title={open ? "Hide people" : "Pick people in " + it.label}>
-                                          <span className={styles.pickSubN}>{(picked ? picked + "/" : "") + members.length}</span>
-                                          <span className={styles.pickSubChev} aria-hidden="true">›</span>
-                                        </button>
-                                      )}
-                                    </div>
-                                    {open && (
-                                      <div className={styles.pickNest}>
-                                        {sub.rows.map(pickRow)}
-                                        {pager("dept:" + it.dept, sub.page, sub.pages)}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                              {pager(g.label, page, pages)}
-                            </div>
-                          );
-                        })}
-                        {groups.length === 0 && <div className={styles.pickEmpty}>No matches</div>}
-                      </div>
-                      <div className={styles.pickFoot}>
-                        <span className={styles.pickCount}>{affected.length} selected</span>
-                        <span className={styles.pickBtns}>
-                          <button type="button" className={styles.pickClear} onClick={() => setAffected([])}>Clear</button>
-                          <button type="button" className={styles.pickDone} onClick={() => setPickOpen(false)}>Done</button>
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  {pick === "affected" && picker}
+                </div>
+                <div className={styles.pickRoot}>
+                  <button type="button" className={styles.pill} data-on={view !== "everyone" || pick === "view" ? "true" : undefined} onClick={() => openPick("view")} disabled={locked} aria-expanded={pick === "view"} aria-haspopup="dialog" aria-label={"Who can see it: " + viewLabel}>
+                    <svg className={styles.pillIcon} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+                    {viewLabel}
+                  </button>
+                  {pick === "view" && picker}
                 </div>
               </div>
               <div className={styles.sendWrap}>
@@ -402,10 +443,10 @@ export function RaiseView() {
                       {phase.at === "done" && (
                         <div className={styles.receipt} role="status">
                           <p className={styles.receiptText}>
-                            On <strong>{ev.lead}</strong>’s desk{ev.passesTo ? <>, passed to <strong>{ev.passesTo}</strong> if it is theirs</> : null}. Answer owed in {seed.promiseDays} d — it stays on the dashboard until then.
+                            On <strong>{ev.lead}</strong>’s desk{ev.passesTo ? <>, passed to <strong>{ev.passesTo}</strong> if it is theirs</> : null}. Answer owed in {seed.promiseDays} d — it stays on the overview until then.
                           </p>
                           <div className={styles.receiptRow}>
-                            <Link href={href("/dashboard")} className={styles.receiptGo}>See it on the dashboard</Link>
+                            <Link href={href("/dashboard")} className={styles.receiptGo}>See it on the overview</Link>
                             <Link href={href("/cases/" + phase.id)} className={styles.receiptOpen}>Open the case</Link>
                             <button type="button" className={styles.again} onClick={reset}>Raise another</button>
                           </div>
