@@ -5,7 +5,10 @@
 import { emptyLog, type EventLog } from "@/features/cases/events";
 import type { Role } from "@/config/roles";
 
-export type DemoPrefs = { role?: Role; leadAs?: string | null; demo?: boolean; dept?: string };
+// Design tweaks from the dev panel's Design page: panels = the colour of the inbox's reasoning
+// panels, motion = animations on (default) or off.
+export type PanelTone = "grey" | "blue" | "deep";
+export type DemoPrefs = { role?: Role; leadAs?: string | null; demo?: boolean; dept?: string; panels?: PanelTone; motion?: boolean };
 export type Persisted = { log: EventLog; prefs: DemoPrefs; loaded: boolean };
 
 const logKey = (slug: string) => "nextup." + slug + ".log.v1";
