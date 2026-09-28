@@ -9,7 +9,7 @@
 .studio {
   position: relative; z-index: 1; width: 100%; max-width: 1480px; margin: 0 auto;
   display: grid; grid-template-columns: 248px minmax(0, 1fr) 304px; gap: 16px;
-  height: calc(var(--nh-screen-h) - 112px); min-height: 540px;
+  height: calc(var(--nh-screen-h) - 120px); min-height: 460px; /* the shell: 60px bar, 20px + 40px padding */
 }
 .card, .rail, .chat, .actions { background: var(--nh-card); border-radius: 22px; box-shadow: 0 22px 44px -22px rgb(25 50 70 / 0.18), 0 4px 12px rgb(25 50 70 / 0.04); }
 .railWrap, .actionsWrap { min-height: 0; display: flex; flex-direction: column; }

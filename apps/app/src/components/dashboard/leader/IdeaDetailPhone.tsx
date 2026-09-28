@@ -155,7 +155,7 @@ function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { b
   const start = useRef<number | null>(null);
   const moved = useRef(false); // a drag that snapped back is not a tap
   // clientY is in screen pixels; the sheet moves in page pixels, which differ by the page scale.
-  const dyOf = (e: React.PointerEvent, el: HTMLElement) => (e.clientY - (start.current ?? e.clientY)) / (el.currentCSSZoom || 1);
+  const dyOf = (e: React.PointerEvent, el: HTMLElement) => e.clientY - (start.current ?? e.clientY);
   const grab = (e: React.PointerEvent<HTMLButtonElement>) => { start.current = e.clientY; moved.current = false; e.currentTarget.setPointerCapture(e.pointerId); };
   const drag = (e: React.PointerEvent) => {
     const el = sheetRef.current;
