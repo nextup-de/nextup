@@ -15,7 +15,7 @@
 //
 // Two constraints shaped this file, both load-bearing:
 //   * act.raise/cosign/affect are consumed SYNCHRONOUSLY for their return values
-//     (RaiseView passes the new id straight to saveShots). So emit() pushes onto a pending queue
+//     (the idea studio passes the new id straight to saveShots). So emit() pushes onto a pending queue
 //     synchronously and only then fires the server action.
 //   * `ready` must stay false on the server and flip after hydration, or ten views that gate on
 //     it start rendering dates during SSR and every page hydration-mismatches at once.
@@ -40,7 +40,7 @@ export type SheetKind = "no" | "ask" | "reply" | "hand" | "assign" | "askIdea";
 export type Sheet = { kind: SheetKind; id: string; text: string; picked: string | null; people: string[] };
 
 export type Act = {
-  raise: (p: EventPayload) => string;
+  raise: (p: EventPayload, id?: string) => string; // id: minted by the caller when it has to be known first (the idea studio publishes with it)
   read: (id: string) => void;
   decide: (id: string, answer: "yes" | "no", reason?: string, note?: string) => void;
   hand: (id: string, to: string, why?: string) => void;
@@ -300,8 +300,8 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   }, [serverMode, slug, actor, log.day, router_refresh, showToast]);
 
   const act = useMemo<Act>(() => ({
-    // Stays synchronous and still returns the id: RaiseView hands it straight to saveShots().
-    raise: (p) => { const id = newId("c"); emit("case.raised", id, p); return id; },
+    // Stays synchronous and still returns the id: the idea studio hands it straight to saveShots().
+    raise: (p, id = newId("c")) => { emit("case.raised", id, p); return id; },
     read: (id) => emit("case.read", id),
     decide: (id, answer, reason, note) => emit("case.decided", id, { answer, reason, note }),
     hand: (id, to, why) => emit("case.handed", id, { to, why }),
