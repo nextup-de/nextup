@@ -4,7 +4,7 @@
 # alpine: glibc, and the image is still small. Prisma 7 talks to Postgres through the pure-JS pg
 # driver adapter - there is no native query engine any more - so no OpenSSL setup is needed.
 
-FROM node:22-bookworm-slim AS deps
+FROM node:26-bookworm-slim AS deps
 WORKDIR /app
 # Schema and config first: postinstall runs `prisma generate`, which needs them. It does NOT need
 # a database, which is what keeps this layer cacheable and the CI build honest.
@@ -29,7 +29,7 @@ RUN npm run build -w @nextup/app
 WORKDIR /app/apps/app
 
 # ── runtime ──────────────────────────────────────────────────────────────────
-FROM node:22-bookworm-slim AS run
+FROM node:26-bookworm-slim AS run
 WORKDIR /app
 # The server only ever runs `node apps/app/server.js`. npm, npx and corepack ship with the base
 # image and bring their own dependency tree - every CVE Trivy found in this image lived there, not
