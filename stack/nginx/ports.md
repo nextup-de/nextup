@@ -1,7 +1,7 @@
 # Port registry — the shared Hetzner box (178.104.253.90)
 
 Every NextUp stack on the box gets a block of ten loopback ports. nginx proxies `SLUG.sellux.ch`
-to the first one. `sellux.ch` and `www` go to the landing page on Vercel, not this box. Nothing here is reachable from outside; only nginx (80/443) is public.
+to the first one. `sellux.ch` and `www` go to the landing page, which also runs on this box (row `landing`; repo `nextup-landing`, `deploy/`). Nothing here is reachable from outside; only nginx (80/443) is public.
 
 | Offset | Service |
 |---|---|
@@ -18,7 +18,8 @@ Add a row **before** running `add-stack.sh`. It refuses a slug/port pair that is
 | globex | 3111 | demo | globex.sellux.ch | empty; company created in /admin |
 | demo | 3121 | demo | demo.sellux.ch | reserved, not installed |
 | admin | 3131 | - | admin.sellux.ch | reserved: our developer tool, apps/ops (step 7); not a company stack |
-| automation | 3141 | - | automation.sellux.ch | n8n for building/testing (step 8), `stack/automation/`. NextUp login page (gate, 3142) + n8n's own login |
+| automation | 3141 | - | automation.sellux.ch | n8n for building/testing (step 8), `stack/automation/`. nginx basic auth + n8n's own login |
+| landing | 3151 | - | sellux.ch, www | public site: one container from `nextup-landing` (`~/nextup/landing`, not a company stack) |
 
 Ports the box's other sites use (don't take them): 3001-3038, 3306/3307, 3999, 25565. To check
 what's in use: `ss -tln`.
