@@ -63,13 +63,39 @@ export function rootDomain(env: Env = process.env): string {
 
 /**
  * The marketing site. Subdomain mode: the bare domain. Path mode: the app root. Single mode: the
- * public site lives elsewhere (nextup-landing), so LANDING_URL, or the company's own root.
+ * public site lives elsewhere (nextup-landing), so LANDING_URL; without it, the domain the stack
+ * hangs off (https://acme.sellux.ch -> https://sellux.ch); else the company's own root.
  */
 export function landingUrl(env: Env = process.env): string {
   const mode = tenantMode(env);
   if (mode === "subdomain") return hostOrigin(rootDomain(env), env);
-  if (mode === "single") return env.LANDING_URL || "/";
+  if (mode === "single") return env.LANDING_URL?.replace(/\/+$/, "") || parentOrigin(env) || "/";
   return "/";
+}
+
+/** Single mode on <slug>.<domain>: https://<domain>. Null for any other host (on-prem, localhost). */
+function parentOrigin(env: Env): string | null {
+  const slug = singleCompany(env);
+  if (!slug) return null;
+  try {
+    const url = new URL(appOrigin(env));
+    if (!url.host.startsWith(`${slug}.`)) return null;
+    const parent = url.host.slice(slug.length + 1);
+    return parent.includes(".") ? `${url.protocol}//${parent}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where "Back" on a company's login goes: the step before, "find your company". The app's own
+ * /login in path and subdomain mode; in single mode that is this very page, so the public site's
+ * /login - or nowhere (null) when there is no public site to go back to.
+ */
+export function companyFinderUrl(env: Env = process.env): string | null {
+  if (tenantMode(env) !== "single") return "/login";
+  const landing = landingUrl(env);
+  return landing === "/" ? null : `${landing}/login`;
 }
 
 /** A company's home, absolute - it is used in e-mails and from admin.<domain>. */

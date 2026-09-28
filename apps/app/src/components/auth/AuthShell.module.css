@@ -67,6 +67,7 @@
 
 .artBack {
   position: absolute;
+  z-index: 2; /* above the card: on narrow screens the card's top padding lies over the link */
   top: 28px;
   left: clamp(28px, 4vw, 56px);
   color: var(--nh-ink-2);

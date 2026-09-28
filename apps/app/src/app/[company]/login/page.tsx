@@ -1,7 +1,7 @@
 // STEP 2 of login: company-branded login. Your personal code or your Microsoft account says who
 // you are (src/server/actions/auth.ts, src/server/microsoft-login.ts); a demo box adds a
 // clearly-labelled "open the demo" button for demo-stage companies (src/server/demo-login.ts).
-import { tenantMode } from "@/features/tenant/urls";
+import { companyFinderUrl, tenantMode } from "@/features/tenant/urls";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuthShell, AuthTitle, AuthFoot, AuthStats } from "@/components/auth/AuthShell";
@@ -41,7 +41,8 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
   return (
     <AuthShell
       art="hand"
-      backHref="/login"
+      step="company"
+      backHref={companyFinderUrl()}
       side={
         <>
           <p className="nh-eyebrow">This week at {short}</p>

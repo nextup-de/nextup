@@ -6,12 +6,14 @@ import { Ground } from "@/components/shell/Ground";
 import { LoginPageTransition } from "./LoginPageTransition";
 import styles from "./AuthShell.module.css";
 
-type Props = { side: React.ReactNode; children: React.ReactNode; art?: "hand"; backHref?: string };
+// `step`: which login step this is (the transition's direction). `backHref`: where "← Back" goes -
+// may be another site (sellux.ch/login from a company stack), null for no Back link.
+type Props = { side: React.ReactNode; children: React.ReactNode; art?: "hand"; step?: "find" | "company"; backHref?: string | null };
 
-export function AuthShell({ side, children, art, backHref = "/" }: Props) {
+export function AuthShell({ side, children, art, step = "find", backHref = "/" }: Props) {
   if (art === "hand") {
     return (
-      <LoginPageTransition key={backHref} step={backHref === "/login" ? "company" : "find"}>
+      <LoginPageTransition key={step} step={step}>
         <Ground />
         <Link className={styles.artLogo} href="/" aria-label={`${SITE.name} home`}>
           <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} priority />
@@ -29,7 +31,9 @@ export function AuthShell({ side, children, art, backHref = "/" }: Props) {
             <div className={`${styles.sideBody} ${styles.artContent}`}>{side}</div>
           </aside>
           <main className={styles.artMain}>
-            <Link className={styles.artBack} href={backHref}>← Back</Link>
+            {backHref && (/^https?:\/\//.test(backHref)
+              ? <a className={styles.artBack} href={backHref}>← Back</a>
+              : <Link className={styles.artBack} href={backHref}>← Back</Link>)}
             <div className={`${styles.card} ${styles.artCard}`}>{children}</div>
           </main>
         </section>
