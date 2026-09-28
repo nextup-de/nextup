@@ -31,8 +31,13 @@ WORKDIR /app/apps/app
 # ── runtime ──────────────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS run
 WORKDIR /app
+# The server only ever runs `node apps/app/server.js`. npm, npx and corepack ship with the base
+# image and bring their own dependency tree - every CVE Trivy found in this image lived there, not
+# in the app. Nothing at runtime needs them, so they go (the migrate image keeps them for prisma).
 RUN groupadd --system --gid 1001 nodejs \
- && useradd --system --uid 1001 --gid nodejs nextjs
+ && useradd --system --uid 1001 --gid nodejs nextjs \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

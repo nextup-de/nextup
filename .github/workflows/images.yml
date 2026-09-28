@@ -74,6 +74,29 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The app image is what faces the internet, so it is scanned BEFORE it is pushed: a fixable
+      # HIGH/CRITICAL finding fails the run and the image never reaches GHCR (or a server).
+      - name: nextup-app (target run) - build for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ops/Dockerfile
+          target: run
+          load: true
+          tags: nextup-app:scan
+          cache-from: type=gha
+
+      - name: Trivy - nextup-app (gate)
+        # Pinned to a commit: this action's tags were once moved to malicious code (Mar 2025).
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: nextup-app:scan
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
       - name: nextup-app (target run)
         uses: docker/build-push-action@v6
         with:
@@ -90,6 +113,19 @@ jobs:
             org.opencontainers.image.description=NextUp app, one company per stack (TENANT_MODE=single)
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # The migrate image runs for seconds, never listens, and carries the build toolchain (npm,
+      # prisma CLI, dev dependencies) on purpose. Reported, not a gate.
+      - name: Trivy - nextup-migrate (report only)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+          format: table
+        if: github.event_name != 'pull_request'
 
       - name: Summary
         if: github.event_name != 'pull_request'

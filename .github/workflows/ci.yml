@@ -2,7 +2,7 @@
 #
 # Four jobs, all must pass before a PR can merge:
 #   guard   — no secrets / forbidden files / oversized files / Kevin-owned paths
-#   app     — npm ci, lint, typecheck, unit tests, production build
+#   app     — npm ci, npm audit (prod, high+), lint, typecheck, unit tests, production build
 #   e2e     — Playwright, demo mode (no database): the inbox loop, role homes,
 #             escalation to the deputy, every page at phone width
 #   e2e-db  — Playwright against Postgres: a company made in /admin, personal
@@ -118,6 +118,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
+      # Known vulnerabilities in what ships to production (dependencies, not devDependencies).
+      # High and critical fail the PR; lower ones are Dependabot's job.
+      - name: npm audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
