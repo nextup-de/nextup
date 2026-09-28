@@ -125,17 +125,27 @@ company stack: company stacks run their own n8n with `install.sh --n8n`. It live
 `stack/automation/`, a compose project `nextup-automation` on `127.0.0.1:3141`.
 
 There are two logins:
-1. **nginx basic auth:** user `nextup`, with a generated password in
-   `~/nextup/automation/basic-auth.txt`. nginx strips that header, so n8n never sees it.
-2. **n8n's own accounts.** The first visitor past the basic auth creates the owner, so do that
+1. **The NextUp login page** (`stack/automation/gate/`, Node with no dependencies, on
+   `127.0.0.1:3142`). nginx asks it about every request (`auth_request`) and sends visitors
+   without a session to `/_gate/login`.
+   - User `nextup`, password in `~/nextup/automation/login.txt`.
+   - Sessions last 12 h (signed, HttpOnly, Secure cookie).
+   - 10 failed attempts per IP lock the form for 15 min.
+   - `automation.sh set-password` issues a new password and ends every session.
+2. **n8n's own accounts.** The first visitor past the login page creates the owner, so do that
    right after enabling the site.
 
 ```bash
-~/nextup/stack/automation/automation.sh install        # first run: key, login, nginx site; prints the sudo lines
+~/nextup/stack/automation/automation.sh install        # key, login, nginx site; prints the sudo lines if nginx needs updating
+~/nextup/stack/automation/automation.sh set-password   # new login password
 ~/nextup/stack/automation/automation.sh ps | logs -f   # anything else goes to docker compose
 ~/nextup/stack/automation/automation.sh backup         # workflows + credentials (still encrypted) + volume
 ~/nextup/stack/automation/automation.sh restore-test   # fresh n8n imports them and decrypts the credentials
 ```
+
+The nginx site is written from `stack/automation/nginx-https.conf`, or `nginx-http.conf` until a
+certificate exists. For a new host, run `sudo certbot certonly --nginx -d <host>` first, then
+`install` again.
 
 - **Keys to keep off the box:** `N8N_ENCRYPTION_KEY` and `RESTIC_PASSWORD` in
   `~/nextup/automation/.env` go into the password manager. Without the key, stored credentials
@@ -145,8 +155,8 @@ There are two logins:
   inactive) and 1 dummy credential restored; the credential decrypted.
 - **Importing a workflow from `ops/n8n/`:** n8n 2.x needs an `id` in the JSON. The exported files
   in git should keep theirs.
-- **Webhooks** are behind the basic auth too. A caller outside the box needs those credentials.
-  Open individual `/webhook/` paths only on purpose.
+- **Webhooks** are behind the login page too, so nothing outside the box can call them. Open
+  individual `/webhook/` paths in `nginx-https.conf` only on purpose.
 
 ## Day to day
 

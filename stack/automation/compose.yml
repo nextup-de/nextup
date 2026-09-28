@@ -1,8 +1,8 @@
 # automation.sellux.ch - n8n for building and testing workflows (docs/PLATFORM_PLAN.md, step 8).
 # Not a company stack: fake data only, one per box. Company stacks run their own n8n (--n8n).
 #
-# Never start it by hand: stack/automation/install.sh writes the .env (encryption key, host)
-# and the nginx site with the password in front. n8n itself only listens on the loopback.
+# Never start it by hand: stack/automation/automation.sh install writes the .env (encryption key,
+# login) and the nginx site. n8n and the login page only listen on the loopback.
 name: nextup-automation
 
 services:
@@ -40,6 +40,32 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+
+  # The login page in front of n8n (gate/server.mjs, no dependencies). nginx asks it about every
+  # request (auth_request); n8n itself is only reachable once it says yes.
+  gate:
+    image: node:22-alpine
+    restart: unless-stopped
+    read_only: true
+    user: node
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    command: ["node", "/gate/server.mjs"]
+    volumes:
+      - ./gate:/gate:ro
+    ports:
+      - "127.0.0.1:${GATE_PORT:?}:8080"
+    environment:
+      GATE_USER: ${GATE_USER:?}
+      GATE_PASSWORD_HASH: ${GATE_PASSWORD_HASH:?}
+      GATE_SECRET: ${GATE_SECRET:?}
+      PORT: "8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/_gate/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
 
 volumes:
   n8ndata:

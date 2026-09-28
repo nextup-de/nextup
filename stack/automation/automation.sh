@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # automation.sellux.ch: n8n for building and testing workflows, behind two logins.
-#   1. nginx basic auth - nobody reaches n8n at all without it
+#   1. the NextUp login page (gate/) - nginx lets nothing through to n8n without its session
 #   2. n8n's own user accounts - the first visitor creates the owner, so do that right away
 #
 #   stack/automation/automation.sh install [--host automation.sellux.ch] [--port 3141]
+#   stack/automation/automation.sh set-password           # new login password, ends all sessions
 #   stack/automation/automation.sh backup | snapshots | restore-test [ID]
 #   stack/automation/automation.sh ps | logs -f | down ...   (anything else goes to docker compose)
 #
 # Everything it writes lives in $NEXTUP_AUTOMATION (default ~/nextup/automation), mode 600:
-#   .env            N8N_ENCRYPTION_KEY, host, port, backup repository + password
-#   basic-auth.txt  the nginx login (user + password) - read it with cat, keep it in the password manager
-#   htpasswd        its hash, copied to /etc/nginx/nextup-automation.htpasswd
-#   nginx-site      the nginx site, copied to /etc/nginx/sites-available/nextup-automation
+#   .env        N8N_ENCRYPTION_KEY, host, ports, login hash + session secret, backup repo + password
+#   login.txt   the login (user + password) - read it with cat, keep it in the password manager
+#   nginx-site  the nginx site, copied to /etc/nginx/sites-available/nextup-automation
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 dir="${NEXTUP_AUTOMATION:-$HOME/nextup/automation}"
@@ -24,6 +24,49 @@ die() { echo "automation: $*" >&2; exit 1; }
 log() { echo "$(date -u +%FT%TZ) automation: $*"; }
 get() { grep -E "^$1=" "$env_file" | cut -d= -f2- || true; }
 rand() { openssl rand -hex "$1"; }
+# Append KEY=VALUE only if the key is missing: existing secrets are never overwritten.
+add() { [ -n "$(get "$1")" ] || (umask 077; printf '%s=%s\n' "$1" "$2" >> "$env_file"); }
+put() { sed -i "s|^$1=.*|$1=$2|" "$env_file"; }
+
+# scrypt hash of a password read from stdin (never from argv, where ps would show it).
+hash_password() {
+  docker run --rm -i node:22-alpine node -e '
+    const c = require("crypto"); let pw = "";
+    process.stdin.on("data", (d) => (pw += d)).on("end", () => {
+      const salt = c.randomBytes(16);
+      console.log("scrypt:" + salt.toString("hex") + ":" + c.scryptSync(pw, salt, 32).toString("hex"));
+    });'
+}
+
+new_login() {  # writes login.txt and GATE_PASSWORD_HASH; reuses the password given, if any
+  local pw="${1:-}" h
+  [ -n "$pw" ] || pw="$(rand 16)"
+  h="$(printf '%s' "$pw" | hash_password)"
+  [[ "$h" =~ ^scrypt:[0-9a-f]{32}:[0-9a-f]{64}$ ]] || die "could not hash the password"
+  (umask 077; printf 'url: https://%s\nuser: %s\npassword: %s\n' "$(get N8N_HOST)" "$(get GATE_USER)" "$pw" > "$dir/login.txt")
+  if [ -n "$(get GATE_PASSWORD_HASH)" ]; then put GATE_PASSWORD_HASH "$h"; else add GATE_PASSWORD_HASH "$h"; fi
+}
+
+write_site() {
+  local host port gport tpl
+  host="$(get N8N_HOST)"; port="$(get N8N_PORT)"; gport="$(get GATE_PORT)"
+  # With a certificate: the full https site. Without: http only, until certbot certonly has run.
+  if [ -d "/etc/letsencrypt/live/$host" ]; then tpl="$here/nginx-https.conf"; else tpl="$here/nginx-http.conf"; fi
+  (umask 077; sed -e "s|__HOST__|$host|g" -e "s|__N8N_PORT__|$port|g" -e "s|__GATE_PORT__|$gport|g" \
+    "$tpl" > "$dir/nginx-site")
+}
+
+wait_healthy() {
+  local svc="$1" state=""
+  echo -n "Waiting for $svc "
+  for _ in $(seq 1 60); do
+    state="$("${compose[@]}" ps "$svc" --format '{{.Health}}' 2>/dev/null || true)"
+    [ "$state" = healthy ] && break
+    echo -n "."; sleep 3
+  done
+  echo
+  [ "$state" = healthy ] || { "${compose[@]}" logs --tail 40 "$svc" >&2; die "$svc did not become healthy"; }
+}
 
 install() {
   local host="automation.sellux.ch" port="3141"
@@ -53,74 +96,40 @@ ENV
     )
     echo "Wrote $env_file with a new encryption key."
   fi
-
-  if [ ! -f "$dir/htpasswd" ]; then
-    local pw; pw="$(rand 16)"
-    (umask 077
-     printf 'user: nextup\npassword: %s\n' "$pw" > "$dir/basic-auth.txt"
-     printf 'nextup:%s\n' "$(openssl passwd -apr1 "$pw")" > "$dir/htpasswd")
-    echo "Wrote the nginx login to $dir/basic-auth.txt"
+  # The login page (added to older installs too). GATE_SECRET signs the session cookies.
+  add GATE_PORT "$(( $(get N8N_PORT) + 1 ))"
+  add GATE_USER nextup
+  add GATE_SECRET "$(rand 32)"
+  if [ -z "$(get GATE_PASSWORD_HASH)" ]; then
+    # An install from the basic-auth days keeps its password, so a saved login still works.
+    local old=""
+    if [ -f "$dir/basic-auth.txt" ]; then old="$(sed -n 's/^password: //p' "$dir/basic-auth.txt")"; fi
+    new_login "$old"
+    rm -f "$dir/basic-auth.txt" "$dir/htpasswd"
+    echo "Wrote the login to $dir/login.txt"
   fi
 
-  host="$(get N8N_HOST)"; port="$(get N8N_PORT)"
-  (umask 077; cat > "$dir/nginx-site" <<CONF
-# automation (n8n) at $host -> 127.0.0.1:$port. Written by stack/automation/automation.sh.
-# Two logins: this basic auth first, then n8n's own accounts. certbot --nginx adds TLS.
-server {
-    listen 80;
-    listen [::]:80;
-    server_name $host;
+  write_site
+  "${compose[@]}" up -d --remove-orphans
+  wait_healthy n8n
+  wait_healthy gate
+  host="$(get N8N_HOST)"
+  echo "n8n is up on 127.0.0.1:$(get N8N_PORT), its login page on 127.0.0.1:$(get GATE_PORT), for https://$host"
 
-    client_max_body_size 50m;
-
-    auth_basic "automation";
-    auth_basic_user_file /etc/nginx/nextup-automation.htpasswd;
-
-    location / {
-        proxy_pass http://127.0.0.1:$port;
-        proxy_http_version 1.1;
-        # The editor's live updates run over a websocket.
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Forwarded-For \$remote_addr;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        # The basic-auth header is for nginx only; n8n never sees the password.
-        proxy_set_header Authorization "";
-        proxy_read_timeout 300s;
-        proxy_buffering off;
-    }
-}
-CONF
-  )
-
-  "${compose[@]}" up -d
-  echo -n "Waiting for n8n "
-  local state=""
-  for _ in $(seq 1 60); do
-    state="$("${compose[@]}" ps n8n --format '{{.Health}}' 2>/dev/null || true)"
-    [ "$state" = healthy ] && break
-    echo -n "."; sleep 3
-  done
+  local live=/etc/nginx/sites-available/nextup-automation
+  if cmp -s "$dir/nginx-site" "$live"; then return; fi
   echo
-  [ "$state" = healthy ] || { "${compose[@]}" logs --tail 40 n8n >&2; die "n8n did not become healthy"; }
-  echo "n8n is up on 127.0.0.1:$port for https://$host"
-
-  if [ ! -e /etc/nginx/sites-enabled/nextup-automation ]; then
-    cat <<CMD
-
-nginx does not serve $host yet. Run once, as a sudoer:
-
-  sudo install -m 640 -o root -g www-data $dir/htpasswd /etc/nginx/nextup-automation.htpasswd
-  sudo install -m 644 $dir/nginx-site /etc/nginx/sites-available/nextup-automation
-  sudo ln -sf /etc/nginx/sites-available/nextup-automation /etc/nginx/sites-enabled/
-  sudo nginx -t && sudo systemctl reload nginx && sudo certbot --nginx -d $host
-
-Then open https://$host (login: cat $dir/basic-auth.txt) and create the n8n owner account
-straight away - until someone does, the first visitor past the basic auth gets to.
-CMD
-  fi
+  echo "nginx needs the new site for $host. Run as a sudoer:"
+  echo
+  if [ ! -d "/etc/letsencrypt/live/$host" ]; then echo "  sudo certbot certonly --nginx -d $host"; fi
+  echo "  sudo install -m 644 $dir/nginx-site $live"
+  echo "  sudo ln -sf $live /etc/nginx/sites-enabled/"
+  echo "  sudo nginx -t && sudo systemctl reload nginx"
+  if [ -e /etc/nginx/nextup-automation.htpasswd ]; then echo "  sudo rm /etc/nginx/nextup-automation.htpasswd     # basic auth is gone"; fi
+  if [ ! -d "/etc/letsencrypt/live/$host" ]; then echo "  # then run install again: it writes the https version of the site"; fi
+  echo
+  echo "Sign in at https://$host with the login in $dir/login.txt, then create the n8n owner"
+  echo "account if nobody has yet."
 }
 
 # restic in a container, as the calling user; a local repository is mounted at /repo.
@@ -136,6 +145,14 @@ extra_mounts=()
 
 case "$action" in
   install) install "$@" ;;
+
+  set-password)
+    [ -f "$env_file" ] || die "not installed ($env_file missing)"
+    new_login
+    "${compose[@]}" up -d gate >/dev/null 2>&1
+    wait_healthy gate
+    echo "New password in $dir/login.txt. Everyone has to sign in again."
+    ;;
 
   backup|snapshots|restore-test)
     [ -f "$env_file" ] || die "not installed ($env_file missing)"
@@ -178,6 +195,6 @@ case "$action" in
         ;;
     esac ;;
 
-  "") sed -n '2,16p' "$0" ;;
+  "") sed -n '2,14p' "$0" ;;
   *) [ -f "$env_file" ] || die "not installed ($env_file missing)"; exec "${compose[@]}" "$action" "$@" ;;
 esac
