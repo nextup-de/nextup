@@ -1,10 +1,10 @@
 // Tickets: every bug report filed in this deployment, per company (docs/PLATFORM_PLAN.md,
 // "Tickets"). The company admin's view. The NextUp team works them in admin.sellux.ch; status and
 // replies come back here through server/tickets-sync.ts. ?company=<slug> picks the company.
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
-import { adminBase } from "@/features/admin/nav";
+import { adminBase, adminScope } from "@/features/admin/nav";
 import { ticketsOfCompany } from "@/lib/db/tickets";
 import { ticketSyncConfigured } from "@/server/tickets-sync";
 import { ReportsView } from "@/components/report/ReportsView";
@@ -12,6 +12,8 @@ import styles from "../admin.module.css";
 
 export default async function TicketsPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
+  // Platform admin only; a company stack's /admin never shows it (features/admin/nav.ts).
+  if (adminScope() === "company") notFound();
   const ctx = await adminContext();
   const { company } = await searchParams;
   const current = ctx.companies.find((c) => c.slug === company) ?? ctx.companies[0] ?? null;

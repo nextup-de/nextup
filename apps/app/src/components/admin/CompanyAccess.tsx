@@ -1,6 +1,7 @@
 "use client";
 // How one company's people get in: a personal login code each, and optionally Microsoft.
-// Folded away under each company row - it is looked at when someone joins or loses their code.
+// Folded away under each company row in the platform admin - it is looked at when someone joins or
+// loses their code. The company admin's People page shows it unfolded (`open`).
 import { useActionState } from "react";
 import {
   issueLoginCodeAction,
@@ -13,18 +14,21 @@ import styles from "@/app/admin/admin.module.css";
 
 const when = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-export function CompanyAccess({ company }: { company: CompanyRow }) {
+export function CompanyAccess({ company, open = false }: { company: CompanyRow; open?: boolean }) {
   const [issued, issue, issuing] = useActionState<LoginCodeState, FormData>(issueLoginCodeAction, {});
   const [tenant, saveTenant, saving] = useActionState<TenantState, FormData>(setEntraTenantAction, {});
   const withCode = company.persons.filter((p) => p.codeIssuedAt).length;
 
   return (
-    <details className={styles.access}>
-      <summary>
-        People &amp; sign-in <span className={styles.rowMeta}>· {withCode} of {company.persons.length} have a login code
-        {company.entraTenantId ? " · Microsoft on" : ""}</span>
-      </summary>
-
+    <Fold
+      open={open}
+      summary={
+        <>
+          People &amp; sign-in <span className={styles.rowMeta}>· {withCode} of {company.persons.length} have a login code
+          {company.entraTenantId ? " · Microsoft on" : ""}</span>
+        </>
+      }
+    >
       {issued.code ? (
         <div className={styles.ok}>
           <strong>Login code for {issued.name}</strong>
@@ -55,7 +59,7 @@ export function CompanyAccess({ company }: { company: CompanyRow }) {
         ))}
       </form>
 
-      <form action={saveTenant} className={styles.accessTenant}>
+      <form action={saveTenant} className={styles.accessTenant} id="microsoft">
         <input type="hidden" name="slug" value={company.slug} />
         <label className={styles.rowMeta} htmlFor={`tenant-${company.slug}`}>
           Continue with Microsoft - the company&apos;s Entra tenant ID (empty = off)
@@ -78,6 +82,17 @@ export function CompanyAccess({ company }: { company: CompanyRow }) {
           consent to the app: <code>{company.microsoftCallback}</code>
         </p>
       </form>
+    </Fold>
+  );
+}
+
+/** Unfolded, it is a plain block: a fold that is always open is only a heading you can misclick. */
+function Fold({ open, summary, children }: { open: boolean; summary: React.ReactNode; children: React.ReactNode }) {
+  if (open) return <div className={styles.access}>{children}</div>;
+  return (
+    <details className={styles.access}>
+      <summary>{summary}</summary>
+      {children}
     </details>
   );
 }

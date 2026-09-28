@@ -25,7 +25,7 @@ export function AssistantAdmin({ slug, view }: { slug: string; view: NonNullable
     <section className={styles.card}>
       <h2>Assistant</h2>
       <p className="nh-hint">
-        The raise page answers from this knowledge before a case is raised (docs/ASSISTANT.md). Only redacted text is sent and
+        The raise page answers from your documents before a case is raised. Only redacted text is sent and
         stored; turns are deleted after {s.retentionDays} days.
       </p>
       <div className={styles.tableWrap}>
