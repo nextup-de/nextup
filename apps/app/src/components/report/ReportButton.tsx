@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { OPENER_NAMES, PERSON_AREA, TEAM_NAMES } from "@nextup/contracts";
 import type { ReportResult } from "@/server/actions/tickets";
 import { installCapture, recentErrors, recentFailures, recentPages, recordPage, takeScreenshot } from "./capture";
 import styles from "./ReportButton.module.css";
@@ -20,9 +21,11 @@ type Props = {
   submit: (input: unknown) => Promise<ReportResult>;
   /** Where the person follows their reports, or null (e.g. /admin has no "My reports"). */
   reportsHref: string | null;
+  /** Demo stacks: ask who of us opened it and who should take it. Never on a real company's stack. */
+  team?: boolean;
 };
 
-export function ReportButton({ submit, reportsHref }: Props) {
+export function ReportButton({ submit, reportsHref, team = false }: Props) {
   const [open, setOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [shot, setShot] = useState<string | null>(null);
@@ -31,6 +34,8 @@ export function ReportButton({ submit, reportsHref }: Props) {
   const [impact, setImpact] = useState<Impact>("annoying");
   const [description, setDescription] = useState("");
   const [expected, setExpected] = useState("");
+  const [openedBy, setOpenedBy] = useState("");
+  const [assignee, setAssignee] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -80,6 +85,7 @@ export function ReportButton({ submit, reportsHref }: Props) {
         description,
         expected: kind === "bug" ? expected : "",
         screenshot: withShot ? shot : null,
+        ...(team ? { openedBy, assignee } : {}),
         context: {
           path: location.pathname,
           userAgent: navigator.userAgent.slice(0, 500),
@@ -167,6 +173,28 @@ export function ReportButton({ submit, reportsHref }: Props) {
                       {IMPACTS.map(([i, label]) => (
                         <button key={i} type="button" role="radio" aria-checked={impact === i} data-on={impact === i} className={styles.chip} onClick={() => setImpact(i)}>
                           {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {team && (
+                  <>
+                    <div className={styles.textLabel}>Opened by</div>
+                    <div className={styles.chips} role="radiogroup" aria-label="Opened by">
+                      {[...OPENER_NAMES, ""].map((n) => (
+                        <button key={n || "unknown"} type="button" role="radio" aria-checked={openedBy === n} data-on={openedBy === n} className={styles.chip} onClick={() => setOpenedBy(n)}>
+                          {n ? <>{n} <span className={styles.chipNote}>{PERSON_AREA[n as keyof typeof PERSON_AREA]}</span></> : "Somebody unknown"}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className={styles.textLabel}>Assign to <span className={styles.optional}>optional</span></div>
+                    <div className={styles.chips} role="radiogroup" aria-label="Assign to">
+                      {["", ...TEAM_NAMES].map((n) => (
+                        <button key={n || "nobody"} type="button" role="radio" aria-checked={assignee === n} data-on={assignee === n} className={styles.chip} onClick={() => setAssignee(n)}>
+                          {n ? <>{n} <span className={styles.chipNote}>{PERSON_AREA[n as keyof typeof PERSON_AREA]}</span></> : "Nobody yet"}
                         </button>
                       ))}
                     </div>

@@ -15,6 +15,7 @@ import { mailConfigured, sendMail } from "@/server/mail";
 import { throttle } from "@/server/throttle";
 import { syncTickets } from "@/server/tickets-sync";
 import { isAdmin } from "@/server/actions/admin";
+import { policyFor } from "@/features/admin/stages";
 
 export type ReportResult = { ok: true; label: string } | { ok: false; error: string };
 
@@ -47,6 +48,8 @@ async function file(reporter: Reporter, raw: unknown): Promise<ReportResult> {
     input: { kind: input.kind, impact: input.impact, description: input.description, expected: input.expected },
     context,
     screenshot,
+    // "Opened by / assign to" is for us on demo stacks; a real company's report never carries it.
+    ...(policyFor(reporter.stage).switchPerson ? { openedBy: input.openedBy, assignee: input.assignee } : { openedBy: "", assignee: "" }),
   });
   const label = ticketLabel(number);
 

@@ -9,9 +9,12 @@ export type NewTicket = {
   companyId: string;
   reporterId: string | null;
   reporterRole: string;
-  input: Omit<ReportInput, "screenshot" | "context">;
+  input: Pick<ReportInput, "kind" | "impact" | "description" | "expected">;
   context: Prisma.InputJsonValue;
   screenshot: Screenshot | null;
+  /** Demo stacks: picked in the dialog. "" = unknown / nobody. */
+  openedBy: string;
+  assignee: string;
 };
 
 /**
@@ -40,6 +43,8 @@ export async function createTicket(t: NewTicket): Promise<{ id: string; number: 
           context: t.context,
           screenshot: t.screenshot ? new Uint8Array(t.screenshot.bytes) : null,
           screenshotMime: t.screenshot?.mime ?? null,
+          openedBy: t.openedBy,
+          assignee: t.assignee,
         },
         select: { id: true, number: true },
       });
@@ -64,6 +69,8 @@ export type TicketListRow = {
   reporterName: string | null;
   /** Who of the NextUp team is on it ("" = nobody yet). */
   assignee: string;
+  /** Demo stacks: who of the team (or Marc) opened it; "" = not said. */
+  openedBy: string;
   hasScreenshot: boolean;
   forwarded: boolean;
   createdAt: Date;
@@ -81,6 +88,7 @@ const listSelect = {
   reporterRole: true,
   reporter: { select: { name: true } },
   assignee: true,
+  openedBy: true,
   screenshotMime: true,
   forwardedAt: true,
   createdAt: true,
@@ -147,6 +155,8 @@ export async function ticketsToForward(companyId: string, limit = 20) {
       screenshot: true,
       screenshotMime: true,
       createdAt: true,
+      openedBy: true,
+      assignee: true,
     },
   });
 }

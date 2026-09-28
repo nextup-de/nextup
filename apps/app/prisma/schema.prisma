@@ -530,6 +530,8 @@ model Ticket {
   status String @default("new") // new | in_progress | fixed | closed - mirrors admin.sellux.ch
   // Who of the NextUp team is on it, as admin.sellux.ch says (GET /api/ticket-state). "" = nobody yet.
   assignee String @default("")
+  // Demo stacks: who of the team (or Marc) opened it, picked in the report dialog. "" = somebody unknown.
+  openedBy String @default("")
 
   // Forwarding to admin.sellux.ch. Null forwardedAt = still to send; the sync retries.
   forwardedAt  DateTime?

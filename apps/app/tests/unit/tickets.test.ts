@@ -94,6 +94,8 @@ describe("toIntake", () => {
     screenshot: new Uint8Array(png),
     screenshotMime: "image/png",
     createdAt: new Date("2026-09-28T10:00:00Z"),
+    openedBy: "",
+    assignee: "",
   };
 
   it("builds a message the contract accepts, with a pseudonym instead of the person", () => {
@@ -102,6 +104,16 @@ describe("toIntake", () => {
     expect(msg).toMatchObject({ stackTicketId: "ckticket1", number: 7, companySlug: "acme", reporterRole: "member" });
     expect(JSON.stringify(msg)).not.toContain("user_1");
     expect(Buffer.from(msg.screenshot!.base64, "base64").equals(png)).toBe(true);
+  });
+
+  it("leaves out opened-by and assignee when nobody was picked, and sends them when they were", () => {
+    const none = toIntake(row, "acme", "s");
+    expect(none).not.toHaveProperty("openedBy");
+    expect(none).not.toHaveProperty("assignee");
+    const picked = toIntake({ ...row, openedBy: "Marc", assignee: "Victor" }, "acme", "s");
+    expect(TicketIntake.parse(picked)).toMatchObject({ openedBy: "Marc", assignee: "Victor" });
+    // Anything else is not sent: the contract only knows the team and Marc.
+    expect(toIntake({ ...row, openedBy: "Mallory", assignee: "Marc" }, "acme", "s")).not.toHaveProperty("assignee");
   });
 
   it("sends null when there is no screenshot", () => {
