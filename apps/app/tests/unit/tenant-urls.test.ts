@@ -4,6 +4,7 @@ import {
   adminBase,
   appHost,
   appOrigin,
+  companyFinderUrl,
   companyPrefix,
   companyUrl,
   dashboardUrl,
@@ -68,5 +69,16 @@ describe("links per mode", () => {
     expect(adminBase(SINGLE)).toBe("/admin");
     expect(landingUrl(SINGLE)).toBe("/");
     expect(landingUrl({ ...SINGLE, LANDING_URL: "https://sellux.ch" })).toBe("https://sellux.ch");
+  });
+
+  it("single mode on <slug>.<domain> finds the public site by itself", () => {
+    const BOX = { TENANT_MODE: "single", COMPANY_SLUG: "acme", APP_ORIGIN: "https://acme.sellux.ch" };
+    expect(landingUrl(BOX)).toBe("https://sellux.ch");
+    expect(companyFinderUrl(BOX)).toBe("https://sellux.ch/login");
+    expect(companyFinderUrl({ ...BOX, LANDING_URL: "https://example.com/" })).toBe("https://example.com/login");
+    // A host that isn't <slug>.<domain> has no public site to go back to.
+    expect(companyFinderUrl(SINGLE)).toBeNull();
+    expect(companyFinderUrl({ ...BOX, APP_ORIGIN: "http://acme.localhost:8080" })).toBeNull();
+    expect(companyFinderUrl(PATH)).toBe("/login");
   });
 });
