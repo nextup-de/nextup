@@ -43,7 +43,8 @@ services:
       timeout: 3s
       retries: 20
 
-  # One-shot: schema first, then (demo stage only) the demo company and its people. `app` waits
+  # One-shot: schema first, then the company - a demo stage gets the demo company and its people,
+  # a real stage only an empty company row, created once (prisma/bootstrap-company.ts). `app` waits
   # for this to finish, so code can never start ahead of its schema.
   migrate:
     image: ${NEXTUP_MIGRATE_IMAGE:-nextup-migrate:local}
@@ -54,11 +55,11 @@ services:
     command:
       - sh
       - -c
-      - npx prisma migrate deploy && if [ "$$SEED_DEMO" = "true" ]; then npx tsx prisma/seed.ts; fi
+      - npx prisma migrate deploy && if [ "$$SEED_DEMO" = "true" ]; then npx tsx prisma/seed.ts; else npx tsx prisma/bootstrap-company.ts; fi
     environment:
       DATABASE_URL: postgresql://nextup:${POSTGRES_PASSWORD}@db:5432/nextup
       SEED_DEMO: ${SEED_DEMO:-false}
-      # The seed labels a non-acme demo stack with these (apps/app/prisma/seed.ts).
+      # The seed labels a non-acme demo stack with these; a real stack's company is created from them.
       COMPANY_SLUG: ${COMPANY_SLUG}
       COMPANY_NAME: ${COMPANY_NAME:-}
     depends_on:
