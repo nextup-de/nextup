@@ -2,7 +2,6 @@
 // The chrome for every role in the demo (SHELL[role] === "simple"): the logo, two or three
 // places (NAV_SIMPLE[role]), and a profile button. No rail, no search - nothing to learn.
 // Shares the overlays with AppShell (input sheet, toast, dev panel) so every action still works.
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -58,7 +57,8 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
       <header className={styles.bar}>
         {/* The blue wordmark carries the name; the company only shows on hover (the mockup keeps the bar to three things). */}
         <Link href={tenant.prefix + "/raise"} className={styles.brand} title={tenant.name} onClick={() => setPop(null)}>
-          <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} className={styles.logo} priority />
+          {/* The wordmark's shape as a mask, painted in the colour the dev panel picks (blue, blue + black, black). */}
+          <span className={styles.logo} data-tone={ctx.logo} role="img" aria-label={SITE.name} />
         </Link>
 
         <nav ref={navRef} className={styles.nav} aria-label="Main">
