@@ -1,7 +1,8 @@
 # NextUp
 
-Who owns what, and what is waiting on whom. An employee raises a case in one field, it lands in
-the right leader's inbox with a clock, the leader answers, management sees the wait ledger.
+Who owns what, and what is waiting on whom. An employee develops an idea with an AI coach until it
+scores high enough to publish (docs/IDEAS.md); it lands in the right leader's inbox with a clock, the
+leader answers, management sees the wait ledger.
 
 Next.js 16 (App Router, TypeScript), no CSS framework - tokens + CSS Modules.
 `docs/PLAN.md` is the roadmap; `docs/ARCHITECTURE.md` explains the folders; `docs/ROUTES.md`
