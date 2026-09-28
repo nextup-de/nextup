@@ -14,6 +14,7 @@ import { hasDatabase } from "@/lib/db/client";
 import { createDraft, discardDraft, getDraft, listDrafts, loadPublishThreshold, markPublished, purgeDiscardedDrafts, saveDraftMeta } from "@/lib/db/ideas";
 import { loadAssistSettings } from "@/lib/db/assist";
 import { serverIdeaContext } from "@/server/ideas";
+import { suggestReplies, type Reply } from "@/features/ideas/replies";
 
 const Slug = z.string().min(1).max(64);
 const Id = z.string().min(1).max(64);
@@ -68,6 +69,30 @@ export async function discardIdeaDraftAction(input: { slug: string; id: string }
   const v = p.success ? await me(p.data.slug) : null;
   if (!p.success || !v) return { ok: false };
   return { ok: await discardDraft(v.companyId, v.userId, p.data.id) };
+}
+
+// The suggested answers for a draft that is reopened (a new message brings its own with the score).
+// Server mode reads the viewer's stored draft; the local demo sends its turns along.
+const RepliesIn = z.object({
+  slug: Slug, id: Id.optional(),
+  turns: z.array(z.object({ role: z.enum(["user", "assistant"]), text: z.string().max(4000) })).max(40).default([]),
+  affected: z.array(z.string().min(1).max(120)).max(50).default([]),
+  attachments: z.number().int().min(0).max(4).default(0),
+});
+export async function ideaRepliesAction(input: z.input<typeof RepliesIn>): Promise<{ ok: boolean; replies: Reply[] }> {
+  const p = RepliesIn.safeParse(input);
+  if (!p.success) return { ok: false, replies: [] };
+  let d: { turns: { role: "user" | "assistant"; text: string }[]; affected: string[]; attachments: number } = p.data;
+  if (hasDatabase()) {
+    const v = await me(p.data.slug);
+    const stored = v && p.data.id ? await getDraft(v.companyId, v.userId, p.data.id) : null;
+    if (!stored || stored.status !== "draft") return { ok: false, replies: [] };
+    d = stored;
+  }
+  if (!d.turns.some((t) => t.role === "user")) return { ok: true, replies: [] };
+  const ctx = await serverIdeaContext(p.data.slug);
+  const now = scoreDraft(d, ctx);
+  return { ok: true, replies: suggestReplies({ text: ideaFromTurns(d.turns).text, affected: d.affected, attachments: d.attachments }, now, ctx) };
 }
 
 export type PublishResult =

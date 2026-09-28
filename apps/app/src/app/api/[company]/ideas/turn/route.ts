@@ -11,7 +11,8 @@
 //   local demo    no database: the browser keeps the draft and sends its turns along; nothing
 //                 is stored here and only the offline coach answers.
 //
-// Events:  scores {overall, parts, sameAs, threshold, delta}   the benchmark after this message
+// Events:  scores {overall, parts, sameAs, threshold, delta,    the benchmark after this message
+//                  replies}                                     and suggested answers (features/ideas/replies)
 //          text   {text}                                        the coach so far (replace)
 //          done   {text, overall}
 //          error  {message}
@@ -27,6 +28,7 @@ import { companyBrief, hasKnowledge, rowsFromSeed, type Knowledge } from "@/feat
 import { DEFAULT_PUBLISH_THRESHOLD, deltas } from "@/features/ideas/benchmarks";
 import { coachBrief, coachMock, ideaFromTurns, IDEA_PROMPT_VERSION } from "@/features/ideas/coach";
 import { MAX_TURN, MAX_TURNS, scoreDraft } from "@/features/ideas/drafts";
+import { suggestReplies } from "@/features/ideas/replies";
 import { hasDatabase } from "@/lib/db/client";
 import { loadAssistSettings, searchDocuments } from "@/lib/db/assist";
 import { addTurns, getDraft, loadPublishThreshold } from "@/lib/db/ideas";
@@ -91,6 +93,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const prev = before.some((t) => t.role === "user") ? scoreDraft({ turns: before, affected, attachments }, ctx) : null;
   const now = scoreDraft({ turns: after, affected, attachments }, ctx);
   const brief = coachBrief(now, threshold);
+  const replies = suggestReplies({ text: ideaFromTurns(after).text, affected, attachments }, now, ctx);
 
   // A model only where the assistant is allowed to answer for this company, with its audit trail.
   const settings = viewer ? await loadAssistSettings(viewer.companyId) : null;
@@ -103,9 +106,9 @@ export async function POST(request: Request, { params }: Ctx) {
     async start(controller) {
       const send = (event: string, data: unknown) => controller.enqueue(encoder.encode(sse(event, data)));
       try {
-        send("scores", { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold, delta: prev ? deltas(prev, now) : null });
+        send("scores", { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold, delta: prev ? deltas(prev, now) : null, replies });
 
-        let reply = coachMock(prev, now, threshold);
+        let reply = coachMock(prev, now, threshold, body.text, replies.length);
         let model = "mock";
         if (useModel) {
           const seed = await seedFor(tenant.slug);

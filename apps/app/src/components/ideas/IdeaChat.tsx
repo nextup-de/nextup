@@ -51,6 +51,13 @@ export function IdeaChat({ who, turns, live, sending, error, locked, threshold, 
     setText(""); setAsk("");
   };
   const prompt = (hint: string) => { setAsk(hint); field.current?.focus(); };
+  // A suggested answer: into the box after what is already typed, to edit before sending.
+  const use = (reply: string) => {
+    setText((t) => (t.trim() ? t.trim() + " " + reply : reply));
+    setAsk("");
+    requestAnimationFrame(() => { const f = field.current; if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } });
+  };
+  const sendNow = (reply: string) => { if (!sending && !locked) { onSend(reply); setAsk(""); } };
 
   return (
     <section className={styles.chat} aria-label="Idea chat">
@@ -82,7 +89,7 @@ export function IdeaChat({ who, turns, live, sending, error, locked, threshold, 
                 <div className={styles.bubbleCol}>
                   <p className={styles.bubble}>{t.role === "assistant" ? stripTags(t.text) : t.text}</p>
                   {t.role === "assistant" && t.overall !== null && t.id !== lastCoach && <span className={styles.msgScore}>Score {t.overall}</span>}
-                  {t.id === lastCoach && !sending && live && <BenchmarkCard parts={live.parts} delta={live.delta} onAsk={locked ? undefined : prompt} />}
+                  {t.id === lastCoach && !sending && live && <BenchmarkCard parts={live.parts} delta={live.delta} replies={locked ? [] : live.replies} onAsk={locked ? undefined : prompt} onUse={locked ? undefined : use} onSendNow={locked ? undefined : sendNow} />}
                 </div>
               </li>
             ))}
