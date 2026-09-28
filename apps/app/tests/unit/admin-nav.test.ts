@@ -1,7 +1,7 @@
 // The sidebar carries state, so these are the rules for when it shouts. A badge that is always there
 // is wallpaper; the point is that "3 stuck" only appears when three are stuck.
 import { describe, expect, it } from "vitest";
-import { adminBase, adminNav, connectionProblems } from "@/features/admin/nav";
+import { adminBase, adminNav, adminScope, companyNav, connectionProblems, lockedOut } from "@/features/admin/nav";
 import { nextStage, STAGES, isStage } from "@/features/admin/stages";
 import type { TaskCounts } from "@/features/integrations/tasks";
 
@@ -93,5 +93,41 @@ describe("stages", () => {
     expect(nextStage("banana")).toBeNull();
     expect(isStage("banana")).toBe(false);
     expect(STAGES.every(isStage)).toBe(true);
+  });
+});
+
+describe("adminScope", () => {
+  it("is the company's own admin only in a one-company stack with its slug set", () => {
+    expect(adminScope({ TENANT_MODE: "single", COMPANY_SLUG: "acme" })).toBe("company");
+    expect(adminScope({ TENANT_MODE: "single", COMPANY_SLUG: " " })).toBe("platform");
+    expect(adminScope({ TENANT_MODE: "path", COMPANY_SLUG: "acme" })).toBe("platform");
+    expect(adminScope({ TENANT_MODE: "subdomain" })).toBe("platform");
+    expect(adminScope({})).toBe("platform");
+  });
+});
+
+describe("companyNav", () => {
+  it("is three pages, with nothing about requests, companies or connections", () => {
+    const items = companyNav({ people: 4, locked: 0 });
+    expect(items.map((i) => i.id)).toEqual(["overview", "people", "assistant"]);
+    expect(items.map((i) => i.path)).toEqual(["", "/people", "/assistant"]);
+    expect(items.find((i) => i.id === "people")).toMatchObject({ badge: "4", tone: null });
+  });
+
+  it("warns when someone cannot sign in", () => {
+    expect(companyNav({ people: 4, locked: 2 }).find((i) => i.id === "people")).toMatchObject({ badge: "2 no access", tone: "warn" });
+  });
+});
+
+describe("lockedOut", () => {
+  const person = (over: Partial<{ codeIssuedAt: string | null; microsoft: boolean }>) => ({
+    id: "u", name: "A", email: "a@x", role: "employee", codeIssuedAt: null, microsoft: false, ...over,
+  });
+
+  it("counts people with neither a code nor a Microsoft account the company still accepts", () => {
+    const persons = [person({ codeIssuedAt: "2026-09-01" }), person({ microsoft: true }), person({})];
+    expect(lockedOut({ persons, entraTenantId: "72f988bf-86f1-41af-91ab-2d7cd011db47" })).toHaveLength(1);
+    // Microsoft switched off: a bound account no longer gets anyone in.
+    expect(lockedOut({ persons, entraTenantId: null })).toHaveLength(2);
   });
 });

@@ -1,5 +1,5 @@
 "use client";
-// The admin sidebar: seven pages, each with the one badge that says whether it needs you.
+// The admin sidebar: three pages for a company, seven for the platform, each with the one badge that says whether it needs you.
 // Client only for the active link (usePathname); the badges are computed on the server.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,6 +8,8 @@ import styles from "@/app/admin/admin.module.css";
 
 const ICONS: Record<AdminPage, React.ReactNode> = {
   overview: <path d="M3 3h6v6H3zM11 3h6v4h-6zM11 9h6v8h-6zM3 11h6v6H3z" />,
+  people: <path d="M7.5 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 17a5.5 5.5 0 0 1 11 0M13 3.5a3 3 0 0 1 0 5.5M15 12a5 5 0 0 1 3 5" />,
+  assistant: <path d="M4 4h12v9H9l-4 3v-3H4zM7.5 8.5h.01M10 8.5h.01M12.5 8.5h.01" />,
   requests: <path d="M3 5l7 5 7-5M3 5h14v10H3z" />,
   tickets: <path d="M7 6.5a3 3 0 0 1 6 0M6.5 6.5h7v6a3.5 3.5 0 0 1-7 0zM10 9v6M3 9l3.5 1M17 9l-3.5 1M3 13.5h3.5M17 13.5h-3.5" />,
   companies: <path d="M4 17V4h7v13M11 8h5v9M2 17h16M6.5 7h2M6.5 10h2M6.5 13h2" />,

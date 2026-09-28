@@ -1,14 +1,15 @@
 // The admin area. Outside [company] on purpose: it is not a role, it is a different surface,
 // reached at admin.<domain> (or /admin in path mode) behind ADMIN_ACCESS_CODE.
 //
-// Signed in, it is a sidebar and six pages (features/admin/nav.ts). The sidebar lives here, not
+// Signed in, it is a sidebar and its pages (features/admin/nav.ts): three for a company stack's own
+// admin, seven for the platform admin. The sidebar lives here, not
 // in each page, so it stays put while a page loads; its badges come from adminContext(), which the
 // page shares, so they cost no extra read.
 import type { Metadata } from "next";
 import Image from "next/image";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { dashboardUrl, landingUrl } from "@/features/tenant/urls";
-import { adminBase } from "@/features/admin/nav";
+import { adminBase, adminScope } from "@/features/admin/nav";
 import { adminSignOut, isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
 import { AdminNav } from "@/components/admin/AdminNav";
@@ -27,6 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // The two places anyone lands in from here: the public site, and the product itself. The demo
   // tenant is the one company that exists in every mode, database or not.
   const demo = DEMO_COMPANIES[0].slug;
+  const company = adminScope() === "company";
   const signedIn = await isAdmin();
   const ctx = signedIn ? await adminContext() : null;
 
@@ -47,7 +49,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ) : (
             <>
               <a href={landingUrl()}>Landing page</a>
-              <a href={dashboardUrl(demo)}>Dashboard</a>
+              <a href={dashboardUrl(singleCompany() ?? demo)}>Dashboard</a>
             </>
           )}
         </nav>
@@ -58,7 +60,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <AdminNav items={ctx.nav} base={adminBase()} />
           </aside>
           <main className={styles.content}>
-            {ctx.live ? null : (
+            {ctx.live ? null : company ? (
+              <section className={`${styles.card} ${styles.demoNotice}`}>
+                <h2>Not connected</h2>
+                <p>The database is not answering, so nothing can be changed right now. Try again in a few minutes; if it stays like this, tell the NextUp team.</p>
+              </section>
+            ) : (
               <section className={`${styles.card} ${styles.demoNotice}`}>
                 <h2>Demo data</h2>
                 <p>

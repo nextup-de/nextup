@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
+import { adminScope } from "@/features/admin/nav";
 import styles from "../admin.module.css";
 
 /**
@@ -19,7 +20,11 @@ export default async function AdminLoginPage() {
   return (
     <section className={styles.card}>
       <h1>Admin</h1>
-      <p className="nh-hint">Add a company, hand out its people&apos;s login codes, or remove it.</p>
+      <p className="nh-hint">
+        {adminScope() === "company"
+          ? "Hand out your people’s login codes, switch on Microsoft sign-in, and set what the assistant may read."
+          : "Add a company, hand out its people’s login codes, or remove it."}
+      </p>
       <AdminLoginForm demoCode={demoCode()} />
     </section>
   );

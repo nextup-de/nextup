@@ -1,15 +1,17 @@
 // Companies: every customer, its stage, its people's login codes and API token - and the form that adds
 // one. ?from=<pilot request id> pre-fills that form from the request.
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
-import { adminBase } from "@/features/admin/nav";
+import { adminBase, adminScope } from "@/features/admin/nav";
 import { CompanyList } from "@/components/admin/CompanyList";
 import { CreateCompany, type CreateInitial } from "@/components/admin/CreateCompany";
 import styles from "../admin.module.css";
 
 export default async function CompaniesPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
+  // Platform admin only; a company stack's /admin never shows it (features/admin/nav.ts).
+  if (adminScope() === "company") notFound();
   const ctx = await adminContext();
   const { from } = await searchParams;
 

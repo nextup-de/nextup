@@ -1,9 +1,9 @@
 // Pilot requests: the list on the left, the selected one's panel on the right. The selection,
 // the filter and the search are all in the URL (?id=, ?view=, ?q=), so a request is a link.
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
-import { adminBase } from "@/features/admin/nav";
+import { adminBase, adminScope } from "@/features/admin/nav";
 import { filterRequests, isRequestView, REQUEST_VIEWS, type RequestView } from "@/features/admin/requests";
 import { RequestList, requestHref } from "@/components/admin/RequestList";
 import { RequestPanel } from "@/components/admin/RequestPanel";
@@ -15,6 +15,8 @@ type Search = { id?: string; view?: string; q?: string };
 
 export default async function RequestsPage({ searchParams }: { searchParams: Promise<Search> }) {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
+  // Platform admin only; a company stack's /admin never shows it (features/admin/nav.ts).
+  if (adminScope() === "company") notFound();
   const ctx = await adminContext();
   const base = adminBase();
   const sp = await searchParams;
