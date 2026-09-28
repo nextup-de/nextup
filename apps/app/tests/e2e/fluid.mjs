@@ -2,11 +2,14 @@
 // Fails (exit 1) when a page scrolls sideways, an element sticks out past the screen edge, the
 // console logs an error, or a page that must fit one screen (the raise page) scrolls down.
 // Saves a full-page screenshot of every page x size to look through. Rules: docs/RESPONSIVE.md.
+// Signed-out pages run first; then it logs in with the demo box's "Open the demo as …" button
+// (a demo-stage company with a database), so the role pages are the real pages, not the login.
 //
 // No dependency: Node 22+ (built-in fetch/WebSocket) drives a local Chrome or Edge over the
-// DevTools protocol. Run it against the database-free demo:
+// DevTools protocol. Run it against a dev server, with or without a database (with one, acme must be
+// a demo-stage company and the database migrated - a missing table shows up as console errors):
 //
-//   npm run dev                                  # another terminal, no DATABASE_URL
+//   npm run dev                                  # another terminal
 //   node tests/e2e/fluid.mjs                     # everything (~15 min)
 //   node tests/e2e/fluid.mjs --only=raise --sizes=phone,laptop
 //
@@ -46,7 +49,8 @@ const PAGES = [
   ["manager", "/acme/settings"], ["manager", "/acme/settings/routing"], ["manager", "/acme/settings/members"], ["manager", "/acme/settings/company"],
   ["-", "/"], ["-", "/pricing"], ["-", "/contact"], ["-", "/privacy"], ["-", "/imprint"],
   ["-", "/login"], ["-", "/signup"], ["-", "/forgot-password"], ["-", "/invite"], ["-", "/acme/login"], ["-", "/admin/login"],
-].filter(([role, path]) => !ONLY.length || ONLY.some((o) => (role + " " + path).includes(o)));
+].filter(([role, path]) => !ONLY.length || ONLY.some((o) => (role + " " + path).includes(o)))
+  .sort((a, b) => (b[0] === "-") - (a[0] === "-")); // signed out first: the login below is for the rest
 
 // Measured in the page: sideways scroll, elements past the screen edge (unless an ancestor clips
 // them, or they are decorative), and the page height.
@@ -62,7 +66,7 @@ const PROBE = `(() => {
       if (!out.includes(name)) out.push(name);
     }
   }
-  return JSON.stringify({ sideways: document.documentElement.scrollWidth - W, docH: document.documentElement.scrollHeight, H: innerHeight, over: out.slice(0, 6) });
+  return JSON.stringify({ sideways: document.documentElement.scrollWidth - W, docH: document.documentElement.scrollHeight, H: innerHeight, path: location.pathname, over: out.slice(0, 6) });
 })()`;
 
 function findChrome() {
@@ -106,9 +110,25 @@ async function main() {
   const { result: { sessionId: s } } = await send("Target.attachToTarget", { targetId, flatten: true });
   await send("Page.enable", {}, s); await send("Runtime.enable", {}, s);
 
+  const evaluate = async (expression) => (await send("Runtime.evaluate", { expression, returnByValue: true }, s)).result.result?.value;
+  // Log in once, before the first signed-in page. Without a database the demo needs no login and
+  // the page has no demo button; with one, a page that still shows the login is a failed sweep.
+  let signedIn = false;
+  const signIn = async () => {
+    signedIn = true;
+    await send("Page.navigate", { url: BASE + "/acme/login" }, s);
+    await sleep(2500);
+    const clicked = await evaluate(`(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.startsWith("Open the demo as")); b?.click(); return !!b; })()`);
+    if (!clicked) { console.log("(no demo login button - running the role pages as they come)"); return; }
+    for (let i = 0; i < 60 && (await evaluate("location.pathname")).endsWith("/login"); i++) await sleep(500);
+    if ((await evaluate("location.pathname")).endsWith("/login")) throw new Error("The demo login did not leave /acme/login - is acme a demo-stage company?");
+    console.log("(logged in with the demo button)");
+  };
+
   const failures = [];
   let checked = 0;
   for (const [role, path, fits] of PAGES) {
+    if (role !== "-" && !signedIn) await signIn();
     for (const [size, w, h, touch] of SIZES) {
       errors.length = 0;
       await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: touch }, s);
@@ -118,12 +138,13 @@ async function main() {
       await send("Page.navigate", { url: BASE + path }, s);
       await sleep(2500); // hydration, fonts, the raise page's entrance
       await send("Page.removeScriptToEvaluateOnNewDocument", { identifier }, s);
-      const probe = JSON.parse((await send("Runtime.evaluate", { expression: PROBE, returnByValue: true }, s)).result.result.value);
+      const probe = JSON.parse(await evaluate(PROBE));
 
       const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: Math.min(probe.docH, 6000), scale: w > 1400 ? 0.6 : 1 } }, s);
       writeFileSync(join(OUT, (role + path).replace(/[/\\]/g, "_") + "__" + size + ".png"), Buffer.from(shot.result.data, "base64"));
 
       const problems = [];
+      if (role !== "-" && probe.path.endsWith("/login")) problems.push("shows the login page instead - the session was lost");
       if (probe.sideways > 0) problems.push("scrolls sideways by " + probe.sideways + "px");
       if (probe.over.length) problems.push("sticks out past the screen: " + probe.over.join(", "));
       if (fits && fits(w, h) && probe.docH > probe.H) problems.push("must fit one screen but is " + (probe.docH - probe.H) + "px too tall");
