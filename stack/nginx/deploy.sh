@@ -59,6 +59,24 @@ stacks() {  # slug port stage, for every installed, running stack: ports.md rows
   done
 }
 
+# Every deploy pulls a new app (~0.4 GB) and migrate (~2.8 GB) image; left alone they filled the
+# 75 GB disk in one day (28 Sep: Postgres of a new stack could not start). Keep :main and the two
+# newest sha tags of each (for a rollback); never one a container still uses. All are on GHCR.
+prune_images() {
+  local repo used t n
+  used="$(docker ps -a --format '{{.Image}}' | sort -u)"
+  for repo in nextup-app nextup-migrate; do
+    n=0
+    while read -r t; do
+      n=$((n + 1)); [ "$n" -le 2 ] && continue
+      grep -qx "${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}/$repo:$t" <<< "$used" && continue
+      docker rmi "${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}/$repo:$t" >/dev/null 2>&1 || true
+    done < <(docker images "${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}/$repo" --format '{{.Tag}}' | grep '^sha-')
+  done
+  docker image prune -f >/dev/null 2>&1 || true
+  echo "images pruned; disk: $(df -h / | awk 'NR==2 { print $4 " free" }')"
+}
+
 case "$action" in
   status)
     stacks | while read -r s _ _; do
@@ -91,6 +109,7 @@ case "$action" in
       echo "== automation"
       "$stack_root/automation/automation.sh" up -d --remove-orphans </dev/null 2>&1 | grep -vE '^ *Container .* (Running|Waiting)' || true
     fi
+    prune_images
     echo "$(date -u +%FT%TZ) deploy $tag done (failed=$failed)" >> "$log"
     exit "$failed" ;;
   *) echo "usage: deploy <main|sha> | status" >&2; exit 2 ;;

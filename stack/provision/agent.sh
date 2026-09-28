@@ -17,6 +17,7 @@
 #   NEXTUP_IMAGES=main                     image tag for new stacks: main, a 7-char sha, or local
 #   SITE_HELPER=/usr/local/sbin/nextup-site  root helper for nginx + certbot (see that file), or none
 #   MIN_MEM_MB=600                         refuse a new stack below this much MemAvailable
+#   MIN_DISK_MB=6000                       refuse a create/restart below this much free disk (images ~3.3 GB)
 #
 # What admin may ask for - nothing else, and every value is checked here again:
 #   create       install a new stack (install.sh via add-stack.sh), nginx + TLS, report its passwords
@@ -41,7 +42,7 @@ die() { say "agent: $*" >&2; exit 1; }
 
 # ── Config ───────────────────────────────────────────────────────────────────────────────────────
 [ -f "$config" ] || die "no config at $config"
-ADMIN_URL="" PROVISION_TOKEN="" OPS_PUBLIC_URL="https://admin.sellux.ch" NEXTUP_IMAGES="main" SITE_HELPER="/usr/local/sbin/nextup-site" MIN_MEM_MB=600
+ADMIN_URL="" PROVISION_TOKEN="" OPS_PUBLIC_URL="https://admin.sellux.ch" NEXTUP_IMAGES="main" SITE_HELPER="/usr/local/sbin/nextup-site" MIN_MEM_MB=600 MIN_DISK_MB=6000
 while IFS='=' read -r k v; do
   v="${v%$'\r'}"
   case "$k" in
@@ -51,6 +52,7 @@ while IFS='=' read -r k v; do
     NEXTUP_IMAGES) NEXTUP_IMAGES="$v" ;;
     SITE_HELPER) SITE_HELPER="$v" ;;
     MIN_MEM_MB) MIN_MEM_MB="$v" ;;
+    MIN_DISK_MB) MIN_DISK_MB="$v" ;;
   esac
 done < "$config"
 [[ "$ADMIN_URL" =~ ^(http://127\.0\.0\.1:[0-9]{2,5}|https://[a-z0-9.-]+)$ ]] || die "ADMIN_URL must be http://127.0.0.1:PORT or https://host"
@@ -58,6 +60,7 @@ done < "$config"
 [[ "$OPS_PUBLIC_URL" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]] || die "OPS_PUBLIC_URL looks wrong"
 [[ "$NEXTUP_IMAGES" =~ ^(main|local|[0-9a-f]{7})$ ]] || die "NEXTUP_IMAGES is main, local or a 7-char sha"
 [[ "$MIN_MEM_MB" =~ ^[0-9]{1,6}$ ]] || die "MIN_MEM_MB is a number"
+[[ "$MIN_DISK_MB" =~ ^[0-9]{1,7}$ ]] || die "MIN_DISK_MB is a number"
 [ "$SITE_HELPER" = none ] || [[ "$SITE_HELPER" =~ ^/usr/local/sbin/[a-z-]+$ ]] || die "SITE_HELPER is none or /usr/local/sbin/<name>"
 
 # ── One run at a time ────────────────────────────────────────────────────────────────────────────
@@ -75,6 +78,7 @@ fi
 printf 'Authorization: Bearer %s\n' "$PROVISION_TOKEN" > "$work/auth"
 curl_admin() { curl -sS --max-time 30 --proto '=http,https' -H @"$work/auth" "$@"; }
 
+disk_mb() { df -Pm "${DOCKER_ROOT:-/var/lib/docker}" 2>/dev/null | awk 'NR==2 { print $4 }' | grep -E '^[0-9]+$' || df -Pm / | awk 'NR==2 { print $4 }'; }
 mem_mb() {  # MemAvailable, else MemFree (Git Bash), else 0
   local m
   m="$(awk '/^MemAvailable:/ { a = $2 } /^MemFree:/ { f = $2 } END { printf "%d", (a ? a : f) / 1024 }' /proc/meminfo 2>/dev/null || true)"
@@ -84,7 +88,7 @@ helper_ok() { [ "$SITE_HELPER" != none ] && [ -x "$SITE_HELPER" ] && sudo -n -l 
 installed() { local d; for d in "$NEXTUP_INSTANCES"/*/; do [ -f "$d.env" ] && basename "$d"; done 2>/dev/null | paste -sd, -; }
 
 # ── Ask for work ─────────────────────────────────────────────────────────────────────────────────
-code="$(curl_admin -o "$work/job" -w '%{http_code}' -H "X-Agent-Info: mem_mb=$(mem_mb) stacks=$(installed) helper=$(helper_ok)" "$ADMIN_URL/api/provision/next" || true)"
+code="$(curl_admin -o "$work/job" -w '%{http_code}' -H "X-Agent-Info: mem_mb=$(mem_mb) disk_mb=$(disk_mb) stacks=$(installed) helper=$(helper_ok)" "$ADMIN_URL/api/provision/next" || true)"
 case "$code" in
   204) exit 0 ;;
   200) ;;
@@ -120,7 +124,14 @@ report() {  # status (done|failed|needs_nginx)
     printf '}\n'
   } > "$body"
   local rc
-  rc="$(curl_admin -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' --data-binary @"$body" "$ADMIN_URL/api/provision/jobs/$id" || true)"
+  # Admin may be restarting or its database briefly away (28 Sep: a 500 left a job "running"
+  # for 30 min): try a few times before giving up.
+  local try
+  for try in 1 2 3 4 5; do
+    rc="$(curl_admin -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' --data-binary @"$body" "$ADMIN_URL/api/provision/jobs/$id" || true)"
+    case "$rc" in 200|404|409|422) break ;; esac
+    sleep $((try * 5))
+  done
   say "job $id $action $slug -> $status (admin answered $rc)"
   scrub < "$log" | sed 's/^/    /'
 }
@@ -227,6 +238,13 @@ nginx_add() {  # 0 = nginx serves it over https now
 }
 nginx_serves() { [ -L "/etc/nginx/sites-enabled/nextup-$slug" ]; }
 
+# A failed create/restart must not leave containers restarting forever (a db that can't start
+# restarts every few seconds). Stop them; volumes and .env stay, so Restart or Delete still work.
+stop_half_built() {
+  echo "Stopping the half-started containers (data stays; Restart or Delete from admin)." >> "$log"
+  "$stack/ctl.sh" "$slug" down >> "$log" 2>&1 < /dev/null || true
+}
+
 run() { echo "\$ ${*//$ops_token/[token]}" >> "$log"; "$@" >> "$log" 2>&1 < /dev/null; }
 
 case "$action" in
@@ -240,6 +258,8 @@ case "$action" in
       port_busy && fail "something already listens on $port-$((port + 9))"
       free="$(mem_mb)"
       [ "$free" -ge "$MIN_MEM_MB" ] || fail "only ${free} MB memory available, need $MIN_MEM_MB MB for a new stack"
+      disk="$(disk_mb)"
+      [ "${disk:-0}" -ge "$MIN_DISK_MB" ] || fail "only ${disk} MB disk free, need $MIN_DISK_MB MB for a new stack"
     fi
     # `IFS='=' read` above drops one trailing "=", which is base64 padding here: put it back.
     while (( ${#name_b64} % 4 )); do name_b64+="="; done
@@ -249,9 +269,9 @@ case "$action" in
     [ -f "$conf" ] || printf 'PORT=%s\nSTAGE=%s\n' "$port" "$stage" > "$conf"
     progress install
     NEXTUP_OPS_TOKEN="$ops_token" run_watched "$stack/nginx/add-stack.sh" "$slug" "$port" "$stage" \
-      --images "$NEXTUP_IMAGES" --name "$name" --ops-url "$OPS_PUBLIC_URL" || fail "add-stack.sh failed"
+      --images "$NEXTUP_IMAGES" --name "$name" --ops-url "$OPS_PUBLIC_URL" || { stop_half_built; fail "add-stack.sh failed"; }
     progress health
-    health || fail "the app does not answer on 127.0.0.1:$port"
+    health || { stop_half_built; fail "the app does not answer on 127.0.0.1:$port"; }
     echo "The app answers on 127.0.0.1:$port." >> "$log"
     progress secrets
     collect_secrets
@@ -271,7 +291,9 @@ case "$action" in
     [ "$(box_port)" = "$port" ] || fail "the box has $slug on port $(box_port), admin says $port"
     [ -f "$conf" ] && sed -i '/^STOPPED=/d' "$conf"
     progress install
-    run_watched "$stack/nginx/add-stack.sh" "$slug" "$port" "$(box_stage)" || fail "add-stack.sh failed"
+    disk="$(disk_mb)"
+    [ "${disk:-0}" -ge 1000 ] || fail "only ${disk} MB disk free - the database can't start like this"
+    run_watched "$stack/nginx/add-stack.sh" "$slug" "$port" "$(box_stage)" || { stop_half_built; fail "add-stack.sh failed"; }
     progress health
     health || fail "the app does not answer on 127.0.0.1:$port"
     progress secrets
