@@ -7,7 +7,7 @@
 .sideBody :global(.nh-eyebrow) { color: var(--nh-on-dark-mute); }
 .sideBody h2 { font-size: clamp(26px, 3vw, 36px); font-weight: 800; }
 .sideBody p:not(:global(.nh-eyebrow)) { color: var(--nh-on-dark-mute); font-size: 15px; }
-.sideFoot { color: var(--nh-on-dark-mute); font-size: 11px; }
+.sideFoot { color: var(--nh-on-dark-mute); font-size: 12px; }
 
 .stats { display: grid; gap: 10px; }
 .stats div { display: flex; align-items: baseline; gap: 12px; padding: 12px 14px; background: var(--nh-dark-2); border: 1px solid var(--nh-dark-line); border-radius: var(--nh-r); }

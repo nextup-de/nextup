@@ -4,15 +4,15 @@
 .discoveryBar { flex: 1; min-width: 150px; }
 .discoveryTrack { height: 7px; border-radius: 999px; background: var(--nh-line-soft); overflow: hidden; }
 .discoveryFill { height: 100%; border-radius: 999px; background: var(--nh-ink); }
-.discoveryNote { font-size: 11.5px; color: var(--nh-mute); margin-top: 6px; }
-.discoveryHint { font-size: 11.5px; color: var(--nh-on-dark-mute); line-height: 1.5; max-width: 240px; }
+.discoveryNote { font-size: 12px; color: var(--nh-mute); margin-top: 6px; }
+.discoveryHint { font-size: 12px; color: var(--nh-on-dark-mute); line-height: 1.5; max-width: 240px; }
 
 .rowTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .rowMain { flex: 1 1 220px; min-width: 170px; }
 .rowRight { display: flex; align-items: flex-end; gap: 14px; }
 .people { text-align: right; }
 .peopleN { font-family: var(--nh-mono); font-size: 15px; font-weight: 800; color: var(--nh-ink); }
-.peopleL { font-size: 11px; color: var(--nh-on-dark-mute); }
+.peopleL { font-size: 12px; color: var(--nh-on-dark-mute); }
 .rowChips { margin-top: 10px; }
 
 .tiles { margin-top: 16px; }

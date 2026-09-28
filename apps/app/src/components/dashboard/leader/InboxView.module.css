@@ -17,23 +17,17 @@
 }
 .page[data-panels="blue"] { --p-bg: #007aff; --p-fg: #fff; --p-sub: rgb(255 255 255 / 0.78); --p-track: rgb(255 255 255 / 0.25); --p-bar: #fff; --p-hl: #007aff; }
 .page[data-panels="deep"] { --p-bg: #0b70d1; --p-fg: #fff; --p-sub: rgb(255 255 255 / 0.78); --p-track: rgb(255 255 255 / 0.25); --p-bar: #fff; --p-gauge: #0b70d1; --p-hl: #0b70d1; }
-/* Desktop (a mouse, wider than a phone) shows the inbox at 90%, as if the browser were zoomed
-   to 90% - on top of the app's own page scale (tokens.css). Inside, every length (px, the screen
-   tokens) is drawn at --z, so a size meant in page pixels is divided by it. */
-.page { --z: 1; transition: width 420ms var(--ease), margin-left 420ms var(--ease); }
-@media (hover: hover) and (pointer: fine) and (min-width: 761px) {
-  .page { --z: 0.9; zoom: var(--z); }
-}
+.page { transition: width 420ms var(--ease), margin-left 420ms var(--ease); }
 /* Open, the inbox fills the screen below the shell's 60px bar, 16px from the sides and the bottom
    (the shell caps content at 1120px and pads it 20px / 40px; the page reaches past both). The list
    and the item scroll on their own. */
 @media (min-width: 761px) {
   .page[data-open="true"] {
-    max-width: none; min-height: calc(420px / var(--z));
-    width: calc((var(--nh-screen-w) - 32px) / var(--z));
-    margin-left: calc((16px - (var(--nh-screen-w) - min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x))) / 2) / var(--z));
-    height: calc((var(--nh-screen-h) - 96px) / var(--z));
-    margin-bottom: calc(-24px / var(--z));
+    max-width: none; min-height: 420px;
+    width: calc(var(--nh-screen-w) - 32px);
+    margin-left: calc(16px - (var(--nh-screen-w) - min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x))) / 2);
+    height: calc(var(--nh-screen-h) - 96px);
+    margin-bottom: -24px;
   }
 }
 .srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* the page keeps its heading for screen readers */
@@ -143,7 +137,7 @@
 .badge[data-tone="paused"] { color: var(--c-mute); background: var(--c-fill); }
 .page[data-open="true"] .rowTitle { font-size: 14px; }
 .page[data-open="true"] :is(.rowWho, .rowSolves, .sent) { font-size: 12.5px; }
-.page[data-open="true"] .badge { font-size: 11px; padding: 2px 7px; }
+.page[data-open="true"] .badge { font-size: 12px; padding: 2px 7px; }
 /* The picked row sits on the blue highlight: white text. */
 .row[data-active="true"] :is(.rowTitle, .rowWho) { color: #fff; }
 .row[data-active="true"] :is(.rowRole, .rowSolves, .sent) { color: rgb(255 255 255 / 0.85); }

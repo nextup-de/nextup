@@ -18,7 +18,7 @@
 .items li { padding-left: 18px; position: relative; }
 .items li::before { content: ""; position: absolute; left: 0; top: 8px; width: 8px; height: 8px; border-radius: 999px; background: var(--nh-accent); }
 .ask { font-size: 13px; color: var(--nh-mute); border-top: 1px solid var(--nh-line-soft); padding-top: 12px; margin-top: auto; }
-.fine { max-width: var(--nh-max); margin: 0 auto; padding: 14px var(--nh-page-x) 0; font-size: 11px; color: var(--nh-mute); }
+.fine { max-width: var(--nh-max); margin: 0 auto; padding: 14px var(--nh-page-x) 0; font-size: 12px; color: var(--nh-mute); }
 
 .every { max-width: var(--nh-max); margin: 0 auto; padding: 64px var(--nh-page-x) 0; display: grid; gap: 18px; }
 .everyGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }

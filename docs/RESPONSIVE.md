@@ -6,25 +6,19 @@ how it does that and the rules that keep it that way. Two checks enforce them: `
 
 ## How it works
 
-- **One page scale.** The design is drawn for a ~1920×950 canvas. On a mouse-driven screen,
-  `zoom` on `<html>` scales the whole page to fit: a laptop lands at 0.9 (the floor - 0.8 made text
-  too small to read), a 1920px monitor at 1, a very large monitor a little above. Width and height
-  both count - the smaller factor wins. The steps live in `src/styles/tokens.css` (`--nh-zoom`).
-- **Phones and tablets are never scaled.** Touch screens keep scale 1; their layouts are tuned
-  per breakpoint in each `*.module.css` (`760px` = phone, `900px` = narrow tablet, `480px` = small phone).
-- **Media queries see the real screen**, not the scaled page. A breakpoint means what it says.
+- **Real pixels, no page scale.** Every size is what it says, on every browser. There is no CSS
+  `zoom` anywhere: Safari computes zoomed lengths differently from Chrome and Firefox, which pushed
+  layouts off screen (the open inbox) and shrank text. *Checked by `npm test`.*
+- **Layouts adapt per breakpoint** in each `*.module.css` (`760px` = phone, `900px` = narrow tablet,
+  `480px` = small phone), with fluid widths (`min()`, `clamp()`, `minmax(0, 1fr)`) in between.
 
 ## Rules
 
 1. **Full-screen sizes: `var(--nh-screen-h)` / `var(--nh-screen-w)`, never `100vh`, `100dvh`, `100vw`.**
-   Viewport units are scaled by `zoom` too, so `min-height: 100dvh` comes out 20% short on a laptop.
-   The tokens undo that. `calc(var(--nh-screen-h) - 60px)` works as you would expect.
+   One place defines the viewport (`src/styles/tokens.css`), so it can change in one place.
    *Checked by `npm test`.* An image's `sizes="…100vw"` is a download hint, not layout - that is fine.
-2. **Mouse and rect maths divide by the page scale.** `clientX`, `getBoundingClientRect()` are screen
-   pixels; widths, `translate()`, SVG coordinates are page pixels. Convert with
-   `el.currentCSSZoom || 1` - see `useCanvas` in `CollaborationView.tsx`. `offsetLeft`/`offsetWidth`
-   are already page pixels. *Checked by `npm test`* (a file that reads pointer positions must mention
-   `currentCSSZoom`).
+2. **Mouse and rect maths use the numbers as they come.** `clientX` and `getBoundingClientRect()` are in
+   the same pixels as widths and `translate()` - no conversion.
 3. **No fixed widths on containers.** `max-width`, `min(420px, 100%)`, `minmax(0, 1fr)`. Flex and
    grid children that hold text get `min-width: 0`, so a long word wraps instead of pushing the page wider.
 4. **Choose column counts on purpose.** 4 → 2 → 1 at breakpoints. `repeat(auto-fit, minmax(…))`
@@ -36,8 +30,7 @@ how it does that and the rules that keep it that way. Two checks enforce them: `
 6. **Phones: thumb and keyboard.** Keep inputs near the top - the on-screen keyboard covers the
    bottom half. Inputs use 16px text (smaller makes iOS zoom in on focus). Popovers open where
    there is room.
-7. **Text stays readable.** Nothing below 11px (on a scaled laptop that is ~10px). The page scale never goes
-   below 0.9.
+7. **Text stays readable.** Nothing below 12px.
 
 ## Before you say a change is done
 

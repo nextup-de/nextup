@@ -66,15 +66,12 @@ function useCanvas() {
   const [dragging, setDragging] = useState(false); // while true the canvas moves without easing
   // Measured on demand: the canvas is laid out by CSS, so its box is always current here.
   const box = () => node.current?.getBoundingClientRect() ?? null;
-  // Pointer and rect values are screen pixels; the view is in page pixels. They differ by the page
-  // scale (`zoom` on <html>, see tokens.css), so every screen distance is divided by it.
-  const zoomOf = () => node.current?.currentCSSZoom || 1;
   const attach = useCallback((el: HTMLDivElement | null) => {
     node.current = el;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const r = el.getBoundingClientRect(), z = el.currentCSSZoom || 1, mx = (e.clientX - r.left) / z, my = (e.clientY - r.top) / z;
+      const r = el.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
       setView((v) => {
         const k = Math.min(KMAX, Math.max(KMIN, v.k * Math.exp(-e.deltaY * 0.0015)));
         return { k, x: mx - ((mx - v.x) * k) / v.k, y: my - ((my - v.y) * k) / v.k };
@@ -83,9 +80,9 @@ function useCanvas() {
     el.addEventListener("wheel", onWheel, { passive: false });
   }, []);
   const zoomBy = (f: number) => {
-    const r = box(), z = zoomOf();
+    const r = box();
     setView((v) => {
-      const k = Math.min(KMAX, Math.max(KMIN, v.k * f)), cx = (r?.width ?? 0) / z / 2, cy = (r?.height ?? 0) / z / 2;
+      const k = Math.min(KMAX, Math.max(KMIN, v.k * f)), cx = (r?.width ?? 0) / 2, cy = (r?.height ?? 0) / 2;
       return { k, x: cx - ((cx - v.x) * k) / v.k, y: cy - ((cy - v.y) * k) / v.k };
     });
   };
@@ -93,22 +90,21 @@ function useCanvas() {
   const fitBox = useCallback((x0: number, y0: number, x1: number, y1: number, kmax = KMAX) => {
     const r = node.current?.getBoundingClientRect();
     if (!r?.width || !r.height) return;
-    const z = node.current?.currentCSSZoom || 1;
-    setView(fitView(r.width / z, r.height / z, x0, y0, x1, y1, kmax));
+    setView(fitView(r.width, r.height, x0, y0, x1, y1, kmax));
   }, []);
   const swallow = useRef(false); // the click that ends a drag must not select a node
   // Pointer capture would retarget the click to the canvas and nodes would stop being clickable,
   // so the drag follows the pointer on window instead.
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 || (e.target as Element).closest("button")) return;
-    const d = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false }, z = zoomOf();
+    const d = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false };
     drag.current = d;
     const move = (ev: PointerEvent) => {
       const dx = ev.clientX - d.x, dy = ev.clientY - d.y;
       if (!d.moved && Math.hypot(dx, dy) < 4) return;
       if (!d.moved) setDragging(true);
       d.moved = true;
-      setView((v) => ({ ...v, x: d.vx + dx / z, y: d.vy + dy / z }));
+      setView((v) => ({ ...v, x: d.vx + dx, y: d.vy + dy }));
     };
     const up = () => {
       window.removeEventListener("pointermove", move);

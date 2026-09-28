@@ -136,9 +136,8 @@ export function InboxView({ initialId }: { initialId?: string }) {
     const behavior: ScrollBehavior = moving ? "smooth" : "auto";
     const scroller = listRef.current, row = scroller?.querySelector<HTMLElement>(`[data-row="${CSS.escape(cid)}"]`);
     if (row && scroller) {
-      // Rects are screen pixels, scrollTop is page pixels: the page is zoomed (docs/RESPONSIVE.md).
-      const lr = scroller.getBoundingClientRect(), rr = row.getBoundingClientRect(), z = scroller.currentCSSZoom || 1;
-      if (rr.top < lr.top + 12 || rr.bottom > lr.bottom - 12) scroller.scrollTo({ top: scroller.scrollTop + ((rr.top - lr.top) - (lr.height - rr.height) / 2) / z, behavior });
+      const lr = scroller.getBoundingClientRect(), rr = row.getBoundingClientRect();
+      if (rr.top < lr.top + 12 || rr.bottom > lr.bottom - 12) scroller.scrollTo({ top: scroller.scrollTop + (rr.top - lr.top) - (lr.height - rr.height) / 2, behavior });
     }
     const pane = paneRef.current;
     if (pane && pane.scrollTop > 0) pane.scrollTo({ top: 0, behavior });

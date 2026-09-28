@@ -1,6 +1,5 @@
-// Guards the fluid UI (docs/RESPONSIVE.md). The page is scaled with `zoom` on <html> (tokens.css),
-// which also scales viewport units - so a raw 100vh / 100dvh / 100vw box comes out 20% short on a
-// laptop, and a mouse position (screen pixels) no longer matches the layout (page pixels).
+// Guards the fluid UI (docs/RESPONSIVE.md). Sizes are real pixels: no CSS `zoom` (Safari lays zoomed
+// pages out differently from Chrome and Firefox), and full-screen sizes go through the screen tokens.
 // These checks read the source; they need no browser. The screenshot sweep is tests/e2e/fluid.mjs.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -35,17 +34,25 @@ describe("fluid UI", () => {
     expect(bad, "use var(--nh-screen-h) / var(--nh-screen-w) instead (see docs/RESPONSIVE.md)").toEqual([]);
   });
 
-  it("code that reads mouse or rect positions divides by the page scale (currentCSSZoom)", () => {
-    const POINTER = /\b(clientX|clientY|pageX|pageY|getBoundingClientRect)\b/;
-    const bad = files(SRC, [".tsx", ".ts"])
-      .filter((f) => { const t = readFileSync(f, "utf8"); return POINTER.test(t) && !t.includes("currentCSSZoom") && !t.includes(OPT_OUT); })
-      .map(rel);
-    expect(bad, "screen pixels differ from page pixels by el.currentCSSZoom (see docs/RESPONSIVE.md)").toEqual([]);
+  it("nothing scales the page with CSS zoom (Safari computes it differently)", () => {
+    const css = files(SRC, [".css"]).flatMap(lines);
+    const tsx = files(SRC, [".tsx", ".ts"]).flatMap(lines);
+    const bad = [
+      ...css.filter((l) => /(^|[\s{;])zoom\s*:/.test(l.text)),
+      ...tsx.filter((l) => /currentCSSZoom|zoom\s*:\s*["'\d]/.test(l.text)),
+    ].filter((l) => !l.text.includes(OPT_OUT)).map((l) => l.at + "  " + l.text.trim());
+    expect(bad, "size things in real pixels instead of zoom (see docs/RESPONSIVE.md)").toEqual([]);
   });
 
-  it("the page scale and the screen tokens are still defined", () => {
+  it("text is never smaller than 12px", () => {
+    const bad = files(SRC, [".css"]).flatMap(lines)
+      .filter((l) => [...l.text.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].some((m) => Number(m[1]) < 12) && !l.text.includes(OPT_OUT))
+      .map((l) => l.at + "  " + l.text.trim());
+    expect(bad, "use 12px or more (see docs/RESPONSIVE.md)").toEqual([]);
+  });
+
+  it("the screen tokens are still defined", () => {
     const tokens = readFileSync(join(ROOT, TOKENS), "utf8");
-    for (const name of ["--nh-zoom:", "--nh-screen-h:", "--nh-screen-w:"]) expect(tokens).toContain(name);
-    expect(readFileSync(join(SRC, "app", "globals.css"), "utf8")).toMatch(/zoom:\s*var\(--nh-zoom\)/);
+    for (const name of ["--nh-screen-h:", "--nh-screen-w:"]) expect(tokens).toContain(name);
   });
 });
