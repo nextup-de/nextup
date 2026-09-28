@@ -5,8 +5,16 @@
   position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
   height: 60px; padding: 0 var(--nh-page-x); background: rgb(255 255 255 / 0.62); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid rgb(0 0 0 / 0.06);
 }
-.brand { display: flex; align-items: center; min-width: 0; justify-self: start; margin-left: calc(16px - var(--nh-page-x)); } /* the wordmark sits in the corner, 16px in, while the content keeps the page gutter */
-.logo { height: 34px; width: auto; flex: none; } /* the blue wordmark, cropped tight - the height sets its width */
+.brand { display: flex; align-items: center; justify-self: start; margin-left: calc(16px - var(--nh-page-x)); } /* the wordmark sits in the corner, 16px in, while the content keeps the page gutter */
+/* The wordmark: nextup-logo-blue.png as a mask, the colour painted underneath. The height sets its width;
+   never squeezed by a wide nav. "half" lays a black box over "NextUp" (x 221-506, y 104-180 of 506×224). */
+.logo {
+  display: block; height: 34px; aspect-ratio: 506 / 224; flex: none;
+  -webkit-mask: url("/brand/nextup-logo-blue.png") center / contain no-repeat; mask: url("/brand/nextup-logo-blue.png") center / contain no-repeat;
+  background: var(--nh-brand);
+}
+.logo[data-tone="black"] { background: #000; }
+.logo[data-tone="half"] { background: linear-gradient(#000, #000) right 0 top 72% / 57% 40% no-repeat, var(--nh-brand); }
 
 /* Raise | Dashboard: one segmented control; an ink thumb slides under the current one. */
 .nav { position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgb(0 0 0 / 0.05); }
@@ -61,6 +69,12 @@
   .logo { height: 24px; }
   .navItem { gap: 4px; padding: 7px 9px; font-size: 12.5px; }
   .navCount { padding: 1px 5px; }
+}
+/* 360px phones: the wordmark keeps its shape, so the nav gives up the room instead. */
+@media (max-width: 380px) {
+  .bar { gap: 6px; padding: 0 10px; }
+  .logo { height: 22px; }
+  .navItem { padding: 7px 7px; font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .navThumb { transition: none; }

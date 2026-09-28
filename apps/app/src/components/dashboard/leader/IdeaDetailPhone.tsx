@@ -150,6 +150,29 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
 }
 
 function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { brief: IdeaBrief; feed: IdeaProps["feed"]; sheet: Sheet; setSheet: (s: Sheet | null) => void; status: IdeaProps["status"]; decide: (k: string) => void; srcId: string }) {
+  // The handle: a tap closes the sheet, a drag pulls it down with the finger and closes it past 80px.
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const start = useRef<number | null>(null);
+  const moved = useRef(false); // a drag that snapped back is not a tap
+  // clientY is in screen pixels; the sheet moves in page pixels, which differ by the page scale.
+  const dyOf = (e: React.PointerEvent, el: HTMLElement) => (e.clientY - (start.current ?? e.clientY)) / (el.currentCSSZoom || 1);
+  const grab = (e: React.PointerEvent<HTMLButtonElement>) => { start.current = e.clientY; moved.current = false; e.currentTarget.setPointerCapture(e.pointerId); };
+  const drag = (e: React.PointerEvent) => {
+    const el = sheetRef.current;
+    if (start.current === null || !el) return;
+    el.style.transition = "none";
+    el.style.transform = `translateY(${Math.max(0, dyOf(e, el))}px)`;
+  };
+  const drop = (e: React.PointerEvent) => {
+    const el = sheetRef.current;
+    if (start.current === null || !el) return;
+    const dy = dyOf(e, el);
+    start.current = null;
+    moved.current = Math.abs(dy) > 6;
+    if (dy > 80) { setSheet(null); return; }
+    el.style.transition = "transform 220ms ease";
+    el.style.transform = "";
+  };
   let label = "", body: React.ReactNode = null;
   if (sheet.kind === "score") {
     const s = brief.scores[sheet.i];
@@ -221,8 +244,8 @@ function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { b
   return (
     <>
       <div className={styles.scrim} onClick={() => setSheet(null)} />
-      <div className={styles.sheet} role="dialog" aria-modal="true" aria-label={label}>
-        <button type="button" className={styles.handle} onClick={() => setSheet(null)} aria-label="Close" />
+      <div className={styles.sheet} ref={sheetRef} role="dialog" aria-modal="true" aria-label={label}>
+        <button type="button" className={styles.handle} aria-label="Close" onClick={() => { if (!moved.current) setSheet(null); }} onPointerDown={grab} onPointerMove={drag} onPointerUp={drop} onPointerCancel={drop} />
         <div className={styles.sheetBody}>{body}</div>
       </div>
     </>

@@ -1,19 +1,20 @@
 "use client";
 // Dev panel (bottom-right): switch the persona, view the inbox as another desk holder, advance
 // the demo clock, demo data on/off, delete what this browser added, reset - and, on its own Design
-// page, the design tweaks under review (reasoning-panel colour, animations on/off). It stays open
+// page, the design tweaks under review (reasoning-panel colour, logo colour, animations on/off). It stays open
 // while settings change; a click anywhere else or Escape closes it. Demo only - sessions replace it.
 import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { openCasesOf } from "@/components/dashboard/derive";
-import type { PanelTone } from "@/lib/demo-log";
+import type { LogoTone, PanelTone } from "@/lib/demo-log";
 import styles from "./DevPanel.module.css";
 
 const PANEL_TONES: { id: PanelTone; label: string }[] = [{ id: "grey", label: "Grey" }, { id: "blue", label: "Blue" }, { id: "deep", label: "Deep blue" }];
+const LOGO_TONES: { id: LogoTone; label: string }[] = [{ id: "blue", label: "Blue" }, { id: "half", label: "Blue + black" }, { id: "black", label: "Black" }];
 
 export function DevPanel() {
   const ctx = useDemo();
-  const { seed, S, role, persona, demo, dev, setDev, leadAs, panels, setPanels, motion, setMotion } = ctx;
+  const { seed, S, role, persona, demo, dev, setDev, leadAs, panels, setPanels, motion, setMotion, logo, setLogo } = ctx;
   const [page, setPage] = useState<"demo" | "design">("demo");
   const box = useRef<HTMLDivElement>(null);
   const isLead = role === "leader";
@@ -46,6 +47,13 @@ export function DevPanel() {
           <div className={`${styles.roles} ${styles.tones}`}>
             {PANEL_TONES.map((t) => (
               <button key={t.id} type="button" className={styles.role} data-on={panels === t.id ? "true" : undefined} onClick={() => setPanels(t.id)}>{t.label}</button>
+            ))}
+          </div>
+
+          <div className={styles.subLabel}>Logo</div>
+          <div className={`${styles.roles} ${styles.tones}`}>
+            {LOGO_TONES.map((t) => (
+              <button key={t.id} type="button" className={styles.role} data-on={logo === t.id ? "true" : undefined} onClick={() => setLogo(t.id)}>{t.label}</button>
             ))}
           </div>
 
