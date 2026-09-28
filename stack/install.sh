@@ -79,8 +79,14 @@ compose=(docker compose -f "$here/compose.yml" --env-file "$env_file")
 if [ -f "$env_file" ]; then
   echo "Keeping $env_file (secrets are never regenerated)."
   if [ -n "$images" ]; then
+    # Pull first: if the tag doesn't exist, the .env still names images that do.
+    if [ "$images" != local ]; then
+      docker pull -q "$app_image" >/dev/null && docker pull -q "$migrate_image" >/dev/null \
+        || die "could not pull $app_image / $migrate_image - nothing changed"
+    fi
     # Only the image lines change; sed -i keeps the file's owner and mode.
-    sed -i -e "s|^NEXTUP_APP_IMAGE=.*|NEXTUP_APP_IMAGE=$app_image|"            -e "s|^NEXTUP_MIGRATE_IMAGE=.*|NEXTUP_MIGRATE_IMAGE=$migrate_image|" "$env_file"
+    sed -i -e "s|^NEXTUP_APP_IMAGE=.*|NEXTUP_APP_IMAGE=$app_image|" \
+           -e "s|^NEXTUP_MIGRATE_IMAGE=.*|NEXTUP_MIGRATE_IMAGE=$migrate_image|" "$env_file"
     echo "Images: $app_image, $migrate_image"
   fi
 else

@@ -5,10 +5,18 @@
 # login) and the nginx site. n8n and the login page only listen on the loopback.
 name: nextup-automation
 
+# Docker keeps container logs forever by default; on a shared box that fills the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
   n8n:
     image: n8nio/n8n:${N8N_VERSION:-2.41.3}
     restart: unless-stopped
+    logging: *logging
     security_opt:
       - no-new-privileges:true
     ports:
@@ -46,6 +54,7 @@ services:
   gate:
     image: node:22-alpine
     restart: unless-stopped
+    logging: *logging
     read_only: true
     user: node
     cap_drop: [ALL]

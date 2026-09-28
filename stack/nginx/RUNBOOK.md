@@ -37,7 +37,7 @@ change.
 ```bash
 # images: build and copy (until CI publishes to GHCR, step 4) - takes a few minutes
 stack/push-images.sh hetzner --build
-# stack files: the committed version, never the working tree
+# stack files by hand (deploy.sh normally fetches them itself): the committed version, never the working tree
 git archive HEAD stack | ssh hetzner 'cd ~/nextup && rm -rf stack && tar x'
 ```
 
@@ -67,7 +67,14 @@ CI publishes `ghcr.io/selluxhenner/nextup-app` and `nextup-migrate` on every pus
 ~/nextup/stack/nginx/deploy.sh status
 ```
 
-`deploy.sh` runs `add-stack.sh ... --images TAG` for each stack. That rewrites only the two image
+`deploy.sh` does three things, in order:
+1. **Pulls the commit's images.** A commit CI hasn't published changes nothing.
+2. **Swaps in `~/nextup/stack`** from that commit's `stack/` folder on GitHub. The previous copy
+   stays in `~/nextup/stack.prev`, so scripts and images always come from the same commit.
+3. **Runs `add-stack.sh ... --images TAG` for each stack,** then `automation.sh up -d` so compose
+   changes reach n8n and the login page as well.
+
+Each stack's `.env` keeps its old image lines until the new images are pulled. That rewrites only the two image
 lines in the stack's `.env`, pulls the images and restarts. `migrate` applies new migrations
 before the app starts. For one stack only: `add-stack.sh acme 3101 demo --images main`.
 `--images local` goes back to images copied with `stack/push-images.sh`.
@@ -199,4 +206,5 @@ for p in 3101 3102 3111 3112 5432; do nc -zvw3 178.104.253.90 $p; done
 | login loops / cookie not set | `APP_ORIGIN` in the `.env` must be `https://<slug>.sellux.ch` |
 | everyone rate-limited together | nginx site lost `X-Forwarded-For $remote_addr`, or `TRUSTED_PROXIES` missing from the `.env` |
 | backup failed | `tail ~/nextup/backup.log`; `backup.sh <slug> snapshots` must list recent ones |
+| disk filling up | `docker system df`; container logs are capped at 3 x 10 MB (compose `x-logging`) |
 | box short on memory | `docker stats --no-stream`. The box has ~2 GB free; stop stacks you don't need |
