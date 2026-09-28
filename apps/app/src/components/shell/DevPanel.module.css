@@ -5,6 +5,11 @@
 .roles { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--nh-dark-2); border-radius: 10px; padding: 3px; gap: 3px; }
 .role { text-align: center; padding: 7px 6px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: transparent; color: var(--nh-mute-2); border: 0; font-family: inherit; }
 .role[data-on="true"] { background: #f4f3f0; color: #1a1a17; font-weight: 700; }
+.tones { margin-top: 7px; }
+.back { display: flex; align-items: center; gap: 6px; margin: -2px 0 10px; padding: 4px 2px; border: 0; background: none; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--nh-mute-2); cursor: pointer; }
+.back:hover, .rowBtn:hover .go { color: var(--nh-on-dark); }
+.go { color: var(--nh-mute-2); flex: none; }
+.note { font-size: 11px; color: var(--nh-mute-2); }
 .personas { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .persona { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; cursor: pointer; background: #26261f; color: var(--nh-mute-2); border: 1px solid #33332e; font-family: inherit; }
 .persona[data-on="true"] { background: #f4f3f0; color: #1a1a17; border-color: #f4f3f0; font-weight: 700; }
@@ -30,5 +35,8 @@
 
 @media (max-width: 760px) {
   .dev { right: 12px; bottom: 12px; }
+  /* An idea open full screen in the inbox (its data-layer view, z 85): stay reachable, above its decision dock. */
+  :global(body:has([data-layer="true"])) .dev { z-index: 88; bottom: calc(80px + env(safe-area-inset-bottom)); }
+  :global(body:has([data-layer="true"] [aria-modal="true"])) .dev { display: none; } /* out of the way while one of its sheets is up */
   .panel { width: min(280px, calc(var(--nh-screen-w) - 24px)); }
 }

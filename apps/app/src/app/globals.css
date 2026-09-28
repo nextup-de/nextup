@@ -5,6 +5,10 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; zoom: var(--nh-zoom); } /* the page scale: see tokens.css */
+/* Animations off (dev panel → Design): everything lands in its end state at once. */
+html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
+  animation: none !important; transition: none !important; scroll-behavior: auto !important;
+}
 body {
   margin: 0;
   background: var(--nh-ground);

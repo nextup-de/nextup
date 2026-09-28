@@ -44,7 +44,7 @@
 .contentInner { max-width: var(--nh-max); margin: 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 
 .backdrop { position: fixed; inset: 0; z-index: 10; } /* below .bar (z 20): the sticky bar is its own stacking context, so a higher backdrop would cover the popover */
-.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 80; max-width: min(92vw, 560px); padding: 11px 16px; border-radius: 12px; background: var(--nh-dark); color: var(--nh-on-dark); font-size: 13px; line-height: 1.45; box-shadow: 0 14px 40px rgba(20, 20, 20, 0.25); }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 87; max-width: min(92vw, 560px); padding: 11px 16px; border-radius: 12px; background: var(--nh-dark); color: var(--nh-on-dark); font-size: 13px; line-height: 1.45; box-shadow: 0 14px 40px rgba(20, 20, 20, 0.25); } /* z 87: over the inbox's full-screen phone view (85) */
 
 @media (max-width: 760px) {
   .bar { grid-template-columns: auto 1fr auto; height: 56px; }
