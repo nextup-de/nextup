@@ -65,7 +65,27 @@ export function RaiseView() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const raisedFrom = useRef<string | null>(null); // the assistant conversation a raise came out of
+  const pageRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const { view: ai, ask, reset: resetAi } = useAssist(tenant.slug);
+
+  // Phones: the box rides at the bottom of the screen and on top of the keyboard. iOS does not shrink the
+  // layout for the keyboard, so the visual viewport says how much it covers (--kb), how much is still
+  // visible (--vv-h) and the CSS keeps the box and the picker in that space; --box-h keeps the card clear of the box.
+  useEffect(() => {
+    const page = pageRef.current, box = boxRef.current, vv = window.visualViewport;
+    if (!page || !box) return;
+    const sync = () => {
+      const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      page.style.setProperty("--kb", kb + "px");
+      page.style.setProperty("--vv-h", (vv ? vv.height : window.innerHeight) + "px");
+      page.style.setProperty("--box-h", box.offsetHeight + "px");
+    };
+    sync();
+    vv?.addEventListener("resize", sync); vv?.addEventListener("scroll", sync);
+    const ro = new ResizeObserver(sync); ro.observe(box);
+    return () => { vv?.removeEventListener("resize", sync); vv?.removeEventListener("scroll", sync); ro.disconnect(); };
+  }, [ready]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -193,13 +213,12 @@ export function RaiseView() {
     ...affected.map((n) => ({ key: "a:" + n, label: n, remove: () => toggleAffected(n) })),
     ...shots.map((s) => ({ key: "s:" + s.url, label: s.name, thumb: s.url, remove: () => setShots((x) => x.filter((y) => y.url !== s.url)) })),
   ];
-  const hint = locked ? "Raised" : asking ? "Looking it up" : composing ? (ai.available ? "Enter to ask" : "Enter to raise") : "";
 
   return (
-    <div className={styles.page} data-kind={kind} data-phase={phase.at}>
+    <div className={styles.page} ref={pageRef} data-kind={kind} data-phase={phase.at}>
       <h1 className={styles.title}>Raise it, {who.name}</h1>
 
-      <div className={styles.boxWrap}>
+      <div className={styles.boxWrap} ref={boxRef}>
         <div className={styles.aura} aria-hidden="true" />
         <div className={styles.ring}>
           <span key={switches} className={styles.ringWash} aria-hidden="true" />
@@ -298,7 +317,6 @@ export function RaiseView() {
                 </div>
               </div>
               <div className={styles.sendWrap}>
-                <span className={styles.hint} aria-live="polite">{hint}</span>
                 <span className={styles.sendRing}>
                   {locked && <span className={styles.pulse} aria-hidden="true" />}
                   <button type="button" className={styles.send} onClick={primary} disabled={!canSend} data-sent={locked ? "true" : undefined} aria-label={ai.available ? "Ask " + SITE.name + " first" : "Raise this " + current.label.toLowerCase()} title={ai.available ? "Ask first" : "Raise it"}>

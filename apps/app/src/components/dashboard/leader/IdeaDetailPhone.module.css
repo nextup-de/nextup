@@ -80,8 +80,9 @@
   background: #fff; border-radius: 22px 22px 0 0; box-shadow: 0 -12px 40px rgb(20 30 60 / 0.18);
   animation: sheetUp 340ms var(--ease);
 }
-.handle { flex: none; align-self: center; width: 60px; height: 24px; margin: 4px 0 0; border: 0; background: none; cursor: pointer; position: relative; }
-.handle::before { content: ""; position: absolute; left: 12px; right: 12px; top: 10px; height: 5px; border-radius: 3px; background: #d1d1d6; }
+/* The whole top strip is the handle; touch-action: none so a drag on it moves the sheet, not the page. */
+.handle { flex: none; align-self: stretch; height: 32px; margin: 0; padding: 0; border: 0; border-radius: 22px 22px 0 0; background: none; cursor: grab; position: relative; touch-action: none; }
+.handle::before { content: ""; position: absolute; left: calc(50% - 18px); width: 36px; top: 12px; height: 5px; border-radius: 3px; background: #d1d1d6; }
 .sheetBody > * { flex: none; }
 .sheetBody { overflow-y: auto; overscroll-behavior: contain; padding: 4px 18px calc(22px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; }
 .members { display: flex; flex-direction: column; }
