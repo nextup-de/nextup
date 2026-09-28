@@ -208,6 +208,7 @@
   .benchLabel { font-size: 12px; }
   .compHint { display: none; }
   .bubbleCol { max-width: 92%; }
+  .compField, .renameField { font-size: 16px; } /* under 16px iOS zooms the page in on focus */
 }
 
 @media (prefers-reduced-motion: reduce) {
