@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
+import { Inter, Manrope, IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import { SITE } from "@/config/site";
 import "./globals.css";
 
@@ -8,6 +8,7 @@ import "./globals.css";
 const sans = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-sans", display: "swap" });
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-mono", display: "swap" });
 const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", variable: "--font-serif", display: "swap" }); // headings on the raise page
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap", preload: false }); // the inbox card and idea detail only
 
 export const metadata: Metadata = {
   title: { default: `${SITE.name} - ${SITE.tagline}`, template: `%s · ${SITE.name}` },
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} ${serif.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable} ${serif.variable} ${inter.variable}`}>
       <body>{children}</body>
     </html>
   );
