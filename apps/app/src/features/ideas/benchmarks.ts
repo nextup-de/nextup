@@ -34,7 +34,8 @@ const REACH = /\b(every|all|each|whole|both|across|shifts?|teams?|lines?|sites?|
 const FIRST_STEP = /\b(first step|start (?:with|by)|pilot|trial|test (?:it|on)|try (?:it|on)|prototype|for (?:one|a) (?:week|month|line|shift))\b/i;
 const WHY = /\b(because|so that|so we|which means|otherwise|saves?|avoids?|instead of)\b/i;
 const WHO = /\b(we|team|shift|operators?|leads?|engineers?|colleagues|customers?|new hires|apprentices|maintenance|finance|it)\b/i;
-const SPEND = /€|\beur\b|spend|buy|order|purchase|budget|cost|invoice|licen[cs]e/i;
+// Money, not effort: "costs 20 minutes" is not spend, so a bare "cost" does not count.
+const SPEND = /€|\beur\b|\bspend|\bbuy|\border(?:s|ing)? (?:a|the|new|spare)|purchase|budget|invoice|licen[cs]e/i;
 
 // The largest euro amount named in the text, or null. "€5k", "5.000 €", "300 EUR".
 export function amountEur(text: string): number | null {

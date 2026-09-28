@@ -54,6 +54,10 @@ describe("benchmark", () => {
     expect(b.sameAs?.from).toBe("S. Dahl");
     expect(b.parts[3].missing[0]).toContain("co-sign");
   });
+  it("time is not money: \"costs 20 minutes\" does not ask for a price", () => {
+    const b = benchmark({ text: "Fixed rig day - the wait costs about 20 minutes per changeover", affected: [], attachments: 0 }, ctx);
+    expect(b.parts[2].found).toContain("No spend needed");
+  });
   it("spend above the team's authority scores lower than spend within it", () => {
     const low = benchmark({ text: "Buy a torque tester for €900 for the line", affected: [], attachments: 0 }, ctx);
     const high = benchmark({ text: "Buy a torque tester for €12k for the line", affected: [], attachments: 0 }, ctx);

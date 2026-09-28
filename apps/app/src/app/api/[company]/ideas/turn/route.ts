@@ -103,7 +103,7 @@ export async function POST(request: Request, { params }: Ctx) {
     async start(controller) {
       const send = (event: string, data: unknown) => controller.enqueue(encoder.encode(sse(event, data)));
       try {
-        send("scores", { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold, delta: deltas(prev, now) });
+        send("scores", { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold, delta: prev ? deltas(prev, now) : null });
 
         let reply = coachMock(prev, now, threshold);
         let model = "mock";
