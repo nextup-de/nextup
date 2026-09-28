@@ -18,6 +18,8 @@ import { hasDatabase, orDemo } from "@/lib/db/client";
 import { policyFor } from "@/features/admin/stages";
 import { DemoProvider, type ViewerInfo } from "@/components/dashboard/DemoProvider";
 import { AppShell } from "@/components/shell/AppShell";
+import { ReportButton } from "@/components/report/ReportButton";
+import { reportTicket } from "@/server/actions/tickets";
 
 export default async function AppLayout({
   children,
@@ -73,6 +75,10 @@ export default async function AppLayout({
       viewer={viewerInfo}
     >
       <AppShell>{children}</AppShell>
+      {/* The bug icon (docs/PLATFORM_PLAN.md, "Tickets"): only where a report can be stored. */}
+      {hasDatabase() && viewer ? (
+        <ReportButton submit={reportTicket.bind(null, tenant.slug)} reportsHref={prefixFor(tenant.slug) + "/reports"} />
+      ) : null}
     </DemoProvider>
   );
 }

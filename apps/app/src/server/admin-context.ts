@@ -19,6 +19,7 @@ import { adminNav, type MailState } from "@/features/admin/nav";
 import { isOverdue } from "@/features/admin/requests";
 import { countByState } from "@/features/integrations/tasks";
 import { databaseOutage, hasDatabase } from "@/lib/db/client";
+import { openTicketCount } from "@/lib/db/tickets";
 import { mailStatus } from "@/server/mail";
 
 export const adminContext = cache(async () => {
@@ -36,12 +37,14 @@ export const adminContext = cache(async () => {
   const overdue = open.filter((r) => isOverdue(r, now));
   const taskCounts = automation ? countByState(tasks) : null;
   const mailState: MailState = !mail.configured ? "off" : mail.reachable ? "up" : "down";
+  const openTickets = live ? await openTicketCount(companies.map((c) => c.id)).catch(() => 0) : 0;
 
   const nav = adminNav({
     database: database.state,
     openRequests: open.length,
     overdueRequests: overdue.length,
     companies: companies.length,
+    openTickets,
     automation: automation?.summary.state ?? null,
     tasks: taskCounts,
     mail: mailState,
@@ -61,6 +64,7 @@ export const adminContext = cache(async () => {
     mail,
     mailState,
     nav,
+    openTickets,
   };
 });
 

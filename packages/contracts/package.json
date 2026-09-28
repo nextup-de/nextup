@@ -1,0 +1,15 @@
+{
+  "name": "@nextup/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Message formats between a NextUp stack and admin.sellux.ch (private repo nextup-admin). Schemas only, no secrets.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "zod": "^4"
+  }
+}

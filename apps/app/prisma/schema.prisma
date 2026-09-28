@@ -74,6 +74,9 @@ model Company {
 
   documents   Document[]
   assistTurns AssistTurn[]
+
+  tickets       Ticket[]
+  ticketReplies TicketReply[]
 }
 
 // ── Company knowledge ────────────────────────────────────────────────────────────────────────────
@@ -283,6 +286,7 @@ model User {
   company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   events      CaseEvent[]
   assistTurns AssistTurn[]
+  tickets     Ticket[]
 
   @@unique([companyId, email])
   @@unique([companyId, entraOid])
@@ -440,4 +444,63 @@ model AssistTurn {
 
   @@index([companyId, createdAt])
   @@index([companyId, sessionId])
+}
+
+// ── Bug reports (docs/PLATFORM_PLAN.md, "Tickets") ────────────────────────────────────────────────
+// Filed from the bug icon. The full ticket, screenshot included, stays in this stack; a copy goes to
+// admin.sellux.ch (packages/contracts TicketIntake) and replies come back as TicketReply rows.
+
+model Ticket {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  number    Int // per company, shown as NU-<number>
+
+  // Null when filed from /admin (no person behind it). The person, not a copy of their name: the
+  // report shows up under "My reports" for whoever filed it.
+  reporterId   String?
+  reporter     User?   @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  reporterRole String // manager | leader | member | admin
+
+  kind        String // bug | idea | question
+  impact      String // blocks | annoying | cosmetic
+  description String
+  expected    String @default("")
+  context     Json // TicketContext: path, browser, viewport, console errors - no names
+
+  screenshot     Bytes?
+  screenshotMime String?
+
+  status String @default("new") // new | in_progress | fixed | closed - mirrors admin.sellux.ch
+
+  // Forwarding to admin.sellux.ch. Null forwardedAt = still to send; the sync retries.
+  forwardedAt  DateTime?
+  forwardError String?
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  replies   TicketReply[]
+
+  @@unique([companyId, number])
+  @@index([companyId, reporterId, createdAt])
+  @@index([companyId, forwardedAt])
+}
+
+// A developer's reply meant for the reporter, fetched from admin.sellux.ch. Never edited.
+model TicketReply {
+  id         String  @id @default(cuid())
+  companyId  String
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  ticketId   String
+  ticket     Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  opsReplyId String  @unique // admin.sellux.ch's id - a re-fetched reply is skipped, not doubled
+
+  body      String
+  status    String // the ticket's status after this reply
+  createdAt DateTime // when the developer wrote it (admin.sellux.ch's clock)
+  receivedAt DateTime @default(now())
+  emailedAt  DateTime? // the reporter was told by mail
+
+  @@index([companyId, createdAt])
+  @@index([ticketId, createdAt])
 }

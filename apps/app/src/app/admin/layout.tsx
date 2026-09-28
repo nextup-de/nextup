@@ -12,6 +12,10 @@ import { adminBase } from "@/features/admin/nav";
 import { adminSignOut, isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { ReportButton } from "@/components/report/ReportButton";
+import { reportFromAdmin } from "@/server/actions/tickets";
+import { singleCompany } from "@/features/tenant/urls";
+import { hasDatabase } from "@/lib/db/client";
 import styles from "./admin.module.css";
 
 export const metadata: Metadata = { title: "NextUp admin", robots: { index: false, follow: false } };
@@ -71,6 +75,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             )}
             {children}
           </main>
+          {/* The bug icon for the company admin: in a one-company stack, where a report has a company. */}
+          {ctx.live && hasDatabase() && singleCompany() ? <ReportButton submit={reportFromAdmin} reportsHref={null} /> : null}
         </div>
       ) : (
         <main className={styles.main}>{children}</main>

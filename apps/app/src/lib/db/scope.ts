@@ -20,6 +20,9 @@ export const TENANT_MODELS = new Set([
   // Raise-page assistant - docs/ASSISTANT.md
   "Document",
   "AssistTurn",
+  // Bug reports - docs/PLATFORM_PLAN.md, "Tickets"
+  "Ticket",
+  "TicketReply",
 ]);
 
 /** Operations that must narrow by company through `where`. */

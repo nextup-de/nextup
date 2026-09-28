@@ -26,12 +26,17 @@ const base = {
 const item = (facts: typeof base | Parameters<typeof adminNav>[0], id: string) => adminNav(facts).find((i) => i.id === id);
 
 describe("adminNav", () => {
-  it("is six pages, and quiet when everything is fine", () => {
+  it("is seven pages, and quiet when everything is fine", () => {
     const items = adminNav(base);
-    expect(items.map((i) => i.id)).toEqual(["overview", "requests", "companies", "knowledge", "decisions", "connections"]);
-    expect(items.map((i) => i.path)).toEqual(["", "/requests", "/companies", "/knowledge", "/decisions", "/connections"]);
+    expect(items.map((i) => i.id)).toEqual(["overview", "requests", "tickets", "companies", "knowledge", "decisions", "connections"]);
+    expect(items.map((i) => i.path)).toEqual(["", "/requests", "/tickets", "/companies", "/knowledge", "/decisions", "/connections"]);
     expect(items.filter((i) => i.tone === "bad" || i.tone === "warn")).toEqual([]);
     expect(item(base, "connections")).toMatchObject({ badge: null, tone: "ok" });
+  });
+
+  it("counts open tickets and says nothing at zero", () => {
+    expect(item(base, "tickets")).toMatchObject({ badge: null, tone: null });
+    expect(item({ ...base, openTickets: 4 }, "tickets")).toMatchObject({ badge: "4", tone: "warn" });
   });
 
   it("counts unanswered requests, says nothing at zero, and shouts about overdue ones", () => {
