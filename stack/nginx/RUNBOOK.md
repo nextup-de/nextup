@@ -118,6 +118,36 @@ export NEXTUP_INSTANCES=~/nextup/instances
 
 The actual restore takes about 10 s.
 
+## automation.sellux.ch (n8n)
+
+This n8n is for building and testing workflows (step 8), **with fake data only**. It isn't a
+company stack: company stacks run their own n8n with `install.sh --n8n`. It lives in
+`stack/automation/`, a compose project `nextup-automation` on `127.0.0.1:3141`.
+
+There are two logins:
+1. **nginx basic auth:** user `nextup`, with a generated password in
+   `~/nextup/automation/basic-auth.txt`. nginx strips that header, so n8n never sees it.
+2. **n8n's own accounts.** The first visitor past the basic auth creates the owner, so do that
+   right after enabling the site.
+
+```bash
+~/nextup/stack/automation/automation.sh install        # first run: key, login, nginx site; prints the sudo lines
+~/nextup/stack/automation/automation.sh ps | logs -f   # anything else goes to docker compose
+~/nextup/stack/automation/automation.sh backup         # workflows + credentials (still encrypted) + volume
+~/nextup/stack/automation/automation.sh restore-test   # fresh n8n imports them and decrypts the credentials
+```
+
+- **Keys to keep off the box:** `N8N_ENCRYPTION_KEY` and `RESTIC_PASSWORD` in
+  `~/nextup/automation/.env` go into the password manager. Without the key, stored credentials
+  can't be decrypted.
+- **Cron:** backup at 03:18 nightly, restore test on Sundays at 04:48. Both log to `backup.log`.
+- **First restore test, 28 Sep 2026:** 1 workflow (`ops/n8n/erp-knowledge-sync.json`, imported
+  inactive) and 1 dummy credential restored; the credential decrypted.
+- **Importing a workflow from `ops/n8n/`:** n8n 2.x needs an `id` in the JSON. The exported files
+  in git should keep theirs.
+- **Webhooks** are behind the basic auth too. A caller outside the box needs those credentials.
+  Open individual `/webhook/` paths only on purpose.
+
 ## Day to day
 
 ```bash
