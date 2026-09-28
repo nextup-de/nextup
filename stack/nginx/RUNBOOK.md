@@ -85,6 +85,39 @@ That key can then only run `ssh hetzner deploy <tag>` or `ssh hetzner status`. E
 is refused. Deploys are logged in `~/nextup/deploy.log`. The admin code and login codes never
 reach the CI log.
 
+## Backups
+
+`stack/backup.sh` makes an encrypted restic snapshot per stack. Each snapshot holds the database
+dump (`pg_dump -Fc`), the instance `.env` and, if the stack runs n8n, its data volume. Each stack
+has its own repository and password: `RESTIC_REPOSITORY` and `RESTIC_PASSWORD` in its `.env`.
+They're added on the first backup.
+
+- **Cron (installed in `crontab -l` of the deploy user):**
+  - 03:17 nightly `backup.sh all backup`
+  - Sunday 04:47 `backup.sh all restore-test`
+  - Both log to `~/nextup/backup.log`.
+- **Retention:** 7 daily, 4 weekly and 6 monthly snapshots.
+- **Target: local only for now** (`~/nextup/backups/<slug>`), Kevin's decision, 28 Sep 2026. The same
+  disk isn't a real backup. For off-box, change `RESTIC_REPOSITORY` per stack (Storage Box
+  `sftp:...`, or `s3:...`) and run `backup.sh <slug> backup`.
+- **Copy each `RESTIC_PASSWORD` into the password manager.** Without it, no snapshot can be read.
+
+```bash
+export NEXTUP_INSTANCES=~/nextup/instances
+~/nextup/stack/backup.sh acme backup
+~/nextup/stack/backup.sh acme snapshots
+~/nextup/stack/backup.sh acme restore-test          # throwaway container; the live stack is untouched
+~/nextup/stack/backup.sh acme restore b4dd1a68      # REPLACES the live database (asks for the slug)
+```
+
+**Restore rehearsal (step 5 "done when"), 28 Sep 2026, acme:**
+1. `backup.sh acme backup` created snapshot `b4dd1a68`.
+2. `DROP DATABASE nextup WITH (FORCE)` on acme. `/login` then returned 500.
+3. `backup.sh acme restore b4dd1a68`.
+4. Afterwards: 5 users, company `acme`, 7 migrations. `/login` and `/api/health` returned 200 over https.
+
+The actual restore takes about 10 s.
+
 ## Day to day
 
 ```bash
@@ -125,4 +158,5 @@ for p in 3101 3102 3111 3112 5432; do nc -zvw3 178.104.253.90 $p; done
 | app never healthy | `ctl.sh <slug> logs migrate`: a failed migration stops the app on purpose |
 | login loops / cookie not set | `APP_ORIGIN` in the `.env` must be `https://<slug>.sellux.ch` |
 | everyone rate-limited together | nginx site lost `X-Forwarded-For $remote_addr`, or `TRUSTED_PROXIES` missing from the `.env` |
+| backup failed | `tail ~/nextup/backup.log`; `backup.sh <slug> snapshots` must list recent ones |
 | box short on memory | `docker stats --no-stream`. The box has ~2 GB free; stop stacks you don't need |
