@@ -1,4 +1,4 @@
-// Bug reports <-> admin.sellux.ch (nextup-ops), docs/PLATFORM_PLAN.md "Tickets".
+// Bug reports <-> admin.sellux.ch (nextup-admin), docs/PLATFORM_PLAN.md "Tickets".
 //
 // Outbound only: this stack sends its new tickets and fetches the replies meant for its reporters.
 // admin.sellux.ch never calls in - which is what lets a stack sit behind a company firewall.

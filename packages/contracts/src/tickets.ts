@@ -1,5 +1,5 @@
 // Tickets between a company stack (apps/app) and our developer tool, admin.sellux.ch (the private
-// repo selluxhenner/nextup-ops). docs/PLATFORM_PLAN.md, "Tickets".
+// repo selluxhenner/nextup-admin). docs/PLATFORM_PLAN.md, "Tickets".
 //
 //   stack ──POST /api/intake──────────▶ ops      one ticket, with its screenshot
 //   stack ──GET  /api/replies?since=──▶ ops      replies meant for the reporter, oldest first
@@ -8,8 +8,8 @@
 // needs to say which stack it comes from. Every body carries `contractVersion`.
 //
 // Changing this file: only ever ADD optional fields. Anything else is a new major version, and
-// nextup-ops keeps a copy of this file (src/contracts/tickets.ts) - update it in the same breath,
-// or ops rejects what the stacks send.
+// nextup-admin keeps a copy of this file (src/contracts/tickets.ts) - update it in the same breath,
+// or admin rejects what the stacks send.
 import { z } from "zod";
 
 export const TICKETS_CONTRACT_VERSION = 1 as const;

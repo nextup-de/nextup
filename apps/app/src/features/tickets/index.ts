@@ -1,6 +1,6 @@
 // Bug reports: everything about a ticket that needs no database, no network and no React.
 // docs/PLATFORM_PLAN.md, "Tickets". The message formats are packages/contracts (shared with the
-// private nextup-ops repo behind admin.sellux.ch).
+// private nextup-admin repo behind admin.sellux.ch).
 import { createHmac } from "node:crypto";
 import { z } from "zod";
 import {
