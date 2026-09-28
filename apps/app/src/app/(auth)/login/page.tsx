@@ -14,7 +14,7 @@ export default function FindCompanyPage() {
           <h2>Nineteen working days.<br />Three of them are work.</h2>
           <p>Log in to see what is waiting on whom - and for how long. One home screen per role:</p>
           <AuthRoles items={[
-            ["Team member", "Raise", "Problem or idea in one box - NextUp names the owner and the deadline."],
+            ["Team member", "Ideas", "Develop an idea with the coach - at the threshold NextUp names the owner and the deadline."],
             ["Team leader", "Inbox", "Open items, oldest first. Yes, no and why, pass on, or ask - one click."],
             ["Manager", "Overview", "What is waiting on you, the wait ledger, where the waiting goes."],
           ]} />
