@@ -1,10 +1,11 @@
 # The NextUp app image. Multi-stage: install -> build -> a runtime carrying no toolchain.
 #
-# node:22 because vitest 5 wants >=22.12 and next 16 wants >=20.9. bookworm-slim rather than
+# node:24, the current LTS (vitest 5 wants >=22.12, next 16 >=20.9); majors are moved by hand, not
+# by Dependabot (.github/dependabot.yml). bookworm-slim rather than
 # alpine: glibc, and the image is still small. Prisma 7 talks to Postgres through the pure-JS pg
 # driver adapter - there is no native query engine any more - so no OpenSSL setup is needed.
 
-FROM node:26-bookworm-slim AS deps
+FROM node:24-bookworm-slim AS deps
 WORKDIR /app
 # Schema and config first: postinstall runs `prisma generate`, which needs them. It does NOT need
 # a database, which is what keeps this layer cacheable and the CI build honest.
@@ -29,7 +30,7 @@ RUN npm run build -w @nextup/app
 WORKDIR /app/apps/app
 
 # ── runtime ──────────────────────────────────────────────────────────────────
-FROM node:26-bookworm-slim AS run
+FROM node:24-bookworm-slim AS run
 WORKDIR /app
 # The server only ever runs `node apps/app/server.js`. npm, npx and corepack ship with the base
 # image and bring their own dependency tree - every CVE Trivy found in this image lived there, not

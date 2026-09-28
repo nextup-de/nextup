@@ -20,6 +20,11 @@ updates:
   - package-ecosystem: docker
     directory: /ops
     schedule: { interval: weekly, day: monday }
+    # Stay on the Node LTS line: a major Node jump (22 -> 26 arrived this way, #91) is a
+    # deliberate upgrade, done by hand. Patch/minor updates of the same major still come.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
