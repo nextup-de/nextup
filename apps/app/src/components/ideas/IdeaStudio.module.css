@@ -84,6 +84,17 @@
 .benchChip:hover:not(:disabled) { border-color: var(--b); }
 .benchChip:disabled { cursor: default; }
 .benchDot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--b); }
+/* Suggested answers: whole sentences - the text puts it in the composer, the arrow sends it as is. */
+.replies { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid #eef2f5; }
+.replyList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.reply { display: flex; align-items: stretch; gap: 6px; }
+.replyUse { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; padding: 9px 12px; border: 1px solid transparent; border-radius: 12px; background: var(--bt); color: var(--nh-ink); font-family: inherit; font-size: 13.5px; line-height: 1.4; text-align: left; cursor: pointer; transition: border-color 0.15s; }
+.replyUse:hover:not(:disabled) { border-color: var(--b); }
+.replyUse:disabled { cursor: default; }
+.replyText { flex: 1; min-width: 0; }
+.replyGain { flex: none; font-family: var(--nh-mono); font-size: 12px; font-weight: 600; color: var(--nh-ok); }
+.replySend { flex: none; width: 38px; border: 0; border-radius: 12px; background: var(--nh-ink); color: #fff; font-size: 16px; cursor: pointer; transition: opacity 0.15s; }
+.replySend:hover { opacity: 0.85; }
 
 /* The composer. */
 .composer { padding: 10px clamp(12px, 2.4vw, 28px) 12px; border-top: 1px solid #eef2f5; background: var(--nh-card); }

@@ -14,14 +14,29 @@ export const IDEA_PROMPT_VERSION = "idea-coach-v1";
 const TITLE_MAX = 140;
 const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, "") + "…");
 
+// Keyboard mashing ("jd klafkhdjahjsdhf ajsdhljf"): at least half of its longer words carry five
+// or more consonant sounds in a row, which real English and German words almost never do once
+// "sch", "ch", "th" and "ng" count as one ("strengths", "Rüstzeit" pass).
+const MASHED = /[bcdfghjklmnpqrstvwxzß]{5,}/;
+const mashed = (w: string) => MASHED.test(w.replace(/sch|ch|th|ng|ck/g, "c"));
+export function isGibberish(text: string): boolean {
+  const long = text.toLowerCase().match(/[a-zäöüß]{4,}/g) ?? [];
+  if (long.length === 0) return false;
+  return long.filter(mashed).length / long.length >= 0.5;
+}
+
 // The idea as it stands: the first message is the title, everything the author wrote after it is
-// the body. The coach's own words are never part of the idea - only the author's.
+// the body. The coach's own words are never part of the idea - only the author's - and neither is
+// a message that is only keyboard mashing, so it cannot move the score.
 export function ideaFromTurns(turns: readonly Turn[]): { title: string; body: string; text: string } {
   const mine = turns.filter((t) => t.role === "user").map((t) => stripTags(t.text).trim()).filter(Boolean);
   const title = clip(mine[0] ?? "", TITLE_MAX);
-  const body = mine.slice(1).join("\n");
-  return { title, body, text: mine.join("\n") };
+  const body = mine.slice(1).filter((m) => !isGibberish(m)).join("\n");
+  const text = [isGibberish(mine[0] ?? "") ? "" : (mine[0] ?? ""), body].filter(Boolean).join("\n");
+  return { title, body, text };
 }
+
+const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 // "12 points to publish" / "Ready to publish".
 export function toGo(overall: number, threshold: number): string {
@@ -29,18 +44,23 @@ export function toGo(overall: number, threshold: number): string {
   return n <= 0 ? "Ready to publish" : n + (n === 1 ? " point" : " points") + " to publish";
 }
 
-export function coachMock(prev: Benchmark | null, now: Benchmark, threshold: number): string {
+// `said` is the message just sent; `offers` is how many suggested answers the page shows under it.
+export function coachMock(prev: Benchmark | null, now: Benchmark, threshold: number, said = "", offers = 0): string {
   const lines: string[] = [];
   const d = deltas(prev, now);
-  if (!prev) lines.push(`First read: ${now.overall} of 100. ${now.overall >= threshold ? "That is enough to publish." : `It needs ${threshold} to publish.`}`);
+  const w = weakest(now);
+  const again = prev !== null && d.overall <= 0 && w !== null && weakest(prev)?.missing[0] === w.missing[0];
+  if (said && isGibberish(said)) lines.push(`That looks like a slip of the keyboard, so I left it out of the idea (still ${now.overall}).`);
+  else if (!prev) lines.push(`First read: ${now.overall} of 100. ${now.overall >= threshold ? "That is enough to publish." : `It needs ${threshold} to publish.`}`);
   else if (d.overall > 0) {
     const best = now.parts.reduce((b, p) => (d[p.id] > d[b.id] ? p : b), now.parts[0]);
     lines.push(`Up ${d.overall} to ${now.overall} - ${best.label.toLowerCase()} got stronger.`);
   } else lines.push(`Still at ${now.overall}. That did not add anything the benchmarks can see yet.`);
 
   if (now.sameAs) lines.push(`Something close is already raised: “${now.sameAs.title}”. You can co-sign it instead, or say what is different about yours.`);
-  const w = weakest(now);
-  if (w) lines.push(w.missing[0]);
+  // Asked the same thing last time and nothing moved: do not just repeat it - point at the answers.
+  if (w && again) lines.push(`I still need this: ${lowerFirst(w.missing[0])}${offers ? " Pick a suggested answer below and edit it, or write your own." : ""}`);
+  else if (w) lines.push(w.missing[0] + (offers && !prev ? " There are suggested answers below to start from." : ""));
   else if (now.overall >= threshold) lines.push(`Ready when you are - publish it and ${SITE.name} routes it to the person who can decide.`);
   return lines.join(" ");
 }

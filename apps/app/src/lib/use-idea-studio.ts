@@ -7,19 +7,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { BenchmarkId, BenchmarkPart } from "@/features/ideas/benchmarks";
 import { canPublish, DEFAULT_PUBLISH_THRESHOLD } from "@/features/ideas/benchmarks";
 import type { KnownCase } from "@/features/evaluate";
+import type { Reply } from "@/features/ideas/replies";
 import type { DraftSummary, DraftView } from "@/features/ideas/drafts";
 import { ideaFromTurns } from "@/features/ideas/coach";
 import { localDrafts } from "@/lib/idea-drafts";
 import {
-  createIdeaDraftAction, discardIdeaDraftAction, getIdeaDraftAction, listIdeaDraftsAction, publishIdeaDraftAction, saveIdeaDraftAction,
+  createIdeaDraftAction, discardIdeaDraftAction, getIdeaDraftAction, ideaRepliesAction, listIdeaDraftsAction, publishIdeaDraftAction, saveIdeaDraftAction,
 } from "@/server/actions/ideas";
 
 export type Delta = Record<BenchmarkId, number> & { overall: number };
-export type Live = { parts: BenchmarkPart[]; overall: number; delta: Delta | null; sameAs: KnownCase | null };
+export type Live = { parts: BenchmarkPart[]; overall: number; delta: Delta | null; sameAs: KnownCase | null; replies: Reply[] };
 export type Sending = { text: string; reply: string } | null;
 export type Meta = { title?: string; affected?: string[]; attachments?: number };
 
-type ScoresEvent = { overall: number; parts: BenchmarkPart[]; sameAs: KnownCase | null; threshold: number; delta: Delta | null };
+type ScoresEvent = { overall: number; parts: BenchmarkPart[]; sameAs: KnownCase | null; threshold: number; delta: Delta | null; replies?: Reply[] };
 
 export function useIdeaStudio(slug: string, serverMode: boolean) {
   const [drafts, setDrafts] = useState<DraftSummary[]>([]);
@@ -30,6 +31,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const abort = useRef<AbortController | null>(null);
+  const opened = useRef<string | null>(null); // the draft last opened, so a slow answer for another one is dropped
 
   // The drafts list, from the server or this browser. Always async, so an effect can call it.
   const fetchList = useCallback(async (): Promise<{ drafts: DraftSummary[]; threshold: number | null } | null> => {
@@ -49,18 +51,25 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
     return () => { on = false; };
   }, [fetchList]);
 
-  const fromView = (d: DraftView | null): Live | null => (d && d.scores.length ? { parts: d.scores, overall: d.overall, delta: null, sameAs: null } : null);
+  const fromView = (d: DraftView | null): Live | null => (d && d.scores.length ? { parts: d.scores, overall: d.overall, delta: null, sameAs: null, replies: [] } : null);
 
   const open = useCallback(async (id: string) => {
     abort.current?.abort();
     setError(""); setSending(null);
+    opened.current = id;
     const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(slug, id);
+    if (opened.current !== id) return;
     setDraft(d); setLive(fromView(d));
-    if (!d) setError("That draft could not be opened.");
+    if (!d) { setError("That draft could not be opened."); return; }
+    // The suggested answers are worked out on the server, where the company's goals and routes are.
+    if (d.status !== "draft") return;
+    const r = await ideaRepliesAction({ slug, id: d.id, turns: d.turns.map(({ role, text }) => ({ role, text })), affected: d.affected, attachments: d.attachments });
+    if (r.ok && opened.current === id) setLive((l) => (l ? { ...l, replies: r.replies } : l));
   }, [slug, serverMode]);
 
   const startNew = useCallback(() => {
     abort.current?.abort();
+    opened.current = null;
     setDraft(null); setLive(null); setSending(null); setError("");
   }, []);
 
@@ -108,7 +117,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
           if (event === "scores") {
             scores = data as unknown as ScoresEvent;
             setThreshold(scores.threshold);
-            setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs });
+            setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs, replies: scores.replies ?? [] });
           } else if (event === "text") {
             reply = String(data.text ?? "");
             setSending((s) => (s ? { ...s, reply } : s));
