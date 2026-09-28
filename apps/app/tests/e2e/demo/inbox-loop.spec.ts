@@ -38,7 +38,8 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
     // Confirm stays a hint until there is a question to send.
     await expect(sheet(page).getByRole("button", { name: "Type the question" })).toBeVisible();
     await confirmSheet(page, "Which shift - early or late?", "Send the question");
-    await expect(page.getByText(/Waiting for .+ to answer · clock paused at 0 d\./)).toBeVisible();
+    // The inbox detail (#102) says "Waiting for <who> · clock paused at 0 d" under "Your question is out".
+    await expect(page.getByText(/Waiting for .+ · clock paused at 0 d/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Yes, do it" })).toHaveCount(0);
   });
 
