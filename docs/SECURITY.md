@@ -64,9 +64,35 @@ HSTS, `nosniff` and a referrer policy.
 
 ## Ongoing
 
-- `npm audit` in CI and Dependabot alerts on. Today's 4 "high" findings sit in Prisma's CLI tooling
-  (`mysql2`, `deepmerge-ts`), not in the runtime; `npm audit fix --force` would downgrade Prisma to
-  v6 - wait for a Prisma release instead.
-- `LOGIN_DEMO_FILL` / `ADMIN_DEMO_FILL` only on demo boxes. `/admin/connections` flags both.
+- **In CI:**
+  - `npm audit --omit=dev --audit-level=high` fails a PR on high or critical findings. On 28 Sep
+    2026 there were none. The old findings in Prisma's CLI tooling (`mysql2`, `deepmerge-ts`) are
+    pinned away by `overrides` in the root `package.json`.
+  - Dependabot opens weekly update PRs.
+  - Trivy scans the app image before it's pushed. A fixable HIGH/CRITICAL finding stops the
+    release.
+- **Demo shortcuts:** `LOGIN_DEMO_FILL` only on demo stages, `ADMIN_DEMO_FILL` only on demo boxes.
+  `/admin/connections` flags both. Company stacks (`stack/`) never pass `ADMIN_DEMO_FILL` at all.
 - Anything published by Docker on a laptop binds to `127.0.0.1`, never all interfaces.
 - A pentest by an outside firm before `live`.
+
+## Checked and closed
+
+- **`uploads/` in the git history** (24 Sep audit; commits `e8c110b`..`d8ebf99`, public repo).
+  Deleted from the tree on 14 Sep, still in history. Checked on 28 Sep 2026:
+  - Two phone screenshots of Pinterest/Dribbble design inspiration, one of them committed twice.
+  - A hand-drawn concept diagram.
+  - A Miro stock template.
+  - A whiteboard photo from a brainstorm.
+  - `skunk-works-model.md`.
+
+  **No personal data:** no people, faces, names or customer screens. The only business detail is
+  one company named on the whiteboard as a possible target customer. It isn't repeated here on
+  purpose, and it appears nowhere else in the repo. Decision (Kevin): **no history rewrite.** A rewrite would change every commit
+  hash, force re-clones and need GitHub support to purge caches, for one name on a whiteboard photo
+  that has been public since 10 Sep. `uploads/` is gitignored, and CI's guard blocks images under it, so it can't
+  happen again.
+- **On-demand TLS** (`ops/caddy/Caddyfile.ondemand`, `/api/tls-check`): removed in #90. The
+  endpoint told anyone which companies exist.
+- **n8n encryption key:** each company stack generates its own (`stack/install.sh`), and backups
+  include it (`stack/backup.sh`, #87).
