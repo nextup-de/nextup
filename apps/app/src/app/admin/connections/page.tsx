@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
 import { connectionChecks } from "@/features/admin/connections";
-import { adminBase, adminScope, type Tone } from "@/features/admin/nav";
+import { adminBase, adminScope } from "@/features/admin/nav";
 import { describeEnvironment } from "@/features/admin/environment";
 import { DatabaseCard } from "@/components/admin/DatabaseCard";
 import { Automation } from "@/components/admin/Automation";
