@@ -6,6 +6,7 @@
 #   * * * * * ~/nextup/stack/provision/agent.sh >> ~/nextup/provision/agent.log 2>&1
 #
 #   GET  $ADMIN_URL/api/provision/next        -> 204 (nothing to do) or one job, key=value lines
+#   POST $ADMIN_URL/api/provision/jobs/<id>/progress  <- while it works: the step and the log so far
 #   POST $ADMIN_URL/api/provision/jobs/<id>   <- how it went, the scrubbed log, the stack's passwords
 #
 # Config: ~/nextup/provision/.env (mode 600), read line by line (never sourced):
@@ -124,6 +125,28 @@ report() {  # status (done|failed|needs_nginx)
 }
 fail() { echo "!! $*" >> "$log"; report failed; exit 1; }
 
+# Where the job is, with the log so far, so admin's company page shows the setup as it happens.
+# Best effort: an older admin answers 404 and the job goes on. Never carries a password.
+step=""
+progress() {  # step: checks | install | health | secrets | nginx
+  step="$1"
+  printf '{"step":"%s","log_b64":"%s"}\n' "$step" "$(scrub < "$log" | tail -c 60000 | base64 | tr -d '\n')" > "$work/progress.json"
+  curl_admin --max-time 10 -o /dev/null -H 'Content-Type: application/json' --data-binary @"$work/progress.json" \
+    "$ADMIN_URL/api/provision/jobs/$id/progress" 2>/dev/null || true
+}
+# Like run(), but posts the log every 5 s while the command works (docker pulls take minutes).
+run_watched() {
+  echo "\$ ${*//$ops_token/[token]}" >> "$log"
+  "$@" >> "$log" 2>&1 < /dev/null &
+  local pid=$! rc=0
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep 5
+    if kill -0 "$pid" 2>/dev/null; then progress "$step"; fi
+  done
+  wait "$pid" || rc=$?
+  return "$rc"
+}
+
 [[ "$action" =~ ^(create|credentials|restart|stop|purge)$ ]] || fail "action '$action' is not allowed"
 [[ "$slug" =~ ^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$ ]] || fail "bad slug"
 case "$RESERVED" in *" $slug "*) fail "'$slug' is reserved" ;; esac
@@ -207,6 +230,7 @@ run() { echo "\$ ${*//$ops_token/[token]}" >> "$log"; "$@" >> "$log" 2>&1 < /dev
 
 case "$action" in
   create)
+    progress checks
     if [ -f "$env_file" ]; then
       # A retry of a create that got this far before: same port or nothing.
       [ "$(box_port)" = "$port" ] || fail "$slug is already installed with another port ($(box_port))"
@@ -220,11 +244,15 @@ case "$action" in
     [[ "$ops_token" =~ ^nxs_[A-Za-z0-9_-]{20,100}$ ]] || fail "the job carries no ticket token"
     mkdir -p "$dir"
     [ -f "$conf" ] || printf 'PORT=%s\nSTAGE=%s\n' "$port" "$stage" > "$conf"
-    NEXTUP_OPS_TOKEN="$ops_token" run "$stack/nginx/add-stack.sh" "$slug" "$port" "$stage" \
+    progress install
+    NEXTUP_OPS_TOKEN="$ops_token" run_watched "$stack/nginx/add-stack.sh" "$slug" "$port" "$stage" \
       --images "$NEXTUP_IMAGES" --name "$name" --ops-url "$OPS_PUBLIC_URL" || fail "add-stack.sh failed"
+    progress health
     health || fail "the app does not answer on 127.0.0.1:$port"
     echo "The app answers on 127.0.0.1:$port." >> "$log"
+    progress secrets
     collect_secrets
+    progress nginx
     if nginx_add; then report done; else report needs_nginx; fi
     ;;
 
@@ -239,9 +267,13 @@ case "$action" in
     [ -f "$env_file" ] || fail "$slug is not installed on this box"
     [ "$(box_port)" = "$port" ] || fail "the box has $slug on port $(box_port), admin says $port"
     [ -f "$conf" ] && sed -i '/^STOPPED=/d' "$conf"
-    run "$stack/nginx/add-stack.sh" "$slug" "$port" "$(box_stage)" || fail "add-stack.sh failed"
+    progress install
+    run_watched "$stack/nginx/add-stack.sh" "$slug" "$port" "$(box_stage)" || fail "add-stack.sh failed"
+    progress health
     health || fail "the app does not answer on 127.0.0.1:$port"
+    progress secrets
     collect_secrets
+    progress nginx
     if nginx_serves || nginx_add; then report done; else report needs_nginx; fi
     ;;
 
