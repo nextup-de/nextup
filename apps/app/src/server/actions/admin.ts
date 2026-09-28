@@ -24,15 +24,13 @@ import {
   type NewCompany,
   type NewPerson,
 } from "@/features/tenant/create";
-import { databaseOutage, getDb, hasDatabase, orDemo, reconnectDatabase } from "@/lib/db/client";
-import { automationFor, raiseCountFor, raisesFor } from "@/lib/db/automation";
-import { databaseFacts, type DatabaseFacts } from "@/lib/db/health";
+import { databaseOutage, getDb, hasDatabase } from "@/lib/db/client";
 import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
 import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
 import { replaceKnowledge } from "@/lib/db/knowledge";
 import { createToken } from "@/lib/db/tokens";
-import { summarise, type AutomationReport, type NoticeFacts } from "@/features/integrations/automation";
-import { classify, type AutomationTaskView } from "@/features/integrations/tasks";
+import type { AutomationReport } from "@/features/integrations/automation";
+import type { AutomationTaskView } from "@/features/integrations/tasks";
 import { buildRaisedNotice } from "@/features/cases/notice";
 import { companyBaseUrl, deliverRaisedNotice } from "@/server/case-notice";
 import { companySeed } from "@/lib/db/companies";
@@ -42,6 +40,7 @@ import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { readEdit, readReply, validateEdit, validateReply, type Reply, type ReplyVia } from "@/features/admin/requests";
 import { sendMail, type MailStatus } from "@/server/mail";
 import { secureCookies } from "@/server/issue-session";
+import { databaseSnapshot, noticeTasks, noticesSnapshot } from "@/server/connections";
 import { clientKey, forgive, throttle } from "@/server/throttle";
 import type { Role } from "@/config/roles";
 
@@ -458,87 +457,14 @@ export async function deletePilotRequestAction(_prev: DeleteRequestState, form: 
 
 /** Takes the relay status rather than checking it again - adminContext already asked once. */
 export async function automationReport(mail: Pick<MailStatus, "configured" | "reachable" | "target">): Promise<AutomationReport | null> {
-  if (!(await isAdmin()) || !hasDatabase()) return null;
-
-  const companies = await getDb().company.findMany({
-    orderBy: { createdAt: "desc" },
-    select: { id: true, slug: true, name: true },
-  });
-  const [rows, raises] = await Promise.all([
-    automationFor(companies),
-    raiseCountFor(companies.map((c) => c.id)),
-  ]);
-
-  const facts: NoticeFacts = { configured: mail.configured, reachable: mail.reachable, target: mail.target };
-  return { facts, companies: rows, summary: summarise(facts, rows, raises) };
+  if (!(await isAdmin())) return null;
+  return noticesSnapshot(mail);
 }
 
-/**
- * One timestamp, rendered on the server in a zone that does not depend on where it runs. The
- * container is UTC and a browser is not, so letting a client component format this is a
- * hydration mismatch - see AutomationTaskView.
- */
-function stamp(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: process.env.TZ || "Europe/Zurich",
-  });
-}
-
-/**
- * Every raise and whether its owner was told, newest first.
- *
- * The owner is resolved with buildRaisedNotice - the same function the real notice uses - so this
- * page cannot disagree with what was actually sent about who owns a route.
- */
+/** Every raise and whether its owner was told, newest first (server/connections.ts). */
 export async function automationTasks(limit = 25): Promise<AutomationTaskView[]> {
-  if (!(await isAdmin()) || !hasDatabase()) return [];
-
-  const companies = await getDb().company.findMany({
-    select: { id: true, slug: true, name: true, demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
-  });
-  if (companies.length === 0) return [];
-
-  const byId = new Map(companies.map((c) => [c.id, c]));
-  const seeds = new Map(await Promise.all(companies.map(async (c) => [c.id, await companySeed(c)] as const)));
-  const raises = await raisesFor(companies.map((c) => c.id), limit);
-  const now = Date.now();
-
-  return raises.map((r) => {
-    const company = byId.get(r.companyId);
-    const payload = (r.payload ?? {}) as EventPayload;
-    const notice = company
-      ? buildRaisedNotice({
-          slug: company.slug,
-          eventId: r.eventId,
-          caseId: r.caseId ?? "",
-          payload,
-          seed: seeds.get(company.id)!,
-          people: company.users,
-          day: company.demoDay,
-          baseUrl: companyBaseUrl(company.slug),
-        })
-      : null;
-
-    const task = classify(
-      {
-        eventId: r.eventId,
-        slug: company?.slug ?? "",
-        companyName: company?.name ?? "",
-        caseId: r.caseId ?? "",
-        title: payload.title ?? "Untitled",
-        ownerName: notice?.route.ownerName ?? null,
-        ownerEmail: notice?.route.ownerEmail ?? null,
-        raisedAt: r.raisedAt,
-        noticeAt: r.noticeAt,
-      },
-      now,
-    );
-    return { ...task, raisedLabel: stamp(r.raisedAt) };
-  });
+  if (!(await isAdmin())) return [];
+  return noticeTasks(limit);
 }
 
 export type RetryState = { eventId?: string; ok?: boolean; error?: string };
@@ -591,27 +517,12 @@ export async function retryNoticeAction(_prev: RetryState, form: FormData): Prom
 
 // ── Database ─────────────────────────────────────────────────────────────────
 
-/**
- * What Postgres says about itself. Never throws: if the read fails mid-flight the page shows the
- * "not answering" state, which is the honest answer and the one the card exists for.
- */
+/** What Postgres says about itself (server/connections.ts). Signed out, only whether it is set. */
 export async function databaseReport(): Promise<DatabaseReport> {
-  const configured = Boolean(process.env.DATABASE_URL);
   if (!(await isAdmin())) {
-    return describeDatabase({ configured, outage: databaseOutage(), facts: null });
+    return describeDatabase({ configured: Boolean(process.env.DATABASE_URL), outage: databaseOutage(), facts: null });
   }
-
-  // Down? Ask again now rather than wait for the background retry: the page polls while the
-  // database is off (DatabaseCard), so this is what turns "Postgres is back" into live data.
-  if (!hasDatabase()) await reconnectDatabase();
-
-  // orDemo, not a bare try/catch: a connection error here must also FLIP the mode flag, because
-  // that is what makes hasDatabase() false for the rest of this render and sends the page down
-  // the demo path instead of throwing a 500 at a reader who only wanted to know what was wrong.
-  const facts = hasDatabase()
-    ? await orDemo<DatabaseFacts | null>(() => databaseFacts(), () => null)
-    : null;
-  return describeDatabase({ configured, outage: databaseOutage(), facts });
+  return databaseSnapshot();
 }
 
 // ── Managing a company ───────────────────────────────────────────────────────
