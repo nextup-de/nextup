@@ -35,11 +35,16 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
 1. The author writes a message. `POST /api/[company]/ideas/turn` rebuilds the idea from all of the
    author's messages (`ideaFromTurns` - the coach's words are never part of the idea), benchmarks it
    on the server, and streams `scores`, then the coach's `text`, then `done`.
-2. The coach (`features/ideas/coach.ts`) says what got better and asks **one** challenging question
-   aimed at the weakest bar. With a model (Bedrock, only where the assistant gate allows it) the
+2. The coach (`features/ideas/coach.ts`) answers in two or three short paragraphs: what the
+   benchmarks can already see and what they cannot (from the bars' `found` / `missing`), then
+   **one** challenging question aimed at the weakest bar and, in a sentence, why the person who
+   decides will ask it. With a model (Bedrock, only where the assistant gate allows it) the
    reply goes through the assistant's pipeline - redaction, classification gate, tools, answer
-   check - in coach mode (`PromptInput.coach`); the model is told the numbers are not its to change.
-   Without one, `coachMock` answers from the bars' `missing` hints. Prompt version `idea-coach-v1`.
+   check - in coach mode (`PromptInput.coach`); the model is told the numbers are not its to change
+   and gets the same two-paragraph shape. Without one, `coachMock` answers. Prompt version `idea-coach-v1`.
+   The suggested answers under the coach (`features/ideas/replies.ts`) are whole sentences with a
+   figure and where it comes from, so the demo reads like a real exchange; each is re-scored before
+   it is shown.
 3. Every turn is kept: server mode in `IdeaDraft` / `IdeaTurn`, the local demo in this browser's
    localStorage (`src/lib/idea-drafts.ts`, same shapes).
 4. At the company's threshold (`CompanyConfig.publishThreshold`, default 70, set on
