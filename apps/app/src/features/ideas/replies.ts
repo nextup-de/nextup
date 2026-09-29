@@ -25,20 +25,24 @@ function candidates(idea: IdeaInput, now: Benchmark, ctx: BenchmarkContext): { i
   const about = idea.text + " " + (near ? near.type + " " + near.keys.join(" ") : "");
   const goals = byOverlap(about, ctx.goals, (g) => g.goal + " " + g.keys.join(" "));
   const has = (id: BenchmarkId, found: string) => now.parts.some((p) => p.id === id && p.found.some((f) => f.startsWith(found)));
-  if (!has("fit", "Serves")) for (const g of goals.slice(0, 2)) out.push({ id: "fit", text: `It serves our goal “${g.goal}”.` });
-  out.push({ id: "fit", text: "The number that moves: about 2 hours per week we lose on this today." });
+  const spend = Math.round(ctx.spendLimitEur * 0.4).toLocaleString("en");
 
-  out.push({ id: "impact", text: "It would save about 30 minutes per shift, for every shift in our team." });
-  out.push({ id: "impact", text: "It helps the whole team, not just me." });
+  // Whole answers, the way a colleague would actually write them: a claim, the figure behind it,
+  // and where the figure comes from - each still carries the facts the benchmarks check for.
+  if (!has("fit", "Serves")) for (const g of goals.slice(0, 2)) out.push({ id: "fit", text: `It serves our goal “${g.goal}” - that is the number my team lead reports on every month, and this is one of the things that quietly works against it today.` });
+  out.push({ id: "fit", text: "The number that moves is the time we lose on this today: roughly 2 hours per week across the team, spread over small waits that nobody measures because each one is only a few minutes." });
+
+  out.push({ id: "impact", text: "In practice it would save about 30 minutes per shift, and since every shift on the line runs into the same thing, that adds up to roughly 10 hours a week for the whole team - I counted it over the last two weeks." });
+  out.push({ id: "impact", text: "It is not just my station: every shift and both lines run into the same problem, so the whole team would work differently afterwards, and the new hires would not have to learn the workaround at all." });
 
   // The routes closest to the idea, named by what they own (their titles carry their own keywords).
   const routes = byOverlap(about, ctx.routes, (r) => r.type + " " + r.keys.join(" "));
-  if (!has("feasibility", "Decided by")) for (const r of routes.slice(0, 2)) out.push({ id: "feasibility", text: `The owner of “${r.type}” would decide this.` });
+  if (!has("feasibility", "Decided by")) for (const r of routes.slice(0, 2)) out.push({ id: "feasibility", text: `The owner of “${r.type}” would decide this; nothing outside their area has to change for a first version, so it should not need anyone above them.` });
   const cost = now.parts.find((p) => p.id === "feasibility")?.missing.some((m) => m.includes("cost"));
-  if (cost) out.push({ id: "feasibility", text: `It would cost roughly €${Math.round(ctx.spendLimitEur * 0.4).toLocaleString("en")} - within team authority.` });
-  out.push({ id: "feasibility", text: "First step: a one-week pilot with one team, then we decide on the rollout." });
+  if (cost) out.push({ id: "feasibility", text: `It would cost roughly €${spend} for the first version, which is within team authority - so the team lead can decide it without a sign-off from controlling, and we only spend more if the pilot holds up.` });
+  out.push({ id: "feasibility", text: "First step: a one-week pilot with one team on one line, with the old way kept as a fallback, so nobody is stuck if it does not work; after that week we compare the two and decide on the rollout together." });
 
-  out.push({ id: "clarity", text: "It matters because today we lose time on this every week, and it avoids the same workaround again and again." });
+  out.push({ id: "clarity", text: "It matters because today we lose time on this every single week, and each time we build the same workaround again instead of fixing it once - the waiting is what people complain about most, and it never gets written down anywhere." });
   return out;
 }
 

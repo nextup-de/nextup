@@ -10,9 +10,9 @@ import { BenchmarkCard } from "./BenchmarkCard";
 import styles from "./IdeaStudio.module.css";
 
 const STARTERS = [
-  "Reserve the endurance rig one day a week for our own experiments",
-  "Let team leads approve spare-part orders up to €500 on night shift",
-  "A shared changeover checklist on the line tablet instead of paper",
+  "Reserve the endurance rig one day a week for our own experiments - right now every slot goes to validation and our own tests wait weeks",
+  "Let team leads approve spare-part orders up to €500 on night shift, so the line does not stand until the day shift comes in",
+  "A shared changeover checklist on the line tablet instead of paper - every shift fills the same steps by hand and the sheet is never where you need it",
 ];
 const LEGEND: { id: keyof typeof BENCHMARK_LABEL; text: string }[] = [
   { id: "fit", text: "Serves a company goal and says which number moves." },
