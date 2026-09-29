@@ -3,7 +3,7 @@
 
 .bar {
   position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
-  height: 60px; padding: 0 var(--nh-page-x); background: rgb(255 255 255 / 0.62); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid rgb(0 0 0 / 0.06);
+  height: 56px; padding: 0 var(--nh-page-x); background: rgb(255 255 255 / 0.62); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid rgb(0 0 0 / 0.06);
 }
 .brand { display: flex; align-items: center; justify-self: start; margin-left: calc(16px - var(--nh-page-x)); } /* the wordmark sits in the corner, 16px in, while the content keeps the page gutter */
 /* The wordmark: nextup-logo-blue.png as a mask, the colour painted underneath. The height sets its width;
@@ -26,7 +26,7 @@
 .navItem[data-active="true"] { color: #fff; transition-delay: 0.08s; } /* the text turns white as the thumb arrives */
 .navItem:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 
-.right { position: relative; justify-self: end; display: flex; align-items: center; }
+.right { position: relative; justify-self: end; display: flex; align-items: center; margin-right: calc(16px - var(--nh-page-x)); }
 .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--nh-ink); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--nh-mono); font-size: 12px; cursor: pointer; border: 0; padding: 0; outline-offset: 2px; }
 .avatar[data-open="true"] { outline: 2px solid var(--nh-brand); }
 
@@ -56,6 +56,7 @@
 
 @media (max-width: 760px) {
   .bar { grid-template-columns: auto 1fr auto; height: 56px; }
+  .right { margin-right: 0; }
   .content { padding-bottom: 16px; }
   .logo { height: 28px; }
   .nav { justify-self: center; }
