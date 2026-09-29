@@ -124,7 +124,41 @@ export type DashStage = "Sent" | "Read" | "Question" | "Approved" | "Declined" |
 export type DashRow = {
   id: string; kind: CaseKind; title: string; from: string; fromDept: string; mine: boolean; fresh: boolean;
   openDays: number; open: boolean; overdue: boolean; stage: DashStage; chain: string[]; escalated: boolean; affected: string[]; attachments: number; score: Score; sortDay: number;
+  step: number; status: OverviewStatus; clock: number; paused: boolean;
 };
+
+// ── the Overview (Claude Design handoff "Overview") ──
+// Five steps every case walks: raised, checked by the AI on the way in, on a lead's desk, decided,
+// in progress. `step` is the one it is on; 5 = all done (shipped). The status says whose move it
+// is - "move" only for the person who raised it, since the question is theirs to answer.
+export const OVERVIEW_STEPS = ["Raised", "AI check", "Team lead", "Decision", "In progress"] as const;
+export type OverviewStatus = "move" | "asked" | "replied" | "waiting" | "approved" | "declined" | "building" | "shipped";
+export type OverviewStep = { label: string; sub: string; tone: "done" | "now" | "todo" };
+
+export const overviewStep = (c: ReducedCase): number => (c.shipped ? 5 : c.building ? 4 : c.decided ? 3 : 2);
+
+export function overviewStatus(c: ReducedCase, mine: boolean): OverviewStatus {
+  if (c.shipped) return "shipped";
+  if (c.building) return "building";
+  if (c.decided) return c.decided.answer === "yes" ? "approved" : "declined";
+  if (c.status === "asked") return mine ? "move" : "asked";
+  return c.question?.answer ? "replied" : "waiting";
+}
+
+// The tracker under an opened case: one line per step, dates from the case's own history.
+export function overviewSteps(c: ReducedCase, f: DayFmt, mine: boolean): OverviewStep[] {
+  const at = overviewStep(c), dec = c.decided, b = c.building, sh = c.shipped;
+  const landed = c.escalated?.day ?? c.handed[c.handed.length - 1]?.day ?? c.raisedDay;
+  const read = c.read !== null ? "Read " + f(c.read) : null;
+  const subs = [
+    f(c.raisedDay),
+    "Passed · " + f(c.raisedDay),
+    at > 2 ? read ?? "Passed on" : c.status === "asked" ? (mine ? "Question for you" : "Question out") : read ?? "Since " + f(landed),
+    dec ? "Decided " + f(dec.day) : c.overdue ? "Overdue" : "Due " + f(c.dueDay),
+    sh ? "Shipped " + f(sh.day) : b ? "Since " + f(b.day) : dec?.answer === "yes" ? "Next" : "",
+  ];
+  return OVERVIEW_STEPS.map((label, i) => ({ label, sub: subs[i], tone: i < at ? "done" : i === at ? "now" : "todo" }));
+}
 
 // What the raise event carried beyond the case fields: who else is affected, how many screenshots,
 // and who the raiser lets see it (none = the old rule).
@@ -143,9 +177,11 @@ export function dashboardRow(c: ReducedCase, promiseDays: number, viewer: { name
     : c.status === "asked" ? "Question" : c.read !== null ? "Read" : "Sent";
   const chain = [c.handed.length ? c.handed[0].from : c.assignee, ...c.handed.map((h) => h.to)];
   if (c.escalated) chain.push(c.escalated.to);
+  const mine = c.from === viewer.name || c.from === viewer.handle;
   return {
-    id: c.id, kind: c.kind, title: c.title, from: c.from, fromDept: c.fromDept, mine: c.from === viewer.name || c.from === viewer.handle, fresh: !c.seed && c.age === 0,
+    id: c.id, kind: c.kind, title: c.title, from: c.from, fromDept: c.fromDept, mine, fresh: !c.seed && c.age === 0,
     openDays: c.age, open: c.open, overdue: c.overdue, stage, chain, escalated: !!c.escalated, affected, attachments,
     score: scoreCase({ ...c, affected: affected.length, evidence: attachments, updates }, promiseDays), sortDay: c.raisedDay,
+    step: overviewStep(c), status: overviewStatus(c, mine), clock: c.clock, paused: c.status === "asked",
   };
 }
