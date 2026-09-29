@@ -280,6 +280,7 @@ export type CaseFacts = {
   updates: number; // new information posted since (each one a re-evaluation)
   passTo: string; // who "Pass to" hands it to: the owner on the map, or my deputy
   history: string; // "From M. Roth, 3 Sept - ..." or "" - built by the page, it knows the calendar
+  side?: "desk" | "raiser"; // who reads it: the lead deciding (default), or the raiser - and anyone following it who does not decide (the dashboard)
 };
 
 const round5 = (n: number) => Math.max(10, Math.min(95, Math.round(n / 5) * 5));
@@ -322,11 +323,17 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
 
   const overall = scoreCase({ ...c, affected: n, evidence: f.attachments, updates: f.updates }, P);
   const ownerIsMe = !!route && route.owner.name === f.me;
-  const rec = !c.open ? "" : route && !ownerIsMe ? "hand" : c.upside ? "yes" : "ask";
-  const actions: Action[] = c.open
+  const raiser = f.side === "raiser", holder = c.escalated?.to ?? c.assignee, q = c.question;
+  const rec = !c.open || raiser ? "" : route && !ownerIsMe ? "hand" : c.upside ? "yes" : "ask";
+  const actions: Action[] = c.open && !raiser
     ? [{ key: "yes", label: "Yes, do it", live: true }, { key: "no", label: "No, and why", live: true }, { key: "hand", label: "Pass to " + f.passTo, live: true }, { key: "ask", label: "Ask a question", live: true }]
     : [];
-  const recText = rec === "hand" && route ? route.owner.name + " owns “" + route.type + "” on the routing map, so the decision is theirs. Passing it keeps the clock running for them, not for you."
+  const you = f.me === c.from; // the raiser side is also read by a lead following their people's cases
+  const recText = raiser ? (c.status === "asked" && q ? q.by + " asked " + (you ? "you" : c.from) + " a question. The clock is paused until " + (you ? "you answer." : "they answer.")
+      : c.decided ? c.decided.by + " answered “" + c.decided.answer + "”" + (c.decided.reason ? " — " + c.decided.reason : "") + "."
+      : !c.upside ? "The case does not say what it is worth yet. Adding that helps " + holder + " decide."
+      : "It is with " + holder + ", who owes you a yes, a no or a question.")
+    : rec === "hand" && route ? route.owner.name + " owns “" + route.type + "” on the routing map, so the decision is theirs. Passing it keeps the clock running for them, not for you."
     : rec === "yes" ? "It is on your desk, the upside is stated, and it is described well enough to act on."
     : rec === "ask" ? "The case does not say what it is worth yet. One question gets that before you decide, and pauses the clock while " + c.from + " answers."
     : c.status === "asked" ? "Waiting for the answer to your question." : "Nothing left to decide on this case.";
@@ -338,7 +345,7 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
     prompts: [
       { label: "Worth", text: c.upside || "Not estimated yet" },
       ...(c.reason ? [{ label: "Flagged as", text: c.reason }] : []),
-      { label: "Owner on the map", text: route ? (ownerIsMe ? "You" : route.owner.name) + " · " + route.type : "Nobody yet - you triage it" },
+      { label: "Owner on the map", text: route ? (ownerIsMe ? "You" : route.owner.name) + " · " + route.type : raiser ? "Nobody yet - the triage desk" : "Nobody yet - you triage it" },
       { label: "Open for", text: c.clock + " days" + (c.status === "asked" ? " · clock paused" : "") },
       ...(f.history ? [{ label: "History", text: f.history }] : []),
     ],
@@ -350,8 +357,9 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
     summary: (c.kind === "idea" ? "An idea" : "A problem") + " from " + c.fromDept + (c.reason ? ", flagged “" + c.reason + "”" : "") + ". The case score is " + overall.value + " / 100" + (overall.parts.length ? ": " + overall.parts.map((p) => p.label.toLowerCase()).join(", ") + "." : "."),
     lead: null, bars: null, after: null,
     actions, rec, recText,
-    next: rec === "hand" ? "Pass it to " + f.passTo + "." : rec === "yes" ? "Say yes; " + c.from + " hears it today." : rec === "ask" ? "Ask " + c.from + " what it is worth." : null,
-    by: !c.open ? null : due >= 0 ? "Within " + due + (due === 1 ? " day" : " days") + ", to keep the " + P + "-day promise" : "Now: " + -due + " days past the " + P + "-day promise",
+    next: raiser ? (!you ? null : c.status === "asked" && q ? "Answer " + q.by + "." : c.open && !c.upside ? "Add what it is worth as a detail." : null)
+      : rec === "hand" ? "Pass it to " + f.passTo + "." : rec === "yes" ? "Say yes; " + c.from + " hears it today." : rec === "ask" ? "Ask " + c.from + " what it is worth." : null,
+    by: !c.open ? null : raiser ? (due >= 0 ? "An answer is due within " + due + (due === 1 ? " day" : " days") : -due + " days past the " + P + "-day promise") : due >= 0 ? "Within " + due + (due === 1 ? " day" : " days") + ", to keep the " + P + "-day promise" : "Now: " + -due + " days past the " + P + "-day promise",
     timeline: null,
     questions: c.upside ? [] : ["What would it be worth if it were fixed?"],
     pattern: linked ? "Linked to the idea “" + linked.title + "”." : "No clear pattern with other cases yet.",

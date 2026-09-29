@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { badgeTone, briefFor, briefForCase, numberBlocks, personFor, SCORE_LABELS, shortFileName, tagTone, type Block, type Source } from "@/features/ideas/brief";
 import { BRIEFS } from "@/features/ideas/brief-demo";
 import { SEED } from "@/features/demo/seed";
-import { emptyLog } from "@/features/cases/events";
+import { appendEvent, emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 
 const ctx = { people: SEED.people, depts: SEED.depts, ideas: SEED.ideas };
@@ -116,6 +116,18 @@ describe("briefForCase", () => {
     const three = briefForCase(caseOf("c1"), ctx, { ...facts, affected: ["S. Dahl", "J. Klein", "J. Schmidt"] });
     expect(three.scores[4].value).toBeGreaterThan(one);
     expect(three.people.map((p) => p.name)).toEqual(["S. Dahl", "J. Klein", "J. Schmidt"]);
+  });
+  it("read by the person who raised it: no decisions, and the advice speaks to them", () => {
+    const c = caseOf("c3");
+    const b = briefForCase(c, ctx, { ...facts, me: c.from, side: "raiser" });
+    expect(b.actions).toEqual([]);
+    expect(b.rec).toBe("");
+    expect(b.recText).toContain(c.assignee);
+    expect(b.recText).not.toContain("your desk");
+    const asked = reduce(SEED, appendEvent(emptyLog(), { type: "case.asked", actor: "T. Vogel", target: "c3", payload: { text: "Which six?" } })).cases.find((x) => x.id === "c3")!;
+    const qb = briefForCase(asked, ctx, { ...facts, me: c.from, side: "raiser" });
+    expect(qb.recText).toBe("T. Vogel asked you a question. The clock is paused until you answer.");
+    expect(qb.next).toBe("Answer T. Vogel.");
   });
 });
 
