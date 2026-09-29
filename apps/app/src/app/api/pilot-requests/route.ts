@@ -1,6 +1,6 @@
 // POST /api/pilot-requests - the public site's /contact form lands here (docs/PLATFORM_PLAN.md).
 //
-// The site (nextup-landing, on Vercel) has no database, so it forwards each request with
+// The site (nextup-landing, its own container on the box) has no database, so it forwards each request with
 // `Authorization: Bearer <PILOT_INTAKE_TOKEN>` and the visitor's address in `x-visitor-address`.
 // Same checks as the in-app form (src/server/actions/pilot.ts): validate again, throttle per
 // visitor, save one PilotRequest row, which shows up in /admin -> Requests.
