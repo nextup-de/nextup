@@ -15,7 +15,7 @@ export const LEGAL = {
   city: "12435 Berlin",
   country: "Germany",
   email: "kevin.schmid@code.berlin", // TODO Kevin: confirm - assumed from the CODE address pattern
-  // Hosting provider + location, named in the privacy policy once the site is deployed (e.g. "Vercel Inc., EU region").
+  // Hosting provider + location, named in the privacy policy once the site is deployed (e.g. "Hetzner Online GmbH, Germany").
   // Leave null while it only runs locally.
   hosting: null as null | { provider: string; location: string; privacyUrl: string },
   updated: "2026-09-15", // last change to /privacy, ISO date
