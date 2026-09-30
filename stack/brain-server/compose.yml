@@ -49,10 +49,15 @@ services:
     logging: *logging
     security_opt:
       - no-new-privileges:true
-    entrypoint: ["sh", "-c", "ollama serve & pid=$$!; sleep 3; ollama pull \"$$BRAIN_MODEL\"; wait $$pid"]
+    # Serve, pull the model if it is missing, then load it once ("ok" is a throwaway prompt), so
+    # the first person after a restart does not wait for 7 GB to reach memory.
+    entrypoint: ["sh", "-c", "ollama serve & pid=$$!; sleep 3; ollama pull \"$$BRAIN_MODEL\"; ollama run \"$$BRAIN_MODEL\" ok >/dev/null 2>&1; wait $$pid"]
     environment:
       BRAIN_MODEL: ${BRAIN_MODEL:-mistral-nemo}
-      OLLAMA_KEEP_ALIVE: 24h
+      # Loaded for good, not for 24 h: loading takes longer than the app waits (BRAIN_TIMEOUT_MS,
+      # 30 s), so a day without ideas would cost the next person the AI. The memory is set aside
+      # for the model anyway.
+      OLLAMA_KEEP_ALIVE: "-1"
       # Ollama's default is 4096 tokens and it cuts longer prompts silently; 80 earlier items need more.
       OLLAMA_CONTEXT_LENGTH: "8192"
     volumes:
