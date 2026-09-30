@@ -20,6 +20,9 @@
 #                      from the environment variable NEXTUP_OPS_TOKEN, never from the command line
 #                      (ps and cron logs would show it). Both only on the first run.
 #   --n8n              also run n8n inside this stack (editor on 127.0.0.1)
+#   --brain            also run the brain and its model (services/brain): the AI proposes the
+#                      routing row and spots repeats. Also works on an existing instance: adds
+#                      the brain's lines to its .env once. BRAIN_MODEL in .env picks the model.
 #   --build            build the images from this repo first (until CI publishes them)
 #   --dir DIR          instance folder (default: stack/instances/SLUG, or $NEXTUP_INSTANCES/SLUG)
 #   --images TAG       run the images CI publishes to GHCR (docs: .github/workflows/images.yml):
@@ -33,7 +36,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-slug="" origin="" stage="demo" landing="" n8n=false build=false dir="" proxy_port="" images="" name="" ops_url=""
+slug="" origin="" stage="demo" landing="" n8n=false brain=false build=false dir="" proxy_port="" images="" name="" ops_url=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="$2"; shift 2 ;;
@@ -43,6 +46,7 @@ while [ $# -gt 0 ]; do
     --name) name="$2"; shift 2 ;;
     --ops-url) ops_url="${2%/}"; shift 2 ;;
     --n8n) n8n=true; shift ;;
+    --brain) brain=true; shift ;;
     --build) build=true; shift ;;
     --dir) dir="$2"; shift 2 ;;
     --behind-proxy) proxy_port="$2"; shift 2 ;;
@@ -171,10 +175,27 @@ ENV
   echo "Wrote $env_file with new secrets."
 fi
 
+# The brain, new or existing instance: its key and settings go in once, and its profile is added.
+if $brain && ! grep -q '^BRAIN_API_KEY=' "$env_file"; then
+  cat >> "$env_file" <<ENV
+
+# The brain (services/brain) - internal to this stack, called by the app only.
+BRAIN_URL=http://brain:8000
+BRAIN_API_KEY=$(openssl rand -hex 24)
+BRAIN_MODEL=mistral-nemo
+NEXTUP_BRAIN_IMAGE=nextup-brain:local
+ENV
+  sed -i -e 's/^COMPOSE_PROFILES=$/COMPOSE_PROFILES=brain/' -e '/^COMPOSE_PROFILES=.\{1,\}/{/brain/!s/$/,brain/;}' "$env_file"
+  echo "Added the brain to $env_file (model: mistral-nemo, pulled on first start)."
+fi
+
 if $build; then
   echo "Building images from $repo ..."
   docker build -q -f "$repo/ops/Dockerfile" --target build -t nextup-migrate:local "$repo" >/dev/null
   docker build -q -f "$repo/ops/Dockerfile" --target run -t nextup-app:local "$repo" >/dev/null
+  if grep -q '^BRAIN_API_KEY=' "$env_file"; then
+    docker build -q -t nextup-brain:local "$repo/services/brain" >/dev/null
+  fi
 fi
 
 if grep -q '^NEXTUP_APP_IMAGE=nextup-app:local$' "$env_file"; then

@@ -1,0 +1,205 @@
+{
+ "company": "Acme Maschinenbau GmbH",
+ "routes": [
+  {
+   "id": "r1",
+   "type": "Spend under €5k (parts, tools, consumables)",
+   "owner": "Team lead, 4-series, Production"
+  },
+  {
+   "id": "r2",
+   "type": "Test-rig or machine time",
+   "owner": "Engineering lead, Engineering"
+  },
+  {
+   "id": "r3",
+   "type": "Quality data, measurements, tolerances",
+   "owner": "Quality lead, Quality"
+  },
+  {
+   "id": "r4",
+   "type": "System access, logins, IT equipment",
+   "owner": "Engineering lead, Engineering"
+  },
+  {
+   "id": "r5",
+   "type": "Product change reaching the field",
+   "owner": "Quality lead, Quality"
+  },
+  {
+   "id": "r6",
+   "type": "Shift plan, staffing, overtime",
+   "owner": "Team lead, 4-series, Production"
+  },
+  {
+   "id": "r7",
+   "type": "Fixture, tooling or line layout",
+   "owner": "Team lead, 4-series, Production"
+  },
+  {
+   "id": "r8",
+   "type": "Paperwork done twice (forms, job sheets)",
+   "owner": "Quality lead, Quality"
+  }
+ ],
+ "known": [
+  {
+   "id": "c1",
+   "title": "Rework on the 4-series housing is back — new batch of castings",
+   "status": "open"
+  },
+  {
+   "id": "c2",
+   "title": "Night shift has no one who can sign a €300 parts order",
+   "status": "open"
+  },
+  {
+   "id": "c3",
+   "title": "Changeover sheet and MES ask for the same six numbers",
+   "status": "open"
+  },
+  {
+   "id": "c4",
+   "title": "Tolerance drift on station 7 — who owns the gauge calibration?",
+   "status": "open"
+  },
+  {
+   "id": "c5",
+   "title": "Two apprentices still have no MES login after four weeks",
+   "status": "open"
+  },
+  {
+   "id": "c6",
+   "title": "Can Line 3 borrow the endurance rig on Fridays?",
+   "status": "open"
+  },
+  {
+   "id": "c7",
+   "title": "Bundle new-hire access into one request",
+   "status": "shipped"
+  },
+  {
+   "id": "c8",
+   "title": "Stop double-entering job data on paper",
+   "status": "building"
+  },
+  {
+   "id": "p1",
+   "title": "Three approval steps for spend under €5k - A €400 sensor takes the same route as a €40k machine.",
+   "status": "known problem"
+  },
+  {
+   "id": "p2",
+   "title": "No slack: 97% of capacity is committed - Nobody has hours left to try anything new.",
+   "status": "known problem"
+  },
+  {
+   "id": "p3",
+   "title": "People who flag a risk get handed the fix - So the second time, they stay quiet.",
+   "status": "known problem"
+  },
+  {
+   "id": "p4",
+   "title": "Quality data lives in three systems - Nobody trusts a number they did not pull themselves.",
+   "status": "known problem"
+  },
+  {
+   "id": "p5",
+   "title": "Sales hears about product changes from customers - Engineering ships, nobody tells the field.",
+   "status": "known problem"
+  },
+  {
+   "id": "p6",
+   "title": "Test rig booked out six weeks ahead - Four ideas are waiting on one machine.",
+   "status": "known problem"
+  },
+  {
+   "id": "p7",
+   "title": "New hires wait five weeks for system access - Paid, onboarded, and unable to work.",
+   "status": "known problem"
+  }
+ ],
+ "baseline_keys": {
+  "r1": [
+   "spend",
+   "buy",
+   "order",
+   "purchase",
+   "sensor",
+   "part",
+   "budget",
+   "€",
+   "invoice",
+   "supplier"
+  ],
+  "r2": [
+   "rig",
+   "test",
+   "machine",
+   "booking",
+   "slot",
+   "validation",
+   "endurance"
+  ],
+  "r3": [
+   "quality",
+   "tolerance",
+   "measurement",
+   "mes",
+   "rework",
+   "scrap",
+   "drift",
+   "defect"
+  ],
+  "r4": [
+   "access",
+   "login",
+   "laptop",
+   "account",
+   "password",
+   "it ",
+   "software",
+   "system",
+   "vpn"
+  ],
+  "r5": [
+   "customer",
+   "firmware",
+   "change note",
+   "release",
+   "field",
+   "shipped",
+   "sales"
+  ],
+  "r6": [
+   "shift",
+   "overtime",
+   "staff",
+   "holiday",
+   "roster",
+   "capacity",
+   "hours",
+   "people"
+  ],
+  "r7": [
+   "fixture",
+   "tooling",
+   "layout",
+   "line",
+   "housing",
+   "jig",
+   "setup",
+   "changeover"
+  ],
+  "r8": [
+   "paper",
+   "form",
+   "twice",
+   "double",
+   "sheet",
+   "excel",
+   "report",
+   "manual"
+  ]
+ }
+}
