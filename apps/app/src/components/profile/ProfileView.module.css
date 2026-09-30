@@ -10,7 +10,7 @@
 .identityText { min-width: 0; flex: 1; }
 .nameLine { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .identity h2 { font-family: var(--nh-serif); font-size: 34px; font-weight: 400; line-height: 1.1; letter-spacing: -.025em; }
-.you { border-radius: 999px; background: #f2f2f7; padding: 4px 9px; color: #6e6e73; font-size: 11px; font-weight: 700; }
+.you { border-radius: 999px; background: #f2f2f7; padding: 4px 9px; color: #6e6e73; font-size: 12px; font-weight: 700; }
 .identity p { margin-top: 5px; color: #3a3a3c; font-size: 14px; }
 .affiliation { display: block; margin-top: 3px; color: #8e8e93; font-size: 12px; }
 .contact { display: inline-flex; align-items: center; gap: 18px; flex: none; height: 36px; padding: 0 15px; border-radius: 999px; background: #1c1c1e; color: #fff; font-size: 12px; font-weight: 600; }
@@ -40,7 +40,7 @@
 .workText { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .workText strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 600; }
 .workText small, .person small { color: #8e8e93; font-size: 12px; }
-.status { padding: 4px 9px; border-radius: 99px; background: #f2f2f7; color: #6e6e73; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.status { padding: 4px 9px; border-radius: 99px; background: #f2f2f7; color: #6e6e73; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .arrow { color: #8e8e93; }
 .empty { padding: 26px 22px; color: #8e8e93; font-size: 13px; }
 .myCases { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-radius: 16px; background: #fff; box-shadow: 0 6px 20px rgb(40 60 100 / .06); }
@@ -52,15 +52,15 @@
 .details { margin: 0; padding: 3px 22px 12px; }
 .details div { display: grid; gap: 2px; padding: 11px 0; border-top: 1px solid #f0f0f3; }
 .details div:first-child { border-top: 0; }
-.details dt { color: #8e8e93; font-size: 11px; }
+.details dt { color: #8e8e93; font-size: 12px; }
 .details dd { margin: 0; overflow-wrap: anywhere; font-size: 12.5px; font-weight: 600; }
 .details a { color: #007aff; }
 .person { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 9px 18px; border-top: 1px solid #f0f0f3; }
 .person:first-of-type { border-top: 0; }
-.personAvatar { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 50%; background: #e5e5ea; color: #6e6e73; font-size: 10px; font-weight: 600; }
+.personAvatar { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 50%; background: #e5e5ea; color: #6e6e73; font-size: 12px; font-weight: 600; }
 .person > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .person strong { font-size: 12px; font-weight: 600; }
 .person:hover strong { color: #007aff; }
 .person:last-child { margin-bottom: 8px; }
 @media (max-width: 800px) { .columns { grid-template-columns: 1fr; } .sideColumn { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .page { padding-bottom: 24px; } .pageHead { margin-bottom: 14px; } .pageHead h1 { font-size: 28px; } .company { display: none; } .identity { flex-wrap: wrap; min-height: 0; gap: 12px; padding: 20px; } .avatar { width: 62px; height: 62px; font-size: 17px; } .identityText { flex-basis: calc(100% - 74px); } .identity h2 { font-size: 26px; } .identity p { font-size: 12px; } .contact { margin-top: 4px; } .stats div { padding: 13px 12px; } .stats strong { font-size: 20px; } .stats span { font-size: 11px; } .columns { gap: 16px; margin-top: 16px; } .sideColumn { grid-template-columns: 1fr; gap: 16px; } .status { display: none; } }
+@media (max-width: 600px) { .page { padding-bottom: 24px; } .pageHead { margin-bottom: 14px; } .pageHead h1 { font-size: 28px; } .company { display: none; } .identity { flex-wrap: wrap; min-height: 0; gap: 12px; padding: 20px; } .avatar { width: 62px; height: 62px; font-size: 17px; } .identityText { flex-basis: calc(100% - 74px); } .identity h2 { font-size: 26px; } .identity p { font-size: 12px; } .contact { margin-top: 4px; } .stats div { padding: 13px 12px; } .stats strong { font-size: 20px; } .stats span { font-size: 12px; } .columns { gap: 16px; margin-top: 16px; } .sideColumn { grid-template-columns: 1fr; gap: 16px; } .status { display: none; } }
