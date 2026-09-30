@@ -70,6 +70,57 @@ events and says PASS (200) or FAIL with the app's error. It only reads, so it is
 
 First run, 28 Sep 2026: automation.sellux.ch → acme answered 200.
 
+## `events-pull.json`
+
+The starting point for any workflow that reacts to what happens in a company. It **polls**; the app
+never pushes. Every minute it asks `GET /api/<slug>/events?since=<cursor>`, remembers the cursor in
+the workflow's own static data, and emits **one item per new event**, oldest first, split by type.
+A Webhook trigger would need a hole in the login page in front of automation.sellux.ch
+(`stack/nginx/RUNBOOK.md`) and code in the app that does not exist; a poll needs neither.
+
+Each item looks like this - `target` is the case id, `payload` is what the event type carries
+(`src/features/cases/events.ts`):
+
+```json
+{ "slug": "acme", "apiBase": "https://acme.sellux.ch",
+  "seq": 4711, "id": "e_…", "when": "2026-09-29T09:12:03.000Z", "day": 3,
+  "type": "case.raised", "actor": "u_…", "target": "c_…", "payload": { "title": "…" } }
+```
+
+To build on it:
+
+1. Import it, open *Which company*, set `slug` and `apiBase`. One copy per company.
+2. Attach the `<slug>-nextup` credential to *Read events* (and to the write-back node if you use it).
+3. Add an output to *By event type* for each type you need, and hang your nodes off it. *Build from
+   here* is a placeholder on the `case.raised` branch - replace it.
+4. **Activate** the workflow. Static data - and with it the cursor - is only kept for an active
+   workflow; a manual *Execute workflow* always reads from `since=0`, which is fine for looking at
+   the shape of the data (the read is side-effect free).
+
+Two things to know:
+
+- The cursor advances when *One item per event* runs. If a node after it fails, those events are not
+  delivered a second time: set *Retry On Fail* on nodes that talk to the outside, or an Error Workflow.
+- *Write a note back (example)* is disabled. It shows the only way a workflow may change a case:
+  `POST /api/<slug>/events` with `case.commented { text }` or `case.handed { to, why? }`, an
+  `Idempotency-Key`, and the token's `events:write` scope. The note appears on the case timeline as
+  `system:n8n`. Nothing else is accepted, and `case.decided` never will be.
+
+### Links for building on automation.sellux.ch
+
+| What | Where |
+|---|---|
+| n8n editor | `https://automation.sellux.ch` - first the NextUp login page (user `nextup`, password from Kevin), then your own n8n account |
+| Test company | `https://acme.sellux.ch` - demo data, safe to write notes to |
+| Read the log by hand | `https://acme.sellux.ch/api/acme/events?since=0&limit=20` with `Authorization: Bearer <token>` |
+| Write back | `POST https://acme.sellux.ch/api/acme/events` - body and headers as in the disabled example node |
+| Token | `https://acme.sellux.ch/admin` → Companies → **API token** (Kevin issues it; scopes `events:read`, `events:write`). Store it in n8n as a Header Auth credential named `acme-nextup`, header `Authorization`, value `Bearer <token>` |
+| Contract | `docs/INTEGRATIONS.md` in this repo; the validation rules are in `src/features/integrations/index.ts` |
+| Workflows to import | `ops/n8n/connection-test.json` (run first), `ops/n8n/events-pull.json` (build on it), `ops/n8n/erp-knowledge-sync.json` |
+
+Run `connection-test.json` before anything else: a 200 there means the URL, the token and the scope
+are right, and every other failure is in the workflow itself.
+
 ## `erp-knowledge-sync.json`
 
 Feeds the raise-page assistant (`docs/ASSISTANT.md`). Nightly: read the customer's ERP export, map
