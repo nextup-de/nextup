@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from brain import main
-from brain.coach import MAX_HISTORY, PROMPT_VERSION, coach
+from brain.coach import MAX_HISTORY, PROMPT_VERSION, coach, not_you
 from brain.llm import LLMOutputError
 from brain.schemas import CoachIn
 from tests.conftest import FakeLLM
@@ -118,3 +118,13 @@ def test_coach_endpoint_and_key(monkeypatch, cbody):
         assert c.post("/v1/coach", json={**cbody, "extra": 1}, headers={"x-api-key": "s3cret"}).status_code == 422
     finally:
         del main.app.state.llm
+
+
+@pytest.mark.parametrize("said,shown", [
+    ("You've raised this issue before, and it's still a problem.", "This issue was raised before, and it's still a problem."),
+    ("You have already raised this before.", "This was raised before."),
+    ("Since you raised it before, what changed?", "Since this was raised before, what changed?"),
+    ("You raised a good point about the sheets.", "You raised a good point about the sheets."),
+])
+def test_earlier_items_are_not_the_employees(said, shown):
+    assert not_you(said) == shown

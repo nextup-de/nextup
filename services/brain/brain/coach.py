@@ -18,6 +18,14 @@ MAX_HISTORY = 12  # the latest turns only; the idea itself carries everything th
 # "72/100", "72 points", "score of 72": the numbers are the app's, never the model's.
 SCORE = re.compile(r"\b\d{1,3}\s*(/\s*100|points?\b)|\bscores?\s+(of\s+)?\d", re.I)
 
+# "You've raised this issue before": earlier items are almost always someone else's, and small
+# models keep writing it anyway - so it is reworded here rather than retried.
+YOU_RAISED = re.compile(r"\b([Yy])ou(?:'ve| have)?(?: already)? raised (?:this|that|it)( issue| idea| problem)?")
+
+
+def not_you(text: str) -> str:
+    return YOU_RAISED.sub(lambda m: ("T" if m.group(1) == "Y" else "t") + "his" + (m.group(2) or "") + " was raised", text)
+
 
 def _known(body: CoachIn) -> str:
     return "\n".join(f"- {k.id}: {k.title}" + (f" [{k.status}]" if k.status else "") for k in body.known) or "(none)"
@@ -91,8 +99,8 @@ def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
 
     ready = t.open_point == "none"
     return CoachOut(
-        open_point=t.open_point, earlier_id=t.earlier_id or None, note=t.note.strip(),
-        question="" if ready else t.question, why="" if ready else t.why.strip(),
+        open_point=t.open_point, earlier_id=t.earlier_id or None, note=not_you(t.note.strip()),
+        question="" if ready else not_you(t.question), why="" if ready else not_you(t.why.strip()),
         recommended="" if ready else t.recommended.strip(),
         model=llm.settings.llm_model, version=PROMPT_VERSION,
         ms=round((time.perf_counter() - started) * 1000),
