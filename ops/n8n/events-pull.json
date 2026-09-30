@@ -1,0 +1,345 @@
+{
+  "id": "nextupEventsPull",
+  "name": "NextUp — events pull",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "Every minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -820,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "slug",
+              "name": "slug",
+              "value": "acme",
+              "type": "string"
+            },
+            {
+              "id": "apiBase",
+              "name": "apiBase",
+              "value": "https://acme.sellux.ch",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d4000000-0000-4000-8000-000000000002",
+      "name": "Which company",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -600,
+        0
+      ],
+      "notes": "The company's public address from automation.sellux.ch; http://app:3000 from an n8n inside the company's own stack (install.sh --n8n). One copy of this workflow per company."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Where we got to last time. n8n keeps this per workflow, on the server, between runs -\n// but only for an ACTIVE workflow. A manual test run always starts from 0.\nconst store = $getWorkflowStaticData('global');\nconst item = $input.first().json;\nreturn [{ json: { ...item, since: Number(store.cursor ?? 0) } }];"
+      },
+      "id": "d4000000-0000-4000-8000-000000000003",
+      "name": "Last cursor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBase }}/api/{{ $json.slug }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "since",
+              "value": "={{ $json.since }}"
+            },
+            {
+              "name": "limit",
+              "value": "200"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d4000000-0000-4000-8000-000000000004",
+      "name": "Read events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        0
+      ],
+      "credentials": {},
+      "notes": "Credential <slug>-nextup (Header Auth: Authorization = Bearer <token>). Needs the events:read scope. 401 = token wrong, 403 = other company's token."
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per new event, oldest first, and remember how far we got.\n// If nothing is new the run ends here with no items, and nothing downstream fires.\nconst r = $input.first().json;\nconst store = $getWorkflowStaticData('global');\nconst who = $('Which company').first().json;\n\nconst events = Array.isArray(r.events) ? r.events : [];\nif (typeof r.cursor === 'number' && r.cursor > Number(store.cursor ?? 0)) {\n  store.cursor = r.cursor;\n}\n\nreturn events.map((e) => ({ json: {\n  slug: who.slug,\n  apiBase: who.apiBase,\n  seq: e.seq,\n  id: e.id,\n  ts: e.ts,\n  when: new Date(e.ts).toISOString(),\n  day: e.day,\n  type: e.type,\n  actor: e.actor,\n  target: e.target,\n  payload: e.payload ?? {},\n} }));"
+      },
+      "id": "d4000000-0000-4000-8000-000000000005",
+      "name": "One item per event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        0
+      ],
+      "notes": "The cursor moves as soon as this node runs. If a node after it fails, those events are not delivered again - set Retry On Fail on your nodes, or an Error Workflow."
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "raised",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "case.raised",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "case.raised"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "decided",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "case.decided",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "case.decided"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "handed",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "case.handed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "case.handed"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "everything else"
+        }
+      },
+      "id": "d4000000-0000-4000-8000-000000000006",
+      "name": "By event type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        280,
+        0
+      ],
+      "notes": "Add an output per type you care about. Types in the log: case.raised, case.read, case.decided, case.handed, case.asked, case.answered, case.override, case.affected, case.unaffected, case.commented, idea.cosigned, idea.uncosigned, idea.asked, idea.approved."
+    },
+    {
+      "parameters": {},
+      "id": "d4000000-0000-4000-8000-000000000007",
+      "name": "Build from here",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -120
+      ],
+      "notes": "Each item is one event: slug, apiBase, seq, id, when, day, type, actor, target (the case id), payload. Replace this node with Slack, mail, a document, whatever the event should cause."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.apiBase }}/api/{{ $json.slug }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "=events-pull:{{ $json.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'case.commented', target: $json.target, payload: { text: 'Seen by n8n.' } }) }}",
+        "options": {}
+      },
+      "id": "d4000000-0000-4000-8000-000000000008",
+      "name": "Write a note back (example)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        -120
+      ],
+      "disabled": true,
+      "credentials": {},
+      "notes": "Disabled on purpose - enable it once you want the case to show what n8n did. Same <slug>-nextup credential; needs events:write. Only case.commented { text } and case.handed { to, why? } are accepted, always as actor system:n8n. The Idempotency-Key makes a re-run a 200 { duplicate: true } with no second note."
+    }
+  ],
+  "connections": {
+    "Every minute": {
+      "main": [
+        [
+          {
+            "node": "Which company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Which company": {
+      "main": [
+        [
+          {
+            "node": "Last cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Last cursor": {
+      "main": [
+        [
+          {
+            "node": "Read events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read events": {
+      "main": [
+        [
+          {
+            "node": "One item per event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One item per event": {
+      "main": [
+        [
+          {
+            "node": "By event type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "By event type": {
+      "main": [
+        [
+          {
+            "node": "Build from here",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    "Build from here": {
+      "main": [
+        [
+          {
+            "node": "Write a note back (example)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "nextup-pilot"
+  },
+  "tags": [
+    {
+      "name": "nextup"
+    }
+  ]
+}
