@@ -97,6 +97,10 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # The brain (services/brain): proposes the routing row and spots repeats. Unset = the
+      # keyword router alone. install.sh --brain sets both.
+      BRAIN_URL: ${BRAIN_URL:-}
+      BRAIN_API_KEY: ${BRAIN_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -162,9 +166,50 @@ services:
       app:
         condition: service_healthy
 
+  # Optional (COMPOSE_PROFILES=...,brain; install.sh --brain). No ports: only this stack's app
+  # reaches it, by service name, with BRAIN_API_KEY. Stateless - the app sends the company's
+  # routing rows and earlier items with every request (services/brain/README.md).
+  brain:
+    <<: *hardening
+    image: ${NEXTUP_BRAIN_IMAGE:-nextup-brain:local}
+    profiles: [brain]
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    environment:
+      LLM_BASE_URL: ${BRAIN_LLM_URL:-http://ollama:11434/v1}
+      LLM_MODEL: ${BRAIN_MODEL:-mistral-nemo}
+      LLM_TIMEOUT: ${BRAIN_LLM_TIMEOUT:-120}
+      API_KEY: ${BRAIN_API_KEY:-}
+      LOG_CONTENT: "false"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  # The model the brain calls. Pulls BRAIN_MODEL once into its volume on first start (the only
+  # time it reaches the internet), then runs offline. No ports; CPU unless the host has a GPU.
+  # Point BRAIN_LLM_URL at a vLLM/Ollama elsewhere and leave this profile's ollama idle.
+  ollama:
+    <<: *hardening
+    image: ollama/ollama:latest
+    profiles: [brain]
+    entrypoint: ["sh", "-c", "ollama serve & pid=$$!; sleep 3; ollama pull \"$$BRAIN_MODEL\"; wait $$pid"]
+    environment:
+      BRAIN_MODEL: ${BRAIN_MODEL:-mistral-nemo}
+      OLLAMA_KEEP_ALIVE: 24h
+      # Ollama's default is 4096 tokens and it cuts longer prompts silently; 80 earlier items need more.
+      OLLAMA_CONTEXT_LENGTH: "8192"
+    volumes:
+      - ollamadata:/root/.ollama
+
 volumes:
   pgdata:
   caddydata:
   caddyconfig:
   maildata:
   n8ndata:
+  ollamadata:

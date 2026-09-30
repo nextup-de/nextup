@@ -65,6 +65,7 @@ stack/ctl.sh acme down -v     # stop and delete the database (asks for the slug 
 | `caddy` | the only published service. `SITE_ADDRESS=:80` for plain http, a host name for automatic https |
 | `mailpit` | profile `demo`: catches all mail, inbox on `127.0.0.1:8025` |
 | `n8n` | profile `n8n` (`--n8n`): editor on `127.0.0.1:5678`, own encryption key |
+| `brain` + `ollama` | profile `brain` (`--brain`): the routing AI and its model, no ports, app-only with `BRAIN_API_KEY`. See `services/brain/README.md` |
 
 ## Backups
 
