@@ -1,15 +1,38 @@
 # e2e (Playwright)
 
-Browser tests that click through the real app. Two suites:
+Browser tests that click through the real app. Two suites, and one check of a running stack:
 
 | Command | Needs | What it covers |
 |---|---|---|
 | `npm run e2e` | nothing | Demo mode (no database): the whole inbox loop, role homes, the deputy taking over a late case, every page at phone width. Safe for CI. |
 | `npm run e2e:db` | Postgres + `.env.local` with `ADMIN_ACCESS_CODE` | Creates a throwaway company in `/admin`, logs in with personal codes, runs the loop across real sessions, Settings -> Members, then deletes the company. |
+| `npm run e2e:live` | `INTERVIEW_URL` | The interview script against a stack that is already running - see below. |
 
-Both build the app and start it on their own port (`:3100` demo, `:3101` database), so your
+The first two build the app and start it on their own port (`:3100` demo, `:3101` database), so your
 `npm run dev` on `:3000` can keep running. The first run of the day takes a minute or two because
 of the build.
+
+## The interview script
+
+`tests/e2e/demo/interview.spec.ts` is the path we click through when we show NextUp to someone:
+the employee chats with the coach in the raise window (one line, the first read, two more
+messages), raises it and opens the case; the team leader, in a second window, finds it in the
+inbox and opens it; the manager ends on the overview. When the path we show changes, change this
+file in the same PR.
+
+It runs with the demo suite on every PR. `e2e:live` runs the same file against a deployed stack:
+
+```bash
+INTERVIEW_URL=https://acme.sellux.ch npm run e2e:live            # bash
+set INTERVIEW_URL=https://acme.sellux.ch&& npm run e2e:live      # cmd.exe
+```
+
+- The company must be demo-stage: the test signs in with the demo button and switches person in
+  the Dev panel.
+- It raises one idea. At the end it clicks "Delete added cases", but only when its own case is the
+  only added one - otherwise somebody prepared cases there, and the report says what it left.
+- The idea stays in the employee's "Your ideas" list: "Reset demo" does not clear that list yet.
+  So run it against `acme.sellux.ch` before a promote, not against the interview stack.
 
 ## First time
 
