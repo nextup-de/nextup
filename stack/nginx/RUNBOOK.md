@@ -92,9 +92,45 @@ The box hosts other sites, so the CI key never gets a shell. Put this one line i
 command="~/nextup/stack/nginx/deploy.sh",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA... nextup-deploy
 ```
 
-That key can then only run `ssh hetzner deploy <tag>` or `ssh hetzner status`. Everything else
-is refused. Deploys are logged in `~/nextup/deploy.log`. The admin code and login codes never
-reach the CI log.
+That key can then only run `ssh hetzner deploy <tag>`, `ssh hetzner promote <slug> <sha>` or
+`ssh hetzner status`. Everything else is refused. Deploys are logged in `~/nextup/deploy.log`.
+The admin code and login codes never reach the CI log.
+
+## The interview stack (demo.sellux.ch)
+
+`acme` and `globex` follow `main`: every green merge is on them a few minutes later. That is
+right for building and wrong for showing. `demo.sellux.ch` is the stack to show: acme's demo
+company and people, **pinned** to one commit. A deploy skips it.
+
+```bash
+# first install, and every later move - always a 7-char sha that CI has published, never `main`
+~/nextup/stack/nginx/deploy.sh promote demo a16bc06 --name "Acme Maschinenbau GmbH"
+~/nextup/stack/nginx/deploy.sh promote demo 4c952d9      # later: --name is only read the first time
+~/nextup/stack/nginx/deploy.sh status                    # demo shows "(pinned)"
+```
+
+`promote` does this, in order:
+1. **Pulls that commit's images.** A sha CI hasn't published changes nothing.
+2. **Backs up the database** (`backup.sh demo backup`), once the nightly backup has set the stack up.
+3. **Copies that commit's `stack/` into `~/nextup/instances/demo/stack`.** The pinned stack runs
+   from this copy, so its compose file and Caddyfile are as old as its images. `ctl.sh demo ...`
+   uses it too.
+4. **Writes `PINNED=<sha>` into `~/nextup/instances/demo/stack.conf`** and restarts the stack.
+
+The first install prints the admin code, the login codes and the three `sudo` lines for nginx and
+the certificate. `nextup-site` refuses the slug `demo`, so those are run by hand.
+
+- **Before an interview:** promote the evening before, click through the script once on
+  `demo.sellux.ch`, then leave it. Pick the sha from `acme.sellux.ch` once it looks right there.
+- **Go back:** `promote demo <old sha>`; the last line of a promote and `~/nextup/deploy.log`
+  name it. If a migration ran in between, the old code meets a newer database: also
+  `backup.sh demo restore <snapshot>` (the one taken in step 2).
+- **Change it only with `promote`.** `add-stack.sh demo ...` would start it from the shared
+  `~/nextup/stack` again.
+- **Any stack can be pinned** the same way. To let one follow `main` again, delete the `PINNED=`
+  line from its `stack.conf`; the next deploy moves it.
+- **Memory:** one more stack is an app, a Postgres, a Caddy and a mailpit. Check `free -m` first
+  (see "When something is wrong").
 
 ## Backups
 

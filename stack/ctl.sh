@@ -15,4 +15,7 @@ if [ "${1:-}" = down ] && printf '%s\n' "$@" | grep -qx -- '-v\|--volumes'; then
   read -r -p "This deletes the database of '$slug'. Type the slug to confirm: " answer
   [ "$answer" = "$slug" ] || { echo "Not confirmed - nothing deleted."; exit 1; }
 fi
-exec docker compose -f "$here/compose.yml" --env-file "$env_file" "$@"
+# A pinned stack (stack/nginx/deploy.sh promote) runs from its own copy of stack/ beside its .env.
+compose="$here/compose.yml"; inst="$(dirname "$env_file")"
+if grep -q '^PINNED=' "$inst/stack.conf" 2>/dev/null && [ -f "$inst/stack/compose.yml" ]; then compose="$inst/stack/compose.yml"; fi
+exec docker compose -f "$compose" --env-file "$env_file" "$@"
