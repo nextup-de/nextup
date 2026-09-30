@@ -9,7 +9,7 @@ import re
 import time
 
 from brain.llm import LLMClient
-from brain.schemas import CoachIn, CoachOut, CoachTurn
+from brain.schemas import CoachIn, CoachOut, CoachTurn, Match
 
 # Stored with every coach turn the app keeps (IdeaTurn.promptVersion). Bump on prompt changes.
 PROMPT_VERSION = "brain-coach-v1"
@@ -28,9 +28,38 @@ def _history(body: CoachIn) -> str:
     return "\n".join(("Employee: " if t.role == "user" else "Coach: ") + t.text.strip() for t in turns) or "(first message)"
 
 
+def earlier_match(llm: LLMClient, body: CoachIn) -> str:
+    """The earlier item about the same problem, found with the routing check's method, or ''."""
+    known_ids = [k.id for k in body.known]
+    if not known_ids:
+        return ""
+    schema = Match.model_json_schema()
+    schema["properties"]["closest_id"]["enum"] = known_ids + [""]
+    m = llm.structured("match", Match, {
+        "company": body.company,
+        "idea": body.idea.title + ("\n" + body.idea.body if body.idea.body else ""),
+        "known": _known(body),
+    }, schema_override=schema)
+    return m.closest_id if m.same_problem and m.closest_id in known_ids else ""
+
+
+def _facts(body: CoachIn, match: str) -> str:
+    k = next((k for k in body.known if k.id == match), None)
+    if not k:
+        return "(none found)"
+    # No ID in the sentence: the model repeats what it is shown, and IDs are never shown to people.
+    # earlier_id is set from the match in coach() instead.
+    return (f"Someone else already raised the same problem: \"{k.title}\" ({k.status or 'open'}). "
+            "Raise it now, as the method says. It was not this employee - say it was raised before, never \"you raised\".")
+
+
 def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
     started = time.perf_counter()
     known_ids = [k.id for k in body.known]
+    # History first: on the idea's first message, look for an earlier item about the same problem.
+    # Later turns see the coach's own earlier question about it in the conversation.
+    first = sum(t.role == "user" for t in body.history) <= 1
+    match = earlier_match(llm, body) if first else ""
     ids = re.compile(r"\b(" + "|".join(map(re.escape, known_ids)) + r")\b") if known_ids else None
 
     def check(t: CoachTurn) -> None:
@@ -55,7 +84,10 @@ def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
         "brief": body.brief,
         "known": _known(body),
         "history": _history(body),
+        "facts": _facts(body, match),
     }, schema_override=schema, check=check)
+    if match:
+        t.earlier_id = match  # the check found it; the fact named it by title only
 
     ready = t.open_point == "none"
     return CoachOut(

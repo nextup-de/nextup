@@ -8,6 +8,9 @@ from brain.schemas import CoachIn
 from tests.conftest import FakeLLM
 
 
+NO_MATCH = {"closest_id": "", "comparison": "-", "same_problem": False}
+
+
 def turn(**over) -> dict:
     base = {"open_point": "impact", "earlier_id": "", "note": "Twelve changeovers a shift is a lot of paper.",
             "question": "How long does one changeover sheet take?", "why": "Minutes per shift decide whether this is a quick fix.",
@@ -28,22 +31,46 @@ def cbody() -> dict:
 
 
 def test_one_turn(cbody):
-    llm = FakeLLM([turn()])
+    llm = FakeLLM([NO_MATCH, turn()])
     out = coach(llm, CoachIn.model_validate(cbody))
     assert out.question == "How long does one changeover sheet take?" and out.open_point == "impact"
     assert out.recommended.startswith("About five minutes") and out.version == PROMPT_VERSION
-    user = llm.calls[0]["user"]
+    user = llm.calls[1]["user"]
+    assert "(none found)" in user
     assert "c8: Stop double-entering job data on paper [building]" in user
     assert "Employee: Changeover checklist on the tablet" in user
     assert "46/100" in user  # the app's brief goes in as it is
 
 
 def test_earlier_item_is_constrained_and_unknown_ids_dropped(cbody):
-    llm = FakeLLM([turn(earlier_id="c99")])
+    llm = FakeLLM([NO_MATCH, turn(earlier_id="c99")])
     out = coach(llm, CoachIn.model_validate(cbody))
     assert out.earlier_id is None
-    assert llm.calls[0]["schema"]["properties"]["earlier_id"]["enum"] == ["c3", "c8", ""]
-    assert coach(FakeLLM([turn(earlier_id="c3")]), CoachIn.model_validate(cbody)).earlier_id == "c3"
+    assert llm.calls[1]["schema"]["properties"]["earlier_id"]["enum"] == ["c3", "c8", ""]
+    assert coach(FakeLLM([NO_MATCH, turn(earlier_id="c3")]), CoachIn.model_validate(cbody)).earlier_id == "c3"
+
+
+def test_first_message_checks_history_and_hands_the_match_over(cbody):
+    llm = FakeLLM([{"closest_id": "c8", "comparison": "-", "same_problem": True}, turn()])
+    out = coach(llm, CoachIn.model_validate(cbody))
+    assert llm.calls[0]["schema"]["properties"]["closest_id"]["enum"] == ["c3", "c8", ""]
+    fact = llm.calls[1]["user"].split("Checked against the records:")[1]
+    assert 'Someone else already raised the same problem: "Stop double-entering job data on paper" (building)' in fact
+    assert "c8" not in fact
+    assert out.earlier_id == "c8"  # set even when the phrasing did not name it
+
+
+def test_a_close_item_that_is_not_the_same_problem_is_no_fact(cbody):
+    llm = FakeLLM([{"closest_id": "c3", "comparison": "-", "same_problem": False}, turn()])
+    out = coach(llm, CoachIn.model_validate(cbody))
+    assert "(none found)" in llm.calls[1]["user"] and out.earlier_id is None
+
+
+def test_later_turns_skip_the_check(cbody):
+    cbody["history"] += [{"role": "assistant", "text": "How often?"}, {"role": "user", "text": "Every shift."}]
+    llm = FakeLLM([turn()])
+    coach(llm, CoachIn.model_validate(cbody))
+    assert len(llm.calls) == 1
 
 
 @pytest.mark.parametrize("bad", [
@@ -55,14 +82,14 @@ def test_earlier_item_is_constrained_and_unknown_ids_dropped(cbody):
     {"question": "How is this different from item c8?"},
 ])
 def test_rule_breaks_are_retried(cbody, bad):
-    llm = FakeLLM([turn(**bad), turn()])
+    llm = FakeLLM([NO_MATCH, turn(**bad), turn()])
     out = coach(llm, CoachIn.model_validate(cbody))
-    assert out.question == "How long does one changeover sheet take?" and len(llm.calls) == 2
-    assert "invalid" in llm.calls[1]["user"]
+    assert out.question == "How long does one changeover sheet take?" and len(llm.calls) == 3
+    assert "invalid" in llm.calls[2]["user"]
 
 
 def test_ready_means_no_question(cbody):
-    out = coach(FakeLLM([turn(open_point="none", question="", why="", recommended="",
+    out = coach(FakeLLM([NO_MATCH, turn(open_point="none", question="", why="", recommended="",
                               note="A decider could act on this now.")]), CoachIn.model_validate(cbody))
     assert (out.question, out.why, out.recommended) == ("", "", "") and out.note
 
@@ -77,12 +104,12 @@ def test_only_the_latest_turns_go_out(cbody):
 
 def test_gives_up_after_retries(cbody):
     with pytest.raises(LLMOutputError):
-        coach(FakeLLM(["x", "x", "x"]), CoachIn.model_validate(cbody))
+        coach(FakeLLM([NO_MATCH, "x", "x", "x"]), CoachIn.model_validate(cbody))
 
 
 def test_coach_endpoint_and_key(monkeypatch, cbody):
     monkeypatch.setattr(main.settings, "api_key", "s3cret")
-    main.app.state.llm = FakeLLM([turn()])
+    main.app.state.llm = FakeLLM([NO_MATCH, turn()])
     try:
         c = TestClient(main.app)
         assert c.post("/v1/coach", json=cbody).status_code == 401

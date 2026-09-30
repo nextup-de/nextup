@@ -72,6 +72,10 @@ coach's own best-guess answer the employee can accept or edit.
   "why": "…", "recommended": "About once a shift, on average.", "model": "mistral-nemo", "version": "brain-coach-v1", "ms": 6700 }
 ```
 
+On an idea's first message the coach first runs the "raised before?" check on its own (the
+routing check's method, prompt `match.md`) and hands a match to the coach as a fact to raise - the
+model alone rarely brings up history. That is a second model call on the first message only.
+
 `brief` is the app's `coachBrief()`: the scores and what each bar misses. The numbers are the
 app's - an answer that states a score, asks two questions, leaves `recommended` empty or shows an
 item ID is rejected and retried (`brain/coach.py`).

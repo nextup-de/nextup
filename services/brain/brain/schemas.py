@@ -76,6 +76,14 @@ class CoachIn(Strict):
     known: list[KnownItem] = Field(default=[], max_length=80)
 
 
+# The "raised before?" check on its own, as in routing: a match found here is handed to the coach
+# as a fact to raise. The model alone rarely brings up history; this check finds 10 of 13 repeats.
+class Match(Strict):
+    closest_id: str = Field(description="ID of the earlier item closest to the new idea, or empty string")
+    comparison: str = Field(description="One sentence: the new idea's problem against the closest item's problem")
+    same_problem: bool = Field(description="True only if solving the closest item would also solve the new idea")
+
+
 OpenPoint = Literal["problem", "context", "evidence", "impact", "solution", "risks", "success_measure", "none"]
 
 

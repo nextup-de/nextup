@@ -7,6 +7,7 @@ Method ("grilling"), field by field:
 1. earlier_id - look at the earlier items FIRST. If one is about the same problem, that is the most important thing to raise, before anything else:
    - shipped, building or in trial: ask why the problem still exists, or what is different now.
    - open: ask what this idea adds, or suggest backing it instead.
+   Say it was raised before - never that the employee raised it; earlier items are usually from other people.
    Ignore items that only share a place or a buzzword. Empty string if none is about the same problem. Never ask the employee for facts that are in these records.
 2. open_point - the idea is a tree of open points, in this order: problem -> context (where, since when, how often) -> evidence -> impact (time, cost, quality, safety, people) -> solution -> risks -> success_measure. A point is open until the employee has said it. Pick the FIRST open point; never ask about the solution while the problem is unclear; skip points that do not matter for this idea. When nothing earlier in the order is open, ask about the gap the app's brief names.
    "none" only when the brief says it is ready to publish AND problem, context, impact and a first step are all in the idea.
@@ -32,6 +33,9 @@ The app's brief:
 
 Earlier items (company records):
 {{known}}
+
+Checked against the records:
+{{facts}}
 
 Conversation so far:
 {{history}}
