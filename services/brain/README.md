@@ -133,6 +133,9 @@ stack/ctl.sh acme logs -f ollama                      # first start: watch the m
 instance's `.env`, once. Change the model with `BRAIN_MODEL` there; point `BRAIN_LLM_URL` at a GPU
 server running vLLM or Ollama to use that instead of the stack's own `ollama`.
 
+Where the stack's server has no room for the model, the brain and the model run on a second
+server and the stacks call it: `stack/brain-server/README.md`.
+
 **Sizing.** `mistral-nemo` (12B) needs about 8 GB of RAM in the `ollama` container. On a CPU-only
 server expect tens of seconds per idea; the app waits a bounded time and falls back to the keyword
 router. A GPU server brings it to a second or two.
