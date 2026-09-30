@@ -58,3 +58,46 @@ class RouteOut(BaseModel):
     model: str
     version: str
     ms: int
+
+
+# ---------------------------------------------------------------- coach (grilling), sent by the app
+class Turn(Strict):
+    role: Literal["user", "assistant"]
+    text: str = Field(max_length=4000)
+
+
+class CoachIn(Strict):
+    company: str = Field(min_length=1, max_length=120)
+    idea: Idea                                   # the author's own words so far, never the coach's
+    history: list[Turn] = Field(default=[], max_length=20)
+    # What the app computed: the scores, what each bar is missing, the gap to ask about. The
+    # numbers are the app's; the coach may not change or restate them.
+    brief: str = Field(max_length=3000)
+    known: list[KnownItem] = Field(default=[], max_length=80)
+
+
+OpenPoint = Literal["problem", "context", "evidence", "impact", "solution", "risks", "success_measure", "none"]
+
+
+# The grilling method, one question per turn: the first open point in dependency order comes
+# first, an earlier item about the same problem must be addressed, and the coach offers its own
+# best-guess answer. The picks come first, so the model decides before it phrases.
+class CoachTurn(Strict):
+    earlier_id: str = Field(description="ID of an earlier item about the same problem, or empty string")
+    open_point: OpenPoint = Field(description="The first point still unclear, in the order problem, context, evidence, impact, solution, risks, success_measure; 'none' if a decider could act now")
+    note: str = Field(description="One or two sentences reacting to the latest message, naming something specific in it")
+    question: str = Field(description="Exactly one short question, ending with a question mark")
+    why: str = Field(description="One sentence: why the person who decides will ask this")
+    recommended: str = Field(description="Your concrete best-guess answer, written as the employee would say it, one or two sentences")
+
+
+class CoachOut(BaseModel):
+    open_point: OpenPoint
+    earlier_id: str | None
+    note: str
+    question: str
+    why: str
+    recommended: str
+    model: str
+    version: str
+    ms: int

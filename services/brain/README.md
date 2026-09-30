@@ -52,6 +52,30 @@ front of the model — `brain/route.py` is the one place for it.
 
 `GET /health` — `ok` when the model server answers and has the model. No key needed.
 
+`POST /v1/coach` (header `X-API-Key`) — one turn of the idea coach, the "grilling" method: the
+first open point in the order problem → context → evidence → impact → solution → risks → success
+measure, one question at a time, an earlier item about the same problem raised first, and the
+coach's own best-guess answer the employee can accept or edit.
+
+```json
+{
+  "company": "Acme Maschinenbau GmbH",
+  "idea": { "title": "Paper changeover sheets are a waste", "body": "" },
+  "history": [{ "role": "user", "text": "Paper changeover sheets are a waste" }],
+  "brief": "The idea scores 38/100; it can be published at 70. …",
+  "known": [{ "id": "c3", "title": "Changeover sheet and MES ask for the same six numbers", "status": "open" }]
+}
+```
+
+```json
+{ "open_point": "impact", "earlier_id": null, "note": "…", "question": "How often do these sheets cause delays or errors?",
+  "why": "…", "recommended": "About once a shift, on average.", "model": "mistral-nemo", "version": "brain-coach-v1", "ms": 6700 }
+```
+
+`brief` is the app's `coachBrief()`: the scores and what each bar misses. The numbers are the
+app's - an answer that states a score, asks two questions, leaves `recommended` empty or shows an
+item ID is rejected and retried (`brain/coach.py`).
+
 ## Run it on a laptop
 
 ```bash
@@ -84,6 +108,13 @@ rows and items from `apps/app/src/features/demo/seed.ts`. It prints routing accu
 keyword router's on the same ideas, duplicate accuracy, invalid-JSON retries and seconds per idea,
 and saves the run in `eval/results/`. Rerun it after every prompt change and bump
 `PROMPT_VERSION` in `brain/route.py`.
+
+```bash
+uv run python -m eval.run_coach           # the coach: 8 first messages, printed, rules checked
+```
+
+Tone is not something a script can score - read the printed turns after a prompt change, and bump
+`PROMPT_VERSION` in `brain/coach.py`.
 
 ## In a stack
 

@@ -1,0 +1,10 @@
+[
+ {"id": "k01", "title": "Paper changeover sheets are a waste", "body": "", "weak": "Impact & reach", "missing": "Put a number on the upside", "earlier": ["c3"]},
+ {"id": "k02", "title": "New colleagues wait weeks for their logins", "body": "", "weak": "Feasibility", "missing": "Who would decide", "earlier": ["p7", "c7", "c5"]},
+ {"id": "k03", "title": "Better coffee in the break room", "body": "", "weak": "Strategic fit", "missing": "Which company goal", "earlier": []},
+ {"id": "k04", "title": "Die Prüfdaten liegen in drei Systemen, keiner weiß welche stimmt", "body": "", "weak": "Impact & reach", "missing": "Put a number on the upside", "earlier": ["p4"]},
+ {"id": "k05", "title": "Let the night shift lead sign parts orders up to 500 EUR", "body": "Twice last month the line stood until the morning because nobody could approve a belt.", "weak": "Feasibility", "missing": "What is the smallest first step", "earlier": ["c2", "p1"]},
+ {"id": "k06", "title": "Fix the thing on line 2", "body": "", "weak": "Novelty & clarity", "missing": "Say a little more", "earlier": []},
+ {"id": "k07", "title": "Offline job sheets for field technicians", "body": "They fill paper sheets and type them in again at the hotel.", "weak": "Impact & reach", "missing": "Put a number on the upside", "earlier": ["c8"]},
+ {"id": "k08", "title": "Book the endurance rig one day a week for small trials", "body": "Our belt-tension trial has waited since June. A one-week pilot on Fridays, Engineering lead decides, no spend. It would unblock four queued ideas and save about 6 weeks per trial.", "weak": "", "missing": "", "earlier": ["c6", "p6"]}
+]

@@ -11,10 +11,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
+from brain.coach import coach
 from brain.config import get_settings
 from brain.llm import LLMClient, LLMOutputError
 from brain.route import route
-from brain.schemas import RouteIn, RouteOut
+from brain.schemas import CoachIn, CoachOut, RouteIn, RouteOut
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -53,6 +54,20 @@ async def post_route(body: RouteIn, request: Request) -> RouteOut:
         log.info("route idea=%r -> %s", body.idea.title, out.route_id)
     log.info("route rows=%d known=%d route=%s same_as=%s ms=%d",
              len(body.routes), len(body.known), out.route_id, out.same_as, out.ms)
+    return out
+
+
+@app.post("/v1/coach", response_model=CoachOut)
+async def post_coach(body: CoachIn, request: Request) -> CoachOut:
+    try:
+        out = await run_in_threadpool(coach, request.app.state.llm, body)
+    except LLMOutputError as e:
+        log.error("coach failed: %s", e)
+        raise HTTPException(502, "The language model returned invalid output. Please retry.")
+    if settings.log_content:
+        log.info("coach idea=%r -> %r", body.idea.title, out.question)
+    log.info("coach turns=%d known=%d point=%s earlier=%s ms=%d",
+             len(body.history), len(body.known), out.open_point, out.earlier_id, out.ms)
     return out
 
 
