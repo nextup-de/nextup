@@ -14,6 +14,7 @@
     "test": "turbo run test",
     "e2e": "npm run e2e -w @nextup/app --",
     "e2e:db": "npm run e2e:db -w @nextup/app --",
+    "e2e:live": "npm run e2e:live -w @nextup/app --",
     "db:migrate": "npm run db:migrate -w @nextup/app",
     "db:seed": "npm run db:seed -w @nextup/app"
   },
