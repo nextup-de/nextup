@@ -39,11 +39,13 @@ function target(url: string): string | null {
 
 /** Short timeouts: a person is waiting on every call, and a dead relay must not hang the page. */
 function transport(timeoutMs = 4000) {
-  return nodemailer.createTransport(process.env.SMTP_URL!, {
+  // One object: as a second argument these are message defaults, and the timeouts are not applied.
+  return nodemailer.createTransport({
+    url: process.env.SMTP_URL!,
     connectionTimeout: timeoutMs,
     greetingTimeout: timeoutMs,
     socketTimeout: timeoutMs * 2,
-  } as nodemailer.TransportOptions);
+  });
 }
 
 export async function sendMail(
