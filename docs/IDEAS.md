@@ -51,6 +51,13 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
    `/admin/knowledge`) **Publish idea** unlocks. The page mints the case id and asks the server
    (`publishIdeaDraftAction`), which recomputes the score from the stored turns and refuses below the
    line. Only then does the page append the usual `case.raised` (kind `idea`) and play the route.
+5. Where the stack runs the brain (`services/brain`, `BRAIN_URL`), the page asks it for the routing
+   row and "raised before?" between the server's yes and `case.raised` (`brainProposalAction`).
+   It gets the routing rows (owner's role and department, never a name), the company's cases and
+   known problems, and the idea's title and body - redacted like every model call (names become
+   roles, the company's patterns apply; above the ceiling nothing is sent). Its answer is checked against what was sent and
+   stored as the proposal (`source: "llm"`, `brain-route-v1`); no answer within `BRAIN_TIMEOUT_MS`,
+   or any error, and the keyword row is used as before.
 
 ## Privacy
 

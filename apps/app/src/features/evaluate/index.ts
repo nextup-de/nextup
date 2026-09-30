@@ -8,10 +8,11 @@
 import type { CaseKind, RouteProposal, Visibility } from "@/features/cases/events";
 import type { OrgPerson, Problem, RolePersona, Route } from "@/features/demo/types";
 import { propose, ROUTER_VERSION } from "@/features/routing";
+import type { BrainProposal } from "@/features/routing/brain";
 import { scoreCase, type Score } from "@/features/scoring";
 
 export type EvalInput = { kind: CaseKind; text: string; context?: string; affected: string[]; attachments: number; who: { name: string; line: string; handle: string | null }; visibility?: Visibility; seenBy?: string[] };
-export type KnownCase = { title: string; from: string; age: number; open: boolean };
+export type KnownCase = { id?: string; title: string; from: string; age: number; open: boolean };
 export type EvalContext = { routes: readonly Route[]; people: readonly OrgPerson[]; personas: readonly RolePersona[]; problems: readonly Problem[]; cases: readonly KnownCase[]; promiseDays: number };
 export type EvalStep = { id: string; title: string; detail: string };
 export type Evaluation = {
@@ -47,20 +48,23 @@ export function closest<T>(text: string, items: readonly T[], of: (t: T) => stri
   return bestHits >= 2 ? best : null;
 }
 
-export function evaluate(input: EvalInput, ctx: EvalContext): Evaluation {
+// `brain`: the language model's proposal (features/routing/brain), when the stack has one and it
+// answered in time. It replaces the keyword row and the "raised before?" match; without it both
+// come from the keywords, as before.
+export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposal | null = null): Evaluation {
   const text = input.text.trim();
   const context = (input.context ?? "").trim();
   const full = context ? text + " " + context : text; // the one line is the title; the optional context only helps the matching
   const lower = full.toLowerCase();
-  const proposal = propose(full, ctx.routes);
-  const route = proposal?.route ?? null;
-  const confidence = proposal?.confidence ?? 0;
+  const keywords = brain ? null : propose(full, ctx.routes);
+  const route = brain ? ctx.routes.find((r) => r.id === brain.proposal.routeId) ?? null : keywords?.route ?? null;
+  const confidence = brain ? (route ? brain.proposal.confidence : 0) : keywords?.confidence ?? 0;
   const me = ctx.people.find((p) => p.name === input.who.name);
   const lead = me?.reportsTo ?? ctx.personas.find((r) => r.id === "leader")?.who.name ?? "Triage desk";
   const leadRow = ctx.people.find((p) => p.name === lead);
   const passesTo = route && route.owner.name !== lead ? route.owner.name : null;
-  const similar = closest(full, ctx.problems, (p) => p.title + " " + p.sub);
-  const sameAs = closest(full, ctx.cases.filter((c) => c.title !== text), (c) => c.title);
+  const similar = brain ? ctx.problems.find((p) => p.id === brain.sameAs) ?? null : closest(full, ctx.problems, (p) => p.title + " " + p.sub);
+  const sameAs = brain ? ctx.cases.find((c) => c.id !== undefined && c.id === brain.sameAs) ?? null : closest(full, ctx.cases.filter((c) => c.title !== text), (c) => c.title);
   const goal = GOALS.find((g) => g.keys.some((k) => lower.includes(k))) ?? null;
   const spend = /€|spend|buy|order|purchase|budget|cost|invoice/.test(lower);
   // Scored exactly as the dashboard will score the stored case: the goal it serves is kept as its upside.
@@ -70,7 +74,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext): Evaluation {
 
   const steps: EvalStep[] = [
     { id: "read", title: "Reading the " + thing, detail: words(full).length + " words from " + (input.who.handle ?? input.who.name) + " · " + input.who.line + (input.attachments ? " · " + input.attachments + (input.attachments === 1 ? " screenshot" : " screenshots") : "") },
-    { id: "org", title: "Org chart · who is responsible", detail: (leadRow ? lead + " leads your team (" + leadRow.role + ")" : lead + " leads your team") + (route ? " · " + route.owner.name + " owns “" + route.type + "”" : " · no map entry matches yet") },
+    { id: "org", title: "Org chart · who is responsible", detail: (leadRow ? lead + " leads your team (" + leadRow.role + ")" : lead + " leads your team") + (route ? " · " + route.owner.name + " owns “" + route.type + "”" : " · no map entry matches yet") + (brain?.reason ? " · " + brain.reason : "") },
     { id: "goals", title: "Company goals & values", detail: goal ? "Serves: “" + goal.goal + "”" : "No stated goal matches directly — logged as a new signal" },
     { id: "budget", title: "Budget & authority", detail: spend ? "Spend involved — " + SPEND_RULE.text : "No spend needed to decide this" },
     { id: "history", title: "Raised before?", detail: sameAs ? "Yes — “" + sameAs.title + "” by " + sameAs.from + ", " + (sameAs.age === 0 ? "today" : sameAs.age + " d ago") + (sameAs.open ? ", still open" : "")
@@ -83,7 +87,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext): Evaluation {
   return {
     steps, route, confidence, lead, passesTo, similar, sameAs, score,
     payload: { kind: input.kind, title: text, body: context, upside, routeId: route?.id ?? null, assignee: lead, fromDept: input.who.line, reason: route ? "triage" : "not responsible", affected: input.affected, attachments: input.attachments,
-      proposal: { routeId: route?.id ?? null, confidence, source: "keywords", version: ROUTER_VERSION },
+      proposal: brain ? { ...brain.proposal, routeId: route?.id ?? null, confidence } : { routeId: route?.id ?? null, confidence, source: "keywords", version: ROUTER_VERSION },
       ...(input.visibility ? { visibility: input.visibility } : {}), ...(input.visibility === "custom" ? { seenBy: input.seenBy ?? [] } : {}) },
   };
 }

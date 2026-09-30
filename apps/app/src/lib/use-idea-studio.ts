@@ -10,7 +10,9 @@ import type { KnownCase } from "@/features/evaluate";
 import type { Reply } from "@/features/ideas/replies";
 import type { DraftSummary, DraftView } from "@/features/ideas/drafts";
 import { ideaFromTurns } from "@/features/ideas/coach";
+import type { BrainProposal } from "@/features/routing/brain";
 import { localDrafts } from "@/lib/idea-drafts";
+import { brainProposalAction } from "@/server/actions/brain";
 import {
   createIdeaDraftAction, discardIdeaDraftAction, getIdeaDraftAction, ideaRepliesAction, listIdeaDraftsAction, publishIdeaDraftAction, saveIdeaDraftAction,
 } from "@/server/actions/ideas";
@@ -158,20 +160,23 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
   }, [draft, slug, serverMode, refresh, startNew]);
 
   // Asks for the publish; the page appends case.raised with `caseId` only when this says yes.
-  const publish = useCallback(async (caseId: string): Promise<{ ok: true; title: string; body: string } | { ok: false; reason: string }> => {
+  // Then asks the brain for the routing row (null where the stack has none or it did not answer).
+  const publish = useCallback(async (caseId: string): Promise<{ ok: true; title: string; body: string; brain: BrainProposal | null } | { ok: false; reason: string }> => {
     if (!draft) return { ok: false, reason: "Write the idea first." };
+    const withBrain = async (title: string, body: string) =>
+      ({ ok: true as const, title, body, brain: await brainProposalAction({ slug, title, body }).catch(() => null) });
     if (serverMode) {
       const r = await publishIdeaDraftAction({ slug, id: draft.id, caseId });
       if (!r.ok) return { ok: false, reason: r.overall !== undefined ? `It scores ${r.overall}; it needs ${r.threshold}.` : r.reason };
       void refresh();
-      return { ok: true, title: r.title, body: r.body };
+      return withBrain(r.title, r.body);
     }
     if (!canPublish(draft.overall, threshold)) return { ok: false, reason: `It scores ${draft.overall}; it needs ${threshold}.` };
     const idea = ideaFromTurns(draft.turns);
     const title = draft.title || idea.title;
     localDrafts.publish(slug, draft.id, caseId, { title, overall: draft.overall, scores: draft.scores });
     void refresh();
-    return { ok: true, title, body: idea.body };
+    return withBrain(title, idea.body);
   }, [draft, slug, serverMode, threshold, refresh]);
 
   const overall = live?.overall ?? draft?.overall ?? 0;

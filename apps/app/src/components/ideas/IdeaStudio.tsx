@@ -90,7 +90,7 @@ export function IdeaStudio() {
     setBusy(false);
     if (!r.ok) { showToast(r.reason); return; }
     // The server said yes: raise it now, then show the route while the case is already on its desk.
-    const ev = evaluate({ kind: "idea", text: r.title, context: r.body, affected: people, attachments: shots.length, who }, { ...seed, cases: S.cases });
+    const ev = evaluate({ kind: "idea", text: r.title, context: r.body, affected: people, attachments: shots.length, who }, { ...seed, cases: S.cases }, r.brain);
     act.raise({ ...ev.payload, title: r.title, body: r.body }, caseId);
     if (shots.length && !saveShots(tenant.slug, caseId, shots)) showToast("Published — the screenshots did not fit in this browser's storage.");
     setPublishing({ ev, caseId });
