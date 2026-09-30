@@ -45,6 +45,14 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
    The suggested answers under the coach (`features/ideas/replies.ts`) are whole sentences with a
    figure and where it comes from, so the demo reads like a real exchange; each is re-scored before
    it is shown.
+   **With the brain** (`services/brain`, `BRAIN_URL`), the brain coaches while the idea is below
+   the publish line: the grilling - the first open point in the order problem, context, evidence,
+   impact, solution, risks, success - one question per turn, an earlier case about the same problem
+   raised first, and its own best-guess answer, which joins the suggested answers (re-scored, only
+   when it really moves the score; event `replies`). It gets `coachBrief()` and the redacted turns,
+   never changes a number, and is off where the company switched the assistant off. At the line,
+   or when it does not answer within `BRAIN_TIMEOUT_MS`, the coach above answers. Prompt version
+   `brain-coach-v1`, stored on the turn.
 3. Every turn is kept: server mode in `IdeaDraft` / `IdeaTurn`, the local demo in this browser's
    localStorage (`src/lib/idea-drafts.ts`, same shapes).
 4. At the company's threshold (`CompanyConfig.publishThreshold`, default 70, set on

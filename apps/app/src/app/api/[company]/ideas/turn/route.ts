@@ -10,9 +10,15 @@
 //                 allows it; otherwise the offline coach does.
 //   local demo    no database: the browser keeps the draft and sends its turns along; nothing
 //                 is stored here and only the offline coach answers.
+//   the brain     where the stack runs it (BRAIN_URL), it coaches - the grilling, one question
+//                 per turn - while the idea is below the publish line, in either mode, unless the
+//                 company switched the assistant off. It runs inside the stack, so no DPA gate.
+//                 No answer in time, or any error, and the coach above answers instead.
 //
 // Events:  scores {overall, parts, sameAs, threshold, delta,    the benchmark after this message
 //                  replies}                                     and suggested answers (features/ideas/replies)
+//          replies {replies}                                    the suggested answers again, with the
+//                                                               brain's own guess first (brain only)
 //          text   {text}                                        the coach so far (replace)
 //          done   {text, overall}
 //          error  {message}
@@ -26,6 +32,7 @@ import { assistGate } from "@/features/assist/gate";
 import { stripTags } from "@/features/assist/check";
 import { companyBrief, hasKnowledge, rowsFromSeed, type Knowledge } from "@/features/knowledge";
 import { DEFAULT_PUBLISH_THRESHOLD, deltas } from "@/features/ideas/benchmarks";
+import { coachText, withCoachSuggestion } from "@/features/ideas/brain-coach";
 import { coachBrief, coachMock, ideaFromTurns, IDEA_PROMPT_VERSION } from "@/features/ideas/coach";
 import { MAX_TURN, MAX_TURNS, scoreDraft } from "@/features/ideas/drafts";
 import { suggestReplies } from "@/features/ideas/replies";
@@ -36,6 +43,9 @@ import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
 import { serverIdeaContext } from "@/server/ideas";
 import { clientKey, throttle } from "@/server/throttle";
 import { providerConfig, providerFor } from "@/server/assist/provider";
+import { DEFAULT_CEILING } from "@/features/assist/classify";
+import { policyFor } from "@/features/admin/stages";
+import { askBrainCoach, brainConfigured } from "@/server/brain";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +110,11 @@ export async function POST(request: Request, { params }: Ctx) {
   const cfg = providerConfig();
   const gate = assistGate({ stage: tenant.stage ?? "demo", hasDatabase: viewer !== null, configured: cfg.id, enabled: settings?.enabled ?? false, dpaSignedAt: settings?.dpaSignedAt ?? null });
   const useModel = viewer !== null && settings !== null && gate.on && gate.provider === "bedrock";
+  // The brain grills while there is something to find; at the line the offline coach's "ready"
+  // is always right. The company's switch in /admin/knowledge still turns it off.
+  // Real people (a real stage) need a database and the switch on, like the assistant's gate.
+  const useBrain = brainConfigured() && now.overall < threshold &&
+    (policyFor(tenant.stage ?? "demo").demoData || (viewer !== null && (settings?.enabled ?? false)));
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -109,8 +124,19 @@ export async function POST(request: Request, { params }: Ctx) {
         send("scores", { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold, delta: prev ? deltas(prev, now) : null, replies });
 
         let reply = coachMock(prev, now, threshold, body.text, replies.length);
-        let model = "mock";
-        if (useModel) {
+        let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
+        const coached = useBrain
+          ? await askBrainCoach(tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },
+            { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING }, request.signal)
+          : null;
+        if (coached) {
+          reply = coachText(coached);
+          model = coached.model;
+          promptVersion = coached.version;
+          const idea = { text: ideaFromTurns(after).text, affected, attachments };
+          const offered = withCoachSuggestion(coached, idea, now, ctx, replies);
+          if (offered[0] !== replies[0]) send("replies", { replies: offered });
+        } else if (useModel) {
           const seed = await seedFor(tenant.slug);
           let knowledge: Knowledge = await loadKnowledge(viewer.companyId);
           if (!hasKnowledge(knowledge)) {
@@ -137,7 +163,7 @@ export async function POST(request: Request, { params }: Ctx) {
         if (viewer && body.draftId) {
           await addTurns(viewer.companyId, viewer.userId, body.draftId, [
             { role: "user", text: body.text },
-            { role: "assistant", text: stripTags(reply), overall: now.overall, model, promptVersion: IDEA_PROMPT_VERSION },
+            { role: "assistant", text: stripTags(reply), overall: now.overall, model, promptVersion },
           ], { title: ideaFromTurns(after).title, overall: now.overall, scores: now.parts });
         }
         send("done", { text: reply, overall: now.overall });
