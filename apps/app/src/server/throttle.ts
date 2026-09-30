@@ -28,6 +28,8 @@ export const RULES = {
   ideaTurn: { limit: 40, windowMs: 10 * 60_000 },
   /** Idea studio, per company from everyone. */
   ideaTurnAll: { limit: 800, windowMs: 10 * 60_000 },
+  /** The brain's routing proposal at publish, per person: one per published idea. */
+  brainRoute: { limit: 20, windowMs: 10 * 60_000 },
   /** The bug icon, per person: a few reports in a row is a bad day, dozens is a script. */
   ticketReport: { limit: 10, windowMs: 10 * 60_000 },
 } satisfies Record<string, Rule>;
