@@ -114,6 +114,7 @@ export type TenantInfo = {
   prefix: string;
   name: string;
   users?: { id?: string; name: string; email: string; role?: Role }[];
+  hiddenPeople?: string[]; // names whose anonymous handles keep them out of public profile links
   /** False for a company with real people: no dev panel, and `users` is only the viewer. */
   demoTools?: boolean;
 };

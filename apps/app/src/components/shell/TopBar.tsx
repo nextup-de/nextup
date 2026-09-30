@@ -3,6 +3,7 @@
 // and the user menu. Port of nh-topbar in legacy/demo/index.html.
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxSorted, mineRows, openCases } from "@/components/dashboard/derive";
 import { decisionsWaiting } from "@/features/metrics";
@@ -176,6 +177,7 @@ export function TopBar() {
               </div>
             </div>
             <div className={styles.meFoot}>
+              <Link href={href("/profile")} className={styles.profileLink} onClick={() => setPop(null)}>View my profile →</Link>
               <button type="button" className={styles.logout} onClick={logout}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>
                 Log out

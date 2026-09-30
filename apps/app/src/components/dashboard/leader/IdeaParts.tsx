@@ -3,6 +3,8 @@
 // layout (IdeaDetailPhone): citations, file chips, the person card, the reasoning blocks, what the
 // AI found, the decisions and the feed. Props in, JSX out.
 import { useState } from "react";
+import Link from "next/link";
+import { useDemo } from "@/components/dashboard/DemoProvider";
 import { type BadgeTone, type IdeaBrief, type Numbered, type NumberedBlock, type Person, tagTone } from "@/features/ideas/brief";
 import styles from "./IdeaDetail.module.css";
 
@@ -50,7 +52,7 @@ export function FileChip({ ext, name, title, meta, n }: { ext: string; name: str
 // The small profile: who, where, how to reach them. The profile page does not exist yet, so the
 // button says so instead of going nowhere.
 export function PersonCard({ p, why }: { p: Person; why?: string | null }) {
-  const [soon, setSoon] = useState(false);
+  const { href, tenant } = useDemo();
   if (p.anonymous) return (
     <>
       <div className={styles.popHead}>
@@ -72,10 +74,9 @@ export function PersonCard({ p, why }: { p: Person; why?: string | null }) {
         <dt>Email</dt><dd><a className={styles.mail} href={"mailto:" + p.email}>{p.email}</a></dd>
       </dl>
       {why && <div className={styles.aiWhy}><Sparkle /><span>{why}</span></div>}
-      <button type="button" className={styles.profileBtn} onClick={() => setSoon(true)}>
+      {!tenant.hiddenPeople?.includes(p.name) && <Link className={styles.profileBtn} href={href("/people/" + encodeURIComponent(p.name))}>
         View profile<Chevron />
-      </button>
-      {soon && <span className={styles.soonNote} role="status">Profile pages are coming soon.</span>}
+      </Link>}
     </>
   );
 }
