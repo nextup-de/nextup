@@ -120,6 +120,10 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
             scores = data as unknown as ScoresEvent;
             setThreshold(scores.threshold);
             setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs, replies: scores.replies ?? [] });
+          } else if (event === "replies") {
+            // The brain's own suggested answer arrives with its reply, after the scores.
+            const replies = (data.replies ?? []) as Reply[];
+            setLive((l) => (l ? { ...l, replies } : l));
           } else if (event === "text") {
             reply = String(data.text ?? "");
             setSending((s) => (s ? { ...s, reply } : s));
