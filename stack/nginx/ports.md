@@ -16,7 +16,7 @@ Add a row **before** running `add-stack.sh`. It refuses a slug/port pair that is
 |---|---|---|---|---|
 | acme | 3101 | demo | acme.sellux.ch | seeded demo company |
 | globex | 3111 | demo | globex.sellux.ch | empty; company created in /admin |
-| demo | 3121 | demo | demo.sellux.ch | reserved, not installed |
+| demo | 3121 | demo | demo.sellux.ch | the interview stack: acme's demo data, **pinned** - deploys skip it, `deploy.sh promote demo <sha>` moves it (RUNBOOK, "The interview stack") |
 | admin | 3131 | - | admin.sellux.ch | reserved: our developer tool, apps/ops (step 7); not a company stack |
 | automation | 3141 | - | automation.sellux.ch | n8n for building/testing (step 8), `stack/automation/`. nginx basic auth + n8n's own login |
 | landing | 3151 | - | sellux.ch, www | public site: one container from `nextup-landing` (`~/nextup/landing`, not a company stack) |
