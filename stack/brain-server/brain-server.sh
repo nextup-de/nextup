@@ -37,7 +37,7 @@ need_docker() {
   [ "$(id -u)" = 0 ] && command -v apt-get >/dev/null \
     || die "docker with the compose plugin is missing - install it, then run this again"
   echo "Installing Docker ..."
-  apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io docker-compose-v2 >/dev/null
+  apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io docker-compose-v2 docker-buildx >/dev/null
 }
 
 build() { echo "Building the brain from $repo/services/brain ..."; docker build -q -t nextup-brain:local "$repo/services/brain" >/dev/null; }
