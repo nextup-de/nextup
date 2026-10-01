@@ -101,6 +101,9 @@ services:
       # keyword router alone. install.sh --brain sets both.
       BRAIN_URL: ${BRAIN_URL:-}
       BRAIN_API_KEY: ${BRAIN_API_KEY:-}
+      # How long the app waits for an answer before the keyword router and offline coach step in.
+      # Empty = the app's default (30 s). A brain on CPUs alone may need more (README there).
+      BRAIN_TIMEOUT_MS: ${BRAIN_TIMEOUT_MS:-}
     depends_on:
       db:
         condition: service_healthy
