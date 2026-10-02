@@ -72,9 +72,10 @@ coach's own best-guess answer the employee can accept or edit.
   "why": "…", "recommended": "About once a shift, on average.", "model": "mistral-nemo", "version": "brain-coach-v1", "ms": 6700 }
 ```
 
-On an idea's first message the coach first runs the "raised before?" check on its own (the
-routing check's method, prompt `match.md`) and hands a match to the coach as a fact to raise - the
-model alone rarely brings up history. That is a second model call on the first message only.
+Two model calls per turn: on an idea's first message the "raised before?" check (the routing
+check's method, prompt `match.md`) - a match is handed to the coach as a fact to raise, because the
+model alone rarely brings up history - and on later messages the notes (`sheet.md`). Then one call
+for the question.
 
 `brief` is the app's `coachBrief()`: the scores and what each bar misses. The numbers are the
 app's - an answer that states a score, asks two questions, leaves `recommended` empty or shows an
@@ -115,10 +116,47 @@ and saves the run in `eval/results/`. Rerun it after every prompt change and bum
 
 ```bash
 uv run python -m eval.run_coach           # the coach: 8 first messages, printed, rules checked
+uv run python -m eval.run_dialogs         # the coach: 8 whole conversations - repeats, order, coverage
+uv run python -m eval.chat                # talk to the coach yourself; --prompt shows what it is sent
 ```
 
-Tone is not something a script can score - read the printed turns after a prompt change, and bump
-`PROMPT_VERSION` in `brain/coach.py`.
+`run_dialogs` plays both sides: scripted employees (`eval/coach_dialogs.json`) who know the
+answer to every point and answer what they are asked - some vaguely the first time - and the app,
+which sends the brief it would and stops at the publish line. It counts questions about a point
+already answered, near-copies of an earlier question, solution-before-problem and how many of
+problem, context, impact and solution got answered. That is the number to watch for "it keeps
+asking the same thing".
+
+The coach cannot ask about something already answered, by construction (`brain/coach.py`):
+
+1. **Notes** - a short call (`prompts/sheet.md`) writes, per point, what the employee said so far,
+   in their own words. Quoting is what a small model does reliably.
+2. **The code picks** the first point the notes leave empty, in NextUp's order: problem → where /
+   how often → impact → first step → evidence → risks → success. The model never chooses.
+3. **The question** - the model only phrases one question about that point (`prompts/coach.md`),
+   with its best guess as a suggested answer.
+
+Two safeguards on the notes, both in code: a point the coach already asked about is done once the
+employee replied, whatever the reply (at most one point per question asked - so it is never asked
+twice); and a note only counts if it shares a word with what the employee actually wrote, and the
+core four (problem, where/how often, impact, first step) cannot be waved away as "n/a". When every
+point has been asked but the app still calls (the idea is below the publish line), the coach does
+not say "ready": it sharpens the point the weakest score needs.
+
+On an idea's first message the notes are the idea itself, and the "raised before?" check runs
+instead. A question worded like an earlier one is redone once; every try costs seconds on a CPU
+server, so there is no second retry - the app's offline coach answers then. Tone is not something
+a script can score - read the printed turns after a prompt change, and bump `PROMPT_VERSION` in
+`brain/coach.py`.
+
+**On the AI server**, without touching the live brain: copy `services/brain` to `/root/brain-eval`
+and run an eval in a throwaway container on the brain's network against its Ollama. Live answers
+wait while it runs (the model answers one request at a time).
+
+```bash
+docker run --rm --user 0 --network nextup-brain_default -v /root/brain-eval:/src -w /src \
+  -e PYTHONPATH=/src -e LLM_BASE_URL=http://ollama:11434/v1 nextup-brain:local python -u -m eval.run_dialogs
+```
 
 ## In a stack
 

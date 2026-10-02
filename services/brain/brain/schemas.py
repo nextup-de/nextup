@@ -84,22 +84,39 @@ class Match(Strict):
     same_problem: bool = Field(description="True only if solving the closest item would also solve the new idea")
 
 
-OpenPoint = Literal["problem", "context", "evidence", "impact", "solution", "risks", "success_measure", "none"]
+Point = Literal["problem", "context", "impact", "solution", "evidence", "risks", "success_measure"]
+OpenPoint = Literal["problem", "context", "impact", "solution", "evidence", "risks", "success_measure", "none"]
 
 
-# The grilling method, one question per turn: the first open point in dependency order comes
-# first, an earlier item about the same problem must be addressed, and the coach offers its own
-# best-guess answer. The picks come first, so the model decides before it phrases.
+# The coach's notes: per point, the employee's own words so far ("n/a" when the point does not
+# matter for this idea). A separate, short model call writes them (brain/coach.py, prompt
+# sheet.md); quoting is something a small model does reliably, judging "what is still open" is not.
+class Sheet(Strict):
+    # Which points the coach's own questions were about. Every question got a reply (the last
+    # message is always the employee's), so these points are done whatever the reply said - the
+    # code never asks about one again. Sorting a question is easier than sorting an answer.
+    asked: list[Point] = Field(max_length=20, description="The points the coach's earlier questions were about, one per question")
+    problem: str = Field(max_length=120, description="What goes wrong, in the employee's words; empty if not said")
+    context: str = Field(max_length=120, description="Where, since when, how often; empty if not said")
+    impact: str = Field(max_length=120, description="Time, cost, quality, safety or people affected; empty if not said")
+    solution: str = Field(max_length=120, description="What they propose, or the first step; empty if not said")
+    evidence: str = Field(max_length=120, description="Numbers, observations or examples that show it; empty if not said")
+    risks: str = Field(max_length=120, description="What could go wrong or who might object; empty if not said")
+    success_measure: str = Field(max_length=120, description="How we would know it worked; empty if not said")
+
+
+# One question about the point the code chose (the first one the notes leave empty). The model
+# only phrases - it cannot pick a point that was already answered.
 class CoachTurn(Strict):
-    earlier_id: str = Field(description="ID of an earlier item about the same problem, or empty string")
-    open_point: OpenPoint = Field(description="The first point still unclear, in the order problem, context, evidence, impact, solution, risks, success_measure; 'none' if a decider could act now")
-    note: str = Field(description="One or two sentences reacting to the latest message, naming something specific in it")
-    question: str = Field(description="Exactly one short question, ending with a question mark")
-    why: str = Field(description="One sentence: why the person who decides will ask this")
-    recommended: str = Field(description="Your concrete best-guess answer, written as the employee would say it, one or two sentences")
+    earlier_id: str = Field(max_length=40, description="ID of an earlier item about the same problem, or empty string")
+    note: str = Field(max_length=300, description="One or two sentences reacting to the latest message, naming something specific in it")
+    question: str = Field(max_length=200, description="Exactly one short question about the chosen point, ending with a question mark")
+    why: str = Field(max_length=250, description="One sentence: why the person who decides will ask this")
+    recommended: str = Field(max_length=300, description="Your concrete best-guess answer, written as the employee would say it, one or two sentences")
 
 
 class CoachOut(BaseModel):
+    covered: list[Point]
     open_point: OpenPoint
     earlier_id: str | None
     note: str

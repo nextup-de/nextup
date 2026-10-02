@@ -51,6 +51,7 @@ class LLMClient:
             model=self.settings.llm_model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             temperature=0,
+            max_tokens=700,  # a safety cap: every answer here is a few short fields
             response_format={"type": "json_schema",
                              "json_schema": {"name": name, "schema": schema, "strict": True}},
         )
@@ -58,7 +59,7 @@ class LLMClient:
 
     def structured(self, prompt: str, model: type[T], variables: dict[str, Any],
                    schema_override: dict | None = None,
-                   check: Callable[[T], None] | None = None) -> T:
+                   check: Callable[[T], None] | None = None, retries: int | None = None) -> T:
         """Render prompt, call the model with a JSON schema, validate with Pydantic, retry on invalid output.
 
         `check` may raise ValueError for semantic problems (e.g. an unknown route id); that also triggers a retry.
@@ -67,7 +68,8 @@ class LLMClient:
         system, user = render(system_tpl, **variables), render(user_tpl, **variables)
         schema = schema_override or model.model_json_schema()
         last_error = ""
-        for attempt in range(self.settings.llm_max_retries + 1):
+        tries = (self.settings.llm_max_retries if retries is None else retries) + 1
+        for attempt in range(tries):
             msg = user if not last_error else (
                 f"{user}\n\nYour previous answer was invalid: {last_error}\nReturn only valid JSON matching the schema.")
             raw = self.complete_json(system, msg, schema, prompt)
@@ -80,7 +82,7 @@ class LLMClient:
                 self.invalid += 1
                 last_error = str(e)[:500]
                 log.warning("invalid output prompt=%s attempt=%d error=%s", prompt, attempt + 1, last_error[:200])
-        raise LLMOutputError(f"{prompt}: invalid output after {self.settings.llm_max_retries + 1} attempts: {last_error}")
+        raise LLMOutputError(f"{prompt}: invalid output after {tries} attempts: {last_error}")
 
     def health(self) -> dict:
         try:
