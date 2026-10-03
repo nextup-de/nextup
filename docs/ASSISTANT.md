@@ -1,5 +1,7 @@
 # The raise-page assistant
 
+> **Updated 2026-09-24** · reference: how the raise-page assistant works. The plan it came from: `docs/plans/2026-09-24_raise-assistant.md`.
+
 An employee with a problem or an idea types one line on the raise page. Before anything is raised,
 NextUp answers from the company's own knowledge: who handles this, what already exists, which goal
 it touches. If that solves it, nothing is raised. If it does not, **Raise it anyway** turns the

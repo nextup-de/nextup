@@ -75,7 +75,7 @@ export default async function AppLayout({
       viewer={viewerInfo}
     >
       <AppShell>{children}</AppShell>
-      {/* The bug icon (docs/PLATFORM_PLAN.md, "Tickets"): only where a report can be stored. */}
+      {/* The bug icon (docs/plans/2026-09-27_platform.md, "Tickets"): only where a report can be stored. */}
       {hasDatabase() && viewer ? (
         <ReportButton submit={reportTicket.bind(null, tenant.slug)} reportsHref={prefixFor(tenant.slug) + "/reports"} team={demoTools} />
       ) : null}

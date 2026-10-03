@@ -1,5 +1,5 @@
 "use client";
-// The bug icon (docs/PLATFORM_PLAN.md, "Tickets"). Click: the screenshot is taken FIRST, of the page
+// The bug icon (docs/plans/2026-09-27_platform.md, "Tickets"). Click: the screenshot is taken FIRST, of the page
 // as it is, then the dialog opens with it as a preview. The person says what happened; the page,
 // browser, the last pages visited, recent errors and failed requests come along on their own. Send stores it in this stack
 // (server/actions/tickets.ts) and hands it to the NextUp team.

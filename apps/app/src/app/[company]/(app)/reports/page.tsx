@@ -1,5 +1,5 @@
 // "My reports": what this person sent with the bug icon, and what the NextUp team answered.
-// docs/PLATFORM_PLAN.md, "Tickets". Replies arrive through server/tickets-sync.ts.
+// docs/plans/2026-09-27_platform.md, "Tickets". Replies arrive through server/tickets-sync.ts.
 import { redirect } from "next/navigation";
 import { getViewerFor } from "@/features/auth/session";
 import { companyPrefix } from "@/features/tenant/urls";

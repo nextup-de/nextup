@@ -1,5 +1,7 @@
 # Running NextUp — laptop and the Hetzner box
 
+> **Updated 2026-09-28** · reference for the laptop setup (root `compose.yml`). The "On the Hetzner box" part is superseded: company stacks now run from `stack/` (`stack/README.md`, `stack/nginx/RUNBOOK.md`, `docs/plans/2026-09-27_platform.md`).
+
 One `compose.yml` serves both. Only `.env` differs.
 
 > **Status:** the compose stack has **not been run end to end yet** — the environment this was
@@ -84,7 +86,7 @@ Let's Encrypt **cannot** issue a wildcard over HTTP-01, which is why the token i
 
 The on-demand variant (`Caddyfile.ondemand` + `/api/tls-check`) is gone (28 Sep 2026): it no
 longer parsed on current `caddy:2`, and the endpoint told anyone which company names exist. Company
-stacks (`stack/`, docs/PLATFORM_PLAN.md) get their certificates from Caddy or nginx+certbot.
+stacks (`stack/`, docs/plans/2026-09-27_platform.md) get their certificates from Caddy or nginx+certbot.
 
 ## The database
 

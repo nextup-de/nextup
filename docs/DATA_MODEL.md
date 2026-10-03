@@ -1,5 +1,7 @@
 # Data model
 
+> **Updated 2026-09-28** · reference. The source of truth is `apps/app/prisma/schema.prisma`; the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
+
 Everything is scoped by company. Today (Phase 1) the only store is
 `src/features/tenant/demo-companies.ts`: `slug, name, mark, anonymousHandles, users[]` with
 users `id, name, email, role (manager|leader|member), dept, handle?`. TypeScript types for the

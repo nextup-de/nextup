@@ -1,4 +1,4 @@
-// Tickets: every bug report filed in this deployment, per company (docs/PLATFORM_PLAN.md,
+// Tickets: every bug report filed in this deployment, per company (docs/plans/2026-09-27_platform.md,
 // "Tickets"). The company admin's view. The NextUp team works them in admin.sellux.ch; status and
 // replies come back here through server/tickets-sync.ts. ?company=<slug> picks the company.
 import { notFound, redirect } from "next/navigation";

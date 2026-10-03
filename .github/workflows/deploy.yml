@@ -1,5 +1,5 @@
 # Roll the company stacks on the shared Hetzner box to the images just published
-# (docs/PLATFORM_PLAN.md, stage 1 step 4; stack/nginx/RUNBOOK.md, "Deploy from CI").
+# (docs/plans/2026-09-27_platform.md, stage 1 step 4; stack/nginx/RUNBOOK.md, "Deploy from CI").
 #
 # Called by images.yml once CI passed on main and that commit's images were pushed; or run by hand
 # with a tag (main or a 7-char short sha - a rollback is "run this workflow with an older sha").

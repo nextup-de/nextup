@@ -1,4 +1,4 @@
-# Dependency updates as PRs (docs/PLATFORM_PLAN.md, stage 1 step 6). Each PR runs the full CI and
+# Dependency updates as PRs (docs/plans/2026-09-27_platform.md, stage 1 step 6). Each PR runs the full CI and
 # the image build + Trivy gate, and Kevin merges. Security fixes arrive on their own, right away;
 # this file adds the routine weekly updates, grouped so they don't flood the PR list.
 #

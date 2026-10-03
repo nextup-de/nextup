@@ -1,4 +1,4 @@
-# automation.sellux.ch - n8n for building and testing workflows (docs/PLATFORM_PLAN.md, step 8).
+# automation.sellux.ch - n8n for building and testing workflows (docs/plans/2026-09-27_platform.md, step 8).
 # Not a company stack: fake data only, one per box. Company stacks run their own n8n (--n8n).
 #
 # Never start it by hand: stack/automation/automation.sh install writes the .env (encryption key,
