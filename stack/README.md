@@ -1,7 +1,7 @@
 # stack/ — one company's NextUp
 
 Every company gets its own stack: app, Postgres, Caddy, and optionally mailpit (demo stage) and
-n8n. Two stacks on one machine share no network, volume or secret. See docs/PLATFORM_PLAN.md
+n8n. Two stacks on one machine share no network, volume or secret. See docs/plans/2026-09-27_platform.md
 ("One stack") for why.
 
 ## Install

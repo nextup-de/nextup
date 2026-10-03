@@ -1,6 +1,6 @@
 # Runbook — NextUp stacks on the shared Hetzner box
 
-Stage 1, step 3 of `docs/PLATFORM_PLAN.md`. The box is `178.104.253.90` (`ssh hetzner`). It also
+Stage 1, step 3 of `docs/plans/2026-09-27_platform.md`. The box is `178.104.253.90` (`ssh hetzner`). It also
 runs about 30 other sites, so it holds **demo data only**. This folder moves to `nextup-infra` as
 `hosts/sellux-box/` later.
 

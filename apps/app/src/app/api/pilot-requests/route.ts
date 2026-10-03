@@ -1,4 +1,4 @@
-// POST /api/pilot-requests - the public site's /contact form lands here (docs/PLATFORM_PLAN.md).
+// POST /api/pilot-requests - the public site's /contact form lands here (docs/plans/2026-09-27_platform.md).
 //
 // The site (nextup-landing, its own container on the box) has no database, so it forwards each request with
 // `Authorization: Bearer <PILOT_INTAKE_TOKEN>` and the visitor's address in `x-visitor-address`.

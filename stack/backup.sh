@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Encrypted backups of one company stack with restic (docs/PLATFORM_PLAN.md, stage 1 step 5).
+# Encrypted backups of one company stack with restic (docs/plans/2026-09-27_platform.md, stage 1 step 5).
 #
 #   stack/backup.sh acme backup              # database dump + the instance .env (+ n8n data)
 #   stack/backup.sh all backup               # every installed stack (what cron runs nightly)

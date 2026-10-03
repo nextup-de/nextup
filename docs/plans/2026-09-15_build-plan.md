@@ -1,5 +1,7 @@
 # NextHub - build plan
 
+> **Plan · started 2026-09-15 · status checked 2026-09-23.** The product build plan: screens, logins, settings. The unticked boxes are still open; hosting moved to `2026-09-27_platform.md`.
+
 > **Decision 15 Sep 2026: Next.js.** The repo is the Next.js app; the old static demo
 > was removed on 23 Sep 2026. Folder rules: `docs/ARCHITECTURE.md`.
 

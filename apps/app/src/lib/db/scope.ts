@@ -23,7 +23,7 @@ export const TENANT_MODELS = new Set([
   // Idea studio - docs/IDEAS.md
   "IdeaDraft",
   "IdeaTurn",
-  // Bug reports - docs/PLATFORM_PLAN.md, "Tickets"
+  // Bug reports - docs/plans/2026-09-27_platform.md, "Tickets"
   "Ticket",
   "TicketReply",
 ]);

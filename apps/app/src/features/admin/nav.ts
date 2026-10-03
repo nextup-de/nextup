@@ -55,7 +55,7 @@ export type NavFacts = {
   /** Open and past the two-working-day promise - features/admin/requests.ts. */
   overdueRequests: number;
   companies: number;
-  /** Bug reports not fixed or closed yet (docs/PLATFORM_PLAN.md, "Tickets"). */
+  /** Bug reports not fixed or closed yet (docs/plans/2026-09-27_platform.md, "Tickets"). */
   openTickets?: number;
   automation: AutomationState | null;
   tasks: TaskCounts | null;

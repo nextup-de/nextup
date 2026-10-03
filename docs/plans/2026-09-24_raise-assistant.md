@@ -1,5 +1,7 @@
 # Plan: raise-page assistant ("ask first, then raise")
 
+> **Plan · 2026-09-24 · built and merged (#70-#73).** Kept for the "Open" list at the end. How it works today: `docs/ASSISTANT.md`.
+
 This is the plan approved on 24 Sep 2026, with the status of each step as built on
 `feat/raise-assistant`. How it works today is in `docs/ASSISTANT.md`; this file records what was
 decided, what changed on the way, and what is still open.

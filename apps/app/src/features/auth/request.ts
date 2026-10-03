@@ -11,7 +11,7 @@ import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
  */
 export const RESERVED_SLUGS = [
   "www", "admin", "api", "n8n", "mail", "app", "static", "assets", "_next",
-  // Platform hosts on the same domain as the companies (docs/PLATFORM_PLAN.md, "Addresses").
+  // Platform hosts on the same domain as the companies (docs/plans/2026-09-27_platform.md, "Addresses").
   "automation", "ops", "status",
   "login", "signup", "pricing", "contact", "imprint", "privacy", "forgot-password", "invite",
 ] as const;
@@ -19,7 +19,7 @@ export const RESERVED_SLUGS = [
 /**
  * path      - one host, companies as the first segment: example.com/acme/leader
  * subdomain - one host per company:                    acme.example.com/leader
- * single    - one company per deployment (docs/PLATFORM_PLAN.md: one stack per company). The
+ * single    - one company per deployment (docs/plans/2026-09-27_platform.md: one stack per company). The
  *             company is fixed by COMPANY_SLUG and served at the root of whatever host the
  *             stack runs on: nextup.bigcorp.local/leader.
  */

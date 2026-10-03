@@ -1,8 +1,10 @@
 # Architecture
 
+> **Updated 2026-09-28** · reference: how the code is organised.
+
 An npm-workspaces monorepo driven by Turborepo (`turbo.json`). The Next.js app lives in
 `apps/app/`; shared code will go to `packages/` as it appears, and the developer admin moves to
-`apps/ops/` (docs/PLATFORM_PLAN.md). Every `src/`, `prisma/` and `tests/` path in this document
+`apps/ops/` (docs/plans/2026-09-27_platform.md). Every `src/`, `prisma/` and `tests/` path in this document
 is relative to `apps/app/`. Root scripts (`npm run dev`, `npm test`, ...) run the app's own.
 
 ## Layers

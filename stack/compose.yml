@@ -1,4 +1,4 @@
-# One company's NextUp stack (docs/PLATFORM_PLAN.md, "One stack").
+# One company's NextUp stack (docs/plans/2026-09-27_platform.md, "One stack").
 #
 # Never run this file by hand with a bare `docker compose up`: stack/install.sh writes the
 # instance's .env (secrets, slug, origin) and stack/ctl.sh passes it in. Every instance is its own
@@ -86,7 +86,7 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       LOGIN_DEMO_FILL: ${LOGIN_DEMO_FILL:-false}
       SMTP_URL: ${SMTP_URL:-}
-      # Bug reports go to admin.sellux.ch and replies come back (docs/PLATFORM_PLAN.md, "Tickets").
+      # Bug reports go to admin.sellux.ch and replies come back (docs/plans/2026-09-27_platform.md, "Tickets").
       # Unset = reports stay in this stack. The token is issued in admin.sellux.ch -> Stacks.
       OPS_URL: ${OPS_URL:-}
       OPS_TOKEN: ${OPS_TOKEN:-}

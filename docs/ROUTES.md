@@ -1,5 +1,7 @@
 # Route map
 
+> **Updated 2026-09-28** · reference: every URL and its file.
+
 | URL | File (`src/app/`) | Session | Role | Purpose |
 |---|---|---|---|---|
 | `/` | `(marketing)/page.tsx` | - | - | Landing |

@@ -1,5 +1,7 @@
 # Security
 
+> **Updated 2026-09-28** · reference: what protects each door, and the open list before real customers.
+
 How NextUp keeps companies apart, what protects each door, and what has to land before
 real customers depend on it. Read this before touching login, `/admin`, stages or the API.
 
