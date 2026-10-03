@@ -2,20 +2,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactForm } from "@/components/marketing/ContactForm";
-import { LEGAL, SITE } from "@/config/site";
+import { LEGAL, PILOT_WEEK, SITE } from "@/config/site";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
   title: "Book a pilot",
   description: "Five working days, one department, one decision type. Free. Tell us which decision keeps waiting.",
 };
-
-const WEEK = [
-  ["Day 1", "We fill in the routing table for your decision type with the department head. Twenty minutes."],
-  ["Days 2-4", "Real requests go through one field. Owners answer from an inbox with a clock."],
-  ["Day 5", "You get the wait ledger: median hours to first answer, share within the promise, where the waiting went."],
-  ["After", "Thirty minutes of feedback from you. A one-page report you can forward from us."],
-];
 
 export default function ContactPage() {
   return (
@@ -29,7 +22,7 @@ export default function ContactPage() {
         </p>
 
         <ol className={styles.week}>
-          {WEEK.map(([d, t]) => (
+          {PILOT_WEEK.map(([d, t]) => (
             <li key={d}>
               <span className="nh-mono">{d}</span>
               <p>{t}</p>

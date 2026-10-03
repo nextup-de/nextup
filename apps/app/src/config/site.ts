@@ -5,6 +5,21 @@ export const SITE = {
   promiseDays: 5, // the "answer within 5 days" promise used by the wait ledger (same as the demo seed)
 } as const;
 
+// The pilot week, shown on / and /contact: [when, what happens].
+export const PILOT_WEEK = [
+  ["Day 1", "We fill in the routing table for your decision type with the department head. Twenty minutes."],
+  ["Days 2-4", "Real requests go through one field. Owners answer from an inbox with a clock."],
+  ["Day 5", "You get the wait ledger: median hours to first answer, share within the promise, where the waiting went."],
+  ["After", "Thirty minutes of feedback from you. A one-page report you can forward from us."],
+] as const;
+
+// What holds in every plan, shown on / and /pricing: [claim, what it means].
+export const PRINCIPLES = [
+  ["Nothing to integrate", "No SSO, no mailbox access, no read access to your systems. A pilot needs one field and one routing table."],
+  ["Cases, not people", "There is no per-person metric in the data model. The ledger measures how long cases wait, never how individuals perform."],
+  ["Your data, in the EU", "Export every case, event and number at any time. Deletion on request. No cookies, no tracking, no third-party fonts on this site."],
+] as const;
+
 // Who runs this site. Rendered on /imprint, /privacy, /contact and in the footer - change it here only.
 // Required by § 5 DDG (Impressum) and Art. 13 GDPR (controller). Keep it accurate before the site goes public.
 export const LEGAL = {
