@@ -46,7 +46,7 @@ npm workspaces + Turborepo. The app is `apps/app/`; the paths below are inside i
 `ops/`, `compose.yml` and `.github/` stay at the repo root. Plan: `docs/PLATFORM_PLAN.md`.
 
 ```
-src/app/            routes - (marketing) · (auth) · [company]/login · [company]/(app)/{manager,leader,team,...} · api
+src/app/            routes - (auth) · [company]/login · [company]/(app)/{manager,leader,team,...} · api
 src/components/     React: ui · marketing · auth · shell · dashboard/{manager,leader,team,shared}
 src/features/       domain logic per entity (tenant, routing, metrics, cases, ...) - no React in here
 src/config/         roles.ts (ROLE_HOME, ROLE_ACCESS) · nav.ts · site.ts

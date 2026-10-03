@@ -33,7 +33,7 @@ plain vitest and portable if the framework ever changes.
 ## Routes = the user journey
 
 ```
-(marketing)/           public: landing, pricing, contact
+page.tsx               / -> /login (the public site is the nextup-landing repo)
 (auth)/                global: find your company, signup, forgot-password, invite
 [company]/             tenant scope - layout resolves the slug, 404s otherwise
   login/               company-branded login

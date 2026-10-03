@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { SITE } from "@/config/site";
 
@@ -8,7 +7,7 @@ export default function NotFound() {
       <div style={{ display: "grid", gap: 14, justifyItems: "start", maxWidth: 480 }}>
         <p className="nh-eyebrow">404 · nobody owns this page</p>
         <h1 style={{ fontSize: "clamp(30px, 5vw, 48px)", fontWeight: 800 }}>Page not found</h1>
-        <p style={{ color: "var(--nh-ink-2)" }}>The address has no owner in our routing table. Back to the start, or <Link href="/contact" style={{ fontWeight: 600, textDecoration: "underline" }}>tell us</Link> what you were looking for.</p>
+        <p style={{ color: "var(--nh-ink-2)" }}>The address has no owner in our routing table. Back to the start.</p>
         <Button href="/">Back to {SITE.name}</Button>
       </div>
     </main>

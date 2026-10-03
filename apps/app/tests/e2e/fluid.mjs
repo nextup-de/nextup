@@ -47,7 +47,6 @@ const PAGES = [
   ["manager", "/acme/manager"], ["manager", "/acme/leader"], ["manager", "/acme/dashboard"],
   ["manager", "/acme/problems"], ["manager", "/acme/ideas"], ["manager", "/acme/collaboration"], ["manager", "/acme/progress"],
   ["manager", "/acme/settings"], ["manager", "/acme/settings/routing"], ["manager", "/acme/settings/members"], ["manager", "/acme/settings/company"],
-  ["-", "/"], ["-", "/pricing"], ["-", "/contact"], ["-", "/privacy"], ["-", "/imprint"],
   ["-", "/login"], ["-", "/signup"], ["-", "/forgot-password"], ["-", "/invite"], ["-", "/acme/login"], ["-", "/admin/login"],
 ].filter(([role, path]) => !ONLY.length || ONLY.some((o) => (role + " " + path).includes(o)))
   .sort((a, b) => (b[0] === "-") - (a[0] === "-")); // signed out first: the login below is for the rest
