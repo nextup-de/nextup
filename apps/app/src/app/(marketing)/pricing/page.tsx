@@ -1,7 +1,7 @@
 // PRICING. Free pilot, one flat company plan, and "talk to us" for groups. Per company, not per seat.
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/Button";
-import { SITE } from "@/config/site";
+import { PRINCIPLES, SITE } from "@/config/site";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -69,12 +69,6 @@ const TIERS = [
   },
 ];
 
-const EVERY = [
-  ["Nothing to integrate", "No SSO, no mailbox access, no read access to your systems. A pilot needs one field and one routing table."],
-  ["Cases, not people", "There is no per-person metric in the data model. The ledger measures how long cases wait, never how individuals perform."],
-  ["Your data, in the EU", "Export every case, event and number at any time. Deletion on request. No cookies, no tracking, no third-party fonts on this site."],
-];
-
 const FAQ = [
   ["Why per company and not per seat?", "A tool for raising things fails the moment you count who is allowed to raise them. Everyone raises; the price does not change when you add people."],
   ["What exactly is a pilot?", "Five working days in one department, timing one recurring decision type - approve a tool, sign off a clause, answer a data request. Real requests, real owners. At the end you see the median time to first answer and where the waiting went. It is free; we ask for thirty minutes of feedback."],
@@ -112,7 +106,7 @@ export default function PricingPage() {
       <section className={styles.every}>
         <p className="nh-eyebrow">In every plan</p>
         <div className={styles.everyGrid}>
-          {EVERY.map(([h, b]) => (
+          {PRINCIPLES.map(([h, b]) => (
             <div key={h}>
               <h3>{h}</h3>
               <p>{b}</p>

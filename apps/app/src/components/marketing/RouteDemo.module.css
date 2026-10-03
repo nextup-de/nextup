@@ -1,0 +1,58 @@
+/* The hero's raise box and its answer. One white field with the raise box's gold edge; the answer stands under it as type, not as a card. */
+
+.demo { width: min(100%, 760px); display: grid; gap: clamp(22px, 2.8vw, 34px); }
+
+/* The box: one line and the send arrow. */
+.box {
+  display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 28px;
+  border: 2px solid transparent; border-radius: 999px; color: var(--nh-ink);
+  /* the gold edge: a gradient under a transparent border, white painted over everything inside it */
+  background: linear-gradient(var(--nh-card), var(--nh-card)) padding-box, linear-gradient(90deg, var(--nh-gold), var(--nh-gold-soft) 50%, var(--nh-gold)) border-box;
+  box-shadow: 0 22px 44px -22px rgb(25 50 70 / 0.24), 0 4px 12px rgb(25 50 70 / 0.05); transition: box-shadow 0.2s ease;
+}
+.box:focus-within { box-shadow: 0 0 0 5px rgb(240 196 64 / 0.2), 0 22px 44px -22px rgb(25 50 70 / 0.24), 0 4px 12px rgb(25 50 70 / 0.05); }
+.input {
+  flex: 1; min-width: 0; height: 1.5em; padding: 0; border: 0; outline: 0; resize: none; background: transparent;
+  font-size: clamp(17px, 1.5vw, 20px); font-weight: 500; line-height: 1.5; text-align: left; overflow: hidden;
+}
+.input::placeholder { color: var(--nh-mute-2); }
+.send {
+  flex: none; width: 48px; height: 48px; border-radius: 50%; border: 0;
+  display: grid; place-items: center; background: var(--nh-ink); color: #fff; cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.send:hover { background: var(--nh-brand); }
+.send:active { transform: translateY(1px); }
+.send:disabled { background: var(--nh-mute-2); cursor: default; transform: none; }
+.send:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+
+/* The answer: three names in the display serif, a caption over each, one quiet line under them. */
+.answer { display: grid; gap: 16px; }
+.facts { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.facts > div { display: grid; gap: 6px; align-content: start; padding: 2px 16px; border-left: 1px solid var(--nh-line); }
+.facts > div:first-child { border-left: 0; }
+.facts dt { font-family: var(--nh-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--nh-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.facts dd {
+  margin: 0; font-family: var(--nh-serif); font-size: clamp(26px, 3vw, 40px); line-height: 1.05;
+  opacity: 0.25; transition: opacity 0.3s ease;
+}
+.answer[data-on="true"] .facts dd { opacity: 1; }
+.note { font-size: 13.5px; line-height: 1.45; color: var(--nh-mute); }
+.note[data-raised="true"] { color: var(--nh-ok); font-weight: 700; }
+
+/* Page load: the box, then the answer, then the typing starts. */
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+.box, .answer { animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.box { animation-delay: 0.18s; }
+.answer { animation-delay: 0.28s; }
+@media (prefers-reduced-motion: reduce) {
+  .box, .answer { animation: none; }
+}
+
+@media (max-width: 640px) {
+  /* A phone cannot hold a request on one line: two lines, and the corners follow. */
+  .box { align-items: flex-end; padding: 14px 12px 12px 18px; border-radius: var(--nh-r-xl); }
+  .input { height: 3em; align-self: flex-start; }
+  .facts { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .facts > div { border-left: 0; padding: 0; }
+}
