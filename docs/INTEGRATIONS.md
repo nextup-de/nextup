@@ -1,8 +1,6 @@
 # NextHub - integrations, AI, tenants, phases
 
-> **Proposal 21 Sep 2026.** How n8n and an LLM plug into the app, and how one deployment
-> serves many companies at different stages. Nothing here is built yet; it lands in Phase 2/4
-> (`docs/PLAN.md`). Decisions to make are at the end.
+> **Updated 2026-10-03** · reference + plan. Written as a proposal on 21 Sep 2026; since then the events API, tokens, stages and tenant guard are built and the code points here as the contract. The n8n workflows themselves (deadline, digests, connectors) are still a plan.
 
 The product rule this follows: **AI proposes, never decides** (§11.2, `features/routing`). The
 architecture rule it follows: **events, not edits** (`features/cases/events.ts`). Every

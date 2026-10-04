@@ -1,5 +1,5 @@
 "use server";
-// The bug icon's submit (components/report/ReportButton.tsx). docs/PLATFORM_PLAN.md, "Tickets".
+// The bug icon's submit (components/report/ReportButton.tsx). docs/plans/2026-09-27_platform.md, "Tickets".
 //
 // The report is stored in this stack first - screenshot included - so nothing is lost when
 // admin.sellux.ch is unreachable; server/tickets-sync.ts forwards it and keeps retrying. The

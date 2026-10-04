@@ -10,7 +10,7 @@ user to ask Kevin instead of working around it.
 
 NextUp — a Next.js 16 app (App Router, TypeScript, `src/`). Read `README.md`
 first, then `docs/ARCHITECTURE.md` for the folder rules. The product idea is
-in `docs/PLAN.md`; routes in `docs/ROUTES.md`; the data model in
+in `docs/plans/2026-09-15_build-plan.md`; routes in `docs/ROUTES.md`; the data model in
 `docs/DATA_MODEL.md`.
 
 The app lives in `apps/app/` (npm workspaces + Turborepo); every `src/`, `prisma/` and `tests/`

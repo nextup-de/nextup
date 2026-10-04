@@ -1,5 +1,7 @@
 # Fluid UI
 
+> **Updated 2026-09-28** · reference: layout rules and the checks that enforce them.
+
 NextUp works on every screen at 100% browser zoom: phones, tablets, laptops, monitors. This page is
 how it does that and the rules that keep it that way. Two checks enforce them: `npm test`
 (`tests/unit/fluid.test.ts`, runs in CI) and the screenshot sweep (`tests/e2e/fluid.mjs`, run by hand).

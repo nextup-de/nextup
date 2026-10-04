@@ -1,4 +1,4 @@
-// The server-side store. Phase 2 of docs/PLAN.md; the tables docs/DATA_MODEL.md asks for, minus
+// The server-side store. Phase 2 of docs/plans/2026-09-15_build-plan.md; the tables docs/DATA_MODEL.md asks for, minus
 // the ones the demo seed still covers (see below).
 //
 // Deliberate scope: only what has to be SHARED between people or QUERIED lives here. The rich
@@ -28,7 +28,7 @@ model Company {
   name String
   mark String @default("")
 
-  // Per-company product rules (docs/PLAN.md "decisions before Phase 2", #3).
+  // Per-company product rules (docs/plans/2026-09-15_build-plan.md "decisions before Phase 2", #3).
   anonymousHandles Boolean @default(true)
 
   // demo | sandbox | pilot | live - docs/INTEGRATIONS.md "Stages". A customer's phase is a flag
@@ -502,7 +502,7 @@ model IdeaTurn {
   @@index([companyId, draftId, createdAt])
 }
 
-// ── Bug reports (docs/PLATFORM_PLAN.md, "Tickets") ────────────────────────────────────────────────
+// ── Bug reports (docs/plans/2026-09-27_platform.md, "Tickets") ────────────────────────────────────────────────
 // Filed from the bug icon. The full ticket, screenshot included, stays in this stack; a copy goes to
 // admin.sellux.ch (packages/contracts TicketIntake) and replies come back as TicketReply rows.
 

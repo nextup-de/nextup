@@ -5,7 +5,7 @@ scores high enough to publish (docs/IDEAS.md); it lands in the right leader's in
 leader answers, management sees the wait ledger.
 
 Next.js 16 (App Router, TypeScript), no CSS framework - tokens + CSS Modules.
-`docs/PLAN.md` is the roadmap; `docs/ARCHITECTURE.md` explains the folders; `docs/ROUTES.md`
+`docs/plans/2026-09-15_build-plan.md` is the roadmap; `docs/ARCHITECTURE.md` explains the folders; `docs/ROUTES.md`
 and `docs/DATA_MODEL.md` are the map. Process rules: `CONTRIBUTING.md`. AI sessions: `CLAUDE.md`.
 
 ## Run
@@ -43,7 +43,7 @@ on a box with `LOGIN_DEMO_FILL=true` - from the "View the demo as…" list. New 
 ## Layout
 
 npm workspaces + Turborepo. The app is `apps/app/`; the paths below are inside it. `docs/`,
-`ops/`, `compose.yml` and `.github/` stay at the repo root. Plan: `docs/PLATFORM_PLAN.md`.
+`ops/`, `compose.yml` and `.github/` stay at the repo root. Plan: `docs/plans/2026-09-27_platform.md`.
 
 ```
 src/app/            routes - (auth) · [company]/login · [company]/(app)/{manager,leader,team,...} · api

@@ -1,5 +1,7 @@
 # The idea studio
 
+> **Updated 2026-09-30** · reference: how the idea studio works.
+
 The member home (`/[company]/raise`) develops ideas instead of taking a one-line problem. It follows
 the whiteboard sessions of 28 Sep 2026: idea → AI → feedback ⇄ develop → decision → outcome.
 

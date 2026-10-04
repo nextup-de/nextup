@@ -1,5 +1,7 @@
 # Company knowledge
 
+> **Updated 2026-09-24** · reference + plan: the tables are built, the later sections are still a plan.
+
 How NextUp stores what a company *is* (vision, structure, who decides what, goals, its public
 papers) so that people can edit it and an AI can read it, cite it and never leak it to another
 company. The first part (the tables) is built; the rest is the plan.

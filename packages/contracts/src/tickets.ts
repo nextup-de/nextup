@@ -1,5 +1,5 @@
 // Tickets between a company stack (apps/app) and our developer tool, admin.sellux.ch (the private
-// repo selluxhenner/nextup-admin). docs/PLATFORM_PLAN.md, "Tickets".
+// repo selluxhenner/nextup-admin). docs/plans/2026-09-27_platform.md, "Tickets".
 //
 //   stack ──POST /api/intake──────────▶ ops      one ticket, with its screenshot
 //   stack ──GET  /api/replies?since=──▶ ops      replies meant for the reporter, oldest first
