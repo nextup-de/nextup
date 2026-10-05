@@ -1,6 +1,6 @@
 # Docs
 
-> **Updated 2026-10-03.** Every file starts with an `Updated` or `Plan` line that gives its date.
+> **Updated 2026-10-05.** Every file starts with an `Updated` or `Plan` line that gives its date.
 
 ## Plans (`plans/`, newest first)
 
@@ -9,6 +9,7 @@ Each one's status line says how much of it is done.
 
 | Date | Plan | Status |
 |---|---|---|
+| 2026-10-05 | [Admin tickets: what to take from Swiss Edu Solution](plans/2026-10-05_admin-vs-ses.md) | open |
 | 2026-10-03 | [AI server: test first, then rent the GPU](plans/2026-10-03_ai-server-gpu.md) | open |
 | 2026-09-27 | [Platform: one stack per company](plans/2026-09-27_platform.md) | stage 1 almost done |
 | 2026-09-24 | [Raise-page assistant](plans/2026-09-24_raise-assistant.md) | built; "Open" list left |
