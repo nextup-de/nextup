@@ -17,15 +17,19 @@ describe("topics and the rail", () => {
     expect(topics.length).toBeLessThanOrEqual(MAX_TOPICS);
     expect(new Set(topics).size).toBe(topics.length);
   });
-  it("starts empty: nothing clear, exactly one active, short labels", () => {
+  it("starts empty on step one: nothing clear, the first topic active, short labels", () => {
     const gaps = gapsOf(topics, oneLiner.parts);
     expect(gaps.filter((g) => g.status === "clear")).toHaveLength(0);
-    expect(gaps.filter((g) => g.status === "active")).toHaveLength(1);
+    expect(gaps.map((g) => g.status)).toEqual(["active", ...gaps.slice(1).map(() => "open")]);
     expect(gaps.every((g) => g.label.length <= 20)).toBe(true);
   });
   it("checks a topic off once the idea answers it", () => {
     const later = benchmark({ text: "A shared calendar for the endurance rig. A pilot for one week on line 3 saves 20 minutes per shift.", affected: ["M. Roth"], attachments: 0 }, ctx);
     expect(gapsOf(topics, later.parts).filter((g) => g.status === "clear").length).toBeGreaterThan(0);
+  });
+  it("puts the coach's first question first: the weakest bar's", () => {
+    const weakestBar = [...oneLiner.parts].sort((a, b) => a.value - b.value).find((p) => p.missing.length);
+    expect(topics[0]).toBe(weakestBar?.missing[0]);
   });
   it("moves on when the active topic is marked unknown", () => {
     const first = gapsOf(topics, oneLiner.parts).find((g) => g.status === "active");
