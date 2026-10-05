@@ -45,7 +45,7 @@ const stepLabel = (step: number) => (step >= OVERVIEW_STEPS.length ? "Shipped" :
 type Profile = { p: Person; raised: number; feed: boolean; x: number; y: number };
 // On a phone it rises from the bottom as a sheet instead, like the inbox's person cards.
 function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: () => void; sheet: boolean }) {
-  const [soon, setSoon] = useState(false);
+  const { href, tenant } = useDemo();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopImmediatePropagation(); onClose(); } };
     window.addEventListener("keydown", onKey, true);
@@ -68,10 +68,9 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
             <span className={s.department}>Email</span><a className={s.email} href={"mailto:" + p.email}>{p.email}</a>
             <span className={s.department}>Ideas raised</span><span className={s.dept2}>{profile.raised}</span>
           </div>
-          <button type="button" className={s.viewProfile} onClick={() => setSoon(true)}>
+          {!tenant.hiddenPeople?.includes(p.name) && <Link className={s.viewProfile} href={href("/people/" + encodeURIComponent(p.name))} onClick={onClose}>
             View profile<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 1l5 5-5 5" /></svg>
-          </button>
-          {soon && <span className={s.soonNote} role="status">Profile pages are coming soon.</span>}
+          </Link>}
         </div>
       </div>
     </>
