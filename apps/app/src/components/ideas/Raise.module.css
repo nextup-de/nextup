@@ -53,7 +53,8 @@
 .publish { display: flex; align-items: center; justify-content: center; gap: calc(6px * var(--u)); height: calc(33px * var(--u)); border: none; border-radius: 999px; background: #e5e5ea; color: #6e6e73; font-family: inherit; font-size: calc(11.25px * var(--u)); font-weight: 600; cursor: default; box-shadow: 0 1px 2px rgba(40,60,100,0.08); transition: background 180ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
 .publish[data-state="ready"] { background: #111; color: #fff; cursor: pointer; }
 .publish[data-state="ready"]:active { transform: scale(.97); }
-.publish[data-state="published"] { background: #eceef2; color: #1c1c1e; box-shadow: none; } /* done: the page's own grey, the check in Decision Blue */
+/* Done: a status, not a button - no fill, a hairline outline, muted text, the check in Decision Blue. */
+.publish[data-state="published"] { background: transparent; color: #6e6e73; box-shadow: inset 0 0 0 1px #e5e5ea; cursor: default; }
 .publish[data-state="published"] svg { color: #007aff; }
 .halves { display: flex; gap: calc(7.5px * var(--u)); }
 .half { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: calc(6px * var(--u)); height: calc(28.5px * var(--u)); border: none; border-radius: 999px; background: #eceef2; color: #1c1c1e; font-family: inherit; font-size: calc(11.25px * var(--u)); font-weight: 600; cursor: pointer; transition: background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
