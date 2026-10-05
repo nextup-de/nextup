@@ -60,7 +60,7 @@ export async function publishTo(page: Page, to: string) {
   await page.getByRole("button", { name: "Publish idea" }).click();
   const who = page.getByRole("dialog", { name: "Who should get this?" });
   await expect(who).toBeVisible({ timeout: 30_000 });
-  const offered = who.getByRole("radio", { name: new RegExp(to.replace(/\./g, "\\.")) });
+  const offered = who.getByRole("radio").filter({ hasText: to }); // by its text: no pattern built from the name
   if (await offered.count()) await offered.first().click();
   else {
     await who.getByRole("button", { name: /Choose someone else/ }).click();
