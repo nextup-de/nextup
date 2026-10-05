@@ -1,7 +1,8 @@
 "use client";
 // The raise page's start: the greeting, the composer at the optical centre and, under it, how NextUp
 // works (empty), the optional context (once typing) or the evaluation (after send). Props in.
-import { useRef } from "react";
+import { useRef, useSyncExternalStore } from "react";
+import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
 import s from "./Raise.module.css";
 
 export const EVAL_STEPS = ["Reading your idea", "Org chart · who is responsible", "Similar ideas", "Cost and impact", "Feasibility", "Past decisions", "Risks and blockers", "Routing"];
@@ -71,28 +72,15 @@ function HowItWorks() {
   );
 }
 
-// The spinning network: 54 points on a sphere (golden angle), each tied to its 2-3 nearest. Fixed geometry.
-const ORB = (() => {
-  const N = 54, pts: [number, number, number][] = [];
-  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < N; i++) { const y = 1 - 2 * (i + 0.5) / N, r = Math.sqrt(1 - y * y), a = i * 2.39996 + rnd() * 0.3; pts.push([Math.cos(a) * r, y, Math.sin(a) * r]); }
-  const P = pts.map(([x, y, z]) => ({ x: 60 + x * 50, y: 60 + y * 50, z }));
-  const edges: { x1: number; y1: number; x2: number; y2: number }[] = [], seen = new Set<string>();
-  pts.forEach((p, i) => {
-    pts.map((q, j): [number, number] => [j, (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2]).filter(([j]) => j !== i).sort((a, b) => a[1] - b[1]).slice(0, 2 + (i % 2))
-      .forEach(([j]) => { const k = i < j ? i + "-" + j : j + "-" + i; if (seen.has(k)) return; seen.add(k); edges.push({ x1: P[i].x, y1: P[i].y, x2: P[j].x, y2: P[j].y }); });
-  });
-  const nodes = P.map((p, i) => ({ cx: p.x, cy: p.y, r: 0.7 + (p.z + 1) * 0.9 + (i % 7 === 0 ? 0.8 : 0), op: 0.35 + (p.z + 1) * 0.33 }));
-  return { nodes, edges };
-})();
+const MOTION = "(prefers-reduced-motion: reduce)";
+const prefersReduced = () => window.matchMedia(MOTION).matches;
+const onMotionPref = (f: () => void) => { const m = window.matchMedia(MOTION); m.addEventListener("change", f); return () => m.removeEventListener("change", f); };
 
 function Evaluating({ step, sub }: { step: number; sub: string }) {
+  const reduced = useSyncExternalStore(onMotionPref, prefersReduced, () => false); // the orb holds still
   return (
     <section className={s.eval} aria-live="polite" aria-label="Evaluating">
-      <svg className={s.orb} viewBox="0 0 120 120" aria-hidden="true">
-        {ORB.edges.map((e, i) => <line key={i} x1={e.x1.toFixed(1)} y1={e.y1.toFixed(1)} x2={e.x2.toFixed(1)} y2={e.y2.toFixed(1)} stroke="#1c1c1e" strokeOpacity="0.22" strokeWidth="0.45" />)}
-        {ORB.nodes.map((n, i) => <circle key={i} cx={n.cx.toFixed(1)} cy={n.cy.toFixed(1)} r={n.r.toFixed(2)} fill="#1c1c1e" fillOpacity={n.op.toFixed(2)} />)}
-      </svg>
+      <span className={s.orb} aria-hidden="true"><EvalOrb state="connecting" size={78} paused={reduced} /></span>
       <h3 className={`${s.evalTitle} ${s.serif}`}>Evaluating</h3>
       <div className={s.evalLine}><span className={s.evalStep}>{EVAL_STEPS[step]}</span><span className={s.evalCount}>{step + 1} / {EVAL_STEPS.length}</span></div>
       <span className={s.evalSub}>{sub}</span>

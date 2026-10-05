@@ -10,7 +10,7 @@
 /* The page fills the shell below its bar, edge to edge (the shell's content box is centred and padded). */
 .root {
   position: relative; display: flex; overflow: hidden; min-height: 0;
-  width: var(--nh-screen-w); height: calc(var(--nh-screen-h) - 56px);
+  width: var(--nh-screen-w); height: calc(var(--nh-screen-h) - var(--nh-bar-h));
   margin: -20px 0 -40px calc((min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x)) - var(--nh-screen-w)) / 2);
   font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1c1c1e; -webkit-font-smoothing: antialiased;
 }
@@ -132,7 +132,7 @@
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
 /* Start */
-.start { animation: affSoft 260ms ease backwards; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 calc(18px * var(--u)); box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr) 56px; justify-items: center; } /* the last row is the shell bar's height: the composer sits at the centre of the screen, not of the area below the bar */
+.start { animation: affSoft 260ms ease backwards; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 calc(18px * var(--u)); box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr) var(--nh-bar-h); justify-items: center; } /* the last row is the shell bar's height: the composer sits at the centre of the screen, not of the area below the bar */
 .h1 { align-self: end; width: 100%; max-width: calc(720px * var(--u)); margin: 0; padding-bottom: calc(21px * var(--u)); text-align: center; font-size: calc(22.5px * var(--u)); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: #1b1d22; }
 .below { grid-row: 3 / 5; width: 100%; max-width: calc(720px * var(--u)); align-self: start; padding: calc(21px * var(--u)) 0 calc(24px * var(--u)); box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: calc(21px * var(--u)); }
 
@@ -212,7 +212,8 @@
 .stepText { margin: 0; font-size: calc(9.75px * var(--u)); line-height: 1.5; color: #6e6e73; text-wrap: pretty; }
 
 .eval { width: 100%; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(3.75px * var(--u)); height: calc(194.25px * var(--u)); padding: calc(12px * var(--u)) calc(21px * var(--u)); background: #fff; border-radius: 16.5px; box-shadow: 0 7.5px 22.5px rgba(40,60,100,0.08), 0 1px 2px rgba(40,60,100,0.05); animation: affFade 420ms cubic-bezier(.2,.8,.2,1) backwards; }
-.orb { display: block; width: calc(78px * var(--u)); height: calc(78px * var(--u)); animation: evSpin 28s linear infinite; }
+.orb { display: block; flex: none; width: calc(78px * var(--u)); height: calc(78px * var(--u)); }
+.orb > canvas { transform: scale(var(--u)); transform-origin: 0 0; } /* drawn at 78px, scaled with the page */
 .evalTitle { margin: 2px 0 0; font-size: calc(22.5px * var(--u)); line-height: 1.1; color: #1b1d22; }
 .evalLine { display: flex; align-items: baseline; gap: calc(9px * var(--u)); }
 .evalStep { font-size: calc(12px * var(--u)); font-weight: 600; color: #3a3a3c; }
@@ -464,7 +465,6 @@
 .srcWhere { font-size: calc(9.38px * var(--u)); color: #6e6e73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .disclaimer { font-size: calc(9.38px * var(--u)); color: #6e6e73; }
 
-@keyframes evSpin { to { transform: rotate(360deg); } }
 @keyframes railRing { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes affBreathe { 0%, 100% { opacity: .75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.015); } }
 @keyframes affPop { from { opacity: 0; transform: translateY(-4.5px) scale(.96); } to { opacity: 1; transform: none; } }
@@ -477,7 +477,7 @@
 
 /* ── Phones: the sidebar becomes a drawer over the page, the rail and the side padding go ── */
 @media (max-width: 760px) {
-  .root { height: calc(var(--nh-screen-h) - 56px); margin-bottom: -16px; }
+  .root { height: calc(var(--nh-screen-h) - var(--nh-bar-h)); margin-bottom: -16px; }
   .sbShell { position: absolute; inset: 0 auto 0 0; width: min(300px, 86%); transform: translateX(-100%); visibility: hidden; transition: transform 420ms cubic-bezier(.2,.8,.2,1), visibility 0s 420ms; }
   .sb { width: 100%; }
   .root[data-sb="open"] .sbShell { transform: none; visibility: visible; box-shadow: 0 0 40px rgba(20,30,60,0.18); transition: transform 420ms cubic-bezier(.2,.8,.2,1); }

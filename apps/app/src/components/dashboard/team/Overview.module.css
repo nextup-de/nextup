@@ -423,7 +423,7 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
   .root[data-open="true"] {
     width: calc(var(--nh-screen-w) - 48px);
     margin-left: calc(24px - (var(--nh-screen-w) - min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x))) / 2);
-    height: calc(var(--nh-screen-h) - 96px); min-height: 420px;
+    height: calc(var(--nh-screen-h) - var(--nh-bar-h) - 40px); min-height: 420px;
     margin-bottom: -24px;
   }
   .root[data-open="true"] .div20 { padding: 0 calc(24px * var(--u)); } /* the design's side padding, inside its 1400px row */

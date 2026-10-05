@@ -26,7 +26,7 @@
     max-width: none; min-height: 420px;
     width: calc(var(--nh-screen-w) - 32px);
     margin-left: calc(16px - (var(--nh-screen-w) - min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x))) / 2);
-    height: calc(var(--nh-screen-h) - 96px);
+    height: calc(var(--nh-screen-h) - var(--nh-bar-h) - 40px);
     margin-bottom: -24px;
   }
 }
