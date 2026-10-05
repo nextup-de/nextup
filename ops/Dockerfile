@@ -35,7 +35,12 @@ WORKDIR /app
 # The server only ever runs `node apps/app/server.js`. npm, npx and corepack ship with the base
 # image and bring their own dependency tree - every CVE Trivy found in this image lived there, not
 # in the app. Nothing at runtime needs them, so they go (the migrate image keeps them for prisma).
-RUN groupadd --system --gid 1001 nodejs \
+# Debian security fixes land days before the next node base image does, and Trivy's gate stops the
+# release until then (5 Oct 2026: libpcre2-8-0, CVE-2026-103111). apt-get upgrade picks them up now.
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 1001 nodejs \
  && useradd --system --uid 1001 --gid nodejs nextjs \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
            /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack

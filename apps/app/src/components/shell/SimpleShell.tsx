@@ -101,14 +101,13 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
                   <span className={styles.meLine}>Anonymous · name and role hidden</span>
                 </div>
               )}
-              <div className={styles.meFoot} data-single={sent || ctx.serverMode ? undefined : "true"}>
-                {(sent || ctx.serverMode) && (
-                  <span className={styles.meLinks}>
-                    {sent && <Link href={tenant.prefix + "/team"} className={styles.meLink} onClick={() => setPop(null)}>What happened to what I sent →</Link>}
-                    {/* Bug reports need the database - the offline demo has none. */}
-                    {ctx.serverMode && <Link href={tenant.prefix + "/reports"} className={styles.meLink} onClick={() => setPop(null)}>My reports →</Link>}
-                  </span>
-                )}
+              <div className={styles.meFoot}>
+                <span className={styles.meLinks}>
+                  <Link href={tenant.prefix + "/profile"} className={styles.meLink} onClick={() => setPop(null)}>My profile <span aria-hidden="true">→</span></Link>
+                  {sent && <Link href={tenant.prefix + "/team"} className={styles.meLink} onClick={() => setPop(null)}>What I sent <span aria-hidden="true">→</span></Link>}
+                  {/* Bug reports need the database - the offline demo has none. */}
+                  {ctx.serverMode && <Link href={tenant.prefix + "/reports"} className={styles.meLink} onClick={() => setPop(null)}>My reports <span aria-hidden="true">→</span></Link>}
+                </span>
                 <button type="button" className={styles.logout} onClick={logout}>Log out</button>
               </div>
             </div>

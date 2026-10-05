@@ -45,9 +45,6 @@
   --nh-bench-feas-tint: #edf7f0;
   --nh-bench-clarity: #0b70d1;   /* novelty & clarity: Decision Blue */
   --nh-bench-clarity-tint: #eaf3ff;
-  /* The raise box's gold edge, as on the landing's hero box: strong at the sides, pale across the middle. */
-  --nh-gold: #f0c440;
-  --nh-gold-soft: #fdefc5;
 
   --nh-font: var(--font-sans, "Manrope"), system-ui, -apple-system, "Segoe UI", sans-serif;   /* --font-sans set by next/font in layout.tsx */
   --nh-mono: var(--font-mono, "IBM Plex Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;

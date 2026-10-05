@@ -68,6 +68,7 @@ export default async function AppLayout({
         prefix: prefixFor(tenant.slug),
         name: tenant.name,
         users: people.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
+        hiddenPeople: tenant.users.filter((u) => Boolean(u.handle)).map((u) => u.name),
         demoTools,
       }}
       seed={seed}

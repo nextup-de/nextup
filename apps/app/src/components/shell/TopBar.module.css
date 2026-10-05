@@ -74,6 +74,7 @@
 .mePreviewAvatar[data-anon="true"] { background: var(--nh-accent); }
 .mePreviewName { font-size: 12.5px; font-weight: 700; color: var(--nh-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meFoot { margin-top: 12px; padding-top: 10px; border-top: 1px solid #f0efea; }
+.profileLink { display: block; padding: 8px 4px 12px; color: var(--nh-brand); font-size: 12.5px; font-weight: 700; }
 .logout { width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px; height: 34px; border-radius: 9px; border: 1px solid var(--nh-line); background: transparent; color: var(--nh-ink); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: background 140ms ease, border-color 140ms ease; }
 .logout:hover { background: #f4f3f0; border-color: var(--nh-ink); }
 
