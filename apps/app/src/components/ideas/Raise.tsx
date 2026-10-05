@@ -359,7 +359,7 @@ export function Raise() {
   );
 
   return (
-    <div className={s.root} data-sb={sb}>
+    <div className={s.root} data-sb={sb} data-raise-root="">
       <div className={s.sbShell}>
         <RaiseSidebar query={query} onQuery={setQuery} onHide={() => { setSb("hidden"); setMenu(null); }} card={card} rows={rows} loaded={studio.loaded}
           onPick={openDraft} onPin={preview.togglePin} onNew={newIdea} />

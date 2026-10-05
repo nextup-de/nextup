@@ -228,7 +228,8 @@
 .backdrop { position: fixed; inset: 0; z-index: 20; }
 .menu { position: absolute; left: calc(-4.5px * var(--u)); bottom: calc(100% + 9px * var(--u)); z-index: 21; width: calc(177px * var(--u)); max-height: var(--menu-max, 400px); background: #fff; border-radius: 13.5px; box-shadow: 0 9px 27px rgba(20,30,60,0.16), 0 0 0 1px rgba(0,0,0,0.04); padding: calc(4.5px * var(--u)); overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; transform-origin: bottom left; animation: affPop 220ms cubic-bezier(.2,.8,.2,1) both; }
 .menu[data-up="false"] { bottom: auto; top: calc(100% + 9px * var(--u)); transform-origin: top left; }
-.menu[data-at="card"] { left: calc(7.5px * var(--u)); top: 0; bottom: auto; transform-origin: top left; }
+.menu[data-at="card"] { position: fixed; left: var(--menu-x); top: var(--menu-y); bottom: auto; transform-origin: top left; }
+.menu:not([data-w]) { width: max-content; min-width: calc(177px * var(--u)); } /* the main list: as wide as its longest label */
 .menu[data-w="panel"] { width: calc(225px * var(--u)); }
 .menu[data-w="pick"] { width: calc(255px * var(--u)); }
 .mRow { animation: affSoft 180ms ease backwards; display: flex; align-items: center; gap: calc(8.25px * var(--u)); min-height: calc(31.5px * var(--u)); padding: 0 calc(9px * var(--u)); border: none; border-radius: 9px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background 140ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
@@ -236,7 +237,7 @@
 .mRow:active { transform: scale(.97); }
 .mRow svg { flex: none; }
 .mRow[data-tall="true"] { min-height: calc(36px * var(--u)); }
-.mLabel { flex: 1; font-size: calc(11.25px * var(--u)); font-weight: 500; color: #1c1c1e; }
+.mLabel { flex: 1; white-space: nowrap; font-size: calc(11.25px * var(--u)); font-weight: 500; color: #1c1c1e; }
 .mSet { width: calc(5.25px * var(--u)); height: calc(5.25px * var(--u)); flex: none; border-radius: 50%; background: #007aff; opacity: 0; }
 .mSet[data-on="true"] { opacity: 1; }
 .mCheck { opacity: 0; }

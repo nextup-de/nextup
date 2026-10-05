@@ -3,6 +3,7 @@
 // it, colleagues, a meeting, files, who is affected, who sees it. Opens upward when there is room.
 // Props in; the receiver, colleagues, meeting and visibility are stand-ins (raisePreview.ts).
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Dept, OrgPerson } from "@/features/demo/types";
 import { initials } from "@/features/ideas/raise";
 import { Icon, PATH, type IconName } from "./raiseIcons";
@@ -42,18 +43,32 @@ export type MenuProps = {
 };
 
 export function RaiseMenu(p: MenuProps) {
+  const spot = useRef<HTMLSpanElement>(null); // where the menu belongs in the page
   const ref = useRef<HTMLDivElement>(null);
-  const [place, setPlace] = useState({ up: p.at === "bar", max: 400 });
+  const [place, setPlace] = useState({ up: p.at === "bar", max: 400, x: 0, y: 0 });
+  // Opened from the sidebar, the menu is drawn over the page (the sidebar clips what leaves it),
+  // fixed beside the row it came from. Into the page root, so it keeps the page's sizes and fonts.
+  const [host, setHost] = useState<HTMLElement | null>(null);
 
-  // Open where there is room: upward when 195px fit above the button (or more than below), else down.
+  // Open where there is room: upward when 195px fit above the button (or more than below), else down;
+  // from the sidebar, to the right of the row and pulled back inside the screen.
   useLayoutEffect(() => {
-    const anchor = ref.current?.parentElement;
+    const anchor = spot.current?.parentElement;
     if (!anchor) return;
     const r = anchor.getBoundingClientRect();
+    if (p.at === "card") {
+      const root = anchor.closest<HTMLElement>("[data-raise-root]");
+      if (root !== host) { setHost(root); return; }
+      const w = ref.current?.offsetWidth ?? 0, gap = 8;
+      const x = Math.max(gap, Math.min(r.right + gap, window.innerWidth - w - gap));
+      const y = Math.max(gap, Math.min(r.top, window.innerHeight - 240));
+      setPlace({ up: false, max: Math.max(120, Math.floor(window.innerHeight - y - gap)), x, y });
+      return;
+    }
     const above = r.top - 17, below = window.innerHeight - r.bottom - 18;
-    const up = p.at === "bar" && (above >= 195 || above >= below);
-    setPlace({ up, max: Math.max(120, Math.floor(up ? above : below)) });
-  }, [p.at, p.view]);
+    const up = above >= 195 || above >= below;
+    setPlace({ up, max: Math.max(120, Math.floor(up ? above : below)), x: 0, y: 0 });
+  }, [p.at, p.view, host]);
 
   const { onClose } = p;
   useEffect(() => {
@@ -64,9 +79,9 @@ export function RaiseMenu(p: MenuProps) {
 
   const width = p.view === "main" ? undefined : isPick(p.view) ? "pick" : "panel";
   const back = () => p.onView(p.view === "visPick" ? "vis" : "main");
-  const vars = { "--menu-max": place.max + "px", "--list-max": Math.max(72, Math.min(225, place.max - 135)) + "px" } as React.CSSProperties;
+  const vars = { "--menu-max": place.max + "px", "--list-max": Math.max(72, Math.min(225, place.max - 135)) + "px", "--menu-x": place.x + "px", "--menu-y": place.y + "px" } as React.CSSProperties;
 
-  return (
+  const menu = (
     <>
       <div className={s.backdrop} onClick={p.onClose} />
       <div ref={ref} className={s.menu} data-up={String(place.up)} data-at={p.at === "card" ? "card" : undefined} data-w={width} style={vars} role="menu">
@@ -86,6 +101,8 @@ export function RaiseMenu(p: MenuProps) {
       </div>
     </>
   );
+  if (p.at !== "card") return <><span ref={spot} hidden />{menu}</>;
+  return <><span ref={spot} hidden />{host && createPortal(menu, host)}</>;
 }
 
 function MainRows(p: MenuProps) {
