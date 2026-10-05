@@ -63,9 +63,12 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
    server (`publishIdeaDraftAction`), which checks the draft is still open and recomputes the score
    from the stored turns. Only then does the page append the usual `case.raised` (kind `idea`).
    Before that, the page asks who should receive it: the button says each step as it runs ("Asking
-   the router…", our thinking orb in front), then a window offers 2-3 receivers with the reason and a
-   match score where a routing row backs it (`features/ideas/receivers.ts`): the router's proposal,
-   the route owners the idea's words match, the team lead, the lead's manager when fewer than two.
+   the router…", our thinking orb in front), then "Who should get this?" offers 2-3 people
+   (`features/ideas/receivers.ts`): the router's proposal, the route owners the idea's words match,
+   the team lead, the lead's manager when fewer than two. Each has a match % built only from facts
+   that are also listed as its "why": where they start (the routing row's keyword score, or their
+   place in the org), the idea landing in their area, being able to approve its spend, and answering
+   the last cases on their desk within the promised days.
    The author picks one or anyone from the directory; the case is raised with that person as its
    `assignee`, the router's own proposal kept in the payload.
 5. Where the stack runs the brain (`services/brain`, `BRAIN_URL`), the page asks it for the routing

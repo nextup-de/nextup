@@ -20,7 +20,8 @@ import { ideaFromTurns } from "@/features/ideas/coach";
 import { ideaContext } from "@/features/ideas/drafts";
 import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, IDEA_UPDATE, initials, isUnsure, splitIdea, splitUpdate, topicsOf, whenLabel, type Gap } from "@/features/ideas/raise";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
-import { receiversFor, type Receiver } from "@/features/ideas/receivers";
+import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
+import { SPEND_LIMIT_EUR } from "@/features/ideas/drafts";
 import { saveShots, shrinkImage } from "@/lib/shots";
 import { brainProposalAction } from "@/server/actions/brain";
 import { useIdeaStudio } from "@/lib/use-idea-studio";
@@ -67,6 +68,7 @@ export function Raise() {
   // choose from; `pubWork` is the step while the chosen one is published.
   const [pubStep, setPubStep] = useState<null | Work | Receiver[]>(null);
   const [pubWork, setPubWork] = useState<Work | null>(null);
+  const [rcvInput, setRcvInput] = useState<ReceiverInput | null>(null); // what the suggestions were scored on, for someone picked by hand
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
   const fillRef = useRef<() => void>(() => {});
@@ -179,6 +181,14 @@ export function Raise() {
     }, 420);
   };
 
+  // What the receiver suggestions are worked out from: the idea, the org, the routing map, and how
+  // everyone answered the cases on their desk.
+  const receiverInput = (text: string, lead: string, brain: ReceiverInput["brain"]): ReceiverInput => ({
+    text, routes: seed.routes, people: seed.people, depts: seed.depts, promiseDays: seed.promiseDays, spendLimitEur: SPEND_LIMIT_EUR,
+    cases: S.cases.map((c) => ({ assignee: c.assignee, raisedDay: c.raisedDay, decided: c.decided })),
+    lead, me: who.name, myDept: who.line.split(",")[0].trim(), affected, brain, yours: extras.recv[0] ?? null,
+  });
+
   // One step of the work, said in the button while it runs: the label and the orb's mode, the real work,
   // and a short minimum so each step can be read.
   const step = async <T,>(set: (w: Work) => void, label: string, orb: Work["orb"], work: () => Promise<T> | T, min: number): Promise<T> => {
@@ -195,11 +205,9 @@ export function Raise() {
     const text = await step(setPubStep, "Reading your idea…", "working", () => idea.text, 450);
     const brain = await step(setPubStep, "Asking the router…", "searching", () => brainProposalAction({ slug: tenant.slug, title: idea.title, body: idea.body }).catch(() => null), 650);
     const lead = await step(setPubStep, "Checking the org chart…", "connecting", () => ev?.lead ?? "Triage desk", 500);
-    const options = await step(setPubStep, "Ranking who fits…", "weaving", () => receiversFor({
-      text, routes: seed.routes, people: seed.people, lead, me: who.name,
-      brain: brain ? { routeId: brain.proposal.routeId, confidence: brain.proposal.confidence, reason: brain.reason } : null,
-      yours: extras.recv[0] ?? null,
-    }), 450);
+    const input = receiverInput(text, lead, brain ? { routeId: brain.proposal.routeId, confidence: brain.proposal.confidence, reason: brain.reason } : null);
+    setRcvInput(input);
+    const options = await step(setPubStep, "Ranking who fits…", "weaving", () => receiversFor(input), 450);
     setPubStep(options);
   };
 
@@ -402,7 +410,8 @@ export function Raise() {
       </div>
       <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label="Close the sidebar" />
       {Array.isArray(pubStep) && (
-        <ReceiverDialog title={draft?.title || idea.title} options={pubStep} people={seed.people} depts={seed.depts} me={who.name} work={pubWork}
+        <ReceiverDialog options={pubStep} people={seed.people} depts={seed.depts} me={who.name} work={pubWork}
+          score={(name) => receiverFor(name, rcvInput ?? receiverInput(idea.text, ev?.lead ?? "Triage desk", null))}
           onCancel={() => setPubStep(null)} onConfirm={(to) => void publish(to)} />
       )}
       <div className={s.main}>

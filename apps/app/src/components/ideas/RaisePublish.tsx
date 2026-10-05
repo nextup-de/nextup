@@ -7,7 +7,7 @@ import type { OrbState } from "thinking-orbs/engine";
 import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
 import type { Dept, OrgPerson } from "@/features/demo/types";
 import { initials } from "@/features/ideas/raise";
-import { otherReceiver, type Receiver } from "@/features/ideas/receivers";
+import type { Receiver } from "@/features/ideas/receivers";
 import { Icon } from "./raiseIcons";
 import s from "./Raise.module.css";
 
@@ -30,18 +30,19 @@ export function Working({ work }: { work: Work }) {
 
 const PAGE = 5;
 
-export function ReceiverDialog({ title, options, people, depts, me, work, onCancel, onConfirm }: {
-  title: string;
+export function ReceiverDialog({ options, people, depts, me, work, score, onCancel, onConfirm }: {
   options: Receiver[];
   people: readonly OrgPerson[];
   depts: readonly Dept[];
   me: string;
   work: Work | null; // publishing: what it is doing
+  score: (name: string) => Receiver; // someone picked by hand, scored on the same facts
   onCancel: () => void;
   onConfirm: (r: Receiver) => void;
 }) {
-  const start = options.find((o) => o.kind === "yours") ?? options.find((o) => o.recommended) ?? options[0];
+  const start = options.find((o) => o.yours) ?? options.find((o) => o.recommended) ?? options[0];
   const [chosen, setChosen] = useState<Receiver>(start);
+  const [custom, setCustom] = useState<Receiver | null>(null); // someone else, once picked
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState("");
   const busy = work !== null;
@@ -61,59 +62,79 @@ export function ReceiverDialog({ title, options, people, depts, me, work, onCanc
   const found = people.filter((p) => p.name !== me && !taken.has(p.name))
     .filter((p) => !needle || (p.name + " " + p.role + " " + deptName(p.dept)).toLowerCase().includes(needle))
     .slice(0, PAGE);
-  const custom = chosen.kind === "other" ? chosen : null;
+  const pick = (name: string) => { const r = score(name); setCustom(r); setChosen(r); setSearching(false); setQ(""); };
 
-  const card = (r: Receiver) => (
-    <button key={r.name} type="button" role="radio" aria-checked={chosen.name === r.name} className={s.rcv} onClick={() => setChosen(r)} disabled={busy}>
-      <span className={s.rcvTop}>
-        <span className={`${s.lead} ${s.leadPick}`} data-kind="person">{initials(r.name)}</span>
-        <span className={s.rcvWho}><span className={s.rcvName}>{r.name}</span><span className={s.rcvRole}>{r.role}</span></span>
-        {r.recommended && <span className={s.rcvTag}>Recommended</span>}
-        {r.score !== null && <span className={s.rcvScore}>{r.score}% match</span>}
-        <span className={s.rcvDot} aria-hidden="true" />
-      </span>
-      <span className={s.rcvWhy}>{r.why}</span>
-    </button>
-  );
+  const row = (r: Receiver) => {
+    const on = chosen.name === r.name;
+    return (
+      <div key={r.name} className={s.rcv} data-on={on}>
+        <button type="button" role="radio" aria-checked={on} className={s.rcvTop} onClick={() => { setChosen(r); setSearching(false); }} disabled={busy}>
+          <span className={s.rcvRadio} aria-hidden="true" />
+          <span className={s.rcvAv} aria-hidden="true">{initials(r.name)}</span>
+          <span className={s.rcvWho}>
+            <span className={s.rcvNameRow}><span className={s.rcvName}>{r.name}</span>{r.recommended && <span className={s.rcvTag}>Best match</span>}</span>
+            <span className={s.rcvRole}>{[r.role, r.yourLead ? "your lead" : ""].filter(Boolean).join(" · ")}</span>
+          </span>
+          <span className={s.rcvMatch} aria-label={r.score + "% match"}>
+            <span className={s.rcvPct}>{r.score}%</span>
+            <span className={s.rcvBar} style={{ "--pct": r.score + "%" } as React.CSSProperties}><span className={s.rcvFill} /></span>
+          </span>
+        </button>
+        {on && (
+          <div className={s.rcvWhy}>
+            <span className={s.rcvWhyLabel}>Why {r.name}</span>
+            <ul className={s.rcvReasons}>{r.reasons.map((x) => <li key={x}>{x}</li>)}</ul>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className={s.dlgWrap}>
       <button type="button" className={s.dlgScrim} onClick={busy ? undefined : onCancel} aria-label="Close" tabIndex={-1} />
       <div ref={dialog} className={s.dlg} role="dialog" aria-modal="true" aria-labelledby="rcv-title" tabIndex={-1}>
         <div className={s.dlgHead}>
-          <h2 id="rcv-title" className={`${s.dlgTitle} ${s.serif}`}>Who should receive it?</h2>
-          <button type="button" className={s.popX} onClick={onCancel} disabled={busy} title="Close" aria-label="Close"><Icon name="x" size={9} width={3} /></button>
-        </div>
-        <p className={s.dlgSub}>NextUp suggests these desks for “{title}”. Pick one, or choose someone yourself.</p>
-
-        <div className={s.rcvs} role="radiogroup" aria-label="Receivers">
-          {options.map(card)}
-          {custom && card(custom)}
-        </div>
-
-        {!searching ? (
-          <button type="button" className={s.rcvOther} onClick={() => setSearching(true)} disabled={busy}>
-            <Icon name="colleague" size={12.75} stroke="#1c1c1e" />Someone else
-          </button>
-        ) : (
-          <div className={s.rcvSearch}>
-            <input ref={field} className={s.pickInput} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people" aria-label="Search people" />
-            <div className={s.rcvList}>
-              {found.map((p) => (
-                <button key={p.name} type="button" className={`${s.mRow} ${s.pickRow}`} onClick={() => { setChosen(otherReceiver(p, deptName(p.dept))); setSearching(false); setQ(""); }}>
-                  <span className={`${s.lead} ${s.leadPick}`} data-kind="person">{initials(p.name)}</span>
-                  <span className={s.pickText}><span className={s.pickName}>{p.name}</span><span className={s.pickMeta}>{p.role} · {deptName(p.dept)}</span></span>
-                </button>
-              ))}
-              {!found.length && <span className={s.noMatch}>No matches</span>}
-            </div>
+          <div className={s.dlgHeadText}>
+            <span className={s.dlgKicker}>Before it goes out</span>
+            <h2 id="rcv-title" className={s.dlgTitle}>Who should get this?</h2>
           </div>
-        )}
+          <button type="button" className={s.dlgClose} onClick={onCancel} disabled={busy} title="Close" aria-label="Close"><Icon name="x" size={11} width={2.6} /></button>
+        </div>
+
+        <div className={s.rcvs} role="radiogroup" aria-label="Who should get this">
+          {options.map(row)}
+          {custom && !taken.has(custom.name) && row(custom)}
+          <div className={s.rcv} data-on={searching}>
+            <button type="button" className={s.rcvTop} onClick={() => setSearching(!searching)} disabled={busy} aria-expanded={searching}>
+              <span className={s.rcvRadio} aria-hidden="true" />
+              <span className={s.rcvWho}>
+                <span className={s.rcvName}>Choose someone else</span>
+                <span className={s.rcvRole}>Search anyone in the company</span>
+              </span>
+              <Icon name="right" size={12} stroke="#8e8e93" width={2.4} className={s.rcvChevron} />
+            </button>
+            {searching && (
+              <div className={s.rcvSearch}>
+                <input ref={field} className={s.pickInput} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people, roles, departments" aria-label="Search people" />
+                <div className={s.rcvList}>
+                  {found.map((p) => (
+                    <button key={p.name} type="button" className={`${s.mRow} ${s.pickRow}`} onClick={() => pick(p.name)}>
+                      <span className={s.rcvAv} aria-hidden="true">{initials(p.name)}</span>
+                      <span className={s.pickText}><span className={s.pickName}>{p.name}</span><span className={s.pickMeta}>{p.role} · {deptName(p.dept)}</span></span>
+                    </button>
+                  ))}
+                  {!found.length && <span className={s.noMatch}>No matches</span>}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className={s.dlgFoot}>
-          <button type="button" className={s.sgNo} onClick={onCancel} disabled={busy}>Cancel</button>
+          <button type="button" className={s.dlgCancel} onClick={onCancel} disabled={busy}>Cancel</button>
           <button type="button" className={s.dlgGo} onClick={() => onConfirm(chosen)} disabled={busy}>
-            {work ? <Working work={work} /> : <><Icon name="up" size={11.25} width={2.4} />Publish to {chosen.name}</>}
+            {work ? <Working work={work} /> : <><Icon name="up" size={12} width={2.4} />Send to {chosen.name}</>}
           </button>
         </div>
       </div>
