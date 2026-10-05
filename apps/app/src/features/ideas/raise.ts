@@ -2,7 +2,7 @@
 // segments, the five analysis dials, the advice line, the note under the coach's latest reply and
 // the sidebar's "when" labels. Every value comes from the benchmark's own facts (benchmarks.ts) -
 // the two dials it has no facts for yet (Cost, Risk) say so. Pure.
-import type { BenchmarkId, BenchmarkPart } from "./benchmarks";
+import type { Benchmark, BenchmarkId, BenchmarkPart } from "./benchmarks";
 
 // ── The rail: what is unclear, worked through during the grilling ─────────────────────────────
 // When the idea is first raised, the questions its benchmark cannot answer yet become a fixed list of
@@ -57,6 +57,20 @@ export function gapsOf(topics: readonly string[], parts: readonly BenchmarkPart[
     id: k, label: topicLabel(k), ask: asks.get(k) ?? k,
     status: !asks.has(k) ? "clear" : unknown.includes(k) ? "unknown" : k === active ? "active" : "open",
   }));
+}
+
+// The benchmark as the coach should ask from it: the questions the author answered "not sure" to are
+// left out, so the coach moves on instead of asking them again. The scores stay as they are.
+export function withoutSkipped(b: Benchmark, skip: readonly string[]): Benchmark {
+  if (!skip.length) return b;
+  return { ...b, parts: b.parts.map((p) => ({ ...p, missing: p.missing.filter((m) => !skip.includes(topicKey(m))) })) };
+}
+
+// Edits made in the Idea view travel with the next message after this marker (components/ideas/Raise.tsx).
+export const IDEA_UPDATE = "\n\nUpdated idea:\n";
+export function splitUpdate(text: string): { said: string; updated: boolean } {
+  const i = text.indexOf(IDEA_UPDATE);
+  return i < 0 ? { said: text, updated: false } : { said: text.slice(0, i), updated: true };
 }
 
 // An answer that says "I don't know": the active question becomes unknown, the coach moves on.

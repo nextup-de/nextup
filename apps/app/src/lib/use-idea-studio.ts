@@ -76,7 +76,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
   }, []);
 
   // One message: make sure a draft exists, stream the score and the coach, then reload the draft.
-  const send = useCallback(async (text: string, meta: { affected: string[]; attachments: number }) => {
+  const send = useCallback(async (text: string, meta: { affected: string[]; attachments: number; skip?: string[] }) => {
     const t = text.trim();
     if (t.length < 3 || sending) return;
     setError("");
@@ -95,7 +95,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
       const res = await fetch(`/api/${encodeURIComponent(slug)}/ideas/turn`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: t, draftId: serverMode ? id : undefined, history, affected: meta.affected, attachments: meta.attachments }),
+        body: JSON.stringify({ text: t, draftId: serverMode ? id : undefined, history, affected: meta.affected, attachments: meta.attachments, skip: meta.skip ?? [] }),
         signal: ctl.signal,
       });
       if (!res.ok || !res.body) {

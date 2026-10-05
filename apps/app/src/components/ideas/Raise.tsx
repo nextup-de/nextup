@@ -18,7 +18,7 @@ import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
 import { ideaContext } from "@/features/ideas/drafts";
-import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, initials, isUnsure, splitIdea, topicsOf, whenLabel, type Gap } from "@/features/ideas/raise";
+import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, IDEA_UPDATE, initials, isUnsure, splitIdea, splitUpdate, topicsOf, whenLabel, type Gap } from "@/features/ideas/raise";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { saveShots, shrinkImage } from "@/lib/shots";
 import { useIdeaStudio } from "@/lib/use-idea-studio";
@@ -197,11 +197,14 @@ export function Raise() {
     if (/^review analysis$/i.test(t)) { setText(""); go("analysis"); return; }
     if (published) { showToast("This idea is published — follow-ups go through Overview."); return; }
     if (t.length < 3) return;
-    if (draft && isUnsure(t)) { const a = gaps.find((g) => g.status === "active"); if (a) preview.markUnknown(draft.id, a.id); }
+    // "Not sure": the active topic becomes unknown, and the coach is told not to ask it again.
+    const skip = draft ? [...(preview.unknown[draft.id] ?? [])] : [];
+    const unsure = draft && isUnsure(t) ? gaps.find((g) => g.status === "active") : undefined;
+    if (draft && unsure) { preview.markUnknown(draft.id, unsure.id); skip.push(unsure.id); }
     // Edits made in the Idea view travel with this message, so the coach and the score see them.
-    const message = edit ? t + "\n\nUpdated idea:\n" + edit.text : t;
+    const message = edit ? t + IDEA_UPDATE + edit.text : t;
     if (draft && edit) preview.edit(draft.id, null);
-    void studio.send(message, { affected, attachments: myFiles.length });
+    void studio.send(message, { affected, attachments: myFiles.length, skip });
     setText(""); setAsk(null);
   };
 
@@ -238,7 +241,7 @@ export function Raise() {
   const lastAi = [...turns].reverse().find((t) => t.role === "assistant")?.id ?? null;
   const msgs: ChatMsg[] = turns.flatMap((t, i): ChatMsg[] => {
     if (i === firstIdx) return [];
-    if (t.role === "user") return [{ id: t.id, role: "user", text: t.text }];
+    if (t.role === "user") { const u = splitUpdate(t.text); return [{ id: t.id, role: "user", text: u.said, note: u.updated ? "Idea changes shared with NextUp" : null }]; }
     const isLast = t.id === lastAi && !sending;
     const prev = turns[i - 1];
     const sgKey = draft ? draft.id + ":" + t.id : t.id;
@@ -246,7 +249,7 @@ export function Raise() {
     const gained = isLast && live?.delta ? Object.entries(live.delta).some(([k, v]) => k !== "overall" && v > 0) : false;
     const offer = !published && isLast && gained && prev?.role === "user" && i - 1 !== firstIdx;
     const before = splitIdea(edit ? edit.text : firstText).context;
-    const after = (before ? before + "\n" : "") + (prev?.text ?? "").replace(/\s+$/, "");
+    const after = (before ? before + "\n" : "") + splitUpdate(prev?.text ?? "").said.replace(/\s+$/, "");
     return [{
       id: t.id, role: "ai", text: stripTags(t.text),
       note: i === firstIdx + 1 ? "Title and problem added" : isLast ? deltaNote(live?.delta ?? null, parts) : null,
@@ -259,7 +262,7 @@ export function Raise() {
     }];
   });
   if (sending) {
-    if (turns.length) msgs.push({ id: "sending", role: "user", text: sending.text });
+    if (turns.length) { const u = splitUpdate(sending.text); msgs.push({ id: "sending", role: "user", text: u.said, note: u.updated ? "Idea changes shared with NextUp" : null }); }
     if (sending.reply) msgs.push({ id: "reply", role: "ai", text: stripTags(sending.reply) });
   }
   if (published) msgs.push({ id: "published", role: "ai", text: "Published. It’s on " + lead + "’s desk now — you’ll see their reply in Overview." });

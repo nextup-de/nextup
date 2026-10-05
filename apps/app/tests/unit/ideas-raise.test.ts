@@ -1,9 +1,9 @@
 // The raise page's reading of the benchmark (features/ideas/raise.ts): rail segments, dials,
 // advice, labels. Everything is derived from the benchmark's own facts.
 import { describe, expect, it } from "vitest";
-import { benchmark } from "@/features/ideas/benchmarks";
+import { benchmark, weakest } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
-import { adviceOf, deltaNote, dialsOf, gapsOf, greetName, initials, isUnsure, MAX_TOPICS, MIN_TOPICS, splitIdea, topicsOf, whenLabel } from "@/features/ideas/raise";
+import { adviceOf, deltaNote, dialsOf, gapsOf, greetName, IDEA_UPDATE, initials, isUnsure, MAX_TOPICS, MIN_TOPICS, splitIdea, splitUpdate, topicsOf, whenLabel, withoutSkipped } from "@/features/ideas/raise";
 import { GOALS } from "@/features/evaluate";
 import { ROUTES } from "@/features/demo/seed";
 
@@ -40,6 +40,17 @@ describe("topics and the rail", () => {
   it("tops a nearly finished idea up to two topics", () => {
     const done = oneLiner.parts.map((p) => ({ ...p, missing: [], found: p.found.length ? p.found : ["Point of " + p.id] }));
     expect(topicsOf(done)).toHaveLength(MIN_TOPICS);
+  });
+  it("keeps the coach off the questions answered 'not sure', without touching the scores", () => {
+    const first = topics[0];
+    const asked = withoutSkipped(oneLiner, [first]);
+    expect(asked.parts.flatMap((p) => p.missing)).not.toContain(first);
+    expect(asked.parts.map((p) => p.value)).toEqual(oneLiner.parts.map((p) => p.value));
+    expect(weakest(asked)?.missing[0]).not.toBe(first);
+  });
+  it("shows only what the author typed when an idea edit travels with the message", () => {
+    expect(splitUpdate("Not sure yet" + IDEA_UPDATE + "A printer\n\nMore")).toEqual({ said: "Not sure yet", updated: true });
+    expect(splitUpdate("Every shift")).toEqual({ said: "Every shift", updated: false });
   });
   it("recognises an unsure answer", () => {
     expect(isUnsure("Not sure yet")).toBe(true);
