@@ -35,6 +35,7 @@ import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
 import { EVAL_STEPS, RaiseStart } from "./RaiseStart";
 import { useRaisePreview, type FileItem } from "./raisePreview";
 import { Icon } from "./raiseIcons";
+import { RaisePeople } from "./RaisePerson";
 import s from "./Raise.module.css";
 
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
@@ -264,8 +265,8 @@ export function Raise() {
   const chips: Chip[] = (() => {
     const at = stage === "start" ? "start" : "card";
     const out: Chip[] = [];
-    extras.recv.forEach((n) => out.push({ key: "r" + n, title: n, sub: "Receiver", kind: "person", lead: initials(n), open: () => openMenu(at, "receiver"), remove: () => preview.setExtras(key, { recv: [] }) }));
-    extras.coll.forEach((n) => out.push({ key: "c" + n, title: n, sub: "Colleague", kind: "person", lead: initials(n), open: () => openMenu(at, "colleague"), remove: () => preview.setExtras(key, { coll: extras.coll.filter((x) => x !== n) }) }));
+    extras.recv.forEach((n) => out.push({ key: "r" + n, title: n, sub: "Receiver", kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "receiver"), remove: () => preview.setExtras(key, { recv: [] }) }));
+    extras.coll.forEach((n) => out.push({ key: "c" + n, title: n, sub: "Colleague", kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "colleague"), remove: () => preview.setExtras(key, { coll: extras.coll.filter((x) => x !== n) }) }));
     if (extras.meet) out.push({ key: "m", title: extras.meet.dur, sub: "Meeting · " + extras.meet.when, kind: "meeting", lead: "", icon: "meeting", open: () => openMenu(at, "meeting"), remove: () => preview.setExtras(key, { meet: null }) });
     if (affected.length) out.push({ key: "a", title: affected.length === 1 ? affected[0] : affected[0] + " +" + (affected.length - 1), sub: "Affected", kind: "affected", lead: "", icon: "affected", open: () => openMenu(at, "affected"), remove: () => setAffected([]) });
     if (extras.vis !== "public") out.push(extras.vis === "private"
@@ -373,7 +374,7 @@ export function Raise() {
     ...(myFiles.length ? [{ name: "Your evidence", where: myFiles.length + (myFiles.length === 1 ? " file" : " files"), ext: "DATA" as const }] : []),
   ];
   const sims: Similar[] = similar
-    ? [{ title: similar.title, status: "Open", where: "Raised by " + similar.from, href: href("/cases/" + similar.id) }]
+    ? [{ title: similar.title, status: "Open", where: "Raised by", by: similar.from, href: href("/cases/" + similar.id) }]
     : [{ title: "No close matches", status: "–", where: "Searched " + openCases + " open cases", href: null }];
   const cats = [...new Set([ev?.route?.type, affected[0] ?? "General", "Idea"].filter((x): x is string => !!x))];
 
@@ -403,6 +404,7 @@ export function Raise() {
   );
 
   return (
+    <RaisePeople.Provider value={{ people: seed.people, depts: seed.depts }}>
     <div className={s.root} data-sb={sb} data-raise-root="">
       <div className={s.sbShell}>
         <RaiseSidebar query={query} onQuery={setQuery} onHide={() => { setSb("hidden"); setMenu(null); }} card={card} rows={rows} loaded={studio.loaded}
@@ -419,6 +421,7 @@ export function Raise() {
         {main}
       </div>
     </div>
+    </RaisePeople.Provider>
   );
 }
 

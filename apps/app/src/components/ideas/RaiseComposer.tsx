@@ -3,9 +3,10 @@
 // dictation (Web Speech API, where the browser has it) and send. Enter sends, Shift+Enter is a new line.
 import { useEffect, useRef, useState } from "react";
 import { Icon, Mic, Solid } from "./raiseIcons";
+import { PersonButton } from "./RaisePerson";
 import s from "./Raise.module.css";
 
-export type Chip = { key: string; title: string; sub: string; kind: "person" | "meeting" | "file" | "affected" | "private" | "custom"; lead: string; img?: string; icon?: "meeting" | "affected" | "lock"; open: () => void; remove: () => void };
+export type Chip = { key: string; title: string; sub: string; kind: "person" | "meeting" | "file" | "affected" | "private" | "custom"; person?: string; lead: string; img?: string; icon?: "meeting" | "affected" | "lock"; open: () => void; remove: () => void };
 
 // The few members of the Web Speech API this page uses - lib.dom does not type it yet.
 type SpeechResult = { 0: { transcript: string } };
@@ -77,10 +78,11 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
               onWheel={(e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY; }}>
               {chips.map((c) => (
                 <span key={c.key} className={s.chip}>
+                  {c.person && <PersonButton name={c.person} className={`${s.lead} ${s.leadBig}`}>{c.lead}</PersonButton>}
                   <button type="button" className={s.chipOpen} onClick={c.open} title="View or edit">
-                    <span className={`${s.lead} ${s.leadBig}`} data-kind={c.kind} style={c.img ? { backgroundImage: `url(${c.img})` } : undefined}>
+                    {!c.person && <span className={`${s.lead} ${s.leadBig}`} data-kind={c.kind} style={c.img ? { backgroundImage: `url(${c.img})` } : undefined}>
                       {c.icon ? <Icon name={c.icon} size={12} /> : !c.img && c.lead}
-                    </span>
+                    </span>}
                     <span className={s.chipText}><span className={s.chipTitle}>{c.title}</span><span className={s.chipSub}>{c.sub}</span></span>
                   </button>
                   <button type="button" className={s.chipX} onClick={c.remove} title="Remove" aria-label={"Remove " + c.title}><Icon name="x" size={7.5} width={3} /></button>

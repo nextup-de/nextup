@@ -9,6 +9,7 @@ import type { Dept, OrgPerson } from "@/features/demo/types";
 import { initials } from "@/features/ideas/raise";
 import type { Receiver } from "@/features/ideas/receivers";
 import { Icon } from "./raiseIcons";
+import { PersonButton } from "./RaisePerson";
 import s from "./Raise.module.css";
 
 // What NextUp is doing right now, said in the button: our thinking orb, in the mode that fits the step,
@@ -68,9 +69,11 @@ export function ReceiverDialog({ options, people, depts, me, work, score, onCanc
     const on = chosen.name === r.name;
     return (
       <div key={r.name} className={s.rcv} data-on={on}>
-        <button type="button" role="radio" aria-checked={on} className={s.rcvTop} onClick={() => { setChosen(r); setSearching(false); }} disabled={busy}>
+        <div role="radio" aria-checked={on} aria-disabled={busy || undefined} tabIndex={busy ? -1 : 0} className={s.rcvTop}
+          onClick={() => { if (!busy) { setChosen(r); setSearching(false); } }}
+          onKeyDown={(e) => { if (!busy && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setChosen(r); setSearching(false); } }}>
           <span className={s.rcvRadio} aria-hidden="true" />
-          <span className={s.rcvAv} aria-hidden="true">{initials(r.name)}</span>
+          <PersonButton name={r.name} className={s.rcvAv}>{initials(r.name)}</PersonButton>
           <span className={s.rcvWho}>
             <span className={s.rcvNameRow}><span className={s.rcvName}>{r.name}</span>{r.recommended && <span className={s.rcvTag}>Best match</span>}</span>
             <span className={s.rcvRole}>{[r.role, r.yourLead ? "your lead" : ""].filter(Boolean).join(" · ")}</span>
@@ -79,7 +82,7 @@ export function ReceiverDialog({ options, people, depts, me, work, score, onCanc
             <span className={s.rcvPct}>{r.score}%</span>
             <span className={s.rcvBar} style={{ "--pct": r.score + "%" } as React.CSSProperties}><span className={s.rcvFill} /></span>
           </span>
-        </button>
+        </div>
         {on && (
           <div className={s.rcvWhy}>
             <span className={s.rcvWhyLabel}>Why {r.name}</span>

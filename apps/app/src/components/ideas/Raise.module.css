@@ -466,6 +466,24 @@
 .srcWhere { font-size: calc(9.38px * var(--u)); color: #6e6e73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .disclaimer { font-size: calc(9.38px * var(--u)); color: #6e6e73; }
 
+/* ── People: every name or avatar opens the small profile (RaisePerson.tsx, PersonCard) ─────────── */
+:where(.personBtn) { padding: 0; border: none; background: none; font-family: inherit; color: inherit; } /* a weightless reset: the element's own sizes win */
+.personBtn { cursor: pointer; transition: box-shadow 160ms ease, background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.personBtn:active { transform: scale(.96); }
+.personBtn[aria-expanded="true"], .personBtn:hover { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #b8d9ff; }
+.whoPill.personBtn:hover, .whoPill.personBtn[aria-expanded="true"] { box-shadow: none; background: #f7f7f9; border-color: #d1d1d6; }
+.inlineName { font-weight: 600; color: #1c1c1e; text-decoration: underline; text-decoration-color: #d1d1d6; text-underline-offset: 2px; }
+.inlineName.personBtn:hover, .inlineName.personBtn[aria-expanded="true"] { box-shadow: none; text-decoration-color: #1c1c1e; }
+.lead.personBtn { border-radius: 50%; background: #1c1c1e; color: #fff; }
+.chip .lead.personBtn { margin-right: calc(3px * var(--u)); }
+.personPop {
+  --c-ink: #1c1c1e; --c-ink-2: #3a3a3c; --c-mute: #6e6e73; --c-left: #007aff; --ease: cubic-bezier(.2,.8,.2,1);
+  position: fixed; left: var(--pop-x); top: var(--pop-y); z-index: 45; width: 280px; max-width: calc(var(--nh-screen-w) - 16px); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 12px; padding: 14px; background: #fff; border-radius: 14px; color: #1c1c1e;
+  box-shadow: 0 12px 32px rgb(20 30 60 / 0.16), 0 0 0 0.5px rgb(0 0 0 / 0.08); transform-origin: top left; animation: affPop 220ms cubic-bezier(.2,.8,.2,1) both;
+}
+.personPop[data-up] { transform-origin: bottom left; }
+
 /* ── Publish: the working glyph in the button, then "Who should receive it?" ─────────────────── */
 .working { display: inline-flex; align-items: center; gap: calc(7.5px * var(--u)); min-width: 0; }
 .workingOrb { display: flex; flex: none; width: 18px; height: 18px; }
@@ -486,10 +504,11 @@
 .rcvs { display: flex; flex-direction: column; gap: calc(8px * var(--u)); }
 .rcv { display: flex; flex-direction: column; border: 1px solid #e5e5ea; border-radius: 14px; background: #fff; transition: border-color 160ms ease, box-shadow 160ms ease; animation: affFade 320ms cubic-bezier(.2,.8,.2,1) backwards; }
 .rcv[data-on="true"] { border-color: #1c1c1e; box-shadow: 0 0 0 0.5px #1c1c1e; }
-.rcvTop { display: flex; align-items: center; gap: calc(12px * var(--u)); min-width: 0; padding: calc(12px * var(--u)) calc(14px * var(--u)); border: none; border-radius: 14px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background 160ms ease; }
+.rcvTop { box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: calc(12px * var(--u)); min-width: 0; padding: calc(12px * var(--u)) calc(14px * var(--u)); border: none; border-radius: 14px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background 160ms ease; }
 .rcvTop:hover { background: #f7f7f9; }
 .rcv[data-on="true"] .rcvTop:hover { background: transparent; }
-.rcvTop:disabled { cursor: default; }
+.rcvTop[aria-disabled] { cursor: default; }
+.rcvTop:focus-visible { outline: 2px solid #b8d9ff; outline-offset: -2px; }
 .rcvRadio { flex: none; width: calc(16px * var(--u)); height: calc(16px * var(--u)); box-sizing: border-box; border-radius: 50%; border: 1.5px solid #c6cbd4; background: #fff; transition: border 140ms ease; }
 .rcv[data-on="true"] .rcvRadio { border: calc(5px * var(--u)) solid #1c1c1e; }
 .rcvAv { flex: none; width: calc(32px * var(--u)); height: calc(32px * var(--u)); border-radius: 50%; background: #eceef2; color: #6e6e73; display: flex; align-items: center; justify-content: center; font-size: calc(11px * var(--u)); font-weight: 700; letter-spacing: 0.02em; transition: background 160ms ease, color 160ms ease; }

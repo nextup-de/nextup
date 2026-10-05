@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon, Search, Solid } from "./raiseIcons";
 import { Working, type Work } from "./RaisePublish";
+import { PersonButton } from "./RaisePerson";
 import type { Chip } from "./RaiseComposer";
 import s from "./Raise.module.css";
 
@@ -145,8 +146,9 @@ function List({ label, icon, items }: { label: string; icon: "bolt" | "file"; it
       </div>
       {shown.map((c) => (
         <div key={c.key} className={s.listRow}>
+          {c.person && <PersonButton name={c.person} className={s.lead}>{c.lead}</PersonButton>}
           <button type="button" className={s.listOpen} onClick={c.open} title="View or edit">
-            <span className={s.lead} data-kind={c.kind} style={c.img ? { backgroundImage: `url(${c.img})` } : undefined}>{c.icon ? <Icon name={c.icon} size={11.25} /> : !c.img && c.lead}</span>
+            {!c.person && <span className={s.lead} data-kind={c.kind} style={c.img ? { backgroundImage: `url(${c.img})` } : undefined}>{c.icon ? <Icon name={c.icon} size={11.25} /> : !c.img && c.lead}</span>}
             <span className={s.listTitle}>{c.title}</span><span className={s.listSub}>{c.sub}</span>
           </button>
           <button type="button" className={s.listX} onClick={c.remove} title="Remove" aria-label={"Remove " + c.title}><Icon name="x" size={7.5} width={3} /></button>

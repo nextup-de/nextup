@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Advice, Dial } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
+import { PersonButton } from "./RaisePerson";
 import s from "./Raise.module.css";
 
-export type Similar = { title: string; status: string; where: string; href: string | null };
+export type Similar = { title: string; status: string; where: string; by?: string; href: string | null }; // by: who raised it
 export type Reviewer = { initials: string; name: string; role: string; why: string };
 export type Source = { name: string; where: string; ext: "IDEA" | "DATA" | "DOC" };
 
@@ -117,20 +118,20 @@ export function AnalysisSheet({ ready, onClose, dials, summary, advice, pattern,
           <div className={s.sec} data-rule="true" data-gap="7">
             <span className={s.secLabel}>Similar ideas</span>
             {similar.map((m) => {
-              const body = (
-                <>
-                  <div className={s.simTop}><span className={s.simTitle}>{m.title}</span><span className={s.simStatus}>{m.status}</span></div>
-                  <span className={s.simWhere}>{m.where}</span>
-                </>
+              const top = <div className={s.simTop}><span className={s.simTitle}>{m.title}</span><span className={s.simStatus}>{m.status}</span></div>;
+              return (
+                <div key={m.title} className={s.sec}>
+                  {m.href ? <Link href={m.href} className={s.simLink}>{top}</Link> : top}
+                  <span className={s.simWhere}>{m.where}{m.by && <> <PersonButton name={m.by} className={s.inlineName}>{m.by}</PersonButton></>}</span>
+                </div>
               );
-              return m.href ? <Link key={m.title} href={m.href} className={`${s.sec} ${s.simLink}`} data-gap="6">{body}</Link> : <div key={m.title} className={s.sec}>{body}</div>;
             })}
           </div>
           <div className={s.sec} data-rule="true" data-gap="7">
             <span className={s.secLabel}>Suggested reviewers</span>
             {reviewers.map((r) => (
               <div key={r.name} className={s.sec}>
-                <div className={s.who}><span className={s.whoPill}><span className={s.whoAv}>{r.initials}</span>{r.name}</span><span className={s.whoRole}>{r.role}</span></div>
+                <div className={s.who}><PersonButton name={r.name} className={s.whoPill}><span className={s.whoAv}>{r.initials}</span>{r.name}</PersonButton><span className={s.whoRole}>{r.role}</span></div>
                 <p className={s.small}>{r.why}</p>
               </div>
             ))}
