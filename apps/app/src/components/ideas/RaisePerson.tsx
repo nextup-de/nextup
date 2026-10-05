@@ -1,17 +1,18 @@
 "use client";
-// A person on the raise page is a button: it opens the same small profile the other pages show
-// (PersonCard, leader/IdeaParts.tsx). The card is drawn over the page, fixed beside the button, so the
-// sidebar or a dialog never clips it. Anyone not on the org chart (a handle, a free name) stays plain.
+// A person on the raise page is a button: it opens the small profile the other pages show - the
+// dashboard's card (team/DashboardView.tsx ProfilePop), at its sizes. The card is drawn over the page,
+// fixed beside the button, so the sidebar or a dialog never clips it. Anyone not on the org chart (a
+// handle, a free name) stays plain.
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { PersonCard } from "@/components/dashboard/leader/IdeaParts";
 import type { Dept, OrgPerson } from "@/features/demo/types";
-import { personFor } from "@/features/ideas/brief";
+import { personFor, type Person } from "@/features/ideas/brief";
+import { initials } from "@/features/ideas/raise";
 import s from "./Raise.module.css";
 
 export const RaisePeople = createContext<{ people: readonly OrgPerson[]; depts: readonly Dept[] }>({ people: [], depts: [] });
 
-const W = 280, GAP = 8;
+const W = 280, GAP = 8; // W: the widest the card gets (monitors); laptops draw it at 210
 
 export function PersonButton({ name, className, children, label }: { name: string; className?: string; children: React.ReactNode; label?: string }) {
   const { people, depts } = useContext(RaisePeople);
@@ -29,7 +30,8 @@ export function PersonButton({ name, className, children, label }: { name: strin
     if (root !== host) { setHost(root); return; }
     const r = btn.current.getBoundingClientRect(), h = pop.current?.offsetHeight ?? 220;
     const up = r.bottom + GAP + h > window.innerHeight - GAP && r.top - GAP - h > GAP;
-    setAt({ x: Math.max(GAP, Math.min(r.left, window.innerWidth - W - GAP)), y: up ? r.top - GAP - h : r.bottom + GAP, up });
+    const w = pop.current?.offsetWidth ?? W;
+    setAt({ x: Math.max(GAP, Math.min(r.left, window.innerWidth - w - GAP)), y: up ? r.top - GAP - h : r.bottom + GAP, up });
   }, [open, host]);
 
   useEffect(() => {
@@ -51,8 +53,29 @@ export function PersonButton({ name, className, children, label }: { name: strin
       {open && host && createPortal(
         <div ref={pop} className={s.personPop} role="dialog" aria-label={"Profile of " + name} onClick={(e) => e.stopPropagation()}
           style={{ "--pop-x": (at?.x ?? -9999) + "px", "--pop-y": (at?.y ?? -9999) + "px" } as React.CSSProperties} data-up={at?.up || undefined}>
-          <PersonCard p={person} />
+          <MiniProfile p={person} />
         </div>, host)}
+    </>
+  );
+}
+
+function MiniProfile({ p }: { p: Person }) {
+  const [soon, setSoon] = useState(false);
+  return (
+    <>
+      <div className={s.mpHead}>
+        <span className={s.mpAv} aria-hidden="true">{initials(p.name)}</span>
+        <span className={s.mpWho}><span className={s.mpName}>{p.name}</span><span className={s.mpRole}>{p.role}</span></span>
+      </div>
+      <div className={s.mpGrid}>
+        <span className={s.mpKey}>Department</span><span className={s.mpVal}>{p.dept || "—"}</span>
+        <span className={s.mpKey}>Location</span><span className={s.mpVal}>{p.location || "—"}</span>
+        <span className={s.mpKey}>Email</span><a className={s.mpMail} href={"mailto:" + p.email}>{p.email}</a>
+      </div>
+      <button type="button" className={s.mpBtn} onClick={() => setSoon(true)}>
+        View profile<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 1l5 5-5 5" /></svg>
+      </button>
+      {soon && <span className={s.mpSoon} role="status">Profile pages are coming soon.</span>}
     </>
   );
 }

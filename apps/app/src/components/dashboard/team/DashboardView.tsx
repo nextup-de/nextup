@@ -42,7 +42,7 @@ const toneOf = (name: string) => AVATAR_TONES[[...name].reduce((n, ch) => (n * 3
 const stepLabel = (step: number) => (step >= OVERVIEW_STEPS.length ? "Shipped" : OVERVIEW_STEPS[step]);
 
 // A person's card, pinned under whatever was pressed and kept inside the window.
-type Profile = { p: Person; raised: number; feed: boolean; x: number; y: number };
+type Profile = { p: Person; feed: boolean; x: number; y: number };
 // On a phone it rises from the bottom as a sheet instead, like the inbox's person cards.
 function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: () => void; sheet: boolean }) {
   const [soon, setSoon] = useState(false);
@@ -66,7 +66,6 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
             <span className={s.department}>Department</span><span className={s.dept2}>{p.dept || "—"}</span>
             <span className={s.department}>Location</span><span className={s.dept2}>{p.location || "—"}</span>
             <span className={s.department}>Email</span><a className={s.email} href={"mailto:" + p.email}>{p.email}</a>
-            <span className={s.department}>Ideas raised</span><span className={s.dept2}>{profile.raised}</span>
           </div>
           <button type="button" className={s.viewProfile} onClick={() => setSoon(true)}>
             View profile<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 1l5 5-5 5" /></svg>
@@ -146,7 +145,7 @@ export function DashboardView() {
     if (!p) return;
     const u = window.innerWidth > 760 && window.innerWidth < 1600 ? 0.75 : 1, w = 280 * u;
     const b = e.currentTarget.getBoundingClientRect();
-    setProfile({ p, feed, raised: D.cases.filter((c) => c.from === name).length, x: Math.max(8, Math.min(b.left, window.innerWidth - w - 8)), y: Math.max(8, Math.min(b.bottom + 8, window.innerHeight - 260 * u)) });
+    setProfile({ p, feed, x: Math.max(8, Math.min(b.left, window.innerWidth - w - 8)), y: Math.max(8, Math.min(b.bottom + 8, window.innerHeight - 260 * u)) });
   };
   const profileOf = (name: string, feed = false) => (personFor(name, briefCtx) ? openProfile(name, feed) : null);
   const pick = (id: string) => { setSel(id); setMode("idea"); setMenu(null); };

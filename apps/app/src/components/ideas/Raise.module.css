@@ -476,12 +476,27 @@
 .inlineName.personBtn:hover, .inlineName.personBtn[aria-expanded="true"] { box-shadow: none; text-decoration-color: #1c1c1e; }
 .lead.personBtn { border-radius: 50%; background: #1c1c1e; color: #fff; }
 .chip .lead.personBtn { margin-right: calc(3px * var(--u)); }
+/* The card: the dashboard's ProfilePop (Overview.module.css div113-115), whose scale is 0.75 of this page's --u. */
 .personPop {
-  --c-ink: #1c1c1e; --c-ink-2: #3a3a3c; --c-mute: #6e6e73; --c-left: #007aff; --ease: cubic-bezier(.2,.8,.2,1);
-  position: fixed; left: var(--pop-x); top: var(--pop-y); z-index: 45; width: 280px; max-width: calc(var(--nh-screen-w) - 16px); box-sizing: border-box;
-  display: flex; flex-direction: column; gap: 12px; padding: 14px; background: #fff; border-radius: 14px; color: #1c1c1e;
-  box-shadow: 0 12px 32px rgb(20 30 60 / 0.16), 0 0 0 0.5px rgb(0 0 0 / 0.08); transform-origin: top left; animation: affPop 220ms cubic-bezier(.2,.8,.2,1) both;
+  --k: calc(0.75 * var(--u));
+  position: fixed; left: var(--pop-x); top: var(--pop-y); z-index: 45; width: calc(280px * var(--k)); max-width: calc(var(--nh-screen-w) - 16px); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: calc(12px * var(--k)); padding: calc(14px * var(--k)); background: #fff; border-radius: 14px; color: #1c1c1e;
+  box-shadow: 0 12px 32px rgba(20,30,60,0.16), 0 0 0 0.5px rgba(0,0,0,0.08); transform-origin: top left; animation: affPop 220ms cubic-bezier(.2,.8,.2,1) both;
 }
+.mpHead { display: flex; align-items: center; gap: calc(12px * var(--k)); }
+.mpAv { width: calc(40px * var(--k)); height: calc(40px * var(--k)); flex: none; border-radius: 50%; background: #1c1c1e; color: #fff; display: flex; align-items: center; justify-content: center; font-size: max(12px, calc(14px * var(--k))); font-weight: 600; }
+.mpWho { display: flex; flex-direction: column; min-width: 0; }
+.mpName { font-size: max(12px, calc(14px * var(--k))); font-weight: 600; }
+.mpRole { font-size: max(12px, calc(13px * var(--k))); color: #6e6e73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mpGrid { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: calc(12px * var(--k)); row-gap: calc(5px * var(--k)); font-size: max(12px, calc(13px * var(--k))); line-height: 1.4; }
+.mpKey { color: #6e6e73; }
+.mpVal { color: #1c1c1e; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpMail { color: #007aff; text-decoration: none; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpMail:hover { text-decoration: underline; }
+.mpBtn { display: flex; align-items: center; justify-content: center; gap: calc(6px * var(--k)); height: calc(34px * var(--k)); border: 0; border-radius: 10px; background: #0b0b0c; color: #fff; font-family: inherit; font-size: max(12px, calc(13px * var(--k))); font-weight: 500; cursor: pointer; transition: background 180ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.mpBtn:hover { background: #2c2c2e; }
+.mpBtn:active { transform: scale(.97); }
+.mpSoon { font-size: 12px; color: #6e6e73; text-align: center; animation: affSoft 220ms ease; }
 .personPop[data-up] { transform-origin: bottom left; }
 
 /* ── Publish: the working glyph in the button, then "Who should receive it?" ─────────────────── */
