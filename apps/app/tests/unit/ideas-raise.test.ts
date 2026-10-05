@@ -3,26 +3,39 @@
 import { describe, expect, it } from "vitest";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
-import { adviceOf, deltaNote, dialsOf, gapsOf, greetName, initials, isUnsure, splitIdea, whenLabel } from "@/features/ideas/raise";
+import { adviceOf, deltaNote, dialsOf, gapsOf, greetName, initials, isUnsure, MAX_TOPICS, MIN_TOPICS, splitIdea, topicsOf, whenLabel } from "@/features/ideas/raise";
 import { GOALS } from "@/features/evaluate";
 import { ROUTES } from "@/features/demo/seed";
 
 const ctx = { routes: ROUTES, goals: GOALS, cases: [], spendLimitEur: 5000 };
 const oneLiner = benchmark({ text: "A shared calendar for the endurance rig", affected: [], attachments: 0 }, ctx);
 
-describe("gapsOf", () => {
-  it("has one segment per point, found ones clear, exactly one active", () => {
-    const gaps = gapsOf(oneLiner.parts);
-    const points = oneLiner.parts.reduce((n, p) => n + p.found.length + p.missing.length, 0);
-    expect(gaps).toHaveLength(points);
-    expect(gaps.filter((g) => g.status === "active")).toHaveLength(1);
-    expect(gaps.filter((g) => g.status === "clear").every((g) => g.ask === null)).toBe(true);
+describe("topics and the rail", () => {
+  const topics = topicsOf(oneLiner.parts);
+  it("prepares 2-8 topics from what the first message leaves open", () => {
+    expect(topics.length).toBeGreaterThanOrEqual(MIN_TOPICS);
+    expect(topics.length).toBeLessThanOrEqual(MAX_TOPICS);
+    expect(new Set(topics).size).toBe(topics.length);
   });
-  it("moves on when the active question is marked unknown", () => {
-    const first = gapsOf(oneLiner.parts).find((g) => g.status === "active");
-    const next = gapsOf(oneLiner.parts, [first?.label ?? ""]);
-    expect(next.find((g) => g.label === first?.label)?.status).toBe("unknown");
-    expect(next.find((g) => g.status === "active")?.label).not.toBe(first?.label);
+  it("starts empty: nothing clear, exactly one active, short labels", () => {
+    const gaps = gapsOf(topics, oneLiner.parts);
+    expect(gaps.filter((g) => g.status === "clear")).toHaveLength(0);
+    expect(gaps.filter((g) => g.status === "active")).toHaveLength(1);
+    expect(gaps.every((g) => g.label.length <= 20)).toBe(true);
+  });
+  it("checks a topic off once the idea answers it", () => {
+    const later = benchmark({ text: "A shared calendar for the endurance rig. A pilot for one week on line 3 saves 20 minutes per shift.", affected: ["M. Roth"], attachments: 0 }, ctx);
+    expect(gapsOf(topics, later.parts).filter((g) => g.status === "clear").length).toBeGreaterThan(0);
+  });
+  it("moves on when the active topic is marked unknown", () => {
+    const first = gapsOf(topics, oneLiner.parts).find((g) => g.status === "active");
+    const next = gapsOf(topics, oneLiner.parts, [first?.id ?? ""]);
+    expect(next.find((g) => g.id === first?.id)?.status).toBe("unknown");
+    expect(next.find((g) => g.status === "active")?.id).not.toBe(first?.id);
+  });
+  it("tops a nearly finished idea up to two topics", () => {
+    const done = oneLiner.parts.map((p) => ({ ...p, missing: [], found: p.found.length ? p.found : ["Point of " + p.id] }));
+    expect(topicsOf(done)).toHaveLength(MIN_TOPICS);
   });
   it("recognises an unsure answer", () => {
     expect(isUnsure("Not sure yet")).toBe(true);

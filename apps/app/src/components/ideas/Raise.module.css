@@ -131,11 +131,9 @@
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
 /* Start */
-.start { animation: affSoft 260ms ease backwards; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: calc(18px * var(--u)) calc(18px * var(--u)) 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; }
-.start > :first-child { margin-top: auto; }
-.start > :last-child { margin-bottom: auto; }
-.h1 { width: 100%; max-width: calc(720px * var(--u)); margin: 0; padding-bottom: calc(21px * var(--u)); text-align: center; font-size: max(12px, calc(22.5px * var(--u))); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: #1b1d22; }
-.below { width: 100%; max-width: calc(720px * var(--u)); padding: calc(21px * var(--u)) 0 calc(24px * var(--u)); box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: calc(21px * var(--u)); }
+.start { animation: affSoft 260ms ease backwards; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 calc(18px * var(--u)); box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr) 56px; justify-items: center; } /* the last row is the shell bar's height: the composer sits at the centre of the screen, not of the area below the bar */
+.h1 { align-self: end; width: 100%; max-width: calc(720px * var(--u)); margin: 0; padding-bottom: calc(21px * var(--u)); text-align: center; font-size: max(12px, calc(22.5px * var(--u))); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: #1b1d22; }
+.below { grid-row: 3 / 5; width: 100%; max-width: calc(720px * var(--u)); align-self: start; padding: calc(21px * var(--u)) 0 calc(24px * var(--u)); box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: calc(21px * var(--u)); }
 
 /* The composer: gold ring, breathing aura */
 .composer { position: relative; width: 100%; max-width: calc(720px * var(--u)); animation: affSoft 320ms ease backwards; }
@@ -314,7 +312,6 @@
 .quickBtn:hover { background: #f7f7f9; }
 .quickBtn:active { transform: scale(.97); }
 .quickBtn[data-primary="true"] { background: #111; border-color: #111; color: #fff; }
-.quickBtn[data-reply="true"] { height: auto; min-height: calc(24px * var(--u)); padding: calc(4.5px * var(--u)) calc(9px * var(--u)); border-radius: 10.5px; white-space: normal; text-align: left; line-height: 1.4; }
 .typing { align-self: flex-start; display: flex; align-items: center; gap: calc(3.75px * var(--u)); padding: calc(7.5px * var(--u)) 0; animation: affSoft 300ms ease backwards; }
 .typing i { width: calc(4.5px * var(--u)); height: calc(4.5px * var(--u)); border-radius: 50%; background: #6e6e73; animation: affDot 1.2s infinite; }
 .typing i:nth-child(2) { animation-delay: .15s; }
@@ -475,6 +472,18 @@
 @keyframes affSoft { from { opacity: 0; } to { opacity: 1; } }
 @keyframes affDot { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
 
+/* Laptops (short screens): the card under the composer a little more compact, so the composer can sit
+   at the centre and the card still fits under it. */
+@media (min-width: 761px) and (max-height: 860px) {
+  .below { padding: calc(16px * var(--u)) 0 calc(8px * var(--u)); }
+  .how .boxHead { padding: calc(10px * var(--u)) calc(21px * var(--u)) calc(8px * var(--u)); }
+  .steps { padding: calc(12px * var(--u)) calc(21px * var(--u)) calc(14px * var(--u)); }
+  .step { padding: 0 calc(12px * var(--u)); }
+  .tile { gap: calc(3px * var(--u)); min-height: 0; padding: calc(6px * var(--u)) calc(7.5px * var(--u)); }
+  .stepTitle { margin-top: calc(4px * var(--u)); }
+  .stepText { line-height: 1.4; }
+}
+
 @media (prefers-reduced-motion: reduce) { .root, .root * { animation: none !important; transition: none !important; } }
 
 /* ── Phones: the sidebar becomes a drawer over the page, the rail and the side padding go ── */
@@ -486,8 +495,9 @@
   .showSb { display: block; }
   .root[data-sb="open"] .showSb { display: none; }
   .root[data-sb="open"] .scrim { display: block; position: absolute; inset: 0; z-index: 5; border: none; padding: 0; background: rgba(20,20,20,0.35); animation: affSoft 200ms ease backwards; }
-  .start { padding: 52px 16px 0; }
-  .start > :first-child { margin-top: 0; }
+  .start { padding: 52px 16px 0; grid-template-rows: auto auto auto; align-content: start; }
+  .below { grid-row: auto; }
+  .h1 { align-self: start; }
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 18px; padding: 16px; }
   .step:nth-child(3) { padding-left: 0; border-left: none; }
   .boxHead { flex-wrap: wrap; padding: 12px 16px 9px; }

@@ -57,10 +57,11 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
    `brain-coach-v1`, stored on the turn.
 3. Every turn is kept: server mode in `IdeaDraft` / `IdeaTurn`, the local demo in this browser's
    localStorage (`src/lib/idea-drafts.ts`, same shapes).
-4. At the company's threshold (`CompanyConfig.publishThreshold`, default 70, set on
-   `/admin/knowledge`) **Publish idea** unlocks. The page mints the case id and asks the server
-   (`publishIdeaDraftAction`), which recomputes the score from the stored turns and refuses below the
-   line. Only then does the page append the usual `case.raised` (kind `idea`) and play the route.
+4. **Publish idea** is available from the first answer on - the author decides when it is ready; the
+   company's threshold (`CompanyConfig.publishThreshold`, default 70, set on `/admin/knowledge`)
+   only drives the analysis' advice (Approve at the line). The page mints the case id and asks the
+   server (`publishIdeaDraftAction`), which checks the draft is still open and recomputes the score
+   from the stored turns. Only then does the page append the usual `case.raised` (kind `idea`).
 5. Where the stack runs the brain (`services/brain`, `BRAIN_URL`), the page asks it for the routing
    row and "raised before?" between the server's yes and `case.raised` (`brainProposalAction`).
    It gets the routing rows (owner's role and department, never a name), the company's cases and

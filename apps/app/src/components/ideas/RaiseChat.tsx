@@ -8,16 +8,15 @@ import { Icon, Solid } from "./raiseIcons";
 import s from "./Raise.module.css";
 
 export type Suggest = { key: string; before: string; after: string; state: "open" | "yes" | "no"; onYes: (text: string) => void; onNo: () => void };
-export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; quick?: { publish: boolean; review: boolean }; replies?: string[]; suggest?: Suggest };
+export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; quick?: { publish: boolean; review: boolean }; suggest?: Suggest };
 
-export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQuick, onReply, dock, followKey }: {
+export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQuick, dock, followKey }: {
   msgs: ChatMsg[];
   typing: boolean; typingLabel: string;
   error: string;
   gaps: Gap[];
   onAsk: (g: Gap) => void;
   onQuick: (what: "publish" | "review") => void;
-  onReply: (text: string) => void; // a suggested answer: into the composer, to edit before sending
   dock: React.ReactNode;
   followKey: string; // changes when the thread grows: scroll to its end
 }) {
@@ -39,11 +38,6 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQui
                 <p className={s.bubble}>{m.text}</p>
                 {m.note && <span className={s.note}><Solid name="sparkle" size={8.25} fill="#007aff" />{m.note}</span>}
                 {m.suggest && <SuggestCard key={m.suggest.key} sg={m.suggest} />}
-                {m.replies && m.replies.length > 0 && (
-                  <div className={s.quick}>
-                    {m.replies.map((r) => <button key={r} type="button" className={s.quickBtn} data-reply="true" onClick={() => onReply(r)}>{r}</button>)}
-                  </div>
-                )}
                 {m.quick && (m.quick.publish || m.quick.review) && (
                   <div className={s.quick}>
                     {m.quick.publish && <button type="button" className={s.quickBtn} data-primary="true" onClick={() => onQuick("publish")}>Publish now</button>}

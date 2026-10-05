@@ -4,20 +4,63 @@
 // the two dials it has no facts for yet (Cost, Risk) say so. Pure.
 import { weakest, type BenchmarkId, type BenchmarkPart } from "./benchmarks";
 
-// ── The rail: one segment per point the benchmark checks ──────────────────────────────────────
+// ── The rail: what is unclear, worked through during the grilling ─────────────────────────────
+// When the idea is first raised, the questions its benchmark cannot answer yet become a fixed list of
+// 2-8 topics - the preparation for the grilling. The rail starts empty; each topic is checked off once
+// the idea answers it, or marked unknown when the author does not know yet either.
 export type GapStatus = "clear" | "open" | "active" | "unknown";
-export type Gap = { id: string; bench: BenchmarkId; label: string; status: GapStatus; ask: string | null };
+export type Gap = { id: string; label: string; status: GapStatus; ask: string };
 
-// Found points are clear; missing ones are questions still open. The point the coach asks about next
-// (the first question of the weakest bar) is active. `unknown`: questions the author answered "not sure" to.
-export function gapsOf(parts: readonly BenchmarkPart[], unknown: readonly string[] = []): Gap[] {
-  const open = parts.filter((p) => p.missing.some((m) => !unknown.includes(m)));
-  const next = weakest({ overall: 0, parts: open.map((p) => ({ ...p, missing: p.missing.filter((m) => !unknown.includes(m)) })), sameAs: null });
-  const nextAsk = next?.missing.find((m) => !unknown.includes(m)) ?? null;
-  return parts.flatMap((p) => [
-    ...p.found.map((f, i): Gap => ({ id: p.id + ":f" + i, bench: p.id, label: f, status: "clear", ask: null })),
-    ...p.missing.map((m): Gap => ({ id: p.id + ":" + m, bench: p.id, label: m, ask: m, status: m === nextAsk ? "active" : unknown.includes(m) ? "unknown" : "open" })),
-  ]);
+export const MIN_TOPICS = 2;
+export const MAX_TOPICS = 8;
+
+// A topic is keyed by its question; the "already raised" question names a case, so it keys on its start.
+export const topicKey = (q: string) => (q.startsWith("Already raised") ? "Already raised" : q);
+
+// Short names for the benchmark's questions (benchmarks.ts), as the rail shows them.
+const TOPIC_LABEL: Record<string, string> = {
+  "Which company goal does it serve?": "Company goal",
+  "Which number would move?": "What it measures",
+  "How far would it move that number?": "How far it moves",
+  "Put a number on the upside (minutes, €, %).": "The upside",
+  "Add who else it helps (Affected).": "Who it affects",
+  "Does it help one team, or every shift?": "Reach",
+  "Attach a photo or a screenshot as evidence.": "Evidence",
+  "Who would decide this?": "Who decides",
+  "Roughly what would it cost?": "What it costs",
+  "What is the smallest first step - a pilot, a one-week trial?": "First step",
+  "Already raised": "Raised before?",
+  "Say a little more: what exactly would change?": "What changes",
+  "Why does it matter - what happens today?": "Why it matters",
+  "Who works differently afterwards?": "Who it is for",
+};
+export const topicLabel = (key: string) => TOPIC_LABEL[key] ?? key.replace(/[.?]$/, "");
+
+// The topics for an idea, from the benchmark of its first message: the open questions, taken in turn
+// from each bar so every bar is covered, at most 8. Fewer than 2 open: the weakest found points fill up.
+export function topicsOf(parts: readonly BenchmarkPart[]): string[] {
+  const queues = parts.map((p) => p.missing.map(topicKey));
+  const out: string[] = [];
+  for (let i = 0; out.length < MAX_TOPICS && queues.some((q) => i < q.length); i++) {
+    queues.forEach((q) => { if (i < q.length && out.length < MAX_TOPICS) out.push(q[i]); });
+  }
+  for (const p of [...parts].sort((a, b) => a.value - b.value)) {
+    for (const f of p.found) if (out.length < MIN_TOPICS && !out.includes(f)) out.push(f);
+  }
+  return out;
+}
+
+// Where each topic stands now. Clear: the benchmark no longer asks it. Unknown: the author said they
+// do not know yet. Active: the question the coach asks next (the weakest bar's), else the first open one.
+export function gapsOf(topics: readonly string[], parts: readonly BenchmarkPart[], unknown: readonly string[] = []): Gap[] {
+  const asks = new Map(parts.flatMap((p) => p.missing.map((m): [string, string] => [topicKey(m), m])));
+  const open = (k: string) => asks.has(k) && !unknown.includes(k);
+  const next = weakest({ overall: 0, parts: parts.map((p) => ({ ...p, missing: p.missing.filter((m) => topics.includes(topicKey(m)) && open(topicKey(m))) })), sameAs: null });
+  const active = (next ? topicKey(next.missing[0]) : null) ?? topics.find(open) ?? null;
+  return topics.map((k) => ({
+    id: k, label: topicLabel(k), ask: asks.get(k) ?? k,
+    status: !asks.has(k) ? "clear" : unknown.includes(k) ? "unknown" : k === active ? "active" : "open",
+  }));
 }
 
 // An answer that says "I don't know": the active question becomes unknown, the coach moves on.

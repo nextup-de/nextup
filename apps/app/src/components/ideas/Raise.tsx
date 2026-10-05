@@ -15,9 +15,10 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
 import { closest, evaluate, GOALS } from "@/features/evaluate";
-import { canPublish } from "@/features/ideas/benchmarks";
+import { benchmark } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
-import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, initials, isUnsure, splitIdea, whenLabel, type Gap } from "@/features/ideas/raise";
+import { ideaContext } from "@/features/ideas/drafts";
+import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, initials, isUnsure, splitIdea, topicsOf, whenLabel, type Gap } from "@/features/ideas/raise";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { saveShots, shrinkImage } from "@/lib/shots";
 import { useIdeaStudio } from "@/lib/use-idea-studio";
@@ -52,6 +53,7 @@ export function Raise() {
   const [files, setFiles] = useState<Record<string, FileItem[]>>({});
   const [slot, setSlot] = useState("n0"); // where the choices of the open idea live: the start form's key, or a draft id
   const [aliases, setAliases] = useState<Record<string, string>>({}); // draft id -> the start slot that made it
+  const [topics, setTopics] = useState<Record<string, string[]>>({}); // slot -> the unclear topics prepared when it was raised
   const [text, setText] = useState("");
   const [ask, setAsk] = useState<string | null>(null); // a rail question the author chose to answer now
   const [menu, setMenu] = useState<Menu>(null);
@@ -106,7 +108,12 @@ export function Raise() {
 
   // After the first answer the analysis opens, once the evaluation has finished playing.
   const shownView = firstPending && stage === "chat" && !sending && turns.length > 0 ? "analysis" : view;
-  const gaps: Gap[] = draft && turns.length ? gapsOf(parts, preview.unknown[draft.id] ?? []) : [];
+  // The rail: the topics prepared when the idea was raised - for a draft from an earlier visit, worked out
+  // again from its first message.
+  const benchCtx = ideaContext(seed.routes, GOALS, S.cases);
+  const myTopics = topics[slot] ?? (firstText ? topicsOf(benchmark({ text: firstText, affected: [], attachments: 0 }, benchCtx).parts) : []);
+  const gaps: Gap[] = draft && turns.length ? gapsOf(myTopics, parts, preview.unknown[draft.id] ?? []) : [];
+  const allAnswered = gaps.length > 0 && !gaps.some((g) => g.status === "open" || g.status === "active");
 
   // ── Actions ─────────────────────────────────────────────────────────────────────────────────
   const setAffected = (next: string[]) => { if (draft) void studio.save({ affected: next }); else setStartAff(next); };
@@ -154,6 +161,7 @@ export function Raise() {
     ].filter(Boolean).join("\n");
     const message = main + (startCtx.trim() ? "\n\n" + startCtx.trim() : "") + (extra ? "\n\n" + extra : "");
     setMenu(null); setEvalStep(0); setFirstPending(true);
+    setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx).parts) }));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
     let step = 0;
     const t = setInterval(() => {
@@ -166,7 +174,6 @@ export function Raise() {
 
   const publish = async () => {
     if (!draft || busy || published) return;
-    if (!canPublish(overall, threshold)) { showToast(`It scores ${overall}; it needs ${threshold} to publish.`); return; }
     setBusy(true);
     const caseId = newId("c");
     const r = await studio.publish(caseId);
@@ -190,7 +197,7 @@ export function Raise() {
     if (/^review analysis$/i.test(t)) { setText(""); go("analysis"); return; }
     if (published) { showToast("This idea is published — follow-ups go through Overview."); return; }
     if (t.length < 3) return;
-    if (draft && isUnsure(t)) { const a = gaps.find((g) => g.status === "active"); if (a?.ask) preview.markUnknown(draft.id, a.ask); }
+    if (draft && isUnsure(t)) { const a = gaps.find((g) => g.status === "active"); if (a) preview.markUnknown(draft.id, a.id); }
     // Edits made in the Idea view travel with this message, so the coach and the score see them.
     const message = edit ? t + "\n\nUpdated idea:\n" + edit.text : t;
     if (draft && edit) preview.edit(draft.id, null);
@@ -243,8 +250,7 @@ export function Raise() {
     return [{
       id: t.id, role: "ai", text: stripTags(t.text),
       note: i === firstIdx + 1 ? "Title and problem added" : isLast ? deltaNote(live?.delta ?? null, parts) : null,
-      quick: isLast && !published ? { publish: canPublish(overall, threshold), review: canPublish(overall, threshold) } : undefined,
-      replies: isLast && !published ? live?.replies.map((r) => r.text) : undefined,
+      quick: isLast && !published ? { publish: allAnswered, review: allAnswered } : undefined,
       suggest: resolved || offer ? {
         key: sgKey, before, after, state: resolved ?? "open",
         onYes: (txt) => { if (draft) { preview.edit(draft.id, { orig: edit?.orig ?? firstText, text: splitIdea(edit ? edit.text : firstText).description + "\n\n" + txt }); preview.resolve(sgKey, "yes"); } },
@@ -259,8 +265,8 @@ export function Raise() {
   if (published) msgs.push({ id: "published", role: "ai", text: "Published. It’s on " + lead + "’s desk now — you’ll see their reply in Overview." });
 
   const card: DraftCard | null = stage === "chat" && draft ? {
-    title: draft.title || idea.title, published, canPublish: canPublish(overall, threshold) && !busy && !sending,
-    pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : canPublish(overall, threshold) ? "Goes to your team lead, " + lead : "Answer a few more questions to publish",
+    title: draft.title || idea.title, published, canPublish: turns.length > 0 && !busy && !sending,
+    pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : "Goes to your team lead, " + lead,
     onPublish: () => void publish(), onRename: (title) => void studio.save({ title }),
     hasIdea: firstIdx >= 0, ideaOn: shownView === "idea", ideaEdited: !!edit, onIdea: () => { setMenu(null); go(shownView === "idea" ? "chat" : "idea"); },
     aiOn: shownView === "analysis", analysed: turns.length > 0, onAI: () => go(shownView === "analysis" ? "chat" : "analysis"),
@@ -346,7 +352,6 @@ export function Raise() {
     <RaiseChat msgs={msgs} typing={!!sending && !sending.reply} typingLabel={turns.length ? "" : "Researching business context…"} error={studio.error}
       gaps={gaps} onAsk={(g) => { setAsk(g.ask); chatField.current?.focus(); }}
       onQuick={(w) => (w === "publish" ? void publish() : go("analysis"))}
-      onReply={(r) => { setText((t) => (t.trim() ? t.trim() + " " + r : r)); requestAnimationFrame(() => { const f = chatField.current; if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }); }}
       dock={composerChat} followKey={turns.length + ":" + (sending ? sending.reply.length : -1) + ":" + (draft?.id ?? "")} />
   );
 

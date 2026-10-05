@@ -123,7 +123,7 @@ export async function POST(request: Request, { params }: Ctx) {
       try {
         send("scores", { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold, delta: prev ? deltas(prev, now) : null, replies });
 
-        let reply = coachMock(prev, now, threshold, body.text, replies.length);
+        let reply = coachMock(prev, now, threshold, body.text, 0); // the raise page shows no suggested answers, so the coach does not point to them
         let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
         const coached = useBrain
           ? await askBrainCoach(tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },
