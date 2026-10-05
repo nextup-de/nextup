@@ -20,11 +20,14 @@ import { ideaFromTurns } from "@/features/ideas/coach";
 import { ideaContext } from "@/features/ideas/drafts";
 import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, IDEA_UPDATE, initials, isUnsure, splitIdea, splitUpdate, topicsOf, whenLabel, type Gap } from "@/features/ideas/raise";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
+import { receiversFor, type Receiver } from "@/features/ideas/receivers";
 import { saveShots, shrinkImage } from "@/lib/shots";
+import { brainProposalAction } from "@/server/actions/brain";
 import { useIdeaStudio } from "@/lib/use-idea-studio";
 import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
 import { RaiseMenu, type MenuView } from "./RaiseMenu";
+import { ReceiverDialog, type Work } from "./RaisePublish";
 import { RaiseChat, type ChatMsg } from "./RaiseChat";
 import { AnalysisSheet, IdeaSheet, type Reviewer, type Similar, type Source } from "./RaiseSheets";
 import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
@@ -60,6 +63,10 @@ export function Raise() {
   const [evalStep, setEvalStep] = useState<number | null>(null);
   const [firstPending, setFirstPending] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Publishing: the step NextUp is on while it finds who should receive it, then the suggestions to
+  // choose from; `pubWork` is the step while the chosen one is published.
+  const [pubStep, setPubStep] = useState<null | Work | Receiver[]>(null);
+  const [pubWork, setPubWork] = useState<Work | null>(null);
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
   const fillRef = useRef<() => void>(() => {});
@@ -172,28 +179,56 @@ export function Raise() {
     }, 420);
   };
 
-  const publish = async () => {
+  // One step of the work, said in the button while it runs: the label and the orb's mode, the real work,
+  // and a short minimum so each step can be read.
+  const step = async <T,>(set: (w: Work) => void, label: string, orb: Work["orb"], work: () => Promise<T> | T, min: number): Promise<T> => {
+    set({ label, orb });
+    const [v] = await Promise.all([Promise.resolve().then(work), new Promise((r) => setTimeout(r, min))]);
+    return v;
+  };
+
+  // "Publish idea": the button says what NextUp does - reads the idea, asks the router, checks the org
+  // chart, ranks who fits - then the author picks who receives it (RaisePublish.tsx).
+  const askReceiver = async () => {
+    if (!draft || busy || published || pubStep) return;
+    setMenu(null);
+    const text = await step(setPubStep, "Reading your idea…", "working", () => idea.text, 450);
+    const brain = await step(setPubStep, "Asking the router…", "searching", () => brainProposalAction({ slug: tenant.slug, title: idea.title, body: idea.body }).catch(() => null), 650);
+    const lead = await step(setPubStep, "Checking the org chart…", "connecting", () => ev?.lead ?? "Triage desk", 500);
+    const options = await step(setPubStep, "Ranking who fits…", "weaving", () => receiversFor({
+      text, routes: seed.routes, people: seed.people, lead, me: who.name,
+      brain: brain ? { routeId: brain.proposal.routeId, confidence: brain.proposal.confidence, reason: brain.reason } : null,
+      yours: extras.recv[0] ?? null,
+    }), 450);
+    setPubStep(options);
+  };
+
+  const publish = async (to: Receiver) => {
     if (!draft || busy || published) return;
     setBusy(true);
     const caseId = newId("c");
-    const r = await studio.publish(caseId);
-    if (!r.ok) { setBusy(false); showToast(r.reason); return; }
-    // The server said yes: raise it now, so the case is already on its desk.
+    const r = await step(setPubWork, "Checking the draft…", "solving", () => studio.publish(caseId), 500);
+    if (!r.ok) { setBusy(false); setPubWork(null); setPubStep(null); showToast(r.reason); return; }
+    // The server said yes: raise it now, on the desk the author chose. The router's own proposal stays
+    // in the payload, so the decision log can compare it with where the case went.
     const e = evaluate({ kind: "idea", text: r.title, context: r.body, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, r.brain);
-    act.raise({ ...e.payload, title: r.title, body: r.body }, caseId);
+    await step(setPubWork, "Raising the case for " + to.name + "…", "composing", () => act.raise({ ...e.payload, title: r.title, body: r.body, assignee: to.name, routeId: to.routeId ?? e.payload.routeId }, caseId), 600);
     const images = myFiles.filter((f) => f.img).slice(0, MAX_SHOTS);
     if (images.length) {
-      const shots = await Promise.all(images.map((f) => shrinkImage(f.file).catch(() => null)));
-      if (!saveShots(tenant.slug, caseId, shots.filter((x) => x !== null))) showToast("Published — the screenshots did not fit in this browser's storage.");
+      const kept = await step(setPubWork, "Saving the screenshots…", "working", async () => {
+        const shots = await Promise.all(images.map((f) => shrinkImage(f.file).catch(() => null)));
+        return saveShots(tenant.slug, caseId, shots.filter((x) => x !== null));
+      }, 400);
+      if (!kept) showToast("Published — the screenshots did not fit in this browser's storage.");
     }
-    setBusy(false);
+    setBusy(false); setPubWork(null); setPubStep(null);
     void studio.open(draft.id);
   };
 
   const send = () => {
     const t = text.trim();
     if (!t || sending) return;
-    if (/^publish( now)?$/i.test(t)) { setText(""); void publish(); return; }
+    if (/^publish( now)?$/i.test(t)) { setText(""); void askReceiver(); return; }
     if (/^review analysis$/i.test(t)) { setText(""); go("analysis"); return; }
     if (published) { showToast("This idea is published — follow-ups go through Overview."); return; }
     if (t.length < 3) return;
@@ -214,7 +249,8 @@ export function Raise() {
   };
 
   // ── Derived for the views ───────────────────────────────────────────────────────────────────
-  const lead = ev?.lead ?? "your team lead";
+  // Where it went: the published case's own assignee; before that, the team lead it would land with.
+  const lead = (draft?.caseId ? S.cases.find((c) => c.id === draft.caseId)?.assignee : undefined) ?? ev?.lead ?? "your team lead";
   const team = affected[0] ?? who.line.split(",")[0];
 
   const chips: Chip[] = (() => {
@@ -270,7 +306,7 @@ export function Raise() {
   const card: DraftCard | null = stage === "chat" && draft ? {
     title: draft.title || idea.title, published, canPublish: turns.length > 0 && !busy && !sending,
     pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : "Goes to your team lead, " + lead,
-    onPublish: () => void publish(), onRename: (title) => void studio.save({ title }),
+    onPublish: () => void askReceiver(), working: pubStep && !Array.isArray(pubStep) ? pubStep : null, onRename: (title) => void studio.save({ title }),
     hasIdea: firstIdx >= 0, ideaOn: shownView === "idea", ideaEdited: !!edit, onIdea: () => { setMenu(null); go(shownView === "idea" ? "chat" : "idea"); },
     aiOn: shownView === "analysis", analysed: turns.length > 0, onAI: () => go(shownView === "analysis" ? "chat" : "analysis"),
     acts: chips, files: fileChips,
@@ -354,7 +390,7 @@ export function Raise() {
   ) : (
     <RaiseChat msgs={msgs} typing={!!sending && !sending.reply} typingLabel={turns.length ? "" : "Researching business context…"} error={studio.error}
       gaps={gaps} onAsk={(g) => { setAsk(g.ask); chatField.current?.focus(); }}
-      onQuick={(w) => (w === "publish" ? void publish() : go("analysis"))}
+      onQuick={(w) => (w === "publish" ? void askReceiver() : go("analysis"))}
       dock={composerChat} followKey={turns.length + ":" + (sending ? sending.reply.length : -1) + ":" + (draft?.id ?? "")} />
   );
 
@@ -365,6 +401,10 @@ export function Raise() {
           onPick={openDraft} onPin={preview.togglePin} onNew={newIdea} />
       </div>
       <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label="Close the sidebar" />
+      {Array.isArray(pubStep) && (
+        <ReceiverDialog title={draft?.title || idea.title} options={pubStep} people={seed.people} depts={seed.depts} me={who.name} work={pubWork}
+          onCancel={() => setPubStep(null)} onConfirm={(to) => void publish(to)} />
+      )}
       <div className={s.main}>
         <div className={s.showSb}><button type="button" className={s.iconBtn} onClick={() => setSb("open")} title="Show sidebar" aria-label="Show sidebar"><Icon name="sidebar" size={12} /></button></div>
         {main}

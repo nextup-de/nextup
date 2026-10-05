@@ -466,6 +466,43 @@
 .srcWhere { font-size: calc(9.38px * var(--u)); color: #6e6e73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .disclaimer { font-size: calc(9.38px * var(--u)); color: #6e6e73; }
 
+/* ── Publish: the working glyph in the button, then "Who should receive it?" ─────────────────── */
+.working { display: inline-flex; align-items: center; gap: calc(7.5px * var(--u)); min-width: 0; }
+.workingOrb { display: flex; flex: none; width: 18px; height: 18px; }
+.workingLabel { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.publish[data-state="working"] .workingOrb canvas, .dlgGo .workingOrb canvas { filter: invert(1); } /* the ink orb, light on the black buttons */
+.publish[data-state="working"] { justify-content: flex-start; padding: 0 calc(12px * var(--u)); background: #111; color: #fff; cursor: progress; } /* orb and step stick to the left while it works */
+.dlgGo:has([role="status"]) { justify-content: flex-start; }
+.dlgWrap { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.dlgScrim { position: absolute; inset: 0; border: none; padding: 0; background: rgba(20,25,40,0.28); animation: affSoft 200ms ease backwards; cursor: default; }
+.dlg { position: relative; width: min(calc(480px * var(--u)), 100%); max-height: calc(var(--nh-screen-h) - 32px); overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: calc(10.5px * var(--u)); padding: calc(16.5px * var(--u)) calc(18px * var(--u)) calc(15px * var(--u)); background: #fff; border-radius: 16.5px; box-shadow: 0 9px 27px rgba(20,30,60,0.16), 0 0 0 1px rgba(0,0,0,0.04); outline: none; animation: affPop 240ms cubic-bezier(.2,.8,.2,1) both; }
+.dlgHead { display: flex; align-items: center; gap: calc(9px * var(--u)); }
+.dlgTitle { flex: 1; margin: 0; font-size: calc(22.5px * var(--u)); line-height: 1.1; color: #1b1d22; }
+.dlgSub { margin: 0; font-size: calc(11.25px * var(--u)); line-height: 1.55; color: #6e6e73; text-wrap: pretty; }
+.rcvs { display: flex; flex-direction: column; gap: calc(6px * var(--u)); }
+.rcv { display: flex; flex-direction: column; gap: calc(6px * var(--u)); padding: calc(10.5px * var(--u)) calc(12px * var(--u)); border: 1px solid #e5e5ea; border-radius: 13.5px; background: #fff; font-family: inherit; text-align: left; cursor: pointer; transition: background 160ms ease, border-color 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); animation: affFade 320ms cubic-bezier(.2,.8,.2,1) backwards; }
+.rcv:hover { background: #f7f7f9; }
+.rcv:active { transform: scale(.99); }
+.rcv[aria-checked="true"] { border-color: #1c1c1e; background: #f7f7f9; box-shadow: 0 0 0 1px #1c1c1e; }
+.rcv:disabled { cursor: default; }
+.rcvTop { display: flex; align-items: center; gap: calc(8.25px * var(--u)); min-width: 0; }
+.rcvWho { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rcvName { font-size: calc(12px * var(--u)); font-weight: 600; color: #1c1c1e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rcvRole { font-size: calc(9.75px * var(--u)); color: #6e6e73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rcvTag { flex: none; font-size: calc(8.25px * var(--u)); font-weight: 600; padding: 2px calc(6.75px * var(--u)); border-radius: 999px; background: #1c1c1e; color: #fff; }
+.rcvScore { flex: none; font-size: calc(9.38px * var(--u)); font-weight: 600; padding: 2px calc(6.75px * var(--u)); border-radius: 999px; background: #e8f1ff; color: #0062cc; }
+.rcvDot { flex: none; width: calc(15px * var(--u)); height: calc(15px * var(--u)); box-sizing: border-box; border-radius: 50%; border: 1.5px solid #c6cbd4; background: #fff; transition: border 140ms ease; }
+.rcv[aria-checked="true"] .rcvDot { border: calc(4.5px * var(--u)) solid #1c1c1e; }
+.rcvWhy { font-size: calc(10.5px * var(--u)); line-height: 1.5; color: #3a3a3c; text-wrap: pretty; }
+.rcvOther { align-self: flex-start; display: flex; align-items: center; gap: calc(6px * var(--u)); height: calc(28.5px * var(--u)); padding: 0 calc(10.5px * var(--u)); border: 1px dashed #c6cbd4; border-radius: 999px; background: transparent; color: #1c1c1e; font-family: inherit; font-size: calc(10.5px * var(--u)); font-weight: 600; cursor: pointer; transition: background 160ms ease; }
+.rcvOther:hover { background: #f5f5f7; }
+.rcvSearch { display: flex; flex-direction: column; gap: calc(3px * var(--u)); animation: affFade 220ms ease backwards; }
+.rcvList { display: flex; flex-direction: column; }
+.dlgFoot { display: flex; align-items: center; justify-content: flex-end; gap: calc(6px * var(--u)); padding-top: calc(4.5px * var(--u)); }
+.dlgGo { display: flex; align-items: center; justify-content: center; gap: calc(6px * var(--u)); min-width: calc(120px * var(--u)); height: calc(30px * var(--u)); padding: 0 calc(15px * var(--u)); border: none; border-radius: 999px; background: #111; color: #fff; font-family: inherit; font-size: calc(10.5px * var(--u)); font-weight: 600; cursor: pointer; transition: transform 160ms cubic-bezier(.2,.8,.2,1); }
+.dlgGo:active { transform: scale(.97); }
+.dlgGo:disabled { cursor: progress; }
+
 @keyframes railRing { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes affBreathe { 0%, 100% { opacity: .75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.015); } }
 @keyframes affPop { from { opacity: 0; transform: translateY(-4.5px) scale(.96); } to { opacity: 1; transform: none; } }

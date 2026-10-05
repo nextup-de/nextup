@@ -3,13 +3,14 @@
 // the ideas list with pinned ones on top. Collapsible; a drawer on phones. Props in, JSX out.
 import { useEffect, useRef, useState } from "react";
 import { Icon, Search, Solid } from "./raiseIcons";
+import { Working, type Work } from "./RaisePublish";
 import type { Chip } from "./RaiseComposer";
 import s from "./Raise.module.css";
 
 export type IdeaRow = { id: string; title: string; when: string; preview: string; published: boolean; pinned: boolean; current: boolean };
 export type DraftCard = {
   title: string; published: boolean; canPublish: boolean; pubHint: string;
-  onPublish: () => void; onRename: (title: string) => void;
+  onPublish: () => void; working: Work | null; onRename: (title: string) => void;
   hasIdea: boolean; ideaOn: boolean; ideaEdited: boolean; onIdea: () => void;
   aiOn: boolean; analysed: boolean; onAI: () => void;
   acts: Chip[]; files: Chip[];
@@ -80,7 +81,7 @@ function Card({ c }: { c: DraftCard }) {
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { if (editing) input.current?.focus(); }, [editing]);
   const commit = () => { const v = draft.trim(); if (v && v !== c.title) c.onRename(v); setEditing(false); };
-  const state = c.published ? "published" : c.canPublish ? "ready" : "off";
+  const state = c.published ? "published" : c.working ? "working" : c.canPublish ? "ready" : "off";
 
   return (
     <div className={s.card}>
@@ -98,8 +99,10 @@ function Card({ c }: { c: DraftCard }) {
       </div>
 
       <button type="button" className={s.publish} data-state={state} disabled={state !== "ready"} onClick={c.onPublish} title={c.pubHint}>
-        <Icon name={c.published ? "check" : "up"} size={11.25} width={c.published ? 2.8 : 2.4} />
-        {c.published ? "Published" : "Publish idea"}
+        {c.working ? <Working work={c.working} /> : <>
+          <Icon name={c.published ? "check" : "up"} size={11.25} width={c.published ? 2.8 : 2.4} />
+          {c.published ? "Published" : "Publish idea"}
+        </>}
       </button>
 
       <div className={s.halves}>
