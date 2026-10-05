@@ -9,7 +9,7 @@ import type { Benchmark, BenchmarkId, BenchmarkPart } from "./benchmarks";
 // 2-8 topics - the preparation for the grilling. The rail starts empty; each topic is checked off once
 // the idea answers it, or marked unknown when the author does not know yet either.
 export type GapStatus = "clear" | "open" | "active" | "unknown";
-export type Gap = { id: string; label: string; status: GapStatus; ask: string };
+export type Gap = { id: string; label: string; status: GapStatus; ask: string; reasoning?: string; research?: { source: string; detail: string }[]; subquestions?: string[] };
 
 export const MIN_TOPICS = 2;
 export const MAX_TOPICS = 8;
@@ -92,15 +92,42 @@ function fromPart(key: DialKey, label: string, p: BenchmarkPart | undefined): Di
   };
 }
 
-// Cost reads the spend rule of Feasibility: no spend, within the team's authority, above it, or unknown.
+// Cost reads the spend rule of Feasibility: no spend, within the team's authority, above it - or spend
+// without an amount, which scores low until a rough figure is given.
 function costDial(p: BenchmarkPart | undefined): Dial {
   const facts = p ? [...p.found, ...p.missing] : [];
   const has = (re: RegExp) => facts.some((f) => re.test(f));
   const [value, note] = has(/^No spend/) ? [85, "No spend needed."]
     : has(/^Within team authority/) ? [70, facts.find((f) => /^Within team authority/.test(f)) + "."]
     : has(/^Above team authority/) ? [40, "Above the team's spending authority - it needs a sign-off."]
-    : [45, "The cost is not stated yet."];
-  return { key: "cost", label: "Cost", value, note, basis: "Read from what the idea says it would spend, against the team's authority.", scored: true };
+    : [35, "It needs spending, but the amount is not stated yet - a rough figure moves this."];
+  return { key: "cost", label: "Cost", value, note, basis: "Read from what the idea says it would spend, against the team's authority.", scored: !!p };
+}
+
+// Risk, where higher is safer like every other dial: read from facts the benchmark already has - a small
+// first step and no spend lower it, spend above the team's authority and a wide reach raise it.
+// Safety and quality checks are not part of it yet, and the basis says so.
+export function riskDial(parts: readonly BenchmarkPart[]): Dial {
+  const found = parts.flatMap((p) => p.found);
+  const has = (re: RegExp) => found.some((f) => re.test(f));
+  const people = Number(found.find((f) => / affected$/.test(f))?.match(/^\d+/)?.[0] ?? 0);
+  const facts: [boolean, number, string][] = [
+    [has(/^Names a first step/), 20, "starts small with a first step"],
+    [has(/^No spend/), 10, "needs no spend"],
+    [has(/^Above team authority/), -15, "spends above the team's authority"],
+    [people >= 3, -10, "touches " + people + " people besides you"],
+    [has(/^Reaches beyond one person/), -5, "reaches beyond one person"],
+  ];
+  const hit = facts.filter(([on]) => on);
+  const value = Math.max(10, Math.min(95, 60 + hit.reduce((n, [, d]) => n + d, 0)));
+  const level = value >= 70 ? "Low risk" : value >= 50 ? "Some risk" : "Higher risk";
+  const lower = hit.filter(([, d]) => d > 0).map(([, , w]) => w), higher = hit.filter(([, d]) => d < 0).map(([, , w]) => w);
+  const why = [lower.length ? "it " + lower.join(" and ") : "", higher.length ? (lower.length ? "but " : "it ") + higher.join(" and ") : ""].filter(Boolean).join(", ");
+  return {
+    key: "risk", label: "Risk", value, scored: true,
+    note: level + (why ? ": " + why + "." : " - nothing in the idea raises or lowers it yet."),
+    basis: "Read from the idea's first step, what it spends and how far it reaches. Safety and quality checks are not part of it yet - talk to your team lead if it changes a shift routine.",
+  };
 }
 
 export function dialsOf(parts: readonly BenchmarkPart[]): Dial[] {
@@ -109,7 +136,7 @@ export function dialsOf(parts: readonly BenchmarkPart[]): Dial[] {
     fromPart("feas", "Feasibility", part(parts, "feasibility")),
     costDial(part(parts, "feasibility")),
     fromPart("fit", "Fit", part(parts, "fit")),
-    { key: "risk", label: "Risk", value: 50, scored: false, note: "Risk is not scored yet.", basis: "Safety and quality checks are not part of the benchmark yet - talk to your team lead if it changes a shift routine." },
+    riskDial(parts),
   ];
 }
 

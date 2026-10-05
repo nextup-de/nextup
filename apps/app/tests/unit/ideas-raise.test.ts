@@ -62,12 +62,30 @@ describe("dialsOf", () => {
   it("gives the five dials in the design's order", () => {
     expect(dialsOf(oneLiner.parts).map((d) => d.label)).toEqual(["Value", "Feasibility", "Cost", "Fit", "Risk"]);
   });
+  it("scores every dial - cost and risk too", () => {
+    const d = dialsOf(oneLiner.parts);
+    expect(d.every((x) => x.scored)).toBe(true);
+    expect(d.every((x) => x.note.length > 0)).toBe(true);
+  });
+  it("prices spend without an amount low, and asks for a figure", () => {
+    const spends = benchmark({ text: "Buy a second label printer for packing", affected: [], attachments: 0 }, ctx);
+    const cost = dialsOf(spends.parts).find((x) => x.key === "cost");
+    expect(cost?.value).toBe(35);
+    expect(cost?.note).toContain("rough figure");
+  });
+  it("reads risk from the first step, the spend and the reach", () => {
+    const small = benchmark({ text: "A pilot for one week on line 3, no new tools", affected: [], attachments: 0 }, ctx);
+    const wide = benchmark({ text: "Buy new tools for every shift across all lines, about €20,000", affected: ["M. Roth", "H. Sander", "S. Dahl"], attachments: 0 }, ctx);
+    const r = (b: typeof small) => dialsOf(b.parts).find((x) => x.key === "risk");
+    expect(r(small)?.value).toBeGreaterThan(r(wide)?.value ?? 100);
+    expect(r(small)?.note).toContain("first step");
+    expect(r(wide)?.note).toContain("above the team's authority");
+  });
   it("reads value, feasibility and fit straight off the benchmark", () => {
     const d = dialsOf(oneLiner.parts);
     expect(d[0].value).toBe(oneLiner.parts[1].value);
     expect(d[1].value).toBe(oneLiner.parts[2].value);
     expect(d[3].value).toBe(oneLiner.parts[0].value);
-    expect(d[4].scored).toBe(false);
   });
 });
 
