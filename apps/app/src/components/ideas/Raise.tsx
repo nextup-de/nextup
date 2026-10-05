@@ -1,0 +1,353 @@
+"use client";
+// The raise page (Claude Design handoff "Raise", docs/IDEAS.md): type one line, add context and
+// people, NextUp evaluates it, the coach grills you on what is missing, you review the analysis and
+// publish it to the right desk.
+//
+//   sidebar   search, the open draft and its actions, the ideas list        RaiseSidebar
+//   main      start | chat (+ progress rail) | idea | analysis             RaiseStart, RaiseChat, RaiseSheets
+//
+// The conversation, the drafts, the benchmark and publishing are the idea studio's (lib/use-idea-studio.ts).
+// The receiver, colleagues, meeting, visibility, pins, idea edits and "not sure" answers are stand-ins
+// (raisePreview.ts, RAISE-FOR-KEVIN.txt).
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useDemo } from "@/components/dashboard/DemoProvider";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { stripTags } from "@/features/assist/check";
+import { newId } from "@/features/cases/events";
+import { closest, evaluate, GOALS } from "@/features/evaluate";
+import { canPublish } from "@/features/ideas/benchmarks";
+import { ideaFromTurns } from "@/features/ideas/coach";
+import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, initials, isUnsure, splitIdea, whenLabel, type Gap } from "@/features/ideas/raise";
+import { saveShots, shrinkImage } from "@/lib/shots";
+import { useIdeaStudio } from "@/lib/use-idea-studio";
+import type { Chip } from "./RaiseComposer";
+import { RaiseComposer } from "./RaiseComposer";
+import { RaiseMenu, type MenuView } from "./RaiseMenu";
+import { RaiseChat, type ChatMsg } from "./RaiseChat";
+import { AnalysisSheet, IdeaSheet, type Reviewer, type Similar, type Source } from "./RaiseSheets";
+import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
+import { EVAL_STEPS, RaiseStart } from "./RaiseStart";
+import { useRaisePreview, type FileItem } from "./raisePreview";
+import { Icon } from "./raiseIcons";
+import s from "./Raise.module.css";
+
+const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
+type Menu = { at: "start" | "chat" | "card"; view: MenuView } | null;
+
+export function Raise() {
+  const { seed, S, persona, act, ready, href, tenant, showToast, serverMode } = useDemo();
+  const studio = useIdeaStudio(tenant.slug, serverMode);
+  const preview = useRaisePreview();
+  const { draft, live, threshold, sending } = studio;
+  const who = persona.who;
+
+  const [stage, setStage] = useState<"start" | "chat">("start");
+  const [view, setView] = useState<"chat" | "idea" | "analysis">("chat");
+  const [sb, setSb] = useState<"auto" | "open" | "hidden">("auto"); // auto: open on screens, closed on phones (CSS)
+  const [query, setQuery] = useState("");
+  const [startText, setStartText] = useState("");
+  const [startCtx, setStartCtx] = useState("");
+  const [startAff, setStartAff] = useState<string[]>([]);
+  const [files, setFiles] = useState<Record<string, FileItem[]>>({});
+  const [slot, setSlot] = useState("n0"); // where the choices of the open idea live: the start form's key, or a draft id
+  const [aliases, setAliases] = useState<Record<string, string>>({}); // draft id -> the start slot that made it
+  const [text, setText] = useState("");
+  const [ask, setAsk] = useState<string | null>(null); // a rail question the author chose to answer now
+  const [menu, setMenu] = useState<Menu>(null);
+  const [evalStep, setEvalStep] = useState<number | null>(null);
+  const [firstPending, setFirstPending] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const startField = useRef<HTMLTextAreaElement>(null);
+  const chatField = useRef<HTMLTextAreaElement>(null);
+
+  const key = slot;
+  const extras = preview.extras(key);
+  const myFiles = useMemo(() => files[key] ?? [], [files, key]);
+  const turns = useMemo(() => draft?.turns ?? [], [draft]);
+  const idea = useMemo(() => ideaFromTurns(turns), [turns]);
+  const affected = draft?.affected ?? startAff;
+  const parts = live?.parts ?? draft?.scores ?? [];
+  const overall = studio.overall;
+  const published = draft?.status === "published";
+  const firstIdx = turns.findIndex((t) => t.role === "user");
+  const firstText = firstIdx >= 0 ? turns[firstIdx].text : "";
+  const edit = draft ? preview.edits[draft.id] ?? null : null;
+  const shown = splitIdea(edit ? edit.text : firstText);
+
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
+
+  // What the evaluation and the analysis say about who receives it: the routing, run here on the open idea.
+  const ev = useMemo(() => {
+    if (!idea.text && !startText.trim()) return null;
+    return evaluate({ kind: "idea", text: idea.text || startText, context: startCtx, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases });
+  }, [idea.text, startText, startCtx, affected, myFiles.length, who, seed, S.cases]);
+
+  const similar = useMemo(() => {
+    if (!idea.text) return null;
+    return closest(idea.text, S.cases.filter((c) => c.open && c.id !== draft?.caseId), (c) => c.title);
+  }, [idea.text, S.cases, draft?.caseId]);
+
+  if (!ready) return <PageSkeleton kind="raise" delay />;
+
+  // After the first answer the analysis opens, once the evaluation has finished playing.
+  const shownView = firstPending && stage === "chat" && !sending && turns.length > 0 ? "analysis" : view;
+  const gaps: Gap[] = draft && turns.length ? gapsOf(parts, preview.unknown[draft.id] ?? []) : [];
+
+  // ── Actions ─────────────────────────────────────────────────────────────────────────────────
+  const setAffected = (next: string[]) => { if (draft) void studio.save({ affected: next }); else setStartAff(next); };
+  const setMyFiles = (next: FileItem[]) => {
+    setFiles((f) => ({ ...f, [key]: next }));
+    if (draft) void studio.save({ attachments: next.length });
+  };
+  const addFiles = (list: FileList | null) => {
+    const picked = Array.from(list ?? []).filter((f) => f.type.startsWith("image/") || f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+    if (!picked.length) return;
+    setMyFiles([...myFiles, ...picked.map((f) => ({ id: newId("f"), name: f.name, url: URL.createObjectURL(f), img: f.type.startsWith("image/"), file: f }))]);
+    setMenu(null);
+  };
+  const removeFile = (id: string) => {
+    const f = myFiles.find((x) => x.id === id);
+    if (f) URL.revokeObjectURL(f.url);
+    setMyFiles(myFiles.filter((x) => x.id !== id));
+  };
+  const openMenu = (at: "start" | "chat" | "card", v: MenuView = "main") => setMenu({ at, view: v });
+  const toggleMenu = (at: "start" | "chat") => setMenu((m) => (m ? null : { at, view: "main" }));
+
+  const go = (v: "chat" | "idea" | "analysis") => { setFirstPending(false); setView(v); };
+  // Leaving a draft the start form made: remember which slot holds its choices, for when it is reopened.
+  const leave = () => { if (draft && slot !== draft.id) setAliases((a) => ({ ...a, [draft.id]: slot })); };
+  const reset = () => { leave(); setText(""); setAsk(null); setMenu(null); go("chat"); setSb((x) => (x === "open" ? "auto" : x)); };
+  const newIdea = () => {
+    studio.startNew(); reset();
+    setStage("start"); setStartText(""); setStartCtx(""); setStartAff([]); setEvalStep(null); setSlot(newId("n"));
+    setTimeout(() => startField.current?.focus(), 60);
+  };
+  const openDraft = (id: string) => {
+    void studio.open(id); reset();
+    setStage("chat"); setEvalStep(null); setSlot(aliases[id] ?? id);
+  };
+
+  // Send from the start page: the line, the context and the chosen extras go as the first message;
+  // the evaluation plays while the coach answers.
+  const startRaise = () => {
+    const main = startText.trim();
+    if (main.length < 3 || evalStep !== null) return;
+    const extra = [
+      extras.recv.length ? "Suggested receiver: " + extras.recv.join(", ") : "",
+      extras.coll.length ? "Colleagues who know this: " + extras.coll.join(", ") : "",
+      extras.meet ? "I’d like a " + extras.meet.dur + " meeting " + extras.meet.when + "." : "",
+    ].filter(Boolean).join("\n");
+    const message = main + (startCtx.trim() ? "\n\n" + startCtx.trim() : "") + (extra ? "\n\n" + extra : "");
+    setMenu(null); setEvalStep(0); setFirstPending(true);
+    void studio.send(message, { affected: startAff, attachments: myFiles.length });
+    let step = 0;
+    const t = setInterval(() => {
+      step += 1;
+      if (step < EVAL_STEPS.length) { setEvalStep(step); return; }
+      clearInterval(t);
+      setEvalStep(null); setStage("chat"); setView("chat"); setStartText(""); setStartCtx("");
+    }, 420);
+  };
+
+  const publish = async () => {
+    if (!draft || busy || published) return;
+    if (!canPublish(overall, threshold)) { showToast(`It scores ${overall}; it needs ${threshold} to publish.`); return; }
+    setBusy(true);
+    const caseId = newId("c");
+    const r = await studio.publish(caseId);
+    if (!r.ok) { setBusy(false); showToast(r.reason); return; }
+    // The server said yes: raise it now, so the case is already on its desk.
+    const e = evaluate({ kind: "idea", text: r.title, context: r.body, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, r.brain);
+    act.raise({ ...e.payload, title: r.title, body: r.body }, caseId);
+    const images = myFiles.filter((f) => f.img).slice(0, MAX_SHOTS);
+    if (images.length) {
+      const shots = await Promise.all(images.map((f) => shrinkImage(f.file).catch(() => null)));
+      if (!saveShots(tenant.slug, caseId, shots.filter((x) => x !== null))) showToast("Published — the screenshots did not fit in this browser's storage.");
+    }
+    setBusy(false);
+    void studio.open(draft.id);
+  };
+
+  const send = () => {
+    const t = text.trim();
+    if (!t || sending) return;
+    if (/^publish( now)?$/i.test(t)) { setText(""); void publish(); return; }
+    if (/^review analysis$/i.test(t)) { setText(""); go("analysis"); return; }
+    if (published) { showToast("This idea is published — follow-ups go through Overview."); return; }
+    if (t.length < 3) return;
+    if (draft && isUnsure(t)) { const a = gaps.find((g) => g.status === "active"); if (a?.ask) preview.markUnknown(draft.id, a.ask); }
+    // Edits made in the Idea view travel with this message, so the coach and the score see them.
+    const message = edit ? t + "\n\nUpdated idea:\n" + edit.text : t;
+    if (draft && edit) preview.edit(draft.id, null);
+    void studio.send(message, { affected, attachments: myFiles.length });
+    setText(""); setAsk(null);
+  };
+
+  const editIdea = (description: string, context: string) => {
+    if (!draft) return;
+    preview.edit(draft.id, { orig: firstText, text: description + (context.trim() ? "\n\n" + context : "") });
+  };
+
+  // ── Derived for the views ───────────────────────────────────────────────────────────────────
+  const lead = ev?.lead ?? "your team lead";
+  const team = affected[0] ?? who.line.split(",")[0];
+
+  const chips: Chip[] = (() => {
+    const at = stage === "start" ? "start" : "card";
+    const out: Chip[] = [];
+    extras.recv.forEach((n) => out.push({ key: "r" + n, title: n, sub: "Receiver", kind: "person", lead: initials(n), open: () => openMenu(at, "receiver"), remove: () => preview.setExtras(key, { recv: [] }) }));
+    extras.coll.forEach((n) => out.push({ key: "c" + n, title: n, sub: "Colleague", kind: "person", lead: initials(n), open: () => openMenu(at, "colleague"), remove: () => preview.setExtras(key, { coll: extras.coll.filter((x) => x !== n) }) }));
+    if (extras.meet) out.push({ key: "m", title: extras.meet.dur, sub: "Meeting · " + extras.meet.when, kind: "meeting", lead: "", icon: "meeting", open: () => openMenu(at, "meeting"), remove: () => preview.setExtras(key, { meet: null }) });
+    if (affected.length) out.push({ key: "a", title: affected.length === 1 ? affected[0] : affected[0] + " +" + (affected.length - 1), sub: "Affected", kind: "affected", lead: "", icon: "affected", open: () => openMenu(at, "affected"), remove: () => setAffected([]) });
+    if (extras.vis !== "public") out.push(extras.vis === "private"
+      ? { key: "v", title: "Private", sub: "You and receiver", kind: "private", lead: "", icon: "lock", open: () => openMenu(at, "vis"), remove: () => preview.setExtras(key, { vis: "public", visTo: [] }) }
+      : { key: "v", title: "Custom", sub: extras.visTo.length ? extras.visTo.length + " selected" : "Pick who", kind: "custom", lead: "", icon: "affected", open: () => openMenu(at, "visPick"), remove: () => preview.setExtras(key, { vis: "public", visTo: [] }) });
+    return out;
+  })();
+  const fileChips: Chip[] = myFiles.map((f) => ({ key: f.id, title: f.name, sub: "Attached", kind: "file", lead: (f.name.split(".").pop() || "file").slice(0, 4).toUpperCase(), img: f.img ? f.url : undefined, open: () => openMenu(stage === "start" ? "start" : "card", "file"), remove: () => removeFile(f.id) }));
+
+  const menuFor = (at: "start" | "chat" | "card") => menu && menu.at === at ? (
+    <RaiseMenu at={at === "card" ? "card" : "bar"} view={menu.view} onView={(v) => setMenu({ at, view: v })} onClose={() => setMenu(null)}
+      extras={extras} onExtras={(x) => preview.setExtras(key, x)} affected={affected} onAffected={setAffected}
+      files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile} people={seed.people} depts={seed.depts} me={who.name} />
+  ) : null;
+
+  // The conversation without the first message - that is the idea, shown in the Idea view.
+  const lastAi = [...turns].reverse().find((t) => t.role === "assistant")?.id ?? null;
+  const msgs: ChatMsg[] = turns.flatMap((t, i): ChatMsg[] => {
+    if (i === firstIdx) return [];
+    if (t.role === "user") return [{ id: t.id, role: "user", text: t.text }];
+    const isLast = t.id === lastAi && !sending;
+    const prev = turns[i - 1];
+    const sgKey = draft ? draft.id + ":" + t.id : t.id;
+    const resolved = preview.suggested[sgKey];
+    const gained = isLast && live?.delta ? Object.entries(live.delta).some(([k, v]) => k !== "overall" && v > 0) : false;
+    const offer = !published && isLast && gained && prev?.role === "user" && i - 1 !== firstIdx;
+    const before = splitIdea(edit ? edit.text : firstText).context;
+    const after = (before ? before + "\n" : "") + (prev?.text ?? "").replace(/\s+$/, "");
+    return [{
+      id: t.id, role: "ai", text: stripTags(t.text),
+      note: i === firstIdx + 1 ? "Title and problem added" : isLast ? deltaNote(live?.delta ?? null, parts) : null,
+      quick: isLast && !published ? { publish: canPublish(overall, threshold), review: canPublish(overall, threshold) } : undefined,
+      replies: isLast && !published ? live?.replies.map((r) => r.text) : undefined,
+      suggest: resolved || offer ? {
+        key: sgKey, before, after, state: resolved ?? "open",
+        onYes: (txt) => { if (draft) { preview.edit(draft.id, { orig: edit?.orig ?? firstText, text: splitIdea(edit ? edit.text : firstText).description + "\n\n" + txt }); preview.resolve(sgKey, "yes"); } },
+        onNo: () => preview.resolve(sgKey, "no"),
+      } : undefined,
+    }];
+  });
+  if (sending) {
+    if (turns.length) msgs.push({ id: "sending", role: "user", text: sending.text });
+    if (sending.reply) msgs.push({ id: "reply", role: "ai", text: stripTags(sending.reply) });
+  }
+  if (published) msgs.push({ id: "published", role: "ai", text: "Published. It’s on " + lead + "’s desk now — you’ll see their reply in Overview." });
+
+  const card: DraftCard | null = stage === "chat" && draft ? {
+    title: draft.title || idea.title, published, canPublish: canPublish(overall, threshold) && !busy && !sending,
+    pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : canPublish(overall, threshold) ? "Goes to your team lead, " + lead : `Scores ${overall} — it needs ${threshold} to publish`,
+    onPublish: () => void publish(), onRename: (title) => void studio.save({ title }),
+    hasIdea: firstIdx >= 0, ideaOn: shownView === "idea", ideaEdited: !!edit, onIdea: () => { setMenu(null); go(shownView === "idea" ? "chat" : "idea"); },
+    aiOn: shownView === "analysis", analysed: turns.length > 0, onAI: () => go(shownView === "analysis" ? "chat" : "analysis"),
+    acts: chips, files: fileChips,
+    saveLabel: published ? "Published " + clockLabel(draft.updatedAt) : draft.updatedAt ? "Saved " + clockLabel(draft.updatedAt) : "Save as draft", saved: !!draft.updatedAt,
+    onSave: () => { void studio.save({}).then((ok) => showToast(ok ? "Draft saved. You find it under Ideas." : "Could not save the draft.")); },
+    discardLabel: published ? "Remove from list" : "Discard draft",
+    onDiscard: () => { void studio.discard().then(() => { reset(); setStage("start"); }); showToast(published ? "Removed from the list." : "Draft discarded."); },
+    menu: menuFor("card"),
+  } : null;
+
+  const needle = query.trim().toLowerCase();
+  const rows: IdeaRow[] = studio.drafts
+    .filter((d) => !needle || (d.title || "Untitled idea").toLowerCase().includes(needle))
+    .map((d) => {
+      const current = stage === "chat" && d.id === draft?.id;
+      const last = current ? turns[turns.length - 1] : undefined;
+      return {
+        id: d.id, title: d.title, when: whenLabel(d.updatedAt, now), current, pinned: preview.pinned.includes(d.id), published: d.status === "published",
+        preview: last ? stripTags(last.text) : d.status === "published" ? "Published · scored " + d.overall : "Scores " + d.overall + " · needs " + threshold,
+      };
+    });
+
+  const words = (startText.trim().match(/\S+/g) || []).length;
+  const composerChat = (
+    <div className={s.dock}>
+      <div className={s.editedWrap}>
+        {edit && (
+          <div className={s.edited}>
+            <div className={s.editedRow}>
+              <Icon name="pencil" size={10.5} stroke="#1a5fd0" width={2} />
+              <span className={s.editedText}><b>Idea edited</b> · NextUp will see the changes with your next message</span>
+              <button type="button" className={s.undo} onClick={() => draft && preview.edit(draft.id, null)}>Undo</button>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className={s.dockBar}>
+        <RaiseComposer value={text} onChange={setText} onSubmit={send} fieldRef={chatField} sendLabel="Send"
+          placeholder={ask ?? (published ? "Add a follow-up — it goes to Overview" : turns.length ? "Answer, or add more detail…" : "Describe the problem or idea…")}
+          canSend={!!text.trim() && !sending} chips={[]} strip={false}
+          menuOpen={menu?.at === "chat"} onMenu={() => toggleMenu("chat")} menu={menuFor("chat")} onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
+      </div>
+    </div>
+  );
+
+  // ── Analysis ────────────────────────────────────────────────────────────────────────────────
+  const reviewers: Reviewer[] = ev ? [
+    { initials: initials(ev.lead), name: ev.lead, role: "Receives it", why: "Your team lead — the first desk for anything you raise" + (team ? ", and close to " + team + "." : ".") },
+    ...(ev.passesTo && ev.passesTo !== ev.lead ? [{ initials: initials(ev.passesTo), name: ev.passesTo, role: "Informed", why: "Owns “" + (ev.route?.type ?? "this area") + "” — where your lead passes it if it is not theirs." }] : []),
+  ] : [];
+  const openCases = S.cases.filter((c) => c.open).length;
+  const sources: Source[] = [
+    { name: "Company goals", where: GOALS.length + " goals checked", ext: "DOC" },
+    { name: "Routing map", where: seed.routes.length + " routes", ext: "DOC" },
+    { name: "Open cases", where: openCases + " searched", ext: "IDEA" },
+    ...(myFiles.length ? [{ name: "Your evidence", where: myFiles.length + (myFiles.length === 1 ? " file" : " files"), ext: "DATA" as const }] : []),
+  ];
+  const sims: Similar[] = similar
+    ? [{ title: similar.title, status: "Open", where: "Raised by " + similar.from, href: href("/cases/" + similar.id) }]
+    : [{ title: "No close matches", status: "–", where: "Searched " + openCases + " open cases", href: null }];
+  const cats = [...new Set([ev?.route?.type, affected[0] ?? "General", "Idea"].filter((x): x is string => !!x))];
+
+  const main = stage === "start" ? (
+    <RaiseStart name={greetName(who.name)} typed={!!startText.trim()} evalStep={evalStep}
+      evalSub={(words || 1) + " words from " + (who.handle ?? who.name) + " · " + who.line}
+      context={startCtx} onContext={setStartCtx}
+      composer={
+        <RaiseComposer value={startText} onChange={setStartText} onSubmit={startRaise} fieldRef={startField} sendLabel="Ask NextUp"
+          placeholder="Share an idea that would make work better…" canSend={startText.trim().length >= 3 && evalStep === null}
+          chips={[...chips, ...fileChips]} strip menuOpen={menu?.at === "start"} onMenu={() => toggleMenu("start")} menu={menuFor("start")}
+          onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
+      } />
+  ) : shownView === "idea" ? (
+    <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
+  ) : shownView === "analysis" ? (
+    <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} dials={dialsOf(parts)}
+      summary={(idea.text || "").replace(/\s+/g, " ").trim().slice(0, 320) || "Nothing to summarise yet."}
+      advice={adviceOf(overall, threshold, team || "your team")}
+      pattern={affected.length > 1 ? "The problem is felt beyond one team: " + affected.join(", ") + "." : "It stands on its own."}
+      cats={cats} similar={sims} reviewers={reviewers} sources={sources} />
+  ) : (
+    <RaiseChat msgs={msgs} typing={!!sending && !sending.reply} typingLabel={turns.length ? "" : "Researching business context…"} error={studio.error}
+      gaps={gaps} onAsk={(g) => { setAsk(g.ask); chatField.current?.focus(); }}
+      onQuick={(w) => (w === "publish" ? void publish() : go("analysis"))}
+      onReply={(r) => { setText((t) => (t.trim() ? t.trim() + " " + r : r)); requestAnimationFrame(() => { const f = chatField.current; if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }); }}
+      dock={composerChat} followKey={turns.length + ":" + (sending ? sending.reply.length : -1) + ":" + (draft?.id ?? "")} />
+  );
+
+  return (
+    <div className={s.root} data-sb={sb}>
+      <div className={s.sbShell}>
+        <RaiseSidebar query={query} onQuery={setQuery} onHide={() => { setSb("hidden"); setMenu(null); }} card={card} rows={rows} loaded={studio.loaded}
+          onPick={openDraft} onPin={preview.togglePin} onNew={newIdea} />
+      </div>
+      <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label="Close the sidebar" />
+      <div className={s.main}>
+        <div className={s.showSb}><button type="button" className={s.iconBtn} onClick={() => setSb("open")} title="Show sidebar" aria-label="Show sidebar"><Icon name="sidebar" size={12} /></button></div>
+        {main}
+      </div>
+    </div>
+  );
+}
+
