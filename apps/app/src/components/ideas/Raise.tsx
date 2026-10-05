@@ -18,6 +18,7 @@ import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { canPublish } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
 import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, initials, isUnsure, splitIdea, whenLabel, type Gap } from "@/features/ideas/raise";
+import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { saveShots, shrinkImage } from "@/lib/shots";
 import { useIdeaStudio } from "@/lib/use-idea-studio";
 import type { Chip } from "./RaiseComposer";
@@ -59,6 +60,7 @@ export function Raise() {
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
+  const fillRef = useRef<() => void>(() => {});
   const chatField = useRef<HTMLTextAreaElement>(null);
 
   const key = slot;
@@ -87,6 +89,18 @@ export function Raise() {
     if (!idea.text) return null;
     return closest(idea.text, S.cases.filter((c) => c.open && c.id !== draft?.caseId), (c) => c.title);
   }, [idea.text, S.cases, draft?.caseId]);
+
+  // The dev panel's "Fill a sample idea", offered while the start view is open (lib/dev-fill.ts).
+  useEffect(() => (stage === "start" ? registerDevFill(() => fillRef.current()) : undefined), [stage]);
+  useEffect(() => {
+    fillRef.current = () => {
+      const x = DEV_SAMPLES[Math.floor(Math.random() * DEV_SAMPLES.length)];
+      const coll = ["S. Dahl", "H. Sander", "L. Brandt", "M. Roth"];
+      setStartText(x.text); setStartCtx(x.ctx); setStartAff(x.aff); setMenu(null);
+      setFiles((f) => ({ ...f, [slot]: x.files.map((name) => ({ id: newId("f"), name, url: "", img: false, file: new File([], name) })) }));
+      preview.setExtras(slot, { recv: ["T. Vogel"], coll: [coll[Math.floor(Math.random() * coll.length)]], meet: Math.random() > 0.5 ? { dur: "15 min", when: "this week" } : null, vis: "public", visTo: [] });
+    };
+  });
 
   if (!ready) return <PageSkeleton kind="raise" delay />;
 
