@@ -3,8 +3,10 @@
 // dashboard's card (team/DashboardView.tsx ProfilePop), at its sizes. The card is drawn over the page,
 // fixed beside the button, so the sidebar or a dialog never clips it. Anyone not on the org chart (a
 // handle, a free name) stays plain.
+import Link from "next/link";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useDemo } from "@/components/dashboard/DemoProvider";
 import type { Dept, OrgPerson } from "@/features/demo/types";
 import { personFor, type Person } from "@/features/ideas/brief";
 import { initials } from "@/features/ideas/raise";
@@ -60,7 +62,7 @@ export function PersonButton({ name, className, children, label }: { name: strin
 }
 
 function MiniProfile({ p }: { p: Person }) {
-  const [soon, setSoon] = useState(false);
+  const { href, tenant } = useDemo();
   return (
     <>
       <div className={s.mpHead}>
@@ -72,10 +74,9 @@ function MiniProfile({ p }: { p: Person }) {
         <span className={s.mpKey}>Location</span><span className={s.mpVal}>{p.location || "—"}</span>
         <span className={s.mpKey}>Email</span><a className={s.mpMail} href={"mailto:" + p.email}>{p.email}</a>
       </div>
-      <button type="button" className={s.mpBtn} onClick={() => setSoon(true)}>
+      {!tenant.hiddenPeople?.includes(p.name) && <Link className={s.mpBtn} href={href("/people/" + encodeURIComponent(p.name))}>
         View profile<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 1l5 5-5 5" /></svg>
-      </button>
-      {soon && <span className={s.mpSoon} role="status">Profile pages are coming soon.</span>}
+      </Link>}
     </>
   );
 }
