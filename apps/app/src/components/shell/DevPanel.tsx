@@ -1,12 +1,13 @@
 "use client";
 // Dev panel (bottom-right): switch the persona, view the inbox as another desk holder, advance
-// the demo clock, demo data on/off, delete what this browser added, reset - and, on its own Design
+// the demo clock, fill the raise page with a sample idea, demo data on/off, delete what this browser added, reset - and, on its own Design
 // page, the design tweaks under review (reasoning-panel colour, logo colour, animations on/off). It stays open
 // while settings change; a click anywhere else or Escape closes it. Demo only - sessions replace it.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { openCasesOf } from "@/components/dashboard/derive";
 import type { LogoTone, PanelTone } from "@/lib/demo-log";
+import { devFill, hasDevFill, subscribeDevFill } from "@/lib/dev-fill";
 import styles from "./DevPanel.module.css";
 
 const PANEL_TONES: { id: PanelTone; label: string }[] = [{ id: "grey", label: "Grey" }, { id: "blue", label: "Blue" }, { id: "deep", label: "Deep blue" }];
@@ -17,6 +18,7 @@ export function DevPanel() {
   const { seed, S, role, persona, demo, dev, setDev, leadAs, panels, setPanels, motion, setMotion, logo, setLogo } = ctx;
   const [page, setPage] = useState<"demo" | "design">("demo");
   const box = useRef<HTMLDivElement>(null);
+  const canFill = useSyncExternalStore(subscribeDevFill, hasDevFill, () => false); // the raise page's start view is open
   const isLead = role === "leader";
   const day = S.day;
   const newCount = S.cases.filter((c) => !c.seed).length;
@@ -97,6 +99,13 @@ export function DevPanel() {
             <span className={styles.rowTitle}>{day === 0 ? "Today" : "Today + " + day + " d"}</span>
             <span className={styles.plusDay}>+1 day</span>
           </button>
+
+          {canFill && (
+            <button type="button" className={styles.rowBtn} onClick={() => { devFill(); setDev(false); }} title="Dev: fill a random idea">
+              <span className={styles.rowTitle}>Fill a sample idea</span>
+              <span className={styles.trash}>Raise</span>
+            </button>
+          )}
 
           <button type="button" className={styles.rowBtn} onClick={ctx.toggleDemo}>
             <span className={styles.rowTitle}>Demo data</span>

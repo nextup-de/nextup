@@ -10,7 +10,7 @@
 // the live check against a stack that is already up (`npm run e2e:live`, playwright.live.config.ts),
 // where the company has a database and the demo login. Everything else is the same clicks.
 import type { Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { aiMessages, answerCoach, expect, publishTo, START, test } from "../helpers";
 
 const TITLE = "A shared setup cart for line 3, so a changeover never waits for tools";
 // The two answers to the coach. Together they lift the one-liner over the publish line (docs/IDEAS.md).
@@ -49,11 +49,7 @@ async function addedCases(page: Page): Promise<number> {
 test("the interview script: employee raises, team leader finds it, manager sees the overview", async ({ page, context, baseURL }, info) => {
   // Live: the address given to the live config, which may be a host (single-company stack) or end in /acme.
   const home = info.config.metadata.live ? (baseURL ?? "").replace(/\/+$/, "") : "/acme";
-  const chat = page.getByRole("region", { name: "Idea chat" });
-  // One <li> per message: mine, then the coach's.
-  const messages = chat.getByRole("list").first().locator(":scope > li");
-  const score = page.getByRole("img", { name: /^Score \d+ of 100$/ });
-  const box = page.getByRole("textbox", { name: "Your idea" });
+  const box = page.getByRole("textbox", { name: START });
   let addedBefore = 0;
 
   await test.step("employee: the raise window opens", async () => {
@@ -63,35 +59,34 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     addedBefore = await addedCases(page);
   });
 
-  await test.step("employee: one line, and the coach answers with a first read and four benchmarks", async () => {
+  await test.step("employee: one line, NextUp evaluates it, and the coach answers", async () => {
     await box.fill(TITLE);
-    await box.press("Enter");
-    await expect(messages).toHaveCount(2, { timeout: 30_000 });
-    await expect(messages.nth(0)).toContainText(TITLE);
-    await expect(messages.nth(1).getByRole("paragraph").first()).toHaveText(/\S.{40,}/);
-    const bench = page.getByRole("region", { name: "Benchmarks" });
-    for (const label of ["Strategic fit", "Impact & reach", "Feasibility", "Novelty & clarity"]) await expect(bench.getByText(label)).toBeVisible();
-    await expect(score).toBeVisible();
-    // A one-liner is not enough yet - that is the point of the coach.
-    await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled();
-  });
-
-  await test.step("employee: keeps writing, twice, and each time the coach answers", async () => {
-    for (const [i, text] of MORE.entries()) {
-      await box.fill(text);
-      await box.press("Enter");
-      await expect(messages).toHaveCount(4 + 2 * i, { timeout: 30_000 });
-      await expect(messages.nth(3 + 2 * i).getByRole("paragraph").first()).toHaveText(/\S.{40,}/);
+    await page.getByRole("button", { name: "Ask NextUp" }).click();
+    await expect(page.getByRole("region", { name: "Evaluating" })).toBeVisible();
+    // The first answer may open the analysis (five dials); the chat is where the script goes on.
+    const close = page.getByRole("button", { name: "Close analysis" });
+    const answer = page.getByRole("textbox", { name: "Answer, or add more detail…" });
+    await expect(close.or(answer).first()).toBeVisible({ timeout: 30_000 });
+    if (await close.isVisible()) {
+      for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
+      await close.click();
     }
+    await expect(aiMessages(page).first()).toContainText(/\S.{40,}/, { timeout: 30_000 });
+    // Publishing is open from the first answer; the coach keeps asking what is unclear.
     await expect(page.getByRole("button", { name: "Publish idea" })).toBeEnabled();
   });
 
-  await test.step("employee: raises it, and it lands on T. Vogel's desk with an answer date", async () => {
-    await page.getByRole("button", { name: "Publish idea" }).click();
-    const done = page.getByRole("dialog", { name: "Publishing your idea" });
-    await expect(done.getByText(/On T\. Vogel’s desk/)).toBeVisible({ timeout: 30_000 });
-    await expect(done.getByText(/Answer owed in 5 d/)).toBeVisible();
-    await done.getByRole("link", { name: "Open the case" }).click();
+  await test.step("employee: keeps writing, twice, and each time the coach answers", async () => {
+    for (const text of MORE) {
+      await answerCoach(page, text);
+      await expect(aiMessages(page).last()).toContainText(/\S.{40,}/);
+    }
+  });
+
+  await test.step("employee: publishes it to T. Vogel, and it lands on his desk", async () => {
+    await publishTo(page, "T. Vogel");
+    await expect(page.getByText(/on T\. Vogel’s desk/)).toBeVisible();
+    await page.getByRole("link", { name: "Open the case" }).click();
   });
 
   await test.step("employee: sees the details of the case", async () => {

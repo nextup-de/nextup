@@ -34,6 +34,7 @@ import { companyBrief, hasKnowledge, rowsFromSeed, type Knowledge } from "@/feat
 import { DEFAULT_PUBLISH_THRESHOLD, deltas } from "@/features/ideas/benchmarks";
 import { coachText, withCoachSuggestion } from "@/features/ideas/brain-coach";
 import { coachBrief, coachMock, ideaFromTurns, IDEA_PROMPT_VERSION } from "@/features/ideas/coach";
+import { withoutSkipped } from "@/features/ideas/raise";
 import { MAX_TURN, MAX_TURNS, scoreDraft } from "@/features/ideas/drafts";
 import { suggestReplies } from "@/features/ideas/replies";
 import { hasDatabase } from "@/lib/db/client";
@@ -59,6 +60,8 @@ const Body = z.object({
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), text: z.string().max(MAX_TURN * 2) })).max(MAX_TURNS).default([]),
   affected: z.array(z.string().min(1).max(120)).max(50).default([]),
   attachments: z.number().int().min(0).max(4).default(0),
+  // The questions the author answered "not sure" to (the raise page's rail): the coach does not ask them again.
+  skip: z.array(z.string().min(1).max(300)).max(20).default([]),
 });
 
 const json = (body: Record<string, unknown>, status: number) => Response.json(body, { status });
@@ -102,7 +105,9 @@ export async function POST(request: Request, { params }: Ctx) {
   const after: Turn[] = [...before, { role: "user", text: body.text }];
   const prev = before.some((t) => t.role === "user") ? scoreDraft({ turns: before, affected, attachments }, ctx) : null;
   const now = scoreDraft({ turns: after, affected, attachments }, ctx);
-  const brief = coachBrief(now, threshold);
+  // The coach asks from the benchmark without the skipped questions; the scores sent are the full ones.
+  const askNow = withoutSkipped(now, body.skip);
+  const brief = coachBrief(askNow, threshold);
   const replies = suggestReplies({ text: ideaFromTurns(after).text, affected, attachments }, now, ctx);
 
   // A model only where the assistant is allowed to answer for this company, with its audit trail.
@@ -123,7 +128,8 @@ export async function POST(request: Request, { params }: Ctx) {
       try {
         send("scores", { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold, delta: prev ? deltas(prev, now) : null, replies });
 
-        let reply = coachMock(prev, now, threshold, body.text, replies.length);
+        // prev as it was: after a "not sure" the coach asks the next question fresh, not "I still need this".
+        let reply = coachMock(prev, askNow, threshold, body.text, 0); // the raise page shows no suggested answers, so the coach does not point to them
         let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
         const coached = useBrain
           ? await askBrainCoach(tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },

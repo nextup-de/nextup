@@ -22,7 +22,7 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
   await test.step("employee raises it; the router puts it on T. Vogel's desk", async () => {
     await expect(page).toHaveURL(/\/acme\/raise$/);
     await publishIdea(page, TITLE);
-    await expect(page.getByText(/On T\. Vogel’s desk/)).toBeVisible();
+    await expect(page.getByText(/on T\. Vogel’s desk/)).toBeVisible();
   });
 
   await test.step("it is in the team leader's inbox at 0 days", async () => {

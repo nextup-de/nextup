@@ -25,14 +25,17 @@ export function isGibberish(text: string): boolean {
   return long.filter(mashed).length / long.length >= 0.5;
 }
 
-// The idea as it stands: the first message is the title, everything the author wrote after it is
-// the body. The coach's own words are never part of the idea - only the author's - and neither is
-// a message that is only keyboard mashing, so it cannot move the score.
+// The idea as it stands: the first paragraph of the first message is the title, everything the
+// author wrote after it (the context under that line, later answers) is the body. The coach's own
+// words are never part of the idea - only the author's - and neither is a message that is only
+// keyboard mashing, so it cannot move the score.
 export function ideaFromTurns(turns: readonly Turn[]): { title: string; body: string; text: string } {
   const mine = turns.filter((t) => t.role === "user").map((t) => stripTags(t.text).trim()).filter(Boolean);
-  const title = clip(mine[0] ?? "", TITLE_MAX);
-  const body = mine.slice(1).filter((m) => !isGibberish(m)).join("\n");
-  const text = [isGibberish(mine[0] ?? "") ? "" : (mine[0] ?? ""), body].filter(Boolean).join("\n");
+  const [head = "", ...more] = (mine[0] ?? "").split(/\n\s*\n/);
+  const title = clip(head.trim(), TITLE_MAX);
+  const later = mine.slice(1).filter((m) => !isGibberish(m)).join("\n");
+  const body = [isGibberish(mine[0] ?? "") ? "" : more.join("\n\n").trim(), later].filter(Boolean).join("\n");
+  const text = [isGibberish(mine[0] ?? "") ? "" : (mine[0] ?? ""), later].filter(Boolean).join("\n");
   return { title, body, text };
 }
 

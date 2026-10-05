@@ -3,11 +3,11 @@
 // without a database and a session there is nothing server-side, and the page keeps its drafts
 // in the browser instead (lib/idea-drafts.ts) - these return { ok: false } in that case.
 //
-// Publishing is gated here, not in the browser: the score is recomputed from the stored turns
-// and the company's threshold, and only then may the page append case.raised.
+// Publishing is checked here, not in the browser: the draft must still be open and the score is
+// recomputed from the stored turns; only then may the page append case.raised. The score does not gate
+// publishing - the author decides when it is ready.
 import { z } from "zod";
 import { getViewerFor } from "@/features/auth/session";
-import { canPublish } from "@/features/ideas/benchmarks";
 import { scoreDraft, type DraftSummary, type DraftView } from "@/features/ideas/drafts";
 import { ideaFromTurns } from "@/features/ideas/coach";
 import { hasDatabase } from "@/lib/db/client";
@@ -106,9 +106,7 @@ export async function publishIdeaDraftAction(input: { slug: string; id: string; 
   if (!p.success || !v) return { ok: false, reason: "Sign in first." };
   const d = await getDraft(v.companyId, v.userId, p.data.id);
   if (!d || d.status !== "draft") return { ok: false, reason: "This draft is no longer open." };
-  const [ctx, threshold] = await Promise.all([serverIdeaContext(p.data.slug), loadPublishThreshold(v.companyId)]);
-  const score = scoreDraft(d, ctx);
-  if (!canPublish(score.overall, threshold)) return { ok: false, reason: "Not ready yet.", overall: score.overall, threshold };
+  const score = scoreDraft(d, await serverIdeaContext(p.data.slug));
   const idea = ideaFromTurns(d.turns);
   const title = d.title || idea.title;
   const done = await markPublished(v.companyId, v.userId, d.id, p.data.caseId, { title, overall: score.overall, scores: score.parts });

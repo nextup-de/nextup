@@ -16,7 +16,7 @@ export function EvalOrb({ state, size, paused }: { state: OrbState; size: number
     if (!canvas || !ctx) return;
     const dpr = Math.min(3, window.devicePixelRatio || 1);
     canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
-    const { mode, speed, opts } = resolvePreset(state, 64);
+    const { mode, speed, opts } = resolvePreset(state, size <= 26 ? 20 : size <= 44 ? 32 : 64); // the hand-tuned design nearest the size
     const geometry = MODE_FRAMES[mode], drawOpts = { ...opts, spread: 1.15 }; // fill the box, as on the page before
     const inked = (f: OrbFrame): OrbFrame => ({ dots: f.dots.map((d) => ({ ...d, white: d.white * DEPTH })), lines: f.lines.map((l) => ({ ...l, white: l.white * DEPTH })) });
     const draw = (t: number) => {

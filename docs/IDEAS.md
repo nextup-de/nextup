@@ -57,10 +57,20 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
    `brain-coach-v1`, stored on the turn.
 3. Every turn is kept: server mode in `IdeaDraft` / `IdeaTurn`, the local demo in this browser's
    localStorage (`src/lib/idea-drafts.ts`, same shapes).
-4. At the company's threshold (`CompanyConfig.publishThreshold`, default 70, set on
-   `/admin/knowledge`) **Publish idea** unlocks. The page mints the case id and asks the server
-   (`publishIdeaDraftAction`), which recomputes the score from the stored turns and refuses below the
-   line. Only then does the page append the usual `case.raised` (kind `idea`) and play the route.
+4. **Publish idea** is available from the first answer on - the author decides when it is ready; the
+   company's threshold (`CompanyConfig.publishThreshold`, default 70, set on `/admin/knowledge`)
+   only drives the analysis' advice (Approve at the line). The page mints the case id and asks the
+   server (`publishIdeaDraftAction`), which checks the draft is still open and recomputes the score
+   from the stored turns. Only then does the page append the usual `case.raised` (kind `idea`).
+   Before that, the page asks who should receive it: the button says each step as it runs ("Asking
+   the router…", our thinking orb in front), then "Who should get this?" offers 2-3 people
+   (`features/ideas/receivers.ts`): the router's proposal, the route owners the idea's words match,
+   the team lead, the lead's manager when fewer than two. Each has a match % built only from facts
+   that are also listed as its "why": where they start (the routing row's keyword score, or their
+   place in the org), the idea landing in their area, being able to approve its spend, and answering
+   the last cases on their desk within the promised days.
+   The author picks one or anyone from the directory; the case is raised with that person as its
+   `assignee`, the router's own proposal kept in the payload.
 5. Where the stack runs the brain (`services/brain`, `BRAIN_URL`), the page asks it for the routing
    row and "raised before?" between the server's yes and `case.raised` (`brainProposalAction`).
    It gets the routing rows (owner's role and department, never a name), the company's cases and

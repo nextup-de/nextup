@@ -5,7 +5,7 @@
 // in this browser (lib/idea-drafts.ts). Either way the benchmark comes from the server route.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BenchmarkId, BenchmarkPart } from "@/features/ideas/benchmarks";
-import { canPublish, DEFAULT_PUBLISH_THRESHOLD } from "@/features/ideas/benchmarks";
+import { DEFAULT_PUBLISH_THRESHOLD } from "@/features/ideas/benchmarks";
 import type { KnownCase } from "@/features/evaluate";
 import type { Reply } from "@/features/ideas/replies";
 import type { DraftSummary, DraftView } from "@/features/ideas/drafts";
@@ -76,7 +76,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
   }, []);
 
   // One message: make sure a draft exists, stream the score and the coach, then reload the draft.
-  const send = useCallback(async (text: string, meta: { affected: string[]; attachments: number }) => {
+  const send = useCallback(async (text: string, meta: { affected: string[]; attachments: number; skip?: string[] }) => {
     const t = text.trim();
     if (t.length < 3 || sending) return;
     setError("");
@@ -95,7 +95,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
       const res = await fetch(`/api/${encodeURIComponent(slug)}/ideas/turn`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: t, draftId: serverMode ? id : undefined, history, affected: meta.affected, attachments: meta.attachments }),
+        body: JSON.stringify({ text: t, draftId: serverMode ? id : undefined, history, affected: meta.affected, attachments: meta.attachments, skip: meta.skip ?? [] }),
         signal: ctl.signal,
       });
       if (!res.ok || !res.body) {
@@ -175,13 +175,12 @@ export function useIdeaStudio(slug: string, serverMode: boolean) {
       void refresh();
       return withBrain(r.title, r.body);
     }
-    if (!canPublish(draft.overall, threshold)) return { ok: false, reason: `It scores ${draft.overall}; it needs ${threshold}.` };
     const idea = ideaFromTurns(draft.turns);
     const title = draft.title || idea.title;
     localDrafts.publish(slug, draft.id, caseId, { title, overall: draft.overall, scores: draft.scores });
     void refresh();
     return withBrain(title, idea.body);
-  }, [draft, slug, serverMode, threshold, refresh]);
+  }, [draft, slug, serverMode, refresh]);
 
   const overall = live?.overall ?? draft?.overall ?? 0;
   return { drafts, threshold, draft, live, sending, error, loaded, overall, open, startNew, send, save, discard, publish, setError };

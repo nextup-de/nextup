@@ -58,6 +58,7 @@
   --nh-space: 8px;
   --nh-page-x: clamp(16px, 5vw, 56px);
   --nh-max: 1120px;
+  --nh-bar-h: 46px; /* the simple shell's top bar; pages that fill the screen below it subtract this */
 
   /* The viewport. No page scale (`zoom`): Safari computes zoomed lengths differently from Chrome
      and Firefox, which pushed layouts off screen, and it shrank text. Sizes are real pixels. */
