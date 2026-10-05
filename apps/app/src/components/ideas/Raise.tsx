@@ -243,7 +243,7 @@ export function Raise() {
     if (t.length < 3) return;
     // "Not sure": the active topic becomes unknown, and the coach is told not to ask it again.
     const skip = draft ? [...(preview.unknown[draft.id] ?? [])] : [];
-    const unsure = draft && isUnsure(t) ? gaps.find((g) => g.status === "active") : undefined;
+    const unsure = draft && isUnsure(t) ? (gaps.find((g) => g.ask === ask) ?? gaps.find((g) => g.status === "active")) : undefined;
     if (draft && unsure) { preview.markUnknown(draft.id, unsure.id); skip.push(unsure.id); }
     // Edits made in the Idea view travel with this message, so the coach and the score see them.
     const message = edit ? t + IDEA_UPDATE + edit.text : t;
@@ -312,6 +312,11 @@ export function Raise() {
   }
   if (published) msgs.push({ id: "published", role: "ai", text: "Published. It’s on " + lead + "’s desk now — you’ll see their reply in Overview.",
     link: draft?.caseId ? { label: "Open the case", href: href("/cases/" + draft.caseId) } : undefined });
+  // "Ask this now" on the rail: the coach asks that step straight away, and the rail shows it as the one
+  // being asked, until the answer is sent.
+  const asking = !sending && !published && ask ? gaps.find((g) => g.ask === ask) ?? null : null;
+  if (asking) msgs.push({ id: "ask:" + asking.id, role: "ai", text: (asking.status === "unknown" ? "Back to " : "Let’s jump to ") + asking.label.toLowerCase() + ". " + asking.ask });
+  const railGaps: Gap[] = asking ? gaps.map((g) => ({ ...g, status: g.id === asking.id ? "active" : g.status === "active" ? "open" : g.status })) : gaps;
 
   const card: DraftCard | null = stage === "chat" && draft ? {
     title: draft.title || idea.title, published, canPublish: turns.length > 0 && !busy && !sending,
@@ -399,9 +404,9 @@ export function Raise() {
       cats={cats} similar={sims} reviewers={reviewers} sources={sources} />
   ) : (
     <RaiseChat msgs={msgs} typing={!!sending && !sending.reply} typingLabel={turns.length ? "" : "Researching business context…"} error={studio.error}
-      gaps={gaps} onAsk={(g) => { setAsk(g.ask); chatField.current?.focus(); }}
+      gaps={railGaps} onAsk={(g) => { setAsk(g.ask); setTimeout(() => chatField.current?.focus(), 0); }}
       onQuick={(w) => (w === "publish" ? void askReceiver() : go("analysis"))}
-      dock={composerChat} followKey={turns.length + ":" + (sending ? sending.reply.length : -1) + ":" + (draft?.id ?? "")} />
+      dock={composerChat} followKey={turns.length + ":" + (sending ? sending.reply.length : -1) + ":" + (draft?.id ?? "") + ":" + (asking?.id ?? "")} />
   );
 
   return (
