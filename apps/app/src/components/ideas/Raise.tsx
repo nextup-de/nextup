@@ -260,7 +260,7 @@ export function Raise() {
 
   const card: DraftCard | null = stage === "chat" && draft ? {
     title: draft.title || idea.title, published, canPublish: canPublish(overall, threshold) && !busy && !sending,
-    pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : canPublish(overall, threshold) ? "Goes to your team lead, " + lead : `Scores ${overall} — it needs ${threshold} to publish`,
+    pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : canPublish(overall, threshold) ? "Goes to your team lead, " + lead : "Answer a few more questions to publish",
     onPublish: () => void publish(), onRename: (title) => void studio.save({ title }),
     hasIdea: firstIdx >= 0, ideaOn: shownView === "idea", ideaEdited: !!edit, onIdea: () => { setMenu(null); go(shownView === "idea" ? "chat" : "idea"); },
     aiOn: shownView === "analysis", analysed: turns.length > 0, onAI: () => go(shownView === "analysis" ? "chat" : "analysis"),
@@ -280,7 +280,7 @@ export function Raise() {
       const last = current ? turns[turns.length - 1] : undefined;
       return {
         id: d.id, title: d.title, when: whenLabel(d.updatedAt, now), current, pinned: preview.pinned.includes(d.id), published: d.status === "published",
-        preview: last ? stripTags(last.text) : d.status === "published" ? "Published · scored " + d.overall : "Scores " + d.overall + " · needs " + threshold,
+        preview: last ? stripTags(last.text) : d.status === "published" ? "Follow it in Overview" : "Continue the conversation",
       };
     });
 
@@ -338,7 +338,7 @@ export function Raise() {
     <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} dials={dialsOf(parts)}
-      summary={(idea.text || "").replace(/\s+/g, " ").trim().slice(0, 320) || "Nothing to summarise yet."}
+      summary={((x) => (x.length > 320 ? x.slice(0, 320).replace(/\s+\S*$/, "") + "…" : x))((idea.text || "").replace(/\s+/g, " ").trim()) || "Nothing to summarise yet."}
       advice={adviceOf(overall, threshold, team || "your team")}
       pattern={affected.length > 1 ? "The problem is felt beyond one team: " + affected.join(", ") + "." : "It stands on its own."}
       cats={cats} similar={sims} reviewers={reviewers} sources={sources} />

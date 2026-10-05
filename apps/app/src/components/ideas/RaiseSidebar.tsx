@@ -101,7 +101,6 @@ function Card({ c }: { c: DraftCard }) {
         <Icon name={c.published ? "check" : "up"} size={11.25} width={c.published ? 2.8 : 2.4} />
         {c.published ? "Published" : "Publish idea"}
       </button>
-      {!c.published && !c.canPublish && <p className={s.pubHint}>{c.pubHint}</p>}
 
       <div className={s.halves}>
         {c.hasIdea && (
@@ -144,7 +143,7 @@ function List({ label, icon, items }: { label: string; icon: "bolt" | "file"; it
       {shown.map((c) => (
         <div key={c.key} className={s.listRow}>
           <button type="button" className={s.listOpen} onClick={c.open} title="View or edit">
-            <span className={s.lead} data-kind={c.kind} style={c.img ? { backgroundImage: `url(${c.img})` } : undefined}>{c.icon ? <Icon name={c.icon} size={11.25} /> : !c.img && c.lead}</span>
+            <span className={s.lead} data-kind={c.kind} style={c.img ? { backgroundImage: `url(${c.img})` } : undefined}>{c.icon ? <Icon name={c.icon} size={11.25} /> : c.kind === "file" ? !c.img && <Icon name="doc" size={11.25} /> : c.lead}</span>
             <span className={s.listTitle}>{c.title}</span><span className={s.listSub}>{c.sub}</span>
           </button>
           <button type="button" className={s.listX} onClick={c.remove} title="Remove" aria-label={"Remove " + c.title}><Icon name="x" size={7.5} width={3} /></button>

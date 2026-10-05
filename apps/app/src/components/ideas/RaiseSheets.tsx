@@ -32,7 +32,7 @@ export function IdeaSheet({ description, context, locked, onChange, onClose }: {
   return (
     <Sheet label="idea" onClose={onClose} an={false}>
       <div className={s.paperHead}><span className={s.paperLabel}>Idea</span></div>
-      {locked ? <p className={s.ideaText}>{description}</p>
+      {locked ? <p className={s.ideaBody}>{description}</p>
         : <textarea className={s.ideaEdit} rows={4} value={description} onChange={(e) => onChange(e.target.value, context)} aria-label="Idea" />}
       {(!locked || context) && (
         <div className={s.ideaCtx}>
