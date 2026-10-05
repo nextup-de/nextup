@@ -4,9 +4,7 @@
 
 | URL | File (`src/app/`) | Session | Role | Purpose |
 |---|---|---|---|---|
-| `/` | `(marketing)/page.tsx` | - | - | Landing |
-| `/pricing` | `(marketing)/pricing/page.tsx` | - | - | Pricing |
-| `/contact` | `(marketing)/contact/page.tsx` | - | - | Contact / book a pilot |
+| `/` | `page.tsx` | - | - | Redirects to `/login`. The public site (landing, pricing, contact) is the `nextup-landing` repo |
 | `/login` | `(auth)/login/page.tsx` | - | - | Find your company -> `/[company]/login` |
 | `/signup` | `(auth)/signup/page.tsx` | - | - | Create company + first manager |
 | `/forgot-password` | `(auth)/forgot-password/page.tsx` | - | - | Reset request |
@@ -32,6 +30,6 @@ per role in `src/config/nav.ts`. `SHELL[role]` picks the chrome: members get the
 (logo, Ideas | Dashboard, profile - `SimpleShell`), leaders and managers the rail + top bar. Enforcement (`src/proxy.ts` + the `(app)` layout) arrives with
 sessions in Phase 2; until then every app page renders with the demo tenant as manager.
 
-Layouts nest: `app/layout.tsx` (html, fonts) -> `(marketing)/layout.tsx` (header, footer) or
+Layouts nest: `app/layout.tsx` (html, fonts) ->
 `[company]/layout.tsx` (resolve tenant, 404) -> `(app)/layout.tsx` (AppShell: rail + top bar)
 -> `settings/layout.tsx` (sub-nav). Auth pages compose `AuthShell` themselves.
