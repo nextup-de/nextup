@@ -317,6 +317,7 @@
 .quickBtn:hover { background: #f7f7f9; }
 .quickBtn:active { transform: scale(.97); }
 .quickBtn[data-primary="true"] { background: #111; border-color: #111; color: #fff; }
+a.quickBtn { display: inline-flex; align-items: center; text-decoration: none; }
 .typing { align-self: flex-start; display: flex; align-items: center; gap: calc(3.75px * var(--u)); padding: calc(7.5px * var(--u)) 0; animation: affSoft 300ms ease backwards; }
 .typing i { width: calc(4.5px * var(--u)); height: calc(4.5px * var(--u)); border-radius: 50%; background: #6e6e73; animation: affDot 1.2s infinite; }
 .typing i:nth-child(2) { animation-delay: .15s; }

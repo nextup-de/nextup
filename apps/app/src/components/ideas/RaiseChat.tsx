@@ -2,13 +2,14 @@
 // The raise page's chat: the coach's questions and the author's answers, the "Update your idea?" card,
 // the progress rail on the right (one segment per point the benchmark checks) and the composer docked
 // at the bottom. Props in, JSX out.
+import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import type { Gap } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
 import s from "./Raise.module.css";
 
 export type Suggest = { key: string; before: string; after: string; state: "open" | "yes" | "no"; onYes: (text: string) => void; onNo: () => void };
-export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; quick?: { publish: boolean; review: boolean }; suggest?: Suggest };
+export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; quick?: { publish: boolean; review: boolean }; link?: { label: string; href: string }; suggest?: Suggest };
 
 export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQuick, dock, followKey }: {
   msgs: ChatMsg[];
@@ -38,6 +39,7 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQui
                 <p className={s.bubble}>{m.text}</p>
                 {m.note && <span className={s.note}><Solid name="sparkle" size={8.25} fill="#007aff" />{m.note}</span>}
                 {m.suggest && <SuggestCard key={m.suggest.key} sg={m.suggest} />}
+                {m.link && <div className={s.quick}><Link className={s.quickBtn} data-primary="true" href={m.link.href}>{m.link.label}</Link></div>}
                 {m.quick && (m.quick.publish || m.quick.review) && (
                   <div className={s.quick}>
                     {m.quick.publish && <button type="button" className={s.quickBtn} data-primary="true" onClick={() => onQuick("publish")}>Publish now</button>}

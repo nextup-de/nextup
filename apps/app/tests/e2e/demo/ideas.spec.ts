@@ -1,45 +1,53 @@
-// The idea studio, demo mode (no database: drafts in this browser, the offline coach). A one-liner
-// is scored and held back; developing it with the coach lifts it over the line; the draft survives a
-// reload; publishing puts it on the team lead's desk. docs/IDEAS.md.
-import { DEVELOP, expect, test } from "../helpers";
+// The raise page, demo mode (no database: drafts in this browser, the offline coach). One line is
+// evaluated and analysed; the coach starts on what is unclear, worked through on the rail; the draft
+// survives a reload; publishing asks who should get it and raises the case on their desk.
+// docs/IDEAS.md.
+import { aiMessages, answerCoach, DEVELOP, expect, publishTo, START, test } from "../helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/acme/raise");
 });
 
-test("a one-liner is scored on four bars and cannot be published yet", async ({ page }) => {
-  const box = page.getByRole("textbox", { name: "Your idea" });
-  await box.fill("A shared calendar for the endurance rig");
-  await box.press("Enter");
+test("one line is evaluated, analysed, and the coach starts on what is unclear", async ({ page }) => {
+  await page.getByRole("textbox", { name: START }).fill("A shared calendar for the endurance rig");
+  await page.getByRole("button", { name: "Ask NextUp" }).click();
+  await expect(page.getByRole("region", { name: "Evaluating" })).toBeVisible();
 
-  const bench = page.getByRole("region", { name: "Benchmarks" });
-  await expect(bench).toBeVisible({ timeout: 30_000 });
-  for (const label of ["Strategic fit", "Impact & reach", "Feasibility", "Novelty & clarity"]) await expect(bench.getByText(label)).toBeVisible();
-  await expect(page.getByText(/^First read: \d+ of 100/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled();
-  await expect(page.getByText(/points to publish/)).toBeVisible();
+  // The analysis of the first answer: five dials.
+  const close = page.getByRole("button", { name: "Close analysis" });
+  const answer = page.getByRole("textbox", { name: "Answer, or add more detail…" });
+  await expect(close.or(answer).first()).toBeVisible({ timeout: 30_000 });
+  if (!(await close.isVisible())) await page.getByRole("button", { name: "AI", exact: true }).click();
+  for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
+  await close.click();
+
+  // The chat: the coach's first answer, and the rail of what is unclear, starting on step one.
+  await expect(aiMessages(page).first()).toContainText(/\S.{40,}/);
+  const steps = page.locator("[data-rail-seg]");
+  await expect.poll(() => steps.count()).toBeGreaterThanOrEqual(2);
+  expect(await steps.count()).toBeLessThanOrEqual(8);
+  await expect(steps.first()).toHaveAttribute("aria-label", /asking now$/);
+  await expect(page.getByRole("button", { name: "Publish idea" })).toBeEnabled();
 });
 
 test("develop it, keep it as a draft, publish it", async ({ page }) => {
   const title = "Reserve the endurance rig one day a week for our own experiments";
-  const box = page.getByRole("textbox", { name: "Your idea" });
-  await box.fill(title);
-  await box.press("Enter");
-  await expect(page.getByRole("region", { name: "Benchmarks" })).toBeVisible({ timeout: 30_000 });
-  await box.fill(DEVELOP);
-  await box.press("Enter");
-  await expect(page.getByText(/^Up \d+ to \d+/)).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Publish idea" })).toBeEnabled();
+  await page.getByRole("textbox", { name: START }).fill(title);
+  await page.getByRole("button", { name: "Ask NextUp" }).click();
+  const close = page.getByRole("button", { name: "Close analysis" });
+  const answer = page.getByRole("textbox", { name: "Answer, or add more detail…" });
+  await expect(close.or(answer).first()).toBeVisible({ timeout: 30_000 });
+  if (await close.isVisible()) await close.click();
+  await expect(aiMessages(page).first()).toBeVisible({ timeout: 30_000 });
+  await answerCoach(page, DEVELOP);
 
-  // The draft is kept: after a reload it is on the left, with both messages.
+  // The draft is kept: after a reload it is under Ideas, with the answer.
   await page.reload();
-  const rail = page.getByRole("navigation", { name: "Your ideas" });
-  await rail.getByRole("button", { name: new RegExp(title.slice(0, 30)) }).click();
+  await page.getByRole("button", { name: new RegExp("^" + title.slice(0, 30)) }).first().click();
   await expect(page.getByText(DEVELOP)).toBeVisible();
 
-  await page.getByRole("button", { name: "Publish idea" }).click();
-  const done = page.getByRole("dialog", { name: "Publishing your idea" });
-  await expect(done.getByText(/On T\. Vogel’s desk/)).toBeVisible({ timeout: 30_000 });
-  await expect(rail.getByRole("button", { name: /^✓ Reserve the endurance rig/ })).toBeVisible(); // moved under Published
-  await expect(page.getByRole("textbox", { name: "Your idea" })).toHaveCount(0); // a published idea is read-only
+  await publishTo(page, "T. Vogel");
+  await expect(page.getByText(/on T\. Vogel’s desk/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Published", exact: true })).toBeDisabled(); // a status now, not a button
+  await expect(page.getByRole("textbox", { name: "Add a follow-up — it goes to Overview" })).toBeVisible();
 });

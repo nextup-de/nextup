@@ -310,7 +310,8 @@ export function Raise() {
     if (turns.length) { const u = splitUpdate(sending.text); msgs.push({ id: "sending", role: "user", text: u.said, note: u.updated ? "Idea changes shared with NextUp" : null }); }
     if (sending.reply) msgs.push({ id: "reply", role: "ai", text: stripTags(sending.reply) });
   }
-  if (published) msgs.push({ id: "published", role: "ai", text: "Published. It’s on " + lead + "’s desk now — you’ll see their reply in Overview." });
+  if (published) msgs.push({ id: "published", role: "ai", text: "Published. It’s on " + lead + "’s desk now — you’ll see their reply in Overview.",
+    link: draft?.caseId ? { label: "Open the case", href: href("/cases/" + draft.caseId) } : undefined });
 
   const card: DraftCard | null = stage === "chat" && draft ? {
     title: draft.title || idea.title, published, canPublish: turns.length > 0 && !busy && !sending,
