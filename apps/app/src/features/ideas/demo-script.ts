@@ -42,6 +42,28 @@ export const DEMO_SCRIPT: readonly ScriptStep[] = [
   },
 ];
 
+// The case the script publishes: what the conversation found, as the main points - the case view shows
+// the first paragraph as the idea, the second as its context, and every "*Label*" line as a fact
+// (features/ideas/brief.ts splitBody). `upside` is what the case says it is worth.
+export const DEMO_CASE = {
+  upside: "≈ 2 h of line time a day",
+  body: "Every changeover on line 3 loses about 20 minutes: the setter walks to the tool crib for clamps, gauges and sockets.\n\n" +
+    "It happens on all three shifts, around six changeovers a day. A shared cart at the line, stocked once with what a changeover needs, ends the walk.\n\n" +
+    "*Goal* Every changeover under 20 minutes\n" +
+    "*First step* A one-week trial with one cart on line 3\n" +
+    "*Cost* None - spare tools maintenance already has, no sign-off needed\n" +
+    "*Then* Lines 1 and 2 get a cart too if changeovers drop under 20 minutes\n" +
+    "*Still open* Who else it helps, and a photo of the walk to the tool crib",
+};
+
+// What the desk does with the script's case on its own, a few seconds after it is published (the static
+// demo's frame, components/demo/StaticDemo.tsx): it reads it and asks one question, so the case shows
+// the conversation - and "Your move" - without anyone switching person.
+export const DESK_REPLY = {
+  afterMs: 8000,
+  text: "Good catch - I have watched that walk to the crib myself. Which tools go on the cart first? Send me the list and I will ask maintenance for the spares today.",
+};
+
 // One message as the script compares it: what the author said (not idea edits travelling along), and
 // for the idea itself only its first paragraph - the context and choices added under it may vary.
 const norm = (text: string, first: boolean) => {

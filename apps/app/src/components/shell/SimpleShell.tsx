@@ -65,7 +65,8 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
           {NAV_SIMPLE[role].map((n) => {
             const href = tenant.prefix + n.href;
-            const active = pathname === href || pathname.startsWith(href + "/");
+            // A case opens from the dashboard, so its page counts as the dashboard.
+            const active = pathname === href || pathname.startsWith(href + "/") || (n.href === "/dashboard" && pathname.startsWith(tenant.prefix + "/cases/"));
             const n1 = n.count ? counts[n.count] : 0;
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} onClick={() => setPop(null)}>

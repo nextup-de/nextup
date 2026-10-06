@@ -22,7 +22,7 @@ import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
 import { ideaContext } from "@/features/ideas/drafts";
-import { DEMO_SCRIPT, scriptStep } from "@/features/ideas/demo-script";
+import { DEMO_CASE, DEMO_SCRIPT, scriptStep } from "@/features/ideas/demo-script";
 import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, IDEA_UPDATE, initials, isUnsure, splitIdea, splitUpdate, topicsOf, whenLabel, type Gap } from "@/features/ideas/raise";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
@@ -117,10 +117,13 @@ export function Raise({ script = false }: { script?: boolean }) {
   useEffect(() => {
     fillRef.current = () => {
       const x = DEV_SAMPLES[Math.floor(Math.random() * DEV_SAMPLES.length)];
-      const coll = ["S. Dahl", "H. Sander", "L. Brandt", "M. Roth"];
-      setStartText(x.text); setStartCtx(x.ctx); setStartAff(x.aff); setMenu(null);
+      // People from this company's own seed: the samples' names only where they exist (the static demo renames them).
+      const known = (n: string) => seed.people.some((p) => p.name === n);
+      const lead = seed.people.find((p) => p.name === who.name)?.reportsTo ?? ev?.lead;
+      const coll = seed.people.filter((p) => p.name !== who.name && p.name !== lead).map((p) => p.name);
+      setStartText(x.text); setStartCtx(x.ctx); setStartAff(x.aff.filter((a) => !/^[A-Z]\. /.test(a) || known(a))); setMenu(null);
       setFiles((f) => ({ ...f, [slot]: x.files.map((name) => ({ id: newId("f"), name, url: "", img: false, file: new File([], name) })) }));
-      preview.setExtras(slot, { recv: ["T. Vogel"], coll: [coll[Math.floor(Math.random() * coll.length)]], meet: Math.random() > 0.5 ? { dur: "15 min", when: "this week" } : null, vis: "public", visTo: [] });
+      preview.setExtras(slot, { recv: lead ? [lead] : [], coll: coll.length ? [coll[Math.floor(Math.random() * coll.length)]] : [], meet: Math.random() > 0.5 ? { dur: "15 min", when: "this week" } : null, vis: "public", visTo: [] });
     };
   });
 
@@ -232,7 +235,9 @@ export function Raise({ script = false }: { script?: boolean }) {
     // The server said yes: raise it now, on the desk the author chose. The router's own proposal stays
     // in the payload, so the decision log can compare it with where the case went.
     const e = evaluate({ kind: "idea", text: r.title, context: r.body, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, r.brain);
-    await step(setPubWork, "Raising the case for " + to.name + "…", "composing", () => act.raise({ ...e.payload, title: r.title, body: r.body, assignee: to.name, routeId: to.routeId ?? e.payload.routeId }, caseId), 600);
+    // The demo script's case carries its main points instead of the raw conversation.
+    const made = script && scriptDone ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
+    await step(setPubWork, "Raising the case for " + to.name + "…", "composing", () => act.raise({ ...e.payload, title: r.title, body: made.body, upside: made.upside, assignee: to.name, routeId: to.routeId ?? e.payload.routeId }, caseId), 600);
     const images = myFiles.filter((f) => f.img).slice(0, MAX_SHOTS);
     if (images.length) {
       const kept = await step(setPubWork, "Saving the screenshots…", "working", async () => {

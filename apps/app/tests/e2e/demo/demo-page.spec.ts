@@ -1,6 +1,7 @@
 // The static demo (/demo, docs/IDEAS.md "The demo page"): no company, no login. The prepared idea and two
-// prepared answers, one click each, the coach's prepared replies after a short pause, then publish it and
-// find it on the dashboard - and a reload starts over. A company's /raise offers none of it.
+// prepared answers, one click each, the coach's prepared replies after a short pause, then publish it: the
+// case opens with its main points, the desk asks a question by itself, the dashboard shows every status
+// and opens each case at its own address - and a reload starts over. A company's /raise offers none of it.
 import { aiMessages, ANSWER, expect, publishTo, START, test } from "../helpers";
 
 const TITLE = "A shared setup cart for line 3, so a changeover never waits for tools";
@@ -31,15 +32,30 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
     await expect(page.getByRole("button", { name: "Publish now" })).toBeVisible();
   });
 
-  await test.step("published to T. Vogel, and on the dashboard", async () => {
-    await publishTo(page, "T. Vogel");
-    await page.getByRole("link", { name: "Dashboard" }).click();
-    await expect(page).toHaveURL(/\/demo\/dashboard$/);
-    await expect(page.getByRole("main")).toContainText(TITLE);
+  await test.step("published to Thomas Vogel: the case shows its main points, and he asks a question", async () => {
+    await publishTo(page, "Thomas Vogel");
+    await page.getByRole("link", { name: "Open the case" }).click();
+    await expect(page).toHaveURL(/\/demo\/cases\/c_\w+$/);
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { name: TITLE, level: 1 })).toBeVisible();
+    for (const label of ["Worth", "First step", "Cost", "Still open"]) await expect(main.getByText(label, { exact: true })).toBeVisible();
+    await expect(main).toContainText("Which tools go on the cart first?", { timeout: 15_000 });
   });
 
-  await test.step("a reload starts the demo over", async () => {
-    await page.reload();
+  await test.step("the dashboard: every status, and each row opens at its own address", async () => {
+    await page.getByRole("button", { name: "Back to the dashboard" }).click();
+    await expect(page).toHaveURL(/\/demo\/dashboard$/);
+    const main = page.getByRole("main");
+    await expect(main).toContainText(TITLE);
+    for (const t of ["Your move", "Replied", "past promise", "Building", "Shipped"]) await expect(main.getByText(t, { exact: true }).first()).toBeVisible();
+    await main.getByText("Ear defenders in two sizes at the press").click();
+    await expect(page).toHaveURL(/\/demo\/cases\/d2$/);
+    await expect(main).toContainText("€250 covers everyone");
+  });
+
+  await test.step("the dev panel is there, and a reload starts the demo over", async () => {
+    await expect(page.getByRole("button", { name: "Dev", exact: true })).toBeVisible();
+    await page.goto("/demo/dashboard");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     await expect(page.getByRole("main")).not.toContainText(TITLE);
   });

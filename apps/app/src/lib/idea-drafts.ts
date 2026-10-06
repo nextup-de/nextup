@@ -66,8 +66,8 @@ export const localDrafts = {
   publish(slug: string, id: string, caseId: string, snap: Snapshot): boolean {
     return update(slug, id, (d) => ({ ...d, status: "published", caseId, title: snap.title, overall: snap.overall, scores: snap.scores }));
   },
-  // Every draft of this company in this browser, gone (the static demo starts clean on each visit).
-  clear(slug: string): void {
-    try { window.localStorage.removeItem(KEY(slug)); } catch { /* blocked: nothing was stored either */ }
+  // Every draft of this company in this browser, replaced (the static demo starts from its own on each visit).
+  replace(slug: string, all: DraftView[]): boolean {
+    return write(slug, all);
   },
 };
