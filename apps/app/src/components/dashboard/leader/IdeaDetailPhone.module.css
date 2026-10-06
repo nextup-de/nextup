@@ -35,7 +35,7 @@
 
 .head { display: flex; align-items: center; gap: 10px; }
 .author { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-.title { margin: 0; font-family: var(--nh-serif); font-weight: 400; font-size: 30px; line-height: 1.08; letter-spacing: -0.02em; color: var(--c-title); text-wrap: balance; }
+.title { margin: 0; font-weight: 600; font-size: 24px; line-height: 1.12; letter-spacing: -0.02em; color: var(--c-title); text-wrap: balance; }
 .lede { margin: 0; font-size: 16px; line-height: 1.5; color: var(--c-ink-2); }
 
 /* The scores: five rings in one row, the whole ring is the button. */

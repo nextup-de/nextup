@@ -8,6 +8,7 @@ import { useEffect, useId, useState } from "react";
 import type { AffectedDept, AffectedPerson, IdeaBrief } from "@/features/ideas/brief";
 import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileChip, initialsOf, PanelRow, PersonCard, Sources, Sparkle, StatusBox, type FeedEntry, type IdeaProps } from "./IdeaParts";
 import styles from "./IdeaDetail.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 export type { FeedEntry, IdeaHeader } from "./IdeaParts";
 
@@ -40,7 +41,7 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
           <div className={styles.head}>
             <div className={styles.authorWrap} data-aff="1">
               <button type="button" className={styles.author} data-on={aff === "author" ? "true" : undefined} onClick={() => toggle("author")} title={"View " + brief.author.name} aria-expanded={aff === "author"}>
-                <span className={styles.authorAvatar}>{initialsOf(brief.author.name)}</span>
+                <span className={styles.authorAvatar} data-avatar={avatarTone(brief.author.name)}>{initialsOf(brief.author.name)}</span>
                 <span className={styles.authorText}>
                   <span className={styles.authorName}>{brief.author.name}</span>
                   <span className={styles.authorLine}>{brief.author.role} · raised {idea.raised}</span>
@@ -147,7 +148,7 @@ function DeptChip({ d, on, member, author, onToggle, onMember }: { d: AffectedDe
               <div className={styles.members}>
                 {d.members.map((x) => (
                   <button key={x.name} type="button" className={styles.member} onClick={() => onMember(x.name)}>
-                    <span className={styles.memberAvatar}>{initialsOf(x.name)}</span>
+                    <span className={styles.memberAvatar} data-avatar={avatarTone(x.name)}>{initialsOf(x.name)}</span>
                     <span className={styles.popWho}><span className={styles.memberName}>{x.name}</span><span className={styles.popRole}>{x.role}</span></span>
                     <span className={styles.memberGo}><Chevron /></span>
                   </button>
@@ -171,7 +172,7 @@ function PersonChip({ p, on, author, onToggle }: { p: AffectedPerson; on: boolea
   return (
     <span className={styles.chipWrap} data-aff="1">
       <button type="button" className={styles.personChip} data-on={on ? "true" : undefined} onClick={onToggle} title={p.ai ? "Added by AI" : "Added by " + author} aria-expanded={on}>
-        <span className={styles.chipAvatar}>{initialsOf(p.name)}</span>{p.name}{p.ai && <Sparkle />}
+        <span className={styles.chipAvatar} data-avatar={avatarTone(p.name)}>{initialsOf(p.name)}</span>{p.name}{p.ai && <Sparkle />}
       </button>
       {on && <div className={styles.pop}><PersonCard p={p} why={p.why} /></div>}
     </span>

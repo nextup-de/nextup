@@ -29,6 +29,9 @@
   /* The signed-in app: light grey ground, white cards that float on a soft shadow instead of a border. */
   --nh-app-ground: #f5f5f7;
   --nh-card-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.12);
+  /* People's initials: this grey when there is no name to go by (anonymous); a person gets a tint ([data-avatar], globals.css). "ME" and the account button stay ink. */
+  --nh-avatar: #e5e5ea;
+  --nh-avatar-ink: #3a3a3c;
   /* The two kinds of thing an employee raises. Tint the surface, never the action button. */
   --nh-problem: #c2410c;      /* terracotta: something hurts */
   --nh-problem-tint: #fff1ea;
@@ -46,9 +49,8 @@
   --nh-bench-clarity: #0b70d1;   /* novelty & clarity: Decision Blue */
   --nh-bench-clarity-tint: #eaf3ff;
 
-  --nh-font: var(--font-sans, "Manrope"), system-ui, -apple-system, "Segoe UI", sans-serif;   /* --font-sans set by next/font in layout.tsx */
+  --nh-font: var(--font-sans, "Manrope"), -apple-system, "Segoe UI", sans-serif;   /* --font-sans set by next/font in layout.tsx */
   --nh-mono: var(--font-mono, "IBM Plex Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;
-  --nh-serif: var(--font-serif, "Instrument Serif"), Georgia, "Times New Roman", serif;   /* section headings on the raise page */
 
   --nh-r-sm: 8px;
   --nh-r: 11px;

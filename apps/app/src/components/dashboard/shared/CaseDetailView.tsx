@@ -107,7 +107,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </div>
         <div className={`${ui.quote} ${ui.mt14}`}>
           <div className={ui.quoteText}>{c.body || "—"}</div>
-          <div className={ui.quoteBy}><Avatar name={c.from} size="sm" tone="color" /> {c.from} · {c.fromDept}{extra.attachments > 0 && <> · {extra.attachments} screenshot{extra.attachments > 1 ? "s" : ""} attached</>}</div>
+          <div className={ui.quoteBy}><Avatar name={c.from} size="sm" /> {c.from} · {c.fromDept}{extra.attachments > 0 && <> · {extra.attachments} screenshot{extra.attachments > 1 ? "s" : ""} attached</>}</div>
           {shots.length > 0 && (
             <div className={styles.shots}>
               {shots.map((s, i) => (
@@ -126,7 +126,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             {chain.map((name, i) => (
               <span key={i} className={styles.hop} data-last={i === chain.length - 1 ? "true" : undefined}>
                 {i > 0 && <span className={styles.arrow} aria-hidden="true">→</span>}
-                <Avatar name={name} size="sm" tone="color" />{name}
+                <Avatar name={name} size="sm" />{name}
               </span>
             ))}
             {c.escalated && <span className={styles.auto}>auto-escalated</span>}
@@ -175,7 +175,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         )}
         {standing.length > 0 && (
           <div className={styles.standing}>
-            <span className={styles.avatars}>{standing.slice(0, 6).map((n) => <Avatar key={n} name={n} size="sm" tone="color" />)}</span>
+            <span className={styles.avatars}>{standing.slice(0, 6).map((n) => <Avatar key={n} name={n} size="sm" />)}</span>
             <span className={ui.small}>{standing.length === 1 ? standing[0] + " is" : standing.length + " people are"} affected too · raised by {mine ? "you" : c.from}</span>
           </div>
         )}
@@ -185,7 +185,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         <div className={styles.thread}>
           {comments.map((m) => (
             <div key={m.id} className={styles.comment}>
-              <Avatar name={m.by} size="sm" tone="color" />
+              <Avatar name={m.by} size="sm" />
               <div className={ui.rowBody}>
                 <div className={styles.commentText}>{m.text}</div>
                 <div className={styles.commentBy}>{m.by === actor ? "you" : m.by} · {f(m.day)}{m.rescore && <span className={styles.rescoreTag}>new information · score re-evaluated</span>}</div>

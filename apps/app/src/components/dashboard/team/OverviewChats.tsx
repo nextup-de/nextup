@@ -11,6 +11,7 @@ import type { DayFmt, OverviewStatus } from "@/features/cases/rows";
 import type { ThreadEntry } from "@/features/cases/thread";
 import type { LocalMsg, RespondKey, Response } from "./overviewPreview";
 import s from "./Overview.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 type Opener = ((e: React.MouseEvent<HTMLElement>) => void) | null;
 type Action = { label: string; hint?: string; done?: RespondKey; text?: RespondKey; go?: "details" | "ai"; draft?: string; divider?: boolean };
@@ -35,7 +36,7 @@ export type OverviewChatsProps = {
   onComment: (text: string) => void;
   directory: { name: string; role: string }[]; // everyone, for the search
   onDetails: () => void; // "Add details": back to the idea, in edit mode
-  profileOf: (name: string, feed?: boolean) => Opener;
+  profileOf: (name: string) => Opener;
   // stand-ins (overviewPreview)
   response: Response | null;
   onRespond: (r: Response | null) => void;
@@ -195,9 +196,9 @@ export function OverviewChats(p: OverviewChatsProps) {
           {p.yourMove && thread !== "desk" && <span className={s.backCount}>1</span>}
         </button>
         {headOpen ? (
-          <button type="button" className={s.threadProfile} data-kind={cur.kind} onClick={headOpen} title={"View " + cur.name} aria-label={"View " + cur.name}>{initialsOf(cur.name)}</button>
+          <button type="button" className={s.threadProfile} data-kind={cur.kind} data-avatar={cur.kind === "person" ? avatarTone(cur.name) : undefined} onClick={headOpen} title={"View " + cur.name} aria-label={"View " + cur.name}>{initialsOf(cur.name)}</button>
         ) : (
-          <span className={s.threadProfile} data-kind={cur.kind}>{cur.kind === "feed" ? <FeedIcon /> : cur.kind === "ai" ? <AiMark /> : initialsOf(cur.name)}</span>
+          <span className={s.threadProfile} data-kind={cur.kind} data-avatar={cur.kind === "person" ? avatarTone(cur.name) : undefined}>{cur.kind === "feed" ? <FeedIcon /> : cur.kind === "ai" ? <AiMark /> : initialsOf(cur.name)}</span>
         )}
         <div className={s.div74}>
           <span className={s.name3}>{cur.name}</span>
@@ -223,7 +224,7 @@ export function OverviewChats(p: OverviewChatsProps) {
             </div>
             {shownThreads.map((t) => (
               <button key={t.id} type="button" className={s.onClick} data-on={t.id === thread ? "true" : undefined} onClick={() => pick(t.id)}>
-                <span className={s.initials3} data-kind={t.kind}>{t.kind === "feed" ? <FeedIcon /> : t.kind === "ai" ? <AiMark /> : initialsOf(t.name)}</span>
+                <span className={s.initials3} data-kind={t.kind} data-avatar={t.kind === "person" ? avatarTone(t.name) : undefined}>{t.kind === "feed" ? <FeedIcon /> : t.kind === "ai" ? <AiMark /> : initialsOf(t.name)}</span>
                 <span className={s.span8}>
                   <span className={s.span9}><span className={s.name4}>{t.name}</span><span className={s.when2}>{t.when}</span></span>
                   <span className={s.div10}><span className={s.preview}>{t.preview}</span>{t.unread && <span className={s.span10} />}</span>
@@ -235,7 +236,7 @@ export function OverviewChats(p: OverviewChatsProps) {
                 <span className={s.people}>People</span>
                 {peopleHits.map((x) => (
                   <button key={x.name} type="button" className={s.onClick2} onClick={() => { p.onStartChat(x.name); pick("p:" + x.name); }}>
-                    <span className={s.initials4}>{initialsOf(x.name)}</span>
+                    <span className={s.initials4} data-avatar={avatarTone(x.name)}>{initialsOf(x.name)}</span>
                     <span className={s.span8}><span className={s.name5}>{x.name}</span><span className={s.dept}>{x.role}</span></span>
                     <span className={s.message}>Message</span>
                   </button>
@@ -260,8 +261,8 @@ export function OverviewChats(p: OverviewChatsProps) {
             ) : (
               <div key={e.id} className={s.div80}>
                 {p.profileOf(e.by)
-                  ? <button type="button" className={s.deskProfile2} onClick={p.profileOf(e.by) ?? undefined} title={"View " + e.by}>{initialsOf(e.by)}</button>
-                  : <div className={s.deskProfile2}>{initialsOf(e.by)}</div>}
+                  ? <button type="button" className={s.deskProfile2} data-avatar={avatarTone(e.by)} onClick={p.profileOf(e.by) ?? undefined} title={"View " + e.by}>{initialsOf(e.by)}</button>
+                  : <div className={s.deskProfile2} data-avatar={avatarTone(e.by)}>{initialsOf(e.by)}</div>}
                 <div className={s.div81}>
                   <div className={s.text3}>{lineOf(e)}</div>
                   <span className={s.dept}>{p.f(e.day)}</span>
@@ -324,12 +325,12 @@ export function OverviewChats(p: OverviewChatsProps) {
             <span className={s.sentiment}>{p.sentiment}</span>
             {p.feed.length === 0 && <span className={s.dept}>No comments yet.</span>}
             {p.feed.map((c, k) => {
-              const open = c.mine ? null : p.profileOf(c.name, true);
+              const open = c.mine ? null : p.profileOf(c.name);
               return (
                 <div key={k} className={s.div96}>
                   {open
-                    ? <button type="button" className={s.onProfile2} data-feed="true" onClick={open} title={"View " + c.name}>{initialsOf(c.name)}</button>
-                    : <div className={s.onProfile2} data-feed={c.mine ? undefined : "true"}>{c.mine ? "ME" : initialsOf(c.name)}</div>}
+                    ? <button type="button" className={s.onProfile2} data-feed="true" data-avatar={avatarTone(c.name)} onClick={open} title={"View " + c.name}>{initialsOf(c.name)}</button>
+                    : <div className={s.onProfile2} data-feed={c.mine ? undefined : "true"} data-avatar={c.mine ? undefined : avatarTone(c.name)}>{c.mine ? "ME" : initialsOf(c.name)}</div>}
                   <div className={s.div97}>
                     <div className={s.div98}>
                       {open ? <button type="button" className={s.onProfile3} onClick={open}>{c.name}</button> : <span className={s.onProfile3}>{c.name}</span>}

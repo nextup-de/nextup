@@ -126,11 +126,7 @@
 .sMark { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 11px; }
 .sMark[data-kind="Problem"] { background: var(--nh-problem-tint); color: var(--nh-problem); }
 .sMark[data-kind="Idea"] { background: var(--nh-idea-tint); color: var(--nh-idea); }
-.sAvatar { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; color: #fff; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; background: linear-gradient(180deg, #a5abb6, #858a94); }
-.sAvatar[data-tone="blue"] { background: linear-gradient(180deg, #8fa9c9, #6d88ab); }
-.sAvatar[data-tone="clay"] { background: linear-gradient(180deg, #c9a48f, #ab846d); }
-.sAvatar[data-tone="sage"] { background: linear-gradient(180deg, #94b39c, #72937b); }
-.sAvatar[data-tone="lilac"] { background: linear-gradient(180deg, #b29cc4, #927ba6); }
+.sAvatar { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; color: var(--nh-avatar-ink); font-size: 13px; font-weight: 600; letter-spacing: 0.02em; background: var(--nh-avatar); }
 .sBody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .sTitle { font-size: 14px; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .sTitle mark { padding: 0 1px; border-radius: 3px; background: #d6e8ff; color: inherit; }

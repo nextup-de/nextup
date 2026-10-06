@@ -10,6 +10,7 @@ import type { OverviewStep } from "@/features/cases/rows";
 import { extOf, type IdeaBrief, type NumberedBlock } from "@/features/ideas/brief";
 import type { IdeaEdit, IdeaFile } from "./overviewPreview";
 import s from "./Overview.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 export type IdeaMode = "idea" | "ai";
 export type OverviewIdeaProps = {
@@ -111,10 +112,10 @@ export function OverviewIdea(p: OverviewIdeaProps) {
             <span className={s.dept}>On the desk of</span>
             {p.onProfile ? (
               <button type="button" className={s.deskProfile} onClick={p.onProfile} title={"View " + p.desk.name}>
-                <span className={s.initials2}>{initialsOf(p.desk.name)}</span>{p.desk.name}<span className={s.role2}>{p.desk.role}</span>
+                <span className={s.initials2} data-avatar={avatarTone(p.desk.name)}>{initialsOf(p.desk.name)}</span>{p.desk.name}<span className={s.role2}>{p.desk.role}</span>
               </button>
             ) : (
-              <span className={s.deskProfile}><span className={s.initials2}>{initialsOf(p.desk.name)}</span>{p.desk.name}<span className={s.role2}>{p.desk.role}</span></span>
+              <span className={s.deskProfile}><span className={s.initials2} data-avatar={avatarTone(p.desk.name)}>{initialsOf(p.desk.name)}</span>{p.desk.name}<span className={s.role2}>{p.desk.role}</span></span>
             )}
             <span className={s.label} />
             <span className={s.waitText} data-tone={p.wait.tone}>
@@ -377,7 +378,7 @@ export function Block({ b }: { b: NumberedBlock }) {
         <div className={s.div37}>
           <span className={s.dept}>{b.h}</span>
           <p className={s.q}>“{b.q}”<Cites ns={b.cites} /></p>
-          <div className={s.div16}><span className={s.who}><span className={s.ini}>{initialsOf(b.who)}</span>{b.who}</span><span className={s.count}>{b.role}</span></div>
+          <div className={s.div16}><span className={s.who}><span className={s.ini} data-avatar={avatarTone(b.who)}>{initialsOf(b.who)}</span>{b.who}</span><span className={s.count}>{b.role}</span></div>
         </div>
       );
     case "split":

@@ -15,7 +15,6 @@ const mono = localFont({
   ],
   variable: "--font-mono", display: "swap",
 });
-const serif = localFont({ src: "./fonts/instrument-serif-400.woff2", weight: "400", variable: "--font-serif", display: "swap" }); // headings on the raise page
 const inter = localFont({ src: "./fonts/inter-var.woff2", weight: "400 700", variable: "--font-inter", display: "swap", preload: false }); // the inbox card and idea detail only
 
 export const metadata: Metadata = {
@@ -25,7 +24,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} ${serif.variable} ${inter.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable} ${inter.variable}`}>
       <body>{children}</body>
     </html>
   );

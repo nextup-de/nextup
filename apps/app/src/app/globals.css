@@ -78,3 +78,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .nh-divider::before, .nh-divider::after { content: ""; flex: 1; height: 1px; background: var(--nh-line); }
 
 .nh-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* People's initials: a soft tint with the same hue's ink, like the app's badges. lib/avatar.ts picks the
+   tone from the name; avatar styles read --nh-avatar / --nh-avatar-ink, so the grey in tokens.css is the fallback. */
+[data-avatar="blue"] { --nh-avatar: #e8f1ff; --nh-avatar-ink: #0062cc; }
+[data-avatar="green"] { --nh-avatar: #e6f6ea; --nh-avatar-ink: #1f7a3a; }
+[data-avatar="amber"] { --nh-avatar: #fff1d1; --nh-avatar-ink: #8a5d00; }
+[data-avatar="violet"] { --nh-avatar: #f1e9fb; --nh-avatar-ink: #6b3fa0; }
+[data-avatar="teal"] { --nh-avatar: #e1f3f4; --nh-avatar-ink: #0f6b70; }

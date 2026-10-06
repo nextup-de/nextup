@@ -10,6 +10,7 @@ import type { IdeaBrief } from "@/features/ideas/brief";
 import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileChip, initialsOf, PanelRow, PersonCard, Sources, Sparkle, StatusBox, type IdeaProps } from "./IdeaParts";
 import base from "./IdeaDetail.module.css";
 import styles from "./IdeaDetailPhone.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 type Nav = { index: number; count: number; onPrev: () => void; onNext: () => void };
 type Sheet =
@@ -81,7 +82,7 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
         <section className={styles.page} aria-label={idea.kind === "case" ? "Case" : "Idea"} role="tabpanel">
           <div className={styles.head}>
             <button type="button" className={styles.author} onClick={() => setSheet({ kind: "author" })}>
-              <span className={base.authorAvatar}>{initialsOf(brief.author.name)}</span>
+              <span className={base.authorAvatar} data-avatar={avatarTone(brief.author.name)}>{initialsOf(brief.author.name)}</span>
               <span className={base.authorText}><span className={base.authorName}>{brief.author.name}</span><span className={base.authorLine}>raised {idea.raised}</span></span>
             </button>
             <span className={base.badge} data-tone={idea.tone}>{idea.badge}</span>
@@ -98,7 +99,7 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
                   <button key={d.id} type="button" className={base.deptChip} onClick={() => setSheet({ kind: "dept", id: d.id, member: null })}>{d.name}{d.ai && <Sparkle />}</button>
                 ))}
                 {brief.people.map((p) => (
-                  <button key={p.name} type="button" className={base.personChip} onClick={() => setSheet({ kind: "person", name: p.name })}><span className={base.chipAvatar}>{initialsOf(p.name)}</span>{p.name}{p.ai && <Sparkle />}</button>
+                  <button key={p.name} type="button" className={base.personChip} onClick={() => setSheet({ kind: "person", name: p.name })}><span className={base.chipAvatar} data-avatar={avatarTone(p.name)}>{initialsOf(p.name)}</span>{p.name}{p.ai && <Sparkle />}</button>
                 ))}
               </div>
             </div>
@@ -223,7 +224,7 @@ function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { b
         <div className={styles.members}>
           {d.members.map((x) => (
             <button key={x.name} type="button" className={base.member} onClick={() => setSheet({ ...sheet, member: x.name })}>
-              <span className={base.memberAvatar}>{initialsOf(x.name)}</span>
+              <span className={base.memberAvatar} data-avatar={avatarTone(x.name)}>{initialsOf(x.name)}</span>
               <span className={base.popWho}><span className={base.memberName}>{x.name}</span><span className={base.popRole}>{x.role}</span></span>
               <span className={base.memberGo}><Chevron /></span>
             </button>

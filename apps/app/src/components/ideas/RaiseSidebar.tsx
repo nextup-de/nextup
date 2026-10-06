@@ -89,10 +89,10 @@ function Card({ c }: { c: DraftCard }) {
       <div className={s.cardAnchor}>{c.menu}</div>
       <div className={s.titleWrap}>
         {editing ? (
-          <input ref={input} className={`${s.titleInput} ${s.serif}`} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Give it a short title" aria-label="Title"
+          <input ref={input} className={`${s.titleInput} ${s.heading}`} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Give it a short title" aria-label="Title"
             onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setEditing(false); }} />
         ) : (
-          <button type="button" className={`${s.titleBtn} ${s.serif}`} data-empty={!c.title} disabled={c.published} title={c.published ? undefined : "Rename"}
+          <button type="button" className={`${s.titleBtn} ${s.heading}`} data-empty={!c.title} disabled={c.published} title={c.published ? undefined : "Rename"}
             onClick={() => { setDraft(c.title); setEditing(true); }}>
             {c.title || "Title appears once you describe your idea"}
           </button>

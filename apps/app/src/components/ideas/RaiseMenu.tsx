@@ -9,6 +9,7 @@ import { initials } from "@/features/ideas/raise";
 import { Icon, PATH, type IconName } from "./raiseIcons";
 import type { Extras, FileItem } from "./raisePreview";
 import s from "./Raise.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 export type MenuView = "main" | "receiver" | "colleague" | "meeting" | "file" | "affected" | "vis" | "visPick";
 type PickKey = "receiver" | "colleague" | "affected" | "visPick";
@@ -163,7 +164,7 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
     const on = sel.includes(it.id);
     return (
       <button type="button" className={`${s.mRow} ${s.pickRow}`} onClick={() => toggle(it.id)} aria-pressed={on}>
-        <span className={`${s.lead} ${s.leadPick}`} data-kind={it.dept ? "dept" : "person"}>{it.dept ? <Icon name="affected" size={12.75} /> : initials(it.label)}</span>
+        <span className={`${s.lead} ${s.leadPick}`} data-kind={it.dept ? "dept" : "person"} data-avatar={it.dept ? undefined : avatarTone(it.label)}>{it.dept ? <Icon name="affected" size={12.75} /> : initials(it.label)}</span>
         <span className={s.pickText}><span className={s.pickName}>{it.label}</span><span className={s.pickMeta}>{nested ? it.meta.split(" · ")[0] : it.meta}</span></span>
         <span className={s.box15} data-on={on}><Icon name="check" size={9} stroke="#fff" width={3.2} /></span>
       </button>
