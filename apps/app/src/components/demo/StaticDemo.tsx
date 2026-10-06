@@ -5,7 +5,7 @@
 // The dev panel is on: "Viewing as" switches person in this browser, "Reset demo" goes back to the seed.
 //
 // Every visit starts from the seed: what was raised on the last visit is wiped when the page loads,
-// before anything reads it, and the employee's earlier chats with the coach are put back. Module code
+// before anything reads it, and everyone's earlier chats with the coach are put back. Module code
 // runs once per page load, not on client-side navigation, so going from the raise page to the
 // dashboard keeps what was just published.
 import { useEffect } from "react";
@@ -16,7 +16,7 @@ import { staticDemoDrafts } from "@/features/demo/static-demo";
 import type { Seed } from "@/features/demo/types";
 import { DEMO_SCRIPT, DESK_REPLY } from "@/features/ideas/demo-script";
 import { clearPrefs, resetLog, updateLog } from "@/lib/demo-log";
-import { localDrafts } from "@/lib/idea-drafts";
+import { draftScope, localDrafts } from "@/lib/idea-drafts";
 import { clearShots } from "@/lib/shots";
 
 const SLUG = "demo";
@@ -24,7 +24,7 @@ const SLUG = "demo";
 if (typeof window !== "undefined") {
   resetLog(SLUG);
   clearPrefs(SLUG);
-  localDrafts.replace(SLUG, staticDemoDrafts(new Date()));
+  for (const [owner, drafts] of Object.entries(staticDemoDrafts(new Date()))) localDrafts.replace(draftScope(SLUG, owner), drafts);
   clearShots(SLUG);
 }
 

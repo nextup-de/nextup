@@ -52,14 +52,24 @@ describe("the employee's dashboard on the static demo", () => {
   });
 });
 
-describe("his earlier chats with the coach", () => {
-  const drafts = staticDemoDrafts(new Date("2026-10-06T12:00:00Z"));
-  it("lists three published ideas, each linked to its case, and one draft still open", () => {
-    expect(drafts.map((d) => [d.status, d.caseId])).toEqual([["published", "d1"], ["published", "d2"], ["published", "d3"], ["draft", null]]);
-    for (const d of drafts) expect(S.cases.find((c) => c.id === d.caseId)?.title ?? d.title).toBe(d.title);
+describe("earlier chats with the coach, each person's own", () => {
+  const byOwner = staticDemoDrafts(new Date("2026-10-06T12:00:00Z"));
+  const lead = STATIC_DEMO_SEED.personas.find((r) => r.id === "leader")!.who.name;
+  const boss = STATIC_DEMO_SEED.personas.find((r) => r.id === "manager")!.who.name;
+  it("gives the employee three published ideas, each linked to its case, and one draft still open", () => {
+    const mine = byOwner[me.name];
+    expect(mine.map((d) => [d.status, d.caseId])).toEqual([["published", "d1"], ["published", "d2"], ["published", "d3"], ["draft", null]]);
+    for (const d of mine) expect(S.cases.find((c) => c.id === d.caseId)?.title ?? d.title).toBe(d.title);
+  });
+  it("gives the team lead and the manager a draft of their own, never the employee's", () => {
+    expect(Object.keys(byOwner).sort()).toEqual([me.name, lead, boss].sort());
+    expect(byOwner[lead].map((d) => d.status)).toEqual(["draft"]);
+    expect(byOwner[boss].map((d) => d.status)).toEqual(["draft"]);
+    const ids = Object.values(byOwner).flat().map((d) => d.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
   it("gives each a conversation the benchmark scored, with no scores in the coach's words", () => {
-    for (const d of drafts) {
+    for (const d of Object.values(byOwner).flat()) {
       expect(d.turns[0].role).toBe("user");
       expect(d.turns.at(-1)!.role).toBe("assistant");
       expect(d.scores).toHaveLength(4);

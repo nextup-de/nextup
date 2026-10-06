@@ -70,35 +70,45 @@ export const STATIC_DEMO_SEED: Seed = {
   briefs: renamed(BRIEFS),
 };
 
-// ── His earlier chats with the coach (the raise page's "Chats & drafts") ──────────────────────────
-// Three became the ideas above (published, linked to their cases); one is still a draft. The coach's
-// words carry no scores, like the demo script's; the scores are the benchmark's own, worked out here.
-const CHATS: { id: string; caseId: string | null; daysAgo: number; says: string[]; coach: string[] }[] = [
-  { id: "dd1", caseId: "d1", daysAgo: 2,
+// ── Earlier chats with the coach (the raise page's "Chats & drafts") ──────────────────────────────
+// Each person's own, like the database's drafts. The employee's: three became the ideas above
+// (published, linked to their cases), one is still a draft. The team lead and the manager have one
+// draft each. The coach's words carry no scores, like the demo script's; the scores are the
+// benchmark's own, worked out here.
+const LEAD = "Thomas Vogel", BOSS = "Bernd Hartmann";
+const CHATS: { owner: string; id: string; caseId: string | null; daysAgo: number; says: string[]; coach: string[] }[] = [
+  { owner: ME, id: "dd1", caseId: "d1", daysAgo: 2,
     says: ["Move the shift handover notes onto a board by the line\n\nHandover notes live in a binder in the break room, so the next shift reads them after the first problem instead of before it.",
       "About ten minutes per handover - people ask around instead of reading the binder. A board at the line, filled in during the last ten minutes of the shift, gets read on the way in."],
     coach: ["It belongs to the shift plan, so your team lead can decide it. What I can't see yet is what it saves: how long does the next shift lose today before they know what happened?",
       "That makes it concrete: ten minutes at every handover, and a first step anyone can picture. It is ready to publish."] },
-  { id: "dd2", caseId: "d2", daysAgo: 4,
+  { owner: ME, id: "dd2", caseId: "d2", daysAgo: 4,
     says: ["Ear defenders in two sizes at the press\n\nWe only stock one size. On smaller heads it slips, so people take it off at the loud press.",
       "Ten people across both shifts. A pair in size S is about €25."],
     coach: ["A safety point with a small spend - your team lead can say yes without anyone else. Who would need the other size, and roughly what would it cost?",
       "Clear, cheap and well inside the team's spending limit. It is ready to publish."] },
-  { id: "dd3", caseId: "d3", daysAgo: 8,
+  { owner: ME, id: "dd3", caseId: "d3", daysAgo: 8,
     says: ["Daylight lamps above the inspection table\n\nThe table at the end of line 3 has one yellow ceiling light. Fine scratches only show in daylight, so the customer finds them instead of us.",
       "Two or three complaints a month, all from the final check. Two daylight lamps over the table would do it."],
     coach: ["This goes to whoever owns the line layout. What does it cost us today - how often do scratches come back from the customer?",
       "That is the number the person who decides needs. It is ready to publish."] },
-  { id: "dd4", caseId: null, daysAgo: 1,
+  { owner: ME, id: "dd4", caseId: null, daysAgo: 1,
     says: ["A short safety walk with the night shift once a week\n\nThe night shift never sees the safety officer, so near misses at night are reported days later, if at all."],
     coach: ["Good point - the night shift is easy to forget. Who would walk with them, and what would they look at first? Name one round you could try next week."] },
+  { owner: LEAD, id: "dl1", caseId: null, daysAgo: 1,
+    says: ["Cross-train two setters per shift between line 3 and line 4\n\nWhen a setter is ill, line 3 waits for the one person who knows its fixtures. Two people per shift who can set up both lines would end that."],
+    coach: ["This sits in the shift plan, so it goes to your head of production. What does a missing setter cost today - how often does the line wait, and for how long?"] },
+  { owner: BOSS, id: "dm1", caseId: null, daysAgo: 3,
+    says: ["Show the monthly scrap figures at every line\n\nScrap is reported to management, but the people at the lines never see the number they are measured on."],
+    coach: ["A small change with a clear owner. Which number would you show first, and who updates the board each month?"] },
 ];
 
-/** His chats as drafts in this browser, dated from `now`. */
-export function staticDemoDrafts(now: Date): DraftView[] {
+/** Everyone's chats as drafts in this browser, per person, dated from `now`. */
+export function staticDemoDrafts(now: Date): Record<string, DraftView[]> {
   const ctx = ideaContext(STATIC_DEMO_SEED.routes, GOALS, []); // no cases: a published chat is not "already raised" by its own case
   const at = (daysAgo: number, minutes: number) => new Date(now.getTime() - daysAgo * 86_400_000 + minutes * 60_000).toISOString();
-  return CHATS.map((c) => {
+  const out: Record<string, DraftView[]> = {};
+  for (const c of CHATS) {
     const turns: DraftTurn[] = [];
     c.says.forEach((text, i) => {
       turns.push({ id: c.id + "u" + i, role: "user", text, overall: null, at: at(c.daysAgo, i * 4) });
@@ -106,9 +116,10 @@ export function staticDemoDrafts(now: Date): DraftView[] {
       turns.push({ id: c.id + "a" + i, role: "assistant", text: c.coach[i], overall: score.overall, at: at(c.daysAgo, i * 4 + 1) });
     });
     const score = scoreDraft({ turns, affected: [], attachments: 0 }, ctx);
-    return {
+    (out[c.owner] ??= []).push({
       id: c.id, title: c.says[0].split("\n")[0], status: c.caseId ? "published" : "draft", overall: score.overall,
       updatedAt: at(c.daysAgo, c.says.length * 4), caseId: c.caseId, scores: score.parts, affected: [], attachments: 0, turns,
-    };
-  });
+    });
+  }
+  return out;
 }

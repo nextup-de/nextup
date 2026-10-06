@@ -112,8 +112,11 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
   men's (Jonas Schmidt, Thomas Vogel, Hans Sander, …), instead of "T. Vogel" and anonymous handles
   (`DEMO_NAMES`); the employee posts under his name. acme keeps its names - the database stacks store
   them as users.
-- **His earlier chats**: the raise page's list starts with four of his conversations with the coach -
-  three published (each opens its case) and one draft still open (`staticDemoDrafts`).
+- **Earlier chats, each person's own**: the employee's list starts with four of his conversations with
+  the coach - three published (each opens its case) and one draft still open; the team lead and the
+  manager have one draft each (`staticDemoDrafts`). Drafts in the browser are kept per company and
+  person (`draftScope`), like the database's, so switching person never shows someone else's chats.
+  The prepared texts are the employee's story: only he gets the "Prepared idea" button.
 - **Nothing leaves the browser**: `useIdeaStudio(…, local)` scores and answers here, publishing skips
   the router, and the event log and drafts are the local demo's, under the slug `demo`. Every page
   load starts from the seed (`components/demo/StaticDemo.tsx`); moving between the demo's pages keeps
