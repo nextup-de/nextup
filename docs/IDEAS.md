@@ -79,6 +79,24 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
    stored as the proposal (`source: "llm"`, `brain-route-v1`); no answer within `BRAIN_TIMEOUT_MS`,
    or any error, and the keyword row is used as before.
 
+## What the raise page shows beside the chat
+
+- **The AI analysis under the latest reply** (`ReadCard` in `components/ideas/RaiseChat.tsx`): the
+  analysis' five dials - Value, Feasibility, Cost, Fit, Risk (`dialsOf` in `features/ideas/raise.ts`) -
+  each as a bar, one word (`levelOf`: Strong / Medium / Weak; for Cost and Risk the cost or the risk
+  itself, so Low is good there) and what was found, then the advice (Approve / Pilot / Needs info).
+  A ▲ marks the dials the answer before it made better (`dialsUp`). No numbers in the chat: they stay in
+  the analysis. Under it, Publish now (once the rail is clear) and Review analysis, in blue.
+- **The rail on the right: the five points a decision needs** (`RAIL`, `railOf`): the same five, each
+  with the one fact the person who decides cannot do without - a number on what it saves, who can
+  decide it, a rough cost, the company goal, a small first step. A photo, who else it helps or how far a
+  number moves make an idea stronger but never stop a publish, so they are not on it. A point is clear
+  once the benchmark finds its fact, unknown after "not sure"; the first open one is "Next". From a
+  720px wide chat it is a card with the names and what was found; narrower, a column of dots.
+- **Leaving the page keeps it**: the open conversation, the view, unsent text and the stand-ins
+  (`raisePreview.ts`) are kept per company and person in module memory (`lib/use-kept.ts`), so the
+  dashboard and back - or switching person and back - reopens the same chat. A reload forgets it.
+
 ## The demo page
 
 `/demo` (`src/app/demo`) is the raise page for showing people how NextUp works, with nothing behind
@@ -89,12 +107,14 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
 - **The script** (`features/ideas/demo-script.ts`): one prepared idea and two prepared answers. While
   the composer is empty, a gold button on its right puts the next one in the field ("Prepared idea",
   "Next answer", "Last answer"); Send works as usual. The coach answers each with a prepared reply
-  after about 2.5 s; anything else typed gets the offline coach (`coachMock`). After the last answer
-  the chat offers Publish now and Review analysis, and the first answer stays in the chat instead of
-  opening the analysis.
-- **No numbers in the replies.** The scores stay on the side (the rail, the analysis) and are the
-  benchmark's own, computed in the browser. `tests/unit/ideas-demo-script.test.ts` checks that what
-  the replies say (goal, decider, over the line, which two points stay open) is still true.
+  after about 2.5 s; anything else typed gets the offline coach (`coachMock`). The rail walks with it:
+  Value is next after the idea, the first step after the first answer, and after the last answer it
+  reads "Ready to publish" and the chat offers Publish now. The first answer stays in the chat instead
+  of opening the analysis.
+- **No numbers in the replies.** The AI analysis card under each latest reply shows the five dials as
+  bars and words; the numbers are in the analysis. All of it is the benchmark's own, computed in the
+  browser. `tests/unit/ideas-demo-script.test.ts` checks that what the replies say (goal, decider, over
+  the line, the two points that stay open without blocking it) and the rail's steps are still true.
 - **The published case carries the main points** (`DEMO_CASE`): one sentence as the idea, the context,
   then `*Label* text` lines (Goal, First step, Cost, Then, Still open) that the case view lists as facts
   next to Worth (`splitBody` in `features/ideas/brief.ts` - the start page's prompts use the same lines).
@@ -112,8 +132,11 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
   men's (Jonas Schmidt, Thomas Vogel, Hans Sander, …), instead of "T. Vogel" and anonymous handles
   (`DEMO_NAMES`); the employee posts under his name. acme keeps its names - the database stacks store
   them as users.
-- **His earlier chats**: the raise page's list starts with four of his conversations with the coach -
-  three published (each opens its case) and one draft still open (`staticDemoDrafts`).
+- **Earlier chats, each person's own**: the employee's list starts with four of his conversations with
+  the coach - three published (each opens its case) and one draft still open; the team lead and the
+  manager have one draft each (`staticDemoDrafts`). Drafts in the browser are kept per company and
+  person (`draftScope`), like the database's, so switching person never shows someone else's chats.
+  The prepared texts are the employee's story: only he gets the "Prepared idea" button.
 - **Nothing leaves the browser**: `useIdeaStudio(…, local)` scores and answers here, publishing skips
   the router, and the event log and drafts are the local demo's, under the slug `demo`. Every page
   load starts from the seed (`components/demo/StaticDemo.tsx`); moving between the demo's pages keeps

@@ -1,62 +1,41 @@
-// What the raise page (components/ideas/Raise.tsx) reads off the benchmark: the progress rail's
-// segments, the five analysis dials, the advice line, the note under the coach's latest reply and
-// the sidebar's "when" labels. Every value comes from the benchmark's own facts (benchmarks.ts) -
-// the two dials it has no facts for yet (Cost, Risk) say so. Pure.
+// What the raise page (components/ideas/Raise.tsx) reads off the benchmark: the rail's five points,
+// the five analysis dials (the same five, in the chat and in the analysis), the advice line, the note
+// under the coach's latest reply and the sidebar's "when" labels. Every value comes from the benchmark's
+// own facts (benchmarks.ts) - the two dials it has no facts for yet (Cost, Risk) say so. Pure.
 import type { Benchmark, BenchmarkId, BenchmarkPart } from "./benchmarks";
 
-// ── The rail: what is unclear, worked through during the grilling ─────────────────────────────
-// When the idea is first raised, the questions its benchmark cannot answer yet become a fixed list of
-// 2-8 topics - the preparation for the grilling. The rail starts empty; each topic is checked off once
-// the idea answers it, or marked unknown when the author does not know yet either.
+// ── The rail: what the person who decides needs before it is published ──────────────────────
+// The same five points as the analysis dials, each with the one fact a decision cannot do without -
+// not every question the benchmark asks: a photo, who else it helps or how far a number moves make an
+// idea stronger, but none of them stops it from being published. A point is clear once the benchmark
+// finds its fact, unknown when the author said they do not know yet; the first open one is next.
 export type GapStatus = "clear" | "open" | "active" | "unknown";
-export type Gap = { id: string; label: string; status: GapStatus; ask: string; reasoning?: string; research?: { source: string; detail: string }[]; subquestions?: string[] };
+// `id` is the benchmark's question (what a "not sure" skips), `need` the fact in a few words, `answer`
+// the fact the benchmark found.
+export type Gap = { id: string; key: DialKey; label: string; status: GapStatus; ask: string; need: string; answer: string | null };
 
-export const MIN_TOPICS = 2;
-export const MAX_TOPICS = 8;
+export const RAIL: readonly { key: DialKey; label: string; ask: string; need: string; found: RegExp }[] = [
+  { key: "value", label: "Value", ask: "Put a number on the upside (minutes, €, %).", need: "A number on what it saves", found: /^Upside has a number/ },
+  { key: "feas", label: "Feasibility", ask: "Who would decide this?", need: "Who can decide it", found: /^Decided by / },
+  { key: "cost", label: "Cost", ask: "Roughly what would it cost?", need: "A rough cost", found: /^(No spend|Within team authority|Above team authority)/ },
+  { key: "fit", label: "Fit", ask: "Which company goal does it serve?", need: "The company goal it serves", found: /^Serves / },
+  { key: "risk", label: "Risk", ask: "What is the smallest first step - a pilot, a one-week trial?", need: "A small first step to try it", found: /^Names a first step/ },
+];
 
 // A topic is keyed by its question; the "already raised" question names a case, so it keys on its start.
 export const topicKey = (q: string) => (q.startsWith("Already raised") ? "Already raised" : q);
 
-// Short names for the benchmark's questions (benchmarks.ts), as the rail shows them.
-const TOPIC_LABEL: Record<string, string> = {
-  "Which company goal does it serve?": "Company goal",
-  "Which number would move?": "What it measures",
-  "How far would it move that number?": "How far it moves",
-  "Put a number on the upside (minutes, €, %).": "The upside",
-  "Add who else it helps (Affected).": "Who it affects",
-  "Does it help one team, or every shift?": "Reach",
-  "Attach a photo or a screenshot as evidence.": "Evidence",
-  "Who would decide this?": "Who decides",
-  "Roughly what would it cost?": "What it costs",
-  "What is the smallest first step - a pilot, a one-week trial?": "First step",
-  "Already raised": "Raised before?",
-  "Say a little more: what exactly would change?": "What changes",
-  "Why does it matter - what happens today?": "Why it matters",
-  "Who works differently afterwards?": "Who it is for",
-};
-export const topicLabel = (key: string) => TOPIC_LABEL[key] ?? key.replace(/[.?]$/, "");
-
-// The topics for an idea, from the benchmark of its first message: the open questions in the order the
-// coach takes them - the weakest bar's first (ties: the earlier bar, as weakest() does) - at most 8.
-// Fewer than 2 open: the weakest found points fill up.
-export function topicsOf(parts: readonly BenchmarkPart[]): string[] {
-  const byNeed = [...parts].sort((a, b) => a.value - b.value);
-  const out = [...new Set(byNeed.flatMap((p) => p.missing.map(topicKey)))].slice(0, MAX_TOPICS);
-  for (const p of byNeed) {
-    for (const f of p.found) if (out.length < MIN_TOPICS && !out.includes(f)) out.push(f);
-  }
-  return out;
-}
-
-// Where each topic stands now. Clear: the benchmark no longer asks it. Unknown: the author said they
-// do not know yet. Active: the first topic from the top still open - the rail works down, one by one.
-export function gapsOf(topics: readonly string[], parts: readonly BenchmarkPart[], unknown: readonly string[] = []): Gap[] {
-  const asks = new Map(parts.flatMap((p) => p.missing.map((m): [string, string] => [topicKey(m), m])));
-  const active = topics.find((k) => asks.has(k) && !unknown.includes(k)) ?? null;
-  return topics.map((k) => ({
-    id: k, label: topicLabel(k), ask: asks.get(k) ?? k,
-    status: !asks.has(k) ? "clear" : unknown.includes(k) ? "unknown" : k === active ? "active" : "open",
-  }));
+// Where each of the five stands now. Clear: the benchmark found its fact. Unknown: the author said they
+// do not know yet. Active: the first one still open - the one to answer next.
+export function railOf(parts: readonly BenchmarkPart[], unknown: readonly string[] = []): Gap[] {
+  const found = parts.flatMap((p) => p.found);
+  let next = true;
+  return RAIL.map((r) => {
+    const answer = found.find((f) => r.found.test(f)) ?? null;
+    const status: GapStatus = answer ? "clear" : unknown.includes(r.ask) ? "unknown" : next ? "active" : "open";
+    if (status === "active") next = false;
+    return { id: r.ask, key: r.key, label: r.label, status, ask: r.ask, need: r.need, answer };
+  });
 }
 
 // The benchmark as the coach should ask from it: the questions the author answered "not sure" to are
@@ -140,18 +119,25 @@ export function dialsOf(parts: readonly BenchmarkPart[]): Dial[] {
   ];
 }
 
-// ── Advice, and the note under the coach's reply ──────────────────────────────────────────────
+// A dial in one word, for the chat's card - no numbers there, those stay in the analysis. Higher is
+// better on every dial, so for Cost and Risk the word is the cost or the risk itself: high value, low cost.
+export function levelOf(d: Dial): string {
+  if (!d.scored) return "Not yet";
+  const band = d.value >= 70 ? 2 : d.value >= 40 ? 1 : 0;
+  return (d.key === "cost" || d.key === "risk" ? ["High", "Medium", "Low"] : ["Weak", "Medium", "Strong"])[band];
+}
+
+// The dials that got better from one reading of the idea to the next (the ▲ in the chat's card).
+export function dialsUp(before: readonly Dial[], now: readonly Dial[]): DialKey[] {
+  return now.filter((d) => d.value > (before.find((b) => b.key === d.key)?.value ?? d.value)).map((d) => d.key);
+}
+
+// ── Advice ────────────────────────────────────────────────────────────────────────────────────
 export type Advice = { name: "Approve" | "Pilot" | "Needs info"; why: string };
 export function adviceOf(overall: number, threshold: number, team: string): Advice {
   if (overall >= threshold) return { name: "Approve", why: "Strong enough to publish. The person who decides can act on it without more detail." };
   if (overall >= threshold - 15) return { name: "Pilot", why: "Try it for a few weeks with " + team + " and measure the result before rolling it out." };
-  return { name: "Needs info", why: "Answer the open questions on the right. The scores move as soon as you do." };
-}
-
-export function deltaNote(delta: Partial<Record<BenchmarkId, number>> | null, parts: readonly BenchmarkPart[]): string | null {
-  if (!delta) return null;
-  const up = parts.filter((p) => (delta[p.id] ?? 0) > 0).map((p) => p.label + " +" + delta[p.id]);
-  return up.length ? up.join(" · ") : null;
+  return { name: "Needs info", why: "Answer the open points on the right. The scores move as soon as you do." };
 }
 
 // ── Labels ────────────────────────────────────────────────────────────────────────────────────

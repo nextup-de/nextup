@@ -2,7 +2,8 @@
 // The idea studio's side of the conversation (docs/IDEAS.md): the drafts list, the open draft,
 // one message at a time streamed from /api/<company>/ideas/turn, and the actions on a draft.
 // Server mode keeps drafts in Postgres through server/actions/ideas.ts; the local demo keeps them
-// in this browser (lib/idea-drafts.ts). Either way the benchmark comes from the server route -
+// in this browser (lib/idea-drafts.ts), per person like the database (`owner`). Either way the
+// benchmark comes from the server route -
 // except on the static demo (app/demo), which passes `local`: there nothing leaves the browser, the
 // benchmark runs here and the coach is the demo script (features/ideas/demo-script) or the offline one.
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,7 +17,7 @@ import { SCRIPT_THINK_MS, scriptReply } from "@/features/ideas/demo-script";
 import { scoreDraft } from "@/features/ideas/drafts";
 import { withoutSkipped } from "@/features/ideas/raise";
 import type { BrainProposal } from "@/features/routing/brain";
-import { localDrafts } from "@/lib/idea-drafts";
+import { draftScope, localDrafts } from "@/lib/idea-drafts";
 import { brainProposalAction } from "@/server/actions/brain";
 import {
   createIdeaDraftAction, discardIdeaDraftAction, getIdeaDraftAction, ideaRepliesAction, listIdeaDraftsAction, publishIdeaDraftAction, saveIdeaDraftAction,
@@ -29,7 +30,8 @@ export type Meta = { title?: string; affected?: string[]; attachments?: number }
 
 type ScoresEvent = { overall: number; parts: BenchmarkPart[]; sameAs: KnownCase | null; threshold: number; delta: Delta | null; replies?: Reply[] };
 
-export function useIdeaStudio(slug: string, serverMode: boolean, local: BenchmarkContext | null = null) {
+export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, local: BenchmarkContext | null = null) {
+  const mine = draftScope(slug, owner); // this browser's drafts are their author's alone, as in the database
   const [drafts, setDrafts] = useState<DraftSummary[]>([]);
   const [threshold, setThreshold] = useState(DEFAULT_PUBLISH_THRESHOLD);
   const [draft, setDraft] = useState<DraftView | null>(null); // null = a new idea, not stored yet
@@ -42,10 +44,10 @@ export function useIdeaStudio(slug: string, serverMode: boolean, local: Benchmar
 
   // The drafts list, from the server or this browser. Always async, so an effect can call it.
   const fetchList = useCallback(async (): Promise<{ drafts: DraftSummary[]; threshold: number | null } | null> => {
-    if (!serverMode) return { drafts: localDrafts.list(slug), threshold: null };
+    if (!serverMode) return { drafts: localDrafts.list(mine), threshold: null };
     const r = await listIdeaDraftsAction({ slug });
     return r.ok ? { drafts: r.drafts, threshold: r.threshold } : null;
-  }, [slug, serverMode]);
+  }, [slug, serverMode, mine]);
   const apply = (r: { drafts: DraftSummary[]; threshold: number | null } | null) => {
     if (r) { setDrafts(r.drafts); if (r.threshold !== null) setThreshold(r.threshold); }
     setLoaded(true);
@@ -60,19 +62,21 @@ export function useIdeaStudio(slug: string, serverMode: boolean, local: Benchmar
 
   const fromView = (d: DraftView | null): Live | null => (d && d.scores.length ? { parts: d.scores, overall: d.overall, delta: null, sameAs: null, replies: [] } : null);
 
-  const open = useCallback(async (id: string) => {
+  // Resolves to the draft, or null when it could not be opened.
+  const open = useCallback(async (id: string): Promise<DraftView | null> => {
     abort.current?.abort();
     setError(""); setSending(null);
     opened.current = id;
-    const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(slug, id);
-    if (opened.current !== id) return;
+    const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(mine, id);
+    if (opened.current !== id) return d;
     setDraft(d); setLive(fromView(d));
-    if (!d) { setError("That draft could not be opened."); return; }
+    if (!d) { setError("That draft could not be opened."); return null; }
     // The suggested answers are worked out on the server, where the company's goals and routes are.
-    if (d.status !== "draft" || local) return;
+    if (d.status !== "draft" || local) return d;
     const r = await ideaRepliesAction({ slug, id: d.id, turns: d.turns.map(({ role, text }) => ({ role, text })), affected: d.affected, attachments: d.attachments });
     if (r.ok && opened.current === id) setLive((l) => (l ? { ...l, replies: r.replies } : l));
-  }, [slug, serverMode, local]);
+    return d;
+  }, [slug, serverMode, local, mine]);
 
   const startNew = useCallback(() => {
     abort.current?.abort();
@@ -87,10 +91,10 @@ export function useIdeaStudio(slug: string, serverMode: boolean, local: Benchmar
     setError("");
     let id = draft?.id ?? null;
     if (!id) {
-      id = serverMode ? (await createIdeaDraftAction({ slug })).id : localDrafts.create(slug);
+      id = serverMode ? (await createIdeaDraftAction({ slug })).id : localDrafts.create(mine);
       if (!id) { setError("Could not start a draft. Sign in again and retry."); return; }
       if (serverMode && (meta.affected.length || meta.attachments)) await saveIdeaDraftAction({ slug, id, affected: meta.affected, attachments: meta.attachments });
-      else if (!serverMode) localDrafts.saveMeta(slug, id, meta);
+      else if (!serverMode) localDrafts.saveMeta(mine, id, meta);
     }
     const history = (draft?.turns ?? []).map(({ role, text: x }) => ({ role, text: x }));
     setSending({ text: t, reply: "" });
@@ -153,29 +157,29 @@ export function useIdeaStudio(slug: string, serverMode: boolean, local: Benchmar
     // The local demo stores the turn itself; the server already did in server mode.
     if (!serverMode && scores) {
       const turns = [...history, { role: "user" as const, text: t }];
-      localDrafts.addTurns(slug, id, [{ role: "user", text: t }, { role: "assistant", text: reply, overall: scores.overall }],
+      localDrafts.addTurns(mine, id, [{ role: "user", text: t }, { role: "assistant", text: reply, overall: scores.overall }],
         { title: ideaFromTurns(turns).title, overall: scores.overall, scores: scores.parts });
     }
-    const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(slug, id);
+    const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(mine, id);
     setDraft(d); setSending(null);
     void refresh();
-  }, [draft, sending, slug, serverMode, local, refresh]);
+  }, [draft, sending, slug, serverMode, local, mine, refresh]);
 
   const save = useCallback(async (meta: Meta) => {
     if (!draft) return true;
-    const ok = serverMode ? (await saveIdeaDraftAction({ slug, id: draft.id, ...meta })).ok : localDrafts.saveMeta(slug, draft.id, meta);
+    const ok = serverMode ? (await saveIdeaDraftAction({ slug, id: draft.id, ...meta })).ok : localDrafts.saveMeta(mine, draft.id, meta);
     if (ok) {
       setDraft((d) => (d ? { ...d, ...meta, updatedAt: new Date().toISOString() } : d));
       void refresh();
     }
     return ok;
-  }, [draft, slug, serverMode, refresh]);
+  }, [draft, slug, serverMode, mine, refresh]);
 
   const discard = useCallback(async () => {
     if (!draft) { startNew(); return; }
-    const ok = serverMode ? (await discardIdeaDraftAction({ slug, id: draft.id })).ok : localDrafts.discard(slug, draft.id);
+    const ok = serverMode ? (await discardIdeaDraftAction({ slug, id: draft.id })).ok : localDrafts.discard(mine, draft.id);
     if (ok) { startNew(); void refresh(); }
-  }, [draft, slug, serverMode, refresh, startNew]);
+  }, [draft, slug, serverMode, mine, refresh, startNew]);
 
   // Asks for the publish; the page appends case.raised with `caseId` only when this says yes.
   // Then asks the brain for the routing row (null where the stack has none or it did not answer).
@@ -191,10 +195,10 @@ export function useIdeaStudio(slug: string, serverMode: boolean, local: Benchmar
     }
     const idea = ideaFromTurns(draft.turns);
     const title = draft.title || idea.title;
-    localDrafts.publish(slug, draft.id, caseId, { title, overall: draft.overall, scores: draft.scores });
+    localDrafts.publish(mine, draft.id, caseId, { title, overall: draft.overall, scores: draft.scores });
     void refresh();
     return withBrain(title, idea.body);
-  }, [draft, slug, serverMode, local, refresh]);
+  }, [draft, slug, serverMode, local, mine, refresh]);
 
   const overall = live?.overall ?? draft?.overall ?? 0;
   return { drafts, threshold, draft, live, sending, error, loaded, overall, open, startNew, send, save, discard, publish, setError };

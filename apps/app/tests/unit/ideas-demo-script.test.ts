@@ -5,10 +5,10 @@ import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
 import { GOALS } from "@/features/evaluate";
-import { DEFAULT_PUBLISH_THRESHOLD, benchmark, type BenchmarkContext } from "@/features/ideas/benchmarks";
+import { DEFAULT_PUBLISH_THRESHOLD, type BenchmarkContext } from "@/features/ideas/benchmarks";
 import { DEMO_SCRIPT, scriptReply, scriptStep } from "@/features/ideas/demo-script";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
-import { gapsOf, IDEA_UPDATE, topicsOf } from "@/features/ideas/raise";
+import { IDEA_UPDATE, railOf } from "@/features/ideas/raise";
 
 type Turn = { role: "user" | "assistant"; text: string };
 const [idea, more, last] = DEMO_SCRIPT;
@@ -67,9 +67,15 @@ describe("what the replies say is true of the benchmark", () => {
     expect(found(3)).toEqual(expect.arrayContaining(["No spend needed", "Names a first step"]));
     expect(after(3).overall).toBeGreaterThan(after(2).overall);
   });
-  it("ends with the two points the last reply names still open: who else it helps, and a photo", () => {
-    const topics = topicsOf(benchmark({ text: idea.say, affected: [], attachments: 0 }, ctx).parts);
-    const open = gapsOf(topics, after(3).parts).filter((g) => g.status !== "clear").map((g) => g.label);
-    expect(open).toEqual(["Who it affects", "Evidence"]);
+  it("walks the rail as the replies do: the value first, then the first step, then ready", () => {
+    const rail = (n: number) => Object.fromEntries(railOf(after(n).parts).map((g) => [g.key, g.status]));
+    expect(rail(1)).toEqual({ value: "active", feas: "clear", cost: "clear", fit: "clear", risk: "open" });
+    expect(rail(2)).toEqual({ value: "clear", feas: "clear", cost: "clear", fit: "clear", risk: "active" });
+    expect(Object.values(rail(3))).toEqual(["clear", "clear", "clear", "clear", "clear"]);
+  });
+  it("still misses the two points the last reply says do not block it: who else it helps, and a photo", () => {
+    const missing = after(3).parts.flatMap((p) => p.missing).join(" ");
+    expect(missing).toMatch(/who else it helps/);
+    expect(missing).toMatch(/photo/);
   });
 });
