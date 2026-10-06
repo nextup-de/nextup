@@ -26,10 +26,17 @@ export const RESERVED_SLUGS = [
 export type TenantMode = "path" | "subdomain" | "single";
 
 /**
- * Pages outside the company segment that a single-company stack still serves as they are:
- * accepting an invite and resetting a password start from a link in an e-mail.
+ * The static demo (app/demo, docs/IDEAS.md "The demo page"): made-up data, no company behind it, no
+ * login. Its path is never a company's, in path and single mode alike. Not a reserved slug: a single
+ * stack whose company is called "demo" (demo.sellux.ch) IS the static demo, served at its root.
  */
-const SINGLE_PASSTHROUGH = ["invite", "signup", "forgot-password"] as const;
+export const STATIC_DEMO = "demo";
+
+/**
+ * Pages outside the company segment that a single-company stack still serves as they are:
+ * accepting an invite and resetting a password start from a link in an e-mail; the static demo.
+ */
+const SINGLE_PASSTHROUGH = ["invite", "signup", "forgot-password", STATIC_DEMO] as const;
 
 export function isReservedSlug(slug: string): boolean {
   return (RESERVED_SLUGS as readonly string[]).includes(slug);
@@ -45,6 +52,8 @@ export type Resolved =
   | { kind: "tenant"; slug: string; appPath: string; rewriteTo: string | null }
   /** The admin surface, which lives outside the [company] segment. */
   | { kind: "admin"; appPath: string; rewriteTo: string | null }
+  /** The static demo at the root of a stack that is the demo: made-up data, no sessions, nothing to guard. */
+  | { kind: "demo"; rewriteTo: string }
   /** Marketing, auth, anything else: not ours to guard. */
   | { kind: "pass" };
 
@@ -81,6 +90,7 @@ export function resolveRequest(
     // /admin stays a path of its own until it moves to apps/ops.
     if (first === "admin") return { kind: "admin", appPath: "/" + rest.join("/"), rewriteTo: null };
     if ((SINGLE_PASSTHROUGH as readonly string[]).includes(first)) return { kind: "pass" };
+    if (company === STATIC_DEMO) return { kind: "demo", rewriteTo: "/" + STATIC_DEMO + (path === "/" ? "" : path) };
     if (!company || !isValidSlug(company)) return { kind: "pass" };
     return {
       kind: "tenant",
@@ -107,7 +117,7 @@ export function resolveRequest(
   // path mode
   const [, first = "", ...rest] = path.split("/");
   if (first === "admin") return { kind: "admin", appPath: "/" + rest.join("/"), rewriteTo: null };
-  if (!first || isReservedSlug(first) || !isValidSlug(first)) return { kind: "pass" };
+  if (!first || first === STATIC_DEMO || isReservedSlug(first) || !isValidSlug(first)) return { kind: "pass" };
   return { kind: "tenant", slug: first, appPath: "/" + rest.join("/"), rewriteTo: null };
 }
 

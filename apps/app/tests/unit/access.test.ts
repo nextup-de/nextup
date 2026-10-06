@@ -74,6 +74,10 @@ describe("path mode", () => {
       kind: "admin", appPath: "/companies", rewriteTo: null,
     });
   });
+
+  it("leaves the static demo to itself: no company, no login", () => {
+    for (const p of ["/demo", "/demo/raise", "/demo/dashboard"]) expect(viaPath(p).kind).toBe("pass");
+  });
 });
 
 describe("single mode", () => {
@@ -97,6 +101,18 @@ describe("single mode", () => {
 
   it("lets e-mail links for invites and password resets through", () => {
     for (const p of ["/invite/abc", "/signup", "/forgot-password"]) expect(single(p).kind).toBe("pass");
+  });
+
+  it("lets the static demo through", () => {
+    for (const p of ["/demo", "/demo/raise"]) expect(single(p).kind).toBe("pass");
+  });
+
+  it("serves the static demo at the root of a stack whose company is called demo, with no login", () => {
+    expect(single("/", "demo")).toEqual({ kind: "demo", rewriteTo: "/demo" });
+    expect(single("/raise", "demo")).toEqual({ kind: "demo", rewriteTo: "/demo/raise" });
+    expect(single("/login", "demo")).toEqual({ kind: "demo", rewriteTo: "/demo/login" });
+    expect(single("/demo/dashboard", "demo").kind).toBe("pass");
+    expect(single("/admin/companies", "demo").kind).toBe("admin");
   });
 
   it("serves nothing without a valid COMPANY_SLUG", () => {

@@ -12,6 +12,7 @@ import {
   rootDomain,
   servedOverHttps,
   singleCompany,
+  staticDemoPrefix,
   tenantMode,
 } from "@/features/tenant/urls";
 
@@ -40,6 +41,14 @@ describe("appOrigin", () => {
     expect(appOrigin(SUB)).toBe("https://nextup.serviweb.ch");
     expect(servedOverHttps(PATH)).toBe(false);
     expect(rootDomain(SUB)).toBe("nextup.serviweb.ch");
+  });
+});
+
+describe("the static demo's links", () => {
+  it("hang off /demo, except on a stack that is the demo, where they start at its root", () => {
+    expect(staticDemoPrefix(PATH)).toBe("/demo");
+    expect(staticDemoPrefix(SINGLE)).toBe("/demo");
+    expect(staticDemoPrefix({ ...SINGLE, COMPANY_SLUG: "demo" })).toBe("");
   });
 });
 

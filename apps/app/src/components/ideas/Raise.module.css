@@ -155,6 +155,11 @@
 .dictate:hover { background: #eceef2; }
 .dictate:active { transform: scale(.94); }
 .dictate[aria-pressed="true"] { background: #fdf1cf; color: #b07c00; }
+/* Demo stage: puts the demo script's next text in the field */
+.fill { flex: none; height: calc(24px * var(--u)); margin-top: calc(3px * var(--u)); display: inline-flex; align-items: center; gap: calc(4.5px * var(--u)); padding: 0 calc(9.75px * var(--u)) 0 calc(8.25px * var(--u)); border: 1px solid #f2cb55; border-radius: 999px; background: #fffaeb; color: #8a6100; font-family: inherit; font-size: calc(9.75px * var(--u)); font-weight: 600; white-space: nowrap; cursor: pointer; animation: affFade 260ms cubic-bezier(.2,.8,.2,1) backwards; transition: background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.fill:hover { background: #fdf1cf; }
+.fill:active { transform: scale(.96); }
+@media (max-width: 760px) { .fillLabel { display: none; } .fill { width: calc(30px * var(--u)); padding: 0; justify-content: center; } }
 .send { width: calc(30px * var(--u)); height: calc(30px * var(--u)); flex: none; border: none; border-radius: 50%; background: #1c1c1e; opacity: 0.4; color: #fff; display: flex; align-items: center; justify-content: center; padding: 0; cursor: default; transition: transform 200ms ease, opacity 200ms ease; }
 .send[data-ready="true"] { opacity: 1; cursor: pointer; }
 .send[data-ready="true"]:hover { transform: translateY(-2px) scale(1.06); }

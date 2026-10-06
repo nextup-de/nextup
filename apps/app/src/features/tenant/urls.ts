@@ -3,7 +3,7 @@
 // for the landing page: in subdomain mode the admin area *is* a host of its own, and "/" is
 // admin's own root. Single mode is one company per deployment, served at the host's root, with
 // /admin as a path next to it. Read the env here and nowhere else.
-import type { TenantMode } from "@/features/auth/request";
+import { STATIC_DEMO, type TenantMode } from "@/features/auth/request";
 
 type Env = Record<string, string | undefined>;
 
@@ -44,6 +44,11 @@ export function singleCompany(env: Env = process.env): string | null {
 /** A company's paths as links see them: "/acme" in path mode, "" where the company is the host. */
 export function companyPrefix(slug: string, env: Env = process.env): string {
   return tenantMode(env) === "path" ? "/" + slug : "";
+}
+
+/** The static demo's paths as links see them: "" on a stack that is the demo (its root), "/demo" anywhere else. */
+export function staticDemoPrefix(env: Env = process.env): string {
+  return singleCompany(env) === STATIC_DEMO ? "" : "/" + STATIC_DEMO;
 }
 
 /** Where /admin lives: the host root on the admin subdomain, "/admin" otherwise. */
