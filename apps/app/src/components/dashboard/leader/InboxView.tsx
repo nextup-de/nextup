@@ -210,7 +210,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   // The open item, idea or case, in one shape for IdeaDetail / IdeaDetailPhone: its brief, the feed,
   // what is already in motion, and where each decision goes.
   const selRow = rows.find((r) => r.id === cid);
-  const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas };
+  const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, briefs: seed.briefs };
   const personOrNull = (name: string) => (name === actor ? null : personFor(name, briefCtx));
   const item: IdeaProps | null = !selRow ? null : (() => {
     const idea = { id: selRow.id, kind: si ? "idea" as const : "case" as const, title: selRow.title, badge: badgeOf(selRow), tone: badgeTone(selRow.due, selRow.paused), raised: raisedPhrase(sentLabel(selRow.sent, now, selRow.exact)) };

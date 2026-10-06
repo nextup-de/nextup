@@ -82,8 +82,9 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
 ## The demo page
 
 `/demo` (`src/app/demo`) is the raise page for showing people how NextUp works, with nothing behind
-it: made-up data (the built-in seed), no company, no login, no database, no model. It opens on
-`/demo/raise`; the bar's Dashboard goes to `/demo/dashboard`, where a published idea shows up.
+it: made-up data (`features/demo/static-demo.ts`: the built-in seed plus what is listed below), no
+company, no login, no database, no model. It opens on `/demo/raise`; the bar's Dashboard goes to
+`/demo/dashboard`, where a published idea shows up.
 
 - **The script** (`features/ideas/demo-script.ts`): one prepared idea and two prepared answers. While
   the composer is empty, a gold button on its right puts the next one in the field ("Prepared idea",
@@ -94,6 +95,25 @@ it: made-up data (the built-in seed), no company, no login, no database, no mode
 - **No numbers in the replies.** The scores stay on the side (the rail, the analysis) and are the
   benchmark's own, computed in the browser. `tests/unit/ideas-demo-script.test.ts` checks that what
   the replies say (goal, decider, over the line, which two points stay open) is still true.
+- **The published case carries the main points** (`DEMO_CASE`): one sentence as the idea, the context,
+  then `*Label* text` lines (Goal, First step, Cost, Then, Still open) that the case view lists as facts
+  next to Worth (`splitBody` in `features/ideas/brief.ts` - the start page's prompts use the same lines).
+  About 8 s after publishing, whoever received it reads it and asks one question (`DESK_REPLY`, written
+  by the demo frame), so the case shows a conversation and "Your move" without switching person.
+- **Cases have an address**: on the demo, a dashboard row and "Open the case" go to `/demo/cases/<id>`,
+  the dashboard's case overview opened on that case (`DashboardView linkCases`); ✕ goes back.
+- **The board is never empty**: three more of the employee's ideas - a question waiting for them (Your
+  move), a question they answered (Replied), one past the 5-day promise that moved to the deputy - and
+  the changeover-sheet problem handed to Quality with a question and an answer. All seed history, so
+  "Reset demo" keeps them; acme's own seed is untouched (`tests/unit/static-demo.test.ts`).
+- **The dev panel is on**: "Viewing as" switches person in this browser (the inbox and the overview
+  live under `/demo` too), "Reset demo" goes back to the seed, "+1 day" moves the clock.
+- **Clear names**: the demo's copy of the seed and of the written briefs uses full German names, mostly
+  men's (Jonas Schmidt, Thomas Vogel, Hans Sander, …), instead of "T. Vogel" and anonymous handles
+  (`DEMO_NAMES`); the employee posts under his name. acme keeps its names - the database stacks store
+  them as users.
+- **His earlier chats**: the raise page's list starts with four of his conversations with the coach -
+  three published (each opens its case) and one draft still open (`staticDemoDrafts`).
 - **Nothing leaves the browser**: `useIdeaStudio(…, local)` scores and answers here, publishing skips
   the router, and the event log and drafts are the local demo's, under the slug `demo`. Every page
   load starts from the seed (`components/demo/StaticDemo.tsx`); moving between the demo's pages keeps
@@ -115,6 +135,9 @@ it: made-up data (the built-in seed), no company, no login, no database, no mode
 
 ## Not in this step
 
+- **After "Yes, do it": a board to work it** (Kevin, 6 Oct 2026 - later). A decided idea moves onto a
+  kanban / project board that the team leader or manager runs, with the central brain helping to plan
+  and follow the steps. Builds on the action items below.
 - **Action items on a published idea, tracked here instead of in Jira** - needs `idea.action.*`
   events, which is reducer work (Kevin).
 - Customer feedback and market research as inputs to opportunity detection.

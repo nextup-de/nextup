@@ -2,6 +2,7 @@
 // the page is derived from these. When Prisma lands these become the seed script's input.
 import type { Role } from "@/config/roles";
 import type { CaseKind, SeedEvent } from "@/features/cases/events";
+import type { WrittenBrief } from "@/features/ideas/brief";
 
 export type Dept = { id: string; name: string; people: number };
 
@@ -86,4 +87,5 @@ export type Seed = {
   depts: Dept[]; people: OrgPerson[]; problems: Problem[]; ideas: Idea[]; initiatives: Initiative[]; outcomes: Outcome[];
   personas: RolePersona[]; leaders: string[]; routes: Route[]; cases: SeedCase[]; waitingOn: WaitingOn[]; buddies: Buddy[];
   stall: Stall[]; ledger: Ledger; metrics: Metrics; views: Record<string, ViewCopy>;
+  briefs?: Record<string, WrittenBrief>; // written AI briefs per idea id, instead of features/ideas/brief-demo (the static demo's renamed copy)
 };

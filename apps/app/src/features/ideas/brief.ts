@@ -116,7 +116,7 @@ export type IdeaBrief = {
   feed: WrittenBrief["feed"];
 };
 
-export type BriefContext = { people: readonly OrgPerson[]; depts: readonly Dept[]; ideas: readonly Idea[] };
+export type BriefContext = { people: readonly OrgPerson[]; depts: readonly Dept[]; ideas: readonly Idea[]; briefs?: Readonly<Record<string, WrittenBrief>> };
 
 // ── small pure helpers the page also uses ──
 
@@ -178,7 +178,8 @@ export const personFor = (name: string, ctx: BriefContext): Person | null => (ct
 
 // The brief for one idea: the written one if there is one, otherwise one built from the seed.
 export function briefFor(idea: Idea, ctx: BriefContext): IdeaBrief {
-  const w = BRIEFS[idea.id] ?? derivedBrief(idea, ctx);
+  const written = (ctx.briefs ?? BRIEFS)[idea.id];
+  const w = written ?? derivedBrief(idea, ctx);
   const [, deptHint = ""] = idea.proposedBy.split(", ");
   const author = personOf(proposerOf(idea), ctx, deptHint);
   const aiWhy = (key: string) => (w.affects.ai.includes(key) ? w.affects.why[key] ?? "Suggested by the AI from the idea description." : null);
@@ -206,7 +207,7 @@ export function briefFor(idea: Idea, ctx: BriefContext): IdeaBrief {
 
   const barMax = w.bars ? Math.max(...w.bars.rows.map((r) => r.value), 0) || 1 : 1;
   return {
-    written: !!BRIEFS[idea.id],
+    written: !!written,
     author,
     description: w.description,
     context: w.context ?? null,
@@ -286,6 +287,19 @@ export type CaseFacts = {
 const round5 = (n: number) => Math.max(10, Math.min(95, Math.round(n / 5) * 5));
 const isHandle = (name: string) => name.startsWith("Anonymous");
 
+// A case body as the raise page writes it: the first paragraph says what it is, a "*Label* text" line is a
+// fact (the start page's prompts, the demo script's main points), every other paragraph is context.
+export function splitBody(body: string): { description: string; context: string | null; facts: { label: string; text: string }[] } {
+  const facts: { label: string; text: string }[] = [], rest: string[] = [];
+  for (const line of body.split("\n")) {
+    const m = /^\*([^*]{1,40})\*\s*(.*)$/.exec(line.trim());
+    if (!m) rest.push(line);
+    else if (m[2].trim()) facts.push({ label: m[1].trim(), text: m[2].trim() });
+  }
+  const [description = "", ...more] = rest.join("\n").trim().split(/\n\s*\n/);
+  return { description: description.trim(), context: more.join("\n\n").trim() || null, facts };
+}
+
 // The same view an idea gets, built only from the case's own facts: the score parts features/scoring
 // uses, the routing map and the promise clock. Nothing is invented; every row cites the case, the
 // map or the promise.
@@ -339,14 +353,16 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
     : c.status === "asked" ? "Waiting for the answer to your question." : "Nothing left to decide on this case.";
   const linked = c.linkedIdea ? ctx.ideas.find((i) => i.id === c.linkedIdea) : null;
   const deputy = route ? personFor(route.deputy, ctx) : null;
+  const body = splitBody(c.body);
   return {
     written: false, author,
-    description: c.body || c.title, context: null,
+    description: body.description || c.title, context: body.context,
     prompts: [
       { label: "Worth", text: c.upside || "Not estimated yet" },
+      ...body.facts,
       ...(c.reason ? [{ label: "Flagged as", text: c.reason }] : []),
       { label: "Owner on the map", text: route ? (ownerIsMe ? "You" : route.owner.name) + " · " + route.type : raiser ? "Nobody yet - the triage desk" : "Nobody yet - you triage it" },
-      { label: "Open for", text: c.clock + " days" + (c.status === "asked" ? " · clock paused" : "") },
+      { label: "Open for", text: c.clock + (c.clock === 1 ? " day" : " days") + (c.status === "asked" ? " · clock paused" : "") },
       ...(f.history ? [{ label: "History", text: f.history }] : []),
     ],
     files: [],

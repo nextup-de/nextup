@@ -6,8 +6,11 @@
 // Rows are facts from dashboardRow(); what the log cannot record yet lives in usePreview().
 // Who sees what (derive.visibleTo): an employee only what they raised; a team leader their own
 // and their people's; a manager everything.
+// `linkCases` (the static demo): every case has its own address, /cases/<id> - a row goes there, ✕ comes
+// back - and that page is this view with `caseId` open.
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { visibleTo } from "@/components/dashboard/derive";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
@@ -40,6 +43,8 @@ const STATUS_LABEL: Record<OverviewStatus, string> = {
 const AVATAR_TONES = ["grey", "blue", "clay", "sage", "lilac"] as const;
 const toneOf = (name: string) => AVATAR_TONES[[...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7) % AVATAR_TONES.length];
 const stepLabel = (step: number) => (step >= OVERVIEW_STEPS.length ? "Shipped" : OVERVIEW_STEPS[step]);
+// Still running: open, or waiting on an answer to a question (the clock is paused, nothing is answered yet).
+const running = (r: DashRow) => r.open || r.paused;
 
 // A person's card, pinned under whatever was pressed and kept inside the window.
 type Profile = { p: Person; feed: boolean; x: number; y: number };
@@ -76,31 +81,34 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
   );
 }
 
-export function DashboardView() {
+export function DashboardView({ caseId, linkCases = false }: { caseId?: string; linkCases?: boolean } = {}) {
   const ctx = useDemo();
   const { seed, D, log, persona, role, ready, href, tenant, act, actor, f, motion } = ctx;
+  const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("move");
   const [menu, setMenu] = useState<"filter" | "sort" | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSel] = useState<string | null>(caseId ?? null);
   const [mode, setMode] = useState<IdeaMode>("idea");
   const [editSignal, setEditSignal] = useState(0); // bumped by the chat's "Add details"
   const paneRef = useRef<HTMLDivElement>(null);
   const prevSel = useRef<string | null>(null);
   const preview = usePreview(); // what the event log cannot record yet: edits, answers to a decision, chats, replies
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
+  const openCase = useCallback((id: string) => (linkCases ? router.push(href("/cases/" + id)) : setSel(id)), [linkCases, router, href]);
+  const closeCase = useCallback(() => (linkCases ? router.push(href("/dashboard")) : setSel(null)), [linkCases, router, href]);
 
   // Escape closes the open menu, else the open case (popovers and inputs handle their own first).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (menu) setMenu(null);
-      else if (sel && !isTyping(e.target)) setSel(null);
+      else if (sel && !isTyping(e.target)) closeCase();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, sel]);
+  }, [menu, sel, closeCase]);
 
   // Opening or switching: the pane scrolls to its top and rises in (the design's componentDidUpdate).
   useEffect(() => {
@@ -132,7 +140,7 @@ export function DashboardView() {
     all: () => true, move: yourMove, problem: (r) => r.kind === "problem", idea: (r) => r.kind === "idea", mine: (r) => r.mine,
   };
   const shown = rows.filter(test[filter]).sort((a, b) => {
-    if (a.open !== b.open) return a.open ? -1 : 1;
+    if (running(a) !== running(b)) return running(a) ? -1 : 1;
     if (sort === "move" && yourMove(a) !== yourMove(b)) return yourMove(a) ? -1 : 1;
     return b.openDays - a.openDays;
   });
@@ -147,7 +155,7 @@ export function DashboardView() {
     setProfile({ p, feed, x: Math.max(8, Math.min(b.left, window.innerWidth - w - 8)), y: Math.max(8, Math.min(b.bottom + 8, window.innerHeight - 260 * u)) });
   };
   const profileOf = (name: string, feed = false) => (personFor(name, briefCtx) ? openProfile(name, feed) : null);
-  const pick = (id: string) => { setSel(id); setMode("idea"); setMenu(null); };
+  const pick = (id: string) => { openCase(id); setMode("idea"); setMenu(null); };
   const pop = profile && <ProfilePop profile={profile} sheet={phone} onClose={() => setProfile(null)} />;
   let phoneCase: React.ReactNode = null; // on a phone the open case is a layer over the table
 
@@ -169,15 +177,15 @@ export function DashboardView() {
       id: c.id, title: c.title, raised: f(c.raisedDay), dept: (row.mine ? "" : c.from + " · ") + c.fromDept,
       steps: overviewSteps(c, f, row.mine), desk: { name: desk, role: roleOf(desk) },
       wait: {
-        text: !row.open ? "answered in " + row.clock + " d" : late ? row.clock + " d · past the " + P + "-day promise" : row.clock + " d of the " + P + "-day promise",
-        pct: Math.min(100, (row.clock / P) * 100), tone: !row.open ? "done" : late ? "late" : "open",
+        text: !running(row) ? "answered in " + row.clock + " d" : late ? row.clock + " d · past the " + P + "-day promise" : row.clock + " d of the " + P + "-day promise" + (row.paused ? " · clock paused" : ""),
+        pct: Math.min(100, (row.clock / P) * 100), tone: !running(row) ? "done" : late ? "late" : "open",
       },
       brief,
       files: loadShots(tenant.slug, c.id).map((x) => ({ name: x.name, ext: extOf(x.name) || "IMG", meta: "Screenshot" })),
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (m.by === actor ? "" : " · " + m.by) })),
       mode, onMode: setMode, editSignal,
       edit: preview.edits[c.id] ?? null, onSave: (e) => preview.saveEdit(c.id, e), // as in the design, anyone who opens it may edit
-      onProfile: profileOf(desk), onClose: () => setSel(null),
+      onProfile: profileOf(desk), onClose: closeCase,
     };
     const chats = (
           <OverviewChats key={c.id} mine={row.mine} me={actor} day={log.day} desk={{ name: other, role: roleOf(other) || (other === c.from ? c.fromDept : "") }}
@@ -200,7 +208,7 @@ export function DashboardView() {
       const ids = shown.map((r) => r.id), at = ids.indexOf(c.id);
       phoneCase = (
         <OverviewPhone key={c.id} idea={ideaProps} chats={chats} yourMove={yourMove(row)} editSignal={editSignal}
-          nav={{ index: at, count: ids.length, onPrev: () => at > 0 && setSel(ids[at - 1]), onNext: () => at < ids.length - 1 && setSel(ids[at + 1]) }} />
+          nav={{ index: at, count: ids.length, onPrev: () => at > 0 && openCase(ids[at - 1]), onNext: () => at < ids.length - 1 && openCase(ids[at + 1]) }} />
       );
     } else {
       return (
@@ -282,7 +290,7 @@ export function DashboardView() {
                     <span className={s.mSub}>{r.mine ? r.fromDept : r.from + " · " + r.fromDept}</span>
                   </span>
                   <span className={s.mRight} role="cell">
-                    <span className={s.mWhen} data-tone={late ? "late" : undefined}>{!r.open ? "answered" : late ? "past promise" : r.openDays + " d open"}</span>
+                    <span className={s.mWhen} data-tone={late ? "late" : undefined}>{!running(r) ? "answered" : late ? "past promise" : r.openDays + " d open"}</span>
                     <span className={s.badge} data-tone={badgeTone}>{STATUS_LABEL[st]}</span>
                   </span>
                 </span>
@@ -294,9 +302,9 @@ export function DashboardView() {
                   <span className={s.title}>{r.title}</span>
                   <div className={s.div16}><span className={s.dept}>{r.mine ? r.fromDept : r.from + " · " + r.fromDept}</span></div>
                 </div>
-                <div className={s.div17} role="cell" data-tone={late ? "late" : !r.open ? "done" : undefined}>
-                  <span className={s.wait}>{(r.open ? r.openDays : r.clock) + " d"}</span>
-                  <span className={s.waitSub}>{!r.open ? "answered" : late ? "past promise" : r.paused ? "clock paused" : P - r.clock + " d left"}</span>
+                <div className={s.div17} role="cell" data-tone={late ? "late" : !running(r) ? "done" : undefined}>
+                  <span className={s.wait}>{(running(r) ? r.openDays : r.clock) + " d"}</span>
+                  <span className={s.waitSub}>{!running(r) ? "answered" : late ? "past promise" : r.paused ? "clock paused" : P - r.clock + " d left"}</span>
                 </div>
                 <div className={s.div18} role="cell">
                   <span className={s.stage}>{stepLabel(r.step)}</span>
