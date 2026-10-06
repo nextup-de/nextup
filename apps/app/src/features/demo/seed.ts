@@ -326,7 +326,7 @@ export const METRICS: Metrics = {
   // Employee → "Your contribution".
   you: { medianWait: '2 d' },
   // Team leader → inbox stats.
-  lead: { medianAnswer: '2 d', withinPromise: '9 / 11' }
+  lead: { medianAnswer: '2 d', withinPromise: '10 / 12' }
 };
 
 export const VIEWS: Record<string, ViewCopy> = {
