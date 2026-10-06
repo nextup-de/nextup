@@ -1,6 +1,6 @@
 "use client";
 // The chrome for every role in the demo (SHELL[role] === "simple"): the logo, two or three
-// places (NAV_SIMPLE[role]), and a profile button. No rail, no search - nothing to learn.
+// places (NAV_SIMPLE[role]), and a profile button. Search expands into the navigation pill.
 // Shares the overlays with AppShell (input sheet, toast, dev panel) so every action still works.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,6 +9,7 @@ import { NAV_SIMPLE } from "@/config/nav";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxCount, mineRows } from "@/components/dashboard/derive";
+import { NavSearch } from "./NavSearch";
 import { decisionsWaiting } from "@/features/metrics";
 import { DevPanel } from "./DevPanel";
 import { Ground } from "./Ground";
@@ -61,7 +62,8 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           <span className={styles.logo} data-tone={ctx.logo} role="img" aria-label={SITE.name} />
         </Link>
 
-        <nav ref={navRef} className={styles.nav} aria-label="Main">
+        <NavSearch>{(searchOpen) => (
+        <nav ref={navRef} className={styles.nav} aria-label="Main" inert={searchOpen} aria-hidden={searchOpen}>
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
           {NAV_SIMPLE[role].map((n) => {
             const href = tenant.prefix + n.href;
@@ -75,6 +77,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+        )}</NavSearch>
 
         <div className={styles.right}>
           <button type="button" className={styles.avatar} data-open={pop === "me" ? "true" : undefined} onClick={() => togglePop("me")} aria-label="Profile" title={who.name + " · " + who.line}>
