@@ -81,3 +81,120 @@
 @media (prefers-reduced-motion: reduce) {
   .navThumb { transition: none; }
 }
+
+
+/* The actual search container expands just like the inbox search, with no overlay crossfade. */
+.navGroup { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; justify-self: center; padding: 3px; }
+.searchSpacer { width: 32px; height: 32px; flex: none; }
+.searchControl { position: absolute; left: 3px; top: 50%; transform: translateY(-50%); z-index: 2; width: 32px; height: 32px; box-sizing: border-box; display: flex; align-items: center; border-radius: 999px; background: rgb(0 0 0 / 0.05); overflow: hidden; transition: width 560ms cubic-bezier(.2,.8,.2,1); }
+.navGroup[data-search="true"] .searchControl { width: calc(100% - 6px); }
+.searchButton { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border: 0; padding: 0; border-radius: 50%; background: transparent; color: var(--nh-ink-2); cursor: pointer; }
+.searchButton:focus, .searchButton:focus-visible { outline: none; box-shadow: none; }
+.navGroup .nav { transition: opacity 260ms ease, transform 420ms cubic-bezier(.2,.8,.2,1), visibility 0s; }
+.navGroup[data-search="true"] .nav { opacity: 0; transform: translateX(-12px); pointer-events: none; visibility: hidden; transition: opacity 260ms ease, transform 420ms cubic-bezier(.2,.8,.2,1), visibility 0s 560ms; }
+.searchSlot { flex: 1; min-width: 0; display: flex; align-items: center; opacity: 0; pointer-events: none; transition: opacity 240ms ease; }
+.navGroup[data-search="true"] .searchSlot { opacity: 1; pointer-events: auto; transition: opacity 240ms ease 180ms; }
+.searchInput { flex: 1; width: 100%; min-width: 0; border: 0; background: transparent; padding: 0 8px 0 0; font: inherit; font-size: 14px; color: var(--nh-ink); outline: none; }
+.searchInput::placeholder { color: var(--nh-mute); }
+.searchClear { width: 22px; height: 22px; margin-right: 6px; flex: none; border: 0; border-radius: 50%; padding: 0; background: rgb(0 0 0 / .08); color: var(--nh-ink-2); font-size: 16px; line-height: 1; cursor: pointer; }
+.searchClear:hover { background: rgb(0 0 0 / .14); }
+@media (max-width: 760px) { .searchInput { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .searchControl, .navGroup .nav, .searchSlot, .navGroup[data-search="true"] .searchSlot { transition: none; } }
+
+/* The results card, in the Overview's language (team/Overview.module.css): a white card on a soft
+   shadow, a black pill for the choice that is on, a row's status badge and five-step bar. */
+.sPanel { position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%); z-index: 3; width: min(560px, calc(var(--nh-screen-w) - 24px)); max-height: min(600px, calc(var(--nh-screen-h) - var(--nh-bar-h) - 24px)); box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #fff; border-radius: 22px; box-shadow: 0 18px 48px rgba(20,30,60,0.16), 0 1px 2px rgba(20,30,60,0.06); color: #1c1c1e; text-align: left; animation: sPop 220ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes sPop { from { opacity: 0; translate: 0 -6px; scale: .98; } to { opacity: 1; translate: 0 0; scale: 1; } }
+
+.sFilters { display: flex; gap: 4px; flex: none; padding: 12px 12px 10px; overflow-x: auto; scrollbar-width: none; }
+.sFilter { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 13px; border: 0; border-radius: 999px; background: #f2f2f7; color: #3a3a3c; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 180ms ease, color 180ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.sFilter:hover { background: #e5e5ea; }
+.sFilter:active { transform: scale(.97); }
+.sFilter[aria-pressed="true"] { background: #111; color: #fff; }
+.sCount { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: #8e8e93; }
+.sFilter[aria-pressed="true"] .sCount { color: rgb(255 255 255 / .6); }
+
+.sList { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px; border-top: 1px solid #f0f0f3; }
+.sList:empty { display: none; }
+.sSection { padding: 6px 0; }
+.sSection + .sSection { border-top: 1px solid #f0f0f3; }
+.sHeading { margin: 8px 10px 4px; font-size: 12px; font-weight: 500; color: #6e6e73; }
+
+.sRow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px; border: 0; border-radius: 14px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.sRow[aria-selected="true"] { background: #eef3fb; }
+.sRow:active { transform: scale(.995); }
+.sMark { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 11px; }
+.sMark[data-kind="Problem"] { background: var(--nh-problem-tint); color: var(--nh-problem); }
+.sMark[data-kind="Idea"] { background: var(--nh-idea-tint); color: var(--nh-idea); }
+.sAvatar { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; color: #fff; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; background: linear-gradient(180deg, #a5abb6, #858a94); }
+.sAvatar[data-tone="blue"] { background: linear-gradient(180deg, #8fa9c9, #6d88ab); }
+.sAvatar[data-tone="clay"] { background: linear-gradient(180deg, #c9a48f, #ab846d); }
+.sAvatar[data-tone="sage"] { background: linear-gradient(180deg, #94b39c, #72937b); }
+.sAvatar[data-tone="lilac"] { background: linear-gradient(180deg, #b29cc4, #927ba6); }
+.sBody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.sTitle { font-size: 14px; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.sTitle mark { padding: 0 1px; border-radius: 3px; background: #d6e8ff; color: inherit; }
+.sSub { font-size: 12.5px; color: #6e6e73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sSub [data-tone="late"] { color: #d70015; }
+.sSide { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+.sBadge { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 3px 9px; white-space: nowrap; color: #3a3a3c; background: #f2f2f7; }
+.sBadge[data-tone="move"] { color: #0062cc; background: #e8f1ff; }
+.sBadge[data-tone="replied"] { color: #1f7a3a; background: #eaf8ee; }
+.sSteps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; width: 56px; }
+.sSteps span { height: 4px; border-radius: 999px; background: #e5e5ea; }
+.sSteps span[data-tone="done"] { background: #1c1c1e; }
+.sSteps span[data-tone="now"] { background: #007aff; }
+.sGo { font-size: 12.5px; font-weight: 600; color: #6e6e73; }
+.sRow[aria-selected="true"] .sGo { color: #1c1c1e; }
+
+.sEmpty { padding: 28px 20px 30px; text-align: center; }
+.sEmpty strong { display: block; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.sEmpty p { margin: 6px 0 14px; font-size: 13px; line-height: 1.5; color: #6e6e73; }
+
+.sPlaces { flex: none; padding: 4px 12px 12px; border-top: 1px solid #f0f0f3; }
+.sPlaces .sHeading { margin: 8px 2px; }
+.sPlaceRow { display: flex; flex-wrap: wrap; gap: 6px; }
+.sPill { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: #f2f2f7; color: #1c1c1e; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 180ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.sPill:hover { background: #e5e5ea; color: #1c1c1e; }
+.sPill:active { transform: scale(.97); }
+
+.sFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; padding: 10px 16px; border-top: 1px solid #f0f0f3; background: #fafafc; font-size: 12px; color: #8e8e93; }
+.sKeys { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.sKeys kbd { min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; display: inline-grid; place-items: center; border-radius: 5px; background: #fff; box-shadow: inset 0 0 0 1px #e5e5ea; font: inherit; font-size: 12px; color: #3a3a3c; }
+.sKeys kbd:not(:first-child) { margin-left: 2px; }
+.sPanel button:focus-visible, .sPanel a:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+
+/* Laptops: the Overview's 0.85 step (--u in team/Overview.module.css): a narrower card, tighter rows, text a size down, never below 12px. */
+@media (min-width: 761px) and (max-width: 1599px) {
+  .sPanel { top: calc(100% + 8px); width: min(480px, calc(var(--nh-screen-w) - 24px)); max-height: min(520px, calc(var(--nh-screen-h) - var(--nh-bar-h) - 20px)); border-radius: 18px; }
+  .sFilters { padding: 10px 10px 8px; }
+  .sFilter { height: 28px; padding: 0 11px; gap: 5px; font-size: 12.5px; }
+  .sList { padding: 0 6px; }
+  .sSection { padding: 4px 0; }
+  .sHeading { margin: 6px 8px 3px; }
+  .sRow { gap: 10px; padding: 8px; border-radius: 12px; }
+  .sMark, .sAvatar { width: 30px; height: 30px; }
+  .sMark { border-radius: 9px; }
+  .sMark svg { width: 13px; height: 13px; }
+  .sAvatar { font-size: 12px; }
+  .sBody { gap: 2px; }
+  .sTitle { font-size: 13px; }
+  .sSub, .sGo { font-size: 12px; }
+  .sSide { gap: 6px; }
+  .sBadge { padding: 2px 8px; }
+  .sSteps { width: 48px; }
+  .sSteps span { height: 3px; }
+  .sEmpty { padding: 22px 16px 24px; }
+  .sEmpty strong { font-size: 13px; }
+  .sEmpty p { font-size: 12.5px; }
+  .sPlaces { padding: 2px 10px 10px; }
+  .sPill { height: 28px; padding: 0 12px; font-size: 12.5px; }
+  .sFoot { padding: 8px 14px; }
+}
+@media (max-width: 760px) {
+  /* On a phone the card hangs from the bar, edge to edge inside a 12px gutter. */
+  .sPanel { position: fixed; top: calc(var(--nh-bar-h) + 8px); left: 12px; right: 12px; width: auto; transform: none; max-height: calc(var(--nh-screen-h) - var(--nh-bar-h) - 20px); border-radius: 18px; }
+  .sSteps, .sKeys { display: none; }
+  .sRow { padding: 10px 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .sPanel { animation: none; } .sRow, .sFilter, .sPill { transition: none; } }

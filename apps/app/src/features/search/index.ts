@@ -6,7 +6,8 @@ import type { Dept, Initiative } from "@/features/demo/types";
 import { type DemoData, people } from "@/features/metrics";
 import { deptName, plural } from "@/lib/utils/format";
 
-export const tokens = (q: string) => (q || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+export const normalizeSearch = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+export const tokens = (q: string) => normalizeSearch(q || "").split(/\s+/).filter(Boolean);
 export const hits = (hay: string, toks: string[]) => toks.every((t) => hay.includes(t));
 
 export type Part = { t: string; hit: boolean };
@@ -37,7 +38,7 @@ export const teamHay = (t: Initiative, depts: readonly Dept[]) =>
 export const caseHay = (c: ReducedCase) => [c.title, c.from, c.fromDept, c.body, c.reason].filter(Boolean).join(" ").toLowerCase();
 
 export type ResultKind = "Problem" | "Idea" | "Team" | "Case" | "Person";
-export type ResultView = "problems" | "ideas" | "collaboration" | "leader";
+export type ResultView = "problems" | "ideas" | "collaboration" | "leader" | "dashboard" | "people";
 export type SearchItem = { kind: ResultKind; group: number; title: string; sub: string; hay: string; right: string; go: { view: ResultView; id: string } | null };
 
 export const GROUP_NAMES = ["Problems", "Ideas", "Teams", "Your inbox", "People"];
@@ -59,25 +60,45 @@ export function buildIndex(D: DemoData, cases: readonly ReducedCase[], depts: re
   return idx;
 }
 
-export function runSearch(idx: readonly SearchItem[], q: string): SearchItem[] {
+// One small typo is tolerated for words of four or more characters.
+function oneEdit(a: string, b: string): boolean {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (a.length >= b.length) i++;
+    if (b.length >= a.length) j++;
+  }
+  return edits + (i < a.length || j < b.length ? 1 : 0) <= 1;
+}
+
+// At most `perGroup` per group and `total` in all, best first (4 and 10: the top bar's grouped list).
+export function runSearch<T extends SearchItem>(idx: readonly T[], q: string, { perGroup: cap = 4, total = 10 } = {}): T[] {
   const toks = tokens(q);
   if (!toks.length) return [];
-  const lower = q.trim().toLowerCase();
-  const scored = idx.filter((x) => hits(x.hay, toks)).map((x) => {
-    const t = x.title.toLowerCase();
-    let score = 0;
-    if (t === lower) score += 40;
-    else if (t.indexOf(lower) === 0) score += 24;
-    else if (t.includes(lower)) score += 16;
-    toks.forEach((k) => { if (t.includes(k)) score += 6; else if (x.sub.toLowerCase().includes(k)) score += 2; });
-    return { x, score };
-  }).sort((a, b) => b.score - a.score || a.x.group - b.x.group);
-  // at most 4 per group, 10 in total, best first
+  const phrase = toks.join(" ");
+  const scored = idx.flatMap((x) => {
+    const title = normalizeSearch(x.title), sub = normalizeSearch(x.sub);
+    const hay = normalizeSearch([x.title, x.sub, x.right, x.hay].join(" "));
+    const words = hay.split(" ");
+    let typos = 0;
+    for (const token of toks) {
+      if (hay.includes(token)) continue;
+      if (token.length < 4 || !words.some((word) => oneEdit(token, word))) return [];
+      typos++;
+    }
+    let score = title === phrase ? 80 : title.startsWith(phrase) ? 50 : title.includes(phrase) ? 35 : 0;
+    for (const token of toks) {
+      if (title.split(" ").includes(token)) score += 15;
+      else if (title.includes(token)) score += 10;
+      else if (sub.includes(token)) score += 4;
+    }
+    return [{ x, score: score - typos * 100 }];
+  }).sort((a, b) => b.score - a.score || a.x.group - b.x.group || a.x.title.localeCompare(b.x.title));
   const perGroup: Record<number, number> = {};
-  const out: SearchItem[] = [];
-  scored.forEach(({ x }) => {
+  return scored.filter(({ x }) => {
     perGroup[x.group] = (perGroup[x.group] ?? 0) + 1;
-    if (perGroup[x.group] <= 4 && out.length < 10) out.push(x);
-  });
-  return out;
+    return perGroup[x.group] <= cap;
+  }).slice(0, total).map(({ x }) => x);
 }
