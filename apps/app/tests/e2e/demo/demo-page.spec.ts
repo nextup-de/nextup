@@ -1,5 +1,6 @@
 // The static demo (/demo, docs/IDEAS.md "The demo page"): no company, no login. The prepared idea and two
-// prepared answers, one click each, the coach's prepared replies after a short pause, then publish it: the
+// prepared answers, one click each, the coach's prepared replies after a short pause - the AI analysis
+// under them and the rail ready, kept through a visit to the dashboard - then publish it: the
 // case opens with its main points, the desk asks a question by itself, the dashboard shows every status
 // and opens each case at its own address - and a reload starts over. A company's /raise offers none of it.
 import { aiMessages, ANSWER, expect, publishTo, START, test } from "../helpers";
@@ -29,6 +30,16 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
       await expect(aiMessages(page).last()).toContainText(reply, { timeout: 30_000 });
     }
     await expect(page.getByRole("button", { name: /^Insert the / })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Publish now" })).toBeVisible();
+  });
+
+  await test.step("the AI analysis is under the reply, the rail is ready, and the dashboard and back keeps the chat", async () => {
+    await expect(page.getByRole("group", { name: "AI analysis" })).toContainText("Feasibility");
+    await expect(page.getByText("Ready to publish")).toBeVisible();
+    await page.getByRole("link", { name: "Dashboard", exact: true }).click();
+    await expect(page).toHaveURL(/\/demo\/dashboard$/);
+    await page.getByRole("link", { name: "Ideas", exact: true }).click();
+    await expect(aiMessages(page).last()).toContainText("It is ready: publish it", { timeout: 15_000 });
     await expect(page.getByRole("button", { name: "Publish now" })).toBeVisible();
   });
 

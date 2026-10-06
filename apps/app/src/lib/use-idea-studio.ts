@@ -62,18 +62,20 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
 
   const fromView = (d: DraftView | null): Live | null => (d && d.scores.length ? { parts: d.scores, overall: d.overall, delta: null, sameAs: null, replies: [] } : null);
 
-  const open = useCallback(async (id: string) => {
+  // Resolves to the draft, or null when it could not be opened.
+  const open = useCallback(async (id: string): Promise<DraftView | null> => {
     abort.current?.abort();
     setError(""); setSending(null);
     opened.current = id;
     const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(mine, id);
-    if (opened.current !== id) return;
+    if (opened.current !== id) return d;
     setDraft(d); setLive(fromView(d));
-    if (!d) { setError("That draft could not be opened."); return; }
+    if (!d) { setError("That draft could not be opened."); return null; }
     // The suggested answers are worked out on the server, where the company's goals and routes are.
-    if (d.status !== "draft" || local) return;
+    if (d.status !== "draft" || local) return d;
     const r = await ideaRepliesAction({ slug, id: d.id, turns: d.turns.map(({ role, text }) => ({ role, text })), affected: d.affected, attachments: d.attachments });
     if (r.ok && opened.current === id) setLive((l) => (l ? { ...l, replies: r.replies } : l));
+    return d;
   }, [slug, serverMode, local, mine]);
 
   const startNew = useCallback(() => {

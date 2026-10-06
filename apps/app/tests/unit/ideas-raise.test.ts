@@ -1,48 +1,49 @@
-// The raise page's reading of the benchmark (features/ideas/raise.ts): rail segments, dials,
+// The raise page's reading of the benchmark (features/ideas/raise.ts): the rail's five points, dials,
 // advice, labels. Everything is derived from the benchmark's own facts.
 import { describe, expect, it } from "vitest";
 import { benchmark, weakest } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
-import { adviceOf, deltaNote, dialsOf, gapsOf, greetName, IDEA_UPDATE, initials, isUnsure, MAX_TOPICS, MIN_TOPICS, splitIdea, splitUpdate, topicsOf, whenLabel, withoutSkipped } from "@/features/ideas/raise";
+import { adviceOf, dialsOf, dialsUp, greetName, IDEA_UPDATE, initials, isUnsure, levelOf, RAIL, railOf, splitIdea, splitUpdate, whenLabel, withoutSkipped } from "@/features/ideas/raise";
 import { GOALS } from "@/features/evaluate";
 import { ROUTES } from "@/features/demo/seed";
 
 const ctx = { routes: ROUTES, goals: GOALS, cases: [], spendLimitEur: 5000 };
 const oneLiner = benchmark({ text: "A shared calendar for the endurance rig", affected: [], attachments: 0 }, ctx);
 
-describe("topics and the rail", () => {
-  const topics = topicsOf(oneLiner.parts);
-  it("prepares 2-8 topics from what the first message leaves open", () => {
-    expect(topics.length).toBeGreaterThanOrEqual(MIN_TOPICS);
-    expect(topics.length).toBeLessThanOrEqual(MAX_TOPICS);
-    expect(new Set(topics).size).toBe(topics.length);
+describe("the rail: the five points a decision needs", () => {
+  it("is the five dials, in their order", () => {
+    expect(railOf(oneLiner.parts).map((g) => g.label)).toEqual(dialsOf(oneLiner.parts).map((d) => d.label));
   });
-  it("starts empty on step one: nothing clear, the first topic active, short labels", () => {
-    const gaps = gapsOf(topics, oneLiner.parts);
-    expect(gaps.filter((g) => g.status === "clear")).toHaveLength(0);
-    expect(gaps.map((g) => g.status)).toEqual(["active", ...gaps.slice(1).map(() => "open")]);
-    expect(gaps.every((g) => g.label.length <= 20)).toBe(true);
+  it("asks the benchmark's own questions, so a 'not sure' skips the right one", () => {
+    const blank = benchmark({ text: "Buy a thing", affected: [], attachments: 0 }, { ...ctx, routes: [], goals: [] });
+    const asked = blank.parts.flatMap((p) => p.missing);
+    for (const r of RAIL) expect(asked).toContain(r.ask);
   });
-  it("checks a topic off once the idea answers it", () => {
-    const later = benchmark({ text: "A shared calendar for the endurance rig. A pilot for one week on line 3 saves 20 minutes per shift.", affected: ["M. Roth"], attachments: 0 }, ctx);
-    expect(gapsOf(topics, later.parts).filter((g) => g.status === "clear").length).toBeGreaterThan(0);
+  it("starts on the first open point, with what the first message already answers checked off", () => {
+    const gaps = railOf(oneLiner.parts);
+    expect(gaps.filter((g) => g.status === "active")).toHaveLength(1);
+    expect(gaps.find((g) => g.status !== "clear")?.status).toBe("active");
+    for (const g of gaps.filter((x) => x.status === "clear")) expect(g.answer).toBeTruthy();
   });
-  it("puts the coach's first question first: the weakest bar's", () => {
-    const weakestBar = [...oneLiner.parts].sort((a, b) => a.value - b.value).find((p) => p.missing.length);
-    expect(topics[0]).toBe(weakestBar?.missing[0]);
+  it("checks a point off once the idea answers it", () => {
+    const later = benchmark({ text: "A shared calendar for the endurance rig. A pilot for one week on line 3 saves 20 minutes per shift.", affected: [], attachments: 0 }, ctx);
+    const status = (b: typeof later, key: string) => railOf(b.parts).find((g) => g.key === key)?.status;
+    expect(status(oneLiner, "value")).not.toBe("clear");
+    expect(status(later, "value")).toBe("clear");
+    expect(status(later, "risk")).toBe("clear");
   });
-  it("moves on when the active topic is marked unknown", () => {
-    const first = gapsOf(topics, oneLiner.parts).find((g) => g.status === "active");
-    const next = gapsOf(topics, oneLiner.parts, [first?.id ?? ""]);
+  it("leaves out what does not stop a publish: a photo, who else it helps", () => {
+    const asks = railOf(oneLiner.parts).map((g) => g.ask);
+    expect(asks.some((a) => /photo|who else/i.test(a))).toBe(false);
+  });
+  it("moves on when the next point is marked unknown", () => {
+    const first = railOf(oneLiner.parts).find((g) => g.status === "active");
+    const next = railOf(oneLiner.parts, [first?.id ?? ""]);
     expect(next.find((g) => g.id === first?.id)?.status).toBe("unknown");
     expect(next.find((g) => g.status === "active")?.id).not.toBe(first?.id);
   });
-  it("tops a nearly finished idea up to two topics", () => {
-    const done = oneLiner.parts.map((p) => ({ ...p, missing: [], found: p.found.length ? p.found : ["Point of " + p.id] }));
-    expect(topicsOf(done)).toHaveLength(MIN_TOPICS);
-  });
   it("keeps the coach off the questions answered 'not sure', without touching the scores", () => {
-    const first = topics[0];
+    const first = railOf(oneLiner.parts).find((g) => g.status === "active")?.id ?? "";
     const asked = withoutSkipped(oneLiner, [first]);
     expect(asked.parts.flatMap((p) => p.missing)).not.toContain(first);
     expect(asked.parts.map((p) => p.value)).toEqual(oneLiner.parts.map((p) => p.value));
@@ -89,15 +90,24 @@ describe("dialsOf", () => {
   });
 });
 
-describe("advice and notes", () => {
+describe("advice and the chat's card", () => {
   it("follows the publish line", () => {
     expect(adviceOf(80, 70, "Production").name).toBe("Approve");
     expect(adviceOf(60, 70, "Production").name).toBe("Pilot");
     expect(adviceOf(30, 70, "Production").name).toBe("Needs info");
   });
-  it("names only the bars that went up", () => {
-    expect(deltaNote({ fit: 0, impact: 40, feasibility: -5, clarity: 15 }, oneLiner.parts)).toBe("Impact & reach +40 · Novelty & clarity +15");
-    expect(deltaNote(null, oneLiner.parts)).toBeNull();
+  it("says each dial in a word for the chat - the cost and the risk themselves, so low is good there", () => {
+    const d = (key: "value" | "cost" | "risk", value: number) => ({ key, label: key, value, note: "", basis: "", scored: true });
+    expect([90, 50, 10].map((v) => levelOf(d("value", v)))).toEqual(["Strong", "Medium", "Weak"]);
+    expect(levelOf(d("cost", 85))).toBe("Low");
+    expect(levelOf(d("risk", 30))).toBe("High");
+    expect(levelOf({ ...d("value", 0), scored: false })).toBe("Not yet");
+  });
+  it("marks only the dials an answer made better", () => {
+    const later = benchmark({ text: "A shared calendar for the endurance rig. A pilot for one week on line 3 saves 20 minutes per shift.", affected: [], attachments: 0 }, ctx);
+    const up = dialsUp(dialsOf(oneLiner.parts), dialsOf(later.parts));
+    expect(up).toEqual(expect.arrayContaining(["value", "risk"]));
+    expect(dialsUp(dialsOf(later.parts), dialsOf(later.parts))).toEqual([]);
   });
 });
 

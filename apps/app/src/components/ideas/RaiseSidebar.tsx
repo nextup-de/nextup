@@ -1,5 +1,5 @@
 "use client";
-// The raise page's sidebar: search, the open draft (title, publish, Idea / AI, what was added), and
+// The raise page's sidebar: search, the open draft (title, publish, Idea / Analysis, what was added), and
 // the ideas list with pinned ones on top. Collapsible; a drawer on phones. Props in, JSX out.
 import { useEffect, useRef, useState } from "react";
 import { Icon, Search, Solid } from "./raiseIcons";
@@ -113,7 +113,7 @@ function Card({ c }: { c: DraftCard }) {
           </button>
         )}
         <button type="button" className={s.half} data-on={c.aiOn} onClick={c.onAI}>
-          <span className={s.sparkle} data-on={c.analysed}><Solid name="sparkle" size={10.5} /></span>AI
+          <span className={s.sparkle} data-on={c.analysed}><Solid name="sparkle" size={10.5} /></span>Analysis
         </button>
       </div>
 

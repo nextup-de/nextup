@@ -8,7 +8,8 @@
 //
 // The conversation, the drafts, the benchmark and publishing are the idea studio's (lib/use-idea-studio.ts).
 // The receiver, colleagues, meeting, visibility, pins, idea edits and "not sure" answers are stand-ins
-// (raisePreview.ts, RAISE-FOR-KEVIN.txt).
+// (raisePreview.ts, RAISE-FOR-KEVIN.txt). What is open here - the conversation, the view, unsent text -
+// is kept per company and person (lib/use-kept.ts): a visit to the dashboard and back finds it as it was.
 //
 // `script`: the static demo (app/demo, no company behind it) - the composer offers the demo script's next
 // text (features/ideas/demo-script.ts), the coach answers it with its prepared reply, and nothing leaves
@@ -19,17 +20,17 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
 import { closest, evaluate, GOALS } from "@/features/evaluate";
-import { benchmark } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
-import { ideaContext } from "@/features/ideas/drafts";
+import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
 import { DEMO_CASE, DEMO_SCRIPT, scriptStep } from "@/features/ideas/demo-script";
-import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, IDEA_UPDATE, initials, isUnsure, splitIdea, splitUpdate, topicsOf, whenLabel, type Gap } from "@/features/ideas/raise";
+import { adviceOf, clockLabel, dialsOf, dialsUp, greetName, IDEA_UPDATE, initials, isUnsure, railOf, splitIdea, splitUpdate, whenLabel, type Gap } from "@/features/ideas/raise";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
 import { SPEND_LIMIT_EUR } from "@/features/ideas/drafts";
 import { saveShots, shrinkImage } from "@/lib/shots";
 import { brainProposalAction } from "@/server/actions/brain";
 import { useIdeaStudio } from "@/lib/use-idea-studio";
+import { useKept } from "@/lib/use-kept";
 import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
 import { RaiseMenu, type MenuView } from "./RaiseMenu";
@@ -52,22 +53,23 @@ export function Raise({ script = false }: { script?: boolean }) {
   // The static demo scores and answers in this browser, against the seed it shows.
   const local = useMemo(() => (script ? ideaContext(seed.routes, GOALS, S.cases) : null), [script, seed.routes, S.cases]);
   const studio = useIdeaStudio(tenant.slug, serverMode, persona.who.name, local);
-  const preview = useRaisePreview();
+  const scope = tenant.slug + "/" + persona.who.name; // whose page this is: what is kept across visits, per person
+  const preview = useRaisePreview(scope);
   const { draft, live, threshold, sending } = studio;
   const who = persona.who;
 
-  const [stage, setStage] = useState<"start" | "chat">("start");
-  const [view, setView] = useState<"chat" | "idea" | "analysis">("chat");
-  const [sb, setSb] = useState<"auto" | "open" | "hidden">("auto"); // auto: open on screens, closed on phones (CSS)
+  const [stage, setStage] = useKept<"start" | "chat">(scope, "stage", "start");
+  const [openId, setOpenId] = useKept<string | null>(scope, "open", null); // the draft open in the chat, reopened on the next visit
+  const [view, setView] = useKept<"chat" | "idea" | "analysis">(scope, "view", "chat");
+  const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "auto"); // auto: open on screens, closed on phones (CSS)
   const [query, setQuery] = useState("");
-  const [startText, setStartText] = useState("");
-  const [startCtx, setStartCtx] = useState("");
-  const [startAff, setStartAff] = useState<string[]>([]);
-  const [files, setFiles] = useState<Record<string, FileItem[]>>({});
-  const [slot, setSlot] = useState("n0"); // where the choices of the open idea live: the start form's key, or a draft id
-  const [aliases, setAliases] = useState<Record<string, string>>({}); // draft id -> the start slot that made it
-  const [topics, setTopics] = useState<Record<string, string[]>>({}); // slot -> the unclear topics prepared when it was raised
-  const [text, setText] = useState("");
+  const [startText, setStartText] = useKept(scope, "startText", "");
+  const [startCtx, setStartCtx] = useKept(scope, "startCtx", "");
+  const [startAff, setStartAff] = useKept<string[]>(scope, "startAff", []);
+  const [files, setFiles] = useKept<Record<string, FileItem[]>>(scope, "files", {});
+  const [slot, setSlot] = useKept(scope, "slot", "n0"); // where the choices of the open idea live: the start form's key, or a draft id
+  const [aliases, setAliases] = useKept<Record<string, string>>(scope, "aliases", {}); // draft id -> the start slot that made it
+  const [text, setText] = useKept(scope, "text", "");
   const [ask, setAsk] = useState<string | null>(null); // a rail question the author chose to answer now
   const [menu, setMenu] = useState<Menu>(null);
   const [evalStep, setEvalStep] = useState<number | null>(null);
@@ -102,6 +104,16 @@ export function Raise({ script = false }: { script?: boolean }) {
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
 
+  // Back on the page: the conversation that was open is opened again - or, gone in the meantime, the
+  // start page. Only once the person is known (`ready`), so nobody else's draft is opened on the way.
+  useEffect(() => {
+    if (!ready || !openId || studio.draft?.id === openId) return;
+    setStage("chat");
+    void studio.open(openId).then((d) => { if (!d) { setOpenId(null); setStage("start"); studio.setError(""); } });
+  }, [ready, scope]); // eslint-disable-line react-hooks/exhaustive-deps -- once per arrival, not on every change
+  // The draft the chat shows is the one to reopen; the start page has none.
+  useEffect(() => { if (draft?.id && stage === "chat") setOpenId(draft.id); }, [draft?.id, stage, setOpenId]);
+
   // What the evaluation and the analysis say about who receives it: the routing, run here on the open idea.
   const ev = useMemo(() => {
     if (!idea.text && !startText.trim()) return null;
@@ -132,11 +144,9 @@ export function Raise({ script = false }: { script?: boolean }) {
 
   // After the first answer the analysis opens, once the evaluation has finished playing.
   const shownView = firstPending && stage === "chat" && !sending && turns.length > 0 ? "analysis" : view;
-  // The rail: the topics prepared when the idea was raised - for a draft from an earlier visit, worked out
-  // again from its first message.
+  // The rail: the five points the person who decides needs, as the benchmark sees them now.
   const benchCtx = ideaContext(seed.routes, GOALS, S.cases);
-  const myTopics = topics[slot] ?? (firstText ? topicsOf(benchmark({ text: firstText, affected: [], attachments: 0 }, benchCtx).parts) : []);
-  const gaps: Gap[] = draft && turns.length ? gapsOf(myTopics, parts, preview.unknown[draft.id] ?? []) : [];
+  const gaps: Gap[] = draft && turns.length ? railOf(parts, preview.unknown[draft.id] ?? []) : [];
   const allAnswered = gaps.length > 0 && !gaps.some((g) => g.status === "open" || g.status === "active");
 
   // ── Actions ─────────────────────────────────────────────────────────────────────────────────
@@ -164,12 +174,12 @@ export function Raise({ script = false }: { script?: boolean }) {
   const leave = () => { if (draft && slot !== draft.id) setAliases((a) => ({ ...a, [draft.id]: slot })); };
   const reset = () => { leave(); setText(""); setAsk(null); setMenu(null); go("chat"); setSb((x) => (x === "open" ? "auto" : x)); };
   const newIdea = () => {
-    studio.startNew(); reset();
+    studio.startNew(); reset(); setOpenId(null);
     setStage("start"); setStartText(""); setStartCtx(""); setStartAff([]); setEvalStep(null); setSlot(newId("n"));
     setTimeout(() => startField.current?.focus(), 60);
   };
   const openDraft = (id: string) => {
-    void studio.open(id); reset();
+    void studio.open(id); reset(); setOpenId(id);
     setStage("chat"); setEvalStep(null); setSlot(aliases[id] ?? id);
   };
 
@@ -186,7 +196,6 @@ export function Raise({ script = false }: { script?: boolean }) {
     const message = main + (startCtx.trim() ? "\n\n" + startCtx.trim() : "") + (extra ? "\n\n" + extra : "");
     // The script goes on in the chat, where its next answer is offered; any other idea opens its analysis first.
     setMenu(null); setEvalStep(0); setFirstPending(!(story && scriptStep([{ role: "user", text: message }]) === 1));
-    setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx).parts) }));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
     let step = 0;
     const t = setInterval(() => {
@@ -301,6 +310,10 @@ export function Raise({ script = false }: { script?: boolean }) {
 
   // The conversation without the first message - that is the idea, shown in the Idea view.
   const lastAi = [...turns].reverse().find((t) => t.role === "assistant")?.id ?? null;
+  // The AI's read under the latest reply: the five dials now, and which of them the answer before it moved.
+  const dials = dialsOf(parts);
+  const advice = adviceOf(overall, threshold, team || "your team");
+  const readAt = (upto: number) => dialsOf(scoreDraft({ turns: turns.slice(0, upto), affected, attachments: myFiles.length }, local ?? benchCtx).parts);
   const msgs: ChatMsg[] = turns.flatMap((t, i): ChatMsg[] => {
     if (i === firstIdx) return [];
     if (t.role === "user") { const u = splitUpdate(t.text); return [{ id: t.id, role: "user", text: u.said, note: u.updated ? "Idea changes shared with NextUp" : null }]; }
@@ -312,11 +325,13 @@ export function Raise({ script = false }: { script?: boolean }) {
     const offer = !published && isLast && gained && prev?.role === "user" && i - 1 !== firstIdx;
     const before = splitIdea(edit ? edit.text : firstText).context;
     const after = (before ? before + "\n" : "") + splitUpdate(prev?.text ?? "").said.replace(/\s+$/, "");
+    const first = i === firstIdx + 1;
     return [{
       id: t.id, role: "ai", text: stripTags(t.text),
-      // The static demo keeps the numbers on the side (rail, analysis), not under the replies.
-      note: i === firstIdx + 1 ? "Title and problem added" : isLast && !script ? deltaNote(live?.delta ?? null, parts) : null,
-      quick: isLast && !published ? { publish: allAnswered || scriptDone, review: allAnswered || scriptDone } : undefined,
+      // The numbers stay in the analysis: the chat shows the five dials as bars and words.
+      note: first ? "Title and problem added" : null,
+      read: isLast ? { dials, advice, first, up: first || i < 2 ? [] : dialsUp(readAt(i - 1), readAt(i + 1)) } : undefined,
+      quick: isLast && !published ? { publish: allAnswered || scriptDone, review: true } : undefined,
       suggest: resolved || offer ? {
         key: sgKey, before, after, state: resolved ?? "open",
         onYes: (txt) => { if (draft) { preview.edit(draft.id, { orig: edit?.orig ?? firstText, text: splitIdea(edit ? edit.text : firstText).description + "\n\n" + txt }); preview.resolve(sgKey, "yes"); } },
@@ -346,7 +361,7 @@ export function Raise({ script = false }: { script?: boolean }) {
     saveLabel: published ? "Published " + clockLabel(draft.updatedAt) : draft.updatedAt ? "Saved " + clockLabel(draft.updatedAt) : "Save as draft", saved: !!draft.updatedAt,
     onSave: () => { void studio.save({}).then((ok) => showToast(ok ? "Draft saved. You find it under Ideas." : "Could not save the draft.")); },
     discardLabel: published ? "Remove from list" : "Discard draft",
-    onDiscard: () => { void studio.discard().then(() => { reset(); setStage("start"); }); showToast(published ? "Removed from the list." : "Draft discarded."); },
+    onDiscard: () => { void studio.discard().then(() => { reset(); setStage("start"); setOpenId(null); }); showToast(published ? "Removed from the list." : "Draft discarded."); },
     menu: menuFor("card"),
   } : null;
 
@@ -421,7 +436,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} dials={dialsOf(parts)}
       summary={((x) => (x.length > 320 ? x.slice(0, 320).replace(/\s+\S*$/, "") + "…" : x))((idea.text || "").replace(/\s+/g, " ").trim()) || "Nothing to summarise yet."}
-      advice={adviceOf(overall, threshold, team || "your team")}
+      advice={advice}
       pattern={affected.length > 1 ? "The problem is felt beyond one team: " + affected.join(", ") + "." : "It stands on its own."}
       cats={cats} similar={sims} reviewers={reviewers} sources={sources} />
   ) : (

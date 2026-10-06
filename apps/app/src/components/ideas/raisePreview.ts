@@ -1,9 +1,10 @@
 "use client";
 // Stand-ins for what a draft cannot store yet - the list for Kevin is RAISE-FOR-KEVIN.txt. The
-// screens are the real ones; this state is not: it lives in the page's memory, a reload forgets it
-// and nobody else sees it. Each piece goes once the draft (or the case.raised payload) has a field.
+// screens are the real ones; this state is not: it lives in the page's memory (lib/use-kept.ts, per
+// company and person, so it is still there after a visit to another page), a reload forgets it and
+// nobody else sees it. Each piece goes once the draft (or the case.raised payload) has a field.
 // Keyed by the page's slot: a draft id, or the start form's own key for the draft it made.
-import { useState } from "react";
+import { useKept } from "@/lib/use-kept";
 
 export type Meeting = { dur: string; when: string };
 export type Visibility = "private" | "public" | "custom";
@@ -26,12 +27,14 @@ export type RaisePreview = {
   resolve: (key: string, v: "yes" | "no") => void;
 };
 
-export function useRaisePreview(): RaisePreview {
-  const [extras, setAll] = useState<Record<string, Extras>>({});
-  const [pinned, setPinned] = useState<string[]>([]);
-  const [unknown, setUnknown] = useState<Record<string, string[]>>({});
-  const [edits, setEdits] = useState<Record<string, IdeaEdit>>({});
-  const [suggested, setSuggested] = useState<Record<string, "yes" | "no">>({});
+const NONE = {};
+
+export function useRaisePreview(scope: string): RaisePreview {
+  const [extras, setAll] = useKept<Record<string, Extras>>(scope, "extras", NONE);
+  const [pinned, setPinned] = useKept<string[]>(scope, "pinned", []);
+  const [unknown, setUnknown] = useKept<Record<string, string[]>>(scope, "unknown", NONE);
+  const [edits, setEdits] = useKept<Record<string, IdeaEdit>>(scope, "edits", NONE);
+  const [suggested, setSuggested] = useKept<Record<string, "yes" | "no">>(scope, "suggested", NONE);
   return {
     extras: (key) => extras[key] ?? NO_EXTRAS,
     setExtras: (key, next) => setAll((s) => ({ ...s, [key]: { ...(s[key] ?? NO_EXTRAS), ...next } })),
