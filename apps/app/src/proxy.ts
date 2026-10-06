@@ -25,6 +25,9 @@ export function proxy(request: NextRequest) {
 
   const rewrite = (to: string) => NextResponse.rewrite(new URL(to + url.search, url));
 
+  // A stack that is the static demo (STATIC_DEMO in features/auth/request.ts): no sessions to check.
+  if (resolved.kind === "demo") return rewrite(resolved.rewriteTo);
+
   // No secret configured, or no database (unset, or set but not answering): sessions cannot be
   // issued, so demanding one would only lock everyone out of the demo. Still map the host/path
   // onto the company, or a subdomain/single deployment would serve nothing. That is what keeps

@@ -1,6 +1,7 @@
 "use client";
 // The gold-ringed composer, on the start page and under the chat: actions button, a field that grows,
 // dictation (Web Speech API, where the browser has it) and send. Enter sends, Shift+Enter is a new line.
+// On a demo-stage company `fill` puts the demo script's next text in the field (features/ideas/demo-script).
 import { useEffect, useRef, useState } from "react";
 import { Icon, Mic, Solid } from "./raiseIcons";
 import { PersonButton } from "./RaisePerson";
@@ -18,7 +19,7 @@ const speechCtor = (): RecognitionCtor | null => {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 };
 
-export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend, sendLabel, fieldRef, chips, strip, menuOpen, onMenu, menu, onUnsupported }: {
+export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend, sendLabel, fieldRef, chips, strip, menuOpen, onMenu, menu, onUnsupported, fill }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
@@ -32,6 +33,7 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
   onMenu: () => void;
   menu: React.ReactNode;
   onUnsupported: () => void;
+  fill?: { label: string; text: string } | null;
 }) {
   const [dictating, setDictating] = useState(false);
   const rec = useRef<Recognition | null>(null);
@@ -70,6 +72,12 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
             <textarea ref={fieldRef} className={s.field} rows={1} value={value} placeholder={placeholder} aria-label={placeholder}
               onChange={(e) => onChange(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); onSubmit(); } }} />
+            {fill && (
+              <button type="button" className={s.fill} title={"Insert: " + fill.text} aria-label={"Insert the " + fill.label.toLowerCase()}
+                onClick={() => { onChange(fill.text); setTimeout(() => { const el = fieldRef?.current; if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; } }, 0); }}>
+                <Solid name="sparkle" size={9} fill="currentColor" /><span className={s.fillLabel}>{fill.label}</span>
+              </button>
+            )}
             <button type="button" className={s.dictate} onClick={dictate} aria-pressed={dictating} title={dictating ? "Stop dictation" : "Dictate"} aria-label="Dictate"><Mic size={13.5} /></button>
             <button type="button" className={s.send} data-ready={canSend} onClick={onSubmit} disabled={!canSend} title={sendLabel} aria-label={sendLabel}><Icon name="up" size={11.25} stroke="#fff" width={2.6} /></button>
           </div>

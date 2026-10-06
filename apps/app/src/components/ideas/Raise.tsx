@@ -9,6 +9,10 @@
 // The conversation, the drafts, the benchmark and publishing are the idea studio's (lib/use-idea-studio.ts).
 // The receiver, colleagues, meeting, visibility, pins, idea edits and "not sure" answers are stand-ins
 // (raisePreview.ts, RAISE-FOR-KEVIN.txt).
+//
+// `script`: the static demo (app/demo, no company behind it) - the composer offers the demo script's next
+// text (features/ideas/demo-script.ts), the coach answers it with its prepared reply, and nothing leaves
+// the browser. The company's /raise never sets it.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
@@ -18,6 +22,7 @@ import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
 import { ideaContext } from "@/features/ideas/drafts";
+import { DEMO_SCRIPT, scriptStep } from "@/features/ideas/demo-script";
 import { adviceOf, clockLabel, deltaNote, dialsOf, gapsOf, greetName, IDEA_UPDATE, initials, isUnsure, splitIdea, splitUpdate, topicsOf, whenLabel, type Gap } from "@/features/ideas/raise";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
@@ -41,9 +46,11 @@ import s from "./Raise.module.css";
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
 type Menu = { at: "start" | "chat" | "card"; view: MenuView } | null;
 
-export function Raise() {
+export function Raise({ script = false }: { script?: boolean }) {
   const { seed, S, persona, act, ready, href, tenant, showToast, serverMode } = useDemo();
-  const studio = useIdeaStudio(tenant.slug, serverMode);
+  // The static demo scores and answers in this browser, against the seed it shows.
+  const local = useMemo(() => (script ? ideaContext(seed.routes, GOALS, S.cases) : null), [script, seed.routes, S.cases]);
+  const studio = useIdeaStudio(tenant.slug, serverMode, local);
   const preview = useRaisePreview();
   const { draft, live, threshold, sending } = studio;
   const who = persona.who;
@@ -88,6 +95,9 @@ export function Raise() {
   const firstText = firstIdx >= 0 ? turns[firstIdx].text : "";
   const edit = draft ? preview.edits[draft.id] ?? null : null;
   const shown = splitIdea(edit ? edit.text : firstText);
+  // The demo script: where this conversation stands in it (-1 once the author wrote their own words).
+  const scriptAt = script ? scriptStep(turns) : -1;
+  const scriptDone = scriptAt === DEMO_SCRIPT.length; // all of it said: publishing is offered, as for a rail with nothing open
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
 
@@ -170,7 +180,8 @@ export function Raise() {
       extras.meet ? "I’d like a " + extras.meet.dur + " meeting " + extras.meet.when + "." : "",
     ].filter(Boolean).join("\n");
     const message = main + (startCtx.trim() ? "\n\n" + startCtx.trim() : "") + (extra ? "\n\n" + extra : "");
-    setMenu(null); setEvalStep(0); setFirstPending(true);
+    // The script goes on in the chat, where its next answer is offered; any other idea opens its analysis first.
+    setMenu(null); setEvalStep(0); setFirstPending(!(script && scriptStep([{ role: "user", text: message }]) === 1));
     setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx).parts) }));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
     let step = 0;
@@ -204,7 +215,7 @@ export function Raise() {
     if (!draft || busy || published || pubStep) return;
     setMenu(null);
     const text = await step(setPubStep, "Reading your idea…", "working", () => idea.text, 450);
-    const brain = await step(setPubStep, "Asking the router…", "searching", () => brainProposalAction({ slug: tenant.slug, title: idea.title, body: idea.body }).catch(() => null), 650);
+    const brain = await step(setPubStep, "Asking the router…", "searching", () => (script ? null : brainProposalAction({ slug: tenant.slug, title: idea.title, body: idea.body }).catch(() => null)), 650);
     const lead = await step(setPubStep, "Checking the org chart…", "connecting", () => ev?.lead ?? "Triage desk", 500);
     const input = receiverInput(text, lead, brain ? { routeId: brain.proposal.routeId, confidence: brain.proposal.confidence, reason: brain.reason } : null);
     setRcvInput(input);
@@ -297,8 +308,9 @@ export function Raise() {
     const after = (before ? before + "\n" : "") + splitUpdate(prev?.text ?? "").said.replace(/\s+$/, "");
     return [{
       id: t.id, role: "ai", text: stripTags(t.text),
-      note: i === firstIdx + 1 ? "Title and problem added" : isLast ? deltaNote(live?.delta ?? null, parts) : null,
-      quick: isLast && !published ? { publish: allAnswered, review: allAnswered } : undefined,
+      // The static demo keeps the numbers on the side (rail, analysis), not under the replies.
+      note: i === firstIdx + 1 ? "Title and problem added" : isLast && !script ? deltaNote(live?.delta ?? null, parts) : null,
+      quick: isLast && !published ? { publish: allAnswered || scriptDone, review: allAnswered || scriptDone } : undefined,
       suggest: resolved || offer ? {
         key: sgKey, before, after, state: resolved ?? "open",
         onYes: (txt) => { if (draft) { preview.edit(draft.id, { orig: edit?.orig ?? firstText, text: splitIdea(edit ? edit.text : firstText).description + "\n\n" + txt }); preview.resolve(sgKey, "yes"); } },
@@ -345,6 +357,10 @@ export function Raise() {
     });
 
   const words = (startText.trim().match(/\S+/g) || []).length;
+  // The script's next text, one click away in an empty composer.
+  const next = (at: number) => (at >= 0 && at < DEMO_SCRIPT.length ? { label: DEMO_SCRIPT[at].label, text: DEMO_SCRIPT[at].say } : null);
+  const chatFill = draft && !published && !sending && !text.trim() ? next(scriptAt) : null;
+  const startFill = script && !startText.trim() && evalStep === null ? next(0) : null;
   const composerChat = (
     <div className={s.dock}>
       <div className={s.editedWrap}>
@@ -361,7 +377,7 @@ export function Raise() {
       <div className={s.dockBar}>
         <RaiseComposer value={text} onChange={setText} onSubmit={send} fieldRef={chatField} sendLabel="Send"
           placeholder={ask ?? (published ? "Add a follow-up — it goes to Overview" : turns.length ? "Answer, or add more detail…" : "Describe the problem or idea…")}
-          canSend={!!text.trim() && !sending} chips={[]} strip={false}
+          canSend={!!text.trim() && !sending} chips={[]} strip={false} fill={chatFill}
           menuOpen={menu?.at === "chat"} onMenu={() => toggleMenu("chat")} menu={menuFor("chat")} onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       </div>
     </div>
@@ -391,7 +407,7 @@ export function Raise() {
       composer={
         <RaiseComposer value={startText} onChange={setStartText} onSubmit={startRaise} fieldRef={startField} sendLabel="Ask NextUp"
           placeholder="Share an idea that would make work better…" canSend={startText.trim().length >= 3 && evalStep === null}
-          chips={[...chips, ...fileChips]} strip menuOpen={menu?.at === "start"} onMenu={() => toggleMenu("start")} menu={menuFor("start")}
+          chips={[...chips, ...fileChips]} strip fill={startFill} menuOpen={menu?.at === "start"} onMenu={() => toggleMenu("start")} menu={menuFor("start")}
           onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       } />
   ) : shownView === "idea" ? (

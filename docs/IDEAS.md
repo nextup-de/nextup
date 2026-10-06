@@ -1,6 +1,6 @@
 # The idea studio
 
-> **Updated 2026-09-30** · reference: how the idea studio works.
+> **Updated 2026-10-06** · reference: how the idea studio works.
 
 The member home (`/[company]/raise`) develops ideas instead of taking a one-line problem. It follows
 the whiteboard sessions of 28 Sep 2026: idea → AI → feedback ⇄ develop → decision → outcome.
@@ -78,6 +78,32 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
    roles, the company's patterns apply; above the ceiling nothing is sent). Its answer is checked against what was sent and
    stored as the proposal (`source: "llm"`, `brain-route-v1`); no answer within `BRAIN_TIMEOUT_MS`,
    or any error, and the keyword row is used as before.
+
+## The demo page
+
+`/demo` (`src/app/demo`) is the raise page for showing people how NextUp works, with nothing behind
+it: made-up data (the built-in seed), no company, no login, no database, no model. It opens on
+`/demo/raise`; the bar's Dashboard goes to `/demo/dashboard`, where a published idea shows up.
+
+- **The script** (`features/ideas/demo-script.ts`): one prepared idea and two prepared answers. While
+  the composer is empty, a gold button on its right puts the next one in the field ("Prepared idea",
+  "Next answer", "Last answer"); Send works as usual. The coach answers each with a prepared reply
+  after about 2.5 s; anything else typed gets the offline coach (`coachMock`). After the last answer
+  the chat offers Publish now and Review analysis, and the first answer stays in the chat instead of
+  opening the analysis.
+- **No numbers in the replies.** The scores stay on the side (the rail, the analysis) and are the
+  benchmark's own, computed in the browser. `tests/unit/ideas-demo-script.test.ts` checks that what
+  the replies say (goal, decider, over the line, which two points stay open) is still true.
+- **Nothing leaves the browser**: `useIdeaStudio(…, local)` scores and answers here, publishing skips
+  the router, and the event log and drafts are the local demo's, under the slug `demo`. Every page
+  load starts from the seed (`components/demo/StaticDemo.tsx`); moving between the demo's pages keeps
+  what was just published.
+- The proxy passes `/demo` through in path and single mode (`STATIC_DEMO` in `features/auth/request.ts`),
+  so it is never read as a company and never asks for a login. A company's own `/raise` is unchanged.
+- **A stack that is the demo**: a single-mode stack whose company is called `demo` (`COMPANY_SLUG=demo`,
+  demo.sellux.ch) serves the static demo at its root - `/raise`, `/dashboard`, `/` - with no login
+  page, and its links drop the `/demo` (`staticDemoPrefix()`). `/admin` stays the admin surface; the
+  stack's own database company is no longer reachable from that host.
 
 ## Privacy
 
