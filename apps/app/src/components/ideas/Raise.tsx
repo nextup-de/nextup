@@ -47,10 +47,11 @@ const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shot
 type Menu = { at: "start" | "chat" | "card"; view: MenuView } | null;
 
 export function Raise({ script = false }: { script?: boolean }) {
-  const { seed, S, persona, act, ready, href, tenant, showToast, serverMode } = useDemo();
+  const { seed, S, persona, role, act, ready, href, tenant, showToast, serverMode } = useDemo();
+  const story = script && role === "member"; // the demo script is the employee's story; others raise their own
   // The static demo scores and answers in this browser, against the seed it shows.
   const local = useMemo(() => (script ? ideaContext(seed.routes, GOALS, S.cases) : null), [script, seed.routes, S.cases]);
-  const studio = useIdeaStudio(tenant.slug, serverMode, local);
+  const studio = useIdeaStudio(tenant.slug, serverMode, persona.who.name, local);
   const preview = useRaisePreview();
   const { draft, live, threshold, sending } = studio;
   const who = persona.who;
@@ -96,7 +97,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   const edit = draft ? preview.edits[draft.id] ?? null : null;
   const shown = splitIdea(edit ? edit.text : firstText);
   // The demo script: where this conversation stands in it (-1 once the author wrote their own words).
-  const scriptAt = script ? scriptStep(turns) : -1;
+  const scriptAt = story ? scriptStep(turns) : -1;
   const scriptDone = scriptAt === DEMO_SCRIPT.length; // all of it said: publishing is offered, as for a rail with nothing open
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
@@ -184,7 +185,7 @@ export function Raise({ script = false }: { script?: boolean }) {
     ].filter(Boolean).join("\n");
     const message = main + (startCtx.trim() ? "\n\n" + startCtx.trim() : "") + (extra ? "\n\n" + extra : "");
     // The script goes on in the chat, where its next answer is offered; any other idea opens its analysis first.
-    setMenu(null); setEvalStep(0); setFirstPending(!(script && scriptStep([{ role: "user", text: message }]) === 1));
+    setMenu(null); setEvalStep(0); setFirstPending(!(story && scriptStep([{ role: "user", text: message }]) === 1));
     setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx).parts) }));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
     let step = 0;
@@ -236,7 +237,7 @@ export function Raise({ script = false }: { script?: boolean }) {
     // in the payload, so the decision log can compare it with where the case went.
     const e = evaluate({ kind: "idea", text: r.title, context: r.body, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, r.brain);
     // The demo script's case carries its main points instead of the raw conversation.
-    const made = script && scriptDone ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
+    const made = story && scriptDone ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     await step(setPubWork, "Raising the case for " + to.name + "…", "composing", () => act.raise({ ...e.payload, title: r.title, body: made.body, upside: made.upside, assignee: to.name, routeId: to.routeId ?? e.payload.routeId }, caseId), 600);
     const images = myFiles.filter((f) => f.img).slice(0, MAX_SHOTS);
     if (images.length) {
@@ -365,7 +366,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   // The script's next text, one click away in an empty composer.
   const next = (at: number) => (at >= 0 && at < DEMO_SCRIPT.length ? { label: DEMO_SCRIPT[at].label, text: DEMO_SCRIPT[at].say } : null);
   const chatFill = draft && !published && !sending && !text.trim() ? next(scriptAt) : null;
-  const startFill = script && !startText.trim() && evalStep === null ? next(0) : null;
+  const startFill = story && !startText.trim() && evalStep === null ? next(0) : null;
   const composerChat = (
     <div className={s.dock}>
       <div className={s.editedWrap}>

@@ -1,12 +1,14 @@
 "use client";
 // Idea drafts for the demo without a database: the same shapes as lib/db/ideas.ts, kept in this
-// browser's localStorage per company. Nothing leaves the browser. With a session and Postgres
+// browser's localStorage per company and person. Nothing leaves the browser. With a session and Postgres
 // the page uses the server actions instead (server/actions/ideas.ts).
 import type { Snapshot, TurnRow } from "@/lib/db/ideas";
 import type { DraftSummary, DraftView } from "@/features/ideas/drafts";
 import { summaryOf } from "@/features/ideas/drafts";
 
 const KEY = (slug: string) => "nextup.ideas." + slug + ".v1";
+// Whose drafts: one company's, one person's - every function below takes this as its `slug`.
+export const draftScope = (slug: string, owner: string) => slug + "/" + owner;
 let seq = 0;
 const mint = (p: string) => p + "_" + Date.now().toString(36) + (seq++).toString(36);
 
