@@ -33,7 +33,7 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQui
           <div className={s.thread} aria-live="polite">
             {!msgs.length && !typing && (
               <div className={s.empty}>
-                <h1 className={`${s.emptyTitle} ${s.serif}`}>What should change?</h1>
+                <h1 className={`${s.emptyTitle} ${s.heading}`}>What should change?</h1>
                 <p className={s.emptyText}>Describe a problem or an idea in your own words. I’ll ask a few questions and build the draft on the left as we go.</p>
               </div>
             )}

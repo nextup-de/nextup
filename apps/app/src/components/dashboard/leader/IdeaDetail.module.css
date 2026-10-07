@@ -21,7 +21,7 @@
 .author { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; border: 0; background: transparent; padding: 4px 12px 4px 4px; margin: -4px 0 -4px -4px; border-radius: 999px; font: inherit; text-align: left; cursor: pointer; color: var(--c-ink); transition: background 180ms ease, transform 160ms var(--ease); }
 .author:hover, .author[data-on="true"] { background: var(--c-fill); }
 .author:active { transform: scale(.98); }
-.authorAvatar { width: 36px; height: 36px; flex: none; border-radius: 50%; background: linear-gradient(180deg, #a5abb6, #858a94); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 600; }
+.authorAvatar { width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--nh-avatar); color: var(--nh-avatar-ink); display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 600; }
 .authorText { min-width: 0; display: flex; flex-direction: column; }
 .authorName { font-size: 14px; font-weight: 600; }
 .authorLine { font-size: 12.5px; color: var(--c-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -32,7 +32,7 @@
 .badge[data-tone="paused"] { color: var(--c-mute); background: var(--c-fill); }
 .close { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 0; background: var(--c-ink); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 .close:hover { background: #000; }
-.title { margin: 0; font-family: var(--nh-serif); font-weight: 400; font-size: 36px; line-height: 1.1; letter-spacing: -0.02em; color: var(--c-title); text-wrap: pretty; }
+.title { margin: 0; font-weight: 600; font-size: 28px; line-height: 1.1; letter-spacing: -0.02em; color: var(--c-title); text-wrap: pretty; }
 .lede { margin: 0; font-size: 16px; line-height: 1.55; color: var(--c-ink-2); text-wrap: pretty; max-width: 62ch; }
 
 /* ── sections ── */
@@ -82,13 +82,13 @@
 .deptChip:active, .personChip:active { transform: scale(.96); }
 .sparkle { flex: none; color: var(--c-left); }
 .chip { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--c-ink); border: 1px solid var(--c-sep-head); border-radius: 999px; padding: 3px 12px 3px 3px; }
-.chipAvatar { width: 22px; height: 22px; flex: none; border-radius: 50%; background: linear-gradient(180deg, #a5abb6, #858a94); color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.chipAvatar { width: 22px; height: 22px; flex: none; border-radius: 50%; background: var(--nh-avatar); color: var(--nh-avatar-ink); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .tag { font-size: 12.5px; font-weight: 500; color: var(--c-ink); background: var(--c-fill); border: 1px solid var(--c-sep-head); border-radius: 999px; padding: 3px 12px; }
 
 .pop { position: absolute; top: calc(100% + 8px); left: 0; z-index: 20; transform-origin: top left; animation: affPop 220ms var(--ease) both; width: 280px; max-width: 80vw; box-sizing: border-box; background: #fff; border-radius: 14px; box-shadow: 0 12px 32px rgb(20 30 60 / 0.16), 0 0 0 0.5px rgb(0 0 0 / 0.08); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .popList { padding: 12px; gap: 10px; }
 .popHead { display: flex; align-items: center; gap: 10px; }
-.popAvatar, .memberAvatar { border-radius: 50%; background: linear-gradient(180deg, #a5abb6, #858a94); color: #fff; font-weight: 600; display: flex; align-items: center; justify-content: center; flex: none; }
+.popAvatar, .memberAvatar { border-radius: 50%; background: var(--nh-avatar); color: var(--nh-avatar-ink); font-weight: 600; display: flex; align-items: center; justify-content: center; flex: none; }
 .popAvatar { width: 40px; height: 40px; font-size: 14px; }
 .memberAvatar { width: 28px; height: 28px; font-size: 12px; }
 .popWho { display: flex; flex-direction: column; min-width: 0; flex: 1; }
@@ -230,8 +230,8 @@
 .feedNum { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--p-fg); }
 .sentiment { font-size: 12.5px; line-height: 1.45; color: var(--c-ink-2); }
 .comment { display: flex; gap: 10px; padding-top: 12px; border-top: 1px solid var(--c-divider); }
-.commentAvatar { width: 28px; height: 28px; flex: none; border-radius: 50%; background: linear-gradient(180deg, #a5abb6, #858a94); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
-.commentAvatar[data-mine="true"] { background: var(--c-ink); }
+.commentAvatar { width: 28px; height: 28px; flex: none; border-radius: 50%; background: var(--nh-avatar); color: var(--nh-avatar-ink); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+.commentAvatar[data-mine="true"] { background: var(--c-ink); color: #fff; }
 .commentWho { position: relative; flex: none; display: flex; align-self: flex-start; }
 .commentPerson, .nameBtn { border: 0; padding: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .commentPerson { border-radius: 50%; }

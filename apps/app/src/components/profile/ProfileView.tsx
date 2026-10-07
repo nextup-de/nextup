@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { profileOf } from "@/features/demo/profiles";
 import styles from "./ProfileView.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 type Target = { name: string; role: string; dept: string; email: string | null };
 
@@ -40,7 +41,7 @@ export function ProfileView({ target }: { target?: Target }) {
 
     <section className={styles.hero} aria-labelledby="profile-name">
       <div className={styles.identity}>
-        <span className={styles.avatar} aria-hidden="true">{initials(name)}</span>
+        <span className={styles.avatar} data-avatar={avatarTone(name)} aria-hidden="true">{initials(name)}</span>
         <div className={styles.identityText}><div className={styles.nameLine}><h2 id="profile-name">{name}</h2>{own && <span className={styles.you}>You</span>}</div><p>{role}{dept ? " · " + dept : ""}</p><span className={styles.affiliation}>{[location, tenant.name].filter(Boolean).join(" · ")}</span></div>
         {own ? <Link className={styles.contact} href={href(ctx.role === "member" ? "/team" : "/leader")}>{ctx.role === "member" ? "My cases" : "Open inbox"}<span aria-hidden="true">→</span></Link> : email && <a className={styles.contact} href={"mailto:" + email}>Email <span aria-hidden="true">↗</span></a>}
       </div>
@@ -68,5 +69,5 @@ export function ProfileView({ target }: { target?: Target }) {
 }
 
 function PersonLink({ name, subtitle, href }: { name: string; subtitle: string; href: string }) {
-  return <Link href={href} className={styles.person}><span className={styles.personAvatar}>{initials(name)}</span><span><strong>{name}</strong><small>{subtitle}</small></span><span className={styles.arrow} aria-hidden="true">→</span></Link>;
+  return <Link href={href} className={styles.person}><span className={styles.personAvatar} data-avatar={avatarTone(name)}>{initials(name)}</span><span><strong>{name}</strong><small>{subtitle}</small></span><span className={styles.arrow} aria-hidden="true">→</span></Link>;
 }

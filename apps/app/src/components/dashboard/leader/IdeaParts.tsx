@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { type BadgeTone, type IdeaBrief, type Numbered, type NumberedBlock, type Person, tagTone } from "@/features/ideas/brief";
 import styles from "./IdeaDetail.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 export type IdeaHeader = { id: string; kind: "idea" | "case"; title: string; badge: string; tone: BadgeTone; raised: string };
 export type FeedEntry = { name: string; role: string; text: string; when: string; mine: boolean; person: Person | null }; // person: their card, when they are on the org chart
@@ -65,7 +66,7 @@ export function PersonCard({ p, why }: { p: Person; why?: string | null }) {
   return (
     <>
       <div className={styles.popHead}>
-        <span className={styles.popAvatar}>{initialsOf(p.name)}</span>
+        <span className={styles.popAvatar} data-avatar={avatarTone(p.name)}>{initialsOf(p.name)}</span>
         <span className={styles.popWho}><span className={styles.popName}>{p.name}</span><span className={styles.popRole}>{p.role}</span></span>
       </div>
       <dl className={styles.popGrid}>
@@ -104,7 +105,7 @@ export function Blocks({ blocks, srcId }: { blocks: NumberedBlock[]; srcId: stri
               <div key={i} className={styles.section}>
                 <span className={styles.label}>{b.h}</span>
                 <p className={`${styles.para} ${styles.quote}`}>“{b.q}”<Cites ns={b.cites} to={srcId} /></p>
-                <div className={styles.quoteBy}><span className={styles.chip}><span className={styles.chipAvatar}>{initialsOf(b.who)}</span>{b.who}</span><span className={styles.small}>{b.role}</span></div>
+                <div className={styles.quoteBy}><span className={styles.chip}><span className={styles.chipAvatar} data-avatar={avatarTone(b.who)}>{initialsOf(b.who)}</span>{b.who}</span><span className={styles.small}>{b.role}</span></div>
               </div>
             );
           case "split":
@@ -224,7 +225,7 @@ export function AiBrief({ brief, srcId, foldSources }: { brief: IdeaBrief; srcId
           <span className={styles.label}>Suggested reviewers</span>
           {brief.routing.map((r) => (
             <div key={r.name} className={styles.reviewer}>
-              <div className={styles.quoteBy}><span className={styles.chip}><span className={styles.chipAvatar}>{initialsOf(r.name)}</span>{r.name}</span><span className={styles.small}>{r.role}</span></div>
+              <div className={styles.quoteBy}><span className={styles.chip}><span className={styles.chipAvatar} data-avatar={avatarTone(r.name)}>{initialsOf(r.name)}</span>{r.name}</span><span className={styles.small}>{r.role}</span></div>
               <p className={styles.para}>{r.why}</p>
             </div>
           ))}
@@ -287,12 +288,12 @@ export function FeedBody({ brief, feed, open = null, onPerson, onComment }: { br
           {c.person && onPerson ? (
             <span className={styles.commentWho} data-aff="1">
               <button type="button" className={styles.commentPerson} onClick={() => onPerson(i)} aria-expanded={open === i} title={"View " + c.name}>
-                <span className={styles.commentAvatar}>{initialsOf(c.name)}</span>
+                <span className={styles.commentAvatar} data-avatar={avatarTone(c.name)}>{initialsOf(c.name)}</span>
               </button>
               {open === i && <div className={styles.pop}><PersonCard p={c.person} /></div>}
             </span>
           ) : (
-            <span className={styles.commentAvatar} data-mine={c.mine ? "true" : undefined}>{c.mine ? "ME" : initialsOf(c.name)}</span>
+            <span className={styles.commentAvatar} data-mine={c.mine ? "true" : undefined} data-avatar={c.mine ? undefined : avatarTone(c.name)}>{c.mine ? "ME" : initialsOf(c.name)}</span>
           )}
           <div className={styles.commentBody}>
             <div className={styles.commentHead}>

@@ -1,5 +1,5 @@
 /* The inbox: the shared stats strip, then the "Fresh ideas" card from the Claude Design handoff
-   ("Inbox App") - values are the handoff's, kept local: Inter in the card, the serif title only,
+   ("Inbox App") - values are the handoff's, kept local: Inter in the card, the title too,
    iOS greys, red only once a week late, blue for time left (tinted badges).
    Closed: the card sits centred under the stats. Open (data-open): the stats fold away, the card
    docks left at 320px (64px tucked, avatars only) and the item slides in beside it. Every move
@@ -66,8 +66,8 @@
 .tuck svg { flex: none; }
 .tuck:hover { background: var(--c-sep-head); }
 .page[data-open="true"] .tuck { width: 32px; opacity: 1; }
-.cardTitle { flex: 1; min-width: 0; overflow: hidden; margin: 0; font-family: var(--nh-serif); font-weight: 400; font-size: 26px; line-height: 1.05; letter-spacing: -0.02em; color: var(--c-title); white-space: nowrap; transition: font-size 560ms var(--ease), opacity 260ms ease, transform 420ms var(--ease); }
-.page[data-open="true"] .cardTitle { font-size: 24px; }
+.cardTitle { flex: 1; min-width: 0; overflow: hidden; margin: 0; font-weight: 600; font-size: 21px; line-height: 1.1; letter-spacing: -0.02em; color: var(--c-title); white-space: nowrap; transition: font-size 560ms var(--ease), opacity 260ms ease, transform 420ms var(--ease); }
+.page[data-open="true"] .cardTitle { font-size: 19px; }
 .cardTitle[data-hidden="true"], .page[data-tucked="true"] .cardTitle { opacity: 0; transform: translateX(-12px); }
 
 .tools { display: flex; align-items: center; gap: 6px; transition: opacity 380ms var(--ease); }
@@ -103,14 +103,10 @@
 .avatar {
   width: 40px; height: 40px; flex: none; margin-top: 13px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 0.02em;
-  background: linear-gradient(180deg, #a5abb6, #858a94);
+  color: var(--nh-avatar-ink); font-size: 15px; font-weight: 600; letter-spacing: 0.02em;
+  background: var(--nh-avatar);
   transition: width 380ms var(--ease), height 380ms var(--ease), font-size 380ms var(--ease), margin-top 380ms var(--ease), box-shadow 380ms var(--ease);
 }
-.avatar[data-tone="blue"] { background: linear-gradient(180deg, #8fa9c9, #6d88ab); }
-.avatar[data-tone="clay"] { background: linear-gradient(180deg, #c9a48f, #ab846d); }
-.avatar[data-tone="sage"] { background: linear-gradient(180deg, #94b39c, #72937b); }
-.avatar[data-tone="lilac"] { background: linear-gradient(180deg, #b29cc4, #927ba6); }
 .page[data-open="true"] .avatar { width: 32px; height: 32px; font-size: 12px; margin-top: 11px; }
 .page[data-tucked="true"] .avatar { margin-top: 8px; }
 .row[data-active="true"] .avatar { box-shadow: 0 0 0 2px rgb(255 255 255 / 0.9); }

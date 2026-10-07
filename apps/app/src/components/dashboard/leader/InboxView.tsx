@@ -21,13 +21,11 @@ import { IdeaDetail } from "./IdeaDetail";
 import type { IdeaProps } from "./IdeaParts";
 import { IdeaDetailPhone } from "./IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { avatarTone } from "@/lib/avatar";
 
 type Filter = "all" | "late" | "ontime";
 const FILTERS: Filter[] = ["all", "late", "ontime"];
 const FILTER_TITLE: Record<Filter, string> = { all: "Filter: all", late: "Filter: late only", ontime: "Filter: on time only" };
-// Avatar backgrounds: the grey default and four muted accents, picked by name so a person keeps theirs.
-const AVATAR_TONES = ["grey", "blue", "clay", "sage", "lilac"] as const;
-const toneOf = (name: string) => AVATAR_TONES[[...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7) % AVATAR_TONES.length];
 const initialsOf = (name: string) => (name.startsWith("Anonymous") ? "?" : name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase());
 // "Yesterday" -> "yesterday", "Monday" -> "on Monday", "09:14" -> "today"
 const raisedPhrase = (label: string) => (/\d:\d/.test(label) || label === "Today" ? "today" : label === "Yesterday" ? "yesterday" : "on " + label);
@@ -313,7 +311,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
                   return (
                     <li key={r.id}>
                       <button type="button" className={styles.row} data-row={r.id} onClick={() => pick(r.id)} data-active={on ? "true" : undefined} aria-current={on ? "true" : undefined} title={isOpen && tucked ? r.title : undefined}>
-                        <span className={styles.avatar} data-tone={toneOf(r.name)} aria-hidden="true">{initialsOf(r.name)}</span>
+                        <span className={styles.avatar} data-avatar={avatarTone(r.name)} aria-hidden="true">{initialsOf(r.name)}</span>
                         <span className={styles.rowBody}>
                           <span className={styles.rowMain}>
                             <span className={styles.rowTitle}>{r.title}</span>

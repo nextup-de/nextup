@@ -13,6 +13,7 @@ import { OVERVIEW_STEPS, type OverviewStatus } from "@/features/cases/rows";
 import { highlight, runSearch, tokens } from "@/features/search";
 import { navbarIndex, type NavHit } from "@/features/search/navbar";
 import styles from "./SimpleShell.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 type Filter = "all" | "Problem" | "Idea" | "Person";
 const FILTERS: [Filter, string][] = [["all", "All"], ["Problem", "Problems"], ["Idea", "Ideas"], ["Person", "People"]];
@@ -21,8 +22,6 @@ const GROUP_LABEL: Record<NavHit["kind"], string> = { Problem: "Problems", Idea:
 const STATUS_LABEL: Record<OverviewStatus, string> = {
   move: "Your move", asked: "Needs more info", replied: "Replied", waiting: "Waiting", approved: "Approved", declined: "Not now", building: "Building", shipped: "Shipped",
 };
-const AVATAR_TONES = ["grey", "blue", "clay", "sage", "lilac"] as const;
-const toneOf = (name: string) => AVATAR_TONES[[...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7) % AVATAR_TONES.length];
 
 type Section = { label: string; items: NavHit[] };
 
@@ -96,7 +95,7 @@ export function NavSearch({ children }: { children: (open: boolean) => React.Rea
               : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5v.01" /></svg>}
           </span>
         ) : (
-          <span className={styles.sAvatar} data-tone={toneOf(r.title)} aria-hidden="true">{initialsOf(r.title)}</span>
+          <span className={styles.sAvatar} data-avatar={avatarTone(r.title)} aria-hidden="true">{initialsOf(r.title)}</span>
         )}
         <span className={styles.sBody}>
           <span className={styles.sTitle}>{highlight(r.title, toks).map((p, k) => (p.hit ? <mark key={k}>{p.t}</mark> : p.t))}</span>

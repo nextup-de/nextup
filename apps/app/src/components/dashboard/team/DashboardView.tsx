@@ -25,6 +25,7 @@ import { OverviewIdea, type IdeaMode, type OverviewIdeaProps } from "./OverviewI
 import { OverviewPhone } from "./OverviewPhone";
 import { usePreview } from "./overviewPreview";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { avatarTone } from "@/lib/avatar";
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 // A phone gets its own case layout (OverviewPhone), like the inbox's IdeaDetailPhone.
@@ -39,15 +40,12 @@ const SORT_LABEL: Record<Sort, string> = { move: "Your move first", wait: "Longe
 const STATUS_LABEL: Record<OverviewStatus, string> = {
   move: "Your move", asked: "Needs more info", replied: "Replied", waiting: "Waiting", approved: "Approved", declined: "Not now", building: "Building", shipped: "Shipped",
 };
-// Avatar colours: the inbox's grey and four muted accents, picked by name so a person keeps theirs.
-const AVATAR_TONES = ["grey", "blue", "clay", "sage", "lilac"] as const;
-const toneOf = (name: string) => AVATAR_TONES[[...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7) % AVATAR_TONES.length];
 const stepLabel = (step: number) => (step >= OVERVIEW_STEPS.length ? "Shipped" : OVERVIEW_STEPS[step]);
 // Still running: open, or waiting on an answer to a question (the clock is paused, nothing is answered yet).
 const running = (r: DashRow) => r.open || r.paused;
 
 // A person's card, pinned under whatever was pressed and kept inside the window.
-type Profile = { p: Person; feed: boolean; x: number; y: number };
+type Profile = { p: Person; x: number; y: number };
 // On a phone it rises from the bottom as a sheet instead, like the inbox's person cards.
 function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: () => void; sheet: boolean }) {
   const { href, tenant } = useDemo();
@@ -64,7 +62,7 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
       <div className={s.div113} data-sheet={sheet ? "true" : undefined} style={sheet ? undefined : { left: profile.x, top: profile.y }} role="dialog" aria-label={p.name}>
         <div className={s.div114}>
           <div className={s.div77}>
-            <span className={s.initials5} data-feed={profile.feed ? "true" : undefined}>{initialsOf(p.name)}</span>
+            <span className={s.initials5} data-avatar={avatarTone(p.name)}>{initialsOf(p.name)}</span>
             <span className={s.span2}><span className={s.desk}>{p.name}</span><span className={s.dept}>{p.role}</span></span>
           </div>
           <div className={s.div115}>
@@ -146,15 +144,15 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
   });
 
   const roleOf = (name: string) => seed.people.find((x) => x.name === name)?.role ?? "";
-  const openProfile = (name: string, feed = false) => (e: React.MouseEvent<HTMLElement>) => {
+  const openProfile = (name: string) => (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault(); e.stopPropagation();
     const p = personFor(name, briefCtx);
     if (!p) return;
     const u = window.innerWidth > 760 && window.innerWidth < 1600 ? 0.75 : 1, w = 280 * u;
     const b = e.currentTarget.getBoundingClientRect();
-    setProfile({ p, feed, x: Math.max(8, Math.min(b.left, window.innerWidth - w - 8)), y: Math.max(8, Math.min(b.bottom + 8, window.innerHeight - 260 * u)) });
+    setProfile({ p, x: Math.max(8, Math.min(b.left, window.innerWidth - w - 8)), y: Math.max(8, Math.min(b.bottom + 8, window.innerHeight - 260 * u)) });
   };
-  const profileOf = (name: string, feed = false) => (personFor(name, briefCtx) ? openProfile(name, feed) : null);
+  const profileOf = (name: string) => (personFor(name, briefCtx) ? openProfile(name) : null);
   const pick = (id: string) => { openCase(id); setMode("idea"); setMenu(null); };
   const pop = profile && <ProfilePop profile={profile} sheet={phone} onClose={() => setProfile(null)} />;
   let phoneCase: React.ReactNode = null; // on a phone the open case is a layer over the table
@@ -282,7 +280,7 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
             // days open and the status on the right. The steps and roles live in the opened case.
             if (phone) return (
               <div key={r.id} className={s.mRow} role="row" tabIndex={0} onClick={() => pick(r.id)} onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) pick(r.id); }}>
-                <span className={s.mAvatar} data-tone={toneOf(desk)} aria-hidden="true">{initialsOf(desk)}</span>
+                <span className={s.mAvatar} data-avatar={avatarTone(desk)} aria-hidden="true">{initialsOf(desk)}</span>
                 <span className={s.mBody}>
                   <span className={s.mMain} role="cell">
                     <span className={s.mTitle}>{r.title}</span>
@@ -312,12 +310,12 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
                 </div>
                 {open ? (
                   <button type="button" className={s.onProfile} role="cell" onClick={open} title={"View " + desk}>
-                    <span className={s.initials}>{initialsOf(desk)}</span>
+                    <span className={s.initials} data-avatar={avatarTone(desk)}>{initialsOf(desk)}</span>
                     <span className={s.span2}><span className={s.desk}>{desk}</span><span className={s.role}>{roleOf(desk)}</span></span>
                   </button>
                 ) : (
                   <div className={s.onProfile} role="cell">
-                    <span className={s.initials}>{initialsOf(desk)}</span>
+                    <span className={s.initials} data-avatar={avatarTone(desk)}>{initialsOf(desk)}</span>
                     <span className={s.span2}><span className={s.desk}>{desk}</span><span className={s.role}>{roleOf(desk)}</span></span>
                   </div>
                 )}

@@ -11,6 +11,7 @@ import type { Dept, OrgPerson } from "@/features/demo/types";
 import { personFor, type Person } from "@/features/ideas/brief";
 import { initials } from "@/features/ideas/raise";
 import s from "./Raise.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 export const RaisePeople = createContext<{ people: readonly OrgPerson[]; depts: readonly Dept[] }>({ people: [], depts: [] });
 
@@ -45,10 +46,10 @@ export function PersonButton({ name, className, children, label }: { name: strin
     return () => { document.removeEventListener("mousedown", off); document.removeEventListener("keydown", key, true); };
   }, [open]);
 
-  if (!person) return <span className={className}>{children}</span>;
+  if (!person) return <span className={className} data-avatar={avatarTone(name)}>{children}</span>;
   return (
     <>
-      <button ref={btn} type="button" className={`${s.personBtn} ${className ?? ""}`} aria-expanded={open} aria-label={label ?? "Profile of " + name} title={label ?? "Profile of " + name}
+      <button ref={btn} type="button" className={`${s.personBtn} ${className ?? ""}`} data-avatar={avatarTone(name)} aria-expanded={open} aria-label={label ?? "Profile of " + name} title={label ?? "Profile of " + name}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}>
         {children}
       </button>
@@ -66,7 +67,7 @@ function MiniProfile({ p }: { p: Person }) {
   return (
     <>
       <div className={s.mpHead}>
-        <span className={s.mpAv} aria-hidden="true">{initials(p.name)}</span>
+        <span className={s.mpAv} data-avatar={avatarTone(p.name)} aria-hidden="true">{initials(p.name)}</span>
         <span className={s.mpWho}><span className={s.mpName}>{p.name}</span><span className={s.mpRole}>{p.role}</span></span>
       </div>
       <div className={s.mpGrid}>

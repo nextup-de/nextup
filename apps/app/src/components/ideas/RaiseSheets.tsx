@@ -7,6 +7,7 @@ import type { Advice, Dial } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
 import { PersonButton } from "./RaisePerson";
 import s from "./Raise.module.css";
+import { avatarTone } from "@/lib/avatar";
 
 export type Similar = { title: string; status: string; where: string; by?: string; href: string | null }; // by: who raised it
 export type Reviewer = { initials: string; name: string; role: string; why: string };
@@ -56,7 +57,7 @@ export function AnalysisSheet({ ready, onClose, dials, summary, advice, pattern,
     return (
       <Sheet label="analysis" onClose={onClose}>
         <div className={s.anEmpty}>
-          <h2 className={`${s.anEmptyTitle} ${s.serif}`}>No analysis yet</h2>
+          <h2 className={`${s.anEmptyTitle} ${s.heading}`}>No analysis yet</h2>
           <p className={s.anEmptyText}>Send your first message. Nextup researches the business context before grilling — its findings and updated results land here.</p>
           <button type="button" className={s.blackPill} onClick={onClose}>Start grilling</button>
         </div>
@@ -131,7 +132,7 @@ export function AnalysisSheet({ ready, onClose, dials, summary, advice, pattern,
             <span className={s.secLabel}>Suggested reviewers</span>
             {reviewers.map((r) => (
               <div key={r.name} className={s.sec}>
-                <div className={s.who}><PersonButton name={r.name} className={s.whoPill}><span className={s.whoAv}>{r.initials}</span>{r.name}</PersonButton><span className={s.whoRole}>{r.role}</span></div>
+                <div className={s.who}><PersonButton name={r.name} className={s.whoPill}><span className={s.whoAv} data-avatar={avatarTone(r.name)}>{r.initials}</span>{r.name}</PersonButton><span className={s.whoRole}>{r.role}</span></div>
                 <p className={s.small}>{r.why}</p>
               </div>
             ))}

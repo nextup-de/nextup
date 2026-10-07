@@ -29,7 +29,7 @@ export function RaiseStart({ name, composer, typed, evalStep, evalSub, context, 
       <div className={s.below}>
         {evalStep !== null ? <Evaluating step={evalStep} sub={evalSub} /> : typed ? (
           <section className={s.box} aria-label="Add context">
-            <div className={s.boxHead}><h2 className={`${s.boxTitle} ${s.serif}`}>Add context</h2><span className={s.boxTag}>Optional</span></div>
+            <div className={s.boxHead}><h2 className={`${s.boxTitle} ${s.heading}`}>Add context</h2><span className={s.boxTag}>Optional</span></div>
             <div className={s.ctxBody}>
               <textarea ref={ctx} className={s.ctx} rows={4} value={context} onChange={(e) => onContext(e.target.value)} aria-label="Context"
                 placeholder="What’s happening, who does it affect, what have you already tried? The more context, the better Nextup can grill and route it." />
@@ -53,12 +53,12 @@ function HowItWorks() {
       "Raise it", "Anyone, from any team, starts with an idea or a problem in one line."],
     [<>{bar("Org", 82)}{bar("Budget", 64)}{bar("Goals", 91)}</>, "It does the research", "Nextup checks it against your org, budget, past ideas and goals."],
     [<>{squares("Clarity", 4)}{squares("Impact", 3)}{squares("Evidence", 5)}</>, "It grills you", "A few sharp questions fill the gaps — scores update as you answer."],
-    [<><span className={s.tileRow} data-split="true"><span className={s.faces}><span className={s.face}>TV</span><span className={s.face}>RH</span></span><span className={s.tag} data-tone="blue">Routed</span></span><span className={s.bar}><span className={s.barFill} data-w={58} /></span></>,
+    [<><span className={s.tileRow} data-split="true"><span className={s.faces}><span className={s.face} data-avatar="blue">TV</span><span className={s.face} data-avatar="amber">RH</span></span><span className={s.tag} data-tone="blue">Routed</span></span><span className={s.bar}><span className={s.barFill} data-w={58} /></span></>,
       "Sent to the right desk", "You review, publish, and follow it in Overview."],
   ];
   return (
     <section className={`${s.box} ${s.how}`} aria-label="How NextUp works">
-      <div className={s.boxHead}><h2 className={`${s.boxTitle} ${s.serif}`}>How NextUp works</h2><span className={s.boxTag}>Raised → grilled → routed</span></div>
+      <div className={s.boxHead}><h2 className={`${s.boxTitle} ${s.heading}`}>How NextUp works</h2><span className={s.boxTag}>Raised → grilled → routed</span></div>
       <div className={s.steps}>
         {steps.map(([tile, title, text]) => (
           <div key={title} className={s.step}>
@@ -81,7 +81,7 @@ function Evaluating({ step, sub }: { step: number; sub: string }) {
   return (
     <section className={s.eval} aria-live="polite" aria-label="Evaluating">
       <span className={s.orb} aria-hidden="true"><EvalOrb state="connecting" size={78} paused={reduced} /></span>
-      <h3 className={`${s.evalTitle} ${s.serif}`}>Evaluating</h3>
+      <h3 className={`${s.evalTitle} ${s.heading}`}>Evaluating</h3>
       <div className={s.evalLine}><span className={s.evalStep}>{EVAL_STEPS[step]}</span><span className={s.evalCount}>{step + 1} / {EVAL_STEPS.length}</span></div>
       <span className={s.evalSub}>{sub}</span>
       <div className={s.evalBars}>{EVAL_STEPS.map((_, k) => <span key={k} className={s.evalBar} data-s={k < step ? "done" : k === step ? "now" : undefined} />)}</div>
