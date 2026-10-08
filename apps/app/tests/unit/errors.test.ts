@@ -11,6 +11,7 @@ import {
   isBrowserNoise,
   isControlFlow,
   normalizeRoute,
+  putBack,
   record,
   scrub,
   toErrorEvent,
@@ -160,6 +161,17 @@ describe("record and drain", () => {
     expect(store.size).toBe(ERROR_LIMITS.groups + 1);
     const overflow = [...store.values()].find((g) => g.name === "Overflow");
     expect(overflow?.count).toBe(50);
+  });
+});
+
+describe("putBack", () => {
+  it("counts a round that could not be saved again, merged with what came since", () => {
+    const store: ErrorStore = new Map();
+    record(store, toErrorEvent("server", new Error("boom"), "/raise", 1000));
+    const round = drain(store);
+    record(store, toErrorEvent("server", new Error("boom"), "/raise", 9000));
+    putBack(store, round);
+    expect([...store.values()]).toMatchObject([{ count: 2, firstSeen: 1000, lastSeen: 9000 }]);
   });
 });
 
