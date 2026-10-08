@@ -32,6 +32,7 @@ An unknown stage gets the real-people policy: fail closed. Creating a company in
 | `/admin/login` | `ADMIN_ACCESS_CODE`, constant-time compare | 5 tries / 15 min per address |
 | `/contact` | honeypot + server-side validation | 5 / hour per address |
 | `/api/[company]/events` | bearer token (sha256 hash stored), scoped to one company | - (token is 192 bits) |
+| `/api/client-errors` | public on purpose (a crash on the login page must report too): `Sec-Fetch-Site: same-origin` or `Origin` = `APP_ORIGIN`, 8 KB, zod-validated; message scrubbed and route made a pattern before it is kept (`src/features/errors`); no cookie, session or address stored | 30 / 10 min per address, then silently 204 |
 | Every server action | re-checks the session for the slug; never trusts the client for actor or company | - |
 | Case and idea events | `mayAppend` (`src/features/cases/permissions.ts`): only whoever holds a case (or a manager) decides, hands or asks; only the raiser answers; only managers re-route or move the clock; no re-raising an existing id | - |
 | `n8n.<domain>`, `mail.<domain>` | Caddy `basic_auth` from `OPS_USER` / `OPS_PASSWORD_HASH`; unset = 401 for everyone | - |
