@@ -45,31 +45,36 @@ export function recordError(source: ErrorSource, err: unknown, route: string, sl
 
 /** Add what was counted since the last round to ErrorGroup. Overlapping calls share the one in flight. */
 export function flushErrors(): Promise<void> {
-  g.__nextupErrorsFlushing ??= (async () => {
-    try {
-      const groups = drain(store());
-      if (groups.length === 0) return;
-      if (!hasDatabase()) {
-        // Postgres away for now: count them again next round. Never configured (the demo): the
-        // console line was all.
-        if (databaseOutage()) putBack(store(), groups);
-        return;
-      }
-      // Imported here, not at the top: the proxy bundle loads instrumentation.ts too and must not pull Prisma.
-      const { pruneErrorGroups, saveErrorGroups } = await import("@/lib/db/errors");
-      try {
-        await saveErrorGroups(groups, process.env.NEXTUP_COMMIT?.slice(0, 40) || null);
-      } catch (e) {
-        putBack(store(), groups);
-        console.warn(`[error] ${groups.length} error group(s) not saved, kept for the next round: ${e instanceof Error ? e.message : String(e)}`);
-        return;
-      }
-      await pruneErrorGroups(Date.now()).catch(() => {});
-    } finally {
-      g.__nextupErrorsFlushing = null;
-    }
-  })();
-  return g.__nextupErrorsFlushing;
+  if (g.__nextupErrorsFlushing) return g.__nextupErrorsFlushing;
+  const run = flush();
+  g.__nextupErrorsFlushing = run;
+  // Cleared once settled - after the assignment above, so a round that has nothing to do (and so
+  // never awaits) can't leave a finished promise in place that every later call would return.
+  void run.finally(() => {
+    if (g.__nextupErrorsFlushing === run) g.__nextupErrorsFlushing = null;
+  });
+  return run;
+}
+
+async function flush(): Promise<void> {
+  const groups = drain(store());
+  if (groups.length === 0) return;
+  if (!hasDatabase()) {
+    // Postgres away for now: count them again next round. Never configured (the demo): the
+    // console line was all.
+    if (databaseOutage()) putBack(store(), groups);
+    return;
+  }
+  // Imported here, not at the top: the proxy bundle loads instrumentation.ts too and must not pull Prisma.
+  const { pruneErrorGroups, saveErrorGroups } = await import("@/lib/db/errors");
+  try {
+    await saveErrorGroups(groups, process.env.NEXTUP_COMMIT?.slice(0, 40) || null);
+  } catch (e) {
+    putBack(store(), groups);
+    console.warn(`[error] ${groups.length} error group(s) not saved, kept for the next round: ${e instanceof Error ? e.message : String(e)}`);
+    return;
+  }
+  await pruneErrorGroups(Date.now()).catch(() => {});
 }
 
 /** Start the once-a-minute flush. Idempotent; never keeps the process alive on its own. */
