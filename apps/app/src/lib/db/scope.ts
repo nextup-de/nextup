@@ -26,6 +26,8 @@ export const TENANT_MODELS = new Set([
   // Bug reports - docs/plans/2026-09-27_platform.md, "Tickets"
   "Ticket",
   "TicketReply",
+  // Feature flags as admin.sellux.ch set them - src/features/flags
+  "FeatureFlag",
 ]);
 
 /** Operations that must narrow by company through `where`. */
