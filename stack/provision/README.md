@@ -30,6 +30,11 @@ admin's **Version** card on a pinned stack (today only `demo`, the interview sta
 3. runs `stack/nginx/deploy.sh promote <slug> <sha>`: pull, backup, that commit's `stack/`, pin, start;
 4. checks `/api/health` and reports the log (codes scrubbed) with the "to go back" line.
 
+For the card to show, the stack needs a company page: **Companies → Register a stack that already
+runs** with `demo` (3121), and the same for `staging` (3161) to switch its feature flags there.
+The agent reads their passwords (`credentials`) even though both slugs are reserved; it never
+creates, stops or deletes a reserved stack.
+
 To offer the choices, every poll's `X-Agent-Info` header also carries `released=` (the last ten
 released shas, newest first), `staged=` (the newest staged sha) and `pins=` (`slug:sha` per pinned
 stack). An admin that sees no `pins=` is talking to an older agent and should not offer the card.

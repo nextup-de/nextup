@@ -187,12 +187,13 @@ run_watched() {
 [[ "$action" =~ ^(create|credentials|restart|stop|purge|promote)$ ]] || fail "action '$action' is not allowed"
 [[ "$slug" =~ ^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$ ]] || fail "bad slug"
 if [ "$action" = promote ]; then
-  # The one job that may name a reserved slug (demo): it only ever moves a stack the box itself
-  # has pinned (checked below), and only to a commit that passed staging. Port and stage come
-  # from the box, never from the job.
+  # May name a reserved slug (demo): it only ever moves a stack the box itself has pinned (checked
+  # below), and only to a commit that passed staging. Port and stage come from the box, never from the job.
   [[ "$sha" =~ ^[0-9a-f]{7}$ ]] || fail "sha must be a 7-char commit sha"
 else
-  case "$RESERVED" in *" $slug "*) fail "'$slug' is reserved" ;; esac
+  # credentials may name a reserved slug too: it only reads an installed stack's passwords, so
+  # staging and demo can be registered in admin like acme. Creating, stopping or deleting one never.
+  if [ "$action" != credentials ]; then case "$RESERVED" in *" $slug "*) fail "'$slug' is reserved" ;; esac; fi
   [[ "$port" =~ ^3[1-9][0-9]1$ ]] || fail "port must be the first of a block, 3101-3991"
   [[ "$stage" =~ ^(demo|real)$ ]] || fail "bad stage"
 fi
