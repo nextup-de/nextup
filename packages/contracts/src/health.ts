@@ -42,6 +42,24 @@ export const HealthEnvRow = z.object({
 });
 export type HealthEnvRow = z.infer<typeof HealthEnvRow>;
 
+/**
+ * One feature flag this build knows (apps/app/src/config/flags.ts) and what it is for the company
+ * now - so admin can draw its switch (./flags.ts). Added later: an older stack sends none.
+ */
+export const HealthFlag = z.object({
+  key: z.string().regex(/^[a-z][A-Za-z0-9]{1,47}$/),
+  description: z.string().max(200),
+  owner: z.string().max(40),
+  /** What the company's stage gives it while admin has not set it. */
+  stageDefault: z.boolean(),
+  enabled: z.boolean(),
+  /** default = nobody set it; admin = admin.sellux.ch's setting. */
+  source: z.enum(["default", "admin"]),
+  /** YYYY-MM-DD: admin shows the flag as overdue after it. */
+  removeBy: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+export type HealthFlag = z.infer<typeof HealthFlag>;
+
 /** POST /api/stack-health body. */
 export const HealthReport = z.object({
   contractVersion: z.literal(HEALTH_CONTRACT_VERSION),
@@ -52,6 +70,8 @@ export const HealthReport = z.object({
   appCommit: z.string().max(40).nullable(),
   checks: z.array(HealthCheck).max(20),
   environment: z.array(HealthEnvRow).max(30),
+  /** Added later (feature flags); optional, so a report from an older stack still parses. */
+  flags: z.array(HealthFlag).max(200).optional(),
 });
 export type HealthReport = z.infer<typeof HealthReport>;
 

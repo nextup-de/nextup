@@ -14,7 +14,8 @@
 #                                          refuses for these calls. An https URL is verified normally.
 #   PROVISION_TOKEN=npa_...                admin keeps only its sha256 (PROVISION_TOKEN_SHA256)
 #   OPS_PUBLIC_URL=https://admin.sellux.ch where new stacks send tickets (default shown)
-#   NEXTUP_IMAGES=main                     image tag for new stacks: main, a 7-char sha, or local
+#   NEXTUP_IMAGES=released                 image tag for new stacks: released (the last sha deploy.sh
+#                                          released; main until there is one), main, a 7-char sha, or local
 #   SITE_HELPER=/usr/local/sbin/nextup-site  root helper for nginx + certbot (see that file), or none
 #   MIN_MEM_MB=600                         refuse a new stack below this much MemAvailable
 #   MIN_DISK_MB=6000                       refuse a create/restart below this much free disk (images ~3.3 GB)
@@ -25,6 +26,11 @@
 #   restart      start a stack again (after stop, or to recover)
 #   stop         stop a stack; data stays; deploys leave it stopped (stack.conf STOPPED=true)
 #   purge        delete a DEMO stack for good: containers, volumes, .env, nginx site
+#   promote      move a PINNED stack (demo) to a commit that reached staging or was released, and
+#                pin it there (stack/nginx/deploy.sh promote: backup first) - admin's Version card
+#
+# Every poll also tells admin which versions it may offer (X-Agent-Info): released= the last ten
+# released shas, newest first; staged= the newest staged one; pins= slug:sha of each pinned stack.
 set -euo pipefail
 umask 077
 
@@ -35,14 +41,14 @@ config="${NEXTUP_PROVISION_ENV:-$home_dir/provision/.env}"
 export NEXTUP_INSTANCES="${NEXTUP_INSTANCES:-$home_dir/instances}"
 export NEXTUP_SITES="${NEXTUP_SITES:-$home_dir/nginx}"
 domain="${NEXTUP_DOMAIN:-sellux.ch}"
-RESERVED=" www admin api n8n mail automation ops status app static assets _next login signup pricing contact imprint privacy forgot-password invite demo landing "
+RESERVED=" www admin api n8n mail automation ops status app static assets _next login signup pricing contact imprint privacy forgot-password invite demo landing staging "
 
 say() { echo "$(date -u +%FT%TZ) $*"; }
 die() { say "agent: $*" >&2; exit 1; }
 
 # ── Config ───────────────────────────────────────────────────────────────────────────────────────
 [ -f "$config" ] || die "no config at $config"
-ADMIN_URL="" PROVISION_TOKEN="" OPS_PUBLIC_URL="https://admin.sellux.ch" NEXTUP_IMAGES="main" SITE_HELPER="/usr/local/sbin/nextup-site" MIN_MEM_MB=600 MIN_DISK_MB=6000
+ADMIN_URL="" PROVISION_TOKEN="" OPS_PUBLIC_URL="https://admin.sellux.ch" NEXTUP_IMAGES="released" SITE_HELPER="/usr/local/sbin/nextup-site" MIN_MEM_MB=600 MIN_DISK_MB=6000
 while IFS='=' read -r k v; do
   v="${v%$'\r'}"
   case "$k" in
@@ -58,7 +64,13 @@ done < "$config"
 [[ "$ADMIN_URL" =~ ^(http://127\.0\.0\.1:[0-9]{2,5}|https://[a-z0-9.-]+)$ ]] || die "ADMIN_URL must be http://127.0.0.1:PORT or https://host"
 [[ "$PROVISION_TOKEN" =~ ^npa_[A-Za-z0-9_-]{32,100}$ ]] || die "PROVISION_TOKEN must be npa_..."
 [[ "$OPS_PUBLIC_URL" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]] || die "OPS_PUBLIC_URL looks wrong"
-[[ "$NEXTUP_IMAGES" =~ ^(main|local|[0-9a-f]{7})$ ]] || die "NEXTUP_IMAGES is main, local or a 7-char sha"
+[[ "$NEXTUP_IMAGES" =~ ^(released|main|local|[0-9a-f]{7})$ ]] || die "NEXTUP_IMAGES is released, main, local or a 7-char sha"
+# A new company gets what the others run - the last released commit (stack/nginx/deploy.sh), never
+# one that only reached staging. Its scripts come from ~/nextup/stack, which is that same commit.
+if [ "$NEXTUP_IMAGES" = released ]; then
+  NEXTUP_IMAGES="$(tail -n 1 "${NEXTUP_RELEASED:-$home_dir/released}" 2>/dev/null | cut -d' ' -f1 || true)"
+  [[ "$NEXTUP_IMAGES" =~ ^[0-9a-f]{7}$ ]] || NEXTUP_IMAGES=main
+fi
 [[ "$MIN_MEM_MB" =~ ^[0-9]{1,6}$ ]] || die "MIN_MEM_MB is a number"
 [[ "$MIN_DISK_MB" =~ ^[0-9]{1,7}$ ]] || die "MIN_DISK_MB is a number"
 [ "$SITE_HELPER" = none ] || [[ "$SITE_HELPER" =~ ^/usr/local/sbin/[a-z-]+$ ]] || die "SITE_HELPER is none or /usr/local/sbin/<name>"
@@ -86,20 +98,33 @@ mem_mb() {  # MemAvailable, else MemFree (Git Bash), else 0
 }
 helper_ok() { [ "$SITE_HELPER" != none ] && [ -x "$SITE_HELPER" ] && sudo -n -l "$SITE_HELPER" >/dev/null 2>&1 && echo yes || echo no; }
 installed() { local d; for d in "$NEXTUP_INSTANCES"/*/; do [ -f "$d.env" ] && basename "$d"; done 2>/dev/null | paste -sd, -; }
+# The commits deploy.sh staged and released ("<sha> <time>" per line, newest last).
+staged_list="${NEXTUP_STAGED:-$home_dir/staged}"
+released_list="${NEXTUP_RELEASED:-$home_dir/released}"
+newest() { [ -f "$1" ] && tail -n "$2" "$1" | cut -d' ' -f1 | grep -E '^[0-9a-f]{7}$' | tac | paste -sd, - || true; }
+pins() {  # slug:sha of every pinned stack
+  local c p
+  for c in "$NEXTUP_INSTANCES"/*/stack.conf; do
+    [ -f "$c" ] || continue
+    p="$(sed -n -E 's/^PINNED=([0-9a-f]{7})$/\1/p' "$c" | tail -1)"
+    [ -z "$p" ] || echo "$(basename "$(dirname "$c")"):$p"
+  done | paste -sd, -
+}
+reached_staging() { grep -qE "^$1 " "$staged_list" "$released_list" 2>/dev/null; }
 
 # ── Ask for work ─────────────────────────────────────────────────────────────────────────────────
-code="$(curl_admin -o "$work/job" -w '%{http_code}' -H "X-Agent-Info: mem_mb=$(mem_mb) disk_mb=$(disk_mb) stacks=$(installed) helper=$(helper_ok)" "$ADMIN_URL/api/provision/next" || true)"
+code="$(curl_admin -o "$work/job" -w '%{http_code}' -H "X-Agent-Info: mem_mb=$(mem_mb) disk_mb=$(disk_mb) stacks=$(installed) helper=$(helper_ok) released=$(newest "$released_list" 10) staged=$(newest "$staged_list" 1) pins=$(pins)" "$ADMIN_URL/api/provision/next" || true)"
 case "$code" in
   204) exit 0 ;;
   200) ;;
   *) die "admin answered $code to /api/provision/next" ;;
 esac
 
-id="" action="" slug="" port="" stage="" name_b64="" ops_token=""
+id="" action="" slug="" port="" stage="" name_b64="" ops_token="" sha=""
 while IFS='=' read -r k v; do
   case "$k" in
     id) id="$v" ;; action) action="$v" ;; slug) slug="$v" ;; port) port="$v" ;; stage) stage="$v" ;;
-    name_b64) name_b64="$v" ;; ops_token) ops_token="$v" ;;
+    name_b64) name_b64="$v" ;; ops_token) ops_token="$v" ;; sha) sha="$v" ;;
     *) die "unknown job field '$k' - refusing the job" ;;
   esac
 done < "$work/job"
@@ -159,11 +184,19 @@ run_watched() {
   return "$rc"
 }
 
-[[ "$action" =~ ^(create|credentials|restart|stop|purge)$ ]] || fail "action '$action' is not allowed"
+[[ "$action" =~ ^(create|credentials|restart|stop|purge|promote)$ ]] || fail "action '$action' is not allowed"
 [[ "$slug" =~ ^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$ ]] || fail "bad slug"
-case "$RESERVED" in *" $slug "*) fail "'$slug' is reserved" ;; esac
-[[ "$port" =~ ^3[1-9][0-9]1$ ]] || fail "port must be the first of a block, 3101-3991"
-[[ "$stage" =~ ^(demo|real)$ ]] || fail "bad stage"
+if [ "$action" = promote ]; then
+  # May name a reserved slug (demo): it only ever moves a stack the box itself has pinned (checked
+  # below), and only to a commit that passed staging. Port and stage come from the box, never from the job.
+  [[ "$sha" =~ ^[0-9a-f]{7}$ ]] || fail "sha must be a 7-char commit sha"
+else
+  # credentials may name a reserved slug too: it only reads an installed stack's passwords, so
+  # staging and demo can be registered in admin like acme. Creating, stopping or deleting one never.
+  if [ "$action" != credentials ]; then case "$RESERVED" in *" $slug "*) fail "'$slug' is reserved" ;; esac; fi
+  [[ "$port" =~ ^3[1-9][0-9]1$ ]] || fail "port must be the first of a block, 3101-3991"
+  [[ "$stage" =~ ^(demo|real)$ ]] || fail "bad stage"
+fi
 
 dir="$NEXTUP_INSTANCES/$slug"
 env_file="$dir/.env"
@@ -336,6 +369,27 @@ case "$action" in
       sudo -n "$SITE_HELPER" remove "$slug" >> "$log" 2>&1 || echo "!! nginx helper failed - run the sudo lines above" >> "$log"
     fi
     rm -f "$NEXTUP_SITES/nextup-$slug"
+    report done
+    ;;
+
+  promote)
+    # Pinned stacks only: every other stack follows its track (deploy.sh stage/release), and a
+    # job from admin must never fork one off it.
+    progress checks
+    [ -f "$env_file" ] || fail "$slug is not installed on this box"
+    grep -qE '^PINNED=[0-9a-f]{7}$' "$conf" 2>/dev/null || fail "$slug is not pinned - it follows its track (deploy.sh stage/release), not a version picked in admin"
+    reached_staging "$sha" || fail "$sha never reached staging and was never released - nothing changed"
+    port="$(box_port)"
+    [[ "$port" =~ ^[0-9]{4,5}$ ]] || fail "the box knows no port for $slug"
+    disk="$(disk_mb)"
+    [ "${disk:-0}" -ge "$MIN_DISK_MB" ] || fail "only ${disk} MB disk free, need $MIN_DISK_MB MB for new images"
+    progress install
+    # deploy.sh pulls the images, takes a backup, fetches stack/ at that commit and pins the stack.
+    # It waits for a CI stage or release that is running (its deploy.lock).
+    run_watched "$stack/nginx/deploy.sh" promote "$slug" "$sha" || fail "deploy.sh promote failed - see the log above"
+    progress health
+    health || fail "the app does not answer on 127.0.0.1:$port"
+    echo "The app answers on 127.0.0.1:$port, pinned at $sha." >> "$log"
     report done
     ;;
 esac

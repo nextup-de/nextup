@@ -128,7 +128,7 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     await expect(leader).toHaveURL(/\/manager$/);
     const main = leader.getByRole("main");
     await expect(main.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
-    for (const part of ["Waiting on you", "What people say is broken", "Ideas people have", "Who is working with who"]) await expect(main.getByText(part, { exact: true })).toBeVisible();
+    for (const name of ["Decisions waiting on you", "Who holds the open cases", "Why cases wait", "Problems nobody owns", "Did shipped work pay off"]) await expect(main.getByRole("heading", { name, level: 2 })).toBeVisible();
     await expect(main.getByRole("link", { name: /^Team-level spend authority/ })).toBeVisible();
   });
 

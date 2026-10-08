@@ -7,6 +7,7 @@
 import { HEALTH_CONTRACT_VERSION, type HealthReport } from "@nextup/contracts";
 import { connectionChecks } from "@/features/admin/connections";
 import { describeEnvironment } from "@/features/admin/environment";
+import { flagReport } from "@/features/flags";
 import { countByState } from "@/features/integrations/tasks";
 import { singleCompany } from "@/features/tenant/urls";
 import { databaseSnapshot, noticeTasks, noticesSnapshot } from "@/server/connections";
@@ -19,6 +20,7 @@ export async function healthReport(slug: string): Promise<HealthReport> {
   const automation = await noticesSnapshot(mail).catch(() => null);
   const tasks = automation ? await noticeTasks().catch(() => []) : [];
   const environment = describeEnvironment(process.env);
+  const flags = await flagReport(slug).catch(() => undefined);
   const checks = connectionChecks({
     database: database.state,
     databaseHeadline: database.headline,
@@ -40,6 +42,7 @@ export async function healthReport(slug: string): Promise<HealthReport> {
       tone: r.tone,
       ...(r.hint ? { hint: r.hint.slice(0, 300) } : {}),
     })),
+    ...(flags ? { flags } : {}),
   };
 }
 

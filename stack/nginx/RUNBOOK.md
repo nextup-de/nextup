@@ -66,22 +66,86 @@ CI publishes `ghcr.io/selluxhenner/nextup-app` and `nextup-migrate` on every pus
 (`.github/workflows/images.yml`), tagged `main` and `sha-<7-char sha>`. Scripts take the plain sha and add the `sha-` prefix. On the box:
 
 ```bash
-~/nextup/stack/nginx/deploy.sh deploy main       # every installed stack in ports.md
-~/nextup/stack/nginx/deploy.sh deploy a16bc06    # pin (or roll back to) one commit
-~/nextup/stack/nginx/deploy.sh status
+~/nextup/stack/nginx/deploy.sh stage a16bc06      # staging gets the commit first
+~/nextup/stack/nginx/deploy.sh release a16bc06    # then every other stack - only a staged sha
+~/nextup/stack/nginx/deploy.sh status             # what runs where; the last staged and released sha
+~/nextup/stack/nginx/deploy.sh deploy a16bc06     # by hand only: both tracks at once, no gate
 ```
 
-`deploy.sh` does three things, in order:
+A `release` does three things, in order:
 1. **Pulls the commit's images.** A commit CI hasn't published changes nothing.
 2. **Swaps in `~/nextup/stack`** from that commit's `stack/` folder on GitHub. The previous copy
    stays in `~/nextup/stack.prev`, so scripts and images always come from the same commit.
-3. **Runs `add-stack.sh ... --images TAG` for each stack,** then `automation.sh up -d` so compose
+3. **Runs `add-stack.sh ... --images TAG` for each release-track stack,** then `automation.sh up -d` so compose
    changes reach n8n and the login page as well.
 
 Each stack's `.env` keeps its old image lines until the new images are pulled. That rewrites only the two image
 lines in the stack's `.env`, pulls the images and restarts. `migrate` applies new migrations
 before the app starts. For one stack only: `add-stack.sh acme 3101 demo --images main`.
 `--images local` goes back to images copied with `stack/push-images.sh`.
+
+## Staging and the release track
+
+`staging.sellux.ch` is a copy of acme (same demo company and people) that gets every green merge
+first. Everyone else gets a commit only after it ran on staging, the smoke test passed on it and
+Kevin approved it in GitHub. The same image moves on; nothing is rebuilt in between.
+
+```
+merge → CI → image sha-abc1234 → stage abc1234 (staging) → e2e:live on staging → Approve → release abc1234 (everyone else)
+```
+
+Which stack gets what is the **Track** column of `ports.md`:
+
+| Track | Stacks | Moved by | Runs from |
+|---|---|---|---|
+| `main` | staging | `stage <sha>`, after every green merge | its own copy, `instances/staging/stack` |
+| `release` | acme, globex, every stack started from admin | `release <sha>`, after Approve | the shared `~/nextup/stack` (= the released commit) |
+| (pinned) | demo | `promote demo <sha>` only | its own copy, `instances/demo/stack` |
+
+- **The gate is on the box as well.** `stage` writes each sha to `~/nextup/staged`, `release` to
+  `~/nextup/released`. Once `staged` exists, `release` refuses a sha that is in neither list, and
+  over ssh so does `promote`. Stopping staging does not switch the gate off.
+- **One move at a time.** `stage`, `release`, `deploy` and `promote` wait for
+  `~/nextup/deploy.lock` (up to 25 minutes), so two migrations never run side by side.
+- **New companies from admin** get the last released sha (`NEXTUP_IMAGES=released`,
+  `stack/provision/README.md`), never one that only reached staging.
+- **Roll back:** release an older sha that was released before (GitHub: Actions → deploy → Run,
+  `release`, the sha; it asks for approval too). `release` accepts it because it is in `released`.
+  Staging alone: run `stage` with the older sha.
+- **Change staging only with `stage`.** `add-stack.sh staging ...` would start it from the shared
+  `~/nextup/stack` again, which is usually older.
+- **Memory and disk:** staging and the others are often on different commits, so the box holds
+  more images. `prune_images` keeps the two newest sha tags plus any a container uses.
+
+### Install staging (once)
+
+After this section's commit was released to the box:
+
+```bash
+free -m && df -h /                         # about 700 MB available; the agent wants 600, health.sh alerts below 400
+# admin.sellux.ch → Stacks: issue a ticket token for "staging" (not "Register a stack that already runs")
+mkdir -p ~/nextup/instances/staging
+printf 'PORT=3991\nSTAGE=demo\nTRACK=main\n' > ~/nextup/instances/staging/stack.conf
+sha=$(~/nextup/stack/nginx/deploy.sh status | sed -n 's/^released: *//p')   # or the sha acme runs now
+NEXTUP_OPS_TOKEN=nxs_... ~/nextup/stack/nginx/add-stack.sh staging 3991 demo --images "$sha" \
+  --name "Acme Maschinenbau GmbH (staging)" --ops-url https://admin.sellux.ch
+# the three sudo lines it prints (nginx site + certificate), then onto its own copy:
+~/nextup/stack/nginx/deploy.sh stage "$sha"
+```
+
+- If `released:` is empty, the release this section came with ran the old script: write the sha
+  acme runs (`status`) into `~/nextup/released` by hand first (`echo "<sha> $(date -u +%FT%TZ)" >> ~/nextup/released`),
+  or a rollback to it is refused later.
+- Remove an explicit `NEXTUP_IMAGES=` from `~/nextup/provision/.env`, so the agent's new default
+  (`released`) applies.
+- Leave the LLM keys out of staging's `.env` unless a model call on every merge is fine.
+- From a laptop: `INTERVIEW_URL=https://staging.sellux.ch npm run e2e:live`.
+
+### Reset staging
+
+The smoke test leaves an idea behind on every run. To start clean:
+`~/nextup/stack/nginx/remove-stack.sh staging --purge`, then the install above again (keep its
+`stack.conf`).
 
 ### Deploy from CI (restricted key)
 
@@ -92,14 +156,31 @@ The box hosts other sites, so the CI key never gets a shell. Put this one line i
 command="~/nextup/stack/nginx/deploy.sh",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA... nextup-deploy
 ```
 
-That key can then only run `ssh hetzner deploy <tag>`, `ssh hetzner promote <slug> <sha>` or
-`ssh hetzner status`. Everything else is refused. Deploys are logged in `~/nextup/deploy.log`.
-The admin code and login codes never reach the CI log.
+That key can then only run `ssh hetzner stage <sha>`, `ssh hetzner release <sha>`,
+`ssh hetzner promote <slug> <sha>` (a staged or released sha) or `ssh hetzner status`, each with
+exactly its own arguments. Everything else is refused, `deploy` too: it skips the gate. Deploys
+are logged in `~/nextup/deploy.log`. The admin code and login codes never reach the CI log.
+
+What CI does with it (`.github/workflows/images.yml`, `deploy.yml`):
+
+1. **staging** - `stage <sha>` right after the images are pushed. No approval.
+2. **smoke** - `npm run e2e:live` against `STAGING_URL` (the interview script). Red here = no release.
+3. **release** - waits in the GitHub environment `production` until Kevin clicks **Review
+   deployments → Approve**, then `release <sha>`. A newer merge replaces a release still waiting.
+
+- **Roll back:** Actions → deploy → Run workflow → `release`, the older sha → approve.
+- **Settings it needs:** environment `production` with Kevin as required reviewer ("Prevent
+  self-review" off) and `main` as the only deployment branch; environment `hetzner` without
+  reviewers, `main` only, with `STAGING_HEALTH_URLS` next to `DEPLOY_HEALTH_URLS`; repository
+  variable `STAGING_URL=https://staging.sellux.ch`. The header of `deploy.yml` lists them.
+- **A change to `deploy.sh` takes effect one release later:** the release that brings it still
+  runs the old copy. If a new `deploy.sh` breaks, run the previous one by hand:
+  `~/nextup/stack.prev/nginx/deploy.sh release <sha>`.
 
 ## The interview stack (demo.sellux.ch)
 
-`acme` and `globex` follow `main`: every green merge is on them a few minutes later. That is
-right for building and wrong for showing. `demo.sellux.ch` is the stack to show: acme's demo
+`staging` gets every green merge, `acme` and `globex` every release. Both move without anyone
+asking, which is right for building and wrong for showing. `demo.sellux.ch` is the stack to show: acme's demo
 company and people, **pinned** to one commit. A deploy skips it.
 
 ```bash
@@ -120,15 +201,19 @@ company and people, **pinned** to one commit. A deploy skips it.
 The first install prints the admin code, the login codes and the three `sudo` lines for nginx and
 the certificate. `nextup-site` refuses the slug `demo`, so those are run by hand.
 
+- **From admin.sellux.ch:** the demo stack's **Version** card lists the released shas (and the one
+  staging runs); **Install this version** does the `promote` below through the box agent and
+  shows its log (`stack/provision/README.md`, "Picking the demo's version").
 - **Before an interview:** promote the evening before, click through the script once on
-  `demo.sellux.ch`, then leave it. Pick the sha from `acme.sellux.ch` once it looks right there.
+  `demo.sellux.ch`, then leave it. Pick the `released:` sha from `status` (or the staged one, once
+  it looks right on `staging.sellux.ch`).
 - **Go back:** `promote demo <old sha>`; the last line of a promote and `~/nextup/deploy.log`
   name it. If a migration ran in between, the old code meets a newer database: also
   `backup.sh demo restore <snapshot>` (the one taken in step 2).
 - **Change it only with `promote`.** `add-stack.sh demo ...` would start it from the shared
   `~/nextup/stack` again.
-- **Any stack can be pinned** the same way. To let one follow `main` again, delete the `PINNED=`
-  line from its `stack.conf`; the next deploy moves it.
+- **Any stack can be pinned** the same way. To put one back on its track, delete the `PINNED=`
+  line from its `stack.conf`; the next `stage` or `release` moves it.
 - **Memory:** one more stack is an app, a Postgres, a Caddy and a mailpit. Check `free -m` first
   (see "When something is wrong").
 

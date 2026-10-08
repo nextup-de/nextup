@@ -12,14 +12,20 @@ to the first one. `sellux.ch` and `www` go to the landing page, which also runs 
 
 Add a row **before** running `add-stack.sh`. It refuses a slug/port pair that isn't here.
 
-| Slug | Port | Stage | Host | Notes |
-|---|---|---|---|---|
-| acme | 3101 | demo | acme.sellux.ch | seeded demo company |
-| globex | 3111 | demo | globex.sellux.ch | empty; company created in /admin |
-| demo | 3121 | demo | demo.sellux.ch | the interview stack: acme's demo data, **pinned** - deploys skip it, `deploy.sh promote demo <sha>` moves it (RUNBOOK, "The interview stack") |
-| admin | 3131 | - | admin.sellux.ch | reserved: our developer tool, apps/ops (step 7); not a company stack |
-| automation | 3141 | - | automation.sellux.ch | n8n for building/testing (step 8), `stack/automation/`. nginx basic auth + n8n's own login |
-| landing | 3151 | - | sellux.ch, www | public site: one container from `nextup-landing` (`~/nextup/landing`, not a company stack) |
+**Track** says which versions a company stack gets (`deploy.sh`, RUNBOOK "Staging and the release
+track"): `main` = every green merge, straight from CI (the staging stack); `release` = only a commit
+that passed staging and was approved. A stack started from admin.sellux.ch has no row here and is
+always on `release`. A pinned stack (`PINNED=` in its stack.conf) ignores its track.
+
+| Slug | Port | Stage | Track | Host | Notes |
+|---|---|---|---|---|---|
+| acme | 3101 | demo | release | acme.sellux.ch | seeded demo company |
+| globex | 3111 | demo | release | globex.sellux.ch | empty; company created in /admin |
+| demo | 3121 | demo | release | demo.sellux.ch | the interview stack: acme's demo data, **pinned** - deploys skip it, `deploy.sh promote demo <sha>` moves it (RUNBOOK, "The interview stack") |
+| admin | 3131 | - | - | admin.sellux.ch | reserved: our developer tool, apps/ops (step 7); not a company stack |
+| automation | 3141 | - | - | automation.sellux.ch | n8n for building/testing (step 8), `stack/automation/`. nginx basic auth + n8n's own login |
+| landing | 3151 | - | - | sellux.ch, www | public site: one container from `nextup-landing` (`~/nextup/landing`, not a company stack) |
+| staging | 3991 | demo | main | staging.sellux.ch | the test stack: acme's demo data, gets every green merge first (`deploy.sh stage`); the rest only get a sha that passed it (`deploy.sh release`). The LAST block on purpose: admin.sellux.ch hands out new companies' blocks from 3161 upwards (test1 has 3161), and keeps 3991 for staging |
 
 Ports the box's other sites use (don't take them): 3001-3038, 3306/3307, 3999, 25565. To check
 what's in use: `ss -tln`.
