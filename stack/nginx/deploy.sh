@@ -12,8 +12,10 @@
 #   status          what runs where, and the last staged and released sha
 #
 # CI runs:        ssh hetzner stage <sha>, later ssh hetzner release <sha>, ssh hetzner status
+#                 (.github/workflows/images.yml + deploy.yml: the release waits for Kevin's approval)
 # By hand:        ~/nextup/stack/nginx/deploy.sh promote demo a16bc06
-#                 ~/nextup/stack/nginx/deploy.sh deploy main     (both tracks at once, no gate)
+#                 ~/nextup/stack/nginx/deploy.sh deploy main     (both tracks at once, no gate;
+#                                                                 refused over ssh)
 #
 # A release first replaces ~/nextup/stack with the stack/ folder of the same commit from GitHub
 # (the previous one stays as stack.prev), then moves every release-track stack - the rows of
@@ -42,7 +44,9 @@ usage() { echo "usage: stage <sha> | release <sha> | deploy <main|sha> | promote
 # exactly as many as the verb takes.
 if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
   read -r -a args <<< "$SSH_ORIGINAL_COMMAND"
-  case "${args[0]:-}:${#args[@]}" in status:1|stage:2|release:2|deploy:2|promote:3) ;; *) usage ;; esac
+  # `deploy` skips the gate, so the CI key can't use it: stage, then release.
+  [ "${args[0]:-}" != deploy ] || { echo "deploy: not over ssh - use stage <sha>, then release <sha>" >&2; exit 2; }
+  case "${args[0]:-}:${#args[@]}" in status:1|stage:2|release:2|promote:3) ;; *) usage ;; esac
 else args=("$@"); fi
 action="${args[0]:-}" tag="${args[1]:-}"
 
