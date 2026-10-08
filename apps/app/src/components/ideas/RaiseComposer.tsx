@@ -1,6 +1,7 @@
 "use client";
-// The gold-ringed composer, on the start page and under the chat: actions button, a field that grows,
-// dictation (Web Speech API, where the browser has it) and send. Enter sends, Shift+Enter is a new line.
+// The gold-ringed composer, on the start page and under the chat: actions button (the chat's only - the
+// start page has the actions as buttons below), a field that grows, dictation (Web Speech API, where the
+// browser has it) and send. Enter sends, Shift+Enter is a new line.
 // On a demo-stage company `fill` puts the demo script's next text in the field (features/ideas/demo-script).
 import { useEffect, useRef, useState } from "react";
 import { Icon, Mic, Solid } from "./raiseIcons";
@@ -29,9 +30,9 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
   fieldRef?: React.RefObject<HTMLTextAreaElement | null>;
   chips: Chip[];
   strip: boolean; // the start page shows the chips; the chat keeps their height empty
-  menuOpen: boolean;
-  onMenu: () => void;
-  menu: React.ReactNode;
+  menuOpen?: boolean;
+  onMenu?: () => void; // no actions button without it
+  menu?: React.ReactNode;
   onUnsupported: () => void;
   fill?: { label: string; text: string } | null;
 }) {
@@ -65,10 +66,12 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
       <div className={s.ring}>
         <div className={s.inner}>
           <div className={s.row}>
-            <div className={s.kindWrap}>
-              <button type="button" className={s.kind} onClick={onMenu} title="Actions" aria-label="Actions" aria-expanded={menuOpen}><Solid name="bolt" size={10.5} fill="#1c1c1e" /></button>
-              {menuOpen && menu}
-            </div>
+            {onMenu && (
+              <div className={s.kindWrap}>
+                <button type="button" className={s.kind} onClick={onMenu} title="Actions" aria-label="Actions" aria-expanded={!!menuOpen}><Solid name="bolt" size={10.5} fill="#1c1c1e" /></button>
+                {menuOpen && menu}
+              </div>
+            )}
             <textarea ref={fieldRef} className={s.field} rows={1} value={value} placeholder={placeholder} aria-label={placeholder}
               onChange={(e) => onChange(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); onSubmit(); } }} />
