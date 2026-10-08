@@ -56,7 +56,6 @@ jobs:
     timeout-minutes: 30
     outputs:
       commit: ${{ steps.tags.outputs.commit }}
-      sha: ${{ steps.tags.outputs.sha }}
     env:
       # The commit CI tested. On a workflow_run, github.sha is main's tip at trigger time - which a
       # later merge may already have moved - so it is never used for what gets built.
@@ -81,7 +80,6 @@ jobs:
         run: |
           short="${COMMIT::7}"
           echo "commit=$short" >> "$GITHUB_OUTPUT"
-          echo "sha=$COMMIT" >> "$GITHUB_OUTPUT"
           echo "app=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-app" >> "$GITHUB_OUTPUT"
           echo "migrate=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-migrate" >> "$GITHUB_OUTPUT"
           echo "short=sha-$short" >> "$GITHUB_OUTPUT"
