@@ -8,6 +8,7 @@
 // route is a pattern (/[company]/cases/[id]), never an address with a query.
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { ERRORS_CONTRACT_VERSION, type ErrorBatch } from "@nextup/contracts";
 
 export const ERROR_SOURCES = ["server", "client"] as const;
 export type ErrorSource = (typeof ERROR_SOURCES)[number];
@@ -213,6 +214,43 @@ export function putBack(store: ErrorStore, groups: ErrorGroup[]): void {
       store.set(g.fingerprint, { ...g });
     }
   }
+}
+
+// ── Sending to admin.sellux.ch ──────────────────────────────────────────────────────────────────
+
+/** An ErrorGroup row as the send needs it (prisma/schema.prisma). */
+export type StoredErrorGroup = {
+  fingerprint: string;
+  source: string;
+  name: string;
+  message: string;
+  frame: string;
+  route: string;
+  count: number;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  appCommit: string | null;
+};
+
+/** The rows as one POST /api/errors body (@nextup/contracts errors.ts). Counts are totals, so a re-send changes nothing. */
+export function toErrorBatch(rows: StoredErrorGroup[], companySlug: string, now: Date): ErrorBatch {
+  return {
+    contractVersion: ERRORS_CONTRACT_VERSION,
+    companySlug,
+    sentAt: now.toISOString(),
+    groups: rows.map((r) => ({
+      fingerprint: r.fingerprint,
+      source: r.source === "client" ? "client" : "server",
+      name: r.name.slice(0, ERROR_LIMITS.name) || "Error",
+      message: r.message.slice(0, ERROR_LIMITS.message),
+      frame: r.frame.slice(0, ERROR_LIMITS.frame),
+      route: r.route.slice(0, ERROR_LIMITS.route),
+      count: Math.max(1, r.count),
+      firstSeenAt: r.firstSeenAt.toISOString(),
+      lastSeenAt: r.lastSeenAt.toISOString(),
+      appCommit: r.appCommit?.slice(0, 40) ?? null,
+    })),
+  };
 }
 
 // ── Browser reports ───────────────────────────────────────────────────────────────────────────────

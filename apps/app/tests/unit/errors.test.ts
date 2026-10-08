@@ -2,6 +2,7 @@
 // same crash always lands in the same group, and a storm of errors can't grow the store without end.
 // Fake secrets are built at runtime, so CI's secret scan never sees a key-shaped literal here.
 import { describe, expect, it } from "vitest";
+import { ErrorBatch } from "@nextup/contracts";
 import {
   ERROR_LIMITS,
   acceptClientReport,
@@ -14,6 +15,7 @@ import {
   putBack,
   record,
   scrub,
+  toErrorBatch,
   toErrorEvent,
   topAppFrame,
   type ErrorStore,
@@ -172,6 +174,32 @@ describe("putBack", () => {
     record(store, toErrorEvent("server", new Error("boom"), "/raise", 9000));
     putBack(store, round);
     expect([...store.values()]).toMatchObject([{ count: 2, firstSeen: 1000, lastSeen: 9000 }]);
+  });
+});
+
+describe("toErrorBatch", () => {
+  const row = {
+    fingerprint: "0123456789abcdef",
+    source: "server",
+    name: "TypeError",
+    message: "x is not a function",
+    frame: "loadCases (src/features/cases.ts)",
+    route: "/[company]/raise",
+    count: 7,
+    firstSeenAt: new Date("2026-10-08T10:00:00Z"),
+    lastSeenAt: new Date("2026-10-08T11:00:00Z"),
+    appCommit: "abc1234",
+  };
+
+  it("is a body admin.sellux.ch accepts, with each kind's total count", () => {
+    const batch = toErrorBatch([row, { ...row, fingerprint: "fedcba9876543210", source: "client", appCommit: null }], "acme", new Date());
+    expect(ErrorBatch.parse(batch)).toEqual(batch);
+    expect(batch.groups[0]).toMatchObject({ count: 7, lastSeenAt: "2026-10-08T11:00:00.000Z" });
+  });
+
+  it("never sends more than one batch's worth", () => {
+    const rows = Array.from({ length: 51 }, (_, i) => ({ ...row, fingerprint: i.toString(16).padStart(16, "0") }));
+    expect(ErrorBatch.safeParse(toErrorBatch(rows, "acme", new Date())).success).toBe(false);
   });
 });
 
