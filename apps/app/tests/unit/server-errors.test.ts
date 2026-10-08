@@ -35,6 +35,15 @@ describe("recordError", () => {
 });
 
 describe("flushErrors", () => {
+  it("keeps flushing after a round that had nothing to do", async () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await flushErrors(); // nothing counted yet: returns before it ever waits
+    recordError("client", new Error("boom"), "/raise");
+    await flushErrors();
+    expect(store().size).toBe(0);
+  });
+
   it("drops the round when the stack has no database (the built-in demo)", async () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.spyOn(console, "error").mockImplementation(() => {});
