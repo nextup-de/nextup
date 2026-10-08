@@ -59,6 +59,18 @@ describe("scopeViolation", () => {
     expect(scopeViolation("Company", "findUnique", { where: { slug: "acme" } })).toBeNull();
   });
 
+  it("guards the feature flags admin set per company", () => {
+    expect(scopeViolation("FeatureFlag", "findMany", {})).toBeInstanceOf(Error);
+    expect(scopeViolation("FeatureFlag", "deleteMany", { where: { key: { notIn: [] } } })).toBeInstanceOf(Error);
+    expect(scopeViolation("FeatureFlag", "findMany", { where: { companyId: "c1" } })).toBeNull();
+    expect(
+      scopeViolation("FeatureFlag", "upsert", {
+        where: { companyId_key: { companyId: "c1", key: "shiftRota" } },
+        create: { companyId: "c1", key: "shiftRota", enabled: true },
+      }),
+    ).toBeNull();
+  });
+
   it("blocks an unscoped read of a tenant table", () => {
     expect(scopeViolation("CaseEvent", "findMany", {})).toBeInstanceOf(Error);
     expect(scopeViolation("User", "findFirst", { where: { email: "a@b.c" } })).toBeInstanceOf(Error);

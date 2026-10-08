@@ -157,9 +157,25 @@ command="~/nextup/stack/nginx/deploy.sh",no-port-forwarding,no-agent-forwarding,
 ```
 
 That key can then only run `ssh hetzner stage <sha>`, `ssh hetzner release <sha>`,
-`ssh hetzner deploy <tag>`, `ssh hetzner promote <slug> <sha>` (a staged or released sha) or
-`ssh hetzner status`, each with exactly its own arguments. Everything else is refused. Deploys
+`ssh hetzner promote <slug> <sha>` (a staged or released sha) or `ssh hetzner status`, each with
+exactly its own arguments. Everything else is refused, `deploy` too: it skips the gate. Deploys
 are logged in `~/nextup/deploy.log`. The admin code and login codes never reach the CI log.
+
+What CI does with it (`.github/workflows/images.yml`, `deploy.yml`):
+
+1. **staging** - `stage <sha>` right after the images are pushed. No approval.
+2. **smoke** - `npm run e2e:live` against `STAGING_URL` (the interview script). Red here = no release.
+3. **release** - waits in the GitHub environment `production` until Kevin clicks **Review
+   deployments → Approve**, then `release <sha>`. A newer merge replaces a release still waiting.
+
+- **Roll back:** Actions → deploy → Run workflow → `release`, the older sha → approve.
+- **Settings it needs:** environment `production` with Kevin as required reviewer ("Prevent
+  self-review" off) and `main` as the only deployment branch; environment `hetzner` without
+  reviewers, `main` only, with `STAGING_HEALTH_URLS` next to `DEPLOY_HEALTH_URLS`; repository
+  variable `STAGING_URL=https://staging.sellux.ch`. The header of `deploy.yml` lists them.
+- **A change to `deploy.sh` takes effect one release later:** the release that brings it still
+  runs the old copy. If a new `deploy.sh` breaks, run the previous one by hand:
+  `~/nextup/stack.prev/nginx/deploy.sh release <sha>`.
 
 ## The interview stack (demo.sellux.ch)
 

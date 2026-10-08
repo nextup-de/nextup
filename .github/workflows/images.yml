@@ -10,9 +10,14 @@
 # the build needs no DATABASE_URL (same condition as the CI build job). Servers pull them instead of
 # getting them copied from a laptop (stack/push-images.sh, the stage-1 bridge).
 #
-# Then it calls deploy.yml with that exact tag, so the box only ever runs code that passed CI - a red
-# CI on main means no new image and no deploy. (Until 28 Sep this ran on every push, and a failing
-# e2e suite still reached the box.)
+# Then that exact tag climbs, one step at a time (stack/nginx/RUNBOOK.md, "Staging and the release
+# track"):
+#   staging  deploy.yml stage    -> staging.sellux.ch runs it
+#   smoke    e2e:live (the interview script) against staging.sellux.ch
+#   release  deploy.yml release  -> waits for Kevin's approval, then every other stack runs it
+# So the box only ever runs code that passed CI, and customers only code that also ran on staging -
+# a red CI on main means no new image and no deploy. (Until 28 Sep this ran on every push, and a
+# failing e2e suite still reached the box.)
 #
 # Kevin owns this file.
 
@@ -30,11 +35,6 @@ on:
     paths: ["apps/**", "packages/**", "ops/Dockerfile", ".dockerignore", "package.json", "package-lock.json", ".github/workflows/images.yml"]
   workflow_dispatch:
 
-concurrency:
-  group: images-${{ github.ref }}
-  # A newer PR push may cancel the older build; on main never - the deploy job may be migrating.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 permissions:
   contents: read
   packages: write
@@ -46,10 +46,17 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    # On the build only, not the whole run: a run that waits days for a release approval must
+    # not hold up the next merge's build and staging. A newer PR push may cancel the older build;
+    # on main never.
+    concurrency:
+      group: images-publish-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       commit: ${{ steps.tags.outputs.commit }}
+      sha: ${{ steps.tags.outputs.sha }}
     env:
       # The commit CI tested. On a workflow_run, github.sha is main's tip at trigger time - which a
       # later merge may already have moved - so it is never used for what gets built.
@@ -74,6 +81,7 @@ jobs:
         run: |
           short="${COMMIT::7}"
           echo "commit=$short" >> "$GITHUB_OUTPUT"
+          echo "sha=$COMMIT" >> "$GITHUB_OUTPUT"
           echo "app=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-app" >> "$GITHUB_OUTPUT"
           echo "migrate=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-migrate" >> "$GITHUB_OUTPUT"
           echo "short=sha-$short" >> "$GITHUB_OUTPUT"
@@ -161,12 +169,61 @@ jobs:
             echo "- \`${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Put exactly this build live. deploy.yml is also the manual rollback (Actions -> deploy).
-  deploy:
-    name: deploy
+  # 1. staging.sellux.ch gets exactly this build.
+  staging:
+    name: staging
     needs: publish
     if: github.event_name == 'workflow_run' && needs.publish.result == 'success'
     uses: ./.github/workflows/deploy.yml
     with:
+      action: stage
+      tag: ${{ needs.publish.outputs.commit }}
+    secrets: inherit
+
+  # 2. The interview script against staging, over the internet - the way people reach it.
+  smoke:
+    name: smoke · e2e:live on staging
+    needs: [publish, staging]
+    if: needs.staging.outputs.deployed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      # The default checkout (main as this run started), not the commit the images came from: a
+      # workflow_run job must not run code it took from the triggering event. It is the same commit
+      # unless another merge landed in between, and then only the interview spec could be newer.
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Interview script on staging
+        env:
+          INTERVIEW_URL: ${{ vars.STAGING_URL }}
+        run: npm run e2e:live
+
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-staging
+          path: apps/app/playwright-report/
+          retention-days: 14
+
+  # 3. Everyone else, after Kevin approves (deploy.yml, job `approve`). deploy.yml is also the
+  # manual rollback (Actions -> deploy -> release, an older sha).
+  release:
+    name: release
+    needs: [publish, smoke]
+    if: needs.smoke.result == 'success'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      action: release
       tag: ${{ needs.publish.outputs.commit }}
     secrets: inherit
