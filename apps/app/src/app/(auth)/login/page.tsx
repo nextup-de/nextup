@@ -16,7 +16,7 @@ export default function FindCompanyPage() {
           <AuthRoles items={[
             ["Team member", "Ideas", "Develop an idea with the coach - at the threshold NextUp names the owner and the deadline."],
             ["Team leader", "Inbox", "Open items, oldest first. Yes, no and why, pass on, or ask - one click."],
-            ["Manager", "Overview", "What is waiting on you, the wait ledger, where the waiting goes."],
+            ["Manager", "Overview", "Decisions waiting on you, who holds the open cases, and why cases wait."],
           ]} />
         </>
       }
