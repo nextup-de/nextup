@@ -80,6 +80,8 @@ model Company {
 
   tickets       Ticket[]
   ticketReplies TicketReply[]
+
+  featureFlags FeatureFlag[]
 }
 
 // ── Company knowledge ────────────────────────────────────────────────────────────────────────────
@@ -563,4 +565,20 @@ model TicketReply {
 
   @@index([companyId, createdAt])
   @@index([ticketId, createdAt])
+}
+
+// ── Feature flags (src/config/flags.ts, src/features/flags) ───────────────────────────────────────
+// NextUp's rollout switches for this company, as admin.sellux.ch set them - the stack fetches the
+// full list once a minute and keeps it here, so a flag holds while admin is away. A flag with no
+// row here gets its stage default from src/config/flags.ts. Not customer settings: those are
+// CompanyConfig, and the company never sees these.
+model FeatureFlag {
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  key       String // a key of FLAGS in src/config/flags.ts; one deleted since is ignored
+  enabled   Boolean
+  source    String   @default("admin") // who set it: admin (admin.sellux.ch)
+  updatedAt DateTime // when admin set it (admin's clock)
+
+  @@id([companyId, key])
 }
