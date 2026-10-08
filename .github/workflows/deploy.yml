@@ -142,10 +142,15 @@ jobs:
       - name: ${{ inputs.action }}
         if: steps.ready.outputs.ok == 'true'
         shell: bash
+        # Through env, never ${{ }} inside the script: the values were checked above, and the
+        # shell only ever sees them as quoted arguments.
+        env:
+          ACTION: ${{ steps.tag.outputs.action }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
               -o ConnectTimeout=15 -o BatchMode=yes \
-              "$USER_NAME@$HOST" "${{ steps.tag.outputs.action }}" "${{ steps.tag.outputs.tag }}"
+              "$USER_NAME@$HOST" "$ACTION" "$TAG"
 
       - name: Status
         if: always() && steps.ready.outputs.ok == 'true'

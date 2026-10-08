@@ -190,9 +190,10 @@ jobs:
     permissions:
       contents: read
     steps:
+      # The default checkout (main as this run started), not the commit the images came from: a
+      # workflow_run job must not run code it took from the triggering event. It is the same commit
+      # unless another merge landed in between, and then only the interview spec could be newer.
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.publish.outputs.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
