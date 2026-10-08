@@ -7,7 +7,7 @@ export default async function SettingsLayout({ children, params }: { children: R
   const base = `${companyPrefix(company)}/settings`;
   return (
     <div style={{ display: "grid", gap: 20 }}>
-      <nav aria-label="Settings" style={{ display: "flex", gap: 16, fontSize: 14 }}>
+      <nav aria-label="Settings" style={{ display: "flex", gap: 16, fontSize: "var(--nh-fs-md)" }}>
         <Link href={`${base}/company`}>Company</Link>
         <Link href={`${base}/members`}>Members</Link>
         <Link href={`${base}/routing`}>Routing table</Link>

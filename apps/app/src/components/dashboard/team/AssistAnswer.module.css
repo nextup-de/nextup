@@ -1,15 +1,15 @@
 /* The assistant's answer card - same card language as the raise page: semibold heading over a hairline,
    mono tags, an ink pill and hairline pills. */
 .wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px clamp(18px, 2.4vw, 30px) 12px; border-bottom: 1px solid #e7edf1; }
-.title { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); }
-.tag { font-family: var(--nh-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #7b8794; white-space: nowrap; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 30px 12px; border-bottom: 1px solid #e7edf1; }
+.title { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); }
+.tag { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); text-transform: uppercase; letter-spacing: 0.08em; color: #7b8794; white-space: nowrap; }
 
-.body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px clamp(18px, 2.4vw, 30px) 6px; }
-.q { margin: 0; font-size: 13.5px; color: var(--nh-mute); }
-.answer { margin: 0; max-width: 72ch; font-size: 16px; line-height: 1.6; color: var(--nh-ink); text-wrap: pretty; }
-.note { margin: 0; max-width: 72ch; font-size: 14.5px; line-height: 1.55; color: var(--nh-ink-2); padding: 10px 14px; border-radius: 12px; background: #fbf6ec; border: 1px solid #f0e3c8; }
-.mark { margin-left: 1px; padding: 0 4px; border-radius: 5px; background: var(--nh-brand-tint); color: var(--nh-brand); font-family: var(--nh-mono); font-size: 12px; font-weight: 600; vertical-align: 0.4em; line-height: 1; }
+.body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px 30px 6px; }
+.q { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.answer { margin: 0; max-width: 72ch; font-size: var(--nh-fs-lg); line-height: 1.6; color: var(--nh-ink); text-wrap: pretty; }
+.note { margin: 0; max-width: 72ch; font-size: var(--nh-fs-md); line-height: 1.55; color: var(--nh-ink-2); padding: 10px 14px; border-radius: 12px; background: #fbf6ec; border: 1px solid #f0e3c8; }
+.mark { margin-left: 1px; padding: 0 4px; border-radius: 5px; background: var(--nh-brand-tint); color: var(--nh-brand); font-family: var(--nh-mono); font-size: var(--nh-fs-xs); font-weight: 600; vertical-align: 0.4em; line-height: 1; }
 
 .dots { display: inline-flex; gap: 5px; padding: 6px 0; }
 .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--nh-brand); opacity: 0.3; animation: blink 1s ease-in-out infinite; }
@@ -18,18 +18,18 @@
 @keyframes blink { 50% { opacity: 0.9; } }
 
 .sources { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 4px 0 0; padding: 10px 0 0; border-top: 1px solid #eef2f5; }
-.source { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; color: var(--nh-ink-2); }
-.srcN { flex: none; min-width: 18px; text-align: center; padding: 1px 4px; border-radius: 5px; background: var(--nh-brand-tint); color: var(--nh-brand); font-family: var(--nh-mono); font-size: 12px; font-weight: 600; }
-.srcKind { flex: none; font-family: var(--nh-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #8b98a5; }
+.source { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
+.srcN { flex: none; min-width: 18px; text-align: center; padding: 1px 4px; border-radius: 5px; background: var(--nh-brand-tint); color: var(--nh-brand); font-family: var(--nh-mono); font-size: var(--nh-fs-xs); font-weight: 600; }
+.srcKind { flex: none; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: #8b98a5; }
 .srcLabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--nh-ink); }
-.level { flex: none; margin-left: auto; font-family: var(--nh-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 6px; border-radius: 5px; border: 1px solid #e6edf1; color: #5c6773; }
+.level { flex: none; margin-left: auto; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 6px; border-radius: 5px; border: 1px solid #e6edf1; color: #5c6773; }
 .level[data-level="public"] { color: #2f7a4a; border-color: #cfe6d7; }
 .level[data-level="confidential"] { color: #9a6412; border-color: #f0e3c8; }
 
-.foot { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 10px clamp(18px, 2.4vw, 30px) 16px; }
-.fine { margin: 0; font-size: 12px; line-height: 1.45; color: var(--nh-mute); max-width: 52ch; }
+.foot { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 10px 30px 16px; }
+.fine { margin: 0; font-size: var(--nh-fs-xs); line-height: 1.45; color: var(--nh-mute); max-width: 52ch; }
 .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.solved, .more, .raise { display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 999px; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.18s, border-color 0.18s; }
+.solved, .more, .raise { display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 999px; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 500; cursor: pointer; transition: background 0.18s, border-color 0.18s; }
 .solved { background: var(--nh-ink); color: #fff; border: 1px solid var(--nh-ink); }
 .solved:hover { background: #2a2a2a; border-color: #2a2a2a; }
 .more, .raise { background: var(--nh-card); color: var(--nh-ink); border: 1px solid #e6edf1; }
@@ -41,8 +41,9 @@
   .dots span { animation: none; opacity: 0.6; }
 }
 @media (max-width: 760px) {
+  .head, .body, .foot { padding-inline: 18px; }
   .body { padding-top: 12px; }
-  .answer { font-size: 15px; }
+  .answer { font-size: var(--nh-fs-md); }
   .foot { flex-direction: column; align-items: stretch; }
   .actions { justify-content: flex-end; }
   .level { display: none; }

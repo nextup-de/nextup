@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint && stylelint \"src/**/*.css\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -16,7 +16,9 @@
     "e2e:live": "playwright test -c playwright.live.config.ts",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "lint:css": "stylelint \"src/**/*.css\"",
+    "e2e:visual": "playwright test -c playwright.visual.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "^0.34.2",
@@ -41,6 +43,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "prisma": "7.10.0",
+    "stylelint": "^17.16.0",
+    "stylelint-declaration-strict-value": "^1.12.1",
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.3"

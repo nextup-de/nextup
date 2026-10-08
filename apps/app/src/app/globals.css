@@ -14,7 +14,7 @@ body {
   background: var(--nh-ground);
   color: var(--nh-ink);
   font-family: var(--nh-font);
-  font-size: 15px;
+  font-size: var(--nh-fs-md);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -27,7 +27,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 .nh-mono { font-family: var(--nh-mono); }
 .nh-eyebrow {
-  font-family: var(--nh-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.08em;
+  font-family: var(--nh-mono); font-size: var(--nh-fs-xs); font-weight: 500; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--nh-mute);
 }
 
@@ -35,7 +35,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .nh-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid transparent;
-  font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap;
+  font-weight: 600; font-size: var(--nh-fs-md); cursor: pointer; white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 .nh-btn:active { transform: translateY(1px); }
@@ -47,12 +47,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .nh-btn-accent { background: var(--nh-brand); color: #fff; }
 .nh-btn-accent:hover { background: var(--nh-brand-hover); color: #fff; }
 .nh-btn-block { width: 100%; }
-.nh-btn-sm { height: 34px; padding: 0 14px; font-size: 13px; }
+.nh-btn-sm { height: 34px; padding: 0 14px; font-size: var(--nh-fs-sm); }
 
 /* Fields */
 .nh-field { display: grid; gap: 6px; }
-.nh-label { font-size: 13px; font-weight: 600; color: var(--nh-ink); }
-.nh-hint { font-size: 12px; color: var(--nh-mute); }
+.nh-label { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
+.nh-hint { font-size: var(--nh-fs-xs); color: var(--nh-mute); }
 .nh-input {
   height: 44px; width: 100%; padding: 0 14px; border-radius: var(--nh-r);
   border: 1px solid var(--nh-line); background: var(--nh-card); color: var(--nh-ink);
@@ -63,7 +63,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* Set by the form's own validation, never by the browser's - forms that use it carry noValidate. */
 .nh-input[aria-invalid="true"] { border-color: var(--nh-danger); }
 .nh-input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgb(179 38 30 / 0.14); }
-.nh-error { display: flex; gap: 6px; align-items: flex-start; font-size: 12.5px; line-height: 1.4; color: var(--nh-danger); }
+.nh-error { display: flex; gap: 6px; align-items: flex-start; font-size: var(--nh-fs-sm); line-height: 1.4; color: var(--nh-danger); }
 .nh-error svg { flex: none; width: 14px; height: 14px; margin-top: 2px; }
 .nh-textarea { height: auto; min-height: 120px; padding: 12px 14px; resize: vertical; line-height: 1.5; }
 .nh-select { appearance: none; padding-right: 36px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235b5b5b' stroke-width='1.6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
@@ -71,10 +71,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .nh-input-wrap .nh-input { padding-right: 44px; }
 .nh-input-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--nh-mute); display: flex; }
 
-.nh-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--nh-ink-2); }
+.nh-check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
 .nh-check input { width: 16px; height: 16px; accent-color: var(--nh-brand); margin: 0; }
 
-.nh-divider { display: flex; align-items: center; gap: 12px; color: var(--nh-mute-2); font-size: 12px; }
+.nh-divider { display: flex; align-items: center; gap: 12px; color: var(--nh-mute-2); font-size: var(--nh-fs-xs); }
 .nh-divider::before, .nh-divider::after { content: ""; flex: 1; height: 1px; background: var(--nh-line); }
 
 .nh-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

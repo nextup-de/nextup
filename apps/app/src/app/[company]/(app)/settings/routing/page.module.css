@@ -1,8 +1,8 @@
 .wrap { overflow-x: auto; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: 14px; }
-.table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.table th { text-align: left; font-family: var(--nh-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--nh-on-dark-mute); font-weight: 500; padding: 12px 14px; border-bottom: 1px solid var(--nh-line); white-space: nowrap; }
+.table { width: 100%; border-collapse: collapse; font-size: var(--nh-fs-sm); }
+.table th { text-align: left; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--nh-on-dark-mute); font-weight: 500; padding: 12px 14px; border-bottom: 1px solid var(--nh-line); white-space: nowrap; }
 .table td { padding: 11px 14px; border-bottom: 1px solid #f0efea; vertical-align: top; color: var(--nh-ink); }
 .type { font-weight: 700; min-width: 200px; }
-.sub { display: block; font-size: 12px; color: var(--nh-mute); margin-top: 2px; }
+.sub { display: block; font-size: var(--nh-fs-xs); color: var(--nh-mute); margin-top: 2px; }
 .mono { font-family: var(--nh-mono); white-space: nowrap; }
-.keys { font-size: 12px; color: var(--nh-mute); min-width: 220px; }
+.keys { font-size: var(--nh-fs-xs); color: var(--nh-mute); min-width: 220px; }

@@ -1,21 +1,21 @@
 .funnel { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
 .funnelHead { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; }
-.funnelN { font-family: var(--nh-mono); font-size: 15px; font-weight: 800; color: var(--nh-ink); min-width: 42px; }
-.funnelLabel { font-size: 13.5px; font-weight: 700; color: var(--nh-ink); }
+.funnelN { font-family: var(--nh-mono); font-size: var(--nh-fs-md); font-weight: 800; color: var(--nh-ink); min-width: 42px; }
+.funnelLabel { font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-ink); }
 .funnelTrack { height: 12px; border-radius: 999px; background: #f0efea; margin-top: 7px; overflow: hidden; }
 .funnelFill { height: 12px; border-radius: 999px; background: var(--nh-ink); }
 .funnelFill[data-gate="true"] { background: var(--nh-accent); }
-.funnelNote { font-size: 12px; color: #b23c07; margin-top: 6px; line-height: 1.5; }
+.funnelNote { font-size: var(--nh-fs-xs); color: #b23c07; margin-top: 6px; line-height: 1.5; }
 
 .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: start; }
 .outcomeMeta { gap: 14px; margin-top: 8px; }
 .promised { font-family: var(--nh-mono); color: var(--nh-ink-2); }
 .measured { font-family: var(--nh-mono); color: var(--nh-ink); font-weight: 600; }
 .stuckAt { margin-top: 7px; }
-.bigV { font-size: 22px; font-weight: 800; color: var(--nh-ink); letter-spacing: -0.025em; }
+.bigV { font-size: var(--nh-fs-2xl); font-weight: 800; color: var(--nh-ink); letter-spacing: -0.025em; }
 .bigV[data-hot="true"] { color: #b23c07; }
 .contrib { padding: 9px 0; }
-.contribName { font-size: 12.5px; font-weight: 700; color: var(--nh-ink); }
-.contribMeta { font-size: 12px; color: var(--nh-on-dark-mute); margin-top: 2px; }
-.credit { font-size: 12px; color: var(--nh-ink-2); white-space: nowrap; }
+.contribName { font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-ink); }
+.contribMeta { font-size: var(--nh-fs-xs); color: var(--nh-on-dark-mute); margin-top: 2px; }
+.credit { font-size: var(--nh-fs-xs); color: var(--nh-ink-2); white-space: nowrap; }
 .anonNote { margin-top: 11px; }

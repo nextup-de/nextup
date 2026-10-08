@@ -51,6 +51,45 @@ describe("fluid UI", () => {
     expect(bad, "use 12px or more (see docs/RESPONSIVE.md)").toEqual([]);
   });
 
+  // The type scale (src/styles/tokens.css): fixed sizes, the same on every screen.
+  const steps = () => [...readFileSync(join(ROOT, TOKENS), "utf8").matchAll(/--nh-fs-([a-z0-9]+):\s*([^;]+);/g)]
+    .filter((m) => m[1] !== "input") // the phone text-field size is not a step of the ramp
+    .map((m) => ({ name: m[1], value: m[2].trim() }));
+
+  it("the type scale is real sizes: plain px, nothing that follows the window", () => {
+    for (const s of steps()) expect(s.value, `--nh-fs-${s.name}`).toMatch(/^\d+(\.\d+)?px$/);
+  });
+
+  it("no step of the type scale is under 12px", () => {
+    for (const s of steps()) expect(parseFloat(s.value), `--nh-fs-${s.name}`).toBeGreaterThanOrEqual(12);
+  });
+
+  it("the type steps are 1px or more apart, so the hierarchy never collapses onto one size", () => {
+    const all = steps();
+    expect(all.length).toBeGreaterThanOrEqual(6);
+    for (let i = 1; i < all.length; i++) {
+      const gap = parseFloat(all[i].value) - parseFloat(all[i - 1].value);
+      expect(gap, `--nh-fs-${all[i].name} vs --nh-fs-${all[i - 1].name}`).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("nothing scales with the screen: no size multiplier (--u, --ux), no spacing or text in vw / vh / cqmin", () => {
+    const bad = files(SRC, [".css"]).filter((f) => rel(f) !== TOKENS).flatMap(lines)
+      .filter((l) => /--ux?\b(?![-\w])/.test(l.text)
+        || /clamp\([^;]*\d(vw|vh|vmin|vmax)\b/.test(l.text)
+        || /(^|[\s{;])(padding|margin|gap|row-gap|column-gap|font-size)(-[a-z-]+)?\s*:[^;]*\d(vw|vh|vmin|vmax|cqmin|cqmax)\b/.test(l.text))
+      .filter((l) => !l.text.includes(OPT_OUT))
+      .map((l) => l.at + "  " + l.text.trim());
+    expect(bad, "use the design's px as they are (see docs/RESPONSIVE.md)").toEqual([]);
+  });
+
+  it("inline font sizes in components use the scale too (stylelint covers the CSS)", () => {
+    const bad = files(SRC, [".tsx"]).flatMap(lines)
+      .filter((l) => /fontSize:(?!\s*["']var\(--nh-fs-)/.test(l.text) && !l.text.includes(OPT_OUT))
+      .map((l) => l.at + "  " + l.text.trim());
+    expect(bad, "use fontSize: \"var(--nh-fs-…)\" (see docs/RESPONSIVE.md)").toEqual([]);
+  });
+
   it("the screen tokens are still defined", () => {
     const tokens = readFileSync(join(ROOT, TOKENS), "utf8");
     for (const name of ["--nh-screen-h:", "--nh-screen-w:"]) expect(tokens).toContain(name);

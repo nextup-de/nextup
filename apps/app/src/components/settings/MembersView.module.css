@@ -8,7 +8,7 @@
   border: 1px solid var(--nh-brand-line);
   border-radius: var(--nh-r);
 }
-.codeValue { font-family: var(--nh-mono); font-size: 1.1rem; letter-spacing: 0.02em; word-break: break-all; user-select: all; }
+.codeValue { font-family: var(--nh-mono); font-size: var(--nh-fs-xl); letter-spacing: 0.02em; word-break: break-all; user-select: all; }
 
 .list { list-style: none; margin: 0; padding: 0; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: 14px; }
 .row {
@@ -21,12 +21,12 @@
 }
 .row:last-child { border-bottom: 0; }
 .who { display: grid; gap: 2px; min-width: 0; }
-.who strong { font-size: 14px; }
-.sub { font-size: 12px; color: var(--nh-mute); overflow-wrap: anywhere; }
+.who strong { font-size: var(--nh-fs-md); }
+.sub { font-size: var(--nh-fs-xs); color: var(--nh-mute); overflow-wrap: anywhere; }
 .role :global(.nh-select) { min-width: 120px; }
 
 .add { display: grid; gap: 12px; padding: 16px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: 14px; }
-.addTitle { margin: 0; font-size: 15px; }
+.addTitle { margin: 0; font-size: var(--nh-fs-md); }
 .addFields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 
 @media (max-width: 760px) {

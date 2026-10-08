@@ -23,7 +23,7 @@
 .step { display: flex; gap: 6px; }
 .tabs { position: relative; flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; border-radius: 999px; background: var(--c-fill); }
 .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 3); border-radius: 999px; background: var(--c-ink); box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); will-change: transform; }
-.tab { position: relative; z-index: 1; height: 30px; border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: var(--c-ink-2); cursor: pointer; transition: color 200ms ease; }
+.tab { position: relative; z-index: 1; height: 30px; border: 0; background: transparent; font: inherit; font-size: var(--nh-fs-md); font-weight: 600; color: var(--c-ink-2); cursor: pointer; transition: color 200ms ease; }
 .tab[data-on="true"] { color: #fff; }
 
 /* ── three pages side by side; each scrolls on its own ── */
@@ -35,8 +35,8 @@
 
 .head { display: flex; align-items: center; gap: 10px; }
 .author { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-.title { margin: 0; font-weight: 600; font-size: 24px; line-height: 1.12; letter-spacing: -0.02em; color: var(--c-title); text-wrap: balance; }
-.lede { margin: 0; font-size: 16px; line-height: 1.5; color: var(--c-ink-2); }
+.title { margin: 0; font-weight: 600; font-size: var(--nh-fs-2xl); line-height: 1.12; letter-spacing: -0.02em; color: var(--c-title); text-wrap: balance; }
+.lede { margin: 0; font-size: var(--nh-fs-lg); line-height: 1.5; color: var(--c-ink-2); }
 
 /* The scores: five rings in one row, the whole ring is the button. */
 .rings { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; padding: 12px 6px 10px; background: #fff; border-radius: 18px; box-shadow: 0 6px 20px rgb(40 60 100 / 0.06); }
@@ -45,10 +45,10 @@
 .ringWrap { position: relative; display: flex; align-items: center; justify-content: center; }
 .ring { transform: rotate(135deg); }
 .ringNum, .ringNumBig { position: absolute; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--c-ink); }
-.ringNum { font-size: 15px; }
-.ringNumBig { font-size: 19px; }
-.ringLabel { font-size: 12px; font-weight: 600; color: var(--c-ink-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hint { margin-top: -8px; text-align: center; font-size: 12.5px; color: var(--c-mute); }
+.ringNum { font-size: var(--nh-fs-md); }
+.ringNumBig { font-size: var(--nh-fs-xl); }
+.ringLabel { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--c-ink-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hint { margin-top: -8px; text-align: center; font-size: var(--nh-fs-sm); color: var(--c-mute); }
 
 .block { display: flex; flex-direction: column; gap: 8px; }
 /* Chips and files run sideways instead of stacking; the row bleeds to the screen edge. */
@@ -66,10 +66,10 @@
   border-top: 1px solid var(--c-sep-head);
 }
 .dockText { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.dockLabel { display: flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--c-mute); }
+.dockLabel { display: flex; align-items: center; gap: 4px; font-size: var(--nh-fs-sm); color: var(--c-mute); }
 .dockLabel svg { color: var(--c-left); }
-.dockSub { font-size: 16px; font-weight: 600; color: var(--c-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.decide { flex: none; height: 44px; padding: 0 24px; border: 0; border-radius: 999px; background: var(--c-ink); color: #fff; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 160ms var(--ease); }
+.dockSub { font-size: var(--nh-fs-lg); font-weight: 600; color: var(--c-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.decide { flex: none; height: 44px; padding: 0 24px; border: 0; border-radius: 999px; background: var(--c-ink); color: #fff; font: inherit; font-size: var(--nh-fs-lg); font-weight: 600; cursor: pointer; transition: transform 160ms var(--ease); }
 .decide:active { transform: scale(.96); }
 
 /* ── bottom sheet ── */
@@ -88,9 +88,9 @@
 .members { display: flex; flex-direction: column; }
 .scoreTabs { display: flex; gap: 6px; overflow-x: auto; margin: 0 -18px; padding: 0 18px 2px; scroll-padding-inline: 18px; scrollbar-width: none; }
 .scoreTabs::-webkit-scrollbar { display: none; }
-.scoreTab { flex: none; display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 12px 4px 4px; border: 0; border-radius: 999px; background: var(--c-fill); font: inherit; font-size: 13px; font-weight: 600; color: var(--c-ink-2); cursor: pointer; }
+.scoreTab { flex: none; display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 12px 4px 4px; border: 0; border-radius: 999px; background: var(--c-fill); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--c-ink-2); cursor: pointer; }
 .scoreTab[data-on="true"] { background: var(--c-ink); color: #fff; }
-.scoreTabNum { min-width: 26px; height: 26px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #fff; color: var(--c-ink); font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.scoreTabNum { min-width: 26px; height: 26px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #fff; color: var(--c-ink); font-size: var(--nh-fs-xs); display: flex; align-items: center; justify-content: center; }
 .reason { display: flex; flex-direction: column; gap: 16px; animation: fadeIn 240ms ease; }
 .reasonHead { display: flex; align-items: center; gap: 14px; }
 
