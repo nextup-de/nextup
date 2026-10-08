@@ -4,12 +4,12 @@
 
 .slug { display: flex; align-items: stretch; }
 .slug :global(.nh-input) { border-radius: var(--nh-r) 0 0 var(--nh-r); }
-.slugSuffix { display: flex; align-items: center; padding: 0 12px; font-size: 12px; color: var(--nh-mute); background: var(--nh-surface); border: 1px solid var(--nh-line); border-left: 0; border-radius: 0 var(--nh-r) var(--nh-r) 0; white-space: nowrap; }
+.slugSuffix { display: flex; align-items: center; padding: 0 12px; font-size: var(--nh-fs-xs); color: var(--nh-mute); background: var(--nh-surface); border: 1px solid var(--nh-line); border-left: 0; border-radius: 0 var(--nh-r) var(--nh-r) 0; white-space: nowrap; }
 
 .company { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--nh-line-soft); }
-.company strong { display: block; font-size: 14px; }
-.mark { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--nh-ink); color: var(--nh-on-dark); font-weight: 800; font-size: 18px; flex: none; }
-.switch { margin-left: auto; font-size: 12px; color: var(--nh-mute); white-space: nowrap; }
+.company strong { display: block; font-size: var(--nh-fs-md); }
+.mark { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--nh-ink); color: var(--nh-on-dark); font-weight: 800; font-size: var(--nh-fs-xl); flex: none; }
+.switch { margin-left: auto; font-size: var(--nh-fs-xs); color: var(--nh-mute); white-space: nowrap; }
 .switch:hover { color: var(--nh-ink); }
 
 /* The line under "Continue with Microsoft". */
@@ -26,9 +26,9 @@
   gap: 10px;
 }
 .demoHead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.demoHead strong { font-size: 13px; }
+.demoHead strong { font-size: var(--nh-fs-sm); }
 .demoTag {
-  font-size: 12px;
+  font-size: var(--nh-fs-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--nh-mute);

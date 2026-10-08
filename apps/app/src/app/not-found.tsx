@@ -6,7 +6,7 @@ export default function NotFound() {
     <main style={{ minHeight: "var(--nh-screen-h)", display: "grid", placeItems: "center", padding: "var(--nh-page-x)", background: "var(--nh-surface)" }}>
       <div style={{ display: "grid", gap: 14, justifyItems: "start", maxWidth: 480 }}>
         <p className="nh-eyebrow">404 · nobody owns this page</p>
-        <h1 style={{ fontSize: "clamp(30px, 5vw, 48px)", fontWeight: 800 }}>Page not found</h1>
+        <h1 style={{ fontSize: "var(--nh-fs-4xl)", fontWeight: 800 }}>Page not found</h1>
         <p style={{ color: "var(--nh-ink-2)" }}>The address has no owner in our routing table. Back to the start.</p>
         <Button href="/">Back to {SITE.name}</Button>
       </div>

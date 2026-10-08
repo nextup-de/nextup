@@ -41,40 +41,40 @@
 }
 
 .eventText {
-    font-size: 12.5px;
+    font-size: var(--nh-fs-sm);
     color: var(--nh-ink);
     line-height: 1.5;
 }
 
 .eventWhen {
     font-family: var(--nh-mono);
-    font-size: 12px;
+    font-size: var(--nh-fs-xs);
     color: var(--nh-on-dark-mute);
     margin-top: 3px;
 }
 /* Back + copy link above the two cards. */
 .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.back { padding: 0; border: 0; background: none; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--nh-ink-2); cursor: pointer; }
+.back { padding: 0; border: 0; background: none; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); cursor: pointer; }
 .back:hover { color: var(--nh-ink); }
 
 /* Every desk it has been on. */
 .desks { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
-.chain { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 12.5px; color: var(--nh-mute); }
+.chain { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .hop { display: inline-flex; align-items: center; gap: 5px; }
 .hop[data-last="true"] { color: var(--nh-ink); font-weight: 700; }
 .arrow { color: var(--nh-mute-2); }
-.auto { font-size: 12px; font-weight: 600; color: var(--nh-accent); padding: 1px 6px; border-radius: 999px; background: #fff1ea; }
+.auto { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-accent); padding: 1px 6px; border-radius: 999px; background: #fff1ea; }
 
 /* Your move: the actions, who stands behind it, the thread. */
 /* The score, as the dashboard scores it, and every correction that moved it. */
 .score { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
-.scoreV { font-family: var(--nh-mono); font-size: 22px; font-weight: 600; color: var(--nh-ink); line-height: 1; }
+.scoreV { font-family: var(--nh-mono); font-size: var(--nh-fs-2xl); font-weight: 600; color: var(--nh-ink); line-height: 1; }
 .scoreV[data-band="high"] { color: var(--nh-brand); }
 .scoreV[data-band="low"] { color: var(--nh-mute); }
-.scoreL { font-size: 12px; color: var(--nh-mute); line-height: 1.4; }
-.corr { margin-top: 6px; font-size: 12px; color: var(--nh-ink-2); line-height: 1.45; padding: 6px 10px; border-radius: var(--nh-r-sm); background: var(--nh-surface); }
+.scoreL { font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.4; }
+.corr { margin-top: 6px; font-size: var(--nh-fs-xs); color: var(--nh-ink-2); line-height: 1.45; padding: 6px 10px; border-radius: var(--nh-r-sm); background: var(--nh-surface); }
 .whyRow { display: flex; gap: 8px; margin-top: 10px; }
-.rescoreTag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--nh-brand-tint); color: var(--nh-brand); font-size: 12px; font-weight: 600; }
+.rescoreTag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--nh-brand-tint); color: var(--nh-brand); font-size: var(--nh-fs-xs); font-weight: 600; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .standing { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .avatars { display: inline-flex; }
@@ -82,10 +82,10 @@
 .avatars > *:first-child { margin-left: 0; }
 .thread { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--nh-line-soft); }
 .comment { display: flex; gap: 8px; align-items: flex-start; }
-.commentText { font-size: 12.5px; color: var(--nh-ink); line-height: 1.5; }
-.commentBy { font-size: 12px; color: var(--nh-mute); margin-top: 2px; }
+.commentText { font-size: var(--nh-fs-sm); color: var(--nh-ink); line-height: 1.5; }
+.commentBy { font-size: var(--nh-fs-xs); color: var(--nh-mute); margin-top: 2px; }
 .noteRow { display: flex; gap: 8px; }
-.note { flex: 1; height: 34px; padding: 0 12px; border-radius: var(--nh-r-sm); border: 1px solid var(--nh-line); background: var(--nh-card); font-family: inherit; font-size: 13px; color: var(--nh-ink); outline: 0; min-width: 0; }
+.note { flex: 1; height: 34px; padding: 0 12px; border-radius: var(--nh-r-sm); border: 1px solid var(--nh-line); background: var(--nh-card); font-family: inherit; font-size: var(--nh-fs-sm); color: var(--nh-ink); outline: 0; min-width: 0; }
 .note:focus { border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
 
 /* Screenshots kept in this browser when the case was raised: thumbnails, click for full size. */
@@ -93,9 +93,9 @@
 .shot { padding: 0; width: 96px; height: 68px; border-radius: var(--nh-r-sm); overflow: hidden; border: 1px solid var(--nh-line); background: var(--nh-surface); cursor: zoom-in; }
 .shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .shot:hover { border-color: var(--nh-ink-2); }
-.shotsGone { margin-top: 8px; font-size: 12px; color: var(--nh-on-dark-mute); font-style: italic; }
+.shotsGone { margin-top: 8px; font-size: var(--nh-fs-xs); color: var(--nh-on-dark-mute); font-style: italic; }
 .lightbox { position: fixed; inset: 0; z-index: 85; background: rgb(20 20 20 / 0.86); display: grid; place-items: center; padding: 24px 24px 64px; cursor: zoom-out; outline: 0; }
 .lightbox img { max-width: min(calc(var(--nh-screen-w) - 48px), 1400px); max-height: calc(var(--nh-screen-h) - 88px); width: auto; height: auto; border-radius: var(--nh-r-sm); box-shadow: 0 20px 60px rgb(0 0 0 / 0.5); cursor: default; background: #fff; }
-.lightboxBar { position: fixed; left: 0; right: 0; bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 14px; color: #fff; font-size: 12.5px; }
+.lightboxBar { position: fixed; left: 0; right: 0; bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 14px; color: #fff; font-size: var(--nh-fs-sm); }
 .lightboxBar button { border: 1px solid rgb(255 255 255 / 0.4); background: rgb(255 255 255 / 0.1); color: #fff; border-radius: 999px; padding: 5px 12px; font: inherit; font-weight: 600; cursor: pointer; }
 .lightboxBar button:hover { background: rgb(255 255 255 / 0.22); }
