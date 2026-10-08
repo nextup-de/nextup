@@ -229,14 +229,8 @@ export const ClientErrorInput = z.object({
 });
 export type ClientErrorInput = z.infer<typeof ClientErrorInput>;
 
-/** Errors that aren't ours: browser extensions, cross-origin scripts, a harmless ResizeObserver warning. */
-export function isBrowserNoise(e: Pick<ClientErrorInput, "message" | "stack">): boolean {
-  return (
-    /^Script error\.?$/.test(e.message.trim()) ||
-    /ResizeObserver loop/.test(e.message) ||
-    /(?:chrome|moz|safari(?:-web)?)-extension:\/\//.test(e.stack)
-  );
-}
+// The browser's reporter needs this too, and can't import this file (node:crypto): it lives apart.
+export { isBrowserNoise } from "./noise";
 
 /**
  * Whether a browser report may be counted at all: small, and from a page of this stack (same
