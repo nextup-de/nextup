@@ -3,7 +3,8 @@
 // five dials with their reasoning, what was found, similar ideas, reviewers and sources. Props in.
 import Link from "next/link";
 import { useState } from "react";
-import type { Advice, Dial } from "@/features/ideas/raise";
+import type { CompanyFact } from "@/features/ideas/company-read";
+import type { Advice, Dial, DialKey } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
 import { PersonButton } from "./RaisePerson";
 import s from "./Raise.module.css";
@@ -47,9 +48,10 @@ export function IdeaSheet({ description, context, locked, onChange, onClose }: {
   );
 }
 
-export function AnalysisSheet({ ready, onClose, dials, summary, advice, pattern, cats, similar, reviewers, sources }: {
+export function AnalysisSheet({ ready, onClose, dials, company, summary, advice, pattern, cats, similar, reviewers, sources }: {
   ready: boolean; onClose: () => void;
-  dials: Dial[]; summary: string; advice: Advice; pattern: string; cats: string[];
+  dials: Dial[]; company: Record<DialKey, CompanyFact[]>; // what was looked up across the company, per dial
+  summary: string; advice: Advice; pattern: string; cats: string[];
   similar: Similar[]; reviewers: Reviewer[]; sources: Source[];
 }) {
   const [open, setOpen] = useState<number | null>(null);
@@ -100,6 +102,14 @@ export function AnalysisSheet({ ready, onClose, dials, summary, advice, pattern,
       {d ? (
         <div className={s.reason}>
           <div className={s.sec}><span className={s.secLabel}>{d.label}</span><p className={s.big}>{d.note}</p></div>
+          {company[d.key].length > 0 && (
+            <div className={s.sec} data-rule="true" data-gap="7">
+              <span className={s.secLabel}>Checked across the company</span>
+              <ul className={s.facts}>
+                {company[d.key].map((f) => <li key={f.text} className={s.fact}><span className={s.factSrc}>{f.source}</span><span className={s.factText}>{f.text}</span></li>)}
+              </ul>
+            </div>
+          )}
           <div className={s.sec} data-rule="true"><span className={s.secLabel}>What it’s based on</span><p className={s.small}>{d.basis}</p></div>
           <div className={s.sec} data-rule="true" data-gap="6"><span className={s.secLabel}>Sources</span>{sourceList}</div>
         </div>

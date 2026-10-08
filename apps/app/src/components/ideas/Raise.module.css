@@ -664,8 +664,6 @@ a.quickBtn { text-decoration: none; }
   .rail { display: none; }
   .field, .pickInput, .searchInput, .titleInput, .ideaEdit, .sgText, .sgMirror { font-size: var(--nh-fs-input); }
   .spacer { height: 6px; }
-  .sg { width: 100%; }
-  .sgCols { grid-template-columns: minmax(0, 1fr); }
   .sheet { padding: 12px 12px 20px; }
   .paper { padding: 16px; }
   .dials { grid-template-columns: repeat(3, minmax(0, 1fr)); }

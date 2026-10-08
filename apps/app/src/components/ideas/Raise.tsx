@@ -21,9 +21,10 @@ import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
 import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { ideaFromTurns } from "@/features/ideas/coach";
+import { companyRead } from "@/features/ideas/company-read";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
 import { DEMO_CASE, DEMO_SCRIPT, scriptStep } from "@/features/ideas/demo-script";
-import { adviceOf, clockLabel, dialsOf, dialsUp, greetName, IDEA_UPDATE, initials, isUnsure, railOf, splitIdea, splitUpdate, whenLabel, type Gap } from "@/features/ideas/raise";
+import { adviceOf, clockLabel, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, railOf, splitIdea, splitUpdate, whenLabel, type Gap } from "@/features/ideas/raise";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
 import { SPEND_LIMIT_EUR } from "@/features/ideas/drafts";
@@ -94,9 +95,9 @@ export function Raise({ script = false }: { script?: boolean }) {
   const overall = studio.overall;
   const published = draft?.status === "published";
   const firstIdx = turns.findIndex((t) => t.role === "user");
-  const firstText = firstIdx >= 0 ? turns[firstIdx].text : "";
+  const current = useMemo(() => ideaNow(turns), [turns]); // the first message with every answer since in its context
   const edit = draft ? preview.edits[draft.id] ?? null : null;
-  const shown = splitIdea(edit ? edit.text : firstText);
+  const shown = splitIdea(edit ? edit.text : current);
   // The demo script: where this conversation stands in it (-1 once the author wrote their own words).
   const scriptAt = story ? scriptStep(turns) : -1;
   const scriptDone = scriptAt === DEMO_SCRIPT.length; // all of it said: publishing is offered, as for a rail with nothing open
@@ -279,7 +280,7 @@ export function Raise({ script = false }: { script?: boolean }) {
 
   const editIdea = (description: string, context: string) => {
     if (!draft) return;
-    preview.edit(draft.id, { orig: firstText, text: description + (context.trim() ? "\n\n" + context : "") });
+    preview.edit(draft.id, { orig: current, text: description + (context.trim() ? "\n\n" + context : "") });
   };
 
   // ── Derived for the views ───────────────────────────────────────────────────────────────────
@@ -317,13 +318,6 @@ export function Raise({ script = false }: { script?: boolean }) {
     if (i === firstIdx) return [];
     if (t.role === "user") { const u = splitUpdate(t.text); return [{ id: t.id, role: "user", text: u.said, note: u.updated ? "Idea changes shared with NextUp" : null }]; }
     const isLast = t.id === lastAi && !sending;
-    const prev = turns[i - 1];
-    const sgKey = draft ? draft.id + ":" + t.id : t.id;
-    const resolved = preview.suggested[sgKey];
-    const gained = isLast && live?.delta ? Object.entries(live.delta).some(([k, v]) => k !== "overall" && v > 0) : false;
-    const offer = !published && isLast && gained && prev?.role === "user" && i - 1 !== firstIdx;
-    const before = splitIdea(edit ? edit.text : firstText).context;
-    const after = (before ? before + "\n" : "") + splitUpdate(prev?.text ?? "").said.replace(/\s+$/, "");
     const first = i === firstIdx + 1;
     return [{
       id: t.id, role: "ai", text: stripTags(t.text),
@@ -331,11 +325,6 @@ export function Raise({ script = false }: { script?: boolean }) {
       note: first ? "Title and problem added" : null,
       read: isLast ? { dials, advice, first, up: first || i < 2 ? [] : dialsUp(readAt(i - 1), readAt(i + 1)) } : undefined,
       quick: isLast && !published ? { publish: allAnswered || scriptDone, review: true } : undefined,
-      suggest: resolved || offer ? {
-        key: sgKey, before, after, state: resolved ?? "open",
-        onYes: (txt) => { if (draft) { preview.edit(draft.id, { orig: edit?.orig ?? firstText, text: splitIdea(edit ? edit.text : firstText).description + "\n\n" + txt }); preview.resolve(sgKey, "yes"); } },
-        onNo: () => preview.resolve(sgKey, "no"),
-      } : undefined,
     }];
   });
   if (sending) {
@@ -413,6 +402,11 @@ export function Raise({ script = false }: { script?: boolean }) {
     { name: "Company goals", where: GOALS.length + " goals checked", ext: "DOC" },
     { name: "Routing map", where: seed.routes.length + " routes", ext: "DOC" },
     { name: "Open cases", where: openCases + " searched", ext: "IDEA" },
+    // What the dials' "Checked across the company" lines read (features/ideas/company-read.ts), where the company has it.
+    ...([
+      ["Org chart", seed.depts.reduce((n, d) => n + d.people, 0), "people, " + seed.depts.length + " departments", "DOC"], ["Named problems", seed.problems.length, "problems", "DATA"],
+      ["Initiatives", seed.initiatives.length, "running or done", "IDEA"], ["Shipped outcomes", seed.outcomes.length, "promise vs result", "DATA"],
+    ] as const).filter(([, n]) => n > 0).map(([name, n, what, ext]) => ({ name, where: n + " " + what, ext })),
     ...(myFiles.length ? [{ name: "Your evidence", where: myFiles.length + (myFiles.length === 1 ? " file" : " files"), ext: "DATA" as const }] : []),
   ];
   const sims: Similar[] = similar
@@ -437,6 +431,11 @@ export function Raise({ script = false }: { script?: boolean }) {
     <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} dials={dialsOf(parts)}
+      company={companyRead({
+        text: idea.text, lead: ev?.lead ?? lead, myDept: who.line.split(",")[0].trim(), affected, people: seed.people, depts: seed.depts,
+        routes: seed.routes, goals: GOALS, problems: seed.problems, ideas: seed.ideas, initiatives: seed.initiatives, outcomes: seed.outcomes,
+        cases: S.cases, promiseDays: seed.promiseDays, spendLimitEur: SPEND_LIMIT_EUR,
+      })}
       summary={((x) => (x.length > 320 ? x.slice(0, 320).replace(/\s+\S*$/, "") + "…" : x))((idea.text || "").replace(/\s+/g, " ").trim()) || "Nothing to summarise yet."}
       advice={advice}
       pattern={affected.length > 1 ? "The problem is felt beyond one team: " + affected.join(", ") + "." : "It stands on its own."}
