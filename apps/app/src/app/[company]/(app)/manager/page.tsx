@@ -1,4 +1,4 @@
-// MANAGER home. Decisions waiting, wait ledger, four stall reasons, movement since baseline.
+// MANAGER home. Decisions waiting, who holds the open cases, why cases wait, unowned problems, outcomes.
 import { OverviewView } from "@/components/dashboard/manager/OverviewView";
 export const metadata = { title: "Overview" };
 export default function ManagerOverviewPage() {
