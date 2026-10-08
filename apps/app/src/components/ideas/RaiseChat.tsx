@@ -1,18 +1,17 @@
 "use client";
 // The raise page's chat: the coach's questions and the author's answers, the AI's read of the idea
-// under the latest reply (the five dials and the advice), the "Update your idea?" card, the rail on the
-// right (the five points a decision needs) and the composer docked at the bottom. Props in, JSX out.
+// under the latest reply (the five dials and the advice), the rail on the right (the five points a
+// decision needs) and the composer docked at the bottom. Props in, JSX out.
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { levelOf, type Advice, type Dial, type DialKey, type Gap } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
 import s from "./Raise.module.css";
 
-export type Suggest = { key: string; before: string; after: string; state: "open" | "yes" | "no"; onYes: (text: string) => void; onNo: () => void };
 // `read`: the five dials as they stand after this reply, which of them got better with the answer before
 // it (`up`), and the advice.
 export type Read = { dials: Dial[]; up: DialKey[]; advice: Advice; first: boolean };
-export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; read?: Read; quick?: { publish: boolean; review: boolean }; link?: { label: string; href: string }; suggest?: Suggest };
+export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; read?: Read; quick?: { publish: boolean; review: boolean }; link?: { label: string; href: string } };
 
 export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQuick, dock, followKey }: {
   msgs: ChatMsg[];
@@ -42,7 +41,6 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQui
                 <p className={s.bubble}>{m.text}</p>
                 {m.note && <span className={s.note}><Solid name="sparkle" size={8.25} fill="#007aff" />{m.note}</span>}
                 {m.read && <ReadCard r={m.read} />}
-                {m.suggest && <SuggestCard key={m.suggest.key} sg={m.suggest} />}
                 {m.link && <div className={s.quick}><Link className={s.quickBtn} data-primary="true" href={m.link.href}>{m.link.label}</Link></div>}
                 {m.quick && (m.quick.publish || m.quick.review) && (
                   <div className={s.quick}>
@@ -61,42 +59,6 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQui
         {gaps.length > 0 && <Rail gaps={gaps} onAsk={onAsk} />}
       </div>
       {dock}
-    </div>
-  );
-}
-
-// Before / After, with what changed marked: the common start and end of the two texts stay plain.
-function diff(before: string, after: string) {
-  let p = 0; while (p < before.length && p < after.length && before[p] === after[p]) p++;
-  let q = 0; while (q < before.length - p && q < after.length - p && before[before.length - 1 - q] === after[after.length - 1 - q]) q++;
-  return { pre: after.slice(0, p), add: after.slice(p, after.length - q), del: before.slice(p, before.length - q), post: after.slice(after.length - q) };
-}
-
-function SuggestCard({ sg }: { sg: Suggest }) {
-  const [text, setText] = useState(sg.after);
-  if (sg.state !== "open") return <span className={s.sgDone}>{sg.state === "yes" ? "Idea context updated" : "Idea left as it was"}</span>;
-  const d = diff(sg.before, text);
-  const edited = text.trim() !== sg.after.trim();
-  return (
-    <div className={s.sg}>
-      <div className={s.sgHead}><span className={s.sgTitle}>Update your idea?</span><span className={s.sgTag}>Context</span></div>
-      <div className={s.sgCols}>
-        <div className={s.sgCol}>
-          <span className={s.sgLabel}>Before</span>
-          <div className={s.sgBefore}>{sg.before ? <><span>{d.pre}</span><span className={s.sgDel}>{d.del}</span><span>{d.post}</span></> : <span className={s.sgNone}>Nothing yet</span>}</div>
-        </div>
-        <div className={s.sgCol}>
-          <span className={s.sgLabel} data-after="true">After</span>
-          <div className={s.sgAfter}>
-            <div className={s.sgMirror} aria-hidden="true"><span>{d.pre}</span><span className={s.sgAdd}>{d.add}</span><span>{d.post + "\n "}</span></div>
-            <textarea className={s.sgText} rows={1} value={text} onChange={(e) => setText(e.target.value)} aria-label="The idea's context after the update" />
-          </div>
-        </div>
-      </div>
-      <div className={s.sgBtns}>
-        <button type="button" className={s.sgNo} onClick={sg.onNo}>No</button>
-        <button type="button" className={s.sgYes} onClick={() => (text.trim() ? sg.onYes(text.trim()) : sg.onNo())}>{edited ? "Save" : "Yes"}</button>
-      </div>
     </div>
   );
 }

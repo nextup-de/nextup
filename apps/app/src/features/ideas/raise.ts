@@ -2,7 +2,10 @@
 // the five analysis dials (the same five, in the chat and in the analysis), the advice line, the note
 // under the coach's latest reply and the sidebar's "when" labels. Every value comes from the benchmark's
 // own facts (benchmarks.ts) - the two dials it has no facts for yet (Cost, Risk) say so. Pure.
+import { stripTags } from "@/features/assist/check";
+import type { Turn } from "@/features/assist/draft";
 import type { Benchmark, BenchmarkId, BenchmarkPart } from "./benchmarks";
+import { isGibberish } from "./coach";
 
 // ── The rail: what the person who decides needs before it is published ──────────────────────
 // The same five points as the analysis dials, each with the one fact a decision cannot do without -
@@ -171,4 +174,23 @@ export const initials = (name: string) => {
 export function splitIdea(first: string): { description: string; context: string } {
   const [description = "", ...rest] = first.split("\n\n");
   return { description, context: rest.join("\n\n") };
+}
+
+// The idea as it stands: the first message - or the author's last edit of it, sent with a message - and
+// every answer since, added to its context one per line. An answer the page reads as "not sure" adds
+// nothing, nor does keyboard mashing; the coach's words never do.
+export function ideaNow(turns: readonly Turn[]): string {
+  let idea: string | null = null;
+  const added: string[] = [];
+  for (const t of turns) {
+    if (t.role !== "user") continue;
+    if (idea === null) { idea = t.text; continue; }
+    const at = t.text.indexOf(IDEA_UPDATE);
+    if (at >= 0) { idea = t.text.slice(at + IDEA_UPDATE.length); added.length = 0; }
+    const said = stripTags(at < 0 ? t.text : t.text.slice(0, at));
+    if (said && !isUnsure(said) && !isGibberish(said)) added.push(said);
+  }
+  const { description, context } = splitIdea(idea ?? "");
+  const all = [context.trim(), ...added].filter(Boolean).join("\n");
+  return all ? description + "\n\n" + all : description;
 }
