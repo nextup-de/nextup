@@ -118,50 +118,19 @@ function List() {
   );
 }
 
-// Manager: the blue "waiting on you" panel, the KPIs, then two cards side by side.
+// Manager: four numbers, then two rows of two cards (decisions | desks, why cases wait | unowned problems).
 function Overview() {
   return (
     <>
       <Head />
-      <div className={`${styles.card} ${styles.brand}`}>
-        <div className={styles.cardTitle}>
-          <Skeleton w={130} h={15} dark />
-          <Skeleton w={70} h={12} dark />
-        </div>
-        <div className={styles.tiles}>
-          {n(3).map((i) => (
-            <div key={i} className={styles.tile}>
-              <Skeleton w="78%" h={14} />
-              <Skeleton w="45%" h={11} />
-              <Skeleton w={90} h={26} r="pill" />
-            </div>
-          ))}
-        </div>
+      <Stats />
+      <div className={`${styles.split} ${styles.wide}`}>
+        <Card rows={3} />
+        <Card rows={3} avatar />
       </div>
-      <div className={styles.kpis}>
-        {n(4).map((i) => (
-          <div key={i} className={styles.kpi}>
-            <Skeleton w="55%" h={11} />
-            <Skeleton w={72} h={24} />
-            <Skeleton w="70%" h={11} />
-          </div>
-        ))}
-      </div>
-      <div className={styles.split}>
-        <Card rows={5} />
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>
-            <Skeleton w={120} h={15} />
-          </div>
-          <div className={styles.bars}>
-            {n(4).map((i) => (
-              <div key={i} className={styles.bar}>
-                <Skeleton w={110} h={12} />
-                <Skeleton w={`${70 - i * 14}%`} h={10} r="pill" />
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className={`${styles.split} ${styles.wide}`}>
+        <Card rows={4} />
+        <Card rows={2} />
       </div>
     </>
   );
