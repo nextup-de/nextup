@@ -16,8 +16,28 @@ admin.sellux.ch ──(queues a job)──▶ its database
 
 | File | What it is |
 |---|---|
-| `agent.sh` | The agent. Allowed jobs: `create`, `credentials`, `restart`, `stop`, `purge`. It checks every value itself: the slug pattern and the reserved list, and the port against ports.md, every `instances/*/stack.conf` and `ss -tln`. It also needs at least 600 MB of free memory before a create, and it deletes demo stacks only. |
+| `agent.sh` | The agent. Allowed jobs: `create`, `credentials`, `restart`, `stop`, `purge`, `promote`. It checks every value itself: the slug pattern and the reserved list, and the port against ports.md, every `instances/*/stack.conf` and `ss -tln`. It also needs at least 600 MB of free memory before a create, and it deletes demo stacks only. |
 | `nextup-site.sh` | The only thing the agent may run as root. Install a **root-owned copy** to `/usr/local/sbin/nextup-site`; never point sudoers at this folder, because kschmid owns it and every deploy replaces it. |
+
+## Picking the demo's version (`promote`)
+
+admin's **Version** card on a pinned stack (today only `demo`, the interview stack) queues a
+`promote` job with `slug` and `sha`. The agent:
+
+1. accepts it only for a stack the box has pinned (`PINNED=` in its stack.conf), reserved slug or
+   not - every other stack follows its track (stack/nginx/RUNBOOK.md, "Staging and the release track");
+2. accepts only a sha in `~/nextup/staged` or `~/nextup/released`, never one that skipped staging;
+3. runs `stack/nginx/deploy.sh promote <slug> <sha>`: pull, backup, that commit's `stack/`, pin, start;
+4. checks `/api/health` and reports the log (codes scrubbed) with the "to go back" line.
+
+For the card to show, the stack needs a company page: **Companies → Register a stack that already
+runs** with `demo` (3121), and the same for `staging` (3991) to switch its feature flags there.
+The agent reads their passwords (`credentials`) even though both slugs are reserved; it never
+creates, stops or deletes a reserved stack.
+
+To offer the choices, every poll's `X-Agent-Info` header also carries `released=` (the last ten
+released shas, newest first), `staged=` (the newest staged sha) and `pins=` (`slug:sha` per pinned
+stack). An admin that sees no `pins=` is talking to an older agent and should not offer the card.
 
 A stack created from admin is registered in `~/nextup/instances/<slug>/stack.conf` (`PORT`,
 `STAGE`, and `STOPPED=true` after a stop). This file lives outside `~/nextup/stack`, which every
