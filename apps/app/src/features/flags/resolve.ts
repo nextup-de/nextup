@@ -37,3 +37,33 @@ export function registryProblems(registry: Readonly<Record<string, FlagDef>>): s
   }
   return problems;
 }
+
+/** What the stack keeps from admin's answer: flags this build knows, the last setting of each key. */
+export function toFlagSettings(
+  flags: readonly { key: string; enabled: boolean; updatedAt: string }[],
+  known: readonly string[],
+): { key: string; enabled: boolean; updatedAt: Date }[] {
+  const byKey = new Map<string, { key: string; enabled: boolean; updatedAt: Date }>();
+  for (const f of flags) {
+    if (known.includes(f.key)) byKey.set(f.key, { key: f.key, enabled: f.enabled, updatedAt: new Date(f.updatedAt) });
+  }
+  return [...byKey.values()];
+}
+
+/** Every flag of `registry` as the health report shows it to admin (@nextup/contracts health.ts HealthFlag). */
+export function flagStates<K extends string>(registry: Readonly<Record<K, FlagDef>>, stage: string, overrides: FlagOverrides) {
+  const s: Stage = isStage(stage) ? stage : "live";
+  return (Object.keys(registry) as K[]).map((key) => {
+    const def = registry[key];
+    const set = overrides[key];
+    return {
+      key,
+      description: def.description.slice(0, 200),
+      owner: def.owner,
+      stageDefault: def.defaults[s],
+      enabled: typeof set === "boolean" ? set : def.defaults[s],
+      source: typeof set === "boolean" ? ("admin" as const) : ("default" as const),
+      removeBy: def.removeBy,
+    };
+  });
+}
