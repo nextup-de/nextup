@@ -7,7 +7,7 @@
 //   OPS_TOKEN  this stack's token, issued in admin.sellux.ch -> Stacks
 //
 // Runs once a minute from instrumentation.ts, and right after someone files a report. The same timer
-// sends this stack's health (server/health-report.ts) and fetches its feature flags (server/flags-sync.ts).
+// sends this stack's health (server/health-report.ts).
 // Not a "use server" module.
 import {
   IntakeAccepted,
@@ -138,7 +138,7 @@ const globalForSync = globalThis as unknown as { __nextupTicketSync?: ReturnType
 export function startTicketSync(): void {
   if (!opsConfig() || globalForSync.__nextupTicketSync) return;
   const round = () => {
-    void pullFlags();
+    void pullFlags(); // feature flags from admin.sellux.ch (server/flags-sync.ts)
     void syncTickets();
     void reportHealth();
   };
