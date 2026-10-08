@@ -185,6 +185,9 @@ company and people, **pinned** to one commit. A deploy skips it.
 The first install prints the admin code, the login codes and the three `sudo` lines for nginx and
 the certificate. `nextup-site` refuses the slug `demo`, so those are run by hand.
 
+- **From admin.sellux.ch:** the demo stack's **Version** card lists the released shas (and the one
+  staging runs); **Install this version** does the `promote` below through the box agent and
+  shows its log (`stack/provision/README.md`, "Picking the demo's version").
 - **Before an interview:** promote the evening before, click through the script once on
   `demo.sellux.ch`, then leave it. Pick the `released:` sha from `status` (or the staged one, once
   it looks right on `staging.sellux.ch`).
