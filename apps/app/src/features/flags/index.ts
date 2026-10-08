@@ -11,7 +11,7 @@
 import { FLAGS, type FlagKey } from "@/config/flags";
 import { orDemo } from "@/lib/db/client";
 import { companyForFlags, flagOverrides } from "@/lib/db/flags";
-import { resolveFlags } from "./resolve";
+import { flagStates, resolveFlags } from "./resolve";
 
 export type Flags = Record<FlagKey, boolean>;
 
@@ -46,4 +46,15 @@ export async function isEnabled(slug: string, key: FlagKey): Promise<boolean> {
 export function invalidateFlags(slug?: string): void {
   if (slug) cache().delete(slug);
   else cache().clear();
+}
+
+/** Every flag with where its value comes from - for the health report admin draws its switches from. */
+export async function flagReport(slug: string) {
+  return orDemo(
+    async () => {
+      const company = await companyForFlags(slug);
+      return company ? flagStates(FLAGS, company.stage, await flagOverrides(company.id)) : [];
+    },
+    () => flagStates(FLAGS, "demo", {}),
+  );
 }

@@ -3,8 +3,9 @@
 // No test compares removeBy with today: that would turn main red on a date with no code change.
 // An overdue flag is admin.sellux.ch's to show.
 import { describe, expect, it } from "vitest";
+import { FlagsResponse, HealthReport } from "@nextup/contracts";
 import { FLAGS, type FlagDef } from "@/config/flags";
-import { registryProblems, resolveFlags } from "@/features/flags/resolve";
+import { flagStates, registryProblems, resolveFlags, toFlagSettings } from "@/features/flags/resolve";
 
 const registry = {
   shiftRota: {
@@ -62,5 +63,49 @@ describe("registryProblems", () => {
   it("finds none in the fixture or in the real registry", () => {
     expect(registryProblems(registry)).toEqual([]);
     expect(registryProblems(FLAGS)).toEqual([]);
+  });
+});
+
+describe("toFlagSettings (admin's answer -> what the stack stores)", () => {
+  const at = "2026-10-08T12:00:00.000Z";
+
+  it("keeps flags this build knows and drops the rest", () => {
+    expect(toFlagSettings([{ key: "shiftRota", enabled: true, updatedAt: at }, { key: "notInThisBuild", enabled: true, updatedAt: at }], Object.keys(registry))).toEqual([
+      { key: "shiftRota", enabled: true, updatedAt: new Date(at) },
+    ]);
+  });
+
+  it("takes the last setting when a key comes twice", () => {
+    expect(toFlagSettings([{ key: "newInbox", enabled: true, updatedAt: at }, { key: "newInbox", enabled: false, updatedAt: at }], Object.keys(registry))).toEqual([
+      { key: "newInbox", enabled: false, updatedAt: new Date(at) },
+    ]);
+  });
+
+  it("parses only a well-formed answer", () => {
+    expect(FlagsResponse.safeParse({ contractVersion: 1, companySlug: "acme", flags: [{ key: "shiftRota", enabled: true, updatedAt: at }] }).success).toBe(true);
+    expect(FlagsResponse.safeParse({ contractVersion: 1, companySlug: "acme", flags: [{ key: "shift-rota", enabled: true, updatedAt: at }] }).success).toBe(false);
+    expect(FlagsResponse.safeParse({ contractVersion: 2, companySlug: "acme", flags: [] }).success).toBe(false);
+  });
+});
+
+describe("flagStates (what the health report tells admin)", () => {
+  it("says for each flag whether admin set it or the stage decides", () => {
+    expect(flagStates(registry, "pilot", { shiftRota: true })).toEqual([
+      { key: "shiftRota", description: "The shift rota page for team leads", owner: "Sam", stageDefault: false, enabled: true, source: "admin", removeBy: "2026-12-01" },
+      { key: "newInbox", description: "The redesigned inbox", owner: "Kevin", stageDefault: true, enabled: true, source: "default", removeBy: "2026-11-15" },
+    ]);
+  });
+
+  it("fits the health report admin parses, and a report without flags still does", () => {
+    const report = {
+      contractVersion: 1,
+      companySlug: "acme",
+      reportedAt: "2026-10-08T12:00:00.000Z",
+      appCommit: null,
+      checks: [],
+      environment: [],
+    };
+    expect(HealthReport.safeParse({ ...report, flags: flagStates(registry, "demo", {}) }).success).toBe(true);
+    expect(HealthReport.safeParse(report).success).toBe(true);
   });
 });
