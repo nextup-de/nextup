@@ -25,7 +25,7 @@ always on `release`. A pinned stack (`PINNED=` in its stack.conf) ignores its tr
 | admin | 3131 | - | - | admin.sellux.ch | reserved: our developer tool, apps/ops (step 7); not a company stack |
 | automation | 3141 | - | - | automation.sellux.ch | n8n for building/testing (step 8), `stack/automation/`. nginx basic auth + n8n's own login |
 | landing | 3151 | - | - | sellux.ch, www | public site: one container from `nextup-landing` (`~/nextup/landing`, not a company stack) |
-| staging | 3161 | demo | main | staging.sellux.ch | the test stack: acme's demo data, gets every green merge first (`deploy.sh stage`); the rest only get a sha that passed it (`deploy.sh release`) |
+| staging | 3991 | demo | main | staging.sellux.ch | the test stack: acme's demo data, gets every green merge first (`deploy.sh stage`); the rest only get a sha that passed it (`deploy.sh release`). The LAST block on purpose: admin.sellux.ch hands out new companies' blocks from 3161 upwards (test1 has 3161), and keeps 3991 for staging |
 
 Ports the box's other sites use (don't take them): 3001-3038, 3306/3307, 3999, 25565. To check
 what's in use: `ss -tln`.

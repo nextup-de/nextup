@@ -125,9 +125,9 @@ After this section's commit was released to the box:
 free -m && df -h /                         # about 700 MB available; the agent wants 600, health.sh alerts below 400
 # admin.sellux.ch → Stacks: issue a ticket token for "staging" (not "Register a stack that already runs")
 mkdir -p ~/nextup/instances/staging
-printf 'PORT=3161\nSTAGE=demo\nTRACK=main\n' > ~/nextup/instances/staging/stack.conf
+printf 'PORT=3991\nSTAGE=demo\nTRACK=main\n' > ~/nextup/instances/staging/stack.conf
 sha=$(~/nextup/stack/nginx/deploy.sh status | sed -n 's/^released: *//p')   # or the sha acme runs now
-NEXTUP_OPS_TOKEN=nxs_... ~/nextup/stack/nginx/add-stack.sh staging 3161 demo --images "$sha" \
+NEXTUP_OPS_TOKEN=nxs_... ~/nextup/stack/nginx/add-stack.sh staging 3991 demo --images "$sha" \
   --name "Acme Maschinenbau GmbH (staging)" --ops-url https://admin.sellux.ch
 # the three sudo lines it prints (nginx site + certificate), then onto its own copy:
 ~/nextup/stack/nginx/deploy.sh stage "$sha"
