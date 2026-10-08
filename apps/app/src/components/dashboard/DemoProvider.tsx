@@ -347,7 +347,9 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     // Server mode: the role comes from the session, so "viewing as" has to actually become
     // somebody else. Only allowed while the company is in demo stage - the action checks.
     if (serverMode) {
-      const target = tenant.users?.find((u) => u.role === r && u.id);
+      // The persona's own person first (Team leader is T. Vogel, as without a database): the users
+      // come sorted by name, so the first leader would be H. Sander, whose inbox the demo never fills.
+      const target = tenant.users?.find((u) => u.role === r && u.id && u.name === rp?.who.name) ?? tenant.users?.find((u) => u.role === r && u.id);
       if (!target?.id) { showToast("No " + r + " in this company to switch to."); return; }
       closeAll();
       startTransition(async () => {
