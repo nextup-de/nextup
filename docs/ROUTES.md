@@ -25,6 +25,7 @@
 | `/[company]/settings/*` | `.../(app)/settings/{company,members,routing}/page.tsx` | yes | manager | Company admin |
 | `/demo/*` | `demo/{raise,dashboard,cases/[caseId],people/[name],leader,manager,…}/page.tsx` | - | - | Static demo: made-up data, no company, no login, nothing leaves the browser; `/demo` opens `/demo/raise`, a case opens at `/demo/cases/<id>`. On a stack whose company is `demo` (demo.sellux.ch) it is the whole host, at the root (docs/IDEAS.md, "The demo page") |
 | `/api/health` | `api/health/route.ts` | - | - | Uptime check |
+| `/api/client-errors` | `api/client-errors/route.ts` | - | - | A browser's script error (`navigator.sendBeacon` from `components/report/error-reporter.ts`), counted by kind with the server's errors (`server/errors.ts`). Same origin only, 8 KB, 204 |
 
 Role rules are data in `src/config/roles.ts` (`ROLE_HOME`, `ROLE_ACCESS`, `canAccess()`, `SHELL`) and nav
 per role in `src/config/nav.ts`. `SHELL[role]` picks the chrome: members get the simple bar

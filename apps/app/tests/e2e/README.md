@@ -23,8 +23,8 @@ file in the same PR.
 It runs with the demo suite on every PR. `e2e:live` runs the same file against a deployed stack:
 
 ```bash
-INTERVIEW_URL=https://acme.sellux.ch npm run e2e:live            # bash
-set INTERVIEW_URL=https://acme.sellux.ch&& npm run e2e:live      # cmd.exe
+INTERVIEW_URL=https://staging.sellux.ch npm run e2e:live         # bash
+set INTERVIEW_URL=https://staging.sellux.ch&& npm run e2e:live   # cmd.exe
 ```
 
 - The company must be demo-stage: the test signs in with the demo button and switches person in
@@ -32,7 +32,9 @@ set INTERVIEW_URL=https://acme.sellux.ch&& npm run e2e:live      # cmd.exe
 - It raises one idea. At the end it clicks "Delete added cases", but only when its own case is the
   only added one - otherwise somebody prepared cases there, and the report says what it left.
 - The idea stays in the employee's "Your ideas" list: "Reset demo" does not clear that list yet.
-  So run it against `acme.sellux.ch` before a promote, not against the interview stack.
+  So run it against `staging.sellux.ch` before a promote, not against the interview stack.
+- CI runs it against `staging.sellux.ch` after every staging deploy; a release waits for it
+  (`.github/workflows/images.yml`, job `smoke`).
 
 ## First time
 

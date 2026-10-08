@@ -125,9 +125,9 @@ After this section's commit was released to the box:
 free -m && df -h /                         # about 700 MB available; the agent wants 600, health.sh alerts below 400
 # admin.sellux.ch → Stacks: issue a ticket token for "staging" (not "Register a stack that already runs")
 mkdir -p ~/nextup/instances/staging
-printf 'PORT=3161\nSTAGE=demo\nTRACK=main\n' > ~/nextup/instances/staging/stack.conf
+printf 'PORT=3991\nSTAGE=demo\nTRACK=main\n' > ~/nextup/instances/staging/stack.conf
 sha=$(~/nextup/stack/nginx/deploy.sh status | sed -n 's/^released: *//p')   # or the sha acme runs now
-NEXTUP_OPS_TOKEN=nxs_... ~/nextup/stack/nginx/add-stack.sh staging 3161 demo --images "$sha" \
+NEXTUP_OPS_TOKEN=nxs_... ~/nextup/stack/nginx/add-stack.sh staging 3991 demo --images "$sha" \
   --name "Acme Maschinenbau GmbH (staging)" --ops-url https://admin.sellux.ch
 # the three sudo lines it prints (nginx site + certificate), then onto its own copy:
 ~/nextup/stack/nginx/deploy.sh stage "$sha"
@@ -157,9 +157,25 @@ command="~/nextup/stack/nginx/deploy.sh",no-port-forwarding,no-agent-forwarding,
 ```
 
 That key can then only run `ssh hetzner stage <sha>`, `ssh hetzner release <sha>`,
-`ssh hetzner deploy <tag>`, `ssh hetzner promote <slug> <sha>` (a staged or released sha) or
-`ssh hetzner status`, each with exactly its own arguments. Everything else is refused. Deploys
+`ssh hetzner promote <slug> <sha>` (a staged or released sha) or `ssh hetzner status`, each with
+exactly its own arguments. Everything else is refused, `deploy` too: it skips the gate. Deploys
 are logged in `~/nextup/deploy.log`. The admin code and login codes never reach the CI log.
+
+What CI does with it (`.github/workflows/images.yml`, `deploy.yml`):
+
+1. **staging** - `stage <sha>` right after the images are pushed. No approval.
+2. **smoke** - `npm run e2e:live` against `STAGING_URL` (the interview script). Red here = no release.
+3. **release** - waits in the GitHub environment `production` until Kevin clicks **Review
+   deployments → Approve**, then `release <sha>`. A newer merge replaces a release still waiting.
+
+- **Roll back:** Actions → deploy → Run workflow → `release`, the older sha → approve.
+- **Settings it needs:** environment `production` with Kevin as required reviewer ("Prevent
+  self-review" off) and `main` as the only deployment branch; environment `hetzner` without
+  reviewers, `main` only, with `STAGING_HEALTH_URLS` next to `DEPLOY_HEALTH_URLS`; repository
+  variable `STAGING_URL=https://staging.sellux.ch`. The header of `deploy.yml` lists them.
+- **A change to `deploy.sh` takes effect one release later:** the release that brings it still
+  runs the old copy. If a new `deploy.sh` breaks, run the previous one by hand:
+  `~/nextup/stack.prev/nginx/deploy.sh release <sha>`.
 
 ## The interview stack (demo.sellux.ch)
 
