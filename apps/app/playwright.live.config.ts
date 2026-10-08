@@ -1,7 +1,8 @@
 // Playwright, live check (`npm run e2e:live`): the interview script (tests/e2e/demo/interview.spec.ts)
-// against a stack that is already running - after a deploy, before an interview.
+// against a stack that is already running - after a deploy, before an interview. CI runs it
+// against staging.sellux.ch after every staging deploy; a release waits for it.
 //
-//   INTERVIEW_URL=https://acme.sellux.ch npm run e2e:live            (bash)
+//   INTERVIEW_URL=https://staging.sellux.ch npm run e2e:live         (bash)
 //   set INTERVIEW_URL=https://acme.sellux.ch&& npm run e2e:live      (cmd.exe)
 //   INTERVIEW_URL=http://localhost:3000/acme npm run e2e:live        (a dev server with a database)
 //
@@ -20,10 +21,15 @@ export default defineConfig({
   // The spec reads this to take the company's address from baseURL instead of the built-in /acme.
   metadata: { live: true },
   workers: 1,
+  // CI runs it against staging before a release (.github/workflows/images.yml, job smoke): one
+  // retry, so a single network blip doesn't hold a release back; never a stray test.only.
+  retries: process.env.CI ? 1 : 0,
+  forbidOnly: !!process.env.CI,
   // Over the internet, and the coach may be a real model there.
   timeout: 180_000,
   expect: { timeout: 15_000 },
-  reporter: [["list"], ["html", { open: "on-failure" }]],
+  // In CI the report is uploaded instead of opened (opening would wait for a browser forever).
+  reporter: [["list"], ["html", { open: process.env.CI ? "never" : "on-failure" }]],
   use: {
     baseURL: url,
     reducedMotion: "reduce",

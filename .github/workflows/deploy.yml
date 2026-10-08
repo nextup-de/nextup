@@ -1,20 +1,30 @@
-# Roll the company stacks on the shared Hetzner box to the images just published
-# (docs/plans/2026-09-27_platform.md, stage 1 step 4; stack/nginx/RUNBOOK.md, "Deploy from CI").
+# Move the company stacks on the shared Hetzner box to the images just published
+# (docs/plans/2026-09-27_platform.md, stage 1 step 4; stack/nginx/RUNBOOK.md, "Staging and the
+# release track").
 #
-# Called by images.yml once CI passed on main and that commit's images were pushed; or run by hand
-# with a tag (main or a 7-char short sha - a rollback is "run this workflow with an older sha").
+# Two actions, the same image both times - nothing is rebuilt in between:
+#   stage    staging.sellux.ch (the stacks on track main) gets the commit. Called by images.yml
+#            after every green merge.
+#   release  every other stack gets it. Waits in the `production` environment until Kevin approves
+#            (Actions -> the run -> Review deployments). The box itself refuses a sha that never
+#            reached staging. A rollback is "Run workflow: release, an older sha" - approved too.
 #
 # The key can do nothing but this: on the box it is a forced command (stack/nginx/deploy.sh), so
-# it accepts only `deploy <tag>` and `status`, never a shell - the box hosts other sites too.
-# deploy.sh keeps the admin code and login codes out of its output, so this log stays clean.
+# it accepts only `stage <sha>`, `release <sha>`, `promote <slug> <sha>` and `status`, never a
+# shell - the box hosts other sites too. deploy.sh keeps the admin code and login codes out of its
+# output, so this log stays clean.
 #
-# Configuration lives in the GitHub environment `hetzner` (Settings -> Environments), so it can
-# also require an approval before each deploy:
-#   secret DEPLOY_SSH_KEY      private half of the forced-command key (ed25519)
-#   secret DEPLOY_KNOWN_HOSTS  the box's host key line(s), from `ssh-keyscan 178.104.253.90`
-#   var    DEPLOY_HOST         178.104.253.90
-#   var    DEPLOY_USER         kschmid
-#   var    DEPLOY_HEALTH_URLS  space-separated, e.g. https://acme.sellux.ch/api/health https://globex.sellux.ch/api/health
+# Configuration (Settings -> Environments):
+#   production   required reviewer: selluxhenner ("Prevent self-review" off); branches: main.
+#                Holds no secrets - it is only the approval.
+#   hetzner      no reviewers (staging must not wait); branches: main.
+#     secret DEPLOY_SSH_KEY       private half of the forced-command key (ed25519)
+#     secret DEPLOY_KNOWN_HOSTS   the box's host key line(s), from `ssh-keyscan 178.104.253.90`
+#     var    DEPLOY_HOST          178.104.253.90
+#     var    DEPLOY_USER          kschmid
+#     var    STAGING_HEALTH_URLS  https://staging.sellux.ch/api/health
+#     var    DEPLOY_HEALTH_URLS   the release-track stacks, space-separated, e.g.
+#                                 https://acme.sellux.ch/api/health https://globex.sellux.ch/api/health
 # Until DEPLOY_SSH_KEY is set the job skips itself with a notice instead of failing.
 #
 # Kevin owns this file.
@@ -22,52 +32,93 @@
 name: deploy
 
 on:
-  # Called by images.yml after CI passed and the images were pushed - with that commit's tag.
+  # Called by images.yml: stage after the images were pushed, release after the smoke test.
   workflow_call:
     inputs:
-      tag:
-        description: "Image tag: main, or a 7-char short commit sha"
+      action:
+        description: "stage or release"
         required: true
         type: string
-  # By hand: a rollback to an older short sha, or `main`.
+      tag:
+        description: "7-char short commit sha"
+        required: true
+        type: string
+    outputs:
+      deployed:
+        description: "true when the box was configured and the move ran"
+        value: ${{ jobs.deploy.outputs.deployed }}
+  # By hand: a rollback (release an older sha), or staging alone.
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Image tag: main, or a 7-char short commit sha (rollback)"
+      action:
+        description: "release = everyone but staging (needs approval); stage = staging only"
         required: true
-        default: main
+        type: choice
+        options: [release, stage]
+        default: release
+      tag:
+        description: "7-char short commit sha"
+        required: true
 
 permissions:
   contents: read
 
 jobs:
-  deploy:
-    name: deploy · Hetzner box
-    # One deploy at a time, and never cancel one halfway: a stack mid-migration must finish.
-    # Job-level, so it also holds when images.yml calls this workflow.
+  # The gate: a release waits here until Kevin approves it. A newer release replaces one still
+  # waiting, so approving always moves to the newest staged commit.
+  approve:
+    name: approve · release ${{ inputs.tag }}
+    if: inputs.action == 'release'
     concurrency:
-      group: deploy-hetzner
+      group: release-approval
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - name: Approved
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: echo "Release of $INPUT_TAG approved."
+
+  deploy:
+    name: ${{ inputs.action }} · Hetzner box
+    needs: approve
+    # stage needs no approval (approve is skipped); release only after an approval.
+    if: >-
+      !cancelled() &&
+      (needs.approve.result == 'success' || (inputs.action == 'stage' && needs.approve.result == 'skipped'))
+    # One move per action at a time, and never cancel one halfway: a stack mid-migration must
+    # finish. Job-level, so it also holds when images.yml calls this workflow. Stage and release
+    # don't wait for each other here; the box's own lock (deploy.sh) keeps them apart.
+    concurrency:
+      group: deploy-${{ inputs.action }}
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     environment: hetzner
+    outputs:
+      deployed: ${{ steps.ready.outputs.ok }}
     env:
       KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
       HOST: ${{ vars.DEPLOY_HOST }}
       USER_NAME: ${{ vars.DEPLOY_USER }}
-      HEALTH_URLS: ${{ vars.DEPLOY_HEALTH_URLS }}
+      HEALTH_URLS: ${{ inputs.action == 'stage' && vars.STAGING_HEALTH_URLS || vars.DEPLOY_HEALTH_URLS }}
     steps:
-      - name: Tag
+      - name: Action and tag
         id: tag
         shell: bash
         env:
+          INPUT_ACTION: ${{ inputs.action }}
           INPUT_TAG: ${{ inputs.tag }}
         run: |
-          tag="$INPUT_TAG"
-          [[ "$tag" =~ ^(main|[0-9a-f]{7})$ ]] || { echo "::error::tag must be main or a 7-char short sha, got '$tag'"; exit 1; }
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "Deploying image tag: $tag"
+          [[ "$INPUT_ACTION" =~ ^(stage|release)$ ]] || { echo "::error::action must be stage or release, got '$INPUT_ACTION'"; exit 1; }
+          [[ "$INPUT_TAG" =~ ^[0-9a-f]{7}$ ]] || { echo "::error::tag must be a 7-char short sha, got '$INPUT_TAG'"; exit 1; }
+          echo "action=$INPUT_ACTION" >> "$GITHUB_OUTPUT"
+          echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+          echo "$INPUT_ACTION $INPUT_TAG"
 
       - name: Configured?
         id: ready
@@ -88,13 +139,18 @@ jobs:
           printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
 
-      - name: Deploy
+      - name: ${{ inputs.action }}
         if: steps.ready.outputs.ok == 'true'
         shell: bash
+        # Through env, never ${{ }} inside the script: the values were checked above, and the
+        # shell only ever sees them as quoted arguments.
+        env:
+          ACTION: ${{ steps.tag.outputs.action }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
               -o ConnectTimeout=15 -o BatchMode=yes \
-              "$USER_NAME@$HOST" deploy "${{ steps.tag.outputs.tag }}"
+              "$USER_NAME@$HOST" "$ACTION" "$TAG"
 
       - name: Status
         if: always() && steps.ready.outputs.ok == 'true'
