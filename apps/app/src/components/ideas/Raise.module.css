@@ -478,6 +478,11 @@ a.quickBtn { text-decoration: none; }
 .secHead { display: flex; align-items: baseline; gap: 6px; }
 .big { margin: 0; font-size: var(--nh-fs-md); line-height: 1.5; color: #1c1c1e; text-wrap: pretty; max-width: 62ch; }
 .small { margin: 0; font-size: var(--nh-fs-sm); line-height: 1.55; color: #3a3a3c; text-wrap: pretty; max-width: 62ch; }
+/* "Checked across the company" under a dial: where each fact was looked up, then the fact */
+.facts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.fact { display: grid; grid-template-columns: 112px minmax(0, 1fr); column-gap: 12px; align-items: baseline; }
+.factSrc { font-size: var(--nh-fs-xs); font-weight: 600; color: #0062cc; }
+.factText { font-size: var(--nh-fs-sm); line-height: 1.55; color: #3a3a3c; text-wrap: pretty; max-width: 62ch; }
 .found { animation: affFade 240ms ease backwards; display: flex; align-items: center; gap: 6px; }
 .foundLabel { font-size: var(--nh-fs-sm); font-weight: 600; }
 .advice { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 10.5px; row-gap: 6px; padding: 10.5px 12px; background: #f7f7f9; border-radius: 9px; }
@@ -623,6 +628,7 @@ a.quickBtn { text-decoration: none; }
   .step:nth-child(3) { padding-left: 0; border-left: none; }
   .boxHead { flex-wrap: wrap; padding: 12px 16px 9px; }
   .adds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fact { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
   .add { height: auto; min-height: 36px; padding-block: 8px; }
   .addLabel { white-space: normal; line-height: 1.25; } /* two lines rather than "Suggest a …" */
   .eval { height: auto; padding: 18px 16px; }

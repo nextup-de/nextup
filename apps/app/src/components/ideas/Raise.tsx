@@ -21,6 +21,7 @@ import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
 import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { ideaFromTurns } from "@/features/ideas/coach";
+import { companyRead } from "@/features/ideas/company-read";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
 import { DEMO_CASE, DEMO_SCRIPT, scriptStep } from "@/features/ideas/demo-script";
 import { adviceOf, clockLabel, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, railOf, splitIdea, splitUpdate, whenLabel, type Gap } from "@/features/ideas/raise";
@@ -401,6 +402,11 @@ export function Raise({ script = false }: { script?: boolean }) {
     { name: "Company goals", where: GOALS.length + " goals checked", ext: "DOC" },
     { name: "Routing map", where: seed.routes.length + " routes", ext: "DOC" },
     { name: "Open cases", where: openCases + " searched", ext: "IDEA" },
+    // What the dials' "Checked across the company" lines read (features/ideas/company-read.ts), where the company has it.
+    ...([
+      ["Org chart", seed.depts.reduce((n, d) => n + d.people, 0), "people, " + seed.depts.length + " departments", "DOC"], ["Named problems", seed.problems.length, "problems", "DATA"],
+      ["Initiatives", seed.initiatives.length, "running or done", "IDEA"], ["Shipped outcomes", seed.outcomes.length, "promise vs result", "DATA"],
+    ] as const).filter(([, n]) => n > 0).map(([name, n, what, ext]) => ({ name, where: n + " " + what, ext })),
     ...(myFiles.length ? [{ name: "Your evidence", where: myFiles.length + (myFiles.length === 1 ? " file" : " files"), ext: "DATA" as const }] : []),
   ];
   const sims: Similar[] = similar
@@ -425,6 +431,11 @@ export function Raise({ script = false }: { script?: boolean }) {
     <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} dials={dialsOf(parts)}
+      company={companyRead({
+        text: idea.text, lead: ev?.lead ?? lead, myDept: who.line.split(",")[0].trim(), affected, people: seed.people, depts: seed.depts,
+        routes: seed.routes, goals: GOALS, problems: seed.problems, ideas: seed.ideas, initiatives: seed.initiatives, outcomes: seed.outcomes,
+        cases: S.cases, promiseDays: seed.promiseDays, spendLimitEur: SPEND_LIMIT_EUR,
+      })}
       summary={((x) => (x.length > 320 ? x.slice(0, 320).replace(/\s+\S*$/, "") + "…" : x))((idea.text || "").replace(/\s+/g, " ").trim()) || "Nothing to summarise yet."}
       advice={advice}
       pattern={affected.length > 1 ? "The problem is felt beyond one team: " + affected.join(", ") + "." : "It stands on its own."}
