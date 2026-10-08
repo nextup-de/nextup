@@ -7,7 +7,7 @@
 //   OPS_TOKEN  this stack's token, issued in admin.sellux.ch -> Stacks
 //
 // Runs once a minute from instrumentation.ts, and right after someone files a report. The same timer
-// sends this stack's health (server/health-report.ts).
+// sends this stack's health (server/health-report.ts) and the errors it counted (server/errors-report.ts).
 // Not a "use server" module.
 import {
   IntakeAccepted,
@@ -28,6 +28,7 @@ import {
   ticketsToForward,
 } from "@/lib/db/tickets";
 import { mailConfigured, sendMail } from "@/server/mail";
+import { reportErrors } from "@/server/errors-report";
 import { reportHealth } from "@/server/health-report";
 
 export type Ops = { url: string; token: string; secret: string };
@@ -139,6 +140,7 @@ export function startTicketSync(): void {
   const round = () => {
     void syncTickets();
     void reportHealth();
+    void reportErrors();
   };
   globalForSync.__nextupTicketSync = setInterval(round, 60_000);
   round();
