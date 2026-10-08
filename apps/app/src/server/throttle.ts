@@ -32,6 +32,8 @@ export const RULES = {
   brainRoute: { limit: 20, windowMs: 10 * 60_000 },
   /** The bug icon, per person: a few reports in a row is a bad day, dozens is a script. */
   ticketReport: { limit: 10, windowMs: 10 * 60_000 },
+  /** Browser errors (api/client-errors), per address: a tab sends at most five per page load. */
+  clientError: { limit: 30, windowMs: 10 * 60_000 },
 } satisfies Record<string, Rule>;
 
 export type Bucket = keyof typeof RULES;
