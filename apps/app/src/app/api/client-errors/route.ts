@@ -11,7 +11,7 @@
 // a deploy - where "chunk failed to load" comes from - could not reach one, and sendBeacon needs a URL.
 // The proxy's matcher excludes /api, so this is never host-rewritten.
 import { CLIENT_REPORT_MAX_BYTES, ClientErrorInput, acceptClientReport, isBrowserNoise } from "@/features/errors";
-import { appOrigin, singleCompany, tenantMode } from "@/features/tenant/urls";
+import { appOrigin, singleCompany } from "@/features/tenant/urls";
 import { recordError } from "@/server/errors";
 import { clientKey, throttle } from "@/server/throttle";
 
@@ -44,8 +44,8 @@ export async function POST(request: Request) {
   if (throttle("clientError", await clientKey())) return answer(204);
   if (isBrowserNoise(input)) return answer(204);
 
-  // Path mode (a laptop): the first segment is the company. A one-company stack has none in its paths.
-  const slug = singleCompany() ?? (tenantMode() === "path" ? input.path.split("/")[1] : undefined);
-  recordError("client", { name: input.name, message: input.message, stack: input.stack }, input.path, slug);
+  // A one-company stack has no slug in its paths. Path mode (a laptop) keeps the path as it is: its
+  // first segment may be a company, /admin or /demo, and only a lookup could tell.
+  recordError("client", { name: input.name, message: input.message, stack: input.stack }, input.path, singleCompany() ?? undefined);
   return answer(204);
 }
