@@ -105,7 +105,9 @@ jobs:
       KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
       HOST: ${{ vars.DEPLOY_HOST }}
       USER_NAME: ${{ vars.DEPLOY_USER }}
-      HEALTH_URLS: ${{ inputs.action == 'stage' && vars.STAGING_HEALTH_URLS || vars.DEPLOY_HEALTH_URLS }}
+      # Each action its own list, never the other's: `a && b || c` falls through to c when b is
+      # empty, so an unset STAGING_HEALTH_URLS used to health-check the release stacks on a stage.
+      HEALTH_URLS: ${{ inputs.action == 'stage' && vars.STAGING_HEALTH_URLS || inputs.action == 'release' && vars.DEPLOY_HEALTH_URLS || '' }}
     steps:
       - name: Action and tag
         id: tag
