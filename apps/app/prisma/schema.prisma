@@ -582,3 +582,29 @@ model TicketReply {
   @@index([companyId, createdAt])
   @@index([ticketId, createdAt])
 }
+
+// ── Errors (features/errors; docs/plans/2026-10-05_admin-vs-ses.md, PR 3 "auto tickets") ──────────
+// One row per kind of error this stack ran into by itself - a page, action or route that threw, or a
+// script error in a browser - with how often and when. Kept per stack, not per company: the row
+// holds no company data by construction (scrubbed message, route pattern, top frame), so it is not
+// a tenant table. `pending` = counted since the last send to admin.sellux.ch, which turns each row
+// into one "auto" ticket. Rows not seen for 30 days are pruned (src/lib/db/errors.ts).
+model ErrorGroup {
+  id          String   @id @default(cuid())
+  fingerprint String   @unique // features/errors fingerprint(): source, name, message pattern, route
+  source      String // server | client
+  name        String // TypeError, PrismaClientKnownRequestError, ...
+  message     String // scrubbed, at most 300 characters
+  frame       String   @default("") // the last top frame from our code - shown, never compared
+  route       String // /[company]/cases/[id]
+  count       Int      @default(0) // every occurrence since firstSeenAt
+  firstSeenAt DateTime
+  lastSeenAt  DateTime
+  appCommit   String? // NEXTUP_COMMIT of the build that saw it last
+
+  pending      Boolean   @default(true)
+  forwardedAt  DateTime?
+  forwardError String?
+
+  @@index([pending, lastSeenAt])
+}
