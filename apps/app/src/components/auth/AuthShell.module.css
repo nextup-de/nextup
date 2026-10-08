@@ -37,7 +37,7 @@
 
 .authPanel {
   min-height: calc(var(--nh-screen-h) - 124px);
-  margin: 20px clamp(20px, 3vw, 40px) 40px 0;
+  margin: 20px 40px 40px 0;
   display: grid;
   grid-template-columns: minmax(0, 58%) minmax(420px, 42%);
   align-items: stretch;
@@ -48,7 +48,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: clamp(28px, 4vw, 56px);
+  padding: 56px;
   background: #fff;
   border: 1px solid #e7edf1;
   border-radius: 28px;
@@ -69,7 +69,7 @@
   position: absolute;
   z-index: 2; /* above the card: on narrow screens the card's top padding lies over the link */
   top: 28px;
-  left: clamp(28px, 4vw, 56px);
+  left: 56px;
   color: var(--nh-ink-2);
   font-size: var(--nh-fs-md);
   font-weight: 600;
@@ -80,7 +80,7 @@
 .artCard {
   width: min(420px, 100%);
   margin: auto;
-  padding: clamp(12px, 2vh, 24px) 0;
+  padding: 16px 0;
   background: transparent;
   border-radius: 0;
   box-shadow: none;
@@ -117,7 +117,7 @@
   width: min(460px, 64%);
   max-width: none;
   margin: 0;
-  padding-left: clamp(30px, 4vw, 64px);
+  padding-left: 56px;
   color: var(--nh-ink);
 }
 
@@ -200,7 +200,7 @@
 }
 
 @media (min-width: 861px) and (max-height: 640px) {
-  .artMain { padding: 18px clamp(24px, 4vw, 48px); }
+  .artMain { padding: 18px 48px; }
   .artCard { padding: 0; }
   .artCard form { gap: 12px; margin-top: 2px; }
   .artCard .title { font-size: var(--nh-fs-2xl); }

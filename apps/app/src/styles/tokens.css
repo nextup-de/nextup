@@ -57,12 +57,25 @@
   --nh-r-lg: 18px;
   --nh-r-xl: 22px;
 
+  /* Type: one fixed scale for every page (docs/RESPONSIVE.md "Sizes"). Real sizes, the same on every
+     screen: nothing grows with the window and nothing is multiplied. Font sizes in CSS use only these
+     (npm run lint enforces it); tests/unit/fluid.test.ts keeps them at 12px and up, 1px or more apart. */
+  --nh-fs-xs: 12px;    /* meta, tags, badges, timestamps - the floor (nothing is smaller) */
+  --nh-fs-sm: 13px;    /* labels, secondary lines, captions, small buttons */
+  --nh-fs-md: 15px;    /* body text, buttons, list titles */
+  --nh-fs-lg: 17px;    /* ledes, card headings, the opened item's intro */
+  --nh-fs-xl: 20px;    /* section headings, big numbers */
+  --nh-fs-2xl: 24px;   /* page headings, list card titles */
+  --nh-fs-3xl: 28px;   /* the opened case's title */
+  --nh-fs-4xl: 34px;   /* display: sign-in and empty pages */
+  --nh-fs-input: 16px; /* text fields on phones - smaller makes iOS zoom in on focus (rule 6) */
+
+  /* Spacing: fixed too. The page gutter steps down on tablets and phones; it never follows the window. */
   --nh-space: 8px;
-  /* Layout spacing from the fluid scale (src/styles/fluid.css): grows with the screen, no breakpoint jumps. */
-  --nh-gap: var(--nh-sp-xs-s);       /* 12-18px: between cards and columns, and from the screen edge in full-screen views */
-  --nh-pad-card: var(--nh-sp-s-m);   /* 16-27px: inside a main card */
-  --nh-pad-card-sm: var(--nh-sp-s);  /* 16-18px: inside a side card */
-  --nh-page-x: clamp(16px, 5vw, 56px);
+  --nh-gap: 16px;          /* between cards and columns, and from the screen edge in full-screen views */
+  --nh-pad-card: 24px;     /* inside a main card */
+  --nh-pad-card-sm: 18px;  /* inside a side card */
+  --nh-page-x: 56px;       /* the page's side gutter: 32px on tablets, 16px on phones (below) */
   --nh-max: 1120px;
   --nh-bar-h: 46px; /* the simple shell's top bar; pages that fill the screen below it subtract this */
 
@@ -72,3 +85,5 @@
   --nh-screen-w: 100vw;
 }
 
+@media (max-width: 1023px) { :root { --nh-page-x: 32px; } }
+@media (max-width: 760px) { :root { --nh-page-x: 16px; } }

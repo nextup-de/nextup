@@ -152,14 +152,14 @@
   background: #fff; border-radius: 18px; box-shadow: var(--shadow);
 }
 .score[data-open="true"] { border-radius: 18px 18px 0 0; }
-.scoreLabel { font-size: clamp(var(--nh-fs-xs), 10cqmin, 15px); font-weight: 600; color: var(--c-ink-2); white-space: nowrap; }
+.scoreLabel { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--c-ink-2); white-space: nowrap; }
 .gauge { position: relative; width: 62cqmin; height: 62cqmin; }
 .arc { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(135deg); }
 .arcTrack, .arcFill { fill: none; stroke-width: 10; stroke-linecap: round; }
 .arcTrack { stroke: #e3eaf7; }
 .arcFill { stroke: var(--p-gauge); transition: stroke-dasharray 420ms var(--ease); }
 .gaugeText { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 6%; }
-.gaugeNum { font-size: max(var(--nh-fs-xs), 17cqmin); font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--c-ink); font-variant-numeric: tabular-nums; }
+.gaugeNum { font-size: var(--nh-fs-2xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--c-ink); font-variant-numeric: tabular-nums; }
 .gaugeSub { font-size: var(--nh-fs-xs); color: #8e8e93; margin-top: 2px; }
 .scoreBtn {
   position: absolute; left: 36.1%; top: 77.8%; width: 27.8%; aspect-ratio: 1; padding: 0; border-radius: 50%; border: 0;

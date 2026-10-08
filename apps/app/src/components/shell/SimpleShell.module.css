@@ -160,33 +160,6 @@
 .sKeys kbd:not(:first-child) { margin-left: 2px; }
 .sPanel button:focus-visible, .sPanel a:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 
-/* Laptops: the Overview's 0.85 step (--u in team/Overview.module.css): a narrower card, tighter rows, text a size down, never below 12px. */
-@media (min-width: 761px) and (max-width: 1599px) {
-  .sPanel { top: calc(100% + 8px); width: min(480px, calc(var(--nh-screen-w) - 24px)); max-height: min(520px, calc(var(--nh-screen-h) - var(--nh-bar-h) - 20px)); border-radius: 18px; }
-  .sFilters { padding: 10px 10px 8px; }
-  .sFilter { height: 28px; padding: 0 11px; gap: 5px; font-size: var(--nh-fs-sm); }
-  .sList { padding: 0 6px; }
-  .sSection { padding: 4px 0; }
-  .sHeading { margin: 6px 8px 3px; }
-  .sRow { gap: 10px; padding: 8px; border-radius: 12px; }
-  .sMark, .sAvatar { width: 30px; height: 30px; }
-  .sMark { border-radius: 9px; }
-  .sMark svg { width: 13px; height: 13px; }
-  .sAvatar { font-size: var(--nh-fs-xs); }
-  .sBody { gap: 2px; }
-  .sTitle { font-size: var(--nh-fs-sm); }
-  .sSub, .sGo { font-size: var(--nh-fs-xs); }
-  .sSide { gap: 6px; }
-  .sBadge { padding: 2px 8px; }
-  .sSteps { width: 48px; }
-  .sSteps span { height: 3px; }
-  .sEmpty { padding: 22px 16px 24px; }
-  .sEmpty strong { font-size: var(--nh-fs-sm); }
-  .sEmpty p { font-size: var(--nh-fs-sm); }
-  .sPlaces { padding: 2px 10px 10px; }
-  .sPill { height: 28px; padding: 0 12px; font-size: var(--nh-fs-sm); }
-  .sFoot { padding: 8px 14px; }
-}
 @media (max-width: 760px) {
   /* On a phone the card hangs from the bar, edge to edge inside a 12px gutter. */
   .sPanel { position: fixed; top: calc(var(--nh-bar-h) + 8px); left: 12px; right: 12px; width: auto; transform: none; max-height: calc(var(--nh-screen-h) - var(--nh-bar-h) - 20px); border-radius: 18px; }

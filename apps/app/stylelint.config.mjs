@@ -1,9 +1,9 @@
-// Stylelint: keeps every page on the shared fluid scale (src/styles/fluid.css, docs/RESPONSIVE.md).
+// Stylelint: keeps every page on the one fixed type scale (src/styles/tokens.css, docs/RESPONSIVE.md).
 // Runs in `npm run lint` (and so in CI). Only sizing rules on purpose - no style-guide opinions.
 /** @type {import("stylelint").Config} */
 const config = {
   plugins: ["stylelint-declaration-strict-value"],
-  ignoreFiles: ["src/styles/fluid.css", "src/styles/tokens.css"],
+  ignoreFiles: ["src/styles/tokens.css"],
   rules: {
     "scale-unlimited/declaration-strict-value": [
       ["font-size"],
@@ -12,11 +12,10 @@ const config = {
         ignoreFunctions: false,
         ignoreValues: [
           "/^var\\(--nh-fs-[a-z0-9]+\\)$/",           // a step of the scale: var(--nh-fs-sm)
-          "/^(clamp|max)\\(var\\(--nh-fs-xs\\),.*cqmin/", // sized by its container (a score tile), floored at the scale's minimum
           "/^\\d*\\.?\\d+em$/",                          // relative to the parent's size: 0.9em
           "inherit",
         ],
-        message: "Use a step of the fluid type scale for \"${property}\": var(--nh-fs-xs | sm | md | lg | xl | 2xl | 3xl | 4xl), or var(--nh-fs-input) for text fields on phones. Not \"${value}\" (docs/RESPONSIVE.md).",
+        message: "Use a step of the type scale for \"${property}\": var(--nh-fs-xs | sm | md | lg | xl | 2xl | 3xl | 4xl), or var(--nh-fs-input) for text fields on phones. Not \"${value}\" (docs/RESPONSIVE.md).",
       },
     ],
   },

@@ -1,47 +1,44 @@
 # Fluid UI
 
-> **Updated 2026-10-08** · reference: layout rules, the fluid size scale, and the checks that enforce them.
+> **Updated 2026-10-08** · reference: layout rules, the size scale, and the checks that enforce them.
 
 NextUp works on every screen at 100% browser zoom: phones, tablets, laptops, monitors. This page is
 how it does that and the rules that keep it that way. Four checks enforce them: `npm run lint`
 (Stylelint, runs in CI), `npm test` (`tests/unit/fluid.test.ts`, runs in CI), the screenshot sweep
 (`tests/e2e/fluid.mjs`, run by hand) and the visual comparison (`npm run e2e:visual`, run by hand).
 
-## Sizes: one fluid scale for every page
+## Sizes: real sizes, one scale for every page
 
-Text and layout spacing come from one scale, `src/styles/fluid.css`, generated with
-[Utopia](https://utopia.fyi) by `scripts/fluid-tokens.mjs`. Every token is a `clamp()` that grows in a
-straight line from a 360px phone to a 1920px monitor and stops at both ends - no jump at a breakpoint.
-Pages pick a step; they never invent a size. That is what keeps pages consistent with each other: before
-the scale each page scaled its own way, and one of them (px × 0.75 with a 12px floor) put labels, body
-text and buttons all on 12px.
+Text has fixed sizes, the same on every screen: nothing is multiplied by a page factor and nothing
+grows with the window. A wider screen gets more room around the page, not bigger text or bigger boxes.
+Pages pick a step from the scale in `src/styles/tokens.css`; they never invent a size. That keeps pages
+consistent with each other: before the scale each page scaled its own way, and one of them (px × 0.75
+with a 12px floor) put labels, body text and buttons all on 12px.
 
-| Token | Phone → monitor | For |
+| Token | Size | For |
 |---|---|---|
 | `--nh-fs-xs` | 12px | meta, tags, badges, timestamps - the floor |
-| `--nh-fs-sm` | 12.5 → 13.5px | labels, secondary lines, small buttons |
-| `--nh-fs-md` | 14 → 15px | body text, buttons, list titles |
-| `--nh-fs-lg` | 15.5 → 17px | ledes, card headings |
-| `--nh-fs-xl` | 18 → 21px | section headings, big numbers |
-| `--nh-fs-2xl` | 21 → 26px | page headings |
-| `--nh-fs-3xl` | 24 → 32px | the opened case's title |
-| `--nh-fs-4xl` | 28 → 40px | display: sign-in, empty pages |
+| `--nh-fs-sm` | 13px | labels, secondary lines, small buttons |
+| `--nh-fs-md` | 15px | body text, buttons, list titles |
+| `--nh-fs-lg` | 17px | ledes, card headings |
+| `--nh-fs-xl` | 20px | section headings, big numbers |
+| `--nh-fs-2xl` | 24px | page headings, score numbers |
+| `--nh-fs-3xl` | 28px | the opened case's title |
+| `--nh-fs-4xl` | 34px | display: sign-in, empty pages |
 | `--nh-fs-input` | 16px | text fields on phones (rule 6) |
 
-Spacing: `--nh-gap` (12 → 18px, between cards and columns), `--nh-pad-card` (16 → 27px, inside a main
-card), `--nh-pad-card-sm` (16 → 18px, side cards), and Utopia's raw steps `--nh-sp-*` (`3xs` … `xl`, and
-the fluid pairs `xs-s`, `s-m`, …). Small fixed gaps inside a component (4px between an icon and its
-label) stay plain px.
+Spacing is fixed too: `--nh-gap` (16px, between cards and columns), `--nh-pad-card` (24px, inside a
+main card), `--nh-pad-card-sm` (18px, side cards). The page gutter `--nh-page-x` is 56px, 32px on
+tablets and 16px on phones - a step per kind of screen, never a share of the window. Small gaps inside a
+component (4px between an icon and its label) are plain px.
 
-- **Change the scale in the generator, never in `fluid.css`:** edit `scripts/fluid-tokens.mjs`, run
-  `npm run fluid:tokens`. `npm test` fails when the file is stale, when a step dips under 12px, or when
-  two neighbouring steps come within 0.5px of each other at any width (the hierarchy collapsing).
-- **A design handed off at its own scale** (the overview and raise pages): keep the design's px for
-  layout and multiply by a length, `calc(12 * var(--ux))`, where the page sets `--ux` once as a
-  `clamp()` (see `team/Overview.module.css`, `ideas/Raise.module.css`). Its font sizes still come from
-  the scale - map each one to the nearest step by the size it renders at on a laptop.
-- **Something sized by its container** (a score tile) may use container units, floored at the scale:
-  `clamp(var(--nh-fs-xs), 10cqmin, 15px)`.
+- **Change a size in `tokens.css`.** `npm test` fails when a step is not plain px, dips under 12px, or
+  comes within 1px of its neighbour (the hierarchy collapsing).
+- **A design handed off in px** (the overview and raise pages): use its px as they are, on every screen.
+  No multiplier (`calc(12 * var(--u))`), no `clamp()` on `vw`: *checked by `npm test`*. Map each font
+  size to the nearest step.
+- **Something sized by its container** (a score tile's ring) may use container units for the graphic;
+  its text still uses a step.
 
 ## How it works
 
@@ -76,6 +73,9 @@ label) stay plain px.
    than the screen (a sidebar that opens, a column that shares the row), switch its layout with a
    container query on the block (`container-type: inline-size` + `@container`), not a screen
    breakpoint - see `.how` on the raise page.
+10. **Nothing scales with the screen.** No page multiplier (`--u`, `--ux`), no padding, gap or text in
+    `vw`, `vh` or `cqmin`, no `clamp()` on the window. Use the design's px; give phones and tablets
+    their own px in a breakpoint when they need it. *Checked by `npm test`.*
 
 ## Before you say a change is done
 

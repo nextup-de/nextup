@@ -1,7 +1,6 @@
 /* Global styles: tokens + reset + shared primitives (nh-* classes).
    Page-specific styles live next to the page as *.module.css. */
 @import "../styles/tokens.css";
-@import "../styles/fluid.css"; /* the fluid type and space scale (generated: scripts/fluid-tokens.mjs) */
 /* Fonts: loaded via next/font in src/app/layout.tsx (self-hosted, no third-party request). */
 
 *, *::before, *::after { box-sizing: border-box; }

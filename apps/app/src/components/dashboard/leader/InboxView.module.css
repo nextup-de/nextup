@@ -37,7 +37,7 @@
    radius and shadow instead of a border, semibold numbers, grey labels. Folds away when open. */
 /* It folds by its grid row (1fr -> 0fr), so it animates from whatever height it has - two rows of
    stats on a phone included. */
-.top { flex: none; display: grid; grid-template-rows: 1fr; margin-bottom: clamp(16px, 2.4vh, 24px); transition: grid-template-rows 520ms var(--ease), opacity 260ms ease, margin-bottom 520ms var(--ease); }
+.top { flex: none; display: grid; grid-template-rows: 1fr; margin-bottom: 16px; transition: grid-template-rows 520ms var(--ease), opacity 260ms ease, margin-bottom 520ms var(--ease); }
 .page[data-open="true"] .top { grid-template-rows: 0fr; opacity: 0; margin-bottom: 0; pointer-events: none; }
 .top .stats { min-height: 0; overflow: hidden; border: 0; border-radius: 22px; padding: 4px 0; box-shadow: 0 10px 30px rgb(40 60 100 / 0.08), 0 1px 2px rgb(40 60 100 / 0.05); }
 .top .stat { padding: 14px 22px 13px; border-left-color: var(--c-sep-head); }
