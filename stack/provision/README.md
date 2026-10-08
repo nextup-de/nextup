@@ -31,7 +31,7 @@ admin's **Version** card on a pinned stack (today only `demo`, the interview sta
 4. checks `/api/health` and reports the log (codes scrubbed) with the "to go back" line.
 
 For the card to show, the stack needs a company page: **Companies → Register a stack that already
-runs** with `demo` (3121), and the same for `staging` (3161) to switch its feature flags there.
+runs** with `demo` (3121), and the same for `staging` (3991) to switch its feature flags there.
 The agent reads their passwords (`credentials`) even though both slugs are reserved; it never
 creates, stops or deletes a reserved stack.
 
