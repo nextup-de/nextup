@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { benchmark, weakest } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
-import { adviceOf, dialsOf, dialsUp, greetName, IDEA_UPDATE, initials, isUnsure, levelOf, RAIL, railOf, splitIdea, splitUpdate, whenLabel, withoutSkipped } from "@/features/ideas/raise";
+import { adviceOf, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, levelOf, RAIL, railOf, splitIdea, splitUpdate, whenLabel, withoutSkipped } from "@/features/ideas/raise";
 import { GOALS } from "@/features/evaluate";
 import { ROUTES } from "@/features/demo/seed";
 
@@ -132,5 +132,15 @@ describe("labels", () => {
   it("splits the first message into description and context", () => {
     expect(splitIdea("A printer\n\n*Impact* 40 min\n\nmore")).toEqual({ description: "A printer", context: "*Impact* 40 min\n\nmore" });
     expect(splitIdea("Just a line")).toEqual({ description: "Just a line", context: "" });
+  });
+  it("adds every answer to the idea's context, without asking", () => {
+    const t = (role: "user" | "assistant", text: string) => ({ role, text });
+    expect(ideaNow([t("user", "A printer"), t("assistant", "How often?"), t("user", "Every shift, about 20 minutes"), t("assistant", "Who decides?"), t("user", "Not sure yet")]))
+      .toBe("A printer\n\nEvery shift, about 20 minutes");
+    expect(ideaNow([t("user", "A printer\n\n*Impact* 40 min"), t("user", "Line 3"), t("user", "jd klafkhdjahjsdhf ajsdhljf")])).toBe("A printer\n\n*Impact* 40 min\nLine 3");
+    // An edit sent with a message replaces the idea; the answers after it are added to that.
+    expect(ideaNow([t("user", "A printer"), t("user", "Line 3"), t("user", "Pilot first" + IDEA_UPDATE + "A second printer\n\nLine 3, all shifts"), t("user", "Under 5,000 €")]))
+      .toBe("A second printer\n\nLine 3, all shifts\nPilot first\nUnder 5,000 €");
+    expect(ideaNow([])).toBe("");
   });
 });
