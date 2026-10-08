@@ -57,7 +57,7 @@ The agent reads this file line by line and never sources it.
 | `ADMIN_URL` | — | `http://127.0.0.1:3131`. Admin refuses calls that came through nginx. |
 | `PROVISION_TOKEN` | — | `npa_…`; admin keeps only its sha256 (`PROVISION_TOKEN_SHA256`) |
 | `OPS_PUBLIC_URL` | `https://admin.sellux.ch` | where new stacks send tickets |
-| `NEXTUP_IMAGES` | `main` | image tag for new stacks: `main`, a 7-char sha, or `local` |
+| `NEXTUP_IMAGES` | `released` | image tag for new stacks: `released` (the last sha in `~/nextup/released`, so a new company gets what the others run; `main` until there is one), `main`, a 7-char sha, or `local` |
 | `SITE_HELPER` | `/usr/local/sbin/nextup-site` | or `none` (laptop) |
 | `MIN_MEM_MB` | `600` | refuse a new stack below this much MemAvailable |
 

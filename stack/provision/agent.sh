@@ -14,7 +14,8 @@
 #                                          refuses for these calls. An https URL is verified normally.
 #   PROVISION_TOKEN=npa_...                admin keeps only its sha256 (PROVISION_TOKEN_SHA256)
 #   OPS_PUBLIC_URL=https://admin.sellux.ch where new stacks send tickets (default shown)
-#   NEXTUP_IMAGES=main                     image tag for new stacks: main, a 7-char sha, or local
+#   NEXTUP_IMAGES=released                 image tag for new stacks: released (the last sha deploy.sh
+#                                          released; main until there is one), main, a 7-char sha, or local
 #   SITE_HELPER=/usr/local/sbin/nextup-site  root helper for nginx + certbot (see that file), or none
 #   MIN_MEM_MB=600                         refuse a new stack below this much MemAvailable
 #   MIN_DISK_MB=6000                       refuse a create/restart below this much free disk (images ~3.3 GB)
@@ -35,14 +36,14 @@ config="${NEXTUP_PROVISION_ENV:-$home_dir/provision/.env}"
 export NEXTUP_INSTANCES="${NEXTUP_INSTANCES:-$home_dir/instances}"
 export NEXTUP_SITES="${NEXTUP_SITES:-$home_dir/nginx}"
 domain="${NEXTUP_DOMAIN:-sellux.ch}"
-RESERVED=" www admin api n8n mail automation ops status app static assets _next login signup pricing contact imprint privacy forgot-password invite demo landing "
+RESERVED=" www admin api n8n mail automation ops status app static assets _next login signup pricing contact imprint privacy forgot-password invite demo landing staging "
 
 say() { echo "$(date -u +%FT%TZ) $*"; }
 die() { say "agent: $*" >&2; exit 1; }
 
 # ── Config ───────────────────────────────────────────────────────────────────────────────────────
 [ -f "$config" ] || die "no config at $config"
-ADMIN_URL="" PROVISION_TOKEN="" OPS_PUBLIC_URL="https://admin.sellux.ch" NEXTUP_IMAGES="main" SITE_HELPER="/usr/local/sbin/nextup-site" MIN_MEM_MB=600 MIN_DISK_MB=6000
+ADMIN_URL="" PROVISION_TOKEN="" OPS_PUBLIC_URL="https://admin.sellux.ch" NEXTUP_IMAGES="released" SITE_HELPER="/usr/local/sbin/nextup-site" MIN_MEM_MB=600 MIN_DISK_MB=6000
 while IFS='=' read -r k v; do
   v="${v%$'\r'}"
   case "$k" in
@@ -58,7 +59,13 @@ done < "$config"
 [[ "$ADMIN_URL" =~ ^(http://127\.0\.0\.1:[0-9]{2,5}|https://[a-z0-9.-]+)$ ]] || die "ADMIN_URL must be http://127.0.0.1:PORT or https://host"
 [[ "$PROVISION_TOKEN" =~ ^npa_[A-Za-z0-9_-]{32,100}$ ]] || die "PROVISION_TOKEN must be npa_..."
 [[ "$OPS_PUBLIC_URL" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]] || die "OPS_PUBLIC_URL looks wrong"
-[[ "$NEXTUP_IMAGES" =~ ^(main|local|[0-9a-f]{7})$ ]] || die "NEXTUP_IMAGES is main, local or a 7-char sha"
+[[ "$NEXTUP_IMAGES" =~ ^(released|main|local|[0-9a-f]{7})$ ]] || die "NEXTUP_IMAGES is released, main, local or a 7-char sha"
+# A new company gets what the others run - the last released commit (stack/nginx/deploy.sh), never
+# one that only reached staging. Its scripts come from ~/nextup/stack, which is that same commit.
+if [ "$NEXTUP_IMAGES" = released ]; then
+  NEXTUP_IMAGES="$(tail -n 1 "${NEXTUP_RELEASED:-$home_dir/released}" 2>/dev/null | cut -d' ' -f1 || true)"
+  [[ "$NEXTUP_IMAGES" =~ ^[0-9a-f]{7}$ ]] || NEXTUP_IMAGES=main
+fi
 [[ "$MIN_MEM_MB" =~ ^[0-9]{1,6}$ ]] || die "MIN_MEM_MB is a number"
 [[ "$MIN_DISK_MB" =~ ^[0-9]{1,7}$ ]] || die "MIN_DISK_MB is a number"
 [ "$SITE_HELPER" = none ] || [[ "$SITE_HELPER" =~ ^/usr/local/sbin/[a-z-]+$ ]] || die "SITE_HELPER is none or /usr/local/sbin/<name>"
