@@ -201,6 +201,20 @@ export function drain(store: ErrorStore): ErrorGroup[] {
   return all;
 }
 
+/** Drained groups that could not be saved, counted again - within the same limit, the rest dropped. */
+export function putBack(store: ErrorStore, groups: ErrorGroup[]): void {
+  for (const g of groups) {
+    const have = store.get(g.fingerprint);
+    if (have) {
+      have.count += g.count;
+      have.firstSeen = Math.min(have.firstSeen, g.firstSeen);
+      have.lastSeen = Math.max(have.lastSeen, g.lastSeen);
+    } else if (store.size < ERROR_LIMITS.groups) {
+      store.set(g.fingerprint, { ...g });
+    }
+  }
+}
+
 // ── Browser reports ───────────────────────────────────────────────────────────────────────────────
 
 export const CLIENT_REPORT_MAX_BYTES = 8_192;
