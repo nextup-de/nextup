@@ -33,7 +33,7 @@ import { useIdeaStudio } from "@/lib/use-idea-studio";
 import { useKept } from "@/lib/use-kept";
 import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
-import { RaiseMenu, type MenuView } from "./RaiseMenu";
+import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
 import { ReceiverDialog, type Work } from "./RaisePublish";
 import { RaiseChat, type ChatMsg } from "./RaiseChat";
 import { AnalysisSheet, IdeaSheet, type Reviewer, type Similar, type Source } from "./RaiseSheets";
@@ -45,7 +45,7 @@ import { RaisePeople } from "./RaisePerson";
 import s from "./Raise.module.css";
 
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
-type Menu = { at: "start" | "chat" | "card"; view: MenuView } | null;
+type Menu = { at: "chat" | "card" | "add"; view: MenuView } | null; // "add": under a start-page action button
 
 export function Raise({ script = false }: { script?: boolean }) {
   const { seed, S, persona, role, act, ready, href, tenant, showToast, serverMode } = useDemo();
@@ -64,7 +64,6 @@ export function Raise({ script = false }: { script?: boolean }) {
   const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "auto"); // auto: open on screens, closed on phones (CSS)
   const [query, setQuery] = useState("");
   const [startText, setStartText] = useKept(scope, "startText", "");
-  const [startCtx, setStartCtx] = useKept(scope, "startCtx", "");
   const [startAff, setStartAff] = useKept<string[]>(scope, "startAff", []);
   const [files, setFiles] = useKept<Record<string, FileItem[]>>(scope, "files", {});
   const [slot, setSlot] = useKept(scope, "slot", "n0"); // where the choices of the open idea live: the start form's key, or a draft id
@@ -117,8 +116,8 @@ export function Raise({ script = false }: { script?: boolean }) {
   // What the evaluation and the analysis say about who receives it: the routing, run here on the open idea.
   const ev = useMemo(() => {
     if (!idea.text && !startText.trim()) return null;
-    return evaluate({ kind: "idea", text: idea.text || startText, context: startCtx, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases });
-  }, [idea.text, startText, startCtx, affected, myFiles.length, who, seed, S.cases]);
+    return evaluate({ kind: "idea", text: idea.text || startText, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases });
+  }, [idea.text, startText, affected, myFiles.length, who, seed, S.cases]);
 
   const similar = useMemo(() => {
     if (!idea.text) return null;
@@ -134,7 +133,7 @@ export function Raise({ script = false }: { script?: boolean }) {
       const known = (n: string) => seed.people.some((p) => p.name === n);
       const lead = seed.people.find((p) => p.name === who.name)?.reportsTo ?? ev?.lead;
       const coll = seed.people.filter((p) => p.name !== who.name && p.name !== lead).map((p) => p.name);
-      setStartText(x.text); setStartCtx(x.ctx); setStartAff(x.aff.filter((a) => !/^[A-Z]\. /.test(a) || known(a))); setMenu(null);
+      setStartText(x.text + "\n\n" + x.ctx); setStartAff(x.aff.filter((a) => !/^[A-Z]\. /.test(a) || known(a))); setMenu(null);
       setFiles((f) => ({ ...f, [slot]: x.files.map((name) => ({ id: newId("f"), name, url: "", img: false, file: new File([], name) })) }));
       preview.setExtras(slot, { recv: lead ? [lead] : [], coll: coll.length ? [coll[Math.floor(Math.random() * coll.length)]] : [], meet: Math.random() > 0.5 ? { dur: "15 min", when: "this week" } : null, vis: "public", visTo: [] });
     };
@@ -166,8 +165,8 @@ export function Raise({ script = false }: { script?: boolean }) {
     if (f) URL.revokeObjectURL(f.url);
     setMyFiles(myFiles.filter((x) => x.id !== id));
   };
-  const openMenu = (at: "start" | "chat" | "card", v: MenuView = "main") => setMenu({ at, view: v });
-  const toggleMenu = (at: "start" | "chat") => setMenu((m) => (m ? null : { at, view: "main" }));
+  const openMenu = (at: NonNullable<Menu>["at"], v: MenuView = "main") => setMenu({ at, view: v });
+  const toggleMenu = (at: "chat") =>setMenu((m) => (m ? null : { at, view: "main" }));
 
   const go = (v: "chat" | "idea" | "analysis") => { setFirstPending(false); setView(v); };
   // Leaving a draft the start form made: remember which slot holds its choices, for when it is reopened.
@@ -175,7 +174,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   const reset = () => { leave(); setText(""); setAsk(null); setMenu(null); go("chat"); setSb((x) => (x === "open" ? "auto" : x)); };
   const newIdea = () => {
     studio.startNew(); reset(); setOpenId(null);
-    setStage("start"); setStartText(""); setStartCtx(""); setStartAff([]); setEvalStep(null); setSlot(newId("n"));
+    setStage("start"); setStartText(""); setStartAff([]); setEvalStep(null); setSlot(newId("n"));
     setTimeout(() => startField.current?.focus(), 60);
   };
   const openDraft = (id: string) => {
@@ -183,7 +182,7 @@ export function Raise({ script = false }: { script?: boolean }) {
     setStage("chat"); setEvalStep(null); setSlot(aliases[id] ?? id);
   };
 
-  // Send from the start page: the line, the context and the chosen extras go as the first message;
+  // Send from the start page: what was typed and the chosen extras go as the first message;
   // the evaluation plays while the coach answers.
   const startRaise = () => {
     const main = startText.trim();
@@ -193,7 +192,7 @@ export function Raise({ script = false }: { script?: boolean }) {
       extras.coll.length ? "Colleagues who know this: " + extras.coll.join(", ") : "",
       extras.meet ? "I’d like a " + extras.meet.dur + " meeting " + extras.meet.when + "." : "",
     ].filter(Boolean).join("\n");
-    const message = main + (startCtx.trim() ? "\n\n" + startCtx.trim() : "") + (extra ? "\n\n" + extra : "");
+    const message = main + (extra ? "\n\n" + extra : "");
     // The script goes on in the chat, where its next answer is offered; any other idea opens its analysis first.
     setMenu(null); setEvalStep(0); setFirstPending(!(story && scriptStep([{ role: "user", text: message }]) === 1));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
@@ -202,7 +201,7 @@ export function Raise({ script = false }: { script?: boolean }) {
       step += 1;
       if (step < EVAL_STEPS.length) { setEvalStep(step); return; }
       clearInterval(t);
-      setEvalStep(null); setStage("chat"); setView("chat"); setStartText(""); setStartCtx("");
+      setEvalStep(null); setStage("chat"); setView("chat"); setStartText("");
     }, 420);
   };
 
@@ -289,7 +288,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   const team = affected[0] ?? who.line.split(",")[0];
 
   const chips: Chip[] = (() => {
-    const at = stage === "start" ? "start" : "card";
+    const at = stage === "start" ? "add" : "card";
     const out: Chip[] = [];
     extras.recv.forEach((n) => out.push({ key: "r" + n, title: n, sub: "Receiver", kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "receiver"), remove: () => preview.setExtras(key, { recv: [] }) }));
     extras.coll.forEach((n) => out.push({ key: "c" + n, title: n, sub: "Colleague", kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "colleague"), remove: () => preview.setExtras(key, { coll: extras.coll.filter((x) => x !== n) }) }));
@@ -300,10 +299,10 @@ export function Raise({ script = false }: { script?: boolean }) {
       : { key: "v", title: "Custom", sub: extras.visTo.length ? extras.visTo.length + " selected" : "Pick who", kind: "custom", lead: "", icon: "affected", open: () => openMenu(at, "visPick"), remove: () => preview.setExtras(key, { vis: "public", visTo: [] }) });
     return out;
   })();
-  const fileChips: Chip[] = myFiles.map((f) => ({ key: f.id, title: f.name, sub: "Attached", kind: "file", lead: (f.name.split(".").pop() || "file").slice(0, 4).toUpperCase(), img: f.img ? f.url : undefined, open: () => openMenu(stage === "start" ? "start" : "card", "file"), remove: () => removeFile(f.id) }));
+  const fileChips: Chip[] = myFiles.map((f) => ({ key: f.id, title: f.name, sub: "Attached", kind: "file", lead: (f.name.split(".").pop() || "file").slice(0, 4).toUpperCase(), img: f.img ? f.url : undefined, open: () => openMenu(stage === "start" ? "add" : "card", "file"), remove: () => removeFile(f.id) }));
 
-  const menuFor = (at: "start" | "chat" | "card") => menu && menu.at === at ? (
-    <RaiseMenu at={at === "card" ? "card" : "bar"} view={menu.view} onView={(v) => setMenu({ at, view: v })} onClose={() => setMenu(null)}
+  const menuFor = (at: NonNullable<Menu>["at"]) =>menu && menu.at === at ? (
+    <RaiseMenu at={at === "card" ? "card" : at === "add" ? "under" : "bar"} view={menu.view} onView={(v) => setMenu({ at, view: v })} onClose={() => setMenu(null)}
       extras={extras} onExtras={(x) => preview.setExtras(key, x)} affected={affected} onAffected={setAffected}
       files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile} people={seed.people} depts={seed.depts} me={who.name} />
   ) : null;
@@ -422,13 +421,16 @@ export function Raise({ script = false }: { script?: boolean }) {
   const cats = [...new Set([ev?.route?.type, affected[0] ?? "General", "Idea"].filter((x): x is string => !!x))];
 
   const main = stage === "start" ? (
-    <RaiseStart name={greetName(who.name)} typed={!!startText.trim()} evalStep={evalStep}
+    <RaiseStart name={greetName(who.name)} typed={!!startText.trim() || chips.length + fileChips.length > 0} evalStep={evalStep}
       evalSub={(words || 1) + " words from " + (who.handle ?? who.name) + " · " + who.line}
-      context={startCtx} onContext={setStartCtx}
+      actions={
+        <RaiseActions rows={actionsOf(extras, myFiles.length, affected.length)} open={menu?.at === "add" ? menu.view : null}
+          onOpen={(v) => openMenu("add", v)} menu={menuFor("add")} onAddFiles={addFiles} />
+      }
       composer={
         <RaiseComposer value={startText} onChange={setStartText} onSubmit={startRaise} fieldRef={startField} sendLabel="Ask NextUp"
           placeholder="Share an idea that would make work better…" canSend={startText.trim().length >= 3 && evalStep === null}
-          chips={[...chips, ...fileChips]} strip fill={startFill} menuOpen={menu?.at === "start"} onMenu={() => toggleMenu("start")} menu={menuFor("start")}
+          chips={[...chips, ...fileChips]} strip fill={startFill}
           onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       } />
   ) : shownView === "idea" ? (

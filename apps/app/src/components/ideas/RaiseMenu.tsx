@@ -1,6 +1,7 @@
 "use client";
 // The actions menu behind the bolt button (and behind an item in the sidebar's lists): who receives
 // it, colleagues, a meeting, files, who is affected, who sees it. Opens upward when there is room.
+// The start page also shows the actions as buttons (RaiseActions); each opens its own panel under it.
 // Props in; the receiver, colleagues, meeting and visibility are stand-ins (raisePreview.ts).
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -26,8 +27,19 @@ const TITLE: Record<Exclude<MenuView, "main">, string> = {
 const PAGE = 5;
 const isPick = (v: MenuView): v is PickKey => v in PICKS;
 
+// The six actions, in the menu's order: the panel each opens, its icon, its label and whether it holds a choice.
+export type ActionRow = [Exclude<MenuView, "main" | "visPick">, IconName, string, boolean];
+export const actionsOf = (x: Extras, files: number, affected: number): ActionRow[] => [
+  ["receiver", "receiver", TITLE.receiver, x.recv.length > 0],
+  ["colleague", "colleague", TITLE.colleague, x.coll.length > 0],
+  ["meeting", "meeting", TITLE.meeting, !!x.meet],
+  ["file", "file", TITLE.file, files > 0],
+  ["affected", "affected", TITLE.affected, affected > 0],
+  ["vis", "vis", TITLE.vis, x.vis !== "public"],
+];
+
 export type MenuProps = {
-  at: "bar" | "card";
+  at: "bar" | "card" | "under";
   view: MenuView;
   onView: (v: MenuView) => void;
   onClose: () => void;
@@ -52,15 +64,23 @@ export function RaiseMenu(p: MenuProps) {
   const [host, setHost] = useState<HTMLElement | null>(null);
 
   // Open where there is room: upward when 195px fit above the button (or more than below), else down;
-  // from the sidebar, to the right of the row and pulled back inside the screen.
+  // from the sidebar, to the right of the row and pulled back inside the screen; under a start-page
+  // button, below it unless the space above is the bigger one, and never past the screen's edge.
   useLayoutEffect(() => {
     const anchor = spot.current?.parentElement;
     if (!anchor) return;
     const r = anchor.getBoundingClientRect();
-    if (p.at === "card") {
+    if (p.at !== "bar") {
       const root = anchor.closest<HTMLElement>("[data-raise-root]");
       if (root !== host) { setHost(root); return; }
       const w = ref.current?.offsetWidth ?? 0, gap = 8;
+      if (p.at === "under") {
+        const below = window.innerHeight - r.bottom - 9 - gap, above = r.top - 9 - gap;
+        const up = below < 260 && above > below;
+        const x = Math.max(gap, Math.min(r.left, window.innerWidth - w - gap));
+        setPlace({ up, max: Math.max(120, Math.floor(up ? above : below)), x, y: up ? window.innerHeight - r.top + 9 : r.bottom + 9 });
+        return;
+      }
       const x = Math.max(gap, Math.min(r.right + gap, window.innerWidth - w - gap));
       const y = Math.max(gap, Math.min(r.top, window.innerHeight - 240));
       setPlace({ up: false, max: Math.max(120, Math.floor(window.innerHeight - y - gap)), x, y });
@@ -79,18 +99,20 @@ export function RaiseMenu(p: MenuProps) {
   }, [onClose]);
 
   const width = p.view === "main" ? undefined : isPick(p.view) ? "pick" : "panel";
-  const back = () => p.onView(p.view === "visPick" ? "vis" : "main");
+  // Opened from its own button there is no list behind a panel: its arrow (and Done) close it.
+  const closes = p.at === "under" && p.view !== "visPick";
+  const back = () => (closes ? p.onClose() : p.onView(p.view === "visPick" ? "vis" : "main"));
   const vars = { "--menu-max": place.max + "px", "--list-max": Math.max(72, Math.min(225, place.max - 135)) + "px", "--menu-x": place.x + "px", "--menu-y": place.y + "px" } as React.CSSProperties;
 
   const menu = (
     <>
       <div className={s.backdrop} onClick={p.onClose} />
-      <div ref={ref} className={s.menu} data-up={String(place.up)} data-at={p.at === "card" ? "card" : undefined} data-w={width} style={vars} role="menu">
+      <div ref={ref} className={s.menu} data-up={String(place.up)} data-at={p.at === "bar" ? undefined : p.at} data-w={width} style={vars} role="menu">
         {p.view === "main" && <MainRows {...p} />}
         {p.view !== "main" && (
           <div className={s.panel} data-pick={isPick(p.view) || undefined}>
-            <button type="button" className={`${s.mRow} ${s.back}`} onClick={back}>
-              <Icon name="left" size={10.5} stroke="#6e6e73" width={2.6} />
+            <button type="button" className={`${s.mRow} ${s.back}`} onClick={back} title={closes ? "Close" : "Back"}>
+              <Icon name={closes ? "x" : "left"} size={10.5} stroke="#6e6e73" width={2.6} />
               <span className={s.backLabel}>{TITLE[p.view]}</span>
             </button>
             {isPick(p.view) && <Picker key={p.view} {...p} view={p.view} done={back} />}
@@ -102,21 +124,40 @@ export function RaiseMenu(p: MenuProps) {
       </div>
     </>
   );
-  if (p.at !== "card") return <><span ref={spot} hidden />{menu}</>;
+  if (p.at === "bar") return <><span ref={spot} hidden />{menu}</>;
   return <><span ref={spot} hidden />{host && createPortal(menu, host)}</>;
 }
 
+// The actions as buttons under the start page's composer: each opens its own panel right there, and
+// "Attach file" opens the file picker itself. A button holding a choice turns blue with a check.
+export function RaiseActions({ rows, open, onOpen, menu, onAddFiles }: {
+  rows: ActionRow[];
+  open: MenuView | null;
+  onOpen: (v: MenuView) => void;
+  menu: React.ReactNode;
+  onAddFiles: (files: FileList | null) => void;
+}) {
+  const pick = useRef<HTMLInputElement>(null);
+  const at = open === "visPick" ? "vis" : open;
+  return (
+    <div className={s.adds} role="group" aria-label="Add to your idea">
+      {rows.map(([v, icon, label, set]) => (
+        <span key={v} className={s.addWrap}>
+          <button type="button" className={s.add} data-on={set} aria-expanded={v === "file" ? undefined : at === v} onClick={() => (v === "file" ? pick.current?.click() : onOpen(v))}>
+            <Icon name={icon} size={13.5} />
+            <span className={s.addLabel}>{label}</span>
+            <Icon name={set ? "check" : "plus"} size={10.5} width={2.6} className={s.addMark} />
+          </button>
+          {at === v && menu}
+        </span>
+      ))}
+      <input ref={pick} className={s.hidden} type="file" multiple accept="image/*,.pdf" onChange={(e) => { onAddFiles(e.target.files); e.target.value = ""; }} />
+    </div>
+  );
+}
+
 function MainRows(p: MenuProps) {
-  const x = p.extras;
-  const rows: [MenuView, IconName, string, boolean][] = [
-    ["receiver", "receiver", "Suggest a receiver", x.recv.length > 0],
-    ["colleague", "colleague", "Add a colleague", x.coll.length > 0],
-    ["meeting", "meeting", "Request meeting", !!x.meet],
-    ["file", "file", "Attach file", p.files.length > 0],
-    ["affected", "affected", "Who’s affected", p.affected.length > 0],
-    ["vis", "vis", "Who sees it", x.vis !== "public"],
-  ];
-  return rows.map(([v, icon, label, set], i) => (
+  return actionsOf(p.extras, p.files.length, p.affected.length).map(([v, icon, label, set], i) => (
     <Fragment key={v}>
       {i === 3 && <div className={s.divider} />}
       <button type="button" role="menuitem" className={s.mRow} onClick={() => p.onView(v)}>

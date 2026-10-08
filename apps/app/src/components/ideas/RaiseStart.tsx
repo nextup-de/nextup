@@ -1,45 +1,26 @@
 "use client";
 // The raise page's start: the greeting, the composer at the optical centre and, under it, how NextUp
-// works (empty), the optional context (once typing) or the evaluation (after send). Props in.
-import { useRef, useSyncExternalStore } from "react";
+// works (empty), the actions as buttons (once typing) or the evaluation (after send). Props in.
+import { useSyncExternalStore } from "react";
 import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
 import s from "./Raise.module.css";
 
 export const EVAL_STEPS = ["Reading your idea", "Org chart · who is responsible", "Similar ideas", "Cost and impact", "Feasibility", "Past decisions", "Risks and blockers", "Routing"];
-const PROMPTS = ["Impact", "Who’s blocked", "Already tried", "Deadline"];
 
-export function RaiseStart({ name, composer, typed, evalStep, evalSub, context, onContext }: {
+export function RaiseStart({ name, composer, actions, typed, evalStep, evalSub }: {
   name: string;
   composer: React.ReactNode;
+  actions: React.ReactNode;
   typed: boolean;
   evalStep: number | null;
   evalSub: string;
-  context: string;
-  onContext: (v: string) => void;
 }) {
-  const ctx = useRef<HTMLTextAreaElement>(null);
-  const prompt = (label: string) => {
-    if (!context.includes("*" + label + "*")) onContext((context.trim() ? context.replace(/\s*$/, "") + "\n" : "") + "*" + label + "* ");
-    setTimeout(() => { const el = ctx.current; if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; } }, 30);
-  };
   return (
     <div className={s.start}>
       <h1 className={s.h1}>Raise it, {name}</h1>
       {composer}
       <div className={s.below}>
-        {evalStep !== null ? <Evaluating step={evalStep} sub={evalSub} /> : typed ? (
-          <section className={s.box} aria-label="Add context">
-            <div className={s.boxHead}><h2 className={`${s.boxTitle} ${s.heading}`}>Add context</h2><span className={s.boxTag}>Optional</span></div>
-            <div className={s.ctxBody}>
-              <textarea ref={ctx} className={s.ctx} rows={4} value={context} onChange={(e) => onContext(e.target.value)} aria-label="Context"
-                placeholder="What’s happening, who does it affect, what have you already tried? The more context, the better Nextup can grill and route it." />
-              <div className={s.prompts}>
-                <span className={s.promptsLabel}>Prompts</span>
-                {PROMPTS.map((p) => <button key={p} type="button" className={s.choice} data-on={context.includes("*" + p + "*")} onClick={() => prompt(p)}>{p}</button>)}
-              </div>
-            </div>
-          </section>
-        ) : <HowItWorks />}
+        {evalStep !== null ? <Evaluating step={evalStep} sub={evalSub} /> : typed ? actions : <HowItWorks />}
       </div>
     </div>
   );
