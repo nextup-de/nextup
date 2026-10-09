@@ -1,7 +1,8 @@
-/* The inbox: the shared stats strip, then the "Fresh ideas" card from the Claude Design handoff
-   ("Inbox App") - values are the handoff's, kept local: Inter in the card, the title too,
-   iOS greys, red only once a week late, blue for time left (tinted badges).
-   Closed: the card sits centred under the stats. Open (data-open): the stats fold away, the card
+/* The inbox: the "Fresh ideas" title (placed like the Overview's), then the card from the Claude
+   Design handoff ("Inbox App") with the shared stats strip as its head - values are the handoff's,
+   kept local: Inter, iOS greys, red only once a week late, blue for time left (tinted badges).
+   Closed: the card sits centred under the title. Open (data-open): the title row folds away, the
+   head becomes the list's title bar, the card
    docks left at --col-w (64px tucked, avatars only) and the item slides in beside it. Every move
    uses one ease; the numbers are the handoff's. */
 .page {
@@ -33,17 +34,22 @@
 }
 .srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* the page keeps its heading for screen readers */
 
-/* The shared stats strip, restyled to sit with the card: same type, the card's
-   radius and shadow instead of a border, semibold numbers, grey labels. Folds away when open. */
-/* It folds by its grid row (1fr -> 0fr), so it animates from whatever height it has - two rows of
-   stats on a phone included. */
-.top { flex: none; display: grid; grid-template-rows: 1fr; margin-bottom: 16px; transition: grid-template-rows 520ms var(--ease), opacity 260ms ease, margin-bottom 520ms var(--ease); }
+/* The title row: the page title left, Filter and Sort right, as on the Overview; the card's width.
+   It folds by its grid row (1fr -> 0fr) when an item opens. */
+.top { flex: none; display: grid; grid-template-rows: 1fr; width: min(680px, 100%); margin: 0 auto 16px; transition: grid-template-rows 520ms var(--ease), opacity 260ms ease, margin-bottom 520ms var(--ease); }
 .page[data-open="true"] .top { grid-template-rows: 0fr; opacity: 0; margin-bottom: 0; pointer-events: none; }
-.top .stats { min-height: 0; overflow: hidden; border: 0; border-radius: 22px; padding: 4px 0; box-shadow: 0 10px 30px rgb(40 60 100 / 0.08), 0 1px 2px rgb(40 60 100 / 0.05); }
-.top .stat { padding: 14px 22px 13px; border-left-color: var(--c-sep-head); }
-.top .statV { font-size: var(--nh-fs-2xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: var(--c-ink); font-variant-numeric: tabular-nums; }
-.top .statV[data-hot="true"] { color: var(--c-late); }
-.top .statL { font-size: var(--nh-fs-sm); margin-top: 3px; color: var(--c-mute); }
+.head { min-height: 0; overflow: hidden; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.pageTitle { margin: 0; font-weight: 600; font-size: var(--nh-fs-2xl); line-height: 1.1; letter-spacing: -0.02em; color: var(--c-title); }
+
+/* The shared stats strip as the card's head: same type, no box of its own, semibold numbers, grey labels. */
+.card .stats { flex: none; border: 0; border-bottom: 1px solid var(--c-sep-head); border-radius: 0; background: transparent; padding: 4px 0; }
+/* Four columns sized to their labels (the leftover width shared out), so each label keeps one line. */
+@media (min-width: 761px) { .card .stats { grid-template-columns: repeat(4, auto); } }
+.card .stat { padding: 14px 18px 13px; border-left-color: var(--c-sep-head); }
+.card .stat:first-child { padding-left: 22px; }
+.card .statV { font-size: var(--nh-fs-2xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: var(--c-ink); font-variant-numeric: tabular-nums; }
+.card .statV[data-hot="true"] { color: var(--c-late); }
+.card .statL { font-size: var(--nh-fs-sm); margin-top: 3px; color: var(--c-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .body { position: relative; flex: 1; min-height: 0; }
 
@@ -69,23 +75,17 @@
 .page[data-open="true"] .tuck { width: 32px; opacity: 1; }
 .cardTitle { flex: 1; min-width: 0; overflow: hidden; margin: 0; font-weight: 600; font-size: var(--nh-fs-xl); line-height: 1.1; letter-spacing: -0.02em; color: var(--c-title); white-space: nowrap; transition: font-size 560ms var(--ease), opacity 260ms ease, transform 420ms var(--ease); }
 .page[data-open="true"] .cardTitle { font-size: var(--nh-fs-xl); }
-.cardTitle[data-hidden="true"], .page[data-tucked="true"] .cardTitle { opacity: 0; transform: translateX(-12px); }
+.page[data-tucked="true"] .cardTitle { opacity: 0; transform: translateX(-12px); }
 
 .tools { display: flex; align-items: center; gap: 6px; transition: opacity 380ms var(--ease); }
 .page[data-tucked="true"] .tools { opacity: 0; pointer-events: none; }
-.search { width: 190px; box-sizing: border-box; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8.5px; background: var(--c-fill); border-radius: 999px; color: #8e8e93; overflow: hidden; cursor: text; transition: width 560ms var(--ease); }
-.page[data-open="true"] .search { width: 174px; }
-.page[data-open="true"] .search[data-collapsed="true"] { width: 32px; cursor: pointer; }
-.search svg { flex: none; }
-.search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: var(--nh-fs-md); color: var(--c-ink); transition: opacity 240ms ease 180ms; }
-.search[data-collapsed="true"] input { opacity: 0; pointer-events: none; transition-delay: 0ms; }
-.search input::placeholder { color: var(--c-mute); }
-.search:focus-within { box-shadow: 0 0 0 2px rgb(0 122 255 / 0.35); }
-.clear { width: 18px; height: 18px; flex: none; border-radius: 50%; border: 0; padding: 0; background: #c7c7cc; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 150ms ease; }
-.clear:hover { background: #aeaeb2; }
-.search[data-collapsed="true"] .clear { display: none; }
-.tool { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 0; padding: 0; background: var(--c-ink); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
+/* Filter / Sort: dark pills with an icon and a label (the Overview's toggles); docked beside an open item they fold to icon circles. */
+.tool { height: 32px; flex: none; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 0; border-radius: 999px; background: #111; color: #fff; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; box-shadow: 0 1px 2px rgb(40 60 100 / 0.08); transition: background 0.15s, padding 380ms var(--ease), transform 160ms cubic-bezier(.2,.8,.2,1); }
+.tool svg { flex: none; }
 .tool:hover { background: #3a3a3c; }
+.tool:active { transform: scale(.97); }
+.page[data-open="true"] .tool { width: 32px; padding: 0; }
+.page[data-open="true"] .toolLabel { display: none; }
 .tool:focus-visible, .tuck:focus-visible { outline: 2px solid var(--c-left); outline-offset: 2px; }
 
 /* ── rows ── */
@@ -160,7 +160,7 @@
    the right (data-layer), with its own bar and pages (IdeaDetailPhone). */
 @media (max-width: 760px) {
   .top { margin-bottom: 14px; }
-  .top .stat { padding: 12px 16px 11px; }
+  .card .stat { padding: 12px 16px 11px; }
   .pane {
     position: fixed; inset: 0; z-index: 85; border-radius: 0; overflow: hidden; background: #f5f8fc;
     opacity: 1; transform: translateX(100%); visibility: hidden; pointer-events: none;
@@ -169,11 +169,4 @@
   .page[data-layer="true"] { z-index: auto; } /* no stacking context of its own, so the layer rises over the shell's bar */
   .page[data-layer="true"] .pane { transform: none; visibility: visible; pointer-events: auto; transition: transform 420ms var(--ease), visibility 0s; }
   .detailWrap { height: 100%; }
-}
-@media (max-width: 560px) {
-  /* The title keeps its line; search and the two buttons take the next one. */
-  .cardHead { flex-wrap: wrap; row-gap: 12px; padding: 14px 16px; }
-  .cardTitle { flex-basis: 100%; }
-  .tools { width: 100%; }
-  .search { flex: 1; width: auto; }
 }

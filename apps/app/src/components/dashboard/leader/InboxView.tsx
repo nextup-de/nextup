@@ -2,10 +2,11 @@
 // TEAM LEADER home: open items addressed to me, sorted by age, one action each - yes /
 // no+why / hand over / ask one question. Port of the INBOX block in legacy/demo/index.html.
 // A manager sees the same list with the ideas waiting on their decision on top.
-// The stats strip, then the "Fresh ideas" card (Claude Design handoff "Inbox App"): search,
-// sort (oldest / newest first), filter (all / late / on time), one row per item - who sent it, what it
-// is about, when it came in, the promise clock. Nothing is open until a row is picked; then the
-// stats fold away, the card docks left (tucked to avatars on first open) and the item slides in
+// The "Fresh ideas" title with filter (all / late / on time) and sort (oldest / newest first), then
+// the card (Claude Design handoff "Inbox App"): the stats strip as its head, one row per item - who
+// sent it, what it is about, when it came in, the promise clock. Nothing is open until a row is
+// picked; then the title row folds away, the head turns into the list's title bar, the card docks
+// left (tucked to avatars on first open) and the item slides in
 // beside it. ↑/↓ walk the list, Close / Escape puts the page back. Ideas and cases open in the same
 // view (IdeaDetail, IdeaDetailPhone on a phone): an idea with its written brief and five decisions,
 // a case with a brief built from its own facts and the four case actions.
@@ -26,6 +27,7 @@ import { avatarTone } from "@/lib/avatar";
 type Filter = "all" | "late" | "ontime";
 const FILTERS: Filter[] = ["all", "late", "ontime"];
 const FILTER_TITLE: Record<Filter, string> = { all: "Filter: all", late: "Filter: late only", ontime: "Filter: on time only" };
+const FILTER_LABEL: Record<Filter, string> = { all: "Filter", late: "Late", ontime: "On time" };
 const initialsOf = (name: string) => (name.startsWith("Anonymous") ? "?" : name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase());
 // "Yesterday" -> "yesterday", "Monday" -> "on Monday", "09:14" -> "today"
 const raisedPhrase = (label: string) => (/\d:\d/.test(label) || label === "Today" ? "today" : label === "Yesterday" ? "yesterday" : "on " + label);
@@ -43,8 +45,6 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const [cid, setCid] = useState<string | null>(initialId ?? null);
   const [open, setOpen] = useState(!!initialId);
   const [tucked, setTucked] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const [newest, setNewest] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [now] = useState(() => new Date()); // views render only once `ready`, so this never meets the server render
@@ -53,7 +53,6 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const hlRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
   const kickRef = useRef<() => void>(() => {});
   const navRef = useRef<{ ids: string[]; pick: (id: string) => void; close: () => void }>({ ids: [], pick: () => {}, close: () => {} });
   const prevRef = useRef<{ cid: string | null; open: boolean }>({ cid: null, open: false });
@@ -68,8 +67,8 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const picked = !!(si || sc);
   const isOpen = open && picked;
 
-  // Keyboard: ↑/↓ walk the list (opening the pane if it is closed), Escape closes. Search and the
-  // idea's popovers handle their own keys first.
+  // Keyboard: ↑/↓ walk the list (opening the pane if it is closed), Escape closes. The idea's
+  // popovers handle their own keys first.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const nav = navRef.current;
@@ -185,10 +184,8 @@ export function InboxView({ initialId }: { initialId?: string }) {
       };
     }),
   ];
-  const q = query.trim().toLowerCase();
   const shown = rows
     .filter((r) => filter === "all" || (filter === "late" ? r.due < 0 : r.due >= 0))
-    .filter((r) => !q || [r.title, r.name, r.role, r.solves].some((t) => t.toLowerCase().includes(q)))
     .sort((a, b) => (newest ? b.sent.getTime() - a.sent.getTime() : a.sent.getTime() - b.sent.getTime()));
   const badgeOf = (r: (typeof rows)[number]) => (r.paused ? "paused" : r.due < 0 ? -r.due + " d late" : r.due + " d left");
 
@@ -201,7 +198,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
     setOpen(true);
     setCid(id);
   };
-  const close = () => { setOpen(false); setTucked(false); setSearchOpen(false); };
+  const close = () => { setOpen(false); setTucked(false); };
   // The keyboard handler reads the current list through a ref, set after each render.
   useLayoutEffect(() => { navRef.current = { ids: shown.map((r) => r.id), pick, close: () => { if (isOpen) close(); } }; });
 
@@ -251,7 +248,20 @@ export function InboxView({ initialId }: { initialId?: string }) {
     };
   })();
   const navIds = shown.map((r) => r.id), at = cid ? navIds.indexOf(cid) : -1;
-  const searchCollapsed = isOpen && !searchOpen;
+
+  // Filter and Sort: beside the page title, or in the list's own head once an item is open.
+  const tools = (
+    <div className={styles.tools}>
+      <button type="button" className={styles.tool} onClick={() => setFilter((v) => FILTERS[(FILTERS.indexOf(v) + 1) % FILTERS.length])} title={FILTER_TITLE[filter]} aria-label={FILTER_TITLE[filter]}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+        <span className={styles.toolLabel}>{FILTER_LABEL[filter]}</span>
+      </button>
+      <button type="button" className={styles.tool} onClick={() => setNewest((v) => !v)} title={newest ? "Sort: newest first" : "Sort: oldest first"} aria-label={newest ? "Sort: newest first" : "Sort: oldest first"}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" /></svg>
+        <span className={styles.toolLabel}>{newest ? "Newest" : "Sort"}</span>
+      </button>
+    </div>
+  );
 
   if (!ready) return <PageSkeleton kind="inbox" delay />;
 
@@ -259,44 +269,32 @@ export function InboxView({ initialId }: { initialId?: string }) {
     <div className={styles.page} data-open={isOpen && !phone ? "true" : undefined} data-layer={isOpen && phone ? "true" : undefined} data-tucked={isOpen && tucked ? "true" : undefined} data-panels={panels}>
       <h1 className={styles.srOnly}>Inbox</h1>
       <div className={styles.top} aria-hidden={isOpen || undefined}>
-        <div className={`${ui.stats} ${styles.stats}`}>
-          {stats.map((k) => (
-            <div key={k.l} className={`${ui.stat} ${styles.stat}`}>
-              <div className={`${ui.statV} ${styles.statV}`} data-hot={k.hot ? "true" : undefined}>{k.v}</div>
-              <div className={`${ui.statL} ${styles.statL}`}>{k.l}</div>
-            </div>
-          ))}
+        <div className={styles.head}>
+          <h2 className={styles.pageTitle}>Fresh ideas</h2>
+          {!(isOpen && !phone) && tools}
         </div>
       </div>
 
       <div className={styles.body}>
         <section className={styles.card} aria-label="Fresh ideas">
-          <div className={styles.cardHead}>
-            <button type="button" className={styles.tuck} onClick={() => setTucked((t) => !t)} title={tucked ? "Show inbox" : "Tuck inbox away"} aria-label={tucked ? "Show inbox" : "Tuck inbox away"} tabIndex={isOpen ? 0 : -1}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /></svg>
-            </button>
-            <h2 className={styles.cardTitle} data-hidden={isOpen && searchOpen ? "true" : undefined}>Fresh ideas</h2>
-            <div className={styles.tools}>
-              <label className={styles.search} data-collapsed={searchCollapsed ? "true" : undefined}
-                onClick={() => { if (searchCollapsed) { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 120); } }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-                <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" aria-label="Search the inbox" tabIndex={searchCollapsed ? -1 : 0}
-                  onBlur={() => { if (!query) setSearchOpen(false); }}
-                  onKeyDown={(e) => { if (e.key === "Escape") { e.nativeEvent.stopImmediatePropagation(); setQuery(""); setSearchOpen(false); e.currentTarget.blur(); } }} />
-                {(query || (isOpen && searchOpen)) && (
-                  <button type="button" className={styles.clear} onMouseDown={(e) => e.preventDefault()} onClick={(e) => { e.stopPropagation(); setQuery(""); setSearchOpen(false); searchRef.current?.blur(); }} title="Close search" aria-label="Close search">
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-                  </button>
-                )}
-              </label>
-              <button type="button" className={styles.tool} onClick={() => setNewest((v) => !v)} title={newest ? "Sort: newest first" : "Sort: oldest first"} aria-label={newest ? "Sort: newest first" : "Sort: oldest first"}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" /></svg>
+          {isOpen && !phone ? (
+            <div className={styles.cardHead}>
+              <button type="button" className={styles.tuck} onClick={() => setTucked((t) => !t)} title={tucked ? "Show inbox" : "Tuck inbox away"} aria-label={tucked ? "Show inbox" : "Tuck inbox away"}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /></svg>
               </button>
-              <button type="button" className={styles.tool} onClick={() => setFilter((v) => FILTERS[(FILTERS.indexOf(v) + 1) % FILTERS.length])} title={FILTER_TITLE[filter]} aria-label={FILTER_TITLE[filter]}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 5h18M6 12h12M10 19h4" /></svg>
-              </button>
+              <h2 className={styles.cardTitle}>Fresh ideas</h2>
+              {tools}
             </div>
-          </div>
+          ) : (
+            <div className={`${ui.stats} ${styles.stats}`}>
+              {stats.map((k) => (
+                <div key={k.l} className={`${ui.stat} ${styles.stat}`}>
+                  <div className={`${ui.statV} ${styles.statV}`} data-hot={k.hot ? "true" : undefined}>{k.v}</div>
+                  <div className={`${ui.statL} ${styles.statL}`}>{k.l}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className={styles.scroll} ref={listRef} data-selected={isOpen && cid ? cid : ""}>
             <div className={styles.hl} ref={hlRef} aria-hidden="true" />
