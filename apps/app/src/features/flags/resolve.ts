@@ -24,7 +24,10 @@ export function resolveFlags<K extends string>(registry: Readonly<Record<K, Flag
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const KEY = /^[a-z][A-Za-z0-9]{1,47}$/;
 
-/** Mistakes in a registry the types can't catch: a key admin couldn't store, a date that isn't one. */
+/**
+ * Mistakes in a registry the types can't catch: a key admin couldn't store, a date that isn't one.
+ * And a flag that is off for demo companies: they are our test stacks, so they see every feature first.
+ */
 export function registryProblems(registry: Readonly<Record<string, FlagDef>>): string[] {
   const problems: string[] = [];
   for (const [key, def] of Object.entries(registry)) {
@@ -34,6 +37,7 @@ export function registryProblems(registry: Readonly<Record<string, FlagDef>>): s
       if (!DATE.test(value) || Number.isNaN(Date.parse(value))) problems.push(`${key}: ${field} is not a YYYY-MM-DD date`);
     }
     if (def.removeBy <= def.added) problems.push(`${key}: removeBy must come after added`);
+    if (!def.defaults.demo) problems.push(`${key}: the demo default must be on - demo companies are the test stacks`);
   }
   return problems;
 }

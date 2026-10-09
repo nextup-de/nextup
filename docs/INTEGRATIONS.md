@@ -100,7 +100,8 @@ What Phase 2 adds so many companies can share one deployment:
   `CompanyConfig` holds what a **company** decides for itself. NextUp's own rollout switches -
   a half-finished feature on for staging and one customer, off for the rest - are feature flags:
   `src/config/flags.ts` (the list, with owner and remove-by date), `src/features/flags` (stage
-  default unless admin.sellux.ch set it for the company). The company never sees those.
+  default unless admin.sellux.ch set it for the company). Every flag is on for `demo` companies,
+  our test stacks; a unit test refuses one that isn't. The company never sees those.
 - **One codebase, one database, one n8n.** A customer who demands their own deployment is a
   later, priced exception - not the default.
 
