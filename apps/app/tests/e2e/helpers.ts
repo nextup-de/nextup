@@ -40,11 +40,15 @@ export async function raiseLine(page: Page, title: string) {
   await expect(aiMessages(page).first()).toBeVisible({ timeout: 30_000 });
 }
 
-/** Send an answer to the coach and wait for its reply. */
+/**
+ * Send an answer to the coach and wait for its reply. On a live stack the reply shows while it
+ * streams, but Enter is ignored until it is stored - Send turns on then, so wait for that first.
+ */
 export async function answerCoach(page: Page, text: string) {
   const before = await aiMessages(page).count();
   const box = page.getByRole("textbox", { name: ANSWER });
   await box.fill(text);
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toBeEnabled({ timeout: 30_000 });
   await box.press("Enter");
   await expect(aiMessages(page)).toHaveCount(before + 1, { timeout: 30_000 });
 }
