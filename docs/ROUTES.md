@@ -16,6 +16,7 @@
 | `/[company]/raise` | `.../(app)/raise/page.tsx` | yes | any | Idea studio: develop an idea with the coach, publish at the threshold (member home, docs/IDEAS.md) |
 | `/api/[company]/ideas/turn` | `app/api/[company]/ideas/turn/route.ts` | yes | any | One message in the idea studio: server score + coach reply (SSE) |
 | `/[company]/dashboard` | `.../(app)/dashboard/page.tsx` | yes | any | Every problem and idea: open since, on whose desk, stage, score |
+| `/[company]/feed` | `.../(app)/feed/page.tsx` | yes | any | Every problem and idea this viewer may see as cards: filter by site and department, support, comment. `?id=` opens one in place |
 | `/[company]/team` | `.../(app)/team/page.tsx` | yes | any | What happened to what I sent (one card per case) |
 | `/[company]/problems` | `.../(app)/problems/page.tsx` | yes | any | Problems |
 | `/[company]/ideas` | `.../(app)/ideas/page.tsx` | yes | any | Ideas |

@@ -9,23 +9,11 @@ export type DevSample = {
   files: string[]; // fake attachment names
 };
 
-// From the Raise handoff (design_handoff_raise/dev-autofill-samples.json), all phrased as ideas.
+// One sample, the "reporting screen" idea: the Feed has its own cover for it (features/cases/thumbs.ts).
 export const DEV_SAMPLES: DevSample[] = [
   {
-    text: "A second label printer at packing station 4", aff: ["Production", "J. Klein"], files: ["printer-downtime-sept.xlsx", "jam-photo.jpg"],
-    ctx: "The only printer at station 4 jams almost every morning between 6:00 and 7:00. Someone has to open it, clear the roll and recalibrate, and the whole line waits for labels in the meantime. A second printer on standby would let us switch over in a minute.\nImpact: About 40 minutes of line stop a day, roughly 160 hours a year\nCost: A matching printer is around €1,200\nAlready tried: Cleaning the rollers weekly. It helps for a day, then it jams again",
-  },
-  {
-    text: "A broken-pallet log for the night shift", aff: ["Production", "Quality"], files: ["broken-pallets-log.pdf"],
-    ctx: "A short form on the rack-end tablet where the night shift logs a broken pallet and tags it. The morning crew sees the list at handover and pulls those pallets before picking starts. Today they are set aside with no record, and by morning they are often back in the rack.\nSafety: One near miss in August, reported by the morning crew\nWho’s blocked: Forklift drivers on the early shift",
-  },
-  {
-    text: "Reuse inbound cartons for outbound packing", aff: ["Ops & Admin", "Production", "R. Nowak"], files: ["carton-sizes.xlsx", "trial-photos.pdf"],
-    ctx: "We buy new boxes every month while the cartons our parts arrive in go straight to the baler. Most of them are the same three sizes we ship in. A small sorting rack at goods-in would be enough to start.\nImpact: Around €4k a month on new boxes, plus less waste\nTrial: Line 2 tried it for one week and reused 60% of inbound cartons\nDeadline: Before the Q4 budget review",
-  },
-  {
-    text: "Two more forklift chargers at Dock 3", aff: ["Production", "Engineering", "T. Vogel"], files: ["dock3-charger-layout.png"],
-    ctx: "Add two chargers at Dock 3 so every forklift can charge at the same time. Today there are two chargers for six forklifts: drivers queue at every shift start and maintenance moves chargers around to make it work.\nImpact: 20 to 30 minutes lost per shift, three shifts a day\nSpace: Dock 3 has room for two more chargers within the safety clearance",
+    text: "A reporting screen at each assembly station", aff: ["Production", "Quality", "Engineering"], files: ["assembly-station-issues.xlsx", "reporting-screen-sketch.pdf"],
+    ctx: "We should put a simple reporting screen at each assembly station so operators can flag recurring problems as they happen, like missing parts, awkward tools, or unclear instructions. The reports would go directly to the team responsible, and operators could see what is being done about them.\nRight now operators tell their shift lead or write problems on the whiteboard at the end of the line. A lot of it gets lost at shift change, and the same issues keep coming back week after week. Nobody on the line knows if anyone picked a problem up. The screen would only need a few taps: choose the station, the type of problem (parts, tooling, instructions, other), add a short note or photo, and send. Each report would then show its status, like received, being looked at, or fixed, so operators know it was not ignored.\nImpact: Make recurring problems on the car assembly line visible and easier to follow up across shifts\nWho’s blocked: Assembly operators who raise issues but cannot see who is handling them or what happens next\nTrial: Start at one assembly station before rolling it out across the line",
   },
 ];
 
