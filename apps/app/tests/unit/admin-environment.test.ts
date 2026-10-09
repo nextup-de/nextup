@@ -35,4 +35,12 @@ describe("describeEnvironment", () => {
     expect(row({ ...good, PUBLIC_SCHEME: "https" }, "Secure cookies")?.value).toMatch(/^on/);
     expect(row({ ...good, PUBLIC_SCHEME: "https", COOKIE_SECURE: "true" }, "Secure cookies")?.tone).toBe("ok");
   });
+
+  it("a demo-stage stack's login demo fill is what it is for, not a warning", () => {
+    const fill = { ...good, LOGIN_DEMO_FILL: "true" };
+    expect(describeEnvironment(fill, "demo").find((r) => r.label === "Login demo fill")?.tone).toBe("ok");
+    expect(describeEnvironment(fill, "live").find((r) => r.label === "Login demo fill")?.tone).toBe("warn");
+    // The admin demo fill puts a code in the page source: a warning on any stage.
+    expect(describeEnvironment({ ...good, ADMIN_DEMO_FILL: "true" }, "demo").find((r) => r.label === "Admin demo fill")?.tone).toBe("warn");
+  });
 });

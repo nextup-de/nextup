@@ -18,7 +18,11 @@ function secret(env: Env, key: string, label: string, why: string): EnvRow {
   return { label, value: "set", tone: "ok" };
 }
 
-export function describeEnvironment(env: Env): EnvRow[] {
+/**
+ * `stage`: the stage of the one company a stack serves, when there is one. A demo-stage company is
+ * what LOGIN_DEMO_FILL is for (install.sh --stage demo turns it on), so there it is no warning.
+ */
+export function describeEnvironment(env: Env, stage?: string): EnvRow[] {
   const mode = tenantMode(env);
   const origin = appOrigin(env);
   const https = servedOverHttps(env);
@@ -53,7 +57,7 @@ export function describeEnvironment(env: Env): EnvRow[] {
     {
       label: "Login demo fill",
       value: env.LOGIN_DEMO_FILL === "true" ? "on - demo-stage companies list their people at login" : "off",
-      tone: env.LOGIN_DEMO_FILL === "true" ? "warn" : "ok",
+      tone: env.LOGIN_DEMO_FILL === "true" && stage !== "demo" ? "warn" : "ok",
       hint: env.LOGIN_DEMO_FILL === "true" ? "Sandbox, pilot and live companies ignore it - their people always need their own code." : undefined,
     },
     {
