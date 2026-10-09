@@ -30,6 +30,7 @@ import { affectedOn, exportSnippet } from "@/features/cases/selectors";
 import type { Persona, RolePersona, Seed } from "@/features/demo/types";
 import { counts, demoData, type Counts, type DemoData } from "@/features/metrics";
 import { clearPrefs, getServerSnapshot, getSnapshot, resetLog, setPrefs, subscribe, updateLog, type LogoTone, type PanelTone } from "@/lib/demo-log";
+import { localDrafts } from "@/lib/idea-drafts";
 import { clearShots, dropShots } from "@/lib/shots";
 import { deptName as deptNameOf } from "@/lib/utils/format";
 import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction } from "@/server/actions/events";
@@ -399,6 +400,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       return;
     }
     resetLog(slug);
+    localDrafts.clear(slug); // the raise page's drafts too - none of them points at a case any more
     setPrefs(slug, { leadAs: null });
     showToast("Demo state reset");
   }, [slug, showToast, serverMode, router_refresh]);
@@ -420,6 +422,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       return;
     }
     updateLog(slug, (prev) => ({ ...prev, events: prev.events.filter((e) => !(e.target && ids.has(e.target))) }));
+    localDrafts.dropCases(slug, ids);
     showToast(said);
   }, [S, slug, showToast, serverMode, router_refresh]);
 

@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SEED } from "@/features/demo/seed";
 import { toSeedJson } from "@/features/demo/parse";
 import { getDb, TenantScopeError } from "@/lib/db/client";
-import { addTurns, createDraft, discardDraft, getDraft, ideaStats, listDrafts, loadPublishThreshold, markPublished, purgeDiscardedDrafts, saveDraftMeta } from "@/lib/db/ideas";
+import { addTurns, createDraft, deleteDemoDrafts, discardDraft, getDraft, ideaStats, listDrafts, loadPublishThreshold, markPublished, purgeDiscardedDrafts, saveDraftMeta } from "@/lib/db/ideas";
 
 const db = getDb();
 let acme: { id: string };
@@ -67,6 +67,20 @@ describe("idea drafts", () => {
     expect(await loadPublishThreshold(acme.id)).toBe(70);
     await db.companyConfig.create({ data: { companyId: acme.id, publishThreshold: 90 } });
     expect(await loadPublishThreshold(acme.id)).toBe(90);
+  });
+
+  it("the demo's reset takes the drafts with their cases - this company's only", async () => {
+    const kept = await createDraft(acme.id, ann.id);
+    const gone = await createDraft(acme.id, ann.id);
+    await markPublished(acme.id, ann.id, gone, "c_gone", snap("Gone", 50));
+    const other = await createDraft(globex.id, eve.id);
+    expect(await deleteDemoDrafts(acme.id, [])).toBe(0);
+    expect(await deleteDemoDrafts(acme.id, ["c_gone"])).toBe(1);
+    expect(await getDraft(acme.id, ann.id, gone)).toBeNull();
+    expect(await getDraft(acme.id, ann.id, kept)).not.toBeNull();
+    await deleteDemoDrafts(acme.id);
+    expect(await listDrafts(acme.id, ann.id)).toEqual([]);
+    expect(await getDraft(globex.id, eve.id, other)).not.toBeNull();
   });
 
   it("the tenant guard covers both tables", async () => {

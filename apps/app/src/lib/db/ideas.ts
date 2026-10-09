@@ -87,6 +87,17 @@ export async function purgeDiscardedDrafts(companyId: string, retentionDays: num
   return r.count;
 }
 
+/**
+ * The demo's reset and "delete added cases" (server/actions/events.ts, demo stage only): the drafts
+ * go with the cases they became, so the raise page lists no idea whose case is gone. Every draft
+ * when `caseIds` is omitted; their turns follow by cascade.
+ */
+export async function deleteDemoDrafts(companyId: string, caseIds?: readonly string[]): Promise<number> {
+  if (caseIds && caseIds.length === 0) return 0;
+  const r = await getDb().ideaDraft.deleteMany({ where: { companyId, ...(caseIds ? { caseId: { in: [...caseIds] } } : {}) } });
+  return r.count;
+}
+
 /** Counts only - never whose draft. For /admin. */
 export async function ideaStats(companyId: string): Promise<{ drafts: number; published: number }> {
   const db = getDb();

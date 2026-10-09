@@ -2,7 +2,7 @@
 // evaluated and analysed; the coach starts on what is unclear, worked through on the rail; the draft
 // survives a reload; publishing asks who should get it and raises the case on their desk.
 // docs/IDEAS.md.
-import { aiMessages, answerCoach, DEVELOP, expect, publishTo, START, test } from "../helpers";
+import { aiMessages, answerCoach, DEVELOP, expect, publishTo, raiseLine, START, test } from "../helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/acme/raise");
@@ -50,4 +50,31 @@ test("develop it, keep it as a draft, publish it", async ({ page }) => {
   await expect(page.getByText(/on T\. Vogel’s desk/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Published", exact: true })).toBeDisabled(); // a status now, not a button
   await expect(page.getByRole("textbox", { name: "Add a follow-up — it goes to Overview" })).toBeVisible();
+});
+
+test("the dev panel's delete and reset take the raise page's drafts with the cases", async ({ page }) => {
+  const published = "Hang the safety gloves on a rail by the press";
+  const draft = "Put a clock on the wall of the break room";
+  await raiseLine(page, published);
+  await publishTo(page, "T. Vogel");
+  await page.getByRole("button", { name: "New idea" }).click();
+  await raiseLine(page, draft);
+  // A row of the sidebar's ideas list: its text ends on the draft's state.
+  const row = (title: string) => page.getByRole("button").filter({ hasText: title }).filter({ hasText: /(Draft|Published)$/ });
+  await expect(row(published)).toBeVisible();
+  await expect(row(draft)).toBeVisible();
+
+  const dev = async (button: RegExp) => {
+    await page.getByRole("button", { name: "Dev", exact: true }).click();
+    await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: button }).click();
+    await page.keyboard.press("Escape");
+    await page.goto("/acme/raise");
+  };
+  // The published idea's case goes, and its draft with it; the unpublished draft stays.
+  await dev(/^Delete added cases/);
+  await expect(row(draft)).toBeVisible();
+  await expect(row(published)).toHaveCount(0);
+  // A reset leaves nothing.
+  await dev(/^Reset demo$/);
+  await expect(page.getByText("Nothing yet. Your ideas and drafts land here.")).toBeVisible();
 });

@@ -271,6 +271,80 @@ export const CASES: SeedCase[] = [
     ] }
 ];
 
+// Ideas raised through the raise page, one at every stage a case walks through (features/cases/rows
+// OVERVIEW_STEPS), so each page opens the way it looks once people use it. J. Schmidt's own, by name -
+// so they are theirs in a company without anonymous handles too: sent today, a question back, answered
+// back, approved, declined, in progress, shipped. On the other leads' desks: a new one and a
+// handed-over one. Kept apart from CASES, whose eight rows the reducer tests pin.
+// Open ones keep their titles clear of the ideas the tests and the demo script type in, so "raised
+// before?" stays quiet for those.
+export const IDEA_CASES: SeedCase[] = [
+  // ── J. Schmidt's own, by name ──
+  { id: 'c9', kind: 'idea', title: 'Next jobs on a screen above the assembly bench', from: 'J. Schmidt', fromDept: 'Production, Line 3',
+    routeId: 'r7', assignee: 'T. Vogel', raisedDay: 0, reason: 'triage', upside: '≈ 15 min per shift of asking around',
+    body: 'Show the next three jobs and their parts lists on a screen above the bench, so nobody walks to the office to ask what comes next. We lose about 15 minutes a shift to that walk, on all three shifts.' },
+  { id: 'c10', kind: 'idea', title: 'Shadow board for the torque wrenches', from: 'J. Schmidt', fromDept: 'Production, Line 3',
+    routeId: 'r7', assignee: 'T. Vogel', raisedDay: -3, reason: 'no time', upside: '≈ 2 h / week searching',
+    body: 'A painted board with an outline for each wrench, next to the bench. Today they end up in drawers on the other lines and we search for them about twice a shift.',
+    seedEvents: [
+      { type: 'case.read', day: -2, actor: 'T. Vogel' },
+      { type: 'case.asked', day: -1, actor: 'T. Vogel', payload: { text: 'Good one. Which wrenches go missing most - the 20 Nm or the 60 Nm? I would start the board with those.' } }
+    ] },
+  { id: 'c11', kind: 'idea', title: 'Knee pads and a mat for the low inspection bay', from: 'J. Schmidt', fromDept: 'Production, Line 3',
+    routeId: 'r1', assignee: 'T. Vogel', raisedDay: -4, reason: 'is it important', upside: 'fewer sore knees, faster checks',
+    body: 'The inspection bay is at knee height, so every check of the lower housing is done kneeling on concrete. Six pairs of knee pads and one anti-fatigue mat would do.',
+    seedEvents: [
+      { type: 'case.read', day: -4, actor: 'T. Vogel' },
+      { type: 'case.asked', day: -3, actor: 'T. Vogel', payload: { text: 'Fine by me in principle - roughly what would it cost?' } },
+      { type: 'case.answered', day: -2, actor: 'J. Schmidt', payload: { text: 'About €180 for six pairs and €95 for the mat, from the catalogue maintenance already orders from.' } }
+    ] },
+  { id: 'c12', kind: 'idea', title: 'Start the Line 3 handover ten minutes earlier', from: 'J. Schmidt', fromDept: 'Production, Line 3',
+    routeId: 'r6', assignee: 'T. Vogel', raisedDay: -12, reason: 'no time', upside: 'no start-of-shift gap',
+    body: 'Overlap the outgoing and the incoming shift by ten minutes, so the handover happens at the line and not in the corridor. Today the first 15 minutes of every shift go on finding out what the last one left.',
+    seedEvents: [
+      { type: 'case.read', day: -11, actor: 'T. Vogel' },
+      { type: 'case.decided', day: -9, actor: 'T. Vogel', payload: { answer: 'yes', note: 'Agreed - we try it for four weeks from Monday. You and S. Dahl run the first handovers.' } }
+    ] },
+  { id: 'c13', kind: 'idea', title: 'A second pallet truck for Line 3', from: 'J. Schmidt', fromDept: 'Production, Line 3',
+    routeId: 'r1', assignee: 'T. Vogel', raisedDay: -20, reason: 'is it important', upside: '≈ 20 min / day waiting',
+    body: 'Line 3 shares one pallet truck with Line 2, so finished pallets wait about 20 minutes a day for it.',
+    seedEvents: [
+      { type: 'case.read', day: -19, actor: 'T. Vogel' },
+      { type: 'case.decided', day: -17, actor: 'T. Vogel', payload: { answer: 'no', reason: 'already planned', note: 'A second truck is in the Q4 budget - it arrives on 14 November. Until then, Line 2’s is free after 10:00.' } }
+    ] },
+
+  // ── on the leads' desks ──
+  { id: 'c14', kind: 'idea', title: 'Scrapped 4-series housings as practice parts for apprentices', from: 'S. Dahl', fromDept: 'Production, Line 3',
+    routeId: null, assignee: 'M. Roth', raisedDay: -2, reason: 'not responsible', upside: 'apprentices practise without new material',
+    body: 'Every month about 30 housings go to scrap for cosmetic faults. Apprentices could practise deburring and fitting on them instead of on new parts.',
+    seedEvents: [{ type: 'case.read', day: -1, actor: 'M. Roth' }] },
+  { id: 'c15', kind: 'idea', title: 'A dated calibration sticker on every gauge', from: 'J. Klein', fromDept: 'Production, 4-series',
+    routeId: 'r3', assignee: 'T. Vogel', raisedDay: -3, reason: 'wrong department', upside: 'no measuring with an expired gauge',
+    body: 'Put a sticker with the next calibration date on each gauge, so anyone can see at a glance whether it is still valid before measuring.',
+    seedEvents: [
+      { type: 'case.handed', day: -2, actor: 'T. Vogel', payload: { to: 'H. Sander', why: 'Calibration is Quality’s - H. Sander owns the gauges.' } }
+    ] },
+
+  // ── J. Schmidt's, further along: in progress and shipped ──
+  { id: 'c16', kind: 'idea', title: 'Scan the batch code instead of typing it into the MES', from: 'J. Schmidt', fromDept: 'Production, Line 3',
+    routeId: 'r3', assignee: 'H. Sander', raisedDay: -32, reason: 'no time', upside: '−6 min per batch, no typos',
+    body: 'Every batch code is typed in by hand, about 40 times a shift, and a typo means the measurement lands on the wrong batch. A handheld scanner at each station would read it in a second.',
+    seedEvents: [
+      { type: 'case.read', day: -31, actor: 'H. Sander' },
+      { type: 'case.decided', day: -28, actor: 'H. Sander', payload: { answer: 'yes', note: 'Yes - IT has four scanners left from the warehouse project. Line 3 first, then Line 2.' } },
+      { type: 'case.building', day: -21, actor: 'H. Sander', payload: { days: 30, expected: '−6 min per batch' } }
+    ] },
+  { id: 'c17', kind: 'idea', title: 'Colour-coded bins for the 4-series fasteners', from: 'J. Schmidt', fromDept: 'Production, Line 3',
+    routeId: 'r7', assignee: 'T. Vogel', raisedDay: -58, reason: 'is it important', upside: 'fewer picking errors',
+    body: 'The M6, M8 and M10 bolts look alike in the grey bins and get mixed up about nine times a month. One colour per size, matching the tag on the work order, and nobody has to read the label.',
+    seedEvents: [
+      { type: 'case.read', day: -57, actor: 'T. Vogel' },
+      { type: 'case.decided', day: -56, actor: 'T. Vogel', payload: { answer: 'yes', note: 'Cheap and obvious - go ahead. Order the bins through C. Ilg.' } },
+      { type: 'case.building', day: -50, actor: 'T. Vogel', payload: { days: 14, expected: 'picking errors 9 → 1 a month' } },
+      { type: 'case.shipped', day: -30, actor: 'T. Vogel', payload: { outcome: 'picking errors 9 → 1 a month', outcomeNote: 'counted over the four weeks since' } }
+    ] }
+];
+
 // What the team leader's own team is waiting on elsewhere — the other end of
 // the same asymmetry (§12): the cost is felt here, the authority sits there.
 export const WAITING_ON: WaitingOn[] = [
@@ -326,7 +400,7 @@ export const METRICS: Metrics = {
   // Employee → "Your contribution".
   you: { medianWait: '2 d' },
   // Team leader → inbox stats.
-  lead: { medianAnswer: '2 d', withinPromise: '9 / 11' }
+  lead: { medianAnswer: '2 d', withinPromise: '10 / 12' }
 };
 
 export const VIEWS: Record<string, ViewCopy> = {
@@ -342,6 +416,6 @@ export const VIEWS: Record<string, ViewCopy> = {
 export const SEED: Seed = {
   promiseDays: PROMISE_DAYS, outcomeDays: OUTCOME_DAYS,
   depts: DEPTS, people: PEOPLE, problems: PROBLEMS, ideas: IDEAS, initiatives: INITIATIVES, outcomes: OUTCOMES,
-  personas: ROLES, leaders: LEADERS, routes: ROUTES, cases: CASES, waitingOn: WAITING_ON, buddies: BUDDIES,
+  personas: ROLES, leaders: LEADERS, routes: ROUTES, cases: [...CASES, ...IDEA_CASES], waitingOn: WAITING_ON, buddies: BUDDIES,
   stall: STALL, ledger: LEDGER, metrics: METRICS, views: VIEWS
 };

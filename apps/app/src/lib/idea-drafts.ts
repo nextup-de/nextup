@@ -66,8 +66,15 @@ export const localDrafts = {
   publish(slug: string, id: string, caseId: string, snap: Snapshot): boolean {
     return update(slug, id, (d) => ({ ...d, status: "published", caseId, title: snap.title, overall: snap.overall, scores: snap.scores }));
   },
-  // Every draft of this company in this browser, gone (the static demo starts clean on each visit).
+  // Every draft of this company in this browser, gone (the static demo starts clean on each visit,
+  // the dev panel's "Reset demo").
   clear(slug: string): void {
     try { window.localStorage.removeItem(KEY(slug)); } catch { /* blocked: nothing was stored either */ }
+  },
+  // The drafts that became these cases (the dev panel's "Delete added cases").
+  dropCases(slug: string, caseIds: ReadonlySet<string>): void {
+    const all = read(slug);
+    const kept = all.filter((d) => !(d.caseId && caseIds.has(d.caseId)));
+    if (kept.length !== all.length) write(slug, kept);
   },
 };

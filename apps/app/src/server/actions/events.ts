@@ -14,6 +14,7 @@ import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
 import { appendEventRow, deleteEventsForTargets, loadLogForSlug, resetCompanyLog } from "@/lib/db/events";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { deleteDemoDrafts } from "@/lib/db/ideas";
 import { issueSession } from "@/server/issue-session";
 import { companySeed } from "@/lib/db/companies";
 import { policyFor } from "@/features/admin/stages";
@@ -128,7 +129,7 @@ async function notifyRaised(
   }
 }
 
-/** Dev panel: put this company back to its seed. Shared - it resets for everyone. */
+/** Dev panel: put this company back to its seed, raise-page drafts included. Shared - it resets for everyone. */
 export async function resetCompanyAction(slug: string): Promise<AppendOutcome> {
   if (!hasDatabase()) return { ok: false, error: "No database is configured." };
   const viewer = await getViewerFor(slug);
@@ -137,12 +138,13 @@ export async function resetCompanyAction(slug: string): Promise<AppendOutcome> {
   if (!(await mayRewriteHistory(viewer.companyId))) return { ok: false, error: realCompany };
 
   await resetCompanyLog(viewer.companyId);
+  await deleteDemoDrafts(viewer.companyId);
   revalidatePath("/" + slug, "layout");
   revalidatePath("/", "layout");
   return { ok: true };
 }
 
-/** Dev panel: drop the cases raised during this demo, keeping the seed ones. */
+/** Dev panel: drop the cases raised during this demo, and the drafts they came from, keeping the seed ones. */
 export async function deleteAddedAction(slug: string, caseIds: string[]): Promise<AppendOutcome> {
   if (!hasDatabase()) return { ok: false, error: "No database is configured." };
   const viewer = await getViewerFor(slug);
@@ -151,6 +153,7 @@ export async function deleteAddedAction(slug: string, caseIds: string[]): Promis
   if (!(await mayRewriteHistory(viewer.companyId))) return { ok: false, error: realCompany };
 
   await deleteEventsForTargets(viewer.companyId, caseIds.slice(0, 500));
+  await deleteDemoDrafts(viewer.companyId, caseIds.slice(0, 500));
   revalidatePath("/" + slug, "layout");
   revalidatePath("/", "layout");
   return { ok: true };
