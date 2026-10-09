@@ -36,6 +36,12 @@ export type StagePolicy = {
   switchPerson: boolean;
   /** Dev panel: move the shared clock, delete added cases, reset the whole log. */
   rewriteHistory: boolean;
+  /**
+   * admin.sellux.ch may ask for new login codes for everyone and see them in clear ("Demo logins",
+   * server/demo-logins-sync.ts) - so the team can test the real login with a code. Never for real
+   * people: their codes exist only as hashes here, and only they and their team leader see one.
+   */
+  shareDemoCodes: boolean;
 };
 
 const DEMO_POLICY: StagePolicy = {
@@ -43,6 +49,7 @@ const DEMO_POLICY: StagePolicy = {
   demoLogin: true,
   switchPerson: true,
   rewriteHistory: true,
+  shareDemoCodes: true,
 };
 
 const REAL_POLICY: StagePolicy = {
@@ -50,6 +57,7 @@ const REAL_POLICY: StagePolicy = {
   demoLogin: false,
   switchPerson: false,
   rewriteHistory: false,
+  shareDemoCodes: false,
 };
 
 export function policyFor(stage: string): StagePolicy {

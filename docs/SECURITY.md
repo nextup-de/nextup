@@ -1,6 +1,6 @@
 # Security
 
-> **Updated 2026-09-28** · reference: what protects each door, and the open list before real customers.
+> **Updated 2026-10-09** · reference: what protects each door, and the open list before real customers.
 
 How NextUp keeps companies apart, what protects each door, and what has to land before
 real customers depend on it. Read this before touching login, `/admin`, stages or the API.
@@ -16,6 +16,7 @@ the server actions check it - hiding a button is only a courtesy.
 | Whose data | Ours - made-up people and cases | Theirs - real people, real cases |
 | "View the demo as..." list on the login page (`LOGIN_DEMO_FILL`) | yes | **no** - never shown, `demoSignIn` refuses |
 | How people log in | their personal code or Microsoft - or, on a demo box, the list above | their **personal code** or **Microsoft** only - the staff list never reaches the browser |
+| Login codes shown on admin.sellux.ch ("Demo logins", `server/demo-logins-sync.ts`) | yes - on request the stack gives everyone a new code and sends them, so the team can test the real login | **no** - the stack never asks, never sends; admin refuses them too |
 | Dev panel: switch person, +1 day, reset, delete added | yes (managers for the last three) | **no** - panel hidden, actions refuse |
 | People sent to the browser | the whole company (the dev panel needs them) | the signed-in viewer only |
 | Move back to `demo` | - | **refused** - create a separate demo company instead |
@@ -74,7 +75,10 @@ HSTS, `nosniff` and a referrer policy.
   - Dependabot opens weekly update PRs.
   - Trivy scans the app image before it's pushed. A fixable HIGH/CRITICAL finding stops the
     release.
-- **Demo shortcuts:** `LOGIN_DEMO_FILL` only on demo stages, `ADMIN_DEMO_FILL` only on demo boxes.
+- **Demo shortcuts:** `LOGIN_DEMO_FILL` only on demo stages, `ADMIN_DEMO_FILL` only on demo boxes,
+  demo login codes to admin.sellux.ch only from a demo-stage company (`policyFor(stage).shareDemoCodes`;
+  the stage is checked again in the transaction that replaces the codes). The static demo
+  (demo.sellux.ch) has no login at all.
   `/admin/connections` flags both. Company stacks (`stack/`) never pass `ADMIN_DEMO_FILL` at all.
 - Anything published by Docker on a laptop binds to `127.0.0.1`, never all interfaces.
 - A pentest by an outside firm before `live`.

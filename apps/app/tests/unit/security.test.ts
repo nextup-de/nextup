@@ -8,7 +8,7 @@ import { safeNextPath } from "@/features/tenant/urls";
 describe("stage policy", () => {
   it("demo is the only stage with demo tools", () => {
     const demo = policyFor("demo");
-    expect(demo).toEqual({ demoData: true, demoLogin: true, switchPerson: true, rewriteHistory: true });
+    expect(demo).toEqual({ demoData: true, demoLogin: true, switchPerson: true, rewriteHistory: true, shareDemoCodes: true });
     for (const stage of STAGES.filter((s) => s !== "demo")) {
       const p = policyFor(stage);
       expect(Object.values(p).every((v) => v === false), stage).toBe(true);
@@ -19,6 +19,7 @@ describe("stage policy", () => {
   it("an unknown stage fails closed", () => {
     expect(policyFor("").switchPerson).toBe(false);
     expect(policyFor("Demo").demoLogin).toBe(false);
+    expect(policyFor("Demo").shareDemoCodes).toBe(false);
     expect(holdsRealPeople("whatever")).toBe(true);
   });
 
