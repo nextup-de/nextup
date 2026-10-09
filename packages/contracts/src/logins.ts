@@ -1,6 +1,6 @@
 // Demo login codes: the personal login codes of a DEMO-stage company's made-up people, so the team
 // can test the real login from our developer tool admin.sellux.ch (the private repo
-// selluxhenner/nextup-admin; a company's page, "Demo logins").
+// nextup-de/nextup-admin; a company's page, "Demo logins").
 //
 //   stack ──GET /api/demo-logins──▶ ops    once a minute, only while the company is in stage demo:
 //                                          does admin want new codes?
