@@ -60,6 +60,11 @@ describe("registryProblems", () => {
     ]);
   });
 
+  it("refuses a flag that is off for demo companies, the test stacks", () => {
+    const hidden = { ...registry.shiftRota, defaults: { ...registry.shiftRota.defaults, demo: false } };
+    expect(registryProblems({ hidden })).toEqual(["hidden: the demo default must be on - demo companies are the test stacks"]);
+  });
+
   it("finds none in the fixture or in the real registry", () => {
     expect(registryProblems(registry)).toEqual([]);
     expect(registryProblems(FLAGS)).toEqual([]);
