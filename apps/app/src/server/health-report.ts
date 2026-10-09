@@ -9,6 +9,7 @@ import { connectionChecks } from "@/features/admin/connections";
 import { describeEnvironment } from "@/features/admin/environment";
 import { flagReport } from "@/features/flags";
 import { countByState } from "@/features/integrations/tasks";
+import { companyForFlags } from "@/lib/db/flags";
 import { singleCompany } from "@/features/tenant/urls";
 import { databaseSnapshot, noticeTasks, noticesSnapshot } from "@/server/connections";
 import { mailStatus } from "@/server/mail";
@@ -19,7 +20,8 @@ export async function healthReport(slug: string): Promise<HealthReport> {
   const [database, mail] = await Promise.all([databaseSnapshot(), mailStatus()]);
   const automation = await noticesSnapshot(mail).catch(() => null);
   const tasks = automation ? await noticeTasks().catch(() => []) : [];
-  const environment = describeEnvironment(process.env);
+  const stage = await companyForFlags(slug).then((c) => c?.stage).catch(() => undefined);
+  const environment = describeEnvironment(process.env, stage);
   const flags = await flagReport(slug).catch(() => undefined);
   const checks = connectionChecks({
     database: database.state,
