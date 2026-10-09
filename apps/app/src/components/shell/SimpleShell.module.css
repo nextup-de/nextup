@@ -63,6 +63,10 @@
   .nav { justify-self: center; }
   .navItem { padding: 5px 12px; font-size: var(--nh-fs-sm); }
   .me { width: min(290px, calc(var(--nh-screen-w) - 32px)); }
+  /* Four places (leader, manager: ... Feed, Dashboard) can be wider than a small phone: the pill
+     scrolls sideways inside itself instead of pushing the page wider. */
+  .nav { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
 }
 /* Small phones: three places (manager, leader) plus the wordmark and the avatar must fit in 320-420px. */
 @media (max-width: 420px) {
