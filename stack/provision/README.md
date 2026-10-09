@@ -1,6 +1,6 @@
 # stack/provision/ — company stacks started from admin.sellux.ch
 
-admin.sellux.ch (the private repo `selluxhenner/nextup-admin`, page **Companies**) can start,
+admin.sellux.ch (the private repo `nextup-de/nextup-admin`, page **Companies**) can start,
 stop and delete company stacks on the box. admin never touches Docker itself. It queues a job,
 and the agent here picks it up:
 

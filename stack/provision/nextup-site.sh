@@ -46,7 +46,7 @@ case "$action" in
     new="$(mktemp)"
     cat > "$new" <<CONF
 # NextUp stack at $host -> its Caddy on 127.0.0.1:$port. Written by /usr/local/sbin/nextup-site
-# (stack/provision/nextup-site.sh in selluxhenner/nextup); certbot adds the TLS part.
+# (stack/provision/nextup-site.sh in nextup-de/nextup); certbot adds the TLS part.
 server {
     listen 80;
     listen [::]:80;

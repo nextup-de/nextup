@@ -26,7 +26,7 @@ server 1: the stacks                         server 2: the AI (this folder)
 3. **On the new server:**
 
 ```bash
-git clone --depth 1 https://github.com/selluxhenner/nextup.git ~/nextup-src
+git clone --depth 1 https://github.com/nextup-de/nextup.git ~/nextup-src
 ~/nextup-src/stack/brain-server/brain-server.sh install   # Docker, the brain, the model (~7 GB)
 ~/nextup-src/stack/brain-server/brain-server.sh test      # one routing and one coach answer, with the seconds
 ```

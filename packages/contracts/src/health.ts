@@ -1,5 +1,5 @@
 // A company stack's health, reported to our developer tool, admin.sellux.ch (the private repo
-// selluxhenner/nextup-admin). It replaces the Connections page a stack's own /admin used to have:
+// nextup-de/nextup-admin). It replaces the Connections page a stack's own /admin used to have:
 // the company never sees its servers, the NextUp team sees all of them in one place.
 //
 //   stack ──POST /api/stack-health──▶ ops      once a minute, the latest snapshot replaces the last

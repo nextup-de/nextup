@@ -50,7 +50,7 @@ if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
 else args=("$@"); fi
 action="${args[0]:-}" tag="${args[1]:-}"
 
-repo="${NEXTUP_REPO:-selluxhenner/nextup}"
+repo="${NEXTUP_REPO:-nextup-de/nextup}"
 stack_root="$(dirname "$here")"
 
 # stack/ at one commit, from GitHub into DEST (which must not exist yet).
@@ -77,7 +77,7 @@ sync_stack() {
 pull_images() {
   local i
   for i in nextup-app nextup-migrate; do
-    docker pull -q "${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}/$i:$1" >/dev/null || { echo "!! no image $i:$1 - nothing changed"; return 1; }
+    docker pull -q "${NEXTUP_REGISTRY:-ghcr.io/nextup-de}/$i:$1" >/dev/null || { echo "!! no image $i:$1 - nothing changed"; return 1; }
   done
 }
 
@@ -202,9 +202,9 @@ prune_images() {
     n=0
     while read -r t; do
       n=$((n + 1)); [ "$n" -le 2 ] && continue
-      grep -qx "${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}/$repo:$t" <<< "$used" && continue
-      docker rmi "${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}/$repo:$t" >/dev/null 2>&1 || true
-    done < <(docker images "${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}/$repo" --format '{{.Tag}}' | grep '^sha-')
+      grep -qx "${NEXTUP_REGISTRY:-ghcr.io/nextup-de}/$repo:$t" <<< "$used" && continue
+      docker rmi "${NEXTUP_REGISTRY:-ghcr.io/nextup-de}/$repo:$t" >/dev/null 2>&1 || true
+    done < <(docker images "${NEXTUP_REGISTRY:-ghcr.io/nextup-de}/$repo" --format '{{.Tag}}' | grep '^sha-')
   done
   docker image prune -f >/dev/null 2>&1 || true
   echo "images pruned; disk: $(df -h / | awk 'NR==2 { print $4 " free" }')"
