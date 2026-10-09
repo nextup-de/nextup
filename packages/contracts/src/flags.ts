@@ -1,5 +1,5 @@
 // Feature flags for one company stack, as our developer tool admin.sellux.ch (the private repo
-// selluxhenner/nextup-admin) set them - NextUp's own rollout switches, not customer settings.
+// nextup-de/nextup-admin) set them - NextUp's own rollout switches, not customer settings.
 //
 //   stack ──GET /api/flags──▶ ops      once a minute: the full list for this stack's company
 //

@@ -81,7 +81,7 @@ if [ -n "$proxy_port" ]; then
   [[ "$proxy_port" =~ ^[0-9]{4,5}$ ]] && [ "$proxy_port" -le 65000 ] || die "--behind-proxy takes a port, e.g. 3101"
   [ "$scheme" = https ] || die "--behind-proxy expects an https --origin (the proxy terminates TLS)"
 fi
-registry="${NEXTUP_REGISTRY:-ghcr.io/selluxhenner}"
+registry="${NEXTUP_REGISTRY:-ghcr.io/nextup-de}"
 case "$images" in
   ""|local) app_image=nextup-app:local; migrate_image=nextup-migrate:local ;;
   *) [[ "$images" =~ ^(main|[0-9a-f]{7})$ ]] || die "--images is main, a 7-char commit sha or local"

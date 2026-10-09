@@ -1,5 +1,5 @@
 // Errors a company stack ran into by itself (apps/app/src/features/errors), sent to our developer
-// tool, admin.sellux.ch (the private repo selluxhenner/nextup-admin). Admin keeps one "auto" ticket
+// tool, admin.sellux.ch (the private repo nextup-de/nextup-admin). Admin keeps one "auto" ticket
 // per fingerprint across all stacks, with a count, and reopens a fixed one when it comes back in a
 // newer build. docs/plans/2026-10-05_admin-vs-ses.md, PR 3.
 //
