@@ -9,7 +9,8 @@
 // hands them the current request's cookie.
 import { cookies } from "next/headers";
 import type { Role } from "@/config/roles";
-import { SESSION_COOKIE, verifySession, type SessionClaims } from "./cookie";
+import { SESSION_COOKIE, SESSION_TTL_SECONDS, verifySession, type SessionClaims } from "./cookie";
+import { usableSecret } from "@/features/admin/environment";
 import { hasDatabase } from "@/lib/db/mode";
 import { sessionStillValid } from "@/lib/db/sessions";
 
@@ -24,6 +25,8 @@ export type Viewer = {
   handle: string | null;
   role: Role;
   epoch: number;
+  /** When the cookie was signed (unix seconds). A login code issued after it ends the session. */
+  issuedAt: number;
 };
 
 function toViewer(c: SessionClaims): Viewer {
@@ -35,12 +38,16 @@ function toViewer(c: SessionClaims): Viewer {
     handle: c.handle,
     role: c.role,
     epoch: c.ep,
+    issuedAt: c.exp - SESSION_TTL_SECONDS,
   };
 }
 
-/** Null when signed out, tampered, expired, or when AUTH_SECRET is not configured. */
+/**
+ * Null when signed out, tampered, expired, or when AUTH_SECRET is not configured - or is the
+ * .env.example placeholder on a public box, which anyone can sign a cookie with.
+ */
 export async function getViewer(): Promise<Viewer | null> {
-  const secret = process.env.AUTH_SECRET;
+  const secret = usableSecret(process.env.AUTH_SECRET);
   if (!secret) return null;
   const raw = (await cookies()).get(SESSION_COOKIE)?.value;
   const claims = verifySession(raw, secret);
@@ -59,13 +66,14 @@ export async function getSession(): Promise<Session | null> {
  *
  * With a database it also asks whether the cookie still describes reality: same company id (a
  * deleted and re-created slug is a different company), the person still exists with the same role,
- * and the company's session epoch has not moved (a stage change ends every older session). A
- * database error counts as "no": fail closed, the login page is the worst case.
+ * the company's session epoch has not moved (a stage change ends every older session), and the
+ * person has not been given a new login code since (a lost or leaked code is replaced to shut it
+ * out). A database error counts as "no": fail closed, the login page is the worst case.
  */
 export async function getViewerFor(slug: string): Promise<Viewer | null> {
   const v = await getViewer();
   if (!v || v.companySlug !== slug) return null;
   if (!hasDatabase()) return v;
-  const live = await sessionStillValid({ cid: v.companyId, slug, uid: v.userId, role: v.role, ep: v.epoch }).catch(() => false);
+  const live = await sessionStillValid({ cid: v.companyId, slug, uid: v.userId, role: v.role, ep: v.epoch, iat: v.issuedAt }).catch(() => false);
   return live ? v : null;
 }

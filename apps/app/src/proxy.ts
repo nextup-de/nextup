@@ -12,6 +12,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, ADMIN_COOKIE, verifyAdmin, verifySession } from "@/features/auth/cookie";
 import { decide, resolveRequest } from "@/features/auth/request";
+import { usableSecret } from "@/features/admin/environment";
 import { rootDomain, singleCompany, tenantMode } from "@/features/tenant/urls";
 import { hasDatabase } from "@/lib/db/mode";
 
@@ -38,9 +39,13 @@ export function proxy(request: NextRequest) {
     return resolved.rewriteTo ? rewrite(resolved.rewriteTo) : NextResponse.next();
   }
 
+  // The .env.example placeholder on a public box verifies nothing - anyone can sign with it - so
+  // every cookie counts as absent, and the login refuses it too (features/admin/environment.ts).
+  const key = usableSecret(secret);
+
   if (resolved.kind === "admin") {
     const open = resolved.appPath === "/login" || resolved.appPath.startsWith("/login/");
-    if (open || verifyAdmin(request.cookies.get(ADMIN_COOKIE)?.value, secret)) {
+    if (open || (key !== null && verifyAdmin(request.cookies.get(ADMIN_COOKIE)?.value, key))) {
       return resolved.rewriteTo ? rewrite(resolved.rewriteTo) : NextResponse.next();
     }
     // In subdomain mode the admin surface is already at the host root, so the login path differs.
@@ -48,7 +53,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(loginPath, url));
   }
 
-  const claims = verifySession(request.cookies.get(SESSION_COOKIE)?.value, secret);
+  const claims = key === null ? null : verifySession(request.cookies.get(SESSION_COOKIE)?.value, key);
   const verdict = decide(
     resolved.appPath,
     claims && { slug: claims.slug, role: claims.role },
@@ -73,5 +78,7 @@ export const config = {
   // Was "/((?!_next|api|.*\..*).*)" - inside a TS string that `\.` collapses to `.`, so Next
   // received `.*..*` and the lookahead failed for every non-empty path: the proxy matched
   // nothing but "/". The escape has to survive into the regex, hence `\\.`.
-  matcher: ["/((?!_next/|api/|.*\\..*).*)"],
+  // Static files by their extension, not "anything with a dot": a person's page has one
+  // (/acme/people/T.%20Vogel) and must still meet the login check and, on a subdomain, the rewrite.
+  matcher: ["/((?!_next/|api/|.*\\.(?:png|jpe?g|gif|svg|ico|webp|avif|woff2?|ttf|otf|css|js|map|txt|xml|json|webmanifest|pdf)$).*)"],
 };

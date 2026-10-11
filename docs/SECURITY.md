@@ -35,7 +35,7 @@ An unknown stage gets the real-people policy: fail closed. Creating a company in
 | `/api/[company]/events` | bearer token (sha256 hash stored), scoped to one company | - (token is 192 bits) |
 | `/api/client-errors` | public on purpose (a crash on the login page must report too): `Sec-Fetch-Site: same-origin` or `Origin` = `APP_ORIGIN`, 8 KB, zod-validated; message scrubbed and route made a pattern before it is kept (`src/features/errors`); no cookie, session or address stored | 30 / 10 min per address, then silently 204 |
 | Every server action | re-checks the session for the slug; never trusts the client for actor or company | - |
-| Every page that loads its own data | `guardPage` (`src/server/page-guard.ts`) re-checks the session and the role - the `(app)` layout's check does not keep a page's output out of the response, and the proxy skips paths with a dot (`/acme/people/T.%20Vogel`) | - |
+| Every page that loads its own data | `guardPage` (`src/server/page-guard.ts`) re-checks the session and the role - the `(app)` layout's check does not keep a page's output out of the response, and the proxy is routing, not a boundary | - |
 | Case and idea events | `mayAppend` (`src/features/cases/permissions.ts`): only whoever holds a case (or a manager) decides, hands or asks; only the raiser answers; only managers re-route or move the clock; no re-raising an existing id | - |
 | `n8n.<domain>`, `mail.<domain>` | Caddy `basic_auth` from `OPS_USER` / `OPS_PASSWORD_HASH`; unset = 401 for everyone | - |
 
@@ -46,9 +46,11 @@ HSTS, `nosniff` and a referrer policy.
 
 The brakes count an IPv6 address by its /64 (`clientAddress`), so one line cannot rotate through
 fresh addresses. On a box served over https the `change-me` placeholder from `.env.example` opens
-nothing: not `/admin` as `ADMIN_ACCESS_CODE`, and as `AUTH_SECRET` it neither signs a session nor
-an admin cookie, nor is an admin cookie signed with it accepted (`usableSecret`,
-`src/features/admin/environment.ts`). Over plain http - a laptop - it still works.
+nothing: not `/admin` as `ADMIN_ACCESS_CODE`, and as `AUTH_SECRET` it neither signs a cookie nor
+is a cookie signed with it accepted - by the proxy, `getViewer()` or `isAdmin()` (`usableSecret`,
+`src/features/admin/environment.ts`). Over plain http - a laptop - it still works. The proxy skips
+static files by their extension, not every path with a dot, so a person's page
+(`/acme/people/T.%20Vogel`) meets the login check like any other.
 
 ## Before the first real customer
 
@@ -57,11 +59,12 @@ an admin cookie, nor is an admin cookie signed with it accepted (`usableSecret`,
    company code opens nothing any more (`Company.accessCodeHash` is kept, nullable, until old
    rows are gone). Still open: team leaders issuing codes themselves instead of the admin, and an
    Entra app registration for the production box (`ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET`).
-2. **Session revocation.** Partly done: `getViewerFor` checks every session against the database
-   (same company id, the person still exists with the same role, and `Company.sessionEpoch`
-   unchanged - a stage move bumps it, so demo sessions end when real people move in). Still open:
-   issuing someone a new code does not end the session they already have. Add
-   `User.sessionVersion` next to the epoch and bump it on new code/offboarding.
+2. ~~**Session revocation.**~~ Done: `getViewerFor` checks every session against the database
+   (same company id, the person still exists with the same role, `Company.sessionEpoch`
+   unchanged - a stage move bumps it, so demo sessions end when real people move in - and no
+   login code issued since the cookie was signed, `User.loginCodeAt`). Issuing someone a new code
+   ends every session they had, Microsoft ones included; "New demo codes" ends a demo's sessions.
+   Offboarding is deleting the person.
 3. **Admin as people, not a shared code.** One `ADMIN_ACCESS_CODE` for everyone means no audit of
    who did what. Named admin users (magic link or SSO) plus 2FA.
 4. **Audit log for admin actions** - create, stage move, issue login code, issue token, delete - as
@@ -110,7 +113,7 @@ an admin cookie, nor is an admin cookie signed with it accepted (`usableSecret`,
   endpoint told anyone which companies exist.
 - **n8n encryption key:** each company stack generates its own (`stack/install.sh`), and backups
   include it (`stack/backup.sh`, #87).
-- **Login audit, 11 Oct 2026.** Three holes, each reproduced against a production build, then closed:
+- **Login audit, 11 Oct 2026.** Each hole reproduced against a production build, then closed:
   - `adminSignOut` moved the admin revocation watermark for anyone. Called without a session, it
     logged every admin out, as often as the caller liked. Now only a signed-in admin moves it.
   - `/[company]/people/[name]` showed a person's email, role and department to a visitor with no
@@ -118,3 +121,6 @@ an admin cookie, nor is an admin cookie signed with it accepted (`usableSecret`,
     layout's redirect did not keep the page out of the response. The same held for a session the
     database had already ended. It and the routing table now check for themselves (`guardPage`).
   - The `change-me` placeholder was accepted as `ADMIN_ACCESS_CODE` and `AUTH_SECRET` on a public box.
+  - A new login code left the person's existing sessions running for up to eight hours.
+  - The proxy skipped every path with a dot - a person's page among them - so in subdomain and
+    single mode such a page was never rewritten to its company and answered 404.
