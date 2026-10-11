@@ -1,6 +1,9 @@
 // The routing table (~15 decision types): owner, deputy, buddy, keywords. Filled once by a
 // department head. Read-only from the seed until settings store events (Phase 3).
+import { notFound } from "next/navigation";
 import { seedFor } from "@/features/demo";
+import { findTenant } from "@/features/tenant";
+import { guardPage } from "@/server/page-guard";
 import { deptName } from "@/lib/utils/format";
 import styles from "./page.module.css";
 
@@ -8,7 +11,10 @@ export const metadata = { title: "Routing table" };
 
 export default async function RoutingSettingsPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
-  const seed = await seedFor(company);
+  const tenant = await findTenant(company);
+  if (!tenant) notFound();
+  await guardPage(tenant.slug, "/settings/routing");
+  const seed = await seedFor(tenant.slug);
   return (
     <>
       <h1>Routing table</h1>

@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import type { Role } from "@/config/roles";
 import { SESSION_COOKIE, SESSION_TTL_SECONDS, signSession } from "@/features/auth/cookie";
 import { servedOverHttps } from "@/features/tenant/urls";
+import { usableSecret } from "@/features/admin/environment";
 import { getDb } from "@/lib/db/client";
 
 /**
@@ -20,8 +21,9 @@ export function secureCookies(): boolean {
 export type SessionUser = { id: string; name: string; handle: string | null; role: string };
 
 export async function issueSession(companyId: string, slug: string, user: SessionUser): Promise<void> {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) throw new Error("AUTH_SECRET is not configured");
+  // Never sign with the .env.example placeholder on a public box (features/admin/environment.ts).
+  const secret = usableSecret(process.env.AUTH_SECRET);
+  if (!secret) throw new Error("AUTH_SECRET is not configured, or is still the .env.example placeholder");
   const company = await getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { sessionEpoch: true } });
 
   const token = signSession(

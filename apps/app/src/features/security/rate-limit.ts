@@ -48,8 +48,31 @@ export function waitText(seconds: number): string {
  * The client address from proxy headers. On Vercel and behind Caddy the edge overwrites
  * x-forwarded-for with the real client first, so the first entry is the one to trust. Anything
  * else (a direct `next start` with no proxy) falls back to one shared bucket - stricter, not looser.
+ *
+ * An IPv6 address counts by its /64. A home line or a rented server gets a whole /64, so keying by
+ * the full address would hand a guesser 2^64 fresh buckets - and a cheap way to fill the
+ * per-company bucket that locks everyone else out of the login.
  */
 export function clientAddress(forwardedFor: string | null, realIp: string | null): string {
   const first = forwardedFor?.split(",")[0]?.trim();
-  return first || realIp?.trim() || "unknown";
+  const address = first || realIp?.trim() || "unknown";
+  return ipv6Network(address) ?? address;
+}
+
+/** "2001:db8:a:b::/64" for an IPv6 address, the IPv4 one inside "::ffff:a.b.c.d", null otherwise. */
+function ipv6Network(address: string): string | null {
+  if (!address.includes(":")) return null;
+  const a = address.replace(/^\[|\](:\d+)?$/g, "").split("%")[0].toLowerCase();
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(a);
+  if (mapped) return mapped[1];
+
+  const halves = a.split("::");
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(":") : [];
+  const tail = halves[1] ? halves[1].split(":") : [];
+  const missing = 8 - head.length - tail.length;
+  if (halves.length === 1 ? missing !== 0 : missing < 1) return null;
+  const groups = [...head, ...Array<string>(halves.length === 2 ? missing : 0).fill("0"), ...tail];
+  if (!groups.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return null;
+  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, "")).join(":") + "::/64";
 }

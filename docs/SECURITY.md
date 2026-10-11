@@ -1,6 +1,6 @@
 # Security
 
-> **Updated 2026-10-09** · reference: what protects each door, and the open list before real customers.
+> **Updated 2026-10-11** · reference: what protects each door, and the open list before real customers.
 
 How NextUp keeps companies apart, what protects each door, and what has to land before
 real customers depend on it. Read this before touching login, `/admin`, stages or the API.
@@ -35,6 +35,7 @@ An unknown stage gets the real-people policy: fail closed. Creating a company in
 | `/api/[company]/events` | bearer token (sha256 hash stored), scoped to one company | - (token is 192 bits) |
 | `/api/client-errors` | public on purpose (a crash on the login page must report too): `Sec-Fetch-Site: same-origin` or `Origin` = `APP_ORIGIN`, 8 KB, zod-validated; message scrubbed and route made a pattern before it is kept (`src/features/errors`); no cookie, session or address stored | 30 / 10 min per address, then silently 204 |
 | Every server action | re-checks the session for the slug; never trusts the client for actor or company | - |
+| Every page that loads its own data | `guardPage` (`src/server/page-guard.ts`) re-checks the session and the role - the `(app)` layout's check does not keep a page's output out of the response, and the proxy skips paths with a dot (`/acme/people/T.%20Vogel`) | - |
 | Case and idea events | `mayAppend` (`src/features/cases/permissions.ts`): only whoever holds a case (or a manager) decides, hands or asks; only the raiser answers; only managers re-route or move the clock; no re-raising an existing id | - |
 | `n8n.<domain>`, `mail.<domain>` | Caddy `basic_auth` from `OPS_USER` / `OPS_PASSWORD_HASH`; unset = 401 for everyone | - |
 
@@ -42,6 +43,12 @@ Sessions are HMAC-signed cookies (`src/features/auth/cookie.ts`), `HttpOnly`, `S
 `Secure` whenever `COOKIE_SECURE=true` **or** `PUBLIC_SCHEME=https`. Post-login redirects only go
 to same-site paths (`safeNextPath`). `next.config.ts` sends a strict CSP, `frame-ancestors 'none'`,
 HSTS, `nosniff` and a referrer policy.
+
+The brakes count an IPv6 address by its /64 (`clientAddress`), so one line cannot rotate through
+fresh addresses. On a box served over https the `change-me` placeholder from `.env.example` opens
+nothing: not `/admin` as `ADMIN_ACCESS_CODE`, and as `AUTH_SECRET` it neither signs a session nor
+an admin cookie, nor is an admin cookie signed with it accepted (`usableSecret`,
+`src/features/admin/environment.ts`). Over plain http - a laptop - it still works.
 
 ## Before the first real customer
 
@@ -103,3 +110,11 @@ HSTS, `nosniff` and a referrer policy.
   endpoint told anyone which companies exist.
 - **n8n encryption key:** each company stack generates its own (`stack/install.sh`), and backups
   include it (`stack/backup.sh`, #87).
+- **Login audit, 11 Oct 2026.** Three holes, each reproduced against a production build, then closed:
+  - `adminSignOut` moved the admin revocation watermark for anyone. Called without a session, it
+    logged every admin out, as often as the caller liked. Now only a signed-in admin moves it.
+  - `/[company]/people/[name]` showed a person's email, role and department to a visitor with no
+    session: names like "B. Hartmann" carry a dot, so the proxy never saw the request, and the
+    layout's redirect did not keep the page out of the response. The same held for a session the
+    database had already ended. It and the routing table now check for themselves (`guardPage`).
+  - The `change-me` placeholder was accepted as `ADMIN_ACCESS_CODE` and `AUTH_SECRET` on a public box.
