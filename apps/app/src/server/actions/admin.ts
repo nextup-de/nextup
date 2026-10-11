@@ -43,6 +43,7 @@ import { sendMail, type MailStatus } from "@/server/mail";
 import { secureCookies } from "@/server/issue-session";
 import { databaseSnapshot, noticeTasks, noticesSnapshot } from "@/server/connections";
 import { clientKey, forgive, throttle } from "@/server/throttle";
+import { usableSecret } from "@/features/admin/environment";
 import type { Role } from "@/config/roles";
 
 // The row shapes live in features/admin/rows.ts, next to the demo rows that mirror them.
@@ -88,7 +89,8 @@ function issuedAt(raw: string): number | null {
 }
 
 export async function isAdmin(): Promise<boolean> {
-  const secret = process.env.AUTH_SECRET;
+  // Not the placeholder on a public box: anyone could sign an admin cookie with it.
+  const secret = usableSecret(process.env.AUTH_SECRET);
   if (!secret) return false;
   const raw = (await cookies()).get(ADMIN_COOKIE)?.value;
   if (!raw || !verifyAdmin(raw, secret)) return false;
@@ -100,9 +102,11 @@ export async function isAdmin(): Promise<boolean> {
 export type AdminLoginState = { error?: string };
 
 export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promise<AdminLoginState> {
-  const expected = process.env.ADMIN_ACCESS_CODE;
-  const secret = process.env.AUTH_SECRET;
-  if (!expected || !secret) return { error: "ADMIN_ACCESS_CODE and AUTH_SECRET must be set on the server." };
+  const expected = usableSecret(process.env.ADMIN_ACCESS_CODE);
+  const secret = usableSecret(process.env.AUTH_SECRET);
+  if (!expected || !secret) {
+    return { error: "ADMIN_ACCESS_CODE and AUTH_SECRET must be set on the server, and not to the .env.example placeholder." };
+  }
 
   // The code opens everything, so this is the tightest door: 5 tries per address per 15 min.
   const who = await clientKey();
@@ -134,9 +138,12 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
  * Logs out this browser, and every other admin cookie issued up to now (see adminRevocation).
  * Leaving the admin area through the header's "Landing page" / "Dashboard" also logs out: `to`
  * names where to go next. A fixed key, never a URL, so this cannot become an open redirect.
+ *
+ * Only a signed-in admin moves the watermark. A server action can be called by anyone who has its
+ * id, and an anonymous caller moving it would log every admin out - again, every second.
  */
 export async function adminSignOut(form?: FormData) {
-  adminRevocation.__nextupAdminRevokedAt = Math.floor(Date.now() / 1000);
+  if (await isAdmin()) adminRevocation.__nextupAdminRevokedAt = Math.floor(Date.now() / 1000);
   (await cookies()).delete(ADMIN_COOKIE);
   const to = form?.get("to");
   if (to === "landing") redirect(landingUrl());

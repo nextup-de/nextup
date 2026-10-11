@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { canMoveStage, holdsRealPeople, policyFor, STAGES } from "@/features/admin/stages";
 import { clientAddress, hit, sweep, waitText, type Window } from "@/features/security/rate-limit";
+import { usableSecret } from "@/features/admin/environment";
 import { safeNextPath } from "@/features/tenant/urls";
 
 describe("stage policy", () => {
@@ -69,6 +70,41 @@ describe("rate limit", () => {
     expect(clientAddress("203.0.113.7, 10.0.0.1", null)).toBe("203.0.113.7");
     expect(clientAddress(null, "198.51.100.2")).toBe("198.51.100.2");
     expect(clientAddress(null, null)).toBe("unknown");
+  });
+
+  it("counts an IPv6 address by its /64, so one line cannot rotate through fresh buckets", () => {
+    expect(clientAddress("2001:db8:a:b:1:2:3:4", null)).toBe("2001:db8:a:b::/64");
+    expect(clientAddress("2001:0DB8:000a:b::ffff", null)).toBe("2001:db8:a:b::/64");
+    expect(clientAddress("2001:db8::1", null)).toBe("2001:db8:0:0::/64");
+    expect(clientAddress("[2001:db8:a:b::1]:443", null)).toBe("2001:db8:a:b::/64");
+    expect(clientAddress("fe80::1%eth0", null)).toBe("fe80:0:0:0::/64");
+    expect(clientAddress("::1", null)).toBe("0:0:0:0::/64");
+    expect(clientAddress(null, "2001:db8:a:c::9")).toBe("2001:db8:a:c::/64");
+    // An IPv4 client written the IPv6 way is that IPv4 client.
+    expect(clientAddress("::ffff:203.0.113.7", null)).toBe("203.0.113.7");
+    // Not an address we can read: kept as it is, as before.
+    expect(clientAddress("2001:db8::1::2", null)).toBe("2001:db8::1::2");
+    expect(clientAddress("not:an:address", null)).toBe("not:an:address");
+  });
+});
+
+describe("secrets", () => {
+  const laptop = { PUBLIC_SCHEME: "http", APP_DOMAIN: "localhost" };
+  const public_ = { APP_ORIGIN: "https://acme.example.com" };
+
+  it("refuses the .env.example placeholder on a box served over https", () => {
+    expect(usableSecret("change-me", public_)).toBeNull();
+    expect(usableSecret(" change-me ", { PUBLIC_SCHEME: "https" })).toBeNull();
+    expect(usableSecret("a-real-random-secret-value", public_)).toBe("a-real-random-secret-value");
+  });
+
+  it("keeps a laptop over plain http working with a copied .env.local", () => {
+    expect(usableSecret("change-me", laptop)).toBe("change-me");
+  });
+
+  it("an unset secret is never usable", () => {
+    expect(usableSecret(undefined, laptop)).toBeNull();
+    expect(usableSecret("", public_)).toBeNull();
   });
 });
 

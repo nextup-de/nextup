@@ -10,6 +10,20 @@ type Env = Record<string, string | undefined>;
 
 const PLACEHOLDER = "change-me";
 
+/**
+ * `value`, or null when it is unset or is the placeholder on a box served over https. compose.yml
+ * only checks that AUTH_SECRET and ADMIN_ACCESS_CODE are set, so a public box started from a copied
+ * .env.example would open /admin to "change-me" and sign its cookies with a secret anyone can read
+ * in this repository. The rows below flag it; the admin login, isAdmin() and issueSession() refuse
+ * it. Over plain http - a laptop - it still works, so `npm run dev`, `next start` and the e2e
+ * suites run from a copied .env.local as before.
+ */
+export function usableSecret(value: string | undefined, env: Env = process.env): string | null {
+  if (!value) return null;
+  if (value.trim() === PLACEHOLDER && servedOverHttps(env)) return null;
+  return value;
+}
+
 function secret(env: Env, key: string, label: string, why: string): EnvRow {
   const v = env[key];
   if (!v) return { label, value: "not set", tone: "bad", hint: why };
