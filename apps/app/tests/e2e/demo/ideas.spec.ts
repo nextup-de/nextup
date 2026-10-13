@@ -1,6 +1,6 @@
 // The raise page, demo mode (no database: drafts in this browser, the offline coach). One line is
-// evaluated and analysed; the chat shows the AI analysis and the rail of the five points a decision
-// needs; the draft
+// evaluated and analysed; the chat shows the AI analysis and the rail of the 2-8 topics still unclear
+// (features/ideas/raise.ts topicsOf); the draft
 // survives a reload; publishing asks who should get it and raises the case on their desk.
 // docs/IDEAS.md.
 import { aiMessages, answerCoach, DEVELOP, expect, publishTo, START, test } from "../helpers";
@@ -22,12 +22,14 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
   await close.click();
 
-  // The chat: the coach's first answer with the AI analysis under it, and the rail of the five points a
-  // decision needs, one of them next.
+  // The chat: the coach's first answer with the AI analysis under it, and the rail of the 2-8 unclear
+  // topics, the coach asking one of them now.
   await expect(aiMessages(page).first()).toContainText(/\S.{40,}/);
   await expect(page.getByRole("group", { name: "AI analysis" })).toBeVisible();
-  await expect(page.locator("[data-rail-seg]")).toHaveCount(5);
-  await expect(page.locator('[data-rail-seg][aria-label$="next"]')).toHaveCount(1);
+  const segs = page.locator("[data-rail-seg]");
+  await expect.poll(() => segs.count()).toBeGreaterThanOrEqual(2);
+  expect(await segs.count()).toBeLessThanOrEqual(8);
+  await expect(page.locator('[data-rail-seg][aria-label$="asking now"]')).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Publish idea" })).toBeEnabled();
 });
 
