@@ -95,7 +95,7 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
   const preview = usePreview(); // what the event log cannot record yet: edits, answers to a decision, chats, replies
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
   const openCase = useCallback((id: string) => (linkCases ? router.push(href("/cases/" + id)) : setSel(id)), [linkCases, router, href]);
-  const closeCase = useCallback(() => (linkCases ? router.push(href("/dashboard")) : setSel(null)), [linkCases, router, href]);
+  const closeCase = useCallback(() => (linkCases ? router.push(href("/overview")) : setSel(null)), [linkCases, router, href]);
 
   // Escape closes the open menu, else the open case (popovers and inputs handle their own first).
   useEffect(() => {
@@ -226,7 +226,7 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
       <div className={s.div7}>
         <div className={s.div8}>
           <div className={s.div9}>
-            <h1 className={s.overview}>Dashboard</h1>
+            <h1 className={s.overview}>Overview</h1>
           </div>
           <div className={s.div10}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}

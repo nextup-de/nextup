@@ -1,6 +1,7 @@
-// MANAGER home. Decisions waiting, who holds the open cases, why cases wait, unowned problems, outcomes.
-import { OverviewView } from "@/components/dashboard/manager/OverviewView";
-export const metadata = { title: "Overview" };
-export default function ManagerOverviewPage() {
-  return <OverviewView />;
+// The manager's old address: the Dashboard lives at /dashboard now.
+import { redirect } from "next/navigation";
+import { companyPrefix } from "@/features/tenant/urls";
+export default async function ManagerPage({ params }: { params: Promise<{ company: string }> }) {
+  const { company } = await params;
+  redirect(companyPrefix(company) + "/dashboard");
 }

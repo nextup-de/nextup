@@ -42,9 +42,9 @@ const SIZES = [
 // `fits(width, height)` = this page must not scroll down at that size.
 const oneScreen = (_w, h) => h >= 600; // the raise page: one screen on every phone, tablet and laptop
 const PAGES = [
-  ["member", "/acme/raise", oneScreen], ["member", "/acme/dashboard"], ["member", "/acme/team"],
+  ["member", "/acme/raise", oneScreen], ["member", "/acme/overview"], ["member", "/acme/team"],
   ["leader", "/acme/leader"], ["leader", "/acme/raise", oneScreen],
-  ["manager", "/acme/manager"], ["manager", "/acme/leader"], ["manager", "/acme/dashboard"],
+  ["manager", "/acme/dashboard"], ["manager", "/acme/leader"], ["manager", "/acme/overview"],
   ["manager", "/acme/problems"], ["manager", "/acme/ideas"], ["manager", "/acme/collaboration"], ["manager", "/acme/progress"],
   ["manager", "/acme/settings"], ["manager", "/acme/settings/routing"], ["manager", "/acme/settings/members"], ["manager", "/acme/settings/company"],
   ["-", "/login"], ["-", "/signup"], ["-", "/forgot-password"], ["-", "/invite"], ["-", "/acme/login"], ["-", "/admin/login"],

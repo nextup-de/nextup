@@ -57,6 +57,6 @@ describe("navbar index access and destinations", () => {
   it("links a case to the Overview with that case open", () => {
     const cases = navbarIndex(ctx).filter((r) => r.case);
     expect(cases.length).toBeGreaterThan(0);
-    expect(cases.every((r) => r.href === "/acme/dashboard?id=" + encodeURIComponent(r.go!.id))).toBe(true);
+    expect(cases.every((r) => r.href === "/acme/overview?id=" + encodeURIComponent(r.go!.id))).toBe(true);
   });
 });

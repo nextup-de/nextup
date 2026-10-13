@@ -4,7 +4,7 @@ export type Role = (typeof ROLES)[number];
 
 // Where each role lands after login (relative to /[company]).
 export const ROLE_HOME: Record<Role, string> = {
-  manager: "/manager", // Overview
+  manager: "/dashboard", // Dashboard
   leader: "/leader", // Inbox
   member: "/raise", // Raise a problem or an idea
 };
@@ -16,7 +16,8 @@ export const SHELL: Record<Role, Shell> = { manager: "simple", leader: "simple",
 
 // Who may open what. Path prefixes relative to /[company]. Anything not listed = any signed-in role.
 export const ROLE_ACCESS: Record<string, readonly Role[]> = {
-  "/manager": ["manager"],
+  "/dashboard": ["manager"],
+  "/manager": ["manager"], // the old address, redirects to /dashboard
   "/settings": ["manager"],
   "/leader": ["leader", "manager"],
 };

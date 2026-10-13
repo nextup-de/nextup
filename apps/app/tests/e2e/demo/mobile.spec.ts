@@ -2,7 +2,7 @@
 // screen - nothing scrolls sideways - and publishing an idea works with a thumb.
 import { expect, publishIdea, test } from "../helpers";
 
-const PAGES = ["/acme/raise", "/acme/team", "/acme/dashboard", "/acme/leader", "/acme/manager", "/acme/ideas", "/acme/problems"];
+const PAGES = ["/acme/raise", "/acme/team", "/acme/overview", "/acme/leader", "/acme/dashboard", "/acme/ideas", "/acme/problems"];
 
 for (const path of PAGES) {
   test(`${path} fits a phone screen`, async ({ page }) => {

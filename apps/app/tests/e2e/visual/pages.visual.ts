@@ -67,8 +67,8 @@ test("team leader: the inbox with an item open", async ({ page }, info) => {
 test("manager: the home overview", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
-  await expect(page).toHaveURL(/\/acme\/manager$/);
-  await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
+  await expect(page).toHaveURL(/\/acme\/dashboard$/);
+  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot("manager.png");
 });
@@ -76,8 +76,8 @@ test("manager: the home overview", async ({ page }) => {
 test("manager: the case table", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
-  await page.goto("/acme/dashboard");
-  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
+  await page.goto("/acme/overview");
+  await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot("case-table.png");
 });
@@ -85,7 +85,7 @@ test("manager: the case table", async ({ page }) => {
 test("manager: a case opened from the case table", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
-  await page.goto("/acme/dashboard");
+  await page.goto("/acme/overview");
   await page.getByRole("main").getByText("Night shift has no one who can sign").first().click();
   await expect(page.getByRole("heading", { name: /Night shift has no one who can sign/, level: 1 })).toBeVisible();
   await settle(page);

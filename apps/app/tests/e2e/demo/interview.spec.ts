@@ -4,7 +4,7 @@
 //   Employee     chats with the coach in the raise window: one line, the coach's first read, two
 //                more messages, then raises it and opens the case.
 //   Team leader  (a second window) finds it in the inbox and opens it.
-//   Manager      ends on the overview.
+//   Manager      ends on the Dashboard.
 //
 // It runs twice: here in the demo suite (`npm run e2e`, no database, the built-in acme), and as
 // the live check against a stack that is already up (`npm run e2e:live`, playwright.live.config.ts),
@@ -123,13 +123,13 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     for (const name of [/^Yes, do it/, "No, and why", "Ask a question"]) await expect(decision.getByRole("button", { name })).toBeVisible();
   });
 
-  await test.step("manager: the overview", async () => {
+  await test.step("manager: the Dashboard", async () => {
     await viewAs(leader, "Manager");
-    await expect(leader).toHaveURL(/\/manager$/);
+    await expect(leader).toHaveURL(/\/dashboard$/);
     const main = leader.getByRole("main");
-    await expect(main.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
-    for (const name of ["Decisions waiting on you", "Who holds the open cases", "Why cases wait", "Problems nobody owns", "Did shipped work pay off"]) await expect(main.getByRole("heading", { name, level: 2 })).toBeVisible();
-    await expect(main.getByRole("link", { name: /^Team-level spend authority/ })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
+    for (const name of ["Ideas per stage", "Ideas raised per month", "How team leads answered", "Did shipped work pay off", "Where the waiting goes"]) await expect(main.getByRole("heading", { name, level: 3 })).toBeVisible();
+    await expect(main.getByRole("button", { name: /^Idea → decision/ })).toBeVisible();
   });
 
   await test.step("leave the company as it was found", async () => {

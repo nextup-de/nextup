@@ -37,7 +37,7 @@ export function ProfileView({ target }: { target?: Target }) {
   ].slice(0, 6);
 
   return <div className={styles.page}>
-    <div className={styles.pageHead}><div><Link href={href("/dashboard")} className={styles.back}>← Dashboard</Link><h1>{own ? "My profile" : "Profile"}</h1></div><span className={styles.company}>{tenant.name}</span></div>
+    <div className={styles.pageHead}><div><Link href={href("/overview")} className={styles.back}>← Overview</Link><h1>{own ? "My profile" : "Profile"}</h1></div><span className={styles.company}>{tenant.name}</span></div>
 
     <section className={styles.hero} aria-labelledby="profile-name">
       <div className={styles.identity}>
