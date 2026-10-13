@@ -68,7 +68,7 @@ test("manager: the home overview", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
   await expect(page).toHaveURL(/\/acme\/dashboard$/);
-  await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot("manager.png");
 });
@@ -77,7 +77,7 @@ test("manager: the case table", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
   await page.goto("/acme/overview");
-  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot("case-table.png");
 });
