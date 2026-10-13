@@ -4,7 +4,7 @@ export type NavItem = { label: string; href: string; roles: readonly Role[] };
 
 // Left rail. Filtered by role in the app shell layout. hrefs are relative to /[company].
 export const NAV: NavItem[] = [
-  { label: "Overview", href: "/manager", roles: ["manager"] },
+  { label: "Dashboard", href: "/manager", roles: ["manager"] },
   { label: "Inbox", href: "/leader", roles: ["leader", "manager"] },
   { label: "My cases", href: "/team", roles: ["member", "leader", "manager"] },
   { label: "Problems", href: "/problems", roles: ["member", "leader", "manager"] },
@@ -22,19 +22,19 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
   member: [
     { label: "Ideas", href: "/raise" },
     { label: "Feed", href: "/feed" },
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Overview", href: "/dashboard" },
   ],
   leader: [
     { label: "Ideas", href: "/raise" },
     { label: "Inbox", href: "/leader", count: "inbox" },
     { label: "Feed", href: "/feed" },
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Overview", href: "/dashboard" },
   ],
   manager: [
-    { label: "Overview", href: "/manager", count: "decisions" },
+    { label: "Dashboard", href: "/manager" },
     { label: "Inbox", href: "/leader", count: "inbox" }, // tentative: what sits on the manager's own desk (escalations, routes they own)
     { label: "Feed", href: "/feed" },
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Overview", href: "/dashboard" },
   ],
 };
 

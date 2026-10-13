@@ -1,6 +1,6 @@
-// MANAGER home. Decisions waiting, who holds the open cases, why cases wait, unowned problems, outcomes.
-import { OverviewView } from "@/components/dashboard/manager/OverviewView";
-export const metadata = { title: "Overview" };
-export default function ManagerOverviewPage() {
-  return <OverviewView />;
+// MANAGER home, the Dashboard: how fast ideas are decided, where the waiting goes, and whether shipped work paid off.
+import { DashboardBoard } from "@/components/dashboard/shared/DashboardBoard";
+export const metadata = { title: "Dashboard" };
+export default function ManagerDashboardPage() {
+  return <DashboardBoard />;
 }

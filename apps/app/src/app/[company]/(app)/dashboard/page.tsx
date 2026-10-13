@@ -1,6 +1,6 @@
-// The Dashboard: how ideas move from raised to in progress - how fast they are decided, where the waiting goes, and whether shipped work paid off.
-import { DashboardBoard } from "@/components/dashboard/shared/DashboardBoard";
-export const metadata = { title: "Dashboard" };
+// The Overview (route /dashboard). Every problem and idea in the company: open since, on whose desk (and every desk before), stage, score.
+import { DashboardView } from "@/components/dashboard/team/DashboardView";
+export const metadata = { title: "Overview" };
 export default function DashboardPage() {
-  return <DashboardBoard />;
+  return <DashboardView />;
 }
