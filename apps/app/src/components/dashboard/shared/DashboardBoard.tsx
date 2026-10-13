@@ -19,7 +19,7 @@ import {
 } from "./dashboardPreview";
 import s from "./DashboardBoard.module.css";
 
-const KPI_COUNT = 4; // the handoff's kpiCount: "4" shows the first four, "6" all six
+const KPI_COUNT = 6; // the handoff's kpiCount: "4" shows the first four, "6" all six
 const STAGES_LEFT = true; // the handoff's topRowOrder, default "Stages left"
 const ALL = "All departments";
 
