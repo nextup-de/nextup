@@ -88,7 +88,8 @@ function render(res, status, { next = "/", notice = "" } = {}) {
 }
 
 function redirect(res, to, cookie) {
-  res.writeHead(303, { location: to, "cache-control": "no-store", ...(cookie ? { "set-cookie": cookie } : {}) });
+  const location = safeNext(to);
+  res.writeHead(303, { location, "cache-control": "no-store", ...(cookie ? { "set-cookie": cookie } : {}) });
   res.end();
 }
 
