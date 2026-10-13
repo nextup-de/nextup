@@ -101,7 +101,7 @@ export function OverviewView() {
           <section className={styles.card} aria-labelledby="ov-desks">
             <header className={styles.cardHead}>
               <h2 id="ov-desks" className={styles.cardTitle}>Who holds the open cases</h2>
-              <Link href={href("/dashboard")} className={styles.more}>Dashboard</Link>
+              <Link href={href("/overview")} className={styles.more}>Overview</Link>
             </header>
             {held.length === 0 && <p className={styles.empty}>No open cases. A raised case shows up here on its owner&rsquo;s desk.</p>}
             <ul className={styles.list}>

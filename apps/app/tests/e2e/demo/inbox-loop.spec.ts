@@ -81,7 +81,7 @@ test("each person lands on their own home page", async ({ page }) => {
   await viewAs(page, "Team leader");
   await expect(page).toHaveURL(/\/acme\/leader$/);
   await viewAs(page, "Manager");
-  await expect(page).toHaveURL(/\/acme\/manager$/);
+  await expect(page).toHaveURL(/\/acme\/dashboard$/);
 });
 
 test("an answer that is late moves to the deputy on its own", async ({ page }) => {

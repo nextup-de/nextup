@@ -11,16 +11,16 @@ export type SkeletonKind = "list" | "overview" | "inbox" | "raise" | "dashboard"
 /** The view family for an app path (relative to /[company]) - what loading.tsx outside the shell uses. */
 export function skeletonKindFor(appPath: string): SkeletonKind {
   const p = appPath === "/" ? "/raise" : appPath;
-  if (p.startsWith("/manager")) return "overview";
+  if (p.startsWith("/dashboard") || p.startsWith("/manager")) return "overview"; // the Dashboard (the manager home)
   if (p.startsWith("/leader")) return "inbox";
   if (p.startsWith("/raise")) return "raise";
-  if (p.startsWith("/dashboard")) return "dashboard";
+  if (p.startsWith("/overview")) return "dashboard"; // the Overview table
   if (p.startsWith("/cases/")) return "detail";
   if (p.startsWith("/settings")) return "settings";
   return "list";
 }
 
-const APP_ROUTES = new Set(["manager", "leader", "raise", "dashboard", "cases", "settings", "problems", "ideas", "collaboration", "progress", "team"]);
+const APP_ROUTES = new Set(["manager", "leader", "raise", "dashboard", "overview", "cases", "settings", "problems", "ideas", "collaboration", "progress", "team"]);
 
 /**
  * Same, from the browser's pathname, which is /acme/leader in path mode and /leader in subdomain

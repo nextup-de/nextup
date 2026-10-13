@@ -91,11 +91,11 @@ export function useDemo(): DemoContext {
   return c;
 }
 
-// First visit: the URL says which role the visitor meant (/manager or /settings -> manager, /leader -> leader).
+// First visit: the URL says which role the visitor meant (/dashboard, /manager or /settings -> manager, /leader -> leader).
 // Everything else - the front door /[company] included - starts as the employee: the login sends
 // people in there, and the employee's Raise page is where every case begins.
 function roleFromPath(path: string): Role {
-  if (path === "/manager" || path.startsWith("/manager/") || path === "/settings" || path.startsWith("/settings/")) return "manager";
+  if (path === "/dashboard" || path.startsWith("/dashboard/") || path === "/manager" || path.startsWith("/manager/") || path === "/settings" || path.startsWith("/settings/")) return "manager";
   if (path === "/leader" || path.startsWith("/leader/")) return "leader";
   return "member";
 }
@@ -200,7 +200,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   const [today] = useState(() => new Date()); // views render dates only once `ready`, so server/client never disagree on screen
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Set by logout: the persona is being forgotten and the login page is next, so the access
-  // check below must not send a manager on /manager "home" as whatever role the URL guessed.
+  // check below must not send a manager on /dashboard "home" as whatever role the URL guessed.
   const leaving = useRef(false);
 
   // Roles are data: a role that may not open this path is sent home.

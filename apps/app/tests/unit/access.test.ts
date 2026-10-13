@@ -165,12 +165,16 @@ describe("decide", () => {
 
   it("enforces ROLE_ACCESS", () => {
     expect(decide("/manager", member, "acme")).toEqual({ kind: "home", to: ROLE_HOME.member });
+    expect(decide("/dashboard", member, "acme")).toEqual({ kind: "home", to: ROLE_HOME.member });
+    expect(decide("/dashboard", leader, "acme")).toEqual({ kind: "home", to: ROLE_HOME.leader });
     expect(decide("/settings/members", leader, "acme")).toEqual({ kind: "home", to: ROLE_HOME.leader });
     expect(decide("/leader", member, "acme")).toEqual({ kind: "home", to: ROLE_HOME.member });
   });
 
   it("lets each role reach what it owns", () => {
     expect(decide("/manager", manager, "acme")).toEqual({ kind: "allow" });
+    expect(decide("/dashboard", manager, "acme")).toEqual({ kind: "allow" });
+    expect(decide("/overview", member, "acme")).toEqual({ kind: "allow" });
     expect(decide("/leader", leader, "acme")).toEqual({ kind: "allow" });
     expect(decide("/leader", manager, "acme")).toEqual({ kind: "allow" }); // managers may view the inbox
     expect(decide("/raise", member, "acme")).toEqual({ kind: "allow" });

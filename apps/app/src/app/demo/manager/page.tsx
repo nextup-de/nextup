@@ -1,4 +1,6 @@
-// The manager's Dashboard, on the static demo's data (dev panel -> Viewing as).
-import ManagerDashboardPage from "@/app/[company]/(app)/manager/page";
-export const metadata = { title: "Dashboard" };
-export default ManagerDashboardPage;
+// The manager's old address: the Dashboard lives at /dashboard now.
+import { redirect } from "next/navigation";
+import { staticDemoPrefix } from "@/features/tenant/urls";
+export default function DemoManagerPage() {
+  redirect(staticDemoPrefix() + "/dashboard");
+}

@@ -1,6 +1,7 @@
-// MANAGER home, the Dashboard: how fast ideas are decided, where the waiting goes, and whether shipped work paid off.
-import { DashboardBoard } from "@/components/dashboard/shared/DashboardBoard";
-export const metadata = { title: "Dashboard" };
-export default function ManagerDashboardPage() {
-  return <DashboardBoard />;
+// The manager's old address: the Dashboard lives at /dashboard now.
+import { redirect } from "next/navigation";
+import { companyPrefix } from "@/features/tenant/urls";
+export default async function ManagerPage({ params }: { params: Promise<{ company: string }> }) {
+  const { company } = await params;
+  redirect(companyPrefix(company) + "/dashboard");
 }

@@ -125,7 +125,7 @@ test("the interview script: employee raises, team leader finds it, manager sees 
 
   await test.step("manager: the overview", async () => {
     await viewAs(leader, "Manager");
-    await expect(leader).toHaveURL(/\/manager$/);
+    await expect(leader).toHaveURL(/\/dashboard$/);
     const main = leader.getByRole("main");
     await expect(main.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
     for (const name of ["Decisions waiting on you", "Who holds the open cases", "Why cases wait", "Problems nobody owns", "Did shipped work pay off"]) await expect(main.getByRole("heading", { name, level: 2 })).toBeVisible();

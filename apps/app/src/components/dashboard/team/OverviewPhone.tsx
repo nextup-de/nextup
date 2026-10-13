@@ -48,7 +48,7 @@ export function OverviewPhone({ idea, chats, yourMove, nav, editSignal }: {
   return (
     <div className={s.phone}>
       <header className={s.phoneBar}>
-        <button type="button" className={s.phoneIcon} onClick={idea.onClose} aria-label="Back to the dashboard"><Chev dir="back" /></button>
+        <button type="button" className={s.phoneIcon} onClick={idea.onClose} aria-label="Back to the overview"><Chev dir="back" /></button>
         <div className={s.phoneTabs} role="tablist" aria-label="Case pages">
           <span className={s.phoneThumb} ref={thumb} aria-hidden="true" />
           {PAGES.map((label, i) => (

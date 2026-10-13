@@ -22,7 +22,7 @@ export function navbarIndex(ctx: DemoContext): NavHit[] {
     index.push({
       kind: c.kind === "idea" ? "Idea" : "Problem", group: c.kind === "idea" ? 1 : 0, title: c.title,
       sub: row.mine ? "You · " + row.fromDept : [row.from, row.fromDept].filter(Boolean).join(" · "),
-      hay: [caseHay(c), desk, stage].join(" "), right: desk, go: { view: "dashboard", id: c.id }, href: ctx.href("/dashboard?id=" + encodeURIComponent(c.id)),
+      hay: [caseHay(c), desk, stage].join(" "), right: desk, go: { view: "dashboard", id: c.id }, href: ctx.href("/overview?id=" + encodeURIComponent(c.id)),
       case: { status: yourMove ? "move" : row.status, step: row.step, open: row.open, late: row.open && row.overdue, yourMove, desk, days: row.open ? row.openDays : row.clock },
     });
   }

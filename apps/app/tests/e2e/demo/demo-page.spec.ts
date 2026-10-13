@@ -37,7 +37,7 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
     await expect(page.getByRole("group", { name: "AI analysis" })).toContainText("Feasibility");
     await expect(page.getByText("Ready to publish")).toBeVisible();
     await page.getByRole("link", { name: "Dashboard", exact: true }).click();
-    await expect(page).toHaveURL(/\/demo\/dashboard$/);
+    await expect(page).toHaveURL(/\/demo\/overview$/);
     await page.getByRole("link", { name: "Ideas", exact: true }).click();
     await expect(aiMessages(page).last()).toContainText("It is ready: publish it", { timeout: 15_000 });
     await expect(page.getByRole("button", { name: "Publish now" })).toBeVisible();
@@ -54,8 +54,8 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
   });
 
   await test.step("the dashboard: every status, and each row opens at its own address", async () => {
-    await page.getByRole("button", { name: "Back to the dashboard" }).click();
-    await expect(page).toHaveURL(/\/demo\/dashboard$/);
+    await page.getByRole("button", { name: "Back to the overview" }).click();
+    await expect(page).toHaveURL(/\/demo\/overview$/);
     const main = page.getByRole("main");
     await expect(main).toContainText(TITLE);
     for (const t of ["Your move", "Replied", "past promise", "Building", "Shipped"]) await expect(main.getByText(t, { exact: true }).first()).toBeVisible();
@@ -66,7 +66,7 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
 
   await test.step("the dev panel is there, and a reload starts the demo over", async () => {
     await expect(page.getByRole("button", { name: "Dev", exact: true })).toBeVisible();
-    await page.goto("/demo/dashboard");
+    await page.goto("/demo/overview");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     await expect(page.getByRole("main")).not.toContainText(TITLE);
   });

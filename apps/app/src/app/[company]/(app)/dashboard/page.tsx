@@ -1,6 +1,6 @@
-// The Overview (route /dashboard). Every problem and idea in the company: open since, on whose desk (and every desk before), stage, score.
-import { DashboardView } from "@/components/dashboard/team/DashboardView";
-export const metadata = { title: "Overview" };
+// MANAGER home, the Dashboard: how fast ideas are decided, where the waiting goes, and whether shipped work paid off.
+import { DashboardBoard } from "@/components/dashboard/shared/DashboardBoard";
+export const metadata = { title: "Dashboard" };
 export default function DashboardPage() {
-  return <DashboardView />;
+  return <DashboardBoard />;
 }
