@@ -2,8 +2,8 @@
 .funnelHead { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; }
 .funnelN { font-family: var(--nh-mono); font-size: var(--nh-fs-md); font-weight: 800; color: var(--nh-ink); min-width: 42px; }
 .funnelLabel { font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-ink); }
-.funnelTrack { height: 12px; border-radius: 999px; background: #f0efea; margin-top: 7px; overflow: hidden; }
-.funnelFill { height: 12px; border-radius: 999px; background: var(--nh-ink); }
+.funnelTrack { height: 12px; border-radius: var(--radius-sm, 999px); background: #f0efea; margin-top: 7px; overflow: hidden; }
+.funnelFill { height: 12px; border-radius: var(--radius-sm, 999px); background: var(--nh-ink); }
 .funnelFill[data-gate="true"] { background: var(--nh-accent); }
 .funnelNote { font-size: var(--nh-fs-xs); color: #b23c07; margin-top: 6px; line-height: 1.5; }
 

@@ -21,7 +21,7 @@
 
 .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 16px; list-style: none; padding: 0; }
 .step { display: flex; flex-direction: column; min-width: 0; }
-.stepBar { height: 4px; border-radius: 999px; background: var(--nh-line); }
+.stepBar { height: 4px; border-radius: var(--radius-sm, 999px); background: var(--nh-line); }
 .step[data-tone="done"] .stepBar { background: var(--nh-ink); }
 .step[data-tone="now"] .stepBar, .step[data-tone="late"] .stepBar { background: var(--nh-accent); }
 .stepLabel { font-size: var(--nh-fs-xs); font-weight: 700; margin-top: 7px; line-height: 1.3; color: var(--nh-ink); }
@@ -42,7 +42,7 @@
 
 .foot { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 14px; }
 .foot:empty { display: none; }
-.answer { height: 34px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--nh-brand); color: #fff; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 700; cursor: pointer; }
+.answer { height: 34px; padding: 0 16px; border-radius: var(--radius-sm, 999px); border: 0; background: var(--nh-brand); color: #fff; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 700; cursor: pointer; }
 .answer:hover { background: var(--nh-brand-hover); }
 .more { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand); }
 

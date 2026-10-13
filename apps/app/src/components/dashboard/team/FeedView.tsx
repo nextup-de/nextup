@@ -335,7 +335,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                           <circle cx="36" cy="36" r="30" fill="none" stroke="#e3eaf7" strokeWidth="10" strokeLinecap="round" strokeDasharray="141.4 188.5" />
                           <circle cx="36" cy="36" r="30" fill="none" stroke="#007aff" strokeWidth="10" strokeLinecap="round" strokeDasharray={((sc.value / 100) * 141.4).toFixed(1) + " 188.5"} />
                         </svg>
-                        <div className={s.div29}><span className={s.v}>{sc.value}</span><span className={s.n100}>/ 100</span></div>
+                        <div className={s.div29}><span className={s.v} data-long={sc.value >= 100}>{sc.value}</span><span className={s.n100}>/ 100</span></div>
                         <button type="button" className={s.toggle} title="Show reasoning" aria-label={(on ? "Hide" : "Show") + " the reasoning for " + sc.label} aria-expanded={on}
                           onClick={() => setOpenScore((m) => ({ ...m, [c.id]: on ? null : i }))}>
                           <svg className={s.svg2} data-open={on ? "true" : undefined} viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>

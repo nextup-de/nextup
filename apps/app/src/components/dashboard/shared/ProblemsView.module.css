@@ -2,8 +2,8 @@
 .discovery { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 0 14px; }
 .discoveryDone { font-size: var(--nh-fs-sm); color: var(--nh-ink); font-weight: 700; margin-top: 5px; }
 .discoveryBar { flex: 1; min-width: 150px; }
-.discoveryTrack { height: 7px; border-radius: 999px; background: var(--nh-line-soft); overflow: hidden; }
-.discoveryFill { height: 100%; border-radius: 999px; background: var(--nh-ink); }
+.discoveryTrack { height: 7px; border-radius: var(--radius-sm, 999px); background: var(--nh-line-soft); overflow: hidden; }
+.discoveryFill { height: 100%; border-radius: var(--radius-sm, 999px); background: var(--nh-ink); }
 .discoveryNote { font-size: var(--nh-fs-xs); color: var(--nh-mute); margin-top: 6px; }
 .discoveryHint { font-size: var(--nh-fs-xs); color: var(--nh-on-dark-mute); line-height: 1.5; max-width: 240px; }
 

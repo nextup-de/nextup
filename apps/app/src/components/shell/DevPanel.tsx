@@ -1,22 +1,29 @@
 "use client";
 // Dev panel (bottom-right): switch the persona, view the inbox as another desk holder, advance
 // the demo clock, fill the raise page with a sample idea, demo data on/off, delete what this browser added, reset - and, on its own Design
-// page, the design tweaks under review (reasoning-panel colour, logo colour, animations on/off). It stays open
+// page, the design tweaks under review (animations on/off, old round corners, the dot grid - which
+// localhost can save as the default for every device). It stays open
 // while settings change; a click anywhere else or Escape closes it. Demo only - sessions replace it.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { openCasesOf } from "@/components/dashboard/derive";
-import type { LogoTone, PanelTone } from "@/lib/demo-log";
+import { DOTS_DEFAULT, DOTS_RANGE } from "@/features/design/dots";
 import { devFill, hasDevFill, subscribeDevFill } from "@/lib/dev-fill";
+import { saveDesignDefaultsAction } from "@/server/actions/design";
 import styles from "./DevPanel.module.css";
 
-const PANEL_TONES: { id: PanelTone; label: string }[] = [{ id: "grey", label: "Grey" }, { id: "blue", label: "Blue" }, { id: "deep", label: "Deep blue" }];
-const LOGO_TONES: { id: LogoTone; label: string }[] = [{ id: "blue", label: "Blue" }, { id: "half", label: "Blue + black" }, { id: "black", label: "Black" }];
 
 export function DevPanel() {
   const ctx = useDemo();
-  const { seed, S, role, persona, demo, dev, setDev, leadAs, panels, setPanels, motion, setMotion, logo, setLogo } = ctx;
+  const { seed, S, role, persona, demo, dev, setDev, leadAs, motion, setMotion, roundCorners, setRoundCorners, dots, dotsCustom, setDots, resetDots } = ctx;
   const [page, setPage] = useState<"demo" | "design">("demo");
+  const [saved, setSaved] = useState<string | null>(null); // the "Set as default" outcome
+  const canSave = process.env.NODE_ENV === "development"; // the default is a source file: localhost writes it
+  const isDefault = dots.dotsStrength === DOTS_DEFAULT.dotsStrength && dots.dotSpacing === DOTS_DEFAULT.dotSpacing;
+  const saveDefault = async () => {
+    const r = await saveDesignDefaultsAction(dots);
+    if (r.ok) { resetDots(); setSaved("Saved as the default for every device - commit it to ship"); } else setSaved(r.error ?? "Could not save");
+  };
   const box = useRef<HTMLDivElement>(null);
   const canFill = useSyncExternalStore(subscribeDevFill, hasDevFill, () => false); // the raise page's start view is open
   const isLead = role === "leader";
@@ -45,24 +52,30 @@ export function DevPanel() {
           </button>
           <div className={styles.label}>Design changes</div>
 
-          <div className={styles.subLabel}>Reasoning panels</div>
-          <div className={`${styles.roles} ${styles.tones}`}>
-            {PANEL_TONES.map((t) => (
-              <button key={t.id} type="button" className={styles.role} data-on={panels === t.id ? "true" : undefined} onClick={() => setPanels(t.id)}>{t.label}</button>
-            ))}
-          </div>
-
-          <div className={styles.subLabel}>Logo</div>
-          <div className={`${styles.roles} ${styles.tones}`}>
-            {LOGO_TONES.map((t) => (
-              <button key={t.id} type="button" className={styles.role} data-on={logo === t.id ? "true" : undefined} onClick={() => setLogo(t.id)}>{t.label}</button>
-            ))}
-          </div>
-
           <button type="button" className={styles.rowBtn} onClick={() => setMotion(!motion)} aria-pressed={motion}>
             <span className={styles.rowTitle}>Animations</span>
             <span className={styles.track} data-on={motion ? "true" : undefined}><span className={styles.knob} /></span>
           </button>
+
+          <button type="button" className={styles.rowBtn} onClick={() => setRoundCorners(!roundCorners)} aria-pressed={roundCorners}>
+            <span className={styles.rowTitle}>Round corners (old)</span>
+            <span className={styles.track} data-on={roundCorners ? "true" : undefined}><span className={styles.knob} /></span>
+          </button>
+
+          <div className={styles.subLabel}>Dot grid</div>
+          <label className={styles.slider}>
+            <span className={styles.sliderHead}><span className={styles.rowTitle}>Strength</span><span className={styles.value}>{dots.dotsStrength.toFixed(2)}</span></span>
+            <input type="range" {...DOTS_RANGE.dotsStrength} value={dots.dotsStrength} onChange={(e) => { setDots({ dotsStrength: Number(e.target.value) }); setSaved(null); }} />
+          </label>
+          <label className={styles.slider}>
+            <span className={styles.sliderHead}><span className={styles.rowTitle}>Spacing</span><span className={styles.value}>{dots.dotSpacing}px</span></span>
+            <input type="range" {...DOTS_RANGE.dotSpacing} value={dots.dotSpacing} onChange={(e) => { setDots({ dotSpacing: Number(e.target.value) }); setSaved(null); }} />
+          </label>
+          <div className={styles.dotActions}>
+            <button type="button" className={styles.reset} onClick={() => { resetDots(); setSaved(null); }} disabled={!dotsCustom}>Back to default</button>
+            {canSave && <button type="button" className={styles.saveDefault} onClick={saveDefault} disabled={isDefault}>Set as default</button>}
+          </div>
+          {saved && <div className={styles.saved} role="status">{saved}</div>}
 
           <div className={styles.foot}>
             <span className={styles.note}>Saved in this browser</span>

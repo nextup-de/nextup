@@ -52,10 +52,18 @@
   --nh-font: var(--font-sans, "Manrope"), -apple-system, "Segoe UI", sans-serif;   /* --font-sans set by next/font in layout.tsx */
   --nh-mono: var(--font-mono, "IBM Plex Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --nh-r-sm: 8px;
-  --nh-r: 11px;
-  --nh-r-lg: 18px;
-  --nh-r-xl: 22px;
+  /* Corners (Square Corners handoff): controls 8px (6px when tiny), containers 12px; avatars and
+     status dots keep 50%. Every radius in the app is var(--radius-*, <old value>): the dev panel's
+     "Round corners" (html[data-corners="round"], below) unsets these so the old value shows again. */
+  --radius-xs: 6px;      /* tiny controls, icon buttons up to 26px, small widgets (was 8-11px) */
+  --radius-sm: 8px;      /* buttons, inputs, chips, pills, tabs, rows, icon buttons (was 999px / 12-16px) */
+  --radius-md: 12px;     /* cards, panels, popovers, menus, modals, sheets (was 18-30px) */
+  --radius-full: 9999px; /* avatars and status dots only */
+
+  --nh-r-sm: var(--radius-xs, 8px);
+  --nh-r: var(--radius-xs, 11px);
+  --nh-r-lg: var(--radius-md, 18px);
+  --nh-r-xl: var(--radius-md, 22px);
 
   /* Type: one fixed scale for every page (docs/RESPONSIVE.md "Sizes"). Real sizes, the same on every
      screen: nothing grows with the window and nothing is multiplied. Font sizes in CSS use only these

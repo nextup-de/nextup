@@ -28,8 +28,9 @@ import { reduce, type State } from "@/features/cases/reducer";
 import { dayFormatter, type DayFmt } from "@/features/cases/rows";
 import { affectedOn, exportSnippet } from "@/features/cases/selectors";
 import type { Persona, RolePersona, Seed } from "@/features/demo/types";
+import { normalizeDots, type Dots } from "@/features/design/dots";
 import { counts, demoData, type Counts, type DemoData } from "@/features/metrics";
-import { clearPrefs, getServerSnapshot, getSnapshot, resetLog, setPrefs, subscribe, updateLog, type LogoTone, type PanelTone } from "@/lib/demo-log";
+import { clearPrefs, getServerSnapshot, getSnapshot, resetLog, setPrefs, subscribe, updateLog } from "@/lib/demo-log";
 import { clearShots, dropShots } from "@/lib/shots";
 import { deptName as deptNameOf } from "@/lib/utils/format";
 import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction } from "@/server/actions/events";
@@ -67,9 +68,9 @@ export type DemoContext = {
   leadAs: string | null; setLeadAs: (name: string) => void;
   persona: { role: RolePersona; who: Persona }; actor: string; email: string | null;
   demo: boolean; toggleDemo: () => void;
-  panels: PanelTone; setPanels: (t: PanelTone) => void; // inbox reasoning-panel colour, from the dev panel
   motion: boolean; setMotion: (on: boolean) => void; // animations on/off, from the dev panel (html[data-motion])
-  logo: LogoTone; setLogo: (t: LogoTone) => void; // the top bar's wordmark colour, from the dev panel
+  roundCorners: boolean; setRoundCorners: (on: boolean) => void; // old round corners, from the dev panel (html[data-corners])
+  dots: Dots; dotsCustom: boolean; setDots: (patch: Partial<Dots>) => void; resetDots: () => void; // the Ground's dot grid, from the dev panel
   dept: string; setDept: (id: string) => void; matches: (depts: readonly string[]) => boolean; deptName: (id: string) => string;
   q: string; setQ: (q: string) => void;
   pop: Pop | null; setPop: (p: Pop | null) => void; togglePop: (p: Pop) => void;
@@ -182,14 +183,27 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   const leadAs = serverMode ? null : (persisted.prefs.leadAs ?? null);
   const demo = persisted.prefs.demo ?? true;
   const dept = persisted.prefs.dept ?? "PRD";
-  const panels = persisted.prefs.panels ?? "grey";
   const motion = persisted.prefs.motion ?? true;
-  const logo = persisted.prefs.logo ?? "blue";
   // Animations off is a page-wide switch: globals.css stops every transition and keyframe under it.
   useEffect(() => {
     if (motion) delete document.documentElement.dataset.motion;
     else document.documentElement.dataset.motion = "off";
   }, [motion]);
+  // Round corners is page-wide too: globals.css unsets the --radius-* tokens under it.
+  const roundCorners = persisted.prefs.roundCorners ?? false;
+  useEffect(() => {
+    if (roundCorners) document.documentElement.dataset.corners = "round";
+    else delete document.documentElement.dataset.corners;
+  }, [roundCorners]);
+  // The dot grid: this browser's values when it has any, else the config default the Ground carries.
+  const { dotsStrength, dotSpacing } = persisted.prefs;
+  const dotsCustom = dotsStrength !== undefined || dotSpacing !== undefined;
+  const dots = normalizeDots({ dotsStrength, dotSpacing });
+  useEffect(() => {
+    const st = document.documentElement.style;
+    if (dotsStrength === undefined) st.removeProperty("--dots-strength"); else st.setProperty("--dots-strength", String(dotsStrength));
+    if (dotSpacing === undefined) st.removeProperty("--dot-spacing"); else st.setProperty("--dot-spacing", dotSpacing + "px");
+  }, [dotsStrength, dotSpacing]);
 
   const [q, setQ] = useState("");
   const [pop, setPop] = useState<Pop | null>(null);
@@ -455,9 +469,9 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     tenant, seed, ready, serverMode, S, D, N, log,
     role, setRole, leadAs, setLeadAs, persona, actor, email,
     demo, toggleDemo: () => setPrefs(slug, { demo: !demo }),
-    panels, setPanels: (t) => setPrefs(slug, { panels: t }),
     motion, setMotion: (on) => setPrefs(slug, { motion: on }),
-    logo, setLogo: (t) => setPrefs(slug, { logo: t }),
+    roundCorners, setRoundCorners: (on) => setPrefs(slug, { roundCorners: on }),
+    dots, dotsCustom, setDots: (patch) => setPrefs(slug, normalizeDots({ ...dots, ...patch })), resetDots: () => setPrefs(slug, { dotsStrength: undefined, dotSpacing: undefined }),
     dept, setDept: (id) => { setPrefs(slug, { dept: id }); setMenu(false); }, matches: (depts) => dept === "All" || depts.includes(dept), deptName,
     q, setQ, pop, setPop, togglePop: (p) => setPop((cur) => (cur === p ? null : p)),
     sheet, openSheet: (kind, id, init) => { setSheet({ kind, id, text: "", picked: null, people: [], ...init }); setPop(null); },

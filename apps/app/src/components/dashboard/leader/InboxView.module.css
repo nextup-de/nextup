@@ -14,11 +14,9 @@
   --c-fill: #f2f2f7; --c-sep-head: #e5e5ea; --c-sep: #d1d1d6; --c-hover: #f7f7f9; --c-divider: #f0f0f3;
   --c-late: #ff3b30; --c-left: #007aff;
   --col-w: 300px; /* the open list and the item's side column (IdeaDetail .side) */
-  /* The reasoning panels: grey by default, blue or deep blue from the dev panel. */
+  /* The reasoning panels: grey. */
   --p-bg: #f7f7f9; --p-fg: #1c1c1e; --p-sub: #8e8e93; --p-track: #e5e5ea; --p-bar: #007aff; --p-gauge: #007aff; --p-hl: #0a84ff;
 }
-.page[data-panels="blue"] { --p-bg: #007aff; --p-fg: #fff; --p-sub: rgb(255 255 255 / 0.78); --p-track: rgb(255 255 255 / 0.25); --p-bar: #fff; --p-hl: #007aff; }
-.page[data-panels="deep"] { --p-bg: #0b70d1; --p-fg: #fff; --p-sub: rgb(255 255 255 / 0.78); --p-track: rgb(255 255 255 / 0.25); --p-bar: #fff; --p-gauge: #0b70d1; --p-hl: #0b70d1; }
 .page { transition: width 420ms var(--ease), margin-left 420ms var(--ease); }
 /* Open, the inbox fills the screen below the shell's 60px bar, --nh-gap (12-18px) from the sides
    (the shell caps content at 1120px and pads it 20px / 40px; the page reaches past both). The list
@@ -58,12 +56,12 @@
   position: relative; z-index: 2; box-sizing: border-box;
   width: min(680px, 100%); margin-left: calc((100% - min(680px, 100%)) / 2);
   display: flex; flex-direction: column;
-  background: var(--nh-card); border-radius: 22px; overflow: hidden; min-width: 0;
+  background: var(--nh-card); border-radius: var(--radius-md, 22px); overflow: hidden; min-width: 0;
   box-shadow: 0 10px 30px rgb(40 60 100 / 0.08), 0 1px 2px rgb(40 60 100 / 0.05);
   color: var(--c-ink);
   transition: width 420ms var(--ease), margin-left 420ms var(--ease);
 }
-.page[data-open="true"] .card { width: var(--col-w); margin-left: 0; height: 100%; border-radius: 18px; } /* the item's card radius (IdeaDetail .card) */
+.page[data-open="true"] .card { width: var(--col-w); margin-left: 0; height: 100%; border-radius: var(--radius-md, 18px); } /* the item's card radius (IdeaDetail .card) */
 .page[data-tucked="true"] .card { width: 64px; }
 
 .cardHead { flex: none; display: flex; align-items: center; gap: 0; padding: 14px 14px 14px 22px; border-bottom: 1px solid var(--c-sep-head); overflow: hidden; transition: padding 380ms var(--ease), gap 380ms var(--ease); }
@@ -80,7 +78,7 @@
 .tools { display: flex; align-items: center; gap: 6px; transition: opacity 380ms var(--ease); }
 .page[data-tucked="true"] .tools { opacity: 0; pointer-events: none; }
 /* Filter / Sort: dark pills with an icon and a label (the Overview's toggles); docked beside an open item they fold to icon circles. */
-.tool { height: 32px; flex: none; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 0; border-radius: 999px; background: #111; color: #fff; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; box-shadow: 0 1px 2px rgb(40 60 100 / 0.08); transition: background 0.15s, padding 380ms var(--ease), transform 160ms cubic-bezier(.2,.8,.2,1); }
+.tool { height: 32px; flex: none; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 0; border-radius: var(--radius-sm, 999px); background: #111; color: #fff; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; box-shadow: 0 1px 2px rgb(40 60 100 / 0.08); transition: background 0.15s, padding 380ms var(--ease), transform 160ms cubic-bezier(.2,.8,.2,1); }
 .tool svg { flex: none; }
 .tool:hover { background: #3a3a3c; }
 .tool:active { transform: scale(.97); }
@@ -91,13 +89,13 @@
 /* ── rows ── */
 .scroll { position: relative; flex: 1; min-height: 0; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: none; transition: padding 380ms var(--ease); }
 .page[data-open="true"] .scroll { overflow-y: auto; padding: 6px 8px; }
-.hl { position: absolute; top: 0; left: 0; width: 0; height: 0; background: var(--p-hl); border-radius: 12px; opacity: 0; pointer-events: none; box-shadow: 0 4px 12px rgb(10 132 255 / 0.28); will-change: transform; }
+.hl { position: absolute; top: 0; left: 0; width: 0; height: 0; background: var(--p-hl); border-radius: var(--radius-sm, 12px); opacity: 0; pointer-events: none; box-shadow: 0 4px 12px rgb(10 132 255 / 0.28); will-change: transform; }
 .page:not([data-open="true"]) .hl { display: none; }
 .list { list-style: none; margin: 0; padding: 0; }
 .row { position: relative; z-index: 1; display: flex; gap: 12px; width: 100%; padding: 0 0 0 16px; border: 0; background: transparent; text-align: left; font: inherit; color: inherit; cursor: pointer; transition: background-color 380ms var(--ease), padding 380ms var(--ease), gap 380ms var(--ease); }
 .row:hover { background: var(--c-hover); }
 .row:focus-visible { outline: 2px solid var(--c-left); outline-offset: -2px; }
-.page[data-open="true"] .row { gap: 10px; padding-left: 10px; border-radius: 12px; }
+.page[data-open="true"] .row { gap: 10px; padding-left: 10px; border-radius: var(--radius-sm, 12px); }
 .page[data-tucked="true"] .row { padding-left: 8px; padding-bottom: 8px; }
 .row[data-active="true"], .row[data-active="true"]:hover { background: transparent; } /* the highlight shows through */
 
@@ -127,7 +125,7 @@
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; } /* a case's body can run long */
 .rowRight { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-top: 2px; }
 .sent { font-size: var(--nh-fs-md); color: #8e8e93; white-space: nowrap; transition: font-size 380ms var(--ease), color 380ms var(--ease); }
-.badge { font-size: var(--nh-fs-xs); font-weight: 600; border-radius: 999px; padding: 3px 9px; white-space: nowrap; transition: font-size 380ms var(--ease), padding 380ms var(--ease), color 380ms var(--ease), background-color 380ms var(--ease); }
+.badge { font-size: var(--nh-fs-xs); font-weight: 600; border-radius: var(--radius-sm, 999px); padding: 3px 9px; white-space: nowrap; transition: font-size 380ms var(--ease), padding 380ms var(--ease), color 380ms var(--ease), background-color 380ms var(--ease); }
 .badge[data-tone="late"] { color: var(--c-late); background: rgb(255 59 48 / 0.12); }
 .badge[data-tone="overdue"] { color: var(--c-mute); background: rgb(110 110 115 / 0.12); }
 .badge[data-tone="left"] { color: var(--c-left); background: rgb(0 122 255 / 0.12); }
@@ -145,7 +143,7 @@
 /* ── the item beside the list ── */
 .pane {
   position: absolute; top: 0; bottom: 0; left: calc(var(--col-w) + var(--nh-gap)); right: 0;
-  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; border-radius: 18px;
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; border-radius: var(--radius-md, 18px);
   opacity: 0; transform: translateX(56px); pointer-events: none;
   transition: opacity 360ms ease, transform 520ms var(--ease), left 560ms var(--ease);
 }

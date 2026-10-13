@@ -167,8 +167,7 @@ function Inbox() {
 }
 
 // Team member: one title and one box.
-// Raise (RaiseView): the greeting, the box (idea/problem switch + one line, Attach/Affected + send)
-// and the "How NextUp works" card with its four steps.
+// Raise (RaiseView): the greeting and the box (idea/problem switch + one line, Attach/Affected + send).
 function Raise() {
   return (
     <>
@@ -184,22 +183,6 @@ function Raise() {
             <Skeleton w={92} h={32} r="pill" />
           </div>
           <Skeleton w={36} h={36} r="circle" />
-        </div>
-      </div>
-      <div className={styles.raiseCard}>
-        <div className={styles.raiseCardHead}>
-          <Skeleton w={170} h={20} />
-          <Skeleton w={150} h={11} />
-        </div>
-        <div className={styles.raiseHow}>
-          {n(4).map((i) => (
-            <div key={i} className={styles.raiseStep}>
-              <Skeleton w="100%" h={78} r="md" />
-              <Skeleton w="60%" h={16} />
-              <Skeleton w="90%" h={11} />
-              <Skeleton w="70%" h={11} />
-            </div>
-          ))}
         </div>
       </div>
     </>

@@ -9,6 +9,9 @@ html { -webkit-text-size-adjust: 100%; }
 html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
   animation: none !important; transition: none !important; scroll-behavior: auto !important;
 }
+/* Round corners (dev panel → Design): unset the radius tokens so every var(--radius-*, <old>) falls
+   back to the pre-Square-Corners value. */
+html[data-corners="round"] { --radius-xs: initial; --radius-sm: initial; --radius-md: initial; }
 body {
   margin: 0;
   background: var(--nh-ground);
@@ -34,7 +37,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* Buttons */
 .nh-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid transparent;
+  height: 42px; padding: 0 18px; border-radius: var(--radius-sm, 999px); border: 1px solid transparent;
   font-weight: 600; font-size: var(--nh-fs-md); cursor: pointer; white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
