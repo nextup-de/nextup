@@ -8,6 +8,7 @@ import { parseSeed } from "@/features/demo/parse";
 import { overlayKnowledge } from "@/features/knowledge";
 import { getDb } from "./client";
 import { loadKnowledge } from "./knowledge";
+import { loadLoopRules } from "./loop";
 
 /** A company row plus its people, in the shape the app has always used. */
 export type CompanyRecord = DemoCompany & { id: string; stage: string; demoDay: number };
@@ -85,5 +86,7 @@ export async function loadSeed(slug: string): Promise<Seed | null> {
 /** The same, for a company row already in hand. Use this, not parseSeed(seedJson), anywhere a
  *  route owner or the org chart matters - the blob alone is stale once the tables exist. */
 export async function companySeed(row: { id: string; seedJson: unknown }): Promise<Seed> {
-  return overlayKnowledge(parseSeed(row.seedJson), await loadKnowledge(row.id));
+  const [knowledge, loop] = await Promise.all([loadKnowledge(row.id), loadLoopRules(row.id)]);
+  // The rules after the routing come from CompanyConfig, never from the blob (src/features/loop/rules.ts).
+  return { ...overlayKnowledge(parseSeed(row.seedJson), knowledge), loop };
 }

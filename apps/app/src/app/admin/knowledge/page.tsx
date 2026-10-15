@@ -9,6 +9,8 @@ import { adminBase, adminScope } from "@/features/admin/nav";
 import { KnowledgeView } from "@/components/admin/KnowledgeView";
 import { AssistantAdmin } from "@/components/admin/AssistantAdmin";
 import { IdeaStudioAdmin } from "@/components/admin/IdeaStudioAdmin";
+import { LoopRulesAdmin } from "@/components/admin/LoopRulesAdmin";
+import { loadLoopRules } from "@/lib/db/loop";
 import styles from "../admin.module.css";
 
 export default async function KnowledgePage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
@@ -21,6 +23,7 @@ export default async function KnowledgePage({ searchParams }: { searchParams: Pr
   const view = await knowledgeView(ctx.live ? current?.id ?? null : null);
   const assistant = await assistantView(ctx.live ? current?.id ?? null : null);
   const ideas = await ideasView(ctx.live ? current?.id ?? null : null);
+  const loop = ctx.live && current ? await loadLoopRules(current.id) : null;
 
   return (
     <>
@@ -46,6 +49,7 @@ export default async function KnowledgePage({ searchParams }: { searchParams: Pr
       {view.source === "none" ? null : <KnowledgeView knowledge={view.knowledge} profile={view.profile} brief={view.brief} />}
       {assistant && current ? <AssistantAdmin slug={current.slug} view={assistant} /> : null}
       {ideas && current ? <IdeaStudioAdmin slug={current.slug} {...ideas} /> : null}
+      {loop && current ? <LoopRulesAdmin slug={current.slug} rules={loop} /> : null}
     </>
   );
 }

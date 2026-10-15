@@ -1,6 +1,6 @@
 # Security
 
-> **Updated 2026-10-11** · reference: what protects each door, and the open list before real customers.
+> **Updated 2026-10-15** · reference: what protects each door, and the open list before real customers.
 
 How NextUp keeps companies apart, what protects each door, and what has to land before
 real customers depend on it. Read this before touching login, `/admin`, stages or the API.
@@ -37,6 +37,8 @@ An unknown stage gets the real-people policy: fail closed. Creating a company in
 | Every server action | re-checks the session for the slug; never trusts the client for actor or company | - |
 | Every page that loads its own data | `guardPage` (`src/server/page-guard.ts`) re-checks the session and the role - the `(app)` layout's check does not keep a page's output out of the response, and the proxy is routing, not a boundary | - |
 | Case and idea events | `mayAppend` (`src/features/cases/permissions.ts`): only whoever holds a case (or a manager) decides, hands or asks; only the raiser answers; only managers re-route or move the clock; no re-raising an existing id | - |
+| Discussions | `mayAppend`: only whoever holds the case (or a manager) starts one, invites or checks in; past the company's last round only a manager adds one; only the raiser revises, and only before the decision. Behind the `discussion` flag (`appendEventAction`) | - |
+| Projects | `mayAppendProject` (`src/features/projects/permissions.ts`): a yes opens a project only as the case's first decision; the lead (or a manager) runs it - baseline before the start, measures only once a check opens; the team adds steps, a step's owner or the lead moves it; only a manager records a reward, only an author claims it. Behind the `projects` flag | - |
 | `n8n.<domain>`, `mail.<domain>` | Caddy `basic_auth` from `OPS_USER` / `OPS_PASSWORD_HASH`; unset = 401 for everyone | - |
 
 Sessions are HMAC-signed cookies (`src/features/auth/cookie.ts`), `HttpOnly`, `SameSite=Lax`, and

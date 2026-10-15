@@ -8,7 +8,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getViewerFor } from "@/features/auth/session";
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
-import { APP_EVENT_TYPES } from "@/features/cases/persist";
+import { APP_EVENT_TYPES, DISCUSSION_EVENT_TYPES, needsProjectsFlag } from "@/features/cases/persist";
+import { isEnabled } from "@/features/flags";
 import { mayAppend } from "@/features/cases/permissions";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
@@ -20,6 +21,7 @@ import { policyFor } from "@/features/admin/stages";
 import { buildRaisedNotice } from "@/features/cases/notice";
 import { companyBaseUrl, notifyCaseRaised } from "@/server/case-notice";
 import { mailConfigured } from "@/server/mail";
+import { notifyLoop } from "@/server/loop-notice";
 
 // Same ceiling as the integration endpoint (features/integrations MAX_PAYLOAD_BYTES): one event
 // is a title, a body and a few ids, never a file.
@@ -63,6 +65,14 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   const viewer = await getViewerFor(slug);
   if (!viewer) return { ok: false, error: "Your session has expired. Log in again." };
 
+  // Behind a flag until admin.sellux.ch turns it on for this company (src/config/flags.ts).
+  if (DISCUSSION_EVENT_TYPES.includes(type) && !(await isEnabled(slug, "discussion"))) {
+    return { ok: false, error: "The discussion stage is not switched on for this company." };
+  }
+  if (needsProjectsFlag(type, payload) && !(await isEnabled(slug, "projects"))) {
+    return { ok: false, error: "Projects are not switched on for this company." };
+  }
+
   // Who may do this to this case? Answered against the reduced log, the same state every browser
   // renders - the buttons the UI hides are hidden here too (features/cases/permissions.ts).
   const log = await loadLogForSlug(slug);
@@ -89,6 +99,8 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   if (type === "case.raised" && target) {
     void notifyRaised(slug, viewer.companyId, id, target, payload);
   }
+  // Discussions and projects: the people asked, and the author at every step (features/loop/notice.ts).
+  notifyLoop(slug, { type: type as CaseEventType, actor, target, payload });
 
   revalidatePath("/" + slug, "layout");
   revalidatePath("/", "layout"); // subdomain mode: the company is the host, so the path has no slug
