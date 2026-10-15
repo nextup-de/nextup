@@ -6,29 +6,39 @@
 // moves. A reload or the reset button puts it back. The chevron folds it to a pill like the Dev button's
 // (remembered in this browser). Clicks on it never reach the page behind: no menu of the app closes, nothing
 // moves out of its way. The next step's title with where it happens, and one button that takes it; the
-// three dots go a step back or restart the demo. The steps:
+// three dots go a step back or restart the demo. Every click the story needs is a step here:
 //
-//   Start demo        fresh from the seed, as Jonas on the raise page
-//   Fill sample idea  the reporting-screen idea in the start view - the presenter presses Ask NextUp
-//   First, Second answer  the next answer in the composer - the presenter presses Send
-//   Full conversation the rest of the eight topics in one go - then the presenter publishes it
-//   Receiver view     the inbox of whoever received it
+//   Fill sample idea  the reporting-screen idea in the start view
+//   Send to NextUp    Ask NextUp: the chat with NextUp's reply, its short read and what is still unclear
+//   First, Second answer + Send answer  each filled and sent: three exchanges before it can be published
+//   Preview           the last look before it goes out
+//   Finalize          the final document
+//   Send idea         to the receiver NextUp ranks first
+//   Switch to team leader  the inbox of whoever received it
+//   Open the idea     the idea open in that inbox
+//   Accept it         "Yes, do it" (a project opens when projects are on)
+//   Open the project  the team leader's new project (skipped when projects are off)
 //   Manager view      the Dashboard
 //
 // The button waits (dimmed, its tooltip says why) while the step cannot be taken yet - until NextUp has
-// answered, until the idea is published. The raise page says which fills it can take (lib/demo-controls.ts).
+// answered, until the idea is sent. The raise page says which clicks it can take (lib/demo-controls.ts).
+// A step the presenter took on the page itself (the role switched in the dev panel, the idea opened in the
+// inbox, its own "Yes, do it", the project opened from a link) is passed over, so the button never gets stuck.
 // Static demo only.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { usePathname, useRouter } from "next/navigation";
 import { DEMO_IDEA, FILLED_ANSWERS } from "@/features/ideas/demo-script";
-import { getRaiseHooks, getRun, getServerRun, noRaiseHooks, RUN_PARAM, setRun, subscribeRaiseHooks, subscribeRun } from "@/lib/demo-controls";
+import { projectOfCase } from "@/features/projects/selectors";
+import { getInboxCase, getRaiseHooks, getRun, getServerRun, noInboxCase, noRaiseHooks, RUN_PARAM, setRun, subscribeInboxCase, subscribeRaiseHooks, subscribeRun } from "@/lib/demo-controls";
 import styles from "./DemoControls.module.css";
 import dev from "./DevPanel.module.css";
 
-// `where`: the tag on the right - where the step happens. `verb`: the button. `back`: what going back to
-// this step shows again - the page the presenter was on after taking it.
-type Step = { label: string; where: string; verb: string; sub: string; can: boolean; run: () => void; back?: () => void };
-const ORDINAL = ["First", "Second", "Third", "Fourth", "Fifth"];
+// `where`: the tag on the right - where the step happens. `verb`: the button. `undo`: how "Back a step" leaves
+// this step - the screen before it (browser history, or the role switched back); none where only data changed.
+// `past`: already done on the page itself (the composer's own send, the chat's Publish): the button passes it over.
+type Step = { label: string; where: string; verb: string; sub: string; can: boolean; run: () => void; undo?: () => void; past?: boolean };
+const ORDINAL = ["First", "Second", "Third", "Fourth"];
 const FOLDED = "nextup.demo.card.folded.v1"; // whether the card is folded, in this browser
 const EDGE = 8; // a dragged card never goes closer to the window's edge than this
 const GAP = 8; // the Dev button keeps this far from a card that would cover it
@@ -77,8 +87,13 @@ function dodge(col: HTMLElement, card: HTMLElement) {
 export function DemoControls() {
   const ctx = useDemo();
   const { S, href } = ctx;
+  const router = useRouter();
   const hooks = useSyncExternalStore(subscribeRaiseHooks, getRaiseHooks, noRaiseHooks);
   const run = useSyncExternalStore(subscribeRun, getRun, getServerRun); // this page load's run
+  const inboxCase = useSyncExternalStore(subscribeInboxCase, getInboxCase, noInboxCase); // the case open in the leader's inbox
+  const pathname = usePathname();
+  // Remember how far the script got: while NextUp answers the page offers nothing, and `at` reads -1.
+  useEffect(() => { if (hooks.at > run.reached) setRun({ reached: hooks.at }); }, [hooks.at, run.reached]);
   const isFolded = useSyncExternalStore(subscribeFolded, getFolded, () => false);
   const [menu, setMenu] = useState<"up" | "down" | null>(null); // open, above or below the card
   const [moved, setMoved] = useState(() => kept !== null); // dragged out of the dev column (until a reload or the reset)
@@ -145,30 +160,65 @@ export function DemoControls() {
   const published = added.find((c) => c.title === DEMO_IDEA.text) ?? added.at(-1) ?? null;
 
   // Start from the seed: the raise page loads again (components/demo/StaticDemo.tsx wipes what the last run
-  // added), and the run there begins with Start demo taken (lib/demo-controls.ts RUN_PARAM).
+  // added), and the run there begins at Fill sample idea (lib/demo-controls.ts RUN_PARAM).
   const start = () => window.location.assign(href("/raise") + "?" + RUN_PARAM);
 
   const raise = () => ctx.setRole("member"); // back on Jonas's raise page, the conversation as it was
+  const history = () => router.back(); // the screen before, from the browser's history (the raise page's URL names its screens)
   const inbox = () => { if (published) ctx.setLeadAs(published.assignee); };
+  const openCase = () => { if (published) router.push(href("/leader?id=" + encodeURIComponent(published.id))); };
+  // "Yes, do it": with projects on, the yes opens a project led by the receiver, named after the idea.
+  const accept = () => {
+    if (!published) return;
+    if (ctx.flag("projects")) ctx.act.accept(published.id, { lead: published.assignee, title: published.title });
+    else ctx.act.decide(published.id, "yes");
+    ctx.showToast("Yes. " + published.from + " has been told" + (ctx.flag("projects") ? "; the project is open." : "."));
+  };
+  // The project that yes opened, on the team leader's screen; the manager's view comes only after it.
+  const project = published?.decided?.answer === "yes" ? projectOfCase(S, published) : undefined;
+  const projectHref = project ? href("/projects/" + encodeURIComponent(project.id)) : null;
+  const openProject = () => { if (projectHref) router.push(projectHref); };
+  const leading = ctx.role === "leader";
+  // The same clicks made on the page itself pass the steps over, so the button always offers what is still to do.
+  const decided = !!published?.decided;
+  const managing = ctx.role === "manager" && decided; // the manager's screens once the yes is in: the end of the story
+  const caseOpen = !!published && leading && (inboxCase === published.id || pathname === href("/cases/" + encodeURIComponent(published.id)));
+  const onProject = !!projectHref && pathname === projectHref;
+  const reached = Math.max(run.reached, hooks.at); // how far the conversation got in the script this run
   const steps: Step[] = [
-    { label: "Start demo", where: "Demo", verb: "Start", sub: "A fresh demo, from the seed", can: true, run: start, back: raise },
-    { label: "Fill sample idea", where: "Raise", verb: "Fill", sub: hooks.fillIdea ? "Then press Ask NextUp" : "On the raise page, before anything is sent", can: !!hooks.fillIdea, run: () => hooks.fillIdea?.(), back: raise },
-    ...Array.from({ length: FILLED_ANSWERS }, (_, k): Step => ({
-      label: ORDINAL[k] + " answer", where: "Chat", verb: "Fill", sub: hooks.at === k + 1 && hooks.fillAnswer ? "Then press Send" : "Waiting for NextUp’s question",
-      can: hooks.at === k + 1 && !!hooks.fillAnswer, run: () => hooks.fillAnswer?.(), back: raise,
-    })),
-    { label: "Full conversation", where: "Chat", verb: "Fill", sub: hooks.fillRest ? "Optional: Finalize works without it" : "Waiting for NextUp’s reply to the " + ORDINAL[FILLED_ANSWERS - 1].toLowerCase() + " answer", can: !!hooks.fillRest, run: () => hooks.fillRest?.(), back: raise },
-    { label: "Receiver view", where: "Inbox", verb: "Open", sub: published ? "The inbox of " + published.assignee : "Publish the idea first", can: !!published, run: inbox, back: inbox },
-    { label: "Manager view", where: "Dashboard", verb: "Open", sub: "The Dashboard", can: true, run: () => ctx.setRole("manager") },
+    { label: "Fill sample idea", where: "Raise", verb: "Fill", sub: hooks.fillIdea ? "The reporting-screen idea" : "On the raise page, before anything is sent", can: !!hooks.fillIdea, run: () => hooks.fillIdea?.(), past: reached >= 1 },
+    { label: "Send to NextUp", where: "Raise", verb: "Send", sub: hooks.send ? "Ask NextUp" : "Fill the idea first", can: !!hooks.send, run: () => hooks.send?.(), past: reached >= 1 },
+    ...Array.from({ length: FILLED_ANSWERS }, (_, k): Step[] => [
+      { label: ORDINAL[k] + " answer", where: "Chat", verb: "Fill", sub: hooks.at === k + 1 && hooks.fillAnswer ? "The script’s answer to NextUp’s question" : "Waiting for NextUp’s question", can: hooks.at === k + 1 && !!hooks.fillAnswer, run: () => hooks.fillAnswer?.(),
+        past: reached >= k + 2 || (hooks.at === k + 1 && !!hooks.send && !hooks.fillAnswer) },
+      { label: "Send answer", where: "Chat", verb: "Send", sub: hooks.at === k + 1 && hooks.send ? "Send it to NextUp" : "Fill the answer first", can: hooks.at === k + 1 && !!hooks.send, run: () => hooks.send?.(), past: reached >= k + 2 },
+    ]).flat(),
+    { label: "Preview", where: "Chat", verb: "Preview", sub: hooks.preview ? "The last look before it goes out" : "Waiting for NextUp’s reply", can: !!hooks.preview, run: () => hooks.preview?.(), undo: history, past: !!hooks.finalize || !!hooks.sendFinal || !!published },
+    { label: "Finalize", where: "Preview", verb: "Finalize", sub: hooks.finalize ? "The final document" : "Open the preview first", can: !!hooks.finalize, run: () => hooks.finalize?.(), undo: history, past: !!hooks.sendFinal || !!published },
+    { label: "Send idea", where: "Document", verb: "Send", sub: hooks.sendFinal ? "To the receiver NextUp suggests" : "Open the final document first", can: !!hooks.sendFinal, run: () => hooks.sendFinal?.(), undo: history, past: !!published },
+    { label: "Switch to team leader", where: "Inbox", verb: "Switch", sub: published ? "The inbox of " + published.assignee : "Waiting for the idea to be sent", can: !!published, run: inbox, undo: raise,
+      past: !!published && (leading || decided) },
+    { label: "Open the idea", where: "Inbox", verb: "Open", sub: published ? published.title : "Send the idea first", can: !!published && leading, run: openCase, undo: inbox, // not history: the person is not in the URL
+      past: caseOpen || decided },
+    { label: "Accept it", where: "Inbox", verb: "Accept", sub: "Yes, do it", can: !!published && leading && !decided, run: accept,
+      past: decided },
+    { label: "Open the project", where: "Projects", verb: "Open", sub: project ? project.title : "Accept the idea first", can: !!project, run: openProject, undo: openCase,
+      past: !ctx.flag("projects") || onProject || managing || (decided && !project) },
+    { label: "Manager view", where: "Dashboard", verb: "Open", sub: "The Dashboard", can: true, run: () => ctx.setRole("manager"), undo: inbox,
+      past: managing },
   ];
-  // The step the button takes; steps.length once all are taken. The full conversation is optional: an idea
-  // finalized and published after the first three steps goes straight on to the receiver view.
-  const next = run.started ? run.done + 1 : 0;
-  const at = steps[next]?.label === "Full conversation" && published ? next + 1 : next;
+  // The step the button takes; steps.length once all are taken.
+  let at = run.done + 1;
+  while (steps[at]?.past) at += 1;
+  // Opening and accepting the idea need the leader's inbox: away from it before the yes (the role switched by
+  // hand), the button offers the switch again instead of waiting.
+  const toLead = steps.findIndex((s) => s.label === "Switch to team leader");
+  if (published && !leading && !decided && at > toLead && steps[at]?.where === "Inbox") at = toLead;
   const step = steps[at] ?? null;
   const take = () => { if (!step?.can) return; setRun({ done: at }); step.run(); };
-  // A step back: the button offers the last step again, and the page from before it comes back.
-  const goBack = () => { setMenu(null); const to = Math.max(0, run.done - 1); setRun({ done: to }); steps[to].back?.(); };
+  // A step back: the button offers the last step again, and the screen from before it comes back. A step that
+  // changed data (a message sent, the yes) stays done - nothing is undone, the step is only offered again.
+  const goBack = () => { setMenu(null); const undo = steps[run.done]?.undo; setRun({ done: Math.max(-1, run.done - 1) }); undo?.(); };
   const restart = () => { setMenu(null); start(); };
 
   // Folded: a pill like the Dev button's; a click unfolds it where it is.
@@ -209,7 +259,7 @@ export function DemoControls() {
       </button>
       {menu && (
         <div className={styles.menu} data-side={menu} role="menu">
-          <button type="button" role="menuitem" onClick={goBack} disabled={!run.started || run.done <= 0}>Back a step</button>
+          <button type="button" role="menuitem" onClick={goBack} disabled={run.done < 0}>Back a step</button>
           <button type="button" role="menuitem" onClick={restart}>Restart demo</button>
         </div>
       )}

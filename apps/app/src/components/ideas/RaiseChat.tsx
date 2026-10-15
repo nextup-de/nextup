@@ -1,24 +1,29 @@
 "use client";
 // The raise page's chat: the coach's questions and the author's answers, the progress rail on the right
-// (one segment per unclear topic) and the composer docked at the bottom. The scores stay in the analysis.
-// Props in, JSX out.
+// (one segment per unclear topic) and the composer docked at the bottom. Under the latest reply: the
+// reply's text, the one or two points still unclear, then the AI's read of the idea (the five dials as bars
+// and words, no numbers - those are in the full analysis, opened only from here). Props in, JSX out.
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
-import type { Topic } from "@/features/ideas/raise";
+import { levelOf, type Advice, type Dial, type Topic } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
 import s from "./Raise.module.css";
 
-// `publish`: "Publish now" under the latest reply, once the idea is ready. `finalize`: "Finalize" next to it, always there once there is a conversation.
-export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; publish?: boolean; finalize?: boolean; link?: { label: string; href: string } };
+// `read`: the five dials as they stand after this reply, and the advice. `open`: the points still unclear (one or two).
+export type Read = { dials: Dial[]; advice: Advice; first: boolean; open: Topic[] };
+// `publish`: the one "Publish" button under the latest reply, once the conversation is long enough; it opens
+// the last look, from which the final document is sent.
+// `asked`: under an earlier reply, the points it left unclear, with where they stand now (clear ones are ticked).
+export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; read?: Read; asked?: Topic[]; publish?: boolean; link?: { label: string; href: string } };
 
-export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onPublish, onFinalize, dock, followKey }: {
+export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onAnalysis, onPublish, dock, followKey }: {
   msgs: ChatMsg[];
   typing: boolean; typingLabel: string;
   error: string;
   gaps: Topic[];
   onAsk: (g: Topic) => void;
+  onAnalysis: () => void;
   onPublish: () => void;
-  onFinalize: () => void;
   dock: React.ReactNode;
   followKey: string; // changes when the thread grows: scroll to its end
 }) {
@@ -39,11 +44,13 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onPub
               <div key={m.id} className={s.msg} data-role={m.role}>
                 <p className={s.bubble}>{m.text}</p>
                 {m.note && <span className={s.note}><Solid name="sparkle" size={8.25} fill="#007aff" />{m.note}</span>}
+                {m.read && m.read.open.length > 0 && <Unclear open={m.read.open} onAsk={onAsk} />}
+                {m.asked && m.asked.length > 0 && <Unclear open={m.asked} onAsk={onAsk} past />}
+                {m.read && <ReadCard r={m.read} onAnalysis={onAnalysis} />}
                 {m.link && <div className={s.quick}><Link className={s.quickBtn} data-primary="ink" href={m.link.href}>{m.link.label}</Link></div>}
-                {(m.publish || m.finalize) && (
+                {m.publish && (
                   <div className={s.quick}>
-                    {m.finalize && <button type="button" className={s.quickBtn} data-primary={m.publish ? undefined : "ink"} onClick={onFinalize}><Icon name="check" size={12} width={2.6} />Finalize</button>}
-                    {m.publish && <button type="button" className={s.publish} data-state="ready" onClick={onPublish}><Icon name="up" size={11.25} width={2.4} />Publish now</button>}
+                    <button type="button" className={s.publish} data-state="ready" onClick={onPublish}><Icon name="up" size={11.25} width={2.4} />Publish</button>
                   </div>
                 )}
               </div>
@@ -57,6 +64,57 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onPub
         {gaps.length > 0 && <Rail gaps={gaps} onAsk={onAsk} />}
       </div>
       {dock}
+    </div>
+  );
+}
+
+// What the AI makes of the idea right now: the five dials of the analysis, each as a bar, one word and
+// its reason, the advice under them, and the way into the full analysis.
+function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
+  return (
+    <div className={s.read} role="group" aria-label="AI analysis">
+      <div className={s.readHead}>
+        <Solid name="sparkle" size={11.25} fill="#007aff" />
+        <span className={s.readTitle}>{r.first ? "AI analysis · first read" : "AI analysis"}</span>
+        <span className={s.readAdvice} data-advice={r.advice.name === "Approve" ? "go" : r.advice.name === "Pilot" ? "pilot" : "info"}>{r.advice.name}</span>
+      </div>
+      <div className={s.readRows}>
+        {r.dials.map((d) => (
+          <div key={d.key} className={s.readRow}>
+            <span className={s.readLabel}>{d.label}</span>
+            <span className={s.readBar} aria-hidden="true"><i style={{ width: (d.scored ? Math.max(4, d.value) : 0) + "%" }} /></span>
+            <span className={s.readLevel}>{levelOf(d)}</span>
+            <span className={s.readNote}>{d.note}</span>
+          </div>
+        ))}
+      </div>
+      <div className={s.readFoot}>
+        <p className={s.readWhy}>{r.advice.why}</p>
+        <button type="button" className={s.readMore} onClick={onAnalysis}>View full analysis<Icon name="right" size={9.75} width={2.6} /></button>
+      </div>
+    </div>
+  );
+}
+
+// The one or two points the idea still leaves open, as plain questions; a click answers that one next.
+// The points a reply left unclear. `past`: under an earlier reply - "Asked", and a point answered since is ticked
+// (no longer a button: there is nothing left to ask).
+function Unclear({ open, onAsk, past = false }: { open: Topic[]; onAsk: (g: Topic) => void; past?: boolean }) {
+  return (
+    <div className={s.unclear} role="group" aria-label={past ? "Asked" : "Still unclear"} data-past={past || undefined}>
+      <span className={s.unclearHead}>{past ? "Asked" : "Still unclear"}</span>
+      {open.map((g, i) => {
+        const inner = (
+          <>
+            <span className={s.unclearN}>{i + 1}</span>
+            <span className={s.unclearText}><span className={s.unclearLabel}>{g.label}</span>{g.ask}</span>
+            {g.status === "clear" && <span className={s.unclearDone} aria-label="Answered"><Icon name="check" size={12} width={2.6} /></span>}
+          </>
+        );
+        return g.status === "clear"
+          ? <div key={g.id} className={s.unclearQ} data-done="true">{inner}</div>
+          : <button key={g.id} type="button" className={s.unclearQ} onClick={() => onAsk(g)} title="Answer this next">{inner}</button>;
+      })}
     </div>
   );
 }

@@ -63,3 +63,14 @@
   .printRoot { display: block; }
   .printRoot .doc { box-shadow: none; border-radius: 0; padding: 0; }
 }
+
+/* The placeholder while the document is put together (DocLoading): grey bars that shimmer. */
+.skel { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, #ececf0 0%, #f6f6f9 50%, #ececf0 100%); background-size: 200% 100%; animation: docShimmer 1.1s linear infinite; }
+.skel[data-w="15"] { width: 15%; } .skel[data-w="20"] { width: 20%; } .skel[data-w="30"] { width: 30%; } .skel[data-w="40"] { width: 40%; }
+.skel[data-w="55"] { width: 55%; } .skel[data-w="70"] { width: 70%; } .skel[data-w="85"] { width: 85%; } .skel[data-w="100"] { width: 100%; }
+.skel[data-h="title"] { height: 30px; border-radius: 9px; margin: 4px 0; }
+.skel[data-h="block"] { height: 96px; border-radius: 10px; }
+.skelBtn { display: block; width: 104px; height: 34px; border-radius: 999px; background: #e3ebf8; animation: docPulse 1s ease-in-out infinite; }
+@keyframes docShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes docPulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .skel, .skelBtn { animation: none; } }

@@ -3,7 +3,7 @@
 // (features/ideas/raise.ts topicsOf); the draft
 // survives a reload; publishing asks who should get it and raises the case on their desk.
 // docs/IDEAS.md.
-import { aiMessages, answerCoach, DEVELOP, expect, publishTo, START, test } from "../helpers";
+import { aiMessages, answerCoach, DEVELOP, DEVELOP_MORE, expect, publishTo, START, test } from "../helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/acme/raise");
@@ -22,15 +22,15 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
   await close.click();
 
-  // The chat: the coach's first answer (no read under it - the analysis was shown first), and the rail
+  // The chat: the coach's first answer with the AI's short read under it, and the rail
   // of the 2-8 unclear topics, the coach asking one of them now.
   await expect(aiMessages(page).first()).toContainText(/\S.{40,}/);
-  await expect(page.getByRole("group", { name: "AI analysis" })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "AI analysis" })).toHaveCount(1);
   const segs = page.locator("[data-rail-seg]");
   await expect.poll(() => segs.count()).toBeGreaterThanOrEqual(2);
   expect(await segs.count()).toBeLessThanOrEqual(8);
   await expect(page.locator('[data-rail-seg][aria-label$="asking now"]')).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Publish idea" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled(); // three messages from the author first
 });
 
 test("develop it, keep it as a draft, publish it", async ({ page }) => {
@@ -49,6 +49,7 @@ test("develop it, keep it as a draft, publish it", async ({ page }) => {
   await page.getByRole("button", { name: new RegExp("^" + title.slice(0, 30)) }).first().click();
   await expect(page.getByText(DEVELOP)).toBeVisible();
 
+  await answerCoach(page, DEVELOP_MORE);
   await publishTo(page, "T. Vogel");
   await expect(page.getByText(/on T\. Vogel’s desk/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Published", exact: true })).toBeDisabled(); // a status now, not a button

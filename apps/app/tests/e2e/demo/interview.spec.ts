@@ -73,8 +73,8 @@ test("the interview script: employee raises, team leader finds it, manager sees 
       await close.click();
     }
     await expect(aiMessages(page).first()).toContainText(/\S.{40,}/, { timeout: 30_000 });
-    // Publishing is open from the first answer; the coach keeps asking what is unclear.
-    await expect(page.getByRole("button", { name: "Publish idea" })).toBeEnabled();
+    // Publishing waits for three messages from the author; the coach keeps asking what is unclear.
+    await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled();
   });
 
   await test.step("employee: keeps writing, twice, and each time the coach answers", async () => {

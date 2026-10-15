@@ -24,6 +24,33 @@ const Remove = ({ onClick, what }: { onClick: () => void; what: string }) => (
   </button>
 );
 
+// The second between "Publish" and the last look: the same window, its parts as grey placeholders while NextUp lays it out.
+export function PreviewLoading() {
+  return (
+    <div className={s.wrap}>
+      <div className={s.scrim} aria-hidden="true" />
+      <div className={s.panel} role="dialog" aria-modal="true" aria-label="Preparing the preview" aria-busy="true">
+        <div className={s.head}>
+          <div className={s.headText}>
+            <span className={s.kicker}>Preview · preparing</span>
+            <h2 className={s.heading}>Laying out how it lands in their inbox…</h2>
+          </div>
+        </div>
+        <div className={s.skelBody} aria-hidden="true">
+          <span className={s.skel} data-w="70" data-h="title" />
+          <span className={s.skel} data-w="100" />
+          <span className={s.skel} data-w="92" />
+          <span className={s.skel} data-w="60" />
+          <div className={s.skelRow}><span className={s.skel} data-h="box" /><span className={s.skel} data-h="box" /></div>
+          <span className={s.skel} data-w="40" />
+          <span className={s.skel} data-w="100" data-h="block" />
+        </div>
+        <div className={s.foot}><span className={s.skel} data-w="30" /><span className={s.skelBtn} /></div>
+      </div>
+    </div>
+  );
+}
+
 export function PublishPreview(p: {
   author: string; // left out of the colleagues to add
   look: Look; onLook: (l: Look) => void;

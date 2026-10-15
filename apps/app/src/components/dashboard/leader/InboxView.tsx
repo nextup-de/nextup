@@ -25,6 +25,7 @@ import type { IdeaProps } from "./IdeaParts";
 import { IdeaDetailPhone } from "./IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
+import { showInboxCase } from "@/lib/demo-controls";
 import { ProjectDesk } from "@/components/projects/ProjectDesk";
 
 type Filter = "all" | "late" | "ontime";
@@ -73,6 +74,8 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const viewing = !!sc && views.includes(sc);
   const picked = !!(si || sc);
   const isOpen = open && picked;
+  // The static demo's controls follow along: a case opened here by hand is a step they pass over.
+  useEffect(() => showInboxCase(isOpen ? cid : null), [isOpen, cid]);
 
   // Keyboard: ↑/↓ walk the list (opening the pane if it is closed), Escape closes. The idea's
   // popovers handle their own keys first.

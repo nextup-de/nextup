@@ -1,143 +1,121 @@
 // The static demo (/demo, docs/IDEAS.md "The demo page"): no company, no login, driven from the demo
-// controls under the Dev button (components/shell/DemoControls.tsx). Start demo starts it over as Jonas, in
-// the same tab; the sample idea and two answers are filled one by one and
-// sent by the presenter, the coach's prepared replies come after a short pause and the rail of eight
-// topics fills; the rest of the conversation comes in one go, then publish it - the Overview and the
-// Feed show it, the receiver has it in their inbox, the manager has the Dashboard. A company's /raise
-// offers none of it.
-import { aiMessages, ANSWER, expect, publishTo, START, test } from "../helpers";
+// controls under the Dev button (components/shell/DemoControls.tsx). Every click the story needs is a step
+// there: fill the sample idea, send it, two answers each filled and sent, the last look, Finalize, send it,
+// switch to the team leader, open the idea, accept it, open the project, and the manager's Dashboard. A step
+// taken on the page itself is passed over, the leader's and manager's too. A company's /raise offers none of it.
+import { aiMessages, ANSWER, expect, START, test } from "../helpers";
 
 const TITLE = "A reporting screen at each assembly station";
 
-test("the demo controls walk the story: idea, answers, published, inbox, dashboard", async ({ page, context }) => {
+test("the demo controls click through the whole story: raise, publish, accept, dashboard", async ({ page }) => {
   await page.goto("/demo");
   await expect(page).toHaveURL(/\/demo\/raise$/);
-  await expect(page.getByRole("button", { name: /Insert the / })).toHaveCount(0); // no fill chips in the composer any more
-
-  // Start demo: the demo starts over in this tab - no second tab.
-  await page.getByRole("button", { name: "Start demo" }).click();
-  await expect(page).toHaveURL(/\/demo\/raise$/);
-  expect(context.pages()).toHaveLength(1);
 
   const start = page.getByRole("textbox", { name: START });
   // The controls: the next step's title over the arrow that takes it (the arrow is named after its step).
   const controls = page.getByRole("group", { name: "Demo controls" });
-  const step = async (name: string) => controls.getByRole("button", { name, exact: true });
+  const step = (name: string) => controls.getByRole("button", { name, exact: true });
+  const take = async (name: string) => { await expect(step(name)).toBeEnabled({ timeout: 30_000 }); await step(name).click(); };
 
-  await test.step("the controls are always there, the sample idea the step to take", async () => {
+  await test.step("no Start step: the sample idea is the first", async () => {
     await expect(controls).toContainText("Fill sample idea");
-    await expect(await step("Fill sample idea")).toBeEnabled();
+    await expect(controls.getByRole("button", { name: "Start demo" })).toHaveCount(0);
   });
 
-  await test.step("the sample idea fills the start view, its analysis opens first, then the coach's answer", async () => {
-    await (await step("Fill sample idea")).click();
-    await expect(start).toHaveValue(TITLE); // the title field; the description under it holds what more there is to say
-    await expect(page.getByText("We should put a simple reporting screen")).toBeVisible();
-    await expect(page.getByRole("group", { name: /^Prompts/ }).getByRole("button")).toHaveCount(5); // the prompts under the box
-    await page.getByRole("button", { name: "Ask NextUp" }).click();
-    await page.getByRole("button", { name: "Close analysis" }).click({ timeout: 30_000 });
+  await test.step("fill and send: the chat shows the reply, its short read and what is still unclear", async () => {
+    await take("Fill sample idea");
+    await expect(start).toHaveValue(TITLE);
+    await take("Send to NextUp");
     await expect(aiMessages(page).first()).toContainText("I can see the value here.", { timeout: 30_000 });
-    await expect(page.getByRole("group", { name: "AI analysis" })).toHaveCount(0);
-    await expect(page.locator("[data-rail-seg]")).toHaveCount(8);
+    await expect(page.getByRole("button", { name: "Close analysis" })).toHaveCount(0); // the full analysis stays closed
+    const read = page.getByRole("group", { name: "AI analysis" });
+    for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(read.getByText(label, { exact: true })).toBeVisible();
+    await expect(page.getByRole("group", { name: "Still unclear" }).getByRole("button")).toHaveCount(2);
+    await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0); // not after one exchange
   });
 
-  await test.step("two answers, each filled by the controls and sent by the presenter", async () => {
-    const box = page.getByRole("textbox", { name: ANSWER });
-    for (const [label, reply] of [["First answer", "loses its owner"], ["Second answer", "clear baseline"]]) {
-      await expect(await step(label)).toBeEnabled({ timeout: 15_000 });
-      await (await step(label)).click();
-      await expect(box).not.toHaveValue("");
-      await box.press("Enter");
-      await expect(aiMessages(page).last()).toContainText(reply, { timeout: 30_000 });
-    }
-    await expect(page.locator('[data-rail-seg][aria-label$="clear"]')).toHaveCount(2);
+  await test.step("View full analysis opens it, and only that", async () => {
+    await page.getByRole("button", { name: /View full analysis/ }).click();
+    await page.getByRole("button", { name: "Close analysis" }).click();
   });
 
-  await test.step("three texts are enough: Finalize is there before the rest of the conversation", async () => {
-    await expect(page.getByRole("button", { name: "Finalize", exact: true }).first()).toBeVisible();
+  await test.step("two answers: the first sent from the controls, the second from the composer itself", async () => {
+    await take("First answer");
+    await take("Send answer");
+    await expect(aiMessages(page).last()).toContainText("loses its owner", { timeout: 30_000 });
+    await take("Second answer");
+    await page.getByRole("textbox", { name: ANSWER }).press("Enter"); // sent on the page: the controls follow
+    await expect(aiMessages(page).last()).toContainText("clear baseline", { timeout: 30_000 });
+    await expect(controls).toContainText("Preview");
+    await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(1); // one button, after three exchanges
+    await expect(page.getByRole("button", { name: "Publish now" })).toHaveCount(0);
   });
 
-  await test.step("the full conversation answers the rest of the rail, and it is ready to publish", async () => {
-    await (await step("Full conversation")).click();
-    await expect(aiMessages(page).last()).toContainText("Everything on the right is answered");
-    await expect(page.locator('[data-rail-seg][aria-label$="clear"]')).toHaveCount(8);
-    await expect(page.getByRole("button", { name: "Publish now" })).toBeVisible();
+  await test.step("preview, finalize, send: published to the first suggestion", async () => {
+    await take("Preview");
+    await expect(page.getByRole("dialog", { name: "Last look before it goes out" })).toBeVisible();
+    await take("Finalize");
+    await expect(page.getByRole("article", { name: "Idea document" })).toContainText(TITLE);
+    await take("Send idea");
+    await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
   });
 
-  await test.step("publishing opens the last look: the idea as the inbox shows it, the author's part editable", async () => {
-    await page.getByRole("button", { name: "Publish now" }).click();
-    const look = page.getByRole("dialog", { name: "Last look before it goes out" });
-    await expect(look).toContainText("NextUp analysis is attached below this");
-    await expect(look.getByRole("textbox", { name: "Title" })).toHaveValue(TITLE);
-    await look.getByRole("textbox", { name: "Description" }).fill("A tablet at station 4: operators report a problem in three taps.");
-    await look.getByRole("button", { name: "Back" }).click(); // closing keeps the edit
-    await page.getByRole("button", { name: "Publish now" }).click();
-    await expect(look.getByRole("textbox", { name: "Description" })).toHaveValue(/three taps/);
-    await expect(page.getByRole("dialog", { name: "Who should get this?" })).toHaveCount(0); // no receiver search yet
-    await look.getByRole("button", { name: /Looks good/ }).click();
-    // ...then the final document, with the last look's words, not yet the receiver search.
-    await expect(page.getByRole("article", { name: "Idea document" })).toContainText("three taps");
-    await expect(page.getByRole("dialog", { name: "Who should get this?" })).toHaveCount(0);
-    await page.getByRole("button", { name: "Edit details" }).click(); // back to the last look, so publishTo below goes the same way
-    await expect(look).toBeVisible();
-  });
-
-  await test.step("published: the Overview and the Feed show it, with the edited description", async () => {
-    await publishTo(page, "Thomas Vogel");
-    await page.getByRole("link", { name: "Projects", exact: true }).click(); // the Overview is the "Ideas & problems" tab of Projects
-    await page.getByRole("link", { name: "Ideas & problems" }).click();
-    await expect(page.getByRole("main")).toContainText(TITLE);
-    await page.getByRole("link", { name: "Feed", exact: true }).click();
-    await expect(page.getByRole("main")).toContainText(TITLE);
-  });
-
-  await test.step("the receiver view is the inbox of whoever got it, the manager view the Dashboard, and a step back the inbox again", async () => {
-    await (await step("Receiver view")).click();
+  await test.step("the team leader opens it, says yes and opens the project; then the manager's Dashboard", async () => {
+    await take("Switch to team leader");
     await expect(page).toHaveURL(/\/demo\/leader$/);
+    await take("Open the idea");
+    await expect(page).toHaveURL(/\/demo\/leader\?id=/);
     await expect(page.getByRole("main")).toContainText(TITLE);
-    await expect(page.getByRole("main")).toContainText("operators report a problem in three taps"); // the last look's edit reached the inbox
-    await (await step("Manager view")).click();
+    await take("Accept it");
+    await take("Open the project");
+    await expect(page).toHaveURL(/\/demo\/projects\/[^/]+$/);
+    await expect(page.getByRole("main")).toContainText(TITLE);
+    await take("Manager view");
     await expect(page).toHaveURL(/\/demo\/dashboard$/);
     await expect(controls).toContainText("Demo done");
-    await controls.getByRole("button", { name: "Demo menu" }).click();
-    await controls.getByRole("menuitem", { name: "Back a step" }).click();
-    await expect(page).toHaveURL(/\/demo\/leader$/);
-    await expect(await step("Manager view")).toBeEnabled();
+  });
+});
+
+test("the leader's and manager's steps taken on the page itself: the controls follow along", async ({ page }) => {
+  await page.goto("/demo");
+  const controls = page.getByRole("group", { name: "Demo controls" });
+  const step = (name: string) => controls.getByRole("button", { name, exact: true });
+  const take = async (name: string) => { await expect(step(name)).toBeEnabled({ timeout: 30_000 }); await step(name).click(); };
+  const viewAs = async (persona: "Employee" | "Team leader" | "Manager") => {
+    await page.getByRole("button", { name: "Dev" }).click();
+    await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: persona, exact: true }).click();
+    await page.keyboard.press("Escape");
+  };
+
+  for (const name of ["Fill sample idea", "Send to NextUp", "First answer", "Send answer", "Second answer", "Send answer", "Preview", "Finalize", "Send idea"]) await take(name);
+  await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
+
+  await test.step("back to the employee before the yes: the switch is offered again", async () => {
+    await take("Switch to team leader");
+    await expect(step("Open the idea")).toBeEnabled();
+    await viewAs("Employee");
+    await expect(step("Switch to team leader")).toBeEnabled();
+  });
+
+  await test.step("switched, opened and accepted on the page: the next step is the project", async () => {
+    await viewAs("Team leader");
+    await expect(step("Open the idea")).toBeEnabled();
+    await page.getByRole("main").getByRole("button", { name: new RegExp(TITLE) }).first().click();
+    await expect(step("Accept it")).toBeEnabled();
+    await page.getByRole("button", { name: /^Yes, do it/ }).click();
+    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
+    await expect(step("Open the project")).toBeEnabled();
+  });
+
+  await test.step("the manager's view by hand ends the demo", async () => {
+    await viewAs("Manager");
+    await expect(page).toHaveURL(/\/demo\/dashboard$/);
+    await expect(controls).toContainText("Demo done");
   });
 });
 
 test("a company's raise page has no demo script", async ({ page }) => {
   await page.goto("/acme/raise");
   await expect(page.getByRole("textbox", { name: START })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start demo" })).toHaveCount(0);
-});
-
-test("three texts, then Finalize skips the rest of the conversation: document, send, the controls go on to the receiver view", async ({ page }) => {
-  await page.goto("/demo");
-  await page.getByRole("button", { name: "Start demo" }).click();
-  const controls = page.getByRole("group", { name: "Demo controls" });
-  const step = (name: string) => controls.getByRole("button", { name, exact: true });
-  await step("Fill sample idea").click();
-  await page.getByRole("button", { name: "Ask NextUp" }).click();
-  await page.getByRole("button", { name: "Close analysis" }).click({ timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Finalize", exact: true })).toHaveCount(0); // not before the third text
-  const box = page.getByRole("textbox", { name: ANSWER });
-  for (const label of ["First answer", "Second answer"]) {
-    await expect(step(label)).toBeEnabled({ timeout: 15_000 });
-    await step(label).click();
-    await box.press("Enter");
-    await expect(aiMessages(page).last()).toBeVisible({ timeout: 30_000 });
-  }
-
-  await page.getByRole("button", { name: "Finalize", exact: true }).first().click();
-  const doc = page.getByRole("article", { name: "Idea document" });
-  await expect(doc).toContainText(TITLE);
-  for (const heading of ["Summary", "The idea", "Assessment", "Sources"]) await expect(doc.getByRole("heading", { name: heading })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save as PDF" })).toBeVisible();
-  await page.getByRole("button", { name: "Send idea" }).click();
-  const who = page.getByRole("dialog", { name: "Who should get this?" });
-  await expect(who).toBeVisible({ timeout: 30_000 });
-  await who.getByRole("button", { name: /^Send to / }).click();
-  await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
-  await expect(step("Receiver view")).toBeEnabled(); // the optional full conversation is passed over
+  await expect(page.getByRole("button", { name: "Fill sample idea" })).toHaveCount(0);
 });

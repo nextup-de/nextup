@@ -15,7 +15,8 @@
 // idea and answers (features/ideas/demo-script.ts, lib/demo-controls.ts), the coach answers each with its
 // prepared reply, the rail shows the script's eight topics, and nothing leaves the browser. The company's
 // /raise never sets it.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { stripTags } from "@/features/assist/check";
@@ -40,11 +41,11 @@ import { useKept } from "@/lib/use-kept";
 import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
 import type { TokenFieldHandle } from "./RaiseTokenField";
-import { RaiseMenu, type MenuView } from "./RaiseMenu";
+import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
 import { ReceiverDialog, type Work } from "./RaisePublish";
-import { PublishPreview, type Look } from "./PublishPreview";
-import { RaiseChat, type ChatMsg } from "./RaiseChat";
-import { RaiseFinal } from "./RaiseFinal";
+import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
+import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
+import { DocLoading, RaiseFinal } from "./RaiseFinal";
 import { AnalysisSheet, IdeaSheet, type Reviewer, type Similar, type Source } from "./RaiseSheets";
 import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
 import { EVAL_STEPS, RaiseStart } from "./RaiseStart";
@@ -53,10 +54,27 @@ import { Icon } from "./raiseIcons";
 import { RaisePeople } from "./RaisePerson";
 import s from "./Raise.module.css";
 
+// Runs `run` after every render: how handlers made after the page's early return reach a ref.
+function Sync({ run }: { run: () => void }) { useEffect(run); return null; }
+
+const MIN_EXCHANGES = FILLED_ANSWERS + 1; // the author's messages (the idea, then answers) before it can be published
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
 type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null; // "add": under a start-page action button
 
-export function Raise({ script = false }: { script?: boolean }) {
+// The screens of an open idea, as the URL names them (`?idea=<draft id>&view=…`, no view = the chat). The URL
+// is the source of truth for which idea and which screen are open, so the browser's back and forward walk
+// the screens and a reload or a shared link opens the same place. Which screens an idea may show comes from
+// its own state (messages, finalized, published), never from the URL: a screen it is past or not yet at
+// falls back to the chat, and a published idea stays read-only - going back never undoes anything.
+type View = "chat" | "idea" | "analysis" | "preview" | "final";
+const VIEWS: readonly string[] = ["idea", "analysis", "preview", "final"];
+
+// useSearchParams needs a Suspense boundary above it; the skeleton is what shows until the URL is read.
+export function Raise(p: { script?: boolean }) {
+  return <Suspense fallback={<PageSkeleton kind="raise" delay />}><RaisePage {...p} /></Suspense>;
+}
+
+function RaisePage({ script = false }: { script?: boolean }) {
   const { seed, S, persona, role, act, ready, href, tenant, showToast, serverMode } = useDemo();
   const story = script && role === "member"; // the demo script is the employee's story; others raise their own
   // The static demo scores and answers in this browser, against the seed it shows.
@@ -67,9 +85,31 @@ export function Raise({ script = false }: { script?: boolean }) {
   const { draft, live, threshold, sending } = studio;
   const who = persona.who;
 
-  const [stage, setStage] = useKept<"start" | "chat">(scope, "stage", "start");
+  const [keptStage, setStage] = useKept<"start" | "chat">(scope, "stage", "start");
   const [openId, setOpenId] = useKept<string | null>(scope, "open", null); // the draft open in the chat, reopened on the next visit
-  const [view, setView] = useKept<"chat" | "idea" | "analysis" | "final">(scope, "view", "chat");
+  const pathname = usePathname(), params = useSearchParams();
+  const urlIdea = params.get("idea");
+  const urlView = params.get("view") ?? "";
+  // An idea in the URL that this person cannot open (wiped by the demo's fresh start, or someone else's when the
+  // back button replays a page as another person): the start page shows, and the URL is left as the history has it.
+  const [missing, setMissing] = useState<string | null>(null);
+  const shownIdea = urlIdea && urlIdea !== missing ? urlIdea : null;
+  const stage = shownIdea ? "chat" : keptStage; // an idea in the URL is always the chat; without one, the start page or a first message on its way
+  const view: View = VIEWS.includes(urlView) ? (urlView as View) : "chat";
+  const looking = view === "preview"; // the last look is a window over the chat
+  // Go to an idea and a screen: `idea` undefined keeps the open one, null is the start page; another idea opens at its chat.
+  const nav = useCallback((next: { idea?: string | null; view?: View }, how: "push" | "replace" = "push") => {
+    const q = new URLSearchParams(params.toString());
+    const id = next.idea === undefined ? urlIdea : next.idea;
+    const v = next.view ?? (next.idea !== undefined && next.idea !== urlIdea ? "chat" : view);
+    if (id) q.set("idea", id); else q.delete("idea");
+    if (id && v !== "chat") q.set("view", v); else q.delete("view");
+    const qs = q.toString();
+    // The browser's own history, which Next keeps in step with usePathname/useSearchParams: the view switches
+    // at once, where router.push waits for a server round trip first.
+    const url = pathname + (qs ? "?" + qs : "");
+    if (how === "push") window.history.pushState(null, "", url); else window.history.replaceState(null, "", url);
+  }, [params, urlIdea, view, pathname]);
   const [finals, setFinals] = useKept<Record<string, number>>(scope, "finals", {}); // draft id -> how many turns it had when it was finalized
   const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "auto"); // auto: open on screens, closed on phones (CSS)
   const [query, setQuery] = useState("");
@@ -84,7 +124,6 @@ export function Raise({ script = false }: { script?: boolean }) {
   const [ask, setAsk] = useState<string | null>(null); // a rail question the author chose to answer now
   const [menu, setMenu] = useState<Menu>(null);
   const [evalStep, setEvalStep] = useState<number | null>(null);
-  const [firstPending, setFirstPending] = useState(false);
   const [busy, setBusy] = useState(false);
   // Publishing: the step NextUp is on while it finds who should receive it, then the suggestions to
   // choose from; `pubWork` is the step while the chosen one is published.
@@ -93,7 +132,10 @@ export function Raise({ script = false }: { script?: boolean }) {
   const [rcvInput, setRcvInput] = useState<ReceiverInput | null>(null); // what the suggestions were scored on, for someone picked by hand
   // The last look before publishing: per draft, the author's words as the case will carry them; open or not.
   const [looks, setLooks] = useKept<Record<string, Look>>(scope, "looks", {});
-  const [looking, setLooking] = useState(false);
+  // Per reply of NextUp's: the topics it left unclear, as they stood when the author answered it - they stay under it.
+  const [asked, setAsked] = useKept<Record<string, string[]>>(scope, "asked", {});
+  const [prepping, setPrepping] = useState(false); // the second between "Publish" and the last look (PreviewLoading)
+  const [drafting, setDrafting] = useState(false); // the moment between "Looks good · finalize" and the document (DocLoading)
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
   const startDesc = useRef<TokenFieldHandle>(null);
@@ -115,24 +157,60 @@ export function Raise({ script = false }: { script?: boolean }) {
   const shown = splitIdea(edit ? edit.text : current);
   // The demo script: where this conversation stands in it (-1 once the author wrote their own words).
   const scriptAt = story ? scriptStep(turns) : -1;
-  // The idea and the two answers filled by hand are enough to publish in the demo; the rest of the
-  // conversation ("Full conversation" in the controls) is optional, so Finalize and Publish wait for no more.
-  const scripted = story && scriptAt >= FILLED_ANSWERS + 1;
-  // Finalizing: always offered once there is a conversation; in the demo script only once it has those three texts.
-  const canFinalize = turns.length > 0 && !busy && !sending && (!story || scriptAt < 0 || scripted || published);
+  // Publishing waits for a real conversation: at least MIN_EXCHANGES messages from the author, each answered.
+  // In the demo that is the idea and the two answers the controls fill (FILLED_ANSWERS).
+  const said = turns.filter((t) => t.role === "user").length;
+  const scripted = story && scriptAt >= MIN_EXCHANGES;
+  const canFinalize = turns.length > 0 && !busy && !sending && (said >= MIN_EXCHANGES || published);
   const finalized = published || (!!draft && finals[draft.id] === turns.length); // sent from the final document; a new message undoes it
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
 
-  // Back on the page: the conversation that was open is opened again - or, gone in the meantime, the
-  // start page. Only once the person is known (`ready`), so nobody else's draft is opened on the way.
+  // The start page, empty: a new idea, or where the browser's back led from an open one.
+  const toStart = useCallback(() => {
+    studio.startNew(); setText(""); setAsk(null); setMenu(null); setOpenId(null);
+    setStage("start"); setStartText(""); setStartAff([]); setEvalStep(null); setSlot(newId("n"));
+  }, [studio.startNew, setText, setOpenId, setStage, setStartText, setStartAff, setSlot]); // eslint-disable-line react-hooks/exhaustive-deps -- studio.startNew is stable
+
+  // The URL changed (a link, the back button, a reload): open the idea it names, or go to the start page.
+  // Arriving with no idea in the URL, the conversation open on the last visit is put back in it. Only once
+  // the person is known (`ready`), so nobody else's draft is opened on the way.
+  const seenIdea = useRef<string | null | undefined>(undefined); // the URL's idea last handled; undefined before the first
   useEffect(() => {
-    if (!ready || !openId || studio.draft?.id === openId) return;
-    setStage("chat");
-    void studio.open(openId).then((d) => { if (!d) { setOpenId(null); setStage("start"); studio.setError(""); } });
-  }, [ready, scope]); // eslint-disable-line react-hooks/exhaustive-deps -- once per arrival, not on every change
-  // The draft the chat shows is the one to reopen; the start page has none.
-  useEffect(() => { if (draft?.id && stage === "chat") setOpenId(draft.id); }, [draft?.id, stage, setOpenId]);
+    if (!ready) return;
+    const before = seenIdea.current;
+    if (before === urlIdea) return;
+    seenIdea.current = urlIdea;
+    if (urlIdea) {
+      if (studio.draft?.id === urlIdea) return;
+      void studio.open(urlIdea).then((d) => {
+        if (!d) { studio.setError(""); toStart(); setMissing(urlIdea); return; } // not this person's, or gone: never rewrite the history
+        setText(""); setAsk(null); setMenu(null); setEvalStep(null);
+        setStage("chat"); setOpenId(urlIdea); setSlot(aliases[urlIdea] ?? urlIdea);
+      });
+    } else if (before === undefined) {
+      if (openId && stage === "chat") nav({ idea: openId }, "replace");
+    } else toStart();
+  }, [ready, urlIdea]); // eslint-disable-line react-hooks/exhaustive-deps -- on a change of the URL's idea only
+
+  // A new idea got its id (NextUp's first reply): the URL names it from now on, without a new history entry.
+  // The reply can come while the evaluation still plays on the start page, so it waits for the chat too.
+  const seenDraft = useRef<string | null>(null);
+  useEffect(() => {
+    const id = draft?.id ?? null;
+    if (!id || stage !== "chat" || id === seenDraft.current) return;
+    seenDraft.current = id;
+    setOpenId(id);
+    if (!shownIdea) { seenIdea.current = id; nav({ idea: id }, "replace"); }
+  }, [draft?.id, stage]); // eslint-disable-line react-hooks/exhaustive-deps -- on a new draft in the chat only
+
+  // A screen the idea cannot show (the last look of a published idea, the document before three messages):
+  // the chat instead. Checked once the idea in the URL is the one loaded, and not while it is being worked on.
+  useEffect(() => {
+    if (!draft || draft.id !== urlIdea || sending || busy || pubStep || view === "chat") return;
+    const ok = view === "preview" ? !published && said >= MIN_EXCHANGES : view === "final" ? published || said >= MIN_EXCHANGES : true;
+    if (!ok) nav({ view: "chat" }, "replace");
+  }, [draft, urlIdea, sending, busy, pubStep, view, published, said, nav]);
 
   // What the evaluation and the analysis say about who receives it: the routing, run here on the open idea.
   const ev = useMemo(() => {
@@ -163,36 +241,49 @@ export function Raise({ script = false }: { script?: boolean }) {
     };
   });
 
-  // The demo controls (lib/demo-controls.ts): what the script can do here right now.
-  const scriptRef = useRef({ answer: () => {}, rest: () => {} });
-  useEffect(() => {
-    scriptRef.current = {
-      answer: () => { if (scriptAt >= 1 && scriptAt <= FILLED_ANSWERS) { setFirstPending(false); setView("chat"); setText(DEMO_SCRIPT[scriptAt].say); setTimeout(() => chatField.current?.focus(), 0); } }, // the chat, where the answer goes
-      rest: () => studio.addScripted(DEMO_SCRIPT.slice(FILLED_ANSWERS + 1)),
-    };
-  });
+  // The demo controls (lib/demo-controls.ts): the click the script needs next, made from the controls -
+  // fill, Ask NextUp, each answer filled and sent, the last look, Finalize, Send. The handlers are this render's (see below).
+  const scriptRef = useRef({ send: () => {}, preview: () => {}, finalize: () => {}, sendFinal: () => {} });
+  const autoPick = useRef(false); // sent from the controls: the receiver NextUp ranks first gets it, no dialog to answer
+  const publishRef = useRef<(to: Receiver) => Promise<void>>(async () => {});
   const idle = ready && !sending && !published && !pubStep && !busy;
   const canIdea = story && idle && stage === "start" && evalStep === null;
-  const canAnswer = story && idle && stage === "chat" && !!draft && scriptAt >= 1 && scriptAt <= FILLED_ANSWERS && text.trim() !== DEMO_SCRIPT[scriptAt].say;
-  const canRest = story && idle && stage === "chat" && !!draft && scriptAt === FILLED_ANSWERS + 1;
-  useEffect(() => (canIdea || canAnswer || canRest ? registerRaiseHooks({
+  const canSend = story && idle && evalStep === null && (stage === "start" ? (startText.trim() || startCtx.trim()).length >= 3 : !!draft && view === "chat" && text.trim().length >= 3);
+  const answer = story && scriptAt >= 1 && scriptAt <= FILLED_ANSWERS ? DEMO_SCRIPT[scriptAt].say : null; // the script's next answer
+  const canAnswer = story && idle && stage === "chat" && view === "chat" && !!draft && !!answer && text.trim() !== answer;
+  const canPreview = story && idle && stage === "chat" && !!draft && canFinalize && !looking && !prepping && view !== "final";
+  const canConfirm = story && idle && looking && !drafting && !!draft;
+  const canSendFinal = story && idle && stage === "chat" && !!draft && view === "final" && !looking && canFinalize;
+  useEffect(() => (canIdea || canSend || canAnswer || canPreview || canConfirm || canSendFinal ? registerRaiseHooks({
     at: scriptAt,
     fillIdea: canIdea ? () => fillRef.current(true) : null,
-    fillAnswer: canAnswer ? () => scriptRef.current.answer() : null,
-    fillRest: canRest ? () => scriptRef.current.rest() : null,
-  }) : undefined), [canIdea, canAnswer, canRest, scriptAt]);
+    fillAnswer: canAnswer && answer ? () => { setText(answer); setTimeout(() => chatField.current?.focus(), 0); } : null,
+    send: canSend ? () => scriptRef.current.send() : null,
+    preview: canPreview ? () => scriptRef.current.preview() : null,
+    finalize: canConfirm ? () => scriptRef.current.finalize() : null,
+    sendFinal: canSendFinal ? () => scriptRef.current.sendFinal() : null,
+  }) : undefined), [canIdea, canSend, canAnswer, answer, canPreview, canConfirm, canSendFinal, scriptAt, setText]);
+  // Sent from the controls: once the suggestions are in, the first one receives it after a moment to read it.
+  useEffect(() => {
+    if (!autoPick.current || !Array.isArray(pubStep) || !pubStep.length) return;
+    autoPick.current = false;
+    const to = pubStep[0], t = setTimeout(() => void publishRef.current(to), 1200);
+    return () => clearTimeout(t);
+  }, [pubStep]);
 
   if (!ready) return <PageSkeleton kind="raise" delay />;
 
-  // After the first answer the analysis opens, once the evaluation has finished playing.
-  const shownView = firstPending && stage === "chat" && !sending && turns.length > 0 ? "analysis" : view;
+  // The chat shows NextUp's reply with its short read; the full analysis opens only when asked for.
+  const shownView = view === "preview" ? "chat" : view; // the last look opens over the chat
   // The rail: the topics prepared when the idea was raised - for a draft from an earlier visit, worked out
   // again from its first message.
   const benchCtx = ideaContext(seed.routes, GOALS, S.cases);
   const myTopics = topics[slot] ?? (firstIdx >= 0 ? topicsOf(benchmark({ text: turns[firstIdx].text, affected: [], attachments: 0 }, benchCtx).parts) : []);
   // The demo script has its own eight topics, cleared one per answer, as long as the conversation follows it.
   const gaps: Topic[] = !draft || !turns.length ? [] : scriptAt >= 1 ? scriptRail(scriptAt) : gapsOf(myTopics, parts, preview.unknown[draft.id] ?? []);
-  const allAnswered = gaps.length > 0 && !gaps.some((g) => g.status === "open" || g.status === "active");
+  // Under the latest reply: the one or two points still unclear - the one being asked first.
+  const lastAi = [...turns].reverse().find((t) => t.role === "assistant")?.id ?? null;
+  const unclear = [...gaps.filter((g) => g.status === "active"), ...gaps.filter((g) => g.status === "open" || g.status === "unknown")].slice(0, 2);
 
   // ── Actions ─────────────────────────────────────────────────────────────────────────────────
   const setAffected = (next: string[]) => { if (draft) void studio.save({ affected: next }); else setStartAff(next); };
@@ -214,19 +305,17 @@ export function Raise({ script = false }: { script?: boolean }) {
   const openMenu = (at: NonNullable<Menu>["at"], v: MenuView = "main") => setMenu({ at, view: v });
   const toggleMenu = (at: "start" | "chat") => setMenu((m) => (m ? null : { at, view: "main" }));
 
-  const go = (v: "chat" | "idea" | "analysis" | "final") => { setFirstPending(false); setView(v); };
+  // A screen of the open idea: a new entry in the browser's history, so back returns to the one before.
+  const go = (v: View) => nav({ view: v });
   // Leaving a draft the start form made: remember which slot holds its choices, for when it is reopened.
-  const leave = () => { if (draft && slot !== draft.id) setAliases((a) => ({ ...a, [draft.id]: slot })); };
-  const reset = () => { leave(); setText(""); setAsk(null); setMenu(null); go("chat"); setSb((x) => (x === "open" ? "auto" : x)); };
+  const leave = () => { if (draft && slot !== draft.id) setAliases((a) => ({ ...a, [draft.id]: slot })); setSb((x) => (x === "open" ? "auto" : x)); };
   const newIdea = () => {
-    studio.startNew(); reset(); setOpenId(null);
-    setStage("start"); setStartText(""); setStartAff([]); setEvalStep(null); setSlot(newId("n"));
+    leave(); toStart();
+    if (urlIdea) nav({ idea: null });
     setTimeout(() => startField.current?.focus(), 60);
   };
-  const openDraft = (id: string) => {
-    void studio.open(id); reset(); setOpenId(id);
-    setStage("chat"); setEvalStep(null); setSlot(aliases[id] ?? id);
-  };
+  // Another idea: the URL names it, and the URL's effect above opens it.
+  const openDraft = (id: string) => { leave(); nav({ idea: id, view: "chat" }); };
 
   // Send from the start page: the line, the context and the chosen extras go as the first message;
   // the evaluation plays while the coach answers.
@@ -242,8 +331,8 @@ export function Raise({ script = false }: { script?: boolean }) {
       extras.meet ? "I’d like a " + extras.meet.dur + " meeting " + extras.meet.when + "." : "",
     ].filter(Boolean).join("\n");
     const message = main + (ctx ? "\n\n" + ctx : "") + (extra ? "\n\n" + extra : "");
-    // Every idea, the demo script's too, opens its analysis first; the chat comes when it is closed.
-    setMenu(null); setEvalStep(0); setFirstPending(true);
+    // Every idea, the demo script's too, lands in the chat: NextUp's reply, its short read and what is still unclear.
+    setMenu(null); setEvalStep(0);
     setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx).parts) }));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
     let step = 0;
@@ -251,7 +340,7 @@ export function Raise({ script = false }: { script?: boolean }) {
       step += 1;
       if (step < EVAL_STEPS.length) { setEvalStep(step); return; }
       clearInterval(t);
-      setEvalStep(null); setStage("chat"); setView("chat"); setStartText("");
+      setEvalStep(null); setStage("chat"); setStartText("");
     }, 420);
   };
 
@@ -283,20 +372,25 @@ export function Raise({ script = false }: { script?: boolean }) {
   // "Publish": first the last look (PublishPreview.tsx) - the idea as the receiver's inbox shows it, the
   // author's part editable - and from there NextUp finds who should receive it. The look is kept per
   // draft, so closing and reopening it loses nothing.
+  // The last look as NextUp first lays it out: the description is the author's own first line (the
+  // script's case has its own); what they wrote under it is the context.
+  const lookOf = (): Look => {
+    const parts = splitBody(outgoing.body);
+    const description = scripted ? parts.description : (idea.text.split(/\n\s*\n/)[0] ?? "").trim();
+    const rest = scripted ? parts.context ?? "" : [parts.description, parts.context].filter(Boolean).join("\n\n");
+    const context = rest.split("\n").filter((l) => !/^(Suggested receiver|Colleagues who know|I’d like a)/.test(l.trim())).join("\n").trim();
+    return { title: finishTitle(draft?.title || idea.title), description, context, prompts: parts.facts };
+  };
+  // Opened by a link or the back button there is no kept look yet: the first layout shows until it is edited.
+  const shownLook = mine ?? (looking && draft ? lookOf() : null);
   const openLook = () => {
-    if (!draft || busy || published || pubStep) return;
+    if (!draft || busy || published || pubStep || prepping) return;
     setMenu(null);
-    if (!mine) {
-      // The description is the author's own first line (the script's case has its own); what they wrote
-      // under it is the context.
-      const parts = splitBody(outgoing.body);
-      const description = scripted ? parts.description : (idea.text.split(/\n\s*\n/)[0] ?? "").trim();
-      const rest = scripted ? parts.context ?? "" : [parts.description, parts.context].filter(Boolean).join("\n\n");
-      const context = rest.split("\n").filter((l) => !/^(Suggested receiver|Colleagues who know|I’d like a)/.test(l.trim())).join("\n").trim();
-      setLook({ title: finishTitle(draft.title || idea.title), description, context, prompts: parts.facts });
-    }
+    if (!mine) setLook(lookOf());
     setSb((x) => (x === "open" ? "auto" : x)); // on a phone the drawer closes, so the window is what shows
-    setLooking(true);
+    // A second of placeholder first, while NextUp lays it out; then the last look, with Finalize.
+    setPrepping(true);
+    setTimeout(() => { setPrepping(false); nav({ view: "preview" }); }, 1000);
   };
 
   // "Publish idea": the button says what NextUp does - reads the idea, asks the router, checks the org
@@ -356,8 +450,27 @@ export function Raise({ script = false }: { script?: boolean }) {
     // Edits made in the Idea view travel with this message, so the coach and the score see them.
     const message = edit ? t + IDEA_UPDATE + edit.text : t;
     if (draft && edit) preview.edit(draft.id, null);
+    if (lastAi && unclear.length) setAsked((a) => (a[lastAi] ? a : { ...a, [lastAi]: unclear.map((g) => g.id) }));
     void studio.send(message, { affected, attachments: myFiles.length, skip });
     setText(""); setAsk(null);
+  };
+
+  // The last look confirmed: the final document opens. Sent from the document: it is final, and NextUp finds who receives it.
+  // The last look confirmed: the window closes, the document is laid out for a moment and a half, then it opens.
+  const confirmLook = () => {
+    if (drafting) return;
+    if (!mine && shownLook) setLook(shownLook);
+    setDrafting(true);
+    setTimeout(() => { setDrafting(false); go("final"); }, 1500);
+  };
+  const sendFinal = () => { if (!draft) return; setFinals((f) => ({ ...f, [draft.id]: turns.length })); void askReceiver(); };
+  // This render's handlers, for the demo controls (handed over after the render, see Sync).
+  const syncScript = () => {
+    scriptRef.current = {
+      send: stage === "start" ? startRaise : send, preview: openLook, finalize: confirmLook,
+      sendFinal: () => { autoPick.current = true; sendFinal(); },
+    };
+    publishRef.current = publish;
   };
 
   const editIdea = (description: string, context: string) => {
@@ -391,9 +504,10 @@ export function Raise({ script = false }: { script?: boolean }) {
   ) : null;
 
   // The conversation without the first message - that is the idea, shown in the Idea view.
-  const lastAi = [...turns].reverse().find((t) => t.role === "assistant")?.id ?? null;
   const advice = adviceOf(overall, threshold, team || "your team");
-  // The scores stay in the analysis: the chat carries only the coach's words.
+  // Under the latest reply: the five dials as bars and words (the numbers stay in the full analysis), and the
+  // points still unclear. Under an earlier one: what it asked, ticked where that is clear now.
+  const read: Read = { dials: dialsOf(parts), advice, first: turns.filter((t) => t.role === "assistant").length <= 1, open: published ? [] : unclear };
   const msgs: ChatMsg[] = turns.flatMap((t, i): ChatMsg[] => {
     if (i === firstIdx) return [];
     if (t.role === "user") { const u = splitUpdate(t.text); return [{ id: t.id, role: "user", text: u.said, note: u.updated ? "Idea changes shared with NextUp" : null }]; }
@@ -401,8 +515,9 @@ export function Raise({ script = false }: { script?: boolean }) {
     return [{
       id: t.id, role: "ai", text: stripTags(t.text),
       note: i === firstIdx + 1 ? "Title added" : null,
-      publish: isLast && !published && (allAnswered || scripted),
-      finalize: isLast && !published && canFinalize,
+      read: t.id === lastAi ? read : undefined, // stays while the next reply is on its way, so the page does not jump
+      asked: t.id === lastAi ? undefined : (asked[t.id] ?? []).flatMap((id) => gaps.filter((g) => g.id === id)),
+      publish: isLast && !published && canFinalize,
     }];
   });
   if (sending) {
@@ -428,7 +543,7 @@ export function Raise({ script = false }: { script?: boolean }) {
     saveLabel: published ? "Published " + clockLabel(draft.updatedAt) : draft.updatedAt ? "Saved " + clockLabel(draft.updatedAt) : "Save as draft", saved: !!draft.updatedAt,
     onSave: () => { void studio.save({}).then((ok) => showToast(ok ? "Draft saved. You find it under Ideas." : "Could not save the draft.")); },
     discardLabel: published ? "Remove from list" : "Discard draft",
-    onDiscard: () => { void studio.discard().then(() => { reset(); setStage("start"); setOpenId(null); }); showToast(published ? "Removed from the list." : "Draft discarded."); },
+    onDiscard: () => { void studio.discard().then(() => { toStart(); nav({ idea: null }, "replace"); }); showToast(published ? "Removed from the list." : "Draft discarded."); },
     menu: menuFor("card"),
   } : null;
 
@@ -515,15 +630,19 @@ export function Raise({ script = false }: { script?: boolean }) {
         <RaiseComposer value={startText} onChange={setStartText} onSubmit={startRaise} fieldRef={startField} sendLabel="Ask NextUp"
           placeholder="Short title" canSend={(startText.trim() || startCtx.trim()).length >= 3 && evalStep === null}
           start={{ desc: startCtx, onDesc: setStartCtx, descPlaceholder: "What’s happening, who does it affect, what have you tried? Add a prompt below." }} descRef={startDesc}
-          chips={[...chips, ...fileChips]} strip menuOpen={menu?.at === "start"} onMenu={() => toggleMenu("start")} menu={menuFor("start")}
+          chips={[...chips, ...fileChips]} strip
+          actions={<RaiseActions rows={actionsOf(extras, myFiles.length, affected.length)} open={menu?.at === "add" ? menu.view : null}
+            onOpen={(v) => setMenu((m) => (m?.at === "add" && m.view === v ? null : { at: "add", view: v }))} menu={menuFor("add")} onAddFiles={addFiles} />}
           onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       } />
+  ) : drafting ? (
+    <DocLoading />
   ) : shownView === "idea" ? (
     <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
   ) : shownView === "final" && draft ? (
     <RaiseFinal doc={finalDoc} final={finalized} published={published} canSend={canFinalize && !pubStep}
-      onSend={() => { setFinals((f) => ({ ...f, [draft.id]: turns.length })); void askReceiver(); }}
-      onEdit={() => (mine ? setLooking(true) : openLook())} onBack={() => go("chat")} onClose={() => go("chat")}
+      onSend={sendFinal}
+      onEdit={() => go("preview")} onBack={() => go("chat")} onClose={() => go("chat")}
       onCopied={(ok) => showToast(ok ? "Copied the document as text." : "Could not copy it.")} />
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} dials={dialsOf(parts)}
@@ -539,13 +658,14 @@ export function Raise({ script = false }: { script?: boolean }) {
   ) : (
     <RaiseChat msgs={msgs} typing={!!sending && !sending.reply} typingLabel={turns.length ? "" : "Researching business context…"} error={studio.error}
       gaps={railGaps} onAsk={(g) => { setAsk(g.ask); setTimeout(() => chatField.current?.focus(), 0); }}
-      onPublish={openLook} onFinalize={() => go("final")}
+      onAnalysis={() => go("analysis")} onPublish={openLook}
       dock={composerChat} followKey={turns.length + ":" + (sending ? sending.reply.length : -1) + ":" + (draft?.id ?? "") + ":" + (asking?.id ?? "")} />
   );
 
   return (
     <RaisePeople.Provider value={{ people: seed.people, depts: seed.depts }}>
     <div className={s.root} data-sb={sb} data-raise-root="">
+      <Sync run={syncScript} />
       <div className={s.sbShell}>
         <RaiseSidebar query={query} onQuery={setQuery} onHide={() => { setSb("hidden"); setMenu(null); }} card={card} rows={rows} loaded={studio.loaded}
           onPick={openDraft} onPin={preview.togglePin} onNew={newIdea} />
@@ -556,14 +676,15 @@ export function Raise({ script = false }: { script?: boolean }) {
           score={(name) => receiverFor(name, rcvInput ?? receiverInput(idea.text, ev?.lead ?? "Triage desk", null))}
           onCancel={() => setPubStep(null)} onConfirm={(to) => void publish(to)} />
       )}
-      {looking && mine && draft && !published && (
-        <PublishPreview author={who.name} look={mine} onLook={setLook}
+      {prepping && <PreviewLoading />}
+      {looking && !drafting && shownLook && draft && !published && (
+        <PublishPreview author={who.name} look={shownLook} onLook={setLook}
           meet={extras.meet} onMeet={(meet) => preview.setExtras(key, { meet })}
           coll={extras.coll} people={seed.people} onColl={(coll) => preview.setExtras(key, { coll })}
           affected={affected} depts={seed.depts.map((d) => d.name)} onAffected={setAffected}
           files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile}
           aiLine={"Summary, scores, and " + sources.length + " sources are added for the receiver."}
-          onClose={() => setLooking(false)} onConfirm={() => { setLooking(false); go("final"); }} />
+          onClose={() => go("chat")} onConfirm={confirmLook} />
       )}
       <div className={s.main}>
         <div className={s.showSb}><button type="button" className={s.iconBtn} onClick={() => setSb("open")} title="Show sidebar" aria-label="Show sidebar"><Icon name="sidebar" size={12} /></button></div>
