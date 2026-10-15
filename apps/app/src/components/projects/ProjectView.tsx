@@ -13,6 +13,7 @@ import { baselineText, MOVE_LABEL, suggestedBaseline, suggestedSteps, visiblePro
 import { withBrainSteps } from "@/features/projects/brain";
 import { useBrainPlan } from "@/lib/use-brain";
 import { ProjectBoard } from "./ProjectBoard";
+import { FilesPanel, OriginPanel } from "./ProjectOrigin";
 import { BaselinePanel, MeasurePanel, RewardPanel } from "./ProjectMeasure";
 import { CommentsPanel, LinksPanel, TeamPanel, TimelinePanel } from "./ProjectTeam";
 import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, viewerOf } from "./parts";
@@ -77,9 +78,11 @@ function Project({ p }: { p: ReducedProject }) {
           {!planning && <BaselinePanel p={p} hint={null} />}
           <MeasurePanel p={p} />
           <RewardPanel p={p} />
+          <OriginPanel p={p} />
         </div>
         <aside className={styles.side} aria-label="Team and history">
           <TeamPanel p={p} />
+          <FilesPanel p={p} />
           <LinksPanel p={p} />
           <CommentsPanel p={p} />
           <TimelinePanel p={p} />

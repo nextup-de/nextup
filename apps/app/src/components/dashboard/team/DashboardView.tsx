@@ -83,7 +83,7 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
   );
 }
 
-export function DashboardView({ caseId, linkCases = false }: { caseId?: string; linkCases?: boolean } = {}) {
+export function DashboardView({ caseId, linkCases = false, embedded = false }: { caseId?: string; linkCases?: boolean; embedded?: boolean } = {}) {
   const ctx = useDemo();
   const { seed, D, log, persona, role, ready, href, tenant, act, actor, f, motion, flag } = ctx;
   const router = useRouter();
@@ -235,7 +235,8 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
       <div className={s.div7}>
         <div className={s.div8}>
           <div className={s.div9}>
-            <h1 className={s.overview}>Overview</h1>
+            {/* On the Projects page the page title above is the heading. */}
+            {!embedded && <h1 className={s.overview}>Overview</h1>}
           </div>
           <div className={s.div10}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}
