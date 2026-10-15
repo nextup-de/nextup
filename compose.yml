@@ -140,6 +140,8 @@ services:
       # The login in front of n8n.<domain> and mail.<domain> (production Caddyfiles only).
       OPS_USER: ${OPS_USER:-}
       OPS_PASSWORD_HASH: ${OPS_PASSWORD_HASH:-}
+      # "public" lets POST /webhook/<name> on n8n.<domain> skip that login, for Jira (production Caddyfile).
+      N8N_WEBHOOKS: ${N8N_WEBHOOKS:-off}
     depends_on:
       - app
 

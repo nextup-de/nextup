@@ -18,6 +18,26 @@
 	# Both are ops tools, not the product: nobody reaches them without the ops login. mailpit has
 	# no login of its own, and n8n makes whoever opens it first its owner. An unset OPS_USER or
 	# OPS_PASSWORD_HASH answers 401 to everyone - closed, never open.
+	#
+	# One exception, off until N8N_WEBHOOKS=public: n8n's production webhooks skip the login,
+	# because Jira can't sign in. Only POST /webhook/<letters, digits, - and _> on n8n.<domain>,
+	# checked on the raw request line: no dots, %-escapes or double slashes. The editor, /rest and
+	# /webhook-test/ keep the login. The Header Auth on each Webhook node guards the webhook itself.
+	# Same rule as stack/caddy/Caddyfile; self-check: node --test stack/caddy/webhook.test.mjs
+	@n8nWebhook {
+		host n8n.{$APP_DOMAIN}
+		method POST
+		expression `{env.N8N_WEBHOOKS} == "public" && {http.request.orig_uri}.matches("^/webhook(/[A-Za-z0-9_-]+)+/?([?][^#[:space:]]*)?$")`
+	}
+	handle @n8nWebhook {
+		# The editor's host: its cookies stay out, and nothing a webhook answers may run there.
+		reverse_proxy n8n:5678 {
+			header_up -Cookie
+			header_down -Set-Cookie
+			header_down Content-Security-Policy "sandbox; default-src 'none'"
+			header_down X-Content-Type-Options nosniff
+		}
+	}
 	handle @n8n {
 		basic_auth {
 			{$OPS_USER} {$OPS_PASSWORD_HASH}
