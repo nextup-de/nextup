@@ -39,7 +39,7 @@ import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAct
 import { signOut } from "@/server/actions/auth";
 
 export type Pop = "search" | "decisions" | "me" | "sort" | "filter";
-export type SheetKind = "no" | "ask" | "reply" | "hand" | "assign" | "askIdea";
+export type SheetKind = "no" | "ask" | "reply" | "hand" | "assign" | "askIdea" | "discuss" | "invite" | "checkin" | "accept"; // the last four: components/shell/LoopSheets.tsx
 export type Sheet = { kind: SheetKind; id: string; text: string; picked: string | null; people: string[] };
 
 export type Act = {

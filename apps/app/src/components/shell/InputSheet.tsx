@@ -6,6 +6,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { Btn } from "@/components/dashboard/shared/primitives";
 import { ini } from "@/lib/utils/format";
 import styles from "./InputSheet.module.css";
+import { LOOP_SHEETS, LoopSheet } from "./LoopSheets";
 
 type Option = { id: string; label: string; sub: string };
 type Model = {
@@ -20,6 +21,8 @@ export function InputSheet() {
   const ctx = useDemo();
   const { sheet, seed, S, persona, act, patchSheet, closeSheet, showToast, deptName } = ctx;
   if (!sheet) return null;
+  // The discussion stage and the yes that opens a project have sheets of their own.
+  if ((LOOP_SHEETS as readonly string[]).includes(sheet.kind)) return <LoopSheet />;
   const who = persona.who;
   const c = S.cases.find((x) => x.id === sheet.id), i = S.ideas.find((x) => x.id === sheet.id);
   const text = (sheet.text || "").trim();

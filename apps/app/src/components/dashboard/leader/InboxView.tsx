@@ -12,7 +12,9 @@
 // a case with a brief built from its own facts and the four case actions.
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { deskCases, inboxIdeas, inboxSorted, openCases, problemOf } from "@/components/dashboard/derive";
+import { askedForView, deskCases, inboxIdeas, inboxSorted, openCases, problemOf } from "@/components/dashboard/derive";
+import { costEurOf, fastLane, roundState, withDiscussion } from "@/features/cases/discussion";
+import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith, sentLabel } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
 import { badgeTone, briefFor, briefForCase, personFor } from "@/features/ideas/brief";
@@ -40,7 +42,8 @@ const onPhoneChange = (fn: () => void) => { const m = window.matchMedia(PHONE); 
 
 export function InboxView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
-  const { seed, S, log, demo, persona, act, openSheet, showToast, ready, f, actor, motion } = ctx;
+  const { seed, S, log, demo, persona, act, openSheet, showToast, ready, f, actor, motion, flag } = ctx;
+  const talk = flag("discussion"), projects = flag("projects");
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
   const [cid, setCid] = useState<string | null>(initialId ?? null);
   const [open, setOpen] = useState(!!initialId);
@@ -60,10 +63,13 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const who = persona.who, P = seed.promiseDays;
   const inbox = ready ? inboxSorted(ctx) : [];
   const ideas = ready ? inboxIdeas(ctx) : [];
+  // Discussions someone else holds that this person was invited into: asked for their view, no decision.
+  const views = ready && talk ? askedForView(ctx) : [];
   // The selection is an idea or a case - or nothing, until a row is picked. An idea that was just
   // approved leaves the list, and the pane closes with it.
   const si = ideas.find((i) => i.id === cid) ?? null;
-  const sc = si ? null : inbox.find((c) => c.id === cid) ?? null;
+  const sc = si ? null : inbox.find((c) => c.id === cid) ?? views.find((c) => c.id === cid) ?? null;
+  const viewing = !!sc && views.includes(sc);
   const picked = !!(si || sc);
   const isOpen = open && picked;
 
@@ -170,24 +176,30 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const roleOf = (name: string, dept: string) => seed.people.find((p) => p.name === name)?.role ?? dept;
 
   // One row shape for ideas owed a decision and cases: who sent it, what it is about, when, the clock.
+  // A case in a discussion counts down to its next check-in; one you were asked into says so.
+  const caseRow = (c: ReducedCase, view: boolean) => {
+    const raised = c.history.find((e) => e.type === "case.raised" && !e.seed);
+    const exact = !!raised && c.raisedDay === S.day;
+    const rs = roundState(c, S.rules, S.day);
+    return {
+      id: c.id, title: c.title, name: c.from, role: roleOf(c.from, c.fromDept),
+      solves: rs ? (rs.ready ? "In discussion · ready to decide" : "In discussion · round " + rs.round + " of " + rs.of + " · check-in " + f(rs.dueDay)) : c.body,
+      sent: exact && raised ? new Date(raised.ts) : dayDate(c.raisedDay - S.day), exact, due: rs ? rs.left : P - c.clock, paused: c.status === "asked", caseId: c.id,
+      tag: view ? "your view" : rs && !rs.ready ? (rs.left < 0 ? "check-in " + -rs.left + " d late" : "check-in in " + rs.left + " d") : null,
+    };
+  };
   const rows = [
     ...ideas.map((i) => {
       const [name, dept = ""] = i.proposedBy.split(", "); // "C. Ilg, Ops"
-      return { id: i.id, title: i.title, name, role: roleOf(name, dept), solves: problemOf(ctx, i)?.title ?? "", sent: dayDate(-i.wait), exact: false, due: P - i.wait, paused: false, caseId: null as string | null };
+      return { id: i.id, title: i.title, name, role: roleOf(name, dept), solves: problemOf(ctx, i)?.title ?? "", sent: dayDate(-i.wait), exact: false, due: P - i.wait, paused: false, caseId: null as string | null, tag: null as string | null };
     }),
-    ...inbox.map((c) => {
-      const raised = c.history.find((e) => e.type === "case.raised" && !e.seed);
-      const exact = !!raised && c.raisedDay === S.day;
-      return {
-        id: c.id, title: c.title, name: c.from, role: roleOf(c.from, c.fromDept), solves: c.body,
-        sent: exact && raised ? new Date(raised.ts) : dayDate(c.raisedDay - S.day), exact, due: P - c.clock, paused: c.status === "asked", caseId: c.id,
-      };
-    }),
+    ...inbox.map((c) => caseRow(c, false)),
+    ...views.map((c) => caseRow(c, true)),
   ];
   const shown = rows
     .filter((r) => filter === "all" || (filter === "late" ? r.due < 0 : r.due >= 0))
     .sort((a, b) => (newest ? b.sent.getTime() - a.sent.getTime() : a.sent.getTime() - b.sent.getTime()));
-  const badgeOf = (r: (typeof rows)[number]) => (r.paused ? "paused" : r.due < 0 ? -r.due + " d late" : r.due + " d left");
+  const badgeOf = (r: (typeof rows)[number]) => r.tag ?? (r.paused ? "paused" : r.due < 0 ? -r.due + " d late" : r.due + " d left");
 
   // Open a row; the open row again closes the pane. The first open tucks the list to its avatars.
   const pick = (id: string) => {
@@ -229,20 +241,39 @@ export function InboxView({ initialId }: { initialId?: string }) {
     const raised = raisedWith(sc);
     const standing = [...raised.affected, ...affectedOn(log, sc.id).map((a) => a.name).filter((n) => !raised.affected.includes(n))];
     const q = sc.question;
+    const plain = briefForCase(sc, briefCtx, { promiseDays: P, me: who.name, affected: standing, attachments: raised.attachments, updates: rescoresOn(log, sc.id).length, passTo: handTo, history: handedNote });
+    // The discussion stage: "Discuss first" on an open case (the advice outside the fast lane), the
+    // check-in once it runs - and for someone asked for their view, no decision at all, only the thread.
+    const d = sc.discussion, rs = roundState(sc, S.rules, S.day), last = d?.rounds[d.rounds.length - 1];
+    const brief = viewing && d ? { ...plain, actions: [], rec: "", recText: d.by + " asked for your view before deciding. Say what you know in a comment; everyone in the discussion reads it.", next: "Comment below.", by: rs ? "Before the check-in on " + f(rs.dueDay) : null }
+      : talk ? withDiscussion(plain, sc, { fast: fastLane(sc.body, S.rules.fastLaneEur), costEur: costEurOf(sc.body), limitEur: S.rules.fastLaneEur })
+        : plain;
+    const talkNote = d && rs ? {
+      label: viewing ? "Asked for your view" : rs.ready ? "Ready to decide" : "In discussion · round " + rs.round + " of " + rs.of,
+      lines: [
+        ...(viewing ? [d.by + " started it " + f(d.startedDay) + "."] : []),
+        ...(d.missing ? ["Missing: “" + d.missing + "”"] : []),
+        "Invited: " + (d.invited.length ? d.invited.join(", ") : "nobody yet") + ", and " + sc.from,
+        ...(last ? ["Check-in " + last.round + ", " + f(last.day) + ": " + (last.next === "decide" ? "ready to decide" : "another round") + (last.open.length ? " · open: " + last.open.join(", ") : "")] : []),
+      ],
+      sub: rs.ready ? "Decide now: yes, or no and why." : rs.late ? "Check-in " + -rs.left + " d late · was due " + f(rs.dueDay) : "Next check-in " + f(rs.dueDay),
+    } : null;
     return {
       idea, onClose: close,
-      brief: briefForCase(sc, briefCtx, { promiseDays: P, me: who.name, affected: standing, attachments: raised.attachments, updates: rescoresOn(log, sc.id).length, passTo: handTo, history: handedNote }),
+      brief,
       feed: commentsOn(log, sc.id).map((m) => ({ name: m.by === actor ? "You" : m.by, role: m.rescore ? "New information" : "Comment", text: m.text, when: f(m.day), mine: m.by === actor, person: personOrNull(m.by) })),
-      status: !q ? null : {
+      status: talkNote ?? (!q ? null : {
         label: q.answer ? sc.from + " answered" : "Your question is out",
         lines: ["“" + (q.text || "One question.") + "” · you asked " + f(q.day), ...(q.answer ? ["“" + q.answer.text + "” · " + f(q.answer.day)] : [])],
         sub: sc.status === "asked" ? "Waiting for " + sc.from + " · clock paused at " + sc.clock + " d" : "",
-      },
+      }),
       onDecide: (key: string) => {
-        if (key === "yes") { act.decide(sc.id, "yes"); showToast("Answered “yes” in " + sc.clock + " days. " + sc.from + " has been told."); }
+        if (key === "yes" && projects) openSheet("accept", sc.id); // a yes opens a project: lead, title, first step
+        else if (key === "yes") { act.decide(sc.id, "yes"); showToast("Answered “yes” in " + sc.clock + " days. " + sc.from + " has been told."); }
         else if (key === "no") openSheet("no", sc.id);
         else if (key === "hand") openSheet("hand", sc.id, { picked: handTo });
         else if (key === "ask") openSheet("ask", sc.id);
+        else if (key === "discuss" || key === "checkin" || key === "invite") openSheet(key, sc.id);
       },
       onComment: (text: string) => act.comment(sc.id, text),
     };

@@ -12,6 +12,8 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen, visibleTo } from "@/components/dashboard/derive";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
+import { archiveOf, inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
 import { FEED_SORT_LABEL, feedCover, feedStage, inDept, sortFeed, supportLine, supportReasons, type FeedSort } from "@/features/cases/feed";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { dashboardRow, overviewSteps, raisedWith } from "@/features/cases/rows";
@@ -45,7 +47,9 @@ type Item = {
 
 export function FeedView({ initialId }: { initialId?: string } = {}) {
   const ctx = useDemo();
-  const { seed, D, log, persona, ready, act, actor, f, motion } = ctx;
+  const { seed, D, log, persona, ready, act, actor, f, motion, flag } = ctx;
+  const [view, setView] = useState<ListView>("open");
+  const [archived, setArchived] = useState<ArchiveFilter>("all");
   const [dept, setDept] = useState("All");
   const [site, setSite] = useState(ALL_SITES);
   const [sort, setSort] = useState<FeedSort>("support");
@@ -77,7 +81,10 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
       site: siteOf(c.from), raisedDay: c.raisedDay, backers: supporters.length, comments: commentsOn(log, c.id).filter((m) => !m.rescore).length,
     };
   };
-  const visible = D.cases.filter((c) => visibleTo(ctx, c)).map(itemOf);
+  // With projects on, the feed shows what is still moving; what was decided sits in the Archive.
+  const split = flag("projects");
+  const everything = D.cases.filter((c) => visibleTo(ctx, c)).map(itemOf);
+  const visible = split ? everything.filter((x) => inView(archiveOf(x.c), view, archived)) : everything;
   const bySite = visible.filter((x) => site === ALL_SITES || x.site === site);
   const list = sortFeed(bySite.filter((x) => inDept(x.tags, dept)), sort);
   const sites = [ALL_SITES, ...[...new Set(visible.map((x) => x.site).filter((x): x is string => !!x))].sort()];
@@ -175,6 +182,8 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
           </div>
         </div>
 
+        {split && <ArchiveTabs view={view} filter={archived} outcomes={everything.map((x) => archiveOf(x.c))} onView={setView} onFilter={setArchived} />}
+
         <div className={s.div8}>
           {chips.map((d) => (
             <button key={d} type="button" className={s.pick2} data-on={dept === d ? "true" : undefined} aria-pressed={dept === d} onClick={() => setDept(d)}>
@@ -236,7 +245,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             );
           })}
         </div>
-        {!list.length && <div className={s.div16}>{visible.length ? "No ideas match these filters." : "Nothing in the feed yet."}</div>}
+        {!list.length && <div className={s.div16}>{visible.length ? "No ideas match these filters." : split && view === "archive" ? "Nothing in the archive yet." : "Nothing in the feed yet."}</div>}
       </div>
     </div>
   );

@@ -1,0 +1,50 @@
+/* The archive line, the discussion panel and the versions on a case page (CaseLoop.tsx). */
+.banner { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--radius-md, 12px); background: var(--nh-card); border-left: 3px solid var(--nh-ink); font-size: var(--nh-fs-sm); color: var(--nh-ink); line-height: 1.5; }
+.banner[data-tone="yes"] { border-left-color: var(--nh-brand); }
+.bannerTag { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); letter-spacing: 0.13em; text-transform: uppercase; color: var(--nh-mute); }
+.bannerLink { font-weight: 700; color: var(--nh-brand); }
+
+.head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.round { font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-ink); }
+.round[data-late="true"] { color: var(--nh-accent); }
+.k { display: block; font-size: var(--nh-fs-xs); font-weight: 700; color: var(--nh-mute); margin-bottom: 3px; }
+.missing { margin-top: 12px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.5; }
+
+.people { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 0 8px; }
+.who { display: inline-flex; align-items: center; gap: 7px; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
+.whoNote { font-size: var(--nh-fs-xs); font-weight: 500; color: var(--nh-mute); }
+
+.checkins { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; }
+.checkin { padding: 10px 0; border-top: 1px solid var(--nh-line-soft); }
+.checkinHead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.checkinTitle { font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-ink); }
+.open { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.openTag { padding: 2px 8px; border-radius: var(--radius-sm, 999px); background: var(--nh-surface); border: 1px solid var(--nh-line); font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-ink-2); }
+.note { margin-top: 6px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.5; white-space: pre-wrap; }
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+.versions { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; }
+.version { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--nh-line-soft); }
+.vTag { flex: none; min-width: 32px; padding: 3px 6px; border-radius: var(--radius-xs, 6px); background: var(--nh-surface); font-family: var(--nh-mono); font-size: var(--nh-fs-xs); font-weight: 700; color: var(--nh-mute); text-align: center; }
+.version[data-now="true"] .vTag { background: var(--nh-ink); color: #fff; }
+.vBody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vTitle { font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-ink); line-height: 1.35; }
+.vScore { flex: none; display: flex; flex-direction: column; align-items: flex-end; font-size: var(--nh-fs-lg); font-weight: 800; color: var(--nh-ink); line-height: 1.1; }
+.delta { font-size: var(--nh-fs-xs); font-weight: 700; color: var(--nh-ok, #1a7f4b); }
+.delta[data-down="true"] { color: var(--nh-accent); }
+.up { color: var(--nh-ok, #1a7f4b); font-weight: 600; }
+
+.older { margin-top: 10px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
+.older summary { cursor: pointer; font-weight: 600; color: var(--nh-mute); }
+.oldText { margin-top: 8px; padding: 8px 10px; background: var(--nh-surface); border-radius: var(--radius-sm, 8px); line-height: 1.5; white-space: pre-wrap; }
+
+.revise { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--nh-line-soft); }
+.field { font-size: var(--nh-fs-sm); }
+.dials { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.dial { padding: 3px 8px; border-radius: var(--radius-sm, 999px); background: var(--nh-surface); font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-ink-2); }
+.dial[data-up="true"] { color: var(--nh-ok, #1a7f4b); }
+
+@media (max-width: 760px) {
+  .field { font-size: var(--nh-fs-input); }
+}

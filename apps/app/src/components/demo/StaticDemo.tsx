@@ -37,6 +37,9 @@ export function StaticDemo({ seed, prefix, children }: { seed: Seed; prefix: str
     // The employee posts under a handle, so their name gets no public profile link.
     hiddenPeople: seed.personas.filter((r) => r.who.handle).map((r) => r.who.name),
     demoTools: true,
+    // The pinned interview demo gets the discussion stage and projects only when Kevin promotes them
+    // (docs/plans/2026-10-15_idea-to-project.md step 7); until then it stays the first half of the loop.
+    flags: { discussion: false, projects: false },
   };
   return (
     <DemoProvider tenant={tenant} seed={seed}>
