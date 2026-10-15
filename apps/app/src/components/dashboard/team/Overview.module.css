@@ -24,6 +24,7 @@
 .toggleSort { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: none; border-radius: var(--radius-sm, 999px); background: #111; color: #fff; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(40,60,100,0.08); transition: background 180ms ease,transform 160ms cubic-bezier(.2,.8,.2,1); }
 .toggleSort:hover { background: #000; }
 .toggleSort:active { transform: scale(.97); }
+.archiveBar { display: flex; }
 .div13 { background: #fff; border-radius: var(--radius-md, 22px); overflow: hidden; box-shadow: 0 10px 30px rgba(40,60,100,0.08),0 1px 2px rgba(40,60,100,0.05); }
 .div14 { display: grid; grid-template-columns: minmax(0,3fr) 110px 120px minmax(0,1.6fr) 130px; gap: 16px; padding: 12px 22px; border-bottom: 1px solid #e5e5ea; font-size: var(--nh-fs-xs); font-weight: 500; color: #6e6e73; }
 .status { text-align: right; }

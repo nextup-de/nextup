@@ -20,6 +20,7 @@
 .submitted { font-size: var(--nh-fs-xs); color: var(--nh-mute); margin-top: 4px; }
 
 .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 16px; list-style: none; padding: 0; }
+.steps[data-long="true"] { grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); row-gap: 12px; } /* the whole life: discussion and project steps too */
 .step { display: flex; flex-direction: column; min-width: 0; }
 .stepBar { height: 4px; border-radius: var(--radius-sm, 999px); background: var(--nh-line); }
 .step[data-tone="done"] .stepBar { background: var(--nh-ink); }
@@ -40,7 +41,15 @@
 .outcomeV { color: var(--nh-ink); font-weight: 700; }
 .outcomeNote { color: var(--nh-mute); }
 
-.foot { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 14px; }
+.asked { display: flex; flex-direction: column; padding: 14px 20px 8px; background: var(--nh-card); border-radius: var(--nh-r-lg); box-shadow: var(--nh-card-shadow); border-left: 3px solid var(--nh-accent); }
+.askedTitle { font-size: var(--nh-fs-md); font-weight: 700; color: var(--nh-ink); }
+.askedRow { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-top: 1px solid var(--nh-line-soft); margin-top: 8px; text-decoration: none; }
+.askedRow + .askedRow { margin-top: 0; }
+.askedCase { font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-ink); line-height: 1.35; }
+.askedRow:hover .askedCase { color: var(--nh-brand); }
+.askedMeta { font-size: var(--nh-fs-xs); color: var(--nh-mute); }
+
+.foot { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
 .foot:empty { display: none; }
 .answer { height: 34px; padding: 0 16px; border-radius: var(--radius-sm, 999px); border: 0; background: var(--nh-brand); color: #fff; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 700; cursor: pointer; }
 .answer:hover { background: var(--nh-brand-hover); }
