@@ -14,8 +14,9 @@ from fastapi.responses import JSONResponse
 from brain.coach import coach
 from brain.config import get_settings
 from brain.llm import LLMClient, LLMOutputError
+from brain.plan import checkin, plan
 from brain.route import route
-from brain.schemas import CoachIn, CoachOut, RouteIn, RouteOut
+from brain.schemas import CheckinIn, CheckinOut, CoachIn, CoachOut, PlanIn, PlanOut, RouteIn, RouteOut
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -68,6 +69,30 @@ async def post_coach(body: CoachIn, request: Request) -> CoachOut:
         log.info("coach idea=%r -> %r", body.idea.title, out.question)
     log.info("coach turns=%d known=%d point=%s earlier=%s ms=%d",
              len(body.history), len(body.known), out.open_point, out.earlier_id, out.ms)
+    return out
+
+
+@app.post("/v1/plan", response_model=PlanOut)
+async def post_plan(body: PlanIn, request: Request) -> PlanOut:
+    """An accepted idea: its first steps and the number to measure it on. The lead picks."""
+    try:
+        out = await run_in_threadpool(plan, request.app.state.llm, body)
+    except LLMOutputError as e:
+        log.error("plan failed: %s", e)
+        raise HTTPException(502, "The language model returned invalid output. Please retry.")
+    log.info("plan steps=%d metric=%s ms=%d", len(out.steps), out.metric is not None, out.ms)
+    return out
+
+
+@app.post("/v1/checkin", response_model=CheckinOut)
+async def post_checkin(body: CheckinIn, request: Request) -> CheckinOut:
+    """A discussion round: a draft of its check-in. The desk holder edits it."""
+    try:
+        out = await run_in_threadpool(checkin, request.app.state.llm, body)
+    except LLMOutputError as e:
+        log.error("checkin failed: %s", e)
+        raise HTTPException(502, "The language model returned invalid output. Please retry.")
+    log.info("checkin round=%d said=%d next=%s open=%d ms=%d", body.round, len(body.said), out.next, len(out.open), out.ms)
     return out
 
 
