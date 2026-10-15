@@ -34,6 +34,15 @@ export async function loadLogForSlug(slug: string): Promise<EventLog | null> {
   return loadLog(company.id, company.demoDay);
 }
 
+/** Has this company already stored an event under this integration idempotency key? */
+export async function hasIdemKey(companyId: string, idemKey: string): Promise<boolean> {
+  const row = await getDb().caseEvent.findUnique({
+    where: { companyId_idemKey: { companyId, idemKey } },
+    select: { id: true },
+  });
+  return row !== null;
+}
+
 export type AppendResult = { ok: true; duplicate: boolean } | { ok: false; error: string };
 
 /**

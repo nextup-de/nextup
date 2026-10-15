@@ -44,6 +44,12 @@ POST /api/[company]/events                    n8n appends; actor = "system:n8n"
 - **POST is allow-listed.** A system actor may append `case.handed`, `route.proposed`,
   `case.commented` - nothing that decides (`case.decided` stays human). Each carries an
   idempotency key; a replay is a 200 with no new row.
+- **For projects, four events and no more** (`SYSTEM_EVENT_TYPES`): `project.step.added`,
+  `project.step.moved`, `project.linked`, `project.commented`, so a connector can mirror the
+  board ("Jira through n8n"). Never the start, done, baseline, measure, reward, stop, team or
+  lead. They need the company's `projects` flag (403 without it) and a project, and a move or a
+  step link needs its step (409 otherwise: `maySystemAppend`). Links and `external.url` must be
+  http(s).
 - Validation lives in `src/features/integrations/` (pure, tested): which actor may append
   which type, payload shape (zod), cursor encoding.
 

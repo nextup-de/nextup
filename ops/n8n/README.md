@@ -24,7 +24,7 @@ connectors. A workflow reads and writes the app through the two endpoints in
 
 ```
 GET  /api/<slug>/events?since=<cursor>   read the event log
-POST /api/<slug>/events                  append case.commented / case.handed as system:n8n
+POST /api/<slug>/events                  append case.commented / case.handed (and four project.* events) as system:n8n
 ```
 
 Both take `Authorization: Bearer <token>`. Issue one per company in `/admin` → Companies → **API
@@ -104,7 +104,9 @@ Two things to know:
 - *Write a note back (example)* is disabled. It shows the only way a workflow may change a case:
   `POST /api/<slug>/events` with `case.commented { text }` or `case.handed { to, why? }`, an
   `Idempotency-Key`, and the token's `events:write` scope. The note appears on the case timeline as
-  `system:n8n`. Nothing else is accepted, and `case.decided` never will be.
+  `system:n8n`. For a project, `project.step.added`, `project.step.moved`, `project.linked` and
+  `project.commented` are accepted too (`docs/INTEGRATIONS.md`). Nothing else, and `case.decided`
+  never will be.
 
 ### Links for building on automation.sellux.ch
 
