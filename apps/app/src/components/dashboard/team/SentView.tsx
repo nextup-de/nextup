@@ -35,7 +35,8 @@ export function SentView() {
   const live = mine.filter((m) => m.status === "Shipped").length;
   const answered = mine.length - waiting;
   const summary = [waiting + " waiting for an answer", answered + " answered", live + " live"].join(" · ");
-  const hasOutcome = (m: MineRow) => m.status === "Shipped" || m.status === "Building" || m.status === "In trial";
+  const changed = (m: MineRow) => m.status === "Shipped" || m.status === "Measured" || m.status === "Recognised"; // a result is in
+  const hasOutcome = (m: MineRow) => changed(m) || m.status === "Building" || m.status === "In trial";
 
   return (
     <div className={styles.page}>
@@ -103,7 +104,7 @@ export function SentView() {
 
             {hasOutcome(m) && (
               <p className={styles.outcome}>
-                <span className={styles.outcomeL}>{m.status === "Shipped" ? "What it changed" : "What it should change"}</span>
+                <span className={styles.outcomeL}>{changed(m) ? "What it changed" : "What it should change"}</span>
                 <strong className={styles.outcomeV}>{m.outcome}</strong>
                 <span className={styles.outcomeNote}>{m.outcomeNote}</span>
               </p>
