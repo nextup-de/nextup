@@ -1,7 +1,8 @@
 // The discussion stage and the yes that opens a project (docs/plans/2026-10-15_idea-to-project.md
 // sections 1-2), through the real UI: the employee raises an idea -> the leader says "Discuss first"
 // and invites someone -> the employee posts v2 -> two check-ins, a day apart -> the leader says yes,
-// which opens P-1 -> the idea leaves the open list and shows in the Archive. Demo mode: one browser
+// which opens a project (P-n: acme seeds projects of its own, so the number is not fixed) -> the idea
+// leaves the open list and shows in the Archive. Demo mode: one browser
 // plays every person via the dev panel; the flags are on for demo companies.
 import type { Page } from "@playwright/test";
 import { expect, publishIdea, test } from "../helpers";
@@ -94,16 +95,18 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await expect(decision(page)).toContainText("Ready to decide");
   });
 
-  await test.step("yes opens P-1 with a lead and a first step; the idea leaves the inbox", async () => {
+  await test.step("yes opens a project with a lead and a first step; the idea leaves the inbox", async () => {
     await page.getByRole("button", { name: /^Yes, do it/ }).click();
     const sheet = page.getByRole("dialog", { name: "Yes, do it" });
     await expect(sheet.getByRole("combobox", { name: "Who leads it" })).toHaveValue("T. Vogel");
     await sheet.getByRole("textbox", { name: "First step (optional)" }).fill("Build one cart for line 3");
     await sheet.getByRole("button", { name: "Say yes and open the project" }).click();
-    await expect(sheet).toContainText("P-1 is open");
-    await expect(sheet.getByRole("link", { name: "Open P-1" })).toHaveAttribute("href", /\/acme\/projects\/p_/);
+    await expect(sheet).toContainText(/P-\d+ is open/);
+    await expect(sheet.getByRole("link", { name: /^Open P-\d+$/ })).toHaveAttribute("href", /\/acme\/projects\/p_/);
     await sheet.getByRole("button", { name: "Done" }).click();
-    await expect(page.getByRole("main").getByText(TITLE)).toHaveCount(0);
+    // Out of the inbox's list - and on the desk as the project T. Vogel now leads (it keeps the idea's title).
+    await expect(page.getByRole("region", { name: "Fresh ideas" }).getByText(TITLE)).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Projects waiting on you" })).toContainText(TITLE);
   });
 
   await test.step("the author's line says Planning, and the idea is in the Archive as a project", async () => {
@@ -111,9 +114,9 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await page.goto("/acme/team");
     const card = page.getByRole("article", { name: TITLE });
     await expect(card).toContainText("Planning");
-    await expect(card.getByRole("link", { name: /P-1/ })).toBeVisible();
+    await expect(card.getByRole("link", { name: /P-\d+/ })).toBeVisible();
     await card.getByRole("link", { name: /Full history/ }).click();
-    await expect(page.getByRole("note", { name: "Archived" })).toContainText(/Accepted today by T\. Vogel → P-1/);
+    await expect(page.getByRole("note", { name: "Archived" })).toContainText(/Accepted today by T\. Vogel → P-\d+/);
 
     await page.goto("/acme/overview");
     await expect(page.getByRole("main").getByText(TITLE)).toHaveCount(0);

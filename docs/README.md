@@ -9,7 +9,7 @@ Each one's status line says how much of it is done.
 
 | Date | Plan | Status |
 |---|---|---|
-| 2026-10-15 | [From accepted idea to measured project](plans/2026-10-15_idea-to-project.md) | open; 10 decisions for Kevin |
+| 2026-10-15 | [From accepted idea to measured project](plans/2026-10-15_idea-to-project.md) | built 15 Oct; release, demo promote, Jira site left |
 | 2026-10-05 | [Admin tickets: what to take from Swiss Edu Solution](plans/2026-10-05_admin-vs-ses.md) | open |
 | 2026-10-03 | [AI server: test first, then rent the GPU](plans/2026-10-03_ai-server-gpu.md) | open |
 | 2026-09-27 | [Platform: one stack per company](plans/2026-09-27_platform.md) | stage 1 almost done |
