@@ -81,6 +81,17 @@ for the question.
 app's - an answer that states a score, asks two questions, leaves `recommended` empty or shows an
 item ID is rejected and retried (`brain/coach.py`).
 
+After a decision (docs/plans/2026-10-15_idea-to-project.md, `brain/plan.py`), two proposals the app
+shows next to its own offline ones - people decide, the model never enters a number:
+
+- `POST /v1/plan` - an accepted idea (`company`, `idea`, `goals: [{name, kpi}]`) → 3-5 first
+  `steps` and the `metric` to measure it on (`{name, unit, better: up|down}`, or null when no number
+  fits). Prompt `plan.md`, version `brain-plan-v1`.
+- `POST /v1/checkin` - a discussion's round (`company`, `idea`, `missing`, `said: [{who, text}]` with
+  roles not names, `weak`, `round`) → a draft check-in: `note`, `open` points and `next`
+  (`decide` only when the model calls it ready and leaves nothing open). Prompt `checkin.md`,
+  version `brain-checkin-v1`.
+
 ## Run it on a laptop
 
 ```bash

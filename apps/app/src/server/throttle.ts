@@ -30,6 +30,8 @@ export const RULES = {
   ideaTurnAll: { limit: 800, windowMs: 10 * 60_000 },
   /** The brain's routing proposal at publish, per person: one per published idea. */
   brainRoute: { limit: 20, windowMs: 10 * 60_000 },
+  /** The brain's steps and metric for an accepted idea, and a check-in draft, per person. */
+  brainPlan: { limit: 20, windowMs: 10 * 60_000 },
   /** The bug icon, per person: a few reports in a row is a bad day, dozens is a script. */
   ticketReport: { limit: 10, windowMs: 10 * 60_000 },
   /** Browser errors (api/client-errors), per address: a tab sends at most five per page load. */
