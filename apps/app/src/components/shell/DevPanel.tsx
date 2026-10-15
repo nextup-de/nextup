@@ -108,10 +108,14 @@ export function DevPanel() {
             </>
           )}
 
-          <button type="button" className={styles.day} onClick={() => ctx.act.advanceDay(1)}>
+          {/* +30 days walks a project to its measure checks in minutes; the server allows 1-30 days per step, on demo stages only. */}
+          <div className={styles.day}>
             <span className={styles.rowTitle}>{day === 0 ? "Today" : "Today + " + day + " d"}</span>
-            <span className={styles.plusDay}>+1 day</span>
-          </button>
+            <span className={styles.dayBtns}>
+              <button type="button" className={styles.plusDay} onClick={() => ctx.act.advanceDay(1)}>+1 day</button>
+              <button type="button" className={styles.plusDay} onClick={() => ctx.act.advanceDay(30)}>+30 days</button>
+            </span>
+          </div>
 
           {canFill && (
             <button type="button" className={styles.rowBtn} onClick={() => { devFill(); setDev(false); }} title="Dev: fill a random idea">
