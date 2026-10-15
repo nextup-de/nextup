@@ -245,7 +245,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                               <circle cx="36" cy="36" r="30" fill="none" stroke="#e3eaf7" strokeWidth="10" strokeLinecap="round" strokeDasharray="141.4 188.5" />
                               <circle className={s.circle} cx="36" cy="36" r="30" fill="none" stroke="#007aff" strokeWidth="10" strokeLinecap="round" strokeDasharray={((sc.value / 100) * 141.4).toFixed(1) + " 188.5"} style={{ animationDelay: i * 70 + "ms" }} />
                             </svg>
-                            <div className={s.div52}><span className={s.value2}>{sc.value}</span><span className={s.n100}>/ 100</span></div>
+                            <div className={s.div52}><span className={s.value2} data-long={sc.value >= 100}>{sc.value}</span><span className={s.n100}>/ 100</span></div>
                             <button type="button" className={s.toggle} onClick={() => setOpenScore(on ? null : i)} title="Show reasoning" aria-label={(on ? "Hide" : "Show") + " the reasoning for " + sc.label} aria-expanded={on}>
                               <svg className={s.svg4} viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                             </button>

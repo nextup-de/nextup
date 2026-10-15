@@ -41,6 +41,57 @@ export function railOf(parts: readonly BenchmarkPart[], unknown: readonly string
   });
 }
 
+// ── The grilling rail: the unclear topics, worked through one by one ──────────────────────────
+// The rail the chat shows. When the idea is first raised, the questions its benchmark cannot answer yet
+// become a fixed list of 2-8 topics - the preparation for the grilling. Each topic is checked off once
+// the idea answers it, or marked unknown when the author does not know yet either.
+export const MIN_TOPICS = 2;
+export const MAX_TOPICS = 8;
+
+// Short names for the benchmark's questions (benchmarks.ts), as the rail shows them.
+const TOPIC_LABEL: Record<string, string> = {
+  "Which company goal does it serve?": "Company goal",
+  "Which number would move?": "What it measures",
+  "How far would it move that number?": "How far it moves",
+  "Put a number on the upside (minutes, €, %).": "The upside",
+  "Add who else it helps (Affected).": "Who it affects",
+  "Does it help one team, or every shift?": "Reach",
+  "Attach a photo or a screenshot as evidence.": "Evidence",
+  "Who would decide this?": "Who decides",
+  "Roughly what would it cost?": "What it costs",
+  "What is the smallest first step - a pilot, a one-week trial?": "First step",
+  "Already raised": "Raised before?",
+  "Say a little more: what exactly would change?": "What changes",
+  "Why does it matter - what happens today?": "Why it matters",
+  "Who works differently afterwards?": "Who it is for",
+};
+export const topicLabel = (key: string) => TOPIC_LABEL[key] ?? key.replace(/[.?]$/, "");
+
+// The topics for an idea, from the benchmark of its first message: the open questions in the order the
+// coach takes them - the weakest bar's first (ties: the earlier bar, as weakest() does) - at most 8.
+// Fewer than 2 open: the weakest found points fill up.
+export function topicsOf(parts: readonly BenchmarkPart[]): string[] {
+  const byNeed = [...parts].sort((a, b) => a.value - b.value);
+  const out = [...new Set(byNeed.flatMap((p) => p.missing.map(topicKey)))].slice(0, MAX_TOPICS);
+  for (const p of byNeed) {
+    for (const f of p.found) if (out.length < MIN_TOPICS && !out.includes(f)) out.push(f);
+  }
+  return out;
+}
+
+export type Topic = { id: string; label: string; status: GapStatus; ask: string };
+
+// Where each topic stands now. Clear: the benchmark no longer asks it. Unknown: the author said they
+// do not know yet. Active: the first topic from the top still open - the rail works down, one by one.
+export function gapsOf(topics: readonly string[], parts: readonly BenchmarkPart[], unknown: readonly string[] = []): Topic[] {
+  const asks = new Map(parts.flatMap((p) => p.missing.map((m): [string, string] => [topicKey(m), m])));
+  const active = topics.find((k) => asks.has(k) && !unknown.includes(k)) ?? null;
+  return topics.map((k) => ({
+    id: k, label: topicLabel(k), ask: asks.get(k) ?? k,
+    status: !asks.has(k) ? "clear" : unknown.includes(k) ? "unknown" : k === active ? "active" : "open",
+  }));
+}
+
 // The benchmark as the coach should ask from it: the questions the author answered "not sure" to are
 // left out, so the coach moves on instead of asking them again. The scores stay as they are.
 export function withoutSkipped(b: Benchmark, skip: readonly string[]): Benchmark {

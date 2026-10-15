@@ -98,7 +98,7 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
                       <circle cx="36" cy="36" r="30" className={styles.arcTrack} strokeDasharray="141.4 188.5" />
                       <circle cx="36" cy="36" r="30" className={styles.arcFill} strokeDasharray={((s.value / 100) * 141.4).toFixed(1) + " 188.5"} />
                     </svg>
-                    <div className={styles.gaugeText}><span className={styles.gaugeNum}>{s.value}</span><span className={styles.gaugeSub}>/ 100</span></div>
+                    <div className={styles.gaugeText}><span className={styles.gaugeNum} data-long={s.value >= 100}>{s.value}</span><span className={styles.gaugeSub}>/ 100</span></div>
                     <button type="button" className={styles.scoreBtn} onClick={() => setOpenScore(on ? null : i)} title={on ? "Hide reasoning" : "Show reasoning"} aria-label={(on ? "Hide" : "Show") + " the reasoning for " + s.label} aria-expanded={on}>
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>

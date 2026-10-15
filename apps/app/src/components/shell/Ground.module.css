@@ -8,6 +8,12 @@
 .blob4 { width: 700px; height: 600px; bottom: -180px; left: 10%; background: radial-gradient(circle, #ddeafc 0%, rgb(221 234 252 / 0) 70%); animation: drift4 20s ease-in-out infinite; }
 .grain { inset: 0; border-radius: 0; filter: none; opacity: 0.18; mix-blend-mode: multiply; background-size: 160px 160px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E"); }
+/* The dot grid: uniform and static, colour rgb(60 100 170), core 1.2px with a soft edge to 2px (the
+   handoff's values at its 0.75 preview scale: 0.9px / 1.5px). Panels cover it; the ground is under everything. */
+.ground > .dots { inset: 0; border-radius: 0; filter: none; will-change: auto;
+  --dot-gap: var(--dot-spacing, var(--dots-default-spacing, 42px));
+  background: radial-gradient(circle, rgb(60 100 170) 0.9px, transparent 1.5px) 0 0 / var(--dot-gap) var(--dot-gap);
+  opacity: var(--dots-strength, var(--dots-default-strength, 0.2)); }
 @keyframes drift1 { 0% { transform: translate(0, 0) scale(1); } 33% { transform: translate(80px, 60px) scale(1.06); } 66% { transform: translate(-40px, 100px) scale(0.96); } 100% { transform: translate(0, 0) scale(1); } }
 @keyframes drift2 { 0% { transform: translate(0, 0) scale(1); } 40% { transform: translate(-100px, 80px) scale(1.08); } 70% { transform: translate(50px, 40px) scale(0.94); } 100% { transform: translate(0, 0) scale(1); } }
 @keyframes drift3 { 0% { transform: translateX(-50%) translateY(0) scale(1); } 50% { transform: translateX(-50%) translateY(-60px) scale(1.1); } 100% { transform: translateX(-50%) translateY(0) scale(1); } }

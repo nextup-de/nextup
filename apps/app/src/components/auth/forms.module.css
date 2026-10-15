@@ -8,7 +8,7 @@
 
 .company { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--nh-line-soft); }
 .company strong { display: block; font-size: var(--nh-fs-md); }
-.mark { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--nh-ink); color: var(--nh-on-dark); font-weight: 800; font-size: var(--nh-fs-xl); flex: none; }
+.mark { width: 40px; height: 40px; border-radius: var(--radius-xs, 10px); display: grid; place-items: center; background: var(--nh-ink); color: var(--nh-on-dark); font-weight: 800; font-size: var(--nh-fs-xl); flex: none; }
 .switch { margin-left: auto; font-size: var(--nh-fs-xs); color: var(--nh-mute); white-space: nowrap; }
 .switch:hover { color: var(--nh-ink); }
 
@@ -33,6 +33,6 @@
   text-transform: uppercase;
   color: var(--nh-mute);
   border: 1px solid var(--nh-line);
-  border-radius: 999px;
+  border-radius: var(--radius-sm, 999px);
   padding: 2px 8px;
 }

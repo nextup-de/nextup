@@ -69,7 +69,7 @@ function Row({ r, onPick, onPin }: { r: IdeaRow; onPick: (id: string) => void; o
         </span>
         <span className={s.ideaLine}>
           <span className={s.ideaPreview}>{r.preview}</span>
-          <span className={s.pill} data-published={r.published}>{r.published ? "Published" : "Draft"}</span>
+          {!r.published && <span className={s.pill}>Draft</span>}
         </span>
       </span>
     </div>

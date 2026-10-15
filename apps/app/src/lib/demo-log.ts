@@ -5,11 +5,10 @@
 import { emptyLog, type EventLog } from "@/features/cases/events";
 import type { Role } from "@/config/roles";
 
-// Design tweaks from the dev panel's Design page: panels = the colour of the inbox's reasoning
-// panels, motion = animations on (default) or off, logo = the wordmark's colour in the top bar.
-export type PanelTone = "grey" | "blue" | "deep";
-export type LogoTone = "blue" | "half" | "black"; // half = blue mark, black "NextUp"
-export type DemoPrefs = { role?: Role; leadAs?: string | null; demo?: boolean; dept?: string; panels?: PanelTone; motion?: boolean; logo?: LogoTone };
+// Design tweaks from the dev panel's Design page: motion = animations on (default) or off;
+// roundCorners = the old pill/round corners instead of the square ones (default off);
+// dotsStrength / dotSpacing = this browser's dot grid, unset = the config default (features/design/dots).
+export type DemoPrefs = { role?: Role; leadAs?: string | null; demo?: boolean; dept?: string; motion?: boolean; roundCorners?: boolean; dotsStrength?: number; dotSpacing?: number };
 export type Persisted = { log: EventLog; prefs: DemoPrefs; loaded: boolean };
 
 const logKey = (slug: string) => "nextup." + slug + ".log.v1";

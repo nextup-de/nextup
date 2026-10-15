@@ -89,7 +89,7 @@ export function AnalysisSheet({ ready, onClose, dials, company, summary, advice,
                   <circle cx="36" cy="36" r="30" fill="none" stroke="#e3eaf7" strokeWidth="10" strokeLinecap="round" strokeDasharray="141.4 188.5" />
                   <circle className={s.arc} cx="36" cy="36" r="30" fill="none" stroke="#007aff" strokeWidth="10" strokeLinecap="round" strokeDasharray={(141.4 * x.value / 100).toFixed(1) + " 188.5"} />
                 </svg>
-                <div className={s.gaugeText}><span className={s.gaugeVal}>{x.scored ? x.value : "–"}</span><span className={s.gaugeOf}>/ 100</span></div>
+                <div className={s.gaugeText}><span className={s.gaugeVal} data-long={x.scored && x.value >= 100}>{x.scored ? x.value : "–"}</span><span className={s.gaugeOf}>/ 100</span></div>
                 <button type="button" className={s.dialBtn} aria-expanded={open === i} title="Show reasoning" aria-label={"Show reasoning for " + x.label} onClick={() => setOpen(open === i ? null : i)}>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </button>

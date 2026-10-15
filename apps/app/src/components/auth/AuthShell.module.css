@@ -51,7 +51,7 @@
   padding: 56px;
   background: #fff;
   border: 1px solid #e7edf1;
-  border-radius: 28px;
+  border-radius: var(--radius-md, 28px);
   box-shadow: 0 26px 56px -20px rgb(25 50 70 / 0.22), 0 6px 14px rgb(25 50 70 / 0.06);
 }
 
@@ -223,7 +223,7 @@
   .card { padding: 24px; }
 
   .authPanel { min-height: calc(var(--nh-screen-h) - 32px); margin: 16px; grid-template-columns: 1fr; }
-  .artMain { min-height: calc(var(--nh-screen-h) - 32px); padding: 24px var(--nh-page-x); border-radius: 24px; }
+  .artMain { min-height: calc(var(--nh-screen-h) - 32px); padding: 24px var(--nh-page-x); border-radius: var(--radius-md, 24px); }
   .artBack { top: 78px; left: var(--nh-page-x); }
   .artCard { margin: auto; padding: 32px 0; }
   .art { display: none; }

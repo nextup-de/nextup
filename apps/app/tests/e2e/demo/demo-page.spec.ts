@@ -1,6 +1,6 @@
 // The static demo (/demo, docs/IDEAS.md "The demo page"): no company, no login. The prepared idea and two
 // prepared answers, one click each, the coach's prepared replies after a short pause - the AI analysis
-// under them and the rail ready, kept through a visit to the Overview - then publish it: the
+// under them and the rail of topics, kept through a visit to the Overview - then publish it: the
 // case opens with its main points, the desk asks a question by itself, the Overview shows every status
 // and opens each case at its own address - and a reload starts over. A company's /raise offers none of it.
 import { aiMessages, ANSWER, expect, publishTo, START, test } from "../helpers";
@@ -33,9 +33,9 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
     await expect(page.getByRole("button", { name: "Publish now" })).toBeVisible();
   });
 
-  await test.step("the AI analysis is under the reply, the rail is ready, and the Overview and back keeps the chat", async () => {
+  await test.step("the AI analysis is under the reply, the rail shows its topics, and the Overview and back keeps the chat", async () => {
     await expect(page.getByRole("group", { name: "AI analysis" })).toContainText("Feasibility");
-    await expect(page.getByText("Ready to publish")).toBeVisible();
+    await expect(page.locator('[data-rail-seg][aria-label$="clear"]').first()).toBeVisible();
     await page.getByRole("link", { name: "Overview", exact: true }).click();
     await expect(page).toHaveURL(/\/demo\/overview$/);
     await page.getByRole("link", { name: "Ideas", exact: true }).click();

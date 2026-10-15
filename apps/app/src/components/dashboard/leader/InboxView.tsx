@@ -40,7 +40,7 @@ const onPhoneChange = (fn: () => void) => { const m = window.matchMedia(PHONE); 
 
 export function InboxView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
-  const { seed, S, log, demo, persona, act, openSheet, showToast, ready, f, actor, panels, motion } = ctx;
+  const { seed, S, log, demo, persona, act, openSheet, showToast, ready, f, actor, motion } = ctx;
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
   const [cid, setCid] = useState<string | null>(initialId ?? null);
   const [open, setOpen] = useState(!!initialId);
@@ -266,7 +266,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   if (!ready) return <PageSkeleton kind="inbox" delay />;
 
   return (
-    <div className={styles.page} data-open={isOpen && !phone ? "true" : undefined} data-layer={isOpen && phone ? "true" : undefined} data-tucked={isOpen && tucked ? "true" : undefined} data-panels={panels}>
+    <div className={styles.page} data-open={isOpen && !phone ? "true" : undefined} data-layer={isOpen && phone ? "true" : undefined} data-tucked={isOpen && tucked ? "true" : undefined}>
       <h1 className={styles.srOnly}>Inbox</h1>
       <div className={styles.top} aria-hidden={isOpen || undefined}>
         <div className={styles.head}>

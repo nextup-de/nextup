@@ -59,7 +59,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
         {/* The blue wordmark carries the name; the company only shows on hover (the mockup keeps the bar to three things). */}
         <Link href={tenant.prefix + "/raise"} className={styles.brand} title={tenant.name} onClick={() => setPop(null)}>
           {/* The wordmark's shape as a mask, painted in the colour the dev panel picks (blue, blue + black, black). */}
-          <span className={styles.logo} data-tone={ctx.logo} role="img" aria-label={SITE.name} />
+          <span className={styles.logo} role="img" aria-label={SITE.name} />
         </Link>
 
         <NavSearch>{(searchOpen) => (

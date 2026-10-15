@@ -63,7 +63,7 @@
 .hop { display: inline-flex; align-items: center; gap: 5px; }
 .hop[data-last="true"] { color: var(--nh-ink); font-weight: 700; }
 .arrow { color: var(--nh-mute-2); }
-.auto { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-accent); padding: 1px 6px; border-radius: 999px; background: #fff1ea; }
+.auto { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-accent); padding: 1px 6px; border-radius: var(--radius-sm, 999px); background: #fff1ea; }
 
 /* Your move: the actions, who stands behind it, the thread. */
 /* The score, as the dashboard scores it, and every correction that moved it. */
@@ -74,7 +74,7 @@
 .scoreL { font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.4; }
 .corr { margin-top: 6px; font-size: var(--nh-fs-xs); color: var(--nh-ink-2); line-height: 1.45; padding: 6px 10px; border-radius: var(--nh-r-sm); background: var(--nh-surface); }
 .whyRow { display: flex; gap: 8px; margin-top: 10px; }
-.rescoreTag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--nh-brand-tint); color: var(--nh-brand); font-size: var(--nh-fs-xs); font-weight: 600; }
+.rescoreTag { margin-left: 6px; padding: 1px 6px; border-radius: var(--radius-sm, 999px); background: var(--nh-brand-tint); color: var(--nh-brand); font-size: var(--nh-fs-xs); font-weight: 600; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .standing { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .avatars { display: inline-flex; }
@@ -97,5 +97,5 @@
 .lightbox { position: fixed; inset: 0; z-index: 85; background: rgb(20 20 20 / 0.86); display: grid; place-items: center; padding: 24px 24px 64px; cursor: zoom-out; outline: 0; }
 .lightbox img { max-width: min(calc(var(--nh-screen-w) - 48px), 1400px); max-height: calc(var(--nh-screen-h) - 88px); width: auto; height: auto; border-radius: var(--nh-r-sm); box-shadow: 0 20px 60px rgb(0 0 0 / 0.5); cursor: default; background: #fff; }
 .lightboxBar { position: fixed; left: 0; right: 0; bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 14px; color: #fff; font-size: var(--nh-fs-sm); }
-.lightboxBar button { border: 1px solid rgb(255 255 255 / 0.4); background: rgb(255 255 255 / 0.1); color: #fff; border-radius: 999px; padding: 5px 12px; font: inherit; font-weight: 600; cursor: pointer; }
+.lightboxBar button { border: 1px solid rgb(255 255 255 / 0.4); background: rgb(255 255 255 / 0.1); color: #fff; border-radius: var(--radius-sm, 999px); padding: 5px 12px; font: inherit; font-weight: 600; cursor: pointer; }
 .lightboxBar button:hover { background: rgb(255 255 255 / 0.22); }
