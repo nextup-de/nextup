@@ -1,6 +1,6 @@
 # The idea studio
 
-> **Updated 2026-10-06** · reference: how the idea studio works.
+> **Updated 2026-10-15** · reference: how the idea studio works.
 
 The member home (`/[company]/raise`) develops ideas instead of taking a one-line problem. It follows
 the whiteboard sessions of 28 Sep 2026: idea → AI → feedback ⇄ develop → decision → outcome.
@@ -104,28 +104,42 @@ it: made-up data (`features/demo/static-demo.ts`: the built-in seed plus what is
 company, no login, no database, no model. It opens on `/demo/raise`; the bar's Dashboard goes to
 `/demo/dashboard`, where a published idea shows up.
 
-- **The script** (`features/ideas/demo-script.ts`): one prepared idea and two prepared answers. While
-  the composer is empty, a gold button on its right puts the next one in the field ("Prepared idea",
-  "Next answer", "Last answer"); Send works as usual. The coach answers each with a prepared reply
-  after about 2.5 s; anything else typed gets the offline coach (`coachMock`). The rail walks with it:
-  Value is next after the idea, the first step after the first answer, and after the last answer it
-  reads "Ready to publish" and the chat offers Publish now. The first answer stays in the chat instead
-  of opening the analysis.
-- **No numbers in the replies.** The AI analysis card under each latest reply shows the five dials as
-  bars and words; the numbers are in the analysis. All of it is the benchmark's own, computed in the
-  browser. `tests/unit/ideas-demo-script.test.ts` checks that what the replies say (goal, decider, over
-  the line, the two points that stay open without blocking it) and the rail's steps are still true.
+- **The demo controls** (`components/shell/DemoControls.tsx`, `lib/demo-controls.ts`): a card under the
+  Dev button, in the dev menu's style, walks the presenter through the story one button at a time:
+  Start demo, Fill sample idea, First answer, Second answer, Full conversation, Receiver view, Manager
+  view. The button waits (dimmed) until its step can be taken. Its menu goes a step back or restarts;
+  the grip moves it (the Dev button only steps aside when it would be covered); the chevron folds it.
+- **The script** (`features/ideas/demo-script.ts`): the "reporting screen at each assembly station"
+  idea, and one prepared answer for each of the eight topics the coach works through (current process,
+  scale, ownership, alternatives, practical use, cost, risks, pilot success). The controls fill the
+  idea and the first two answers - the presenter presses Ask NextUp and Send - then "Full conversation"
+  adds the rest in one go. The coach answers each with a prepared reply after about 2.5 s; anything else
+  typed gets the offline coach (`coachMock`). While the conversation follows the script, the rail shows
+  its eight topics, one cleared per answer, and once all are answered the chat offers Publish now.
+- **No numbers in the replies.** The scores are in the analysis, all of them the benchmark's own,
+  computed in the browser. `tests/unit/ideas-demo-script.test.ts` checks the rail, and that the script
+  is never taken for an idea already raised or for a goal it does not name.
 - **The published case carries the main points** (`DEMO_CASE`): one sentence as the idea, the context,
-  then `*Label* text` lines (Goal, First step, Cost, Then, Still open) that the case view lists as facts
-  next to Worth (`splitBody` in `features/ideas/brief.ts` - the start page's prompts use the same lines).
-  About 8 s after publishing, whoever received it reads it and asks one question (`DESK_REPLY`, written
-  by the demo frame), so the case shows a conversation and "Your move" without switching person.
+  then `*Label* text` lines (Cost today, Owners, First step, Cost, Then) that the case view lists as
+  facts (`splitBody` in `features/ideas/brief.ts`). It lands in the receiver's inbox unread: the demo
+  asks no question by itself.
 - **Cases have an address**: on the demo, a dashboard row and "Open the case" go to `/demo/cases/<id>`,
   the dashboard's case overview opened on that case (`DashboardView linkCases`); ✕ goes back.
 - **The board is never empty**: three more of the employee's ideas - a question waiting for them (Your
   move), a question they answered (Replied), one past the 5-day promise that moved to the deputy - and
   the changeover-sheet problem handed to Quality with a question and an answer. All seed history, so
   "Reset demo" keeps them; acme's own seed is untouched (`tests/unit/static-demo.test.ts`).
+- **What happens next** (`features/ideas/demo-loop.ts`, `components/demo/LoopPlayer.tsx`): once the
+  script's idea is published, a player in the bottom left plays the rest of the loop one step at a
+  time (docs/plans/2026-10-15_idea-to-project.md): Jonas answers the desk's question (when one was
+  asked), the team lead asks Quality for a number (a discussion), Quality posts it, Jonas posts version
+  2, the check-in three days later says "ready to decide", the yes archives the idea and opens P-1 with
+  its steps and the number to beat (15 recurring issues a week on line 3), the team starts, four weeks
+  later the pilot is done, and the checks after 30 and 90 days count 9 and 4 - then the plant
+  manager's thanks. Each step is the
+  events its people would send, written into this browser's log; where the story stands is read from
+  the log, so the app's own buttons can take a turn in between (a yes clicked by hand is picked up).
+  `tests/unit/demo-loop.test.ts` plays it through.
 - **The dev panel is on**: "Viewing as" switches person in this browser (the inbox and the overview
   live under `/demo` too), "Reset demo" goes back to the seed, "+1 day" moves the clock.
 - **Clear names**: the demo's copy of the seed and of the written briefs uses full German names, mostly
@@ -148,6 +162,40 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
   page, and its links drop the `/demo` (`staticDemoPrefix()`). `/admin` stays the admin surface; the
   stack's own database company is no longer reachable from that host.
 
+## After the publish: discussion, decision, project
+
+Built 15 Oct 2026 (docs/plans/2026-10-15_idea-to-project.md). Behind the flags `discussion` and
+`projects`: on for demo companies and the static demo, off for real ones until admin.sellux.ch turns
+them on. The company's rhythm, measure days and reward rule are on `/admin/knowledge` ("After the
+decision", `CompanyConfig` → `Seed.loop`, `features/loop/rules.ts`).
+
+- **Discuss first** (`components/shell/LoopSheets.tsx`, `features/cases/discussion.ts`): next to Yes,
+  No, Pass and Ask, the desk holder opens a discussion: what is still missing, and whom to ask (the
+  sheet suggests the route's buddy and deputy, the people affected, the department's head, authors of
+  close ideas). Invited people get "Asked for your view" in their inbox and a mail; they comment on
+  the case. The author posts a new version from the case page; each one is scored again
+  (v1 → v2, ▲ on the dials that got better). A check-in every `discussEveryDays` (3) ends a round:
+  another round, or ready to decide - drafted offline from the new versions, comments and weak dials,
+  or by the brain (`/v1/checkin`) where the stack has one. After `discussMaxRounds` (3) the decision
+  is due; one more round needs a manager. A late check-in goes to the deputy, like a late decision.
+  An idea within the team's spend authority (`fastLaneEur`) keeps Yes as the main button.
+- **Yes, do it** opens a project: lead (the decider by default), title, an optional first step. The
+  idea is archived - read-only, out of the open lists, in the Archive tab - and points to P-n. A no
+  archives it with its reason.
+- **The project** (`/projects/[id]`, `components/projects`, `features/projects`): a board (To do,
+  Doing, Blocked, Done), the team, links (http(s) only; Jira keys from the connector), comments and
+  the timeline. The baseline comes before the start - or "no number possible" with a why. Steps and
+  the metric are suggested from the brief's own lines, and by the brain (`/v1/plan`) where there is
+  one. A project not started within the promise goes to the deputy; so does a late measure.
+- **Measure** at done + 30 and + 90 days (`measureDays`): the verdict - better, same within the
+  tolerance, or worse - is computed from the numbers (`features/projects/verdict.ts`), never typed.
+- **Recognise** by the company's own rule (none, thanks, fixed, share of the measured saving): a
+  manager records it, an anonymous author claims it. Counts only, no ranking of people.
+- **The author sees every step** on `/team`: Sent · Read · In discussion · Approved · Planning ·
+  In progress · Done · Measured · Recognised, with a mail at each (`features/loop/notice.ts`).
+- **The team lead's inbox** lists the projects waiting on them (`ProjectDesk`): their next move as a
+  lead, and a late start or measure that moved to them.
+
 ## Privacy
 
 - A draft is its author's alone: every query names the company **and** the author. No lead, manager
@@ -158,11 +206,10 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
 
 ## Not in this step
 
-- **After "Yes, do it": a board to work it** (Kevin, 6 Oct 2026 - later). A decided idea moves onto a
-  kanban / project board that the team leader or manager runs, with the central brain helping to plan
-  and follow the steps. Builds on the action items below.
-- **Action items on a published idea, tracked here instead of in Jira** - needs `idea.action.*`
-  events, which is reducer work (Kevin).
+- **The brain following a project** after its start (reminders, spotting a stuck step): it only
+  proposes the first steps and the metric for now.
+- **Escalating a late step**: a step's due day shows on the board, but nothing moves on its own -
+  no per-person overdue counts, for the works council.
 - Customer feedback and market research as inputs to opportunity detection.
 - Similarity by embeddings (pgvector) instead of shared words; connecting authors of close ideas.
 - `AssistAnswer` / `src/lib/use-assist.ts` (the old "ask first, then raise") are no longer used by

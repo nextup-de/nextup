@@ -8,6 +8,7 @@
 // criteria: the three case-level criteria (board §17 - score the case, never the person).
 // Linking rules: idea.problem -> problem.id; problem.ideas -> [idea.id]; case.routeId -> route.id;
 // signal.by / proposedBy / members[].name are the names the contributors list counts.
+import type { SeedProject } from "@/features/projects/types";
 import type {
   Buddy, Dept, Idea, Initiative, Ledger, Metrics, Outcome, OrgPerson, Problem, RolePersona, Route, Seed, SeedCase, Stall, ViewCopy, WaitingOn,
 } from "./types";
@@ -339,9 +340,81 @@ export const VIEWS: Record<string, ViewCopy> = {
   progress: { title: 'Does the system actually move', sub: 'Twelve months of flow, where ideas stall, and whether people got an answer.' }
 };
 
+// ── Projects (docs/plans/2026-10-15_idea-to-project.md) ─────────────────
+// What accepted ideas became, one in each state: P-1 recognised, P-2 running, P-3 measuring (its
+// 30-day check came out better), P-4 planning. P-1 to P-3 are seed projects with their history as
+// seed events; P-4 is opened the way a live yes opens one - by the case.decided on c9 below.
+//
+// c9 sits in SEED.cases but not in CASES: the reducer tests build their seed from CASES and count
+// its inbox and its projects, and this case would change both.
+export const PROJECT_CASES: SeedCase[] = [
+  { id: 'c9', kind: 'idea', title: 'A second deburring bench next to the 4-series press', from: 'S. Dahl', fromDept: 'Production, 4-series',
+    routeId: 'r7', assignee: 'T. Vogel', raisedDay: -9, reason: 'no time', upside: '≈ 6 h / week of parts waiting',
+    body: 'One deburring station serves the whole 4-series line, so housings queue there at every shift start.\n\n' +
+      'A second, simpler bench next to the press takes the small parts, and the queue goes.\n\n' +
+      '*Goal* Deburring queue under 10 minutes\n' +
+      '*First step* Move the spare bench from line 1 next to the press for two weeks\n' +
+      '*Cost* About €1,800 for a second extraction hood\n' +
+      '*Then* Buy the hood if the queue halves in the trial\n' +
+      '*Still open* Whether Quality needs a second gauge at the new bench',
+    seedEvents: [
+      { type: 'case.read', day: -8, actor: 'T. Vogel' },
+      { type: 'case.decided', day: -2, actor: 'T. Vogel', payload: { answer: 'yes', note: 'Yes. Start with the spare bench, and time the queue before anything moves.', projectId: 'pj4', lead: 'T. Vogel', title: 'Second deburring bench, 4-series' } }
+    ] }
+];
+
+export const PROJECTS: SeedProject[] = [
+  { id: 'pj1', title: 'Bundle new-hire access into one request', sources: ['c7'], authors: ['Anonymous #4471'], routeId: 'r4',
+    lead: 'L. Brandt', members: ['B. Ehlers'], openedDay: -181, openedBy: 'L. Brandt',
+    seedEvents: [
+      { type: 'project.baseline', day: -180, actor: 'L. Brandt', payload: { metric: 'time to first productive day', unit: 'days', value: 35, better: 'down', source: 'HR onboarding log, last 12 hires' } },
+      { type: 'project.step.added', day: -180, actor: 'L. Brandt', payload: { stepId: 's1', text: 'One access template, raised at contract signature', owner: 'B. Ehlers' } },
+      { type: 'project.step.added', day: -180, actor: 'L. Brandt', payload: { stepId: 's2', text: 'IT sets up the eight systems before day one', owner: 'L. Brandt' } },
+      { type: 'project.started', day: -179, actor: 'L. Brandt' },
+      { type: 'project.step.moved', day: -178, actor: 'B. Ehlers', payload: { stepId: 's1', to: 'doing' } },
+      { type: 'project.step.moved', day: -170, actor: 'B. Ehlers', payload: { stepId: 's1', to: 'done' } },
+      { type: 'project.step.moved', day: -168, actor: 'L. Brandt', payload: { stepId: 's2', to: 'doing' } },
+      { type: 'project.step.moved', day: -160, actor: 'L. Brandt', payload: { stepId: 's2', to: 'done' } },
+      { type: 'project.done', day: -157, actor: 'L. Brandt', payload: { note: 'Live at Ulm for every new hire' } },
+      { type: 'project.measured', day: -125, actor: 'L. Brandt', payload: { check: 30, value: 11, source: 'HR onboarding log, 4 hires' } },
+      { type: 'project.measured', day: -66, actor: 'L. Brandt', payload: { check: 90, value: 11, source: 'HR onboarding log, 9 hires' } },
+      { type: 'project.rewarded', day: -60, actor: 'B. Hartmann', payload: { rule: 'thanks', note: 'Thanked at the Ulm site meeting' } }
+    ] },
+  { id: 'pj2', title: 'Offline job sheets for field service', sources: ['c8'], authors: ['Anonymous #4471'], routeId: 'r8',
+    lead: 'D. Ferraro', members: ['L. Brandt'], openedDay: -102, openedBy: 'D. Ferraro',
+    seedEvents: [
+      { type: 'project.baseline', day: -20, actor: 'D. Ferraro', payload: { metric: 'double entry per technician', unit: 'h / week', value: 3, better: 'down', source: 'technician time sheets, August' } },
+      { type: 'project.step.added', day: -20, actor: 'D. Ferraro', payload: { stepId: 's1', text: 'List the 14 fields on the paper job sheet', owner: 'D. Ferraro' } },
+      { type: 'project.step.added', day: -20, actor: 'D. Ferraro', payload: { stepId: 's2', text: 'Offline form on the service tablets', owner: 'L. Brandt' } },
+      { type: 'project.step.added', day: -20, actor: 'D. Ferraro', payload: { stepId: 's3', text: 'Sync the form when the van has signal', owner: 'L. Brandt' } },
+      { type: 'project.step.added', day: -19, actor: 'D. Ferraro', payload: { stepId: 's4', text: 'Two-week trial with the Ulm technicians', owner: 'D. Ferraro', dueDay: 12 } },
+      { type: 'project.started', day: -18, actor: 'D. Ferraro' },
+      { type: 'project.step.moved', day: -17, actor: 'D. Ferraro', payload: { stepId: 's1', to: 'doing' } },
+      { type: 'project.step.moved', day: -15, actor: 'D. Ferraro', payload: { stepId: 's1', to: 'done' } },
+      { type: 'project.step.moved', day: -14, actor: 'L. Brandt', payload: { stepId: 's2', to: 'doing' } },
+      { type: 'project.linked', day: -12, actor: 'D. Ferraro', payload: { system: 'jira', key: 'FS-12', url: 'https://jira.acme.example/browse/FS-12', stepId: 's2' } },
+      { type: 'project.step.moved', day: -6, actor: 'L. Brandt', payload: { stepId: 's3', to: 'blocked', why: 'Waiting for the VPN profile for the vans' } },
+      { type: 'project.commented', day: -3, actor: 'D. Ferraro', payload: { text: 'The form works offline on the test tablet. Sync is the last piece.' } }
+    ] },
+  { id: 'pj3', title: 'Retrofit kit line, phase one', sources: ['i3'], authors: ['A. Weber'], routeId: 'r5',
+    lead: 'A. Weber', members: ['M. Roth', 'J. Klein'], openedDay: -160, openedBy: 'B. Hartmann',
+    seedEvents: [
+      { type: 'project.baseline', day: -158, actor: 'A. Weber', payload: { metric: 'service revenue from installed machines', unit: '€k / quarter', value: 120, better: 'up', source: 'SAP sales report, Q1' } },
+      { type: 'project.step.added', day: -158, actor: 'A. Weber', payload: { stepId: 's1', text: 'Pick the two most-requested models', owner: 'A. Weber' } },
+      { type: 'project.step.added', day: -158, actor: 'A. Weber', payload: { stepId: 's2', text: 'Engineer the kits and the fitting guide', owner: 'M. Roth' } },
+      { type: 'project.step.added', day: -158, actor: 'A. Weber', payload: { stepId: 's3', text: 'Build the first 20 kits on line 2', owner: 'J. Klein' } },
+      { type: 'project.started', day: -155, actor: 'A. Weber' },
+      { type: 'project.step.moved', day: -150, actor: 'A. Weber', payload: { stepId: 's1', to: 'done' } },
+      { type: 'project.step.moved', day: -96, actor: 'M. Roth', payload: { stepId: 's2', to: 'done' } },
+      { type: 'project.step.moved', day: -48, actor: 'J. Klein', payload: { stepId: 's3', to: 'done' } },
+      { type: 'project.done', day: -40, actor: 'A. Weber', payload: { note: 'Both kits on the price list, 31 sold' } },
+      { type: 'project.measured', day: -8, actor: 'A. Weber', payload: { check: 30, value: 165, source: 'SAP sales report, Q3' } }
+    ] }
+];
+
 export const SEED: Seed = {
   promiseDays: PROMISE_DAYS, outcomeDays: OUTCOME_DAYS,
   depts: DEPTS, people: PEOPLE, problems: PROBLEMS, ideas: IDEAS, initiatives: INITIATIVES, outcomes: OUTCOMES,
-  personas: ROLES, leaders: LEADERS, routes: ROUTES, cases: CASES, waitingOn: WAITING_ON, buddies: BUDDIES,
-  stall: STALL, ledger: LEDGER, metrics: METRICS, views: VIEWS
+  personas: ROLES, leaders: LEADERS, routes: ROUTES, cases: [...CASES, ...PROJECT_CASES], waitingOn: WAITING_ON, buddies: BUDDIES,
+  stall: STALL, ledger: LEDGER, metrics: METRICS, views: VIEWS, projects: PROJECTS
 };

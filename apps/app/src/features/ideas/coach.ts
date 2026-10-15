@@ -12,10 +12,10 @@ import { deltas, weakest, type Benchmark } from "./benchmarks";
 export const IDEA_PROMPT_VERSION = "idea-coach-v1";
 
 // A title as the idea shows it: never cut with "…". Over 56 characters it ends at the first natural break
-// (a comma, a dash, "because", "so", "that"…) after the 12th; with none, at the last word that fits. Then
+// (a comma, a dash, "because", "so", "that"…) after the 24th - so it keeps enough to say what it is about; with none, at the last word that fits. Then
 // no trailing punctuation, no dangling small word, a capital first letter.
 const TITLE_CUT = 56;
-const BREAK = new RegExp("^(.{12," + TITLE_CUT + "}?)(?:,|;|:| — | - | so | because | which | since | but | when | where | and | that | to )", "i");
+const BREAK = new RegExp("^(.{24," + TITLE_CUT + "}?)(?:,|;|:| — | - | so | because | which | since | but | when | where | and | that | to )", "i");
 const DANGLING = /\s+(the|a|an|and|or|of|to|for|in|on|at|with|by|from|so|that|is|are|we|our|it)$/i;
 export function finishTitle(raw: string): string {
   let t = raw.replace(/\s*…$/, "").replace(/\s+/g, " ").trim();

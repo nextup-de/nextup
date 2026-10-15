@@ -1,22 +1,40 @@
 // The contract for the two integration endpoints. Pure - no database, no server.
 import { describe, expect, it } from "vitest";
+import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/events";
+import { reduce, type ReduceSeed } from "@/features/cases/reducer";
+import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
 import {
   bearerFrom,
   DEFAULT_LIMIT,
   hasScope,
   MAX_LIMIT,
   mayAppend,
+  maySystemAppend,
   parseCursor,
   parseInbound,
   parseLimit,
   SYSTEM_EVENT_TYPES,
+  type SystemEventType,
 } from "@/features/integrations";
 
 const handed = { type: "case.handed", target: "c1", payload: { to: "M. Roth", why: "deadline" } };
 
 describe("the allow-list", () => {
   it("permits only what docs/INTEGRATIONS.md permits", () => {
-    expect([...SYSTEM_EVENT_TYPES]).toEqual(["case.handed", "case.commented"]);
+    expect([...SYSTEM_EVENT_TYPES]).toEqual([
+      "case.handed", "case.commented",
+      "project.step.added", "project.step.moved", "project.linked", "project.commented",
+    ]);
+  });
+
+  it("never lets a connector run a project - people start, finish, measure and reward", () => {
+    for (const t of [
+      "project.member", "project.handed", "project.baseline", "project.started", "project.done",
+      "project.measured", "project.rewarded", "project.claimed", "project.stopped",
+    ]) {
+      expect(mayAppend(t)).toBe(false);
+      expect(parseInbound({ type: t, target: "p_one", payload: { note: "x", why: "x" } }).ok).toBe(false);
+    }
   });
 
   it("never lets a system actor decide - AI proposes, never decides", () => {
@@ -85,6 +103,95 @@ describe("parseInbound", () => {
   it("allows no key at all - many rows carry none", () => {
     const r = parseInbound(handed);
     expect(r.ok && r.event.idempotencyKey).toBeNull();
+  });
+});
+
+describe("parseInbound: the four project events", () => {
+  const ok = (type: string, payload: object) => parseInbound({ type, target: "p_one", payload }).ok;
+  const jira = { system: "jira", key: "NUP-2", url: "https://nextup-test.atlassian.net/browse/NUP-2" };
+
+  it("accepts what the Jira workflow sends", () => {
+    expect(ok("project.step.added", { stepId: "s_1", text: "Measure today" })).toBe(true);
+    expect(ok("project.step.added", { stepId: "s_1", text: "From Jira", owner: "M. Roth", dueDay: 4, external: jira })).toBe(true);
+    expect(ok("project.step.moved", { stepId: "s_1", to: "done" })).toBe(true);
+    expect(ok("project.linked", { system: "jira", key: "NUP-1", url: jira.url })).toBe(true);
+    expect(ok("project.linked", { ...jira, stepId: "s_1" })).toBe(true);
+    expect(ok("project.commented", { text: "Jira NUP-2: budget approved" })).toBe(true);
+  });
+
+  it("refuses payloads the board could not show", () => {
+    expect(ok("project.step.added", { text: "no id" })).toBe(false);
+    expect(ok("project.step.added", { stepId: "s 1", text: "bad id" })).toBe(false);
+    expect(ok("project.step.added", { stepId: "s_1", text: "  " })).toBe(false);
+    expect(ok("project.step.added", { stepId: "s_1", text: "x".repeat(501) })).toBe(false);
+    expect(ok("project.step.added", { stepId: "s_1", text: "t", dueDay: "Friday" })).toBe(false);
+    expect(ok("project.step.added", { stepId: "s_1", text: "t", external: { system: "jira" } })).toBe(false);
+    expect(ok("project.step.added", { stepId: "s_1", text: "t", external: { ...jira, url: "javascript:alert(1)" } })).toBe(false);
+    expect(ok("project.step.moved", { stepId: "s_1", to: "finished" })).toBe(false);
+    expect(ok("project.step.moved", { to: "done" })).toBe(false);
+    expect(ok("project.linked", { system: "trello", url: jira.url })).toBe(false);
+    expect(ok("project.linked", { system: "jira", key: "NUP-1" })).toBe(false);
+    expect(ok("project.linked", { system: "url", url: "data:text/html,hi" })).toBe(false);
+    expect(ok("project.linked", { ...jira, stepId: "../s" })).toBe(false);
+    expect(ok("project.commented", {})).toBe(false);
+  });
+
+  it("names the project in a missing target", () => {
+    const r = parseInbound({ type: "project.commented", target: "", payload: { text: "hi" } });
+    expect(!r.ok && r.error).toContain("project");
+  });
+});
+
+describe("maySystemAppend: a connector mirrors a project, never makes one up", () => {
+  const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
+  let n = 0;
+  const ev = (type: CaseEventType, actor: string, target: string, payload: EventPayload = {}): CaseEvent =>
+    ({ id: "i" + n++, ts: 0, day: 0, type, actor, target, payload });
+  const opened = [
+    ev("case.raised", "Anonymous #4471", "c_a", { kind: "idea", title: "Idea", body: "text", routeId: "r1", assignee: "T. Vogel" }),
+    ev("case.decided", "T. Vogel", "c_a", { answer: "yes", projectId: "p_one", lead: "L. Brandt", title: "Shorter changeover" }),
+    ev("project.step.added", "L. Brandt", "p_one", { stepId: "s_1", text: "Pre-stage the tools" }),
+  ];
+  const state = (...more: CaseEvent[]) => reduce(SEED, { events: [...opened, ...more], day: 0 });
+  const check = (type: SystemEventType, payload: EventPayload, target = "p_one", s = state()) =>
+    maySystemAppend({ type, target, payload }, s);
+
+  it("refuses every project event for a project that does not exist", () => {
+    expect(check("project.step.added", { stepId: "s_2", text: "x" }, "p_nope")).toEqual({ ok: false, error: "No such project." });
+    expect(check("project.step.moved", { stepId: "s_1", to: "done" }, "p_nope").ok).toBe(false);
+    expect(check("project.linked", { system: "jira", url: "https://x" }, "p_nope").ok).toBe(false);
+    expect(check("project.commented", { text: "hi" }, "c_a").ok).toBe(false); // a case id is not a project
+  });
+
+  it("moves and step links need the step", () => {
+    expect(check("project.step.moved", { stepId: "s_1", to: "done" })).toEqual({ ok: true });
+    expect(check("project.step.moved", { stepId: "s_9", to: "done" })).toEqual({ ok: false, error: "No such step." });
+    expect(check("project.linked", { system: "jira", key: "NUP-2", url: "https://x", stepId: "s_9" }).ok).toBe(false);
+    expect(check("project.linked", { system: "jira", key: "NUP-1", url: "https://x" }).ok).toBe(true);
+    expect(check("project.commented", { text: "Jira NUP-2: hi" }).ok).toBe(true);
+  });
+
+  it("a new step needs a fresh id and a project that is still open", () => {
+    expect(check("project.step.added", { stepId: "s_2", text: "Train shift B" }).ok).toBe(true);
+    expect(check("project.step.added", { stepId: "s_1", text: "again" })).toEqual({ ok: false, error: "That step id is already used." });
+    const stopped = state(ev("project.stopped", "L. Brandt", "p_one", { why: "Line closes" }));
+    expect(check("project.step.added", { stepId: "s_2", text: "x" }, "p_one", stopped)).toEqual({ ok: false, error: "This project is closed." });
+  });
+
+  it("leaves case events as they were", () => {
+    expect(maySystemAppend({ type: "case.commented", target: "c_nope", payload: { text: "hi" } }, state()).ok).toBe(true);
+  });
+
+  it("what it lets through lands on the board as Jira sent it", () => {
+    const jira = { system: "jira", key: "NUP-3", url: "https://nextup-test.atlassian.net/browse/NUP-3" };
+    const S = state(
+      ev("project.step.added", "system:n8n", "p_one", { stepId: "s_2", text: "From Jira", external: jira }),
+      ev("project.linked", "system:n8n", "p_one", { system: "jira", key: "NUP-2", url: "https://nextup-test.atlassian.net/browse/NUP-2", stepId: "s_1" }),
+      ev("project.step.moved", "system:n8n", "p_one", { stepId: "s_1", to: "done" }),
+    );
+    const steps = S.projects[0].steps;
+    expect(steps.find((s) => s.id === "s_2")?.external).toEqual(jira);
+    expect(steps.find((s) => s.id === "s_1")).toMatchObject({ column: "done", external: { system: "jira", key: "NUP-2" } });
   });
 });
 

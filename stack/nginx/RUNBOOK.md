@@ -17,6 +17,8 @@ internet ──443──▶ nginx + certbot (host, shared with the other sites)
 - **Each stack is its own compose project:** separate network, volumes and secrets. Only its Caddy
   is published, and only on the loopback.
 - **The rest of the stack is internal:** Postgres, mailpit and n8n are never on a public port.
+  The one way in to n8n is its production webhooks, through the stack's Caddy, and only with
+  `N8N_WEBHOOKS=public` in the stack's `.env` ("n8n webhooks for a company stack" below).
 - **Client IPs:** nginx sets `X-Forwarded-For` to the client IP. Caddy trusts that hop
   (`TRUSTED_PROXIES=private_ranges`), so the app's rate limiter sees the real client.
 
@@ -287,8 +289,108 @@ certificate exists. For a new host, run `sudo certbot certonly --nginx -d <host>
   inactive) and 1 dummy credential restored; the credential decrypted.
 - **Importing a workflow from `ops/n8n/`:** n8n 2.x needs an `id` in the JSON. The exported files
   in git should keep theirs.
-- **Webhooks** are behind the login page too, so nothing outside the box can call them. Open
-  individual `/webhook/` paths in `nginx-https.conf` only on purpose.
+- **Webhooks:** `POST /webhook/<letters, digits, - and _>` gets past the login page, so Jira can
+  call n8n (`gate/server.mjs`, checked on the raw path). Every *active* production webhook is
+  therefore open to the internet and must have Header Auth. `/webhook-test/` and everything else
+  still need the login. Webhook answers are sandboxed and carry no cookies either way (below).
+
+### Webhook pass-through and the Jira test site (plan step 6)
+
+The pass-through reaches the box with the next `deploy.sh release`, which brings the new
+`stack/automation/`. The gate reads `server.mjs` only when it starts, and the nginx site is written
+by `install`:
+
+```bash
+~/nextup/stack/automation/automation.sh restart gate   # the gate that knows /webhook/
+~/nextup/stack/automation/automation.sh install        # rewrites ~/nextup/automation/nginx-site, prints the sudo lines
+```
+
+**Webhook answers are sandboxed (15 Oct 2026).** The site has its own `location ~* ^/webhook/`.
+The gate still decides who gets through, but nginx sends n8n no cookies, drops any `Set-Cookie`
+from n8n and adds `Content-Security-Policy: sandbox; default-src 'none'` and
+`X-Content-Type-Options: nosniff`. A workflow that echoes HTML then can't act on the editor with a
+signed-in user's cookies. Only the nginx site changes: after the release, `install` rewrites it and
+prints the lines below (`restart gate` is only needed where the pass-through itself is new). Run
+them as a sudoer:
+
+```bash
+sudo install -m 644 ~/nextup/automation/nginx-site /etc/nginx/sites-available/nextup-automation
+sudo ln -sf /etc/nginx/sites-available/nextup-automation /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Before the sudo lines, check in n8n that every active workflow with a Webhook node has
+authentication set. After `nginx -t` and the reload, check from the laptop:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://automation.sellux.ch/webhook/nothing-here    # 404 from n8n: past the gate
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://automation.sellux.ch/webhook-test/x          # 302: login page
+curl -s -o /dev/null -w '%{http_code}\n' https://automation.sellux.ch/webhook/x                        # 302: only POST passes
+curl -s -o /dev/null -w '%{http_code}\n' --path-as-is -X POST https://automation.sellux.ch/webhook/../rest/login   # 302
+curl -s -o /dev/null -D - -X POST https://automation.sellux.ch/webhook/nothing-here | grep -iE '^(content-security-policy|x-content-type-options|set-cookie):'
+# two lines: content-security-policy: sandbox; default-src 'none'  and  x-content-type-options: nosniff (no set-cookie)
+```
+
+The Jira test site, at Atlassian (fake data only):
+
+1. Sign up for Jira Free (up to 10 users) with a team address, site `nextup-test` →
+   `https://nextup-test.atlassian.net`. A spare account just for n8n keeps your own rights out of
+   the token.
+2. Create a software project (Kanban), name "NextUp test", key `NUP`.
+3. As the account n8n will use: id.atlassian.com → Security → API tokens → **Create API token**
+   (the plain one; tokens *with scopes* need the `api.atlassian.com` address, which the workflow
+   doesn't use). Pick an expiry, then store it in n8n as the `<slug>-jira` credential with the
+   account's e-mail. It goes nowhere else.
+4. Set up the workflow and its two automation rules: `ops/n8n/README.md`, `jira-projects.json`.
+
+## n8n webhooks for a company stack (Jira in production)
+
+Needed only before a pilot connects its own Jira. In production the Jira workflow runs in the
+company's own n8n (`install.sh --n8n`), which is on the loopback. Jira's calls get in through
+the stack's Caddy, on the company's own host: `POST /webhook/<letters, digits, - and _>` and
+nothing else, checked on the raw request line (`stack/caddy/Caddyfile`). nginx needs no change:
+`site.sh` passes every path to Caddy as the client sent it.
+
+Which hosts let n8n's production webhooks through without a login:
+
+| Host | Where the exception lives | On when |
+|---|---|---|
+| `automation.sellux.ch` (fake data) | its login page, `stack/automation/gate/server.mjs` | always |
+| `<slug>.sellux.ch`, a company stack on this box | the stack's Caddy, `stack/caddy/Caddyfile` | its `.env` has `N8N_WEBHOOKS=public` |
+| a company stack on its own server or on-prem | the same Caddyfile | the same |
+| `n8n.<domain>`, the older `ops/` deployment | `ops/caddy/Caddyfile`, before `basic_auth` | its `.env` has `N8N_WEBHOOKS=public` |
+
+Nowhere else: not `mail.<domain>`, `admin.sellux.ch` or any stack without the line. The editor,
+`/rest` and `/webhook-test/` stay off the internet on every host.
+
+The Caddyfile and compose change reach the box with the next `deploy.sh release`. That restarts
+every release-track stack's Caddy (and n8n, which now gets `WEBHOOK_URL`), with the exception off.
+Then, for the pilot's stack only (`<slug>`, its port block `<PORT>`):
+
+```bash
+# 1. the stack runs n8n? If not: add ",n8n" to COMPOSE_PROFILES in its .env, then ctl.sh <slug> up -d
+~/nextup/stack/ctl.sh <slug> ps n8n
+# 2. from the laptop, the editor: ssh -L <PORT+2>:127.0.0.1:<PORT+2> hetzner, then http://localhost:<PORT+2>.
+#    Every *active* workflow with a Webhook node must have Authentication set (Header Auth).
+# 3. turn the exception on and restart Caddy
+grep -q '^N8N_WEBHOOKS=' ~/nextup/instances/<slug>/.env || echo 'N8N_WEBHOOKS=public' >> ~/nextup/instances/<slug>/.env
+~/nextup/stack/ctl.sh <slug> up -d caddy
+```
+
+No sudo: nginx and the certificate stay as they are. Then from the laptop:
+
+```bash
+curl -s -X POST https://<slug>.sellux.ch/webhook/nothing-here; echo     # n8n's JSON: "... is not registered" - n8n is reached
+curl -s -D - -o /dev/null -X POST https://<slug>.sellux.ch/webhook/nothing-here | grep -i '^content-security-policy'   # sandbox; default-src 'none'
+curl -s -o /dev/null -w '%{http_code}\n' https://<slug>.sellux.ch/webhook/x                        # 404 from the app: only POST passes
+curl -s -X POST https://<slug>.sellux.ch/webhook-test/x | head -c 60; echo                         # the app's page, never n8n's JSON
+curl -s -X POST --path-as-is https://<slug>.sellux.ch/webhook/../rest/login | head -c 60; echo     # the app's page as well
+```
+
+In Jira the automation rules then call `https://<slug>.sellux.ch/webhook/jira-<slug>`
+(`ops/n8n/README.md`). To close it again, delete the `N8N_WEBHOOKS` line and run
+`ctl.sh <slug> up -d caddy`. The self-check needs Node 22 and docker, from a full checkout:
+`node --test stack/caddy/webhook.test.mjs`.
 
 ## Health checks and alerts
 

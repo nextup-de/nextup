@@ -20,6 +20,7 @@ export const ROLE_ACCESS: Record<string, readonly Role[]> = {
   "/manager": ["manager"], // the old address, redirects to /dashboard
   "/settings": ["manager"],
   "/leader": ["leader", "manager"],
+  "/projects": ["member", "leader", "manager"], // every role; which projects a member sees is features/projects/views visibleProjects
 };
 
 export function canAccess(role: Role, path: string): boolean {

@@ -22,6 +22,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
+import { FLAGS, type FlagKey } from "@/config/flags";
+import type { StepColumn } from "@/features/projects/types";
 import { appendEvent, emptyLog, newId, type CaseEvent, type EventLog, type EventPayload } from "@/features/cases/events";
 import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
@@ -37,7 +39,7 @@ import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAct
 import { signOut } from "@/server/actions/auth";
 
 export type Pop = "search" | "decisions" | "me" | "sort" | "filter";
-export type SheetKind = "no" | "ask" | "reply" | "hand" | "assign" | "askIdea";
+export type SheetKind = "no" | "ask" | "reply" | "hand" | "assign" | "askIdea" | "discuss" | "invite" | "checkin" | "accept"; // the last four: components/shell/LoopSheets.tsx
 export type Sheet = { kind: SheetKind; id: string; text: string; picked: string | null; people: string[] };
 
 export type Act = {
@@ -56,6 +58,33 @@ export type Act = {
   approve: (ideaId: string, team: string[], note: string) => void;
   fund: (ideaId: string, team: string[], note: string) => void;
   advanceDay: (by?: number) => void;
+  // The discussion stage (docs/plans/2026-10-15_idea-to-project.md)
+  discuss: (caseId: string, invited: string[], missing: string) => void;
+  invite: (caseId: string, invited: string[]) => void;
+  revise: (caseId: string, body: string, title?: string, overall?: number) => void;
+  checkin: (caseId: string, next: "round" | "decide", open: string[], note: string) => void;
+  // "Yes, do it" that opens a project - or joins `projectId` when that one is already open. Returns the project id.
+  accept: (caseId: string, p: { lead: string; title: string; note?: string; projectId?: string }) => string;
+  project: ProjectAct;
+};
+
+export type BaselineInput = { metric: string; unit: string; value: number; better: "up" | "down"; source: string } | { none: true; why: string };
+
+// Everything done to a project, each one event (features/projects). Ids are minted here when the caller needs them back.
+export type ProjectAct = {
+  member: (projectId: string, name: string, on: boolean) => void;
+  hand: (projectId: string, to: string, why?: string) => void;
+  baseline: (projectId: string, b: BaselineInput) => void;
+  start: (projectId: string) => void;
+  addStep: (projectId: string, text: string, owner?: string, dueDay?: number) => string;
+  moveStep: (projectId: string, stepId: string, to: StepColumn, why?: string) => void;
+  link: (projectId: string, url: string, system?: string, key?: string, stepId?: string) => void;
+  comment: (projectId: string, text: string) => void;
+  done: (projectId: string, note?: string) => void;
+  measure: (projectId: string, check: number, value: number, source: string, note?: string) => void;
+  reward: (projectId: string, rule: string, amount?: number, note?: string) => void;
+  claim: (projectId: string) => void;
+  stop: (projectId: string, why: string) => void;
 };
 
 export type DemoContext = {
@@ -79,6 +108,8 @@ export type DemoContext = {
   menu: boolean; setMenu: (b: boolean) => void;
   dev: boolean; setDev: (b: boolean) => void;
   act: Act;
+  /** A feature flag for this company (src/config/flags.ts); without a value from the server, its demo default. */
+  flag: (key: FlagKey) => boolean;
   resetDemo: () => void; deleteAdded: () => void; copySnippet: () => void; logout: () => void;
   f: DayFmt; // demo day offset -> "today" / "12 Sep"
   href: (path: string) => string; // "/ideas?id=i1" -> "/acme/ideas?id=i1"
@@ -118,6 +149,8 @@ export type TenantInfo = {
   hiddenPeople?: string[]; // names whose anonymous handles keep them out of public profile links
   /** False for a company with real people: no dev panel, and `users` is only the viewer. */
   demoTools?: boolean;
+  /** The company's feature flags (features/flags flagsFor), resolved on the server. */
+  flags?: Partial<Record<FlagKey, boolean>>;
 };
 
 /** The signed-in person. Present only in server mode. */
@@ -350,7 +383,33 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     approve: (ideaId, team, note) => emit("idea.approved", ideaId, { team, note }),
     fund: (ideaId, team, note) => emit("idea.funded", ideaId, { team, note }),
     advanceDay: (by) => emit("day.advanced", null, { by: by ?? 1 }),
+    discuss: (caseId, invited, missing) => emit("case.discussion", caseId, { invited, missing }),
+    invite: (caseId, invited) => emit("case.invited", caseId, { invited }),
+    revise: (caseId, body, title, overall) => emit("case.revised", caseId, { body, title, overall }),
+    checkin: (caseId, next, open, note) => emit("case.checkin", caseId, { next, open, note }),
+    accept: (caseId, { lead, title, note, projectId = newId("p") }) => {
+      emit("case.decided", caseId, { answer: "yes", projectId, lead, title, note });
+      return projectId;
+    },
+    project: {
+      member: (id, name, on) => emit("project.member", id, { name, on }),
+      hand: (id, to, why) => emit("project.handed", id, { to, why }),
+      baseline: (id, b) => emit("project.baseline", id, "none" in b ? { none: true, why: b.why } : { ...b }),
+      start: (id) => emit("project.started", id),
+      addStep: (id, text, owner, dueDay) => { const stepId = newId("s"); emit("project.step.added", id, { stepId, text, owner, dueDay }); return stepId; },
+      moveStep: (id, stepId, to, why) => emit("project.step.moved", id, { stepId, to, why }),
+      link: (id, url, system = "url", key, stepId) => emit("project.linked", id, { url, system, key, stepId }),
+      comment: (id, text) => emit("project.commented", id, { text }),
+      done: (id, note) => emit("project.done", id, { note }),
+      measure: (id, check, value, source, note) => emit("project.measured", id, { check, value, source, note }),
+      reward: (id, rule, amount, note) => emit("project.rewarded", id, { rule, amount, note }),
+      claim: (id) => emit("project.claimed", id),
+      stop: (id, why) => emit("project.stopped", id, { why }),
+    },
   }), [emit, S.ideas, actor, slug, serverMode, log]);
+
+  const flags = tenant.flags;
+  const flag = useCallback((key: FlagKey) => flags?.[key] ?? FLAGS[key].defaults.demo, [flags]);
 
   const href = useCallback((path: string) => prefix + path, [prefix]);
   // Close the popovers and the mobile menu; the dev panel stays open so settings can be changed in a row.
@@ -476,7 +535,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     q, setQ, pop, setPop, togglePop: (p) => setPop((cur) => (cur === p ? null : p)),
     sheet, openSheet: (kind, id, init) => { setSheet({ kind, id, text: "", picked: null, people: [], ...init }); setPop(null); },
     closeSheet: () => setSheet(null), patchSheet: (p) => setSheet((s) => (s ? { ...s, ...p } : s)),
-    toast, showToast, menu, setMenu, dev, setDev, act, resetDemo, deleteAdded, copySnippet, logout,
+    toast, showToast, menu, setMenu, dev, setDev, act, flag, resetDemo, deleteAdded, copySnippet, logout,
     f: dayFormatter(today, S.day), href,
   };
 

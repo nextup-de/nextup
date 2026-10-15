@@ -13,6 +13,7 @@ export function feedStage(c: Pick<ReducedCase, "shipped" | "building" | "decided
   if (c.building) return { label: "Piloting", tone: "piloting" };
   if (c.decided) return c.decided.answer === "yes" ? { label: "Approved", tone: "approved" } : { label: "Not now", tone: "new" };
   if (c.status === "asked") return { label: "Needs info", tone: "review" };
+  if (c.status === "discussion") return { label: "In discussion", tone: "review" };
   if (c.read !== null) return { label: "Under review", tone: "review" };
   return { label: "New", tone: "new" };
 }

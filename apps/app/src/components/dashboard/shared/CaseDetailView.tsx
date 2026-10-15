@@ -9,7 +9,10 @@ import { createPortal } from "react-dom";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen } from "@/components/dashboard/derive";
 import { Avatar, Empty, Pill, reasonTone, statusTone } from "@/components/dashboard/shared/primitives";
+import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
+import { roundState } from "@/features/cases/discussion";
 import type { CaseEvent } from "@/features/cases/events";
+import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import { raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
 import { scoreBand, scoreCase } from "@/features/scoring";
@@ -18,7 +21,7 @@ import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CaseDetailView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
-const STATUS_LABEL = { open: "Sent", asked: "Question for you", decided: "Decided", building: "Building", shipped: "Shipped" } as const;
+const STATUS_LABEL = { open: "Sent", discussion: "In discussion", asked: "Question for you", decided: "Decided", building: "Building", shipped: "Shipped" } as const;
 
 // Facts in, one sentence out - nothing here is stored.
 function sentence(e: CaseEvent): string {
@@ -26,7 +29,11 @@ function sentence(e: CaseEvent): string {
   switch (e.type) {
     case "case.raised": return e.actor + " raised this";
     case "case.read": return e.actor + " read it";
-    case "case.decided": return e.actor + " answered “" + (p.answer ?? "yes") + "”" + (p.reason ? " — " + p.reason : "") + (p.note ? ": “" + p.note + "”" : "");
+    case "case.decided": return e.actor + " answered “" + (p.answer ?? "yes") + "”" + (p.reason ? " — " + p.reason : "") + (p.note ? ": “" + p.note + "”" : "") + (p.projectId ? " and opened a project" + (p.lead && p.lead !== e.actor ? " led by " + p.lead : "") : "");
+    case "case.discussion": return e.actor + " started a discussion" + (p.invited?.length ? " with " + p.invited.join(", ") : "") + (p.missing ? " — missing: “" + p.missing + "”" : "");
+    case "case.invited": return e.actor + " invited " + (p.invited ?? []).join(", ");
+    case "case.revised": return e.actor + " posted a new version" + (typeof p.overall === "number" ? " · score " + p.overall : "");
+    case "case.checkin": return e.actor + " checked in: " + (p.next === "decide" ? "ready to decide" : "another round") + (p.open?.length ? " · open: " + p.open.join(", ") : "");
     case "case.handed": return e.actor + " handed it to " + p.to + (p.why ? " — “" + p.why + "”" : "");
     case "case.asked": return e.actor + " asked: “" + (p.text || "One question.") + "” · clock paused";
     case "case.answered": return e.actor + " answered: “" + p.text + "” · clock running again";
@@ -39,7 +46,7 @@ function sentence(e: CaseEvent): string {
 
 export function CaseDetailView({ caseId }: { caseId: string }) {
   const ctx = useDemo();
-  const { S, log, href, ready, f, actor, persona, role, act, openSheet, showToast, tenant } = ctx;
+  const { S, log, href, ready, f, actor, persona, role, act, openSheet, showToast, tenant, flag } = ctx;
   const router = useRouter();
   const [note, setNote] = useState("");
   const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
@@ -87,8 +94,13 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     else { act.rescore(c.id, t); showToast("Score re-evaluated with the new information."); }
     setWhy(""); setAsking(false);
   };
+  const rs = roundState(c, S.rules, S.day);
   const clock = c.status === "asked" ? "clock paused at " + c.clock + " d"
-    : c.open ? (c.overdue ? c.clock - P + " d past the promise" : P - c.clock + " d left on the promise") : "answered in " + c.clock + " d";
+    : c.status === "discussion" && rs ? (rs.ready ? "ready to decide" : "round " + rs.round + " of " + rs.of + " · " + (rs.late ? "check-in " + -rs.left + " d late" : "check-in " + f(rs.dueDay)))
+      : c.open ? (c.overdue ? c.clock - P + " d past the promise" : P - c.clock + " d left on the promise") : "answered in " + c.clock + " d";
+  // Archived and a project: read-only here, the conversation goes on at the project.
+  const project = c.archived && flag("projects") ? projectOfCase(S, c) : undefined;
+  const talk = flag("discussion");
 
   return (
     <>
@@ -96,7 +108,9 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       <button type="button" className={styles.back} onClick={back}>← Back</button>
       <button type="button" className={ui.textlink} onClick={share}>Copy link</button>
     </div>
+    {flag("projects") && <ArchiveBanner c={c} />}
     <div className={ui.split}>
+      <div className={ui.stack}>
       <div className={ui.card}>
         <div className={ui.eyebrow}>{c.kind === "idea" ? "Idea" : "Problem"} · {c.id}</div>
         <div className={ui.h2}>{c.title}</div>
@@ -140,6 +154,9 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           <div className={ui.tile}><div className={ui.tileTitle}>{c.upside || "not estimated yet"}</div><div className={ui.tileL}>what it costs while it waits</div></div>
           <div className={ui.tile}><div className={ui.tileTitle}>{c.shipped ? c.shipped.outcome : c.building?.expected ? "expected " + c.building.expected : "pending"}</div><div className={ui.tileL}>outcome</div></div>
         </div>
+      </div>
+      {talk && <DiscussionPanel c={c} />}
+      {talk && <VersionsPanel c={c} mine={mine} />}
       </div>
 
       <div className={ui.stack}>
@@ -192,11 +209,15 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               </div>
             </div>
           ))}
+          {project ? (
+            <div className={styles.moved}>This idea is archived. Comments go on the project: <Link href={href("/projects/" + project.id)}>{projectLabel(project)} {project.title} →</Link></div>
+          ) : (
           <div className={styles.noteRow}>
             <input className={styles.note} value={note} onChange={(e) => setNote(e.target.value)} placeholder={comments.length ? "Add to the thread" : "Add what you know — where, since when, what it costs"} aria-label="Comment"
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendNote(); } }} />
             <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={sendNote} disabled={!note.trim()}>Post</button>
           </div>
+          )}
         </div>
       </div>
 

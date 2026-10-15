@@ -8,17 +8,21 @@
 // always path-addressed and authenticates by bearer token, never by cookie.
 import { findCompanyBySlug } from "@/lib/db/companies";
 import { getDb, hasDatabase } from "@/lib/db/client";
-import { appendEventRow } from "@/lib/db/events";
+import { appendEventRow, hasIdemKey, loadLogForSlug } from "@/lib/db/events";
 import { markTokenUsed, resolveToken } from "@/lib/db/tokens";
 import {
   bearerFrom,
+  maySystemAppend,
   parseCursor,
   parseInbound,
   parseLimit,
   SYSTEM_ACTOR,
   hasScope,
 } from "@/features/integrations";
-import { cursorOf, logFromRows } from "@/features/cases/persist";
+import { cursorOf, logFromRows, needsProjectsFlag } from "@/features/cases/persist";
+import { reduce } from "@/features/cases/reducer";
+import { seedFor } from "@/features/demo";
+import { isEnabled } from "@/features/flags";
 
 export const dynamic = "force-dynamic";
 
@@ -103,19 +107,40 @@ export async function POST(request: Request, { params }: Ctx) {
   const tenant = await findCompanyBySlug(company);
   if (!tenant) return json({ error: "No such company." }, 404);
 
+  // A replay is answered before the state is checked: a replayed project.step.added would
+  // otherwise find its own step already there and be refused instead of being a duplicate.
+  const key = parsed.event.idempotencyKey;
+  if (key !== null && (await hasIdemKey(auth.token.companyId, key))) {
+    await markTokenUsed(auth.token.id, auth.token.companyId);
+    return json({ ok: true, duplicate: true }, 200);
+  }
+
+  // Project events: behind the `projects` flag like in the app, and only about a project (and a
+  // step) that exists in the company's reduced log - a connector mirrors a project, never makes one.
+  if (needsProjectsFlag(parsed.event.type, parsed.event.payload)) {
+    if (!(await isEnabled(company, "projects"))) {
+      return json({ error: "Projects are not switched on for this company." }, 403);
+    }
+    const log = await loadLogForSlug(company);
+    if (!log) return json({ error: "No such company." }, 404);
+    const verdict = maySystemAppend(parsed.event, reduce(await seedFor(company), log));
+    if (!verdict.ok) return json({ error: verdict.error }, 409);
+  }
+
   const result = await appendEventRow(
     auth.token.companyId,
     {
       // The row id is derived from the idempotency key when there is one, so a replay collides
-      // on the primary key as well as on the unique index.
-      id: "e_n8n_" + (parsed.event.idempotencyKey ?? crypto.randomUUID()),
+      // on the primary key as well as on the unique index. The company is part of it: two
+      // companies' connectors can send the same key (a Jira comment id from two Jira sites).
+      id: "e_n8n_" + (key !== null ? auth.token.companyId + "_" + key : crypto.randomUUID()),
       day: 0,
       type: parsed.event.type,
       actor: SYSTEM_ACTOR,
       targetId: parsed.event.target,
       payload: parsed.event.payload,
     },
-    { source: "n8n", idemKey: parsed.event.idempotencyKey },
+    { source: "n8n", idemKey: key },
   );
 
   if (!result.ok) return json({ error: result.error }, 500);

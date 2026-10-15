@@ -1,6 +1,6 @@
 # Data model
 
-> **Updated 2026-09-28** · reference. The source of truth is `apps/app/prisma/schema.prisma`; the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
+> **Updated 2026-10-15** · reference. The source of truth is `apps/app/prisma/schema.prisma`; the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
 
 Everything is scoped by company. Today (Phase 1) the only store is
 `src/features/tenant/demo-companies.ts`: `slug, name, mark, anonymousHandles, users[]` with
@@ -35,6 +35,20 @@ Event types (`src/features/cases/events.ts`), as in the demo:
   `case.read, case.decided, case.handed, case.asked, case.answered, case.override, case.shipped,
   idea.cosigned, idea.approved, idea.funded` - plus, new here: `member.invited, member.role,
   route.upsert, dept.upsert` so settings pages also store facts, not edited copies of the seed.
+
+After the routing (docs/plans/2026-10-15_idea-to-project.md, 15 Oct 2026), in the same log:
+- **The discussion stage**: `case.discussion {invited, missing}`, `case.invited {invited}`,
+  `case.revised {body, title?, overall?}` (the reducer numbers the versions) and
+  `case.checkin {next: round|decide, open, note}`. The case's status is `discussion`; its due day is
+  the next check-in, `CompanyConfig.discussEveryDays` after the last one.
+- **Projects**: a `case.decided {answer: "yes", projectId, lead, title}` opens the project, or adds the
+  idea to it when it is already open; the idea is archived from then on. Then `project.member`,
+  `project.handed`, `project.baseline`, `project.started`, `project.step.added`, `project.step.moved`,
+  `project.linked`, `project.commented`, `project.done`, `project.measured`, `project.rewarded`,
+  `project.claimed` and `project.stopped`, with the project id as the target. There is no project table:
+  `reduce()` returns `projects` (`src/features/projects`), and the verdict of a measure is computed
+  (`verdict.ts`), never sent. The company's rhythm, measure days and reward rule are `CompanyConfig`
+  fields, read into `Seed.loop` (`src/features/loop/rules.ts`).
 
 Pages render `reduceCases(seed, events)` from `features/cases/reducer.ts`. Rule carried over from the demo:
 **never store display text as state.** Store who / which day / which route; build the sentence at

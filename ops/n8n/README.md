@@ -24,7 +24,7 @@ connectors. A workflow reads and writes the app through the two endpoints in
 
 ```
 GET  /api/<slug>/events?since=<cursor>   read the event log
-POST /api/<slug>/events                  append case.commented / case.handed as system:n8n
+POST /api/<slug>/events                  append case.commented / case.handed (and four project.* events) as system:n8n
 ```
 
 Both take `Authorization: Bearer <token>`. Issue one per company in `/admin` → Companies → **API
@@ -75,8 +75,8 @@ First run, 28 Sep 2026: automation.sellux.ch → acme answered 200.
 The starting point for any workflow that reacts to what happens in a company. It **polls**; the app
 never pushes. Every minute it asks `GET /api/<slug>/events?since=<cursor>`, remembers the cursor in
 the workflow's own static data, and emits **one item per new event**, oldest first, split by type.
-A Webhook trigger would need a hole in the login page in front of automation.sellux.ch
-(`stack/nginx/RUNBOOK.md`) and code in the app that does not exist; a poll needs neither.
+A push would need code in the app that does not exist; a poll needs none. (Webhooks *into* n8n from
+other systems, such as Jira's, are a different thing: see `jira-projects.json`.)
 
 Each item looks like this - `target` is the case id, `payload` is what the event type carries
 (`src/features/cases/events.ts`):
@@ -104,7 +104,9 @@ Two things to know:
 - *Write a note back (example)* is disabled. It shows the only way a workflow may change a case:
   `POST /api/<slug>/events` with `case.commented { text }` or `case.handed { to, why? }`, an
   `Idempotency-Key`, and the token's `events:write` scope. The note appears on the case timeline as
-  `system:n8n`. Nothing else is accepted, and `case.decided` never will be.
+  `system:n8n`. For a project, `project.step.added`, `project.step.moved`, `project.linked` and
+  `project.commented` are accepted too (`docs/INTEGRATIONS.md`). Nothing else, and `case.decided`
+  never will be.
 
 ### Links for building on automation.sellux.ch
 
@@ -116,10 +118,65 @@ Two things to know:
 | Write back | `POST https://acme.sellux.ch/api/acme/events` - body and headers as in the disabled example node |
 | Token | `https://acme.sellux.ch/admin` → Companies → **API token** (Kevin issues it; scopes `events:read`, `events:write`). Store it in n8n as a Header Auth credential named `acme-nextup`, header `Authorization`, value `Bearer <token>` |
 | Contract | `docs/INTEGRATIONS.md` in this repo; the validation rules are in `src/features/integrations/index.ts` |
-| Workflows to import | `ops/n8n/connection-test.json` (run first), `ops/n8n/events-pull.json` (build on it), `ops/n8n/erp-knowledge-sync.json` |
+| Workflows to import | `ops/n8n/connection-test.json` (run first), `ops/n8n/events-pull.json` (build on it), `ops/n8n/jira-projects.json`, `ops/n8n/erp-knowledge-sync.json` |
 
 Run `connection-test.json` before anything else: a 200 there means the URL, the token and the scope
 are right, and every other failure is in the workflow itself.
+
+## `jira-projects.json`
+
+A project's epic and steps in Jira Cloud, and Jira's progress back on the board. What flows which
+way, and what n8n may never send: `docs/INTEGRATIONS.md`, "Jira through n8n". It needs the project
+events in the app (the `projects` flag and the four on the allow-list); before that, every
+write-back answers 400.
+
+Two triggers share one workflow, because they share its static data (the map of issue ↔ step and
+epic ↔ project). *Every minute* polls NextUp and creates epics and issues. *From Jira* takes
+Jira's calls and posts step moves and comments. Only the poll writes the static data.
+
+1. Import it (Workflows → Import from file). Open *Settings* and set `slug`, `apiBase`, `jiraBase`
+   (`https://<site>.atlassian.net`) and `jiraProject` (the project key, e.g. `NUP`). Open *From
+   Jira* and set the path to `jira-<slug>`.
+2. Make three credentials and attach them:
+   - `<slug>-nextup`: as for events-pull, on *Read events*, *Link epic*, *Link issue*, *Move the
+     step* and *Write the comment*. Needs `events:read` and `events:write`.
+   - `<slug>-jira`: Basic Auth, user = the Atlassian account's e-mail, password = its API token. On
+     *Create epic*, *Create issue* and *Read the status in Jira*.
+   - `<slug>-jira-webhook`: Header Auth, name `X-NextUp-Jira`, value from `openssl rand -hex 32`. On
+     *From Jira*.
+3. **Activate** it. A manual *Execute workflow* creates nothing: *Jobs for Jira* then only lists
+   what it would create.
+4. In Jira: Project settings → Automation → Create rule, twice. Each rule's action is **Send web
+   request**: URL `https://automation.sellux.ch/webhook/jira-<slug>`, method POST, headers
+   `X-NextUp-Jira: <the secret>` (tick *Hidden*) and `Content-Type: application/json`, body
+   *Custom data*. In the company's own n8n the URL is `https://<slug>.sellux.ch/webhook/jira-<slug>`
+   (its own host on-prem), once its stack has `N8N_WEBHOOKS=public` (`stack/README.md`):
+
+   | Trigger | Custom data |
+   |---|---|
+   | Work item transitioned | `{"webhookEvent":"jira:issue_updated","issue":{"key":"{{issue.key}}"}}` |
+   | Work item commented | `{"webhookEvent":"comment_created","issue":{"key":"{{issue.key}}"},"comment":{"id":"{{comment.id}}","body":"{{comment.body.jsonEncode}}"}}` |
+
+   Jira's plain admin webhooks can't send a custom header, so they can't pass n8n's Header Auth.
+   Automation rules can.
+
+Test the inbound side without Jira (the issue must be one the workflow created):
+
+```bash
+curl -i -X POST https://automation.sellux.ch/webhook/jira-acme \
+  -H 'X-NextUp-Jira: <the secret>' -H 'Content-Type: application/json' \
+  -d '{"webhookEvent":"comment_created","issue":{"key":"NUP-2"},"comment":{"id":"1","body":"From curl"}}'
+```
+
+Good to know:
+
+- **One copy per company.** A second import of the same file replaces the first (same `id`). For
+  another company, duplicate it in n8n instead, and give it its own path and credentials.
+- **Change a running copy in the editor; don't re-import it.** The cursor and the map live with
+  the workflow in n8n, not in the file. A fresh import reads the log from the start again, makes a
+  second epic for every project in it, and ignores Jira's calls about the old issues.
+- **The epic and issues are created in the default columns.** n8n never moves anything in Jira,
+  and NextUp's own moves stay in NextUp.
 
 ## `erp-knowledge-sync.json`
 

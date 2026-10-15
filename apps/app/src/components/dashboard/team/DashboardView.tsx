@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { visibleTo } from "@/components/dashboard/derive";
+import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
+import { inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { dashboardRow, OVERVIEW_STEPS, overviewSteps, raisedWith, type DashRow, type OverviewStatus } from "@/features/cases/rows";
 import { commentsOn, onDesk, rescoresOn } from "@/features/cases/selectors";
@@ -41,6 +43,8 @@ const STATUS_LABEL: Record<OverviewStatus, string> = {
   move: "Your move", asked: "Needs more info", replied: "Replied", waiting: "Waiting", approved: "Approved", declined: "Not now", building: "Building", shipped: "Shipped",
 };
 const stepLabel = (step: number) => (step >= OVERVIEW_STEPS.length ? "Shipped" : OVERVIEW_STEPS[step]);
+// A case in a discussion is still waiting on its desk; the status says it is being talked over.
+const statusLabel = (r: DashRow, st: OverviewStatus) => (r.talk && (st === "waiting" || st === "replied") ? "In discussion" : STATUS_LABEL[st]);
 // Still running: open, or waiting on an answer to a question (the clock is paused, nothing is answered yet).
 const running = (r: DashRow) => r.open || r.paused;
 
@@ -81,8 +85,10 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
 
 export function DashboardView({ caseId, linkCases = false }: { caseId?: string; linkCases?: boolean } = {}) {
   const ctx = useDemo();
-  const { seed, D, log, persona, role, ready, href, tenant, act, actor, f, motion } = ctx;
+  const { seed, D, log, persona, role, ready, href, tenant, act, actor, f, motion, flag } = ctx;
   const router = useRouter();
+  const [view, setView] = useState<ListView>("open");
+  const [archived, setArchived] = useState<ArchiveFilter>("all");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("move");
   const [menu, setMenu] = useState<"filter" | "sort" | null>(null);
@@ -125,7 +131,10 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
 
   const P = seed.promiseDays;
   const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas };
-  const rows = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, P, persona.who, log));
+  // With projects on, the table shows what is still moving; what was decided sits in the Archive.
+  const split = flag("projects");
+  const everyRow = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, P, persona.who, log));
+  const rows = split ? everyRow.filter((r) => inView(r.archive, view, archived) || r.id === sel) : everyRow;
   const filters: Filter[] = role === "member" ? ["all", "move", "problem", "idea"] : ["all", "move", "problem", "idea", "mine"]; // every row is the employee's own
   // Your move: a question for you; a decision on your case you have not answered yet (a stand-in until
   // it has its event, so a reload asks again); or someone's case on your desk, waiting for your answer.
@@ -265,6 +274,7 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
             </div>
           </div>
         </div>
+        {split && <div className={s.archiveBar}><ArchiveTabs view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} /></div>}
         <div className={s.div13} role="table" aria-label="Problems and ideas">
           <div className={s.div14} role="row">
             <span role="columnheader">What</span><span role="columnheader">Open since</span><span role="columnheader">Stage</span><span role="columnheader">On whose desk</span>
@@ -289,7 +299,7 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
                   </span>
                   <span className={s.mRight} role="cell">
                     <span className={s.mWhen} data-tone={late ? "late" : undefined}>{!running(r) ? "answered" : late ? "past promise" : r.openDays + " d open"}</span>
-                    <span className={s.badge} data-tone={badgeTone}>{STATUS_LABEL[st]}</span>
+                    <span className={s.badge} data-tone={badgeTone}>{statusLabel(r, st)}</span>
                   </span>
                 </span>
               </div>
@@ -319,7 +329,7 @@ export function DashboardView({ caseId, linkCases = false }: { caseId?: string; 
                     <span className={s.span2}><span className={s.desk}>{desk}</span><span className={s.role}>{roleOf(desk)}</span></span>
                   </div>
                 )}
-                <div className={s.div5} role="cell"><span className={s.badge} data-tone={badgeTone}>{STATUS_LABEL[st]}</span></div>
+                <div className={s.div5} role="cell"><span className={s.badge} data-tone={badgeTone}>{statusLabel(r, st)}</span></div>
               </div>
             );
           })}

@@ -160,5 +160,7 @@ describe("finishTitle", () => {
   });
   it("strips an ellipsis left by an older title", () => {
     expect(finishTitle("Forklift charging queue at…")).toBe("Forklift charging queue");
+    // A break too early would leave too little: not "Setters walk".
+    expect(finishTitle("Setters walk to the tool crib before every changeover on line 3")).toBe("Setters walk to the tool crib before every changeover");
   });
 });
