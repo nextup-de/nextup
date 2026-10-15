@@ -1,6 +1,7 @@
-// The Overview. Every problem and idea in the company: open since, on whose desk (and every desk before), stage, score.
-import { DashboardView } from "@/components/dashboard/team/DashboardView";
+// The Overview, now the "Ideas & problems" tab of the Projects page. Every problem and idea in the
+// company: open since, on whose desk (and every desk before), stage, score.
+import { ProjectsHub } from "@/components/projects/ProjectsHub";
 export const metadata = { title: "Overview" };
 export default function OverviewPage() {
-  return <DashboardView />;
+  return <ProjectsHub tab="ideas" />;
 }

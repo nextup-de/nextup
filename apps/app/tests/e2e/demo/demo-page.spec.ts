@@ -78,7 +78,10 @@ test("the demo controls walk the story: idea, answers, published, inbox, dashboa
 
   await test.step("published: the Overview and the Feed show it, with the edited description", async () => {
     await publishTo(page, "Thomas Vogel");
-    await page.getByRole("link", { name: "Overview", exact: true }).click();
+    // The Overview is the "Ideas & problems" tab of Projects.
+    await page.getByRole("link", { name: "Projects", exact: true }).click();
+    await page.getByRole("link", { name: "Ideas & problems" }).click();
+    await expect(page).toHaveURL(/\/demo\/overview$/);
     const main = page.getByRole("main");
     await expect(main).toContainText(TITLE);
     for (const t of ["Your move", "Replied", "past promise"]) await expect(main.getByText(t, { exact: true }).first()).toBeVisible();

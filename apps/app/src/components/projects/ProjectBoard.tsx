@@ -20,6 +20,18 @@ export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[
   const [owner, setOwner] = useState("");
   const [inDays, setInDays] = useState("");
   const done = cols.done.length;
+  // Drag and drop: the card being dragged, the column it hovers, and the card whose "what blocks it?" is asked.
+  const [drag, setDrag] = useState<string | null>(null);
+  const [over, setOver] = useState<StepColumn | null>(null);
+  const [askBlock, setAskBlock] = useState<string | null>(null);
+  const dragged = p.steps.find((s) => s.id === drag);
+  const drop = (col: StepColumn) => {
+    const s = dragged;
+    setDrag(null); setOver(null);
+    if (!s || s.column === col || !r.moveStep(s)) return;
+    if (col === "blocked") setAskBlock(s.id); // a blocked step needs its reason, so the drop only opens the question
+    else send("project.step.moved", { stepId: s.id, to: col }, () => act.project.moveStep(p.id, s.id, col));
+  };
 
   const add = (t: string, o?: string, due?: number) =>
     send("project.step.added", { stepId: "probe", text: t }, () => act.project.addStep(p.id, t, o || undefined, due));
@@ -51,9 +63,17 @@ export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[
 
       <div className={styles.board}>
         {STEP_COLUMNS.map((col) => (
-          <div key={col} className={styles.column} data-col={col} role="group" aria-label={COLUMN_LABEL[col]}>
+          <div
+            key={col} className={styles.column} data-col={col} role="group" aria-label={COLUMN_LABEL[col]} data-over={over === col ? "true" : undefined}
+            onDragOver={(e) => { if (dragged && dragged.column !== col) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOver(col); } }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((o) => (o === col ? null : o)); }}
+            onDrop={(e) => { e.preventDefault(); drop(col); }}
+          >
             <div className={styles.colHead}>{COLUMN_LABEL[col]}<span className={styles.count}>{cols[col].length}</span></div>
-            {cols[col].map((s) => <StepCard key={s.id} p={p} s={s} />)}
+            {cols[col].map((s) => (
+              <StepCard key={s.id} p={p} s={s} dragging={drag === s.id} onDragStart={() => setDrag(s.id)} onDragEnd={() => { setDrag(null); setOver(null); }}
+                askBlock={askBlock === s.id} onAsked={() => setAskBlock(null)} />
+            ))}
           </div>
         ))}
       </div>
@@ -73,17 +93,27 @@ export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[
   );
 }
 
-function StepCard({ p, s }: { p: ReducedProject; s: Step }) {
+type CardProps = { p: ReducedProject; s: Step; dragging: boolean; onDragStart: () => void; onDragEnd: () => void; askBlock: boolean; onAsked: () => void };
+
+function StepCard({ p, s, dragging, onDragStart, onDragEnd, askBlock, onAsked }: CardProps) {
   const { act, S, f } = useDemo();
   const r = useRights(p);
   const send = useSend(p);
-  const [why, setWhy] = useState<string | null>(null); // the "what blocks it?" field, while it is open
+  const [typed, setWhy] = useState<string | null>(null); // the "what blocks it?" field, while it is open
+  // A card dropped on Blocked opens the same question the Blocked button does (askBlock), until it is answered or cancelled.
+  const why = typed ?? (askBlock ? "" : null);
+  const close = () => { setWhy(null); onAsked(); };
+  const canDrag = r.moveStep(s) && why === null;
   const late = s.dueDay !== null && s.column !== "done" && S.day > s.dueDay;
   const href = safeUrl(s.external?.url);
   const move = (to: StepColumn, w?: string) => send("project.step.moved", { stepId: s.id, to, why: w }, () => act.project.moveStep(p.id, s.id, to, w));
 
   return (
-    <article className={styles.step} aria-label={s.text}>
+    <article
+      className={styles.step} aria-label={s.text} draggable={canDrag} data-dragging={dragging ? "true" : undefined}
+      onDragStart={(e) => { if (!canDrag) return; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", s.id); onDragStart(); }}
+      onDragEnd={onDragEnd}
+    >
       <div className={styles.stepText}>{s.text}</div>
       <div className={styles.stepMeta}>
         <span>{s.owner ?? "No owner"}</span>
@@ -103,11 +133,11 @@ function StepCard({ p, s }: { p: ReducedProject; s: Step }) {
         </div>
       )}
       {why !== null && (
-        <form className={styles.whyForm} onSubmit={(e) => { e.preventDefault(); if (why.trim() && move("blocked", why.trim())) setWhy(null); }}>
+        <form className={styles.whyForm} onSubmit={(e) => { e.preventDefault(); if (why.trim() && move("blocked", why.trim())) close(); }}>
           <input className={`nh-input ${styles.input}`} value={why} onChange={(e) => setWhy(e.target.value)} placeholder="What blocks it?" aria-label="What blocks it?" autoFocus />
           <span className={styles.actionRow}>
             <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!why.trim()}>Mark blocked</button>
-            <button type="button" className={styles.quiet} onClick={() => setWhy(null)}>Cancel</button>
+            <button type="button" className={styles.quiet} onClick={close}>Cancel</button>
           </span>
         </form>
       )}

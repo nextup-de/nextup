@@ -108,3 +108,42 @@ test("a lead plans, runs and measures a project; the manager records the reward"
     await expect(reward).toContainText("Recorded today by B. Hartmann: Thanked at the shift meeting");
   });
 });
+
+test("projects and the overview are tabs of one page", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Overview" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Projects", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
+  await page.getByRole("link", { name: "Ideas & problems" }).click();
+  await expect(page).toHaveURL(/\/acme\/overview$/);
+  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Projects/ }).first()).toBeVisible();
+});
+
+test("a step is dragged to another column; a drop on Blocked asks why", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/projects/pj4");
+  await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
+  await page.getByRole("button", { name: "Add step", exact: true }).click();
+  const todo = page.getByRole("group", { name: "To do" });
+  const card = todo.getByRole("article", { name: TYPED });
+  await card.dragTo(page.getByRole("group", { name: "Doing" }));
+  await expect(page.getByRole("group", { name: "Doing" }).getByRole("article", { name: TYPED })).toBeVisible();
+  await page.getByRole("group", { name: "Doing" }).getByRole("article", { name: TYPED }).dragTo(page.getByRole("group", { name: "Blocked" }));
+  const why = page.getByRole("textbox", { name: "What blocks it?" });
+  await expect(why).toBeVisible();
+  await expect(page.getByRole("group", { name: "Doing" }).getByRole("article", { name: TYPED })).toBeVisible(); // not moved until the reason is given
+  await why.fill("Waiting for the stopwatch");
+  await page.getByRole("button", { name: "Mark blocked" }).click();
+  await expect(page.getByRole("group", { name: "Blocked" }).getByRole("article", { name: TYPED })).toContainText("Waiting for the stopwatch");
+});
+
+test("the project page shows the idea it came from", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/projects/pj4");
+  await expect(page.getByRole("heading", { name: "The idea" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Files and sources" })).toBeVisible();
+});
