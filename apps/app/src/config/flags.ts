@@ -25,7 +25,7 @@ export type FlagDef = {
   removeBy: string;
 };
 
-// Empty until the first feature needs one. An entry looks like:
+// An entry looks like:
 //   shiftRota: {
 //     description: "The shift rota page for team leads",
 //     owner: "Sam",
@@ -33,6 +33,23 @@ export type FlagDef = {
 //     added: "2026-10-08",
 //     removeBy: "2026-12-01",
 //   },
-export const FLAGS = {} as const satisfies Record<string, FlagDef>;
+export const FLAGS = {
+  // docs/plans/2026-10-15_idea-to-project.md, step 1
+  discussion: {
+    description: "'Discuss first' before a decision: invite people, the author revises, a check-in every 3 days",
+    owner: "Kevin",
+    defaults: { demo: true, sandbox: false, pilot: false, live: false },
+    added: "2026-10-15",
+    removeBy: "2026-12-31",
+  },
+  // docs/plans/2026-10-15_idea-to-project.md, steps 2-5
+  projects: {
+    description: "After 'Yes, do it' the idea is archived and a project opens: board, measure, reward",
+    owner: "Kevin",
+    defaults: { demo: true, sandbox: false, pilot: false, live: false },
+    added: "2026-10-15",
+    removeBy: "2026-12-31",
+  },
+} as const satisfies Record<string, FlagDef>;
 
 export type FlagKey = keyof typeof FLAGS;

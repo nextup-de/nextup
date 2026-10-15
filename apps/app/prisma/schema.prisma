@@ -259,6 +259,19 @@ model CompanyConfig {
 
   // The idea studio (docs/IDEAS.md): the benchmark score an idea needs before it can be published.
   publishThreshold Int @default(70)
+
+  // After the routing (docs/plans/2026-10-15_idea-to-project.md, src/features/loop/rules.ts): how
+  // often a discussion checks in, when a project is measured, and the company's reward rule.
+  discussEveryDays    Int     @default(3)
+  discussMaxRounds    Int     @default(3)
+  fastLaneEur         Int     @default(5000)
+  measureDays         Int[]   @default([30, 90])
+  measureTolerancePct Int     @default(2)
+  // none | thanks | fixed | share
+  rewardRule          String  @default("thanks")
+  rewardAmountEur     Int?
+  rewardSharePct      Int?
+  rewardCapEur        Int?
 }
 
 // ── Feature flags (src/config/flags.ts, src/features/flags) ───────────────────────────────────────

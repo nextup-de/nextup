@@ -18,7 +18,7 @@ import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CaseDetailView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
-const STATUS_LABEL = { open: "Sent", asked: "Question for you", decided: "Decided", building: "Building", shipped: "Shipped" } as const;
+const STATUS_LABEL = { open: "Sent", discussion: "In discussion", asked: "Question for you", decided: "Decided", building: "Building", shipped: "Shipped" } as const;
 
 // Facts in, one sentence out - nothing here is stored.
 function sentence(e: CaseEvent): string {

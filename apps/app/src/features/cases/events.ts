@@ -4,7 +4,11 @@
 export type CaseEventType =
   | "case.raised" // { title, body, routeId, assignee, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy? }
   | "case.read" // -
-  | "case.decided" // { answer: 'yes'|'no', reason?, note? }
+  | "case.decided" // { answer: 'yes'|'no', reason?, note?, projectId?, lead?, title? }  a yes with projectId opens (or joins) that project
+  | "case.discussion" // { invited, missing }  "Discuss first": round 1 starts (docs/plans/2026-10-15_idea-to-project.md)
+  | "case.invited" // { invited }  more people asked for their view
+  | "case.revised" // { body, title?, overall? }  the raiser's next version; the reducer numbers it
+  | "case.checkin" // { next: 'round'|'decide', open, note }  ends a round
   | "case.handed" // { to, why? }
   | "case.asked" // { text }
   | "case.answered" // { text }
@@ -19,6 +23,20 @@ export type CaseEventType =
   | "idea.asked" // { text }
   | "idea.approved" // { team?: [names], note? }
   | "idea.funded" // { team?: [names], note? }
+  // A project, target = its id. It opens with the case.decided yes above, never with an event of its own.
+  | "project.member" // { name, on }
+  | "project.handed" // { to, why? }  a new lead; the old one stays on the team
+  | "project.baseline" // { metric, unit, value, better: 'up'|'down', source } or { none: true, why }
+  | "project.started" // -  refused without a baseline
+  | "project.step.added" // { stepId, text, owner?, dueDay?, external? }
+  | "project.step.moved" // { stepId, to: 'todo'|'doing'|'blocked'|'done', why? }
+  | "project.linked" // { system, url, key?, stepId? }
+  | "project.commented" // { text }
+  | "project.done" // { note? }  the measure checks start counting
+  | "project.measured" // { check, value, source, note? }  the verdict is computed, never sent
+  | "project.rewarded" // { rule, amount?, note? }
+  | "project.claimed" // -  an anonymous author takes their reward
+  | "project.stopped" // { why }
   | "day.advanced"; // { by }
 
 // What an employee raises: something that hurts, or something that could be. Missing = problem.
@@ -55,6 +73,22 @@ export type EventPayload = {
   proposal?: RouteProposal; // on case.raised
   visibility?: Visibility; // on case.raised
   seenBy?: string[]; // on case.raised with visibility "custom": people and department names
+  // The discussion stage
+  invited?: string[]; // case.discussion, case.invited: names
+  missing?: string; // case.discussion: what is still missing, in the desk holder's words
+  overall?: number; // case.revised: the benchmark score of the new version, 0-100
+  next?: "round" | "decide"; // case.checkin
+  open?: string[]; // case.checkin: the points still open (dial names or short notes)
+  // Projects
+  projectId?: string; // case.decided yes: the project it opens or joins
+  lead?: string; // case.decided yes: who leads it
+  name?: string; on?: boolean; // project.member
+  metric?: string; unit?: string; value?: number; better?: "up" | "down"; source?: string; none?: boolean; // project.baseline, project.measured (value, source)
+  stepId?: string; owner?: string; dueDay?: number; // project.step.*, project.linked (stepId)
+  external?: { system: string; key: string; url?: string }; // project.step.added from a connector
+  system?: string; url?: string; key?: string; // project.linked
+  check?: number; // project.measured: days after done (30, 90)
+  rule?: string; amount?: number; // project.rewarded
 };
 
 export type CaseEvent = {

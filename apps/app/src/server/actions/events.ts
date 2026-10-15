@@ -8,7 +8,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getViewerFor } from "@/features/auth/session";
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
-import { APP_EVENT_TYPES } from "@/features/cases/persist";
+import { APP_EVENT_TYPES, DISCUSSION_EVENT_TYPES, needsProjectsFlag } from "@/features/cases/persist";
+import { isEnabled } from "@/features/flags";
 import { mayAppend } from "@/features/cases/permissions";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
@@ -62,6 +63,14 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
 
   const viewer = await getViewerFor(slug);
   if (!viewer) return { ok: false, error: "Your session has expired. Log in again." };
+
+  // Behind a flag until admin.sellux.ch turns it on for this company (src/config/flags.ts).
+  if (DISCUSSION_EVENT_TYPES.includes(type) && !(await isEnabled(slug, "discussion"))) {
+    return { ok: false, error: "The discussion stage is not switched on for this company." };
+  }
+  if (needsProjectsFlag(type, payload) && !(await isEnabled(slug, "projects"))) {
+    return { ok: false, error: "Projects are not switched on for this company." };
+  }
 
   // Who may do this to this case? Answered against the reduced log, the same state every browser
   // renders - the buttons the UI hides are hidden here too (features/cases/permissions.ts).

@@ -16,6 +16,7 @@ import { getViewerFor } from "@/features/auth/session";
 import { loadLogForSlug } from "@/lib/db/events";
 import { hasDatabase, orDemo } from "@/lib/db/client";
 import { policyFor } from "@/features/admin/stages";
+import { flagsFor } from "@/features/flags";
 import { DemoProvider, type ViewerInfo } from "@/components/dashboard/DemoProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { ReportButton } from "@/components/report/ReportButton";
@@ -34,7 +35,7 @@ export default async function AppLayout({
   const tenant = await findTenant(company);
   if (!tenant) notFound();
 
-  const seed = await seedFor(tenant.slug);
+  const [seed, flags] = await Promise.all([seedFor(tenant.slug), flagsFor(tenant.slug)]);
 
   // Server mode only when there is both a database and a session for THIS company.
   let viewer = hasDatabase() ? await getViewerFor(tenant.slug) : null;
@@ -70,6 +71,7 @@ export default async function AppLayout({
         users: people.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
         hiddenPeople: tenant.users.filter((u) => Boolean(u.handle)).map((u) => u.name),
         demoTools,
+        flags,
       }}
       seed={seed}
       initialLog={initialLog ?? undefined}

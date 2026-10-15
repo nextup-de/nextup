@@ -72,8 +72,19 @@ export const APP_EVENT_TYPES = [
   "case.raised", "case.read", "case.decided", "case.handed", "case.asked", "case.answered",
   "case.override", "case.affected", "case.unaffected", "case.commented",
   "idea.cosigned", "idea.uncosigned", "idea.asked", "idea.approved", "idea.funded",
+  // The discussion stage and projects (docs/plans/2026-10-15_idea-to-project.md), each behind its flag.
+  "case.discussion", "case.invited", "case.revised", "case.checkin",
+  "project.member", "project.handed", "project.baseline", "project.started", "project.step.added", "project.step.moved",
+  "project.linked", "project.commented", "project.done", "project.measured", "project.rewarded", "project.claimed", "project.stopped",
   "day.advanced",
 ] as const;
+
+/** The events behind the `discussion` flag. */
+export const DISCUSSION_EVENT_TYPES: readonly string[] = ["case.discussion", "case.invited", "case.revised", "case.checkin"];
+
+/** Is this event behind the `projects` flag? Every project.* event, and a yes that opens a project. */
+export const needsProjectsFlag = (type: string, payload: { projectId?: unknown }): boolean =>
+  type.startsWith("project.") || (type === "case.decided" && payload.projectId != null);
 
 export type AppEventType = (typeof APP_EVENT_TYPES)[number];
 
