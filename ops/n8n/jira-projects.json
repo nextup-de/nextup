@@ -1,0 +1,862 @@
+{
+  "id": "nextupJiraProjects",
+  "name": "NextUp — Jira projects",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "e5000000-0000-4000-8000-000000000001",
+      "name": "Every minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1100,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jira-acme",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000002",
+      "name": "From Jira",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1100,
+        240
+      ],
+      "webhookId": "e5000000-0000-4000-8000-000000000099",
+      "credentials": {},
+      "notes": "Production URL: https://automation.sellux.ch/webhook/jira-<slug> - the only kind of path the login page lets through. Credential <slug>-jira-webhook (Header Auth: name X-NextUp-Jira, value a long random secret); the Jira automation rule sends the same header. Without the credential every call is refused."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "slug",
+              "name": "slug",
+              "value": "acme",
+              "type": "string"
+            },
+            {
+              "id": "apiBase",
+              "name": "apiBase",
+              "value": "https://acme.sellux.ch",
+              "type": "string"
+            },
+            {
+              "id": "jiraBase",
+              "name": "jiraBase",
+              "value": "https://your-site.atlassian.net",
+              "type": "string"
+            },
+            {
+              "id": "jiraProject",
+              "name": "jiraProject",
+              "value": "NUP",
+              "type": "string"
+            },
+            {
+              "id": "epicType",
+              "name": "epicType",
+              "value": "Epic",
+              "type": "string"
+            },
+            {
+              "id": "stepType",
+              "name": "stepType",
+              "value": "Task",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000003",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -880,
+        0
+      ],
+      "notes": "One copy of this workflow per company and Jira site. apiBase: the company's public address from automation.sellux.ch, http://app:3000 from an n8n inside its own stack. jiraBase: the Jira Cloud site, no trailing slash. jiraProject: the Jira project KEY. Rename the webhook path to jira-<slug> as well."
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "poll",
+                    "leftValue": "={{ $json.body === undefined ? 'poll' : 'jira' }}",
+                    "rightValue": "poll",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "poll"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "jira",
+                    "leftValue": "={{ $json.body === undefined ? 'poll' : 'jira' }}",
+                    "rightValue": "jira",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "jira"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000004",
+      "name": "Poll or Jira?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -660,
+        0
+      ],
+      "notes": "The schedule leads to the poll (NextUp -> Jira); the webhook, which carries a body, to Jira -> NextUp."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Where we got to last time. n8n keeps this per workflow, on the server, between runs -\n// but only for an ACTIVE workflow. A manual test run always starts from 0.\nconst store = $getWorkflowStaticData('global');\nconst item = $input.first().json;\nreturn [{ json: { ...item, since: Number(store.cursor ?? 0) } }];"
+      },
+      "id": "e5000000-0000-4000-8000-000000000005",
+      "name": "Last cursor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBase }}/api/{{ $json.slug }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "since",
+              "value": "={{ $json.since }}"
+            },
+            {
+              "name": "limit",
+              "value": "200"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000006",
+      "name": "Read events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -220,
+        -200
+      ],
+      "credentials": {},
+      "notes": "Credential <slug>-nextup (Header Auth: Authorization = Bearer <token>). Needs events:read; the write-back nodes need events:write."
+    },
+    {
+      "parameters": {
+        "jsCode": "// New events -> what to create in Jira, oldest first.\n//   case.decided {answer:\"yes\", projectId, title}  -> an Epic, once per project (an idea that joins a\n//                                                     project that already has its epic makes none)\n//   project.step.added without payload.external     -> an issue under the project's epic\n// A step with payload.external already lives in another tool, and a step of a project with no epic\n// here (opened before this workflow was active) gets no issue: both are left alone.\nconst r = $input.first().json;\nconst s = $('Settings').first().json;\nconst store = $getWorkflowStaticData('global');\nconst projects = store.projects ?? {};\nconst steps = store.steps ?? {};\n\nconst events = Array.isArray(r.events) ? r.events : [];\nconst jobs = [];\nconst epics = new Set();\nconst issues = new Set();\nlet first = null; // seq of the first event that still needs Jira\nfor (const e of events) {\n  const p = e.payload ?? {};\n  let job = null;\n  if (e.type === 'case.decided' && p.answer === 'yes' && typeof p.projectId === 'string') {\n    if (projects[p.projectId] || epics.has(p.projectId)) continue;\n    epics.add(p.projectId);\n    job = { job: 'epic', projectId: p.projectId, title: String(p.title ?? '').trim() || 'NextUp project ' + p.projectId };\n  } else if (e.type === 'project.step.added' && !p.external && typeof p.stepId === 'string' && typeof e.target === 'string') {\n    if (steps[p.stepId] || issues.has(p.stepId)) continue;\n    if (!projects[e.target] && !epics.has(e.target)) continue;\n    issues.add(p.stepId);\n    job = { job: 'issue', projectId: e.target, stepId: p.stepId, text: String(p.text ?? '').trim() || 'Step ' + p.stepId };\n  }\n  if (!job) continue;\n  if (first === null) first = e.seq;\n  jobs.push({ slug: s.slug, apiBase: s.apiBase, ...job });\n}\n\n// A run by hand (Execute workflow) reads from 0 and keeps no static data, so creating anything\n// would make duplicates. It only shows what the active workflow would create.\nif ($execution.mode !== 'production') return [{ json: { dryRun: true, wouldCreate: jobs } }];\n\n// The cursor stops just before the first event with work, so a job that failed (Jira down, a wrong\n// setting) is tried again next minute; jobs that worked are in the map by then and skipped. After\n// 5 failed minutes that event is given up, so one bad event can't hold up the rest for ever.\nlet next = typeof r.cursor === 'number' ? r.cursor : Number(store.cursor ?? 0);\nif (first !== null) {\n  const tries = store.retry?.seq === first ? store.retry.tries + 1 : 1;\n  store.retry = { seq: first, tries };\n  if (tries <= 5) next = first - 1;\n}\nif (next > Number(store.cursor ?? 0)) store.cursor = next;\nreturn jobs.map((json) => ({ json, pairedItem: { item: 0 } }));"
+      },
+      "id": "e5000000-0000-4000-8000-000000000007",
+      "name": "Jobs for Jira",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -200
+      ],
+      "notes": "Active workflow only: the cursor stops before the first event that still needs Jira, so a failed epic or issue is tried again each minute, 5 times. After that, create it in Jira by hand. A manual run only lists what it would create."
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "epic",
+                    "leftValue": "={{ $json.job }}",
+                    "rightValue": "epic",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "epic"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "issue",
+                    "leftValue": "={{ $json.job }}",
+                    "rightValue": "issue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "issue"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000008",
+      "name": "Epic or issue?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        220,
+        -200
+      ],
+      "notes": "Epics run first (their branch is higher on the canvas), so a step added in the same minute as its project finds the epic."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.jiraBase }}/rest/api/3/issue",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fields: { project: { key: $('Settings').first().json.jiraProject }, issuetype: { name: $('Settings').first().json.epicType }, summary: $json.title.slice(0, 250), description: { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Opened in NextUp (' + $json.slug + ') as project ' + $json.projectId + '. Its steps show up here as issues; moving one to Done moves the step in NextUp.' }] }] } } }) }}",
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000009",
+      "name": "Create epic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        -320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {},
+      "notes": "Credential <slug>-jira (Basic Auth: the Atlassian account's e-mail + an API token from id.atlassian.com). Jira answers { id, key, self }."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Remember the epic before telling NextUp: if the write-back fails, the next run still knows the\n// project has its epic and never makes a second one. Whole objects are assigned back, so n8n\n// notices the change and saves it.\nconst store = $getWorkflowStaticData('global');\nconst s = $('Settings').first().json;\nconst projects = { ...(store.projects ?? {}) };\nconst issues = { ...(store.issues ?? {}) };\nconst out = $input.all().map((it, i) => {\n  const job = $('Epic or issue?').itemMatching(i).json;\n  const key = it.json.key;\n  const url = s.jiraBase + '/browse/' + key;\n  projects[job.projectId] = { key, url };\n  issues[key] = { projectId: job.projectId, stepId: null };\n  return { json: { slug: job.slug, apiBase: job.apiBase, projectId: job.projectId, key, url }, pairedItem: { item: i } };\n});\nstore.projects = projects;\nstore.issues = issues;\nreturn out;"
+      },
+      "id": "e5000000-0000-4000-8000-000000000010",
+      "name": "Remember epic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.apiBase }}/api/{{ $json.slug }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "=jira:epic:{{ $json.projectId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'project.linked', target: $json.projectId, payload: { system: 'jira', key: $json.key, url: $json.url } }) }}",
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000011",
+      "name": "Link epic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        -320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {},
+      "notes": "project.linked on the project. The app accepts it once project.linked is on the allow-list (SYSTEM_EVENT_TYPES); until then it answers 400. Continues on error, so the other items still run; a lost link can be added on the board by hand."
+    },
+    {
+      "parameters": {
+        "jsCode": "// A step's issue goes under its project's epic. A project with no epic here (opened before this\n// workflow was active, or its epic could not be created) gets no issues: add those in Jira by hand.\nconst store = $getWorkflowStaticData('global');\nconst projects = store.projects ?? {};\nconst steps = store.steps ?? {};\nconst out = [];\n$input.all().forEach((it, i) => {\n  const epic = projects[it.json.projectId];\n  if (epic && !steps[it.json.stepId]) out.push({ json: { ...it.json, epic: epic.key }, pairedItem: { item: i } });\n});\nreturn out;"
+      },
+      "id": "e5000000-0000-4000-8000-000000000012",
+      "name": "Find the epic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.jiraBase }}/rest/api/3/issue",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fields: { project: { key: $('Settings').first().json.jiraProject }, issuetype: { name: $('Settings').first().json.stepType }, parent: { key: $json.epic }, summary: $json.text.slice(0, 250), description: { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A step of NextUp project ' + $json.projectId + ' (' + $json.slug + '). Move it to Done here and the step moves in NextUp.' }] }] } } }) }}",
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000013",
+      "name": "Create issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        -80
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {},
+      "notes": "Same <slug>-jira credential. parent = the project's epic (works in team- and company-managed projects)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Remember issue <-> step before telling NextUp, as for the epic.\nconst store = $getWorkflowStaticData('global');\nconst s = $('Settings').first().json;\nconst steps = { ...(store.steps ?? {}) };\nconst issues = { ...(store.issues ?? {}) };\nconst out = $input.all().map((it, i) => {\n  const step = $('Find the epic').itemMatching(i).json;\n  const key = it.json.key;\n  steps[step.stepId] = key;\n  issues[key] = { projectId: step.projectId, stepId: step.stepId };\n  return {\n    json: { slug: step.slug, apiBase: step.apiBase, projectId: step.projectId, stepId: step.stepId, key, url: s.jiraBase + '/browse/' + key },\n    pairedItem: { item: i },\n  };\n});\nstore.steps = steps;\nstore.issues = issues;\nreturn out;"
+      },
+      "id": "e5000000-0000-4000-8000-000000000014",
+      "name": "Remember issue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.apiBase }}/api/{{ $json.slug }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "=jira:issue:{{ $json.stepId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'project.linked', target: $json.projectId, payload: { system: 'jira', key: $json.key, url: $json.url, stepId: $json.stepId } }) }}",
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000015",
+      "name": "Link issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        -80
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {},
+      "notes": "project.linked with the stepId, so the board shows the issue on the step."
+    },
+    {
+      "parameters": {
+        "jsCode": "// What the Jira automation rule sent (docs/INTEGRATIONS.md, \"Jira through n8n\"): the issue key,\n// and for a comment its id and text. The status is not taken from here: the next node reads it\n// from Jira itself. Issues this workflow didn't create are ignored. This side only READS static\n// data, so a webhook run can never overwrite what a poll run has just remembered.\nconst s = $('Settings').first().json;\nconst store = $getWorkflowStaticData('global');\nconst issues = store.issues ?? {};\n\n// A comment body is text, or Atlassian Document Format (REST v3): keep the words.\nfunction plain(node) {\n  if (typeof node === 'string') return node;\n  if (!node || typeof node !== 'object') return '';\n  const inner = Array.isArray(node.content) ? node.content.map(plain).join(node.type === 'doc' ? '\\n' : '') : '';\n  return (typeof node.text === 'string' ? node.text : '') + inner;\n}\n\nconst out = [];\n$input.all().forEach((it, i) => {\n  const b = it.json.body ?? {};\n  const key = String(b.issue?.key ?? '').trim();\n  const link = issues[key];\n  if (!link) return;\n  const base = { slug: s.slug, apiBase: s.apiBase, jiraBase: s.jiraBase, key, projectId: link.projectId };\n  if (b.comment) {\n    const text = plain(b.comment.body).trim();\n    if (!text) return;\n    out.push({ json: { ...base, kind: 'comment', commentId: String(b.comment.id ?? ''), text: ('Jira ' + key + ': ' + text).slice(0, 4000) }, pairedItem: { item: i } });\n  } else if (link.stepId) {\n    out.push({ json: { ...base, kind: 'status', stepId: link.stepId }, pairedItem: { item: i } });\n  }\n});\nreturn out;"
+      },
+      "id": "e5000000-0000-4000-8000-000000000016",
+      "name": "Read the Jira call",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "status",
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "status"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "comment",
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "comment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "comment"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000017",
+      "name": "Status or comment?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -220,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.jiraBase }}/rest/api/3/issue/{{ $json.key }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "status,statuscategorychangedate"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000018",
+      "name": "Read the status in Jira",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        160
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {},
+      "notes": "Same <slug>-jira credential. The status comes from Jira, never from the webhook body."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Jira's status CATEGORY decides, not the status name, so renamed or extra columns still work:\n// Done -> done, In Progress -> doing, To Do -> todo (a reopened issue). A move inside one category\n// (In Progress -> In Review) keeps statuscategorychangedate, so the idempotency key repeats and\n// NextUp records no second move. Epics never get here: they have no step.\nconst TO = { done: 'done', indeterminate: 'doing', new: 'todo' };\nconst out = [];\n$input.all().forEach((it, i) => {\n  const call = $('Read the Jira call').itemMatching(i).json;\n  const f = it.json.fields ?? {};\n  const to = TO[f.status?.statusCategory?.key];\n  if (!to) return;\n  const since = f.statuscategorychangedate ?? f.updated ?? String(Date.now());\n  out.push({ json: { ...call, to, idem: ('jira:' + call.key + ':' + to + ':' + since).slice(0, 200) }, pairedItem: { item: i } });\n});\nreturn out;"
+      },
+      "id": "e5000000-0000-4000-8000-000000000019",
+      "name": "Status to step",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.apiBase }}/api/{{ $json.slug }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.idem }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'project.step.moved', target: $json.projectId, payload: { stepId: $json.stepId, to: $json.to } }) }}",
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000020",
+      "name": "Move the step",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        160
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {},
+      "notes": "project.step.moved as system:n8n. Never project.done, measured, rewarded or stopped: people decide those."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.apiBase }}/api/{{ $json.slug }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.commentId ? 'jira:comment:' + $json.commentId : 'jira:comment:' + $json.key + ':' + $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'project.commented', target: $json.projectId, payload: { text: $json.text } }) }}",
+        "options": {}
+      },
+      "id": "e5000000-0000-4000-8000-000000000021",
+      "name": "Write the comment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {},
+      "notes": "project.commented { text: 'Jira <KEY>: <comment>' } on the project, for a comment on the epic or on a step's issue."
+    }
+  ],
+  "connections": {
+    "Every minute": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "From Jira": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Poll or Jira?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll or Jira?": {
+      "main": [
+        [
+          {
+            "node": "Last cursor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read the Jira call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Last cursor": {
+      "main": [
+        [
+          {
+            "node": "Read events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read events": {
+      "main": [
+        [
+          {
+            "node": "Jobs for Jira",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jobs for Jira": {
+      "main": [
+        [
+          {
+            "node": "Epic or issue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Epic or issue?": {
+      "main": [
+        [
+          {
+            "node": "Create epic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find the epic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create epic": {
+      "main": [
+        [
+          {
+            "node": "Remember epic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remember epic": {
+      "main": [
+        [
+          {
+            "node": "Link epic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find the epic": {
+      "main": [
+        [
+          {
+            "node": "Create issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create issue": {
+      "main": [
+        [
+          {
+            "node": "Remember issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remember issue": {
+      "main": [
+        [
+          {
+            "node": "Link issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the Jira call": {
+      "main": [
+        [
+          {
+            "node": "Status or comment?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status or comment?": {
+      "main": [
+        [
+          {
+            "node": "Read the status in Jira",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Write the comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the status in Jira": {
+      "main": [
+        [
+          {
+            "node": "Status to step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status to step": {
+      "main": [
+        [
+          {
+            "node": "Move the step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "nextup-pilot"
+  },
+  "tags": [
+    {
+      "name": "nextup"
+    }
+  ]
+}

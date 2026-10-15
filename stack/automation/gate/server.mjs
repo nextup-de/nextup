@@ -1,6 +1,6 @@
 // The login in front of automation.sellux.ch. nginx asks GET /_gate/auth before every request
 // (auth_request); without a valid session cookie it sends the browser to /_gate/login.
-// No dependencies: node's http + crypto only.
+// No dependencies: node's http + crypto only. Self-check: node --test stack/automation/gate/server.test.mjs
 //
 // Env: GATE_USER, GATE_PASSWORD_HASH (scrypt:<salt hex>:<hash hex> - no "$", compose would expand it), GATE_SECRET (hex),
 //      GATE_TTL_HOURS (default 12), PORT (default 8080).
@@ -60,6 +60,17 @@ setInterval(() => {
   for (const [ip, f] of failures) if (f.until < Date.now()) failures.delete(ip);
 }, 60_000).unref();
 
+// n8n's production webhooks skip the login: Jira can't sign in, so the Header Auth on each Webhook
+// node guards them instead. nginx sends the method and the path exactly as n8n will get them
+// ($request_uri). Only POST /webhook/<letters, digits, - and _> passes: no dots, %-escapes or
+// double slashes, so "/webhook/../rest/..." never reaches the editor. /webhook-test/ and
+// everything else still need the login.
+const WEBHOOK = /^\/webhook(?:\/[A-Za-z0-9_-]+)+\/?(?:\?[^\s#]*)?$/;
+function webhook(req) {
+  const uri = req.headers["x-original-uri"];
+  return req.headers["x-original-method"] === "POST" && typeof uri === "string" && uri.length <= 2048 && WEBHOOK.test(uri);
+}
+
 // Only paths on this host: "/x" yes, "//evil.example" and "https://..." no.
 const safeNext = (n) => (typeof n === "string" && /^\/(?![/\\])/.test(n) ? n : "/");
 
@@ -111,7 +122,7 @@ http
     const ip = String(req.headers["x-real-ip"] ?? req.socket.remoteAddress);
 
     if (url.pathname === "/_gate/auth") {
-      res.writeHead(session(req) ? 204 : 401);
+      res.writeHead(session(req) || webhook(req) ? 204 : 401);
       return res.end();
     }
     if (url.pathname === "/_gate/health") {

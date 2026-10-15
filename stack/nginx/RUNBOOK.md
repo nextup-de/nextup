@@ -287,8 +287,43 @@ certificate exists. For a new host, run `sudo certbot certonly --nginx -d <host>
   inactive) and 1 dummy credential restored; the credential decrypted.
 - **Importing a workflow from `ops/n8n/`:** n8n 2.x needs an `id` in the JSON. The exported files
   in git should keep theirs.
-- **Webhooks** are behind the login page too, so nothing outside the box can call them. Open
-  individual `/webhook/` paths in `nginx-https.conf` only on purpose.
+- **Webhooks:** `POST /webhook/<letters, digits, - and _>` gets past the login page, so Jira can
+  call n8n (`gate/server.mjs`, checked on the raw path). Every *active* production webhook is
+  therefore open to the internet and must have Header Auth. `/webhook-test/` and everything else
+  still need the login.
+
+### Webhook pass-through and the Jira test site (plan step 6)
+
+The pass-through reaches the box with the next `deploy.sh release`, which brings the new
+`stack/automation/`. The gate reads `server.mjs` only when it starts, and the nginx site is written
+by `install`:
+
+```bash
+~/nextup/stack/automation/automation.sh restart gate   # the gate that knows /webhook/
+~/nextup/stack/automation/automation.sh install        # rewrites ~/nextup/automation/nginx-site, prints the sudo lines
+```
+
+Before the sudo lines, check in n8n that every active workflow with a Webhook node has
+authentication set. After `nginx -t` and the reload, check from the laptop:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://automation.sellux.ch/webhook/nothing-here    # 404 from n8n: past the gate
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://automation.sellux.ch/webhook-test/x          # 302: login page
+curl -s -o /dev/null -w '%{http_code}\n' https://automation.sellux.ch/webhook/x                        # 302: only POST passes
+curl -s -o /dev/null -w '%{http_code}\n' --path-as-is -X POST https://automation.sellux.ch/webhook/../rest/login   # 302
+```
+
+The Jira test site, at Atlassian (fake data only):
+
+1. Sign up for Jira Free (up to 10 users) with a team address, site `nextup-test` →
+   `https://nextup-test.atlassian.net`. A spare account just for n8n keeps your own rights out of
+   the token.
+2. Create a software project (Kanban), name "NextUp test", key `NUP`.
+3. As the account n8n will use: id.atlassian.com → Security → API tokens → **Create API token**
+   (the plain one; tokens *with scopes* need the `api.atlassian.com` address, which the workflow
+   doesn't use). Pick an expiry, then store it in n8n as the `<slug>-jira` credential with the
+   account's e-mail. It goes nowhere else.
+4. Set up the workflow and its two automation rules: `ops/n8n/README.md`, `jira-projects.json`.
 
 ## Health checks and alerts
 
