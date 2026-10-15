@@ -368,6 +368,12 @@
 .unclearN { flex: none; width: 20px; height: 20px; border-radius: 50%; background: #007aff; color: #fff; display: flex; align-items: center; justify-content: center; font-size: var(--nh-fs-xs); font-weight: 700; }
 .unclearText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: var(--nh-fs-sm); line-height: 1.45; color: #1c1c1e; text-wrap: pretty; }
 .unclearLabel { font-size: var(--nh-fs-xs); font-weight: 600; color: #1a5fd0; }
+/* Under an earlier reply: what it asked stays, with no fade-in; a point answered since is ticked. */
+.unclear[data-past] { animation: none; }
+.unclearQ[data-done] { cursor: default; background: #fbfbfd; }
+.unclearQ[data-done] .unclearN { background: #c7c7cc; }
+.unclearQ[data-done] .unclearText { color: #6e6e73; }
+.unclearDone { flex: none; align-self: center; width: 22px; height: 22px; border-radius: 50%; background: #e8f7ee; color: #1f9d55; display: flex; align-items: center; justify-content: center; }
 .quick .publish { padding: 0 16px; } /* "Publish now" in the chat: the sidebar's Publish idea button, sized to its words */
 a.quickBtn { text-decoration: none; }
 

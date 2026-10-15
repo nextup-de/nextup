@@ -132,6 +132,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [rcvInput, setRcvInput] = useState<ReceiverInput | null>(null); // what the suggestions were scored on, for someone picked by hand
   // The last look before publishing: per draft, the author's words as the case will carry them; open or not.
   const [looks, setLooks] = useKept<Record<string, Look>>(scope, "looks", {});
+  // Per reply of NextUp's: the topics it left unclear, as they stood when the author answered it - they stay under it.
+  const [asked, setAsked] = useKept<Record<string, string[]>>(scope, "asked", {});
   const [prepping, setPrepping] = useState(false); // the second between "Publish" and the last look (PreviewLoading)
   const [drafting, setDrafting] = useState(false); // the moment between "Looks good · finalize" and the document (DocLoading)
   const [now, setNow] = useState(() => new Date());
@@ -279,6 +281,9 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const myTopics = topics[slot] ?? (firstIdx >= 0 ? topicsOf(benchmark({ text: turns[firstIdx].text, affected: [], attachments: 0 }, benchCtx).parts) : []);
   // The demo script has its own eight topics, cleared one per answer, as long as the conversation follows it.
   const gaps: Topic[] = !draft || !turns.length ? [] : scriptAt >= 1 ? scriptRail(scriptAt) : gapsOf(myTopics, parts, preview.unknown[draft.id] ?? []);
+  // Under the latest reply: the one or two points still unclear - the one being asked first.
+  const lastAi = [...turns].reverse().find((t) => t.role === "assistant")?.id ?? null;
+  const unclear = [...gaps.filter((g) => g.status === "active"), ...gaps.filter((g) => g.status === "open" || g.status === "unknown")].slice(0, 2);
 
   // ── Actions ─────────────────────────────────────────────────────────────────────────────────
   const setAffected = (next: string[]) => { if (draft) void studio.save({ affected: next }); else setStartAff(next); };
@@ -445,6 +450,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     // Edits made in the Idea view travel with this message, so the coach and the score see them.
     const message = edit ? t + IDEA_UPDATE + edit.text : t;
     if (draft && edit) preview.edit(draft.id, null);
+    if (lastAi && unclear.length) setAsked((a) => (a[lastAi] ? a : { ...a, [lastAi]: unclear.map((g) => g.id) }));
     void studio.send(message, { affected, attachments: myFiles.length, skip });
     setText(""); setAsk(null);
   };
@@ -498,11 +504,9 @@ function RaisePage({ script = false }: { script?: boolean }) {
   ) : null;
 
   // The conversation without the first message - that is the idea, shown in the Idea view.
-  const lastAi = [...turns].reverse().find((t) => t.role === "assistant")?.id ?? null;
   const advice = adviceOf(overall, threshold, team || "your team");
   // Under the latest reply: the five dials as bars and words (the numbers stay in the full analysis), and the
-  // one or two points still unclear - the one being asked first.
-  const unclear = [...gaps.filter((g) => g.status === "active"), ...gaps.filter((g) => g.status === "open" || g.status === "unknown")].slice(0, 2);
+  // points still unclear. Under an earlier one: what it asked, ticked where that is clear now.
   const read: Read = { dials: dialsOf(parts), advice, first: turns.filter((t) => t.role === "assistant").length <= 1, open: published ? [] : unclear };
   const msgs: ChatMsg[] = turns.flatMap((t, i): ChatMsg[] => {
     if (i === firstIdx) return [];
@@ -512,6 +516,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       id: t.id, role: "ai", text: stripTags(t.text),
       note: i === firstIdx + 1 ? "Title added" : null,
       read: t.id === lastAi ? read : undefined, // stays while the next reply is on its way, so the page does not jump
+      asked: t.id === lastAi ? undefined : (asked[t.id] ?? []).flatMap((id) => gaps.filter((g) => g.id === id)),
       publish: isLast && !published && canFinalize,
     }];
   });
