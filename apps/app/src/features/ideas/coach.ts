@@ -11,8 +11,19 @@ import { deltas, weakest, type Benchmark } from "./benchmarks";
 
 export const IDEA_PROMPT_VERSION = "idea-coach-v1";
 
-const TITLE_MAX = 140;
-const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, "") + "…");
+// A title as the idea shows it: never cut with "…". Over 56 characters it ends at the first natural break
+// (a comma, a dash, "because", "so", "that"…) after the 12th; with none, at the last word that fits. Then
+// no trailing punctuation, no dangling small word, a capital first letter.
+const TITLE_CUT = 56;
+const BREAK = new RegExp("^(.{12," + TITLE_CUT + "}?)(?:,|;|:| — | - | so | because | which | since | but | when | where | and | that | to )", "i");
+const DANGLING = /\s+(the|a|an|and|or|of|to|for|in|on|at|with|by|from|so|that|is|are|we|our|it)$/i;
+export function finishTitle(raw: string): string {
+  let t = raw.replace(/\s*…$/, "").replace(/\s+/g, " ").trim();
+  if (t.length > TITLE_CUT) t = BREAK.exec(t)?.[1] ?? t.slice(0, TITLE_CUT).replace(/\s+\S*$/, "");
+  t = t.replace(/[\s,;:—-]+$/, "");
+  while (DANGLING.test(t)) t = t.replace(DANGLING, "");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 
 // Keyboard mashing ("jd klafkhdjahjsdhf ajsdhljf"): at least half of its longer words carry five
 // or more consonant sounds in a row, which real English and German words almost never do once
@@ -32,7 +43,7 @@ export function isGibberish(text: string): boolean {
 export function ideaFromTurns(turns: readonly Turn[]): { title: string; body: string; text: string } {
   const mine = turns.filter((t) => t.role === "user").map((t) => stripTags(t.text).trim()).filter(Boolean);
   const [head = "", ...more] = (mine[0] ?? "").split(/\n\s*\n/);
-  const title = clip(head.trim(), TITLE_MAX);
+  const title = finishTitle(head);
   const later = mine.slice(1).filter((m) => !isGibberish(m)).join("\n");
   const body = [isGibberish(mine[0] ?? "") ? "" : more.join("\n\n").trim(), later].filter(Boolean).join("\n");
   const text = [isGibberish(mine[0] ?? "") ? "" : (mine[0] ?? ""), later].filter(Boolean).join("\n");

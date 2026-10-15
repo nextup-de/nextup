@@ -11,9 +11,10 @@
 // (raisePreview.ts, RAISE-FOR-KEVIN.txt). What is open here - the conversation, the view, unsent text -
 // is kept per company and person (lib/use-kept.ts): a visit to the dashboard and back finds it as it was.
 //
-// `script`: the static demo (app/demo, no company behind it) - the composer offers the demo script's next
-// text (features/ideas/demo-script.ts), the coach answers it with its prepared reply, and nothing leaves
-// the browser. The company's /raise never sets it.
+// `script`: the static demo (app/demo, no company behind it) - the demo controls fill the demo script's
+// idea and answers (features/ideas/demo-script.ts, lib/demo-controls.ts), the coach answers each with its
+// prepared reply, the rail shows the script's eight topics, and nothing leaves the browser. The company's
+// /raise never sets it.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
@@ -21,11 +22,14 @@ import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
 import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { benchmark } from "@/features/ideas/benchmarks";
-import { ideaFromTurns } from "@/features/ideas/coach";
+import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
+import { ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
-import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
-import { DEMO_CASE, DEMO_SCRIPT, scriptStep } from "@/features/ideas/demo-script";
-import { adviceOf, clockLabel, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, splitIdea, splitUpdate, topicsOf, whenLabel, type Topic } from "@/features/ideas/raise";
+import { splitBody } from "@/features/ideas/brief";
+import { ideaContext } from "@/features/ideas/drafts";
+import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, scriptRail, scriptStep } from "@/features/ideas/demo-script";
+import { adviceOf, clockLabel, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, splitIdea, splitUpdate, topicsOf, whenLabel, type Topic } from "@/features/ideas/raise";
+import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
 import { SPEND_LIMIT_EUR } from "@/features/ideas/drafts";
@@ -35,9 +39,12 @@ import { useIdeaStudio } from "@/lib/use-idea-studio";
 import { useKept } from "@/lib/use-kept";
 import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
+import type { TokenFieldHandle } from "./RaiseTokenField";
 import { RaiseMenu, type MenuView } from "./RaiseMenu";
 import { ReceiverDialog, type Work } from "./RaisePublish";
+import { PublishPreview, type Look } from "./PublishPreview";
 import { RaiseChat, type ChatMsg } from "./RaiseChat";
+import { RaiseFinal } from "./RaiseFinal";
 import { AnalysisSheet, IdeaSheet, type Reviewer, type Similar, type Source } from "./RaiseSheets";
 import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
 import { EVAL_STEPS, RaiseStart } from "./RaiseStart";
@@ -47,7 +54,7 @@ import { RaisePeople } from "./RaisePerson";
 import s from "./Raise.module.css";
 
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
-type Menu = { at: "start" | "chat" | "card"; view: MenuView } | null;
+type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null; // "add": under a start-page action button
 
 export function Raise({ script = false }: { script?: boolean }) {
   const { seed, S, persona, role, act, ready, href, tenant, showToast, serverMode } = useDemo();
@@ -62,11 +69,12 @@ export function Raise({ script = false }: { script?: boolean }) {
 
   const [stage, setStage] = useKept<"start" | "chat">(scope, "stage", "start");
   const [openId, setOpenId] = useKept<string | null>(scope, "open", null); // the draft open in the chat, reopened on the next visit
-  const [view, setView] = useKept<"chat" | "idea" | "analysis">(scope, "view", "chat");
+  const [view, setView] = useKept<"chat" | "idea" | "analysis" | "final">(scope, "view", "chat");
+  const [finals, setFinals] = useKept<Record<string, number>>(scope, "finals", {}); // draft id -> how many turns it had when it was finalized
   const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "auto"); // auto: open on screens, closed on phones (CSS)
   const [query, setQuery] = useState("");
   const [startText, setStartText] = useKept(scope, "startText", "");
-  const [startCtx, setStartCtx] = useKept(scope, "startCtx", "");
+  const [startCtx, setStartCtx] = useKept(scope, "startCtx", ""); // the description under the title; prompts are added to it
   const [startAff, setStartAff] = useKept<string[]>(scope, "startAff", []);
   const [files, setFiles] = useKept<Record<string, FileItem[]>>(scope, "files", {});
   const [slot, setSlot] = useKept(scope, "slot", "n0"); // where the choices of the open idea live: the start form's key, or a draft id
@@ -83,9 +91,13 @@ export function Raise({ script = false }: { script?: boolean }) {
   const [pubStep, setPubStep] = useState<null | Work | Receiver[]>(null);
   const [pubWork, setPubWork] = useState<Work | null>(null);
   const [rcvInput, setRcvInput] = useState<ReceiverInput | null>(null); // what the suggestions were scored on, for someone picked by hand
+  // The last look before publishing: per draft, the author's words as the case will carry them; open or not.
+  const [looks, setLooks] = useKept<Record<string, Look>>(scope, "looks", {});
+  const [looking, setLooking] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
-  const fillRef = useRef<() => void>(() => {});
+  const startDesc = useRef<TokenFieldHandle>(null);
+  const fillRef = useRef<(fixed?: boolean) => void>(() => {});
   const chatField = useRef<HTMLTextAreaElement>(null);
 
   const key = slot;
@@ -103,7 +115,12 @@ export function Raise({ script = false }: { script?: boolean }) {
   const shown = splitIdea(edit ? edit.text : current);
   // The demo script: where this conversation stands in it (-1 once the author wrote their own words).
   const scriptAt = story ? scriptStep(turns) : -1;
-  const scriptDone = scriptAt === DEMO_SCRIPT.length; // all of it said: publishing is offered, as for a rail with nothing open
+  // The idea and the two answers filled by hand are enough to publish in the demo; the rest of the
+  // conversation ("Full conversation" in the controls) is optional, so Finalize and Publish wait for no more.
+  const scripted = story && scriptAt >= FILLED_ANSWERS + 1;
+  // Finalizing: always offered once there is a conversation; in the demo script only once it has those three texts.
+  const canFinalize = turns.length > 0 && !busy && !sending && (!story || scriptAt < 0 || scripted || published);
+  const finalized = published || (!!draft && finals[draft.id] === turns.length); // sent from the final document; a new message undoes it
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
 
@@ -120,8 +137,8 @@ export function Raise({ script = false }: { script?: boolean }) {
   // What the evaluation and the analysis say about who receives it: the routing, run here on the open idea.
   const ev = useMemo(() => {
     if (!idea.text && !startText.trim()) return null;
-    return evaluate({ kind: "idea", text: idea.text || startText, context: startCtx, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases });
-  }, [idea.text, startText, startCtx, affected, myFiles.length, who, seed, S.cases]);
+    return evaluate({ kind: "idea", text: idea.text || startText, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases });
+  }, [idea.text, startText, affected, myFiles.length, who, seed, S.cases]);
 
   const similar = useMemo(() => {
     if (!idea.text) return null;
@@ -130,18 +147,40 @@ export function Raise({ script = false }: { script?: boolean }) {
 
   // The dev panel's "Fill a sample idea", offered while the start view is open (lib/dev-fill.ts).
   useEffect(() => (stage === "start" ? registerDevFill(() => fillRef.current()) : undefined), [stage]);
+  // `fixed`: the demo controls' fill - the same colleague and meeting every time, where the dev panel's varies them.
   useEffect(() => {
-    fillRef.current = () => {
-      const x = DEV_SAMPLES[Math.floor(Math.random() * DEV_SAMPLES.length)];
+    fillRef.current = (fixed = false) => {
+      const x = DEV_SAMPLES[fixed ? 0 : Math.floor(Math.random() * DEV_SAMPLES.length)];
       // People from this company's own seed: the samples' names only where they exist (the static demo renames them).
       const known = (n: string) => seed.people.some((p) => p.name === n);
       const lead = seed.people.find((p) => p.name === who.name)?.reportsTo ?? ev?.lead;
       const coll = seed.people.filter((p) => p.name !== who.name && p.name !== lead).map((p) => p.name);
       setStartText(x.text); setStartCtx(x.ctx); setStartAff(x.aff.filter((a) => !/^[A-Z]\. /.test(a) || known(a))); setMenu(null);
       setFiles((f) => ({ ...f, [slot]: x.files.map((name) => ({ id: newId("f"), name, url: "", img: false, file: new File([], name) })) }));
-      preview.setExtras(slot, { recv: lead ? [lead] : [], coll: coll.length ? [coll[Math.floor(Math.random() * coll.length)]] : [], meet: Math.random() > 0.5 ? { dur: "15 min", when: "this week" } : null, vis: "public", visTo: [] });
+      const mate = coll.findIndex((n) => seed.people.find((p) => p.name === n)?.reportsTo === lead); // the demo's: a teammate
+      const pick = fixed ? Math.max(0, mate) : Math.floor(Math.random() * coll.length);
+      preview.setExtras(slot, { recv: lead ? [lead] : [], coll: coll.length ? [coll[pick]] : [], meet: fixed || Math.random() > 0.5 ? { dur: "15 min", when: "this week" } : null, vis: "public", visTo: [] });
     };
   });
+
+  // The demo controls (lib/demo-controls.ts): what the script can do here right now.
+  const scriptRef = useRef({ answer: () => {}, rest: () => {} });
+  useEffect(() => {
+    scriptRef.current = {
+      answer: () => { if (scriptAt >= 1 && scriptAt <= FILLED_ANSWERS) { setFirstPending(false); setView("chat"); setText(DEMO_SCRIPT[scriptAt].say); setTimeout(() => chatField.current?.focus(), 0); } }, // the chat, where the answer goes
+      rest: () => studio.addScripted(DEMO_SCRIPT.slice(FILLED_ANSWERS + 1)),
+    };
+  });
+  const idle = ready && !sending && !published && !pubStep && !busy;
+  const canIdea = story && idle && stage === "start" && evalStep === null;
+  const canAnswer = story && idle && stage === "chat" && !!draft && scriptAt >= 1 && scriptAt <= FILLED_ANSWERS && text.trim() !== DEMO_SCRIPT[scriptAt].say;
+  const canRest = story && idle && stage === "chat" && !!draft && scriptAt === FILLED_ANSWERS + 1;
+  useEffect(() => (canIdea || canAnswer || canRest ? registerRaiseHooks({
+    at: scriptAt,
+    fillIdea: canIdea ? () => fillRef.current(true) : null,
+    fillAnswer: canAnswer ? () => scriptRef.current.answer() : null,
+    fillRest: canRest ? () => scriptRef.current.rest() : null,
+  }) : undefined), [canIdea, canAnswer, canRest, scriptAt]);
 
   if (!ready) return <PageSkeleton kind="raise" delay />;
 
@@ -151,7 +190,8 @@ export function Raise({ script = false }: { script?: boolean }) {
   // again from its first message.
   const benchCtx = ideaContext(seed.routes, GOALS, S.cases);
   const myTopics = topics[slot] ?? (firstIdx >= 0 ? topicsOf(benchmark({ text: turns[firstIdx].text, affected: [], attachments: 0 }, benchCtx).parts) : []);
-  const gaps: Topic[] = draft && turns.length ? gapsOf(myTopics, parts, preview.unknown[draft.id] ?? []) : [];
+  // The demo script has its own eight topics, cleared one per answer, as long as the conversation follows it.
+  const gaps: Topic[] = !draft || !turns.length ? [] : scriptAt >= 1 ? scriptRail(scriptAt) : gapsOf(myTopics, parts, preview.unknown[draft.id] ?? []);
   const allAnswered = gaps.length > 0 && !gaps.some((g) => g.status === "open" || g.status === "active");
 
   // ── Actions ─────────────────────────────────────────────────────────────────────────────────
@@ -171,16 +211,16 @@ export function Raise({ script = false }: { script?: boolean }) {
     if (f) URL.revokeObjectURL(f.url);
     setMyFiles(myFiles.filter((x) => x.id !== id));
   };
-  const openMenu = (at: "start" | "chat" | "card", v: MenuView = "main") => setMenu({ at, view: v });
+  const openMenu = (at: NonNullable<Menu>["at"], v: MenuView = "main") => setMenu({ at, view: v });
   const toggleMenu = (at: "start" | "chat") => setMenu((m) => (m ? null : { at, view: "main" }));
 
-  const go = (v: "chat" | "idea" | "analysis") => { setFirstPending(false); setView(v); };
+  const go = (v: "chat" | "idea" | "analysis" | "final") => { setFirstPending(false); setView(v); };
   // Leaving a draft the start form made: remember which slot holds its choices, for when it is reopened.
   const leave = () => { if (draft && slot !== draft.id) setAliases((a) => ({ ...a, [draft.id]: slot })); };
   const reset = () => { leave(); setText(""); setAsk(null); setMenu(null); go("chat"); setSb((x) => (x === "open" ? "auto" : x)); };
   const newIdea = () => {
     studio.startNew(); reset(); setOpenId(null);
-    setStage("start"); setStartText(""); setStartCtx(""); setStartAff([]); setEvalStep(null); setSlot(newId("n"));
+    setStage("start"); setStartText(""); setStartAff([]); setEvalStep(null); setSlot(newId("n"));
     setTimeout(() => startField.current?.focus(), 60);
   };
   const openDraft = (id: string) => {
@@ -191,16 +231,19 @@ export function Raise({ script = false }: { script?: boolean }) {
   // Send from the start page: the line, the context and the chosen extras go as the first message;
   // the evaluation plays while the coach answers.
   const startRaise = () => {
-    const main = startText.trim();
+    // No title typed: the first line of the description is the headline.
+    const [firstLine, ...restLines] = startCtx.trim().split("\n");
+    const main = startText.trim() || firstLine.trim();
+    const ctx = startText.trim() ? startCtx.trim() : restLines.join("\n").trim();
     if (main.length < 3 || evalStep !== null) return;
     const extra = [
       extras.recv.length ? "Suggested receiver: " + extras.recv.join(", ") : "",
       extras.coll.length ? "Colleagues who know this: " + extras.coll.join(", ") : "",
       extras.meet ? "I’d like a " + extras.meet.dur + " meeting " + extras.meet.when + "." : "",
     ].filter(Boolean).join("\n");
-    const message = main + (startCtx.trim() ? "\n\n" + startCtx.trim() : "") + (extra ? "\n\n" + extra : "");
-    // The script goes on in the chat, where its next answer is offered; any other idea opens its analysis first.
-    setMenu(null); setEvalStep(0); setFirstPending(!(story && scriptStep([{ role: "user", text: message }]) === 1));
+    const message = main + (ctx ? "\n\n" + ctx : "") + (extra ? "\n\n" + extra : "");
+    // Every idea, the demo script's too, opens its analysis first; the chat comes when it is closed.
+    setMenu(null); setEvalStep(0); setFirstPending(true);
     setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx).parts) }));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
     let step = 0;
@@ -208,7 +251,7 @@ export function Raise({ script = false }: { script?: boolean }) {
       step += 1;
       if (step < EVAL_STEPS.length) { setEvalStep(step); return; }
       clearInterval(t);
-      setEvalStep(null); setStage("chat"); setView("chat"); setStartText(""); setStartCtx("");
+      setEvalStep(null); setStage("chat"); setView("chat"); setStartText("");
     }, 420);
   };
 
@@ -228,12 +271,40 @@ export function Raise({ script = false }: { script?: boolean }) {
     return v;
   };
 
+  // What the case will say: the demo script's main points, or the idea as the conversation has it - its
+  // first paragraph the description, "*Label* text" lines the details, the rest context (without the
+  // start page's receiver, colleague and meeting lines: those are chips of their own).
+  const outgoing = scripted ? DEMO_CASE : { body: idea.body, upside: ev?.payload.upside ?? "" };
+  const mine = draft ? looks[draft.id] ?? null : null;
+  const bodyOf = (l: Look) => [l.description.trim(), l.context.trim(),
+    l.prompts.filter((x) => x.label.trim() && x.text.trim()).map((x) => "*" + x.label.trim() + "* " + x.text.trim()).join("\n")].filter(Boolean).join("\n\n");
+  const setLook = (l: Look) => { if (draft) setLooks((x) => ({ ...x, [draft.id]: l })); };
+
+  // "Publish": first the last look (PublishPreview.tsx) - the idea as the receiver's inbox shows it, the
+  // author's part editable - and from there NextUp finds who should receive it. The look is kept per
+  // draft, so closing and reopening it loses nothing.
+  const openLook = () => {
+    if (!draft || busy || published || pubStep) return;
+    setMenu(null);
+    if (!mine) {
+      // The description is the author's own first line (the script's case has its own); what they wrote
+      // under it is the context.
+      const parts = splitBody(outgoing.body);
+      const description = scripted ? parts.description : (idea.text.split(/\n\s*\n/)[0] ?? "").trim();
+      const rest = scripted ? parts.context ?? "" : [parts.description, parts.context].filter(Boolean).join("\n\n");
+      const context = rest.split("\n").filter((l) => !/^(Suggested receiver|Colleagues who know|I’d like a)/.test(l.trim())).join("\n").trim();
+      setLook({ title: finishTitle(draft.title || idea.title), description, context, prompts: parts.facts });
+    }
+    setSb((x) => (x === "open" ? "auto" : x)); // on a phone the drawer closes, so the window is what shows
+    setLooking(true);
+  };
+
   // "Publish idea": the button says what NextUp does - reads the idea, asks the router, checks the org
   // chart, ranks who fits - then the author picks who receives it (RaisePublish.tsx).
   const askReceiver = async () => {
     if (!draft || busy || published || pubStep) return;
     setMenu(null);
-    const text = await step(setPubStep, "Reading your idea…", "working", () => idea.text, 450);
+    const text = await step(setPubStep, "Reading your idea…", "working", () => (mine ? mine.title + "\n\n" + bodyOf(mine) : idea.text), 450);
     const brain = await step(setPubStep, "Asking the router…", "searching", () => (script ? null : brainProposalAction({ slug: tenant.slug, title: idea.title, body: idea.body }).catch(() => null)), 650);
     const lead = await step(setPubStep, "Checking the org chart…", "connecting", () => ev?.lead ?? "Triage desk", 500);
     const input = receiverInput(text, lead, brain ? { routeId: brain.proposal.routeId, confidence: brain.proposal.confidence, reason: brain.reason } : null);
@@ -250,10 +321,13 @@ export function Raise({ script = false }: { script?: boolean }) {
     if (!r.ok) { setBusy(false); setPubWork(null); setPubStep(null); showToast(r.reason); return; }
     // The server said yes: raise it now, on the desk the author chose. The router's own proposal stays
     // in the payload, so the decision log can compare it with where the case went.
-    const e = evaluate({ kind: "idea", text: r.title, context: r.body, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, r.brain);
+    // The author's last look wins: its title and body are what the receiver reads.
+    const title = mine?.title.trim() || r.title;
+    const e = evaluate({ kind: "idea", text: title, context: r.body, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, r.brain);
     // The demo script's case carries its main points instead of the raw conversation.
-    const made = story && scriptDone ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
-    await step(setPubWork, "Raising the case for " + to.name + "…", "composing", () => act.raise({ ...e.payload, title: r.title, body: made.body, upside: made.upside, assignee: to.name, routeId: to.routeId ?? e.payload.routeId }, caseId), 600);
+    const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
+    const body = mine ? bodyOf(mine) : made.body;
+    await step(setPubWork, "Raising the case for " + to.name + "…", "composing", () => act.raise({ ...e.payload, title, body, upside: made.upside, assignee: to.name, routeId: to.routeId ?? e.payload.routeId }, caseId), 600);
     const images = myFiles.filter((f) => f.img).slice(0, MAX_SHOTS);
     if (images.length) {
       const kept = await step(setPubWork, "Saving the screenshots…", "working", async () => {
@@ -263,14 +337,16 @@ export function Raise({ script = false }: { script?: boolean }) {
       if (!kept) showToast("Published — the screenshots did not fit in this browser's storage.");
     }
     setBusy(false); setPubWork(null); setPubStep(null);
+    go("chat"); // published from the document: back to the conversation, where the case is offered
     void studio.open(draft.id);
   };
 
   const send = () => {
     const t = text.trim();
     if (!t || sending) return;
-    if (/^publish( now)?$/i.test(t)) { setText(""); void askReceiver(); return; }
+    if (/^publish( now)?$/i.test(t)) { setText(""); openLook(); return; }
     if (/^review analysis$/i.test(t)) { setText(""); go("analysis"); return; }
+    if (/^finali[sz]e( idea)?$/i.test(t)) { setText(""); if (canFinalize) go("final"); return; }
     if (published) { showToast("This idea is published — follow-ups go through Overview."); return; }
     if (t.length < 3) return;
     // "Not sure": the active topic becomes unknown, and the coach is told not to ask it again.
@@ -295,7 +371,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   const team = affected[0] ?? who.line.split(",")[0];
 
   const chips: Chip[] = (() => {
-    const at = stage === "start" ? "start" : "card";
+    const at = stage === "start" ? "add" : "card";
     const out: Chip[] = [];
     extras.recv.forEach((n) => out.push({ key: "r" + n, title: n, sub: "Receiver", kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "receiver"), remove: () => preview.setExtras(key, { recv: [] }) }));
     extras.coll.forEach((n) => out.push({ key: "c" + n, title: n, sub: "Colleague", kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "colleague"), remove: () => preview.setExtras(key, { coll: extras.coll.filter((x) => x !== n) }) }));
@@ -306,31 +382,27 @@ export function Raise({ script = false }: { script?: boolean }) {
       : { key: "v", title: "Custom", sub: extras.visTo.length ? extras.visTo.length + " selected" : "Pick who", kind: "custom", lead: "", icon: "affected", open: () => openMenu(at, "visPick"), remove: () => preview.setExtras(key, { vis: "public", visTo: [] }) });
     return out;
   })();
-  const fileChips: Chip[] = myFiles.map((f) => ({ key: f.id, title: f.name, sub: "Attached", kind: "file", lead: (f.name.split(".").pop() || "file").slice(0, 4).toUpperCase(), img: f.img ? f.url : undefined, open: () => openMenu(stage === "start" ? "start" : "card", "file"), remove: () => removeFile(f.id) }));
+  const fileChips: Chip[] = myFiles.map((f) => ({ key: f.id, title: f.name, sub: "Attached", kind: "file", lead: (f.name.split(".").pop() || "file").slice(0, 4).toUpperCase(), img: f.img ? f.url : undefined, open: () => openMenu(stage === "start" ? "add" : "card", "file"), remove: () => removeFile(f.id) }));
 
-  const menuFor = (at: "start" | "chat" | "card") => menu && menu.at === at ? (
-    <RaiseMenu at={at === "card" ? "card" : "bar"} view={menu.view} onView={(v) => setMenu({ at, view: v })} onClose={() => setMenu(null)}
+  const menuFor = (at: NonNullable<Menu>["at"]) => menu && menu.at === at ? (
+    <RaiseMenu at={at === "card" ? "card" : at === "add" ? "under" : "bar"} view={menu.view} onView={(v) => setMenu({ at, view: v })} onClose={() => setMenu(null)}
       extras={extras} onExtras={(x) => preview.setExtras(key, x)} affected={affected} onAffected={setAffected}
       files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile} people={seed.people} depts={seed.depts} me={who.name} />
   ) : null;
 
   // The conversation without the first message - that is the idea, shown in the Idea view.
   const lastAi = [...turns].reverse().find((t) => t.role === "assistant")?.id ?? null;
-  // The AI's read under the latest reply: the five dials now, and which of them the answer before it moved.
-  const dials = dialsOf(parts);
   const advice = adviceOf(overall, threshold, team || "your team");
-  const readAt = (upto: number) => dialsOf(scoreDraft({ turns: turns.slice(0, upto), affected, attachments: myFiles.length }, local ?? benchCtx).parts);
+  // The scores stay in the analysis: the chat carries only the coach's words.
   const msgs: ChatMsg[] = turns.flatMap((t, i): ChatMsg[] => {
     if (i === firstIdx) return [];
     if (t.role === "user") { const u = splitUpdate(t.text); return [{ id: t.id, role: "user", text: u.said, note: u.updated ? "Idea changes shared with NextUp" : null }]; }
     const isLast = t.id === lastAi && !sending;
-    const first = i === firstIdx + 1;
     return [{
       id: t.id, role: "ai", text: stripTags(t.text),
-      // The numbers stay in the analysis: the chat shows the five dials as bars and words.
-      note: first ? "Title and problem added" : null,
-      read: isLast ? { dials, advice, first, up: first || i < 2 ? [] : dialsUp(readAt(i - 1), readAt(i + 1)) } : undefined,
-      quick: isLast && !published ? { publish: allAnswered || scriptDone, review: true } : undefined,
+      note: i === firstIdx + 1 ? "Title added" : null,
+      publish: isLast && !published && (allAnswered || scripted),
+      finalize: isLast && !published && canFinalize,
     }];
   });
   if (sending) {
@@ -346,9 +418,10 @@ export function Raise({ script = false }: { script?: boolean }) {
   const railGaps: Topic[] = asking ? gaps.map((g) => ({ ...g, status: g.id === asking.id ? "active" : g.status === "active" ? "open" : g.status })) : gaps;
 
   const card: DraftCard | null = stage === "chat" && draft ? {
-    title: draft.title || idea.title, published, canPublish: turns.length > 0 && !busy && !sending,
+    title: draft.title || idea.title, published, canPublish: canFinalize,
     pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : "Goes to your team lead, " + lead,
-    onPublish: () => void askReceiver(), working: pubStep && !Array.isArray(pubStep) ? pubStep : null, onRename: (title) => void studio.save({ title }),
+    finalOn: shownView === "final", finalized, canFinalize, onFinal: () => { setMenu(null); go(shownView === "final" ? "chat" : "final"); },
+    onPublish: openLook, working: pubStep && !Array.isArray(pubStep) ? pubStep : null, onRename: (title) => void studio.save({ title }),
     hasIdea: firstIdx >= 0, ideaOn: shownView === "idea", ideaEdited: !!edit, onIdea: () => { setMenu(null); go(shownView === "idea" ? "chat" : "idea"); },
     aiOn: shownView === "analysis", analysed: turns.length > 0, onAI: () => go(shownView === "analysis" ? "chat" : "analysis"),
     acts: chips, files: fileChips,
@@ -372,10 +445,6 @@ export function Raise({ script = false }: { script?: boolean }) {
     });
 
   const words = (startText.trim().match(/\S+/g) || []).length;
-  // The script's next text, one click away in an empty composer.
-  const next = (at: number) => (at >= 0 && at < DEMO_SCRIPT.length ? { label: DEMO_SCRIPT[at].label, text: DEMO_SCRIPT[at].say } : null);
-  const chatFill = draft && !published && !sending && !text.trim() ? next(scriptAt) : null;
-  const startFill = story && !startText.trim() && evalStep === null ? next(0) : null;
   const composerChat = (
     <div className={s.dock}>
       <div className={s.editedWrap}>
@@ -392,7 +461,7 @@ export function Raise({ script = false }: { script?: boolean }) {
       <div className={s.dockBar}>
         <RaiseComposer value={text} onChange={setText} onSubmit={send} fieldRef={chatField} sendLabel="Send"
           placeholder={ask ?? (published ? "Add a follow-up — it goes to Overview" : turns.length ? "Answer, or add more detail…" : "Describe the problem or idea…")}
-          canSend={!!text.trim() && !sending} chips={[]} strip={false} fill={chatFill}
+          canSend={!!text.trim() && !sending} chips={[]} strip={false}
           menuOpen={menu?.at === "chat"} onMenu={() => toggleMenu("chat")} menu={menuFor("chat")} onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       </div>
     </div>
@@ -420,18 +489,42 @@ export function Raise({ script = false }: { script?: boolean }) {
     : [{ title: "No close matches", status: "–", where: "Searched " + openCases + " open cases", href: null }];
   const cats = [...new Set([ev?.route?.type, affected[0] ?? "General", "Idea"].filter((x): x is string => !!x))];
 
+  const dials = dialsOf(parts);
+  const finalDoc = ideaDoc({
+    title: mine?.title.trim() || draft?.title || idea.title, author: who.name, team: team || "", receiver: lead,
+    date: now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+    advice, overall: parts.some((p) => p.value > 0) ? Math.round(overall) : null,
+    description: mine ? mine.description : shown.description,
+    context: mine ? [mine.context.trim(), ...mine.prompts.filter((x) => x.label.trim() && x.text.trim()).map((x) => x.label.trim() + ": " + x.text.trim())].filter(Boolean).join("\n") : shown.context, dials,
+    company: companyRead({
+      text: idea.text, lead: ev?.lead ?? lead, myDept: who.line.split(",")[0].trim(), affected, people: seed.people, depts: seed.depts,
+      routes: seed.routes, goals: GOALS, problems: seed.problems, ideas: seed.ideas, initiatives: seed.initiatives, outcomes: seed.outcomes,
+      cases: S.cases, promiseDays: seed.promiseDays, spendLimitEur: SPEND_LIMIT_EUR,
+    }),
+    pattern: affected.length > 1 ? "The problem is felt beyond one team: " + affected.join(", ") + "." : "It stands on its own.",
+    openTopics: gaps.filter((g) => g.status !== "clear").map((g) => g.label + (g.ask ? ": " + g.ask : "")),
+    similar: sims.filter((m) => m.href).map((m) => ({ title: m.title, status: m.status, by: m.by ?? "" })),
+    sources: sources.map((x) => ({ name: x.name, where: x.where })), turns,
+  });
+
   const main = stage === "start" ? (
     <RaiseStart name={greetName(who.name)} evalStep={evalStep}
       evalSub={(words || 1) + " words from " + (who.handle ?? who.name) + " · " + who.line}
-      context={startCtx} onContext={setStartCtx}
+      context={startCtx} onPrompt={(label) => startDesc.current?.insert(label)}
       composer={
         <RaiseComposer value={startText} onChange={setStartText} onSubmit={startRaise} fieldRef={startField} sendLabel="Ask NextUp"
-          placeholder="Share an idea that would make work better…" canSend={startText.trim().length >= 3 && evalStep === null}
-          chips={[...chips, ...fileChips]} strip fill={startFill} menuOpen={menu?.at === "start"} onMenu={() => toggleMenu("start")} menu={menuFor("start")}
+          placeholder="Short title" canSend={(startText.trim() || startCtx.trim()).length >= 3 && evalStep === null}
+          start={{ desc: startCtx, onDesc: setStartCtx, descPlaceholder: "What’s happening, who does it affect, what have you tried? Add a prompt below." }} descRef={startDesc}
+          chips={[...chips, ...fileChips]} strip menuOpen={menu?.at === "start"} onMenu={() => toggleMenu("start")} menu={menuFor("start")}
           onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       } />
   ) : shownView === "idea" ? (
     <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
+  ) : shownView === "final" && draft ? (
+    <RaiseFinal doc={finalDoc} final={finalized} published={published} canSend={canFinalize && !pubStep}
+      onSend={() => { setFinals((f) => ({ ...f, [draft.id]: turns.length })); void askReceiver(); }}
+      onEdit={() => (mine ? setLooking(true) : openLook())} onBack={() => go("chat")} onClose={() => go("chat")}
+      onCopied={(ok) => showToast(ok ? "Copied the document as text." : "Could not copy it.")} />
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} dials={dialsOf(parts)}
       company={companyRead({
@@ -446,7 +539,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   ) : (
     <RaiseChat msgs={msgs} typing={!!sending && !sending.reply} typingLabel={turns.length ? "" : "Researching business context…"} error={studio.error}
       gaps={railGaps} onAsk={(g) => { setAsk(g.ask); setTimeout(() => chatField.current?.focus(), 0); }}
-      onQuick={(w) => (w === "publish" ? void askReceiver() : go("analysis"))}
+      onPublish={openLook} onFinalize={() => go("final")}
       dock={composerChat} followKey={turns.length + ":" + (sending ? sending.reply.length : -1) + ":" + (draft?.id ?? "") + ":" + (asking?.id ?? "")} />
   );
 
@@ -462,6 +555,15 @@ export function Raise({ script = false }: { script?: boolean }) {
         <ReceiverDialog options={pubStep} people={seed.people} depts={seed.depts} me={who.name} work={pubWork}
           score={(name) => receiverFor(name, rcvInput ?? receiverInput(idea.text, ev?.lead ?? "Triage desk", null))}
           onCancel={() => setPubStep(null)} onConfirm={(to) => void publish(to)} />
+      )}
+      {looking && mine && draft && !published && (
+        <PublishPreview author={who.name} look={mine} onLook={setLook}
+          meet={extras.meet} onMeet={(meet) => preview.setExtras(key, { meet })}
+          coll={extras.coll} people={seed.people} onColl={(coll) => preview.setExtras(key, { coll })}
+          affected={affected} depts={seed.depts.map((d) => d.name)} onAffected={setAffected}
+          files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile}
+          aiLine={"Summary, scores, and " + sources.length + " sources are added for the receiver."}
+          onClose={() => setLooking(false)} onConfirm={() => { setLooking(false); go("final"); }} />
       )}
       <div className={s.main}>
         <div className={s.showSb}><button type="button" className={s.iconBtn} onClick={() => setSb("open")} title="Show sidebar" aria-label="Show sidebar"><Icon name="sidebar" size={12} /></button></div>

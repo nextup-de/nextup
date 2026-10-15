@@ -2,7 +2,7 @@
 // script's idea is published, "What happens next" plays the rest of the loop one step at a time - the
 // discussion, version 2, the check-in, the yes, the project, two measures and the thanks - and ends on
 // the project, recognised. docs/plans/2026-10-15_idea-to-project.md, step 7.
-import { aiMessages, ANSWER, expect, publishTo, START, test } from "../helpers";
+import { aiMessages, ANSWER, expect, finalizeAndSend, START, test } from "../helpers";
 
 test("the demo plays the loop to the end after the idea is published", async ({ page }) => {
   await page.goto("/demo");
@@ -10,17 +10,21 @@ test("the demo plays the loop to the end after the idea is published", async ({ 
 
   await test.step("the script's idea, its two answers, published to Thomas Vogel", async () => {
     await expect(player).toHaveCount(0);
-    await page.getByRole("button", { name: "Insert the prepared idea" }).click();
+    // The demo controls: the sample idea and two answers, then Finalize and send - three texts are enough.
+    const controls = page.getByRole("group", { name: "Demo controls" });
+    await controls.getByRole("button", { name: "Start demo", exact: true }).click();
+    await controls.getByRole("button", { name: "Fill sample idea", exact: true }).click();
     await expect(page.getByRole("textbox", { name: START })).not.toHaveValue("");
     await page.getByRole("button", { name: "Ask NextUp" }).click();
+    await page.getByRole("button", { name: "Close analysis" }).click({ timeout: 30_000 });
     await expect(aiMessages(page).first()).toBeVisible({ timeout: 30_000 });
     const box = page.getByRole("textbox", { name: ANSWER });
-    for (const label of ["next answer", "last answer"]) {
-      await page.getByRole("button", { name: "Insert the " + label }).click();
+    for (const label of ["First answer", "Second answer"]) {
+      await expect(controls.getByRole("button", { name: label, exact: true })).toBeEnabled({ timeout: 15_000 });
+      await controls.getByRole("button", { name: label, exact: true }).click();
       await box.press("Enter");
-      await expect(page.getByRole("button", { name: /^Insert the / }).or(page.getByRole("button", { name: "Publish now" })).first()).toBeVisible({ timeout: 30_000 });
     }
-    await publishTo(page, "Thomas Vogel");
+    await finalizeAndSend(page, "Thomas Vogel");
   });
 
   await test.step("the player walks the rest of the loop, one step per click", async () => {

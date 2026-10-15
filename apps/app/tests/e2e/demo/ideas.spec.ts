@@ -22,10 +22,10 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
   await close.click();
 
-  // The chat: the coach's first answer with the AI analysis under it, and the rail of the 2-8 unclear
-  // topics, the coach asking one of them now.
+  // The chat: the coach's first answer (no read under it - the analysis was shown first), and the rail
+  // of the 2-8 unclear topics, the coach asking one of them now.
   await expect(aiMessages(page).first()).toContainText(/\S.{40,}/);
-  await expect(page.getByRole("group", { name: "AI analysis" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "AI analysis" })).toHaveCount(0);
   const segs = page.locator("[data-rail-seg]");
   await expect.poll(() => segs.count()).toBeGreaterThanOrEqual(2);
   expect(await segs.count()).toBeLessThanOrEqual(8);

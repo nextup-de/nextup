@@ -35,17 +35,35 @@ export const GOALS: { goal: string; keys: string[] }[] = [
 ];
 export const SPEND_RULE = { limit: "€5k", text: "team-level authority up to €5k, no controlling sign-off" };
 
-export const words = (s: string) => s.toLowerCase().match(/[a-zäöüß€0-9]{4,}/g) ?? [];
+// Words that say nothing about what a text is about, however often two texts share them.
+const FILLER = new Set(("that this with from have been were will would could should there their they them then than what when where which while " +
+  "about after before also into only just more most much some such very still even each every other over under again once here does done " +
+  "four five three week weeks today said says make made take like want need know think back away same").split(" "));
+export const words = (s: string) => (s.toLowerCase().match(/[a-zäöüß€0-9]{4,}/g) ?? []).filter((w) => !FILLER.has(w));
 
-// The closest of `items` by shared words (4+ letters), or null under two shared words.
+// The closest of `items` by shared words (4+ letters, no filler): three, or two that are half of the
+// item's own words - a long text shares a word or two with almost anything.
 export function closest<T>(text: string, items: readonly T[], of: (t: T) => string): T | null {
   const w = new Set(words(text));
   let best: T | null = null, bestHits = 0;
   for (const it of items) {
-    const hits = new Set(words(of(it)).filter((x) => w.has(x))).size;
-    if (hits > bestHits) { best = it; bestHits = hits; }
+    const own = new Set(words(of(it)));
+    const hits = [...own].filter((x) => w.has(x)).length;
+    if ((hits >= 3 || (hits === 2 && hits * 2 >= own.size)) && hits > bestHits) { best = it; bestHits = hits; }
   }
-  return bestHits >= 2 ? best : null;
+  return best;
+}
+
+// A goal's keys as whole words or word starts ("wait" in "waiting", never "mes" in "comes").
+const says = (lower: string, key: string) => new RegExp("\\b" + key.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(lower);
+export const goalHits = (text: string, g: { keys: readonly string[] }) => { const lower = text.toLowerCase(); return g.keys.filter((k) => says(lower, k)).length; };
+
+// The goal an idea serves: the one with the most of its keys in the text, and at least two - one shared
+// word ("tooling" in a list of problem types) does not make an idea about a goal.
+export function goalOf<G extends { keys: readonly string[] }>(text: string, goals: readonly G[]): G | null {
+  let best: G | null = null, bestHits = 1;
+  for (const g of goals) { const n = goalHits(text, g); if (n > bestHits) { best = g; bestHits = n; } }
+  return best;
 }
 
 // `brain`: the language model's proposal (features/routing/brain), when the stack has one and it
@@ -65,7 +83,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposa
   const passesTo = route && route.owner.name !== lead ? route.owner.name : null;
   const similar = brain ? ctx.problems.find((p) => p.id === brain.sameAs) ?? null : closest(full, ctx.problems, (p) => p.title + " " + p.sub);
   const sameAs = brain ? ctx.cases.find((c) => c.id !== undefined && c.id === brain.sameAs) ?? null : closest(full, ctx.cases.filter((c) => c.title !== text), (c) => c.title);
-  const goal = GOALS.find((g) => g.keys.some((k) => lower.includes(k))) ?? null;
+  const goal = goalOf(full, GOALS);
   const spend = /€|spend|buy|order|purchase|budget|cost|invoice/.test(lower);
   // Scored exactly as the dashboard will score the stored case: the goal it serves is kept as its upside.
   const upside = goal ? goal.goal : "";
