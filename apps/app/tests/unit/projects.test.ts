@@ -95,6 +95,15 @@ describe("projects: working one", () => {
     expect(projectCommentsOn(log, "p_one").map((c) => c.text)).toEqual(["Cart ordered"]);
   });
 
+  it("a link is only ever an http(s) address", () => {
+    const p = reduce(SEED, logAt(0, raise("c_a"), yes("c_a"), P("project.linked", { system: "url", url: "javascript:alert(1)" }), P("project.linked", { system: "jira", key: "NU-1", url: "data:text/html,x" }))).projects[0];
+    expect(p.links.map((l) => [l.url, l.key])).toEqual([["", "NU-1"]]);
+    const S = reduce(SEED, logAt(0, raise("c_a"), yes("c_a")));
+    expect(mayAppend(actor("L. Brandt"), q("project.linked", { system: "url", url: "javascript:alert(1)" }), S).ok).toBe(false);
+    expect(mayAppend(actor("L. Brandt"), q("project.linked", { system: "url", url: "https://jira.example.com/browse/NU-1" }), S).ok).toBe(true);
+    expect(mayAppend(actor("L. Brandt"), q("project.linked", { system: "jira", key: "NU-1" }), S).ok).toBe(true);
+  });
+
   it("a stopped project takes no more work and says why", () => {
     const p = reduce(SEED, logAt(1, raise("c_a"), yes("c_a"), P("project.stopped", { why: "Line closes" }, 1), baseline(1))).projects[0];
     expect(p.status).toBe("stopped");
