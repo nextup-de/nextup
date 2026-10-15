@@ -9,10 +9,11 @@ import { fmt } from "@/lib/utils/format";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./ProgressView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { ProjectMovement } from "@/components/projects/ProjectMovement";
 
 export function ProgressView() {
   const ctx = useDemo();
-  const { seed, D, N, demo, persona, ready } = ctx;
+  const { seed, D, N, demo, persona, ready, flag } = ctx;
   if (!ready) return <PageSkeleton kind="list" delay />;
   const M = seed.metrics, P = seed.promiseDays, O = seed.outcomeDays;
   const steps = funnel(N);
@@ -24,6 +25,8 @@ export function ProgressView() {
     <>
       <ViewHead view="progress" />
       <div className={ui.stack14}>
+        {/* Real projects, before and after (docs/plans/2026-10-15_idea-to-project.md §4). */}
+        {flag("projects") && <ProjectMovement />}
         <div className={ui.card}>
           <div className={ui.head}>
             <div>

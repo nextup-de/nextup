@@ -10,6 +10,11 @@ import { Avatar, Empty, Pill, statusTone } from "@/components/dashboard/shared/p
 import { ViewHead } from "@/components/dashboard/shared/ViewHead";
 import type { Initiative, InitiativeStatus, OrgPerson } from "@/features/demo/types";
 import { chainEdges, coworkersOf, layoutTree, namedMembers, pairs, projectsOf, visiblePeople } from "@/features/org";
+import type { State } from "@/features/cases/reducer";
+import { splitBody } from "@/features/ideas/brief";
+import type { ReducedProject } from "@/features/projects/types";
+import { asInitiatives, visibleProjects } from "@/features/projects/views";
+import { viewerOf } from "@/components/projects/parts";
 import { ini } from "@/lib/utils/format";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CollaborationView.module.css";
@@ -27,6 +32,14 @@ const edgeLook = (status: InitiativeStatus) =>
 const STATUS_ORDER: InitiativeStatus[] = ["Awaiting decision", "In trial", "Building", "Proposed", "Shipped"];
 const waitDays = (t: Initiative) => (t.status === "Awaiting decision" ? Number(/(\d+)/.exec(t.stage)?.[1] ?? 0) : -1);
 const isNamed = (n: string) => n !== "—" && n !== "Anonymous";
+// "Started because: ..." for a project - the first sentence of the idea it came from.
+const firstSentence = (s: string) => (/^.*?[.!?](\s|$)/.exec(s.trim())?.[0] ?? s).trim();
+const whyOf = (S: State, p: ReducedProject) => {
+  const c = S.cases.find((x) => p.sources.includes(x.id));
+  if (c) return firstSentence(splitBody(c.body).description || c.title);
+  const i = S.ideas.find((x) => p.sources.includes(x.id));
+  return firstSentence(i?.rationale || p.title);
+};
 
 // Mind map geometry: the selection in the middle, its satellites on an ellipse around it.
 const MW = 620, MH = 250, MCX = MW / 2, MCY = MH / 2 + 4, MRX = 236, MRY = 86;
@@ -156,22 +169,30 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   const pSize = PROJECT_PAGE, hSize = PEOPLE_PAGE;
   if (!ready) return <PageSkeleton kind="list" delay />;
 
+  // With projects on, the project window lists the real projects (features/projects), not the
+  // made-up initiatives of the seed; stopped ones wait nowhere and are left out.
+  const projectMode = ctx.flag("projects");
+  const initiatives: Initiative[] = projectMode
+    ? asInitiatives(visibleProjects(ctx.S, viewerOf(ctx), ctx.demo),
+      (name) => ctx.seed.people.find((x) => x.name === name)?.dept ?? null, deptName, (p) => whyOf(ctx.S, p))
+    : D.initiatives;
+
   const byName = new Map(D.people.map((p) => [p.name, p]));
   // A member who has no org row (a name the seed forgot) still gets a card: role from the initiative.
   const personOf = (name: string): OrgPerson | null => {
     const p = byName.get(name);
     if (p) return p;
-    const m = D.initiatives.flatMap((t) => t.members).find((x) => x.name === name);
+    const m = initiatives.flatMap((t) => t.members).find((x) => x.name === name);
     return m ? { name, role: m.role, dept: "", reportsTo: null } : null;
   };
 
-  const st = sel.kind === "project" ? D.initiatives.find((t) => t.id === sel.id) ?? null : null;
+  const st = sel.kind === "project" ? initiatives.find((t) => t.id === sel.id) ?? null : null;
   const sp = sel.kind === "person" ? personOf(sel.name) : null;
 
   // ── project window: scope + search + filter + sort, then pages ───────────────────────────
   const pToks = pq.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const pHay = (t: Initiative) => [t.name, t.why, t.status, ...t.depts.map(deptName), ...t.members.map((m) => m.name + " " + m.role), t.stuckOn?.name ?? ""].join(" ").toLowerCase();
-  const pScoped = D.initiatives.filter((t) => matches(t.depts));
+  const pScoped = initiatives.filter((t) => matches(t.depts));
   const pSearched = pScoped.filter((t) => pToks.every((k) => pHay(t).includes(k)));
   const pPool = pSearched.filter((t) => pFilter === "All" || (pFilter === "Stuck" ? !!t.stuckOn : t.status === pFilter));
   const pSorted = [...pPool].sort((a, b) =>
@@ -183,10 +204,10 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   const pRows = pSorted.slice(pCur * pSize, pCur * pSize + pSize);
 
   // ── people window ─────────────────────────────────────────────────────────────────────────
-  const spProjects = sp ? projectsOf(D.initiatives, sp.name) : [];
-  const spCoworkers = sp ? coworkersOf(D.initiatives, sp.name) : [];
+  const spProjects = sp ? projectsOf(initiatives, sp.name) : [];
+  const spCoworkers = sp ? coworkersOf(initiatives, sp.name) : [];
   // Projects waiting on this person - whether or not they are a member (the CFO is not "on" the spend project).
-  const stuckHere = sp ? D.initiatives.filter((t) => t.stuckOn?.name === sp.name) : [];
+  const stuckHere = sp ? initiatives.filter((t) => t.stuckOn?.name === sp.name) : [];
   const spWaiting = stuckHere.filter((t) => !spProjects.includes(t));
   const stMembers = st ? namedMembers(st) : [];
   const stuck = st?.stuckOn ?? null;
@@ -289,7 +310,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   const centreR = sp ? 30 : 44;
   const centreSub = st ? (stMembers.length ? stMembers.length + " people" : "nobody assigned") : sp ? sp.role : "";
 
-  const emptyProjects = D.initiatives.length === 0;
+  const emptyProjects = initiatives.length === 0;
   const reportsCount = sp ? D.people.filter((p) => p.reportsTo === sp.name).length : 0;
 
   return (
@@ -420,7 +441,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
           <div className={`${ui.card} ${styles.win}`} data-expanded={st ? "true" : undefined}>
             <div className={ui.between}>
               <div className={ui.h}>Projects</div>
-              <span className={ui.small}>{pSorted.length} of {D.initiatives.length}</span>
+              <span className={ui.small}>{pSorted.length} of {initiatives.length}</span>
             </div>
             {!emptyProjects && (
               <div className={styles.tools}>
@@ -455,7 +476,9 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
                   </div>
                 )}
                 <div className={styles.go}>
-                  {st.idea ? (
+                  {projectMode ? (
+                    <Link href={href("/projects/" + st.id)} className={styles.goBtn}>Open the project →</Link>
+                  ) : st.idea ? (
                     <Link href={href("/ideas?id=" + st.idea)} className={styles.goBtn}>Open on the Ideas page →</Link>
                   ) : st.status === "Shipped" ? (
                     <Link href={href("/progress")} className={styles.goBtn}>See the outcome on Progress →</Link>
