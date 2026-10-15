@@ -8,6 +8,31 @@ import { docFileName, docText, type IdeaDoc } from "@/features/ideas/finalize";
 import { Icon } from "./raiseIcons";
 import s from "./RaiseFinal.module.css";
 
+// The moment between "Looks good · finalize" and the document: the page as grey placeholders while it is
+// put together - heading, summary, the idea, the assessment.
+export function DocLoading() {
+  const lines = (ws: number[]) => ws.map((w, i) => <span key={i} className={s.skel} data-w={w} />);
+  return (
+    <div className={s.sheet} aria-busy="true" aria-label="Preparing the document">
+      <div className={s.col}>
+        <div className={s.bar}>
+          <div className={s.barText}>
+            <span className={s.barKicker}>Final document</span>
+            <span className={s.barSub}>Putting it together…</span>
+          </div>
+        </div>
+        <div className={s.actions} aria-hidden="true">{[0, 1, 2, 3].map((i) => <span key={i} className={s.skelBtn} />)}</div>
+        <div className={s.doc} aria-hidden="true">
+          <div className={s.head}>{lines([20])}<span className={s.skel} data-h="title" data-w="70" />{lines([40, 30])}</div>
+          <div className={s.sec}>{lines([15, 100, 85, 55])}</div>
+          <div className={s.sec}>{lines([15, 100, 85, 100, 70, 55])}</div>
+          <div className={s.sec}>{lines([20, 100, 70])}<span className={s.skel} data-h="block" data-w="100" /></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Doc({ d, final }: { d: IdeaDoc; final: boolean }) {
   return (
     <article className={s.doc} data-final={final} aria-label="Idea document">

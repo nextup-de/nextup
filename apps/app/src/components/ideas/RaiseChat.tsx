@@ -1,8 +1,8 @@
 "use client";
 // The raise page's chat: the coach's questions and the author's answers, the progress rail on the right
 // (one segment per unclear topic) and the composer docked at the bottom. Under the latest reply: the
-// reply's text, the AI's read of the idea (the five dials as bars and words, no numbers - those are in the
-// full analysis, opened only from here), and the one or two points still unclear. Props in, JSX out.
+// reply's text, the one or two points still unclear, then the AI's read of the idea (the five dials as bars
+// and words, no numbers - those are in the full analysis, opened only from here). Props in, JSX out.
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { levelOf, type Advice, type Dial, type Topic } from "@/features/ideas/raise";
@@ -43,8 +43,8 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onAna
               <div key={m.id} className={s.msg} data-role={m.role}>
                 <p className={s.bubble}>{m.text}</p>
                 {m.note && <span className={s.note}><Solid name="sparkle" size={8.25} fill="#007aff" />{m.note}</span>}
-                {m.read && <ReadCard r={m.read} onAnalysis={onAnalysis} />}
                 {m.read && m.read.open.length > 0 && <Unclear open={m.read.open} onAsk={onAsk} />}
+                {m.read && <ReadCard r={m.read} onAnalysis={onAnalysis} />}
                 {m.link && <div className={s.quick}><Link className={s.quickBtn} data-primary="ink" href={m.link.href}>{m.link.label}</Link></div>}
                 {m.publish && (
                   <div className={s.quick}>

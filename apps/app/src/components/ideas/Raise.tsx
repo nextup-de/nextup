@@ -45,7 +45,7 @@ import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
 import { ReceiverDialog, type Work } from "./RaisePublish";
 import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
 import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
-import { RaiseFinal } from "./RaiseFinal";
+import { DocLoading, RaiseFinal } from "./RaiseFinal";
 import { AnalysisSheet, IdeaSheet, type Reviewer, type Similar, type Source } from "./RaiseSheets";
 import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
 import { EVAL_STEPS, RaiseStart } from "./RaiseStart";
@@ -133,6 +133,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // The last look before publishing: per draft, the author's words as the case will carry them; open or not.
   const [looks, setLooks] = useKept<Record<string, Look>>(scope, "looks", {});
   const [prepping, setPrepping] = useState(false); // the second between "Publish" and the last look (PreviewLoading)
+  const [drafting, setDrafting] = useState(false); // the moment between "Looks good · finalize" and the document (DocLoading)
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
   const startDesc = useRef<TokenFieldHandle>(null);
@@ -249,7 +250,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const answer = story && scriptAt >= 1 && scriptAt <= FILLED_ANSWERS ? DEMO_SCRIPT[scriptAt].say : null; // the script's next answer
   const canAnswer = story && idle && stage === "chat" && view === "chat" && !!draft && !!answer && text.trim() !== answer;
   const canPreview = story && idle && stage === "chat" && !!draft && canFinalize && !looking && !prepping && view !== "final";
-  const canConfirm = story && idle && looking && !!draft;
+  const canConfirm = story && idle && looking && !drafting && !!draft;
   const canSendFinal = story && idle && stage === "chat" && !!draft && view === "final" && !looking && canFinalize;
   useEffect(() => (canIdea || canSend || canAnswer || canPreview || canConfirm || canSendFinal ? registerRaiseHooks({
     at: scriptAt,
@@ -449,7 +450,13 @@ function RaisePage({ script = false }: { script?: boolean }) {
   };
 
   // The last look confirmed: the final document opens. Sent from the document: it is final, and NextUp finds who receives it.
-  const confirmLook = () => { if (!mine && shownLook) setLook(shownLook); go("final"); };
+  // The last look confirmed: the window closes, the document is laid out for a moment and a half, then it opens.
+  const confirmLook = () => {
+    if (drafting) return;
+    if (!mine && shownLook) setLook(shownLook);
+    setDrafting(true);
+    setTimeout(() => { setDrafting(false); go("final"); }, 1500);
+  };
   const sendFinal = () => { if (!draft) return; setFinals((f) => ({ ...f, [draft.id]: turns.length })); void askReceiver(); };
   // This render's handlers, for the demo controls (handed over after the render, see Sync).
   const syncScript = () => {
@@ -504,7 +511,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     return [{
       id: t.id, role: "ai", text: stripTags(t.text),
       note: i === firstIdx + 1 ? "Title added" : null,
-      read: isLast ? read : undefined,
+      read: t.id === lastAi ? read : undefined, // stays while the next reply is on its way, so the page does not jump
       publish: isLast && !published && canFinalize,
     }];
   });
@@ -623,6 +630,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
             onOpen={(v) => setMenu((m) => (m?.at === "add" && m.view === v ? null : { at: "add", view: v }))} menu={menuFor("add")} onAddFiles={addFiles} />}
           onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       } />
+  ) : drafting ? (
+    <DocLoading />
   ) : shownView === "idea" ? (
     <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
   ) : shownView === "final" && draft ? (
@@ -663,7 +672,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
           onCancel={() => setPubStep(null)} onConfirm={(to) => void publish(to)} />
       )}
       {prepping && <PreviewLoading />}
-      {looking && shownLook && draft && !published && (
+      {looking && !drafting && shownLook && draft && !published && (
         <PublishPreview author={who.name} look={shownLook} onLook={setLook}
           meet={extras.meet} onMeet={(meet) => preview.setExtras(key, { meet })}
           coll={extras.coll} people={seed.people} onColl={(coll) => preview.setExtras(key, { coll })}
