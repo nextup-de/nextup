@@ -41,8 +41,7 @@
 .label { font-size: var(--nh-fs-sm); color: var(--c-mute); }
 .labelRow { display: flex; align-items: baseline; gap: 8px; }
 .count { font-size: var(--nh-fs-sm); color: #aeaeb2; }
-.para { margin: 0; font-size: var(--nh-fs-md); line-height: 1.55; color: var(--c-ink-2); text-wrap: pretty; max-width: 72ch; }
-.leadPara { margin: 0; font-size: var(--nh-fs-lg); line-height: 1.5; color: var(--c-ink); text-wrap: pretty; max-width: 72ch; }
+.para { margin: 0; font-size: var(--nh-fs-md); line-height: 1.55; color: var(--c-ink-2); text-wrap: pretty; max-width: 72ch; }.leadPara { margin: 0; font-size: var(--nh-fs-lg); line-height: 1.5; color: var(--c-ink); text-wrap: pretty; max-width: 72ch; }
 .small { font-size: var(--nh-fs-sm); color: var(--c-mute); }
 .strong { font-weight: 600; }
 .fade { animation: affFade 420ms var(--ease) backwards; }

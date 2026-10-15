@@ -165,6 +165,26 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     void refresh();
   }, [draft, sending, slug, serverMode, local, mine, refresh]);
 
+  // The static demo only: prepared turns added to the open draft in one go, each reply scored as if the
+  // conversation had been had one message at a time (the demo controls' "Full conversation").
+  const addScripted = useCallback((steps: readonly { say: string; reply: string }[]) => {
+    if (!local || serverMode || !draft || sending || !steps.length) return;
+    const meta = { affected: draft.affected, attachments: draft.attachments };
+    const history = draft.turns.map(({ role, text }) => ({ role, text }));
+    const added: { role: "user" | "assistant"; text: string; overall?: number }[] = [];
+    let b = scoreDraft({ turns: history, ...meta }, local);
+    for (const s of steps) {
+      history.push({ role: "user", text: s.say });
+      b = scoreDraft({ turns: history, ...meta }, local);
+      history.push({ role: "assistant", text: s.reply });
+      added.push({ role: "user", text: s.say }, { role: "assistant", text: s.reply, overall: b.overall });
+    }
+    localDrafts.addTurns(mine, draft.id, added, { title: draft.title || ideaFromTurns(history).title, overall: b.overall, scores: b.parts });
+    const d = localDrafts.get(mine, draft.id);
+    setDraft(d); setLive(fromView(d));
+    void refresh();
+  }, [local, serverMode, draft, sending, mine, refresh]);
+
   const save = useCallback(async (meta: Meta) => {
     if (!draft) return true;
     const ok = serverMode ? (await saveIdeaDraftAction({ slug, id: draft.id, ...meta })).ok : localDrafts.saveMeta(mine, draft.id, meta);
@@ -201,5 +221,5 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
   }, [draft, slug, serverMode, local, mine, refresh]);
 
   const overall = live?.overall ?? draft?.overall ?? 0;
-  return { drafts, threshold, draft, live, sending, error, loaded, overall, open, startNew, send, save, discard, publish, setError };
+  return { drafts, threshold, draft, live, sending, error, loaded, overall, open, startNew, send, addScripted, save, discard, publish, setError };
 }

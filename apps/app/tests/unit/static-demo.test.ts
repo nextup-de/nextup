@@ -89,8 +89,8 @@ describe("a case body's main points", () => {
   });
   it("gives the script's case its main points", () => {
     const b = splitBody(DEMO_CASE.body);
-    expect(b.description).toMatch(/^Every changeover on line 3 loses about 20 minutes/);
-    expect(b.context).toMatch(/all three shifts/);
-    expect(b.facts.map((f) => f.label)).toEqual(["Goal", "First step", "Cost", "Then", "Still open"]);
+    expect(b.description).toMatch(/^A tablet at each assembly station/);
+    expect(b.context).toMatch(/shift change/);
+    expect(b.facts.map((f) => f.label)).toEqual(["Cost today", "Owners", "First step", "Cost", "Then"]);
   });
 });

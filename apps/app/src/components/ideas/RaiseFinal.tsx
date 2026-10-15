@@ -83,14 +83,14 @@ function Doc({ d, final }: { d: IdeaDoc; final: boolean }) {
   );
 }
 
-export function RaiseFinal({ doc, final, published, canSend, onFinalize, onReopen, onSend, onClose, onCopied }: {
+export function RaiseFinal({ doc, final, published, canSend, onSend, onEdit, onBack, onClose, onCopied }: {
   doc: IdeaDoc;
-  final: boolean; // this version is locked in
+  final: boolean; // sent from here: this version is the one that went out
   published: boolean;
   canSend: boolean;
-  onFinalize: () => void;
-  onReopen: () => void; // back to the conversation to change it
-  onSend: () => void;
+  onSend: () => void; // finalizes this version and goes on to the receiver
+  onEdit: () => void; // back to the last look, where title, description and details are edited
+  onBack: () => void; // back to the conversation
   onClose: () => void;
   onCopied: (ok: boolean) => void;
 }) {
@@ -114,17 +114,17 @@ export function RaiseFinal({ doc, final, published, canSend, onFinalize, onReope
       <div className={s.col}>
         <div className={s.bar}>
           <div className={s.barText}>
-            <span className={s.barKicker}>{published ? "Published" : final ? "Final · ready to send" : "Finalize"}</span>
-            <span className={s.barSub}>{published ? "The document that went out." : final ? "This version is locked in. Change anything and you finalize again." : "Read it through. Once you finalize, you can send it."}</span>
+            <span className={s.barKicker}>{published ? "Published" : "Final document"}</span>
+            <span className={s.barSub}>{published ? "The document that went out." : "Read it through. Sending it finalizes this version."}</span>
           </div>
           <button type="button" className={s.close} onClick={onClose} title="Close document" aria-label="Close document"><Icon name="x" size={13.5} stroke="#fff" width={2.4} /></button>
         </div>
         <div className={s.actions}>
-          {!final && !published && <button type="button" className={s.btn} data-primary="ink" onClick={onFinalize}><Icon name="check" size={12} width={2.6} />Finalize</button>}
-          {final && !published && <button type="button" className={s.btn} data-primary="blue" onClick={onSend} disabled={!canSend}><Icon name="up" size={12} width={2.4} />Send idea</button>}
+          {!published && <button type="button" className={s.btn} data-primary="blue" onClick={onSend} disabled={!canSend}><Icon name="up" size={12} width={2.4} />Send idea</button>}
           <button type="button" className={s.btn} onClick={() => setPrinting(true)}><Icon name="download" size={11} width={2.4} />Save as PDF</button>
           <button type="button" className={s.btn} onClick={copy}><Icon name="file" size={11} width={2.2} />Copy text</button>
-          {!published && <button type="button" className={s.btn} onClick={onReopen}>{final ? "Keep editing" : "Back to the chat"}</button>}
+          {!published && <button type="button" className={s.btn} onClick={onEdit}><Icon name="pencil" size={11} width={2.2} />Edit details</button>}
+          {!published && <button type="button" className={s.btn} onClick={onBack}>Back to the chat</button>}
         </div>
         <Doc d={doc} final={final || published} />
       </div>

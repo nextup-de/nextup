@@ -6,6 +6,7 @@ import type { Page } from "@playwright/test";
 import { confirmSheet, expect, publishIdea, sheet, test } from "../helpers";
 
 const TITLE = "The Friday shift plan leaves line 3 with no overtime hours for the changeover";
+const SHOWN = "The Friday shift plan leaves line 3 with no overtime"; // the title NextUp makes of it: cut at a natural break (features/ideas/coach.ts finishTitle)
 
 /** Dev panel -> "Viewing as". Switching person also sends you to that person's home page. */
 async function viewAs(page: Page, persona: "Employee" | "Team leader" | "Manager") {
@@ -28,7 +29,7 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
   await test.step("it is in the team leader's inbox at 0 days", async () => {
     await viewAs(page, "Team leader");
     await expect(page).toHaveURL(/\/acme\/leader$/);
-    const row = page.getByRole("main").getByText(TITLE).first();
+    const row = page.getByRole("main").getByText(SHOWN).first();
     await expect(row).toBeVisible();
     await row.click();
   });
@@ -54,7 +55,7 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
 
   await test.step("the leader says no, with a reason", async () => {
     await viewAs(page, "Team leader");
-    await page.getByRole("main").getByText(TITLE).first().click();
+    await page.getByRole("main").getByText(SHOWN).first().click();
     await expect(page.getByRole("button", { name: "Yes, do it" })).toBeVisible();
     await page.getByRole("button", { name: "No, and why" }).click();
     await expect(sheet(page).getByRole("button", { name: "Pick a reason" })).toBeVisible();
@@ -66,13 +67,13 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
   await test.step("the employee sees the no, the reason and who said it - also after a reload", async () => {
     await viewAs(page, "Employee");
     await page.goto("/acme/team");
-    const card = page.getByRole("article", { name: TITLE });
+    const card = page.getByRole("article", { name: SHOWN });
     await expect(card).toContainText("Answered: no");
     await expect(card).toContainText("Answered “no” in 0 days — no time.");
     await expect(card).toContainText("Q4 at the earliest - the fixture team is on the 4-series until then");
     await expect(card).toContainText("T. Vogel · today");
     await page.reload();
-    await expect(page.getByRole("article", { name: TITLE })).toContainText("Answered: no");
+    await expect(page.getByRole("article", { name: SHOWN })).toContainText("Answered: no");
   });
 });
 

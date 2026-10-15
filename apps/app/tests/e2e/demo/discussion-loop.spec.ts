@@ -7,7 +7,7 @@
 import type { Page } from "@playwright/test";
 import { expect, publishIdea, test } from "../helpers";
 
-const TITLE = "Setters walk to the tool crib before every changeover on line 3";
+const TITLE = "Setters walk to the tool crib before every changeover"; // under 56 characters: longer titles are finished at a natural break (coach.ts finishTitle)
 const V2 = "Every changeover on line 3 loses about 20 minutes because the setter walks to the tool crib. First step: a one-week pilot with one tool cart on line 3, about €800 for the cart. It serves the changeover goal on every shift.";
 
 /** Dev panel -> "Viewing as". Switching person also sends you to that person's home page. */

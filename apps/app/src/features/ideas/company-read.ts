@@ -5,7 +5,7 @@
 // that data, so it names the real desk, person and figure; where a company has no such data yet, the
 // line is left out rather than made up. Pure.
 import type { Dept, Idea, Initiative, OrgPerson, Outcome, Problem, Route } from "@/features/demo/types";
-import { closest } from "@/features/evaluate";
+import { closest, goalOf } from "@/features/evaluate";
 import { proposeRoute } from "@/features/routing";
 import type { DialKey } from "./raise";
 
@@ -43,12 +43,10 @@ const latest = <C extends CompanyCase>(cs: readonly C[]) =>
   cs.flatMap((c) => (c.decided ? [{ c, d: c.decided }] : [])).sort((a, b) => b.d.day - a.d.day).slice(0, LAST_DECISIONS);
 
 export function companyRead(x: CompanyInput): Record<DialKey, CompanyFact[]> {
-  const lower = x.text.toLowerCase();
   const route = proposeRoute(x.text, x.routes);
   const desk = route?.owner.name ?? x.lead;
   // The goal with the most keyword hits, as the benchmark picks it (benchmarks.ts).
-  const hits = (g: { keys: string[] }) => g.keys.filter((k) => lower.includes(k.toLowerCase())).length;
-  const goal = x.goals.reduce<CompanyInput["goals"][number] | null>((b, g) => (hits(g) > (b ? hits(b) : 0) ? g : b), null);
+  const goal = goalOf(x.text, x.goals);
   const problem = closest(x.text, x.problems, (p) => p.title + " " + p.sub);
   const outcome = closest(x.text, x.outcomes, (o) => o.title);
   const idea = closest(x.text, x.ideas, (i) => i.title + " " + i.rationale);
