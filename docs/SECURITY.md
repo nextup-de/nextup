@@ -39,7 +39,8 @@ An unknown stage gets the real-people policy: fail closed. Creating a company in
 | Case and idea events | `mayAppend` (`src/features/cases/permissions.ts`): only whoever holds a case (or a manager) decides, hands or asks; only the raiser answers; only managers re-route or move the clock; no re-raising an existing id | - |
 | Discussions | `mayAppend`: only whoever holds the case (or a manager) starts one, invites or checks in; past the company's last round only a manager adds one; only the raiser revises, and only before the decision. Behind the `discussion` flag (`appendEventAction`) | - |
 | Projects | `mayAppendProject` (`src/features/projects/permissions.ts`): a yes opens a project only as the case's first decision; the lead (or a manager) runs it - baseline before the start, measures only once a check opens; the team adds steps, a step's owner or the lead moves it; only a manager records a reward, only an author claims it. Behind the `projects` flag | - |
-| `n8n.<domain>`, `mail.<domain>` | Caddy `basic_auth` from `OPS_USER` / `OPS_PASSWORD_HASH`; unset = 401 for everyone | - |
+| `n8n.<domain>`, `mail.<domain>` | Caddy `basic_auth` from `OPS_USER` / `OPS_PASSWORD_HASH`; unset = 401 for everyone. With `N8N_WEBHOOKS=public`, `POST /webhook/<letters, digits, - and _>` on `n8n.<domain>` skips it (raw request line, `ops/caddy/Caddyfile`) | - |
+| A company stack's n8n (`stack/`) | loopback only. With `N8N_WEBHOOKS=public` in the stack's `.env`, its Caddy passes `POST /webhook/<letters, digits, - and _>` on the app's host to n8n, without the app's cookies and with `Content-Security-Policy: sandbox` (`stack/caddy/Caddyfile`). Each active Webhook node: Header Auth | - |
 
 Sessions are HMAC-signed cookies (`src/features/auth/cookie.ts`), `HttpOnly`, `SameSite=Lax`, and
 `Secure` whenever `COOKIE_SECURE=true` **or** `PUBLIC_SCHEME=https`. Post-login redirects only go

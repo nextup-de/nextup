@@ -15,5 +15,29 @@
 {$SITE_ADDRESS} {
 	encode zstd gzip
 	header -Server
-	reverse_proxy app:3000
+
+	# n8n's production webhooks, so Jira can call the stack's own n8n (install.sh --n8n). Off until
+	# the stack's .env says N8N_WEBHOOKS=public. Only POST /webhook/<letters, digits, - and _>
+	# passes, checked on the raw request line: no dots, %-escapes or double slashes, so
+	# "/webhook/../rest/..." never reaches n8n. The editor, /rest and /webhook-test/ stay off the
+	# internet; they go to the app like any other path. The Header Auth on each Webhook node guards
+	# the webhook itself. Same rule as stack/automation/gate/server.mjs and ops/caddy/Caddyfile.
+	# Self-check: node --test stack/caddy/webhook.test.mjs
+	@n8nWebhook {
+		method POST
+		expression `{env.N8N_WEBHOOKS} == "public" && {http.request.orig_uri}.matches("^/webhook(/[A-Za-z0-9_-]+)+/?([?][^#[:space:]]*)?$")`
+	}
+	handle @n8nWebhook {
+		# This is the app's host: the app's cookies stay with the app, and nothing n8n answers may
+		# run as the app (sandbox) or set a cookie on it.
+		reverse_proxy n8n:5678 {
+			header_up -Cookie
+			header_down -Set-Cookie
+			header_down Content-Security-Policy "sandbox; default-src 'none'"
+			header_down X-Content-Type-Options nosniff
+		}
+	}
+	handle {
+		reverse_proxy app:3000
+	}
 }

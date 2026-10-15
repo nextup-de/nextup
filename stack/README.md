@@ -34,7 +34,8 @@ sudo ln -s /etc/nginx/sites-available/nextup-acme /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx && sudo certbot --nginx -d acme.sellux.ch
 ```
 
-Mailpit is on `127.0.0.1:PORT+1` and n8n on `PORT+2`. Reach them with `ssh -L`. Caddy trusts the
+Mailpit is on `127.0.0.1:PORT+1` and n8n on `PORT+2`. Reach them with `ssh -L` (n8n's production
+webhooks: "n8n webhooks from outside" below). Caddy trusts the
 nginx hop (`TRUSTED_PROXIES=private_ranges`), so the app's rate limiter sees the client's IP.
 
 | Stack | Port block |
@@ -64,8 +65,36 @@ stack/ctl.sh acme down -v     # stop and delete the database (asks for the slug 
 | `app` | `TENANT_MODE=single`, read-only filesystem, all capabilities dropped |
 | `caddy` | the only published service. `SITE_ADDRESS=:80` for plain http, a host name for automatic https |
 | `mailpit` | profile `demo`: catches all mail, inbox on `127.0.0.1:8025` |
-| `n8n` | profile `n8n` (`--n8n`): editor on `127.0.0.1:5678`, own encryption key |
+| `n8n` | profile `n8n` (`--n8n`): editor on `127.0.0.1:5678`, own encryption key. Only its production webhooks can be reached from outside, and only with `N8N_WEBHOOKS=public` (below) |
 | `brain` + `ollama` | profile `brain` (`--brain`): the routing AI and its model, no ports, app-only with `BRAIN_API_KEY`. See `services/brain/README.md`. On a server without 8 GB to spare, leave it out and point the stack at the AI server instead: `brain-server/README.md` |
+
+## n8n webhooks from outside (Jira)
+
+Jira's automation rules POST to an n8n Webhook node (`docs/INTEGRATIONS.md`, "Jira through n8n").
+A stack's n8n is on the loopback, so its Caddy lets exactly one kind of request through to it, and
+only once the stack's `.env` says so:
+
+```ini
+N8N_WEBHOOKS=public
+```
+
+- **What passes:** `POST /webhook/<letters, digits, - and _>` (more segments allowed, a query too),
+  checked on the raw request line: no dots, `%`-escapes or double slashes. Jira then calls
+  `https://<the stack's host>/webhook/jira-<slug>`.
+- **What doesn't:** the editor, `/rest`, `/webhook-test/`, `/webhook-waiting/`, any other method.
+  Those go to the app as before and get its 404. Without the line nothing reaches n8n.
+- **Guard:** every *active* Webhook node is then open to the internet, so each needs
+  authentication (Header Auth). The route strips the app's cookies, drops any cookie n8n sets
+  and answers with `Content-Security-Policy: sandbox`, because it is the app's own host.
+- **Self-check** (Node 22 and docker; runs the real Caddyfiles in `caddy:2`):
+  `node --test stack/caddy/webhook.test.mjs`
+
+**Hosts:** the app host of every stack whose `.env` has the line, on the shared box
+(`<slug>.sellux.ch`, nginx passes the raw request line through unchanged) and on a server or
+on-prem where the stack's Caddy has the certificate. `automation.sellux.ch` has its own exception
+in its login page (`automation/gate/`), and the older `ops/` deployment one on `n8n.<domain>`
+(`ops/caddy/Caddyfile`, same variable). Box steps: `nginx/RUNBOOK.md`, "n8n webhooks for a company
+stack".
 
 ## Backups
 

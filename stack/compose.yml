@@ -131,6 +131,8 @@ services:
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:?}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
+      # "public" lets POST /webhook/<name> through to n8n, for Jira (caddy/Caddyfile says which).
+      N8N_WEBHOOKS: ${N8N_WEBHOOKS:-off}
     depends_on:
       app:
         condition: service_healthy
@@ -150,6 +152,7 @@ services:
 
   # Optional (COMPOSE_PROFILES=...,n8n). Editor on the loopback only - reach it over the VPN or an
   # SSH tunnel, never through Caddy. Its key encrypts stored credentials: keep it with the backups.
+  # Only its production webhooks can go through Caddy, and only with N8N_WEBHOOKS=public.
   n8n:
     <<: *hardening
     image: n8nio/n8n:latest
@@ -163,6 +166,8 @@ services:
       GENERIC_TIMEZONE: ${TZ:-Europe/Zurich}
       # Workflows call the app inside the stack; the events API authenticates by bearer token.
       NEXTUP_APP_URL: http://app:3000
+      # The address the editor shows for a Webhook node: the one Jira calls, through Caddy.
+      WEBHOOK_URL: ${APP_ORIGIN:?}/
     volumes:
       - n8ndata:/home/node/.n8n
     depends_on:

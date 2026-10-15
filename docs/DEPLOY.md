@@ -71,6 +71,11 @@ OPS_PASSWORD_HASH='<docker run --rm caddy:2 caddy hash-password --plaintext ...>
 without them both hosts answer 401. Create the n8n owner account right after the first deploy -
 behind that login nobody else can reach the setup screen first.
 
+`N8N_WEBHOOKS=public` (not in `.env.example`; unset = off) lets n8n's production webhooks,
+`POST /webhook/<letters, digits, - and _>` on `n8n.<domain>`, skip that login so Jira can call
+them. Every active Webhook node then needs its own Header Auth. Apply it with
+`docker compose up -d caddy`. Details: `ops/caddy/Caddyfile`, `stack/nginx/RUNBOOK.md`.
+
 **3. Deploy:**
 
 ```bash
