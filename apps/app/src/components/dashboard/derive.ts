@@ -1,7 +1,11 @@
 // Lists derived from the demo context that more than one component needs (rail counts, the
 // decisions dropdown, the inbox and My cases views). Pure over the context value.
+import { invitedTo, scoreVersions, versionReader, type VersionScore } from "@/features/cases/discussion";
 import { cosignRow, mineRow, raisedWith, type MineRow } from "@/features/cases/rows";
-import { onDesk } from "@/features/cases/selectors";
+import { affectedOn, onDesk } from "@/features/cases/selectors";
+import { GOALS } from "@/features/evaluate";
+import { ideaContext } from "@/features/ideas/drafts";
+import { projectOfCase } from "@/features/projects/selectors";
 import { seesByChoice } from "@/features/cases/visibility";
 import type { DemoContext } from "./DemoProvider";
 
@@ -29,7 +33,10 @@ export function mineRows(ctx: DemoContext): MineRow[] {
   const { name, handle } = ctx.persona.who;
   const me = ctx.persona.role.id === "member" && handle ? handle : name;
   const { promiseDays, outcomeDays } = ctx.seed;
-  return ctx.D.cases.filter((c) => c.from === me).map((c) => mineRow(c, ctx.S.day, ctx.f, promiseDays, outcomeDays))
+  // With the loop on, each row follows the case past the decision: the discussion, the project it became.
+  const loop = ctx.flag("discussion") || ctx.flag("projects");
+  return ctx.D.cases.filter((c) => c.from === me)
+    .map((c) => mineRow(c, ctx.S.day, ctx.f, promiseDays, outcomeDays, loop ? { rules: ctx.S.rules, project: projectOfCase(ctx.S, c) ?? null } : undefined))
     .concat(ctx.D.ideas.filter((i) => i.cosigners.some((x) => x.name === me)).map((i) => cosignRow(i, ctx.S.day, ctx.f, me, promiseDays)))
     .sort((a, b) => b.sortDay - a.sortDay);
 }
@@ -56,7 +63,25 @@ export function visibleTo(ctx: DemoContext, c: ReducedCase): boolean {
 
 // Who may open a case by its link: what they see in the lists, plus what sits on their desk (a
 // lead opens their inbox cases here too). An employee cannot open a colleague's case by URL.
-export const canOpen = (ctx: DemoContext, c: ReducedCase) => visibleTo(ctx, c) || onDesk(c, ctx.persona.who.name);
+export const canOpen = (ctx: DemoContext, c: ReducedCase) => visibleTo(ctx, c) || onDesk(c, ctx.persona.who.name) || invitedTo(c, ctx.persona.who.name);
+
+// Everyone who stands behind a case: named when it was raised, plus everyone who said it affects them too.
+export function standingOn(ctx: DemoContext, c: ReducedCase): string[] {
+  const raised = raisedWith(c).affected;
+  return [...raised, ...affectedOn(ctx.log, c.id).map((a) => a.name).filter((n) => !raised.includes(n))];
+}
+
+// Every version of a case, scored by the idea benchmarks (v1 as raised, then each revision), with the ▲.
+export function versionsOf(ctx: DemoContext, c: ReducedCase): VersionScore[] {
+  const read = versionReader(ideaContext(ctx.seed.routes, GOALS, ctx.S.cases), c.id, { affected: standingOn(ctx, c), attachments: raisedWith(c).attachments });
+  return scoreVersions(c.versions, read);
+}
+
+// Discussions this person was asked into ("Asked for your view"), not on their own desk and not their own.
+export const askedForView = (ctx: DemoContext) => {
+  const { name, handle } = ctx.persona.who;
+  return ctx.D.cases.filter((c) => invitedTo(c, name) && !onDesk(c, name) && c.from !== name && c.from !== handle);
+};
 
 // ── problems / ideas in the current department scope, with the list views' sort orders ──
 import type { ReducedCase, ReducedIdea, ReducedProblem } from "@/features/cases/reducer";

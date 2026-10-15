@@ -2,19 +2,34 @@
 // Nothing here is stored - every string is rebuilt from the reduced case at render time.
 import { days } from "@/lib/utils/format";
 import { scoreCase, type Score } from "@/features/scoring";
+import type { LoopRules } from "@/features/loop/rules";
+import { projectLabel } from "@/features/projects/selectors";
+import type { ReducedProject } from "@/features/projects/types";
+import { archiveOf, type ArchiveOutcome } from "./discussion";
 import type { CaseKind, EventLog, Visibility } from "./events";
 import type { ReducedCase, ReducedIdea } from "./reducer";
 import { affectedOn, rescoresOn } from "./selectors";
 
 export type StepTone = "done" | "now" | "late" | "todo";
 export type Step = { label: string; when: string; tone: StepTone };
-export type MineStatus = "Shipped" | "Building" | "Approved" | "Declined" | "Question for you" | "Sent" | ReducedIdea["status"];
+export type MineStatus = "Shipped" | "Building" | "Approved" | "Declined" | "Question for you" | "Sent" | LifeStatus | ReducedIdea["status"];
+// The second half of the loop (docs/plans/2026-10-15_idea-to-project.md): a discussion before the
+// decision, and the project a yes opens - planned, worked on, done, measured, recognised (or stopped).
+export type LifeStatus = "In discussion" | "Planning" | "In progress" | "Done" | "Measured" | "Recognised" | "Stopped";
+export const PROJECT_STATUS: Record<ReducedProject["status"], LifeStatus> = {
+  planning: "Planning", running: "In progress", measuring: "Done", measured: "Measured", recognised: "Recognised", stopped: "Stopped",
+};
 
 export type MineRow = {
   id: string; kind: "case" | "idea"; sortDay: number; title: string; status: MineStatus; overdue: boolean;
   canReply: boolean; replyTo: string; submitted: string; clock: string; steps: Step[];
   reply: string; replyBy: string; outcome: string; outcomeNote: string;
+  /** The project a yes opened, when the case became one. */
+  project: { id: string; label: string; title: string } | null;
 };
+
+// What mineRow needs to follow a case past the decision: the company's rules and the project, if any.
+export type MineLoop = { rules: Pick<LoopRules, "discussMaxRounds">; project: ReducedProject | null };
 
 // A day offset (0 = demo today) as a short date; 'today' / 'yesterday' near now.
 export type DayFmt = (d: number) => string;
@@ -44,8 +59,10 @@ export function sentLabel(sent: Date, now: Date, exact: boolean): string {
 }
 
 // One case, seen by the person who raised it.
-export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: number, outcomeDays: number): MineRow {
+export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: number, outcomeDays: number, loop?: MineLoop): MineRow {
   const P = promiseDays;
+  // The whole life, once the loop is on - except old seed cases that went straight to a build.
+  if (loop && !c.building && !c.shipped) return lifeRow(c, day, f, P, loop);
   const deputy = c.route ? (c.route.owner.name === c.assignee ? c.route.deputy : c.route.owner.name) : "their deputy";
   const q = c.question, dec = c.decided, b = c.building, sh = c.shipped;
   const buildDay = b ? Math.min(b.days, day - b.day) : 0;
@@ -86,6 +103,104 @@ export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: num
     clock, steps, reply, replyBy,
     outcome: sh ? sh.outcome : b && b.expected ? "expected " + b.expected : "pending",
     outcomeNote: sh ? sh.outcomeNote : b ? "will be measured " + outcomeDays + " days after launch" : "measured " + outcomeDays + " days after launch",
+    project: null,
+  };
+}
+
+// "better (42 → 31 min)": the latest measure against the baseline, as the verdict says it.
+export function measuredLabel(p: Pick<ReducedProject, "baseline" | "measures" | "verdict">): string {
+  const m = p.measures[p.measures.length - 1];
+  if (!m) return p.verdict ?? "not measured";
+  const b = p.baseline && !p.baseline.none ? p.baseline : null;
+  return m.verdict + (b ? " (" + b.value + " → " + m.value + (b.unit ? " " + b.unit : "") + ")" : "");
+}
+
+// The life of one case, one step each: Sent · Read · In discussion · Approved · Planning ·
+// In progress · Done · Measured · Recognised. The discussion step shows only when there was one;
+// the project steps only once a yes opened a project (before that, one "Project" step waits).
+export function lifeSteps(c: ReducedCase, f: DayFmt, loop: MineLoop): Step[] {
+  const dec = c.decided, talk = c.discussion, p = loop.project;
+  const steps: Step[] = [
+    { label: "Sent", when: f(c.raisedDay), tone: "done" },
+    { label: "Read", when: c.read !== null ? f(c.read) : "pending", tone: c.read !== null ? "done" : "now" },
+  ];
+  if (talk) {
+    const last = talk.rounds[talk.rounds.length - 1];
+    const n = Math.max(1, talk.rounds.length);
+    steps.push(dec ? { label: "In discussion", when: n + (n === 1 ? " round" : " rounds"), tone: "done" }
+      : talk.ready && last ? { label: "In discussion", when: "ready " + f(last.day), tone: "done" }
+        : { label: "In discussion", when: "round " + Math.max(1, talk.round) + " of " + loop.rules.discussMaxRounds + " · check-in " + f(c.dueDay), tone: c.overdue ? "late" : "now" });
+  }
+  steps.push(dec ? { label: dec.answer === "yes" ? "Approved" : "Declined", when: f(dec.day), tone: "done" }
+    : c.status === "asked" ? { label: "Decided", when: "question for you", tone: "now" }
+      : talk ? { label: "Decided", when: talk.ready ? "due now" : "after the discussion", tone: talk.ready ? "now" : "todo" }
+        : c.overdue ? { label: "Decided", when: "overdue", tone: "late" }
+          : { label: "Decided", when: "due " + f(c.dueDay), tone: c.read !== null ? "now" : "todo" });
+  if (dec?.answer === "no") return steps;
+  if (!p) {
+    if (!dec) steps.push({ label: "Project", when: "after a yes", tone: "todo" });
+    return steps;
+  }
+  const doneSteps = p.steps.filter((s) => s.column === "done").length;
+  const started = p.startedDay !== null, done = p.doneDay !== null, measured = p.measures.length > 0;
+  const now = (on: boolean): StepTone => (on && p.overdue ? "late" : "now");
+  steps.push(
+    { label: "Planning", when: started ? f(p.openedDay) : "since " + f(p.openedDay), tone: started ? "done" : now(p.status === "planning") },
+    { label: "In progress", when: !started ? "—" : p.steps.length ? doneSteps + " of " + p.steps.length + " steps" : "since " + f(p.startedDay ?? p.openedDay), tone: done ? "done" : started ? "now" : "todo" },
+    { label: "Done", when: done ? f(p.doneDay ?? 0) : "—", tone: done ? "done" : "todo" },
+    { label: "Measured", when: measured ? measuredLabel(p) : done && p.dueDay !== null ? "due " + f(p.dueDay) : "—", tone: measured ? "done" : done ? now(p.status === "measuring") : "todo" },
+    { label: "Recognised", when: p.reward ? f(p.reward.day) : p.rewardDue ? "due" : "—", tone: p.reward ? "done" : p.rewardDue ? "now" : "todo" },
+  );
+  if (p.stopped) {
+    const at = steps.findIndex((s) => s.tone !== "done");
+    return [...steps.slice(0, at < 0 ? steps.length : at), { label: "Stopped", when: f(p.stopped.day), tone: "done" }];
+  }
+  return steps;
+}
+
+function lifeRow(c: ReducedCase, day: number, f: DayFmt, P: number, loop: MineLoop): MineRow {
+  const dec = c.decided, talk = c.discussion, q = c.question, p = loop.project;
+  const status: MineStatus = p && dec?.answer === "yes" ? PROJECT_STATUS[p.status]
+    : dec ? (dec.answer === "yes" ? "Approved" : "Declined")
+      : c.status === "discussion" ? "In discussion" : c.status === "asked" ? "Question for you" : "Sent";
+  const last = talk?.rounds[talk.rounds.length - 1];
+  const round = talk ? "round " + Math.max(1, talk.round) + " of " + loop.rules.discussMaxRounds : "";
+  const named = p ? projectLabel(p) + " " + p.title : "";
+  const doneSteps = p ? p.steps.filter((s) => s.column === "done").length : 0;
+  const progress = !p ? "" : p.status === "running" && p.steps.length ? ": " + doneSteps + " of " + p.steps.length + " steps done."
+    : p.status === "measured" || p.status === "recognised" ? ": " + measuredLabel(p) + "." : ".";
+  const clock = p && dec ? (p.stopped ? named + " was stopped " + f(p.stopped.day) + ": " + p.stopped.why
+      : "Approved " + f(dec.day) + " by " + dec.by + ". " + named + " · " + PROJECT_STATUS[p.status].toLowerCase() + progress + " Led by " + p.lead + ".")
+    : dec ? (dec.answer === "yes" ? "Answered “yes” in " : "Answered “no” in ") + days(c.clock) + (dec.reason ? " — " + dec.reason : "") + "."
+      : talk ? (talk.ready ? "In discussion · ready to decide. " + c.assignee + " owes you a yes or a no."
+        : "In discussion · " + round + " · next check-in " + f(c.dueDay) + (c.overdue ? ", " + days(day - c.dueDay) + " late." : "."))
+        : c.status === "asked" && q ? q.by + " asked you a question " + f(q.day) + ". The clock is paused until you answer."
+          : c.overdue ? c.clock + " days waiting — " + days(c.clock - P) + " past the promise." + (c.escalated ? " Moved to " + c.escalated.to + " automatically." : "")
+            : c.read !== null ? c.assignee + " read this " + f(c.read) + ". They owe you a yes, a no or a question by " + f(c.dueDay) + "."
+              : "Sent to " + c.assignee + ". They owe you a yes, a no or a question by " + f(c.dueDay) + ".";
+  const answered = !!(q && q.answer && !dec);
+  const hand = c.handed[c.handed.length - 1];
+  const reply = dec ? (dec.note || (dec.answer === "yes" ? "Yes — we are doing this." : "No." + (dec.reason ? " Reason: " + dec.reason + "." : "")))
+    : last ? last.note || (last.next === "decide" ? "Ready to decide." : "Another round.")
+      : talk ? (talk.missing ? "Still missing: " + talk.missing : "Asked " + talk.invited.length + (talk.invited.length === 1 ? " person" : " people") + " for their view.")
+        : c.status === "asked" && q ? "“" + (q.text || "One question for you before this can be decided.") + "”"
+          : answered && q && q.answer ? "“" + (q.text || "One question.") + "” — you answered: “" + q.answer.text + "”. The clock is running again."
+            : hand ? "Handed from " + hand.from + " to " + c.assignee + " " + f(hand.day) + ". The clock kept running."
+              : "No reply yet. " + c.assignee + " has been told; if they miss the date it moves on automatically.";
+  const replyBy = dec ? dec.by + " · " + f(dec.day)
+    : last ? last.by + " · check-in " + last.round + ", " + f(last.day)
+      : talk ? talk.by + " · " + f(talk.startedDay) + (talk.invited.length ? " · with " + talk.invited.join(", ") : "")
+        : c.status === "asked" && q ? q.by + " · " + f(q.day)
+          : answered && q && q.answer ? q.by + " · " + f(q.day) + ", you · " + f(q.answer.day)
+            : "the " + P + "-day clock started " + f(c.raisedDay);
+  const measured = p && p.measures.length ? measuredLabel(p) : null;
+  return {
+    id: c.id, kind: "case", sortDay: c.raisedDay, title: c.title, status, overdue: c.overdue || !!p?.overdue,
+    canReply: c.status === "asked", replyTo: q ? q.by : "",
+    submitted: "You raised this " + f(c.raisedDay) + " · " + c.from,
+    clock, steps: lifeSteps(c, f, loop), reply, replyBy,
+    outcome: measured ?? "pending", outcomeNote: measured ? "against the baseline" : "measured once the project is done",
+    project: p ? { id: p.id, label: projectLabel(p), title: p.title } : null,
   };
 }
 
@@ -114,6 +229,7 @@ export function cosignRow(i: ReducedIdea, day: number, f: DayFmt, handle: string
     reply: i.teamNote, replyBy: lead + " · proposer",
     outcome: ap ? "approved" : i.status === "Shipped" ? i.expected : "pending",
     outcomeNote: i.upside && i.upside !== "not modelled" ? i.upside + " / yr expected" + (ap || i.status === "Shipped" ? "" : " if approved") : "upside not modelled yet",
+    project: null,
   };
 }
 
@@ -125,6 +241,10 @@ export type DashRow = {
   id: string; kind: CaseKind; title: string; from: string; fromDept: string; mine: boolean; fresh: boolean;
   openDays: number; open: boolean; overdue: boolean; stage: DashStage; chain: string[]; escalated: boolean; affected: string[]; attachments: number; score: Score; sortDay: number;
   step: number; status: OverviewStatus; clock: number; paused: boolean;
+  /** In a discussion (the open status says whose move; this says it is being talked over). */
+  talk: boolean;
+  /** Archived: became a project, or declined. Null while it is live. */
+  archive: ArchiveOutcome | null;
 };
 
 // ── the Overview (Claude Design handoff "Overview") ──
@@ -183,5 +303,6 @@ export function dashboardRow(c: ReducedCase, promiseDays: number, viewer: { name
     openDays: c.age, open: c.open, overdue: c.overdue, stage, chain, escalated: !!c.escalated, affected, attachments,
     score: scoreCase({ ...c, affected: affected.length, evidence: attachments, updates }, promiseDays), sortDay: c.raisedDay,
     step: overviewStep(c), status: overviewStatus(c, mine), clock: c.clock, paused: c.status === "asked",
+    talk: c.status === "discussion", archive: archiveOf(c),
   };
 }
