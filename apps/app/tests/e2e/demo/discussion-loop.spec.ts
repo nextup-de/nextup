@@ -104,7 +104,9 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await expect(sheet).toContainText(/P-\d+ is open/);
     await expect(sheet.getByRole("link", { name: /^Open P-\d+$/ })).toHaveAttribute("href", /\/acme\/projects\/p_/);
     await sheet.getByRole("button", { name: "Done" }).click();
-    await expect(page.getByRole("main").getByText(TITLE)).toHaveCount(0);
+    // Out of the inbox's list - and on the desk as the project T. Vogel now leads (it keeps the idea's title).
+    await expect(page.getByRole("region", { name: "Fresh ideas" }).getByText(TITLE)).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Projects waiting on you" })).toContainText(TITLE);
   });
 
   await test.step("the author's line says Planning, and the idea is in the Archive as a project", async () => {

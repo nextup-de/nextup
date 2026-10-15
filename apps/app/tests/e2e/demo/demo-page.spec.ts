@@ -58,7 +58,11 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
     await expect(page).toHaveURL(/\/demo\/overview$/);
     const main = page.getByRole("main");
     await expect(main).toContainText(TITLE);
-    for (const t of ["Your move", "Replied", "past promise", "Building", "Shipped"]) await expect(main.getByText(t, { exact: true }).first()).toBeVisible();
+    for (const t of ["Your move", "Replied", "past promise"]) await expect(main.getByText(t, { exact: true }).first()).toBeVisible();
+    // With projects on (the demo shows everything), what was decided sits in the Archive.
+    await main.getByRole("tab", { name: /^Archive/ }).click();
+    for (const t of ["Building", "Shipped"]) await expect(main.getByText(t, { exact: true }).first()).toBeVisible();
+    await main.getByRole("tab", { name: /^Open/ }).click();
     await main.getByText("Ear defenders in two sizes at the press").click();
     await expect(page).toHaveURL(/\/demo\/cases\/d2$/);
     await expect(main).toContainText("€250 covers everyone");

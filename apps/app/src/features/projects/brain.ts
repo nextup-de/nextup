@@ -51,3 +51,15 @@ export function checkinRequest(company: string, c: ReducedCase, said: { who: str
     round: Math.min(20, Math.max(1, c.discussion?.round ?? 1)),
   };
 }
+
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9äöüß]+/g, " ").trim();
+
+/**
+ * The brief's own step suggestions plus the brain's, labelled "AI" - minus what is on the board or
+ * already suggested. The brief's lines come first: they are the author's words.
+ */
+export function withBrainSteps<H extends { label: string; text: string }>(hints: readonly H[], brain: readonly string[], board: readonly { text: string }[]): (H | { label: string; text: string })[] {
+  const seen = new Set([...board.map((s) => norm(s.text)), ...hints.map((h) => norm(h.text))]);
+  const extra = brain.filter((t) => { const k = norm(t); if (!k || seen.has(k)) return false; seen.add(k); return true; });
+  return [...hints, ...extra.map((text) => ({ label: "AI", text }))];
+}

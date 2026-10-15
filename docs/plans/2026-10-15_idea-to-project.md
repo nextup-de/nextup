@@ -1,8 +1,28 @@
 # Plan: from accepted idea to measured project
 
-> **Plan · 2026-10-15 · open.** A discussion stage before the decision, the second half of the loop
+> **Plan · 2026-10-15 · built the same day.** A discussion stage before the decision, the second half of the loop
 > (build together, measure, recognise), and how we test it on the sellux.ch subdomains. Follows `docs/IDEAS.md` ("Not in this step") and
-> the moat board (Close the loop · Trusted numbers · Plant-floor fit). Nothing here is built yet.
+> the moat board (Close the loop · Trusted numbers · Plant-floor fit).
+
+## What was built (15 Oct 2026)
+
+Steps 1-7 are merged; how it works now is in `docs/IDEAS.md`, "After the publish". Built in
+parallel sessions: the core first, then the UI, the connector and the demo on top of it.
+
+| Step | PRs |
+|---|---|
+| Core: events, reducer, permissions, flags, company rules, mails | #206, #211 |
+| 1 Discussion stage · 2 Accept and archive | #214 |
+| 3 Project space · 4 Measure · 5 Recognise | #212 |
+| The brain's proposals (steps and metric, check-in drafts) | #209 |
+| 6 Jira through n8n | #207, #208, #213 |
+| 7 The demo plays the loop | #210 |
+
+The ten decisions below were taken as recommended. Still Kevin's:
+- approve the release from staging (the flags are on for demo stacks only);
+- promote demo.sellux.ch;
+- a Jira Cloud test site and the gate redeploy (`stack/nginx/RUNBOOK.md`);
+- the brain image on its server.
 
 ## Where we are
 

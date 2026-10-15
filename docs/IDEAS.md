@@ -158,6 +158,40 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
   page, and its links drop the `/demo` (`staticDemoPrefix()`). `/admin` stays the admin surface; the
   stack's own database company is no longer reachable from that host.
 
+## After the publish: discussion, decision, project
+
+Built 15 Oct 2026 (docs/plans/2026-10-15_idea-to-project.md). Behind the flags `discussion` and
+`projects`: on for demo companies and the static demo, off for real ones until admin.sellux.ch turns
+them on. The company's rhythm, measure days and reward rule are on `/admin/knowledge` ("After the
+decision", `CompanyConfig` → `Seed.loop`, `features/loop/rules.ts`).
+
+- **Discuss first** (`components/shell/LoopSheets.tsx`, `features/cases/discussion.ts`): next to Yes,
+  No, Pass and Ask, the desk holder opens a discussion: what is still missing, and whom to ask (the
+  sheet suggests the route's buddy and deputy, the people affected, the department's head, authors of
+  close ideas). Invited people get "Asked for your view" in their inbox and a mail; they comment on
+  the case. The author posts a new version from the case page; each one is scored again
+  (v1 → v2, ▲ on the dials that got better). A check-in every `discussEveryDays` (3) ends a round:
+  another round, or ready to decide - drafted offline from the new versions, comments and weak dials,
+  or by the brain (`/v1/checkin`) where the stack has one. After `discussMaxRounds` (3) the decision
+  is due; one more round needs a manager. A late check-in goes to the deputy, like a late decision.
+  An idea within the team's spend authority (`fastLaneEur`) keeps Yes as the main button.
+- **Yes, do it** opens a project: lead (the decider by default), title, an optional first step. The
+  idea is archived - read-only, out of the open lists, in the Archive tab - and points to P-n. A no
+  archives it with its reason.
+- **The project** (`/projects/[id]`, `components/projects`, `features/projects`): a board (To do,
+  Doing, Blocked, Done), the team, links (http(s) only; Jira keys from the connector), comments and
+  the timeline. The baseline comes before the start - or "no number possible" with a why. Steps and
+  the metric are suggested from the brief's own lines, and by the brain (`/v1/plan`) where there is
+  one. A project not started within the promise goes to the deputy; so does a late measure.
+- **Measure** at done + 30 and + 90 days (`measureDays`): the verdict - better, same within the
+  tolerance, or worse - is computed from the numbers (`features/projects/verdict.ts`), never typed.
+- **Recognise** by the company's own rule (none, thanks, fixed, share of the measured saving): a
+  manager records it, an anonymous author claims it. Counts only, no ranking of people.
+- **The author sees every step** on `/team`: Sent · Read · In discussion · Approved · Planning ·
+  In progress · Done · Measured · Recognised, with a mail at each (`features/loop/notice.ts`).
+- **The team lead's inbox** lists the projects waiting on them (`ProjectDesk`): their next move as a
+  lead, and a late start or measure that moved to them.
+
 ## Privacy
 
 - A draft is its author's alone: every query names the company **and** the author. No lead, manager
@@ -168,12 +202,10 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
 
 ## Not in this step
 
-- **After "Yes, do it"** - planned and being built in docs/plans/2026-10-15_idea-to-project.md: a
-  discussion stage before the decision, then the archive and a project with a board, a measure
-  against the number before, and a reward by the company's rule. The `project.step.*` events there
-  replace the `idea.action.*` events this list used to ask for.
-- **The brain in the project**: steps and the baseline metric are suggested from the brief's own
-  lines for now; the brain planning and following the steps comes later.
+- **The brain following a project** after its start (reminders, spotting a stuck step): it only
+  proposes the first steps and the metric for now.
+- **Escalating a late step**: a step's due day shows on the board, but nothing moves on its own -
+  no per-person overdue counts, for the works council.
 - Customer feedback and market research as inputs to opportunity detection.
 - Similarity by embeddings (pgvector) instead of shared words; connecting authors of close ideas.
 - `AssistAnswer` / `src/lib/use-assist.ts` (the old "ask first, then raise") are no longer used by

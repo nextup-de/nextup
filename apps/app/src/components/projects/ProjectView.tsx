@@ -10,6 +10,8 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ProjectStatus, ReducedProject } from "@/features/projects/types";
 import { baselineText, MOVE_LABEL, suggestedBaseline, suggestedSteps, visibleProjects } from "@/features/projects/views";
+import { withBrainSteps } from "@/features/projects/brain";
+import { useBrainPlan } from "@/lib/use-brain";
 import { ProjectBoard } from "./ProjectBoard";
 import { BaselinePanel, MeasurePanel, RewardPanel } from "./ProjectMeasure";
 import { CommentsPanel, LinksPanel, TeamPanel, TimelinePanel } from "./ProjectTeam";
@@ -46,8 +48,12 @@ function Project({ p }: { p: ReducedProject }) {
   const source = S.cases.find((c) => p.sources.includes(c.id));
   const idea = S.ideas.find((i) => p.sources.includes(i.id));
   const planning = p.status === "planning";
-  const stepHints = planning && source ? suggestedSteps(source.body, p.steps) : [];
-  const baseHint = planning ? suggestedBaseline(source?.body ?? "", idea?.criteria.kpi) : null;
+  // The brain's steps and metric join the brief's own (server mode only); people pick, as with the brief's.
+  const brain = useBrainPlan(ctx.tenant.slug, source?.id ?? null, planning && ctx.serverMode);
+  const stepHints = planning && source ? withBrainSteps(suggestedSteps(source.body, p.steps), brain?.steps ?? [], p.steps) : [];
+  const baseHint = planning
+    ? suggestedBaseline(source?.body ?? "", idea?.criteria.kpi) ?? (brain?.metric ? { metric: brain.metric.name, unit: brain.metric.unit, better: brain.metric.better, goal: "" } : null)
+    : null;
   const move = nextMove(p, S.day);
   // The lead's own move (a manager may act as lead too, but it is not on their desk), or a reward a manager records.
   const who = ctx.persona.who;
