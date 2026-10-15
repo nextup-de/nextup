@@ -4,7 +4,7 @@
 // ctx.openSheet like every other sheet (InputSheet hands these four kinds here) and keep their own
 // draft state, because each has more fields than the shared sheet carries. Every confirm is one act.*.
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen, standingOn, versionsOf } from "@/components/dashboard/derive";
 import { Btn } from "@/components/dashboard/shared/primitives";
@@ -19,6 +19,7 @@ import { ideaContext } from "@/features/ideas/drafts";
 import { railOf } from "@/features/ideas/raise";
 import { projectById, projectLabel } from "@/features/projects/selectors";
 import { ini } from "@/lib/utils/format";
+import { brainCheckinAction } from "@/server/actions/brain";
 import base from "./InputSheet.module.css";
 import styles from "./LoopSheets.module.css";
 
@@ -173,7 +174,7 @@ function InviteSheet({ c }: { c: ReducedCase }) {
 
 function CheckinSheet({ c }: { c: ReducedCase }) {
   const ctx = useDemo();
-  const { S, log, act, role, closeSheet, showToast, f } = ctx;
+  const { S, log, act, role, tenant, closeSheet, showToast, f } = ctx;
   const rs = roundState(c, S.rules, S.day);
   // The offline draft: new versions and comments since the last check-in, and the dials still weak.
   const [draft] = useState(() => {
@@ -184,6 +185,21 @@ function CheckinSheet({ c }: { c: ReducedCase }) {
   const [next, setNext] = useState<"round" | "decide">(blocked || !draft.open.length ? "decide" : "round");
   const [open, setOpen] = useState<string[]>(draft.open);
   const [note, setNote] = useState(draft.note);
+  const [by, setBy] = useState<"offline" | "brain">("offline");
+  const touched = useRef(false); // once the desk holder edits, a late brain draft never overwrites it
+  const mark = () => { touched.current = true; };
+  // The brain drafts it when the stack has one (null otherwise); the offline draft stands until then.
+  useEffect(() => {
+    let live = true;
+    brainCheckinAction({ slug: tenant.slug, caseId: c.id, weak: draft.open }).then((p) => {
+      if (!live || !p || touched.current) return;
+      setOpen(p.open);
+      setNote(p.note);
+      setNext(p.next === "round" && blocked ? "decide" : p.next);
+      setBy("brain");
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [tenant.slug, c.id, draft.open, blocked]);
   const ok = !!note.trim() && !(next === "round" && blocked);
   const confirm = () => {
     if (!ok) return;
@@ -197,11 +213,11 @@ function CheckinSheet({ c }: { c: ReducedCase }) {
       sub={"Round " + (rs?.round ?? 1) + " of " + S.rules.discussMaxRounds + ". Everyone in the discussion sees the same check-in at the same time; edit the draft before you send it."}
       actions={<><Btn kind={ok ? "primary" : "disabled"} onClick={confirm}>{next === "decide" ? "Send: ready to decide" : "Send: another round"}</Btn><Btn fixed onClick={closeSheet}>Cancel</Btn></>}>
       <div className={base.options}>
-        <button type="button" className={base.option} data-on={next === "decide" ? "true" : undefined} onClick={() => setNext("decide")}>
+        <button type="button" className={base.option} data-on={next === "decide" ? "true" : undefined} onClick={() => { mark(); setNext("decide"); }}>
           <div className={base.optionLabel}>Ready to decide</div>
           <div className={base.optionSub}>the discussion ends; yes or no is due now</div>
         </button>
-        <button type="button" className={base.option} data-on={next === "round" ? "true" : undefined} onClick={() => !blocked && setNext("round")} disabled={blocked} aria-disabled={blocked}>
+        <button type="button" className={base.option} data-on={next === "round" ? "true" : undefined} onClick={() => { if (!blocked) { mark(); setNext("round"); } }} disabled={blocked} aria-disabled={blocked}>
           <div className={base.optionLabel}>Another round</div>
           <div className={base.optionSub}>{blocked ? "That was the last round - one more needs a manager." : "the next check-in is due in " + S.rules.discussEveryDays + " days"}</div>
         </button>
@@ -210,11 +226,12 @@ function CheckinSheet({ c }: { c: ReducedCase }) {
       <div className={styles.points}>
         {points.map((p) => {
           const on = open.includes(p);
-          return <button key={p} type="button" className={styles.point} data-on={on ? "true" : undefined} aria-pressed={on} onClick={() => setOpen((o) => toggle(o, p))}>{p}</button>;
+          return <button key={p} type="button" className={styles.point} data-on={on ? "true" : undefined} aria-pressed={on} onClick={() => { mark(); setOpen((o) => toggle(o, p)); }}>{p}</button>;
         })}
       </div>
       <div className={base.textLabel}>Note to everyone</div>
-      <textarea className={`${base.textarea} ${styles.draft}`} value={note} onChange={(e) => setNote(e.target.value)} rows={6} aria-label="Note to everyone" />
+      <textarea className={`${base.textarea} ${styles.draft}`} value={note} onChange={(e) => { mark(); setNote(e.target.value); }} rows={6} aria-label="Note to everyone" />
+      <div className={styles.none}>{by === "brain" ? "Drafted by the brain from the versions, the comments and the dials. Check it before you send it." : "Drafted from the new versions, the new comments and the dials still weak."}</div>
     </Frame>
   );
 }
