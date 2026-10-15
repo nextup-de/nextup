@@ -53,7 +53,7 @@ function RailShell({ children }: { children: React.ReactNode }) {
 
         <div className={styles.railLabel}>Views</div>
         <nav className={styles.nav}>
-          {navFor(role).map((n) => {
+          {navFor(role, ctx.flag).map((n) => {
             const href = tenant.prefix + n.href;
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
