@@ -3,6 +3,7 @@
 // over its own seed (features/demo/static-demo.ts), in local mode - no company, no session, no database.
 // The event log, the idea drafts and the screenshots live in this browser only, under the slug "demo".
 // The dev panel is on: "Viewing as" switches person in this browser, "Reset demo" goes back to the seed.
+// Once the script's idea is published, the player (LoopPlayer) plays what happens to it next, step by step.
 //
 // Every visit starts from the seed: what was raised on the last visit is wiped when the page loads,
 // before anything reads it, and everyone's earlier chats with the coach are put back. Module code
@@ -11,6 +12,7 @@
 import { useEffect } from "react";
 import { DemoProvider, useDemo, type TenantInfo } from "@/components/dashboard/DemoProvider";
 import { AppShell } from "@/components/shell/AppShell";
+import { LoopPlayer } from "@/components/demo/LoopPlayer";
 import { appendEvent } from "@/features/cases/events";
 import { staticDemoDrafts } from "@/features/demo/static-demo";
 import type { Seed } from "@/features/demo/types";
@@ -45,6 +47,7 @@ export function StaticDemo({ seed, prefix, children }: { seed: Seed; prefix: str
     <DemoProvider tenant={tenant} seed={seed}>
       <DeskReply />
       <AppShell>{children}</AppShell>
+      <LoopPlayer slug={SLUG} />
     </DemoProvider>
   );
 }
