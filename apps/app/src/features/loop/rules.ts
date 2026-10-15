@@ -54,7 +54,7 @@ export function loopRules(p?: Partial<LoopRules> | null): LoopRules {
   const d = LOOP_DEFAULTS;
   if (!p) return d;
   const days = Array.isArray(p.measureDays)
-    ? [...new Set(p.measureDays.map((n) => int(n, 1, 730, 0)).filter((n) => n > 0))].sort((a, b) => a - b).slice(0, 4)
+    ? [...new Set(p.measureDays.filter((n) => typeof n === "number" && n >= 1).map((n) => int(n, 1, 730, 0)))].sort((a, b) => a - b).slice(0, 4)
     : d.measureDays;
   const r: Partial<RewardRule> = p.reward ?? {};
   return {

@@ -21,6 +21,7 @@ import { policyFor } from "@/features/admin/stages";
 import { buildRaisedNotice } from "@/features/cases/notice";
 import { companyBaseUrl, notifyCaseRaised } from "@/server/case-notice";
 import { mailConfigured } from "@/server/mail";
+import { notifyLoop } from "@/server/loop-notice";
 
 // Same ceiling as the integration endpoint (features/integrations MAX_PAYLOAD_BYTES): one event
 // is a title, a body and a few ids, never a file.
@@ -98,6 +99,8 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   if (type === "case.raised" && target) {
     void notifyRaised(slug, viewer.companyId, id, target, payload);
   }
+  // Discussions and projects: the people asked, and the author at every step (features/loop/notice.ts).
+  notifyLoop(slug, { type: type as CaseEventType, actor, target, payload });
 
   revalidatePath("/" + slug, "layout");
   revalidatePath("/", "layout"); // subdomain mode: the company is the host, so the path has no slug
