@@ -69,8 +69,9 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
           {simpleNavFor(role, ctx.flag).map((n) => {
             const href = tenant.prefix + n.href;
-            // A case opens from the Overview, so its page counts as the Overview.
-            const active = pathname === href || pathname.startsWith(href + "/") || (n.href === "/overview" && pathname.startsWith(tenant.prefix + "/cases/"));
+            // A case opens from the Overview, so its page counts as the Overview - a tab of Projects while that is on.
+            const inOverview = pathname === tenant.prefix + "/overview" || pathname.startsWith(tenant.prefix + "/cases/");
+            const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview);
             const n1 = n.count ? counts[n.count] : 0;
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} onClick={() => setPop(null)}>

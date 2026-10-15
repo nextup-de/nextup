@@ -36,7 +36,9 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
   await test.step("the AI analysis is under the reply, the rail shows its topics, and the Overview and back keeps the chat", async () => {
     await expect(page.getByRole("group", { name: "AI analysis" })).toContainText("Feasibility");
     await expect(page.locator('[data-rail-seg][aria-label$="clear"]').first()).toBeVisible();
-    await page.getByRole("link", { name: "Overview", exact: true }).click();
+    // The Overview is the "Ideas & problems" tab of Projects.
+    await page.getByRole("link", { name: "Projects", exact: true }).click();
+    await page.getByRole("link", { name: "Ideas & problems" }).click();
     await expect(page).toHaveURL(/\/demo\/overview$/);
     await page.getByRole("link", { name: "Ideas", exact: true }).click();
     await expect(aiMessages(page).last()).toContainText("It is ready: publish it", { timeout: 15_000 });
@@ -71,7 +73,7 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
   await test.step("the dev panel is there, and a reload starts the demo over", async () => {
     await expect(page.getByRole("button", { name: "Dev", exact: true })).toBeVisible();
     await page.goto("/demo/overview");
-    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
     await expect(page.getByRole("main")).not.toContainText(TITLE);
   });
 });

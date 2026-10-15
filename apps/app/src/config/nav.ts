@@ -20,27 +20,28 @@ export const NAV: NavItem[] = [
 
 // The simple shell (SHELL[role] === "simple"): two or three places and a profile button, per role.
 // hrefs relative to /[company]. `count` names what the badge next to the label counts.
-export type SimpleNavItem = { label: string; href: string; count?: "inbox" | "decisions"; flag?: FlagKey };
+// `unlessFlag`: shown only while that flag is off (the Overview, once Projects carries it as a tab).
+export type SimpleNavItem = { label: string; href: string; count?: "inbox" | "decisions"; flag?: FlagKey; unlessFlag?: FlagKey };
 export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
   member: [
     { label: "Ideas", href: "/raise" },
     { label: "Feed", href: "/feed" },
     { label: "Projects", href: "/projects", flag: "projects" },
-    { label: "Overview", href: "/overview" },
+    { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
   leader: [
     { label: "Ideas", href: "/raise" },
     { label: "Inbox", href: "/leader", count: "inbox" },
     { label: "Feed", href: "/feed" },
     { label: "Projects", href: "/projects", flag: "projects" },
-    { label: "Overview", href: "/overview" },
+    { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
   manager: [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Inbox", href: "/leader", count: "inbox" }, // tentative: what sits on the manager's own desk (escalations, routes they own)
     { label: "Feed", href: "/feed" },
     { label: "Projects", href: "/projects", flag: "projects" },
-    { label: "Overview", href: "/overview" },
+    { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
 };
 
@@ -51,5 +52,5 @@ export function navFor(role: Role, flag: (key: FlagKey) => boolean = () => true)
 
 /** The simple shell's places for a role, flagged ones only while their flag is on. */
 export function simpleNavFor(role: Role, flag: (key: FlagKey) => boolean): SimpleNavItem[] {
-  return NAV_SIMPLE[role].filter((n) => !n.flag || flag(n.flag));
+  return NAV_SIMPLE[role].filter((n) => (!n.flag || flag(n.flag)) && (!n.unlessFlag || !flag(n.unlessFlag)));
 }
