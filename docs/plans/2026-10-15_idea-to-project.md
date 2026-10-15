@@ -402,6 +402,8 @@ or export ranks people.
 - [ ] Build the n8n Jira workflow (out and back) and export it to `ops/n8n/`, where
   `docs/INTEGRATIONS.md` puts exported workflows.
 - [ ] Add the nginx `/webhook/` exception on automation.sellux.ch (Kevin runs the sudo lines).
+- [ ] Before a pilot connects its own Jira: `N8N_WEBHOOKS=public` on its stack (`stack/nginx/RUNBOOK.md`,
+  "n8n webhooks for a company stack").
 
 **Done when:** opening P-1 creates an epic on the Jira test site, and moving its issue to Done
 moves the step in NextUp within a minute.

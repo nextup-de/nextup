@@ -149,7 +149,8 @@ Jira's calls and posts step moves and comments. Only the poll writes the static 
 4. In Jira: Project settings → Automation → Create rule, twice. Each rule's action is **Send web
    request**: URL `https://automation.sellux.ch/webhook/jira-<slug>`, method POST, headers
    `X-NextUp-Jira: <the secret>` (tick *Hidden*) and `Content-Type: application/json`, body
-   *Custom data*:
+   *Custom data*. In the company's own n8n the URL is `https://<slug>.sellux.ch/webhook/jira-<slug>`
+   (its own host on-prem), once its stack has `N8N_WEBHOOKS=public` (`stack/README.md`):
 
    | Trigger | Custom data |
    |---|---|

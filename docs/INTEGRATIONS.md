@@ -142,8 +142,12 @@ allow-list has the four, the app answers 400 to every write-back; the workflow c
 digits, - and _>` through, checked on the raw path n8n receives. `/webhook-test/`, the editor and
 everything else still need the login. So every *active* production webhook there is open to the
 internet and needs Header Auth. Self-check: `node --test stack/automation/gate/server.test.mjs`.
-A company's own n8n is not reachable from outside today (`stack/`: loopback only; `ops/caddy`:
-`basic_auth`). It needs the same `/webhook/` exception before Jira can call it.
+A company's own n8n gets the same exception, off until its `.env` says `N8N_WEBHOOKS=public`: the
+stack's Caddy passes `POST /webhook/<…>` to n8n on the company's own host (Jira then calls
+`https://<slug>.sellux.ch/webhook/jira-<slug>`), and the older `ops/` deployment lets it skip the
+`basic_auth` on `n8n.<domain>`. Everything else stays where it was. The hosts and the box steps:
+`stack/nginx/RUNBOOK.md`, "n8n webhooks for a company stack". Self-check:
+`node --test stack/caddy/webhook.test.mjs` (docker).
 
 **Test with a free Jira Cloud site.** Fake data only. Kevin creates the site and the API token
 (`stack/nginx/RUNBOOK.md`, "Jira test site"); the workflow's setup, with the two automation rules,
