@@ -292,7 +292,7 @@ certificate exists. For a new host, run `sudo certbot certonly --nginx -d <host>
 - **Webhooks:** `POST /webhook/<letters, digits, - and _>` gets past the login page, so Jira can
   call n8n (`gate/server.mjs`, checked on the raw path). Every *active* production webhook is
   therefore open to the internet and must have Header Auth. `/webhook-test/` and everything else
-  still need the login.
+  still need the login. Webhook answers are sandboxed and carry no cookies either way (below).
 
 ### Webhook pass-through and the Jira test site (plan step 6)
 
@@ -305,6 +305,20 @@ by `install`:
 ~/nextup/stack/automation/automation.sh install        # rewrites ~/nextup/automation/nginx-site, prints the sudo lines
 ```
 
+**Webhook answers are sandboxed (15 Oct 2026).** The site has its own `location ~* ^/webhook/`.
+The gate still decides who gets through, but nginx sends n8n no cookies, drops any `Set-Cookie`
+from n8n and adds `Content-Security-Policy: sandbox; default-src 'none'` and
+`X-Content-Type-Options: nosniff`. A workflow that echoes HTML then can't act on the editor with a
+signed-in user's cookies. Only the nginx site changes: after the release, `install` rewrites it and
+prints the lines below (`restart gate` is only needed where the pass-through itself is new). Run
+them as a sudoer:
+
+```bash
+sudo install -m 644 ~/nextup/automation/nginx-site /etc/nginx/sites-available/nextup-automation
+sudo ln -sf /etc/nginx/sites-available/nextup-automation /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
 Before the sudo lines, check in n8n that every active workflow with a Webhook node has
 authentication set. After `nginx -t` and the reload, check from the laptop:
 
@@ -313,6 +327,8 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://automation.sellux.ch/we
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://automation.sellux.ch/webhook-test/x          # 302: login page
 curl -s -o /dev/null -w '%{http_code}\n' https://automation.sellux.ch/webhook/x                        # 302: only POST passes
 curl -s -o /dev/null -w '%{http_code}\n' --path-as-is -X POST https://automation.sellux.ch/webhook/../rest/login   # 302
+curl -s -o /dev/null -D - -X POST https://automation.sellux.ch/webhook/nothing-here | grep -iE '^(content-security-policy|x-content-type-options|set-cookie):'
+# two lines: content-security-policy: sandbox; default-src 'none'  and  x-content-type-options: nosniff (no set-cookie)
 ```
 
 The Jira test site, at Atlassian (fake data only):
