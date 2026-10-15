@@ -1,0 +1,35 @@
+/* The demo controls (DemoControls.tsx), in the dev menu's language and at its size (DevPanel.module.css):
+   the dark panel and its line, IBM Plex Mono caps, the toggles' solid orange. It sits in the dev column right
+   under the Dev button; dragged by its grip it floats where it was put (DemoControls.tsx sets left and top),
+   and folded it is a pill exactly like the Dev button (DevPanel.module.css .toggle). */
+.card { position: relative; width: 256px; box-sizing: border-box; padding: 10px 12px 12px; background: var(--nh-dark); border: 1px solid #33332e; border-radius: var(--radius-sm, 12px); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45); font-family: var(--nh-font); color: var(--nh-on-dark); user-select: none; }
+.card[data-moved="true"] { position: fixed; z-index: 60; }
+.card[data-folded="true"] { width: auto; padding: 0; background: none; border: 0; box-shadow: none; }
+
+.head { display: flex; align-items: center; gap: 6px; min-height: 24px; }
+.grip { flex: none; display: grid; place-items: center; width: 14px; height: 24px; margin-left: -4px; border-radius: var(--radius-xs, 6px); color: #5c5b54; cursor: grab; touch-action: none; }
+.grip:hover { color: var(--nh-mute-2); background: var(--nh-dark-2); }
+.grip:active { cursor: grabbing; }
+.title { flex: 1; min-width: 0; font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-on-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.where { flex: none; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); letter-spacing: 0.16em; text-transform: uppercase; color: var(--nh-mute-2); }
+.icon { flex: none; display: grid; place-items: center; width: 20px; height: 22px; border: 0; border-radius: var(--radius-xs, 6px); background: none; color: var(--nh-mute-2); cursor: pointer; }
+.icon:hover, .icon[aria-expanded="true"] { background: var(--nh-dark-2); color: var(--nh-on-dark); }
+.icon:last-child { margin-right: -4px; }
+
+.go { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 32px; margin-top: 10px; padding-top: 0; border: 0; border-radius: var(--radius-xs, 7px); background: var(--nh-accent); color: var(--nh-dark); font-family: var(--nh-mono); font-size: var(--nh-fs-xs); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer; transition: filter 0.15s ease, transform 0.1s ease; }
+.rule { height: 1px; margin: 9px 0 0; background: var(--nh-dark-line); }
+.go:hover:not(:disabled) { filter: brightness(1.06); }
+.go:active:not(:disabled) { transform: translateY(1px); }
+.go:disabled { opacity: 0.35; cursor: default; }
+.go:focus-visible, .icon:focus-visible, .grip:focus-visible { outline: 2px solid var(--nh-accent); outline-offset: 2px; }
+
+.menu { position: absolute; right: 0; min-width: 160px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; padding: 4px; background: var(--nh-dark); border: 1px solid #33332e; border-radius: var(--radius-sm, 12px); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45); z-index: 1; }
+.menu[data-side="up"] { bottom: calc(100% + 6px); }
+.menu[data-side="down"] { top: calc(100% + 6px); }
+.menu button { padding: 7px 9px; border: 0; border-radius: var(--radius-xs, 7px); background: none; color: var(--nh-on-dark); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; text-align: left; cursor: pointer; }
+.menu button:hover:not(:disabled) { background: var(--nh-dark-2); }
+.menu button:disabled { color: var(--nh-mute); cursor: default; }
+
+@media (max-width: 760px) {
+  .card { width: min(256px, calc(var(--nh-screen-w) - 24px)); }
+}

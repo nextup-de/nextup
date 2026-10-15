@@ -13,6 +13,7 @@ import type { Page } from "@playwright/test";
 import { aiMessages, answerCoach, expect, publishTo, START, test } from "../helpers";
 
 const TITLE = "A shared setup cart for line 3, so a changeover never waits for tools";
+const SHOWN = "A shared setup cart for line 3"; // the title NextUp makes of it: cut at a natural break (features/ideas/coach.ts finishTitle)
 // The two answers to the coach. Together they lift the one-liner over the publish line (docs/IDEAS.md).
 const MORE = [
   "It serves the changeover goal: every changeover on line 3 loses about 20 minutes looking for tools, on all three shifts.",
@@ -92,7 +93,7 @@ test("the interview script: employee raises, team leader finds it, manager sees 
   await test.step("employee: sees the details of the case", async () => {
     await expect(page).toHaveURL(/\/cases\/c_\w+$/);
     const main = page.getByRole("main");
-    await expect(main).toContainText(TITLE);
+    await expect(main).toContainText(SHOWN);
     await expect(main).toContainText(MORE[0]);
     await expect(main).toContainText("5 d left on the promise");
     await expect(main).toContainText(/T\. Vogel\s*on whose desk it is/);
@@ -108,14 +109,14 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     await viewAs(leader, "Team leader");
     await expect(leader).toHaveURL(/\/leader$/);
     await expect(leader.getByRole("heading", { name: "Inbox", level: 1 })).toBeVisible();
-    const row = leader.getByRole("region", { name: "Fresh ideas" }).getByRole("button", { name: new RegExp("^" + TITLE) });
+    const row = leader.getByRole("region", { name: "Fresh ideas" }).getByRole("button", { name: new RegExp("^" + SHOWN) });
     await expect(row).toBeVisible();
     await row.click();
   });
 
   await test.step("team leader: sees the details of the case and what he can do with it", async () => {
     const detail = leader.getByRole("article");
-    await expect(detail.getByRole("heading", { name: TITLE, level: 1 })).toBeVisible();
+    await expect(detail.getByRole("heading", { name: SHOWN, level: 1 })).toBeVisible();
     await expect(detail).toContainText(MORE[0]);
     await expect(detail).toContainText("5 d left");
     await expect(leader.getByRole("region", { name: "What the AI found" })).toBeVisible();
@@ -136,7 +137,7 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     // "Delete added cases" drops every case on top of the seed, for everyone. Only safe when this
     // run's case is the only one - otherwise somebody prepared something here, and it stays.
     if (addedBefore > 0) {
-      info.annotations.push({ type: "left behind", description: `"${TITLE}" - ${addedBefore} other added case(s) were already here, so nothing was deleted` });
+      info.annotations.push({ type: "left behind", description: `"${SHOWN}" - ${addedBefore} other added case(s) were already here, so nothing was deleted` });
       return;
     }
     await dev(leader).click();

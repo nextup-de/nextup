@@ -8,14 +8,11 @@
 // before anything reads it, and everyone's earlier chats with the coach are put back. Module code
 // runs once per page load, not on client-side navigation, so going from the raise page to the
 // dashboard keeps what was just published.
-import { useEffect } from "react";
-import { DemoProvider, useDemo, type TenantInfo } from "@/components/dashboard/DemoProvider";
+import { DemoProvider, type TenantInfo } from "@/components/dashboard/DemoProvider";
 import { AppShell } from "@/components/shell/AppShell";
-import { appendEvent } from "@/features/cases/events";
 import { staticDemoDrafts } from "@/features/demo/static-demo";
 import type { Seed } from "@/features/demo/types";
-import { DEMO_SCRIPT, DESK_REPLY } from "@/features/ideas/demo-script";
-import { clearPrefs, resetLog, updateLog } from "@/lib/demo-log";
+import { clearPrefs, resetLog } from "@/lib/demo-log";
 import { draftScope, localDrafts } from "@/lib/idea-drafts";
 import { clearShots } from "@/lib/shots";
 
@@ -40,23 +37,7 @@ export function StaticDemo({ seed, prefix, children }: { seed: Seed; prefix: str
   };
   return (
     <DemoProvider tenant={tenant} seed={seed}>
-      <DeskReply />
       <AppShell>{children}</AppShell>
     </DemoProvider>
   );
-}
-
-// The script's case, once published, gets read and one question from whoever received it (DESK_REPLY) -
-// written straight into this browser's log as that person, the way the local demo stores every event.
-function DeskReply() {
-  const { S } = useDemo();
-  const waiting = S.cases.find((c) => !c.seed && c.title === DEMO_SCRIPT[0].say && c.status === "open" && !c.question && c.read === null);
-  const id = waiting?.id, by = waiting?.assignee;
-  useEffect(() => {
-    if (!id || !by) return;
-    const t = setTimeout(() => updateLog(SLUG, (log) =>
-      appendEvent(appendEvent(log, { type: "case.read", actor: by, target: id }), { type: "case.asked", actor: by, target: id, payload: { text: DESK_REPLY.text } })), DESK_REPLY.afterMs);
-    return () => clearTimeout(t);
-  }, [id, by]);
-  return null;
 }

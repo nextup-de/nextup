@@ -2,7 +2,7 @@
 // (docs/IDEAS.md). Arithmetic over the text and the company context, never model output - so
 // every point names the fact behind it, and chatting cannot talk the score up. The coach
 // (coach.ts) reads `missing` to decide what to ask next. Pure.
-import { closest, words, type KnownCase } from "@/features/evaluate";
+import { closest, goalOf, words, type KnownCase } from "@/features/evaluate";
 import { propose, type RouteRow } from "@/features/routing";
 
 export type BenchmarkId = "fit" | "impact" | "feasibility" | "clarity";
@@ -64,11 +64,9 @@ const hit = (on: boolean, points: number, found: string, missing?: string): Rule
 
 export function benchmark(idea: IdeaInput, ctx: BenchmarkContext): Benchmark {
   const text = idea.text.trim();
-  const lower = text.toLowerCase();
   const n = words(text).length;
-  // The goal with the most keyword hits, not the first with one: "wait" alone should not beat three changeover words.
-  const goalHits = (g: { keys: string[] }) => g.keys.filter((k) => lower.includes(k.toLowerCase())).length;
-  const goal = ctx.goals.reduce<(typeof ctx.goals)[number] | null>((b, g) => (goalHits(g) > (b ? goalHits(b) : 0) ? g : b), null);
+  // The goal with the most keyword hits, and at least two: "wait" alone should not beat three changeover words.
+  const goal = goalOf(text, ctx.goals);
   const route = propose(text, ctx.routes)?.route ?? null;
   const amount = amountEur(text);
   const spends = SPEND.test(text);

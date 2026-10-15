@@ -4,12 +4,14 @@
 // page, the design tweaks under review (animations on/off, old round corners, the dot grid - which
 // localhost can save as the default for every device). It stays open
 // while settings change; a click anywhere else or Escape closes it. Demo only - sessions replace it.
+// On the static demo the demo controls sit right under it (DemoControls.tsx).
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { openCasesOf } from "@/components/dashboard/derive";
 import { DOTS_DEFAULT, DOTS_RANGE } from "@/features/design/dots";
 import { devFill, hasDevFill, subscribeDevFill } from "@/lib/dev-fill";
 import { saveDesignDefaultsAction } from "@/server/actions/design";
+import { DemoControls } from "./DemoControls";
 import styles from "./DevPanel.module.css";
 
 
@@ -144,6 +146,8 @@ export function DevPanel() {
       <button type="button" className={styles.toggle} data-on={dev ? "true" : undefined} onClick={() => { setDev(!dev); ctx.setPop(null); }} title={status}>
         <span className={styles.toggleDot} />Dev
       </button>
+      {/* The static demo's remote, right under the Dev button until it is dragged away (DemoControls.tsx). */}
+      {ctx.tenant.slug === "demo" && <DemoControls />}
     </div>
   );
 }

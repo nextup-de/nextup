@@ -2,7 +2,7 @@
 // advice, labels. Everything is derived from the benchmark's own facts.
 import { describe, expect, it } from "vitest";
 import { benchmark, weakest } from "@/features/ideas/benchmarks";
-import { ideaFromTurns } from "@/features/ideas/coach";
+import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
 import { adviceOf, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, levelOf, RAIL, railOf, splitIdea, splitUpdate, whenLabel, withoutSkipped } from "@/features/ideas/raise";
 import { GOALS } from "@/features/evaluate";
 import { ROUTES } from "@/features/demo/seed";
@@ -142,5 +142,23 @@ describe("labels", () => {
     expect(ideaNow([t("user", "A printer"), t("user", "Line 3"), t("user", "Pilot first" + IDEA_UPDATE + "A second printer\n\nLine 3, all shifts"), t("user", "Under 5,000 €")]))
       .toBe("A second printer\n\nLine 3, all shifts\nPilot first\nUnder 5,000 €");
     expect(ideaNow([])).toBe("");
+  });
+});
+
+describe("finishTitle", () => {
+  it("keeps a short title, capitalised, with no trailing punctuation", () => {
+    expect(finishTitle("a second label printer at packing,")).toBe("A second label printer at packing");
+  });
+  it("cuts a long one at its first natural break, never with an ellipsis", () => {
+    expect(finishTitle("The label printer at station 4 jams every morning because the rollers wear out fast")).toBe("The label printer at station 4 jams every morning");
+    expect(finishTitle("We could reuse the cardboard from inbound deliveries, which would save us about four thousand a month")).toBe("We could reuse the cardboard from inbound deliveries");
+  });
+  it("with no break, ends at the last whole word and drops a dangling small word", () => {
+    const t = finishTitle("Install two additional rugged wall mounted tablets beside the assembly stations near the dock");
+    expect(t.length).toBeLessThanOrEqual(56);
+    expect(t).not.toMatch(/…|\s(the|a|an|and|of|to|near)$/);
+  });
+  it("strips an ellipsis left by an older title", () => {
+    expect(finishTitle("Forklift charging queue at…")).toBe("Forklift charging queue");
   });
 });

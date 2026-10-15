@@ -54,14 +54,19 @@ export async function answerCoach(page: Page, text: string) {
 }
 
 /**
- * "Publish idea", then "Who should get this?": pick `to` among the suggestions, or find them under
- * "Choose someone else". Waits until the case is raised (the chat offers "Open the case").
- * On a phone the sidebar is a drawer, opened first.
+ * "Publish idea", the last look before it goes out (its preview window) and "Looks good · find receiver",
+ * then "Who should get this?": pick `to` among the suggestions, or find them under "Choose someone else".
+ * Waits until the case is raised (the chat offers "Open the case").
+ * On a phone the sidebar is a drawer, opened first. An already open preview goes straight on.
  */
 export async function publishTo(page: Page, to: string) {
-  const show = page.getByRole("button", { name: "Show sidebar" });
-  if (await show.isVisible()) await show.click();
-  await page.getByRole("button", { name: "Publish idea" }).click();
+  const look = page.getByRole("dialog", { name: "Last look before it goes out" });
+  if (!(await look.isVisible())) {
+    const show = page.getByRole("button", { name: "Show sidebar" });
+    if (await show.isVisible()) await show.click();
+    await page.getByRole("button", { name: "Publish idea" }).click();
+  }
+  await look.getByRole("button", { name: /Looks good/ }).click({ timeout: 30_000 });
   const who = page.getByRole("dialog", { name: "Who should get this?" });
   await expect(who).toBeVisible({ timeout: 30_000 });
   const offered = who.getByRole("radio").filter({ hasText: to }); // by its text: no pattern built from the name
