@@ -1,7 +1,7 @@
 "use client";
 // The actions menu behind the bolt button (and behind an item in the sidebar's lists): who receives
 // it, colleagues, a meeting, files, who is affected, who sees it. Opens upward when there is room.
-// The start page also shows the actions as buttons (RaiseActions); each opens its own panel under it.
+// The start page shows the actions as a row of buttons in its composer instead (RaiseActions); each opens its own panel under it.
 // Props in; the receiver, colleagues, meeting and visibility are stand-ins (raisePreview.ts).
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -128,9 +128,9 @@ export function RaiseMenu(p: MenuProps) {
   return <><span ref={spot} hidden />{host && createPortal(menu, host)}</>;
 }
 
-// The actions as buttons under the start page's composer: each opens its own panel right there, and
-// "Attach file" opens the file picker itself. They look the same whatever is chosen: the chips in the
-// composer show the choices.
+// The actions as a row of buttons along the bottom edge inside the start page's composer: each opens its
+// own panel right there, and "Attach file" opens the file picker itself. One with a choice is outlined;
+// the chips above the row show what was chosen.
 export function RaiseActions({ rows, open, onOpen, menu, onAddFiles }: {
   rows: ActionRow[];
   open: MenuView | null;
@@ -142,12 +142,11 @@ export function RaiseActions({ rows, open, onOpen, menu, onAddFiles }: {
   const at = open === "visPick" ? "vis" : open;
   return (
     <div className={s.adds} role="group" aria-label="Add to your idea">
-      {rows.map(([v, icon, label]) => (
+      {rows.map(([v, icon, label, set]) => (
         <span key={v} className={s.addWrap}>
-          <button type="button" className={s.add} aria-expanded={v === "file" ? undefined : at === v} onClick={() => (v === "file" ? pick.current?.click() : onOpen(v))}>
-            <Icon name={icon} size={13.5} />
+          <button type="button" className={s.add} data-set={set} title={label} aria-expanded={v === "file" ? undefined : at === v} onClick={() => (v === "file" ? pick.current?.click() : onOpen(v))}>
+            <Icon name={icon} size={12} />
             <span className={s.addLabel}>{label}</span>
-            <Icon name="plus" size={10.5} width={2.6} className={s.addMark} />
           </button>
           {at === v && menu}
         </span>

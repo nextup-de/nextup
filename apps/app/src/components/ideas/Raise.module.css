@@ -97,6 +97,10 @@
 .save[data-saved="true"] { color: #1f7a3a; }
 .discard { padding: 3px 6px; margin-right: -6px; border: none; border-radius: 6px; background: transparent; color: #6e6e73; font-family: inherit; font-size: var(--nh-fs-xs); cursor: pointer; transition: color 160ms ease, background 160ms ease; }
 .discard:hover { color: #d70015; background: #fff5f5; }
+.sure { display: flex; align-items: center; gap: 6px; margin-right: -6px; animation: affFade 200ms ease backwards; }
+.sure .discard { margin-right: 0; }
+.discardYes { padding: 4px 10px; border: none; border-radius: 999px; background: #d70015; color: #fff; font-family: inherit; font-size: var(--nh-fs-xs); font-weight: 600; cursor: pointer; transition: background 160ms ease; }
+.discardYes:hover { background: #b30012; }
 
 /* The ideas list */
 .ideasHead { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 12px 12px 4.5px 15px; }
@@ -209,16 +213,18 @@
 .choice:active { transform: scale(.96); }
 .choice[aria-pressed="true"] { background: #1c1c1e; color: #fff; border-color: #1c1c1e; }
 
-/* The actions as buttons under the start page's composer: three by two, the same whatever is chosen. */
-.adds { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7.5px; animation: affFade 360ms cubic-bezier(.2,.8,.2,1) backwards; }
+/* The actions as a row of small buttons along the bottom edge inside the start page's composer; each opens its own panel. */
+.adds { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .addWrap { position: relative; min-width: 0; display: flex; }
-.add { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7.5px; height: 36px; padding: 0 10.5px 0 12px; border: 1px solid transparent; border-radius: var(--radius-sm, 12px); background: #fff; box-shadow: 0 4.5px 13.5px rgba(40,60,100,0.07), 0 1px 2px rgba(40,60,100,0.05); color: #1c1c1e; font-family: inherit; text-align: left; cursor: pointer; transition: background 160ms ease, border-color 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
-.add:hover { background: #f7f9fb; }
+.add { min-width: 0; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10.5px; border: 1px solid #e5e5ea; border-radius: var(--radius-sm, 999px); background: #fff; color: #1c1c1e; font-family: inherit; text-align: left; cursor: pointer; transition: background 160ms ease, border-color 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.add:hover { background: #f5f6f8; }
 .add:active { transform: scale(.97); }
 .add svg { flex: none; }
-.add[aria-expanded="true"] { border-color: #b8d9ff; }
-.addLabel { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--nh-fs-sm); font-weight: 500; }
-.addMark { color: #8e8e93; }
+.add[aria-expanded="true"] { border-color: #b8d9ff; background: #f2f7ff; }
+.add[data-set="true"] { border-color: #b8d9ff; }
+.addLabel { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--nh-fs-xs); font-weight: 500; }
+.barChipsRow { min-width: 0; padding-top: 6px; }
+@media (max-width: 560px) { .adds .addLabel { display: none; } .adds .add { width: 30px; padding: 0; justify-content: center; } } /* phones: the icons only, the name in the tooltip */
 
 
 .eval { width: 100%; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3.75px; height: 194.25px; padding: 12px 21px; background: #fff; border-radius: var(--radius-sm, 16.5px); box-shadow: 0 7.5px 22.5px rgba(40,60,100,0.08), 0 1px 2px rgba(40,60,100,0.05); animation: affFade 420ms cubic-bezier(.2,.8,.2,1) backwards; }
@@ -329,6 +335,39 @@
 .quickBtn[data-primary="true"]:hover { background: #0068d9; }
 .quickBtn[data-primary="ink"] { background: #111; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.18); } /* "Open the case": black, like Publish idea */
 .quickBtn[data-primary="ink"]:hover { background: #000; color: #fff; }
+/* The AI's read under the latest reply: five bars with a word and the reason, the advice, the way into the full analysis. */
+.read { width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 9px; padding: 12px 13.5px; background: #fff; border: 1px solid #e3eaf7; border-radius: var(--radius-sm, 13.5px); box-shadow: 0 1px 2px rgba(40,60,100,0.05); animation: affFade 360ms cubic-bezier(.2,.8,.2,1) 60ms backwards; }
+.readHead { display: flex; align-items: center; gap: 6px; }
+.readHead svg { flex: none; }
+.readTitle { flex: 1; min-width: 0; font-size: var(--nh-fs-sm); font-weight: 600; color: #1a5fd0; }
+.readAdvice { flex: none; padding: 3px 9px; border-radius: var(--radius-sm, 999px); font-size: var(--nh-fs-xs); font-weight: 600; background: #f2f2f7; color: #3a3a3c; }
+.readAdvice[data-advice="go"] { background: #e3f6e8; color: #1f7a3a; }
+.readAdvice[data-advice="pilot"] { background: #eaf2ff; color: #1a5fd0; }
+.readRows { display: flex; flex-direction: column; gap: 7.5px; }
+.readRow { display: grid; grid-template-columns: 6.6em 4.6em 4.6em minmax(0, 1fr); column-gap: 10.5px; align-items: baseline; font-size: var(--nh-fs-sm); line-height: 1.45; }
+.readLabel { font-weight: 600; color: #1c1c1e; }
+.readBar { align-self: center; height: 6px; border-radius: var(--radius-sm, 999px); background: #e3eaf7; overflow: hidden; }
+.readBar i { display: block; height: 100%; border-radius: inherit; background: #007aff; transition: width 600ms cubic-bezier(.2,.8,.2,1); }
+.readLevel { font-weight: 600; color: #3a3a3c; white-space: nowrap; }
+.readNote { color: #6e6e73; text-wrap: pretty; overflow-wrap: anywhere; }
+.readFoot { display: flex; align-items: center; gap: 12px; padding-top: 9px; border-top: 1px solid #eef1f6; }
+.readWhy { flex: 1; min-width: 0; margin: 0; font-size: var(--nh-fs-sm); line-height: 1.5; color: #3a3a3c; text-wrap: pretty; }
+.readMore { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: none; border-radius: var(--radius-sm, 999px); background: #eaf2ff; color: #1a5fd0; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.readMore:hover { background: #dbe9ff; }
+.readMore:active { transform: scale(.97); }
+@media (max-width: 560px) {
+  .readRow { grid-template-columns: 6.6em minmax(0, 1fr) 4.6em; row-gap: 2px; }
+  .readNote { grid-column: 1 / -1; }
+  .readFoot { flex-direction: column; align-items: stretch; }
+}
+/* The points still unclear, one or two, under the read. */
+.unclear { width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; animation: affFade 360ms cubic-bezier(.2,.8,.2,1) 120ms backwards; }
+.unclearHead { font-size: var(--nh-fs-xs); font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.04em; padding-left: 2px; }
+.unclearQ { display: flex; align-items: flex-start; gap: 9px; width: 100%; padding: 9px 12px; border: 1px solid #e5e5ea; border-radius: var(--radius-sm, 12px); background: #fff; font-family: inherit; text-align: left; cursor: pointer; transition: border-color 160ms ease, background 160ms ease; }
+.unclearQ:hover { border-color: #b8d9ff; background: #f7faff; }
+.unclearN { flex: none; width: 20px; height: 20px; border-radius: 50%; background: #007aff; color: #fff; display: flex; align-items: center; justify-content: center; font-size: var(--nh-fs-xs); font-weight: 700; }
+.unclearText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: var(--nh-fs-sm); line-height: 1.45; color: #1c1c1e; text-wrap: pretty; }
+.unclearLabel { font-size: var(--nh-fs-xs); font-weight: 600; color: #1a5fd0; }
 .quick .publish { padding: 0 16px; } /* "Publish now" in the chat: the sidebar's Publish idea button, sized to its words */
 a.quickBtn { text-decoration: none; }
 

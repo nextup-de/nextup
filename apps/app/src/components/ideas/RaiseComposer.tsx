@@ -1,6 +1,6 @@
 "use client";
 // The gold-ringed composer, on the start page and under the chat: actions button (the chat's only - the
-// start page has the actions as buttons below), a field that grows, dictation (Web Speech API, where the
+// start page has the actions as a row of buttons along its bottom edge), a field that grows, dictation (Web Speech API, where the
 // browser has it) and send. Enter sends, Shift+Enter is a new line.
 // On a demo-stage company `fill` puts the demo script's next text in the field (features/ideas/demo-script).
 import { useEffect, useRef, useState } from "react";
@@ -21,7 +21,7 @@ const speechCtor = (): RecognitionCtor | null => {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 };
 
-export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend, sendLabel, fieldRef, chips, strip, menuOpen, onMenu, menu, onUnsupported, fill, start, descRef }: {
+export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend, sendLabel, fieldRef, chips, strip, menuOpen, onMenu, menu, onUnsupported, fill, start, descRef, actions }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
@@ -39,6 +39,7 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
   // The start page: `value` is the short title, and under it sits a description that takes tokens.
   start?: { desc: string; onDesc: (v: string) => void; descPlaceholder: string };
   descRef?: React.RefObject<TokenFieldHandle | null>;
+  actions?: React.ReactNode; // the start page: the actions as a row of buttons along the bottom edge, in place of the actions button
 }) {
   const [dictating, setDictating] = useState(false);
   const rec = useRef<Recognition | null>(null);
@@ -114,12 +115,23 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
               {fillBtn}
             </div>
             <RaiseTokenField ref={descRef} value={start.desc} onChange={start.onDesc} onSubmit={onSubmit} placeholder={start.descPlaceholder} />
-            <div className={s.bar}>
-              {bolt}
-              <div className={s.barChips}>{strips}</div>
-              {dictBtn}
-              {sendBtn}
-            </div>
+            {actions ? (
+              <>
+                {chips.length > 0 && <div className={s.barChipsRow}>{strips}</div>}
+                <div className={s.bar}>
+                  {actions}
+                  {dictBtn}
+                  {sendBtn}
+                </div>
+              </>
+            ) : (
+              <div className={s.bar}>
+                {bolt}
+                <div className={s.barChips}>{strips}</div>
+                {dictBtn}
+                {sendBtn}
+              </div>
+            )}
           </div>
         ) : (
           <div className={s.inner}>

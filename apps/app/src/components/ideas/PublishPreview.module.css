@@ -105,3 +105,16 @@
 
 @keyframes affSoft { from { opacity: 0 } to { opacity: 1 } }
 @keyframes pubIn { from { opacity: 0; transform: translateY(14px) scale(.98) } to { opacity: 1; transform: none } }
+
+/* The placeholder while the last look is laid out (PreviewLoading): grey bars that shimmer. */
+.skelBody { flex: 1; display: flex; flex-direction: column; gap: 12px; margin: 0 18px 16px; padding: 22px 24px; background: #fff; border-radius: var(--radius-sm, 16px); }
+.skelRow { display: flex; gap: 10px; }
+.skel { display: block; height: 14px; border-radius: 7px; background: linear-gradient(90deg, #ececf0 0%, #f6f6f9 50%, #ececf0 100%); background-size: 200% 100%; animation: pvShimmer 1.1s linear infinite; }
+.skel[data-w="30"] { width: 30%; } .skel[data-w="40"] { width: 40%; } .skel[data-w="60"] { width: 60%; } .skel[data-w="70"] { width: 70%; } .skel[data-w="92"] { width: 92%; } .skel[data-w="100"] { width: 100%; }
+.skel[data-h="title"] { height: 26px; border-radius: 9px; }
+.skel[data-h="box"] { flex: 1; height: 54px; border-radius: 12px; }
+.skel[data-h="block"] { height: 88px; border-radius: 12px; }
+.skelBtn { margin-left: auto; width: 180px; height: 40px; border-radius: 999px; background: #d9d9de; animation: pvPulse 1s ease-in-out infinite; }
+@keyframes pvShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes pvPulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .skel, .skelBtn { animation: none; } }

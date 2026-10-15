@@ -1,4 +1,4 @@
-.dev { position: fixed; right: 14px; bottom: 14px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.dev { position: fixed; right: 14px; bottom: 14px; z-index: 100; /* over every dialog and sheet: the demo controls in it take their steps there too */ display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 /* The column is as wide as its widest part: only its parts take clicks, never the empty space beside the Dev button. */
 .dev { pointer-events: none; }
 .dev > * { pointer-events: auto; }
@@ -50,7 +50,7 @@ div.day { cursor: default; }
 @media (max-width: 760px) {
   .dev { right: 12px; bottom: 12px; }
   /* An idea open full screen in the inbox (its data-layer view, z 85): stay reachable, above its decision dock. */
-  :global(body:has([data-layer="true"])) .dev { z-index: 88; bottom: calc(80px + env(safe-area-inset-bottom)); }
+  :global(body:has([data-layer="true"])) .dev { z-index: 100; bottom: calc(80px + env(safe-area-inset-bottom)); }
   :global(body:has([data-layer="true"] [aria-modal="true"])) .dev { display: none; } /* out of the way while one of its sheets is up */
   .panel { width: min(280px, calc(var(--nh-screen-w) - 24px)); max-height: calc(var(--nh-screen-h) - 80px); overflow: auto; }
 }

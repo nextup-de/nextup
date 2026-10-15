@@ -18,6 +18,8 @@ export { expect };
 
 // What the second message adds so any one-line idea clears the publish line (docs/IDEAS.md): a
 // goal, a number, who it reaches, why, and a first step with no spend.
+export const DEVELOP_MORE = "Thomas Vogel owns it and checks the slot plan every Monday; if the rig is needed for a customer test, our day moves, it is never dropped.";
+// Publishing waits for three messages from the author (the idea, then two answers).
 export const DEVELOP = "It serves the changeover goal: setup waits cost about 20 minutes per changeover on every shift, because the team waits for a slot. First step: a one-week pilot on line 3, no spend needed.";
 
 // The raise page (docs/IDEAS.md): the start composer, the chat composer, and the window that asks
@@ -83,7 +85,7 @@ export async function publishTo(page: Page, to: string) {
 }
 
 /**
- * The demo's short way out: the chat's Finalize opens the final document, "Send idea" goes on to
+ * The demo's short way out: the sidebar's Finalize opens the final document, "Send idea" goes on to
  * "Who should get this?", where `to` is the first suggestion that matches. Waits for the case.
  */
 export async function finalizeAndSend(page: Page, to: string) {
@@ -98,12 +100,13 @@ export async function finalizeAndSend(page: Page, to: string) {
 }
 
 /**
- * Publish an idea from the member home: the one line, DEVELOP as the answer to the coach, then
+ * Publish an idea from the member home: the one line, DEVELOP and DEVELOP_MORE as the answers to the coach, then
  * publish it to `to` (the team lead in the demo). Waits until the case is raised.
  */
 export async function publishIdea(page: Page, title: string, to = "T. Vogel") {
   await raiseLine(page, title);
   await answerCoach(page, DEVELOP);
+  await answerCoach(page, DEVELOP_MORE);
   await publishTo(page, to);
 }
 

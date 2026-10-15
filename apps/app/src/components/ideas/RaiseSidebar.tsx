@@ -80,6 +80,7 @@ function Row({ r, onPick, onPin }: { r: IdeaRow; onPick: (id: string) => void; o
 function Card({ c }: { c: DraftCard }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [sure, setSure] = useState(false); // "Remove from list" / "Discard draft" pressed once: the confirming button shows
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { if (editing) input.current?.focus(); }, [editing]);
   const commit = () => { const v = draft.trim(); if (v && v !== c.title) c.onRename(v); setEditing(false); };
@@ -131,7 +132,15 @@ function Card({ c }: { c: DraftCard }) {
 
       <div className={s.foot}>
         <button type="button" className={s.save} data-saved={c.saved} onClick={c.onSave}><Icon name="download" size={9} width={2.4} />{c.saveLabel}</button>
-        <button type="button" className={s.discard} onClick={c.onDiscard}>{c.discardLabel}</button>
+        {sure ? (
+          // The second button: only this one takes the idea off the page.
+          <span className={s.sure} role="group" aria-label={c.discardLabel + "?"}>
+            <button type="button" className={s.discard} onClick={() => setSure(false)}>Keep it</button>
+            <button type="button" className={s.discardYes} onClick={() => { setSure(false); c.onDiscard(); }}>{c.published ? "Yes, remove" : "Yes, discard"}</button>
+          </span>
+        ) : (
+          <button type="button" className={s.discard} onClick={() => setSure(true)}>{c.discardLabel}</button>
+        )}
       </div>
     </div>
   );
