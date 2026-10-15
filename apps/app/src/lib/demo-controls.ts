@@ -28,6 +28,18 @@ export const subscribeRaiseHooks = (f: () => void) => { subs.add(f); return () =
 export const getRaiseHooks = () => hooks;
 export const noRaiseHooks = () => NONE;
 
+// The case open in the team leader's inbox (components/dashboard/leader/InboxView.tsx), so the controls pass
+// "Open the idea" over when the presenter opened it on the page. Returns the clear function, for an effect.
+let inboxCase: string | null = null;
+const caseSubs = new Set<() => void>();
+export function showInboxCase(id: string | null): () => void {
+  inboxCase = id; caseSubs.forEach((f) => f());
+  return () => { if (inboxCase === id) { inboxCase = null; caseSubs.forEach((f) => f()); } };
+}
+export const subscribeInboxCase = (f: () => void) => { caseSubs.add(f); return () => { caseSubs.delete(f); }; };
+export const getInboxCase = () => inboxCase;
+export const noInboxCase = () => null;
+
 // ── this tab's run of the demo ──
 // In memory, like the demo itself: every page load starts the demo over from the seed (components/demo/
 // StaticDemo.tsx), so it starts the controls over at the first step too. Client-side navigation keeps it.

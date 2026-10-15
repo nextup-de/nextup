@@ -17,16 +17,20 @@
 //   Switch to team leader  the inbox of whoever received it
 //   Open the idea     the idea open in that inbox
 //   Accept it         "Yes, do it" (a project opens when projects are on)
+//   Open the project  the team leader's new project (skipped when projects are off)
 //   Manager view      the Dashboard
 //
 // The button waits (dimmed, its tooltip says why) while the step cannot be taken yet - until NextUp has
 // answered, until the idea is sent. The raise page says which clicks it can take (lib/demo-controls.ts).
+// A step the presenter took on the page itself (the role switched in the dev panel, the idea opened in the
+// inbox, its own "Yes, do it", the project opened from a link) is passed over, so the button never gets stuck.
 // Static demo only.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { DEMO_IDEA, FILLED_ANSWERS } from "@/features/ideas/demo-script";
-import { getRaiseHooks, getRun, getServerRun, noRaiseHooks, RUN_PARAM, setRun, subscribeRaiseHooks, subscribeRun } from "@/lib/demo-controls";
+import { projectOfCase } from "@/features/projects/selectors";
+import { getInboxCase, getRaiseHooks, getRun, getServerRun, noInboxCase, noRaiseHooks, RUN_PARAM, setRun, subscribeInboxCase, subscribeRaiseHooks, subscribeRun } from "@/lib/demo-controls";
 import styles from "./DemoControls.module.css";
 import dev from "./DevPanel.module.css";
 
@@ -86,6 +90,8 @@ export function DemoControls() {
   const router = useRouter();
   const hooks = useSyncExternalStore(subscribeRaiseHooks, getRaiseHooks, noRaiseHooks);
   const run = useSyncExternalStore(subscribeRun, getRun, getServerRun); // this page load's run
+  const inboxCase = useSyncExternalStore(subscribeInboxCase, getInboxCase, noInboxCase); // the case open in the leader's inbox
+  const pathname = usePathname();
   // Remember how far the script got: while NextUp answers the page offers nothing, and `at` reads -1.
   useEffect(() => { if (hooks.at > run.reached) setRun({ reached: hooks.at }); }, [hooks.at, run.reached]);
   const isFolded = useSyncExternalStore(subscribeFolded, getFolded, () => false);
@@ -168,7 +174,16 @@ export function DemoControls() {
     else ctx.act.decide(published.id, "yes");
     ctx.showToast("Yes. " + published.from + " has been told" + (ctx.flag("projects") ? "; the project is open." : "."));
   };
+  // The project that yes opened, on the team leader's screen; the manager's view comes only after it.
+  const project = published?.decided?.answer === "yes" ? projectOfCase(S, published) : undefined;
+  const projectHref = project ? href("/projects/" + encodeURIComponent(project.id)) : null;
+  const openProject = () => { if (projectHref) router.push(projectHref); };
   const leading = ctx.role === "leader";
+  // The same clicks made on the page itself pass the steps over, so the button always offers what is still to do.
+  const decided = !!published?.decided;
+  const managing = ctx.role === "manager" && decided; // the manager's screens once the yes is in: the end of the story
+  const caseOpen = !!published && leading && (inboxCase === published.id || pathname === href("/cases/" + encodeURIComponent(published.id)));
+  const onProject = !!projectHref && pathname === projectHref;
   const reached = Math.max(run.reached, hooks.at); // how far the conversation got in the script this run
   const steps: Step[] = [
     { label: "Fill sample idea", where: "Raise", verb: "Fill", sub: hooks.fillIdea ? "The reporting-screen idea" : "On the raise page, before anything is sent", can: !!hooks.fillIdea, run: () => hooks.fillIdea?.(), past: reached >= 1 },
@@ -181,14 +196,24 @@ export function DemoControls() {
     { label: "Preview", where: "Chat", verb: "Preview", sub: hooks.preview ? "The last look before it goes out" : "Waiting for NextUp’s reply", can: !!hooks.preview, run: () => hooks.preview?.(), undo: history, past: !!hooks.finalize || !!hooks.sendFinal || !!published },
     { label: "Finalize", where: "Preview", verb: "Finalize", sub: hooks.finalize ? "The final document" : "Open the preview first", can: !!hooks.finalize, run: () => hooks.finalize?.(), undo: history, past: !!hooks.sendFinal || !!published },
     { label: "Send idea", where: "Document", verb: "Send", sub: hooks.sendFinal ? "To the receiver NextUp suggests" : "Open the final document first", can: !!hooks.sendFinal, run: () => hooks.sendFinal?.(), undo: history, past: !!published },
-    { label: "Switch to team leader", where: "Inbox", verb: "Switch", sub: published ? "The inbox of " + published.assignee : "Waiting for the idea to be sent", can: !!published, run: inbox, undo: raise },
-    { label: "Open the idea", where: "Inbox", verb: "Open", sub: published ? published.title : "Send the idea first", can: !!published && leading, run: openCase, undo: inbox }, // not history: the person is not in the URL
-    { label: "Accept it", where: "Inbox", verb: "Accept", sub: published?.decided ? "Already decided" : "Yes, do it", can: !!published && leading && !published.decided, run: accept },
-    { label: "Manager view", where: "Dashboard", verb: "Open", sub: "The Dashboard", can: true, run: () => ctx.setRole("manager"), undo: inbox },
+    { label: "Switch to team leader", where: "Inbox", verb: "Switch", sub: published ? "The inbox of " + published.assignee : "Waiting for the idea to be sent", can: !!published, run: inbox, undo: raise,
+      past: !!published && (leading || decided) },
+    { label: "Open the idea", where: "Inbox", verb: "Open", sub: published ? published.title : "Send the idea first", can: !!published && leading, run: openCase, undo: inbox, // not history: the person is not in the URL
+      past: caseOpen || decided },
+    { label: "Accept it", where: "Inbox", verb: "Accept", sub: "Yes, do it", can: !!published && leading && !decided, run: accept,
+      past: decided },
+    { label: "Open the project", where: "Projects", verb: "Open", sub: project ? project.title : "Accept the idea first", can: !!project, run: openProject, undo: openCase,
+      past: !ctx.flag("projects") || onProject || managing || (decided && !project) },
+    { label: "Manager view", where: "Dashboard", verb: "Open", sub: "The Dashboard", can: true, run: () => ctx.setRole("manager"), undo: inbox,
+      past: managing },
   ];
   // The step the button takes; steps.length once all are taken.
   let at = run.done + 1;
   while (steps[at]?.past) at += 1;
+  // Opening and accepting the idea need the leader's inbox: away from it before the yes (the role switched by
+  // hand), the button offers the switch again instead of waiting.
+  const toLead = steps.findIndex((s) => s.label === "Switch to team leader");
+  if (published && !leading && !decided && at > toLead && steps[at]?.where === "Inbox") at = toLead;
   const step = steps[at] ?? null;
   const take = () => { if (!step?.can) return; setRun({ done: at }); step.run(); };
   // A step back: the button offers the last step again, and the screen from before it comes back. A step that

@@ -1,8 +1,8 @@
 // The static demo (/demo, docs/IDEAS.md "The demo page"): no company, no login, driven from the demo
 // controls under the Dev button (components/shell/DemoControls.tsx). Every click the story needs is a step
 // there: fill the sample idea, send it, two answers each filled and sent, the last look, Finalize, send it,
-// switch to the team leader, open the idea, accept it, and the manager's Dashboard. A step taken on the page
-// itself is passed over. A company's /raise offers none of it.
+// switch to the team leader, open the idea, accept it, open the project, and the manager's Dashboard. A step
+// taken on the page itself is passed over, the leader's and manager's too. A company's /raise offers none of it.
 import { aiMessages, ANSWER, expect, START, test } from "../helpers";
 
 const TITLE = "A reporting screen at each assembly station";
@@ -60,14 +60,55 @@ test("the demo controls click through the whole story: raise, publish, accept, d
     await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
   });
 
-  await test.step("the team leader opens it and says yes; then the manager's Dashboard", async () => {
+  await test.step("the team leader opens it, says yes and opens the project; then the manager's Dashboard", async () => {
     await take("Switch to team leader");
     await expect(page).toHaveURL(/\/demo\/leader$/);
     await take("Open the idea");
     await expect(page).toHaveURL(/\/demo\/leader\?id=/);
     await expect(page.getByRole("main")).toContainText(TITLE);
     await take("Accept it");
+    await take("Open the project");
+    await expect(page).toHaveURL(/\/demo\/projects\/[^/]+$/);
+    await expect(page.getByRole("main")).toContainText(TITLE);
     await take("Manager view");
+    await expect(page).toHaveURL(/\/demo\/dashboard$/);
+    await expect(controls).toContainText("Demo done");
+  });
+});
+
+test("the leader's and manager's steps taken on the page itself: the controls follow along", async ({ page }) => {
+  await page.goto("/demo");
+  const controls = page.getByRole("group", { name: "Demo controls" });
+  const step = (name: string) => controls.getByRole("button", { name, exact: true });
+  const take = async (name: string) => { await expect(step(name)).toBeEnabled({ timeout: 30_000 }); await step(name).click(); };
+  const viewAs = async (persona: "Employee" | "Team leader" | "Manager") => {
+    await page.getByRole("button", { name: "Dev" }).click();
+    await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: persona, exact: true }).click();
+    await page.keyboard.press("Escape");
+  };
+
+  for (const name of ["Fill sample idea", "Send to NextUp", "First answer", "Send answer", "Second answer", "Send answer", "Preview", "Finalize", "Send idea"]) await take(name);
+  await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
+
+  await test.step("back to the employee before the yes: the switch is offered again", async () => {
+    await take("Switch to team leader");
+    await expect(step("Open the idea")).toBeEnabled();
+    await viewAs("Employee");
+    await expect(step("Switch to team leader")).toBeEnabled();
+  });
+
+  await test.step("switched, opened and accepted on the page: the next step is the project", async () => {
+    await viewAs("Team leader");
+    await expect(step("Open the idea")).toBeEnabled();
+    await page.getByRole("main").getByRole("button", { name: new RegExp(TITLE) }).first().click();
+    await expect(step("Accept it")).toBeEnabled();
+    await page.getByRole("button", { name: /^Yes, do it/ }).click();
+    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
+    await expect(step("Open the project")).toBeEnabled();
+  });
+
+  await test.step("the manager's view by hand ends the demo", async () => {
+    await viewAs("Manager");
     await expect(page).toHaveURL(/\/demo\/dashboard$/);
     await expect(controls).toContainText("Demo done");
   });
