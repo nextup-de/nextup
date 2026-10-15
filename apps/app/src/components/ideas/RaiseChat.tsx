@@ -11,7 +11,7 @@ import s from "./Raise.module.css";
 // `read`: the five dials as they stand after this reply, which of them got better with the answer before
 // it (`up`), and the advice.
 export type Read = { dials: Dial[]; up: DialKey[]; advice: Advice; first: boolean };
-export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; read?: Read; quick?: { publish: boolean; review: boolean }; link?: { label: string; href: string } };
+export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; read?: Read; quick?: { publish: boolean; finalize: boolean; review: boolean }; link?: { label: string; href: string } };
 
 export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQuick, dock, followKey }: {
   msgs: ChatMsg[];
@@ -19,7 +19,7 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQui
   error: string;
   gaps: Topic[];
   onAsk: (g: Topic) => void;
-  onQuick: (what: "publish" | "review") => void;
+  onQuick: (what: "publish" | "finalize" | "review") => void;
   dock: React.ReactNode;
   followKey: string; // changes when the thread grows: scroll to its end
 }) {
@@ -42,8 +42,9 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onQui
                 {m.note && <span className={s.note}><Solid name="sparkle" size={8.25} fill="#007aff" />{m.note}</span>}
                 {m.read && <ReadCard r={m.read} />}
                 {m.link && <div className={s.quick}><Link className={s.quickBtn} data-primary="ink" href={m.link.href}>{m.link.label}</Link></div>}
-                {m.quick && (m.quick.publish || m.quick.review) && (
+                {m.quick && (m.quick.publish || m.quick.finalize || m.quick.review) && (
                   <div className={s.quick}>
+                    {m.quick.finalize && <button type="button" className={s.quickBtn} data-primary={m.quick.publish ? undefined : "ink"} onClick={() => onQuick("finalize")}><Icon name="check" size={12} width={2.6} />Finalize</button>}
                     {m.quick.publish && <button type="button" className={s.quickBtn} data-primary="true" onClick={() => onQuick("publish")}><Icon name="up" size={12} width={2.4} />Publish now</button>}
                     {m.quick.review && <button type="button" className={s.quickBtn} onClick={() => onQuick("review")}><Solid name="sparkle" size={11} />Review analysis</button>}
                   </div>

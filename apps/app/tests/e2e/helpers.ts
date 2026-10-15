@@ -22,7 +22,7 @@ export const DEVELOP = "It serves the changeover goal: setup waits cost about 20
 
 // The raise page (docs/IDEAS.md): the start composer, the chat composer, and the window that asks
 // who should get a published idea.
-export const START = "Share an idea that would make work better…";
+export const START = "Short title";
 export const ANSWER = "Answer, or add more detail…";
 export const aiMessages = (page: Page) => page.locator('[data-role="ai"]');
 
@@ -62,6 +62,9 @@ export async function publishTo(page: Page, to: string) {
   const show = page.getByRole("button", { name: "Show sidebar" });
   if (await show.isVisible()) await show.click();
   await page.getByRole("button", { name: "Publish idea" }).click();
+  // Sending needs the final document: Publish idea opens it, Finalize locks it in, Send idea goes on.
+  await page.getByRole("button", { name: "Finalize", exact: true }).click();
+  await page.getByRole("button", { name: "Send idea" }).click();
   const who = page.getByRole("dialog", { name: "Who should get this?" });
   await expect(who).toBeVisible({ timeout: 30_000 });
   const offered = who.getByRole("radio").filter({ hasText: to }); // by its text: no pattern built from the name

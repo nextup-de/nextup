@@ -22,6 +22,7 @@ import { newId } from "@/features/cases/events";
 import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { ideaFromTurns } from "@/features/ideas/coach";
+import { ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
 import { DEMO_CASE, DEMO_SCRIPT, scriptStep } from "@/features/ideas/demo-script";
@@ -38,6 +39,7 @@ import { RaiseComposer } from "./RaiseComposer";
 import { RaiseMenu, type MenuView } from "./RaiseMenu";
 import { ReceiverDialog, type Work } from "./RaisePublish";
 import { RaiseChat, type ChatMsg } from "./RaiseChat";
+import { RaiseFinal } from "./RaiseFinal";
 import { AnalysisSheet, IdeaSheet, type Reviewer, type Similar, type Source } from "./RaiseSheets";
 import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
 import { EVAL_STEPS, RaiseStart } from "./RaiseStart";
@@ -62,7 +64,8 @@ export function Raise({ script = false }: { script?: boolean }) {
 
   const [stage, setStage] = useKept<"start" | "chat">(scope, "stage", "start");
   const [openId, setOpenId] = useKept<string | null>(scope, "open", null); // the draft open in the chat, reopened on the next visit
-  const [view, setView] = useKept<"chat" | "idea" | "analysis">(scope, "view", "chat");
+  const [view, setView] = useKept<"chat" | "idea" | "analysis" | "final">(scope, "view", "chat");
+  const [finals, setFinals] = useKept<Record<string, number>>(scope, "finals", {}); // draft id -> how many turns it had when it was finalized
   const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "auto"); // auto: open on screens, closed on phones (CSS)
   const [query, setQuery] = useState("");
   const [startText, setStartText] = useKept(scope, "startText", "");
@@ -104,6 +107,10 @@ export function Raise({ script = false }: { script?: boolean }) {
   // The demo script: where this conversation stands in it (-1 once the author wrote their own words).
   const scriptAt = story ? scriptStep(turns) : -1;
   const scriptDone = scriptAt === DEMO_SCRIPT.length; // all of it said: publishing is offered, as for a rail with nothing open
+  // Finalizing: always offered once there is a conversation; the demo script offers it after its third text.
+  // A new message after it changes the idea, so it has to be finalized again before it can be sent.
+  const canFinalize = turns.length > 0 && !busy && !sending && (!story || scriptDone || published);
+  const finalized = published || (!!draft && finals[draft.id] === turns.length);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
 
@@ -174,7 +181,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   const openMenu = (at: "start" | "chat" | "card", v: MenuView = "main") => setMenu({ at, view: v });
   const toggleMenu = (at: "start" | "chat") => setMenu((m) => (m ? null : { at, view: "main" }));
 
-  const go = (v: "chat" | "idea" | "analysis") => { setFirstPending(false); setView(v); };
+  const go = (v: "chat" | "idea" | "analysis" | "final") => { setFirstPending(false); setView(v); };
   // Leaving a draft the start form made: remember which slot holds its choices, for when it is reopened.
   const leave = () => { if (draft && slot !== draft.id) setAliases((a) => ({ ...a, [draft.id]: slot })); };
   const reset = () => { leave(); setText(""); setAsk(null); setMenu(null); go("chat"); setSb((x) => (x === "open" ? "auto" : x)); };
@@ -233,6 +240,8 @@ export function Raise({ script = false }: { script?: boolean }) {
   const askReceiver = async () => {
     if (!draft || busy || published || pubStep) return;
     setMenu(null);
+    // Sending needs the final document: the first stop is its page.
+    if (!finalized) { if (canFinalize) { go("final"); showToast("Finalize your idea first, then you can send it."); } return; }
     const text = await step(setPubStep, "Reading your idea…", "working", () => idea.text, 450);
     const brain = await step(setPubStep, "Asking the router…", "searching", () => (script ? null : brainProposalAction({ slug: tenant.slug, title: idea.title, body: idea.body }).catch(() => null)), 650);
     const lead = await step(setPubStep, "Checking the org chart…", "connecting", () => ev?.lead ?? "Triage desk", 500);
@@ -263,6 +272,7 @@ export function Raise({ script = false }: { script?: boolean }) {
       if (!kept) showToast("Published — the screenshots did not fit in this browser's storage.");
     }
     setBusy(false); setPubWork(null); setPubStep(null);
+    go("chat"); // published from the document: back to the conversation, where the case is offered
     void studio.open(draft.id);
   };
 
@@ -271,6 +281,7 @@ export function Raise({ script = false }: { script?: boolean }) {
     if (!t || sending) return;
     if (/^publish( now)?$/i.test(t)) { setText(""); void askReceiver(); return; }
     if (/^review analysis$/i.test(t)) { setText(""); go("analysis"); return; }
+    if (/^finali[sz]e( idea)?$/i.test(t)) { setText(""); if (canFinalize) go("final"); return; }
     if (published) { showToast("This idea is published — follow-ups go through Overview."); return; }
     if (t.length < 3) return;
     // "Not sure": the active topic becomes unknown, and the coach is told not to ask it again.
@@ -330,7 +341,7 @@ export function Raise({ script = false }: { script?: boolean }) {
       // The numbers stay in the analysis: the chat shows the five dials as bars and words.
       note: first ? "Title and problem added" : null,
       read: isLast ? { dials, advice, first, up: first || i < 2 ? [] : dialsUp(readAt(i - 1), readAt(i + 1)) } : undefined,
-      quick: isLast && !published ? { publish: allAnswered || scriptDone, review: true } : undefined,
+      quick: isLast && !published ? { publish: allAnswered || scriptDone, finalize: canFinalize, review: true } : undefined,
     }];
   });
   if (sending) {
@@ -346,8 +357,9 @@ export function Raise({ script = false }: { script?: boolean }) {
   const railGaps: Topic[] = asking ? gaps.map((g) => ({ ...g, status: g.id === asking.id ? "active" : g.status === "active" ? "open" : g.status })) : gaps;
 
   const card: DraftCard | null = stage === "chat" && draft ? {
-    title: draft.title || idea.title, published, canPublish: turns.length > 0 && !busy && !sending,
-    pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : "Goes to your team lead, " + lead,
+    title: draft.title || idea.title, published, canPublish: canFinalize,
+    pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : finalized ? "Goes to your team lead, " + lead : "Finalize first, then send it",
+    finalOn: shownView === "final", finalized, canFinalize, onFinal: () => { setMenu(null); go(shownView === "final" ? "chat" : "final"); },
     onPublish: () => void askReceiver(), working: pubStep && !Array.isArray(pubStep) ? pubStep : null, onRename: (title) => void studio.save({ title }),
     hasIdea: firstIdx >= 0, ideaOn: shownView === "idea", ideaEdited: !!edit, onIdea: () => { setMenu(null); go(shownView === "idea" ? "chat" : "idea"); },
     aiOn: shownView === "analysis", analysed: turns.length > 0, onAI: () => go(shownView === "analysis" ? "chat" : "analysis"),
@@ -420,6 +432,22 @@ export function Raise({ script = false }: { script?: boolean }) {
     : [{ title: "No close matches", status: "–", where: "Searched " + openCases + " open cases", href: null }];
   const cats = [...new Set([ev?.route?.type, affected[0] ?? "General", "Idea"].filter((x): x is string => !!x))];
 
+  const finalDoc = ideaDoc({
+    title: draft?.title || idea.title, author: who.name, team: team || "", receiver: lead,
+    date: now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+    advice, overall: parts.some((p) => p.value > 0) ? Math.round(overall) : null,
+    description: shown.description, context: shown.context, dials,
+    company: companyRead({
+      text: idea.text, lead: ev?.lead ?? lead, myDept: who.line.split(",")[0].trim(), affected, people: seed.people, depts: seed.depts,
+      routes: seed.routes, goals: GOALS, problems: seed.problems, ideas: seed.ideas, initiatives: seed.initiatives, outcomes: seed.outcomes,
+      cases: S.cases, promiseDays: seed.promiseDays, spendLimitEur: SPEND_LIMIT_EUR,
+    }),
+    pattern: affected.length > 1 ? "The problem is felt beyond one team: " + affected.join(", ") + "." : "It stands on its own.",
+    openTopics: gaps.filter((g) => g.status !== "clear").map((g) => g.label + (g.ask ? ": " + g.ask : "")),
+    similar: sims.filter((m) => m.href).map((m) => ({ title: m.title, status: m.status, by: m.by ?? "" })),
+    sources: sources.map((x) => ({ name: x.name, where: x.where })), turns,
+  });
+
   const main = stage === "start" ? (
     <RaiseStart name={greetName(who.name)} evalStep={evalStep}
       evalSub={(words || 1) + " words from " + (who.handle ?? who.name) + " · " + who.line}
@@ -432,6 +460,11 @@ export function Raise({ script = false }: { script?: boolean }) {
       } />
   ) : shownView === "idea" ? (
     <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
+  ) : shownView === "final" && draft ? (
+    <RaiseFinal doc={finalDoc} final={finalized} published={published} canSend={canFinalize && !pubStep}
+      onFinalize={() => setFinals((f) => ({ ...f, [draft.id]: turns.length }))}
+      onReopen={() => go("chat")} onSend={() => void askReceiver()} onClose={() => go("chat")}
+      onCopied={(ok) => showToast(ok ? "Copied the document as text." : "Could not copy it.")} />
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} dials={dialsOf(parts)}
       company={companyRead({
@@ -446,7 +479,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   ) : (
     <RaiseChat msgs={msgs} typing={!!sending && !sending.reply} typingLabel={turns.length ? "" : "Researching business context…"} error={studio.error}
       gaps={railGaps} onAsk={(g) => { setAsk(g.ask); setTimeout(() => chatField.current?.focus(), 0); }}
-      onQuick={(w) => (w === "publish" ? void askReceiver() : go("analysis"))}
+      onQuick={(w) => (w === "publish" ? void askReceiver() : w === "finalize" ? go("final") : go("analysis"))}
       dock={composerChat} followKey={turns.length + ":" + (sending ? sending.reply.length : -1) + ":" + (draft?.id ?? "") + ":" + (asking?.id ?? "")} />
   );
 

@@ -30,6 +30,7 @@ test("the demo page: prepared idea, two prepared answers, published, on the dash
       await expect(aiMessages(page).last()).toContainText(reply, { timeout: 30_000 });
     }
     await expect(page.getByRole("button", { name: /^Insert the / })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Finalize", exact: true }).first()).toBeVisible(); // offered only after the third text
     await expect(page.getByRole("button", { name: "Publish now" })).toBeVisible();
   });
 
