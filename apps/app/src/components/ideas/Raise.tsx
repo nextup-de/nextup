@@ -36,6 +36,7 @@ import { useIdeaStudio } from "@/lib/use-idea-studio";
 import { useKept } from "@/lib/use-kept";
 import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
+import type { TokenFieldHandle } from "./RaiseTokenField";
 import { RaiseMenu, type MenuView } from "./RaiseMenu";
 import { ReceiverDialog, type Work } from "./RaisePublish";
 import { RaiseChat, type ChatMsg } from "./RaiseChat";
@@ -88,6 +89,7 @@ export function Raise({ script = false }: { script?: boolean }) {
   const [rcvInput, setRcvInput] = useState<ReceiverInput | null>(null); // what the suggestions were scored on, for someone picked by hand
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
+  const startDesc = useRef<TokenFieldHandle>(null);
   const fillRef = useRef<() => void>(() => {});
   const chatField = useRef<HTMLTextAreaElement>(null);
 
@@ -198,14 +200,17 @@ export function Raise({ script = false }: { script?: boolean }) {
   // Send from the start page: the line, the context and the chosen extras go as the first message;
   // the evaluation plays while the coach answers.
   const startRaise = () => {
-    const main = startText.trim();
+    // No title typed: the first line of the description is the headline.
+    const [firstLine, ...restLines] = startCtx.trim().split("\n");
+    const main = startText.trim() || firstLine.trim();
+    const ctx = startText.trim() ? startCtx.trim() : restLines.join("\n").trim();
     if (main.length < 3 || evalStep !== null) return;
     const extra = [
       extras.recv.length ? "Suggested receiver: " + extras.recv.join(", ") : "",
       extras.coll.length ? "Colleagues who know this: " + extras.coll.join(", ") : "",
       extras.meet ? "I’d like a " + extras.meet.dur + " meeting " + extras.meet.when + "." : "",
     ].filter(Boolean).join("\n");
-    const message = main + (startCtx.trim() ? "\n\n" + startCtx.trim() : "") + (extra ? "\n\n" + extra : "");
+    const message = main + (ctx ? "\n\n" + ctx : "") + (extra ? "\n\n" + extra : "");
     // The script goes on in the chat, where its next answer is offered; any other idea opens its analysis first.
     setMenu(null); setEvalStep(0); setFirstPending(!(story && scriptStep([{ role: "user", text: message }]) === 1));
     setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx).parts) }));
@@ -451,10 +456,11 @@ export function Raise({ script = false }: { script?: boolean }) {
   const main = stage === "start" ? (
     <RaiseStart name={greetName(who.name)} evalStep={evalStep}
       evalSub={(words || 1) + " words from " + (who.handle ?? who.name) + " · " + who.line}
-      context={startCtx} onContext={setStartCtx}
+      context={startCtx} onPrompt={(label) => startDesc.current?.insert(label)}
       composer={
         <RaiseComposer value={startText} onChange={setStartText} onSubmit={startRaise} fieldRef={startField} sendLabel="Ask NextUp"
-          placeholder="Share an idea that would make work better…" canSend={startText.trim().length >= 3 && evalStep === null}
+          placeholder="Short title" canSend={(startText.trim() || startCtx.trim()).length >= 3 && evalStep === null}
+          start={{ desc: startCtx, onDesc: setStartCtx, descPlaceholder: "What’s happening, who does it affect, what have you tried? Add a prompt below." }} descRef={startDesc}
           chips={[...chips, ...fileChips]} strip fill={startFill} menuOpen={menu?.at === "start"} onMenu={() => toggleMenu("start")} menu={menuFor("start")}
           onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       } />
