@@ -25,6 +25,7 @@ import type { IdeaProps } from "./IdeaParts";
 import { IdeaDetailPhone } from "./IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
+import { ProjectDesk } from "@/components/projects/ProjectDesk";
 
 type Filter = "all" | "late" | "ontime";
 const FILTERS: Filter[] = ["all", "late", "ontime"];
@@ -304,6 +305,8 @@ export function InboxView({ initialId }: { initialId?: string }) {
           <h2 className={styles.pageTitle}>Fresh ideas</h2>
           {!(isOpen && !phone) && tools}
         </div>
+        {/* Projects waiting on this person: their next move as a lead, a late one moved to them (components/projects). */}
+        {!isOpen && <ProjectDesk />}
       </div>
 
       <div className={styles.body}>
