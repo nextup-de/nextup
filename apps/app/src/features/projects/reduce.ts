@@ -117,11 +117,13 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       break;
     }
     case "project.linked": {
-      if (!pl.url && !pl.key) break;
+      // Only http(s) ever becomes an address on the page (the permissions refuse the rest too).
+      const url = pl.url && /^https?:\/\//i.test(pl.url) ? pl.url : "";
+      if (!url && !pl.key) break;
       const stepId = pl.stepId ?? null;
-      p.links.push({ system: pl.system ?? "url", url: pl.url ?? "", key: pl.key ?? "", stepId, day: d });
+      p.links.push({ system: pl.system ?? "url", url, key: pl.key ?? "", stepId, day: d });
       const s = stepId ? p.steps.find((x) => x.id === stepId) : undefined;
-      if (s && pl.key) s.external = { system: pl.system ?? "url", key: pl.key, url: pl.url };
+      if (s && pl.key) s.external = { system: pl.system ?? "url", key: pl.key, url: url || undefined };
       break;
     }
     case "project.done":
