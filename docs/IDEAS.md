@@ -1,6 +1,6 @@
 # The idea studio
 
-> **Updated 2026-10-06** · reference: how the idea studio works.
+> **Updated 2026-10-15** · reference: how the idea studio works.
 
 The member home (`/[company]/raise`) develops ideas instead of taking a one-line problem. It follows
 the whiteboard sessions of 28 Sep 2026: idea → AI → feedback ⇄ develop → decision → outcome.
@@ -126,6 +126,16 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
   move), a question they answered (Replied), one past the 5-day promise that moved to the deputy - and
   the changeover-sheet problem handed to Quality with a question and an answer. All seed history, so
   "Reset demo" keeps them; acme's own seed is untouched (`tests/unit/static-demo.test.ts`).
+- **What happens next** (`features/ideas/demo-loop.ts`, `components/demo/LoopPlayer.tsx`): once the
+  script's idea is published, a player in the bottom left plays the rest of the loop one step at a
+  time (docs/plans/2026-10-15_idea-to-project.md): Jonas answers the desk's question, the team lead
+  asks Quality for a number (a discussion), Quality posts it, Jonas posts version 2, the check-in three
+  days later says "ready to decide", the yes archives the idea and opens P-1 with its steps and the
+  number to beat (38 min per changeover), the team starts, a week later it is done, and the checks
+  after 30 and 90 days measure 24 and 19 minutes - then the plant manager's thanks. Each step is the
+  events its people would send, written into this browser's log; where the story stands is read from
+  the log, so the app's own buttons can take a turn in between (a yes clicked by hand is picked up).
+  `tests/unit/demo-loop.test.ts` plays it through.
 - **The dev panel is on**: "Viewing as" switches person in this browser (the inbox and the overview
   live under `/demo` too), "Reset demo" goes back to the seed, "+1 day" moves the clock.
 - **Clear names**: the demo's copy of the seed and of the written briefs uses full German names, mostly
@@ -158,11 +168,12 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
 
 ## Not in this step
 
-- **After "Yes, do it": a board to work it** (Kevin, 6 Oct 2026 - later). A decided idea moves onto a
-  kanban / project board that the team leader or manager runs, with the central brain helping to plan
-  and follow the steps. Builds on the action items below.
-- **Action items on a published idea, tracked here instead of in Jira** - needs `idea.action.*`
-  events, which is reducer work (Kevin).
+- **After "Yes, do it"** - planned and being built in docs/plans/2026-10-15_idea-to-project.md: a
+  discussion stage before the decision, then the archive and a project with a board, a measure
+  against the number before, and a reward by the company's rule. The `project.step.*` events there
+  replace the `idea.action.*` events this list used to ask for.
+- **The brain in the project**: steps and the baseline metric are suggested from the brief's own
+  lines for now; the brain planning and following the steps comes later.
 - Customer feedback and market research as inputs to opportunity detection.
 - Similarity by embeddings (pgvector) instead of shared words; connecting authors of close ideas.
 - `AssistAnswer` / `src/lib/use-assist.ts` (the old "ask first, then raise") are no longer used by
