@@ -67,6 +67,9 @@ export const STATIC_DEMO_SEED: Seed = {
   // He posts under his name here: no handle, so his name and profile show like everyone else's.
   personas: seed.personas.map((r) => (r.who.name === ME ? { ...r, who: { ...r.who, handle: null } } : r)),
   cases: [...seed.cases.map((c) => (c.id === "c3" ? { ...c, seedEvents: [...(c.seedEvents ?? []), ...SHEET] } : c)), ...IDEAS],
+  // acme's projects in every state (P-1 to P-3, and P-4 from c9's yes), renamed with DEMO_NAMES like the rest:
+  // two of them are the employee's own ideas, so his projects page is not empty.
+  projects: seed.projects,
   briefs: renamed(BRIEFS),
 };
 

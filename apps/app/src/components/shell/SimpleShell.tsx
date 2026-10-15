@@ -1,11 +1,11 @@
 "use client";
 // The chrome for every role in the demo (SHELL[role] === "simple"): the logo, two or three
-// places (NAV_SIMPLE[role]), and a profile button. Search expands into the navigation pill.
+// places (NAV_SIMPLE[role], flagged ones while on), and a profile button. Search expands into the navigation pill.
 // Shares the overlays with AppShell (input sheet, toast, dev panel) so every action still works.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { NAV_SIMPLE } from "@/config/nav";
+import { simpleNavFor } from "@/config/nav";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxCount, mineRows } from "@/components/dashboard/derive";
@@ -30,6 +30,8 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
     const measure = () => {
       const on = nav.querySelector<HTMLElement>('[aria-current="page"]');
       setThumb(on ? { x: on.offsetLeft, w: on.offsetWidth } : null);
+      // On a phone five places scroll inside the pill: keep the current one in view.
+      if (on && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = Math.max(0, on.offsetLeft + on.offsetWidth / 2 - nav.clientWidth / 2);
     };
     measure();
     const ro = new ResizeObserver(measure); ro.observe(nav);
@@ -65,7 +67,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
         <NavSearch>{(searchOpen) => (
         <nav ref={navRef} className={styles.nav} aria-label="Main" inert={searchOpen} aria-hidden={searchOpen}>
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
-          {NAV_SIMPLE[role].map((n) => {
+          {simpleNavFor(role, ctx.flag).map((n) => {
             const href = tenant.prefix + n.href;
             // A case opens from the Overview, so its page counts as the Overview.
             const active = pathname === href || pathname.startsWith(href + "/") || (n.href === "/overview" && pathname.startsWith(tenant.prefix + "/cases/"));

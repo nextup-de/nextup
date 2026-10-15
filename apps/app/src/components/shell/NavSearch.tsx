@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
-import { NAV_SIMPLE } from "@/config/nav";
+import { simpleNavFor } from "@/config/nav";
 import { OVERVIEW_STEPS, type OverviewStatus } from "@/features/cases/rows";
 import { highlight, runSearch, tokens } from "@/features/search";
 import { navbarIndex, type NavHit } from "@/features/search/navbar";
@@ -164,7 +164,7 @@ export function NavSearch({ children }: { children: (open: boolean) => React.Rea
             <div className={styles.sPlaces}>
               <p className={styles.sHeading}>Go to</p>
               <div className={styles.sPlaceRow}>
-                {NAV_SIMPLE[ctx.role].map((p) => <Link key={p.href} className={styles.sPill} href={ctx.href(p.href)} onClick={close}>{p.label}</Link>)}
+                {simpleNavFor(ctx.role, ctx.flag).map((p) => <Link key={p.href} className={styles.sPill} href={ctx.href(p.href)} onClick={close}>{p.label}</Link>)}
                 <Link className={styles.sPill} href={ctx.href("/profile")} onClick={close}>My profile</Link>
               </div>
             </div>
