@@ -1,0 +1,31 @@
+/* The discussion and yes sheets (LoopSheets.tsx). The frame is InputSheet's; these are the parts it
+   does not have: people with a line on why they are suggested, a directory search, the open points,
+   and the fields of the yes. */
+.people { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.person, .foundRow { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 10px); background: var(--nh-surface); color: var(--nh-ink); font-family: inherit; cursor: pointer; }
+.person[data-on="true"] { border-color: var(--nh-brand); background: var(--nh-brand); color: #fff; }
+.ini { flex: none; width: 24px; height: 24px; border-radius: var(--radius-full, 50%); display: flex; align-items: center; justify-content: center; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); background: var(--nh-ink); color: #fff; }
+.person[data-on="true"] .ini { background: #fff; color: var(--nh-ink); }
+.who { display: flex; flex-direction: column; min-width: 0; }
+.name { font-size: var(--nh-fs-sm); font-weight: 700; line-height: 1.3; }
+.note { font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person[data-on="true"] .note { color: #c9c8c0; }
+
+.search { margin-top: 7px; height: 38px; font-size: var(--nh-fs-sm); }
+.found { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.foundRow { border-color: transparent; background: transparent; padding: 6px 8px; }
+.foundRow:hover { background: var(--nh-surface); }
+.none { font-size: var(--nh-fs-xs); color: var(--nh-mute); margin-top: 6px; }
+
+.points { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.point { padding: 6px 11px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 999px); background: var(--nh-surface); color: var(--nh-ink); font-family: inherit; font-size: var(--nh-fs-xs); font-weight: 700; cursor: pointer; }
+.point[data-on="true"] { border-color: var(--nh-brand); background: var(--nh-brand); color: #fff; }
+.draft { white-space: pre-wrap; min-height: 132px; }
+
+.field { margin-top: 7px; height: 40px; font-size: var(--nh-fs-sm); }
+.go { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 18px; border-radius: var(--radius-sm, 999px); background: var(--nh-brand); color: #fff; font-size: var(--nh-fs-sm); font-weight: 700; text-decoration: none; }
+.go:hover { background: var(--nh-brand-hover); color: #fff; }
+
+@media (max-width: 760px) {
+  .search, .field { font-size: var(--nh-fs-input); }
+}
