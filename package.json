@@ -19,7 +19,7 @@
     "db:seed": "npm run db:seed -w @nextup/app"
   },
   "devDependencies": {
-    "turbo": "^2.11.6"
+    "turbo": "^2.11.7"
   },
   "overrides": {
     "mysql2": "^3.24.4",
