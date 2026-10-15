@@ -126,3 +126,68 @@ class CoachOut(BaseModel):
     model: str
     version: str
     ms: int
+
+
+# ---------------------------------------------------------------- after the decision (docs/plans/2026-10-15_idea-to-project.md)
+# Plan: an accepted idea in, the first steps and what to measure out. The lead adds what fits; the
+# number itself is always taken by people, never by the model.
+class Goal(Strict):
+    name: str = Field(min_length=1, max_length=200)
+    kpi: str = Field("", max_length=200, description="What the goal is measured on, e.g. minutes per changeover")
+
+
+class PlanIn(Strict):
+    company: str = Field(min_length=1, max_length=120)
+    idea: Idea
+    goals: list[Goal] = Field(default=[], max_length=20)
+
+
+class PlanDraft(Strict):
+    steps: list[str] = Field(min_length=1, max_length=5, description="3 to 5 concrete steps, each one action a person can finish within two weeks, at most 15 words, in order")
+    metric: str = Field(max_length=80, description="The one number that shows the idea worked, measured the same way before and after; empty string if there is none")
+    unit: str = Field(max_length=20, description="The metric's unit, e.g. min, %, parts per shift; empty string if none")
+    better: Literal["up", "down"] = Field(description="Whether a higher or a lower number is better")
+
+
+class PlanMetric(BaseModel):
+    name: str
+    unit: str
+    better: Literal["up", "down"]
+
+
+class PlanOut(BaseModel):
+    steps: list[str]
+    metric: PlanMetric | None
+    model: str
+    version: str
+    ms: int
+
+
+# Check-in: a discussion's round in, a short draft of the check-in out. The desk holder edits it.
+class Said(Strict):
+    who: str = Field(max_length=120, description="A role, never a name, e.g. Quality lead, or the author")
+    text: str = Field(max_length=2000)
+
+
+class CheckinIn(Strict):
+    company: str = Field(min_length=1, max_length=120)
+    idea: Idea
+    missing: str = Field("", max_length=500, description="What the desk holder said was missing when the discussion started")
+    said: list[Said] = Field(default=[], max_length=30, description="What was said in this round, oldest first")
+    weak: list[str] = Field(default=[], max_length=10, description="The points the app's analysis still finds weak")
+    round: int = Field(ge=1, le=20)
+
+
+class CheckinDraft(Strict):
+    note: str = Field(max_length=400, description="Two or three sentences: what changed in this round and what people said, naming roles not people")
+    open: list[str] = Field(max_length=6, description="What is still open, each at most 8 words; empty if nothing")
+    ready: bool = Field(description="True only if what was missing at the start is now answered")
+
+
+class CheckinOut(BaseModel):
+    next: Literal["round", "decide"]
+    open: list[str]
+    note: str
+    model: str
+    version: str
+    ms: int

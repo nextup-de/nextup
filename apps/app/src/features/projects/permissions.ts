@@ -10,6 +10,9 @@ const OK: Verdict = { ok: true };
 const no = (error: string): Verdict => ({ ok: false, error });
 
 const text = (v: unknown, max = 2000): v is string => typeof v === "string" && v.trim().length > 0 && v.length <= max;
+// A link ends up as <a href> on the board: only http(s), never javascript: or data: (same rule as the
+// connectors' allow-list, features/integrations).
+const webUrl = (v: unknown): v is string => typeof v === "string" && v.length <= 1000 && /^https?:\/\/\S+$/i.test(v);
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** Ids a client mints for a project or a step (features/cases/events newId). */
@@ -66,7 +69,8 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
 
     case "project.linked":
       if (!isLead) return no(leadOnly);
-      return text(pl.url, 1000) || text(pl.key, 100) ? OK : no("A link needs an address or a key.");
+      if (pl.url !== undefined && pl.url !== "" && !webUrl(pl.url)) return no("A link must be an http or https address.");
+      return webUrl(pl.url) || text(pl.key, 100) ? OK : no("A link needs an address or a key.");
 
     case "project.done":
       if (!isLead) return no(leadOnly);
