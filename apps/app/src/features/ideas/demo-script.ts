@@ -114,9 +114,9 @@ export const SCRIPT_FIRST_IMPROVED: DialKey[] = ["value", "feas", "risk"];
 // shows all the dials). The word on each dial and its reason still come from the real benchmark.
 export const SCRIPT_MOVES: readonly Partial<Record<DialKey, Move>>[] = [
   {},
-  { value: "up" }, // the handoff at shift change is the problem; the first reading has no fit evidence yet
-  { value: "up", cost: "up" }, // 4 h a week gives a baseline
-  { fit: "up", risk: "up" }, // an owner per problem type
+  { value: "up", feas: "up" }, // the handoff at shift change is the problem: two changes
+  { value: "up", cost: "up", feas: "up" }, // 4 h a week gives a baseline: three changes
+  { risk: "up" }, // an owner per problem type: one change
   { feas: "up", fit: "up" }, // no existing tool does it
   { feas: "up" }, // three taps, under 30 seconds
   { cost: "up", feas: "up" }, // one tablet, two days of setup
