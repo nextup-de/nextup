@@ -22,27 +22,35 @@ test("the demo controls click through the whole story: raise, publish, accept, d
     await expect(controls.getByRole("button", { name: "Start demo" })).toHaveCount(0);
   });
 
-  await test.step("fill and send: the chat shows the reply, its short read and what is still unclear", async () => {
+  await test.step("fill and send: the full analysis in the chat, the reply and the one point still unclear", async () => {
     await take("Fill sample idea");
     await expect(start).toHaveValue(TITLE);
     await take("Send to NextUp");
     await expect(aiMessages(page).first()).toContainText("I can see the value here.", { timeout: 30_000 });
-    await expect(page.getByRole("button", { name: "Close analysis" })).toHaveCount(0); // the full analysis stays closed
-    const read = page.getByRole("group", { name: "AI analysis" });
-    for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(read.getByText(label, { exact: true })).toBeVisible();
-    await expect(page.getByRole("group", { name: "Still unclear" }).getByRole("button")).toHaveCount(2);
+    await expect(page.getByRole("button", { name: "Close analysis" })).toHaveCount(0); // in the thread, not the sheet
+    const full = page.getByRole("group", { name: "Full analysis" });
+    for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(full.getByText(label, { exact: true })).toBeVisible();
+    await expect(page.getByRole("group", { name: "AI analysis" })).toHaveCount(0); // the short read starts with the next reply
+    await expect(page.getByRole("group", { name: "Still unclear" }).getByRole("button")).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0); // not after one exchange
   });
 
-  await test.step("View full analysis opens it, and only that", async () => {
+  await test.step("the first answer, sent from the controls: the short read, one point, the way into the full analysis", async () => {
+    await take("First answer");
+    await take("Send answer");
+    await expect(aiMessages(page).last()).toContainText("loses its owner", { timeout: 30_000 });
+    const read = page.getByRole("group", { name: "AI analysis" });
+    await expect(read).toHaveCount(1);
+    // Only the dials this answer moved (features/ideas/demo-script.ts SCRIPT_MOVES): Value and Feasibility.
+    for (const label of ["Value", "Feasibility"]) await expect(read.getByText(label, { exact: true })).toBeVisible();
+    for (const label of ["Cost", "Fit", "Risk"]) await expect(read.getByText(label, { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Still unclear" }).getByRole("button")).toHaveCount(1);
+    await expect(page.getByRole("group", { name: "Full analysis" })).toHaveCount(1); // still above the first reply
     await page.getByRole("button", { name: /View full analysis/ }).click();
     await page.getByRole("button", { name: "Close analysis" }).click();
   });
 
-  await test.step("two answers: the first sent from the controls, the second from the composer itself", async () => {
-    await take("First answer");
-    await take("Send answer");
-    await expect(aiMessages(page).last()).toContainText("loses its owner", { timeout: 30_000 });
+  await test.step("the second answer, sent from the composer itself", async () => {
     await take("Second answer");
     await page.getByRole("textbox", { name: ANSWER }).press("Enter"); // sent on the page: the controls follow
     await expect(aiMessages(page).last()).toContainText("clear baseline", { timeout: 30_000 });
@@ -51,12 +59,10 @@ test("the demo controls click through the whole story: raise, publish, accept, d
     await expect(page.getByRole("button", { name: "Publish now" })).toHaveCount(0);
   });
 
-  await test.step("preview, finalize, send: published to the first suggestion", async () => {
+  await test.step("preview, find receiver: published to the first suggestion", async () => {
     await take("Preview");
     await expect(page.getByRole("dialog", { name: "Last look before it goes out" })).toBeVisible();
-    await take("Finalize");
-    await expect(page.getByRole("article", { name: "Idea document" })).toContainText(TITLE);
-    await take("Send idea");
+    await take("Find receiver");
     await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
   });
 
@@ -87,7 +93,7 @@ test("the leader's and manager's steps taken on the page itself: the controls fo
     await page.keyboard.press("Escape");
   };
 
-  for (const name of ["Fill sample idea", "Send to NextUp", "First answer", "Send answer", "Second answer", "Send answer", "Preview", "Finalize", "Send idea"]) await take(name);
+  for (const name of ["Fill sample idea", "Send to NextUp", "First answer", "Send answer", "Second answer", "Send answer", "Preview", "Find receiver"]) await take(name);
   await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
 
   await test.step("back to the employee before the yes: the switch is offered again", async () => {

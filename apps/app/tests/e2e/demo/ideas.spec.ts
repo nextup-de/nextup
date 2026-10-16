@@ -3,7 +3,7 @@
 // (features/ideas/raise.ts topicsOf); the draft
 // survives a reload; publishing asks who should get it and raises the case on their desk.
 // docs/IDEAS.md.
-import { aiMessages, answerCoach, DEVELOP, DEVELOP_MORE, expect, publishTo, START, test } from "../helpers";
+import { aiMessages, answerCoach, DEVELOP, DEVELOP_MORE, expect, holdNextReply, publishTo, START, test } from "../helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/acme/raise");
@@ -11,6 +11,7 @@ test.beforeEach(async ({ page }) => {
 
 test("one line is evaluated, analysed, and the rail shows what a decision still needs", async ({ page }) => {
   await page.getByRole("textbox", { name: START }).fill("A shared calendar for the endurance rig");
+  await holdNextReply(page);
   await page.getByRole("button", { name: "Ask NextUp" }).click();
   await expect(page.getByRole("region", { name: "Evaluating" })).toBeVisible();
 
@@ -22,10 +23,11 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
   await close.click();
 
-  // The chat: the coach's first answer with the AI's short read under it, and the rail
-  // of the 2-8 unclear topics, the coach asking one of them now.
+  // The chat: the coach's first answer under the full analysis, one point still unclear, and the
+  // rail of the 2-8 unclear topics, the coach asking one of them now.
   await expect(aiMessages(page).first()).toContainText(/\S.{40,}/);
-  await expect(page.getByRole("group", { name: "AI analysis" })).toHaveCount(1);
+  await expect(page.getByRole("group", { name: "Full analysis" })).toHaveCount(1);
+  await expect(page.getByRole("group", { name: "Still unclear" }).getByRole("button")).toHaveCount(1);
   const segs = page.locator("[data-rail-seg]");
   await expect.poll(() => segs.count()).toBeGreaterThanOrEqual(2);
   expect(await segs.count()).toBeLessThanOrEqual(8);

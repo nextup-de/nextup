@@ -81,12 +81,16 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
 
 ## What the raise page shows beside the chat
 
-- **The AI analysis under the latest reply** (`ReadCard` in `components/ideas/RaiseChat.tsx`): the
+- **The full analysis above NextUp's first reply** (`Analysis` in `components/ideas/RaiseSheets.tsx`,
+  `inChat`): the five dials with their numbers, what the AI found, the advice, pattern, categories and
+  similar ideas. Once later replies came, it keeps the scores of the first message.
+- **The AI analysis under every later reply** (`ReadCard` in `components/ideas/RaiseChat.tsx`): the
   analysis' five dials - Value, Feasibility, Cost, Fit, Risk (`dialsOf` in `features/ideas/raise.ts`) -
   each as a bar, one word (`levelOf`: Strong / Medium / Weak; for Cost and Risk the cost or the risk
   itself, so Low is good there) and what was found, then the advice (Approve / Pilot / Needs info).
-  A ▲ marks the dials the answer before it made better (`dialsUp`). No numbers in the chat: they stay in
-  the analysis. Under it, Publish now (once the rail is clear) and Review analysis, in blue.
+  No numbers there: they stay in the full analysis ("View full analysis").
+- **One question at a time**: under the latest reply, "Still unclear" holds a single point - the one the
+  rail is asking now. Under earlier replies it reads "Asked", ticked once answered.
 - **The rail on the right: the five points a decision needs** (`RAIL`, `railOf`): the same five, each
   with the one fact the person who decides cannot do without - a number on what it saves, who can
   decide it, a rough cost, the company goal, a small first step. A photo, who else it helps or how far a

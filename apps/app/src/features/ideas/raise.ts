@@ -186,6 +186,20 @@ export function dialsUp(before: readonly Dial[], now: readonly Dial[]): DialKey[
   return now.filter((d) => d.value > (before.find((b) => b.key === d.key)?.value ?? d.value)).map((d) => d.key);
 }
 
+// The dials an answer moved, up or down, from one reading of the idea to the next (the chat's card shows
+// only these after NextUp's first reply). A dial not scored before and scored now counts as up.
+export type Move = "up" | "down";
+export function dialsMoved(before: readonly Dial[], now: readonly Dial[]): Partial<Record<DialKey, Move>> {
+  const out: Partial<Record<DialKey, Move>> = {};
+  for (const d of now) {
+    const b = before.find((x) => x.key === d.key);
+    const was = b && b.scored ? b.value : null, is = d.scored ? d.value : null;
+    if (was === is || is === null) continue;
+    out[d.key] = was === null || is > was ? "up" : "down";
+  }
+  return out;
+}
+
 // ── Advice ────────────────────────────────────────────────────────────────────────────────────
 export type Advice = { name: "Approve" | "Pilot" | "Needs info"; why: string };
 export function adviceOf(overall: number, threshold: number, team: string): Advice {

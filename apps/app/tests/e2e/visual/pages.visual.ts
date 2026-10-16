@@ -34,7 +34,7 @@ test("sign-in", async ({ page }) => {
 test("raise: the start", async ({ page }) => {
   await page.goto("/acme");
   await expect(page).toHaveURL(/\/acme\/raise$/);
-  await expect(page.getByRole("textbox", { name: "Short title" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Share an idea that would make work better…" })).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot("raise.png");
 });

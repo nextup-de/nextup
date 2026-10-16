@@ -10,10 +10,9 @@ export type RaiseHooks = {
   fillAnswer: (() => void) | null; // NextUp asked: put the script's next answer in the composer
   send: (() => void) | null; // the start view holds an idea, or the composer an answer: send it
   preview: (() => void) | null; // NextUp has answered: open the last look before it goes out
-  finalize: (() => void) | null; // the last look is open: confirm it, and the final document opens
-  sendFinal: (() => void) | null; // the final document is open: send it to the suggested receiver
+  findReceiver: (() => void) | null; // the last look is open: confirm it, and it goes to the receiver NextUp ranks first
 };
-const NONE: RaiseHooks = { at: -1, fillIdea: null, fillAnswer: null, send: null, preview: null, finalize: null, sendFinal: null };
+const NONE: RaiseHooks = { at: -1, fillIdea: null, fillAnswer: null, send: null, preview: null, findReceiver: null };
 
 let hooks: RaiseHooks = NONE;
 const subs = new Set<() => void>();

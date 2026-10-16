@@ -12,8 +12,7 @@
 //   Send to NextUp    Ask NextUp: the chat with NextUp's reply, its short read and what is still unclear
 //   First, Second answer + Send answer  each filled and sent: three exchanges before it can be published
 //   Preview           the last look before it goes out
-//   Finalize          the final document
-//   Send idea         to the receiver NextUp ranks first
+//   Find receiver     to the receiver NextUp ranks first
 //   Switch to team leader  the inbox of whoever received it
 //   Open the idea     the idea open in that inbox
 //   Accept it         "Yes, do it" (a project opens when projects are on)
@@ -193,9 +192,8 @@ export function DemoControls() {
         past: reached >= k + 2 || (hooks.at === k + 1 && !!hooks.send && !hooks.fillAnswer) },
       { label: "Send answer", where: "Chat", verb: "Send", sub: hooks.at === k + 1 && hooks.send ? "Send it to NextUp" : "Fill the answer first", can: hooks.at === k + 1 && !!hooks.send, run: () => hooks.send?.(), past: reached >= k + 2 },
     ]).flat(),
-    { label: "Preview", where: "Chat", verb: "Preview", sub: hooks.preview ? "The last look before it goes out" : "Waiting for NextUp’s reply", can: !!hooks.preview, run: () => hooks.preview?.(), undo: history, past: !!hooks.finalize || !!hooks.sendFinal || !!published },
-    { label: "Finalize", where: "Preview", verb: "Finalize", sub: hooks.finalize ? "The final document" : "Open the preview first", can: !!hooks.finalize, run: () => hooks.finalize?.(), undo: history, past: !!hooks.sendFinal || !!published },
-    { label: "Send idea", where: "Document", verb: "Send", sub: hooks.sendFinal ? "To the receiver NextUp suggests" : "Open the final document first", can: !!hooks.sendFinal, run: () => hooks.sendFinal?.(), undo: history, past: !!published },
+    { label: "Preview", where: "Chat", verb: "Preview", sub: hooks.preview ? "The last look before it goes out" : "Waiting for NextUp’s reply", can: !!hooks.preview, run: () => hooks.preview?.(), undo: history, past: !!hooks.findReceiver || !!published },
+    { label: "Find receiver", where: "Preview", verb: "Send", sub: hooks.findReceiver ? "To the receiver NextUp suggests" : "Open the preview first", can: !!hooks.findReceiver, run: () => hooks.findReceiver?.(), undo: history, past: !!published },
     { label: "Switch to team leader", where: "Inbox", verb: "Switch", sub: published ? "The inbox of " + published.assignee : "Waiting for the idea to be sent", can: !!published, run: inbox, undo: raise,
       past: !!published && (leading || decided) },
     { label: "Open the idea", where: "Inbox", verb: "Open", sub: published ? published.title : "Send the idea first", can: !!published && leading, run: openCase, undo: inbox, // not history: the person is not in the URL

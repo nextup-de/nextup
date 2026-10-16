@@ -1,24 +1,33 @@
 "use client";
 // The raise page's chat: the coach's questions and the author's answers, the progress rail on the right
-// (one segment per unclear topic) and the composer docked at the bottom. Under the latest reply: the
-// reply's text, the one or two points still unclear, then the AI's read of the idea (the five dials as bars
-// and words, no numbers - those are in the full analysis, opened only from here). Props in, JSX out.
+// (one segment per unclear topic) and the composer docked at the bottom. On top, the idea as it was asked,
+// with its details; the thinking orb under it until NextUp's first reply is ready. That reply comes after
+// the full analysis (the dials with their numbers, what the AI found); every later one is the reply's text,
+// the AI's read of what the answer changed (those dials as bars and words, no numbers - those are in the
+// full analysis, opened from here), then the one point still unclear. Props in, JSX out.
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { levelOf, type Advice, type Dial, type Topic } from "@/features/ideas/raise";
+import { levelOf, type Dial, type DialKey, type Move, type Topic } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
+import { Analysis, type AnalysisData } from "./RaiseSheets";
+import { Evaluating } from "./RaiseStart";
 import s from "./Raise.module.css";
 
-// `read`: the five dials as they stand after this reply, and the advice. `open`: the points still unclear (one or two).
-export type Read = { dials: Dial[]; advice: Advice; first: boolean; open: Topic[] };
+// `read`: the five dials as they stand after this reply. `moved`: the dials the answer before
+// it moved - the only ones shown. `open`: the point still unclear - one at most.
+export type Read = { dials: Dial[]; moved: Partial<Record<DialKey, Move>>; open: Topic[] };
+// `idea`: the first message - the idea as asked, its title, what was written under it and its details
+// (affected, files, receiver, colleagues, meeting).
+// `full`: NextUp's first reply - the full analysis stands above it, in place of the short read.
 // `publish`: the one "Publish" button under the latest reply, once the conversation is long enough; it opens
 // the last look, from which the final document is sent.
-// `asked`: under an earlier reply, the points it left unclear, with where they stand now (clear ones are ticked).
-export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; read?: Read; asked?: Topic[]; publish?: boolean; link?: { label: string; href: string } };
+// `asked`: under an earlier reply, the point it left unclear, with where it stands now (ticked once clear).
+export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; idea?: { body: string; details: { key: string; value: string }[] }; read?: Read; full?: AnalysisData; asked?: Topic[]; publish?: boolean; link?: { label: string; href: string } };
 
-export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onAnalysis, onPublish, dock, followKey }: {
+export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalysis, onPublish, dock, followKey }: {
   msgs: ChatMsg[];
-  typing: boolean; typingLabel: string;
+  typing: boolean;
+  thinking: { step: number; sub: string } | null; // the first reply on its way: the orb and the evaluation's steps
   error: string;
   gaps: Topic[];
   onAsk: (g: Topic) => void;
@@ -28,25 +37,44 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onAna
   followKey: string; // changes when the thread grows: scroll to its end
 }) {
   const scroll = useRef<HTMLDivElement>(null);
-  useEffect(() => { const el = scroll.current; if (el) el.scrollTop = el.scrollHeight; }, [followKey]);
+  // The thread follows its end - except when NextUp’s first reply has just come in: its analysis box then sits right under
+  // the top bar, and the thread stays scrollable from there (up to the idea, down to the reply and the open point).
+  useEffect(() => {
+    const el = scroll.current;
+    if (!el) return;
+    const first = msgs.length && msgs[msgs.length - 1].full ? el.querySelector<HTMLElement>("[data-first]") : null;
+    if (first) el.scrollTop += first.getBoundingClientRect().top - el.getBoundingClientRect().top - parseFloat(getComputedStyle(el).paddingTop);
+    else el.scrollTop = el.scrollHeight;
+  }, [followKey]); // eslint-disable-line react-hooks/exhaustive-deps -- only when the thread grows
   return (
     <div className={s.chatView}>
       <div className={s.scrollWrap}>
         <div ref={scroll} className={s.scroll}>
           <div className={s.thread} aria-live="polite">
-            {!msgs.length && !typing && (
+            {!msgs.length && !typing && !thinking && (
               <div className={s.empty}>
                 <h1 className={`${s.emptyTitle} ${s.heading}`}>What should change?</h1>
                 <p className={s.emptyText}>Describe a problem or an idea in your own words. I’ll ask a few questions and build the draft on the left as we go.</p>
               </div>
             )}
             {msgs.map((m) => (
-              <div key={m.id} className={s.msg} data-role={m.role}>
-                <p className={s.bubble}>{m.text}</p>
+              <div key={m.id} className={s.msg} data-role={m.role} data-first={m.full ? true : undefined}>
+                {m.full && <Analysis {...m.full} inChat />}
+                {m.idea ? (
+                  <div className={s.bubble} data-idea="true">
+                    <span className={s.askTitle}>{m.text}</span>
+                    {m.idea.body && <span className={s.askText}>{m.idea.body}</span>}
+                  </div>
+                ) : <p className={s.bubble}>{m.text}</p>}
+                {m.idea && m.idea.details.length > 0 && (
+                  <ul className={s.askDetails} aria-label="Details">
+                    {m.idea.details.map((d) => <li key={d.key + d.value} className={s.askDetail}><span className={s.askKey}>{d.key}</span>{d.value}</li>)}
+                  </ul>
+                )}
                 {m.note && <span className={s.note}><Solid name="sparkle" size={8.25} fill="#007aff" />{m.note}</span>}
+                {m.read && !m.full && <ReadCard r={m.read} onAnalysis={onAnalysis} />}
                 {m.read && m.read.open.length > 0 && <Unclear open={m.read.open} onAsk={onAsk} />}
                 {m.asked && m.asked.length > 0 && <Unclear open={m.asked} onAsk={onAsk} past />}
-                {m.read && <ReadCard r={m.read} onAnalysis={onAnalysis} />}
                 {m.link && <div className={s.quick}><Link className={s.quickBtn} data-primary="ink" href={m.link.href}>{m.link.label}</Link></div>}
                 {m.publish && (
                   <div className={s.quick}>
@@ -55,8 +83,8 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onAna
                 )}
               </div>
             ))}
-            {typing && (
-              <div className={s.typing} aria-label="NextUp is typing"><i /><i /><i />{typingLabel && <span className={s.typingLabel}>{typingLabel}</span>}</div>
+            {thinking ? <Evaluating step={thinking.step} sub={thinking.sub} inChat /> : typing && (
+              <div className={s.typing} aria-label="NextUp is typing"><i /><i /><i /></div>
             )}
             {error && <p className={s.error} role="alert">{error}</p>}
           </div>
@@ -68,37 +96,39 @@ export function RaiseChat({ msgs, typing, typingLabel, error, gaps, onAsk, onAna
   );
 }
 
-// What the AI makes of the idea right now: the five dials of the analysis, each as a bar, one word and
-// its reason, the advice under them, and the way into the full analysis.
+// What the answer changed: the dials it moved, each as a bar, an arrow, one word and its reason (as many as
+// moved - none, a line saying so) and the way into the full analysis.
 function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
+  const rows = r.dials.filter((d) => r.moved[d.key]);
   return (
     <div className={s.read} role="group" aria-label="AI analysis">
       <div className={s.readHead}>
         <Solid name="sparkle" size={11.25} fill="#007aff" />
-        <span className={s.readTitle}>{r.first ? "AI analysis · first read" : "AI analysis"}</span>
-        <span className={s.readAdvice} data-advice={r.advice.name === "Approve" ? "go" : r.advice.name === "Pilot" ? "pilot" : "info"}>{r.advice.name}</span>
+        <span className={s.readTitle}>AI analysis</span>
       </div>
-      <div className={s.readRows}>
-        {r.dials.map((d) => (
-          <div key={d.key} className={s.readRow}>
-            <span className={s.readLabel}>{d.label}</span>
-            <span className={s.readBar} aria-hidden="true"><i style={{ width: (d.scored ? Math.max(4, d.value) : 0) + "%" }} /></span>
-            <span className={s.readLevel}>{levelOf(d)}</span>
-            <span className={s.readNote}>{d.note}</span>
-          </div>
-        ))}
-      </div>
+      {rows.length ? (
+        <div className={s.readRows}>
+          {rows.map((d) => (
+            <div key={d.key} className={s.readRow}>
+              <span className={s.readLabel}>{d.label}</span>
+              <span className={s.readBar} aria-hidden="true"><i style={{ width: (d.scored ? Math.max(4, d.value) : 0) + "%" }} /></span>
+              <span className={s.readLevel} data-move={r.moved[d.key]}>
+                <span className={s.readArrow} aria-label={r.moved[d.key] === "up" ? "Better" : "Worse"}>{r.moved[d.key] === "up" ? "▲" : "▼"}</span>{levelOf(d)}
+              </span>
+              <span className={s.readNote}>{d.note}</span>
+            </div>
+          ))}
+        </div>
+      ) : <p className={s.readSame}>This answer did not move the scores.</p>}
       <div className={s.readFoot}>
-        <p className={s.readWhy}>{r.advice.why}</p>
         <button type="button" className={s.readMore} onClick={onAnalysis}>View full analysis<Icon name="right" size={9.75} width={2.6} /></button>
       </div>
     </div>
   );
 }
 
-// The one or two points the idea still leaves open, as plain questions; a click answers that one next.
-// The points a reply left unclear. `past`: under an earlier reply - "Asked", and a point answered since is ticked
-// (no longer a button: there is nothing left to ask).
+// The point the idea still leaves open, as a plain question; a click answers it next. Under an earlier
+// reply (`past`): "Asked", ticked once answered (no longer a button: there is nothing left to ask).
 function Unclear({ open, onAsk, past = false }: { open: Topic[]; onAsk: (g: Topic) => void; past?: boolean }) {
   return (
     <div className={s.unclear} role="group" aria-label={past ? "Asked" : "Still unclear"} data-past={past || undefined}>

@@ -71,6 +71,15 @@
 .addFile { display: flex; align-items: center; gap: 6px; min-height: 52px; padding: 0 16px; border: 1px dashed #c7c7cc; border-radius: var(--radius-sm, 12px); color: #3a3a3c; font-size: var(--nh-fs-sm); font-weight: 500; cursor: pointer; transition: background 160ms ease; }
 .addFile:hover { background: #f7f7f9; }
 .hidden { display: none; }
+/* Published (IdeaCard locked): read only - no add or remove buttons, no field hover. */
+.none { font-size: var(--nh-fs-sm); color: #8e8e93; }
+.card[data-locked] .dashed, .card[data-locked] .x, .card[data-locked] .addFile { display: none; }
+.card[data-locked] .title:hover, .card[data-locked] .desc:hover, .card[data-locked] .ctx:hover, .card[data-locked] .promptText:hover,
+.card[data-locked] .title:focus, .card[data-locked] .desc:focus, .card[data-locked] .ctx:focus, .card[data-locked] .promptText:focus { background: transparent; box-shadow: none; }
+.card[data-locked] .meetDur, .card[data-locked] .meetWhen { cursor: default; }
+/* The Idea view (RaiseSheets.tsx IdeaSheet): the same card on the page, a head (once published) and a hint around it. */
+.sheetHead { display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }
+.sheetHint { padding: 0 4px; font-size: var(--nh-fs-sm); color: #6e6e73; }
 
 /* NextUp's analysis travels with it, but is not the author's to edit. */
 .ai { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md, 16px); border: 1px dashed #c7c7cc; }
@@ -81,8 +90,10 @@
 
 .foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 18px 18px; border-top: 1px solid #e5e5ea; background: #fff; }
 .hint { flex: 1; min-width: 0; font-size: var(--nh-fs-sm); color: #6e6e73; }
-.back { flex: none; height: 42px; padding: 0 18px; border: none; border-radius: var(--radius-sm, 999px); background: #f2f2f7; color: #1c1c1e; font-family: inherit; font-size: var(--nh-fs-md); font-weight: 600; cursor: pointer; transition: background 160ms ease; }
-.back:hover { background: #e5e5ea; }
+.export { flex: none; display: flex; align-items: center; gap: 6px; height: 42px; padding: 0 18px; border: none; border-radius: var(--radius-sm, 999px); background: #f2f2f7; color: #1c1c1e; font-family: inherit; font-size: var(--nh-fs-md); font-weight: 600; cursor: pointer; transition: background 160ms ease; }
+.export:hover { background: #e5e5ea; }
+.export:disabled { color: #6e6e73; cursor: default; }
+.export:disabled:hover { background: #f2f2f7; }
 .go { flex: none; display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 20px; border: none; border-radius: var(--radius-sm, 999px); background: #111; color: #fff; font-family: inherit; font-size: var(--nh-fs-md); font-weight: 600; cursor: pointer; transition: background 160ms ease,transform 160ms cubic-bezier(.2,.8,.2,1); }
 .go:active { transform: scale(.97); }
 .go:disabled { background: #e5e5ea; color: #6e6e73; cursor: default; transform: none; }
@@ -100,7 +111,7 @@
   .file { max-width: 100%; }
   .foot { flex-wrap: wrap; padding: 12px 14px 14px; }
   .hint { flex-basis: 100%; }
-  .back { margin-left: auto; }
+  .export { margin-left: auto; }
 }
 
 @keyframes affSoft { from { opacity: 0 } to { opacity: 1 } }
