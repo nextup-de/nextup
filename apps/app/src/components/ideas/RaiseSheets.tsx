@@ -1,6 +1,7 @@
 "use client";
 // The two sheets that open over the chat: the idea itself (edited in place) and the AI analysis -
-// five dials with their reasoning, what was found, similar ideas, reviewers and sources. Props in.
+// five dials with their reasoning, what was found, similar ideas, reviewers and sources. The analysis also
+// stands in the chat, above NextUp's first reply (RaiseChat.tsx). Props in.
 import Link from "next/link";
 import { useState } from "react";
 import type { CompanyFact } from "@/features/ideas/company-read";
@@ -48,13 +49,14 @@ export function IdeaSheet({ description, context, locked, onChange, onClose }: {
   );
 }
 
-export function AnalysisSheet({ ready, onClose, dials, company, summary, advice, pattern, cats, similar, reviewers, sources }: {
-  ready: boolean; onClose: () => void;
+// What the analysis shows: in its own sheet, and in the chat under NextUp's first reply.
+export type AnalysisData = {
   dials: Dial[]; company: Record<DialKey, CompanyFact[]>; // what was looked up across the company, per dial
   summary: string; advice: Advice; pattern: string; cats: string[];
   similar: Similar[]; reviewers: Reviewer[]; sources: Source[];
-}) {
-  const [open, setOpen] = useState<number | null>(null);
+};
+
+export function AnalysisSheet({ ready, onClose, ...a }: AnalysisData & { ready: boolean; onClose: () => void }) {
   if (!ready) {
     return (
       <Sheet label="analysis" onClose={onClose}>
@@ -66,6 +68,13 @@ export function AnalysisSheet({ ready, onClose, dials, company, summary, advice,
       </Sheet>
     );
   }
+  return <Sheet label="analysis" onClose={onClose} an><Analysis {...a} /></Sheet>;
+}
+
+// The five dials (each opens to its reasoning) and what the AI found. `inChat`: under NextUp's first reply -
+// a card in the thread, up to the similar ideas; the reviewers and sources stay in the sheet.
+export function Analysis({ dials, company, summary, advice, pattern, cats, similar, reviewers, sources, inChat = false }: AnalysisData & { inChat?: boolean }) {
+  const [open, setOpen] = useState<number | null>(null);
   const d = open === null ? null : dials[open];
   const sourceList = (
     <div className={s.sources}>
@@ -77,8 +86,8 @@ export function AnalysisSheet({ ready, onClose, dials, company, summary, advice,
       ))}
     </div>
   );
-  return (
-    <Sheet label="analysis" onClose={onClose} an>
+  const body = (
+    <>
       <div className={s.dialsBox}>
         <div className={s.dials}>
           {dials.map((x, i) => (
@@ -138,6 +147,7 @@ export function AnalysisSheet({ ready, onClose, dials, company, summary, advice,
               );
             })}
           </div>
+          {!inChat && <>
           <div className={s.sec} data-rule="true" data-gap="7">
             <span className={s.secLabel}>Suggested reviewers</span>
             {reviewers.map((r) => (
@@ -152,8 +162,10 @@ export function AnalysisSheet({ ready, onClose, dials, company, summary, advice,
             {sourceList}
           </div>
           <span className={s.disclaimer}>AI suggestions only. You make the decision.</span>
+          </>}
         </>
       )}
-    </Sheet>
+    </>
   );
+  return inChat ? <div className={`${s.paper} ${s.anChat}`} data-an="true" role="group" aria-label="Full analysis">{body}</div> : body;
 }

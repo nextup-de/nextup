@@ -238,6 +238,10 @@
 .evalBar { width: 41.25px; height: 3.75px; border-radius: var(--radius-sm, 999px); background: #e5e9ee; transition: background 400ms ease; }
 .evalBar[data-s="done"] { background: #1a6fe0; }
 .evalBar[data-s="now"] { background: #6aa6ea; }
+/* In the chat, under the first message until the first reply is ready: as tall as it needs, bars that fit a phone. */
+.eval[data-chat] { height: auto; padding: 18px 16.5px 16.5px; box-shadow: 0 1px 2px rgba(40,60,100,0.05); border: 1px solid #e3eaf7; }
+.eval[data-chat] .evalBars { width: 100%; max-width: 367px; }
+.eval[data-chat] .evalBar { flex: 1; width: auto; }
 
 /* ── The actions menu ───────────────────────────────────────────────────────────────────────── */
 .backdrop { position: fixed; inset: 0; z-index: 20; }
@@ -324,6 +328,13 @@
 .msg[data-role="user"] { align-items: flex-end; }
 .bubble { max-width: 80%; margin: 0; padding: 0; border-radius: 3px var(--radius-xs, 10.5px) var(--radius-xs, 10.5px) var(--radius-xs, 10.5px); background: transparent; color: #1c1c1e; font-size: var(--nh-fs-sm); line-height: 1.55; text-wrap: pretty; white-space: pre-wrap; overflow-wrap: anywhere; }
 .msg[data-role="user"] .bubble { padding: 8.25px 11.25px; border-radius: var(--radius-xs, 10.5px) var(--radius-xs, 10.5px) 3px var(--radius-xs, 10.5px); background: #1c1c1e; color: #fff; }
+/* The first message: the idea as asked - its title, what was written under it, then its details as pills. */
+.bubble[data-idea] { display: flex; flex-direction: column; gap: 4.5px; white-space: normal; }
+.askTitle { font-weight: 600; white-space: pre-wrap; }
+.askText { color: rgba(255,255,255,0.82); white-space: pre-wrap; }
+.askDetails { list-style: none; margin: 0; padding: 0; max-width: 80%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4.5px; }
+.askDetail { display: inline-flex; align-items: baseline; gap: 4.5px; max-width: 100%; padding: 3px 9px; border: 1px solid #e5e5ea; border-radius: var(--radius-sm, 999px); background: #fff; font-size: var(--nh-fs-xs); color: #1c1c1e; overflow-wrap: anywhere; }
+.askKey { flex: none; font-weight: 600; color: #6e6e73; }
 .note { animation: affFade 260ms ease backwards; display: flex; align-items: center; gap: 4.5px; font-size: var(--nh-fs-xs); font-weight: 600; color: #1a5fd0; padding-left: 3px; }
 .note svg { flex: none; }
 .quick { animation: affFade 300ms ease 80ms backwards; display: flex; flex-wrap: wrap; gap: 7.5px; max-width: 100%; }
@@ -344,11 +355,15 @@
 .readAdvice[data-advice="go"] { background: #e3f6e8; color: #1f7a3a; }
 .readAdvice[data-advice="pilot"] { background: #eaf2ff; color: #1a5fd0; }
 .readRows { display: flex; flex-direction: column; gap: 7.5px; }
-.readRow { display: grid; grid-template-columns: 6.6em 4.6em 4.6em minmax(0, 1fr); column-gap: 10.5px; align-items: baseline; font-size: var(--nh-fs-sm); line-height: 1.45; }
+.readRow { display: grid; grid-template-columns: 6.6em 4.6em 5.6em minmax(0, 1fr); column-gap: 10.5px; align-items: baseline; font-size: var(--nh-fs-sm); line-height: 1.45; }
 .readLabel { font-weight: 600; color: #1c1c1e; }
 .readBar { align-self: center; height: 6px; border-radius: var(--radius-sm, 999px); background: #e3eaf7; overflow: hidden; }
 .readBar i { display: block; height: 100%; border-radius: inherit; background: #007aff; transition: width 600ms cubic-bezier(.2,.8,.2,1); }
 .readLevel { font-weight: 600; color: #3a3a3c; white-space: nowrap; }
+.readArrow { margin-right: 4.5px; font-size: 0.75em; }
+.readLevel[data-move="up"] .readArrow { color: #1f7a3a; }
+.readLevel[data-move="down"] .readArrow { color: #c2410c; }
+.readSame { margin: 0; font-size: var(--nh-fs-sm); color: #6e6e73; }
 .readNote { color: #6e6e73; text-wrap: pretty; overflow-wrap: anywhere; }
 .readFoot { display: flex; align-items: center; gap: 12px; padding-top: 9px; border-top: 1px solid #eef1f6; }
 .readWhy { flex: 1; min-width: 0; margin: 0; font-size: var(--nh-fs-sm); line-height: 1.5; color: #3a3a3c; text-wrap: pretty; }
@@ -356,11 +371,11 @@
 .readMore:hover { background: #dbe9ff; }
 .readMore:active { transform: scale(.97); }
 @media (max-width: 560px) {
-  .readRow { grid-template-columns: 6.6em minmax(0, 1fr) 4.6em; row-gap: 2px; }
+  .readRow { grid-template-columns: 6.6em minmax(0, 1fr) 5.6em; row-gap: 2px; }
   .readNote { grid-column: 1 / -1; }
   .readFoot { flex-direction: column; align-items: stretch; }
 }
-/* The points still unclear, one or two, under the read. */
+/* The point still unclear, under the read. */
 .unclear { width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; animation: affFade 360ms cubic-bezier(.2,.8,.2,1) 120ms backwards; }
 .unclearHead { font-size: var(--nh-fs-xs); font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.04em; padding-left: 2px; }
 .unclearQ { display: flex; align-items: flex-start; gap: 9px; width: 100%; padding: 9px 12px; border: 1px solid #e5e5ea; border-radius: var(--radius-sm, 12px); background: #fff; font-family: inherit; text-align: left; cursor: pointer; transition: border-color 160ms ease, background 160ms ease; }
@@ -430,6 +445,7 @@ a.quickBtn { text-decoration: none; }
 .close svg { width: 13.5px; height: 13.5px; }
 .paper { background: #fff; border-radius: var(--radius-sm, 13.5px); padding: 16.5px 19.5px 18px; box-shadow: 0 4.5px 15px rgba(40,60,100,0.06); display: flex; flex-direction: column; gap: 12px; animation: affFade 420ms cubic-bezier(.2,.8,.2,1) backwards; }
 .paper[data-an="true"] { padding: 15px 16.5px 16.5px; gap: 15px; }
+.anChat { width: 100%; box-sizing: border-box; border: 1px solid #e3eaf7; box-shadow: 0 1px 2px rgba(40,60,100,0.05); } /* the analysis in the chat, above NextUp's first reply */
 .paperHead { flex: none; display: flex; align-items: center; gap: 6px; min-height: 30px; }
 .paperLabel { flex: 1; font-size: var(--nh-fs-xs); font-weight: 600; color: #6e6e73; }
 .ideaBody { animation: affSoft 180ms ease backwards; flex: none; margin: 0; font-size: var(--nh-fs-md); line-height: 1.55; color: #3a3a3c; text-wrap: pretty; white-space: pre-line; }

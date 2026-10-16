@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { benchmark, weakest } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
-import { adviceOf, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, levelOf, RAIL, railOf, splitIdea, splitUpdate, whenLabel, withoutSkipped } from "@/features/ideas/raise";
+import { adviceOf, dialsMoved, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, levelOf, RAIL, railOf, splitIdea, splitUpdate, whenLabel, withoutSkipped } from "@/features/ideas/raise";
 import { GOALS } from "@/features/evaluate";
 import { ROUTES } from "@/features/demo/seed";
 
@@ -108,6 +108,15 @@ describe("advice and the chat's card", () => {
     const up = dialsUp(dialsOf(oneLiner.parts), dialsOf(later.parts));
     expect(up).toEqual(expect.arrayContaining(["value", "risk"]));
     expect(dialsUp(dialsOf(later.parts), dialsOf(later.parts))).toEqual([]);
+  });
+  it("names the dials an answer moved, up or down, and nothing else", () => {
+    const d = (key: "value" | "fit", value: number, scored = true) => ({ key, label: key, value, note: "", basis: "", scored });
+    expect(dialsMoved([d("value", 20), d("fit", 50)], [d("value", 60), d("fit", 50)])).toEqual({ value: "up" });
+    expect(dialsMoved([d("value", 60), d("fit", 50)], [d("value", 40), d("fit", 70)])).toEqual({ value: "down", fit: "up" });
+    expect(dialsMoved([d("fit", 0, false)], [d("fit", 30)])).toEqual({ fit: "up" });
+    const later = benchmark({ text: "A shared calendar for the endurance rig. A pilot for one week on line 3 saves 20 minutes per shift.", affected: [], attachments: 0 }, ctx);
+    expect(Object.keys(dialsMoved(dialsOf(oneLiner.parts), dialsOf(later.parts)))).toEqual(expect.arrayContaining(["value", "risk"]));
+    expect(dialsMoved(dialsOf(later.parts), dialsOf(later.parts))).toEqual({});
   });
 });
 
