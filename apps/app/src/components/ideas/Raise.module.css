@@ -334,7 +334,7 @@
 /* ── Chat ────────────────────────────────────────────────────────────────────────────────────── */
 .chatView { animation: affSoft 260ms ease backwards; flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
 .scrollWrap { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
-.scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 18px 75px 63px; } /* room under the last message, above the composer */
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 18px 75px 126px; } /* room under the last message, above the composer */
 .thread { max-width: 570px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; gap: 12px; animation: affIn 260ms cubic-bezier(.2,.8,.2,1) backwards; }
 .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10.5px; text-align: center; padding: 30px 0; animation: affFade 420ms cubic-bezier(.2,.8,.2,1) backwards; }
 .emptyTitle { margin: 0; font-size: var(--nh-fs-2xl); line-height: 1.1; color: #1b1d22; }
@@ -674,7 +674,7 @@ a.quickBtn { text-decoration: none; }
   .eval { height: auto; padding: 18px 16px; }
   .evalBars { flex-wrap: wrap; justify-content: center; }
   .evalBar { width: 28px; }
-  .scroll { padding: 52px 16px 48px; }
+  .scroll { padding: 52px 16px 96px; }
   .dock { padding: 9px 12px 12px; }
   .rail { display: none; }
   .field, .pickInput, .searchInput, .titleInput, .ideaEdit { font-size: var(--nh-fs-input); }
