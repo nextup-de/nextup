@@ -1,5 +1,6 @@
 "use client";
-// The two sheets that open over the chat: the idea itself (edited in place) and the AI analysis -
+// The two sheets that open over the chat: the idea itself (edited in place, the same card as the publish
+// preview's) and the AI analysis -
 // five dials with their reasoning, what was found, similar ideas, reviewers and sources. Props in.
 import Link from "next/link";
 import { useState } from "react";
@@ -7,7 +8,9 @@ import type { CompanyFact } from "@/features/ideas/company-read";
 import type { Advice, Dial, DialKey } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
 import { PersonButton } from "./RaisePerson";
+import { IdeaCard, type IdeaCardProps, type Look } from "./IdeaCard";
 import s from "./Raise.module.css";
+import pv from "./PublishPreview.module.css";
 import { avatarTone } from "@/lib/avatar";
 
 export type Similar = { title: string; status: string; where: string; by?: string; href: string | null }; // by: who raised it
@@ -27,23 +30,26 @@ function Sheet({ label, onClose, an, children }: { label: string; onClose: () =>
   );
 }
 
-export function IdeaSheet({ description, context, locked, onChange, onClose }: {
-  description: string; context: string; locked: boolean;
-  onChange: (description: string, context: string) => void;
+// The idea, laid out and edited as in the last look before publishing (IdeaCard.tsx). The card keeps
+// its own copy while open - a line just added has no text yet, so it is not in the idea - and hands
+// every change on; the page opens it afresh (a new `key`) per draft.
+export function IdeaSheet({ initial, card, locked, onChange, onTitle, onClose }: {
+  initial: Look; locked: boolean;
+  card: Omit<IdeaCardProps, "look" | "onLook" | "onTitleDone" | "locked">;
+  onChange: (l: Look) => void;
+  onTitle: (title: string) => void;
   onClose: () => void;
 }) {
+  const [look, setLook] = useState(initial);
   return (
-    <Sheet label="idea" onClose={onClose} an={false}>
-      <div className={s.paperHead}><span className={s.paperLabel}>Idea</span></div>
-      {locked ? <p className={s.ideaBody}>{description}</p>
-        : <textarea className={s.ideaEdit} rows={4} value={description} onChange={(e) => onChange(e.target.value, context)} aria-label="Idea" />}
-      {(!locked || context) && (
-        <div className={s.ideaCtx}>
-          <span className={s.ideaCtxLabel}>Context</span>
-          {locked ? <p className={s.ideaCtxText}>{context}</p>
-            : <textarea className={s.ideaEdit} data-ctx="true" rows={3} value={context} onChange={(e) => onChange(description, e.target.value)} aria-label="Context" />}
+    <Sheet label="idea" onClose={onClose}>
+      {locked && (
+        <div className={pv.sheetHead}>
+          <span className={pv.kicker}>Published · as it landed in their inbox</span>
         </div>
       )}
+      <IdeaCard {...card} locked={locked} look={look} onLook={(l) => { setLook(l); if (l.title === look.title) onChange(l); }} onTitleDone={() => onTitle(look.title)} />
+      {!locked && <span className={pv.sheetHint}>NextUp sees your changes with your next message.</span>}
     </Sheet>
   );
 }
