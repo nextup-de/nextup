@@ -28,8 +28,8 @@ import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
 import { splitBody } from "@/features/ideas/brief";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
-import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, SCRIPT_FIRST_IMPROVED, SCRIPT_MOVES, scriptRail, scriptStep } from "@/features/ideas/demo-script";
-import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, splitIdea, splitUpdate, topicsOf, whenLabel, type DialKey, type Topic } from "@/features/ideas/raise";
+import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, SCRIPT_MOVES, scriptDials, scriptOverall, scriptRail, scriptStep } from "@/features/ideas/demo-script";
+import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, splitIdea, splitUpdate, topicsOf, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
@@ -530,7 +530,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   ) : null;
 
   // The conversation without the first message - that is the idea, shown in the Idea view.
-  const advice = adviceOf(overall, threshold, team || "your team");
+  const advice = adviceOf(story && scriptAt >= 1 ? scriptOverall(scriptAt - 1) : overall, threshold, team || "your team");
   // Under the latest reply: the five dials as bars and words (the numbers stay in the full analysis), and the
   // point still unclear. Under an earlier one: what it asked, ticked once that is clear.
   // What the latest answer moved: the conversation read up to it, against the one up to the answer before.
@@ -538,7 +538,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const readAt = (n: number) => dialsOf(scoreDraft({ turns: turns.slice(0, n), affected, attachments: myFiles.length }, benchCtx).parts);
   // In the demo script each answer moves a prepared one to three dials (SCRIPT_MOVES), so the card never says nothing changed.
   const moved = lastSaid <= firstIdx ? {} : scriptAt >= 2 && SCRIPT_MOVES[scriptAt - 1] ? SCRIPT_MOVES[scriptAt - 1] : dialsMoved(readAt(lastSaid), readAt(lastSaid + 1));
-  const read: Read = { dials: dialsOf(parts), moved, open: published ? [] : unclear };
+  const scripted0 = (d: Dial[], answers: number) => (story && scriptAt >= 1 ? scriptDials(answers, d) : d); // the demo script reads the five checks its own way
+  const read: Read = { dials: scripted0(dialsOf(parts), scriptAt - 1), moved, open: published ? [] : unclear };
   const msgs: ChatMsg[] = turns.flatMap((t, i): ChatMsg[] => {
     if (i === firstIdx) return [];
     if (t.role === "user") { const u = splitUpdate(t.text); return [{ id: t.id, role: "user", text: u.said, note: u.updated ? "Idea changes shared with NextUp" : null }]; }
@@ -657,17 +658,17 @@ function RaisePage({ script = false }: { script?: boolean }) {
     cases: S.cases, promiseDays: seed.promiseDays, spendLimitEur: SPEND_LIMIT_EUR,
   });
   const summaryOf = (text: string) => ((x) => (x.length > 320 ? x.slice(0, 320).replace(/\s+\S*$/, "") + "…" : x))(text.replace(/\s+/g, " ").trim()) || "Nothing to summarise yet.";
-  const analysis: AnalysisData = { dials: dialsOf(parts), company, summary: summaryOf(idea.text || ""), advice, pattern, cats, similar: sims, reviewers, sources };
+  const analysis: AnalysisData = { dials: scripted0(dialsOf(parts), scriptAt - 1), company, summary: summaryOf(idea.text || ""), advice, pattern, cats, similar: sims, reviewers, sources };
   // NextUp's first reply stands under the full analysis: as the idea reads now while that reply is the latest,
   // after that as its first message was read - the scores it was answered with, not today's.
   const firstAi = turns[firstIdx + 1]?.role === "assistant" ? turns[firstIdx + 1].id : null;
   const firstRead: AnalysisData = !firstAi || firstAi === lastAi ? analysis : (() => {
     const b = scoreDraft({ turns: turns.slice(0, firstIdx + 1), affected, attachments: myFiles.length }, benchCtx);
-    return { ...analysis, dials: dialsOf(b.parts), advice: adviceOf(b.overall, threshold, team || "your team"), summary: summaryOf(ideaFromTurns(turns.slice(0, firstIdx + 1)).text) };
+    return { ...analysis, dials: scripted0(dialsOf(b.parts), 0), advice: adviceOf(story ? scriptOverall(0) : b.overall, threshold, team || "your team"), summary: summaryOf(ideaFromTurns(turns.slice(0, firstIdx + 1)).text) };
   })();
   // The first feedback marks the checks that came out better than the idea as written (before its affected people and
-  // files counted): at most three. In the demo script they are prepared (SCRIPT_FIRST_IMPROVED).
-  const improved: DialKey[] = !firstAi ? [] : story ? SCRIPT_FIRST_IMPROVED : (() => {
+  // files counted): at most three. The demo script shows none: its first look is the low one.
+  const improved: DialKey[] = !firstAi || story ? [] : (() => {
     const asWritten = dialsOf(scoreDraft({ turns: turns.slice(0, firstIdx + 1), affected: [], attachments: 0 }, benchCtx).parts);
     return firstRead.dials.filter((d) => d.scored).map((d) => ({ key: d.key, gain: d.value - (asWritten.find((b) => b.key === d.key)?.value ?? d.value) }))
       .filter((x) => x.gain > 0).sort((a, b) => b.gain - a.gain).slice(0, 3).map((x) => x.key);

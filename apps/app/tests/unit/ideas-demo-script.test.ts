@@ -6,7 +6,7 @@ import { reduce } from "@/features/cases/reducer";
 import { STATIC_DEMO_SEED } from "@/features/demo/static-demo";
 import { GOALS } from "@/features/evaluate";
 import { DEFAULT_PUBLISH_THRESHOLD, type BenchmarkContext } from "@/features/ideas/benchmarks";
-import { DEMO_IDEA, DEMO_SCRIPT, DEMO_TOPICS, SCRIPT_MOVES, scriptRail, scriptReply, scriptStep } from "@/features/ideas/demo-script";
+import { DEMO_IDEA, DEMO_SCRIPT, DEMO_TOPICS, SCRIPT_MOVES, scriptDials, scriptRail, scriptReply, scriptStep } from "@/features/ideas/demo-script";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
 import { IDEA_UPDATE } from "@/features/ideas/raise";
 
@@ -49,11 +49,11 @@ describe("prepared replies", () => {
 });
 
 describe("the rail", () => {
-  it("has the eight topics, each answer clears the next one, and the last answer clears them all", () => {
-    expect(DEMO_TOPICS).toHaveLength(8);
+  it("has the three topics, each answer clears the next one, and the last answer clears them all", () => {
+    expect(DEMO_TOPICS).toHaveLength(3);
     expect(DEMO_SCRIPT).toHaveLength(DEMO_TOPICS.length + 1);
-    expect(scriptRail(1).map((t) => t.status)).toEqual(["active", "open", "open", "open", "open", "open", "open", "open"]);
-    expect(scriptRail(4).map((t) => t.status)).toEqual(["clear", "clear", "clear", "active", "open", "open", "open", "open"]);
+    expect(scriptRail(1).map((t) => t.status)).toEqual(["active", "open", "open"]);
+    expect(scriptRail(2).map((t) => t.status)).toEqual(["clear", "active", "open"]);
     expect(scriptRail(DEMO_SCRIPT.length).every((t) => t.status === "clear")).toBe(true);
   });
   it("the first reply names every topic, each later one asks the next topic's question, the last says it is ready", () => {
@@ -78,9 +78,6 @@ describe("what the script's answers give the benchmark", () => {
       expect(after(n).parts[0].found.join(" ")).not.toMatch(/^Serves/);
     }
   });
-  it("the cost answer stays within team authority", () => {
-    expect(after(END).parts.flatMap((p) => p.found)).toContain("Within team authority (≤ €5,000)");
-  });
 });
 
 describe("what each scripted answer moves", () => {
@@ -91,5 +88,21 @@ describe("what each scripted answer moves", () => {
       expect(n).toBeGreaterThanOrEqual(1);
       expect(n).toBeLessThanOrEqual(3);
     }
+  });
+});
+
+describe("how the demo reads the five checks", () => {
+  const raw = (["value", "feas", "cost", "fit", "risk"] as const).map((key) => ({ key, label: key, value: 100, note: "", basis: "", scored: false }));
+  const at = (k: number) => Object.fromEntries(scriptDials(k, raw).map((d) => [d.key, d.value]));
+  it("starts very low and moves only the dials each answer is scripted to move", () => {
+    expect(Math.max(...Object.values(at(0)))).toBeLessThanOrEqual(30);
+    SCRIPT_MOVES.forEach((moves, k) => {
+      if (k === 0) return;
+      const before = at(k - 1), now = at(k);
+      for (const key of Object.keys(now)) expect(now[key] > before[key]).toBe(key in moves);
+    });
+  });
+  it("keeps the last reading for any later step", () => {
+    expect(at(9)).toEqual(at(DEMO_SCRIPT.length - 1));
   });
 });
