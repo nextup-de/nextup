@@ -40,7 +40,7 @@ import { useIdeaStudio } from "@/lib/use-idea-studio";
 import { useKept } from "@/lib/use-kept";
 import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
-import { RaiseMenu, type MenuView } from "./RaiseMenu";
+import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
 import { PromptBody, PromptTray, type BodyFocus } from "./RaisePrompts";
 import { EMPTY_BODY, insertBlock, segsContext, splitSegs, type Caret, type Seg } from "@/features/ideas/prompts";
 import { ReceiverDialog, type Work } from "./RaisePublish";
@@ -60,7 +60,7 @@ function Sync({ run }: { run: () => void }) { useEffect(run); return null; }
 
 const MIN_EXCHANGES = FILLED_ANSWERS + 1; // the author's messages (the idea, then answers) before it can be published
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
-type Menu = { at: "start" | "chat" | "card"; view: MenuView } | null;
+type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null;
 
 // The screens of an open idea, as the URL names them (`?idea=<draft id>&view=…`, no view = the chat). The URL
 // is the source of truth for which idea and which screen are open, so the browser's back and forward walk
@@ -600,7 +600,9 @@ function RaisePage({ script = false }: { script?: boolean }) {
         <RaiseComposer value={text} onChange={setText} onSubmit={send} fieldRef={chatField} sendLabel="Send"
           placeholder={ask ?? (published ? "Add a follow-up — it goes to Overview" : turns.length ? "Answer, or add more detail…" : "Describe the problem or idea…")}
           canSend={!!text.trim() && !sending} chips={[]} strip={false}
-          menuOpen={menu?.at === "chat"} onMenu={() => toggleMenu("chat")} menu={menuFor("chat")} onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
+          actions={<RaiseActions rows={actionsOf(extras, myFiles.length, affected.length)} open={menu?.at === "add" ? menu.view : null}
+            onOpen={(v) => setMenu((m) => (m?.at === "add" && m.view === v ? null : { at: "add", view: v }))} menu={menuFor("add")} onAddFiles={addFiles} />}
+          onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       </div>
     </div>
   );

@@ -20,7 +20,7 @@ const speechCtor = (): RecognitionCtor | null => {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 };
 
-export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend, sendLabel, fieldRef, chips, strip, menuOpen, onMenu, menu, onUnsupported, fill, body, tray }: {
+export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend, sendLabel, fieldRef, chips, strip, menuOpen, onMenu, menu, onUnsupported, fill, body, tray, actions }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
@@ -37,6 +37,7 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
   fill?: { label: string; text: string } | null;
   body?: React.ReactNode; // under the field, scrolling with it: the start page's text and blocks (RaisePrompts.tsx)
   tray?: React.ReactNode; // tucked under the card: the start page's mini bar
+  actions?: React.ReactNode; // the chat's row of add-ons along the bottom edge (RaiseActions)
 }) {
   const [dictating, setDictating] = useState(false);
   const rec = useRef<Recognition | null>(null);
@@ -106,7 +107,7 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
                 </span>
               ))}
             </div>
-          ) : <div className={s.spacer} />}
+          ) : actions ? <div className={s.actionsRow}>{actions}</div> : <div className={s.spacer} />}
         </div>
       </div>
       {tray}
