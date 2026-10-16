@@ -118,10 +118,12 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await card.getByRole("link", { name: /Full history/ }).click();
     await expect(page.getByRole("note", { name: "Archived" })).toContainText(/Accepted today by T\. Vogel → P-\d+/);
 
+    // The page shows the projects beside the ideas: the new project carries the title, the open ideas no longer do.
     await page.goto("/acme/overview");
-    await expect(page.getByRole("main").getByText(TITLE)).toHaveCount(0);
+    const ideas = page.getByRole("region", { name: "Ideas" });
+    await expect(ideas.getByText(TITLE)).toHaveCount(0);
     await page.getByRole("tab", { name: /Archive/ }).click();
     await page.getByRole("button", { name: /Became a project/ }).click();
-    await expect(page.getByRole("main").getByText(TITLE)).toBeVisible();
+    await expect(ideas.getByText(TITLE)).toBeVisible();
   });
 });
