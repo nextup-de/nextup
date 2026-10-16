@@ -49,6 +49,9 @@
 
 .content { flex: 1; padding: 20px var(--nh-page-x) 40px; overflow-x: clip; } /* decorative glows (the raise aura) may reach into the gutter, never past the screen edge */
 .contentInner { max-width: var(--nh-max); margin: 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+/* A page that marks itself data-wide (the projects, their boards) uses the width of the screen. */
+.contentInner:has([data-wide="true"]) { --nh-max: var(--nh-max-wide); }
+@media (min-width: 1101px) { .content:has([data-wide="true"]) { --nh-page-x: 32px; } }
 
 .backdrop { position: fixed; inset: 0; z-index: 10; } /* below .bar (z 20): the sticky bar is its own stacking context, so a higher backdrop would cover the popover */
 .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 87; max-width: min(92vw, 560px); padding: 11px 16px; border-radius: var(--radius-sm, 12px); background: var(--nh-dark); color: var(--nh-on-dark); font-size: var(--nh-fs-sm); line-height: 1.45; box-shadow: 0 14px 40px rgba(20, 20, 20, 0.25); } /* z 87: over the inbox's full-screen phone view (85) */

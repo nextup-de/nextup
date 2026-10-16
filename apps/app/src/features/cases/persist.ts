@@ -75,7 +75,7 @@ export const APP_EVENT_TYPES = [
   // The discussion stage and projects (docs/plans/2026-10-15_idea-to-project.md), each behind its flag.
   "case.discussion", "case.invited", "case.revised", "case.checkin",
   "project.member", "project.handed", "project.baseline", "project.started", "project.step.added", "project.step.moved",
-  "project.linked", "project.commented", "project.done", "project.measured", "project.rewarded", "project.claimed", "project.stopped",
+  "project.step.edited", "project.linked", "project.commented", "project.done", "project.measured", "project.rewarded", "project.claimed", "project.stopped",
   "day.advanced",
 ] as const;
 

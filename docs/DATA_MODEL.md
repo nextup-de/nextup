@@ -44,8 +44,11 @@ After the routing (docs/plans/2026-10-15_idea-to-project.md, 15 Oct 2026), in th
 - **Projects**: a `case.decided {answer: "yes", projectId, lead, title}` opens the project, or adds the
   idea to it when it is already open; the idea is archived from then on. Then `project.member`,
   `project.handed`, `project.baseline`, `project.started`, `project.step.added`, `project.step.moved`,
-  `project.linked`, `project.commented`, `project.done`, `project.measured`, `project.rewarded`,
-  `project.claimed` and `project.stopped`, with the project id as the target. There is no project table:
+  `project.step.edited`, `project.linked`, `project.commented`, `project.done`, `project.measured`,
+  `project.rewarded`, `project.claimed` and `project.stopped`, with the project id as the target. The
+  board is a Kanban: `project.step.added {to?}` starts a step in To do, Doing or Done; `project.step.moved
+  {before?}` puts it above another card (the steps' order is the board's order); `project.step.edited
+  {text?, owner?, dueDay?, note?, removed?}` changes only the fields it sends. There is no project table:
   `reduce()` returns `projects` (`src/features/projects`), and the verdict of a measure is computed
   (`verdict.ts`), never sent. The company's rhythm, measure days and reward rule are `CompanyConfig`
   fields, read into `Seed.loop` (`src/features/loop/rules.ts`).

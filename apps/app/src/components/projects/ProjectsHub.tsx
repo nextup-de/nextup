@@ -25,7 +25,7 @@ export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases
   return (
     <>
       {on && (
-        <header className={styles.head}>
+        <header className={styles.head} data-wide="true">
           <h1 className={styles.title}>Projects</h1>
           <p className={styles.sub}>
             {role === "member"

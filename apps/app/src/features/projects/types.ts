@@ -14,9 +14,14 @@ export type Step = {
   column: StepColumn;
   /** Why it moved last (a blocked step says what blocks it). */
   why: string;
+  /** The card's details: what "done" means, where to look. Empty when nobody wrote any. */
+  note: string;
   addedDay: number;
   by: string;
   movedDay: number;
+  /** When it first went to Doing, and when it last reached Done (null until then): the step's cycle time. */
+  startedDay: number | null;
+  doneDay: number | null;
   external: { system: string; key: string; url?: string } | null;
 };
 
