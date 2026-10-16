@@ -6,7 +6,7 @@
 // one by one, then the rest of the conversation in one go. The replies carry no numbers: the scores stay
 // on the side (the analysis), computed by the benchmark as for any idea. Pure.
 import { stripTags } from "@/features/assist/check";
-import { splitUpdate, type Topic } from "./raise";
+import { splitUpdate, type DialKey, type Move, type Topic } from "./raise";
 
 type Turn = { role: "user" | "assistant"; text: string };
 export type ScriptStep = { label: string; say: string; reply: string };
@@ -104,6 +104,21 @@ export const DEMO_SCRIPT: readonly ScriptStep[] = [
     reply: "That makes it easy to decide: a four-week pilot at one station, a cost the team can approve, an owner for every problem type and a clear bar for rolling it out.\n\n" +
       "Everything on the right is answered. Publish it, and NextUp sends it to the person who can decide, with this analysis attached.",
   },
+];
+
+// What each answer moves, for the chat's AI analysis card under the coach's reply: one to three dials per
+// step, so the card always shows something changed. Indexed like DEMO_SCRIPT (the idea itself, step 0,
+// shows all the dials). The word on each dial and its reason still come from the real benchmark.
+export const SCRIPT_MOVES: readonly Partial<Record<DialKey, Move>>[] = [
+  {},
+  { value: "up" }, // the handoff at shift change is the problem; the first reading has no fit evidence yet
+  { value: "up", cost: "up" }, // 4 h a week gives a baseline
+  { fit: "up", risk: "up" }, // an owner per problem type
+  { feas: "up", fit: "up" }, // no existing tool does it
+  { feas: "up" }, // three taps, under 30 seconds
+  { cost: "up", feas: "up" }, // one tablet, two days of setup
+  { risk: "up" }, // escalation rule and a fallback
+  { value: "up", fit: "up", risk: "up" }, // a four-week pilot with a clear bar
 ];
 
 // The answers the demo controls fill one by one; the rest of the conversation comes in one go after them.

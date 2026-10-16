@@ -6,7 +6,7 @@ import { reduce } from "@/features/cases/reducer";
 import { STATIC_DEMO_SEED } from "@/features/demo/static-demo";
 import { GOALS } from "@/features/evaluate";
 import { DEFAULT_PUBLISH_THRESHOLD, type BenchmarkContext } from "@/features/ideas/benchmarks";
-import { DEMO_IDEA, DEMO_SCRIPT, DEMO_TOPICS, scriptRail, scriptReply, scriptStep } from "@/features/ideas/demo-script";
+import { DEMO_IDEA, DEMO_SCRIPT, DEMO_TOPICS, SCRIPT_MOVES, scriptRail, scriptReply, scriptStep } from "@/features/ideas/demo-script";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
 import { IDEA_UPDATE } from "@/features/ideas/raise";
 
@@ -80,5 +80,16 @@ describe("what the script's answers give the benchmark", () => {
   });
   it("the cost answer stays within team authority", () => {
     expect(after(END).parts.flatMap((p) => p.found)).toContain("Within team authority (≤ €5,000)");
+  });
+});
+
+describe("what each scripted answer moves", () => {
+  it("has one entry per step, and every answer moves one to three dials", () => {
+    expect(SCRIPT_MOVES).toHaveLength(DEMO_SCRIPT.length);
+    for (const moves of SCRIPT_MOVES.slice(1)) {
+      const n = Object.keys(moves).length;
+      expect(n).toBeGreaterThanOrEqual(1);
+      expect(n).toBeLessThanOrEqual(3);
+    }
   });
 });

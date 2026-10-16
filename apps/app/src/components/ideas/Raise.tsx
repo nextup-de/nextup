@@ -28,7 +28,7 @@ import { ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
 import { splitBody } from "@/features/ideas/brief";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
-import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, scriptRail, scriptStep } from "@/features/ideas/demo-script";
+import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, SCRIPT_MOVES, scriptRail, scriptStep } from "@/features/ideas/demo-script";
 import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, splitIdea, splitUpdate, topicsOf, whenLabel, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
@@ -515,8 +515,9 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // What the latest answer moved: the conversation read up to it, against the one up to the answer before.
   const lastSaid = turns.map((t) => t.role).lastIndexOf("user");
   const readAt = (n: number) => dialsOf(scoreDraft({ turns: turns.slice(0, n), affected, attachments: myFiles.length }, benchCtx).parts);
-  const moved = lastSaid > firstIdx ? dialsMoved(readAt(lastSaid), readAt(lastSaid + 1)) : {};
-  const read: Read = { dials: dialsOf(parts), advice, moved, open: published ? [] : unclear };
+  // In the demo script each answer moves a prepared one to three dials (SCRIPT_MOVES), so the card never says nothing changed.
+  const moved = lastSaid <= firstIdx ? {} : scriptAt >= 2 && SCRIPT_MOVES[scriptAt - 1] ? SCRIPT_MOVES[scriptAt - 1] : dialsMoved(readAt(lastSaid), readAt(lastSaid + 1));
+  const read: Read = { dials: dialsOf(parts), moved, open: published ? [] : unclear };
   const msgs: ChatMsg[] = turns.flatMap((t, i): ChatMsg[] => {
     if (i === firstIdx) return [];
     if (t.role === "user") { const u = splitUpdate(t.text); return [{ id: t.id, role: "user", text: u.said, note: u.updated ? "Idea changes shared with NextUp" : null }]; }

@@ -7,15 +7,15 @@
 // full analysis, opened from here), then the one point still unclear. Props in, JSX out.
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { levelOf, type Advice, type Dial, type DialKey, type Move, type Topic } from "@/features/ideas/raise";
+import { levelOf, type Dial, type DialKey, type Move, type Topic } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
 import { Analysis, type AnalysisData } from "./RaiseSheets";
 import { Evaluating } from "./RaiseStart";
 import s from "./Raise.module.css";
 
-// `read`: the five dials as they stand after this reply, and the advice. `moved`: the dials the answer before
+// `read`: the five dials as they stand after this reply. `moved`: the dials the answer before
 // it moved - the only ones shown. `open`: the point still unclear - one at most.
-export type Read = { dials: Dial[]; advice: Advice; moved: Partial<Record<DialKey, Move>>; open: Topic[] };
+export type Read = { dials: Dial[]; moved: Partial<Record<DialKey, Move>>; open: Topic[] };
 // `idea`: the first message - the idea as asked, its title, what was written under it and its details
 // (affected, files, receiver, colleagues, meeting).
 // `full`: NextUp's first reply - the full analysis stands above it, in place of the short read.
@@ -89,7 +89,7 @@ export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalys
 }
 
 // What the answer changed: the dials it moved, each as a bar, an arrow, one word and its reason (as many as
-// moved - none, a line saying so), the advice under them, and the way into the full analysis.
+// moved - none, a line saying so) and the way into the full analysis.
 function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
   const rows = r.dials.filter((d) => r.moved[d.key]);
   return (
@@ -97,7 +97,6 @@ function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
       <div className={s.readHead}>
         <Solid name="sparkle" size={11.25} fill="#007aff" />
         <span className={s.readTitle}>AI analysis</span>
-        <span className={s.readAdvice} data-advice={r.advice.name === "Approve" ? "go" : r.advice.name === "Pilot" ? "pilot" : "info"}>{r.advice.name}</span>
       </div>
       {rows.length ? (
         <div className={s.readRows}>
@@ -114,7 +113,6 @@ function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
         </div>
       ) : <p className={s.readSame}>This answer did not move the scores.</p>}
       <div className={s.readFoot}>
-        <p className={s.readWhy}>{r.advice.why}</p>
         <button type="button" className={s.readMore} onClick={onAnalysis}>View full analysis<Icon name="right" size={9.75} width={2.6} /></button>
       </div>
     </div>
