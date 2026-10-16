@@ -106,6 +106,9 @@ export const DEMO_SCRIPT: readonly ScriptStep[] = [
   },
 ];
 
+// The three checks the first feedback marks as improved (the ▲ on its gauges), of the five.
+export const SCRIPT_FIRST_IMPROVED: DialKey[] = ["value", "feas", "risk"];
+
 // What each answer moves, for the chat's AI analysis card under the coach's reply: one to three dials per
 // step, so the card always shows something changed. Indexed like DEMO_SCRIPT (the idea itself, step 0,
 // shows all the dials). The word on each dial and its reason still come from the real benchmark.

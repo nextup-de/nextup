@@ -28,8 +28,8 @@ import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
 import { splitBody } from "@/features/ideas/brief";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
-import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, SCRIPT_MOVES, scriptRail, scriptStep } from "@/features/ideas/demo-script";
-import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, splitIdea, splitUpdate, topicsOf, whenLabel, type Topic } from "@/features/ideas/raise";
+import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, SCRIPT_FIRST_IMPROVED, SCRIPT_MOVES, scriptRail, scriptStep } from "@/features/ideas/demo-script";
+import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, splitIdea, splitUpdate, topicsOf, whenLabel, type DialKey, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
@@ -665,7 +665,14 @@ function RaisePage({ script = false }: { script?: boolean }) {
     const b = scoreDraft({ turns: turns.slice(0, firstIdx + 1), affected, attachments: myFiles.length }, benchCtx);
     return { ...analysis, dials: dialsOf(b.parts), advice: adviceOf(b.overall, threshold, team || "your team"), summary: summaryOf(ideaFromTurns(turns.slice(0, firstIdx + 1)).text) };
   })();
-  const thread = msgs.map((m) => (m.id === firstAi ? { ...m, full: firstRead } : m));
+  // The first feedback marks the checks that came out better than the idea as written (before its affected people and
+  // files counted): at most three. In the demo script they are prepared (SCRIPT_FIRST_IMPROVED).
+  const improved: DialKey[] = !firstAi ? [] : story ? SCRIPT_FIRST_IMPROVED : (() => {
+    const asWritten = dialsOf(scoreDraft({ turns: turns.slice(0, firstIdx + 1), affected: [], attachments: 0 }, benchCtx).parts);
+    return firstRead.dials.filter((d) => d.scored).map((d) => ({ key: d.key, gain: d.value - (asWritten.find((b) => b.key === d.key)?.value ?? d.value) }))
+      .filter((x) => x.gain > 0).sort((a, b) => b.gain - a.gain).slice(0, 3).map((x) => x.key);
+  })();
+  const thread = msgs.map((m) => (m.id === firstAi ? { ...m, full: { ...firstRead, improved } } : m));
 
   const dials = analysis.dials;
   const finalDoc = ideaDoc({

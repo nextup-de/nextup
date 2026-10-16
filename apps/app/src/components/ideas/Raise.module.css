@@ -470,6 +470,9 @@ a.quickBtn { text-decoration: none; }
 .dial { position: relative; height: min(142.5px, calc((100cqw - 30px) / 5)); align-self: start; min-height: 0; container-type: size; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4.5px; background: #f7f7f9; border-radius: var(--radius-sm, 13.5px); transition: background-color 200ms ease; }
 .dial[data-open="true"] { background: #eef3fb; }
 .dialLabel { font-size: var(--nh-fs-sm); font-weight: 600; color: #3a3a3c; white-space: nowrap; }
+.dialUp { margin-left: 4px; font-size: 0.7em; color: #1f7a3a; }
+.dialsGain { margin: 9px 0 0; font-size: var(--nh-fs-xs); color: #6e6e73; }
+.dialsGain b { font-weight: 600; color: #1f7a3a; }
 .gauge { position: relative; width: 62cqmin; height: 62cqmin; }
 .gauge > svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(135deg); }
 .arc { transition: stroke-dasharray 700ms cubic-bezier(.2,.8,.2,1); }
