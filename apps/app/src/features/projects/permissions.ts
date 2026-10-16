@@ -14,6 +14,8 @@ const text = (v: unknown, max = 2000): v is string => typeof v === "string" && v
 // connectors' allow-list, features/integrations).
 const webUrl = (v: unknown): v is string => typeof v === "string" && v.length <= 1000 && /^https?:\/\/\S+$/i.test(v);
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
+/** The columns a new step may start in: Blocked needs its reason, so a step only moves there. */
+const STARTS: readonly string[] = ["todo", "doing", "done"];
 
 /** Ids a client mints for a project or a step (features/cases/events newId). */
 export const isProjectId = (v: unknown): v is string => typeof v === "string" && ID.test(v);
@@ -58,13 +60,30 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!onTeam) return no("Only the project's team can add steps.");
       if (!live) return no("This project is closed.");
       if (!isProjectId(pl.stepId) || p.steps.some((s) => s.id === pl.stepId)) return no("That step id is not usable.");
+      if (pl.to !== undefined && !(typeof pl.to === "string" && STARTS.includes(pl.to))) return no("A new step starts in To do, Doing or Done.");
+      if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("The details are too long.");
       return text(pl.text, 500) ? OK : no("A step needs some text.");
 
     case "project.step.moved": {
       const step = p.steps.find((s) => s.id === pl.stepId);
       if (!step) return no("No such step.");
-      if (!(isLead || isMe(step.owner))) return no("Only the step's owner or the project's lead can move it.");
+      // An unowned step is the team's: anyone on it may pick it up and move it.
+      if (!(isLead || isMe(step.owner) || (step.owner === null && onTeam))) return no("Only the step's owner or the project's lead can move it.");
+      if (pl.before != null && !p.steps.some((s) => s.id === pl.before)) return no("No such step to put it above.");
       return typeof pl.to === "string" && (STEP_COLUMNS as readonly string[]).includes(pl.to) ? OK : no("Move it where?");
+    }
+
+    case "project.step.edited": {
+      const step = p.steps.find((s) => s.id === pl.stepId);
+      if (!step) return no("No such step.");
+      if (!onTeam) return no("Only the project's team can change steps.");
+      if (!live) return no("This project is closed.");
+      if (pl.removed) return isLead || isMe(step.by) ? OK : no("Only the project's lead or whoever added the step can remove it.");
+      if (pl.text !== undefined && !text(pl.text, 500)) return no("A step needs some text.");
+      if (pl.owner !== undefined && !(typeof pl.owner === "string" && pl.owner.length <= 120)) return no("Who owns it?");
+      if (pl.dueDay !== undefined && pl.dueDay !== null && !(typeof pl.dueDay === "number" && Number.isFinite(pl.dueDay))) return no("When is it due?");
+      if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("The details are too long.");
+      return OK;
     }
 
     case "project.linked":

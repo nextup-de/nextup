@@ -24,7 +24,7 @@ import { newId } from "@/features/cases/events";
 import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
-import { ideaDoc } from "@/features/ideas/finalize";
+import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
 import { splitBody } from "@/features/ideas/brief";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
@@ -35,6 +35,7 @@ import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
 import { SPEND_LIMIT_EUR } from "@/features/ideas/drafts";
 import { saveShots, shrinkImage } from "@/lib/shots";
+import { saveRaised } from "@/lib/raised";
 import { brainProposalAction } from "@/server/actions/brain";
 import { useIdeaStudio } from "@/lib/use-idea-studio";
 import { useKept } from "@/lib/use-kept";
@@ -42,7 +43,7 @@ import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
 import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
 import { PromptBody, PromptTray, type BodyFocus } from "./RaisePrompts";
-import { EMPTY_BODY, insertBlock, segsContext, splitSegs, type Caret, type Seg } from "@/features/ideas/prompts";
+import { EMPTY_BODY, insertBlock, promptContext, segsContext, splitPrompts, splitSegs, type Caret, type Seg } from "@/features/ideas/prompts";
 import { ReceiverDialog, type Work } from "./RaisePublish";
 import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
 import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
@@ -60,7 +61,8 @@ function Sync({ run }: { run: () => void }) { useEffect(run); return null; }
 
 const MIN_EXCHANGES = FILLED_ANSWERS + 1; // the author's messages (the idea, then answers) before it can be published
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
-type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null;
+const sizeOf = (bytes: number) => (bytes > 1e6 ? (bytes / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(bytes / 1e3)) + " KB");
+type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null; // "add": under a start-page action button
 
 // The screens of an open idea, as the URL names them (`?idea=<draft id>&view=…`, no view = the chat). The URL
 // is the source of truth for which idea and which screen are open, so the browser's back and forward walk
@@ -427,6 +429,10 @@ function RaisePage({ script = false }: { script?: boolean }) {
     const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     const body = mine ? bodyOf(mine) : made.body;
     await step(setPubWork, "Raising the case for " + to.name + "…", "composing", () => act.raise({ ...e.payload, title, body, upside: made.upside, assignee: to.name, routeId: to.routeId ?? e.payload.routeId }, caseId), 600);
+    // Everything the raise page worked out goes with the case: the document, the dials, every file (not only the images).
+    saveRaised(tenant.slug, caseId, briefOfDoc({ ...finalDoc, receiver: to.name }, {
+      files: myFiles.map((f) => ({ name: f.name, size: f.file.size ? sizeOf(f.file.size) : "" })), affected, categories: cats, receiverRole: to.role, depts: seed.depts, people: seed.people,
+    }));
     const images = myFiles.filter((f) => f.img).slice(0, MAX_SHOTS);
     if (images.length) {
       const kept = await step(setPubWork, "Saving the screenshots…", "working", async () => {
@@ -481,6 +487,21 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const editIdea = (description: string, context: string) => {
     if (!draft) return;
     preview.edit(draft.id, { orig: current, text: description + (context.trim() ? "\n\n" + context : "") });
+  };
+  // The Idea view shows the idea as the last look does (IdeaCard.tsx): its "*Label*" and "Impact:" lines
+  // as rows, the start page's receiver, colleague and meeting lines left out (the card has those as
+  // fields) but kept in the text, so the coach still reads them.
+  const EXTRA_LINE = /^(Suggested receiver|Colleagues who know|I’d like a)/;
+  const ctxLines = shown.context.split("\n");
+  const extraLines = ctxLines.filter((l) => EXTRA_LINE.test(l.trim()));
+  const ideaParts = splitPrompts(ctxLines.filter((l) => !EXTRA_LINE.test(l.trim())).join("\n"));
+  const ideaLook: Look = { title: draft?.title || idea.title, description: shown.description, context: ideaParts.free, prompts: ideaParts.rows };
+  const editLook = (l: Look) => editIdea(l.description, [promptContext(l.context, l.prompts), extraLines.join("\n")].filter(Boolean).join("\n"));
+  const cardProps = {
+    author: who.name, meet: extras.meet, onMeet: (meet: typeof extras.meet) => preview.setExtras(key, { meet }),
+    coll: extras.coll, people: seed.people, onColl: (coll: string[]) => preview.setExtras(key, { coll }),
+    affected, depts: seed.depts.map((d) => d.name), onAffected: setAffected,
+    files: myFiles, onAddFiles: addFiles, onRemoveFile: removeFile,
   };
 
   // ── Derived for the views ───────────────────────────────────────────────────────────────────
@@ -673,7 +694,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   ) : drafting ? (
     <DocLoading />
   ) : shownView === "idea" ? (
-    <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
+    <IdeaSheet key={draft?.id ?? "none"} initial={ideaLook} card={cardProps} locked={published} onChange={editLook}
+      onTitle={(t) => { if (t.trim() && t.trim() !== draft?.title) void studio.save({ title: t.trim() }); }} onClose={() => go("chat")} />
   ) : shownView === "final" && draft ? (
     <RaiseFinal doc={finalDoc} final={finalized} published={published} canSend={canFinalize && !pubStep}
       onSend={sendFinal}

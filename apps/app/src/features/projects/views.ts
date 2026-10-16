@@ -139,6 +139,117 @@ export const safeUrl = (url: string | undefined | null): string | null => (url &
 /** A Jira-style key ("FS-12") says which system a link is in; anything else is a plain address. */
 export const systemOf = (key: string) => (/^[A-Z][A-Z0-9]+-\d+$/.test(key.trim()) ? "jira" : "url");
 
+// ── the tools a project connects to (docs/plans/2026-10-15_idea-to-project.md §6) ──
+
+export type ToolId = "jira" | "azure" | "planner" | "teams" | "sharepoint" | "polarion" | "codebeamer" | "url";
+
+/**
+ * The tools a project can be connected to. "sync": the connector runs through the company's n8n -
+ * new steps go out, status and comments come back (Jira today, docs/INTEGRATIONS.md). "link": the
+ * page keeps the address and the keys; the work itself stays in that tool.
+ */
+export type Tool = { id: ToolId; name: string; short: string; what: string; sync: "sync" | "link"; host: RegExp | null };
+
+export const TOOLS: readonly Tool[] = [
+  { id: "jira", name: "Jira", short: "JI", what: "An epic for the project, an issue per step. Status and comments come back.", sync: "sync", host: /atlassian\.net$|(^|\.)jira\./i },
+  { id: "azure", name: "Azure DevOps", short: "AZ", what: "Work items for the steps, under one feature.", sync: "link", host: /(^|\.)dev\.azure\.com$|visualstudio\.com$/i },
+  { id: "planner", name: "Microsoft Planner", short: "PL", what: "A plan with one task per step.", sync: "link", host: /planner\.cloud\.microsoft$|tasks\.office\.com$/i },
+  { id: "teams", name: "Microsoft Teams", short: "TE", what: "The channel the team talks in.", sync: "link", host: /teams\.microsoft\.com$|teams\.live\.com$/i },
+  { id: "sharepoint", name: "SharePoint", short: "SP", what: "The folder the files and drawings live in.", sync: "link", host: /sharepoint\.com$|onedrive\.live\.com$/i },
+  { id: "polarion", name: "Polarion", short: "PO", what: "Requirements and test runs.", sync: "link", host: /polarion/i },
+  { id: "codebeamer", name: "codebeamer", short: "CB", what: "Requirements and test runs.", sync: "link", host: /codebeamer/i },
+];
+
+const OTHER: Tool = { id: "url", name: "Other links", short: "↗", what: "Any other page.", sync: "link", host: null };
+
+export const toolOf = (id: string): Tool => TOOLS.find((t) => t.id === id) ?? OTHER;
+
+/** Which tool a link is in: its address first (dev.azure.com, *.sharepoint.com), then a Jira-style key. */
+export function systemFrom(url: string, key = ""): ToolId {
+  const host = url.trim().replace(/^https?:\/\//i, "").split(/[/?#]/)[0] ?? "";
+  const byHost = host ? TOOLS.find((t) => t.host?.test(host)) : undefined;
+  if (byHost) return byHost.id;
+  return key.trim() && systemOf(key) === "jira" ? "jira" : "url";
+}
+
+export type ToolLink = { url: string | null; key: string; stepId: string | null; day: number };
+export type Connection = { tool: Tool; links: ToolLink[]; steps: number };
+
+/** Per tool: the project's links into it and how many steps carry a key there. Connected tools first; "Other links" only when there are some. */
+export function connectionsOf(p: Pick<ReducedProject, "links" | "steps">): Connection[] {
+  const rows = [...TOOLS, OTHER].map((tool): Connection => ({
+    tool,
+    links: p.links.filter((l) => toolOf(l.system).id === tool.id).map((l) => ({ url: safeUrl(l.url), key: l.key, stepId: l.stepId, day: l.day })),
+    steps: p.steps.filter((s) => s.external && toolOf(s.external.system).id === tool.id).length,
+  }));
+  const on = (r: Connection) => r.links.length > 0 || r.steps > 0;
+  return rows.filter((r) => r.tool.id !== "url" || on(r)).sort((a, b) => Number(on(b)) - Number(on(a)));
+}
+
+// ── the board in numbers ──
+
+export type BoardStats = {
+  total: number;
+  by: Record<StepColumn, number>;
+  /** Done of all, 0-100 (0 with no steps). */
+  pct: number;
+  late: number;
+  unowned: number;
+  /** Steps that reached Done in the last 7 days. */
+  doneWeek: number;
+  /** Median days from Doing to Done, over the done steps that went through Doing. */
+  cycleDays: number | null;
+  /** The started step that has sat longest in its column (Doing or Blocked). */
+  stalest: { step: Step; days: number } | null;
+};
+
+export function boardStats(p: Pick<ReducedProject, "steps">, day: number): BoardStats {
+  const by: Record<StepColumn, number> = { todo: 0, doing: 0, blocked: 0, done: 0 };
+  for (const s of p.steps) by[s.column]++;
+  const open = p.steps.filter((s) => s.column !== "done");
+  const cycles = p.steps
+    .filter((s) => s.column === "done" && s.startedDay !== null && s.doneDay !== null)
+    .map((s) => (s.doneDay as number) - (s.startedDay as number));
+  let stalest: BoardStats["stalest"] = null;
+  for (const s of open) {
+    if (s.column === "todo") continue;
+    const days = day - s.movedDay;
+    if (!stalest || days > stalest.days) stalest = { step: s, days };
+  }
+  return {
+    total: p.steps.length, by,
+    pct: p.steps.length ? Math.round((by.done / p.steps.length) * 100) : 0,
+    late: open.filter((s) => s.dueDay !== null && day > s.dueDay).length,
+    unowned: open.filter((s) => !s.owner).length,
+    doneWeek: p.steps.filter((s) => s.column === "done" && s.doneDay !== null && day - s.doneDay <= 7).length,
+    cycleDays: median(cycles),
+    stalest,
+  };
+}
+
+// ── the project's life, as the stepper on its page shows it ──
+
+export type Stage = { key: string; label: string; day: number | null; state: "done" | "now" | "next" | "stopped" };
+
+/** Opened, baseline, started, done, measured, recognised: each with its day once reached. A stop ends the line where it happened. */
+export function lifecycle(p: ReducedProject): Stage[] {
+  const measured = p.measures.length ? p.measures[p.measures.length - 1].day : null;
+  const raw: { key: string; label: string; day: number | null }[] = [
+    { key: "opened", label: "Opened", day: p.openedDay },
+    { key: "baseline", label: "Baseline", day: p.baseline?.day ?? null },
+    { key: "started", label: "Started", day: p.startedDay },
+    { key: "done", label: "Done", day: p.doneDay },
+    { key: "measured", label: p.baseline?.none ? "Not measured" : "Measured", day: p.baseline?.none ? p.doneDay : measured },
+    { key: "recognised", label: "Recognised", day: p.reward?.day ?? null },
+  ];
+  const firstOpen = raw.findIndex((r) => r.day === null);
+  return raw.map((r, k): Stage => {
+    if (r.day !== null) return { ...r, state: "done" };
+    if (p.stopped && k === firstOpen) return { key: r.key, label: "Stopped", day: p.stopped.day, state: "stopped" };
+    return { ...r, state: k === firstOpen && !p.stopped ? "now" : "next" };
+  });
+}
+
 // ── numbers ──
 
 /** 11, 2.5, 1,200 - never more than two decimals. */
@@ -236,13 +347,25 @@ export function asInitiatives(list: readonly ReducedProject[], deptOf: (name: st
 
 // ── the timeline ──
 
+/** What a project.step.edited changed, in words. */
+function editedWhat(pl: CaseEvent["payload"]): string {
+  const out: string[] = [];
+  if (pl.text) out.push("renamed it");
+  if (pl.owner !== undefined) out.push(pl.owner ? "gave it to " + pl.owner : "took the owner off");
+  if (pl.dueDay !== undefined) out.push(pl.dueDay === null ? "took the due day off" : "moved the due day");
+  if (pl.note !== undefined) out.push("updated the details");
+  return out.join(", ") || "no change";
+}
+
 export const COLUMN_LABEL: Record<StepColumn, string> = { todo: "To do", doing: "Doing", blocked: "Blocked", done: "Done" };
 
 export type TimelineLine = { id: string; day: number; by: string; text: string };
 
 /** What happened to a project, oldest first, one short line per event. Comments have their own thread, so they are left out. */
 export function timelineOf(p: ReducedProject): TimelineLine[] {
-  const stepText = (id: unknown) => p.steps.find((s) => s.id === id)?.text ?? "a step";
+  // A removed step is off the board, but its text is still in the event that added it.
+  const stepText = (id: unknown) => p.steps.find((s) => s.id === id)?.text
+    ?? p.history.find((e) => e.type === "project.step.added" && e.payload.stepId === id)?.payload.text ?? "a step";
   const line = (ev: CaseEvent): string | null => {
     const pl = ev.payload ?? {};
     switch (ev.type) {
@@ -251,7 +374,8 @@ export function timelineOf(p: ReducedProject): TimelineLine[] {
       case "project.handed": return "handed the lead to " + pl.to + (pl.why ? ": " + pl.why : "");
       case "project.baseline": return pl.none ? "said no number is possible: " + (pl.why ?? "") : "took the baseline: " + fmtNumber(pl.value ?? 0) + (pl.unit ? " " + pl.unit : "") + " " + (pl.metric ?? "") + (pl.source ? " (" + pl.source + ")" : "");
       case "project.started": return "started the project";
-      case "project.step.added": return "added a step: " + (pl.text ?? "");
+      case "project.step.added": return "added a step: " + (pl.text ?? "") + (pl.to && pl.to !== "todo" ? " (in " + (COLUMN_LABEL[pl.to as StepColumn] ?? pl.to) + ")" : "");
+      case "project.step.edited": return pl.removed ? "removed the step “" + stepText(pl.stepId) + "”" : "changed “" + stepText(pl.stepId) + "”: " + editedWhat(pl);
       case "project.step.moved": return "moved “" + stepText(pl.stepId) + "” to " + (COLUMN_LABEL[pl.to as StepColumn] ?? pl.to) + (pl.why ? ": " + pl.why : "");
       case "project.linked": return "linked " + (pl.key || pl.url || "a page");
       case "project.done": return "marked it done" + (pl.note ? ": " + pl.note : "");
@@ -262,7 +386,15 @@ export function timelineOf(p: ReducedProject): TimelineLine[] {
       default: return null;
     }
   };
+  // A move inside one column only changes the order: the timeline leaves it out.
+  const col: Record<string, string> = {};
   return p.history.flatMap((ev) => {
+    const pl = ev.payload ?? {};
+    if (ev.type === "project.step.added" && pl.stepId) col[pl.stepId] = pl.to && pl.to !== "blocked" ? pl.to : "todo";
+    if (ev.type === "project.step.moved" && pl.stepId) {
+      if (col[pl.stepId] === pl.to) return [];
+      col[pl.stepId] = pl.to ?? "";
+    }
     const text = line(ev);
     return text ? [{ id: ev.id, day: ev.day, by: ev.actor, text }] : [];
   });

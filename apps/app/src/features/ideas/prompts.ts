@@ -1,7 +1,8 @@
-// The start composer's blocks (components/ideas/RaisePrompts.tsx): labelled lines - Impact, Who's
-// blocked, ... or a custom label - set into the free text where the caret was. On send they go, in
-// order, as the context after the headline, "*Label* text" per block: the format splitIdea
-// (features/ideas/raise.ts) reads back.
+// Prompt blocks: labelled lines - Impact, Who’s blocked, ... or a custom label. The start composer
+// (components/ideas/RaisePrompts.tsx) sets them into the free text where the caret was, and the Idea view
+// (components/ideas/IdeaCard.tsx) edits them as rows. In the idea's text they are "*Label* text" lines (or
+// "Impact: text" for the presets): the format splitIdea (features/ideas/raise.ts) and the brief read back.
+// On send they go, in order, as the context after the headline.
 
 export type Prompt = { label: string; text: string; custom?: boolean };
 

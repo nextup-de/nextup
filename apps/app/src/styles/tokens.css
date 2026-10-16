@@ -85,6 +85,7 @@
   --nh-pad-card-sm: 18px;  /* inside a side card */
   --nh-page-x: 56px;       /* the page's side gutter: 32px on tablets, 16px on phones (below) */
   --nh-max: 1120px;
+  --nh-max-wide: 1920px; /* work surfaces (the projects and their boards): as wide as the screen allows */
   --nh-bar-h: 46px; /* the simple shell's top bar; pages that fill the screen below it subtract this */
 
   /* The viewport. No page scale (`zoom`): Safari computes zoomed lengths differently from Chrome

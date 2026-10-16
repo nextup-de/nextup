@@ -7,9 +7,9 @@ import { useDemo, type DemoContext } from "@/components/dashboard/DemoProvider";
 import { Pill, type Tone } from "@/components/dashboard/shared/primitives";
 import type { EventPayload } from "@/features/cases/events";
 import { mayAppendProject } from "@/features/projects/permissions";
-import { nextMove, projectLabel } from "@/features/projects/selectors";
+import { board, nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject, Step, VerdictWord } from "@/features/projects/types";
-import { MOVE_LABEL, type Viewer } from "@/features/projects/views";
+import { COLUMN_LABEL, MOVE_LABEL, type Viewer } from "@/features/projects/views";
 import styles from "./Projects.module.css";
 
 export const viewerOf = (ctx: Pick<DemoContext, "role" | "persona">): Viewer =>
@@ -27,11 +27,13 @@ export function useRights(p: ReducedProject) {
     hand: can("project.handed", { to: "-" }),
     addStep: can("project.step.added", { stepId: "probe", text: "-" }),
     moveStep: (s: Step) => can("project.step.moved", { stepId: s.id, to: "done" }),
+    editStep: (s: Step) => can("project.step.edited", { stepId: s.id }),
+    removeStep: (s: Step) => can("project.step.edited", { stepId: s.id, removed: true }),
     baseline: can("project.baseline", { none: true, why: "-" }),
     start: can("project.started"),
     done: can("project.done"),
     stop: can("project.stopped", { why: "-" }),
-    link: can("project.linked", { url: "-" }),
+    link: can("project.linked", { key: "-" }), // a key, not an address: the rules accept only real http(s) addresses
     measure: (check: number) => can("project.measured", { check, value: 0 }),
     reward: can("project.rewarded"),
     claim: can("project.claimed"),
@@ -103,11 +105,34 @@ export function ProjectCard({ p, note }: { p: ReducedProject; note?: string }) {
       </span>
       <span className={styles.cardTitle}>{p.title}</span>
       <span className={styles.cardMeta}>Lead {p.lead}{p.members.length ? " · " + (p.members.length + 1) + " people" : ""}</span>
+      {p.steps.length > 0 && <StepsBar p={p} />}
       <span className={styles.cardFoot}>
         <span className={styles.next} data-mine={lead && nextMove(p, S.day) ? "true" : undefined}>{note ?? nextLine(p, S.day, f, lead)}</span>
         <DueBadge p={p} />
       </span>
     </Link>
+  );
+}
+
+/** The board in one line: done, doing, blocked and to do as one bar, with the count. */
+function StepsBar({ p }: { p: ReducedProject }) {
+  const { S } = useDemo();
+  const by = board(p);
+  const cols = (["done", "doing", "blocked", "todo"] as const).filter((c) => by[c].length > 0);
+  // A running project's line below already says "x of y steps done": here only what needs attention.
+  const late = p.steps.filter((s) => s.column !== "done" && s.dueDay !== null && S.day > s.dueDay).length;
+  const bits = [
+    p.status !== "running" ? by.done.length + "/" + p.steps.length + " steps" : "",
+    by.blocked.length ? by.blocked.length + " blocked" : "",
+    late ? late + " late" : "",
+  ].filter(Boolean);
+  return (
+    <span className={styles.cardSteps}>
+      <span className={styles.segbar} role="img" aria-label={cols.map((c) => by[c].length + " " + COLUMN_LABEL[c]).join(", ")}>
+        {cols.map((c) => <span key={c} data-col={c} style={{ flexGrow: by[c].length }} />)}
+      </span>
+      {bits.length > 0 && <span className={styles.cardStepsText}>{bits.join(" · ")}</span>}
+    </span>
   );
 }
 

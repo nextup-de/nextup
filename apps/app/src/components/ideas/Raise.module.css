@@ -457,14 +457,6 @@ a.quickBtn { text-decoration: none; }
 .paper { background: #fff; border-radius: var(--radius-sm, 13.5px); padding: 16.5px 19.5px 18px; box-shadow: 0 4.5px 15px rgba(40,60,100,0.06); display: flex; flex-direction: column; gap: 12px; animation: affFade 420ms cubic-bezier(.2,.8,.2,1) backwards; }
 .paper[data-an="true"] { padding: 15px 16.5px 16.5px; gap: 15px; }
 .anChat { width: 100%; box-sizing: border-box; border: 1px solid #e3eaf7; box-shadow: 0 1px 2px rgba(40,60,100,0.05); } /* the analysis in the chat, above NextUp's first reply */
-.paperHead { flex: none; display: flex; align-items: center; gap: 6px; min-height: 30px; }
-.paperLabel { flex: 1; font-size: var(--nh-fs-xs); font-weight: 600; color: #6e6e73; }
-.ideaBody { animation: affSoft 180ms ease backwards; flex: none; margin: 0; font-size: var(--nh-fs-md); line-height: 1.55; color: #3a3a3c; text-wrap: pretty; white-space: pre-line; }
-.ideaEdit { animation: affSoft 180ms ease backwards; flex: none; width: 100%; box-sizing: border-box; resize: none; field-sizing: content; min-height: 72px; overflow: hidden; border: 1px solid #007aff; border-radius: var(--radius-xs, 9px); padding: 7.5px 9px; font-family: inherit; font-size: var(--nh-fs-md); line-height: 1.55; color: #1c1c1e; background: #fff; outline: none; }
-.ideaEdit[data-ctx="true"] { font-size: var(--nh-fs-sm); }
-.ideaCtx { animation: affFade 240ms ease backwards; flex: none; display: flex; flex-direction: column; gap: 4.5px; padding-top: 10.5px; border-top: 1px solid #f0f0f3; }
-.ideaCtxLabel { font-size: var(--nh-fs-xs); color: #6e6e73; }
-.ideaCtxText { animation: affSoft 180ms ease backwards; margin: 0; font-size: var(--nh-fs-sm); line-height: 1.55; color: #1c1c1e; text-wrap: pretty; white-space: pre-line; }
 
 .anEmpty { animation: affFade 360ms ease backwards; display: flex; flex-direction: column; align-items: center; gap: 7.5px; text-align: center; padding: 60px 0; }
 .anEmptyTitle { margin: 0; font-size: var(--nh-fs-2xl); line-height: 1.1; color: #1b1d22; }
@@ -673,7 +665,7 @@ a.quickBtn { text-decoration: none; }
   .scroll { padding: 52px 16px 96px; }
   .dock { padding: 9px 12px 12px; }
   .rail { display: none; }
-  .field, .pickInput, .searchInput, .titleInput, .ideaEdit { font-size: var(--nh-fs-input); }
+  .field, .pickInput, .searchInput, .titleInput { font-size: var(--nh-fs-input); }
   .spacer { height: 6px; }
   .sheet { padding: 12px 12px 20px; }
   .paper { padding: 16px; }

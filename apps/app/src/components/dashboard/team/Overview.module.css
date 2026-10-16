@@ -111,6 +111,7 @@
 .div40 { display: grid; grid-template-columns: max-content minmax(0,1fr); column-gap: 14px; row-gap: 8px; padding: 14px 16px; background: #f7f7f9; border-radius: var(--radius-sm, 12px); }
 .label4 { font-size: var(--nh-fs-sm); line-height: 1.45; color: #6e6e73; }
 .text { font-size: var(--nh-fs-sm); line-height: 1.45; font-weight: 500; color: #1c1c1e; text-wrap: pretty; }
+.why { display: block; margin-top: 2px; font-weight: 400; color: #6e6e73; } /* under a name: why they are responsible */
 .div41 { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #f7f7f9; border-radius: var(--radius-sm, 12px); }
 .div42 { display: grid; grid-template-columns: 120px minmax(0,1fr) 28px; gap: 8px; align-items: center; }
 .label5 { height: 34px; width: 100%; box-sizing: border-box; border: 1px solid #e5e5ea; border-radius: var(--radius-xs, 10px); padding: 0 10px; font-family: inherit; font-size: var(--nh-fs-sm); color: #1c1c1e; background: #fff; outline: none; }

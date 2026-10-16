@@ -23,8 +23,14 @@ async function plus30(page: Page, times = 1) {
   await page.keyboard.press("Escape");
 }
 
-// The project page; its state ("P-4 · Running") and baseline line are in the header at the top.
+// The project page; its state ("P-4 · Running") is in the header, the baseline in its section and the summary.
 const head = (page: Page) => page.getByRole("main");
+
+/** Open a card's sheet - where its moves, owner, due day and details are. */
+async function openStep(page: Page, text: string) {
+  await page.getByRole("button", { name: "Open “" + text + "”" }).click();
+  return page.getByRole("dialog", { name: text });
+}
 
 test("a lead plans, runs and measures a project; the manager records the reward", async ({ page }) => {
   await page.goto("/acme");
@@ -57,18 +63,23 @@ test("a lead plans, runs and measures a project; the manager records the reward"
     await page.getByLabel("Lower is better").check();
     await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
     await page.getByRole("button", { name: "Save the baseline" }).click();
-    await expect(head(page)).toContainText("25 minutes · Deburring queue · lower is better");
+    await expect(head(page)).toContainText("25 minutes");
+    await expect(head(page)).toContainText("Deburring queue · lower is better");
     await page.getByRole("button", { name: "Start the project" }).click();
     await expect(head(page)).toContainText("P-4 · Running");
   });
 
-  await test.step("works the board: blocked asks why, then both steps are done", async () => {
-    await page.getByRole("button", { name: "Move “" + TYPED + "” to Blocked" }).click();
-    await page.getByRole("textbox", { name: "What blocks it?" }).fill("Stopwatch is at the other site");
-    await page.getByRole("button", { name: "Mark blocked" }).click();
+  await test.step("works the board from the card sheets: blocked asks why, then both steps are done", async () => {
+    let sheet = await openStep(page, TYPED);
+    await sheet.getByRole("button", { name: "Move “" + TYPED + "” to Blocked" }).click();
+    await sheet.getByRole("textbox", { name: "What blocks it?" }).fill("Stopwatch is at the other site");
+    await sheet.getByRole("button", { name: "Mark blocked" }).click();
     await expect(page.getByRole("group", { name: "Blocked" })).toContainText("Stopwatch is at the other site");
-    await page.getByRole("button", { name: "Move “" + TYPED + "” to Done" }).click();
-    await page.getByRole("button", { name: "Move “" + FIRST + "” to Done" }).click();
+    await sheet.getByRole("button", { name: "Move “" + TYPED + "” to Done" }).click();
+    await page.keyboard.press("Escape");
+    sheet = await openStep(page, FIRST);
+    await sheet.getByRole("button", { name: "Move “" + FIRST + "” to Done" }).click();
+    await page.keyboard.press("Escape");
     await expect(page.getByRole("group", { name: "Done" }).getByRole("article")).toHaveCount(2);
   });
 
@@ -109,16 +120,18 @@ test("a lead plans, runs and measures a project; the manager records the reward"
   });
 });
 
-test("projects and the overview are tabs of one page", async ({ page }) => {
+test("projects and ideas sit side by side on one page", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Overview" })).toHaveCount(0);
   await page.getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-  await page.getByRole("link", { name: "Ideas & problems" }).click();
-  await expect(page).toHaveURL(/\/acme\/overview$/);
-  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Projects/ }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Problems and ideas" })).toBeVisible();
+  await page.goto("/acme/overview");
+  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
 });
 
 test("a step is dragged to another column; a drop on Blocked asks why", async ({ page }) => {
@@ -140,10 +153,44 @@ test("a step is dragged to another column; a drop on Blocked asks why", async ({
   await expect(page.getByRole("group", { name: "Blocked" }).getByRole("article", { name: TYPED })).toContainText("Waiting for the stopwatch");
 });
 
-test("the project page shows the idea it came from", async ({ page }) => {
+test("a step goes straight into Doing, gets an owner and details in its sheet, and is dragged to the top", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Manager");
+  await page.goto("/acme/projects/pj2");
+  const doing = page.getByRole("group", { name: "Doing" });
+  await page.getByRole("button", { name: "Add a step to Doing" }).click();
+  await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
+  await page.getByRole("textbox", { name: "New step" }).press("Enter");
+  await expect(doing.getByRole("article")).toHaveCount(3);
+  await expect(doing.getByRole("article").last()).toHaveAccessibleName(TYPED);
+
+  const sheet = await openStep(page, TYPED);
+  await sheet.getByRole("combobox", { name: "Owner" }).selectOption("L. Brandt");
+  await sheet.getByRole("button", { name: "+1 week" }).click();
+  await sheet.getByLabel("Details").fill("Five shift starts, stopwatch from the Ulm depot");
+  await sheet.getByRole("button", { name: "Save changes" }).click();
+  await expect(sheet).toContainText("changed “" + TYPED + "”: updated the details");
+  await page.keyboard.press("Escape");
+  const card = doing.getByRole("article", { name: TYPED });
+  await expect(card).toContainText("L. Brandt");
+
+  await card.dragTo(doing.getByRole("article").first(), { targetPosition: { x: 20, y: 4 } });
+  await expect(doing.getByRole("article").first()).toHaveAccessibleName(TYPED);
+  await expect(page.getByRole("region", { name: "Where it stands" })).toContainText("1 open without an owner");
+});
+
+test("the project page shows the idea it came from and its connected tools", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await page.goto("/acme/projects/pj4");
   await expect(page.getByRole("heading", { name: "The idea" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Files and sources" })).toBeVisible();
+  await page.goto("/acme/projects/pj2");
+  const tools = page.getByRole("region", { name: "Connected tools" });
+  await expect(tools).toContainText("Two-way sync");
+  await expect(tools.getByRole("link", { name: "FS-9" })).toBeVisible();
+  await expect(tools).toContainText("Microsoft Teams");
+  await expect(tools).toContainText("SharePoint");
+  // The tools in use also sit under the title, so they show without scrolling.
+  await expect(page.getByLabel("Tools in use").getByRole("link", { name: /Jira FS-9/ })).toBeVisible();
 });
