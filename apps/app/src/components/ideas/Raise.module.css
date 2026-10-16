@@ -173,9 +173,12 @@
 .strip { height: 34.5px; margin: 0 0 0 -3px; padding: 0 3px; display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; overflow-x: auto; overflow-y: hidden; }
 .strip[data-more="true"] { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 27px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 27px), transparent); }
 .spacer { height: 34.5px; }
+/* The chat: the add-ons as small icon buttons on one line, grouped like the old menu (who and when, then file, who is affected, who sees it); the name is in the tooltip. */
 .actionsRow { display: flex; padding-top: 3px; }
-.actionsRow .add { gap: 4px; padding: 0 8px; height: 26px; }
-.actionsRow .adds { gap: 5px; }
+.actionsRow .adds { flex-wrap: nowrap; gap: 4px; }
+.actionsRow .add { width: 28px; height: 28px; padding: 0; justify-content: center; }
+.actionsRow .addLabel { display: none; }
+.actionsRow .addWrap:nth-child(3) { margin-right: 6px; padding-right: 7px; border-right: 1px solid #e5e5ea; }
 .chip { flex: none; display: inline-flex; align-items: center; gap: 3px; max-width: 180px; padding: 3.75px 4.5px 3.75px 3.75px; border-radius: var(--radius-xs, 10.5px); background: #f7f7f9; border: 1px solid #e5e5ea; transition: background 160ms ease, border-color 160ms ease; animation: affFade 260ms cubic-bezier(.2,.8,.2,1) backwards; }
 .chip:hover { background: #eef3fa; border-color: #d6e4f7; }
 .chipOpen { min-width: 0; display: flex; align-items: center; gap: 6.75px; padding: 0; border: none; background: transparent; font-family: inherit; text-align: left; cursor: pointer; }
@@ -331,7 +334,7 @@
 /* ── Chat ────────────────────────────────────────────────────────────────────────────────────── */
 .chatView { animation: affSoft 260ms ease backwards; flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
 .scrollWrap { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
-.scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 18px 75px 6px; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 18px 75px 63px; } /* room under the last message, above the composer */
 .thread { max-width: 570px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; gap: 12px; animation: affIn 260ms cubic-bezier(.2,.8,.2,1) backwards; }
 .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10.5px; text-align: center; padding: 30px 0; animation: affFade 420ms cubic-bezier(.2,.8,.2,1) backwards; }
 .emptyTitle { margin: 0; font-size: var(--nh-fs-2xl); line-height: 1.1; color: #1b1d22; }
@@ -412,7 +415,7 @@ a.quickBtn { text-decoration: none; }
 .error { margin: 0; font-size: var(--nh-fs-sm); color: #d70015; }
 
 /* The composer at the bottom of the chat */
-.dock { flex: none; padding: 21px 75px 15px; }
+.dock { flex: none; padding: 9px 75px 15px; }
 .editedWrap { max-width: 570px; margin: 0 auto; position: relative; }
 .edited { margin: 0 13.5px; padding: 4.5px 6px 15px 6px; background: #f3f6fa; border: 1px solid #e8ecf2; border-bottom: none; border-radius: var(--radius-sm, 13.5px) var(--radius-sm, 13.5px) 0 0; display: flex; flex-direction: column; animation: affFade 320ms cubic-bezier(.2,.8,.2,1) backwards; }
 .editedRow { display: flex; align-items: center; gap: 6px; min-height: 25.5px; padding: 0 3px 0 4.5px; }
@@ -421,7 +424,7 @@ a.quickBtn { text-decoration: none; }
 .editedText b { font-weight: 600; color: #1c1c1e; }
 .undo { flex: none; height: 21px; padding: 0 7.5px; border: none; border-radius: var(--radius-sm, 999px); background: transparent; color: #6e6e73; font-family: inherit; font-size: var(--nh-fs-xs); font-weight: 600; cursor: pointer; transition: background-color 160ms ease, color 160ms ease; }
 .undo:hover { background: #e8ecf2; color: #1c1c1e; }
-.dockBar { position: relative; z-index: 2; max-width: 720px; margin: 0 auto; }
+.dockBar { position: relative; z-index: 2; max-width: 720px; margin: -10.5px auto 0; }
 
 /* ── The progress rail (Segments) ───────────────────────────────────────────────────────────── */
 .rail { position: absolute; z-index: 5; right: 4.5px; top: 0; bottom: 0; width: 63px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4.5px 0; box-sizing: border-box; user-select: none; animation: affFade 600ms cubic-bezier(.2,.8,.2,1) backwards; }
@@ -671,8 +674,8 @@ a.quickBtn { text-decoration: none; }
   .eval { height: auto; padding: 18px 16px; }
   .evalBars { flex-wrap: wrap; justify-content: center; }
   .evalBar { width: 28px; }
-  .scroll { padding: 52px 16px 6px; }
-  .dock { padding: 16px 12px 12px; }
+  .scroll { padding: 52px 16px 48px; }
+  .dock { padding: 9px 12px 12px; }
   .rail { display: none; }
   .field, .pickInput, .searchInput, .titleInput, .ideaEdit { font-size: var(--nh-fs-input); }
   .spacer { height: 6px; }
