@@ -24,7 +24,7 @@ export const DEVELOP = "It serves the changeover goal: setup waits cost about 20
 
 // The raise page (docs/IDEAS.md): the start composer, the chat composer, and the window that asks
 // who should get a published idea.
-export const START = "Short title";
+export const START = "Share an idea that would make work better…";
 export const ANSWER = "Answer, or add more detail…";
 export const aiMessages = (page: Page) => page.locator('[data-role="ai"]');
 

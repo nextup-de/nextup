@@ -40,8 +40,9 @@ import { useIdeaStudio } from "@/lib/use-idea-studio";
 import { useKept } from "@/lib/use-kept";
 import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
-import type { TokenFieldHandle } from "./RaiseTokenField";
-import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
+import { RaiseMenu, type MenuView } from "./RaiseMenu";
+import { PromptBody, PromptTray, type BodyFocus } from "./RaisePrompts";
+import { EMPTY_BODY, insertBlock, segsContext, splitSegs, type Caret, type Seg } from "@/features/ideas/prompts";
 import { ReceiverDialog, type Work } from "./RaisePublish";
 import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
 import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
@@ -59,7 +60,7 @@ function Sync({ run }: { run: () => void }) { useEffect(run); return null; }
 
 const MIN_EXCHANGES = FILLED_ANSWERS + 1; // the author's messages (the idea, then answers) before it can be published
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
-type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null; // "add": under a start-page action button
+type Menu = { at: "start" | "chat" | "card"; view: MenuView } | null;
 
 // The screens of an open idea, as the URL names them (`?idea=<draft id>&view=…`, no view = the chat). The URL
 // is the source of truth for which idea and which screen are open, so the browser's back and forward walk
@@ -114,7 +115,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "auto"); // auto: open on screens, closed on phones (CSS)
   const [query, setQuery] = useState("");
   const [startText, setStartText] = useKept(scope, "startText", "");
-  const [startCtx, setStartCtx] = useKept(scope, "startCtx", ""); // the description under the title; prompts are added to it
+  const [segs, setSegs] = useKept<Seg[]>(scope, "segs", EMPTY_BODY); // the start composer's text and blocks under the headline
+  const [bodyFocus, setBodyFocus] = useState<BodyFocus | null>(null);
   const [startAff, setStartAff] = useKept<string[]>(scope, "startAff", []);
   const [files, setFiles] = useKept<Record<string, FileItem[]>>(scope, "files", {});
   const [slot, setSlot] = useKept(scope, "slot", "n0"); // where the choices of the open idea live: the start form's key, or a draft id
@@ -139,7 +141,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [drafting, setDrafting] = useState(false); // the moment between "Looks good · finalize" and the document (DocLoading)
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
-  const startDesc = useRef<TokenFieldHandle>(null);
+  const caretRef = useRef<Caret | null>(null); // where a block from the mini bar lands
   const fillRef = useRef<(fixed?: boolean) => void>(() => {});
   const chatField = useRef<HTMLTextAreaElement>(null);
 
@@ -170,8 +172,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // The start page, empty: a new idea, or where the browser's back led from an open one.
   const toStart = useCallback(() => {
     studio.startNew(); setText(""); setAsk(null); setMenu(null); setOpenId(null); clearInterval(evalTimer.current);
-    setStage("start"); setStartText(""); setStartAff([]); setEvalStep(null); setSlot(newId("n"));
-  }, [studio.startNew, setText, setOpenId, setStage, setStartText, setStartAff, setSlot]); // eslint-disable-line react-hooks/exhaustive-deps -- studio.startNew is stable
+    setStage("start"); setStartText(""); setSegs(EMPTY_BODY); caretRef.current = null; setStartAff([]); setEvalStep(null); setSlot(newId("n"));
+  }, [studio.startNew, setText, setOpenId, setStage, setStartText, setSegs, setStartAff, setSlot]); // eslint-disable-line react-hooks/exhaustive-deps -- studio.startNew is stable
 
   // The URL changed (a link, the back button, a reload): open the idea it names, or go to the start page.
   // Arriving with no idea in the URL, the conversation open on the last visit is put back in it. Only once
@@ -239,7 +241,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       const known = (n: string) => seed.people.some((p) => p.name === n);
       const lead = seed.people.find((p) => p.name === who.name)?.reportsTo ?? ev?.lead;
       const coll = seed.people.filter((p) => p.name !== who.name && p.name !== lead).map((p) => p.name);
-      setStartText(x.text); setStartCtx(x.ctx); setStartAff(x.aff.filter((a) => !/^[A-Z]\. /.test(a) || known(a))); setMenu(null);
+      setStartText(x.text); setSegs(splitSegs(x.ctx)); caretRef.current = null; setStartAff(x.aff.filter((a) => !/^[A-Z]\. /.test(a) || known(a))); setMenu(null);
       setFiles((f) => ({ ...f, [slot]: x.files.map((name) => ({ id: newId("f"), name, url: "", img: false, file: new File([], name) })) }));
       const mate = coll.findIndex((n) => seed.people.find((p) => p.name === n)?.reportsTo === lead); // the demo's: a teammate
       const pick = fixed ? Math.max(0, mate) : Math.floor(Math.random() * coll.length);
@@ -254,7 +256,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const publishRef = useRef<(to: Receiver) => Promise<void>>(async () => {});
   const idle = ready && !sending && !published && !pubStep && !busy;
   const canIdea = story && idle && stage === "start" && !evaluating;
-  const canSend = story && idle && !evaluating && (stage === "start" ? (startText.trim() || startCtx.trim()).length >= 3 : !!draft && view === "chat" && text.trim().length >= 3);
+  const canSend = story && idle && !evaluating && (stage === "start" ? (startText.trim() || segsContext(segs).trim()).length >= 3 : !!draft && view === "chat" && text.trim().length >= 3);
   const answer = story && scriptAt >= 1 && scriptAt <= FILLED_ANSWERS ? DEMO_SCRIPT[scriptAt].say : null; // the script's next answer
   const canAnswer = story && idle && stage === "chat" && view === "chat" && !!draft && !!answer && text.trim() !== answer;
   const canPreview = story && idle && stage === "chat" && !!draft && canFinalize && !looking && !prepping && view !== "final";
@@ -326,10 +328,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // Send from the start page: the line, the context and the chosen extras go as the first message. The chat
   // opens at once with it on top; the evaluation plays under it, with the orb, until the coach has answered.
   const startRaise = () => {
-    // No title typed: the first line of the description is the headline.
-    const [firstLine, ...restLines] = startCtx.trim().split("\n");
-    const main = startText.trim() || firstLine.trim();
-    const ctx = startText.trim() ? startCtx.trim() : restLines.join("\n").trim();
+    const main = startText.trim(), ctx = segsContext(segs);
     if (main.length < 3 || evaluating) return;
     const extra = [
       extras.recv.length ? "Suggested receiver: " + extras.recv.join(", ") : "",
@@ -341,7 +340,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     setMenu(null); setEvalStep(0);
     setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx).parts) }));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
-    setStage("chat"); setStartText("");
+    setStage("chat"); setStartText(""); setSegs(EMPTY_BODY); caretRef.current = null;
     let step = 0;
     clearInterval(evalTimer.current);
     evalTimer.current = setInterval(() => {
@@ -490,7 +489,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const team = affected[0] ?? who.line.split(",")[0];
 
   const chips: Chip[] = (() => {
-    const at = stage === "start" ? "add" : "card";
+    const at = stage === "start" ? "start" : "card";
     const out: Chip[] = [];
     extras.recv.forEach((n) => out.push({ key: "r" + n, title: n, sub: "Receiver", kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "receiver"), remove: () => preview.setExtras(key, { recv: [] }) }));
     extras.coll.forEach((n) => out.push({ key: "c" + n, title: n, sub: "Colleague", kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "colleague"), remove: () => preview.setExtras(key, { coll: extras.coll.filter((x) => x !== n) }) }));
@@ -501,10 +500,10 @@ function RaisePage({ script = false }: { script?: boolean }) {
       : { key: "v", title: "Custom", sub: extras.visTo.length ? extras.visTo.length + " selected" : "Pick who", kind: "custom", lead: "", icon: "affected", open: () => openMenu(at, "visPick"), remove: () => preview.setExtras(key, { vis: "public", visTo: [] }) });
     return out;
   })();
-  const fileChips: Chip[] = myFiles.map((f) => ({ key: f.id, title: f.name, sub: "Attached", kind: "file", lead: (f.name.split(".").pop() || "file").slice(0, 4).toUpperCase(), img: f.img ? f.url : undefined, open: () => openMenu(stage === "start" ? "add" : "card", "file"), remove: () => removeFile(f.id) }));
+  const fileChips: Chip[] = myFiles.map((f) => ({ key: f.id, title: f.name, sub: "Attached", kind: "file", lead: (f.name.split(".").pop() || "file").slice(0, 4).toUpperCase(), img: f.img ? f.url : undefined, open: () => openMenu(stage === "start" ? "start" : "card", "file"), remove: () => removeFile(f.id) }));
 
   const menuFor = (at: NonNullable<Menu>["at"]) => menu && menu.at === at ? (
-    <RaiseMenu at={at === "card" ? "card" : at === "add" ? "under" : "bar"} view={menu.view} onView={(v) => setMenu({ at, view: v })} onClose={() => setMenu(null)}
+    <RaiseMenu at={at === "card" ? "card" : "bar"} view={menu.view} onView={(v) => setMenu({ at, view: v })} onClose={() => setMenu(null)}
       extras={extras} onExtras={(x) => preview.setExtras(key, x)} affected={affected} onAffected={setAffected}
       files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile} people={seed.people} depts={seed.depts} me={who.name} />
   ) : null;
@@ -659,14 +658,13 @@ function RaisePage({ script = false }: { script?: boolean }) {
 
   const main = stage === "start" ? (
     <RaiseStart name={greetName(who.name)}
-      context={startCtx} onPrompt={(label) => startDesc.current?.insert(label)}
       composer={
         <RaiseComposer value={startText} onChange={setStartText} onSubmit={startRaise} fieldRef={startField} sendLabel="Ask NextUp"
-          placeholder="Short title" canSend={(startText.trim() || startCtx.trim()).length >= 3 && !evaluating}
-          start={{ desc: startCtx, onDesc: setStartCtx, descPlaceholder: "What’s happening, who does it affect, what have you tried? Add a prompt below." }} descRef={startDesc}
+          placeholder="Share an idea that would make work better…" canSend={startText.trim().length >= 3 && !evaluating}
           chips={[...chips, ...fileChips]} strip
-          actions={<RaiseActions rows={actionsOf(extras, myFiles.length, affected.length)} open={menu?.at === "add" ? menu.view : null}
-            onOpen={(v) => setMenu((m) => (m?.at === "add" && m.view === v ? null : { at: "add", view: v }))} menu={menuFor("add")} onAddFiles={addFiles} />}
+          menuOpen={menu?.at === "start"} onMenu={() => toggleMenu("start")} menu={menuFor("start")}
+          body={<PromptBody segs={segs} onSegs={setSegs} caretRef={caretRef} focus={bodyFocus} onFocus={setBodyFocus} headRef={startField} />}
+          tray={<PromptTray onAdd={(p) => { const r = insertBlock(segs, caretRef.current, p); setSegs(r.segs); setBodyFocus({ seg: r.at, on: p.custom ? "label" : "text" }); }} />}
           onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       } />
   ) : drafting ? (
