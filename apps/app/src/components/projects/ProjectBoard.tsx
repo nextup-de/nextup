@@ -5,7 +5,7 @@
 // keyboard and touch way to move it). A drop on Blocked asks what blocks it first. Every move is one
 // project.* event, asked of the server's rules first, so a card only drags for someone who may move it.
 // While the project is planned, the idea's own brief offers its first steps - each added only with a click.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { Avatar } from "@/components/dashboard/shared/primitives";
 import { board } from "@/features/projects/selectors";
@@ -82,6 +82,47 @@ export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[
     if (spot?.col !== col || spot.before !== before) setSpot({ col, before });
   };
 
+  // Touch: phones have no HTML5 drag, so each card has a grip that drags by pointer events. The finger's
+  // point says which column and which card it is over; near the board's edge the columns scroll along.
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [ghost, setGhost] = useState<{ x: number; y: number; text: string } | null>(null);
+  const grip = {
+    down: (e: React.PointerEvent, s: Step) => {
+      if (!r.moveStep(s)) return;
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setDrag(s.id);
+      setGhost({ x: e.clientX, y: e.clientY, text: s.text });
+    },
+    move: (e: React.PointerEvent) => {
+      if (!dragged) return;
+      setGhost((g) => (g ? { ...g, x: e.clientX, y: e.clientY } : g));
+      const b = boardRef.current;
+      if (b) {
+        const box = b.getBoundingClientRect();
+        if (e.clientX > box.right - 40) b.scrollLeft += 14;
+        else if (e.clientX < box.left + 40) b.scrollLeft -= 14;
+      }
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      const colEl = under?.closest<HTMLElement>('[role="group"][data-col]');
+      const col = colEl?.dataset.col as StepColumn | undefined;
+      if (!col || !(col in cols)) return;
+      // The first card (not the one in hand) whose middle is below the finger: read from the cards'
+      // places, not from what is under the finger - the drop line itself shifts the cards as it appears.
+      const next = colEl
+        ? [...colEl.querySelectorAll<HTMLElement>("article[data-step]")].find((c) => {
+            if (c.dataset.step === dragged.id) return false;
+            const box = c.getBoundingClientRect();
+            return e.clientY < box.top + box.height / 2;
+          })
+        : undefined;
+      const before = next?.dataset.step ?? null;
+      if (spot?.col !== col || spot.before !== before) setSpot({ col, before });
+    },
+    up: () => { setGhost(null); drop(); },
+    cancel: () => { setGhost(null); end(); },
+  };
+
   return (
     <section className={styles.boardWrap} aria-labelledby={"board-" + p.id}>
       <div className={styles.boardHead}>
@@ -121,7 +162,7 @@ export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[
         </div>
       )}
 
-      <div className={styles.board} data-dragging={drag ? "true" : undefined}>
+      <div ref={boardRef} className={styles.board} data-dragging={drag ? "true" : undefined}>
         {STEP_COLUMNS.map((col) => {
           const list = cols[col].filter(shown);
           const line = (before: string | null) => dragged && spot?.col === col && spot.before === before ? <div className={styles.dropLine} aria-hidden="true" /> : null;
@@ -150,7 +191,7 @@ export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[
                     {line(s.id)}
                     <StepCard
                       p={p} s={s} dragging={drag === s.id} mine={mine(s)}
-                      onDragStart={() => setDrag(s.id)} onDragEnd={end} onDragOver={(e) => overCard(e, col, s)} onOpen={() => setOpen(s.id)}
+                      onDragStart={() => setDrag(s.id)} onDragEnd={end} onDragOver={(e) => overCard(e, col, s)} onOpen={() => setOpen(s.id)} grip={grip}
                       ask={askBlock?.id === s.id ? askBlock : null} onAsked={() => setAskBlock(null)}
                     />
                   </div>
@@ -170,6 +211,7 @@ export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[
         })}
       </div>
 
+      {ghost && <div className={styles.dragGhost} style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">{ghost.text}</div>}
       {opened && <StepDetail p={p} s={opened} onClose={() => setOpen(null)} />}
     </section>
   );
@@ -219,10 +261,14 @@ function Composer({ p, col, team, focus, onClose }: { p: ReducedProject; col: St
 type CardProps = {
   p: ReducedProject; s: Step; dragging: boolean; mine: boolean;
   onDragStart: () => void; onDragEnd: () => void; onDragOver: (e: React.DragEvent) => void; onOpen: () => void;
+  grip: Grip;
   ask: Spot | null; onAsked: () => void;
 };
 
-function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, onOpen, ask, onAsked }: CardProps) {
+/** The touch drag's handlers, from the board. */
+type Grip = { down: (e: React.PointerEvent, s: Step) => void; move: (e: React.PointerEvent) => void; up: () => void; cancel: () => void };
+
+function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, onOpen, ask, onAsked, grip }: CardProps) {
   const { act, S, f } = useDemo();
   const r = useRights(p);
   const send = useSend(p);
@@ -250,7 +296,20 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
           {s.column !== "done" && age > 0 && <span className={styles.age} title={"In " + COLUMN_LABEL[s.column] + " for " + age + (age === 1 ? " day" : " days")}>{age}d</span>}
         </div>
       )}
-      <button type="button" className={styles.stepOpen} onClick={onOpen} aria-label={"Open “" + s.text + "”"}>{s.text}</button>
+      <div className={styles.stepRow}>
+        <button type="button" className={styles.stepOpen} onClick={onOpen} aria-label={"Open “" + s.text + "”"}>{s.text}</button>
+        {/* Touch screens only (CSS): hold and drag. The keyboard moves a card from its sheet. */}
+        {canDrag && (
+          <span
+            className={styles.dragGrip} role="button" tabIndex={-1} aria-label={"Drag “" + s.text + "”"}
+            // No mousedown default: the card is draggable the HTML5 way too, and that drag would cancel this one.
+            onMouseDown={(e) => e.preventDefault()}
+            onPointerDown={(e) => grip.down(e, s)} onPointerMove={grip.move} onPointerUp={grip.up} onPointerCancel={grip.cancel}
+          >
+            <svg width="12" height="16" viewBox="0 0 12 16" aria-hidden="true"><circle cx="3" cy="3" r="1.5" /><circle cx="9" cy="3" r="1.5" /><circle cx="3" cy="8" r="1.5" /><circle cx="9" cy="8" r="1.5" /><circle cx="3" cy="13" r="1.5" /><circle cx="9" cy="13" r="1.5" /></svg>
+          </span>
+        )}
+      </div>
       {s.column === "blocked" && s.why && <div className={styles.blockedWhy}>{s.why}</div>}
       <div className={styles.stepFoot}>
         {s.owner ? <span className={styles.owner}><Avatar name={s.owner} size="sm" /><span>{s.owner}</span></span> : <span className={styles.noOwner}>No owner</span>}

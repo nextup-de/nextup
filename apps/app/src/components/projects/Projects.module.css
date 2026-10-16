@@ -205,6 +205,12 @@ a.toolChip:hover { border-color: var(--nh-brand-line); }
 .step[data-col="done"] .stepOpen { color: var(--nh-ink-2); }
 .stepTop { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .age { margin-left: auto; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); color: var(--nh-mute); }
+.stepRow { display: flex; align-items: flex-start; gap: 6px; }
+.stepRow .stepOpen { flex: 1; min-width: 0; }
+/* The touch grip: only where the pointer is a finger. touch-action none so the drag is not a scroll. */
+.dragGrip { display: none; flex: none; align-items: center; justify-content: center; width: 30px; height: 30px; margin: -6px -6px -6px 0; border-radius: var(--radius-sm, 8px); color: var(--nh-mute); fill: currentColor; touch-action: none; cursor: grab; }
+@media (pointer: coarse) { .dragGrip { display: inline-flex; } }
+.dragGhost { position: fixed; z-index: 70; max-width: 240px; padding: 8px 10px; transform: translate(-50%, -120%); background: var(--nh-card); border: 1px solid var(--nh-brand-line); border-radius: var(--radius-sm, 10px); box-shadow: 0 12px 30px -10px rgb(0 0 0 / 0.35); font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); pointer-events: none; }
 .stepOpen { all: unset; display: block; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); line-height: 1.35; overflow-wrap: anywhere; cursor: pointer; }
 .stepOpen:hover { color: var(--nh-brand); }
 .stepOpen:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; border-radius: var(--radius-xs, 4px); }
@@ -340,6 +346,7 @@ a.key:hover { text-decoration: underline; }
   /* The board scrolls sideways, one column at a time, so a phone still sees it as a board. */
   .board { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; gap: 10px; margin: 12px -16px 0; padding: 0 16px 6px; }
   .column { flex: 0 0 82%; scroll-snap-align: start; min-height: 120px; }
+  .board[data-dragging="true"] { scroll-snap-type: none; } /* the edge auto-scroll moves freely while a card is held */
   .stepper { display: flex; overflow-x: auto; margin: 0 -14px; padding: 0 14px 2px; }
   .stage { flex: 0 0 92px; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
