@@ -15,10 +15,6 @@
 .originKey { display: inline-block; min-width: 64px; margin-right: 8px; font-size: var(--nh-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--nh-mute); }
 .versions summary { cursor: pointer; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
 .version { margin-top: 8px; padding-left: 10px; border-left: 2px solid var(--nh-line); }
-.tabs { display: flex; gap: 4px; margin-top: 14px; border-bottom: 1px solid var(--nh-line); }
-.tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; margin-bottom: -1px; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); text-decoration: none; border-bottom: 2px solid transparent; }
-.tab:hover { color: var(--nh-ink); }
-.tab[data-active="true"] { color: var(--nh-ink); border-bottom-color: var(--nh-ink); }
 
 .back { display: inline-block; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); margin: 0 0 12px; text-decoration: none; }
 .back:hover { color: var(--nh-ink); }
@@ -348,4 +344,24 @@ a.key:hover { text-decoration: underline; }
   .composerRow .days { width: 100%; }
   .deskRow { flex-wrap: wrap; }
   .sheet { width: 100%; }
+}
+
+/* ── the hub: projects and ideas side by side ── */
+/* About 80% of the screen (never narrower than the normal page); the shell's data-wide lets it past 1120px. */
+.hub { width: 100%; max-width: max(80vw, 1120px); margin: 0 auto; }
+.hubCols { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr); gap: 28px; align-items: start; }
+.hubProjects, .hubIdeas { min-width: 0; }
+.hubHead { display: flex; align-items: flex-end; min-height: 36px; margin-bottom: 16px; } /* as tall as the ideas' Filter / Sort row */
+.hubTitle { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: var(--nh-fs-xl); font-weight: 700; color: var(--nh-ink); letter-spacing: -0.01em; line-height: 1.2; }
+.hubProjects .group:first-of-type { margin-top: 0; }
+.hubProjects .cards { grid-template-columns: minmax(0, 1fr); }
+/* An idea opened in place fills the screen as on the Overview: the projects step aside for it. */
+.hub:has([data-open="true"]) { max-width: none; }
+.hub:has([data-open="true"]) > .head { display: none; } /* the idea has its own title; "Projects" above it read as the idea's */
+.hub:has([data-open="true"]) .hubCols { display: block; }
+.hub:has([data-open="true"]) .hubProjects { display: none; }
+
+@media (max-width: 1100px) {
+  .hubCols { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .hubProjects .cards { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }
 }

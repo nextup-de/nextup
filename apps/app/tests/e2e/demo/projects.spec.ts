@@ -120,16 +120,18 @@ test("a lead plans, runs and measures a project; the manager records the reward"
   });
 });
 
-test("projects and the overview are tabs of one page", async ({ page }) => {
+test("projects and ideas sit side by side on one page", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Overview" })).toHaveCount(0);
   await page.getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-  await page.getByRole("link", { name: "Ideas & problems" }).click();
-  await expect(page).toHaveURL(/\/acme\/overview$/);
-  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Projects/ }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Problems and ideas" })).toBeVisible();
+  await page.goto("/acme/overview");
+  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
 });
 
 test("a step is dragged to another column; a drop on Blocked asks why", async ({ page }) => {

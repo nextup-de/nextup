@@ -20,6 +20,7 @@ import { dashboardRow, OVERVIEW_STEPS, overviewSteps, raisedWith, type DashRow, 
 import { commentsOn, onDesk, rescoresOn } from "@/features/cases/selectors";
 import { deskThread } from "@/features/cases/thread";
 import { briefForCase, extOf, personFor, type Person } from "@/features/ideas/brief";
+import { loadRaised } from "@/lib/raised";
 import { loadShots } from "@/lib/shots";
 import s from "./Overview.module.css";
 import { OverviewChats } from "./OverviewChats";
@@ -83,7 +84,7 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
   );
 }
 
-export function DashboardView({ caseId, linkCases = false, embedded = false }: { caseId?: string; linkCases?: boolean; embedded?: boolean } = {}) {
+export function DashboardView({ caseId, linkCases = false, embedded = false, title }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode } = {}) {
   const ctx = useDemo();
   const { seed, D, log, persona, role, ready, href, tenant, act, actor, f, motion, flag } = ctx;
   const router = useRouter();
@@ -173,7 +174,8 @@ export function DashboardView({ caseId, linkCases = false, embedded = false }: {
     const desk = row.chain[row.chain.length - 1];
     const raised = raisedWith(c);
     const added = rescoresOn(log, c.id);
-    const brief = briefForCase(c, briefCtx, {
+    // The written brief when there is one: the static demo's, or what the raise page saved when it was published here.
+    const brief = briefForCase(c, { ...briefCtx, briefs: { ...seed.briefs, ...loadRaised(tenant.slug) } }, {
       promiseDays: P, me: row.mine ? c.from : persona.who.name, affected: row.affected, attachments: raised.attachments, updates: added.length,
       passTo: "", history: "", side: onDesk(c, persona.who.name) && !row.mine ? "desk" : "raiser",
     });
@@ -235,8 +237,8 @@ export function DashboardView({ caseId, linkCases = false, embedded = false }: {
       <div className={s.div7}>
         <div className={s.div8}>
           <div className={s.div9}>
-            {/* On the Projects page the page title above is the heading. */}
-            {!embedded && <h1 className={s.overview}>Overview</h1>}
+            {/* On the Projects page the page title above is the heading; the column brings its own. */}
+            {embedded ? title : <h1 className={s.overview}>Overview</h1>}
           </div>
           <div className={s.div10}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}
