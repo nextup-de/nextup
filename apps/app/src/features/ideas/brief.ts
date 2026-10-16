@@ -179,9 +179,13 @@ export const personFor = (name: string, ctx: BriefContext): Person | null => (ct
 // The brief for one idea: the written one if there is one, otherwise one built from the seed.
 export function briefFor(idea: Idea, ctx: BriefContext): IdeaBrief {
   const written = (ctx.briefs ?? BRIEFS)[idea.id];
-  const w = written ?? derivedBrief(idea, ctx);
   const [, deptHint = ""] = idea.proposedBy.split(", ");
-  const author = personOf(proposerOf(idea), ctx, deptHint);
+  return fromWritten(written ?? derivedBrief(idea, ctx), personOf(proposerOf(idea), ctx, deptHint), ctx, !!written);
+}
+
+// A written brief (or one derived from the seed) as the page renders it: departments and people resolved
+// on the org chart, sources numbered in first-cited order.
+function fromWritten(w: WrittenBrief, author: Person, ctx: BriefContext, written: boolean): IdeaBrief {
   const aiWhy = (key: string) => (w.affects.ai.includes(key) ? w.affects.why[key] ?? "Suggested by the AI from the idea description." : null);
 
   const depts = w.affects.depts.map((id): AffectedDept => ({
@@ -207,7 +211,7 @@ export function briefFor(idea: Idea, ctx: BriefContext): IdeaBrief {
 
   const barMax = w.bars ? Math.max(...w.bars.rows.map((r) => r.value), 0) || 1 : 1;
   return {
-    written: !!written,
+    written,
     author,
     description: w.description,
     context: w.context ?? null,
@@ -351,8 +355,32 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
     : rec === "yes" ? "It is on your desk, the upside is stated, and it is described well enough to act on."
     : rec === "ask" ? "The case does not say what it is worth yet. One question gets that before you decide, and pauses the clock while " + c.from + " answers."
     : c.status === "asked" ? "Waiting for the answer to your question." : "Nothing left to decide on this case.";
-  const linked = c.linkedIdea ? ctx.ideas.find((i) => i.id === c.linkedIdea) : null;
   const deputy = route ? personFor(route.deputy, ctx) : null;
+  const routing = route ? [
+    { name: route.owner.name, role: route.owner.role, why: "Owns “" + route.type + "” on the routing map." },
+    { name: route.deputy, role: deputy?.role ?? "Deputy", why: "Deputy on the map: the case moves to them if the promise is missed." },
+  ] : [];
+  const next = raiser ? (!you ? null : c.status === "asked" && q ? "Answer " + q.by + "." : c.open && !c.upside ? "Add what it is worth as a detail." : null)
+    : rec === "hand" ? "Pass it to " + f.passTo + "." : rec === "yes" ? "Say yes; " + c.from + " hears it today." : rec === "ask" ? "Ask " + c.from + " what it is worth." : null;
+  const by = !c.open ? null : raiser ? (due >= 0 ? "An answer is due within " + due + (due === 1 ? " day" : " days") : -due + " days past the " + P + "-day promise") : due >= 0 ? "Within " + due + (due === 1 ? " day" : " days") + ", to keep the " + P + "-day promise" : "Now: " + -due + " days past the " + P + "-day promise";
+
+  // A case with a written brief (what the raise page worked out, or the static demo's) shows all of it:
+  // the files, who it affects and why, the five dials, who receives it. The decision part - the buttons,
+  // the advice for whoever reads it now, the clock - stays the case's own.
+  const written = ctx.briefs?.[c.id];
+  if (written) {
+    const b = fromWritten(written, author, ctx, true);
+    const more = f.affected.map((x) => personFor(x, ctx)).filter((p): p is Person => p !== null && !b.people.some((y) => y.name === p.name));
+    return {
+      ...b, actions, rec, recText, next, by,
+      cites: { ...b.cites, rec: [] }, // the "why" is the case's own sentence, not the brief's
+      people: [...b.people, ...more.map((p) => ({ ...p, ai: false, why: null }))],
+      routing: b.routing.length ? b.routing : routing,
+      feed: { ...b.feed, supporters: Math.max(b.feed.supporters, n) },
+    };
+  }
+
+  const linked = c.linkedIdea ? ctx.ideas.find((i) => i.id === c.linkedIdea) : null;
   const body = splitBody(c.body);
   return {
     written: false, author,
@@ -372,18 +400,12 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
     scores,
     summary: (c.kind === "idea" ? "An idea" : "A problem") + " from " + c.fromDept + (c.reason ? ", flagged “" + c.reason + "”" : "") + ". The case score is " + overall.value + " / 100" + (overall.parts.length ? ": " + overall.parts.map((p) => p.label.toLowerCase()).join(", ") + "." : "."),
     lead: null, bars: null, after: null,
-    actions, rec, recText,
-    next: raiser ? (!you ? null : c.status === "asked" && q ? "Answer " + q.by + "." : c.open && !c.upside ? "Add what it is worth as a detail." : null)
-      : rec === "hand" ? "Pass it to " + f.passTo + "." : rec === "yes" ? "Say yes; " + c.from + " hears it today." : rec === "ask" ? "Ask " + c.from + " what it is worth." : null,
-    by: !c.open ? null : raiser ? (due >= 0 ? "An answer is due within " + due + (due === 1 ? " day" : " days") : -due + " days past the " + P + "-day promise") : due >= 0 ? "Within " + due + (due === 1 ? " day" : " days") + ", to keep the " + P + "-day promise" : "Now: " + -due + " days past the " + P + "-day promise",
+    actions, rec, recText, next, by,
     timeline: null,
     questions: c.upside ? [] : ["What would it be worth if it were fixed?"],
     pattern: linked ? "Linked to the idea “" + linked.title + "”." : "No clear pattern with other cases yet.",
     similar: [],
-    routing: route ? [
-      { name: route.owner.name, role: route.owner.role, why: "Owns “" + route.type + "” on the routing map." },
-      { name: route.deputy, role: deputy?.role ?? "Deputy", why: "Deputy on the map: the case moves to them if the promise is missed." },
-    ] : [],
+    routing,
     cites: { summary: cite("case"), lead: [], bars: [], after: [], rec: rec === "hand" ? cite("map") : cite("case"), pattern: [], similar: [] },
     sources,
     feed: { supporters: n, sentiment: n ? n + (n === 1 ? " person stands" : " people stand") + " behind it." : "Nobody else has added their name yet.", comments: [] },

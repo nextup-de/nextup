@@ -9,6 +9,7 @@ import { GOALS } from "@/features/evaluate";
 import { BRIEFS } from "@/features/ideas/brief-demo";
 import { ideaContext, scoreDraft, type DraftTurn, type DraftView } from "@/features/ideas/drafts";
 import { SEED } from "./seed";
+import { STATIC_DEMO_BRIEFS } from "./static-demo-briefs";
 import type { Seed, SeedCase } from "./types";
 
 // The seed's "T. Vogel" style and anonymous handles read oddly in a demo: full names instead, the same
@@ -70,7 +71,8 @@ export const STATIC_DEMO_SEED: Seed = {
   // acme's projects in every state (P-1 to P-3, and P-4 from c9's yes), renamed with DEMO_NAMES like the rest:
   // two of them are the employee's own ideas, so his projects page is not empty.
   projects: seed.projects,
-  briefs: renamed(BRIEFS),
+  // The written briefs: the inbox ideas' (renamed), and what the raise page worked out for d1-d3.
+  briefs: { ...renamed(BRIEFS), ...STATIC_DEMO_BRIEFS },
 };
 
 // ── Earlier chats with the coach (the raise page's "Chats & drafts") ──────────────────────────────

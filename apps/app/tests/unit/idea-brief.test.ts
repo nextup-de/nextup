@@ -129,6 +129,17 @@ describe("briefForCase", () => {
     expect(qb.recText).toBe("T. Vogel asked you a question. The clock is paused until you answer.");
     expect(qb.next).toBe("Answer T. Vogel.");
   });
+  it("with a written brief for the case: its files, people and dials, but the case's own decision part", () => {
+    const c = caseOf("c3");
+    const b = briefForCase(c, { ...ctx, briefs: { c3: BRIEFS.i1 } }, { ...facts, me: c.from, side: "raiser", affected: ["S. Dahl"] });
+    expect(b.written).toBe(true);
+    expect(b.files.map((f) => f.name)).toEqual(BRIEFS.i1.files.map((f) => f.name));
+    expect(b.routing).toEqual(BRIEFS.i1.routing);
+    expect(b.scores.map((s) => s.value)).toEqual(BRIEFS.i1.scores.map((s) => s.value));
+    expect(b.people.map((p) => p.name)).toContain("S. Dahl"); // who said "affects me too" stays
+    expect(b.actions).toEqual([]);
+    expect(b.recText).toContain(c.assignee);
+  });
 });
 
 describe("display helpers", () => {

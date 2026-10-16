@@ -77,6 +77,8 @@ export function OverviewIdea(p: OverviewIdeaProps) {
     if (e) patch({ files: [...e.files, ...picked] });
   };
   const files = (e ?? shown).files;
+  // Why each team or person is affected, where the raise page's analysis said so.
+  const whys = [...brief.depts, ...brief.people].filter((x): x is typeof x & { why: string } => !!x.why && (e ?? shown).affects.includes(x.name));
   const score = openScore == null ? null : brief.scores[openScore];
   const rec = brief.actions.find((a) => a.key === brief.rec);
   const phone = p.variant === "phone";
@@ -152,6 +154,22 @@ export function OverviewIdea(p: OverviewIdeaProps) {
               {e
                 ? <textarea className={s.textarea} value={e.description} onChange={(ev) => patch({ description: ev.target.value })} rows={4} aria-label="Description" />
                 : <p className={s.description}>{shown.description}</p>}
+              {!e && (
+                <div className={s.div37}>
+                  <span className={s.dept}>Who</span>
+                  <div className={s.div40}>
+                    <span className={s.label4}>Raised by</span>
+                    <span className={s.text}>{brief.author.name}{!brief.author.anonymous && brief.author.role && brief.author.role !== brief.author.dept ? " · " + brief.author.role : ""}</span>
+                    {brief.author.dept && <><span className={s.label4}>Team</span><span className={s.text}>{brief.author.dept}</span></>}
+                    {brief.routing.map((r, k) => (
+                      <Fragment key={r.name + k}>
+                        <span className={s.label4}>{k === 0 ? "Responsible" : "Next in line"}</span>
+                        <span className={s.text}>{r.name}{r.role ? " · " + r.role : ""}<span className={s.why}>{r.why}</span></span>
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className={s.div37}>
                 <span className={s.dept}>Affects</span>
                 <div className={s.div38}>
@@ -166,6 +184,11 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                       onKeyDown={(ev) => { if (ev.key === "Enter" && affDraft.trim()) { ev.preventDefault(); patch({ affects: [...e.affects, affDraft.trim()] }); setAffDraft(""); } }} />
                   )}
                 </div>
+                {!e && whys.length > 0 && (
+                  <div className={s.div40}>
+                    {whys.map((w) => <Fragment key={w.name}><span className={s.label4}>{w.name}</span><span className={s.text}>{w.why}</span></Fragment>)}
+                  </div>
+                )}
               </div>
               <div className={s.div39}>
                 <span className={s.dept}>Context</span>
