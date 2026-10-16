@@ -1,0 +1,81 @@
+/* The export view (RaiseExport.tsx) - from the Claude Design handoff "Export view". Sizes are the design's
+   laptop sizes (its px × 0.75, as everywhere on the raise page); type from the fixed scale, never below 12px. */
+
+.view { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; background: #eef1f6; animation: exportIn 220ms ease backwards; }
+.wrap { max-width: 810px; margin: 0 auto; padding: 18px 18px 42px; display: flex; flex-direction: column; gap: 15px; }
+
+/* Back, the title and Close; the spacer as wide as the panel keeps Close over the page's right edge. */
+.head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.back, .close { width: 28px; height: 28px; flex: none; padding: 0; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 160ms ease; }
+.back { background: #111; color: #fff; }
+.back:hover { background: #3a3a3c; }
+.close { background: #e5e5ea; color: #1c1c1e; }
+.close:hover { background: #d1d1d6; }
+.title { flex: 1; min-width: 90px; margin: 0; font-size: var(--nh-fs-md); font-weight: 600; letter-spacing: -0.01em; color: #1c1c1e; }
+.spacer { flex: 0 1 165px; min-width: 128px; margin-left: 4.5px; }
+
+.row { display: flex; align-items: flex-start; gap: 12px; flex-wrap: nowrap; }
+
+/* The A4 sheet: what goes out, in order; the footer sits on the bottom edge. */
+.page { flex: 1 1 0; min-width: 0; aspect-ratio: 210 / 297; box-sizing: border-box; padding: clamp(21px, 8%, 54px); display: flex; flex-direction: column; background: #fff; border-radius: 4.5px; box-shadow: 0 1px 1.5px rgba(20,30,60,0.06), 0 13.5px 36px rgba(20,30,60,0.10); }
+.eyebrow { font-size: var(--nh-fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #1f7a3a; }
+.docTitle { margin-top: 6px; font-size: var(--nh-fs-xl); font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; color: #1b1d22; text-wrap: pretty; overflow-wrap: anywhere; }
+.meta { margin-top: 6px; font-size: var(--nh-fs-xs); color: #6e6e73; }
+.goes { margin-top: 3px; font-size: var(--nh-fs-xs); color: #6e6e73; }
+.goes strong { font-weight: 600; color: #3a3a3c; }
+.rule { height: 2px; margin: 16.5px 0 18px; background: #1c1c1e; }
+.sec { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; }
+.sec[data-first] { margin-top: 0; }
+.sec[data-ai] { gap: 7.5px; animation: exportIn 220ms ease backwards; }
+.label { font-size: var(--nh-fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6e6e73; }
+.label[data-rows] { margin-bottom: 0; }
+.summary { font-size: var(--nh-fs-sm); line-height: 1.6; color: #1c1c1e; text-wrap: pretty; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ctx { font-size: var(--nh-fs-xs); line-height: 1.6; color: #1c1c1e; text-wrap: pretty; white-space: pre-wrap; overflow-wrap: anywhere; }
+.detail { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 9px; padding: 7.5px 0; border-bottom: 1px solid #ececf0; }
+.detailLabel { font-size: var(--nh-fs-xs); color: #6e6e73; }
+.detailValue { font-size: var(--nh-fs-xs); line-height: 1.45; color: #1c1c1e; text-wrap: pretty; overflow-wrap: anywhere; }
+
+/* NextUp's assessment - black and white only, the scores are not colour-coded. */
+.rec { display: flex; align-items: baseline; gap: 7.5px; flex-wrap: wrap; }
+.recPill { font-size: var(--nh-fs-xs); font-weight: 600; color: #1c1c1e; background: #f2f2f7; border-radius: 999px; padding: 2px 7.5px; }
+.recWhy { flex: 1; min-width: 150px; font-size: var(--nh-fs-xs); line-height: 1.5; color: #3a3a3c; text-wrap: pretty; }
+.scores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #ececf0; border-bottom: 1px solid #ececf0; }
+.score { display: flex; flex-direction: column; gap: 2px; padding: 7.5px 0; min-width: 0; }
+.scoreLabel { font-size: var(--nh-fs-xs); color: #6e6e73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scoreVal { font-size: var(--nh-fs-sm); font-weight: 600; color: #1c1c1e; font-variant-numeric: tabular-nums; }
+.caption { font-size: var(--nh-fs-xs); color: #8e8e93; }
+.foot { margin-top: auto; padding-top: 18px; display: flex; justify-content: space-between; gap: 9px; font-size: var(--nh-fs-xs); color: #8e8e93; }
+
+/* The panel beside the page: include the AI analysis, then the three equal export buttons. */
+.panel { flex: 0 1 165px; min-width: 128px; position: sticky; top: 0; display: flex; flex-direction: column; gap: 10.5px; padding: 9px; box-sizing: border-box; background: #fff; border-radius: 13.5px; box-shadow: 0 4.5px 15px rgba(40,60,100,0.06); }
+.group { display: flex; flex-direction: column; gap: 6px; }
+.group[data-split] { gap: 4.5px; padding-top: 10.5px; border-top: 1px solid #f0f0f3; }
+.groupLabel { font-size: var(--nh-fs-xs); font-weight: 600; color: #6e6e73; }
+.group[data-split] .groupLabel { margin-bottom: 1.5px; }
+.switch { width: 100%; display: flex; align-items: center; gap: 7.5px; padding: 7.5px 9px; border: none; border-radius: 9px; background: #f2f2f7; color: #1c1c1e; font-family: inherit; text-align: left; cursor: pointer; transition: background 160ms ease; }
+.switch:hover { background: #e5e5ea; }
+.switchText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.switchTitle { font-size: var(--nh-fs-sm); font-weight: 600; }
+.switchSub { font-size: var(--nh-fs-xs); color: #6e6e73; }
+.track { width: 24px; height: 15px; flex: none; border-radius: 999px; background: #d1d1d6; position: relative; transition: background 200ms ease; }
+.track[data-on="true"] { background: #111; }
+.knob { position: absolute; top: 1.5px; left: 1.5px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2); transition: left 200ms cubic-bezier(.2,.8,.2,1); }
+.track[data-on="true"] .knob { left: 10.5px; }
+.act { width: 100%; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10.5px; border: none; border-radius: 9px; background: #f2f2f7; color: #1c1c1e; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; text-align: left; cursor: pointer; transition: background 160ms ease; }
+.act:hover { background: #e5e5ea; }
+.act svg { flex: none; }
+
+/* Phones: the panel goes above the sheet (its buttons in reach), the sheet grows with its text. */
+@media (max-width: 760px) {
+  .wrap { padding: 14px 16px 32px; gap: 12px; }
+  .head { padding-left: 34px; } /* clear of the raise page's show-sidebar button in the corner */
+  .spacer { display: none; }
+  .row { flex-direction: column; align-items: stretch; }
+  .panel { order: -1; flex: none; position: static; }
+  .page { flex: none; aspect-ratio: auto; min-height: 420px; padding: 22px 18px; }
+  .detail { grid-template-columns: 96px minmax(0, 1fr); }
+  .scores { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@keyframes exportIn { from { opacity: 0 } to { opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .view, .sec[data-ai] { animation: none; } .track, .knob { transition: none; } }

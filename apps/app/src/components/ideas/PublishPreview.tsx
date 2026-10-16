@@ -2,7 +2,8 @@
 // "Last look before it goes out" (Claude Design handoff "Publish Preview"): what "Publish" opens before
 // NextUp looks for a receiver. The idea laid out as the receiver's inbox will show it, every part the
 // author wrote editable in place and the missing ones addable (IdeaCard.tsx, shared with the Idea view); NextUp's analysis only as a locked note.
-// "Looks good · finalize" goes on to the final document (RaiseFinal.tsx), whose "Send idea" opens the receiver suggestions (RaisePublish.tsx). Props in.
+// "Looks good · finalize" goes on to the final document (RaiseFinal.tsx), whose "Send idea" opens the receiver suggestions (RaisePublish.tsx).
+// "Export" (Claude Design handoff "Export button", in place of Back) opens the export view (RaiseExport.tsx). Props in.
 import { useEffect, useRef } from "react";
 import { IdeaCard, type Look } from "./IdeaCard";
 import type { Meeting } from "./raisePreview";
@@ -46,6 +47,7 @@ export function PublishPreview(p: {
   files: readonly { id: string; name: string }[]; onAddFiles: (list: FileList | null) => void; onRemoveFile: (id: string) => void;
   aiLine: string;
   onClose: () => void; onConfirm: () => void;
+  onExport: () => void; // the export view (RaiseExport.tsx): the A4 page, copied, saved as .doc or PDF
 }) {
   const { look, onLook } = p;
   const panel = useRef<HTMLDivElement>(null);
@@ -93,7 +95,10 @@ export function PublishPreview(p: {
 
         <div className={s.foot}>
           <span className={s.hint}>{ok ? "Changes save to your draft" : "Needs a title and a description"}</span>
-          <button type="button" className={s.back} onClick={onClose}>Back</button>
+          <button type="button" className={s.export} disabled={!ok} onClick={p.onExport} title="Open the export view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" /></svg>
+            Export
+          </button>
           <button type="button" className={s.go} disabled={!ok} onClick={p.onConfirm}>
             Looks good · finalize
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
