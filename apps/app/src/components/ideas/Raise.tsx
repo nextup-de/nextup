@@ -26,6 +26,7 @@ import { benchmark } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
 import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
+import type { ExportAnalysis, ExportIdea } from "@/features/ideas/export";
 import { splitBody } from "@/features/ideas/brief";
 import { ideaContext } from "@/features/ideas/drafts";
 import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, scriptRail, scriptStep } from "@/features/ideas/demo-script";
@@ -45,6 +46,7 @@ import type { TokenFieldHandle } from "./RaiseTokenField";
 import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
 import { ReceiverDialog, type Work } from "./RaisePublish";
 import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
+import { RaiseExport } from "./RaiseExport";
 import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
 import { DocLoading, RaiseFinal } from "./RaiseFinal";
 import { AnalysisSheet, IdeaSheet, type Reviewer, type Similar, type Source } from "./RaiseSheets";
@@ -68,8 +70,8 @@ type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null; //
 // the screens and a reload or a shared link opens the same place. Which screens an idea may show comes from
 // its own state (messages, finalized, published), never from the URL: a screen it is past or not yet at
 // falls back to the chat, and a published idea stays read-only - going back never undoes anything.
-type View = "chat" | "idea" | "analysis" | "preview" | "final";
-const VIEWS: readonly string[] = ["idea", "analysis", "preview", "final"];
+type View = "chat" | "idea" | "analysis" | "preview" | "final" | "export";
+const VIEWS: readonly string[] = ["idea", "analysis", "preview", "final", "export"];
 
 // useSearchParams needs a Suspense boundary above it; the skeleton is what shows until the URL is read.
 export function Raise(p: { script?: boolean }) {
@@ -210,7 +212,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // the chat instead. Checked once the idea in the URL is the one loaded, and not while it is being worked on.
   useEffect(() => {
     if (!draft || draft.id !== urlIdea || sending || busy || pubStep || view === "chat") return;
-    const ok = view === "preview" ? !published && said >= MIN_EXCHANGES : view === "final" ? published || said >= MIN_EXCHANGES : true;
+    const ok = view === "preview" || view === "export" ? !published && said >= MIN_EXCHANGES : view === "final" ? published || said >= MIN_EXCHANGES : true;
     if (!ok) nav({ view: "chat" }, "replace");
   }, [draft, urlIdea, sending, busy, pubStep, view, published, said, nav]);
 
@@ -628,6 +630,19 @@ function RaisePage({ script = false }: { script?: boolean }) {
     sources: sources.map((x) => ({ name: x.name, where: x.where })), turns,
   });
 
+  // The export view (RaiseExport.tsx, from the last look's "Export"): what the author wrote and chose,
+  // and NextUp's assessment for when they switch it in.
+  const outLook = mine ?? shownLook;
+  const exportIdea: ExportIdea = {
+    kind: "idea", title: outLook?.title ?? draft?.title ?? idea.title, summary: outLook?.description ?? shown.description, context: outLook?.context ?? shown.context ?? "",
+    affected, coll: extras.coll, meet: extras.meet, prompts: outLook?.prompts ?? [], author: who.name, receiver: lead,
+    meta: [who.name, affected[0] ?? team, now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })].filter(Boolean).join(" · "),
+  };
+  const exportAnalysis: ExportAnalysis = {
+    rec: advice.name, why: advice.why, overall: Math.round(overall),
+    scores: dials.map((x) => ({ label: x.label, val: x.scored ? String(x.value) : "–" })),
+  };
+
   const main = stage === "start" ? (
     <RaiseStart name={greetName(who.name)} evalStep={evalStep}
       evalSub={(words || 1) + " words from " + (who.handle ?? who.name) + " · " + who.line}
@@ -645,6 +660,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
     <DocLoading />
   ) : shownView === "idea" ? (
     <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
+  ) : shownView === "export" && draft ? (
+    <RaiseExport idea={exportIdea} analysis={exportAnalysis} onBack={() => go("preview")} onClose={() => go("chat")} />
   ) : shownView === "final" && draft ? (
     <RaiseFinal doc={finalDoc} final={finalized} published={published} canSend={canFinalize && !pubStep}
       onSend={sendFinal}
@@ -690,7 +707,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
           affected={affected} depts={seed.depts.map((d) => d.name)} onAffected={setAffected}
           files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile}
           aiLine={"Summary, scores, and " + sources.length + " sources are added for the receiver."}
-          onClose={() => go("chat")} onConfirm={confirmLook} />
+          onClose={() => go("chat")} onConfirm={confirmLook}
+          onExport={() => { if (!mine && shownLook) setLook(shownLook); go("export"); }} />
       )}
       <div className={s.main}>
         <div className={s.showSb}><button type="button" className={s.iconBtn} onClick={() => setSb("open")} title="Show sidebar" aria-label="Show sidebar"><Icon name="sidebar" size={12} /></button></div>

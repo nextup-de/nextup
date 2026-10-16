@@ -81,8 +81,10 @@
 
 .foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 18px 18px; border-top: 1px solid #e5e5ea; background: #fff; }
 .hint { flex: 1; min-width: 0; font-size: var(--nh-fs-sm); color: #6e6e73; }
-.back { flex: none; height: 42px; padding: 0 18px; border: none; border-radius: var(--radius-sm, 999px); background: #f2f2f7; color: #1c1c1e; font-family: inherit; font-size: var(--nh-fs-md); font-weight: 600; cursor: pointer; transition: background 160ms ease; }
-.back:hover { background: #e5e5ea; }
+.export { flex: none; display: flex; align-items: center; gap: 6px; height: 42px; padding: 0 18px; border: none; border-radius: var(--radius-sm, 999px); background: #f2f2f7; color: #1c1c1e; font-family: inherit; font-size: var(--nh-fs-md); font-weight: 600; cursor: pointer; transition: background 160ms ease; }
+.export:hover { background: #e5e5ea; }
+.export:disabled { color: #6e6e73; cursor: default; }
+.export:disabled:hover { background: #f2f2f7; }
 .go { flex: none; display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 20px; border: none; border-radius: var(--radius-sm, 999px); background: #111; color: #fff; font-family: inherit; font-size: var(--nh-fs-md); font-weight: 600; cursor: pointer; transition: background 160ms ease,transform 160ms cubic-bezier(.2,.8,.2,1); }
 .go:active { transform: scale(.97); }
 .go:disabled { background: #e5e5ea; color: #6e6e73; cursor: default; transform: none; }
@@ -100,7 +102,7 @@
   .file { max-width: 100%; }
   .foot { flex-wrap: wrap; padding: 12px 14px 14px; }
   .hint { flex-basis: 100%; }
-  .back { margin-left: auto; }
+  .export { margin-left: auto; }
 }
 
 @keyframes affSoft { from { opacity: 0 } to { opacity: 1 } }
