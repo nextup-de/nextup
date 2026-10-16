@@ -37,7 +37,15 @@ export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalys
   followKey: string; // changes when the thread grows: scroll to its end
 }) {
   const scroll = useRef<HTMLDivElement>(null);
-  useEffect(() => { const el = scroll.current; if (el) el.scrollTop = el.scrollHeight; }, [followKey]);
+  // The thread follows its end - except when NextUp’s first reply has just come in: its analysis box then sits right under
+  // the top bar, and the thread stays scrollable from there (up to the idea, down to the reply and the open point).
+  useEffect(() => {
+    const el = scroll.current;
+    if (!el) return;
+    const first = msgs.length && msgs[msgs.length - 1].full ? el.querySelector<HTMLElement>("[data-first]") : null;
+    if (first) el.scrollTop += first.getBoundingClientRect().top - el.getBoundingClientRect().top - parseFloat(getComputedStyle(el).paddingTop);
+    else el.scrollTop = el.scrollHeight;
+  }, [followKey]); // eslint-disable-line react-hooks/exhaustive-deps -- only when the thread grows
   return (
     <div className={s.chatView}>
       <div className={s.scrollWrap}>
@@ -50,7 +58,7 @@ export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalys
               </div>
             )}
             {msgs.map((m) => (
-              <div key={m.id} className={s.msg} data-role={m.role}>
+              <div key={m.id} className={s.msg} data-role={m.role} data-first={m.full ? true : undefined}>
                 {m.full && <Analysis {...m.full} inChat />}
                 {m.idea ? (
                   <div className={s.bubble} data-idea="true">
