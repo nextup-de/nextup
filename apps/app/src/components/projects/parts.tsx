@@ -33,7 +33,7 @@ export function useRights(p: ReducedProject) {
     start: can("project.started"),
     done: can("project.done"),
     stop: can("project.stopped", { why: "-" }),
-    link: can("project.linked", { url: "-" }),
+    link: can("project.linked", { key: "-" }), // a key, not an address: the rules accept only real http(s) addresses
     measure: (check: number) => can("project.measured", { check, value: 0 }),
     reward: can("project.rewarded"),
     claim: can("project.claimed"),
@@ -116,14 +116,22 @@ export function ProjectCard({ p, note }: { p: ReducedProject; note?: string }) {
 
 /** The board in one line: done, doing, blocked and to do as one bar, with the count. */
 function StepsBar({ p }: { p: ReducedProject }) {
+  const { S } = useDemo();
   const by = board(p);
   const cols = (["done", "doing", "blocked", "todo"] as const).filter((c) => by[c].length > 0);
+  // A running project's line below already says "x of y steps done": here only what needs attention.
+  const late = p.steps.filter((s) => s.column !== "done" && s.dueDay !== null && S.day > s.dueDay).length;
+  const bits = [
+    p.status !== "running" ? by.done.length + "/" + p.steps.length + " steps" : "",
+    by.blocked.length ? by.blocked.length + " blocked" : "",
+    late ? late + " late" : "",
+  ].filter(Boolean);
   return (
     <span className={styles.cardSteps}>
       <span className={styles.segbar} role="img" aria-label={cols.map((c) => by[c].length + " " + COLUMN_LABEL[c]).join(", ")}>
         {cols.map((c) => <span key={c} data-col={c} style={{ flexGrow: by[c].length }} />)}
       </span>
-      <span className={styles.cardStepsText}>{by.done.length}/{p.steps.length}{by.blocked.length ? " · " + by.blocked.length + " blocked" : ""}</span>
+      {bits.length > 0 && <span className={styles.cardStepsText}>{bits.join(" · ")}</span>}
     </span>
   );
 }

@@ -191,4 +191,6 @@ test("the project page shows the idea it came from and its connected tools", asy
   await expect(tools.getByRole("link", { name: "FS-9" })).toBeVisible();
   await expect(tools).toContainText("Microsoft Teams");
   await expect(tools).toContainText("SharePoint");
+  // The tools in use also sit under the title, so they show without scrolling.
+  await expect(page.getByLabel("Tools in use").getByRole("link", { name: /Jira FS-9/ })).toBeVisible();
 });

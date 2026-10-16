@@ -74,6 +74,17 @@ form .due { white-space: normal; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 8px; }
 .actionRow { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .actions .input { width: 260px; max-width: 100%; }
+/* the tools in use, as chips under the title (the rail keeps the details) */
+.toolChips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; }
+.toolChip { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px 3px 3px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 8px); background: var(--nh-card); font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); text-decoration: none; }
+a.toolChip:hover { border-color: var(--nh-brand-line); }
+.toolChip .toolMark { width: 24px; height: 24px; color: #fff; border-color: transparent; background: var(--nh-ink-2); }
+.toolChip .toolMark[data-tool="jira"] { background: #0c66e4; }
+.toolChip .toolMark[data-tool="azure"] { background: #0078d4; }
+.toolChip .toolMark[data-tool="planner"] { background: #31752f; }
+.toolChip .toolMark[data-tool="teams"] { background: #5b5fc7; }
+.toolChip .toolMark[data-tool="sharepoint"] { background: #038387; }
+.chipNote { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
 .quiet { background: none; border: 0; padding: 0; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); cursor: pointer; }
 .quiet:hover { color: var(--nh-ink); }
 .quietLink { background: none; border: 0; padding: 0; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand); cursor: pointer; white-space: nowrap; }
@@ -170,7 +181,7 @@ form .due { white-space: normal; }
 .readOnly { margin: 8px 0 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 
 .board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; align-items: start; }
-.column { --col: #8c8c88; background: var(--nh-surface); border: 1px solid var(--nh-line-soft); border-radius: var(--radius-md, 14px); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; min-width: 0; transition: background-color 120ms ease, border-color 120ms ease; }
+.column { --col: #8c8c88; background: rgb(255 255 255 / 0.42); border: 1px solid transparent; border-top: 2px solid var(--col); border-radius: var(--radius-md, 14px); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; min-width: 0; transition: background-color 120ms ease, border-color 120ms ease; }
 .column[data-col="doing"] { --col: var(--nh-brand); }
 .column[data-col="blocked"] { --col: var(--nh-accent); }
 .column[data-col="done"] { --col: var(--nh-ok); }

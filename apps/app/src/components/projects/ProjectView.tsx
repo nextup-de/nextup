@@ -12,7 +12,7 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { Avatar } from "@/components/dashboard/shared/primitives";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ProjectStatus, ReducedProject } from "@/features/projects/types";
-import { MOVE_LABEL, suggestedBaseline, suggestedSteps, visibleProjects } from "@/features/projects/views";
+import { connectionsOf, MOVE_LABEL, suggestedBaseline, suggestedSteps, visibleProjects } from "@/features/projects/views";
 import { withBrainSteps } from "@/features/projects/brain";
 import { useBrainPlan } from "@/lib/use-brain";
 import { ProjectBoard } from "./ProjectBoard";
@@ -130,8 +130,36 @@ function Header({ p }: { p: ReducedProject }) {
           <span className={styles.faceText}><span className={styles.strong}>{p.lead}</span> leads{p.members.length ? " · " + (p.members.length + 1) + " on the team" : ""}</span>
         </div>
       </div>
+      <ToolChips p={p} />
       <Actions p={p} />
     </header>
+  );
+}
+
+/** The tools the work lives in, at the top: one chip per connected tool, its key, and whether it syncs. Details in the rail. */
+function ToolChips({ p }: { p: ReducedProject }) {
+  const r = useRights(p);
+  const on = connectionsOf(p).filter((c) => c.links.length || c.steps);
+  if (!on.length && !r.link) return null;
+  return (
+    <div className={styles.toolChips} aria-label="Tools in use">
+      {on.map((c) => {
+        const first = c.links.find((l) => l.stepId === null) ?? c.links[0];
+        const label = first?.key || c.tool.name;
+        const body = (
+          <>
+            <span className={styles.toolMark} data-tool={c.tool.id} aria-hidden="true">{c.tool.short}</span>
+            <span>{c.tool.name}{first?.key ? " " + label : ""}</span>
+            {c.tool.sync === "sync" && <span className={styles.toolMode} data-sync="true">Sync</span>}
+            {c.steps > 0 && <span className={styles.chipNote}>{c.steps} steps</span>}
+          </>
+        );
+        return first?.url
+          ? <a key={c.tool.id} href={first.url} target="_blank" rel="noreferrer noopener" className={styles.toolChip} data-on="true">{body}</a>
+          : <span key={c.tool.id} className={styles.toolChip} data-on="true">{body}</span>;
+      })}
+      {r.link && <a href={"#tools-" + p.id} className={styles.quietLink}>{on.length ? "+ Connect another tool" : "+ Connect a tool (Jira, Teams, SharePoint…)"}</a>}
+    </div>
   );
 }
 
@@ -142,6 +170,8 @@ function Actions({ p }: { p: ReducedProject }) {
   const send = useSend(p);
   const [note, setNote] = useState("");
   const [stopping, setStopping] = useState<string | null>(null);
+  const [finishing, setFinishing] = useState(false);
+  const boardDone = p.steps.every((s) => s.column === "done");
   const planning = p.status === "planning";
   const showStart = planning && r.lead;
   if (!showStart && !r.done && !r.stop) return null;
@@ -156,10 +186,16 @@ function Actions({ p }: { p: ReducedProject }) {
           {!p.baseline && <span className={styles.hint}>Take the baseline first - or say why there is no number.</span>}
         </span>
       )}
-      {r.done && (
+      {/* While steps are still open, "done" is a quiet link; it becomes the main button once the board is done. */}
+      {r.done && !boardDone && !finishing && (
+        <button type="button" className={styles.quiet} onClick={() => setFinishing(true)}>Mark it done…</button>
+      )}
+      {r.done && (boardDone || finishing) && (
         <form className={styles.actionRow} onSubmit={(e) => { e.preventDefault(); if (send("project.done", { note }, () => act.project.done(p.id, note.trim() || undefined))) setNote(""); }}>
-          <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What is done (optional)" aria-label="What is done" />
-          <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">Mark it done</button>
+          <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What is done (optional)" aria-label="What is done" autoFocus={finishing} />
+          <button type="submit" className={`nh-btn ${boardDone ? "nh-btn-primary" : "nh-btn-ghost"} nh-btn-sm`}>Mark it done</button>
+          {!boardDone && <span className={styles.hint}>{p.steps.filter((s) => s.column !== "done").length} steps still open</span>}
+          {finishing && <button type="button" className={styles.quiet} onClick={() => setFinishing(false)}>Cancel</button>}
         </form>
       )}
       {r.stop && stopping === null && (
