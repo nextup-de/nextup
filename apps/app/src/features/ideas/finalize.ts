@@ -1,8 +1,8 @@
 // The finalized idea: the whole raise conversation worked into one document - summary, the problem and the
 // idea, what the AI made of it (five dials), what was checked across the company, what is still open,
 // similar ideas, who receives it, the conversation itself and the sources. One to three pages when
-// printed. The author finalizes it before sending (components/ideas/RaiseFinal.tsx); the demo script
-// offers that only after its third text. Pure.
+// printed. It has no page of its own: it travels with the case when the idea is published (briefOfDoc,
+// components/ideas/Raise.tsx); the author's own copy is the last look's Export (RaiseExport.tsx). Pure.
 import { stripTags } from "@/features/assist/check";
 import type { Turn } from "@/features/assist/draft";
 import type { Dept, OrgPerson } from "@/features/demo/types";

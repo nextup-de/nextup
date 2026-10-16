@@ -2,7 +2,7 @@
 // "Last look before it goes out" (Claude Design handoff "Publish Preview"): what "Publish" opens before
 // NextUp looks for a receiver. The idea laid out as the receiver's inbox will show it, every part the
 // author wrote editable in place and the missing ones addable (IdeaCard.tsx, shared with the Idea view); NextUp's analysis only as a locked note.
-// "Looks good · finalize" goes on to the final document (RaiseFinal.tsx), whose "Send idea" opens the receiver suggestions (RaisePublish.tsx).
+// "Find receiver" opens the receiver suggestions (RaisePublish.tsx).
 // "Export" (Claude Design handoff "Export button", in place of Back) opens the export view (RaiseExport.tsx). Props in.
 import { useEffect, useRef } from "react";
 import { IdeaCard, type Look } from "./IdeaCard";
@@ -100,7 +100,7 @@ export function PublishPreview(p: {
             Export
           </button>
           <button type="button" className={s.go} disabled={!ok} onClick={p.onConfirm}>
-            Looks good · finalize
+            Find receiver
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
           </button>
         </div>

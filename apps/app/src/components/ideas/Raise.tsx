@@ -49,7 +49,6 @@ import { ReceiverDialog, type Work } from "./RaisePublish";
 import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
 import { RaiseExport } from "./RaiseExport";
 import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
-import { DocLoading, RaiseFinal } from "./RaiseFinal";
 import { AnalysisSheet, IdeaSheet, type AnalysisData, type Reviewer, type Similar, type Source } from "./RaiseSheets";
 import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
 import { EVAL_STEPS, RaiseStart } from "./RaiseStart";
@@ -71,8 +70,8 @@ type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null; //
 // the screens and a reload or a shared link opens the same place. Which screens an idea may show comes from
 // its own state (messages, finalized, published), never from the URL: a screen it is past or not yet at
 // falls back to the chat, and a published idea stays read-only - going back never undoes anything.
-type View = "chat" | "idea" | "analysis" | "preview" | "final" | "export";
-const VIEWS: readonly string[] = ["idea", "analysis", "preview", "final", "export"];
+type View = "chat" | "idea" | "analysis" | "preview" | "export";
+const VIEWS: readonly string[] = ["idea", "analysis", "preview", "export"];
 
 // useSearchParams needs a Suspense boundary above it; the skeleton is what shows until the URL is read.
 export function Raise(p: { script?: boolean }) {
@@ -115,7 +114,6 @@ function RaisePage({ script = false }: { script?: boolean }) {
     const url = pathname + (qs ? "?" + qs : "");
     if (how === "push") window.history.pushState(null, "", url); else window.history.replaceState(null, "", url);
   }, [params, urlIdea, view, pathname]);
-  const [finals, setFinals] = useKept<Record<string, number>>(scope, "finals", {}); // draft id -> how many turns it had when it was finalized
   const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "auto"); // auto: open on screens, closed on phones (CSS)
   const [query, setQuery] = useState("");
   const [startText, setStartText] = useKept(scope, "startText", "");
@@ -142,7 +140,6 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // Per reply of NextUp's: the topics it left unclear, as they stood when the author answered it - they stay under it.
   const [asked, setAsked] = useKept<Record<string, string[]>>(scope, "asked", {});
   const [prepping, setPrepping] = useState(false); // the second between "Publish" and the last look (PreviewLoading)
-  const [drafting, setDrafting] = useState(false); // the moment between "Looks good · finalize" and the document (DocLoading)
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
   const caretRef = useRef<Caret | null>(null); // where a block from the mini bar lands
@@ -169,7 +166,6 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const said = turns.filter((t) => t.role === "user").length;
   const scripted = story && scriptAt >= MIN_EXCHANGES;
   const canFinalize = turns.length > 0 && !busy && !sending && (said >= MIN_EXCHANGES || published);
-  const finalized = published || (!!draft && finals[draft.id] === turns.length); // sent from the final document; a new message undoes it
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
 
@@ -216,11 +212,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const evaluating = evalStep !== null && !replied;
   useEffect(() => { if (replied) clearInterval(evalTimer.current); }, [replied]);
 
-  // A screen the idea cannot show (the last look of a published idea, the document before three messages):
+  // A screen the idea cannot show (the last look or the export of a published idea, or before three messages):
   // the chat instead. Checked once the idea in the URL is the one loaded, and not while it is being worked on.
   useEffect(() => {
     if (!draft || draft.id !== urlIdea || sending || busy || pubStep || view === "chat") return;
-    const ok = view === "preview" || view === "export" ? !published && said >= MIN_EXCHANGES : view === "final" ? published || said >= MIN_EXCHANGES : true;
+    const ok = view === "preview" || view === "export" ? !published && said >= MIN_EXCHANGES : true;
     if (!ok) nav({ view: "chat" }, "replace");
   }, [draft, urlIdea, sending, busy, pubStep, view, published, said, nav]);
 
@@ -254,8 +250,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   });
 
   // The demo controls (lib/demo-controls.ts): the click the script needs next, made from the controls -
-  // fill, Ask NextUp, each answer filled and sent, the last look, Finalize, Send. The handlers are this render's (see below).
-  const scriptRef = useRef({ send: () => {}, preview: () => {}, finalize: () => {}, sendFinal: () => {} });
+  // fill, Ask NextUp, each answer filled and sent, the last look, Find receiver. The handlers are this render's (see below).
+  const scriptRef = useRef({ send: () => {}, preview: () => {}, findReceiver: () => {} });
   const autoPick = useRef(false); // sent from the controls: the receiver NextUp ranks first gets it, no dialog to answer
   const publishRef = useRef<(to: Receiver) => Promise<void>>(async () => {});
   const idle = ready && !sending && !published && !pubStep && !busy;
@@ -263,18 +259,16 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const canSend = story && idle && !evaluating && (stage === "start" ? (startText.trim() || segsContext(segs).trim()).length >= 3 : !!draft && view === "chat" && text.trim().length >= 3);
   const answer = story && scriptAt >= 1 && scriptAt <= FILLED_ANSWERS ? DEMO_SCRIPT[scriptAt].say : null; // the script's next answer
   const canAnswer = story && idle && stage === "chat" && view === "chat" && !!draft && !!answer && text.trim() !== answer;
-  const canPreview = story && idle && stage === "chat" && !!draft && canFinalize && !looking && !prepping && view !== "final";
-  const canConfirm = story && idle && looking && !drafting && !!draft;
-  const canSendFinal = story && idle && stage === "chat" && !!draft && view === "final" && !looking && canFinalize;
-  useEffect(() => (canIdea || canSend || canAnswer || canPreview || canConfirm || canSendFinal ? registerRaiseHooks({
+  const canPreview = story && idle && stage === "chat" && !!draft && canFinalize && !looking && !prepping;
+  const canConfirm = story && idle && looking && !!draft;
+  useEffect(() => (canIdea || canSend || canAnswer || canPreview || canConfirm ? registerRaiseHooks({
     at: scriptAt,
     fillIdea: canIdea ? () => fillRef.current(true) : null,
     fillAnswer: canAnswer && answer ? () => { setText(answer); setTimeout(() => chatField.current?.focus(), 0); } : null,
     send: canSend ? () => scriptRef.current.send() : null,
     preview: canPreview ? () => scriptRef.current.preview() : null,
-    finalize: canConfirm ? () => scriptRef.current.finalize() : null,
-    sendFinal: canSendFinal ? () => scriptRef.current.sendFinal() : null,
-  }) : undefined), [canIdea, canSend, canAnswer, answer, canPreview, canConfirm, canSendFinal, scriptAt, setText]);
+    findReceiver: canConfirm ? () => scriptRef.current.findReceiver() : null,
+  }) : undefined), [canIdea, canSend, canAnswer, answer, canPreview, canConfirm, scriptAt, setText]);
   // Sent from the controls: once the suggestions are in, the first one receives it after a moment to read it.
   useEffect(() => {
     if (!autoPick.current || !Array.isArray(pubStep) || !pubStep.length) return;
@@ -397,7 +391,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     setMenu(null);
     if (!mine) setLook(lookOf());
     setSb((x) => (x === "open" ? "auto" : x)); // on a phone the drawer closes, so the window is what shows
-    // A second of placeholder first, while NextUp lays it out; then the last look, with Finalize.
+    // A second of placeholder first, while NextUp lays it out; then the last look, with Find receiver.
     setPrepping(true);
     setTimeout(() => { setPrepping(false); nav({ view: "preview" }); }, 1000);
   };
@@ -444,7 +438,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       if (!kept) showToast("Published — the screenshots did not fit in this browser's storage.");
     }
     setBusy(false); setPubWork(null); setPubStep(null);
-    go("chat"); // published from the document: back to the conversation, where the case is offered
+    go("chat"); // published: back to the conversation, where the case is offered
     void studio.open(draft.id);
   };
 
@@ -453,7 +447,6 @@ function RaisePage({ script = false }: { script?: boolean }) {
     if (!t || sending) return;
     if (/^publish( now)?$/i.test(t)) { setText(""); openLook(); return; }
     if (/^review analysis$/i.test(t)) { setText(""); go("analysis"); return; }
-    if (/^finali[sz]e( idea)?$/i.test(t)) { setText(""); if (canFinalize) go("final"); return; }
     if (published) { showToast("This idea is published — follow-ups go through Overview."); return; }
     if (t.length < 3) return;
     // "Not sure": the active topic becomes unknown, and the coach is told not to ask it again.
@@ -468,20 +461,18 @@ function RaisePage({ script = false }: { script?: boolean }) {
     setText(""); setAsk(null);
   };
 
-  // The last look confirmed: the final document opens. Sent from the document: it is final, and NextUp finds who receives it.
-  // The last look confirmed: the window closes, the document is laid out for a moment and a half, then it opens.
+  // The last look confirmed ("Find receiver"): the window closes and NextUp finds who receives it.
   const confirmLook = () => {
-    if (drafting) return;
+    if (!draft) return;
     if (!mine && shownLook) setLook(shownLook);
-    setDrafting(true);
-    setTimeout(() => { setDrafting(false); go("final"); }, 1500);
+    go("chat");
+    void askReceiver();
   };
-  const sendFinal = () => { if (!draft) return; setFinals((f) => ({ ...f, [draft.id]: turns.length })); void askReceiver(); };
   // This render's handlers, for the demo controls (handed over after the render, see Sync).
   const syncScript = () => {
     scriptRef.current = {
-      send: stage === "start" ? startRaise : send, preview: openLook, finalize: confirmLook,
-      sendFinal: () => { autoPick.current = true; sendFinal(); },
+      send: stage === "start" ? startRaise : send, preview: openLook,
+      findReceiver: () => { autoPick.current = true; confirmLook(); },
     };
     publishRef.current = publish;
   };
@@ -584,7 +575,6 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const card: DraftCard | null = stage === "chat" && draft ? {
     title: draft.title || idea.title, published, canPublish: canFinalize,
     pubHint: published ? "On " + lead + "’s desk · follow it in Overview" : "Goes to your team lead, " + lead,
-    finalOn: shownView === "final", finalized, canFinalize, onFinal: () => { setMenu(null); go(shownView === "final" ? "chat" : "final"); },
     onPublish: openLook, working: pubStep && !Array.isArray(pubStep) ? pubStep : null, onRename: (title) => void studio.save({ title }),
     hasIdea: firstIdx >= 0, ideaOn: shownView === "idea", ideaEdited: !!edit, onIdea: () => { setMenu(null); go(shownView === "idea" ? "chat" : "idea"); },
     aiOn: shownView === "analysis", analysed: turns.length > 0, onAI: () => go(shownView === "analysis" ? "chat" : "analysis"),
@@ -678,6 +668,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const thread = msgs.map((m) => (m.id === firstAi ? { ...m, full: { ...firstRead, improved } } : m));
 
   const dials = analysis.dials;
+  // The idea as one document: no page of its own any more, it travels with the case (saveRaised in publish).
   const finalDoc = ideaDoc({
     title: mine?.title.trim() || draft?.title || idea.title, author: who.name, team: team || "", receiver: lead,
     date: now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
@@ -714,18 +705,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
           tray={<PromptTray onAdd={(p) => { const r = insertBlock(segs, caretRef.current, p); setSegs(r.segs); setBodyFocus({ seg: r.at, on: p.custom ? "label" : "text" }); }} />}
           onUnsupported={() => showToast("Dictation isn’t supported in this browser.")} />
       } />
-  ) : drafting ? (
-    <DocLoading />
   ) : shownView === "idea" ? (
     <IdeaSheet key={draft?.id ?? "none"} initial={ideaLook} card={cardProps} locked={published} onChange={editLook}
       onTitle={(t) => { if (t.trim() && t.trim() !== draft?.title) void studio.save({ title: t.trim() }); }} onClose={() => go("chat")} />
   ) : shownView === "export" && draft ? (
     <RaiseExport idea={exportIdea} analysis={exportAnalysis} onBack={() => go("preview")} onClose={() => go("chat")} />
-  ) : shownView === "final" && draft ? (
-    <RaiseFinal doc={finalDoc} final={finalized} published={published} canSend={canFinalize && !pubStep}
-      onSend={sendFinal}
-      onEdit={() => go("preview")} onBack={() => go("chat")} onClose={() => go("chat")}
-      onCopied={(ok) => showToast(ok ? "Copied the document as text." : "Could not copy it.")} />
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} {...analysis} />
   ) : (
@@ -751,7 +735,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
           onCancel={() => setPubStep(null)} onConfirm={(to) => void publish(to)} />
       )}
       {prepping && <PreviewLoading />}
-      {looking && !drafting && shownLook && draft && !published && (
+      {looking && shownLook && draft && !published && (
         <PublishPreview author={who.name} look={shownLook} onLook={setLook}
           meet={extras.meet} onMeet={(meet) => preview.setExtras(key, { meet })}
           coll={extras.coll} people={seed.people} onColl={(coll) => preview.setExtras(key, { coll })}

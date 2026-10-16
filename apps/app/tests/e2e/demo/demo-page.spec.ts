@@ -57,12 +57,10 @@ test("the demo controls click through the whole story: raise, publish, accept, d
     await expect(page.getByRole("button", { name: "Publish now" })).toHaveCount(0);
   });
 
-  await test.step("preview, finalize, send: published to the first suggestion", async () => {
+  await test.step("preview, find receiver: published to the first suggestion", async () => {
     await take("Preview");
     await expect(page.getByRole("dialog", { name: "Last look before it goes out" })).toBeVisible();
-    await take("Finalize");
-    await expect(page.getByRole("article", { name: "Idea document" })).toContainText(TITLE);
-    await take("Send idea");
+    await take("Find receiver");
     await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
   });
 
@@ -93,7 +91,7 @@ test("the leader's and manager's steps taken on the page itself: the controls fo
     await page.keyboard.press("Escape");
   };
 
-  for (const name of ["Fill sample idea", "Send to NextUp", "First answer", "Send answer", "Second answer", "Send answer", "Preview", "Finalize", "Send idea"]) await take(name);
+  for (const name of ["Fill sample idea", "Send to NextUp", "First answer", "Send answer", "Second answer", "Send answer", "Preview", "Find receiver"]) await take(name);
   await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
 
   await test.step("back to the employee before the yes: the switch is offered again", async () => {

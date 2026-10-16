@@ -56,7 +56,7 @@ export async function answerCoach(page: Page, text: string) {
 }
 
 /**
- * "Publish idea", the last look before it goes out (its preview window) and "Looks good · find receiver",
+ * "Publish idea", the last look before it goes out (its preview window) and "Find receiver",
  * then "Who should get this?": pick `to` among the suggestions, or find them under "Choose someone else".
  * Waits until the case is raised (the chat offers "Open the case").
  * On a phone the sidebar is a drawer, opened first. An already open preview goes straight on.
@@ -68,9 +68,7 @@ export async function publishTo(page: Page, to: string) {
     if (await show.isVisible()) await show.click();
     await page.getByRole("button", { name: "Publish idea" }).click();
   }
-  await look.getByRole("button", { name: /Looks good/ }).click({ timeout: 30_000 });
-  // The last look leads to the final document; sending it is one click, then the receiver dialog.
-  await page.getByRole("button", { name: "Send idea" }).click();
+  await look.getByRole("button", { name: /Find receiver/ }).click({ timeout: 30_000 });
   const who = page.getByRole("dialog", { name: "Who should get this?" });
   await expect(who).toBeVisible({ timeout: 30_000 });
   const offered = who.getByRole("radio").filter({ hasText: to }); // by its text: no pattern built from the name
@@ -80,21 +78,6 @@ export async function publishTo(page: Page, to: string) {
     await who.getByRole("textbox", { name: "Search people" }).fill(to);
     await who.getByRole("button").filter({ hasText: to }).first().click();
   }
-  await who.getByRole("button", { name: "Send to " + to }).click();
-  await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
-}
-
-/**
- * The demo's short way out: the sidebar's Finalize opens the final document, "Send idea" goes on to
- * "Who should get this?", where `to` is the first suggestion that matches. Waits for the case.
- */
-export async function finalizeAndSend(page: Page, to: string) {
-  await expect(page.getByRole("button", { name: "Finalize", exact: true }).first()).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Finalize", exact: true }).first().click();
-  await page.getByRole("button", { name: "Send idea" }).click();
-  const who = page.getByRole("dialog", { name: "Who should get this?" });
-  await expect(who).toBeVisible({ timeout: 30_000 });
-  await who.getByRole("radio").filter({ hasText: to }).first().click();
   await who.getByRole("button", { name: "Send to " + to }).click();
   await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
 }

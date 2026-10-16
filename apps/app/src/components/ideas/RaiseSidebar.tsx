@@ -14,7 +14,6 @@ export type DraftCard = {
   onPublish: () => void; working: Work | null; onRename: (title: string) => void;
   hasIdea: boolean; ideaOn: boolean; ideaEdited: boolean; onIdea: () => void;
   aiOn: boolean; analysed: boolean; onAI: () => void;
-  finalOn: boolean; finalized: boolean; canFinalize: boolean; onFinal: () => void;
   acts: Chip[]; files: Chip[];
   saveLabel: string; saved: boolean; onSave: () => void;
   discardLabel: string; onDiscard: () => void;
@@ -118,14 +117,6 @@ function Card({ c }: { c: DraftCard }) {
           <span className={s.sparkle} data-on={c.analysed}><Solid name="sparkle" size={10.5} /></span>Analysis
         </button>
       </div>
-
-      {c.canFinalize && (
-        <div className={s.halves}>
-          <button type="button" className={s.half} data-on={c.finalOn} onClick={c.onFinal} title="Read the whole idea as one document, finalize it, save it as a PDF">
-            <Icon name={c.finalized ? "check" : "file"} size={12} width={c.finalized ? 2.6 : 2} />{c.published ? "Document" : c.finalized ? "Final document" : "Finalize"}
-          </button>
-        </div>
-      )}
 
       <List label="Actions made" icon="bolt" items={c.acts} />
       <List label="Attachments" icon="file" items={c.files} />
