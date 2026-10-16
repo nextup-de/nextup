@@ -28,8 +28,9 @@ export type CaseEventType =
   | "project.handed" // { to, why? }  a new lead; the old one stays on the team
   | "project.baseline" // { metric, unit, value, better: 'up'|'down', source } or { none: true, why }
   | "project.started" // -  refused without a baseline
-  | "project.step.added" // { stepId, text, owner?, dueDay?, external? }
-  | "project.step.moved" // { stepId, to: 'todo'|'doing'|'blocked'|'done', why? }
+  | "project.step.added" // { stepId, text, owner?, dueDay?, note?, to?, external? }  to: the column it starts in (To do when missing)
+  | "project.step.moved" // { stepId, to: 'todo'|'doing'|'blocked'|'done', why?, before? }  before: the card it lands above (null = the bottom)
+  | "project.step.edited" // { stepId, text?, owner?, dueDay?, note?, removed? }  only the fields sent change; owner "" and dueDay null clear
   | "project.linked" // { system, url, key?, stepId? }
   | "project.commented" // { text }
   | "project.done" // { note? }  the measure checks start counting
@@ -84,7 +85,8 @@ export type EventPayload = {
   lead?: string; // case.decided yes: who leads it
   name?: string; on?: boolean; // project.member
   metric?: string; unit?: string; value?: number; better?: "up" | "down"; source?: string; none?: boolean; // project.baseline, project.measured (value, source)
-  stepId?: string; owner?: string; dueDay?: number; // project.step.*, project.linked (stepId)
+  stepId?: string; owner?: string; dueDay?: number | null; // project.step.*, project.linked (stepId)
+  before?: string | null; removed?: boolean; // project.step.moved (before), project.step.edited (removed)
   external?: { system: string; key: string; url?: string }; // project.step.added from a connector
   system?: string; url?: string; key?: string; // project.linked
   check?: number; // project.measured: days after done (30, 90)

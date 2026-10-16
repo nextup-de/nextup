@@ -1,10 +1,10 @@
 // The finalized idea document (features/ideas/finalize.ts): what it carries and how it reads as text.
 import { describe, expect, it } from "vitest";
-import { docFileName, docText, ideaDoc, type DocInput } from "@/features/ideas/finalize";
+import { briefOfDoc, docFileName, docText, ideaDoc, type DocInput } from "@/features/ideas/finalize";
 import { IDEA_UPDATE, dialsOf } from "@/features/ideas/raise";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { GOALS } from "@/features/evaluate";
-import { ROUTES } from "@/features/demo/seed";
+import { DEPTS, PEOPLE, ROUTES } from "@/features/demo/seed";
 
 const parts = benchmark({ text: "A shared setup cart for line 3", affected: [], attachments: 0 }, { routes: ROUTES, goals: GOALS, cases: [], spendLimitEur: 5000 }).parts;
 const dials = dialsOf(parts);
@@ -56,4 +56,22 @@ describe("docText", () => {
 
 describe("docFileName", () => {
   it("is safe for a file system", () => { expect(docFileName(ideaDoc(input({ title: "Cart: line 3 / fast?" })))).toBe("Cart-line-3-fast"); });
+});
+
+describe("briefOfDoc", () => {
+  const doc = ideaDoc(input());
+  const b = briefOfDoc(doc, { files: [{ name: "sketch.pdf", size: "1.2 MB" }], affected: ["Quality", "S. Dahl"], categories: ["Idea"], receiverRole: "Team lead, 4-series", depts: DEPTS, people: PEOPLE });
+  it("carries the document itself as a PDF, then every attached file", () => {
+    expect(b.files.map((f) => f.name)).toEqual([docFileName(doc) + ".pdf", "sketch.pdf"]);
+  });
+  it("turns the five dials into the five scores, with the company facts as reasoning", () => {
+    expect(b.scores).toHaveLength(5);
+    expect(b.scores[0].blocks.some((x) => x.t === "facts")).toBe(true);
+  });
+  it("names who it affects on the org chart and who receives it", () => {
+    expect(b.affects).toMatchObject({ depts: ["QUA"], people: ["S. Dahl"] });
+    expect(b.routing[0]).toMatchObject({ name: "T. Vogel", role: "Team lead, 4-series" });
+    expect(b.prompts).toContainEqual({ label: "Team", text: "Line 3" });
+    expect(b.questions).toEqual(["Who else it helps"]);
+  });
 });

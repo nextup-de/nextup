@@ -63,6 +63,16 @@ export function openOrJoin(book: ProjectBook, ev: CaseEvent, source: Source): Re
 
 const isColumn = (s: unknown): s is StepColumn => typeof s === "string" && (STEP_COLUMNS as readonly string[]).includes(s);
 
+/** Put a step right above `before` (when that is another step), else after every other step. */
+function placeStep(p: ReducedProject, stepId: string, before: string | null): void {
+  const k = p.steps.findIndex((x) => x.id === stepId);
+  if (k < 0) return;
+  const [s] = p.steps.splice(k, 1);
+  const at = before && before !== stepId ? p.steps.findIndex((x) => x.id === before) : -1;
+  if (at < 0) p.steps.push(s);
+  else p.steps.splice(at, 0, s);
+}
+
 /** One project.* event. Returns false when the event is not a project event at all. */
 export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopRules): boolean {
   if (!ev.type.startsWith("project.")) return false;
@@ -101,9 +111,12 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const stepId = pl.stepId;
       const text = pl.text?.trim();
       if (!stepId || !text || p.steps.some((s) => s.id === stepId)) break;
+      // A card can start in any column but Blocked (that one needs its reason, so it is a move).
+      const column: StepColumn = isColumn(pl.to) && pl.to !== "blocked" ? pl.to : "todo";
       p.steps.push({
         id: stepId, text, owner: pl.owner?.trim() || null, dueDay: typeof pl.dueDay === "number" ? pl.dueDay : null,
-        column: "todo", why: "", addedDay: d, by: ev.actor, movedDay: d,
+        column, why: "", note: pl.note?.trim() ?? "", addedDay: d, by: ev.actor, movedDay: d,
+        startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
         external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null,
       });
       break;
@@ -111,9 +124,27 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
     case "project.step.moved": {
       const s = p.steps.find((x) => x.id === pl.stepId);
       if (!s || !isColumn(pl.to)) break;
+      const changed = s.column !== pl.to;
       s.column = pl.to;
-      s.why = pl.why ?? "";
-      s.movedDay = d;
+      // A reorder inside the column keeps its day (and, without a new one, its reason).
+      s.why = pl.why ?? (changed ? "" : s.why);
+      if (changed) s.movedDay = d;
+      if (pl.to !== "todo" && s.startedDay === null) s.startedDay = d;
+      s.doneDay = pl.to === "done" ? (changed || s.doneDay === null ? d : s.doneDay) : null;
+      // The board's order is the steps' order: a card lands above `before`, or at the bottom of its new
+      // column. A move that names no place and keeps the column (a connector repeating a status) stays put.
+      if (pl.before !== undefined || changed) placeStep(p, s.id, pl.before ?? null);
+      break;
+    }
+    case "project.step.edited": {
+      const s = p.steps.find((x) => x.id === pl.stepId);
+      if (!s) break;
+      if (pl.removed) { p.steps = p.steps.filter((x) => x !== s); break; }
+      const text = pl.text?.trim();
+      if (text) s.text = text;
+      if (pl.owner !== undefined) s.owner = pl.owner.trim() || null;
+      if (pl.dueDay !== undefined) s.dueDay = typeof pl.dueDay === "number" ? pl.dueDay : null;
+      if (pl.note !== undefined) s.note = pl.note.trim();
       break;
     }
     case "project.linked": {

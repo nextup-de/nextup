@@ -8,7 +8,6 @@ import { ArchiveBanner, DiscussionPanel } from "@/components/dashboard/shared/Ca
 import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith } from "@/features/cases/rows";
 import type { ReducedProject } from "@/features/projects/types";
-import { safeUrl } from "@/features/projects/views";
 import styles from "./Projects.module.css";
 
 export function OriginPanel({ p }: { p: ReducedProject }) {
@@ -59,8 +58,8 @@ export function OriginPanel({ p }: { p: ReducedProject }) {
   );
 }
 
-// Where to find the rest: the source cases and ideas with the files raised alongside, the ticket keys
-// the steps carry, and a way back to the full list.
+// Where to find the rest: the source cases and ideas with the files raised alongside, and a way back
+// to the full list. The tickets and folders the work lives in are under Connected tools.
 export function FilesPanel({ p }: { p: ReducedProject }) {
   const { S, href } = useDemo();
   const rows = p.sources.map((id) => {
@@ -69,11 +68,10 @@ export function FilesPanel({ p }: { p: ReducedProject }) {
     const i = S.ideas.find((x) => x.id === id);
     return { id, title: i?.title ?? id, to: i ? href("/ideas?id=" + id) : null, files: 0 };
   });
-  const tickets = p.steps.filter((s) => s.external);
 
   return (
-    <section className={styles.panel} aria-labelledby={"files-" + p.id}>
-      <h2 id={"files-" + p.id} className={styles.h2}>Files and sources</h2>
+    <section className={styles.railSection} aria-labelledby={"files-" + p.id}>
+      <h2 id={"files-" + p.id} className={styles.h3}>Files and sources</h2>
       <ul className={styles.links}>
         {rows.map((r) => (
           <li key={r.id} className={styles.linkRow}>
@@ -81,15 +79,6 @@ export function FilesPanel({ p }: { p: ReducedProject }) {
             <span className={styles.muted}>{r.files > 0 ? r.files + (r.files === 1 ? " file" : " files") + " attached" : "no files"}</span>
           </li>
         ))}
-        {tickets.map((s) => {
-          const url = safeUrl(s.external?.url);
-          return (
-            <li key={s.id} className={styles.linkRow}>
-              {url ? <a href={url} target="_blank" rel="noreferrer noopener" className={styles.link}>{s.external?.key}</a> : <span>{s.external?.key}</span>}
-              <span className={styles.muted}>on “{s.text}”</span>
-            </li>
-          );
-        })}
       </ul>
       <Link href={href("/overview")} className={styles.link}>All ideas and problems →</Link>
     </section>

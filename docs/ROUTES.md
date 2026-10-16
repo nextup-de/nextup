@@ -22,7 +22,7 @@
 | `/[company]/ideas` | `.../(app)/ideas/page.tsx` | yes | any | Ideas |
 | `/[company]/collaboration` | `.../(app)/collaboration/page.tsx` | yes | any | Initiatives; with the `projects` flag, the projects |
 | `/[company]/progress` | `.../(app)/progress/page.tsx` | yes | any | Movement since baseline; with the `projects` flag, each measured project's before → after and the Wait ledger after the yes |
-| `/[company]/projects` | `.../(app)/projects/page.tsx` | yes | any | Projects by state (Planning, Running, Measuring, Measured and recognised, Stopped), as the first tab of a page whose second tab, "Ideas & problems", is `/overview`. With no project yet it opens on that table. Members see their own ideas' and the ones they are on. `projects` flag (docs/plans/2026-10-15_idea-to-project.md) |
+| `/[company]/projects` | `.../(app)/projects/page.tsx` | yes | any | Projects by state (Planning, Running, Measuring, Measured and recognised, Stopped), on one page side by side with "Ideas" (the `/overview` table), about 80% of the screen wide; `/overview` shows the same page. Below 1100px the two stack. Members see their own ideas' and the ones they are on. `projects` flag (docs/plans/2026-10-15_idea-to-project.md) |
 | `/[company]/projects/[projectId]` | `.../(app)/projects/[projectId]/page.tsx` | yes | any | One project: board (drag a card to move it), the idea it came from with versions, discussion and archive line, files and sources, team, baseline, measure checks, reward, links, comments, timeline. `projects` flag |
 | `/[company]/cases/[caseId]` | `.../(app)/cases/[caseId]/page.tsx` | yes | any | Case detail |
 | `/[company]/settings/*` | `.../(app)/settings/{company,members,routing}/page.tsx` | yes | manager | Company admin |

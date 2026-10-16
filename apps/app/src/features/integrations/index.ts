@@ -27,7 +27,7 @@ export const SYSTEM_EVENT_TYPES = [
 export type SystemEventType = (typeof SYSTEM_EVENT_TYPES)[number];
 
 /** The tools a project can link to (docs/plans/2026-10-15_idea-to-project.md, step 6). */
-export const LINK_SYSTEMS = ["jira", "azure", "planner", "url"] as const;
+export const LINK_SYSTEMS = ["jira", "azure", "planner", "teams", "sharepoint", "polarion", "codebeamer", "url"] as const;
 
 export const SCOPES = ["events:read", "events:write", "knowledge:write"] as const;
 export type Scope = (typeof SCOPES)[number];

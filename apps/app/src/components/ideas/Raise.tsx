@@ -24,7 +24,7 @@ import { newId } from "@/features/cases/events";
 import { closest, evaluate, GOALS } from "@/features/evaluate";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
-import { ideaDoc } from "@/features/ideas/finalize";
+import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
 import { splitBody } from "@/features/ideas/brief";
 import { ideaContext } from "@/features/ideas/drafts";
@@ -35,6 +35,7 @@ import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
 import { SPEND_LIMIT_EUR } from "@/features/ideas/drafts";
 import { saveShots, shrinkImage } from "@/lib/shots";
+import { saveRaised } from "@/lib/raised";
 import { brainProposalAction } from "@/server/actions/brain";
 import { useIdeaStudio } from "@/lib/use-idea-studio";
 import { useKept } from "@/lib/use-kept";
@@ -59,6 +60,7 @@ function Sync({ run }: { run: () => void }) { useEffect(run); return null; }
 
 const MIN_EXCHANGES = FILLED_ANSWERS + 1; // the author's messages (the idea, then answers) before it can be published
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
+const sizeOf = (bytes: number) => (bytes > 1e6 ? (bytes / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(bytes / 1e3)) + " KB");
 type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null; // "add": under a start-page action button
 
 // The screens of an open idea, as the URL names them (`?idea=<draft id>&view=…`, no view = the chat). The URL
@@ -422,6 +424,10 @@ function RaisePage({ script = false }: { script?: boolean }) {
     const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     const body = mine ? bodyOf(mine) : made.body;
     await step(setPubWork, "Raising the case for " + to.name + "…", "composing", () => act.raise({ ...e.payload, title, body, upside: made.upside, assignee: to.name, routeId: to.routeId ?? e.payload.routeId }, caseId), 600);
+    // Everything the raise page worked out goes with the case: the document, the dials, every file (not only the images).
+    saveRaised(tenant.slug, caseId, briefOfDoc({ ...finalDoc, receiver: to.name }, {
+      files: myFiles.map((f) => ({ name: f.name, size: f.file.size ? sizeOf(f.file.size) : "" })), affected, categories: cats, receiverRole: to.role, depts: seed.depts, people: seed.people,
+    }));
     const images = myFiles.filter((f) => f.img).slice(0, MAX_SHOTS);
     if (images.length) {
       const kept = await step(setPubWork, "Saving the screenshots…", "working", async () => {

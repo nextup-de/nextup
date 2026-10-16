@@ -165,7 +165,7 @@ describe("asInitiatives", () => {
     const rows = asInitiatives(S0.projects, deptOf, (id) => id, (p) => "because " + p.id);
     expect(rows.map((r) => [r.id, r.status])).toEqual([["pj1", "Shipped"], ["pj2", "Building"], ["pj3", "Shipped"], ["pj4", "Proposed"]]);
     const pj2 = rows.find((r) => r.id === "pj2")!;
-    expect(pj2).toMatchObject({ people: 2, stage: "1 of 4 steps done", why: "because pj2" });
+    expect(pj2).toMatchObject({ people: 2, stage: "2 of 8 steps done", why: "because pj2" });
     expect(pj2.stuckOn).toEqual({ name: "L. Brandt", reason: "blocked: Waiting for the VPN profile for the vans" });
     expect(pj2.members[0]).toEqual({ name: "D. Ferraro", role: "Lead · FLD" });
   });
