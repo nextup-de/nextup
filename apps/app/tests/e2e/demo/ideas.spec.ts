@@ -3,7 +3,7 @@
 // (features/ideas/raise.ts topicsOf); the draft
 // survives a reload; publishing asks who should get it and raises the case on their desk.
 // docs/IDEAS.md.
-import { aiMessages, answerCoach, DEVELOP, DEVELOP_MORE, expect, publishTo, START, test } from "../helpers";
+import { aiMessages, answerCoach, DEVELOP, DEVELOP_MORE, expect, holdNextReply, publishTo, START, test } from "../helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/acme/raise");
@@ -11,6 +11,7 @@ test.beforeEach(async ({ page }) => {
 
 test("one line is evaluated, analysed, and the rail shows what a decision still needs", async ({ page }) => {
   await page.getByRole("textbox", { name: START }).fill("A shared calendar for the endurance rig");
+  await holdNextReply(page);
   await page.getByRole("button", { name: "Ask NextUp" }).click();
   await expect(page.getByRole("region", { name: "Evaluating" })).toBeVisible();
 

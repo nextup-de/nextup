@@ -28,6 +28,11 @@ export const START = "Share an idea that would make work better…";
 export const ANSWER = "Answer, or add more detail…";
 export const aiMessages = (page: Page) => page.locator('[data-role="ai"]');
 
+// The evaluation under the first message plays only until the coach answers. Without the brain the
+// offline coach answers in a few milliseconds, so the next reply is held back this long for it to be seen.
+export const holdNextReply = (page: Page, ms = 1_500) =>
+  page.route("**/ideas/turn", async (route) => { await new Promise((r) => setTimeout(r, ms)); await route.continue(); }, { times: 1 });
+
 /**
  * Raise one line from the start page and wait for the coach's first answer. NextUp evaluates it,
  * and may open its analysis of that first answer: closed again here, so the chat is in front.

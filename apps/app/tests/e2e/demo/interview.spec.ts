@@ -10,7 +10,7 @@
 // the live check against a stack that is already up (`npm run e2e:live`, playwright.live.config.ts),
 // where the company has a database and the demo login. Everything else is the same clicks.
 import type { Page } from "@playwright/test";
-import { aiMessages, answerCoach, expect, publishTo, START, test } from "../helpers";
+import { aiMessages, answerCoach, expect, holdNextReply, publishTo, START, test } from "../helpers";
 
 const TITLE = "A shared setup cart for line 3, so a changeover never waits for tools";
 const SHOWN = "A shared setup cart for line 3"; // the title NextUp makes of it: cut at a natural break (features/ideas/coach.ts finishTitle)
@@ -62,6 +62,7 @@ test("the interview script: employee raises, team leader finds it, manager sees 
 
   await test.step("employee: one line, NextUp evaluates it, and the coach answers", async () => {
     await box.fill(TITLE);
+    await holdNextReply(page);
     await page.getByRole("button", { name: "Ask NextUp" }).click();
     await expect(page.getByRole("region", { name: "Evaluating" })).toBeVisible();
     // The first answer may open the analysis (five dials); the chat is where the script goes on.
