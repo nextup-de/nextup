@@ -20,7 +20,6 @@ import { dashboardRow, OVERVIEW_STEPS, overviewSteps, raisedWith, type DashRow, 
 import { commentsOn, onDesk, rescoresOn } from "@/features/cases/selectors";
 import { deskThread } from "@/features/cases/thread";
 import { briefForCase, extOf, personFor, type Person } from "@/features/ideas/brief";
-import { loadRaised } from "@/lib/raised";
 import { loadShots } from "@/lib/shots";
 import s from "./Overview.module.css";
 import { OverviewChats } from "./OverviewChats";
@@ -174,8 +173,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     const desk = row.chain[row.chain.length - 1];
     const raised = raisedWith(c);
     const added = rescoresOn(log, c.id);
-    // The written brief when there is one: the static demo's, or what the raise page saved when it was published here.
-    const brief = briefForCase(c, { ...briefCtx, briefs: { ...seed.briefs, ...loadRaised(tenant.slug) } }, {
+    const brief = briefForCase(c, briefCtx, {
       promiseDays: P, me: row.mine ? c.from : persona.who.name, affected: row.affected, attachments: raised.attachments, updates: added.length,
       passTo: "", history: "", side: onDesk(c, persona.who.name) && !row.mine ? "desk" : "raiser",
     });

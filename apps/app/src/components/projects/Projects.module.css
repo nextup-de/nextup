@@ -355,6 +355,20 @@ a.key:hover { text-decoration: underline; }
 .hubTitle { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: var(--nh-fs-xl); font-weight: 700; color: var(--nh-ink); letter-spacing: -0.01em; line-height: 1.2; }
 .hubProjects .group:first-of-type { margin-top: 0; }
 .hubProjects .cards { grid-template-columns: minmax(0, 1fr); }
+/* Fewer boxes: in the side column all projects sit on one surface, the stages as its dividers and
+   the projects as rows divided by hairlines. */
+@media (min-width: 1101px) {
+  .hubProjects .group { margin: 0; padding-top: 12px; background: var(--nh-card); border: 1px solid var(--nh-line-soft); border-top: 0; }
+  .hubProjects .group:first-of-type { border-top: 1px solid var(--nh-line-soft); border-radius: var(--radius-md, 18px) var(--radius-md, 18px) 0 0; }
+  .hubProjects .group:last-of-type { border-radius: 0 0 var(--radius-md, 18px) var(--radius-md, 18px); }
+  .hubProjects .group:only-of-type { border-radius: var(--radius-md, 18px); }
+  .hubProjects .groupHead { padding: 0 16px; margin-bottom: 2px; }
+  .hubProjects .cards { gap: 0; }
+  .hubProjects .card { border: 0; border-bottom: 1px solid var(--nh-line-soft); border-radius: 0; box-shadow: none; padding: 10px 16px 12px; }
+  .hubProjects .group:last-of-type .card:last-child { border-bottom: 0; border-radius: 0 0 var(--radius-md, 18px) var(--radius-md, 18px); }
+  .hubProjects .card:hover { background: var(--nh-surface); }
+  .hubProjects .cardFoot { border-top: 0; padding-top: 0; }
+}
 /* An idea opened in place fills the screen as on the Overview: the projects step aside for it. */
 .hub:has([data-open="true"]) { max-width: none; }
 .hub:has([data-open="true"]) > .head { display: none; } /* the idea has its own title; "Projects" above it read as the idea's */
