@@ -71,6 +71,15 @@
 .addFile { display: flex; align-items: center; gap: 6px; min-height: 52px; padding: 0 16px; border: 1px dashed #c7c7cc; border-radius: var(--radius-sm, 12px); color: #3a3a3c; font-size: var(--nh-fs-sm); font-weight: 500; cursor: pointer; transition: background 160ms ease; }
 .addFile:hover { background: #f7f7f9; }
 .hidden { display: none; }
+/* Published (IdeaCard locked): read only - no add or remove buttons, no field hover. */
+.none { font-size: var(--nh-fs-sm); color: #8e8e93; }
+.card[data-locked] .dashed, .card[data-locked] .x, .card[data-locked] .addFile { display: none; }
+.card[data-locked] .title:hover, .card[data-locked] .desc:hover, .card[data-locked] .ctx:hover, .card[data-locked] .promptText:hover,
+.card[data-locked] .title:focus, .card[data-locked] .desc:focus, .card[data-locked] .ctx:focus, .card[data-locked] .promptText:focus { background: transparent; box-shadow: none; }
+.card[data-locked] .meetDur, .card[data-locked] .meetWhen { cursor: default; }
+/* The Idea view (RaiseSheets.tsx IdeaSheet): the same card on the page, a head (once published) and a hint around it. */
+.sheetHead { display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }
+.sheetHint { padding: 0 4px; font-size: var(--nh-fs-sm); color: #6e6e73; }
 
 /* NextUp's analysis travels with it, but is not the author's to edit. */
 .ai { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md, 16px); border: 1px dashed #c7c7cc; }

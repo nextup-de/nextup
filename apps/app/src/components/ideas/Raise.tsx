@@ -48,6 +48,7 @@ import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
 import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
 import { DocLoading, RaiseFinal } from "./RaiseFinal";
 import { AnalysisSheet, IdeaSheet, type Reviewer, type Similar, type Source } from "./RaiseSheets";
+import { promptContext, splitPrompts } from "@/features/ideas/prompts";
 import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
 import { EVAL_STEPS, RaiseStart } from "./RaiseStart";
 import { useRaisePreview, type FileItem } from "./raisePreview";
@@ -483,6 +484,21 @@ function RaisePage({ script = false }: { script?: boolean }) {
     if (!draft) return;
     preview.edit(draft.id, { orig: current, text: description + (context.trim() ? "\n\n" + context : "") });
   };
+  // The Idea view shows the idea as the last look does (IdeaCard.tsx): its "*Label*" and "Impact:" lines
+  // as rows, the start page's receiver, colleague and meeting lines left out (the card has those as
+  // fields) but kept in the text, so the coach still reads them.
+  const EXTRA_LINE = /^(Suggested receiver|Colleagues who know|I’d like a)/;
+  const ctxLines = shown.context.split("\n");
+  const extraLines = ctxLines.filter((l) => EXTRA_LINE.test(l.trim()));
+  const ideaParts = splitPrompts(ctxLines.filter((l) => !EXTRA_LINE.test(l.trim())).join("\n"));
+  const ideaLook: Look = { title: draft?.title || idea.title, description: shown.description, context: ideaParts.free, prompts: ideaParts.rows };
+  const editLook = (l: Look) => editIdea(l.description, [promptContext(l.context, l.prompts), extraLines.join("\n")].filter(Boolean).join("\n"));
+  const cardProps = {
+    author: who.name, meet: extras.meet, onMeet: (meet: typeof extras.meet) => preview.setExtras(key, { meet }),
+    coll: extras.coll, people: seed.people, onColl: (coll: string[]) => preview.setExtras(key, { coll }),
+    affected, depts: seed.depts.map((d) => d.name), onAffected: setAffected,
+    files: myFiles, onAddFiles: addFiles, onRemoveFile: removeFile,
+  };
 
   // ── Derived for the views ───────────────────────────────────────────────────────────────────
   // Where it went: the published case's own assignee; before that, the team lead it would land with.
@@ -644,7 +660,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   ) : drafting ? (
     <DocLoading />
   ) : shownView === "idea" ? (
-    <IdeaSheet description={shown.description} context={shown.context} locked={published} onChange={editIdea} onClose={() => go("chat")} />
+    <IdeaSheet key={draft?.id ?? "none"} initial={ideaLook} card={cardProps} locked={published} onChange={editLook}
+      onTitle={(t) => { if (t.trim() && t.trim() !== draft?.title) void studio.save({ title: t.trim() }); }} onClose={() => go("chat")} />
   ) : shownView === "final" && draft ? (
     <RaiseFinal doc={finalDoc} final={finalized} published={published} canSend={canFinalize && !pubStep}
       onSend={sendFinal}
