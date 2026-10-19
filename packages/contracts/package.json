@@ -10,6 +10,6 @@
     ".": "./src/index.ts"
   },
   "peerDependencies": {
-    "zod": "^4"
+    "zod": "^4.6.7"
   }
 }
