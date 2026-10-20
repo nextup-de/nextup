@@ -1,7 +1,7 @@
 // The admin area. Outside [company] on purpose: it is not a role, it is a different surface,
 // reached at admin.<domain> (or /admin in path mode) behind ADMIN_ACCESS_CODE.
 //
-// Signed in, it is a sidebar and its pages (features/admin/nav.ts): three for a company stack's own
+// Signed in, it is a sidebar and its pages (features/admin/nav.ts): four for a company stack's own
 // admin, seven for the platform admin. The sidebar lives here, not
 // in each page, so it stays put while a page loads; its badges come from adminContext(), which the
 // page shares, so they cost no extra read.

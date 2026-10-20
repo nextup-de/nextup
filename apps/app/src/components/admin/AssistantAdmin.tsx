@@ -1,4 +1,4 @@
-// /admin/knowledge, last card: the raise-page assistant for this company - its switches, what it
+// /admin/company-data, last card: the raise-page assistant for this company - its switches, what it
 // did in 30 days (counts only: no per-person view, BetrVG §87) and the documents it may search.
 // Props in, JSX out.
 import { LEVEL_LABEL, canUse, isLevel } from "@/features/assist/classify";

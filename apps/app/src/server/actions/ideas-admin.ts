@@ -1,5 +1,5 @@
 "use server";
-// /admin/knowledge, idea studio card: the score an idea needs before it can be published
+// /admin/company-data, idea studio card: the score an idea needs before it can be published
 // (docs/IDEAS.md). Admin only; the company comes from the form's slug and is looked up.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -21,6 +21,6 @@ export async function saveIdeaSettingsAction(_prev: IdeaSettingsState, form: For
   if (!company) return { error: "No such company." };
   const companyId = company.id, publishThreshold = p.data.publishThreshold;
   await db.companyConfig.upsert({ where: { companyId }, create: { companyId, publishThreshold }, update: { publishThreshold } });
-  revalidatePath(adminBase() + "/knowledge");
+  revalidatePath(adminBase() + "/company-data");
   return { ok: true };
 }

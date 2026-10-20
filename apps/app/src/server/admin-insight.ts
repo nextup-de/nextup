@@ -14,6 +14,9 @@ import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
 import { assistStats, listDocuments, loadAssistSettings, type AssistSettings, type AssistStats } from "@/lib/db/assist";
 import { providerConfig, type ProviderConfig } from "@/server/assist/provider";
 import { ideaStats, loadPublishThreshold } from "@/lib/db/ideas";
+import { inventoryCounts } from "@/lib/db/inventory";
+import { dataInventory, documentsByClass, type ClassRow, type InventoryFacts, type KnowledgeFrom, type SourceCard } from "@/features/admin/data";
+import { DEFAULT_CEILING, type Level } from "@/features/assist/classify";
 
 export type KnowledgeView = { knowledge: Knowledge; profile: Profile | null; brief: string; source: "tables" | "demo" | "none" };
 
@@ -28,6 +31,36 @@ export async function knowledgeView(companyId: string | null): Promise<Knowledge
   const [knowledge, profile] = await Promise.all([loadKnowledge(companyId), loadProfile(companyId)]);
   const source = knowledge.units.length ? "tables" : "none";
   return { knowledge, profile, brief: source === "tables" ? companyBrief(knowledge, profile) : "", source };
+}
+
+export type DataView = {
+  cards: SourceCard[];
+  classes: ClassRow[];
+  ceiling: Level;
+  /** The assistant's switches; null without a database, where nothing is stored. */
+  ai: AssistSettings | null;
+  from: KnowledgeFrom;
+} | null;
+
+/**
+ * What NextUp holds for one company, one card per source (features/admin/data.ts). Counts only.
+ * Without a database it is the built-in demo company, labelled so; null when the admin is signed out.
+ */
+export async function dataView(company: { id: string; entraTenantId: string | null; people: number } | null, live: boolean): Promise<DataView> {
+  if (!(await isAdmin())) return null;
+  const k = await knowledgeView(live && company ? company.id : null);
+  const people = company?.people ?? 0;
+  const entra = Boolean(company?.entraTenantId);
+  if (!live || !company) {
+    const facts: InventoryFacts = {
+      people, entra, knowledge: k.knowledge, knowledgeFrom: k.source,
+      updated: { org: null, routing: null, goals: null }, documents: [], ceiling: DEFAULT_CEILING, n8n: { events: 0, last: null },
+    };
+    return { cards: dataInventory(facts), classes: documentsByClass([], DEFAULT_CEILING), ceiling: DEFAULT_CEILING, ai: null, from: k.source };
+  }
+  const [counts, settings] = await Promise.all([inventoryCounts(company.id), loadAssistSettings(company.id)]);
+  const facts: InventoryFacts = { people, entra, knowledge: k.knowledge, knowledgeFrom: k.source, ceiling: settings.ceiling, ...counts };
+  return { cards: dataInventory(facts), classes: documentsByClass(counts.documents, settings.ceiling), ceiling: settings.ceiling, ai: settings, from: k.source };
 }
 
 type CompanyRef = { id: string; slug: string };

@@ -617,3 +617,20 @@ a.count[data-tone="bad"] { border-color: #f5c2bf; background: var(--nh-danger-ti
   background: var(--nh-app-ground, #f6f7f9);
   border-radius: var(--radius-xs, 8px);
 }
+
+/* Data: a card per source, and the map of where data comes from and who reads it. */
+.dataGrid { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.dataCard { display: grid; gap: 3px; align-content: start; padding: 12px 14px; border: 1px solid var(--nh-line); border-radius: var(--radius-xs, 10px); }
+.dataCard[data-tone="ok"] .dot { background: #16a34a; }
+.dataCard[data-tone="warn"] .dot { background: #d97706; }
+.dataCard[data-tone="bad"] .dot { background: var(--nh-danger, #b3261e); }
+.dataNote { font-size: var(--nh-fs-sm); color: #92400e; }
+
+.mapWrap { margin-top: 12px; overflow-x: auto; }
+.map { display: block; width: 100%; min-width: 640px; max-width: 760px; height: auto; }
+.mapHead { font-size: var(--nh-fs-xs); font-weight: 600; fill: var(--nh-ink-mute, #6b7280); text-transform: uppercase; letter-spacing: 0.06em; }
+.mapLine { fill: none; stroke: var(--nh-line-strong, #b6bcc6); stroke-width: 1.2; }
+.mapNode rect { fill: var(--nh-surface, #fff); stroke: var(--nh-line); }
+.mapNode[data-column="stored"] rect { fill: var(--nh-app-ground, #f6f7f9); }
+.mapLabel { font-size: var(--nh-fs-sm); font-weight: 600; fill: var(--nh-ink, #111827); }
+.mapDetail { font-size: var(--nh-fs-xs); fill: var(--nh-ink-mute, #6b7280); }

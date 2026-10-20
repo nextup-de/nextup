@@ -1,5 +1,5 @@
 "use client";
-// The assistant's switches on /admin/knowledge. Client only for useActionState's saved/error line.
+// The assistant's switches on /admin/company-data. Client only for useActionState's saved/error line.
 import { useActionState } from "react";
 import { Field } from "@/components/ui/Field";
 import { LEVEL_LABEL, type Level } from "@/features/assist/classify";
