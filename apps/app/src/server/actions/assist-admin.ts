@@ -1,5 +1,5 @@
 "use server";
-// /admin/assistant (company stack) or /admin/knowledge (platform): the assistant's switches for one company - on/off (the kill switch), the
+// /admin/assistant (company stack) or /admin/company-data (platform): the assistant's switches for one company - on/off (the kill switch), the
 // classification ceiling, retention, the data-processing agreement date, compliance rules and
 // extra redaction patterns. Admin only; the company comes from the form's slug and is looked up.
 import { revalidatePath } from "next/cache";
@@ -18,7 +18,7 @@ function foreignCompany(slug: string): boolean {
 /** Where the assistant card is shown - both, so neither page keeps a stale copy. */
 function revalidateAssistant() {
   revalidatePath(adminBase() + "/assistant");
-  revalidatePath(adminBase() + "/knowledge");
+  revalidatePath(adminBase() + "/company-data");
 }
 
 export type AssistSettingsState = { ok?: boolean; error?: string };

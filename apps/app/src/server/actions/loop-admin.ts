@@ -1,5 +1,5 @@
 "use server";
-// /admin/knowledge, "After the decision" card: the company's discussion rhythm, measure checks and
+// /admin/company-data, "After the decision" card: the company's discussion rhythm, measure checks and
 // reward rule (src/features/loop/rules.ts). Admin only; the company comes from the form's slug.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -45,6 +45,6 @@ export async function saveLoopSettingsAction(_prev: LoopSettingsState, form: For
     tolerancePct: f.tolerancePct,
     reward: { kind: f.rewardRule, amount: f.rewardAmountEur, sharePct: f.rewardSharePct, capEur: f.rewardCapEur },
   }));
-  revalidatePath(adminBase() + "/knowledge");
+  revalidatePath(adminBase() + "/company-data");
   return { ok: true };
 }

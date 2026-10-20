@@ -28,8 +28,8 @@ const item = (facts: typeof base | Parameters<typeof adminNav>[0], id: string) =
 describe("adminNav", () => {
   it("is seven pages, and quiet when everything is fine", () => {
     const items = adminNav(base);
-    expect(items.map((i) => i.id)).toEqual(["overview", "requests", "tickets", "companies", "knowledge", "decisions", "connections"]);
-    expect(items.map((i) => i.path)).toEqual(["", "/requests", "/tickets", "/companies", "/knowledge", "/decisions", "/connections"]);
+    expect(items.map((i) => i.id)).toEqual(["overview", "requests", "tickets", "companies", "data", "decisions", "connections"]);
+    expect(items.map((i) => i.path)).toEqual(["", "/requests", "/tickets", "/companies", "/company-data", "/decisions", "/connections"]);
     expect(items.filter((i) => i.tone === "bad" || i.tone === "warn")).toEqual([]);
     expect(item(base, "connections")).toMatchObject({ badge: null, tone: "ok" });
   });
@@ -107,10 +107,10 @@ describe("adminScope", () => {
 });
 
 describe("companyNav", () => {
-  it("is three pages, with nothing about requests, companies or connections", () => {
+  it("is four pages, with nothing about requests, companies or connections", () => {
     const items = companyNav({ people: 4, locked: 0 });
-    expect(items.map((i) => i.id)).toEqual(["overview", "people", "assistant"]);
-    expect(items.map((i) => i.path)).toEqual(["", "/people", "/assistant"]);
+    expect(items.map((i) => i.id)).toEqual(["overview", "people", "data", "assistant"]);
+    expect(items.map((i) => i.path)).toEqual(["", "/people", "/company-data", "/assistant"]);
     expect(items.find((i) => i.id === "people")).toMatchObject({ badge: "4", tone: null });
   });
 
