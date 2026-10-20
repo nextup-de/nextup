@@ -53,6 +53,14 @@ The sidebar label stays "Data".
 ┌ Edit ── Profile · Units & roles · Routing · Goals · Documents ────────┐
 ```
 
+**Built for scale (21 Oct, same PR).** Tables do not survive 500 people, so the org part of the page is
+pictures with the tables behind a toggle: a treemap of units sized by people and coloured by how many
+routing rows each owns (click a unit to narrow the tree), the role tree folded to the first level and capped
+at 24 children per role and 300 roles, a grid with one square per routing row (green = owner, deputy and buddy
+exist and are held), and goals as chips. The logic is in `features/admin/org-visual.ts` and is tested on a
+made-up 500-person company (`tests/helpers/large-org.ts`). On a phone the treemap becomes ranked bars. No
+holder's name is drawn anywhere on the page; the raw tables are capped at 50 rows.
+
 Each source card shows four things: **status** (on / off / failing), **size** (rows, never names),
 **origin** (`manual`, `seed`, `entra`, `n8n`, `upload`) and **freshness** (last edit or sync). One
 click opens the rows, the same tables `KnowledgeView` renders now.

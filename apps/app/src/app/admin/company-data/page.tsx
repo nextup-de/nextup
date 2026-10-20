@@ -1,14 +1,15 @@
-// Data: what NextUp holds for one company - a card per source (counts, never names), what the AI may
-// read, and the map of where data comes from and who reads it (docs/plans/2026-10-21_company-data-page.md).
-// The company admin sees its own company; the platform admin picks one (?company=<slug>) and also
-// keeps what used to live on Knowledge: the assistant, idea studio and loop settings.
+// Data: what NextUp holds for one company - a card per source (counts, never names), the
+// organisation as a picture, what the AI may read, and the map of where data comes from and who
+// reads it (docs/plans/2026-10-21_company-data-page.md). The company admin sees its own company;
+// the platform admin picks one (?company=<slug>) and also keeps what used to live on Knowledge: the
+// assistant, idea studio and loop settings. ?unit=<key> narrows the role tree to one unit.
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
 import { assistantView, dataView, ideasView, knowledgeView } from "@/server/admin-insight";
 import { adminBase } from "@/features/admin/nav";
 import { DataOverview } from "@/components/admin/DataOverview";
-import { KnowledgeView } from "@/components/admin/KnowledgeView";
+import { KnowledgeRaw, KnowledgeVisual } from "@/components/admin/KnowledgeVisual";
 import { AssistantAdmin } from "@/components/admin/AssistantAdmin";
 import { CompanyMissing } from "@/components/admin/CompanyOverview";
 import { IdeaStudioAdmin } from "@/components/admin/IdeaStudioAdmin";
@@ -16,11 +17,11 @@ import { LoopRulesAdmin } from "@/components/admin/LoopRulesAdmin";
 import { loadLoopRules } from "@/lib/db/loop";
 import styles from "../admin.module.css";
 
-export default async function DataPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+export default async function DataPage({ searchParams }: { searchParams: Promise<{ company?: string; unit?: string }> }) {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
   const ctx = await adminContext();
   const platform = ctx.scope === "platform";
-  const { company } = await searchParams;
+  const { company, unit } = await searchParams;
   const current = platform ? (ctx.companies.find((c) => c.slug === company) ?? ctx.companies[0] ?? null) : ctx.company;
   if (!current && !platform) return <CompanyMissing />;
 
@@ -31,6 +32,18 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
   const ideas = platform ? await ideasView(id) : null;
   const loop = platform && ctx.live && current ? await loadLoopRules(current.id) : null;
   const name = current?.name ?? "this company";
+
+  // This page, narrowed to a unit (or not). A company stack has one company, so no ?company there.
+  const hrefFor = (unitKey: string | null) => {
+    const q = new URLSearchParams();
+    if (platform && current) q.set("company", current.slug);
+    if (unitKey) q.set("unit", unitKey);
+    return `${adminBase()}/company-data${q.size ? `?${q}` : ""}`;
+  };
+  const picture = knowledge.source === "none" ? null : (
+    <KnowledgeVisual knowledge={knowledge.knowledge} profile={knowledge.profile} unit={unit} hrefFor={hrefFor} />
+  );
+  const rows = knowledge.source === "none" ? null : <KnowledgeRaw knowledge={knowledge.knowledge} brief={knowledge.brief} />;
 
   return (
     <>
@@ -53,8 +66,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
           </nav>
         ) : null}
       </section>
-      {data ? <DataOverview view={data} companyName={name} showMap={platform} /> : null}
-      {knowledge.source === "none" ? null : <KnowledgeView knowledge={knowledge.knowledge} profile={knowledge.profile} brief={knowledge.brief} />}
+      {data ? <DataOverview view={data} companyName={name} showMap={platform} middle={picture} last={rows} /> : null}
       {assistant && current ? <AssistantAdmin slug={current.slug} view={assistant} /> : null}
       {ideas && current ? <IdeaStudioAdmin slug={current.slug} {...ideas} /> : null}
       {loop && current ? <LoopRulesAdmin slug={current.slug} rules={loop} /> : null}

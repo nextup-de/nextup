@@ -1,5 +1,6 @@
 // /admin/company-data: what NextUp holds for one company - a card per source, what the AI may read, and
 // the map of where each kind of data comes from and who reads it. Props in, JSX out.
+import type { ReactNode } from "react";
 import type { SourceCard } from "@/features/admin/data";
 import type { DataView } from "@/server/admin-insight";
 import { LEVEL_LABEL } from "@/features/assist/classify";
@@ -24,7 +25,17 @@ function Source({ s }: { s: SourceCard }) {
   );
 }
 
-export function DataOverview({ view, companyName, showMap }: { view: NonNullable<DataView>; companyName: string; showMap: boolean }) {
+type Props = {
+  view: NonNullable<DataView>;
+  companyName: string;
+  showMap: boolean;
+  /** Drawn between the sources and the AI card: the picture of the organisation. */
+  middle?: ReactNode;
+  /** Drawn last: the raw rows. */
+  last?: ReactNode;
+};
+
+export function DataOverview({ view, companyName, showMap, middle, last }: Props) {
   const { cards, classes, ceiling, ai } = view;
   return (
     <>
@@ -38,6 +49,8 @@ export function DataOverview({ view, companyName, showMap }: { view: NonNullable
           {cards.map((s) => <Source key={s.id} s={s} />)}
         </ul>
       </section>
+
+      {middle}
 
       <section className={styles.card}>
         <h2>What the AI may read</h2>
@@ -77,6 +90,7 @@ export function DataOverview({ view, companyName, showMap }: { view: NonNullable
           <DataMap />
         </section>
       ) : null}
+      {last}
     </>
   );
 }
