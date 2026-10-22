@@ -4,13 +4,15 @@ import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { profileOf } from "@/features/demo/profiles";
 import styles from "./ProfileView.module.css";
+import { M365Card } from "./M365Card";
+import type { M365Card as M365CardData } from "@/server/m365-profile";
 import { avatarTone } from "@/lib/avatar";
 
 type Target = { name: string; role: string; dept: string; email: string | null };
 
 const initials = (name: string) => name.split(/[.\s]+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
-export function ProfileView({ target }: { target?: Target }) {
+export function ProfileView({ target, m365 }: { target?: Target; m365?: M365CardData | null }) {
   const ctx = useDemo();
   const { D, seed, persona, tenant, href } = ctx;
   const own = !target || target.name === persona.who.name;
@@ -62,6 +64,7 @@ export function ProfileView({ target }: { target?: Target }) {
 
       <aside className={styles.sideColumn} aria-label="Profile details">
         <section className={styles.card}><div className={styles.sectionHead}><h2>Details</h2></div><dl className={styles.details}><div><dt>Role</dt><dd>{role}</dd></div><div><dt>Department</dt><dd>{dept || "Not specified"}</dd></div>{location && <div><dt>Location</dt><dd>{location}</dd></div>}{email && <div><dt>Email</dt><dd><a href={"mailto:" + email}>{email}</a></dd></div>}</dl></section>
+        {own && m365 ? <M365Card card={m365} /> : null}
         {(manager || colleagues.length > 0) && <section className={styles.card}><div className={styles.sectionHead}><h2>People nearby</h2></div>{manager && <PersonLink name={manager.name} subtitle="Reports to" href={href("/people/" + encodeURIComponent(manager.name))} />}{colleagues.map((p) => <PersonLink key={p.name} name={p.name} subtitle={p.role} href={href("/people/" + encodeURIComponent(p.name))} />)}</section>}
       </aside>
     </div>

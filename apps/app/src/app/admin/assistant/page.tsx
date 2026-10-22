@@ -6,6 +6,8 @@ import { adminContext } from "@/server/admin-context";
 import { assistantView } from "@/server/admin-insight";
 import { adminBase } from "@/features/admin/nav";
 import { AssistantAdmin } from "@/components/admin/AssistantAdmin";
+import { M365Admin } from "@/components/admin/M365Admin";
+import { m365AdminView } from "@/server/m365-admin";
 import { CompanyMissing } from "@/components/admin/CompanyOverview";
 import styles from "../admin.module.css";
 
@@ -16,9 +18,13 @@ export default async function AssistantPage() {
   if (ctx.scope !== "company") notFound();
   if (!ctx.company) return <CompanyMissing />;
   const assistant = await assistantView(ctx.live ? ctx.company.id : null);
+  const m365 = assistant && ctx.live ? await m365AdminView(ctx.company) : null;
 
   return assistant ? (
-    <AssistantAdmin slug={ctx.company.slug} view={assistant} />
+    <>
+      <AssistantAdmin slug={ctx.company.slug} view={assistant} />
+      {m365 ? <M365Admin view={m365} /> : null}
+    </>
   ) : (
     <section className={styles.card}>
       <h1>Assistant</h1>
