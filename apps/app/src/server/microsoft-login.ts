@@ -216,6 +216,16 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
     return fail("failed");
   }
 
+  try {
+    if (!(await idTokenIsSigned(idToken, company.entraTenantId))) {
+      console.warn(`[microsoft] ${slug}: ID token signature not valid`);
+      return loginWithError(slug, "token");
+    }
+  } catch (err) {
+    console.warn(`[microsoft] ${slug}: could not fetch signing keys`, err);
+    return loginWithError(slug, "failed");
+  }
+
   const checked = checkIdToken(decodeIdToken(idToken), {
     clientId: app.clientId,
     tenantId: company.entraTenantId,
