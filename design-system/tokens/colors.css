@@ -1,0 +1,51 @@
+/* NextUp --nh-* colour tokens. The names are the repo's (apps/app/src/styles/tokens.css); the neutral,
+   status and dark values now point at the NEW system (tokens/system.css) so everything built on --nh-*
+   matches it. Logo blue (--nh-brand #1286fc) is for the logo only - not for buttons. */
+:root{
+  /* Grounds and surfaces */
+  --nh-ground:#f9fcfc;--nh-surface:#f7f7f9;--nh-card:#ffffff;--nh-app-ground:#f5f5f7;
+  --nh-line:#e5e5ea;--nh-line-soft:#f0f0f3;
+  /* Ink */
+  --nh-ink:#1c1c1e;--nh-ink-2:#3a3a3c;--nh-mute:#6e6e73;--nh-mute-2:#8e8e93;
+  /* Dark panel */
+  --nh-dark:#1c1c1e;--nh-dark-2:#2c2c2e;--nh-dark-line:#3a3a3c;--nh-on-dark:#ffffff;--nh-on-dark-mute:#aeaeb2;
+  /* Now / time left (blue) - late is --nh-late */
+  --nh-accent:#007aff;--nh-late:#ff3b30;
+  /* Logo blue - sampled from the NextUp logo files (#1286fc). Logo only, never a button fill. */
+  --nh-brand:#1286fc;--nh-brand-hover:#085dae;--nh-brand-active:#064b8c;--nh-brand-tint:#eaf3ff;--nh-brand-line:#b8d9ff;--nh-brand-2:var(--nh-brand-hover);
+  /* Status */
+  --nh-ok:#1f7a3a;--nh-ok-tint:#eaf8ee;--nh-danger:#d70015;--nh-danger-tint:#fff5f5;
+  /* Avatars (fallback grey; person tints below) */
+  --nh-avatar:#e5e5ea;--nh-avatar-ink:#3a3a3c;
+  --nh-avatar-blue:#e8f1ff;--nh-avatar-blue-ink:#0062cc;
+  --nh-avatar-green:#e6f6ea;--nh-avatar-green-ink:#1f7a3a;
+  --nh-avatar-amber:#fff1d1;--nh-avatar-amber-ink:#8a5d00;
+  --nh-avatar-violet:#f1e9fb;--nh-avatar-violet-ink:#6b3fa0;
+  --nh-avatar-teal:#e1f3f4;--nh-avatar-teal-ink:#0f6b70;
+  /* The two kinds of thing an employee raises - neutral; tell them apart by icon and label, not colour */
+  --nh-problem:#3a3a3c;--nh-problem-tint:#f2f2f7;--nh-problem-line:#e5e5ea;
+  --nh-idea:#3a3a3c;--nh-idea-tint:#f2f2f7;--nh-idea-line:#e5e5ea;
+  /* Score benchmarks - all one blue, like the gauges */
+  --nh-bench-fit:#007aff;--nh-bench-fit-tint:#e3eaf7;
+  --nh-bench-impact:#007aff;--nh-bench-impact-tint:#e3eaf7;
+  --nh-bench-feas:#007aff;--nh-bench-feas-tint:#e3eaf7;
+  --nh-bench-clarity:#007aff;--nh-bench-clarity-tint:#e3eaf7;
+  /* Status pills (dashboard/shared/ui.module.css) */
+  --nh-pill-accent-bg:#fff1dc;--nh-pill-accent-fg:#9a5300;
+  --nh-pill-ok-bg:#eaf8ee;--nh-pill-ok-fg:#1f7a3a;
+  --nh-pill-grey-bg:#f2f2f7;--nh-pill-grey-fg:#3a3a3c;
+  --nh-pill-soft-bg:#f2f2f7;
+  --nh-pill-purple-bg:#f2f2f7;--nh-pill-purple-fg:#3a3a3c;
+  --nh-hot:#ff3b30;
+  /* Handoff greys - the Raise, Inbox and Feed screens (Claude Design handoffs) use iOS-like system greys */
+  --nh-sys-ink:#1c1c1e;--nh-sys-title:#1b1d22;--nh-sys-ink-2:#3a3a3c;--nh-sys-mute:#6e6e73;--nh-sys-mute-2:#8e8e93;--nh-sys-faint:#c7c7cc;
+  --nh-sys-fill:#f2f2f7;--nh-sys-fill-2:#eceef2;--nh-sys-fill-3:#e0e3e8;--nh-sys-sep:#e5e5ea;--nh-sys-sep-2:#d1d1d6;--nh-sys-hover:#f7f7f9;--nh-sys-divider:#f0f0f3;
+  --nh-sys-black:#111111;--nh-sys-blue:#007aff;--nh-sys-red:#ff3b30;--nh-sys-late:#d70015;
+  /* Raise composer gold ring */
+  --nh-gold-1:#f0c23a;--nh-gold-2:#f7dd93;--nh-gold-3:#fff3d0;--nh-gold-4:#f2cb55;--nh-gold-5:#e6a919;
+  --nh-gold-ring:linear-gradient(110deg,#f0c23a 0%,#f7dd93 30%,#fff3d0 52%,#f2cb55 78%,#e6a919 100%); /* @kind color */
+  /* The Ground's blue blobs */
+  --nh-blob-1:#bfd6f8;--nh-blob-2:#d0e4fb;--nh-blob-3:#c3d8f9;--nh-blob-4:#ddeafc;--nh-dot:rgb(60 100 170);
+
+  --status-ok:var(--nh-ok);--status-danger:var(--nh-danger);
+}

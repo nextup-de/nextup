@@ -1,0 +1,62 @@
+/* NextUp - the NEW design system (Raise, Feed, Inbox, Projects). Inter, system greys, black pills,
+   one blue for "now / selected / time left", red only when late. Values are the handoff screens' own
+   (Raise.module.css, Feed.module.css, InboxView.module.css, IdeaDetail.module.css, Overview.module.css).
+   Use these first; the --nh-* greige set in colors.css is the legacy system being phased out. */
+:root{
+  /* Ink */
+  --nu-ink:#1c1c1e;        /* body text, icons, the dark of pills */
+  --nu-title:#1b1d22;      /* page and card titles */
+  --nu-ink-2:#3a3a3c;      /* secondary text, ledes */
+  --nu-mute:#6e6e73;       /* meta, labels, timestamps */
+  --nu-mute-2:#8e8e93;     /* placeholders, roles, "/ 100" */
+  --nu-faint:#aeaeb2;      /* citations, counts */
+  --nu-ghost:#c7c7cc;      /* chevrons, disabled icons */
+  /* Surfaces & lines */
+  --nu-card:#ffffff;
+  --nu-panel:#f7f7f9;      /* info panels inside cards (label / value grids, bars, stats) */
+  --nu-fill:#f2f2f7;       /* grey buttons, chips, search, segmented tracks */
+  --nu-fill-2:#eceef2;     /* small round icon buttons */
+  --nu-fill-3:#e0e3e8;     /* their hover */
+  --nu-sep:#e5e5ea;        /* hairlines, input borders, outline pills */
+  --nu-sep-2:#d1d1d6;      /* list row separators (0.5px) */
+  --nu-divider:#f0f0f3;    /* section dividers inside cards */
+  --nu-hover:#f7f7f9;
+  /* Actions */
+  --nu-black:#111111;      /* THE primary action: pills, toggles, Support, close buttons, the "on" segment */
+  --nu-black-hover:#000000;
+  /* Accent */
+  --nu-blue:#007aff;       /* now / selected / time left / gauges / progress / AI sparkle */
+  --nu-blue-ink:#0062cc;   /* blue text on blue tint */
+  --nu-blue-hl:#0a84ff;    /* the selected inbox row */
+  --nu-blue-tint:rgb(0 122 255 / 0.12);
+  --nu-gauge-track:#e3eaf7;
+  --nu-red:#ff3b30;        /* late: hot numbers */
+  --nu-red-ink:#d70015;    /* destructive text, "Discard" */
+  --nu-green-ink:#1f7a3a;  /* saved, approved, published-at */
+  /* Tinted badges (text on tint) */
+  --nu-badge-left-fg:#007aff;--nu-badge-left-bg:rgb(0 122 255 / 0.12);
+  --nu-badge-late-fg:#6e6e73;--nu-badge-late-bg:rgb(110 110 115 / 0.12);
+  --nu-badge-review-fg:#9a5300;--nu-badge-review-bg:#fff1dc;
+  --nu-badge-piloting-fg:#0062cc;--nu-badge-piloting-bg:#e8f1ff;
+  --nu-badge-approved-fg:#1f7a3a;--nu-badge-approved-bg:#eaf8ee;
+  --nu-badge-neutral-fg:#3a3a3c;--nu-badge-neutral-bg:#f2f2f7;
+  /* Shadows - bluish, soft */
+  --nu-shadow:0 6px 20px rgb(40 60 100 / 0.06);                                  /* detail cards, score tiles, side cards */
+  --nu-shadow-card:0 1px 3px rgba(30,45,80,0.08),0 10px 30px rgba(30,45,80,0.12); /* feed cards */
+  --nu-shadow-card-hover:0 2px 6px rgba(30,45,80,0.10),0 16px 40px rgba(30,45,80,0.18);
+  --nu-shadow-list:0 10px 30px rgb(40 60 100 / 0.08),0 1px 2px rgb(40 60 100 / 0.05); /* inbox list card */
+  --nu-shadow-pill:0 1px 2px rgba(40,60,100,0.08);
+  --nu-shadow-pop:0 12px 32px rgb(20 30 60 / 0.16),0 0 0 0.5px rgb(0 0 0 / 0.08);
+  /* Type */
+  --nu-font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; /* @kind font */
+
+  /* Semantic aliases - point at the new system */
+  --text-body:var(--nu-ink);--text-title:var(--nu-title);--text-secondary:var(--nu-ink-2);--text-muted:var(--nu-mute);--text-faint:var(--nu-mute-2);--text-on-dark:#ffffff;--text-on-brand:#ffffff;
+  --surface-page:#f9fcfc;--surface-card:var(--nu-card);--surface-panel:var(--nu-panel);--surface-fill:var(--nu-fill);--surface-dark:var(--nu-black);
+  --border-default:var(--nu-sep);--border-soft:var(--nu-divider);
+  --action-primary:var(--nu-black);--action-primary-hover:var(--nu-black-hover);--action-secondary:var(--nu-fill);--action-secondary-hover:var(--nu-sep);
+  --accent:var(--nu-blue);--status-time-left:var(--nu-blue);--status-late:var(--nu-red);
+  --focus-ring:0 0 0 2px #b8d9ff; /* @kind shadow */
+  --font-body:var(--nu-font);--font-display:var(--nu-font);--font-ui:var(--nu-font);
+  --radius-control:var(--radius-sm);--radius-card:var(--radius-md);--shadow-card:var(--nu-shadow);
+}

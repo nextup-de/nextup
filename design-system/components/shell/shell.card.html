@@ -1,0 +1,19 @@
+<!-- @dsCard group="Components" viewport="1100x300" name="Shell" subtitle="Ground, ShellBar, NavPill, Wordmark, Toggle, FilterChip" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{background:#f5f5f7;padding:20px}body{padding:0}.stage{position:relative;height:300px;overflow:hidden}.c{position:relative;padding:22px 32px;display:grid;gap:16px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}</style></head>
+<body><div id="r"></div>
+<script type="text/babel">
+const { Ground, ShellBar, NavPill, Wordmark, Toggle, FilterChip, Icon } = window.NextUpDesignSystem_2debbf;
+ReactDOM.createRoot(document.getElementById("r")).render(<><div className="stage"><Ground contained />
+<div style={{position:"relative"}}><ShellBar logoBase="../../assets/brand/" value="Inbox" items={[{label:"Ideas"},{label:"Inbox",count:3},{label:"Feed"},{label:"Overview"}]} /></div>
+<div className="c">
+<div className="row"><NavPill value="Ideas" items={[{label:"Ideas"},{label:"Feed"},{label:"Overview"}]} /><NavPill value="Dashboard" items={[{label:"Dashboard"},{label:"Inbox",count:2},{label:"Feed"}]} /></div>
+<div className="row"><Toggle tone="light" icon={<Icon name="pin" size={14} width={2.2} />}>All sites</Toggle><Toggle icon={<Icon name="sort" size={14} width={2.2} />}>Most support</Toggle><Toggle size="sm" icon={<Icon name="up" size={13} width={2.6} />} count={12}>Support</Toggle><Toggle size="sm" tone="outline" icon={<Icon name="check" size={13} width={2.6} />} count={13}>Supported</Toggle></div>
+<div className="row"><FilterChip on count={24}>All</FilterChip><FilterChip count={9}>Production</FilterChip><FilterChip count={6}>Quality</FilterChip><FilterChip count={4}>Maintenance</FilterChip><span style={{width:20}} /><Wordmark base="../../assets/brand/" height={28} /><Wordmark base="../../assets/brand/" height={28} tone="black" /><Wordmark base="../../assets/brand/" layout="mark" height={28} /></div>
+</div></div></>);
+</script></body></html>

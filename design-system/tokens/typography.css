@@ -1,0 +1,26 @@
+/* Type: one fixed scale for every page (docs/RESPONSIVE.md). Nothing below 12px, nothing grows with the window. */
+:root{
+  --nh-font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; /* Inter everywhere (Manrope retired) */
+  --nh-font-inter:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; /* Raise, Inbox, Feed, idea detail */
+  --nh-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; /* @kind font */
+  --font-sans:"Inter";--font-inter:"Inter";--font-mono:"IBM Plex Mono";
+
+  --nh-fs-xs:12px;   /* meta, tags, badges, timestamps - the floor */
+  --nh-fs-sm:13px;   /* labels, secondary lines, small buttons */
+  --nh-fs-md:15px;   /* body text, buttons, list titles */
+  --nh-fs-lg:17px;   /* ledes, card headings */
+  --nh-fs-xl:20px;   /* section headings, big numbers */
+  --nh-fs-2xl:24px;  /* page headings, score numbers */
+  --nh-fs-3xl:28px;  /* the opened case's title */
+  --nh-fs-4xl:34px;  /* display: sign-in, empty pages */
+  --nh-fs-input:16px;/* text fields on phones */
+
+  --nh-lh-body:1.5; /* @kind other */
+  --nh-lh-tight:1.1; /* @kind other */
+  --nh-lh-snug:1.3; /* @kind other */
+  --nh-ls-heading:-0.02em;--nh-ls-display:-0.035em;--nh-ls-eyebrow:0.08em;
+
+  /* Semantic aliases (font-body / display / ui live in system.css - Inter) */
+  --font-code:var(--nh-mono); /* @kind font */
+  --text-display:var(--nh-fs-4xl);--text-page-title:var(--nh-fs-2xl);--text-section:var(--nh-fs-xl);--text-card-title:var(--nh-fs-lg);--text-base:var(--nh-fs-md);--text-label:var(--nh-fs-sm);--text-meta:var(--nh-fs-xs);
+}
