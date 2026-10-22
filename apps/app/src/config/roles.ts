@@ -32,6 +32,10 @@ export const ENTRA_ROLE_CLAIMS: Record<string, Role> = {
   "nextup.member": "member",
 };
 
+// The Entra app role that opens a company stack's /admin. Not a NextUp role: the admin area sits
+// outside the role system (src/server/actions/admin.ts), so it is not in ENTRA_ROLE_CLAIMS either.
+export const ENTRA_ADMIN_CLAIM = "nextup.admin";
+
 export function canAccess(role: Role, path: string): boolean {
   const rule = Object.entries(ROLE_ACCESS).find(([prefix]) => path === prefix || path.startsWith(prefix + "/"));
   return rule ? rule[1].includes(role) : true;

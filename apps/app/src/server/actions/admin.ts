@@ -10,7 +10,8 @@ import { redirect } from "next/navigation";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { isTenantId } from "@/features/auth/entra";
 import { generateLoginCode, hashLoginCode } from "@/features/auth/login-code";
-import { ADMIN_COOKIE, signAdmin, verifyAdmin } from "@/features/auth/cookie";
+import { ADMIN_COOKIE, ADMIN_TTL_SECONDS, verifyAdmin } from "@/features/auth/cookie";
+import { issueAdminSession } from "@/server/admin-session";
 import type { CompanyRow, PilotRequestRow } from "@/features/admin/rows";
 import { seedTemplate } from "@/features/demo";
 import { toSeedJson } from "@/features/demo/parse";
@@ -40,7 +41,6 @@ import { companyUrl, dashboardUrl, landingUrl } from "@/features/tenant/urls";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { readEdit, readReply, validateEdit, validateReply, type Reply, type ReplyVia } from "@/features/admin/requests";
 import { sendMail, type MailStatus } from "@/server/mail";
-import { secureCookies } from "@/server/issue-session";
 import { databaseSnapshot, noticeTasks, noticesSnapshot } from "@/server/connections";
 import { clientKey, forgive, throttle } from "@/server/throttle";
 import { usableSecret } from "@/features/admin/environment";
@@ -63,8 +63,6 @@ function platformOnly(): boolean {
 function foreignCompany(slug: string): boolean {
   return adminScope() === "company" && slug !== process.env.COMPANY_SLUG?.trim();
 }
-
-const ADMIN_TTL_SECONDS = 8 * 60 * 60;
 
 /** Compared as digests, so neither the code's content nor its length leaks through timing. */
 function codeMatches(given: string, expected: string): boolean {
@@ -120,15 +118,9 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   }
   forgive("adminLogin", who);
 
-  // strict: the admin area is never entered from a link on another site, so the cookie never
-  // needs to travel on one - which also takes cross-site request forgery off the table.
-  (await cookies()).set(ADMIN_COOKIE, signAdmin(Math.floor(Date.now() / 1000) + ADMIN_TTL_SECONDS, secret), {
-    httpOnly: true,
-    sameSite: "strict",
-    path: "/",
-    secure: secureCookies(),
-    maxAge: ADMIN_TTL_SECONDS,
-  });
+  // The shared code names nobody, so it is logged as what it is: the way in when Microsoft is not.
+  console.info(`[admin] signed in with the shared admin code from ${who}`);
+  await issueAdminSession();
   // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
   // is a TypeError: Invalid URL, not a redirect to the root.
   redirect(adminHome() || "/");

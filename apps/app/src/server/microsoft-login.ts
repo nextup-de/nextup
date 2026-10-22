@@ -19,6 +19,7 @@ import {
   FLOW_COOKIE,
   FLOW_TTL_SECONDS,
   idTokenKeyId,
+  isEntraAdmin,
   isTenantId,
   jwksUrl,
   landingFor,
@@ -35,8 +36,10 @@ import {
   type MicrosoftError,
 } from "@/features/auth/entra";
 import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
+import { adminScope } from "@/features/admin/nav";
 import { initialsOf } from "@/features/tenant/create";
 import { companyPrefix, safeNextPath } from "@/features/tenant/urls";
+import { issueAdminSession } from "@/server/admin-session";
 import { issueSession, secureCookies } from "@/server/issue-session";
 
 export { companyPrefix };
@@ -67,6 +70,19 @@ export async function microsoftEnabledFor(slug: string): Promise<boolean> {
 
 const loginWithError = (slug: string, reason: MicrosoftError) => `${companyPrefix(slug)}/login?error=${reason}`;
 
+// A company stack's own /admin, which Microsoft can also unlock (the NextUp.Admin app role).
+const adminHome = () => (process.env.TENANT_MODE === "subdomain" ? "" : "/admin");
+const adminLoginError = (reason: MicrosoftError) => `${adminHome()}/login?error=${reason}`;
+
+/** Only a one-company stack has an admin of its own, and only for its own company. */
+const isThisStacksAdmin = (slug: string) => adminScope() === "company" && process.env.COMPANY_SLUG?.trim() === slug;
+
+/** The Microsoft button on /admin/login: shown when Microsoft sign-in works for this stack's company. */
+export async function microsoftAdminEnabled(): Promise<boolean> {
+  const slug = process.env.COMPANY_SLUG?.trim();
+  return Boolean(slug && isThisStacksAdmin(slug) && (await microsoftEnabledFor(slug)));
+}
+
 function flowCookieOptions(maxAge: number) {
   return {
     httpOnly: true,
@@ -80,11 +96,17 @@ function flowCookieOptions(maxAge: number) {
 }
 
 /** Returns the URL to redirect to: Microsoft on success, back to the login page otherwise. */
-export async function startMicrosoftLogin(slug: string, origin: string, next: string | null): Promise<string> {
+export async function startMicrosoftLogin(
+  slug: string,
+  origin: string,
+  next: string | null,
+  asAdmin = false,
+): Promise<string> {
   const app = entraApp();
   const secret = process.env.AUTH_SECRET;
   const company = await tenantOf(slug);
-  if (!app || !secret || !company) return loginWithError(slug, "off");
+  if (asAdmin && !isThisStacksAdmin(slug)) return loginWithError(slug, "off");
+  if (!app || !secret || !company) return asAdmin ? adminLoginError("off") : loginWithError(slug, "off");
 
   const { verifier, challenge } = pkcePair();
   const state = randomToken();
@@ -93,7 +115,7 @@ export async function startMicrosoftLogin(slug: string, origin: string, next: st
 
   (await cookies()).set(
     FLOW_COOKIE,
-    signFlow({ slug, state, nonce, verifier, next: safeNext(next), exp }, secret),
+    signFlow({ slug, state, nonce, verifier, next: safeNext(next), exp, ...(asAdmin ? { as: "admin" as const } : {}) }, secret),
     flowCookieOptions(FLOW_TTL_SECONDS),
   );
 
@@ -141,20 +163,22 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
   const app = entraApp();
   const secret = process.env.AUTH_SECRET;
   const company = await tenantOf(slug);
-  if (!app || !secret || !company) return loginWithError(slug, "off");
+  // Read first, so a failure goes back to the page the person started from: /admin or the login.
+  const flow = secret ? verifyFlow(raw, secret) : null;
+  const fail = (reason: MicrosoftError) => (flow?.as === "admin" ? adminLoginError(reason) : loginWithError(slug, reason));
+  if (!app || !secret || !company) return fail("off");
 
   // The person pressed Cancel, or their admin has not consented to the app.
   if (params.get("error")) {
     console.warn(`[microsoft] ${slug}: ${params.get("error")} ${params.get("error_description") ?? ""}`.slice(0, 300));
-    return loginWithError(slug, params.get("error") === "access_denied" ? "cancelled" : "failed");
+    return fail(params.get("error") === "access_denied" ? "cancelled" : "failed");
   }
 
-  const flow = verifyFlow(raw, secret);
-  if (!flow) return loginWithError(slug, raw ? "expired" : "state");
-  if (flow.slug !== slug || !sameToken(params.get("state") ?? "", flow.state)) return loginWithError(slug, "state");
+  if (!flow) return fail(raw ? "expired" : "state");
+  if (flow.slug !== slug || !sameToken(params.get("state") ?? "", flow.state)) return fail("state");
 
   const code = params.get("code");
-  if (!code) return loginWithError(slug, "token");
+  if (!code) return fail("token");
 
   let idToken: unknown;
   try {
@@ -174,22 +198,22 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
     const body = (await res.json()) as { id_token?: unknown; error?: string; error_description?: string };
     if (!res.ok) {
       console.warn(`[microsoft] ${slug}: token endpoint ${res.status} ${body.error ?? ""}`);
-      return loginWithError(slug, "failed");
+      return fail("failed");
     }
     idToken = body.id_token;
   } catch (err) {
     console.warn(`[microsoft] ${slug}: token request failed`, err);
-    return loginWithError(slug, "failed");
+    return fail("failed");
   }
 
   try {
     if (!(await idTokenIsSigned(idToken, company.entraTenantId))) {
       console.warn(`[microsoft] ${slug}: ID token signature not valid`);
-      return loginWithError(slug, "token");
+      return fail("token");
     }
   } catch (err) {
     console.warn(`[microsoft] ${slug}: could not fetch signing keys`, err);
-    return loginWithError(slug, "failed");
+    return fail("failed");
   }
 
   const checked = checkIdToken(decodeIdToken(idToken), {
@@ -197,8 +221,20 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
     tenantId: company.entraTenantId,
     nonce: flow.nonce,
   });
-  if (!checked.ok) return loginWithError(slug, checked.reason);
+  if (!checked.ok) return fail(checked.reason);
   const { oid, email, name } = checked.who;
+
+  // /admin: the customer's IT decides who, with the NextUp.Admin app role. No NextUp account needed.
+  if (flow.as === "admin") {
+    if (!isThisStacksAdmin(slug)) return fail("off");
+    if (!isEntraAdmin(checked.who.roles)) {
+      console.warn(`[admin] ${email || oid} tried Microsoft sign-in without the NextUp.Admin role`);
+      return fail("noadmin");
+    }
+    await issueAdminSession(email || name || oid);
+    console.info(`[admin] ${email || oid} signed in with Microsoft`);
+    return adminHome() || "/";
+  }
 
   const db = getDb();
   // Bound account first; the email only finds someone who has never used Microsoft here - and
@@ -212,7 +248,7 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
   const landing = landingFor({ found, emailTaken, email, role: roleFromEntra(checked.who.roles) });
   if (landing.kind === "refuse") {
     console.warn(`[microsoft] ${slug}: ${landing.reason} for ${email || "(no email)"}`);
-    return loginWithError(slug, landing.reason);
+    return fail(landing.reason);
   }
 
   let user = found;
@@ -225,7 +261,7 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
       });
     } catch (err) {
       console.warn(`[microsoft] ${slug}: could not create ${email}`, err);
-      return loginWithError(slug, "failed");
+      return fail("failed");
     }
     console.info(`[microsoft] ${slug}: created ${email} as ${landing.role}`);
   } else if (found) {
@@ -236,7 +272,7 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
       if (landing.setRole) console.info(`[microsoft] ${slug}: ${email} is now ${landing.setRole} (was ${found.role})`);
     }
   }
-  if (!user) return loginWithError(slug, "failed");
+  if (!user) return fail("failed");
 
   await issueSession(company.id, company.slug, user);
   return companyPrefix(slug) + (flow.next || ROLE_HOME[user.role as Role]);

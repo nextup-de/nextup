@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   SESSION_TTL_SECONDS,
+  adminBy,
   signAdmin,
   signSession,
   verifyAdmin,
@@ -119,5 +120,27 @@ describe("access code", () => {
 
   it("generates a code that carries the slug", () => {
     expect(generateAccessCode("acme")).toMatch(/^acme-[0-9a-f]{4}-[0-9a-f]{4}$/);
+  });
+});
+
+describe("admin cookie: who", () => {
+  it("names the Microsoft account that signed in", () => {
+    expect(adminBy(signAdmin(NOW + 60, SECRET, "it.admin@acme.example"), SECRET, NOW)).toBe("it.admin@acme.example");
+  });
+
+  it("names nobody for the shared admin code", () => {
+    expect(adminBy(signAdmin(NOW + 60, SECRET), SECRET, NOW)).toBeNull();
+  });
+
+  it("names nobody once expired, forged or for a session cookie", () => {
+    expect(adminBy(signAdmin(NOW - 1, SECRET, "a@b.c"), SECRET, NOW)).toBeNull();
+    expect(adminBy(signAdmin(NOW + 60, "other-secret", "a@b.c"), SECRET, NOW)).toBeNull();
+    expect(adminBy(undefined, SECRET, NOW)).toBeNull();
+  });
+
+  it("cannot be given a name by editing the cookie", () => {
+    const [payload, mac] = signAdmin(NOW + 60, SECRET).split(".");
+    const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(payload, "base64url").toString()), by: "ceo@acme.example" })).toString("base64url");
+    expect(adminBy(`${forged}.${mac}`, SECRET, NOW)).toBeNull();
   });
 });

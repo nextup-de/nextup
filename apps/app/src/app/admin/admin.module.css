@@ -634,3 +634,9 @@ a.count[data-tone="bad"] { border-color: #f5c2bf; background: var(--nh-danger-ti
 .mapNode[data-column="stored"] rect { fill: var(--nh-app-ground, #f6f7f9); }
 .mapLabel { font-size: var(--nh-fs-sm); font-weight: 600; fill: var(--nh-ink, #111827); }
 .mapDetail { font-size: var(--nh-fs-xs); fill: var(--nh-ink-mute, #6b7280); }
+
+/* Who signed in to /admin with Microsoft; empty for the shared admin code. */
+.who {
+  font-size: var(--nh-fs-sm);
+  color: var(--nh-ink-mute, #6b7280);
+}

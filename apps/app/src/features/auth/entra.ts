@@ -14,7 +14,7 @@
 //
 // Pure: node:crypto only. The glue that reads cookies and redirects is src/server/microsoft-login.ts.
 import { createHash, createHmac, createPublicKey, randomBytes, timingSafeEqual, verify } from "node:crypto";
-import { ENTRA_ROLE_CLAIMS, ROLES, type Role } from "@/config/roles";
+import { ENTRA_ADMIN_CLAIM, ENTRA_ROLE_CLAIMS, ROLES, type Role } from "@/config/roles";
 
 export const MICROSOFT_AUTHORITY = "https://login.microsoftonline.com";
 export const FLOW_COOKIE = "nextup_ms_flow";
@@ -99,7 +99,8 @@ export function tokenRequestBody(p: {
 // (replay), the PKCE verifier, and where to go afterwards. Signed with AUTH_SECRET, httpOnly,
 // gone after one use or ten minutes.
 
-export type Flow = { slug: string; state: string; nonce: string; verifier: string; next: string; exp: number };
+/** `as: "admin"`: the person asked for the company's /admin, not for the product. */
+export type Flow = { slug: string; state: string; nonce: string; verifier: string; next: string; exp: number; as?: "admin" };
 
 const hmac = (payload: string, secret: string) => b64url(createHmac("sha256", secret).update(`ms-flow:${payload}`).digest());
 
@@ -122,6 +123,7 @@ export function verifyFlow(raw: string | undefined, secret: string, nowSeconds =
       typeof f.slug !== "string" || typeof f.state !== "string" || typeof f.nonce !== "string" ||
       typeof f.verifier !== "string" || typeof f.next !== "string" || typeof f.exp !== "number"
     ) return null;
+    if (f.as !== undefined && f.as !== "admin") return null;
     return f.exp > nowSeconds ? (f as Flow) : null;
   } catch {
     return null;
@@ -237,6 +239,11 @@ export function roleFromEntra(roles: readonly string[]): Role | null {
   return ROLES.find((r) => given.has(r)) ?? null;
 }
 
+/** Did the customer's IT assign this person the NextUp.Admin app role? */
+export function isEntraAdmin(roles: readonly string[]): boolean {
+  return roles.some((r) => r.trim().toLowerCase() === ENTRA_ADMIN_CLAIM);
+}
+
 /** What a verified Microsoft sign-in leads to. Pure, so every case is a unit test. */
 export type Landing =
   | { kind: "refuse"; reason: MicrosoftError }
@@ -275,6 +282,7 @@ export const MICROSOFT_ERRORS = {
   token: "Microsoft sent back something we couldn't read. Please try again.",
   unknown: "Your Microsoft account isn't set up here yet. Ask your team leader to add you.",
   norole: "Your Microsoft account has no NextUp role yet. Ask your IT administrator to assign you one.",
+  noadmin: "Your Microsoft account isn't a NextUp administrator. Ask your IT administrator to assign you the NextUp.Admin role.",
   failed: "We couldn't reach Microsoft just now. Please try again in a moment.",
 } as const;
 
