@@ -63,7 +63,10 @@ static files by their extension, not every path with a dot, so a person's page
    rows are gone). Still open: team leaders issuing codes themselves instead of the admin, and an
    Entra app registration for the production box. A stack takes it with `stack/install.sh
    --entra-client-id` + `NEXTUP_ENTRA_CLIENT_SECRET`; the ID token signature is verified against the
-   tenant's published keys (`docs/plans/2026-10-22_sso-and-data-access.md`, phase 1).
+   tenant's published keys (`docs/plans/2026-10-22_sso-and-data-access.md`, phase 1). The customer's IT
+   assigns the Entra app roles `NextUp.Manager` / `NextUp.Leader` / `NextUp.Member`; the `roles` claim
+   sets the role at every Microsoft sign-in (the most powerful wins) and is the only thing that creates
+   a person on first sign-in. No role claim: a known person keeps the stored role, a new one is refused.
 2. ~~**Session revocation.**~~ Done: `getViewerFor` checks every session against the database
    (same company id, the person still exists with the same role, `Company.sessionEpoch`
    unchanged - a stage move bumps it, so demo sessions end when real people move in - and no
