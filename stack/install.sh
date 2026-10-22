@@ -23,6 +23,10 @@
 #   --brain            also run the brain and its model (services/brain): the AI proposes the
 #                      routing row and spots repeats. Also works on an existing instance: adds
 #                      the brain's lines to its .env once. BRAIN_MODEL in .env picks the model.
+#   --entra-client-id ID  turn on "Continue with Microsoft": the Entra app registration's client ID.
+#                      The secret comes from the environment variable NEXTUP_ENTRA_CLIENT_SECRET, never
+#                      the command line. Also works on an existing instance: sets the two lines in
+#                      its .env. The company's tenant ID is set afterwards in /admin.
 #   --build            build the images from this repo first (until CI publishes them)
 #   --dir DIR          instance folder (default: stack/instances/SLUG, or $NEXTUP_INSTANCES/SLUG)
 #   --images TAG       run the images CI publishes to GHCR (docs: .github/workflows/images.yml):
@@ -36,7 +40,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-slug="" origin="" stage="demo" landing="" n8n=false brain=false build=false dir="" proxy_port="" images="" name="" ops_url=""
+slug="" origin="" stage="demo" landing="" n8n=false brain=false build=false dir="" proxy_port="" images="" name="" ops_url="" entra_id=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="$2"; shift 2 ;;
@@ -45,6 +49,7 @@ while [ $# -gt 0 ]; do
     --landing) landing="$2"; shift 2 ;;
     --name) name="$2"; shift 2 ;;
     --ops-url) ops_url="${2%/}"; shift 2 ;;
+    --entra-client-id) entra_id="$2"; shift 2 ;;
     --n8n) n8n=true; shift ;;
     --brain) brain=true; shift ;;
     --build) build=true; shift ;;
@@ -76,6 +81,16 @@ ops_token="${NEXTUP_OPS_TOKEN:-}"
 if [ -n "$ops_url" ]; then
   [[ "$ops_url" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]] || die "--ops-url must look like https://admin.sellux.ch"
   [[ "$ops_token" =~ ^nxs_[A-Za-z0-9_-]{20,100}$ ]] || die "--ops-url needs the stack's token in NEXTUP_OPS_TOKEN (nxs_...)"
+fi
+entra_secret="${NEXTUP_ENTRA_CLIENT_SECRET:-}"
+if [ -n "$entra_id" ]; then
+  [[ "$entra_id" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] \
+    || die "--entra-client-id must be the app registration's client ID (a GUID)"
+  # The secret lands in a compose env file: no quotes, $, backslash, backtick or line break.
+  [ -n "$entra_secret" ] || die "--entra-client-id needs the client secret in NEXTUP_ENTRA_CLIENT_SECRET"
+  case "$entra_secret" in
+    *'$'* | *'`'* | *'"'* | *"'"* | *\\* | *' '* | *$'\n'* | *$'\r'*) die "NEXTUP_ENTRA_CLIENT_SECRET must not contain \$, quotes, a backtick, a backslash, a space or a line break" ;;
+  esac
 fi
 if [ -n "$proxy_port" ]; then
   [[ "$proxy_port" =~ ^[0-9]{4,5}$ ]] && [ "$proxy_port" -le 65000 ] || die "--behind-proxy takes a port, e.g. 3101"
@@ -187,6 +202,15 @@ NEXTUP_BRAIN_IMAGE=nextup-brain:local
 ENV
   sed -i -e 's/^COMPOSE_PROFILES=$/COMPOSE_PROFILES=brain/' -e '/^COMPOSE_PROFILES=.\{1,\}/{/brain/!s/$/,brain/;}' "$env_file"
   echo "Added the brain to $env_file (model: mistral-nemo, pulled on first start)."
+fi
+
+# Microsoft sign-in, new or existing instance: both lines are set (or replaced) in the .env. The
+# secret never appears on a command line (printf is a shell builtin, so ps cannot show it).
+if [ -n "$entra_id" ]; then
+  sed -i '/^ENTRA_CLIENT_ID=/d;/^ENTRA_CLIENT_SECRET=/d' "$env_file"
+  printf 'ENTRA_CLIENT_ID=%s\nENTRA_CLIENT_SECRET=%s\n' "$entra_id" "$entra_secret" >> "$env_file"
+  echo "Set the Entra app in $env_file - add the company's tenant ID in /admin, and this callback to the app registration:"
+  echo "  $origin/login/microsoft/callback"
 fi
 
 if $build; then

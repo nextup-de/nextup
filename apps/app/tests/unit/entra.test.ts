@@ -1,19 +1,23 @@
 // "Continue with Microsoft" (src/features/auth/entra.ts). The point of these: a token from another
 // tenant, for another app, with a stale nonce or long expired is refused; the flow cookie cannot
 // be forged or outlive its ten minutes; nothing untrusted ends up in the authorize URL's path.
-import { createHash } from "node:crypto";
+import { createHash, generateKeyPairSync, sign as cryptoSign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   authorizeUrl,
   checkIdToken,
   decodeIdToken,
   entraApp,
+  idTokenKeyId,
   isMicrosoftError,
   isTenantId,
+  jwksUrl,
   pkcePair,
   signFlow,
   tokenRequestBody,
   verifyFlow,
+  verifyIdTokenSignature,
+  type Jwk,
   type Flow,
 } from "@/features/auth/entra";
 
@@ -128,5 +132,55 @@ describe("id token", () => {
     expect(isMicrosoftError("tenant")).toBe(true);
     expect(isMicrosoftError("toString")).toBe(false);
     expect(isMicrosoftError("<script>")).toBe(false);
+  });
+});
+
+// The signature check: a token is only good when one of the tenant's published keys signed it.
+describe("ID token signature", () => {
+  const b64 = (v: object | Buffer) => (Buffer.isBuffer(v) ? v : Buffer.from(JSON.stringify(v))).toString("base64url");
+  const pair = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const other = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const jwkOf = (k: typeof pair, kid: string): Jwk => ({ ...(k.publicKey.export({ format: "jwk" }) as Jwk), kid, use: "sig" });
+  const sign = (payload: object, header: object, key = pair.privateKey) => {
+    const head = b64(header);
+    const body = b64(payload);
+    return `${head}.${body}.${b64(cryptoSign("sha256", Buffer.from(`${head}.${body}`), key))}`;
+  };
+  const keys = [jwkOf(pair, "k1")];
+
+  it("accepts a token signed by a published key", () => {
+    const t = sign(claims(), { alg: "RS256", kid: "k1" });
+    expect(verifyIdTokenSignature(t, keys)).toBe(true);
+  });
+
+  it("refuses a token signed by another key", () => {
+    const t = sign(claims(), { alg: "RS256", kid: "k1" }, other.privateKey);
+    expect(verifyIdTokenSignature(t, keys)).toBe(false);
+  });
+
+  it("refuses a changed payload", () => {
+    const t = sign(claims(), { alg: "RS256", kid: "k1" });
+    const [h, , s] = t.split(".");
+    expect(verifyIdTokenSignature(`${h}.${b64(claims({ oid: "someone-else" }))}.${s}`, keys)).toBe(false);
+  });
+
+  it("refuses an unknown key id", () => {
+    expect(verifyIdTokenSignature(sign(claims(), { alg: "RS256", kid: "k9" }), keys)).toBe(false);
+  });
+
+  it("refuses any algorithm but RS256", () => {
+    expect(verifyIdTokenSignature(sign(claims(), { alg: "none", kid: "k1" }), keys)).toBe(false);
+    expect(verifyIdTokenSignature(`${b64({ alg: "HS256", kid: "k1" })}.${b64(claims())}.x`, keys)).toBe(false);
+    expect(idTokenKeyId(sign(claims(), { alg: "none", kid: "k1" }))).toBeNull();
+  });
+
+  it("refuses garbage and keys without a modulus", () => {
+    expect(verifyIdTokenSignature("a.b", keys)).toBe(false);
+    expect(verifyIdTokenSignature(42, keys)).toBe(false);
+    expect(verifyIdTokenSignature(sign(claims(), { alg: "RS256", kid: "k1" }), [{ kid: "k1", kty: "RSA" }])).toBe(false);
+  });
+
+  it("points at the tenant's own key set", () => {
+    expect(jwksUrl(TID)).toBe(`https://login.microsoftonline.com/${TID}/discovery/v2.0/keys`);
   });
 });

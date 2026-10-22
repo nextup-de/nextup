@@ -61,7 +61,9 @@ static files by their extension, not every path with a dot, so a person's page
    `/admin` -> Companies -> People & sign-in) and "Continue with Microsoft" per company. The shared
    company code opens nothing any more (`Company.accessCodeHash` is kept, nullable, until old
    rows are gone). Still open: team leaders issuing codes themselves instead of the admin, and an
-   Entra app registration for the production box (`ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET`).
+   Entra app registration for the production box. A stack takes it with `stack/install.sh
+   --entra-client-id` + `NEXTUP_ENTRA_CLIENT_SECRET`; the ID token signature is verified against the
+   tenant's published keys (`docs/plans/2026-10-22_sso-and-data-access.md`, phase 1).
 2. ~~**Session revocation.**~~ Done: `getViewerFor` checks every session against the database
    (same company id, the person still exists with the same role, `Company.sessionEpoch`
    unchanged - a stage move bumps it, so demo sessions end when real people move in - and no

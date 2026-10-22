@@ -18,7 +18,9 @@ import {
   entraApp,
   FLOW_COOKIE,
   FLOW_TTL_SECONDS,
+  idTokenKeyId,
   isTenantId,
+  jwksUrl,
   pkcePair,
   randomToken,
   sameToken,
@@ -26,6 +28,8 @@ import {
   tokenRequestBody,
   tokenUrl,
   verifyFlow,
+  verifyIdTokenSignature,
+  type Jwk,
   type MicrosoftError,
 } from "@/features/auth/entra";
 import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
@@ -100,6 +104,30 @@ export async function startMicrosoftLogin(slug: string, origin: string, next: st
   });
 }
 
+/** A tenant's signing keys, kept for an hour. Microsoft rolls keys over every few weeks. */
+const KEY_TTL_MS = 60 * 60 * 1000;
+const keyCache = new Map<string, { keys: Jwk[]; at: number }>();
+
+async function signingKeys(tenantId: string, fresh: boolean): Promise<Jwk[]> {
+  const hit = keyCache.get(tenantId);
+  if (hit && !fresh && Date.now() - hit.at < KEY_TTL_MS) return hit.keys;
+  const res = await fetch(jwksUrl(tenantId), { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`jwks ${res.status}`);
+  const body = (await res.json()) as { keys?: Jwk[] };
+  const keys = Array.isArray(body.keys) ? body.keys : [];
+  keyCache.set(tenantId, { keys, at: Date.now() });
+  return keys;
+}
+
+/** Signed by this tenant? A key id we do not know gets one refetch (a rollover), not more. */
+async function idTokenIsSigned(jwt: unknown, tenantId: string): Promise<boolean> {
+  const kid = idTokenKeyId(jwt);
+  if (!kid) return false;
+  let keys = await signingKeys(tenantId, false);
+  if (!keys.some((k) => k.kid === kid)) keys = await signingKeys(tenantId, true);
+  return verifyIdTokenSignature(jwt, keys);
+}
+
 /** Returns the URL to redirect to: the person's home on success, the login page with a reason otherwise. */
 export async function finishMicrosoftLogin(slug: string, origin: string, params: URLSearchParams): Promise<string> {
   const jar = await cookies();
@@ -148,6 +176,16 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
     idToken = body.id_token;
   } catch (err) {
     console.warn(`[microsoft] ${slug}: token request failed`, err);
+    return loginWithError(slug, "failed");
+  }
+
+  try {
+    if (!(await idTokenIsSigned(idToken, company.entraTenantId))) {
+      console.warn(`[microsoft] ${slug}: ID token signature not valid`);
+      return loginWithError(slug, "token");
+    }
+  } catch (err) {
+    console.warn(`[microsoft] ${slug}: could not fetch signing keys`, err);
     return loginWithError(slug, "failed");
   }
 
