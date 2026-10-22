@@ -1,6 +1,6 @@
 # Plan: single sign-on and direct access to company data
 
-> **Plan · 2026-10-22 · nothing built yet.** How a company signs in with its own identity provider, and how
+> **Plan · 2026-10-22 · phase 1 built (#233-#235); phase 2 decided 2026-10-23, PR A in progress.** How a company signs in with its own identity provider, and how
 > NextUp then reads the company's data for AI context without becoming a copy of the company. Follows the
 > data-access research of 20 Oct 2026 (vault: "nextup – Recherche Datenzugang (Okt 2026)") and the phases in
 > `docs/plans/2026-10-21_company-data-page.md` (SSO + role table → directory sync → read-only connectors).
@@ -68,19 +68,44 @@ Role names stay data: the claim → role map lives in `config/roles.ts`, not in 
 
 ## Phase 2: live Microsoft 365 search, nothing copied
 
-| Step | What |
-|---|---|
-| 2.1 | "Connect Microsoft 365" in the user menu: incremental consent for delegated `Files.Read.All`, `Sites.Read.All`, `offline_access` (most tenants need their admin to consent once) |
-| 2.2 | New `Connection` model: `companyId`, `userId`, `provider`, `scopes`, `refreshTokenSealed`, `expiresAt`, `revokedAt`. Sealed with `CONNECTOR_VAULT_KEY` (same pattern as `OPS_VAULT_KEY` in nextup-admin). Revoke button; tokens die with the user |
-| 2.3 | `search_documents` fans out: local `Document` full-text + Graph `POST /search/query` (`driveItem`, `listItem`). Microsoft trims results to what the person may open, so we replicate no ACLs |
-| 2.4 | Snippets go through `features/assist/redact.ts` and the classification ceiling before any model sees them; sources are cited in the answer |
-| 2.5 | Same for the brain: the app adds the top snippets to `/v1/route` and `/v1/coach` requests when the raising person has a connection |
-| 2.6 | Data page (`/admin/company-data`) shows the source "Microsoft 365 (live)", how many people connected, last query; never content |
+> **Decided 2026-10-23.** Spike and PR A now; PRs B-D when a pilot customer is ready for phase 2 (decision 1).
+
+A person connects their own Microsoft 365 account. The assistant then searches the SharePoint and OneDrive files
+that person can already open, as that person: Microsoft trims the results, so NextUp replicates no permissions and
+copies nothing. The way in is `ctx.searchDocuments(query, k)`, which the assistant and the idea coach already
+share (`api/[company]/assist`, `ideas/turn`); every tool result already passes `redact()` before the model.
+
+| Step | What | PR |
+|---|---|---|
+| 2.0 | **Spike, not merged.** Against a test tenant: consent screens, real `POST /search/query` response, latency, and whether a sensitivity label can be read from a hit | - |
+| 2.1 | **`Connection` table** (`companyId`, `userId`, `provider`, `scopes`, `refreshTokenSealed`, `lastUsedAt`, `lastError`), one per person and provider, deleted with the person. AES-256-GCM with `CONNECTOR_VAULT_KEY` (written once by `install.sh`), bound to company and person. Company switch `CompanyConfig.m365Search`, off by default | A |
+| 2.2 | **"Connect Microsoft 365"** on the person's profile: the existing Microsoft flow with `as: "connect"` (same redirect URI), scopes `offline_access` + `Files.Read.All`. The Microsoft account must be the signed-in person's own. Disconnect deletes the row; `/admin/assistant` has the switch and "disconnect everyone" | A |
+| 2.3 | **Token helper** (`server/graph-token.ts`): refresh, store the rotated refresh token, `invalid_grant` -> `lastError` and "connect again" | B |
+| 2.4 | **Search**: pure request builder and parser (`features/m365/search.ts`: `driveItem`, KQL-escaped query, size 5, highlight markup stripped, a hit whose snippet is marked above the ceiling dropped); glue with a 3 s timeout that returns nothing on failure | B |
+| 2.5 | **Wired in**: `searchDocuments` = local full text + Microsoft 365 when the company switch is on and the person is connected; sources get a `url` | C |
+| 2.6 | **Level of a hit**: per company, default `internal`; a sensitivity label wins if the spike shows it is readable | C |
+| 2.7 | **Data page**: "Microsoft 365 (live)" with how many people are connected and the last search, never content | D |
+| 2.8 | **Docs and rules**: `INTEGRATIONS.md`, `SECURITY.md`, `ASSISTANT.md`, the customer guide, and the `CLAUDE.md` outside-request rule (decision 9) | A + D |
+
+### Decisions (2026-10-23)
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Build now or when a customer asks | Spike + PR A now; B-D when a pilot is ready for phase 2 |
+| 2 | Permission | `Files.Read.All` only (files, pages, news). Not `Sites.Read.All`: lists often hold HR-like data |
+| 3 | Consent | Opt-in per person with the Connect button, behind the company switch (off by default); the customer's IT consents once for the tenant |
+| 4 | Level of an unlabelled hit | `internal`, set per company; anything marked "vertraulich" is dropped |
+| 5 | Where snippets go | The assistant's model as today (Amazon Bedrock, Frankfurt); the company switch is the customer's no |
+| 6 | Brain too | No. Assistant and idea coach only; judge the value first |
+| 7 | Token storage | In the app database, sealed - the exception below. Back up the key with the other stack secrets (sops/age) |
+| 8 | What the assistant history keeps | For Microsoft 365 sources, title and link only; answer text follows the existing retention |
+| 9 | Repo rule on outside requests | Allow `graph.microsoft.com` and `login.microsoftonline.com` by name (the login already calls the latter) - with PR B, the first Graph call |
+| 10 | Test tenant for the spike | A Microsoft 365 Business Basic trial with a few SharePoint files, set up by the team |
+| 11 | Legal order | Ask the first pilot (works agreement, DPIA, Conditional Access for refreshes from our servers) before 2.3-2.6 ship; the box's outgoing IP goes into the customer guide |
 
 **Rule change.** `docs/INTEGRATIONS.md` says per-customer credentials live in n8n, never in the app database.
 Per-person refresh tokens cannot live in n8n, so this plan makes one exception: delegated user tokens live
-sealed in the app DB. App-only credentials (phase 3) stay in n8n. Update `INTEGRATIONS.md` and `SECURITY.md`
-in the same PR.
+sealed in the app DB. App-only credentials (phase 3) stay in n8n.
 
 Atlassian works the same way (OAuth 2.0 3LO, delegated, Confluence search API) once a customer asks for it.
 

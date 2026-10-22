@@ -87,6 +87,10 @@ type; the timeline sentence is built at render, as always.
   `GET /api/[company]/integrations` (which connectors are on, which channel, which deputy rule).
 - Per-customer credentials live in n8n credentials named `<slug>-slack`, `<slug>-smtp`, and so
   on. Never in the repo, never in the app database.
+  **One exception** (docs/plans/2026-10-22_sso-and-data-access.md, phase 2): a person's own
+  Microsoft 365 connection is a refresh token that only works as that person, so n8n cannot hold
+  it. It lives in the app database, sealed with `CONNECTOR_VAULT_KEY` and bound to company and
+  person (`Connection`, `features/connectors/vault.ts`). App-only credentials stay in n8n.
 - **Every workflow is exported as JSON into `ops/n8n/<name>.json`** and imported per
   environment with the n8n CLI. Otherwise n8n is untracked state nobody can reproduce.
 - The first workflow, and the only one until it runs end to end in the sandbox: deadline

@@ -28,6 +28,8 @@ export const TENANT_MODELS = new Set([
   "TicketReply",
   // Feature flags as admin.sellux.ch set them - src/features/flags
   "FeatureFlag",
+  // People's own connections to sources read on their behalf - docs/plans/2026-10-22_sso-and-data-access.md
+  "Connection",
 ]);
 
 /** Operations that must narrow by company through `where`. */

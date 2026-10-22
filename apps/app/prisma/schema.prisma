@@ -82,6 +82,8 @@ model Company {
   ticketReplies TicketReply[]
 
   featureFlags FeatureFlag[]
+
+  connections Connection[]
 }
 
 // ── Company knowledge ────────────────────────────────────────────────────────────────────────────
@@ -272,6 +274,10 @@ model CompanyConfig {
   rewardAmountEur     Int?
   rewardSharePct      Int?
   rewardCapEur        Int?
+
+  // Live Microsoft 365 search (docs/plans/2026-10-22_sso-and-data-access.md, phase 2): people may
+  // connect their own Microsoft 365 account. Off until the company's admin turns it on.
+  m365Search Boolean @default(false)
 }
 
 // ── Feature flags (src/config/flags.ts, src/features/flags) ───────────────────────────────────────
@@ -325,6 +331,7 @@ model User {
   assistTurns AssistTurn[]
   ideaDrafts  IdeaDraft[]
   tickets     Ticket[]
+  connections Connection[]
 
   @@unique([companyId, email])
   @@unique([companyId, entraOid])
@@ -387,6 +394,33 @@ model ApiToken {
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
+  @@index([companyId])
+}
+
+// A person's own connection to a source NextUp reads on their behalf - today only Microsoft 365
+// (docs/plans/2026-10-22_sso-and-data-access.md, phase 2). NextUp reads as that person, so the
+// source decides what they may see; nothing is copied. Disconnecting deletes the row.
+model Connection {
+  id        String @id @default(cuid())
+  companyId String
+  userId    String
+
+  provider String // "m365"
+  scopes   String[] // as the provider granted them, e.g. ["Files.Read.All", "offline_access"]
+
+  // Sealed with CONNECTOR_VAULT_KEY (features/connectors/vault.ts), bound to company and person.
+  // Never logged, never sent to a browser.
+  refreshTokenSealed String
+
+  lastUsedAt DateTime?
+  lastError  String? // why the provider refused the last refresh; the person has to connect again
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId, provider])
   @@index([companyId])
 }
 

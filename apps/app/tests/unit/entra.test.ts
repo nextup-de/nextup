@@ -5,14 +5,18 @@ import { createHash, generateKeyPairSync, sign as cryptoSign } from "node:crypto
 import { describe, expect, it } from "vitest";
 import {
   authorizeUrl,
+  canSearchFiles,
   checkIdToken,
   decodeIdToken,
   entraApp,
+  grantedScopes,
   idTokenKeyId,
   isMicrosoftError,
   isEntraAdmin,
   isTenantId,
   landingFor,
+  M365_SCOPE,
+  SIGN_IN_SCOPE,
   jwksUrl,
   pkcePair,
   roleFromEntra,
@@ -268,5 +272,41 @@ describe("Microsoft sign-in to /admin", () => {
 
   it("has a message for a Microsoft account that is not an administrator", () => {
     expect(isMicrosoftError("noadmin")).toBe(true);
+  });
+});
+
+// "Connect Microsoft 365" (phase 2): the same flow, asking for the person's files and a refresh token.
+describe("Connect Microsoft 365", () => {
+  const base = { tenantId: TID, clientId: "app-1", redirectUri: "https://x/acme/login/microsoft/callback", state: "s", nonce: "n", challenge: "c" };
+
+  it("signs in with the identity scopes only", () => {
+    expect(new URL(authorizeUrl(base)).searchParams.get("scope")).toBe(SIGN_IN_SCOPE);
+    expect(SIGN_IN_SCOPE).not.toMatch(/offline_access|Files|Mail|Sites|Chat|Calendars/);
+  });
+
+  it("asks for files and a refresh token, and nothing else, when connecting", () => {
+    const scope = new URL(authorizeUrl({ ...base, scope: M365_SCOPE })).searchParams.get("scope")!;
+    expect(scope.split(" ").sort()).toEqual(["email", "https://graph.microsoft.com/Files.Read.All", "offline_access", "openid", "profile"]);
+    expect(tokenRequestBody({ clientId: "a", clientSecret: "b", code: "c", redirectUri: "r", verifier: "v", scope: M365_SCOPE }).get("scope")).toBe(M365_SCOPE);
+  });
+
+  it("reads the granted scopes without the Graph prefix", () => {
+    expect(grantedScopes("https://graph.microsoft.com/Files.Read.All https://graph.microsoft.com/User.Read openid offline_access openid"))
+      .toEqual(["Files.Read.All", "User.Read", "offline_access", "openid"]);
+    expect(grantedScopes(undefined)).toEqual([]);
+    expect(grantedScopes(42)).toEqual([]);
+  });
+
+  it("needs both the files and offline access to search later", () => {
+    expect(canSearchFiles(["Files.Read.All", "offline_access"])).toBe(true);
+    expect(canSearchFiles(["files.read.all", "OFFLINE_ACCESS"])).toBe(true);
+    expect(canSearchFiles(["Files.Read.All"])).toBe(false);
+    expect(canSearchFiles(["offline_access", "Files.Read"])).toBe(false);
+    expect(canSearchFiles([])).toBe(false);
+  });
+
+  it("carries the connect purpose in the signed flow cookie", () => {
+    const f: Flow = { slug: "acme", state: "s", nonce: "n", verifier: "v", next: "", exp: now + 600, as: "connect" };
+    expect(verifyFlow(signFlow(f, "k"), "k", now)?.as).toBe("connect");
   });
 });

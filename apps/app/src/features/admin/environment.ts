@@ -3,6 +3,7 @@
 // from .env.example. tests/unit/admin-environment.test.ts.
 import { appOrigin, servedOverHttps, tenantMode } from "@/features/tenant/urls";
 import type { Tone } from "./nav";
+import { vaultKey } from "@/features/connectors/vault";
 
 export type EnvRow = { label: string; value: string; tone: Tone; hint?: string };
 
@@ -79,6 +80,12 @@ export function describeEnvironment(env: Env, stage?: string): EnvRow[] {
       value: env.ENTRA_CLIENT_ID && env.ENTRA_CLIENT_SECRET ? "configured - on per company in Companies" : "off",
       tone: Boolean(env.ENTRA_CLIENT_ID) !== Boolean(env.ENTRA_CLIENT_SECRET) ? "warn" : "ok",
       hint: Boolean(env.ENTRA_CLIENT_ID) !== Boolean(env.ENTRA_CLIENT_SECRET) ? "Set both ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET." : undefined,
+    },
+    {
+      label: "Microsoft 365 token vault",
+      value: vaultKey(env) ? "set - people can connect Microsoft 365 where the company allows it" : env.CONNECTOR_VAULT_KEY ? "invalid" : "off",
+      tone: env.CONNECTOR_VAULT_KEY && !vaultKey(env) ? "warn" : "ok",
+      hint: env.CONNECTOR_VAULT_KEY && !vaultKey(env) ? "CONNECTOR_VAULT_KEY must be 64 hex characters (openssl rand -hex 32)." : undefined,
     },
   ];
 }

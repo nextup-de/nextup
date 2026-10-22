@@ -81,6 +81,13 @@ static files by their extension, not every path with a dot, so a person's page
    the platform admin on admin.sellux.ch. Customer setup: `docs/customer/ENTRA_SETUP.md`.
 4. **Audit log for admin actions** - create, stage move, issue login code, issue token, delete - as
    events, like everything else.
+4b. **Microsoft 365 connections** (phase 2 of `docs/plans/2026-10-22_sso-and-data-access.md`). A
+   person's refresh token for their own files (`Files.Read.All` + `offline_access`, nothing else)
+   is stored sealed: AES-256-GCM with `CONNECTOR_VAULT_KEY`, bound to company and person, so a
+   database dump or a token copied into another row opens nothing. Off per company until its
+   admin turns it on; the Microsoft account must be the signed-in person's own; disconnecting
+   deletes the row, and "disconnect everyone" is one click in `/admin/assistant`. Losing the key
+   disconnects everyone - back it up with the other stack secrets.
 5. **Shared rate-limit store.** The throttle counts in process memory: right for one Hetzner box,
    per-instance on Vercel. Move the `Map` to a Postgres table when there is more than one process.
 6. **Role-scoped data.** The whole case log goes to every signed-in browser; roles only choose

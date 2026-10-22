@@ -95,6 +95,9 @@ services:
       # button stays hidden. The company's tenant is set in /admin; install.sh --entra-client-id sets both.
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      # Seals people's Microsoft 365 connections (phase 2, features/connectors/vault.ts). install.sh
+      # writes it once; a new key makes every stored connection unreadable. Unset = nobody can connect.
+      CONNECTOR_VAULT_KEY: ${CONNECTOR_VAULT_KEY:-}
       # The raise-page assistant (docs/ASSISTANT.md). Unset = answers from lookups, no model.
       LLM_PROVIDER: ${LLM_PROVIDER:-}
       LLM_REGION: ${LLM_REGION:-eu-central-1}

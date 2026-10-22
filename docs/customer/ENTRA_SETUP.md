@@ -120,6 +120,23 @@ sign-in permissions above (Microsoft adds `User.Read`, "sign in and read the sig
 We set the tenant in your NextUp admin and install the client ID and secret on your stack. Then we test with you:
 first an Admin, then a Member.
 
+## Optional: let the assistant search people's files (Microsoft 365)
+
+Only if you want it, and only after your works council and data-protection officer agree. Each person
+decides for themselves with **Connect Microsoft 365** on their NextUp profile; nothing happens until
+your NextUp admin turns it on in `/admin/assistant`.
+
+- NextUp then asks Microsoft for **Files.Read.All** (delegated: read the files *that person* can
+  open) and **offline_access** (search later without signing in again). Not mail, chats, calendars
+  or lists. Grant admin consent for these two under **Permissions** (step 5) if your policy
+  requires it.
+- NextUp searches as that person, so it never sees more than they do, and copies nothing. Results
+  are masked (names, emails, secrets) before the assistant's model reads them.
+- Anyone can disconnect on their profile; your NextUp admin can disconnect everyone at once; and
+  removing NextUp from Enterprise applications ends all connections.
+- If you limit sign-ins by location (Conditional Access), allow NextUp's server address; we send
+  it with this guide.
+
 ## What happens at sign-in
 
 1. The person opens `https://<company>.sellux.ch` and chooses **Continue with Microsoft**.

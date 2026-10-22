@@ -48,6 +48,16 @@ export function pkcePair(): { verifier: string; challenge: string } {
 
 export const randomToken = () => b64url(randomBytes(24));
 
+/** What signing in asks Microsoft for: who you are, nothing else. */
+export const SIGN_IN_SCOPE = "openid profile email";
+
+/**
+ * "Connect Microsoft 365" asks for this on top (docs/plans/2026-10-22_sso-and-data-access.md,
+ * phase 2): read the files the person can already open, and a refresh token so NextUp can search
+ * them later without another sign-in. Files only - no mail, chats, calendars or lists.
+ */
+export const M365_SCOPE = SIGN_IN_SCOPE + " offline_access https://graph.microsoft.com/Files.Read.All";
+
 export function authorizeUrl(p: {
   tenantId: string;
   clientId: string;
@@ -55,6 +65,7 @@ export function authorizeUrl(p: {
   state: string;
   nonce: string;
   challenge: string;
+  scope?: string;
 }): string {
   const u = new URL(`${MICROSOFT_AUTHORITY}/${p.tenantId}/oauth2/v2.0/authorize`);
   u.search = new URLSearchParams({
@@ -62,7 +73,7 @@ export function authorizeUrl(p: {
     response_type: "code",
     redirect_uri: p.redirectUri,
     response_mode: "query",
-    scope: "openid profile email",
+    scope: p.scope ?? SIGN_IN_SCOPE,
     state: p.state,
     nonce: p.nonce,
     code_challenge: p.challenge,
@@ -82,6 +93,7 @@ export function tokenRequestBody(p: {
   code: string;
   redirectUri: string;
   verifier: string;
+  scope?: string;
 }): URLSearchParams {
   return new URLSearchParams({
     client_id: p.clientId,
@@ -90,7 +102,7 @@ export function tokenRequestBody(p: {
     code: p.code,
     redirect_uri: p.redirectUri,
     code_verifier: p.verifier,
-    scope: "openid profile email",
+    scope: p.scope ?? SIGN_IN_SCOPE,
   });
 }
 
@@ -99,8 +111,12 @@ export function tokenRequestBody(p: {
 // (replay), the PKCE verifier, and where to go afterwards. Signed with AUTH_SECRET, httpOnly,
 // gone after one use or ten minutes.
 
-/** `as: "admin"`: the person asked for the company's /admin, not for the product. */
-export type Flow = { slug: string; state: string; nonce: string; verifier: string; next: string; exp: number; as?: "admin" };
+/**
+ * `as`: why the person went to Microsoft. "admin": the company's /admin, not the product.
+ * "connect": a signed-in person connecting their Microsoft 365 files. Absent: signing in.
+ */
+export type FlowPurpose = "admin" | "connect";
+export type Flow = { slug: string; state: string; nonce: string; verifier: string; next: string; exp: number; as?: FlowPurpose };
 
 const hmac = (payload: string, secret: string) => b64url(createHmac("sha256", secret).update(`ms-flow:${payload}`).digest());
 
@@ -123,7 +139,7 @@ export function verifyFlow(raw: string | undefined, secret: string, nowSeconds =
       typeof f.slug !== "string" || typeof f.state !== "string" || typeof f.nonce !== "string" ||
       typeof f.verifier !== "string" || typeof f.next !== "string" || typeof f.exp !== "number"
     ) return null;
-    if (f.as !== undefined && f.as !== "admin") return null;
+    if (f.as !== undefined && f.as !== "admin" && f.as !== "connect") return null;
     return f.exp > nowSeconds ? (f as Flow) : null;
   } catch {
     return null;
@@ -244,6 +260,22 @@ export function isEntraAdmin(roles: readonly string[]): boolean {
   return roles.some((r) => r.trim().toLowerCase() === ENTRA_ADMIN_CLAIM);
 }
 
+/**
+ * The scopes Microsoft granted, from the token response's `scope`, without the Graph prefix
+ * ("https://graph.microsoft.com/Files.Read.All" -> "Files.Read.All"). Sorted, no duplicates.
+ */
+export function grantedScopes(scope: unknown): string[] {
+  if (typeof scope !== "string") return [];
+  const names = scope.split(/\s+/).filter(Boolean).map((s) => s.replace(/^https:\/\/graph\.microsoft\.com\//i, ""));
+  return [...new Set(names)].sort();
+}
+
+/** Did Microsoft grant what live search needs: the files, and a way to come back later? */
+export function canSearchFiles(scopes: readonly string[]): boolean {
+  const has = (name: string) => scopes.some((s) => s.toLowerCase() === name.toLowerCase());
+  return has("Files.Read.All") && has("offline_access");
+}
+
 /** What a verified Microsoft sign-in leads to. Pure, so every case is a unit test. */
 export type Landing =
   | { kind: "refuse"; reason: MicrosoftError }
@@ -284,6 +316,11 @@ export const MICROSOFT_ERRORS = {
   norole: "Your Microsoft account has no NextUp role yet. Ask your IT administrator to assign you one.",
   noadmin: "Your Microsoft account isn't a NextUp administrator. Ask your IT administrator to assign you the NextUp.Admin role.",
   failed: "We couldn't reach Microsoft just now. Please try again in a moment.",
+  // "Connect Microsoft 365" (phase 2): shown on the profile page, not the login page.
+  m365off: "Microsoft 365 search is switched off for this company. Your admin can turn it on.",
+  otheraccount: "That Microsoft account isn't the one you use for NextUp. Connect with your own work account.",
+  files: "Microsoft didn't give NextUp access to your files. Ask your IT administrator to approve NextUp for Files.Read.All.",
+  vault: "This NextUp can't store the connection safely yet. Tell your NextUp admin (CONNECTOR_VAULT_KEY).",
 } as const;
 
 export type MicrosoftError = keyof typeof MICROSOFT_ERRORS;

@@ -190,6 +190,13 @@ ENV
   echo "Wrote $env_file with new secrets."
 fi
 
+# The token vault, new or existing instance: added once and never regenerated - a new key would make
+# every stored Microsoft 365 connection unreadable (features/connectors/vault.ts).
+if ! grep -q '^CONNECTOR_VAULT_KEY=' "$env_file"; then
+  printf '\n# Seals people'"'"'s Microsoft 365 connections. Losing it disconnects everyone.\nCONNECTOR_VAULT_KEY=%s\n' "$(openssl rand -hex 32)" >> "$env_file"
+  echo "Added CONNECTOR_VAULT_KEY to $env_file."
+fi
+
 # The brain, new or existing instance: its key and settings go in once, and its profile is added.
 if $brain && ! grep -q '^BRAIN_API_KEY=' "$env_file"; then
   cat >> "$env_file" <<ENV

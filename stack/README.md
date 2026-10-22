@@ -67,6 +67,7 @@ stack/ctl.sh acme down -v     # stop and delete the database (asks for the slug 
 | `mailpit` | profile `demo`: catches all mail, inbox on `127.0.0.1:8025` |
 | `n8n` | profile `n8n` (`--n8n`): editor on `127.0.0.1:5678`, own encryption key. Only its production webhooks can be reached from outside, and only with `N8N_WEBHOOKS=public` (below) |
 | `app` env `ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET` | optional (`--entra-client-id ID`, secret in `NEXTUP_ENTRA_CLIENT_SECRET`): turns on "Continue with Microsoft". The company's tenant ID is set in `/admin`; add `<origin>/login/microsoft/callback` to the app registration |
+| `app` env `CONNECTOR_VAULT_KEY` | written once by `install.sh` (also on an existing instance), never regenerated: it seals people's Microsoft 365 connections, and a new key disconnects everyone. Back it up with the other secrets |
 | `brain` + `ollama` | profile `brain` (`--brain`): the routing AI and its model, no ports, app-only with `BRAIN_API_KEY`. See `services/brain/README.md`. On a server without 8 GB to spare, leave it out and point the stack at the AI server instead: `brain-server/README.md` |
 
 ## n8n webhooks from outside (Jira)

@@ -1,0 +1,6 @@
+.body { display: flex; flex-direction: column; gap: 12px; padding: 18px 22px; font-size: var(--nh-fs-sm); line-height: 1.5; color: var(--nh-ink); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.state { color: var(--nh-mute); font-size: var(--nh-fs-xs); font-weight: 600; }
+.ok { color: var(--nh-ok); }
+.error { color: var(--nh-danger); }
+.note { color: var(--nh-mute); font-size: var(--nh-fs-xs); }
