@@ -1,0 +1,21 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Dashboard" subtitle="Pill, Avatar, Tile, Stats, Steps, Quote, Bars, Btn, Empty" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{background:#f5f5f7;padding:20px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.c{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:var(--nh-card-shadow);display:grid;gap:14px;margin-top:12px}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}</style></head>
+<body><div id="r"></div>
+<script type="text/babel">
+const { Pill, Avatar, Tile, Stats, Steps, Quote, Bars, Btn, Empty } = window.NextUpDesignSystem_2debbf;
+ReactDOM.createRoot(document.getElementById("r")).render(<><div className="row"><Pill tone="accent">Awaiting decision</Pill><Pill tone="ok">Answered: yes</Pill><Pill tone="ink">Live</Pill><Pill tone="grey">Being built</Pill><Pill tone="soft">Strategic fit</Pill><Pill tone="purple">Idea</Pill><Pill tone="ghost">Unfunded</Pill>
+<span style={{width:12}} /><Avatar name="H. Sander" /><Avatar name="L. Brandt" /><Avatar name="T. Vogel" /><Avatar name="D. Ferraro" size="lg" /><Avatar name="Anonymous #4471" /><Avatar name="J S" tone="ink" /></div>
+<Stats items={[{v:"7",l:"on your desk"},{v:"2",l:"past the 5-day promise",hot:true},{v:"2.4 d",l:"median time to answer"},{v:"86%",l:"within the promise, Q3"}]} />
+<div className="c">
+<Steps steps={[{label:"Sent",when:"10 Oct",tone:"done"},{label:"Read",when:"pending",tone:"now"},{label:"Answered",when:"due 15 Oct",tone:"todo"},{label:"Live",when:"—",tone:"todo"}]} />
+<div className="g"><Tile v="€120k" l="expected upside / yr" /><Tile v="3 people · 10 wks" l="to find out if it works" /><div><Bars spark={[0.3,0.4,0.35,0.6,0.7,0.85,0.9]} size="lg" /></div></div>
+<Quote text="Agreed and funded. Two people on it: offline job sheets that sync when you get signal." by="D. Ferraro · 3 Jul" />
+<div className="row" style={{flexWrap:"nowrap"}}><Btn kind="primary">Co-sign this idea</Btn><Btn>Ask a question</Btn><Btn kind="muted">Hand over</Btn></div>
+</div></>);
+</script></body></html>

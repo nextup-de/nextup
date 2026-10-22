@@ -1,0 +1,40 @@
+/* Spacing, corners, shadows, layout - 1:1 from apps/app/src/styles/tokens.css and the shared primitives. */
+:root{
+  --nh-space:8px;
+  --nh-gap:16px;          /* between cards and columns */
+  --nh-pad-card:24px;     /* inside a main card */
+  --nh-pad-card-sm:18px;  /* inside a side card */
+  --nh-page-x:56px;       /* page gutter: 32px tablet, 16px phone */
+  --nh-max:1120px;--nh-max-wide:1920px;
+  --nh-bar-h:46px;        /* the simple shell's top bar */
+  --nh-screen-h:100dvh; /* @kind spacing */
+  --nh-screen-w:100vw; /* @kind spacing */
+
+  /* Corners ("Square Corners" handoff): controls 8px (6px tiny), containers 12px, avatars/dots 50% */
+  --radius-xs:6px;--radius-sm:8px;--radius-md:12px;--radius-full:9999px;
+  --nh-r-sm:var(--radius-xs);--nh-r:var(--radius-xs);--nh-r-lg:var(--radius-md);--nh-r-xl:var(--radius-md);
+
+  /* Shadows */
+  --nh-card-shadow:0 6px 20px rgb(40 60 100 / 0.06);
+  --nh-shadow-float:0 10px 30px rgb(40 60 100 / 0.08),0 1px 2px rgb(40 60 100 / 0.05);   /* inbox card */
+  --nh-shadow-feed:0 1px 3px rgba(30,45,80,0.08),0 10px 30px rgba(30,45,80,0.12);       /* feed cards */
+  --nh-shadow-feed-hover:0 2px 6px rgba(30,45,80,0.10),0 16px 40px rgba(30,45,80,0.18);
+  --nh-shadow-menu:0 14px 36px rgba(20,20,17,0.13),0 2px 6px rgba(20,20,17,0.05);
+  --nh-shadow-popover:0 16px 42px rgba(20,30,60,0.18);
+  --nh-shadow-panel:0 18px 48px rgba(20,30,60,0.16),0 1px 2px rgba(20,30,60,0.06);
+  --nh-shadow-toast:0 14px 40px rgba(20,20,20,0.25);
+  --nh-shadow-composer:0 7.5px 22.5px rgba(40,60,100,0.08),0 1px 2px rgba(40,60,100,0.05);
+  --nh-shadow-chip:0 1px 2px rgba(40,60,100,0.08);
+
+  /* Motion */
+  --nh-ease:cubic-bezier(.2,.8,.2,1); /* @kind other */
+  --nh-ease-thumb:cubic-bezier(0.4,0.05,0.2,1); /* @kind other */
+  --nh-dur-fast:150ms; /* @kind other */
+  --nh-dur:160ms; /* @kind other */
+  --nh-dur-slide:420ms; /* @kind other */
+
+  /* Semantic aliases */
+  --space-gap:var(--nh-gap);--space-card:var(--nh-pad-card);--space-card-sm:var(--nh-pad-card-sm);--space-page-x:var(--nh-page-x);
+}
+@media (max-width:1023px){:root{--nh-page-x:32px}}
+@media (max-width:760px){:root{--nh-page-x:16px}}

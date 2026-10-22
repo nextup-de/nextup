@@ -34,6 +34,8 @@ is on their first line.
 | [RESPONSIVE.md](RESPONSIVE.md) | layout rules |
 | [DEPLOY.md](DEPLOY.md) | running it on a laptop |
 
+Design system (tokens, components, brand assets, UI kit): `design-system/README.md`.
+
 Company stacks and servers: `stack/README.md`, `stack/nginx/RUNBOOK.md`,
 `stack/brain-server/README.md`. Strategy, outreach and concept docs live outside the repo, in
 `Startup_speed/docs/`.

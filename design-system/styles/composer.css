@@ -1,0 +1,39 @@
+/* The Raise composer: gold ring, breathing aura, prompt tray. 1:1 from components/ideas/Raise.module.css. */
+.nh-composer{position:relative;width:100%;max-width:720px;font-family:var(--nh-font-inter);color:#1c1c1e}
+.nh-composer-aura{position:absolute;inset:-15px;border-radius:var(--radius-md,22.5px);filter:blur(12px);pointer-events:none;background:radial-gradient(60% 120% at 22% 50%,#e6a9192e 0%,#e6a91900 69%),radial-gradient(60% 120% at 78% 50%,#f2cb552e 0%,#f2cb5500 72%);animation:nh-breathe 5.5s ease-in-out infinite}
+@keyframes nh-breathe{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.015)}}
+.nh-composer-ring{position:relative;padding:2px;border-radius:var(--radius-md,18px);background:linear-gradient(110deg,#f0c23a 0%,#f7dd93 30%,#fff3d0 52%,#f2cb55 78%,#e6a919 100%);box-shadow:0 7.5px 22.5px rgba(40,60,100,0.08),0 1px 2px rgba(40,60,100,0.05)}
+.nh-composer-inner{position:relative;z-index:1;display:flex;flex-direction:column;gap:4.5px;padding:13.5px 13.5px 10.5px 16.5px;border-radius:var(--radius-sm,16.5px);background:#fff}
+.nh-composer-row{display:flex;align-items:flex-start;gap:9px}
+.nh-composer-kind{width:24px;height:24px;flex:none;margin-top:-1px;border:none;border-radius:50%;background:#eceef2;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:background 160ms ease,transform 160ms cubic-bezier(.2,.8,.2,1)}
+.nh-composer-kind:hover{background:#e0e3e8}
+.nh-composer-kind:active{transform:scale(.94)}
+.nh-composer-field{flex:1;min-width:0;resize:none;field-sizing:content;min-height:24px;max-height:calc(8 * 1.4em + 3px);overflow-y:auto;border:none;outline:none;background:transparent;padding:3px 0 0;font-family:inherit;font-size:var(--nh-fs-md);line-height:1.4;color:#1c1c1e}
+.nh-composer-field::placeholder{color:#8e8e93}
+.nh-composer-dictate{width:30px;height:30px;flex:none;border:none;border-radius:50%;background:transparent;color:#6e6e73;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;transition:background 160ms ease,color 160ms ease,transform 160ms cubic-bezier(.2,.8,.2,1)}
+.nh-composer-dictate:hover{background:#eceef2}
+.nh-composer-dictate[aria-pressed="true"]{background:#fdf1cf;color:#b07c00}
+.nh-composer-send{width:30px;height:30px;flex:none;border:none;border-radius:50%;background:#1c1c1e;opacity:0.4;color:#fff;display:flex;align-items:center;justify-content:center;padding:0;cursor:default;transition:transform 200ms ease,opacity 200ms ease}
+.nh-composer-send[data-ready="true"]{opacity:1;cursor:pointer}
+.nh-composer-send[data-ready="true"]:hover{transform:translateY(-2px) scale(1.06)}
+.nh-composer-send[data-ready="true"]:active{transform:scale(.94)}
+.nh-composer-spacer{height:34.5px}
+.nh-composer-strip{height:34.5px;margin:0 0 0 -3px;padding:0 3px;display:flex;flex-wrap:nowrap;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden}
+.nh-composer-chip{flex:none;display:inline-flex;align-items:center;gap:6.75px;max-width:180px;padding:3.75px 4.5px 3.75px 3.75px;border-radius:var(--radius-xs,10.5px);background:#f7f7f9;border:1px solid #e5e5ea;transition:background 160ms ease,border-color 160ms ease}
+.nh-composer-chip:hover{background:#eef3fa;border-color:#d6e4f7}
+.nh-composer-lead{width:24px;height:24px;flex:none;border-radius:7.5px;display:flex;align-items:center;justify-content:center;font-size:var(--nh-fs-xs);font-weight:700;letter-spacing:0.02em;background:#eceef2;color:#3a3a3c}
+.nh-composer-lead[data-kind="person"]{border-radius:50%;background:var(--nh-avatar);color:var(--nh-avatar-ink)}
+.nh-composer-lead[data-kind="meeting"]{background:#e8f1ff;color:#0062cc}
+.nh-composer-lead[data-kind="affected"]{background:#fff3d6;color:#8a5d00}
+.nh-composer-lead[data-kind="private"]{background:#eaf8ee;color:#1f7a3a}
+.nh-composer-lead[data-kind="custom"]{background:#f1e9fb;color:#6b3fa0}
+.nh-composer-chiptext{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.nh-composer-chiptitle{font-size:var(--nh-fs-xs);font-weight:600;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nh-composer-chipsub{font-size:var(--nh-fs-xs);color:#6e6e73;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nh-composer-tray{position:relative;z-index:0;margin:-15px 21px 0;padding:22.5px 12px 9px 13.5px;border-radius:0 0 var(--radius-md,15px) var(--radius-md,15px);background:#f2f2f7;box-shadow:0 7.5px 22.5px rgba(40,60,100,0.06)}
+.nh-composer-trayrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.nh-composer-traybtn{flex:none;display:flex;align-items:center;gap:4.5px;white-space:nowrap;height:24px;padding:0 9.75px;border:1px solid #e5e5ea;border-radius:var(--radius-sm,999px);background:#fff;color:#3a3a3c;font-family:inherit;font-size:var(--nh-fs-xs);font-weight:600;cursor:pointer;transition:background 160ms ease,border-color 160ms ease,transform 160ms cubic-bezier(.2,.8,.2,1)}
+.nh-composer-traybtn:hover{background:#fbfbfc;border-color:#c7c7cc}
+.nh-composer-traybtn:active{transform:scale(.96)}
+.nh-composer-traybtn[data-custom]{border-style:dashed;border-color:#a1a1a8}
+@media (prefers-reduced-motion:reduce){.nh-composer-aura{animation:none}}

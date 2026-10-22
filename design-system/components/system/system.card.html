@@ -1,0 +1,44 @@
+<!-- @dsCard group="Components" viewport="1000x620" name="System (new)" subtitle="Pills, badges, segmented, gauges, steps, panels, decision, chat" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{background:#eef3fb;padding:20px;font-family:var(--nu-font)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.g{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;margin-top:14px}.col{display:flex;flex-direction:column;gap:14px;min-width:0}</style></head>
+<body><div id="r"></div>
+<script type="text/babel">
+const { PillButton, IconButton, Badge, Segmented, InfoPanel, BarsPanel, ScoreRow, StepTrack, DeskStrip, DecisionList, FeedPanel, ChatMessage, ProgressRail, Icon } = window.NextUpDesignSystem_2debbf;
+function Demo() {
+  const [seg, setSeg] = React.useState("open"); const [tab, setTab] = React.useState("idea"); const [d, setD] = React.useState("Discuss first");
+  return <>
+    <div className="row">
+      <PillButton icon={<Icon name="sort" size={14} width={2.2} />}>Most supported</PillButton>
+      <PillButton variant="light" icon={<Icon name="pin" size={14} width={2.2} />}>All sites</PillButton>
+      <PillButton variant="fill" icon={<Icon name="idea" size={14} />}>Idea</PillButton>
+      <PillButton size="sm" icon={<Icon name="up" size={13} width={2.6} />} count={0}>Support</PillButton>
+      <PillButton size="sm" variant="outline" icon={<Icon name="check" size={13} width={2.6} />}>Published</PillButton>
+      <IconButton variant="dark" label="Close"><Icon name="x" size={12} width={2.6} /></IconButton>
+      <IconButton variant="fill" label="Collapse"><Icon name="down" size={14} width={2.2} /></IconButton>
+      <IconButton variant="outline" label="Attach"><Icon name="file" size={14} /></IconButton>
+      <Segmented tone="white" value={seg} onChange={setSeg} items={[{label:"Open",key:"open",count:4},{label:"Archive",key:"archive",count:2}]} />
+      <Segmented value={tab} onChange={setTab} items={[{label:"Idea",key:"idea"},{label:"AI",key:"ai",icon:<Icon name="plus" size={10} width={2.6} />}]} />
+      <Badge tone="left">1 d left</Badge><Badge tone="late">3 d late</Badge><Badge tone="review">Under review</Badge><Badge tone="approved">Approved</Badge><Badge>paused</Badge>
+    </div>
+    <div className="g"><div className="col">
+      <div className="nu-card">
+        <h2 className="nu-title" style={{fontSize:24}}>Move the shift handover notes onto a board by the line</h2>
+        <StepTrack steps={[{label:"Raised",sub:"19 Oct",tone:"done"},{label:"AI check",sub:"Passed · 19 Oct",tone:"done"},{label:"Team lead",sub:"Question for you",tone:"now"},{label:"Decision",sub:"Due 25 Oct",tone:"todo"},{label:"In progress",sub:"",tone:"todo"}]} />
+        <DeskStrip name="Thomas Vogel" role="Team lead, 4-series" initials="TV" tone="blue" used={0.2} label="1 d of the 5-day promise · clock paused" />
+        <InfoPanel rows={[{label:"Raised by",value:"Jonas Schmidt · Line 3"},{label:"Responsible",value:"Thomas Vogel · Team lead, 4-series",sub:"Owns “Shift plan, staffing, overtime” on the routing map."}]} />
+        <BarsPanel title="Minutes before the first part runs" rows={[{label:"Line 3 today",value:1,display:"11 min"},{label:"Line 4, board at the line",value:.27,display:"3 min"}]} />
+      </div>
+      <ScoreRow scores={[{label:"Value",value:80},{label:"Fit",value:85},{label:"Detail",value:60},{label:"Urgency",value:95},{label:"Support",value:35}]} />
+    </div><div className="col">
+      <DecisionList options={["Yes, do it","Discuss first","No, and why","Pass to Markus Roth","Ask a question"]} value={d} suggested="Discuss first" onPick={setD} />
+      <div className="nu-card" data-pad="sm"><div className="nu-thread"><ChatMessage role="user" text="Do you like the idea?" /><ChatMessage text="Still at 79. Still open: who else it helps." /><ChatMessage role="them" initials="TV" tone="blue" when="yesterday" text="Which board do you mean?" /></div></div>
+    </div></div>
+  </>;
+}
+ReactDOM.createRoot(document.getElementById("r")).render(<Demo />);
+</script></body></html>
