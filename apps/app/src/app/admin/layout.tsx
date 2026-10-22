@@ -11,6 +11,7 @@ import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { dashboardUrl, landingUrl } from "@/features/tenant/urls";
 import { adminBase, adminScope } from "@/features/admin/nav";
 import { adminSignOut, isAdmin } from "@/server/actions/admin";
+import { adminActor } from "@/server/admin-session";
 import { adminContext } from "@/server/admin-context";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { ReportButton } from "@/components/report/ReportButton";
@@ -31,12 +32,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const company = adminScope() === "company";
   const signedIn = await isAdmin();
   const ctx = signedIn ? await adminContext() : null;
+  const actor = signedIn ? await adminActor() : null;
 
   return (
     <div className={styles.shell}>
       <header className={styles.bar}>
         <Image src="/brand/nextup-logo-blue.png" alt="NextUp" width={506} height={224} className={styles.logo} />
         <span className={styles.tag}>admin</span>
+        {actor ? <span className={styles.who}>{actor}</span> : null}
         <nav className={styles.barNav}>
           {signedIn ? (
             // Signed in, every way out of the admin area logs out first (adminSignOut, `to`), so

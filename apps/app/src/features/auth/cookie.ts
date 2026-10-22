@@ -45,10 +45,23 @@ export function signSession(claims: SessionClaims, secret: string): string {
   return `${payload}.${sign(payload, secret)}`;
 }
 
-/** Same for the admin cookie, which carries only an expiry - there is no admin user. */
-export function signAdmin(exp: number, secret: string): string {
-  const payload = b64url(JSON.stringify({ v: 1, admin: true, exp }));
+/** Eight hours: the admin cookie's lifetime. */
+export const ADMIN_TTL_SECONDS = 8 * 60 * 60;
+
+/**
+ * Same for the admin cookie. It carries an expiry and, when the admin signed in with Microsoft,
+ * `by`: who. The shared admin code has no person behind it, so `by` is then left out.
+ */
+export function signAdmin(exp: number, secret: string, by?: string): string {
+  const payload = b64url(JSON.stringify({ v: 1, admin: true, exp, ...(by ? { by } : {}) }));
   return `${payload}.${sign(payload, secret)}`;
+}
+
+/** Who the admin cookie says signed in, or null (admin code, or not a valid cookie). */
+export function adminBy(raw: string | undefined, secret: string, nowSeconds = Math.floor(Date.now() / 1000)): string | null {
+  if (!verifyAdmin(raw, secret, nowSeconds)) return null;
+  const c = verifyRaw(raw, secret);
+  return c && typeof c.by === "string" && c.by ? c.by : null;
 }
 
 function verifyRaw(raw: string | undefined, secret: string): Record<string, unknown> | null {

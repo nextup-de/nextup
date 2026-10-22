@@ -74,7 +74,11 @@ static files by their extension, not every path with a dot, so a person's page
    ends every session they had, Microsoft ones included; "New demo codes" ends a demo's sessions.
    Offboarding is deleting the person.
 3. **Admin as people, not a shared code.** One `ADMIN_ACCESS_CODE` for everyone means no audit of
-   who did what. Named admin users (magic link or SSO) plus 2FA.
+   who did what. Named admin users (magic link or SSO) plus 2FA. Started: on a company stack, a
+   Microsoft account with the Entra app role `NextUp.Admin` opens `/admin`; the cookie carries who
+   (shown in the header, logged at sign-in) and the shared code is logged as break-glass. Still open:
+   2FA of our own, switching the shared code off, naming the admin on each action (item 4), and
+   the platform admin on admin.sellux.ch. Customer setup: `docs/customer/ENTRA_SETUP.md`.
 4. **Audit log for admin actions** - create, stage move, issue login code, issue token, delete - as
    events, like everything else.
 5. **Shared rate-limit store.** The throttle counts in process memory: right for one Hetzner box,

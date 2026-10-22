@@ -10,6 +10,7 @@ import {
   entraApp,
   idTokenKeyId,
   isMicrosoftError,
+  isEntraAdmin,
   isTenantId,
   landingFor,
   jwksUrl,
@@ -239,5 +240,33 @@ describe("roles from Entra", () => {
 
   it("has a message for the no-role case", () => {
     expect(isMicrosoftError("norole")).toBe(true);
+  });
+});
+
+// /admin with Microsoft: the NextUp.Admin app role is the only key, and it is not a NextUp role.
+describe("Microsoft sign-in to /admin", () => {
+  it("opens for NextUp.Admin, whatever its case", () => {
+    expect(isEntraAdmin(["NextUp.Admin"])).toBe(true);
+    expect(isEntraAdmin(["NextUp.Member", " nextup.ADMIN "])).toBe(true);
+  });
+
+  it("stays shut for every other role, including a manager", () => {
+    expect(isEntraAdmin([])).toBe(false);
+    expect(isEntraAdmin(["NextUp.Manager", "NextUp.Leader", "NextUp.Member", "Admin", "NextUp.Administrator"])).toBe(false);
+  });
+
+  it("gives NextUp.Admin no place in the person roles", () => {
+    expect(roleFromEntra(["NextUp.Admin"])).toBeNull();
+  });
+
+  it("carries the admin intent in the signed flow cookie, and nothing else", () => {
+    const base: Flow = { slug: "acme", state: "s", nonce: "n", verifier: "v", next: "/", exp: now + 600 };
+    expect(verifyFlow(signFlow({ ...base, as: "admin" }, "k"), "k", now)?.as).toBe("admin");
+    expect(verifyFlow(signFlow(base, "k"), "k", now)?.as).toBeUndefined();
+    expect(verifyFlow(signFlow({ ...base, as: "root" as "admin" }, "k"), "k", now)).toBeNull();
+  });
+
+  it("has a message for a Microsoft account that is not an administrator", () => {
+    expect(isMicrosoftError("noadmin")).toBe(true);
   });
 });

@@ -11,6 +11,11 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   // Next decodes the segment, so /%2Fevil.com/... arrives as "/evil.com" - and a redirect built
   // from it would leave the site. Only a real company name gets any further.
   if (!isValidSlug(company)) return new NextResponse(null, { status: 404 });
-  const to = await startMicrosoftLogin(company, request.nextUrl.origin, request.nextUrl.searchParams.get("next"));
+  const to = await startMicrosoftLogin(
+    company,
+    request.nextUrl.origin,
+    request.nextUrl.searchParams.get("next"),
+    request.nextUrl.searchParams.get("as") === "admin",
+  );
   return NextResponse.redirect(new URL(to, request.nextUrl.origin));
 }
