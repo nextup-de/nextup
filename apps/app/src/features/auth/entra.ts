@@ -14,6 +14,7 @@
 //
 // Pure: node:crypto only. The glue that reads cookies and redirects is src/server/microsoft-login.ts.
 import { createHash, createHmac, createPublicKey, randomBytes, timingSafeEqual, verify } from "node:crypto";
+import { ENTRA_ROLE_CLAIMS, ROLES, type Role } from "@/config/roles";
 
 export const MICROSOFT_AUTHORITY = "https://login.microsoftonline.com";
 export const FLOW_COOKIE = "nextup_ms_flow";
@@ -189,7 +190,8 @@ export function decodeIdToken(jwt: unknown): Record<string, unknown> | null {
   }
 }
 
-export type MicrosoftIdentity = { oid: string; tid: string; email: string; name: string };
+/** `roles` are the app roles the customer's IT assigned in Entra, as the token spells them. */
+export type MicrosoftIdentity = { oid: string; tid: string; email: string; name: string; roles: string[] };
 
 export type IdTokenCheck = { ok: true; who: MicrosoftIdentity } | { ok: false; reason: MicrosoftError };
 
@@ -220,7 +222,46 @@ export function checkIdToken(
   // that the account is matched by `oid`, which Microsoft never reassigns.
   const email = (str("email") || str("preferred_username")).trim().toLowerCase();
   if (!oid) return { ok: false, reason: "token" };
-  return { ok: true, who: { oid, tid, email, name: str("name") } };
+  const roles = Array.isArray(claims.roles) ? claims.roles.filter((r): r is string => typeof r === "string") : [];
+  return { ok: true, who: { oid, tid, email, name: str("name"), roles } };
+}
+
+/**
+ * The NextUp role the token carries, or null when it carries none we know. With several, the
+ * most powerful wins (ROLES is ordered manager, leader, member).
+ */
+export function roleFromEntra(roles: readonly string[]): Role | null {
+  const given = new Set(
+    roles.map((r) => r.trim().toLowerCase()).filter((r) => Object.hasOwn(ENTRA_ROLE_CLAIMS, r)).map((r) => ENTRA_ROLE_CLAIMS[r]),
+  );
+  return ROLES.find((r) => given.has(r)) ?? null;
+}
+
+/** What a verified Microsoft sign-in leads to. Pure, so every case is a unit test. */
+export type Landing =
+  | { kind: "refuse"; reason: MicrosoftError }
+  | { kind: "existing"; setRole: Role | null }
+  | { kind: "create"; role: Role };
+
+/**
+ * `found`: the person we already have for this Microsoft account (bound by oid, or matched by
+ * email the first time). `emailTaken`: somebody else here already uses that email.
+ *
+ * - Someone we know signs in. If Entra assigns a role, it wins over the stored one; with none
+ *   assigned the stored role stays, so a company that sets roles by hand keeps working.
+ * - Someone new is created only when the customer's IT assigned a NextUp app role. The role is
+ *   the proof that they meant this person to have access - no role, no account.
+ */
+export function landingFor(p: {
+  found: { role: string } | null;
+  emailTaken: boolean;
+  email: string;
+  role: Role | null;
+}): Landing {
+  if (p.found) return { kind: "existing", setRole: p.role && p.role !== p.found.role ? p.role : null };
+  if (!p.email || p.emailTaken) return { kind: "refuse", reason: "unknown" };
+  if (!p.role) return { kind: "refuse", reason: "norole" };
+  return { kind: "create", role: p.role };
 }
 
 // ── What the login page says when it went wrong ─────────────────────────────
@@ -233,6 +274,7 @@ export const MICROSOFT_ERRORS = {
   tenant: "That Microsoft account belongs to another organisation. Sign in with your work account.",
   token: "Microsoft sent back something we couldn't read. Please try again.",
   unknown: "Your Microsoft account isn't set up here yet. Ask your team leader to add you.",
+  norole: "Your Microsoft account has no NextUp role yet. Ask your IT administrator to assign you one.",
   failed: "We couldn't reach Microsoft just now. Please try again in a moment.",
 } as const;
 

@@ -23,6 +23,15 @@ export const ROLE_ACCESS: Record<string, readonly Role[]> = {
   "/projects": ["member", "leader", "manager"], // every role; which projects a member sees is features/projects/views visibleProjects
 };
 
+// The app roles a customer's IT assigns in Entra (the `value` of each app role in the app
+// registration manifest, docs/plans/2026-10-22_sso-and-data-access.md). They arrive in the ID
+// token's `roles` claim and set User.role at every Microsoft sign-in. Compared lower-cased.
+export const ENTRA_ROLE_CLAIMS: Record<string, Role> = {
+  "nextup.manager": "manager",
+  "nextup.leader": "leader",
+  "nextup.member": "member",
+};
+
 export function canAccess(role: Role, path: string): boolean {
   const rule = Object.entries(ROLE_ACCESS).find(([prefix]) => path === prefix || path.startsWith(prefix + "/"));
   return rule ? rule[1].includes(role) : true;

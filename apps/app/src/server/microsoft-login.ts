@@ -21,8 +21,10 @@ import {
   idTokenKeyId,
   isTenantId,
   jwksUrl,
+  landingFor,
   pkcePair,
   randomToken,
+  roleFromEntra,
   sameToken,
   signFlow,
   tokenRequestBody,
@@ -33,6 +35,7 @@ import {
   type MicrosoftError,
 } from "@/features/auth/entra";
 import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
+import { initialsOf } from "@/features/tenant/create";
 import { companyPrefix, safeNextPath } from "@/features/tenant/urls";
 import { issueSession, secureCookies } from "@/server/issue-session";
 
@@ -195,19 +198,45 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
     nonce: flow.nonce,
   });
   if (!checked.ok) return loginWithError(slug, checked.reason);
-  const { oid, email } = checked.who;
+  const { oid, email, name } = checked.who;
 
   const db = getDb();
   // Bound account first; the email only finds someone who has never used Microsoft here - and
   // only if no other Microsoft account has claimed that person already.
-  const user =
+  const found =
     (await db.user.findFirst({ where: { companyId: company.id, entraOid: oid } })) ??
     (email ? await db.user.findFirst({ where: { companyId: company.id, email, entraOid: null } }) : null);
-  if (!user) {
-    console.warn(`[microsoft] ${slug}: no person for ${email || "(no email)"}`);
-    return loginWithError(slug, "unknown");
+  const emailTaken =
+    !found && email ? Boolean(await db.user.findFirst({ where: { companyId: company.id, email }, select: { id: true } })) : false;
+
+  const landing = landingFor({ found, emailTaken, email, role: roleFromEntra(checked.who.roles) });
+  if (landing.kind === "refuse") {
+    console.warn(`[microsoft] ${slug}: ${landing.reason} for ${email || "(no email)"}`);
+    return loginWithError(slug, landing.reason);
   }
-  if (!user.entraOid) await db.user.update({ where: { id: user.id, companyId: company.id }, data: { entraOid: oid } });
+
+  let user = found;
+  if (landing.kind === "create") {
+    // The customer's IT assigned this person a NextUp role in Entra: that is the invitation.
+    const display = name.trim() || email.split("@")[0];
+    try {
+      user = await db.user.create({
+        data: { companyId: company.id, name: display, email, role: landing.role, ini: initialsOf(display), entraOid: oid },
+      });
+    } catch (err) {
+      console.warn(`[microsoft] ${slug}: could not create ${email}`, err);
+      return loginWithError(slug, "failed");
+    }
+    console.info(`[microsoft] ${slug}: created ${email} as ${landing.role}`);
+  } else if (found) {
+    // Bind the Microsoft account on first sight; take the role Entra assigns, if it assigns one.
+    const data = { ...(found.entraOid ? {} : { entraOid: oid }), ...(landing.setRole ? { role: landing.setRole } : {}) };
+    if (Object.keys(data).length > 0) {
+      user = await db.user.update({ where: { id: found.id, companyId: company.id }, data });
+      if (landing.setRole) console.info(`[microsoft] ${slug}: ${email} is now ${landing.setRole} (was ${found.role})`);
+    }
+  }
+  if (!user) return loginWithError(slug, "failed");
 
   await issueSession(company.id, company.slug, user);
   return companyPrefix(slug) + (flow.next || ROLE_HOME[user.role as Role]);

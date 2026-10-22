@@ -11,8 +11,10 @@ import {
   idTokenKeyId,
   isMicrosoftError,
   isTenantId,
+  landingFor,
   jwksUrl,
   pkcePair,
+  roleFromEntra,
   signFlow,
   tokenRequestBody,
   verifyFlow,
@@ -98,7 +100,7 @@ describe("flow cookie", () => {
 describe("id token", () => {
   it("accepts a matching token and matches on the lower-cased sign-in name", () => {
     const r = checkIdToken(decodeIdToken(jwt(claims())), want, now);
-    expect(r).toEqual({ ok: true, who: { oid: "oid-1", tid: TID, email: "j.schmidt@acme.example", name: "J. Schmidt" } });
+    expect(r).toEqual({ ok: true, who: { oid: "oid-1", tid: TID, email: "j.schmidt@acme.example", name: "J. Schmidt", roles: [] } });
   });
 
   it("prefers the email claim when there is one", () => {
@@ -182,5 +184,60 @@ describe("ID token signature", () => {
 
   it("points at the tenant's own key set", () => {
     expect(jwksUrl(TID)).toBe(`https://login.microsoftonline.com/${TID}/discovery/v2.0/keys`);
+  });
+});
+
+// Roles from Entra: the customer's IT assigns an app role, the token carries it, and it sets the
+// person's role and - for someone new - is the only reason an account gets created.
+describe("roles from Entra", () => {
+  it("reads the roles claim and ignores what is not a string", () => {
+    const r = checkIdToken(claims({ roles: ["NextUp.Leader", 7, null] }), want, now);
+    expect(r.ok && r.who.roles).toEqual(["NextUp.Leader"]);
+    expect(checkIdToken(claims({ roles: "NextUp.Leader" }), want, now)).toMatchObject({ ok: true, who: { roles: [] } });
+  });
+
+  it("maps the three app roles, whatever their case", () => {
+    expect(roleFromEntra(["NextUp.Manager"])).toBe("manager");
+    expect(roleFromEntra([" nextup.LEADER "])).toBe("leader");
+    expect(roleFromEntra(["NextUp.Member"])).toBe("member");
+  });
+
+  it("gives the most powerful role when several are assigned", () => {
+    expect(roleFromEntra(["NextUp.Member", "NextUp.Leader"])).toBe("leader");
+    expect(roleFromEntra(["NextUp.Member", "NextUp.Manager", "NextUp.Leader"])).toBe("manager");
+  });
+
+  it("knows no role from anything else", () => {
+    expect(roleFromEntra([])).toBeNull();
+    expect(roleFromEntra(["Admin", "manager", "NextUp.Owner", "NextUp.Admin"])).toBeNull();
+    expect(roleFromEntra(["toString", "__proto__", "constructor"])).toBeNull();
+  });
+
+  const email = "new.person@acme.example";
+
+  it("lets a known person in and keeps their role when Entra assigns none", () => {
+    expect(landingFor({ found: { role: "leader" }, emailTaken: false, email, role: null })).toEqual({ kind: "existing", setRole: null });
+  });
+
+  it("takes the role Entra assigns over the stored one", () => {
+    expect(landingFor({ found: { role: "member" }, emailTaken: false, email, role: "leader" })).toEqual({ kind: "existing", setRole: "leader" });
+    expect(landingFor({ found: { role: "leader" }, emailTaken: false, email, role: "leader" })).toEqual({ kind: "existing", setRole: null });
+  });
+
+  it("creates a new person only when Entra assigned a role", () => {
+    expect(landingFor({ found: null, emailTaken: false, email, role: "member" })).toEqual({ kind: "create", role: "member" });
+    expect(landingFor({ found: null, emailTaken: false, email, role: null })).toEqual({ kind: "refuse", reason: "norole" });
+  });
+
+  it("never creates a second account for an email somebody else here already uses", () => {
+    expect(landingFor({ found: null, emailTaken: true, email, role: "manager" })).toEqual({ kind: "refuse", reason: "unknown" });
+  });
+
+  it("needs an email to create someone", () => {
+    expect(landingFor({ found: null, emailTaken: false, email: "", role: "member" })).toEqual({ kind: "refuse", reason: "unknown" });
+  });
+
+  it("has a message for the no-role case", () => {
+    expect(isMicrosoftError("norole")).toBe(true);
   });
 });
