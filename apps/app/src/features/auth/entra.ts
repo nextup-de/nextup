@@ -2,17 +2,18 @@
 // with PKCE. No library: the whole flow is two redirects and one POST, and every check we rely on
 // is below and unit-tested.
 //
-// Why no signature check on the ID token: we never accept one from the browser. It comes back
-// from our own server-to-server POST to Microsoft's token endpoint over TLS, which OpenID Connect
-// Core 3.1.3.7 allows in place of verifying the signature. We still check iss, aud, tid, nonce
-// and expiry.
+// The ID token comes back from our own server-to-server POST to Microsoft's token endpoint over
+// TLS, which OpenID Connect Core 3.1.3.7 would accept without a signature check. We verify the
+// RS256 signature against the tenant's published keys anyway (verifyIdTokenSignature), so the
+// token is also good for anything that later reads it outside that one request, and then check
+// iss, aud, tid, nonce and expiry.
 //
 // Tenant isolation: a company opts in by storing its Entra tenant ID (Company.entraTenantId).
 // The authorize URL is sent to THAT tenant only, and the token's `tid` must match it - so an
 // account from any other organisation, or a personal Microsoft account, cannot sign in to it.
 //
 // Pure: node:crypto only. The glue that reads cookies and redirects is src/server/microsoft-login.ts.
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, createPublicKey, randomBytes, timingSafeEqual, verify } from "node:crypto";
 
 export const MICROSOFT_AUTHORITY = "https://login.microsoftonline.com";
 export const FLOW_COOKIE = "nextup_ms_flow";
@@ -135,7 +136,47 @@ export function sameToken(a: string, b: string): boolean {
 
 // ── The ID token ────────────────────────────────────────────────────────────
 
-/** The payload of a JWT, unverified - see the header for why that is enough here. */
+/** Where a tenant publishes the public keys its tokens are signed with. */
+export function jwksUrl(tenantId: string): string {
+  return `${MICROSOFT_AUTHORITY}/${tenantId}/discovery/v2.0/keys`;
+}
+
+export type Jwk = { kid?: string; kty?: string; n?: string; e?: string; use?: string };
+
+/** The `kid` the token says it was signed with, or null when the header is unreadable or not RS256. */
+export function idTokenKeyId(jwt: unknown): string | null {
+  if (typeof jwt !== "string") return null;
+  try {
+    const header: unknown = JSON.parse(Buffer.from(jwt.split(".")[0] ?? "", "base64url").toString("utf8"));
+    if (typeof header !== "object" || header === null) return null;
+    const h = header as { alg?: unknown; kid?: unknown };
+    return h.alg === "RS256" && typeof h.kid === "string" ? h.kid : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when the JWT is RS256-signed by one of `keys`. Only RS256 is accepted: Entra signs with it,
+ * and an `alg` taken from the token itself must never choose the algorithm (no "none", no HS256
+ * with the public key as secret).
+ */
+export function verifyIdTokenSignature(jwt: unknown, keys: readonly Jwk[]): boolean {
+  const kid = idTokenKeyId(jwt);
+  if (!kid || typeof jwt !== "string") return false;
+  const jwk = keys.find((k) => k.kid === kid && k.kty === "RSA" && k.n && k.e && (!k.use || k.use === "sig"));
+  if (!jwk) return false;
+  const [header, payload, signature] = jwt.split(".");
+  if (!header || !payload || !signature) return false;
+  try {
+    const key = createPublicKey({ key: { kty: "RSA", n: jwk.n, e: jwk.e }, format: "jwk" });
+    return verify("sha256", Buffer.from(`${header}.${payload}`), key, Buffer.from(signature, "base64url"));
+  } catch {
+    return false;
+  }
+}
+
+/** The payload of a JWT, unverified: call verifyIdTokenSignature first. */
 export function decodeIdToken(jwt: unknown): Record<string, unknown> | null {
   if (typeof jwt !== "string") return null;
   const parts = jwt.split(".");
