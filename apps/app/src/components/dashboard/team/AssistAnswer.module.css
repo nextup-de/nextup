@@ -22,6 +22,7 @@
 .srcN { flex: none; min-width: 18px; text-align: center; padding: 1px 4px; border-radius: 5px; background: var(--nh-brand-tint); color: var(--nh-brand); font-family: var(--nh-mono); font-size: var(--nh-fs-xs); font-weight: 600; }
 .srcKind { flex: none; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: #8b98a5; }
 .srcLabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--nh-ink); }
+.srcLabel a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .level { flex: none; margin-left: auto; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 6px; border-radius: 5px; border: 1px solid #e6edf1; color: #5c6773; }
 .level[data-level="public"] { color: #2f7a4a; border-color: #cfe6d7; }
 .level[data-level="confidential"] { color: #9a6412; border-color: #f0e3c8; }

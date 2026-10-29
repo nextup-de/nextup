@@ -53,6 +53,31 @@ export async function deleteAllConnections(companyId: string): Promise<number> {
   return r.count;
 }
 
+/**
+ * The sealed token to redeem (server/graph-token.ts), or null when the person is not connected or
+ * Microsoft already refused it - then nothing is tried until they connect again.
+ */
+export async function sealedRefreshToken(companyId: string, userId: string): Promise<string | null> {
+  const row = await getDb().connection.findFirst({
+    where: { companyId, userId, provider: M365, lastError: null },
+    select: { refreshTokenSealed: true },
+  });
+  return row?.refreshTokenSealed ?? null;
+}
+
+/** After a redeem: the rotated token (when Microsoft sent one) goes in, and the use is noted. */
+export async function connectionUsed(companyId: string, userId: string, refreshTokenSealed: string | null): Promise<void> {
+  await getDb().connection.updateMany({
+    where: { companyId, userId, provider: M365 },
+    data: { lastUsedAt: new Date(), ...(refreshTokenSealed ? { refreshTokenSealed } : {}) },
+  });
+}
+
+/** Microsoft refused the token for good: the profile shows "connect again". */
+export async function connectionRefused(companyId: string, userId: string, why: string): Promise<void> {
+  await getDb().connection.updateMany({ where: { companyId, userId, provider: M365 }, data: { lastError: why.slice(0, 200) } });
+}
+
 export async function countConnections(companyId: string): Promise<number> {
   return getDb().connection.count({ where: { companyId, provider: M365 } });
 }

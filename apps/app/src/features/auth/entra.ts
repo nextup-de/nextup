@@ -270,10 +270,13 @@ export function grantedScopes(scope: unknown): string[] {
   return [...new Set(names)].sort();
 }
 
-/** Did Microsoft grant what live search needs: the files, and a way to come back later? */
+/**
+ * Did Microsoft grant the files live search reads? The other half, a way to come back later, is
+ * the refresh token itself: Microsoft never lists offline_access in `scope` (that names only what
+ * the access token is good for) and answers it with a refresh_token instead - the caller checks it.
+ */
 export function canSearchFiles(scopes: readonly string[]): boolean {
-  const has = (name: string) => scopes.some((s) => s.toLowerCase() === name.toLowerCase());
-  return has("Files.Read.All") && has("offline_access");
+  return scopes.some((s) => s.toLowerCase() === "files.read.all");
 }
 
 /** What a verified Microsoft sign-in leads to. Pure, so every case is a unit test. */

@@ -10,9 +10,16 @@ import type { Knowledge, Profile } from "@/features/knowledge";
 import { canUse, type Level } from "./classify";
 
 export type SourceKind = "profile" | "goal" | "role" | "route" | "doc";
-export type Source = { tag: string; kind: SourceKind; label: string; level: Level };
+/** `url` is set for a file read live from Microsoft 365 - the only thing stored of it besides its title. */
+export type Source = { tag: string; kind: SourceKind; label: string; level: Level; url?: string };
 
-export type DocHit = { id: string; title: string; snippet: string; classification: string; source: string };
+/** `url` is set for a hit from Microsoft 365 (source "m365"); company documents have none. */
+export type DocHit = { id: string; title: string; snippet: string; classification: string; source: string; url?: string };
+
+/** What the history keeps of a source (decision 8): title and link, never text from the file. */
+export const storedSource = ({ tag, kind, label, level, url }: Source): Source => ({ tag, kind, label, level, ...(url ? { url } : {}) });
+
+const sourceLabel = (d: DocHit) => (d.url ? "Microsoft 365" : d.source);
 
 export type ToolContext = {
   knowledge: Knowledge;
@@ -25,10 +32,10 @@ export type ToolContext = {
 /** Hands out one tag per distinct fact for the length of one answer. */
 export class Sources {
   private byKey = new Map<string, Source>();
-  add(kind: SourceKind, key: string, label: string, level: Level): string {
+  add(kind: SourceKind, key: string, label: string, level: Level, url?: string): string {
     const k = kind + ":" + key;
     let s = this.byKey.get(k);
-    if (!s) this.byKey.set(k, (s = { tag: "S" + (this.byKey.size + 1), kind, label, level }));
+    if (!s) this.byKey.set(k, (s = { tag: "S" + (this.byKey.size + 1), kind, label, level, ...(url ? { url } : {}) }));
     return s.tag;
   }
   get(tag: string): Source | undefined {
@@ -135,8 +142,8 @@ export async function runTool(name: string, input: unknown, ctx: ToolContext, sr
       const hits = (await ctx.searchDocuments(query, 4)).filter((d) => canUse(d.classification, ctx.ceiling));
       if (!hits.length) return "No document matches.";
       return hits.map((d) => {
-        const tag = src.add("doc", d.id, d.title, d.classification as Level);
-        return `[${tag}] ${d.title} (${d.source}): ${d.snippet}`;
+        const tag = src.add("doc", d.id, d.title, d.classification as Level, d.url);
+        return `[${tag}] ${d.title} (${sourceLabel(d)}): ${d.snippet}`;
       }).join("\n");
     }
     default:

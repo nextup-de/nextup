@@ -337,7 +337,10 @@ async function finishConnect(
     return profileWith(slug, "otheraccount");
   }
   if (!(await m365SearchOn(companyId))) return profileWith(slug, "m365off");
-  if (typeof refreshToken !== "string" || !refreshToken || !canSearchFiles(scopes)) return profileWith(slug, "files");
+  if (typeof refreshToken !== "string" || !refreshToken || !canSearchFiles(scopes)) {
+    console.warn(`[m365] ${slug}: ${me.email} not connected - granted "${scopes.join(" ")}", refresh token ${refreshToken ? "yes" : "no"}`);
+    return profileWith(slug, "files");
+  }
   const key = vaultKey();
   if (!key) return profileWith(slug, "vault");
 

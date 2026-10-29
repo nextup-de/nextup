@@ -15,12 +15,14 @@ import { GOALS } from "@/features/evaluate";
 import { companyBrief, hasKnowledge, rowsFromSeed, type Knowledge, type Profile } from "@/features/knowledge";
 import { getViewerFor } from "@/features/auth/session";
 import { assist, ASSIST_PROMPT_VERSION, MAX_HISTORY, MAX_QUESTION, type Source } from "@/features/assist";
+import { storedSource } from "@/features/assist/tools";
 import { DEFAULT_CEILING } from "@/features/assist/classify";
 import { assistGate } from "@/features/assist/gate";
 import { stripTags } from "@/features/assist/check";
 import { hasDatabase } from "@/lib/db/client";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
-import { loadAssistSettings, purgeAssistTurns, recordTurns, searchDocuments, type AssistSettings } from "@/lib/db/assist";
+import { loadAssistSettings, purgeAssistTurns, recordTurns, type AssistSettings } from "@/lib/db/assist";
+import { searchDocumentsFor } from "@/server/assist-search";
 import { clientKey, throttle } from "@/server/throttle";
 import { providerConfig, providerFor } from "@/server/assist/provider";
 
@@ -49,7 +51,7 @@ function purgeSoon(companyId: string, retentionDays: number) {
   purgeAssistTurns(companyId, retentionDays).catch((e) => console.error("[assist] purge", e instanceof Error ? e.message : e));
 }
 const sse = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-const shown = (s: Source[]) => s.map(({ tag, kind, label, level }) => ({ tag, kind, label, level }));
+const shown = (s: Source[]) => s.map(storedSource);
 
 export async function POST(request: Request, { params }: Ctx) {
   const { company } = await params;
@@ -102,7 +104,7 @@ export async function POST(request: Request, { params }: Ctx) {
             knowledge: knowledge!,
             profile,
             ceiling: settings.ceiling,
-            searchDocuments: audited ? (q, k) => searchDocuments(viewer.companyId, settings.ceiling, q, k) : async () => [],
+            searchDocuments: audited ? searchDocumentsFor(viewer, settings.ceiling) : async () => [],
           },
           prompt: { companyName: tenant.name, brief: companyBrief(knowledge!, profile), rules: settings.rules },
           redaction,
@@ -120,7 +122,7 @@ export async function POST(request: Request, { params }: Ctx) {
             : [
                 { userId: viewer.userId, sessionId, role: "user", text: out.question, redactions: out.hits, promptVersion: ASSIST_PROMPT_VERSION },
                 {
-                  userId: viewer.userId, sessionId, role: "assistant", text: stripTags(out.answer.text), sources: out.answer.cited,
+                  userId: viewer.userId, sessionId, role: "assistant", text: stripTags(out.answer.text), sources: out.answer.cited.map(storedSource),
                   redactions: out.answer.hits, unsourced: out.answer.unsourced, model: out.model, promptVersion: ASSIST_PROMPT_VERSION,
                   latencyMs: Date.now() - started, tokensIn: out.tokensIn, tokensOut: out.tokensOut,
                 },

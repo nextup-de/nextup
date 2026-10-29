@@ -6,7 +6,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { Turn } from "@/features/assist/draft";
 
-export type ShownSource = { tag: string; kind: string; label: string; level: string };
+export type ShownSource = { tag: string; kind: string; label: string; level: string; url?: string };
 export type AssistStatus = "idle" | "asking" | "answered" | "blocked" | "error";
 export type AssistView = {
   status: AssistStatus;
