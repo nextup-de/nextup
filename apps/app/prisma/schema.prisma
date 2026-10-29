@@ -84,6 +84,8 @@ model Company {
   featureFlags FeatureFlag[]
 
   connections Connection[]
+
+  integrations Integration[]
 }
 
 // ── Company knowledge ────────────────────────────────────────────────────────────────────────────
@@ -422,6 +424,46 @@ model Connection {
 
   @@unique([companyId, userId, provider])
   @@index([companyId])
+}
+
+// A company's connection to a tool that NextUp syncs with from inside the app - today only Jira
+// (docs/plans/2026-10-29_jira-in-app.md). One row per company and system; the secrets are sealed
+// (features/connectors/vault.ts, context integration:<companyId>:<system>) and never come back out.
+// The shapes of `settings` and `account` are per system: features/integrations/jira/types.ts.
+model Integration {
+  id        String @id @default(cuid())
+  companyId String
+  system    String // "jira"
+
+  // Switched on by an admin. Turning it on sets enabledAt; projects that decided "yes" before that
+  // are not synced on their own (only through a human project.sync).
+  on        Boolean   @default(false)
+  enabledAt DateTime?
+
+  settings Json // JiraSettings for "jira": site, project key, issue types, toggles
+  // The API token and the webhook secret, sealed. Never logged, never sent to a browser.
+  secretSealed        String?
+  webhookSecretSealed String?
+  // What the tool says the integration account is ({ id, name }), to tell its own changes from a human's.
+  account             Json?
+
+  // The sync cursors: the last event sequence pushed out, and when the tool was last read.
+  pushedSeq Int       @default(0)
+  pulledAt  DateTime?
+  // One runner per company: a round may start only after this time has passed.
+  leaseUntil DateTime?
+  lastRunAt  DateTime?
+  lastOkAt   DateTime?
+  lastError  String? // why the last round failed; empty after a good one
+
+  updatedBy String? // the admin who last saved it (a name, not a user id)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, system])
+  @@index([on, system])
 }
 
 // A pilot request from the public /contact form. Not a tenant table: the company named here is

@@ -22,6 +22,7 @@ const log: EventLog = {
     ev("case.commented", AUTHOR, { text: "Thanks, added to v2." }, 2),
     ev("case.checkin", "T. Vogel", { next: "round", open: ["Who stocks it"] }, 3),
     ev("case.commented", "L. Brandt", { text: "Maintenance can stock it." }, 4),
+    ev("case.commented", "system:jira", { text: "Jira NUP-2: budget approved" }, 4), // a connector is never part of the discussion
   ],
 };
 const c = reduce(SEED, log).cases.find((x) => x.id === "c_b")!;

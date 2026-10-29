@@ -1,7 +1,7 @@
 // The token vault (src/features/connectors/vault.ts). The point of these: a sealed token opens only
 // with the right key AND for the same company and person, and anything tampered with opens to null.
 import { describe, expect, it } from "vitest";
-import { open, seal, vaultContext, vaultKey } from "@/features/connectors/vault";
+import { integrationContext, open, seal, vaultContext, vaultKey } from "@/features/connectors/vault";
 
 const KEY = vaultKey({ CONNECTOR_VAULT_KEY: "a".repeat(64) })!;
 const OTHER_KEY = vaultKey({ CONNECTOR_VAULT_KEY: "b".repeat(64) })!;
@@ -53,5 +53,23 @@ describe("seal and open", () => {
     expect(open(sealed + ".extra", KEY, here)).toBeNull();
     expect(open("", KEY, here)).toBeNull();
     expect(open("v1.only", KEY, here)).toBeNull();
+  });
+});
+
+describe("integration secrets", () => {
+  const ctx = integrationContext("company-1", "jira");
+
+  it("are bound to the company and the system, in a context of their own", () => {
+    expect(ctx).toBe("integration:company-1:jira");
+    expect(ctx).not.toBe(vaultContext("company-1", "jira"));
+    const sealed = seal("api-token", KEY, ctx);
+    expect(open(sealed, KEY, ctx)).toBe("api-token");
+    expect(open(sealed, KEY, integrationContext("company-2", "jira"))).toBeNull();
+    expect(open(sealed, KEY, integrationContext("company-1", "azure"))).toBeNull();
+  });
+
+  it("never open as a person's token, nor a person's token as an integration secret", () => {
+    expect(open(seal("api-token", KEY, ctx), KEY, vaultContext("company-1", "jira"))).toBeNull();
+    expect(open(seal("refresh", KEY, here), KEY, integrationContext("company-1", "user-1"))).toBeNull();
   });
 });

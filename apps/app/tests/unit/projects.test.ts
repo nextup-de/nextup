@@ -8,6 +8,7 @@ import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/se
 import { loopRules, LOOP_DEFAULTS, suggestedReward } from "@/features/loop/rules";
 import { board, nextMove, projectCommentsOn, projectLabel, projectOfCase, projectsEscalatedTo, projectsFrom, projectsOf } from "@/features/projects/selectors";
 import type { Baseline } from "@/features/projects/types";
+import { timelineOf } from "@/features/projects/views";
 import { verdictOf } from "@/features/projects/verdict";
 
 const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
@@ -252,5 +253,63 @@ describe("projects: who may", () => {
     const rewarded = reduce(SEED, doneLog(93, P("project.measured", { check: 30, value: 31 }, 32), P("project.measured", { check: 90, value: 30 }, 92), P("project.rewarded", { rule: "thanks" }, 93, "B. Hartmann")));
     expect(mayAppend(actor("J. Schmidt", "member", AUTHOR), q("project.claimed"), rewarded).ok).toBe(true);
     expect(mayAppend(actor("T. Vogel"), q("project.claimed"), rewarded).ok).toBe(false);
+  });
+});
+
+describe("projects: sent to Jira (project.sync)", () => {
+  const sync = (on: boolean, day = 0, who = "L. Brandt") => P("project.sync", { system: "jira", on }, day, who);
+  const base = [raise("c_a"), yes("c_a")];
+  const sent = reduce(SEED, logAt(0, ...base, sync(true)));
+
+  it("a project starts out never synced, and the latest sync wins", () => {
+    expect(reduce(SEED, logAt(0, ...base)).projects[0].sync).toBeNull();
+    expect(sent.projects[0].sync).toEqual({ system: "jira", on: true, day: 0, by: "L. Brandt" });
+    const stopped = reduce(SEED, logAt(3, ...base, sync(true, 1), sync(false, 3, "B. Hartmann")));
+    expect(stopped.projects[0].sync).toEqual({ system: "jira", on: false, day: 3, by: "B. Hartmann" });
+    const again = reduce(SEED, logAt(4, ...base, sync(true, 1), sync(false, 3), sync(true, 4)));
+    expect(again.projects[0].sync).toMatchObject({ on: true, day: 4 });
+  });
+
+  it("is on the project's history", () => {
+    expect(sent.projects[0].history.map((e) => e.type)).toContain("project.sync");
+  });
+
+  it("does nothing with a system it does not know or an on that is not true or false", () => {
+    const S = reduce(SEED, logAt(0, ...base, P("project.sync", { system: "trello", on: true }), P("project.sync", { system: "jira" }), P("project.sync", { system: "jira", on: "yes" as unknown as boolean })));
+    expect(S.projects[0].sync).toBeNull();
+  });
+
+  it("does not change once the project is stopped", () => {
+    const S = reduce(SEED, logAt(2, ...base, sync(true, 1), P("project.stopped", { why: "Line closes" }, 2), sync(false, 2)));
+    expect(S.projects[0].sync).toMatchObject({ on: true, day: 1 });
+  });
+
+  it("the lead or a manager may; nobody else; and only while the project is open", () => {
+    const send = (name: string, role: Actor["role"] = "leader", state = sent) => mayAppend(actor(name, role), q("project.sync", { system: "jira", on: true }), state);
+    expect(send("L. Brandt").ok).toBe(true);
+    expect(send("B. Hartmann", "manager").ok).toBe(true);
+    const roth = reduce(SEED, logAt(0, ...base, P("project.member", { name: "M. Roth", on: true })));
+    expect(send("M. Roth", "member", roth)).toEqual({ ok: false, error: "Only the project's lead (or a manager) can do that." });
+    expect(send("H. Sander", "member", roth).ok).toBe(false);
+    expect(send("J. Schmidt", "member").ok).toBe(false);
+    const closed = reduce(SEED, logAt(1, ...base, P("project.stopped", { why: "Line closes" }, 1)));
+    expect(send("L. Brandt", "leader", closed)).toEqual({ ok: false, error: "This project is closed." });
+    expect(mayAppend(actor("L. Brandt"), q("project.sync", { system: "jira", on: true }, "p_nope"), sent).ok).toBe(false);
+  });
+
+  it("needs a known system and an on of true or false", () => {
+    const check = (payload: Record<string, unknown>) => mayAppend(actor("L. Brandt"), q("project.sync", payload), sent).ok;
+    expect(check({ system: "jira", on: false })).toBe(true);
+    expect(check({ system: "trello", on: true })).toBe(false);
+    expect(check({ on: true })).toBe(false);
+    expect(check({ system: "jira" })).toBe(false);
+    expect(check({ system: "jira", on: "true" })).toBe(false);
+  });
+
+  it("the timeline says what happened", () => {
+    const S = reduce(SEED, logAt(2, ...base, sync(true, 1), sync(false, 2)));
+    const lines = timelineOf(S.projects[0]).map((l) => l.text);
+    expect(lines).toContain("sent it to Jira");
+    expect(lines).toContain("stopped syncing with Jira");
   });
 });

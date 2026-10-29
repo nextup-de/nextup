@@ -5,7 +5,7 @@ import type { CaseEvent } from "@/features/cases/events";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
 import type { CheckDue, ReducedProject, SeedProject, StepColumn } from "./types";
-import { STEP_COLUMNS } from "./types";
+import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 import { verdictOf } from "./verdict";
 
 export type ProjectBook = { byId: Record<string, ReducedProject>; order: string[] };
@@ -16,7 +16,7 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
   const project: ReducedProject = {
     id, number: 0, ...p,
     startedDay: null, doneDay: null, doneNote: "", stopped: null, baseline: null,
-    steps: [], links: [], measures: [], checks: [], verdict: null, reward: null, claimed: null,
+    steps: [], links: [], sync: null, measures: [], checks: [], verdict: null, reward: null, claimed: null,
     status: "planning", closed: false, rewardDue: false, dueDay: null, overdue: false, escalated: null, history: [],
   };
   book.byId[id] = project;
@@ -155,6 +155,13 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       p.links.push({ system: pl.system ?? "url", url, key: pl.key ?? "", stepId, day: d });
       const s = stepId ? p.steps.find((x) => x.id === stepId) : undefined;
       if (s && pl.key) s.external = { system: pl.system ?? "url", key: pl.key, url: url || undefined };
+      break;
+    }
+    case "project.sync": {
+      // Send it to the tool, or stop. Not once the project is stopped or recognised (the permissions refuse that too).
+      const system = SYNC_SYSTEMS.find((x) => x === pl.system);
+      if (!system || typeof pl.on !== "boolean" || !live || p.reward !== null) break;
+      p.sync = { system, on: pl.on, day: d, by: ev.actor };
       break;
     }
     case "project.done":

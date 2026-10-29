@@ -1,6 +1,6 @@
 # NextHub - integrations, AI, tenants, phases
 
-> **Updated 2026-10-15** · reference + plan. Written as a proposal on 21 Sep 2026; since then the events API, tokens, stages and tenant guard are built and the code points here as the contract. The first connector, *Jira through n8n*, has its workflow; deadline and digests are still a plan.
+> **Updated 2026-10-29** · reference + plan. Written as a proposal on 21 Sep 2026; since then the events API, tokens, stages and tenant guard are built and the code points here as the contract. Jira moved from n8n into the app on 29 Oct 2026 (*Jira in the app* below: the contract is in, the engine follows); deadline and digests are still a plan.
 
 The product rule this follows: **AI proposes, never decides** (§11.2, `features/routing`). The
 architecture rule it follows: **events, not edits** (`features/cases/events.ts`). Every
@@ -44,10 +44,10 @@ POST /api/[company]/events                    n8n appends; actor = "system:n8n"
 - **POST is allow-listed.** A system actor may append `case.handed`, `route.proposed`,
   `case.commented` - nothing that decides (`case.decided` stays human). Each carries an
   idempotency key; a replay is a 200 with no new row.
-- **For projects, four events and no more** (`SYSTEM_EVENT_TYPES`): `project.step.added`,
-  `project.step.moved`, `project.linked`, `project.commented`, so a connector can mirror the
-  board ("Jira through n8n"). Never the start, done, baseline, measure, reward, stop, team or
-  lead. They need the company's `projects` flag (403 without it) and a project, and a move or a
+- **For projects, five events and no more** (`SYSTEM_EVENT_TYPES`): `project.step.added`,
+  `project.step.moved`, `project.step.edited` (the step's text only), `project.linked`,
+  `project.commented`, so a connector can mirror the board (Jira). Never the start, done,
+  baseline, measure, reward, stop, team, lead or sync. They need the company's `projects` flag (403 without it) and a project, and a move or a
   step link needs its step (409 otherwise: `maySystemAppend`). Links and `external.url` must be
   http(s).
 - Validation lives in `src/features/integrations/` (pure, tested): which actor may append
@@ -91,12 +91,83 @@ type; the timeline sentence is built at render, as always.
   Microsoft 365 connection is a refresh token that only works as that person, so n8n cannot hold
   it. It lives in the app database, sealed with `CONNECTOR_VAULT_KEY` and bound to company and
   person (`Connection`, `features/connectors/vault.ts`). App-only credentials stay in n8n.
+  **A second exception** (docs/plans/2026-10-29_jira-in-app.md): the Jira sync runs in the app, so
+  the integration account's API token and the webhook secret live in the app database too
+  (`Integration.secretSealed`, `webhookSecretSealed`), sealed with the same key and bound to company
+  and system (`integrationContext`). Write-only: the admin page never shows them again.
 - **Every workflow is exported as JSON into `ops/n8n/<name>.json`** and imported per
   environment with the n8n CLI. Otherwise n8n is untracked state nobody can reproduce.
 - The first workflow, and the only one until it runs end to end in the sandbox: deadline
   expiry -> hand to deputy -> notify both.
 
-## Jira through n8n
+## Jira in the app
+
+Decided 29 Oct 2026, plan in `docs/plans/2026-10-29_jira-in-app.md`: the Jira sync moves out of n8n
+into the app, as the case-notice mails did. Settings and the sealed token are stored per company, a
+once-a-minute loop pushes NextUp's changes to Jira and pulls Jira's back. This section is the
+**contract** the pieces are built against; the plan says how and in what order.
+
+**Settings: the `Integration` table** (`prisma/schema.prisma`, `src/lib/db/integrations.ts`), one row
+per `(companyId, system)`, system `"jira"`:
+
+| Column | Holds |
+|---|---|
+| `on`, `enabledAt` | the admin's switch; `enabledAt` is the moment it was last switched on |
+| `settings` (Json) | `JiraSettings` (`features/integrations/jira/types.ts`), checked by `parseJiraSettings` (`settings.ts`) |
+| `secretSealed`, `webhookSecretSealed` | the API token and the webhook secret, sealed (below); never read back by a page |
+| `account` (Json) | `{id, name}` of the integration account (`/myself`), to tell its own changes from a person's |
+| `pushedSeq`, `pulledAt` | the cursors: the last event sequence pushed out, and when Jira was last read |
+| `leaseUntil`, `lastRunAt`, `lastOkAt`, `lastError` | one runner per company; what the admin page shows |
+
+`JiraSettings`: `flavor` (`cloud`, or `dc` as a seam only), `siteUrl`, `email`, `projectKey`,
+`epicTypeId` and `stepTypeId` (ids, because "Epic" is "Epos" on a German site), `autoEpic`,
+`pullNewIssues`, `pullComments`, and optional `statusFor` (column → Jira status id).
+
+**Secrets: the second exception to "no credentials in the app database".** The token is sealed with
+`CONNECTOR_VAULT_KEY` under the context `integration:<companyId>:<system>` (`integrationContext`
+in `features/connectors/vault.ts`): a value copied into another company's row, or into a person's
+`Connection`, does not open. `getIntegration` and `jiraStatusView` return only "has a token";
+`integrationSecrets` hands the sealed values to the sync, which opens them just before the call.
+
+**Events.**
+
+- New human event **`project.sync {system:"jira", on}`**: "Send to Jira" / "Stop syncing". The lead or
+  a manager may send it, only while the project is open (`features/projects/permissions.ts`). The
+  reducer puts the latest one on the project as `ReducedProject.sync = {system, on, day, by}` (`null`
+  = never). A system actor may not send it.
+- **Link an existing issue** is the human `project.linked {system:"jira", key, url, stepId}`; the url
+  comes from `jiraIssueUrl(settings, key)`.
+- The allow-list gains **`project.step.edited {stepId, text}`**: the step's text, nothing else
+  (`projectPayloadProblem` refuses `owner`, `dueDay`, `note`, `removed`).
+- The sync's actor is **`JIRA_ACTOR = "system:jira"`** and its `CaseEvent.source` **`JIRA_SOURCE =
+  "jira"`**. It appends in the app, not through the HTTP endpoint, but checks everything with
+  `parseInbound` and `maySystemAppend` first: the allow-list is the same.
+
+**What syncs.** A project is sent to Jira when its latest `project.sync` is `on`, or when `autoEpic`
+is on and its `case.decided` came after `enabledAt` (older projects are never swept in on their own).
+Out: epic, one issue per step, a board move → a transition by status category (`CATEGORY_FOR`: To do
+→ new, Doing and Blocked → indeterminate, Done → done, or `statusFor`), a text edit → the summary, a
+removed step → a comment and the label `nextup-removed` (never a delete). In: a person's status
+change → `project.step.moved`, a summary change → `project.step.edited`, a new child of the epic →
+`project.step.added` (if `pullNewIssues`), a comment → `project.commented` (if `pullComments`,
+2000 characters, no author, works council). If both sides change a step within one round, NextUp wins.
+
+**Echo loops** are broken four ways: the push acts only on human actors (`isSystemActor`); the pull
+skips changes by the integration account; both directions compare states before acting; every
+write has an idempotency key (`jira:epic:<projectId>`, `jira:issue:<stepId>`,
+`jira:<KEY>:status:<historyId>`, `jira:comment:<id>`). Creating is safe to repeat: the issue carries
+the label `nextup-<projectId>` or `nextup-step-<stepId>`, and the sync searches for it before it
+creates.
+
+**The seam in code.** `JiraApi` (`features/integrations/jira/types.ts`) is the only way anything talks
+to Jira; `Job` is what the push plans; `JiraStatusView` is what the screens read; `TestJira` is the
+admin's connection test. The implementations (`server/jira/cloud.ts`, the planner, the loop) are the
+engine's.
+
+The sections below describe the n8n workflow this replaces. It stays in `ops/n8n/` until the live
+test on `nextup-test.atlassian.net` passes.
+
+## Jira through n8n (replaced by the app, 29 Oct 2026)
 
 Step 6 B of `docs/plans/2026-10-15_idea-to-project.md`: a project's epic and steps live in Jira as
 well, and Jira's progress comes back. The workflow is `ops/n8n/jira-projects.json`, one copy per
@@ -134,12 +205,12 @@ has an idempotency key: `jira:epic:<projectId>`, `jira:issue:<stepId>`,
 `jira:<KEY>:<to>:<statuscategorychangedate>`, `jira:comment:<commentId>`. A move inside one
 category (In Progress → In Review) repeats its key, so NextUp records it once.
 
-**What n8n may never send.** The allow-list (`SYSTEM_EVENT_TYPES`) gets exactly four project
-events: `project.step.added`, `project.step.moved`, `project.linked` and `project.commented`. It
+**What n8n may never send.** The allow-list (`SYSTEM_EVENT_TYPES`) has exactly five project
+events: `project.step.added`, `project.step.moved`, `project.linked`, `project.commented` and
+`project.step.edited` (text only; this workflow does not use it). It
 never gets `case.decided`, `project.started`, `project.done`, `project.baseline`,
-`project.measured`, `project.rewarded`, `project.stopped`, `project.member` or `project.handed`:
-people decide those. An issue in Done moves one step, and never finishes the project. Until the
-allow-list has the four, the app answers 400 to every write-back; the workflow carries on.
+`project.measured`, `project.rewarded`, `project.stopped`, `project.member`, `project.handed` or `project.sync`:
+people decide those. An issue in Done moves one step, and never finishes the project.
 
 **The webhook and the login page.** automation.sellux.ch sits behind the NextUp login page
 (`stack/automation/gate/`). Jira can't sign in, so the gate lets exactly `POST /webhook/<letters,

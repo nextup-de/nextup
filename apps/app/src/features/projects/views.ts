@@ -347,6 +347,9 @@ export function asInitiatives(list: readonly ReducedProject[], deptOf: (name: st
 
 // ── the timeline ──
 
+/** The tool a project.sync names, as a sentence says it. */
+const syncName = (system: string | undefined): string => (system === "jira" ? "Jira" : system ?? "a tool");
+
 /** What a project.step.edited changed, in words. */
 function editedWhat(pl: CaseEvent["payload"]): string {
   const out: string[] = [];
@@ -378,6 +381,7 @@ export function timelineOf(p: ReducedProject): TimelineLine[] {
       case "project.step.edited": return pl.removed ? "removed the step “" + stepText(pl.stepId) + "”" : "changed “" + stepText(pl.stepId) + "”: " + editedWhat(pl);
       case "project.step.moved": return "moved “" + stepText(pl.stepId) + "” to " + (COLUMN_LABEL[pl.to as StepColumn] ?? pl.to) + (pl.why ? ": " + pl.why : "");
       case "project.linked": return "linked " + (pl.key || pl.url || "a page");
+      case "project.sync": return pl.on === false ? "stopped syncing with " + syncName(pl.system) : "sent it to " + syncName(pl.system);
       case "project.done": return "marked it done" + (pl.note ? ": " + pl.note : "");
       case "project.measured": return "recorded the " + pl.check + "-day measure: " + fmtNumber(pl.value ?? 0) + (pl.source ? " (" + pl.source + ")" : "");
       case "project.rewarded": return "recorded the reward" + (typeof pl.amount === "number" ? ": " + eur(pl.amount) : "") + (pl.note ? " - " + pl.note : "");

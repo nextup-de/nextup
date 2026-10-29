@@ -211,6 +211,7 @@ New events (the server checks every one in `mayAppend`):
 | `project.step.moved` | `stepId, to: todo\|doing\|blocked\|done, why?` | lead, step owner | yes |
 | `project.linked` | `system, key, url` | lead | yes |
 | `project.commented` | `text` | anyone who sees it, the author too | yes |
+| `project.sync` | `system:"jira", on` (send to Jira / stop; `docs/plans/2026-10-29_jira-in-app.md`) | lead, manager; project open | no |
 | `project.done` | `note` | lead | no |
 | `project.measured` | `check: 30\|90, value, source, note?` | lead | no |
 | `project.rewarded` | `rule, note` | manager | no |

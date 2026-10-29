@@ -33,6 +33,7 @@ export type CaseEventType =
   | "project.step.edited" // { stepId, text?, owner?, dueDay?, note?, removed? }  only the fields sent change; owner "" and dueDay null clear
   | "project.linked" // { system, url, key?, stepId? }
   | "project.commented" // { text }
+  | "project.sync" // { system: 'jira', on }  send the project to Jira / stop syncing it; lead or manager, while the project is open
   | "project.done" // { note? }  the measure checks start counting
   | "project.measured" // { check, value, source, note? }  the verdict is computed, never sent
   | "project.rewarded" // { rule, amount?, note? }
@@ -88,7 +89,7 @@ export type EventPayload = {
   stepId?: string; owner?: string; dueDay?: number | null; // project.step.*, project.linked (stepId)
   before?: string | null; removed?: boolean; // project.step.moved (before), project.step.edited (removed)
   external?: { system: string; key: string; url?: string }; // project.step.added from a connector
-  system?: string; url?: string; key?: string; // project.linked
+  system?: string; url?: string; key?: string; // project.linked, project.sync (system; on is above)
   check?: number; // project.measured: days after done (30, 90)
   rule?: string; amount?: number; // project.rewarded
 };

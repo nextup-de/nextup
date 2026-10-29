@@ -4,7 +4,7 @@
 import type { Actor, Verdict } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
-import { STEP_COLUMNS } from "./types";
+import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 
 const OK: Verdict = { ok: true };
 const no = (error: string): Verdict => ({ ok: false, error });
@@ -90,6 +90,12 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!isLead) return no(leadOnly);
       if (pl.url !== undefined && pl.url !== "" && !webUrl(pl.url)) return no("A link must be an http or https address.");
       return webUrl(pl.url) || text(pl.key, 100) ? OK : no("A link needs an address or a key.");
+
+    case "project.sync":
+      if (!isLead) return no(leadOnly);
+      if (!live) return no("This project is closed.");
+      if (!(SYNC_SYSTEMS as readonly unknown[]).includes(pl.system)) return no(`Sync to what? One of ${SYNC_SYSTEMS.join(", ")}.`);
+      return typeof pl.on === "boolean" ? OK : no("Start or stop syncing?");
 
     case "project.done":
       if (!isLead) return no(leadOnly);
