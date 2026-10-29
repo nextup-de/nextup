@@ -82,10 +82,12 @@ src/lib/            db client, small utils.   src/server/actions/  server action
   the file you are in.
 - No `any`. No `// @ts-ignore`. If the types fight you, the shape is wrong —
   fix the shape or ask.
-- No external requests except Google Fonts (already there) and the raise-page
+- No external requests except Google Fonts (already there), the raise-page
   assistant's model call (Amazon Bedrock, server-side only, `src/server/assist/`,
-  docs/ASSISTANT.md). No analytics, no third-party scripts, no other fetch to
-  outside APIs.
+  docs/ASSISTANT.md), and Microsoft by name: `login.microsoftonline.com` (sign-in
+  and token refresh) and `graph.microsoft.com` (live Microsoft 365 search, server-side,
+  as the signed-in person; docs/plans/2026-10-22_sso-and-data-access.md, decision 9).
+  No analytics, no third-party scripts, no other fetch to outside APIs.
 - No secrets in code, ever — not even "just for testing".
 
 ## Ownership — who changes what
