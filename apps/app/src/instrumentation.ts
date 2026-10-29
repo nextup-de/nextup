@@ -11,6 +11,9 @@ export async function register() {
   // Bug reports to and replies from admin.sellux.ch, once a minute (a no-op without OPS_URL).
   const { startTicketSync } = await import("@/server/tickets-sync");
   startTicketSync();
+  // The Jira sync, once a minute for each company that switched it on (a no-op without a database).
+  const { startJiraSync } = await import("@/server/jira-sync");
+  startJiraSync();
   // Errors counted in memory go to the ErrorGroup table once a minute.
   const { startErrorFlush } = await import("@/server/errors");
   startErrorFlush();
