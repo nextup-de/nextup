@@ -306,6 +306,10 @@ a.key:hover { text-decoration: underline; }
 .toolName { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-ink); }
 .toolMode { font-size: var(--nh-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--nh-mute); border: 1px solid var(--nh-line); border-radius: var(--radius-xs, 6px); padding: 0 5px; }
 .toolMode[data-sync="true"] { color: var(--nh-ok); border-color: var(--nh-ok); }
+.syncChip { display: inline-flex; align-items: center; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-ink-2); background: var(--nh-surface); border: 1px solid var(--nh-line); border-radius: 999px; padding: 2px 9px; overflow-wrap: anywhere; }
+.syncChip[data-tone="ok"] { color: var(--nh-ok); background: var(--nh-ok-tint); border-color: var(--nh-ok); }
+.syncChip[data-tone="problem"] { color: var(--nh-danger); background: var(--nh-danger-tint); border-color: var(--nh-danger); }
+.waitKey { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); font-style: italic; white-space: nowrap; }
 .toolLinks { display: flex; flex-direction: column; gap: 2px; }
 .toolLink { font-size: var(--nh-fs-sm); overflow-wrap: anywhere; }
 .feedComment { display: flex; gap: 9px; padding: 8px 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); line-height: 1.45; overflow-wrap: anywhere; }

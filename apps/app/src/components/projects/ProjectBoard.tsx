@@ -10,7 +10,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { Avatar } from "@/components/dashboard/shared/primitives";
 import { board } from "@/features/projects/selectors";
 import { STEP_COLUMNS, type ReducedProject, type Step, type StepColumn } from "@/features/projects/types";
-import { COLUMN_LABEL, safeUrl, toolOf, type StepHint } from "@/features/projects/views";
+import { COLUMN_LABEL, safeUrl, toolOf, type JiraRow, type StepHint } from "@/features/projects/views";
 import { useRights, useSend } from "./parts";
 import { StepDetail } from "./StepDetail";
 import styles from "./Projects.module.css";
@@ -25,7 +25,7 @@ const EMPTY: Record<StepColumn, string> = {
 /** Where a dragged card would land: above `before`, or at the foot of `col`. */
 type Spot = { col: StepColumn; before: string | null };
 
-export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[] }) {
+export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: StepHint[]; jira: JiraRow }) {
   const { act, persona } = useDemo();
   const r = useRights(p);
   const send = useSend(p);
@@ -191,7 +191,7 @@ export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[
                     {line(s.id)}
                     <StepCard
                       p={p} s={s} dragging={drag === s.id} mine={mine(s)}
-                      onDragStart={() => setDrag(s.id)} onDragEnd={end} onDragOver={(e) => overCard(e, col, s)} onOpen={() => setOpen(s.id)} grip={grip}
+                      onDragStart={() => setDrag(s.id)} onDragEnd={end} onDragOver={(e) => overCard(e, col, s)} onOpen={() => setOpen(s.id)} grip={grip} waiting={jira.waiting}
                       ask={askBlock?.id === s.id ? askBlock : null} onAsked={() => setAskBlock(null)}
                     />
                   </div>
@@ -212,7 +212,7 @@ export function ProjectBoard({ p, hints }: { p: ReducedProject; hints: StepHint[
       </div>
 
       {ghost && <div className={styles.dragGhost} style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">{ghost.text}</div>}
-      {opened && <StepDetail p={p} s={opened} onClose={() => setOpen(null)} />}
+      {opened && <StepDetail p={p} s={opened} jira={jira} onClose={() => setOpen(null)} />}
     </section>
   );
 }
@@ -263,12 +263,14 @@ type CardProps = {
   onDragStart: () => void; onDragEnd: () => void; onDragOver: (e: React.DragEvent) => void; onOpen: () => void;
   grip: Grip;
   ask: Spot | null; onAsked: () => void;
+  /** The project is synced to Jira and this card has no issue yet. */
+  waiting: boolean;
 };
 
 /** The touch drag's handlers, from the board. */
 type Grip = { down: (e: React.PointerEvent, s: Step) => void; move: (e: React.PointerEvent) => void; up: () => void; cancel: () => void };
 
-function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, onOpen, ask, onAsked, grip }: CardProps) {
+function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, onOpen, ask, onAsked, grip, waiting }: CardProps) {
   const { act, S, f } = useDemo();
   const r = useRights(p);
   const send = useSend(p);
@@ -288,8 +290,9 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
       onDragStart={(e) => { if (!canDrag) return; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", s.id); onDragStart(); }}
       onDragEnd={onDragEnd} onDragOver={onDragOver}
     >
-      {(tool || age > 0) && (
+      {(tool || age > 0 || waiting) && (
         <div className={styles.stepTop}>
+          {waiting && !s.external && <span className={styles.waitKey} title="The issue is created in the next round">waiting for Jira</span>}
           {tool && s.external && (href
             ? <a href={href} target="_blank" rel="noreferrer noopener" className={styles.key} title={"Open in " + tool.name}>{s.external.key}</a>
             : <span className={styles.key} title={tool.name}>{s.external.key}</span>)}

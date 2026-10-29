@@ -7,6 +7,7 @@ import type { CaseEvent } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import type { Initiative, InitiativeStatus } from "@/features/demo/types";
 import { splitBody } from "@/features/ideas/brief";
+import type { JiraStatusView } from "@/features/integrations/jira/types";
 import type { RewardRule } from "@/features/loop/rules";
 import { nextMove, type ProjectMove } from "./selectors";
 import type { Baseline, Measure, ProjectStatus, ReducedProject, Step, StepColumn } from "./types";
@@ -144,8 +145,9 @@ export const systemOf = (key: string) => (/^[A-Z][A-Z0-9]+-\d+$/.test(key.trim()
 export type ToolId = "jira" | "azure" | "planner" | "teams" | "sharepoint" | "polarion" | "codebeamer" | "url";
 
 /**
- * The tools a project can be connected to. "sync": the connector runs through the company's n8n -
- * new steps go out, status and comments come back (Jira today, docs/INTEGRATIONS.md). "link": the
+ * The tools a project can be connected to. "sync": the app can run the sync itself - new steps go out,
+ * status and comments come back (Jira today, if the company's admin switched it on: jiraRowOf below).
+ * "link": the
  * page keeps the address and the keys; the work itself stays in that tool.
  */
 export type Tool = { id: ToolId; name: string; short: string; what: string; sync: "sync" | "link"; host: RegExp | null };
@@ -184,6 +186,97 @@ export function connectionsOf(p: Pick<ReducedProject, "links" | "steps">): Conne
   }));
   const on = (r: Connection) => r.links.length > 0 || r.steps > 0;
   return rows.filter((r) => r.tool.id !== "url" || on(r)).sort((a, b) => Number(on(b)) - Number(on(a)));
+}
+
+// ── the Jira row of the tools panel (docs/plans/2026-10-29_jira-in-app.md, "Lead UI") ──
+
+/** One Jira link of a project, for the row's chips. */
+export type JiraRowChip = { tone: "sending" | "ok" | "problem"; text: string };
+
+/**
+ * What the Jira row says about one project. `off`: the company's Jira sync is not switched on (the row
+ * is a plain link row). `ready`: it is on and the project is not sent. `synced`: the project is sent
+ * (or the company's auto-epic rule did it).
+ */
+export type JiraRow = {
+  state: "off" | "ready" | "synced";
+  /** The mode tag on the row: "Link" while the sync is off, "Two-way sync" while it can run. */
+  label: "Link" | "Two-way sync";
+  /** The line under the name for `off` and `ready`; empty when synced (the chip speaks). */
+  hint: string;
+  /** "Send to Jira" while `ready`, else null. */
+  send: string | null;
+  /** Only while `synced`. */
+  chip: JiraRowChip | null;
+  projectKey: string | null;
+  siteUrl: string | null;
+  /** The project's epic once there is one (a link with no step). */
+  epicKey: string | null;
+  /** Can a person link an existing issue? Needs the sync on and the site address. */
+  canLink: boolean;
+  /** Steps with no key yet say "waiting for Jira". */
+  waiting: boolean;
+};
+
+/** "just now", "3 min ago", "2 h ago", "4 days ago" - for "checked … ago". */
+export function agoText(iso: string, nowMs: number): string {
+  const ms = nowMs - Date.parse(iso);
+  if (!Number.isFinite(ms) || ms < 60_000) return "just now";
+  const min = Math.floor(ms / 60_000);
+  if (min < 60) return min + " min ago";
+  const h = Math.floor(min / 60);
+  if (h < 24) return h + " h ago";
+  const d = Math.floor(h / 24);
+  return d + (d === 1 ? " day ago" : " days ago");
+}
+
+/** The local demo has no Jira; its stand-in is "NUP" on a host that never resolves (DemoProvider's act.project.sync plays the connector). */
+export const DEMO_JIRA_KEY = "NUP";
+export const DEMO_JIRA_SITE = "https://jira.demo.invalid";
+
+/** The company's Jira as the local demo shows it: switched on, nothing to configure, always just checked. */
+export function demoJiraView(nowMs: number): JiraStatusView {
+  return {
+    configured: true, on: true, enabledAt: null, siteUrl: DEMO_JIRA_SITE, projectKey: DEMO_JIRA_KEY, hasToken: true, hasWebhookSecret: false,
+    account: null, lastRunAt: new Date(nowMs).toISOString(), lastOkAt: new Date(nowMs).toISOString(), lastError: null, tokenExpired: false,
+    linked: null, problems: [],
+  };
+}
+
+const plural = (n: number, one: string, many: string) => n + " " + (n === 1 ? one : many);
+
+/**
+ * The Jira row for one project: pure, so it is tested without a screen. `view` is the company's
+ * integration as the server built it (jiraStatusView), null where there is none (the static demo,
+ * no database) - which reads as off. The row never shows more than the view holds: no secrets.
+ */
+export function jiraRowOf(p: Pick<ReducedProject, "sync" | "links" | "steps" | "id">, view: JiraStatusView | null, nowMs: number): JiraRow {
+  if (!view || !view.on) {
+    return {
+      state: "off", label: "Link", hint: "Your admin can switch the Jira sync on", send: null, chip: null,
+      projectKey: view?.projectKey ?? null, siteUrl: null, epicKey: null, canLink: false, waiting: false,
+    };
+  }
+  const key = view.projectKey ?? "Jira";
+  const epic = p.links.find((l) => toolOf(l.system).id === "jira" && l.stepId === null && l.key);
+  const epicKey = epic?.key ?? null;
+  // The latest project.sync wins; without one, an epic that is already there means the auto-epic rule sent it.
+  const synced = p.sync ? p.sync.on : epicKey !== null;
+  const base = { label: "Two-way sync", projectKey: view.projectKey, siteUrl: view.siteUrl, epicKey, canLink: view.siteUrl !== null } as const;
+  if (!synced) {
+    const n = p.steps.filter((s) => !s.external).length;
+    return {
+      ...base, state: "ready", send: "Send to Jira", chip: null, waiting: false,
+      hint: "Creates an epic in " + key + (n > 0 ? " and " + plural(n, "issue", "issues") : "; steps you add follow"),
+    };
+  }
+  const mine = view.problems.find((x) => x.projectId === p.id);
+  const detail = mine?.message ?? (view.tokenExpired ? "the Jira token has expired, your admin needs to enter a new one" : view.lastError ? view.lastError.slice(0, 120) : null);
+  let chip: JiraRowChip;
+  if (detail) chip = { tone: "problem", text: "Sync problem: " + detail };
+  else if (!epicKey) chip = { tone: "sending", text: "Sending…" };
+  else chip = { tone: "ok", text: "Synced · " + epicKey + (view.lastOkAt ? " · checked " + agoText(view.lastOkAt, nowMs) : "") };
+  return { ...base, state: "synced", send: null, hint: "", chip, waiting: true };
 }
 
 // ── the board in numbers ──
