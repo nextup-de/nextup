@@ -133,26 +133,34 @@ export async function syncJira(): Promise<void> {
   }
 }
 
-/** The companies that had Jira on at the last pass: kickJira ignores everyone else without a database trip. */
+/** The companies that had Jira on at the last pass; a kick for anyone else asks the database once. */
 let enabled = new Map<string, { id: string; slug: string }>();
 const pending = new Set<string>();
 let kickTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** A company that switched Jira on since the last pass (the admin's "Sync now" comes right after the switch). */
+async function lookupEnabled(slug: string): Promise<{ id: string; slug: string } | null> {
+  return getDb().company.findFirst({ where: { slug, integrations: { some: { system: JIRA, on: true } } }, select: { id: true, slug: true } });
+}
+
 /**
  * Ask for a round for this company soon instead of waiting for the minute. Called after a person's
- * project event and by Jira's webhook. Does nothing for a company without Jira on; never throws.
+ * project event, by the admin's "Sync now" and by Jira's webhook. Does nothing for a company
+ * without Jira on; never throws.
  */
 export function kickJira(slug: string): void {
   try {
-    if (!enabled.has(slug)) return;
+    if (!hasDatabase()) return;
     pending.add(slug);
     kickTimer ??= setTimeout(() => {
       kickTimer = null;
       const slugs = [...pending];
       pending.clear();
       for (const s of slugs) {
-        const c = enabled.get(s);
-        if (c) void syncCompany(c);
+        void (async () => {
+          const c = enabled.get(s) ?? (await lookupEnabled(s));
+          if (c) await syncCompany(c);
+        })().catch(() => undefined);
       }
     }, KICK_DELAY_MS);
   } catch {
