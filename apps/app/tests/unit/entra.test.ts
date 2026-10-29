@@ -297,10 +297,11 @@ describe("Connect Microsoft 365", () => {
     expect(grantedScopes(42)).toEqual([]);
   });
 
-  it("needs both the files and offline access to search later", () => {
+  it("needs Files.Read.All; offline access comes as the refresh token, not in scope", () => {
+    // What Microsoft's token response carries: Graph scopes only, never offline_access.
+    expect(canSearchFiles(grantedScopes("https://graph.microsoft.com/Files.Read.All https://graph.microsoft.com/User.Read"))).toBe(true);
     expect(canSearchFiles(["Files.Read.All", "offline_access"])).toBe(true);
-    expect(canSearchFiles(["files.read.all", "OFFLINE_ACCESS"])).toBe(true);
-    expect(canSearchFiles(["Files.Read.All"])).toBe(false);
+    expect(canSearchFiles(["files.read.all"])).toBe(true);
     expect(canSearchFiles(["offline_access", "Files.Read"])).toBe(false);
     expect(canSearchFiles([])).toBe(false);
   });

@@ -1,13 +1,14 @@
 "use client";
 // Beside the board: who works on it (add, remove, hand over the lead), the tools the work lives in
-// (Jira syncs through n8n; Azure DevOps, Planner, Teams, SharePoint, Polarion and codebeamer keep their
-// links and keys), and - below the board - one activity feed: what was said and everything that
+// (Jira syncs from the app once the company's admin switched it on; Azure DevOps, Planner, Teams,
+// SharePoint, Polarion and codebeamer keep their links and keys), and - below the board - one activity feed: what was said and everything that
 // happened, newest first.
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { Avatar } from "@/components/dashboard/shared/primitives";
+import { isIssueKey, jiraIssueUrl } from "@/features/integrations/jira/settings";
 import type { ReducedProject } from "@/features/projects/types";
-import { connectionsOf, safeUrl, systemFrom, timelineOf, toolOf, type ToolId } from "@/features/projects/views";
+import { connectionsOf, safeUrl, systemFrom, timelineOf, toolOf, type JiraRow, type ToolId } from "@/features/projects/views";
 import { useRights, useSend } from "./parts";
 import styles from "./Projects.module.css";
 
@@ -64,7 +65,7 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
 }
 
 /** The tools the project's work lives in, and a way to connect one. */
-export function ToolsPanel({ p }: { p: ReducedProject }) {
+export function ToolsPanel({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const { act } = useDemo();
   const r = useRights(p);
   const send = useSend(p);
@@ -75,10 +76,13 @@ export function ToolsPanel({ p }: { p: ReducedProject }) {
   const [key, setKey] = useState("");
   const [stepId, setStepId] = useState("");
   const [all, setAll] = useState(false);
+  // Send to Jira and Stop syncing are the lead's (or a manager's): the same rule the server checks for project.sync.
+  const mayShare = r.check("project.sync", { system: "jira", on: true }).ok;
   const stepText = (id: string | null) => (id ? p.steps.find((s) => s.id === id)?.text : undefined);
   const badUrl = url.trim() !== "" && !safeUrl(url);
   // The rows shown: every connected tool, and the rest only when asked for (or while one is being added).
-  const visible = rows.filter((c) => c.links.length || c.steps || all || adding === c.tool.id);
+  // Jira stays in view once the company's sync is on: Send to Jira is the lead's first move.
+  const visible = rows.filter((c) => c.links.length || c.steps || all || adding === c.tool.id || (c.tool.id === "jira" && jira.state !== "off"));
   const startAdd = (id: ToolId) => { setAdding(id); setUrl(""); setKey(""); setStepId(""); };
 
   return (
@@ -89,14 +93,16 @@ export function ToolsPanel({ p }: { p: ReducedProject }) {
       </div>
       <ul className={styles.tools}>
         {visible.map((c) => {
-          const synced = c.tool.sync === "sync";
+          const isJira = c.tool.id === "jira";
+          // Jira's mode follows the company: "Link" until the admin switches the sync on. Other tools only link.
+          const mode = isJira ? jira.label : "Link";
           return (
             <li key={c.tool.id} className={styles.tool} data-on={c.links.length || c.steps ? "true" : undefined}>
               <span className={styles.toolMark} data-tool={c.tool.id} aria-hidden="true">{c.tool.short}</span>
               <div className={styles.toolBody}>
                 <div className={styles.toolName}>
                   {c.tool.name}
-                  <span className={styles.toolMode} data-sync={synced ? "true" : undefined}>{synced ? "Two-way sync" : "Link"}</span>
+                  <span className={styles.toolMode} data-sync={isJira && jira.state !== "off" ? "true" : undefined}>{mode}</span>
                 </div>
                 {c.links.length || c.steps ? (
                   <div className={styles.toolLinks}>
@@ -112,7 +118,8 @@ export function ToolsPanel({ p }: { p: ReducedProject }) {
                     })}
                     {c.steps > 0 && <span className={styles.hint}>{c.steps} of {p.steps.length} steps have a ticket there</span>}
                   </div>
-                ) : <div className={styles.hint}>{c.tool.what}</div>}
+                ) : <div className={styles.hint}>{isJira && jira.state !== "off" ? "An epic for the project, an issue per step. Status and comments come back." : c.tool.what}</div>}
+                {isJira && <JiraControls p={p} jira={jira} mayShare={mayShare} />}
               </div>
               {r.link && adding !== c.tool.id && (
                 <button type="button" className={styles.quietLink} onClick={() => startAdd(c.tool.id)} aria-label={(c.links.length ? "Add another link to " : "Connect ") + c.tool.name}>
@@ -126,7 +133,8 @@ export function ToolsPanel({ p }: { p: ReducedProject }) {
       {!all && rows.length > visible.length && (
         <button type="button" className={styles.quietLink} onClick={() => setAll(true)}>{on.length ? "More tools" : "Show the tools"} ({rows.length - visible.length})</button>
       )}
-      {r.link && adding && (
+      {r.link && adding === "jira" && jira.canLink && <JiraLinkForm p={p} jira={jira} onDone={() => { setAdding(null); setAll(false); }} />}
+      {r.link && adding && !(adding === "jira" && jira.canLink) && (
         <form className={styles.form} aria-label={"Connect " + toolOf(adding).name} onSubmit={(e) => {
           e.preventDefault();
           if (badUrl) return;
@@ -155,10 +163,71 @@ export function ToolsPanel({ p }: { p: ReducedProject }) {
         </form>
       )}
       <p className={styles.hint}>
-        Jira syncs both ways through your company’s automation: a new step becomes an issue, and its status and comments come back here.
-        The other tools keep the link and the keys; ask your admin to switch a sync on for them.
+        {jira.state === "off"
+          ? "Jira keeps the link and the keys until your admin switches the sync on. "
+          : "Jira syncs both ways: a new step becomes an issue, and its status and comments come back here. "}
+        The other tools keep the link and the keys.
       </p>
     </section>
+  );
+}
+
+/** Under Jira's name: what the sync is doing for this project, and the lead's way to start or stop it. */
+function JiraControls({ p, jira, mayShare }: { p: ReducedProject; jira: JiraRow; mayShare: boolean }) {
+  const { act } = useDemo();
+  const send = useSend(p);
+  const share = (on: boolean) => send("project.sync", { system: "jira", on }, () => act.project.sync(p.id, on));
+  return (
+    <>
+      {jira.state === "off" && <div className={styles.hint}>{jira.hint}</div>}
+      {jira.state === "ready" && (
+        <>
+          {mayShare && <span className={styles.actionRow}><button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => share(true)}>{jira.send}</button></span>}
+          <div className={styles.hint}>{jira.hint}</div>
+        </>
+      )}
+      {jira.state === "synced" && jira.chip && (
+        <span className={styles.actionRow}>
+          <span className={styles.syncChip} data-tone={jira.chip.tone} role="status">{jira.chip.text}</span>
+          {mayShare && <button type="button" className={styles.quietLink} onClick={() => share(false)}>Stop syncing</button>}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** Link an existing Jira issue to a step (or the project): its key and the step, the address built from the site's. */
+function JiraLinkForm({ p, jira, onDone }: { p: ReducedProject; jira: JiraRow; onDone: () => void }) {
+  const { act } = useDemo();
+  const send = useSend(p);
+  const [key, setKey] = useState("");
+  const [stepId, setStepId] = useState("");
+  const k = key.trim().toUpperCase();
+  const bad = k !== "" && !isIssueKey(k);
+  const siteUrl = jira.siteUrl ?? "";
+  const example = (jira.projectKey ?? "NUP") + "-12";
+  return (
+    <form className={styles.form} aria-label="Link a Jira issue" onSubmit={(e) => {
+      e.preventDefault();
+      if (!isIssueKey(k)) return;
+      const url = jiraIssueUrl({ siteUrl }, k);
+      if (send("project.linked", { system: "jira", key: k, url, stepId: stepId || undefined }, () => act.project.link(p.id, url, "jira", k, stepId || undefined))) onDone();
+    }}>
+      <div className={styles.formHead}>Link an existing Jira issue</div>
+      <span className={styles.inline}>
+        <input className={`nh-input ${styles.input} ${styles.grow}`} value={key} onChange={(e) => setKey(e.target.value)} placeholder={"Issue key, e.g. " + example} aria-label="Jira issue key" aria-invalid={bad ? "true" : undefined} autoFocus />
+        <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={stepId} onChange={(e) => setStepId(e.target.value)} aria-label="For which step">
+          <option value="">The whole project</option>
+          {p.steps.map((s) => <option key={s.id} value={s.id}>{s.text}</option>)}
+        </select>
+      </span>
+      {bad && <span className="nh-error">A Jira key looks like {example}.</span>}
+      <span className={styles.hint}>The step takes the issue’s status the next time Jira is checked.</span>
+      <span className={styles.actionRow}>
+        <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!isIssueKey(k)}>Link the issue</button>
+        <button type="button" className={styles.quiet} onClick={onDone}>Cancel</button>
+      </span>
+    </form>
   );
 }
 

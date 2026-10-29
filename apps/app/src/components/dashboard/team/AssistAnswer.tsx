@@ -44,8 +44,10 @@ export function AssistAnswer({ view, onSolved, onAskMore, onRaise }: {
             {sources.map((s) => (
               <li key={s.tag} className={styles.source}>
                 <span className={styles.srcN}>{n.get(s.tag)}</span>
-                <span className={styles.srcKind}>{KIND[s.kind] ?? s.kind}</span>
-                <span className={styles.srcLabel}>{s.label}</span>
+                <span className={styles.srcKind}>{s.url ? "Microsoft 365" : (KIND[s.kind] ?? s.kind)}</span>
+                <span className={styles.srcLabel}>
+                  {s.url && /^https:\/\//i.test(s.url) ? <a href={s.url} target="_blank" rel="noopener noreferrer">{s.label}</a> : s.label}
+                </span>
                 {isLevel(s.level) && <span className={styles.level} data-level={s.level}>{LEVEL_LABEL[s.level]}</span>}
               </li>
             ))}

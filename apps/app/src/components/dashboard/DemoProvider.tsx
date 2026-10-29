@@ -23,7 +23,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname, useRouter } from "next/navigation";
 import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
 import { FLAGS, type FlagKey } from "@/config/flags";
-import type { StepColumn } from "@/features/projects/types";
+import type { StepColumn, SyncSystem } from "@/features/projects/types";
+import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
 import { appendEvent, emptyLog, newId, type CaseEvent, type EventLog, type EventPayload } from "@/features/cases/events";
 import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
@@ -84,6 +85,11 @@ export type ProjectAct = {
   moveStep: (projectId: string, stepId: string, to: StepColumn, why?: string, before?: string | null) => void;
   editStep: (projectId: string, stepId: string, change: StepChange) => void;
   link: (projectId: string, url: string, system?: string, key?: string, stepId?: string) => void;
+  /**
+   * Send the project to a tool, or stop syncing (project.sync). Server mode: the connector does the rest.
+   * The local demo has no Jira: it plays the connector itself, with the same project.linked events and no network.
+   */
+  sync: (projectId: string, on: boolean, system?: SyncSystem) => void;
   comment: (projectId: string, text: string) => void;
   done: (projectId: string, note?: string) => void;
   measure: (projectId: string, check: number, value: number, source: string, note?: string) => void;
@@ -405,6 +411,22 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       moveStep: (id, stepId, to, why, before) => emit("project.step.moved", id, { stepId, to, why, ...(before !== undefined ? { before } : {}) }),
       editStep: (id, stepId, change) => emit("project.step.edited", id, { stepId, ...change }),
       link: (id, url, system = "url", key, stepId) => emit("project.linked", id, { url, system, key, stepId }),
+      sync: (id, on, system = "jira") => {
+        emit("project.sync", id, { system, on });
+        const p = S.projects.find((x) => x.id === id);
+        if (serverMode || !on || !p) return;
+        // The demo's stand-in for the connector: an epic, then an issue for each step that has none.
+        const url = (key: string) => DEMO_JIRA_SITE + "/browse/" + key;
+        let n = S.projects.reduce((sum, x) => sum + x.links.filter((l) => l.system === system && l.key.startsWith(DEMO_JIRA_KEY + "-")).length, 0);
+        if (!p.links.some((l) => l.system === system && l.stepId === null && l.key)) {
+          const key = DEMO_JIRA_KEY + "-" + ++n;
+          emit("project.linked", id, { system, key, url: url(key) });
+        }
+        for (const st of p.steps.filter((x) => !x.external)) {
+          const key = DEMO_JIRA_KEY + "-" + ++n;
+          emit("project.linked", id, { system, key, url: url(key), stepId: st.id });
+        }
+      },
       comment: (id, text) => emit("project.commented", id, { text }),
       done: (id, note) => emit("project.done", id, { note }),
       measure: (id, check, value, source, note) => emit("project.measured", id, { check, value, source, note }),
@@ -412,7 +434,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       claim: (id) => emit("project.claimed", id),
       stop: (id, why) => emit("project.stopped", id, { why }),
     },
-  }), [emit, S.ideas, actor, slug, serverMode, log]);
+  }), [emit, S.ideas, S.projects, actor, slug, serverMode, log]);
 
   const flags = tenant.flags;
   const flag = useCallback((key: FlagKey) => flags?.[key] ?? FLAGS[key].defaults.demo, [flags]);

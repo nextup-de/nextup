@@ -21,6 +21,7 @@ export type AdminPage =
   | "overview"
   | "people"
   | "assistant"
+  | "integrations"
   | "requests"
   | "tickets"
   | "companies"
@@ -81,10 +82,15 @@ export function adminNav(f: NavFacts): NavItem[] {
   ];
 }
 
+/** What the Integrations badge needs of the Jira row: is it running, did the last round fail, was the token refused. */
+export type JiraNavFacts = { on: boolean; failing: boolean; tokenExpired: boolean };
+
 export type CompanyNavFacts = {
   people: number;
   /** People who have neither a login code nor a Microsoft account bound - they cannot get in. */
   locked: number;
+  /** The Jira integration, or null/absent when nothing was saved or the database did not answer. */
+  jira?: JiraNavFacts | null;
 };
 
 /** Nobody can get in: no login code, and no Microsoft account the company's tenant still lets in. */
@@ -92,7 +98,13 @@ export function lockedOut(company: Pick<CompanyRow, "persons" | "entraTenantId">
   return company.persons.filter((p) => !p.codeIssuedAt && !(p.microsoft && company.entraTenantId));
 }
 
-/** The company admin: four pages, and People only speaks up when someone cannot sign in. */
+/** Quiet while Jira is off or fine; "token expired" and "sync error" are the two things an admin has to act on. */
+export function jiraBadge(j: JiraNavFacts | null | undefined): { badge: string | null; tone: Tone | null } {
+  if (!j || !j.on || !j.failing) return { badge: null, tone: null };
+  return j.tokenExpired ? { badge: "token expired", tone: "bad" } : { badge: "sync error", tone: "warn" };
+}
+
+/** The company admin: five pages; People only speaks up when someone cannot sign in, Integrations when a sync fails. */
 export function companyNav(f: CompanyNavFacts): NavItem[] {
   return [
     { id: "overview", label: "Overview", path: "", badge: null, tone: null },
@@ -105,6 +117,7 @@ export function companyNav(f: CompanyNavFacts): NavItem[] {
     },
     { id: "data", label: "Data", path: "/company-data", badge: null, tone: null },
     { id: "assistant", label: "Assistant", path: "/assistant", badge: null, tone: null },
+    { id: "integrations", label: "Integrations", path: "/integrations", ...jiraBadge(f.jira) },
   ];
 }
 

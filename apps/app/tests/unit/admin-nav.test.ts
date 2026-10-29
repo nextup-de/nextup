@@ -1,7 +1,7 @@
 // The sidebar carries state, so these are the rules for when it shouts. A badge that is always there
 // is wallpaper; the point is that "3 stuck" only appears when three are stuck.
 import { describe, expect, it } from "vitest";
-import { adminBase, adminNav, adminScope, companyNav, connectionProblems, lockedOut } from "@/features/admin/nav";
+import { adminBase, adminNav, adminScope, companyNav, connectionProblems, jiraBadge, lockedOut } from "@/features/admin/nav";
 import { nextStage, STAGES, isStage } from "@/features/admin/stages";
 import type { TaskCounts } from "@/features/integrations/tasks";
 
@@ -107,15 +107,37 @@ describe("adminScope", () => {
 });
 
 describe("companyNav", () => {
-  it("is four pages, with nothing about requests, companies or connections", () => {
+  it("is five pages, with nothing about requests, companies or connections", () => {
     const items = companyNav({ people: 4, locked: 0 });
-    expect(items.map((i) => i.id)).toEqual(["overview", "people", "data", "assistant"]);
-    expect(items.map((i) => i.path)).toEqual(["", "/people", "/company-data", "/assistant"]);
+    expect(items.map((i) => i.id)).toEqual(["overview", "people", "data", "assistant", "integrations"]);
+    expect(items.map((i) => i.path)).toEqual(["", "/people", "/company-data", "/assistant", "/integrations"]);
     expect(items.find((i) => i.id === "people")).toMatchObject({ badge: "4", tone: null });
   });
 
   it("warns when someone cannot sign in", () => {
     expect(companyNav({ people: 4, locked: 2 }).find((i) => i.id === "people")).toMatchObject({ badge: "2 no access", tone: "warn" });
+  });
+});
+
+describe("Integrations in the company nav", () => {
+  const integrations = (jira: Parameters<typeof jiraBadge>[0]) =>
+    companyNav({ people: 1, locked: 0, jira }).find((i) => i.id === "integrations");
+
+  it("says nothing without a Jira row, while it is off, or while it runs fine", () => {
+    expect(integrations(undefined)).toMatchObject({ badge: null, tone: null });
+    expect(integrations(null)).toMatchObject({ badge: null, tone: null });
+    expect(integrations({ on: false, failing: true, tokenExpired: true })).toMatchObject({ badge: null, tone: null });
+    expect(integrations({ on: true, failing: false, tokenExpired: false })).toMatchObject({ badge: null, tone: null });
+  });
+
+  it("shouts when a running sync fails, loudest for a refused token", () => {
+    expect(integrations({ on: true, failing: true, tokenExpired: false })).toMatchObject({ badge: "sync error", tone: "warn" });
+    expect(integrations({ on: true, failing: true, tokenExpired: true })).toMatchObject({ badge: "token expired", tone: "bad" });
+    expect(jiraBadge({ on: true, failing: true, tokenExpired: true }).tone).toBe("bad");
+  });
+
+  it("is not in the platform admin", () => {
+    expect(adminNav(base).map((i) => i.id)).not.toContain("integrations");
   });
 });
 
