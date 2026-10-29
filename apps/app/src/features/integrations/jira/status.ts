@@ -16,10 +16,9 @@ export function sameState(column: StepColumn, status: JiraStatus, m: Mapping): b
 
 /** The column an issue in this status belongs on. `current` is kept when it already fits (a Blocked card stays Blocked). */
 export function columnFor(status: JiraStatus, m: Mapping, current: StepColumn): StepColumn {
+  const pinned = Object.entries(m.statusFor ?? {}).filter(([, id]) => id === status.id).map(([column]) => column as StepColumn);
+  if (pinned.length) return pinned.includes(current) ? current : pinned[0];
   if (sameState(current, status, m)) return current;
-  for (const [column, id] of Object.entries(m.statusFor ?? {})) {
-    if (id === status.id) return column as StepColumn;
-  }
   return COLUMN_OF[status.statusCategory.key] ?? "todo";
 }
 
