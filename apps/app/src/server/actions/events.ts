@@ -21,6 +21,7 @@ import { policyFor } from "@/features/admin/stages";
 import { buildRaisedNotice } from "@/features/cases/notice";
 import { companyBaseUrl, notifyCaseRaised } from "@/server/case-notice";
 import { mailConfigured } from "@/server/mail";
+import { kickJira } from "@/server/jira-sync";
 import { notifyLoop } from "@/server/loop-notice";
 
 // Same ceiling as the integration endpoint (features/integrations MAX_PAYLOAD_BYTES): one event
@@ -101,6 +102,8 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   }
   // Discussions and projects: the people asked, and the author at every step (features/loop/notice.ts).
   notifyLoop(slug, { type: type as CaseEventType, actor, target, payload });
+  // A person's project event (or a yes that opens a project) is Jira's to hear about now, not in a minute.
+  if (type.startsWith("project.") || type === "case.decided") kickJira(slug);
 
   revalidatePath("/" + slug, "layout");
   revalidatePath("/", "layout"); // subdomain mode: the company is the host, so the path has no slug
