@@ -30,6 +30,8 @@ export const TENANT_MODELS = new Set([
   "FeatureFlag",
   // People's own connections to sources read on their behalf - docs/plans/2026-10-22_sso-and-data-access.md
   "Connection",
+  // A company's integration with another tool (Jira) - docs/plans/2026-10-29_jira-in-app.md
+  "Integration",
 ]);
 
 /** Operations that must narrow by company through `where`. */

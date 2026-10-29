@@ -7,6 +7,9 @@ import {
   bearerFrom,
   DEFAULT_LIMIT,
   hasScope,
+  isSystemActor,
+  JIRA_ACTOR,
+  JIRA_SOURCE,
   MAX_LIMIT,
   mayAppend,
   maySystemAppend,
@@ -23,14 +26,23 @@ describe("the allow-list", () => {
   it("permits only what docs/INTEGRATIONS.md permits", () => {
     expect([...SYSTEM_EVENT_TYPES]).toEqual([
       "case.handed", "case.commented",
-      "project.step.added", "project.step.moved", "project.linked", "project.commented",
+      "project.step.added", "project.step.moved", "project.step.edited", "project.linked", "project.commented",
     ]);
+  });
+
+  it("the Jira actor is a system actor, and the log can tell it from a person", () => {
+    expect(JIRA_ACTOR).toBe("system:jira");
+    expect(JIRA_SOURCE).toBe("jira");
+    expect(isSystemActor(JIRA_ACTOR)).toBe(true);
+    expect(isSystemActor("system:n8n")).toBe(true);
+    expect(isSystemActor("L. Brandt")).toBe(false);
+    expect(isSystemActor("Anonymous #4471")).toBe(false);
   });
 
   it("never lets a connector run a project - people start, finish, measure and reward", () => {
     for (const t of [
       "project.member", "project.handed", "project.baseline", "project.started", "project.done",
-      "project.measured", "project.rewarded", "project.claimed", "project.stopped",
+      "project.measured", "project.rewarded", "project.claimed", "project.stopped", "project.sync",
     ]) {
       expect(mayAppend(t)).toBe(false);
       expect(parseInbound({ type: t, target: "p_one", payload: { note: "x", why: "x" } }).ok).toBe(false);
@@ -136,6 +148,23 @@ describe("parseInbound: the four project events", () => {
     expect(ok("project.commented", {})).toBe(false);
   });
 
+  it("project.step.edited changes a step's text and nothing else", () => {
+    expect(ok("project.step.edited", { stepId: "s_1", text: "Renamed in Jira" })).toBe(true);
+    expect(ok("project.step.edited", { stepId: "s_1" })).toBe(false); // no text
+    expect(ok("project.step.edited", { stepId: "s_1", text: "  " })).toBe(false);
+    expect(ok("project.step.edited", { stepId: "s_1", text: "x".repeat(501) })).toBe(false);
+    expect(ok("project.step.edited", { text: "no step" })).toBe(false);
+    expect(ok("project.step.edited", { stepId: "s 1", text: "bad id" })).toBe(false);
+    // Owner, due day, details and removal belong to people.
+    expect(ok("project.step.edited", { stepId: "s_1", text: "t", owner: "M. Roth" })).toBe(false);
+    expect(ok("project.step.edited", { stepId: "s_1", text: "t", dueDay: 3 })).toBe(false);
+    expect(ok("project.step.edited", { stepId: "s_1", text: "t", note: "n" })).toBe(false);
+    expect(ok("project.step.edited", { stepId: "s_1", removed: true })).toBe(false);
+    expect(ok("project.step.edited", { stepId: "s_1", text: "t", removed: true })).toBe(false);
+    const r = parseInbound({ type: "project.step.edited", target: "p_one", payload: { stepId: "s_1", text: "t", owner: "x" } });
+    expect(!r.ok && r.error).toContain("owner");
+  });
+
   it("names the project in a missing target", () => {
     const r = parseInbound({ type: "project.commented", target: "", payload: { text: "hi" } });
     expect(!r.ok && r.error).toContain("project");
@@ -169,6 +198,22 @@ describe("maySystemAppend: a connector mirrors a project, never makes one up", (
     expect(check("project.linked", { system: "jira", key: "NUP-2", url: "https://x", stepId: "s_9" }).ok).toBe(false);
     expect(check("project.linked", { system: "jira", key: "NUP-1", url: "https://x" }).ok).toBe(true);
     expect(check("project.commented", { text: "Jira NUP-2: hi" }).ok).toBe(true);
+  });
+
+  it("an edit needs the step, and only the step", () => {
+    expect(check("project.step.edited", { stepId: "s_1", text: "Pre-stage the carts" })).toEqual({ ok: true });
+    expect(check("project.step.edited", { stepId: "s_9", text: "x" })).toEqual({ ok: false, error: "No such step." });
+    expect(check("project.step.edited", { stepId: "s_1", text: "x" }, "p_nope")).toEqual({ ok: false, error: "No such project." });
+  });
+
+  it("an edit from Jira renames the step on the board", () => {
+    const S = state(ev("project.step.edited", JIRA_ACTOR, "p_one", { stepId: "s_1", text: "Pre-stage the carts" }));
+    expect(S.projects[0].steps[0]).toMatchObject({ id: "s_1", text: "Pre-stage the carts" });
+  });
+
+  it("a connector cannot send or stop a sync: project.sync is a person's", () => {
+    expect(mayAppend("project.sync")).toBe(false);
+    expect(parseInbound({ type: "project.sync", target: "p_one", payload: { system: "jira", on: true } }).ok).toBe(false);
   });
 
   it("a new step needs a fresh id and a project that is still open", () => {

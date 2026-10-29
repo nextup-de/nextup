@@ -47,6 +47,18 @@ export type Measure = {
 /** A measure check: opens `check` days after done, due `promiseDays` later, then goes to the deputy. */
 export type CheckDue = { check: number; opensDay: number; dueDay: number; measured: boolean; late: boolean };
 
+/** The tools a project can be sent to from inside the app (project.sync). Jira only, for now. */
+export const SYNC_SYSTEMS = ["jira"] as const;
+export type SyncSystem = (typeof SYNC_SYSTEMS)[number];
+
+/**
+ * Has someone sent this project to a tool, or told it to stop? The latest project.sync wins; `null`
+ * means nobody ever did. A sync that is `on` is what makes the connector create the epic and the
+ * issues (docs/plans/2026-10-29_jira-in-app.md); a project the company's auto-epic rule syncs
+ * without this is the connector's to work out from the log. `day` and `by` say when and who.
+ */
+export type ProjectSync = { system: SyncSystem; on: boolean; day: number; by: string };
+
 export type Link = { system: string; url: string; key: string; stepId: string | null; day: number };
 export type Reward = { rule: string; amount: number | null; note: string; day: number; by: string };
 
@@ -77,6 +89,8 @@ export type ReducedProject = {
   baseline: Baseline | null;
   steps: Step[];
   links: Link[];
+  /** project.sync: sent to a tool or taken off it (null until someone did either). */
+  sync: ProjectSync | null;
   measures: Measure[];
   checks: CheckDue[];
   /** The latest measure's verdict, or "not measured" once done without a baseline number. */

@@ -16,13 +16,14 @@ import { STEP_COLUMNS } from "@/features/projects/types";
  * (docs/INTEGRATIONS.md §11.2). `route.proposed` belongs to the LLM work and is not a
  * CaseEventType yet, so it is not here either.
  *
- * The four project events are what a connector (Jira through n8n, docs/INTEGRATIONS.md) needs to
- * mirror a project's steps. Never the start, done, baseline, measure, reward, stop, team or lead:
- * people decide those.
+ * The five project events are what a connector (Jira, in the app or through n8n, docs/INTEGRATIONS.md)
+ * needs to mirror a project's steps. Never the start, done, baseline, measure, reward, stop, team,
+ * lead or sync: people decide those. `project.step.edited` is allowed for the step's text only (a
+ * summary changed in the other tool): see projectPayloadProblem.
  */
 export const SYSTEM_EVENT_TYPES = [
   "case.handed", "case.commented",
-  "project.step.added", "project.step.moved", "project.linked", "project.commented",
+  "project.step.added", "project.step.moved", "project.step.edited", "project.linked", "project.commented",
 ] as const;
 export type SystemEventType = (typeof SYSTEM_EVENT_TYPES)[number];
 
@@ -148,6 +149,13 @@ function projectPayloadProblem(type: string, p: Record<string, unknown>): string
       if (!isProjectId(p.stepId)) return "project.step.moved needs payload.stepId.";
       if (!(STEP_COLUMNS as readonly unknown[]).includes(p.to)) return `payload.to must be one of ${STEP_COLUMNS.join(", ")}.`;
       return p.why === undefined || words(p.why, 500) ? null : "payload.why must be text.";
+    case "project.step.edited": {
+      if (!isProjectId(p.stepId)) return "project.step.edited needs payload.stepId.";
+      // Text only. Owner, due day, details and removal are people's: a connector never reassigns or deletes.
+      const extra = Object.keys(p).filter((k) => k !== "stepId" && k !== "text");
+      if (extra.length) return `A system actor may only change a step's text, not ${extra.join(", ")}.`;
+      return words(p.text, 500) ? null : "project.step.edited needs payload.text (up to 500 characters).";
+    }
     case "project.linked":
       if (!(LINK_SYSTEMS as readonly unknown[]).includes(p.system)) return `payload.system must be one of ${LINK_SYSTEMS.join(", ")}.`;
       if (!webUrl(p.url)) return "project.linked needs payload.url, an http(s) address.";
@@ -176,6 +184,7 @@ export function maySystemAppend(ev: Pick<Inbound, "type" | "target" | "payload">
       if (p.status === "stopped" || p.status === "recognised") return { ok: false, error: "This project is closed." };
       return hasStep(pl.stepId) ? { ok: false, error: "That step id is already used." } : { ok: true };
     case "project.step.moved":
+    case "project.step.edited":
       return hasStep(pl.stepId) ? { ok: true } : { ok: false, error: "No such step." };
     case "project.linked":
       return pl.stepId === undefined || hasStep(pl.stepId) ? { ok: true } : { ok: false, error: "No such step." };
@@ -186,3 +195,19 @@ export function maySystemAppend(ev: Pick<Inbound, "type" | "target" | "payload">
 
 /** The actor recorded for anything appended through the API. Never taken from the request. */
 export const SYSTEM_ACTOR = "system:n8n";
+
+/**
+ * The actor, and the CaseEvent.source, of anything the in-app Jira sync appends
+ * (docs/plans/2026-10-29_jira-in-app.md). Like SYSTEM_ACTOR it is never taken from a request. The
+ * sync still checks what it writes with parseInbound and maySystemAppend: it has the same
+ * allow-list as a connector, however it gets to append.
+ */
+export const JIRA_ACTOR = "system:jira";
+export const JIRA_SOURCE = "jira";
+
+/**
+ * Is this actor a connector rather than a person? The first echo-loop breaker: the Jira sync pushes
+ * only what a person did, and the project brain never reads what a connector wrote
+ * (features/projects/brain.ts, roundSaid).
+ */
+export const isSystemActor = (actor: string): boolean => actor.startsWith("system:");
