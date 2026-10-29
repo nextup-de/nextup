@@ -3,6 +3,7 @@
 // time reads. No next/*, no database - the actions and the page call these.
 import { STEP_COLUMNS, type ReducedProject, type StepColumn } from "@/features/projects/types";
 import { parseJiraSettings, type JiraSettingsResult } from "@/features/integrations/jira/settings";
+import { syncMode } from "@/features/integrations/jira/map";
 import { isTokenError } from "@/features/integrations/jira/view";
 import type { JiraIssueType, JiraProblem, JiraStatusView } from "@/features/integrations/jira/types";
 
@@ -96,18 +97,28 @@ export function jiraWebhookUrl(origin: string, slug: string): string {
 
 const isJira = (system: string | undefined): boolean => system === "jira";
 
-/** A project the sync works on: someone sent it, or it already has its epic - unless someone stopped it or it was stopped. */
-export function isSynced(p: Pick<ReducedProject, "sync" | "links" | "status">): boolean {
-  if (p.status === "stopped" || p.sync?.on === false) return false;
-  return p.sync?.on === true || p.links.some((l) => isJira(l.system) && l.stepId === null);
+/** What the engine needs to decide whether it creates things for a project (see syncMode). */
+export type SyncRules = { autoEpic: boolean; enabledAt: number | null };
+
+type SummaryProject = Pick<ReducedProject, "id" | "title" | "sync" | "links" | "status" | "steps" | "seed" | "history">;
+
+/**
+ * Will the sync create an epic and issues for this project? The same question the engine asks
+ * (syncMode): a project sent to Jira, or an idea decided yes after the integration was switched on.
+ * A project that only carries links (demo data, issues twinned by hand) is never filled in.
+ */
+export function isSynced(p: SummaryProject, rules: SyncRules): boolean {
+  if (p.status === "stopped") return false;
+  return syncMode(p as ReducedProject, rules, rules.enabledAt) === "sync";
 }
 
 /**
- * How many projects and steps have a Jira twin, and what is still missing a twin: a synced project
- * with no epic, a step of a synced project with no issue. Each of those is "waiting" when the sync
- * is healthy and a problem when its last round failed - the page decides how to say it.
+ * How many projects and steps have a Jira twin, and what is still missing a twin: a project the sync
+ * will fill in that has no epic, a step of one that has no issue. Each of those is "waiting" when the
+ * sync is healthy and a problem when its last round failed - the page decides how to say it. Projects
+ * the engine leaves alone are not listed: nothing is coming for them.
  */
-export function jiraLinkSummary(projects: readonly Pick<ReducedProject, "id" | "title" | "sync" | "links" | "status" | "steps">[]): {
+export function jiraLinkSummary(projects: readonly SummaryProject[], rules: SyncRules): {
   linked: { projects: number; steps: number };
   problems: JiraProblem[];
 } {
@@ -118,7 +129,7 @@ export function jiraLinkSummary(projects: readonly Pick<ReducedProject, "id" | "
     const epic = p.links.some((l) => isJira(l.system) && l.stepId === null);
     if (epic) linkedProjects += 1;
     for (const s of p.steps) if (isJira(s.external?.system)) linkedSteps += 1;
-    if (!isSynced(p)) continue;
+    if (!isSynced(p, rules)) continue;
     if (!epic) problems.push({ projectId: p.id, stepId: null, message: `"${p.title}" has no epic in Jira yet.` });
     for (const s of p.steps) {
       if (!s.external) problems.push({ projectId: p.id, stepId: s.id, message: `Step "${s.text}" of "${p.title}" has no issue in Jira yet.` });

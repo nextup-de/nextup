@@ -58,7 +58,8 @@ export async function jiraAdminView(company: { id: string; slug: string }): Prom
       const rec = await getDb().company.findUnique({ where: { id: company.id }, select: { id: true, seedJson: true } });
       if (rec) {
         const log = (await loadLogForSlug(company.slug)) ?? emptyLog();
-        const { linked, problems } = jiraLinkSummary(reduce(await companySeed(rec), log).projects);
+        const rules = { autoEpic: formFromSettings(row.settings ?? {}).autoEpic, enabledAt: row.enabledAt ? row.enabledAt.getTime() : null };
+        const { linked, problems } = jiraLinkSummary(reduce(await companySeed(rec), log).projects, rules);
         status.linked = linked;
         status.problems = problems;
       }
