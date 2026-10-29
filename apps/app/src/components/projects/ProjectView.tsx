@@ -10,9 +10,10 @@ import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { Avatar } from "@/components/dashboard/shared/primitives";
+import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ProjectStatus, ReducedProject } from "@/features/projects/types";
-import { connectionsOf, MOVE_LABEL, suggestedBaseline, suggestedSteps, visibleProjects } from "@/features/projects/views";
+import { connectionsOf, demoJiraView, jiraRowOf, MOVE_LABEL, suggestedBaseline, suggestedSteps, visibleProjects, type JiraRow } from "@/features/projects/views";
 import { withBrainSteps } from "@/features/projects/brain";
 import { useBrainPlan } from "@/lib/use-brain";
 import { ProjectBoard } from "./ProjectBoard";
@@ -27,7 +28,8 @@ const STATUS_WORD: Record<ProjectStatus, string> = {
   planning: "Planning", running: "Running", measuring: "Measuring", measured: "Measured", recognised: "Recognised", stopped: "Stopped",
 };
 
-export function ProjectView({ projectId }: { projectId: string }) {
+/** `jira`: the company's Jira as the server read it (null: static demo, or no database). */
+export function ProjectView({ projectId, jira }: { projectId: string; jira: JiraStatusView | null }) {
   const ctx = useDemo();
   const { S, ready, demo, flag, href } = ctx;
   if (!ready) return <PageSkeleton kind="list" delay />;
@@ -42,12 +44,15 @@ export function ProjectView({ projectId }: { projectId: string }) {
       </div>
     );
   }
-  return <Project p={p} />;
+  return <Project p={p} jira={jira} />;
 }
 
-function Project({ p }: { p: ReducedProject }) {
+function Project({ p, jira }: { p: ReducedProject; jira: JiraStatusView | null }) {
   const ctx = useDemo();
   const { S } = ctx;
+  // The local demo has no Jira: it shows the sync as switched on and plays the connector itself (act.project.sync).
+  const [now] = useState(() => Date.now());
+  const row = jiraRowOf(p, jira ?? (ctx.serverMode ? null : demoJiraView(now)), now);
   const r = useRights(p);
   // The brief the yes came from: the first source that is a case. An idea gives its KPI instead.
   const source = S.cases.find((c) => p.sources.includes(c.id));
@@ -67,7 +72,7 @@ function Project({ p }: { p: ReducedProject }) {
 
   return (
     <div className={styles.projectPage} data-wide="true">
-      <Header p={p} />
+      <Header p={p} jira={row} />
       <ProjectSummary p={p} />
       {(mine || escalatedToMe) && move && (
         <div className={styles.yourMove} role="status">
@@ -76,7 +81,7 @@ function Project({ p }: { p: ReducedProject }) {
         </div>
       )}
       {planning && <BaselinePanel p={p} hint={baseHint} />}
-      <ProjectBoard p={p} hints={stepHints} />
+      <ProjectBoard p={p} hints={stepHints} jira={row} />
       <div className={styles.layout}>
         <div className={styles.main}>
           {!planning && <BaselinePanel p={p} hint={null} />}
@@ -87,7 +92,7 @@ function Project({ p }: { p: ReducedProject }) {
         </div>
         <aside className={styles.rail} aria-label="Team, tools and files">
           <TeamPanel p={p} />
-          <ToolsPanel p={p} />
+          <ToolsPanel p={p} jira={row} />
           <FilesPanel p={p} />
         </aside>
       </div>
@@ -95,7 +100,7 @@ function Project({ p }: { p: ReducedProject }) {
   );
 }
 
-function Header({ p }: { p: ReducedProject }) {
+function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const { S, href, f } = useDemo();
   const sourceOf = (id: string) => {
     const c = S.cases.find((x) => x.id === id);
@@ -130,14 +135,14 @@ function Header({ p }: { p: ReducedProject }) {
           <span className={styles.faceText}><span className={styles.strong}>{p.lead}</span> leads{p.members.length ? " · " + (p.members.length + 1) + " on the team" : ""}</span>
         </div>
       </div>
-      <ToolChips p={p} />
+      <ToolChips p={p} jira={jira} />
       <Actions p={p} />
     </header>
   );
 }
 
 /** The tools the work lives in, at the top: one chip per connected tool, its key, and whether it syncs. Details in the rail. */
-function ToolChips({ p }: { p: ReducedProject }) {
+function ToolChips({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const r = useRights(p);
   const on = connectionsOf(p).filter((c) => c.links.length || c.steps);
   if (!on.length && !r.link) return null;
@@ -150,7 +155,7 @@ function ToolChips({ p }: { p: ReducedProject }) {
           <>
             <span className={styles.toolMark} data-tool={c.tool.id} aria-hidden="true">{c.tool.short}</span>
             <span>{c.tool.name}{first?.key ? " " + label : ""}</span>
-            {c.tool.sync === "sync" && <span className={styles.toolMode} data-sync="true">Sync</span>}
+            {c.tool.id === "jira" && jira.state === "synced" && <span className={styles.toolMode} data-sync="true">Sync</span>}
             {c.steps > 0 && <span className={styles.chipNote}>{c.steps} steps</span>}
           </>
         );

@@ -194,3 +194,58 @@ test("the project page shows the idea it came from and its connected tools", asy
   // The tools in use also sit under the title, so they show without scrolling.
   await expect(page.getByLabel("Tools in use").getByRole("link", { name: /Jira FS-9/ })).toBeVisible();
 });
+
+test("the lead sends a project to Jira, links an issue and stops the sync - all simulated, no network", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/projects/pj4");
+  await page.getByRole("button", { name: "Add step: " + FIRST }).click();
+  const tools = page.getByRole("region", { name: "Connected tools" });
+
+  await test.step("a project that is not sent offers Send to Jira, and says what it will create", async () => {
+    await expect(tools).toContainText("Two-way sync");
+    await expect(tools).toContainText("Creates an epic in NUP and 1 issue");
+    await expect(page.getByRole("article", { name: FIRST })).not.toContainText("waiting for Jira");
+  });
+
+  await test.step("Send to Jira shows the epic and the issue keys, with the sync chip", async () => {
+    await tools.getByRole("button", { name: "Send to Jira" }).click();
+    await expect(tools.getByRole("status")).toContainText(/Synced · NUP-1 · checked (just now|1 min ago)/);
+    await expect(page.getByRole("article", { name: FIRST })).toContainText("NUP-2");
+    await expect(page.getByLabel("Tools in use")).toContainText("Sync");
+    await expect(tools.getByRole("button", { name: "Send to Jira" })).toHaveCount(0);
+  });
+
+  await test.step("a step added after the send waits for Jira", async () => {
+    await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
+    await page.getByRole("button", { name: "Add step", exact: true }).click();
+    await expect(page.getByRole("article", { name: TYPED })).toContainText("waiting for Jira");
+  });
+
+  await test.step("an existing issue is linked to a step by its key", async () => {
+    await tools.getByRole("button", { name: "Add another link to Jira" }).click();
+    const form = page.getByRole("form", { name: "Link a Jira issue" });
+    await form.getByLabel("Jira issue key").fill("nup");
+    await expect(form.getByRole("button", { name: "Link the issue" })).toBeDisabled();
+    await form.getByLabel("Jira issue key").fill("NUP-77");
+    await form.getByLabel("For which step").selectOption({ label: TYPED });
+    await form.getByRole("button", { name: "Link the issue" }).click();
+    await expect(page.getByRole("article", { name: TYPED })).toContainText("NUP-77");
+    await expect(page.getByRole("article", { name: TYPED })).not.toContainText("waiting for Jira");
+  });
+
+  await test.step("Stop syncing takes the project off Jira and offers Send again", async () => {
+    await tools.getByRole("button", { name: "Stop syncing" }).click();
+    await expect(tools.getByRole("button", { name: "Send to Jira" })).toBeVisible();
+    await expect(page.getByRole("article", { name: TYPED })).not.toContainText("waiting for Jira");
+  });
+});
+
+test("only the lead (or a manager) gets the Jira buttons", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Employee");
+  await page.goto("/acme/projects/pj2");
+  const tools = page.getByRole("region", { name: "Connected tools" });
+  await expect(tools).toContainText("Two-way sync");
+  await expect(tools.getByRole("button", { name: /Send to Jira|Stop syncing/ })).toHaveCount(0);
+});

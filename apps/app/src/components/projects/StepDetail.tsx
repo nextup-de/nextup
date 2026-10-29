@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { Avatar } from "@/components/dashboard/shared/primitives";
 import { STEP_COLUMNS, type ReducedProject, type Step, type StepColumn } from "@/features/projects/types";
-import { COLUMN_LABEL, safeUrl, systemFrom, timelineOf, toolOf, TOOLS } from "@/features/projects/views";
+import { COLUMN_LABEL, safeUrl, systemFrom, timelineOf, toolOf, TOOLS, type JiraRow } from "@/features/projects/views";
 import { useRights, useSend } from "./parts";
 import styles from "./Projects.module.css";
 
@@ -14,7 +14,7 @@ const DUE_QUICK: { label: string; days: number }[] = [
   { label: "Today", days: 0 }, { label: "+3 days", days: 3 }, { label: "+1 week", days: 7 }, { label: "+2 weeks", days: 14 },
 ];
 
-export function StepDetail({ p, s, onClose }: { p: ReducedProject; s: Step; onClose: () => void }) {
+export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step; jira: JiraRow; onClose: () => void }) {
   const { act, S, f, persona } = useDemo();
   const r = useRights(p);
   const send = useSend(p);
@@ -151,8 +151,8 @@ export function StepDetail({ p, s, onClose }: { p: ReducedProject; s: Step; onCl
           <div className={styles.sheetField}>
             <span className={styles.fieldLabel}>In a tool</span>
             {s.external
-              ? <span className={styles.muted}>{tool?.name} {s.external.key}{tool?.sync === "sync" ? " · its status comes back to this board" : ""}</span>
-              : <span className={styles.muted}>Not linked to a ticket yet.</span>}
+              ? <span className={styles.muted}>{tool?.name} {s.external.key}{tool?.id === "jira" && jira.state !== "off" ? " · its status comes back to this board" : ""}</span>
+              : <span className={styles.muted}>{jira.waiting ? "Waiting for Jira: the issue is created in the next round." : "Not linked to a ticket yet."}</span>}
             {r.link && (
               <form className={styles.inline} aria-label="Link this step" onSubmit={(e) => {
                 e.preventDefault();
