@@ -640,3 +640,24 @@ a.count[data-tone="bad"] { border-color: #f5c2bf; background: var(--nh-danger-ti
   font-size: var(--nh-fs-sm);
   color: var(--nh-ink-mute, #6b7280);
 }
+
+/* Integrations (Jira): the one-line state over the status, the test checks, and the small bits of the form. */
+.jiraHeadline {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-xs, 8px);
+  border: 1px solid var(--nh-line);
+  font-size: var(--nh-fs-md);
+}
+.jiraHeadline[data-tone="ok"] { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.jiraHeadline[data-tone="warn"] { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+.jiraHeadline[data-tone="bad"] { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+.jiraActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.jiraProblems { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: var(--nh-fs-md); }
+.jiraChecks { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.jiraChecks li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; font-size: var(--nh-fs-md); }
+.jiraChecks li[data-ok="true"] > span:first-child { color: #15803d; }
+.jiraChecks li[data-ok="false"] > span:first-child { color: var(--nh-danger, #b3261e); }
+.jiraSwitches { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; font-size: var(--nh-fs-md); }
+.jiraSwitches label { display: flex; gap: 8px; align-items: baseline; }
+.jiraCode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--nh-fs-sm); word-break: break-all; }

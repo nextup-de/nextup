@@ -25,6 +25,7 @@ import { countByState } from "@/features/integrations/tasks";
 import { databaseOutage, hasDatabase } from "@/lib/db/client";
 import { openTicketCount } from "@/lib/db/tickets";
 import { mailStatus } from "@/server/mail";
+import { jiraNavFacts } from "@/server/jira-admin";
 
 export const adminContext = cache(async () => {
   const database = await databaseReport();
@@ -35,7 +36,9 @@ export const adminContext = cache(async () => {
     const companies = live ? await listCompanies() : await demoCompanies();
     // The stack's database holds this one company; the slug check is belt and braces.
     const company = companies.find((c) => c.slug === process.env.COMPANY_SLUG?.trim()) ?? (live ? null : companies[0] ?? null);
-    const nav = companyNav({ people: company?.persons.length ?? 0, locked: company ? lockedOut(company).length : 0 });
+    // The Integrations badge: a failing sync shows in the sidebar. A dead database must not break the layout.
+    const jira = live && company ? await jiraNavFacts(company.id).catch(() => null) : null;
+    const nav = companyNav({ people: company?.persons.length ?? 0, locked: company ? lockedOut(company).length : 0, jira });
     return { scope, live, outage: databaseOutage(), database, company, companies: company ? [company] : [], nav, ...PLATFORM_EMPTY };
   }
   // The relay is checked once, here, and handed to the notices report rather than asked twice.
