@@ -80,11 +80,13 @@ describe("suggestTypes", () => {
 describe("jiraLinkSummary", () => {
   const step = (id: string, key?: string) => ({ id, text: "Step " + id, external: key ? { system: "jira", key } : null });
   const project = (id: string, over: Record<string, unknown> = {}) => ({
-    id, title: "Project " + id, status: "running", sync: null, links: [], steps: [step("a")], ...over,
+    id, title: "Project " + id, status: "running", sync: null, links: [], steps: [step("a")], seed: false, history: [], ...over,
   });
   const epic = { system: "jira", url: "u", key: "NUP-1", stepId: null, day: 1 };
+  const rules = { autoEpic: true, enabledAt: Date.parse("2026-10-29T10:00:00Z") };
+  const decided = (iso: string) => ({ type: "case.decided", ts: Date.parse(iso) });
   type P = Parameters<typeof jiraLinkSummary>[0][number];
-  const summary = (...ps: Record<string, unknown>[]) => jiraLinkSummary(ps as unknown as P[]);
+  const summary = (...ps: Record<string, unknown>[]) => jiraLinkSummary(ps as unknown as P[], rules);
 
   it("counts projects with an epic and steps with an issue", () => {
     const r = summary(project("p1", { links: [epic], steps: [step("a", "NUP-2"), step("b", "NUP-3")] }), project("p2"));
@@ -94,13 +96,33 @@ describe("jiraLinkSummary", () => {
 
   it("lists a sent project that has no epic yet, and a step with no issue", () => {
     const sent = { system: "jira", on: true, day: 1, by: "u" };
-    const r = summary(project("p1", { sync: sent }), project("p2", { links: [epic], steps: [step("a", "NUP-2"), step("b")] }));
+    const r = summary(project("p1", { sync: sent }), project("p2", { sync: sent, links: [epic], steps: [step("a", "NUP-2"), step("b")] }));
     expect(r.problems.map((p) => [p.projectId, p.stepId])).toEqual([["p1", null], ["p1", "a"], ["p2", "b"]]);
+  });
+
+  it("lists an idea decided after the sync was switched on, but not one decided before", () => {
+    const after = project("p1", { history: [decided("2026-10-29T11:00:00Z")] });
+    const before = project("p2", { history: [decided("2026-10-28T11:00:00Z")] });
+    expect(summary(after, before).problems.map((p) => p.projectId)).toEqual(["p1", "p1"]);
+  });
+
+  it("does not wait for a project the engine leaves alone: demo data and hand-made links", () => {
+    const seeded = project("p1", { seed: true, links: [epic], steps: [step("a", "NUP-2"), step("b")], history: [decided("2026-10-29T11:00:00Z")] });
+    const byHand = project("p2", { links: [epic], steps: [step("a", "NUP-3"), step("b")] });
+    const r = summary(seeded, byHand);
+    expect(r.problems).toEqual([]);
+    expect(r.linked).toEqual({ projects: 2, steps: 2 });
+  });
+
+  it("waits for nothing when auto-epic is off, until someone sends the project", () => {
+    const p = project("p1", { history: [decided("2026-10-29T11:00:00Z")] });
+    expect(jiraLinkSummary([p] as unknown as P[], { ...rules, autoEpic: false }).problems).toEqual([]);
   });
 
   it("ignores a project that was taken off Jira or stopped", () => {
     const off = { system: "jira", on: false, day: 2, by: "u" };
-    expect(summary(project("p1", { sync: off, links: [epic] }), project("p2", { status: "stopped", links: [epic] })).problems).toEqual([]);
+    const sent = { system: "jira", on: true, day: 1, by: "u" };
+    expect(summary(project("p1", { sync: off, links: [epic] }), project("p2", { status: "stopped", sync: sent, links: [epic] })).problems).toEqual([]);
   });
 });
 
