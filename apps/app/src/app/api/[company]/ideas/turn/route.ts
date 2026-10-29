@@ -38,9 +38,10 @@ import { withoutSkipped } from "@/features/ideas/raise";
 import { MAX_TURN, MAX_TURNS, scoreDraft } from "@/features/ideas/drafts";
 import { suggestReplies } from "@/features/ideas/replies";
 import { hasDatabase } from "@/lib/db/client";
-import { loadAssistSettings, searchDocuments } from "@/lib/db/assist";
+import { loadAssistSettings } from "@/lib/db/assist";
 import { addTurns, getDraft, loadPublishThreshold } from "@/lib/db/ideas";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
+import { searchDocumentsFor } from "@/server/assist-search";
 import { serverIdeaContext } from "@/server/ideas";
 import { clientKey, throttle } from "@/server/throttle";
 import { providerConfig, providerFor } from "@/server/assist/provider";
@@ -154,7 +155,7 @@ export async function POST(request: Request, { params }: Ctx) {
           const out = await assist({
             question: body.text,
             history: before,
-            ctx: { knowledge, profile, ceiling: settings.ceiling, searchDocuments: (q, k) => searchDocuments(viewer.companyId, settings.ceiling, q, k) },
+            ctx: { knowledge, profile, ceiling: settings.ceiling, searchDocuments: searchDocumentsFor(viewer, settings.ceiling) },
             prompt: { companyName: tenant.name, brief: companyBrief(knowledge, profile), rules: settings.rules, coach: brief },
             redaction: { people, patterns: settings.patterns },
             provider: providerFor(cfg),
