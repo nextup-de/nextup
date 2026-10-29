@@ -2,6 +2,7 @@
 // Thin on purpose - the flow is src/server/microsoft-login.ts.
 import { NextResponse, type NextRequest } from "next/server";
 import { isValidSlug } from "@/features/auth/request";
+import { companyOrigin } from "@/features/tenant/urls";
 import { startMicrosoftLogin } from "@/server/microsoft-login";
 
 type Ctx = { params: Promise<{ company: string }> };
@@ -13,11 +14,13 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   if (!isValidSlug(company)) return new NextResponse(null, { status: 404 });
   // ?as=admin: the company's /admin. ?as=connect: "Connect Microsoft 365" from the profile page.
   const as = request.nextUrl.searchParams.get("as");
+  // The public origin, not the request's: behind the box's proxy that is https://0.0.0.0:3000.
+  const origin = companyOrigin(company);
   const to = await startMicrosoftLogin(
     company,
-    request.nextUrl.origin,
+    origin,
     request.nextUrl.searchParams.get("next"),
     as === "admin" || as === "connect" ? as : undefined,
   );
-  return NextResponse.redirect(new URL(to, request.nextUrl.origin));
+  return NextResponse.redirect(new URL(to, origin));
 }
