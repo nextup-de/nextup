@@ -5,6 +5,7 @@ import {
   appHost,
   appOrigin,
   companyFinderUrl,
+  companyOrigin,
   companyPrefix,
   companyUrl,
   dashboardUrl,
@@ -56,6 +57,7 @@ describe("links per mode", () => {
   it("path mode carries the slug", () => {
     expect(companyPrefix("acme", PATH)).toBe("/acme");
     expect(companyUrl("acme", PATH)).toBe("http://localhost:3000/acme");
+    expect(companyOrigin("acme", PATH)).toBe("http://localhost:3000");
     expect(dashboardUrl("acme", PATH)).toBe("/acme/dashboard");
     expect(adminBase(PATH)).toBe("/admin");
     expect(landingUrl(PATH)).toBe("/");
@@ -64,6 +66,7 @@ describe("links per mode", () => {
   it("subdomain mode makes the company the host", () => {
     expect(companyPrefix("acme", SUB)).toBe("");
     expect(companyUrl("acme", SUB)).toBe("https://acme.nextup.serviweb.ch");
+    expect(companyOrigin("acme", SUB)).toBe("https://acme.nextup.serviweb.ch");
     expect(dashboardUrl("acme", SUB)).toBe("https://acme.nextup.serviweb.ch/dashboard");
     expect(adminBase(SUB)).toBe("");
     expect(landingUrl(SUB)).toBe("https://nextup.serviweb.ch");
@@ -83,6 +86,7 @@ describe("links per mode", () => {
   it("single mode on <slug>.<domain> finds the public site by itself", () => {
     const BOX = { TENANT_MODE: "single", COMPANY_SLUG: "acme", APP_ORIGIN: "https://acme.sellux.ch" };
     expect(landingUrl(BOX)).toBe("https://sellux.ch");
+    expect(companyOrigin("acme", BOX)).toBe("https://acme.sellux.ch");
     expect(companyFinderUrl(BOX)).toBe("https://sellux.ch/login");
     expect(companyFinderUrl({ ...BOX, LANDING_URL: "https://example.com/" })).toBe("https://example.com/login");
     // A host that isn't <slug>.<domain> has no public site to go back to.

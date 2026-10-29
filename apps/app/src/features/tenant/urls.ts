@@ -105,10 +105,17 @@ export function companyFinderUrl(env: Env = process.env): string | null {
 
 /** A company's home, absolute - it is used in e-mails and from admin.<domain>. */
 export function companyUrl(slug: string, env: Env = process.env): string {
-  const mode = tenantMode(env);
-  if (mode === "subdomain") return hostOrigin(`${slug}.${rootDomain(env)}`, env);
-  if (mode === "single") return appOrigin(env);
-  return `${appOrigin(env)}/${slug}`;
+  return tenantMode(env) === "path" ? `${companyOrigin(slug, env)}/${slug}` : companyOrigin(slug, env);
+}
+
+/**
+ * The origin a company's pages are served on, without its path: its own host in subdomain mode,
+ * appOrigin() otherwise. Use it, never the request's origin, for URLs that leave the app (the
+ * Microsoft redirect URI): behind the box's proxy the request's origin is the app's bind address,
+ * https://0.0.0.0:3000.
+ */
+export function companyOrigin(slug: string, env: Env = process.env): string {
+  return tenantMode(env) === "subdomain" ? hostOrigin(`${slug}.${rootDomain(env)}`, env) : appOrigin(env);
 }
 
 /**
