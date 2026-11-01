@@ -9,6 +9,7 @@ import { GOALS } from "@/features/evaluate";
 import { BRIEFS } from "@/features/ideas/brief-demo";
 import { ideaContext, scoreDraft, type DraftTurn, type DraftView } from "@/features/ideas/drafts";
 import { SEED } from "./seed";
+import { DEMO_GOALS, DEMO_RULES } from "./structure";
 import { STATIC_DEMO_BRIEFS } from "./static-demo-briefs";
 import type { Seed, SeedCase } from "./types";
 
@@ -65,6 +66,7 @@ const SHEET: NonNullable<SeedCase["seedEvents"]> = [
 const seed = renamed(SEED);
 export const STATIC_DEMO_SEED: Seed = {
   ...seed,
+  goals: DEMO_GOALS, spend: DEMO_RULES.spend,
   // He posts under his name here: no handle, so his name and profile show like everyone else's.
   personas: seed.personas.map((r) => (r.who.name === ME ? { ...r, who: { ...r.who, handle: null } } : r)),
   cases: [...seed.cases.map((c) => (c.id === "c3" ? { ...c, seedEvents: [...(c.seedEvents ?? []), ...SHEET] } : c)), ...IDEAS],

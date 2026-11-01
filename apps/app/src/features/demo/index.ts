@@ -8,7 +8,7 @@ import { SEED } from "./seed";
 import type { Seed } from "./types";
 
 export const EMPTY_SEED: Seed = {
-  ...SEED, depts: [], people: [], problems: [], ideas: [], initiatives: [], outcomes: [], cases: [], waitingOn: [], stall: [],
+  ...SEED, goals: [], spend: null, depts: [], people: [], problems: [], ideas: [], initiatives: [], outcomes: [], cases: [], waitingOn: [], stall: [],
 };
 
 export async function seedFor(slug: string): Promise<Seed> {
