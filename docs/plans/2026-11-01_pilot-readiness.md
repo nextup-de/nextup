@@ -5,6 +5,28 @@
 > of 1,000–2,000 employees. Each phase below gets its own detailed plan before it is built. Why this order and
 > this segment: [2026-11-01_segment-analysis.md](2026-11-01_segment-analysis.md).
 
+## Executable version: orch Hauptplan PILOT
+
+The phases below are the overview. The version orch runs is the Hauptplan `PILOT` in `selluxhenner/plans`
+(`projects/nextup/hauptplaene/PILOT.md`), with one brief per phase (result, done when, acceptance test, code
+area, what it takes and hands on). Each phase there becomes one Bauplan. It recuts the phases to orch size and
+changes the order in two places: company structure (STR) comes before identity by id (IDN), because role holders
+are structure tables, and German/English (LNG) comes early, so later UI phases write both languages from the start.
+
+| Here | PILOT | Here | PILOT |
+| --- | --- | --- | --- |
+| 0 Audit | AUD | 11 Dashboards | MET |
+| 1 Architecture | ARC | 12 AI provider | AIP |
+| 2 Identity by id | IDN | 13 Notifications | NTF |
+| 3 Structure out of seed | STR | 14 Teams | TMS |
+| 4 Real clock | CLK | 15 Shop floor | FLR |
+| 5 Read model | VIS | 16 Connectors | CON |
+| 6 Directory sync | DIR | 17 Enterprise seams | API + EID |
+| 7 Admin in app | ADM | 18 Platform | OPS (+ INF, parked) |
+| 8 DE/EN | LNG | 19 Security pack | SEC |
+| 9 Data protection | GDP | 20 Demo test phase | TST |
+| 10 Case loop | LOOP | 21 First pilot | PIL (package only; the pilot itself is not code) |
+
 ## Goal
 
 At the end of these phases NextUp runs for one real company of 1,000–2,000 employees on its own server, with
