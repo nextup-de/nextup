@@ -64,5 +64,5 @@ the phase in the row does (D3).
 | G-051 | tests | The DB tests (apps/app/tests/db, run by ops/test-db.sh) are not run by any CI job | apps/app/tests/db · ops/test-db.sh · .github/workflows/ci.yml | medium | AUD | K |
 | G-052 | tests | The brain's pytest suite is not run by any CI job | services/brain/tests · .github/workflows/ci.yml | medium | AUD | K |
 | G-053 | hard-wired | The three roles and the Entra claim names (nextup.manager, nextup.leader, nextup.member, nextup.admin) are fixed in code, not configuration per company | apps/app/src/config/roles.ts:2 · apps/app/src/config/roles.ts:29 | medium | STR | K |
-| G-054 | hard-wired | Our own team names (Kevin, Sam, Victor, Marc) are a contract constant | packages/contracts/src/tickets.ts:53 | low | LATER | K |
+| G-054 | hard-wired | Our own team names (TEAM_NAMES: Kevin, Sam, Victor; OPENER_NAMES adds Marc) are a contract constant | packages/contracts/src/tickets.ts:53 | low | LATER | K |
 | G-055 | hard-wired | In single mode the landing URL is derived from the sellux.ch host layout (acme.sellux.ch to sellux.ch) when LANDING_URL is unset | apps/app/src/features/tenant/urls.ts:72 | low | LATER | K |
