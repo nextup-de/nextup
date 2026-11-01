@@ -1,0 +1,15 @@
+{
+  "id": "prj_01",
+  "companyId": "co_acme",
+  "caseId": "case_01",
+  "title": "Fix machine 4 feeder",
+  "state": "running",
+  "leadRoleId": "role_lead",
+  "links": [
+    {
+      "system": "jira",
+      "key": "PROD-12",
+      "url": "https://example.com/browse/PROD-12"
+    }
+  ]
+}

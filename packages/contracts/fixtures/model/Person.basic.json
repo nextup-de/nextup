@@ -1,0 +1,15 @@
+{
+  "id": "usr_01",
+  "companyId": "co_acme",
+  "displayName": "Alex Example",
+  "email": "alex@example.com",
+  "locale": "de",
+  "active": true,
+  "managerId": "usr_02",
+  "orgUnitIds": [
+    "ou_prod"
+  ],
+  "externalIds": {
+    "entra": "00000000-0000-4000-8000-000000000001"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "rh_01",
+  "companyId": "co_acme",
+  "roleId": "role_lead",
+  "userId": "usr_01",
+  "label": "Alex Example",
+  "kind": "holder",
+  "validFrom": "2026-01-01T00:00:00.000Z",
+  "validTo": null
+}
