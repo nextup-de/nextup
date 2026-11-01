@@ -44,10 +44,10 @@ export function readJiraForm(raw: unknown): JiraForm {
 
 /**
  * The form as JiraSettings. `forTest` fills a missing issue type with "0": the connection test is what
- * fetches the types, so it must be runnable before they are chosen. Data Center is a seam only.
+ * fetches the types, so it must be runnable before they are chosen. `flavor` is "cloud" or "dc" (Data Center needs no email); any other is refused.
  */
 export function settingsFromForm(f: JiraForm, opts: { forTest?: boolean } = {}): JiraSettingsResult {
-  if (f.flavor !== "cloud") return { ok: false, errors: ["Data Center is not available yet - only Jira Cloud."] };
+  if (f.flavor !== "cloud" && f.flavor !== "dc") return { ok: false, errors: ['flavor must be "cloud" or "dc".'] };
   const fill = (id: string) => (opts.forTest && !id.trim() ? "0" : id);
   return parseJiraSettings({
     flavor: f.flavor, siteUrl: f.siteUrl, email: f.email, projectKey: f.projectKey,
