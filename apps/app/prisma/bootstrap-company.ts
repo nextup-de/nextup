@@ -10,6 +10,7 @@
 // Idempotent and hands-off: an existing company is never touched, so a restart or a new image
 // cannot undo what the company's admin changed.
 import { seedTemplate } from "../src/features/demo";
+import { contentOnly } from "../src/features/demo/content";
 import { toSeedJson } from "../src/features/demo/parse";
 import { markFor } from "../src/features/tenant/create";
 import { getDb } from "../src/lib/db/client";
@@ -40,7 +41,7 @@ async function main() {
       name,
       mark: markFor({ name }),
       stage: "sandbox",
-      seedJson: toSeedJson(seedTemplate("empty")) as object,
+      seedJson: toSeedJson(contentOnly(seedTemplate("empty"))) as object,
       config: { create: {} },
     },
   });
