@@ -1,0 +1,1 @@
+{"specVersion":1,"deliveryId":"dlv_01","attempt":1,"sentAt":"2026-10-30T08:00:02.000Z","event":{"id":"evt_01","type":"case.raised","typeVersion":1,"companyId":"co_acme","occurredAt":"2026-10-30T08:00:00.000Z","actor":{"userId":"user_anna","roleId":null},"subject":{"kind":"case","id":"case_01"},"data":{"kind":"problem","routeKey":"r1"}}}
