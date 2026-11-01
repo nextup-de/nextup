@@ -1,0 +1,35 @@
+{
+  "question": "q09",
+  "persona": "lena",
+  "source": "synthetic",
+  "recordedAt": null,
+  "request": {
+    "requests": [
+      {
+        "entityTypes": [
+          "driveItem"
+        ],
+        "query": {
+          "queryString": "what are the salary bands at acme"
+        },
+        "from": 0,
+        "size": 10
+      }
+    ]
+  },
+  "status": 200,
+  "body": {
+    "value": [
+      {
+        "searchTerms": [],
+        "hitsContainers": [
+          {
+            "total": 0,
+            "moreResultsAvailable": false,
+            "hits": []
+          }
+        ]
+      }
+    ]
+  }
+}

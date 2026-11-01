@@ -6,7 +6,13 @@
 `@nextup/contracts/public` (`packages/contracts/src/public/connectors/`): see
 [ADR 0002](adr/0002-connector-interfaces.md) for the interfaces and [ADR 0006](adr/0006-config-not-code.md) for
 how the adapter and its settings are chosen per company. The `Integration` table is defined in
-`apps/app/prisma/schema/integrations.prisma`. The code below predates the interfaces and keeps its own types.
+`apps/app/prisma/schema/integrations.prisma`.
+
+**Adapters.** Microsoft 365 search is the `KnowledgeSource` adapter `m365`
+(`apps/app/src/server/connectors/m365.ts`, chosen by `knowledgeSourcesFor`). Jira is the `WorkTracker` adapter
+`jira-cloud` or `jira-dc` (`server/connectors/jira.ts`, chosen by `workTrackerFor`). Jira Data Center is supported
+(REST v2, personal access token as Bearer). The sync engine still uses the `JiraApi` client directly. How a new system
+is added: [connectors/README.md](connectors/README.md). The code below predates the interfaces and keeps its own types.
 
 The product rule this follows: **AI proposes, never decides** (§11.2, `features/routing`). The
 architecture rule it follows: **events, not edits** (`features/cases/events.ts`). Every
