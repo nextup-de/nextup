@@ -1,0 +1,35 @@
+// The error pages: app/error.tsx, app/global-error.tsx, app/not-found.tsx and components/ui/ErrorScreen.tsx.
+import { defineMessages } from "../define";
+
+export const errors = defineMessages({
+  en: {
+    eyebrow: "Error · something broke on our side",
+    title: "This page could not be shown",
+    text: "It has been counted for the {site} team. Try again - if it keeps happening, tell us with the bug icon what you were doing.",
+    reference: "Reference {digest}",
+    retry: "Try again",
+    home: "Back to the start",
+    crashTitle: "Something broke · {site}",
+    notFoundEyebrow: "404 · nobody owns this page",
+    notFoundTitle: "Page not found",
+    notFoundText: "The address has no owner in our routing table. Back to the start.",
+    notFoundBack: "Back to {site}",
+    localeInvalid: "That language is not available.",
+    localeNotSaved: "The language could not be saved to your profile.",
+  },
+  de: {
+    eyebrow: "Fehler · bei uns ist etwas schiefgegangen",
+    title: "Diese Seite konnte nicht angezeigt werden",
+    text: "Der Fehler wurde für das Team von {site} gezählt. Versuch es noch einmal - wenn es wieder passiert, sag uns mit dem Käfer-Symbol, was du gerade getan hast.",
+    reference: "Referenz {digest}",
+    retry: "Erneut versuchen",
+    home: "Zurück zum Start",
+    crashTitle: "Etwas ist schiefgegangen · {site}",
+    notFoundEyebrow: "404 · diese Seite gehört niemandem",
+    notFoundTitle: "Seite nicht gefunden",
+    notFoundText: "Die Adresse hat in unserer Routing-Tabelle keinen Besitzer. Zurück zum Start.",
+    notFoundBack: "Zurück zu {site}",
+    localeInvalid: "Diese Sprache ist nicht verfügbar.",
+    localeNotSaved: "Die Sprache konnte nicht in deinem Profil gespeichert werden.",
+  },
+});
