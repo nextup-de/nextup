@@ -1,0 +1,11 @@
+{
+  "id": "ou_prod",
+  "companyId": "co_acme",
+  "key": "prod",
+  "name": "Production",
+  "kind": "dept",
+  "parentId": null,
+  "externalIds": {
+    "scim": "grp-17"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "case_01",
+  "companyId": "co_acme",
+  "kind": "problem",
+  "title": "Machine 4 stops every shift",
+  "state": "open",
+  "ownerRoleId": "role_lead",
+  "routeKey": "r1",
+  "raisedAt": "2026-10-30T08:00:00.000Z",
+  "url": "https://example.com/acme/cases/case_01"
+}

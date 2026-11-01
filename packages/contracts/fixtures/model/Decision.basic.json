@@ -1,0 +1,11 @@
+{
+  "id": "dec_01",
+  "companyId": "co_acme",
+  "caseId": "case_01",
+  "answer": "yes",
+  "reason": "Worth fixing this quarter.",
+  "decidedAt": "2026-10-31T10:00:00.000Z",
+  "decidedByRoleId": "role_lead",
+  "decidedByUserId": "usr_01",
+  "projectId": "prj_01"
+}
