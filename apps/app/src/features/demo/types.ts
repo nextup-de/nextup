@@ -84,10 +84,17 @@ export type Metrics = {
 
 export type ViewCopy = { title: string; sub: string };
 
+// The company's spend rule: who may spend how much without a sign-off (CompanyRule "spend").
+export type SpendRule = { limitEur: number; text: string };
+// One company goal, matched to cases by keyword.
+export type SeedGoal = { goal: string; keys: string[] };
+
 export type Seed = {
   promiseDays: number; outcomeDays: number;
   depts: Dept[]; people: OrgPerson[]; problems: Problem[]; ideas: Idea[]; initiatives: Initiative[]; outcomes: Outcome[];
   personas: RolePersona[]; leaders: string[]; routes: Route[]; cases: SeedCase[]; waitingOn: WaitingOn[]; buddies: Buddy[];
+  goals: SeedGoal[]; // filled from the Goal table by companySeed(), never from seedJson (D5)
+  spend: SpendRule | null; // filled from the CompanyRule table by companySeed(), never from seedJson (D5)
   stall: Stall[]; ledger: Ledger; metrics: Metrics; views: Record<string, ViewCopy>;
   briefs?: Record<string, WrittenBrief>; // written AI briefs per idea id, instead of features/ideas/brief-demo (the static demo's renamed copy)
   projects?: SeedProject[]; // accepted ideas being worked on, in every state (features/projects)
