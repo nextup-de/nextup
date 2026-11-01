@@ -1,0 +1,47 @@
+{
+  "question": "q08",
+  "persona": "erik",
+  "source": "synthetic",
+  "recordedAt": null,
+  "request": {
+    "requests": [
+      {
+        "entityTypes": [
+          "driveItem"
+        ],
+        "query": {
+          "queryString": "what is projekt falke"
+        },
+        "from": 0,
+        "size": 10
+      }
+    ]
+  },
+  "status": 200,
+  "body": {
+    "value": [
+      {
+        "searchTerms": [],
+        "hitsContainers": [
+          {
+            "total": 1,
+            "moreResultsAvailable": false,
+            "hits": [
+              {
+                "hitId": "hit-06",
+                "rank": 1,
+                "summary": "Streng vertraulich. Made-up test content of <c0>Board minutes 2026-09 Projekt Falke</c0> <ddd/>",
+                "resource": {
+                  "@odata.type": "#microsoft.graph.driveItem",
+                  "id": "01SYNTHETICITEM06",
+                  "name": "Board minutes 2026-09 Projekt Falke.docx",
+                  "webUrl": "https://nextuptest.sharepoint.com/sites/AcmeBoard/Acme%20Board/Minutes/2026/Board%20minutes%202026-09%20Projekt%20Falke.docx"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

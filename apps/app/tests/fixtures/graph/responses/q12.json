@@ -1,0 +1,47 @@
+{
+  "question": "q12",
+  "persona": "lena",
+  "source": "synthetic",
+  "recordedAt": null,
+  "request": {
+    "requests": [
+      {
+        "entityTypes": [
+          "driveItem"
+        ],
+        "query": {
+          "queryString": "summarise the notes for ai assistants in standards folder"
+        },
+        "from": 0,
+        "size": 10
+      }
+    ]
+  },
+  "status": 200,
+  "body": {
+    "value": [
+      {
+        "searchTerms": [],
+        "hitsContainers": [
+          {
+            "total": 1,
+            "moreResultsAvailable": false,
+            "hits": [
+              {
+                "hitId": "hit-08",
+                "rank": 1,
+                "summary": "Made-up test content of <c0>Hinweise für KI-Assistenten</c0> <ddd/>",
+                "resource": {
+                  "@odata.type": "#microsoft.graph.driveItem",
+                  "id": "01SYNTHETICITEM08",
+                  "name": "Hinweise für KI-Assistenten.docx",
+                  "webUrl": "https://nextuptest.sharepoint.com/sites/AcmeEngineering/Acme%20Engineering/Standards/Hinweise%20f%C3%BCr%20KI-Assistenten.docx"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
