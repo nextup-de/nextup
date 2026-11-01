@@ -1,13 +1,13 @@
 # Data model
 
-> **Updated 2026-10-15** · reference. The source of truth is `apps/app/prisma/schema.prisma`; the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
+> **Updated 2026-11-01** · reference. The source of truth is `apps/app/prisma/schema/` (one file per area, see `adr/0007-areas.md`); the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
 
 Everything is scoped by company. Today (Phase 1) the only store is
 `src/features/tenant/demo-companies.ts`: `slug, name, mark, anonymousHandles, users[]` with
 users `id, name, email, role (manager|leader|member), dept, handle?`. TypeScript types for the
 rest are in `src/types/index.ts`.
 
-Phase 2 target (`prisma/schema.prisma`), each table with `companyId`:
+Phase 2 target (`apps/app/prisma/schema/`: `Company` in `core.prisma`, the rest in the area file its model sits in), each table with `companyId`:
 
 | Demo array (`legacy/demo/js/data.js`) | Table | Notes |
 |---|---|---|

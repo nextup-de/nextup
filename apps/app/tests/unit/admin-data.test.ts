@@ -1,7 +1,7 @@
 // The Data page's two pure parts: the source cards (counts and verdicts) and the data map. The map
 // is checked against the code it describes, so adding a reader without adding it here fails a test.
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { SEED } from "@/features/demo/seed";
 import { GOALS } from "@/features/evaluate";
@@ -120,7 +120,11 @@ describe("DATA_MAP", () => {
   });
 
   it("names a real table for every stored node", () => {
-    const schema = readFileSync(join(__dirname, "../../prisma/schema.prisma"), "utf8");
+    const dir = join(__dirname, "../../prisma/schema");
+    const schema = readdirSync(dir)
+      .filter((f) => f.endsWith(".prisma"))
+      .map((f) => readFileSync(join(dir, f), "utf8"))
+      .join("\n");
     for (const node of DATA_MAP.nodes.filter((x) => x.column === "stored")) {
       const models = node.id === "Org" ? ["OrgUnit", "OrgRole"] : [node.id];
       for (const m of models) expect(schema, m).toMatch(new RegExp(`^model ${m} \\{`, "m"));
