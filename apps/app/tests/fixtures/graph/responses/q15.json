@@ -1,0 +1,35 @@
+{
+  "question": "q15",
+  "persona": "lena",
+  "source": "synthetic",
+  "recordedAt": null,
+  "request": {
+    "requests": [
+      {
+        "entityTypes": [
+          "driveItem"
+        ],
+        "query": {
+          "queryString": "show me the test results of prototype b-300"
+        },
+        "from": 0,
+        "size": 10
+      }
+    ]
+  },
+  "status": 200,
+  "body": {
+    "value": [
+      {
+        "searchTerms": [],
+        "hitsContainers": [
+          {
+            "total": 0,
+            "moreResultsAvailable": false,
+            "hits": []
+          }
+        ]
+      }
+    ]
+  }
+}

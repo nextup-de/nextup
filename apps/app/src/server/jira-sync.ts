@@ -17,17 +17,15 @@ import { open, integrationContext, vaultKey } from "@/features/connectors/vault"
 import { seedFor } from "@/features/demo";
 import { JIRA_ACTOR, JIRA_SOURCE } from "@/features/integrations";
 import { parseJiraSettings } from "@/features/integrations/jira/settings";
-import { JiraError, type JiraAccount, type JiraApiFactory } from "@/features/integrations/jira/types";
+import { JiraError, type JiraAccount } from "@/features/integrations/jira/types";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { appendEventRow, loadLog } from "@/lib/db/events";
 import {
   claimLease, companiesWithIntegrationOn, getIntegration, integrationSecrets, JIRA, recordRun, releaseLease,
 } from "@/lib/db/integrations";
-import { cloudApi } from "@/server/jira/cloud";
-import { dcApi } from "@/server/jira/dc";
+import { jiraApiFor } from "@/server/jira/flavors";
 import { runRound, type RoundStore } from "@/server/jira/round";
 
-const FACTORIES: Record<"cloud" | "dc", JiraApiFactory> = { cloud: cloudApi, dc: dcApi };
 /** A round that dies without releasing loses its lease after this. Longer than any round should take. */
 const LEASE_MS = 5 * 60_000;
 const RECONCILE_EVERY_MS = 60 * 60_000;
@@ -97,7 +95,7 @@ export async function syncCompany(company: { id: string; slug: string }, now = n
       if (!token) {
         return void (await recordRun(company.id, JIRA, { error: key ? "The API token cannot be read. Enter it again." : "The vault key is not set on this server." }));
       }
-      const api = FACTORIES[parsed.settings.flavor](parsed.settings, token);
+      const api = jiraApiFor(parsed.settings, token);
       const reconcile = row.pulledAt === null || now.getTime() - (lastReconcile.get(company.id) ?? 0) >= RECONCILE_EVERY_MS;
       const r = await runRound(api, dbStore(company), {
         settings: parsed.settings, enabledAt: row.enabledAt, pushedSeq: row.pushedSeq, pulledAt: row.pulledAt,

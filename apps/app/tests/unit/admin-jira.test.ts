@@ -18,10 +18,11 @@ describe("settingsFromForm", () => {
     expect(JSON.stringify(r)).not.toContain("secret");
   });
 
-  it("names each wrong field, and refuses Data Center", () => {
+  it("names each wrong field, and refuses an unknown flavor", () => {
     const bad = settingsFromForm(form({ siteUrl: "acme", email: "x", projectKey: "1" }));
     expect(!bad.ok && bad.errors.join(" ")).toMatch(/siteUrl[\s\S]*email[\s\S]*projectKey/);
-    expect(settingsFromForm(form({ flavor: "dc" })).ok).toBe(false);
+    expect(settingsFromForm(form({ flavor: "dc", email: "" })).ok).toBe(true);
+    expect(settingsFromForm(form({ flavor: "server" })).ok).toBe(false);
   });
 
   it("needs the issue types to save, but not to test (the test is what lists them)", () => {

@@ -5,6 +5,7 @@
 //   --token fake-token                   the API token it accepts
 //   --email jira-bot@example.com         the integration account's email
 //   --project NUP                        the project key
+//   --flavor dc                          speak the Data Center dialect (REST v2, Bearer token; default cloud)
 //   --direct-done                        let To Do go straight to Done (default: it must pass In Progress)
 //
 // Point the admin page at it: site http://127.0.0.1:<port>, the email and token above, project NUP,
@@ -29,6 +30,7 @@ const fake = await startFakeJira({
   token: flag("token", "fake-token"),
   email: flag("email", "jira-bot@example.com"),
   projectKey: flag("project", "NUP"),
+  flavor: flag("flavor", "cloud") === "dc" ? "dc" : "cloud",
   directDone: args.includes("--direct-done"),
 });
 

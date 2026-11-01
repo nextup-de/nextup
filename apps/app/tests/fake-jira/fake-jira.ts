@@ -1,4 +1,5 @@
-// A small fake of Jira Cloud (REST API v3) for the sync's tests and for local work
+// A small fake of Jira Cloud (REST API v3), or with `flavor: "dc"` of Jira Data Center (REST API v2: Bearer
+// token, plain-text comments, users by key, GET /search paged by startAt) for the sync's tests and for local work
 // (`node tests/fake-jira/server.mjs --port 4010`). node:http only, no dependencies, and no imports from
 // src/ - server.mjs runs this file directly with Node's type stripping, so it sticks to syntax that
 // erases cleanly (no enums, no parameter properties).
@@ -29,6 +30,8 @@ type FakeIssue = {
 };
 
 export type FakeOptions = {
+  /** "cloud" (default) or "dc" (Data Center dialect). */
+  flavor?: "cloud" | "dc";
   /** API token the fake accepts (the password half of Basic auth). */
   token?: string;
   /** The integration account: the email it signs in with, and the accountId /myself answers. */
@@ -65,6 +68,7 @@ const adfOf = (text: string) => ({
 export type FakeJira = Awaited<ReturnType<typeof startFakeJira>>;
 
 export async function startFakeJira(opts: FakeOptions = {}) {
+  const dc = opts.flavor === "dc";
   const token = opts.token ?? "fake-token";
   const email = opts.email ?? "jira-bot@example.com";
   const bot = { accountId: opts.accountId ?? "acc-bot", displayName: "NextUp Bot" };
@@ -123,6 +127,10 @@ export async function startFakeJira(opts: FakeOptions = {}) {
     });
   };
 
+  /** A user as the dialect writes it: accountId on Cloud, key and name on Data Center. */
+  const userOut = <T extends { accountId: string; displayName: string } | undefined>(u: T) =>
+    !u || !dc ? u : { key: u.accountId, name: u.accountId, displayName: u.displayName };
+  const commentOut = (c: Comment) => ({ ...c, author: userOut(c.author) });
   const typeName = (id: string) => (id === EPIC_TYPE.id ? EPIC_TYPE.name : TASK_TYPE.name);
   const view = (i: FakeIssue, changelog: boolean) => ({
     id: i.id, key: i.key,
@@ -130,7 +138,7 @@ export async function startFakeJira(opts: FakeOptions = {}) {
       summary: i.summary, status: i.status, issuetype: { id: i.typeId, name: typeName(i.typeId), subtask: false },
       ...(i.parentKey ? { parent: { key: i.parentKey } } : {}), labels: i.labels, updated: stamp(i.updated),
     },
-    ...(changelog ? { changelog: { histories: i.histories } } : {}),
+    ...(changelog ? { changelog: { histories: i.histories.map((h) => ({ ...h, author: userOut(h.author) })) } } : {}),
   });
 
   // ---- HTTP ----
@@ -156,26 +164,35 @@ export async function startFakeJira(opts: FakeOptions = {}) {
       fail429--;
       return json(res, 429, { errorMessages: ["Rate limit exceeded"] }, { "retry-after": String(retryAfter) });
     }
-    const expected = "Basic " + Buffer.from(`${email}:${token}`).toString("base64");
+    const expected = dc ? "Bearer " + token : "Basic " + Buffer.from(`${email}:${token}`).toString("base64");
     if (req.headers.authorization !== expected) return json(res, 401, { message: "Unauthorized" });
 
-    const p = url.pathname.replace(/^\/rest\/api\/3/, "");
+    const p = (dc ? url.pathname.replace(new RegExp('^/rest/api/2'), '') : url.pathname).replace(/^\/rest\/api\/3/, "");
     let m: RegExpExecArray | null;
     try {
-      if (method === "GET" && p === "/myself") return json(res, 200, bot);
+      if (method === "GET" && p === "/myself") return json(res, 200, dc ? userOut(bot) : bot);
       if (method === "GET" && (m = /^\/project\/([^/]+)$/.exec(p))) {
         if (m[1] !== projectKey) return fail(res, 404, "No project could be found with key '" + m[1] + "'.");
         return json(res, 200, { id: "10100", key: projectKey, name: "NextUp test", issueTypes: [EPIC_TYPE, TASK_TYPE] });
       }
       if (method === "GET" && (m = /^\/issue\/createmeta\/([^/]+)\/issuetypes$/.exec(p))) {
-        return json(res, 200, { issueTypes: [{ ...EPIC_TYPE, subtask: false }, { ...TASK_TYPE, subtask: false }] });
+        const list = [{ ...EPIC_TYPE, subtask: false }, { ...TASK_TYPE, subtask: false }];
+        return json(res, 200, dc ? { values: list } : { issueTypes: list });
       }
       if (method === "GET" && p === "/mypermissions") {
         const out: Record<string, { havePermission: boolean }> = {};
         for (const n of (url.searchParams.get("permissions") ?? "").split(",").filter(Boolean)) out[n] = { havePermission: perms[n as keyof typeof perms] === true };
         return json(res, 200, { permissions: out });
       }
-      if (method === "POST" && p === "/search/jql") {
+      if (dc && method === "GET" && p === "/search") {
+        const clauses = parseJql(url.searchParams.get("jql") ?? "");
+        const all = [...issues.values()].filter((i) => clauses.every((c) => c(i)));
+        const start = Number(url.searchParams.get("startAt") ?? 0);
+        const size = Math.min(Number(url.searchParams.get("maxResults") ?? 50), 100);
+        const cl = (url.searchParams.get("expand") ?? "").includes("changelog");
+        return json(res, 200, { startAt: start, maxResults: size, total: all.length, issues: all.slice(start, start + size).map((i) => view(i, cl)) });
+      }
+      if (!dc && method === "POST" && p === "/search/jql") {
         const b = body as { jql?: string; maxResults?: number; nextPageToken?: string; expand?: string };
         const clauses = parseJql(b.jql ?? "");
         const all = [...issues.values()].filter((i) => clauses.every((c) => c(i)));
@@ -209,14 +226,14 @@ export async function startFakeJira(opts: FakeOptions = {}) {
         if (sub === "comment" && method === "GET") {
           const from = Number(url.searchParams.get("startAt") ?? 0);
           const size = Number(url.searchParams.get("maxResults") ?? 50);
-          return json(res, 200, { comments: i.comments.slice(from, from + size), total: i.comments.length, startAt: from, maxResults: size });
+          return json(res, 200, { comments: i.comments.slice(from, from + size).map(commentOut), total: i.comments.length, startAt: from, maxResults: size });
         }
         if (sub === "comment" && method === "POST") {
           if (!perms.ADD_COMMENTS) return fail(res, 403, "You do not have permission to comment.");
-          const c: Comment = { id: String(nextComment++), author: bot, body: (body as { body: unknown }).body, created: stamp(now()), updated: stamp(now()) };
+          const c: Comment = { id: String(nextComment++), author: bot, body: dc ? String((body as { body: unknown }).body) : (body as { body: unknown }).body, created: stamp(now()), updated: stamp(now()) };
           i.comments.push(c);
           touch(i);
-          return json(res, 201, c);
+          return json(res, 201, commentOut(c));
         }
         if (sub === "transitions" && method === "GET") {
           return json(res, 200, { transitions: (graph[i.status.id] ?? []).map((to) => ({ id: "t" + to.id, name: "Move to " + to.name, to })) });
@@ -263,7 +280,7 @@ export async function startFakeJira(opts: FakeOptions = {}) {
     },
     comment(key: string, text: string, who = "alice"): string {
       const i = get(key);
-      const c: Comment = { id: String(nextComment++), author: person(who), body: adfOf(text), created: stamp(now()), updated: stamp(now()) };
+      const c: Comment = { id: String(nextComment++), author: person(who), body: dc ? text : adfOf(text), created: stamp(now()), updated: stamp(now()) };
       i.comments.push(c);
       touch(i);
       return c.id;

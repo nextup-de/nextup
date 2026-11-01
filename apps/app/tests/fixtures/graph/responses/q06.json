@@ -1,0 +1,47 @@
+{
+  "question": "q06",
+  "persona": "fiona",
+  "source": "synthetic",
+  "recordedAt": null,
+  "request": {
+    "requests": [
+      {
+        "entityTypes": [
+          "driveItem"
+        ],
+        "query": {
+          "queryString": "what do we pay sensotec for the temperature sensor ts-20"
+        },
+        "from": 0,
+        "size": 10
+      }
+    ]
+  },
+  "status": 200,
+  "body": {
+    "value": [
+      {
+        "searchTerms": [],
+        "hitsContainers": [
+          {
+            "total": 1,
+            "moreResultsAvailable": false,
+            "hits": [
+              {
+                "hitId": "hit-05",
+                "rank": 1,
+                "summary": "Vertraulich. Made-up test content of <c0>Supplier prices Q4 2026 Sensotec</c0> <ddd/>",
+                "resource": {
+                  "@odata.type": "#microsoft.graph.driveItem",
+                  "id": "01SYNTHETICITEM05",
+                  "name": "Supplier prices Q4 2026 Sensotec.docx",
+                  "webUrl": "https://nextuptest.sharepoint.com/sites/AcmeFinance/Acme%20Finance/Procurement/Supplier%20prices/Sensotec%20GmbH/Supplier%20prices%20Q4%202026%20Sensotec.docx"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

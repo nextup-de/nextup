@@ -1,0 +1,35 @@
+{
+  "question": "q05",
+  "persona": "lena",
+  "source": "synthetic",
+  "recordedAt": null,
+  "request": {
+    "requests": [
+      {
+        "entityTypes": [
+          "driveItem"
+        ],
+        "query": {
+          "queryString": "what do we pay sensotec for the temperature sensor ts-20"
+        },
+        "from": 0,
+        "size": 10
+      }
+    ]
+  },
+  "status": 200,
+  "body": {
+    "value": [
+      {
+        "searchTerms": [],
+        "hitsContainers": [
+          {
+            "total": 0,
+            "moreResultsAvailable": false,
+            "hits": []
+          }
+        ]
+      }
+    ]
+  }
+}

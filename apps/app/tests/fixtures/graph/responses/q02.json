@@ -1,0 +1,58 @@
+{
+  "question": "q02",
+  "persona": "lena",
+  "source": "synthetic",
+  "recordedAt": null,
+  "request": {
+    "requests": [
+      {
+        "entityTypes": [
+          "driveItem"
+        ],
+        "query": {
+          "queryString": "bis zu welchem betrag dürfen teamleiter ersatzteile bestellen"
+        },
+        "from": 0,
+        "size": 10
+      }
+    ]
+  },
+  "status": 200,
+  "body": {
+    "value": [
+      {
+        "searchTerms": [],
+        "hitsContainers": [
+          {
+            "total": 2,
+            "moreResultsAvailable": false,
+            "hits": [
+              {
+                "hitId": "hit-01",
+                "rank": 1,
+                "summary": "Made-up test content of <c0>Spending policy 2026</c0> <ddd/>",
+                "resource": {
+                  "@odata.type": "#microsoft.graph.driveItem",
+                  "id": "01SYNTHETICITEM01",
+                  "name": "Spending policy 2026.docx",
+                  "webUrl": "https://nextuptest.sharepoint.com/sites/AcmeCompany/Acme%20Company/Policies/Finance/Spending%20policy%202026.docx"
+                }
+              },
+              {
+                "hitId": "hit-02",
+                "rank": 2,
+                "summary": "Made-up test content of <c0>Wer entscheidet was</c0> <ddd/>",
+                "resource": {
+                  "@odata.type": "#microsoft.graph.driveItem",
+                  "id": "01SYNTHETICITEM02",
+                  "name": "Wer entscheidet was.docx",
+                  "webUrl": "https://nextuptest.sharepoint.com/sites/AcmeCompany/Acme%20Company/Handbook/Wer%20entscheidet%20was.docx"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -43,6 +43,9 @@ host_up() {
   export OPSTEST_HOST
   (cd "$OPSTEST_ROOT" && docker build -q -t "$OPSTEST_IMAGE" stack/tests/host >/dev/null) || {
     echo "host_up: could not build $OPSTEST_IMAGE" >&2; return 1; }
+  # A host left by a test that was cut off still holds the cache volume; a second dockerd on the same
+  # /var/lib/docker never gets ready ("not ready after 60 s"), so the old one goes first.
+  docker ps -aq --filter "volume=$OPSTEST_VOLUME" | xargs -r docker rm -f >/dev/null 2>&1
   docker run -d --privileged --name "$OPSTEST_HOST" -v "$OPSTEST_VOLUME:/var/lib/docker" \
     "$OPSTEST_IMAGE" >/dev/null || { echo "host_up: could not start $OPSTEST_HOST" >&2; return 1; }
 
