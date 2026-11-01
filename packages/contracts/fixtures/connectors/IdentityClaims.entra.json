@@ -1,0 +1,17 @@
+{
+  "issuer": "https://login.example.com/tenant-1/v2.0",
+  "subject": "sub_entra_01",
+  "email": "anna.example@acme.example",
+  "displayName": "Anna Example",
+  "tenantId": "tenant-1",
+  "groups": [
+    "grp-prod"
+  ],
+  "appRoles": [
+    "nextup.user"
+  ],
+  "department": "Production",
+  "externalIds": {
+    "entra": "7f1c0000-0000-4000-8000-000000000001"
+  }
+}

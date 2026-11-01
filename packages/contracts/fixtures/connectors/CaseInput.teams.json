@@ -1,0 +1,12 @@
+{
+  "companyId": "co_acme",
+  "source": "teams",
+  "externalId": "19:msg-abc",
+  "kind": "problem",
+  "title": "Machine 4 stops every shift",
+  "body": "Seen on three shifts this week.",
+  "raisedByUserId": null,
+  "raisedByExternalId": "entra:7f1c0000-0000-4000-8000-000000000001",
+  "routeHint": null,
+  "receivedAt": "2026-11-01T09:30:00.000Z"
+}

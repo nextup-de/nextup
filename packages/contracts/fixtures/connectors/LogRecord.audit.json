@@ -1,0 +1,11 @@
+{
+  "id": "log_01",
+  "companyId": "co_acme",
+  "at": "2026-11-01T09:30:00.000Z",
+  "type": "audit.case_decided",
+  "actorUserId": "user_01",
+  "target": "case_01",
+  "data": {
+    "answer": "yes"
+  }
+}
