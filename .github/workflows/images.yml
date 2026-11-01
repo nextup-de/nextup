@@ -1,9 +1,10 @@
 # Publish the stack images to GHCR (docs/plans/2026-09-27_platform.md, stage 1 step 4).
 #
 # When CI has passed on main (lint, typecheck, tests, build, both e2e suites), this builds the very
-# commit CI tested from ops/Dockerfile twice and pushes:
-#   ghcr.io/selluxhenner/nextup-app      target `run`   - what each company stack runs
-#   ghcr.io/selluxhenner/nextup-migrate  target `build` - the one-shot prisma migrate (+ demo seed)
+# commit CI tested and pushes three images (the first two from ops/Dockerfile):
+#   ghcr.io/nextup-de/nextup-app      target `run`   - what each company stack runs
+#   ghcr.io/nextup-de/nextup-migrate  target `build` - the one-shot prisma migrate (+ demo seed)
+#   ghcr.io/nextup-de/nextup-brain    services/brain - routing proposal and repeats (--brain stacks)
 # tagged `main` (moves with every merge) and `sha-<short>` (pinned, for rollbacks).
 #
 # The images hold this public repo's code and no secrets: .dockerignore keeps every .env out, and
@@ -32,7 +33,7 @@ on:
   # On a PR the images are built but not pushed - proof that a change still builds a stack image.
   pull_request:
     branches: [main]
-    paths: ["apps/**", "packages/**", "ops/Dockerfile", ".dockerignore", "package.json", "package-lock.json", ".github/workflows/images.yml"]
+    paths: ["apps/**", "packages/**", "ops/Dockerfile", "services/brain/**", ".dockerignore", "package.json", "package-lock.json", ".github/workflows/images.yml"]
   workflow_dispatch:
 
 permissions:
@@ -41,7 +42,7 @@ permissions:
 
 jobs:
   publish:
-    name: build and push · app + migrate
+    name: build and push · app + migrate + brain
     # A workflow_run fires for every CI run on main, red ones too: build only the green pushes.
     if: >-
       github.event_name != 'workflow_run' ||
@@ -82,6 +83,7 @@ jobs:
           echo "commit=$short" >> "$GITHUB_OUTPUT"
           echo "app=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-app" >> "$GITHUB_OUTPUT"
           echo "migrate=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-migrate" >> "$GITHUB_OUTPUT"
+          echo "brain=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-brain" >> "$GITHUB_OUTPUT"
           echo "short=sha-$short" >> "$GITHUB_OUTPUT"
 
       # Built first: `run` copies from the `build` stage, so the second build is a cache hit.
@@ -157,6 +159,35 @@ jobs:
           format: table
         if: github.event_name != 'pull_request'
 
+      # The brain image is built from its own folder. It listens only inside a stack, behind its API
+      # key, so its scan is reported, not a gate.
+      - name: nextup-brain (services/brain)
+        uses: docker/build-push-action@v7
+        with:
+          context: services/brain
+          file: services/brain/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ steps.tags.outputs.brain }}:main
+            ${{ steps.tags.outputs.brain }}:${{ steps.tags.outputs.short }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.COMMIT }}
+            org.opencontainers.image.description=NextUp brain (routing proposal, repeats)
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy - nextup-brain (report only)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.tags.outputs.brain }}:${{ steps.tags.outputs.short }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+          format: table
+        if: github.event_name != 'pull_request'
+
       - name: Summary
         if: github.event_name != 'pull_request'
         shell: bash
@@ -165,6 +196,7 @@ jobs:
             echo "### Published"
             echo "- \`${{ steps.tags.outputs.app }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
             echo "- \`${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
+            echo "- \`${{ steps.tags.outputs.brain }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # 1. staging.sellux.ch gets exactly this build.
