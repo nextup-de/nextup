@@ -1,0 +1,62 @@
+// Area auth (docs/adr/0007-areas.md). Models: User, ApiToken. Changed only by: DIR. Every migration is its own folder under prisma/migrations.
+
+// A person who can sign in. `role` is a plain String, not an enum, because the three roles are
+// data in src/config/roles.ts (Kevin's file) and an enum here would be a second source of truth.
+model User {
+  id        String @id @default(cuid())
+  companyId String
+
+  name String
+  // Must match a name used in the company's seedJson (a persona, a route owner, or a row in
+  // people[]) or derive.ts's visibleTo()/inboxFor() match nothing and the inbox renders empty
+  // with no error. The admin create-company action checks this and warns.
+
+  email String
+  role  String // manager | leader | member - see src/config/roles.ts
+  dept  String @default("")
+  line  String @default("") // "Team lead · Production, 4-series" - persona.who.line
+  ini   String @default("")
+
+  handle String? // anonymous handle for members, e.g. "Anonymous #4471"
+
+  // Personal login code: sha256 of it (src/features/auth/login-code.ts). Unique across ALL
+  // companies because the login finds the person from the code alone. Null = no code issued.
+  loginCodeHash String?   @unique
+  loginCodeAt   DateTime? // when the current code was issued - shown in /admin, never the code
+
+  // Microsoft's object id for this person, bound on their first Microsoft sign-in (matched by
+  // email then). After that the account is matched by this, which Microsoft never reassigns.
+  entraOid String?
+
+  createdAt DateTime @default(now())
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  events      CaseEvent[]
+  assistTurns AssistTurn[]
+  ideaDrafts  IdeaDraft[]
+  tickets     Ticket[]
+  connections Connection[]
+
+  @@unique([companyId, email])
+  @@unique([companyId, entraOid])
+  @@index([companyId, name])
+}
+
+// A bearer token for one company's integration endpoints. docs/INTEGRATIONS.md: a token for
+// company A used against company B is a 403, and that is a test.
+model ApiToken {
+  id        String @id @default(cuid())
+  companyId String
+
+  name   String
+  hash   String   @unique // sha256(raw token), hex. The raw token is shown once and never stored.
+  scopes String[] // ["events:read", "events:write"]
+
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}

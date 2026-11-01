@@ -1,0 +1,212 @@
+// Area core (docs/adr/0007-areas.md). Models: Company, CaseEvent, AssistTurn, IdeaDraft, IdeaTurn (plus generator client and datasource db). Changed only by: IDN, CLK, VIS. Every migration is its own folder under prisma/migrations.
+
+// The server-side store. Phase 2 of docs/plans/2026-09-15_build-plan.md; the tables docs/DATA_MODEL.md asks for, minus
+// the ones the demo seed still covers (see below).
+//
+// Deliberate scope: only what has to be SHARED between people or QUERIED lives here. The rich
+// per-company content - departments, the org chart, the routing table, problems, ideas,
+// initiatives, seed cases - stays as one `Seed` object in Company.seedJson, because
+// src/features/cases/reducer.ts takes `reduce(seed, log)` and needs that shape verbatim.
+// Normalising it would be weeks of work and would buy nothing the pilot needs.
+//
+// Note for Prisma 7: the datasource carries no `url`. Connection details live in
+// prisma7.config.ts - `url = env("DATABASE_URL")` here is a validation error since v7.
+
+generator client {
+  // The classic generator: emits into node_modules/@prisma/client, so `@prisma/client` stays a
+  // plain bare import. The newer "prisma-client" provider emits .ts into a path we would have to
+  // add to .gitignore, which is Kevin's file. Worth revisiting when Prisma 8 lands.
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// One tenant. `slug` is the [company] URL segment and the subdomain label.
+model Company {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+  mark String @default("")
+
+  // Per-company product rules (docs/plans/2026-09-15_build-plan.md "decisions before Phase 2", #3).
+  anonymousHandles Boolean @default(true)
+
+  // demo | sandbox | pilot | live - docs/INTEGRATIONS.md "Stages". A customer's phase is a flag
+  // set, not a branch.
+  stage String @default("demo")
+
+  // scrypt$<saltHex>$<hashHex>. The pilot's shared company code. No longer a way in: people sign
+  // in with their own User.loginCodeHash or Microsoft. Nullable so new companies need none; kept
+  // until the old rows are gone, then dropped.
+  accessCodeHash String?
+
+  // "Continue with Microsoft": the company's Entra tenant ID (a GUID). Null = Microsoft sign-in
+  // off for this company. Only accounts from this tenant get in - src/features/auth/entra.ts.
+  entraTenantId String?
+
+  // The demo clock, and the reason it is a column rather than a derived value: reducer.ts reads
+  // `log.day` directly (`const day = log.day | 0`) and never replays day.advanced. So EventLog.day
+  // has to be materialised somewhere, and it is here. A day.advanced row still gets written - it
+  // is the audit trail - and it bumps this in the same transaction.
+  demoDay Int @default(0)
+
+  // Signed into every session cookie; a cookie with another number is dead. Bumped when the
+  // company changes stage, so a demo visitor's session ends the moment real people move in.
+  sessionEpoch Int @default(0)
+
+  // One `Seed` (src/features/demo/types.ts), verbatim. Cloned from a template when the company is
+  // created in /admin.
+  seedJson Json
+
+  createdAt DateTime @default(now())
+
+  // -- core --
+  events      CaseEvent[]
+  ideaDrafts  IdeaDraft[]
+  ideaTurns   IdeaTurn[]
+  assistTurns AssistTurn[]
+
+  // -- structure --
+  profile  CompanyProfile?
+  orgUnits OrgUnit[]
+  orgRoles OrgRole[]
+  holders  OrgRoleHolder[]
+  rules    RoutingRule[]
+  goals    Goal[]
+
+  // -- auth --
+  users  User[]
+  tokens ApiToken[]
+
+  // -- integrations --
+  config       CompanyConfig?
+  connections  Connection[]
+  integrations Integration[]
+  documents    Document[]
+
+  // -- ops --
+  tickets       Ticket[]
+  ticketReplies TicketReply[]
+  featureFlags  FeatureFlag[]
+}
+
+// The event log - one row per appended fact. "Events, not edits": nothing here is ever updated.
+//
+// What is NOT in this table: seed history. Those events live inside seedJson (SeedCase.seedEvents)
+// and reducer.ts synthesises them with seed:true before replaying these rows. Keeping them out
+// means "reset this company" is a delete of these rows and nothing else.
+model CaseEvent {
+  // Minted by the client (newId("e")) so an optimistic UI can dedupe, and so a retried server
+  // action collides on the primary key instead of writing a second row.
+  id String @id
+
+  // The cursor for GET /api/[company]/events?since=. Int, not BigInt: BigInt does not survive
+  // JSON.stringify and would leak into the route handler and the client.
+  seq Int @unique @default(autoincrement())
+
+  companyId String
+
+  ts  DateTime @default(now())
+  day Int // Company.demoDay when this was written - matches appendEvent(), which stamps the day
+  // it left, before day.advanced moves the clock.
+
+  type        String // CaseEventType - src/features/cases/events.ts
+  actor       String // display name or handle; what reduce() reads
+  actorUserId String? // real identity behind the actor; null for "system:n8n"
+  targetId    String? // case id, idea id, or null (day.advanced)
+  payload     Json
+
+  source String  @default("app") // app | n8n | admin
+  idemKey String? // integration idempotency key; a replay is a 200 with no new row
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actorRef User?  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  // Ordering is by seq, never by ts: ts ties at millisecond resolution and the reducer is
+  // order-sensitive (a hand-over then an answer is not the same as the reverse).
+  @@index([companyId, seq])
+  @@index([companyId, targetId])
+  // Postgres treats NULLs as distinct, so the many rows with no idemKey do not collide.
+  @@unique([companyId, idemKey])
+}
+
+// One question or one answer. Only REDACTED text is stored - names already replaced by roles,
+// secrets and personal data masked (features/assist/redact.ts). Deleted after
+// CompanyConfig.retentionDays. Read in aggregate only: no per-person view (BetrVG §87).
+model AssistTurn {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionId     String // one conversation on the raise page
+  role          String // user | assistant
+  text          String
+  sources       Json     @default("[]") // [{tag, kind, label, level}] actually cited
+  redactions    Json     @default("{}") // {email: 1, name: 2} - counts, never the values
+  blocked       Boolean  @default(false) // question refused: marked above the ceiling
+  unsourced     Boolean  @default(false)
+  helpful       Boolean? // the employee's "that solved it"
+  raisedCaseId  String? // "raise it anyway": the case it became
+  model         String   @default("")
+  promptVersion String   @default("")
+  latencyMs     Int      @default(0)
+  tokensIn      Int      @default(0)
+  tokensOut     Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([companyId, sessionId])
+}
+
+// ── Idea studio (docs/IDEAS.md) ──────────────────────────────────────────────────────────────────
+// An idea being developed in the chat on /raise. Private to its author until published: nobody
+// else - no lead, no admin - reads a draft; /admin sees counts only (BetrVG §87). Publishing
+// appends the usual case.raised event and records the case here, the way AssistTurn.raisedCaseId
+// links a conversation to its case. The score is a snapshot of features/ideas/benchmarks.ts; the
+// server recomputes it from the turns before it lets anything publish.
+model IdeaDraft {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String   @default("")
+  status      String   @default("draft") // draft | published | discarded
+  overall     Int      @default(0)
+  scores      Json     @default("[]") // BenchmarkPart[] at the last turn
+  affected    String[]
+  attachments Int      @default(0)
+  caseId      String? // the case it became
+
+  turns IdeaTurn[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  @@index([companyId, userId, updatedAt])
+}
+
+// One message in an idea's chat. The author's own words are kept as written (they become the
+// case); only redacted text is ever sent to a model.
+model IdeaTurn {
+  id        String    @id @default(cuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  draftId   String
+  draft     IdeaDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  role          String // user | assistant
+  text          String
+  overall       Int? // on assistant turns: the score this reply was about
+  model         String   @default("")
+  promptVersion String   @default("")
+  createdAt     DateTime @default(now())
+
+  @@index([companyId, draftId, createdAt])
+}
