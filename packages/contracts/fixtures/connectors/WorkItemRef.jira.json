@@ -1,0 +1,5 @@
+{
+  "system": "jira",
+  "key": "ACME-12",
+  "url": "https://acme.example/browse/ACME-12"
+}

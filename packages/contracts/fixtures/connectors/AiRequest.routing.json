@@ -1,0 +1,12 @@
+{
+  "companyId": "co_acme",
+  "purpose": "routing",
+  "system": "You propose a route.",
+  "messages": [
+    {
+      "role": "user",
+      "text": "Machine 4 stops every shift"
+    }
+  ],
+  "maxTokens": 500
+}

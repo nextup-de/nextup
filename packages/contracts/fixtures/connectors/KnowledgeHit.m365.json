@@ -1,0 +1,8 @@
+{
+  "id": "hit_01",
+  "source": "m365",
+  "title": "Maintenance plan 2026",
+  "snippet": "Machine 4 is serviced every second Monday.",
+  "url": "https://acme.example/sites/ops/plan.docx",
+  "classification": "internal"
+}

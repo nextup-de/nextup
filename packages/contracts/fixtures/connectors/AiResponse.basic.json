@@ -1,0 +1,6 @@
+{
+  "text": "Route r1",
+  "model": "example-model",
+  "tokensIn": 120,
+  "tokensOut": 8
+}
