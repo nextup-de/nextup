@@ -1,0 +1,1 @@
+{"id":"evt_02","type":"case.decided","typeVersion":1,"companyId":"co_acme","occurredAt":"2026-10-31T10:15:00.000Z","actor":{"userId":"user_ben","roleId":"role_lead"},"subject":{"kind":"case","id":"case_01"},"data":{"answer":"yes","projectId":"proj_01"}}
