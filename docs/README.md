@@ -9,6 +9,8 @@ Each one's status line says how much of it is done.
 
 | Date | Plan | Status |
 |---|---|---|
+| 2026-11-01 | [Master plan: from today's build to a pilot-ready product](plans/2026-11-01_pilot-readiness.md) | draft, 22 phases; waits for Kevin's go |
+| 2026-11-01 | [Analysis: big corporate or mid-size company first?](plans/2026-11-01_segment-analysis.md) | open; Kevin and Marc decide |
 | 2026-10-15 | [From accepted idea to measured project](plans/2026-10-15_idea-to-project.md) | built 15 Oct; release, demo promote, Jira site left |
 | 2026-10-05 | [Admin tickets: what to take from Swiss Edu Solution](plans/2026-10-05_admin-vs-ses.md) | open |
 | 2026-10-03 | [AI server: test first, then rent the GPU](plans/2026-10-03_ai-server-gpu.md) | open |
