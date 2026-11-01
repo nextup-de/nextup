@@ -1,6 +1,6 @@
 # Master plan: from today's build to a pilot-ready product
 
-> **Plan · 2026-11-01 · draft, waiting for Kevin's go on the phases. Nothing built yet.**
+> **Plan · 2026-11-01 · draft, waiting for Kevin's go on the phases. Phase 0 (audit) is done: the gap register is in [../audit/gap-register.md](../audit/gap-register.md).**
 > The rough plan (L0) for everything between today's `main` (984f3b0, #249) and the first pilot with a company
 > of 1,000–2,000 employees. Each phase below gets its own detailed plan before it is built. Why this order and
 > this segment: [2026-11-01_segment-analysis.md](2026-11-01_segment-analysis.md).
@@ -113,7 +113,7 @@ turns it into a gap register. Status: **live** = on and used · **off** = built,
 | --- | --- | --- | --- |
 | Assistant on Bedrock eu-central-1, redaction, DPA gate | off | `server/assist/provider.ts`, `features/assist/redact.ts` | no AWS account on any stack |
 | Brain (route, coach, plan, check-in), OpenAI-compatible | live on demo | `services/brain` | shared CPU server, ~10 users max; coach skips the DPA gate |
-| Eval set | partial | `services/brain/eval`: 32 ideas | brain tests and eval not in CI |
+| Eval set | partial | `services/brain/eval`: 32 ideas | brain eval not in CI |
 
 ### Data protection
 
@@ -143,7 +143,7 @@ turns it into a gap register. Status: **live** = on and used · **off** = built,
 
 ### Tests
 
-About 950 unit tests (vitest, in CI), about 67 DB tests (not found in `ci.yml`), about 44 e2e tests (demo suite,
+About 950 unit tests (vitest, in CI), about 67 DB tests (CI job `db-tests`, see `docs/audit/ci-baseline.md`), about 44 e2e tests (demo suite,
 DB login suite, visual), a fake Jira. Seed: acme with 5 users and 9 cases.
 
 ## Integration principles

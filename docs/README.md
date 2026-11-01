@@ -35,6 +35,7 @@ is on their first line.
 | [IDEAS.md](IDEAS.md) | the idea studio |
 | [RESPONSIVE.md](RESPONSIVE.md) | layout rules |
 | [DEPLOY.md](DEPLOY.md) | running it on a laptop |
+| [audit/gap-register.md](audit/gap-register.md) | gaps to the pilot, by phase |
 
 Design system (tokens, components, brand assets, UI kit): `design-system/README.md`.
 
