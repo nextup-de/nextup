@@ -1,0 +1,11 @@
+{
+  "id": "usr_03",
+  "companyId": "co_acme",
+  "displayName": "Sam Sample",
+  "email": null,
+  "locale": null,
+  "active": true,
+  "managerId": null,
+  "orgUnitIds": [],
+  "externalIds": {}
+}

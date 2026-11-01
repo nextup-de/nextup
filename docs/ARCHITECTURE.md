@@ -1,6 +1,6 @@
 # Architecture
 
-> **Updated 2026-09-28** · reference: how the code is organised.
+> **Updated 2026-11-01** · reference: how the code is organised.
 
 An npm-workspaces monorepo driven by Turborepo (`turbo.json`). The Next.js app lives in
 `apps/app/`; shared code will go to `packages/` as it appears, and the developer admin moves to
@@ -63,6 +63,14 @@ api/                   route handlers (health; auth in Phase 2)
 - **Tests:** `tests/unit/` mirrors `src/features/`. `tests/e2e/` (Playwright, Phase 3) drives
   the login flow and the inbox loop.
 - **Nothing named `data/`** - the repo `.gitignore` ignores that folder name everywhere.
+
+## Contracts and decisions
+
+`packages/contracts` (`@nextup/contracts`) holds the zod schemas two sides agree on. It has two export paths:
+`@nextup/contracts` (stack <-> admin.sellux.ch) and `@nextup/contracts/public` (PILOT's public contracts: the
+canonical model and the connector interfaces; nothing in the app imports it yet). Public contracts are only
+extended, never broken; see `packages/contracts/README.md`. Architecture decisions are recorded in `docs/adr/`
+(index: `docs/adr/README.md`).
 
 ## Where the demo went
 

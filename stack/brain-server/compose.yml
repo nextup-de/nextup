@@ -17,7 +17,7 @@ services:
   # loopback). The public interface never sees it. Stateless - every request brings the company's
   # routing rows and earlier items, so one brain can serve several stacks.
   brain:
-    image: nextup-brain:local
+    image: ${NEXTUP_BRAIN_IMAGE:-nextup-brain:local}
     restart: unless-stopped
     logging: *logging
     read_only: true
@@ -44,7 +44,8 @@ services:
   # The model the brain calls. Pulls BRAIN_MODEL once into its volume on first start (the only
   # time it reaches the internet), then runs offline. No ports; CPU unless the host has a GPU.
   ollama:
-    image: ollama/ollama:latest
+    # Ollama 0.40.13. To move: new version and its multi-arch index digest, in one PR.
+    image: ollama/ollama:0.40.13@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429
     restart: unless-stopped
     logging: *logging
     security_opt:

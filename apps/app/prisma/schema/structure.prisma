@@ -1,0 +1,151 @@
+// Area structure (docs/adr/0007-areas.md). Models: CompanyProfile, OrgUnit, OrgRole, OrgRoleHolder, RoutingRule, Goal. Changed only by: STR. Every migration is its own folder under prisma/migrations.
+
+// ── Company knowledge ────────────────────────────────────────────────────────────────────────────
+// What the company IS, as facts a department head edits now and then and an AI can read and cite:
+// profile, org units, roles, the routing table, goals. docs/COMPANY_KNOWLEDGE.md has the why.
+//
+// Roles, not people (PRODUCT_CONCEPT_ORG_OS.md §5.3, CONCEPT_CHECK_SEP13.md §4): the hierarchy,
+// decision rights and skills hang off OrgRole. A person appears only as an OrgRoleHolder, so the
+// model can be handed the structure without a single name in it.
+//
+// While seedJson still exists, src/features/knowledge projects these rows back into Seed.depts /
+// people / routes, so reduce(seed, log) keeps its shape. A company with no OrgUnit rows is read
+// from seedJson exactly as before.
+
+// Vision, mission and the like. Short text, one row per company.
+model CompanyProfile {
+  companyId String  @id
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  vision        String   @default("")
+  mission       String   @default("")
+  principles    String[]
+  businessModel String   @default("")
+  // The company's own rules for the assistant, in its admins' words (docs/ASSISTANT.md). Put
+  // into the system prompt verbatim, after the fixed guardrails.
+  complianceRules String @default("")
+
+  updatedAt DateTime @updatedAt
+  updatedBy String? // display name of whoever saved it last
+}
+
+// A department, team or board. `key` is the id the seed and the event log already use ("PRD").
+model OrgUnit {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  key       String
+  name      String
+  kind      String  @default("dept") // board | dept | team
+  headcount Int     @default(0)
+  parentId  String?
+  parent    OrgUnit?  @relation("OrgUnitTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  OrgUnit[] @relation("OrgUnitTree")
+  sort      Int       @default(0)
+
+  roles OrgRole[]
+  goals Goal[]
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique([companyId, key])
+}
+
+// A position: "Head of Production", "Line 3". The hierarchy is between roles.
+model OrgRole {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  orgUnitId   String
+  orgUnit     OrgUnit   @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  title       String
+  reportsToId String?
+  reportsTo   OrgRole?  @relation("RoleTree", fields: [reportsToId], references: [id], onDelete: SetNull)
+  reports     OrgRole[] @relation("RoleTree")
+
+  decides       String[] // decision rights in words: "spend under €5k", "shift plan"
+  spendLimitEur Int? // null = no own spend authority on record
+  skills        String[] // what the ROLE needs - never a per-person profile (BetrVG §87)
+  sort          Int      @default(0)
+
+  holders OrgRoleHolder[]
+  owns    RoutingRule[]   @relation("RuleOwner")
+  deputy  RoutingRule[]   @relation("RuleDeputy")
+  buddy   RoutingRule[]   @relation("RuleBuddy")
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@index([companyId])
+}
+
+// Who holds a role. The only place a person's name meets the structure. `userId` is set when the
+// person can sign in; many holders (people in the org chart) never do.
+model OrgRoleHolder {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  roleId String
+  role   OrgRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  name   String
+  userId String?
+  sort   Int     @default(0)
+
+  @@unique([roleId, name])
+  @@index([companyId])
+}
+
+// One row of the routing table (§19): request type -> owning role · deputy role · buddy role.
+// `key` is Seed.Route.id ("r1"), which cases and events already point at.
+model RoutingRule {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  key          String
+  type         String
+  keywords     String[]
+  ownerRoleId  String
+  owner        OrgRole  @relation("RuleOwner", fields: [ownerRoleId], references: [id], onDelete: Cascade)
+  deputyRoleId String?
+  deputy       OrgRole? @relation("RuleDeputy", fields: [deputyRoleId], references: [id], onDelete: SetNull)
+  buddyRoleId  String?
+  buddy        OrgRole? @relation("RuleBuddy", fields: [buddyRoleId], references: [id], onDelete: SetNull)
+  wait         String   @default("") // "3 d" - display text until the promise clock is per rule
+  sort         Int      @default(0)
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique([companyId, key])
+}
+
+// A company goal, or a unit's goal under it. `keywords` feed the matcher in features/evaluate
+// until a model replaces it.
+model Goal {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  orgUnitId String? // null = a company-wide goal
+  orgUnit   OrgUnit? @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Goal?    @relation("GoalTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Goal[]   @relation("GoalTree")
+
+  title    String
+  kpi      String   @default("")
+  target   String   @default("")
+  period   String   @default("") // "2026", "Q4 2026"
+  keywords String[]
+  sort     Int      @default(0)
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@index([companyId])
+}

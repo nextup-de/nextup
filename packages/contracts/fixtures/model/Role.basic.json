@@ -1,0 +1,8 @@
+{
+  "id": "role_lead",
+  "companyId": "co_acme",
+  "key": "prod-lead",
+  "title": "Production lead",
+  "orgUnitId": "ou_prod",
+  "reportsToRoleId": null
+}

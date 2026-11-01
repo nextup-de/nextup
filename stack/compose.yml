@@ -8,8 +8,9 @@
 #   stack/install.sh --slug acme --origin http://localhost:8080 --stage demo --build
 #   stack/ctl.sh acme ps | logs -f app | down
 #
-# Images: built from this repo with --build (nextup-app:local, nextup-migrate:local) until CI
-# publishes them (stage 1, step 4); then NEXTUP_APP_IMAGE / NEXTUP_MIGRATE_IMAGE point at GHCR.
+# Images: nextup-app, nextup-migrate and nextup-brain are built from this repo with --build (the
+# :local tags) or come from GHCR (NEXTUP_*_IMAGE, install.sh --images). Every other image is pinned
+# by version and digest below.
 
 name: nextup-${COMPANY_SLUG:?set COMPANY_SLUG - run stack/install.sh}
 
@@ -29,7 +30,8 @@ x-hardening: &hardening
 services:
   db:
     <<: *hardening
-    image: postgres:17
+    # PostgreSQL 17.11. To move: new version and its multi-arch index digest, in one PR.
+    image: postgres:17.11@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
     environment:
       POSTGRES_USER: nextup
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
@@ -127,7 +129,8 @@ services:
   # (laptop), a bare host name gets a Let's Encrypt certificate (public server).
   caddy:
     <<: *hardening
-    image: caddy:2
+    # Caddy 2.11.7. To move: new version and its multi-arch index digest, in one PR.
+    image: caddy:2.11.7@sha256:36c24ad91a7ff7bc4c87fe22bfa8df3c4b18da0773d73fc12ee2c52b98c0bb7e
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
@@ -148,7 +151,8 @@ services:
   # Inbox on the loopback of the machine running the stack.
   mailpit:
     <<: *hardening
-    image: axllent/mailpit:latest
+    # Mailpit v1.33.0. To move: new version and its multi-arch index digest, in one PR.
+    image: axllent/mailpit:v1.33.0@sha256:9b3a463be15354c0f0eba91697d80e3e0d8a5623ef0e627cacc836bc17fd5231
     profiles: [demo]
     ports:
       - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
@@ -162,7 +166,8 @@ services:
   # Only its production webhooks can go through Caddy, and only with N8N_WEBHOOKS=public.
   n8n:
     <<: *hardening
-    image: n8nio/n8n:latest
+    # n8n 2.45.7. To move: new version and its multi-arch index digest, in one PR.
+    image: n8nio/n8n:2.45.7@sha256:9a8d8dcea75667496695d7810d7e1fe018a65efb36cc499d347f3931b3957b5d
     profiles: [n8n]
     ports:
       - "127.0.0.1:${N8N_PORT:-5678}:5678"
@@ -210,7 +215,8 @@ services:
   # Point BRAIN_LLM_URL at a vLLM/Ollama elsewhere and leave this profile's ollama idle.
   ollama:
     <<: *hardening
-    image: ollama/ollama:latest
+    # Ollama 0.40.13. To move: new version and its multi-arch index digest, in one PR.
+    image: ollama/ollama:0.40.13@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429
     profiles: [brain]
     # Serve, pull the model if it is missing, then load it once ("ok" is a throwaway prompt), so
     # the first person after a restart does not wait for 7 GB to reach memory.

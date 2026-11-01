@@ -1,0 +1,10 @@
+{
+  "id": "rh_02",
+  "companyId": "co_acme",
+  "roleId": "role_lead",
+  "userId": null,
+  "label": "Jo Placeholder",
+  "kind": "deputy",
+  "validFrom": null,
+  "validTo": null
+}
