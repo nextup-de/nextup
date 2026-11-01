@@ -1,0 +1,47 @@
+{
+  "question": "q03",
+  "persona": "lena",
+  "source": "synthetic",
+  "recordedAt": null,
+  "request": {
+    "requests": [
+      {
+        "entityTypes": [
+          "driveItem"
+        ],
+        "query": {
+          "queryString": "how long should changeover on line 3 take"
+        },
+        "from": 0,
+        "size": 10
+      }
+    ]
+  },
+  "status": 200,
+  "body": {
+    "value": [
+      {
+        "searchTerms": [],
+        "hitsContainers": [
+          {
+            "total": 1,
+            "moreResultsAvailable": false,
+            "hits": [
+              {
+                "hitId": "hit-03",
+                "rank": 1,
+                "summary": "Made-up test content of <c0>Changeover checklist Line 3</c0> <ddd/>",
+                "resource": {
+                  "@odata.type": "#microsoft.graph.driveItem",
+                  "id": "01SYNTHETICITEM03",
+                  "name": "Changeover checklist Line 3.docx",
+                  "webUrl": "https://nextuptest.sharepoint.com/sites/AcmeProduction/Acme%20Production/Lines/Line%203/Changeovers/Changeover%20checklist%20Line%203.docx"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
