@@ -8,6 +8,7 @@
 // sends the mail itself (server/case-notice.ts) and writes the note in the same process.
 import type { EventPayload } from "./events";
 import type { Seed } from "@/features/demo/types";
+import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
 
 export type RaisedNotice = {
   eventId: string;
@@ -35,7 +36,10 @@ export type RaisedNotice = {
 export const NOTICE_ACTOR = "system:mail";
 
 /** What the case timeline says once the owner has been emailed. */
-export const NOTICE_TEXT = "Route owner notified by email.";
+export const NOTICE_TEXT = translate("en", "mail.noticeNote");
+
+/** The note in the recipient's language; English stays the constant /admin matches on. */
+export const noticeText = (locale: Locale): string => (locale === "de" ? translate("de", "mail.noticeNote") : NOTICE_TEXT);
 
 /**
  * The idempotency key of the note, derived from the raise it answers. It is what pairs a raise
@@ -73,7 +77,7 @@ export function buildRaisedNotice(args: {
     day,
     case: {
       id: caseId,
-      title: payload.title ?? "Untitled",
+      title: payload.title ?? translate(DEFAULT_LOCALE, "mail.noticeUntitled"),
       body: payload.body ?? "",
       from: payload.fromDept ?? "",
       routeId: payload.routeId ?? null,
@@ -93,26 +97,27 @@ export function buildRaisedNotice(args: {
 export type NoticeMail = { to: string; subject: string; text: string };
 
 /** The message itself, or null when there is nobody to send it to. */
-export function composeNoticeMail(n: RaisedNotice): NoticeMail | null {
+export function composeNoticeMail(n: RaisedNotice, locale: Locale = DEFAULT_LOCALE): NoticeMail | null {
   if (!n.route.ownerEmail) return null;
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
 
   const lines = [
-    `${n.route.ownerName ?? "Hello"},`,
+    `${n.route.ownerName ?? t("mail.noticeHello")},`,
     "",
-    "someone raised this and it is on your desk:",
+    t("mail.noticeIntro"),
     "",
     `  ${n.case.title}`,
   ];
   if (n.case.body) lines.push("", `  ${n.case.body}`);
   lines.push("");
-  if (n.route.label) lines.push(`Route: ${n.route.label}`);
+  if (n.route.label) lines.push(t("mail.noticeRoute", { label: n.route.label }));
   lines.push(
-    `Answer by day ${n.case.dueDay} - yes, no with a reason, hand it over, or ask a question.`,
+    t("mail.noticeAnswerBy", { day: n.case.dueDay }),
     "",
-    `Open the inbox: ${n.links.inbox}`,
-    `This case:      ${n.links.case}`,
+    t("mail.noticeOpenInbox", { url: n.links.inbox }),
+    t("mail.noticeThisCase", { url: n.links.case }),
   );
-  if (n.route.deputyName) lines.push("", `If you cannot take it, ${n.route.deputyName} is the deputy.`);
+  if (n.route.deputyName) lines.push("", t("mail.noticeDeputy", { name: n.route.deputyName }));
 
-  return { to: n.route.ownerEmail, subject: `New case on your desk: ${n.case.title}`, text: lines.join("\n") };
+  return { to: n.route.ownerEmail, subject: t("mail.noticeSubject", { title: n.case.title }), text: lines.join("\n") };
 }

@@ -23,6 +23,8 @@ import { companyBaseUrl, notifyCaseRaised } from "@/server/case-notice";
 import { mailConfigured } from "@/server/mail";
 import { kickJira } from "@/server/jira-sync";
 import { notifyLoop } from "@/server/loop-notice";
+import { getLocale } from "@/i18n/server";
+import { createT } from "@/i18n";
 
 // Same ceiling as the integration endpoint (features/integrations MAX_PAYLOAD_BYTES): one event
 // is a title, a body and a few ids, never a file.
@@ -54,35 +56,35 @@ async function mayRewriteHistory(companyId: string): Promise<boolean> {
   return Boolean(company && policyFor(company.stage).rewriteHistory);
 }
 
-const realCompany = "This company holds real people's cases - the demo tools are switched off.";
-
 export async function appendEventAction(input: AppendInput): Promise<AppendOutcome> {
-  if (!hasDatabase()) return { ok: false, error: "No database is configured." };
+  const locale = await getLocale();
+  const t = createT(locale);
+  if (!hasDatabase()) return { ok: false, error: t("cases.actionNoDatabase") };
 
   const parsed = Input.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "That event did not look right." };
+  if (!parsed.success) return { ok: false, error: t("cases.actionBadEvent") };
   const { slug, id, type, target, payload } = parsed.data;
 
   const viewer = await getViewerFor(slug);
-  if (!viewer) return { ok: false, error: "Your session has expired. Log in again." };
+  if (!viewer) return { ok: false, error: t("cases.actionSessionExpired") };
 
   // Behind a flag until admin.sellux.ch turns it on for this company (src/config/flags.ts).
   if (DISCUSSION_EVENT_TYPES.includes(type) && !(await isEnabled(slug, "discussion"))) {
-    return { ok: false, error: "The discussion stage is not switched on for this company." };
+    return { ok: false, error: t("cases.actionDiscussionOff") };
   }
   if (needsProjectsFlag(type, payload) && !(await isEnabled(slug, "projects"))) {
-    return { ok: false, error: "Projects are not switched on for this company." };
+    return { ok: false, error: t("cases.actionProjectsOff") };
   }
 
   // Who may do this to this case? Answered against the reduced log, the same state every browser
   // renders - the buttons the UI hides are hidden here too (features/cases/permissions.ts).
   const log = await loadLogForSlug(slug);
-  if (!log) return { ok: false, error: "Your session has expired. Log in again." };
-  const verdict = mayAppend(viewer, { type, target, payload }, reduce(await seedFor(slug), log));
+  if (!log) return { ok: false, error: t("cases.actionSessionExpired") };
+  const verdict = mayAppend(viewer, { type, target, payload }, reduce(await seedFor(slug), log), locale);
   if (!verdict.ok) return verdict;
 
   if (type === "day.advanced" && !(await mayRewriteHistory(viewer.companyId))) {
-    return { ok: false, error: realCompany };
+    return { ok: false, error: t("cases.actionRealCompany") };
   }
 
   // The actor is derived here, never taken from the client: a member posts under their handle,
@@ -145,11 +147,12 @@ async function notifyRaised(
 
 /** Dev panel: put this company back to its seed. Shared - it resets for everyone. */
 export async function resetCompanyAction(slug: string): Promise<AppendOutcome> {
-  if (!hasDatabase()) return { ok: false, error: "No database is configured." };
+  const t = createT(await getLocale());
+  if (!hasDatabase()) return { ok: false, error: t("cases.actionNoDatabase") };
   const viewer = await getViewerFor(slug);
-  if (!viewer) return { ok: false, error: "Your session has expired. Log in again." };
-  if (!isDemoOwner(viewer.role)) return { ok: false, error: "Only a manager can reset the demo." };
-  if (!(await mayRewriteHistory(viewer.companyId))) return { ok: false, error: realCompany };
+  if (!viewer) return { ok: false, error: t("cases.actionSessionExpired") };
+  if (!isDemoOwner(viewer.role)) return { ok: false, error: t("cases.actionResetManager") };
+  if (!(await mayRewriteHistory(viewer.companyId))) return { ok: false, error: t("cases.actionRealCompany") };
 
   await resetCompanyLog(viewer.companyId);
   revalidatePath("/" + slug, "layout");
@@ -159,11 +162,12 @@ export async function resetCompanyAction(slug: string): Promise<AppendOutcome> {
 
 /** Dev panel: drop the cases raised during this demo, keeping the seed ones. */
 export async function deleteAddedAction(slug: string, caseIds: string[]): Promise<AppendOutcome> {
-  if (!hasDatabase()) return { ok: false, error: "No database is configured." };
+  const t = createT(await getLocale());
+  if (!hasDatabase()) return { ok: false, error: t("cases.actionNoDatabase") };
   const viewer = await getViewerFor(slug);
-  if (!viewer) return { ok: false, error: "Your session has expired. Log in again." };
-  if (!isDemoOwner(viewer.role)) return { ok: false, error: "Only a manager can delete cases." };
-  if (!(await mayRewriteHistory(viewer.companyId))) return { ok: false, error: realCompany };
+  if (!viewer) return { ok: false, error: t("cases.actionSessionExpired") };
+  if (!isDemoOwner(viewer.role)) return { ok: false, error: t("cases.actionDeleteManager") };
+  if (!(await mayRewriteHistory(viewer.companyId))) return { ok: false, error: t("cases.actionRealCompany") };
 
   await deleteEventsForTargets(viewer.companyId, caseIds.slice(0, 500));
   revalidatePath("/" + slug, "layout");
@@ -173,19 +177,20 @@ export async function deleteAddedAction(slug: string, caseIds: string[]): Promis
 
 /** Dev panel, demo stage only: become one of this company's other people. */
 export async function switchUserAction(slug: string, userId: string): Promise<AppendOutcome> {
-  if (!hasDatabase()) return { ok: false, error: "No database is configured." };
+  const t = createT(await getLocale());
+  if (!hasDatabase()) return { ok: false, error: t("cases.actionNoDatabase") };
   const viewer = await getViewerFor(slug);
-  if (!viewer) return { ok: false, error: "Your session has expired. Log in again." };
+  if (!viewer) return { ok: false, error: t("cases.actionSessionExpired") };
 
   const company = await getDb().company.findUnique({
     where: { slug },
     select: { id: true, stage: true },
   });
   if (!company || !policyFor(company.stage).switchPerson) {
-    return { ok: false, error: "Switching people is only available while a company is in demo stage." };
+    return { ok: false, error: t("cases.actionSwitchDemoOnly") };
   }
   const user = await getDb().user.findFirst({ where: { companyId: company.id, id: userId } });
-  if (!user) return { ok: false, error: "No such person in this company." };
+  if (!user) return { ok: false, error: t("cases.actionNoPerson") };
 
   await issueSession(company.id, slug, user);
   revalidatePath("/" + slug, "layout");
