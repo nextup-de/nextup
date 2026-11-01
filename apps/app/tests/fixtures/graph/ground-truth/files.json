@@ -1,0 +1,147 @@
+[
+  {
+    "path": "Acme Company/Policies/Finance/Spending policy 2026.docx",
+    "file": "Spending policy 2026.docx",
+    "classification": "internal",
+    "lang": "en",
+    "readers": [
+      "G-ALL"
+    ]
+  },
+  {
+    "path": "Acme Company/Handbook/Wer entscheidet was.docx",
+    "file": "Wer entscheidet was.docx",
+    "classification": "internal",
+    "lang": "de",
+    "readers": [
+      "G-ALL"
+    ]
+  },
+  {
+    "path": "Acme Production/Lines/Line 3/Changeovers/Changeover checklist Line 3.docx",
+    "file": "Changeover checklist Line 3.docx",
+    "classification": "internal",
+    "lang": "en",
+    "readers": [
+      "G-PRD",
+      "G-QUA",
+      "G-ENG",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Quality/8D/2026/8D-2026-014 burrs on bracket B-114.docx",
+    "file": "8D-2026-014 burrs on bracket B-114.docx",
+    "classification": "internal",
+    "lang": "en",
+    "readers": [
+      "G-QUA",
+      "G-PRD",
+      "G-ENG",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Finance/Procurement/Supplier prices/Sensotec GmbH/Supplier prices Q4 2026 Sensotec.docx",
+    "file": "Supplier prices Q4 2026 Sensotec.docx",
+    "classification": "confidential",
+    "lang": "de",
+    "readers": [
+      "G-FIN",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Board/Minutes/2026/Board minutes 2026-09 Projekt Falke.docx",
+    "file": "Board minutes 2026-09 Projekt Falke.docx",
+    "classification": "strict",
+    "lang": "de",
+    "readers": [
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme HR and IT/HR/Salary bands 2026.docx",
+    "file": "Salary bands 2026.docx",
+    "classification": "confidential",
+    "lang": "en",
+    "readers": [
+      "G-HIT",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Engineering/Standards/Hinweise für KI-Assistenten.docx",
+    "file": "Hinweise für KI-Assistenten.docx",
+    "classification": "internal",
+    "lang": "de",
+    "readers": [
+      "G-ENG",
+      "G-PRD",
+      "G-QUA",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Sales/Marketing/Wettbewerber-Notizen.docx",
+    "file": "Wettbewerber-Notizen.docx",
+    "classification": "confidential",
+    "lang": "de",
+    "readers": [
+      "G-SAL",
+      "G-FLD",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Engineering/Projects/P-2231 Prototype B-300/Prototype B-300 test results.docx",
+    "file": "Prototype B-300 test results.docx",
+    "classification": "confidential",
+    "lang": "en",
+    "readers": [
+      "G-ENG-PROTO",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Quality/Audits/IATF/IATF audit findings 2026.docx",
+    "file": "IATF audit findings 2026.docx",
+    "classification": "confidential",
+    "lang": "en",
+    "readers": [
+      "G-QUA",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Sales/Customers/Nordwerk Automotive/Rahmenvertrag Konditionen.docx",
+    "file": "Rahmenvertrag Konditionen.docx",
+    "classification": "confidential",
+    "lang": "de",
+    "readers": [
+      "G-KEYACC",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Production/Lines/Line 3/Maintenance/Press P-12 breakdown history.docx",
+    "file": "Press P-12 breakdown history.docx",
+    "classification": "internal",
+    "lang": "en",
+    "readers": [
+      "G-PRD",
+      "G-QUA",
+      "G-ENG",
+      "G-EXEC"
+    ]
+  },
+  {
+    "path": "Acme Company/Announcements/2026/Werksurlaub 2026.docx",
+    "file": "Werksurlaub 2026.docx",
+    "classification": "public",
+    "lang": "de",
+    "readers": [
+      "G-ALL"
+    ]
+  }
+]
