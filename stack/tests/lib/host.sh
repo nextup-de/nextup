@@ -110,7 +110,7 @@ host_fake_images() {
 host_minio_up() {
   host_root 'docker rm -f minio >/dev/null 2>&1
     docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=opstest -e MINIO_ROOT_PASSWORD=opstest-secret-123 \
-      minio/minio:RELEASE.2025-04-22T22-12-26Z server /data >/dev/null' || return 1
+      cgr.dev/chainguard/minio@sha256:0a01100085e30fb08d2f39e39c9f5c9d83a95707f220b007d813b690cd41622d server /data >/dev/null' || return 1
   _host_wait 60 'curl -fs http://127.0.0.1:9000/minio/health/live' || { echo "host_minio_up: MinIO not healthy" >&2; return 1; }
   local gw
   gw="$(host_root "docker network inspect bridge -f '{{(index .IPAM.Config 0).Gateway}}'")" || return 1
