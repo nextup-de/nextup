@@ -1,0 +1,21 @@
+{
+  "changes": [
+    {
+      "key": "ACME-12",
+      "kind": "state",
+      "state": "done",
+      "summary": null,
+      "text": null,
+      "at": "2026-11-01T09:30:00.000Z"
+    },
+    {
+      "key": "ACME-13",
+      "kind": "comment",
+      "state": null,
+      "summary": null,
+      "text": "Waiting for parts.",
+      "at": "2026-11-01T09:30:00.000Z"
+    }
+  ],
+  "nextCursor": "cur_2"
+}

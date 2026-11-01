@@ -1,0 +1,1 @@
+{"data":[{"id":"proj_01","companyId":"co_acme","caseId":"case_01","title":"Fix machine 4","state":"running","leadRoleId":"role_lead","links":[{"system":"jira","key":"OPS-12","url":"https://example.com/browse/OPS-12"}]}],"page":{"nextCursor":null}}

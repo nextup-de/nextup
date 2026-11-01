@@ -1,6 +1,12 @@
 # NextHub - integrations, AI, tenants, phases
 
-> **Updated 2026-10-29** · reference + plan. Written as a proposal on 21 Sep 2026; since then the events API, tokens, stages and tenant guard are built and the code points here as the contract. Jira moved from n8n into the app on 29 Oct 2026 (*Jira in the app* below: the contract is in, the engine follows); deadline and digests are still a plan.
+> **Updated 2026-11-01** · reference + plan. Written as a proposal on 21 Sep 2026; since then the events API, tokens, stages and tenant guard are built and the code points here as the contract. Jira moved from n8n into the app on 29 Oct 2026 (*Jira in the app* below: the contract is in, the engine follows); deadline and digests are still a plan.
+
+**Contracts.** Every external system sits behind one of eight connector interfaces exported from
+`@nextup/contracts/public` (`packages/contracts/src/public/connectors/`): see
+[ADR 0002](adr/0002-connector-interfaces.md) for the interfaces and [ADR 0006](adr/0006-config-not-code.md) for
+how the adapter and its settings are chosen per company. The `Integration` table is defined in
+`apps/app/prisma/schema/integrations.prisma`. The code below predates the interfaces and keeps its own types.
 
 The product rule this follows: **AI proposes, never decides** (§11.2, `features/routing`). The
 architecture rule it follows: **events, not edits** (`features/cases/events.ts`). Every
@@ -107,7 +113,7 @@ into the app, as the case-notice mails did. Settings and the sealed token are st
 once-a-minute loop pushes NextUp's changes to Jira and pulls Jira's back. This section is the
 **contract** the pieces are built against; the plan says how and in what order.
 
-**Settings: the `Integration` table** (`prisma/schema.prisma`, `src/lib/db/integrations.ts`), one row
+**Settings: the `Integration` table** (`prisma/schema/integrations.prisma`, `src/lib/db/integrations.ts`), one row
 per `(companyId, system)`, system `"jira"`:
 
 | Column | Holds |

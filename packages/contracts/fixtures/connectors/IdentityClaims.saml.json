@@ -1,0 +1,15 @@
+{
+  "issuer": "http://adfs.acme.example/adfs/services/trust",
+  "subject": "anna@acme.example",
+  "email": "anna.example@acme.example",
+  "displayName": "Anna Example",
+  "tenantId": null,
+  "groups": [
+    "NextUp-Users"
+  ],
+  "appRoles": [],
+  "department": null,
+  "externalIds": {
+    "saml": "anna@acme.example"
+  }
+}

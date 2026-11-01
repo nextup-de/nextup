@@ -1,0 +1,27 @@
+{
+  "entries": [
+    {
+      "externalId": "ext-user-1",
+      "displayName": "Anna Example",
+      "email": "anna.example@acme.example",
+      "department": "Production",
+      "jobTitle": "Shift lead",
+      "managerExternalId": null,
+      "groupExternalIds": [
+        "ext-grp-1"
+      ],
+      "active": true
+    }
+  ],
+  "groups": [
+    {
+      "externalId": "ext-grp-1",
+      "name": "Production",
+      "parentExternalId": null
+    }
+  ],
+  "removedExternalIds": [
+    "ext-user-7"
+  ],
+  "nextCursor": null
+}

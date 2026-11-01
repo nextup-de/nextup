@@ -1,0 +1,16 @@
+{
+  "id": "msg_01",
+  "companyId": "co_acme",
+  "recipient": {
+    "userId": "user_01",
+    "address": "anna.example@acme.example"
+  },
+  "template": "case.raised",
+  "locale": "en",
+  "subject": "New case: Machine 4 stops",
+  "text": "A case was raised for your role.",
+  "link": "https://example.com/acme/cases/case_01",
+  "data": {
+    "caseId": "case_01"
+  }
+}
