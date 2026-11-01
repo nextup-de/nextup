@@ -1,6 +1,6 @@
 # Docs
 
-> **Updated 2026-10-15.** Every file starts with an `Updated` or `Plan` line that gives its date.
+> **Updated 2026-11-01.** Every file starts with an `Updated` or `Plan` line that gives its date.
 
 ## Plans (`plans/`, newest first)
 
@@ -33,6 +33,7 @@ is on their first line.
 | [IDEAS.md](IDEAS.md) | the idea studio |
 | [RESPONSIVE.md](RESPONSIVE.md) | layout rules |
 | [DEPLOY.md](DEPLOY.md) | running it on a laptop |
+| [audit/gap-register.md](audit/gap-register.md) | gaps to the pilot, by phase |
 
 Design system (tokens, components, brand assets, UI kit): `design-system/README.md`.
 
