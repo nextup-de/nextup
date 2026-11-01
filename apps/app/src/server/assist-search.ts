@@ -8,15 +8,16 @@ import { mergeHits } from "@/features/assist/merge";
 import type { Level } from "@/features/assist/classify";
 import type { DocHit } from "@/features/assist/tools";
 import { searchDocuments } from "@/lib/db/assist";
-import { m365SearchOn } from "@/lib/db/connections";
-import { searchM365 } from "@/server/m365-search";
+import { knowledgeSourcesFor } from "@/server/connectors/knowledge";
 
-async function m365Hits(v: { companyId: string; userId: string }, ceiling: Level, query: string, limit: number): Promise<DocHit[]> {
+async function sourceHits(v: { companyId: string; userId: string }, ceiling: Level, query: string, limit: number): Promise<DocHit[]> {
   try {
-    if (!(await m365SearchOn(v.companyId))) return [];
-    // A person without a connection has no token, so this comes back empty without calling Microsoft.
-    const hits = await searchM365({ ...v, ceiling }, query, limit);
-    return hits.map((h) => ({ id: "m365:" + h.id, title: h.title, snippet: h.snippet, classification: h.classification, source: "m365", url: h.url }));
+    const sources = await knowledgeSourcesFor(v.companyId);
+    // A person without a connection has no token, so a source comes back empty without calling Microsoft.
+    const lists = await Promise.all(
+      sources.map((s) => s.search({ companyId: v.companyId, userId: v.userId, text: query.slice(0, 500), size: Math.min(Math.max(limit, 1), 20), ceiling }).catch(() => [])),
+    );
+    return lists.flat().map((h) => ({ id: h.id, title: h.title, snippet: h.snippet, classification: h.classification, source: h.source, url: h.url }));
   } catch {
     return [];
   }
@@ -25,7 +26,7 @@ async function m365Hits(v: { companyId: string; userId: string }, ceiling: Level
 /** `ToolContext.searchDocuments` for a signed-in viewer. */
 export function searchDocumentsFor(v: { companyId: string; userId: string }, ceiling: Level) {
   return async (query: string, limit: number): Promise<DocHit[]> => {
-    const [local, m365] = await Promise.all([searchDocuments(v.companyId, ceiling, query, limit), m365Hits(v, ceiling, query, limit)]);
-    return mergeHits(local, m365, limit);
+    const [local, external] = await Promise.all([searchDocuments(v.companyId, ceiling, query, limit), sourceHits(v, ceiling, query, limit)]);
+    return mergeHits(local, external, limit);
   };
 }

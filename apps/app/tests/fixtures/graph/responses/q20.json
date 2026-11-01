@@ -1,0 +1,35 @@
+{
+  "question": "q20",
+  "persona": "lena",
+  "source": "synthetic",
+  "recordedAt": null,
+  "request": {
+    "requests": [
+      {
+        "entityTypes": [
+          "driveItem"
+        ],
+        "query": {
+          "queryString": "zebrafisch"
+        },
+        "from": 0,
+        "size": 10
+      }
+    ]
+  },
+  "status": 200,
+  "body": {
+    "value": [
+      {
+        "searchTerms": [],
+        "hitsContainers": [
+          {
+            "total": 0,
+            "moreResultsAvailable": false,
+            "hits": []
+          }
+        ]
+      }
+    ]
+  }
+}
