@@ -49,7 +49,7 @@ The register records gaps, it fixes none. Each row names the phase that closes i
 | G-237 | AI hosting | There is no AI gateway in front of the model providers for keys, quotas, logging and a provider choice per company. | apps/app/src/server/assist/provider.ts · stack/brain-server/README.md | medium | AIP | V |
 | G-238 | scale | No load test has been run; there is no measured response time under load. | .github/workflows/ci.yml · docs/DEPLOY.md | high | TST | K |
 | G-239 | scale | There is no figure for how many users one stack carries, so hosting cannot be sized or priced. | stack/compose.yml · docs/DEPLOY.md | high | TST | K |
-| G-240 | scale | No connection pooler sits between the app and Postgres, so each app process opens its own connections. | stack/compose.yml:32 · apps/app/prisma/schema.prisma | medium | VIS | K |
+| G-240 | scale | No connection pooler sits between the app and Postgres, so each app process opens its own connections. | stack/compose.yml:32 · apps/app/prisma/schema/core.prisma | medium | VIS | K |
 | G-241 | scale | Postgres runs with default settings and is not tuned for a company of 1,000 to 2,000 users. | stack/compose.yml:32 | medium | TST | K |
 | G-242 | nextup-admin | The `/audit` page for platform actions in admin is still open (from the Nextup docs). | nextup-admin:README.md | medium | OPS | K |
 | G-243 | nextup-admin | Box metrics (CPU, memory, disk per box) are not shown in admin (from the Nextup docs). | nextup-admin:README.md | medium | OPS | K |
