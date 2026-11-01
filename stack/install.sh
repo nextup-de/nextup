@@ -31,7 +31,9 @@
 #   --dir DIR          instance folder (default: stack/instances/SLUG, or $NEXTUP_INSTANCES/SLUG)
 #   --images TAG       run the images CI publishes to GHCR (docs: .github/workflows/images.yml):
 #                      main, or a commit's 7-char short sha. 'local' goes back to local builds. Also
-#                      works on an existing instance: only the two image lines change.
+#                      works on an existing instance: only the image lines change (app, migrate,
+#                      and the brain's when the instance has one; a failed pull changes nothing).
+#                      With --brain the new brain runs the registry's nextup-brain, not a local build.
 #   --behind-proxy PORT  a server whose 80/443 already belong to a reverse proxy (nginx) that
 #                      terminates TLS: Caddy serves plain http on 127.0.0.1:PORT, mailpit on
 #                      PORT+1, n8n on PORT+2. Point the proxy at PORT (stack/nginx/site.sh).
@@ -56,7 +58,7 @@ while [ $# -gt 0 ]; do
     --dir) dir="$2"; shift 2 ;;
     --behind-proxy) proxy_port="$2"; shift 2 ;;
     --images) images="$2"; shift 2 ;;
-    -h|--help) sed -n '2,35p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,39p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -98,12 +100,13 @@ if [ -n "$proxy_port" ]; then
 fi
 registry="${NEXTUP_REGISTRY:-ghcr.io/nextup-de}"
 case "$images" in
-  ""|local) app_image=nextup-app:local; migrate_image=nextup-migrate:local ;;
+  ""|local) app_image=nextup-app:local; migrate_image=nextup-migrate:local; brain_image=nextup-brain:local ;;
   *) [[ "$images" =~ ^(main|[0-9a-f]{7})$ ]] || die "--images is main, a 7-char commit sha or local"
      $build && die "--images and --build exclude each other"
      # images.yml tags each build as :main and :sha-<7-char sha>.
      tag="$images"; [ "$images" = main ] || tag="sha-$images"
-     app_image="$registry/nextup-app:$tag"; migrate_image="$registry/nextup-migrate:$tag" ;;
+     app_image="$registry/nextup-app:$tag"; migrate_image="$registry/nextup-migrate:$tag"
+     brain_image="$registry/nextup-brain:$tag" ;;
 esac
 command -v docker >/dev/null || die "docker is not installed"
 command -v openssl >/dev/null || die "openssl is not installed"
@@ -116,14 +119,24 @@ if [ -f "$env_file" ]; then
   echo "Keeping $env_file (secrets are never regenerated)."
   if [ -n "$images" ]; then
     # Pull first: if the tag doesn't exist, the .env still names images that do.
+    # A brain only changes with the rest when this instance runs one.
+    has_brain=false; grep -q '^BRAIN_API_KEY=' "$env_file" && has_brain=true
     if [ "$images" != local ]; then
       docker pull -q "$app_image" >/dev/null && docker pull -q "$migrate_image" >/dev/null \
         || die "could not pull $app_image / $migrate_image - nothing changed"
+      if $has_brain; then
+        docker pull -q "$brain_image" >/dev/null || die "could not pull $brain_image - nothing changed"
+      fi
     fi
     # Only the image lines change; sed -i keeps the file's owner and mode.
     sed -i -e "s|^NEXTUP_APP_IMAGE=.*|NEXTUP_APP_IMAGE=$app_image|" \
            -e "s|^NEXTUP_MIGRATE_IMAGE=.*|NEXTUP_MIGRATE_IMAGE=$migrate_image|" "$env_file"
     echo "Images: $app_image, $migrate_image"
+    if $has_brain; then
+      sed -i '/^NEXTUP_BRAIN_IMAGE=/d' "$env_file"
+      printf 'NEXTUP_BRAIN_IMAGE=%s\n' "$brain_image" >> "$env_file"
+      echo "Brain image: $brain_image"
+    fi
   fi
 else
   mkdir -p "$dir"
@@ -205,7 +218,7 @@ if $brain && ! grep -q '^BRAIN_API_KEY=' "$env_file"; then
 BRAIN_URL=http://brain:8000
 BRAIN_API_KEY=$(openssl rand -hex 24)
 BRAIN_MODEL=mistral-nemo
-NEXTUP_BRAIN_IMAGE=nextup-brain:local
+NEXTUP_BRAIN_IMAGE=$brain_image
 ENV
   sed -i -e 's/^COMPOSE_PROFILES=$/COMPOSE_PROFILES=brain/' -e '/^COMPOSE_PROFILES=.\{1,\}/{/brain/!s/$/,brain/;}' "$env_file"
   echo "Added the brain to $env_file (model: mistral-nemo, pulled on first start)."
@@ -232,7 +245,11 @@ fi
 if grep -q '^NEXTUP_APP_IMAGE=nextup-app:local$' "$env_file"; then
   :   # local images: nothing to pull
 else
-  "${compose[@]}" pull --quiet app migrate
+  pull_services=(app migrate)
+  if grep -q '^BRAIN_API_KEY=' "$env_file" && ! grep -q '^NEXTUP_BRAIN_IMAGE=nextup-brain:local$' "$env_file"; then
+    pull_services+=(brain)
+  fi
+  "${compose[@]}" pull --quiet "${pull_services[@]}"
 fi
 "${compose[@]}" up -d --remove-orphans
 
