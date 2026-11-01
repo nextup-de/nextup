@@ -22,7 +22,7 @@ t_ok "install-clean ends with '0 failed' ($last)" bash -c '[[ "$1" == *", 0 fail
 
 # Number of snapshots in the repository carrying the given tag.
 count() { # <tag>
-  host_exec "stack/backup.sh opsbk snapshots --json" | jq --arg t "$1" '[.[] | select(.tags | index($t))] | length'
+  host_exec "stack/backup.sh opsbk snapshots --json | jq --arg t '$1' '[.[] | select(.tags | index(\$t))] | length'"
 }
 t_eq "one snapshot tagged opsbk" 1 "$(count opsbk)"
 
@@ -51,6 +51,7 @@ t_ok "it names BACKUP_OFFBOX" bash -c '[[ "$1" == *BACKUP_OFFBOX* ]]' _ "$out"
 
 # Without --backup-repo and the keys the stack backs up locally, as before.
 unset BACKUP_S3_ACCESS_KEY_ID BACKUP_S3_SECRET_ACCESS_KEY
+host_exec "stack/ctl.sh opsbk down" >/dev/null 2>&1   # both stacks want port 8080
 out="$(host_stack_up opslocal aaaaaaa)"; rc=$?
 [ "$rc" -eq 0 ] || printf '%s\n' "$out" | tail -n 40 >&2
 t_eq "a stack without --backup-repo installs" 0 "$rc"

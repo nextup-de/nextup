@@ -37,7 +37,7 @@ want="$(host_exec "awk '/^  [A-Za-z0-9_-]+:/{f=(\$1==\"db:\")} f&&\$1==\"image:\
 t_ok "the restore-test log names the db image of compose.yml ($want)" \
   bash -c '[ -n "$2" ] && [[ "$1" == *"image=$2 "* ]]' _ "$out" "$want"
 
-id="$(host_exec "stack/backup.sh opsrto snapshots --json" | jq -r '.[-1].short_id')"
+id="$(host_exec "stack/backup.sh opsrto snapshots --json | jq -r '.[-1].short_id'")"
 out="$(printf 'opsrto\n' | host_exec "stack/backup.sh opsrto restore $id" 2>&1)"; rc=$?
 t_eq "restore $id exits 0" 0 "$rc"
 t_ok "it logs seconds=" bash -c '[[ "$1" =~ restored.*seconds=[0-9]+ ]]' _ "$out"
