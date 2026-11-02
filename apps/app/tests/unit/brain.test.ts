@@ -3,6 +3,7 @@
 // row stays the fallback.
 import { describe, expect, it } from "vitest";
 import { evaluate } from "@/features/evaluate";
+import { DEMO_GOALS, DEMO_RULES } from "@/features/demo/structure";
 import { DEPTS, PEOPLE, PROBLEMS, PROMISE_DAYS, ROLES, ROUTES } from "@/features/demo/seed";
 import { brainRequest, fromBrain, type BrainAnswer, type BrainProposal } from "@/features/routing/brain";
 
@@ -48,7 +49,7 @@ describe("fromBrain", () => {
 
 describe("evaluate with the brain", () => {
   const cases = [{ id: "c2", title: "Night shift has no one who can sign a €300 parts order", from: "S. Dahl", age: 4, open: true }];
-  const ctx = { routes: ROUTES, people: PEOPLE, personas: ROLES, problems: PROBLEMS, cases, promiseDays: PROMISE_DAYS };
+  const ctx = { routes: ROUTES, people: PEOPLE, personas: ROLES, problems: PROBLEMS, cases, promiseDays: PROMISE_DAYS, goals: DEMO_GOALS, spend: DEMO_RULES.spend };
   const who = { name: "J. Schmidt", line: "Production, Line 3", handle: "Anonymous #4471" };
   const input = { kind: "idea" as const, text: "Nights cannot approve a replacement belt", affected: [], attachments: 0, who };
   const brain = (over: Partial<BrainProposal> = {}): BrainProposal =>

@@ -5,7 +5,6 @@
 // Only the static demo uses this; acme's seed, its names and the database stacks are untouched. Titles
 // share at most one word with the demo script's idea, so the benchmark never calls the script "already
 // raised" (tests/unit/static-demo.test.ts).
-import { GOALS } from "@/features/evaluate";
 import { BRIEFS } from "@/features/ideas/brief-demo";
 import { ideaContext, scoreDraft, type DraftTurn, type DraftView } from "@/features/ideas/drafts";
 import { SEED } from "./seed";
@@ -112,7 +111,7 @@ const CHATS: { owner: string; id: string; caseId: string | null; daysAgo: number
 
 /** Everyone's chats as drafts in this browser, per person, dated from `now`. */
 export function staticDemoDrafts(now: Date): Record<string, DraftView[]> {
-  const ctx = ideaContext(STATIC_DEMO_SEED.routes, GOALS, []); // no cases: a published chat is not "already raised" by its own case
+  const ctx = ideaContext(STATIC_DEMO_SEED.routes, STATIC_DEMO_SEED.goals, [], STATIC_DEMO_SEED.spend); // no cases: a published chat is not "already raised" by its own case
   const at = (daysAgo: number, minutes: number) => new Date(now.getTime() - daysAgo * 86_400_000 + minutes * 60_000).toISOString();
   const out: Record<string, DraftView[]> = {};
   for (const c of CHATS) {
