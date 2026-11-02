@@ -138,13 +138,13 @@ them.
 ## The settings menu
 
 ADM-G1 builds the menu from `SETTINGS_SECTIONS` (`apps/app/src/features/settings/sections.ts`) in the order of
-ADM/D7: Setup (only while the company has no org unit), Company, Rules, Calendar, Org, Routing, Members, Connectors.
+ADM/D7: Setup (until `setupStep` says `done`), Company, Rules, Calendar, Org, Routing, Members, Connectors.
 Later phases append their sections. The group labels below are a visual grouping of that order. Routes are relative
 to `/[company]`.
 
 | Group (EN / DE) | Section | Route | Phase | Spec |
 |---|---|---|---|---|
-| – | Setup (only without units) | `/settings/setup` | ADM-F1 | 02 |
+| – | Setup (until setup is done) | `/settings/setup` | ADM-F1 | 02 |
 | Company / Firma | Company | `/settings/company` | ADM-A1 | 01 |
 | | Rules | `/settings/rules` | ADM-A1 | 01 |
 | | Calendar | `/settings/calendar` | ADM-A1, CLK | 01 |
@@ -152,7 +152,7 @@ to `/[company]`.
 | | Routing | `/settings/routing` | ADM-B1 | 02 |
 | | Members | `/settings/members` | DIR-D1, ADM-D1 | 01 |
 | Connectors / Anbindungen | Connectors | `/settings/connectors` | ADM-C1 (+ TMS, SFX) | 03 |
-| Notifications / Benachrichtigungen | Notifications | `/settings/notifications` | NTF | 06 |
+| Notifications / Benachrichtigungen | Notifications | `/settings/notifications` | ADM-N1 | 06 |
 | | Webhooks | `/settings/webhooks` | API | 08 |
 | Data and security / Daten und Sicherheit | Data and privacy | `/settings/privacy` | GDP | 05 |
 | | Audit log | `/settings/audit` | GDP | 05 |
@@ -181,7 +181,7 @@ sections are proposals; their Bauplan fixes them.
 | Decision log | `/decisions` | LOOP | 04 |
 | Data and privacy | `/settings/privacy` | GDP | 05 |
 | Audit log | `/settings/audit` | GDP | 05 |
-| Notifications | `/settings/notifications` | NTF | 06 |
+| Notifications | `/settings/notifications` | ADM-N1 | 06 |
 | Areas and QR codes | `/settings/areas` | FLR | 07 |
 | Raise from an area | `/[company]/floor/[area]` | FLR | 07 |
 | Shared-device sign-in | `/[company]/floor/[area]/sign-in` | FLR | 07 |
@@ -251,7 +251,7 @@ Each has a default. These specs follow the default until Kevin decides otherwise
 |---|---|---|
 | Q1 | New pages follow the design system (black action button) while today's settings form uses the blue `nh-btn-primary`. Restyle the global form classes too? | Yes: ADM-G1 restyles `nh-btn-*` in `globals.css` so old and new forms match. |
 | Q2 | Does everything the company admins use live in Settings, with `/admin` for the stack's own team? | Yes (GDP's audit view included). |
-| Q3 | Company goals (`Goal`) have no editor in any Bauplan; ADM edits rules but not goals. Add a goals section to Rules? | Yes, as a *later* section on the Rules page (spec 01); it needs a task in ADM or a follow-up. |
+| Q3 | Company goals (`Goal`) had no editor in any Bauplan. | Decided: a Goals section on the Rules page, task ADM-H1 (spec 01). |
 | Q4 | Per-site calendars (PILOT brief) vs one company calendar (ADM/Q1, CLK). | One company calendar; per-site is drawn as *later* only. |
 | Q5 | Shop floor: raising without a name allowed per area, or always a short code? | Both, chosen per area. |
 | Q6 | Raise publishing step: finish or remove receiver, colleagues and meeting? | Decided in the LOOP plan; spec 04 draws the finished simple form. |
@@ -260,31 +260,25 @@ Each has a default. These specs follow the default until Kevin decides otherwise
 Each spec file ends with its own open questions (R1-R4 in 02, C1-C4 in 03, 04-Q1 to 04-Q6, G1-G4 in 05, N1-N4 in 06,
 F1-F6 in 07, Q-08-1 to Q-08-4, Q-09-1 to Q-09-4), each with a default.
 
-## Gaps the specs found in the plans and the code
+## Gaps the specs found, and their solutions
 
-Writing the specs against the Baupläne and `main` turned up these. They are not design questions; each needs a
-decision or a task in the named plan before its page can be built.
+Writing the specs against the Baupläne and `main` turned up these. Each now has a solution and an owner, written
+into the plans repo on 2026-11-02 (PILOT brief lines "From the page specs", HD15, the ADM and VIS Baupläne). NTF is
+already running and stays unchanged; what it handed to nobody went to ADM or API.
 
-| Gap | Where | Spec |
-|---|---|---|
-| No plan builds the Notifications and Webhooks settings: NTF hands its failed-messages view and subscription editor to ADM, and ADM has no task for them. | NTF, ADM, API | 06, 08 |
-| No plan owns the shop-floor areas table: the FLR brief takes areas from ADM, ADM's Bauplan leaves QR areas to FLR. A QR image also needs a package (ADM/Q2, HD12). | FLR, ADM | 07 |
-| No plan edits company goals (`Goal`). | ADM, STR | 01 (Q3) |
-| The receiver picker on the raise page scores people, including their answer track record (`features/ideas/receivers.ts`). That breaks HD5. | LOOP | 04 |
-| The person page is keyed by display name (`/people/[name]`), which HD10 rules out, and returns 404 for anyone with a handle, which IDN gives every member. | MET, IDN, ADM | 04 (04-Q5) |
-| `/admin/decisions` already exists and is a different log (router proposals against what people did); the new `/decisions` must not be confused with it. | LOOP | 04 |
-| `metricInputs` has no first-answer day, which the dashboard needs. | VIS, MET | 04 |
-| The connectors keep only their last error, so a list of recent errors has no data. | ADM, CNX, DIR | 03 (C2) |
-| Setup disappears from the menu once one unit exists, but the wizard has three more steps after units. | ADM | 02 (R2) |
-| No way to reset a lost second factor; D12 does not say whether demo-stage managers enrol. | ADM | 08 (Q-08-1, Q-08-2) |
-| Every stage move signs the whole company out (`sessionEpoch`); the pilot stage text speaks of a two-day promise while `promise_days` defaults to 5. | PIL, SEC | 09 |
-| The company login shows fixed numbers ("26 h", "84 %") to real companies. | ADM, EID | 08 |
-| Retention covers assistant turns only (`retentionDays`); drafts, case events and the screenshot policy have no fields. | GDP | 05 |
-| The rate-limit wait text exists in English only. | VIS, FLR | 07 |
-
-## Done when
-
-- Every page in the tables above has a desktop and a phone frame in Figma or Paper, in German, linked in its spec.
-- Every page's states (empty, loading, error, read-only and its own) are drawn.
-- The shared building blocks exist as Figma components and are used by every frame.
-- Kevin has looked at the settings shell and the first three settings pages before the rest is drawn.
+| Gap | Solution | Owner | Spec |
+|---|---|---|---|
+| No plan builds the Notifications and Webhooks settings: NTF hands its failed-messages view and subscription editor to ADM, and ADM had no task for them. | ADM builds the company Notifications page with the switch, opt-out counts and failed messages with Retry (ADM/D18, task ADM-N1). API builds the Webhooks page with the subscription editor and deliveries, and the API tokens page. | ADM-N1, API | 06, 08 |
+| No plan owned the shop-floor areas table, and a QR image needs a package. | FLR owns `FloorArea` and `FloorDevice` in `structure.prisma` and adds its `areas` section to ADM's settings menu; the QR encoder arrives first as `deps/FLR` (HD12). | FLR | 07 |
+| No plan edited company goals (`Goal`). | A Goals section on the Rules page (ADM/D17, task ADM-H1). | ADM-H1 | 01 |
+| The receiver picker on the raise page scores people, including their answer track record (`features/ideas/receivers.ts`). That breaks HD5. | Suggestions rank desks (a role and its seats) by route, keywords and spend authority only; the track record (`TRACK_CASES`) goes and no score is shown for a person. | LOOP | 04 |
+| The person page is keyed by display name (`/people/[name]`), which HD10 rules out, and returns 404 for anyone with a handle. | Person pages move to `/people/[userId]`; a name URL redirects when exactly one active member has that name; anonymous members have no person page and their handle is not a link. | MET | 04 (04-Q5) |
+| `/admin/decisions` already exists and is a different log. | The new log is `/decisions`; the stack's `/admin/decisions` is renamed "Routing review". | LOOP | 04 |
+| `metricInputs` had no first-answer day. | `firstAnswerDay` in `CaseView` and `metricInputs` (VIS/D7). | VIS | 04 |
+| The connectors keep only their last error. | No history for the pilot: the *Recent errors* slot shows the last error and Jira's per-item problems (03, C2 default). | ADM-C1 | 03 |
+| Setup disappeared from the menu once one unit existed, but the wizard has three more steps. | Setup stays in the menu and `/settings` redirects to it until `setupStep` says `done` (ADM/D7, D14; ADM-G1 builds `setupStep`). | ADM-G1, ADM-F1 | 01, 02 |
+| No way to reset a lost second factor; unclear whether demo-stage managers enrol. | Another manager of the company (Members) or a stack admin (`/admin` People) resets it, logged; the person enrols again. Demo-stage managers sign in through the demo and never enrol (ADM/D19, task ADM-R1). | ADM-R1 | 01, 08 |
+| Every stage move signs the whole company out (`sessionEpoch`); the pilot stage text speaks of a two-day promise while `promise_days` defaults to 5. | Only leaving `demo` or moving back to a lower stage signs everyone out; sandbox → pilot → live keep sessions. `STAGE_MEANING` reads the company's `promise_days`. | PIL | 09 |
+| The company login shows fixed numbers ("26 h", "84 %") to real companies. | The side panel with sample numbers shows on demo companies only (ADM/D20, in ADM-E1). | ADM-E1 | 08 |
+| Retention covered assistant turns only; drafts, case events and the screenshot policy had no fields. | GDP adds its own rows in `ops.prisma` (retention per kind, screenshot policy), no new columns on Company (HD11). The audit view is `/settings/audit`. | GDP | 05 |
+| The rate-limit wait text exists in English only. | The refusal comes from the catalog in German and English (`errors.tooManyAttempts`, VIS/D11, in VIS-D1). | VIS-D1 | 07 |

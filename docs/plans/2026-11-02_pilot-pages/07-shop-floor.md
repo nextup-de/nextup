@@ -722,7 +722,7 @@ In these frames `✦` stands for the star image.
 
 | # | Question | Default here |
 |---|---|---|
-| F1 | ADM does not build `areas`, though the FLR brief takes them from ADM. Where do `FloorArea`, `FloorDevice` and `FloorReference` live, and who owns the schema file? | FLR adds them to `structure.prisma` (areas belong to the org) with its own migration, and names the file in its Bauplan. |
+| F1 | ADM does not build `areas`, though the FLR brief takes them from ADM. Where do `FloorArea`, `FloorDevice` and `FloorReference` live, and who owns the schema file? | Decided (PILOT, FLR): FLR adds them to `structure.prisma` with its own migration; the QR encoder comes as `deps/FLR`. |
 | F2 | One static manifest, or one per company (name and start page)? | Static for the pilot; a paired device opens its area from `/`. |
 | F3 | The plan's route `/floor/sent/[reference]` puts the reference in the address bar and the history of a shared device. Keep it? | No: `/[company]/floor/sent` shows the reference from the send response once; the reference never goes into a URL path or query. |
 | F4 | The person's short code: a new 6-digit code per person (`User.floorCodeHash`), or reuse the login code? | A new short code, issued in Members, valid only on floor pages. |

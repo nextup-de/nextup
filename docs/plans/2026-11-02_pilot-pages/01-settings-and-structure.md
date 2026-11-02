@@ -64,7 +64,7 @@ Context for this file:
 - Group labels: `--nh-fs-xs`, 600, `--nh-mute`. 16 px above each group, 4 px below.
 - Items: 34 px tall, `--nh-fs-sm`, `--nh-ink-2`, 8 px radius. Hover: grey fill `#f2f2f7`. Current item: grey fill,
   ink text, 600. Connectors shows a small Error `StatusBadge` when a connector is in error.
-- While the company has no org unit, a **Setup** item sits first, above the groups, as a black pill
+- Until setup is done (`setupStep`, ADM/D14), a **Setup** item sits first, above the groups, as a black pill
   ("Set up {company}") instead of a plain item, and `/settings` opens it (ADM/D7).
 - The column is sticky under the top bar and scrolls on its own when taller than the screen.
 - Gap between column and page: 32 px.
@@ -89,7 +89,7 @@ closes the sheet and opens the page.
 | Element | Rules | EN | DE |
 |---|---|---|---|
 | Column title | | Settings | Einstellungen |
-| Setup pill | only while no org unit exists | Set up {company} | {company} einrichten |
+| Setup pill | until `setupStep` says `done` | Set up {company} | {company} einrichten |
 | Groups | visual only; the order is D7's | Company · Structure · Connectors · Notifications · Data and security · Shop floor · Go-live | Firma · Struktur · Anbindungen · Benachrichtigungen · Daten und Sicherheit · Shopfloor · Start |
 | Items (ADM) | | Company · Rules · Calendar · Org · Routing · Members · Connectors | Firma · Regeln · Kalender · Organisation · Routing · Mitglieder · Anbindungen |
 | Phone button | shows the current page | Settings: {page} | Einstellungen: {page} |
@@ -202,7 +202,8 @@ Labels go above their fields; the language control stays one row; Save buttons a
 - **Data:** `CompanyRule` keys `promise_days` (1-60, default 5), `outcome_days` (1-365, default 14), `spend`
   (`limitEur` ≥ 0 and a text of 1-200 characters, or none) (`features/knowledge/rules.ts`); `CompanyConfig` loop
   rules `discussEveryDays`, `discussMaxRounds`, `fastLaneEur`, `measureDays`, `measureTolerancePct`.
-  *Later:* company goals (`Goal`, open question Q3) and the idea publish score (`publishThreshold`, today in `/admin`).
+  Company goals (`Goal`) in their own card: ADM-H1 (ADM/D17). *Later:* the idea publish score (`publishThreshold`,
+  today in `/admin`).
 - **Today:** the company rules are written once at creation; the loop rules are edited in `/admin`. The reward
   setting stays in `/admin` (reward schemes are outside PILOT).
 
@@ -239,7 +240,7 @@ The promises NextUp makes and how fast ideas move at Acme Automotive.
 │ Counts as unchanged within         [ 2 ] %                            │
 │                                                            [ Save ]   │
 └───────────────────────────────────────────────────────────────────────┘
-┌ Goals  later (Q3) ──────────────────────────────────── [Add goal] ────┐
+┌ Goals  (ADM-H1) ────────────────────────────────────── [Add goal] ────┐
 │ Company-wide                                                          │
 │  Scrap rate below 2 %          KPI scrap rate · target < 2 % · 2027   │
 │ Werk Süd · Assembly                                                   │
@@ -270,7 +271,7 @@ Label above, field and unit on one row, hint under it. Goal rows become two line
 | Rounds | number | 1-10, default 3 | Rounds before the decision is due · One more round needs a manager. | Runden bis zur Entscheidung · Eine weitere Runde braucht eine Führungskraft. |
 | Measure after | number chips + days | 1-3 values, ascending | Measure a project after · days | Projekt messen nach · Tagen |
 | Tolerance | number + % | 0-50, default 2 | Counts as unchanged within · A smaller move is neither better nor worse. | Gilt als unverändert innerhalb von · Eine kleinere Änderung ist weder besser noch schlechter. |
-| Goals *(later)* | rows → drawer | grouped: company-wide first, then by unit | KPI {kpi} · target {target} · {period} | KPI {kpi} · Ziel {target} · {period} |
+| Goals (ADM-H1) | rows → drawer | grouped: company-wide first, then by unit | KPI {kpi} · target {target} · {period} | KPI {kpi} · Ziel {target} · {period} |
 
 ### Actions
 
@@ -279,12 +280,12 @@ Label above, field and unit on one row, hint under it. Goal rows become two line
 
 ### States
 
-- Loading: skeleton bars. No goals *(later)*: `EmptyState` "No goals yet. Without goals, ideas are scored on impact
+- Loading: skeleton bars. No goals: `EmptyState` "No goals yet. Without goals, ideas are scored on impact
   and clarity only." / "Noch keine Ziele. Ohne Ziele werden Ideen nur nach Wirkung und Klarheit bewertet."
 
 ### Done when
 
-- [ ] Desktop and phone in German, spend limit on and off, a refused value, the *later* Goals card in its own frame.
+- [ ] Desktop and phone in German, spend limit on and off, a refused value, the Goals card and its drawer.
 
 ---
 
@@ -527,7 +528,8 @@ Members                                               [Add] [Invite]
 - Avatar: initials on the person's tint (`avatarTone(name)`), 32 px.
 - Seats: the first seat's role title plus "+n"; a click opens the seats popover (below).
 - Deactivated rows: text in `--nh-mute`, the role select replaced by plain text, "Deactivated {date}" under the name.
-- The ⋯ menu: New login code · Seats… · Deactivate… (red) for active people; Reactivate · Delete… (red) for
+- The ⋯ menu: New login code · Seats… · Reset second factor… (other managers who enrolled; ADM-R1, see 08) ·
+  Deactivate… (red) for active people; Reactivate · Delete… (red) for
   deactivated people. *Later (GDP):* Export data · Pseudonymise….
 - You cannot change your own app role or deactivate yourself: those controls are disabled on your own row.
 

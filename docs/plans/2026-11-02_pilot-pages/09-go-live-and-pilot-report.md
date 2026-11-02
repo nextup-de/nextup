@@ -17,8 +17,10 @@ Context for this file:
 - **Stages** (`apps/app/src/features/admin/stages.ts`, `docs/SECURITY.md`, `docs/INTEGRATIONS.md` "Stages"): `demo`,
   `sandbox`, `pilot`, `live`. `policyFor(stage)` gives the demo policy to `demo` only; every other stage gets the
   real-people policy (no demo login, no switching person, no rewriting history, no shared demo codes).
-  `canMoveStage`: forward always, back to `demo` never from a real stage, between real stages both ways. Every stage
-  move bumps `Company.sessionEpoch`, which **signs everyone of the company out** (`server/actions/admin.ts`).
+  `canMoveStage`: forward always, back to `demo` never from a real stage, between real stages both ways. Today every stage
+  move bumps `Company.sessionEpoch`, which signs everyone of the company out (`server/actions/admin.ts`). **Decided
+  for PIL (PILOT, 2026-11-02):** only leaving `demo` or moving back to a lower stage does that; sandbox → pilot →
+  live keep everyone signed in. `STAGE_MEANING` reads the company's `promise_days`.
   `STAGE_MEANING` holds today's one-line meanings.
 - **What a stage changes in sending** (Bauplan NTF/D8): `sandbox` writes every message as `skipped` (reason
   "sandbox") and sends nothing; raise and discussion mails go out from `pilot` on; reminders and the digest only
@@ -127,8 +129,6 @@ From now on:
 • Mails about a case go to the people it concerns.
 • Reminders and the daily digest go out (they are on).
 • The pilot report counts from week 46 (from 9 Nov).
-• Everyone at Acme Automotive is signed out once and
-  signs in again.
 You can switch back to sandbox at any time.
                            [Cancel]  [Switch to pilot]
 ```
@@ -167,7 +167,7 @@ line under the name and the link on its own line. The switch button sits full wi
 | Switch to pilot | black pill | all "Needed" done | Switch to pilot | Auf Pilot umstellen |
 | Switch back | grey pill | in pilot | Switch back to sandbox | Zurück auf Sandbox |
 | Live line | text | in pilot | NextUp switches to live after the pilot. | NextUp stellt nach dem Pilot auf Live um. |
-| Dialog (to pilot) | `ConfirmDialog` | week from `pilotReport`'s calendar | Switch {company} to pilot? · From now on: · Mails about a case go to the people it concerns. · Reminders and the daily digest go out (they are on). · Reminders and the daily digest stay off. Switch them on in Notifications. · The pilot report counts from week {week} (from {date}). · Everyone at {company} is signed out once and signs in again. · You can switch back to sandbox at any time. | {company} auf Pilot umstellen? · Ab jetzt: · Mails zu einem Fall gehen an die Personen, die er betrifft. · Erinnerungen und die tägliche Zusammenfassung gehen raus (sie sind an). · Erinnerungen und die tägliche Zusammenfassung bleiben aus. Schalte sie unter Benachrichtigungen ein. · Der Pilotbericht zählt ab KW {week} (ab {date}). · Alle bei {company} werden einmal abgemeldet und melden sich neu an. · Du kannst jederzeit zurück auf Sandbox. |
+| Dialog (to pilot) | `ConfirmDialog` | week from `pilotReport`'s calendar | Switch {company} to pilot? · From now on: · Mails about a case go to the people it concerns. · Reminders and the daily digest go out (they are on). · Reminders and the daily digest stay off. Switch them on in Notifications. · The pilot report counts from week {week} (from {date}). · You can switch back to sandbox at any time. | {company} auf Pilot umstellen? · Ab jetzt: · Mails zu einem Fall gehen an die Personen, die er betrifft. · Erinnerungen und die tägliche Zusammenfassung gehen raus (sie sind an). · Erinnerungen und die tägliche Zusammenfassung bleiben aus. Schalte sie unter Benachrichtigungen ein. · Der Pilotbericht zählt ab KW {week} (ab {date}). · Du kannst jederzeit zurück auf Sandbox. |
 | Dialog (to sandbox) | `ConfirmDialog` | | Switch {company} back to sandbox? · Messages stop at once; waiting ones are skipped. · The pilot report pauses after week {week}. · Everyone is signed out once and signs in again. | {company} zurück auf Sandbox stellen? · Nachrichten stoppen sofort; wartende werden übersprungen. · Der Pilotbericht pausiert nach KW {week}. · Alle werden einmal abgemeldet und melden sich neu an. |
 | History | list | newest first | History · {from} → {to} · by {name} | Verlauf · {from} → {to} · von {name} |
 
@@ -177,9 +177,10 @@ line under the name and the link on its own line. The switch button sits full wi
   {time}". The page also checks on load.
 - *Switch to pilot*: the server runs the checks again and refuses if one "Needed" check fails ("Routes changed since
   the last check. Check again." / "Die Routen haben sich seit der letzten Prüfung geändert. Erneut prüfen."). On
-  success the admin is signed out with everyone else and lands on the login; after signing in, a toast on Go-live:
-  "{company} is in pilot." / "{company} ist im Pilot."
-- *Switch back to sandbox*: same flow, no checks.
+  success the admin stays signed in and gets a toast on Go-live: "{company} is in pilot." / "{company} ist im
+  Pilot."
+- *Switch back to sandbox*: no checks; a move back to a lower stage signs everyone out once (the dialog says so), so
+  the admin lands on the login afterwards.
 
 ### States
 
@@ -374,6 +375,6 @@ Stop these emails →
 | # | Question | Default |
 |---|---|---|
 | Q-09-1 | Who switches the stage? `live` means a paying customer. | Company admins switch sandbox ⇄ pilot on Go-live; pilot → live stays NextUp's in `/admin`, after the contract. |
-| Q-09-2 | Every stage move signs the whole company out (`sessionEpoch`). Keep that for moves between real stages? | Keep it: the dialog says so. Changing it is a one-line change in `/admin`'s stage action, not a page matter. |
+| Q-09-2 | Every stage move signs the whole company out (`sessionEpoch`). Keep that for moves between real stages? | Decided (PILOT, PIL): only leaving `demo` or moving back signs everyone out; sandbox → pilot → live keep sessions. |
 | Q-09-3 | What is the baseline: a period of NextUp data (MET brief) or numbers from before NextUp (the demo seed's "baseline survey")? | The two weeks before the pilot by default; entered numbers with a source as the alternative. |
 | Q-09-4 | Is the PDF a print view saved by the browser, or a server-made file (needs a package, HD12)? | Print view. |

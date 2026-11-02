@@ -1133,5 +1133,5 @@ Each has a default; the page specs above follow it.
 | 04-Q2 | Does the Person page still list a person's ideas and collaborations? | No: it is a per-person tally (HD5). The page shows roles only. |
 | 04-Q3 | The Inbox's "median to answer" and "within the promise" are a desk's numbers; a desk with one holder is one person. Keep them? | Keep, shown only to the desk's own holders, with "–" below 5 answers. Never shown to anyone else. |
 | 04-Q4 | Who may open the Decision log? | Every role, each row only when its case is visible to the viewer; in the nav for leaders and managers. |
-| 04-Q5 | The Person page route is a display name (`/people/[name]`). Move it to the user id? | Yes, `/people/[userId]`, in MET or ADM, whichever touches it first. |
+| 04-Q5 | The Person page route is a display name (`/people/[name]`). Move it to the user id? | Decided (PILOT, MET): `/people/[userId]`; a name URL redirects when exactly one active member has the name; anonymous members have no person page. |
 | 04-Q6 | The baseline period: a stored date range per company, set on the Dashboard? | Yes, `{ from, to }` in `CompanyConfig`, set by a manager on the Dashboard; PIL reads it for the pilot report. |

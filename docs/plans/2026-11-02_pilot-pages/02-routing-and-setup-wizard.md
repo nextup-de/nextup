@@ -214,7 +214,7 @@ sheet; *Add route* is full width under the lead.
 ## Setup wizard
 
 - **Route:** `/[company]/settings/setup` (new)
-- **Who:** company admins. `/settings` redirects here while the company has no org unit (ADM/D7).
+- **Who:** company admins. `/settings` redirects here until `setupStep` says `done` (ADM/D7, D14).
 - **Phase:** ADM-F1 (`SetupWizard.tsx`, `setupStep(knowledge, users)` in `server/actions/settings/setup.ts`); each
   step calls the action of its page: `saveCompanyAction` (ADM-A1), the org and route actions (ADM-B1), the add and
   invite actions of Members (ADM-D1). No second write path (D14). *Later (PIL):* an import step for a whole company.
@@ -438,6 +438,6 @@ the wizard's frame text is in `settingsSetup`.
 | # | Question | Default |
 |---|---|---|
 | R1 | The "Where would this case go?" test card on Routing is in no plan. Add it to ADM-B1? It only calls the pure `propose` on the saved rows. | Yes, keyword router only, no model call; drop the card if ADM-B1 runs over budget. |
-| R2 | D7 hides Setup in the menu once one unit exists, but the wizard has three more steps after units. How does an admin who leaves at step 3 find it again? | `/settings` still redirects to Setup until `setupStep` is `done` *(changes D7's redirect rule)*; the menu pill stays hidden as D7 says. |
+| R2 | D7 hides Setup in the menu once one unit exists, but the wizard has three more steps after units. How does an admin who leaves at step 3 find it again? | Decided (ADM/D7, D14): the menu shows Setup and `/settings` redirects to it until `setupStep` says `done`. |
 | R3 | `RoutingRule.wait` is display text ("3 d") while deadlines use the company promise (Rules). Keep a free text field? | Yes, until the promise clock is per rule; the hint says deadlines follow Rules. |
 | R4 | How is a new route's `key` made, and how long may `type` be? D8 sets neither. | Server makes the next free `r<n>`; `type` 1-120 characters like a role title. |

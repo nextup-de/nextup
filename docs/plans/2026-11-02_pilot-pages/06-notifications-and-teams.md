@@ -42,8 +42,8 @@ Context for this file:
 
 - **Route:** `/[company]/settings/notifications` (new)
 - **Who:** company admins (ADM/D6)
-- **Phase:** none yet (N1). NTF provides every piece of data; the page needs a task in ADM or a follow-up. Retry is
-  *(proposal, not in any plan)*.
+- **Phase:** ADM-N1 (ADM/D18), on NTF's data (`listOutbox`, `NotifyPreference`, `CompanyConfig.notifications`).
+  Retry is `retryOutboxRow` in ADM-N1. Opt-out counts below 5 show "fewer than 5".
 - **Data:** `Company.stage`; `CompanyConfig.notifications` (reminders and digest) and `CompanyConfig.n8n`
   (webhooks; called "Automations" in the UI) in `integrations.prisma`; `mailStatus()` and `mailFrom()` in
   `server/mail.ts` (configured, reachable; the relay's host is not shown here); `listOutbox(companyId, { status?,
@@ -655,7 +655,7 @@ Step 1                                        Step 2
 
 | # | Question | Default here |
 |---|---|---|
-| N1 | NTF hands the failed-messages view and the subscription editor to ADM, but ADM's Bauplan has no task for them. Who builds `/settings/notifications`? | A follow-up task after NTF-Z1 (ADM-H1 or NTF-E1); Webhooks (spec 08) stays with API. |
+| N1 | NTF hands the failed-messages view and the subscription editor to ADM, but ADM's Bauplan has no task for them. Who builds `/settings/notifications`? | Decided: ADM-N1 (ADM/D18); Webhooks (spec 08) is API's. |
 | N2 | Retry of a failed message: NTF has no function for it. Add one? | Yes, `retryOutbox(id)` that resets `attempt` and `nextAt`; admin only, audited. |
 | N3 | Teams cards: `Action.Submit` with message updates, or `Action.Execute` (universal actions) with refresh? | TMS decides; the result states drawn here apply to both. |
 | N4 | Reminders and the digest: an opt-out line at the bottom of the mail (not in NTF-A1's texts)? | Yes, one line linking to the profile. |

@@ -1065,7 +1065,7 @@ One column at full width; the disclosure works the same.
 
 | # | Question | Default |
 |---|---|---|
-| Q-08-1 | A manager who loses their phone cannot sign in by code (ADM-E1 has no reset). Who resets a second factor? | Another manager in Members (⋯ → "Reset second factor", clears `totpEnabledAt` and the secret, logged), and a stack admin in `/admin/people`. Needs a line in ADM-E1 or a follow-up. |
-| Q-08-2 | Does ADM/D12 apply to managers of demo-stage companies, who sign in by code on demo boxes? | Yes for code logins; the one-click demo button stays as it is. |
+| Q-08-1 | A manager who loses their phone cannot sign in by code (ADM-E1 has no reset). Who resets a second factor? | Another manager in Members (⋯ → "Reset second factor", clears `totpEnabledAt` and the secret, logged), and a stack admin in `/admin/people`. Decided: ADM/D19, task ADM-R1. |
+| Q-08-2 | Does ADM/D12 apply to managers of demo-stage companies, who sign in by code on demo boxes? | Decided (ADM/D19): no, demo-stage managers sign in through the demo and never enrol. |
 | Q-08-3 | Is an import all or nothing, or may rows with errors be skipped? | All or nothing: *Apply* waits until every row is clean. |
 | Q-08-4 | API tokens: system tokens only, or also tokens that act as one user (ADR 0003 mentions user tokens)? | System tokens only for the pilot; user tokens need `ApiToken.userId` and come with the API Bauplan if a customer asks. |
