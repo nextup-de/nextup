@@ -37,6 +37,7 @@ export async function decisionInputs(
 
   return raises.map((r) => ({
     eventId: r.eventId,
+    companyId: r.companyId,
     company: slugOf.get(r.companyId) ?? "",
     caseId: r.caseId,
     raisedAt: r.raisedAt,

@@ -1,19 +1,21 @@
-// GET: the routing eval set as JSON lines - settled raises only (features/admin/decisions.ts).
-// Admin cookie required; it holds what people wrote.
-import { isAdmin, listCompanies } from "@/server/actions/admin";
+// GET: the own company's routing eval set as JSON lines - settled raises only (features/admin/decisions.ts).
+// The console guard decides who may; the company is the guard's, never a parameter.
+import { consoleCompany } from "@/server/console-guard";
 import { decisionData } from "@/server/admin-insight";
 import { toEvalJsonl } from "@/features/admin/decisions";
-import { adminScope } from "@/features/admin/nav";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
-  if (!(await isAdmin())) return new Response("Not signed in to the admin area.", { status: 401 });
-  // Platform admin only - a company stack's /admin has no Decisions page (features/admin/nav.ts).
-  if (adminScope() === "company") return new Response("Not found.", { status: 404 });
-  const { rows } = await decisionData(await listCompanies(), 5000);
+  const guard = await consoleCompany();
+  if (!guard) return new Response("Not found.", { status: 404 });
+  const { rows } = await decisionData({ id: guard.companyId, slug: guard.slug }, 5000);
+  const body = toEvalJsonl(rows, guard.companyId);
+  const count = body ? body.split("\n").length : 0;
+  // Counts only: no names, no text.
+  console.log(`[admin] export ${new Date().toISOString()} ${count}`);
   const day = new Date().toISOString().slice(0, 10);
-  return new Response(toEvalJsonl(rows) + "\n", {
+  return new Response(body + "\n", {
     headers: {
       "content-type": "application/x-ndjson; charset=utf-8",
       "content-disposition": `attachment; filename="routing-eval-${day}.jsonl"`,

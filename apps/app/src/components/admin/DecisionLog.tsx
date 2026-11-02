@@ -1,6 +1,7 @@
 // /admin/decisions: every raise, what the router proposed, and whether people agreed. The summary
 // says how often the proposal holds; the table says where it did not. Props in, JSX out.
 import type { DecisionRow, DecisionSummary } from "@/features/admin/decisions";
+import type { T } from "@/i18n";
 import styles from "@/app/admin/admin.module.css";
 
 type Props = {
@@ -9,12 +10,13 @@ type Props = {
   /** company slug -> route id -> request type, so a row reads "r3 · Quality data", not just "r3". */
   routeNames: Record<string, Record<string, string>>;
   exportHref: string;
+  t: T;
 };
 
 const pct = (x: number | null) => (x === null ? "-" : Math.round(x * 100) + "%");
 const when = (iso: string) => new Date(iso).toISOString().slice(0, 16).replace("T", " ");
 
-export function DecisionLog({ rows, summary: s, routeNames, exportHref }: Props) {
+export function DecisionLog({ rows, summary: s, routeNames, exportHref, t }: Props) {
   const route = (company: string, id: string | null) =>
     id === null ? <span className={styles.sub}>none</span> : (
       <>
@@ -24,26 +26,22 @@ export function DecisionLog({ rows, summary: s, routeNames, exportHref }: Props)
     );
 
   const tiles: [string, string][] = [
-    [String(s.raised), "raised"],
-    [pct(s.agreement), "proposal held (agreed ÷ settled)"],
-    [String(s.overridden), "overridden"],
-    [String(s.handedElsewhere), "handed elsewhere"],
-    [String(s.noRoute), "no route found"],
-    [String(s.open), "still open"],
-    [s.meanConfidence === null ? "-" : s.meanConfidence + "%", "mean confidence"],
-    [String(s.notified), "notified by n8n"],
+    [String(s.raised), t("adminPrivacy.tileRaisedCases")],
+    [pct(s.agreement), t("adminPrivacy.tileHeld")],
+    [String(s.overridden), t("adminPrivacy.tileOverridden")],
+    [String(s.handedElsewhere), t("adminPrivacy.tileHanded")],
+    [String(s.noRoute), t("adminPrivacy.tileNoRoute")],
+    [String(s.open), t("adminPrivacy.tileOpen")],
+    [s.meanConfidence === null ? "-" : s.meanConfidence + "%", t("adminPrivacy.tileConfidence")],
+    [String(s.notified), t("adminPrivacy.tileNotified")],
   ];
 
   return (
     <>
       <section className={styles.card}>
-        <h1>Decisions</h1>
-        <p className="nh-hint">
-          What the router proposed for each raised case, and what people did with it. Overridden or handed elsewhere means
-          the proposal did not hold; that is the signal to fix a keyword, a row in the map, or the prompt. The label always
-          comes from people, never from the model. n8n&rsquo;s side of each raise is on Connections.
-        </p>
-        <div className={styles.tiles}>
+        <h1>{t("adminPrivacy.routingTitle")}</h1>
+        <p className="nh-hint">{t("adminPrivacy.routingLead")}</p>
+        <div className={styles.tiles} data-testid="console-routing-tiles">
           {tiles.map(([v, l]) => (
             <div key={l} className={styles.tile}>
               <div className={styles.tileValue}>{v}</div>
@@ -64,8 +62,7 @@ export function DecisionLog({ rows, summary: s, routeNames, exportHref }: Props)
           </div>
         ) : null}
         <p className="nh-hint">
-          <a href={exportHref} download>Download the eval set</a> (JSON lines, settled cases only: the text and the route people
-          chose). It is the input for <code>tests/eval/routing/</code>: score a new matcher or prompt on it before it ships.
+          <a href={exportHref} download data-testid="console-routing-export">{t("adminPrivacy.routingExport")}</a>
         </p>
       </section>
 
