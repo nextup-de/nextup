@@ -1,12 +1,17 @@
 // Brute-force brakes for the doors that take a secret or accept anonymous writes.
 //
-// In-process memory: right for the one Hetzner box, and per-instance on Vercel (each serverless
-// instance counts on its own - weaker, still far better than nothing). When the app scales out,
-// replace `stores` with a shared table; src/features/security/rate-limit.ts stays as it is.
+// With a database the windows live in the RateCounter table, so every instance counts against the
+// same limit (src/lib/db/rate-limit.ts, VIS/D11). Without one - the built-in demo, or Postgres
+// gone away - they live in this process's memory, per instance. The pure rules in
+// src/features/security/rate-limit.ts are the same either way.
 //
 // Not a "use server" module: helpers the actions call, not actions themselves.
 import { headers } from "next/headers";
-import { clear, clientAddress, hit, sweep, waitText, type Rule, type Window } from "@/features/security/rate-limit";
+import { clear, clientAddress, hit, sweep, type Rule, type Verdict, type Window } from "@/features/security/rate-limit";
+import { getT } from "@/i18n/server";
+import { isConnectionError } from "@/lib/db/client";
+import { clearShared, hitShared, sweepShared } from "@/lib/db/rate-limit";
+import { hasDatabase } from "@/lib/db/mode";
 
 /** Every limit in one table, so tuning them is one diff. */
 export const RULES = {
@@ -54,17 +59,50 @@ export async function clientKey(): Promise<string> {
   return clientAddress(h.get("x-forwarded-for"), h.get("x-real-ip"));
 }
 
-/** Null when the attempt may go ahead, otherwise the sentence to show. */
-export function throttle(bucket: Bucket, key: string): string | null {
-  const store = storeFor(bucket);
-  const now = Date.now();
-  if (store.size > 10_000) sweep(store, now);
-  const v = hit(store, key, RULES[bucket], now);
-  if (v.ok) return null;
-  console.warn(`[throttle] ${bucket} blocked for ${key}`);
-  return `Too many attempts. Wait ${waitText(v.retryAfterSeconds)} and try again.`;
+const SWEEP_EVERY_MS = 60 * 60_000;
+
+/** Once an hour, delete expired shared windows. Fire and forget: a failed sweep is retried next hour. */
+function sweepSharedHourly(now: number): void {
+  const g = globalThis as unknown as { __nextupThrottleSweptAt?: number };
+  if (g.__nextupThrottleSweptAt !== undefined && now - g.__nextupThrottleSweptAt < SWEEP_EVERY_MS) return;
+  g.__nextupThrottleSweptAt = now;
+  sweepShared(now).catch((err) => console.warn("[throttle] sweep failed", err));
 }
 
-export function forgive(bucket: Bucket, key: string): void {
+async function verdictFor(bucket: Bucket, key: string, now: number): Promise<Verdict> {
+  const rule = RULES[bucket];
+  if (hasDatabase()) {
+    sweepSharedHourly(now);
+    try {
+      return await hitShared(`${bucket}|${key}`, rule, now);
+    } catch (err) {
+      if (!isConnectionError(err)) throw err;
+      // Postgres went away: count in memory rather than let the door open.
+    }
+  }
+  const store = storeFor(bucket);
+  if (store.size > 10_000) sweep(store, now);
+  return hit(store, key, rule, now);
+}
+
+/** Null when the attempt may go ahead, otherwise the sentence to show, in the reader's language. */
+export async function throttle(bucket: Bucket, key: string): Promise<string | null> {
+  const v = await verdictFor(bucket, key, Date.now());
+  if (v.ok) return null;
+  console.warn(`[throttle] ${bucket} blocked for ${key}`);
+  const t = await getT();
+  const s = v.retryAfterSeconds;
+  const wait =
+    s < 60 ? t("errors.waitSeconds", { count: s }) : t("errors.waitMinutes", { count: Math.ceil(s / 60) });
+  return t("errors.tooManyAttempts", { wait });
+}
+
+export async function forgive(bucket: Bucket, key: string): Promise<void> {
   clear(storeFor(bucket), key);
+  if (!hasDatabase()) return;
+  try {
+    await clearShared(`${bucket}|${key}`);
+  } catch (err) {
+    if (!isConnectionError(err)) throw err;
+  }
 }

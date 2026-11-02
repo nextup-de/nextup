@@ -78,7 +78,7 @@ export async function POST(request: Request, { params }: Ctx) {
   if (hasDatabase() && process.env.AUTH_SECRET && !viewer) return json({ error: "Sign in first." }, 401);
 
   const who = viewer?.userId ?? (await clientKey());
-  const slow = throttle("ideaTurn", tenant.slug + ":" + who) ?? throttle("ideaTurnAll", tenant.slug);
+  const slow = (await throttle("ideaTurn", tenant.slug + ":" + who)) ?? (await throttle("ideaTurnAll", tenant.slug));
   if (slow) return json({ error: slow }, 429);
 
   const parsed = Body.safeParse(await request.json().catch(() => null));

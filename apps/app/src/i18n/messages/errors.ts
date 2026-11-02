@@ -16,6 +16,11 @@ export const errors = defineMessages({
     notFoundBack: "Back to {site}",
     localeInvalid: "That language is not available.",
     localeNotSaved: "The language could not be saved to your profile.",
+    tooManyAttempts: "Too many attempts. Wait {wait} and try again.",
+    waitMinutes_one: "{count} minute",
+    waitMinutes_other: "{count} minutes",
+    waitSeconds_one: "{count} second",
+    waitSeconds_other: "{count} seconds",
   },
   de: {
     eyebrow: "Fehler · bei uns ist etwas schiefgegangen",
@@ -31,5 +36,10 @@ export const errors = defineMessages({
     notFoundBack: "Zurück zu {site}",
     localeInvalid: "Diese Sprache ist nicht verfügbar.",
     localeNotSaved: "Die Sprache konnte nicht in deinem Profil gespeichert werden.",
+    tooManyAttempts: "Zu viele Versuche. Warte {wait} und versuch es dann noch einmal.",
+    waitMinutes_one: "{count} Minute",
+    waitMinutes_other: "{count} Minuten",
+    waitSeconds_one: "{count} Sekunde",
+    waitSeconds_other: "{count} Sekunden",
   },
 });
