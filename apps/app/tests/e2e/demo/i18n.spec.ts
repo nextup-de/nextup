@@ -71,6 +71,7 @@ const LEFT_OUT: Record<string, string> = {
   "[company]/(app)/settings/members/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/routing/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/org/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/notifications/page.tsx": "settings need a database and a signed-in manager",
 };
 
 function pageFilesOf(dir: string, match: RegExp, out: string[] = []): string[] {
