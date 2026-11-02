@@ -23,7 +23,11 @@ proofs:
       && npx playwright test -c playwright.db.config.ts
       tests/e2e/db/identity.spec.ts -g 'IDN acceptance'
     expect: 'IDN acceptance[\s\S]*[1-9]\d* passed'
-status: ready
+status: merged
+lane: pc/a
+branch: orch/idn-z1
+pr: 312
+merge: "1e7a162"
 ---
 
 Plan IDN (sub-plan of PILOT): acceptance. Every other IDN task is merged; this task proves the phase's result end

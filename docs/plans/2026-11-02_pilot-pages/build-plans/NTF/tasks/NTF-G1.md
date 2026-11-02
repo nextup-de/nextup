@@ -2,7 +2,7 @@
 id: NTF-G1
 title: Outbox, webhook subscription, preference and cursor tables with their helpers
 wp: G
-needs: [ CLK-Z1, AIP-Z1, LNG-Z1, CNX-Z1, DIR-G1, VIS-G1 ]
+needs: [ VIS-G1 ]
 host: any
 owns:
   - apps/app/prisma/schema/integrations.prisma

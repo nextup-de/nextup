@@ -425,7 +425,10 @@ screen.
   deciding who someone is; proposal: `/people/[userId]` with the name only shown *(proposal, not in any plan; IDN/D14
   left the people pages to ADM, the MET brief removes their counts)*.
 - **Who:** every signed-in role. Anonymous handles have no person page.
-- **Phase:** MET (counts removed; no Bauplan yet)
+- **Phase:** MET (counts removed; no Bauplan yet). Before MET, TRUTH-B1 of the
+  [defensible-offer Codex plan](../2026-11-02_defensible-offer-codex.md) deletes `/people/[name]` and every profile
+  link ([11](11-defensible-offer-pages.md#removed-contributor-ranking-and-person-pages)); this design is then the
+  page MET builds new at `/people/[userId]`.
 - **Data:** `User` (name, email, department), the person's seats (`OrgRoleHolder.userId` → `OrgRole` title,
   `decides`, `reportsToId` → `OrgUnit`), the role they report to and its holders, the other seats of the same unit.
   Never the personnel number (HD14).

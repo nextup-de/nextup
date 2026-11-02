@@ -2,7 +2,7 @@
 id: AIP-B1
 title: The brain is asked only through the gate and uses the company's endpoint
 wp: B
-needs: [ AIP-G1 ]
+needs: [ AIP-G1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/server/brain.ts
@@ -11,6 +11,8 @@ owns:
   - services/brain/tests/**
   - services/brain/README.md
   - apps/app/tests/unit/aip/brain-gate.test.ts
+  - apps/app/src/lib/db/assist.ts
+  - apps/app/src/app/api/[company]/ideas/turn/route.ts
 risk: normal
 profile: orch
 budget: { minutes: 90, window_pct: 15 }
@@ -20,8 +22,8 @@ proofs:
     says: a real company without a DPA, with off or (for routing) without aiRouting
       never reaches the brain and gets the offline answer, and an azure or
       openai-compatible company's request carries its llm endpoint
-    run: npm test -w @nextup/app -- tests/unit/aip/brain-gate.test.ts -t 'AIP
-      brain gate'
+    run: npm test -w @nextup/app -- tests/unit/aip/brain-gate.test.ts -t 'AIP brain
+      gate'
   - id: B2
     says: the brain answers a request with an llm block through that endpoint and
       model, falls back to its own settings without one, and never logs the key
@@ -30,7 +32,17 @@ proofs:
       && tar -x && uv sync --frozen && uv run --frozen pytest
       tests/test_llm_override.py"
     expect: '[1-9]\d* passed'
-status: open
+status: merged
+lane: pc/b
+branch: orch/aip-b1
+answers: 1
+last_failure: "Du hast gemeldet «blocked: the studio coach is still ungated
+  because I need `apps/app/src/app/api/[company]/ideas/turn/route.ts`, and
+  `claim` refused it (it belongs to the running task AIP-A1).». Antwort:
+  Freigegeben: `apps/app/src/app/api/[company]/ideas/turn/route.ts` gehört jetzt
+  zu deinem Besitz. Mach dort weiter und melde am Ende wieder."
+pr: 320
+merge: "61b7226"
 ---
 
 Plan AIP (sub-plan of PILOT): the brain. On `main` `brainProposalAction`, the plan and check-in actions and the

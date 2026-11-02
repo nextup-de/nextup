@@ -40,10 +40,11 @@ proofs:
       owner's seat on a raise whatever the client sent
     run: npm test -w @nextup/app -- tests/unit/idn/permissions-ids.test.ts -t 'IDN
       permissions on ids'
-status: proven
+status: merged
 lane: pc/b
 branch: orch/idn-a1
 pr: 305
+merge: "b4a1c61"
 ---
 
 Plan IDN (sub-plan of PILOT): the case domain. After this task the reducer knows for every case which seat and role
