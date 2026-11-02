@@ -28,3 +28,12 @@ cd apps/app && npx tsx prisma/clock-backfill.ts
 ```
 
 It sets each non-demo event's `day` to `workdayOf(ts, calendar)` and prints `<slug>: <n> days set` or `<slug>: left as it is` per company. Safe to repeat; demo companies are untouched.
+
+## CLK gaps
+
+Register rows of phase CLK (`docs/audit/gaps/product.md`) and the task that answers each. The acceptance proof is `apps/app/tests/db/clock.test.ts` (CLK-Z1).
+
+| Gap | What it said | Answered by |
+|---|---|---|
+| G-001 | Deadlines ran on `Company.demoDay`, which only `day.advanced` moves, and that is refused outside the demo stage: on a real company nothing ever fell due. | CLK-B1 (a real company's events and log run on working-day numbers, D9), with CLK-A1 (the working-day calendar) and CLK-D1 (the scheduler that reads them). |
+| G-002 | Escalation to the deputy was computed at render time and never written as an event, and no scheduler job existed. | CLK-C1 (escalation from stored `clock.due` facts, D11) and CLK-D1 (the scheduler that writes each fact once, D13). |
