@@ -7,7 +7,9 @@ const at = (y: number, m: number, d: number, h = 9, min = 5) => new Date(y, m, d
 
 describe("sentLabel", () => {
   it("today: the clock time when it is known, else 'Today'", () => {
-    expect(sentLabel(at(2026, 8, 24, 9, 5), now, true)).toBe("09:05");
+    // The clock time is printed in Europe/Berlin (i18n/format.ts), whatever zone the machine is in.
+    const berlin9 = new Date("2026-09-24T09:05:00+02:00");
+    expect(sentLabel(berlin9, now, true)).toBe("09:05");
     expect(sentLabel(at(2026, 8, 24), now, false)).toBe("Today");
   });
   it("yesterday, by calendar day - not by 24 hours", () => {
