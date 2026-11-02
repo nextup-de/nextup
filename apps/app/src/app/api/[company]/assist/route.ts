@@ -16,14 +16,16 @@ import { getViewerFor } from "@/features/auth/session";
 import { assist, ASSIST_PROMPT_VERSION, MAX_HISTORY, MAX_QUESTION, type Source } from "@/features/assist";
 import { storedSource } from "@/features/assist/tools";
 import { DEFAULT_CEILING } from "@/features/assist/classify";
-import { assistGate } from "@/features/assist/gate";
+import { aiGate } from "@/features/ai/gate";
+import { aiSettings } from "@/features/ai/settings";
 import { stripTags } from "@/features/assist/check";
 import { hasDatabase } from "@/lib/db/client";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
+import { loadAiSettings } from "@/lib/db/ai";
 import { loadAssistSettings, purgeAssistTurns, recordTurns, type AssistSettings } from "@/lib/db/assist";
 import { searchDocumentsFor } from "@/server/assist-search";
 import { clientKey, throttle } from "@/server/throttle";
-import { providerConfig, providerFor } from "@/server/assist/provider";
+import { streamingFor } from "@/server/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -72,8 +74,9 @@ export async function POST(request: Request, { params }: Ctx) {
   const { question, sessionId, history } = parsed.data;
 
   const settings = audited ? await loadAssistSettings(viewer.companyId) : LOCAL;
-  const cfg = providerConfig();
-  const gate = assistGate({ stage: tenant.stage ?? "demo", hasDatabase: audited, configured: cfg.id, enabled: settings.enabled, dpaSignedAt: settings.dpaSignedAt });
+  const stage = tenant.stage ?? "demo";
+  const ai = audited ? await loadAiSettings(viewer.companyId, stage) : { settings: aiSettings(null, process.env, stage), key: null };
+  const gate = aiGate({ stage, hasDatabase: audited, settings: ai.settings, dpaSignedAt: settings.dpaSignedAt, purpose: "assist", assistantOn: settings.enabled, aiRouting: false });
   if (!gate.on) return json({ error: gate.why, off: true }, 403);
 
   const seed = await seedFor(tenant.slug);
@@ -88,7 +91,7 @@ export async function POST(request: Request, { params }: Ctx) {
     ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" })),
   ];
   const redaction = { people, patterns: settings.patterns };
-  const provider = providerFor(gate.provider === "bedrock" ? cfg : { ...cfg, id: "mock", model: "mock" });
+  const provider = streamingFor(gate.settings, ai.key);
 
   const started = Date.now();
   const encoder = new TextEncoder();
