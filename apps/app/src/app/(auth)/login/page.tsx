@@ -1,32 +1,36 @@
 // STEP 1 of login: work email or company name -> that company's /[company]/login (findCompany).
 import Link from "next/link";
+import { getT } from "@/i18n/server";
 import { AuthShell, AuthTitle, AuthFoot, AuthRoles } from "@/components/auth/AuthShell";
 import { FindCompanyForm } from "@/components/auth/FindCompanyForm";
 
-export const metadata = { title: "Log in" };
+export async function generateMetadata() {
+  return { title: (await getT())("auth.metaLogIn") };
+}
 
-export default function FindCompanyPage() {
+export default async function FindCompanyPage() {
+  const t = await getT();
   return (
     <AuthShell
       art="hand"
       side={
         <>
-          <h2>Nineteen working days.<br />Three of them are work.</h2>
-          <p>Log in to see what is waiting on whom - and for how long. One home screen per role:</p>
+          <h2>{t("auth.findSideTitle1")}<br />{t("auth.findSideTitle2")}</h2>
+          <p>{t("auth.findSideText")}</p>
           <AuthRoles items={[
-            ["Team member", "Ideas", "Develop an idea with the coach - at the threshold NextUp names the owner and the deadline."],
-            ["Team leader", "Inbox", "Open items, oldest first. Yes, no and why, pass on, or ask - one click."],
-            ["Manager", "Dashboard", "How fast ideas are decided, where the waiting goes, and whether shipped work paid off."],
+            [t("auth.roleMember"), t("auth.roleMemberScreen"), t("auth.roleMemberLine")],
+            [t("auth.roleLeader"), t("auth.roleLeaderScreen"), t("auth.roleLeaderLine")],
+            [t("auth.roleManager"), t("auth.roleManagerScreen"), t("auth.roleManagerLine")],
           ]} />
         </>
       }
     >
-      <AuthTitle title="Find your company" sub="Enter your work email or your company's NextUp name. We will take you to your company's login." />
+      <AuthTitle title={t("auth.findTitle")} sub={t("auth.findSub")} />
 
       <FindCompanyForm />
 
       <AuthFoot>
-        New here? <Link href="/signup">Create a workspace</Link> · <Link href="/invite/demo">I have an invite</Link>
+        {t("auth.newHere")} <Link href="/signup">{t("auth.createWorkspace")}</Link> · <Link href="/invite/demo">{t("auth.haveInvite")}</Link>
       </AuthFoot>
     </AuthShell>
   );

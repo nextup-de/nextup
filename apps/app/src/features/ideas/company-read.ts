@@ -29,7 +29,7 @@ export type CompanyInput = {
   outcomes: readonly Outcome[];
   cases: readonly CompanyCase[];
   promiseDays: number;
-  spendLimitEur: number;
+  spendLimitEur: number | null;
 };
 
 export const LAST_DECISIONS = 5; // the last decisions on a desk its record looks at
@@ -92,7 +92,7 @@ export function companyRead(x: CompanyInput): Record<DialKey, CompanyFact[]> {
   const cfo = x.people.find((p) => /\bCFO\b/.test(p.role));
   const waiting = cfo ? x.initiatives.find((i) => live(i) && i.stuckOn?.name === cfo.name) : undefined;
   const cost: (CompanyFact | null)[] = [
-    { source: "Spend rule", text: "Team leads approve up to €" + x.spendLimitEur.toLocaleString("en") + " without a controlling sign-off." },
+    x.spendLimitEur !== null ? { source: "Spend rule", text: "Team leads approve up to €" + x.spendLimitEur.toLocaleString("en") + " without a controlling sign-off." } : null,
     cfo ? { source: "Org chart", text: "Above that it goes to " + cfo.name + " (" + cfo.role + ")" + (waiting ? ", the signature " + q(waiting.name) + " is waiting on right now" : "") + "." } : null,
     idea ? { source: "Idea board", text: "The closest idea on the board, " + q(idea.title) + ", is sized at " + idea.effort + " for an upside of " + idea.upside + "." }
       : x.ideas.length ? { source: "Idea board", text: "None of the " + x.ideas.length + " ideas on the board is close enough to compare its size with." }

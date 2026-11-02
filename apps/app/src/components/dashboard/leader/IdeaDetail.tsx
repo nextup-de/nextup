@@ -9,10 +9,12 @@ import type { AffectedDept, AffectedPerson, IdeaBrief } from "@/features/ideas/b
 import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileChip, initialsOf, PanelRow, PersonCard, Sources, Sparkle, StatusBox, type FeedEntry, type IdeaProps } from "./IdeaParts";
 import styles from "./IdeaDetail.module.css";
 import { avatarTone } from "@/lib/avatar";
+import { useT } from "@/i18n/client";
 
 export type { FeedEntry, IdeaHeader } from "./IdeaParts";
 
 export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onClose }: IdeaProps) {
+  const t = useT();
   const uid = useId();
   const aiSrc = uid + "-ai", scoreSrc = uid + "-score";
   const [aff, setAff] = useState<string | null>(null); // "author" | "d:<dept id>" | "p:<name>" | "f:<feed index>"
@@ -40,17 +42,17 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
         <article className={styles.card}>
           <div className={styles.head}>
             <div className={styles.authorWrap} data-aff="1">
-              <button type="button" className={styles.author} data-on={aff === "author" ? "true" : undefined} onClick={() => toggle("author")} title={"View " + brief.author.name} aria-expanded={aff === "author"}>
+              <button type="button" className={styles.author} data-on={aff === "author" ? "true" : undefined} onClick={() => toggle("author")} title={t("leader.viewPerson", { name: brief.author.name })} aria-expanded={aff === "author"}>
                 <span className={styles.authorAvatar} data-avatar={avatarTone(brief.author.name)}>{initialsOf(brief.author.name)}</span>
                 <span className={styles.authorText}>
                   <span className={styles.authorName}>{brief.author.name}</span>
-                  <span className={styles.authorLine}>{brief.author.role} · raised {idea.raised}</span>
+                  <span className={styles.authorLine}>{t("leader.authorLine", { role: brief.author.role, raised: idea.raised })}</span>
                 </span>
               </button>
               {aff === "author" && <div className={styles.pop}><PersonCard p={brief.author} /></div>}
             </div>
             <span className={styles.badge} data-tone={idea.tone}>{idea.badge}</span>
-            <button type="button" className={styles.close} onClick={onClose} title="Back to inbox" aria-label="Back to inbox">
+            <button type="button" className={styles.close} onClick={onClose} title={t("leader.backToInbox")} aria-label={t("leader.backToInbox")}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
@@ -59,7 +61,7 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
 
           {hasAffects && (
             <div className={`${styles.section} ${styles.affects} ${styles.fade}`} data-delay="1">
-              <span className={styles.label}>Affects</span>
+              <span className={styles.label}>{t("leader.affects")}</span>
               <div className={styles.chips}>
                 {brief.depts.map((d) => <DeptChip key={d.id} d={d} on={aff === "d:" + d.id} member={aff === "d:" + d.id ? member : null} author={brief.author.name} onToggle={() => toggle("d:" + d.id)} onMember={setMember} />)}
                 {brief.people.map((p) => <PersonChip key={p.name} p={p} on={aff === "p:" + p.name} author={brief.author.name} onToggle={() => toggle("p:" + p.name)} />)}
@@ -68,7 +70,7 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
           )}
           {brief.context && (
             <div className={`${styles.section} ${styles.fade}`} data-delay="2">
-              <span className={styles.label}>Context</span>
+              <span className={styles.label}>{t("leader.context")}</span>
               <p className={styles.para}>{brief.context}</p>
             </div>
           )}
@@ -79,7 +81,7 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
           )}
           {brief.files.length > 0 && (
             <div className={`${styles.section} ${styles.fade}`} data-delay="4">
-              <span className={styles.label}>Attachments</span>
+              <span className={styles.label}>{t("leader.attachments")}</span>
               <div className={styles.files}>{brief.files.map((f) => <FileChip key={f.name} ext={f.ext} name={f.short} title={f.name} meta={f.size} />)}</div>
             </div>
           )}
@@ -99,7 +101,7 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
                       <circle cx="36" cy="36" r="30" className={styles.arcFill} strokeDasharray={((s.value / 100) * 141.4).toFixed(1) + " 188.5"} />
                     </svg>
                     <div className={styles.gaugeText}><span className={styles.gaugeNum} data-long={s.value >= 100}>{s.value}</span><span className={styles.gaugeSub}>/ 100</span></div>
-                    <button type="button" className={styles.scoreBtn} onClick={() => setOpenScore(on ? null : i)} title={on ? "Hide reasoning" : "Show reasoning"} aria-label={(on ? "Hide" : "Show") + " the reasoning for " + s.label} aria-expanded={on}>
+                    <button type="button" className={styles.scoreBtn} onClick={() => setOpenScore(on ? null : i)} title={on ? t("leader.hideReasoning") : t("leader.showReasoning")} aria-label={t(on ? "leader.hideReasoningFor" : "leader.showReasoningFor", { label: s.label })} aria-expanded={on}>
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>
                   </div>
@@ -111,7 +113,7 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
         </div>
 
         {/* ── the reasoning of the open score, or what the AI found ── */}
-        <section className={styles.card} data-joined={openScore === 0 ? "left" : openScore === 4 ? "right" : openScore != null ? "mid" : undefined} aria-label={score ? score.label + " reasoning" : "What the AI found"}>
+        <section className={styles.card} data-joined={openScore === 0 ? "left" : openScore === 4 ? "right" : openScore != null ? "mid" : undefined} aria-label={score ? t("leader.reasoning", { label: score.label }) : t("leader.whatAiFound")}>
           {score ? (
             <div key={openScore} className={styles.reason}>
               <div className={styles.sectionTop}><span className={styles.label}>{score.label}</span><p className={styles.leadPara}>{score.note}</p></div>
@@ -133,17 +135,18 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
 }
 
 function DeptChip({ d, on, member, author, onToggle, onMember }: { d: AffectedDept; on: boolean; member: string | null; author: string; onToggle: () => void; onMember: (n: string | null) => void }) {
+  const t = useT();
   const m = member ? d.members.find((x) => x.name === member) ?? null : null;
   return (
     <span className={styles.chipWrap} data-aff="1">
-      <button type="button" className={styles.deptChip} data-on={on ? "true" : undefined} onClick={onToggle} title={d.ai ? "Added by AI" : "Added by " + author} aria-expanded={on}>
+      <button type="button" className={styles.deptChip} data-on={on ? "true" : undefined} onClick={onToggle} title={d.ai ? t("leader.addedByAi") : t("leader.addedBy", { name: author })} aria-expanded={on}>
         {d.name}{d.ai && <Sparkle />}
       </button>
       {on && (
         <div className={`${styles.pop} ${styles.popList}`}>
           {!m ? (
             <>
-              <div className={styles.popListHead}><span className={styles.popName}>{d.name}</span><span className={styles.small}>{d.members.length} {d.members.length === 1 ? "person" : "people"}</span></div>
+              <div className={styles.popListHead}><span className={styles.popName}>{d.name}</span><span className={styles.small}>{t("leader.persons", { count: d.members.length })}</span></div>
               {d.why && <div className={styles.aiWhy}><Sparkle /><span>{d.why}</span></div>}
               <div className={styles.members}>
                 {d.members.map((x) => (
@@ -153,7 +156,7 @@ function DeptChip({ d, on, member, author, onToggle, onMember }: { d: AffectedDe
                     <span className={styles.memberGo}><Chevron /></span>
                   </button>
                 ))}
-                {d.members.length === 0 && <span className={styles.small}>Nobody on the org chart yet.</span>}
+                {d.members.length === 0 && <span className={styles.small}>{t("leader.nobodyOnChart")}</span>}
               </div>
             </>
           ) : (
@@ -169,9 +172,10 @@ function DeptChip({ d, on, member, author, onToggle, onMember }: { d: AffectedDe
 }
 
 function PersonChip({ p, on, author, onToggle }: { p: AffectedPerson; on: boolean; author: string; onToggle: () => void }) {
+  const t = useT();
   return (
     <span className={styles.chipWrap} data-aff="1">
-      <button type="button" className={styles.personChip} data-on={on ? "true" : undefined} onClick={onToggle} title={p.ai ? "Added by AI" : "Added by " + author} aria-expanded={on}>
+      <button type="button" className={styles.personChip} data-on={on ? "true" : undefined} onClick={onToggle} title={p.ai ? t("leader.addedByAi") : t("leader.addedBy", { name: author })} aria-expanded={on}>
         <span className={styles.chipAvatar} data-avatar={avatarTone(p.name)}>{initialsOf(p.name)}</span>{p.name}{p.ai && <Sparkle />}
       </button>
       {on && <div className={styles.pop}><PersonCard p={p} why={p.why} /></div>}
@@ -181,9 +185,10 @@ function PersonChip({ p, on, author, onToggle }: { p: AffectedPerson; on: boolea
 
 
 function DecisionCard({ brief, status, onDecide }: { brief: IdeaBrief; status: IdeaProps["status"]; onDecide: (k: string) => void }) {
+  const t = useT();
   return (
-    <section className={styles.sideCard} aria-label="Your decision">
-      <h2 className={styles.sideTitle}>Your decision</h2>
+    <section className={styles.sideCard} aria-label={t("leader.yourDecision")}>
+      <h2 className={styles.sideTitle}>{t("leader.yourDecision")}</h2>
       <StatusBox status={status} />
       <DecisionList brief={brief} onDecide={onDecide} />
     </section>
@@ -191,9 +196,10 @@ function DecisionCard({ brief, status, onDecide }: { brief: IdeaBrief; status: I
 }
 
 function Feed({ brief, feed, open, onPerson, onComment }: { brief: IdeaBrief; feed: FeedEntry[]; open: number | null; onPerson: (i: number) => void; onComment?: (text: string) => void }) {
+  const t = useT();
   return (
-    <section className={styles.sideCard} aria-label="From the feed">
-      <h2 className={styles.sideTitle}>From the feed</h2>
+    <section className={styles.sideCard} aria-label={t("leader.fromTheFeed")}>
+      <h2 className={styles.sideTitle}>{t("leader.fromTheFeed")}</h2>
       <FeedBody brief={brief} feed={feed} open={open} onPerson={onPerson} onComment={onComment} />
     </section>
   );

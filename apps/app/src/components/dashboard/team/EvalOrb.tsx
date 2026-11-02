@@ -4,12 +4,14 @@
 // here the 64 preset's geometry is laid out at the real size and painted at the device's pixel ratio.
 // The ink ramp is flattened so the constellation reads jet black rather than fading to grey at the back.
 import { useEffect, useRef } from "react";
+import { useT } from "@/i18n/client";
 import { MODE_FRAMES, paintFrame, resolvePreset, STATE_TO_MODE, type OrbFrame, type OrbState } from "thinking-orbs/engine";
 
 const DEPTH = 0.3; // 0 = flat black; 1 = the library's full near-to-far ramp
 
 export function EvalOrb({ state, size, paused }: { state: OrbState; size: number; paused: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const t = useT();
 
   useEffect(() => {
     const canvas = ref.current, ctx = canvas?.getContext("2d");
@@ -31,5 +33,5 @@ export function EvalOrb({ state, size, paused }: { state: OrbState; size: number
     return () => cancelAnimationFrame(raf);
   }, [state, size, paused]);
 
-  return <canvas ref={ref} role="img" aria-label={STATE_TO_MODE[state] === "web" ? "Connecting the dots" : "Thinking"} style={{ width: size, height: size, display: "block" }} />;
+  return <canvas ref={ref} role="img" aria-label={STATE_TO_MODE[state] === "web" ? t("team.evalOrbConnecting") : t("team.evalOrbThinking")} style={{ width: size, height: size, display: "block" }} />;
 }
