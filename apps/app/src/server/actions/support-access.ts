@@ -68,7 +68,7 @@ export async function supportSignIn(code: string): Promise<SupportSignInState> {
   if (!slug || !hasDatabase()) return wrong;
 
   const who = await clientKey();
-  const blocked = throttle("adminLogin", who);
+  const blocked = await throttle("adminLogin", who);
   if (blocked) return { error: blocked };
 
   const given = normalizeSupportCode(String(code ?? ""));
@@ -82,7 +82,7 @@ export async function supportSignIn(code: string): Promise<SupportSignInState> {
     return wrong;
   }
 
-  forgive("adminLogin", who);
+  await forgive("adminLogin", who);
   console.info(`[admin] support ${now.toISOString()}`);
   await db.supportGrant.update({ where: { id: grant.id }, data: { signins: appendSignin(grant.signins, now) } });
   await issueAdminSession(supportBy(grant.id), false, "support", grant.expiresAt);
