@@ -23,7 +23,6 @@ In this order. Setup shows only while it is not done.
 | Org | `settings/org` | Units, roles under a unit, seats under a role, and linking a seat to a member. |
 | Routing | `settings/routing` | Request types with keywords, owner / deputy / buddy role, wait, and order. |
 | Members | `settings/members` | Add or invite people, new login codes, roles, seats, deactivate or delete, reset a manager's second factor. |
-| Connectors | `settings/connectors` | Listed in the nav (D7). The page is not in the tree this document was written against. |
 | Notifications | `settings/notifications` | The company's switch, opt-out counts, failed outbox rows with Retry. |
 
 Test ids are `settings-<section>-<thing>`; the wizard's steps are `setup-step-<key>`.
