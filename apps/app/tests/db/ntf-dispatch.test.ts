@@ -137,6 +137,7 @@ describe("NTF old senders off", () => {
   });
 
   it("a raise gives one raised mail from the outbox and the note on the case, and the resend reuses the row", async () => {
+    await dispatchOnce(); // own the cursor: this describe must not depend on the one above having run
     await raise("r3");
     await dispatchOnce();
     await deliverOnce(later());
