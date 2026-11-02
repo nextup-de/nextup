@@ -1,0 +1,37 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users(id,displayName,mail,userPrincipalName,department,jobTitle,employeeId,accountEnabled,manager(id))",
+  "@odata.nextLink": "https://graph.microsoft.com/v1.0/users/delta?$skiptoken=fixtureSkipToken1",
+  "value": [
+    {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "displayName": "Mira Example",
+      "mail": "mira.example@contoso-fixture.example",
+      "userPrincipalName": "mira.example@contoso-fixture.onmicrosoft.com",
+      "department": "Engineering",
+      "jobTitle": "Head of Engineering",
+      "employeeId": "P-10001",
+      "accountEnabled": true
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000002",
+      "displayName": "Noel Sample",
+      "mail": "noel.sample@contoso-fixture.example",
+      "userPrincipalName": "noel.sample@contoso-fixture.onmicrosoft.com",
+      "department": "Engineering",
+      "jobTitle": "Developer",
+      "employeeId": null,
+      "accountEnabled": true,
+      "manager": { "@odata.type": "#microsoft.graph.user", "id": "a0000000-0000-4000-8000-000000000001" }
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000003",
+      "displayName": "Olga Placeholder",
+      "mail": null,
+      "userPrincipalName": "olga.placeholder@contoso-fixture.onmicrosoft.com",
+      "department": "Finance",
+      "jobTitle": "Controller",
+      "employeeId": null,
+      "accountEnabled": true
+    }
+  ]
+}

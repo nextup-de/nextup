@@ -160,6 +160,25 @@ there). Check it in a test sign-in: the decoded ID token must carry `"department
 **Without the claim** (missing, empty or a department NextUp does not know) the account is created as
 before, but has no seat. Such a person is seated later by the directory sync (DIR) or by an administrator.
 
+## Directory sync
+
+Only if you want it. NextUp can read your people from Entra ID, so that cases reach the right role holder
+without anyone typing the structure in by hand.
+
+- **Permission.** Under **API permissions → Add a permission → Microsoft Graph → Application permissions**, add
+  **User.Read.All**, then **Grant admin consent for your organisation**. This is an application permission: NextUp
+  reads as itself, not as a signed-in person, with the same client ID and secret as sign-in.
+- **What NextUp reads**, per user: object ID, display name, work email, department, job title, manager, whether the
+  account is enabled, and the personnel number (`employeeId`) when you fill it (for example from SuccessFactors or
+  SAP HCM). The personnel number is used only to match people; it is never shown, logged or sent to the assistant.
+- **What NextUp never reads:** absences, calendars, mail, files, groups, or any HR data beyond the fields above.
+  NextUp never writes to your directory.
+- **Departments.** A person is brought in when their **department names one of the org units** of your NextUp
+  company (name or key, case does not matter). A department that matches nothing is skipped; add the unit first.
+- **How often.** Every 15 minutes. The first run reads everyone, later runs read only what changed.
+- **Switching it on.** In `https://<company>.sellux.ch/admin`, open the directory settings, choose Microsoft Entra ID
+  as the source and switch the sync on. It needs the tenant ID to be set (step 6 above).
+
 ## What happens at sign-in
 
 1. The person opens `https://<company>.sellux.ch` and chooses **Continue with Microsoft**.
