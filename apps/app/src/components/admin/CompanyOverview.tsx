@@ -5,6 +5,8 @@ import type { CompanyRow } from "@/features/admin/rows";
 import { lockedOut } from "@/features/admin/nav";
 import { STAGE_MEANING, type Stage } from "@/features/admin/stages";
 import type { AssistantView } from "@/server/admin-insight";
+import type { ConsoleOverviewFacts } from "@/server/console-guard";
+import type { T } from "@/i18n";
 import styles from "@/app/admin/admin.module.css";
 
 export function CompanyOverview({ company, assistant, base }: { company: CompanyRow; assistant: AssistantView; base: string }) {
@@ -97,6 +99,38 @@ export function CompanyMissing() {
     <section className={styles.card}>
       <h1>Not set up yet</h1>
       <p className="nh-hint">This NextUp has no company in its database yet. The NextUp team finishes the setup - nothing to do here.</p>
+    </section>
+  );
+}
+
+/** The console's own front page (ITC-G1): who can get in, what is connected, what the assistant does. */
+export function ConsoleOverview({ company, facts, base, t }: { company: CompanyRow; facts: ConsoleOverviewFacts; base: string; t: T }) {
+  const state = (on: boolean) => (on ? t("adminConsole.on") : t("adminConsole.off"));
+  return (
+    <section className={styles.card} data-testid="console-overview-card">
+      <div className={styles.cardHead}>
+        <h1>{company.name}</h1>
+      </div>
+      <p className={`nh-hint ${styles.lead}`}>{t("adminConsole.overviewLead")}</p>
+      <div className={styles.counts}>
+        <a className={styles.count} href={`${base}/people`} data-testid="console-overview-admins">
+          <span className={styles.countValue}>{facts.admins}</span>
+          <span className={styles.countLabel}>{t("adminConsole.adminsLabel")}</span>
+        </a>
+        <a className={styles.count} href={`${base}/people#microsoft`} data-testid="console-overview-entra">
+          <span className={styles.countValue}>{state(facts.entra)}</span>
+          <span className={styles.countLabel}>{t("adminConsole.entraLabel")}</span>
+        </a>
+        <a className={styles.count} href={`${base}/connectors`} data-testid="console-overview-connectors">
+          <span className={styles.countValue}>{state(facts.jira)}</span>
+          <span className={styles.countLabel}>{t("adminConsole.connectorsLabel")}</span>
+        </a>
+        <a className={styles.count} href={`${base}/assistant`} data-testid="console-overview-assistant">
+          <span className={styles.countValue}>{state(facts.assistant)}</span>
+          <span className={styles.countLabel}>{t("adminConsole.assistantLabel")}</span>
+        </a>
+      </div>
+      <p className="nh-hint" data-testid="console-overview-support">{t("adminConsole.supportNone")}</p>
     </section>
   );
 }

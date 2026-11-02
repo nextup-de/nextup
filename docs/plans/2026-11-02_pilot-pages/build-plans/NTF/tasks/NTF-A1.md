@@ -2,7 +2,7 @@
 id: NTF-A1
 title: Planner, gate and public events decide what message each event becomes
 wp: A
-needs: [ NTF-G1 ]
+needs: [ NTF-G1, CLK-Z1, AIP-Z1 ]
 host: any
 owns:
   - apps/app/src/features/notify/plan.ts

@@ -294,7 +294,7 @@ deputy once on the right working day` is green.
 
 | WP | Content | Tasks | depends on | Owns |
 |---|---|---|---|---|
-| G | `CompanyCalendar`, `ClockLease`, migration; clock types; `Seed.clock`; `clock.due` type | CLK-G1 | IDN-Z1 | `prisma/schema/core.prisma`, `prisma/migrations/20261110080000_clk_calendar/`, `features/clock/index.ts`, `features/cases/events.ts`, `features/demo/{types,seed,static-demo,index,parse,content}.ts`, `features/cases/reducer.ts` (type only), `lib/db/calendar.ts`, `lib/db/companies.ts` |
+| G | `CompanyCalendar`, `ClockLease`, migration; clock types; `Seed.clock`; `clock.due` type | CLK-G1 | IDN-G1 | `prisma/schema/core.prisma`, `prisma/migrations/20261110080000_clk_calendar/`, `features/clock/index.ts`, `features/cases/events.ts`, `features/demo/{types,seed,static-demo,index,parse,content}.ts`, `features/cases/reducer.ts` (type only), `lib/db/calendar.ts`, `lib/db/companies.ts` |
 | A | Working days and holidays | CLK-A1 | G | `features/clock/{calendar,holidays}.ts` |
 | C | Reducer escalation from due facts; `dueNow` | CLK-C1 | G | `features/cases/reducer.ts`, `features/projects/reduce.ts`, `features/clock/due.ts` |
 | B | Working-day stamps, log day, page dates, day backfill | CLK-B1 | A, G | `lib/db/events.ts`, `features/cases/rows.ts`, `server/jira-sync.ts`, `server/actions/{events,admin}.ts`, `server/connections.ts`, `prisma/clock-backfill.ts`, `lib/db/clock-backfill.ts`, `docs/CLOCK.md` |
@@ -316,6 +316,6 @@ Paths under `apps/app/src/` unless they start with `prisma/`, `tests/`, `instrum
   data exist today.
 - **The reducer is Kevin's file** (header "Only Kevin changes this file") → CLK-G1 (type only) and CLK-C1 change it
   under his L2 approval of this plan, as in IDN.
-- **CLK depends on names IDN fixes** (seats, escalation by role). → Its first task needs IDN-Z1; if IDN's names
-  change before it merges, the main chat corrects CLK's tasks before they start.
+- **CLK depends on names IDN fixes** (seats, escalation by role). → CLK-G1 needs only IDN-G1 (seats and `Me`); every
+  other CLK task needs IDN-Z1, so nothing that uses the names IDN fixes starts before IDN is done.
 - **Budget:** 90 % against 60 % in PILOT (6 tasks, 72 %): the day stamping and the page dates were not in the brief.

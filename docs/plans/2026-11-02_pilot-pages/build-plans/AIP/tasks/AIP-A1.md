@@ -1,8 +1,9 @@
 ---
 id: AIP-A1
-title: Bedrock, Azure OpenAI and OpenAI-compatible adapters, and the assistant and coach use the company's choice
+title: Bedrock, Azure OpenAI and OpenAI-compatible adapters, and the assistant
+  and coach use the company's choice
 wp: A
-needs: [ AIP-G1 ]
+needs: [ AIP-G1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/server/ai/**
@@ -11,6 +12,8 @@ owns:
   - apps/app/src/app/api/[company]/ideas/turn/route.ts
   - apps/app/src/server/admin-insight.ts
   - apps/app/tests/unit/aip/adapters.test.ts
+  - apps/app/src/features/assist/index.ts
+  - apps/app/src/components/admin/AssistantAdmin.tsx
 risk: normal
 profile: orch
 budget: { minutes: 90, window_pct: 15 }
@@ -23,7 +26,11 @@ proofs:
       from
     run: npm test -w @nextup/app -- tests/unit/aip/adapters.test.ts -t 'AIP
       adapters'
-status: open
+status: merged
+lane: pc/a
+branch: orch/aip-a1
+pr: 318
+merge: "118baee"
 ---
 
 Plan AIP (sub-plan of PILOT): the adapters. After this task the assistant and the studio coach call the model the

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Codex task result (defensible-offer plan)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task", "status", "summary", "files_changed", "blocked_paths", "question", "verify"],
+  "properties": {
+    "task": { "type": "string", "description": "The task id, for example TRUTH-A1" },
+    "status": { "type": "string", "enum": ["done", "blocked", "question"] },
+    "summary": { "type": "string", "description": "Two to five sentences: what is true now that was not before" },
+    "files_changed": { "type": "array", "items": { "type": "string" } },
+    "blocked_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths outside owns that the task needed; empty unless status is blocked"
+    },
+    "question": {
+      "type": ["string", "null"],
+      "description": "One question for Kevin when status is question, else null"
+    },
+    "verify": {
+      "type": "array",
+      "description": "Each verify command the session ran, with its last result line",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "result"],
+        "properties": {
+          "command": { "type": "string" },
+          "result": { "type": "string" }
+        }
+      }
+    }
+  }
+}

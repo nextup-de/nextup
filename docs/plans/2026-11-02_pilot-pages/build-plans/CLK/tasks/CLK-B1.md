@@ -3,7 +3,7 @@ id: CLK-B1
 title: A real company's events and log run on working-day numbers, pages show
   their dates, and stored days are backfilled
 wp: B
-needs: [ CLK-A1, CLK-G1 ]
+needs: [ CLK-A1, CLK-G1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/lib/db/events.ts
@@ -18,6 +18,7 @@ owns:
   - apps/app/tests/unit/rows.test.ts
   - apps/app/tests/unit/clk/day-format.test.ts
   - apps/app/tests/db/clk-days.test.ts
+  - apps/app/src/components/dashboard/DemoProvider.tsx
 risk: high
 profile: orch
 budget: { minutes: 90, window_pct: 15 }
@@ -34,7 +35,11 @@ proofs:
       non-demo days from their timestamps once
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/clk-days.test.ts -t 'CLK working-day stamps'
-status: ready
+status: merged
+lane: pc/b
+branch: orch/clk-b1
+pr: 316
+merge: "e5731e5"
 ---
 
 Plan CLK (sub-plan of PILOT): the days of a real company. Today every event of a non-demo company is stamped with

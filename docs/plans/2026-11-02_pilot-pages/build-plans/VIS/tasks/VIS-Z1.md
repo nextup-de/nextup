@@ -1,8 +1,9 @@
 ---
 id: VIS-Z1
-title: "VIS acceptance: a member receives only visible cases and pages stay fast with 50,000 events"
+title: "VIS acceptance: a member receives only visible cases and pages stay fast
+  with 50,000 events"
 wp: Z
-needs: [ VIS-G1, VIS-A1, VIS-D1, VIS-B1, VIS-C1 ]
+needs: [ VIS-G1, VIS-A1, VIS-D1, VIS-B1, VIS-C1, CLK-Z1 ]
 host: any
 owns:
   - apps/app/tests/e2e/db/visibility.spec.ts
@@ -14,8 +15,8 @@ budget: { minutes: 75, window_pct: 12 }
 uses: [ D1, D8, D9, D13, D14 ]
 proofs:
   - id: B1
-    says: a member's browser never receives an event of a case they may not see,
-      and with 50,000 events the inbox and a case page load in under one second
+    says: a member's browser never receives an event of a case they may not see, and
+      with 50,000 events the inbox and a case page load in under one second
     run: cd apps/app && export
       DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test
       AUTH_SECRET=<test value, see the plans repo>
@@ -23,7 +24,7 @@ proofs:
       && npx playwright test -c playwright.db.config.ts
       tests/e2e/db/visibility.spec.ts -g 'VIS acceptance'
     expect: 'VIS acceptance[\s\S]*[1-9]\d* passed'
-status: open
+status: ready
 ---
 
 Plan VIS (sub-plan of PILOT): acceptance. Every other VIS task is merged. Read first: `apps/app/tests/e2e/db/structure.spec.ts`

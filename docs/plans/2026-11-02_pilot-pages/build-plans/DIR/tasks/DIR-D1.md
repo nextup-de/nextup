@@ -1,6 +1,7 @@
 ---
 id: DIR-D1
-title: Deputies follow the manager chain, and a manager can deactivate or delete a member
+title: Deputies follow the manager chain, and a manager can deactivate or delete
+  a member
 wp: D
 needs: [ DIR-A1 ]
 host: any
@@ -28,7 +29,7 @@ proofs:
       reach
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/dir-members.test.ts -t 'DIR member actions'
-status: open
+status: ready
 ---
 
 Plan DIR (sub-plan of PILOT): deputies and member actions. Read first: D12 and D13 of the plan,

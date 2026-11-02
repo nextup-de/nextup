@@ -21,7 +21,7 @@ proofs:
       settings page
     run: npm test -w @nextup/app -- tests/unit/adm/setup.test.ts -t 'ADM setup
       steps'
-status: open
+status: ready
 ---
 
 Plan ADM (sub-plan of PILOT): the setup wizard (D14). Read first: the actions and editors of ADM-A1, ADM-B1 and
