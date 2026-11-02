@@ -90,6 +90,10 @@ model Company {
   connections  Connection[]
   integrations Integration[]
   documents    Document[]
+  outbox               OutboxMessage[]
+  webhookSubscriptions WebhookSubscription[]
+  notifyPreferences    NotifyPreference[]
+  notifyCursor         NotifyCursor?
 
   // -- ops --
   tickets       Ticket[]
