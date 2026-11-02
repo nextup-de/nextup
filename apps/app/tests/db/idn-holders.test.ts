@@ -71,7 +71,7 @@ describe("IDN holder helpers", () => {
     const r = await appendEventRow(a.id, { id: "idn-e1", day: 0, type: "case.read", actor: "Ann", targetId: "c1", payload: {} }, { actorUserId: userA });
     expect(r.ok).toBe(true);
     await appendEventRow(a.id, { id: "idn-e2", day: 0, type: "case.read", actor: "system:n8n", targetId: "c1", payload: {} });
-    const log = await loadLog(a.id, 0);
+    const log = await loadLog(a.id);
     expect(log.events.map((e) => e.actorUserId)).toEqual([userA, null]);
   });
 });
