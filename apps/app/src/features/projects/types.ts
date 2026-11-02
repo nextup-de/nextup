@@ -10,6 +10,8 @@ export type Step = {
   id: string;
   text: string;
   owner: string | null;
+  /** The owner's user id (project.step.* ownerUserId); null when none was named. */
+  ownerUserId: string | null;
   dueDay: number | null;
   column: StepColumn;
   /** Why it moved last (a blocked step says what blocks it). */
@@ -18,6 +20,7 @@ export type Step = {
   note: string;
   addedDay: number;
   by: string;
+  byUserId: string | null;
   movedDay: number;
   /** When it first went to Doing, and when it last reached Done (null until then): the step's cycle time. */
   startedDay: number | null;
@@ -65,7 +68,7 @@ export type Reward = { rule: string; amount: number | null; note: string; day: n
 export type ProjectStatus = "planning" | "running" | "measuring" | "measured" | "recognised" | "stopped";
 
 /** Late start or late measure: on the deputy's desk too, like a late decision. */
-export type ProjectEscalation = { to: string; from: string; day: number; live: boolean; what: "start" | "measure" };
+export type ProjectEscalation = { to: string; toSeatId: string | null; toRoleId: string | null; from: string; day: number; live: boolean; what: "start" | "measure" };
 
 export type ReducedProject = {
   id: string;
@@ -80,6 +83,10 @@ export type ReducedProject = {
   routeId: string | null;
   lead: string;
   members: string[];
+  /** The same people by user id; null / [] when the events carried no id (a label never stands in). */
+  leadUserId: string | null;
+  memberUserIds: string[];
+  authorUserIds: string[];
   openedDay: number;
   openedBy: string;
   startedDay: number | null;

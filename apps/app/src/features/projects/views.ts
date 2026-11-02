@@ -3,6 +3,7 @@
 // facts (and the short sentences built from them) out. The shapes and rules are ./types, ./reduce,
 // ./selectors and ./permissions; this file only reads them.
 import type { Role } from "@/config/roles";
+import { holdsRole, type Me } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import type { Initiative, InitiativeStatus } from "@/features/demo/types";
@@ -14,7 +15,10 @@ import type { RewardRule } from "@/features/loop/rules";
 import { nextMove, type ProjectMove } from "./selectors";
 import type { Baseline, Measure, ProjectStatus, ReducedProject, Step, StepColumn, VerdictWord } from "./types";
 
-/** Who is looking: their role, their name and - when they post anonymously - their handle. */
+/** Who is looking, by id: their role and their user id; `me` (seats and roles) decides what was escalated to them. */
+export type IdViewer = { role: Role; userId: string | null; me?: Me };
+
+/** @deprecated IDN-S1 removes this - use IdViewer. Who is looking: their role, their name and - when they post anonymously - their handle. */
 export type Viewer = { role: Role; name: string; handle: string | null };
 
 const isViewer = (v: Viewer) => (who: string | null) => who !== null && (who === v.name || (v.handle !== null && who === v.handle));
@@ -23,6 +27,7 @@ const isViewer = (v: Viewer) => (who: string | null) => who !== null && (who ===
 export const isHandle = (who: string) => who.startsWith("Anonymous");
 
 /**
+ * @deprecated IDN-S1 removes this - use visibleProjectsFor.
  * The projects this person may see. Members: the projects of their own ideas and the ones they are
  * on. Leaders and managers: all. With demo data off, only what happened here (no seed projects).
  */
@@ -31,6 +36,15 @@ export function visibleProjects(state: Pick<State, "projects">, v: Viewer, demo 
   if (v.role !== "member") return all;
   const me = isViewer(v);
   return all.filter((p) => me(p.lead) || p.members.some(me) || p.authors.some(me));
+}
+
+/** visibleProjects by user id: a member sees the projects they lead, are on, or whose idea they raised. */
+export function visibleProjectsFor(state: Pick<State, "projects">, v: IdViewer, demo = true): ReducedProject[] {
+  const all = demo ? state.projects : state.projects.filter((p) => !p.seed);
+  if (v.role !== "member") return all;
+  const id = v.userId;
+  if (id === null) return [];
+  return all.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id));
 }
 
 export type ProjectGroup = { key: string; label: string; projects: ReducedProject[] };
@@ -61,7 +75,25 @@ export type DeskItem = { project: ReducedProject; move: NonNullable<ProjectMove>
 // What is most pressing first: a late move, then the moves that unblock the loop, then the board.
 const MOVE_RANK: Record<NonNullable<ProjectMove>, number> = { measure: 0, start: 1, baseline: 2, reward: 3, done: 4, steps: 5 };
 
+/** projectDesk by id: the lead's own moves by user id, a late move by the role of the seat it moved to. */
+export function projectDeskFor(list: readonly ReducedProject[], day: number, v: IdViewer): DeskItem[] {
+  const out: DeskItem[] = [];
+  for (const p of list) {
+    const move = nextMove(p, day);
+    if (!move) continue;
+    if (move === "reward") {
+      if (v.role === "manager") out.push({ project: p, move, why: "reward" });
+    } else if (v.userId !== null && p.leadUserId === v.userId) out.push({ project: p, move, why: "lead" });
+    else if (v.me && holdsRole(v.me, p.escalated?.toRoleId ?? null)) out.push({ project: p, move, why: "escalated" });
+  }
+  return sortDesk(out);
+}
+
+const sortDesk = (out: DeskItem[]): DeskItem[] =>
+  out.sort((a, b) => Number(b.project.overdue) - Number(a.project.overdue) || MOVE_RANK[a.move] - MOVE_RANK[b.move] || a.project.number - b.project.number);
+
 /**
+ * @deprecated IDN-S1 removes this - use projectDeskFor.
  * The projects waiting on this person: their next move as the lead, a late start or measure that
  * moved to them as the deputy (or the route's owner), and - for a manager - a reward that is due.
  */
