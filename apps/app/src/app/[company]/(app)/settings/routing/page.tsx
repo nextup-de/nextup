@@ -5,24 +5,28 @@ import { seedFor } from "@/features/demo";
 import { findTenant } from "@/features/tenant";
 import { guardPage } from "@/server/page-guard";
 import { deptName } from "@/lib/utils/format";
+import { getT } from "@/i18n/server";
 import styles from "./page.module.css";
 
-export const metadata = { title: "Routing table" };
+export async function generateMetadata() {
+  return { title: (await getT())("settings.navRouting") };
+}
 
 export default async function RoutingSettingsPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
+  const t = await getT();
   const tenant = await findTenant(company);
   if (!tenant) notFound();
   await guardPage(tenant.slug, "/settings/routing");
   const seed = await seedFor(tenant.slug);
   return (
     <>
-      <h1>Routing table</h1>
-      <p className="nh-hint">Recurring request type → owning role · deputy · buddy in the neighbouring department. The intake box matches typed text against the keywords and proposes the row — it never decides.</p>
+      <h1>{t("settings.navRouting")}</h1>
+      <p className="nh-hint">{t("settings.routingHint")}</p>
       <div className={styles.wrap}>
         <table className={styles.table}>
           <thead>
-            <tr><th>Request type</th><th>Owner</th><th>Deputy</th><th>Buddy</th><th>Typical wait</th><th>Keywords</th></tr>
+            <tr><th>{t("settings.routingType")}</th><th>{t("settings.routingOwner")}</th><th>{t("settings.routingDeputy")}</th><th>{t("settings.routingBuddy")}</th><th>{t("settings.routingWait")}</th><th>{t("settings.routingKeywords")}</th></tr>
           </thead>
           <tbody>
             {seed.routes.map((r) => (
@@ -37,7 +41,7 @@ export default async function RoutingSettingsPage({ params }: { params: Promise<
             ))}
           </tbody>
         </table>
-        {seed.routes.length === 0 && <p className="nh-hint">No routes yet. The department head fills this in once; the map grows from every overruled proposal.</p>}
+        {seed.routes.length === 0 && <p className="nh-hint">{t("settings.routingEmpty")}</p>}
       </div>
     </>
   );

@@ -2,21 +2,25 @@
 // hand out a new login code. Manager only - loadMembers() re-checks the role in the database.
 import { loadMembers } from "@/server/actions/members";
 import { MembersView } from "@/components/settings/MembersView";
+import { getT } from "@/i18n/server";
 
-export const metadata = { title: "Members" };
+export async function generateMetadata() {
+  return { title: (await getT())("settings.navMembers") };
+}
 
 export default async function MembersSettingsPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
+  const t = await getT();
   const page = await loadMembers(company);
   return (
     <>
-      <h1>Members</h1>
+      <h1>{t("settings.navMembers")}</h1>
       {page.status === "ok" ? (
         <MembersView slug={company} me={page.me} members={page.members} />
       ) : page.status === "no-database" ? (
-        <p className="nh-hint">People are stored in the database. This copy of NextUp runs without one, so there is nobody to manage here.</p>
+        <p className="nh-hint">{t("settings.membersNoDatabase")}</p>
       ) : (
-        <p className="nh-hint">Only a manager of this company can see its members.</p>
+        <p className="nh-hint">{t("settings.membersManagerOnly")}</p>
       )}
     </>
   );
