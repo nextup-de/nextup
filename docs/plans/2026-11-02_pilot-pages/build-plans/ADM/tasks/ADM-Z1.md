@@ -1,8 +1,22 @@
 ---
 id: ADM-Z1
-title: "ADM acceptance: an empty company is configured in the app and its first case is routed"
+title: "ADM acceptance: an empty company is configured in the app and its first
+  case is routed"
 wp: Z
-needs: [ ADM-G1, ADM-A1, ADM-B1, ADM-C1, ADM-D1, ADM-E1, ADM-F1, ADM-H1, ADM-N1, ADM-R1 ]
+needs:
+  [
+    ADM-G1,
+    ADM-A1,
+    ADM-B1,
+    ADM-C1,
+    ADM-D1,
+    ADM-E1,
+    ADM-F1,
+    ADM-H1,
+    ADM-N1,
+    ADM-R1,
+    IDN-Z1
+  ]
 host: any
 owns:
   - apps/app/tests/e2e/db/admin-setup.spec.ts
@@ -25,7 +39,7 @@ proofs:
       playwright.db.config.ts tests/e2e/db/admin-setup.spec.ts -g 'ADM
       acceptance'
     expect: 'ADM acceptance[\s\S]*[1-9]\d* passed'
-status: open
+status: ready
 ---
 
 Plan ADM (sub-plan of PILOT): acceptance. Every other ADM task is merged. Read first:

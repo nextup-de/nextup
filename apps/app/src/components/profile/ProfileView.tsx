@@ -7,6 +7,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { profileOf } from "@/features/demo/profiles";
 import styles from "./ProfileView.module.css";
 import { M365Card } from "./M365Card";
+import { NotifySettings } from "./NotifySettings";
 import type { M365Card as M365CardData } from "@/server/m365-profile";
 import { avatarTone } from "@/lib/avatar";
 import { setLocale } from "@/i18n/actions";
@@ -35,7 +36,7 @@ type Target = { userId?: string | null; name: string; role: string; dept: string
 
 const initials = (name: string) => name.split(/[.\s]+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
-export function ProfileView({ target, m365 }: { target?: Target; m365?: M365CardData | null }) {
+export function ProfileView({ target, m365, mailPrefs }: { target?: Target; m365?: M365CardData | null; mailPrefs?: { template: string; on: boolean }[] | null }) {
   const ctx = useDemo();
   const t = useT();
   const { D, seed, persona, tenant, href } = ctx;
@@ -90,6 +91,7 @@ export function ProfileView({ target, m365 }: { target?: Target; m365?: M365Card
         <section className={styles.card}><div className={styles.sectionHead}><h2>{t("profile.details")}</h2></div><dl className={styles.details}><div><dt>{t("profile.role")}</dt><dd>{role}</dd></div><div><dt>{t("profile.department")}</dt><dd>{dept || t("profile.notSpecified")}</dd></div>{location && <div><dt>{t("profile.location")}</dt><dd>{location}</dd></div>}{email && <div><dt>{t("profile.email")}</dt><dd><a href={"mailto:" + email}>{email}</a></dd></div>}</dl></section>
         {own ? <LanguageSwitch /> : null}
         {own && m365 ? <M365Card card={m365} /> : null}
+        {own && mailPrefs ? <NotifySettings slug={tenant.slug} prefs={mailPrefs} /> : null}
         {(manager || colleagues.length > 0) && <section className={styles.card}><div className={styles.sectionHead}><h2>{t("profile.peopleNearby")}</h2></div>{manager && <PersonLink name={manager.name} subtitle={t("profile.reportsTo")} href={href("/people/" + encodeURIComponent(manager.name))} />}{colleagues.map((p) => <PersonLink key={p.name} name={p.name} subtitle={p.role} href={href("/people/" + encodeURIComponent(p.name))} />)}</section>}
       </aside>
     </div>

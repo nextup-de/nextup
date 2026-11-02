@@ -2,7 +2,7 @@
 id: IDN
 project: nextup
 title: Identity by id
-state: active
+state: archived
 level: 2
 approved:
   [

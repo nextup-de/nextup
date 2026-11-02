@@ -20,6 +20,9 @@ export async function register() {
   // The directory sync, every 15 minutes for each company that switched it on (a no-op without a database or Entra app).
   const { startDirectorySync } = await import("@/server/directory/sync");
   startDirectorySync();
+  // Every message NextUp sends: new events planned into the outbox, then the due rows delivered (a no-op without a database).
+  const { startNotify } = await import("@/server/notify/loop");
+  startNotify();
   // Errors counted in memory go to the ErrorGroup table once a minute.
   const { startErrorFlush } = await import("@/server/errors");
   startErrorFlush();

@@ -3,3 +3,4 @@ export * from "./flags";
 export * from "./health";
 export * from "./errors";
 export * from "./logins";
+export * from "./platform-jobs";

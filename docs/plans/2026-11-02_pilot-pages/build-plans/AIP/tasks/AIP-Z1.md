@@ -2,7 +2,7 @@
 id: AIP-Z1
 title: "AIP acceptance: proposal made on the server, off works, DPA gate holds"
 wp: Z
-needs: [ AIP-G1, AIP-A1, AIP-B1, AIP-E1, AIP-C1 ]
+needs: [ AIP-G1, AIP-A1, AIP-B1, AIP-E1, AIP-C1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/tests/db/ai-provider.test.ts
@@ -18,7 +18,7 @@ proofs:
       called for a real company
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/ai-provider.test.ts -t 'AIP acceptance'
-status: open
+status: ready
 ---
 
 Plan AIP (sub-plan of PILOT): acceptance. Every other AIP task is merged. Read first: `docs/ASSISTANT.md`,

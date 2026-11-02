@@ -2,7 +2,7 @@
 id: CLK-Z1
 title: "CLK acceptance: a deadline hands to the deputy once on the right working day"
 wp: Z
-needs: [ CLK-G1, CLK-A1, CLK-C1, CLK-B1, CLK-D1 ]
+needs: [ CLK-G1, CLK-A1, CLK-C1, CLK-B1, CLK-D1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/tests/db/clock.test.ts

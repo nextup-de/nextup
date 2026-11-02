@@ -2,7 +2,7 @@
 id: DIR-Z1
 title: "DIR acceptance: delta sync adds, moves and deactivates users"
 wp: Z
-needs: [ DIR-G1, DIR-A1, DIR-B1, DIR-C1, DIR-D1 ]
+needs: [ DIR-G1, DIR-A1, DIR-B1, DIR-C1, DIR-D1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/tests/db/directory.test.ts
@@ -18,7 +18,7 @@ proofs:
       leaver is deactivated and their open case moves to the role's other holder
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/directory.test.ts -t 'DIR acceptance'
-status: open
+status: ready
 ---
 
 Plan DIR (sub-plan of PILOT): acceptance. Every other DIR task is merged. Read first: D9, D11 of the plan,

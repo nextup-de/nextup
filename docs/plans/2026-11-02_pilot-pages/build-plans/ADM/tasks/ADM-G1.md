@@ -1,8 +1,9 @@
 ---
 id: ADM-G1
-title: Settings frame - company-admin guard, the section list and the message namespaces
+title: Settings frame - company-admin guard, the section list and the message
+  namespaces
 wp: G
-needs: [ IDN-Z1, LNG-Z1, CLK-G1 ]
+needs: [ IDN-G1, CLK-G1 ]
 host: any
 owns:
   - apps/app/src/server/actions/settings/guard.ts
@@ -18,6 +19,8 @@ owns:
   - apps/app/src/i18n/messages/adminAccess.ts
   - apps/app/tests/unit/adm/sections.test.ts
   - apps/app/tests/db/adm-guard.test.ts
+  - apps/app/prisma/schema/auth.prisma
+  - apps/app/src/lib/db/setup-counts.ts
 risk: normal
 profile: orch
 budget: { minutes: 60, window_pct: 10 }
@@ -26,14 +29,19 @@ proofs:
   - id: B1
     says: SETTINGS_SECTIONS lists the sections of D7 in order with a message key in
       German and English each, and Setup shows only for a company without units
-    run: npm test -w @nextup/app -- tests/unit/adm/sections.test.ts -t 'ADM
-      settings sections'
+    run: npm test -w @nextup/app -- tests/unit/adm/sections.test.ts -t 'ADM settings
+      sections'
   - id: B2
     says: companyAdminOf gives an active manager of the company and refuses a
       leader, a deactivated manager and a manager of another company
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/adm-guard.test.ts -t 'ADM company admin guard'
-status: open
+status: merged
+lane: pc/a
+branch: orch/adm-g1
+answers: 1
+pr: 317
+merge: "1cfe2b5"
 ---
 
 Plan ADM (sub-plan of PILOT): the frame every settings page sits in. Read first: `docs/README.md`,

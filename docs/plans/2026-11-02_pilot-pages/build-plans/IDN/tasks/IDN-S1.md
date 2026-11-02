@@ -27,6 +27,13 @@ owns:
   - apps/app/tests/unit/projects-brain.test.ts
   - apps/app/tests/unit/idn/no-names.test.ts
   - apps/app/tests/unit/idn/handover.test.ts
+  - apps/app/src/components/projects/parts.tsx
+  - apps/app/tests/unit/cases.test.ts
+  - apps/app/tests/unit/project-views.test.ts
+  - apps/app/src/components/demo/LoopPlayer.tsx
+  - apps/app/src/features/cases/rows.ts
+  - apps/app/src/features/cases/hand.ts
+  - apps/app/tests/e2e/demo/discussion-loop.spec.ts
 risk: normal
 profile: orch
 budget: { minutes: 90, window_pct: 15 }
@@ -42,7 +49,11 @@ proofs:
       toRoleHolderId, and the search marks your move by the desk rule
     run: npm test -w @nextup/app -- tests/unit/idn/handover.test.ts -t 'IDN
       hand-over by seat'
-status: ready
+status: merged
+lane: pc/a
+branch: orch/idn-s1
+pr: 310
+merge: "25efc7f"
 ---
 
 Plan IDN (sub-plan of PILOT): the rest of the pages and the clean-up. After this task no page and no file of
