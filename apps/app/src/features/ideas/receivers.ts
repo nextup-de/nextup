@@ -30,7 +30,7 @@ export type ReceiverInput = {
   depts: readonly Dept[];
   cases: readonly DeskCase[]; // what is on everyone's desk, for the track record
   promiseDays: number; // the answer every case is owed within
-  spendLimitEur: number; // team-level authority (features/ideas/drafts SPEND_LIMIT_EUR)
+  spendLimitEur: number | null; // team-level authority - the company's spend rule; null: none set
   lead: string; // the author's team lead - where anything raised lands first
   me: string;
   myDept: string; // the author's department, by name ("Production")
@@ -75,7 +75,7 @@ function scored(name: string, start: Start, input: ReceiverInput, locale: Locale
 
   // They can say yes to what it costs without escalating: team leads, within the team's limit.
   const amount = amountEur(input.text);
-  if (start.kind === "lead" && amount !== null && amount <= input.spendLimitEur) {
+  if (start.kind === "lead" && amount !== null && input.spendLimitEur !== null && amount <= input.spendLimitEur) {
     score += 6; reasons.push(t("ideas.rcvApprove", { limit: euros(input.spendLimitEur, locale) }));
   }
 

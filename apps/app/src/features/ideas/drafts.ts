@@ -2,7 +2,6 @@
 // server (lib/db/ideas.ts, the turn route, publishing) and the browser-only demo store
 // (lib/idea-drafts.ts), so both sides always agree on the number. Pure.
 import type { Turn } from "@/features/assist/draft";
-import { DEMO_RULES } from "@/features/demo/structure";
 import type { SpendRule } from "@/features/demo/types";
 import { benchmark, type Benchmark, type BenchmarkContext, type BenchmarkPart } from "./benchmarks";
 import { ideaFromTurns } from "./coach";
@@ -22,15 +21,12 @@ export function scoreDraft(d: { turns: readonly Turn[]; affected: readonly strin
 export const summaryOf = (d: DraftView): DraftSummary =>
   ({ id: d.id, title: d.title, status: d.status, overall: d.overall, updatedAt: d.updatedAt, caseId: d.caseId });
 
-/** @deprecated read seed.spend - removed by STR-D1 */
-export const SPEND_LIMIT_EUR = 5000;
-
 // What the benchmarks compare an idea with: the routing map, the goals, and what is already raised.
 export function ideaContext(
   routes: BenchmarkContext["routes"],
   goals: BenchmarkContext["goals"],
   cases: BenchmarkContext["cases"],
-  spend: SpendRule | null = DEMO_RULES.spend, // until STR-D1: callers pass seed.spend
+  spend: SpendRule | null,
 ): BenchmarkContext {
   return { routes, goals, cases, spendLimitEur: spend?.limitEur ?? null };
 }

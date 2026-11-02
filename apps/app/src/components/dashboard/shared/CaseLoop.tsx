@@ -13,7 +13,6 @@ import { roundState, scoreVersions, versionReader } from "@/features/cases/discu
 import type { ReducedCase } from "@/features/cases/reducer";
 import { projectStatus, raisedWith } from "@/features/cases/rows";
 import { onDesk } from "@/features/cases/selectors";
-import { GOALS } from "@/features/evaluate";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import ui from "@/components/dashboard/shared/ui.module.css";
@@ -106,7 +105,7 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
   if (versions.length < 2 && !canRevise) return null;
   const now = versions[versions.length - 1];
   // The draft scored live, against the version it would follow.
-  const read = versionReader(ideaContext(ctx.seed.routes, GOALS, ctx.S.cases), c.id, { affected: standingOn(ctx, c), attachments: raisedWith(c).attachments });
+  const read = versionReader(ideaContext(ctx.seed.routes, ctx.seed.goals, ctx.S.cases, ctx.seed.spend), c.id, { affected: standingOn(ctx, c), attachments: raisedWith(c).attachments });
   const draft = editing ? scoreVersions([now, { ...now, version: now.version + 1, title, body, overall: null }], read)[1] : null;
   const changed = body.trim() !== c.body.trim() || title.trim() !== c.title.trim();
   const post = () => {

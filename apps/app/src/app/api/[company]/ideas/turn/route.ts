@@ -25,7 +25,6 @@
 import { z } from "zod";
 import { findTenant } from "@/features/tenant";
 import { seedFor } from "@/features/demo";
-import { GOALS } from "@/features/evaluate";
 import { getViewerFor } from "@/features/auth/session";
 import { assist } from "@/features/assist";
 import { assistGate } from "@/features/assist/gate";
@@ -148,7 +147,7 @@ export async function POST(request: Request, { params }: Ctx) {
           let knowledge: Knowledge = await loadKnowledge(viewer.companyId);
           if (!hasKnowledge(knowledge)) {
             let n = 0;
-            knowledge = rowsFromSeed(seed, GOALS, () => "k" + ++n);
+            knowledge = rowsFromSeed(seed, seed.goals, () => "k" + ++n);
           }
           const profile = await loadProfile(viewer.companyId);
           const people = [...seed.people.map((p) => ({ name: p.name, role: p.role })), ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" }))];

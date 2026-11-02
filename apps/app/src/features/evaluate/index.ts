@@ -6,7 +6,6 @@
 // Demo honesty: this is arithmetic over the seed, not a model. Every step names the fact it
 // used, so a manager can ask "where did that come from?" and get an answer.
 import type { CaseKind, RouteProposal, Visibility } from "@/features/cases/events";
-import { DEMO_GOALS } from "@/features/demo/structure";
 import type { OrgPerson, Problem, RolePersona, Route, SeedGoal, SpendRule } from "@/features/demo/types";
 import { propose, ROUTER_VERSION } from "@/features/routing";
 import type { BrainProposal } from "@/features/routing/brain";
@@ -26,9 +25,6 @@ export type Evaluation = {
   score: Score;
   payload: { kind: CaseKind; title: string; body: string; upside: string; routeId: string | null; assignee: string; fromDept: string; reason: string; affected: string[]; attachments: number; proposal: RouteProposal; visibility?: Visibility; seenBy?: string[] };
 };
-
-/** @deprecated acme's demo goals - read seed.goals */
-export const GOALS = DEMO_GOALS;
 
 // Words that say nothing about what a text is about, however often two texts share them.
 const FILLER = new Set(("that this with from have been were will would could should there their they them then than what when where which while " +

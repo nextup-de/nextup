@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { STATIC_DEMO_SEED } from "@/features/demo/static-demo";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { DEFAULT_PUBLISH_THRESHOLD, type BenchmarkContext } from "@/features/ideas/benchmarks";
 import { DEMO_IDEA, DEMO_SCRIPT, DEMO_TOPICS, SCRIPT_MOVES, scriptDials, scriptRail, scriptReply, scriptStep } from "@/features/ideas/demo-script";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
@@ -65,7 +65,7 @@ describe("the rail", () => {
 
 describe("what the script's answers give the benchmark", () => {
   let ctx: BenchmarkContext;
-  beforeAll(() => { ctx = ideaContext(STATIC_DEMO_SEED.routes, GOALS, reduce(STATIC_DEMO_SEED, emptyLog()).cases); });
+  beforeAll(() => { ctx = ideaContext(STATIC_DEMO_SEED.routes, DEMO_GOALS, reduce(STATIC_DEMO_SEED, emptyLog()).cases, STATIC_DEMO_SEED.spend); });
   const first = DEMO_IDEA.text + "\n\n" + DEMO_IDEA.ctx;
   const after = (n: number) => scoreDraft({ turns: said(n).map((t, i) => (i === 0 ? { ...t, text: first } : t)), affected: DEMO_IDEA.aff, attachments: DEMO_IDEA.files.length }, ctx);
   it("starts under the publish line with the idea as filled, and the answers lift it over", () => {
