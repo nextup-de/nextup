@@ -15,6 +15,16 @@
 #
 # A check has to fail twice in a row (10 min) before it alerts, so a deploy doesn't page anyone.
 # Alerts name the check and what was seen, never a secret.
+#
+# health.env keys (all optional; see docs/ops/monitoring.md):
+#   NTFY_URL / NTFY_URLS   ntfy topic URLs (NTFY_URLS space separated; both are read, no duplicates)
+#   ALERT_EMAILS           space separated addresses, mailed with ALERT_SMTP_URL (smtp:// or smtps://,
+#                          with credentials) and ALERT_MAIL_FROM
+#   HEARTBEAT_URL          requested with GET at the end of every run of the checks. An external
+#                          dead-man's-switch monitor (healthchecks.io compatible) alerts when the
+#                          calls stop, which is the only way to notice that the host itself is down.
+#   HEALTH_URLS, BACKUP_NAMES   more web checks and backup names
+# Every alert, recovery and summary goes to every recipient; one failing never stops the others.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 base="${NEXTUP_HOME:-$HOME/nextup}"
@@ -27,11 +37,43 @@ backup_log="$base/backup.log"
 get() { grep -E "^$1=" "$2" 2>/dev/null | cut -d= -f2- || true; }
 now() { date -u +%FT%TZ; }
 
-push() {  # title, message, priority, tags
-  local url; url="$(get NTFY_URL "$conf")"
-  [ -n "$url" ] || return 0
-  curl -fsS --max-time 10 -H "Title: $1" -H "Priority: $3" -H "Tags: $4" -d "$2" "$url" >/dev/null \
-    || echo "$(now) could not reach ntfy" >> "$log"
+# Where a failure is written: the host of a URL or the address, never the URL itself (the ntfy
+# topic in the path is the secret).
+where() { case "$1" in *://*) sed -E 's#^[a-z]+://([^/@]*@)?([^/:?]+).*#\2#' <<< "$1" ;; *) echo "$1" ;; esac; }
+
+push() {  # title, message, priority, tags: to every ntfy topic and every mail address
+  local u a f seen=" " from smtp
+  for u in $(get NTFY_URLS "$conf") $(get NTFY_URL "$conf"); do
+    case "$seen" in *" $u "*) continue ;; esac
+    seen+="$u "
+    curl -fsS --max-time 10 -H "Title: $1" -H "Priority: $3" -H "Tags: $4" -d "$2" "$u" >/dev/null       || echo "$(now) could not reach $(where "$u")" >> "$log"
+  done
+  smtp="$(get ALERT_SMTP_URL "$conf")"; from="$(get ALERT_MAIL_FROM "$conf")"
+  [ -n "$smtp" ] && [ -n "$from" ] || return 0
+  seen=" "
+  for a in $(get ALERT_EMAILS "$conf"); do
+    case "$seen" in *" $a "*) continue ;; esac
+    seen+="$a "
+    f="$(mktemp)"; chmod 600 "$f"
+    printf 'From: %s
+To: %s
+Subject: %s
+Date: %s
+
+%s
+' "$from" "$a" "$1"       "$(date -u '+%a, %d %b %Y %H:%M:%S +0000')" "$2" > "$f"
+    curl -fsS --max-time 20 --url "$smtp" --mail-from "$from" --mail-rcpt "$a" --upload-file "$f" >/dev/null       || echo "$(now) could not reach $a" >> "$log"
+    rm -f "$f"
+  done
+  return 0
+}
+
+# Dead-man's switch: tell the external monitor this run happened. A failure only goes to the log.
+heartbeat() {
+  local h; h="$(get HEARTBEAT_URL "$conf")"
+  [ -n "$h" ] || return 0
+  curl -fsS --max-time 10 "$h" >/dev/null || echo "$(now) could not reach $(where "$h") (heartbeat)" >> "$log"
+  return 0
 }
 
 if [ "${1:-}" = install ]; then
@@ -43,6 +85,16 @@ if [ "${1:-}" = install ]; then
 # stack/health.sh settings. The topic name is the only thing that protects the alerts: keep it
 # private (it's in the password manager with the rest).
 NTFY_URL=https://ntfy.sh/nextup-$(openssl rand -hex 12)
+# More ntfy topics (space separated); each is a secret like the one above.
+#NTFY_URLS=https://ntfy.sh/nextup-second-topic
+# People who get every alert as an e-mail, space separated (needs the two lines below).
+#ALERT_EMAILS=ops@example.com
+# SMTP server used for the e-mails, with credentials: smtps://user:password@mail.example.com:465
+#ALERT_SMTP_URL=smtps://user:password@mail.example.com:465
+# The sender address of the alert e-mails.
+#ALERT_MAIL_FROM=alerts@example.com
+# Pinged at the end of every run; an outside monitor alerts when the pings stop (host down).
+#HEARTBEAT_URL=https://hc-ping.com/your-check-uuid
 # More https endpoints to watch, space separated.
 HEALTH_URLS=https://admin.sellux.ch/api/health https://sellux.ch/
 # More names whose nightly "<name>: backup done" line must be in backup.log.
@@ -131,6 +183,7 @@ if [ "$mode" = --summary ]; then
   for r in "${results[@]}"; do IFS='|' read -r n ok d <<< "$r"; [ "$ok" = 1 ] || { bad=$((bad+1)); body+="✗ $n: $d"$'\n'; }; done
   if [ "$bad" = 0 ]; then push "NextUp: all ${#results[@]} checks OK" "Weekly summary - web, certificates, backups, disk and memory are fine." low white_check_mark
   else push "NextUp: $bad of ${#results[@]} checks failing" "$body" high warning; fi
+  heartbeat
   exit 0
 fi
 
@@ -163,3 +216,4 @@ for r in "${results[@]}"; do ran["${r%%|*}"]=1; done
 for n in "${!fails[@]}"; do [[ "$n" = cert\ * ]] && [ -z "${ran[$n]:-}" ] && new_state+="$n|${fails[$n]}|${alerted[$n]}"$'
 '; done
 (umask 077; printf '%s' "$new_state" > "$state.tmp" && mv "$state.tmp" "$state")
+heartbeat

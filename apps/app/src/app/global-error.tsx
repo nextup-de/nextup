@@ -6,16 +6,19 @@ import { useEffect } from "react";
 import { reportClientError } from "@/components/report/error-reporter";
 import { ErrorScreen } from "@/components/ui/ErrorScreen";
 import { SITE } from "@/config/site";
+import { useLocale, useT } from "@/i18n/client";
 import "./globals.css";
 
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     if (!error.digest) reportClientError(error);
   }, [error]);
+  const locale = useLocale();
+  const t = useT();
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body>
-        <title>{`Something broke · ${SITE.name}`}</title>
+        <title>{t("errors.crashTitle", { site: SITE.name })}</title>
         <ErrorScreen digest={error.digest} onRetry={retry} />
       </body>
     </html>

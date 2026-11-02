@@ -5,9 +5,10 @@ import type { Role } from "@/config/roles";
 import type { DemoCompany, DemoUser } from "@/features/tenant/demo-companies";
 import type { Seed } from "@/features/demo/types";
 import { parseSeed } from "@/features/demo/parse";
-import { overlayKnowledge } from "@/features/knowledge";
+import { structureSeed } from "@/features/knowledge";
 import { getDb } from "./client";
 import { loadKnowledge } from "./knowledge";
+import { loadCompanyRules } from "./rules";
 import { loadLoopRules } from "./loop";
 
 /** A company row plus its people, in the shape the app has always used. */
@@ -75,8 +76,9 @@ export async function findCompanyByEmailDomain(email: string): Promise<CompanyRe
 }
 
 /**
- * The company's content. Throws SeedShapeError if the blob is not a Seed. Once the company has
- * knowledge rows (docs/COMPANY_KNOWLEDGE.md), depts, people and routes come from those instead.
+ * The company's content. Throws SeedShapeError if the blob is not a Seed. Depts, people, routes,
+ * goals and rules come from the tables only (docs/COMPANY_KNOWLEDGE.md); a company without rows has
+ * none, whatever its blob holds.
  */
 export async function loadSeed(slug: string): Promise<Seed | null> {
   const row = await getDb().company.findUnique({ where: { slug }, select: { id: true, seedJson: true } });
@@ -84,9 +86,9 @@ export async function loadSeed(slug: string): Promise<Seed | null> {
 }
 
 /** The same, for a company row already in hand. Use this, not parseSeed(seedJson), anywhere a
- *  route owner or the org chart matters - the blob alone is stale once the tables exist. */
+ *  route owner, the org chart, goals or rules matter - the blob's structure is ignored (no fallback). */
 export async function companySeed(row: { id: string; seedJson: unknown }): Promise<Seed> {
-  const [knowledge, loop] = await Promise.all([loadKnowledge(row.id), loadLoopRules(row.id)]);
+  const [knowledge, rules, loop] = await Promise.all([loadKnowledge(row.id), loadCompanyRules(row.id), loadLoopRules(row.id)]);
   // The rules after the routing come from CompanyConfig, never from the blob (src/features/loop/rules.ts).
-  return { ...overlayKnowledge(parseSeed(row.seedJson), knowledge), loop };
+  return { ...structureSeed(parseSeed(row.seedJson), knowledge, rules), loop };
 }

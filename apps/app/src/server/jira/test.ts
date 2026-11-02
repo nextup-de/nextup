@@ -10,18 +10,15 @@ import {
   type JiraTestResult,
   type TestJira,
 } from "@/features/integrations/jira/types";
-import { cloudApi } from "./cloud";
-import { dcApi } from "./dc";
+import { jiraApiFor } from "./flavors";
 
 const why = (e: unknown): string => (e instanceof JiraError || e instanceof Error ? e.message : String(e));
-
-const FLAVORS = { cloud: cloudApi, dc: dcApi } as const;
 
 export const testJira: TestJira = async (settings: JiraSettings, token: string, api?: JiraApi): Promise<JiraTestResult> => {
   const checks: JiraCheck[] = [];
   let client: JiraApi;
   try {
-    client = api ?? FLAVORS[settings.flavor](settings, token);
+    client = api ?? jiraApiFor(settings, token);
   } catch (e) {
     return { ok: false, checks: [{ id: "auth", ok: false, label: "Sign in", detail: why(e) }], account: null, issueTypes: [] };
   }

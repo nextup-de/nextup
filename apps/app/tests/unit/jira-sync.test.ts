@@ -341,9 +341,9 @@ describe("jira sync: the connection test", () => {
     }
   });
 
-  it("a Data Center site is a failed check, not a throw", async () => {
-    const r = await testJira({ ...settings, flavor: "dc" }, "tok");
+  it("a Data Center client against a Cloud site is a failed check, not a throw", async () => {
+    const r = await testJira({ ...settings, flavor: "dc", email: "" }, "tok");
     expect(r.ok).toBe(false);
-    expect(r.checks[0].detail).toMatch(/not supported yet/);
+    expect(r.checks[0]).toMatchObject({ id: "auth", ok: false });
   });
 });
