@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { SITE } from "@/config/site";
+import { I18nProvider } from "@/i18n/client";
+import { getLocale } from "@/i18n/server";
 import "./globals.css";
 
 // Fonts are committed in ./fonts (latin subset, SIL Open Font License) and served from this origin.
@@ -22,10 +24,11 @@ export const metadata: Metadata = {
   description: SITE.description,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} ${inter.variable}`}>
-      <body>{children}</body>
+    <html lang={locale} className={`${sans.variable} ${mono.variable} ${inter.variable}`}>
+      <body><I18nProvider locale={locale}>{children}</I18nProvider></body>
     </html>
   );
 }
