@@ -130,7 +130,7 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
       if (!sub.on || !sub.events.includes(pe.type)) continue;
       push({
         key: `wh:${pe.id}:${sub.id}`, recipientUserId: null, address: sub.id, template: "webhook", locale: DEFAULT_LOCALE,
-        subject: pe.type, text: "", link: null, data: JSON.parse(JSON.stringify(pe)) as Prisma.InputJsonValue,
+        subject: pe.type, text: "", link: null, data: { event: JSON.parse(JSON.stringify(pe)) } as Prisma.InputJsonValue,
       }, "webhook", null);
     }
   }
