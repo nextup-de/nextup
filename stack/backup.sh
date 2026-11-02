@@ -173,7 +173,9 @@ case "$action" in
     psql 'DROP DATABASE IF EXISTS nextup WITH (FORCE)'
     psql 'CREATE DATABASE nextup OWNER nextup'
     "${compose[@]}" exec -T db pg_restore -U nextup -d nextup --no-owner < "$work/data/stack/db.dump"
-    "${compose[@]}" start app
+    # --no-deps: `start app` would also re-run the one-shot migrate and apply the migrations the
+    # snapshot predates; going forward again is a release.
+    "${compose[@]}" up -d --no-deps --no-recreate app
     log "restored $snap into the live database seconds=$(( $(date +%s) - started ))"
     ;;
 

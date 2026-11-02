@@ -60,15 +60,18 @@ stack/ctl.sh acme down -v     # stop and delete the database (asks for the slug 
 
 | Service | Notes |
 |---|---|
-| `db` | Postgres 17, not published; only this stack's network reaches it |
+| `db` | Postgres 17 (`postgres:17.11`, pinned by digest), not published; only this stack's network reaches it |
 | `migrate` | one-shot `prisma migrate deploy` (+ demo seed); `app` waits for it |
-| `app` | `TENANT_MODE=single`, read-only filesystem, all capabilities dropped |
-| `caddy` | the only published service. `SITE_ADDRESS=:80` for plain http, a host name for automatic https |
+| `app` | `TENANT_MODE=single`, read-only filesystem, all capabilities dropped. Image `${NEXTUP_APP_IMAGE}`; `migrate` likewise: with `install.sh --images <tag>` both come from the registry CI publishes to |
+| `caddy` | `caddy:2.11.7`, pinned by digest. The only published service. `SITE_ADDRESS=:80` for plain http, a host name for automatic https |
 | `mailpit` | profile `demo`: catches all mail, inbox on `127.0.0.1:8025` |
 | `n8n` | profile `n8n` (`--n8n`): editor on `127.0.0.1:5678`, own encryption key. Only its production webhooks can be reached from outside, and only with `N8N_WEBHOOKS=public` (below) |
 | `app` env `ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET` | optional (`--entra-client-id ID`, secret in `NEXTUP_ENTRA_CLIENT_SECRET`): turns on "Continue with Microsoft". The company's tenant ID is set in `/admin`; add `<origin>/login/microsoft/callback` to the app registration |
 | `app` env `CONNECTOR_VAULT_KEY` | written once by `install.sh` (also on an existing instance), never regenerated: it seals people's Microsoft 365 connections, and a new key disconnects everyone. Back it up with the other secrets |
-| `brain` + `ollama` | profile `brain` (`--brain`): the routing AI and its model, no ports, app-only with `BRAIN_API_KEY`. See `services/brain/README.md`. On a server without 8 GB to spare, leave it out and point the stack at the AI server instead: `brain-server/README.md` |
+| `brain` + `ollama` | profile `brain` (`--brain`): the routing AI (image `nextup-brain` built by CI like app and migrate; `--images <tag>` pulls it when the `.env` has `BRAIN_API_KEY`) and its model (`ollama/ollama`, pinned), no ports, app-only with `BRAIN_API_KEY`. See `services/brain/README.md`. On a server without 8 GB to spare, leave it out and point the stack at the AI server instead: `brain-server/README.md` |
+
+Every third-party image is pinned as `<name>:<exact version>@sha256:<digest>` (`mailpit`, `n8n` and
+`ollama` too); no `:latest` remains in `compose.yml` or `brain-server/compose.yml`.
 
 ## n8n webhooks from outside (Jira)
 
@@ -101,19 +104,40 @@ stack".
 ## Backups
 
 ```bash
-stack/backup.sh acme backup          # encrypted restic snapshot: database, .env, n8n data
-stack/backup.sh acme restore-test    # restore into a throwaway container and check it
-stack/backup.sh acme restore ID      # replace the live database (asks for the slug)
+stack/backup.sh acme backup              # encrypted restic snapshot: database, .env, n8n data
+stack/backup.sh acme pre-migrate 1a2b3c4 # the same content, tagged acme-pre-migrate + release-1a2b3c4
+stack/backup.sh acme snapshots [--json]  # nightly and pre-migrate snapshots
+stack/backup.sh acme restore-test [ID]   # restore into a throwaway container and check it
+stack/backup.sh acme restore ID          # replace the live database (asks for the slug)
 ```
 
 The repository and password are per stack, in its `.env` (`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`).
 Keep the password outside the machine as well. On the shared box, cron runs it nightly (see
 `nginx/RUNBOOK.md`).
 
-Not yet: an agent (stage 2).
+- **Off-box keys** (all optional): `RESTIC_REPOSITORY` as `s3:...`, `sftp:...` or `rest:...`;
+  `BACKUP_S3_ACCESS_KEY_ID` and `BACKUP_S3_SECRET_ACCESS_KEY` (given to restic; the app's own `AWS_*`
+  keys belong to Bedrock and are never used); `BACKUP_OFFBOX=required` makes every action refuse a
+  local repository.
+- **`pre-migrate <sha>`** is what a release runs before the database migrates. Its snapshots are not
+  tagged with the slug, so the nightly retention never prunes them; the last 10 are kept. A restore
+  of one is the way back across a migration.
+- **`snapshots --json`** passes `--json` to restic, for scripts.
+- Numbers (RPO 24 h, RTO 1 h) and the restore steps: `docs/ops/RPO_RTO.md`.
 
-## On-prem with the company's own certificate
+## On a customer server
 
-Mount the certificate and replace the site block in `caddy/Caddyfile` with
-`tls /certs/cert.pem /certs/key.pem`. Proper support for this comes with the on-prem rehearsal
-(stage 2).
+One stack per VM, no nginx and no box agent. The stack's own Caddy terminates TLS on 80 and 443 and
+gets its own Let's Encrypt certificate for the host name in `--origin`:
+
+```bash
+stack/install.sh --slug globex --origin https://nextup.globex.example --stage real --images <sha>
+```
+
+- **Install and first rehearsal:** `stack/tests/install-clean.sh` installs from registry images on a
+  clean VM, checks health, ports, backup and restore-test (`stack/tests/README.md`).
+- **VM, deploy user, key, `host.conf`, cron, releasing and going back:** `stack/remote/README.md`.
+  A release is `stack/deploy-remote.sh deploy@<host> <sha>` from Kevin's machine.
+- **Own certificate** (instead of Let's Encrypt): mount it and replace the site block in
+  `caddy/Caddyfile` with `tls /certs/cert.pem /certs/key.pem`.
+- Alerts and the outside monitor: `docs/ops/monitoring.md`.

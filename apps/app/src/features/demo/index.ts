@@ -37,11 +37,8 @@ export const EMPTY_METRICS: Metrics = {
 
 /** A bare install: no acme content, no structure (D8). Built without spreading SEED. */
 export const EMPTY_SEED: Seed = {
-  promiseDays: 5, outcomeDays: 14,
-  depts: [], people: [], problems: [], ideas: [], initiatives: [], outcomes: [],
-  personas: NEUTRAL_PERSONAS, leaders: [], routes: [], cases: [], waitingOn: [], buddies: [],
-  seats: [], goals: [], spend: null,
-  stall: [], ledger: EMPTY_LEDGER, metrics: EMPTY_METRICS, views: VIEWS, projects: [],
+  ...SEED, seats: [], goals: [], spend: null, depts: [], people: [], problems: [], ideas: [], initiatives: [], outcomes: [], cases: [], waitingOn: [], stall: [],
+  personas: NEUTRAL_PERSONAS, leaders: [], routes: [], buddies: [], ledger: EMPTY_LEDGER, metrics: EMPTY_METRICS, projects: [],
 };
 
 export async function seedFor(slug: string): Promise<Seed> {

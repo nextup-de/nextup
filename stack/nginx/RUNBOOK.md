@@ -107,6 +107,11 @@ Which stack gets what is the **Track** column of `ports.md`:
 - **The gate is on the box as well.** `stage` writes each sha to `~/nextup/staged`, `release` to
   `~/nextup/released`. Once `staged` exists, `release` refuses a sha that is in neither list, and
   over ssh so does `promote`. Stopping staging does not switch the gate off.
+- **A backup before every move.** `stage`, `release`, `deploy` and `promote` take a `pre-migrate` backup
+  (`backup.sh <slug> pre-migrate <sha>`) of each stack they move, before its `migrate` runs. If that
+  backup fails, that stack stays where it was and the move says so (a stack without backup settings
+  yet, or with its database down, moves without one and says so). To go back across a migration,
+  restore the snapshot ("Backups" below).
 - **One move at a time.** `stage`, `release`, `deploy` and `promote` wait for
   `~/nextup/deploy.lock` (up to 25 minutes), so two migrations never run side by side.
 - **New companies from admin** get the last released sha (`NEXTUP_IMAGES=released`,
@@ -230,10 +235,17 @@ They're added on the first backup.
   - 03:17 nightly `backup.sh all backup`
   - Sunday 04:47 `backup.sh all restore-test`
   - Both log to `~/nextup/backup.log`.
-- **Retention:** 7 daily, 4 weekly and 6 monthly snapshots.
+- **Retention:** 7 daily, 4 weekly and 6 monthly snapshots. `pre-migrate` snapshots (tags
+  `<slug>-pre-migrate` and `release-<sha>`, taken before each move) are separate: the nightly forget
+  never prunes them, and the last 10 per stack are kept. List them with `backup.sh <slug> snapshots`
+  (`--json` for scripts).
 - **Target: local only for now** (`~/nextup/backups/<slug>`), Kevin's decision, 28 Sep 2026. The same
-  disk isn't a real backup. For off-box, change `RESTIC_REPOSITORY` per stack (Storage Box
-  `sftp:...`, or `s3:...`) and run `backup.sh <slug> backup`.
+  disk isn't a real backup. For off-box, set these keys in the stack's `.env` and run
+  `backup.sh <slug> backup`: `RESTIC_REPOSITORY=s3:https://<endpoint>/<bucket>` (or Storage Box
+  `sftp:...`), and for S3 `BACKUP_S3_ACCESS_KEY_ID` and `BACKUP_S3_SECRET_ACCESS_KEY`. Add
+  `BACKUP_OFFBOX=required` so no action falls back to a local folder. The app's own `AWS_*` keys
+  (Bedrock) are never used for backups. Existing snapshots stay in the old repository; run a backup
+  against the new one before relying on it.
 - **Copy each `RESTIC_PASSWORD` into the password manager.** Without it, no snapshot can be read.
 
 ```bash
@@ -250,7 +262,8 @@ export NEXTUP_INSTANCES=~/nextup/instances
 3. `backup.sh acme restore b4dd1a68`.
 4. Afterwards: 5 users, company `acme`, 7 migrations. `/login` and `/api/health` returned 200 over https.
 
-The actual restore takes about 10 s.
+The actual restore takes about 10 s. `restore-test` and `restore` log `seconds=<n>`; `restore-test`
+fails when `n` is over `RTO_SECONDS` (default 3600, `docs/ops/RPO_RTO.md`).
 
 ## automation.sellux.ch (n8n)
 
@@ -395,8 +408,10 @@ In Jira the automation rules then call `https://<slug>.sellux.ch/webhook/jira-<s
 ## Health checks and alerts
 
 `stack/health.sh` runs from cron every 5 minutes and pushes to Kevin's phone through
-[ntfy](https://ntfy.sh). The topic is in `~/nextup/health.env` (mode 600); subscribe to it in the
-ntfy app.
+[ntfy](https://ntfy.sh) and, if configured, by mail. Recipients are in `~/nextup/health.env`
+(mode 600): `NTFY_URLS` (space-separated topics; the old `NTFY_URL` still counts) and `ALERT_EMAILS`
+with `ALERT_SMTP_URL` and `ALERT_MAIL_FROM`. Every alert, recovery and summary goes to every
+recipient; one failing never stops the others. Subscribe to the topics in the ntfy app.
 
 | Check | Fails when |
 |---|---|
@@ -410,7 +425,9 @@ ntfy app.
 - A recovered check sends one "Recovered" push. On Mondays at 08:00 UTC a summary arrives, so a
   silent week means the checks are still running.
 - Alerts never contain secrets.
-- If the box itself is down, nothing can push: an outside uptime check is still to do.
+- If the box itself is down, nothing can push. `HEARTBEAT_URL` in `health.env` is requested at the end
+  of every run; an external dead-man's-switch monitor alerts when the pings stop. Setup:
+  `docs/ops/monitoring.md`.
 
 ```bash
 ~/nextup/stack/health.sh --list      # state of every check now

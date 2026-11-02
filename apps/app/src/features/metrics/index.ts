@@ -3,6 +3,7 @@
 // Port of the counting half of legacy/demo/js/dashboard.js renderVals().
 import type { ReducedCase, ReducedIdea, ReducedProblem, State } from "@/features/cases/reducer";
 import type { Buddy, Initiative, Outcome, OrgPerson, Seed, Stall, WaitingOn } from "@/features/demo/types";
+import type { T } from "@/i18n";
 
 export function median(values: readonly number[]): number | null {
   if (values.length === 0) return null;
@@ -121,16 +122,16 @@ export const decisionsWaiting = (D: DemoData) =>
 
 export type FunnelStep = { n: number; label: string; sub: string; pct: number; note: string; gate: boolean };
 
-export function funnel(N: Counts): FunnelStep[] {
+export function funnel(N: Counts, t: T): FunnelStep[] {
   const top = Math.max(1, N.signals);
   const w = (x: number) => Math.round((x / top) * 100);
   return [
-    { n: N.signals, label: "Said out loud", sub: "quotes kept from interviews and the app", pct: w(N.signals), note: "", gate: false },
-    { n: N.problems, label: "Clustered into root problems", sub: "duplicates merged, named plainly", pct: w(N.problems), note: "", gate: false },
-    { n: N.ideas, label: "Answered with an idea", sub: "employees proposed the fix themselves", pct: w(N.ideas), note: "", gate: false },
-    { n: N.funded, label: "Given a team and a budget", sub: N.ideas - N.funded + " ideas stopped here", pct: w(N.funded),
-      note: "This is the hierarchy gate. It is the narrowest point in the system and the only one leadership controls directly.", gate: true },
-    { n: N.shippedIdeas, label: "Shipped", sub: N.funded - N.shippedIdeas + " still in trial or being built", pct: w(N.shippedIdeas), note: "", gate: false },
+    { n: N.signals, label: t("dashboard.funnelSignals"), sub: t("dashboard.funnelSignalsSub"), pct: w(N.signals), note: "", gate: false },
+    { n: N.problems, label: t("dashboard.funnelProblems"), sub: t("dashboard.funnelProblemsSub"), pct: w(N.problems), note: "", gate: false },
+    { n: N.ideas, label: t("dashboard.funnelIdeas"), sub: t("dashboard.funnelIdeasSub"), pct: w(N.ideas), note: "", gate: false },
+    { n: N.funded, label: t("dashboard.funnelFunded"), sub: t("dashboard.funnelFundedSub", { n: N.ideas - N.funded }), pct: w(N.funded),
+      note: t("dashboard.funnelFundedNote"), gate: true },
+    { n: N.shippedIdeas, label: t("dashboard.funnelShipped"), sub: t("dashboard.funnelShippedSub", { n: N.funded - N.shippedIdeas }), pct: w(N.shippedIdeas), note: "", gate: false },
   ];
 }
 
