@@ -28,7 +28,10 @@ export type GoalRow = {
   id: string; orgUnitId: string | null; parentId: string | null;
   title: string; kpi: string; target: string; period: string; keywords: string[]; sort: number;
 };
-export type Knowledge = { units: UnitRow[]; roles: RoleRow[]; holders: HolderRow[]; rules: RuleRow[]; goals: GoalRow[] };
+export type Knowledge = { units: UnitRow[]; roles: RoleRow[]; holders: HolderRow[]; rules: RuleRow[]; goals: GoalRow[];
+  /** Active users with a manager (D12), for the deputy rule. */
+  managers?: { userId: string; managerId: string }[];
+};
 
 /** The keyword goals features/evaluate matches against today. */
 export type KeywordGoal = { goal: string; keys: string[] };
@@ -130,17 +133,28 @@ export function seedParts(k: Knowledge): Pick<Seed, "depts" | "people" | "routes
     return [{ name: h.name, role: r.title, dept: unitById.get(r.orgUnitId)?.key ?? "", reportsTo: firstHolder(r.reportsToId) || null }];
   });
 
+  // D12: a route without a deputy role is covered by the first seat of the owner seat user's manager.
+  const managerOf = new Map((k.managers ?? []).map((m) => [m.userId, m.managerId]));
+  const sortedHolders = bySort(k.holders);
+  const managerSeat = (ownerRoleId: string): HolderRow | undefined => {
+    const ownerUser = holdersOf.get(ownerRoleId)?.[0]?.userId;
+    const managerId = ownerUser ? managerOf.get(ownerUser) : undefined;
+    return managerId ? sortedHolders.find((h) => h.userId === managerId) : undefined;
+  };
+
   const routes: Route[] = bySort(k.rules).map((rule) => {
     const owner = roleById.get(rule.ownerRoleId);
+    const viaManager = rule.deputyRoleId ? undefined : managerSeat(rule.ownerRoleId);
+    const deputyRoleId = rule.deputyRoleId ?? viaManager?.roleId ?? null;
     const buddy = firstHolder(rule.buddyRoleId);
     return {
       id: rule.key, type: rule.type, keys: [...rule.keywords],
       owner: { name: firstHolder(rule.ownerRoleId), role: owner?.title ?? "", dept: unitOf(rule.ownerRoleId)?.key ?? "" },
-      deputy: firstHolder(rule.deputyRoleId),
+      deputy: viaManager ? viaManager.name : firstHolder(rule.deputyRoleId),
       buddy: buddy ? buddy + " · " + (unitOf(rule.buddyRoleId)?.name ?? "") : "",
       wait: rule.wait,
       ownerRoleId: rule.ownerRoleId, ownerSeatId: firstSeatId(rule.ownerRoleId),
-      deputyRoleId: rule.deputyRoleId, deputySeatId: firstSeatId(rule.deputyRoleId),
+      deputyRoleId, deputySeatId: viaManager ? viaManager.id : firstSeatId(rule.deputyRoleId),
     };
   });
 
