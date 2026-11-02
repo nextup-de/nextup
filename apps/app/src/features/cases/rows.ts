@@ -8,7 +8,7 @@ import { archiveOf, type ArchiveOutcome } from "./discussion";
 import type { CaseKind, EventLog, Visibility } from "./events";
 import type { ReducedCase, ReducedIdea } from "./reducer";
 import { affectedOn, rescoresOn } from "./selectors";
-import { createT, DEFAULT_LOCALE, INTL_LOCALE, translate, type Locale, type MessageKey, type T } from "@/i18n";
+import { createT, DEFAULT_LOCALE, translate, type Locale, type MessageKey, type T } from "@/i18n";
 import { days, formatDate } from "@/i18n/format";
 
 type LT = T & { locale: Locale };
@@ -68,13 +68,11 @@ export function dayFormatter(today: Date, demoDay: number, locale: Locale = DEFA
 export function sentLabel(sent: Date, now: Date, exact: boolean, locale: Locale = DEFAULT_LOCALE): string {
   const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const diff = Math.round((startOf(now) - startOf(sent)) / 864e5);
-  // The viewer's own clock, like the day arithmetic above (not Europe/Berlin), so a stamp reads as it did.
-  const fmt = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(INTL_LOCALE[locale], o).format(sent);
-  if (diff <= 0) return exact ? fmt({ hour: "2-digit", minute: "2-digit" }) : translate(locale, "common.today");
+  if (diff <= 0) return exact ? formatDate(locale, sent, "time") : translate(locale, "common.today");
   if (diff === 1) return translate(locale, "common.yesterday");
-  if (diff < 7) return fmt({ weekday: "long" });
-  if (sent.getFullYear() === now.getFullYear()) return fmt({ day: "numeric", month: "short" });
-  return fmt({ day: "numeric", month: "short", year: "numeric" });
+  if (diff < 7) return formatDate(locale, sent, "weekday");
+  if (sent.getFullYear() === now.getFullYear()) return formatDate(locale, sent, "dayMonth");
+  return formatDate(locale, sent, "day");
 }
 
 const step = (label: string, when: string, tone: StepTone): Step => ({ label, when, tone });
