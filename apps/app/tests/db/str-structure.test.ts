@@ -12,6 +12,10 @@ import { loadHoldersOfRole, loadKnowledge, replaceKnowledge } from "@/lib/db/kno
 import { saveCompanyRules } from "@/lib/db/rules";
 
 const db = getDb();
+// IDN-G1: loaded routes also carry the owner/deputy role and seat ids; the fixture has none.
+const ID_KEYS = ["ownerRoleId", "ownerSeatId", "deputyRoleId", "deputySeatId"];
+const withoutIds = (routes: readonly object[] | undefined) =>
+  routes?.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !ID_KEYS.includes(k))));
 const id = () => crypto.randomUUID();
 let a: { id: string };
 let b: { id: string };
@@ -70,7 +74,7 @@ describe("STR company seed from the tables", () => {
     await replaceKnowledge(c.id, rowsFromSeed(SEED, DEMO_GOALS, id));
     await saveCompanyRules(c.id, DEMO_RULES);
     const s = await loadSeed("str-c");
-    expect(s?.routes).toEqual(SEED.routes);
+    expect(withoutIds(s?.routes)).toEqual(SEED.routes);
     expect(s?.goals).toEqual(DEMO_GOALS);
     expect(s?.spend).toEqual(DEMO_RULES.spend);
     expect(reduce(s!, emptyLog()).cases.map((x) => x.id)).toEqual(reduce(SEED, emptyLog()).cases.map((x) => x.id));
