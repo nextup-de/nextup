@@ -2,14 +2,15 @@
 // page (Requests, Companies, Connections); this one only points at them.
 //
 // In a company stack this is the company's own front page instead (CompanyOverview).
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
 import { adminBase, connectionProblems } from "@/features/admin/nav";
 import { STAGES } from "@/features/admin/stages";
 import { RequestList } from "@/components/admin/RequestList";
-import { CompanyMissing, CompanyOverview } from "@/components/admin/CompanyOverview";
-import { assistantView } from "@/server/admin-insight";
+import { CompanyMissing, ConsoleOverview } from "@/components/admin/CompanyOverview";
+import { consoleCompany, consoleOverviewFacts } from "@/server/console-guard";
+import { getT } from "@/i18n/server";
 import styles from "./admin.module.css";
 
 export default async function AdminOverview() {
@@ -18,9 +19,11 @@ export default async function AdminOverview() {
   const base = adminBase();
 
   if (ctx.scope === "company") {
+    const guard = await consoleCompany();
+    if (!guard) notFound();
     if (!ctx.company) return <CompanyMissing />;
-    const assistant = await assistantView(ctx.live ? ctx.company.id : null);
-    return <CompanyOverview company={ctx.company} assistant={assistant} base={base} />;
+    const facts = await consoleOverviewFacts(guard.companyId);
+    return <ConsoleOverview company={ctx.company} facts={facts} base={base} t={await getT()} />;
   }
 
   const problems = connectionProblems({
