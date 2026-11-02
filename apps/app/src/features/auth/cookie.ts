@@ -66,15 +66,15 @@ export function adminBy(raw: string | undefined, secret: string, nowSeconds = Ma
   return c && typeof c.by === "string" && c.by ? c.by : null;
 }
 
-/** How an admin got in. ITC-F1 adds "support"; callers must not assume the union is closed. */
-export type AdminVia = "entra" | "stack-admin" | "break-glass";
+/** How an admin got in. "support" is NextUp support, signed in with a customer-opened code (ITC/D8). */
+export type AdminVia = "entra" | "stack-admin" | "break-glass" | "support";
 
 /** The way in the admin cookie records, or null when it is not a valid admin cookie. Older cookies without it: bg wins, then by means Microsoft. */
 export function adminVia(raw: string | undefined, secret: string, nowSeconds = Math.floor(Date.now() / 1000)): AdminVia | null {
   if (!verifyAdmin(raw, secret, nowSeconds)) return null;
   const c = verifyRaw(raw, secret);
   if (c?.bg === true) return "break-glass";
-  if (c?.via === "entra" || c?.via === "stack-admin") return c.via;
+  if (c?.via === "entra" || c?.via === "stack-admin" || c?.via === "support") return c.via;
   return typeof c?.by === "string" && c.by ? "entra" : "break-glass";
 }
 

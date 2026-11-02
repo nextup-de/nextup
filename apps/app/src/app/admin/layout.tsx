@@ -9,7 +9,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { dashboardUrl, landingUrl } from "@/features/tenant/urls";
-import { getT } from "@/i18n/server";
+import { getLocale, getT } from "@/i18n/server";
+import { formatDate } from "@/i18n/format";
+import { consoleCompany } from "@/server/console-guard";
 import { adminBase, adminScope } from "@/features/admin/nav";
 import { adminSignOut, isAdmin } from "@/server/actions/admin";
 import { adminActor, adminBreakGlassActive } from "@/server/admin-session";
@@ -36,6 +38,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const actor = signedIn ? await adminActor() : null;
   const breakGlass = signedIn && (await adminBreakGlassActive());
   const t = await getT();
+  const support = signedIn && company ? (await consoleCompany())?.supportUntil : undefined;
+  const supportUntil = support ? formatDate(await getLocale(), support, "dateTime") : null;
 
   return (
     <div className={styles.shell}>
@@ -67,6 +71,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </aside>
           <main className={styles.content}>
             {breakGlass ? <p className={`${styles.card} ${styles.error}`} role="status">{t("adminAccess.breakGlassBanner")}</p> : null}
+            {supportUntil ? <p className={`${styles.card} ${styles.error}`} role="status" data-testid="console-support-banner">{t("adminSupport.banner", { time: supportUntil })}</p> : null}
             {ctx.live ? null : company ? (
               <section className={`${styles.card} ${styles.demoNotice}`}>
                 <h2>Not connected</h2>

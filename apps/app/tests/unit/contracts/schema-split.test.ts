@@ -12,11 +12,12 @@ const AREAS: Record<string, string[]> = {
   "structure.prisma": ["CompanyProfile", "OrgUnit", "OrgRole", "OrgRoleHolder", "RoutingRule", "Goal"],
   "auth.prisma": ["User", "ApiToken"],
   "integrations.prisma": ["CompanyConfig", "Connection", "Integration", "Document", "OutboxMessage", "WebhookSubscription", "NotifyPreference", "NotifyCursor"],
+  "support.prisma": ["SupportGrant"],
   "ops.prisma": ["FeatureFlag", "PilotRequest", "PilotReply", "Ticket", "TicketReply", "ErrorGroup"],
 };
 const PHASES = [
   "AUD", "ARC", "OPS", "STR", "LNG", "CON", "IDN", "CLK", "DIR", "AIP", "ADM", "VIS", "NTF",
-  "GDP", "LOOP", "MET", "TMS", "FLR", "API", "EID", "SEC", "TST", "PIL",
+  "GDP", "LOOP", "MET", "TMS", "FLR", "API", "EID", "SEC", "TST", "PIL", "ITC",
 ];
 
 const read = (file: string) => readFileSync(join(SCHEMA, file), "utf8");
