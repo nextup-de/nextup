@@ -204,6 +204,7 @@ export function companyBrief(k: Knowledge, profile: Profile | null): string {
     lines.push("## Profile");
     if (profile.vision) lines.push("Vision: " + profile.vision);
     if (profile.mission) lines.push("Mission: " + profile.mission);
+    // eslint-disable-next-line -- AI prompt text (D9)
     if (profile.businessModel) lines.push("Business model: " + profile.businessModel);
     for (const p of profile.principles) lines.push("Principle: " + p);
     lines.push("");
@@ -223,6 +224,7 @@ export function companyBrief(k: Knowledge, profile: Profile | null): string {
     lines.push(`${"  ".repeat(n.depth)}- ${n.role.title} (${n.unit})${extra.length ? " - " + extra.join("; ") : ""}`);
   }
 
+  // eslint-disable-next-line -- AI prompt text (D9)
   lines.push("", "## Routing table (request type -> owner · deputy · buddy)");
   for (const r of [...k.rules].sort((a, b) => a.sort - b.sort)) {
     lines.push(`- [${r.key}] ${r.type} -> ${roleLabel(r.ownerRoleId)} · ${roleLabel(r.deputyRoleId)} · ${roleLabel(r.buddyRoleId)}; keywords: ${r.keywords.join(", ")}`);

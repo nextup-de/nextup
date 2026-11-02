@@ -5,6 +5,7 @@ import { getViewerFor } from "@/features/auth/session";
 import { companyPrefix } from "@/features/tenant/urls";
 import { connectionStatus, m365SearchOn } from "@/lib/db/connections";
 import { hasDatabase } from "@/lib/db/client";
+import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
 import { microsoftEnabledFor } from "@/server/microsoft-login";
 
 export type M365Card = {
@@ -19,13 +20,13 @@ export type M365Card = {
   notice: { text: string; tone: "ok" | "error" } | null;
 };
 
-const OUTCOMES: Record<string, string> = {
-  connected: "Connected. When you ask the assistant, it can now search the files you can open in Microsoft 365.",
-  disconnected: "Disconnected. NextUp no longer holds any access to your Microsoft 365 files.",
+const OUTCOMES: Record<string, MessageKey> = {
+  connected: "connectors.m365Connected",
+  disconnected: "connectors.m365Disconnected",
 };
 
 /** Null: nothing to show (no database, Microsoft sign-in off, or switched off and never connected). */
-export async function m365Card(slug: string, outcome: string | undefined): Promise<M365Card | null> {
+export async function m365Card(slug: string, outcome: string | undefined, locale: Locale = DEFAULT_LOCALE): Promise<M365Card | null> {
   if (!hasDatabase()) return null;
   const viewer = await getViewerFor(slug);
   if (!viewer || !(await microsoftEnabledFor(slug))) return null;
@@ -34,7 +35,7 @@ export async function m365Card(slug: string, outcome: string | undefined): Promi
   if (!available && !status && !outcome) return null;
 
   const notice = outcome && Object.hasOwn(OUTCOMES, outcome)
-    ? { text: OUTCOMES[outcome], tone: "ok" as const }
+    ? { text: translate(locale, OUTCOMES[outcome]), tone: "ok" as const }
     : isMicrosoftError(outcome) ? { text: MICROSOFT_ERRORS[outcome], tone: "error" as const } : null;
   return {
     slug,

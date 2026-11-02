@@ -10,6 +10,7 @@ import type { OrgPerson, Problem, RolePersona, Route, SeedGoal, SpendRule } from
 import { propose, ROUTER_VERSION } from "@/features/routing";
 import type { BrainProposal } from "@/features/routing/brain";
 import { scoreCase, type Score } from "@/features/scoring";
+import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
 
 export type EvalInput = { kind: CaseKind; text: string; context?: string; affected: string[]; attachments: number; who: { name: string; line: string; handle: string | null }; visibility?: Visibility; seenBy?: string[] };
 export type KnownCase = { id?: string; title: string; from: string; age: number; open: boolean };
@@ -60,7 +61,8 @@ export function goalOf<G extends { keys: readonly string[] }>(text: string, goal
 // `brain`: the language model's proposal (features/routing/brain), when the stack has one and it
 // answered in time. It replaces the keyword row and the "raised before?" match; without it both
 // come from the keywords, as before.
-export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposal | null = null): Evaluation {
+export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposal | null = null, locale: Locale = DEFAULT_LOCALE): Evaluation {
+  const t = (key: MessageKey, params?: Record<string, string | number>) => translate(locale, key, params);
   const text = input.text.trim();
   const context = (input.context ?? "").trim();
   const full = context ? text + " " + context : text; // the one line is the title; the optional context only helps the matching
@@ -69,7 +71,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposa
   const route = brain ? ctx.routes.find((r) => r.id === brain.proposal.routeId) ?? null : keywords?.route ?? null;
   const confidence = brain ? (route ? brain.proposal.confidence : 0) : keywords?.confidence ?? 0;
   const me = ctx.people.find((p) => p.name === input.who.name);
-  const lead = me?.reportsTo ?? ctx.personas.find((r) => r.id === "leader")?.who.name ?? "Triage desk";
+  const lead = me?.reportsTo ?? ctx.personas.find((r) => r.id === "leader")?.who.name ?? "Triage desk"; // eslint-disable-line -- stored as the case assignee: data, not display text
   const leadRow = ctx.people.find((p) => p.name === lead);
   const passesTo = route && route.owner.name !== lead ? route.owner.name : null;
   const similar = brain ? ctx.problems.find((p) => p.id === brain.sameAs) ?? null : closest(full, ctx.problems, (p) => p.title + " " + p.sub);
@@ -79,18 +81,21 @@ export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposa
   // Scored exactly as the dashboard will score the stored case: the goal it serves is kept as its upside.
   const upside = goal ? goal.goal : "";
   const score = scoreCase({ routeId: route?.id ?? null, upside, body: "", age: 0, open: true, affected: input.affected.length, evidence: input.attachments }, ctx.promiseDays);
-  const thing = input.kind === "idea" ? "idea" : "problem";
+  const sep = " · ";
+  const shots = input.attachments ? [t("structure.evalReadScreenshots", { count: input.attachments })] : [];
+  const owns = route ? t("structure.evalOrgOwns", { owner: route.owner.name, type: route.type }) : t("structure.evalOrgNoMatch");
+  const when = sameAs ? (sameAs.age === 0 ? t("structure.evalHistoryToday") : t("structure.evalHistoryDaysAgo", { age: sameAs.age })) : "";
 
   const steps: EvalStep[] = [
-    { id: "read", title: "Reading the " + thing, detail: words(full).length + " words from " + (input.who.handle ?? input.who.name) + " · " + input.who.line + (input.attachments ? " · " + input.attachments + (input.attachments === 1 ? " screenshot" : " screenshots") : "") },
-    { id: "org", title: "Org chart · who is responsible", detail: (leadRow ? lead + " leads your team (" + leadRow.role + ")" : lead + " leads your team") + (route ? " · " + route.owner.name + " owns “" + route.type + "”" : " · no map entry matches yet") + (brain?.reason ? " · " + brain.reason : "") },
-    { id: "goals", title: "Company goals & values", detail: goal ? "Serves: “" + goal.goal + "”" : "No stated goal matches directly — logged as a new signal" },
-    { id: "budget", title: "Budget & authority", detail: spend ? "Spend involved — " + (ctx.spend ? ctx.spend.text : "no spend rule set for this company") : "No spend needed to decide this" },
-    { id: "history", title: "Raised before?", detail: sameAs ? "Yes — “" + sameAs.title + "” by " + sameAs.from + ", " + (sameAs.age === 0 ? "today" : sameAs.age + " d ago") + (sameAs.open ? ", still open" : "")
-      : similar ? "Looks like “" + similar.title + "” · " + similar.people + " people, " + similar.age : "Nothing similar in the last 12 months" },
-    { id: "affected", title: "Who else it touches", detail: input.affected.length ? input.affected.join(", ") + " · " + (input.affected.length + 1) + " people in total" : "You so far — others can add themselves" },
-    { id: "worth", title: "What it is worth", detail: "Score " + score.value + " · " + (score.parts.map((p) => p.label.toLowerCase()).join(", ") || "base only") },
-    { id: "route", title: "Forwarding", detail: "→ " + lead + (passesTo ? " → " + passesTo + " if it is theirs" : "") + " · answer owed in " + ctx.promiseDays + " d" },
+    { id: "read", title: t(input.kind === "idea" ? "structure.evalReadTitleIdea" : "structure.evalReadTitleProblem"), detail: [t("structure.evalReadDetail", { words: words(full).length, who: input.who.handle ?? input.who.name, line: input.who.line }), ...shots].join(sep) },
+    { id: "org", title: t("structure.evalOrgTitle"), detail: [leadRow ? t("structure.evalOrgLeadsRole", { lead, role: leadRow.role }) : t("structure.evalOrgLeads", { lead }), owns, ...(brain?.reason ? [brain.reason] : [])].join(sep) },
+    { id: "goals", title: t("structure.evalGoalsTitle"), detail: goal ? t("structure.evalGoalsServes", { goal: goal.goal }) : t("structure.evalGoalsNone") },
+    { id: "budget", title: t("structure.evalBudgetTitle"), detail: spend ? t("structure.evalBudgetSpend", { rule: ctx.spend ? ctx.spend.text : t("structure.evalBudgetNoRule") }) : t("structure.evalBudgetNone") },
+    { id: "history", title: t("structure.evalHistoryTitle"), detail: sameAs ? t(sameAs.open ? "structure.evalHistorySameOpen" : "structure.evalHistorySame", { title: sameAs.title, from: sameAs.from, when })
+      : similar ? t("structure.evalHistoryLooks", { title: similar.title, people: similar.people, age: similar.age }) : t("structure.evalHistoryNone") },
+    { id: "affected", title: t("structure.evalAffectedTitle"), detail: input.affected.length ? t("structure.evalAffectedList", { names: input.affected.join(", "), total: input.affected.length + 1 }) : t("structure.evalAffectedNone") },
+    { id: "worth", title: t("structure.evalWorthTitle"), detail: t("structure.evalWorthDetail", { score: score.value, parts: score.parts.map((p) => p.label.toLowerCase()).join(", ") || t("structure.evalWorthBase") }) },
+    { id: "route", title: t("structure.evalRouteTitle"), detail: passesTo ? t("structure.evalRoutePasses", { lead, next: passesTo, days: ctx.promiseDays }) : t("structure.evalRouteDetail", { lead, days: ctx.promiseDays }) },
   ];
 
   return {
