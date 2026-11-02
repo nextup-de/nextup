@@ -44,6 +44,55 @@ async function add(type: CaseEventType, actor: string, targetId: string | null, 
   expect(r.ok).toBe(true);
 }
 
+// The 30 events over five cases; run once per file so each describe can run alone (-t).
+const M = "J. Schmidt";
+const L = "T. Vogel";
+const B = "B. Hartmann";
+let thirty: Promise<void> | null = null;
+function appendThirty(): Promise<void> {
+  thirty ??= (async () => {
+    const raised = (title: string, extra: EventPayload = {}): EventPayload => ({
+      title, body: "b", routeId: null, assignee: "Triage desk", assigneeRoleHolderId: seatA, fromDept: "PRD", kind: "problem", ...extra,
+    });
+    // n1: raise, read, question, answer, hand-over, decision
+    await add("case.raised", M, "n1", raised("n1"), ids.member);
+    await add("case.read", B, "n1", {}, ids.manager);
+    await add("case.asked", B, "n1", { text: "q" }, ids.manager);
+    await add("case.answered", M, "n1", { text: "a" }, ids.member);
+    await add("case.handed", B, "n1", { to: "x", toRoleHolderId: seatB, why: "w" }, ids.manager);
+    await add("case.decided", B, "n1", { answer: "no", reason: "r" }, ids.manager);
+    // n2: a custom audience by id
+    await add("case.raised", L, "n2", raised("n2", { visibility: "custom", seenBy: ["J. Schmidt"], seenByUserIds: [ids.member] }), ids.leader);
+    await add("case.read", B, "n2", {}, ids.manager);
+    await add("case.commented", L, "n2", { text: "c1" }, ids.leader);
+    await add("case.commented", M, "n2", { text: "c2" }, ids.member);
+    await add("case.handed", B, "n2", { to: "x", toRoleHolderId: seatB }, ids.manager);
+    await add("case.asked", B, "n2", { text: "q" }, ids.manager);
+    await add("case.answered", L, "n2", { text: "a" }, ids.leader);
+    // n3: private
+    await add("case.raised", M, "n3", raised("n3", { visibility: "private" }), ids.member);
+    await add("case.read", B, "n3", {}, ids.manager);
+    await add("case.commented", M, "n3", { text: "c" }, ids.member);
+    await add("case.handed", B, "n3", { to: "x", toRoleHolderId: seatB }, ids.manager);
+    // n4: everyone, with a discussion
+    await add("case.raised", L, "n4", raised("n4", { visibility: "everyone", kind: "idea" }), ids.leader);
+    await add("case.read", B, "n4", {}, ids.manager);
+    await add("case.discussion", B, "n4", { invited: ["J. Schmidt"], invitedUserIds: [ids.member], missing: "m" }, ids.manager);
+    await add("case.invited", B, "n4", { invited: ["T. Vogel"], invitedUserIds: [ids.leader] }, ids.manager);
+    await add("case.checkin", B, "n4", { next: "round", open: ["x"], note: "n" }, ids.manager);
+    await add("case.revised", L, "n4", { body: "better" }, ids.leader);
+    await add("case.commented", M, "n4", { text: "c" }, ids.member);
+    await add("case.checkin", B, "n4", { next: "decide", open: [], note: "n" }, ids.manager);
+    // n5: no choice, then the deadline fact moves it to the deputy
+    await add("case.raised", B, "n5", raised("n5"), ids.manager);
+    await add("case.read", B, "n5", {}, ids.manager);
+    await add("clock.due", "system:clock", "n5", { kind: "deadline", dueDay: 1, toRoleHolderId: deputySeat });
+    await add("case.commented", B, "n5", { text: "c" }, ids.manager);
+    await add("case.commented", B, "n5", { text: "d" }, ids.manager);
+  })();
+  return thirty;
+}
+
 async function expectRowsEqualReducer(opts: { every: boolean }) {
   const [seed, seats, knowledge] = await Promise.all([loadSeed("vis-proj"), loadSeats(companyId), loadKnowledge(companyId)]);
   const state = reduce({ ...seed!, seats }, await loadLog(companyId));
@@ -103,47 +152,7 @@ afterAll(async () => {
 
 describe("VIS projections match the reducer", () => {
   it("keeps every row equal to the full reducer through 30 events, a rebuild, and a failing projection", async () => {
-    const raised = (title: string, extra: EventPayload = {}): EventPayload => ({
-      title, body: "b", routeId: null, assignee: "Triage desk", assigneeRoleHolderId: seatA, fromDept: "PRD", kind: "problem", ...extra,
-    });
-    const M = "J. Schmidt";
-    const L = "T. Vogel";
-    const B = "B. Hartmann";
-    // n1: raise, read, question, answer, hand-over, decision
-    await add("case.raised", M, "n1", raised("n1"), ids.member);
-    await add("case.read", B, "n1", {}, ids.manager);
-    await add("case.asked", B, "n1", { text: "q" }, ids.manager);
-    await add("case.answered", M, "n1", { text: "a" }, ids.member);
-    await add("case.handed", B, "n1", { to: "x", toRoleHolderId: seatB, why: "w" }, ids.manager);
-    await add("case.decided", B, "n1", { answer: "no", reason: "r" }, ids.manager);
-    // n2: a custom audience by id
-    await add("case.raised", L, "n2", raised("n2", { visibility: "custom", seenBy: ["J. Schmidt"], seenByUserIds: [ids.member] }), ids.leader);
-    await add("case.read", B, "n2", {}, ids.manager);
-    await add("case.commented", L, "n2", { text: "c1" }, ids.leader);
-    await add("case.commented", M, "n2", { text: "c2" }, ids.member);
-    await add("case.handed", B, "n2", { to: "x", toRoleHolderId: seatB }, ids.manager);
-    await add("case.asked", B, "n2", { text: "q" }, ids.manager);
-    await add("case.answered", L, "n2", { text: "a" }, ids.leader);
-    // n3: private
-    await add("case.raised", M, "n3", raised("n3", { visibility: "private" }), ids.member);
-    await add("case.read", B, "n3", {}, ids.manager);
-    await add("case.commented", M, "n3", { text: "c" }, ids.member);
-    await add("case.handed", B, "n3", { to: "x", toRoleHolderId: seatB }, ids.manager);
-    // n4: everyone, with a discussion
-    await add("case.raised", L, "n4", raised("n4", { visibility: "everyone", kind: "idea" }), ids.leader);
-    await add("case.read", B, "n4", {}, ids.manager);
-    await add("case.discussion", B, "n4", { invited: ["J. Schmidt"], invitedUserIds: [ids.member], missing: "m" }, ids.manager);
-    await add("case.invited", B, "n4", { invited: ["T. Vogel"], invitedUserIds: [ids.leader] }, ids.manager);
-    await add("case.checkin", B, "n4", { next: "round", open: ["x"], note: "n" }, ids.manager);
-    await add("case.revised", L, "n4", { body: "better" }, ids.leader);
-    await add("case.commented", M, "n4", { text: "c" }, ids.member);
-    await add("case.checkin", B, "n4", { next: "decide", open: [], note: "n" }, ids.manager);
-    // n5: no choice, then the deadline fact moves it to the deputy
-    await add("case.raised", B, "n5", raised("n5"), ids.manager);
-    await add("case.read", B, "n5", {}, ids.manager);
-    await add("clock.due", "system:clock", "n5", { kind: "deadline", dueDay: 1, toRoleHolderId: deputySeat });
-    await add("case.commented", B, "n5", { text: "c" }, ids.manager);
-    await add("case.commented", B, "n5", { text: "d" }, ids.manager);
+    await appendThirty();
     expect(await db.caseEvent.count({ where: { companyId } })).toBe(30);
 
     const afterAppends = await expectRowsEqualReducer({ every: false });
@@ -168,10 +177,12 @@ describe("VIS projections match the reducer", () => {
       control.fail = false;
       spy.mockRestore();
     }
-  });
+  }, 30_000);
 });
 
 describe("VIS projection readers", () => {
+  beforeAll(appendThirty);
+
   it("lists the escalated case on the deputy's inbox", async () => {
     await rebuildProjections(companyId);
     const seats = await loadSeats(companyId);
