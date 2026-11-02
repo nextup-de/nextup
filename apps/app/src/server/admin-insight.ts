@@ -3,7 +3,7 @@
 // the admin cookie itself - they are also reached from a route handler, not only from a page.
 import { isAdmin } from "@/server/actions/admin";
 import { SEED } from "@/features/demo/seed";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { companyBrief, NO_KNOWLEDGE, rowsFromSeed, type Knowledge, type Profile } from "@/features/knowledge";
 import { toDecision, type DecisionRow } from "@/features/admin/decisions";
 import type { Route } from "@/features/demo/types";
@@ -25,7 +25,7 @@ export async function knowledgeView(companyId: string | null): Promise<Knowledge
   if (!(await isAdmin())) return { knowledge: NO_KNOWLEDGE, profile: null, brief: "", source: "none" };
   if (!hasDatabase() || !companyId) {
     let n = 0;
-    const knowledge = rowsFromSeed(SEED, GOALS, () => "demo" + ++n);
+    const knowledge = rowsFromSeed(SEED, DEMO_GOALS, () => "demo" + ++n);
     return { knowledge, profile: null, brief: companyBrief(knowledge, null), source: "demo" };
   }
   const [knowledge, profile] = await Promise.all([loadKnowledge(companyId), loadProfile(companyId)]);

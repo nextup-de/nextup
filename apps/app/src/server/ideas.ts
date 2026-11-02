@@ -4,7 +4,6 @@
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
-import { GOALS } from "@/features/evaluate";
 import type { BenchmarkContext } from "@/features/ideas/benchmarks";
 import { ideaContext } from "@/features/ideas/drafts";
 import { hasDatabase } from "@/lib/db/client";
@@ -13,5 +12,5 @@ import { loadLogForSlug } from "@/lib/db/events";
 export async function serverIdeaContext(slug: string): Promise<BenchmarkContext> {
   const seed = await seedFor(slug);
   const log = (hasDatabase() ? await loadLogForSlug(slug) : null) ?? emptyLog();
-  return ideaContext(seed.routes, GOALS, reduce(seed, log).cases);
+  return ideaContext(seed.routes, seed.goals, reduce(seed, log).cases, seed.spend);
 }
