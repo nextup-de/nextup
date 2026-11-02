@@ -2,26 +2,42 @@
 id: VIS
 project: nextup
 title: Read model and server-side visibility
-state: draft
-level: 0
-approved: []
+state: active
+level: 2
+approved:
+  [
+    { level: 0, by: kevin, at: 2026-11-02, note: Workbench Control },
+    { level: 1, by: kevin, at: 2026-11-02, note: Workbench Control },
+    { level: 2, by: kevin, at: 2026-11-02, note: Workbench Control }
+  ]
 milestone: PILOT VIS
-summary: "VIS stops sending every browser the whole case log: the server keeps a projection per case with who may
-  see it, and a member's browser gets only the events of the cases they may see (their own, their desk's, the ones
-  shared with them, and for a leader their reports'). A manager still sees everything, but only open cases and what
-  moved in the last 90 working days come along; older cases load one at a time. The raiser's custom audience is
-  stored by user id and unit, the rate limits move into Postgres so two app instances count together, and the
-  connection pool is set by configuration. Inbox and case pages stay under one second with 50,000 events. 6 tasks,
-  100 % of a window; it starts after CLK and LNG."
+summary: "VIS stops sending every browser the whole case log: the server keeps a
+  projection per case with who may see it, and a member's browser gets only the
+  events of the cases they may see (their own, their desk's, the ones shared
+  with them, and for a leader their reports'). A manager still sees everything,
+  but only open cases and what moved in the last 90 working days come along;
+  older cases load one at a time. The raiser's custom audience is stored by user
+  id and unit, the rate limits move into Postgres so two app instances count
+  together, and the connection pool is set by configuration. Inbox and case
+  pages stay under one second with 50,000 events. 6 tasks, 100 % of a window; it
+  starts after CLK and LNG."
 phases:
   - { id: G, title: Projection tables, wps: [ G ], gate: auto }
-  - { id: W1, title: The visibility rule and the shared rate limits, wps: [ A, D ], gate: auto }
+  - {
+      id: W1,
+      title: The visibility rule and the shared rate limits,
+      wps: [ A, D ],
+      gate: auto
+    }
   - { id: W2, title: Case projections, wps: [ B ], gate: auto }
   - { id: W3, title: A filtered log for every browser, wps: [ C ], gate: auto }
   - { id: Z, title: Acceptance, wps: [ Z ], gate: auto }
 max_parallel: 2
 decisions:
-  - { id: D1, text: "(from PILOT/HD13) Plans, code, comments and PRs are in English." }
+  - {
+      id: D1,
+      text: "(from PILOT/HD13) Plans, code, comments and PRs are in English."
+    }
   - {
       id: D2,
       text: "(from PILOT/HD5 and HD10) Roles, not people; people are identified by
@@ -50,8 +66,8 @@ decisions:
         their units in `seenByUnitIds`; \"private\" lets nobody else); with no
         choice: a manager always, a leader when the raiser holds a seat whose
         role reports to one of the leader's roles, a member never. The pages'
-        lists show exactly the cases a viewer may open; derive.ts `visibleTo` and
-        `canOpen` call this rule and keep no rule of their own."
+        lists show exactly the cases a viewer may open; derive.ts `visibleTo`
+        and `canOpen` call this rule and keep no rule of their own."
     }
   - {
       id: D5,
@@ -61,17 +77,18 @@ decisions:
         raiser's seats report to when there is no choice), `n:<unitId>` (custom
         units), `all` (everyone), `m` (managers, when there is no choice or the
         choice is not private). `viewerKeys(me, role, units: string[]):
-        string[]` gives the viewer's keys (`u:` own id, `r:` every role id,
-        `n:` every unit id of their seats' roles, `all`, and `m` for a manager).
+        string[]` gives the viewer's keys (`u:` own id, `r:` every role id, `n:`
+        every unit id of their seats' roles, `all`, and `m` for a manager).
         canOpen(c, viewer) is `accessKeys ∩ viewerKeys ≠ ∅`. Projection table
         `model CaseView { companyId String; caseId String; kind String; status
         String; open Boolean; routeId String?; assigneeSeatId String?;
         assigneeRoleId String?; escalatedRoleId String?; fromUserId String?;
-        dueDay Int; firstAnswerDay Int?; lastDay Int; lastSeq Int; accessKeys String[]; updatedAt
-        DateTime @updatedAt; company Company @relation(fields: [companyId],
-        references: [id], onDelete: Cascade); @@id([companyId, caseId]);
-        @@index([companyId, open, lastDay]) }` plus a GIN index on accessKeys in
-        the migration SQL. One row per case, seed cases included."
+        dueDay Int; firstAnswerDay Int?; lastDay Int; lastSeq Int; accessKeys
+        String[]; updatedAt DateTime @updatedAt; company Company
+        @relation(fields: [companyId], references: [id], onDelete: Cascade);
+        @@id([companyId, caseId]); @@index([companyId, open, lastDay]) }` plus a
+        GIN index on accessKeys in the migration SQL. One row per case, seed
+        cases included."
     }
   - {
       id: D6,
@@ -91,9 +108,9 @@ decisions:
         viewerKeys, me)` (open cases on the viewer's desk, by CaseView),
         `caseView(companyId, caseId)`, `visibleCaseIds(companyId, viewerKeys,
         window)` and `metricInputs(companyId, from, to)` (status, route, dueDay,
-        firstAnswerDay, lastDay per case, no person; firstAnswerDay = the day
-        of the first answer, question or hand-over by the desk, null while
-        none, for MET's time to first answer). `visibleTo(userId)` in
+        firstAnswerDay, lastDay per case, no person; firstAnswerDay = the day of
+        the first answer, question or hand-over by the desk, null while none,
+        for MET's time to first answer). `visibleTo(userId)` in
         lib/db/projections/visible.ts gives a user's viewerKeys from their seats
         and role."
     }
@@ -131,14 +148,14 @@ decisions:
       id: D11,
       text: "Shared rate limits. `model RateCounter { key String @id; count Int;
         resetAt DateTime }` in core.prisma; apps/app/src/lib/db/rate-limit.ts
-        `hitShared(key, rule, now)` (one upsert that resets an expired window and
-        increments in one statement) and `clearShared(key)`; server/throttle.ts
-        uses it when a database is there and the in-memory store otherwise; the
-        pure rules in features/security/rate-limit.ts stay. A sweep deletes
-        expired rows once an hour. The refusal a person reads comes from the
-        catalog in their language (`getT()`, keys `errors.tooManyAttempts`
-        with a plural wait in minutes or seconds), not from the English
-        `waitText`."
+        `hitShared(key, rule, now)` (one upsert that resets an expired window
+        and increments in one statement) and `clearShared(key)`;
+        server/throttle.ts uses it when a database is there and the in-memory
+        store otherwise; the pure rules in features/security/rate-limit.ts stay.
+        A sweep deletes expired rows once an hour. The refusal a person reads
+        comes from the catalog in their language (`getT()`, keys
+        `errors.tooManyAttempts` with a plural wait in minutes or seconds), not
+        from the English `waitText`."
     }
   - {
       id: D12,
@@ -170,8 +187,8 @@ questions:
       id: Q1,
       text: "The token-based events GET (/api/[company]/events, n8n) returns every
         event of the company. Filter it by visibility too?",
-      default: "No: a token is an integration acting for the company, not a person.
-        It keeps reading every event; docs/VISIBILITY.md says so, and API (phase
+      default: "No: a token is an integration acting for the company, not a person. It
+        keeps reading every event; docs/VISIBILITY.md says so, and API (phase
         API) decides scopes such as private cases for v1."
     }
   - {
@@ -188,12 +205,23 @@ questions:
         the full log for a company without CaseView rows."
     }
 autonomy:
-  merge: [low, normal]
+  merge: [ low, normal ]
   start_high: true
   replan: none
   budget_window_pct: 100 # tasks 80 % + 20 %
 talk:
-  telegram: [ question_open, blocked_twice, proof_red_twice, budget_over, gate_kevin, merge_waiting, start_high, other_repo, plan_done ]
+  telegram:
+    [
+      question_open,
+      blocked_twice,
+      proof_red_twice,
+      budget_over,
+      gate_kevin,
+      merge_waiting,
+      start_high,
+      other_repo,
+      plan_done
+    ]
   pane: [ blocked, task_merged, phase_done ]
   none: [ task_started ]
 ---
@@ -247,7 +275,7 @@ and pages stay fast with 50,000 events` is green.
 
 | WP | Content | Tasks | depends on | Owns |
 |---|---|---|---|---|
-| G | `CaseView`, `RateCounter`, migration | VIS-G1 | CLK-Z1, LNG-Z1, DIR-G1 | `prisma/schema/core.prisma`, `prisma/migrations/20261118080000_vis_projections/` |
+| G | `CaseView`, `RateCounter`, migration | VIS-G1 | DIR-G1 | `prisma/schema/core.prisma`, `prisma/migrations/20261118080000_vis_projections/` |
 | A | The rule as access keys; derive.ts on it; audience by id | VIS-A1 | G | `features/cases/visibility.ts`, `features/cases/events.ts`, `components/dashboard/derive.ts`, `components/ideas/RaiseMenu.tsx`, `components/ideas/RaisePublish.tsx` |
 | D | Rate limits in Postgres; pool settings | VIS-D1 | G | `lib/db/rate-limit.ts`, `server/throttle.ts`, `lib/db/client.ts`, `.env.example`, `docs/DEPLOY.md` |
 | B | `CaseView` projections, rebuild, readers | VIS-B1 | A | `lib/db/projections/**`, `lib/db/events.ts`, `prisma/rebuild-projections.ts` |

@@ -1,8 +1,9 @@
 ---
 id: DIR-G1
-title: Directory fields on users, the DirectoryRun table, and inactive users cannot sign in
+title: Directory fields on users, the DirectoryRun table, and inactive users
+  cannot sign in
 wp: G
-needs: [ IDN-Z1, CLK-G1 ]
+needs: [ IDN-G1, CLK-G1 ]
 host: any
 owns:
   - apps/app/prisma/schema/auth.prisma
@@ -31,7 +32,11 @@ proofs:
       Microsoft sign-in are refused
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/dir-run.test.ts -t 'DIR run and inactive users'
-status: open
+status: running
+lane: pc/e
+branch: orch/dir-g1
+retries: 1
+last_failure: "Beweise rot: B2"
 ---
 
 Plan DIR (sub-plan of PILOT): the scaffold. After this task users can carry an employeeId, a manager and an active

@@ -10,6 +10,7 @@
 // carries state, not just names - the badge is the answer, the link is only how you get to the
 // detail. Connections folds the database, case notices, their tasks and mail into one badge:
 // whichever is worst, because that is the one you are going there to fix.
+import type { MessageKey } from "@/i18n";
 import type { DatabaseState } from "./health";
 import type { AutomationState } from "@/features/integrations/automation";
 import type { TaskCounts } from "@/features/integrations/tasks";
@@ -20,6 +21,10 @@ export type Tone = "ok" | "warn" | "bad";
 export type AdminPage =
   | "overview"
   | "people"
+  | "access"
+  | "connectors"
+  | "routing"
+  | "support"
   | "assistant"
   | "integrations"
   | "requests"
@@ -35,6 +40,34 @@ export type AdminScope = "company" | "platform";
 /** A one-company stack gets the company admin; anything that serves several gets the platform one. */
 export function adminScope(env: Record<string, string | undefined> = process.env): AdminScope {
   return env.TENANT_MODE === "single" && env.COMPANY_SLUG?.trim() ? "company" : "platform";
+}
+
+/**
+ * The company's IT and privacy console (ITC/D3): the sections of /admin in a one-company stack, in this
+ * order. `path` is the full path, `labelKey` a key of the `adminConsole` namespace. A section whose page
+ * has not landed yet still shows and answers 404 until it does.
+ */
+export const CONSOLE_SECTIONS = [
+  { key: "overview", path: "/admin", labelKey: "adminConsole.sectionOverview" },
+  { key: "access", path: "/admin/people", labelKey: "adminConsole.sectionAccess" },
+  { key: "connectors", path: "/admin/connectors", labelKey: "adminConsole.sectionConnectors" },
+  { key: "assistant", path: "/admin/assistant", labelKey: "adminConsole.sectionAssistant" },
+  { key: "data", path: "/admin/company-data", labelKey: "adminConsole.sectionData" },
+  { key: "routing", path: "/admin/decisions", labelKey: "adminConsole.sectionRouting" },
+  { key: "support", path: "/admin/support", labelKey: "adminConsole.sectionSupport" },
+] as const satisfies readonly { key: AdminPage; path: string; labelKey: MessageKey }[];
+
+export type ConsoleSection = (typeof CONSOLE_SECTIONS)[number];
+
+/** The console sidebar: one item per section; Access speaks up when someone cannot sign in. */
+export function consoleNav(label: (key: MessageKey) => string, f: Pick<CompanyNavFacts, "locked">): NavItem[] {
+  return CONSOLE_SECTIONS.map((s) => ({
+    id: s.key,
+    label: label(s.labelKey),
+    path: s.path === "/admin" ? "" : s.path.slice("/admin".length),
+    badge: s.key === "access" && f.locked ? String(f.locked) : null,
+    tone: s.key === "access" && f.locked ? ("warn" as const) : null,
+  }));
 }
 
 export type NavItem = {

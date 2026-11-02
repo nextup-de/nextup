@@ -1,8 +1,9 @@
 ---
 id: ADM-E1
-title: Managers' code logins and stack admins need a second factor; the shared admin code is a logged break-glass
+title: Managers' code logins and stack admins need a second factor; the shared
+  admin code is a logged break-glass
 wp: E
-needs: [ ADM-G1, DIR-G1, CLK-B1 ]
+needs: [ ADM-G1, DIR-G1, CLK-B1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/prisma/schema/auth.prisma
@@ -30,11 +31,11 @@ proofs:
     run: npm test -w @nextup/app -- tests/unit/adm/totp.test.ts -t 'ADM TOTP'
   - id: B2
     says: a manager's code login needs a TOTP once enrolled and enrolment before it,
-      a member's does not, /admin opens for a stack admin with code and TOTP, and
-      the shared code opens it only as logged break-glass
+      a member's does not, /admin opens for a stack admin with code and TOTP,
+      and the shared code opens it only as logged break-glass
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/adm-access.test.ts -t 'ADM admin access'
-status: open
+status: ready
 ---
 
 Plan ADM (sub-plan of PILOT): sign-in security (G-047). Read first: D12, D13, `apps/app/prisma/schema/auth.prisma`,

@@ -1,8 +1,9 @@
 ---
 id: ADM-C1
-title: The connectors page - Microsoft 365, Jira Cloud and Data Center, AI provider and directory status
+title: The connectors page - Microsoft 365, Jira Cloud and Data Center, AI
+  provider and directory status
 wp: C
-needs: [ ADM-G1, AIP-G1, DIR-C1 ]
+needs: [ ADM-G1, AIP-G1, DIR-C1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/app/[company]/(app)/settings/connectors/**
@@ -27,8 +28,9 @@ proofs:
       own company only, and reads the directory status, while a leader can do
       none of it
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
-      ops/test-db.sh tests/db/adm-connectors.test.ts -t 'ADM connectors settings'
-status: open
+      ops/test-db.sh tests/db/adm-connectors.test.ts -t 'ADM connectors
+      settings'
+status: ready
 ---
 
 Plan ADM (sub-plan of PILOT): connectors in the app. Read first: `components/admin/JiraAdmin.tsx`,

@@ -2,7 +2,7 @@
 id: AIP-G1
 title: Each company has an AI choice, and one gate answers for every model call
 wp: G
-needs: [ IDN-Z1, CNX-Z1, CLK-G1 ]
+needs: [ IDN-G1, CLK-G1 ]
 host: any
 owns:
   - apps/app/src/features/ai/settings.ts
@@ -27,7 +27,11 @@ proofs:
       the key sealed, and loadAiSettings reads it back for that company only
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/aip-settings.test.ts -t 'AIP settings'
-status: open
+status: merged
+lane: pc/a
+branch: orch/aip-g1
+pr: 315
+merge: "0ffdb99"
 ---
 
 Plan AIP (sub-plan of PILOT): the settings and the gate. Read first: `docs/ASSISTANT.md`,

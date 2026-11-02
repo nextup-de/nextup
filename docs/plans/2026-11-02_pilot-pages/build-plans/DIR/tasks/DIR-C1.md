@@ -1,6 +1,7 @@
 ---
 id: DIR-C1
-title: The directory sync runs per company under a lease, and /admin shows and switches it
+title: The directory sync runs per company under a lease, and /admin shows and
+  switches it
 wp: C
 needs: [ DIR-A1, DIR-B1, CLK-D1 ]
 host: any
@@ -24,7 +25,7 @@ proofs:
       apply once
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/dir-sync.test.ts -t 'DIR sync loop'
-status: open
+status: ready
 ---
 
 Plan DIR (sub-plan of PILOT): the loop. Read first: D11 of the plan, `apps/app/src/server/jira-sync.ts` and
