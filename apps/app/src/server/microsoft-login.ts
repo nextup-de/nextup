@@ -43,12 +43,12 @@ import {
   type Jwk,
   type MicrosoftError,
 } from "@/features/auth/entra";
+import { createMicrosoftUser, linkJitSeat } from "@/lib/db/accounts";
 import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
 import { m365SearchOn, saveConnection } from "@/lib/db/connections";
 import { getViewerFor } from "@/features/auth/session";
 import { seal, vaultContext, vaultKey } from "@/features/connectors/vault";
 import { adminScope } from "@/features/admin/nav";
-import { initialsOf } from "@/features/tenant/create";
 import { companyPrefix, safeNextPath } from "@/features/tenant/urls";
 import { issueAdminSession } from "@/server/admin-session";
 import { issueSession, secureCookies } from "@/server/issue-session";
@@ -290,22 +290,24 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
   let user = found;
   if (landing.kind === "create") {
     // The customer's IT assigned this person a NextUp role in Entra: that is the invitation.
-    const display = name.trim() || email.split("@")[0];
     try {
-      user = await db.user.create({
-        data: { companyId: company.id, name: display, email, role: landing.role, ini: initialsOf(display), entraOid: oid },
-      });
+      const made = await createMicrosoftUser(company.id, checked.who, landing.role);
+      user = made.user;
+      console.info(`[microsoft] ${slug}: created ${email} as ${landing.role}, seat ${made.seat}`);
     } catch (err) {
       console.warn(`[microsoft] ${slug}: could not create ${email}`, err);
       return fail("failed");
     }
-    console.info(`[microsoft] ${slug}: created ${email} as ${landing.role}`);
   } else if (found) {
     // Bind the Microsoft account on first sight; take the role Entra assigns, if it assigns one.
     const data = { ...(found.entraOid ? {} : { entraOid: oid }), ...(landing.setRole ? { role: landing.setRole } : {}) };
     if (Object.keys(data).length > 0) {
       user = await db.user.update({ where: { id: found.id, companyId: company.id }, data });
       if (landing.setRole) console.info(`[microsoft] ${slug}: ${email} is now ${landing.setRole} (was ${found.role})`);
+    }
+    if (user) {
+      const seat = await linkJitSeat(company.id, user, checked.who.department);
+      if (seat === "created") console.info(`[microsoft] ${slug}: ${email} took a seat`);
     }
   }
   if (!user) return fail("failed");
