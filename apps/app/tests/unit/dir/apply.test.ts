@@ -65,10 +65,20 @@ describe("DIR plan a directory page", () => {
   it("marks active false and removed ids as leavers", () => {
     const users = [user({ id: "u1", entraOid: "o1" }), user({ id: "u2", entraOid: "o2" }), user({ id: "u3", entraOid: "o3", active: false })];
     const plan = run(page([entry({ externalId: "o1", active: false })], ["o2", "o3"]), users);
-    expect(plan.leavers.sort()).toEqual(["u1"]);
+    // An id named only in removedExternalIds (Graph sends no entry for a deleted user) leaves too; an inactive one stays as is.
+    expect(plan.leavers.sort()).toEqual(["u1", "u2"]);
     const plan2 = run(page([], ["o2", "o3"]), users);
-    expect(plan2.leavers).toEqual([]);
+    expect(plan2.leavers).toEqual(["u2"]);
     expect(plan2.updates).toEqual([]);
+  });
+
+  it("takes the employeeId of a Graph entry on create and update, never one another user holds", () => {
+    const created = run(page([entry({ externalId: "o1", employeeId: "P1" })]));
+    expect(created.creates[0]).toMatchObject({ entraOid: "o1", employeeId: "P1" });
+    const updated = run(page([entry({ externalId: "o1", employeeId: "P1" })]), [user({ id: "u1", entraOid: "o1" })]);
+    expect(updated.updates).toEqual([{ userId: "u1", fields: { employeeId: "P1" } }]);
+    const taken = run(page([entry({ externalId: "o1", employeeId: "P1" })]), [user({ id: "u1", entraOid: "o1" }), user({ id: "u2", entraOid: "o2", employeeId: "P1" })]);
+    expect(taken.updates).toEqual([]);
   });
 
   it("matches successfactors entries by employeeId", () => {

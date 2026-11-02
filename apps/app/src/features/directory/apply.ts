@@ -91,6 +91,14 @@ export function planDirectoryDelta(input: {
   const plan: DirectoryPlan = { creates: [], updates: [], managers: [], leavers: [], skipped: [], seen: [] };
   const emailsInUse = new Set(users.map((u) => lower(u.email)));
   const handles = new Set(input.takenHandles);
+  // The personnel number is unique per company: one already held by another user is not written again.
+  const employeeIds = new Set(users.flatMap((u) => (u.employeeId ? [u.employeeId] : [])));
+  const employeeIdFree = (v: string | null | undefined): string | null => {
+    const id = (v ?? "").trim();
+    if (!id || employeeIds.has(id)) return null;
+    employeeIds.add(id);
+    return id;
+  };
   const claimed = new Set<string>(); // user ids already matched by an earlier entry
   const refOf = new Map<string, PlanRef>(); // entry externalId -> the user it became
   const resolved: { entry: (typeof page.entries)[number]; ref: PlanRef; current: PlanUser | null }[] = [];
@@ -119,7 +127,7 @@ export function planDirectoryDelta(input: {
         externalId: e.externalId, name: e.displayName, email, dept: unit.key, line: e.jobTitle ?? "", role: "member", handle,
         ini: initialsOf(e.displayName),
         entraOid: source === "graph" ? e.externalId : null,
-        employeeId: source === "successfactors" ? e.externalId : null,
+        employeeId: source === "successfactors" ? e.externalId : employeeIdFree(e.employeeId),
       });
       const ref: PlanRef = { create: plan.creates.length - 1 };
       refOf.set(e.externalId, ref);
@@ -147,8 +155,22 @@ export function planDirectoryDelta(input: {
     if (u.line !== undefined && u.line !== line) fields.line = line;
     // A user found by email is bound to the source key now; so is a SuccessFactors one never seen by id.
     if (source === "graph" && u.entraOid !== e.externalId) fields.entraOid = e.externalId;
+    if (source === "graph" && u.employeeId !== (e.employeeId ?? null)) {
+      const id = employeeIdFree(e.employeeId);
+      if (id) fields.employeeId = id;
+    }
     if (!u.active) fields.active = true;
     if (Object.keys(fields).length > 0) plan.updates.push({ userId: u.id, fields });
+  }
+
+  // An id that is only named in removedExternalIds (Graph sends no entry for a deleted user) is a leaver too.
+  for (const id of removed) {
+    if (refOf.has(id)) continue;
+    const u = byKey.get(id);
+    if (!u || claimed.has(u.id)) continue;
+    claimed.add(u.id);
+    plan.seen.push(u.id);
+    if (u.active) plan.leavers.push(u.id);
   }
 
   // Managers after the whole page: the entry's manager is the user with that source key, else none.
