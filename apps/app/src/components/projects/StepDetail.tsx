@@ -8,7 +8,7 @@ import { Avatar } from "@/components/dashboard/shared/primitives";
 import { STEP_COLUMNS, type ReducedProject, type Step, type StepColumn } from "@/features/projects/types";
 import { columnLabel, safeUrl, systemFrom, timelineOf, toolName, toolOf, TOOLS, type JiraRow } from "@/features/projects/views";
 import { useFormat, useLocale, useT } from "@/i18n/client";
-import { useRights, useSend } from "./parts";
+import { teamOf, useRights, useSend, withIds } from "./parts";
 import styles from "./Projects.module.css";
 
 const DUE_QUICK = [
@@ -16,13 +16,13 @@ const DUE_QUICK = [
 ] as const;
 
 export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step; jira: JiraRow; onClose: () => void }) {
-  const { act, S, f, persona } = useDemo();
+  const { act, S, f, seed, actorUserId } = useDemo();
   const t = useT();
   const locale = useLocale();
   const fmt = useFormat();
   const r = useRights(p);
   const send = useSend(p);
-  const team = [p.lead, ...p.members];
+  const team = withIds(teamOf(p, seed.seats));
   const edit = r.editStep(s);
   const [text, setText] = useState(s.text);
   const [note, setNote] = useState(s.note);
@@ -41,7 +41,7 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const me = persona.who.name;
+  const meOnTeam = team.find((m) => m.userId === actorUserId);
   const dirty = text.trim() !== s.text || note.trim() !== s.note;
   const change = (c: Parameters<typeof act.project.editStep>[2]) => send("project.step.edited", { stepId: s.id, ...c }, () => act.project.editStep(p.id, s.id, c));
   const move = (to: StepColumn, w?: string) => send("project.step.moved", { stepId: s.id, to, why: w }, () => act.project.moveStep(p.id, s.id, to, w));
@@ -110,11 +110,11 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
               <span className={styles.fieldLabel}>{t("projects.owner")}</span>
               {edit ? (
                 <span className={styles.actionRow}>
-                  <select className={`nh-input nh-select ${styles.input}`} value={s.owner ?? ""} onChange={(e) => change({ owner: e.target.value })} aria-label={t("projects.owner")}>
+                  <select className={`nh-input nh-select ${styles.input}`} value={s.ownerUserId ?? ""} onChange={(e) => { const m = team.find((x) => x.userId === e.target.value); change({ owner: m?.name ?? "", ownerUserId: m?.userId ?? null }); }} aria-label={t("projects.owner")}>
                     <option value="">{t("projects.noOwner")}</option>
-                    {team.map((n) => <option key={n} value={n}>{n}</option>)}
+                    {team.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
                   </select>
-                  {s.owner !== me && team.includes(me) && <button type="button" className={styles.quietLink} onClick={() => change({ owner: me })}>{t("projects.takeIt")}</button>}
+                  {meOnTeam && s.ownerUserId !== meOnTeam.userId && <button type="button" className={styles.quietLink} onClick={() => change({ owner: meOnTeam.name, ownerUserId: meOnTeam.userId })}>{t("projects.takeIt")}</button>}
                 </span>
               ) : (
                 <span className={styles.owner}>{s.owner ? <><Avatar name={s.owner} size="sm" />{s.owner}</> : t("projects.noOwner")}</span>
