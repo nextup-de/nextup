@@ -15,6 +15,7 @@ Competitor facts are vendor claims from public pages as of 2 Nov 2026. Statement
 | 4 | [Offer levels](04-offer-levels.md) | Basic, expected, augmented and potential offer; gaps in the expected offer | [notes](notes/04-offer-levels/) |
 | 5 | [Defensible offer](05-defensible-offer.md) | Critical check: is the feature analysis real or an illusion? Corrected ratings, gaps after PILOT, investability, ten phases | [notes](notes/05-defensible-offer/) |
 | 6 | [PESTLE: legal and environmental](06-pestle-legal-environmental.md) | Text for the PESTLE frames, with scenarios and impact on product development | – |
+| 7 | [Pilot plan adaptation](07-pilot-plan-adaptation.md) | How the PILOT plans must change, using reports 1–6: phase by phase, new Hauptplan decisions (HD16–HD20), pilot design, business track, timeline | – |
 
 The Codex-runnable build plan that follows from report 5 is
 [docs/plans/2026-11-02_defensible-offer-codex.md](../docs/plans/2026-11-02_defensible-offer-codex.md) (PR #327).
