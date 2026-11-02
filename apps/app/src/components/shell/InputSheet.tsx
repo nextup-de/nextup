@@ -3,13 +3,37 @@
 // line of text, or a set of people. `kind` decides which parts show and what confirming does.
 // Port of sheetVals() in legacy/demo/js/dashboard.js. Views open it via ctx.openSheet(kind, id).
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import type { Me, SeatRow } from "@/features/auth/identity";
+import type { Route } from "@/features/demo/types";
+import type { T } from "@/i18n";
 import { Btn } from "@/components/dashboard/shared/primitives";
 import { useT } from "@/i18n/client";
 import { ini } from "@/lib/utils/format";
 import styles from "./InputSheet.module.css";
 import { LOOP_SHEETS, LoopSheet } from "./LoopSheets";
 
-type Option = { id: string; label: string; sub: string };
+export type Option = { id: string; label: string; sub: string };
+
+/**
+ * The seats a case can be handed to (IDN/D5): the route's owner and deputy first, then the other routes' owners (the team
+ * leaders), each once, never a seat of the person handing it over. The id is the seat id, the label is the seat's label.
+ */
+export function handCandidates(
+  route: Route | null, routes: readonly Route[], seats: readonly SeatRow[], me: Me, t: T, deptName: (id: string) => string,
+): Option[] {
+  const out: Option[] = [];
+  const add = (seatId: string | null | undefined, sub: string) => {
+    if (!seatId || me.seatIds.includes(seatId) || out.some((x) => x.id === seatId)) return;
+    const seat = seats.find((s) => s.id === seatId);
+    if (seat) out.push({ id: seat.id, label: seat.label, sub });
+  };
+  if (route) {
+    add(route.ownerSeatId, t("shell.handOwner", { role: route.owner.role, dept: deptName(route.owner.dept) }));
+    add(route.deputySeatId, route.ownerSeatId && me.seatIds.includes(route.ownerSeatId) ? t("shell.handDeputyYours") : t("shell.handDeputy"));
+  }
+  routes.forEach((r) => add(r.ownerSeatId, r.owner.role + " · " + deptName(r.owner.dept)));
+  return out;
+}
 type Model = {
   eyebrow: string; title: string; sub: string;
   options?: Option[]; peopleNames?: string[];
@@ -21,11 +45,10 @@ type Model = {
 export function InputSheet() {
   const ctx = useDemo();
   const t = useT();
-  const { sheet, seed, S, persona, act, patchSheet, closeSheet, showToast, deptName } = ctx;
+  const { sheet, seed, S, act, patchSheet, closeSheet, showToast, deptName } = ctx;
   if (!sheet) return null;
   // The discussion stage and the yes that opens a project have sheets of their own.
   if ((LOOP_SHEETS as readonly string[]).includes(sheet.kind)) return <LoopSheet />;
-  const who = persona.who;
   const c = S.cases.find((x) => x.id === sheet.id), i = S.ideas.find((x) => x.id === sheet.id);
   const text = (sheet.text || "").trim();
   const done = (msg: string) => { closeSheet(); showToast(msg); };
@@ -64,20 +87,15 @@ export function InputSheet() {
     };
   } else if (sheet.kind === "hand" && c) {
     const route = c.route;
-    const cands: Option[] = [];
-    const add = (name: string | undefined, sub: string) => { if (name && name !== who.name && !cands.some((x) => x.id === name)) cands.push({ id: name, label: name, sub }); };
-    if (route) {
-      if (route.owner.name !== who.name) add(route.owner.name, t("shell.handOwner", { role: route.owner.role, dept: deptName(route.owner.dept) }));
-      add(route.deputy, route.owner.name === who.name ? t("shell.handDeputyYours") : t("shell.handDeputy"));
-    }
-    seed.leaders.forEach((n) => { const r = seed.routes.find((x) => x.owner.name === n); add(n, r ? r.owner.role + " · " + deptName(r.owner.dept) : t("shell.handTeamLead")); });
+    const cands = handCandidates(route, seed.routes, seed.seats, ctx.me, t, deptName);
+    const pickedLabel = cands.find((x) => x.id === sheet.picked)?.label ?? "";
     // A pass needs a reason: the person receiving it and the one who raised it both read it.
     const picked = !!sheet.picked, why = text.length >= 8, ok = picked && why;
     m = {
       eyebrow: t("shell.handEyebrow"), title: c.title, sub: t("shell.handSub", { from: c.from }),
       options: cands, textLabel: t("shell.handWhy"), placeholder: t("shell.handPlaceholder"),
-      ok, primaryLabel: !picked ? t("shell.handPick") : !why ? t("shell.handSayWhy") : t("shell.handPassTo", { name: sheet.picked ?? "" }), primaryKind: "accent",
-      onConfirm: () => { if (!ok || !sheet.picked) return; act.hand(c.id, sheet.picked, text); done(t("shell.handDone", { name: sheet.picked, from: c.from })); },
+      ok, primaryLabel: !picked ? t("shell.handPick") : !why ? t("shell.handSayWhy") : t("shell.handPassTo", { name: pickedLabel }), primaryKind: "accent",
+      onConfirm: () => { if (!ok || !sheet.picked) return; act.hand(c.id, sheet.picked, text); done(t("shell.handDone", { name: pickedLabel, from: c.from })); },
     };
   } else if (sheet.kind === "assign" && i) {
     const funded = i.status === "Unfunded";

@@ -48,7 +48,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const counts = { inbox: inboxCount(ctx), decisions: decisionsWaiting(D).length };
   // Profile numbers per role: what this person sent (member), what sits on their desk and what they
   // decided (leader), what waits on them (manager). A manager raises nothing, so "0 raised" is noise.
-  const decided = D.cases.filter((c) => c.decided?.by === who.name).length;
+  const decided = D.cases.filter((c) => ctx.actorUserId !== null && c.decided?.byUserId === ctx.actorUserId).length;
   const stats: [number, string][] = role === "manager"
     ? [[counts.decisions, t("shell.statDecisionsWaiting", { count: counts.decisions })]]
     : role === "leader"

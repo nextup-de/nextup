@@ -13,8 +13,8 @@ import { chainEdges, coworkersOf, layoutTree, namedMembers, pairs, projectsOf, v
 import type { State } from "@/features/cases/reducer";
 import { splitBody } from "@/features/ideas/brief";
 import type { ReducedProject } from "@/features/projects/types";
-import { asInitiatives, visibleProjects } from "@/features/projects/views";
-import { viewerOf } from "@/components/projects/parts";
+import { asInitiatives, visibleProjectsFor } from "@/features/projects/views";
+import { idViewerOf } from "@/components/projects/parts";
 import { useT } from "@/i18n/client";
 import { ini } from "@/lib/utils/format";
 import ui from "@/components/dashboard/shared/ui.module.css";
@@ -179,7 +179,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   // made-up initiatives of the seed; stopped ones wait nowhere and are left out.
   const projectMode = ctx.flag("projects");
   const initiatives: Initiative[] = projectMode
-    ? asInitiatives(visibleProjects(ctx.S, viewerOf(ctx), ctx.demo),
+    ? asInitiatives(visibleProjectsFor(ctx.S, idViewerOf(ctx), ctx.demo),
       (name) => ctx.seed.people.find((x) => x.name === name)?.dept ?? null, deptName, (p) => whyOf(ctx.S, p))
     : D.initiatives;
 

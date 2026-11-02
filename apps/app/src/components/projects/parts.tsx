@@ -11,7 +11,7 @@ import type { Actor } from "@/features/cases/permissions";
 import { mayAppendProject } from "@/features/projects/permissions";
 import { board, nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject, Step, VerdictWord } from "@/features/projects/types";
-import { columnLabel, moveLabel, verdictWord, type IdViewer, type Viewer } from "@/features/projects/views";
+import { columnLabel, moveLabel, verdictWord, type IdViewer } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import type { Locale, T } from "@/i18n";
 import styles from "./Projects.module.css";
@@ -19,10 +19,6 @@ import styles from "./Projects.module.css";
 /** Who is looking, by id: the role, the user id and the seats (never the name). */
 export const idViewerOf = (ctx: Pick<DemoContext, "role" | "actorUserId" | "me">): IdViewer =>
   ({ role: ctx.role, userId: ctx.actorUserId, me: ctx.me });
-
-/** @deprecated IDN-S1 removes this - use idViewerOf. */
-export const viewerOf = (ctx: Pick<DemoContext, "role" | "persona">): Viewer =>
-  ({ role: ctx.role, name: ctx.persona.who.name, handle: ctx.persona.who.handle });
 
 /** The Actor the server rules are asked with: ids decide, name and handle only label. */
 export const actorOf = (ctx: Pick<DemoContext, "role" | "persona" | "actorUserId" | "me">): Actor =>

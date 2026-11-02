@@ -38,7 +38,7 @@ export function roundSaid(c: ReducedCase, log: EventLog, roleOf: (name: string) 
   return commentsOn(log, c.id)
     .filter((m) => m.day >= since && !m.by.startsWith("system:"))
     .slice(-30)
-    .map((m) => ({ who: m.by === c.from ? "the author" : roleOf(m.by) ?? "a colleague", text: clip(m.text, 2000) }));
+    .map((m) => ({ who: m.byUserId !== null && m.byUserId === c.fromUserId ? "the author" : roleOf(m.by) ?? "a colleague", text: clip(m.text, 2000) }));
 }
 
 export function checkinRequest(company: string, c: ReducedCase, said: { who: string; text: string }[], weak: readonly string[]): CheckinRequest {

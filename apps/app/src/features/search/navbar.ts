@@ -12,6 +12,8 @@ export type NavHit = SearchItem & { href: string; case: NavCase | null };
 export function navbarIndex(ctx: DemoContext): NavHit[] {
   const { D, seed, persona, log, tenant } = ctx;
   const me = persona.who.name; // the label the index shows; who "I" am is ctx.me
+  // "You" is the person behind the seats this user holds (by user id); their labels only name the directory rows.
+  const myLabels = new Set(seed.seats.filter((s) => ctx.actorUserId !== null && s.userId === ctx.actorUserId).map((s) => s.label));
   const index: NavHit[] = [];
   for (const c of D.cases.filter((c) => canOpen(ctx, c))) {
     const row = dashboardRow(c, seed.promiseDays, ctx.me, log);
@@ -33,7 +35,7 @@ export function navbarIndex(ctx: DemoContext): NavHit[] {
       case: { status: "move", step: 3, open: true, late: false, yourMove: true, desk: me, days: i.wait } });
   }
   for (const person of seed.people) {
-    if (person.name === me || tenant.hiddenPeople?.includes(person.name)) continue;
+    if (myLabels.has(person.name) || tenant.hiddenPeople?.includes(person.name)) continue;
     const dept = seed.depts.find((d) => d.id === person.dept)?.name ?? person.dept;
     index.push({ kind: "Person", group: 4, title: person.name, sub: [person.role, dept].filter(Boolean).join(" · "),
       hay: [person.name, person.role, dept].join(" "), right: "", go: { view: "people", id: person.name },
