@@ -25,7 +25,7 @@ import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
 import { FLAGS, type FlagKey } from "@/config/flags";
 import type { StepColumn, SyncSystem } from "@/features/projects/types";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
-import { meFor, type Me } from "@/features/auth/identity";
+import { meFor, meOfSeat, type Me } from "@/features/auth/identity";
 import { appendEvent, emptyLog, newId, type CaseEvent, type EventLog, type EventPayload } from "@/features/cases/events";
 import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
@@ -63,8 +63,9 @@ export type Act = {
   fund: (ideaId: string, team: string[], note: string) => void;
   advanceDay: (by?: number) => void;
   // The discussion stage (docs/plans/2026-10-15_idea-to-project.md)
-  discuss: (caseId: string, invited: string[], missing: string) => void;
-  invite: (caseId: string, invited: string[]) => void;
+  // `invited` are the labels shown, `invitedUserIds` who is asked (the ids decide, IDN/D2).
+  discuss: (caseId: string, invited: string[], missing: string, invitedUserIds: string[]) => void;
+  invite: (caseId: string, invited: string[], invitedUserIds: string[]) => void;
   revise: (caseId: string, body: string, title?: string, overall?: number) => void;
   checkin: (caseId: string, next: "round" | "decide", open: string[], note: string) => void;
   // "Yes, do it" that opens a project - or joins `projectId` when that one is already open. Returns the project id.
@@ -109,7 +110,7 @@ export type DemoContext = {
   serverMode: boolean; // a session and Postgres behind the page; false = the localStorage demo
   S: State; D: DemoData; N: Counts; log: EventLog;
   role: Role; setRole: (r: Role) => void;
-  leadAs: string | null; setLeadAs: (name: string) => void;
+  leadAs: string | null; setLeadAs: (seatId: string) => void; // a seat id (looking at the leader screens as that desk)
   persona: { role: RolePersona; who: Persona }; actor: string; actorUserId: string | null; me: Me; email: string | null;
   demo: boolean; toggleDemo: () => void;
   motion: boolean; setMotion: (on: boolean) => void; // animations on/off, from the dev panel (html[data-motion])
@@ -229,7 +230,8 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   // Server mode: the role is the session's, not a client preference - that is the whole point of
   // enforcing it in proxy.ts.
   const role: Role = viewer ? viewer.role : (persisted.prefs.role ?? guessedRole);
-  const leadAs = serverMode ? null : (persisted.prefs.leadAs ?? null);
+  // A seat id; an old stored name is not a seat of this company, so it reads as none.
+  const leadAs = serverMode ? null : (seed.seats.some((s) => s.id === persisted.prefs.leadAs) ? persisted.prefs.leadAs ?? null : null);
   // Demo figures only make sense next to demo content: a company without any (the empty template)
   // never shows the handoff's stand-in numbers, whatever the toggle says.
   const hasDemoContent = seed.problems.length + seed.ideas.length + seed.initiatives.length + seed.outcomes.length + seed.cases.length > 0;
@@ -324,19 +326,23 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
         who: { name: viewer.name, ini: iniOf(viewer.name), line: viewer.line || rp.who.line, handle: viewer.handle },
       };
     }
-    if (rp.id !== "leader" || !leadAs || leadAs === rp.who.name) return { role: rp, who: rp.who };
-    const r = seed.routes.find((x) => x.owner.name === leadAs);
-    const b = seed.buddies.find((x) => x.name === leadAs);
+    const seat = leadAs ? seed.seats.find((s) => s.id === leadAs) : undefined;
+    if (rp.id !== "leader" || !seat || (seat.userId !== null && seat.userId === rp.who.userId)) return { role: rp, who: rp.who };
+    // The persona shown for a seat takes the seat's label; the route and the buddy only tell which line to print.
+    const name = seat.label;
+    const r = seed.routes.find((x) => x.ownerSeatId === seat.id) ?? seed.routes.find((x) => x.ownerRoleId === seat.roleId);
+    const b = seed.buddies.find((x) => x.name === name);
     const bDept = b ? seed.depts.find((d) => d.name === b.dept)?.id : undefined;
     const pDept = r ? r.owner.dept : bDept ?? rp.dept;
     const line = r ? r.owner.role + " · " + deptName(r.owner.dept) : b ? t("dashboard.providerTeamLead", { dept: b.dept }) : t("dashboard.providerDeputy", { dept: deptName(pDept) });
-    return { role: { ...rp, dept: pDept }, who: { name: leadAs, ini: iniOf(leadAs), line, handle: null } };
+    return { role: { ...rp, dept: pDept }, who: { name, ini: iniOf(name), line, handle: null, userId: seat.userId } };
   }, [seed, role, leadAs, deptName, viewer, t]);
 
   // Who is acting: the employee posts under their handle, everyone else by name.
   const actor = persona.role.id === "member" && persona.who.handle ? persona.who.handle : persona.who.name;
   const actorUserId = viewer ? viewer.userId : persona.who.userId ?? null;
-  const me = useMemo(() => meFor(actorUserId, seed.seats), [actorUserId, seed.seats]);
+  // Looking at a desk through the dev panel: that seat alone (and its role), whoever holds it.
+  const me = useMemo(() => (leadAs && persona.who.userId !== (seed.personas.find((r) => r.id === "leader")?.who.userId ?? null) ? meOfSeat(leadAs, seed.seats) : meFor(actorUserId, seed.seats)), [leadAs, persona.who.userId, seed.personas, actorUserId, seed.seats]);
   const email = tenant.users?.find((u) => u.name === persona.who.name)?.email ?? null;
 
   const showToast = useCallback((msg: string) => {
@@ -383,21 +389,21 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     answer: (id, text) => emit("case.answered", id, { text }),
     override: (id, proposed, chosen) => emit("case.override", id, { proposed, chosen }),
     cosign: (ideaId) => {
-      const already = S.ideas.find((x) => x.id === ideaId)?.cosigners.some((x) => x.name === actor) ?? false;
+      const already = actorUserId !== null && (S.ideas.find((x) => x.id === ideaId)?.cosigners.some((x) => x.userId === actorUserId) ?? false);
       emit(already ? "idea.uncosigned" : "idea.cosigned", ideaId);
       return !already;
     },
     affect: (caseId, why) => {
       // Decided against the log as it is at that moment, so a double click toggles cleanly.
       if (serverMode) {
-        const added = !affectedOn(log, caseId).some((a) => a.name === actor);
+        const added = !affectedOn(log, caseId).some((a) => actorUserId !== null && a.userId === actorUserId);
         emit(added ? "case.affected" : "case.unaffected", caseId, added && why ? { why } : undefined);
         return added;
       }
       let added = true;
       updateLog(slug, (prev) => {
-        added = !affectedOn(prev, caseId).some((a) => a.name === actor);
-        return appendEvent(prev, { type: added ? "case.affected" : "case.unaffected", actor, target: caseId, payload: added && why ? { why } : undefined });
+        added = !affectedOn(prev, caseId).some((a) => actorUserId !== null && a.userId === actorUserId);
+        return appendEvent(prev, { type: added ? "case.affected" : "case.unaffected", actor, actorUserId, target: caseId, payload: added && why ? { why } : undefined });
       });
       return added;
     },
@@ -407,8 +413,8 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     approve: (ideaId, team, note) => emit("idea.approved", ideaId, { team, note }),
     fund: (ideaId, team, note) => emit("idea.funded", ideaId, { team, note }),
     advanceDay: (by) => emit("day.advanced", null, { by: by ?? 1 }),
-    discuss: (caseId, invited, missing) => emit("case.discussion", caseId, { invited, missing }),
-    invite: (caseId, invited) => emit("case.invited", caseId, { invited }),
+    discuss: (caseId, invited, missing, invitedUserIds) => emit("case.discussion", caseId, { invited, invitedUserIds, missing }),
+    invite: (caseId, invited, invitedUserIds) => emit("case.invited", caseId, { invited, invitedUserIds }),
     revise: (caseId, body, title, overall) => emit("case.revised", caseId, { body, title, overall }),
     checkin: (caseId, next, open, note) => emit("case.checkin", caseId, { next, open, note }),
     accept: (caseId, { lead, leadUserId, title, note, projectId = newId("p") }) => {
@@ -447,7 +453,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       claim: (id) => emit("project.claimed", id),
       stop: (id, why) => emit("project.stopped", id, { why }),
     },
-  }), [emit, S.ideas, S.projects, actor, slug, serverMode, log]);
+  }), [emit, S.ideas, S.projects, actor, actorUserId, slug, serverMode, log]);
 
   const flags = tenant.flags;
   const flag = useCallback((key: FlagKey) => flags?.[key] ?? FLAGS[key].defaults.demo, [flags]);
@@ -480,10 +486,12 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   }, [seed.personas, slug, dept, closeAll, router, href, serverMode, tenant.users, showToast, router_refresh]);
 
   // Dev panel: look at the team-leader screens as another desk holder.
-  const setLeadAs = useCallback((name: string) => {
+  const setLeadAs = useCallback((seatId: string) => {
+    const seat = seed.seats.find((s) => s.id === seatId);
+    if (!seat) return;
     if (serverMode) {
-      const target = tenant.users?.find((u) => u.name === name && u.id);
-      if (!target?.id) { showToast(name + " is seed data, not a person who can sign in here."); return; }
+      const target = seat.userId ? tenant.users?.find((u) => u.id === seat.userId) : undefined;
+      if (!target?.id) { showToast(seat.label + " is seed data, not a person who can sign in here."); return; }
       closeAll();
       startTransition(async () => {
         const res = await switchUserAction(slug, target.id!);
@@ -494,10 +502,10 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       return;
     }
     const lead = seed.personas.find((r) => r.id === "leader");
-    const r = seed.routes.find((x) => x.owner.name === name);
-    const b = seed.buddies.find((x) => x.name === name);
+    const r = seed.routes.find((x) => x.ownerSeatId === seat.id) ?? seed.routes.find((x) => x.ownerRoleId === seat.roleId);
+    const b = seed.buddies.find((x) => x.name === seat.label);
     const nextDept = r ? r.owner.dept : b ? (seed.depts.find((d) => d.name === b.dept)?.id ?? lead?.dept ?? "PRD") : lead?.dept ?? "PRD";
-    setPrefs(slug, { role: "leader", leadAs: lead && name === lead.who.name ? null : name, dept: nextDept });
+    setPrefs(slug, { role: "leader", leadAs: lead && seat.userId !== null && seat.userId === lead.who.userId ? null : seat.id, dept: nextDept });
     closeAll();
     router.push(href(ROLE_HOME.leader));
   }, [seed, slug, closeAll, router, href, serverMode, tenant.users, showToast, router_refresh]);

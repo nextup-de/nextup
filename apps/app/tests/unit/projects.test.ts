@@ -127,7 +127,7 @@ describe("projects: the clock after the yes", () => {
       { id: "seat_tv", roleId: "role_owner", label: "T. Vogel", userId: "u_tv", sort: 0 },
       { id: "seat_dep", roleId: "role_deputy", label: "H. Sander", userId: "u_hs", sort: 1 },
     ];
-    const routes = ROUTES.map((x) => (x.id === "r1" ? { ...x, ownerSeatId: "seat_tv", ownerRoleId: "role_owner", deputySeatId: "seat_dep", deputyRoleId: "role_deputy" } : x));
+    const routes = LOCAL_SEED.routes.map((x) => (x.id === "r1" ? { ...x, ownerSeatId: "seat_tv", ownerRoleId: "role_owner", deputySeatId: "seat_dep", deputyRoleId: "role_deputy" } : x));
     const S = reduce({ ...SEED, routes, seats }, logAt(6, raise("c_a"), yes("c_a")));
     const p = S.projects[0];
     expect(p.dueDay).toBe(5);

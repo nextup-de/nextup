@@ -3,7 +3,7 @@
 import type { DemoContext } from "@/components/dashboard/DemoProvider";
 import { canOpen, inboxIdeas } from "@/components/dashboard/derive";
 import { dashboardRow, OVERVIEW_STEPS, type OverviewStatus } from "@/features/cases/rows";
-import { onDesk } from "@/features/cases/selectors";
+import { onDeskOf } from "@/features/cases/selectors";
 import { caseHay, ideaHay, type SearchItem } from ".";
 
 export type NavCase = { status: OverviewStatus; step: number; open: boolean; late: boolean; yourMove: boolean; desk: string; days: number };
@@ -11,13 +11,13 @@ export type NavHit = SearchItem & { href: string; case: NavCase | null };
 
 export function navbarIndex(ctx: DemoContext): NavHit[] {
   const { D, seed, persona, log, tenant } = ctx;
-  const me = persona.who.name;
+  const me = persona.who.name; // the label the index shows; who "I" am is ctx.me
   const index: NavHit[] = [];
   for (const c of D.cases.filter((c) => canOpen(ctx, c))) {
-    const row = dashboardRow(c, seed.promiseDays, persona.who, log);
+    const row = dashboardRow(c, seed.promiseDays, ctx.me, log);
     const desk = row.chain[row.chain.length - 1];
     // The Overview's "Your move": a question for you, or someone's open case waiting on your desk.
-    const yourMove = row.status === "move" || (!row.mine && row.open && onDesk(c, me));
+    const yourMove = row.status === "move" || (!row.mine && row.open && onDeskOf(c, ctx.me));
     const stage = row.step >= OVERVIEW_STEPS.length ? "Shipped" : OVERVIEW_STEPS[row.step];
     index.push({
       kind: c.kind === "idea" ? "Idea" : "Problem", group: c.kind === "idea" ? 1 : 0, title: c.title,

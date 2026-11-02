@@ -19,7 +19,7 @@ import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
 import { inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { dashboardRow, OVERVIEW_STEPS, overviewSteps, raisedWith, type DashRow, type OverviewStatus } from "@/features/cases/rows";
-import { commentsOn, onDesk, rescoresOn } from "@/features/cases/selectors";
+import { commentsOn, onDeskOf, rescoresOn } from "@/features/cases/selectors";
 import { deskThread } from "@/features/cases/thread";
 import { briefForCase, extOf, personFor, type Person } from "@/features/ideas/brief";
 import { loadRaised } from "@/lib/raised";
@@ -90,7 +90,8 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
 export function DashboardView({ caseId, linkCases = false, embedded = false, title }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode } = {}) {
   const t = useT();
   const ctx = useDemo();
-  const { seed, D, log, persona, role, ready, href, tenant, act, actor, f, motion, flag } = ctx;
+  const { seed, D, log, persona, role, ready, href, tenant, act, me, f, motion, flag } = ctx;
+  const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const router = useRouter();
   const [view, setView] = useState<ListView>("open");
   const [archived, setArchived] = useState<ArchiveFilter>("all");
@@ -138,12 +139,12 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas };
   // With projects on, the table shows what is still moving; what was decided sits in the Archive.
   const split = flag("projects");
-  const everyRow = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, P, persona.who, log));
+  const everyRow = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, P, me, log));
   const rows = split ? everyRow.filter((r) => inView(r.archive, view, archived) || r.id === sel) : everyRow;
   const filters: Filter[] = role === "member" ? ["all", "move", "problem", "idea"] : ["all", "move", "problem", "idea", "mine"]; // every row is the employee's own
   // Your move: a question for you; a decision on your case you have not answered yet (a stand-in until
   // it has its event, so a reload asks again); or someone's case on your desk, waiting for your answer.
-  const onMyDesk = (r: DashRow) => { const x = D.cases.find((k) => k.id === r.id); return !!x && onDesk(x, persona.who.name); };
+  const onMyDesk = (r: DashRow) => { const x = D.cases.find((k) => k.id === r.id); return !!x && onDeskOf(x, me); };
   const yourMove = (r: DashRow) => r.status === "move"
     || (r.mine && (r.status === "approved" || r.status === "declined") && !preview.responses[r.id])
     || (!r.mine && r.open && (r.status === "waiting" || r.status === "replied") && onMyDesk(r));
@@ -181,10 +182,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     // The written brief when there is one: the static demo's, or what the raise page saved when it was published here.
     const brief = briefForCase(c, { ...briefCtx, briefs: { ...seed.briefs, ...loadRaised(tenant.slug) } }, {
       promiseDays: P, me: row.mine ? c.from : persona.who.name, affected: row.affected, attachments: raised.attachments, updates: added.length,
-      passTo: "", history: "", side: onDesk(c, persona.who.name) && !row.mine ? "desk" : "raiser",
+      passTo: "", history: "", side: onDeskOf(c, me) && !row.mine ? "desk" : "raiser",
     });
     const late = row.open && row.overdue;
-    const other = desk === persona.who.name && !row.mine ? c.from : desk; // the first chat is with whoever holds it - or, for the holder, with whoever raised it
+    const other = onDeskOf(c, me) && !row.mine ? c.from : desk; // the first chat is with whoever holds it - or, for the holder, with whoever raised it
     const canAnswer = row.mine && c.status === "asked";
     const ideaProps: OverviewIdeaProps = {
       id: c.id, title: c.title, raised: f(c.raisedDay), dept: (row.mine ? "" : c.from + " · ") + c.fromDept,
@@ -196,18 +197,18 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       brief,
       // What the raise page attached (the idea document, PDFs, sheets), then the screenshots kept in this browser.
       files: [...brief.files.map((x) => ({ name: x.name, ext: x.ext || "FILE", meta: x.size || t("team.dashFile") })), ...loadShots(tenant.slug, c.id).map((x) => ({ name: x.name, ext: extOf(x.name) || "IMG", meta: t("team.dashScreenshot") }))],
-      added: added.map((m) => ({ text: m.text, when: f(m.day) + (m.by === actor ? "" : " · " + m.by) })),
+      added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       mode, onMode: setMode, editSignal,
       edit: preview.edits[c.id] ?? null, onSave: (e) => preview.saveEdit(c.id, e), // as in the design, anyone who opens it may edit
       onProfile: profileOf(desk), onClose: closeCase,
     };
     const chats = (
-          <OverviewChats key={c.id} mine={row.mine} me={actor} day={log.day} desk={{ name: other, role: roleOf(other) || (other === c.from ? c.fromDept : "") }}
-            status={row.status} yourMove={yourMove(row)} open={row.open} entries={deskThread(c, log)} f={f}
+          <OverviewChats key={c.id} mine={row.mine} me={me} day={log.day} desk={{ name: other, role: roleOf(other) || (other === c.from ? c.fromDept : "") }}
+            status={row.status} yourMove={yourMove(row)} open={row.open} entries={deskThread(c, log, seed.seats)} f={f}
             canAnswer={canAnswer} onSend={(t) => (canAnswer ? act.answer(c.id, t) : act.comment(c.id, t))}
             deputy={c.route && c.route.deputy !== desk ? c.route.deputy : null}
             supporters={brief.feed.supporters} sentiment={brief.feed.sentiment}
-            feed={commentsOn(log, c.id).filter((m) => !m.rescore).map((m) => ({ name: m.by === actor ? t("team.dashYou") : m.by, role: m.by === actor ? t("team.dashYou") : roleOf(m.by) || t("team.dashComment"), text: m.text, when: f(m.day), mine: m.by === actor }))}
+            feed={commentsOn(log, c.id).filter((m) => !m.rescore).map((m) => ({ name: isMe(m.byUserId) ? t("team.dashYou") : m.by, role: isMe(m.byUserId) ? t("team.dashYou") : roleOf(m.by) || t("team.dashComment"), text: m.text, when: f(m.day), mine: isMe(m.byUserId) }))}
             onComment={(t) => act.comment(c.id, t)}
             directory={seed.people.filter((x) => x.name !== persona.who.name).map((x) => ({ name: x.name, role: x.role }))}
             onDetails={() => { setMode("idea"); setEditSignal((n) => n + 1); }}

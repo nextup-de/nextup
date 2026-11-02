@@ -6,6 +6,7 @@ import type { Action, IdeaBrief } from "@/features/ideas/brief";
 import { splitBody } from "@/features/ideas/brief";
 import { amountEur, benchmark, type BenchmarkContext } from "@/features/ideas/benchmarks";
 import { dialsOf, dialsUp, type Dial } from "@/features/ideas/raise";
+import type { Me, SeatRow } from "@/features/auth/identity";
 import type { OrgPerson } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
 import type { ReducedCase, Version } from "./reducer";
@@ -75,16 +76,20 @@ export function withDiscussion(brief: IdeaBrief, c: Pick<ReducedCase, "status" |
 // ── Whom to invite ────────────────────────────────────────────────────────────────────────────
 
 export type InviteWhy = "buddy" | "deputy" | "affected" | "head" | "close";
-export type InviteSuggestion = { name: string; why: InviteWhy; note: string };
+/** A person to ask: the user id is who, the label is what the sheet shows. */
+export type InviteSuggestion = { userId: string; label: string; why: InviteWhy; note: string };
 
 export type InviteInput = {
+  /** The seats of the company: only a seat with a user can be invited. */
+  seats: readonly SeatRow[];
+  /** The org chart, read only to find the head of a department. */
   people: readonly OrgPerson[];
-  /** Names the raiser added as Affected, and everyone who said it affects them too. */
-  affected: readonly string[];
+  /** The people the raiser named as Affected, and everyone who said it affects them too (user id where known). */
+  affected: readonly { userId: string | null; name: string }[];
   /** Other cases that read like this one, with who raised them. */
-  close: readonly { from: string; title: string }[];
+  close: readonly { fromUserId: string | null; title: string }[];
   /** The desk holder: never suggested, they are in already. */
-  me: string;
+  me: Me;
 };
 
 const WHY_LINE: Record<InviteWhy, MessageKey> = {
@@ -99,25 +104,41 @@ const WHY_LINE: Record<InviteWhy, MessageKey> = {
  * The people the "Discuss first" sheet offers, each once, in this order: the route's buddy and
  * deputy, the people who said it affects them, the head of the raiser's department, and the people
  * who raised close ideas. Only people in the directory; never the desk holder or the raiser
- * (the raiser is always in).
+ * (the raiser is always in). Each is a seat with a user, offered once by user id, never by what it is called.
  */
-export function inviteSuggestions(c: Pick<ReducedCase, "route" | "from" | "fromDept">, x: InviteInput, locale: Locale = DEFAULT_LOCALE): InviteSuggestion[] {
+export function inviteSuggestions(c: Pick<ReducedCase, "route" | "from" | "fromUserId" | "fromDept">, x: InviteInput, locale: Locale = DEFAULT_LOCALE): InviteSuggestion[] {
   const out: InviteSuggestion[] = [];
-  const known = (n: string) => x.people.some((p) => p.name === n);
-  const add = (name: string | undefined | null, why: InviteWhy, note = translate(locale, WHY_LINE[why])) => {
-    const n = name?.trim();
-    if (!n || n === x.me || n === c.from || !known(n) || out.some((s) => s.name === n)) return;
-    out.push({ name: n, why, note });
+  const bySort = [...x.seats].sort((a, b) => a.sort - b.sort);
+  const add = (userId: string | null | undefined, why: InviteWhy, note = translate(locale, WHY_LINE[why])) => {
+    if (!userId || userId === x.me.userId || userId === c.fromUserId || out.some((s) => s.userId === userId)) return;
+    const seat = bySort.find((s) => s.userId === userId);
+    if (seat) out.push({ userId, label: seat.label, why, note });
   };
+  const seatUser = (seatId: string | null | undefined) => (seatId ? x.seats.find((s) => s.id === seatId)?.userId ?? null : null);
   if (c.route) {
-    add(c.route.buddy.split(" · ")[0], "buddy"); // "C. Ilg · Ops & Admin"
-    add(c.route.deputy, "deputy");
+    // The buddy is named in the routing rule as text only ("C. Ilg · Ops & Admin"): the seat that carries that label.
+    const buddy = c.route.buddy.split(" · ")[0].trim();
+    add(buddy ? bySort.find((s) => s.label === buddy)?.userId : null, "buddy");
+    add(seatUser(c.route.deputySeatId), "deputy");
   }
-  x.affected.forEach((n) => add(n, "affected"));
-  const head = headOf(c, x.people);
-  if (head) add(head.name, "head", head.role);
-  x.close.forEach((k) => add(k.from, "close", translate(locale, "cases.whyCloseTitled", { title: k.title })));
+  x.affected.forEach((a) => add(a.userId, "affected"));
+  const head = headSeatOf(c, x.seats, x.people);
+  if (head) add(head.seat.userId, "head", head.role);
+  x.close.forEach((k) => add(k.fromUserId, "close", translate(locale, "cases.whyCloseTitled", { title: k.title })));
   return out;
+}
+
+/**
+ * The seat of the head of the department a case came from, and the role it holds, for the "head"
+ * suggestion. The org chart (`people`) says which department and who answers to whom; the answer is
+ * a seat, so the caller gets an id to invite by. Null when the department is unknown or the head
+ * holds no seat with a user.
+ */
+export function headSeatOf(c: Pick<ReducedCase, "from" | "fromUserId" | "fromDept">, seats: readonly SeatRow[], people: readonly OrgPerson[]): { seat: SeatRow; role: string } | null {
+  const head = headOf(c, people, seats);
+  if (!head) return null;
+  const seat = [...seats].sort((a, b) => a.sort - b.sort).find((s) => s.userId !== null && s.label === head.name);
+  return seat ? { seat, role: head.role } : null;
 }
 
 /**
@@ -125,8 +146,10 @@ export function inviteSuggestions(c: Pick<ReducedCase, "route" | "from" | "fromD
  * directory, otherwise the department named in `fromDept` ("Production, Line 3"). The head is the
  * one in it who reports to nobody in it.
  */
-export function headOf(c: Pick<ReducedCase, "from" | "fromDept">, people: readonly OrgPerson[]): OrgPerson | null {
-  const raiser = people.find((p) => p.name === c.from);
+export function headOf(c: Pick<ReducedCase, "from" | "fromUserId" | "fromDept">, people: readonly OrgPerson[], seats: readonly SeatRow[] = []): OrgPerson | null {
+  // The raiser's own seat names their place on the org chart; an anonymous raiser holds none, and their fromDept says it.
+  const raiserSeat = c.fromUserId ? seats.find((s) => s.userId === c.fromUserId) : undefined;
+  const raiser = raiserSeat ? people.find((p) => p.name === raiserSeat.label) : undefined;
   const word = c.fromDept.split(",")[0].trim().toLowerCase();
   const dept = raiser?.dept ?? people.find((p) => p.dept.toLowerCase() === word || p.role.toLowerCase().includes(word))?.dept;
   if (!dept) return null;
@@ -157,9 +180,9 @@ export function roundState(c: Pick<ReducedCase, "discussion" | "dueDay" | "overd
   };
 }
 
-/** Invited to a discussion that is still running (and so asked for their view). */
-export const invitedTo = (c: Pick<ReducedCase, "status" | "discussion">, name: string): boolean =>
-  c.status === "discussion" && !!c.discussion && c.discussion.invited.includes(name);
+/** Invited to a discussion that is still running (and so asked for their view), by user id. */
+export const invitedTo = (c: Pick<ReducedCase, "status" | "discussion">, me: Me): boolean =>
+  me.userId !== null && c.status === "discussion" && !!c.discussion && c.discussion.invitedUserIds.includes(me.userId);
 
 // ── The check-in draft ────────────────────────────────────────────────────────────────────────
 

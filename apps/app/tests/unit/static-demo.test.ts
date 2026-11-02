@@ -2,6 +2,7 @@
 // anyone types, and that the demo script still reads as a new idea next to it. Plus the case body's
 // main points (features/ideas/brief.ts splitBody), which is how the script's case shows them.
 import { describe, expect, it } from "vitest";
+import { meFor } from "@/features/auth/identity";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { dashboardRow } from "@/features/cases/rows";
@@ -14,7 +15,8 @@ import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
 
 const log = emptyLog();
 const S = reduce(STATIC_DEMO_SEED, log);
-const me = STATIC_DEMO_SEED.personas.find((r) => r.id === "member")!.who;
+const who = STATIC_DEMO_SEED.personas.find((r) => r.id === "member")!.who;
+const me = meFor(who.userId ?? null, STATIC_DEMO_SEED.seats);
 const row = (id: string) => dashboardRow(S.cases.find((c) => c.id === id)!, STATIC_DEMO_SEED.promiseDays, me, log);
 
 describe("the employee's dashboard on the static demo", () => {
@@ -25,7 +27,7 @@ describe("the employee's dashboard on the static demo", () => {
     expect(row("d3")).toMatchObject({ status: "waiting", overdue: true, escalated: true }); // past the promise, with the deputy
   });
   it("gives every case of theirs a conversation, not an empty chat", () => {
-    const mine = S.cases.filter((c) => c.from === me.name);
+    const mine = S.cases.filter((c) => c.fromUserId === me.userId);
     expect(mine.length).toBeGreaterThanOrEqual(6);
     for (const c of mine) expect(deskThread(c, log).length, c.title).toBeGreaterThan(0);
     const sheet = S.cases.find((c) => c.id === "c3")!;
@@ -42,7 +44,7 @@ describe("the employee's dashboard on the static demo", () => {
     const all = JSON.stringify(STATIC_DEMO_SEED) + JSON.stringify(staticDemoDrafts(new Date()));
     expect(all.match(/\b[A-Z]\. [A-Z][a-zäöü]+/g) ?? []).toEqual([]);
     expect(all).not.toContain("Anonymous #");
-    expect(me).toMatchObject({ name: "Jonas Schmidt", handle: null });
+    expect(who).toMatchObject({ name: "Jonas Schmidt", handle: null });
     expect(STATIC_DEMO_SEED.people.find((p) => p.name === "Jonas Schmidt")?.reportsTo).toBe("Thomas Vogel");
   });
   it("never makes the demo script look already raised", () => {
@@ -57,12 +59,12 @@ describe("earlier chats with the coach, each person's own", () => {
   const lead = STATIC_DEMO_SEED.personas.find((r) => r.id === "leader")!.who.name;
   const boss = STATIC_DEMO_SEED.personas.find((r) => r.id === "manager")!.who.name;
   it("gives the employee three published ideas, each linked to its case, and one draft still open", () => {
-    const mine = byOwner[me.name];
+    const mine = byOwner[who.name];
     expect(mine.map((d) => [d.status, d.caseId])).toEqual([["published", "d1"], ["published", "d2"], ["published", "d3"], ["draft", null]]);
     for (const d of mine) expect(S.cases.find((c) => c.id === d.caseId)?.title ?? d.title).toBe(d.title);
   });
   it("gives the team lead and the manager a draft of their own, never the employee's", () => {
-    expect(Object.keys(byOwner).sort()).toEqual([me.name, lead, boss].sort());
+    expect(Object.keys(byOwner).sort()).toEqual([who.name, lead, boss].sort());
     expect(byOwner[lead].map((d) => d.status)).toEqual(["draft"]);
     expect(byOwner[boss].map((d) => d.status)).toEqual(["draft"]);
     const ids = Object.values(byOwner).flat().map((d) => d.id);

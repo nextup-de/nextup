@@ -14,10 +14,10 @@ import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
 import { archiveOf, inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
-import { FEED_SORT_KEY, feedCover, feedStage, inDept, sortFeed, supportLine, supportReasons, type FeedSort } from "@/features/cases/feed";
+import { FEED_SORT_KEY, feedCover, feedStage, inDept, sortFeed, isMe as isBacker, supportLine, supportReasons, type Backer, type FeedSort } from "@/features/cases/feed";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { dashboardRow, overviewSteps, raisedWith } from "@/features/cases/rows";
-import { affectedOn, commentsOn, onDesk, rescoresOn } from "@/features/cases/selectors";
+import { affectedOn, commentsOn, onDeskOf, rescoresOn } from "@/features/cases/selectors";
 import { briefForCase, tagTone, type IdeaBrief } from "@/features/ideas/brief";
 import { profileOf } from "@/features/demo/profiles";
 import { useT } from "@/i18n/client";
@@ -43,14 +43,15 @@ function Thumb() {
 
 // One case as the Feed needs it: facts from the log, nothing invented.
 type Item = {
-  c: ReducedCase; mine: boolean; supporters: string[]; supported: boolean; tags: string[];
+  c: ReducedCase; mine: boolean; backing: Backer[]; supported: boolean; tags: string[];
   site: string | null; raisedDay: number; backers: number; comments: number;
 };
 
 export function FeedView({ initialId }: { initialId?: string } = {}) {
   const t = useT();
   const ctx = useDemo();
-  const { seed, D, log, persona, ready, act, actor, f, motion, flag } = ctx;
+  const { seed, D, log, ready, act, actor, me, f, motion, flag } = ctx; // actor is the label I post under: shown, never compared
+  const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const [view, setView] = useState<ListView>("open");
   const [archived, setArchived] = useState<ArchiveFilter>("all");
   const [dept, setDept] = useState("All");
@@ -75,13 +76,16 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const top = () => rootRef.current?.scrollIntoView({ block: "start", behavior: motion ? "smooth" : "auto" });
 
   const itemOf = (c: ReducedCase): Item => {
-    const row = dashboardRow(c, P, persona.who, log);
-    const supporters = row.affected.filter((n) => !deptNames.includes(n));
+    const row = dashboardRow(c, P, me, log);
+    // Who backs it: named when raised (no id), plus everyone who pressed "this affects me too" (their user id).
+    const named = raisedWith(c).affected;
+    const backing: Backer[] = [...named.map((name) => ({ userId: null, name })), ...affectedOn(log, c.id).filter((a) => !named.includes(a.name)).map((a) => ({ userId: a.userId, name: a.name }))]
+      .filter((b) => !deptNames.includes(b.name));
     const routeDept = c.route ? seed.depts.find((d) => d.id === c.route?.owner.dept)?.name ?? null : null;
     const tags = [...new Set([c.fromDept, ...(routeDept ? [routeDept] : []), ...row.affected.filter((n) => deptNames.includes(n))])];
     return {
-      c, mine: row.mine, supporters, supported: supporters.includes(actor) || affectedOn(log, c.id).some((a) => a.name === actor), tags,
-      site: siteOf(c.from), raisedDay: c.raisedDay, backers: supporters.length, comments: commentsOn(log, c.id).filter((m) => !m.rescore).length,
+      c, mine: row.mine, backing, supported: backing.some((b) => isBacker(b, me)), tags,
+      site: siteOf(c.from), raisedDay: c.raisedDay, backers: backing.length, comments: commentsOn(log, c.id).filter((m) => !m.rescore).length,
     };
   };
   // With projects on, the feed shows what is still moving; what was decided sits in the Archive.
@@ -100,7 +104,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     preview.setReason(x.c.id, added ? "ask" : "done");
   };
   // Supporter avatars: up to three, you first once you back it.
-  const avatars = (x: Item) => (x.supported ? [actor, ...x.supporters.filter((n) => n !== actor)] : x.supporters).slice(0, 3);
+  const avatars = (x: Item) => (x.supported ? [{ name: actor, me: true }, ...x.backing.filter((b) => !isBacker(b, me)).map((b) => ({ name: b.name, me: false }))] : x.backing.map((b) => ({ name: b.name, me: false }))).slice(0, 3);
 
   // ── the opened idea ──
   const openIdx = list.findIndex((x) => x.c.id === openId);
@@ -128,10 +132,10 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   if (current) {
     const { c } = current;
     const raised = raisedWith(c);
-    const row = dashboardRow(c, P, persona.who, log);
+    const row = dashboardRow(c, P, me, log);
     const brief = briefForCase(c, briefCtx, {
-      promiseDays: P, me: current.mine ? c.from : persona.who.name, affected: row.affected, attachments: raised.attachments, updates: rescoresOn(log, c.id).length,
-      passTo: "", history: "", side: onDesk(c, persona.who.name) && !current.mine ? "desk" : "raiser",
+      promiseDays: P, me: current.mine ? c.from : ctx.persona.who.name, affected: row.affected, attachments: raised.attachments, updates: rescoresOn(log, c.id).length,
+      passTo: "", history: "", side: onDeskOf(c, me) && !current.mine ? "desk" : "raiser",
     });
     return (
       <div className={s.root} ref={rootRef}>
@@ -201,7 +205,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             // Until covers are generated per idea (docs/AI_COVERS.md): the sample idea's own picture and
             // text, else a library picture with its text (features/cases/thumbs.ts).
             const pic = sampleCoverFor(c) ?? libraryCoverFor(c.id);
-            const own = pic ?? feedCover(c, x.supporters.length);
+            const own = pic ?? feedCover(c, x.backing.length);
             const cover = { stat: own.stat, hook: own.hook, image: pic?.src ?? null, fit: pic?.fit ?? 1 };
             return (
               <div key={c.id} className={s.open} role="link" tabIndex={0} data-screen-label="Feed card" style={{ animationDelay: k * 70 + "ms" }}
@@ -231,11 +235,11 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 <h3 className={s.title}>{c.title}</h3>
                 <div className={s.div14}>
                   <div className={s.div15}>
-                    {avatars(x).map((n) => <span key={n} className={s.ini} data-me={n === actor ? "true" : undefined}>{initialsOf(n)}</span>)}
+                    {avatars(x).map((a) => <span key={a.name} className={s.ini} data-me={a.me ? "true" : undefined}>{initialsOf(a.name)}</span>)}
                   </div>
                   <button type="button" className={s.toggleSupport} data-on={x.supported ? "true" : undefined} aria-pressed={x.supported}
                     onClick={(e) => { e.stopPropagation(); support(x); }}>
-                    {x.supported ? <Check size={13} /> : <UpArrow size={13} w={2.6} />}{x.supported ? t("team.feedSupported") : t("team.feedSupport")}<span className={s.supCount}>{x.supporters.length + (x.supported && !x.supporters.includes(actor) ? 1 : 0)}</span>
+                    {x.supported ? <Check size={13} /> : <UpArrow size={13} w={2.6} />}{x.supported ? t("team.feedSupported") : t("team.feedSupport")}<span className={s.supCount}>{x.backing.length}</span>
                   </button>
                   <span className={s.commentCount}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z" /></svg>
@@ -263,12 +267,11 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     const draft = drafts[c.id] ?? "";
     const rt = replyTo[c.id] ?? null;
     const rc = rt ? cs.find((m) => m.id === rt) ?? null : null;
-    const nameOf = (by: string) => (by === actor ? t("team.feedYou") : by);
-    const count = item.supporters.length + (item.supported && !item.supporters.includes(actor) ? 1 : 0);
-    const names = item.supported && !item.supporters.includes(actor) ? [actor, ...item.supporters] : item.supporters;
-    const myDept = deptNameOf(persona.who.name);
-    const fromMine = names.filter((n) => n !== actor && deptNameOf(n) === myDept).length + (item.supported ? 1 : 0);
-    const iTalked = cs.some((m) => m.by === actor) || cs.some((m) => preview.replies[m.id]?.length);
+    const nameOf = (m: { by: string; byUserId?: string | null }) => (isMe(m.byUserId) ? t("team.feedYou") : m.by);
+    const count = item.backing.length;
+    const myDept = deptNameOf(ctx.persona.who.name);
+    const fromMine = item.backing.filter((b) => !isBacker(b, me) && deptNameOf(b.name) === myDept).length + (item.supported ? 1 : 0);
+    const iTalked = cs.some((m) => isMe(m.byUserId)) || cs.some((m) => preview.replies[m.id]?.length);
     const iLiked = cs.some((m) => preview.likes[m.id]);
     const anon = isHandle(c.from);
     const role = anon ? c.fromDept : roleOf(c.from) || c.fromDept;
@@ -437,10 +440,10 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             <div className={s.div47}>
               <div className={s.div19}>
                 <div className={s.div15}>
-                  {avatars(item).map((n) => <span key={n} className={s.ini3} data-me={n === actor ? "true" : undefined}>{initialsOf(n)}</span>)}
+                  {avatars(item).map((a) => <span key={a.name} className={s.ini3} data-me={a.me ? "true" : undefined}>{initialsOf(a.name)}</span>)}
                 </div>
                 <span className={s.div11}>
-                  <span className={s.supLine}>{supportLine(names, actor)}</span>
+                  <span className={s.supLine}>{supportLine(item.backing, me)}</span>
                   {myDept && fromMine > 0 && <span className={s.size}>{item.supported ? t("team.feedFromDeptIncluding", { count: fromMine, dept: myDept }) : t("team.feedFromDeptBack", { count: fromMine, dept: myDept })}</span>}
                 </span>
               </div>
@@ -473,11 +476,11 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 return (
                   <div key={m.id} className={s.div51}>
                     <div className={s.div52}>
-                      <span className={s.ini4} data-mine={m.by === actor ? "true" : undefined}>{initialsOf(m.by)}</span>
+                      <span className={s.ini4} data-mine={isMe(m.byUserId) ? "true" : undefined}>{initialsOf(m.by)}</span>
                       <div className={s.div53}>
                         <div className={s.div54}>
-                          <span className={s.name3}>{nameOf(m.by)}</span>
-                          <span className={s.role2}>{[m.by === actor ? "" : roleOf(m.by) || deptNameOf(m.by), f(m.day)].filter(Boolean).join(" · ")}</span>
+                          <span className={s.name3}>{nameOf(m)}</span>
+                          <span className={s.role2}>{[isMe(m.byUserId) ? "" : roleOf(m.by) || deptNameOf(m.by), f(m.day)].filter(Boolean).join(" · ")}</span>
                         </div>
                         <p className={s.text2}>{m.text}</p>
                         <div className={s.div55}>
@@ -517,14 +520,14 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
               )}
               {rc && (
                 <div className={s.div59}>
-                  <span className={s.replyingTo}>{t("team.feedReplyingTo")}<span className={s.replyName}>{nameOf(rc.by)}</span></span>
+                  <span className={s.replyingTo}>{t("team.feedReplyingTo")}<span className={s.replyName}>{nameOf(rc)}</span></span>
                   <button type="button" className={s.cancelReply} onClick={() => setReplyTo((r) => ({ ...r, [c.id]: null }))} title={t("team.feedCancelReply")} aria-label={t("team.feedCancelReply")}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6e6e73" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
                   </button>
                 </div>
               )}
               <div className={s.div60}>
-                <input ref={inputRef} className={s.input} value={draft} placeholder={rc ? t("team.feedReplyTo", { name: nameOf(rc.by) }) : t("team.feedAddComment")} aria-label={rc ? t("team.feedReplyTo", { name: nameOf(rc.by) }) : t("team.feedAddComment")}
+                <input ref={inputRef} className={s.input} value={draft} placeholder={rc ? t("team.feedReplyTo", { name: nameOf(rc) }) : t("team.feedAddComment")} aria-label={rc ? t("team.feedReplyTo", { name: nameOf(rc) }) : t("team.feedAddComment")}
                   onChange={(e) => { const v = e.target.value; setDrafts((d) => ({ ...d, [c.id]: v })); }}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } else if (e.key === "Escape") setReplyTo((r) => ({ ...r, [c.id]: null })); }} />
                 <button type="button" className={s.send} data-live={draft.trim() ? "true" : undefined} onClick={send} title={t("team.feedSend")} aria-label={t("team.feedSend")}>
