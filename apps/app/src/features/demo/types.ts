@@ -3,6 +3,7 @@
 import type { Role } from "@/config/roles";
 import type { SeatRow } from "@/features/auth/identity";
 import type { CaseKind, SeedEvent } from "@/features/cases/events";
+import type { ClockSpec } from "@/features/clock";
 import type { WrittenBrief } from "@/features/ideas/brief";
 import type { LoopRules } from "@/features/loop/rules";
 import type { SeedProject } from "@/features/projects/types";
@@ -105,5 +106,6 @@ export type Seed = {
   stall: Stall[]; ledger: Ledger; metrics: Metrics; views: Record<string, ViewCopy>;
   briefs?: Record<string, WrittenBrief>; // written AI briefs per idea id, instead of features/ideas/brief-demo (the static demo's renamed copy)
   projects?: SeedProject[]; // accepted ideas being worked on, in every state (features/projects)
+  clock: ClockSpec; // demo = the simulated day; set by companySeed() from the stage and the calendar, never from seedJson (CLK/D8)
   loop?: Partial<LoopRules>; // the company's discussion, measure and reward rules; missing = LOOP_DEFAULTS (features/loop/rules.ts)
 };

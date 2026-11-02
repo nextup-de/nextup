@@ -9,6 +9,7 @@
 // is "this company's JSON is empty / truncated / from an older shape", which shows up as a
 // missing or wrong-typed top-level key. A full nested validation would be a second copy of
 // types.ts to keep in sync.
+import { DEMO_CLOCK } from "@/features/clock";
 import type { Seed } from "./types";
 
 /** The arrays every Seed carries. A company missing one of these would render a broken page. */
@@ -57,7 +58,7 @@ export function parseSeed(value: unknown): Seed {
 
   // Shape verified; the nested rows came from a Seed that already typechecked when it was written.
   // A stored `seats` is ignored too (IDN/D7). Old blobs have neither goals nor spend (both come from the tables, D5).
-  return { ...(value as Seed), seats: [], goals: Array.isArray(v.goals) ? (v.goals as Seed["goals"]) : [], spend: (v.spend as Seed["spend"] | undefined) ?? null };
+  return { ...(value as Seed), seats: [], goals: Array.isArray(v.goals) ? (v.goals as Seed["goals"]) : [], spend: (v.spend as Seed["spend"] | undefined) ?? null, clock: DEMO_CLOCK };
 }
 
 /** True when `value` is a usable Seed. For callers that want to fall back rather than throw. */

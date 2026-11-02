@@ -1,4 +1,4 @@
-// Area core (docs/adr/0007-areas.md). Models: Company, CaseEvent, AssistTurn, IdeaDraft, IdeaTurn (plus generator client and datasource db). Changed only by: IDN, CLK, VIS. Every migration is its own folder under prisma/migrations.
+// Area core (docs/adr/0007-areas.md). Models: Company, CaseEvent, AssistTurn, IdeaDraft, IdeaTurn, CompanyCalendar, ClockLease (plus generator client and datasource db). Changed only by: IDN, CLK, VIS. Every migration is its own folder under prisma/migrations.
 
 // The server-side store. Phase 2 of docs/plans/2026-09-15_build-plan.md; the tables docs/DATA_MODEL.md asks for, minus
 // the ones the demo seed still covers (see below).
@@ -67,6 +67,8 @@ model Company {
   ideaDrafts  IdeaDraft[]
   ideaTurns   IdeaTurn[]
   assistTurns AssistTurn[]
+  calendar    CompanyCalendar?
+  clockLease  ClockLease?
 
   // -- structure --
   profile  CompanyProfile?
@@ -210,4 +212,26 @@ model IdeaTurn {
   createdAt     DateTime @default(now())
 
   @@index([companyId, draftId, createdAt])
+}
+
+// The company's working calendar (CLK/D6). No row = DEFAULT_CALENDAR (src/features/clock). Dates are ISO yyyy-mm-dd.
+model CompanyCalendar {
+  companyId     String   @id
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  region        String   @default("DE")
+  workdays      Int[]    @default([1, 2, 3, 4, 5])
+  extraHolidays String[]
+  extraWorkdays String[]
+  updatedAt     DateTime @updatedAt
+  updatedBy     String?
+}
+
+// The lease a scheduler holds on one company's clock, so two runners never tick it at once (CLK/D13).
+model ClockLease {
+  companyId  String    @id
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  leaseUntil DateTime?
+  lastRunAt  DateTime?
+  lastOkAt   DateTime?
+  lastError  String?
 }
