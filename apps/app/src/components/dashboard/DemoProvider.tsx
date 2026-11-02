@@ -226,7 +226,10 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   // enforcing it in proxy.ts.
   const role: Role = viewer ? viewer.role : (persisted.prefs.role ?? guessedRole);
   const leadAs = serverMode ? null : (persisted.prefs.leadAs ?? null);
-  const demo = persisted.prefs.demo ?? true;
+  // Demo figures only make sense next to demo content: a company without any (the empty template)
+  // never shows the handoff's stand-in numbers, whatever the toggle says.
+  const hasDemoContent = seed.problems.length + seed.ideas.length + seed.initiatives.length + seed.outcomes.length + seed.cases.length > 0;
+  const demo = hasDemoContent && (persisted.prefs.demo ?? true);
   const dept = persisted.prefs.dept ?? "PRD";
   const motion = persisted.prefs.motion ?? true;
   // Animations off is a page-wide switch: globals.css stops every transition and keyframe under it.

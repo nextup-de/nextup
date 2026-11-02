@@ -125,3 +125,22 @@ Nothing in the UI emits `case.override` yet. Until something does, "handed elsew
 3. `buildCompanyBrief` plus `routing/llm.ts`, with an eval set at
    `tests/eval/routing/<company>.jsonl`.
 4. Documents, pgvector, `search_documents`, and citations in `CaseDetailView`.
+
+## STR gaps
+
+The rows of `docs/audit/gaps/*.md` with phase STR (D13), and the STR task that answers each. Task
+ids are the plan's; the PR numbers are in the git log. The acceptance test is
+`apps/app/tests/e2e/db/structure.spec.ts` (STR-Z1).
+
+| id | gap | answered by |
+|---|---|---|
+| G-008 | `seedJson` holds structure, goals and demo cases in one blob | STR-A1/STR-B1: org units, roles, holders, routes, goals and rules are read from their tables only (D5); `seedJson` keeps demo content |
+| G-009 | `EMPTY_SEED` leaks acme's routes, personas, leaders, ledger, metrics and view copy | STR-A1 (D8: `EMPTY_SEED` carries no acme content); proved by STR-Z1 |
+| G-010 | `GOALS` and `SPEND_RULE` are acme constants used for every company | STR-C1: evaluate, the idea benchmarks and the brain read the company's goals and spend rule; STR-D1: the raise page, components and the assist route do too |
+| G-011 | `CompanyConfig.aiRouting`, n8n and notifications are stored but never read | open: STR builds nothing beyond its tasks for it (D13); it needs its own task |
+| G-053 | The three roles and the Entra claim names are fixed in code | open: roles stay in `src/config/roles.ts` until IDN (D13, Kevin owns that file) |
+
+**Backfill.** Companies stored before the tables existed get their structure rows with
+`cd apps/app && npx tsx prisma/backfill-structure.ts`. It writes units, roles, holders and routes
+for every company with no org unit whose stored seed has departments; no rules, no goals.
+Idempotent: a second run writes nothing.
