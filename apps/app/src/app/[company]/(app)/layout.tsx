@@ -13,7 +13,7 @@ import { companyPrefix } from "@/features/tenant/urls";
 import { findTenant } from "@/features/tenant";
 import { seedFor } from "@/features/demo";
 import { getViewerFor } from "@/features/auth/session";
-import { loadLogForSlug } from "@/lib/db/events";
+import { loadLogFor, seedForViewer } from "@/lib/db/viewer-log";
 import { hasDatabase, orDemo } from "@/lib/db/client";
 import { policyFor } from "@/features/admin/stages";
 import { flagsFor } from "@/features/flags";
@@ -35,7 +35,7 @@ export default async function AppLayout({
   const tenant = await findTenant(company);
   if (!tenant) notFound();
 
-  const [seed, flags] = await Promise.all([seedFor(tenant.slug), flagsFor(tenant.slug)]);
+  const [fullSeed, flags] = await Promise.all([seedFor(tenant.slug), flagsFor(tenant.slug)]);
 
   // Server mode only when there is both a database and a session for THIS company.
   let viewer = hasDatabase() ? await getViewerFor(tenant.slug) : null;
@@ -43,7 +43,12 @@ export default async function AppLayout({
     redirect(prefixFor(tenant.slug) + "/login");
   }
 
-  const initialLog = viewer ? await orDemo(() => loadLogForSlug(tenant.slug), () => null) : null;
+  // Server mode ships only what this viewer may open inside the window (VIS/D8); the rest of a case
+  // loads on its own page. No CaseView rows yet = the full log and the full seed.
+  const who = viewer;
+  const shipped = who ? await orDemo(() => loadLogFor(who.companyId, { userId: who.userId, role: who.role }), () => null) : null;
+  const initialLog = shipped?.log ?? null;
+  const seed = shipped?.caseIds && shipped.projectIds ? seedForViewer(fullSeed, shipped.caseIds, shipped.projectIds) : fullSeed;
   // Postgres went away between the checks above and this read: show the demo, not a 500.
   if (!hasDatabase()) viewer = null;
 
