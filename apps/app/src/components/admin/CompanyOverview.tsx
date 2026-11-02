@@ -6,6 +6,8 @@ import { lockedOut } from "@/features/admin/nav";
 import { STAGE_MEANING, type Stage } from "@/features/admin/stages";
 import type { AssistantView } from "@/server/admin-insight";
 import type { ConsoleOverviewFacts } from "@/server/console-guard";
+import { consoleTodo } from "@/features/admin/console-overview";
+import { formatDate } from "@/i18n/format";
 import type { T } from "@/i18n";
 import styles from "@/app/admin/admin.module.css";
 
@@ -103,34 +105,63 @@ export function CompanyMissing() {
   );
 }
 
-/** The console's own front page (ITC-G1): who can get in, what is connected, what the assistant does. */
+/** The console's own front page (ITC-G1, ITC-H1): who can get in, what is connected, what to do. */
 export function ConsoleOverview({ company, facts, base, t }: { company: CompanyRow; facts: ConsoleOverviewFacts; base: string; t: T }) {
   const state = (on: boolean) => (on ? t("adminConsole.on") : t("adminConsole.off"));
+  const c = facts.connectors;
+  const names = [
+    c.jira ? t("adminConsole.connectorJira") : null,
+    c.m365 ? t("adminConsole.connectorM365") : null,
+    c.ai ? t("adminConsole.connectorAi") : null,
+  ].filter((x): x is string => x !== null);
+  // Both 24 h in en and de, so the locale does not matter for a time of day.
+  const support = facts.support
+    ? t("adminConsole.supportOpen", { time: formatDate("en", facts.support.until, "time") })
+    : t("adminConsole.supportNone");
+  const todo = consoleTodo(facts, facts.via ?? "stack-admin");
   return (
-    <section className={styles.card} data-testid="console-overview-card">
-      <div className={styles.cardHead}>
-        <h1>{company.name}</h1>
-      </div>
-      <p className={`nh-hint ${styles.lead}`}>{t("adminConsole.overviewLead")}</p>
-      <div className={styles.counts}>
-        <a className={styles.count} href={`${base}/people`} data-testid="console-overview-admins">
-          <span className={styles.countValue}>{facts.admins}</span>
-          <span className={styles.countLabel}>{t("adminConsole.adminsLabel")}</span>
-        </a>
-        <a className={styles.count} href={`${base}/people#microsoft`} data-testid="console-overview-entra">
-          <span className={styles.countValue}>{state(facts.entra)}</span>
-          <span className={styles.countLabel}>{t("adminConsole.entraLabel")}</span>
-        </a>
-        <a className={styles.count} href={`${base}/connectors`} data-testid="console-overview-connectors">
-          <span className={styles.countValue}>{state(facts.jira)}</span>
-          <span className={styles.countLabel}>{t("adminConsole.connectorsLabel")}</span>
-        </a>
-        <a className={styles.count} href={`${base}/assistant`} data-testid="console-overview-assistant">
-          <span className={styles.countValue}>{state(facts.assistant)}</span>
-          <span className={styles.countLabel}>{t("adminConsole.assistantLabel")}</span>
-        </a>
-      </div>
-      <p className="nh-hint" data-testid="console-overview-support">{t("adminConsole.supportNone")}</p>
-    </section>
+    <>
+      <section className={styles.card} data-testid="console-overview-card">
+        <div className={styles.cardHead}>
+          <h1>{company.name}</h1>
+        </div>
+        <p className={`nh-hint ${styles.lead}`}>{t("adminConsole.overviewLead")}</p>
+        <div className={styles.counts}>
+          <a className={styles.count} href={`${base}/people`} data-testid="console-overview-admins" data-tone={facts.admins === 0 ? "warn" : undefined}>
+            <span className={styles.countText}>{t(facts.admins === 1 ? "adminConsole.adminsOne" : "adminConsole.admins", { count: facts.admins })}</span>
+          </a>
+          <a className={styles.count} href={`${base}/people#microsoft`} data-testid="console-overview-entra">
+            <span className={styles.countText}>{t("adminConsole.entraState", { state: state(facts.entra) })}</span>
+          </a>
+          <a className={styles.count} href={`${base}/connectors`} data-testid="console-overview-connectors">
+            <span className={styles.countText}>
+              {t("adminConsole.connectorsState", { list: names.length ? names.join(", ") : t("adminConsole.noConnectors") })}
+            </span>
+          </a>
+          <a className={styles.count} href={`${base}/assistant`} data-testid="console-overview-assistant">
+            <span className={styles.countText}>{t("adminConsole.assistantState", { state: state(facts.assistant) })}</span>
+          </a>
+          <a className={styles.count} href={`${base}/support`} data-testid="console-overview-support" data-tone={facts.support ? "warn" : undefined}>
+            <span className={styles.countText}>{support}</span>
+          </a>
+        </div>
+      </section>
+
+      <section className={styles.card} data-testid="console-overview-todo">
+        <h2>{t("adminConsole.todoTitle")}</h2>
+        {todo.length ? (
+          <div className={styles.rows}>
+            {todo.map((line) => (
+              <div key={line.key} className={styles.row}>
+                <span>{t(line.key)}</span>
+                <a className="nh-btn nh-btn-ghost nh-btn-sm" href={`${base}${line.href}`}>{t("adminConsole.todoOpen")}</a>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="nh-hint">{t("adminConsole.todoNone")}</p>
+        )}
+      </section>
+    </>
   );
 }
