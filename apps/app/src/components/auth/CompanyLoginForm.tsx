@@ -3,6 +3,7 @@
 // no list to pick from. Props in, JSX out - the decisions live in src/server/actions/auth.ts and
 // src/server/microsoft-login.ts.
 import { useActionState, useState } from "react";
+import { useT } from "@/i18n/client";
 import { codeLogin, type LoginState } from "@/server/actions/auth";
 import { Field } from "@/components/ui/Field";
 import { Divider } from "@/components/ui/Divider";
@@ -18,6 +19,7 @@ type Props = { slug: string; short: string; next?: string; microsoftHref: string
 export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftError }: Props) {
   // The action is passed directly, not wrapped in a closure: React needs the real server action
   // to give the form something to submit to before it hydrates.
+  const t = useT();
   const [state, act, pending] = useActionState<LoginState, FormData>(codeLogin, {});
   // Our own message for an empty field, instead of the browser's "Please fill out this field"
   // bubble (the form is noValidate). Cleared as soon as they type.
@@ -33,7 +35,7 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
       onSubmit={(e) => {
         if (!code.trim()) {
           e.preventDefault();
-          setLocalError(`Enter your personal login code. Your team leader has it - it looks like ${slug}-xxxx-xxxx-xxxx.`);
+          setLocalError(t("auth.loginCodeRequired", { slug }));
         }
       }}
       autoComplete="off"
@@ -48,13 +50,13 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
         </p>
       ) : null}
 
-      <Field id="code" label="Your login code" error={error}>
+      <Field id="code" label={t("auth.loginCodeLabel")} error={error}>
         <input
           className="nh-input"
           id="code"
           name="code"
           type="text"
-          placeholder={`${slug}-xxxx-xxxx-xxxx`}
+          placeholder={t("auth.loginCodePlaceholder", { slug })}
           autoComplete="one-time-code"
           autoCapitalize="none"
           spellCheck={false}
@@ -70,7 +72,7 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
       </Field>
 
       <button className="nh-btn nh-btn-primary nh-btn-block" type="submit" disabled={pending}>
-        {pending ? "One moment…" : "Log in"}
+        {pending ? t("auth.oneMoment") : t("auth.logIn")}
       </button>
 
       {microsoftHref ? (
@@ -78,10 +80,10 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
           <Divider />
           <a className="nh-btn nh-btn-ghost nh-btn-block" href={microsoftHref}>
             <MicrosoftLogo />
-            Continue with Microsoft
+            {t("auth.continueWithMicrosoft")}
           </a>
           <p className={`nh-hint ${styles.under}`}>
-            With your {short} work account.
+            {t("auth.workAccount", { short })}
           </p>
         </>
       ) : null}

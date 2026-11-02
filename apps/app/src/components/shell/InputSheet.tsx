@@ -4,6 +4,7 @@
 // Port of sheetVals() in legacy/demo/js/dashboard.js. Views open it via ctx.openSheet(kind, id).
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { Btn } from "@/components/dashboard/shared/primitives";
+import { useT } from "@/i18n/client";
 import { ini } from "@/lib/utils/format";
 import styles from "./InputSheet.module.css";
 import { LOOP_SHEETS, LoopSheet } from "./LoopSheets";
@@ -19,6 +20,7 @@ type Model = {
 
 export function InputSheet() {
   const ctx = useDemo();
+  const t = useT();
   const { sheet, seed, S, persona, act, patchSheet, closeSheet, showToast, deptName } = ctx;
   if (!sheet) return null;
   // The discussion stage and the yes that opens a project have sheets of their own.
@@ -32,50 +34,50 @@ export function InputSheet() {
   if (sheet.kind === "no" && c) {
     const ok = !!sheet.picked;
     m = {
-      eyebrow: "No, and why", title: c.title, sub: c.from + " is told today. A no with a reason beats silence; pick the one that is true.",
+      eyebrow: t("shell.noEyebrow"), title: c.title, sub: t("shell.noSub", { from: c.from }),
       options: [
-        { id: "not now", label: "Not now", sub: "a real no from you — say why below" },
-        { id: "wrong department", label: "Wrong department", sub: "it belongs to someone else — consider handing it over instead" },
-        { id: "not responsible", label: "Nobody owns this", sub: "the map has no entry — it goes back to the department head" },
-        { id: "no time", label: "No time this quarter", sub: "you would take it, the plan is full" },
-        { id: "is it important", label: "Does not rank", sub: "against what the team has on, it is not the next thing" },
+        { id: "not now", label: t("shell.noNotNow"), sub: t("shell.noNotNowSub") },
+        { id: "wrong department", label: t("shell.noWrongDept"), sub: t("shell.noWrongDeptSub") },
+        { id: "not responsible", label: t("shell.noNobody"), sub: t("shell.noNobodySub") },
+        { id: "no time", label: t("shell.noNoTime"), sub: t("shell.noNoTimeSub") },
+        { id: "is it important", label: t("shell.noNoRank"), sub: t("shell.noNoRankSub") },
       ],
-      textLabel: "One line for " + c.from + " (optional)", placeholder: "e.g. Q4 at the earliest — the fixture team is on the 4-series until then",
-      ok, primaryLabel: ok ? "Send the no" : "Pick a reason", primaryKind: "primary",
-      onConfirm: () => { if (!ok || !sheet.picked) return; act.decide(c.id, "no", sheet.picked, text); done("Answered “no” in " + c.clock + " days — " + sheet.picked + ". " + c.from + " has been told."); },
+      textLabel: t("shell.noTextLabel", { from: c.from }), placeholder: t("shell.noPlaceholder"),
+      ok, primaryLabel: ok ? t("shell.noSend") : t("shell.noPick"), primaryKind: "primary",
+      onConfirm: () => { if (!ok || !sheet.picked) return; act.decide(c.id, "no", sheet.picked, text); done(t("shell.noDone", { clock: c.clock, reason: sheet.picked, from: c.from })); },
     };
   } else if (sheet.kind === "ask" && c) {
     const ok = text.length >= 4;
     m = {
-      eyebrow: "Ask one question", title: c.title, sub: "One question, not a form. The clock pauses until " + c.from + " answers; it lands in their My cases.",
-      textLabel: "Your question", placeholder: "e.g. Which belt size — the 40 mm or the 60 mm?",
-      ok, primaryLabel: ok ? "Send the question" : "Type the question", primaryKind: "primary",
-      onConfirm: () => { if (!ok) return; act.ask(c.id, text); done("Question sent to " + c.from + ". The clock is paused at " + c.clock + " d."); },
+      eyebrow: t("shell.askEyebrow"), title: c.title, sub: t("shell.askSub", { from: c.from }),
+      textLabel: t("shell.yourQuestion"), placeholder: t("shell.askPlaceholder"),
+      ok, primaryLabel: ok ? t("shell.askSend") : t("shell.typeQuestion"), primaryKind: "primary",
+      onConfirm: () => { if (!ok) return; act.ask(c.id, text); done(t("shell.askDone", { from: c.from, clock: c.clock })); },
     };
   } else if (sheet.kind === "reply" && c && c.question) {
     const ok = text.length >= 2, qBy = c.question.by;
     m = {
-      eyebrow: "Answer " + qBy, title: "“" + (c.question.text || "One question.") + "”", sub: "Your answer goes straight back; the clock on " + qBy + " starts again the moment you send it.",
-      textLabel: "Your answer", placeholder: "Short is fine.",
-      ok, primaryLabel: ok ? "Send the answer" : "Type your answer", primaryKind: "accent",
-      onConfirm: () => { if (!ok) return; act.answer(c.id, text); done("Answered. " + qBy + "’s clock is running again."); },
+      eyebrow: t("shell.replyEyebrow", { by: qBy }), title: t("shell.replyTitle", { text: c.question.text || t("shell.replyOneQuestion") }), sub: t("shell.replySub", { by: qBy }),
+      textLabel: t("shell.yourAnswer"), placeholder: t("shell.replyPlaceholder"),
+      ok, primaryLabel: ok ? t("shell.replySend") : t("shell.replyType"), primaryKind: "accent",
+      onConfirm: () => { if (!ok) return; act.answer(c.id, text); done(t("shell.replyDone", { by: qBy })); },
     };
   } else if (sheet.kind === "hand" && c) {
     const route = c.route;
     const cands: Option[] = [];
     const add = (name: string | undefined, sub: string) => { if (name && name !== who.name && !cands.some((x) => x.id === name)) cands.push({ id: name, label: name, sub }); };
     if (route) {
-      if (route.owner.name !== who.name) add(route.owner.name, "the map’s owner · " + route.owner.role + ", " + deptName(route.owner.dept));
-      add(route.deputy, route.owner.name === who.name ? "your deputy for this row" : "deputy on this row");
+      if (route.owner.name !== who.name) add(route.owner.name, t("shell.handOwner", { role: route.owner.role, dept: deptName(route.owner.dept) }));
+      add(route.deputy, route.owner.name === who.name ? t("shell.handDeputyYours") : t("shell.handDeputy"));
     }
-    seed.leaders.forEach((n) => { const r = seed.routes.find((x) => x.owner.name === n); add(n, r ? r.owner.role + " · " + deptName(r.owner.dept) : "team lead"); });
+    seed.leaders.forEach((n) => { const r = seed.routes.find((x) => x.owner.name === n); add(n, r ? r.owner.role + " · " + deptName(r.owner.dept) : t("shell.handTeamLead")); });
     // A pass needs a reason: the person receiving it and the one who raised it both read it.
     const picked = !!sheet.picked, why = text.length >= 8, ok = picked && why;
     m = {
-      eyebrow: "Pass on", title: c.title, sub: "Sideways, not up. Whoever you pick gets it in their inbox with the clock still running; " + c.from + " is told who has it now and why.",
-      options: cands, textLabel: "Why them", placeholder: "e.g. Quality owns the gauge — we only see the symptom",
-      ok, primaryLabel: !picked ? "Pick a person" : !why ? "Say why them" : "Pass to " + sheet.picked, primaryKind: "accent",
-      onConfirm: () => { if (!ok || !sheet.picked) return; act.hand(c.id, sheet.picked, text); done("Passed to " + sheet.picked + ". Both of you and " + c.from + " have been told. The clock keeps running."); },
+      eyebrow: t("shell.handEyebrow"), title: c.title, sub: t("shell.handSub", { from: c.from }),
+      options: cands, textLabel: t("shell.handWhy"), placeholder: t("shell.handPlaceholder"),
+      ok, primaryLabel: !picked ? t("shell.handPick") : !why ? t("shell.handSayWhy") : t("shell.handPassTo", { name: sheet.picked ?? "" }), primaryKind: "accent",
+      onConfirm: () => { if (!ok || !sheet.picked) return; act.hand(c.id, sheet.picked, text); done(t("shell.handDone", { name: sheet.picked, from: c.from })); },
     };
   } else if (sheet.kind === "assign" && i) {
     const funded = i.status === "Unfunded";
@@ -87,21 +89,21 @@ export function InputSheet() {
     seed.buddies.forEach((b) => add(b.name));
     const ok = sheet.people.length > 0, n = sheet.people.length;
     m = {
-      eyebrow: funded ? "Fund a trial" : "Approve and assign", title: i.title,
-      sub: (funded ? "A trial needs people more than money. " : "Approving stops the clock; naming the team is what makes it real. ") + "Pick who runs it — they are told today, and the proposer is credited.",
-      peopleNames: names, textLabel: "One line to the team (optional)",
-      placeholder: funded ? "e.g. Four weeks, one site, measure the wait before and after" : "e.g. Start with the two pilot sites; report on Thursday",
-      ok, primaryLabel: ok ? (funded ? "Fund it with " : "Approve with ") + n + (n === 1 ? " person" : " people") : "Pick at least one person", primaryKind: "accent",
-      onConfirm: () => { if (!ok) return; (funded ? act.fund : act.approve)(i.id, sheet.people, text); done((funded ? "Trial funded. " : "Approved. ") + sheet.people.join(", ") + (n === 1 ? " has" : " have") + " been told; the clock is stopped."); },
+      eyebrow: funded ? t("shell.fundEyebrow") : t("shell.approveEyebrow"), title: i.title,
+      sub: (funded ? t("shell.fundLead") : t("shell.approveLead")) + t("shell.assignSub"),
+      peopleNames: names, textLabel: t("shell.assignTextLabel"),
+      placeholder: funded ? t("shell.fundPlaceholder") : t("shell.approvePlaceholder"),
+      ok, primaryLabel: ok ? t(funded ? "shell.fundWith" : "shell.approveWith", { count: n }) : t("shell.assignPickOne"), primaryKind: "accent",
+      onConfirm: () => { if (!ok) return; (funded ? act.fund : act.approve)(i.id, sheet.people, text); done(t(funded ? "shell.fundDone" : "shell.approveDone", { names: sheet.people.join(", "), count: n })); },
     };
   } else if (sheet.kind === "askIdea" && i) {
-    const to = i.team[0] === "—" ? "the proposer" : i.team[0];
+    const to = i.team[0] === "—" ? t("shell.theProposer") : i.team[0];
     const ok = text.length >= 4;
     m = {
-      eyebrow: "Ask a question", title: i.title, sub: "Goes to " + to + ". It shows under the idea for everyone, so the answer is asked once.",
-      textLabel: "Your question", placeholder: "e.g. What happened at the two pilot sites when a purchase went wrong?",
-      ok, primaryLabel: ok ? "Ask " + to : "Type the question", primaryKind: "primary",
-      onConfirm: () => { if (!ok) return; act.askIdea(i.id, text); done("Question posted under “" + i.title + "”. " + to + " has been told."); },
+      eyebrow: t("shell.askIdeaEyebrow"), title: i.title, sub: t("shell.askIdeaSub", { to }),
+      textLabel: t("shell.yourQuestion"), placeholder: t("shell.askIdeaPlaceholder"),
+      ok, primaryLabel: ok ? t("shell.askIdeaSend", { to }) : t("shell.typeQuestion"), primaryKind: "primary",
+      onConfirm: () => { if (!ok) return; act.askIdea(i.id, text); done(t("shell.askIdeaDone", { title: i.title, to })); },
     };
   }
   if (!m) return null;
@@ -148,7 +150,7 @@ export function InputSheet() {
 
         <div className={styles.actions}>
           <Btn kind={m.ok ? m.primaryKind : "disabled"} onClick={m.onConfirm}>{m.primaryLabel}</Btn>
-          <Btn fixed onClick={closeSheet}>Cancel</Btn>
+          <Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn>
         </div>
       </div>
     </>

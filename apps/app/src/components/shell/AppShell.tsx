@@ -10,9 +10,11 @@ import { SHELL } from "@/config/roles";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { mineRows, openCases } from "@/components/dashboard/derive";
+import { useT } from "@/i18n/client";
 import { DevPanel } from "./DevPanel";
 import { Ground } from "./Ground";
 import { InputSheet } from "./InputSheet";
+import { navLabel } from "./NavSearch";
 import { SimpleShell } from "./SimpleShell";
 import { TopBar } from "./TopBar";
 import styles from "./AppShell.module.css";
@@ -26,6 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 // The full chrome: rail (nav by role) + top bar. Leaders and managers.
 function RailShell({ children }: { children: React.ReactNode }) {
   const ctx = useDemo();
+  const t = useT();
   const { tenant, role, persona, N, menu, setMenu, pop, setPop, sheet, toast } = ctx;
   const pathname = usePathname();
 
@@ -42,23 +45,23 @@ function RailShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={styles.root}>
       <Ground />
-      <aside className={styles.rail} data-open={menu ? "true" : undefined} aria-label="Main">
+      <aside className={styles.rail} data-open={menu ? "true" : undefined} aria-label={t("shell.navMain")}>
         <div className={styles.brand}>
           <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} className={styles.logo} />
           <span className={styles.brandText}>
             <span className={styles.brandTenant}>{tenant.name}</span>
           </span>
-          <button type="button" className={styles.close} onClick={() => setMenu(false)} aria-label="Close menu">×</button>
+          <button type="button" className={styles.close} onClick={() => setMenu(false)} aria-label={t("shell.closeMenu")}>×</button>
         </div>
 
-        <div className={styles.railLabel}>Views</div>
+        <div className={styles.railLabel}>{t("shell.views")}</div>
         <nav className={styles.nav}>
           {navFor(role, ctx.flag).map((n) => {
             const href = tenant.prefix + n.href;
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} onClick={() => { setPop(null); setMenu(false); }}>
-                <span>{n.label}</span>
+                <span>{navLabel(t, n.label)}</span>
                 <span className={styles.navCount}>{countFor[n.href] ?? ""}</span>
               </Link>
             );

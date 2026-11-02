@@ -1,9 +1,13 @@
+import { getT } from "@/i18n/server";
 import { AuthShell, AuthTitle } from "@/components/auth/AuthShell";
-export const metadata = { title: "Reset password" };
-export default function ForgotPasswordPage() {
+export async function generateMetadata() {
+  return { title: (await getT())("auth.metaResetPassword") };
+}
+export default async function ForgotPasswordPage() {
+  const t = await getT();
   return (
-    <AuthShell side={<h2>We will send a link.</h2>}>
-      <AuthTitle title="Reset your password" sub="Coming with real accounts in Phase 2." />
+    <AuthShell side={<h2>{t("auth.forgotSide")}</h2>}>
+      <AuthTitle title={t("auth.forgotTitle")} sub={t("auth.forgotSub")} />
     </AuthShell>
   );
 }

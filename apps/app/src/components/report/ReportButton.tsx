@@ -7,6 +7,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OPENER_NAMES, PERSON_AREA, TEAM_NAMES } from "@nextup/contracts";
+import { useT } from "@/i18n/client";
+import type { MessageKey } from "@/i18n";
 import type { ReportResult } from "@/server/actions/tickets";
 import { installCapture, recentErrors, recentFailures, recentPages, recordPage, takeScreenshot } from "./capture";
 import styles from "./ReportButton.module.css";
@@ -14,8 +16,8 @@ import styles from "./ReportButton.module.css";
 type Kind = "bug" | "idea" | "question";
 type Impact = "blocks" | "annoying" | "cosmetic";
 
-const KINDS: [Kind, string][] = [["bug", "Something's broken"], ["idea", "An idea"], ["question", "A question"]];
-const IMPACTS: [Impact, string][] = [["blocks", "Blocks me"], ["annoying", "Annoying"], ["cosmetic", "Cosmetic"]];
+const KINDS: [Kind, MessageKey][] = [["bug", "report.kindBug"], ["idea", "report.kindIdea"], ["question", "report.kindQuestion"]];
+const IMPACTS: [Impact, MessageKey][] = [["blocks", "report.impactBlocks"], ["annoying", "report.impactAnnoying"], ["cosmetic", "report.impactCosmetic"]];
 
 type Props = {
   submit: (input: unknown) => Promise<ReportResult>;
@@ -26,6 +28,7 @@ type Props = {
 };
 
 export function ReportButton({ submit, reportsHref, team = false }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [shot, setShot] = useState<string | null>(null);
@@ -107,8 +110,8 @@ export function ReportButton({ submit, reportsHref, team = false }: Props) {
         className={styles.fab}
         onClick={begin}
         disabled={capturing}
-        aria-label="Report a problem or an idea to the NextUp team"
-        title="Report a problem or an idea"
+        aria-label={t("report.fabLabel")}
+        title={t("report.fabTitle")}
       >
         <BugIcon />
       </button>
@@ -119,37 +122,37 @@ export function ReportButton({ submit, reportsHref, team = false }: Props) {
           <div className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="report-title">
             {sent ? (
               <div>
-                <div className={styles.eyebrow}>Sent</div>
-                <h2 id="report-title" className={styles.title}>Thanks, it&apos;s in as {sent}.</h2>
+                <div className={styles.eyebrow}>{t("report.sent")}</div>
+                <h2 id="report-title" className={styles.title}>{t("report.thanks", { label: sent })}</h2>
                 <p className={styles.sub}>
-                  The NextUp team sees it now. You&apos;ll get a mail when someone replies
+                  {t("report.sentSees")}
                   {reportsHref ? (
                     <>
-                      , and you can follow it under{" "}
-                      <Link href={reportsHref} onClick={close}>My reports</Link>
+                      {t("report.sentFollow")}{" "}
+                      <Link href={reportsHref} onClick={close}>{t("report.myReports")}</Link>
                     </>
                   ) : null}
                   .
                 </p>
                 <div className={styles.actions}>
-                  <button type="button" className="nh-btn nh-btn-primary" onClick={close}>Close</button>
+                  <button type="button" className="nh-btn nh-btn-primary" onClick={close}>{t("common.close")}</button>
                 </div>
               </div>
             ) : (
               <form onSubmit={send}>
-                <div className={styles.eyebrow}>Tell the NextUp team</div>
-                <h2 id="report-title" className={styles.title}>What happened?</h2>
+                <div className={styles.eyebrow}>{t("report.eyebrow")}</div>
+                <h2 id="report-title" className={styles.title}>{t("report.whatHappened")}</h2>
 
-                <div className={styles.chips} role="radiogroup" aria-label="Kind">
+                <div className={styles.chips} role="radiogroup" aria-label={t("report.kindLabel")}>
                   {KINDS.map(([k, label]) => (
                     <button key={k} type="button" role="radio" aria-checked={kind === k} data-on={kind === k} className={styles.chip} onClick={() => setKind(k)}>
-                      {label}
+                      {t(label)}
                     </button>
                   ))}
                 </div>
 
                 <label className={styles.textLabel} htmlFor="report-what">
-                  {kind === "idea" ? "Your idea" : kind === "question" ? "Your question" : "What happened"}
+                  {kind === "idea" ? t("report.yourIdea") : kind === "question" ? t("report.yourQuestion") : t("report.whatHappenedLabel")}
                 </label>
                 <textarea
                   id="report-what"
@@ -160,19 +163,19 @@ export function ReportButton({ submit, reportsHref, team = false }: Props) {
                   required
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder={kind === "bug" ? "I clicked … and then …" : ""}
+                  placeholder={kind === "bug" ? t("report.placeholder") : ""}
                 />
 
                 {kind === "bug" && (
                   <>
-                    <label className={styles.textLabel} htmlFor="report-expected">What did you expect?</label>
+                    <label className={styles.textLabel} htmlFor="report-expected">{t("report.expectLabel")}</label>
                     <textarea id="report-expected" className={styles.textarea} rows={2} maxLength={2000} value={expected} onChange={(e) => setExpected(e.target.value)} />
 
-                    <div className={styles.textLabel}>How much does it get in your way?</div>
-                    <div className={styles.chips} role="radiogroup" aria-label="Impact">
+                    <div className={styles.textLabel}>{t("report.howMuch")}</div>
+                    <div className={styles.chips} role="radiogroup" aria-label={t("report.impactLabel")}>
                       {IMPACTS.map(([i, label]) => (
                         <button key={i} type="button" role="radio" aria-checked={impact === i} data-on={impact === i} className={styles.chip} onClick={() => setImpact(i)}>
-                          {label}
+                          {t(label)}
                         </button>
                       ))}
                     </div>
@@ -181,20 +184,20 @@ export function ReportButton({ submit, reportsHref, team = false }: Props) {
 
                 {team && (
                   <>
-                    <div className={styles.textLabel}>Opened by</div>
-                    <div className={styles.chips} role="radiogroup" aria-label="Opened by">
+                    <div className={styles.textLabel}>{t("report.openedBy")}</div>
+                    <div className={styles.chips} role="radiogroup" aria-label={t("report.openedBy")}>
                       {[...OPENER_NAMES, ""].map((n) => (
                         <button key={n || "unknown"} type="button" role="radio" aria-checked={openedBy === n} data-on={openedBy === n} className={styles.chip} onClick={() => setOpenedBy(n)}>
-                          {n ? <>{n} <span className={styles.chipNote}>{PERSON_AREA[n as keyof typeof PERSON_AREA]}</span></> : "Somebody unknown"}
+                          {n ? <>{n} <span className={styles.chipNote}>{PERSON_AREA[n as keyof typeof PERSON_AREA]}</span></> : t("report.unknownPerson")}
                         </button>
                       ))}
                     </div>
 
-                    <div className={styles.textLabel}>Assign to <span className={styles.optional}>optional</span></div>
-                    <div className={styles.chips} role="radiogroup" aria-label="Assign to">
+                    <div className={styles.textLabel}>{t("report.assignTo")} <span className={styles.optional}>{t("report.optional")}</span></div>
+                    <div className={styles.chips} role="radiogroup" aria-label={t("report.assignTo")}>
                       {["", ...TEAM_NAMES].map((n) => (
                         <button key={n || "nobody"} type="button" role="radio" aria-checked={assignee === n} data-on={assignee === n} className={styles.chip} onClick={() => setAssignee(n)}>
-                          {n ? <>{n} <span className={styles.chipNote}>{PERSON_AREA[n as keyof typeof PERSON_AREA]}</span></> : "Nobody yet"}
+                          {n ? <>{n} <span className={styles.chipNote}>{PERSON_AREA[n as keyof typeof PERSON_AREA]}</span></> : t("report.nobodyYet")}
                         </button>
                       ))}
                     </div>
@@ -205,27 +208,27 @@ export function ReportButton({ submit, reportsHref, team = false }: Props) {
                   <div className={styles.shot}>
                     <label className={styles.shotToggle}>
                       <input type="checkbox" checked={withShot} onChange={(e) => setWithShot(e.target.checked)} />
-                      Include this screenshot
+                      {t("report.includeShot")}
                     </label>
                     {/* eslint-disable-next-line @next/next/no-img-element -- a data: URL made on this page, nothing for next/image to optimise */}
-                    <img src={shot} alt="Screenshot of the page as you saw it" className={styles.shotImg} data-off={!withShot} />
-                    <p className={styles.fine}>Password fields are blurred. Untick it if anything on screen shouldn&apos;t leave your company.</p>
+                    <img src={shot} alt={t("report.shotAlt")} className={styles.shotImg} data-off={!withShot} />
+                    <p className={styles.fine}>{t("report.shotFine")}</p>
                   </div>
                 ) : (
-                  <p className={styles.fine}>No screenshot this time: this browser couldn&apos;t take one.</p>
+                  <p className={styles.fine}>{t("report.noShot")}</p>
                 )}
 
                 <p className={styles.fine}>
-                  Sent along: this page&apos;s address, your browser and recent error messages. Not your name: the team sees your role only.
+                  {t("report.sentAlong")}
                 </p>
 
                 {error && <p className={styles.error} role="alert">{error}</p>}
 
                 <div className={styles.actions}>
                   <button type="submit" className="nh-btn nh-btn-primary" disabled={pending || !description.trim()}>
-                    {pending ? "Sending…" : "Send"}
+                    {pending ? t("report.sending") : t("report.send")}
                   </button>
-                  <button type="button" className="nh-btn nh-btn-ghost" onClick={close}>Cancel</button>
+                  <button type="button" className="nh-btn nh-btn-ghost" onClick={close}>{t("common.cancel")}</button>
                 </div>
               </form>
             )}

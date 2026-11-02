@@ -6,8 +6,13 @@
 //             should not start the demo over when they load go beside it, outside the frame
 
 // Where the links point depends on the stack it runs on (env), not on the build.
+import { getT } from "@/i18n/server";
+
 export const dynamic = "force-dynamic";
-export const metadata = { title: { template: "%s · NextUp demo", default: "NextUp demo" }, robots: { index: false } };
+export async function generateMetadata() {
+  const t = await getT();
+  return { title: { template: t("demo.titleTemplate"), default: t("demo.titleDefault") }, robots: { index: false } };
+}
 
 export default function DemoLayout({ children }: { children: React.ReactNode }) {
   return children;

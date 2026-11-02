@@ -3,6 +3,7 @@
 // src/server/actions/members.ts; a login code comes back once and is shown once, here.
 import { useActionState } from "react";
 import { ROLES } from "@/config/roles";
+import { useFormat, useT } from "@/i18n/client";
 import {
   addMemberAction,
   issueMemberCodeAction,
@@ -14,12 +15,13 @@ import {
 } from "@/server/actions/members";
 import styles from "./MembersView.module.css";
 
-const when = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-
 type Props = { slug: string; me: string; members: MemberRow[] };
 type Coded = CodeState & Pick<AddState, "problems" | "warnings">;
 
 export function MembersView({ slug, me, members }: Props) {
+  const t = useT();
+  const format = useFormat();
+  const when = (iso: string) => format.date(iso, "day");
   const [roled, setRole, saving] = useActionState<RoleState, FormData>(setMemberRoleAction, {});
   // Adding a person and "New code" share one state, so the code on screen is always the latest.
   const [coded, codeAction, coding] = useActionState<Coded, FormData>(async (_prev, form) => {
@@ -35,15 +37,14 @@ export function MembersView({ slug, me, members }: Props) {
   return (
     <div className={styles.wrap}>
       <p className="nh-hint">
-        Everyone signs in with their own login code{members.some((m) => m.microsoft) ? " or with Microsoft" : ""}.
-        A new code replaces the old one at once - that is also how you lock out a lost code.
+        {members.some((m) => m.microsoft) ? t("settings.hintCodeMicrosoft") : t("settings.hintCode")} {t("settings.hintNewCode")}
       </p>
 
       {fresh ? (
         <div className={styles.code} role="status">
-          <strong>Login code for {fresh.name}</strong>
+          <strong>{t("settings.codeFor", { name: fresh.name })}</strong>
           <span className={styles.codeValue}>{fresh.code}</span>
-          <span className="nh-hint">Give it to {fresh.name} only - it signs in as them. It is shown this once.</span>
+          <span className="nh-hint">{t("settings.codeGive", { name: fresh.name })}</span>
         </div>
       ) : null}
       {coded.warnings?.map((w) => <p key={w} className="nh-hint">{w}</p>)}
@@ -55,12 +56,12 @@ export function MembersView({ slug, me, members }: Props) {
         {members.map((m) => (
           <li key={m.id} className={styles.row}>
             <span className={styles.who}>
-              <strong>{m.name}{m.id === me ? " (you)" : ""}</strong>
+              <strong>{m.name}{m.id === me ? ` (${t("settings.you")})` : ""}</strong>
               <span className={styles.sub}>{m.email}{m.dept ? ` · ${m.dept}` : ""}</span>
             </span>
             <span className={styles.sub}>
-              {m.codeIssuedAt ? `Code since ${when(m.codeIssuedAt)}` : "No code yet"}
-              {m.microsoft ? " · Microsoft linked" : ""}
+              {m.codeIssuedAt ? t("settings.codeSince", { date: when(m.codeIssuedAt) }) : t("settings.noCode")}
+              {m.microsoft ? ` · ${t("settings.microsoftLinked")}` : ""}
             </span>
             <form action={setRole} className={styles.role}>
               <input type="hidden" name="slug" value={slug} />
@@ -69,7 +70,7 @@ export function MembersView({ slug, me, members }: Props) {
                 className="nh-select"
                 name="role"
                 defaultValue={m.role}
-                aria-label={`Role of ${m.name}`}
+                aria-label={t("settings.roleOf", { name: m.name })}
                 disabled={saving || m.id === me}
                 onChange={(e) => e.currentTarget.form?.requestSubmit()}
               >
@@ -79,7 +80,7 @@ export function MembersView({ slug, me, members }: Props) {
             <form action={codeAction}>
               <input type="hidden" name="slug" value={slug} />
               <button className="nh-btn nh-btn-ghost nh-btn-sm" type="submit" name="userId" value={m.id} disabled={coding}>
-                {m.codeIssuedAt ? "New code" : "Issue code"}
+                {m.codeIssuedAt ? t("settings.newCode") : t("settings.issueCode")}
               </button>
             </form>
           </li>
@@ -87,24 +88,24 @@ export function MembersView({ slug, me, members }: Props) {
       </ul>
 
       <form action={codeAction} className={styles.add}>
-        <h2 className={styles.addTitle}>Add a person</h2>
+        <h2 className={styles.addTitle}>{t("settings.addTitle")}</h2>
         <input type="hidden" name="slug" value={slug} />
         <input type="hidden" name="intent" value="add" />
         <div className={styles.addFields}>
           <label className="nh-field">
-            <span className="nh-label">Name</span>
+            <span className="nh-label">{t("settings.name")}</span>
             <input className="nh-input" name="name" required autoComplete="off" />
           </label>
           <label className="nh-field">
-            <span className="nh-label">Work email</span>
+            <span className="nh-label">{t("settings.workEmail")}</span>
             <input className="nh-input" name="email" type="email" required autoComplete="off" />
           </label>
           <label className="nh-field">
-            <span className="nh-label">Department</span>
+            <span className="nh-label">{t("settings.department")}</span>
             <input className="nh-input" name="dept" autoComplete="off" />
           </label>
           <label className="nh-field">
-            <span className="nh-label">Role</span>
+            <span className="nh-label">{t("settings.role")}</span>
             <select className="nh-select" name="role" defaultValue="member">
               {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
@@ -112,7 +113,7 @@ export function MembersView({ slug, me, members }: Props) {
         </div>
         {coded.problems?.map((p) => <p key={p} className="nh-error" role="alert">{p}</p>)}
         <div>
-          <button className="nh-btn nh-btn-primary" type="submit" disabled={coding}>Add and issue a code</button>
+          <button className="nh-btn nh-btn-primary" type="submit" disabled={coding}>{t("settings.addAndIssue")}</button>
         </div>
       </form>
     </div>

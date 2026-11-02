@@ -9,7 +9,8 @@ import { simpleNavFor } from "@/config/nav";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxCount, mineRows } from "@/components/dashboard/derive";
-import { NavSearch } from "./NavSearch";
+import { useT } from "@/i18n/client";
+import { NavSearch, navLabel } from "./NavSearch";
 import { decisionsWaiting } from "@/features/metrics";
 import { DevPanel } from "./DevPanel";
 import { Ground } from "./Ground";
@@ -18,6 +19,7 @@ import styles from "./SimpleShell.module.css";
 
 export function SimpleShell({ children }: { children: React.ReactNode }) {
   const ctx = useDemo();
+  const t = useT();
   const { tenant, role, persona, actor, email, pop, setPop, togglePop, sheet, toast, logout, D } = ctx;
   const pathname = usePathname();
   const who = persona.who;
@@ -48,10 +50,10 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   // decided (leader), what waits on them (manager). A manager raises nothing, so "0 raised" is noise.
   const decided = D.cases.filter((c) => c.decided?.by === who.name).length;
   const stats: [number, string][] = role === "manager"
-    ? [[counts.decisions, counts.decisions === 1 ? "decision waiting" : "decisions waiting"]]
+    ? [[counts.decisions, t("shell.statDecisionsWaiting", { count: counts.decisions })]]
     : role === "leader"
-      ? [[counts.inbox, "in inbox"], [decided, "decided"]]
-      : [[mine.length, "raised"], [shipped, "shipped"]];
+      ? [[counts.inbox, t("shell.statInInbox")], [decided, t("shell.statDecided")]]
+      : [[mine.length, t("shell.statRaised")], [shipped, t("shell.statShipped")]];
   const sent = role !== "manager"; // members and leaders raise things; the footer link follows them
 
   return (
@@ -65,7 +67,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <NavSearch>{(searchOpen) => (
-        <nav ref={navRef} className={styles.nav} aria-label="Main" inert={searchOpen} aria-hidden={searchOpen}>
+        <nav ref={navRef} className={styles.nav} aria-label={t("shell.navMain")} inert={searchOpen} aria-hidden={searchOpen}>
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
           {simpleNavFor(role, ctx.flag).map((n) => {
             const href = tenant.prefix + n.href;
@@ -75,7 +77,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
             const n1 = n.count ? counts[n.count] : 0;
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} onClick={() => setPop(null)}>
-                {n.label}{n1 > 0 && <span className={styles.navCount}>{n1}</span>}
+                {navLabel(t, n.label)}{n1 > 0 && <span className={styles.navCount}>{n1}</span>}
               </Link>
             );
           })}
@@ -83,11 +85,11 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
         )}</NavSearch>
 
         <div className={styles.right}>
-          <button type="button" className={styles.avatar} data-open={pop === "me" ? "true" : undefined} onClick={() => togglePop("me")} aria-label="Profile" title={who.name + " · " + who.line}>
+          <button type="button" className={styles.avatar} data-open={pop === "me" ? "true" : undefined} onClick={() => togglePop("me")} aria-label={t("shell.profile")} title={who.name + " · " + who.line}>
             {who.ini}
           </button>
           {pop === "me" && (
-            <div className={styles.me} role="dialog" aria-label="Profile">
+            <div className={styles.me} role="dialog" aria-label={t("shell.profile")}>
               <div className={styles.meHead}>
                 <span className={styles.meAvatar}>{who.ini}</span>
                 <span className={styles.meText}>
@@ -103,19 +105,19 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
               {/* Only worth showing when it differs from the header: the employee posts under a handle. */}
               {anon && (
                 <div className={styles.mePreview}>
-                  <span className={styles.mePreviewLabel}>How others see you</span>
+                  <span className={styles.mePreviewLabel}>{t("shell.othersSeeYou")}</span>
                   <span className={styles.mePreviewName}>{actor}</span>
-                  <span className={styles.meLine}>Anonymous · name and role hidden</span>
+                  <span className={styles.meLine}>{t("shell.anonymousHidden")}</span>
                 </div>
               )}
               <div className={styles.meFoot}>
                 <span className={styles.meLinks}>
-                  <Link href={tenant.prefix + "/profile"} className={styles.meLink} onClick={() => setPop(null)}>My profile <span aria-hidden="true">→</span></Link>
-                  {sent && <Link href={tenant.prefix + "/team"} className={styles.meLink} onClick={() => setPop(null)}>What I sent <span aria-hidden="true">→</span></Link>}
+                  <Link href={tenant.prefix + "/profile"} className={styles.meLink} onClick={() => setPop(null)}>{t("shell.myProfile")} <span aria-hidden="true">→</span></Link>
+                  {sent && <Link href={tenant.prefix + "/team"} className={styles.meLink} onClick={() => setPop(null)}>{t("shell.whatISent")} <span aria-hidden="true">→</span></Link>}
                   {/* Bug reports need the database - the offline demo has none. */}
-                  {ctx.serverMode && <Link href={tenant.prefix + "/reports"} className={styles.meLink} onClick={() => setPop(null)}>My reports <span aria-hidden="true">→</span></Link>}
+                  {ctx.serverMode && <Link href={tenant.prefix + "/reports"} className={styles.meLink} onClick={() => setPop(null)}>{t("shell.myReports")} <span aria-hidden="true">→</span></Link>}
                 </span>
-                <button type="button" className={styles.logout} onClick={logout}>Log out</button>
+                <button type="button" className={styles.logout} onClick={logout}>{t("shell.logOut")}</button>
               </div>
             </div>
           )}
