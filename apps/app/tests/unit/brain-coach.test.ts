@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 import { benchmark, weakest } from "@/features/ideas/benchmarks";
 import { coachRequest, coachText, withCoachSuggestion, COACH_MAX_HISTORY, type CoachAnswer } from "@/features/ideas/brain-coach";
 import { suggestReplies } from "@/features/ideas/replies";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { ROUTES } from "@/features/demo/seed";
 
-const ctx = { routes: ROUTES, goals: GOALS, cases: [], spendLimitEur: 5000 };
+const ctx = { routes: ROUTES, goals: DEMO_GOALS, cases: [], spendLimitEur: 5000 };
 const idea = { text: "Paper changeover sheets are a waste", affected: [], attachments: 0 };
 const answer = (over: Partial<CoachAnswer> = {}): CoachAnswer => ({
   open_point: "impact", earlier_id: null, note: "Paper you type in again is double work.",

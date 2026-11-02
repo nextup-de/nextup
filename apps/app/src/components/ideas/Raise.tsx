@@ -21,7 +21,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
-import { closest, evaluate, GOALS } from "@/features/evaluate";
+import { closest, evaluate } from "@/features/evaluate";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
 import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
@@ -37,7 +37,6 @@ import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, idea
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
-import { SPEND_LIMIT_EUR } from "@/features/ideas/drafts";
 import { saveShots, shrinkImage } from "@/lib/shots";
 import { saveRaised } from "@/lib/raised";
 import { brainProposalAction } from "@/server/actions/brain";
@@ -95,7 +94,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const { seed, S, persona, role, act, ready, href, tenant, showToast, serverMode } = useDemo();
   const story = script && role === "member"; // the demo script is the employee's story; others raise their own
   // The static demo scores and answers in this browser, against the seed it shows.
-  const local = useMemo(() => (script ? ideaContext(seed.routes, GOALS, S.cases) : null), [script, seed.routes, S.cases]);
+  const local = useMemo(() => (script ? ideaContext(seed.routes, seed.goals, S.cases, seed.spend) : null), [script, seed.routes, seed.goals, seed.spend, S.cases]);
   const studio = useIdeaStudio(tenant.slug, serverMode, persona.who.name, local);
   const scope = tenant.slug + "/" + persona.who.name; // whose page this is: what is kept across visits, per person
   const preview = useRaisePreview(scope);
@@ -296,7 +295,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const shownView = view === "preview" ? "chat" : view; // the last look opens over the chat
   // The rail: the topics prepared when the idea was raised - for a draft from an earlier visit, worked out
   // again from its first message.
-  const benchCtx = ideaContext(seed.routes, GOALS, S.cases);
+  const benchCtx = ideaContext(seed.routes, seed.goals, S.cases, seed.spend);
   // The scores come from the studio in the default language; in another one they are read again from the conversation.
   const parts = locale === DEFAULT_LOCALE || !turns.length ? storedParts : benchmark({ text: idea.text, affected, attachments: myFiles.length }, benchCtx, locale).parts;
   const myTopics = topics[slot] ?? (firstIdx >= 0 ? topicsOf(benchmark({ text: turns[firstIdx].text, affected: [], attachments: 0 }, benchCtx, locale).parts, locale) : []);
@@ -365,7 +364,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // What the receiver suggestions are worked out from: the idea, the org, the routing map, and how
   // everyone answered the cases on their desk.
   const receiverInput = (text: string, lead: string, brain: ReceiverInput["brain"]): ReceiverInput => ({
-    text, routes: seed.routes, people: seed.people, depts: seed.depts, promiseDays: seed.promiseDays, spendLimitEur: SPEND_LIMIT_EUR,
+    text, routes: seed.routes, people: seed.people, depts: seed.depts, promiseDays: seed.promiseDays, spendLimitEur: seed.spend?.limitEur ?? null,
     cases: S.cases.map((c) => ({ assignee: c.assignee, raisedDay: c.raisedDay, decided: c.decided })),
     lead, me: who.name, myDept: who.line.split(",")[0].trim(), affected, brain, yours: extras.recv[0] ?? null,
   });
@@ -646,7 +645,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   ] : [];
   const openCases = S.cases.filter((c) => c.open).length;
   const sources: Source[] = [
-    { name: t("ideas.pageSrcGoals"), where: t("ideas.pageSrcGoalsWhere", { n: GOALS.length }), ext: "DOC" },
+    { name: t("ideas.pageSrcGoals"), where: t("ideas.pageSrcGoalsWhere", { n: seed.goals.length }), ext: "DOC" },
     { name: t("ideas.pageSrcRouting"), where: t("ideas.pageSrcRoutingWhere", { n: seed.routes.length }), ext: "DOC" },
     { name: t("ideas.pageSrcCases"), where: t("ideas.pageSrcCasesWhere", { n: openCases }), ext: "IDEA" },
     // What the dials' "Checked across the company" lines read (features/ideas/company-read.ts), where the company has it.
@@ -665,8 +664,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const pattern = affected.length > 1 ? t("ideas.pagePatternWide", { teams: affected.join(", ") }) : t("ideas.pagePatternAlone");
   const company = companyRead({
     text: idea.text, lead: ev?.lead ?? lead, myDept: who.line.split(",")[0].trim(), affected, people: seed.people, depts: seed.depts,
-    routes: seed.routes, goals: GOALS, problems: seed.problems, ideas: seed.ideas, initiatives: seed.initiatives, outcomes: seed.outcomes,
-    cases: S.cases, promiseDays: seed.promiseDays, spendLimitEur: SPEND_LIMIT_EUR,
+    routes: seed.routes, goals: seed.goals, problems: seed.problems, ideas: seed.ideas, initiatives: seed.initiatives, outcomes: seed.outcomes,
+    cases: S.cases, promiseDays: seed.promiseDays, spendLimitEur: seed.spend?.limitEur ?? null,
   }, locale);
   const summaryOf = (text: string) => ((x) => (x.length > 320 ? x.slice(0, 320).replace(/\s+\S*$/, "") + "…" : x))(text.replace(/\s+/g, " ").trim()) || t("ideas.pageNothingToSummarise");
   const analysis: AnalysisData = { dials: scripted0(dialsOf(parts, locale), scriptAt - 1), company, summary: summaryOf(idea.text || ""), advice, pattern, cats, similar: sims, reviewers, sources };

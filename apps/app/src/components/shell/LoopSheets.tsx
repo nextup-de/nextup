@@ -12,7 +12,7 @@ import { checkinDraft, inviteSuggestions, roundState, versionText, type InviteSu
 import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith } from "@/features/cases/rows";
 import { commentsOn } from "@/features/cases/selectors";
-import { closest, GOALS } from "@/features/evaluate";
+import { closest } from "@/features/evaluate";
 import { SCORE_LABELS } from "@/features/ideas/brief";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { ideaContext } from "@/features/ideas/drafts";
@@ -126,7 +126,7 @@ function DiscussSheet({ c }: { c: ReducedCase }) {
   const suggested = useSuggestions(c);
   // What the benchmark still misses, as the desk holder's first draft of "what is missing".
   const [missing, setMissing] = useState(() => {
-    const bench = ideaContext(ctx.seed.routes, GOALS, S.cases.filter((k) => k.id !== c.id));
+    const bench = ideaContext(ctx.seed.routes, ctx.seed.goals, S.cases.filter((k) => k.id !== c.id), ctx.seed.spend);
     const parts = benchmark({ text: versionText(c), affected: standingOn(ctx, c), attachments: raisedWith(c).attachments }, bench).parts;
     const open = railOf(parts).filter((g) => g.status !== "clear").map((g, i) => (i ? g.need.toLowerCase() : g.need));
     return open.length ? open.join(", ") + "." : "";

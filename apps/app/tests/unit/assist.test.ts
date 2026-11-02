@@ -3,7 +3,7 @@
 // under the ceiling survive, and the tools never hand out a person's name.
 import { describe, expect, it } from "vitest";
 import { SEED } from "@/features/demo/seed";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { companyBrief, rowsFromSeed } from "@/features/knowledge";
 import { assist, type Provider } from "@/features/assist";
 import { canUse, ceilingOf } from "@/features/assist/classify";
@@ -15,7 +15,7 @@ import { markerOf, redact } from "@/features/assist/redact";
 import { runTool, Sources, type DocHit, type ToolContext } from "@/features/assist/tools";
 
 const counter = () => { let n = 0; return () => "id" + ++n; };
-const knowledge = rowsFromSeed(SEED, GOALS, counter());
+const knowledge = rowsFromSeed(SEED, DEMO_GOALS, counter());
 const people = SEED.people.map((p) => ({ name: p.name, role: p.role }));
 
 const DOCS: DocHit[] = [

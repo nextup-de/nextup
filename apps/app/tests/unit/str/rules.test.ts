@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_SEED } from "@/features/demo";
 import { DEMO_GOALS, DEMO_RULES } from "@/features/demo/structure";
-import { GOALS } from "@/features/evaluate";
 import { DEFAULT_RULES, rowsFromRules, rulesFromRows } from "@/features/knowledge/rules";
 
 describe("STR rule values", () => {
@@ -28,7 +27,6 @@ describe("STR rule values", () => {
   });
   it("holds acme's goals and spend rule", () => {
     expect(DEMO_GOALS).toHaveLength(4);
-    expect(DEMO_GOALS.map((g) => g.goal)).toEqual(GOALS.map((g) => g.goal));
     expect(DEMO_RULES.spend?.text).toContain("€5k");
   });
   it("starts an empty seed without goals or spend", () => {
