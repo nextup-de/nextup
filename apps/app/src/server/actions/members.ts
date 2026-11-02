@@ -15,8 +15,9 @@ import { isRole, roleChangeProblem, validateNewMember, type Member } from "@/fea
 import { companySeed } from "@/lib/db/companies";
 import type { Seed } from "@/features/demo/types";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { deactivateUser } from "@/lib/db/directory";
 
-export type MemberRow = Member & { dept: string; codeIssuedAt: string | null; microsoft: boolean };
+export type MemberRow = Member & { dept: string; codeIssuedAt: string | null; microsoft: boolean; active: boolean };
 
 type Manager = { userId: string; companyId: string; slug: string };
 
@@ -42,7 +43,7 @@ async function membersOf(companyId: string): Promise<MemberRow[]> {
   const rows = await getDb().user.findMany({
     where: { companyId },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, email: true, role: true, dept: true, loginCodeAt: true, entraOid: true },
+    select: { id: true, name: true, email: true, role: true, dept: true, loginCodeAt: true, entraOid: true, active: true },
   });
   return rows
     .filter((u) => isRole(u.role))
@@ -54,6 +55,7 @@ async function membersOf(companyId: string): Promise<MemberRow[]> {
       dept: u.dept,
       codeIssuedAt: u.loginCodeAt?.toISOString() ?? null,
       microsoft: Boolean(u.entraOid),
+      active: u.active,
     }));
 }
 
@@ -156,4 +158,35 @@ export async function addMemberAction(_prev: AddState, form: FormData): Promise<
   });
   revalidatePath(`/${manager.slug}/settings/members`);
   return { added: { name: person.name, code }, warnings: seed ? seedNameWarnings(seed, [person]) : [] };
+}
+
+export type RemoveState = { done?: string; error?: string };
+
+/** The leaver path of the directory sync for one person: inactive, seats vacated, open cases handed. Never oneself. */
+export async function deactivateMemberAction(_prev: RemoveState, form: FormData): Promise<RemoveState> {
+  const manager = await managerOf(String(form.get("slug") ?? ""));
+  if (!manager) return { error: forbidden };
+  const userId = String(form.get("userId") ?? "");
+  if (userId === manager.userId) return { error: "You can't deactivate yourself. Ask another manager." };
+  const user = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { name: true, active: true } });
+  if (!user) return { error: "No such person in this company." };
+  if (!user.active) return { error: `${user.name} is inactive already.` };
+  await deactivateUser(manager.companyId, userId);
+  revalidatePath(`/${manager.slug}/settings/members`);
+  return { done: `${user.name} is deactivated. Their open cases were handed on where someone else holds the role.` };
+}
+
+/** Removes an inactive person. Their events stay with the label; the link to the user is cleared (SetNull). */
+export async function deleteMemberAction(_prev: RemoveState, form: FormData): Promise<RemoveState> {
+  const manager = await managerOf(String(form.get("slug") ?? ""));
+  if (!manager) return { error: forbidden };
+  const userId = String(form.get("userId") ?? "");
+  if (userId === manager.userId) return { error: "You can't delete yourself. Ask another manager." };
+  const user = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { name: true, active: true } });
+  if (!user) return { error: "No such person in this company." };
+  if (user.active) return { error: `${user.name} is still active. Deactivate them first.` };
+  await getDb().orgRoleHolder.updateMany({ where: { companyId: manager.companyId, userId }, data: { userId: null } });
+  await getDb().user.delete({ where: { id: userId, companyId: manager.companyId } });
+  revalidatePath(`/${manager.slug}/settings/members`);
+  return { done: `${user.name} is deleted.` };
 }
