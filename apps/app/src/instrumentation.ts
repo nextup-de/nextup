@@ -14,6 +14,9 @@ export async function register() {
   // The Jira sync, once a minute for each company that switched it on (a no-op without a database).
   const { startJiraSync } = await import("@/server/jira-sync");
   startJiraSync();
+  // The clock scheduler writes what fell due, once, under a per-company lease (a no-op without a database).
+  const { startClock } = await import("@/server/scheduler/clock");
+  startClock();
   // Errors counted in memory go to the ErrorGroup table once a minute.
   const { startErrorFlush } = await import("@/server/errors");
   startErrorFlush();

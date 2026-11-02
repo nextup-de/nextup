@@ -26,6 +26,7 @@ import { companyBaseUrl, notifyCaseRaised } from "@/server/case-notice";
 import { mailConfigured } from "@/server/mail";
 import { kickJira } from "@/server/jira-sync";
 import { notifyLoop } from "@/server/loop-notice";
+import { proposeOnRaise } from "@/server/routing";
 import { getLocale } from "@/i18n/server";
 import { createT } from "@/i18n";
 
@@ -97,7 +98,9 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   const actor = actorLabel(viewer);
 
   // The seat a raise lands on is the server's call, whatever the client sent (features/cases/stamp.ts).
-  const stored = stampEvent(type, payload, seed);
+  let stored = stampEvent(type, payload, seed);
+  // So is the routing proposal: the brain's or the keywords', whatever the browser sent (server/routing.ts).
+  if (type === "case.raised") stored = { ...stored, proposal: await proposeOnRaise(slug, viewer.companyId, stored) };
   const result = await appendEventRow(
     viewer.companyId,
     { id, day: 0, type: type as CaseEventType, actor, targetId: target, payload: stored },
