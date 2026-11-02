@@ -6,14 +6,15 @@
 // Demo honesty: this is arithmetic over the seed, not a model. Every step names the fact it
 // used, so a manager can ask "where did that come from?" and get an answer.
 import type { CaseKind, RouteProposal, Visibility } from "@/features/cases/events";
-import type { OrgPerson, Problem, RolePersona, Route } from "@/features/demo/types";
+import { DEMO_GOALS } from "@/features/demo/structure";
+import type { OrgPerson, Problem, RolePersona, Route, SeedGoal, SpendRule } from "@/features/demo/types";
 import { propose, ROUTER_VERSION } from "@/features/routing";
 import type { BrainProposal } from "@/features/routing/brain";
 import { scoreCase, type Score } from "@/features/scoring";
 
 export type EvalInput = { kind: CaseKind; text: string; context?: string; affected: string[]; attachments: number; who: { name: string; line: string; handle: string | null }; visibility?: Visibility; seenBy?: string[] };
 export type KnownCase = { id?: string; title: string; from: string; age: number; open: boolean };
-export type EvalContext = { routes: readonly Route[]; people: readonly OrgPerson[]; personas: readonly RolePersona[]; problems: readonly Problem[]; cases: readonly KnownCase[]; promiseDays: number };
+export type EvalContext = { routes: readonly Route[]; people: readonly OrgPerson[]; personas: readonly RolePersona[]; problems: readonly Problem[]; cases: readonly KnownCase[]; promiseDays: number; goals: readonly SeedGoal[]; spend: SpendRule | null };
 export type EvalStep = { id: string; title: string; detail: string };
 export type Evaluation = {
   steps: EvalStep[];
@@ -26,14 +27,8 @@ export type Evaluation = {
   payload: { kind: CaseKind; title: string; body: string; upside: string; routeId: string | null; assignee: string; fromDept: string; reason: string; affected: string[]; attachments: number; proposal: RouteProposal; visibility?: Visibility; seenBy?: string[] };
 };
 
-// The demo company's goals, as the board would state them. Matched by keyword so a step can say which goal a case serves.
-export const GOALS: { goal: string; keys: string[] }[] = [
-  { goal: "No line stops waiting for a signature", keys: ["stop", "stood", "wait", "sign", "order", "approve", "night"] },
-  { goal: "Scrap and rework on the 4-series down 20 %", keys: ["scrap", "rework", "tolerance", "casting", "quality", "drift", "defect"] },
-  { goal: "Every changeover under 20 minutes", keys: ["changeover", "setup", "fixture", "jig", "tooling", "sheet", "mes"] },
-  { goal: "New hires productive in week one", keys: ["login", "access", "apprentice", "hire", "onboard", "account"] },
-];
-export const SPEND_RULE = { limit: "€5k", text: "team-level authority up to €5k, no controlling sign-off" };
+/** @deprecated acme's demo goals - read seed.goals */
+export const GOALS = DEMO_GOALS;
 
 // Words that say nothing about what a text is about, however often two texts share them.
 const FILLER = new Set(("that this with from have been were will would could should there their they them then than what when where which while " +
@@ -83,7 +78,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposa
   const passesTo = route && route.owner.name !== lead ? route.owner.name : null;
   const similar = brain ? ctx.problems.find((p) => p.id === brain.sameAs) ?? null : closest(full, ctx.problems, (p) => p.title + " " + p.sub);
   const sameAs = brain ? ctx.cases.find((c) => c.id !== undefined && c.id === brain.sameAs) ?? null : closest(full, ctx.cases.filter((c) => c.title !== text), (c) => c.title);
-  const goal = goalOf(full, GOALS);
+  const goal = goalOf(full, ctx.goals);
   const spend = /€|spend|buy|order|purchase|budget|cost|invoice/.test(lower);
   // Scored exactly as the dashboard will score the stored case: the goal it serves is kept as its upside.
   const upside = goal ? goal.goal : "";
@@ -94,7 +89,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposa
     { id: "read", title: "Reading the " + thing, detail: words(full).length + " words from " + (input.who.handle ?? input.who.name) + " · " + input.who.line + (input.attachments ? " · " + input.attachments + (input.attachments === 1 ? " screenshot" : " screenshots") : "") },
     { id: "org", title: "Org chart · who is responsible", detail: (leadRow ? lead + " leads your team (" + leadRow.role + ")" : lead + " leads your team") + (route ? " · " + route.owner.name + " owns “" + route.type + "”" : " · no map entry matches yet") + (brain?.reason ? " · " + brain.reason : "") },
     { id: "goals", title: "Company goals & values", detail: goal ? "Serves: “" + goal.goal + "”" : "No stated goal matches directly — logged as a new signal" },
-    { id: "budget", title: "Budget & authority", detail: spend ? "Spend involved — " + SPEND_RULE.text : "No spend needed to decide this" },
+    { id: "budget", title: "Budget & authority", detail: spend ? "Spend involved — " + (ctx.spend ? ctx.spend.text : "no spend rule set for this company") : "No spend needed to decide this" },
     { id: "history", title: "Raised before?", detail: sameAs ? "Yes — “" + sameAs.title + "” by " + sameAs.from + ", " + (sameAs.age === 0 ? "today" : sameAs.age + " d ago") + (sameAs.open ? ", still open" : "")
       : similar ? "Looks like “" + similar.title + "” · " + similar.people + " people, " + similar.age : "Nothing similar in the last 12 months" },
     { id: "affected", title: "Who else it touches", detail: input.affected.length ? input.affected.join(", ") + " · " + (input.affected.length + 1) + " people in total" : "You so far — others can add themselves" },

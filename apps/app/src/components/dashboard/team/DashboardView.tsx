@@ -12,6 +12,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { useT } from "@/i18n/client";
+import type { MessageKey, T } from "@/i18n";
 import { visibleTo } from "@/components/dashboard/derive";
 import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
 import { inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
@@ -38,14 +40,14 @@ const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagNa
 
 type Filter = "all" | "move" | "problem" | "idea" | "mine";
 type Sort = "move" | "wait";
-const FILTER_LABEL: Record<Filter, string> = { all: "All", move: "Your move", problem: "Problems", idea: "Ideas", mine: "Mine" };
-const SORT_LABEL: Record<Sort, string> = { move: "Your move first", wait: "Longest waiting" };
-const STATUS_LABEL: Record<OverviewStatus, string> = {
-  move: "Your move", asked: "Needs more info", replied: "Replied", waiting: "Waiting", approved: "Approved", declined: "Not now", building: "Building", shipped: "Shipped",
+const FILTER_LABEL: Record<Filter, MessageKey> = { all: "team.dashFilterAll", move: "team.dashFilterMove", problem: "team.dashFilterProblem", idea: "team.dashFilterIdea", mine: "team.dashFilterMine" };
+const SORT_LABEL: Record<Sort, MessageKey> = { move: "team.dashSortMove", wait: "team.dashSortWait" };
+const STATUS_LABEL: Record<OverviewStatus, MessageKey> = {
+  move: "team.dashStatusMove", asked: "team.dashStatusAsked", replied: "team.dashStatusReplied", waiting: "team.dashStatusWaiting", approved: "team.dashStatusApproved", declined: "team.dashStatusDeclined", building: "team.dashStatusBuilding", shipped: "team.dashStatusShipped",
 };
-const stepLabel = (step: number) => (step >= OVERVIEW_STEPS.length ? "Shipped" : OVERVIEW_STEPS[step]);
+const stepLabel = (t: T, step: number) => (step >= OVERVIEW_STEPS.length ? t("team.dashStatusShipped") : OVERVIEW_STEPS[step]);
 // A case in a discussion is still waiting on its desk; the status says it is being talked over.
-const statusLabel = (r: DashRow, st: OverviewStatus) => (r.talk && (st === "waiting" || st === "replied") ? "In discussion" : STATUS_LABEL[st]);
+const statusLabel = (t: T, r: DashRow, st: OverviewStatus) => (r.talk && (st === "waiting" || st === "replied") ? t("team.dashInDiscussion") : t(STATUS_LABEL[st]));
 // Still running: open, or waiting on an answer to a question (the clock is paused, nothing is answered yet).
 const running = (r: DashRow) => r.open || r.paused;
 
@@ -54,6 +56,7 @@ type Profile = { p: Person; x: number; y: number };
 // On a phone it rises from the bottom as a sheet instead, like the inbox's person cards.
 function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: () => void; sheet: boolean }) {
   const { href, tenant } = useDemo();
+  const t = useT();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopImmediatePropagation(); onClose(); } };
     window.addEventListener("keydown", onKey, true);
@@ -71,12 +74,12 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
             <span className={s.span2}><span className={s.desk}>{p.name}</span><span className={s.dept}>{p.role}</span></span>
           </div>
           <div className={s.div115}>
-            <span className={s.department}>Department</span><span className={s.dept2}>{p.dept || "—"}</span>
-            <span className={s.department}>Location</span><span className={s.dept2}>{p.location || "—"}</span>
-            <span className={s.department}>Email</span><a className={s.email} href={"mailto:" + p.email}>{p.email}</a>
+            <span className={s.department}>{t("team.dashDepartment")}</span><span className={s.dept2}>{p.dept || "—"}</span>
+            <span className={s.department}>{t("team.dashLocation")}</span><span className={s.dept2}>{p.location || "—"}</span>
+            <span className={s.department}>{t("team.dashEmail")}</span><a className={s.email} href={"mailto:" + p.email}>{p.email}</a>
           </div>
           {!tenant.hiddenPeople?.includes(p.name) && <Link className={s.viewProfile} href={href("/people/" + encodeURIComponent(p.name))} onClick={onClose}>
-            View profile<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 1l5 5-5 5" /></svg>
+            {t("team.dashViewProfile")}<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 1l5 5-5 5" /></svg>
           </Link>}
         </div>
       </div>
@@ -85,6 +88,7 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
 }
 
 export function DashboardView({ caseId, linkCases = false, embedded = false, title }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode } = {}) {
+  const t = useT();
   const ctx = useDemo();
   const { seed, D, log, persona, role, ready, href, tenant, act, actor, f, motion, flag } = ctx;
   const router = useRouter();
@@ -186,12 +190,12 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       id: c.id, title: c.title, raised: f(c.raisedDay), dept: (row.mine ? "" : c.from + " · ") + c.fromDept,
       steps: overviewSteps(c, f, row.mine), desk: { name: desk, role: roleOf(desk) },
       wait: {
-        text: !running(row) ? "answered in " + row.clock + " d" : late ? row.clock + " d · past the " + P + "-day promise" : row.clock + " d of the " + P + "-day promise" + (row.paused ? " · clock paused" : ""),
+        text: !running(row) ? t("team.dashWaitAnswered", { n: row.clock }) : late ? t("team.dashWaitLate", { n: row.clock, days: P }) : t(row.paused ? "team.dashWaitOpenPaused" : "team.dashWaitOpen", { n: row.clock, days: P }),
         pct: Math.min(100, (row.clock / P) * 100), tone: !running(row) ? "done" : late ? "late" : "open",
       },
       brief,
       // What the raise page attached (the idea document, PDFs, sheets), then the screenshots kept in this browser.
-      files: [...brief.files.map((x) => ({ name: x.name, ext: x.ext || "FILE", meta: x.size || "File" })), ...loadShots(tenant.slug, c.id).map((x) => ({ name: x.name, ext: extOf(x.name) || "IMG", meta: "Screenshot" }))],
+      files: [...brief.files.map((x) => ({ name: x.name, ext: x.ext || "FILE", meta: x.size || t("team.dashFile") })), ...loadShots(tenant.slug, c.id).map((x) => ({ name: x.name, ext: extOf(x.name) || "IMG", meta: t("team.dashScreenshot") }))],
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (m.by === actor ? "" : " · " + m.by) })),
       mode, onMode: setMode, editSignal,
       edit: preview.edits[c.id] ?? null, onSave: (e) => preview.saveEdit(c.id, e), // as in the design, anyone who opens it may edit
@@ -203,7 +207,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             canAnswer={canAnswer} onSend={(t) => (canAnswer ? act.answer(c.id, t) : act.comment(c.id, t))}
             deputy={c.route && c.route.deputy !== desk ? c.route.deputy : null}
             supporters={brief.feed.supporters} sentiment={brief.feed.sentiment}
-            feed={commentsOn(log, c.id).filter((m) => !m.rescore).map((m) => ({ name: m.by === actor ? "You" : m.by, role: m.by === actor ? "You" : roleOf(m.by) || "Comment", text: m.text, when: f(m.day), mine: m.by === actor }))}
+            feed={commentsOn(log, c.id).filter((m) => !m.rescore).map((m) => ({ name: m.by === actor ? t("team.dashYou") : m.by, role: m.by === actor ? t("team.dashYou") : roleOf(m.by) || t("team.dashComment"), text: m.text, when: f(m.day), mine: m.by === actor }))}
             onComment={(t) => act.comment(c.id, t)}
             directory={seed.people.filter((x) => x.name !== persona.who.name).map((x) => ({ name: x.name, role: x.role }))}
             onDetails={() => { setMode("idea"); setEditSignal((n) => n + 1); }}
@@ -239,20 +243,20 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
         <div className={s.div8}>
           <div className={s.div9}>
             {/* On the Projects page the page title above is the heading; the column brings its own. */}
-            {embedded ? title : <h1 className={s.overview}>Overview</h1>}
+            {embedded ? title : <h1 className={s.overview}>{t("team.dashOverview")}</h1>}
           </div>
           <div className={s.div10}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}
             <div className={s.div11}>
               <button type="button" className={s.toggleFilter} onClick={() => setMenu(menu === "filter" ? null : "filter")} aria-expanded={menu === "filter"} aria-haspopup="menu">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-                {filter === "all" ? "Filter" : FILTER_LABEL[filter]}
+                {filter === "all" ? t("team.dashFilter") : t(FILTER_LABEL[filter])}
               </button>
               {menu === "filter" && (
                 <div className={s.div12} role="menu">
                   {filters.map((k) => (
                     <button key={k} type="button" role="menuitemradio" aria-checked={filter === k} className={s.pick} data-on={filter === k ? "true" : undefined} onClick={() => { setFilter(k); setMenu(null); }}>
-                      <span className={s.label}>{FILTER_LABEL[k]}</span>
+                      <span className={s.label}>{t(FILTER_LABEL[k])}</span>
                       <span className={s.count}>{rows.filter(test[k]).length}</span>
                       <span className={s.check}>{filter === k ? "✓" : ""}</span>
                     </button>
@@ -263,13 +267,13 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             <div className={s.div11}>
               <button type="button" className={s.toggleSort} onClick={() => setMenu(menu === "sort" ? null : "sort")} aria-expanded={menu === "sort"} aria-haspopup="menu">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" /></svg>
-                {sort === "move" ? "Sort" : SORT_LABEL[sort]}
+                {sort === "move" ? t("team.dashSort") : t(SORT_LABEL[sort])}
               </button>
               {menu === "sort" && (
                 <div className={s.div12} role="menu">
                   {(["move", "wait"] as const).map((k) => (
                     <button key={k} type="button" role="menuitemradio" aria-checked={sort === k} className={s.pick} data-on={sort === k ? "true" : undefined} onClick={() => { setSort(k); setMenu(null); }}>
-                      <span className={s.label}>{SORT_LABEL[k]}</span>
+                      <span className={s.label}>{t(SORT_LABEL[k])}</span>
                       <span className={s.check}>{sort === k ? "✓" : ""}</span>
                     </button>
                   ))}
@@ -279,10 +283,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
           </div>
         </div>
         {split && <div className={s.archiveBar}><ArchiveTabs view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} /></div>}
-        <div className={s.div13} role="table" aria-label="Problems and ideas">
+        <div className={s.div13} role="table" aria-label={t("team.dashTable")}>
           <div className={s.div14} role="row">
-            <span role="columnheader">What</span><span role="columnheader">Open since</span><span role="columnheader">Stage</span><span role="columnheader">On whose desk</span>
-            <span role="columnheader" className={s.status}>Status</span>
+            <span role="columnheader">{t("team.dashColWhat")}</span><span role="columnheader">{t("team.dashColOpenSince")}</span><span role="columnheader">{t("team.dashColStage")}</span><span role="columnheader">{t("team.dashColDesk")}</span>
+            <span role="columnheader" className={s.status}>{t("team.dashColStatus")}</span>
           </div>
           {shown.map((r, i) => {
             const desk = r.chain[r.chain.length - 1];
@@ -298,12 +302,12 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
                 <span className={s.mBody}>
                   <span className={s.mMain} role="cell">
                     <span className={s.mTitle}>{r.title}</span>
-                    <span className={s.mWho}>{desk}<span className={s.mMute}> · {stepLabel(r.step)}</span></span>
+                    <span className={s.mWho}>{desk}<span className={s.mMute}> · {stepLabel(t, r.step)}</span></span>
                     <span className={s.mSub}>{r.mine ? r.fromDept : r.from + " · " + r.fromDept}</span>
                   </span>
                   <span className={s.mRight} role="cell">
-                    <span className={s.mWhen} data-tone={late ? "late" : undefined}>{!running(r) ? "answered" : late ? "past promise" : r.openDays + " d open"}</span>
-                    <span className={s.badge} data-tone={badgeTone}>{statusLabel(r, st)}</span>
+                    <span className={s.mWhen} data-tone={late ? "late" : undefined}>{!running(r) ? t("team.dashAnswered") : late ? t("team.dashPastPromise") : t("team.dashDaysOpen", { n: r.openDays })}</span>
+                    <span className={s.badge} data-tone={badgeTone}>{statusLabel(t, r, st)}</span>
                   </span>
                 </span>
               </div>
@@ -315,15 +319,15 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
                   <div className={s.div16}><span className={s.dept}>{r.mine ? r.fromDept : r.from + " · " + r.fromDept}</span></div>
                 </div>
                 <div className={s.div17} role="cell" data-tone={late ? "late" : !running(r) ? "done" : undefined}>
-                  <span className={s.wait}>{(running(r) ? r.openDays : r.clock) + " d"}</span>
-                  <span className={s.waitSub}>{!running(r) ? "answered" : late ? "past promise" : r.paused ? "clock paused" : P - r.clock + " d left"}</span>
+                  <span className={s.wait}>{t("team.dashDaysShort", { n: running(r) ? r.openDays : r.clock })}</span>
+                  <span className={s.waitSub}>{!running(r) ? t("team.dashAnswered") : late ? t("team.dashPastPromise") : r.paused ? t("team.dashClockPaused") : t("team.dashDaysLeft", { n: P - r.clock })}</span>
                 </div>
                 <div className={s.div18} role="cell">
-                  <span className={s.stage}>{stepLabel(r.step)}</span>
+                  <span className={s.stage}>{stepLabel(t, r.step)}</span>
                   <div className={s.div19}>{OVERVIEW_STEPS.map((x, k) => <span key={x} className={s.span} data-tone={k < r.step ? "done" : k === r.step ? "now" : undefined} />)}</div>
                 </div>
                 {open ? (
-                  <button type="button" className={s.onProfile} role="cell" onClick={open} title={"View " + desk}>
+                  <button type="button" className={s.onProfile} role="cell" onClick={open} title={t("team.dashViewPerson", { name: desk })}>
                     <span className={s.initials} data-avatar={avatarTone(desk)}>{initialsOf(desk)}</span>
                     <span className={s.span2}><span className={s.desk}>{desk}</span><span className={s.role}>{roleOf(desk)}</span></span>
                   </button>
@@ -333,14 +337,14 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
                     <span className={s.span2}><span className={s.desk}>{desk}</span><span className={s.role}>{roleOf(desk)}</span></span>
                   </div>
                 )}
-                <div className={s.div5} role="cell"><span className={s.badge} data-tone={badgeTone}>{statusLabel(r, st)}</span></div>
+                <div className={s.div5} role="cell"><span className={s.badge} data-tone={badgeTone}>{statusLabel(t, r, st)}</span></div>
               </div>
             );
           })}
           {rows.length === 0 && (
-            <div className={s.nothingHere}>{role === "member" ? "You have not raised anything yet." : "Nothing here yet."} <Link href={href("/raise")}>Raise the first one →</Link></div>
+            <div className={s.nothingHere}>{role === "member" ? t("team.dashEmptyMember") : t("team.dashEmptyOther")} <Link href={href("/raise")}>{t("team.dashRaiseFirst")}</Link></div>
           )}
-          {rows.length > 0 && shown.length === 0 && <div className={s.nothingHere}>Nothing here.</div>}
+          {rows.length > 0 && shown.length === 0 && <div className={s.nothingHere}>{t("team.dashNothingHere")}</div>}
         </div>
       </div>
       <div className={s.layer} data-open={phoneCase ? "true" : undefined} data-layer={phoneCase ? "true" : undefined} aria-hidden={!phoneCase || undefined}>{phoneCase}</div>

@@ -8,6 +8,8 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen } from "@/components/dashboard/derive";
+import { useT } from "@/i18n/client";
+import { translate, type MessageKey, type T } from "@/i18n";
 import { Avatar, Empty, Pill, reasonTone, statusTone } from "@/components/dashboard/shared/primitives";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
 import { roundState } from "@/features/cases/discussion";
@@ -21,26 +23,27 @@ import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CaseDetailView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
-const STATUS_LABEL = { open: "Sent", discussion: "In discussion", asked: "Question for you", decided: "Decided", building: "Building", shipped: "Shipped" } as const;
+const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped" } as const satisfies Record<string, MessageKey>;
 
 // Facts in, one sentence out - nothing here is stored.
-function sentence(e: CaseEvent): string {
+function sentence(e: CaseEvent, t: T): string {
   const p = e.payload;
+  const actor = e.actor;
   switch (e.type) {
-    case "case.raised": return e.actor + " raised this";
-    case "case.read": return e.actor + " read it";
-    case "case.decided": return e.actor + " answered “" + (p.answer ?? "yes") + "”" + (p.reason ? " — " + p.reason : "") + (p.note ? ": “" + p.note + "”" : "") + (p.projectId ? " and opened a project" + (p.lead && p.lead !== e.actor ? " led by " + p.lead : "") : "");
-    case "case.discussion": return e.actor + " started a discussion" + (p.invited?.length ? " with " + p.invited.join(", ") : "") + (p.missing ? " — missing: “" + p.missing + "”" : "");
-    case "case.invited": return e.actor + " invited " + (p.invited ?? []).join(", ");
-    case "case.revised": return e.actor + " posted a new version" + (typeof p.overall === "number" ? " · score " + p.overall : "");
-    case "case.checkin": return e.actor + " checked in: " + (p.next === "decide" ? "ready to decide" : "another round") + (p.open?.length ? " · open: " + p.open.join(", ") : "");
-    case "case.handed": return e.actor + " handed it to " + p.to + (p.why ? " — “" + p.why + "”" : "");
-    case "case.asked": return e.actor + " asked: “" + (p.text || "One question.") + "” · clock paused";
-    case "case.answered": return e.actor + " answered: “" + p.text + "” · clock running again";
-    case "case.building": return e.actor + " started the build" + (p.expected ? " — expected " + p.expected : "") + (p.days ? ", " + p.days + " days" : "");
-    case "case.shipped": return e.actor + " shipped it — " + p.outcome + (p.outcomeNote ? " (" + p.outcomeNote + ")" : "");
-    case "case.override": return e.actor + " overruled the proposed route";
-    default: return e.actor + " · " + e.type;
+    case "case.raised": return t("dashboard.evRaised", { actor });
+    case "case.read": return t("dashboard.evRead", { actor });
+    case "case.decided": return t("dashboard.evDecided", { actor, answer: p.answer ?? t("common.yes").toLowerCase() }) + (p.reason ? " " + t("dashboard.evReasonSuffix", { reason: p.reason }) : "") + (p.note ? t("dashboard.evNoteSuffix", { note: p.note }) : "") + (p.projectId ? " " + t("dashboard.evOpenedProject") + (p.lead && p.lead !== actor ? " " + t("dashboard.evLedBy", { lead: p.lead }) : "") : "");
+    case "case.discussion": return t("dashboard.evDiscussion", { actor }) + (p.invited?.length ? " " + t("dashboard.evWith", { names: p.invited.join(", ") }) : "") + (p.missing ? " " + t("dashboard.evMissing", { missing: p.missing }) : "");
+    case "case.invited": return t("dashboard.evInvited", { actor, names: (p.invited ?? []).join(", ") });
+    case "case.revised": return t("dashboard.evRevised", { actor }) + (typeof p.overall === "number" ? " " + t("dashboard.evScore", { n: p.overall }) : "");
+    case "case.checkin": return t("dashboard.evCheckin", { actor, next: p.next === "decide" ? t("dashboard.evReadyToDecide") : t("dashboard.evAnotherRound") }) + (p.open?.length ? " " + t("dashboard.evOpenList", { list: p.open.join(", ") }) : "");
+    case "case.handed": return t("dashboard.evHanded", { actor, to: p.to ?? "" }) + (p.why ? " " + t("dashboard.evHandedWhy", { why: p.why }) : "");
+    case "case.asked": return t("dashboard.evAsked", { actor, text: p.text || t("dashboard.evOneQuestion") });
+    case "case.answered": return t("dashboard.evAnswered", { actor, text: p.text ?? "" });
+    case "case.building": return t("dashboard.evBuilding", { actor }) + (p.expected ? " " + t("dashboard.evExpected", { x: p.expected }) : "") + (p.days ? t("dashboard.evDaysSuffix", { n: p.days }) : "");
+    case "case.shipped": return t("dashboard.evShipped", { actor, outcome: p.outcome ?? "" }) + (p.outcomeNote ? " " + t("dashboard.evParen", { note: p.outcomeNote }) : "");
+    case "case.override": return t("dashboard.evOverride", { actor });
+    default: return actor + " · " + e.type;
   }
 }
 
@@ -48,6 +51,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const ctx = useDemo();
   const { S, log, href, ready, f, actor, persona, role, act, openSheet, showToast, tenant, flag } = ctx;
   const router = useRouter();
+  const t = useT();
   const [note, setNote] = useState("");
   const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
   const [asking, setAsking] = useState(false); // the why field is open
@@ -58,8 +62,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   if (!c || !canOpen(ctx, c)) {
     return (
       <div className={ui.card}>
-        <Empty title="No such case" sub={"Nothing with the id “" + caseId + "” is in your view for this company."}>
-          <Link href={href("/")} className={ui.ghost}>Back home</Link>
+        <Empty title={t("dashboard.detailNoCase")} sub={t("dashboard.detailNoCaseSub", { id: caseId })}>
+          <Link href={href("/")} className={ui.ghost}>{t("dashboard.detailBackHome")}</Link>
         </Empty>
       </div>
     );
@@ -84,20 +88,20 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   // Back: where the visitor came from when it was inside the app, otherwise the dashboard.
   const back = () => { if (window.history.length > 1 && document.referrer.startsWith(window.location.origin)) router.back(); else router.push(href("/overview")); };
   const share = async () => {
-    try { await navigator.clipboard.writeText(window.location.href); showToast("Link copied — it opens for whoever may see this case."); }
+    try { await navigator.clipboard.writeText(window.location.href); showToast(t("dashboard.detailLinkCopied")); }
     catch { showToast(window.location.href); }
   };
-  const sendNote = () => { const t = note.trim(); if (!t) return; act.comment(c.id, t); setNote(""); };
+  const sendNote = () => { const text = note.trim(); if (!text) return; act.comment(c.id, text); setNote(""); };
   const sendWhy = () => {
-    const t = why.trim(); if (!t) return;
-    if (lead) { act.affect(c.id, t); showToast("Noted — your team is counted behind this " + c.kind + "."); }
-    else { act.rescore(c.id, t); showToast("Score re-evaluated with the new information."); }
+    const text = why.trim(); if (!text) return;
+    if (lead) { act.affect(c.id, text); showToast(t("dashboard.detailNoted", { kind: t(c.kind === "idea" ? "dashboard.detailKindIdea" : "dashboard.detailKindProblem") })); }
+    else { act.rescore(c.id, text); showToast(t("dashboard.detailRescored")); }
     setWhy(""); setAsking(false);
   };
   const rs = roundState(c, S.rules, S.day);
-  const clock = c.status === "asked" ? "clock paused at " + c.clock + " d"
-    : c.status === "discussion" && rs ? (rs.ready ? "ready to decide" : "round " + rs.round + " of " + rs.of + " · " + (rs.late ? "check-in " + -rs.left + " d late" : "check-in " + f(rs.dueDay)))
-      : c.open ? (c.overdue ? c.clock - P + " d past the promise" : P - c.clock + " d left on the promise") : "answered in " + c.clock + " d";
+  const clock = c.status === "asked" ? t("dashboard.detailClockPaused", { n: c.clock })
+    : c.status === "discussion" && rs ? (rs.ready ? t("dashboard.evReadyToDecide") : t("dashboard.detailRound", { round: rs.round, of: rs.of, tail: rs.late ? t("dashboard.detailCheckinLate", { n: -rs.left }) : t("dashboard.detailCheckinOn", { date: f(rs.dueDay) }) }))
+      : c.open ? (c.overdue ? t("dashboard.detailPastPromise", { n: c.clock - P }) : t("dashboard.detailLeftPromise", { n: P - c.clock })) : t("dashboard.detailAnsweredIn", { n: c.clock });
   // Archived and a project: read-only here, the conversation goes on at the project.
   const project = c.archived && flag("projects") ? projectOfCase(S, c) : undefined;
   const talk = flag("discussion");
@@ -105,37 +109,37 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   return (
     <>
     <div className={styles.bar}>
-      <button type="button" className={styles.back} onClick={back}>← Back</button>
-      <button type="button" className={ui.textlink} onClick={share}>Copy link</button>
+      <button type="button" className={styles.back} onClick={back}>← {t("common.back")}</button>
+      <button type="button" className={ui.textlink} onClick={share}>{t("dashboard.detailCopyLink")}</button>
     </div>
     {flag("projects") && <ArchiveBanner c={c} />}
     <div className={ui.split}>
       <div className={ui.stack}>
       <div className={ui.card}>
-        <div className={ui.eyebrow}>{c.kind === "idea" ? "Idea" : "Problem"} · {c.id}</div>
+        <div className={ui.eyebrow}>{t(c.kind === "idea" ? "dashboard.detailIdea" : "dashboard.detailProblem")} · {c.id}</div>
         <div className={ui.h2}>{c.title}</div>
         <div className={`${ui.chips} ${styles.meta}`}>
-          <Pill tone={statusTone(STATUS_LABEL[c.status])}>{STATUS_LABEL[c.status]}</Pill>
+          <Pill tone={statusTone(translate("en", STATUS_LABEL[c.status]))}>{t(STATUS_LABEL[c.status])}</Pill>
           <Pill tone={reasonTone(c.reason)}>{c.reason}</Pill>
-          <span className={ui.small}>raised {f(c.raisedDay)} · {clock}</span>
+          <span className={ui.small}>{t("dashboard.detailRaised", { date: f(c.raisedDay), clock })}</span>
         </div>
         <div className={`${ui.quote} ${ui.mt14}`}>
           <div className={ui.quoteText}>{c.body || "—"}</div>
-          <div className={ui.quoteBy}><Avatar name={c.from} size="sm" /> {c.from} · {c.fromDept}{extra.attachments > 0 && <> · {extra.attachments} screenshot{extra.attachments > 1 ? "s" : ""} attached</>}</div>
+          <div className={ui.quoteBy}><Avatar name={c.from} size="sm" /> {c.from} · {c.fromDept}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
           {shots.length > 0 && (
             <div className={styles.shots}>
               {shots.map((s, i) => (
-                <button key={i} type="button" className={styles.shot} onClick={() => setBig(i)} aria-label={"Open " + s.name}>
+                <button key={i} type="button" className={styles.shot} onClick={() => setBig(i)} aria-label={t("dashboard.detailOpenShot", { name: s.name })}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- a local data URL, never fetched */}
                   <img src={s.url} alt={s.name} />
                 </button>
               ))}
             </div>
           )}
-          {extra.attachments > 0 && shots.length === 0 && <div className={styles.shotsGone}>The screenshots were kept in the browser that raised this case.</div>}
+          {extra.attachments > 0 && shots.length === 0 && <div className={styles.shotsGone}>{t("dashboard.detailShotsGone")}</div>}
         </div>
         <div className={styles.desks}>
-          <span className={ui.eyebrow}>Desks</span>
+          <span className={ui.eyebrow}>{t("dashboard.detailDesks")}</span>
           <span className={styles.chain}>
             {chain.map((name, i) => (
               <span key={i} className={styles.hop} data-last={i === chain.length - 1 ? "true" : undefined}>
@@ -143,16 +147,16 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                 <Avatar name={name} size="sm" />{name}
               </span>
             ))}
-            {c.escalated && <span className={styles.auto}>auto-escalated</span>}
+            {c.escalated && <span className={styles.auto}>{t("dashboard.detailAutoEscalated")}</span>}
           </span>
         </div>
         <div className={`${ui.grid2} ${ui.mt14}`}>
-          <div className={ui.tile}><div className={ui.tileTitle}>{c.assignee}</div><div className={ui.tileL}>on whose desk it is{c.escalated ? " · also " + c.escalated.to : ""}</div></div>
-          <div className={ui.tile}><div className={ui.tileTitle}>{c.route ? c.route.type : "no matching route"}</div><div className={ui.tileL}>{c.route ? "deputy " + c.route.deputy + " · buddy " + c.route.buddy : "a human triages it"}</div></div>
+          <div className={ui.tile}><div className={ui.tileTitle}>{c.assignee}</div><div className={ui.tileL}>{t("dashboard.detailOnDesk")}{c.escalated ? " " + t("dashboard.detailAlso", { to: c.escalated.to }) : ""}</div></div>
+          <div className={ui.tile}><div className={ui.tileTitle}>{c.route ? c.route.type : t("dashboard.detailNoRoute")}</div><div className={ui.tileL}>{c.route ? t("dashboard.detailDeputyBuddy", { deputy: c.route.deputy, buddy: c.route.buddy }) : t("dashboard.detailTriage")}</div></div>
         </div>
         <div className={`${ui.grid2} ${ui.mt8}`}>
-          <div className={ui.tile}><div className={ui.tileTitle}>{c.upside || "not estimated yet"}</div><div className={ui.tileL}>what it costs while it waits</div></div>
-          <div className={ui.tile}><div className={ui.tileTitle}>{c.shipped ? c.shipped.outcome : c.building?.expected ? "expected " + c.building.expected : "pending"}</div><div className={ui.tileL}>outcome</div></div>
+          <div className={ui.tile}><div className={ui.tileTitle}>{c.upside || t("dashboard.detailNotEstimated")}</div><div className={ui.tileL}>{t("dashboard.detailCostWaiting")}</div></div>
+          <div className={ui.tile}><div className={ui.tileTitle}>{c.shipped ? c.shipped.outcome : c.building?.expected ? t("dashboard.detailExpected", { x: c.building.expected }) : t("dashboard.detailPending")}</div><div className={ui.tileL}>{t("dashboard.detailOutcome")}</div></div>
         </div>
       </div>
       {talk && <DiscussionPanel c={c} />}
@@ -161,43 +165,43 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
       <div className={ui.stack}>
       <div className={ui.card}>
-        <div className={ui.eyebrow}>Your move</div>
-        <div className={styles.score} title={score.parts.map((p) => "+" + p.points + " " + p.label).join("\n") || "Base score only"}>
+        <div className={ui.eyebrow}>{t("dashboard.detailYourMove")}</div>
+        <div className={styles.score} title={score.parts.map((p) => "+" + p.points + " " + p.label).join("\n") || t("dashboard.detailBaseOnly")}>
           <span className={styles.scoreV} data-band={scoreBand(score.value)}>{score.value}</span>
-          <span className={styles.scoreL}>score · {score.parts.length ? score.parts.map((p) => p.label.toLowerCase()).join(", ") : "base only"}</span>
+          <span className={styles.scoreL}>{t("dashboard.detailScore", { parts: score.parts.length ? score.parts.map((p) => p.label.toLowerCase()).join(", ") : t("dashboard.detailBaseOnlyLc") })}</span>
         </div>
         {updates.map((u) => (
-          <div key={u.id} className={styles.corr}>Corrected because of “{u.text}” · {u.by === actor ? "you" : u.by}, {f(u.day)}</div>
+          <div key={u.id} className={styles.corr}>{t("dashboard.detailCorrected", { text: u.text, by: u.by === actor ? t("dashboard.detailYou") : u.by, date: f(u.day) })}</div>
         ))}
         <div className={styles.actions}>
           {c.open && lead && (
             <button type="button" className={`nh-btn nh-btn-sm ${meToo ? "nh-btn-ghost" : "nh-btn-primary"}`} aria-pressed={meToo} aria-expanded={asking}
-              onClick={() => { if (meToo) { act.affect(c.id); showToast("Withdrawn."); } else setAsking((v) => !v); }}>
-              {meToo ? "✓ Affects my team too" : "Affects my team too"}
+              onClick={() => { if (meToo) { act.affect(c.id); showToast(t("dashboard.detailWithdrawn")); } else setAsking((v) => !v); }}>
+              {meToo ? "✓ " : ""}{t("dashboard.detailAffects")}
             </button>
           )}
           {c.open && !lead && (
-            <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" aria-expanded={asking} onClick={() => setAsking((v) => !v)}>Re-evaluate the score</button>
+            <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" aria-expanded={asking} onClick={() => setAsking((v) => !v)}>{t("dashboard.detailReevaluate")}</button>
           )}
-          {mine && c.status === "asked" && <button type="button" className="nh-btn nh-btn-accent nh-btn-sm" onClick={() => openSheet("reply", c.id)}>Answer the question</button>}
-          {!c.open && <Link href={href("/raise")} className="nh-btn nh-btn-ghost nh-btn-sm">Raise a follow-up</Link>}
+          {mine && c.status === "asked" && <button type="button" className="nh-btn nh-btn-accent nh-btn-sm" onClick={() => openSheet("reply", c.id)}>{t("dashboard.detailAnswerQuestion")}</button>}
+          {!c.open && <Link href={href("/raise")} className="nh-btn nh-btn-ghost nh-btn-sm">{t("dashboard.detailFollowUp")}</Link>}
         </div>
         {asking && c.open && (
           <div className={styles.whyRow}>
-            <input className={styles.note} value={why} onChange={(e) => setWhy(e.target.value)} autoFocus aria-label={lead ? "Why it affects your team" : "What is new"}
-              placeholder={lead ? "Because… what it does to your team" : "What is new — where, since when, what it costs now"}
+            <input className={styles.note} value={why} onChange={(e) => setWhy(e.target.value)} autoFocus aria-label={lead ? t("dashboard.detailWhyAffects") : t("dashboard.detailWhatIsNew")}
+              placeholder={lead ? t("dashboard.detailWhyPlaceholder") : t("dashboard.detailNewPlaceholder")}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendWhy(); } if (e.key === "Escape") setAsking(false); }} />
-            <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={sendWhy} disabled={!why.trim()}>{lead ? "Confirm" : "Re-evaluate"}</button>
+            <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={sendWhy} disabled={!why.trim()}>{lead ? t("dashboard.detailConfirm") : t("dashboard.detailReevaluateShort")}</button>
           </div>
         )}
         {standing.length > 0 && (
           <div className={styles.standing}>
             <span className={styles.avatars}>{standing.slice(0, 6).map((n) => <Avatar key={n} name={n} size="sm" />)}</span>
-            <span className={ui.small}>{standing.length === 1 ? standing[0] + " is" : standing.length + " people are"} affected too · raised by {mine ? "you" : c.from}</span>
+            <span className={ui.small}>{t("dashboard.detailAffected", { count: standing.length, name: standing[0], by: mine ? t("dashboard.detailYou") : c.from })}</span>
           </div>
         )}
         {reasons.map((a) => (
-          <div key={a.name} className={styles.corr}>{a.name === actor ? "You" : a.name}, as the lead: “{a.why}” · {f(a.day)}</div>
+          <div key={a.name} className={styles.corr}>{t("dashboard.detailAsLead", { who: a.name === actor ? t("dashboard.detailYouCap") : a.name, why: a.why ?? "", date: f(a.day) })}</div>
         ))}
         <div className={styles.thread}>
           {comments.map((m) => (
@@ -205,30 +209,30 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               <Avatar name={m.by} size="sm" />
               <div className={ui.rowBody}>
                 <div className={styles.commentText}>{m.text}</div>
-                <div className={styles.commentBy}>{m.by === actor ? "you" : m.by} · {f(m.day)}{m.rescore && <span className={styles.rescoreTag}>new information · score re-evaluated</span>}</div>
+                <div className={styles.commentBy}>{m.by === actor ? t("dashboard.detailYou") : m.by} · {f(m.day)}{m.rescore && <span className={styles.rescoreTag}>{t("dashboard.detailNewInfoTag")}</span>}</div>
               </div>
             </div>
           ))}
           {project ? (
-            <div className={styles.moved}>This idea is archived. Comments go on the project: <Link href={href("/projects/" + project.id)}>{projectLabel(project)} {project.title} →</Link></div>
+            <div className={styles.moved}>{t("dashboard.detailArchivedMoved")} <Link href={href("/projects/" + project.id)}>{projectLabel(project)} {project.title} →</Link></div>
           ) : (
           <div className={styles.noteRow}>
-            <input className={styles.note} value={note} onChange={(e) => setNote(e.target.value)} placeholder={comments.length ? "Add to the thread" : "Add what you know — where, since when, what it costs"} aria-label="Comment"
+            <input className={styles.note} value={note} onChange={(e) => setNote(e.target.value)} placeholder={comments.length ? t("dashboard.detailAddThread") : t("dashboard.detailAddKnow")} aria-label={t("dashboard.detailComment")}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendNote(); } }} />
-            <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={sendNote} disabled={!note.trim()}>Post</button>
+            <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={sendNote} disabled={!note.trim()}>{t("dashboard.detailPost")}</button>
           </div>
           )}
         </div>
       </div>
 
       <div className={ui.card}>
-        <div className={ui.eyebrow}>What happened</div>
+        <div className={ui.eyebrow}>{t("dashboard.detailWhatHappened")}</div>
         <ol className={styles.timeline}>
           {c.history.map((e) => (
             <li key={e.id} className={styles.event}>
               <span className={styles.dot} data-seed={e.seed ? "true" : undefined} />
               <div className={styles.eventBody}>
-                <div className={styles.eventText}>{sentence(e)}</div>
+                <div className={styles.eventText}>{sentence(e, t)}</div>
                 <div className={styles.eventWhen}>{f(e.day)}</div>
               </div>
             </li>
@@ -237,13 +241,13 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             <li className={styles.event}>
               <span className={styles.dot} data-tone="accent" />
               <div className={styles.eventBody}>
-                <div className={styles.eventText}>Past the {P}-day promise — the map moved it sideways to {c.escalated.to} as well</div>
+                <div className={styles.eventText}>{t("dashboard.detailPastPromiseEscalated", { n: P, to: c.escalated.to })}</div>
                 <div className={styles.eventWhen}>{f(c.escalated.day)}</div>
               </div>
             </li>
           )}
         </ol>
-        <div className={`${ui.note} ${ui.mt}`}>Every line is one event in the log. Nothing on this page is stored as text — it is built from who did what on which day.</div>
+        <div className={`${ui.note} ${ui.mt}`}>{t("dashboard.detailLogNote")}</div>
       </div>
       </div>
     </div>
@@ -254,8 +258,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         <img src={shots[big].url} alt={shots[big].name} onClick={(e) => e.stopPropagation()} />
         <div className={styles.lightboxBar}>
           <span>{shots[big].name} · {big + 1}/{shots.length}</span>
-          {shots.length > 1 && <button type="button" onClick={(e) => { e.stopPropagation(); setBig((big + 1) % shots.length); }}>Next →</button>}
-          <button type="button" onClick={() => setBig(null)}>Close</button>
+          {shots.length > 1 && <button type="button" onClick={(e) => { e.stopPropagation(); setBig((big + 1) % shots.length); }}>{t("dashboard.detailNext")}</button>}
+          <button type="button" onClick={() => setBig(null)}>{t("common.close")}</button>
         </div>
       </div>,
       document.body,
