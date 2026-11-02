@@ -2,6 +2,9 @@
 // login code when someone joins or loses theirs, and the "Continue with Microsoft" switch.
 import { notFound, redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
+import { getDb } from "@/lib/db/client";
+import { getT } from "@/i18n/server";
+import { StackAdminSwitch } from "@/components/admin/StackAdminSwitch";
 import { adminContext } from "@/server/admin-context";
 import { adminBase } from "@/features/admin/nav";
 import { CompanyAccess } from "@/components/admin/CompanyAccess";
@@ -14,6 +17,15 @@ export default async function PeoplePage() {
   // The platform admin has this per company, under Companies.
   if (ctx.scope !== "company") notFound();
   if (!ctx.company) return <CompanyMissing />;
+
+  const t = await getT();
+  const people = ctx.live
+    ? await getDb().user.findMany({
+        where: { company: { slug: ctx.company.slug }, active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, isStackAdmin: true, totpEnabledAt: true },
+      })
+    : [];
 
   return (
     <section className={styles.card}>
@@ -28,6 +40,14 @@ export default async function PeoplePage() {
       ) : (
         <p className="nh-hint">Login codes are stored in the database, which is not answering right now.</p>
       )}
+      {people.length ? (
+        <>
+          <h2>{t("adminAccess.stackAdminTitle")}</h2>
+          {people.map((p) => (
+            <StackAdminSwitch key={p.id} slug={ctx.company!.slug} userId={p.id} name={p.name} isStackAdmin={p.isStackAdmin} hasTotp={Boolean(p.totpEnabledAt)} />
+          ))}
+        </>
+      ) : null}
     </section>
   );
 }
