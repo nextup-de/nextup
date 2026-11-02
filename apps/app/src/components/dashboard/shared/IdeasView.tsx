@@ -6,22 +6,28 @@ import { useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { criteriaTags, problemOf, scopedIdeas, sortIdeas, type IdeaSort } from "@/components/dashboard/derive";
-import { Avatar, Btn, Empty, Pill, Tile, statusTone } from "@/components/dashboard/shared/primitives";
+import { Avatar, Btn, Empty, Pill, Tile, statusTone, wordText } from "@/components/dashboard/shared/primitives";
 import { FilterStrip, ListTools, ViewHead, type Chip } from "@/components/dashboard/shared/ViewHead";
 import type { IdeaStatus } from "@/features/demo/types";
 import { hits, ideaHay, tokens } from "@/features/search";
+import { useLocale, useT } from "@/i18n/client";
+import type { MessageKey } from "@/i18n";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./IdeasView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
-const SORTS: { id: IdeaSort; label: string }[] = [
-  { id: "score", label: "Most criteria met" }, { id: "wait", label: "Longest waiting" }, { id: "upside", label: "Biggest upside" }, { id: "title", label: "A → Z" },
+const SORTS: { id: IdeaSort; msg: MessageKey }[] = [
+  { id: "score", msg: "dashboard.ideasSortScore" }, { id: "wait", msg: "dashboard.ideasSortWait" }, { id: "upside", msg: "dashboard.ideasSortUpside" }, { id: "title", msg: "dashboard.sortAZ" },
 ];
-const STATUSES: IdeaStatus[] = ["Awaiting decision", "In trial", "Building", "Unfunded", "Shipped"];
+// In the order the facet lists them; the first one is the status that waits on a decision.
+const STATUSES = Object.keys({ "Awaiting decision": 0, "In trial": 0, Building: 0, Unfunded: 0, Shipped: 0 } satisfies Record<IdeaStatus, 0>) as IdeaStatus[];
+const AWAITING = STATUSES[0];
 
 export function IdeasView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
   const { seed, S, demo, role, persona, act, openSheet, showToast, q, setQ, href, ready, f } = ctx;
+  const t = useT();
+  const locale = useLocale();
   const [iid, setIid] = useState<string | null>(initialId ?? null);
   const [sort, setSort] = useState<IdeaSort>("score");
   const [status, setStatus] = useState("All");
@@ -38,36 +44,36 @@ export function IdeasView({ initialId }: { initialId?: string }) {
 
   const filterCount = status !== "All" ? 1 : 0;
   const filtered = (filterCount > 0 || hasQuery) && scope.length > 0;
-  const showing = "Showing " + sorted.length + " of " + scope.length + " ideas";
-  const facets = [{ key: "status", label: "Status", value: status, onSel: setStatus,
-    options: [{ id: "All", label: "All", count: searched.length }].concat(STATUSES.map((s) => ({ id: s, label: s, count: searched.filter((i) => i.status === s).length }))) }];
+  const showing = t("dashboard.ideasShowing", { n: sorted.length, total: scope.length });
+  const facets = [{ key: "status", label: t("dashboard.ideasFacetStatus"), value: status, onSel: setStatus,
+    options: [{ id: "All", label: t("dashboard.listAll"), count: searched.length }].concat(STATUSES.map((s) => ({ id: s, label: wordText(t, s), count: searched.filter((i) => i.status === s).length }))) }];
   const chips: Chip[] = [];
-  if (hasQuery) chips.push({ label: "“" + q.trim() + "”", onRemove: () => setQ("") });
-  if (status !== "All") chips.push({ label: status, onRemove: () => setStatus("All") });
+  if (hasQuery) chips.push({ label: t("dashboard.chipQuery", { q: q.trim() }), onRemove: () => setQ("") });
+  if (status !== "All") chips.push({ label: wordText(t, status), onRemove: () => setStatus("All") });
   const clearAll = () => { setQ(""); setStatus("All"); };
 
-  const decidable = si?.status === "Awaiting decision", fundable = si?.status === "Unfunded";
+  const decidable = si?.status === AWAITING, fundable = si?.status === "Unfunded";
   const cosigned = !!si && si.cosigners.some((x) => x.name === persona.who.handle);
-  const primaryLabel = isEmployee ? (cosigned ? "Co-signed ✓" : "Co-sign this idea") : decidable ? "Approve and assign" : fundable ? "Fund a trial" : "Open the trial";
+  const primaryLabel = t(isEmployee ? (cosigned ? "dashboard.ideasCosigned" : "dashboard.ideasCosign") : decidable ? "dashboard.ideasApproveAssign" : fundable ? "dashboard.ideasFundTrial" : "dashboard.ideasOpenTrial");
   const onPrimary = () => {
     if (!si) return;
-    if (isEmployee) { const added = act.cosign(si.id); showToast(added ? "You co-signed “" + si.title + "”. Credit follows your handle." : "Co-sign withdrawn from “" + si.title + "”."); }
+    if (isEmployee) { const added = act.cosign(si.id); showToast(added ? t("dashboard.ideasYouCosigned", { title: si.title }) : t("dashboard.ideasCosignWithdrawn", { title: si.title })); }
     else if (decidable || fundable) openSheet("assign", si.id, { people: si.team.filter((n) => n !== "—" && n !== "Anonymous") });
-    else showToast("Opened " + si.title + ".");
+    else showToast(t("dashboard.ideasOpened", { title: si.title }));
   };
-  const emptySub = filtered ? "Try fewer words, or clear the search and filters to see everything in scope."
-    : demo ? "No ideas are tied to problems in this department yet." : "Ideas appear here as step three of a case — once a problem exists, whoever raised it (or anyone else) can propose the fix.";
+  const emptySub = filtered ? t("dashboard.ideasEmptyFiltered")
+    : demo ? t("dashboard.ideasEmptyDemo") : t("dashboard.ideasEmptyLive");
 
   return (
     <>
       <ViewHead view="ideas"
-        tools={<ListTools sort={sort} sortOptions={SORTS} onSort={(id) => setSort(id as IdeaSort)} facets={facets} filterCount={filterCount} onClearFilters={() => setStatus("All")} showingLabel={showing} />}
+        tools={<ListTools sort={sort} sortOptions={SORTS.map((o) => ({ id: o.id, label: t(o.msg) }))} onSort={(id) => setSort(id as IdeaSort)} facets={facets} filterCount={filterCount} onClearFilters={() => setStatus("All")} showingLabel={showing} />}
         strip={filtered ? <FilterStrip showingLabel={showing} chips={chips} onClearAll={clearAll} /> : undefined} />
       <div className={ui.split}>
         <div className={`${ui.card} ${ui.cardList}`}>
           {sorted.length === 0 && (
-            <Empty title={filtered ? "No ideas match" : "No ideas yet"} sub={emptySub}>
-              {filtered && <button type="button" className={ui.ghost} onClick={clearAll}>Clear search and filters</button>}
+            <Empty title={filtered ? t("dashboard.ideasNoMatch") : t("dashboard.ideasNone")} sub={emptySub}>
+              {filtered && <button type="button" className={ui.ghost} onClick={clearAll}>{t("dashboard.ideasClearSearch")}</button>}
             </Empty>
           )}
           <div className={ui.list}>
@@ -78,19 +84,19 @@ export function IdeasView({ initialId }: { initialId?: string }) {
                   <div className={styles.rowTop}>
                     <div className={styles.rowMain}>
                       <div className={`${ui.chips} ${styles.criteria}`}>
-                        {criteriaTags(i.criteria).map((t) => <Pill key={t.label} tone={t.none ? "none" : t.strong ? "ink" : "soft"}>{t.label}</Pill>)}
+                        {criteriaTags(i.criteria, locale).map((tag) => <Pill key={tag.label} tone={tag.none ? "none" : tag.strong ? "ink" : "soft"}>{tag.label}</Pill>)}
                       </div>
                       <div className={ui.rowTitle}>{i.title}</div>
-                      <div className={ui.rowSub}>solves: {problemOf(ctx, i)?.title ?? "—"}</div>
+                      <div className={ui.rowSub}>{t("dashboard.ideasSolves", { title: problemOf(ctx, i)?.title ?? "—" })}</div>
                     </div>
                     <div className={styles.rowRight}>
-                      <Pill tone={statusTone(i.status)}>{i.status}</Pill>
+                      <Pill tone={statusTone(i.status)}>{wordText(t, i.status)}</Pill>
                       <span className={styles.effort}>{i.effort}</span>
                     </div>
                   </div>
                   <div className={`${ui.chips} ${styles.rowMeta}`}>
                     <span className={styles.expected}>{i.expected}</span>
-                    <span className={ui.rowMeta}>· raised by {i.proposedBy}</span>
+                    <span className={ui.rowMeta}>{t("dashboard.ideasRaisedBy", { by: i.proposedBy })}</span>
                   </div>
                 </div>
               </div>
@@ -99,50 +105,50 @@ export function IdeasView({ initialId }: { initialId?: string }) {
         </div>
 
         <div className={`${ui.card} ${ui.sticky}`}>
-          <div className={ui.eyebrow}>Selected idea</div>
-          <div className={ui.h2}>{si ? si.title : "No idea to show"}</div>
+          <div className={ui.eyebrow}>{t("dashboard.ideasSelected")}</div>
+          <div className={ui.h2}>{si ? si.title : t("dashboard.ideasNoneToShow")}</div>
           {si && (
             <div className={`${ui.chips} ${styles.selMeta}`}>
-              <Pill tone={statusTone(si.status)}>{si.status}</Pill>
-              <span className={ui.small}>{si.wait ? "waiting " + si.wait + " days" : si.status === "Shipped" ? "live" : "no owner assigned"}</span>
+              <Pill tone={statusTone(si.status)}>{wordText(t, si.status)}</Pill>
+              <span className={ui.small}>{si.wait ? t("dashboard.ideasWaiting", { n: si.wait }) : si.status === "Shipped" ? t("dashboard.ideasLive") : t("dashboard.ideasNoOwner")}</span>
             </div>
           )}
           <div className={`${ui.body} ${styles.rationale}`}>{si ? si.rationale : emptySub}</div>
           <div className={`${ui.grid2} ${styles.tiles}`}>
-            <Tile v={si ? si.upside : "—"} l="expected upside / yr" />
-            <Tile v={si ? si.effort : "—"} l="to find out if it works" />
+            <Tile v={si ? si.upside : "—"} l={t("dashboard.ideasUpsideYr")} />
+            <Tile v={si ? si.effort : "—"} l={t("dashboard.ideasFindOut")} />
           </div>
 
           {si?.approved && (
             <div className={styles.approved}>
-              {(si.approved.funded ? "Trial funded " : "Approved ") + f(si.approved.day) + " by " + si.approved.by + (si.approved.note ? " — “" + si.approved.note + "”" : "")}
+              {t(si.approved.funded ? "dashboard.ideasTrialFunded" : "dashboard.ideasApprovedBy", { date: f(si.approved.day), by: si.approved.by }) + (si.approved.note ? " " + t("dashboard.ideasApprovedNote", { note: si.approved.note }) : "")}
             </div>
           )}
-          {si && si.cosigners.length > 0 && <div className={styles.cosign}>{si.cosigners.length + (si.cosigners.length === 1 ? " co-signer" : " co-signers")} from the organisation</div>}
+          {si && si.cosigners.length > 0 && <div className={styles.cosign}>{t("dashboard.ideasCosigners", { count: si.cosigners.length })}</div>}
           <div className={`${ui.btnRow} ${ui.mt14}`}>
             {si ? (
               <Btn kind={(decidable || fundable) && !isEmployee ? "accent" : cosigned ? "muted" : "primary"} onClick={onPrimary}>{primaryLabel}</Btn>
             ) : (
-              <Btn kind="disabled">Nothing to decide</Btn>
+              <Btn kind="disabled">{t("dashboard.ideasNothingToDecide")}</Btn>
             )}
-            <Btn onClick={() => si && openSheet("askIdea", si.id)}>Ask a question</Btn>
+            <Btn onClick={() => si && openSheet("askIdea", si.id)}>{t("dashboard.ideasAsk")}</Btn>
           </div>
 
           {si && si.thread.length > 0 && (
             <>
-              <div className={`${ui.eyebrow} ${ui.mt20}`}>Questions asked</div>
+              <div className={`${ui.eyebrow} ${ui.mt20}`}>{t("dashboard.ideasQuestionsAsked")}</div>
               <div className={styles.thread}>
-                {si.thread.map((t, k) => (
+                {si.thread.map((q2, k) => (
                   <div key={k} className={ui.quote}>
-                    <div className={ui.quoteText}>“{t.text}”</div>
-                    <div className={ui.quoteBy}>{t.by} · {f(t.day)} · no answer yet</div>
+                    <div className={ui.quoteText}>{t("dashboard.ideasQuote", { text: q2.text })}</div>
+                    <div className={ui.quoteBy}>{t("dashboard.ideasNoAnswerYet", { by: q2.by, date: f(q2.day) })}</div>
                   </div>
                 ))}
               </div>
             </>
           )}
 
-          <div className={`${ui.eyebrow} ${ui.mt20}`}>Problem it answers</div>
+          <div className={`${ui.eyebrow} ${ui.mt20}`}>{t("dashboard.ideasProblemAnswers")}</div>
           {sip ? (
             <Link href={href("/problems?id=" + sip.id)} className={`${ui.tile} ${ui.tileClick} ${styles.problemTile}`}>
               <div className={ui.tileTitle}>{sip.title}</div>
@@ -152,10 +158,10 @@ export function IdeasView({ initialId }: { initialId?: string }) {
             <div className={`${ui.tile} ${styles.problemTile}`}><div className={ui.tileTitle}>—</div></div>
           )}
 
-          <div className={`${ui.eyebrow} ${ui.mt20}`}>Who would run it</div>
+          <div className={`${ui.eyebrow} ${ui.mt20}`}>{t("dashboard.ideasWhoRuns")}</div>
           <div className={styles.team}>
             {(si?.team ?? []).map((n) => (
-              <span key={n} className={ui.personChip}><Avatar name={n} size="sm" />{n === "—" ? "Nobody assigned" : n}</span>
+              <span key={n} className={ui.personChip}><Avatar name={n} size="sm" />{n === "—" ? t("dashboard.listNobodyAssigned") : n}</span>
             ))}
           </div>
           <div className={`${ui.note} ${styles.teamNote}`}>{si?.teamNote ?? ""}</div>
