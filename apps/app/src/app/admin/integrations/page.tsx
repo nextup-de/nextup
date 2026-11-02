@@ -6,6 +6,8 @@ import { adminContext } from "@/server/admin-context";
 import { adminBase } from "@/features/admin/nav";
 import { jiraAdminView } from "@/server/jira-admin";
 import { JiraAdmin } from "@/components/admin/JiraAdmin";
+import { DirectoryAdmin } from "@/components/admin/DirectoryAdmin";
+import { loadDirectoryStatus } from "@/lib/db/directory-run";
 import { CompanyMissing } from "@/components/admin/CompanyOverview";
 import styles from "../admin.module.css";
 
@@ -23,5 +25,16 @@ export default async function IntegrationsPage() {
     );
   }
   const view = await jiraAdminView(ctx.company);
-  return <JiraAdmin view={view} />;
+  const dir = await loadDirectoryStatus(ctx.company.id);
+  return (
+    <>
+      <JiraAdmin view={view} />
+      <DirectoryAdmin
+        view={{
+          on: dir.on, source: dir.source, counts: dir.counts, lastError: dir.lastError,
+          lastRunAt: dir.lastRunAt?.toISOString() ?? null, lastOkAt: dir.lastOkAt?.toISOString() ?? null,
+        }}
+      />
+    </>
+  );
 }

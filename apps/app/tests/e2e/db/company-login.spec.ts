@@ -5,7 +5,7 @@
 // It makes its own company in /admin ("e2e-<time>", sandbox stage = real-people rules) and
 // deletes it afterwards, so it leaves acme and everyone's codes alone on a shared dev database.
 import type { Browser, Page } from "@playwright/test";
-import { confirmSheet, expect, publishIdea, test } from "../helpers";
+import { confirmSheet, expect, passSecondFactor, publishIdea, test } from "../helpers";
 
 const SLUG = `e2e-${Date.now().toString(36)}`;
 // Names from the demo seed, so the router and the inboxes have someone to match.
@@ -35,6 +35,7 @@ async function signIn(browser: Browser, person: Person | string): Promise<Page> 
   await page.goto(`/${SLUG}/login`);
   await page.locator("#code").fill(codes.get(person) ?? "");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await passSecondFactor(page, `${SLUG}|${person}`);
   await expect(page).not.toHaveURL(/\/login/);
   return page;
 }

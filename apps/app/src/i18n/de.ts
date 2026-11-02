@@ -18,6 +18,7 @@ import { structure } from "./messages/structure";
 import { connectors } from "./messages/connectors";
 import { settingsCompany } from "./messages/settingsCompany";
 import { settingsOrg } from "./messages/settingsOrg";
+import { settingsGoals } from "./messages/settingsGoals";
 import { settingsConnectors } from "./messages/settingsConnectors";
 import { settingsSetup } from "./messages/settingsSetup";
 import { adminAccess } from "./messages/adminAccess";
@@ -42,6 +43,7 @@ export const de = {
   connectors: connectors.de,
   settingsCompany: settingsCompany.de,
   settingsOrg: settingsOrg.de,
+  settingsGoals: settingsGoals.de,
   settingsConnectors: settingsConnectors.de,
   settingsSetup: settingsSetup.de,
   adminAccess: adminAccess.de,

@@ -17,6 +17,9 @@ export async function register() {
   // The clock scheduler writes what fell due, once, under a per-company lease (a no-op without a database).
   const { startClock } = await import("@/server/scheduler/clock");
   startClock();
+  // The directory sync, every 15 minutes for each company that switched it on (a no-op without a database or Entra app).
+  const { startDirectorySync } = await import("@/server/directory/sync");
+  startDirectorySync();
   // Errors counted in memory go to the ErrorGroup table once a minute.
   const { startErrorFlush } = await import("@/server/errors");
   startErrorFlush();

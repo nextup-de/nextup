@@ -11,7 +11,7 @@ const AREAS: Record<string, string[]> = {
   "core.prisma": ["Company", "CaseEvent", "IdeaDraft", "IdeaTurn", "AssistTurn"],
   "structure.prisma": ["CompanyProfile", "OrgUnit", "OrgRole", "OrgRoleHolder", "RoutingRule", "Goal"],
   "auth.prisma": ["User", "ApiToken"],
-  "integrations.prisma": ["CompanyConfig", "Connection", "Integration", "Document"],
+  "integrations.prisma": ["CompanyConfig", "Connection", "Integration", "Document", "OutboxMessage", "WebhookSubscription", "NotifyPreference", "NotifyCursor"],
   "ops.prisma": ["FeatureFlag", "PilotRequest", "PilotReply", "Ticket", "TicketReply", "ErrorGroup"],
 };
 const PHASES = [

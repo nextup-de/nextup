@@ -9,7 +9,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { isTenantId } from "@/features/auth/entra";
-import { generateLoginCode, hashLoginCode } from "@/features/auth/login-code";
+import { generateLoginCode, hashLoginCode, normalizeLoginCode } from "@/features/auth/login-code";
+import { totpContext, verifyTotp } from "@/features/auth/totp";
+import { open, vaultKey } from "@/features/connectors/vault";
+import { getT } from "@/i18n/server";
 import { ADMIN_COOKIE, ADMIN_TTL_SECONDS, verifyAdmin } from "@/features/auth/cookie";
 import { issueAdminSession } from "@/server/admin-session";
 import type { CompanyRow, PilotRequestRow } from "@/features/admin/rows";
@@ -115,17 +118,42 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   if (blocked) return { error: blocked };
 
   const given = String(form.get("code") ?? "");
-  if (!given || !codeMatches(given, expected)) {
-    console.warn(`[admin] wrong admin code from ${who}`);
-    return { error: "That is not the admin code." };
-  }
-  forgive("adminLogin", who);
+  const t = await getT();
 
-  // The shared code names nobody, so it is logged as what it is: the way in when Microsoft is not.
-  console.info(`[admin] signed in with the shared admin code from ${who}`);
-  await issueAdminSession();
-  // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
-  // is a TypeError: Invalid URL, not a redirect to the root.
+  // (a) The shared code: break-glass. No person behind it, so the log line names nobody.
+  if (given && codeMatches(given, expected)) {
+    forgive("adminLogin", who);
+    console.info(`[admin] break-glass ${new Date().toISOString()}`);
+    await issueAdminSession(undefined, true);
+    // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
+    // is a TypeError: Invalid URL, not a redirect to the root.
+    redirect(adminHome() || "/");
+  }
+
+  // (b) A stack admin's personal code plus the authenticator code.
+  const code = normalizeLoginCode(given);
+  const user =
+    code && hasDatabase()
+      ? await getDb().user.findUnique({
+          where: { loginCodeHash: hashLoginCode(code) },
+          include: { company: { select: { slug: true } } },
+        })
+      : null;
+  const ownCompany = adminScope() !== "company" || user?.company.slug === process.env.COMPANY_SLUG?.trim();
+  if (!user || !user.active || !user.isStackAdmin || !ownCompany) {
+    console.warn(`[admin] wrong admin code from ${who}`);
+    return { error: t("adminAccess.adminWrong") };
+  }
+  const key = vaultKey();
+  if (!key) return { error: t("adminAccess.vaultMissing") };
+  if (!user.totpEnabledAt || !user.totpSecretSealed) return { error: t("adminAccess.adminNotEnrolled") };
+  const totp = String(form.get("totp") ?? "");
+  if (!totp.trim()) return { error: t("adminAccess.totpRequired") };
+  const plain = open(user.totpSecretSealed, key, totpContext(user.companyId, user.id));
+  if (!plain || !verifyTotp(plain, totp, Date.now())) return { error: t("adminAccess.totpWrong") };
+
+  forgive("adminLogin", who);
+  await issueAdminSession(user.name);
   redirect(adminHome() || "/");
 }
 
@@ -292,6 +320,29 @@ export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData
   });
   revalidatePath("/admin", "layout");
   return { slug, name: user.name, code };
+}
+
+export type StackAdminState = { saved?: boolean; error?: string };
+
+/**
+ * Lets one person open /admin with their own code and authenticator (or takes it away). Only an
+ * admin sets it, never the person; the shared code is not enough to hand it out on the platform
+ * stack's behalf of another company (foreignCompany).
+ */
+export async function setStackAdminAction(_prev: StackAdminState, form: FormData): Promise<StackAdminState> {
+  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (!hasDatabase()) return { error: "No database is configured." };
+
+  const slug = String(form.get("slug") ?? "");
+  if (foreignCompany(slug)) return { error: "No such company." };
+  const userId = String(form.get("userId") ?? "");
+  const on = form.get("stackAdmin") === "on";
+  const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
+  if (!company) return { error: "No such person in this company." };
+  const { count } = await getDb().user.updateMany({ where: { id: userId, companyId: company.id }, data: { isStackAdmin: on } });
+  if (count === 0) return { error: "No such person in this company." };
+  revalidatePath("/admin", "layout");
+  return { saved: true };
 }
 
 export type TenantState = { slug?: string; saved?: boolean; error?: string };
