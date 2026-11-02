@@ -4,9 +4,11 @@
 import { describe, expect, it } from "vitest";
 import { SEED } from "@/features/demo/seed";
 import { GOALS } from "@/features/evaluate";
+import { DEMO_RULES } from "@/features/demo/structure";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
-import { companyBrief, NO_KNOWLEDGE, overlayKnowledge, roleTree, rowsFromSeed, seedParts } from "@/features/knowledge";
+import { DEFAULT_RULES } from "@/features/knowledge/rules";
+import { companyBrief, NO_KNOWLEDGE, roleTree, rowsFromSeed, seedParts, structureSeed } from "@/features/knowledge";
 
 const counter = () => { let n = 0; return () => "id" + ++n; };
 const rows = () => rowsFromSeed(SEED, GOALS, counter());
@@ -20,7 +22,7 @@ describe("rowsFromSeed -> seedParts", () => {
   });
 
   it("reduces to the same cases as the seed", () => {
-    const moved = overlayKnowledge({ ...SEED, depts: [], people: [], routes: [] }, rows());
+    const moved = structureSeed({ ...SEED, depts: [], people: [], routes: [], goals: [] }, rows(), DEMO_RULES);
     expect(reduce(moved, emptyLog()).cases).toEqual(reduce(SEED, emptyLog()).cases);
   });
 });
@@ -74,9 +76,10 @@ describe("roleTree and companyBrief", () => {
   });
 });
 
-describe("overlayKnowledge", () => {
-  it("leaves a company without rows exactly as its seedJson", () => {
-    expect(overlayKnowledge(SEED, NO_KNOWLEDGE)).toBe(SEED);
+describe("structureSeed", () => {
+  it("gives a company without rows no structure", () => {
+    const s = structureSeed(SEED, NO_KNOWLEDGE, DEFAULT_RULES);
+    expect([s.depts, s.people, s.routes, s.goals]).toEqual([[], [], [], []]);
   });
 
   it("gives a name the org chart lacks a role of its own, outside the org chart", () => {
