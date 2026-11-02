@@ -1,15 +1,17 @@
 // The event log. Append-only facts; the reducer turns seed + events into what the page shows.
 // Port of legacy/demo/js/store.js - types here, reducer in reducer.ts, selectors in selectors.ts.
+// Every event may also carry actorUserId (the person behind `actor`; null for system actors) and
+// the id fields next to the label fields above (docs/IDENTITY.md). Labels are for display only.
 // Never store display text as state: store who / which day / which route; build sentences at render.
 export type CaseEventType =
-  | "case.raised" // { title, body, routeId, assignee, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy? }
+  | "case.raised" // { title, body, routeId, assignee, assigneeRoleHolderId?, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy? }
   | "case.read" // -
-  | "case.decided" // { answer: 'yes'|'no', reason?, note?, projectId?, lead?, title? }  a yes with projectId opens (or joins) that project
-  | "case.discussion" // { invited, missing }  "Discuss first": round 1 starts (docs/plans/2026-10-15_idea-to-project.md)
-  | "case.invited" // { invited }  more people asked for their view
+  | "case.decided" // { answer: 'yes'|'no', reason?, note?, projectId?, lead?, leadUserId?, title? }  a yes with projectId opens (or joins) that project
+  | "case.discussion" // { invited, invitedUserIds?, missing }  "Discuss first": round 1 starts (docs/plans/2026-10-15_idea-to-project.md)
+  | "case.invited" // { invited, invitedUserIds? }  more people asked for their view
   | "case.revised" // { body, title?, overall? }  the raiser's next version; the reducer numbers it
   | "case.checkin" // { next: 'round'|'decide', open, note }  ends a round
-  | "case.handed" // { to, why? }
+  | "case.handed" // { to, toRoleHolderId?, why? }
   | "case.asked" // { text }
   | "case.answered" // { text }
   | "case.building" // { days, expected? }            (seed history)
@@ -24,13 +26,13 @@ export type CaseEventType =
   | "idea.approved" // { team?: [names], note? }
   | "idea.funded" // { team?: [names], note? }
   // A project, target = its id. It opens with the case.decided yes above, never with an event of its own.
-  | "project.member" // { name, on }
-  | "project.handed" // { to, why? }  a new lead; the old one stays on the team
+  | "project.member" // { name, userId?, on }
+  | "project.handed" // { to, toUserId?, why? }  a new lead; the old one stays on the team
   | "project.baseline" // { metric, unit, value, better: 'up'|'down', source } or { none: true, why }
   | "project.started" // -  refused without a baseline
-  | "project.step.added" // { stepId, text, owner?, dueDay?, note?, to?, external? }  to: the column it starts in (To do when missing)
+  | "project.step.added" // { stepId, text, owner?, ownerUserId?, dueDay?, note?, to?, external? }  to: the column it starts in (To do when missing)
   | "project.step.moved" // { stepId, to: 'todo'|'doing'|'blocked'|'done', why?, before? }  before: the card it lands above (null = the bottom)
-  | "project.step.edited" // { stepId, text?, owner?, dueDay?, note?, removed? }  only the fields sent change; owner "" and dueDay null clear
+  | "project.step.edited" // { stepId, text?, owner?, ownerUserId?, dueDay?, note?, removed? }  only the fields sent change; owner "" and dueDay null clear
   | "project.linked" // { system, url, key?, stepId? }
   | "project.commented" // { text }
   | "project.sync" // { system: 'jira', on }  send the project to Jira / stop syncing it; lead or manager, while the project is open
@@ -92,6 +94,14 @@ export type EventPayload = {
   system?: string; url?: string; key?: string; // project.linked, project.sync (system; on is above)
   check?: number; // project.measured: days after done (30, 90)
   rule?: string; amount?: number; // project.rewarded
+  // Ids next to the labels above (IDN/D5); the label fields stay for display.
+  assigneeRoleHolderId?: string | null; // case.raised: the seat it lands on
+  toRoleHolderId?: string | null; // case.handed
+  invitedUserIds?: string[]; // case.discussion, case.invited
+  leadUserId?: string | null; // case.decided yes with projectId
+  userId?: string | null; // project.member
+  toUserId?: string | null; // project.handed
+  ownerUserId?: string | null; // project.step.added, project.step.edited (null clears)
 };
 
 export type CaseEvent = {
@@ -102,11 +112,12 @@ export type CaseEvent = {
   actor: string;
   target: string | null; // case id, idea id, or null (day.advanced)
   payload: EventPayload;
+  actorUserId?: string | null; // the person behind `actor`; null or absent for system actors and unbound history
   seed?: boolean; // history that already happened before day 0 (from the seed rows)
 };
 
 // History carried on a seed row; the reducer applies it before live events.
-export type SeedEvent = { type: CaseEventType; day: number; actor: string; payload?: EventPayload };
+export type SeedEvent = { type: CaseEventType; day: number; actor: string; actorUserId?: string | null; payload?: EventPayload };
 
 // The log: the events that happened in this browser plus the demo clock.
 export type EventLog = { events: CaseEvent[]; day: number };
@@ -116,11 +127,11 @@ export const emptyLog = (): EventLog => ({ events: [], day: 0 });
 let seq = 0;
 export const newId = (prefix: string) => prefix + "_" + Date.now().toString(36) + (seq++).toString(36);
 
-export type NewEvent = { type: CaseEventType; actor: string; target: string | null; payload?: EventPayload };
+export type NewEvent = { type: CaseEventType; actor: string; actorUserId?: string | null; target: string | null; payload?: EventPayload };
 
 // Append one event. Returns a new log; the old one is untouched. day.advanced moves the clock.
 export function appendEvent(log: EventLog, ev: NewEvent): EventLog {
-  const e: CaseEvent = { id: newId("e"), ts: Date.now(), day: log.day, ...ev, payload: ev.payload ?? {} };
+  const e: CaseEvent = { id: newId("e"), ts: Date.now(), day: log.day, ...ev, actorUserId: ev.actorUserId ?? null, payload: ev.payload ?? {} };
   const day = ev.type === "day.advanced" ? log.day + (ev.payload?.by ?? 1) : log.day;
   return { events: log.events.concat([e]), day };
 }

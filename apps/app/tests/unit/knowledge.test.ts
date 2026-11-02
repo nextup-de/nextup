@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { SEED } from "@/features/demo/seed";
 import { DEMO_GOALS } from "@/features/demo/structure";
 import { DEMO_RULES } from "@/features/demo/structure";
+import type { Route } from "@/features/demo/types";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { DEFAULT_RULES } from "@/features/knowledge/rules";
@@ -12,17 +13,20 @@ import { companyBrief, NO_KNOWLEDGE, roleTree, rowsFromSeed, seedParts, structur
 
 const counter = () => { let n = 0; return () => "id" + ++n; };
 const rows = () => rowsFromSeed(SEED, DEMO_GOALS, counter());
+// The routes also carry role and seat ids now (IDN-G1); the old fields must be unchanged.
+const noIds = (rs: Route[]) => rs.map(({ ownerRoleId, ownerSeatId, deputyRoleId, deputySeatId, ...r }) => r); // eslint-disable-line @typescript-eslint/no-unused-vars
 
 describe("rowsFromSeed -> seedParts", () => {
   it("gives back the seed's depts, people and routes unchanged", () => {
     const back = seedParts(rows());
     expect(back.depts).toEqual(SEED.depts);
     expect(back.people).toEqual(SEED.people);
-    expect(back.routes).toEqual(SEED.routes);
+    expect(noIds(back.routes)).toEqual(SEED.routes);
   });
 
   it("reduces to the same cases as the seed", () => {
-    const moved = structureSeed({ ...SEED, depts: [], people: [], routes: [], goals: [] }, rows(), DEMO_RULES);
+    const moved = { ...structureSeed({ ...SEED, depts: [], people: [], routes: [], goals: [] }, rows(), DEMO_RULES) };
+    moved.routes = noIds(moved.routes);
     expect(reduce(moved, emptyLog()).cases).toEqual(reduce(SEED, emptyLog()).cases);
   });
 });

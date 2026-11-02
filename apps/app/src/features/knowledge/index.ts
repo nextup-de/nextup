@@ -5,12 +5,13 @@
 // Two directions:
 //   rowsFromSeed  demo structure (Seed.depts/people/routes + goals) -> rows, to write the demo
 //                 into a company's tables (prisma/seed.ts, the admin template).
-//   structureSeed rows + rules -> the `Seed` shape, so reduce(seed, log) and every page read the
+//   structureSeed rows + rules -> the `Seed` shape (with `seats`, one per holder), so reduce(seed, log) and every page read the
 //                 tables only (seedParts is its structure half).
 //
 // The structure is between ROLES; a person is only ever a holder's name. Two people with the
 // same title in the same unit under the same boss are one role with two holders ("Line 3").
 import type { Dept, OrgPerson, Route, Seed } from "@/features/demo/types";
+import type { SeatRow } from "@/features/auth/identity";
 import type { CompanyRules } from "./rules";
 
 export type UnitRow = { id: string; key: string; name: string; kind: string; headcount: number; parentId: string | null; sort: number };
@@ -115,6 +116,7 @@ export function seedParts(k: Knowledge): Pick<Seed, "depts" | "people" | "routes
 
   // A role with several holders answers to its first; that is who the case lands with.
   const firstHolder = (roleId: string | null) => (roleId ? holdersOf.get(roleId)?.[0]?.name ?? "" : "");
+  const firstSeatId = (roleId: string | null) => (roleId ? holdersOf.get(roleId)?.[0]?.id ?? null : null);
   const unitOf = (roleId: string | null) => {
     const r = roleId ? roleById.get(roleId) : undefined;
     return r ? unitById.get(r.orgUnitId) : undefined;
@@ -137,6 +139,8 @@ export function seedParts(k: Knowledge): Pick<Seed, "depts" | "people" | "routes
       deputy: firstHolder(rule.deputyRoleId),
       buddy: buddy ? buddy + " · " + (unitOf(rule.buddyRoleId)?.name ?? "") : "",
       wait: rule.wait,
+      ownerRoleId: rule.ownerRoleId, ownerSeatId: firstSeatId(rule.ownerRoleId),
+      deputyRoleId: rule.deputyRoleId, deputySeatId: firstSeatId(rule.deputyRoleId),
     };
   });
 
@@ -153,7 +157,8 @@ export function seedParts(k: Knowledge): Pick<Seed, "depts" | "people" | "routes
 export function structureSeed(seed: Seed, k: Knowledge, rules: CompanyRules): Seed {
   const parts = hasKnowledge(k) ? seedParts(k) : { depts: [], people: [], routes: [] };
   const goals = [...k.goals].sort((a, b) => a.sort - b.sort).map((g) => ({ goal: g.title, keys: [...g.keywords] }));
-  return { ...seed, ...parts, goals, promiseDays: rules.promiseDays, outcomeDays: rules.outcomeDays, spend: rules.spend };
+  const seats: SeatRow[] = [...k.holders].sort((a, b) => a.sort - b.sort).map((h) => ({ id: h.id, roleId: h.roleId, label: h.name, userId: h.userId, sort: h.sort }));
+  return { ...seed, ...parts, seats, goals, promiseDays: rules.promiseDays, outcomeDays: rules.outcomeDays, spend: rules.spend };
 }
 
 /** One role's holders, by `sort`; [] for a role the knowledge does not have. */

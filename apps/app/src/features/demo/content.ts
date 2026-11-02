@@ -9,7 +9,7 @@ import type { Seed } from "./types";
 
 /** The seed with its structure, goals and spend rule removed; those live in the tables. */
 export function contentOnly(seed: Seed): Seed {
-  return { ...seed, depts: [], people: [], routes: [], goals: [], spend: null };
+  return { ...seed, depts: [], people: [], routes: [], seats: [], goals: [], spend: null };
 }
 
 export type TemplateWrites = { seedJson: Seed; knowledge: Knowledge; rules: CompanyRules | null };

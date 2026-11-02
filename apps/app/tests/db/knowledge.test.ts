@@ -10,6 +10,10 @@ import { loadSeed } from "@/lib/db/companies";
 import { loadKnowledge, replaceKnowledge } from "@/lib/db/knowledge";
 
 const db = getDb();
+// IDN-G1: loaded routes also carry the owner/deputy role and seat ids; the fixture has none.
+const ID_KEYS = ["ownerRoleId", "ownerSeatId", "deputyRoleId", "deputySeatId"];
+const withoutIds = (routes: readonly object[] | undefined) =>
+  routes?.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !ID_KEYS.includes(k))));
 const rows = () => rowsFromSeed(SEED, DEMO_GOALS, () => crypto.randomUUID());
 
 let acme: { id: string };
@@ -46,7 +50,7 @@ describe("company knowledge tables", () => {
     const seed = await loadSeed("acme");
     expect(seed?.depts).toEqual(SEED.depts);
     expect(seed?.people).toEqual(SEED.people);
-    expect(seed?.routes).toEqual(SEED.routes);
+    expect(withoutIds(seed?.routes)).toEqual(SEED.routes);
   });
 
   it("replaces rather than appends on a second save", async () => {
