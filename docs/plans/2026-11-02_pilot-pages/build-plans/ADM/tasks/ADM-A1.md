@@ -2,7 +2,7 @@
 id: ADM-A1
 title: Company profile, rules and calendar are edited in settings
 wp: A
-needs: [ ADM-G1, CLK-G1, CLK-A1 ]
+needs: [ ADM-G1, CLK-G1, CLK-A1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/app/[company]/(app)/settings/company/**
@@ -15,6 +15,7 @@ owns:
   - apps/app/src/i18n/messages/settingsCompany.ts
   - apps/app/tests/unit/adm/company-forms.test.ts
   - apps/app/tests/db/adm-company.test.ts
+  - apps/app/src/features/settings/company-forms.ts
 risk: normal
 profile: orch
 budget: { minutes: 90, window_pct: 15 }
@@ -22,16 +23,21 @@ uses: [ D1, D2, D3, D6, D7, D9, D15 ]
 proofs:
   - id: B1
     says: the company, rules and calendar forms parse and check their input into
-      profile, CompanyRules, loop rules and CalendarSpec, refusing bad values with
-      a message key
+      profile, CompanyRules, loop rules and CalendarSpec, refusing bad values
+      with a message key
     run: npm test -w @nextup/app -- tests/unit/adm/company-forms.test.ts -t 'ADM
       company forms'
   - id: B2
-    says: the settings actions save name, profile, rules, loop rules and calendar for
-      the admin's company only, and a leader's call changes nothing
+    says: the settings actions save name, profile, rules, loop rules and calendar
+      for the admin's company only, and a leader's call changes nothing
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/adm-company.test.ts -t 'ADM company settings'
-status: open
+status: built
+lane: pc/a
+branch: orch/adm-a1
+retries: 1
+last_failure: "Beweise rot: B2"
+resumes: 0
 ---
 
 Plan ADM (sub-plan of PILOT): company, rules and calendar (G-014). Read first: `apps/app/src/server/actions/settings/guard.ts`

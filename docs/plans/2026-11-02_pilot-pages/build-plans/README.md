@@ -1,6 +1,6 @@
 # Build plans: a copy for reading
 
-> **Updated 2026-11-02** · copy of the plans repo (`selluxhenner/plans`, private) at commit `feb971f`, folder
+> **Updated 2026-11-02 (afternoon)** · copy of the plans repo (`selluxhenner/plans`, private) at commit `139bbd3`, folder
 > `projects/nextup/`. The plans repo is the source of truth; this copy is refreshed when the page specs change.
 > If something here looks out of date, ask Kevin.
 
@@ -22,6 +22,14 @@ are replaced by `<test value, see the plans repo>` (this repo is public and its 
 
 Phases without a build plan yet (GDP, LOOP, MET, TMS, FLR, API, EID, SFX, SEC, TST, PIL) have only their brief in
 `PILOT.md`.
+
+Refreshed from `feb971f` to `139bbd3` (2 Nov 2026, 14:49): the PLAN.md of ADM, AIP, CLK, DIR,
+IDN, NTF and VIS and most of their tasks changed (status, lanes, PR numbers, decisions from the page specs); CNX and
+`PILOT.md` are unchanged. No new Bauplan was written since, so GDP, LOOP, MET, SEC and the rest still have only their
+brief. State at `139bbd3`: IDN and CNX merged; CLK A1, B1, C1, G1 merged, D1 built; AIP G1, A1, B1, E1 merged, C1
+running; ADM G1 merged, A1 built, B1 running; DIR G1 running; NTF and VIS not started. The defensible-offer pages
+(spec 11) use the plan [../../2026-11-02_defensible-offer-codex.md](../../2026-11-02_defensible-offer-codex.md),
+which lives in this repo, not in the plans repo.
 
 ## How to read a build plan
 

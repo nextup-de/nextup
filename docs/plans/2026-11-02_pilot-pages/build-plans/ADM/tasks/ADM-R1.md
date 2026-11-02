@@ -18,12 +18,13 @@ uses: [ D1, D3, D6, D12, D13, D15, D19, D21 ]
 proofs:
   - id: B1
     says: a manager resets another manager's second factor of the same company and
-      that person must enrol again, nobody resets their own or another company's,
-      a stack admin resets it in /admin, and one log line without personal data is
-      written
+      that person must enrol again, nobody resets their own or another
+      company's, a stack admin resets it in /admin, and one log line without
+      personal data is written
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
-      ops/test-db.sh tests/db/adm-totp-reset.test.ts -t 'ADM second factor reset'
-status: open
+      ops/test-db.sh tests/db/adm-totp-reset.test.ts -t 'ADM second factor
+      reset'
+status: ready
 ---
 
 Plan ADM (sub-plan of PILOT): resetting a lost second factor (D19). Read first: D12, D13, D19,

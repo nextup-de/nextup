@@ -2,7 +2,7 @@
 id: NTF-B1
 title: Channel registry, mail and signed webhook channels, and delivery with retries
 wp: B
-needs: [ NTF-G1 ]
+needs: [ NTF-G1, CLK-Z1, AIP-Z1 ]
 host: any
 owns:
   - apps/app/src/server/notify/registry.ts

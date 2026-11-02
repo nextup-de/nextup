@@ -227,6 +227,12 @@ Namespace `projects` unless noted.
   - **The team list shows no per-person count.** Today each person has "{n} open" (open steps they own); that is a
     per-person number (HD5, MET "no screen renders a per-person count"). The board's person filter answers it when
     someone asks. Open question 10-Q6.
+  - **Measure and Reward follow spec 11** once their tasks are merged: the Measure card gains preset metrics, KPI
+    import, the source line and the second person's confirmation
+    ([11, Measurement from data sources](11-defensible-offer-pages.md#measurement-from-data-sources); PROOF-A1 to
+    PROOF-C1); the Reward card shows the computed premium, "due only after a confirmed better result", the paid state
+    and the premium letter ([11, Reward and premium letter](11-defensible-offer-pages.md#reward-and-premium-letter);
+    TRUTH-G1, BVW-E1, BVW-F1). Design them in their current form now and add these states when the data exists.
   - **Phone, fixed:** the stage track fits 375 px (today it is cut off after "Done" with a partial grey track); no
     label collides with another (today "BASELINE → NOW" runs into its neighbour and under the Dev button on demo
     companies); the first screen shows the title, the stage and the viewer's move, and the board starts within the
@@ -799,8 +805,10 @@ Namespace `dashboard`.
 
 - **Route:** `/[company]/progress`
 - **Who:** every role.
-- **Phase:** MET (the "most relied-on contributors" ranking and every per-person number removed; numbers from the
-  log instead of the seed; no Bauplan yet), LOOP (projects switch). HD5.
+- **Phase:** TRUTH-A1 of the [defensible-offer Codex plan](../2026-11-02_defensible-offer-codex.md) removes the
+  "most relied-on contributors" ranking and every per-person number now, ahead of MET (spec
+  [11](11-defensible-offer-pages.md#removed-contributor-ranking-and-person-pages)); MET (numbers from the log instead
+  of the seed; no Bauplan yet), LOOP (projects switch). HD5.
 - **Data:** with projects on, `ProjectMovement` (`measuredProjects`, `movement`, `projectWaits`, and three counts from
   the seed's `S.ledger`: `projectsEscalated`, `measuresOwed`, `unmeasured`); then `funnel(N, t)` (demo numbers only),
   `D.outcomes`, `stalled(D)`, `seed.metrics.answered`, `contributors(D, handle)`.
@@ -817,7 +825,7 @@ Namespace `dashboard`.
 
 - **Stays:** Movement since baseline (real project data, worse verdicts shown too); the wait ledger after the yes.
 - **Changes:**
-  - **Most relied-on contributors goes** (MET; HD5). So does every per-person number on the page.
+  - **Most relied-on contributors goes** (TRUTH-A1, before MET; HD5). So does every per-person number on the page.
   - The funnel, "Did anyone answer them" and "Stuck the longest" either come from the log (MET) or go; they are seed
     numbers today. The answered numbers duplicate the Dashboard's tiles (04). 10-Q4.
   - The ledger's three seed counts come from the projects (`p.escalated`, open checks past due, done without a

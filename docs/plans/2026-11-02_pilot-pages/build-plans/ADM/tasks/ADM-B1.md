@@ -2,7 +2,7 @@
 id: ADM-B1
 title: Org units, roles, seats and the routing table are edited in settings
 wp: B
-needs: [ ADM-G1 ]
+needs: [ ADM-G1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/app/[company]/(app)/settings/org/**
@@ -32,7 +32,10 @@ proofs:
       another company changes
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/adm-org.test.ts -t 'ADM org editor'
-status: open
+status: running
+lane: pc/b
+branch: orch/adm-b1
+resumes: 0
 ---
 
 Plan ADM (sub-plan of PILOT): the org and routing editor (G-012, G-013). Read first: `docs/COMPANY_KNOWLEDGE.md`,

@@ -1,6 +1,7 @@
 ---
 id: AIP-C1
-title: The routing proposal is made on the server at raise, and the override rate is counted per company
+title: The routing proposal is made on the server at raise, and the override
+  rate is counted per company
 wp: C
 needs: [ AIP-B1, CLK-B1 ]
 host: any
@@ -18,15 +19,20 @@ proofs:
   - id: B1
     says: overrideRate counts proposals and overrides per company from the events
       and gives null without a proposal
-    run: npm test -w @nextup/app -- tests/unit/aip/override.test.ts -t 'AIP
-      override rate'
+    run: npm test -w @nextup/app -- tests/unit/aip/override.test.ts -t 'AIP override
+      rate'
   - id: B2
     says: proposeOnRaise gives the keyword proposal when the gate is closed or the
       brain is slow, and the brain's when it answers in time, ignoring what the
       client sent
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
-      ops/test-db.sh tests/db/aip-proposal.test.ts -t 'AIP proposal on the server'
-status: open
+      ops/test-db.sh tests/db/aip-proposal.test.ts -t 'AIP proposal on the
+      server'
+status: running
+lane: pc/d
+branch: orch/aip-c1
+retries: 1
+last_failure: "Beweise rot: B2"
 ---
 
 Plan AIP (sub-plan of PILOT): the proposal on the server. Today the browser asks for the brain's proposal and sends

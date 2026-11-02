@@ -20,8 +20,13 @@ import { settingsCompany } from "./messages/settingsCompany";
 import { settingsOrg } from "./messages/settingsOrg";
 import { settingsGoals } from "./messages/settingsGoals";
 import { settingsConnectors } from "./messages/settingsConnectors";
+import { settingsNotifications } from "./messages/settingsNotifications";
 import { settingsSetup } from "./messages/settingsSetup";
 import { adminAccess } from "./messages/adminAccess";
+import { adminConsole } from "./messages/adminConsole";
+import { adminConnectors } from "./messages/adminConnectors";
+import { adminPrivacy } from "./messages/adminPrivacy";
+import { adminSupport } from "./messages/adminSupport";
 
 export const de = {
   common: common.de,
@@ -45,6 +50,11 @@ export const de = {
   settingsOrg: settingsOrg.de,
   settingsGoals: settingsGoals.de,
   settingsConnectors: settingsConnectors.de,
+  settingsNotifications: settingsNotifications.de,
   settingsSetup: settingsSetup.de,
   adminAccess: adminAccess.de,
+  adminConsole: adminConsole.de,
+  adminConnectors: adminConnectors.de,
+  adminPrivacy: adminPrivacy.de,
+  adminSupport: adminSupport.de,
 } as const;
