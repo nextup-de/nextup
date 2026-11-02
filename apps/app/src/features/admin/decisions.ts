@@ -18,6 +18,8 @@ export type Verdict = "agreed" | "overridden" | "handed elsewhere" | "no route" 
 /** One raise, with the later events on the same case that say whether the proposal held. */
 export type DecisionInput = {
   eventId: string;
+  /** The company's id: the console shows one company's raises and filters on it. */
+  companyId: string;
   company: string; // slug
   caseId: string | null;
   raisedAt: string;
@@ -32,6 +34,7 @@ export type DecisionInput = {
 
 export type DecisionRow = {
   eventId: string;
+  companyId: string;
   company: string;
   caseId: string | null;
   raisedAt: string;
@@ -72,6 +75,7 @@ export function toDecision(d: DecisionInput): DecisionRow {
 
   return {
     eventId: d.eventId,
+    companyId: d.companyId,
     company: d.company,
     caseId: d.caseId,
     raisedAt: d.raisedAt,
@@ -87,6 +91,11 @@ export function toDecision(d: DecisionInput): DecisionRow {
     answer,
     noticeAt: d.noticeAt,
   };
+}
+
+/** The raises of one company, as decision rows: whatever other companies' raises are in `inputs` is dropped. */
+export function decisionRows(inputs: readonly DecisionInput[], companyId: string): DecisionRow[] {
+  return inputs.filter((d) => d.companyId === companyId).map(toDecision);
 }
 
 export type VersionStats = { version: string; raised: number; agreed: number; overridden: number; handedElsewhere: number; noRoute: number };
@@ -135,13 +144,14 @@ export function summarise(rows: readonly DecisionRow[]): DecisionSummary {
 }
 
 /**
- * The eval set, one JSON object per line: the text the router read and the route people settled
+ * The eval set of one company, one JSON object per line: the text the router read and the route people settled
  * on. Only agreed and overridden rows: an open case has no label yet, and "handed elsewhere" says
  * the proposal was wrong without saying which route was right. Feed it
  * to tests/eval/routing/<company>.jsonl to score a new matcher or prompt before it ships.
  */
-export function toEvalJsonl(rows: readonly DecisionRow[]): string {
+export function toEvalJsonl(rows: readonly DecisionRow[], companyId: string): string {
   return rows
+    .filter((r) => r.companyId === companyId)
     .filter((r) => r.verdict === "agreed" || r.verdict === "overridden")
     .map((r) => JSON.stringify({ company: r.company, text: r.text, expected: r.chosen, proposed: r.proposed, confidence: r.confidence, version: r.version, verdict: r.verdict }))
     .join("\n");

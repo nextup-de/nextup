@@ -31,6 +31,7 @@ import { mailConfigured, sendMail } from "@/server/mail";
 import { reportErrors } from "@/server/errors-report";
 import { reportHealth } from "@/server/health-report";
 import { pullFlags } from "@/server/flags-sync";
+import { pullPlatformJobs } from "@/server/platform-jobs-sync";
 import { pullDemoLogins } from "@/server/demo-logins-sync";
 
 export type Ops = { url: string; token: string; secret: string };
@@ -141,6 +142,7 @@ export function startTicketSync(): void {
   if (!opsConfig() || globalForSync.__nextupTicketSync) return;
   const round = () => {
     void pullFlags(); // feature flags from admin.sellux.ch (server/flags-sync.ts)
+    void pullPlatformJobs(); // company create / stage / delete when admin asks (server/platform-jobs-sync.ts)
     void pullDemoLogins(); // demo-stage companies only: new login codes when admin asks (server/demo-logins-sync.ts)
     void syncTickets();
     void reportHealth();

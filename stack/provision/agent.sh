@@ -236,9 +236,30 @@ port_taken_elsewhere() {  # the port belongs to another slug in ports.md or a st
   return 1
 }
 
+# Which of the stack's secrets go to admin's vault. Break-glass stays with the customer (D7): only a
+# demo stack sends ADMIN_ACCESS_CODE. Sandbox, live, real - and anything unknown - keep it back.
+secrets_to_send() {  # <stage>
+  case "$1" in
+    demo) echo "ADMIN_ACCESS_CODE POSTGRES_PASSWORD AUTH_SECRET N8N_ENCRYPTION_KEY RESTIC_PASSWORD" ;;
+    *) echo "POSTGRES_PASSWORD AUTH_SECRET N8N_ENCRYPTION_KEY RESTIC_PASSWORD" ;;
+  esac
+}
+
+write_break_glass() {  # <stack folder> <code>: written once, mode 600, never overwritten; the value is never logged
+  local f="$1/BREAK_GLASS.txt"
+  [ -e "$f" ] && return 0
+  [ -n "$2" ] || return 0
+  ( umask 077; printf 'NextUp admin break-glass code. Keep it safe: NextUp holds no copy.\n%s\n' "$2" > "$f" ) || return 1
+  chmod 600 "$f"
+  if [ "$(id -u)" = 0 ]; then chown root "$f" 2>/dev/null || true; fi
+  echo "break-glass written" >> "${log:-/dev/null}"
+}
+
 collect_secrets() {  # the stack's passwords (+ demo login codes) for admin's vault
-  local k v parts=()
-  for k in ADMIN_ACCESS_CODE POSTGRES_PASSWORD AUTH_SECRET N8N_ENCRYPTION_KEY RESTIC_PASSWORD; do
+  local k v parts=() st
+  st="$(box_stage)"; [ -n "$st" ] || st="$stage"
+  [ "$st" = demo ] || write_break_glass "$dir" "$(getenv ADMIN_ACCESS_CODE)" || echo "break-glass NOT written" >> "$log"
+  for k in $(secrets_to_send "$st"); do
     v="$(getenv "$k")"
     [[ "$v" =~ ^[A-Za-z0-9_+/=.-]{1,200}$ ]] && parts+=("\"$k\":\"$v\"")
   done
