@@ -12,6 +12,8 @@ export const DirectoryEntry = z.object({
   jobTitle: z.string().nullable(),
   managerExternalId: z.string().nullable(),
   groupExternalIds: z.array(z.string()),
+  /** The personnel number (HD14). For matching only: never shown, never logged, never sent to the AI. */
+  employeeId: z.string().nullable().optional(),
   active: z.boolean(),
 });
 export type DirectoryEntry = z.infer<typeof DirectoryEntry>;

@@ -1,0 +1,170 @@
+// Planning a directory page against the company's users (DIR/D4, D8, D9). Pure: no database, no fetch.
+// People are matched by source key only (Graph: entraOid, else the same email; SuccessFactors:
+// employeeId) - a display name is a label and is never compared.
+import { needsHandle, newHandle } from "@/features/auth/handle";
+import { initialsOf } from "@/features/tenant/create";
+import type { DirectoryPage } from "@nextup/contracts/public";
+import type { DirectorySourceKind } from "./index";
+
+export type PlanUnit = { key: string; name: string; sort: number };
+export type PlanUser = {
+  id: string;
+  entraOid: string | null;
+  employeeId: string | null;
+  email: string;
+  active: boolean;
+  managerId: string | null;
+  dept: string;
+  /** Optional: when missing, the field is not compared. */
+  name?: string;
+  line?: string;
+};
+
+/**
+ * The unit whose name or key equals `department` (case-insensitive, trimmed, first by sort) - the same
+ * comparison as `jitSeatRole` in features/auth/entra.ts (IDN/D12). Null for an empty or unknown one.
+ */
+export function unitForDepartment<U extends { key: string; name: string; sort: number }>(
+  units: readonly U[],
+  department: string | null | undefined,
+): U | null {
+  const want = (department ?? "").trim().toLowerCase();
+  if (!want) return null;
+  return [...units].sort((a, b) => a.sort - b.sort).find((u) => u.name.toLowerCase() === want || u.key.toLowerCase() === want) ?? null;
+}
+
+/** A user in the plan: one that exists (by id) or one the plan creates (by index into `creates`). */
+export type PlanRef = { userId: string } | { create: number };
+
+export type PlanCreate = {
+  externalId: string;
+  name: string;
+  email: string;
+  dept: string;
+  line: string;
+  role: "member";
+  handle: string;
+  ini: string;
+  entraOid: string | null;
+  employeeId: string | null;
+};
+export type PlanUpdate = {
+  userId: string;
+  /** Only what changed. `active: true` is a comeback (the writer also clears deactivatedAt). */
+  fields: Partial<{ name: string; email: string; dept: string; line: string; entraOid: string; employeeId: string; active: true }>;
+};
+export type PlanSkip = { externalId: string; reason: "no-unit" | "no-email" | "email-taken" | "duplicate" | "inactive" };
+
+export type DirectoryPlan = {
+  creates: PlanCreate[];
+  updates: PlanUpdate[];
+  /** Only where the manager differs from what is stored (or a new user has one). `manager` null = none. */
+  managers: { who: PlanRef; manager: PlanRef | null }[];
+  /** Ids of active users the page switches off. */
+  leavers: string[];
+  skipped: PlanSkip[];
+  /** Ids of every existing user the page named (matched, changed or not): the writer stamps directorySyncedAt. */
+  seen: string[];
+};
+
+const lower = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+
+export function planDirectoryDelta(input: {
+  source: DirectorySourceKind;
+  page: DirectoryPage;
+  users: PlanUser[];
+  units: PlanUnit[];
+  takenHandles: string[];
+}): DirectoryPlan {
+  const { source, page, users, units } = input;
+  const keyOf = (u: PlanUser) => (source === "successfactors" ? u.employeeId : u.entraOid);
+  const byKey = new Map<string, PlanUser>();
+  for (const u of users) {
+    const k = keyOf(u);
+    if (k) byKey.set(k, u);
+  }
+  // Graph only: a user the sign-in never bound is found by the same email, lower case.
+  const byEmail = new Map<string, PlanUser>();
+  if (source === "graph") for (const u of users) if (!u.entraOid) byEmail.set(lower(u.email), u);
+
+  const removed = new Set(page.removedExternalIds);
+  const plan: DirectoryPlan = { creates: [], updates: [], managers: [], leavers: [], skipped: [], seen: [] };
+  const emailsInUse = new Set(users.map((u) => lower(u.email)));
+  const handles = new Set(input.takenHandles);
+  const claimed = new Set<string>(); // user ids already matched by an earlier entry
+  const refOf = new Map<string, PlanRef>(); // entry externalId -> the user it became
+  const resolved: { entry: (typeof page.entries)[number]; ref: PlanRef; current: PlanUser | null }[] = [];
+
+  for (const e of page.entries) {
+    if (refOf.has(e.externalId)) { plan.skipped.push({ externalId: e.externalId, reason: "duplicate" }); continue; }
+    let u = byKey.get(e.externalId);
+    if (!u && source === "graph" && e.email) {
+      const byMail = byEmail.get(lower(e.email));
+      if (byMail && !claimed.has(byMail.id)) u = byMail;
+    }
+    if (u && claimed.has(u.id)) { plan.skipped.push({ externalId: e.externalId, reason: "duplicate" }); continue; }
+    const leaving = !e.active || removed.has(e.externalId);
+    const unit = unitForDepartment(units, e.department);
+
+    if (!u) {
+      if (leaving) { plan.skipped.push({ externalId: e.externalId, reason: "inactive" }); continue; }
+      if (!unit) { plan.skipped.push({ externalId: e.externalId, reason: "no-unit" }); continue; }
+      const email = lower(e.email);
+      if (!email) { plan.skipped.push({ externalId: e.externalId, reason: "no-email" }); continue; }
+      if (emailsInUse.has(email)) { plan.skipped.push({ externalId: e.externalId, reason: "email-taken" }); continue; }
+      emailsInUse.add(email);
+      const handle = needsHandle("member") ? newHandle(handles) : "";
+      handles.add(handle);
+      plan.creates.push({
+        externalId: e.externalId, name: e.displayName, email, dept: unit.key, line: e.jobTitle ?? "", role: "member", handle,
+        ini: initialsOf(e.displayName),
+        entraOid: source === "graph" ? e.externalId : null,
+        employeeId: source === "successfactors" ? e.externalId : null,
+      });
+      const ref: PlanRef = { create: plan.creates.length - 1 };
+      refOf.set(e.externalId, ref);
+      resolved.push({ entry: e, ref, current: null });
+      continue;
+    }
+
+    claimed.add(u.id);
+    plan.seen.push(u.id);
+    const ref: PlanRef = { userId: u.id };
+    refOf.set(e.externalId, ref);
+    if (leaving) {
+      if (u.active) plan.leavers.push(u.id);
+      continue;
+    }
+    resolved.push({ entry: e, ref, current: u });
+
+    const fields: PlanUpdate["fields"] = {};
+    if (u.name !== undefined && u.name !== e.displayName) fields.name = e.displayName;
+    const email = lower(e.email);
+    if (email && email !== lower(u.email) && !emailsInUse.has(email)) { fields.email = email; emailsInUse.add(email); }
+    const dept = unit ? unit.key : "";
+    if (dept !== u.dept) fields.dept = dept;
+    const line = e.jobTitle ?? "";
+    if (u.line !== undefined && u.line !== line) fields.line = line;
+    // A user found by email is bound to the source key now; so is a SuccessFactors one never seen by id.
+    if (source === "graph" && u.entraOid !== e.externalId) fields.entraOid = e.externalId;
+    if (!u.active) fields.active = true;
+    if (Object.keys(fields).length > 0) plan.updates.push({ userId: u.id, fields });
+  }
+
+  // Managers after the whole page: the entry's manager is the user with that source key, else none.
+  const resolveKey = (externalId: string): PlanRef | null => {
+    const r = refOf.get(externalId);
+    if (r) return r;
+    const u = byKey.get(externalId);
+    return u ? { userId: u.id } : null;
+  };
+  const same = (a: PlanRef | null, b: PlanRef | null) =>
+    a === null || b === null ? a === b : "userId" in a ? "userId" in b && a.userId === b.userId : "create" in b && a.create === b.create;
+  for (const { entry, ref, current } of resolved) {
+    let manager = entry.managerExternalId ? resolveKey(entry.managerExternalId) : null;
+    if (manager && same(manager, ref)) manager = null;
+    const now: PlanRef | null = current?.managerId ? { userId: current.managerId } : null;
+    if (current ? !same(manager, now) : manager !== null) plan.managers.push({ who: ref, manager });
+  }
+  return plan;
+}
