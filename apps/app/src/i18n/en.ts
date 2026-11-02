@@ -20,6 +20,7 @@ import { settingsCompany } from "./messages/settingsCompany";
 import { settingsOrg } from "./messages/settingsOrg";
 import { settingsGoals } from "./messages/settingsGoals";
 import { settingsConnectors } from "./messages/settingsConnectors";
+import { settingsNotifications } from "./messages/settingsNotifications";
 import { settingsSetup } from "./messages/settingsSetup";
 import { adminAccess } from "./messages/adminAccess";
 
@@ -45,6 +46,7 @@ export const en = {
   settingsOrg: settingsOrg.en,
   settingsGoals: settingsGoals.en,
   settingsConnectors: settingsConnectors.en,
+  settingsNotifications: settingsNotifications.en,
   settingsSetup: settingsSetup.en,
   adminAccess: adminAccess.en,
 } as const;
