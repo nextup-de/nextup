@@ -137,6 +137,29 @@ your NextUp admin turns it on in `/admin/assistant`.
 - If you limit sign-ins by location (Conditional Access), allow NextUp's server address; we send
   it with this guide.
 
+## Department claim and role seats
+
+A person who signs in for the first time with the app role `NextUp.Leader` or `NextUp.Manager` can be
+seated in NextUp's company structure straight away, so that cases routed to their role reach them. NextUp
+finds the seat from the **department** in the ID token.
+
+**How you emit it.** The `department` claim is not in an ID token by default. Add it with a claims
+mapping policy that maps `user.department` to the `department` claim, and assign the policy to the app's
+service principal (or, in the app registration, add an optional claim if your tenant offers `department`
+there). Check it in a test sign-in: the decoded ID token must carry `"department": "Engineering"`.
+
+**How NextUp uses it.**
+
+- The value is compared, without regard to case, with the **name or key** of a unit in your structure
+  (for example `Engineering` or `ENG`). The first matching unit counts.
+- A **leader or manager** takes a seat in the unit's top role: the role that reports to nobody, or to a
+  role of another unit (the lowest one in the list if there are several).
+- A **member** gets no seat. Members get an anonymous handle instead.
+- The seat is created once. A person who already holds a seat keeps it; NextUp never moves or removes it.
+
+**Without the claim** (missing, empty or a department NextUp does not know) the account is created as
+before, but has no seat. Such a person is seated later by the directory sync (DIR) or by an administrator.
+
 ## What happens at sign-in
 
 1. The person opens `https://<company>.sellux.ch` and chooses **Continue with Microsoft**.

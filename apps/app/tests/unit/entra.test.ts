@@ -105,7 +105,7 @@ describe("flow cookie", () => {
 describe("id token", () => {
   it("accepts a matching token and matches on the lower-cased sign-in name", () => {
     const r = checkIdToken(decodeIdToken(jwt(claims())), want, now);
-    expect(r).toEqual({ ok: true, who: { oid: "oid-1", tid: TID, email: "j.schmidt@acme.example", name: "J. Schmidt", roles: [] } });
+    expect(r).toEqual({ ok: true, who: { oid: "oid-1", tid: TID, email: "j.schmidt@acme.example", name: "J. Schmidt", roles: [], department: "" } });
   });
 
   it("prefers the email claim when there is one", () => {
@@ -309,5 +309,14 @@ describe("Connect Microsoft 365", () => {
   it("carries the connect purpose in the signed flow cookie", () => {
     const f: Flow = { slug: "acme", state: "s", nonce: "n", verifier: "v", next: "", exp: now + 600, as: "connect" };
     expect(verifyFlow(signFlow(f, "k"), "k", now)?.as).toBe("connect");
+  });
+});
+
+describe("id token department claim", () => {
+  it("reads the department trimmed, and gives an empty string when missing or not a string", () => {
+    expect(checkIdToken(claims({ department: "  Engineering " }), want, now)).toMatchObject({ ok: true, who: { department: "Engineering" } });
+    expect(checkIdToken(claims(), want, now)).toMatchObject({ ok: true, who: { department: "" } });
+    expect(checkIdToken(claims({ department: 7 }), want, now)).toMatchObject({ ok: true, who: { department: "" } });
+    expect(checkIdToken(claims({ department: ["Engineering"] }), want, now)).toMatchObject({ ok: true, who: { department: "" } });
   });
 });

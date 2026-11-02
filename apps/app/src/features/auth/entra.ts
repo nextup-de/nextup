@@ -209,7 +209,7 @@ export function decodeIdToken(jwt: unknown): Record<string, unknown> | null {
 }
 
 /** `roles` are the app roles the customer's IT assigned in Entra, as the token spells them. */
-export type MicrosoftIdentity = { oid: string; tid: string; email: string; name: string; roles: string[] };
+export type MicrosoftIdentity = { oid: string; tid: string; email: string; name: string; roles: string[]; department: string };
 
 export type IdTokenCheck = { ok: true; who: MicrosoftIdentity } | { ok: false; reason: MicrosoftError };
 
@@ -241,7 +241,7 @@ export function checkIdToken(
   const email = (str("email") || str("preferred_username")).trim().toLowerCase();
   if (!oid) return { ok: false, reason: "token" };
   const roles = Array.isArray(claims.roles) ? claims.roles.filter((r): r is string => typeof r === "string") : [];
-  return { ok: true, who: { oid, tid, email, name: str("name"), roles } };
+  return { ok: true, who: { oid, tid, email, name: str("name"), roles, department: str("department").trim() } };
 }
 
 /**
@@ -253,6 +253,31 @@ export function roleFromEntra(roles: readonly string[]): Role | null {
     roles.map((r) => r.trim().toLowerCase()).filter((r) => Object.hasOwn(ENTRA_ROLE_CLAIMS, r)).map((r) => ENTRA_ROLE_CLAIMS[r]),
   );
   return ROLES.find((r) => given.has(r)) ?? null;
+}
+
+/**
+ * The role a just-in-time Microsoft user takes a seat in (IDN/D12): the top role of the unit whose
+ * name or key equals `department` (case-insensitive, first unit by sort). The top role reports to
+ * nobody or to a role of another unit; the lowest sort wins. Null for a member, an empty or unknown
+ * department, or a unit without such a role.
+ */
+export function jitSeatRole(
+  k: {
+    units: { id: string; key: string; name: string; sort: number }[];
+    roles: { id: string; orgUnitId: string; reportsToId: string | null; sort: number }[];
+  },
+  department: string,
+  role: Role,
+): string | null {
+  const want = department.trim().toLowerCase();
+  if (role === "member" || !want) return null;
+  const unit = [...k.units].sort((a, b) => a.sort - b.sort).find((u) => u.name.toLowerCase() === want || u.key.toLowerCase() === want);
+  if (!unit) return null;
+  const unitOf = new Map(k.roles.map((r) => [r.id, r.orgUnitId]));
+  const top = k.roles
+    .filter((r) => r.orgUnitId === unit.id && (r.reportsToId === null || unitOf.get(r.reportsToId) !== unit.id))
+    .sort((a, b) => a.sort - b.sort)[0];
+  return top?.id ?? null;
 }
 
 /** Did the customer's IT assign this person the NextUp.Admin app role? */

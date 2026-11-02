@@ -7,6 +7,7 @@
 // cookie carries the role the person had when they logged in, and a manager demoted a minute ago
 // must not keep handing out codes until their session expires.
 import { revalidatePath } from "next/cache";
+import { needsHandle, newHandle } from "@/features/auth/handle";
 import { getViewerFor } from "@/features/auth/session";
 import { generateLoginCode, hashLoginCode } from "@/features/auth/login-code";
 import { initialsOf, seedNameWarnings } from "@/features/tenant/create";
@@ -29,6 +30,12 @@ async function managerOf(slug: string): Promise<Manager | null> {
     select: { role: true },
   });
   return me?.role === "manager" ? { userId: viewer.userId, companyId: viewer.companyId, slug } : null;
+}
+
+/** A handle no one in the company has yet (IDN/D11). */
+async function freshHandle(companyId: string): Promise<string> {
+  const taken = await getDb().user.findMany({ where: { companyId, handle: { not: null } }, select: { handle: true } });
+  return newHandle(taken.flatMap((t) => (t.handle ? [t.handle] : [])));
 }
 
 async function membersOf(companyId: string): Promise<MemberRow[]> {
@@ -99,7 +106,10 @@ export async function setMemberRoleAction(_prev: RoleState, form: FormData): Pro
   const problem = roleChangeProblem(members, manager.userId, userId, role);
   if (problem) return { error: problem };
 
-  await getDb().user.update({ where: { id: userId, companyId: manager.companyId }, data: { role } });
+  // A user who becomes a member gets a handle if they have none; an existing handle never changes.
+  const before = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { handle: true } });
+  const handle = isRole(role) && needsHandle(role) && before && !before.handle ? await freshHandle(manager.companyId) : null;
+  await getDb().user.update({ where: { id: userId, companyId: manager.companyId }, data: { role, ...(handle ? { handle } : {}) } });
   revalidatePath(`/${manager.slug}/settings/members`);
   return { saved: `${members.find((m) => m.id === userId)?.name} is now a ${role}. It applies from their next login.` };
 }
@@ -130,6 +140,7 @@ export async function addMemberAction(_prev: AddState, form: FormData): Promise<
   }
 
   const code = generateLoginCode(manager.slug);
+  const handle = needsHandle(person.role) ? await freshHandle(manager.companyId) : null;
   await getDb().user.create({
     data: {
       companyId: manager.companyId,
@@ -137,6 +148,7 @@ export async function addMemberAction(_prev: AddState, form: FormData): Promise<
       email: person.email.toLowerCase(),
       role: person.role,
       dept: person.dept,
+      ...(handle ? { handle } : {}),
       ini: initialsOf(person.name),
       loginCodeHash: hashLoginCode(code),
       loginCodeAt: new Date(),
