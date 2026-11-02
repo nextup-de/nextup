@@ -14,7 +14,8 @@ import { isEnabled } from "@/features/flags";
 import { mayAppend } from "@/features/cases/permissions";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
-import { appendEventRow, deleteEventsForTargets, loadLogForSlug, resetCompanyLog } from "@/lib/db/events";
+import { loadCalendar } from "@/lib/db/calendar";
+import { appendEventRow, companyDay, deleteEventsForTargets, loadLogForSlug, resetCompanyLog } from "@/lib/db/events";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { issueSession } from "@/server/issue-session";
 import { companySeed } from "@/lib/db/companies";
@@ -131,7 +132,7 @@ async function notifyRaised(
   try {
     const company = await getDb().company.findUnique({
       where: { slug },
-      select: { id: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
+      select: { id: true, stage: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
     });
     if (!company) return;
     notifyCaseRaised(
@@ -143,7 +144,7 @@ async function notifyRaised(
         payload,
         seed: await companySeed(company),
         people: company.users,
-        day: company.demoDay,
+        day: companyDay(company, await loadCalendar(company.id), new Date()),
         baseUrl: companyBaseUrl(slug),
       }),
     );

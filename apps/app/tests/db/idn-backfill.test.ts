@@ -86,7 +86,7 @@ describe("IDN identity backfill", () => {
     // The reducer over the stored seed and log lands the case on M. Roth. (The reduced case has no
     // assigneeSeatId yet - the reducer is not read from ids until a later IDN task; the seat id is
     // asserted on the hand-over event above.)
-    const state = reduce((await loadSeed(a.slug))!, await loadLog(a.id, 0));
+    const state = reduce((await loadSeed(a.slug))!, await loadLog(a.id));
     expect(state.cases.find((c) => c.id === "bf-1")?.assignee).toBe("M. Roth");
 
     // A second company with the same names was not touched by the first company's users.

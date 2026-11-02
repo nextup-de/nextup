@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 
 class Strict(BaseModel):
@@ -8,6 +8,15 @@ class Strict(BaseModel):
 
 
 # ---------------------------------------------------------------- request (sent by the app)
+# The company's own model endpoint for this one request (azure-openai, openai-compatible). Used
+# instead of LLM_*; never stored, never logged: the key is a SecretStr and has no repr.
+class LlmOverride(Strict):
+    base_url: str = Field(min_length=8, max_length=300, pattern=r"^https?://")
+    model: str = Field(min_length=1, max_length=200)
+    api_key: SecretStr = Field(min_length=1, max_length=500)
+
+
+
 # Everything the model needs comes with the request: the service stores nothing and knows no
 # company. Route rows carry the owner's role, never a name - the AI points to roles.
 class RouteRow(Strict):
@@ -32,6 +41,7 @@ class RouteIn(Strict):
     idea: Idea
     routes: list[RouteRow] = Field(min_length=1, max_length=50)
     known: list[KnownItem] = Field(default=[], max_length=80)
+    llm: LlmOverride | None = None
 
 
 # ---------------------------------------------------------------- what the model answers
@@ -74,6 +84,7 @@ class CoachIn(Strict):
     # numbers are the app's; the coach may not change or restate them.
     brief: str = Field(max_length=3000)
     known: list[KnownItem] = Field(default=[], max_length=80)
+    llm: LlmOverride | None = None
 
 
 # The "raised before?" check on its own, as in routing: a match found here is handed to the coach
@@ -140,6 +151,7 @@ class PlanIn(Strict):
     company: str = Field(min_length=1, max_length=120)
     idea: Idea
     goals: list[Goal] = Field(default=[], max_length=20)
+    llm: LlmOverride | None = None
 
 
 class PlanDraft(Strict):
@@ -176,6 +188,7 @@ class CheckinIn(Strict):
     said: list[Said] = Field(default=[], max_length=30, description="What was said in this round, oldest first")
     weak: list[str] = Field(default=[], max_length=10, description="The points the app's analysis still finds weak")
     round: int = Field(ge=1, le=20)
+    llm: LlmOverride | None = None
 
 
 class CheckinDraft(Strict):

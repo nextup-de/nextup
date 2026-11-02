@@ -12,7 +12,8 @@ import { companySeed } from "@/lib/db/companies";
 import { decisionInputs } from "@/lib/db/decisions";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
 import { assistStats, listDocuments, loadAssistSettings, type AssistSettings, type AssistStats } from "@/lib/db/assist";
-import { providerConfig, type ProviderConfig } from "@/server/assist/provider";
+import { loadAiSettings } from "@/lib/db/ai";
+import type { AiSettings } from "@/features/ai/settings";
 import { ideaStats, loadPublishThreshold } from "@/lib/db/ideas";
 import { inventoryCounts } from "@/lib/db/inventory";
 import { dataInventory, documentsByClass, type ClassRow, type InventoryFacts, type KnowledgeFrom, type SourceCard } from "@/features/admin/data";
@@ -98,7 +99,8 @@ export async function decisionData(companies: readonly CompanyRef[], limit = 200
 
 export type AssistantView = {
   settings: AssistSettings;
-  provider: ProviderConfig;
+  /** The company's own choice and model (features/ai), not the environment's. */
+  provider: AiSettings;
   stats: AssistStats;
   documents: Awaited<ReturnType<typeof listDocuments>>;
 } | null;
@@ -107,8 +109,11 @@ export type AssistantView = {
 export async function assistantView(companyId: string | null): Promise<AssistantView> {
   if (!(await isAdmin()) || !hasDatabase() || !companyId) return null;
   const since = new Date(Date.now() - 30 * 86_400_000);
-  const [settings, stats, documents] = await Promise.all([loadAssistSettings(companyId), assistStats(companyId, since), listDocuments(companyId)]);
-  return { settings, provider: providerConfig(), stats, documents };
+  const company = await getDb().company.findUnique({ where: { id: companyId }, select: { stage: true } });
+  const [settings, stats, documents, ai] = await Promise.all([
+    loadAssistSettings(companyId), assistStats(companyId, since), listDocuments(companyId), loadAiSettings(companyId, company?.stage ?? "demo"),
+  ]);
+  return { settings, provider: ai.settings, stats, documents };
 }
 
 export type IdeasView = { threshold: number; drafts: number; published: number } | null;

@@ -5,6 +5,8 @@ import { scoreCase, type Score } from "@/features/scoring";
 import type { LoopRules } from "@/features/loop/rules";
 import { projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
+import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
+import { CLOCK_EPOCH, dateOfWorkday } from "@/features/clock/calendar";
 import { archiveOf, type ArchiveOutcome } from "./discussion";
 import type { CaseKind, EventLog, Visibility } from "./events";
 import type { ReducedCase, ReducedIdea } from "./reducer";
@@ -52,11 +54,17 @@ export type MineLoop = { rules: Pick<LoopRules, "discussMaxRounds">; project: Re
 // A day offset (0 = demo today) as a short date; 'today' / 'yesterday' near now.
 export type DayFmt = (d: number) => string;
 
-export function dayFormatter(today: Date, demoDay: number, locale: Locale = DEFAULT_LOCALE): DayFmt {
+// In workdays mode a day is a working-day number (CLK/D9): it shows as its calendar date, "Today" and
+// "Yesterday" stay relative to the log's day (`demoDay` here is the log day in either mode).
+export function dayFormatter(today: Date, demoDay: number, locale: Locale = DEFAULT_LOCALE, clock: ClockSpec = DEMO_CLOCK): DayFmt {
   return (d) => {
     const rel = d - demoDay;
     if (rel === 0) return translate(locale, "cases.dayToday");
     if (rel === -1) return translate(locale, "cases.dayYesterday");
+    if (clock.mode === "workdays") {
+      if (d < 1) return formatDate(locale, new Date(`${CLOCK_EPOCH}T12:00:00Z`), "dayMonth");
+      return formatDate(locale, new Date(`${dateOfWorkday(d, clock.calendar)}T12:00:00Z`), "dayMonth");
+    }
     const date = new Date(today);
     date.setDate(date.getDate() + d);
     return formatDate(locale, date, "dayMonth");
