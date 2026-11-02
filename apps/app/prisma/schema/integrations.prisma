@@ -1,4 +1,4 @@
-// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document. Changed only by: CON, NTF. Every migration is its own folder under prisma/migrations.
+// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document, OutboxMessage, WebhookSubscription, NotifyPreference, NotifyCursor. Changed only by: CON, NTF. Every migration is its own folder under prisma/migrations.
 
 // Which integrations are on for this company. docs/INTEGRATIONS.md: flipped only by an event, so
 // the change is a fact with an actor, not a silent edit.
@@ -136,4 +136,74 @@ model Document {
 
   @@unique([companyId, source, externalId])
   @@index([companyId])
+}
+
+// One message a planner decided to send (docs/adr/0004-webhook-and-outbox.md). (companyId, key) is the
+// idempotency key: planning the same fact twice writes one row. The delivery claims due rows, sends
+// them through the channel and records the outcome here.
+model OutboxMessage {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  channel         String // mail | webhook | any name a later registerChannel adds
+  key             String
+  recipientUserId String?
+  address         String? // mail address or webhook subscription id
+  template        String
+  locale          String
+  subject         String
+  text            String
+  link            String?
+  data            Json    @default("{}")
+
+  status    String    @default("pending") // pending | sent | failed | skipped
+  attempt   Int       @default(0)
+  nextAt    DateTime  @default(now())
+  lastError String?
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([companyId, key])
+  @@index([status, nextAt])
+}
+
+// Where a company's public events are posted. The secrets are sealed (features/connectors/vault.ts,
+// context "webhook:<companyId>"); several at once so a secret can be rotated without a gap.
+model WebhookSubscription {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  url     String
+  secrets String[]
+  events  String[] // PublicEventType values
+  on      Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@index([companyId])
+}
+
+// A person's choice to get or not get a template (or "*" for all) by mail.
+model NotifyPreference {
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId    String
+  template  String
+  on        Boolean
+
+  @@id([companyId, userId, template])
+}
+
+// How far the notification planner has read a company's event log, and the lease that keeps one runner per company.
+model NotifyCursor {
+  companyId  String    @id
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  seq        Int       @default(0)
+  leaseUntil DateTime?
+  lastRunAt  DateTime?
+  lastError  String?
 }
