@@ -59,7 +59,7 @@ export const auth = defineMessages({
   de: {
     homeLabel: "{name} Startseite",
     back: "← Zurück",
-    sideFoot: "Berlin · 2026",
+    sideFoot: "Berlin, 2026",
     loginCodeRequired: "Gib deinen persönlichen Anmeldecode ein. Deine Teamleitung hat ihn – er sieht so aus: {slug}-xxxx-xxxx-xxxx.",
     loginCodeLabel: "Dein Anmeldecode",
     loginCodePlaceholder: "{slug}-xxxx-xxxx-xxxx",
