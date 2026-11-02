@@ -210,7 +210,7 @@ function JiraLinkForm({ p, jira, onDone }: { p: ReducedProject; jira: JiraRow; o
   const siteUrl = jira.siteUrl ?? "";
   const example = (jira.projectKey ?? "NUP") + "-12";
   return (
-    <form className={styles.form} aria-label={t("projects.linkJiraIssue")} onSubmit={(e) => {
+    <form className={styles.form} aria-label={t("projects.linkJiraIssueLabel")} onSubmit={(e) => {
       e.preventDefault();
       if (!isIssueKey(k)) return;
       const url = jiraIssueUrl({ siteUrl }, k);
