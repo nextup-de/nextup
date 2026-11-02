@@ -4,14 +4,17 @@ import { describe, expect, it } from "vitest";
 import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "@/features/cases/events";
 import { mayAppend, type Actor } from "@/features/cases/permissions";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
-import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
+import { meOfSeat, NOBODY } from "@/features/auth/identity";
+import { LOCAL_SEED } from "@/features/demo";
+import { seatByLabel } from "@/features/demo/identity";
+import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS } from "@/features/demo/seed";
 import { loopRules, LOOP_DEFAULTS, suggestedReward } from "@/features/loop/rules";
 import { board, nextMove, projectCommentsOn, projectLabel, projectOfCase, projectsEscalatedTo, projectsFrom, projectsOf } from "@/features/projects/selectors";
 import type { Baseline } from "@/features/projects/types";
 import { timelineOf } from "@/features/projects/views";
 import { verdictOf } from "@/features/projects/verdict";
 
-const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
+const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: LOCAL_SEED.routes, promiseDays: PROMISE_DAYS, seats: LOCAL_SEED.seats };
 
 let n = 0;
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
@@ -208,7 +211,11 @@ describe("verdictOf and the rules", () => {
   });
 });
 
-const actor = (name: string, role: Actor["role"] = "leader", handle: string | null = null): Actor => ({ role, name, handle });
+const actor = (name: string, role: Actor["role"] = "leader", handle: string | null = null): Actor => {
+  const seat = seatByLabel(LOCAL_SEED.seats, name);
+  const me = seat ? meOfSeat(seat, LOCAL_SEED.seats) : NOBODY;
+  return { role, name, handle, userId: me.userId, me };
+};
 const q = (type: string, payload: Record<string, unknown> = {}, target = "p_one") => ({ type, target, payload });
 
 describe("projects: who may", () => {
