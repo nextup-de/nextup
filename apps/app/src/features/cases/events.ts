@@ -41,7 +41,8 @@ export type CaseEventType =
   | "project.rewarded" // { rule, amount?, note? }
   | "project.claimed" // -  an anonymous author takes their reward
   | "project.stopped" // { why }
-  | "day.advanced"; // { by }
+  | "day.advanced" // { by }
+  | "clock.due"; // { kind, dueDay, check?, toRoleHolderId? }  internal: the scheduler appends it as actor system:clock, never a browser or integration (CLK/D10)
 
 // What an employee raises: something that hurts, or something that could be. Missing = problem.
 export type CaseKind = "problem" | "idea";
@@ -62,7 +63,7 @@ export type RouteProposal = {
 
 // Every field an event may carry. Which ones apply is documented per type above.
 export type EventPayload = {
-  title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind; reason?: string; upside?: string;
+  title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind | "deadline" | "checkin" | "start" | "measure"; reason?: string; upside?: string;
   answer?: "yes" | "no"; note?: string;
   to?: string; why?: string;
   text?: string;

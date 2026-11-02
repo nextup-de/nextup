@@ -6,6 +6,7 @@
 //
 // Time: `log.day` is the demo clock, 0 = today. Seed cases carry `raisedDay` as a negative
 // offset; age = day - raisedDay. A paused clock (question sent) does not count towards the promise.
+import type { ClockSpec } from "@/features/clock";
 import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import type { Idea, Problem, Route, SeedCase } from "@/features/demo/types";
@@ -70,6 +71,7 @@ export type State = {
 export type ReduceSeed = {
   cases: SeedCase[]; ideas: Idea[]; problems: Problem[]; routes: Route[]; promiseDays: number;
   projects?: SeedProject[]; loop?: Partial<LoopRules>; seats?: SeatRow[];
+  clock?: ClockSpec; // missing = demo; the logic is CLK-C1's
 };
 
 type CaseRow = { kind?: CaseKind; title: string; body?: string; from: string; fromDept?: string; routeId?: string | null; assignee: string; raisedDay?: number; reason?: string; upside?: string; linkedIdea?: string; fromUserId?: string | null; seatId?: string | null };
@@ -131,7 +133,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     switch (ev.type) {
       case "case.raised": {
         const seatId = pl.assigneeRoleHolderId ?? routeOf(pl.routeId ?? null)?.ownerSeatId ?? null;
-        const c = freshCase(target, { kind: pl.kind, title: pl.title ?? "Untitled", body: pl.body, from: ev.actor, fromUserId: uid, fromDept: pl.fromDept, routeId: pl.routeId, assignee: pl.assignee ?? "Triage desk", raisedDay: d, reason: pl.reason ?? "triage", upside: pl.upside ?? "", seatId }, false);
+        const c = freshCase(target, { kind: pl.kind === "problem" || pl.kind === "idea" ? pl.kind : undefined, title: pl.title ?? "Untitled", body: pl.body, from: ev.actor, fromUserId: uid, fromDept: pl.fromDept, routeId: pl.routeId, assignee: pl.assignee ?? "Triage desk", raisedDay: d, reason: pl.reason ?? "triage", upside: pl.upside ?? "", seatId }, false);
         c.history.push(ev);
         break;
       }

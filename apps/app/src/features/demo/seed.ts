@@ -8,6 +8,7 @@
 // criteria: the three case-level criteria (board §17 - score the case, never the person).
 // Linking rules: idea.problem -> problem.id; problem.ideas -> [idea.id]; case.routeId -> route.id;
 // signal.by / proposedBy / members[].name are the names the contributors list counts.
+import { DEMO_CLOCK } from "@/features/clock";
 import type { SeedProject } from "@/features/projects/types";
 import { DEMO_GOALS, DEMO_RULES } from "./structure";
 import type {
@@ -425,6 +426,7 @@ export const PROJECTS: SeedProject[] = [
 ];
 
 export const SEED: Seed = {
+  clock: DEMO_CLOCK,
   seats: [], goals: DEMO_GOALS, spend: DEMO_RULES.spend,
   promiseDays: PROMISE_DAYS, outcomeDays: OUTCOME_DAYS,
   depts: DEPTS, people: PEOPLE, problems: PROBLEMS, ideas: IDEAS, initiatives: INITIATIVES, outcomes: OUTCOMES,

@@ -4,8 +4,10 @@
 import type { Role } from "@/config/roles";
 import type { DemoCompany, DemoUser } from "@/features/tenant/demo-companies";
 import type { Seed } from "@/features/demo/types";
+import { DEMO_CLOCK } from "@/features/clock";
 import { parseSeed } from "@/features/demo/parse";
 import { structureSeed } from "@/features/knowledge";
+import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
 import { loadKnowledge } from "./knowledge";
 import { loadCompanyRules } from "./rules";
@@ -81,14 +83,18 @@ export async function findCompanyByEmailDomain(email: string): Promise<CompanyRe
  * none, whatever its blob holds.
  */
 export async function loadSeed(slug: string): Promise<Seed | null> {
-  const row = await getDb().company.findUnique({ where: { slug }, select: { id: true, seedJson: true } });
+  const row = await getDb().company.findUnique({ where: { slug }, select: { id: true, seedJson: true, stage: true } });
   return row ? companySeed(row) : null;
 }
 
 /** The same, for a company row already in hand. Use this, not parseSeed(seedJson), anywhere a
  *  route owner, the org chart, goals or rules matter - the blob's structure is ignored (no fallback). */
-export async function companySeed(row: { id: string; seedJson: unknown }): Promise<Seed> {
-  const [knowledge, rules, loop] = await Promise.all([loadKnowledge(row.id), loadCompanyRules(row.id), loadLoopRules(row.id)]);
+export async function companySeed(row: { id: string; seedJson: unknown; stage?: string }): Promise<Seed> {
+  const [knowledge, rules, loop, calendar] = await Promise.all([loadKnowledge(row.id), loadCompanyRules(row.id), loadLoopRules(row.id), loadCalendar(row.id)]);
+  // A demo company runs on the simulated day; every other stage on the working-day calendar (CLK/D8).
+  // Callers that did not select the stage get it looked up, so no row is ever guessed to be a real company.
+  const stage = row.stage ?? (await getDb().company.findUnique({ where: { id: row.id }, select: { stage: true } }))?.stage ?? "demo";
+  const clock = stage === "demo" ? DEMO_CLOCK : ({ mode: "workdays", calendar } as const);
   // The rules after the routing come from CompanyConfig, never from the blob (src/features/loop/rules.ts).
-  return { ...structureSeed(parseSeed(row.seedJson), knowledge, rules), loop };
+  return { ...structureSeed(parseSeed(row.seedJson), knowledge, rules), loop, clock };
 }
