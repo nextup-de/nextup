@@ -15,8 +15,7 @@ import { issueAdminSession } from "@/server/admin-session";
 import type { CompanyRow, PilotRequestRow } from "@/features/admin/rows";
 import { seedTemplate } from "@/features/demo";
 import { toSeedJson } from "@/features/demo/parse";
-import { GOALS } from "@/features/evaluate";
-import { hasKnowledge, rowsFromSeed } from "@/features/knowledge";
+import { templateWrites } from "@/features/demo/content";
 import {
   initialsOf,
   markFor,
@@ -29,7 +28,7 @@ import { databaseOutage, getDb, hasDatabase } from "@/lib/db/client";
 import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
 import { adminScope } from "@/features/admin/nav";
 import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
-import { replaceKnowledge } from "@/lib/db/knowledge";
+import { writeStructure } from "@/lib/db/structure-writes";
 import { createToken } from "@/lib/db/tokens";
 import type { AutomationReport } from "@/features/integrations/automation";
 import type { AutomationTaskView } from "@/features/integrations/tasks";
@@ -212,6 +211,7 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
   }
 
   const seed = seedTemplate(input.template);
+  const writes = templateWrites(input.template, () => crypto.randomUUID());
   const now = new Date();
   const codes = input.people.map((p) => ({ name: p.name.trim(), email: p.email.trim().toLowerCase(), code: generateLoginCode(input.slug) }));
 
@@ -221,7 +221,7 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
       name: input.name,
       mark: markFor(input),
       stage,
-      seedJson: toSeedJson(seed) as object,
+      seedJson: toSeedJson(writes.seedJson) as object,
       config: { create: {} },
       users: {
         create: input.people.map((p, i) => ({
@@ -238,10 +238,9 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
     },
   });
 
-  // The template's org units, roles, routing table and goals as rows (docs/COMPANY_KNOWLEDGE.md).
-  // The empty template has none, and a company without rows reads from seedJson as before.
-  const knowledge = rowsFromSeed(seed, input.template === "demo" ? GOALS : [], () => crypto.randomUUID());
-  if (hasKnowledge(knowledge)) await replaceKnowledge(company.id, knowledge, "admin");
+  // The demo template's org units, roles, routing table, goals and rules as rows
+  // (docs/COMPANY_KNOWLEDGE.md). The empty template writes none.
+  if (input.template === "demo") await writeStructure(company.id, writes, "admin");
 
   return {
     status: "created",

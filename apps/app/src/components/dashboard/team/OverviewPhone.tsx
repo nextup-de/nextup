@@ -6,11 +6,12 @@
 // ring opens its reasoning in a bottom sheet.
 // The pieces are the desktop ones (OverviewIdea variants, OverviewChats), in the design's classes.
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/i18n/client";
 import s from "./Overview.module.css";
 import { Block, OverviewIdea, type OverviewIdeaProps } from "./OverviewIdea";
 
 type Nav = { index: number; count: number; onPrev: () => void; onNext: () => void };
-const PAGES = ["Idea", "Chat"] as const;
+const PAGES = ["team.phoneIdea", "team.phoneChat"] as const;
 
 const Chev = ({ dir }: { dir: "back" | "up" | "down" }) => (
   <svg className={s.phoneChev} data-dir={dir} width="10" height="14" viewBox="0 0 8 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 1L1 6l5 5" /></svg>
@@ -19,6 +20,7 @@ const Chev = ({ dir }: { dir: "back" | "up" | "down" }) => (
 export function OverviewPhone({ idea, chats, yourMove, nav, editSignal }: {
   idea: OverviewIdeaProps; chats: React.ReactNode; yourMove: boolean; nav: Nav; editSignal: number;
 }) {
+  const t = useT();
   const [page, setPage] = useState(0);
   const [score, setScore] = useState<number | null>(null);
   const pager = useRef<HTMLDivElement>(null);
@@ -48,34 +50,34 @@ export function OverviewPhone({ idea, chats, yourMove, nav, editSignal }: {
   return (
     <div className={s.phone}>
       <header className={s.phoneBar}>
-        <button type="button" className={s.phoneIcon} onClick={idea.onClose} aria-label="Back to the overview"><Chev dir="back" /></button>
-        <div className={s.phoneTabs} role="tablist" aria-label="Case pages">
+        <button type="button" className={s.phoneIcon} onClick={idea.onClose} aria-label={t("team.phoneBack")}><Chev dir="back" /></button>
+        <div className={s.phoneTabs} role="tablist" aria-label={t("team.phoneCasePages")}>
           <span className={s.phoneThumb} ref={thumb} aria-hidden="true" />
           {PAGES.map((label, i) => (
             <button key={label} type="button" role="tab" aria-selected={page === i} className={s.phoneTab} data-on={page === i ? "true" : undefined} onClick={() => go(page === i ? 1 - i : i)}>
-              {label}{i === 1 && yourMove && page !== 1 && <span className={s.phoneDot} aria-label="needs you" />}
+              {t(label)}{i === 1 && yourMove && page !== 1 && <span className={s.phoneDot} aria-label={t("team.phoneNeedsYou")} />}
             </button>
           ))}
         </div>
         <div className={s.phoneStep}>
-          <button type="button" className={s.phoneIcon} onClick={nav.onPrev} disabled={nav.index <= 0} aria-label="Previous case"><Chev dir="up" /></button>
-          <button type="button" className={s.phoneIcon} onClick={nav.onNext} disabled={nav.index >= nav.count - 1} aria-label="Next case"><Chev dir="down" /></button>
+          <button type="button" className={s.phoneIcon} onClick={nav.onPrev} disabled={nav.index <= 0} aria-label={t("team.phonePrev")}><Chev dir="up" /></button>
+          <button type="button" className={s.phoneIcon} onClick={nav.onNext} disabled={nav.index >= nav.count - 1} aria-label={t("team.phoneNext")}><Chev dir="down" /></button>
         </div>
       </header>
 
       <div className={s.phonePager} ref={pager} onScroll={onScroll}>
-        <section className={s.phonePage} role="tabpanel" aria-label="Idea"><OverviewIdea {...idea} variant="phone" onOpenScore={setScore} /></section>
-        <section className={`${s.phonePage} ${s.phoneChat}`} role="tabpanel" aria-label="Chat">{chats}</section>
+        <section className={s.phonePage} role="tabpanel" aria-label={t("team.phoneIdea")}><OverviewIdea {...idea} variant="phone" onOpenScore={setScore} /></section>
+        <section className={`${s.phonePage} ${s.phoneChat}`} role="tabpanel" aria-label={t("team.phoneChat")}>{chats}</section>
       </div>
 
 
       {score !== null && (
         <>
           <div className={s.phoneScrim} onClick={() => setScore(null)} aria-hidden="true" />
-          <div className={s.phoneSheet} role="dialog" aria-modal="true" aria-label={idea.brief.scores[score].label + " reasoning"}>
-            <button type="button" className={s.phoneHandle} aria-label="Close" onClick={() => setScore(null)} />
+          <div className={s.phoneSheet} role="dialog" aria-modal="true" aria-label={t("team.phoneReasoning", { label: idea.brief.scores[score].label })}>
+            <button type="button" className={s.phoneHandle} aria-label={t("team.phoneClose")} onClick={() => setScore(null)} />
             <div className={s.phoneSheetBody}>
-              <div className={s.phoneScoreTabs} role="tablist" aria-label="Scores">
+              <div className={s.phoneScoreTabs} role="tablist" aria-label={t("team.phoneScores")}>
                 {idea.brief.scores.map((x, i) => (
                   <button key={x.label} type="button" role="tab" aria-selected={i === score} className={s.phoneScoreTab} data-on={i === score ? "true" : undefined} onClick={() => setScore(i)}>
                     <span className={s.phoneScoreNum}>{x.value}</span>{x.label}
@@ -86,7 +88,7 @@ export function OverviewPhone({ idea, chats, yourMove, nav, editSignal }: {
                 <div className={s.div18}><span className={s.dept}>{idea.brief.scores[score].label}</span><p className={s.note}>{idea.brief.scores[score].note}</p></div>
                 {idea.brief.scores[score].blocks.map((b, k) => <Block key={k} b={b} />)}
                 <div className={s.div37}>
-                  <span className={s.dept}>Sources</span>
+                  <span className={s.dept}>{t("team.phoneSources")}</span>
                   <div className={s.div43}>
                     {idea.brief.scores[score].sources.map((src) => (
                       <span key={src.n} className={s.a}>

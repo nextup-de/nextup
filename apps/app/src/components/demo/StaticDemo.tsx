@@ -8,6 +8,7 @@
 // before anything reads it, and everyone's earlier chats with the coach are put back. Module code
 // runs once per page load, not on client-side navigation, so going from the raise page to the
 // dashboard keeps what was just published.
+import { useT } from "@/i18n/client";
 import { DemoProvider, type TenantInfo } from "@/components/dashboard/DemoProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { staticDemoDrafts } from "@/features/demo/static-demo";
@@ -27,10 +28,11 @@ if (typeof window !== "undefined") {
 
 // `prefix`: "/demo", or "" on a stack that is the demo (features/tenant/urls staticDemoPrefix).
 export function StaticDemo({ seed, prefix, children }: { seed: Seed; prefix: string; children: React.ReactNode }) {
+  const t = useT();
   const tenant: TenantInfo = {
     slug: SLUG,
     prefix,
-    name: "Demo company",
+    name: t("demo.company"),
     // The employee posts under a handle, so their name gets no public profile link.
     hiddenPeople: seed.personas.filter((r) => r.who.handle).map((r) => r.who.name),
     demoTools: true,

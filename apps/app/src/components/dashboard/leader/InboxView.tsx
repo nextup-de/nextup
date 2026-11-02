@@ -27,14 +27,16 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
 import { showInboxCase } from "@/lib/demo-controls";
 import { ProjectDesk } from "@/components/projects/ProjectDesk";
+import { useT } from "@/i18n/client";
+import type { MessageKey, T } from "@/i18n";
 
 type Filter = "all" | "late" | "ontime";
 const FILTERS: Filter[] = ["all", "late", "ontime"];
-const FILTER_TITLE: Record<Filter, string> = { all: "Filter: all", late: "Filter: late only", ontime: "Filter: on time only" };
-const FILTER_LABEL: Record<Filter, string> = { all: "Filter", late: "Late", ontime: "On time" };
+const FILTER_TITLE: Record<Filter, MessageKey> = { all: "leader.filterAll", late: "leader.filterLate", ontime: "leader.filterOntime" };
+const FILTER_LABEL: Record<Filter, MessageKey> = { all: "leader.filter", late: "leader.late", ontime: "leader.onTime" };
 const initialsOf = (name: string) => (name.startsWith("Anonymous") ? "?" : name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase());
 // "Yesterday" -> "yesterday", "Monday" -> "on Monday", "09:14" -> "today"
-const raisedPhrase = (label: string) => (/\d:\d/.test(label) || label === "Today" ? "today" : label === "Yesterday" ? "yesterday" : "on " + label);
+const raisedPhrase = (t: T, label: string) => (/\d:\d/.test(label) || label === "Today" ? t("leader.raisedToday") : label === "Yesterday" ? t("leader.raisedYesterday") : t("leader.raisedOn", { day: label }));
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
 const HL_EASE = "cubic-bezier(.3,1.25,.4,1)";
 // A phone gets its own idea layout (IdeaDetailPhone); a big monitor opens with the list showing,
@@ -44,6 +46,7 @@ const onPhoneChange = (fn: () => void) => { const m = window.matchMedia(PHONE); 
 
 export function InboxView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
+  const t = useT();
   const { seed, S, log, demo, persona, act, openSheet, showToast, ready, f, actor, motion, flag } = ctx;
   const talk = flag("discussion"), projects = flag("projects");
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
@@ -158,21 +161,21 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const desk = deskCases(ctx), openList = openCases(ctx);
   const route = sc?.route ?? null;
   const scMine = !!route && route.owner.name === who.name;
-  const handTo = route ? (scMine ? route.deputy : route.owner.name) : "the triage desk";
+  const handTo = route ? (scMine ? route.deputy : route.owner.name) : t("leader.triageDesk");
   const lastHand = sc?.handed[sc.handed.length - 1];
   const handedNote = !sc ? ""
     : sc.escalated && sc.escalated.to === who.name && sc.assignee !== who.name
-      ? "Escalated to you " + f(sc.escalated.day) + " — " + sc.assignee + " missed the " + P + "-day promise."
+      ? t("leader.escalatedToYou", { day: f(sc.escalated.day), name: sc.assignee, days: P })
       : sc.escalated && sc.assignee === who.name
-        ? "Past the promise since " + f(sc.escalated.day) + " — " + sc.escalated.to + " sees it too."
-        : lastHand ? "From " + lastHand.from + ", " + f(lastHand.day) + (lastHand.why ? " — “" + lastHand.why + "”" : "") : "";
+        ? t("leader.pastPromiseSince", { day: f(sc.escalated.day), to: sc.escalated.to })
+        : lastHand ? t(lastHand.why ? "leader.handedFromWhy" : "leader.handedFrom", { from: lastHand.from, day: f(lastHand.day), why: lastHand.why ?? "" }) : "";
 
   const overdue = openList.filter((c) => c.overdue).length + ideas.filter((i) => i.wait > P).length;
   const stats = [
-    { v: String(desk.length + ideas.length), l: openList.length === desk.length ? "on your desk" : "on your desk · " + (desk.length - openList.length) + " paused" },
-    { v: String(overdue), l: "past the " + P + "-day promise", hot: overdue > 0 },
-    { v: demo ? seed.metrics.lead.medianAnswer : "—", l: "median time to answer" },
-    { v: demo ? seed.metrics.lead.withinPromise : "—", l: "within the promise, Q3" },
+    { v: String(desk.length + ideas.length), l: openList.length === desk.length ? t("leader.statOnDesk") : t("leader.statOnDeskPaused", { count: desk.length - openList.length }) },
+    { v: String(overdue), l: t("leader.statPastPromise", { days: P }), hot: overdue > 0 },
+    { v: demo ? seed.metrics.lead.medianAnswer : "—", l: t("leader.statMedian") },
+    { v: demo ? seed.metrics.lead.withinPromise : "—", l: t("leader.statWithin") },
   ];
 
   // A demo day offset (0 = today) as a date; a case raised today in this browser has its real time.
@@ -187,9 +190,9 @@ export function InboxView({ initialId }: { initialId?: string }) {
     const rs = roundState(c, S.rules, S.day);
     return {
       id: c.id, title: c.title, name: c.from, role: roleOf(c.from, c.fromDept),
-      solves: rs ? (rs.ready ? "In discussion · ready to decide" : "In discussion · round " + rs.round + " of " + rs.of + " · check-in " + f(rs.dueDay)) : c.body,
+      solves: rs ? (rs.ready ? t("leader.inDiscussionReady") : t("leader.inDiscussionRoundCheckin", { round: rs.round, of: rs.of, day: f(rs.dueDay) })) : c.body,
       sent: exact && raised ? new Date(raised.ts) : dayDate(c.raisedDay - S.day), exact, due: rs ? rs.left : P - c.clock, paused: c.status === "asked", caseId: c.id,
-      tag: view ? "your view" : rs && !rs.ready ? (rs.left < 0 ? "check-in " + -rs.left + " d late" : "check-in in " + rs.left + " d") : null,
+      tag: view ? t("leader.tagYourView") : rs && !rs.ready ? (rs.left < 0 ? t("leader.tagCheckinLate", { n: -rs.left }) : t("leader.tagCheckinIn", { n: rs.left })) : null,
     };
   };
   const rows = [
@@ -203,7 +206,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const shown = rows
     .filter((r) => filter === "all" || (filter === "late" ? r.due < 0 : r.due >= 0))
     .sort((a, b) => (newest ? b.sent.getTime() - a.sent.getTime() : a.sent.getTime() - b.sent.getTime()));
-  const badgeOf = (r: (typeof rows)[number]) => r.tag ?? (r.paused ? "paused" : r.due < 0 ? -r.due + " d late" : r.due + " d left");
+  const badgeOf = (r: (typeof rows)[number]) => r.tag ?? (r.paused ? t("leader.badgePaused") : r.due < 0 ? t("leader.badgeLate", { n: -r.due }) : t("leader.badgeLeft", { n: r.due }));
 
   // Open a row; the open row again closes the pane. The first open tucks the list to its avatars.
   const pick = (id: string) => {
@@ -224,17 +227,17 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, briefs: seed.briefs };
   const personOrNull = (name: string) => (name === actor ? null : personFor(name, briefCtx));
   const item: IdeaProps | null = !selRow ? null : (() => {
-    const idea = { id: selRow.id, kind: si ? "idea" as const : "case" as const, title: selRow.title, badge: badgeOf(selRow), tone: badgeTone(selRow.due, selRow.paused), raised: raisedPhrase(sentLabel(selRow.sent, now, selRow.exact)) };
+    const idea = { id: selRow.id, kind: si ? "idea" as const : "case" as const, title: selRow.title, badge: badgeOf(selRow), tone: badgeTone(selRow.due, selRow.paused), raised: raisedPhrase(t, sentLabel(selRow.sent, now, selRow.exact)) };
     if (si) {
       const brief = briefFor(si, briefCtx);
-      const asked = si.thread.filter((t) => t.by === actor);
+      const asked = si.thread.filter((m) => m.by === actor);
       return {
         idea, brief, onClose: close,
         feed: [
-          ...brief.feed.comments.map((c) => ({ name: c.name, role: c.role, text: c.text, when: c.daysAgo + " d", mine: false, person: personFor(c.name, briefCtx) })),
-          ...si.thread.map((t) => ({ name: t.by === actor ? "You" : t.by, role: "Asked a question", text: t.text, when: f(t.day), mine: t.by === actor, person: personOrNull(t.by) })),
+          ...brief.feed.comments.map((c) => ({ name: c.name, role: c.role, text: c.text, when: t("leader.daysShort", { n: c.daysAgo }), mine: false, person: personFor(c.name, briefCtx) })),
+          ...si.thread.map((m) => ({ name: m.by === actor ? t("leader.you") : m.by, role: t("leader.askedQuestion"), text: m.text, when: f(m.day), mine: m.by === actor, person: personOrNull(m.by) })),
         ],
-        status: asked.length ? { label: "More info requested", lines: asked.map((t) => "“" + t.text + "” · " + f(t.day)), sub: brief.author.name + " has been told." } : null,
+        status: asked.length ? { label: t("leader.moreInfoRequested"), lines: asked.map((m) => "“" + m.text + "” · " + f(m.day)), sub: t("leader.toldAuthor", { name: brief.author.name }) } : null,
         onDecide: (key: string) => {
           if (key === "approve") openSheet("assign", si.id, { people: si.team.filter((n) => n !== "—" && n !== "Anonymous") });
           else if (key === "info") openSheet("askIdea", si.id);
@@ -249,31 +252,31 @@ export function InboxView({ initialId }: { initialId?: string }) {
     // The discussion stage: "Discuss first" on an open case (the advice outside the fast lane), the
     // check-in once it runs - and for someone asked for their view, no decision at all, only the thread.
     const d = sc.discussion, rs = roundState(sc, S.rules, S.day), last = d?.rounds[d.rounds.length - 1];
-    const brief = viewing && d ? { ...plain, actions: [], rec: "", recText: d.by + " asked for your view before deciding. Say what you know in a comment; everyone in the discussion reads it.", next: "Comment below.", by: rs ? "Before the check-in on " + f(rs.dueDay) : null }
+    const brief = viewing && d ? { ...plain, actions: [], rec: "", recText: t("leader.askedViewDecide", { by: d.by }), next: t("leader.commentBelow"), by: rs ? t("leader.beforeCheckin", { day: f(rs.dueDay) }) : null }
       : talk ? withDiscussion(plain, sc, { fast: fastLane(sc.body, S.rules.fastLaneEur), costEur: costEurOf(sc.body), limitEur: S.rules.fastLaneEur })
         : plain;
     const talkNote = d && rs ? {
-      label: viewing ? "Asked for your view" : rs.ready ? "Ready to decide" : "In discussion · round " + rs.round + " of " + rs.of,
+      label: viewing ? t("leader.askedForView") : rs.ready ? t("leader.readyToDecide") : t("leader.inDiscussionRound", { round: rs.round, of: rs.of }),
       lines: [
-        ...(viewing ? [d.by + " started it " + f(d.startedDay) + "."] : []),
-        ...(d.missing ? ["Missing: “" + d.missing + "”"] : []),
-        "Invited: " + (d.invited.length ? d.invited.join(", ") : "nobody yet") + ", and " + sc.from,
-        ...(last ? ["Check-in " + last.round + ", " + f(last.day) + ": " + (last.next === "decide" ? "ready to decide" : "another round") + (last.open.length ? " · open: " + last.open.join(", ") : "")] : []),
+        ...(viewing ? [t("leader.startedBy", { by: d.by, day: f(d.startedDay) })] : []),
+        ...(d.missing ? [t("leader.missingLine", { what: d.missing })] : []),
+        t("leader.invitedLine", { who: d.invited.length ? d.invited.join(", ") : t("leader.nobodyYet"), from: sc.from }),
+        ...(last ? [t(last.open.length ? "leader.checkinLineOpen" : "leader.checkinLine", { round: last.round, day: f(last.day), next: last.next === "decide" ? t("leader.checkinReady") : t("leader.checkinAnother"), open: last.open.join(", ") })] : []),
       ],
-      sub: rs.ready ? "Decide now: yes, or no and why." : rs.late ? "Check-in " + -rs.left + " d late · was due " + f(rs.dueDay) : "Next check-in " + f(rs.dueDay),
+      sub: rs.ready ? t("leader.decideNow") : rs.late ? t("leader.checkinLate", { n: -rs.left, day: f(rs.dueDay) }) : t("leader.nextCheckin", { day: f(rs.dueDay) }),
     } : null;
     return {
       idea, onClose: close,
       brief,
-      feed: commentsOn(log, sc.id).map((m) => ({ name: m.by === actor ? "You" : m.by, role: m.rescore ? "New information" : "Comment", text: m.text, when: f(m.day), mine: m.by === actor, person: personOrNull(m.by) })),
+      feed: commentsOn(log, sc.id).map((m) => ({ name: m.by === actor ? t("leader.you") : m.by, role: m.rescore ? t("leader.newInformation") : t("leader.comment"), text: m.text, when: f(m.day), mine: m.by === actor, person: personOrNull(m.by) })),
       status: talkNote ?? (!q ? null : {
-        label: q.answer ? sc.from + " answered" : "Your question is out",
-        lines: ["“" + (q.text || "One question.") + "” · you asked " + f(q.day), ...(q.answer ? ["“" + q.answer.text + "” · " + f(q.answer.day)] : [])],
-        sub: sc.status === "asked" ? "Waiting for " + sc.from + " · clock paused at " + sc.clock + " d" : "",
+        label: q.answer ? t("leader.answeredBy", { name: sc.from }) : t("leader.questionOut"),
+        lines: [t("leader.youAsked", { text: q.text || t("leader.oneQuestion"), day: f(q.day) }), ...(q.answer ? [t("leader.answerLine", { text: q.answer.text, day: f(q.answer.day) })] : [])],
+        sub: sc.status === "asked" ? t("leader.waitingFor", { name: sc.from, n: sc.clock }) : "",
       }),
       onDecide: (key: string) => {
         if (key === "yes" && projects) openSheet("accept", sc.id); // a yes opens a project: lead, title, first step
-        else if (key === "yes") { act.decide(sc.id, "yes"); showToast("Answered “yes” in " + sc.clock + " days. " + sc.from + " has been told."); }
+        else if (key === "yes") { act.decide(sc.id, "yes"); showToast(t("leader.toastYes", { n: sc.clock, name: sc.from })); }
         else if (key === "no") openSheet("no", sc.id);
         else if (key === "hand") openSheet("hand", sc.id, { picked: handTo });
         else if (key === "ask") openSheet("ask", sc.id);
@@ -287,13 +290,13 @@ export function InboxView({ initialId }: { initialId?: string }) {
   // Filter and Sort: beside the page title, or in the list's own head once an item is open.
   const tools = (
     <div className={styles.tools}>
-      <button type="button" className={styles.tool} onClick={() => setFilter((v) => FILTERS[(FILTERS.indexOf(v) + 1) % FILTERS.length])} title={FILTER_TITLE[filter]} aria-label={FILTER_TITLE[filter]}>
+      <button type="button" className={styles.tool} onClick={() => setFilter((v) => FILTERS[(FILTERS.indexOf(v) + 1) % FILTERS.length])} title={t(FILTER_TITLE[filter])} aria-label={t(FILTER_TITLE[filter])}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-        <span className={styles.toolLabel}>{FILTER_LABEL[filter]}</span>
+        <span className={styles.toolLabel}>{t(FILTER_LABEL[filter])}</span>
       </button>
-      <button type="button" className={styles.tool} onClick={() => setNewest((v) => !v)} title={newest ? "Sort: newest first" : "Sort: oldest first"} aria-label={newest ? "Sort: newest first" : "Sort: oldest first"}>
+      <button type="button" className={styles.tool} onClick={() => setNewest((v) => !v)} title={t(newest ? "leader.sortNewest" : "leader.sortOldest")} aria-label={t(newest ? "leader.sortNewest" : "leader.sortOldest")}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" /></svg>
-        <span className={styles.toolLabel}>{newest ? "Newest" : "Sort"}</span>
+        <span className={styles.toolLabel}>{t(newest ? "leader.newest" : "leader.sort")}</span>
       </button>
     </div>
   );
@@ -302,10 +305,10 @@ export function InboxView({ initialId }: { initialId?: string }) {
 
   return (
     <div className={styles.page} data-open={isOpen && !phone ? "true" : undefined} data-layer={isOpen && phone ? "true" : undefined} data-tucked={isOpen && tucked ? "true" : undefined}>
-      <h1 className={styles.srOnly}>Inbox</h1>
+      <h1 className={styles.srOnly}>{t("leader.inbox")}</h1>
       <div className={styles.top} aria-hidden={isOpen || undefined}>
         <div className={styles.head}>
-          <h2 className={styles.pageTitle}>Fresh ideas</h2>
+          <h2 className={styles.pageTitle}>{t("leader.freshIdeas")}</h2>
           {!(isOpen && !phone) && tools}
         </div>
         {/* Projects waiting on this person: their next move as a lead, a late one moved to them (components/projects). */}
@@ -313,13 +316,13 @@ export function InboxView({ initialId }: { initialId?: string }) {
       </div>
 
       <div className={styles.body}>
-        <section className={styles.card} aria-label="Fresh ideas">
+        <section className={styles.card} aria-label={t("leader.freshIdeas")}>
           {isOpen && !phone ? (
             <div className={styles.cardHead}>
-              <button type="button" className={styles.tuck} onClick={() => setTucked((t) => !t)} title={tucked ? "Show inbox" : "Tuck inbox away"} aria-label={tucked ? "Show inbox" : "Tuck inbox away"}>
+              <button type="button" className={styles.tuck} onClick={() => setTucked((t) => !t)} title={t(tucked ? "leader.showInbox" : "leader.tuckInbox")} aria-label={t(tucked ? "leader.showInbox" : "leader.tuckInbox")}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /></svg>
               </button>
-              <h2 className={styles.cardTitle}>Fresh ideas</h2>
+              <h2 className={styles.cardTitle}>{t("leader.freshIdeas")}</h2>
               {tools}
             </div>
           ) : (
@@ -336,9 +339,9 @@ export function InboxView({ initialId }: { initialId?: string }) {
           <div className={styles.scroll} ref={listRef} data-selected={isOpen && cid ? cid : ""}>
             <div className={styles.hl} ref={hlRef} aria-hidden="true" />
             {rows.length === 0 ? (
-              <div className={styles.empty}>Nothing is waiting on you.</div>
+              <div className={styles.empty}>{t("leader.nothingWaiting")}</div>
             ) : shown.length === 0 ? (
-              <div className={styles.empty}>No ideas match.</div>
+              <div className={styles.empty}>{t("leader.noIdeasMatch")}</div>
             ) : (
               <ul className={styles.list}>
                 {shown.map((r) => {
