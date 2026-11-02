@@ -5,11 +5,13 @@
 // The page around it (title, tabs) is ProjectsHub.
 import { groupProjects } from "@/features/projects/views";
 import type { ReducedProject } from "@/features/projects/types";
+import { useLocale } from "@/i18n/client";
 import { ProjectCard } from "./parts";
 import styles from "./Projects.module.css";
 
 export function ProjectsList({ list }: { list: ReducedProject[] }) {
-  const groups = groupProjects(list).filter((g) => g.projects.length > 0);
+  const locale = useLocale();
+  const groups = groupProjects(list, locale).filter((g) => g.projects.length > 0);
   return (
     <>
       {groups.map((g) => (
