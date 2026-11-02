@@ -1,0 +1,26 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users(id,displayName,mail,userPrincipalName,department,jobTitle,employeeId,accountEnabled,manager(id))",
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/users/delta?$deltatoken=fixtureDeltaToken1",
+  "value": [
+    {
+      "id": "a0000000-0000-4000-8000-000000000004",
+      "displayName": "Pia Demo",
+      "mail": "pia.demo@contoso-fixture.example",
+      "userPrincipalName": "pia.demo@contoso-fixture.onmicrosoft.com",
+      "department": "Finance",
+      "jobTitle": "Accountant",
+      "employeeId": null,
+      "accountEnabled": true
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000005",
+      "displayName": "Quin Disabled",
+      "mail": "quin.disabled@contoso-fixture.example",
+      "userPrincipalName": "quin.disabled@contoso-fixture.onmicrosoft.com",
+      "department": "Engineering",
+      "jobTitle": "Developer",
+      "employeeId": null,
+      "accountEnabled": false
+    }
+  ]
+}
