@@ -56,6 +56,21 @@ export const mail = defineMessages({
     rewardAmount: "{amount} €",
     whatMeasuredNone: "was measured.",
     whatMeasured: "was measured after {days} days: {verdict}.{numbers}",
+
+    // ── features/notify/templates.ts
+    reminderDeadlineSubject: "Answer overdue: {title}",
+    reminderDeadlineIntro: "This case passed its answer date (day {day}) and is now with you or your deputy:",
+    reminderCheckinSubject: "Check-in due: {title}",
+    reminderCheckinIntro: "A check-in on this discussion is due:",
+    reminderStartSubject: "Project start due: {title}",
+    reminderStartIntro: "This project should have started by day {day}. Add the baseline and start it:",
+    reminderMeasureSubject: "Measure due: {title}",
+    reminderMeasureIntro: "The {days}-day check of this project is due:",
+    reminderOpenCase: "Open the case: {url}",
+    reminderOpenProject: "Open the project: {url}",
+    digestSubject: "Your NextUp digest",
+    digestIntro: "This is what is waiting for you:",
+    digestOpen: "Open your inbox: {url}",
   },
   de: {
     noticeHello: "Hallo",
@@ -108,5 +123,20 @@ export const mail = defineMessages({
     rewardAmount: "{amount} Euro",
     whatMeasuredNone: "wurde gemessen.",
     whatMeasured: "wurde nach {days} Tagen gemessen: {verdict}.{numbers}",
+
+    // ── features/notify/templates.ts
+    reminderDeadlineSubject: "Antwort überfällig: {title}",
+    reminderDeadlineIntro: "Dieser Fall hat sein Antwortdatum (Tag {day}) überschritten und liegt jetzt bei dir oder deiner Vertretung:",
+    reminderCheckinSubject: "Zwischenstand fällig: {title}",
+    reminderCheckinIntro: "Für diese Diskussion ist ein Zwischenstand fällig:",
+    reminderStartSubject: "Projektstart fällig: {title}",
+    reminderStartIntro: "Dieses Projekt hätte bis Tag {day} starten sollen. Erfasse die Ausgangszahl und starte es:",
+    reminderMeasureSubject: "Messung fällig: {title}",
+    reminderMeasureIntro: "Die Messung nach {days} Tagen für dieses Projekt ist fällig:",
+    reminderOpenCase: "Fall öffnen: {url}",
+    reminderOpenProject: "Projekt öffnen: {url}",
+    digestSubject: "Deine NextUp-Zusammenfassung",
+    digestIntro: "Das wartet auf dich:",
+    digestOpen: "Posteingang öffnen: {url}",
   },
 });
