@@ -13,6 +13,7 @@ export type EventRow = {
   ts: Date | number;
   type: string;
   actor: string;
+  actorUserId?: string | null;
   targetId: string | null;
   payload: unknown;
 };
@@ -34,6 +35,7 @@ function toEvent(row: EventRow): CaseEvent {
     day: row.day | 0,
     type: row.type as CaseEventType,
     actor: row.actor,
+    actorUserId: row.actorUserId ?? null,
     target: row.targetId,
     payload: (row.payload ?? {}) as EventPayload,
     // `seed` is deliberately never set. Seed history lives in Company.seedJson and the reducer

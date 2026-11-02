@@ -6,6 +6,7 @@
 // decides who the actor is. A client cannot post as somebody else, and cannot pick the day.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { actorLabel, meFor, type Actor } from "@/features/auth/identity";
 import { getViewerFor } from "@/features/auth/session";
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
 import { APP_EVENT_TYPES, DISCUSSION_EVENT_TYPES, needsProjectsFlag } from "@/features/cases/persist";
@@ -80,7 +81,9 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   // renders - the buttons the UI hides are hidden here too (features/cases/permissions.ts).
   const log = await loadLogForSlug(slug);
   if (!log) return { ok: false, error: t("cases.actionSessionExpired") };
-  const verdict = mayAppend(viewer, { type, target, payload }, reduce(await seedFor(slug), log), locale);
+  const seed = await seedFor(slug);
+  const who: Actor = { role: viewer.role, userId: viewer.userId, me: meFor(viewer.userId, seed.seats), name: viewer.name, handle: viewer.handle };
+  const verdict = mayAppend(who, { type, target, payload }, reduce(seed, log), locale);
   if (!verdict.ok) return verdict;
 
   if (type === "day.advanced" && !(await mayRewriteHistory(viewer.companyId))) {
@@ -89,7 +92,7 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
 
   // The actor is derived here, never taken from the client: a member posts under their handle,
   // everyone else by name. Same rule the demo had.
-  const actor = viewer.role === "member" && viewer.handle ? viewer.handle : viewer.name;
+  const actor = actorLabel(viewer);
 
   const result = await appendEventRow(
     viewer.companyId,
@@ -103,7 +106,8 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
     void notifyRaised(slug, viewer.companyId, id, target, payload);
   }
   // Discussions and projects: the people asked, and the author at every step (features/loop/notice.ts).
-  notifyLoop(slug, { type: type as CaseEventType, actor, target, payload });
+  const loopEvent = { type: type as CaseEventType, actor, actorUserId: viewer.userId, target, payload };
+  notifyLoop(slug, loopEvent);
   // A person's project event (or a yes that opens a project) is Jira's to hear about now, not in a minute.
   if (type.startsWith("project.") || type === "case.decided") kickJira(slug);
 

@@ -1,6 +1,7 @@
 // Shapes of the demo seed (port of legacy/demo/js/data.js). One company's rows; every count on
 // the page is derived from these. When Prisma lands these become the seed script's input.
 import type { Role } from "@/config/roles";
+import type { SeatRow } from "@/features/auth/identity";
 import type { CaseKind, SeedEvent } from "@/features/cases/events";
 import type { WrittenBrief } from "@/features/ideas/brief";
 import type { LoopRules } from "@/features/loop/rules";
@@ -43,17 +44,22 @@ export type Verdict = "As promised" | "Beat it" | "Short";
 export type Outcome = { title: string; promised: string; actual: string; verdict: Verdict };
 
 // Who is looking: the employee posts under a handle, everyone else by name.
-export type Persona = { name: string; ini: string; line: string; handle: string | null };
+export type Persona = { name: string; ini: string; line: string; handle: string | null; userId?: string | null };
 export type RolePersona = { id: Role; label: string; dept: string; who: Persona };
 
 // One row of the routing table (§19): request type -> owner · deputy · buddy next door.
 export type RouteOwner = { name: string; role: string; dept: string };
-export type Route = { id: string; type: string; keys: string[]; owner: RouteOwner; deputy: string; buddy: string; wait: string };
+export type Route = {
+  id: string; type: string; keys: string[]; owner: RouteOwner; deputy: string; buddy: string; wait: string;
+  // Ids from the tables (IDN/D7): the rule's roles and the first holder of each; null when absent.
+  ownerRoleId?: string | null; ownerSeatId?: string | null; deputyRoleId?: string | null; deputySeatId?: string | null;
+};
 
 // A case as seeded. raisedDay is relative to demo day 0 (today); status, clock and assignee are derived by the reducer.
 export type SeedCase = {
   id: string; kind?: CaseKind; title: string; from: string; fromDept: string; routeId: string | null; assignee: string;
   raisedDay: number; reason: string; upside: string; linkedIdea?: string; body: string; seedEvents?: SeedEvent[];
+  fromUserId?: string | null; assigneeRoleHolderId?: string | null;
 };
 
 export type WaitingOn = { title: string; owner: string; dept: string; age: number; promised: number };
@@ -93,6 +99,7 @@ export type Seed = {
   promiseDays: number; outcomeDays: number;
   depts: Dept[]; people: OrgPerson[]; problems: Problem[]; ideas: Idea[]; initiatives: Initiative[]; outcomes: Outcome[];
   personas: RolePersona[]; leaders: string[]; routes: Route[]; cases: SeedCase[]; waitingOn: WaitingOn[]; buddies: Buddy[];
+  seats: SeatRow[]; // filled from the OrgRoleHolder rows by structureSeed(), never from seedJson (IDN/D7)
   goals: SeedGoal[]; // filled from the Goal table by companySeed(), never from seedJson (D5)
   spend: SpendRule | null; // filled from the CompanyRule table by companySeed(), never from seedJson (D5)
   stall: Stall[]; ledger: Ledger; metrics: Metrics; views: Record<string, ViewCopy>;

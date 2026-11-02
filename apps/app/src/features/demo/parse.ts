@@ -56,8 +56,8 @@ export function parseSeed(value: unknown): Seed {
   }
 
   // Shape verified; the nested rows came from a Seed that already typechecked when it was written.
-  // Old blobs have neither goals nor spend (both come from the tables, D5).
-  return { ...(value as Seed), goals: Array.isArray(v.goals) ? (v.goals as Seed["goals"]) : [], spend: (v.spend as Seed["spend"] | undefined) ?? null };
+  // A stored `seats` is ignored too (IDN/D7). Old blobs have neither goals nor spend (both come from the tables, D5).
+  return { ...(value as Seed), seats: [], goals: Array.isArray(v.goals) ? (v.goals as Seed["goals"]) : [], spend: (v.spend as Seed["spend"] | undefined) ?? null };
 }
 
 /** True when `value` is a usable Seed. For callers that want to fall back rather than throw. */
