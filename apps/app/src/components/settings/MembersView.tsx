@@ -1,16 +1,19 @@
 "use client";
 // The Members table plus "add a person". Every button posts a server action from
 // src/server/actions/members.ts; a login code comes back once and is shown once, here.
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { ROLES } from "@/config/roles";
 import { useFormat, useT } from "@/i18n/client";
 import {
   addMemberAction,
+  deactivateMemberAction,
+  deleteMemberAction,
   issueMemberCodeAction,
   setMemberRoleAction,
   type AddState,
   type CodeState,
   type MemberRow,
+  type RemoveState,
   type RoleState,
 } from "@/server/actions/members";
 import styles from "./MembersView.module.css";
@@ -32,6 +35,11 @@ export function MembersView({ slug, me, members }: Props) {
     return issueMemberCodeAction({}, form);
   }, {});
 
+  const [removed, removeAction, removing] = useActionState<RemoveState, FormData>(async (_prev, form) => {
+    return form.get("intent") === "delete" ? deleteMemberAction({}, form) : deactivateMemberAction({}, form);
+  }, {});
+  const [asking, setAsking] = useState<string | null>(null);
+
   const fresh = coded.code && coded.name ? { name: coded.name, code: coded.code } : null;
 
   return (
@@ -49,6 +57,8 @@ export function MembersView({ slug, me, members }: Props) {
       ) : null}
       {coded.warnings?.map((w) => <p key={w} className="nh-hint">{w}</p>)}
       {coded.error ? <p className="nh-error" role="alert">{coded.error}</p> : null}
+      {removed.error ? <p className="nh-error" role="alert">{removed.error}</p> : null}
+      {removed.done ? <p className="nh-hint" role="status">{removed.done}</p> : null}
       {roled.error ? <p className="nh-error" role="alert">{roled.error}</p> : null}
       {roled.saved ? <p className="nh-hint" role="status">{roled.saved}</p> : null}
 
@@ -57,6 +67,7 @@ export function MembersView({ slug, me, members }: Props) {
           <li key={m.id} className={styles.row}>
             <span className={styles.who}>
               <strong>{m.name}{m.id === me ? ` (${t("settings.you")})` : ""}</strong>
+              {m.active ? null : <span className={styles.sub}>{t("settings.inactive")}</span>}
               <span className={styles.sub}>{m.email}{m.dept ? ` · ${m.dept}` : ""}</span>
             </span>
             <span className={styles.sub}>
@@ -83,6 +94,22 @@ export function MembersView({ slug, me, members }: Props) {
                 {m.codeIssuedAt ? t("settings.newCode") : t("settings.issueCode")}
               </button>
             </form>
+            {m.id === me ? null : asking === m.id ? (
+              <form action={(f) => { setAsking(null); removeAction(f); }} className={styles.role}>
+                <input type="hidden" name="slug" value={slug} />
+                <input type="hidden" name="userId" value={m.id} />
+                <input type="hidden" name="intent" value={m.active ? "deactivate" : "delete"} />
+                <span className={styles.sub}>{t(m.active ? "settings.deactivateAsk" : "settings.deleteAsk", { name: m.name })}</span>
+                <button className="nh-btn nh-btn-ghost nh-btn-sm" type="submit" disabled={removing}>
+                  {t("settings.confirm", { action: t(m.active ? "settings.deactivate" : "settings.delete").toLowerCase() })}
+                </button>
+                <button className="nh-btn nh-btn-ghost nh-btn-sm" type="button" onClick={() => setAsking(null)}>{t("settings.cancel")}</button>
+              </form>
+            ) : (
+              <button className="nh-btn nh-btn-ghost nh-btn-sm" type="button" onClick={() => setAsking(m.id)} disabled={removing}>
+                {t(m.active ? "settings.deactivate" : "settings.delete")}
+              </button>
+            )}
           </li>
         ))}
       </ul>

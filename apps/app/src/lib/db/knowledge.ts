@@ -13,14 +13,16 @@ export async function loadKnowledge(companyId: string): Promise<Knowledge> {
   const db = getDb();
   const where = { companyId };
   const orderBy = { sort: "asc" } as const;
-  const [units, roles, holders, rules, goals] = await Promise.all([
+  const [units, roles, holders, rules, goals, withManager] = await Promise.all([
     db.orgUnit.findMany({ where, orderBy, select: unit }),
     db.orgRole.findMany({ where, orderBy, select: role }),
     db.orgRoleHolder.findMany({ where, orderBy, select: holder }),
     db.routingRule.findMany({ where, orderBy, select: rule }),
     db.goal.findMany({ where, orderBy, select: goal }),
+    db.user.findMany({ where: { companyId, active: true, managerId: { not: null } }, select: { id: true, managerId: true } }),
   ]);
-  return { units, roles, holders, rules, goals };
+  const managers = withManager.flatMap((u) => (u.managerId ? [{ userId: u.id, managerId: u.managerId }] : []));
+  return { units, roles, holders, rules, goals, ...(managers.length ? { managers } : {}) };
 }
 
 /** One role's holders in `sort` order, for that company only. */
