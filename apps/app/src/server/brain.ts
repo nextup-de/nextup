@@ -148,16 +148,18 @@ export async function askBrain(gate: AiGate, slug: string, idea: { title: string
 // In the studio: one coach turn (the grilling). `brief` is coachBrief() - the scores and gaps the
 // app computed; the coach may not change them.
 export async function askBrainCoach(
-  slug: string, input: { idea: { title: string; body: string }; turns: readonly Turn[]; brief: string },
-  policy: BrainPolicy, signal?: AbortSignal,
+  gate: AiGate, slug: string, input: { idea: { title: string; body: string }; turns: readonly Turn[]; brief: string },
+  policy: BrainPolicy, signal?: AbortSignal, opts: BrainOptions = {},
 ): Promise<CoachAnswer | null> {
-  if (!brainConfigured()) return null;
+  if (!gate.on || !brainConfigured()) return null;
   const co = await companyFor(slug, policy);
   const text = co?.cleanAll([input.idea.title, input.idea.body, ...input.turns.map((t) => t.text)]);
   if (!co || !text) return null;
   const turns = input.turns.map((t, i) => ({ role: t.role, text: text[i + 2] }));
   const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, input.brief, co.known);
-  return post(slug, "/v1/coach", req, CoachReply, signal);
+  const body = withLlm(gate, opts, req);
+  if (!body) return null;
+  return post(slug, "/v1/coach", body, CoachReply, signal, opts.fetch);
 }
 
 // After a yes: the first steps and the metric for the project (docs/plans/2026-10-15_idea-to-project.md).
