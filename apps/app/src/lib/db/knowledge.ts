@@ -1,6 +1,6 @@
 // Company knowledge tables <-> the plain rows in src/features/knowledge. Every query names the
 // company at the top level, so the tenant guard sees all of them (no nested includes from Company).
-import type { Knowledge, Profile } from "@/features/knowledge";
+import type { HolderRow, Knowledge, Profile } from "@/features/knowledge";
 import { getDb } from "./client";
 
 const unit = { id: true, key: true, name: true, kind: true, headcount: true, parentId: true, sort: true } as const;
@@ -23,6 +23,11 @@ export async function loadKnowledge(companyId: string): Promise<Knowledge> {
   return { units, roles, holders, rules, goals };
 }
 
+/** One role's holders in `sort` order, for that company only. */
+export async function loadHoldersOfRole(companyId: string, roleId: string): Promise<HolderRow[]> {
+  return getDb().orgRoleHolder.findMany({ where: { companyId, roleId }, orderBy: { sort: "asc" }, select: holder });
+}
+
 /** Replace a company's knowledge wholesale, in one transaction. `by` is who saved it. */
 export async function replaceKnowledge(companyId: string, k: Knowledge, by: string | null = null): Promise<void> {
   const db = getDb();
@@ -38,11 +43,12 @@ export async function replaceKnowledge(companyId: string, k: Knowledge, by: stri
     db.orgUnit.deleteMany({ where }),
     // One INSERT per table: Postgres checks the self-references (reportsTo, parent) at the end of
     // the statement, so row order inside a table does not matter.
-    db.orgUnit.createMany({ data: stamp(k.units) }),
-    db.orgRole.createMany({ data: stamp(k.roles) }),
-    db.orgRoleHolder.createMany({ data: k.holders.map((h) => ({ ...h, companyId })) }),
-    db.routingRule.createMany({ data: stamp(k.rules) }),
-    db.goal.createMany({ data: stamp(k.goals) }),
+    // An empty createMany names no company, which the tenant guard refuses; there is nothing to insert.
+    ...(k.units.length ? [db.orgUnit.createMany({ data: stamp(k.units) })] : []),
+    ...(k.roles.length ? [db.orgRole.createMany({ data: stamp(k.roles) })] : []),
+    ...(k.holders.length ? [db.orgRoleHolder.createMany({ data: k.holders.map((h) => ({ ...h, companyId })) })] : []),
+    ...(k.rules.length ? [db.routingRule.createMany({ data: stamp(k.rules) })] : []),
+    ...(k.goals.length ? [db.goal.createMany({ data: stamp(k.goals) })] : []),
   ]);
 }
 

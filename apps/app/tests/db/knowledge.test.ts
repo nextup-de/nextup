@@ -54,7 +54,8 @@ describe("company knowledge tables", () => {
     expect((await loadKnowledge(acme.id)).roles).toHaveLength(SEED.people.length - 1);
   });
 
-  it("reads a company without rows from its seedJson as before", async () => {
-    expect((await loadSeed("globex"))?.routes).toEqual(SEED.routes);
+  it("gives a company without rows no structure, whatever its seedJson holds", async () => {
+    const seed = await loadSeed("globex");
+    expect([seed?.routes, seed?.people, seed?.depts]).toEqual([[], [], []]);
   });
 });

@@ -3,14 +3,15 @@
 // writes these shapes; this file converts between them and the `Seed` the pages already read.
 //
 // Two directions:
-//   rowsFromSeed  Seed.depts/people/routes (+ goals) -> rows. Used to fill the tables for a
-//                 company that so far lived in seedJson (prisma/seed.ts, the admin template).
-//   seedParts     rows -> Seed.depts/people/routes, so reduce(seed, log) and every page keep
-//                 working while the tables become the source of truth.
+//   rowsFromSeed  demo structure (Seed.depts/people/routes + goals) -> rows, to write the demo
+//                 into a company's tables (prisma/seed.ts, the admin template).
+//   structureSeed rows + rules -> the `Seed` shape, so reduce(seed, log) and every page read the
+//                 tables only (seedParts is its structure half).
 //
 // The structure is between ROLES; a person is only ever a holder's name. Two people with the
 // same title in the same unit under the same boss are one role with two holders ("Line 3").
 import type { Dept, OrgPerson, Route, Seed } from "@/features/demo/types";
+import type { CompanyRules } from "./rules";
 
 export type UnitRow = { id: string; key: string; name: string; kind: string; headcount: number; parentId: string | null; sort: number };
 export type RoleRow = {
@@ -142,9 +143,22 @@ export function seedParts(k: Knowledge): Pick<Seed, "depts" | "people" | "routes
   return { depts, people, routes };
 }
 
-/** The Seed the pages read: seedJson, with the tables laid over it once the company has them. */
-export function overlayKnowledge(seed: Seed, k: Knowledge): Seed {
-  return hasKnowledge(k) ? { ...seed, ...seedParts(k) } : seed;
+/**
+ * The Seed the pages read: `seed` with its structure, goals and rules replaced by the tables'
+ * (D5). Whatever the stored seed holds for depts, people, routes, goals, promiseDays, outcomeDays
+ * and spend is ignored; a company without rows gets none and the default rules.
+ *
+ * This is the compatibility selector that gives the reducer its old `Seed` shape until IDN.
+ */
+export function structureSeed(seed: Seed, k: Knowledge, rules: CompanyRules): Seed {
+  const parts = hasKnowledge(k) ? seedParts(k) : { depts: [], people: [], routes: [] };
+  const goals = [...k.goals].sort((a, b) => a.sort - b.sort).map((g) => ({ goal: g.title, keys: [...g.keywords] }));
+  return { ...seed, ...parts, goals, promiseDays: rules.promiseDays, outcomeDays: rules.outcomeDays, spend: rules.spend };
+}
+
+/** One role's holders, by `sort`; [] for a role the knowledge does not have. */
+export function holdersOfRole(k: Knowledge, roleId: string): HolderRow[] {
+  return k.holders.filter((h) => h.roleId === roleId).sort((a, b) => a.sort - b.sort);
 }
 
 export type Profile = { vision: string; mission: string; principles: string[]; businessModel: string };

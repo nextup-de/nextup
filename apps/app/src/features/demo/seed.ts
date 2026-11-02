@@ -9,6 +9,7 @@
 // Linking rules: idea.problem -> problem.id; problem.ideas -> [idea.id]; case.routeId -> route.id;
 // signal.by / proposedBy / members[].name are the names the contributors list counts.
 import type { SeedProject } from "@/features/projects/types";
+import { DEMO_GOALS, DEMO_RULES } from "./structure";
 import type {
   Buddy, Dept, Idea, Initiative, Ledger, Metrics, Outcome, OrgPerson, Problem, RolePersona, Route, Seed, SeedCase, Stall, ViewCopy, WaitingOn,
 } from "./types";
@@ -424,6 +425,7 @@ export const PROJECTS: SeedProject[] = [
 ];
 
 export const SEED: Seed = {
+  goals: DEMO_GOALS, spend: DEMO_RULES.spend,
   promiseDays: PROMISE_DAYS, outcomeDays: OUTCOME_DAYS,
   depts: DEPTS, people: PEOPLE, problems: PROBLEMS, ideas: IDEAS, initiatives: INITIATIVES, outcomes: OUTCOMES,
   personas: ROLES, leaders: LEADERS, routes: ROUTES, cases: [...CASES, ...PROJECT_CASES], waitingOn: WAITING_ON, buddies: BUDDIES,

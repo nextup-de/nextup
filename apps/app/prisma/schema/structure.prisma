@@ -149,3 +149,17 @@ model Goal {
 
   @@index([companyId])
 }
+
+// A company's numeric and spend rules, one row per key: promise_days, outcome_days, spend. `value`
+// is JSON; src/features/knowledge/rules.ts checks it and falls back to a default per key.
+model CompanyRule {
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@id([companyId, key])
+}
