@@ -24,6 +24,19 @@ the server actions check it - hiding a button is only a courtesy.
 An unknown stage gets the real-people policy: fail closed. Creating a company in `/admin` asks
 "Who logs in" - demo or real people (sandbox).
 
+## Break-glass code
+
+`ADMIN_ACCESS_CODE` is the way into `/admin` when Microsoft sign-in is not available.
+
+| | `demo` | `sandbox` · `live` |
+|---|---|---|
+| Who holds it | NextUp | **The customer** |
+| Where it is | The stack's `.env`, and the vault on admin.sellux.ch | The stack's `.env`, and `BREAK_GLASS.txt` in the stack folder on the box (mode 600, root) |
+| Does NextUp keep a copy | yes | **no** - the box agent (`stack/provision/agent.sh`) leaves it out of what it sends to admin.sellux.ch, writes the file once and never overwrites it, and logs `break-glass written` without the value |
+| Filled in on the `/admin` login (`ADMIN_DEMO_FILL`) | only when the company's stage is `demo` | never |
+
+The other stack secrets (database, `AUTH_SECRET`, n8n, restic) still go to the vault; they follow in phase SEC.
+
 ## Doors and their locks
 
 | Door | Lock | Brake (`src/server/throttle.ts`) |

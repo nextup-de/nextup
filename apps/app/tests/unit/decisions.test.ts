@@ -11,6 +11,7 @@ const proposal = (routeId: string | null, confidence = 83) => ({ routeId, confid
 
 const raise = (over: Partial<DecisionInput> = {}, payload: EventPayload = {}): DecisionInput => ({
   eventId: "e1",
+  companyId: "co_acme",
   company: "acme",
   caseId: "c1",
   raisedAt: "2026-09-24T08:00:00.000Z",
@@ -93,7 +94,7 @@ describe("toEvalJsonl", () => {
       toDecision(raise({ eventId: "c" })),
       toDecision(raise({ eventId: "d", later: [{ type: "case.handed", payload: { to: "H. Sander" } }] })),
     ];
-    const lines = toEvalJsonl(rows).split("\n").map((l) => JSON.parse(l));
+    const lines = toEvalJsonl(rows, "co_acme").split("\n").map((l) => JSON.parse(l));
     expect(lines).toHaveLength(2);
     expect(lines.map((l) => l.expected)).toEqual(["r1", "r3"]);
     expect(lines[0]).toMatchObject({ company: "acme", proposed: "r1", version: ROUTER_VERSION, verdict: "agreed" });
