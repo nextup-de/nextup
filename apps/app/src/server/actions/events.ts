@@ -14,18 +14,12 @@ import { isEnabled } from "@/features/flags";
 import { mayAppend } from "@/features/cases/permissions";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
-import { loadCalendar } from "@/lib/db/calendar";
-import { appendEventRow, companyDay, deleteEventsForTargets, loadLogForSlug, resetCompanyLog } from "@/lib/db/events";
+import { appendEventRow, deleteEventsForTargets, loadLogForSlug, resetCompanyLog } from "@/lib/db/events";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { issueSession } from "@/server/issue-session";
-import { companySeed } from "@/lib/db/companies";
 import { policyFor } from "@/features/admin/stages";
-import { buildRaisedNotice } from "@/features/cases/notice";
 import { stampEvent } from "@/features/cases/stamp";
-import { companyBaseUrl, notifyCaseRaised } from "@/server/case-notice";
-import { mailConfigured } from "@/server/mail";
 import { kickJira } from "@/server/jira-sync";
-import { notifyLoop } from "@/server/loop-notice";
 import { proposeOnRaise } from "@/server/routing";
 import { getLocale } from "@/i18n/server";
 import { createT } from "@/i18n";
@@ -108,52 +102,13 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   );
   if (!result.ok) return { ok: false, error: result.error };
 
-  // Email the route owner, but only after the row is safely committed, and never block on it.
-  if (type === "case.raised" && target) {
-    void notifyRaised(slug, viewer.companyId, id, target, stored);
-  }
-  // Discussions and projects: the people asked, and the author at every step (features/loop/notice.ts).
-  const loopEvent = { type: type as CaseEventType, actor, actorUserId: viewer.userId, target, payload: stored };
-  notifyLoop(slug, loopEvent);
+  // The mails for this event come from the outbox: server/notify/dispatch.ts plans them from the log.
   // A person's project event (or a yes that opens a project) is Jira's to hear about now, not in a minute.
   if (type.startsWith("project.") || type === "case.decided") kickJira(slug);
 
   revalidatePath("/" + slug, "layout");
   revalidatePath("/", "layout"); // subdomain mode: the company is the host, so the path has no slug
   return { ok: true };
-}
-
-/** Resolve the route owner and send them the notice. */
-async function notifyRaised(
-  slug: string,
-  companyId: string,
-  eventId: string,
-  caseId: string,
-  payload: EventPayload,
-): Promise<void> {
-  if (!mailConfigured()) return;
-  try {
-    const company = await getDb().company.findUnique({
-      where: { slug },
-      select: { id: true, stage: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
-    });
-    if (!company) return;
-    notifyCaseRaised(
-      companyId,
-      buildRaisedNotice({
-        slug,
-        eventId,
-        caseId,
-        payload,
-        seed: await companySeed(company),
-        people: company.users,
-        day: companyDay(company, await loadCalendar(company.id), new Date()),
-        baseUrl: companyBaseUrl(slug),
-      }),
-    );
-  } catch {
-    // Same rule as the delivery itself: a raise must never fail because of the notification.
-  }
 }
 
 /** Dev panel: put this company back to its seed. Shared - it resets for everyone. */
