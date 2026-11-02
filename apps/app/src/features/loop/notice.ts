@@ -7,24 +7,30 @@ import type { NoticeMail } from "@/features/cases/notice";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import { projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
+import { createT, DEFAULT_LOCALE, type Locale, type T } from "@/i18n";
 
 /** A person who can get mail: their name, and the handle they post under (anonymous members). */
 export type Person = { name: string; email: string; handle?: string | null };
 
 type Args = { ev: Pick<CaseEvent, "type" | "actor" | "target" | "payload">; state: State; people: Person[]; baseUrl: string };
 
-const inDays = (n: number) => (n <= 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`);
+/** One language for all mails, or the language of each recipient by address. */
+export type MailLocale = Locale | ((email: string) => Locale);
 
-export function loopMails({ ev, state, people, baseUrl }: Args): NoticeMail[] {
+const inDays = (t: T, n: number) => (n <= 0 ? t("mail.inToday") : n === 1 ? t("mail.inTomorrow") : t("mail.inDays", { n }));
+
+export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLocale = DEFAULT_LOCALE): NoticeMail[] {
   const find = (who: string) => people.find((p) => p.name === who || (p.handle && p.handle === who));
   const out: NoticeMail[] = [];
   const seen = new Set<string>();
-  const send = (who: string, subject: string, lines: string[]) => {
+  // Subjects and lines are built per recipient, in that recipient's language.
+  const send = (who: string, subject: (t: T) => string, lines: (t: T) => string[]) => {
     const p = find(who);
     // Never write to whoever did it, never twice, never without an address.
     if (!p?.email || who === ev.actor || find(ev.actor)?.email === p.email || seen.has(p.email)) return;
     seen.add(p.email);
-    out.push({ to: p.email, subject, text: [`${p.name},`, "", ...lines].join("\n") });
+    const t = createT(typeof locale === "function" ? locale(p.email) : locale);
+    out.push({ to: p.email, subject: subject(t), text: [`${p.name},`, "", ...lines(t)].join("\n") });
   };
   const caseLink = (c: ReducedCase) => `${baseUrl}/cases/${encodeURIComponent(c.id)}`;
   const projectLink = (p: ReducedProject) => `${baseUrl}/projects/${encodeURIComponent(p.id)}`;
@@ -36,20 +42,21 @@ export function loopMails({ ev, state, people, baseUrl }: Args): NoticeMail[] {
     case "case.discussion":
     case "case.invited": {
       if (!kase?.discussion) break;
-      const names = ev.type === "case.invited" ? pl.invited ?? [] : kase.discussion.invited;
+      const talk = kase.discussion;
+      const names = ev.type === "case.invited" ? pl.invited ?? [] : talk.invited;
       const due = kase.dueDay - state.day;
       for (const name of names) {
-        send(name, `Your view is asked: ${kase.title}`, [
-          `${ev.actor} asks for your view on this idea before it is decided:`, "", `  ${kase.title}`, "",
-          ...(kase.discussion.missing ? [`Still missing: ${kase.discussion.missing}`, ""] : []),
-          `The next check-in is ${inDays(due)}. Say what you know on the case: ${caseLink(kase)}`,
+        send(name, (t) => t("mail.viewSubject", { title: kase.title }), (t) => [
+          t("mail.viewIntro", { actor: ev.actor }), "", `  ${kase.title}`, "",
+          ...(talk.missing ? [t("mail.stillMissing", { text: talk.missing }), ""] : []),
+          t("mail.viewNext", { when: inDays(t, due), url: caseLink(kase) }),
         ]);
       }
       if (ev.type === "case.discussion") {
-        send(kase.from, `Your idea goes into a discussion: ${kase.title}`, [
-          `${ev.actor} wants a few more views before deciding, with a check-in every ${state.rules.discussEveryDays} days.`,
-          ...(kase.discussion.missing ? ["", `Still missing: ${kase.discussion.missing}`] : []),
-          "", `You can add a new version on the case: ${caseLink(kase)}`,
+        send(kase.from, (t) => t("mail.discussionSubject", { title: kase.title }), (t) => [
+          t("mail.discussionIntro", { actor: ev.actor, n: state.rules.discussEveryDays }),
+          ...(talk.missing ? ["", t("mail.stillMissing", { text: talk.missing })] : []),
+          "", t("mail.discussionAddVersion", { url: caseLink(kase) }),
         ]);
       }
       break;
@@ -58,46 +65,50 @@ export function loopMails({ ev, state, people, baseUrl }: Args): NoticeMail[] {
       const d = kase?.discussion;
       const last = d?.rounds[d.rounds.length - 1];
       if (!kase || !d || !last) break;
-      const lines = [
-        last.next === "decide" ? `Round ${last.round} is done and the idea is ready to decide.` : `Round ${last.round} is done; the next check-in is ${inDays(kase.dueDay - state.day)}.`,
-        ...(last.open.length ? ["", `Still open: ${last.open.join(", ")}`] : []),
+      const lines = (t: T) => [
+        last.next === "decide" ? t("mail.checkinReady", { round: last.round }) : t("mail.checkinNext", { round: last.round, when: inDays(t, kase.dueDay - state.day) }),
+        ...(last.open.length ? ["", t("mail.stillOpen", { list: last.open.join(", ") })] : []),
         ...(last.note ? ["", last.note] : []),
         "", caseLink(kase),
       ];
-      for (const who of [kase.from, ...d.invited]) send(who, `Check-in: ${kase.title}`, lines);
+      for (const who of [kase.from, ...d.invited]) send(who, (t) => t("mail.checkinSubject", { title: kase.title }), lines);
       break;
     }
     case "case.decided": {
       const p = kase?.decided?.projectId ? state.projects.find((x) => x.id === kase.decided?.projectId) : undefined;
       if (!kase || !p) break;
-      send(kase.from, `Your idea was accepted: ${kase.title}`, [
-        `${ev.actor} said yes. It is now ${projectLabel(p)} "${p.title}", led by ${p.lead}.`,
-        "", "You will hear when it starts, when it is done, and what it changed.", "", projectLink(p),
+      send(kase.from, (t) => t("mail.acceptedSubject", { title: kase.title }), (t) => [
+        t("mail.acceptedIntro", { actor: ev.actor, label: projectLabel(p), title: p.title, lead: p.lead }),
+        "", t("mail.acceptedNext"), "", projectLink(p),
       ]);
-      send(p.lead, `You lead ${projectLabel(p)}: ${p.title}`, [
-        `${ev.actor} accepted this idea and named you as its lead.`,
-        "", `Take the number to measure it against, then start it - due ${inDays(p.dueDay !== null ? p.dueDay - state.day : 0)}.`,
+      send(p.lead, (t) => t("mail.leadSubject", { label: projectLabel(p), title: p.title }), (t) => [
+        t("mail.leadIntro", { actor: ev.actor }),
+        "", t("mail.leadNext", { when: inDays(t, p.dueDay !== null ? p.dueDay - state.day : 0) }),
         "", projectLink(p),
       ]);
       break;
     }
     case "project.handed":
-      if (project) send(project.lead, `You lead ${projectLabel(project)}: ${project.title}`, [`${ev.actor} handed this project to you.`, ...(pl.why ? ["", pl.why] : []), "", projectLink(project)]);
+      if (project) send(project.lead, (t) => t("mail.leadSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.handedIntro", { actor: ev.actor }), ...(pl.why ? ["", pl.why] : []), "", projectLink(project)]);
       break;
     case "project.member":
-      if (project && pl.on !== false && pl.name) send(pl.name, `You are on ${projectLabel(project)}: ${project.title}`, [`${ev.actor} added you to the team.`, "", projectLink(project)]);
+      if (project && pl.on !== false && pl.name) send(pl.name, (t) => t("mail.memberSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.memberIntro", { actor: ev.actor }), "", projectLink(project)]);
       break;
     case "project.started":
     case "project.done":
     case "project.measured":
     case "project.rewarded": {
       if (!project) break;
-      const what =
-        ev.type === "project.started" ? "has started." :
-        ev.type === "project.done" ? "is done. It will be measured against the number taken before it started." :
-        ev.type === "project.measured" ? measured(project, pl.check) :
-        `is recognised: ${project.reward?.rule === "thanks" || project.reward?.amount == null ? "thank you" : `${project.reward.amount} €`}${project.reward?.note ? ` - ${project.reward.note}` : ""}.`;
-      for (const a of project.authors) send(a, `${projectLabel(project)} ${ev.type.split(".")[1]}: ${project.title}`, [`What your idea became ${what}`, "", projectLink(project)]);
+      const step = ev.type === "project.started" ? "mail.stepStarted" : ev.type === "project.done" ? "mail.stepDone" : ev.type === "project.measured" ? "mail.stepMeasured" : "mail.stepRewarded";
+      const what = (t: T): string => {
+        if (ev.type === "project.started") return t("mail.whatStarted");
+        if (ev.type === "project.done") return t("mail.whatDone");
+        if (ev.type === "project.measured") return measured(t, project, pl.check);
+        const r = project.reward;
+        const reward = r?.rule === "thanks" || r?.amount == null ? t("mail.rewardThanks") : t("mail.rewardAmount", { amount: r.amount });
+        return r?.note ? t("mail.whatRecognisedNote", { reward, note: r.note }) : t("mail.whatRecognised", { reward });
+      };
+      for (const a of project.authors) send(a, (t) => t("mail.stepSubject", { label: projectLabel(project), step: t(step), title: project.title }), (t) => [t("mail.stepIntro", { what: what(t) }), "", projectLink(project)]);
       break;
     }
     default:
@@ -106,10 +117,10 @@ export function loopMails({ ev, state, people, baseUrl }: Args): NoticeMail[] {
   return out;
 }
 
-function measured(p: ReducedProject, check: number | undefined): string {
+function measured(t: T, p: ReducedProject, check: number | undefined): string {
   const m = p.measures.find((x) => x.check === check);
-  if (!m) return "was measured.";
+  if (!m) return t("mail.whatMeasuredNone");
   const b = p.baseline && !p.baseline.none ? p.baseline : null;
   const numbers = b ? ` ${b.metric}: ${b.value} → ${m.value}${b.unit ? " " + b.unit : ""}` : "";
-  return `was measured after ${m.check} days: ${m.verdict}.${numbers}`;
+  return t("mail.whatMeasured", { days: m.check, verdict: m.verdict, numbers });
 }
