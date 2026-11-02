@@ -3,7 +3,7 @@ id: CLK-C1
 title: In a real company escalation comes from stored due facts, and dueNow
   lists what fell due
 wp: C
-needs: [ CLK-G1 ]
+needs: [ CLK-G1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/features/cases/reducer.ts
@@ -28,7 +28,11 @@ proofs:
       once with its idemKey and the deputy's or owner's seat, and nothing that
       already has its fact or runs in demo mode
     run: npm test -w @nextup/app -- tests/unit/clk/due.test.ts -t 'CLK dueNow'
-status: ready
+status: merged
+lane: pc/b
+branch: orch/clk-c1
+pr: 314
+merge: "135a9ff"
 ---
 
 Plan CLK (sub-plan of PILOT): the reducer side. After this task a real company's escalation is a stored fact the

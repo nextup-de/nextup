@@ -2,7 +2,7 @@
 id: NTF-Z1
 title: "NTF acceptance: reminders once, webhook retries, sandbox sends nothing"
 wp: Z
-needs: [ NTF-G1, NTF-A1, NTF-B1, NTF-C1, NTF-D1 ]
+needs: [ NTF-G1, NTF-A1, NTF-B1, NTF-C1, NTF-D1, CLK-Z1, AIP-Z1 ]
 host: any
 owns:
   - apps/app/tests/db/outbox.test.ts

@@ -2,31 +2,60 @@
 id: DIR
 project: nextup
 title: Directory sync
-state: draft
-level: 0
-approved: []
+state: active
+level: 2
+approved:
+  [
+    { level: 0, by: kevin, at: 2026-11-02, note: Workbench Control },
+    { level: 1, by: kevin, at: 2026-11-02, note: Workbench Control },
+    { level: 2, by: kevin, at: 2026-11-02, note: Workbench Control }
+  ]
 milestone: PILOT DIR
-summary: "DIR syncs people from Entra into NextUp: new employees appear with department, manager and personnel
-  number, movers change unit, and leavers are deactivated, their seats left vacant and their open cases handed to the
-  role's other holder. A deactivated person can no longer sign in, and a manager can deactivate or delete someone in
-  Members. Where a route has no deputy role, the deputy follows the owner's manager. The sync runs every 15 minutes
-  per company behind the DirectorySource interface, so SuccessFactors (SFX) later adds a second source without
-  touching it. 6 tasks, 85 % of a window; it starts after IDN and next to CLK."
+summary: "DIR syncs people from Entra into NextUp: new employees appear with
+  department, manager and personnel number, movers change unit, and leavers are
+  deactivated, their seats left vacant and their open cases handed to the role's
+  other holder. A deactivated person can no longer sign in, and a manager can
+  deactivate or delete someone in Members. Where a route has no deputy role, the
+  deputy follows the owner's manager. The sync runs every 15 minutes per company
+  behind the DirectorySource interface, so SuccessFactors (SFX) later adds a
+  second source without touching it. 6 tasks, 85 % of a window; it starts after
+  IDN and next to CLK."
 phases:
-  - { id: G, title: Directory fields, run table and inactive users, wps: [ G ], gate: auto }
-  - { id: W1, title: Apply a directory page and the Graph adapter, wps: [ A, B ], gate: auto }
-  - { id: W2, title: Sync loop, status, manager deputies and member actions, wps: [ C, D ], gate: auto }
+  - {
+      id: G,
+      title: Directory fields,
+      run table and inactive users,
+      wps: [ G ],
+      gate: auto
+    }
+  - {
+      id: W1,
+      title: Apply a directory page and the Graph adapter,
+      wps: [ A, B ],
+      gate: auto
+    }
+  - {
+      id: W2,
+      title: Sync loop,
+      status,
+      manager deputies and member actions,
+      wps: [ C, D ],
+      gate: auto
+    }
   - { id: Z, title: Acceptance, wps: [ Z ], gate: auto }
-max_parallel: 1
+max_parallel: 2
 decisions:
-  - { id: D1, text: "(from PILOT/HD13) Plans, code, comments and PRs are in English." }
+  - {
+      id: D1,
+      text: "(from PILOT/HD13) Plans, code, comments and PRs are in English."
+    }
   - {
       id: D2,
       text: "(from PILOT/HD2 and HD3) Every external system sits behind a connector
         interface of @nextup/contracts/public; the Graph directory is an adapter
         of `DirectorySource`. Public contracts are only extended: DIR may add
-        the optional field `employeeId: string | null` (`.nullable().optional()`)
-        to `DirectoryEntry` and nothing else."
+        the optional field `employeeId: string | null`
+        (`.nullable().optional()`) to `DirectoryEntry` and nothing else."
     }
   - {
       id: D3,
@@ -39,8 +68,8 @@ decisions:
       id: D4,
       text: "(from PILOT/HD10) People are matched by ids only: a directory entry is
         matched to a user by its source key - Graph: `User.entraOid` =
-        entry.externalId (the Entra object id), else for a user without
-        entraOid by the same email (lower case, as the Microsoft sign-in does);
+        entry.externalId (the Entra object id), else for a user without entraOid
+        by the same email (lower case, as the Microsoft sign-in does);
         successfactors: `User.employeeId` = entry.externalId. Display names are
         never compared. Seats and roles are IDN's (`SeatRow`, `holderOf`,
         `usersOfRole`, `seatsOfRole`, `linkJitSeat`, desk by role)."
@@ -82,30 +111,29 @@ decisions:
     }
   - {
       id: D8,
-      text: "Scope and unit. An entry belongs to the company when its department
-        names an OrgUnit (name or key, case-insensitive, trimmed - IDN's JIT
-        rule); `User.dept` is that unit's key, `User.line` the job title. An
-        entry whose department names no unit is skipped when it is new; an
-        existing user keeps their account with `dept: \"\"`. A new user is
-        created with role member, a handle (`newHandle`), the email, `ini`,
-        the source key, `employeeId`; sync never changes a role and creates no
-        seat (seats come from the Microsoft sign-in, IDN/D12, or an admin).
-        Entra groups are carried in the page and not stored (ADM maps groups to
-        units)."
+      text: "Scope and unit. An entry belongs to the company when its department names
+        an OrgUnit (name or key, case-insensitive, trimmed - IDN's JIT rule);
+        `User.dept` is that unit's key, `User.line` the job title. An entry
+        whose department names no unit is skipped when it is new; an existing
+        user keeps their account with `dept: \"\"`. A new user is created with
+        role member, a handle (`newHandle`), the email, `ini`, the source key,
+        `employeeId`; sync never changes a role and creates no seat (seats come
+        from the Microsoft sign-in, IDN/D12, or an admin). Entra groups are
+        carried in the page and not stored (ADM maps groups to units)."
     }
   - {
       id: D9,
       text: "`applyDirectoryDelta(companyId, source, page, now)` in
         apps/app/src/lib/db/directory.ts, planned by the pure
         `planDirectoryDelta(input): DirectoryPlan` in
-        apps/app/src/features/directory/apply.ts: create and update users
-        (name, email, dept, line, employeeId, directorySyncedAt); managers are
-        resolved after all entries of the page (managerExternalId → the user
-        with that source key, else null); an entry with `active: false` or in
+        apps/app/src/features/directory/apply.ts: create and update users (name,
+        email, dept, line, employeeId, directorySyncedAt); managers are resolved
+        after all entries of the page (managerExternalId → the user with that
+        source key, else null); an entry with `active: false` or in
         `removedExternalIds` is a leaver: `active: false`, `deactivatedAt: now`,
         every seat of theirs gets `userId: null` (a vacant seat of the same
-        role), and each open case on such a seat is handed with a `case.handed
-        { to: <seat label>, toRoleHolderId: <the role's first other seat with an
+        role), and each open case on such a seat is handed with a `case.handed {
+        to: <seat label>, toRoleHolderId: <the role's first other seat with an
         active user>, why: \"leaver\" }` by actor `system:directory`, idemKey
         `dir:leaver:<caseId>:<seatId>` (no other holder: no hand-over, the case
         stays with the role). A leaver who comes back (`active: true`) is
@@ -120,33 +148,36 @@ decisions:
         (`tokenUrl(tenantId)`, scope `https://graph.microsoft.com/.default`,
         application permission User.Read.All, admin consent), cached in memory
         until 5 minutes before expiry, never logged. `delta({ cursor })`: cursor
-        null → `GET /v1.0/users/delta?$select=id,displayName,mail,userPrincipalName,department,jobTitle,employeeId,accountEnabled&$expand=manager($select=id)`,
+        null → `GET
+        /v1.0/users/delta?$select=id,displayName,mail,userPrincipalName,departm\
+        ent,jobTitle,employeeId,accountEnabled&$expand=manager($select=id)`,
         else the cursor URL; follows `@odata.nextLink` one page per call
         (nextCursor = nextLink), and the last page's `@odata.deltaLink` becomes
         the stored cursor (nextCursor null). Maps to DirectoryEntry (email =
-        mail or userPrincipalName, externalId = id, `@removed` → removedExternalIds).
-        A cursor URL must start with https://graph.microsoft.com/ or it is
-        refused."
+        mail or userPrincipalName, externalId = id, `@removed` →
+        removedExternalIds). A cursor URL must start with
+        https://graph.microsoft.com/ or it is refused."
     }
   - {
       id: D11,
-      text: "Sync loop, apps/app/src/server/directory/sync.ts: `runDirectoryOnce(now
-        = new Date(), source?: (company) => DirectorySource | null)` - for every
+      text: "Sync loop, apps/app/src/server/directory/sync.ts: `runDirectoryOnce(now =
+        new Date(), source?: (company) => DirectorySource | null)` - for every
         company with `DirectoryRun.on` and an entraTenantId (graph), claim the
         run's lease (updateMany on leaseUntil null or past, 10 minutes), read
         pages from the stored cursor until nextCursor is null (at most 50 pages
         a round), apply each, store the new cursor only after the last page,
         record counts and lastOkAt, or lastError (cut to 500 characters) and
         keep the old cursor; release. `startDirectorySync()` every
-        DIRECTORY_INTERVAL_MS (default 900 000) from apps/app/instrumentation.ts,
-        guarded by globalThis like server/jira-sync.ts; a no-op without a
-        database or without ENTRA_CLIENT_ID / ENTRA_CLIENT_SECRET."
+        DIRECTORY_INTERVAL_MS (default 900 000) from
+        apps/app/instrumentation.ts, guarded by globalThis like
+        server/jira-sync.ts; a no-op without a database or without
+        ENTRA_CLIENT_ID / ENTRA_CLIENT_SECRET."
     }
   - {
       id: D12,
-      text: "Deputy from the manager chain. In features/knowledge `seedParts`, a
-        route without a deputy role gets as deputy the first seat by sort of
-        the owner seat user's manager (`deputyRoleId`, `deputySeatId`, label);
+      text: "Deputy from the manager chain. In features/knowledge `seedParts`, a route
+        without a deputy role gets as deputy the first seat by sort of the owner
+        seat user's manager (`deputyRoleId`, `deputySeatId`, label);
         `Knowledge.managers?: { userId: string; managerId: string }[]` is filled
         by `loadKnowledge` for the company's active users with a manager. A
         route with a deputy role keeps it."
@@ -155,12 +186,12 @@ decisions:
       id: D13,
       text: "Inactive users and member actions. An inactive user cannot sign in:
         `sessionStillValid` (lib/db/sessions.ts) is false for them, the login
-        code is refused (server/actions/auth.ts), the Microsoft sign-in refuses a
-        found inactive user with reason `unknown`. In Members, a manager may
+        code is refused (server/actions/auth.ts), the Microsoft sign-in refuses
+        a found inactive user with reason `unknown`. In Members, a manager may
         `deactivateMemberAction` (the leaver path of D9 for one user, not
         oneself) and `deleteMemberAction` (only an inactive user; their events
-        keep the label, `actorUserId` becomes null by the existing SetNull).
-        New strings through `t()` in i18n/messages/settings.ts."
+        keep the label, `actorUserId` becomes null by the existing SetNull). New
+        strings through `t()` in i18n/messages/settings.ts."
     }
   - {
       id: D14,
@@ -170,11 +201,11 @@ decisions:
         following tests/db/setup.ts, run from the repo root with
         `DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
         ops/test-db.sh tests/db/<file> -t '<title>'`. Recorded Graph delta pages
-        live in apps/app/tests/fixtures/graph-directory/ (made-up tenant, no real
-        person), fetch is always injected, never a live call. Top-level files
-        apps/app/tests/unit/*.test.ts are not edited (CLK-G1 owns them while
-        CLK runs). Run them yourself; only your own DB tests; repeat a red DB
-        run once."
+        live in apps/app/tests/fixtures/graph-directory/ (made-up tenant, no
+        real person), fetch is always injected, never a live call. Top-level
+        files apps/app/tests/unit/*.test.ts are not edited (CLK-G1 owns them
+        while CLK runs). Run them yourself; only your own DB tests; repeat a red
+        DB run once."
     }
   - {
       id: D15,
@@ -186,15 +217,15 @@ questions:
   - {
       id: Q1,
       text: "Which Entra users does a company's sync bring in?",
-      default: "Everyone whose department names one of the company's org units
-        (D8). A department that matches nothing is skipped; an admin adds the
-        unit or its key first."
+      default: "Everyone whose department names one of the company's org units (D8). A
+        department that matches nothing is skipped; an admin adds the unit or
+        its key first."
     }
   - {
       id: Q2,
       text: "How often does the directory sync run?",
-      default: "Every 15 minutes (DIRECTORY_INTERVAL_MS), delta only after the
-        first full round."
+      default: "Every 15 minutes (DIRECTORY_INTERVAL_MS), delta only after the first
+        full round."
     }
   - {
       id: Q3,
@@ -205,12 +236,23 @@ questions:
         docs/customer/ENTRA_SETUP.md names the permission."
     }
 autonomy:
-  merge: [low, normal]
+  merge: [ low, normal ]
   start_high: true
   replan: none
   budget_window_pct: 85 # tasks 69 % + 20 %
 talk:
-  telegram: [ question_open, blocked_twice, proof_red_twice, budget_over, gate_kevin, merge_waiting, start_high, other_repo, plan_done ]
+  telegram:
+    [
+      question_open,
+      blocked_twice,
+      proof_red_twice,
+      budget_over,
+      gate_kevin,
+      merge_waiting,
+      start_high,
+      other_repo,
+      plan_done
+    ]
   pane: [ blocked, task_merged, phase_done ]
   none: [ task_started ]
 ---
@@ -265,7 +307,7 @@ deactivated and their cases move to the role's other holder (DIR-Z1). The accept
 
 | WP | Content | Tasks | depends on | Owns |
 |---|---|---|---|---|
-| G | User fields, `DirectoryRun`, migration; run helpers; inactive users refused | DIR-G1 | IDN-Z1, CLK-G1 | `prisma/schema/auth.prisma`, `core.prisma` (auth block), `migrations/20261112080000_dir_directory/`, `features/directory/index.ts`, `lib/db/directory-run.ts`, `lib/db/sessions.ts`, `server/actions/auth.ts`, `server/microsoft-login.ts` |
+| G | User fields, `DirectoryRun`, migration; run helpers; inactive users refused | DIR-G1 | IDN-G1, CLK-G1 | `prisma/schema/auth.prisma`, `core.prisma` (auth block), `migrations/20261112080000_dir_directory/`, `features/directory/index.ts`, `lib/db/directory-run.ts`, `lib/db/sessions.ts`, `server/actions/auth.ts`, `server/microsoft-login.ts` |
 | A | `planDirectoryDelta`, `applyDirectoryDelta`, leaver hand-over | DIR-A1 | G | `features/directory/apply.ts`, `lib/db/directory.ts` |
 | B | Graph adapter, contract field, fixtures, Entra setup doc | DIR-B1 | G | `server/directory/graph.ts`, `packages/contracts/src/public/connectors/directory-source.ts`, `tests/fixtures/graph-directory/`, `docs/customer/ENTRA_SETUP.md` |
 | C | Sync loop, `/admin` status and switch | DIR-C1 | A, B, CLK-D1 | `server/directory/sync.ts`, `instrumentation.ts`, `app/admin/integrations/page.tsx`, `components/admin/DirectoryAdmin.tsx`, `server/actions/directory-admin.ts`, `i18n/messages/connectors.ts` |

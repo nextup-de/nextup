@@ -2,7 +2,7 @@
 id: DIR-B1
 title: A Graph DirectorySource reads Entra user deltas into directory pages
 wp: B
-needs: [ DIR-G1 ]
+needs: [ DIR-G1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/server/directory/graph.ts
@@ -22,7 +22,7 @@ proofs:
       graph.microsoft.com
     run: npm test -w @nextup/app -- tests/unit/dir/graph.test.ts -t 'DIR Graph
       directory'
-status: open
+status: ready
 ---
 
 Plan DIR (sub-plan of PILOT): the Graph adapter. Read first: D2, D5, D10 of the plan,

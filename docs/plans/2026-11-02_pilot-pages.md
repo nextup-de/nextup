@@ -3,8 +3,10 @@
 > **Plan · 2026-11-02 · open: Sam designs and builds every page here; the data behind each page comes from the PILOT phase named on it. Nothing is built yet.**
 > The Hauptplan PILOT adds **23 new pages**, changes **15 existing pages** and needs **27 other surfaces** (Teams cards,
 > emails, printables, dialogs, states). On top of that, **8 existing pages** that work today get a design pass
-> (spec 10). This file is the map, the shared rules and the shared building blocks. The
-> pages themselves are specified in the ten files in [2026-11-02_pilot-pages/](2026-11-02_pilot-pages/), one per area.
+> (spec 10). The [defensible-offer plan](2026-11-02_defensible-offer.md) adds **9 new pages**, changes **7 pages**,
+> removes **2 routes** and needs **5 other surfaces** (spec 11). This file is the map, the shared rules and the shared
+> building blocks. The pages themselves are specified in the eleven files in
+> [2026-11-02_pilot-pages/](2026-11-02_pilot-pages/), one per area.
 
 ## Start here, Sam
 
@@ -117,7 +119,8 @@ their specs follow the brief and may change when their Bauplan is written.
 | [07-shop-floor.md](2026-11-02_pilot-pages/07-shop-floor.md) | Areas and QR codes, the four phone pages, QR poster, reference slip, installed app | FLR | 6th |
 | [08-enterprise-and-sign-in.md](2026-11-02_pilot-pages/08-enterprise-and-sign-in.md) | API tokens, Webhooks, Import and export, Sign-in and provisioning, Support access, two-factor pages, company login, forgot code, `/admin` login | API, EID, SEC, ADM | 7th |
 | [09-go-live-and-pilot-report.md](2026-11-02_pilot-pages/09-go-live-and-pilot-report.md) | Go-live, Pilot report (page and email) | PIL, MET | 8th |
-| [10-existing-pages.md](2026-11-02_pilot-pages/10-existing-pages.md) | Existing pages to improve: Projects, Project page, Raise as a whole, Ideas, Problems, Collaboration, Progress, My reports | none (MET touches Progress) | Projects, Project page and Raise right after 01-03; the other five last |
+| [10-existing-pages.md](2026-11-02_pilot-pages/10-existing-pages.md) | Existing pages to improve: Projects, Project page, Raise as a whole, Ideas, Problems, Collaboration, Progress, My reports | none (MET touches Progress; TRUTH-A1 removes its ranking) | Projects, Project page and Raise right after 01-03; the other five last |
+| [11-defensible-offer-pages.md](2026-11-02_pilot-pages/11-defensible-offer-pages.md) | From the defensible-offer plan: answer date and deputy status, why this score, Gutachter review, committee, premium rules, premium letter, payroll export, ZI KPI report, content translation, measurement from data sources, new Rules settings, works-council pack, oversight, benchmark; removal of the contributor ranking and the person pages | TRUTH, CORE, BVW, PROOF, PACK, BENCH ([Codex plan](2026-11-02_defensible-offer-codex.md)) | The removals and "answer date" and "why this score" with 04; review, committee and premium after 10; the rest last |
 
 The order follows the build order: ADM is the next phase with a lot of UI (after IDN and LNG), so its pages come first.
 
@@ -293,7 +296,7 @@ everything in one place (Q2).
 | Dashboard | `/dashboard` | MET | 04 |
 | Feed | `/feed` | MET | 04 |
 | Overview | `/overview` | MET | 04 |
-| Person page | `/people/[name]` | MET | 04 |
+| Person page | `/people/[name]` (removed by TRUTH-B1; MET may rebuild it as `/people/[userId]`) | MET | 04, 11 |
 | Raise: publishing step | `/raise` | LOOP | 04 |
 | Case page | `/cases/[caseId]` | LOOP, CLK, VIS | 04 |
 | Inbox and My cases | `/leader`, `/team` | VIS | 04 |
@@ -319,6 +322,34 @@ Built and working today, and no PILOT phase rebuilds them. They keep what they d
 
 Ideas, Problems, Collaboration, Progress and My reports are not in the navigation today; spec 10 asks whether each
 stays (10-Q1 to 10-Q5).
+
+### From the defensible-offer plan (spec 11)
+
+The [defensible-offer plan](2026-11-02_defensible-offer.md) and its [Codex tasks](2026-11-02_defensible-offer-codex.md)
+add these. Each page's data comes from the task named in spec 11.
+
+| Page | Route | New / changed / removed | Tasks |
+|---|---|---|---|
+| Reviews | `/reviews` | new | BVW-A1, BVW-B1 |
+| Review a case | `/reviews/[caseId]` | new | BVW-A1, BVW-B1 |
+| Committee | `/committee` | new | BVW-C1 |
+| Premium rules | `/settings/premium` | new | BVW-D1, BVW-E1 |
+| Payroll export | `/settings/payroll` | new | BVW-F1 |
+| ZI KPI report | `/kpis` | new | BVW-G1 |
+| Works council and AI Act | `/settings/works-council` | new | PACK-A1, PACK-B1, PROOF-D1 |
+| Oversight | `/oversight` | new | PACK-C1 |
+| Benchmark | `/settings/benchmark` | new | BENCH-A1, BENCH-B1 |
+| Case page (answer date, why this score, translation) | `/cases/[caseId]` | changed | CORE-S1, CORE-H1, TRUTH-D1, TRUTH-E1, BVW-H1 |
+| My cases (answer date) | `/team` | changed | CORE-S1 |
+| Raise (suggestions without a gain number) | `/raise` | changed | TRUTH-E1 |
+| Project page (reward, measure card) | `/projects/[projectId]` | changed | BVW-E1, PROOF-A1, PROOF-B1, PROOF-C1 |
+| Rules (six new cards) | `/settings/rules` | changed | CORE-H1, BVW-B1, BVW-C1, BVW-F1, PROOF-B1, PROOF-C1 |
+| Dashboard (benchmark card) | `/dashboard` | changed | BENCH-B1 |
+| Progress (ranking removed) | `/progress` | changed | TRUTH-A1 |
+| Person page | `/people/[name]`, `/demo/people/[name]` | removed | TRUTH-B1 (MET may add `/people/[userId]` later) |
+
+Other surfaces: the printable premium letter and four dialogs (request a review, decide in committee, confirm a
+result, import a KPI file).
 
 ### Other surfaces (27)
 
@@ -357,7 +388,7 @@ Each has a default. These specs follow the default until Kevin decides otherwise
 | Q7 | Pilot report: page, email or both? | Both, plus a PDF download (the browser's print view, no new package). |
 
 Each spec file ends with its own open questions (R1-R4 in 02, C1-C4 in 03, 04-Q1 to 04-Q6, G1-G4 in 05, N1-N4 in 06,
-F1-F6 in 07, Q-08-1 to Q-08-4, Q-09-1 to Q-09-4), each with a default.
+F1-F6 in 07, Q-08-1 to Q-08-4, Q-09-1 to Q-09-4, 10-Q1 to 10-Q8, 11-Q1 to 11-Q7), each with a default.
 
 ## Gaps the specs found, and their solutions
 
