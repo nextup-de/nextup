@@ -4,6 +4,7 @@
 // inside and the mini bar under it (RaisePrompts.tsx).
 // On a demo-stage company `fill` puts the demo script's next text in the field (features/ideas/demo-script).
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/i18n/client";
 import { Icon, Mic, Solid } from "./raiseIcons";
 import { PersonButton } from "./RaisePerson";
 import s from "./Raise.module.css";
@@ -39,6 +40,7 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
   tray?: React.ReactNode; // tucked under the card: the start page's mini bar
   actions?: React.ReactNode; // the chat's row of add-ons along the bottom edge (RaiseActions)
 }) {
+  const t = useT();
   const [dictating, setDictating] = useState(false);
   const rec = useRef<Recognition | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
@@ -57,7 +59,7 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
     const base = value.replace(/\s+$/, ""), pre = base ? base + " " : "";
     const r = new Ctor();
     r.continuous = true; r.interimResults = true; r.lang = navigator.language || "en-US";
-    r.onresult = (e) => { let t = ""; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; onChange(pre + t.trim()); };
+    r.onresult = (e) => { let heard = ""; for (let i = 0; i < e.results.length; i++) heard += e.results[i][0].transcript; onChange(pre + heard.trim()); };
     r.onend = () => { if (rec.current === r) { rec.current = null; setDictating(false); } };
     r.onerror = () => r.stop();
     rec.current = r; r.start(); setDictating(true);
@@ -71,7 +73,7 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
           <div className={s.row}>
             {onMenu && (
               <div className={s.kindWrap}>
-                <button type="button" className={s.kind} onClick={onMenu} title="Actions" aria-label="Actions" aria-expanded={!!menuOpen}><Solid name="bolt" size={10.5} fill="#1c1c1e" /></button>
+                <button type="button" className={s.kind} onClick={onMenu} title={t("ideas.composerActions")} aria-label={t("ideas.composerActions")} aria-expanded={!!menuOpen}><Solid name="bolt" size={10.5} fill="#1c1c1e" /></button>
                 {menuOpen && menu}
               </div>
             )}
@@ -83,12 +85,12 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
               {body}
             </div>
             {fill && (
-              <button type="button" className={s.fill} title={"Insert: " + fill.text} aria-label={"Insert the " + fill.label.toLowerCase()}
+              <button type="button" className={s.fill} title={t("ideas.composerInsert", { text: fill.text })} aria-label={t("ideas.composerInsertThe", { label: fill.label.toLowerCase() })}
                 onClick={() => { onChange(fill.text); setTimeout(() => { const el = fieldRef?.current; if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; } }, 0); }}>
                 <Solid name="sparkle" size={9} fill="currentColor" /><span className={s.fillLabel}>{fill.label}</span>
               </button>
             )}
-            <button type="button" className={s.dictate} onClick={dictate} aria-pressed={dictating} title={dictating ? "Stop dictation" : "Dictate"} aria-label="Dictate"><Mic size={13.5} /></button>
+            <button type="button" className={s.dictate} onClick={dictate} aria-pressed={dictating} title={dictating ? t("ideas.composerStopDictation") : t("ideas.composerDictate")} aria-label={t("ideas.composerDictate")}><Mic size={13.5} /></button>
             <button type="button" className={s.send} data-ready={canSend} onClick={onSubmit} disabled={!canSend} title={sendLabel} aria-label={sendLabel}><Icon name="up" size={11.25} stroke="#fff" width={2.6} /></button>
           </div>
           {strip ? (
@@ -97,13 +99,13 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
               {chips.map((c) => (
                 <span key={c.key} className={s.chip}>
                   {c.person && <PersonButton name={c.person} className={`${s.lead} ${s.leadBig}`}>{c.lead}</PersonButton>}
-                  <button type="button" className={s.chipOpen} onClick={c.open} title="View or edit">
+                  <button type="button" className={s.chipOpen} onClick={c.open} title={t("ideas.composerViewEdit")}>
                     {!c.person && <span className={`${s.lead} ${s.leadBig}`} data-kind={c.kind} style={c.img ? { backgroundImage: `url(${c.img})` } : undefined}>
                       {c.icon ? <Icon name={c.icon} size={12} /> : !c.img && c.lead}
                     </span>}
                     <span className={s.chipText}><span className={s.chipTitle}>{c.title}</span><span className={s.chipSub}>{c.sub}</span></span>
                   </button>
-                  <button type="button" className={s.chipX} onClick={c.remove} title="Remove" aria-label={"Remove " + c.title}><Icon name="x" size={7.5} width={3} /></button>
+                  <button type="button" className={s.chipX} onClick={c.remove} title={t("ideas.cardRemove")} aria-label={t("ideas.cardRemoveWhat", { what: c.title })}><Icon name="x" size={7.5} width={3} /></button>
                 </span>
               ))}
             </div>

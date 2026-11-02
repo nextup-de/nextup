@@ -10,6 +10,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import type { Dept, OrgPerson } from "@/features/demo/types";
 import { personFor, type Person } from "@/features/ideas/brief";
 import { initials } from "@/features/ideas/raise";
+import { useT } from "@/i18n/client";
 import s from "./Raise.module.css";
 import { avatarTone } from "@/lib/avatar";
 
@@ -18,6 +19,7 @@ export const RaisePeople = createContext<{ people: readonly OrgPerson[]; depts: 
 const W = 280, GAP = 8; // W: the widest the card gets (monitors); laptops draw it at 210
 
 export function PersonButton({ name, className, children, label }: { name: string; className?: string; children: React.ReactNode; label?: string }) {
+  const t = useT();
   const { people, depts } = useContext(RaisePeople);
   const person = personFor(name, { people, depts, ideas: [] });
   const [open, setOpen] = useState(false);
@@ -49,12 +51,12 @@ export function PersonButton({ name, className, children, label }: { name: strin
   if (!person) return <span className={className} data-avatar={avatarTone(name)}>{children}</span>;
   return (
     <>
-      <button ref={btn} type="button" className={`${s.personBtn} ${className ?? ""}`} data-avatar={avatarTone(name)} aria-expanded={open} aria-label={label ?? "Profile of " + name} title={label ?? "Profile of " + name}
+      <button ref={btn} type="button" className={`${s.personBtn} ${className ?? ""}`} data-avatar={avatarTone(name)} aria-expanded={open} aria-label={label ?? t("ideas.personProfileOf", { name })} title={label ?? t("ideas.personProfileOf", { name })}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}>
         {children}
       </button>
       {open && host && createPortal(
-        <div ref={pop} className={s.personPop} role="dialog" aria-label={"Profile of " + name} onClick={(e) => e.stopPropagation()}
+        <div ref={pop} className={s.personPop} role="dialog" aria-label={t("ideas.personProfileOf", { name })} onClick={(e) => e.stopPropagation()}
           style={{ "--pop-x": (at?.x ?? -9999) + "px", "--pop-y": (at?.y ?? -9999) + "px" } as React.CSSProperties} data-up={at?.up || undefined}>
           <MiniProfile p={person} />
         </div>, host)}
@@ -63,6 +65,7 @@ export function PersonButton({ name, className, children, label }: { name: strin
 }
 
 function MiniProfile({ p }: { p: Person }) {
+  const t = useT();
   const { href, tenant } = useDemo();
   return (
     <>
@@ -71,12 +74,12 @@ function MiniProfile({ p }: { p: Person }) {
         <span className={s.mpWho}><span className={s.mpName}>{p.name}</span><span className={s.mpRole}>{p.role}</span></span>
       </div>
       <div className={s.mpGrid}>
-        <span className={s.mpKey}>Department</span><span className={s.mpVal}>{p.dept || "—"}</span>
-        <span className={s.mpKey}>Location</span><span className={s.mpVal}>{p.location || "—"}</span>
-        <span className={s.mpKey}>Email</span><a className={s.mpMail} href={"mailto:" + p.email}>{p.email}</a>
+        <span className={s.mpKey}>{t("ideas.personDepartment")}</span><span className={s.mpVal}>{p.dept || "—"}</span>
+        <span className={s.mpKey}>{t("ideas.personLocation")}</span><span className={s.mpVal}>{p.location || "—"}</span>
+        <span className={s.mpKey}>{t("ideas.personEmail")}</span><a className={s.mpMail} href={"mailto:" + p.email}>{p.email}</a>
       </div>
       {!tenant.hiddenPeople?.includes(p.name) && <Link className={s.mpBtn} href={href("/people/" + encodeURIComponent(p.name))}>
-        View profile<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 1l5 5-5 5" /></svg>
+        {t("ideas.personViewProfile")}<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 1l5 5-5 5" /></svg>
       </Link>}
     </>
   );

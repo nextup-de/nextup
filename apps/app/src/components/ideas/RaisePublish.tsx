@@ -4,6 +4,7 @@
 // and a match score, or anyone else from the directory. Props in.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { OrbState } from "thinking-orbs/engine";
+import { useT } from "@/i18n/client";
 import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
 import type { Dept, OrgPerson } from "@/features/demo/types";
 import { initials } from "@/features/ideas/raise";
@@ -41,6 +42,7 @@ export function ReceiverDialog({ options, people, depts, me, work, score, onCanc
   onCancel: () => void;
   onConfirm: (r: Receiver) => void;
 }) {
+  const t = useT();
   const start = options.find((o) => o.yours) ?? options.find((o) => o.recommended) ?? options[0];
   const [chosen, setChosen] = useState<Receiver>(start);
   const [custom, setCustom] = useState<Receiver | null>(null); // someone else, once picked
@@ -75,17 +77,17 @@ export function ReceiverDialog({ options, people, depts, me, work, score, onCanc
           <span className={s.rcvRadio} aria-hidden="true" />
           <PersonButton name={r.name} className={s.rcvAv}>{initials(r.name)}</PersonButton>
           <span className={s.rcvWho}>
-            <span className={s.rcvNameRow}><span className={s.rcvName}>{r.name}</span>{r.recommended && <span className={s.rcvTag}>Best match</span>}</span>
-            <span className={s.rcvRole}>{[r.role, r.yourLead ? "your lead" : ""].filter(Boolean).join(" · ")}</span>
+            <span className={s.rcvNameRow}><span className={s.rcvName}>{r.name}</span>{r.recommended && <span className={s.rcvTag}>{t("ideas.publishBest")}</span>}</span>
+            <span className={s.rcvRole}>{[r.role, r.yourLead ? t("ideas.publishYourLead") : ""].filter(Boolean).join(" · ")}</span>
           </span>
-          <span className={s.rcvMatch} aria-label={r.score + "% match"}>
+          <span className={s.rcvMatch} aria-label={t("ideas.publishMatch", { score: r.score })}>
             <span className={s.rcvPct}>{r.score}%</span>
             <span className={s.rcvBar} style={{ "--pct": r.score + "%" } as React.CSSProperties}><span className={s.rcvFill} /></span>
           </span>
         </div>
         {on && (
           <div className={s.rcvWhy}>
-            <span className={s.rcvWhyLabel}>Why {r.name}</span>
+            <span className={s.rcvWhyLabel}>{t("ideas.publishWhy", { name: r.name })}</span>
             <ul className={s.rcvReasons}>{r.reasons.map((x) => <li key={x}>{x}</li>)}</ul>
           </div>
         )}
@@ -95,31 +97,31 @@ export function ReceiverDialog({ options, people, depts, me, work, score, onCanc
 
   return (
     <div className={s.dlgWrap}>
-      <button type="button" className={s.dlgScrim} onClick={busy ? undefined : onCancel} aria-label="Close" tabIndex={-1} />
+      <button type="button" className={s.dlgScrim} onClick={busy ? undefined : onCancel} aria-label={t("common.close")} tabIndex={-1} />
       <div ref={dialog} className={s.dlg} role="dialog" aria-modal="true" aria-labelledby="rcv-title" tabIndex={-1}>
         <div className={s.dlgHead}>
           <div className={s.dlgHeadText}>
-            <span className={s.dlgKicker}>Before it goes out</span>
-            <h2 id="rcv-title" className={s.dlgTitle}>Who should get this?</h2>
+            <span className={s.dlgKicker}>{t("ideas.publishKicker")}</span>
+            <h2 id="rcv-title" className={s.dlgTitle}>{t("ideas.publishTitle")}</h2>
           </div>
-          <button type="button" className={s.dlgClose} onClick={onCancel} disabled={busy} title="Close" aria-label="Close"><Icon name="x" size={11} width={2.6} /></button>
+          <button type="button" className={s.dlgClose} onClick={onCancel} disabled={busy} title={t("common.close")} aria-label={t("common.close")}><Icon name="x" size={11} width={2.6} /></button>
         </div>
 
-        <div className={s.rcvs} role="radiogroup" aria-label="Who should get this">
+        <div className={s.rcvs} role="radiogroup" aria-label={t("ideas.publishTitle")}>
           {options.map(row)}
           {custom && !taken.has(custom.name) && row(custom)}
           <div className={s.rcv} data-on={searching}>
             <button type="button" className={s.rcvTop} onClick={() => setSearching(!searching)} disabled={busy} aria-expanded={searching}>
               <span className={s.rcvRadio} aria-hidden="true" />
               <span className={s.rcvWho}>
-                <span className={s.rcvName}>Choose someone else</span>
-                <span className={s.rcvRole}>Search anyone in the company</span>
+                <span className={s.rcvName}>{t("ideas.publishElse")}</span>
+                <span className={s.rcvRole}>{t("ideas.publishElseSub")}</span>
               </span>
               <Icon name="right" size={12} stroke="#8e8e93" width={2.4} className={s.rcvChevron} />
             </button>
             {searching && (
               <div className={s.rcvSearch}>
-                <input ref={field} className={s.pickInput} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people, roles, departments" aria-label="Search people" />
+                <input ref={field} className={s.pickInput} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("ideas.publishSearch")} aria-label={t("ideas.publishSearchPeople")} />
                 <div className={s.rcvList}>
                   {found.map((p) => (
                     <button key={p.name} type="button" className={`${s.mRow} ${s.pickRow}`} onClick={() => pick(p.name)}>
@@ -127,7 +129,7 @@ export function ReceiverDialog({ options, people, depts, me, work, score, onCanc
                       <span className={s.pickText}><span className={s.pickName}>{p.name}</span><span className={s.pickMeta}>{p.role} · {deptName(p.dept)}</span></span>
                     </button>
                   ))}
-                  {!found.length && <span className={s.noMatch}>No matches</span>}
+                  {!found.length && <span className={s.noMatch}>{t("ideas.publishNoMatches")}</span>}
                 </div>
               </div>
             )}
@@ -135,9 +137,9 @@ export function ReceiverDialog({ options, people, depts, me, work, score, onCanc
         </div>
 
         <div className={s.dlgFoot}>
-          <button type="button" className={s.dlgCancel} onClick={onCancel} disabled={busy}>Cancel</button>
+          <button type="button" className={s.dlgCancel} onClick={onCancel} disabled={busy}>{t("common.cancel")}</button>
           <button type="button" className={s.dlgGo} onClick={() => onConfirm(chosen)} disabled={busy}>
-            {work ? <Working work={work} /> : <><Icon name="up" size={12} width={2.4} />Send to {chosen.name}</>}
+            {work ? <Working work={work} /> : <><Icon name="up" size={12} width={2.4} />{t("ideas.publishSend", { name: chosen.name })}</>}
           </button>
         </div>
       </div>

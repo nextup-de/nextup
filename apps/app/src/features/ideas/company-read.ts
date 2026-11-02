@@ -7,6 +7,8 @@
 import type { Dept, Idea, Initiative, OrgPerson, Outcome, Problem, Route } from "@/features/demo/types";
 import { closest, goalOf } from "@/features/evaluate";
 import { proposeRoute } from "@/features/routing";
+import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
+import { formatEuro } from "@/i18n/format";
 import type { DialKey } from "./raise";
 
 export type CompanyFact = { source: string; text: string };
@@ -33,16 +35,21 @@ export type CompanyInput = {
 };
 
 export const LAST_DECISIONS = 5; // the last decisions on a desk its record looks at
-const q = (s: string) => "“" + s + "”";
-const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]);
-const count = (n: number, one: string, many = one + "s") => n + " " + (n === 1 ? one : many);
-const TREND: Record<Problem["trend"], string> = { Worsening: "and it is getting worse", Flat: "and it is not easing", Improving: "though it is easing" };
+const TREND: Record<Problem["trend"], MessageKey> = {
+  Worsening: "ideas.readTrendWorse",
+  Flat: "ideas.readTrendFlat",
+  Improving: "ideas.readTrendBetter",
+};
 // A goal key as a whole word: "mes" is the MES, not the middle of "times".
 const says = (text: string, key: string) => new RegExp("\\b" + key.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i").test(text);
 const latest = <C extends CompanyCase>(cs: readonly C[]) =>
   cs.flatMap((c) => (c.decided ? [{ c, d: c.decided }] : [])).sort((a, b) => b.d.day - a.d.day).slice(0, LAST_DECISIONS);
 
-export function companyRead(x: CompanyInput): Record<DialKey, CompanyFact[]> {
+export function companyRead(x: CompanyInput, locale: Locale = DEFAULT_LOCALE): Record<DialKey, CompanyFact[]> {
+  const t = (key: MessageKey, params?: Record<string, string | number>) => translate(locale, key, params);
+  const q = (text: string) => t("ideas.listQuote", { text });
+  const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : xs.slice(0, -1).join(", ") + " " + t("ideas.listAnd") + " " + xs[xs.length - 1]);
+  const fact = (source: MessageKey, text: string): CompanyFact => ({ source: t(source), text });
   const route = proposeRoute(x.text, x.routes);
   const desk = route?.owner.name ?? x.lead;
   // The goal with the most keyword hits, as the benchmark picks it (benchmarks.ts).
@@ -58,18 +65,21 @@ export function companyRead(x: CompanyInput): Record<DialKey, CompanyFact[]> {
   // A department's head: its person who reports to someone outside it (or to nobody).
   const head = (id: string) => x.people.find((p) => p.dept === id && x.people.find((r) => r.name === p.reportsTo)?.dept !== id);
   const live = (i: Initiative) => i.status !== "Shipped";
-  const named = (is: readonly Initiative[]) => list([...is.slice(0, 2).map((i) => q(i.name) + " (" + i.status.toLowerCase() + ")"), ...(is.length > 2 ? [is.length - 2 + " more"] : [])]);
+  const named = (is: readonly Initiative[]) => list([...is.slice(0, 2).map((i) => q(i.name) + " (" + i.status.toLowerCase() + ")"), ...(is.length > 2 ? [t("ideas.readMore", { count: is.length - 2 })] : [])]);
 
   // ── Value: is the pain real, and how far does it reach ──
   const felt = x.problems.filter((p) => touched.some((d) => p.depts.includes(d.id))).sort((a, b) => b.people - a.people);
   const value: (CompanyFact | null)[] = [
-    problem ? { source: "Named problems", text: count(problem.people, "person", "people") + " in " + count(problem.depts.length, "department") + " have named " + q(problem.title) + ", " + TREND[problem.trend] + (problem.timeLost !== "—" ? " (" + problem.timeLost + " lost so far)" : "") + "." }
-      : felt.length ? { source: "Named problems", text: "Employees in " + list(touched.map((d) => d.name)) + " have named " + count(felt.length, "problem") + "; the most widely felt is " + q(felt[0].title) + " (" + felt[0].people + " people). None matches this one yet, so it would start a new one." }
+    problem ? fact("ideas.readSrcProblems", t(problem.timeLost !== "—" ? "ideas.readProblemLost" : "ideas.readProblem", {
+      people: t("ideas.readPersons", { count: problem.people }), depts: t("ideas.readDepts", { count: problem.depts.length }),
+      title: q(problem.title), trend: t(TREND[problem.trend]), time: problem.timeLost,
+    }))
+      : felt.length ? fact("ideas.readSrcProblems", t("ideas.readFelt", { depts: list(touched.map((d) => d.name)), problems: t("ideas.readProblems", { count: felt.length }), title: q(felt[0].title), people: felt[0].people }))
       : null,
-    touched.length === 1 ? { source: "Org chart", text: touched[0].name + ", where this lands, has " + touched[0].people + " people." }
-      : touched.length ? { source: "Org chart", text: list(touched.map((d) => d.name + " (" + d.people + ")")) + ": " + touched.reduce((n, d) => n + d.people, 0) + " people work where this lands." }
+    touched.length === 1 ? fact("ideas.readSrcOrg", t("ideas.readOrgOne", { dept: touched[0].name, people: touched[0].people }))
+      : touched.length ? fact("ideas.readSrcOrg", t("ideas.readOrgMany", { depts: list(touched.map((d) => d.name + " (" + d.people + ")")), total: touched.reduce((n, d) => n + d.people, 0) }))
       : null,
-    outcome ? { source: "Shipped outcomes", text: "The closest change already shipped, " + q(outcome.title) + ", promised " + outcome.promised + " and delivered " + outcome.actual + "." } : null,
+    outcome ? fact("ideas.readSrcOutcomes", t("ideas.readOutcome", { title: q(outcome.title), promised: outcome.promised, actual: outcome.actual })) : null,
   ];
 
   // ── Feasibility: who decides, how they decide, how loaded they are ──
@@ -79,23 +89,23 @@ export function companyRead(x: CompanyInput): Record<DialKey, CompanyFact[]> {
   const openNow = onDesk.filter((c) => c.open).length;
   const busy = ownerDept ? x.initiatives.filter((i) => live(i) && i.depts.includes(ownerDept.id)) : [];
   const feas: (CompanyFact | null)[] = [
-    route ? { source: "Routing map", text: q(route.type) + " is " + route.owner.name + "’s desk (" + route.owner.role + "), with " + route.deputy + " as deputy. That desk usually answers in " + route.wait + "." }
-      : x.routes.length ? { source: "Routing map", text: "None of the " + x.routes.length + " rows in the routing map matches, so it lands with " + x.lead + ", your team lead." }
+    route ? fact("ideas.readSrcRouting", t("ideas.readRoute", { type: q(route.type), owner: route.owner.name, role: route.owner.role, deputy: route.deputy, wait: route.wait }))
+      : x.routes.length ? fact("ideas.readSrcRouting", t("ideas.readNoRoute", { count: x.routes.length, lead: x.lead }))
       : null,
-    deskDecided.length ? { source: "Case history", text: desk + " decided " + onTime + " of the last " + deskDecided.length + " cases on that desk within " + x.promiseDays + " days; " + (openNow === 1 ? "1 case is" : openNow + " cases are") + " open there today." }
-      : openNow ? { source: "Case history", text: desk + " has " + count(openNow, "open case") + " and no decision on record yet." }
+    deskDecided.length ? fact("ideas.readSrcCases", t("ideas.readDecided", { desk, onTime, total: deskDecided.length, days: x.promiseDays, count: openNow }))
+      : openNow ? fact("ideas.readSrcCases", t("ideas.readDeskOpen", { desk, count: openNow }))
       : null,
-    busy.length && ownerDept ? { source: "Initiatives", text: ownerDept.name + " already carries " + count(busy.length, "initiative") + ": " + named(busy) + "." } : null,
+    busy.length && ownerDept ? fact("ideas.readSrcInitiatives", t("ideas.readBusy", { dept: ownerDept.name, count: busy.length, named: named(busy) })) : null,
   ];
 
   // ── Cost: what the team may spend, who signs above it, what comparable ideas cost ──
   const cfo = x.people.find((p) => /\bCFO\b/.test(p.role));
   const waiting = cfo ? x.initiatives.find((i) => live(i) && i.stuckOn?.name === cfo.name) : undefined;
   const cost: (CompanyFact | null)[] = [
-    x.spendLimitEur !== null ? { source: "Spend rule", text: "Team leads approve up to €" + x.spendLimitEur.toLocaleString("en") + " without a controlling sign-off." } : null,
-    cfo ? { source: "Org chart", text: "Above that it goes to " + cfo.name + " (" + cfo.role + ")" + (waiting ? ", the signature " + q(waiting.name) + " is waiting on right now" : "") + "." } : null,
-    idea ? { source: "Idea board", text: "The closest idea on the board, " + q(idea.title) + ", is sized at " + idea.effort + " for an upside of " + idea.upside + "." }
-      : x.ideas.length ? { source: "Idea board", text: "None of the " + x.ideas.length + " ideas on the board is close enough to compare its size with." }
+    x.spendLimitEur !== null ? fact("ideas.readSrcSpend", t("ideas.readSpend", { limit: formatEuro(locale, x.spendLimitEur) })) : null,
+    cfo ? fact("ideas.readSrcOrg", t(waiting ? "ideas.readCfoWaiting" : "ideas.readCfo", { name: cfo.name, role: cfo.role, initiative: waiting ? q(waiting.name) : "" })) : null,
+    idea ? fact("ideas.readSrcBoard", t("ideas.readIdea", { title: q(idea.title), effort: idea.effort, upside: idea.upside }))
+      : x.ideas.length ? fact("ideas.readSrcBoard", t("ideas.readNoIdea", { count: x.ideas.length }))
       : null,
   ];
 
@@ -104,9 +114,9 @@ export function companyRead(x: CompanyInput): Record<DialKey, CompanyFact[]> {
   // Work on the same goal so far, what is still running first.
   const moving = goal ? x.initiatives.filter((i) => goal.keys.some((k) => says(i.name + " " + i.why, k))).sort((a, b) => Number(live(b)) - Number(live(a))) : [];
   const fit: (CompanyFact | null)[] = [
-    { source: "Company goals", text: "Checked against the " + x.goals.length + " company goals: " + (goal ? "it serves " + q(goal.goal) + "." : "none names it directly, so it would be logged as a new signal.") },
-    goal ? { source: "Case history", text: sameGoal.length ? count(sameGoal.length, "open case") + (sameGoal.length === 1 ? " already serves" : " already serve") + " that goal, the newest " + q(sameGoal[0].title) + " from " + sameGoal[0].from + "." : "No open case serves that goal yet; this would be the first." } : null,
-    moving.length ? { source: "Initiatives", text: "Worked on for that goal so far: " + named(moving) + "." } : null,
+    fact("ideas.readSrcGoals", goal ? t("ideas.readGoal", { count: x.goals.length, goal: q(goal.goal) }) : t("ideas.readNoGoal", { count: x.goals.length })),
+    goal ? fact("ideas.readSrcCases", sameGoal.length ? t("ideas.readSame", { count: sameGoal.length, title: q(sameGoal[0].title), from: sameGoal[0].from }) : t("ideas.readSameNone")) : null,
+    moving.length ? fact("ideas.readSrcInitiatives", t("ideas.readMoving", { named: named(moving) })) : null,
   ];
 
   // ── Risk: how that desk decides, how promises held, who feels it first ──
@@ -116,9 +126,13 @@ export function companyRead(x: CompanyInput): Record<DialKey, CompanyFact[]> {
   const short = x.outcomes.filter((o) => o.verdict === "Short");
   const heads = touched.map((d) => head(d.id)).filter((p): p is OrgPerson => !!p);
   const risk: (CompanyFact | null)[] = [
-    route ? { source: "Decisions", text: routeDecided.length ? "On that desk, " + yes + " of the last " + routeDecided.length + " decisions were yes" + (lastNo ? "; the latest no was " + q(lastNo.c.title) : "") + "." : "Nothing on that desk has been decided yet, so there is no record to go by." } : null,
-    x.outcomes.length ? { source: "Shipped outcomes", text: short.length ? short.length + " of the " + x.outcomes.length + " changes shipped so far delivered less than promised" + (short.length > 1 ? ", among them " : ": ") + q(short[0].title) + " promised " + short[0].promised + " and delivered " + short[0].actual + ". A measured first step guards against that." : "All " + x.outcomes.length + " changes shipped so far delivered what they promised or more." } : null,
-    heads.length ? { source: "Org chart", text: "Who would feel it first: " + list(heads.map((p) => p.name + " (" + p.role + ")")) + "." } : null,
+    route ? fact("ideas.readSrcDecisions", routeDecided.length
+      ? t(lastNo ? "ideas.readDecisionsNo" : "ideas.readDecisions", { yes, total: routeDecided.length, title: lastNo ? q(lastNo.c.title) : "" })
+      : t("ideas.readDecisionsNone")) : null,
+    x.outcomes.length ? fact("ideas.readSrcOutcomes", short.length
+      ? t("ideas.readShort", { count: short.length, total: x.outcomes.length, title: q(short[0].title), promised: short[0].promised, actual: short[0].actual })
+      : t("ideas.readAllKept", { total: x.outcomes.length })) : null,
+    heads.length ? fact("ideas.readSrcOrg", t("ideas.readFirst", { list: list(heads.map((p) => p.name + " (" + p.role + ")")) })) : null,
   ];
 
   const keep = (xs: (CompanyFact | null)[]) => xs.filter((f): f is CompanyFact => !!f);
