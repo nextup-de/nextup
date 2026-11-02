@@ -6,12 +6,15 @@
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { projectLabel } from "@/features/projects/selectors";
-import { MOVE_LABEL, projectDesk, visibleProjects } from "@/features/projects/views";
+import { moveLabel, projectDesk, visibleProjects } from "@/features/projects/views";
+import { useLocale, useT } from "@/i18n/client";
 import { DueBadge, viewerOf } from "./parts";
 import styles from "./Projects.module.css";
 
 export function ProjectDesk() {
   const ctx = useDemo();
+  const t = useT();
+  const locale = useLocale();
   const { S, ready, demo, flag, href } = ctx;
   if (!ready || !flag("projects")) return null;
   const v = viewerOf(ctx);
@@ -21,8 +24,8 @@ export function ProjectDesk() {
   return (
     <section className={styles.desk} aria-labelledby="project-desk">
       <div className={styles.panelHead}>
-        <h2 id="project-desk" className={styles.h2}>Projects waiting on you</h2>
-        <Link href={href("/projects")} className={styles.link}>All projects</Link>
+        <h2 id="project-desk" className={styles.h2}>{t("projects.deskTitle")}</h2>
+        <Link href={href("/projects")} className={styles.link}>{t("projects.allProjects")}</Link>
       </div>
       <ul className={styles.deskList}>
         {items.map(({ project: p, move, why }) => (
@@ -32,8 +35,8 @@ export function ProjectDesk() {
               <span className={styles.deskText}>
                 <span className={styles.strong}>{p.title}</span>
                 <span className={styles.muted}>
-                  {MOVE_LABEL[move]}
-                  {why === "escalated" ? " · moved to you from " + p.lead : why === "reward" ? " · by the company’s rule" : ""}
+                  {moveLabel(move, locale)}
+                  {why === "escalated" ? " · " + t("projects.deskMovedToYou", { name: p.lead }) : why === "reward" ? " · " + t("projects.deskByRule") : ""}
                 </span>
               </span>
               <DueBadge p={p} />

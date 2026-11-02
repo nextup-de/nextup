@@ -93,6 +93,7 @@ export async function syncCompany(company: { id: string; slug: string }, now = n
       const sealed = (await integrationSecrets(company.id, JIRA))?.secretSealed ?? null;
       const token = key && sealed ? open(sealed, key, integrationContext(company.id, JIRA)) : null;
       if (!token) {
+        // eslint-disable-next-line -- shown on /admin only (D9)
         return void (await recordRun(company.id, JIRA, { error: key ? "The API token cannot be read. Enter it again." : "The vault key is not set on this server." }));
       }
       const api = jiraApiFor(parsed.settings, token);

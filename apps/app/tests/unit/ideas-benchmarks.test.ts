@@ -3,12 +3,12 @@
 import { describe, expect, it } from "vitest";
 import { amountEur, benchmark, canPublish, DEFAULT_PUBLISH_THRESHOLD, deltas, weakest } from "@/features/ideas/benchmarks";
 import { coachBrief, coachMock, ideaFromTurns, toGo } from "@/features/ideas/coach";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { ROUTES } from "@/features/demo/seed";
 
 const ctx = {
   routes: ROUTES,
-  goals: GOALS,
+  goals: DEMO_GOALS,
   cases: [{ title: "Night shift has no one who can sign a €300 parts order", from: "S. Dahl", age: 4, open: true }],
   spendLimitEur: 5000,
 };

@@ -7,10 +7,12 @@ import type { CaseEvent } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import type { Initiative, InitiativeStatus } from "@/features/demo/types";
 import { splitBody } from "@/features/ideas/brief";
+import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
+import { formatEuro, formatNumber } from "@/i18n/format";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
 import type { RewardRule } from "@/features/loop/rules";
 import { nextMove, type ProjectMove } from "./selectors";
-import type { Baseline, Measure, ProjectStatus, ReducedProject, Step, StepColumn } from "./types";
+import type { Baseline, Measure, ProjectStatus, ReducedProject, Step, StepColumn, VerdictWord } from "./types";
 
 /** Who is looking: their role, their name and - when they post anonymously - their handle. */
 export type Viewer = { role: Role; name: string; handle: string | null };
@@ -33,32 +35,26 @@ export function visibleProjects(state: Pick<State, "projects">, v: Viewer, demo 
 
 export type ProjectGroup = { key: string; label: string; projects: ReducedProject[] };
 
-const GROUPS: { key: string; label: string; has: readonly ProjectStatus[] }[] = [
-  { key: "planning", label: "Planning", has: ["planning"] },
-  { key: "running", label: "Running", has: ["running"] },
-  { key: "measuring", label: "Measuring", has: ["measuring"] },
-  { key: "measured", label: "Measured and recognised", has: ["measured", "recognised"] },
-  { key: "stopped", label: "Stopped", has: ["stopped"] },
+const GROUPS: { key: "planning" | "running" | "measuring" | "measured" | "stopped"; has: readonly ProjectStatus[] }[] = [
+  { key: "planning", has: ["planning"] },
+  { key: "running", has: ["running"] },
+  { key: "measuring", has: ["measuring"] },
+  { key: "measured", has: ["measured", "recognised"] },
+  { key: "stopped", has: ["stopped"] },
 ];
 
 /** The list's groups, in the order a project moves through them. Late ones first, then by number. Empty groups stay (the page hides them). */
-export function groupProjects(list: readonly ReducedProject[]): ProjectGroup[] {
+export function groupProjects(list: readonly ReducedProject[], locale: Locale = DEFAULT_LOCALE): ProjectGroup[] {
   return GROUPS.map((g) => ({
     key: g.key,
-    label: g.label,
+    label: translate(locale, ("projects.group_" + g.key) as "projects.group_planning"),
     projects: list.filter((p) => g.has.includes(p.status)).sort((a, b) => Number(b.overdue) - Number(a.overdue) || a.number - b.number),
   }));
 }
 
 /** The lead's next move, as the button or the card says it. */
-export const MOVE_LABEL: Record<NonNullable<ProjectMove>, string> = {
-  baseline: "Take the baseline",
-  start: "Start the project",
-  steps: "Work the board",
-  done: "Mark it done",
-  measure: "Record the measure",
-  reward: "Record the reward",
-};
+export const moveLabel = (move: NonNullable<ProjectMove>, locale: Locale = DEFAULT_LOCALE): string =>
+  translate(locale, ("projects.move_" + move) as "projects.move_baseline");
 
 export type DeskItem = { project: ReducedProject; move: NonNullable<ProjectMove>; why: "lead" | "escalated" | "reward" };
 
@@ -87,22 +83,22 @@ export function projectDesk(list: readonly ReducedProject[], day: number, v: Vie
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
-const STEP_LINES: Record<string, (text: string) => string> = {
+const STEP_LINES: Record<string, (text: string, locale: Locale) => string> = {
   "first step": (t) => t,
   then: (t) => t,
-  "still open": (t) => "Clear up: " + lowerFirst(t),
+  "still open": (t, locale) => translate(locale, "projects.stepClearUp", { text: lowerFirst(t) }),
 };
 
 export type StepHint = { label: string; text: string };
 
 /** The brief's "First step", "Then" and "Still open" lines as steps - minus the ones already on the board. */
-export function suggestedSteps(body: string, steps: readonly Pick<Step, "text">[]): StepHint[] {
+export function suggestedSteps(body: string, steps: readonly Pick<Step, "text">[], locale: Locale = DEFAULT_LOCALE): StepHint[] {
   const have = new Set(steps.map((s) => norm(s.text)));
   const out: StepHint[] = [];
   for (const f of splitBody(body).facts) {
     const make = STEP_LINES[norm(f.label)];
     if (!make) continue;
-    const text = make(f.text);
+    const text = make(f.text, locale);
     if (!have.has(norm(text)) && !out.some((x) => norm(x.text) === norm(text))) out.push({ label: f.label, text });
   }
   return out;
@@ -119,13 +115,13 @@ const LEADING = /^(every|each|all|the|a|an|our)\s+/i;
  * changeover time, minutes, lower is better). Without a goal, the idea's KPI names the metric and
  * the lead says which way is better. Null when there is nothing to go on.
  */
-export function suggestedBaseline(body: string, kpi?: string | null): BaselineHint | null {
+export function suggestedBaseline(body: string, kpi?: string | null, locale: Locale = DEFAULT_LOCALE): BaselineHint | null {
   const goal = splitBody(body).facts.find((f) => norm(f.label) === "goal")?.text ?? "";
   const m = /^(.*?)\s*\b(under|below|less than|fewer than|at most|over|above|more than|at least)\s+[€$]?\s*([\d.,]+)\s*(%|[^\s,.;]+)?/i.exec(goal);
   if (m) {
     const unit = (m[4] ?? "").trim();
     let metric = m[1].replace(LEADING, "").trim();
-    if (metric && !metric.includes(" ") && TIME_UNITS.test(unit)) metric += " time";
+    if (metric && !metric.includes(" ") && TIME_UNITS.test(unit)) metric = translate(locale, "projects.metricTime", { metric });
     return { metric: metric || goal, unit, better: LOWER.test(m[2]) ? "down" : "up", goal };
   }
   if (goal) return { metric: goal, unit: "", better: null, goal };
@@ -150,21 +146,36 @@ export type ToolId = "jira" | "azure" | "planner" | "teams" | "sharepoint" | "po
  * "link": the
  * page keeps the address and the keys; the work itself stays in that tool.
  */
-export type Tool = { id: ToolId; name: string; short: string; what: string; sync: "sync" | "link"; host: RegExp | null };
+export type Tool = { id: ToolId; short: string; sync: "sync" | "link"; host: RegExp | null };
 
 export const TOOLS: readonly Tool[] = [
-  { id: "jira", name: "Jira", short: "JI", what: "An epic for the project, an issue per step. Status and comments come back.", sync: "sync", host: /atlassian\.net$|(^|\.)jira\./i },
-  { id: "azure", name: "Azure DevOps", short: "AZ", what: "Work items for the steps, under one feature.", sync: "link", host: /(^|\.)dev\.azure\.com$|visualstudio\.com$/i },
-  { id: "planner", name: "Microsoft Planner", short: "PL", what: "A plan with one task per step.", sync: "link", host: /planner\.cloud\.microsoft$|tasks\.office\.com$/i },
-  { id: "teams", name: "Microsoft Teams", short: "TE", what: "The channel the team talks in.", sync: "link", host: /teams\.microsoft\.com$|teams\.live\.com$/i },
-  { id: "sharepoint", name: "SharePoint", short: "SP", what: "The folder the files and drawings live in.", sync: "link", host: /sharepoint\.com$|onedrive\.live\.com$/i },
-  { id: "polarion", name: "Polarion", short: "PO", what: "Requirements and test runs.", sync: "link", host: /polarion/i },
-  { id: "codebeamer", name: "codebeamer", short: "CB", what: "Requirements and test runs.", sync: "link", host: /codebeamer/i },
+  { id: "jira", short: "JI", sync: "sync", host: /atlassian\.net$|(^|\.)jira\./i },
+  { id: "azure", short: "AZ", sync: "link", host: /(^|\.)dev\.azure\.com$|visualstudio\.com$/i },
+  { id: "planner", short: "PL", sync: "link", host: /planner\.cloud\.microsoft$|tasks\.office\.com$/i },
+  { id: "teams", short: "TE", sync: "link", host: /teams\.microsoft\.com$|teams\.live\.com$/i },
+  { id: "sharepoint", short: "SP", sync: "link", host: /sharepoint\.com$|onedrive\.live\.com$/i },
+  { id: "polarion", short: "PO", sync: "link", host: /polarion/i },
+  { id: "codebeamer", short: "CB", sync: "link", host: /codebeamer/i },
 ];
 
-const OTHER: Tool = { id: "url", name: "Other links", short: "↗", what: "Any other page.", sync: "link", host: null };
+const OTHER: Tool = { id: "url", short: "↗", sync: "link", host: null };
 
 export const toolOf = (id: string): Tool => TOOLS.find((t) => t.id === id) ?? OTHER;
+
+// A multi-word product name is joined from its single-word parts (they read the same in every language).
+type Brand = "Jira" | "Azure" | "DevOps" | "Microsoft" | "Planner" | "Teams" | "SharePoint" | "Polarion" | "codebeamer";
+const BRAND_PARTS: Record<ToolId, readonly Brand[]> = {
+  jira: ["Jira"], azure: ["Azure", "DevOps"], planner: ["Microsoft", "Planner"], teams: ["Microsoft", "Teams"],
+  sharepoint: ["SharePoint"], polarion: ["Polarion"], codebeamer: ["codebeamer"], url: [],
+};
+
+/** The tool's name: "Jira", "Azure DevOps", ... and "Other links" for any other address. */
+export const toolName = (tool: Pick<Tool, "id">, locale: Locale = DEFAULT_LOCALE): string =>
+  tool.id === "url" ? translate(locale, "projects.toolOther") : BRAND_PARTS[tool.id].map((w) => translate(locale, ("projects.brand" + w) as "projects.brandJira")).join(" ");
+
+/** One line on what a tool is for. */
+export const toolWhat = (tool: Pick<Tool, "id">, locale: Locale = DEFAULT_LOCALE): string =>
+  translate(locale, ("projects.toolWhat_" + tool.id) as "projects.toolWhat_jira");
 
 /** Which tool a link is in: its address first (dev.azure.com, *.sharepoint.com), then a Jira-style key. */
 export function systemFrom(url: string, key = ""): ToolId {
@@ -201,7 +212,7 @@ export type JiraRowChip = { tone: "sending" | "ok" | "problem"; text: string };
 export type JiraRow = {
   state: "off" | "ready" | "synced";
   /** The mode tag on the row: "Link" while the sync is off, "Two-way sync" while it can run. */
-  label: "Link" | "Two-way sync";
+  label: string;
   /** The line under the name for `off` and `ready`; empty when synced (the chip speaks). */
   hint: string;
   /** "Send to Jira" while `ready`, else null. */
@@ -219,15 +230,14 @@ export type JiraRow = {
 };
 
 /** "just now", "3 min ago", "2 h ago", "4 days ago" - for "checked … ago". */
-export function agoText(iso: string, nowMs: number): string {
+export function agoText(iso: string, nowMs: number, locale: Locale = DEFAULT_LOCALE): string {
   const ms = nowMs - Date.parse(iso);
-  if (!Number.isFinite(ms) || ms < 60_000) return "just now";
+  if (!Number.isFinite(ms) || ms < 60_000) return translate(locale, "projects.agoNow");
   const min = Math.floor(ms / 60_000);
-  if (min < 60) return min + " min ago";
+  if (min < 60) return translate(locale, "projects.agoMin", { count: min });
   const h = Math.floor(min / 60);
-  if (h < 24) return h + " h ago";
-  const d = Math.floor(h / 24);
-  return d + (d === 1 ? " day ago" : " days ago");
+  if (h < 24) return translate(locale, "projects.agoHour", { count: h });
+  return translate(locale, "projects.agoDay", { count: Math.floor(h / 24) });
 }
 
 /** The local demo has no Jira; its stand-in is "NUP" on a host that never resolves (DemoProvider's act.project.sync plays the connector). */
@@ -243,17 +253,16 @@ export function demoJiraView(nowMs: number): JiraStatusView {
   };
 }
 
-const plural = (n: number, one: string, many: string) => n + " " + (n === 1 ? one : many);
-
 /**
  * The Jira row for one project: pure, so it is tested without a screen. `view` is the company's
  * integration as the server built it (jiraStatusView), null where there is none (the static demo,
  * no database) - which reads as off. The row never shows more than the view holds: no secrets.
  */
-export function jiraRowOf(p: Pick<ReducedProject, "sync" | "links" | "steps" | "id">, view: JiraStatusView | null, nowMs: number): JiraRow {
+export function jiraRowOf(p: Pick<ReducedProject, "sync" | "links" | "steps" | "id">, view: JiraStatusView | null, nowMs: number, locale: Locale = DEFAULT_LOCALE): JiraRow {
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
   if (!view || !view.on) {
     return {
-      state: "off", label: "Link", hint: "Your admin can switch the Jira sync on", send: null, chip: null,
+      state: "off", label: t("projects.jiraLink"), hint: t("projects.jiraOffHint"), send: null, chip: null,
       projectKey: view?.projectKey ?? null, siteUrl: null, epicKey: null, canLink: false, waiting: false,
     };
   }
@@ -262,20 +271,20 @@ export function jiraRowOf(p: Pick<ReducedProject, "sync" | "links" | "steps" | "
   const epicKey = epic?.key ?? null;
   // The latest project.sync wins; without one, an epic that is already there means the auto-epic rule sent it.
   const synced = p.sync ? p.sync.on : epicKey !== null;
-  const base = { label: "Two-way sync", projectKey: view.projectKey, siteUrl: view.siteUrl, epicKey, canLink: view.siteUrl !== null } as const;
+  const base = { label: t("projects.jiraTwoWay"), projectKey: view.projectKey, siteUrl: view.siteUrl, epicKey, canLink: view.siteUrl !== null } as const;
   if (!synced) {
     const n = p.steps.filter((s) => !s.external).length;
     return {
-      ...base, state: "ready", send: "Send to Jira", chip: null, waiting: false,
-      hint: "Creates an epic in " + key + (n > 0 ? " and " + plural(n, "issue", "issues") : "; steps you add follow"),
+      ...base, state: "ready", send: t("projects.jiraSend"), chip: null, waiting: false,
+      hint: n > 0 ? t("projects.jiraReadyIssues", { key, issues: t("projects.issueCount", { count: n }) }) : t("projects.jiraReadyEmpty", { key }),
     };
   }
   const mine = view.problems.find((x) => x.projectId === p.id);
-  const detail = mine?.message ?? (view.tokenExpired ? "the Jira token has expired, your admin needs to enter a new one" : view.lastError ? view.lastError.slice(0, 120) : null);
+  const detail = mine?.message ?? (view.tokenExpired ? t("projects.jiraTokenExpired") : view.lastError ? view.lastError.slice(0, 120) : null);
   let chip: JiraRowChip;
-  if (detail) chip = { tone: "problem", text: "Sync problem: " + detail };
-  else if (!epicKey) chip = { tone: "sending", text: "Sending…" };
-  else chip = { tone: "ok", text: "Synced · " + epicKey + (view.lastOkAt ? " · checked " + agoText(view.lastOkAt, nowMs) : "") };
+  if (detail) chip = { tone: "problem", text: t("projects.jiraProblem", { detail }) };
+  else if (!epicKey) chip = { tone: "sending", text: t("projects.jiraSending") };
+  else chip = { tone: "ok", text: view.lastOkAt ? t("projects.jiraSyncedChecked", { epic: epicKey, ago: agoText(view.lastOkAt, nowMs, locale) }) : t("projects.jiraSynced", { epic: epicKey }) };
   return { ...base, state: "synced", send: null, hint: "", chip, waiting: true };
 }
 
@@ -325,20 +334,21 @@ export function boardStats(p: Pick<ReducedProject, "steps">, day: number): Board
 export type Stage = { key: string; label: string; day: number | null; state: "done" | "now" | "next" | "stopped" };
 
 /** Opened, baseline, started, done, measured, recognised: each with its day once reached. A stop ends the line where it happened. */
-export function lifecycle(p: ReducedProject): Stage[] {
+export function lifecycle(p: ReducedProject, locale: Locale = DEFAULT_LOCALE): Stage[] {
+  const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
   const measured = p.measures.length ? p.measures[p.measures.length - 1].day : null;
   const raw: { key: string; label: string; day: number | null }[] = [
-    { key: "opened", label: "Opened", day: p.openedDay },
-    { key: "baseline", label: "Baseline", day: p.baseline?.day ?? null },
-    { key: "started", label: "Started", day: p.startedDay },
-    { key: "done", label: "Done", day: p.doneDay },
-    { key: "measured", label: p.baseline?.none ? "Not measured" : "Measured", day: p.baseline?.none ? p.doneDay : measured },
-    { key: "recognised", label: "Recognised", day: p.reward?.day ?? null },
+    { key: "opened", label: t("projects.stageOpened"), day: p.openedDay },
+    { key: "baseline", label: t("projects.stageBaseline"), day: p.baseline?.day ?? null },
+    { key: "started", label: t("projects.stageStarted"), day: p.startedDay },
+    { key: "done", label: t("projects.stageDone"), day: p.doneDay },
+    { key: "measured", label: p.baseline?.none ? t("projects.stageNotMeasured") : t("projects.stageMeasured"), day: p.baseline?.none ? p.doneDay : measured },
+    { key: "recognised", label: t("projects.stageRecognised"), day: p.reward?.day ?? null },
   ];
   const firstOpen = raw.findIndex((r) => r.day === null);
   return raw.map((r, k): Stage => {
     if (r.day !== null) return { ...r, state: "done" };
-    if (p.stopped && k === firstOpen) return { key: r.key, label: "Stopped", day: p.stopped.day, state: "stopped" };
+    if (p.stopped && k === firstOpen) return { key: r.key, label: t("projects.stageStopped"), day: p.stopped.day, state: "stopped" };
     return { ...r, state: k === firstOpen && !p.stopped ? "now" : "next" };
   });
 }
@@ -346,36 +356,47 @@ export function lifecycle(p: ReducedProject): Stage[] {
 // ── numbers ──
 
 /** 11, 2.5, 1,200 - never more than two decimals. */
-export const fmtNumber = (n: number) => n.toLocaleString("en-GB", { maximumFractionDigits: 2 });
+export const fmtNumber = (n: number, locale: Locale = DEFAULT_LOCALE) => formatNumber(locale, Math.round(n * 100) / 100);
 
 /** "35 → 11 days": the baseline against a measure, in the baseline's unit. */
-export function movement(b: Baseline | null, m: Pick<Measure, "value">): string {
-  if (!b || b.none) return fmtNumber(m.value);
-  return fmtNumber(b.value) + " → " + fmtNumber(m.value) + (b.unit ? " " + b.unit : "");
+export function movement(b: Baseline | null, m: Pick<Measure, "value">, locale: Locale = DEFAULT_LOCALE): string {
+  if (!b || b.none) return fmtNumber(m.value, locale);
+  return fmtNumber(b.value, locale) + " → " + fmtNumber(m.value, locale) + (b.unit ? " " + b.unit : "");
 }
 
 /** "+37.5 %" / "−68.6 %" / "" when there is no percent (a zero baseline, or none). */
-export const changeText = (pct: number | null) => (pct === null ? "" : (pct > 0 ? "+" : pct < 0 ? "−" : "±") + fmtNumber(Math.abs(pct)) + " %");
+export const changeText = (pct: number | null, locale: Locale = DEFAULT_LOCALE) =>
+  (pct === null ? "" : (pct > 0 ? "+" : pct < 0 ? "−" : "±") + fmtNumber(Math.abs(pct), locale) + " %");
+
+/** "higher is better" / "lower is better". */
+export const betterText = (better: "up" | "down", locale: Locale = DEFAULT_LOCALE): string =>
+  translate(locale, better === "up" ? "projects.betterUp" : "projects.betterDown");
 
 /** The baseline in one line: "35 days · time to first productive day · lower is better". */
-export function baselineText(b: Baseline): string {
-  if (b.none) return "No number possible: " + b.why;
-  return fmtNumber(b.value) + (b.unit ? " " + b.unit : "") + " · " + b.metric + " · " + (b.better === "up" ? "higher" : "lower") + " is better";
+export function baselineText(b: Baseline, locale: Locale = DEFAULT_LOCALE): string {
+  if (b.none) return translate(locale, "projects.baselineNone", { why: b.why });
+  return fmtNumber(b.value, locale) + (b.unit ? " " + b.unit : "") + " · " + b.metric + " · " + betterText(b.better, locale);
 }
 
-const eur = (n: number) => "€" + n.toLocaleString("en-GB");
+/** Euros in the locale: "€2,000" / "2.000 €". */
+export const euros = (n: number, locale: Locale = DEFAULT_LOCALE) => formatEuro(locale, n);
 
 /** The company's reward rule in words. */
-export function rewardRuleText(rule: RewardRule): string {
+export function rewardRuleText(rule: RewardRule, locale: Locale = DEFAULT_LOCALE): string {
   switch (rule.kind) {
-    case "none": return "No reward - the company gives none";
-    case "thanks": return "A thank-you, on record";
-    case "fixed": return rule.amount != null ? eur(rule.amount) + " for the authors" : "A fixed amount";
-    case "share": return (rule.sharePct ?? 0) + "% of the measured yearly saving" + (rule.capEur != null ? ", up to " + eur(rule.capEur) : "");
+    case "none": return translate(locale, "projects.ruleNone");
+    case "thanks": return translate(locale, "projects.ruleThanks");
+    case "fixed": return rule.amount != null ? translate(locale, "projects.ruleFixed", { amount: euros(rule.amount, locale) }) : translate(locale, "projects.ruleFixedPlain");
+    case "share": {
+      const share = translate(locale, "projects.ruleShare", { pct: rule.sharePct ?? 0 });
+      return rule.capEur != null ? translate(locale, "projects.ruleShareCap", { share, cap: euros(rule.capEur, locale) }) : share;
+    }
   }
 }
 
-export { eur as euros };
+/** The verdict word of a measure, as people read it. */
+export const verdictWord = (v: VerdictWord, locale: Locale = DEFAULT_LOCALE): string =>
+  translate(locale, v === "not measured" ? "projects.verdictNotMeasured" : v === "better" ? "projects.verdictBetter" : v === "same" ? "projects.verdictSame" : "projects.verdictWorse");
 
 // ── the Wait ledger, read from the projects ──
 
@@ -415,7 +436,8 @@ const COLLAB_STATUS: Record<ProjectStatus, InitiativeStatus | null> = {
  * person's department id; `whyOf` says what a project started from. Stopped projects wait nowhere,
  * so they are left out.
  */
-export function asInitiatives(list: readonly ReducedProject[], deptOf: (name: string) => string | null, deptName: (id: string) => string, whyOf: (p: ReducedProject) => string): Initiative[] {
+export function asInitiatives(list: readonly ReducedProject[], deptOf: (name: string) => string | null, deptName: (id: string) => string, whyOf: (p: ReducedProject) => string, locale: Locale = DEFAULT_LOCALE): Initiative[] {
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
   const out: Initiative[] = [];
   for (const p of list) {
     const status = COLLAB_STATUS[p.status];
@@ -424,15 +446,18 @@ export function asInitiatives(list: readonly ReducedProject[], deptOf: (name: st
     const depts = [...new Set(team.map(deptOf).filter((d): d is string => !!d))];
     const blocked = p.steps.find((s) => s.column === "blocked");
     const done = p.steps.filter((s) => s.column === "done").length;
-    const stage = p.status === "planning" ? (p.overdue ? "planning, the start is late" : "planning")
-      : p.status === "running" ? done + " of " + p.steps.length + " steps done"
-      : p.status === "measuring" ? "done, measuring"
-      : p.verdict ? "measured: " + p.verdict : "measured";
+    const stage = p.status === "planning" ? (p.overdue ? t("projects.stagePlanningLate") : t("projects.stagePlanning"))
+      : p.status === "running" ? t("projects.stepsDoneOf", { done, total: p.steps.length })
+      : p.status === "measuring" ? t("projects.stageDoneMeasuring")
+      : p.verdict ? t("projects.stageMeasuredVerdict", { verdict: verdictWord(p.verdict, locale) }) : t("projects.stageMeasuredPlain");
     out.push({
       id: p.id, name: p.title, depts, people: team.length, status, stage, why: whyOf(p),
-      members: team.map((name, k) => ({ name, role: (k === 0 ? "Lead · " : "") + (deptOf(name) ? deptName(deptOf(name) as string) : "team") })),
-      stuckOn: p.escalated ? { name: p.escalated.to, reason: p.escalated.what === "start" ? "the start is late" : "a measure is late" }
-        : blocked ? { name: blocked.owner ?? p.lead, reason: "blocked: " + (blocked.why || "no reason given") } : undefined,
+      members: team.map((name, k) => {
+        const dept = deptOf(name) ? deptName(deptOf(name) as string) : t("projects.roleTeam");
+        return { name, role: k === 0 ? t("projects.roleLead", { dept }) : dept };
+      }),
+      stuckOn: p.escalated ? { name: p.escalated.to, reason: p.escalated.what === "start" ? t("projects.stuckStart") : t("projects.stuckMeasure") }
+        : blocked ? { name: blocked.owner ?? p.lead, reason: t("projects.stuckBlocked", { why: blocked.why || t("projects.stuckNoReason") }) } : undefined,
     });
   }
   return out;
@@ -441,45 +466,55 @@ export function asInitiatives(list: readonly ReducedProject[], deptOf: (name: st
 // ── the timeline ──
 
 /** The tool a project.sync names, as a sentence says it. */
-const syncName = (system: string | undefined): string => (system === "jira" ? "Jira" : system ?? "a tool");
+const syncName = (system: string | undefined, locale: Locale): string =>
+  system === "jira" ? toolName({ id: "jira" }, locale) : system ?? translate(locale, "projects.aTool");
 
 /** What a project.step.edited changed, in words. */
-function editedWhat(pl: CaseEvent["payload"]): string {
+function editedWhat(pl: CaseEvent["payload"], locale: Locale): string {
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
   const out: string[] = [];
-  if (pl.text) out.push("renamed it");
-  if (pl.owner !== undefined) out.push(pl.owner ? "gave it to " + pl.owner : "took the owner off");
-  if (pl.dueDay !== undefined) out.push(pl.dueDay === null ? "took the due day off" : "moved the due day");
-  if (pl.note !== undefined) out.push("updated the details");
-  return out.join(", ") || "no change";
+  if (pl.text) out.push(t("projects.editRenamed"));
+  if (pl.owner !== undefined) out.push(pl.owner ? t("projects.editGave", { owner: pl.owner }) : t("projects.editOwnerOff"));
+  if (pl.dueDay !== undefined) out.push(pl.dueDay === null ? t("projects.editDueOff") : t("projects.editDueMoved"));
+  if (pl.note !== undefined) out.push(t("projects.editDetails"));
+  return out.join(", ") || t("projects.editNone");
 }
 
-export const COLUMN_LABEL: Record<StepColumn, string> = { todo: "To do", doing: "Doing", blocked: "Blocked", done: "Done" };
+/** A step column's name. */
+export const columnLabel = (col: StepColumn | string, locale: Locale = DEFAULT_LOCALE): string =>
+  col === "todo" || col === "doing" || col === "blocked" || col === "done" ? translate(locale, ("projects.col_" + col) as "projects.col_todo") : col;
 
 export type TimelineLine = { id: string; day: number; by: string; text: string };
 
 /** What happened to a project, oldest first, one short line per event. Comments have their own thread, so they are left out. */
-export function timelineOf(p: ReducedProject): TimelineLine[] {
+export function timelineOf(p: ReducedProject, locale: Locale = DEFAULT_LOCALE): TimelineLine[] {
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
   // A removed step is off the board, but its text is still in the event that added it.
   const stepText = (id: unknown) => p.steps.find((s) => s.id === id)?.text
-    ?? p.history.find((e) => e.type === "project.step.added" && e.payload.stepId === id)?.payload.text ?? "a step";
+    ?? p.history.find((e) => e.type === "project.step.added" && e.payload.stepId === id)?.payload.text ?? t("projects.aStep");
   const line = (ev: CaseEvent): string | null => {
     const pl = ev.payload ?? {};
     switch (ev.type) {
-      case "case.decided": return "said yes, and the project opened" + (pl.lead ? " with " + pl.lead + " as lead" : "");
-      case "project.member": return pl.on === false ? "took " + pl.name + " off the team" : "added " + pl.name + " to the team";
-      case "project.handed": return "handed the lead to " + pl.to + (pl.why ? ": " + pl.why : "");
-      case "project.baseline": return pl.none ? "said no number is possible: " + (pl.why ?? "") : "took the baseline: " + fmtNumber(pl.value ?? 0) + (pl.unit ? " " + pl.unit : "") + " " + (pl.metric ?? "") + (pl.source ? " (" + pl.source + ")" : "");
-      case "project.started": return "started the project";
-      case "project.step.added": return "added a step: " + (pl.text ?? "") + (pl.to && pl.to !== "todo" ? " (in " + (COLUMN_LABEL[pl.to as StepColumn] ?? pl.to) + ")" : "");
-      case "project.step.edited": return pl.removed ? "removed the step “" + stepText(pl.stepId) + "”" : "changed “" + stepText(pl.stepId) + "”: " + editedWhat(pl);
-      case "project.step.moved": return "moved “" + stepText(pl.stepId) + "” to " + (COLUMN_LABEL[pl.to as StepColumn] ?? pl.to) + (pl.why ? ": " + pl.why : "");
-      case "project.linked": return "linked " + (pl.key || pl.url || "a page");
-      case "project.sync": return pl.on === false ? "stopped syncing with " + syncName(pl.system) : "sent it to " + syncName(pl.system);
-      case "project.done": return "marked it done" + (pl.note ? ": " + pl.note : "");
-      case "project.measured": return "recorded the " + pl.check + "-day measure: " + fmtNumber(pl.value ?? 0) + (pl.source ? " (" + pl.source + ")" : "");
-      case "project.rewarded": return "recorded the reward" + (typeof pl.amount === "number" ? ": " + eur(pl.amount) : "") + (pl.note ? " - " + pl.note : "");
-      case "project.claimed": return "claimed the reward";
-      case "project.stopped": return "stopped it: " + (pl.why ?? "");
+      case "case.decided": return pl.lead ? t("projects.tlDecidedLead", { lead: pl.lead }) : t("projects.tlDecided");
+      case "project.member": return pl.on === false ? t("projects.tlMemberOff", { name: pl.name ?? "" }) : t("projects.tlMemberOn", { name: pl.name ?? "" });
+      case "project.handed": return pl.why ? t("projects.tlHandedWhy", { to: pl.to ?? "", why: pl.why }) : t("projects.tlHanded", { to: pl.to ?? "" });
+      case "project.baseline":
+        if (pl.none) return t("projects.tlBaselineNone", { why: pl.why ?? "" });
+        return t("projects.tlBaseline", { number: fmtNumber(pl.value ?? 0, locale) + (pl.unit ? " " + pl.unit : "") + " " + (pl.metric ?? "") + (pl.source ? " (" + pl.source + ")" : "") });
+      case "project.started": return t("projects.tlStarted");
+      case "project.step.added": return t("projects.tlStepAdded", { text: (pl.text ?? "") + (pl.to && pl.to !== "todo" ? " " + t("projects.tlStepAddedIn", { column: columnLabel(pl.to, locale) }) : "") });
+      case "project.step.edited": return pl.removed ? t("projects.tlStepRemoved", { step: stepText(pl.stepId) as string }) : t("projects.tlStepChanged", { step: stepText(pl.stepId) as string, what: editedWhat(pl, locale) });
+      case "project.step.moved": return pl.why ? t("projects.tlStepMovedWhy", { step: stepText(pl.stepId) as string, column: columnLabel(pl.to ?? "", locale), why: pl.why }) : t("projects.tlStepMoved", { step: stepText(pl.stepId) as string, column: columnLabel(pl.to ?? "", locale) });
+      case "project.linked": return t("projects.tlLinked", { what: pl.key || pl.url || t("projects.aPage") });
+      case "project.sync": return pl.on === false ? t("projects.tlSyncOff", { tool: syncName(pl.system, locale) }) : t("projects.tlSyncOn", { tool: syncName(pl.system, locale) });
+      case "project.done": return pl.note ? t("projects.tlDoneNote", { note: pl.note }) : t("projects.tlDone");
+      case "project.measured": return t("projects.tlMeasured", { check: pl.check ?? "", value: fmtNumber(pl.value ?? 0, locale) + (pl.source ? " (" + pl.source + ")" : "") });
+      case "project.rewarded": {
+        const base = typeof pl.amount === "number" ? t("projects.tlRewardedAmount", { amount: euros(pl.amount, locale) }) : t("projects.tlRewarded");
+        return pl.note ? base + " - " + pl.note : base;
+      }
+      case "project.claimed": return t("projects.tlClaimed");
+      case "project.stopped": return t("projects.tlStopped", { why: pl.why ?? "" });
       default: return null;
     }
   };

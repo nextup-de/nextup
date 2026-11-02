@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { coachMock, ideaFromTurns, isGibberish } from "@/features/ideas/coach";
 import { suggestReplies } from "@/features/ideas/replies";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { ROUTES } from "@/features/demo/seed";
 
-const ctx = { routes: ROUTES, goals: GOALS, cases: [], spendLimitEur: 5000 };
+const ctx = { routes: ROUTES, goals: DEMO_GOALS, cases: [], spendLimitEur: 5000 };
 const idea = { text: "i want to change IT", affected: [], attachments: 0 };
 
 describe("suggestReplies", () => {

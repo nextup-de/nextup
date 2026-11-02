@@ -3,11 +3,11 @@
 // where a company has no such data.
 import { describe, expect, it } from "vitest";
 import { companyRead, type CompanyCase, type CompanyInput } from "@/features/ideas/company-read";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { DEPTS, IDEAS, INITIATIVES, OUTCOMES, PEOPLE, PROBLEMS, ROUTES } from "@/features/demo/seed";
 
 const base: CompanyInput = {
-  text: "", lead: "T. Vogel", myDept: "Production", affected: [], people: PEOPLE, depts: DEPTS, routes: ROUTES, goals: GOALS,
+  text: "", lead: "T. Vogel", myDept: "Production", affected: [], people: PEOPLE, depts: DEPTS, routes: ROUTES, goals: DEMO_GOALS,
   problems: PROBLEMS, ideas: IDEAS, initiatives: INITIATIVES, outcomes: OUTCOMES, cases: [], promiseDays: 5, spendLimitEur: 5000,
 };
 const kase = (over: Partial<CompanyCase>): CompanyCase => ({ title: "A case", from: "J. Klein", assignee: "T. Vogel", routeId: "r7", upside: "", open: true, raisedDay: -10, decided: null, ...over });

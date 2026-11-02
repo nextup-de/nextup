@@ -243,6 +243,9 @@ export const shell = defineMessages({
     acceptTitle: "Project title",
     acceptStep: "First step (optional)",
     acceptStepPlaceholder: "e.g. One-week trial on line 3",
+    metaRaise: "Raise",
+    metaProject: "Project",
+    teamMember: "Team member",
   },
   de: {
     cancel: "Abbrechen",
@@ -473,5 +476,8 @@ export const shell = defineMessages({
     acceptTitle: "Projekttitel",
     acceptStep: "Erster Schritt (optional)",
     acceptStepPlaceholder: "z. B. Einwöchiger Versuch an Linie 3",
+    metaRaise: "Melden",
+    metaProject: "Projekt",
+    teamMember: "Teammitglied",
   },
 });

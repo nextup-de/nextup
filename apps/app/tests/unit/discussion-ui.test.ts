@@ -9,7 +9,7 @@ import {
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { lifeSteps, measuredLabel, mineRow } from "@/features/cases/rows";
 import { CASES, IDEAS, PEOPLE, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS, DEMO_RULES } from "@/features/demo/structure";
 import { briefForCase } from "@/features/ideas/brief";
 import { ideaContext } from "@/features/ideas/drafts";
 import type { Dial } from "@/features/ideas/raise";
@@ -120,7 +120,7 @@ describe("rounds and check-ins", () => {
   it("versions are scored against every other case, never against themselves", () => {
     const S = reduce(SEED, logAt(0, raised));
     const c = S.cases.find((x) => x.id === "c_t")!;
-    const read = versionReader(ideaContext(ROUTES, GOALS, S.cases), c.id, { affected: [], attachments: 0 });
+    const read = versionReader(ideaContext(ROUTES, DEMO_GOALS, S.cases, DEMO_RULES.spend), c.id, { affected: [], attachments: 0 });
     const v = read(c.versions[0]);
     expect(v.dials.map((d) => d.key)).toEqual(["value", "feas", "cost", "fit", "risk"]);
     const self = read({ title: c.title, body: c.body });
