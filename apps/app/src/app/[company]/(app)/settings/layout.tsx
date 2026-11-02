@@ -25,7 +25,7 @@ export default async function SettingsLayout({ children, params }: { children: R
     <div style={{ display: "grid", gap: 20 }}>
       <nav aria-label={t("settings.navAria")} style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: "var(--nh-fs-md)" }}>
         {visibleSections(setupDone).map((s) => (
-          <Link key={s.key} href={`${base}/${s.path}`} data-testid={`settings-nav-${s.key}`}>
+          <Link key={s.key} prefetch={false} href={`${base}/${s.path}`} data-testid={`settings-nav-${s.key}`}>
             {t(s.label)}
           </Link>
         ))}
