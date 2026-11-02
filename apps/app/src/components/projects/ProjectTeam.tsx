@@ -10,7 +10,7 @@ import { isIssueKey, jiraIssueUrl } from "@/features/integrations/jira/settings"
 import type { ReducedProject } from "@/features/projects/types";
 import { connectionsOf, safeUrl, systemFrom, timelineOf, toolName, toolOf, toolWhat, type JiraRow, type ToolId } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
-import { useRights, useSend } from "./parts";
+import { peopleOf, teamOf, useRights, useSend, withIds } from "./parts";
 import styles from "./Projects.module.css";
 
 export function TeamPanel({ p }: { p: ReducedProject }) {
@@ -22,10 +22,11 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
   const [to, setTo] = useState("");
   const [why, setWhy] = useState("");
   const live = p.status !== "stopped" && p.status !== "recognised";
-  const team = [p.lead, ...p.members];
-  const others = seed.people.map((x) => x.name).filter((n) => !team.includes(n));
+  const team = teamOf(p, seed.seats);
+  const onTeam = new Set(team.map((m) => m.userId));
+  const others = peopleOf(seed.seats).filter((x) => !onTeam.has(x.userId));
   // How much of the board each person carries: open steps they own.
-  const load = (n: string) => p.steps.filter((s) => s.owner === n && s.column !== "done").length;
+  const load = (userId: string | null) => userId === null ? 0 : p.steps.filter((s) => s.ownerUserId === userId && s.column !== "done").length;
 
   return (
     <section className={styles.railSection} aria-labelledby={"team-" + p.id}>
@@ -35,28 +36,28 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
       </div>
       <ul className={styles.people}>
         {team.map((m, k) => (
-          <li key={m} className={styles.person}>
-            <Avatar name={m} size="sm" />
-            <span className={styles.grow}>{m}{k === 0 && <span className={styles.leadTag}>{t("projects.leadTag")}</span>}</span>
-            <span className={styles.load} title={t("projects.openStepsTheyOwn")}>{load(m) ? t("projects.openCount", { count: load(m) }) : ""}</span>
-            {k > 0 && r.lead && live && <button type="button" className={styles.quiet} onClick={() => send("project.member", { name: m }, () => act.project.member(p.id, m, false))} aria-label={t("projects.takeOffTeam", { name: m })}>{t("projects.remove")}</button>}
+          <li key={m.userId ?? m.name} className={styles.person}>
+            <Avatar name={m.name} size="sm" />
+            <span className={styles.grow}>{m.name}{k === 0 && <span className={styles.leadTag}>{t("projects.leadTag")}</span>}</span>
+            <span className={styles.load} title={t("projects.openStepsTheyOwn")}>{load(m.userId) ? t("projects.openCount", { count: load(m.userId) }) : ""}</span>
+            {k > 0 && m.userId !== null && r.lead && live && <button type="button" className={styles.quiet} onClick={() => send("project.member", { userId: m.userId as string, name: m.name }, () => act.project.member(p.id, { userId: m.userId as string, name: m.name }, false))} aria-label={t("projects.takeOffTeam", { name: m.name })}>{t("projects.remove")}</button>}
           </li>
         ))}
       </ul>
       {r.lead && live && others.length > 0 && (
-        <form className={styles.inline} onSubmit={(e) => { e.preventDefault(); if (add && send("project.member", { name: add }, () => act.project.member(p.id, add, true))) setAdd(""); }}>
+        <form className={styles.inline} onSubmit={(e) => { e.preventDefault(); const who = others.find((x) => x.userId === add); if (who && send("project.member", { userId: who.userId, name: who.name }, () => act.project.member(p.id, who, true))) setAdd(""); }}>
           <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={add} onChange={(e) => setAdd(e.target.value)} aria-label={t("projects.addToTeam")}>
             <option value="">{t("projects.addSomeone")}</option>
-            {others.map((n) => <option key={n} value={n}>{n}</option>)}
+            {others.map((x) => <option key={x.userId} value={x.userId}>{x.name}</option>)}
           </select>
           <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!add}>{t("projects.add")}</button>
         </form>
       )}
-      {r.hand && p.members.length > 0 && (
-        <form className={styles.form} onSubmit={(e) => { e.preventDefault(); if (to && send("project.handed", { to }, () => act.project.hand(p.id, to, why.trim() || undefined))) { setTo(""); setWhy(""); } }} aria-label={t("projects.handOver")}>
+      {r.hand && withIds(team.slice(1)).length > 0 && (
+        <form className={styles.form} onSubmit={(e) => { e.preventDefault(); const next = withIds(team.slice(1)).find((x) => x.userId === to); if (next && send("project.handed", { toUserId: next.userId, to: next.name }, () => act.project.hand(p.id, next, why.trim() || undefined))) { setTo(""); setWhy(""); } }} aria-label={t("projects.handOver")}>
           <select className={`nh-input nh-select ${styles.input}`} value={to} onChange={(e) => setTo(e.target.value)} aria-label={t("projects.newLead")}>
             <option value="">{t("projects.handTo")}</option>
-            {p.members.map((n) => <option key={n} value={n}>{n}</option>)}
+            {withIds(team.slice(1)).map((x) => <option key={x.userId} value={x.userId}>{x.name}</option>)}
           </select>
           {to && <input className={`nh-input ${styles.input}`} value={why} onChange={(e) => setWhy(e.target.value)} placeholder={t("projects.whyOptional")} aria-label={t("projects.whyHandOver")} />}
           {to && <span className={styles.actionRow}><button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm">{t("projects.handOver")}</button></span>}

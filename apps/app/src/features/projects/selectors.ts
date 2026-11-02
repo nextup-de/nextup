@@ -1,6 +1,7 @@
 // Selectors over the reduced projects. A project is seen from four sides: the lead's and the team's
 // (their board), the authors' ("what my idea became"), the deputy's (a late start or measure), and
 // a manager's (all of them).
+import { holdsRole, type Me } from "@/features/auth/identity";
 import type { EventLog } from "@/features/cases/events";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import type { ReducedProject } from "./types";
@@ -13,16 +14,28 @@ export const projectById = (state: State, id: string): ReducedProject | undefine
 export const projectOfCase = (state: State, c: Pick<ReducedCase, "id" | "decided">): ReducedProject | undefined =>
   c.decided?.projectId ? projectById(state, c.decided.projectId) : state.projects.find((p) => p.sources.includes(c.id));
 
-/** Projects this person leads or works on. */
+/** @deprecated IDN-S1 removes this - use projectsOfMe. */
 export const projectsOf = (state: State, name: string): ReducedProject[] => state.projects.filter((p) => named(p, name));
 
-/** Projects that came from this person's ideas (they posted under `handle` - or their name). */
+/** @deprecated IDN-S1 removes this - use authoredByMe. */
 export const projectsFrom = (state: State, who: string | null): ReducedProject[] =>
   who ? state.projects.filter((p) => p.authors.includes(who)) : [];
 
-/** Projects whose next move is late and sits with `name` as the deputy (or the route's owner). */
+/** @deprecated IDN-S1 removes this - use escalatedToMe. */
 export const projectsEscalatedTo = (state: State, name: string): ReducedProject[] =>
   state.projects.filter((p) => p.escalated?.to === name);
+
+/** Projects this person leads or is on the team of, by user id. */
+export const projectsOfMe = (state: Pick<State, "projects">, me: Me): ReducedProject[] =>
+  me.userId === null ? [] : state.projects.filter((p) => p.leadUserId === me.userId || p.memberUserIds.includes(me.userId as string));
+
+/** Projects that came from this person's ideas, by user id. */
+export const authoredByMe = (state: Pick<State, "projects">, me: Me): ReducedProject[] =>
+  me.userId === null ? [] : state.projects.filter((p) => p.authorUserIds.includes(me.userId as string));
+
+/** Projects whose late next move sits with a role this person holds (the deputy's or the route owner's seat). */
+export const escalatedToMe = (state: Pick<State, "projects">, me: Me): ReducedProject[] =>
+  state.projects.filter((p) => holdsRole(me, p.escalated?.toRoleId ?? null));
 
 /** What a lead must do next on a project, as a fact - the page builds the sentence. */
 export type ProjectMove = "baseline" | "start" | "steps" | "done" | "measure" | "reward" | null;

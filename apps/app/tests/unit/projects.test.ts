@@ -9,22 +9,28 @@ import { LOCAL_SEED } from "@/features/demo";
 import { seatByLabel } from "@/features/demo/identity";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS } from "@/features/demo/seed";
 import { loopRules, LOOP_DEFAULTS, suggestedReward } from "@/features/loop/rules";
-import { board, nextMove, projectCommentsOn, projectLabel, projectOfCase, projectsEscalatedTo, projectsFrom, projectsOf } from "@/features/projects/selectors";
+import { meFor, type SeatRow } from "@/features/auth/identity";
+import { board, escalatedToMe, nextMove, projectCommentsOn, projectLabel, projectOfCase, projectsOfMe } from "@/features/projects/selectors";
 import type { Baseline } from "@/features/projects/types";
 import { timelineOf } from "@/features/projects/views";
 import { verdictOf } from "@/features/projects/verdict";
 
 const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: LOCAL_SEED.routes, promiseDays: PROMISE_DAYS, seats: LOCAL_SEED.seats };
 
+// People are user ids (IDN/D2); the labels only show. The same person has the same id everywhere below.
+const UID: Record<string, string> = {
+  "L. Brandt": "u_lb", "T. Vogel": "u_tv", "M. Roth": "u_mr", "C. Ilg": "u_ci", "J. Schmidt": "u_js", "H. Sander": "u_hs", "B. Hartmann": "u_bh",
+  "Anonymous #4471": "u_js",
+};
 let n = 0;
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
-  ({ id: "p" + n++, ts: 0, type, actor, target, payload, day });
+  ({ id: "p" + n++, ts: 0, type, actor, actorUserId: UID[actor] ?? null, target, payload, day });
 const logAt = (day: number, ...events: CaseEvent[]): EventLog => ({ events, day });
 
 const AUTHOR = "Anonymous #4471";
 const raise = (id: string, from = AUTHOR) => ev("case.raised", from, id, { kind: "idea", title: "Idea " + id, body: "text", routeId: "r1", assignee: "T. Vogel" });
 const yes = (caseId: string, projectId = "p_one", day = 0, lead = "L. Brandt") =>
-  ev("case.decided", "T. Vogel", caseId, { answer: "yes", projectId, lead, title: "Shorter changeover" }, day);
+  ev("case.decided", "T. Vogel", caseId, { answer: "yes", projectId, lead, leadUserId: UID[lead], title: "Shorter changeover" }, day);
 const P = (type: CaseEventType, payload: EventPayload = {}, day = 0, actor = "L. Brandt", target = "p_one") => ev(type, actor, target, payload, day);
 const baseline = (day = 0) => P("project.baseline", { metric: "Changeover time", unit: "min", value: 42, better: "down", source: "MES weekly" }, day);
 
@@ -44,7 +50,7 @@ describe("projects: a yes opens one", () => {
     expect(projectLabel(p)).toBe("P-1");
     expect(p).toMatchObject({ title: "Shorter changeover", sources: ["c_a"], authors: [AUTHOR], lead: "L. Brandt", openedBy: "T. Vogel", status: "planning", routeId: "r1" });
     expect(projectOfCase(S, c)?.id).toBe("p_one");
-    expect(projectsFrom(S, AUTHOR).map((x) => x.id)).toEqual(["p_one"]);
+    expect(p).toMatchObject({ leadUserId: "u_lb", memberUserIds: [] });
   });
 
   it("a second idea joins an open project; a later yes on a decided case opens nothing", () => {
@@ -68,7 +74,7 @@ describe("projects: working one", () => {
     expect(S.projects[0].status).toBe("planning");
     expect(nextMove(S.projects[0], 0)).toBe("baseline");
     S = reduce(SEED, logAt(1, raise("c_a"), yes("c_a"), baseline(), P("project.started", {}, 1),
-      P("project.step.added", { stepId: "s1", text: "Order the cart", owner: "M. Roth", dueDay: 4 }, 1),
+      P("project.step.added", { stepId: "s1", text: "Order the cart", owner: "M. Roth", ownerUserId: "u_mr", dueDay: 4 }, 1),
       P("project.step.added", { stepId: "s2", text: "Train shift B" }, 1),
       P("project.step.moved", { stepId: "s1", to: "blocked", why: "Waiting for purchasing" }, 1),
       P("project.step.moved", { stepId: "s2", to: "nowhere" }, 1)));
@@ -87,15 +93,14 @@ describe("projects: working one", () => {
   });
 
   it("members, hand-over, links (with a Jira key on a step) and comments", () => {
-    const log = logAt(1, raise("c_a"), yes("c_a"), P("project.member", { name: "M. Roth", on: true }), P("project.member", { name: "C. Ilg", on: true }),
-      P("project.member", { name: "C. Ilg", on: false }), P("project.step.added", { stepId: "s1", text: "Cart" }),
+    const log = logAt(1, raise("c_a"), yes("c_a"), P("project.member", { name: "M. Roth", userId: "u_mr", on: true }), P("project.member", { name: "C. Ilg", userId: "u_ci", on: true }),
+      P("project.member", { name: "C. Ilg", userId: "u_ci", on: false }), P("project.step.added", { stepId: "s1", text: "Cart" }),
       P("project.linked", { system: "jira", key: "NU-7", url: "https://x.atlassian.net/browse/NU-7", stepId: "s1" }),
-      P("project.handed", { to: "M. Roth", why: "Engineering owns it" }, 1), P("project.commented", { text: "Cart ordered" }, 1));
+      P("project.handed", { to: "M. Roth", toUserId: "u_mr", why: "Engineering owns it" }, 1), P("project.commented", { text: "Cart ordered" }, 1));
     const p = reduce(SEED, log).projects[0];
-    expect(p.lead).toBe("M. Roth");
-    expect(p.members).toEqual(["L. Brandt"]);
+    expect(p).toMatchObject({ lead: "M. Roth", leadUserId: "u_mr", members: ["L. Brandt"], memberUserIds: ["u_lb"] });
     expect(p.steps[0].external).toEqual({ system: "jira", key: "NU-7", url: "https://x.atlassian.net/browse/NU-7" });
-    expect(projectsOf(reduce(SEED, log), "L. Brandt").map((x) => x.id)).toEqual(["p_one"]);
+    expect(projectsOfMe(reduce(SEED, log), meFor("u_lb", [])).map((x) => x.id)).toEqual(["p_one"]);
     expect(projectCommentsOn(log, "p_one").map((c) => c.text)).toEqual(["Cart ordered"]);
   });
 
@@ -118,12 +123,18 @@ describe("projects: working one", () => {
 
 describe("projects: the clock after the yes", () => {
   it("not started within the promise: late, and on the route owner's desk", () => {
-    const S = reduce(SEED, logAt(6, raise("c_a"), yes("c_a")));
+    const seats: SeatRow[] = [
+      { id: "seat_tv", roleId: "role_owner", label: "T. Vogel", userId: "u_tv", sort: 0 },
+      { id: "seat_dep", roleId: "role_deputy", label: "H. Sander", userId: "u_hs", sort: 1 },
+    ];
+    const routes = ROUTES.map((x) => (x.id === "r1" ? { ...x, ownerSeatId: "seat_tv", ownerRoleId: "role_owner", deputySeatId: "seat_dep", deputyRoleId: "role_deputy" } : x));
+    const S = reduce({ ...SEED, routes, seats }, logAt(6, raise("c_a"), yes("c_a")));
     const p = S.projects[0];
     expect(p.dueDay).toBe(5);
     expect(p.overdue).toBe(true);
-    expect(p.escalated).toEqual({ to: "T. Vogel", from: "L. Brandt", day: 6, live: true, what: "start" });
-    expect(projectsEscalatedTo(S, "T. Vogel").map((x) => x.id)).toEqual(["p_one"]);
+    expect(p.escalated).toEqual({ to: "T. Vogel", toSeatId: "seat_tv", toRoleId: "role_owner", from: "L. Brandt", day: 6, live: true, what: "start" });
+    expect(escalatedToMe(S, meFor("u_tv", seats)).map((x) => x.id)).toEqual(["p_one"]);
+    expect(escalatedToMe(S, meFor("u_hs", seats))).toEqual([]);
     expect(S.ledger.projectsEscalated).toBe(1);
   });
 
@@ -219,7 +230,7 @@ const actor = (name: string, role: Actor["role"] = "leader", handle: string | nu
 const q = (type: string, payload: Record<string, unknown> = {}, target = "p_one") => ({ type, target, payload });
 
 describe("projects: who may", () => {
-  const planning = reduce(SEED, logAt(0, raise("c_a"), yes("c_a"), P("project.member", { name: "M. Roth", on: true })));
+  const planning = reduce(SEED, logAt(0, raise("c_a"), yes("c_a"), P("project.member", { name: "M. Roth", userId: "u_mr", on: true })));
 
   it("a yes with a project id: only as the first decision, with a lead and a usable id", () => {
     const open = reduce(SEED, logAt(0, raise("c_a")));
@@ -245,7 +256,7 @@ describe("projects: who may", () => {
   });
 
   it("a step moves by its owner or the lead; a check only once it opened; rewards by a manager; claims by the author", () => {
-    const run = reduce(SEED, doneLog(31, P("project.step.added", { stepId: "s2", text: "Train", owner: "M. Roth" })));
+    const run = reduce(SEED, doneLog(31, P("project.step.added", { stepId: "s2", text: "Train", owner: "M. Roth", ownerUserId: "u_mr" })));
     expect(mayAppend(actor("M. Roth"), q("project.step.moved", { stepId: "s2", to: "doing" }), run).ok).toBe(true);
     expect(mayAppend(actor("H. Sander"), q("project.step.moved", { stepId: "s2", to: "doing" }), run).ok).toBe(false);
     expect(mayAppend(actor("L. Brandt"), q("project.step.moved", { stepId: "s2", to: "sideways" }), run).ok).toBe(false);
@@ -258,6 +269,8 @@ describe("projects: who may", () => {
     expect(mayAppend(actor("B. Hartmann", "manager"), q("project.rewarded", { rule: "thanks" }), measured).ok).toBe(true);
     expect(mayAppend(actor("J. Schmidt", "member", AUTHOR), q("project.claimed"), measured).ok).toBe(false);
     const rewarded = reduce(SEED, doneLog(93, P("project.measured", { check: 30, value: 31 }, 32), P("project.measured", { check: 90, value: 30 }, 92), P("project.rewarded", { rule: "thanks" }, 93, "B. Hartmann")));
+    // The raiser's id reaches authorUserIds through the case reducer (IDN-A1); here it is set by hand.
+    rewarded.projects[0].authorUserIds = ["u_js"];
     expect(mayAppend(actor("J. Schmidt", "member", AUTHOR), q("project.claimed"), rewarded).ok).toBe(true);
     expect(mayAppend(actor("T. Vogel"), q("project.claimed"), rewarded).ok).toBe(false);
   });
@@ -295,7 +308,7 @@ describe("projects: sent to Jira (project.sync)", () => {
     const send = (name: string, role: Actor["role"] = "leader", state = sent) => mayAppend(actor(name, role), q("project.sync", { system: "jira", on: true }), state);
     expect(send("L. Brandt").ok).toBe(true);
     expect(send("B. Hartmann", "manager").ok).toBe(true);
-    const roth = reduce(SEED, logAt(0, ...base, P("project.member", { name: "M. Roth", on: true })));
+    const roth = reduce(SEED, logAt(0, ...base, P("project.member", { name: "M. Roth", userId: "u_mr", on: true })));
     expect(send("M. Roth", "member", roth)).toEqual({ ok: false, error: "Only the project's lead (or a manager) can do that." });
     expect(send("H. Sander", "member", roth).ok).toBe(false);
     expect(send("J. Schmidt", "member").ok).toBe(false);

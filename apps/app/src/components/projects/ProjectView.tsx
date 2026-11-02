@@ -11,9 +11,10 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { Avatar } from "@/components/dashboard/shared/primitives";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
+import { holdsRole } from "@/features/auth/identity";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
-import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, suggestedBaseline, suggestedSteps, toolName, visibleProjects, type JiraRow } from "@/features/projects/views";
+import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, suggestedBaseline, suggestedSteps, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { withBrainSteps } from "@/features/projects/brain";
 import { useBrainPlan } from "@/lib/use-brain";
@@ -22,7 +23,7 @@ import { ProjectSummary } from "./ProjectSummary";
 import { FilesPanel, OriginPanel } from "./ProjectOrigin";
 import { BaselinePanel, MeasurePanel, RewardPanel } from "./ProjectMeasure";
 import { ActivityPanel, TeamPanel, ToolsPanel } from "./ProjectTeam";
-import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, viewerOf } from "./parts";
+import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } from "./parts";
 import styles from "./Projects.module.css";
 
 /** `jira`: the company's Jira as the server read it (null: static demo, or no database). */
@@ -32,7 +33,7 @@ export function ProjectView({ projectId, jira }: { projectId: string; jira: Jira
   const { S, ready, demo, flag, href } = ctx;
   if (!ready) return <PageSkeleton kind="list" delay />;
   if (!flag("projects")) return <ProjectsOff />;
-  const p = visibleProjects(S, viewerOf(ctx), demo).find((x) => x.id === projectId);
+  const p = visibleProjectsFor(S, idViewerOf(ctx), demo).find((x) => x.id === projectId);
   if (!p) {
     return (
       <div className={styles.off}>
@@ -66,9 +67,8 @@ function Project({ p, jira }: { p: ReducedProject; jira: JiraStatusView | null }
     : null;
   const move = nextMove(p, S.day);
   // The lead's own move (a manager may act as lead too, but it is not on their desk), or a reward a manager records.
-  const who = ctx.persona.who;
-  const mine = move !== null && (move === "reward" ? r.reward : p.lead === who.name || p.lead === who.handle);
-  const escalatedToMe = p.escalated?.to === who.name;
+  const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);
+  const escalatedToMe = holdsRole(ctx.me, p.escalated?.toRoleId ?? null);
 
   return (
     <div className={styles.projectPage} data-wide="true">

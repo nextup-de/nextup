@@ -11,15 +11,17 @@ import { boardStats, connectionsOf, lifecycle, systemFrom, timelineOf } from "@/
 
 const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
 
+// People are user ids (IDN/D2); labels only show.
+const UID: Record<string, string> = { "L. Brandt": "u_lb", "T. Vogel": "u_tv", "M. Roth": "u_mr", "J. Schmidt": "u_js", "H. Sander": "u_hs", "B. Hartmann": "u_bh", "Anonymous #4471": "u_js" };
 let n = 0;
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
-  ({ id: "b" + n++, ts: 0, type, actor, target, payload, day });
+  ({ id: "b" + n++, ts: 0, type, actor, actorUserId: UID[actor] ?? null, target, payload, day });
 const logAt = (day: number, ...events: CaseEvent[]): EventLog => ({ events, day });
 const P = (type: CaseEventType, payload: EventPayload = {}, day = 0, actor = "L. Brandt") => ev(type, actor, "p_one", payload, day);
 const open = [
   ev("case.raised", "Anonymous #4471", "c_a", { kind: "idea", title: "Idea", body: "text", routeId: "r1", assignee: "T. Vogel" }),
-  ev("case.decided", "T. Vogel", "c_a", { answer: "yes", projectId: "p_one", lead: "L. Brandt", title: "Shorter changeover" }),
-  P("project.member", { name: "M. Roth", on: true }),
+  ev("case.decided", "T. Vogel", "c_a", { answer: "yes", projectId: "p_one", lead: "L. Brandt", leadUserId: "u_lb", title: "Shorter changeover" }),
+  P("project.member", { name: "M. Roth", userId: "u_mr", on: true }),
   P("project.baseline", { metric: "Changeover time", unit: "min", value: 42, better: "down", source: "MES" }),
   P("project.started"),
 ];
@@ -68,14 +70,14 @@ describe("board: columns and order", () => {
 describe("board: editing a card", () => {
   it("only the fields sent change; owner '' and dueDay null clear them; removed takes it off", () => {
     const p = project(2,
-      add("s1", "A", { owner: "M. Roth", dueDay: 5 }), add("s2", "B"),
+      add("s1", "A", { owner: "M. Roth", ownerUserId: "u_mr", dueDay: 5 }), add("s2", "B"),
       P("project.step.edited", { stepId: "s1", note: "Done when the cart is on line 3" }, 1),
-      P("project.step.edited", { stepId: "s1", text: "Order the cart", owner: "" }, 2),
+      P("project.step.edited", { stepId: "s1", text: "Order the cart", owner: "", ownerUserId: null }, 2),
       P("project.step.edited", { stepId: "s2", dueDay: 9 }, 2),
       P("project.step.edited", { stepId: "s2", dueDay: null }, 2),
       P("project.step.edited", { stepId: "s2", removed: true }, 2));
     expect(p.steps).toHaveLength(1);
-    expect(p.steps[0]).toMatchObject({ text: "Order the cart", owner: null, dueDay: 5, note: "Done when the cart is on line 3" });
+    expect(p.steps[0]).toMatchObject({ text: "Order the cart", owner: null, ownerUserId: null, dueDay: 5, note: "Done when the cart is on line 3" });
     const lines = timelineOf(p).map((l) => l.text);
     expect(lines).toContain("changed “Order the cart”: renamed it, took the owner off");
     expect(lines).toContain("removed the step “B”");
@@ -87,11 +89,11 @@ describe("board: editing a card", () => {
   });
 });
 
-const actor = (name: string, role: Actor["role"] = "leader"): Actor => ({ role, name, handle: null });
+const actor = (name: string, role: Actor["role"] = "leader"): Actor => ({ role, name, handle: null, userId: UID[name] ?? null });
 const q = (type: string, payload: Record<string, unknown> = {}) => ({ type, target: "p_one", payload });
 
 describe("board: who may", () => {
-  const S = reduce(SEED, logAt(0, ...open, add("s1", "Mine", { owner: "M. Roth" }), add("s2", "Nobody's"), add("s3", "The lead's", { owner: "L. Brandt" }, 0, "M. Roth")));
+  const S = reduce(SEED, logAt(0, ...open, add("s1", "Mine", { owner: "M. Roth", ownerUserId: "u_mr" }), add("s2", "Nobody's"), add("s3", "The lead's", { owner: "L. Brandt", ownerUserId: "u_lb" }, 0, "M. Roth")));
 
   it("the team moves an unowned step; an owned one moves by its owner or the lead", () => {
     expect(mayAppend(actor("M. Roth"), q("project.step.moved", { stepId: "s2", to: "doing" }), S).ok).toBe(true);

@@ -3,31 +3,70 @@
 // features/projects/permissions, so a button shows only when the event would go through), the
 // state chips and the card the list and the desk use.
 import Link from "next/link";
+import type { SeatRow } from "@/features/auth/identity";
 import { useDemo, type DemoContext } from "@/components/dashboard/DemoProvider";
 import { Pill, type Tone } from "@/components/dashboard/shared/primitives";
 import type { EventPayload } from "@/features/cases/events";
+import type { Actor } from "@/features/cases/permissions";
 import { mayAppendProject } from "@/features/projects/permissions";
 import { board, nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject, Step, VerdictWord } from "@/features/projects/types";
-import { columnLabel, moveLabel, verdictWord, type Viewer } from "@/features/projects/views";
+import { columnLabel, moveLabel, verdictWord, type IdViewer, type Viewer } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import type { Locale, T } from "@/i18n";
 import styles from "./Projects.module.css";
 
+/** Who is looking, by id: the role, the user id and the seats (never the name). */
+export const idViewerOf = (ctx: Pick<DemoContext, "role" | "actorUserId" | "me">): IdViewer =>
+  ({ role: ctx.role, userId: ctx.actorUserId, me: ctx.me });
+
+/** @deprecated IDN-S1 removes this - use idViewerOf. */
 export const viewerOf = (ctx: Pick<DemoContext, "role" | "persona">): Viewer =>
   ({ role: ctx.role, name: ctx.persona.who.name, handle: ctx.persona.who.handle });
+
+/** The Actor the server rules are asked with: ids decide, name and handle only label. */
+export const actorOf = (ctx: Pick<DemoContext, "role" | "persona" | "actorUserId" | "me">): Actor =>
+  ({ role: ctx.role, userId: ctx.actorUserId, me: ctx.me, name: ctx.persona.who.name, handle: ctx.persona.who.handle });
+
+/** A person a project can name: a user id and the label to show. */
+export type Person = { userId: string; name: string };
+
+/** The people the pickers offer: seats that a user holds (from seed.seats), once per user. */
+export function peopleOf(seats: readonly SeatRow[]): Person[] {
+  const seen = new Set<string>();
+  const out: Person[] = [];
+  for (const s of [...seats].sort((a, b) => a.sort - b.sort)) {
+    if (s.userId === null || seen.has(s.userId)) continue;
+    seen.add(s.userId);
+    out.push({ userId: s.userId, name: s.label });
+  }
+  return out;
+}
+
+/** The people on a team that have a user id: only those can be named by id (owner, hand-over). */
+export const withIds = (team: { userId: string | null; name: string }[]): Person[] =>
+  team.flatMap((m) => (m.userId === null ? [] : [{ userId: m.userId, name: m.name }]));
+
+/** The team of a project, lead first: the user id when the events carried one, and the label to show. */
+export function teamOf(p: ReducedProject, seats: readonly SeatRow[]): { userId: string | null; name: string }[] {
+  const label = (u: string, fallback: string) => seats.find((s) => s.userId === u)?.label ?? fallback;
+  return [
+    { userId: p.leadUserId, name: p.lead },
+    ...p.memberUserIds.map((u, i) => ({ userId: u as string | null, name: label(u, p.members[i] ?? u) })),
+  ];
+}
 
 /** What this person may do on `p`, asked of the same rules the server checks before it writes. */
 export function useRights(p: ReducedProject) {
   const ctx = useDemo();
   const locale = useLocale();
-  const actor = viewerOf(ctx);
+  const actor = actorOf(ctx);
   const check = (type: string, payload: EventPayload = {}) => mayAppendProject(actor, { type, target: p.id, payload }, ctx.S, locale);
   const can = (type: string, payload: EventPayload = {}) => check(type, payload).ok;
   return {
     check,
-    lead: can("project.member", { name: "-" }),
-    hand: can("project.handed", { to: "-" }),
+    lead: can("project.member", { userId: "-", name: "-" }),
+    hand: can("project.handed", { toUserId: "-", to: "-" }),
     addStep: can("project.step.added", { stepId: "probe", text: "-" }),
     moveStep: (s: Step) => can("project.step.moved", { stepId: s.id, to: "done" }),
     editStep: (s: Step) => can("project.step.edited", { stepId: s.id }),
@@ -99,11 +138,11 @@ export function nextLine(p: ReducedProject, day: number, f: (d: number) => strin
 }
 
 export function ProjectCard({ p, note }: { p: ReducedProject; note?: string }) {
-  const { S, f, href, persona, role } = useDemo();
+  const { S, f, href, actorUserId, role } = useDemo();
   const t = useT();
   const locale = useLocale();
   // The lead's move is theirs to read; a manager records the reward.
-  const lead = p.lead === persona.who.name || p.lead === persona.who.handle || (role === "manager" && p.rewardDue);
+  const lead = (actorUserId !== null && p.leadUserId === actorUserId) || (role === "manager" && p.rewardDue);
   return (
     <Link href={href("/projects/" + p.id)} className={styles.card} aria-label={projectLabel(p) + " " + p.title}>
       <span className={styles.cardTop}>

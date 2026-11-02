@@ -17,17 +17,17 @@ const LOOP_MAIL_TYPES = new Set([
   "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.rewarded",
 ]);
 
-export function notifyLoop(slug: string, ev: Pick<CaseEvent, "type" | "actor" | "target" | "payload">): void {
+export function notifyLoop(slug: string, ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload">): void {
   if (!mailConfigured() || !LOOP_MAIL_TYPES.has(ev.type)) return;
   void deliver(slug, ev).catch((err) => {
     console.warn("[notice]", ev.type, "for", slug, "-", err instanceof Error ? err.message : err);
   });
 }
 
-async function deliver(slug: string, ev: Pick<CaseEvent, "type" | "actor" | "target" | "payload">): Promise<void> {
+async function deliver(slug: string, ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload">): Promise<void> {
   const company = await getDb().company.findUnique({
     where: { slug },
-    select: { id: true, seedJson: true, users: { select: { name: true, email: true, handle: true } } },
+    select: { id: true, seedJson: true, users: { select: { id: true, name: true, email: true, handle: true } } },
   });
   const log = company ? await loadLogForSlug(slug) : null;
   if (!company || !log) return;

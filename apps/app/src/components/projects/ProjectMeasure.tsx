@@ -197,7 +197,7 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
 }
 
 export function RewardPanel({ p }: { p: ReducedProject }) {
-  const { act, S, f, persona } = useDemo();
+  const { act, S, f, persona, actorUserId } = useDemo();
   const t = useT();
   const locale = useLocale();
   const r = useRights(p);
@@ -227,7 +227,7 @@ export function RewardPanel({ p }: { p: ReducedProject }) {
             <div className={styles.muted}>{t("projects.rewardClaimed", { day: f(p.claimed.day) })}</div>
           ) : r.claim ? (
             <div className={styles.claim}>
-              <span>{handle && p.authors.includes(handle) ? t("projects.claimAnon", { handle }) : t("projects.claimPlain")}</span>
+              <span>{handle && actorUserId !== null && p.authorUserIds.includes(actorUserId) ? t("projects.claimAnon", { handle }) : t("projects.claimPlain")}</span>
               <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => send("project.claimed", {}, () => act.project.claim(p.id))}>{t("projects.claimBtn")}</button>
             </div>
           ) : null}

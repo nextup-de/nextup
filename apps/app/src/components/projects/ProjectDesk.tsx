@@ -6,9 +6,9 @@
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { projectLabel } from "@/features/projects/selectors";
-import { moveLabel, projectDesk, visibleProjects } from "@/features/projects/views";
+import { moveLabel, projectDeskFor, visibleProjectsFor } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
-import { DueBadge, viewerOf } from "./parts";
+import { DueBadge, idViewerOf } from "./parts";
 import styles from "./Projects.module.css";
 
 export function ProjectDesk() {
@@ -17,8 +17,8 @@ export function ProjectDesk() {
   const locale = useLocale();
   const { S, ready, demo, flag, href } = ctx;
   if (!ready || !flag("projects")) return null;
-  const v = viewerOf(ctx);
-  const items = projectDesk(visibleProjects(S, v, demo), S.day, v);
+  const v = idViewerOf(ctx);
+  const items = projectDeskFor(visibleProjectsFor(S, v, demo), S.day, v);
   if (!items.length) return null;
 
   return (
