@@ -9,6 +9,7 @@ import { adminContext } from "@/server/admin-context";
 import { adminBase } from "@/features/admin/nav";
 import { CompanyAccess } from "@/components/admin/CompanyAccess";
 import { CompanyMissing } from "@/components/admin/CompanyOverview";
+import { TotpReset } from "./TotpReset";
 import styles from "../admin.module.css";
 
 export default async function PeoplePage() {
@@ -44,7 +45,10 @@ export default async function PeoplePage() {
         <>
           <h2>{t("adminAccess.stackAdminTitle")}</h2>
           {people.map((p) => (
-            <StackAdminSwitch key={p.id} slug={ctx.company!.slug} userId={p.id} name={p.name} isStackAdmin={p.isStackAdmin} hasTotp={Boolean(p.totpEnabledAt)} />
+            <div key={p.id}>
+              <StackAdminSwitch slug={ctx.company!.slug} userId={p.id} name={p.name} isStackAdmin={p.isStackAdmin} hasTotp={Boolean(p.totpEnabledAt)} />
+              {p.totpEnabledAt ? <TotpReset slug={ctx.company!.slug} userId={p.id} name={p.name} /> : null}
+            </div>
           ))}
         </>
       ) : null}

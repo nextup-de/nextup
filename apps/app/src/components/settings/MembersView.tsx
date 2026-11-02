@@ -1,7 +1,7 @@
 "use client";
 // The Members table plus "add a person". Every button posts a server action from
 // src/server/actions/members.ts; a login code comes back once and is shown once, here.
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { ROLES } from "@/config/roles";
 import { useFormat, useT } from "@/i18n/client";
 import {
@@ -20,6 +20,7 @@ import {
   type SeatLabel,
   type SeatState,
 } from "@/server/actions/members";
+import { enrolledManagersAction, resetTotpAction } from "@/server/actions/settings/totp-reset";
 import styles from "./MembersView.module.css";
 
 type Props = { slug: string; me: string; members: MemberRow[]; freeSeats: SeatLabel[] };
@@ -48,6 +49,26 @@ export function MembersView({ slug, me, members, freeSeats }: Props) {
   }, {});
   const [seated, seatAction, seating] = useActionState<SeatState, FormData>(memberSeatAction, {});
   const [asking, setAsking] = useState<string | null>(null);
+  // Managers who enrolled a second factor: only they can have it reset (ADM D19).
+  const [enrolled, setEnrolled] = useState<string[]>([]);
+  const [askingTotp, setAskingTotp] = useState<string | null>(null);
+  const [totpMsg, setTotpMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [resetting, startReset] = useTransition();
+  useEffect(() => {
+    let live = true;
+    enrolledManagersAction(slug).then((ids) => { if (live) setEnrolled(ids); }, () => {});
+    return () => { live = false; };
+  }, [slug, members]);
+  const resetTotp = (m: MemberRow) => {
+    setAskingTotp(null);
+    startReset(async () => {
+      const r = await resetTotpAction(slug, m.id);
+      if (r.ok) {
+        setEnrolled((ids) => ids.filter((id) => id !== m.id));
+        setTotpMsg({ ok: true, text: t("settings.totpResetDone", { name: m.name }) });
+      } else setTotpMsg({ ok: false, text: t(r.error) });
+    });
+  };
 
   const fresh = coded.code && coded.name ? { name: coded.name, code: coded.code } : null;
   // The code is shown when no mail carried it, or the mail did not go out.
@@ -76,6 +97,7 @@ export function MembersView({ slug, me, members, freeSeats }: Props) {
       {removed.done ? <p className="nh-hint" role="status">{removed.done}</p> : null}
       {seated.error ? <p className="nh-error" role="alert">{seated.error}</p> : null}
       {roled.error ? <p className="nh-error" role="alert">{roled.error}</p> : null}
+      {totpMsg ? <p className={totpMsg.ok ? "nh-hint" : "nh-error"} role={totpMsg.ok ? "status" : "alert"}>{totpMsg.text}</p> : null}
       {roled.saved ? <p className="nh-hint" role="status">{roled.saved}</p> : null}
 
       <ul className={styles.list}>
@@ -141,6 +163,17 @@ export function MembersView({ slug, me, members, freeSeats }: Props) {
                 {m.codeIssuedAt ? t("settings.newCode") : t("settings.issueCode")}
               </button>
             </form>
+            {m.id !== me && m.role === "manager" && enrolled.includes(m.id) ? (
+              askingTotp === m.id ? (
+                <span className={styles.role}>
+                  <span className={styles.sub}>{t("settings.totpResetAsk", { name: m.name })}</span>
+                  <button className="nh-btn nh-btn-ghost nh-btn-sm" type="button" disabled={resetting} onClick={() => resetTotp(m)}>{t("settings.totpResetConfirm")}</button>
+                  <button className="nh-btn nh-btn-ghost nh-btn-sm" type="button" onClick={() => setAskingTotp(null)}>{t("settings.cancel")}</button>
+                </span>
+              ) : (
+                <button className="nh-btn nh-btn-ghost nh-btn-sm" type="button" onClick={() => setAskingTotp(m.id)} disabled={resetting}>{t("settings.totpReset")}</button>
+              )
+            ) : null}
             {m.id === me ? null : asking === m.id ? (
               <form action={(f) => { setAsking(null); removeAction(f); }} className={styles.role}>
                 <input type="hidden" name="slug" value={slug} />
