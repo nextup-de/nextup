@@ -107,3 +107,27 @@ export async function confirmSheet(page: Page, text: string, confirm: string) {
   await page.getByRole("button", { name: confirm }).click();
   await expect(sheet(page)).toBeHidden();
 }
+
+// Managers sign in with a second factor (ADM-E1). Secrets of people who enrolled in this run, by key.
+const totpSecrets = new Map<string, string>();
+
+/**
+ * After the code step: if the page asks for an authenticator code, answer it. A manager who has not
+ * enrolled yet sees the key as text; we read it, confirm with the code it gives, and remember it.
+ */
+export async function passSecondFactor(page: Page, who: string) {
+  const field = page.locator("#totp");
+  const next = page.waitForURL((url) => !/\/login/.test(url.pathname), { timeout: 15_000 }).then(() => "in", () => "stuck");
+  const asked = field.waitFor({ timeout: 15_000 }).then(() => "totp", () => "none");
+  if ((await Promise.race([next, asked])) === "in") return;
+  await field.waitFor();
+  let secret = totpSecrets.get(who);
+  if (!secret) {
+    const shown = await page.locator("code").first().innerText();
+    secret = shown.replace(/\s+/g, "");
+    totpSecrets.set(who, secret);
+  }
+  const { totpAt } = await import("../../src/features/auth/totp");
+  await field.fill(totpAt(secret, Date.now()));
+  await page.locator("form button[type=submit]").last().click();
+}

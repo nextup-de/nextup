@@ -7,6 +7,7 @@ import { useT } from "@/i18n/client";
 import { codeLogin, type LoginState } from "@/server/actions/auth";
 import { Field } from "@/components/ui/Field";
 import { Divider } from "@/components/ui/Divider";
+import { TotpEnrol } from "./TotpEnrol";
 import { MicrosoftLogo } from "./MicrosoftLogo";
 import styles from "./forms.module.css";
 
@@ -27,13 +28,15 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
   // Controlled, so a wrong code stays in the field to fix - React resets a form after its action.
   const [code, setCode] = useState("");
   const error = localError ?? state.error;
+  // Second step for a manager: the code was right, now the authenticator (or enrolling one first).
+  const step = state.step;
 
   return (
     <form
       className={styles.form}
       action={act}
       onSubmit={(e) => {
-        if (!code.trim()) {
+        if (!step && !code.trim()) {
           e.preventDefault();
           setLocalError(t("auth.loginCodeRequired", { slug }));
         }
@@ -50,29 +53,61 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
         </p>
       ) : null}
 
-      <Field id="code" label={t("auth.loginCodeLabel")} error={error}>
-        <input
-          className="nh-input"
-          id="code"
-          name="code"
-          type="text"
-          placeholder={t("auth.loginCodePlaceholder", { slug })}
-          autoComplete="one-time-code"
-          autoCapitalize="none"
-          spellCheck={false}
-          value={code}
-          onChange={(e) => {
-            setCode(e.target.value);
-            setLocalError(null);
-          }}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "code-error" : undefined}
-          autoFocus
-        />
-      </Field>
+      {step ? (
+        <>
+          {/* The code is sent again with the second factor; the server checks both every time. */}
+          <input type="hidden" name="code" value={code} />
+          {step === "enrol" && state.secret && state.otpauth ? (
+            <>
+              <input type="hidden" name="secret" value={state.secret} />
+              <TotpEnrol secret={state.secret} otpauth={state.otpauth} />
+            </>
+          ) : (
+            <>
+              <h2>{t("adminAccess.totpStepTitle")}</h2>
+              <p className="nh-hint">{t("adminAccess.totpStepSub")}</p>
+            </>
+          )}
+          <Field id="totp" label={t("adminAccess.totpLabel")} error={state.error} hint={t("adminAccess.totpHint")}>
+            <input
+              className="nh-input"
+              id="totp"
+              name="totp"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9 ]*"
+              maxLength={7}
+              autoComplete="one-time-code"
+              aria-invalid={state.error ? true : undefined}
+              autoFocus
+            />
+          </Field>
+        </>
+      ) : (
+        <Field id="code" label={t("auth.loginCodeLabel")} error={error}>
+          <input
+            className="nh-input"
+            id="code"
+            name="code"
+            type="text"
+            placeholder={t("auth.loginCodePlaceholder", { slug })}
+            autoComplete="one-time-code"
+            autoCapitalize="none"
+            spellCheck={false}
+            value={code}
+            onChange={(e) => {
+              setCode(e.target.value);
+              setLocalError(null);
+            }}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? "code-error" : undefined}
+            autoFocus
+          />
+        </Field>
+      )}
 
       <button className="nh-btn nh-btn-primary nh-btn-block" type="submit" disabled={pending}>
-        {pending ? t("auth.oneMoment") : t("auth.logIn")}
+        {pending ? t("auth.oneMoment") : step === "enrol" ? t("adminAccess.enrolConfirm") : t("auth.logIn")}
       </button>
 
       {microsoftHref ? (

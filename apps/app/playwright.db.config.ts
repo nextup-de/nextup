@@ -5,6 +5,7 @@
 // it can run against the shared local database without touching acme or anyone's login codes.
 import { defineConfig, devices } from "@playwright/test";
 import { loadEnvConfig } from "@next/env";
+import { randomBytes } from "node:crypto";
 
 // The tests need ADMIN_ACCESS_CODE too, not only the server - read .env.local the way Next does.
 loadEnvConfig(process.cwd());
@@ -38,6 +39,8 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
     // Links and redirects the app builds from these must point at this server, not :3000.
-    env: { AUTH_URL: BASE, APP_DOMAIN: `localhost:${PORT}`, TENANT_MODE: "path", PUBLIC_SCHEME: "http" },
+    // Managers enrol an authenticator (ADM-E1); the secret is sealed with the vault key. A fresh random
+    // one per run when .env.local has none, so CI needs no stored secret.
+    env: { CONNECTOR_VAULT_KEY: process.env.CONNECTOR_VAULT_KEY || randomBytes(32).toString("hex"), AUTH_URL: BASE, APP_DOMAIN: `localhost:${PORT}`, TENANT_MODE: "path", PUBLIC_SCHEME: "http" },
   },
 });

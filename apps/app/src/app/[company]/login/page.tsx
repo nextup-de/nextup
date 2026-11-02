@@ -47,11 +47,14 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
       step="company"
       backHref={companyFinderUrl()}
       side={
+        // Sample numbers are for demo-stage companies only; a real company's login shows no numbers (D20).
+        (tenant.stage ?? "demo") !== "demo" ? undefined : (
         <>
           <p className="nh-eyebrow">{t("auth.weekAt", { short })}</p>
           <AuthStats items={[["26 h", t("auth.statMedian")], ["84 %", t("auth.statWithin", { days: SITE.promiseDays })], ["3", t("auth.statWaiting")]]} />
           <p>{t("auth.sideNote")}</p>
         </>
+        )
       }
     >
       <div className={styles.company}>
