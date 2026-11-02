@@ -16,7 +16,7 @@ import s from "./Overview.module.css";
 import { avatarTone } from "@/lib/avatar";
 
 type Opener = ((e: React.MouseEvent<HTMLElement>) => void) | null;
-type Action = { label: string; hint?: string; done?: RespondKey; text?: RespondKey; go?: "details" | "ai"; draft?: string; divider?: boolean };
+type Action = { label: string; hint?: string; done?: RespondKey; compose?: RespondKey; go?: "details" | "ai"; draft?: string; divider?: boolean };
 export type FeedComment = { name: string; role: string; text: string; when: string; mine: boolean };
 
 export type OverviewChatsProps = {
@@ -50,9 +50,9 @@ export type OverviewChatsProps = {
   onReply: (i: number, text: string) => void;
 };
 
-const PILL: Partial<Record<OverviewStatus, { label: MessageKey; tone?: "amber" | "green" }>> = {
-  move: { label: "team.chatsNeedsInfo", tone: "amber" }, asked: { label: "team.chatsNeedsInfo", tone: "amber" }, replied: { label: "team.chatsReplied", tone: "green" },
-  approved: { label: "team.chatsApproved", tone: "green" }, declined: { label: "team.chatsNotNow" }, building: { label: "team.chatsBuilding" }, shipped: { label: "team.chatsShipped" },
+const PILL: Partial<Record<OverviewStatus, { pill: MessageKey; tone?: "amber" | "green" }>> = {
+  move: { pill: "team.chatsNeedsInfo", tone: "amber" }, asked: { pill: "team.chatsNeedsInfo", tone: "amber" }, replied: { pill: "team.chatsReplied", tone: "green" },
+  approved: { pill: "team.chatsApproved", tone: "green" }, declined: { pill: "team.chatsNotNow" }, building: { pill: "team.chatsBuilding" }, shipped: { pill: "team.chatsShipped" },
 };
 const DONE: Record<RespondKey, MessageKey> = { accept: "team.chatsDoneAccept", "accept-start": "team.chatsDoneStart", owner: "team.chatsDoneOwner", second: "team.chatsDoneSecond" };
 
@@ -60,7 +60,7 @@ const DONE: Record<RespondKey, MessageKey> = { accept: "team.chatsDoneAccept", "
 // drafts that fill the composer.
 function actionsFor(t: T, status: OverviewStatus, open: boolean, deputy: string | null): Action[] {
   const own: Action[] = status === "move" ? [{ label: t("team.chatsAddDetails"), hint: t("team.chatsToTheIdea"), go: "details" }, { label: t("team.chatsWorkAi"), hint: t("team.chatsThenAnswer"), go: "ai" }]
-    : status === "approved" ? [{ label: t("team.chatsAcceptStart"), done: "accept-start" }, { label: t("team.chatsSuggestOwner"), hint: t("team.chatsNameSomeone"), text: "owner" }]
+    : status === "approved" ? [{ label: t("team.chatsAcceptStart"), done: "accept-start" }, { label: t("team.chatsSuggestOwner"), hint: t("team.chatsNameSomeone"), compose: "owner" }]
     : status === "declined" ? [{ label: t("team.chatsAccept"), done: "accept" }, { label: t("team.chatsImprove"), hint: t("team.chatsWithAi"), go: "ai" }, ...(deputy ? [{ label: t("team.chatsSecondOpinion"), hint: t("team.chatsFromDeputy", { name: deputy }), done: "second" as const }] : [])]
     : [];
   const drafts: Action[] = [
@@ -126,7 +126,7 @@ export function OverviewChats(p: OverviewChatsProps) {
     if (a.go === "details") return p.onDetails();
     if (a.go === "ai") return pick("ai");
     if (a.done) return p.onRespond({ key: a.done, text: "" });
-    if (a.text) { setComposing(a.text); setComposeDraft(""); return; }
+    if (a.compose) { setComposing(a.compose); setComposeDraft(""); return; }
     if (a.draft) { setDraft(a.draft); setTimeout(() => { const el = draftRef.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }, 30); }
   };
   const sendCompose = () => { const t = composeDraft.trim(); if (!t || !composing) return; p.onRespond({ key: composing, text: t }); setComposing(null); setComposeDraft(""); };
@@ -255,7 +255,7 @@ export function OverviewChats(p: OverviewChatsProps) {
         <div key="desk" className={s.div78}>
           <div className={s.div79} ref={bodyRef}>
             {pill && p.entries.length > 0 && (
-              <div className={s.div10}><span className={s.label} /><span className={s.label9} data-tone={pill.tone}>{t(pill.label)}</span></div>
+              <div className={s.div10}><span className={s.label} /><span className={s.label9} data-tone={pill.tone}>{t(pill.pill)}</span></div>
             )}
             {p.entries.map((e) => e.t === "handed" ? (
               <span key={e.id} className={s.system}>{lineOf(t, e)} · {p.f(e.day)}</span>
@@ -347,7 +347,7 @@ export function OverviewChats(p: OverviewChatsProps) {
                     </button>
                     {(p.replies[k] ?? []).map((r, j) => (
                       <div key={j} className={s.div99}>
-                        <div className={s.onProfile4}>ME</div>
+                        <div className={s.onProfile4}>{t("team.chatsMe")}</div>
                         <div className={s.span8}>
                           <div className={s.div98}><span className={s.onProfile5}>{t("team.chatsYou")}</span><span className={s.dept}>{r.when}</span></div>
                           <span className={s.text2}>{r.text}</span>
