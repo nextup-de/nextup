@@ -102,6 +102,15 @@ name. To get a shell:
 docker compose exec db psql -U nextup -d nextup
 ```
 
+The app's connection pool is set by two variables on the `app` service (both optional):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `DATABASE_POOL_MAX` | `10` | Most connections one app instance holds open. Instances × this must stay under Postgres's `max_connections`. |
+| `DATABASE_STATEMENT_TIMEOUT_MS` | `15000` | A statement running longer than this is cancelled by Postgres. |
+
+A value that is not a positive whole number is ignored and the default is used.
+
 Backups — `pgdata` is a named volume:
 
 ```bash
