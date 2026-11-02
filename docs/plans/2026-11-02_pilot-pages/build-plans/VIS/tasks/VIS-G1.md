@@ -2,7 +2,7 @@
 id: VIS-G1
 title: CaseView and RateCounter tables
 wp: G
-needs: [ CLK-Z1, LNG-Z1, DIR-G1 ]
+needs: [ DIR-G1 ]
 host: any
 owns:
   - apps/app/prisma/schema/core.prisma
@@ -18,7 +18,7 @@ proofs:
       keys and not by another company, and a RateCounter row upserts
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/vis-tables.test.ts -t 'VIS tables'
-status: open
+status: ready
 ---
 
 Plan VIS (sub-plan of PILOT): the schema. Read first: `docs/adr/0007-areas.md`, `apps/app/prisma/schema/core.prisma`,

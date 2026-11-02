@@ -1,8 +1,9 @@
 ---
 id: DIR-A1
-title: applyDirectoryDelta writes any directory page into users, vacates leavers' seats and hands their cases
+title: applyDirectoryDelta writes any directory page into users, vacates
+  leavers' seats and hands their cases
 wp: A
-needs: [ DIR-G1 ]
+needs: [ DIR-G1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/features/directory/apply.ts
@@ -26,7 +27,7 @@ proofs:
       and changes nothing on the same page twice
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/dir-apply.test.ts -t 'DIR apply a directory page'
-status: open
+status: ready
 ---
 
 Plan DIR (sub-plan of PILOT): applying a page. This is the source-agnostic core that the Graph adapter (DIR-B1) and

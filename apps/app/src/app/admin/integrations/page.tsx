@@ -1,40 +1,7 @@
-// Integrations (company admin only): Jira's connection, mapping and status for this company
-// (docs/plans/2026-10-29_jira-in-app.md). The platform admin has no per-company settings page.
-import { notFound, redirect } from "next/navigation";
-import { isAdmin } from "@/server/actions/admin";
-import { adminContext } from "@/server/admin-context";
+// The old address of the connectors: Jira and the directory now live in the console (ITC-A1).
+import { redirect } from "next/navigation";
 import { adminBase } from "@/features/admin/nav";
-import { jiraAdminView } from "@/server/jira-admin";
-import { JiraAdmin } from "@/components/admin/JiraAdmin";
-import { DirectoryAdmin } from "@/components/admin/DirectoryAdmin";
-import { loadDirectoryStatus } from "@/lib/db/directory-run";
-import { CompanyMissing } from "@/components/admin/CompanyOverview";
-import styles from "../admin.module.css";
 
-export default async function IntegrationsPage() {
-  if (!(await isAdmin())) redirect(adminBase() + "/login");
-  const ctx = await adminContext();
-  if (ctx.scope !== "company") notFound();
-  if (!ctx.company) return <CompanyMissing />;
-  if (!ctx.live) {
-    return (
-      <section className={styles.card}>
-        <h1>Integrations</h1>
-        <p className="nh-hint">The settings and the token are stored in the database, which is not configured here.</p>
-      </section>
-    );
-  }
-  const view = await jiraAdminView(ctx.company);
-  const dir = await loadDirectoryStatus(ctx.company.id);
-  return (
-    <>
-      <JiraAdmin view={view} />
-      <DirectoryAdmin
-        view={{
-          on: dir.on, source: dir.source, counts: dir.counts, lastError: dir.lastError,
-          lastRunAt: dir.lastRunAt?.toISOString() ?? null, lastOkAt: dir.lastOkAt?.toISOString() ?? null,
-        }}
-      />
-    </>
-  );
+export default function IntegrationsPage() {
+  redirect(adminBase() + "/connectors");
 }

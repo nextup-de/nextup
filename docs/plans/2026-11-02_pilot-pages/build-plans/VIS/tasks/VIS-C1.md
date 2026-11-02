@@ -1,6 +1,7 @@
 ---
 id: VIS-C1
-title: Each browser gets only the visible cases inside the window, and older ones load on their page
+title: Each browser gets only the visible cases inside the window, and older
+  ones load on their page
 wp: C
 needs: [ VIS-B1, DIR-C1, AIP-A1 ]
 host: any
@@ -17,13 +18,13 @@ budget: { minutes: 90, window_pct: 15 }
 uses: [ D1, D2, D8, D9, D13 ]
 proofs:
   - id: B1
-    says: loadLogFor gives a member only the events of cases they may open, of
-      their projects, the idea events and the untargeted ones, keeps only those
-      seed cases, applies the window to a manager, and loadCaseLog refuses a
-      case the viewer may not open
+    says: loadLogFor gives a member only the events of cases they may open, of their
+      projects, the idea events and the untargeted ones, keeps only those seed
+      cases, applies the window to a manager, and loadCaseLog refuses a case the
+      viewer may not open
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/vis-viewer-log.test.ts -t 'VIS log per viewer'
-status: open
+status: ready
 ---
 
 Plan VIS (sub-plan of PILOT): what leaves the server. Read first: D8 and D9 of the plan,

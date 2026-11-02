@@ -2,7 +2,7 @@
 id: ADM-N1
 title: The company's notifications page shows the switch, opt-outs and failed messages
 wp: N
-needs: [ ADM-G1, ADM-H1, NTF-B1 ]
+needs: [ ADM-G1, ADM-H1, NTF-B1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/app/[company]/(app)/settings/notifications/**
@@ -23,13 +23,15 @@ proofs:
   - id: B1
     says: the opt-out counts show "fewer than 5" below five people and the failed
       list carries no message body and no person's address
-    run: npm test -w @nextup/app -- tests/unit/adm/notifications.test.ts -t 'ADM notifications view'
+    run: npm test -w @nextup/app -- tests/unit/adm/notifications.test.ts -t 'ADM
+      notifications view'
   - id: B2
-    says: the switch saves for the admin's company only, Retry sets one failed row of
-      that company back to pending, and a leader's call changes nothing
+    says: the switch saves for the admin's company only, Retry sets one failed row
+      of that company back to pending, and a leader's call changes nothing
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
-      ops/test-db.sh tests/db/adm-notifications.test.ts -t 'ADM notifications settings'
-status: open
+      ops/test-db.sh tests/db/adm-notifications.test.ts -t 'ADM notifications
+      settings'
+status: ready
 ---
 
 Plan ADM (sub-plan of PILOT): the notifications page (D18). Read first: NTF's `PLAN.md` (D5 outbox and
