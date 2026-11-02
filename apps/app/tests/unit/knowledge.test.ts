@@ -3,7 +3,7 @@
 // routes - and reduce() over them gives the same cases.
 import { describe, expect, it } from "vitest";
 import { SEED } from "@/features/demo/seed";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { DEMO_RULES } from "@/features/demo/structure";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
@@ -11,7 +11,7 @@ import { DEFAULT_RULES } from "@/features/knowledge/rules";
 import { companyBrief, NO_KNOWLEDGE, roleTree, rowsFromSeed, seedParts, structureSeed } from "@/features/knowledge";
 
 const counter = () => { let n = 0; return () => "id" + ++n; };
-const rows = () => rowsFromSeed(SEED, GOALS, counter());
+const rows = () => rowsFromSeed(SEED, DEMO_GOALS, counter());
 
 describe("rowsFromSeed -> seedParts", () => {
   it("gives back the seed's depts, people and routes unchanged", () => {
@@ -48,7 +48,7 @@ describe("the structure is between roles, not people", () => {
   });
 
   it("keeps the evaluate goals as goal rows", () => {
-    expect(rows().goals.map((g) => g.title)).toEqual(GOALS.map((g) => g.goal));
+    expect(rows().goals.map((g) => g.title)).toEqual(DEMO_GOALS.map((g) => g.goal));
   });
 });
 
@@ -67,7 +67,7 @@ describe("roleTree and companyBrief", () => {
     expect(brief).toContain("Vision: Machines that never wait");
     expect(brief).toContain("[r1] Spend under €5k");
     expect(brief).toContain("Team lead, 4-series (Production)");
-    expect(brief).toContain(GOALS[0].goal);
+    expect(brief).toContain(DEMO_GOALS[0].goal);
     for (const p of SEED.people) expect(brief).not.toContain(p.name);
   });
 

@@ -11,7 +11,6 @@
 import { z } from "zod";
 import { findTenant } from "@/features/tenant";
 import { seedFor } from "@/features/demo";
-import { GOALS } from "@/features/evaluate";
 import { companyBrief, hasKnowledge, rowsFromSeed, type Knowledge, type Profile } from "@/features/knowledge";
 import { getViewerFor } from "@/features/auth/session";
 import { assist, ASSIST_PROMPT_VERSION, MAX_HISTORY, MAX_QUESTION, type Source } from "@/features/assist";
@@ -81,7 +80,7 @@ export async function POST(request: Request, { params }: Ctx) {
   let knowledge: Knowledge | null = audited ? await loadKnowledge(viewer.companyId) : null;
   if (!knowledge || !hasKnowledge(knowledge)) {
     let n = 0;
-    knowledge = rowsFromSeed(seed, GOALS, () => "k" + ++n);
+    knowledge = rowsFromSeed(seed, seed.goals, () => "k" + ++n);
   }
   const profile: Profile | null = audited ? await loadProfile(viewer.companyId) : null;
   const people = [

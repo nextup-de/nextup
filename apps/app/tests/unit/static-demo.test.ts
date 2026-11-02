@@ -7,7 +7,7 @@ import { reduce } from "@/features/cases/reducer";
 import { dashboardRow } from "@/features/cases/rows";
 import { deskThread } from "@/features/cases/thread";
 import { STATIC_DEMO_SEED, staticDemoDrafts } from "@/features/demo/static-demo";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { splitBody } from "@/features/ideas/brief";
 import { DEMO_CASE, DEMO_SCRIPT } from "@/features/ideas/demo-script";
 import { ideaContext, scoreDraft } from "@/features/ideas/drafts";
@@ -46,7 +46,7 @@ describe("the employee's dashboard on the static demo", () => {
     expect(STATIC_DEMO_SEED.people.find((p) => p.name === "Jonas Schmidt")?.reportsTo).toBe("Thomas Vogel");
   });
   it("never makes the demo script look already raised", () => {
-    const ctx = ideaContext(STATIC_DEMO_SEED.routes, GOALS, S.cases);
+    const ctx = ideaContext(STATIC_DEMO_SEED.routes, DEMO_GOALS, S.cases, STATIC_DEMO_SEED.spend);
     const turns = DEMO_SCRIPT.flatMap((s) => [{ role: "user" as const, text: s.say }, { role: "assistant" as const, text: s.reply }]);
     for (const n of [2, 4, 6]) expect(scoreDraft({ turns: turns.slice(0, n), affected: [], attachments: 0 }, ctx).sameAs).toBeNull();
   });

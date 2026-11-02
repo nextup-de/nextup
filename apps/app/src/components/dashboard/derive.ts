@@ -3,7 +3,6 @@
 import { invitedTo, scoreVersions, versionReader, type VersionScore } from "@/features/cases/discussion";
 import { cosignRow, mineRow, raisedWith, type MineRow } from "@/features/cases/rows";
 import { affectedOn, onDesk } from "@/features/cases/selectors";
-import { GOALS } from "@/features/evaluate";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectOfCase } from "@/features/projects/selectors";
 import { seesByChoice } from "@/features/cases/visibility";
@@ -74,7 +73,7 @@ export function standingOn(ctx: DemoContext, c: ReducedCase): string[] {
 
 // Every version of a case, scored by the idea benchmarks (v1 as raised, then each revision), with the ▲.
 export function versionsOf(ctx: DemoContext, c: ReducedCase): VersionScore[] {
-  const read = versionReader(ideaContext(ctx.seed.routes, GOALS, ctx.S.cases), c.id, { affected: standingOn(ctx, c), attachments: raisedWith(c).attachments });
+  const read = versionReader(ideaContext(ctx.seed.routes, ctx.seed.goals, ctx.S.cases, ctx.seed.spend), c.id, { affected: standingOn(ctx, c), attachments: raisedWith(c).attachments });
   return scoreVersions(c.versions, read);
 }
 
