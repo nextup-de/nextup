@@ -4,15 +4,17 @@ import { describe, expect, it } from "vitest";
 import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "@/features/cases/events";
 import { mayAppend, type Actor } from "@/features/cases/permissions";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
-import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
+import { LOCAL_SEED } from "@/features/demo";
+import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS } from "@/features/demo/seed";
 import { loopRules, LOOP_DEFAULTS, suggestedReward } from "@/features/loop/rules";
-import { meFor, type SeatRow } from "@/features/auth/identity";
+import { meFor, meOfSeat, type SeatRow } from "@/features/auth/identity";
+import { seatByLabel } from "@/features/demo/identity";
 import { board, escalatedToMe, nextMove, projectCommentsOn, projectLabel, projectOfCase, projectsOfMe } from "@/features/projects/selectors";
 import type { Baseline } from "@/features/projects/types";
 import { timelineOf } from "@/features/projects/views";
 import { verdictOf } from "@/features/projects/verdict";
 
-const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
+const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: LOCAL_SEED.routes, promiseDays: PROMISE_DAYS, seats: LOCAL_SEED.seats };
 
 // People are user ids (IDN/D2); the labels only show. The same person has the same id everywhere below.
 const UID: Record<string, string> = {
@@ -124,7 +126,7 @@ describe("projects: the clock after the yes", () => {
       { id: "seat_tv", roleId: "role_owner", label: "T. Vogel", userId: "u_tv", sort: 0 },
       { id: "seat_dep", roleId: "role_deputy", label: "H. Sander", userId: "u_hs", sort: 1 },
     ];
-    const routes = ROUTES.map((x) => (x.id === "r1" ? { ...x, ownerSeatId: "seat_tv", ownerRoleId: "role_owner", deputySeatId: "seat_dep", deputyRoleId: "role_deputy" } : x));
+    const routes = LOCAL_SEED.routes.map((x) => (x.id === "r1" ? { ...x, ownerSeatId: "seat_tv", ownerRoleId: "role_owner", deputySeatId: "seat_dep", deputyRoleId: "role_deputy" } : x));
     const S = reduce({ ...SEED, routes, seats }, logAt(6, raise("c_a"), yes("c_a")));
     const p = S.projects[0];
     expect(p.dueDay).toBe(5);
@@ -219,7 +221,12 @@ describe("verdictOf and the rules", () => {
   });
 });
 
-const actor = (name: string, role: Actor["role"] = "leader", handle: string | null = null): Actor => ({ role, name, handle, userId: UID[name] ?? null, me: meFor(UID[name] ?? null, []) });
+const actor = (name: string, role: Actor["role"] = "leader", handle: string | null = null): Actor => {
+  const seat = seatByLabel(LOCAL_SEED.seats, name);
+  const userId = UID[name] ?? null;
+  // A seat puts the case on the person's desk by role; without one the person only has their user id.
+  return { role, name, handle, userId, me: seat ? { ...meOfSeat(seat, LOCAL_SEED.seats), userId } : meFor(userId, []) };
+};
 const q = (type: string, payload: Record<string, unknown> = {}, target = "p_one") => ({ type, target, payload });
 
 describe("projects: who may", () => {

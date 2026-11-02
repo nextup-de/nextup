@@ -5,12 +5,16 @@ import { appendEvent, emptyLog, type CaseEvent, type CaseEventType, type EventLo
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { actedBy, clearedBy, cosignedBy, deskFor, deskHolders, exportSnippet, inboxFor, mineFor } from "@/features/cases/selectors";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
+import { LOCAL_SEED } from "@/features/demo";
+import { seatByLabel } from "@/features/demo/identity";
 
-const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
+const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: LOCAL_SEED.routes, promiseDays: PROMISE_DAYS, seats: LOCAL_SEED.seats };
 
 let n = 0;
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
   ({ id: "t" + n++, ts: 0, type, actor, target, payload, day });
+const seatOf = (label: string) => seatByLabel(LOCAL_SEED.seats, label)!;
+const as = (uid: string, e: CaseEvent): CaseEvent => ({ ...e, actorUserId: uid });
 const logOf = (...events: CaseEvent[]): EventLog => ({ events, day: Math.max(0, ...events.map((e) => e.day)) });
 const find = <T extends { id: string }>(xs: T[], id: string) => xs.find((x) => x.id === id)!;
 
@@ -102,7 +106,7 @@ describe("reduce", () => {
   });
 
   it("day.advanced ages every open case; a fresh case crosses the promise", () => {
-    const log: EventLog = { events: [ev("case.raised", "Anonymous #4471", "c_x", { title: "x", routeId: "r6", assignee: "T. Vogel" }, 0)], day: PROMISE_DAYS + 1 };
+    const log: EventLog = { events: [ev("case.raised", "Anonymous #4471", "c_x", { title: "x", routeId: "r6", assignee: "T. Vogel", assigneeRoleHolderId: seatOf("T. Vogel") }, 0)], day: PROMISE_DAYS + 1 };
     const c = find(reduce(SEED, log).cases, "c_x");
     expect(c.age).toBe(PROMISE_DAYS + 1);
     expect(c.overdue).toBe(true);
@@ -118,7 +122,7 @@ describe("reduce", () => {
     expect(inboxFor(S0, "M. Roth").some((c) => c.id === "c1"), "deputy sees it").toBe(true);
     expect(inboxFor(S0, "T. Vogel").some((c) => c.id === "c1"), "original owner keeps it").toBe(true);
     // a case raised today, six days later
-    const S6 = reduce(SEED, { events: [ev("case.raised", "Anonymous #4471", "c_x", { title: "x", routeId: "r3", assignee: "T. Vogel" }, 0)], day: PROMISE_DAYS + 1 });
+    const S6 = reduce(SEED, { events: [ev("case.raised", "Anonymous #4471", "c_x", { title: "x", routeId: "r3", assignee: "T. Vogel", assigneeRoleHolderId: seatOf("T. Vogel") }, 0)], day: PROMISE_DAYS + 1 });
     const cx = find(S6.cases, "c_x");
     expect(cx.escalated?.to, "sat with T. Vogel but r3 is owned by H. Sander → goes to the owner").toBe("H. Sander");
     expect(cx.escalated?.live).toBe(true);
@@ -140,9 +144,9 @@ describe("reduce", () => {
   });
 
   it("idea.cosigned is idempotent per actor; idea.uncosigned removes it", () => {
-    const S1 = reduce(SEED, logOf(ev("idea.cosigned", "Anonymous #4471", "i2"), ev("idea.cosigned", "Anonymous #4471", "i2")));
+    const S1 = reduce(SEED, logOf(as("u1", ev("idea.cosigned", "Anonymous #4471", "i2")), as("u1", ev("idea.cosigned", "Anonymous #4471", "i2"))));
     expect(find(S1.ideas, "i2").cosigners.length).toBe(1);
-    const S2 = reduce(SEED, logOf(ev("idea.cosigned", "Anonymous #4471", "i2"), ev("idea.uncosigned", "Anonymous #4471", "i2")));
+    const S2 = reduce(SEED, logOf(as("u1", ev("idea.cosigned", "Anonymous #4471", "i2")), as("u1", ev("idea.uncosigned", "Anonymous #4471", "i2"))));
     expect(find(S2.ideas, "i2").cosigners.length).toBe(0);
     expect(find(S2.ideas, "i1").cosigners.length, "seed co-sign on i1 untouched").toBe(1);
   });

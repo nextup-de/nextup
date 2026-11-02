@@ -4,14 +4,18 @@ import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "@/feature
 import { mayAppend, type Actor } from "@/features/cases/permissions";
 import { needsProjectsFlag, DISCUSSION_EVENT_TYPES, isAppEventType } from "@/features/cases/persist";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
-import { inboxFor } from "@/features/cases/selectors";
-import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
+import { inboxOf } from "@/features/cases/selectors";
+import { meOfSeat, NOBODY } from "@/features/auth/identity";
+import { LOCAL_SEED } from "@/features/demo";
+import { seatByLabel } from "@/features/demo/identity";
+import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS } from "@/features/demo/seed";
 
-const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
+const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: LOCAL_SEED.routes, promiseDays: PROMISE_DAYS, seats: LOCAL_SEED.seats };
+const meOf = (label: string) => { const s = seatByLabel(LOCAL_SEED.seats, label); return s ? meOfSeat(s, LOCAL_SEED.seats) : NOBODY; };
 
 let n = 0;
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
-  ({ id: "d" + n++, ts: 0, type, actor, target, payload, day });
+  ({ id: "d" + n++, ts: 0, type, actor, actorUserId: actor === AUTHOR ? "u_author" : null, target, payload, day });
 const logAt = (day: number, ...events: CaseEvent[]): EventLog => ({ events, day });
 
 const AUTHOR = "Anonymous #4471";
@@ -22,7 +26,7 @@ const kase = (log: EventLog, seed: ReduceSeed = SEED) => reduce(seed, log).cases
 describe("discussion stage: reducer", () => {
   it("a raised case starts as v1, open, not archived", () => {
     const c = kase(logAt(0, raised));
-    expect(c.versions).toEqual([{ version: 1, day: 0, by: AUTHOR, title: "Shorter changeover", body: "v1 text", overall: null }]);
+    expect(c.versions).toEqual([{ version: 1, day: 0, by: AUTHOR, title: "Shorter changeover", body: "v1 text", overall: null, byUserId: "u_author" }]);
     expect(c.status).toBe("open");
     expect(c.archived).toBe(false);
   });
@@ -37,13 +41,13 @@ describe("discussion stage: reducer", () => {
     expect(c.discussion?.lastDay).toBe(9);
     expect(c.dueDay).toBe(3);
     expect(c.overdue).toBe(false);
-    expect(inboxFor(S, "T. Vogel").some((x) => x.id === "c_talk")).toBe(true);
+    expect(inboxOf(S, meOf("T. Vogel")).some((x) => x.id === "c_talk")).toBe(true);
   });
 
   it("a late check-in is overdue and moves to the deputy, like a late decision", () => {
     const c = kase(logAt(4, raised, discuss()));
     expect(c.overdue).toBe(true);
-    expect(c.escalated).toEqual({ to: "M. Roth", from: "T. Vogel", day: 4, live: true });
+    expect(c.escalated).toMatchObject({ to: "M. Roth", from: "T. Vogel", day: 4, live: true });
   });
 
   it("each check-in ends a round and moves the due day; 'decide' makes the decision due", () => {
@@ -92,9 +96,9 @@ describe("discussion stage: reducer", () => {
   });
 });
 
-const leader = (name: string): Actor => ({ role: "leader", name, handle: null });
+const leader = (name: string): Actor => ({ role: "leader", name, handle: null, userId: meOf(name).userId, me: meOf(name) });
 const manager: Actor = { role: "manager", name: "B. Hartmann", handle: null };
-const author: Actor = { role: "member", name: "J. Schmidt", handle: AUTHOR };
+const author: Actor = { role: "member", name: "J. Schmidt", handle: AUTHOR, userId: "u_author", me: { ...NOBODY, userId: "u_author" } };
 const p = (type: string, payload: Record<string, unknown> = {}) => ({ type, target: "c_talk", payload });
 
 describe("discussion stage: who may", () => {

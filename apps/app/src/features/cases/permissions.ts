@@ -3,15 +3,15 @@
 //
 // Pure: state in, verdict out. The caller reduces the company's log first, so "is this your case"
 // is answered against the same state everybody sees.
-import type { Actor as IdentityActor } from "@/features/auth/identity";
+import { NOBODY, type Actor as IdentityActor } from "@/features/auth/identity";
 import { isProjectId, mayAppendProject } from "@/features/projects/permissions";
 import type { EventPayload } from "./events";
 import type { State } from "./reducer";
-import { onDesk } from "./selectors";
+import { onDeskOf } from "./selectors";
 import { createT, DEFAULT_LOCALE, type Locale, type MessageKey, type T } from "@/i18n";
 
-// The identity Actor (features/auth/identity.ts). `userId` and `me` are optional here because nothing reads
-// them yet (IDN-A1 does); callers that only have a name and a handle keep compiling until then.
+// The identity Actor (features/auth/identity.ts). `userId` and `me` are optional so a caller that has only a
+// name and a handle keeps compiling; without them the actor is nobody and holds no desk.
 export type Actor = Pick<IdentityActor, "role" | "name" | "handle"> & Partial<Pick<IdentityActor, "userId" | "me">>;
 export type Verdict = { ok: true } | { ok: false; error: string };
 
@@ -34,7 +34,10 @@ export function mayAppend(
   const isManager = actor.role === "manager";
   const kase = ev.target ? state.cases.find((c) => c.id === ev.target) : undefined;
   const idea = ev.target ? state.ideas.find((i) => i.id === ev.target) : undefined;
-  const isMe = (who: string) => who === actor.name || (actor.handle !== null && who === actor.handle);
+  const me = actor.me ?? NOBODY;
+  const userId = actor.userId ?? me.userId;
+  const onMyDesk = (c: State["cases"][number]) => onDeskOf(c, me);
+  const isRaiser = (c: State["cases"][number]) => c.fromUserId !== null && c.fromUserId === userId;
 
   switch (true) {
     case ev.type === "case.raised":
@@ -44,20 +47,24 @@ export function mayAppend(
 
     case DESK_EVENTS.has(ev.type): {
       if (!kase) return no(t, "cases.permNoCase");
-      if (!(isManager || onDesk(kase, actor.name))) return no(t, "cases.permDeskOnly");
+      if (!(isManager || onMyDesk(kase))) return no(t, "cases.permDeskOnly");
+      if (ev.type === "case.handed") {
+        const seat = (ev.payload as EventPayload).toRoleHolderId;
+        if (typeof seat !== "string" || !state.seats.some((s) => s.id === seat)) return no(t, "cases.permHandSeat");
+      }
       return ev.type === "case.decided" ? mayDecide(ev.payload as EventPayload, kase, state, t) : OK;
     }
 
     // The discussion stage (docs/plans/2026-10-15_idea-to-project.md).
     case ev.type === "case.discussion":
       if (!kase) return no(t, "cases.permNoCase");
-      if (!(isManager || onDesk(kase, actor.name))) return no(t, "cases.permDeskDiscussion");
+      if (!(isManager || onMyDesk(kase))) return no(t, "cases.permDeskDiscussion");
       return kase.status === "open" ? OK : no(t, "cases.permOpenForDiscussion");
 
     case ev.type === "case.invited":
     case ev.type === "case.checkin": {
       if (!kase) return no(t, "cases.permNoCase");
-      if (!(isManager || onDesk(kase, actor.name))) return no(t, "cases.permDeskOnly");
+      if (!(isManager || onMyDesk(kase))) return no(t, "cases.permDeskOnly");
       if (kase.status !== "discussion" || !kase.discussion || kase.discussion.ready) return no(t, "cases.permNotInDiscussion");
       if (ev.type === "case.invited") return Array.isArray(ev.payload.invited) && ev.payload.invited.length > 0 ? OK : no(t, "cases.permInviteWhom");
       // The last allowed round ends in a decision; going on needs a manager.
@@ -67,7 +74,7 @@ export function mayAppend(
 
     case ev.type === "case.revised":
       if (!kase) return no(t, "cases.permNoCase");
-      if (!isMe(kase.from)) return no(t, "cases.permReviseOwner");
+      if (!isRaiser(kase)) return no(t, "cases.permReviseOwner");
       if (kase.decided) return no(t, "cases.permIdeaDecided");
       return typeof ev.payload.body === "string" && ev.payload.body.trim() ? OK : no(t, "cases.permReviseText");
 
@@ -76,7 +83,7 @@ export function mayAppend(
 
     case ev.type === "case.answered":
       if (!kase) return no(t, "cases.permNoCase");
-      return isMe(kase.from) ? OK : no(t, "cases.permAnswerOwner");
+      return isRaiser(kase) ? OK : no(t, "cases.permAnswerOwner");
 
     case ev.type === "case.override":
       if (!kase) return no(t, "cases.permNoCase");
