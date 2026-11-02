@@ -2,54 +2,11 @@
 // A case is one object seen from three sides: `from` = whose "My cases", `assignee` = whose
 // inbox (a hand-over changes it), an escalation puts it on a second desk too.
 import { holdsRole, type Me } from "@/features/auth/identity";
-import type { Route } from "@/features/demo/types";
 import type { SeatRow } from "@/features/auth/identity";
 import type { EventLog } from "./events";
 import type { ReducedCase, ReducedIdea, State } from "./reducer";
 
 export type Acted = "decided" | "handed" | "asked";
-
-/** @deprecated IDN-S1 removes this - use onDeskOf. */
-export const onDesk = (c: ReducedCase, name: string) => c.assignee === name || c.escalated?.to === name;
-/** @deprecated IDN-S1 removes this - use inboxOf. */
-export const inboxFor = (state: State, name: string) => state.cases.filter((c) => onDesk(c, name) && c.open);
-/** @deprecated IDN-S1 removes this - use mineOf. */
-export const mineFor = (state: State, handle: string | null) => state.cases.filter((c) => c.from === handle);
-/** @deprecated IDN-S1 removes this - use cosignedOf. */
-export const cosignedBy = (state: State, handle: string | null): ReducedIdea[] =>
-  state.ideas.filter((i) => i.cosigners.some((x) => x.name === handle));
-
-/** @deprecated IDN-S1 removes this - use actedByMe. */
-// What did `name` last do to this case that took it off their desk?
-// A question only counts while it is still unanswered - once the sender replies the case is back on the desk.
-export function actedBy(c: ReducedCase, name: string): Acted | null {
-  for (let k = c.history.length - 1; k >= 0; k--) {
-    const ev = c.history[k];
-    if (ev.actor !== name) continue;
-    if (ev.type === "case.decided") return "decided";
-    if (ev.type === "case.handed") return "handed";
-    if (ev.type === "case.asked") return c.status === "asked" ? "asked" : null;
-  }
-  return null;
-}
-
-/** @deprecated IDN-S1 removes this - use deskOf. */
-// Open cases on someone's desk: live ones plus the ones paused on a question.
-export const deskFor = (state: State, name: string) => state.cases.filter((c) => onDesk(c, name) && (c.open || c.status === "asked"));
-
-/** @deprecated IDN-S1 removes this - use deskSeats. */
-// Everyone who currently has, or could act on, a case: route owners plus whoever holds one right
-// now (hand-overs, escalations). For the dev panel's "inbox of ...".
-export function deskHolders(state: State, routes: readonly Route[]): string[] {
-  const names: string[] = [];
-  const add = (n: string | undefined) => { if (n && !names.includes(n)) names.push(n); };
-  routes.forEach((r) => add(r.owner.name));
-  state.cases.forEach((c) => { if (c.open || c.status === "asked") { add(c.assignee); if (c.escalated) add(c.escalated.to); } });
-  return names;
-}
-
-/** @deprecated IDN-S1 removes this - use clearedByMe. */
-export const clearedBy = (state: State, name: string) => state.cases.filter((c) => actedBy(c, name) !== null);
 
 // By id (IDN/D8): a case sits on one seat; everyone who holds that seat's role (or the escalated-to role) has it.
 export const onDeskOf = (c: ReducedCase, me: Me): boolean => holdsRole(me, c.assigneeRoleId) || holdsRole(me, c.escalated?.toRoleId ?? null);

@@ -27,6 +27,7 @@ import type { StepColumn, SyncSystem } from "@/features/projects/types";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
 import { meFor, meOfSeat, type Me } from "@/features/auth/identity";
 import { appendEvent, emptyLog, newId, type CaseEvent, type EventLog, type EventPayload } from "@/features/cases/events";
+import { handPayload } from "@/features/cases/hand";
 import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
 import { dayFormatter, type DayFmt } from "@/features/cases/rows";
@@ -50,7 +51,7 @@ export type Act = {
   raise: (p: EventPayload, id?: string) => string; // id: minted by the caller when it has to be known first (the idea studio publishes with it)
   read: (id: string) => void;
   decide: (id: string, answer: "yes" | "no", reason?: string, note?: string) => void;
-  hand: (id: string, to: string, why?: string) => void;
+  hand: (id: string, seatId: string, why?: string) => void; // the seat id; its label rides along as `to` (IDN/D5, D13)
   ask: (id: string, text: string) => void;
   answer: (id: string, text: string) => void;
   override: (id: string, proposed: string | null, chosen: string) => void;
@@ -384,7 +385,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     raise: (p, id = newId("c")) => { emit("case.raised", id, p); return id; },
     read: (id) => emit("case.read", id),
     decide: (id, answer, reason, note) => emit("case.decided", id, { answer, reason, note }),
-    hand: (id, to, why) => emit("case.handed", id, { to, why }),
+    hand: (id, seatId, why) => emit("case.handed", id, handPayload(seed.seats, seatId, why)),
     ask: (id, text) => emit("case.asked", id, { text }),
     answer: (id, text) => emit("case.answered", id, { text }),
     override: (id, proposed, chosen) => emit("case.override", id, { proposed, chosen }),
@@ -453,7 +454,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       claim: (id) => emit("project.claimed", id),
       stop: (id, why) => emit("project.stopped", id, { why }),
     },
-  }), [emit, S.ideas, S.projects, actor, actorUserId, slug, serverMode, log]);
+  }), [emit, seed.seats, S.ideas, S.projects, actor, actorUserId, slug, serverMode, log]);
 
   const flags = tenant.flags;
   const flag = useCallback((key: FlagKey) => flags?.[key] ?? FLAGS[key].defaults.demo, [flags]);

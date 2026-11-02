@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen, standingOn, versionsOf } from "@/components/dashboard/derive";
 import { Btn } from "@/components/dashboard/shared/primitives";
+import { peopleOf } from "@/components/projects/parts";
 import { checkinDraft, inviteSuggestions, roundState, versionText, type InviteSuggestion } from "@/features/cases/discussion";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith } from "@/features/cases/rows";
@@ -261,21 +262,25 @@ function CheckinSheet({ c }: { c: ReducedCase }) {
 // ── Yes, do it ──
 
 function AcceptSheet({ c }: { c: ReducedCase }) {
-  const { S, seed, persona, act, href, closeSheet, showToast } = useDemo();
+  const { S, seed, actorUserId, act, href, closeSheet, showToast } = useDemo();
   const t = useT();
   const fmt = useFormat();
-  const me = persona.who.name;
-  const [lead, setLead] = useState(me);
+  // The lead is a user id; the names only label the options.
+  const people = peopleOf(seed.seats);
+  const seatUser = (seatId: string | null | undefined) => seed.seats.find((s) => s.id === seatId)?.userId ?? null;
+  const [leadId, setLeadId] = useState(actorUserId ?? people[0]?.userId ?? "");
+  const lead = people.find((p) => p.userId === leadId)?.name ?? "";
   const [title, setTitle] = useState(c.title);
   const [step, setStep] = useState("");
   const [opened, setOpened] = useState<string | null>(null); // the project id, once the yes is sent
-  const ok = !!lead && title.trim().length >= 3;
+  const ok = !!leadId && title.trim().length >= 3;
   // The decider first, then the route's owner and deputy, then the rest of the directory.
-  const leads = [...new Set([me, ...(c.route ? [c.route.owner.name, c.route.deputy] : []), ...seed.people.map((p) => p.name)])];
-  const roleOf = (n: string) => (n === me ? t("shell.acceptYou") : seed.people.find((p) => p.name === n)?.role ?? "");
+  const first = [actorUserId, seatUser(c.route?.ownerSeatId), seatUser(c.route?.deputySeatId)].filter((x): x is string => x !== null && people.some((p) => p.userId === x));
+  const order = [...new Set([...first, ...people.map((p) => p.userId)])];
+  const roleOf = (id: string, name: string) => (id === actorUserId ? t("shell.acceptYou") : seed.people.find((p) => p.name === name)?.role ?? "");
   const confirm = () => {
     if (!ok || opened) return;
-    const id = act.accept(c.id, { lead, title: title.trim() });
+    const id = act.accept(c.id, { lead, leadUserId: leadId, title: title.trim() });
     if (step.trim()) act.project.addStep(id, step.trim());
     setOpened(id);
     showToast(t("shell.acceptDone", { days: fmt.days(c.clock), from: c.from }));
@@ -292,8 +297,8 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
     <Frame label={t("shell.acceptLabel")} title={c.title} sub={t("shell.acceptSub", { from: c.from })}
       actions={<><Btn kind={ok ? "accent" : "disabled"} onClick={confirm}>{ok ? t("shell.acceptSend") : t("shell.acceptName")}</Btn><Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn></>}>
       <label className={base.textLabel} htmlFor="accept-lead">{t("shell.acceptLead")}</label>
-      <select id="accept-lead" className={`nh-input nh-select ${styles.field}`} value={lead} onChange={(e) => setLead(e.target.value)}>
-        {leads.map((n) => <option key={n} value={n}>{n}{roleOf(n) ? " · " + roleOf(n) : ""}</option>)}
+      <select id="accept-lead" className={`nh-input nh-select ${styles.field}`} value={leadId} onChange={(e) => setLeadId(e.target.value)}>
+        {order.map((id) => { const p = people.find((x) => x.userId === id)!; return <option key={id} value={id}>{p.name}{roleOf(id, p.name) ? " · " + roleOf(id, p.name) : ""}</option>; })}
       </select>
       <label className={base.textLabel} htmlFor="accept-title">{t("shell.acceptTitle")}</label>
       <input id="accept-title" className={`nh-input ${styles.field}`} value={title} onChange={(e) => setTitle(e.target.value)} />

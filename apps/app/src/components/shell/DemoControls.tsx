@@ -169,7 +169,7 @@ export function DemoControls() {
   // "Yes, do it": with projects on, the yes opens a project led by the receiver, named after the idea.
   const accept = () => {
     if (!published) return;
-    if (ctx.flag("projects")) ctx.act.accept(published.id, { lead: published.assignee, title: published.title });
+    if (ctx.flag("projects")) ctx.act.accept(published.id, { lead: published.assignee, leadUserId: ctx.seed.seats.find((s) => s.id === published.assigneeSeatId)?.userId ?? null, title: published.title });
     else ctx.act.decide(published.id, "yes");
     ctx.showToast("Yes. " + published.from + " has been told" + (ctx.flag("projects") ? "; the project is open." : "."));
   };

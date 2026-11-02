@@ -3,17 +3,22 @@
 import { describe, expect, it } from "vitest";
 import { appendEvent, emptyLog, type CaseEvent, type CaseEventType, type EventLog, type EventPayload } from "@/features/cases/events";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
-import { actedBy, clearedBy, cosignedBy, deskFor, deskHolders, exportSnippet, inboxFor, mineFor } from "@/features/cases/selectors";
-import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
+import { meFor, type Me } from "@/features/auth/identity";
+import { actedByMe, clearedByMe, cosignedOf, deskOf, deskSeats, exportSnippet, inboxOf, mineOf } from "@/features/cases/selectors";
+import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS } from "@/features/demo/seed";
 import { LOCAL_SEED } from "@/features/demo";
 import { seatByLabel } from "@/features/demo/identity";
 
-const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: LOCAL_SEED.routes, promiseDays: PROMISE_DAYS, seats: LOCAL_SEED.seats };
+const SEED: ReduceSeed = { cases: LOCAL_SEED.cases.filter((c) => CASES.some((x) => x.id === c.id)), ideas: LOCAL_SEED.ideas, problems: PROBLEMS, routes: LOCAL_SEED.routes, promiseDays: PROMISE_DAYS, seats: LOCAL_SEED.seats };
 
 let n = 0;
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
   ({ id: "t" + n++, ts: 0, type, actor, target, payload, day });
 const seatOf = (label: string) => seatByLabel(LOCAL_SEED.seats, label)!;
+const userOf = (label: string) => LOCAL_SEED.seats.find((s) => s.label === label)!.userId!;
+const meOf = (label: string): Me => meFor(userOf(label), LOCAL_SEED.seats);
+const memberUser = LOCAL_SEED.personas.find((r) => r.id === "member")!.who.userId!;
+const memberMe: Me = meFor(memberUser, LOCAL_SEED.seats);
 const as = (uid: string, e: CaseEvent): CaseEvent => ({ ...e, actorUserId: uid });
 const logOf = (...events: CaseEvent[]): EventLog => ({ events, day: Math.max(0, ...events.map((e) => e.day)) });
 const find = <T extends { id: string }>(xs: T[], id: string) => xs.find((x) => x.id === id)!;
@@ -22,9 +27,9 @@ describe("reduce", () => {
   it("seed reduces: 8 cases, 6 open for T. Vogel, employee has 2 cases + 1 co-sign", () => {
     const S = reduce(SEED, logOf());
     expect(S.cases.length).toBe(8);
-    expect(inboxFor(S, "T. Vogel").length).toBe(6);
-    expect(mineFor(S, "Anonymous #4471").length).toBe(3); // c3 open + c7 shipped + c8 building
-    expect(cosignedBy(S, "Anonymous #4471").map((i) => i.id).join()).toBe("i1");
+    expect(inboxOf(S, meOf("T. Vogel")).length).toBe(6);
+    expect(mineOf(S, memberMe).length).toBe(3); // c3 open + c7 shipped + c8 building
+    expect(cosignedOf(S, memberMe).map((i) => i.id).join()).toBe("i1");
   });
 
   it("seed history: c7 shipped, c8 building, ages derived from raisedDay", () => {
@@ -40,12 +45,12 @@ describe("reduce", () => {
   });
 
   it("case.raised: new case lands in the assignee inbox, employee sees it", () => {
-    const S = reduce(SEED, logOf(ev("case.raised", "Anonymous #4471", "c_new", { title: "Night shift order", routeId: "r1", assignee: "R. Nowak", fromDept: "Production, Line 3" })));
+    const S = reduce(SEED, logOf(as(memberUser, ev("case.raised", "Anonymous #4471", "c_new", { title: "Night shift order", routeId: "r1", assignee: "R. Nowak", assigneeRoleHolderId: seatOf("R. Nowak"), fromDept: "Production, Line 3" }))));
     const c = find(S.cases, "c_new");
     expect(c.seed).toBe(false);
     expect(c.assignee).toBe("R. Nowak");
-    expect(inboxFor(S, "R. Nowak").length).toBe(1);
-    expect(mineFor(S, "Anonymous #4471").length).toBe(4);
+    expect(inboxOf(S, meOf("R. Nowak")).length).toBe(1);
+    expect(mineOf(S, memberMe).length).toBe(4);
     expect(c.age).toBe(0);
     expect(c.overdue).toBe(false);
     expect(c.kind, "kind missing on the event = problem").toBe("problem");
@@ -58,30 +63,30 @@ describe("reduce", () => {
   });
 
   it("case.decided closes the case; clock stops; cleared list credits the actor", () => {
-    const S = reduce(SEED, logOf(ev("case.decided", "T. Vogel", "c2", { answer: "no", reason: "not responsible", note: "Night shift gets a €500 card." })));
+    const S = reduce(SEED, logOf(as(userOf("T. Vogel"), ev("case.decided", "T. Vogel", "c2", { answer: "no", reason: "not responsible", note: "Night shift gets a €500 card." }))));
     const c = find(S.cases, "c2");
     expect(c.status).toBe("decided");
     expect(c.decided?.answer).toBe("no");
     expect(c.decided?.reason).toBe("not responsible");
-    expect(inboxFor(S, "T. Vogel").length).toBe(5);
-    expect(actedBy(c, "T. Vogel")).toBe("decided");
-    expect(clearedBy(S, "T. Vogel").length).toBe(1);
+    expect(inboxOf(S, meOf("T. Vogel")).length).toBe(5);
+    expect(actedByMe(c, meOf("T. Vogel"))).toBe("decided");
+    expect(clearedByMe(S, meOf("T. Vogel")).length).toBe(1);
   });
 
   it("case.handed moves the case to the other inbox; ledger counts it", () => {
-    const S = reduce(SEED, logOf(ev("case.handed", "T. Vogel", "c2", { to: "R. Nowak" })));
+    const S = reduce(SEED, logOf(as(userOf("T. Vogel"), ev("case.handed", "T. Vogel", "c2", { to: "R. Nowak", toRoleHolderId: seatOf("R. Nowak") }))));
     const c = find(S.cases, "c2");
     expect(c.assignee).toBe("R. Nowak");
     expect(c.open).toBe(true);
-    expect(inboxFor(S, "T. Vogel").length).toBe(5);
-    expect(inboxFor(S, "R. Nowak").length).toBe(1);
-    expect(actedBy(c, "T. Vogel")).toBe("handed");
+    expect(inboxOf(S, meOf("T. Vogel")).length).toBe(5);
+    expect(inboxOf(S, meOf("R. Nowak")).length).toBe(1);
+    expect(actedByMe(c, meOf("T. Vogel"))).toBe("handed");
     expect(S.ledger.handedOver).toBe(1);
   });
 
   it("case.asked pauses the clock; case.answered resumes it", () => {
     // raised at -4 (c2). Ask on day 0, answer on day 3, look on day 5 → clock = 9 - 3 paused = 6
-    const asked = ev("case.asked", "T. Vogel", "c2", { text: "Which belt?" }, 0);
+    const asked = as(userOf("T. Vogel"), ev("case.asked", "T. Vogel", "c2", { text: "Which belt?" }, 0));
     const log: EventLog = { events: [asked, ev("case.answered", "S. Dahl", "c2", { text: "The 40 mm one." }, 3)], day: 5 };
     const S = reduce(SEED, log);
     const c = find(S.cases, "c2");
@@ -92,17 +97,17 @@ describe("reduce", () => {
     const paused = find(reduce(SEED, { events: [asked], day: 5 }).cases, "c2");
     expect(paused.status).toBe("asked");
     expect(paused.clock, "while paused the clock stays where it was when the question went out").toBe(4);
-    expect(inboxFor(S, "T. Vogel").some((x) => x.id === "c2"), "answered case is back in the inbox").toBe(true);
+    expect(inboxOf(S, meOf("T. Vogel")).some((x) => x.id === "c2"), "answered case is back in the inbox").toBe(true);
   });
 
   it('a question is "off the desk" only while unanswered; deskFor keeps paused cases', () => {
-    const asked = reduce(SEED, logOf(ev("case.asked", "T. Vogel", "c2", { text: "Which belt?" })));
-    expect(actedBy(find(asked.cases, "c2"), "T. Vogel")).toBe("asked");
-    expect(inboxFor(asked, "T. Vogel").length, "paused case is not in the live inbox").toBe(5);
-    expect(deskFor(asked, "T. Vogel").length, "but it is still on the desk").toBe(6);
-    const back = reduce(SEED, logOf(ev("case.asked", "T. Vogel", "c2", { text: "Which belt?" }), ev("case.answered", "S. Dahl", "c2", { text: "40 mm" }, 1)));
-    expect(actedBy(find(back.cases, "c2"), "T. Vogel"), "answered → back on the desk, not cleared").toBeNull();
-    expect(clearedBy(back, "T. Vogel").length).toBe(0);
+    const asked = reduce(SEED, logOf(as(userOf("T. Vogel"), ev("case.asked", "T. Vogel", "c2", { text: "Which belt?" }))));
+    expect(actedByMe(find(asked.cases, "c2"), meOf("T. Vogel"))).toBe("asked");
+    expect(inboxOf(asked, meOf("T. Vogel")).length, "paused case is not in the live inbox").toBe(5);
+    expect(deskOf(asked, meOf("T. Vogel")).length, "but it is still on the desk").toBe(6);
+    const back = reduce(SEED, logOf(as(userOf("T. Vogel"), ev("case.asked", "T. Vogel", "c2", { text: "Which belt?" })), ev("case.answered", "S. Dahl", "c2", { text: "40 mm" }, 1)));
+    expect(actedByMe(find(back.cases, "c2"), meOf("T. Vogel")), "answered → back on the desk, not cleared").toBeNull();
+    expect(clearedByMe(back, meOf("T. Vogel")).length).toBe(0);
   });
 
   it("day.advanced ages every open case; a fresh case crosses the promise", () => {
@@ -119,8 +124,8 @@ describe("reduce", () => {
     expect(c1.escalated?.to).toBe("M. Roth");
     expect(c1.escalated?.live, "already overdue at day 0 — not counted as a demo escalation").toBe(false);
     expect(S0.ledger.escalated).toBe(0);
-    expect(inboxFor(S0, "M. Roth").some((c) => c.id === "c1"), "deputy sees it").toBe(true);
-    expect(inboxFor(S0, "T. Vogel").some((c) => c.id === "c1"), "original owner keeps it").toBe(true);
+    expect(inboxOf(S0, meOf("M. Roth")).some((c) => c.id === "c1"), "deputy sees it").toBe(true);
+    expect(inboxOf(S0, meOf("T. Vogel")).some((c) => c.id === "c1"), "original owner keeps it").toBe(true);
     // a case raised today, six days later
     const S6 = reduce(SEED, { events: [ev("case.raised", "Anonymous #4471", "c_x", { title: "x", routeId: "r3", assignee: "T. Vogel", assigneeRoleHolderId: seatOf("T. Vogel") }, 0)], day: PROMISE_DAYS + 1 });
     const cx = find(S6.cases, "c_x");
@@ -128,11 +133,11 @@ describe("reduce", () => {
     expect(cx.escalated?.live).toBe(true);
     expect(cx.escalated?.day).toBe(PROMISE_DAYS + 1);
     expect(S6.ledger.escalated, "the new case + five seed cases (raised 1-4 d ago) all crossed the line during the session; c1 was already over").toBe(6);
-    expect(deskHolders(S6, ROUTES)).toContain("H. Sander");
+    expect(deskSeats(S6).map((x) => x.id)).toContain(seatOf("H. Sander"));
     // the owner can close it
     const S7 = reduce(SEED, { events: cx.history.concat([ev("case.decided", "H. Sander", "c_x", { answer: "yes" }, PROMISE_DAYS + 1)]), day: PROMISE_DAYS + 1 });
     expect(find(S7.cases, "c_x").decided?.by).toBe("H. Sander");
-    expect(inboxFor(S7, "T. Vogel").some((c) => c.id === "c_x")).toBe(false);
+    expect(inboxOf(S7, meOf("T. Vogel")).some((c) => c.id === "c_x")).toBe(false);
   });
 
   it("advancing the day ages waiting ideas but not decided ones", () => {
@@ -163,7 +168,7 @@ describe("reduce", () => {
 
   it("seed is never mutated by reduce", () => {
     const before = JSON.stringify([CASES, IDEAS, PROBLEMS]);
-    reduce(SEED, logOf(ev("idea.approved", "B. Hartmann", "i1", { team: ["X"] }), ev("case.handed", "T. Vogel", "c2", { to: "R. Nowak" })));
+    reduce(SEED, logOf(ev("idea.approved", "B. Hartmann", "i1", { team: ["X"] }), as(userOf("T. Vogel"), ev("case.handed", "T. Vogel", "c2", { to: "R. Nowak", toRoleHolderId: seatOf("R. Nowak") }))));
     expect(JSON.stringify([CASES, IDEAS, PROBLEMS])).toBe(before);
   });
 

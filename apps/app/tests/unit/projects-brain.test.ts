@@ -8,7 +8,7 @@ import { checkinRequest, planRequest, roundSaid } from "@/features/projects/brai
 
 const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
 let n = 0;
-const ev = (type: CaseEventType, actor: string, payload: EventPayload = {}, day = 0): CaseEvent => ({ id: "b" + n++, ts: 0, type, actor, target: "c_b", payload, day });
+const ev = (type: CaseEventType, actor: string, payload: EventPayload = {}, day = 0): CaseEvent => ({ id: "b" + n++, ts: 0, type, actor, actorUserId: actor.startsWith("system:") ? null : "u_" + actor, target: "c_b", payload, day });
 const AUTHOR = "Anonymous #4471";
 
 const log: EventLog = {

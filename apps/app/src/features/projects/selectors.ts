@@ -6,24 +6,11 @@ import type { EventLog } from "@/features/cases/events";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import type { ReducedProject } from "./types";
 
-const named = (p: ReducedProject, name: string) => p.lead === name || p.members.includes(name);
-
 export const projectById = (state: State, id: string): ReducedProject | undefined => state.projects.find((p) => p.id === id);
 
 /** The project an archived idea became, if a yes opened (or joined) one. */
 export const projectOfCase = (state: State, c: Pick<ReducedCase, "id" | "decided">): ReducedProject | undefined =>
   c.decided?.projectId ? projectById(state, c.decided.projectId) : state.projects.find((p) => p.sources.includes(c.id));
-
-/** @deprecated IDN-S1 removes this - use projectsOfMe. */
-export const projectsOf = (state: State, name: string): ReducedProject[] => state.projects.filter((p) => named(p, name));
-
-/** @deprecated IDN-S1 removes this - use authoredByMe. */
-export const projectsFrom = (state: State, who: string | null): ReducedProject[] =>
-  who ? state.projects.filter((p) => p.authors.includes(who)) : [];
-
-/** @deprecated IDN-S1 removes this - use escalatedToMe. */
-export const projectsEscalatedTo = (state: State, name: string): ReducedProject[] =>
-  state.projects.filter((p) => p.escalated?.to === name);
 
 /** Projects this person leads or is on the team of, by user id. */
 export const projectsOfMe = (state: Pick<State, "projects">, me: Me): ReducedProject[] =>
