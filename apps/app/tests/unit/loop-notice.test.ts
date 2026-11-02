@@ -6,26 +6,31 @@ import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/se
 import { loopMails, type Person } from "@/features/loop/notice";
 
 const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
+// Mail goes to user ids (IDN/D2); names and handles only greet.
+const UID: Record<string, string> = { "T. Vogel": "u_tv", "H. Sander": "u_hs", "L. Brandt": "u_lb", "M. Roth": "u_mr", "J. Schmidt": "u_js", "Anonymous #4471": "u_js" };
 let n = 0;
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
-  ({ id: "n" + n++, ts: 0, type, actor, target, payload, day });
+  ({ id: "n" + n++, ts: 0, type, actor, actorUserId: UID[actor] ?? null, target, payload, day });
 const AUTHOR = "Anonymous #4471";
 const people: Person[] = [
-  { name: "J. Schmidt", email: "js@acme.test", handle: AUTHOR },
-  { name: "T. Vogel", email: "tv@acme.test" },
-  { name: "H. Sander", email: "hs@acme.test" },
-  { name: "L. Brandt", email: "lb@acme.test" },
-  { name: "M. Roth", email: "" },
+  { id: "u_js", name: "J. Schmidt", email: "js@acme.test", handle: AUTHOR },
+  { id: "u_tv", name: "T. Vogel", email: "tv@acme.test" },
+  { id: "u_hs", name: "H. Sander", email: "hs@acme.test" },
+  { id: "u_lb", name: "L. Brandt", email: "lb@acme.test" },
+  { id: "u_mr", name: "M. Roth", email: "" },
 ];
 const raised = ev("case.raised", AUTHOR, "c_m", { kind: "idea", title: "Shorter changeover", body: "x", routeId: "r1", assignee: "T. Vogel" });
 const mails = (last: CaseEvent, ...before: CaseEvent[]) => {
   const log: EventLog = { events: [raised, ...before, last], day: last.day };
-  return loopMails({ ev: last, state: reduce(SEED, log), people, baseUrl: "https://acme.sellux.ch" });
+  const state = reduce(SEED, log);
+  // The raiser's id reaches a project's authorUserIds through the case reducer (IDN-A1); here it is set by hand.
+  for (const p of state.projects) if (!p.authorUserIds.length) p.authorUserIds = ["u_js"];
+  return loopMails({ ev: last, state, people, baseUrl: "https://acme.sellux.ch" });
 };
 
 describe("loopMails", () => {
   it("a discussion asks each invited person (with an address) and tells the author, never the actor", () => {
-    const out = mails(ev("case.discussion", "T. Vogel", "c_m", { invited: ["H. Sander", "M. Roth", "T. Vogel"], missing: "The saving" }));
+    const out = mails(ev("case.discussion", "T. Vogel", "c_m", { invited: ["H. Sander", "M. Roth", "T. Vogel"], invitedUserIds: ["u_hs", "u_mr", "u_tv"], missing: "The saving" }));
     expect(out.map((m) => m.to)).toEqual(["hs@acme.test", "js@acme.test"]);
     expect(out[0].subject).toBe("Your view is asked: Shorter changeover");
     expect(out[0].text).toContain("Still missing: The saving");
@@ -34,7 +39,7 @@ describe("loopMails", () => {
   });
 
   it("a check-in reaches the author and everyone invited", () => {
-    const talk = ev("case.discussion", "T. Vogel", "c_m", { invited: ["H. Sander"] });
+    const talk = ev("case.discussion", "T. Vogel", "c_m", { invited: ["H. Sander"], invitedUserIds: ["u_hs"] });
     const out = mails(ev("case.checkin", "T. Vogel", "c_m", { next: "decide", open: ["Cost"], note: "Quote is in" }, 3), talk);
     expect(out.map((m) => m.to)).toEqual(["js@acme.test", "hs@acme.test"]);
     expect(out[0].text).toContain("ready to decide");
@@ -42,7 +47,7 @@ describe("loopMails", () => {
   });
 
   it("a yes that opens a project tells the author and the new lead", () => {
-    const out = mails(ev("case.decided", "T. Vogel", "c_m", { answer: "yes", projectId: "p_m", lead: "L. Brandt", title: "Changeover cart" }));
+    const out = mails(ev("case.decided", "T. Vogel", "c_m", { answer: "yes", projectId: "p_m", lead: "L. Brandt", leadUserId: "u_lb", title: "Changeover cart" }));
     expect(out.map((m) => [m.to, m.subject])).toEqual([
       ["js@acme.test", "Your idea was accepted: Shorter changeover"],
       ["lb@acme.test", "You lead P-1: Changeover cart"],
@@ -53,7 +58,7 @@ describe("loopMails", () => {
   it("the author hears the measure with its numbers, also when worse", () => {
     const P = (type: CaseEventType, payload: EventPayload = {}, day = 0) => ev(type, "L. Brandt", "p_m", payload, day);
     const before = [
-      ev("case.decided", "T. Vogel", "c_m", { answer: "yes", projectId: "p_m", lead: "L. Brandt" }),
+      ev("case.decided", "T. Vogel", "c_m", { answer: "yes", projectId: "p_m", lead: "L. Brandt", leadUserId: "u_lb" }),
       P("project.baseline", { metric: "Changeover", unit: "min", value: 42, better: "down" }), P("project.started"), P("project.done", {}, 1),
     ];
     const out = mails(P("project.measured", { check: 30, value: 45 }, 31), ...before);

@@ -5,23 +5,27 @@ import { describe, expect, it } from "vitest";
 import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "@/features/cases/events";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
-import { SEED } from "@/features/demo/seed";
+import { LOCAL_SEED as SEED } from "@/features/demo";
 import { STATIC_DEMO_SEED } from "@/features/demo/static-demo";
+import { meFor } from "@/features/auth/identity";
 import { LOOP_DEFAULTS } from "@/features/loop/rules";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import {
-  asInitiatives, baselineText, changeText, groupProjects, movement, projectDesk, projectWaits, rewardRuleText, safeUrl,
-  suggestedBaseline, suggestedSteps, systemOf, timelineOf, visibleProjects, type Viewer,
+  asInitiatives, baselineText, changeText, groupProjects, movement, projectDeskFor, projectWaits, rewardRuleText, safeUrl,
+  suggestedBaseline, suggestedSteps, systemOf, timelineOf, visibleProjectsFor, type IdViewer,
 } from "@/features/projects/views";
 
+// The seed carries ids (localDemoSeed); a person is found once, here, by the label the seed names them with.
+const uid = (name: string): string => SEED.seats.find((s) => s.label === name)?.userId ?? SEED.personas.find((r) => r.who.name === name)?.who.userId ?? "";
 let n = 0;
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
-  ({ id: "v" + n++, ts: 0, type, actor, target, payload, day });
+  ({ id: "v" + n++, ts: 0, type, actor, actorUserId: uid(actor) || null, target, payload, day });
 const at = (day: number, ...events: CaseEvent[]): EventLog => ({ events, day });
 
-const member: Viewer = { role: "member", name: "J. Schmidt", handle: "Anonymous #4471" };
-const leader: Viewer = { role: "leader", name: "T. Vogel", handle: null };
-const manager: Viewer = { role: "manager", name: "B. Hartmann", handle: null };
+const viewer = (role: IdViewer["role"], name: string): IdViewer => ({ role, userId: uid(name), me: meFor(uid(name), SEED.seats) });
+const member = viewer("member", "J. Schmidt");
+const leader = viewer("leader", "T. Vogel");
+const manager = viewer("manager", "B. Hartmann");
 const S0 = reduce(SEED, emptyLog());
 const byId = (S: typeof S0, id: string) => S.projects.find((p) => p.id === id)!;
 
@@ -56,20 +60,21 @@ describe("the seeded projects", () => {
     expect(S.projects.map((p) => p.status)).toEqual(S0.projects.map((p) => p.status));
     expect(byId(S, "pj1").authors).toEqual(["Jonas Schmidt"]);
     expect(byId(S, "pj4").lead).toBe("Thomas Vogel");
-    const me: Viewer = { role: "member", name: "Jonas Schmidt", handle: null };
-    expect(visibleProjects(S, me).map((p) => p.id)).toEqual(["pj1", "pj2"]);
+    const userId = STATIC_DEMO_SEED.personas.find((r) => r.who.name === "Jonas Schmidt")?.who.userId ?? null;
+    const me: IdViewer = { role: "member", userId };
+    expect(visibleProjectsFor(S, me).map((p) => p.id)).toEqual(["pj1", "pj2"]);
   });
 });
 
 describe("visibleProjects", () => {
   it("shows a member the projects of their own ideas and the ones they are on", () => {
-    expect(visibleProjects(S0, member).map((p) => p.id)).toEqual(["pj1", "pj2"]);
-    const S = reduce(SEED, at(0, ev("project.member", "T. Vogel", "pj4", { name: "J. Schmidt", on: true })));
-    expect(visibleProjects(S, member).map((p) => p.id)).toEqual(["pj1", "pj2", "pj4"]);
+    expect(visibleProjectsFor(S0, member).map((p) => p.id)).toEqual(["pj1", "pj2"]);
+    const S = reduce(SEED, at(0, ev("project.member", "T. Vogel", "pj4", { name: "J. Schmidt", userId: uid("J. Schmidt"), on: true })));
+    expect(visibleProjectsFor(S, member).map((p) => p.id)).toEqual(["pj1", "pj2", "pj4"]);
   });
   it("shows leaders and managers all of them, and no seed projects with demo data off", () => {
-    expect(visibleProjects(S0, leader)).toHaveLength(4);
-    expect(visibleProjects(S0, manager, false)).toHaveLength(0);
+    expect(visibleProjectsFor(S0, leader)).toHaveLength(4);
+    expect(visibleProjectsFor(S0, manager, false)).toHaveLength(0);
   });
 });
 
@@ -84,20 +89,20 @@ describe("groupProjects", () => {
 
 describe("projectDesk", () => {
   it("gives the lead their next move", () => {
-    expect(projectDesk(S0.projects, 0, leader).map((d) => [d.project.id, d.move, d.why])).toEqual([["pj4", "baseline", "lead"]]);
+    expect(projectDeskFor(S0.projects, 0, leader).map((d) => [d.project.id, d.move, d.why])).toEqual([["pj4", "baseline", "lead"]]);
   });
   it("moves a late start to the route's deputy, late first", () => {
     const S = reduce(SEED, at(9));
     const p = byId(S, "pj4");
     expect(p.overdue).toBe(true);
     expect(p.escalated?.to).toBe("M. Roth"); // r7: T. Vogel owns it, M. Roth is the deputy
-    expect(projectDesk(S.projects, S.day, { role: "leader", name: "M. Roth", handle: null }).map((d) => [d.project.id, d.why])).toEqual([["pj4", "escalated"]]);
+    expect(projectDeskFor(S.projects, S.day, viewer("leader", "M. Roth")).map((d) => [d.project.id, d.why])).toEqual([["pj4", "escalated"]]);
   });
   it("puts a due reward on a manager's desk only", () => {
     const S = reduce({ ...SEED, projects: SEED.projects?.filter((p) => p.id === "pj1").map((p) => ({ ...p, seedEvents: p.seedEvents?.filter((e) => e.type !== "project.rewarded") })) }, emptyLog());
     expect(byId(S, "pj1").rewardDue).toBe(true);
-    expect(projectDesk(S.projects, 0, manager).map((d) => d.move)).toEqual(["reward"]);
-    expect(projectDesk(S.projects, 0, { role: "leader", name: "L. Brandt", handle: null })).toEqual([]);
+    expect(projectDeskFor(S.projects, 0, manager).map((d) => d.move)).toEqual(["reward"]);
+    expect(projectDeskFor(S.projects, 0, viewer("leader", "L. Brandt"))).toEqual([]);
   });
 });
 

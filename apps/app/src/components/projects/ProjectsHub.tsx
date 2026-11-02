@@ -6,10 +6,10 @@
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { DashboardView } from "@/components/dashboard/team/DashboardView";
-import { visibleProjects } from "@/features/projects/views";
+import { visibleProjectsFor } from "@/features/projects/views";
 import { useT } from "@/i18n/client";
 import { ProjectsList } from "./ProjectsView";
-import { viewerOf } from "./parts";
+import { idViewerOf } from "./parts";
 import styles from "./Projects.module.css";
 
 export type HubTab = "projects" | "ideas";
@@ -20,7 +20,7 @@ export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases
   const { S, ready, demo, flag, role } = ctx;
   if (!ready) return <PageSkeleton kind={tab === "ideas" ? "dashboard" : "list"} delay />;
   if (!flag("projects")) return <DashboardView linkCases={linkCases} />;
-  const projects = visibleProjects(S, viewerOf(ctx), demo);
+  const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
 
   return (
     <div className={styles.hub} data-wide="true">

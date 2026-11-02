@@ -68,22 +68,23 @@ export type Act = {
   revise: (caseId: string, body: string, title?: string, overall?: number) => void;
   checkin: (caseId: string, next: "round" | "decide", open: string[], note: string) => void;
   // "Yes, do it" that opens a project - or joins `projectId` when that one is already open. Returns the project id.
-  accept: (caseId: string, p: { lead: string; title: string; note?: string; projectId?: string }) => string;
+  accept: (caseId: string, p: { lead: string; leadUserId?: string | null; title: string; note?: string; projectId?: string }) => string;
   project: ProjectAct;
 };
 
 /** A change to a step: only the fields given change. owner "" and dueDay null clear them; removed takes it off the board. */
-export type StepChange = { text?: string; owner?: string; dueDay?: number | null; note?: string; removed?: boolean };
+export type StepChange = { text?: string; owner?: string; ownerUserId?: string | null; dueDay?: number | null; note?: string; removed?: boolean };
 
 export type BaselineInput = { metric: string; unit: string; value: number; better: "up" | "down"; source: string } | { none: true; why: string };
 
 // Everything done to a project, each one event (features/projects). Ids are minted here when the caller needs them back.
 export type ProjectAct = {
-  member: (projectId: string, name: string, on: boolean) => void;
-  hand: (projectId: string, to: string, why?: string) => void;
+  /** Team changes name the person by user id; the label rides along for the timeline. */
+  member: (projectId: string, who: { userId: string; name: string }, on: boolean) => void;
+  hand: (projectId: string, to: { userId: string; name: string }, why?: string) => void;
   baseline: (projectId: string, b: BaselineInput) => void;
   start: (projectId: string) => void;
-  addStep: (projectId: string, text: string, owner?: string, dueDay?: number, to?: StepColumn, note?: string) => string;
+  addStep: (projectId: string, text: string, owner?: string, dueDay?: number, to?: StepColumn, note?: string, ownerUserId?: string | null) => string;
   /** before: the card it lands above; null puts it at the bottom of the column. */
   moveStep: (projectId: string, stepId: string, to: StepColumn, why?: string, before?: string | null) => void;
   editStep: (projectId: string, stepId: string, change: StepChange) => void;
@@ -410,16 +411,16 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     invite: (caseId, invited) => emit("case.invited", caseId, { invited }),
     revise: (caseId, body, title, overall) => emit("case.revised", caseId, { body, title, overall }),
     checkin: (caseId, next, open, note) => emit("case.checkin", caseId, { next, open, note }),
-    accept: (caseId, { lead, title, note, projectId = newId("p") }) => {
-      emit("case.decided", caseId, { answer: "yes", projectId, lead, title, note });
+    accept: (caseId, { lead, leadUserId, title, note, projectId = newId("p") }) => {
+      emit("case.decided", caseId, { answer: "yes", projectId, lead, ...(leadUserId ? { leadUserId } : {}), title, note });
       return projectId;
     },
     project: {
-      member: (id, name, on) => emit("project.member", id, { name, on }),
-      hand: (id, to, why) => emit("project.handed", id, { to, why }),
+      member: (id, who, on) => emit("project.member", id, { name: who.name, userId: who.userId, on }),
+      hand: (id, to, why) => emit("project.handed", id, { to: to.name, toUserId: to.userId, why }),
       baseline: (id, b) => emit("project.baseline", id, "none" in b ? { none: true, why: b.why } : { ...b }),
       start: (id) => emit("project.started", id),
-      addStep: (id, text, owner, dueDay, to, note) => { const stepId = newId("s"); emit("project.step.added", id, { stepId, text, owner, dueDay, to, note }); return stepId; },
+      addStep: (id, text, owner, dueDay, to, note, ownerUserId) => { const stepId = newId("s"); emit("project.step.added", id, { stepId, text, owner, ...(ownerUserId ? { ownerUserId } : {}), dueDay, to, note }); return stepId; },
       moveStep: (id, stepId, to, why, before) => emit("project.step.moved", id, { stepId, to, why, ...(before !== undefined ? { before } : {}) }),
       editStep: (id, stepId, change) => emit("project.step.edited", id, { stepId, ...change }),
       link: (id, url, system = "url", key, stepId) => emit("project.linked", id, { url, system, key, stepId }),

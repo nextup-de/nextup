@@ -12,7 +12,7 @@ import { board } from "@/features/projects/selectors";
 import { STEP_COLUMNS, type ReducedProject, type Step, type StepColumn } from "@/features/projects/types";
 import { columnLabel, safeUrl, toolName, toolOf, type JiraRow, type StepHint } from "@/features/projects/views";
 import { useFormat, useLocale, useT } from "@/i18n/client";
-import { useRights, useSend } from "./parts";
+import { teamOf, useRights, useSend, withIds, type Person } from "./parts";
 import { StepDetail } from "./StepDetail";
 import styles from "./Projects.module.css";
 
@@ -20,18 +20,17 @@ import styles from "./Projects.module.css";
 type Spot = { col: StepColumn; before: string | null };
 
 export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: StepHint[]; jira: JiraRow }) {
-  const { act, persona } = useDemo();
+  const { act, seed, actorUserId } = useDemo();
   const t = useT();
   const locale = useLocale();
   const r = useRights(p);
   const send = useSend(p);
   const cols = board(p);
-  const team = [p.lead, ...p.members];
-  const me = persona.who;
-  const mine = (s: Step) => s.owner !== null && (s.owner === me.name || s.owner === me.handle);
-  const [filter, setFilter] = useState("all"); // "all" | "mine" | "unowned" | an owner's name
-  const shown = (s: Step) => filter === "all" || (filter === "mine" ? mine(s) : filter === "unowned" ? !s.owner : s.owner === filter);
-  const owners = team.filter((n) => p.steps.some((s) => s.owner === n));
+  const team = teamOf(p, seed.seats);
+  const mine = (s: Step) => actorUserId !== null && s.ownerUserId === actorUserId;
+  const [filter, setFilter] = useState("all"); // "all" | "mine" | "unowned" | an owner's user id
+  const shown = (s: Step) => filter === "all" || (filter === "mine" ? mine(s) : filter === "unowned" ? !s.owner : s.ownerUserId === filter);
+  const owners = team.filter((m) => m.userId !== null && p.steps.some((s) => s.ownerUserId === m.userId));
   const hidden = p.steps.filter((s) => !shown(s)).length;
 
   // A planned board with no steps opens with To do's composer, so the first step is one click away.
@@ -131,8 +130,8 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
             {[["all", t("projects.filterAll")], ["mine", t("projects.filterMine")], ["unowned", t("projects.noOwner")]].map(([k, label]) => (
               <button key={k} type="button" className={styles.filter} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>
             ))}
-            {owners.map((n) => (
-              <button key={n} type="button" className={styles.filterFace} aria-pressed={filter === n} onClick={() => setFilter(filter === n ? "all" : n)} aria-label={t("projects.filterOnly", { name: n })} title={n}>
+            {owners.map(({ userId, name: n }) => (
+              <button key={userId} type="button" className={styles.filterFace} aria-pressed={filter === userId} onClick={() => setFilter(filter === userId ? "all" : (userId as string))} aria-label={t("projects.filterOnly", { name: n })} title={n}>
                 <Avatar name={n} size="sm" />
               </button>
             ))}
@@ -196,7 +195,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
                 {list.length === 0 && adding !== col && <p className={styles.colEmpty}>{cols[col].length ? t("projects.colNoneFiltered") : t(("projects.empty_" + col) as "projects.empty_todo")}</p>}
               </div>
               {adding === col
-                ? <Composer p={p} col={col} team={team} focus={p.steps.length > 0} onClose={() => setAdding(null)} />
+                ? <Composer p={p} col={col} team={withIds(team)} focus={p.steps.length > 0} onClose={() => setAdding(null)} />
                 : canAdd && (
                   <button type="button" className={styles.addCard} onClick={() => setAdding(col)} aria-label={t("projects.addStepTo", { column: columnLabel(col, locale) })}>
                     <span aria-hidden="true">+</span> {t("projects.addStep")}
@@ -214,7 +213,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
 }
 
 /** A new step at the foot of a column: Enter adds it and keeps the box open for the next one. */
-function Composer({ p, col, team, focus, onClose }: { p: ReducedProject; col: StepColumn; team: string[]; focus: boolean; onClose: () => void }) {
+function Composer({ p, col, team, focus, onClose }: { p: ReducedProject; col: StepColumn; team: Person[]; focus: boolean; onClose: () => void }) {
   const { act, S } = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -228,7 +227,7 @@ function Composer({ p, col, team, focus, onClose }: { p: ReducedProject; col: St
     const n = inDays.trim() === "" ? NaN : Math.max(0, Math.round(Number(inDays)));
     const due = Number.isNaN(n) ? undefined : S.day + n;
     const to = col === "todo" ? undefined : col;
-    if (send("project.step.added", { stepId: "probe", text: t, to }, () => act.project.addStep(p.id, t, owner || undefined, due, to))) { setText(""); setInDays(""); }
+    if (send("project.step.added", { stepId: "probe", text: t, to }, () => act.project.addStep(p.id, t, team.find((m) => m.userId === owner)?.name, due, to, undefined, owner || null))) { setText(""); setInDays(""); }
   };
 
   return (
@@ -244,7 +243,7 @@ function Composer({ p, col, team, focus, onClose }: { p: ReducedProject; col: St
       <div className={styles.composerRow}>
         <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={owner} onChange={(e) => setOwner(e.target.value)} aria-label={t("projects.owner")}>
           <option value="">{t("projects.noOwnerYet")}</option>
-          {team.map((n) => <option key={n} value={n}>{n}</option>)}
+          {team.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
         </select>
         <input className={`nh-input ${styles.input} ${styles.days}`} type="number" min={0} max={365} value={inDays} onChange={(e) => setInDays(e.target.value)} placeholder={t("projects.dueInDays")} aria-label={t("projects.dueInDays")} />
       </div>

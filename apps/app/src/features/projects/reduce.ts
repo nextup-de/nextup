@@ -13,7 +13,7 @@ export type ProjectBook = { byId: Record<string, ReducedProject>; order: string[
 
 export const newBook = (): ProjectBook => ({ byId: {}, order: [] });
 
-function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | "sources" | "authors" | "routeId" | "lead" | "members" | "openedDay" | "openedBy" | "seed">): ReducedProject {
+function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | "sources" | "authors" | "routeId" | "lead" | "members" | "leadUserId" | "memberUserIds" | "authorUserIds" | "openedDay" | "openedBy" | "seed">): ReducedProject {
   const project: ReducedProject = {
     id, number: 0, ...p,
     startedDay: null, doneDay: null, doneNote: "", stopped: null, baseline: null,
@@ -30,7 +30,11 @@ export function seedProject(book: ProjectBook, row: SeedProject): void {
   if (book.byId[row.id]) return;
   fresh(book, row.id, {
     title: row.title, sources: row.sources.slice(), authors: row.authors.slice(), routeId: row.routeId ?? null,
-    lead: row.lead, members: (row.members ?? []).filter((m) => m !== row.lead), openedDay: row.openedDay, openedBy: row.openedBy, seed: true,
+    lead: row.lead, members: (row.members ?? []).filter((m) => m !== row.lead),
+    leadUserId: row.leadUserId ?? null,
+    memberUserIds: (row.memberUserIds ?? []).filter((u) => u !== (row.leadUserId ?? null)),
+    authorUserIds: (row.authorUserIds ?? []).slice(),
+    openedDay: row.openedDay, openedBy: row.openedBy, seed: true,
   });
 }
 
@@ -50,13 +54,15 @@ export function openOrJoin(book: ProjectBook, ev: CaseEvent, source: Source): Re
     if (have.stopped || have.reward || have.sources.includes(source.id)) return null;
     have.sources.push(source.id);
     if (!have.authors.includes(source.from)) have.authors.push(source.from);
+    if (source.fromUserId && !have.authorUserIds.includes(source.fromUserId)) have.authorUserIds.push(source.fromUserId);
     have.history.push(ev);
     return have;
   }
   const lead = pl.lead?.trim() || ev.actor;
   const p = fresh(book, id, {
     title: pl.title?.trim() || source.title, sources: [source.id], authors: [source.from], routeId: source.routeId,
-    lead, members: [], openedDay: ev.day | 0, openedBy: ev.actor, seed: Boolean(ev.seed),
+    lead, members: [], leadUserId: pl.leadUserId ?? ev.actorUserId ?? null, memberUserIds: [],
+    authorUserIds: source.fromUserId ? [source.fromUserId] : [], openedDay: ev.day | 0, openedBy: ev.actor, seed: Boolean(ev.seed),
   });
   p.history.push(ev);
   return p;
@@ -84,18 +90,31 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
   const live = p.stopped === null;
   switch (ev.type) {
     case "project.member": {
-      const name = pl.name?.trim();
-      if (!name || name === p.lead) break;
-      if (pl.on === false) p.members = p.members.filter((m) => m !== name);
-      else if (!p.members.includes(name)) p.members.push(name);
+      const userId = pl.userId;
+      if (!userId || userId === p.leadUserId) break;
+      const name = pl.name?.trim() ?? "";
+      if (pl.on === false) {
+        p.memberUserIds = p.memberUserIds.filter((u) => u !== userId);
+        if (name) p.members = p.members.filter((m) => m !== name); // the shown list only
+      } else if (!p.memberUserIds.includes(userId)) {
+        p.memberUserIds.push(userId);
+        if (name) p.members.push(name);
+      }
       break;
     }
     case "project.handed": {
-      const to = pl.to?.trim();
-      if (!to || to === p.lead || !live) break;
-      if (!p.members.includes(p.lead)) p.members.push(p.lead);
-      p.members = p.members.filter((m) => m !== to);
-      p.lead = to;
+      const toUserId = pl.toUserId ?? null;
+      const to = pl.to?.trim() ?? "";
+      if (!live || toUserId === null || toUserId === p.leadUserId) break;
+      // The old lead joins the team (by id; the label list only follows for display).
+      if (p.leadUserId !== null && !p.memberUserIds.includes(p.leadUserId)) {
+        p.memberUserIds.push(p.leadUserId);
+        if (p.lead) p.members.push(p.lead);
+      }
+      p.memberUserIds = p.memberUserIds.filter((u) => u !== toUserId);
+      if (to) p.members = p.members.filter((m) => m !== to);
+      p.leadUserId = toUserId;
+      if (to) p.lead = to;
       break;
     }
     case "project.baseline": {
@@ -115,8 +134,8 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       // A card can start in any column but Blocked (that one needs its reason, so it is a move).
       const column: StepColumn = isColumn(pl.to) && pl.to !== "blocked" ? pl.to : "todo";
       p.steps.push({
-        id: stepId, text, owner: pl.owner?.trim() || null, dueDay: typeof pl.dueDay === "number" ? pl.dueDay : null,
-        column, why: "", note: pl.note?.trim() ?? "", addedDay: d, by: ev.actor, movedDay: d,
+        id: stepId, text, owner: pl.owner?.trim() || null, ownerUserId: pl.ownerUserId ?? null, dueDay: typeof pl.dueDay === "number" ? pl.dueDay : null,
+        column, why: "", note: pl.note?.trim() ?? "", addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d,
         startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
         external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null,
       });
@@ -144,6 +163,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const text = pl.text?.trim();
       if (text) s.text = text;
       if (pl.owner !== undefined) s.owner = pl.owner.trim() || null;
+      if (pl.ownerUserId !== undefined) s.ownerUserId = pl.ownerUserId;
       if (pl.dueDay !== undefined) s.dueDay = typeof pl.dueDay === "number" ? pl.dueDay : null;
       if (pl.note !== undefined) s.note = pl.note.trim();
       break;
@@ -197,7 +217,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
 type Finish = { day: number; promise: number; rules: LoopRules; routeOf: (id: string | null) => Route | null; seats?: readonly SeatRow[] };
 
 /** Derived per project once every event is applied: status, checks, due day, escalation. */
-export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf }: Finish): ReducedProject[] {
+export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf, seats = [] }: Finish): ReducedProject[] {
   const list = book.order.map((id) => book.byId[id]);
   list.forEach((p, k) => {
     p.number = k + 1;
@@ -226,9 +246,14 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf
     p.dueDay = p.status === "planning" ? p.openedDay + promise : p.status === "measuring" && nextCheck ? nextCheck.dueDay : null;
     p.overdue = p.dueDay !== null && day > p.dueDay;
     const route = routeOf(p.routeId);
-    const to = route ? (route.owner.name === p.lead ? route.deputy : route.owner.name) : null;
+    // The lead is the route owner when the owner seat's user is the lead's user (by id, never by name).
+    const ownerUser = route?.ownerSeatId ? seats.find((s) => s.id === route.ownerSeatId)?.userId ?? null : null;
+    const leadIsOwner = p.leadUserId !== null && ownerUser === p.leadUserId;
+    const to = route ? (leadIsOwner ? route.deputy : route.owner.name) : null;
+    const toSeatId = route ? (leadIsOwner ? route.deputySeatId : route.ownerSeatId) ?? null : null;
+    const toRoleId = route ? (leadIsOwner ? route.deputyRoleId : route.ownerRoleId) ?? null : null;
     p.escalated = p.overdue && to && p.dueDay !== null
-      ? { to, from: p.lead, day: p.dueDay + 1, live: p.dueDay + 1 >= 0, what: p.status === "planning" ? "start" : "measure" }
+      ? { to, toSeatId, toRoleId, from: p.lead, day: p.dueDay + 1, live: p.dueDay + 1 >= 0, what: p.status === "planning" ? "start" : "measure" }
       : null;
   });
   return list;

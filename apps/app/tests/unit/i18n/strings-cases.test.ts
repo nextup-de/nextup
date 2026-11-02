@@ -40,13 +40,13 @@ const notice: RaisedNotice = {
 
 const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
-  ({ id: "n" + type, ts: 0, type, actor, target, payload, day });
+  ({ id: "n" + type, ts: 0, type, actor, actorUserId: actor === "T. Vogel" ? "u_tv" : null, target, payload, day });
 const people: Person[] = [
-  { name: "T. Vogel", email: "tv@acme.test" },
-  { name: "H. Sander", email: "hs@acme.test" },
+  { id: "u_tv", name: "T. Vogel", email: "tv@acme.test" },
+  { id: "u_hs", name: "H. Sander", email: "hs@acme.test" },
 ];
 const raised = ev("case.raised", "Anonymous #4471", "c_m", { kind: "idea", title: "Shorter changeover", body: "x", routeId: "r1", assignee: "T. Vogel" });
-const discussion = ev("case.discussion", "T. Vogel", "c_m", { invited: ["H. Sander"], missing: "The saving" });
+const discussion = ev("case.discussion", "T. Vogel", "c_m", { invited: ["H. Sander"], invitedUserIds: ["u_hs"], missing: "The saving" });
 const mailFor = (locale?: "de" | "en") => {
   const log: EventLog = { events: [raised, discussion], day: 0 };
   return loopMails({ ev: discussion, state: reduce(SEED, log), people, baseUrl: "https://acme.sellux.ch" }, locale);

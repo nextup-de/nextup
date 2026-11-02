@@ -9,10 +9,10 @@ import { projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
 import { createT, DEFAULT_LOCALE, type Locale, type T } from "@/i18n";
 
-/** A person who can get mail: their name, and the handle they post under (anonymous members). */
-export type Person = { name: string; email: string; handle?: string | null };
+/** A person who can get mail: their user id, their name (shown in the greeting) and the handle they post under. */
+export type Person = { id: string; name: string; email: string; handle?: string | null };
 
-type Args = { ev: Pick<CaseEvent, "type" | "actor" | "target" | "payload">; state: State; people: Person[]; baseUrl: string };
+type Args = { ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload">; state: State; people: Person[]; baseUrl: string };
 
 /** One language for all mails, or the language of each recipient by address. */
 export type MailLocale = Locale | ((email: string) => Locale);
@@ -20,14 +20,15 @@ export type MailLocale = Locale | ((email: string) => Locale);
 const inDays = (t: T, n: number) => (n <= 0 ? t("mail.inToday") : n === 1 ? t("mail.inTomorrow") : t("mail.inDays", { n }));
 
 export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLocale = DEFAULT_LOCALE): NoticeMail[] {
-  const find = (who: string) => people.find((p) => p.name === who || (p.handle && p.handle === who));
+  // Who gets a mail is a user id; names and handles only greet (IDN/D2).
+  const find = (userId: string | null | undefined) => (userId ? people.find((p) => p.id === userId) : undefined);
   const out: NoticeMail[] = [];
   const seen = new Set<string>();
   // Subjects and lines are built per recipient, in that recipient's language.
-  const send = (who: string, subject: (t: T) => string, lines: (t: T) => string[]) => {
+  const send = (who: string | null | undefined, subject: (t: T) => string, lines: (t: T) => string[]) => {
     const p = find(who);
     // Never write to whoever did it, never twice, never without an address.
-    if (!p?.email || who === ev.actor || find(ev.actor)?.email === p.email || seen.has(p.email)) return;
+    if (!p?.email || (ev.actorUserId && (who === ev.actorUserId || find(ev.actorUserId)?.email === p.email)) || seen.has(p.email)) return;
     seen.add(p.email);
     const t = createT(typeof locale === "function" ? locale(p.email) : locale);
     out.push({ to: p.email, subject: subject(t), text: [`${p.name},`, "", ...lines(t)].join("\n") });
@@ -37,23 +38,28 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
   const kase = ev.target ? state.cases.find((c) => c.id === ev.target) : undefined;
   const project = ev.target ? state.projects.find((p) => p.id === ev.target) : undefined;
   const pl = ev.payload;
+  // The ids the case's own events carried: the raiser, and everyone invited to the discussion so far.
+  const authorOf = (c: ReducedCase): string | null =>
+    (c as { fromUserId?: string | null }).fromUserId ?? c.history.find((h) => h.type === "case.raised")?.actorUserId ?? null;
+  const invitedOf = (c: ReducedCase): string[] =>
+    [...new Set(c.history.flatMap((h) => (h.type === "case.discussion" || h.type === "case.invited" ? h.payload.invitedUserIds ?? [] : [])))];
 
   switch (ev.type) {
     case "case.discussion":
     case "case.invited": {
       if (!kase?.discussion) break;
       const talk = kase.discussion;
-      const names = ev.type === "case.invited" ? pl.invited ?? [] : talk.invited;
+      const invitees = ev.type === "case.invited" ? pl.invitedUserIds ?? [] : invitedOf(kase);
       const due = kase.dueDay - state.day;
-      for (const name of names) {
-        send(name, (t) => t("mail.viewSubject", { title: kase.title }), (t) => [
+      for (const id of invitees) {
+        send(id, (t) => t("mail.viewSubject", { title: kase.title }), (t) => [
           t("mail.viewIntro", { actor: ev.actor }), "", `  ${kase.title}`, "",
           ...(talk.missing ? [t("mail.stillMissing", { text: talk.missing }), ""] : []),
           t("mail.viewNext", { when: inDays(t, due), url: caseLink(kase) }),
         ]);
       }
       if (ev.type === "case.discussion") {
-        send(kase.from, (t) => t("mail.discussionSubject", { title: kase.title }), (t) => [
+        send(authorOf(kase), (t) => t("mail.discussionSubject", { title: kase.title }), (t) => [
           t("mail.discussionIntro", { actor: ev.actor, n: state.rules.discussEveryDays }),
           ...(talk.missing ? ["", t("mail.stillMissing", { text: talk.missing })] : []),
           "", t("mail.discussionAddVersion", { url: caseLink(kase) }),
@@ -71,17 +77,17 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
         ...(last.note ? ["", last.note] : []),
         "", caseLink(kase),
       ];
-      for (const who of [kase.from, ...d.invited]) send(who, (t) => t("mail.checkinSubject", { title: kase.title }), lines);
+      for (const who of [authorOf(kase), ...invitedOf(kase)]) send(who, (t) => t("mail.checkinSubject", { title: kase.title }), lines);
       break;
     }
     case "case.decided": {
       const p = kase?.decided?.projectId ? state.projects.find((x) => x.id === kase.decided?.projectId) : undefined;
       if (!kase || !p) break;
-      send(kase.from, (t) => t("mail.acceptedSubject", { title: kase.title }), (t) => [
+      send(authorOf(kase), (t) => t("mail.acceptedSubject", { title: kase.title }), (t) => [
         t("mail.acceptedIntro", { actor: ev.actor, label: projectLabel(p), title: p.title, lead: p.lead }),
         "", t("mail.acceptedNext"), "", projectLink(p),
       ]);
-      send(p.lead, (t) => t("mail.leadSubject", { label: projectLabel(p), title: p.title }), (t) => [
+      send(p.leadUserId, (t) => t("mail.leadSubject", { label: projectLabel(p), title: p.title }), (t) => [
         t("mail.leadIntro", { actor: ev.actor }),
         "", t("mail.leadNext", { when: inDays(t, p.dueDay !== null ? p.dueDay - state.day : 0) }),
         "", projectLink(p),
@@ -89,10 +95,10 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
       break;
     }
     case "project.handed":
-      if (project) send(project.lead, (t) => t("mail.leadSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.handedIntro", { actor: ev.actor }), ...(pl.why ? ["", pl.why] : []), "", projectLink(project)]);
+      if (project) send(project.leadUserId, (t) => t("mail.leadSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.handedIntro", { actor: ev.actor }), ...(pl.why ? ["", pl.why] : []), "", projectLink(project)]);
       break;
     case "project.member":
-      if (project && pl.on !== false && pl.name) send(pl.name, (t) => t("mail.memberSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.memberIntro", { actor: ev.actor }), "", projectLink(project)]);
+      if (project && pl.on !== false && pl.userId) send(pl.userId, (t) => t("mail.memberSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.memberIntro", { actor: ev.actor }), "", projectLink(project)]);
       break;
     case "project.started":
     case "project.done":
@@ -108,7 +114,7 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
         const reward = r?.rule === "thanks" || r?.amount == null ? t("mail.rewardThanks") : t("mail.rewardAmount", { amount: r.amount });
         return r?.note ? t("mail.whatRecognisedNote", { reward, note: r.note }) : t("mail.whatRecognised", { reward });
       };
-      for (const a of project.authors) send(a, (t) => t("mail.stepSubject", { label: projectLabel(project), step: t(step), title: project.title }), (t) => [t("mail.stepIntro", { what: what(t) }), "", projectLink(project)]);
+      for (const a of project.authorUserIds) send(a, (t) => t("mail.stepSubject", { label: projectLabel(project), step: t(step), title: project.title }), (t) => [t("mail.stepIntro", { what: what(t) }), "", projectLink(project)]);
       break;
     }
     default:
