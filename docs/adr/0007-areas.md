@@ -23,6 +23,7 @@ its brief names (PILOT/HD11).
 | `auth.prisma` | `User`, `ApiToken` | DIR |
 | `integrations.prisma` | `CompanyConfig`, `Connection`, `Integration`, `Document` | CON, NTF |
 | `ops.prisma` | `FeatureFlag`, `PilotRequest`, `PilotReply`, `Ticket`, `TicketReply`, `ErrorGroup` | GDP |
+| `support.prisma` | `SupportGrant` | ITC |
 
 Rules:
 
@@ -65,6 +66,7 @@ Paths are under `apps/app/` unless they start at the repo root (`docs/`, `.githu
 | SEC | `stack/provision/`, `stack/`, `.github/workflows/`, `docs/compliance/`, `docs/customer/` |
 | TST | `tests/e2e/db/`, `tests/load/`, `prisma/generators/musterwerk/` |
 | PIL | `src/features/pilot/`, `prisma/generators/`, `docs/pilot/` |
+| ITC | `src/features/admin/support-code.ts`, `src/server/actions/support-access.ts`, `prisma/schema/support.prisma` |
 
 ### Known overlaps
 
