@@ -70,7 +70,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       const step = p.steps.find((s) => s.id === pl.stepId);
       if (!step) return no("projects.permNoStep");
       // An unowned step is the team's: anyone on it may pick it up and move it.
-      if (!(isLead || isMe(step.ownerUserId) || (step.ownerUserId === null && onTeam))) return no("projects.permStepMoveOwner");
+      if (!(isLead || isMe(step.ownerUserId ?? null) || ((step.ownerUserId ?? null) === null && onTeam))) return no("projects.permStepMoveOwner");
       if (pl.before != null && !p.steps.some((s) => s.id === pl.before)) return no("projects.permNoStepAbove");
       return typeof pl.to === "string" && (STEP_COLUMNS as readonly string[]).includes(pl.to) ? OK : no("projects.permMoveWhere");
     }
@@ -80,7 +80,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!step) return no("projects.permNoStep");
       if (!onTeam) return no("projects.permStepTeamChange");
       if (!live) return no("projects.permClosed");
-      if (pl.removed) return isLead || isMe(step.byUserId) ? OK : no("projects.permStepRemove");
+      if (pl.removed) return isLead || isMe(step.byUserId ?? null) ? OK : no("projects.permStepRemove");
       if (pl.text !== undefined && !text(pl.text, 500)) return no("projects.permStepText");
       if (pl.owner !== undefined && !(typeof pl.owner === "string" && pl.owner.length <= 120)) return no("projects.permStepOwnerWho");
       if (pl.ownerUserId !== undefined && pl.ownerUserId !== null && typeof pl.ownerUserId !== "string") return no("projects.permStepOwnerWho");

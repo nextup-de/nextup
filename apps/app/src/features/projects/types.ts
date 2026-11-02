@@ -11,7 +11,7 @@ export type Step = {
   text: string;
   owner: string | null;
   /** The owner's user id (project.step.* ownerUserId); null when none was named. */
-  ownerUserId: string | null;
+  ownerUserId?: string | null;
   dueDay: number | null;
   column: StepColumn;
   /** Why it moved last (a blocked step says what blocks it). */
@@ -20,7 +20,7 @@ export type Step = {
   note: string;
   addedDay: number;
   by: string;
-  byUserId: string | null;
+  byUserId?: string | null;
   movedDay: number;
   /** When it first went to Doing, and when it last reached Done (null until then): the step's cycle time. */
   startedDay: number | null;

@@ -6,10 +6,10 @@
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { projectLabel } from "@/features/projects/selectors";
-import { betterText, changeText, fmtNumber, measuredProjects, movement, projectWaits, visibleProjects, type WaitStat } from "@/features/projects/views";
+import { betterText, changeText, fmtNumber, measuredProjects, movement, projectWaits, visibleProjectsFor, type WaitStat } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import type { Locale, T } from "@/i18n";
-import { VerdictChip, viewerOf } from "./parts";
+import { VerdictChip, idViewerOf } from "./parts";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./Projects.module.css";
 
@@ -21,7 +21,7 @@ export function ProjectMovement() {
   const t = useT();
   const locale = useLocale();
   const { S, demo, href } = ctx;
-  const list = visibleProjects(S, viewerOf(ctx), demo);
+  const list = visibleProjectsFor(S, idViewerOf(ctx), demo);
   const measured = measuredProjects(list);
   const waits = projectWaits(list);
   const L = S.ledger;
