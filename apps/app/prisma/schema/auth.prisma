@@ -32,6 +32,13 @@ model User {
   // history still names them; the settings guard and sign-in refuse an inactive user.
   active Boolean @default(true)
 
+  // Second factor (phase ADM, features/auth/totp.ts). The TOTP secret is sealed with the connector
+  // vault; it counts only once totpEnabledAt is set (the person confirmed one code). isStackAdmin
+  // lets this person open /admin with their code and a TOTP; an admin sets it in /admin People.
+  totpSecretSealed String?
+  totpEnabledAt    DateTime?
+  isStackAdmin     Boolean   @default(false)
+
   // Directory sync (phase DIR). employeeId is the personnel number: never shown, never logged, never sent to the AI.
   employeeId        String?
   managerId         String?
