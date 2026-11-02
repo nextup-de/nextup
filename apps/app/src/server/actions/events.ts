@@ -20,6 +20,7 @@ import { issueSession } from "@/server/issue-session";
 import { companySeed } from "@/lib/db/companies";
 import { policyFor } from "@/features/admin/stages";
 import { buildRaisedNotice } from "@/features/cases/notice";
+import { stampEvent } from "@/features/cases/stamp";
 import { companyBaseUrl, notifyCaseRaised } from "@/server/case-notice";
 import { mailConfigured } from "@/server/mail";
 import { kickJira } from "@/server/jira-sync";
@@ -94,19 +95,21 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   // everyone else by name. Same rule the demo had.
   const actor = actorLabel(viewer);
 
+  // The seat a raise lands on is the server's call, whatever the client sent (features/cases/stamp.ts).
+  const stored = stampEvent(type, payload, seed);
   const result = await appendEventRow(
     viewer.companyId,
-    { id, day: 0, type: type as CaseEventType, actor, targetId: target, payload },
+    { id, day: 0, type: type as CaseEventType, actor, targetId: target, payload: stored },
     { actorUserId: viewer.userId },
   );
   if (!result.ok) return { ok: false, error: result.error };
 
   // Email the route owner, but only after the row is safely committed, and never block on it.
   if (type === "case.raised" && target) {
-    void notifyRaised(slug, viewer.companyId, id, target, payload);
+    void notifyRaised(slug, viewer.companyId, id, target, stored);
   }
   // Discussions and projects: the people asked, and the author at every step (features/loop/notice.ts).
-  const loopEvent = { type: type as CaseEventType, actor, actorUserId: viewer.userId, target, payload };
+  const loopEvent = { type: type as CaseEventType, actor, actorUserId: viewer.userId, target, payload: stored };
   notifyLoop(slug, loopEvent);
   // A person's project event (or a yes that opens a project) is Jira's to hear about now, not in a minute.
   if (type.startsWith("project.") || type === "case.decided") kickJira(slug);
@@ -128,7 +131,7 @@ async function notifyRaised(
   try {
     const company = await getDb().company.findUnique({
       where: { slug },
-      select: { id: true, demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
+      select: { id: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
     });
     if (!company) return;
     notifyCaseRaised(

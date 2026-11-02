@@ -58,7 +58,7 @@ export async function noticeTasks(limit = 25): Promise<AutomationTaskView[]> {
   if (!hasDatabase()) return [];
 
   const companies = await getDb().company.findMany({
-    select: { id: true, slug: true, name: true, demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
+    select: { id: true, slug: true, name: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
   });
   if (companies.length === 0) return [];
 

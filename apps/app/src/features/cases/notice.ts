@@ -53,7 +53,7 @@ export const noticeKey = (raiseEventId: string) => "notify:" + raiseEventId;
  */
 export const NOTICE_SOURCES = ["mail", "n8n"] as const;
 
-type People = { name: string; email: string }[];
+type People = { id: string; name: string; email: string }[];
 
 /** Resolve the route owner and gather what the message needs. */
 export function buildRaisedNotice(args: {
@@ -68,8 +68,10 @@ export function buildRaisedNotice(args: {
 }): RaisedNotice {
   const { slug, eventId, caseId, payload, seed, people, day, baseUrl } = args;
   const route = seed.routes.find((r) => r.id === payload.routeId) ?? null;
-  const ownerName = route?.owner.name ?? payload.assignee ?? null;
-  const ownerEmail = ownerName ? (people.find((p) => p.name === ownerName)?.email ?? null) : null;
+  // The owner is a seat; its user's email is where the mail goes (none when nobody holds the seat).
+  const seat = seed.seats.find((s) => s.id === (payload.assigneeRoleHolderId ?? route?.ownerSeatId ?? null)) ?? null;
+  const ownerName = seat?.label ?? route?.owner.name ?? payload.assignee ?? null;
+  const ownerEmail = seat?.userId ? (people.find((p) => p.id === seat.userId)?.email ?? null) : null;
 
   return {
     eventId,

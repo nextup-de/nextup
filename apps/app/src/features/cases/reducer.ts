@@ -14,31 +14,33 @@ import { applyProjectEvent, finishProjects, newBook, openOrJoin, seedProject } f
 import type { ReducedProject, SeedProject } from "@/features/projects/types";
 
 // A yes that names a project opens it (or adds this idea to it): the idea is archived from then on.
-export type Decision = { answer: "yes" | "no"; reason: string; note: string; by: string; day: number; projectId?: string | null; lead?: string | null };
-export type HandOver = { from: string; to: string; why: string; day: number };
-export type Answer = { text: string; by: string; day: number };
-export type Question = { text: string; by: string; day: number; answer: Answer | null };
-export type Building = { day: number; days: number; expected: string; by: string };
-export type Shipped = { day: number; outcome: string; outcomeNote: string; by: string };
-export type Override = { proposed: string | null; chosen: string; day: number; by: string };
+export type Decision = { answer: "yes" | "no"; reason: string; note: string; by: string; day: number; projectId?: string | null; lead?: string | null; byUserId?: string | null };
+export type HandOver = { from: string; fromUserId: string | null; to: string; toSeatId: string | null; why: string; day: number };
+export type Answer = { text: string; by: string; byUserId: string | null; day: number };
+export type Question = { text: string; by: string; byUserId: string | null; day: number; answer: Answer | null };
+export type Building = { day: number; days: number; expected: string; by: string; byUserId: string | null };
+export type Shipped = { day: number; outcome: string; outcomeNote: string; by: string; byUserId: string | null };
+export type Override = { proposed: string | null; chosen: string; day: number; by: string; byUserId: string | null };
 // The promise rule (§11): miss the date and it moves to the deputy automatically. `live` = it
 // crossed the line during this demo session (day 0 or later) - what the manager's ledger counts.
-export type Escalation = { to: string; from: string; day: number; live: boolean };
+export type Escalation = { to: string; from: string; day: number; live: boolean; toSeatId: string | null; toRoleId: string | null };
 // The discussion stage (docs/plans/2026-10-15_idea-to-project.md): people are invited, the raiser
 // revises, and every `discussEveryDays` a check-in ends the round - the next one or the decision.
-export type CheckIn = { round: number; day: number; by: string; next: "round" | "decide"; open: string[]; note: string };
+export type CheckIn = { round: number; day: number; by: string; byUserId: string | null; next: "round" | "decide"; open: string[]; note: string };
 export type Discussion = {
-  startedDay: number; by: string; invited: string[]; missing: string; rounds: CheckIn[];
+  startedDay: number; by: string; byUserId: string | null; invited: string[]; invitedUserIds: string[]; missing: string; rounds: CheckIn[];
   // derived: the round under way (the next check-in ends it), whether the last check-in said "decide",
   // and the day the last allowed round ends
   round: number; ready: boolean; lastDay: number;
 };
 // v1 is the case as raised; each case.revised adds the next one.
-export type Version = { version: number; day: number; by: string; title: string; body: string; overall: number | null };
+export type Version = { version: number; day: number; by: string; byUserId?: string | null; title: string; body: string; overall: number | null };
 export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building" | "shipped";
 
 export type ReducedCase = {
   id: string; seed: boolean; kind: CaseKind; title: string; body: string; from: string; fromDept: string;
+  // Ids next to the labels (IDN/D6): who raised it, and the seat and role it sits on. Null when unknown.
+  fromUserId: string | null; assigneeSeatId: string | null; assigneeRoleId: string | null;
   routeId: string | null; assignee: string; raisedDay: number; reason: string; upside: string; linkedIdea: string | null;
   status: CaseStatus; read: number | null; decided: Decision | null; question: Question | null; handed: HandOver[];
   building: Building | null; shipped: Shipped | null; override: Override | null;
@@ -49,9 +51,9 @@ export type ReducedCase = {
   route: Route | null; age: number; clock: number; open: boolean; archived: boolean; overdue: boolean; dueDay: number; escalated: Escalation | null;
 };
 
-export type Cosign = { name: string; day: number };
-export type IdeaQuestion = { text: string; by: string; day: number; answer: null };
-export type Approval = { by: string; day: number; note: string; funded: boolean };
+export type Cosign = { name: string; userId: string | null; day: number };
+export type IdeaQuestion = { text: string; by: string; byUserId: string | null; day: number; answer: null };
+export type Approval = { by: string; byUserId: string | null; day: number; note: string; funded: boolean };
 export type ReducedIdea = Idea & { cosigners: Cosign[]; thread: IdeaQuestion[]; approved: Approval | null; seedWait: number };
 export type ReducedProblem = Problem;
 
@@ -70,12 +72,14 @@ export type ReduceSeed = {
   projects?: SeedProject[]; loop?: Partial<LoopRules>; seats?: SeatRow[];
 };
 
-type CaseRow = { kind?: CaseKind; title: string; body?: string; from: string; fromDept?: string; routeId?: string | null; assignee: string; raisedDay?: number; reason?: string; upside?: string; linkedIdea?: string };
+type CaseRow = { kind?: CaseKind; title: string; body?: string; from: string; fromDept?: string; routeId?: string | null; assignee: string; raisedDay?: number; reason?: string; upside?: string; linkedIdea?: string; fromUserId?: string | null; seatId?: string | null };
 
 export function reduce(seed: ReduceSeed, log: EventLog): State {
   const day = log.day | 0;
   const routes = seed.routes;
   const routeOf = (id: string | null) => routes.find((r) => r.id === id) ?? null;
+  const seats = seed.seats ?? [];
+  const roleOfSeat = (seatId: string | null) => (seatId === null ? null : seats.find((s) => s.id === seatId)?.roleId ?? null);
 
   const cases: Record<string, ReducedCase> = {};
   const order: string[] = [];
@@ -87,19 +91,20 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
   const freshCase = (id: string, row: CaseRow, isSeed: boolean): ReducedCase => {
     const c: ReducedCase = {
       id, seed: isSeed, kind: row.kind ?? "problem", title: row.title, body: row.body ?? "", from: row.from, fromDept: row.fromDept ?? "",
+      fromUserId: row.fromUserId ?? null, assigneeSeatId: row.seatId ?? null, assigneeRoleId: roleOfSeat(row.seatId ?? null),
       routeId: row.routeId ?? null, assignee: row.assignee, raisedDay: row.raisedDay ?? 0,
       reason: row.reason ?? "", upside: row.upside ?? "", linkedIdea: row.linkedIdea ?? null,
       status: "open", read: null, decided: null, question: null, handed: [], building: null, shipped: null,
       override: null, discussion: null, versions: [], pausedDays: 0, pausedSince: null, history: [],
       route: null, age: 0, clock: 0, open: true, archived: false, overdue: false, dueDay: 0, escalated: null,
     };
-    c.versions.push({ version: 1, day: c.raisedDay, by: c.from, title: c.title, body: c.body, overall: null });
+    c.versions.push({ version: 1, day: c.raisedDay, by: c.from, byUserId: c.fromUserId, title: c.title, body: c.body, overall: null });
     cases[id] = c;
     order.push(id);
     return c;
   };
 
-  seed.cases.forEach((row) => freshCase(row.id, row, true));
+  seed.cases.forEach((row) => freshCase(row.id, { ...row, seatId: row.assigneeRoleHolderId ?? routeOf(row.routeId)?.ownerSeatId ?? null }, true));
   // An idea that is still waiting keeps waiting as the demo clock advances.
   seed.ideas.forEach((i) => {
     ideas[i.id] = { ...i, team: i.team.slice(), cosigners: [], thread: [], approved: null,
@@ -111,7 +116,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
   // Seed history first (in day order), then live events (in log order).
   const seedEvents: CaseEvent[] = [];
   const pushSeed = (target: string) => (ev: NonNullable<SeedCase["seedEvents"]>[number], k: number) =>
-    seedEvents.push({ id: "seed_" + target + "_" + k, ts: 0, target, seed: true, type: ev.type, day: ev.day, actor: ev.actor, payload: ev.payload ?? {} });
+    seedEvents.push({ id: "seed_" + target + "_" + k, ts: 0, target, seed: true, type: ev.type, day: ev.day, actor: ev.actor, actorUserId: ev.actorUserId ?? null, payload: ev.payload ?? {} });
   seed.cases.forEach((row) => (row.seedEvents ?? []).forEach(pushSeed(row.id)));
   seed.ideas.forEach((row) => (row.seedEvents ?? []).forEach(pushSeed(row.id)));
   (seed.projects ?? []).forEach((row) => (row.seedEvents ?? []).forEach(pushSeed(row.id)));
@@ -122,9 +127,11 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     const pl = ev.payload ?? {};
     const d = ev.day | 0;
     const target = ev.target ?? "";
+    const uid = ev.actorUserId ?? null;
     switch (ev.type) {
       case "case.raised": {
-        const c = freshCase(target, { kind: pl.kind, title: pl.title ?? "Untitled", body: pl.body, from: ev.actor, fromDept: pl.fromDept, routeId: pl.routeId, assignee: pl.assignee ?? "Triage desk", raisedDay: d, reason: pl.reason ?? "triage", upside: pl.upside ?? "" }, false);
+        const seatId = pl.assigneeRoleHolderId ?? routeOf(pl.routeId ?? null)?.ownerSeatId ?? null;
+        const c = freshCase(target, { kind: pl.kind, title: pl.title ?? "Untitled", body: pl.body, from: ev.actor, fromUserId: uid, fromDept: pl.fromDept, routeId: pl.routeId, assignee: pl.assignee ?? "Triage desk", raisedDay: d, reason: pl.reason ?? "triage", upside: pl.upside ?? "", seatId }, false);
         c.history.push(ev);
         break;
       }
@@ -143,9 +150,9 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const first = c.decided === null;
         const answer = pl.answer === "no" ? "no" : "yes";
         // Only the first yes opens a project: a decision cannot fork an idea into two projects.
-        const project = first && answer === "yes" ? openOrJoin(book, ev, { id: c.id, from: c.from, routeId: c.routeId, title: c.title }) : null;
+        const project = first && answer === "yes" ? openOrJoin(book, ev, { id: c.id, from: c.from, fromUserId: c.fromUserId, routeId: c.routeId, title: c.title }) : null;
         c.decided = {
-          answer, reason: pl.reason ?? "", note: pl.note ?? "", by: ev.actor, day: d,
+          answer, reason: pl.reason ?? "", note: pl.note ?? "", by: ev.actor, byUserId: uid, day: d,
           projectId: project ? project.id : c.decided?.projectId ?? null, lead: project ? project.lead : c.decided?.lead ?? null,
         };
         c.status = "decided";
@@ -157,7 +164,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (!c || c.status !== "open" || c.discussion) break;
         if (c.read === null) c.read = d;
         c.discussion = {
-          startedDay: d, by: ev.actor, invited: uniq(pl.invited ?? []), missing: pl.missing ?? "", rounds: [],
+          startedDay: d, by: ev.actor, byUserId: uid, invited: uniq(pl.invited ?? []), invitedUserIds: uniqIds(pl.invitedUserIds ?? []), missing: pl.missing ?? "", rounds: [],
           round: 1, ready: false, lastDay: 0,
         };
         c.status = "discussion";
@@ -168,6 +175,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "discussion" || !c.discussion) break;
         c.discussion.invited = uniq(c.discussion.invited.concat(pl.invited ?? []));
+        c.discussion.invitedUserIds = uniqIds(c.discussion.invitedUserIds.concat(pl.invitedUserIds ?? []));
         c.history.push(ev);
         break;
       }
@@ -175,7 +183,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.decided || !pl.body?.trim()) break;
         const title = pl.title?.trim() || c.title;
-        c.versions.push({ version: c.versions.length + 1, day: d, by: ev.actor, title, body: pl.body, overall: typeof pl.overall === "number" ? pl.overall : null });
+        c.versions.push({ version: c.versions.length + 1, day: d, by: ev.actor, byUserId: uid, title, body: pl.body, overall: typeof pl.overall === "number" ? pl.overall : null });
         c.title = title;
         c.body = pl.body;
         c.history.push(ev);
@@ -185,7 +193,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "discussion" || !c.discussion || c.discussion.ready) break;
         const next = pl.next === "decide" ? "decide" : "round";
-        c.discussion.rounds.push({ round: c.discussion.rounds.length + 1, day: d, by: ev.actor, next, open: (pl.open ?? []).slice(0, 12), note: pl.note ?? "" });
+        c.discussion.rounds.push({ round: c.discussion.rounds.length + 1, day: d, by: ev.actor, byUserId: uid, next, open: (pl.open ?? []).slice(0, 12), note: pl.note ?? "" });
         if (next === "decide") c.discussion.ready = true;
         c.history.push(ev);
         break;
@@ -194,8 +202,11 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || (c.status !== "open" && c.status !== "discussion") || !pl.to) break;
         if (c.read === null) c.read = d;
-        c.handed.push({ from: ev.actor, to: pl.to, why: pl.why ?? "", day: d });
+        const toSeat = pl.toRoleHolderId ?? null;
+        c.handed.push({ from: ev.actor, fromUserId: uid, to: pl.to, toSeatId: toSeat, why: pl.why ?? "", day: d });
         c.assignee = pl.to;
+        c.assigneeSeatId = toSeat;
+        c.assigneeRoleId = roleOfSeat(toSeat);
         c.history.push(ev);
         break;
       }
@@ -203,7 +214,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "open") break;
         if (c.read === null) c.read = d;
-        c.question = { text: pl.text ?? "", by: ev.actor, day: d, answer: null };
+        c.question = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d, answer: null };
         c.status = "asked";
         c.pausedSince = d;
         c.history.push(ev);
@@ -212,7 +223,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       case "case.answered": {
         const c = cases[target];
         if (!c || c.status !== "asked" || !c.question) break;
-        c.question.answer = { text: pl.text ?? "", by: ev.actor, day: d };
+        c.question.answer = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d };
         c.pausedDays += d - (c.pausedSince ?? d);
         c.pausedSince = null;
         c.status = "open";
@@ -222,7 +233,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       case "case.building": {
         const c = cases[target];
         if (!c) break;
-        c.building = { day: d, days: pl.days ?? 30, expected: pl.expected ?? "", by: ev.actor };
+        c.building = { day: d, days: pl.days ?? 30, expected: pl.expected ?? "", by: ev.actor, byUserId: uid };
         c.status = "building";
         c.history.push(ev);
         break;
@@ -230,7 +241,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       case "case.shipped": {
         const c = cases[target];
         if (!c) break;
-        c.shipped = { day: d, outcome: pl.outcome ?? "", outcomeNote: pl.outcomeNote ?? "", by: ev.actor };
+        c.shipped = { day: d, outcome: pl.outcome ?? "", outcomeNote: pl.outcomeNote ?? "", by: ev.actor, byUserId: uid };
         c.status = "shipped";
         c.history.push(ev);
         break;
@@ -239,34 +250,38 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || !pl.chosen) break;
         const chosen = routeOf(pl.chosen);
-        c.override = { proposed: pl.proposed ?? c.routeId, chosen: pl.chosen, day: d, by: ev.actor };
-        if (chosen) { c.routeId = chosen.id; c.assignee = chosen.owner.name; }
+        c.override = { proposed: pl.proposed ?? c.routeId, chosen: pl.chosen, day: d, by: ev.actor, byUserId: uid };
+        if (chosen) {
+          c.routeId = chosen.id; c.assignee = chosen.owner.name;
+          c.assigneeSeatId = chosen.ownerSeatId ?? null; c.assigneeRoleId = roleOfSeat(c.assigneeSeatId);
+        }
         c.history.push(ev);
         break;
       }
       case "idea.cosigned": {
         const i = ideas[target];
         if (!i) break;
-        if (!i.cosigners.some((x) => x.name === ev.actor)) i.cosigners.push({ name: ev.actor, day: d });
+        // By user id; an event without one adds a co-signer nobody can remove again.
+        if (uid === null || !i.cosigners.some((x) => x.userId === uid)) i.cosigners.push({ name: ev.actor, userId: uid, day: d });
         break;
       }
       case "idea.uncosigned": {
         const i = ideas[target];
         if (!i) break;
-        i.cosigners = i.cosigners.filter((x) => x.name !== ev.actor);
+        if (uid !== null) i.cosigners = i.cosigners.filter((x) => x.userId !== uid);
         break;
       }
       case "idea.asked": {
         const i = ideas[target];
         if (!i) break;
-        i.thread.push({ text: pl.text ?? "", by: ev.actor, day: d, answer: null });
+        i.thread.push({ text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d, answer: null });
         break;
       }
       case "idea.approved":
       case "idea.funded": {
         const i = ideas[target];
         if (!i) break;
-        i.approved = { by: ev.actor, day: d, note: pl.note ?? "", funded: ev.type === "idea.funded" };
+        i.approved = { by: ev.actor, byUserId: uid, day: d, note: pl.note ?? "", funded: ev.type === "idea.funded" };
         i.status = "In trial";
         i.wait = 0;
         if (pl.team && pl.team.length) i.team = pl.team.slice();
@@ -310,8 +325,12 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     }
     // The route's owner takes it if the case sat with someone else, otherwise the owner's deputy.
     // The original owner keeps it too - both can act.
-    const to = route ? (route.owner.name === c.assignee ? route.deputy : route.owner.name) : null;
-    c.escalated = c.overdue && to ? { to, from: c.assignee, day: c.dueDay + 1, live: c.dueDay + 1 >= 0 } : null;
+    // By role (D8): a case on the owner's role goes to the deputy, anything else to the owner.
+    const atOwner = route !== null && c.assigneeRoleId !== null && c.assigneeRoleId === (route.ownerRoleId ?? null);
+    const to = route ? (atOwner ? route.deputy : route.owner.name) : null;
+    const toSeatId = route ? (atOwner ? route.deputySeatId ?? null : route.ownerSeatId ?? null) : null;
+    const toRoleId = route ? (atOwner ? route.deputyRoleId ?? null : route.ownerRoleId ?? null) : null;
+    c.escalated = c.overdue && to ? { to, from: c.assignee, day: c.dueDay + 1, live: c.dueDay + 1 >= 0, toSeatId, toRoleId } : null;
   });
 
   const projects = finishProjects(book, { day, promise, rules, routeOf, seats: seed.seats ?? [] });
@@ -338,3 +357,4 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
 }
 
 const uniq = (names: readonly string[]): string[] => [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+const uniqIds = (ids: readonly string[]): string[] => [...new Set(ids.filter(Boolean))];

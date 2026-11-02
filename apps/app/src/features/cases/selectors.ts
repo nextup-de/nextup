@@ -1,18 +1,25 @@
 // Selectors over the reduced state. Port of the selector half of legacy/demo/js/store.js.
 // A case is one object seen from three sides: `from` = whose "My cases", `assignee` = whose
 // inbox (a hand-over changes it), an escalation puts it on a second desk too.
+import { holdsRole, type Me } from "@/features/auth/identity";
 import type { Route } from "@/features/demo/types";
+import type { SeatRow } from "@/features/auth/identity";
 import type { EventLog } from "./events";
 import type { ReducedCase, ReducedIdea, State } from "./reducer";
 
 export type Acted = "decided" | "handed" | "asked";
 
+/** @deprecated IDN-S1 removes this - use onDeskOf. */
 export const onDesk = (c: ReducedCase, name: string) => c.assignee === name || c.escalated?.to === name;
+/** @deprecated IDN-S1 removes this - use inboxOf. */
 export const inboxFor = (state: State, name: string) => state.cases.filter((c) => onDesk(c, name) && c.open);
+/** @deprecated IDN-S1 removes this - use mineOf. */
 export const mineFor = (state: State, handle: string | null) => state.cases.filter((c) => c.from === handle);
+/** @deprecated IDN-S1 removes this - use cosignedOf. */
 export const cosignedBy = (state: State, handle: string | null): ReducedIdea[] =>
   state.ideas.filter((i) => i.cosigners.some((x) => x.name === handle));
 
+/** @deprecated IDN-S1 removes this - use actedByMe. */
 // What did `name` last do to this case that took it off their desk?
 // A question only counts while it is still unanswered - once the sender replies the case is back on the desk.
 export function actedBy(c: ReducedCase, name: string): Acted | null {
@@ -26,9 +33,11 @@ export function actedBy(c: ReducedCase, name: string): Acted | null {
   return null;
 }
 
+/** @deprecated IDN-S1 removes this - use deskOf. */
 // Open cases on someone's desk: live ones plus the ones paused on a question.
 export const deskFor = (state: State, name: string) => state.cases.filter((c) => onDesk(c, name) && (c.open || c.status === "asked"));
 
+/** @deprecated IDN-S1 removes this - use deskSeats. */
 // Everyone who currently has, or could act on, a case: route owners plus whoever holds one right
 // now (hand-overs, escalations). For the dev panel's "inbox of ...".
 export function deskHolders(state: State, routes: readonly Route[]): string[] {
@@ -39,7 +48,42 @@ export function deskHolders(state: State, routes: readonly Route[]): string[] {
   return names;
 }
 
+/** @deprecated IDN-S1 removes this - use clearedByMe. */
 export const clearedBy = (state: State, name: string) => state.cases.filter((c) => actedBy(c, name) !== null);
+
+// By id (IDN/D8): a case sits on one seat; everyone who holds that seat's role (or the escalated-to role) has it.
+export const onDeskOf = (c: ReducedCase, me: Me): boolean => holdsRole(me, c.assigneeRoleId) || holdsRole(me, c.escalated?.toRoleId ?? null);
+export const inboxOf = (state: State, me: Me) => state.cases.filter((c) => onDeskOf(c, me) && c.open);
+export const mineOf = (state: State, me: Me) => state.cases.filter((c) => me.userId !== null && c.fromUserId === me.userId);
+export const cosignedOf = (state: State, me: Me): ReducedIdea[] =>
+  state.ideas.filter((i) => me.userId !== null && i.cosigners.some((x) => x.userId === me.userId));
+
+// What did this person last do to the case that took it off their desk? Same rule as actedBy, by user id.
+export function actedByMe(c: ReducedCase, me: Me): Acted | null {
+  if (me.userId === null) return null;
+  for (let k = c.history.length - 1; k >= 0; k--) {
+    const ev = c.history[k];
+    if (ev.actorUserId !== me.userId) continue;
+    if (ev.type === "case.decided") return "decided";
+    if (ev.type === "case.handed") return "handed";
+    if (ev.type === "case.asked") return c.status === "asked" ? "asked" : null;
+  }
+  return null;
+}
+
+export const deskOf = (state: State, me: Me) => state.cases.filter((c) => onDeskOf(c, me) && (c.open || c.status === "asked"));
+export const clearedByMe = (state: State, me: Me) => state.cases.filter((c) => actedByMe(c, me) !== null);
+
+// The seats that hold an open or asked case (or its escalation), in the order the seats are listed.
+export function deskSeats(state: State): SeatRow[] {
+  const held = new Set<string>();
+  state.cases.forEach((c) => {
+    if (!(c.open || c.status === "asked")) return;
+    if (c.assigneeSeatId) held.add(c.assigneeSeatId);
+    if (c.escalated?.toSeatId) held.add(c.escalated.toSeatId);
+  });
+  return state.seats.filter((s) => held.has(s.id));
+}
 
 // Session-created cases as seed rows (with their history as seedEvents), for pasting into seed.ts.
 export function exportSnippet(state: State): string {
@@ -59,21 +103,23 @@ export function exportSnippet(state: State): string {
 
 // Read straight from the log - these events do not change a case's state, so the reducer leaves
 // them alone; they are facts about who stands behind a case and what was said under it.
-export type Affected = { name: string; day: number; why?: string };
-export type Comment = { id: string; by: string; text: string; day: number; rescore: boolean };
+export type Affected = { name: string; userId: string | null; day: number; why?: string };
+export type Comment = { id: string; by: string; byUserId?: string | null; text: string; day: number; rescore: boolean };
 
 export function affectedOn(log: EventLog, caseId: string): Affected[] {
   const out: Affected[] = [];
   for (const e of log.events) {
     if (e.target !== caseId) continue;
-    if (e.type === "case.affected" && !out.some((a) => a.name === e.actor)) out.push({ name: e.actor, day: e.day, why: e.payload.why?.trim() || undefined });
-    if (e.type === "case.unaffected") { const i = out.findIndex((a) => a.name === e.actor); if (i >= 0) out.splice(i, 1); }
+    const uid = e.actorUserId ?? null;
+    // By user id; an event without one is its own entry and can never be withdrawn.
+    if (e.type === "case.affected" && (uid === null || !out.some((a) => a.userId === uid))) out.push({ name: e.actor, userId: uid, day: e.day, why: e.payload.why?.trim() || undefined });
+    if (e.type === "case.unaffected" && uid !== null) { const i = out.findIndex((a) => a.userId === uid); if (i >= 0) out.splice(i, 1); }
   }
   return out;
 }
 
 export const commentsOn = (log: EventLog, caseId: string): Comment[] =>
-  log.events.filter((e) => e.target === caseId && e.type === "case.commented").map((e) => ({ id: e.id, by: e.actor, text: e.payload.text ?? "", day: e.day, rescore: !!e.payload.rescore }));
+  log.events.filter((e) => e.target === caseId && e.type === "case.commented").map((e) => ({ id: e.id, by: e.actor, byUserId: e.actorUserId ?? null, text: e.payload.text ?? "", day: e.day, rescore: !!e.payload.rescore }));
 
 // New information posted since the case was raised - each one re-evaluates the score (scoring: `updates`).
 export const rescoresOn = (log: EventLog, caseId: string): Comment[] => commentsOn(log, caseId).filter((m) => m.rescore);
