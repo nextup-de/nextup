@@ -64,7 +64,7 @@ export async function codeLogin(_prev: LoginState, form: FormData): Promise<Logi
   );
   if (!hasDatabase()) return noDatabase;
   // A code for another company is simply a wrong code here - never "it belongs to X".
-  if (!user || user.company.slug !== slug) return wrongCode;
+  if (!user || !user.active || user.company.slug !== slug) return wrongCode;
   forgive("loginCode", `${who}|${slug}`);
 
   await issueSession(user.company.id, user.company.slug, user);

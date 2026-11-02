@@ -281,6 +281,12 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
   const emailTaken =
     !found && email ? Boolean(await db.user.findFirst({ where: { companyId: company.id, email }, select: { id: true } })) : false;
 
+  // A deactivated person is shut out, as if unknown.
+  if (found && !found.active) {
+    console.warn(`[microsoft] ${slug}: inactive account for ${email || "(no email)"}`);
+    return fail("unknown");
+  }
+
   const landing = landingFor({ found, emailTaken, email, role: roleFromEntra(checked.who.roles) });
   if (landing.kind === "refuse") {
     console.warn(`[microsoft] ${slug}: ${landing.reason} for ${email || "(no email)"}`);

@@ -82,6 +82,7 @@ model Company {
   // -- auth --
   users  User[]
   tokens ApiToken[]
+  directoryRun DirectoryRun?
 
   // -- integrations --
   config       CompanyConfig?
