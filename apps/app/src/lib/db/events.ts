@@ -1,6 +1,9 @@
 // Reading and appending the event log. The only place the app writes history.
 import type { EventLog } from "@/features/cases/events";
 import { logFromRows, type NewEventRow } from "@/features/cases/persist";
+import { workdayOf } from "@/features/clock/calendar";
+import { DEFAULT_CALENDAR, type CalendarSpec } from "@/features/clock";
+import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
 
 const SELECT = {
@@ -15,24 +18,32 @@ const SELECT = {
   payload: true,
 } as const;
 
-/** Every event for one company, plus its demo clock. */
-export async function loadLog(companyId: string, demoDay: number): Promise<EventLog> {
-  const rows = await getDb().caseEvent.findMany({
+/**
+ * The company's day now: a demo company keeps its simulated counter, any other stage counts
+ * working days of its calendar (CLK/D9).
+ */
+export function companyDay(company: { stage: string; demoDay: number }, cal: CalendarSpec, now: Date): number {
+  return company.stage === "demo" ? company.demoDay : workdayOf(now, cal);
+}
+
+/** Every event for one company, plus its clock (demoDay, or today's working-day number). */
+export async function loadLog(companyId: string, now: Date = new Date()): Promise<EventLog> {
+  const db = getDb();
+  const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } });
+  const cal = company.stage === "demo" ? null : await loadCalendar(companyId);
+  const rows = await db.caseEvent.findMany({
     where: { companyId },
     orderBy: { seq: "asc" },
     select: SELECT,
   });
-  return logFromRows(rows, demoDay);
+  return logFromRows(rows, cal ? companyDay(company, cal, now) : company.demoDay);
 }
 
 /** Load a company's log by slug, resolving its clock in the same trip. */
-export async function loadLogForSlug(slug: string): Promise<EventLog | null> {
-  const company = await getDb().company.findUnique({
-    where: { slug },
-    select: { id: true, demoDay: true },
-  });
+export async function loadLogForSlug(slug: string, now: Date = new Date()): Promise<EventLog | null> {
+  const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
   if (!company) return null;
-  return loadLog(company.id, company.demoDay);
+  return loadLog(company.id, now);
 }
 
 /** Has this company already stored an event under this integration idempotency key? */
@@ -49,7 +60,7 @@ export type AppendResult = { ok: true; duplicate: boolean } | { ok: false; error
 /**
  * Append one event.
  *
- * The row's `day` is the company's clock BEFORE this event, matching appendEvent() in
+ * The row's `day` is the company's clock (companyDay) BEFORE this event, matching appendEvent() in
  * features/cases/events.ts - a day.advanced event carries the day it left, not the one it
  * arrived at. Both the insert and the clock move happen in one transaction.
  *
@@ -59,20 +70,21 @@ export type AppendResult = { ok: true; duplicate: boolean } | { ok: false; error
 export async function appendEventRow(
   companyId: string,
   event: NewEventRow,
-  opts: { actorUserId?: string | null; source?: string; idemKey?: string | null } = {},
+  opts: { actorUserId?: string | null; source?: string; idemKey?: string | null; now?: Date } = {},
 ): Promise<AppendResult> {
   const db = getDb();
   try {
     await db.$transaction(async (tx) => {
       const company = await tx.company.findUniqueOrThrow({
         where: { id: companyId },
-        select: { demoDay: true },
+        select: { stage: true, demoDay: true },
       });
+      const cal = company.stage === "demo" ? DEFAULT_CALENDAR : await loadCalendar(companyId);
       await tx.caseEvent.create({
         data: {
           id: event.id,
           companyId,
-          day: company.demoDay,
+          day: companyDay(company, cal, opts.now ?? new Date()),
           type: event.type,
           actor: event.actor,
           actorUserId: opts.actorUserId ?? null,

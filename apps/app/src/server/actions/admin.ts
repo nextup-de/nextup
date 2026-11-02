@@ -37,6 +37,8 @@ import type { AutomationTaskView } from "@/features/integrations/tasks";
 import { buildRaisedNotice } from "@/features/cases/notice";
 import { companyBaseUrl, deliverRaisedNotice } from "@/server/case-notice";
 import { companySeed } from "@/lib/db/companies";
+import { loadCalendar } from "@/lib/db/calendar";
+import { companyDay } from "@/lib/db/events";
 import type { EventPayload } from "@/features/cases/events";
 import { companyUrl, dashboardUrl, landingUrl } from "@/features/tenant/urls";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
@@ -520,7 +522,7 @@ export async function retryNoticeAction(_prev: RetryState, form: FormData): Prom
 
   const company = await getDb().company.findUnique({
     where: { slug },
-    select: { id: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
+    select: { id: true, stage: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
   });
   if (!company) return { eventId, error: "No such company." };
 
@@ -539,7 +541,7 @@ export async function retryNoticeAction(_prev: RetryState, form: FormData): Prom
       payload: (event.payload ?? {}) as EventPayload,
       seed: await companySeed(company),
       people: company.users,
-      day: company.demoDay,
+      day: companyDay(company, await loadCalendar(company.id), new Date()),
       baseUrl: companyBaseUrl(slug),
     }),
     8000, // A person is watching this one, so give the relay longer than the raise path does.

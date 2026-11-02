@@ -183,7 +183,7 @@ describe("CNX acceptance: ground truth 21 of 21 and Jira Cloud and Data Center s
         expect(epics[0].summary).toBe("Shorter changeover");
         const epic = epics[0];
 
-        let log = await loadLog(jc.id, 0);
+        let log = await loadLog(jc.id);
         const linked = log.events.filter((e) => e.type === "project.linked");
         expect(linked.length).toBeGreaterThan(0);
         expect(linked.every((e) => e.actor === JIRA_ACTOR)).toBe(true);
@@ -199,7 +199,7 @@ describe("CNX acceptance: ground truth 21 of 21 and Jira Cloud and Data Center s
         const before = log.events.length;
         await syncCompany(jc, new Date());
 
-        log = await loadLog(jc.id, 0);
+        log = await loadLog(jc.id);
         const pulled = log.events.slice(before);
         expect(pulled.length).toBeGreaterThan(0);
         expect(pulled.every((e) => e.actor === JIRA_ACTOR)).toBe(true);

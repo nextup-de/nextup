@@ -8,6 +8,10 @@ import { databaseOutage, getDb, hasDatabase, orDemo, reconnectDatabase } from "@
 import { automationFor, raiseCountFor, raisesFor } from "@/lib/db/automation";
 import { databaseFacts, type DatabaseFacts } from "@/lib/db/health";
 import { companySeed } from "@/lib/db/companies";
+import { companyDay } from "@/lib/db/events";
+import { DEFAULT_CALENDAR, type ClockSpec } from "@/features/clock";
+
+const clockCalendar = (c: ClockSpec) => (c.mode === "workdays" ? c.calendar : DEFAULT_CALENDAR);
 import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
 import { summarise, type AutomationReport, type NoticeFacts } from "@/features/integrations/automation";
 import { classify, type AutomationTaskView } from "@/features/integrations/tasks";
@@ -58,7 +62,7 @@ export async function noticeTasks(limit = 25): Promise<AutomationTaskView[]> {
   if (!hasDatabase()) return [];
 
   const companies = await getDb().company.findMany({
-    select: { id: true, slug: true, name: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
+    select: { id: true, slug: true, name: true, stage: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
   });
   if (companies.length === 0) return [];
 
@@ -78,7 +82,7 @@ export async function noticeTasks(limit = 25): Promise<AutomationTaskView[]> {
           payload,
           seed: seeds.get(company.id)!,
           people: company.users,
-          day: company.demoDay,
+          day: companyDay(company, clockCalendar(seeds.get(company.id)!.clock), new Date()),
           baseUrl: companyBaseUrl(company.slug),
         })
       : null;
