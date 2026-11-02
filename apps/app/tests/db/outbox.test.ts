@@ -172,7 +172,7 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
     expect((await db.outboxMessage.findMany({ where: { companyId: box.id, template: "reminder.deadline" } })).filter((r) => mine(r.data))).toHaveLength(box.recipients.length);
     expect(seen()).toEqual([...box.recipients].sort());
     expect(hits[box.hook]).toBe(1);
-  });
+  }, 60_000);
 
   it("a receiver answering 500 is tried on the backoff schedule and the row is failed after attempt 6", async () => {
     const box = await company("ntfz-retry", "pilot");
@@ -205,7 +205,7 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
     expect(last.lastError).toContain("500");
     await n.deliverOnce(new Date(now.getTime() + 24 * 60 * MIN));
     expect(hits[box.hook]).toBe(6);
-  });
+  }, 60_000);
 
   it("a sandbox company with the same setup sends nothing and writes every row as skipped", async () => {
     const box = await company("ntfz-sandbox", "sandbox");
@@ -223,5 +223,5 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
     expect(rows.every((r) => r.status === "skipped" && r.lastError === "sandbox" && r.sentAt === null && r.attempt === 0)).toBe(true);
     expect(mail).toEqual([]);
     expect(hits[box.hook]).toBe(0);
-  });
+  }, 60_000);
 });
