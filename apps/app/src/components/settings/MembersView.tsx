@@ -8,20 +8,24 @@ import {
   addMemberAction,
   deactivateMemberAction,
   deleteMemberAction,
+  inviteMemberAction,
   issueMemberCodeAction,
+  memberSeatAction,
   setMemberRoleAction,
-  type AddState,
   type CodeState,
+  type InviteState,
   type MemberRow,
   type RemoveState,
   type RoleState,
+  type SeatLabel,
+  type SeatState,
 } from "@/server/actions/members";
 import styles from "./MembersView.module.css";
 
-type Props = { slug: string; me: string; members: MemberRow[] };
-type Coded = CodeState & Pick<AddState, "problems" | "warnings">;
+type Props = { slug: string; me: string; members: MemberRow[]; freeSeats: SeatLabel[] };
+type Coded = CodeState & Pick<InviteState, "problems" | "warnings" | "mailed" | "mailError">;
 
-export function MembersView({ slug, me, members }: Props) {
+export function MembersView({ slug, me, members, freeSeats }: Props) {
   const t = useT();
   const format = useFormat();
   const when = (iso: string) => format.date(iso, "day");
@@ -32,15 +36,22 @@ export function MembersView({ slug, me, members }: Props) {
       const r = await addMemberAction({}, form);
       return { ...r.added, problems: r.problems, warnings: r.warnings };
     }
+    if (form.get("intent") === "invite") {
+      const r = await inviteMemberAction({}, form);
+      return { ...r.added, problems: r.problems, warnings: r.warnings, mailed: r.mailed, mailError: r.mailError };
+    }
     return issueMemberCodeAction({}, form);
   }, {});
 
   const [removed, removeAction, removing] = useActionState<RemoveState, FormData>(async (_prev, form) => {
     return form.get("intent") === "delete" ? deleteMemberAction({}, form) : deactivateMemberAction({}, form);
   }, {});
+  const [seated, seatAction, seating] = useActionState<SeatState, FormData>(memberSeatAction, {});
   const [asking, setAsking] = useState<string | null>(null);
 
   const fresh = coded.code && coded.name ? { name: coded.name, code: coded.code } : null;
+  // The code is shown when no mail carried it, or the mail did not go out.
+  const mailedOk = coded.mailed === true;
 
   return (
     <div className={styles.wrap}>
@@ -48,7 +59,11 @@ export function MembersView({ slug, me, members }: Props) {
         {members.some((m) => m.microsoft) ? t("settings.hintCodeMicrosoft") : t("settings.hintCode")} {t("settings.hintNewCode")}
       </p>
 
-      {fresh ? (
+      {fresh && mailedOk ? <p className="nh-hint" role="status">{t("settings.invited", { name: fresh.name })}</p> : null}
+      {fresh && coded.mailed === false ? (
+        <p className="nh-error" role="alert">{t("settings.inviteMailFailed", { name: fresh.name, error: coded.mailError ?? "" })}</p>
+      ) : null}
+      {fresh && !mailedOk ? (
         <div className={styles.code} role="status">
           <strong>{t("settings.codeFor", { name: fresh.name })}</strong>
           <span className={styles.codeValue}>{fresh.code}</span>
@@ -59,6 +74,7 @@ export function MembersView({ slug, me, members }: Props) {
       {coded.error ? <p className="nh-error" role="alert">{coded.error}</p> : null}
       {removed.error ? <p className="nh-error" role="alert">{removed.error}</p> : null}
       {removed.done ? <p className="nh-hint" role="status">{removed.done}</p> : null}
+      {seated.error ? <p className="nh-error" role="alert">{seated.error}</p> : null}
       {roled.error ? <p className="nh-error" role="alert">{roled.error}</p> : null}
       {roled.saved ? <p className="nh-hint" role="status">{roled.saved}</p> : null}
 
@@ -73,6 +89,37 @@ export function MembersView({ slug, me, members }: Props) {
             <span className={styles.sub}>
               {m.codeIssuedAt ? t("settings.codeSince", { date: when(m.codeIssuedAt) }) : t("settings.noCode")}
               {m.microsoft ? ` · ${t("settings.microsoftLinked")}` : ""}
+            </span>
+            <span className={styles.seats}>
+              <span className={styles.sub}>{t("settings.seats")}</span>
+              {m.seats.length === 0 ? <span className={styles.sub}>{t("settings.noSeats")}</span> : null}
+              {m.seats.map((s) => (
+                <form key={s.id} action={seatAction} className={styles.role}>
+                  <input type="hidden" name="slug" value={slug} />
+                  <input type="hidden" name="userId" value={m.id} />
+                  <input type="hidden" name="seatId" value={s.id} />
+                  <input type="hidden" name="intent" value="unlink" />
+                  <span className={styles.sub}>{s.label}</span>
+                  <button className="nh-btn nh-btn-ghost nh-btn-sm" type="submit" disabled={seating} aria-label={t("settings.unlinkSeat", { seat: s.label })}>×</button>
+                </form>
+              ))}
+              {m.active && freeSeats.length > 0 ? (
+                <form action={seatAction} className={styles.role}>
+                  <input type="hidden" name="slug" value={slug} />
+                  <input type="hidden" name="userId" value={m.id} />
+                  <select
+                    className="nh-select"
+                    name="seatId"
+                    defaultValue=""
+                    aria-label={t("settings.linkSeatOf", { name: m.name })}
+                    disabled={seating}
+                    onChange={(e) => { if (e.currentTarget.value) e.currentTarget.form?.requestSubmit(); }}
+                  >
+                    <option value="">{t("settings.linkSeat")}</option>
+                    {freeSeats.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                </form>
+              ) : null}
             </span>
             <form action={setRole} className={styles.role}>
               <input type="hidden" name="slug" value={slug} />
@@ -117,7 +164,6 @@ export function MembersView({ slug, me, members }: Props) {
       <form action={codeAction} className={styles.add}>
         <h2 className={styles.addTitle}>{t("settings.addTitle")}</h2>
         <input type="hidden" name="slug" value={slug} />
-        <input type="hidden" name="intent" value="add" />
         <div className={styles.addFields}>
           <label className="nh-field">
             <span className="nh-label">{t("settings.name")}</span>
@@ -140,7 +186,9 @@ export function MembersView({ slug, me, members }: Props) {
         </div>
         {coded.problems?.map((p) => <p key={p} className="nh-error" role="alert">{p}</p>)}
         <div>
-          <button className="nh-btn nh-btn-primary" type="submit" disabled={coding}>{t("settings.addAndIssue")}</button>
+          <button className="nh-btn nh-btn-primary" type="submit" name="intent" value="add" disabled={coding}>{t("settings.addAndIssue")}</button>
+          {" "}
+          <button className="nh-btn nh-btn-ghost" type="submit" name="intent" value="invite" disabled={coding}>{t("settings.invite")}</button>
         </div>
       </form>
     </div>

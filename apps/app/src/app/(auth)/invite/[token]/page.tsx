@@ -1,15 +1,8 @@
-// Accept invite: token -> set password -> joins the company with the role on the invite. Stub until Phase 2.
-import { getT } from "@/i18n/server";
-import { AuthShell, AuthTitle } from "@/components/auth/AuthShell";
-export async function generateMetadata() {
-  return { title: (await getT())("auth.metaInvited") };
-}
-export default async function AcceptInvitePage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
-  const t = await getT();
-  return (
-    <AuthShell side={<h2>{t("auth.inviteSide")}</h2>}>
-      <AuthTitle title={t("auth.inviteTitle")} sub={t("auth.inviteSub", { token })} />
-    </AuthShell>
-  );
+// An invite is a mail with a personal login code (ADM D11); there is no token to accept. The old
+// link goes on to the company's login, or to "find your company" when it names none.
+import { redirect } from "next/navigation";
+import { companyLoginPath } from "@/features/auth/login-path";
+
+export default async function AcceptInvitePage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+  redirect(companyLoginPath((await searchParams).company));
 }
