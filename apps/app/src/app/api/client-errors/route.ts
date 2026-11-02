@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return answer(400);
   }
 
-  if (throttle("clientError", await clientKey())) return answer(204);
+  if (await throttle("clientError", await clientKey())) return answer(204);
   if (isBrowserNoise(input)) return answer(204);
 
   // A one-company stack has no slug in its paths. Path mode (a laptop) keeps the path as it is: its

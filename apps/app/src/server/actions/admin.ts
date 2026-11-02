@@ -114,7 +114,7 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
 
   // The code opens everything, so this is the tightest door: 5 tries per address per 15 min.
   const who = await clientKey();
-  const blocked = throttle("adminLogin", who);
+  const blocked = await throttle("adminLogin", who);
   if (blocked) return { error: blocked };
 
   const given = String(form.get("code") ?? "");
@@ -122,7 +122,7 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
 
   // (a) The shared code: break-glass. No person behind it, so the log line names nobody.
   if (given && codeMatches(given, expected)) {
-    forgive("adminLogin", who);
+    await forgive("adminLogin", who);
     console.info(`[admin] break-glass ${new Date().toISOString()}`);
     await issueAdminSession(undefined, true);
     // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
@@ -152,7 +152,7 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   const plain = open(user.totpSecretSealed, key, totpContext(user.companyId, user.id));
   if (!plain || !verifyTotp(plain, totp, Date.now())) return { error: t("adminAccess.totpWrong") };
 
-  forgive("adminLogin", who);
+  await forgive("adminLogin", who);
   await issueAdminSession(user.name);
   redirect(adminHome() || "/");
 }

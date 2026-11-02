@@ -66,7 +66,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const audited = viewer !== null;
 
   const who = viewer?.userId ?? (await clientKey());
-  const slow = throttle("assistAsk", tenant.slug + ":" + who) ?? throttle("assistAskAll", tenant.slug);
+  const slow = (await throttle("assistAsk", tenant.slug + ":" + who)) ?? (await throttle("assistAskAll", tenant.slug));
   if (slow) return json({ error: slow }, 429);
 
   const parsed = Body.safeParse(await request.json().catch(() => null));
