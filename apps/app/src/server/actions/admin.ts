@@ -124,7 +124,7 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   if (given && codeMatches(given, expected)) {
     forgive("adminLogin", who);
     console.info(`[admin] break-glass ${new Date().toISOString()}`);
-    await issueAdminSession(undefined, true);
+    await issueAdminSession(undefined, true, "break-glass");
     // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
     // is a TypeError: Invalid URL, not a redirect to the root.
     redirect(adminHome() || "/");
@@ -153,7 +153,7 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   if (!plain || !verifyTotp(plain, totp, Date.now())) return { error: t("adminAccess.totpWrong") };
 
   forgive("adminLogin", who);
-  await issueAdminSession(user.name);
+  await issueAdminSession(user.name, false, "stack-admin");
   redirect(adminHome() || "/");
 }
 
