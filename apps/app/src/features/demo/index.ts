@@ -4,6 +4,7 @@
 // Async now that it can come from Postgres. Both callers are already async server components.
 import { orDemo } from "@/lib/db/client";
 import { loadSeed } from "@/lib/db/companies";
+import { localDemoSeed } from "./identity";
 import { ROLES, SEED, VIEWS } from "./seed";
 import type { Ledger, Metrics, Movement, Persona, RolePersona, Seed } from "./types";
 
@@ -41,10 +42,13 @@ export const EMPTY_SEED: Seed = {
   personas: NEUTRAL_PERSONAS, leaders: [], routes: [], buddies: [], ledger: EMPTY_LEDGER, metrics: EMPTY_METRICS, projects: [],
 };
 
+/** The built-in seed with its structure as rows and its content on seat and user ids (IDN/D10). */
+export const LOCAL_SEED: Seed = localDemoSeed(SEED);
+
 export async function seedFor(slug: string): Promise<Seed> {
   return orDemo(
     async () => (await loadSeed(slug)) ?? EMPTY_SEED,
-    () => (slug === "acme" ? SEED : EMPTY_SEED),
+    () => (slug === "acme" ? LOCAL_SEED : EMPTY_SEED),
   );
 }
 

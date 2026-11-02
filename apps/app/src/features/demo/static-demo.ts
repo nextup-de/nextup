@@ -7,6 +7,7 @@
 // raised" (tests/unit/static-demo.test.ts).
 import { BRIEFS } from "@/features/ideas/brief-demo";
 import { ideaContext, scoreDraft, type DraftTurn, type DraftView } from "@/features/ideas/drafts";
+import { localDemoSeed } from "./identity";
 import { SEED } from "./seed";
 import { DEMO_GOALS, DEMO_RULES } from "./structure";
 import { STATIC_DEMO_BRIEFS } from "./static-demo-briefs";
@@ -63,7 +64,7 @@ const SHEET: NonNullable<SeedCase["seedEvents"]> = [
 ];
 
 const seed = renamed(SEED);
-export const STATIC_DEMO_SEED: Seed = {
+const STATIC_DEMO_RAW: Seed = {
   ...seed,
   seats: [], goals: DEMO_GOALS, spend: DEMO_RULES.spend,
   // He posts under his name here: no handle, so his name and profile show like everyone else's.
@@ -75,6 +76,8 @@ export const STATIC_DEMO_SEED: Seed = {
   // The written briefs: the inbox ideas' (renamed), and what the raise page worked out for d1-d3.
   briefs: { ...renamed(BRIEFS), ...STATIC_DEMO_BRIEFS },
 };
+
+export const STATIC_DEMO_SEED: Seed = localDemoSeed(STATIC_DEMO_RAW);
 
 // ── Earlier chats with the coach (the raise page's "Chats & drafts") ──────────────────────────────
 // Each person's own, like the database's drafts. The employee's: three became the ideas above
