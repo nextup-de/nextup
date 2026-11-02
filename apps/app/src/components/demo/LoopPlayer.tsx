@@ -31,9 +31,13 @@ export function LoopPlayer({ slug }: { slug: string }) {
     );
   }
 
-  const manager = seed.personas.find((p) => p.id === "manager")?.who.name ?? "";
-  const expert = seed.routes.find((r) => r.id === "r3")?.owner.name ?? "";
-  const cast = { caseId: script.id, author: script.from, desk: script.assignee, expert, manager, projectId: next.projectId };
+  const managerWho = seed.personas.find((p) => p.id === "manager")?.who;
+  const expertRoute = seed.routes.find((r) => r.id === "r3");
+  const seatUser = (seatId: string | null | undefined) => seed.seats.find((x) => x.id === seatId)?.userId ?? null;
+  const cast = {
+    caseId: script.id, author: script.from, desk: script.assignee, expert: expertRoute?.owner.name ?? "", manager: managerWho?.name ?? "", projectId: next.projectId,
+    authorUserId: script.fromUserId, deskUserId: seatUser(script.assigneeSeatId), expertUserId: seatUser(expertRoute?.ownerSeatId), managerUserId: managerWho?.userId ?? null,
+  };
 
   const play = () => {
     const events = next.step.events(cast, next.project);

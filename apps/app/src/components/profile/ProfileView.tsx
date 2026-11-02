@@ -31,7 +31,7 @@ const CASE_STATUS: Record<string, MessageKey> = {
 // Each language is named in its own language, so these are never translated.
 const LANGUAGE_KEY: Record<Locale, MessageKey> = { de: "profile.languageGerman", en: "profile.languageEnglish" };
 
-type Target = { name: string; role: string; dept: string; email: string | null };
+type Target = { userId?: string | null; name: string; role: string; dept: string; email: string | null };
 
 const initials = (name: string) => name.split(/[.\s]+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
@@ -39,7 +39,7 @@ export function ProfileView({ target, m365 }: { target?: Target; m365?: M365Card
   const ctx = useDemo();
   const t = useT();
   const { D, seed, persona, tenant, href } = ctx;
-  const own = !target || target.name === persona.who.name;
+  const own = !target || (ctx.actorUserId !== null && target.userId === ctx.actorUserId);
   const name = own ? persona.who.name : target!.name;
   const org = seed.people.find((p) => p.name === name);
   const role = own ? (org?.role ?? persona.role.label) : target!.role;
@@ -52,7 +52,7 @@ export function ProfileView({ target, m365 }: { target?: Target; m365?: M365Card
   // A public profile only shows attributed work. Anonymous submissions never get joined to a person.
   const ideas = D.ideas.filter((i) => i.proposedBy.split(",")[0].trim() === name || i.team.includes(name));
   const initiatives = D.initiatives.filter((i) => i.members.some((m) => m.name === name));
-  const cases = D.cases.filter((c) => c.from === name || (own && c.from === ctx.actor));
+  const cases = own ? D.cases.filter((c) => ctx.actorUserId !== null && c.fromUserId === ctx.actorUserId) : D.cases.filter((c) => c.from === name);
   const ideaCount = ideas.length + cases.filter((c) => c.kind === "idea" && !c.linkedIdea).length;
   const manager = org?.reportsTo && org.reportsTo !== name ? seed.people.find((p) => p.name === org.reportsTo) : null;
   const colleagues = seed.people.filter((p) => p.name !== name && p.name !== manager?.name && p.dept === deptId && !tenant.hiddenPeople?.includes(p.name)).slice(0, 4);

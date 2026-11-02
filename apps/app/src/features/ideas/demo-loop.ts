@@ -12,7 +12,15 @@ import type { ReducedProject } from "@/features/projects/types";
 import { DEMO_CASE } from "./demo-script";
 
 /** The people in the story, as the demo's seed names them, and the ids the steps write to. */
-export type LoopCast = { caseId: string; author: string; desk: string; expert: string; manager: string; projectId: string };
+export type LoopCast = {
+  caseId: string; author: string; desk: string; expert: string; manager: string; projectId: string;
+  /** Who each of them is, by user id (IDN/D5): the names above only label the events. */
+  authorUserId?: string | null; deskUserId?: string | null; expertUserId?: string | null; managerUserId?: string | null;
+};
+
+type Who = { name: string; userId: string | null };
+const w = (name: string, userId?: string | null): Who => ({ name, userId: userId ?? null });
+const by = (who: Who) => ({ actor: who.name, actorUserId: who.userId });
 
 export type LoopStep = {
   key: string;
@@ -41,14 +49,14 @@ const STEPS = [
 
 const decided = (c: ReducedCase) => c.decided !== null;
 
-const baseline = (desk: string, projectId: string): NewEvent =>
-  ({ type: "project.baseline", actor: desk, target: projectId, payload: { metric: "Changeover time, line 3", unit: "min", value: LOOP_NUMBERS.before, better: "down", source: "MES, monthly average" } });
-const addSteps = (desk: string, projectId: string): NewEvent[] =>
-  STEPS.map((text, k) => ({ type: "project.step.added", actor: desk, target: projectId, payload: { stepId: "s_demo_" + (k + 1), text } }));
+const baseline = (desk: Who, projectId: string): NewEvent =>
+  ({ type: "project.baseline", ...by(desk), target: projectId, payload: { metric: "Changeover time, line 3", unit: "min", value: LOOP_NUMBERS.before, better: "down", source: "MES, monthly average" } });
+const addSteps = (desk: Who, projectId: string): NewEvent[] =>
+  STEPS.map((text, k) => ({ type: "project.step.added", ...by(desk), target: projectId, payload: { stepId: "s_demo_" + (k + 1), text } }));
 /** Every step of the project into one column - or the script's own steps when it has none yet. */
-const moveAll = (desk: string, projectId: string, p: ReducedProject | undefined, to: "doing" | "done", only?: number): NewEvent[] => {
+const moveAll = (desk: Who, projectId: string, p: ReducedProject | undefined, to: "doing" | "done", only?: number): NewEvent[] => {
   const ids = p && p.steps.length ? p.steps.map((s) => s.id) : STEPS.map((_t, k) => "s_demo_" + (k + 1));
-  return ids.filter((_id, k) => only === undefined || k === only).map((stepId) => ({ type: "project.step.moved", actor: desk, target: projectId, payload: { stepId, to } }));
+  return ids.filter((_id, k) => only === undefined || k === only).map((stepId) => ({ type: "project.step.moved", ...by(desk), target: projectId, payload: { stepId, to } }));
 };
 
 export const LOOP_STEPS: readonly LoopStep[] = [
@@ -56,43 +64,43 @@ export const LOOP_STEPS: readonly LoopStep[] = [
     key: "answer", go: "case",
     say: "Jonas answers the question about the tools",
     done: (c) => c.status !== "asked",
-    events: ({ caseId, author }) => [{ type: "case.answered", actor: author, target: caseId, payload: { text: "Clamps, the two torque gauges and the 13 and 17 sockets - that is what every changeover on the 4-series needs." } }],
+    events: ({ caseId, author, authorUserId }) => [{ type: "case.answered", ...by(w(author, authorUserId)), target: caseId, payload: { text: "Clamps, the two torque gauges and the 13 and 17 sockets - that is what every changeover on the 4-series needs." } }],
   },
   {
     key: "discuss", go: "case",
     say: "The team lead asks Quality for a number before deciding",
     done: (c) => c.discussion !== null || decided(c),
-    events: ({ caseId, desk, expert }) => [{ type: "case.discussion", actor: desk, target: caseId, payload: { invited: [expert], missing: "What a changeover takes today - measured, not estimated" } }],
+    events: ({ caseId, desk, deskUserId, expert, expertUserId }) => [{ type: "case.discussion", ...by(w(desk, deskUserId)), target: caseId, payload: { invited: [expert], invitedUserIds: expertUserId ? [expertUserId] : [], missing: "What a changeover takes today - measured, not estimated" } }],
   },
   {
     key: "comment", go: "case",
     say: "Quality adds the number from MES",
     done: (c, _p, log) => decided(c) || commentsOn(log, c.id).length > 0,
-    events: ({ caseId, expert }) => [{ type: "case.commented", actor: expert, target: caseId, payload: { text: `MES says changeovers on line 3 took ${LOOP_NUMBERS.before} minutes on average last month. The walk to the crib is about half of that.` } }],
+    events: ({ caseId, expert, expertUserId }) => [{ type: "case.commented", ...by(w(expert, expertUserId)), target: caseId, payload: { text: `MES says changeovers on line 3 took ${LOOP_NUMBERS.before} minutes on average last month. The walk to the crib is about half of that.` } }],
   },
   {
     key: "revise", go: "case",
     say: "Jonas posts version 2 with the measured number",
     done: (c) => c.versions.length > 1 || decided(c),
-    events: ({ caseId, author }) => [{ type: "case.revised", actor: author, target: caseId, payload: { body: V2_BODY, overall: 82 } }],
+    events: ({ caseId, author, authorUserId }) => [{ type: "case.revised", ...by(w(author, authorUserId)), target: caseId, payload: { body: V2_BODY, overall: 82 } }],
   },
   {
     key: "checkin", go: "case",
     say: "Three days later: the check-in - ready to decide",
     done: (c) => Boolean(c.discussion?.ready) || decided(c),
-    events: ({ caseId, desk }) => [
-      { type: "day.advanced", actor: desk, target: null, payload: { by: 3 } },
-      { type: "case.checkin", actor: desk, target: caseId, payload: { next: "decide", open: [], note: "The number is in and the trial costs nothing." } },
+    events: ({ caseId, desk, deskUserId }) => [
+      { type: "day.advanced", ...by(w(desk, deskUserId)), target: null, payload: { by: 3 } },
+      { type: "case.checkin", ...by(w(desk, deskUserId)), target: caseId, payload: { next: "decide", open: [], note: "The number is in and the trial costs nothing." } },
     ],
   },
   {
     key: "yes", go: "project",
     say: "Yes, do it: the idea is archived and P-1 opens, with its steps and the number to beat",
     done: (c) => Boolean(c.decided?.projectId),
-    events: ({ caseId, desk, projectId }) => [
-      { type: "case.decided", actor: desk, target: caseId, payload: { answer: "yes", projectId, lead: desk, title: "A setup cart for line 3" } },
-      ...addSteps(desk, projectId),
-      baseline(desk, projectId),
+    events: ({ caseId, desk, deskUserId, projectId }) => [
+      { type: "case.decided", ...by(w(desk, deskUserId)), target: caseId, payload: { answer: "yes", projectId, lead: desk, leadUserId: deskUserId ?? null, title: "A setup cart for line 3" } },
+      ...addSteps(w(desk, deskUserId), projectId),
+      baseline(w(desk, deskUserId), projectId),
     ],
   },
   {
@@ -100,11 +108,11 @@ export const LOOP_STEPS: readonly LoopStep[] = [
     say: "The team starts: the cart is stocked, the trial runs",
     done: (_c, p) => Boolean(p && p.startedDay !== null),
     events: ({ projectId }, p) => {
-      const lead = p?.lead ?? "";
+      const lead = w(p?.lead ?? "", p?.leadUserId);
       return [
         ...(p && p.steps.length ? [] : addSteps(lead, projectId)),
         ...(p?.baseline ? [] : [baseline(lead, projectId)]),
-        { type: "project.started", actor: lead, target: projectId },
+        { type: "project.started", ...by(lead), target: projectId },
         ...moveAll(lead, projectId, p, "done", 0),
         ...moveAll(lead, projectId, p, "doing", 1),
       ];
@@ -115,11 +123,11 @@ export const LOOP_STEPS: readonly LoopStep[] = [
     say: "A week later the trial is done",
     done: (_c, p) => Boolean(p && p.doneDay !== null),
     events: ({ projectId }, p) => {
-      const lead = p?.lead ?? "";
+      const lead = w(p?.lead ?? "", p?.leadUserId);
       return [
-        { type: "day.advanced", actor: lead, target: null, payload: { by: 7 } },
+        { type: "day.advanced", ...by(lead), target: null, payload: { by: 7 } },
         ...moveAll(lead, projectId, p, "done"),
-        { type: "project.done", actor: lead, target: projectId, payload: { note: "The cart stays on line 3; lines 1 and 2 get theirs." } },
+        { type: "project.done", ...by(lead), target: projectId, payload: { note: "The cart stays on line 3; lines 1 and 2 get theirs." } },
       ];
     },
   },
@@ -128,8 +136,8 @@ export const LOOP_STEPS: readonly LoopStep[] = [
     say: `30 days later: measured against the number before - ${LOOP_NUMBERS.before} → ${LOOP_NUMBERS.after30} min`,
     done: (_c, p) => Boolean(p?.measures.some((m) => m.check === 30)),
     events: ({ projectId }, p) => [
-      { type: "day.advanced", actor: p?.lead ?? "", target: null, payload: { by: 30 } },
-      { type: "project.measured", actor: p?.lead ?? "", target: projectId, payload: { check: 30, value: LOOP_NUMBERS.after30, source: "MES, 30 days after" } },
+      { type: "day.advanced", ...by(w(p?.lead ?? "", p?.leadUserId)), target: null, payload: { by: 30 } },
+      { type: "project.measured", ...by(w(p?.lead ?? "", p?.leadUserId)), target: projectId, payload: { check: 30, value: LOOP_NUMBERS.after30, source: "MES, 30 days after" } },
     ],
   },
   {
@@ -137,17 +145,17 @@ export const LOOP_STEPS: readonly LoopStep[] = [
     say: `90 days later: ${LOOP_NUMBERS.before} → ${LOOP_NUMBERS.after90} min, every changeover under 20 minutes`,
     done: (_c, p) => Boolean(p?.measures.some((m) => m.check === 90)),
     events: ({ projectId }, p) => [
-      { type: "day.advanced", actor: p?.lead ?? "", target: null, payload: { by: 30 } },
-      { type: "day.advanced", actor: p?.lead ?? "", target: null, payload: { by: 30 } },
-      { type: "project.measured", actor: p?.lead ?? "", target: projectId, payload: { check: 90, value: LOOP_NUMBERS.after90, source: "MES, 90 days after" } },
+      { type: "day.advanced", ...by(w(p?.lead ?? "", p?.leadUserId)), target: null, payload: { by: 30 } },
+      { type: "day.advanced", ...by(w(p?.lead ?? "", p?.leadUserId)), target: null, payload: { by: 30 } },
+      { type: "project.measured", ...by(w(p?.lead ?? "", p?.leadUserId)), target: projectId, payload: { check: 90, value: LOOP_NUMBERS.after90, source: "MES, 90 days after" } },
     ],
   },
   {
     key: "thanks", go: "project",
     say: "The plant manager thanks Jonas, by the company's own rule",
     done: (_c, p) => Boolean(p?.reward),
-    events: ({ manager, projectId }) => [
-      { type: "project.rewarded", actor: manager, target: projectId, payload: { rule: "thanks", note: "Thank you, Jonas - every changeover on line 3 is under 20 minutes now." } },
+    events: ({ manager, managerUserId, projectId }) => [
+      { type: "project.rewarded", ...by(w(manager, managerUserId)), target: projectId, payload: { rule: "thanks", note: "Thank you, Jonas - every changeover on line 3 is under 20 minutes now." } },
     ],
   },
 ];

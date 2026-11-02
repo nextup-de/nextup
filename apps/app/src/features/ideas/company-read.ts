@@ -13,12 +13,13 @@ import type { DialKey } from "./raise";
 
 export type CompanyFact = { source: string; text: string };
 export type CompanyCase = {
-  title: string; from: string; assignee: string; routeId: string | null; upside: string; open: boolean; raisedDay: number;
+  title: string; from: string; assignee: string; assigneeSeatId?: string | null; routeId: string | null; upside: string; open: boolean; raisedDay: number;
   decided: { answer: "yes" | "no"; day: number } | null;
 };
 export type CompanyInput = {
   text: string; // the idea as it stands: the first message and every answer
   lead: string; // the author's team lead - where anything raised lands first
+  leadSeatId?: string | null; // that lead's seat, for the cases on their desk when no route names one
   myDept: string; // the author's department, by name ("Production")
   affected: readonly string[]; // people and departments named as affected
   people: readonly OrgPerson[];
@@ -83,7 +84,8 @@ export function companyRead(x: CompanyInput, locale: Locale = DEFAULT_LOCALE): R
   ];
 
   // ── Feasibility: who decides, how they decide, how loaded they are ──
-  const onDesk = x.cases.filter((c) => c.assignee === desk);
+  const deskSeatId = route ? route.ownerSeatId ?? null : x.leadSeatId ?? null;
+  const onDesk = deskSeatId === null ? [] : x.cases.filter((c) => c.assigneeSeatId === deskSeatId);
   const deskDecided = latest(onDesk);
   const onTime = deskDecided.filter(({ c, d }) => d.day - c.raisedDay <= x.promiseDays).length;
   const openNow = onDesk.filter((c) => c.open).length;

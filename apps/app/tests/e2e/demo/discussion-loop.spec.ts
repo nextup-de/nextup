@@ -98,7 +98,7 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
   await test.step("yes opens a project with a lead and a first step; the idea leaves the inbox", async () => {
     await page.getByRole("button", { name: /^Yes, do it/ }).click();
     const sheet = page.getByRole("dialog", { name: "Yes, do it" });
-    await expect(sheet.getByRole("combobox", { name: "Who leads it" })).toHaveValue("T. Vogel");
+    await expect(sheet.getByRole("combobox", { name: "Who leads it" }).locator("option:checked")).toHaveText(/^T. Vogel/); // the value is a user id
     await sheet.getByRole("textbox", { name: "First step (optional)" }).fill("Build one cart for line 3");
     await sheet.getByRole("button", { name: "Say yes and open the project" }).click();
     await expect(sheet).toContainText(/P-\d+ is open/);

@@ -18,27 +18,10 @@ import type { Baseline, Measure, ProjectStatus, ReducedProject, Step, StepColumn
 /** Who is looking, by id: their role and their user id; `me` (seats and roles) decides what was escalated to them. */
 export type IdViewer = { role: Role; userId: string | null; me?: Me };
 
-/** @deprecated IDN-S1 removes this - use IdViewer. Who is looking: their role, their name and - when they post anonymously - their handle. */
-export type Viewer = { role: Role; name: string; handle: string | null };
-
-const isViewer = (v: Viewer) => (who: string | null) => who !== null && (who === v.name || (v.handle !== null && who === v.handle));
-
 /** A handle, not a name: the author posted anonymously and stays that way. */
 export const isHandle = (who: string) => who.startsWith("Anonymous");
 
-/**
- * @deprecated IDN-S1 removes this - use visibleProjectsFor.
- * The projects this person may see. Members: the projects of their own ideas and the ones they are
- * on. Leaders and managers: all. With demo data off, only what happened here (no seed projects).
- */
-export function visibleProjects(state: Pick<State, "projects">, v: Viewer, demo = true): ReducedProject[] {
-  const all = demo ? state.projects : state.projects.filter((p) => !p.seed);
-  if (v.role !== "member") return all;
-  const me = isViewer(v);
-  return all.filter((p) => me(p.lead) || p.members.some(me) || p.authors.some(me));
-}
-
-/** visibleProjects by user id: a member sees the projects they lead, are on, or whose idea they raised. */
+/** The projects this person may see: a member sees the projects they lead, are on, or whose idea they raised. */
 export function visibleProjectsFor(state: Pick<State, "projects">, v: IdViewer, demo = true): ReducedProject[] {
   const all = demo ? state.projects : state.projects.filter((p) => !p.seed);
   if (v.role !== "member") return all;
@@ -91,25 +74,6 @@ export function projectDeskFor(list: readonly ReducedProject[], day: number, v: 
 
 const sortDesk = (out: DeskItem[]): DeskItem[] =>
   out.sort((a, b) => Number(b.project.overdue) - Number(a.project.overdue) || MOVE_RANK[a.move] - MOVE_RANK[b.move] || a.project.number - b.project.number);
-
-/**
- * @deprecated IDN-S1 removes this - use projectDeskFor.
- * The projects waiting on this person: their next move as the lead, a late start or measure that
- * moved to them as the deputy (or the route's owner), and - for a manager - a reward that is due.
- */
-export function projectDesk(list: readonly ReducedProject[], day: number, v: Viewer): DeskItem[] {
-  const me = isViewer(v);
-  const out: DeskItem[] = [];
-  for (const p of list) {
-    const move = nextMove(p, day);
-    if (!move) continue;
-    if (move === "reward") {
-      if (v.role === "manager") out.push({ project: p, move, why: "reward" });
-    } else if (me(p.lead)) out.push({ project: p, move, why: "lead" });
-    else if (p.escalated && me(p.escalated.to)) out.push({ project: p, move, why: "escalated" });
-  }
-  return out.sort((a, b) => Number(b.project.overdue) - Number(a.project.overdue) || MOVE_RANK[a.move] - MOVE_RANK[b.move] || a.project.number - b.project.number);
-}
 
 // ── AI suggests, people decide: the offline proposals, read from the source case's brief ──
 

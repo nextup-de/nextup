@@ -103,7 +103,7 @@ export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: num
   const t = withLocale(locale);
   // The whole life, once the loop is on - except old seed cases that went straight to a build.
   if (loop && !c.building && !c.shipped) return lifeRow(c, day, f, P, loop, t);
-  const deputy = c.route ? (c.route.owner.name === c.assignee ? c.route.deputy : c.route.owner.name) : t("cases.deputyFallback");
+  const deputy = c.route ? (c.assigneeRoleId !== null && c.assigneeRoleId === c.route.ownerRoleId ? c.route.deputy : c.route.owner.name) : t("cases.deputyFallback");
   const q = c.question, dec = c.decided, b = c.building, sh = c.shipped;
   const buildDay = b ? Math.min(b.days, day - b.day) : 0;
   const status = (sh ? t("cases.statusShipped") : b ? t("cases.statusBuilding") : dec ? t(dec.answer === "yes" ? "cases.statusApproved" : "cases.statusDeclined") : c.status === "asked" ? t("cases.statusQuestionForYou") : t("cases.statusSent")) as MineStatus;
