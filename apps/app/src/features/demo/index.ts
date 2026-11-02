@@ -40,7 +40,7 @@ export const EMPTY_SEED: Seed = {
   promiseDays: 5, outcomeDays: 14,
   depts: [], people: [], problems: [], ideas: [], initiatives: [], outcomes: [],
   personas: NEUTRAL_PERSONAS, leaders: [], routes: [], cases: [], waitingOn: [], buddies: [],
-  goals: [], spend: null,
+  seats: [], goals: [], spend: null,
   stall: [], ledger: EMPTY_LEDGER, metrics: EMPTY_METRICS, views: VIEWS, projects: [],
 };
 

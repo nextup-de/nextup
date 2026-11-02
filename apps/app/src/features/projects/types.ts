@@ -121,4 +121,7 @@ export type SeedProject = {
   openedDay: number;
   openedBy: string;
   seedEvents?: SeedEvent[];
+  leadUserId?: string | null;
+  memberUserIds?: string[];
+  authorUserIds?: string[];
 };

@@ -6,6 +6,7 @@
 //
 // Time: `log.day` is the demo clock, 0 = today. Seed cases carry `raisedDay` as a negative
 // offset; age = day - raisedDay. A paused clock (question sent) does not count towards the promise.
+import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import type { Idea, Problem, Route, SeedCase } from "@/features/demo/types";
 import { loopRules, type LoopRules } from "@/features/loop/rules";
@@ -61,12 +62,12 @@ export type LedgerCounts = {
 };
 export type State = {
   day: number; cases: ReducedCase[]; ideas: ReducedIdea[]; problems: ReducedProblem[]; projects: ReducedProject[];
-  ledger: LedgerCounts; rules: LoopRules;
+  ledger: LedgerCounts; rules: LoopRules; seats: SeatRow[];
 };
 
 export type ReduceSeed = {
   cases: SeedCase[]; ideas: Idea[]; problems: Problem[]; routes: Route[]; promiseDays: number;
-  projects?: SeedProject[]; loop?: Partial<LoopRules>;
+  projects?: SeedProject[]; loop?: Partial<LoopRules>; seats?: SeatRow[];
 };
 
 type CaseRow = { kind?: CaseKind; title: string; body?: string; from: string; fromDept?: string; routeId?: string | null; assignee: string; raisedDay?: number; reason?: string; upside?: string; linkedIdea?: string };
@@ -313,7 +314,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     c.escalated = c.overdue && to ? { to, from: c.assignee, day: c.dueDay + 1, live: c.dueDay + 1 >= 0 } : null;
   });
 
-  const projects = finishProjects(book, { day, promise, rules, routeOf });
+  const projects = finishProjects(book, { day, promise, rules, routeOf, seats: seed.seats ?? [] });
 
   const ledger: LedgerCounts = {
     handedOver: order.reduce((a, id) => a + cases[id].handed.length, 0),
@@ -332,6 +333,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     projects,
     ledger,
     rules,
+    seats: seed.seats ?? [],
   };
 }
 

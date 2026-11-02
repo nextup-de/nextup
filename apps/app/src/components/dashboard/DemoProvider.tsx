@@ -25,6 +25,7 @@ import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
 import { FLAGS, type FlagKey } from "@/config/flags";
 import type { StepColumn, SyncSystem } from "@/features/projects/types";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
+import { meFor, type Me } from "@/features/auth/identity";
 import { appendEvent, emptyLog, newId, type CaseEvent, type EventLog, type EventPayload } from "@/features/cases/events";
 import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
@@ -107,7 +108,7 @@ export type DemoContext = {
   S: State; D: DemoData; N: Counts; log: EventLog;
   role: Role; setRole: (r: Role) => void;
   leadAs: string | null; setLeadAs: (name: string) => void;
-  persona: { role: RolePersona; who: Persona }; actor: string; email: string | null;
+  persona: { role: RolePersona; who: Persona }; actor: string; actorUserId: string | null; me: Me; email: string | null;
   demo: boolean; toggleDemo: () => void;
   motion: boolean; setMotion: (on: boolean) => void; // animations on/off, from the dev panel (html[data-motion])
   roundCorners: boolean; setRoundCorners: (on: boolean) => void; // old round corners, from the dev panel (html[data-corners])
@@ -331,6 +332,8 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
 
   // Who is acting: the employee posts under their handle, everyone else by name.
   const actor = persona.role.id === "member" && persona.who.handle ? persona.who.handle : persona.who.name;
+  const actorUserId = viewer ? viewer.userId : persona.who.userId ?? null;
+  const me = useMemo(() => meFor(actorUserId, seed.seats), [actorUserId, seed.seats]);
   const email = tenant.users?.find((u) => u.name === persona.who.name)?.email ?? null;
 
   const showToast = useCallback((msg: string) => {
@@ -343,7 +346,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   // optimistically (synchronously, so act.raise can return its id) and then persists it.
   const emit = useCallback((type: AppEventType, target: string | null, payload?: EventPayload, id?: string) => {
     if (!serverMode) {
-      updateLog(slug, (prev) => appendEvent(prev, { type, actor, target, payload }));
+      updateLog(slug, (prev) => appendEvent(prev, { type, actor, actorUserId, target, payload }));
       return;
     }
     const ev: CaseEvent = {
@@ -352,6 +355,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       day: log.day,
       type,
       actor,
+      actorUserId,
       target,
       payload: payload ?? {},
     };
@@ -364,7 +368,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       }
       router_refresh();
     });
-  }, [serverMode, slug, actor, log.day, router_refresh, showToast]);
+  }, [serverMode, slug, actor, actorUserId, log.day, router_refresh, showToast]);
 
   const act = useMemo<Act>(() => ({
     // Stays synchronous and still returns the id: the idea studio hands it straight to saveShots().
@@ -560,7 +564,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
 
   const value: DemoContext = {
     tenant, seed, ready, serverMode, S, D, N, log,
-    role, setRole, leadAs, setLeadAs, persona, actor, email,
+    role, setRole, leadAs, setLeadAs, persona, actor, actorUserId, me, email,
     demo, toggleDemo: () => setPrefs(slug, { demo: !demo }),
     motion, setMotion: (on) => setPrefs(slug, { motion: on }),
     roundCorners, setRoundCorners: (on) => setPrefs(slug, { roundCorners: on }),
