@@ -14,7 +14,7 @@ import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
 import { archiveOf, inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
-import { FEED_SORT_LABEL, feedCover, feedStage, inDept, sortFeed, supportLine, supportReasons, type FeedSort } from "@/features/cases/feed";
+import { FEED_SORT_KEY, feedCover, feedStage, inDept, sortFeed, supportLine, supportReasons, type FeedSort } from "@/features/cases/feed";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { dashboardRow, overviewSteps, raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, onDesk, rescoresOn } from "@/features/cases/selectors";
@@ -136,7 +136,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     return (
       <div className={s.root} ref={rootRef}>
         <div className={s.div3}>
-          {renderOpen(current, brief, overviewSteps(c, f, current.mine))}
+          {renderOpen(current, brief, overviewSteps(c, f, current.mine, ctx.locale))}
         </div>
       </div>
     );
@@ -169,13 +169,13 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             <div className={s.div6}>
               <button type="button" className={s.toggleSort} onClick={() => setMenu(menu === "sort" ? null : "sort")} aria-expanded={menu === "sort"} aria-haspopup="menu">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" /></svg>
-                {FEED_SORT_LABEL[sort]}
+                {t(FEED_SORT_KEY[sort])}
               </button>
               {menu === "sort" && (
                 <div className={s.div7} role="menu">
                   {(["support", "newest"] as const).map((k) => (
                     <button key={k} type="button" role="menuitemradio" aria-checked={sort === k} className={s.pick} data-on={sort === k ? "true" : undefined} onClick={() => { setSort(k); setMenu(null); }}>
-                      <span className={s.label}>{FEED_SORT_LABEL[k]}</span>
+                      <span className={s.label}>{t(FEED_SORT_KEY[k])}</span>
                       <span className={s.check}>{sort === k ? "✓" : ""}</span>
                     </button>
                   ))}
@@ -197,7 +197,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
 
         <div className={s.div9}>
           {list.map((x, k) => {
-            const { c } = x, st = feedStage(c);
+            const { c } = x, st = feedStage(c, ctx.locale);
             // Until covers are generated per idea (docs/AI_COVERS.md): the sample idea's own picture and
             // text, else a library picture with its text (features/cases/thumbs.ts).
             const pic = sampleCoverFor(c) ?? libraryCoverFor(c.id);
@@ -255,7 +255,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
 
   // The opened idea: left the case, its dials and what the AI found; right Support and comments.
   function renderOpen(item: Item, brief: IdeaBrief, steps: ReturnType<typeof overviewSteps>) {
-    const { c } = item, st = feedStage(c);
+    const { c } = item, st = feedStage(c, ctx.locale);
     const os = openScore[c.id] ?? null;
     const dial = os !== null ? brief.scores[os] : null;
     const cs = commentsOn(log, c.id).filter((m) => !m.rescore);

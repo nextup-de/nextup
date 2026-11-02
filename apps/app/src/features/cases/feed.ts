@@ -3,19 +3,21 @@
 // two sort orders. The page builds the cards from these; nothing here is invented - the cover's
 // number comes from what the raiser wrote, how many back it, or how long it has been open.
 import type { ReducedCase } from "./reducer";
+import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
 
 export type FeedTone = "new" | "review" | "piloting" | "approved";
 export type FeedStage = { label: string; tone: FeedTone };
 
 // The pill on the card and in the opened idea: where the case is, in the design's four tones.
-export function feedStage(c: Pick<ReducedCase, "shipped" | "building" | "decided" | "status" | "read">): FeedStage {
-  if (c.shipped) return { label: "Shipped", tone: "approved" };
-  if (c.building) return { label: "Piloting", tone: "piloting" };
-  if (c.decided) return c.decided.answer === "yes" ? { label: "Approved", tone: "approved" } : { label: "Not now", tone: "new" };
-  if (c.status === "asked") return { label: "Needs info", tone: "review" };
-  if (c.status === "discussion") return { label: "In discussion", tone: "review" };
-  if (c.read !== null) return { label: "Under review", tone: "review" };
-  return { label: "New", tone: "new" };
+export function feedStage(c: Pick<ReducedCase, "shipped" | "building" | "decided" | "status" | "read">, locale: Locale = DEFAULT_LOCALE): FeedStage {
+  const stage = (key: MessageKey, tone: FeedTone): FeedStage => ({ label: translate(locale, key), tone });
+  if (c.shipped) return stage("team.feedStageShipped", "approved");
+  if (c.building) return stage("team.feedStagePiloting", "piloting");
+  if (c.decided) return c.decided.answer === "yes" ? stage("team.feedStageApproved", "approved") : stage("team.feedStageNotNow", "new");
+  if (c.status === "asked") return stage("team.feedStageNeedsInfo", "review");
+  if (c.status === "discussion") return stage("team.feedStageDiscussion", "review");
+  if (c.read !== null) return stage("team.feedStageReview", "review");
+  return stage("team.feedStageNew", "new");
 }
 
 // The cover's big number (at most 7 characters, units abbreviated) and the short lowercase line
@@ -71,7 +73,7 @@ export function supportLine(names: readonly string[], me: string): string {
 export const inDept = (tags: readonly string[], dept: string) => dept === "All" || tags.includes(dept);
 
 export type FeedSort = "support" | "newest";
-export const FEED_SORT_LABEL: Record<FeedSort, string> = { support: "Most supported", newest: "Newest" };
+export const FEED_SORT_KEY = { support: "team.feedSortSupport", newest: "team.feedSortNewest" } as const satisfies Record<FeedSort, MessageKey>;
 // Most supported: backers, then comments, then the one waiting longest - so with nobody backing
 // anything yet it still differs from Newest.
 export function sortFeed<T extends { backers: number; raisedDay: number; comments: number }>(list: readonly T[], sort: FeedSort): T[] {

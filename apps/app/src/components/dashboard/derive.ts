@@ -36,8 +36,8 @@ export function mineRows(ctx: DemoContext): MineRow[] {
   // With the loop on, each row follows the case past the decision: the discussion, the project it became.
   const loop = ctx.flag("discussion") || ctx.flag("projects");
   return ctx.D.cases.filter((c) => c.from === me)
-    .map((c) => mineRow(c, ctx.S.day, ctx.f, promiseDays, outcomeDays, loop ? { rules: ctx.S.rules, project: projectOfCase(ctx.S, c) ?? null } : undefined))
-    .concat(ctx.D.ideas.filter((i) => i.cosigners.some((x) => x.name === me)).map((i) => cosignRow(i, ctx.S.day, ctx.f, me, promiseDays)))
+    .map((c) => mineRow(c, ctx.S.day, ctx.f, promiseDays, outcomeDays, loop ? { rules: ctx.S.rules, project: projectOfCase(ctx.S, c) ?? null } : undefined, ctx.locale))
+    .concat(ctx.D.ideas.filter((i) => i.cosigners.some((x) => x.name === me)).map((i) => cosignRow(i, ctx.S.day, ctx.f, me, promiseDays, ctx.locale)))
     .sort((a, b) => b.sortDay - a.sortDay);
 }
 
