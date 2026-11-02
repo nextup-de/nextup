@@ -3,14 +3,14 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SEED } from "@/features/demo/seed";
 import { toSeedJson } from "@/features/demo/parse";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { rowsFromSeed } from "@/features/knowledge";
 import { getDb, TenantScopeError } from "@/lib/db/client";
 import { loadSeed } from "@/lib/db/companies";
 import { loadKnowledge, replaceKnowledge } from "@/lib/db/knowledge";
 
 const db = getDb();
-const rows = () => rowsFromSeed(SEED, GOALS, () => crypto.randomUUID());
+const rows = () => rowsFromSeed(SEED, DEMO_GOALS, () => crypto.randomUUID());
 
 let acme: { id: string };
 let globex: { id: string };

@@ -4,13 +4,13 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { SEED } from "@/features/demo/seed";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { NO_KNOWLEDGE, rowsFromSeed } from "@/features/knowledge";
 import { dataInventory, documentsByClass, latest, type InventoryFacts } from "@/features/admin/data";
 import { DATA_MAP, mapLayout } from "@/features/admin/data-map";
 
 let n = 0;
-const knowledge = rowsFromSeed(SEED, GOALS, () => "id" + ++n);
+const knowledge = rowsFromSeed(SEED, DEMO_GOALS, () => "id" + ++n);
 
 const facts: InventoryFacts = {
   people: 12,

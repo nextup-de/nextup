@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { briefOfDoc, docFileName, docText, ideaDoc, type DocInput } from "@/features/ideas/finalize";
 import { IDEA_UPDATE, dialsOf } from "@/features/ideas/raise";
 import { benchmark } from "@/features/ideas/benchmarks";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { DEPTS, PEOPLE, ROUTES } from "@/features/demo/seed";
 
-const parts = benchmark({ text: "A shared setup cart for line 3", affected: [], attachments: 0 }, { routes: ROUTES, goals: GOALS, cases: [], spendLimitEur: 5000 }).parts;
+const parts = benchmark({ text: "A shared setup cart for line 3", affected: [], attachments: 0 }, { routes: ROUTES, goals: DEMO_GOALS, cases: [], spendLimitEur: 5000 }).parts;
 const dials = dialsOf(parts);
 const empty = { value: [], feas: [], cost: [], fit: [], risk: [] };
 

@@ -3,7 +3,7 @@
 // and kept in the history as title and link only (decision 8).
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SEED } from "@/features/demo/seed";
-import { GOALS } from "@/features/evaluate";
+import { DEMO_GOALS } from "@/features/demo/structure";
 import { rowsFromSeed } from "@/features/knowledge";
 import { assist, type Provider } from "@/features/assist";
 import { mergeHits } from "@/features/assist/merge";
@@ -36,7 +36,7 @@ describe("mergeHits", () => {
 
 describe("search_documents with a Microsoft 365 hit", () => {
   let n = 0;
-  const knowledge = rowsFromSeed(SEED, GOALS, () => "id" + ++n);
+  const knowledge = rowsFromSeed(SEED, DEMO_GOALS, () => "id" + ++n);
   const hit = cloud("x", "Supplier call notes", { snippet: "Mail anna.meier@firma.de, IBAN DE89 3704 0044 0532 0130 00" });
   const ctx = { knowledge, profile: null, ceiling: "internal" as const, searchDocuments: async () => [hit] };
 
