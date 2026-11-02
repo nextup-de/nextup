@@ -16,8 +16,11 @@ import {
   NOTICE_ACTOR,
   NOTICE_TEXT,
   noticeKey,
+  noticeText,
   type RaisedNotice,
 } from "@/features/cases/notice";
+import { translate } from "@/i18n";
+import { localeForEmail } from "@/i18n/server";
 
 export type Delivery = { ok: true } | { ok: false; error: string };
 
@@ -30,8 +33,10 @@ export async function deliverRaisedNotice(
   notice: RaisedNotice,
   timeoutMs = 4000,
 ): Promise<Delivery> {
-  const mail = composeNoticeMail(notice);
-  if (!mail) return { ok: false, error: "This route has no owner with an email address, so there is nobody to write to." };
+  // The mail goes out in the owner's language; what /admin shows stays English.
+  const locale = notice.route.ownerEmail ? await localeForEmail(companyId, notice.route.ownerEmail) : undefined;
+  const mail = composeNoticeMail(notice, locale);
+  if (!mail) return { ok: false, error: translate("en", "mail.noticeNoOwner") };
 
   const key = noticeKey(notice.eventId);
   const already = await getDb().caseEvent.findFirst({ where: { companyId, idemKey: key }, select: { id: true } });
@@ -48,12 +53,12 @@ export async function deliverRaisedNotice(
       type: "case.commented",
       actor: NOTICE_ACTOR,
       targetId: notice.case.id,
-      payload: { text: NOTICE_TEXT },
+      payload: { text: locale ? noticeText(locale) : NOTICE_TEXT },
     },
     { source: "mail", idemKey: key },
   );
   if (!noted.ok) {
-    return { ok: false, error: `The owner was emailed, but the note on the case could not be saved: ${noted.error}` };
+    return { ok: false, error: translate("en", "mail.noticeNoteNotSaved", { error: noted.error }) };
   }
   return { ok: true };
 }
