@@ -520,7 +520,7 @@ export async function retryNoticeAction(_prev: RetryState, form: FormData): Prom
 
   const company = await getDb().company.findUnique({
     where: { slug },
-    select: { id: true, demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
+    select: { id: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
   });
   if (!company) return { eventId, error: "No such company." };
 

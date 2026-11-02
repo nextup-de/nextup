@@ -2,12 +2,13 @@
 // pure, so this needs no server and no mail relay.
 import { describe, expect, it } from "vitest";
 import { buildRaisedNotice, composeNoticeMail, noticeKey } from "@/features/cases/notice";
-import { seedTemplate } from "@/features/demo";
+import { LOCAL_SEED } from "@/features/demo";
 
-const seed = seedTemplate("demo");
+const seed = LOCAL_SEED;
 const route = seed.routes[0];
+const ownerSeat = seed.seats.find((s) => s.id === route.ownerSeatId)!;
 
-function notice(over: { people?: { name: string; email: string }[]; routeId?: string; body?: string } = {}) {
+function notice(over: { people?: { id: string; name: string; email: string }[]; routeId?: string; body?: string } = {}) {
   return buildRaisedNotice({
     slug: "acme",
     eventId: "e_1",
@@ -19,7 +20,7 @@ function notice(over: { people?: { name: string; email: string }[]; routeId?: st
       fromDept: "Production",
     },
     seed,
-    people: over.people ?? [{ name: route.owner.name, email: "owner@acme.example" }],
+    people: over.people ?? [{ id: ownerSeat.userId!, name: "Someone Else", email: "owner@acme.example" }],
     day: 2,
     baseUrl: "http://acme.localhost",
   });
@@ -32,6 +33,12 @@ describe("buildRaisedNotice", () => {
     expect(n.route.ownerEmail).toBe("owner@acme.example");
     expect(n.case.dueDay).toBe(2 + seed.promiseDays);
     expect(n.links.case).toBe("http://acme.localhost/cases/c_1");
+  });
+
+  it("finds the owner by the seat's user id, never by name", () => {
+    const n = notice({ people: [{ id: "other", name: ownerSeat.label, email: "wrong@acme.example" }] });
+    expect(n.route.ownerEmail).toBeNull();
+    expect(n.route.ownerName).toBe(ownerSeat.label);
   });
 
   it("has no owner email when nobody matches", () => {
