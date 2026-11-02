@@ -18,7 +18,7 @@ export function ProgressView() {
   const fmt = useFormat();
   if (!ready) return <PageSkeleton kind="list" delay />;
   const M = seed.metrics, P = seed.promiseDays, O = seed.outcomeDays;
-  const steps = funnel(N);
+  const steps = funnel(N, t);
   const stuck = stalled(D);
   const top = contributors(D, persona.who.handle);
   const unanswered = N.overdueIdeas + D.cases.filter((c) => c.overdue).length;
