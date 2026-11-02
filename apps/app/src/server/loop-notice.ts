@@ -4,6 +4,8 @@
 import { reduce } from "@/features/cases/reducer";
 import type { CaseEvent } from "@/features/cases/events";
 import { loopMails } from "@/features/loop/notice";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n";
+import { localeForEmail } from "@/i18n/server";
 import { getDb } from "@/lib/db/client";
 import { companySeed } from "@/lib/db/companies";
 import { loadLogForSlug } from "@/lib/db/events";
@@ -30,7 +32,11 @@ async function deliver(slug: string, ev: Pick<CaseEvent, "type" | "actor" | "tar
   const log = company ? await loadLogForSlug(slug) : null;
   if (!company || !log) return;
   const state = reduce(await companySeed(company), log);
-  for (const mail of loopMails({ ev, state, people: company.users, baseUrl: companyBaseUrl(slug) })) {
+  const args = { ev, state, people: company.users, baseUrl: companyBaseUrl(slug) };
+  // Who gets a mail is decided inside loopMails; ask each of them for their language, then compose again.
+  const locales = new Map<string, Locale>();
+  for (const { to } of loopMails(args)) locales.set(to, await localeForEmail(company.id, to));
+  for (const mail of loopMails(args, (email) => locales.get(email) ?? DEFAULT_LOCALE)) {
     const sent = await sendMail(mail, 4000);
     if (!sent.ok) console.warn("[notice]", ev.type, "for", slug, "-", sent.error);
   }
