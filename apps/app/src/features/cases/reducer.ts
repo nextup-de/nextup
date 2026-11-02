@@ -6,7 +6,7 @@
 //
 // Time: `log.day` is the demo clock, 0 = today. Seed cases carry `raisedDay` as a negative
 // offset; age = day - raisedDay. A paused clock (question sent) does not count towards the promise.
-import type { ClockSpec } from "@/features/clock";
+import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import type { Idea, Problem, Route, SeedCase } from "@/features/demo/types";
@@ -65,13 +65,13 @@ export type LedgerCounts = {
 };
 export type State = {
   day: number; cases: ReducedCase[]; ideas: ReducedIdea[]; problems: ReducedProblem[]; projects: ReducedProject[];
-  ledger: LedgerCounts; rules: LoopRules; seats: SeatRow[];
+  ledger: LedgerCounts; rules: LoopRules; seats: SeatRow[]; routes: Route[]; clock: ClockSpec;
 };
 
 export type ReduceSeed = {
   cases: SeedCase[]; ideas: Idea[]; problems: Problem[]; routes: Route[]; promiseDays: number;
   projects?: SeedProject[]; loop?: Partial<LoopRules>; seats?: SeatRow[];
-  clock?: ClockSpec; // missing = demo; the logic is CLK-C1's
+  clock?: ClockSpec; // missing = demo (render-time escalation); workdays = escalation only from clock.due facts (CLK/D11)
 };
 
 type CaseRow = { kind?: CaseKind; title: string; body?: string; from: string; fromDept?: string; routeId?: string | null; assignee: string; raisedDay?: number; reason?: string; upside?: string; linkedIdea?: string; fromUserId?: string | null; seatId?: string | null };
@@ -81,6 +81,8 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
   const routes = seed.routes;
   const routeOf = (id: string | null) => routes.find((r) => r.id === id) ?? null;
   const seats = seed.seats ?? [];
+  const clock = seed.clock ?? DEMO_CLOCK;
+  const workdays = clock.mode === "workdays";
   const roleOfSeat = (seatId: string | null) => (seatId === null ? null : seats.find((s) => s.id === seatId)?.roleId ?? null);
 
   const cases: Record<string, ReducedCase> = {};
@@ -291,6 +293,12 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (p && p.owner !== "trial") p.owner = "trial";
         break;
       }
+      case "clock.due": {
+        // A fact the scheduler stored (CLK/D10). It stays in the case's history; the escalation reads it below.
+        const c = cases[target];
+        if (c) c.history.push(ev);
+        break;
+      }
       case "day.advanced":
         break; // the day is tracked on the log itself
       default:
@@ -332,10 +340,19 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     const to = route ? (atOwner ? route.deputy : route.owner.name) : null;
     const toSeatId = route ? (atOwner ? route.deputySeatId ?? null : route.ownerSeatId ?? null) : null;
     const toRoleId = route ? (atOwner ? route.deputyRoleId ?? null : route.ownerRoleId ?? null) : null;
-    c.escalated = c.overdue && to ? { to, from: c.assignee, day: c.dueDay + 1, live: c.dueDay + 1 >= 0, toSeatId, toRoleId } : null;
+    if (!workdays) {
+      c.escalated = c.overdue && to ? { to, from: c.assignee, day: c.dueDay + 1, live: c.dueDay + 1 >= 0, toSeatId, toRoleId } : null;
+    } else {
+      // Workdays (D11): only the latest stored deadline fact escalates, and only while the case is open.
+      const fact = c.open ? [...c.history].reverse().find((e) => e.type === "clock.due" && e.payload.kind === "deadline") : undefined;
+      const seat = fact ? seats.find((s) => s.id === fact.payload.toRoleHolderId) : undefined;
+      c.escalated = fact && seat
+        ? { to: seat.label, from: c.assignee, day: (fact.payload.dueDay ?? c.dueDay) + 1, live: true, toSeatId: seat.id, toRoleId: seat.roleId }
+        : null;
+    }
   });
 
-  const projects = finishProjects(book, { day, promise, rules, routeOf, seats: seed.seats ?? [] });
+  const projects = finishProjects(book, { day, promise, rules, routeOf, seats: seed.seats ?? [], workdays });
 
   const ledger: LedgerCounts = {
     handedOver: order.reduce((a, id) => a + cases[id].handed.length, 0),
@@ -355,6 +372,8 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     ledger,
     rules,
     seats: seed.seats ?? [],
+    routes,
+    clock,
   };
 }
 
