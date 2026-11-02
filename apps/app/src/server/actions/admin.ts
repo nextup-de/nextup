@@ -28,7 +28,9 @@ import { databaseOutage, getDb, hasDatabase } from "@/lib/db/client";
 import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
 import { adminScope } from "@/features/admin/nav";
 import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
+import { bindDemoCompany } from "@/lib/db/demo-identity";
 import { writeStructure } from "@/lib/db/structure-writes";
+import { needsHandle, newHandle } from "@/features/auth/handle";
 import { createToken } from "@/lib/db/tokens";
 import type { AutomationReport } from "@/features/integrations/automation";
 import type { AutomationTaskView } from "@/features/integrations/tasks";
@@ -215,6 +217,12 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
   const now = new Date();
   const codes = input.people.map((p) => ({ name: p.name.trim(), email: p.email.trim().toLowerCase(), code: generateLoginCode(input.slug) }));
 
+  // Every member gets an anonymous handle (IDN/D11); one already given in the form stays.
+  const handles = input.people.flatMap((p) => (p.handle ? [p.handle] : []));
+  for (const p of input.people) {
+    if (needsHandle(p.role) && !p.handle) { p.handle = newHandle(handles); handles.push(p.handle); }
+  }
+
   const company = await db.company.create({
     data: {
       slug: input.slug,
@@ -240,7 +248,10 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
 
   // The demo template's org units, roles, routing table, goals and rules as rows
   // (docs/COMPANY_KNOWLEDGE.md). The empty template writes none.
-  if (input.template === "demo") await writeStructure(company.id, writes, "admin");
+  if (input.template === "demo") {
+    await writeStructure(company.id, writes, "admin");
+    await bindDemoCompany(company.id);
+  }
 
   return {
     status: "created",

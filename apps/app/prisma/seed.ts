@@ -21,6 +21,7 @@ import { DEMO_GOALS, DEMO_RULES } from "../src/features/demo/structure";
 import { contentOnly } from "../src/features/demo/content";
 import { rowsFromSeed } from "../src/features/knowledge";
 import { getDb } from "../src/lib/db/client";
+import { bindDemoCompany } from "../src/lib/db/demo-identity";
 import { writeStructure } from "../src/lib/db/structure-writes";
 
 // Same rule as prisma7.config.ts: .env.local on a laptop, the environment everywhere else.
@@ -101,6 +102,9 @@ async function main() {
       printed.push(`  ${u.name.padEnd(14)} ${code}`);
     }
   }
+
+  // Seats to their users and the stored seed to ids (IDN/D9); needs the users above.
+  await bindDemoCompany(company.id);
 
   const created = !(await db.caseEvent.count({ where: { companyId: company.id } }));
   console.log(`seeded ${company.slug} (${demo.users.length} people, event log ${created ? "empty" : "left as it was"})`);
