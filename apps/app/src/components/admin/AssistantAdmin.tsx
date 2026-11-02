@@ -7,6 +7,7 @@ import { AssistSettingsForm } from "./AssistSettingsForm";
 import { deleteDocumentAction } from "@/server/actions/assist-admin";
 import styles from "@/app/admin/admin.module.css";
 
+const PROVIDER_LABEL = { bedrock: "Amazon Bedrock", "azure-openai": "Azure OpenAI", "openai-compatible": "OpenAI-compatible endpoint" } as const;
 const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) + "%" : "-");
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -32,7 +33,7 @@ export function AssistantAdmin({ slug, view }: { slug: string; view: NonNullable
         <table className={styles.table}>
           <tbody>
             <tr><th>Answering</th><td>{s.enabled ? "On" : "Off"} <span className={styles.sub}>demo stage answers regardless</span></td></tr>
-            <tr><th>Model</th><td>{p.id === "bedrock" ? <><code>{p.model}</code> <span className={styles.sub}>Amazon Bedrock, {p.region}</span></> : <>No model configured <span className={styles.sub}>answers are built from lookups only</span></>}</td></tr>
+            <tr><th>Model</th><td>{p.choice === "off" || p.choice === "mock" ? <>No model configured <span className={styles.sub}>{p.choice === "off" ? "AI is switched off for this company" : "answers are built from lookups only"}</span></> : <><code>{p.choice === "azure-openai" ? p.deployment || p.model : p.model}</code> <span className={styles.sub}>{PROVIDER_LABEL[p.choice]}{p.choice === "bedrock" ? ", " + p.region : ""}</span></>}</td></tr>
             <tr><th>Data-processing agreement</th><td>{s.dpaSignedAt ? "signed " + day(s.dpaSignedAt) : <span className={styles.warn}>not recorded - no model is called for real people until it is</span>}</td></tr>
             <tr><th>Classification ceiling</th><td>{LEVEL_LABEL[s.ceiling]} <span className={styles.sub}>nothing above it is searched or sent</span></td></tr>
           </tbody>

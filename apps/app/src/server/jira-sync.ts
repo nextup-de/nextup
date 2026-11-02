@@ -47,8 +47,7 @@ const accountOf = (v: unknown): JiraAccount | null => {
 function dbStore(company: { id: string; slug: string }): RoundStore {
   return {
     async state() {
-      const row = await getDb().company.findUnique({ where: { id: company.id }, select: { demoDay: true } });
-      const log = await loadLog(company.id, row?.demoDay ?? 0);
+      const log = await loadLog(company.id);
       return reduce(await seedFor(company.slug), log);
     },
     async eventsSince(after) {

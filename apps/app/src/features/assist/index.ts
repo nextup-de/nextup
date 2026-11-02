@@ -30,7 +30,7 @@ export type ProviderRun = {
   signal?: AbortSignal;
 };
 export type ProviderResult = { text: string; model: string; tokensIn: number; tokensOut: number };
-export type Provider = { id: "bedrock" | "mock"; run: (r: ProviderRun) => Promise<ProviderResult> };
+export type Provider = { id: "bedrock" | "azure-openai" | "openai-compatible" | "mock"; run: (r: ProviderRun) => Promise<ProviderResult> };
 
 export const MAX_QUESTION = 2000;
 export const MAX_HISTORY = 6;

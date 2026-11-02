@@ -586,7 +586,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     sheet, openSheet: (kind, id, init) => { setSheet({ kind, id, text: "", picked: null, people: [], ...init }); setPop(null); },
     closeSheet: () => setSheet(null), patchSheet: (p) => setSheet((s) => (s ? { ...s, ...p } : s)),
     toast, showToast, menu, setMenu, dev, setDev, act, flag, resetDemo, deleteAdded, copySnippet, logout,
-    locale, f: dayFormatter(today, S.day, locale), href,
+    locale, f: dayFormatter(today, S.day, locale, seed.clock), href,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
