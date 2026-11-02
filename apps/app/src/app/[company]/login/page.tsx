@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { findTenant } from "@/features/tenant";
 import { hasDatabase } from "@/lib/db/client";
 import { SITE } from "@/config/site";
+import { getT } from "@/i18n/server";
 import { isMicrosoftError, MICROSOFT_ERRORS } from "@/features/auth/entra";
 import { demoPersonFor } from "@/server/demo-login";
 import { companyPrefix, microsoftEnabledFor, safeNext } from "@/server/microsoft-login";
@@ -20,11 +21,13 @@ type Props = { params: Promise<{ company: string }>; searchParams: Promise<{ nex
 
 export async function generateMetadata({ params }: Props) {
   const tenant = await findTenant((await params).company);
-  return { title: `Log in to ${tenant?.name ?? "your company"}` };
+  const t = await getT();
+  return { title: t("auth.metaLogInTo", { name: tenant?.name ?? t("auth.yourCompany") }) };
 }
 
 export default async function CompanyLoginPage({ params, searchParams }: Props) {
   const { company } = await params;
+  const t = await getT();
   const { next: rawNext, error } = await searchParams;
   const tenant = await findTenant(company);
   if (!tenant) notFound(); // the layout 404s too, but layouts and pages render in parallel
@@ -45,9 +48,9 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
       backHref={companyFinderUrl()}
       side={
         <>
-          <p className="nh-eyebrow">This week at {short}</p>
-          <AuthStats items={[["26 h", "median to first answer"], ["84 %", `within the ${SITE.promiseDays}-day promise`], ["3", "decisions waiting on you"]]} />
-          <p>Numbers from the manager overview. Empty inbox by end of day is the whole ritual.</p>
+          <p className="nh-eyebrow">{t("auth.weekAt", { short })}</p>
+          <AuthStats items={[["26 h", t("auth.statMedian")], ["84 %", t("auth.statWithin", { days: SITE.promiseDays })], ["3", t("auth.statWaiting")]]} />
+          <p>{t("auth.sideNote")}</p>
         </>
       }
     >
@@ -57,14 +60,14 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
           <strong>{tenant.name}</strong>
         </div>
         {/* A single-company stack has no other company to switch to - its /login is this page. */}
-        {tenantMode() !== "single" && <Link className={styles.switch} href="/login">Not your company?</Link>}
+        {tenantMode() !== "single" && <Link className={styles.switch} href="/login">{t("auth.notYourCompany")}</Link>}
       </div>
 
       {hasDatabase() ? (
         <>
           <AuthTitle
-            title="Welcome back"
-            sub={microsoftHref ? "Log in with your personal code or your Microsoft work account." : "Log in with your personal code."}
+            title={t("auth.welcomeBack")}
+            sub={microsoftHref ? t("auth.subCodeMicrosoft") : t("auth.subCode")}
           />
           <CompanyLoginForm
             slug={tenant.slug}
@@ -80,12 +83,12 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
         // needs no login - send them straight in rather than to a form that can only say no.
         // `?as=member`: through the login you always arrive as the employee (RoleRouter).
         <>
-          <AuthTitle title="Demo mode" sub="No database is connected, so there is nothing to log in to. The built-in demo works without one." />
-          <Button href={`${companyPrefix(tenant.slug) || "/"}?as=member`} block>Open the {short} demo</Button>
+          <AuthTitle title={t("auth.demoModeTitle")} sub={t("auth.demoModeSub")} />
+          <Button href={`${companyPrefix(tenant.slug) || "/"}?as=member`} block>{t("auth.openShortDemo", { short })}</Button>
         </>
       )}
 
-      <AuthFoot>No code yet, or lost it? Ask your team leader - they can give you a new one.</AuthFoot>
+      <AuthFoot>{t("auth.noCodeFoot")}</AuthFoot>
     </AuthShell>
   );
 }

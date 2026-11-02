@@ -7,7 +7,10 @@ import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { hasDatabase } from "@/lib/db/client";
 import { findCompanyBySlug } from "@/lib/db/companies";
 import { getIntegration, JIRA } from "@/lib/db/integrations";
-export const metadata = { title: "Project" };
+import { getT } from "@/i18n/server";
+export async function generateMetadata() {
+  return { title: (await getT())("shell.metaProject") };
+}
 
 async function jiraOf(slug: string | undefined): Promise<JiraStatusView | null> {
   if (!slug || !hasDatabase()) return null;

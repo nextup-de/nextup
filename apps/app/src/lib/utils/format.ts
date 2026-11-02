@@ -8,8 +8,6 @@ export const fmt = (n: number | string) => String(n).replace(/\B(?=(\d{3})+(?!\d
 export const ini = (name: string | null | undefined) =>
   !name || name.startsWith("Anonymous") || name === "—" ? "?" : name.split(" ").map((w) => w[0]).join("").slice(0, 2);
 
-export const days = (n: number) => n + (n === 1 ? " day" : " days");
-
 export const deptName = (depts: readonly Dept[], id: string) => depts.find((d) => d.id === id)?.name ?? id;
 
 // "1 team" / "3 teams"

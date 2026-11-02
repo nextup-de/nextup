@@ -6,8 +6,11 @@ import { companyPrefix } from "@/features/tenant/urls";
 import { hasDatabase } from "@/lib/db/client";
 import { ticketsOf } from "@/lib/db/tickets";
 import { ReportsView } from "@/components/report/ReportsView";
+import { getT } from "@/i18n/server";
 
-export const metadata = { title: "My reports" };
+export async function generateMetadata() {
+  return { title: (await getT())("shell.myReports") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage({ params }: { params: Promise<{ company: string }> }) {

@@ -1,7 +1,10 @@
 import { ProfileView } from "@/components/profile/ProfileView";
 import { m365Card } from "@/server/m365-profile";
+import { getT } from "@/i18n/server";
 
-export const metadata = { title: "My profile" };
+export async function generateMetadata() {
+  return { title: (await getT())("shell.myProfile") };
+}
 
 type Props = { params: Promise<{ company: string }>; searchParams: Promise<{ m365?: string }> };
 

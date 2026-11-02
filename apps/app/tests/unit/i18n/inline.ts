@@ -9,13 +9,14 @@ import { en } from "@/i18n/en";
 export type Finding = { file: string; line: number; text: string };
 
 const APP_ROOT = path.resolve(__dirname, "../../..");
-const RULE = "nextup/no-inline-strings";
+// Own plugin key: the project config registers "nextup" with another module instance, and ESLint refuses to redefine it.
+const RULE = "nextup-proof/no-inline-strings";
 
 /** Findings of the rule over files matching the patterns (relative to apps/app). A pattern without files throws. */
 export async function inlineStrings(patterns: string[]): Promise<Finding[]> {
   const eslint = new ESLint({
     cwd: APP_ROOT,
-    overrideConfig: [{ ignores: ["!**/node_modules/"] }, { files: ["**/*.{ts,tsx}"], plugins: { nextup: plugin }, rules: { [RULE]: "error" } }],
+    overrideConfig: [{ ignores: ["!**/node_modules/"] }, { files: ["**/*.{ts,tsx}"], plugins: { "nextup-proof": plugin }, rules: { [RULE]: "error", "nextup/no-inline-strings": "off" } }],
   });
   const results = await eslint.lintFiles(patterns);
   if (results.length === 0) throw new Error(`no file matches ${patterns.join(", ")}`);
