@@ -56,12 +56,16 @@ describe("feedCover", () => {
 
 describe("supportLine", () => {
   it("names first, the rest as a count; you first when you back it", () => {
-    expect(supportLine([], "SD")).toBe("Nobody backs this yet");
-    expect(supportLine(["Tom"], "SD")).toBe("Tom backs this");
-    expect(supportLine(["SD"], "SD")).toBe("You back this");
-    expect(supportLine(["Tom", "Lena"], "SD")).toBe("Tom and Lena");
-    expect(supportLine(["Tom", "SD", "Lena", "Ana"], "SD")).toBe("You, Tom and 2 others");
-    expect(supportLine(["Tom", "Lena", "Ana"], "SD")).toBe("Tom, Lena and 1 other");
+    const b = (name: string, userId: string | null = "u_" + name) => ({ name, userId });
+    const me = { userId: "u_SD", seatIds: [], roleIds: [] };
+    expect(supportLine([], me)).toBe("Nobody backs this yet");
+    expect(supportLine([b("Tom")], me)).toBe("Tom backs this");
+    expect(supportLine([b("SD")], me)).toBe("You back this");
+    expect(supportLine([b("Tom"), b("Lena")], me)).toBe("Tom and Lena");
+    expect(supportLine([b("Tom"), b("SD"), b("Lena"), b("Ana")], me)).toBe("You, Tom and 2 others");
+    expect(supportLine([b("Tom"), b("Lena"), b("Ana")], me)).toBe("Tom, Lena and 1 other");
+    // the same label under another id is somebody else
+    expect(supportLine([b("SD", "u_other")], me)).toBe("SD backs this");
   });
 });
 

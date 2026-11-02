@@ -12,7 +12,7 @@ import { Avatar } from "@/components/dashboard/shared/primitives";
 import { roundState, scoreVersions, versionReader } from "@/features/cases/discussion";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { projectStatus, raisedWith } from "@/features/cases/rows";
-import { onDesk } from "@/features/cases/selectors";
+import { onDeskOf } from "@/features/cases/selectors";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import ui from "@/components/dashboard/shared/ui.module.css";
@@ -45,13 +45,13 @@ export function ArchiveBanner({ c }: { c: ReducedCase }) {
 
 // Who is in, where the rounds stand, and every check-in with what it left open.
 export function DiscussionPanel({ c }: { c: ReducedCase }) {
-  const { S, f, role, persona, openSheet } = useDemo();
+  const { S, f, role, me, openSheet } = useDemo();
   const t = useT();
   const d = c.discussion;
   const rs = roundState(c, S.rules, S.day);
   if (!d || !rs) return null;
   const live = c.status === "discussion";
-  const holder = live && (role === "manager" || onDesk(c, persona.who.name));
+  const holder = live && (role === "manager" || onDeskOf(c, me));
   const people = [c.from, ...d.invited];
   return (
     <section className={ui.card} aria-label={t("dashboard.loopDiscussion")}>

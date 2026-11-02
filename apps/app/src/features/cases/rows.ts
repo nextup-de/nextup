@@ -1,5 +1,6 @@
 // "My cases" rows: facts in, sentences out. Port of mineRow / cosignRow in legacy/demo/js/dashboard.js.
 // Nothing here is stored - every string is rebuilt from the reduced case at render time.
+import type { Me } from "@/features/auth/identity";
 import { scoreCase, type Score } from "@/features/scoring";
 import type { LoopRules } from "@/features/loop/rules";
 import { projectLabel } from "@/features/projects/selectors";
@@ -242,10 +243,12 @@ function lifeRow(c: ReducedCase, day: number, f: DayFmt, P: number, loop: MineLo
 }
 
 // An idea I co-signed, as a row in My cases.
-export function cosignRow(i: ReducedIdea, day: number, f: DayFmt, handle: string, promiseDays: number, locale: Locale = DEFAULT_LOCALE): MineRow {
+// `me` finds the co-sign by user id; the label shown is the one the co-sign was posted under.
+export function cosignRow(i: ReducedIdea, day: number, f: DayFmt, me: Me, promiseDays: number, locale: Locale = DEFAULT_LOCALE): MineRow {
   const P = promiseDays;
   const t = withLocale(locale);
-  const cs = i.cosigners.find((x) => x.name === handle);
+  const cs = me.userId === null ? undefined : i.cosigners.find((x) => x.userId === me.userId);
+  const handle = cs?.name ?? "";
   const since = cs ? cs.day : 0;
   const waiting = i.status === translate(DEFAULT_LOCALE, "cases.statusAwaitingDecision"), late = waiting && i.wait > P, ap = i.approved;
   const raised = day - (i.wait || 0), lead = i.team[0] === "—" ? t("cases.proposer") : i.team[0];
@@ -329,7 +332,7 @@ export function raisedWith(c: ReducedCase): { affected: string[]; attachments: n
   return { affected: p?.affected ?? [], attachments: p?.attachments ?? 0, visibility: p?.visibility ?? null, seenBy: p?.seenBy ?? [] };
 }
 
-export function dashboardRow(c: ReducedCase, promiseDays: number, viewer: { name: string; handle: string | null }, log?: EventLog): DashRow {
+export function dashboardRow(c: ReducedCase, promiseDays: number, me: Me, log?: EventLog): DashRow {
   const raised = raisedWith(c);
   // Named when raised, plus everyone who pressed "this affects me too" since.
   const affected = [...raised.affected, ...(log ? affectedOn(log, c.id).map((a) => a.name) : []).filter((n) => !raised.affected.includes(n))];
@@ -339,7 +342,7 @@ export function dashboardRow(c: ReducedCase, promiseDays: number, viewer: { name
     : c.status === "asked" ? "Question" : c.read !== null ? "Read" : "Sent";
   const chain = [c.handed.length ? c.handed[0].from : c.assignee, ...c.handed.map((h) => h.to)];
   if (c.escalated) chain.push(c.escalated.to);
-  const mine = c.from === viewer.name || c.from === viewer.handle;
+  const mine = me.userId !== null && c.fromUserId === me.userId;
   return {
     id: c.id, kind: c.kind, title: c.title, from: c.from, fromDept: c.fromDept, mine, fresh: !c.seed && c.age === 0,
     openDays: c.age, open: c.open, overdue: c.overdue, stage, chain, escalated: !!c.escalated, affected, attachments,

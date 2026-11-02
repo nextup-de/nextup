@@ -7,7 +7,8 @@
 // On the static demo the demo controls sit right under it (DemoControls.tsx).
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { openCasesOf } from "@/components/dashboard/derive";
+import { meOfSeat, type SeatRow } from "@/features/auth/identity";
+import { deskSeats, inboxOf } from "@/features/cases/selectors";
 import { DOTS_DEFAULT, DOTS_RANGE } from "@/features/design/dots";
 import { devFill, hasDevFill, subscribeDevFill } from "@/lib/dev-fill";
 import { saveDesignDefaultsAction } from "@/server/actions/design";
@@ -30,6 +31,12 @@ export function DevPanel() {
   const canFill = useSyncExternalStore(subscribeDevFill, hasDevFill, () => false); // the raise page's start view is open
   const isLead = role === "leader";
   const day = S.day;
+  // "Inbox of": the route owners' seats, then any other seat that holds a case right now; one button per seat.
+  const deskPicks: SeatRow[] = [];
+  for (const id of [...seed.routes.map((r) => r.ownerSeatId), ...deskSeats(S).map((s) => s.id)]) {
+    const seat = id ? seed.seats.find((s) => s.id === id) : undefined;
+    if (seat && !deskPicks.some((s) => s.id === seat.id)) deskPicks.push(seat);
+  }
   const newCount = S.cases.filter((c) => !c.seed).length;
   const status = (isLead && leadAs ? persona.who.name : persona.role.label) + " · demo " + (demo ? "on" : "off") + (day ? " · +" + day + " d" : "");
 
@@ -98,11 +105,12 @@ export function DevPanel() {
             <>
               <div className={styles.subLabel}>Inbox of</div>
               <div className={styles.personas}>
-                {seed.leaders.map((n) => {
-                  const on = persona.who.name === n, count = openCasesOf(ctx, n).length;
+                {deskPicks.map((seat) => {
+                  const on = leadAs ? leadAs === seat.id : seat.userId !== null && seat.userId === persona.who.userId;
+                  const count = inboxOf(S, meOfSeat(seat.id, seed.seats)).length;
                   return (
-                    <button key={n} type="button" className={styles.persona} data-on={on ? "true" : undefined} onClick={() => ctx.setLeadAs(n)}>
-                      {n}{count ? <span className={styles.personaCount}>{count}</span> : null}
+                    <button key={seat.id} type="button" className={styles.persona} data-on={on ? "true" : undefined} onClick={() => ctx.setLeadAs(seat.id)}>
+                      {seat.label}{count ? <span className={styles.personaCount}>{count}</span> : null}
                     </button>
                   );
                 })}

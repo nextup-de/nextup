@@ -49,7 +49,7 @@ function sentence(e: CaseEvent, t: T): string {
 
 export function CaseDetailView({ caseId }: { caseId: string }) {
   const ctx = useDemo();
-  const { S, log, href, ready, f, actor, persona, role, act, openSheet, showToast, tenant, flag } = ctx;
+  const { S, log, href, ready, f, me, role, act, openSheet, showToast, tenant, flag } = ctx;
   const router = useRouter();
   const t = useT();
   const [note, setNote] = useState("");
@@ -71,10 +71,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const P = ctx.seed.promiseDays;
   const extra = raisedWith(c);
   const shots = loadShots(tenant.slug, c.id); // whatever this browser kept when the case was raised
-  const who = persona.who;
-  const mine = c.from === who.name || c.from === who.handle;
+  const mine = me.userId !== null && c.fromUserId === me.userId;
   const affected = affectedOn(log, c.id), comments = commentsOn(log, c.id);
-  const meToo = affected.some((a) => a.name === actor);
+  const meToo = me.userId !== null && affected.some((a) => a.userId === me.userId);
+  const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const standing = [...extra.affected, ...affected.map((a) => a.name).filter((n) => !extra.affected.includes(n))];
   const reasons = affected.filter((a) => a.why); // leads say why it hits their team
   // The score as the dashboard scores it, re-evaluated with every piece of new information posted since.
@@ -171,7 +171,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           <span className={styles.scoreL}>{t("dashboard.detailScore", { parts: score.parts.length ? score.parts.map((p) => p.label.toLowerCase()).join(", ") : t("dashboard.detailBaseOnlyLc") })}</span>
         </div>
         {updates.map((u) => (
-          <div key={u.id} className={styles.corr}>{t("dashboard.detailCorrected", { text: u.text, by: u.by === actor ? t("dashboard.detailYou") : u.by, date: f(u.day) })}</div>
+          <div key={u.id} className={styles.corr}>{t("dashboard.detailCorrected", { text: u.text, by: isMe(u.byUserId) ? t("dashboard.detailYou") : u.by, date: f(u.day) })}</div>
         ))}
         <div className={styles.actions}>
           {c.open && lead && (
@@ -201,7 +201,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           </div>
         )}
         {reasons.map((a) => (
-          <div key={a.name} className={styles.corr}>{t("dashboard.detailAsLead", { who: a.name === actor ? t("dashboard.detailYouCap") : a.name, why: a.why ?? "", date: f(a.day) })}</div>
+          <div key={a.name} className={styles.corr}>{t("dashboard.detailAsLead", { who: isMe(a.userId) ? t("dashboard.detailYouCap") : a.name, why: a.why ?? "", date: f(a.day) })}</div>
         ))}
         <div className={styles.thread}>
           {comments.map((m) => (
@@ -209,7 +209,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               <Avatar name={m.by} size="sm" />
               <div className={ui.rowBody}>
                 <div className={styles.commentText}>{m.text}</div>
-                <div className={styles.commentBy}>{m.by === actor ? t("dashboard.detailYou") : m.by} · {f(m.day)}{m.rescore && <span className={styles.rescoreTag}>{t("dashboard.detailNewInfoTag")}</span>}</div>
+                <div className={styles.commentBy}>{isMe(m.byUserId) ? t("dashboard.detailYou") : m.by} · {f(m.day)}{m.rescore && <span className={styles.rescoreTag}>{t("dashboard.detailNewInfoTag")}</span>}</div>
               </div>
             </div>
           ))}
