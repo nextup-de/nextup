@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useState } from "react";
 import { adminSignIn, type AdminLoginState } from "@/server/actions/admin";
+import { useT } from "@/i18n/client";
 import { Field } from "@/components/ui/Field";
 import styles from "@/app/admin/admin.module.css";
 
@@ -11,11 +12,12 @@ import styles from "@/app/admin/admin.module.css";
  */
 export function AdminLoginForm({ demoCode }: { demoCode?: string | null }) {
   const [state, act, pending] = useActionState<AdminLoginState, FormData>(adminSignIn, {});
+  const t = useT();
   const [code, setCode] = useState("");
 
   return (
     <form action={act} className={styles.grid} autoComplete="off">
-      <Field id="code" label="Admin code">
+      <Field id="code" label="Admin code or personal login code">
         <div className={styles.inputWrap}>
           <input
             className={`nh-input ${demoCode ? styles.inputWithFill : ""}`}
@@ -38,6 +40,9 @@ export function AdminLoginForm({ demoCode }: { demoCode?: string | null }) {
             </button>
           ) : null}
         </div>
+      </Field>
+      <Field id="totp" label={t("adminAccess.totpLabel")} hint={t("adminAccess.adminTotpHint")}>
+        <input className="nh-input" id="totp" name="totp" type="text" inputMode="numeric" pattern="[0-9 ]*" maxLength={7} autoComplete="one-time-code" />
       </Field>
       {state.error ? <p className={styles.error} role="alert">{state.error}</p> : null}
       <button className="nh-btn nh-btn-primary" type="submit" disabled={pending}>

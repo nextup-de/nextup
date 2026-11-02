@@ -9,9 +9,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { dashboardUrl, landingUrl } from "@/features/tenant/urls";
+import { getT } from "@/i18n/server";
 import { adminBase, adminScope } from "@/features/admin/nav";
 import { adminSignOut, isAdmin } from "@/server/actions/admin";
-import { adminActor } from "@/server/admin-session";
+import { adminActor, adminBreakGlassActive } from "@/server/admin-session";
 import { adminContext } from "@/server/admin-context";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { ReportButton } from "@/components/report/ReportButton";
@@ -33,6 +34,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const signedIn = await isAdmin();
   const ctx = signedIn ? await adminContext() : null;
   const actor = signedIn ? await adminActor() : null;
+  const breakGlass = signedIn && (await adminBreakGlassActive());
+  const t = await getT();
 
   return (
     <div className={styles.shell}>
@@ -63,6 +66,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <AdminNav items={ctx.nav} base={adminBase()} />
           </aside>
           <main className={styles.content}>
+            {breakGlass ? <p className={`${styles.card} ${styles.error}`} role="status">{t("adminAccess.breakGlassBanner")}</p> : null}
             {ctx.live ? null : company ? (
               <section className={`${styles.card} ${styles.demoNotice}`}>
                 <h2>Not connected</h2>

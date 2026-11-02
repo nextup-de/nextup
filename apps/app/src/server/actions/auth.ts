@@ -13,6 +13,9 @@
 import { redirect } from "next/navigation";
 import { ROLE_HOME, type Role } from "@/config/roles";
 import { hashLoginCode, looksLikeLoginCode, looksLikeSharedCode, normalizeLoginCode } from "@/features/auth/login-code";
+import { generateTotpSecret, base32Decode, otpauthUrl, totpContext, verifyTotp } from "@/features/auth/totp";
+import { open, seal, vaultKey } from "@/features/connectors/vault";
+import { getT } from "@/i18n/server";
 import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
 import { findTenant, findTenantByEmail } from "@/features/tenant";
 import { normaliseSlug } from "@/features/tenant/create";
@@ -22,7 +25,11 @@ import { companyPrefix, safeNext } from "@/server/microsoft-login";
 import { clearSession, issueSession } from "@/server/issue-session";
 import { clientKey, forgive, throttle } from "@/server/throttle";
 
-export type LoginState = { error?: string };
+/**
+ * `step` is set when the code was right but a manager still owes the second factor: "totp" asks for
+ * the authenticator code, "enrol" shows the key (`secret`, `otpauth`) to set one up first.
+ */
+export type LoginState = { error?: string; step?: "totp" | "enrol"; secret?: string; otpauth?: string };
 
 const noDatabase: LoginState = {
   error: "No database is connected, so there is nobody to sign in as. The demo works without one.",
@@ -65,10 +72,54 @@ export async function codeLogin(_prev: LoginState, form: FormData): Promise<Logi
   if (!hasDatabase()) return noDatabase;
   // A code for another company is simply a wrong code here - never "it belongs to X".
   if (!user || !user.active || user.company.slug !== slug) return wrongCode;
+
+  // A manager needs a second factor; members and leaders sign in with the code alone.
+  if (user.role === "manager") {
+    const gate = await managerSecondFactor(user, slug, form);
+    if (gate) return gate;
+  }
   forgive("loginCode", `${who}|${slug}`);
 
   await issueSession(user.company.id, user.company.slug, user);
   redirect(companyPrefix(slug) + (safeNext(String(form.get("next") ?? "")) || ROLE_HOME[user.role as Role]));
+}
+
+type Manager = { id: string; companyId: string; email: string; totpSecretSealed: string | null; totpEnabledAt: Date | null };
+
+/**
+ * Null when the manager may have a session; otherwise the step to show. Enrolled: the TOTP code is
+ * needed. Not enrolled: the key is shown first, and one right code from it stores the secret
+ * (sealed) and lets them in. Time is Date.now(), so a test pins it with fake timers.
+ */
+async function managerSecondFactor(user: Manager, slug: string, form: FormData): Promise<LoginState | null> {
+  const t = await getT();
+  const key = vaultKey();
+  if (!key) return { error: t("adminAccess.vaultMissing") };
+  const context = totpContext(user.companyId, user.id);
+  const given = String(form.get("totp") ?? "");
+
+  if (user.totpEnabledAt && user.totpSecretSealed) {
+    if (!given.trim()) return { step: "totp" };
+    const secret = open(user.totpSecretSealed, key, context);
+    if (!secret || !verifyTotp(secret, given, Date.now())) return { step: "totp", error: t("adminAccess.totpWrong") };
+    return null;
+  }
+
+  // Not enrolled. The key travels with the form between the two steps; it only counts once a code
+  // made from it is entered, and never replaces a secret that is already confirmed.
+  const posted = String(form.get("secret") ?? "");
+  const known = /^[A-Z2-7]{32}$/.test(posted) && base32Decode(posted) ? posted : null;
+  const secret = known ?? generateTotpSecret();
+  const show = { step: "enrol" as const, secret, otpauth: otpauthUrl("NextUp", user.email || slug, secret) };
+  if (!known) return show;
+  if (!given.trim()) return { ...show, error: t("adminAccess.totpRequired") };
+  if (!verifyTotp(secret, given, Date.now())) return { ...show, error: t("adminAccess.totpWrong") };
+
+  const stored = await getDb().user.updateMany({
+    where: { id: user.id, companyId: user.companyId, totpEnabledAt: null },
+    data: { totpSecretSealed: seal(secret, key, context), totpEnabledAt: new Date() },
+  });
+  return stored.count === 1 ? null : { step: "totp" };
 }
 
 /** Demo boxes only: become one of a demo company's made-up people in one click. */
