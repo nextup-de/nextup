@@ -122,7 +122,8 @@ test.describe.serial("STR acceptance: an empty company has no acme content and a
       for (const path of paths) {
         const text = await textOf(page, EMPTY_SLUG, path);
         for (const marker of MARKERS) {
-          expect(text.includes(marker), `${p.name} on ${path} shows acme marker "${marker}"`).toBe(false);
+          const at = text.indexOf(marker);
+          expect(at, `${p.name} on ${path} shows acme marker "${marker}": ${at < 0 ? "" : text.slice(Math.max(0, at - 60), at + 60).replace(/\s+/g, " ")}`).toBe(-1);
         }
         if (path === "/raise" && !/\/login/.test(page.url())) {
           expect(text, `${p.name} raise page goal count`).toMatch(/\b0 goals checked\b/);
