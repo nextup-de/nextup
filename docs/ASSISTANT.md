@@ -104,3 +104,60 @@ In order: mock provider → a sandbox company on a controlled Bedrock test → a
 - n8n follow-up actions (e.g. open an ERP ticket) after the employee confirms. The model never
   triggers n8n itself.
 - Refusal fallback to a second model. A refusal today ends the answer with "raise it".
+
+## The AI choice per company
+
+Each company picks its own provider in `/admin` (its Integration row with system `ai`, `features/ai/settings.ts`):
+`off`, `bedrock`, `azure-openai` or `openai-compatible`. Demo companies without a row use the mock. The API key
+of azure-openai and openai-compatible is sealed with the vault and bound to the company; it leaves the vault only
+to be sent to the brain with one request (`lib/db/ai.ts`, `server/brain.ts llmFor`).
+
+### The gate
+
+One pure, fail-closed function decides every model call: `aiGate` in `features/ai/gate.ts`. `assistGate` is a thin
+wrapper over it for the assistant.
+
+| Situation | Answer |
+|---|---|
+| no database | mock only, and only in a demo stage |
+| demo stage | on, with the settings |
+| real stage, choice off | off |
+| real stage, any choice other than mock, no `dpaSignedAt` | off ("waits for the data-processing agreement") |
+| purpose `assist`, `CompanyConfig.assistant` off | off |
+| purpose `routing`, `CompanyConfig.aiRouting` off | off |
+
+Every "no" carries a `why` in plain words. With the gate closed no request leaves, not to the brain and not to the model.
+
+### The proposal at raise
+
+At `case.raised`, `appendEventAction` replaces whatever proposal the browser sent with `proposeOnRaise`
+(`server/routing.ts`): the brain's proposal when the gate (purpose `routing`) holds and the brain answers within
+`BRAIN_RAISE_TIMEOUT_MS` (default 8000), else the keyword proposal (`source: "keywords"`, `ROUTER_VERSION`). The
+route the person chose is never changed. The AI being off therefore never stops a raise (HD7).
+
+### The brain's endpoint
+
+`BRAIN_URL` (a service name inside the company's stack) and `BRAIN_API_KEY` are the stack's. For azure-openai and
+openai-compatible the request body carries `llm: { base_url, model, api_key }` and the brain talks to that
+endpoint; for the other choices it uses its own stack model. Incomplete settings (no key, no endpoint, no model or
+deployment) send nothing.
+
+### Acceptance
+
+`apps/app/tests/db/ai-provider.test.ts` runs the three cases against a real database with a fake
+OpenAI-compatible model and a fake brain that forwards to it: choice off gives the keyword proposal and zero
+requests; openai-compatible with a DPA and `aiRouting` stores `source: "llm"`, route r2; the same company
+without a DPA sends nothing and the gate says why.
+
+## AIP gaps
+
+Register rows of `docs/audit/gaps` whose phase is AIP:
+
+| Gap | What | Answered by |
+|---|---|---|
+| G-035 | Routing proposal made in the browser | AIP-C1: the server makes it at raise (`server/routing.ts`); proved by AIP-Z1 |
+| G-036 | Idea coach skips the DPA gate | AIP-B1: brain calls, coach included, go through `aiGate` (#318) |
+| G-037 | Eval set too small, too little German | #321: an 84-case routing eval, a third German |
+| G-038 | Brain eval not in CI | #321: runs in CI with a threshold |
+| G-236 | Bedrock off everywhere, no AWS account attached | open: needs an AWS account on a stack, which is hosting, not code |
+| G-237 | No AI gateway for keys, quotas, logging | open: the per-company choice and sealed keys exist, but quotas and request logging in front of providers do not |
