@@ -16,6 +16,11 @@ import { cases } from "./messages/cases";
 import { mail } from "./messages/mail";
 import { structure } from "./messages/structure";
 import { connectors } from "./messages/connectors";
+import { settingsCompany } from "./messages/settingsCompany";
+import { settingsOrg } from "./messages/settingsOrg";
+import { settingsConnectors } from "./messages/settingsConnectors";
+import { settingsSetup } from "./messages/settingsSetup";
+import { adminAccess } from "./messages/adminAccess";
 
 export const de = {
   common: common.de,
@@ -35,4 +40,9 @@ export const de = {
   mail: mail.de,
   structure: structure.de,
   connectors: connectors.de,
+  settingsCompany: settingsCompany.de,
+  settingsOrg: settingsOrg.de,
+  settingsConnectors: settingsConnectors.de,
+  settingsSetup: settingsSetup.de,
+  adminAccess: adminAccess.de,
 } as const;

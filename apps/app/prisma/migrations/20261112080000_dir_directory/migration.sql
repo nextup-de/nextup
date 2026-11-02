@@ -1,6 +1,5 @@
 -- AlterTable
-ALTER TABLE "User" ADD COLUMN     "active" BOOLEAN NOT NULL DEFAULT true,
-ADD COLUMN     "deactivatedAt" TIMESTAMP(3),
+ALTER TABLE "User" ADD COLUMN     "deactivatedAt" TIMESTAMP(3),
 ADD COLUMN     "directorySyncedAt" TIMESTAMP(3),
 ADD COLUMN     "employeeId" TEXT,
 ADD COLUMN     "managerId" TEXT;

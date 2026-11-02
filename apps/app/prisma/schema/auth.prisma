@@ -28,10 +28,13 @@ model User {
 
   locale String? // de | en (src/i18n). Null: the company's defaultLocale, then English.
 
+  // False = deactivated (left the company, or the directory says so). Kept, not deleted, so the
+  // history still names them; the settings guard and sign-in refuse an inactive user.
+  active Boolean @default(true)
+
   // Directory sync (phase DIR). employeeId is the personnel number: never shown, never logged, never sent to the AI.
   employeeId        String?
   managerId         String?
-  active            Boolean   @default(true) // false: cannot sign in, session ends
   deactivatedAt     DateTime?
   directorySyncedAt DateTime?
 

@@ -2,8 +2,9 @@
 
 > **Plan · 2026-11-02 · open: Sam designs and builds every page here; the data behind each page comes from the PILOT phase named on it. Nothing is built yet.**
 > The Hauptplan PILOT adds **23 new pages**, changes **15 existing pages** and needs **27 other surfaces** (Teams cards,
-> emails, printables, dialogs, states). This file is the map, the shared rules and the shared building blocks. The
-> pages themselves are specified in the nine files in [2026-11-02_pilot-pages/](2026-11-02_pilot-pages/), one per area.
+> emails, printables, dialogs, states). On top of that, **8 existing pages** that work today get a design pass
+> (spec 10). This file is the map, the shared rules and the shared building blocks. The
+> pages themselves are specified in the ten files in [2026-11-02_pilot-pages/](2026-11-02_pilot-pages/), one per area.
 
 ## Start here, Sam
 
@@ -116,6 +117,7 @@ their specs follow the brief and may change when their Bauplan is written.
 | [07-shop-floor.md](2026-11-02_pilot-pages/07-shop-floor.md) | Areas and QR codes, the four phone pages, QR poster, reference slip, installed app | FLR | 6th |
 | [08-enterprise-and-sign-in.md](2026-11-02_pilot-pages/08-enterprise-and-sign-in.md) | API tokens, Webhooks, Import and export, Sign-in and provisioning, Support access, two-factor pages, company login, forgot code, `/admin` login | API, EID, SEC, ADM | 7th |
 | [09-go-live-and-pilot-report.md](2026-11-02_pilot-pages/09-go-live-and-pilot-report.md) | Go-live, Pilot report (page and email) | PIL, MET | 8th |
+| [10-existing-pages.md](2026-11-02_pilot-pages/10-existing-pages.md) | Existing pages to improve: Projects, Project page, Raise as a whole, Ideas, Problems, Collaboration, Progress, My reports | none (MET touches Progress) | Projects, Project page and Raise right after 01-03; the other five last |
 
 The order follows the build order: ADM is the next phase with a lot of UI (after IDN and LNG), so its pages come first.
 
@@ -299,6 +301,24 @@ everything in one place (Q2).
 | Company login | `/[company]/login` | ADM-E1, EID | 08 |
 | Forgot code, signup and invite pages | `/forgot-password`, `/signup`, `/invite/[token]` | ADM-D1 | 08 |
 | `/admin` login | `/admin/login` | ADM-E1 | 08 |
+
+### Existing pages to improve (8)
+
+Built and working today, and no PILOT phase rebuilds them. They keep what they do and get the design system's look.
+
+| Page | Route | Spec |
+|---|---|---|
+| Projects | `/projects` | 10 |
+| Project page (with the card sheet) | `/projects/[projectId]` | 10 |
+| Raise as a whole (the publishing step is in 04) | `/raise` | 10 |
+| Ideas | `/ideas` | 10 |
+| Problems | `/problems` | 10 |
+| Collaboration | `/collaboration` | 10 |
+| Progress | `/progress` | 10 |
+| My reports | `/reports` | 10 |
+
+Ideas, Problems, Collaboration, Progress and My reports are not in the navigation today; spec 10 asks whether each
+stays (10-Q1 to 10-Q5).
 
 ### Other surfaces (27)
 

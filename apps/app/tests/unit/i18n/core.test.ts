@@ -16,7 +16,7 @@ import {
   type MessageKey,
 } from "@/i18n";
 
-const NAMESPACES = ["common", "errors", "shell", "auth", "profile", "settings", "report", "demo", "dashboard", "team", "leader", "ideas", "projects", "cases", "mail", "structure", "connectors"];
+const NAMESPACES = ["common", "errors", "shell", "auth", "profile", "settings", "report", "demo", "dashboard", "team", "leader", "ideas", "projects", "cases", "mail", "structure", "connectors", "settingsCompany", "settingsOrg", "settingsConnectors", "settingsSetup", "adminAccess"];
 const flat = (s: string) => s.replace(/[  ]/g, " ");
 
 describe("LNG catalog core", () => {

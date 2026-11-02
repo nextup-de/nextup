@@ -50,6 +50,17 @@ app's own rows. The coach is a later step, inside the app's existing coach.
 Limits: 50 rows, 80 earlier items. A company with hundreds of earlier items needs a shortlist in
 front of the model — `brain/route.py` is the one place for it.
 
+**`llm` (optional, on every request: route, coach, plan, checkin).** The company's own model endpoint
+for this one request, sent by the app for azure-openai and openai-compatible companies:
+
+```json
+"llm": { "base_url": "https://<endpoint>/openai/v1", "model": "<deployment or model>", "api_key": "…" }
+```
+
+With it the brain builds a client for that request and uses it instead of `LLM_*`; without it the
+stack model (`LLM_*`) answers. Nothing is kept between requests, and the key is never logged or put
+in an error message. All three fields are required, `base_url` must be `http(s)`.
+
 `GET /health` — `ok` when the model server answers and has the model. No key needed.
 
 `POST /v1/coach` (header `X-API-Key`) — one turn of the idea coach, the "grilling" method: the

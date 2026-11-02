@@ -12,7 +12,7 @@
 //                 is stored here and only the offline coach answers.
 //   the brain     where the stack runs it (BRAIN_URL), it coaches - the grilling, one question
 //                 per turn - while the idea is below the publish line, in either mode, unless the
-//                 company switched the assistant off. It runs inside the stack, so no DPA gate.
+//                 company switched the assistant off. The data-processing gate (purpose coach) applies like everywhere else.
 //                 No answer in time, or any error, and the coach above answers instead.
 //
 // Events:  scores {overall, parts, sameAs, threshold, delta,    the benchmark after this message
@@ -27,7 +27,8 @@ import { findTenant } from "@/features/tenant";
 import { seedFor } from "@/features/demo";
 import { getViewerFor } from "@/features/auth/session";
 import { assist } from "@/features/assist";
-import { assistGate } from "@/features/assist/gate";
+import { aiGate } from "@/features/ai/gate";
+import { aiSettings } from "@/features/ai/settings";
 import { stripTags } from "@/features/assist/check";
 import { companyBrief, hasKnowledge, rowsFromSeed, type Knowledge } from "@/features/knowledge";
 import { DEFAULT_PUBLISH_THRESHOLD, deltas } from "@/features/ideas/benchmarks";
@@ -38,12 +39,13 @@ import { MAX_TURN, MAX_TURNS, scoreDraft } from "@/features/ideas/drafts";
 import { suggestReplies } from "@/features/ideas/replies";
 import { hasDatabase } from "@/lib/db/client";
 import { loadAssistSettings } from "@/lib/db/assist";
+import { loadAiSettings } from "@/lib/db/ai";
 import { addTurns, getDraft, loadPublishThreshold } from "@/lib/db/ideas";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
 import { searchDocumentsFor } from "@/server/assist-search";
 import { serverIdeaContext } from "@/server/ideas";
 import { clientKey, throttle } from "@/server/throttle";
-import { providerConfig, providerFor } from "@/server/assist/provider";
+import { streamingFor } from "@/server/ai";
 import { DEFAULT_CEILING } from "@/features/assist/classify";
 import { policyFor } from "@/features/admin/stages";
 import { askBrainCoach, brainConfigured } from "@/server/brain";
@@ -112,13 +114,14 @@ export async function POST(request: Request, { params }: Ctx) {
 
   // A model only where the assistant is allowed to answer for this company, with its audit trail.
   const settings = viewer ? await loadAssistSettings(viewer.companyId) : null;
-  const cfg = providerConfig();
-  const gate = assistGate({ stage: tenant.stage ?? "demo", hasDatabase: viewer !== null, configured: cfg.id, enabled: settings?.enabled ?? false, dpaSignedAt: settings?.dpaSignedAt ?? null });
-  const useModel = viewer !== null && settings !== null && gate.on && gate.provider === "bedrock";
+  const stage = tenant.stage ?? "demo";
+  const ai = viewer ? await loadAiSettings(viewer.companyId, stage) : { settings: aiSettings(null, process.env, stage), key: null };
+  const gate = aiGate({ stage, hasDatabase: viewer !== null, settings: ai.settings, dpaSignedAt: settings?.dpaSignedAt ?? null, purpose: "coach", assistantOn: settings?.enabled ?? false, aiRouting: false });
+  const useModel = viewer !== null && settings !== null && settings.enabled && gate.on && gate.settings.choice !== "mock" && gate.settings.choice !== "off";
   // The brain grills while there is something to find; at the line the offline coach's "ready"
   // is always right. The company's switch in /admin/knowledge still turns it off.
   // Real people (a real stage) need a database and the switch on, like the assistant's gate.
-  const useBrain = brainConfigured() && now.overall < threshold &&
+  const useBrain = gate.on && brainConfigured() && now.overall < threshold &&
     (policyFor(tenant.stage ?? "demo").demoData || (viewer !== null && (settings?.enabled ?? false)));
 
   const encoder = new TextEncoder();
@@ -132,8 +135,8 @@ export async function POST(request: Request, { params }: Ctx) {
         let reply = coachMock(prev, askNow, threshold, body.text, 0); // the raise page shows no suggested answers, so the coach does not point to them
         let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
         const coached = useBrain
-          ? await askBrainCoach(tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },
-            { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING }, request.signal)
+          ? await askBrainCoach(gate, tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },
+            { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING }, request.signal, { key: ai.key })
           : null;
         if (coached) {
           reply = coachText(coached);
@@ -157,7 +160,7 @@ export async function POST(request: Request, { params }: Ctx) {
             ctx: { knowledge, profile, ceiling: settings.ceiling, searchDocuments: searchDocumentsFor(viewer, settings.ceiling) },
             prompt: { companyName: tenant.name, brief: companyBrief(knowledge, profile), rules: settings.rules, coach: brief },
             redaction: { people, patterns: settings.patterns },
-            provider: providerFor(cfg),
+            provider: streamingFor(ai.settings, ai.key),
             onChecked: (c) => send("text", { text: c.text }),
             signal: request.signal,
           });
