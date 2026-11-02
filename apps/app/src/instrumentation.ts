@@ -17,6 +17,9 @@ export async function register() {
   // The clock scheduler writes what fell due, once, under a per-company lease (a no-op without a database).
   const { startClock } = await import("@/server/scheduler/clock");
   startClock();
+  // The nightly retention run deletes what is past each company's rules, under a lease (a no-op without a database).
+  const { startRetention } = await import("@/server/scheduler/retention");
+  startRetention();
   // The directory sync, every 15 minutes for each company that switched it on (a no-op without a database or Entra app).
   const { startDirectorySync } = await import("@/server/directory/sync");
   startDirectorySync();
