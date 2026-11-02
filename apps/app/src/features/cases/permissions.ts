@@ -8,12 +8,13 @@ import { isProjectId, mayAppendProject } from "@/features/projects/permissions";
 import type { EventPayload } from "./events";
 import type { State } from "./reducer";
 import { onDesk } from "./selectors";
+import { createT, DEFAULT_LOCALE, type Locale, type MessageKey, type T } from "@/i18n";
 
 export type Actor = { role: Role; name: string; handle: string | null };
 export type Verdict = { ok: true } | { ok: false; error: string };
 
 const OK: Verdict = { ok: true };
-const no = (error: string): Verdict => ({ ok: false, error });
+const no = (t: T, key: MessageKey): Verdict => ({ ok: false, error: t(key) });
 
 /** Events on a case that only the person holding it (or a manager) may send. */
 const DESK_EVENTS = new Set(["case.read", "case.decided", "case.handed", "case.asked"]);
@@ -25,7 +26,9 @@ export function mayAppend(
   actor: Actor,
   ev: { type: string; target: string | null; payload: Readonly<Record<string, unknown>> },
   state: State,
+  locale: Locale = DEFAULT_LOCALE,
 ): Verdict {
+  const t = createT(locale);
   const isManager = actor.role === "manager";
   const kase = ev.target ? state.cases.find((c) => c.id === ev.target) : undefined;
   const idea = ev.target ? state.ideas.find((i) => i.id === ev.target) : undefined;
@@ -34,78 +37,78 @@ export function mayAppend(
   switch (true) {
     case ev.type === "case.raised":
       // A second case.raised on an existing id would rebuild that case and drop its history.
-      if (!ev.target) return no("A new case needs an id.");
-      return kase || idea ? no("That case already exists.") : OK;
+      if (!ev.target) return no(t, "cases.permNeedsId");
+      return kase || idea ? no(t, "cases.permCaseExists") : OK;
 
     case DESK_EVENTS.has(ev.type): {
-      if (!kase) return no("No such case.");
-      if (!(isManager || onDesk(kase, actor.name))) return no("Only the person this case sits with can do that.");
-      return ev.type === "case.decided" ? mayDecide(ev.payload as EventPayload, kase, state) : OK;
+      if (!kase) return no(t, "cases.permNoCase");
+      if (!(isManager || onDesk(kase, actor.name))) return no(t, "cases.permDeskOnly");
+      return ev.type === "case.decided" ? mayDecide(ev.payload as EventPayload, kase, state, t) : OK;
     }
 
     // The discussion stage (docs/plans/2026-10-15_idea-to-project.md).
     case ev.type === "case.discussion":
-      if (!kase) return no("No such case.");
-      if (!(isManager || onDesk(kase, actor.name))) return no("Only the person this case sits with can start a discussion.");
-      return kase.status === "open" ? OK : no("Only an open case can go into a discussion.");
+      if (!kase) return no(t, "cases.permNoCase");
+      if (!(isManager || onDesk(kase, actor.name))) return no(t, "cases.permDeskDiscussion");
+      return kase.status === "open" ? OK : no(t, "cases.permOpenForDiscussion");
 
     case ev.type === "case.invited":
     case ev.type === "case.checkin": {
-      if (!kase) return no("No such case.");
-      if (!(isManager || onDesk(kase, actor.name))) return no("Only the person this case sits with can do that.");
-      if (kase.status !== "discussion" || !kase.discussion || kase.discussion.ready) return no("This case is not in a discussion.");
-      if (ev.type === "case.invited") return Array.isArray(ev.payload.invited) && ev.payload.invited.length > 0 ? OK : no("Invite whom?");
+      if (!kase) return no(t, "cases.permNoCase");
+      if (!(isManager || onDesk(kase, actor.name))) return no(t, "cases.permDeskOnly");
+      if (kase.status !== "discussion" || !kase.discussion || kase.discussion.ready) return no(t, "cases.permNotInDiscussion");
+      if (ev.type === "case.invited") return Array.isArray(ev.payload.invited) && ev.payload.invited.length > 0 ? OK : no(t, "cases.permInviteWhom");
       // The last allowed round ends in a decision; going on needs a manager.
       const lastRound = kase.discussion.rounds.length + 1 >= state.rules.discussMaxRounds;
-      return ev.payload.next === "round" && lastRound && !isManager ? no("That was the last round - one more needs a manager.") : OK;
+      return ev.payload.next === "round" && lastRound && !isManager ? no(t, "cases.permLastRound") : OK;
     }
 
     case ev.type === "case.revised":
-      if (!kase) return no("No such case.");
-      if (!isMe(kase.from)) return no("Only the person who raised this idea can revise it.");
-      if (kase.decided) return no("This idea is decided - it can no longer change.");
-      return typeof ev.payload.body === "string" && ev.payload.body.trim() ? OK : no("A new version needs its text.");
+      if (!kase) return no(t, "cases.permNoCase");
+      if (!isMe(kase.from)) return no(t, "cases.permReviseOwner");
+      if (kase.decided) return no(t, "cases.permIdeaDecided");
+      return typeof ev.payload.body === "string" && ev.payload.body.trim() ? OK : no(t, "cases.permReviseText");
 
     case ev.type.startsWith("project."):
       return mayAppendProject(actor, { type: ev.type, target: ev.target, payload: ev.payload as EventPayload }, state);
 
     case ev.type === "case.answered":
-      if (!kase) return no("No such case.");
-      return isMe(kase.from) ? OK : no("Only the person who raised this case can answer its question.");
+      if (!kase) return no(t, "cases.permNoCase");
+      return isMe(kase.from) ? OK : no(t, "cases.permAnswerOwner");
 
     case ev.type === "case.override":
-      if (!kase) return no("No such case.");
-      return isManager ? OK : no("Only a manager can re-route a case.");
+      if (!kase) return no(t, "cases.permNoCase");
+      return isManager ? OK : no(t, "cases.permOverrideManager");
 
     case OPEN_CASE_EVENTS.has(ev.type):
-      return kase ? OK : no("No such case.");
+      return kase ? OK : no(t, "cases.permNoCase");
 
     case OPEN_IDEA_EVENTS.has(ev.type):
-      return idea ? OK : no("No such idea.");
+      return idea ? OK : no(t, "cases.permNoIdea");
 
     case ev.type === "idea.approved" || ev.type === "idea.funded":
-      if (!idea) return no("No such idea.");
-      return actor.role === "member" ? no("Only a team leader or a manager can approve an idea.") : OK;
+      if (!idea) return no(t, "cases.permNoIdea");
+      return actor.role === "member" ? no(t, "cases.permApproveRole") : OK;
 
     case ev.type === "day.advanced": {
-      if (!isManager) return no("Only a manager can move the demo clock - everyone shares it.");
+      if (!isManager) return no(t, "cases.permClockManager");
       const by = ev.payload.by ?? 1;
-      return typeof by === "number" && Number.isInteger(by) && by >= 1 && by <= 30 ? OK : no("The clock moves 1 to 30 days at a time.");
+      return typeof by === "number" && Number.isInteger(by) && by >= 1 && by <= 30 ? OK : no(t, "cases.permClockRange");
     }
 
     default:
-      return no("That event is not allowed here.");
+      return no(t, "cases.permNotAllowed");
   }
 }
 
 /** A yes that names a project opens it, or joins one that is still open - only as the case's first decision. */
-function mayDecide(pl: EventPayload, kase: State["cases"][number], state: State): Verdict {
+function mayDecide(pl: EventPayload, kase: State["cases"][number], state: State, t: T): Verdict {
   if (pl.projectId === undefined) return OK;
-  if (pl.answer !== "yes") return no("Only a yes opens a project.");
-  if (kase.decided) return no("This case is already decided.");
-  if (!isProjectId(pl.projectId)) return no("That project id is not usable.");
-  if (typeof pl.lead !== "string" || !pl.lead.trim() || pl.lead.length > 120) return no("Who leads the project?");
+  if (pl.answer !== "yes") return no(t, "cases.permYesOpensProject");
+  if (kase.decided) return no(t, "cases.permAlreadyDecided");
+  if (!isProjectId(pl.projectId)) return no(t, "cases.permProjectId");
+  if (typeof pl.lead !== "string" || !pl.lead.trim() || pl.lead.length > 120) return no(t, "cases.permProjectLead");
   const project = state.projects.find((p) => p.id === pl.projectId);
-  if (project && (project.status === "stopped" || project.status === "recognised")) return no("That project is closed.");
+  if (project && (project.status === "stopped" || project.status === "recognised")) return no(t, "cases.permProjectClosed");
   return OK;
 }
