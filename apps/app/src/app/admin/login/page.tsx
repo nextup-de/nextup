@@ -6,18 +6,21 @@ import { isAdmin } from "@/server/actions/admin";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 import { adminScope } from "@/features/admin/nav";
 import { isMicrosoftError, MICROSOFT_ERRORS } from "@/features/auth/entra";
+import { companyForFlags } from "@/lib/db/flags";
+import { demoFillAllowed } from "./demo-fill";
 import { companyPrefix } from "@/features/tenant/urls";
 import { microsoftAdminEnabled } from "@/server/microsoft-login";
 import styles from "../admin.module.css";
 
 /**
  * ADMIN_DEMO_FILL=true puts a "Demo code" button in the field so the code does not have to be
- * typed in front of a room. It sends ADMIN_ACCESS_CODE to the browser - only ever on a demo box,
- * never on a box whose admin area is worth protecting.
+ * typed in front of a room. It sends ADMIN_ACCESS_CODE to the browser - only when the stack's
+ * company is in stage demo, never on a box whose admin area is worth protecting (ITC D7).
  */
-function demoCode(): string | null {
-  if (process.env.ADMIN_DEMO_FILL !== "true") return null;
-  return process.env.ADMIN_ACCESS_CODE ?? null;
+async function demoCode(slug: string | undefined): Promise<string | null> {
+  if (process.env.ADMIN_DEMO_FILL !== "true" || !slug) return null;
+  const stage = await companyForFlags(slug).then((c) => c?.stage).catch(() => undefined);
+  return demoFillAllowed(stage) ? (process.env.ADMIN_ACCESS_CODE ?? null) : null;
 }
 
 export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -41,7 +44,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
         </>
       ) : null}
       {isMicrosoftError(error) ? <p className={styles.error} role="alert">{MICROSOFT_ERRORS[error]}</p> : null}
-      <AdminLoginForm demoCode={demoCode()} />
+      <AdminLoginForm demoCode={await demoCode(slug)} />
     </section>
   );
 }
