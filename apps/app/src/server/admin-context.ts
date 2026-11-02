@@ -18,14 +18,14 @@ import {
   listPilotRequests,
 } from "@/server/actions/admin";
 import { demoCompanies, demoPilotRequests } from "@/features/admin/demo";
-import { adminNav, adminScope, companyNav, lockedOut, type MailState } from "@/features/admin/nav";
+import { adminNav, adminScope, consoleNav, lockedOut, type MailState } from "@/features/admin/nav";
 import type { CompanyRow } from "@/features/admin/rows";
 import { isOverdue } from "@/features/admin/requests";
 import { countByState } from "@/features/integrations/tasks";
 import { databaseOutage, hasDatabase } from "@/lib/db/client";
 import { openTicketCount } from "@/lib/db/tickets";
 import { mailStatus } from "@/server/mail";
-import { jiraNavFacts } from "@/server/jira-admin";
+import { getT } from "@/i18n/server";
 
 export const adminContext = cache(async () => {
   const database = await databaseReport();
@@ -36,9 +36,8 @@ export const adminContext = cache(async () => {
     const companies = live ? await listCompanies() : await demoCompanies();
     // The stack's database holds this one company; the slug check is belt and braces.
     const company = companies.find((c) => c.slug === process.env.COMPANY_SLUG?.trim()) ?? (live ? null : companies[0] ?? null);
-    // The Integrations badge: a failing sync shows in the sidebar. A dead database must not break the layout.
-    const jira = live && company ? await jiraNavFacts(company.id).catch(() => null) : null;
-    const nav = companyNav({ people: company?.persons.length ?? 0, locked: company ? lockedOut(company).length : 0, jira });
+    const t = await getT();
+    const nav = consoleNav(t, { locked: company ? lockedOut(company).length : 0 });
     return { scope, live, outage: databaseOutage(), database, company, companies: company ? [company] : [], nav, ...PLATFORM_EMPTY };
   }
   // The relay is checked once, here, and handed to the notices report rather than asked twice.
