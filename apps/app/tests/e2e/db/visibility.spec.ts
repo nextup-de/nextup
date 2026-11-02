@@ -155,6 +155,7 @@ test.describe.serial("VIS acceptance: a member receives only visible cases and p
   });
 
   test.afterAll(async ({ browser }) => {
+    if (process.env.VIS_KEEP) return;
     await deleteCompany(browser);
   });
 
