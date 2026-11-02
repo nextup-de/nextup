@@ -5,6 +5,7 @@ import { workdayOf } from "@/features/clock/calendar";
 import { DEFAULT_CALENDAR, type CalendarSpec } from "@/features/clock";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
+import { projectCases } from "./projections/case-view";
 
 const SELECT = {
   id: true,
@@ -99,11 +100,19 @@ export async function appendEventRow(
         await tx.company.update({ where: { id: companyId }, data: { demoDay: { increment: by } } });
       }
     });
-    return { ok: true, duplicate: false };
   } catch (err) {
     if (isUniqueViolation(err)) return { ok: true, duplicate: true };
     return { ok: false, error: err instanceof Error ? err.message : "could not save" };
   }
+  // After the commit: a projection error is logged and never fails the append (VIS/D6).
+  if (event.targetId !== null) {
+    try {
+      await projectCases(companyId, [event.targetId], opts.now);
+    } catch (err) {
+      console.error("projectCases failed", err);
+    }
+  }
+  return { ok: true, duplicate: false };
 }
 
 function isUniqueViolation(err: unknown): boolean {
