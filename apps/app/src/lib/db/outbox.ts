@@ -48,10 +48,14 @@ export async function listOutbox(companyId: string, f: { status?: string; templa
   });
 }
 
+/** How long a claimed row stays out of reach; a delivery that dies mid-send finds the row due again after it. */
+const CLAIM_LEASE_MS = 5 * 60_000;
+
 /**
  * Take up to `limit` pending rows that are due. Each is moved to attempt + 1 with a guard on the attempt it
- * had when read, so of two concurrent callers only one wins a row. The rows come back as they were claimed
- * (attempt already counted).
+ * had when read, so of two concurrent callers only one wins a row, and its nextAt is pushed out by a lease so
+ * a later call does not take it again before the delivery has marked it. The rows come back as they were
+ * claimed (attempt already counted).
  */
 export async function claimDue(now: Date, limit: number): Promise<OutboxRow[]> {
   const db = getDb();
@@ -64,7 +68,7 @@ export async function claimDue(now: Date, limit: number): Promise<OutboxRow[]> {
   for (const row of due) {
     const r = await db.outboxMessage.updateMany({
       where: { id: row.id, status: "pending", attempt: row.attempt },
-      data: { attempt: row.attempt + 1 },
+      data: { attempt: row.attempt + 1, nextAt: new Date(now.getTime() + CLAIM_LEASE_MS) },
     });
     if (r.count === 1) won.push({ ...row, attempt: row.attempt + 1 });
   }

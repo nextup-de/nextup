@@ -52,7 +52,6 @@ describe("NTF outbox tables", () => {
     await db.outboxMessage.deleteMany({ where: { template: { not: "claim" } } });
     const [x, y] = await Promise.all([claimDue(now, 10), claimDue(now, 10)]);
     const ids = [...x, ...y].map((r) => r.id);
-    console.log("DBG", x.length, y.length, x.map((r) => r.key + r.attempt).join(), y.map((r) => r.key + r.attempt).join());
     expect(ids.length).toBe(6);
     expect(new Set(ids).size).toBe(6);
     expect([...x, ...y].every((r) => r.attempt === 1)).toBe(true);
