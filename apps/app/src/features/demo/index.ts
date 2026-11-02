@@ -4,9 +4,38 @@
 // Async now that it can come from Postgres. Both callers are already async server components.
 import { orDemo } from "@/lib/db/client";
 import { loadSeed } from "@/lib/db/companies";
-import { SEED } from "./seed";
-import type { Seed } from "./types";
+import { ROLES, SEED, VIEWS } from "./seed";
+import type { Ledger, Metrics, Movement, Persona, RolePersona, Seed } from "./types";
 
+const NEUTRAL_WHO: Persona = { name: "", ini: "", line: "", handle: null };
+
+/** The three home-screen personas with no person behind them: the labels only. */
+export const NEUTRAL_PERSONAS: RolePersona[] = ROLES.map((r) => ({ id: r.id, label: r.label, dept: "", who: { ...NEUTRAL_WHO } }));
+
+export const EMPTY_LEDGER: Ledger = {
+  firstAnswer: "—", firstAnswerWas: "—", withinPromise: "—", withinPromiseWas: "—",
+  escalated: 0, handedOver: 0, overrides: "—", overridesNote: "—",
+};
+
+const NO_MOVEMENT: Movement = { now: "—", was: "—", spark: [] };
+
+export const EMPTY_METRICS: Metrics = {
+  discovery: { round: 0, interviewed: 0, note: "—" },
+  signals: 0,
+  ideaToDecision: { ...NO_MOVEMENT },
+  valueBooked: { ...NO_MOVEMENT, delta: "—", sub: "—" },
+  waitingDaysSaved: { now: "—", spark: [] },
+  shippedWas: "—", shippedSpark: [],
+  noOwnerWas: "—", noOwnerSpark: [],
+  contributing: { ...NO_MOVEMENT },
+  stoppedEarly: 0,
+  nextCall: "—",
+  answered: { replied: "—", median: "—", credited: 0 },
+  you: { medianWait: "—" },
+  lead: { medianAnswer: "—", withinPromise: "—" },
+};
+
+/** A bare install: no acme content, no structure (D8). Built without spreading SEED. */
 export const EMPTY_SEED: Seed = {
   ...SEED, goals: [], spend: null, depts: [], people: [], problems: [], ideas: [], initiatives: [], outcomes: [], cases: [], waitingOn: [], stall: [],
 };

@@ -28,6 +28,8 @@ model User {
   // email then). After that the account is matched by this, which Microsoft never reassigns.
   entraOid String?
 
+  locale String? // de | en (src/i18n). Null: the company's defaultLocale, then English.
+
   createdAt DateTime @default(now())
 
   company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)

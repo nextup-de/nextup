@@ -1,9 +1,11 @@
+"use client";
 // What every page shows before its content: grey boxes in the shape of the view. Used twice -
 // by Next's loading.tsx while the route streams in, and by each view while it waits for `ready`
 // (the browser's persisted state), so a page never sits empty or half-rendered.
 //
 // No data, no context: this has to render outside DemoProvider (src/app/[company]/loading.tsx).
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useT } from "@/i18n/client";
 import styles from "./PageSkeleton.module.css";
 
 export type SkeletonKind = "list" | "overview" | "inbox" | "raise" | "dashboard" | "detail" | "settings";
@@ -37,6 +39,7 @@ export function skeletonKindForPathname(pathname: string): SkeletonKind {
 // The views pass it (they wait for hydration); loading.tsx does not - on navigation the old page
 // is already gone, so a delayed skeleton would only mean a blank. CSS-only, so it runs pre-hydration.
 export function PageSkeleton({ kind = "list", delay = false }: { kind?: SkeletonKind; delay?: boolean }) {
+  const t = useT();
   const body =
     kind === "overview" ? <Overview /> :
     kind === "inbox" ? <Inbox /> :
@@ -47,7 +50,7 @@ export function PageSkeleton({ kind = "list", delay = false }: { kind?: Skeleton
     <List />;
   return (
     <div className={kind === "raise" ? styles.raise : styles.page} data-delay={delay || undefined} role="status" aria-busy="true" aria-live="polite">
-      <span className={styles.sr}>Loading…</span>
+      <span className={styles.sr}>{t("common.loading")}</span>
       {body}
     </div>
   );

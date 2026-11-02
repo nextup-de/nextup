@@ -1,6 +1,7 @@
 // Two-column auth layout: dark side panel (brand + a message) and the centered card.
 import Image from "next/image";
 import Link from "next/link";
+import { getT } from "@/i18n/server";
 import { SITE } from "@/config/site";
 import { Ground } from "@/components/shell/Ground";
 import { LoginPageTransition } from "./LoginPageTransition";
@@ -10,12 +11,13 @@ import styles from "./AuthShell.module.css";
 // may be another site (sellux.ch/login from a company stack), null for no Back link.
 type Props = { side: React.ReactNode; children: React.ReactNode; art?: "hand"; step?: "find" | "company"; backHref?: string | null };
 
-export function AuthShell({ side, children, art, step = "find", backHref = "/" }: Props) {
+export async function AuthShell({ side, children, art, step = "find", backHref = "/" }: Props) {
+  const t = await getT();
   if (art === "hand") {
     return (
       <LoginPageTransition key={step} step={step}>
         <Ground />
-        <Link className={styles.artLogo} href="/" aria-label={`${SITE.name} home`}>
+        <Link className={styles.artLogo} href="/" aria-label={t("auth.homeLabel", { name: SITE.name })}>
           <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} priority />
         </Link>
         <section className={styles.authPanel}>
@@ -32,8 +34,8 @@ export function AuthShell({ side, children, art, step = "find", backHref = "/" }
           </aside>
           <main className={styles.artMain}>
             {backHref && (/^https?:\/\//.test(backHref)
-              ? <a className={styles.artBack} href={backHref}>← Back</a>
-              : <Link className={styles.artBack} href={backHref}>← Back</Link>)}
+              ? <a className={styles.artBack} href={backHref}>{t("auth.back")}</a>
+              : <Link className={styles.artBack} href={backHref}>{t("auth.back")}</Link>)}
             <div className={`${styles.card} ${styles.artCard}`}>{children}</div>
           </main>
         </section>
@@ -45,11 +47,11 @@ export function AuthShell({ side, children, art, step = "find", backHref = "/" }
     <div className={styles.shell}>
       <Ground />
       <aside className={styles.side}>
-        <Link className={styles.logo} href="/" aria-label={`${SITE.name} home`}>
+        <Link className={styles.logo} href="/" aria-label={t("auth.homeLabel", { name: SITE.name })}>
           <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} />
         </Link>
         <div className={styles.sideBody}>{side}</div>
-        <p className={`${styles.sideFoot} nh-mono`}>Berlin · 2026</p>
+        <p className={`${styles.sideFoot} nh-mono`}>{t("auth.sideFoot")}</p>
       </aside>
       <main className={styles.main}>
         <div className={styles.card}>{children}</div>

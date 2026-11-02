@@ -5,6 +5,10 @@
 // came from.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDb } from "@/lib/db/client";
+import { replaceKnowledge } from "@/lib/db/knowledge";
+import { saveCompanyRules } from "@/lib/db/rules";
+import { rowsFromSeed } from "@/features/knowledge";
+import { DEMO_GOALS, DEMO_RULES } from "@/features/demo/structure";
 import { findCompanyByEmailDomain, findCompanyBySlug, loadSeed } from "@/lib/db/companies";
 import { seedTemplate } from "@/features/demo";
 import { toSeedJson } from "@/features/demo/parse";
@@ -26,6 +30,8 @@ beforeAll(async () => {
       seedJson: toSeedJson(seedTemplate("demo")) as object,
     },
   });
+  await replaceKnowledge(acme.id, rowsFromSeed(SEED, DEMO_GOALS, () => crypto.randomUUID()));
+  await saveCompanyRules(acme.id, DEMO_RULES);
   await db.user.create({
     data: {
       companyId: acme.id,
