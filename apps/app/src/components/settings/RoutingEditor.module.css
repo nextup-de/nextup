@@ -1,0 +1,5 @@
+.wrap { display: grid; gap: 12px; max-width: 1100px; }
+.row { padding: 14px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 14px); }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: end; }
+.key { font-family: var(--nh-mono); }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
