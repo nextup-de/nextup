@@ -25,6 +25,11 @@ export const adminAccess = defineMessages({
     stackAdminNoTotp: "no authenticator yet",
     stackAdminSaved: "Saved.",
     stackAdminTitle: "Stack admins",
+    totpReset: "Reset second factor…",
+    totpResetAsk: "Reset the second factor of {name}? They enrol again at their next code login.",
+    totpResetConfirm: "Yes, reset",
+    totpResetCancel: "Cancel",
+    totpResetDone: "Second factor reset.",
   },
   de: {
     totpLabel: "Authenticator-Code",
@@ -49,5 +54,10 @@ export const adminAccess = defineMessages({
     stackAdminNoTotp: "noch kein Authenticator",
     stackAdminSaved: "Gespeichert.",
     stackAdminTitle: "Stack-Admins",
+    totpReset: "Zweiten Faktor zurücksetzen…",
+    totpResetAsk: "Zweiten Faktor von {name} zurücksetzen? Die Person richtet ihn beim nächsten Code-Login neu ein.",
+    totpResetConfirm: "Ja, zurücksetzen",
+    totpResetCancel: "Abbrechen",
+    totpResetDone: "Zweiter Faktor zurückgesetzt.",
   },
 });
