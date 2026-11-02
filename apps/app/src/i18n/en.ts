@@ -27,6 +27,18 @@ import { adminConsole } from "./messages/adminConsole";
 import { adminConnectors } from "./messages/adminConnectors";
 import { adminPrivacy } from "./messages/adminPrivacy";
 import { adminSupport } from "./messages/adminSupport";
+import { settingsPrivacy } from "./messages/settingsPrivacy";
+import { settingsAudit } from "./messages/settingsAudit";
+import { privacyExport } from "./messages/privacyExport";
+import { privacyPerson } from "./messages/privacyPerson";
+import { loopCase } from "./messages/loopCase";
+import { decisions } from "./messages/decisions";
+import { metrics } from "./messages/metrics";
+import { kpis } from "./messages/kpis";
+import { people } from "./messages/people";
+import { feed } from "./messages/feed";
+import { overview } from "./messages/overview";
+import { progress } from "./messages/progress";
 
 export const en = {
   common: common.en,
@@ -57,4 +69,16 @@ export const en = {
   adminConnectors: adminConnectors.en,
   adminPrivacy: adminPrivacy.en,
   adminSupport: adminSupport.en,
+  settingsPrivacy: settingsPrivacy.en,
+  settingsAudit: settingsAudit.en,
+  privacyExport: privacyExport.en,
+  privacyPerson: privacyPerson.en,
+  loopCase: loopCase.en,
+  decisions: decisions.en,
+  metrics: metrics.en,
+  kpis: kpis.en,
+  people: people.en,
+  feed: feed.en,
+  overview: overview.en,
+  progress: progress.en,
 } as const;
