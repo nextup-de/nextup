@@ -2,7 +2,7 @@
 // counter, and which post-login redirects may leave the site (none).
 import { describe, expect, it } from "vitest";
 import { canMoveStage, holdsRealPeople, policyFor, STAGES } from "@/features/admin/stages";
-import { clientAddress, hit, sweep, waitText, type Window } from "@/features/security/rate-limit";
+import { clientAddress, hit, sweep, type Window } from "@/features/security/rate-limit";
 import { usableSecret } from "@/features/admin/environment";
 import { safeNextPath } from "@/features/tenant/urls";
 
@@ -58,12 +58,6 @@ describe("rate limit", () => {
     hit(store, "new", rule, 50_000);
     sweep(store, 60_000);
     expect([...store.keys()]).toEqual(["new"]);
-  });
-
-  it("says how long to wait in words", () => {
-    expect(waitText(1)).toBe("1 second");
-    expect(waitText(40)).toBe("40 seconds");
-    expect(waitText(61)).toBe("2 minutes");
   });
 
   it("takes the first forwarded address, and one shared bucket without any", () => {

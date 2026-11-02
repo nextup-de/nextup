@@ -33,7 +33,7 @@ async function file(reporter: Reporter, raw: unknown): Promise<ReportResult> {
     screenshot = shot;
   }
 
-  const wait = throttle("ticketReport", `${reporter.companyId}|${reporter.userId ?? "admin"}`);
+  const wait = await throttle("ticketReport", `${reporter.companyId}|${reporter.userId ?? "admin"}`);
   if (wait) return { ok: false, error: wait };
 
   const context: Prisma.InputJsonValue = {

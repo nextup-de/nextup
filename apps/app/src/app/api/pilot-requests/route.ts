@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   // Behind the token the site is trusted to name the visitor; without the header every request
   // would count against the site's own address.
   const visitor = request.headers.get("x-visitor-address")?.trim() || (await clientKey());
-  const wait = throttle("pilotRequest", visitor);
+  const wait = await throttle("pilotRequest", visitor);
   if (wait) return json({ error: wait }, 429);
 
   try {
