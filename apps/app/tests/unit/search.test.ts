@@ -29,7 +29,8 @@ describe("navbar search ranking", () => {
   });
 });
 
-import { SEED } from "@/features/demo/seed";
+import { meFor } from "@/features/auth/identity";
+import { LOCAL_SEED as SEED } from "@/features/demo";
 import { reduce } from "@/features/cases/reducer";
 import { demoData } from "@/features/metrics";
 import { navbarIndex } from "@/features/search/navbar";
@@ -40,7 +41,7 @@ describe("navbar index access and destinations", () => {
   const S = reduce(SEED, { day: 0, events: [] });
   const role = SEED.personas.find((p) => p.id === "member")!;
   const persona = { role, who: role.who };
-  const ctx = { seed: SEED, S, D: demoData(SEED, S, true), persona, role: "member", f: () => "today", href: (path: string) => "/acme" + path, tenant: { hiddenPeople: ["T. Vogel"] } } as unknown as DemoContext;
+  const ctx = { seed: SEED, S, D: demoData(SEED, S, true), persona, me: meFor(role.who.userId ?? null, SEED.seats), role: "member", f: () => "today", href: (path: string) => "/acme" + path, tenant: { hiddenPeople: ["T. Vogel"] } } as unknown as DemoContext;
   it("indexes only cases this viewer can open", () => {
     const actual = navbarIndex(ctx).filter((r) => r.go?.view === "dashboard").map((r) => r.go!.id).sort();
     expect(actual).toEqual(ctx.D.cases.filter((c) => canOpen(ctx, c)).map((c) => c.id).sort());

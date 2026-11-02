@@ -25,7 +25,7 @@ const AWAITING = STATUSES[0];
 
 export function IdeasView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
-  const { seed, S, demo, role, persona, act, openSheet, showToast, q, setQ, href, ready, f } = ctx;
+  const { seed, S, demo, role, me, act, openSheet, showToast, q, setQ, href, ready, f } = ctx;
   const t = useT();
   const locale = useLocale();
   const [iid, setIid] = useState<string | null>(initialId ?? null);
@@ -53,7 +53,7 @@ export function IdeasView({ initialId }: { initialId?: string }) {
   const clearAll = () => { setQ(""); setStatus("All"); };
 
   const decidable = si?.status === AWAITING, fundable = si?.status === "Unfunded";
-  const cosigned = !!si && si.cosigners.some((x) => x.name === persona.who.handle);
+  const cosigned = !!si && me.userId !== null && si.cosigners.some((x) => x.userId === me.userId);
   const primaryLabel = t(isEmployee ? (cosigned ? "dashboard.ideasCosigned" : "dashboard.ideasCosign") : decidable ? "dashboard.ideasApproveAssign" : fundable ? "dashboard.ideasFundTrial" : "dashboard.ideasOpenTrial");
   const onPrimary = () => {
     if (!si) return;

@@ -11,7 +11,8 @@ import { Btn } from "@/components/dashboard/shared/primitives";
 import { checkinDraft, inviteSuggestions, roundState, versionText, type InviteSuggestion } from "@/features/cases/discussion";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith } from "@/features/cases/rows";
-import { commentsOn } from "@/features/cases/selectors";
+import { affectedOn, commentsOn } from "@/features/cases/selectors";
+import type { SeatRow } from "@/features/auth/identity";
 import { closest } from "@/features/evaluate";
 import { SCORE_LABELS } from "@/features/ideas/brief";
 import { benchmark } from "@/features/ideas/benchmarks";
@@ -57,19 +58,28 @@ function Frame({ label, title, sub, children, actions }: { label: string; title:
 // ── people ──
 
 // Suggested people as toggles (with why each is suggested), then anyone else from the directory.
-function PeoplePicker({ suggested, picked, onToggle, skip }: { suggested: InviteSuggestion[]; picked: string[]; onToggle: (name: string) => void; skip: readonly string[] }) {
+// People are user ids; the names are only what the rows show. Only a seat with a user can be asked.
+function PeoplePicker({ suggested, picked, onToggle, skip }: { suggested: InviteSuggestion[]; picked: string[]; onToggle: (userId: string) => void; skip: readonly (string | null)[] }) {
   const { seed } = useDemo();
   const t = useT();
   const [q, setQ] = useState("");
-  const shown = new Set([...suggested.map((s) => s.name), ...skip]);
-  const extra = picked.filter((n) => !shown.has(n));
+  const shown = new Set<string | null>([...suggested.map((s) => s.userId), ...skip]);
+  const seats = [...seed.seats].sort((a, b) => a.sort - b.sort);
+  const labelOf = (userId: string) => seats.find((s) => s.userId === userId)?.label ?? "";
+  const extra = picked.filter((id) => !shown.has(id));
   const term = q.trim().toLowerCase();
-  const found = term ? seed.people.filter((p) => !shown.has(p.name) && !picked.includes(p.name) && (p.name.toLowerCase().includes(term) || p.role.toLowerCase().includes(term))).slice(0, 6) : [];
-  const roleOf = (n: string) => seed.people.find((p) => p.name === n)?.role ?? "";
-  const person = (name: string, note: string) => {
-    const on = picked.includes(name);
+  const roleOf = (n: string) => seed.people.find((p) => p.name === n)?.role ?? ""; // shown next to the name
+  const seen = new Set<string>();
+  const found = term ? seats.filter((s) => {
+    if (!s.userId || shown.has(s.userId) || picked.includes(s.userId) || seen.has(s.userId)) return false;
+    if (!(s.label.toLowerCase().includes(term) || roleOf(s.label).toLowerCase().includes(term))) return false;
+    seen.add(s.userId);
+    return true;
+  }).slice(0, 6) : [];
+  const person = (userId: string, name: string, note: string) => {
+    const on = picked.includes(userId);
     return (
-      <button key={name} type="button" className={styles.person} data-on={on ? "true" : undefined} aria-pressed={on} onClick={() => onToggle(name)}>
+      <button key={userId} type="button" className={styles.person} data-on={on ? "true" : undefined} aria-pressed={on} onClick={() => onToggle(userId)}>
         <span className={styles.ini} aria-hidden="true">{ini(name)}</span>
         <span className={styles.who}><span className={styles.name}>{name}</span><span className={styles.note}>{note}</span></span>
       </button>
@@ -79,17 +89,17 @@ function PeoplePicker({ suggested, picked, onToggle, skip }: { suggested: Invite
     <>
       {suggested.length > 0 && <div className={base.textLabel}>{t("shell.loopSuggested")}</div>}
       <div className={styles.people}>
-        {suggested.map((s) => person(s.name, s.note))}
-        {extra.map((n) => person(n, roleOf(n) || t("shell.loopAddedByYou")))}
+        {suggested.map((s) => person(s.userId, s.label, s.note))}
+        {extra.map((id) => person(id, labelOf(id), roleOf(labelOf(id)) || t("shell.loopAddedByYou")))}
       </div>
       <div className={base.textLabel}>{t("shell.loopAddAnyone")}</div>
       <input className={`nh-input ${styles.search}`} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("shell.loopSearchPlaceholder")} aria-label={t("shell.loopSearchPeople")} />
       {found.length > 0 && (
         <div className={styles.found}>
           {found.map((p) => (
-            <button key={p.name} type="button" className={styles.foundRow} onClick={() => { onToggle(p.name); setQ(""); }}>
-              <span className={styles.ini} aria-hidden="true">{ini(p.name)}</span>
-              <span className={styles.who}><span className={styles.name}>{p.name}</span><span className={styles.note}>{p.role}</span></span>
+            <button key={p.userId} type="button" className={styles.foundRow} onClick={() => { onToggle(p.userId as string); setQ(""); }}>
+              <span className={styles.ini} aria-hidden="true">{ini(p.label)}</span>
+              <span className={styles.who}><span className={styles.name}>{p.label}</span><span className={styles.note}>{roleOf(p.label)}</span></span>
             </button>
           ))}
         </div>
@@ -101,20 +111,26 @@ function PeoplePicker({ suggested, picked, onToggle, skip }: { suggested: Invite
 
 const toggle = (list: string[], n: string) => (list.includes(n) ? list.filter((x) => x !== n) : list.concat([n]));
 
+// The labels of user ids, for the event and the toast (shown only).
+const labelsOf = (seats: readonly SeatRow[], ids: readonly string[]) => ids.map((id) => seats.find((s) => s.userId === id)?.label ?? id);
+
+// Who said it affects them: label and user id from the log.
+const affectedPeople = (ctx: ReturnType<typeof useDemo>, c: ReducedCase) => affectedOn(ctx.log, c.id).map((a) => ({ userId: a.userId, name: a.name }));
+
 // Whom the sheet suggests for a case: the route, the people behind it, the department head, close ideas.
 function useSuggestions(c: ReducedCase): InviteSuggestion[] {
   const ctx = useDemo();
-  const { S, seed, persona } = ctx;
-  const others = S.cases.filter((k) => k.id !== c.id && k.from !== c.from && canOpen(ctx, k));
-  const close: { from: string; title: string }[] = [];
+  const { S, seed, me } = ctx;
+  const others = S.cases.filter((k) => k.id !== c.id && k.fromUserId !== c.fromUserId && canOpen(ctx, k));
+  const close: { fromUserId: string | null; title: string }[] = [];
   let pool = others;
   for (let i = 0; i < 2; i++) { // the two closest by shared words
     const k = closest(c.title + " " + c.body, pool, (x) => x.title + " " + x.body);
     if (!k) break;
-    close.push({ from: k.from, title: k.title });
+    close.push({ fromUserId: k.fromUserId, title: k.title });
     pool = pool.filter((x) => x.id !== k.id);
   }
-  return inviteSuggestions(c, { people: seed.people, affected: standingOn(ctx, c), close, me: persona.who.name });
+  return inviteSuggestions(c, { seats: seed.seats, people: seed.people, affected: affectedPeople(ctx, c), close, me });
 }
 
 // ── Discuss first ──
@@ -135,7 +151,7 @@ function DiscussSheet({ c }: { c: ReducedCase }) {
   const R = S.rules, ok = missing.trim().length >= 4 && picked.length > 0;
   const confirm = () => {
     if (!ok) return;
-    act.discuss(c.id, picked, missing.trim());
+    act.discuss(c.id, labelsOf(ctx.seed.seats, picked), missing.trim(), picked);
     closeSheet();
     showToast(t("shell.discussDone", { count: picked.length, date: f(S.day + R.discussEveryDays) }));
   };
@@ -145,7 +161,7 @@ function DiscussSheet({ c }: { c: ReducedCase }) {
       actions={<><Btn kind={ok ? "primary" : "disabled"} onClick={confirm}>{!missing.trim() ? t("shell.discussSayMissing") : !picked.length ? t("shell.discussInviteSomeone") : t("shell.discussStart", { count: picked.length })}</Btn><Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn></>}>
       <div className={base.textLabel}>{t("shell.discussMissing")}</div>
       <textarea className={base.textarea} value={missing} onChange={(e) => setMissing(e.target.value)} rows={2} placeholder={t("shell.discussMissingPlaceholder")} aria-label={t("shell.discussMissing")} />
-      <PeoplePicker suggested={suggested} picked={picked} onToggle={(n) => setPicked((p) => toggle(p, n))} skip={[c.from, ctx.persona.who.name]} />
+      <PeoplePicker suggested={suggested} picked={picked} onToggle={(n) => setPicked((p) => toggle(p, n))} skip={[c.fromUserId, ctx.me.userId]} />
     </Frame>
   );
 }
@@ -157,19 +173,20 @@ function InviteSheet({ c }: { c: ReducedCase }) {
   const { act, closeSheet, showToast } = ctx;
   const t = useT();
   const already = c.discussion?.invited ?? [];
-  const suggested = useSuggestions(c).filter((s) => !already.includes(s.name));
+  const alreadyIds = c.discussion?.invitedUserIds ?? [];
+  const suggested = useSuggestions(c).filter((s) => !alreadyIds.includes(s.userId));
   const [picked, setPicked] = useState<string[]>([]);
   const ok = picked.length > 0;
   const confirm = () => {
     if (!ok) return;
-    act.invite(c.id, picked);
+    act.invite(c.id, labelsOf(ctx.seed.seats, picked), picked);
     closeSheet();
-    showToast(t("shell.inviteDone", { names: picked.join(", "), count: picked.length }));
+    showToast(t("shell.inviteDone", { names: labelsOf(ctx.seed.seats, picked).join(", "), count: picked.length }));
   };
   return (
     <Frame label={t("shell.inviteLabel")} title={c.title} sub={already.length ? t("shell.inviteIn", { names: already.join(", "), from: c.from }) : t("shell.inviteNobody")}
       actions={<><Btn kind={ok ? "primary" : "disabled"} onClick={confirm}>{ok ? t("shell.inviteButton", { count: picked.length }) : t("shell.invitePick")}</Btn><Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn></>}>
-      <PeoplePicker suggested={suggested} picked={picked} onToggle={(n) => setPicked((p) => toggle(p, n))} skip={[c.from, ctx.persona.who.name, ...already]} />
+      <PeoplePicker suggested={suggested} picked={picked} onToggle={(n) => setPicked((p) => toggle(p, n))} skip={[c.fromUserId, ctx.me.userId, ...alreadyIds]} />
     </Frame>
   );
 }

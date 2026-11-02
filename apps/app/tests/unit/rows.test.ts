@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import { appendEvent, emptyLog } from "@/features/cases/events";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { dashboardRow, overviewSteps } from "@/features/cases/rows";
-import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
+import { meFor } from "@/features/auth/identity";
+import { LOCAL_SEED } from "@/features/demo";
+import { PROMISE_DAYS } from "@/features/demo/seed";
 
-const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
-const viewer = { name: "J. Schmidt", handle: "Anonymous #4471" };
+const SEED: ReduceSeed = LOCAL_SEED;
+const userOf = (label: string) => LOCAL_SEED.seats.find((s) => s.label === label)?.userId ?? null;
+const viewer = meFor(LOCAL_SEED.personas.find((r) => r.id === "member")!.who.userId ?? null, LOCAL_SEED.seats);
 const rowFor = (id: string, log = emptyLog()) => dashboardRow(reduce(SEED, log).cases.find((c) => c.id === id)!, PROMISE_DAYS, viewer);
 
 describe("dashboardRow", () => {
@@ -26,7 +29,7 @@ describe("dashboardRow", () => {
     expect(r.chain).toEqual(["T. Vogel", "H. Sander"]);
     expect(r.stage).toBe("Read");
   });
-  it("mine: matches the viewer by handle; shipped rows are closed and scored without the wait", () => {
+  it("mine: matches the viewer by user id; shipped rows are closed and scored without the wait", () => {
     const r = rowFor("c7");
     expect(r.mine).toBe(true);
     expect(r.kind).toBe("idea");
@@ -38,7 +41,7 @@ describe("dashboardRow", () => {
 
 describe("Overview step and status", () => {
   const ask = (log = emptyLog()) => appendEvent(log, { type: "case.asked", actor: "T. Vogel", target: "c3", payload: { text: "Which six numbers?" } });
-  const other = { name: "T. Vogel", handle: null };
+  const other = meFor(userOf("T. Vogel"), LOCAL_SEED.seats);
   it("a fresh case sits on the lead's desk, waiting", () => {
     const r = rowFor("c3");
     expect(r.step).toBe(2);

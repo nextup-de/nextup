@@ -8,25 +8,29 @@ import {
 } from "@/features/cases/discussion";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { lifeSteps, measuredLabel, mineRow } from "@/features/cases/rows";
-import { CASES, IDEAS, PEOPLE, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
+import { meFor } from "@/features/auth/identity";
+import { LOCAL_SEED } from "@/features/demo";
+import { PEOPLE, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
 import { DEMO_GOALS, DEMO_RULES } from "@/features/demo/structure";
 import { briefForCase } from "@/features/ideas/brief";
 import { ideaContext } from "@/features/ideas/drafts";
 import type { Dial } from "@/features/ideas/raise";
 import { projectOfCase } from "@/features/projects/selectors";
 
-const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
+const SEED: ReduceSeed = { ...LOCAL_SEED, projects: [] };
+const AUTHOR = "Anonymous #4471";
+// Ids of the people the events name (the seats' users, and the member persona under their handle).
+const uid = (label: string): string | null => LOCAL_SEED.seats.find((s) => s.label === label)?.userId ?? (label === AUTHOR ? LOCAL_SEED.personas.find((r) => r.id === "member")!.who.userId ?? null : null);
 const RULES = { discussMaxRounds: 3 };
 
 let n = 0;
 const ev = (type: CaseEventType, actor: string, target: string | null, payload: EventPayload = {}, day = 0): CaseEvent =>
-  ({ id: "u" + n++, ts: 0, type, actor, target, payload, day });
+  ({ id: "u" + n++, ts: 0, type, actor, actorUserId: uid(actor), target, payload, day });
 const logAt = (day: number, ...events: CaseEvent[]): EventLog => ({ events, day });
 
-const AUTHOR = "Anonymous #4471";
 const BODY = "Every changeover on line 3 loses about 20 minutes.\n\n*Cost* About €3,000 for a cart\n*First step* A one-week trial";
 const raised = ev("case.raised", AUTHOR, "c_t", { kind: "idea", title: "A changeover cart", body: BODY, routeId: "r7", assignee: "T. Vogel", fromDept: "Production, Line 3", upside: "≈ 2 h a day" });
-const discuss = (day = 0) => ev("case.discussion", "T. Vogel", "c_t", { invited: ["H. Sander"], missing: "A quote" }, day);
+const discuss = (day = 0) => ev("case.discussion", "T. Vogel", "c_t", { invited: ["H. Sander"], invitedUserIds: [uid("H. Sander") as string], missing: "A quote" }, day);
 const kase = (log: EventLog) => reduce(SEED, log).cases.find((c) => c.id === "c_t")!;
 const f = (d: number) => "d" + d;
 
@@ -78,15 +82,21 @@ describe("withDiscussion: the decision card", () => {
 describe("whom to invite", () => {
   it("route buddy and deputy, the affected, the department head, close ideas - each once, never me or the raiser", () => {
     const c = kase(logAt(0, raised)); // r7: owner T. Vogel, deputy M. Roth, buddy "M. Roth · Engineering"
-    const s = inviteSuggestions(c, { people: PEOPLE, affected: ["H. Sander", "Nobody Known"], close: [{ from: "J. Klein", title: "Gauge drift" }, { from: AUTHOR, title: "Mine" }], me: "T. Vogel" });
-    expect(s.map((x) => [x.name, x.why])).toEqual([
+    const s = inviteSuggestions(c, {
+      seats: LOCAL_SEED.seats, people: PEOPLE,
+      affected: [{ userId: uid("H. Sander"), name: "H. Sander" }, { userId: null, name: "Nobody Known" }],
+      close: [{ fromUserId: uid("J. Klein"), title: "Gauge drift" }, { fromUserId: uid(AUTHOR), title: "Mine" }],
+      me: meFor(uid("T. Vogel"), LOCAL_SEED.seats),
+    });
+    expect(s.map((x) => [x.label, x.why])).toEqual([
       ["M. Roth", "buddy"], ["H. Sander", "affected"], ["B. Hartmann", "head"], ["J. Klein", "close"],
     ]);
   });
   it("the head of a department is the one in it who reports to nobody in it", () => {
-    expect(headOf({ from: "S. Dahl", fromDept: "x" }, PEOPLE)?.name).toBe("B. Hartmann");
-    expect(headOf({ from: "Anonymous #1", fromDept: "Production, Line 2" }, PEOPLE)?.name).toBe("B. Hartmann");
-    expect(headOf({ from: "Anonymous #1", fromDept: "Nowhere" }, PEOPLE)).toBeNull();
+    const seats = LOCAL_SEED.seats;
+    expect(headOf({ from: "S. Dahl", fromUserId: uid("S. Dahl"), fromDept: "x" }, PEOPLE, seats)?.name).toBe("B. Hartmann");
+    expect(headOf({ from: "Anonymous #1", fromUserId: null, fromDept: "Production, Line 2" }, PEOPLE, seats)?.name).toBe("B. Hartmann");
+    expect(headOf({ from: "Anonymous #1", fromUserId: null, fromDept: "Nowhere" }, PEOPLE, seats)).toBeNull();
   });
 });
 
@@ -101,9 +111,10 @@ describe("rounds and check-ins", () => {
     expect(roundState(kase(logAt(0, raised)), RULES, 0)).toBeNull();
   });
   it("invited people are asked for their view while it runs", () => {
-    expect(invitedTo(kase(logAt(0, raised, discuss())), "H. Sander")).toBe(true);
-    expect(invitedTo(kase(logAt(0, raised, discuss())), "M. Roth")).toBe(false);
-    expect(invitedTo(kase(logAt(1, raised, discuss(), ev("case.decided", "T. Vogel", "c_t", { answer: "no" }, 1))), "H. Sander")).toBe(false);
+    const me = (label: string) => meFor(uid(label), LOCAL_SEED.seats);
+    expect(invitedTo(kase(logAt(0, raised, discuss())), me("H. Sander"))).toBe(true);
+    expect(invitedTo(kase(logAt(0, raised, discuss())), me("M. Roth"))).toBe(false);
+    expect(invitedTo(kase(logAt(1, raised, discuss(), ev("case.decided", "T. Vogel", "c_t", { answer: "no" }, 1))), me("H. Sander"))).toBe(false);
   });
   it("the draft lists new versions and comments since the last check-in, and the weak dials as open", () => {
     const c = kase(logAt(4, raised, discuss(), ev("case.checkin", "T. Vogel", "c_t", { next: "round", open: [], note: "" }, 3)));
@@ -169,8 +180,8 @@ describe("the author's line through the whole life", () => {
     expect(steps[5]).toEqual({ label: "In progress", when: "1 of 2 steps", tone: "now" });
     const row = mineRow(c, 2, f, PROMISE_DAYS, 14, { rules: RULES, project });
     expect(row.status).toBe("In progress");
-    expect(row.project).toEqual({ id: "p_one", label: "P-1", title: "Cart" });
-    expect(row.clock).toContain("P-1 Cart · in progress: 1 of 2 steps done.");
+    expect(row.project).toEqual({ id: "p_one", label: expect.stringMatching(/^P-\d+$/), title: "Cart" });
+    expect(row.clock).toContain("" + row.project?.label + " Cart · in progress: 1 of 2 steps done.");
   });
   it("a no ends the line at Declined", () => {
     const c = kase(logAt(1, raised, ev("case.decided", "T. Vogel", "c_t", { answer: "no", reason: "not now" }, 1)));

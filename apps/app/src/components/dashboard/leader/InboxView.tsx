@@ -10,6 +10,7 @@
 // beside it. ↑/↓ walk the list, Close / Escape puts the page back. Ideas and cases open in the same
 // view (IdeaDetail, IdeaDetailPhone on a phone): an idea with its written brief and five decisions,
 // a case with a brief built from its own facts and the four case actions.
+import { holdsRole } from "@/features/auth/identity";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { askedForView, deskCases, inboxIdeas, inboxSorted, openCases, problemOf } from "@/components/dashboard/derive";
@@ -47,7 +48,8 @@ const onPhoneChange = (fn: () => void) => { const m = window.matchMedia(PHONE); 
 export function InboxView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
   const t = useT();
-  const { seed, S, log, demo, persona, act, openSheet, showToast, ready, f, actor, motion, flag } = ctx;
+  const { seed, S, log, demo, persona, act, openSheet, showToast, ready, f, me, motion, flag } = ctx;
+  const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const talk = flag("discussion"), projects = flag("projects");
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
   const [cid, setCid] = useState<string | null>(initialId ?? null);
@@ -160,13 +162,13 @@ export function InboxView({ initialId }: { initialId?: string }) {
 
   const desk = deskCases(ctx), openList = openCases(ctx);
   const route = sc?.route ?? null;
-  const scMine = !!route && route.owner.name === who.name;
+  const scMine = !!route && holdsRole(me, route.ownerRoleId ?? null);
   const handTo = route ? (scMine ? route.deputy : route.owner.name) : t("leader.triageDesk");
   const lastHand = sc?.handed[sc.handed.length - 1];
   const handedNote = !sc ? ""
-    : sc.escalated && sc.escalated.to === who.name && sc.assignee !== who.name
+    : sc.escalated && holdsRole(me, sc.escalated.toRoleId) && !holdsRole(me, sc.assigneeRoleId)
       ? t("leader.escalatedToYou", { day: f(sc.escalated.day), name: sc.assignee, days: P })
-      : sc.escalated && sc.assignee === who.name
+      : sc.escalated && holdsRole(me, sc.assigneeRoleId)
         ? t("leader.pastPromiseSince", { day: f(sc.escalated.day), to: sc.escalated.to })
         : lastHand ? t(lastHand.why ? "leader.handedFromWhy" : "leader.handedFrom", { from: lastHand.from, day: f(lastHand.day), why: lastHand.why ?? "" }) : "";
 
@@ -225,17 +227,17 @@ export function InboxView({ initialId }: { initialId?: string }) {
   // what is already in motion, and where each decision goes.
   const selRow = rows.find((r) => r.id === cid);
   const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, briefs: seed.briefs };
-  const personOrNull = (name: string) => (name === actor ? null : personFor(name, briefCtx));
+  const personOrNull = (name: string, userId: string | null | undefined) => (isMe(userId) ? null : personFor(name, briefCtx));
   const item: IdeaProps | null = !selRow ? null : (() => {
     const idea = { id: selRow.id, kind: si ? "idea" as const : "case" as const, title: selRow.title, badge: badgeOf(selRow), tone: badgeTone(selRow.due, selRow.paused), raised: raisedPhrase(t, sentLabel(selRow.sent, now, selRow.exact)) };
     if (si) {
       const brief = briefFor(si, briefCtx);
-      const asked = si.thread.filter((m) => m.by === actor);
+      const asked = si.thread.filter((m) => isMe(m.byUserId));
       return {
         idea, brief, onClose: close,
         feed: [
           ...brief.feed.comments.map((c) => ({ name: c.name, role: c.role, text: c.text, when: t("leader.daysShort", { n: c.daysAgo }), mine: false, person: personFor(c.name, briefCtx) })),
-          ...si.thread.map((m) => ({ name: m.by === actor ? t("leader.you") : m.by, role: t("leader.askedQuestion"), text: m.text, when: f(m.day), mine: m.by === actor, person: personOrNull(m.by) })),
+          ...si.thread.map((m) => ({ name: isMe(m.byUserId) ? t("leader.you") : m.by, role: t("leader.askedQuestion"), text: m.text, when: f(m.day), mine: isMe(m.byUserId), person: personOrNull(m.by, m.byUserId) })),
         ],
         status: asked.length ? { label: t("leader.moreInfoRequested"), lines: asked.map((m) => "“" + m.text + "” · " + f(m.day)), sub: t("leader.toldAuthor", { name: brief.author.name }) } : null,
         onDecide: (key: string) => {
@@ -268,7 +270,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
     return {
       idea, onClose: close,
       brief,
-      feed: commentsOn(log, sc.id).map((m) => ({ name: m.by === actor ? t("leader.you") : m.by, role: m.rescore ? t("leader.newInformation") : t("leader.comment"), text: m.text, when: f(m.day), mine: m.by === actor, person: personOrNull(m.by) })),
+      feed: commentsOn(log, sc.id).map((m) => ({ name: isMe(m.byUserId) ? t("leader.you") : m.by, role: m.rescore ? t("leader.newInformation") : t("leader.comment"), text: m.text, when: f(m.day), mine: isMe(m.byUserId), person: personOrNull(m.by, m.byUserId) })),
       status: talkNote ?? (!q ? null : {
         label: q.answer ? t("leader.answeredBy", { name: sc.from }) : t("leader.questionOut"),
         lines: [t("leader.youAsked", { text: q.text || t("leader.oneQuestion"), day: f(q.day) }), ...(q.answer ? [t("leader.answerLine", { text: q.answer.text, day: f(q.answer.day) })] : [])],

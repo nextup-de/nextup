@@ -95,3 +95,26 @@ test("an answer that is late moves to the deputy on its own", async ({ page }) =
   await page.goto("/acme/team");
   await expect(page.getByRole("main")).toContainText(/Moved to .+ automatically/);
 });
+
+// The inbox follows the seat: the leader persona sees the open seed cases on their desk (route r1's
+// "Night shift ..." case among them); "Inbox of" another leader's seat shows that seat's cases, and
+// only those. M. Roth owns route r2 and holds the escalated "Rework" case; the r1 case is not his.
+test("IDN inbox by seat", async ({ page }) => {
+  const R1_CASE = "Night shift has no one who can sign";
+  const SEAT_CASE = "Rework on the 4-series housing";
+  const inboxOf = async (seat: string) => {
+    await page.getByRole("button", { name: "Dev" }).click();
+    await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: new RegExp("^" + seat.replace(".", "\.")) }).click();
+    await page.keyboard.press("Escape");
+  };
+  await viewAs(page, "Team leader");
+  await expect(page).toHaveURL(/\/acme\/leader$/);
+  await expect(page.getByRole("main").getByText(R1_CASE).first()).toBeVisible();
+
+  await inboxOf("M. Roth");
+  await expect(page.getByRole("main").getByText(SEAT_CASE).first()).toBeVisible();
+  await expect(page.getByRole("main").getByText(R1_CASE)).toHaveCount(0);
+
+  await inboxOf("T. Vogel");
+  await expect(page.getByRole("main").getByText(R1_CASE).first()).toBeVisible();
+});

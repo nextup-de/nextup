@@ -2,6 +2,7 @@
 // back. Pure: the stage pill, the cover's number and line, the supporters line, the filters and the
 // two sort orders. The page builds the cards from these; nothing here is invented - the cover's
 // number comes from what the raiser wrote, how many back it, or how long it has been open.
+import type { Me } from "@/features/auth/identity";
 import type { ReducedCase } from "./reducer";
 import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
 
@@ -59,9 +60,12 @@ export function feedCover(c: Pick<ReducedCase, "upside" | "age" | "open">, suppo
 }
 
 // "You, Martin and 40 others" / "Martin, Tom and 40 others" - the names first, the rest as a count.
-export function supportLine(names: readonly string[], me: string): string {
-  const mine = names.includes(me);
-  const shown = [...(mine ? ["You"] : []), ...names.filter((n) => n !== me)];
+// "You" is whoever has your user id; the names are labels, only shown.
+export type Backer = { userId: string | null; name: string };
+export const isMe = (b: Backer, me: Me): boolean => me.userId !== null && b.userId === me.userId;
+export function supportLine(backers: readonly Backer[], me: Me): string {
+  const mine = backers.some((b) => isMe(b, me));
+  const shown = [...(mine ? ["You"] : []), ...backers.filter((b) => !isMe(b, me)).map((b) => b.name)];
   if (!shown.length) return "Nobody backs this yet";
   if (shown.length === 1) return mine ? "You back this" : shown[0] + " backs this";
   if (shown.length === 2) return shown[0] + " and " + shown[1];

@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { useT } from "@/i18n/client";
 import type { MessageKey, T } from "@/i18n";
+import type { Me } from "@/features/auth/identity";
 import type { DayFmt, OverviewStatus } from "@/features/cases/rows";
 import type { ThreadEntry } from "@/features/cases/thread";
 import type { LocalMsg, RespondKey, Response } from "./overviewPreview";
@@ -21,7 +22,7 @@ export type FeedComment = { name: string; role: string; text: string; when: stri
 
 export type OverviewChatsProps = {
   mine: boolean; // the viewer raised it: the move and the actions are theirs
-  me: string; // the viewer's own messages sit on the right
+  me: Me; // the viewer's own messages sit on the right (by user id)
   day: number; // today, for what is sent now
   desk: { name: string; role: string }; // who the first thread is with
   status: OverviewStatus;
@@ -259,7 +260,7 @@ export function OverviewChats(p: OverviewChatsProps) {
             )}
             {p.entries.map((e) => e.t === "handed" ? (
               <span key={e.id} className={s.system}>{lineOf(t, e)} · {p.f(e.day)}</span>
-            ) : e.by === p.me ? (
+            ) : p.me.userId !== null && e.byUserId === p.me.userId ? (
               mineBubble(e.id, lineOf(t, e), p.f(e.day))
             ) : (
               <div key={e.id} className={s.div80}>
