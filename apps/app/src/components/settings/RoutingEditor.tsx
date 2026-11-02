@@ -1,7 +1,7 @@
 "use client";
 // The routing table, editable: request type, keywords, owner / deputy / buddy role, wait, order.
 import { useState, useTransition, type FormEvent } from "react";
-import type { Knowledge, RoleRow, RuleRow } from "@/features/knowledge";
+import { holdersOfRole, type Knowledge, type RoleRow, type RuleRow } from "@/features/knowledge";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import { moveRouteAction, removeRouteAction, saveRouteAction, type OrgResult } from "@/server/actions/settings/org";
@@ -49,7 +49,7 @@ export function RoutingEditor({ slug, knowledge: k }: Props) {
     };
     return (
       <form className={styles.fields} onSubmit={onSubmit} data-testid={rule ? `settings-routing-row-${rule.key}` : "settings-routing-new"}>
-        {rule ? <strong className={styles.key}>{rule.key}</strong> : (
+        {rule ? <strong className={styles.key}>{rule.key} · {rule.type} · {holdersOfRole(k, rule.ownerRoleId)[0]?.name ?? ""}</strong> : (
           <label className="nh-field"><span className="nh-label">{t("settingsOrg.routeKey")}</span>
             <input className="nh-input" name="key" required maxLength={32} data-testid="settings-routing-key" /></label>
         )}
