@@ -96,11 +96,14 @@ export type SpendRule = { limitEur: number; text: string };
 // One company goal, matched to cases by keyword.
 export type SeedGoal = { goal: string; keys: string[] };
 
+export type SeedRole = { id: string; orgUnitId: string; reportsToId: string | null };
+
 export type Seed = {
   promiseDays: number; outcomeDays: number;
   depts: Dept[]; people: OrgPerson[]; problems: Problem[]; ideas: Idea[]; initiatives: Initiative[]; outcomes: Outcome[];
   personas: RolePersona[]; leaders: string[]; routes: Route[]; cases: SeedCase[]; waitingOn: WaitingOn[]; buddies: Buddy[];
   seats: SeatRow[]; // filled from the OrgRoleHolder rows by structureSeed(), never from seedJson (IDN/D7)
+  roles?: SeedRole[]; // the roles' unit and boss by id, filled by structureSeed() for the visibility rule (VIS/D4); missing = none
   goals: SeedGoal[]; // filled from the Goal table by companySeed(), never from seedJson (D5)
   spend: SpendRule | null; // filled from the CompanyRule table by companySeed(), never from seedJson (D5)
   stall: Stall[]; ledger: Ledger; metrics: Metrics; views: Record<string, ViewCopy>;
