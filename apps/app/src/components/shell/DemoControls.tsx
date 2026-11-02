@@ -164,7 +164,7 @@ export function DemoControls() {
 
   const raise = () => ctx.setRole("member"); // back on Jonas's raise page, the conversation as it was
   const history = () => router.back(); // the screen before, from the browser's history (the raise page's URL names its screens)
-  const inbox = () => { if (published) ctx.setLeadAs(published.assignee); };
+  const inbox = () => { if (published?.assigneeSeatId) ctx.setLeadAs(published.assigneeSeatId); };
   const openCase = () => { if (published) router.push(href("/leader?id=" + encodeURIComponent(published.id))); };
   // "Yes, do it": with projects on, the yes opens a project led by the receiver, named after the idea.
   const accept = () => {
@@ -194,7 +194,7 @@ export function DemoControls() {
     ]).flat(),
     { label: "Preview", where: "Chat", verb: "Preview", sub: hooks.preview ? "The last look before it goes out" : "Waiting for NextUp’s reply", can: !!hooks.preview, run: () => hooks.preview?.(), undo: history, past: !!hooks.findReceiver || !!published },
     { label: "Find receiver", where: "Preview", verb: "Send", sub: hooks.findReceiver ? "To the receiver NextUp suggests" : "Open the preview first", can: !!hooks.findReceiver, run: () => hooks.findReceiver?.(), undo: history, past: !!published },
-    { label: "Switch to team leader", where: "Inbox", verb: "Switch", sub: published ? "The inbox of " + published.assignee : "Waiting for the idea to be sent", can: !!published, run: inbox, undo: raise,
+    { label: "Switch to team leader", where: "Inbox", verb: "Switch", sub: published ? "The inbox of " + published.assignee : "Waiting for the idea to be sent", can: !!published?.assigneeSeatId, run: inbox, undo: raise,
       past: !!published && (leading || decided) },
     { label: "Open the idea", where: "Inbox", verb: "Open", sub: published ? published.title : "Send the idea first", can: !!published && leading, run: openCase, undo: inbox, // not history: the person is not in the URL
       past: caseOpen || decided },
