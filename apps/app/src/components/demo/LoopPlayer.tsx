@@ -6,6 +6,7 @@
 // is read from the log, so the app's own buttons can take a turn in between.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/i18n/client";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { appendEvent } from "@/features/cases/events";
 import { LOOP_STEPS, nextLoopStep } from "@/features/ideas/demo-loop";
@@ -16,6 +17,7 @@ import styles from "./LoopPlayer.module.css";
 export function LoopPlayer({ slug }: { slug: string }) {
   const { S, log, seed, href, flag } = useDemo();
   const router = useRouter();
+  const t = useT();
   const [hidden, setHidden] = useState(false);
   const script = S.cases.find((c) => !c.seed && c.title === DEMO_SCRIPT[0].say);
   if (!script || !flag("discussion") || !flag("projects")) return null;
@@ -24,7 +26,7 @@ export function LoopPlayer({ slug }: { slug: string }) {
   if (hidden) {
     return (
       <button type="button" className={`nh-btn nh-btn-primary ${styles.reopen}`} onClick={() => setHidden(false)}>
-        What happens next ▸
+        {t("demo.nextReopen")}
       </button>
     );
   }
@@ -40,17 +42,17 @@ export function LoopPlayer({ slug }: { slug: string }) {
   };
 
   return (
-    <aside className={styles.player} aria-label="What happens next">
+    <aside className={styles.player} aria-label={t("demo.next")}>
       <div className={styles.label}>
-        <span>What happens next · {next.index + 1} of {LOOP_STEPS.length}</span>
-        <button type="button" className={styles.hide} onClick={() => setHidden(true)}>Hide</button>
+        <span>{t("demo.nextStep", { index: next.index + 1, total: LOOP_STEPS.length })}</span>
+        <button type="button" className={styles.hide} onClick={() => setHidden(true)}>{t("demo.hide")}</button>
       </div>
       <p className={styles.say}>{next.step.say}</p>
       <div className={styles.row}>
         <div className={styles.dots} aria-hidden="true">
           {LOOP_STEPS.map((s, k) => <span key={s.key} className={styles.dot} data-done={k < next.index} data-now={k === next.index} />)}
         </div>
-        <button type="button" className="nh-btn nh-btn-primary" onClick={play}>Play ▸</button>
+        <button type="button" className="nh-btn nh-btn-primary" onClick={play}>{t("demo.play")}</button>
       </div>
     </aside>
   );
