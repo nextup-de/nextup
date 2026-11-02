@@ -21,6 +21,10 @@ import { settingsOrg } from "./messages/settingsOrg";
 import { settingsGoals } from "./messages/settingsGoals";
 import { settingsConnectors } from "./messages/settingsConnectors";
 import { settingsNotifications } from "./messages/settingsNotifications";
+import { settingsPrivacy } from "./messages/settingsPrivacy";
+import { settingsAudit } from "./messages/settingsAudit";
+import { privacyExport } from "./messages/privacyExport";
+import { privacyPerson } from "./messages/privacyPerson";
 import { settingsSetup } from "./messages/settingsSetup";
 import { adminAccess } from "./messages/adminAccess";
 import { adminConsole } from "./messages/adminConsole";
@@ -63,6 +67,10 @@ export const en = {
   settingsGoals: settingsGoals.en,
   settingsConnectors: settingsConnectors.en,
   settingsNotifications: settingsNotifications.en,
+  settingsPrivacy: settingsPrivacy.en,
+  settingsAudit: settingsAudit.en,
+  privacyExport: privacyExport.en,
+  privacyPerson: privacyPerson.en,
   settingsSetup: settingsSetup.en,
   adminAccess: adminAccess.en,
   adminConsole: adminConsole.en,
