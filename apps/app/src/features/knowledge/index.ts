@@ -172,7 +172,8 @@ export function structureSeed(seed: Seed, k: Knowledge, rules: CompanyRules): Se
   const parts = hasKnowledge(k) ? seedParts(k) : { depts: [], people: [], routes: [] };
   const goals = [...k.goals].sort((a, b) => a.sort - b.sort).map((g) => ({ goal: g.title, keys: [...g.keywords] }));
   const seats: SeatRow[] = [...k.holders].sort((a, b) => a.sort - b.sort).map((h) => ({ id: h.id, roleId: h.roleId, label: h.name, userId: h.userId, sort: h.sort }));
-  return { ...seed, ...parts, seats, goals, promiseDays: rules.promiseDays, outcomeDays: rules.outcomeDays, spend: rules.spend };
+  const roles = k.roles.map((r) => ({ id: r.id, orgUnitId: r.orgUnitId, reportsToId: r.reportsToId }));
+  return { ...seed, ...parts, seats, roles, goals, promiseDays: rules.promiseDays, outcomeDays: rules.outcomeDays, spend: rules.spend };
 }
 
 /** One role's holders, by `sort`; [] for a role the knowledge does not have. */

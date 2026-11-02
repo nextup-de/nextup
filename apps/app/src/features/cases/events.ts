@@ -48,8 +48,9 @@ export type CaseEventType =
 export type CaseKind = "problem" | "idea";
 
 // Who the raiser lets see it in the lists: the whole company, only them and the desk it lands on,
-// or those plus the people and departments in seenBy. Missing = the old rule (derive.visibleTo).
-// Applied in the browser only for now: the events endpoint still sends every event to every viewer.
+// or those plus the people and departments picked (seenByUserIds, seenByUnitIds). Missing = no choice
+// (features/cases/visibility decides by role). Applied in the browser only for now: the events endpoint
+// still sends every event to every viewer.
 export type Visibility = "everyone" | "private" | "custom";
 
 // What the router proposed when the case was raised, kept so /admin/decisions can compare it with
@@ -77,7 +78,9 @@ export type EventPayload = {
   by?: number;
   proposal?: RouteProposal; // on case.raised
   visibility?: Visibility; // on case.raised
-  seenBy?: string[]; // on case.raised with visibility "custom": people and department names
+  seenBy?: string[]; // on case.raised with visibility "custom": people and department names (shown, never compared)
+  seenByUserIds?: string[]; // on case.raised with visibility "custom": the picked people by user id (VIS/D10)
+  seenByUnitIds?: string[]; // on case.raised with visibility "custom": the picked departments by org unit id (VIS/D10)
   // The discussion stage
   invited?: string[]; // case.discussion, case.invited: names
   missing?: string; // case.discussion: what is still missing, in the desk holder's words

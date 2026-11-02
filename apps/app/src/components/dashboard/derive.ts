@@ -6,7 +6,7 @@ import { cosignRow, mineRow, raisedWith, type MineRow } from "@/features/cases/r
 import { affectedOn, onDeskOf } from "@/features/cases/selectors";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectOfCase } from "@/features/projects/selectors";
-import { seesByChoice } from "@/features/cases/visibility";
+import { canOpen as canOpenCase, unitsOf } from "@/features/cases/visibility";
 import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
 import type { DemoContext } from "./DemoProvider";
 
@@ -39,32 +39,12 @@ export function mineRows(ctx: DemoContext): MineRow[] {
     .sort((a, b) => b.sortDay - a.sortDay);
 }
 
-// Who sees which case in the lists. First the raiser's choice (View on the raise page: everyone,
-// private, or the people and departments they picked - features/cases/visibility). Without one: an
-// employee sees only what they raised. A team leader: what they raised and what the people who report
-// to them raised - not the rest of the company; what merely
-// sits on their desk is the inbox's job. A manager: everything.
-export function visibleTo(ctx: DemoContext, c: ReducedCase): boolean {
-  const { name } = ctx.persona.who; // a label: the raiser's pick of people and the org chart are read by name
-  const { me } = ctx;
-  if (me.userId !== null && c.fromUserId === me.userId) return true;
-  const { visibility, seenBy } = raisedWith(c);
-  const deptId = ctx.seed.people.find((p) => p.name === name)?.dept;
-  const chosen = seesByChoice(visibility, seenBy, { name, dept: ctx.seed.depts.find((d) => d.id === deptId)?.name ?? null });
-  if (chosen !== null) return chosen;
-  if (ctx.role === "member") return false;
-  if (ctx.role !== "leader") return true;
-  // Who answers to this leader is org-chart data (names); who raised the case is an id: the reports' user ids, from their seats and personas.
-  const reports = ctx.seed.people.filter((p) => p.reportsTo === name).map((p) => p.name);
-  const ids = new Set<string>();
-  for (const s of ctx.seed.seats) if (s.userId && reports.includes(s.label)) ids.add(s.userId);
-  for (const r of ctx.seed.personas) if (r.who.userId && reports.includes(r.who.name)) ids.add(r.who.userId);
-  return c.fromUserId !== null && ids.has(c.fromUserId);
-}
-
-// Who may open a case by its link: what they see in the lists, plus what sits on their desk (a
-// lead opens their inbox cases here too). An employee cannot open a colleague's case by URL.
-export const canOpen = (ctx: DemoContext, c: ReducedCase) => visibleTo(ctx, c) || onDeskOf(c, ctx.me) || invitedTo(c, ctx.me);
+// Who sees which case in the lists, and who may open one by its link: one rule, by ids
+// (features/cases/visibility). The lists show exactly the cases a viewer may open.
+const visCtx = (ctx: DemoContext) => ({ seats: ctx.seed.seats, roles: ctx.seed.roles ?? [], projects: ctx.S.projects });
+export const canOpen = (ctx: DemoContext, c: ReducedCase) =>
+  canOpenCase(c, { me: ctx.me, role: ctx.role, unitIds: unitsOf(ctx.me, visCtx(ctx)) }, visCtx(ctx));
+export const visibleTo = (ctx: DemoContext, c: ReducedCase): boolean => canOpen(ctx, c);
 
 // Everyone who stands behind a case: named when it was raised, plus everyone who said it affects them too.
 export function standingOn(ctx: DemoContext, c: ReducedCase): string[] {
