@@ -9,6 +9,8 @@ import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { simpleNavFor } from "@/config/nav";
+import { useT } from "@/i18n/client";
+import type { MessageKey } from "@/i18n";
 import { OVERVIEW_STEPS, type OverviewStatus } from "@/features/cases/rows";
 import { highlight, runSearch, tokens } from "@/features/search";
 import { navbarIndex, type NavHit } from "@/features/search/navbar";
@@ -16,17 +18,28 @@ import styles from "./SimpleShell.module.css";
 import { avatarTone } from "@/lib/avatar";
 
 type Filter = "all" | "Problem" | "Idea" | "Person";
-const FILTERS: [Filter, string][] = [["all", "All"], ["Problem", "Problems"], ["Idea", "Ideas"], ["Person", "People"]];
-const GROUP_LABEL: Record<NavHit["kind"], string> = { Problem: "Problems", Idea: "Ideas", Person: "People", Team: "Teams", Case: "Cases" };
+const FILTERS: [Filter, MessageKey][] = [["all", "shell.searchAll"], ["Problem", "shell.searchProblems"], ["Idea", "shell.searchIdeas"], ["Person", "shell.searchPeople"]];
+const GROUP_LABEL: Record<NavHit["kind"], MessageKey> = { Problem: "shell.searchProblems", Idea: "shell.searchIdeas", Person: "shell.searchPeople", Team: "shell.searchTeams", Case: "shell.searchCases" };
 // The Overview's status words and badge tones (team/DashboardView), so a case reads the same in both places.
-const STATUS_LABEL: Record<OverviewStatus, string> = {
-  move: "Your move", asked: "Needs more info", replied: "Replied", waiting: "Waiting", approved: "Approved", declined: "Not now", building: "Building", shipped: "Shipped",
+const STATUS_LABEL: Record<OverviewStatus, MessageKey> = {
+  move: "shell.statusMove", asked: "shell.statusAsked", replied: "shell.statusReplied", waiting: "shell.statusWaiting", approved: "shell.statusApproved", declined: "shell.statusDeclined", building: "shell.statusBuilding", shipped: "shell.statusShipped",
 };
 
 type Section = { label: string; items: NavHit[] };
 
+const NAV_KEYS: Record<string, MessageKey> = {
+  Dashboard: "shell.navDashboard", Inbox: "shell.navInbox", "My cases": "shell.navMyCases", Problems: "shell.navProblems", Ideas: "shell.navIdeas",
+  Feed: "shell.navFeed", Collaboration: "shell.navCollaboration", Projects: "shell.navProjects", Progress: "shell.navProgress", Settings: "shell.navSettings", Overview: "shell.navOverview",
+};
+/** A navigation label from src/config/nav.ts in the viewer's language; an unknown label stays as it is. */
+export function navLabel(t: (key: MessageKey) => string, label: string): string {
+  const key = NAV_KEYS[label];
+  return key ? t(key) : label;
+}
+
 export function NavSearch({ children }: { children: (open: boolean) => React.ReactNode }) {
   const ctx = useDemo(), router = useRouter();
+  const t = useT();
   const open = ctx.pop === "search";
   const input = useRef<HTMLInputElement>(null), list = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<Filter>("all"), [cursor, setCursor] = useState(0);
@@ -46,15 +59,15 @@ export function NavSearch({ children }: { children: (open: boolean) => React.Rea
   if (query) {
     const shown = filter === "all" ? runSearch(index, query, { perGroup: 4, total: 12 }) : matches.filter((r) => r.kind === filter);
     for (const r of shown) {
-      const label = GROUP_LABEL[r.kind];
+      const label = t(GROUP_LABEL[r.kind]);
       const at = sections.find((x) => x.label === label);
       if (at) at.items.push(r); else sections.push({ label, items: [r] });
     }
   } else {
     const waiting = index.filter((r) => r.case?.yourMove && r.case.open).sort((a, b) => (b.case?.days ?? 0) - (a.case?.days ?? 0)).slice(0, 3);
     const last = recent.map((h) => index.find((r) => r.href === h)).filter((r): r is NavHit => !!r && !waiting.includes(r));
-    if (waiting.length) sections.push({ label: "Waiting on you", items: waiting });
-    if (last.length) sections.push({ label: "Recently opened", items: last });
+    if (waiting.length) sections.push({ label: t("shell.searchWaiting"), items: waiting });
+    if (last.length) sections.push({ label: t("shell.searchRecent"), items: last });
   }
   const items = sections.flatMap((x) => x.items);
   const active = Math.min(cursor, Math.max(0, items.length - 1));
@@ -101,18 +114,18 @@ export function NavSearch({ children }: { children: (open: boolean) => React.Rea
           <span className={styles.sTitle}>{highlight(r.title, toks).map((p, k) => (p.hit ? <mark key={k}>{p.t}</mark> : p.t))}</span>
           <span className={styles.sSub}>
             {r.sub}
-            {c && <> · <span data-tone={c.late ? "late" : undefined}>{!c.open ? "answered" : c.late ? "past promise" : c.days + " d open"}</span></>}
+            {c && <> · <span data-tone={c.late ? "late" : undefined}>{!c.open ? t("shell.searchAnswered") : c.late ? t("shell.searchPastPromise") : t("shell.searchDaysOpen", { days: c.days })}</span></>}
           </span>
         </span>
         {c ? (
           <span className={styles.sSide}>
-            <span className={styles.sBadge} data-tone={c.status === "move" ? "move" : c.status === "replied" ? "replied" : undefined}>{STATUS_LABEL[c.status]}</span>
-            <span className={styles.sSteps} title={c.step >= OVERVIEW_STEPS.length ? "Shipped" : OVERVIEW_STEPS[c.step] + " · on " + c.desk + "'s desk"}>
+            <span className={styles.sBadge} data-tone={c.status === "move" ? "move" : c.status === "replied" ? "replied" : undefined}>{t(STATUS_LABEL[c.status])}</span>
+            <span className={styles.sSteps} title={c.step >= OVERVIEW_STEPS.length ? t("shell.statusShipped") : t("shell.searchOnDesk", { step: OVERVIEW_STEPS[c.step], desk: c.desk })}>
               {OVERVIEW_STEPS.map((x, k) => <span key={x} data-tone={k < c.step ? "done" : k === c.step ? "now" : undefined} />)}
             </span>
           </span>
         ) : (
-          <span className={styles.sSide}><span className={styles.sGo}>Profile <span aria-hidden="true">›</span></span></span>
+          <span className={styles.sSide}><span className={styles.sGo}>{t("shell.searchProfile")} <span aria-hidden="true">›</span></span></span>
         )}
       </button>
     );
@@ -123,28 +136,28 @@ export function NavSearch({ children }: { children: (open: boolean) => React.Rea
     <div className={styles.navGroup} data-search={open ? "true" : undefined}>
       <span className={styles.searchSpacer} aria-hidden="true" />
       <div className={styles.searchControl}>
-        <button type="button" className={styles.searchButton} aria-label={open ? "Close search" : "Open search"} aria-expanded={open} aria-controls="nh-search" onClick={() => (open ? close() : ctx.setPop("search"))}>
+        <button type="button" className={styles.searchButton} aria-label={open ? t("shell.searchClose") : t("shell.searchOpen")} aria-expanded={open} aria-controls="nh-search" onClick={() => (open ? close() : ctx.setPop("search"))}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
         </button>
         <div className={styles.searchSlot} aria-hidden={!open}>
           <input ref={input} id="nh-search" className={styles.searchInput} type="text" role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls="nav-search-list"
-            aria-activedescendant={open && items[active] ? "nav-search-" + active : undefined} placeholder="Search problems, ideas, people" aria-label="Search"
+            aria-activedescendant={open && items[active] ? "nav-search-" + active : undefined} placeholder={t("shell.searchPlaceholder")} aria-label={t("shell.search")}
             tabIndex={open ? 0 : -1} value={ctx.q} autoComplete="off" spellCheck={false} onChange={(e) => { ctx.setQ(e.target.value); setCursor(0); }} onKeyDown={onKey} />
-          {query && <button type="button" className={styles.searchClear} aria-label="Clear search" tabIndex={open ? 0 : -1} onClick={() => { ctx.setQ(""); setCursor(0); input.current?.focus(); }}>×</button>}
+          {query && <button type="button" className={styles.searchClear} aria-label={t("shell.searchClear")} tabIndex={open ? 0 : -1} onClick={() => { ctx.setQ(""); setCursor(0); input.current?.focus(); }}>×</button>}
         </div>
       </div>
       {children(open)}
       {open && (
         <div className={styles.sPanel}>
-          <div className={styles.sFilters} role="group" aria-label="Show">
+          <div className={styles.sFilters} role="group" aria-label={t("shell.searchShow")}>
             {FILTERS.map(([f, label]) => (
               <button key={f} type="button" className={styles.sFilter} aria-pressed={filter === f} onClick={() => choose(f)}>
-                {label}{query && <span className={styles.sCount}>{count(f)}</span>}
+                {t(label)}{query && <span className={styles.sCount}>{count(f)}</span>}
               </button>
             ))}
           </div>
 
-          <div ref={list} id="nav-search-list" role="listbox" aria-label={query ? "Matches" : "Suggestions"} className={styles.sList}>
+          <div ref={list} id="nav-search-list" role="listbox" aria-label={query ? t("shell.searchMatches") : t("shell.searchSuggestions")} className={styles.sList}>
             {sections.map((sec) => (
               <div key={sec.label} role="group" aria-label={sec.label} className={styles.sSection}>
                 <p className={styles.sHeading} aria-hidden="true">{sec.label}</p>
@@ -153,26 +166,26 @@ export function NavSearch({ children }: { children: (open: boolean) => React.Rea
             ))}
             {query && items.length === 0 && (
               <div className={styles.sEmpty}>
-                <strong>Nothing matches “{query}”</strong>
-                <p>Try fewer words, a person’s name or part of a title.</p>
-                {filter !== "all" && count("all") > 0 && <button type="button" className={styles.sPill} onClick={() => choose("all")}>Show all {count("all")} matches</button>}
+                <strong>{t("shell.searchNothing", { query })}</strong>
+                <p>{t("shell.searchTry")}</p>
+                {filter !== "all" && count("all") > 0 && <button type="button" className={styles.sPill} onClick={() => choose("all")}>{t("shell.searchShowAll", { count: count("all") })}</button>}
               </div>
             )}
           </div>
 
           {!query && (
             <div className={styles.sPlaces}>
-              <p className={styles.sHeading}>Go to</p>
+              <p className={styles.sHeading}>{t("shell.searchGoTo")}</p>
               <div className={styles.sPlaceRow}>
-                {simpleNavFor(ctx.role, ctx.flag).map((p) => <Link key={p.href} className={styles.sPill} href={ctx.href(p.href)} onClick={close}>{p.label}</Link>)}
-                <Link className={styles.sPill} href={ctx.href("/profile")} onClick={close}>My profile</Link>
+                {simpleNavFor(ctx.role, ctx.flag).map((p) => <Link key={p.href} className={styles.sPill} href={ctx.href(p.href)} onClick={close}>{navLabel(t, p.label)}</Link>)}
+                <Link className={styles.sPill} href={ctx.href("/profile")} onClick={close}>{t("shell.myProfile")}</Link>
               </div>
             </div>
           )}
 
           <div className={styles.sFoot}>
-            <span role="status" aria-live="polite">{query ? (matches.length === 1 ? "1 match" : matches.length + " matches") : "Search by title, person, team or desk"}</span>
-            <span className={styles.sKeys} aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> open <kbd>esc</kbd> {query ? "clear" : "close"}</span>
+            <span role="status" aria-live="polite">{query ? t("shell.searchCount", { count: matches.length }) : t("shell.searchHint")}</span>
+            <span className={styles.sKeys} aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd> {t("shell.keyMove")} <kbd>↵</kbd> {t("shell.keyOpen")} <kbd>{"esc"}</kbd> {query ? t("shell.keyClear") : t("shell.keyClose")}</span>
           </div>
         </div>
       )}

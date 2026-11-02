@@ -11,6 +11,7 @@ import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileChip, initialsOf,
 import base from "./IdeaDetail.module.css";
 import styles from "./IdeaDetailPhone.module.css";
 import { avatarTone } from "@/lib/avatar";
+import { useT } from "@/i18n/client";
 
 type Nav = { index: number; count: number; onPrev: () => void; onNext: () => void };
 type Sheet =
@@ -21,7 +22,7 @@ type Sheet =
   | { kind: "feed"; i: number }
   | { kind: "decide" };
 
-const PAGES = ["Idea", "AI", "Feed"] as const; // the first reads "Case" for a case
+const PAGES = ["leader.pageIdea", "leader.pageAi", "leader.pageFeed"] as const; // the first reads "Case" for a case
 
 function Ring({ value, size }: { value: number; size: number }) {
   return (
@@ -33,6 +34,7 @@ function Ring({ value, size }: { value: number; size: number }) {
 }
 
 export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment, onClose, nav }: IdeaProps & { nav: Nav }) {
+  const t = useT();
   const uid = useId();
   const [page, setPage] = useState(0);
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -64,26 +66,26 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
   return (
     <div className={styles.phone}>
       <header className={styles.bar}>
-        <button type="button" className={styles.icon} onClick={onClose} aria-label="Back to inbox"><Chevron back /></button>
-        <div className={styles.tabs} role="tablist" aria-label="Idea pages">
+        <button type="button" className={styles.icon} onClick={onClose} aria-label={t("leader.backToInbox")}><Chevron back /></button>
+        <div className={styles.tabs} role="tablist" aria-label={t("leader.ideaPages")}>
           <span className={styles.thumb} ref={thumb} aria-hidden="true" />
           {PAGES.map((p, i) => (
-            <button key={p} type="button" role="tab" aria-selected={page === i} className={styles.tab} data-on={page === i ? "true" : undefined} onClick={() => go(i)}>{i === 0 && idea.kind === "case" ? "Case" : p}</button>
+            <button key={p} type="button" role="tab" aria-selected={page === i} className={styles.tab} data-on={page === i ? "true" : undefined} onClick={() => go(i)}>{i === 0 && idea.kind === "case" ? t("leader.pageCase") : t(p)}</button>
           ))}
         </div>
         <div className={styles.step}>
-          <button type="button" className={styles.icon} onClick={nav.onPrev} disabled={nav.index <= 0} aria-label="Previous idea"><span className={styles.up}><Chevron back /></span></button>
-          <button type="button" className={styles.icon} onClick={nav.onNext} disabled={nav.index >= nav.count - 1} aria-label="Next idea"><span className={styles.down}><Chevron back /></span></button>
+          <button type="button" className={styles.icon} onClick={nav.onPrev} disabled={nav.index <= 0} aria-label={t("leader.previousIdea")}><span className={styles.up}><Chevron back /></span></button>
+          <button type="button" className={styles.icon} onClick={nav.onNext} disabled={nav.index >= nav.count - 1} aria-label={t("leader.nextIdea")}><span className={styles.down}><Chevron back /></span></button>
         </div>
       </header>
 
       <div className={styles.pager} ref={pager} onScroll={onScroll}>
         {/* ── Idea ── */}
-        <section className={styles.page} aria-label={idea.kind === "case" ? "Case" : "Idea"} role="tabpanel">
+        <section className={styles.page} aria-label={idea.kind === "case" ? t("leader.pageCase") : t("leader.pageIdea")} role="tabpanel">
           <div className={styles.head}>
             <button type="button" className={styles.author} onClick={() => setSheet({ kind: "author" })}>
               <span className={base.authorAvatar} data-avatar={avatarTone(brief.author.name)}>{initialsOf(brief.author.name)}</span>
-              <span className={base.authorText}><span className={base.authorName}>{brief.author.name}</span><span className={base.authorLine}>raised {idea.raised}</span></span>
+              <span className={base.authorText}><span className={base.authorName}>{brief.author.name}</span><span className={base.authorLine}>{t("leader.raisedLine", { raised: idea.raised })}</span></span>
             </button>
             <span className={base.badge} data-tone={idea.tone}>{idea.badge}</span>
           </div>
@@ -93,7 +95,7 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
 
           {(brief.depts.length > 0 || brief.people.length > 0) && (
             <div className={styles.block}>
-              <span className={base.label}>Affects</span>
+              <span className={base.label}>{t("leader.affects")}</span>
               <div className={styles.rail}>
                 {brief.depts.map((d) => (
                   <button key={d.id} type="button" className={base.deptChip} onClick={() => setSheet({ kind: "dept", id: d.id, member: null })}>{d.name}{d.ai && <Sparkle />}</button>
@@ -105,33 +107,33 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
             </div>
           )}
           {brief.context && (
-            <div className={styles.block}><span className={base.label}>Context</span><p className={base.para}>{brief.context}</p></div>
+            <div className={styles.block}><span className={base.label}>{t("leader.context")}</span><p className={base.para}>{brief.context}</p></div>
           )}
           {brief.prompts.length > 0 && <dl className={`${base.panel} ${styles.prompts}`}>{brief.prompts.map((p) => <PanelRow key={p.label} k={p.label}>{p.text}</PanelRow>)}</dl>}
           {brief.files.length > 0 && (
             <div className={styles.block}>
-              <span className={base.label}>Attachments · {brief.files.length}</span>
+              <span className={base.label}>{t("leader.attachmentsCount", { count: brief.files.length })}</span>
               <div className={styles.rail}>{brief.files.map((f) => <FileChip key={f.name} ext={f.ext} name={f.short} title={f.name} meta={f.size} />)}</div>
             </div>
           )}
         </section>
 
         {/* ── AI ── */}
-        <section className={styles.page} aria-label="What the AI found" role="tabpanel">
-          <div className={styles.rings} role="group" aria-label="Scores">
+        <section className={styles.page} aria-label={t("leader.whatAiFound")} role="tabpanel">
+          <div className={styles.rings} role="group" aria-label={t("leader.scores")}>
             {brief.scores.map((s, i) => (
-              <button key={s.label} type="button" className={styles.ringBtn} onClick={() => setSheet({ kind: "score", i })} aria-label={s.label + " " + s.value + " of 100, show the reasoning"}>
+              <button key={s.label} type="button" className={styles.ringBtn} onClick={() => setSheet({ kind: "score", i })} aria-label={t("leader.scoreAria", { label: s.label, value: s.value })}>
                 <span className={styles.ringWrap}><Ring value={s.value} size={52} /><span className={styles.ringNum}>{s.value}</span></span>
                 <span className={styles.ringLabel}>{s.label}</span>
               </button>
             ))}
           </div>
-          <span className={styles.hint}>Tap a score for the reasoning</span>
+          <span className={styles.hint}>{t("leader.tapScore")}</span>
           <AiBrief brief={brief} srcId={uid + "-ai"} foldSources />
         </section>
 
         {/* ── Feed ── */}
-        <section className={`${styles.page} ${styles.feed}`} aria-label="From the feed" role="tabpanel">
+        <section className={`${styles.page} ${styles.feed}`} aria-label={t("leader.fromTheFeed")} role="tabpanel">
           <FeedBody brief={brief} feed={feed} onPerson={(i) => setSheet({ kind: "feed", i })} onComment={onComment} />
         </section>
       </div>
@@ -139,10 +141,10 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
       <footer className={styles.dock}>
         <span className={styles.dockText}>
           {status ? <><span className={styles.dockLabel}>{status.label}</span><span className={styles.dockSub}>{status.sub || status.lines[0]}</span></>
-            : rec ? <><span className={styles.dockLabel}><Sparkle size={12} />AI suggests</span><span className={styles.dockSub}>{rec.label}</span></>
-            : <span className={styles.dockLabel}>Nothing left to decide</span>}
+            : rec ? <><span className={styles.dockLabel}><Sparkle size={12} />{t("leader.aiSuggests")}</span><span className={styles.dockSub}>{rec.label}</span></>
+            : <span className={styles.dockLabel}>{t("leader.nothingToDecide")}</span>}
         </span>
-        {brief.actions.length > 0 && <button type="button" className={styles.decide} onClick={() => setSheet({ kind: "decide" })}>Decide</button>}
+        {brief.actions.length > 0 && <button type="button" className={styles.decide} onClick={() => setSheet({ kind: "decide" })}>{t("leader.decide")}</button>}
       </footer>
 
       {sheet && <PhoneSheet brief={brief} feed={feed} sheet={sheet} setSheet={setSheet} status={status} decide={decide} srcId={uid + "-score"} />}
@@ -151,6 +153,7 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
 }
 
 function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { brief: IdeaBrief; feed: IdeaProps["feed"]; sheet: Sheet; setSheet: (s: Sheet | null) => void; status: IdeaProps["status"]; decide: (k: string) => void; srcId: string }) {
+  const t = useT();
   // The handle: a tap closes the sheet, a drag pulls it down with the finger and closes it past 80px.
   const sheetRef = useRef<HTMLDivElement>(null);
   const start = useRef<number | null>(null);
@@ -177,10 +180,10 @@ function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { b
   let label = "", body: React.ReactNode = null;
   if (sheet.kind === "score") {
     const s = brief.scores[sheet.i];
-    label = s.label + " reasoning";
+    label = t("leader.reasoning", { label: s.label });
     body = (
       <>
-        <div className={styles.scoreTabs} role="tablist" aria-label="Scores">
+        <div className={styles.scoreTabs} role="tablist" aria-label={t("leader.scores")}>
           {brief.scores.map((x, i) => (
             <button key={x.label} type="button" role="tab" aria-selected={i === sheet.i} className={styles.scoreTab} data-on={i === sheet.i ? "true" : undefined} onClick={() => setSheet({ kind: "score", i })}>
               <span className={styles.scoreTabNum}>{x.value}</span>{x.label}
@@ -219,7 +222,7 @@ function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { b
       </div>
     ) : (
       <>
-        <div className={base.popListHead}><span className={base.popName}>{d.name}</span><span className={base.small}>{d.members.length} {d.members.length === 1 ? "person" : "people"}</span></div>
+        <div className={base.popListHead}><span className={base.popName}>{d.name}</span><span className={base.small}>{t("leader.persons", { count: d.members.length })}</span></div>
         {d.why && <div className={base.aiWhy}><Sparkle /><span>{d.why}</span></div>}
         <div className={styles.members}>
           {d.members.map((x) => (
@@ -233,10 +236,10 @@ function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { b
       </>
     );
   } else {
-    label = "Your decision";
+    label = t("leader.yourDecision");
     body = (
       <>
-        <h2 className={base.sideTitle}>Your decision</h2>
+        <h2 className={base.sideTitle}>{t("leader.yourDecision")}</h2>
         <StatusBox status={status} />
         <DecisionList brief={brief} onDecide={decide} />
       </>
@@ -246,7 +249,7 @@ function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { b
     <>
       <div className={styles.scrim} onClick={() => setSheet(null)} />
       <div className={styles.sheet} ref={sheetRef} role="dialog" aria-modal="true" aria-label={label}>
-        <button type="button" className={styles.handle} aria-label="Close" onClick={() => { if (!moved.current) setSheet(null); }} onPointerDown={grab} onPointerMove={drag} onPointerUp={drop} onPointerCancel={drop} />
+        <button type="button" className={styles.handle} aria-label={t("leader.close")} onClick={() => { if (!moved.current) setSheet(null); }} onPointerDown={grab} onPointerMove={drag} onPointerUp={drop} onPointerCancel={drop} />
         <div className={styles.sheetBody}>{body}</div>
       </div>
     </>

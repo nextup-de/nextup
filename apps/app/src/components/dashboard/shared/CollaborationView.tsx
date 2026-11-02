@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { Avatar, Empty, Pill, statusTone } from "@/components/dashboard/shared/primitives";
+import { Avatar, Empty, Pill, statusTone, wordText } from "@/components/dashboard/shared/primitives";
 import { ViewHead } from "@/components/dashboard/shared/ViewHead";
 import type { Initiative, InitiativeStatus, OrgPerson } from "@/features/demo/types";
 import { chainEdges, coworkersOf, layoutTree, namedMembers, pairs, projectsOf, visiblePeople } from "@/features/org";
@@ -15,6 +15,7 @@ import { splitBody } from "@/features/ideas/brief";
 import type { ReducedProject } from "@/features/projects/types";
 import { asInitiatives, visibleProjects } from "@/features/projects/views";
 import { viewerOf } from "@/components/projects/parts";
+import { useT } from "@/i18n/client";
 import { ini } from "@/lib/utils/format";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CollaborationView.module.css";
@@ -27,10 +28,13 @@ type PersonSort = "name" | "dept" | "role";
 type PeopleScope = "linked" | "all";
 
 const INK = "#141414", BRAND = "#0b70d1", ACCENT = "#ff5a1f", MUTE = "#b9b9b4";
+// The statuses in the order the lists use; the first is the one that waits on a decision.
+const STATUS_ORDER = Object.keys({ "Awaiting decision": 0, "In trial": 0, Building: 0, Proposed: 0, Shipped: 0 } satisfies Record<InitiativeStatus, 0>) as InitiativeStatus[];
+const AWAITING = STATUS_ORDER[0];
+const ASPECT = ["xMidYMid", "meet"].join(" "); // the map scales to fit its box
 const edgeLook = (status: InitiativeStatus) =>
-  status === "Shipped" ? { stroke: INK, dash: "0" } : status === "Awaiting decision" ? { stroke: ACCENT, dash: "0" } : status === "Proposed" ? { stroke: MUTE, dash: "7 7" } : { stroke: "#8c8c88", dash: "0" };
-const STATUS_ORDER: InitiativeStatus[] = ["Awaiting decision", "In trial", "Building", "Proposed", "Shipped"];
-const waitDays = (t: Initiative) => (t.status === "Awaiting decision" ? Number(/(\d+)/.exec(t.stage)?.[1] ?? 0) : -1);
+  status === "Shipped" ? { stroke: INK, dash: "0" } : status === AWAITING ? { stroke: ACCENT, dash: "0" } : status === "Proposed" ? { stroke: MUTE, dash: "7 7" } : { stroke: "#8c8c88", dash: "0" };
+const waitDays = (t: Initiative) => (t.status === AWAITING ? Number(/(\d+)/.exec(t.stage)?.[1] ?? 0) : -1);
 const isNamed = (n: string) => n !== "—" && n !== "Anonymous";
 // "Started because: ..." for a project - the first sentence of the idea it came from.
 const firstSentence = (s: string) => (/^.*?[.!?](\s|$)/.exec(s.trim())?.[0] ?? s).trim();
@@ -137,15 +141,16 @@ function useCanvas() {
 }
 
 function Pager({ page, pages, from, to, total, onPage }: { page: number; pages: number; from: number; to: number; total: number; onPage: (p: number) => void }) {
+  const t = useT();
   if (total === 0) return null;
   return (
     <div className={styles.pager}>
-      <span>{from}–{to} of {total}</span>
+      <span>{t("dashboard.collabPager", { from, to, total })}</span>
       {pages > 1 && (
         <span className={styles.pageBtns}>
-          <button type="button" className={styles.pageBtn} disabled={page === 0} onClick={() => onPage(page - 1)} aria-label="Previous page">‹</button>
+          <button type="button" className={styles.pageBtn} disabled={page === 0} onClick={() => onPage(page - 1)} aria-label={t("dashboard.collabPrevPage")}>‹</button>
           <span className={styles.pageNo}>{page + 1} / {pages}</span>
-          <button type="button" className={styles.pageBtn} disabled={page >= pages - 1} onClick={() => onPage(page + 1)} aria-label="Next page">›</button>
+          <button type="button" className={styles.pageBtn} disabled={page >= pages - 1} onClick={() => onPage(page + 1)} aria-label={t("dashboard.collabNextPage")}>›</button>
         </span>
       )}
     </div>
@@ -155,6 +160,7 @@ function Pager({ page, pages, from, to, total, onPage }: { page: number; pages: 
 export function CollaborationView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
   const { D, deptName, matches, ready, href } = ctx;
+  const t = useT();
   const [sel, setSel] = useState<Sel>(initialId ? { kind: "project", id: initialId } : { kind: "none" });
   const [treeMode, setTreeMode] = useState<TreeMode>("chain");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
@@ -215,16 +221,16 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   type Row = { name: string; role: string; dept: string; right: React.ReactNode; click: boolean };
   const linkedRows: Row[] = st
     ? [
-      ...st.members.map((m) => ({ name: m.name, role: m.role, dept: byName.get(m.name)?.dept ?? "", click: isNamed(m.name), right: stuck?.name === m.name ? <Pill tone="accent">waiting here</Pill> : m.role })),
-      ...(stuck && !st.members.some((m) => m.name === stuck.name) ? [{ name: stuck.name, role: personOf(stuck.name)?.role ?? "", dept: personOf(stuck.name)?.dept ?? "", click: true, right: <Pill tone="accent">waiting on them</Pill> }] : []),
+      ...st.members.map((m) => ({ name: m.name, role: m.role, dept: byName.get(m.name)?.dept ?? "", click: isNamed(m.name), right: stuck?.name === m.name ? <Pill tone="accent">{t("dashboard.collabWaitingHere")}</Pill> : m.role })),
+      ...(stuck && !st.members.some((m) => m.name === stuck.name) ? [{ name: stuck.name, role: personOf(stuck.name)?.role ?? "", dept: personOf(stuck.name)?.dept ?? "", click: true, right: <Pill tone="accent">{t("dashboard.collabWaitingOnThem")}</Pill> }] : []),
     ]
     : sp
-      ? spCoworkers.map((c) => ({ name: c.name, role: personOf(c.name)?.role ?? "", dept: personOf(c.name)?.dept ?? "", click: true, right: c.shared.length === 1 ? c.shared[0].name : c.shared.length + " projects" }))
+      ? spCoworkers.map((c) => ({ name: c.name, role: personOf(c.name)?.role ?? "", dept: personOf(c.name)?.dept ?? "", click: true, right: c.shared.length === 1 ? c.shared[0].name : t("dashboard.collabNProjects", { count: c.shared.length }) }))
       : [];
   const onIt = new Set(linkedRows.map((r) => r.name));
   const allRows: Row[] = D.people.map((p) => ({
     name: p.name, role: p.role, dept: p.dept, click: true,
-    right: stuck?.name === p.name ? <Pill tone="accent">waiting here</Pill> : onIt.has(p.name) ? <Pill tone="soft">{st ? "on it" : "works with"}</Pill> : deptName(p.dept),
+    right: stuck?.name === p.name ? <Pill tone="accent">{t("dashboard.collabWaitingHere")}</Pill> : onIt.has(p.name) ? <Pill tone="soft">{st ? t("dashboard.collabOnIt") : t("dashboard.collabWorksWith")}</Pill> : deptName(p.dept),
   }));
   const scope: PeopleScope = st || sp ? hScope : "all";
   const hBase = scope === "linked" ? linkedRows : allRows;
@@ -290,7 +296,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   // "Via the org chart": light up the reporting lines that join the people up instead of drawing
   // new ones - the chain of command the project runs through, and where on it the wait sits.
   const chain = treeMode === "chain" ? chainEdges(D.people, [...litNames]) : new Set<string>();
-  const chainLook = st ? edgeLook(st.status) : edgeLook(stuckHere.length ? "Awaiting decision" : spCoworkers[0]?.shared[0].status ?? "Building");
+  const chainLook = st ? edgeLook(st.status) : edgeLook(stuckHere.length ? AWAITING : spCoworkers[0]?.shared[0].status ?? "Building");
 
   // Satellites of the mind map.
   const sats: { key: string; label: string; sub: string; stroke: string; dash: string; kind: "person" | "project"; hot: boolean; tag?: string; onClick: () => void }[] = st
@@ -302,13 +308,13 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
     ]
     : sp
       ? [
-        ...spProjects.map((t) => ({ key: t.id, label: t.name, sub: t.stage, ...edgeLook(t.status), kind: "project" as const, hot: t.stuckOn?.name === sp.name, tag: t.stuckOn?.name === sp.name ? "stuck here" : undefined, onClick: () => pickProject(t.id) })),
-        ...spWaiting.map((t) => ({ key: t.id, label: t.name, sub: t.stage, stroke: ACCENT, dash: "4 5", kind: "project" as const, hot: true, tag: "waiting on them", onClick: () => pickProject(t.id) })),
+        ...spProjects.map((pr) => ({ key: pr.id, label: pr.name, sub: pr.stage, ...edgeLook(pr.status), kind: "project" as const, hot: pr.stuckOn?.name === sp.name, tag: pr.stuckOn?.name === sp.name ? t("dashboard.collabStuckHere") : undefined, onClick: () => pickProject(pr.id) })),
+        ...spWaiting.map((pr) => ({ key: pr.id, label: pr.name, sub: pr.stage, stroke: ACCENT, dash: "4 5", kind: "project" as const, hot: true, tag: t("dashboard.collabWaitingOnThem"), onClick: () => pickProject(pr.id) })),
       ]
       : [];
   const centre = st ? wrap2(st.name) : sp ? [sp.name] : ["—"];
   const centreR = sp ? 30 : 44;
-  const centreSub = st ? (stMembers.length ? stMembers.length + " people" : "nobody assigned") : sp ? sp.role : "";
+  const centreSub = st ? (stMembers.length ? t("dashboard.collabNPeople", { n: stMembers.length }) : t("dashboard.collabNobodyAssigned")) : sp ? sp.role : "";
 
   const emptyProjects = initiatives.length === 0;
   const reportsCount = sp ? D.people.filter((p) => p.reportsTo === sp.name).length : 0;
@@ -321,20 +327,20 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
         <div className={`${ui.card} ${styles.mapCard}`}>
           <div className={ui.between}>
             <div>
-              <div className={ui.eyebrow}>{st ? "Project map" : sp ? "Person map" : "Map"}</div>
-              <div className={ui.h}>{st ? st.name : sp ? sp.name : emptyProjects ? "Nothing to map yet" : "Nothing selected"}</div>
+              <div className={ui.eyebrow}>{st ? t("dashboard.collabProjectMap") : sp ? t("dashboard.collabPersonMap") : t("dashboard.collabMap")}</div>
+              <div className={ui.h}>{st ? st.name : sp ? sp.name : emptyProjects ? t("dashboard.collabNothingToMap") : t("dashboard.collabNothingSelected")}</div>
               <div className={ui.sub}>
-                {st ? (stMembers.length ? "The people on it. " : "") + (stuck ? "Waiting on " + stuck.name + " - " + stuck.reason + "." : st.status === "Proposed" ? "Proposed - nobody assigned yet." : "Nothing is waiting on one person.")
-                  : sp ? (spProjects.length ? sp.role + (sp.dept ? " · " + deptName(sp.dept) : "") + " - on " + spProjects.length + (spProjects.length === 1 ? " project" : " projects") + "." : sp.role + " - not on a cross-team project.") + (stuckHere.length ? " " + stuckHere.length + (stuckHere.length === 1 ? " project is" : " projects are") + " waiting on them." : "")
-                  : emptyProjects ? "The first case that needs two departments draws the first project." : "Click a project or a person to map who is joined up and where it is waiting."}
+                {st ? (stMembers.length ? t("dashboard.collabPeopleOnIt") + " " : "") + (stuck ? t("dashboard.collabWaitingOn", { name: stuck.name, reason: stuck.reason }) : st.status === "Proposed" ? t("dashboard.collabProposedNobody") : t("dashboard.collabNothingOnePerson"))
+                  : sp ? (spProjects.length ? t("dashboard.collabRoleOn", { head: sp.role + (sp.dept ? " · " + deptName(sp.dept) : ""), count: spProjects.length }) : t("dashboard.collabRoleNotOn", { role: sp.role })) + (stuckHere.length ? " " + t("dashboard.collabWaitingOnThemN", { count: stuckHere.length }) : "")
+                  : emptyProjects ? t("dashboard.collabFirstCase") : t("dashboard.collabClickToMap")}
               </div>
             </div>
-            {st && <Pill tone={statusTone(st.status)}>{st.status}</Pill>}
-            {sp && stuckHere.length > 0 && <Pill tone="accent">waiting on them</Pill>}
+            {st && <Pill tone={statusTone(st.status)}>{wordText(t, st.status)}</Pill>}
+            {sp && stuckHere.length > 0 && <Pill tone="accent">{t("dashboard.collabWaitingOnThem")}</Pill>}
           </div>
 
           {(st || sp) && (
-            <svg key={st ? st.id : sp?.name} viewBox={"0 0 " + MW + " " + MH} className={styles.mind} preserveAspectRatio="xMidYMid meet" role="img" aria-label="Mind map of the selection">
+            <svg key={st ? st.id : sp?.name} viewBox={"0 0 " + MW + " " + MH} className={styles.mind} preserveAspectRatio={ASPECT} role="img" aria-label={t("dashboard.collabMindMap")}>
               {sats.map((s, i) => { const p = satellite(i, sats.length); return <path key={"s" + s.key} d={spoke(p.x, p.y)} fill="none" stroke={s.stroke} strokeWidth={s.hot ? 2.2 : 1.6} strokeDasharray={s.dash} strokeLinecap="round" />; })}
               <g className={styles.node}>
                 <circle cx={MCX} cy={MCY} r={centreR} fill={INK} />
@@ -371,19 +377,19 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
           )}
 
           <div className={`${ui.between} ${styles.treeHead}`}>
-            <div className={ui.eyebrow}>Who reports to whom</div>
+            <div className={ui.eyebrow}>{t("dashboard.collabWhoReports")}</div>
             {D.people.length > 0 && (
-              <div className={styles.seg} role="group" aria-label="How to draw the connections">
-                <button type="button" className={styles.segBtn} data-on={treeMode === "chain" ? "true" : undefined} onClick={() => setTreeMode("chain")}>Via the org chart</button>
-                <button type="button" className={styles.segBtn} data-on={treeMode === "lines" ? "true" : undefined} onClick={() => setTreeMode("lines")}>Direct lines</button>
+              <div className={styles.seg} role="group" aria-label={t("dashboard.collabHowDraw")}>
+                <button type="button" className={styles.segBtn} data-on={treeMode === "chain" ? "true" : undefined} onClick={() => setTreeMode("chain")}>{t("dashboard.collabViaOrg")}</button>
+                <button type="button" className={styles.segBtn} data-on={treeMode === "lines" ? "true" : undefined} onClick={() => setTreeMode("lines")}>{t("dashboard.collabDirect")}</button>
               </div>
             )}
           </div>
           {D.people.length === 0 ? (
-            <div className={ui.emptyLine}>The org chart fills in as members are invited.</div>
+            <div className={ui.emptyLine}>{t("dashboard.collabOrgFills")}</div>
           ) : (
             <div className={styles.treeWrap} ref={canvasAttach} data-dragging={dragging ? "true" : undefined} {...canvasHandlers}>
-              <svg className={styles.tree} role="img" aria-label="Org chart">
+              <svg className={styles.tree} role="img" aria-label={t("dashboard.collabOrgChart")}>
                 <g className={styles.canvas} transform={"translate(" + cv.x + " " + cv.y + ") scale(" + cv.k + ")"}>
                   {tree.edges.map((e) => { const a = pos.get(e.from)!, b = pos.get(e.to)!, on = chain.has(e.from + ">" + e.to); return <path key={e.from + e.to} d={orth(a, b)} fill="none" stroke={on ? chainLook.stroke : "#e6e5e0"} strokeWidth={on ? 2.6 : 1.2} strokeDasharray={on ? chainLook.dash : undefined} strokeLinecap="round" />; })}
                   {treeMode === "lines" && treeLines.map((l) => { const a = pos.get(l.a), b = pos.get(l.b); return a && b ? <path key={l.a + l.b} d={curve(a, b)} fill="none" stroke={l.stroke} strokeWidth={1.8} strokeDasharray={l.dash} strokeLinecap="round" opacity={0.9} /> : null; })}
@@ -417,22 +423,22 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
                 </g>
               </svg>
               <div className={styles.zoom}>
-                <button type="button" className={styles.zoomBtn} onClick={() => zoomBy(1 / 1.3)} aria-label="Zoom out">{"\u2212"}</button>
+                <button type="button" className={styles.zoomBtn} onClick={() => zoomBy(1 / 1.3)} aria-label={t("dashboard.collabZoomOut")}>{"\u2212"}</button>
                 <span className={styles.zoomPct}>{Math.round(cv.k * 100)}%</span>
-                <button type="button" className={styles.zoomBtn} onClick={() => zoomBy(1.3)} aria-label="Zoom in">+</button>
-                <button type="button" className={styles.zoomBtn} data-wide="true" onClick={fitAll}>Fit all</button>
-                <button type="button" className={styles.zoomBtn} data-wide="true" onClick={fitSelection} disabled={litNames.size === 0}>Zoom to selection</button>
-                {collapsed.size > 0 && <button type="button" className={styles.zoomBtn} data-wide="true" onClick={() => setCollapsed(new Set())}>Unfold all</button>}
+                <button type="button" className={styles.zoomBtn} onClick={() => zoomBy(1.3)} aria-label={t("dashboard.collabZoomIn")}>+</button>
+                <button type="button" className={styles.zoomBtn} data-wide="true" onClick={fitAll}>{t("dashboard.collabFitAll")}</button>
+                <button type="button" className={styles.zoomBtn} data-wide="true" onClick={fitSelection} disabled={litNames.size === 0}>{t("dashboard.collabZoomSel")}</button>
+                {collapsed.size > 0 && <button type="button" className={styles.zoomBtn} data-wide="true" onClick={() => setCollapsed(new Set())}>{t("dashboard.collabUnfold")}</button>}
               </div>
             </div>
           )}
 
           <div className={styles.legend}>
-            <span className={styles.legendItem}><span className={styles.swatch} /> shipped</span>
-            <span className={styles.legendItem}><span className={styles.swatch} data-tone="running" /> running now</span>
-            <span className={styles.legendItem}><span className={styles.swatch} data-tone="accent" /> waiting on a decision</span>
-            <span className={styles.legendItem}><span className={styles.swatchDashed} /> proposed, nobody assigned</span>
-            <span className={styles.legendItem}><span className={styles.ring} /> where it is stuck</span>
+            <span className={styles.legendItem}><span className={styles.swatch} /> {t("dashboard.collabLegendShipped")}</span>
+            <span className={styles.legendItem}><span className={styles.swatch} data-tone="running" /> {t("dashboard.collabLegendRunning")}</span>
+            <span className={styles.legendItem}><span className={styles.swatch} data-tone="accent" /> {t("dashboard.collabLegendWaiting")}</span>
+            <span className={styles.legendItem}><span className={styles.swatchDashed} /> {t("dashboard.collabLegendProposed")}</span>
+            <span className={styles.legendItem}><span className={styles.ring} /> {t("dashboard.collabLegendStuck")}</span>
           </div>
         </div>
 
@@ -440,70 +446,70 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
         <div className={styles.side}>
           <div className={`${ui.card} ${styles.win}`} data-expanded={st ? "true" : undefined}>
             <div className={ui.between}>
-              <div className={ui.h}>Projects</div>
-              <span className={ui.small}>{pSorted.length} of {initiatives.length}</span>
+              <div className={ui.h}>{t("dashboard.collabProjects")}</div>
+              <span className={ui.small}>{t("dashboard.collabCountOf", { n: pSorted.length, total: initiatives.length })}</span>
             </div>
             {!emptyProjects && (
               <div className={styles.tools}>
-                <input className={styles.search} type="search" placeholder="Search projects" value={pq} onChange={(e) => { setPq(e.target.value); setPPage(0); }} aria-label="Search projects" />
-                <select className={styles.select} value={pSort} onChange={(e) => { setPSort(e.target.value as ProjectSort); setPPage(0); }} aria-label="Sort projects">
-                  <option value="wait">Waiting longest</option>
-                  <option value="status">By status</option>
-                  <option value="people">Most people</option>
-                  <option value="title">A → Z</option>
+                <input className={styles.search} type="search" placeholder={t("dashboard.collabSearchProjects")} value={pq} onChange={(e) => { setPq(e.target.value); setPPage(0); }} aria-label={t("dashboard.collabSearchProjects")} />
+                <select className={styles.select} value={pSort} onChange={(e) => { setPSort(e.target.value as ProjectSort); setPPage(0); }} aria-label={t("dashboard.collabSortProjects")}>
+                  <option value="wait">{t("dashboard.collabSortWait")}</option>
+                  <option value="status">{t("dashboard.collabSortStatus")}</option>
+                  <option value="people">{t("dashboard.collabSortPeople")}</option>
+                  <option value="title">{t("dashboard.sortAZ")}</option>
                 </select>
-                <select className={styles.select} data-on={pFilter !== "All" ? "true" : undefined} value={pFilter} onChange={(e) => { setPFilter(e.target.value); setPPage(0); }} aria-label="Filter projects">
-                  <option value="All">All statuses</option>
-                  <option value="Stuck">Stuck on someone</option>
-                  {STATUS_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
+                <select className={styles.select} data-on={pFilter !== "All" ? "true" : undefined} value={pFilter} onChange={(e) => { setPFilter(e.target.value); setPPage(0); }} aria-label={t("dashboard.collabFilterProjects")}>
+                  <option value="All">{t("dashboard.collabAllStatuses")}</option>
+                  <option value="Stuck">{t("dashboard.collabStuckOnSomeone")}</option>
+                  {STATUS_ORDER.map((s) => <option key={s} value={s}>{wordText(t, s)}</option>)}
                 </select>
               </div>
             )}
             {st && (
               <div key={st.id} className={styles.detail}>
-                <div className={ui.eyebrow}>Selected project</div>
+                <div className={ui.eyebrow}>{t("dashboard.collabSelectedProject")}</div>
                 <div className={styles.detailTitle}>{st.name}</div>
                 <div className={`${ui.chips} ${styles.selMeta}`}>
-                  <Pill tone={statusTone(st.status)}>{st.status}</Pill>
+                  <Pill tone={statusTone(st.status)}>{wordText(t, st.status)}</Pill>
                   <span className={ui.small}>{st.stage}</span>
                   {st.depts.map((d) => <span key={d} className={styles.deptMini}>{deptName(d)}</span>)}
                 </div>
-                <div className={`${ui.body} ${styles.why}`}>Started because: {st.why}</div>
+                <div className={`${ui.body} ${styles.why}`}>{t("dashboard.collabStartedBecause", { why: st.why })}</div>
                 {stuck && (
                   <div className={styles.stuck} onClick={() => pickPerson(stuck.name)}>
                     <Avatar name={stuck.name} size="sm" />
-                    <span><b>Stuck at {stuck.name}</b> - {stuck.reason}</span>
+                    <span><b>{t("dashboard.collabStuckAt", { name: stuck.name })}</b> - {stuck.reason}</span>
                   </div>
                 )}
                 <div className={styles.go}>
                   {projectMode ? (
-                    <Link href={href("/projects/" + st.id)} className={styles.goBtn}>Open the project →</Link>
+                    <Link href={href("/projects/" + st.id)} className={styles.goBtn}>{t("dashboard.collabOpenProject")}</Link>
                   ) : st.idea ? (
-                    <Link href={href("/ideas?id=" + st.idea)} className={styles.goBtn}>Open on the Ideas page →</Link>
+                    <Link href={href("/ideas?id=" + st.idea)} className={styles.goBtn}>{t("dashboard.collabOpenIdeas")}</Link>
                   ) : st.status === "Shipped" ? (
-                    <Link href={href("/progress")} className={styles.goBtn}>See the outcome on Progress →</Link>
+                    <Link href={href("/progress")} className={styles.goBtn}>{t("dashboard.collabSeeOutcome")}</Link>
                   ) : (
-                    <span className={styles.goNone}>No idea page yet - started from a case.</span>
+                    <span className={styles.goNone}>{t("dashboard.collabNoIdeaPage")}</span>
                   )}
-                  <button type="button" className={ui.textlink} onClick={() => setSel({ kind: "none" })}>Close</button>
+                  <button type="button" className={ui.textlink} onClick={() => setSel({ kind: "none" })}>{t("common.close")}</button>
                 </div>
               </div>
             )}
             <div className={styles.listBox}>
-              {emptyProjects && <Empty title="Nothing yet" sub="The first case that needs two departments draws the first project." />}
-              {!emptyProjects && pSorted.length === 0 && <div className={ui.emptyLine}>No project matches.</div>}
+              {emptyProjects && <Empty title={t("dashboard.collabNothingYet")} sub={t("dashboard.collabFirstCase")} />}
+              {!emptyProjects && pSorted.length === 0 && <div className={ui.emptyLine}>{t("dashboard.collabNoProjectMatches")}</div>}
               <div className={ui.list}>
-                {pRows.map((t) => {
-                  const mine = sp ? t.members.some((m) => m.name === sp.name) || t.stuckOn?.name === sp.name : false;
+                {pRows.map((row) => {
+                  const mine = sp ? row.members.some((m) => m.name === sp.name) || row.stuckOn?.name === sp.name : false;
                   return (
-                    <div key={t.id} className={ui.row} data-active={st?.id === t.id || mine ? "true" : undefined} onClick={() => pickProject(t.id)}>
+                    <div key={row.id} className={ui.row} data-active={st?.id === row.id || mine ? "true" : undefined} onClick={() => pickProject(row.id)}>
                       <div className={ui.mark} />
                       <div className={ui.rowBody}>
                         <div className={styles.allRow}>
-                          <span className={ui.tileTitle}>{t.name}</span>
-                          <Pill tone={statusTone(t.status)}>{t.status}</Pill>
+                          <span className={ui.tileTitle}>{row.name}</span>
+                          <Pill tone={statusTone(row.status)}>{wordText(t, row.status)}</Pill>
                         </div>
-                        <div className={styles.allMeta}>{t.depts.map(deptName).join(" × ")} · {t.people ? t.people + " people" : "nobody assigned"}{t.stuckOn ? " · stuck at " + t.stuckOn.name : ""}</div>
+                        <div className={styles.allMeta}>{row.depts.map(deptName).join(" × ")} · {row.people ? t("dashboard.collabNPeople", { n: row.people }) : t("dashboard.collabNobodyAssigned")}{row.stuckOn ? " · " + t("dashboard.collabStuckAtLc", { name: row.stuckOn.name }) : ""}</div>
                       </div>
                     </div>
                   );
@@ -515,24 +521,24 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
 
           <div className={`${ui.card} ${styles.win}`} data-expanded={sp ? "true" : undefined}>
             <div className={ui.between}>
-              <div className={ui.h}>{sp ? "Person" : "People"}</div>
+              <div className={ui.h}>{sp ? t("dashboard.collabPerson") : t("dashboard.collabPeople")}</div>
               {(st || sp) && (
-                <div className={styles.seg} role="group" aria-label="Which people to list">
-                  <button type="button" className={styles.segBtn} data-on={scope === "linked" ? "true" : undefined} onClick={() => { setHScope("linked"); setHPage(0); }}>{st ? "On it" : "Works with"}</button>
-                  <button type="button" className={styles.segBtn} data-on={scope === "all" ? "true" : undefined} onClick={() => { setHScope("all"); setHPage(0); }}>Everyone</button>
+                <div className={styles.seg} role="group" aria-label={t("dashboard.collabWhichPeople")}>
+                  <button type="button" className={styles.segBtn} data-on={scope === "linked" ? "true" : undefined} onClick={() => { setHScope("linked"); setHPage(0); }}>{st ? t("dashboard.collabOnItBtn") : t("dashboard.collabWorksWithBtn")}</button>
+                  <button type="button" className={styles.segBtn} data-on={scope === "all" ? "true" : undefined} onClick={() => { setHScope("all"); setHPage(0); }}>{t("dashboard.collabEveryone")}</button>
                 </div>
               )}
             </div>
             {D.people.length > 0 && (
               <div className={styles.tools}>
-                <input className={styles.search} type="search" placeholder="Search people" value={hq} onChange={(e) => { setHq(e.target.value); setHPage(0); }} aria-label="Search people" />
-                <select className={styles.select} value={hSort} onChange={(e) => { setHSort(e.target.value as PersonSort); setHPage(0); }} aria-label="Sort people">
-                  <option value="name">A → Z</option>
-                  <option value="dept">By department</option>
-                  <option value="role">By role</option>
+                <input className={styles.search} type="search" placeholder={t("dashboard.collabSearchPeople")} value={hq} onChange={(e) => { setHq(e.target.value); setHPage(0); }} aria-label={t("dashboard.collabSearchPeople")} />
+                <select className={styles.select} value={hSort} onChange={(e) => { setHSort(e.target.value as PersonSort); setHPage(0); }} aria-label={t("dashboard.collabSortPeopleLabel")}>
+                  <option value="name">{t("dashboard.sortAZ")}</option>
+                  <option value="dept">{t("dashboard.collabSortDept")}</option>
+                  <option value="role">{t("dashboard.collabSortRole")}</option>
                 </select>
-                <select className={styles.select} data-on={hDept !== "All" ? "true" : undefined} value={hDept} onChange={(e) => { setHDept(e.target.value); setHPage(0); }} aria-label="Filter people by department">
-                  <option value="All">All departments</option>
+                <select className={styles.select} data-on={hDept !== "All" ? "true" : undefined} value={hDept} onChange={(e) => { setHDept(e.target.value); setHPage(0); }} aria-label={t("dashboard.collabFilterPeopleDept")}>
+                  <option value="All">{t("dashboard.collabAllDepartments")}</option>
                   {deptsInList.map((d) => <option key={d} value={d}>{deptName(d)}</option>)}
                 </select>
               </div>
@@ -548,27 +554,27 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
                   </div>
                 </div>
                 <div className={`${ui.note} ${ui.mt8}`}>
-                  {sp.reportsTo ? <>Reports to <button type="button" className={ui.textlink} onClick={() => pickPerson(sp.reportsTo ?? "")}>{sp.reportsTo}</button>. </> : sp.dept ? "Top of the company. " : ""}
-                  {reportsCount ? reportsCount + (reportsCount === 1 ? " person reports" : " people report") + " to them. " : ""}
-                  {spProjects.length ? "On " + spProjects.map((t) => t.name).join(", ") + "." : "Not on a cross-team project."}
+                  {sp.reportsTo ? <>{t("dashboard.collabReportsTo")} <button type="button" className={ui.textlink} onClick={() => pickPerson(sp.reportsTo ?? "")}>{sp.reportsTo}</button>. </> : sp.dept ? t("dashboard.collabTopOfCompany") + " " : ""}
+                  {reportsCount ? t("dashboard.collabReports", { count: reportsCount }) + " " : ""}
+                  {spProjects.length ? t("dashboard.collabOnNames", { names: spProjects.map((p) => p.name).join(", ") }) : t("dashboard.collabNotOnCross")}
                 </div>
-                {stuckHere.map((t) => (
-                  <div key={t.id} className={styles.stuck} onClick={() => pickProject(t.id)}>
-                    <span><b>{t.name}</b> is waiting on them - {t.stuckOn?.reason}</span>
+                {stuckHere.map((pr) => (
+                  <div key={pr.id} className={styles.stuck} onClick={() => pickProject(pr.id)}>
+                    <span><b>{pr.name}</b> {t("dashboard.collabIsWaitingOnThem")} {pr.stuckOn?.reason}</span>
                   </div>
                 ))}
               </div>
             )}
 
             <div className={styles.listBox}>
-              {D.people.length === 0 && !st && <div className={ui.emptyLine}>People appear here as members are invited.</div>}
-              {hBase.length > 0 && hSorted.length === 0 && <div className={ui.emptyLine}>Nobody matches.</div>}
-              {hBase.length === 0 && (st || sp) && <div className={ui.emptyLine}>{st ? "Nobody assigned yet." : "Works with nobody yet."}</div>}
+              {D.people.length === 0 && !st && <div className={ui.emptyLine}>{t("dashboard.collabPeopleAppear")}</div>}
+              {hBase.length > 0 && hSorted.length === 0 && <div className={ui.emptyLine}>{t("dashboard.collabNobodyMatches")}</div>}
+              {hBase.length === 0 && (st || sp) && <div className={ui.emptyLine}>{st ? t("dashboard.collabNobodyAssignedYet") : t("dashboard.collabWorksWithNobody")}</div>}
               <div className={styles.members}>
                 {hRows.map((r) => (
                   <div key={r.name + r.role} className={ui.personRow} data-click={r.click ? "true" : undefined} data-active={sp?.name === r.name ? "true" : undefined} onClick={() => r.click && pickPerson(r.name)}>
                     <Avatar name={r.name} />
-                    <span className={styles.memberName}>{r.name === "—" ? "Nobody assigned" : r.name}</span>
+                    <span className={styles.memberName}>{r.name === "—" ? t("dashboard.listNobodyAssigned") : r.name}</span>
                     <span className={styles.memberRole}>{r.right}</span>
                   </div>
                 ))}

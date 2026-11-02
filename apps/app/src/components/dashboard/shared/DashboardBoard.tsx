@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { useT } from "@/i18n/client";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { barHeights, pastPromise, ringOffset, shares, trendPaths, trendPoints } from "@/features/metrics/dashboard";
 import { deliveredCount, stallSplit } from "@/features/metrics/overview";
@@ -21,7 +22,6 @@ import s from "./DashboardBoard.module.css";
 
 const KPI_COUNT = 6; // the handoff's kpiCount: "4" shows the first four, "6" all six
 const STAGES_LEFT = true; // the handoff's topRowOrder, default "Stages left"
-const ALL = "All departments";
 
 type ListKey = "l:sup" | "l:ai" | "l:dep";
 type Widget = "trend" | "stage" | "out" | "pay" | "why" | ListKey;
@@ -35,8 +35,9 @@ const FMT: Record<KpiUnit, (v: number) => string> = {
 const RESULT_TONE: Record<string, string> = { "As promised": "blue", "Beat it": "green", Short: "short", Running: "grey" };
 
 function Close({ onClose }: { onClose: () => void }) {
+  const t = useT();
   return (
-    <button type="button" className={s.closeAll2} onClick={onClose} title="Close" aria-label="Close">
+    <button type="button" className={s.closeAll2} onClick={onClose} title={t("common.close")} aria-label={t("common.close")}>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" strokeWidth="2.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
     </button>
   );
@@ -49,10 +50,11 @@ function Row({ to, className, style, children }: { to: string | null; className:
 
 export function DashboardBoard() {
   const { seed, D, demo, ready, href } = useDemo();
+  const t = useT();
   const [open, setOpen] = useState<Open>(null);
   const [ph, setPh] = useState(0); // the opened widget's height, kept by its slot
   const [menu, setMenu] = useState(false);
-  const [scope, setScope] = useState(ALL);
+  const [scope, setScope] = useState<string | null>(null); // null = all departments
   const [hov, setHov] = useState<string | null>(null);
   const [month, setMonth] = useState(TREND.length - 1);
   const [stage, setStage] = useState(3);
@@ -81,9 +83,9 @@ export function DashboardBoard() {
   // ── KPIs ──
   const headline: Record<KpiId, { value: string; delta: string; sub?: string }> = {
     dec: { value: M.ideaToDecision.now, delta: M.ideaToDecision.was },
-    ship: { value: String(SHIPPED_THIS_YEAR), delta: M.shippedWas, sub: M.stoppedEarly + " stopped early" },
+    ship: { value: String(SHIPPED_THIS_YEAR), delta: M.shippedWas, sub: t("dashboard.boardStoppedEarly", { n: M.stoppedEarly }) },
     val: { value: M.valueBooked.now, delta: M.valueBooked.delta, sub: M.valueBooked.sub },
-    saved: { value: M.waitingDaysSaved.now, delta: "vs old route" },
+    saved: { value: M.waitingDaysSaved.now, delta: t("dashboard.boardVsOldRoute") },
     within: { value: L.withinPromise, delta: L.withinPromiseWas },
     first: { value: L.firstAnswer, delta: L.firstAnswerWas },
   };
@@ -100,8 +102,8 @@ export function DashboardBoard() {
     const [r, a, w, ap] = trend[hi], p = pts[hi], d = hi ? r - trend[hi - 1][0] : null;
     return {
       p, m: TREND_MONTHS[hi] + " " + TREND_YEAR, tx: hi === 0 ? "-12%" : hi === pts.length - 1 ? "-88%" : "-50%",
-      delta: d == null ? "first month" : (d >= 0 ? "+" : "") + d + " vs " + TREND_MONTHS[hi - 1], first: d == null,
-      rows: [["Raised", String(r)], ["Answered", a + " of " + r], ["Within 5 days", Math.round((w / a) * 100) + "%"], ["Approved or piloted", String(ap)]],
+      delta: d == null ? t("dashboard.boardFirstMonth") : t("dashboard.boardVsMonth", { delta: (d >= 0 ? "+" : "") + d, month: TREND_MONTHS[hi - 1] }), first: d == null,
+      rows: [[t("dashboard.boardRaised"), String(r)], [t("dashboard.boardAnswered"), t("dashboard.boardNOfM", { a, b: r })], [t("dashboard.boardWithin5Days"), Math.round((w / a) * 100) + "%"], [t("dashboard.boardApprovedOrPiloted"), String(ap)]],
     };
   })() : null;
   const pickMonth = (i: number) => (e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setMonth(i); if (!trendOpen) openFrom("trend", e.currentTarget); };
@@ -133,19 +135,21 @@ export function DashboardBoard() {
 
   // ── the three lists ──
   const lists: { key: ListKey; title: string; sub: string; rows: ListRow[]; emptyText: string }[] = [
-    { key: "l:sup", title: "Most supported", sub: "From the feed", rows: SUPPORTED, emptyText: "No supporters yet. Ideas people back in the feed show up here." },
-    { key: "l:ai", title: "Highest AI score", sub: "Value, feasibility, cost, fit, risk", rows: SCORED, emptyText: "No ideas scored yet. Each idea gets an AI score as soon as it is raised." },
-    { key: "l:dep", title: "Ideas by department", sub: "Raised this quarter", rows: BY_DEPT, emptyText: "No department has raised an idea yet." },
+    { key: "l:sup", title: t("dashboard.boardListSupTitle"), sub: t("dashboard.boardListSupSub"), rows: SUPPORTED, emptyText: t("dashboard.boardListSupEmpty") },
+    { key: "l:ai", title: t("dashboard.boardListAiTitle"), sub: t("dashboard.boardListAiSub"), rows: SCORED, emptyText: t("dashboard.boardListAiEmpty") },
+    { key: "l:dep", title: t("dashboard.boardListDepTitle"), sub: t("dashboard.boardListDepSub"), rows: BY_DEPT, emptyText: t("dashboard.boardListDepEmpty") },
   ];
-  const scopes = [ALL, ...seed.depts.map((d) => d.name)];
+  const allLabel = t("dashboard.boardAllDepartments");
+  const scopeLabel = scope ?? allLabel;
+  const scopes = [allLabel, ...seed.depts.map((d) => d.name)];
 
   const trendCard = (
     <div className={s.div30} style={{ ...slot("trend"), order: STAGES_LEFT ? 2 : 1 }}>
       <div className={`${s.click} ${s.card}`} data-w="trend" data-open={on("trend")} onClick={cardClick("trend")}>
         <div className={s.div31}>
           <div className={s.div32}>
-            <h3 className={s.h32}>Ideas raised per month</h3>
-            <span className={s.m2}>{trend.length ? (demo ? (trendOpen ? "Tap a month or a row to compare" : `Last ${trend.length} months · up from ${trend[0][0]} in ${TREND_FIRST_LONG}`) : "measured in pilot") : "No ideas raised yet"}</span>
+            <h3 className={s.h32}>{t("dashboard.boardTrendTitle")}</h3>
+            <span className={s.m2}>{trend.length ? (demo ? (trendOpen ? t("dashboard.boardTrendTap") : t("dashboard.boardTrendSub", { n: trend.length, from: trend[0][0], month: TREND_FIRST_LONG })) : t("dashboard.boardMeasuredInPilot")) : t("dashboard.boardNoIdeasRaised")}</span>
           </div>
           {trendOpen && <Close onClose={close} />}
         </div>
@@ -184,10 +188,10 @@ export function DashboardBoard() {
           </div>
         </div>
         {trendOpen && (
-          <div className={s.div41} role="table" aria-label="Ideas per month">
+          <div className={s.div41} role="table" aria-label={t("dashboard.boardTrendTable")}>
             <div className={s.div42} role="row">
-              <span role="columnheader">Month</span><span className={s.raised} role="columnheader">Raised</span><span className={s.raised} role="columnheader">Answered</span>
-              <span className={s.raised} role="columnheader">Within 5 days</span><span className={s.raised} role="columnheader">Approved or piloted</span>
+              <span role="columnheader">{t("dashboard.boardMonth")}</span><span className={s.raised} role="columnheader">{t("dashboard.boardRaised")}</span><span className={s.raised} role="columnheader">{t("dashboard.boardAnswered")}</span>
+              <span className={s.raised} role="columnheader">{t("dashboard.boardWithin5Days")}</span><span className={s.raised} role="columnheader">{t("dashboard.boardApprovedOrPiloted")}</span>
             </div>
             {trend.map(([r, a, w, ap], i) => ({ r, a, w, ap, i })).reverse().map(({ r, a, w, ap, i }) => (
               <div key={i} className={s.pick4} role="row" data-on={month === i ? "true" : undefined} onClick={pickMonth(i)}>
@@ -206,12 +210,12 @@ export function DashboardBoard() {
       <div className={`${s.click} ${s.card}`} data-w="stage" data-open={on("stage")} onClick={cardClick("stage")}>
         <div className={s.div31}>
           <div className={s.div32}>
-            <h3 className={s.h32}>Ideas per stage</h3>
-            <span className={s.m2}>{stages.length ? (stageOpen ? "Tap a bar to see its ideas" : `${dash(openN)} open ideas · average days in each stage`) : "Nothing in motion yet"}</span>
+            <h3 className={s.h32}>{t("dashboard.boardStageTitle")}</h3>
+            <span className={s.m2}>{stages.length ? (stageOpen ? t("dashboard.boardStageTap") : t("dashboard.boardStageSub", { n: dash(openN) })) : t("dashboard.boardStageNone")}</span>
           </div>
           {stageOpen && <Close onClose={close} />}
         </div>
-        {!stages.length && <span className={s.span6}>No ideas raised yet. Each one shows up here as it moves from Raised to In progress.</span>}
+        {!stages.length && <span className={s.span6}>{t("dashboard.boardStageEmpty")}</span>}
         {stages.length > 0 && (
           <>
             <div className={s.div44}>
@@ -223,9 +227,9 @@ export function DashboardBoard() {
                     {demo && hov === "s:" + i && (
                       <div className={s.div45} data-edge={i === 0 ? "start" : i === stages.length - 1 ? "end" : undefined}>
                         <span className={s.m3}>{x.name}</span>
-                        <div className={s.div46}><span className={s.m}>Ideas</span><span className={s.v6}>{x.n} · {Math.round((x.n / openN) * 100)}% of open</span></div>
-                        <div className={s.div46}><span className={s.m}>{x.running ? "Running for" : "Avg wait"}</span><span className={s.v6} data-tone={over ? "late" : undefined}>{x.days} d{x.running ? " avg" : ""}</span></div>
-                        <div className={s.div46}><span className={s.m}>Longest</span><span className={s.v6}>{x.ideas[0]?.days ?? 0} d</span></div>
+                        <div className={s.div46}><span className={s.m}>{t("dashboard.boardIdeas")}</span><span className={s.v6}>{t("dashboard.boardOfOpen", { n: x.n, pct: Math.round((x.n / openN) * 100) })}</span></div>
+                        <div className={s.div46}><span className={s.m}>{x.running ? t("dashboard.boardRunningFor") : t("dashboard.boardAvgWait")}</span><span className={s.v6} data-tone={over ? "late" : undefined}>{x.running ? t("dashboard.boardDAvg", { n: x.days }) : x.days + " d"}</span></div>
+                        <div className={s.div46}><span className={s.m}>{t("dashboard.boardLongest")}</span><span className={s.v6}>{x.ideas[0]?.days ?? 0} d</span></div>
                       </div>
                     )}
                     <span className={s.value2}>{dash(x.n)}</span>
@@ -240,20 +244,20 @@ export function DashboardBoard() {
               {stages.map((x, i) => (
                 <div key={x.name} className={s.pick6} onClick={pickStage(i)}>
                   <span className={s.name2}>{x.name}</span>
-                  <span className={s.days} data-tone={pastPromise(x.days, P, x.running) ? "late" : undefined}>{demo ? (x.running ? `${x.days} d running` : `${x.days} d avg`) : "measured in pilot"}</span>
+                  <span className={s.days} data-tone={pastPromise(x.days, P, x.running) ? "late" : undefined}>{demo ? t(x.running ? "dashboard.boardDRunning" : "dashboard.boardDAvg", { n: x.days }) : t("dashboard.boardMeasuredInPilot")}</span>
                 </div>
               ))}
             </div>
             {stageOpen && sel && (
               <div className={s.div50}>
                 <div className={s.div51}>
-                  <span className={s.name3}>{sel.name} · {sel.n} ideas</span>
-                  <span className={s.span7}>Longest in stage first</span>
+                  <span className={s.name3}>{t("dashboard.boardStageIdeas", { name: sel.name, n: sel.n })}</span>
+                  <span className={s.span7}>{t("dashboard.boardLongestFirst")}</span>
                 </div>
                 {sel.ideas.map((it, j) => (
                   <Row key={it.title} to={caseHref(it.title)} className={s.a} style={{ animationDelay: 40 + j * 50 + "ms" }}>
                     <div className={s.div52}><span className={s.title}>{it.title}</span><span className={s.m2}>{it.who}</span></div>
-                    <span className={s.d} data-tone={pastPromise(it.days, P, sel.running) ? "late" : undefined}>{it.days} d {sel.running ? "running" : "in stage"}</span>
+                    <span className={s.d} data-tone={pastPromise(it.days, P, sel.running) ? "late" : undefined}>{t(sel.running ? "dashboard.boardDRunning" : "dashboard.boardDInStage", { n: it.days })}</span>
                   </Row>
                 ))}
               </div>
@@ -269,18 +273,18 @@ export function DashboardBoard() {
       {open && <div className={s.closeAll} onClick={close} aria-hidden="true" />}
       <div className={s.div7}>
         <div className={s.div8}>
-          <div className={s.div9}><h1 className={s.dashboard2}>Dashboard</h1></div>
+          <div className={s.div9}><h1 className={s.dashboard2}>{t("dashboard.boardTitle")}</h1></div>
           <div className={s.div10}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(false)} aria-hidden="true" />}
             <button type="button" className={s.toggleMenu} onClick={() => setMenu(!menu)} aria-expanded={menu} aria-haspopup="menu">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5h18M6 12h12M10 19h4" /></svg>
-              {scope}
+              {scopeLabel}
             </button>
             {menu && (
               <div className={s.div11} role="menu">
                 {scopes.map((l) => (
-                  <button key={l} type="button" role="menuitemradio" aria-checked={l === scope} className={s.pick} data-on={l === scope ? "true" : undefined} onClick={() => { setScope(l); setMenu(false); }}>
-                    <span className={s.label}>{l}</span><span className={s.check}>{l === scope ? "✓" : ""}</span>
+                  <button key={l} type="button" role="menuitemradio" aria-checked={l === scopeLabel} className={s.pick} data-on={l === scopeLabel ? "true" : undefined} onClick={() => { setScope(l === allLabel ? null : l); setMenu(false); }}>
+                    <span className={s.label}>{l}</span><span className={s.check}>{l === scopeLabel ? "✓" : ""}</span>
                   </button>
                 ))}
               </div>
@@ -298,7 +302,7 @@ export function DashboardBoard() {
                   <span className={s.value}>{dash(h.value)}</span>
                   {demo && <span className={s.delta}>{h.delta}</span>}
                 </div>
-                <span className={s.sub}>{demo ? h.sub ?? k.sub : "measured in pilot"}</span>
+                <span className={s.sub}>{demo ? h.sub ?? k.sub : t("dashboard.boardMeasuredInPilot")}</span>
                 <div className={s.div14}>
                   {k.vals.map((v, j) => {
                     const key = "b:" + k.id + ":" + j, hv = demo && hov === key;
@@ -330,8 +334,8 @@ export function DashboardBoard() {
               <div className={s.div19}>
                 <div className={s.div20}>
                   <div className={s.div21}>
-                    <span className={s.monthByMonth}>Month by month</span>
-                    <span className={s.span2}><span className={s.beforeNextup}><span className={s.span3} />Before NextUp</span><span className={s.beforeNextup}><span className={s.span4} />Since the pilot</span></span>
+                    <span className={s.monthByMonth}>{t("dashboard.boardMonthByMonth")}</span>
+                    <span className={s.span2}><span className={s.beforeNextup}><span className={s.span3} />{t("dashboard.boardBeforeNextup")}</span><span className={s.beforeNextup}><span className={s.span4} />{t("dashboard.boardSincePilot")}</span></span>
                   </div>
                   <div className={s.div22}>
                     {kSel.vals.map((v, i) => {
@@ -372,12 +376,12 @@ export function DashboardBoard() {
               <div className={`${s.click2} ${s.card}`} data-w="out" data-open={on("out")} onClick={cardClick("out")}>
                 <div className={s.div31}>
                   <div className={s.div32}>
-                    <h3 className={s.h32}>How team leads answered</h3>
-                    <span className={s.m2}>{answers.length ? (open === "out" ? "Per team lead, this quarter" : `${dash(answerTotal)} answers this quarter`) : "No answers yet"}</span>
+                    <h3 className={s.h32}>{t("dashboard.boardOutTitle")}</h3>
+                    <span className={s.m2}>{answers.length ? (open === "out" ? t("dashboard.boardOutPer") : t("dashboard.boardOutCount", { n: dash(answerTotal) })) : t("dashboard.boardOutNone")}</span>
                   </div>
                   {open === "out" && <Close onClose={close} />}
                 </div>
-                {!answers.length && <span className={s.span6}>No answers yet. Approve, pilot, more info, route and decline are counted here once leads respond.</span>}
+                {!answers.length && <span className={s.span6}>{t("dashboard.boardOutEmpty")}</span>}
                 {answers.length > 0 && (
                   <>
                     <div className={s.div56}>
@@ -395,7 +399,7 @@ export function DashboardBoard() {
                     {open === "out" && (
                       <div className={s.div59}>
                         <div className={s.div60}>
-                          <span>Team lead</span><span className={s.raised}>Answers</span><span className={s.raised}>Median</span><span className={s.raised}>Within 5 d</span><span>Answer mix</span>
+                          <span>{t("dashboard.boardTeamLead")}</span><span className={s.raised}>{t("dashboard.boardAnswers")}</span><span className={s.raised}>{t("dashboard.boardMedian")}</span><span className={s.raised}>{t("dashboard.boardWithin5d")}</span><span>{t("dashboard.boardAnswerMix")}</span>
                         </div>
                         {LEADS.map((l, i) => (
                           <Row key={l.name} to={personHref(l.name)} className={s.a2} style={{ animationDelay: 40 + i * 50 + "ms" }}>
@@ -421,26 +425,26 @@ export function DashboardBoard() {
               <div className={`${s.click3} ${s.card}`} data-w="pay" data-open={on("pay")} onClick={cardClick("pay")}>
                 <div className={s.div31}>
                   <div className={s.div32}>
-                    <h3 className={s.h32}>Did shipped work pay off</h3>
-                    <span className={s.m2}>{payOpen ? "Ideas that shipped or are running, against what they promised" : "Ideas that shipped, against what they promised"}</span>
+                    <h3 className={s.h32}>{t("dashboard.boardPayTitle")}</h3>
+                    <span className={s.m2}>{payOpen ? t("dashboard.boardPaySubOpen") : t("dashboard.boardPaySub")}</span>
                   </div>
                   {payOpen && <Close onClose={close} />}
                 </div>
-                {!D.outcomes.length && <span className={s.span11}>Nothing shipped yet. Each idea in progress is checked against what it promised once it ships.</span>}
+                {!D.outcomes.length && <span className={s.span11}>{t("dashboard.boardPayEmpty")}</span>}
                 {D.outcomes.length > 0 && (
                   <>
                     <div className={s.div62}>
                       <span className={s.value3}>{dash(M.valueBooked.now)}</span>
                       <span className={s.span12}>
-                        booked so far: <strong className={s.n435k}>{M.valueBooked.delta}</strong> since the baseline, {M.valueBooked.sub}.{" "}
-                        <strong className={s.n435k}>{deliveredCount(D.outcomes)} of {D.outcomes.length}</strong> shipped ideas met or beat their promise.
+                        {t("dashboard.boardBookedSoFar")} <strong className={s.n435k}>{M.valueBooked.delta}</strong> {t("dashboard.boardSinceBaseline", { sub: M.valueBooked.sub })}{" "}
+                        <strong className={s.n435k}>{t("dashboard.boardNOfM", { a: deliveredCount(D.outcomes), b: D.outcomes.length })}</strong> {t("dashboard.boardMetPromise")}
                       </span>
                     </div>
                     <div className={`${s.div55} ${s.payTable}`}>
                       <div className={s.div63}>
-                        <span>Shipped</span>
-                        {payOpen && <><span>Team</span><span>Shipped on</span></>}
-                        <span className={s.promised}>Promised</span><span>Delivered</span><span className={s.raised}>Result</span>
+                        <span>{t("dashboard.boardShipped")}</span>
+                        {payOpen && <><span>{t("dashboard.boardTeam")}</span><span>{t("dashboard.boardShippedOn")}</span></>}
+                        <span className={s.promised}>{t("dashboard.boardPromised")}</span><span>{t("dashboard.boardDelivered")}</span><span className={s.raised}>{t("dashboard.boardResult")}</span>
                       </div>
                       {payRows.map((r, i) => (
                         <Row key={r.t} to={caseHref(r.t)} className={s.a3} style={{ animationDelay: (payOpen && i >= 4 ? (i - 4) * 60 : 0) + "ms" }}>
@@ -461,12 +465,12 @@ export function DashboardBoard() {
             <div className={`${s.click4} ${s.card}`} data-w="why" data-open={on("why")} onClick={cardClick("why")}>
               <div className={s.div31}>
                 <div className={s.div32}>
-                  <h3 className={s.h32}>Where the waiting goes</h3>
-                  <span className={s.m2}>{split ? split.total + " waiting days, tagged by reason · how fast people hear back" : "No waiting days tagged yet"}</span>
+                  <h3 className={s.h32}>{t("dashboard.boardWhyTitle")}</h3>
+                  <span className={s.m2}>{split ? t("dashboard.boardWhySub", { n: split.total }) : t("dashboard.boardWhyNone")}</span>
                 </div>
                 {open === "why" && <Close onClose={close} />}
               </div>
-              {!split && <span className={s.span13}>Once cases move, each day of waiting is labelled: wrong department, not responsible, no time, or could not rank it. The split tells you whether the routing or the capacity is the problem.</span>}
+              {!split && <span className={s.span13}>{t("dashboard.boardWhyEmpty")}</span>}
               {split && (
                 <div className={s.div64}>
                   <div className={s.div65}>
@@ -480,18 +484,18 @@ export function DashboardBoard() {
                           <span className={s.within}>{dash(L.withinPromise)}</span>
                         </div>
                         <div className={s.div69}>
-                          <span className={s.span14}>Answered within {P} days</span>
-                          <span className={s.m2}>{demo ? L.withinPromiseWas : "measured in pilot"}</span>
+                          <span className={s.span14}>{t("dashboard.boardAnsweredWithin", { n: P })}</span>
+                          <span className={s.m2}>{demo ? L.withinPromiseWas : t("dashboard.boardMeasuredInPilot")}</span>
                         </div>
                       </div>
                       <div className={s.div70}>
                         <span className={s.first}>{dash(L.firstAnswer)}</span>
-                        <span className={s.span14}>Median to first answer</span>
-                        <span className={s.m2}>{demo ? L.firstAnswerWas : "measured in pilot"}</span>
+                        <span className={s.span14}>{t("dashboard.boardMedianFirst")}</span>
+                        <span className={s.m2}>{demo ? L.firstAnswerWas : t("dashboard.boardMeasuredInPilot")}</span>
                       </div>
                     </div>
                     <div className={s.div55}>
-                      {[["Escalated this quarter", L.escalated], ["Handed sideways", L.handedOver], ["Proposed owner overruled", L.overrides]].map(([label, v]) => (
+                      {[[t("dashboard.boardEscalated"), L.escalated], [t("dashboard.boardHandedSideways"), L.handedOver], [t("dashboard.boardOverruled"), L.overrides]].map(([label, v]) => (
                         <div key={label} className={s.div71}><span className={s.label5}>{label}</span><span className={s.v2}>{dash(v)}</span></div>
                       ))}
                     </div>
@@ -503,8 +507,8 @@ export function DashboardBoard() {
                         <div className={s.div76} />
                       </div>
                       <div className={s.div77}>
-                        <span><strong className={s.n435k}>{dash(split.routing)} d routing</strong><span className={s.span15}> · the routing is wrong</span></span>
-                        <span><strong className={s.capD}>{dash(split.total - split.routing)} d capacity</strong><span className={s.span15}> · time or priority</span></span>
+                        <span><strong className={s.n435k}>{t("dashboard.boardDRouting", { n: dash(split.routing) })}</strong><span className={s.span15}> {t("dashboard.boardRoutingWrong")}</span></span>
+                        <span><strong className={s.capD}>{t("dashboard.boardDCapacity", { n: dash(split.total - split.routing) })}</strong><span className={s.span15}> {t("dashboard.boardCapacityWhy")}</span></span>
                       </div>
                     </div>
                     <div className={s.div55}>
@@ -563,7 +567,7 @@ export function DashboardBoard() {
                       </Row>
                     ))}
                   </div>
-                  {!isOpen && rows.length > 4 && <button type="button" className={s.openIt2} onClick={openIt}>Show all {rows.length}</button>}
+                  {!isOpen && rows.length > 4 && <button type="button" className={s.openIt2} onClick={openIt}>{t("dashboard.boardShowAll", { n: rows.length })}</button>}
                 </div>
               </div>
             );
