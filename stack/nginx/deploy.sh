@@ -28,6 +28,10 @@
 #
 # A pinned stack (PINNED=<sha> in its instances/<slug>/stack.conf) is left alone by both, so
 # what is shown in an interview never changes by itself. Only `promote <slug> <sha>` moves it.
+#
+# Every move takes a backup first (stage, release, deploy and promote): `backup.sh <slug>
+# pre-migrate <sha>`, before the new commit's migrations run. A stack whose backup fails is not
+# moved; a stack without one set up yet, or with its database down, moves without.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 export NEXTUP_INSTANCES="${NEXTUP_INSTANCES:-$HOME/nextup/instances}"
@@ -146,6 +150,19 @@ take_lock() {
   flock -w 1500 8 || { echo "!! another deploy has held $lock_file for 25 minutes - nothing changed" >&2; exit 1; }
 }
 
+# The database as it is now, before the new commit's migrations run: going back is a move to the
+# old sha, plus `backup.sh <slug> restore` if a migration was in between. A stack whose database is
+# down, or that the nightly backup has not set up yet, moves without one. Returns 1 when the backup
+# fails: that stack is then not moved.
+backup_before() {  # slug sha stack-dir (the copy of stack/ whose scripts run the move)
+  if grep -q '^RESTIC_PASSWORD=' "$NEXTUP_INSTANCES/$1/.env" 2>/dev/null       && "$3/ctl.sh" "$1" exec -T db pg_isready -U nextup -d nextup </dev/null >/dev/null 2>&1; then
+    "$3/backup.sh" "$1" pre-migrate "$2" </dev/null >> "$backup_log" 2>&1       || { echo "!! $1: backup failed (see $backup_log) - not moved"; return 1; }
+    echo "backup taken"
+  else
+    echo "no backup (new stack, or its database is not running)"
+  fi
+}
+
 # Track main: every installed, unpinned main-track stack to TAG, each from its own copy of stack/.
 # Sets `moved` to how many it moved; returns 1 when one failed.
 moved=0
@@ -159,6 +176,9 @@ move_main_track() {  # tag
     echo "== $s -> $1 (track main)"
     rc=0
     own_copy "$s" "$1" || rc=1
+    if [ "$rc" -eq 0 ]; then
+      backup_before "$s" "$1" "$NEXTUP_INSTANCES/$s/stack" || rc=1
+    fi
     if [ "$rc" -eq 0 ]; then
       set_conf "$s" "$p" "$st" TRACK main
       "$NEXTUP_INSTANCES/$s/stack/nginx/add-stack.sh" "$s" "$p" "$st" --images "$1" </dev/null 2>&1 | hide_codes || rc=$?
@@ -178,6 +198,7 @@ move_release_track() {  # tag
     if [ -n "$pin" ]; then echo "== $s stays at $pin (pinned; 'promote $s <sha>' moves it)"; continue; fi
     if [ "$tr" = main ]; then echo "== $s follows main ('stage <sha>' moves it)"; continue; fi
     echo "== $s -> $1"
+    if ! backup_before "$s" "$1" "$stack_root"; then failed=1; continue; fi
     # It was on main before (ports.md changed): back onto the shared stack/.
     grep -q '^TRACK=' "$NEXTUP_INSTANCES/$s/stack.conf" 2>/dev/null && set_conf "$s" "$p" "$st" TRACK
     rc=0
@@ -287,16 +308,8 @@ case "$action" in
     echo "$(date -u +%FT%TZ) promote $slug $tag (was ${was:-not pinned}) by ${by%% *}" >> "$log"
     bail() { echo "!! $1"; echo "$(date -u +%FT%TZ) promote $slug $tag failed: $1" >> "$log"; exit 1; }
     pull_images "sha-$tag" || bail "no images"
-    # The database as it is now, before the new commit's migrations run: going back is a promote
-    # to the old sha, plus `backup.sh <slug> restore` if a migration was in between. A stack whose
-    # database is down, or that the nightly backup has not set up yet, moves without one.
-    if grep -q '^RESTIC_PASSWORD=' "$dir/.env" 2>/dev/null \
-        && "$stack_root/ctl.sh" "$slug" exec -T db pg_isready -U nextup -d nextup >/dev/null 2>&1; then
-      "$stack_root/backup.sh" "$slug" backup >> "$backup_log" 2>&1 || bail "backup failed (see $backup_log) - nothing changed"
-      echo "backup taken"
-    else
-      echo "no backup (new stack, or its database is not running)"
-    fi
+    # The database as it is now, before the new commit's migrations run (backup_before).
+    backup_before "$slug" "$tag" "$stack_root"       || { echo "$(date -u +%FT%TZ) promote $slug $tag failed: backup failed"; exit 1; }
     own_copy "$slug" "$tag" || bail "stack/ not fetched - nothing changed"
     set_conf "$slug" "$port" "$stage" PINNED "$tag"
     echo "== $slug -> $tag (pinned)"
