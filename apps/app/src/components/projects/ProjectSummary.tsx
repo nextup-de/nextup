@@ -5,32 +5,34 @@
 // baseline against the latest measure. Read from the reduced project; nothing here is stored.
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import type { ReducedProject } from "@/features/projects/types";
-import { boardStats, changeText, COLUMN_LABEL, fmtNumber, lifecycle } from "@/features/projects/views";
+import { betterText, boardStats, changeText, columnLabel, fmtNumber, lifecycle, verdictWord } from "@/features/projects/views";
+import { useFormat, useLocale, useT } from "@/i18n/client";
 import styles from "./Projects.module.css";
-
-const days = (n: number) => n + (n === 1 ? " day" : " days");
 
 export function ProjectSummary({ p }: { p: ReducedProject }) {
   const { S, f } = useDemo();
+  const t = useT();
+  const locale = useLocale();
+  const fmt = useFormat();
   const st = boardStats(p, S.day);
   const nextCheck = p.checks.find((c) => !c.measured);
-  const stages = lifecycle(p);
+  const stages = lifecycle(p, locale);
   const b = p.baseline;
   const last = p.measures[p.measures.length - 1];
   const running = p.startedDay !== null ? (p.doneDay ?? S.day) - p.startedDay : null;
   const segs = (["done", "doing", "blocked", "todo"] as const).filter((c) => st.by[c] > 0);
 
   return (
-    <section className={styles.summary} aria-label="Where it stands">
-      <ol className={styles.stepper} aria-label="The project's life">
+    <section className={styles.summary} aria-label={t("projects.summaryLabel")}>
+      <ol className={styles.stepper} aria-label={t("projects.lifeLabel")}>
         {stages.map((s) => (
           <li key={s.key} className={styles.stage} data-state={s.state}>
             <span className={styles.stageDot} aria-hidden="true" />
             <span className={styles.stageLabel}>{s.label}</span>
             <span className={styles.stageDay}>
               {s.day !== null ? f(s.day)
-                : s.key === "measured" && nextCheck ? "opens " + f(nextCheck.opensDay)
-                : s.state === "now" ? "next" : ""}
+                : s.key === "measured" && nextCheck ? t("projects.stageOpens", { day: f(nextCheck.opensDay) })
+                : s.state === "now" ? t("projects.stageNext") : ""}
             </span>
           </li>
         ))}
@@ -38,42 +40,42 @@ export function ProjectSummary({ p }: { p: ReducedProject }) {
 
       <dl className={styles.kpis}>
         <div className={styles.kpi}>
-          <dt>Steps done</dt>
+          <dt>{t("projects.kpiStepsDone")}</dt>
           <dd><span className={styles.kpiNum}>{st.by.done}</span><span className={styles.kpiOf}> / {st.total}</span></dd>
-          <div className={styles.segbar} role="img" aria-label={segs.map((c) => st.by[c] + " " + COLUMN_LABEL[c]).join(", ") || "No steps"}>
+          <div className={styles.segbar} role="img" aria-label={segs.map((c) => st.by[c] + " " + columnLabel(c, locale)).join(", ") || t("projects.noSteps")}>
             {segs.map((c) => <span key={c} data-col={c} style={{ flexGrow: st.by[c] }} />)}
           </div>
-          <span className={styles.kpiNote}>{st.total ? st.pct + "% · " + st.by.doing + " in progress" : "Add the first steps"}</span>
+          <span className={styles.kpiNote}>{st.total ? t("projects.kpiProgress", { pct: st.pct, count: st.by.doing }) : t("projects.kpiAddSteps")}</span>
         </div>
         <div className={styles.kpi} data-hot={st.by.blocked > 0 ? "true" : undefined}>
-          <dt>Blocked</dt>
+          <dt>{t("projects.col_blocked")}</dt>
           <dd><span className={styles.kpiNum}>{st.by.blocked}</span></dd>
-          <span className={styles.kpiNote}>{st.stalest ? "Longest: " + days(st.stalest.days) + " in " + COLUMN_LABEL[st.stalest.step.column] : "Nothing stuck"}</span>
+          <span className={styles.kpiNote}>{st.stalest ? t("projects.kpiLongest", { days: fmt.days(st.stalest.days), column: columnLabel(st.stalest.step.column, locale) }) : t("projects.kpiNothingStuck")}</span>
         </div>
         <div className={styles.kpi} data-hot={st.late > 0 ? "true" : undefined}>
-          <dt>Late</dt>
+          <dt>{t("projects.kpiLate")}</dt>
           <dd><span className={styles.kpiNum}>{st.late}</span></dd>
-          <span className={styles.kpiNote}>{st.unowned ? st.unowned + " open without an owner" : "Every open step has an owner"}</span>
+          <span className={styles.kpiNote}>{st.unowned ? t("projects.kpiUnowned", { count: st.unowned }) : t("projects.kpiAllOwned")}</span>
         </div>
         <div className={styles.kpi}>
-          <dt>Cycle time</dt>
-          <dd><span className={styles.kpiNum}>{st.cycleDays === null ? "-" : fmtNumber(st.cycleDays)}</span>{st.cycleDays !== null && <span className={styles.kpiOf}> d</span>}</dd>
-          <span className={styles.kpiNote}>Doing → Done, median · {st.doneWeek} done this week</span>
+          <dt>{t("projects.cycleTime")}</dt>
+          <dd><span className={styles.kpiNum}>{st.cycleDays === null ? "-" : fmtNumber(st.cycleDays, locale)}</span>{st.cycleDays !== null && <span className={styles.kpiOf}> {t("projects.unitDays")}</span>}</dd>
+          <span className={styles.kpiNote}>{t("projects.kpiCycleNote", { count: st.doneWeek })}</span>
         </div>
         <div className={styles.kpi}>
-          <dt>{running !== null ? (p.doneDay !== null ? "Took" : "Running") : "Open for"}</dt>
-          <dd><span className={styles.kpiNum}>{running ?? S.day - p.openedDay}</span><span className={styles.kpiOf}> d</span></dd>
-          <span className={styles.kpiNote}>{p.startedDay !== null ? "since the start, " + f(p.startedDay) : "since the yes, " + f(p.openedDay)}</span>
+          <dt>{running !== null ? (p.doneDay !== null ? t("projects.kpiTook") : t("projects.status_running")) : t("projects.kpiOpenFor")}</dt>
+          <dd><span className={styles.kpiNum}>{running ?? S.day - p.openedDay}</span><span className={styles.kpiOf}> {t("projects.unitDays")}</span></dd>
+          <span className={styles.kpiNote}>{p.startedDay !== null ? t("projects.kpiSinceStart", { day: f(p.startedDay) }) : t("projects.kpiSinceYes", { day: f(p.openedDay) })}</span>
         </div>
         <div className={styles.kpi}>
-          <dt>Baseline → now</dt>
+          <dt>{t("projects.kpiBaselineNow")}</dt>
           <dd>
-            {!b ? <span className={styles.kpiNone}>Not taken</span>
-              : b.none ? <span className={styles.kpiNone}>No number</span>
-              : <><span className={styles.kpiNum}>{fmtNumber(b.value)}</span>{last && <span className={styles.kpiNum} data-verdict={last.verdict}> → {fmtNumber(last.value)}</span>}<span className={styles.kpiOf}> {b.unit}</span></>}
+            {!b ? <span className={styles.kpiNone}>{t("projects.kpiNotTaken")}</span>
+              : b.none ? <span className={styles.kpiNone}>{t("projects.kpiNoNumber")}</span>
+              : <><span className={styles.kpiNum}>{fmtNumber(b.value, locale)}</span>{last && <span className={styles.kpiNum} data-verdict={last.verdict}> → {fmtNumber(last.value, locale)}</span>}<span className={styles.kpiOf}> {b.unit}</span></>}
           </dd>
           <span className={styles.kpiNote}>
-            {b && !b.none ? (last ? (changeText(last.changePct) || last.verdict) + " · " + last.check + "-day check" : b.metric + " · " + (b.better === "up" ? "higher" : "lower") + " is better") : b?.none ? b.why : "Taken before the start"}
+            {b && !b.none ? (last ? t("projects.kpiCheckNote", { change: changeText(last.changePct, locale) || verdictWord(last.verdict, locale), check: last.check }) : b.metric + " · " + betterText(b.better, locale)) : b?.none ? b.why : t("projects.kpiTakenBefore")}
           </span>
         </div>
       </dl>

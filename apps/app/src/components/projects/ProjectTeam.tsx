@@ -8,12 +8,14 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { Avatar } from "@/components/dashboard/shared/primitives";
 import { isIssueKey, jiraIssueUrl } from "@/features/integrations/jira/settings";
 import type { ReducedProject } from "@/features/projects/types";
-import { connectionsOf, safeUrl, systemFrom, timelineOf, toolOf, type JiraRow, type ToolId } from "@/features/projects/views";
+import { connectionsOf, safeUrl, systemFrom, timelineOf, toolName, toolOf, toolWhat, type JiraRow, type ToolId } from "@/features/projects/views";
+import { useLocale, useT } from "@/i18n/client";
 import { useRights, useSend } from "./parts";
 import styles from "./Projects.module.css";
 
 export function TeamPanel({ p }: { p: ReducedProject }) {
   const { act, seed } = useDemo();
+  const t = useT();
   const r = useRights(p);
   const send = useSend(p);
   const [add, setAdd] = useState("");
@@ -28,36 +30,36 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
   return (
     <section className={styles.railSection} aria-labelledby={"team-" + p.id}>
       <div className={styles.panelHead}>
-        <h2 id={"team-" + p.id} className={styles.h3}>Team</h2>
-        <span className={styles.muted}>{team.length} {team.length === 1 ? "person" : "people"}</span>
+        <h2 id={"team-" + p.id} className={styles.h3}>{t("projects.teamTitle")}</h2>
+        <span className={styles.muted}>{t("projects.peopleCount", { count: team.length })}</span>
       </div>
       <ul className={styles.people}>
         {team.map((m, k) => (
           <li key={m} className={styles.person}>
             <Avatar name={m} size="sm" />
-            <span className={styles.grow}>{m}{k === 0 && <span className={styles.leadTag}>Lead</span>}</span>
-            <span className={styles.load} title="Open steps they own">{load(m) ? load(m) + " open" : ""}</span>
-            {k > 0 && r.lead && live && <button type="button" className={styles.quiet} onClick={() => send("project.member", { name: m }, () => act.project.member(p.id, m, false))} aria-label={"Take " + m + " off the team"}>Remove</button>}
+            <span className={styles.grow}>{m}{k === 0 && <span className={styles.leadTag}>{t("projects.leadTag")}</span>}</span>
+            <span className={styles.load} title={t("projects.openStepsTheyOwn")}>{load(m) ? t("projects.openCount", { count: load(m) }) : ""}</span>
+            {k > 0 && r.lead && live && <button type="button" className={styles.quiet} onClick={() => send("project.member", { name: m }, () => act.project.member(p.id, m, false))} aria-label={t("projects.takeOffTeam", { name: m })}>{t("projects.remove")}</button>}
           </li>
         ))}
       </ul>
       {r.lead && live && others.length > 0 && (
         <form className={styles.inline} onSubmit={(e) => { e.preventDefault(); if (add && send("project.member", { name: add }, () => act.project.member(p.id, add, true))) setAdd(""); }}>
-          <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={add} onChange={(e) => setAdd(e.target.value)} aria-label="Add to the team">
-            <option value="">Add someone…</option>
+          <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={add} onChange={(e) => setAdd(e.target.value)} aria-label={t("projects.addToTeam")}>
+            <option value="">{t("projects.addSomeone")}</option>
             {others.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
-          <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!add}>Add</button>
+          <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!add}>{t("projects.add")}</button>
         </form>
       )}
       {r.hand && p.members.length > 0 && (
-        <form className={styles.form} onSubmit={(e) => { e.preventDefault(); if (to && send("project.handed", { to }, () => act.project.hand(p.id, to, why.trim() || undefined))) { setTo(""); setWhy(""); } }} aria-label="Hand over the lead">
-          <select className={`nh-input nh-select ${styles.input}`} value={to} onChange={(e) => setTo(e.target.value)} aria-label="New lead">
-            <option value="">Hand the lead to…</option>
+        <form className={styles.form} onSubmit={(e) => { e.preventDefault(); if (to && send("project.handed", { to }, () => act.project.hand(p.id, to, why.trim() || undefined))) { setTo(""); setWhy(""); } }} aria-label={t("projects.handOver")}>
+          <select className={`nh-input nh-select ${styles.input}`} value={to} onChange={(e) => setTo(e.target.value)} aria-label={t("projects.newLead")}>
+            <option value="">{t("projects.handTo")}</option>
             {p.members.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
-          {to && <input className={`nh-input ${styles.input}`} value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Why (optional)" aria-label="Why hand it over" />}
-          {to && <span className={styles.actionRow}><button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm">Hand over the lead</button></span>}
+          {to && <input className={`nh-input ${styles.input}`} value={why} onChange={(e) => setWhy(e.target.value)} placeholder={t("projects.whyOptional")} aria-label={t("projects.whyHandOver")} />}
+          {to && <span className={styles.actionRow}><button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm">{t("projects.handOver")}</button></span>}
         </form>
       )}
     </section>
@@ -67,6 +69,8 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
 /** The tools the project's work lives in, and a way to connect one. */
 export function ToolsPanel({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const { act } = useDemo();
+  const t = useT();
+  const locale = useLocale();
   const r = useRights(p);
   const send = useSend(p);
   const rows = connectionsOf(p);
@@ -88,42 +92,42 @@ export function ToolsPanel({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   return (
     <section className={styles.railSection} aria-labelledby={"tools-" + p.id}>
       <div className={styles.panelHead}>
-        <h2 id={"tools-" + p.id} className={styles.h3}>Connected tools</h2>
-        <span className={styles.muted}>{on.length ? on.length + " connected" : "none yet"}</span>
+        <h2 id={"tools-" + p.id} className={styles.h3}>{t("projects.toolsTitle")}</h2>
+        <span className={styles.muted}>{on.length ? t("projects.toolsConnected", { count: on.length }) : t("projects.toolsNone")}</span>
       </div>
       <ul className={styles.tools}>
         {visible.map((c) => {
           const isJira = c.tool.id === "jira";
           // Jira's mode follows the company: "Link" until the admin switches the sync on. Other tools only link.
-          const mode = isJira ? jira.label : "Link";
+          const mode = isJira ? jira.label : t("projects.jiraLink");
           return (
             <li key={c.tool.id} className={styles.tool} data-on={c.links.length || c.steps ? "true" : undefined}>
               <span className={styles.toolMark} data-tool={c.tool.id} aria-hidden="true">{c.tool.short}</span>
               <div className={styles.toolBody}>
                 <div className={styles.toolName}>
-                  {c.tool.name}
+                  {toolName(c.tool, locale)}
                   <span className={styles.toolMode} data-sync={isJira && jira.state !== "off" ? "true" : undefined}>{mode}</span>
                 </div>
                 {c.links.length || c.steps ? (
                   <div className={styles.toolLinks}>
                     {c.links.map((l, k) => {
-                      const label = l.key || (l.url ? shortUrl(l.url) : "link");
+                      const label = l.key || (l.url ? shortUrl(l.url) : t("projects.linkWord"));
                       const onStep = stepText(l.stepId);
                       return (
                         <span key={k} className={styles.toolLink}>
                           {l.url ? <a href={l.url} target="_blank" rel="noreferrer noopener" className={styles.link}>{label}</a> : <span className={styles.strong}>{label}</span>}
-                          <span className={styles.muted}>{onStep ? " · " + onStep : " · the project"}</span>
+                          <span className={styles.muted}>{onStep ? " · " + onStep : " · " + t("projects.theProject")}</span>
                         </span>
                       );
                     })}
-                    {c.steps > 0 && <span className={styles.hint}>{c.steps} of {p.steps.length} steps have a ticket there</span>}
+                    {c.steps > 0 && <span className={styles.hint}>{t("projects.stepsHaveTicket", { count: c.steps, total: p.steps.length })}</span>}
                   </div>
-                ) : <div className={styles.hint}>{isJira && jira.state !== "off" ? "An epic for the project, an issue per step. Status and comments come back." : c.tool.what}</div>}
+                ) : <div className={styles.hint}>{toolWhat(c.tool, locale)}</div>}
                 {isJira && <JiraControls p={p} jira={jira} mayShare={mayShare} />}
               </div>
               {r.link && adding !== c.tool.id && (
-                <button type="button" className={styles.quietLink} onClick={() => startAdd(c.tool.id)} aria-label={(c.links.length ? "Add another link to " : "Connect ") + c.tool.name}>
-                  {c.links.length ? "Add" : "Connect"}
+                <button type="button" className={styles.quietLink} onClick={() => startAdd(c.tool.id)} aria-label={c.links.length ? t("projects.addAnotherLinkTo", { tool: toolName(c.tool, locale) }) : t("projects.connectTool", { tool: toolName(c.tool, locale) })}>
+                  {c.links.length ? t("projects.add") : t("projects.connect")}
                 </button>
               )}
             </li>
@@ -131,11 +135,11 @@ export function ToolsPanel({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
         })}
       </ul>
       {!all && rows.length > visible.length && (
-        <button type="button" className={styles.quietLink} onClick={() => setAll(true)}>{on.length ? "More tools" : "Show the tools"} ({rows.length - visible.length})</button>
+        <button type="button" className={styles.quietLink} onClick={() => setAll(true)}>{on.length ? t("projects.moreTools") : t("projects.showTools")} ({rows.length - visible.length})</button>
       )}
       {r.link && adding === "jira" && jira.canLink && <JiraLinkForm p={p} jira={jira} onDone={() => { setAdding(null); setAll(false); }} />}
       {r.link && adding && !(adding === "jira" && jira.canLink) && (
-        <form className={styles.form} aria-label={"Connect " + toolOf(adding).name} onSubmit={(e) => {
+        <form className={styles.form} aria-label={t("projects.connectTool", { tool: toolName(toolOf(adding), locale) })} onSubmit={(e) => {
           e.preventDefault();
           if (badUrl) return;
           const k = key.trim();
@@ -144,29 +148,26 @@ export function ToolsPanel({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
           const system = u && systemFrom(u, k) !== "url" ? systemFrom(u, k) : adding;
           if (send("project.linked", { url: u, key: k }, () => act.project.link(p.id, u, system, k || undefined, stepId || undefined))) { setAdding(null); setAll(false); }
         }}>
-          <div className={styles.formHead}>Connect {toolOf(adding).name}</div>
-          <input className={`nh-input ${styles.input}`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={placeholder(adding)} aria-label="Link address" aria-invalid={badUrl ? "true" : undefined} autoFocus />
-          {badUrl && <span className="nh-error">Only http and https addresses.</span>}
+          <div className={styles.formHead}>{t("projects.connectTool", { tool: toolName(toolOf(adding), locale) })}</div>
+          <input className={`nh-input ${styles.input}`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={placeholder(adding)} aria-label={t("projects.linkAddress")} aria-invalid={badUrl ? "true" : undefined} autoFocus />
+          {badUrl && <span className="nh-error">{t("projects.onlyHttp")}</span>}
           <span className={styles.inline}>
-            <input className={`nh-input ${styles.input} ${styles.grow}`} value={key} onChange={(e) => setKey(e.target.value)} placeholder="Key, e.g. FS-12 (optional)" aria-label="Ticket key" />
+            <input className={`nh-input ${styles.input} ${styles.grow}`} value={key} onChange={(e) => setKey(e.target.value)} placeholder={t("projects.ticketKeyOptional")} aria-label={t("projects.ticketKey")} />
             {p.steps.length > 0 && (
-              <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={stepId} onChange={(e) => setStepId(e.target.value)} aria-label="For which step">
-                <option value="">The whole project</option>
+              <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={stepId} onChange={(e) => setStepId(e.target.value)} aria-label={t("projects.forWhichStep")}>
+                <option value="">{t("projects.wholeProject")}</option>
                 {p.steps.map((s) => <option key={s.id} value={s.id}>{s.text}</option>)}
               </select>
             )}
           </span>
           <span className={styles.actionRow}>
-            <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={(!url.trim() && !key.trim()) || badUrl}>Add the link</button>
-            <button type="button" className={styles.quiet} onClick={() => setAdding(null)}>Cancel</button>
+            <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={(!url.trim() && !key.trim()) || badUrl}>{t("projects.addLink")}</button>
+            <button type="button" className={styles.quiet} onClick={() => setAdding(null)}>{t("common.cancel")}</button>
           </span>
         </form>
       )}
       <p className={styles.hint}>
-        {jira.state === "off"
-          ? "Jira keeps the link and the keys until your admin switches the sync on. "
-          : "Jira syncs both ways: a new step becomes an issue, and its status and comments come back here. "}
-        The other tools keep the link and the keys.
+        {(jira.state === "off" ? t("projects.toolsHintOff") : t("projects.toolsHintOn")) + " " + t("projects.toolsHintOthers")}
       </p>
     </section>
   );
@@ -175,6 +176,7 @@ export function ToolsPanel({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
 /** Under Jira's name: what the sync is doing for this project, and the lead's way to start or stop it. */
 function JiraControls({ p, jira, mayShare }: { p: ReducedProject; jira: JiraRow; mayShare: boolean }) {
   const { act } = useDemo();
+  const t = useT();
   const send = useSend(p);
   const share = (on: boolean) => send("project.sync", { system: "jira", on }, () => act.project.sync(p.id, on));
   return (
@@ -189,7 +191,7 @@ function JiraControls({ p, jira, mayShare }: { p: ReducedProject; jira: JiraRow;
       {jira.state === "synced" && jira.chip && (
         <span className={styles.actionRow}>
           <span className={styles.syncChip} data-tone={jira.chip.tone} role="status">{jira.chip.text}</span>
-          {mayShare && <button type="button" className={styles.quietLink} onClick={() => share(false)}>Stop syncing</button>}
+          {mayShare && <button type="button" className={styles.quietLink} onClick={() => share(false)}>{t("projects.stopSyncing")}</button>}
         </span>
       )}
     </>
@@ -199,6 +201,7 @@ function JiraControls({ p, jira, mayShare }: { p: ReducedProject; jira: JiraRow;
 /** Link an existing Jira issue to a step (or the project): its key and the step, the address built from the site's. */
 function JiraLinkForm({ p, jira, onDone }: { p: ReducedProject; jira: JiraRow; onDone: () => void }) {
   const { act } = useDemo();
+  const t = useT();
   const send = useSend(p);
   const [key, setKey] = useState("");
   const [stepId, setStepId] = useState("");
@@ -207,25 +210,25 @@ function JiraLinkForm({ p, jira, onDone }: { p: ReducedProject; jira: JiraRow; o
   const siteUrl = jira.siteUrl ?? "";
   const example = (jira.projectKey ?? "NUP") + "-12";
   return (
-    <form className={styles.form} aria-label="Link a Jira issue" onSubmit={(e) => {
+    <form className={styles.form} aria-label={t("projects.linkJiraIssue")} onSubmit={(e) => {
       e.preventDefault();
       if (!isIssueKey(k)) return;
       const url = jiraIssueUrl({ siteUrl }, k);
       if (send("project.linked", { system: "jira", key: k, url, stepId: stepId || undefined }, () => act.project.link(p.id, url, "jira", k, stepId || undefined))) onDone();
     }}>
-      <div className={styles.formHead}>Link an existing Jira issue</div>
+      <div className={styles.formHead}>{t("projects.linkJiraIssue")}</div>
       <span className={styles.inline}>
-        <input className={`nh-input ${styles.input} ${styles.grow}`} value={key} onChange={(e) => setKey(e.target.value)} placeholder={"Issue key, e.g. " + example} aria-label="Jira issue key" aria-invalid={bad ? "true" : undefined} autoFocus />
-        <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={stepId} onChange={(e) => setStepId(e.target.value)} aria-label="For which step">
-          <option value="">The whole project</option>
+        <input className={`nh-input ${styles.input} ${styles.grow}`} value={key} onChange={(e) => setKey(e.target.value)} placeholder={t("projects.issueKeyPlaceholder", { example })} aria-label={t("projects.jiraIssueKey")} aria-invalid={bad ? "true" : undefined} autoFocus />
+        <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={stepId} onChange={(e) => setStepId(e.target.value)} aria-label={t("projects.forWhichStep")}>
+          <option value="">{t("projects.wholeProject")}</option>
           {p.steps.map((s) => <option key={s.id} value={s.id}>{s.text}</option>)}
         </select>
       </span>
-      {bad && <span className="nh-error">A Jira key looks like {example}.</span>}
-      <span className={styles.hint}>The step takes the issue’s status the next time Jira is checked.</span>
+      {bad && <span className="nh-error">{t("projects.jiraKeyLooksLike", { example })}</span>}
+      <span className={styles.hint}>{t("projects.stepTakesStatus")}</span>
       <span className={styles.actionRow}>
-        <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!isIssueKey(k)}>Link the issue</button>
-        <button type="button" className={styles.quiet} onClick={onDone}>Cancel</button>
+        <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!isIssueKey(k)}>{t("projects.linkIssue")}</button>
+        <button type="button" className={styles.quiet} onClick={onDone}>{t("common.cancel")}</button>
       </span>
     </form>
   );
@@ -252,12 +255,14 @@ type FeedItem = { kind: "comment" | "event"; id: string; by: string; text: strin
 /** What was said and what happened, in one feed: newest first, with the box to say something on top. */
 export function ActivityPanel({ p }: { p: ReducedProject }) {
   const { act, f } = useDemo();
+  const t = useT();
+  const locale = useLocale();
   const send = useSend(p);
   const [text, setText] = useState("");
   const [more, setMore] = useState(false);
   // The project's history holds every event in the order it happened, seed and live, comments too:
   // read backwards, it is the feed, newest first.
-  const lines = new Map(timelineOf(p).map((l) => [l.id, l]));
+  const lines = new Map(timelineOf(p, locale).map((l) => [l.id, l]));
   const feed = p.history.slice().reverse().flatMap((e): FeedItem[] => {
     if (e.type === "project.commented") return [{ kind: "comment", id: e.id, by: e.actor, text: e.payload.text ?? "", day: e.day }];
     const l = lines.get(e.id);
@@ -270,12 +275,12 @@ export function ActivityPanel({ p }: { p: ReducedProject }) {
   return (
     <section className={`${styles.panel} ${styles.activity}`} aria-labelledby={"activity-" + p.id}>
       <div className={styles.panelHead}>
-        <h2 id={"activity-" + p.id} className={styles.h2}>Activity</h2>
-        <span className={styles.muted}>{comments.length} {comments.length === 1 ? "comment" : "comments"} · {events.length} events</span>
+        <h2 id={"activity-" + p.id} className={styles.h2}>{t("projects.activityTitle")}</h2>
+        <span className={styles.muted}>{t("projects.commentCount", { count: comments.length })} · {t("projects.eventCount", { count: events.length })}</span>
       </div>
       <form className={styles.form} onSubmit={(e) => { e.preventDefault(); if (send("project.commented", { text }, () => act.project.comment(p.id, text.trim()))) setText(""); }}>
-        <textarea className={`nh-input nh-textarea ${styles.textarea}`} value={text} onChange={(e) => setText(e.target.value)} placeholder="Say something to the team" aria-label="Comment" maxLength={2000} />
-        {text.trim() && <span className={styles.actionRow}><button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">Comment</button></span>}
+        <textarea className={`nh-input nh-textarea ${styles.textarea}`} value={text} onChange={(e) => setText(e.target.value)} placeholder={t("projects.commentPlaceholder")} aria-label={t("projects.comment")} maxLength={2000} />
+        {text.trim() && <span className={styles.actionRow}><button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{t("projects.comment")}</button></span>}
       </form>
       <ol className={styles.feed}>
         {shown.map((x) => x.kind === "comment" ? (
@@ -293,7 +298,7 @@ export function ActivityPanel({ p }: { p: ReducedProject }) {
           </li>
         ))}
       </ol>
-      {feed.length > 8 && <button type="button" className={styles.quietLink} onClick={() => setMore(!more)}>{more ? "Show less" : "Show all " + feed.length}</button>}
+      {feed.length > 8 && <button type="button" className={styles.quietLink} onClick={() => setMore(!more)}>{more ? t("projects.showLess") : t("projects.showAll", { count: feed.length })}</button>}
     </section>
   );
 }
