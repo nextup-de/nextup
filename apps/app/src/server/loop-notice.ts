@@ -1,43 +1,9 @@
-// Send the mails for a discussion or project event (features/loop/notice.ts). Like the raise notice
-// (server/case-notice.ts) this runs after the event row committed, the caller never awaits it, and
-// every failure is only a log line: a dead relay never breaks the loop.
-import { reduce } from "@/features/cases/reducer";
-import type { CaseEvent } from "@/features/cases/events";
-import { loopMails } from "@/features/loop/notice";
-import { DEFAULT_LOCALE, type Locale } from "@/i18n";
-import { localeForEmail } from "@/i18n/server";
-import { getDb } from "@/lib/db/client";
-import { companySeed } from "@/lib/db/companies";
-import { loadLogForSlug } from "@/lib/db/events";
-import { mailConfigured, sendMail } from "@/server/mail";
-import { companyBaseUrl } from "@/server/case-notice";
+// The discussion and project events that mail people (features/loop/notice.ts decides who). The mails themselves
+// are planned from the log by the dispatcher (features/notify/plan.ts, server/notify/dispatch.ts) and sent from the
+// outbox (plan NTF, D13); nothing here sends any more.
+import type { CaseEventType } from "@/features/cases/events";
 
-const LOOP_MAIL_TYPES = new Set([
+export const LOOP_MAIL_TYPES: ReadonlySet<CaseEventType> = new Set<CaseEventType>([
   "case.discussion", "case.invited", "case.checkin", "case.decided",
   "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.rewarded",
 ]);
-
-export function notifyLoop(slug: string, ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload">): void {
-  if (!mailConfigured() || !LOOP_MAIL_TYPES.has(ev.type)) return;
-  void deliver(slug, ev).catch((err) => {
-    console.warn("[notice]", ev.type, "for", slug, "-", err instanceof Error ? err.message : err);
-  });
-}
-
-async function deliver(slug: string, ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload">): Promise<void> {
-  const company = await getDb().company.findUnique({
-    where: { slug },
-    select: { id: true, seedJson: true, users: { select: { id: true, name: true, email: true, handle: true } } },
-  });
-  const log = company ? await loadLogForSlug(slug) : null;
-  if (!company || !log) return;
-  const state = reduce(await companySeed(company), log);
-  const args = { ev, state, people: company.users, baseUrl: companyBaseUrl(slug) };
-  // Who gets a mail is decided inside loopMails; ask each of them for their language, then compose again.
-  const locales = new Map<string, Locale>();
-  for (const { to } of loopMails(args)) locales.set(to, await localeForEmail(company.id, to));
-  for (const mail of loopMails(args, (email) => locales.get(email) ?? DEFAULT_LOCALE)) {
-    const sent = await sendMail(mail, 4000);
-    if (!sent.ok) console.warn("[notice]", ev.type, "for", slug, "-", sent.error);
-  }
-}
