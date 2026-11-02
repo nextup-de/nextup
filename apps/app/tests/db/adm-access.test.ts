@@ -125,13 +125,13 @@ describe("ADM admin access", () => {
 
     const ok = await adminSignIn({}, form({ code: codes.stackAdmin, totp: totpAt(secret, NOW.getTime()) })).catch((e: Error) => e.message);
     expect(ok).toMatch(/^REDIRECT/);
-    expect(issueAdminSession).toHaveBeenCalledWith("stackAdmin");
+    expect(issueAdminSession).toHaveBeenCalledWith("stackAdmin", false, "stack-admin");
   });
 
   it("opens /admin with the shared code only as logged break-glass", async () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     expect(await landed(adminSignIn({}, form({ code: process.env.ADMIN_ACCESS_CODE! })))).toMatch(/^REDIRECT/);
-    expect(issueAdminSession).toHaveBeenCalledWith(undefined, true);
+    expect(issueAdminSession).toHaveBeenCalledWith(undefined, true, "break-glass");
     expect(info).toHaveBeenCalledTimes(1);
     expect(info).toHaveBeenCalledWith(`[admin] break-glass ${NOW.toISOString()}`);
     info.mockRestore();
