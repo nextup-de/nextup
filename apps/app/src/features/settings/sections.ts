@@ -2,7 +2,7 @@
 // Pure: the layout and the index page fetch the counts and hand them in.
 import type { MessageKey } from "@/i18n";
 
-export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "notifications";
+export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "notifications" | "privacy" | "audit";
 export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey };
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
@@ -14,6 +14,8 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { key: "routing", path: "routing", label: "settings.navRouting" },
   { key: "members", path: "members", label: "settings.navMembers" },
   { key: "notifications", path: "notifications", label: "settingsNotifications.navLabel" },
+  { key: "privacy", path: "privacy", label: "settingsPrivacy.navLabel" },
+  { key: "audit", path: "audit", label: "settingsAudit.navLabel" },
 ];
 
 export type SetupStep = "company" | "units" | "roles" | "routes" | "members" | "done";

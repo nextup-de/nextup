@@ -99,6 +99,12 @@ model Company {
   tickets       Ticket[]
   ticketReplies TicketReply[]
   featureFlags  FeatureFlag[]
+  auditEvents    AuditEvent[]
+  dataExports    DataExport[]
+  retentionRules RetentionRule[]
+  retentionRun   RetentionRun?
+  privacyPolicy  PrivacyPolicy?
+  pseudonyms     Pseudonym[]
 }
 
 // The event log - one row per appended fact. "Events, not edits": nothing here is ever updated.
