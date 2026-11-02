@@ -47,7 +47,7 @@ async def require_api_key(request: Request, call_next):
 @app.post("/v1/route", response_model=RouteOut)
 async def post_route(body: RouteIn, request: Request) -> RouteOut:
     try:
-        out = await run_in_threadpool(route, request.app.state.llm, body)
+        out = await run_in_threadpool(route, request.app.state.llm.for_request(body.llm), body)
     except LLMOutputError as e:
         log.error("route failed: %s", e)
         raise HTTPException(502, "The language model returned invalid output. Please retry.")
@@ -61,7 +61,7 @@ async def post_route(body: RouteIn, request: Request) -> RouteOut:
 @app.post("/v1/coach", response_model=CoachOut)
 async def post_coach(body: CoachIn, request: Request) -> CoachOut:
     try:
-        out = await run_in_threadpool(coach, request.app.state.llm, body)
+        out = await run_in_threadpool(coach, request.app.state.llm.for_request(body.llm), body)
     except LLMOutputError as e:
         log.error("coach failed: %s", e)
         raise HTTPException(502, "The language model returned invalid output. Please retry.")
@@ -76,7 +76,7 @@ async def post_coach(body: CoachIn, request: Request) -> CoachOut:
 async def post_plan(body: PlanIn, request: Request) -> PlanOut:
     """An accepted idea: its first steps and the number to measure it on. The lead picks."""
     try:
-        out = await run_in_threadpool(plan, request.app.state.llm, body)
+        out = await run_in_threadpool(plan, request.app.state.llm.for_request(body.llm), body)
     except LLMOutputError as e:
         log.error("plan failed: %s", e)
         raise HTTPException(502, "The language model returned invalid output. Please retry.")
@@ -88,7 +88,7 @@ async def post_plan(body: PlanIn, request: Request) -> PlanOut:
 async def post_checkin(body: CheckinIn, request: Request) -> CheckinOut:
     """A discussion round: a draft of its check-in. The desk holder edits it."""
     try:
-        out = await run_in_threadpool(checkin, request.app.state.llm, body)
+        out = await run_in_threadpool(checkin, request.app.state.llm.for_request(body.llm), body)
     except LLMOutputError as e:
         log.error("checkin failed: %s", e)
         raise HTTPException(502, "The language model returned invalid output. Please retry.")

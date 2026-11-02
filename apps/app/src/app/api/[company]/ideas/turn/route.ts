@@ -12,7 +12,7 @@
 //                 is stored here and only the offline coach answers.
 //   the brain     where the stack runs it (BRAIN_URL), it coaches - the grilling, one question
 //                 per turn - while the idea is below the publish line, in either mode, unless the
-//                 company switched the assistant off. It runs inside the stack, so no DPA gate.
+//                 company switched the assistant off. The data-processing gate (purpose coach) applies like everywhere else.
 //                 No answer in time, or any error, and the coach above answers instead.
 //
 // Events:  scores {overall, parts, sameAs, threshold, delta,    the benchmark after this message
@@ -121,7 +121,7 @@ export async function POST(request: Request, { params }: Ctx) {
   // The brain grills while there is something to find; at the line the offline coach's "ready"
   // is always right. The company's switch in /admin/knowledge still turns it off.
   // Real people (a real stage) need a database and the switch on, like the assistant's gate.
-  const useBrain = brainConfigured() && now.overall < threshold &&
+  const useBrain = gate.on && brainConfigured() && now.overall < threshold &&
     (policyFor(tenant.stage ?? "demo").demoData || (viewer !== null && (settings?.enabled ?? false)));
 
   const encoder = new TextEncoder();
@@ -135,8 +135,8 @@ export async function POST(request: Request, { params }: Ctx) {
         let reply = coachMock(prev, askNow, threshold, body.text, 0); // the raise page shows no suggested answers, so the coach does not point to them
         let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
         const coached = useBrain
-          ? await askBrainCoach(tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },
-            { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING }, request.signal)
+          ? await askBrainCoach(gate, tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },
+            { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING }, request.signal, { key: ai.key })
           : null;
         if (coached) {
           reply = coachText(coached);

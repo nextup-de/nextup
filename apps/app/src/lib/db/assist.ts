@@ -34,6 +34,12 @@ export async function loadAssistSettings(companyId: string): Promise<AssistSetti
   };
 }
 
+/** CompanyConfig.aiRouting: may the brain propose the routing of a raised idea (docs/plans AIP D6). */
+export async function loadAiRouting(companyId: string): Promise<boolean> {
+  const cfg = await getDb().companyConfig.findUnique({ where: { companyId }, select: { aiRouting: true } });
+  return cfg?.aiRouting ?? false;
+}
+
 /** Search terms as an OR tsquery: letters and digits only, so nothing reaches to_tsquery unescaped. */
 export function tsQuery(text: string): string {
   const words = [...new Set((text.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []))].slice(0, 12);
