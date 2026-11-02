@@ -1,7 +1,7 @@
 // LNG acceptance: with the locale de, every page of the demo suite renders in German. The page
 // files are read from disk, so a new page must be put in the table below (or left out with a reason).
 // Seed and demo content (case titles, personas) is data and may be English; only catalog texts are checked.
-import { readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { de } from "../../../src/i18n/de";
 import { en } from "../../../src/i18n/en";
@@ -70,21 +70,37 @@ const LEFT_OUT: Record<string, string> = {
   "[company]/(app)/settings/routing/page.tsx": "settings need a database and a signed-in manager",
 };
 
-function pageFiles(dir: string, out: string[] = []): string[] {
+function pageFilesOf(dir: string, match: RegExp, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
-    if (statSync(full).isDirectory()) pageFiles(full, out);
-    else if (name === "page.tsx") out.push(full);
+    if (statSync(full).isDirectory()) pageFilesOf(full, match, out);
+    else if (match.test(name)) out.push(full);
   }
   return out;
 }
+const pageFiles = (dir: string) => pageFilesOf(dir, /^page\.tsx$/);
 
 const APP = join(__dirname, "../../../src/app");
 const clean = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 
+// Demo and seed content is data and stays English (LNG D9). A catalog text that the data also says word for
+// word (a role such as "Team lead") cannot tell a leak from the data, so it is no sentinel.
+const SRC = join(__dirname, "../../../src");
+const DATA_FILES = [
+  "features/ideas/brief-demo.ts",
+  "features/ideas/demo-script.ts",
+  "features/ideas/demo-loop.ts",
+  "features/ideas/static-demo-briefs.ts",
+];
+function dataText(): string {
+  const files = pageFilesOf(join(SRC, "features/demo"), /\.tsx?$/).concat(DATA_FILES.map((f) => join(SRC, f)).filter((f) => existsSync(f)));
+  return clean(files.map((f) => readFileSync(f, "utf8")).join(" "));
+}
+
 /** Catalog texts of two or more words, without a placeholder, that German words differently. */
 function sentinels(): string[] {
   const out = new Set<string>();
+  const data = dataText();
   const enCat = en as unknown as Record<string, Record<string, string>>;
   const deCat = de as unknown as Record<string, Record<string, string>>;
   for (const ns of Object.keys(enCat)) {
@@ -92,6 +108,7 @@ function sentinels(): string[] {
       if (typeof value !== "string" || value.includes("{")) continue;
       if (clean(value).split(" ").length < 2) continue;
       if (clean(deCat[ns]?.[key] ?? "") === clean(value)) continue;
+      if (data.includes(clean(value))) continue;
       out.add(clean(value));
     }
   }
