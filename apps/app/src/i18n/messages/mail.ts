@@ -71,6 +71,7 @@ export const mail = defineMessages({
     digestSubject: "Your NextUp digest",
     digestIntro: "This is what is waiting for you:",
     digestOpen: "Open your inbox: {url}",
+    digestItem: "  {title} - waiting {n} d",
   },
   de: {
     noticeHello: "Hallo",
@@ -138,5 +139,6 @@ export const mail = defineMessages({
     digestSubject: "Deine NextUp-Zusammenfassung",
     digestIntro: "Das wartet auf dich:",
     digestOpen: "Posteingang öffnen: {url}",
+    digestItem: "  {title} - wartet seit {n} T",
   },
 });
