@@ -20,6 +20,7 @@ import { settingsCompany } from "./messages/settingsCompany";
 import { settingsOrg } from "./messages/settingsOrg";
 import { settingsGoals } from "./messages/settingsGoals";
 import { settingsConnectors } from "./messages/settingsConnectors";
+import { settingsNotifications } from "./messages/settingsNotifications";
 import { settingsSetup } from "./messages/settingsSetup";
 import { adminAccess } from "./messages/adminAccess";
 
@@ -45,6 +46,7 @@ export const de = {
   settingsOrg: settingsOrg.de,
   settingsGoals: settingsGoals.de,
   settingsConnectors: settingsConnectors.de,
+  settingsNotifications: settingsNotifications.de,
   settingsSetup: settingsSetup.de,
   adminAccess: adminAccess.de,
 } as const;
