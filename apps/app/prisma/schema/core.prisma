@@ -75,6 +75,7 @@ model Company {
   holders  OrgRoleHolder[]
   rules    RoutingRule[]
   goals    Goal[]
+  companyRules CompanyRule[]
 
   // -- auth --
   users  User[]
