@@ -10,23 +10,19 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { Avatar } from "@/components/dashboard/shared/primitives";
 import { board } from "@/features/projects/selectors";
 import { STEP_COLUMNS, type ReducedProject, type Step, type StepColumn } from "@/features/projects/types";
-import { COLUMN_LABEL, safeUrl, toolOf, type JiraRow, type StepHint } from "@/features/projects/views";
+import { columnLabel, safeUrl, toolName, toolOf, type JiraRow, type StepHint } from "@/features/projects/views";
+import { useFormat, useLocale, useT } from "@/i18n/client";
 import { useRights, useSend } from "./parts";
 import { StepDetail } from "./StepDetail";
 import styles from "./Projects.module.css";
-
-const EMPTY: Record<StepColumn, string> = {
-  todo: "Nothing waiting.",
-  doing: "Drag a step here when someone starts it.",
-  blocked: "Nothing blocked.",
-  done: "Finished steps land here.",
-};
 
 /** Where a dragged card would land: above `before`, or at the foot of `col`. */
 type Spot = { col: StepColumn; before: string | null };
 
 export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: StepHint[]; jira: JiraRow }) {
   const { act, persona } = useDemo();
+  const t = useT();
+  const locale = useLocale();
   const r = useRights(p);
   const send = useSend(p);
   const cols = board(p);
@@ -127,36 +123,36 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
     <section className={styles.boardWrap} aria-labelledby={"board-" + p.id}>
       <div className={styles.boardHead}>
         <div className={styles.boardTitle}>
-          <h2 id={"board-" + p.id} className={styles.h2}>Board</h2>
-          <span className={styles.muted}>{p.steps.length ? cols.done.length + " of " + p.steps.length + " done" : "No steps yet"}</span>
+          <h2 id={"board-" + p.id} className={styles.h2}>{t("projects.boardTitle")}</h2>
+          <span className={styles.muted}>{p.steps.length ? t("projects.boardDone", { done: cols.done.length, total: p.steps.length }) : t("projects.boardNoSteps")}</span>
         </div>
         {p.steps.length > 0 && (
-          <div className={styles.filters} role="group" aria-label="Show steps">
-            {[["all", "All"], ["mine", "Mine"], ["unowned", "No owner"]].map(([k, label]) => (
+          <div className={styles.filters} role="group" aria-label={t("projects.filterLabel")}>
+            {[["all", t("projects.filterAll")], ["mine", t("projects.filterMine")], ["unowned", t("projects.noOwner")]].map(([k, label]) => (
               <button key={k} type="button" className={styles.filter} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>
             ))}
             {owners.map((n) => (
-              <button key={n} type="button" className={styles.filterFace} aria-pressed={filter === n} onClick={() => setFilter(filter === n ? "all" : n)} aria-label={"Only " + n + "’s steps"} title={n}>
+              <button key={n} type="button" className={styles.filterFace} aria-pressed={filter === n} onClick={() => setFilter(filter === n ? "all" : n)} aria-label={t("projects.filterOnly", { name: n })} title={n}>
                 <Avatar name={n} size="sm" />
               </button>
             ))}
-            {hidden > 0 && <span className={styles.hint}>{hidden} hidden</span>}
+            {hidden > 0 && <span className={styles.hint}>{t("projects.filterHidden", { count: hidden })}</span>}
           </div>
         )}
       </div>
 
       {!r.addStep && !p.steps.some((s) => r.moveStep(s)) && p.steps.length > 0 && (
-        <p className={styles.readOnly}>You follow this project. Its team moves the steps; open a card to see its details.</p>
+        <p className={styles.readOnly}>{t("projects.readOnly")}</p>
       )}
 
       {hints.length > 0 && r.addStep && (
-        <div className={styles.suggest} role="group" aria-label="Suggested steps">
-          <div className={styles.suggestHead}>Suggested steps <span className={styles.muted}>from the idea’s brief - you decide which go on the board</span></div>
+        <div className={styles.suggest} role="group" aria-label={t("projects.suggestedSteps")}>
+          <div className={styles.suggestHead}>{t("projects.suggestedSteps")} <span className={styles.muted}>{t("projects.suggestedFrom")}</span></div>
           {hints.map((h) => (
             <div key={h.text} className={styles.suggestRow}>
               <span className={styles.suggestLabel}>{h.label}</span>
               <span className={styles.suggestText}>{h.text}</span>
-              <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => send("project.step.added", { stepId: "probe", text: h.text }, () => act.project.addStep(p.id, h.text))} aria-label={"Add step: " + h.text}>Add</button>
+              <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => send("project.step.added", { stepId: "probe", text: h.text }, () => act.project.addStep(p.id, h.text))} aria-label={t("projects.addStepNamed", { text: h.text })}>{t("projects.add")}</button>
             </div>
           ))}
         </div>
@@ -169,7 +165,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
           const canAdd = r.addStep && col !== "blocked";
           return (
             <div
-              key={col} className={styles.column} data-col={col} role="group" aria-label={COLUMN_LABEL[col]} data-over={dragged && spot?.col === col ? "true" : undefined}
+              key={col} className={styles.column} data-col={col} role="group" aria-label={columnLabel(col, locale)} data-over={dragged && spot?.col === col ? "true" : undefined}
               onDragOver={(e) => {
                 if (!dragged) return;
                 e.preventDefault();
@@ -182,7 +178,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
             >
               <div className={styles.colHead}>
                 <span className={styles.colDot} aria-hidden="true" />
-                <span className={styles.colName}>{COLUMN_LABEL[col]}</span>
+                <span className={styles.colName}>{columnLabel(col, locale)}</span>
                 <span className={styles.count}>{cols[col].length}</span>
               </div>
               <div className={styles.colCards}>
@@ -197,13 +193,13 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
                   </div>
                 ))}
                 {line(null)}
-                {list.length === 0 && adding !== col && <p className={styles.colEmpty}>{cols[col].length ? "None for this filter." : EMPTY[col]}</p>}
+                {list.length === 0 && adding !== col && <p className={styles.colEmpty}>{cols[col].length ? t("projects.colNoneFiltered") : t(("projects.empty_" + col) as "projects.empty_todo")}</p>}
               </div>
               {adding === col
                 ? <Composer p={p} col={col} team={team} focus={p.steps.length > 0} onClose={() => setAdding(null)} />
                 : canAdd && (
-                  <button type="button" className={styles.addCard} onClick={() => setAdding(col)} aria-label={"Add a step to " + COLUMN_LABEL[col]}>
-                    <span aria-hidden="true">+</span> Add a step
+                  <button type="button" className={styles.addCard} onClick={() => setAdding(col)} aria-label={t("projects.addStepTo", { column: columnLabel(col, locale) })}>
+                    <span aria-hidden="true">+</span> {t("projects.addStep")}
                   </button>
                 )}
             </div>
@@ -220,6 +216,8 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
 /** A new step at the foot of a column: Enter adds it and keeps the box open for the next one. */
 function Composer({ p, col, team, focus, onClose }: { p: ReducedProject; col: StepColumn; team: string[]; focus: boolean; onClose: () => void }) {
   const { act, S } = useDemo();
+  const t = useT();
+  const locale = useLocale();
   const send = useSend(p);
   const [text, setText] = useState("");
   const [owner, setOwner] = useState("");
@@ -234,9 +232,9 @@ function Composer({ p, col, team, focus, onClose }: { p: ReducedProject; col: St
   };
 
   return (
-    <form className={styles.composer} aria-label={"New step in " + COLUMN_LABEL[col]} onSubmit={(e) => { e.preventDefault(); submit(); }}>
+    <form className={styles.composer} aria-label={t("projects.newStepIn", { column: columnLabel(col, locale) })} onSubmit={(e) => { e.preventDefault(); submit(); }}>
       <textarea
-        className={`nh-input ${styles.composerText}`} value={text} onChange={(e) => setText(e.target.value)} placeholder="What needs doing?" aria-label="New step" maxLength={500} rows={2}
+        className={`nh-input ${styles.composerText}`} value={text} onChange={(e) => setText(e.target.value)} placeholder={t("projects.newStepPlaceholder")} aria-label={t("projects.newStep")} maxLength={500} rows={2}
         autoFocus={focus}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
@@ -244,15 +242,15 @@ function Composer({ p, col, team, focus, onClose }: { p: ReducedProject; col: St
         }}
       />
       <div className={styles.composerRow}>
-        <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={owner} onChange={(e) => setOwner(e.target.value)} aria-label="Owner">
-          <option value="">No owner yet</option>
+        <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={owner} onChange={(e) => setOwner(e.target.value)} aria-label={t("projects.owner")}>
+          <option value="">{t("projects.noOwnerYet")}</option>
           {team.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
-        <input className={`nh-input ${styles.input} ${styles.days}`} type="number" min={0} max={365} value={inDays} onChange={(e) => setInDays(e.target.value)} placeholder="Due in days" aria-label="Due in days" />
+        <input className={`nh-input ${styles.input} ${styles.days}`} type="number" min={0} max={365} value={inDays} onChange={(e) => setInDays(e.target.value)} placeholder={t("projects.dueInDays")} aria-label={t("projects.dueInDays")} />
       </div>
       <div className={styles.composerRow}>
-        <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!text.trim()}>Add step</button>
-        <button type="button" className={styles.quiet} onClick={onClose}>Close</button>
+        <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!text.trim()}>{t("projects.addStepBtn")}</button>
+        <button type="button" className={styles.quiet} onClick={onClose}>{t("common.close")}</button>
       </div>
     </form>
   );
@@ -272,6 +270,9 @@ type Grip = { down: (e: React.PointerEvent, s: Step) => void; move: (e: React.Po
 
 function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, onOpen, ask, onAsked, grip, waiting }: CardProps) {
   const { act, S, f } = useDemo();
+  const t = useT();
+  const locale = useLocale();
+  const fmt = useFormat();
   const r = useRights(p);
   const send = useSend(p);
   const [why, setWhy] = useState("");
@@ -292,19 +293,19 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
     >
       {(tool || age > 0 || waiting) && (
         <div className={styles.stepTop}>
-          {waiting && !s.external && <span className={styles.waitKey} title="The issue is created in the next round">waiting for Jira</span>}
+          {waiting && !s.external && <span className={styles.waitKey} title={t("projects.waitKeyTitle")}>{t("projects.waitKey")}</span>}
           {tool && s.external && (href
-            ? <a href={href} target="_blank" rel="noreferrer noopener" className={styles.key} title={"Open in " + tool.name}>{s.external.key}</a>
-            : <span className={styles.key} title={tool.name}>{s.external.key}</span>)}
-          {s.column !== "done" && age > 0 && <span className={styles.age} title={"In " + COLUMN_LABEL[s.column] + " for " + age + (age === 1 ? " day" : " days")}>{age}d</span>}
+            ? <a href={href} target="_blank" rel="noreferrer noopener" className={styles.key} title={t("projects.openIn", { tool: toolName(tool, locale) })}>{s.external.key}</a>
+            : <span className={styles.key} title={toolName(tool, locale)}>{s.external.key}</span>)}
+          {s.column !== "done" && age > 0 && <span className={styles.age} title={t("projects.ageTitle", { column: columnLabel(s.column, locale), days: fmt.days(age) })}>{age}{t("projects.unitDays")}</span>}
         </div>
       )}
       <div className={styles.stepRow}>
-        <button type="button" className={styles.stepOpen} onClick={onOpen} aria-label={"Open “" + s.text + "”"}>{s.text}</button>
+        <button type="button" className={styles.stepOpen} onClick={onOpen} aria-label={t("projects.openStep", { text: s.text })}>{s.text}</button>
         {/* Touch screens only (CSS): hold and drag. The keyboard moves a card from its sheet. */}
         {canDrag && (
           <span
-            className={styles.dragGrip} role="button" tabIndex={-1} aria-label={"Drag “" + s.text + "”"}
+            className={styles.dragGrip} role="button" tabIndex={-1} aria-label={t("projects.dragStep", { text: s.text })}
             // No mousedown default: the card is draggable the HTML5 way too, and that drag would cancel this one.
             onMouseDown={(e) => e.preventDefault()}
             onPointerDown={(e) => grip.down(e, s)} onPointerMove={grip.move} onPointerUp={grip.up} onPointerCancel={grip.cancel}
@@ -315,20 +316,20 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
       </div>
       {s.column === "blocked" && s.why && <div className={styles.blockedWhy}>{s.why}</div>}
       <div className={styles.stepFoot}>
-        {s.owner ? <span className={styles.owner}><Avatar name={s.owner} size="sm" /><span>{s.owner}</span></span> : <span className={styles.noOwner}>No owner</span>}
+        {s.owner ? <span className={styles.owner}><Avatar name={s.owner} size="sm" /><span>{s.owner}</span></span> : <span className={styles.noOwner}>{t("projects.noOwner")}</span>}
         <span className={styles.stepIcons}>
-          {s.note && <span className={styles.noteMark} title="Has details" aria-label="Has details">≡</span>}
+          {s.note && <span className={styles.noteMark} title={t("projects.hasDetails")} aria-label={t("projects.hasDetails")}>≡</span>}
           {s.dueDay !== null && (s.column === "done"
-            ? <span className={styles.dueChip}>{s.doneDay !== null ? "done " + f(s.doneDay) : "due " + f(s.dueDay)}</span>
-            : <span className={styles.dueChip} data-late={late ? "true" : undefined} data-soon={soon ? "true" : undefined}>{late ? "late · " : ""}{f(s.dueDay)}</span>)}
+            ? <span className={styles.dueChip}>{s.doneDay !== null ? t("projects.doneOn", { day: f(s.doneDay) }) : t("projects.dueLower", { day: f(s.dueDay) })}</span>
+            : <span className={styles.dueChip} data-late={late ? "true" : undefined} data-soon={soon ? "true" : undefined}>{late ? t("projects.lateShort") + " · " : ""}{f(s.dueDay)}</span>)}
         </span>
       </div>
       {ask && (
         <form className={styles.whyForm} onSubmit={(e) => { e.preventDefault(); if (why.trim() && send("project.step.moved", { stepId: s.id, to: "blocked", why: why.trim(), before: ask.before }, () => act.project.moveStep(p.id, s.id, "blocked", why.trim(), ask.before))) close(); }}>
-          <input className={`nh-input ${styles.input}`} value={why} onChange={(e) => setWhy(e.target.value)} placeholder="What blocks it?" aria-label="What blocks it?" autoFocus />
+          <input className={`nh-input ${styles.input}`} value={why} onChange={(e) => setWhy(e.target.value)} placeholder={t("projects.whatBlocks")} aria-label={t("projects.whatBlocks")} autoFocus />
           <span className={styles.actionRow}>
-            <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!why.trim()}>Mark blocked</button>
-            <button type="button" className={styles.quiet} onClick={close}>Cancel</button>
+            <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!why.trim()}>{t("projects.markBlocked")}</button>
+            <button type="button" className={styles.quiet} onClick={close}>{t("common.cancel")}</button>
           </span>
         </form>
       )}

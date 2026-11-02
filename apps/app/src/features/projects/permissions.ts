@@ -4,10 +4,10 @@
 import type { Actor, Verdict } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
+import { translate, DEFAULT_LOCALE, type Locale, type MessageKey } from "@/i18n";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 
 const OK: Verdict = { ok: true };
-const no = (error: string): Verdict => ({ ok: false, error });
 
 const text = (v: unknown, max = 2000): v is string => typeof v === "string" && v.trim().length > 0 && v.length <= max;
 // A link ends up as <a href> on the board: only http(s), never javascript: or data: (same rule as the
@@ -20,110 +20,110 @@ const STARTS: readonly string[] = ["todo", "doing", "done"];
 /** Ids a client mints for a project or a step (features/cases/events newId). */
 export const isProjectId = (v: unknown): v is string => typeof v === "string" && ID.test(v);
 
-export function mayAppendProject(actor: Actor, ev: { type: string; target: string | null; payload: EventPayload }, state: State): Verdict {
+export function mayAppendProject(actor: Actor, ev: { type: string; target: string | null; payload: EventPayload }, state: State, locale: Locale = DEFAULT_LOCALE): Verdict {
+  const no = (key: MessageKey, params?: Record<string, string | number>): Verdict => ({ ok: false, error: translate(locale, key, params) });
   const p = ev.target ? state.projects.find((x) => x.id === ev.target) : undefined;
-  if (!p) return no("No such project.");
+  if (!p) return no("projects.permNoProject");
   const pl = ev.payload;
   const isManager = actor.role === "manager";
   const isMe = (who: string | null) => who !== null && (who === actor.name || (actor.handle !== null && who === actor.handle));
   const isLead = isMe(p.lead) || isManager;
   const onTeam = isLead || p.members.some(isMe);
   const live = p.status !== "stopped" && p.status !== "recognised";
-  const leadOnly = "Only the project's lead (or a manager) can do that.";
-
+  
   switch (ev.type) {
     case "project.commented":
-      return text(pl.text) ? OK : no("A comment needs some text.");
+      return text(pl.text) ? OK : no("projects.permCommentText");
 
     case "project.member":
-      if (!isLead) return no(leadOnly);
-      return text(pl.name, 120) ? OK : no("Whom to add or remove?");
+      if (!isLead) return no("projects.permLeadOnly");
+      return text(pl.name, 120) ? OK : no("projects.permMemberWhom");
 
     case "project.handed":
-      if (!isLead) return no(leadOnly);
-      if (!live) return no("This project is closed.");
-      return text(pl.to, 120) ? OK : no("Hand it to whom?");
+      if (!isLead) return no("projects.permLeadOnly");
+      if (!live) return no("projects.permClosed");
+      return text(pl.to, 120) ? OK : no("projects.permHandWhom");
 
     case "project.baseline":
-      if (!isLead) return no(leadOnly);
-      if (p.status !== "planning") return no("The baseline is taken before the start, never after.");
-      if (pl.none) return text(pl.why) ? OK : no("Say why there is no number to measure.");
-      if (!text(pl.metric, 200) || typeof pl.value !== "number" || !Number.isFinite(pl.value)) return no("A baseline needs what is measured and today's number.");
-      return pl.better === "up" || pl.better === "down" ? OK : no("Say whether a higher or a lower number is better.");
+      if (!isLead) return no("projects.permLeadOnly");
+      if (p.status !== "planning") return no("projects.permBaselineBeforeStart");
+      if (pl.none) return text(pl.why) ? OK : no("projects.permBaselineWhy");
+      if (!text(pl.metric, 200) || typeof pl.value !== "number" || !Number.isFinite(pl.value)) return no("projects.permBaselineWhat");
+      return pl.better === "up" || pl.better === "down" ? OK : no("projects.permBaselineBetter");
 
     case "project.started":
-      if (!isLead) return no(leadOnly);
-      if (p.status !== "planning") return no("This project has already started.");
-      return p.baseline ? OK : no("Take the baseline first - or say why there is no number.");
+      if (!isLead) return no("projects.permLeadOnly");
+      if (p.status !== "planning") return no("projects.permAlreadyStarted");
+      return p.baseline ? OK : no("projects.permStartNeedsBaseline");
 
     case "project.step.added":
-      if (!onTeam) return no("Only the project's team can add steps.");
-      if (!live) return no("This project is closed.");
-      if (!isProjectId(pl.stepId) || p.steps.some((s) => s.id === pl.stepId)) return no("That step id is not usable.");
-      if (pl.to !== undefined && !(typeof pl.to === "string" && STARTS.includes(pl.to))) return no("A new step starts in To do, Doing or Done.");
-      if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("The details are too long.");
-      return text(pl.text, 500) ? OK : no("A step needs some text.");
+      if (!onTeam) return no("projects.permStepTeamAdd");
+      if (!live) return no("projects.permClosed");
+      if (!isProjectId(pl.stepId) || p.steps.some((s) => s.id === pl.stepId)) return no("projects.permStepIdUnusable");
+      if (pl.to !== undefined && !(typeof pl.to === "string" && STARTS.includes(pl.to))) return no("projects.permStepStart");
+      if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("projects.permDetailsLong");
+      return text(pl.text, 500) ? OK : no("projects.permStepText");
 
     case "project.step.moved": {
       const step = p.steps.find((s) => s.id === pl.stepId);
-      if (!step) return no("No such step.");
+      if (!step) return no("projects.permNoStep");
       // An unowned step is the team's: anyone on it may pick it up and move it.
-      if (!(isLead || isMe(step.owner) || (step.owner === null && onTeam))) return no("Only the step's owner or the project's lead can move it.");
-      if (pl.before != null && !p.steps.some((s) => s.id === pl.before)) return no("No such step to put it above.");
-      return typeof pl.to === "string" && (STEP_COLUMNS as readonly string[]).includes(pl.to) ? OK : no("Move it where?");
+      if (!(isLead || isMe(step.owner) || (step.owner === null && onTeam))) return no("projects.permStepMoveOwner");
+      if (pl.before != null && !p.steps.some((s) => s.id === pl.before)) return no("projects.permNoStepAbove");
+      return typeof pl.to === "string" && (STEP_COLUMNS as readonly string[]).includes(pl.to) ? OK : no("projects.permMoveWhere");
     }
 
     case "project.step.edited": {
       const step = p.steps.find((s) => s.id === pl.stepId);
-      if (!step) return no("No such step.");
-      if (!onTeam) return no("Only the project's team can change steps.");
-      if (!live) return no("This project is closed.");
-      if (pl.removed) return isLead || isMe(step.by) ? OK : no("Only the project's lead or whoever added the step can remove it.");
-      if (pl.text !== undefined && !text(pl.text, 500)) return no("A step needs some text.");
-      if (pl.owner !== undefined && !(typeof pl.owner === "string" && pl.owner.length <= 120)) return no("Who owns it?");
-      if (pl.dueDay !== undefined && pl.dueDay !== null && !(typeof pl.dueDay === "number" && Number.isFinite(pl.dueDay))) return no("When is it due?");
-      if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("The details are too long.");
+      if (!step) return no("projects.permNoStep");
+      if (!onTeam) return no("projects.permStepTeamChange");
+      if (!live) return no("projects.permClosed");
+      if (pl.removed) return isLead || isMe(step.by) ? OK : no("projects.permStepRemove");
+      if (pl.text !== undefined && !text(pl.text, 500)) return no("projects.permStepText");
+      if (pl.owner !== undefined && !(typeof pl.owner === "string" && pl.owner.length <= 120)) return no("projects.permStepOwnerWho");
+      if (pl.dueDay !== undefined && pl.dueDay !== null && !(typeof pl.dueDay === "number" && Number.isFinite(pl.dueDay))) return no("projects.permStepDue");
+      if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("projects.permDetailsLong");
       return OK;
     }
 
     case "project.linked":
-      if (!isLead) return no(leadOnly);
-      if (pl.url !== undefined && pl.url !== "" && !webUrl(pl.url)) return no("A link must be an http or https address.");
-      return webUrl(pl.url) || text(pl.key, 100) ? OK : no("A link needs an address or a key.");
+      if (!isLead) return no("projects.permLeadOnly");
+      if (pl.url !== undefined && pl.url !== "" && !webUrl(pl.url)) return no("projects.permLinkHttp");
+      return webUrl(pl.url) || text(pl.key, 100) ? OK : no("projects.permLinkNeeds");
 
     case "project.sync":
-      if (!isLead) return no(leadOnly);
-      if (!live) return no("This project is closed.");
-      if (!(SYNC_SYSTEMS as readonly unknown[]).includes(pl.system)) return no(`Sync to what? One of ${SYNC_SYSTEMS.join(", ")}.`);
-      return typeof pl.on === "boolean" ? OK : no("Start or stop syncing?");
+      if (!isLead) return no("projects.permLeadOnly");
+      if (!live) return no("projects.permClosed");
+      if (!(SYNC_SYSTEMS as readonly unknown[]).includes(pl.system)) return no("projects.permSyncWhat", { systems: SYNC_SYSTEMS.join(", ") });
+      return typeof pl.on === "boolean" ? OK : no("projects.permSyncOnOff");
 
     case "project.done":
-      if (!isLead) return no(leadOnly);
-      return p.status === "running" ? OK : no("Only a running project can be done.");
+      if (!isLead) return no("projects.permLeadOnly");
+      return p.status === "running" ? OK : no("projects.permOnlyRunningDone");
 
     case "project.measured": {
-      if (!isLead) return no(leadOnly);
+      if (!isLead) return no("projects.permLeadOnly");
       const check = p.checks.find((c) => c.check === pl.check);
-      if (!check) return no("There is no such check for this project.");
-      if (check.measured) return no("That check is already recorded - a correction is a comment with its why.");
-      if (state.day < check.opensDay) return no("That check opens on its day, not before.");
-      return typeof pl.value === "number" && Number.isFinite(pl.value) ? OK : no("A measure needs the number.");
+      if (!check) return no("projects.permNoCheck");
+      if (check.measured) return no("projects.permCheckRecorded");
+      if (state.day < check.opensDay) return no("projects.permCheckOpens");
+      return typeof pl.value === "number" && Number.isFinite(pl.value) ? OK : no("projects.permMeasureNumber");
     }
 
     case "project.rewarded":
-      if (!isManager) return no("Only a manager records a reward.");
-      return p.rewardDue ? OK : no("No reward is due for this project.");
+      if (!isManager) return no("projects.permRewardManager");
+      return p.rewardDue ? OK : no("projects.permNoRewardDue");
 
     case "project.claimed":
-      if (!p.authors.some(isMe)) return no("Only the person who raised the idea can claim its reward.");
-      return p.reward && !p.claimed ? OK : no("There is no reward to claim.");
+      if (!p.authors.some(isMe)) return no("projects.permClaimAuthor");
+      return p.reward && !p.claimed ? OK : no("projects.permNoRewardToClaim");
 
     case "project.stopped":
-      if (!isLead) return no(leadOnly);
-      if (!live) return no("This project is already closed.");
-      return text(pl.why) ? OK : no("Say why it stops.");
+      if (!isLead) return no("projects.permLeadOnly");
+      if (!live) return no("projects.permAlreadyClosed");
+      return text(pl.why) ? OK : no("projects.permStopWhy");
 
     default:
-      return no("That event is not allowed here.");
+      return no("projects.permNotAllowed");
   }
 }

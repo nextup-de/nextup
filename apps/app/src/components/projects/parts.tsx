@@ -9,7 +9,9 @@ import type { EventPayload } from "@/features/cases/events";
 import { mayAppendProject } from "@/features/projects/permissions";
 import { board, nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject, Step, VerdictWord } from "@/features/projects/types";
-import { COLUMN_LABEL, MOVE_LABEL, type Viewer } from "@/features/projects/views";
+import { columnLabel, moveLabel, verdictWord, type Viewer } from "@/features/projects/views";
+import { useLocale, useT } from "@/i18n/client";
+import type { Locale, T } from "@/i18n";
 import styles from "./Projects.module.css";
 
 export const viewerOf = (ctx: Pick<DemoContext, "role" | "persona">): Viewer =>
@@ -18,8 +20,9 @@ export const viewerOf = (ctx: Pick<DemoContext, "role" | "persona">): Viewer =>
 /** What this person may do on `p`, asked of the same rules the server checks before it writes. */
 export function useRights(p: ReducedProject) {
   const ctx = useDemo();
+  const locale = useLocale();
   const actor = viewerOf(ctx);
-  const check = (type: string, payload: EventPayload = {}) => mayAppendProject(actor, { type, target: p.id, payload }, ctx.S);
+  const check = (type: string, payload: EventPayload = {}) => mayAppendProject(actor, { type, target: p.id, payload }, ctx.S, locale);
   const can = (type: string, payload: EventPayload = {}) => check(type, payload).ok;
   return {
     check,
@@ -58,43 +61,47 @@ export function useSend(p: ReducedProject) {
 const VERDICT_TONE: Record<VerdictWord, Tone> = { better: "ok", same: "soft", worse: "accent", "not measured": "ghost" };
 
 export function VerdictChip({ verdict }: { verdict: VerdictWord | null }) {
+  const locale = useLocale();
   if (!verdict) return null;
-  return <Pill tone={VERDICT_TONE[verdict]}>{verdict}</Pill>;
+  return <Pill tone={VERDICT_TONE[verdict]}>{verdictWord(verdict, locale)}</Pill>;
 }
 
 /** "Due 3 Oct" or "2 days late", with whom a late move sits now. Nothing when nothing is due. */
 export function DueBadge({ p }: { p: ReducedProject }) {
   const { S, f } = useDemo();
+  const t = useT();
   if (p.dueDay === null) return null;
   const late = S.day - p.dueDay;
   return (
     <span className={styles.due} data-late={p.overdue ? "true" : undefined}>
-      {p.overdue ? late + (late === 1 ? " day late" : " days late") + (p.escalated ? " · with " + p.escalated.to : "") : "Due " + f(p.dueDay)}
+      {p.overdue ? (p.escalated ? t("projects.dueLateWith", { late: t("projects.dueLate", { count: late }), name: p.escalated.to }) : t("projects.dueLate", { count: late })) : t("projects.dueOn", { day: f(p.dueDay) })}
     </span>
   );
 }
 
 /** The next thing that happens to a project, as one short line: the move for its lead, where it stands for everyone else. */
-export function nextLine(p: ReducedProject, day: number, f: (d: number) => string, lead: boolean): string {
+export function nextLine(p: ReducedProject, day: number, f: (d: number) => string, lead: boolean, t: T, locale: Locale): string {
   const move = nextMove(p, day);
-  if (move && lead) return MOVE_LABEL[move];
-  if (p.status === "planning") return p.baseline ? "Planning, ready to start" : "Planning, baseline next";
+  if (move && lead) return moveLabel(move, locale);
+  if (p.status === "planning") return p.baseline ? t("projects.nextPlanningReady") : t("projects.nextPlanningBaseline");
   if (p.status === "running") {
     const done = p.steps.filter((s) => s.column === "done").length;
-    return p.steps.length ? done + " of " + p.steps.length + " steps done" : "Running, no steps yet";
+    return p.steps.length ? t("projects.stepsDoneOf", { done, total: p.steps.length }) : t("projects.nextRunningNoSteps");
   }
-  if (p.status === "measured") return p.rewardDue ? "Measured, reward due" : "Measured";
+  if (p.status === "measured") return p.rewardDue ? t("projects.nextMeasuredReward") : t("projects.nextMeasured");
   if (p.status === "measuring") {
     const c = p.checks.find((x) => !x.measured);
-    return c ? c.check + "-day check opens " + f(c.opensDay) : "Measuring";
+    return c ? t("projects.nextCheckOpens", { check: c.check, day: f(c.opensDay) }) : t("projects.nextMeasuring");
   }
-  if (p.status === "stopped") return "Stopped" + (p.stopped?.why ? ": " + p.stopped.why : "");
-  if (p.status === "recognised") return p.claimed ? "Recognised, reward claimed" : "Recognised";
-  return "Closed";
+  if (p.status === "stopped") return p.stopped?.why ? t("projects.nextStoppedWhy", { why: p.stopped.why }) : t("projects.nextStopped");
+  if (p.status === "recognised") return p.claimed ? t("projects.nextRecognisedClaimed") : t("projects.nextRecognised");
+  return t("projects.nextClosed");
 }
 
 export function ProjectCard({ p, note }: { p: ReducedProject; note?: string }) {
   const { S, f, href, persona, role } = useDemo();
+  const t = useT();
+  const locale = useLocale();
   // The lead's move is theirs to read; a manager records the reward.
   const lead = p.lead === persona.who.name || p.lead === persona.who.handle || (role === "manager" && p.rewardDue);
   return (
@@ -104,10 +111,10 @@ export function ProjectCard({ p, note }: { p: ReducedProject; note?: string }) {
         <VerdictChip verdict={p.verdict} />
       </span>
       <span className={styles.cardTitle}>{p.title}</span>
-      <span className={styles.cardMeta}>Lead {p.lead}{p.members.length ? " · " + (p.members.length + 1) + " people" : ""}</span>
+      <span className={styles.cardMeta}>{t("projects.cardLead", { name: p.lead })}{p.members.length ? " · " + t("projects.peopleCount", { count: p.members.length + 1 }) : ""}</span>
       {p.steps.length > 0 && <StepsBar p={p} />}
       <span className={styles.cardFoot}>
-        <span className={styles.next} data-mine={lead && nextMove(p, S.day) ? "true" : undefined}>{note ?? nextLine(p, S.day, f, lead)}</span>
+        <span className={styles.next} data-mine={lead && nextMove(p, S.day) ? "true" : undefined}>{note ?? nextLine(p, S.day, f, lead, t, locale)}</span>
         <DueBadge p={p} />
       </span>
     </Link>
@@ -117,18 +124,20 @@ export function ProjectCard({ p, note }: { p: ReducedProject; note?: string }) {
 /** The board in one line: done, doing, blocked and to do as one bar, with the count. */
 function StepsBar({ p }: { p: ReducedProject }) {
   const { S } = useDemo();
+  const t = useT();
+  const locale = useLocale();
   const by = board(p);
   const cols = (["done", "doing", "blocked", "todo"] as const).filter((c) => by[c].length > 0);
   // A running project's line below already says "x of y steps done": here only what needs attention.
   const late = p.steps.filter((s) => s.column !== "done" && s.dueDay !== null && S.day > s.dueDay).length;
   const bits = [
-    p.status !== "running" ? by.done.length + "/" + p.steps.length + " steps" : "",
-    by.blocked.length ? by.blocked.length + " blocked" : "",
-    late ? late + " late" : "",
+    p.status !== "running" ? t("projects.cardStepsFraction", { done: by.done.length, total: p.steps.length }) : "",
+    by.blocked.length ? t("projects.countBlocked", { count: by.blocked.length }) : "",
+    late ? t("projects.countLate", { count: late }) : "",
   ].filter(Boolean);
   return (
     <span className={styles.cardSteps}>
-      <span className={styles.segbar} role="img" aria-label={cols.map((c) => by[c].length + " " + COLUMN_LABEL[c]).join(", ")}>
+      <span className={styles.segbar} role="img" aria-label={cols.map((c) => by[c].length + " " + columnLabel(c, locale)).join(", ")}>
         {cols.map((c) => <span key={c} data-col={c} style={{ flexGrow: by[c].length }} />)}
       </span>
       {bits.length > 0 && <span className={styles.cardStepsText}>{bits.join(" · ")}</span>}
@@ -139,11 +148,12 @@ function StepsBar({ p }: { p: ReducedProject }) {
 /** Shown instead of a project page while the company does not have projects yet. */
 export function ProjectsOff() {
   const { href } = useDemo();
+  const t = useT();
   return (
     <div className={styles.off}>
-      <h1 className={styles.title}>Projects</h1>
-      <p className={styles.sub}>Projects are not turned on for this company yet. When they are, every idea that gets a yes becomes one here.</p>
-      <Link href={href("/feed")} className={styles.back}>Back to the feed</Link>
+      <h1 className={styles.title}>{t("projects.pageTitle")}</h1>
+      <p className={styles.sub}>{t("projects.offSub")}</p>
+      <Link href={href("/feed")} className={styles.back}>{t("projects.backToFeed")}</Link>
     </div>
   );
 }
