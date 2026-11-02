@@ -9,6 +9,7 @@
 #             login codes, the loop across real sessions, Settings -> Members
 #   db-tests    — vitest against Postgres: apps/app/tests/db via ops/test-db.sh
 #   brain-tests — pytest for services/brain, run in the uv image
+#   brain-eval  — routing eval set rules + recorded answers vs threshold (no model)
 #
 # The legacy demo's syntax + smoke jobs went with legacy/ in #61; e2e is their port.
 #
@@ -272,3 +273,14 @@ jobs:
       # The brain's own toolchain in the uv image, so no setup action is needed. --frozen keeps uv.lock as is.
       - name: Run the brain suite (services/brain/tests)
         run: docker run --rm -v "$PWD/services/brain:/w" -w /w ghcr.io/astral-sh/uv:python3.12-bookworm-slim sh -c "uv sync --frozen && uv run --frozen pytest"
+
+  # The routing eval set (services/brain/eval/routing_cases.json) keeps its rules, and the recorded
+  # answers of the last run still score at or above their threshold. No model is called.
+  brain-eval:
+    name: brain-eval · routing set
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the eval set and score the recorded answers
+        run: docker run --rm -v "$PWD/services/brain:/w" -w /w ghcr.io/astral-sh/uv:python3.12-bookworm-slim sh -c "uv sync --frozen && uv run --frozen pytest eval/test_eval_set.py && uv run --frozen python -m eval.run_eval --recorded eval/recorded/routing.json"
