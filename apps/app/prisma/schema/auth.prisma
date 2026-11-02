@@ -7,9 +7,7 @@ model User {
   companyId String
 
   name String
-  // Must match a name used in the company's seedJson (a persona, a route owner, or a row in
-  // people[]) or derive.ts's visibleTo()/inboxFor() match nothing and the inbox renders empty
-  // with no error. The admin create-company action checks this and warns.
+  // Display text only: people are matched by id, never by this name (phase IDN).
 
   email String
   role  String // manager | leader | member - see src/config/roles.ts
@@ -30,6 +28,13 @@ model User {
 
   locale String? // de | en (src/i18n). Null: the company's defaultLocale, then English.
 
+  // Directory sync (phase DIR). employeeId is the personnel number: never shown, never logged, never sent to the AI.
+  employeeId        String?
+  managerId         String?
+  active            Boolean   @default(true) // false: cannot sign in, session ends
+  deactivatedAt     DateTime?
+  directorySyncedAt DateTime?
+
   createdAt DateTime @default(now())
 
   company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -38,9 +43,13 @@ model User {
   ideaDrafts  IdeaDraft[]
   tickets     Ticket[]
   connections Connection[]
+  manager     User?        @relation("UserManager", fields: [managerId], references: [id], onDelete: SetNull)
+  reports     User[]       @relation("UserManager")
 
   @@unique([companyId, email])
   @@unique([companyId, entraOid])
+  @@unique([companyId, employeeId])
+  @@index([companyId, managerId])
   @@index([companyId, name])
 }
 
@@ -61,4 +70,27 @@ model ApiToken {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
+}
+
+// One row per company: the directory sync's switch, source, cursor and lease (phase DIR).
+// `cursor` is the Graph deltaLink or another source's cursor; never shown.
+model DirectoryRun {
+  companyId String  @id
+  on        Boolean @default(false)
+  source    String  @default("graph") // graph | successfactors (features/directory)
+  cursor    String?
+
+  leaseUntil  DateTime?
+  lastRunAt   DateTime?
+  lastOkAt    DateTime?
+  lastError   String?
+  added       Int       @default(0)
+  updated     Int       @default(0)
+  deactivated Int       @default(0)
+  handed      Int       @default(0)
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }
