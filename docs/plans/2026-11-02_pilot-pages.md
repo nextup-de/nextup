@@ -1,17 +1,65 @@
 # Pilot pages: what every new and changed screen looks like
 
-> **Plan · 2026-11-02 · open: page specs for Sam (front-end). Nothing is built yet; each page is built in the PILOT phase named on it.**
+> **Plan · 2026-11-02 · open: Sam designs and builds every page here; the data behind each page comes from the PILOT phase named on it. Nothing is built yet.**
 > The Hauptplan PILOT adds **23 new pages**, changes **15 existing pages** and needs **27 other surfaces** (Teams cards,
 > emails, printables, dialogs, states). This file is the map, the shared rules and the shared building blocks. The
 > pages themselves are specified in the nine files in [2026-11-02_pilot-pages/](2026-11-02_pilot-pages/), one per area.
+
+## Start here, Sam
+
+Your job: **design every page in this plan, then build it and open a pull request for it.** Kevin reviews and
+merges. This file and the nine spec files tell you what each page shows, how it behaves and which data it uses;
+the build plans copied into [build-plans/](2026-11-02_pilot-pages/build-plans/README.md) hold the details behind
+them.
+
+For each page, in the order of the table "The spec files" below:
+
+1. **Read** the page in its spec file: layout, phone, content (German and English), actions, states, *Done when*.
+   Read this file's ground rules, visual language and shared building blocks once, before the first page.
+2. **Design** it in Paper or Figma: desktop and phone, with the German text, and every state in its *Done when*
+   list. Build the shared building blocks (below) as components first and reuse them. Name layers after the test ids
+   (`settings-<section>-<thing>`), so design and code use the same names.
+3. **Link the frame** in the spec: add a line `Design: <link>` under the page's header lines. Do this in your
+   first PR for that page (step 5), or in a small `docs/` PR if you want feedback on the design first.
+4. **Wait for Kevin's look at the first designs:** the settings shell and the first three settings pages (Company,
+   Rules, Calendar) before you draw the rest, so the shared look is right once.
+5. **Build** it as [CONTRIBUTING.md](../../CONTRIBUTING.md) describes: a fresh `main`, a branch `feat/<area>-<page>`
+   (for example `feat/settings-rules`), one page or one small group of pages per PR. In the PR description: the spec
+   section, the frame link and screenshots of desktop and phone. Before you open it: `npm run lint`, `npm run
+   typecheck`, `npm test`, and the checks in [../RESPONSIVE.md](../RESPONSIVE.md) "Before you say a change is done".
+6. **Check the data first.** Each page's *Phase* line names the phase that builds its data (tables, functions, server
+   actions). If that phase is not merged on `main` yet, the page waits for it, or you build only what the merged
+   code supports and leave the rest for later. Never fake data in a real page; demo data stays in the demo.
+7. **Questions:** each spec file ends with open questions, each with a default. Build the default unless Kevin says
+   otherwise. Anything not answered by the spec or the build plans: ask Kevin, and note the answer in the spec in your
+   PR.
+
+**Pages an automated lane is also planned to build.** Some build plans have tasks that own a page's files: ADM-G1,
+A1, B1, C1, D1, E1, F1, H1, N1, R1 (settings, setup, login), NTF-D1 (the mail section of the profile), IDN-S1 (the
+profile on ids). The general check: if a task in `build-plans/*/tasks/` lists a file you are about to change under
+`owns` and that task is not merged yet, ask Kevin first who builds it, so you and a lane never change the same files
+at the same time. Designing the pages is always yours.
+
+### Words used in these files
+
+| Word | Meaning |
+|---|---|
+| PILOT, Hauptplan | The master plan for making NextUp pilot-ready: [build-plans/PILOT.md](2026-11-02_pilot-pages/build-plans/PILOT.md). |
+| Phase (ADM, VIS, MET …) | One part of PILOT with one result, for example ADM = administration in the app. Each spec names the phase that builds the page's data. |
+| Build plan (Bauplan) | The detailed plan of one phase: [build-plans/<phase>/PLAN.md](2026-11-02_pilot-pages/build-plans/README.md). |
+| Task (ADM-A1) | One piece of a build plan, in `build-plans/<phase>/tasks/`. |
+| `ADM/D7` | Decision 7 of the build plan ADM. `HD5` = decision 5 of PILOT, which holds for every phase. |
+| *later* | Shown in the spec, but no plan builds it yet. Design it in its own frame; do not build it. |
+| *(proposal, not in any plan)* | An idea in the spec without data behind it. Design it; build it only after Kevin says yes. |
+| orch, lane | The automated agent sessions that build tasks on Kevin's PC. |
 
 ## Read first
 
 | What | Where |
 |---|---|
 | Master plan (why, phases, audit) | [2026-11-01_pilot-readiness.md](2026-11-01_pilot-readiness.md) |
-| The phases as orch runs them: one brief per phase (result, scope, acceptance test, code area) | Hauptplan `PILOT` in the plans repo (`selluxhenner/plans`): `projects/nextup/hauptplaene/PILOT.md` |
-| The detailed build plans (Baupläne) written so far, with decisions and one file per task | plans repo: `projects/nextup/<PHASE>/PLAN.md` and `tasks/` for ADM, AIP, CLK, CNX, DIR, IDN, LNG, NTF, STR, VIS (and the merged ones) |
+| The phases: one brief per phase (result, scope, acceptance test, code area) | [build-plans/PILOT.md](2026-11-02_pilot-pages/build-plans/PILOT.md) (copy of the Hauptplan `PILOT` in the private plans repo) |
+| The detailed build plans written so far, with decisions and one file per task | [build-plans/](2026-11-02_pilot-pages/build-plans/README.md): ADM, AIP, CLK, CNX, DIR, IDN, NTF, VIS. Where a spec says "plans repo `projects/nextup/<X>/…`", the copy is `build-plans/<X>/…`. |
 | Gaps per phase | [../audit/gap-register.md](../audit/gap-register.md) |
 | Visual language, components, UI kit | [../../design-system/README.md](../../design-system/README.md), `design-system/ui_kits/app/` |
 | Layout rules and the size scale | [../RESPONSIVE.md](../RESPONSIVE.md), `apps/app/src/styles/tokens.css` |
