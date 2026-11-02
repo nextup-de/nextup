@@ -2,7 +2,7 @@
 // structure or demo content on its pages, and one created from the demo template still shows
 // acme's routes and goals. Own companies, deleted at the end, like company-login.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { expect, START, test } from "../helpers";
+import { expect, passSecondFactor, START, test } from "../helpers";
 import { BUDDIES, DEPTS, LEADERS, PEOPLE, ROLES, ROUTES } from "../../../src/features/demo/seed";
 import { DEMO_GOALS } from "../../../src/features/demo/structure";
 
@@ -93,6 +93,7 @@ async function signIn(browser: Browser, slug: string, name: string): Promise<Pag
   await page.goto(`/${slug}/login`);
   await page.locator("#code").fill(codes.get(`${slug}|${name}`) ?? "");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await passSecondFactor(page, `${slug}|${name}`);
   await expect(page).not.toHaveURL(/\/login/);
   return page;
 }
