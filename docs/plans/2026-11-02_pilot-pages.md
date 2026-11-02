@@ -7,51 +7,50 @@
 
 ## Start here, Sam
 
-Your job: **design every page in this plan, then build it and open a pull request for it.** Kevin reviews and
-merges. This file and the nine spec files tell you what each page shows, how it behaves and which data it uses;
-the build plans copied into [build-plans/](2026-11-02_pilot-pages/build-plans/README.md) hold the details behind
-them.
+**Who does what.** Kevin builds the infrastructure: tables, server actions, sign-in, connectors, the clock, the
+outbox, through the build plans. You design and build the interface on top of it: every page in this plan, designed
+in Paper or Figma however you think it works best, then built and opened as pull requests. Kevin reviews and merges.
 
-For each page, in the order of the table "The spec files" below:
+**What these files give you is what each page needs, not how it must look.** For every page the specs list the data
+it shows, what people can do there, every state it has to handle, the rules it must keep and starting copy in German
+and English. The ASCII layouts, the building-block looks and the pixel values are one way to arrange it, a starting
+point you are free to throw away. What is fixed:
 
-1. **Read** the page in its spec file: layout, phone, content (German and English), actions, states, *Done when*.
-   Read this file's ground rules, visual language and shared building blocks once, before the first page.
-2. **Design** it in Paper or Figma: desktop and phone, with the German text, and every state in its *Done when*
-   list. Build the shared building blocks (below) as components first and reuse them. Name layers after the test ids
-   (`settings-<section>-<thing>`), so design and code use the same names.
-3. **Link the frame** in the spec: add a line `Design: <link>` under the page's header lines. Do this in your
-   first PR for that page (step 5), or in a small `docs/` PR if you want feedback on the design first.
-4. **Wait for Kevin's look at the first designs:** the settings shell and the first three settings pages (Company,
-   Rules, Calendar) before you draw the rest, so the shared look is right once.
-5. **Build** it as [CONTRIBUTING.md](../../CONTRIBUTING.md) describes: a fresh `main`, a branch `feat/<area>-<page>`
-   (for example `feat/settings-rules`), one page or one small group of pages per PR. In the PR description: the spec
-   section, the frame link and screenshots of desktop and phone. Before you open it: `npm run lint`, `npm run
-   typecheck`, `npm test`, and the checks in [../RESPONSIVE.md](../RESPONSIVE.md) "Before you say a change is done".
-6. **Check the data first.** Each page's *Phase* line names the phase that builds its data (tables, functions, server
-   actions). If that phase is not merged on `main` yet, the page waits for it, or you build only what the merged
-   code supports and leave the rest for later. Never fake data in a real page; demo data stays in the demo.
-7. **Questions:** each spec file ends with open questions, each with a default. Build the default unless Kevin says
-   otherwise. Anything not answered by the spec or the build plans: ask Kevin, and note the answer in the spec in your
-   PR.
+- the **content**: every element, field and action in a page's *Content* and *Actions* sections, with its rules and
+  limits (they come from the infrastructure, and the server refuses anything outside them);
+- the **states**: every case in a page's *States* section and its *Done when* list must have a design;
+- the **ground rules** below (German first, roles not people, too few to show below 5, the AI can be off, no
+  personnel number, secrets write-only);
+- the **names in code**: routes, test ids (`settings-<section>-<thing>`), message keys in both catalogs, the functions
+  and fields a page calls;
+- the **layout rules** in [../RESPONSIVE.md](../RESPONSIVE.md) and the house style in
+  [../../design-system/README.md](../../design-system/README.md). If you want to change the house style itself,
+  change it in one place for every page, not on one page.
 
-**Pages an automated lane is also planned to build.** Some build plans have tasks that own a page's files: ADM-G1,
-A1, B1, C1, D1, E1, F1, H1, N1, R1 (settings, setup, login), NTF-D1 (the mail section of the profile), IDN-S1 (the
-profile on ids). The general check: if a task in `build-plans/*/tasks/` lists a file you are about to change under
-`owns` and that task is not merged yet, ask Kevin first who builds it, so you and a lane never change the same files
-at the same time. Designing the pages is always yours.
+**How you work, per page,** roughly in the order of "The spec files" below:
+
+1. Read the page's spec and the ground rules.
+2. Design it (desktop and phone, the German text, every state). Add a line `Design: <link>` under the page's header
+   lines in its spec, so the frame can be found from the spec.
+3. Build it as [CONTRIBUTING.md](../../CONTRIBUTING.md) describes: a fresh `main`, a branch `feat/<area>-<page>`, one
+   page or one small group of pages per PR, with the spec section, the frame link and screenshots in the PR
+   description. Before you open it: `npm run lint`, `npm run typecheck`, `npm test` and the checks in RESPONSIVE.md.
+4. If the page's data is not on `main` yet (its *Phase* line names the phase that builds it), design it now and build
+   it once Kevin's part is merged, or build what the merged code already supports. Never fake data in a real page.
+5. Open questions at the end of each spec have a default; build the default unless Kevin says otherwise. If a spec
+   and the code disagree, or a page needs data nobody builds, tell Kevin: that is infrastructure.
 
 ### Words used in these files
 
 | Word | Meaning |
 |---|---|
 | PILOT, Hauptplan | The master plan for making NextUp pilot-ready: [build-plans/PILOT.md](2026-11-02_pilot-pages/build-plans/PILOT.md). |
-| Phase (ADM, VIS, MET …) | One part of PILOT with one result, for example ADM = administration in the app. Each spec names the phase that builds the page's data. |
-| Build plan (Bauplan) | The detailed plan of one phase: [build-plans/<phase>/PLAN.md](2026-11-02_pilot-pages/build-plans/README.md). |
+| Phase (ADM, VIS, MET …) | One part of PILOT with one result, for example ADM = administration in the app. A page's *Phase* line names the phase that builds its data. |
+| Build plan (Bauplan) | The detailed infrastructure plan of one phase: [build-plans/<phase>/PLAN.md](2026-11-02_pilot-pages/build-plans/README.md). Read it for field names, limits and functions, not for design. |
 | Task (ADM-A1) | One piece of a build plan, in `build-plans/<phase>/tasks/`. |
 | `ADM/D7` | Decision 7 of the build plan ADM. `HD5` = decision 5 of PILOT, which holds for every phase. |
-| *later* | Shown in the spec, but no plan builds it yet. Design it in its own frame; do not build it. |
-| *(proposal, not in any plan)* | An idea in the spec without data behind it. Design it; build it only after Kevin says yes. |
-| orch, lane | The automated agent sessions that build tasks on Kevin's PC. |
+| *later* | Shown in the spec, but no plan builds its data yet. Design it if you like; do not build it. |
+| *(proposal, not in any plan)* | An idea without data behind it. Ask Kevin before building it. |
 
 ## Read first
 
@@ -99,9 +98,9 @@ Every page has the same parts, in this order:
 1. **Header lines:** route, who opens it, phase (and Bauplan task where one exists), the data it shows, what exists
    today.
 2. **Purpose:** one sentence.
-3. **Layout (desktop):** an ASCII wireframe. It fixes what sits where, the order and the grouping, not the pixels;
-   sizes come from the tokens below. Draw the Figma or Paper frame from it.
-4. **Phone (≤ 760 px):** what changes.
+3. **Layout (desktop):** an ASCII wireframe: one way to arrange the content, a starting point for your design, not a
+   requirement.
+4. **Phone (≤ 760 px):** what changes on a phone in that suggestion.
 5. **Content:** a table, one row per element: control, rules, English text, German text.
 6. **Actions:** what each button does, what it asks first, what it says afterwards.
 7. **States:** loading, empty, error, read-only and the page's own special states.
@@ -160,11 +159,11 @@ The target is [design-system/README.md](../../design-system/README.md). In short
 Today's settings form uses the older global classes (`nh-btn-primary`, a blue button). New pages use the system look
 above. Open question Q1 below.
 
-## Shared building blocks (build these once, first)
+## Shared building blocks
 
-Settings-only blocks go in `apps/app/src/components/settings/`, shared ones in `apps/app/src/components/ui/`. Every
-page spec refers to them by these names. They belong to ADM-G1 (the settings frame) or to the first task that needs
-them.
+The specs refer to these blocks by name, so each one means the same thing on every page. What each block is for
+and which pages use it is what matters; the looks below are suggestions. Build each once and reuse it: settings-only
+blocks in `apps/app/src/components/settings/`, shared ones in `apps/app/src/components/ui/`.
 
 | Block | What it looks like | Used by |
 |---|---|---|
@@ -330,3 +329,11 @@ already running and stays unchanged; what it handed to nobody went to ADM or API
 | The company login shows fixed numbers ("26 h", "84 %") to real companies. | The side panel with sample numbers shows on demo companies only (ADM/D20, in ADM-E1). | ADM-E1 | 08 |
 | Retention covered assistant turns only; drafts, case events and the screenshot policy had no fields. | GDP adds its own rows in `ops.prisma` (retention per kind, screenshot policy), no new columns on Company (HD11). The audit view is `/settings/audit`. | GDP | 05 |
 | The rate-limit wait text exists in English only. | The refusal comes from the catalog in German and English (`errors.tooManyAttempts`, VIS/D11, in VIS-D1). | VIS-D1 | 07 |
+
+## Done when
+
+- Every page in the tables above is designed (desktop, phone, German, every state of its *Done when* list) and its
+  frame is linked in its spec.
+- Every page is built and merged, with its data from Kevin's infrastructure, and passes lint, typecheck, tests and
+  the RESPONSIVE.md checks.
+- The shared building blocks exist once, as design components and as code components, and every page uses them.
