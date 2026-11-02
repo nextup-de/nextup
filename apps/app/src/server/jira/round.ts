@@ -92,6 +92,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
 
   /** Find the issue a repeat would otherwise duplicate: our label on it. */
   async function adopt(label: string): Promise<string | null> {
+    // eslint-disable-next-line -- JQL, Jira-side comment and developer error (D9)
     const found = await api.search(`project = ${settings.projectKey} AND labels = ${quote(label)} ORDER BY created ASC`);
     return found[0]?.key ?? null;
   }
@@ -124,6 +125,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
       }
       case "issue": {
         const epicKey = job.epicKey ?? epicKeys.get(job.projectId) ?? null;
+        // eslint-disable-next-line -- JQL, Jira-side comment and developer error (D9)
         if (!epicKey) throw new Refused(`No epic for ${job.projectId} yet, so ${job.stepId} waits.`);
         let key = await adopt(job.label);
         if (!key) {
@@ -149,6 +151,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
         const issue = await api.issue(job.issueKey);
         if (!issue || (issue.fields.labels ?? []).includes(REMOVED_LABEL)) return;
         await api.addLabel(job.issueKey, REMOVED_LABEL);
+        // eslint-disable-next-line -- JQL, Jira-side comment and developer error (D9)
         await api.addComment(job.issueKey, "This step was removed from the board in NextUp. The issue is left here; close it if it is no longer needed.");
         wrote += 2;
         return;
@@ -188,6 +191,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
 
   const seen = new Map<string, JiraIssue>();
   const take = (list: readonly JiraIssue[]) => list.forEach((i) => seen.set(i.key, i));
+  // eslint-disable-next-line -- JQL, Jira-side comment and developer error (D9)
   take(await api.search(`project = ${settings.projectKey} AND updated >= "-${minutes}m" ORDER BY updated ASC`, { changelog: true }));
   const everyKey = input.reconcile || input.pulledAt === null ? linked : fresh.filter((k) => linked.includes(k));
   for (const batch of chunks(everyKey, BATCH)) take(await api.search(`key in (${batch.join(",")})`, { changelog: true }));

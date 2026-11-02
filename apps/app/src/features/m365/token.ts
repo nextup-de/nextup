@@ -4,6 +4,7 @@
 // src/server/graph-token.ts.
 
 /** What live search needs, and no more: the files the person can open, and a way to come back. */
+// eslint-disable-next-line -- OAuth scope, not text
 export const GRAPH_SCOPE = "https://graph.microsoft.com/Files.Read.All offline_access";
 
 export function refreshRequestBody(p: { clientId: string; clientSecret: string; refreshToken: string }): URLSearchParams {

@@ -28,6 +28,10 @@ const eslintConfig = defineConfig([
       "src/features/projects/{permissions,views}.ts",
       "src/server/{case-notice,loop-notice}.ts",
       "src/server/actions/events.ts",
+      "src/features/{evaluate,knowledge,m365}/**/*.ts",
+      "src/server/jira/**/*.ts",
+      "src/server/{jira-sync,m365-*}.ts",
+      "src/server/connectors/**/*.ts",
     ],
     ignores: [
       "src/components/admin/**",

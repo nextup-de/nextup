@@ -15,6 +15,7 @@ import type { JiraAccount, JiraApi, JiraCategory, JiraIssue, JiraSettings } from
 const MAX_TEXT = 2000;
 const MAX_HOPS = 3;
 const STATE_OF: Record<JiraCategory, WorkItemState> = { new: "todo", indeterminate: "doing", done: "done" };
+// eslint-disable-next-line -- JQL and Jira-side comment (D9)
 const REMOVED_NOTE = "This step was removed from the board in NextUp. The issue is left here; close it if it is no longer needed.";
 
 const quote = (s: string): string => `"${s.replace(/["\\]/g, "\\$&")}"`;
@@ -27,6 +28,7 @@ export function jiraWorkTracker(api: JiraApi, settings: JiraSettings, account: J
   const ref = (key: string): WorkItemRef => ({ system: "jira", key, url: jiraIssueUrl(settings, key) });
 
   async function adopt(label: string, create: () => Promise<{ key: string }>): Promise<WorkItemRef> {
+    // eslint-disable-next-line -- JQL and Jira-side comment (D9)
     const found = await api.search(`project = ${settings.projectKey} AND labels = ${quote(label)} ORDER BY created ASC`);
     return ref(found[0]?.key ?? (await create()).key);
   }
@@ -77,13 +79,16 @@ export function jiraWorkTracker(api: JiraApi, settings: JiraSettings, account: J
     async changes(input): Promise<WorkChangePage> {
       const since = input.cursor ? ms(input.cursor) : 0;
       // A coarse window keeps big projects cheap; the exact cut is made below on each change's own time.
+      // eslint-disable-next-line -- JQL and Jira-side comment (D9)
       const window = since ? ` AND updated >= "-${Math.max(1, Math.ceil((Date.now() - since) / 60_000) + 1)}m"` : "";
       const base = `project = ${settings.projectKey}`;
       let issues: JiraIssue[];
       if (input.projectId === null) {
         issues = await api.search(`${base}${window}`, { changelog: true });
       } else {
+        // eslint-disable-next-line -- JQL and Jira-side comment (D9)
         const epics = await api.search(`${base} AND labels = ${quote(epicLabel(input.projectId))}`, { changelog: true });
+        // eslint-disable-next-line -- JQL and Jira-side comment (D9)
         const children = epics.length ? await api.search(`${base} AND parent in (${epics.map((e) => e.key).join(", ")})${window}`, { changelog: true }) : [];
         issues = [...epics.filter((e) => ms(e.fields.updated) >= since), ...children];
       }

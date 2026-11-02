@@ -1,3 +1,4 @@
+/* eslint-disable -- the /admin connection test: operator console text (D9) */
 // The admin's "Test connection": can this site, account and token do what the sync needs? Each check
 // is its own line with its reason, so the admin sees what to fix. A refused call is a failed check,
 // never a throw. Not a "use server" module.
