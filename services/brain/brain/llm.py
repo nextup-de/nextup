@@ -12,6 +12,7 @@ from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
 from brain.config import Settings
+from brain.schemas import LlmOverride
 
 log = logging.getLogger("brain.llm")
 PROMPT_DIR = Path(__file__).parent / "prompts"
@@ -44,6 +45,19 @@ class LLMClient:
         self.client = OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key,
                              timeout=settings.llm_timeout, max_retries=1)
         self.invalid = 0  # attempts that failed JSON/schema validation, for the eval
+
+    def for_request(self, override: LlmOverride | None) -> "LLMClient":
+        """The client for one request: this one, or - with the company's own endpoint - a fresh one.
+
+        No global state: the override lives only as long as the returned client. The key is read
+        here and nowhere else, and is never logged.
+        """
+        if override is None:
+            return self
+        settings = self.settings.model_copy(update={
+            "llm_base_url": override.base_url, "llm_model": override.model,
+            "llm_api_key": override.api_key.get_secret_value()})
+        return LLMClient(settings)
 
     def complete_json(self, system: str, user: str, schema: dict, name: str) -> str:
         """One raw completion constrained to a JSON schema. Separate method so tests can mock it."""

@@ -4,6 +4,8 @@
 // without it: the keyword proposal at publish, the offline coach in the studio.
 // Not a "use server" module: server/actions/brain.ts and the idea turn route call it.
 import { z } from "zod";
+import type { AiGate } from "@/features/ai/gate";
+import type { AiSettings } from "@/features/ai/settings";
 import { isAboveCeiling, redact } from "@/features/assist/redact";
 import type { Level } from "@/features/assist/classify";
 import type { Turn } from "@/features/assist/draft";
@@ -72,12 +74,42 @@ async function companyFor(slug: string, policy: BrainPolicy) {
   return { tenant, seed, known, cleanAll, state, log };
 }
 
-async function post<T>(slug: string, path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal): Promise<T | null> {
+// What a call needs besides the gate: the company's API key (azure-openai, openai-compatible) and,
+// in tests, a fetch to inject.
+export type BrainOptions = { key?: string | null; fetch?: typeof fetch };
+export type BrainLlm = { base_url: string; model: string; api_key: string };
+
+/**
+ * The company's own endpoint for one request (docs/plans AIP D8). Only azure-openai and
+ * openai-compatible carry one; everything else uses the brain's stack model. Null when the
+ * settings or the key are incomplete - then nothing is sent.
+ */
+export function llmFor(settings: AiSettings, key: string | null | undefined): BrainLlm | null | "none" {
+  if (settings.choice !== "azure-openai" && settings.choice !== "openai-compatible") return "none";
+  if (!key) return null;
+  if (settings.choice === "azure-openai") {
+    const host = settings.endpoint?.trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    if (!host || !settings.deployment) return null;
+    return { base_url: `https://${host}/openai/v1`, model: settings.deployment, api_key: key };
+  }
+  if (!settings.endpoint || !settings.model) return null;
+  return { base_url: settings.endpoint.replace(/\/+$/, ""), model: settings.model, api_key: key };
+}
+
+// Closed gate, or an incomplete endpoint: null, no request. Otherwise the body gets `llm` when the company has its own.
+function withLlm(gate: AiGate, opts: BrainOptions, body: object): object | null {
+  if (!gate.on) return null;
+  const llm = llmFor(gate.settings, opts.key);
+  if (llm === null) return null;
+  return llm === "none" ? body : { ...body, llm };
+}
+
+async function post<T>(slug: string, path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal, doFetch: typeof fetch = fetch): Promise<T | null> {
   const url = process.env.BRAIN_URL, key = process.env.BRAIN_API_KEY;
   if (!url || !key) return null;
   const timeout = AbortSignal.timeout(Number(process.env.BRAIN_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS);
   try {
-    const res = await fetch(url.replace(/\/$/, "") + path, {
+    const res = await doFetch(url.replace(/\/$/, "") + path, {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": key },
       body: JSON.stringify(body),
@@ -101,13 +133,15 @@ async function post<T>(slug: string, path: string, body: unknown, schema: z.ZodT
 }
 
 // At publish: the routing row that owns the idea and whether it was raised before.
-export async function askBrain(slug: string, idea: { title: string; body: string }, policy: BrainPolicy): Promise<BrainProposal | null> {
-  if (!brainConfigured()) return null;
+export async function askBrain(gate: AiGate, slug: string, idea: { title: string; body: string }, policy: BrainPolicy, opts: BrainOptions = {}): Promise<BrainProposal | null> {
+  if (!gate.on || !brainConfigured()) return null;
   const co = await companyFor(slug, policy);
   const text = co?.cleanAll([idea.title, idea.body]);
   if (!co || !text) return null;
   const req = brainRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.routes, co.seed.depts, co.known);
-  const answer = await post(slug, "/v1/route", req, RouteAnswer);
+  const body = withLlm(gate, opts, req);
+  if (!body) return null;
+  const answer = await post(slug, "/v1/route", body, RouteAnswer, undefined, opts.fetch);
   return answer ? fromBrain(answer, req) : null;
 }
 
@@ -127,20 +161,22 @@ export async function askBrainCoach(
 }
 
 // After a yes: the first steps and the metric for the project (docs/plans/2026-10-15_idea-to-project.md).
-export async function askBrainPlan(slug: string, caseId: string, policy: BrainPolicy): Promise<PlanProposal | null> {
-  if (!brainConfigured()) return null;
+export async function askBrainPlan(gate: AiGate, slug: string, caseId: string, policy: BrainPolicy, opts: BrainOptions = {}): Promise<PlanProposal | null> {
+  if (!gate.on || !brainConfigured()) return null;
   const co = await companyFor(slug, policy);
   const c = co?.state.cases.find((x) => x.id === caseId);
   const text = c ? co?.cleanAll([c.title, c.body]) : null;
   if (!co || !text) return null;
-  const answer = await post(slug, "/v1/plan", planRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.goals), PlanReply);
+  const body = withLlm(gate, opts, planRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.goals));
+  if (!body) return null;
+  const answer = await post(slug, "/v1/plan", body, PlanReply, undefined, opts.fetch);
   return answer ? { steps: answer.steps, metric: answer.metric, version: answer.version } : null;
 }
 
 // In a discussion: the draft of the check-in that ends the round under way. `weak`: the dials the
 // app's analysis still finds weak, by name.
-export async function askBrainCheckin(slug: string, caseId: string, weak: readonly string[], policy: BrainPolicy): Promise<CheckinProposal | null> {
-  if (!brainConfigured()) return null;
+export async function askBrainCheckin(gate: AiGate, slug: string, caseId: string, weak: readonly string[], policy: BrainPolicy, opts: BrainOptions = {}): Promise<CheckinProposal | null> {
+  if (!gate.on || !brainConfigured()) return null;
   const co = await companyFor(slug, policy);
   const c = co?.state.cases.find((x) => x.id === caseId);
   if (!co || !c?.discussion) return null;
@@ -150,6 +186,8 @@ export async function askBrainCheckin(slug: string, caseId: string, weak: readon
   if (!text) return null;
   const clean = { ...c, title: text[0], body: text[1], discussion: { ...c.discussion, missing: text[2] } };
   const req = checkinRequest(co.tenant.name, clean, said.map((s, i) => ({ who: s.who, text: text[i + 3] })), weak);
-  const answer = await post(slug, "/v1/checkin", req, CheckinReply);
+  const body = withLlm(gate, opts, req);
+  if (!body) return null;
+  const answer = await post(slug, "/v1/checkin", body, CheckinReply, undefined, opts.fetch);
   return answer ? { next: answer.next, open: answer.open, note: answer.note, version: answer.version } : null;
 }
