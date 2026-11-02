@@ -16,8 +16,19 @@ import { companySeed } from "@/lib/db/companies";
 import type { Seed } from "@/features/demo/types";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { deactivateUser } from "@/lib/db/directory";
+import { linkSeat } from "@/lib/db/org-edit";
+import { inviteMail } from "@/features/auth/invite-mail";
+import { companyUrl } from "@/features/tenant/urls";
+import { localeForEmail } from "@/i18n/server";
+import { sendMail } from "@/server/mail";
+import { companyAdminOf } from "./settings/guard";
 
-export type MemberRow = Member & { dept: string; codeIssuedAt: string | null; microsoft: boolean; active: boolean };
+export type SeatLabel = { id: string; label: string };
+export type MemberRow = Member & {
+  dept: string; codeIssuedAt: string | null; microsoft: boolean; active: boolean;
+  /** The seats this member holds (OrgRoleHolder rows, by sort). */
+  seats: SeatLabel[];
+};
 
 type Manager = { userId: string; companyId: string; slug: string };
 
@@ -40,6 +51,11 @@ async function freshHandle(companyId: string): Promise<string> {
 }
 
 async function membersOf(companyId: string): Promise<MemberRow[]> {
+  const held = await getDb().orgRoleHolder.findMany({
+    where: { companyId, userId: { not: null } },
+    orderBy: { sort: "asc" },
+    select: { id: true, name: true, userId: true, role: { select: { title: true } } },
+  });
   const rows = await getDb().user.findMany({
     where: { companyId },
     orderBy: { name: "asc" },
@@ -56,11 +72,22 @@ async function membersOf(companyId: string): Promise<MemberRow[]> {
       codeIssuedAt: u.loginCodeAt?.toISOString() ?? null,
       microsoft: Boolean(u.entraOid),
       active: u.active,
+      seats: held.filter((h) => h.userId === u.id).map((h) => ({ id: h.id, label: `${h.role.title} · ${h.name}` })),
     }));
 }
 
+/** Seats nobody holds, for the "link a seat" choice. */
+async function freeSeatsOf(companyId: string): Promise<SeatLabel[]> {
+  const rows = await getDb().orgRoleHolder.findMany({
+    where: { companyId, userId: null },
+    orderBy: { sort: "asc" },
+    select: { id: true, name: true, role: { select: { title: true } } },
+  });
+  return rows.map((h) => ({ id: h.id, label: `${h.role.title} · ${h.name}` }));
+}
+
 export type MembersPage =
-  | { status: "ok"; me: string; members: MemberRow[] }
+  | { status: "ok"; me: string; members: MemberRow[]; freeSeats: SeatLabel[] }
   | { status: "no-database" }
   | { status: "forbidden" };
 
@@ -69,7 +96,7 @@ export async function loadMembers(slug: string): Promise<MembersPage> {
   if (!hasDatabase()) return { status: "no-database" };
   const manager = await managerOf(slug);
   if (!manager) return { status: "forbidden" };
-  return { status: "ok", me: manager.userId, members: await membersOf(manager.companyId) };
+  return { status: "ok", me: manager.userId, members: await membersOf(manager.companyId), freeSeats: await freeSeatsOf(manager.companyId) };
 }
 
 const forbidden = "Only a manager of this company can do that.";
@@ -118,11 +145,10 @@ export async function setMemberRoleAction(_prev: RoleState, form: FormData): Pro
 
 export type AddState = { added?: { name: string; code: string }; problems?: string[]; warnings?: string[] };
 
-/** Adds a person and issues their first login code in one step - there is no code-less state worth having. */
-export async function addMemberAction(_prev: AddState, form: FormData): Promise<AddState> {
-  const manager = await managerOf(String(form.get("slug") ?? ""));
-  if (!manager) return { problems: [forbidden] };
+type Scope = { companyId: string; slug: string };
 
+/** Validates and creates one member with a fresh login code; the code is returned, never stored. */
+async function createMember(manager: Scope, form: FormData): Promise<AddState & { email?: string }> {
   const person = {
     name: String(form.get("name") ?? "").trim(),
     email: String(form.get("email") ?? "").trim(),
@@ -157,7 +183,85 @@ export async function addMemberAction(_prev: AddState, form: FormData): Promise<
     },
   });
   revalidatePath(`/${manager.slug}/settings/members`);
-  return { added: { name: person.name, code }, warnings: seed ? seedNameWarnings(seed, [person]) : [] };
+  return { added: { name: person.name, code }, warnings: seed ? seedNameWarnings(seed, [person]) : [], email: person.email.toLowerCase() };
+}
+
+/** Adds a person and issues their first login code in one step - there is no code-less state worth having. */
+export async function addMemberAction(_prev: AddState, form: FormData): Promise<AddState> {
+  const manager = await managerOf(String(form.get("slug") ?? ""));
+  if (!manager) return { problems: [forbidden] };
+  const created = await createMember(manager, form);
+  return { added: created.added, problems: created.problems, warnings: created.warnings };
+}
+
+export type InviteState = AddState & { mailed?: boolean; mailError?: string };
+
+/** Add, then mail the person their code and the company's login address (ADM D11). The code is in the body only. */
+export async function inviteMemberAction(_prev: InviteState, form: FormData): Promise<InviteState> {
+  const admin = await companyAdminOf(String(form.get("slug") ?? ""));
+  if (!admin) return { problems: [forbidden] };
+  const { email, ...result } = await createMember({ companyId: admin.companyId, slug: admin.companySlug }, form);
+  if (!result.added || !email) return result;
+
+  const company = await getDb().company.findUnique({ where: { id: admin.companyId }, select: { name: true } });
+  const locale = await localeForEmail(admin.companyId, email);
+  const mail = inviteMail(
+    { name: result.added.name },
+    { name: company?.name ?? admin.companySlug, loginUrl: `${companyUrl(admin.companySlug)}/login` },
+    result.added.code,
+    locale,
+  );
+  const sent = await sendMail({ to: email, subject: mail.subject, text: mail.text });
+  return sent.ok ? { ...result, mailed: true } : { ...result, mailed: false, mailError: sent.error };
+}
+
+export type SeatState = { done?: boolean; error?: string };
+
+/** Link a free seat to a member, or (intent "unlink") clear a seat that member holds. Through linkSeat. */
+export async function memberSeatAction(_prev: SeatState, form: FormData): Promise<SeatState> {
+  const admin = await companyAdminOf(String(form.get("slug") ?? ""));
+  if (!admin) return { error: forbidden };
+  const userId = String(form.get("userId") ?? "");
+  const seatId = String(form.get("seatId") ?? "");
+  const unlink = form.get("intent") === "unlink";
+  const seat = await getDb().orgRoleHolder.findFirst({ where: { id: seatId, companyId: admin.companyId }, select: { userId: true } });
+  if (!seat) return { error: "No such seat in this company." };
+  if (unlink ? seat.userId !== userId : seat.userId !== null) return { error: unlink ? "That member does not hold this seat." : "That seat is taken." };
+  const ok = await linkSeat(admin.companyId, seatId, unlink ? null : userId);
+  if (!ok) return { error: "That person is not an active member of this company." };
+  revalidatePath(`/${admin.companySlug}/settings/members`);
+  return { done: true };
+}
+
+export type RemoveState = { done?: string; error?: string };
+
+/** The leaver path of the directory sync for one person: inactive, seats vacated, open cases handed. Never oneself. */
+export async function deactivateMemberAction(_prev: RemoveState, form: FormData): Promise<RemoveState> {
+  const manager = await managerOf(String(form.get("slug") ?? ""));
+  if (!manager) return { error: forbidden };
+  const userId = String(form.get("userId") ?? "");
+  if (userId === manager.userId) return { error: "You can't deactivate yourself. Ask another manager." };
+  const user = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { name: true, active: true } });
+  if (!user) return { error: "No such person in this company." };
+  if (!user.active) return { error: `${user.name} is inactive already.` };
+  await deactivateUser(manager.companyId, userId);
+  revalidatePath(`/${manager.slug}/settings/members`);
+  return { done: `${user.name} is deactivated. Their open cases were handed on where someone else holds the role.` };
+}
+
+/** Removes an inactive person. Their events stay with the label; the link to the user is cleared (SetNull). */
+export async function deleteMemberAction(_prev: RemoveState, form: FormData): Promise<RemoveState> {
+  const manager = await managerOf(String(form.get("slug") ?? ""));
+  if (!manager) return { error: forbidden };
+  const userId = String(form.get("userId") ?? "");
+  if (userId === manager.userId) return { error: "You can't delete yourself. Ask another manager." };
+  const user = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { name: true, active: true } });
+  if (!user) return { error: "No such person in this company." };
+  if (user.active) return { error: `${user.name} is still active. Deactivate them first.` };
+  await getDb().orgRoleHolder.updateMany({ where: { companyId: manager.companyId, userId }, data: { userId: null } });
+  await getDb().user.delete({ where: { id: userId, companyId: manager.companyId } });
+  revalidatePath(`/${manager.slug}/settings/members`);
+  return { done: `${user.name} is deleted.` };
 }
 
 export type RemoveState = { done?: string; error?: string };

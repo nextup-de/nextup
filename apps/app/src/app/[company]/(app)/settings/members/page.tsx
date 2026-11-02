@@ -16,7 +16,7 @@ export default async function MembersSettingsPage({ params }: { params: Promise<
     <>
       <h1>{t("settings.navMembers")}</h1>
       {page.status === "ok" ? (
-        <MembersView slug={company} me={page.me} members={page.members} />
+        <MembersView slug={company} me={page.me} members={page.members} freeSeats={page.freeSeats} />
       ) : page.status === "no-database" ? (
         <p className="nh-hint">{t("settings.membersNoDatabase")}</p>
       ) : (

@@ -1,3 +1,4 @@
+// No password reset: a login code is personal and a manager issues a new one (ADM D11, G-018).
 import { getT } from "@/i18n/server";
 import { AuthShell, AuthTitle } from "@/components/auth/AuthShell";
 export async function generateMetadata() {
