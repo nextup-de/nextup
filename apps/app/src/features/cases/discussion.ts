@@ -10,6 +10,8 @@ import type { OrgPerson } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
 import type { ReducedCase, Version } from "./reducer";
 import type { Comment } from "./selectors";
+import { createT, DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
+import { formatEuro } from "@/i18n/format";
 
 // ── Fast lane ─────────────────────────────────────────────────────────────────────────────────
 
@@ -33,7 +35,6 @@ export const fastLane = (body: string, limitEur: number): boolean => {
 
 export type DiscussionMode = { fast: boolean; costEur: number | null; limitEur: number };
 
-const euro = (n: number) => "€" + n.toLocaleString("en");
 const action = (key: string, label: string): Action => ({ key, label, live: true });
 
 /**
@@ -42,30 +43,32 @@ const action = (key: string, label: string): Action => ({ key, label, live: true
  * advice, unless the case belongs on someone else's desk. A case in a discussion offers the
  * check-in until the last one said "ready", then the decision; "Ask" is gone, the discussion asks.
  */
-export function withDiscussion(brief: IdeaBrief, c: Pick<ReducedCase, "status" | "discussion" | "from">, m: DiscussionMode): IdeaBrief {
+export function withDiscussion(brief: IdeaBrief, c: Pick<ReducedCase, "status" | "discussion" | "from">, m: DiscussionMode, locale: Locale = DEFAULT_LOCALE): IdeaBrief {
+  const t = createT(locale);
+  const euro = (n: number) => formatEuro(locale, n);
   if (!brief.actions.length) return brief;
   if (c.status === "open") {
     const actions = [...brief.actions];
-    actions.splice(1, 0, action("discuss", "Discuss first"));
+    actions.splice(1, 0, action("discuss", t("cases.discussFirst")));
     if (m.fast || brief.rec === "hand") return { ...brief, actions };
-    const cost = m.costEur === null ? "It does not say what it costs" : "It costs about " + euro(m.costEur) + ", above the team's " + euro(m.limitEur);
+    const cost = m.costEur === null ? t("cases.costUnknown") : t("cases.costAbove", { cost: euro(m.costEur), limit: euro(m.limitEur) });
     return {
       ...brief, actions, rec: "discuss",
-      recText: cost + ", so ask the people it touches before you decide. Yes, no and pass stay open the whole time.",
-      next: "Start a discussion: say what is missing and invite people.",
+      recText: t("cases.recDiscuss", { cost }),
+      next: t("cases.nextDiscuss"),
     };
   }
   if (c.status !== "discussion" || !c.discussion) return brief;
   const keep = brief.actions.filter((a) => a.key !== "ask");
   if (c.discussion.ready) {
-    return { ...brief, actions: keep, rec: "", recText: "The last check-in said it is ready. Decide now: yes, or no and why.", next: "Decide.", by: null };
+    return { ...brief, actions: keep, rec: "", recText: t("cases.recReady"), next: t("cases.nextDecide"), by: null };
   }
   return {
     ...brief,
-    actions: [action("checkin", "Check in"), ...keep, action("invite", "Invite more")],
+    actions: [action("checkin", t("cases.discussCheckIn")), ...keep, action("invite", t("cases.discussInviteMore"))],
     rec: "checkin",
-    recText: "A check-in ends the round: ready to decide, or another round with what is still open. Everyone in the discussion sees it.",
-    next: "Check in with " + c.from + " and the people you invited.",
+    recText: t("cases.recCheckin"),
+    next: t("cases.nextCheckin", { name: c.from }),
   };
 }
 
@@ -84,12 +87,12 @@ export type InviteInput = {
   me: string;
 };
 
-const WHY_LINE: Record<InviteWhy, string> = {
-  buddy: "Buddy on the route",
-  deputy: "Deputy on the route",
-  affected: "Says it affects them",
-  head: "Heads the department",
-  close: "Raised something close",
+const WHY_LINE: Record<InviteWhy, MessageKey> = {
+  buddy: "cases.whyBuddy",
+  deputy: "cases.whyDeputy",
+  affected: "cases.whyAffected",
+  head: "cases.whyHead",
+  close: "cases.whyClose",
 };
 
 /**
@@ -98,10 +101,10 @@ const WHY_LINE: Record<InviteWhy, string> = {
  * who raised close ideas. Only people in the directory; never the desk holder or the raiser
  * (the raiser is always in).
  */
-export function inviteSuggestions(c: Pick<ReducedCase, "route" | "from" | "fromDept">, x: InviteInput): InviteSuggestion[] {
+export function inviteSuggestions(c: Pick<ReducedCase, "route" | "from" | "fromDept">, x: InviteInput, locale: Locale = DEFAULT_LOCALE): InviteSuggestion[] {
   const out: InviteSuggestion[] = [];
   const known = (n: string) => x.people.some((p) => p.name === n);
-  const add = (name: string | undefined | null, why: InviteWhy, note = WHY_LINE[why]) => {
+  const add = (name: string | undefined | null, why: InviteWhy, note = translate(locale, WHY_LINE[why])) => {
     const n = name?.trim();
     if (!n || n === x.me || n === c.from || !known(n) || out.some((s) => s.name === n)) return;
     out.push({ name: n, why, note });
@@ -113,7 +116,7 @@ export function inviteSuggestions(c: Pick<ReducedCase, "route" | "from" | "fromD
   x.affected.forEach((n) => add(n, "affected"));
   const head = headOf(c, x.people);
   if (head) add(head.name, "head", head.role);
-  x.close.forEach((k) => add(k.from, "close", "Raised “" + k.title + "”"));
+  x.close.forEach((k) => add(k.from, "close", translate(locale, "cases.whyCloseTitled", { title: k.title })));
   return out;
 }
 
@@ -172,18 +175,20 @@ export type VersionScore = Version & { score: number; dials: Dial[]; up: string[
  * check-in (or since the discussion started), then the points still open from the latest dials.
  * The desk holder edits it before it is sent.
  */
-export function checkinDraft(c: Pick<ReducedCase, "discussion">, versions: readonly VersionScore[], comments: readonly Comment[], dials: readonly Dial[]): CheckinDraft {
+export function checkinDraft(c: Pick<ReducedCase, "discussion">, versions: readonly VersionScore[], comments: readonly Comment[], dials: readonly Dial[], locale: Locale = DEFAULT_LOCALE): CheckinDraft {
+  const t = createT(locale);
   const d = c.discussion;
   const since = d ? (d.rounds.length ? d.rounds[d.rounds.length - 1].day : d.startedDay) : 0;
   const open = weakDials(dials);
   const lines: string[] = [];
   versions.filter((v) => v.version > 1 && v.day >= since).forEach((v) => {
     const before = versions.find((x) => x.version === v.version - 1);
-    lines.push("v" + v.version + " from " + v.by + (before ? ": score " + before.score + " → " + v.score : "") + (v.up.length ? " (better: " + v.up.join(", ") + ")" : "") + ".");
+    lines.push(t("cases.draftVersion", { version: v.version, by: v.by }) + (before ? t("cases.draftScore", { from: before.score, to: v.score }) : "") + (v.up.length ? t("cases.draftBetter", { list: v.up.join(", ") }) : "") + ".");
   });
-  comments.filter((m) => m.day >= since).forEach((m) => lines.push(m.by + ": “" + m.text + "”"));
-  const head = lines.length ? (d && d.rounds.length ? "Since the last check-in:" : "Since the discussion started:") : "Nothing new since " + (d && d.rounds.length ? "the last check-in." : "the discussion started.");
-  const tail = open.length ? "Still open: " + open.join(", ") + "." : "Every point is covered.";
+  comments.filter((m) => m.day >= since).forEach((m) => lines.push(t("cases.draftComment", { by: m.by, text: m.text })));
+  const afterCheckin = !!(d && d.rounds.length);
+  const head = lines.length ? t(afterCheckin ? "cases.draftSinceCheckin" : "cases.draftSinceStart") : t(afterCheckin ? "cases.draftNothingCheckin" : "cases.draftNothingStart");
+  const tail = open.length ? t("cases.draftOpen", { list: open.join(", ") }) : t("cases.draftCovered");
   return { open, note: [head, ...lines.map((l) => "- " + l), tail].join("\n") };
 }
 
@@ -220,7 +225,9 @@ export function scoreVersions(versions: readonly Version[], read: (v: Version) =
 export const isLive = (c: Pick<ReducedCase, "open" | "status">) => c.open || c.status === "asked";
 
 export type ArchiveOutcome = "project" | "declined";
-export const ARCHIVE_LABEL: Record<ArchiveOutcome, string> = { project: "Became a project", declined: "Declined" };
+export const archiveLabel = (outcome: ArchiveOutcome, locale: Locale = DEFAULT_LOCALE): string =>
+  translate(locale, outcome === "project" ? "cases.archiveProject" : "cases.archiveDeclined");
+export const ARCHIVE_LABEL: Record<ArchiveOutcome, string> = { project: archiveLabel("project"), declined: archiveLabel("declined") };
 
 /**
  * Where an idea went once it left the open lists: a no is declined, every yes became work - a project,

@@ -1,6 +1,6 @@
 # Company knowledge
 
-> **Updated 2026-09-24** · reference + plan: the tables are built, the later sections are still a plan.
+> **Updated 2026-11-02** · reference + plan: the tables are built, the later sections are still a plan.
 
 How NextUp stores what a company *is* (vision, structure, who decides what, goals, its public
 papers) so that people can edit it and an AI can read it, cite it and never leak it to another
@@ -34,18 +34,33 @@ company. The first part (the tables) is built; the rest is the plan.
 - `src/features/knowledge` is pure: it converts rows to and from the `Seed` the pages read.
   `src/lib/db/knowledge.ts` loads the rows and replaces them in one transaction.
 
-**Moving off `seedJson`.** `reduce(seed, log)` needs the `Seed` shape, so the tables are laid
-over it rather than replacing it.
+**The tables are the only source (D5).** `reduce(seed, log)` still needs the `Seed` shape, so
+`structureSeed(seed, knowledge, rules)` in `src/features/knowledge` is the bridge until IDN: it
+returns the seed with `depts`, `people`, `routes`, `goals`, `promiseDays`, `outcomeDays` and
+`spend` taken from the tables and nothing else.
 
-- `loadSeed()` returns `seedJson` with `depts`, `people` and `routes` rebuilt from the tables,
-  once the company has at least one `OrgUnit`.
-- A company without rows reads exactly as before.
-- `npm run db:seed` and the admin "demo" template both write the rows.
-- `tests/unit/knowledge.test.ts` proves that acme's rows give back the seed's depts, people and
-  routes unchanged, and that the rebuilt seed reduces to the same cases.
+- `loadSeed()` / `companySeed()` load the knowledge rows, the `CompanyRule` rows and the loop
+  rules, and apply `structureSeed`. Structure, goals and rules inside a stored `seedJson` are
+  ignored. A company without rows has no depts, people, routes or goals and the default rules.
+- Without a database `seedFor()` still returns the built-in `SEED` for acme and `EMPTY_SEED`
+  otherwise. `EMPTY_SEED` carries no acme content.
+- `rowsFromSeed` goes the other way: it writes the demo structure into the tables when a company
+  is created from the demo template. `npm run db:seed` and the admin "demo" template use it.
+- `holdersOfRole(knowledge, roleId)` / `loadHoldersOfRole(companyId, roleId)` give a role's
+  holders by `sort`; `[]` for an unknown role.
 
-**What stays in `seedJson` for now:** problems, ideas, initiatives, seed cases and metrics. That
-is demo content, not company structure.
+**`CompanyRule`** (`companyId`, `key`, `value` JSON, primary key `(companyId, key)`) holds the
+rules, checked by `src/features/knowledge/rules.ts`; a missing key or an invalid value gives the
+default for that key (`DEFAULT_RULES`):
+
+| key | value | default |
+|---|---|---|
+| `promise_days` | `{ days: int 1-60 }` | 5 |
+| `outcome_days` | `{ days: int 1-365 }` | 14 |
+| `spend` | `{ limitEur: int >= 0, text: string 1-200 }` | none |
+
+**What `seedJson` still holds:** demo content only - problems, ideas, initiatives, outcomes,
+cases, waitingOn, stall, ledger, metrics, views, briefs, projects, personas, leaders, buddies.
 
 ### Layer 2: documents (next)
 

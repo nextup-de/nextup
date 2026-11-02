@@ -1,0 +1,41 @@
+// Words used in many places. Other namespaces copy a word they need; only this one is imported across.
+import { defineMessages } from "../define";
+
+export const common = defineMessages({
+  en: {
+    save: "Save",
+    cancel: "Cancel",
+    close: "Close",
+    back: "Back",
+    next: "Next",
+    done: "Done",
+    edit: "Edit",
+    delete: "Delete",
+    loading: "Loading…",
+    retry: "Try again",
+    yes: "Yes",
+    no: "No",
+    today: "Today",
+    yesterday: "Yesterday",
+    days_one: "{count} day",
+    days_other: "{count} days",
+  },
+  de: {
+    save: "Speichern",
+    cancel: "Abbrechen",
+    close: "Schließen",
+    back: "Zurück",
+    next: "Weiter",
+    done: "Fertig",
+    edit: "Bearbeiten",
+    delete: "Löschen",
+    loading: "Lädt…",
+    retry: "Erneut versuchen",
+    yes: "Ja",
+    no: "Nein",
+    today: "Heute",
+    yesterday: "Gestern",
+    days_one: "{count} Tag",
+    days_other: "{count} Tage",
+  },
+});

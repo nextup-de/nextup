@@ -8,6 +8,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { type BadgeTone, type IdeaBrief, type Numbered, type NumberedBlock, type Person, tagTone } from "@/features/ideas/brief";
 import styles from "./IdeaDetail.module.css";
 import { avatarTone } from "@/lib/avatar";
+import { useT } from "@/i18n/client";
 
 export type IdeaHeader = { id: string; kind: "idea" | "case"; title: string; badge: string; tone: BadgeTone; raised: string };
 export type FeedEntry = { name: string; role: string; text: string; when: string; mine: boolean; person: Person | null }; // person: their card, when they are on the org chart
@@ -54,13 +55,14 @@ export function FileChip({ ext, name, title, meta, n }: { ext: string; name: str
 // button says so instead of going nowhere.
 export function PersonCard({ p, why }: { p: Person; why?: string | null }) {
   const { href, tenant } = useDemo();
+  const t = useT();
   if (p.anonymous) return (
     <>
       <div className={styles.popHead}>
         <span className={styles.popAvatar}>?</span>
         <span className={styles.popWho}><span className={styles.popName}>{p.name}</span><span className={styles.popRole}>{p.dept}</span></span>
       </div>
-      <span className={styles.small}>Raised anonymously. The name stays hidden, from you too.</span>
+      <span className={styles.small}>{t("leader.anonymousNote")}</span>
     </>
   );
   return (
@@ -70,19 +72,20 @@ export function PersonCard({ p, why }: { p: Person; why?: string | null }) {
         <span className={styles.popWho}><span className={styles.popName}>{p.name}</span><span className={styles.popRole}>{p.role}</span></span>
       </div>
       <dl className={styles.popGrid}>
-        <dt>Department</dt><dd>{p.dept || "—"}</dd>
-        <dt>Location</dt><dd>{p.location}</dd>
-        <dt>Email</dt><dd><a className={styles.mail} href={"mailto:" + p.email}>{p.email}</a></dd>
+        <dt>{t("leader.department")}</dt><dd>{p.dept || "—"}</dd>
+        <dt>{t("leader.location")}</dt><dd>{p.location}</dd>
+        <dt>{t("leader.email")}</dt><dd><a className={styles.mail} href={"mailto:" + p.email}>{p.email}</a></dd>
       </dl>
       {why && <div className={styles.aiWhy}><Sparkle /><span>{why}</span></div>}
       {!tenant.hiddenPeople?.includes(p.name) && <Link className={styles.profileBtn} href={href("/people/" + encodeURIComponent(p.name))}>
-        View profile<Chevron />
+        {t("leader.viewProfile")}<Chevron />
       </Link>}
     </>
   );
 }
 
 export function Blocks({ blocks, srcId }: { blocks: NumberedBlock[]; srcId: string }) {
+  const t = useT();
   return (
     <>
       {blocks.map((b, i) => {
@@ -111,8 +114,8 @@ export function Blocks({ blocks, srcId }: { blocks: NumberedBlock[]; srcId: stri
           case "split":
             return (
               <div key={i} className={`${styles.section} ${styles.split}`}>
-                <div><span className={styles.label}>Pulling it up</span>{b.ups.map((u) => <p key={u.t} className={styles.para}>{u.t}<Cites ns={u.cites} to={srcId} /></p>)}</div>
-                <div><span className={styles.label}>Holding it back</span>{b.downs.map((u) => <p key={u.t} className={styles.para}>{u.t}<Cites ns={u.cites} to={srcId} /></p>)}</div>
+                <div><span className={styles.label}>{t("leader.pullingUp")}</span>{b.ups.map((u) => <p key={u.t} className={styles.para}>{u.t}<Cites ns={u.cites} to={srcId} /></p>)}</div>
+                <div><span className={styles.label}>{t("leader.holdingBack")}</span>{b.downs.map((u) => <p key={u.t} className={styles.para}>{u.t}<Cites ns={u.cites} to={srcId} /></p>)}</div>
               </div>
             );
         }
@@ -136,10 +139,11 @@ export function Bar({ label, pct, display, wide = false }: { label: string; pct:
 // The numbered sources. `fold` (phones) tucks them into one row - a peek at the file types and the
 // count - that opens into a compact list; a citation link opens it too (the target sits inside).
 export function Sources({ id, list, count, fold }: { id: string; list: Numbered[]; count?: boolean; fold?: boolean }) {
+  const t = useT();
   if (fold) return (
     <details className={`${styles.section} ${styles.srcFold}`}>
       <summary className={styles.srcSummary}>
-        <span className={styles.label}>Sources</span>
+        <span className={styles.label}>{t("leader.sources")}</span>
         <span className={styles.srcPeek} aria-hidden="true">{list.slice(0, 5).map((s) => <span key={s.n} className={styles.srcDot} data-tone={tagTone(s.ext)}>{s.ext.slice(0, 1)}</span>)}</span>
         <span className={styles.count}>{list.length}</span>
         <span className={styles.srcChevron}><Chevron /></span>
@@ -157,18 +161,19 @@ export function Sources({ id, list, count, fold }: { id: string; list: Numbered[
   );
   return (
     <div className={styles.section} id={id}>
-      <div className={styles.labelRow}><span className={styles.label}>Sources</span>{count && <span className={styles.count}>{list.length} sources</span>}</div>
+      <div className={styles.labelRow}><span className={styles.label}>{t("leader.sources")}</span>{count && <span className={styles.count}>{t("leader.sourcesCount", { count: list.length })}</span>}</div>
       <div className={styles.files}>{list.map((s) => <FileChip key={s.n} n={s.n} ext={s.ext} name={s.name} meta={s.where} />)}</div>
     </div>
   );
 }
 
 export function AiBrief({ brief, srcId, foldSources }: { brief: IdeaBrief; srcId: string; foldSources?: boolean }) {
+  const t = useT();
   const rec = brief.actions.find((d) => d.key === brief.rec);
   const questions = brief.lead ? brief.questions.slice(0, 2) : brief.questions;
   return (
     <div className={styles.found}>
-      <div className={styles.foundHead}><span className={styles.foundIcon}><Sparkle size={16} /></span><span className={styles.foundTitle}>What the AI found</span></div>
+      <div className={styles.foundHead}><span className={styles.foundIcon}><Sparkle size={16} /></span><span className={styles.foundTitle}>{t("leader.whatAiFound")}</span></div>
       <div className={styles.foundBody}>
         <p className={styles.leadPara}>{brief.summary}<Cites ns={brief.cites.summary} to={srcId} /></p>
         {brief.lead && <p className={styles.para}>{brief.lead}<Cites ns={brief.cites.lead} to={srcId} /></p>}
@@ -182,10 +187,10 @@ export function AiBrief({ brief, srcId, foldSources }: { brief: IdeaBrief; srcId
       )}
       {brief.after && <p className={styles.para}>{brief.after}<Cites ns={brief.cites.after} to={srcId} /></p>}
       <dl className={styles.panel}>
-        {rec && <PanelRow k="Advice"><span className={styles.strong}>{rec.label}</span></PanelRow>}
-        <PanelRow k="Why">{brief.recText}<Cites ns={brief.cites.rec} to={srcId} /></PanelRow>
-        {brief.next && <PanelRow k="Next step">{brief.next}</PanelRow>}
-        {brief.by && <PanelRow k="Answer by">{brief.by}</PanelRow>}
+        {rec && <PanelRow k={t("leader.advice")}><span className={styles.strong}>{rec.label}</span></PanelRow>}
+        <PanelRow k={t("leader.why")}>{brief.recText}<Cites ns={brief.cites.rec} to={srcId} /></PanelRow>
+        {brief.next && <PanelRow k={t("leader.nextStep")}>{brief.next}</PanelRow>}
+        {brief.by && <PanelRow k={t("leader.answerBy")}>{brief.by}</PanelRow>}
       </dl>
       {brief.timeline && (
         <div className={styles.section}>
@@ -199,21 +204,21 @@ export function AiBrief({ brief, srcId, foldSources }: { brief: IdeaBrief; srcId
       )}
       {questions.length > 0 && (
         <div className={styles.section}>
-          <span className={styles.label}>Worth asking {brief.author.name}</span>
+          <span className={styles.label}>{t("leader.worthAsking", { name: brief.author.name })}</span>
           {questions.map((q, i) => <div key={i} className={styles.question}><span className={styles.qn}>{i + 1}</span><p className={styles.para}>{q}</p></div>)}
         </div>
       )}
-      <div className={styles.section}><span className={styles.label}>Pattern</span><p className={styles.para}>{brief.pattern}<Cites ns={brief.cites.pattern} to={srcId} /></p></div>
+      <div className={styles.section}><span className={styles.label}>{t("leader.pattern")}</span><p className={styles.para}>{brief.pattern}<Cites ns={brief.cites.pattern} to={srcId} /></p></div>
       <div className={styles.section}>
-        <span className={styles.label}>Categorised as</span>
+        <span className={styles.label}>{t("leader.categorisedAs")}</span>
         <div className={styles.chips}>{brief.categories.map((c) => <span key={c} className={styles.tag}>{c}</span>)}</div>
       </div>
       {brief.similar.length > 0 && (
         <div className={styles.section}>
-          <span className={styles.label}>Similar ideas</span>
+          <span className={styles.label}>{t("leader.similarIdeas")}</span>
           {brief.similar.map((m) => (
             <div key={m.title} className={styles.similar}>
-              <div className={styles.similarHead}><span className={styles.similarTitle}>{m.title}</span><span className={styles.status}>{m.status}</span>{m.match != null && <span className={styles.match}>{m.match}% match</span>}</div>
+              <div className={styles.similarHead}><span className={styles.similarTitle}>{m.title}</span><span className={styles.status}>{m.status}</span>{m.match != null && <span className={styles.match}>{t("leader.matchPct", { pct: m.match })}</span>}</div>
               <span className={styles.small}>{m.where}</span>
               {m.note && <p className={styles.para}>{m.note}<Cites ns={brief.cites.similar} to={srcId} /></p>}
             </div>
@@ -222,7 +227,7 @@ export function AiBrief({ brief, srcId, foldSources }: { brief: IdeaBrief; srcId
       )}
       {brief.routing.length > 0 && (
         <div className={styles.section}>
-          <span className={styles.label}>Suggested reviewers</span>
+          <span className={styles.label}>{t("leader.suggestedReviewers")}</span>
           {brief.routing.map((r) => (
             <div key={r.name} className={styles.reviewer}>
               <div className={styles.quoteBy}><span className={styles.chip}><span className={styles.chipAvatar} data-avatar={avatarTone(r.name)}>{initialsOf(r.name)}</span>{r.name}</span><span className={styles.small}>{r.role}</span></div>
@@ -232,7 +237,7 @@ export function AiBrief({ brief, srcId, foldSources }: { brief: IdeaBrief; srcId
         </div>
       )}
       <Sources id={srcId} list={brief.sources} count fold={foldSources} />
-      <span className={styles.small}>AI suggestions only. You make the decision.</span>
+      <span className={styles.small}>{t("leader.aiSuggestionsOnly")}</span>
     </div>
   );
 }
@@ -251,6 +256,7 @@ export function StatusBox({ status }: { status: StatusNote | null }) {
 }
 
 export function DecisionList({ brief, onDecide }: { brief: IdeaBrief; onDecide: (k: string) => void }) {
+  const t = useT();
   if (!brief.actions.length) return null;
   return (
     <div className={styles.actions}>
@@ -258,10 +264,10 @@ export function DecisionList({ brief, onDecide }: { brief: IdeaBrief; onDecide: 
         const suggested = d.key === brief.rec;
         return (
           <button key={d.key} type="button" className={styles.action} data-primary={suggested ? "true" : undefined} data-tone={d.danger ? "danger" : undefined}
-            disabled={!d.live} onClick={() => onDecide(d.key)} title={d.live ? undefined : "Coming soon: this decision needs a new event type"}>
+            disabled={!d.live} onClick={() => onDecide(d.key)} title={d.live ? undefined : t("leader.decisionSoon")}>
             <span>{d.label}</span>
-            {suggested && <span className={styles.suggest}><Sparkle size={10} />AI suggests</span>}
-            {!d.live && !suggested && <span className={styles.soon}>Soon</span>}
+            {suggested && <span className={styles.suggest}><Sparkle size={10} />{t("leader.aiSuggests")}</span>}
+            {!d.live && !suggested && <span className={styles.soon}>{t("leader.soon")}</span>}
           </button>
         );
       })}
@@ -273,27 +279,28 @@ export function DecisionList({ brief, onDecide }: { brief: IdeaBrief; onDecide: 
 // chart opens their card: as a popover here (`open` = which one), or wherever `onPerson` sends it
 // (the phone's sheet).
 export function FeedBody({ brief, feed, open = null, onPerson, onComment }: { brief: IdeaBrief; feed: FeedEntry[]; open?: number | null; onPerson?: (i: number) => void; onComment?: (text: string) => void }) {
+  const t = useT();
   const [draft, setDraft] = useState("");
   const post = () => { const t = draft.trim(); if (!t || !onComment) return; onComment(t); setDraft(""); };
   return (
     <>
       <div className={styles.feedStats}>
-        <div className={styles.feedStat}><span className={styles.feedNum}>{brief.feed.supporters}</span><span className={styles.panelSub}>supporters</span></div>
-        <div className={styles.feedStat}><span className={styles.feedNum}>{feed.length}</span><span className={styles.panelSub}>comments</span></div>
+        <div className={styles.feedStat}><span className={styles.feedNum}>{brief.feed.supporters}</span><span className={styles.panelSub}>{t("leader.supporters")}</span></div>
+        <div className={styles.feedStat}><span className={styles.feedNum}>{feed.length}</span><span className={styles.panelSub}>{t("leader.comments")}</span></div>
       </div>
       <span className={styles.sentiment}>{brief.feed.sentiment}</span>
-      {feed.length === 0 && <span className={styles.small}>No comments yet.</span>}
+      {feed.length === 0 && <span className={styles.small}>{t("leader.noComments")}</span>}
       {feed.map((c, i) => (
         <div key={i} className={styles.comment}>
           {c.person && onPerson ? (
             <span className={styles.commentWho} data-aff="1">
-              <button type="button" className={styles.commentPerson} onClick={() => onPerson(i)} aria-expanded={open === i} title={"View " + c.name}>
+              <button type="button" className={styles.commentPerson} onClick={() => onPerson(i)} aria-expanded={open === i} title={t("leader.viewPerson", { name: c.name })}>
                 <span className={styles.commentAvatar} data-avatar={avatarTone(c.name)}>{initialsOf(c.name)}</span>
               </button>
               {open === i && <div className={styles.pop}><PersonCard p={c.person} /></div>}
             </span>
           ) : (
-            <span className={styles.commentAvatar} data-mine={c.mine ? "true" : undefined} data-avatar={c.mine ? undefined : avatarTone(c.name)}>{c.mine ? "ME" : initialsOf(c.name)}</span>
+            <span className={styles.commentAvatar} data-mine={c.mine ? "true" : undefined} data-avatar={c.mine ? undefined : avatarTone(c.name)}>{c.mine ? t("leader.me") : initialsOf(c.name)}</span>
           )}
           <div className={styles.commentBody}>
             <div className={styles.commentHead}>
@@ -310,14 +317,14 @@ export function FeedBody({ brief, feed, open = null, onPerson, onComment }: { br
       <div className={styles.compose}>
         {onComment ? (
           <>
-            <input className={styles.input} placeholder="Add a comment" aria-label="Add a comment" value={draft} onChange={(e) => setDraft(e.target.value)}
+            <input className={styles.input} placeholder={t("leader.addComment")} aria-label={t("leader.addComment")} value={draft} onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); post(); } }} />
-            <button type="button" className={styles.post} data-live={draft.trim() ? "true" : undefined} onClick={post} disabled={!draft.trim()}>Post</button>
+            <button type="button" className={styles.post} data-live={draft.trim() ? "true" : undefined} onClick={post} disabled={!draft.trim()}>{t("leader.post")}</button>
           </>
         ) : (
           <>
-            <input className={styles.input} placeholder="Add a comment" disabled title="Coming soon: comments on ideas need a new event type" aria-label="Add a comment" />
-            <button type="button" className={styles.post} disabled>Post</button>
+            <input className={styles.input} placeholder={t("leader.addComment")} disabled title={t("leader.commentsSoon")} aria-label={t("leader.addComment")} />
+            <button type="button" className={styles.post} disabled>{t("leader.post")}</button>
           </>
         )}
       </div>
