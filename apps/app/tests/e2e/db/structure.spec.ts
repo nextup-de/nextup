@@ -2,7 +2,7 @@
 // structure or demo content on its pages, and one created from the demo template still shows
 // acme's routes and goals. Own companies, deleted at the end, like company-login.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { expect, START, test } from "../helpers";
 import { BUDDIES, DEPTS, LEADERS, PEOPLE, ROLES, ROUTES } from "../../../src/features/demo/seed";
 import { DEMO_GOALS } from "../../../src/features/demo/structure";
 
@@ -104,6 +104,19 @@ async function textOf(page: Page, slug: string, path: string): Promise<string> {
   return page.locator("body").innerText();
 }
 
+/** The raise page's analysis of one line: its sources (goals, routing, ...) are listed there. */
+async function analysisText(page: Page, slug: string): Promise<string> {
+  await page.goto(`/${slug}/raise`);
+  await page.getByRole("textbox", { name: START }).fill("A shared calendar for the endurance rig");
+  await page.getByRole("button", { name: "Ask NextUp" }).click();
+  const close = page.getByRole("button", { name: "Close analysis" });
+  const answer = page.getByRole("textbox", { name: "Answer, or add more detail…" });
+  await expect(close.or(answer).first()).toBeVisible({ timeout: 30_000 });
+  if (!(await close.isVisible())) await page.getByRole("button", { name: "Analysis", exact: true }).click();
+  await expect(close).toBeVisible();
+  return page.locator("body").innerText();
+}
+
 test.describe.serial("STR acceptance: an empty company has no acme content and acme is unchanged", () => {
   test.beforeAll(async ({ browser }) => {
     await createCompany(browser, EMPTY_SLUG, "empty", "sandbox", EMPTY_PEOPLE);
@@ -120,14 +133,12 @@ test.describe.serial("STR acceptance: an empty company has no acme content and a
       const page = await signIn(browser, EMPTY_SLUG, p.name);
       const paths = ["/", "/leader", "/raise", ...(p.role === "manager" ? ["/settings/routing"] : [])];
       for (const path of paths) {
-        const text = await textOf(page, EMPTY_SLUG, path);
+        const text = path === "/raise" ? await analysisText(page, EMPTY_SLUG) : await textOf(page, EMPTY_SLUG, path);
         for (const marker of MARKERS) {
           const at = text.indexOf(marker);
           expect(at, `${p.name} on ${path} shows acme marker "${marker}": ${at < 0 ? "" : text.slice(Math.max(0, at - 60), at + 60).replace(/\s+/g, " ")}`).toBe(-1);
         }
-        if (path === "/raise" && !/\/login/.test(page.url())) {
-          expect(text, `${p.name} raise page goal count`).toMatch(/\b0 goals checked\b/);
-        }
+        if (path === "/raise") expect(text, `${p.name} raise page goal count`).toMatch(/\b0 goals checked\b/);
       }
       await page.context().close();
     }
@@ -141,7 +152,7 @@ test.describe.serial("STR acceptance: an empty company has no acme content and a
       expect(routing, `owner of "${r.type}"`).toContain(r.owner.name);
     }
     const member = await signIn(browser, DEMO_SLUG, "J. Schmidt");
-    const raise = await textOf(member, DEMO_SLUG, "/raise");
+    const raise = await analysisText(member, DEMO_SLUG);
     expect(raise).toMatch(/\b4 goals checked\b/);
     expect(DEMO_GOALS).toHaveLength(4);
   });
