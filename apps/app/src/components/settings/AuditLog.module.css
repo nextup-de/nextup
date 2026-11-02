@@ -1,0 +1,31 @@
+.wrap { display: grid; gap: 16px; max-width: 1100px; }
+.head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.filters label, .group { display: grid; gap: 4px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.group summary { cursor: pointer; }
+.checks { display: grid; gap: 4px; padding: 8px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); }
+.checks label { display: flex; gap: 6px; align-items: center; color: inherit; }
+.table { width: 100%; border-collapse: collapse; background: var(--nh-card); border: 1px solid var(--nh-line); }
+.table th, .table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--nh-line-soft); vertical-align: top; }
+.table th { font-size: var(--nh-fs-sm); color: var(--nh-mute); font-weight: 600; }
+.row { cursor: pointer; }
+.row:hover { background: var(--nh-line-soft); }
+.rowButton { all: unset; cursor: pointer; }
+.sub { display: block; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.pager { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.buttons { display: flex; gap: 8px; }
+.mono { font-family: var(--nh-mono); }
+.state { padding: 24px; text-align: center; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); display: grid; gap: 12px; justify-items: center; }
+.drawer { position: fixed; inset: 0 0 0 auto; width: min(480px, 100vw); z-index: 50; overflow: auto; display: grid; align-content: start; gap: 12px; padding: 20px; background: var(--nh-card); border-left: 1px solid var(--nh-line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12); }
+.info { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
+.info dt { color: var(--nh-mute); }
+.info dd { margin: 0; overflow-wrap: anywhere; }
+.changes { width: 100%; border-collapse: collapse; }
+.changes th, .changes td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--nh-line-soft); overflow-wrap: anywhere; }
+.footer { display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .table, .table tbody, .table tr, .table td { display: block; }
+  .table thead { display: none; }
+  .table tr { padding: 8px 10px; border-bottom: 1px solid var(--nh-line-soft); }
+  .table td { border: 0; padding: 2px 0; }
+}
