@@ -188,7 +188,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     const canAnswer = row.mine && c.status === "asked";
     const ideaProps: OverviewIdeaProps = {
       id: c.id, title: c.title, raised: f(c.raisedDay), dept: (row.mine ? "" : c.from + " · ") + c.fromDept,
-      steps: overviewSteps(c, f, row.mine), desk: { name: desk, role: roleOf(desk) },
+      steps: overviewSteps(c, f, row.mine, ctx.locale), desk: { name: desk, role: roleOf(desk) },
       wait: {
         text: !running(row) ? t("team.dashWaitAnswered", { n: row.clock }) : late ? t("team.dashWaitLate", { n: row.clock, days: P }) : t(row.paused ? "team.dashWaitOpenPaused" : "team.dashWaitOpen", { n: row.clock, days: P }),
         pct: Math.min(100, (row.clock / P) * 100), tone: !running(row) ? "done" : late ? "late" : "open",

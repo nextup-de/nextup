@@ -40,6 +40,7 @@ import { deptName as deptNameOf } from "@/lib/utils/format";
 import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction } from "@/server/actions/events";
 import { signOut } from "@/server/actions/auth";
 import { useLocale, useT } from "@/i18n/client";
+import type { Locale } from "@/i18n";
 
 export type Pop = "search" | "decisions" | "me" | "sort" | "filter";
 export type SheetKind = "no" | "ask" | "reply" | "hand" | "assign" | "askIdea" | "discuss" | "invite" | "checkin" | "accept"; // the last four: components/shell/LoopSheets.tsx
@@ -124,6 +125,7 @@ export type DemoContext = {
   /** A feature flag for this company (src/config/flags.ts); without a value from the server, its demo default. */
   flag: (key: FlagKey) => boolean;
   resetDemo: () => void; deleteAdded: () => void; copySnippet: () => void; logout: () => void;
+  locale: Locale;
   f: DayFmt; // demo day offset -> "today" / "12 Sep"
   href: (path: string) => string; // "/ideas?id=i1" -> "/acme/ideas?id=i1"
 };
@@ -574,7 +576,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     sheet, openSheet: (kind, id, init) => { setSheet({ kind, id, text: "", picked: null, people: [], ...init }); setPop(null); },
     closeSheet: () => setSheet(null), patchSheet: (p) => setSheet((s) => (s ? { ...s, ...p } : s)),
     toast, showToast, menu, setMenu, dev, setDev, act, flag, resetDemo, deleteAdded, copySnippet, logout,
-    f: dayFormatter(today, S.day, locale), href,
+    locale, f: dayFormatter(today, S.day, locale), href,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
