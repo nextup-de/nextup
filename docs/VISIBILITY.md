@@ -63,10 +63,10 @@ fills it with 50,000 events (`fixtures/bulk-events.ts`, 5,000 cases of 10 events
 - as the route owner's leader and as the manager: the inbox and one case page reach `load` in under 1000 ms (Navigation
   Timing, after one warm-up visit).
 
-Status when written: the visibility half passes. The speed half does not yet: against a built app the layout's
-document is about 1.5 MB and takes about 1.7 s to arrive, and a case page about 7 s, against about 0.15 s with the
-same company without the bulk. The server reads are fast (`loadLogFor` 100 to 270 ms, `loadCaseFor` 20 ms, the reducer
-on the shipped log under 15 ms), so the time is spent rendering the shipped log, not loading it.
+Where the time went: the server reads are fast (`loadLogFor` 100 to 270 ms, `loadCaseFor` 20 ms, the reducer on the
+shipped log under 15 ms). The browser was slow because `DemoProvider`'s day formatter (`f`) walked the calendar and
+built an `Intl.DateTimeFormat` on every call, thousands of times per page. It now remembers each day it has formatted;
+a case page went from about 7 s of script to under half a second.
 
 ## VIS gaps
 
