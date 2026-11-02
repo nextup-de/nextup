@@ -82,9 +82,10 @@ function placeStep(p: ReducedProject, stepId: string, before: string | null): vo
 
 /** One project.* event. Returns false when the event is not a project event at all. */
 export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopRules): boolean {
-  if (!ev.type.startsWith("project.")) return false;
+  const isFact = ev.type === "clock.due"; // a stored due fact (CLK/D10) on a project; on a case the case reducer takes it
+  if (!isFact && !ev.type.startsWith("project.")) return false;
   const p = ev.target ? book.byId[ev.target] : undefined;
-  if (!p) return true;
+  if (!p) return !isFact;
   const pl = ev.payload ?? {};
   const d = ev.day | 0;
   const live = p.stopped === null;
@@ -214,10 +215,10 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
   return true;
 }
 
-type Finish = { day: number; promise: number; rules: LoopRules; routeOf: (id: string | null) => Route | null; seats?: readonly SeatRow[] };
+type Finish = { day: number; promise: number; rules: LoopRules; routeOf: (id: string | null) => Route | null; seats?: readonly SeatRow[]; workdays?: boolean };
 
 /** Derived per project once every event is applied: status, checks, due day, escalation. */
-export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf, seats = [] }: Finish): ReducedProject[] {
+export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf, seats = [], workdays = false }: Finish): ReducedProject[] {
   const list = book.order.map((id) => book.byId[id]);
   list.forEach((p, k) => {
     p.number = k + 1;
@@ -252,8 +253,21 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf
     const to = route ? (leadIsOwner ? route.deputy : route.owner.name) : null;
     const toSeatId = route ? (leadIsOwner ? route.deputySeatId : route.ownerSeatId) ?? null : null;
     const toRoleId = route ? (leadIsOwner ? route.deputyRoleId : route.ownerRoleId) ?? null : null;
-    p.escalated = p.overdue && to && p.dueDay !== null
-      ? { to, toSeatId, toRoleId, from: p.lead, day: p.dueDay + 1, live: p.dueDay + 1 >= 0, what: p.status === "planning" ? "start" : "measure" }
+    if (!workdays) {
+      p.escalated = p.overdue && to && p.dueDay !== null
+        ? { to, toSeatId, toRoleId, from: p.lead, day: p.dueDay + 1, live: p.dueDay + 1 >= 0, what: p.status === "planning" ? "start" : "measure" }
+        : null;
+      return;
+    }
+    // Workdays (D11): a start fact while planning, a measure fact for a check still owed; nothing else escalates.
+    const what = p.status === "planning" ? "start" : p.status === "measuring" ? "measure" : null;
+    const fact = what === null ? undefined : [...p.history].reverse().find((e) => {
+      if (e.type !== "clock.due" || e.payload.kind !== what) return false;
+      return what === "start" || p.checks.some((c) => c.check === e.payload.check && !c.measured);
+    });
+    const seat = fact ? seats.find((s) => s.id === fact.payload.toRoleHolderId) : undefined;
+    p.escalated = fact && seat && what
+      ? { to: seat.label, toSeatId: seat.id, toRoleId: seat.roleId, from: p.lead, day: (fact.payload.dueDay ?? p.dueDay ?? 0) + 1, live: true, what }
       : null;
   });
   return list;
