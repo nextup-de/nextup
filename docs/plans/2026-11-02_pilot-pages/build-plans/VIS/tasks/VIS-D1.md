@@ -2,7 +2,7 @@
 id: VIS-D1
 title: Rate limits count in Postgres and the connection pool is configured
 wp: D
-needs: [ VIS-G1 ]
+needs: [ VIS-G1, CLK-Z1 ]
 host: any
 owns:
   - apps/app/src/lib/db/rate-limit.ts
@@ -29,7 +29,7 @@ proofs:
       DATABASE_STATEMENT_TIMEOUT_MS with their defaults
     run: npm test -w @nextup/app -- tests/unit/vis/pool.test.ts -t 'VIS pool
       settings'
-status: open
+status: ready
 ---
 
 Plan VIS (sub-plan of PILOT): shared rate limits and the pool (G-225, G-240). Read first: D11 and D12 of the plan,

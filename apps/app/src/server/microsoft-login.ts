@@ -265,7 +265,7 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
       console.warn(`[admin] ${email || oid} tried Microsoft sign-in without the NextUp.Admin role`);
       return fail("noadmin");
     }
-    await issueAdminSession(email || name || oid);
+    await issueAdminSession(email || name || oid, false, "entra");
     console.info(`[admin] ${email || oid} signed in with Microsoft`);
     return adminHome() || "/";
   }

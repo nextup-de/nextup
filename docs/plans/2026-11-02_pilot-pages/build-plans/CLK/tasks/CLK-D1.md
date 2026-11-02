@@ -2,13 +2,14 @@
 id: CLK-D1
 title: A scheduler writes each due fact once under a per-company lease
 wp: D
-needs: [ CLK-A1, CLK-C1, CLK-G1 ]
+needs: [ CLK-A1, CLK-C1, CLK-G1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/server/scheduler/clock.ts
   - apps/app/src/lib/db/clock-lease.ts
   - apps/app/instrumentation.ts
   - apps/app/tests/db/clk-scheduler.test.ts
+  - apps/app/src/instrumentation.ts
 risk: normal
 profile: orch
 budget: { minutes: 75, window_pct: 12 }
@@ -20,7 +21,10 @@ proofs:
       no fact twice
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/clk-scheduler.test.ts -t 'CLK scheduler'
-status: ready
+status: built
+lane: pc/c
+branch: orch/clk-d1
+resumes: 0
 ---
 
 Plan CLK (sub-plan of PILOT): the scheduler. `dueNow` (CLK-C1) says what fell due; this task writes it, once.

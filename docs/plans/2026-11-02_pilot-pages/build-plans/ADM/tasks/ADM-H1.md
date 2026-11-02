@@ -29,7 +29,7 @@ proofs:
       `companySeed` reads them back, and a leader's call writes nothing
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/adm-goals.test.ts -t 'ADM goals editor'
-status: open
+status: ready
 ---
 
 Plan ADM (sub-plan of PILOT): the goals editor (D17). Read first: `apps/app/prisma/schema/structure.prisma` (model

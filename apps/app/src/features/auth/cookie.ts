@@ -52,8 +52,10 @@ export const ADMIN_TTL_SECONDS = 8 * 60 * 60;
  * Same for the admin cookie. It carries an expiry and, when the admin signed in with Microsoft,
  * `by`: who. The shared admin code has no person behind it, so `by` is then left out.
  */
-export function signAdmin(exp: number, secret: string, by?: string, breakGlass = false): string {
-  const payload = b64url(JSON.stringify({ v: 1, admin: true, exp, ...(by ? { by } : {}), ...(breakGlass ? { bg: true } : {}) }));
+export function signAdmin(exp: number, secret: string, by?: string, breakGlass = false, via?: AdminVia): string {
+  const payload = b64url(
+    JSON.stringify({ v: 1, admin: true, exp, ...(by ? { by } : {}), ...(breakGlass ? { bg: true } : {}), ...(via ? { via } : {}) }),
+  );
   return `${payload}.${sign(payload, secret)}`;
 }
 
@@ -62,6 +64,18 @@ export function adminBy(raw: string | undefined, secret: string, nowSeconds = Ma
   if (!verifyAdmin(raw, secret, nowSeconds)) return null;
   const c = verifyRaw(raw, secret);
   return c && typeof c.by === "string" && c.by ? c.by : null;
+}
+
+/** How an admin got in. ITC-F1 adds "support"; callers must not assume the union is closed. */
+export type AdminVia = "entra" | "stack-admin" | "break-glass";
+
+/** The way in the admin cookie records, or null when it is not a valid admin cookie. Older cookies without it: bg wins, then by means Microsoft. */
+export function adminVia(raw: string | undefined, secret: string, nowSeconds = Math.floor(Date.now() / 1000)): AdminVia | null {
+  if (!verifyAdmin(raw, secret, nowSeconds)) return null;
+  const c = verifyRaw(raw, secret);
+  if (c?.bg === true) return "break-glass";
+  if (c?.via === "entra" || c?.via === "stack-admin") return c.via;
+  return typeof c?.by === "string" && c.by ? "entra" : "break-glass";
 }
 
 /** True when the admin cookie was issued by the shared ADMIN_ACCESS_CODE (break-glass). */

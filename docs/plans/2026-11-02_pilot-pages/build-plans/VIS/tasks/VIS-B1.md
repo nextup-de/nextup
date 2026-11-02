@@ -1,6 +1,7 @@
 ---
 id: VIS-B1
-title: Every case has a CaseView row with its access keys, kept current on append and rebuildable
+title: Every case has a CaseView row with its access keys, kept current on
+  append and rebuildable
 wp: B
 needs: [ VIS-A1 ]
 host: any
@@ -25,8 +26,9 @@ proofs:
     says: inboxView, caseView, visibleCaseIds and visibleTo answer from the rows for
       the company asked only
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
-      ops/test-db.sh tests/db/vis-projections.test.ts -t 'VIS projection readers'
-status: open
+      ops/test-db.sh tests/db/vis-projections.test.ts -t 'VIS projection
+      readers'
+status: ready
 ---
 
 Plan VIS (sub-plan of PILOT): the read model. Read first: D5-D7 and D10 of the plan,
