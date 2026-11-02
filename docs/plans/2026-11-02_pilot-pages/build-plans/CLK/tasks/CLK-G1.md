@@ -2,7 +2,7 @@
 id: CLK-G1
 title: Calendar table, clock types, Seed.clock and the clock.due event type
 wp: G
-needs: [ IDN-Z1 ]
+needs: [ IDN-G1 ]
 host: any
 owns:
   - apps/app/prisma/schema/core.prisma
@@ -37,7 +37,11 @@ proofs:
       without one
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/clk-calendar.test.ts -t 'CLK company clock'
-status: ready
+status: merged
+lane: pc/b
+branch: orch/clk-g1
+pr: 309
+merge: "be913f4"
 ---
 
 Plan CLK (sub-plan of PILOT): the scaffold. After this task a company has a calendar row, the seed says which clock

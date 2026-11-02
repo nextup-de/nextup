@@ -2,7 +2,7 @@
 id: CLK-A1
 title: Working-day calendar with German federal and state holidays
 wp: A
-needs: [ CLK-G1 ]
+needs: [ CLK-G1, IDN-Z1 ]
 host: any
 owns:
   - apps/app/src/features/clock/calendar.ts
@@ -19,7 +19,11 @@ proofs:
       holidays and extra holidays and count extra workdays
     run: npm test -w @nextup/app -- tests/unit/clk/calendar.test.ts -t 'CLK working
       days'
-status: ready
+status: merged
+lane: pc/a
+branch: orch/clk-a1
+pr: 313
+merge: "bd0f2f0"
 ---
 
 Plan CLK (sub-plan of PILOT): the calendar, pure date arithmetic. Read first: `apps/app/src/features/clock/index.ts`

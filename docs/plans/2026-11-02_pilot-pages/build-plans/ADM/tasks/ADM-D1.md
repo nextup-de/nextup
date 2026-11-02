@@ -1,6 +1,7 @@
 ---
 id: ADM-D1
-title: Members hold seats and can be invited by mail; signup, invite and password pages are real
+title: Members hold seats and can be invited by mail; signup, invite and
+  password pages are real
 wp: D
 needs: [ ADM-B1, DIR-D1 ]
 host: any
@@ -29,7 +30,7 @@ proofs:
       signs in with the mailed code, and nothing of another company changes
     run: DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
       ops/test-db.sh tests/db/adm-members.test.ts -t 'ADM members'
-status: open
+status: ready
 ---
 
 Plan ADM (sub-plan of PILOT): members (G-018). DIR-D1 added deactivate and delete; this task adds seats and invites.

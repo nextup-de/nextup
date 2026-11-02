@@ -36,6 +36,8 @@ owns:
   - apps/app/src/components/dashboard/team/OverviewPhone.tsx
   - apps/app/src/features/search/navbar.ts
   - apps/app/tests/unit/static-demo.test.ts
+  - apps/app/src/components/shell/DemoControls.tsx
+  - apps/app/src/components/shell/DemoControls.test.tsx
 risk: normal
 profile: orch
 budget: { minutes: 90, window_pct: 15 }
@@ -52,11 +54,13 @@ proofs:
     run: npm run e2e -w @nextup/app -- tests/e2e/demo/inbox-loop.spec.ts -g 'IDN
       inbox by seat'
     expect: 'IDN inbox by seat[\s\S]*[1-9]\d* passed'
-status: running
+status: merged
 lane: pc/a
 branch: orch/idn-p1
 retries: 1
 last_failure: "Beweise rot: B2"
+pr: 307
+merge: "b78eb0d"
 ---
 
 Plan IDN (sub-plan of PILOT): the dashboards. IDN-A1 and IDN-B1 gave the domain id functions (D18); this task moves
