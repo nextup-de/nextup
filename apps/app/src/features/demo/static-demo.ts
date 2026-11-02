@@ -65,7 +65,7 @@ const SHEET: NonNullable<SeedCase["seedEvents"]> = [
 const seed = renamed(SEED);
 export const STATIC_DEMO_SEED: Seed = {
   ...seed,
-  goals: DEMO_GOALS, spend: DEMO_RULES.spend,
+  seats: [], goals: DEMO_GOALS, spend: DEMO_RULES.spend,
   // He posts under his name here: no handle, so his name and profile show like everyone else's.
   personas: seed.personas.map((r) => (r.who.name === ME ? { ...r, who: { ...r.who, handle: null } } : r)),
   cases: [...seed.cases.map((c) => (c.id === "c3" ? { ...c, seedEvents: [...(c.seedEvents ?? []), ...SHEET] } : c)), ...IDEAS],

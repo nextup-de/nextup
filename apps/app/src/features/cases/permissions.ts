@@ -3,14 +3,16 @@
 //
 // Pure: state in, verdict out. The caller reduces the company's log first, so "is this your case"
 // is answered against the same state everybody sees.
-import type { Role } from "@/config/roles";
+import type { Actor as IdentityActor } from "@/features/auth/identity";
 import { isProjectId, mayAppendProject } from "@/features/projects/permissions";
 import type { EventPayload } from "./events";
 import type { State } from "./reducer";
 import { onDesk } from "./selectors";
 import { createT, DEFAULT_LOCALE, type Locale, type MessageKey, type T } from "@/i18n";
 
-export type Actor = { role: Role; name: string; handle: string | null };
+// The identity Actor (features/auth/identity.ts). `userId` and `me` are optional here because nothing reads
+// them yet (IDN-A1 does); callers that only have a name and a handle keep compiling until then.
+export type Actor = Pick<IdentityActor, "role" | "name" | "handle"> & Partial<Pick<IdentityActor, "userId" | "me">>;
 export type Verdict = { ok: true } | { ok: false; error: string };
 
 const OK: Verdict = { ok: true };

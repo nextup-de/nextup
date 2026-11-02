@@ -1,6 +1,7 @@
 // The project half of reduce(seed, log) (features/cases/reducer.ts calls into this). A project
 // opens with the case.decided yes that names it, and changes only through project.* events.
 // Pure like the case reducer: state in, state out, nothing stored.
+import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
@@ -34,7 +35,7 @@ export function seedProject(book: ProjectBook, row: SeedProject): void {
 }
 
 /** The case a yes came from, as the project needs it. */
-export type Source = { id: string; from: string; routeId: string | null; title: string };
+export type Source = { id: string; from: string; fromUserId?: string | null; routeId: string | null; title: string };
 
 /**
  * case.decided { answer: "yes", projectId, lead, title }: open that project, or - when it is
@@ -193,7 +194,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
   return true;
 }
 
-type Finish = { day: number; promise: number; rules: LoopRules; routeOf: (id: string | null) => Route | null };
+type Finish = { day: number; promise: number; rules: LoopRules; routeOf: (id: string | null) => Route | null; seats?: readonly SeatRow[] };
 
 /** Derived per project once every event is applied: status, checks, due day, escalation. */
 export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf }: Finish): ReducedProject[] {

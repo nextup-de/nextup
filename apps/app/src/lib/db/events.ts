@@ -10,6 +10,7 @@ const SELECT = {
   ts: true,
   type: true,
   actor: true,
+  actorUserId: true,
   targetId: true,
   payload: true,
 } as const;
