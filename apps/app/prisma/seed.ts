@@ -10,17 +10,18 @@
 // the migrate container) gets the same demo people and content under its own slug and name, so
 // every test company opens with something to click. Without those variables it is acme, as before.
 //
-// It ports src/features/demo/seed.ts (itself the port of legacy/demo/js/data.js) into acme's
-// seedJson, and creates that company's people from the demo table - each with a personal login
+// It ports src/features/demo/seed.ts (itself the port of legacy/demo/js/data.js): the demo content
+// goes into acme's seedJson, its structure, goals and rules into the tables (D5), and it creates that company's people from the demo table - each with a personal login
 // code (printed once). Set SEED_NEW_CODES=true to replace codes people already have.
 import { generateLoginCode, hashLoginCode } from "../src/features/auth/login-code";
 import { DEMO_COMPANIES, type DemoCompany } from "../src/features/tenant/demo-companies";
 import { seedTemplate } from "../src/features/demo";
 import { toSeedJson } from "../src/features/demo/parse";
-import { GOALS } from "../src/features/evaluate";
+import { DEMO_GOALS, DEMO_RULES } from "../src/features/demo/structure";
+import { contentOnly } from "../src/features/demo/content";
 import { rowsFromSeed } from "../src/features/knowledge";
 import { getDb } from "../src/lib/db/client";
-import { replaceKnowledge } from "../src/lib/db/knowledge";
+import { writeStructure } from "../src/lib/db/structure-writes";
 
 // Same rule as prisma7.config.ts: .env.local on a laptop, the environment everywhere else.
 try {
@@ -56,7 +57,7 @@ async function main() {
       name: demo.name,
       mark: demo.mark,
       anonymousHandles: demo.anonymousHandles,
-      seedJson: toSeedJson(seedTemplate("demo")) as object,
+      seedJson: toSeedJson(contentOnly(seedTemplate("demo"))) as object,
     },
     create: {
       slug: demo.slug,
@@ -64,14 +65,18 @@ async function main() {
       mark: demo.mark,
       anonymousHandles: demo.anonymousHandles,
       stage: "demo",
-      seedJson: toSeedJson(seedTemplate("demo")) as object,
+      seedJson: toSeedJson(contentOnly(seedTemplate("demo"))) as object,
       config: { create: {} },
     },
   });
 
-  // The org units, roles, routing table and goals as rows (docs/COMPANY_KNOWLEDGE.md). Replaced
+  // The org units, roles, routing table, goals and rules as rows (docs/COMPANY_KNOWLEDGE.md). Replaced
   // wholesale on every run: nobody edits acme's structure by hand yet.
-  await replaceKnowledge(company.id, rowsFromSeed(seedTemplate("demo"), GOALS, () => crypto.randomUUID()), "seed");
+  await writeStructure(
+    company.id,
+    { knowledge: rowsFromSeed(seedTemplate("demo"), DEMO_GOALS, () => crypto.randomUUID()), rules: DEMO_RULES },
+    "seed",
+  );
 
   const printed: string[] = [];
   for (const u of demo.users) {

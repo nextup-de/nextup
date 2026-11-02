@@ -6,6 +6,8 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Dept, OrgPerson } from "@/features/demo/types";
+import { useLocale, useT } from "@/i18n/client";
+import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
 import { initials } from "@/features/ideas/raise";
 import { Icon, PATH, type IconName } from "./raiseIcons";
 import type { Extras, FileItem } from "./raisePreview";
@@ -14,28 +16,28 @@ import { avatarTone } from "@/lib/avatar";
 
 export type MenuView = "main" | "receiver" | "colleague" | "meeting" | "file" | "affected" | "vis" | "visPick";
 type PickKey = "receiver" | "colleague" | "affected" | "visPick";
-const PICKS: Record<PickKey, { depts: boolean; multi: boolean; ph: string }> = {
-  receiver: { depts: false, multi: false, ph: "Search people" },
-  colleague: { depts: false, multi: true, ph: "Search people" },
-  affected: { depts: true, multi: true, ph: "Search people, departments" },
-  visPick: { depts: true, multi: true, ph: "Search people, departments" },
+const PICKS: Record<PickKey, { depts: boolean; multi: boolean; ph: MessageKey }> = {
+  receiver: { depts: false, multi: false, ph: "ideas.menuSearchPeople" },
+  colleague: { depts: false, multi: true, ph: "ideas.menuSearchPeople" },
+  affected: { depts: true, multi: true, ph: "ideas.menuSearchPeopleDepts" },
+  visPick: { depts: true, multi: true, ph: "ideas.menuSearchPeopleDepts" },
 };
-const TITLE: Record<Exclude<MenuView, "main">, string> = {
-  receiver: "Suggest a receiver", colleague: "Add a colleague", meeting: "Request meeting", file: "Attach file",
-  affected: "Who’s affected", vis: "Who sees it", visPick: "Custom — who sees it",
+const TITLE: Record<Exclude<MenuView, "main">, MessageKey> = {
+  receiver: "ideas.menuTitleReceiver", colleague: "ideas.menuTitleColleague", meeting: "ideas.menuTitleMeeting", file: "ideas.menuTitleFile",
+  affected: "ideas.menuTitleAffected", vis: "ideas.menuTitleVis", visPick: "ideas.menuTitleVisPick",
 };
 const PAGE = 5;
 const isPick = (v: MenuView): v is PickKey => v in PICKS;
 
 // The six actions, in the menu's order: the panel each opens, its icon, its label and whether it holds a choice.
 export type ActionRow = [Exclude<MenuView, "main" | "visPick">, IconName, string, boolean];
-export const actionsOf = (x: Extras, files: number, affected: number): ActionRow[] => [
-  ["receiver", "receiver", TITLE.receiver, x.recv.length > 0],
-  ["colleague", "colleague", TITLE.colleague, x.coll.length > 0],
-  ["meeting", "meeting", TITLE.meeting, !!x.meet],
-  ["file", "file", TITLE.file, files > 0],
-  ["affected", "affected", TITLE.affected, affected > 0],
-  ["vis", "vis", TITLE.vis, x.vis !== "public"],
+export const actionsOf = (x: Extras, files: number, affected: number, locale: Locale = DEFAULT_LOCALE): ActionRow[] => [
+  ["receiver", "receiver", translate(locale, TITLE.receiver), x.recv.length > 0],
+  ["colleague", "colleague", translate(locale, TITLE.colleague), x.coll.length > 0],
+  ["meeting", "meeting", translate(locale, TITLE.meeting), !!x.meet],
+  ["file", "file", translate(locale, TITLE.file), files > 0],
+  ["affected", "affected", translate(locale, TITLE.affected), affected > 0],
+  ["vis", "vis", translate(locale, TITLE.vis), x.vis !== "public"],
 ];
 
 export type MenuProps = {
@@ -56,6 +58,7 @@ export type MenuProps = {
 };
 
 export function RaiseMenu(p: MenuProps) {
+  const t = useT();
   const spot = useRef<HTMLSpanElement>(null); // where the menu belongs in the page
   const ref = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState({ up: p.at === "bar", max: 400, x: 0, y: 0 });
@@ -111,9 +114,9 @@ export function RaiseMenu(p: MenuProps) {
         {p.view === "main" && <MainRows {...p} />}
         {p.view !== "main" && (
           <div className={s.panel} data-pick={isPick(p.view) || undefined}>
-            <button type="button" className={`${s.mRow} ${s.back}`} onClick={back} title={closes ? "Close" : "Back"}>
+            <button type="button" className={`${s.mRow} ${s.back}`} onClick={back} title={closes ? t("common.close") : t("common.back")}>
               <Icon name={closes ? "x" : "left"} size={10.5} stroke="#6e6e73" width={2.6} />
-              <span className={s.backLabel}>{TITLE[p.view]}</span>
+              <span className={s.backLabel}>{t(TITLE[p.view])}</span>
             </button>
             {isPick(p.view) && <Picker key={p.view} {...p} view={p.view} done={back} />}
             {p.view === "meeting" && <MeetingPanel {...p} />}
@@ -138,10 +141,11 @@ export function RaiseActions({ rows, open, onOpen, menu, onAddFiles }: {
   menu: React.ReactNode;
   onAddFiles: (files: FileList | null) => void;
 }) {
+  const t = useT();
   const pick = useRef<HTMLInputElement>(null);
   const at = open === "visPick" ? "vis" : open;
   return (
-    <div className={s.adds} role="group" aria-label="Add to your idea">
+    <div className={s.adds} role="group" aria-label={t("ideas.menuAddToIdea")}>
       {rows.map(([v, icon, label, set]) => (
         <span key={v} className={s.addWrap}>
           <button type="button" className={s.add} data-set={set} title={label} aria-expanded={v === "file" ? undefined : at === v} onClick={() => (v === "file" ? pick.current?.click() : onOpen(v))}>
@@ -157,7 +161,8 @@ export function RaiseActions({ rows, open, onOpen, menu, onAddFiles }: {
 }
 
 function MainRows(p: MenuProps) {
-  return actionsOf(p.extras, p.files.length, p.affected.length).map(([v, icon, label, set], i) => (
+  const locale = useLocale();
+  return actionsOf(p.extras, p.files.length, p.affected.length, locale).map(([v, icon, label, set], i) => (
     <Fragment key={v}>
       {i === 3 && <div className={s.divider} />}
       <button type="button" role="menuitem" className={s.mRow} onClick={() => p.onView(v)}>
@@ -173,7 +178,9 @@ function MainRows(p: MenuProps) {
 type Item = { id: string; label: string; meta: string; dept?: string };
 
 function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
+  const t = useT();
   const cfg = PICKS[p.view];
+  const ph = t(cfg.ph);
   const [q, setQ] = useState("");
   const [pages, setPages] = useState<Record<string, number>>({});
   const [openDept, setOpenDept] = useState<string | null>(null);
@@ -192,13 +199,13 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
   const hit = (it: Item) => !needle || it.label.toLowerCase().includes(needle) || it.meta.toLowerCase().includes(needle);
   const deptName = (id: string) => p.depts.find((d) => d.id === id)?.name ?? id;
   const people: Item[] = p.people.filter((x) => x.name !== p.me).map((x) => ({ id: x.name, label: x.name, meta: x.role + " · " + deptName(x.dept) })).filter(hit);
-  const depts: Item[] = cfg.depts ? p.depts.map((d) => ({ id: d.name, label: d.name, meta: d.people + " people", dept: d.id })).filter(hit) : [];
+  const depts: Item[] = cfg.depts ? p.depts.map((d) => ({ id: d.name, label: d.name, meta: t("ideas.menuPeople", { count: d.people }), dept: d.id })).filter(hit) : [];
   const page = (key: string, items: Item[]) => { const n = Math.max(1, Math.ceil(items.length / PAGE)), at = Math.min(pages[key] ?? 0, n - 1); return { at, n, rows: items.slice(at * PAGE, (at + 1) * PAGE) }; };
   const pager = (key: string, at: number, n: number) => n > 1 && (
     <div className={s.pager}>
-      <button type="button" className={s.pageBtn} disabled={at === 0} onClick={() => setPages((x) => ({ ...x, [key]: at - 1 }))} aria-label="Previous page">‹</button>
+      <button type="button" className={s.pageBtn} disabled={at === 0} onClick={() => setPages((x) => ({ ...x, [key]: at - 1 }))} aria-label={t("ideas.menuPrevPage")}>‹</button>
       <span className={s.pageText}>{at + 1} / {n}</span>
-      <button type="button" className={s.pageBtn} disabled={at >= n - 1} onClick={() => setPages((x) => ({ ...x, [key]: at + 1 }))} aria-label="Next page">›</button>
+      <button type="button" className={s.pageBtn} disabled={at >= n - 1} onClick={() => setPages((x) => ({ ...x, [key]: at + 1 }))} aria-label={t("ideas.menuNextPage")}>›</button>
     </div>
   );
   const row = (it: Item, nested = false) => {
@@ -211,16 +218,16 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
       </button>
     );
   };
-  const groups = [{ label: "People", items: people }, { label: "Departments", items: depts }].filter((g) => g.items.length);
+  const groups = [{ key: "people", label: t("ideas.menuPeopleHead"), items: people }, { key: "depts", label: t("ideas.menuDepartments"), items: depts }].filter((g) => g.items.length);
 
   return (
     <>
-      <div className={s.pickSearch}><input ref={input} className={s.pickInput} value={q} onChange={(e) => { setQ(e.target.value); setPages({}); }} placeholder={cfg.ph} aria-label={cfg.ph} /></div>
+      <div className={s.pickSearch}><input ref={input} className={s.pickInput} value={q} onChange={(e) => { setQ(e.target.value); setPages({}); }} placeholder={ph} aria-label={ph} /></div>
       <div className={s.pickList}>
         {groups.map((g) => {
-          const pg = page(g.label, g.items);
+          const pg = page(g.key, g.items);
           return (
-            <Fragment key={g.label}>
+            <Fragment key={g.key}>
               <span className={s.pickHead}>{g.label}</span>
               {pg.rows.map((it) => {
                 if (!it.dept) return <div key={it.id} className={s.pickLine}>{row(it)}</div>;
@@ -231,7 +238,7 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
                     <div className={s.pickLine}>
                       {row(it)}
                       {members.length > 0 && (
-                        <button type="button" className={s.sub} aria-expanded={open} title="Pick people in this department" onClick={() => setOpenDept(open ? null : it.dept ?? null)}>
+                        <button type="button" className={s.sub} aria-expanded={open} title={t("ideas.menuPickInDept")} onClick={() => setOpenDept(open ? null : it.dept ?? null)}>
                           <span>{(picked ? picked + "/" : "") + members.length}</span><Icon name="right" size={9} width={2.6} />
                         </button>
                       )}
@@ -241,53 +248,57 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
                   </Fragment>
                 );
               })}
-              {pager(g.label, pg.at, pg.n)}
+              {pager(g.key, pg.at, pg.n)}
             </Fragment>
           );
         })}
-        {!groups.length && <span className={s.noMatch}>No matches</span>}
+        {!groups.length && <span className={s.noMatch}>{t("ideas.publishNoMatches")}</span>}
       </div>
       <div className={s.pickFoot}>
-        <span className={s.pickCount}>{sel.length} selected</span>
-        <button type="button" className={s.clear} onClick={() => set([])}>Clear</button>
-        <button type="button" className={s.done} onClick={p.done}>Done</button>
+        <span className={s.pickCount}>{t("ideas.menuSelected", { count: sel.length })}</span>
+        <button type="button" className={s.clear} onClick={() => set([])}>{t("ideas.menuClear")}</button>
+        <button type="button" className={s.done} onClick={p.done}>{t("common.done")}</button>
       </div>
     </>
   );
 }
 
 function MeetingPanel(p: MenuProps) {
+  const t = useT();
   const m = p.extras.meet;
   return (
     <div className={s.meet}>
-      <span className={s.meetLabel}>How long</span>
+      <span className={s.meetLabel}>{t("ideas.menuHowLong")}</span>
       <div className={s.choices}>
-        {["15 min", "30 min", "45 min"].map((d) => <button key={d} type="button" className={s.choice} aria-pressed={m?.dur === d} onClick={() => p.onExtras({ meet: { dur: d, when: m?.when ?? "this week" } })}>{d}</button>)}
+        {(["15 min", "30 min", "45 min"] as const).map((d) => <button key={d} type="button" className={s.choice} aria-pressed={m?.dur === d} onClick={() => p.onExtras({ meet: { dur: d, when: m?.when ?? "this week" } })}>{t(DUR_KEY[d])}</button>)}
       </div>
-      <span className={s.meetLabel}>When</span>
+      <span className={s.meetLabel}>{t("ideas.menuWhen")}</span>
       <div className={s.choices}>
-        {["This week", "Next week", "No rush"].map((w) => <button key={w} type="button" className={s.choice} aria-pressed={m?.when === w.toLowerCase()} onClick={() => p.onExtras({ meet: { dur: m?.dur ?? "15 min", when: w.toLowerCase() } })}>{w}</button>)}
+        {(["this week", "next week", "no rush"] as const).map((w) => <button key={w} type="button" className={s.choice} aria-pressed={m?.when === w} onClick={() => p.onExtras({ meet: { dur: m?.dur ?? "15 min", when: w } })}>{t(WHEN_KEY[w])}</button>)}
       </div>
     </div>
   );
 }
 
+const DUR_KEY = { "15 min": "ideas.cardDur15", "30 min": "ideas.cardDur30", "45 min": "ideas.cardDur45" } as const;
+const WHEN_KEY = { "this week": "ideas.cardWhenThisWeek", "next week": "ideas.cardWhenNextWeek", "no rush": "ideas.cardWhenNoRush" } as const;
 const extOf = (name: string) => (name.split(".").pop() || "file").slice(0, 4).toUpperCase();
 
 function FilePanel(p: MenuProps) {
+  const t = useT();
   return (
     <div className={s.files}>
       {p.files.map((f) => (
         <div key={f.id} className={s.file}>
           <span className={s.thumb} style={f.img ? { backgroundImage: `url(${f.url})` } : undefined}>{!f.img && extOf(f.name)}</span>
           <span className={s.fileName}>{f.name}</span>
-          <button type="button" className={s.fileX} title="Remove" aria-label={"Remove " + f.name} onClick={() => p.onRemoveFile(f.id)}><Icon name="x" size={8.25} width={3} /></button>
+          <button type="button" className={s.fileX} title={t("ideas.cardRemove")} aria-label={t("ideas.cardRemoveWhat", { what: f.name })} onClick={() => p.onRemoveFile(f.id)}><Icon name="x" size={8.25} width={3} /></button>
         </div>
       ))}
       <label className={s.drop} data-more={p.files.length > 0}>
         <Icon name="upload" size={12.75} stroke="#1c1c1e" />
-        <span className={s.dropTitle}>{p.files.length ? "Add more files" : "Choose files"}</span>
-        <span className={s.dropSub}>Photos or PDFs · pick several</span>
+        <span className={s.dropTitle}>{p.files.length ? t("ideas.menuAddMore") : t("ideas.menuChoose")}</span>
+        <span className={s.dropSub}>{t("ideas.menuPhotosPdfs")}</span>
         <input className={s.hidden} type="file" multiple accept="image/*,.pdf" onChange={(e) => { p.onAddFiles(e.target.files); e.target.value = ""; }} />
       </label>
     </div>
@@ -295,7 +306,8 @@ function FilePanel(p: MenuProps) {
 }
 
 function VisPanel(p: MenuProps) {
-  const opts: [Extras["vis"], string, IconName][] = [["private", "Private", "lock"], ["public", "Public", "globe"], ["custom", "Custom", "affected"]];
+  const t = useT();
+  const opts: [Extras["vis"], string, IconName][] = [["private", t("ideas.menuPrivate"), "lock"], ["public", t("ideas.menuPublic"), "globe"], ["custom", t("ideas.cardCustom"), "affected"]];
   return opts.map(([k, label, icon]) => (
     <button key={k} type="button" className={s.mRow} data-tall="true" onClick={() => { p.onExtras({ vis: k }); if (k === "custom") p.onView("visPick"); }}>
       <Icon name={icon} size={12.75} stroke="#1c1c1e" />

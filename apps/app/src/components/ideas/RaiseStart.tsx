@@ -3,17 +3,20 @@
 // After send the chat opens, and the evaluation (`Evaluating`, here) plays there under the first message. Props in.
 import { useSyncExternalStore } from "react";
 import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
+import { useT } from "@/i18n/client";
+import type { MessageKey } from "@/i18n";
 import s from "./Raise.module.css";
 
-export const EVAL_STEPS = ["Reading your idea", "Org chart · who is responsible", "Similar ideas", "Cost and impact", "Feasibility", "Past decisions", "Risks and blockers", "Routing"];
+export const EVAL_STEPS: readonly MessageKey[] = ["ideas.startStepReading", "ideas.startStepOrg", "ideas.startStepSimilar", "ideas.startStepCost", "ideas.startStepFeasibility", "ideas.startStepPast", "ideas.startStepRisks", "ideas.startStepRouting"];
 
 export function RaiseStart({ name, composer }: {
   name: string;
   composer: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <div className={s.start}>
-      <h1 className={s.h1}>Raise it, {name}</h1>
+      <h1 className={s.h1}>{t("ideas.startGreeting", { name })}</h1>
       {composer}
       <div className={s.below} />
     </div>
@@ -26,12 +29,13 @@ const onMotionPref = (f: () => void) => { const m = window.matchMedia(MOTION); m
 
 // `inChat`: under the first message in the chat, until NextUp's first reply is ready.
 export function Evaluating({ step, sub, inChat = false }: { step: number; sub: string; inChat?: boolean }) {
+  const t = useT();
   const reduced = useSyncExternalStore(onMotionPref, prefersReduced, () => false); // the orb holds still
   return (
-    <section className={s.eval} data-chat={inChat || undefined} aria-live="polite" aria-label="Evaluating">
+    <section className={s.eval} data-chat={inChat || undefined} aria-live="polite" aria-label={t("ideas.startEvaluating")}>
       <span className={s.orb} aria-hidden="true"><EvalOrb state="connecting" size={78} paused={reduced} /></span>
-      <h3 className={`${s.evalTitle} ${s.heading}`}>Evaluating</h3>
-      <div className={s.evalLine}><span className={s.evalStep}>{EVAL_STEPS[step]}</span><span className={s.evalCount}>{step + 1} / {EVAL_STEPS.length}</span></div>
+      <h3 className={`${s.evalTitle} ${s.heading}`}>{t("ideas.startEvaluating")}</h3>
+      <div className={s.evalLine}><span className={s.evalStep}>{t(EVAL_STEPS[step])}</span><span className={s.evalCount}>{step + 1} / {EVAL_STEPS.length}</span></div>
       <span className={s.evalSub}>{sub}</span>
       <div className={s.evalBars}>{EVAL_STEPS.map((_, k) => <span key={k} className={s.evalBar} data-s={k < step ? "done" : k === step ? "now" : undefined} />)}</div>
     </section>

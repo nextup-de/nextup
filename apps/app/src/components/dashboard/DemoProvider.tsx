@@ -38,6 +38,7 @@ import { clearShots, dropShots } from "@/lib/shots";
 import { deptName as deptNameOf } from "@/lib/utils/format";
 import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction } from "@/server/actions/events";
 import { signOut } from "@/server/actions/auth";
+import { useLocale, useT } from "@/i18n/client";
 
 export type Pop = "search" | "decisions" | "me" | "sort" | "filter";
 export type SheetKind = "no" | "ask" | "reply" | "hand" | "assign" | "askIdea" | "discuss" | "invite" | "checkin" | "accept"; // the last four: components/shell/LoopSheets.tsx
@@ -299,6 +300,8 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   const D = useMemo(() => demoData(seed, S, demo), [seed, S, demo]);
   const N = useMemo(() => counts(seed, D), [seed, D]);
 
+  const t = useT();
+  const locale = useLocale();
   const deptName = useCallback((id: string) => deptNameOf(seed.depts, id), [seed.depts]);
 
   // The effective role + person. The team-leader role can be viewed as any desk holder (dev
@@ -319,9 +322,9 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     const b = seed.buddies.find((x) => x.name === leadAs);
     const bDept = b ? seed.depts.find((d) => d.name === b.dept)?.id : undefined;
     const pDept = r ? r.owner.dept : bDept ?? rp.dept;
-    const line = r ? r.owner.role + " · " + deptName(r.owner.dept) : b ? "Team lead · " + b.dept : "Deputy · " + deptName(pDept);
+    const line = r ? r.owner.role + " · " + deptName(r.owner.dept) : b ? t("dashboard.providerTeamLead", { dept: b.dept }) : t("dashboard.providerDeputy", { dept: deptName(pDept) });
     return { role: { ...rp, dept: pDept }, who: { name: leadAs, ini: iniOf(leadAs), line, handle: null } };
-  }, [seed, role, leadAs, deptName, viewer]);
+  }, [seed, role, leadAs, deptName, viewer, t]);
 
   // Who is acting: the employee posts under their handle, everyone else by name.
   const actor = persona.role.id === "member" && persona.who.handle ? persona.who.handle : persona.who.name;
@@ -496,22 +499,22 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
       // Shared: this resets the company for everyone looking at it, not just this browser.
       startTransition(async () => {
         const res = await resetCompanyAction(slug);
-        showToast(res.ok ? "Demo reset for everyone in this company." : res.error);
+        showToast(res.ok ? t("dashboard.providerResetShared") : res.error);
         router_refresh();
       });
       return;
     }
     resetLog(slug);
     setPrefs(slug, { leadAs: null });
-    showToast("Demo state reset");
-  }, [slug, showToast, serverMode, router_refresh]);
+    showToast(t("dashboard.providerResetLocal"));
+  }, [slug, showToast, serverMode, router_refresh, t]);
 
   // Dev panel: drop the cases raised in this browser (and everything done to them); seed cases and
   // what was done to them stay. A log purge, not an event - it only exists for the demo.
   const deleteAdded = useCallback(() => {
     const ids = new Set(S.cases.filter((c) => !c.seed).map((c) => c.id));
-    if (!ids.size) { showToast("Nothing to delete — every case here is seed data."); return; }
-    const said = "Deleted " + ids.size + (ids.size === 1 ? " case" : " cases") + " you added. Seed data untouched.";
+    if (!ids.size) { showToast(t("dashboard.providerNothingDelete")); return; }
+    const said = t("dashboard.providerDeleted", { count: ids.size });
     dropShots(slug, ids);
     setSheet(null);
     if (serverMode) {
@@ -524,7 +527,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     }
     updateLog(slug, (prev) => ({ ...prev, events: prev.events.filter((e) => !(e.target && ids.has(e.target))) }));
     showToast(said);
-  }, [S, slug, showToast, serverMode, router_refresh]);
+  }, [S, slug, showToast, serverMode, router_refresh, t]);
 
   // Log out: forget the persona in this browser and go back to the company login. Demo log stays.
   // `leaving` first: clearing the prefs drops the role to the page-load guess, and without the
@@ -546,11 +549,11 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   const copySnippet = useCallback(() => {
     const txt = exportSnippet(S);
     const n = S.cases.filter((c) => !c.seed).length;
-    if (!txt) { showToast("Nothing new to copy — raise a case as the employee first."); return; }
-    const done = () => showToast("Copied " + n + (n === 1 ? " case" : " cases") + " — paste into CASES in seed.ts.");
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(done, () => window.prompt("Copy this into seed.ts:", txt));
-    else window.prompt("Copy this into seed.ts:", txt);
-  }, [S, showToast]);
+    if (!txt) { showToast(t("dashboard.providerNothingCopy")); return; }
+    const done = () => showToast(t("dashboard.providerCopied", { count: n }));
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(done, () => window.prompt(t("dashboard.providerCopyPrompt"), txt));
+    else window.prompt(t("dashboard.providerCopyPrompt"), txt);
+  }, [S, showToast, t]);
 
   const value: DemoContext = {
     tenant, seed, ready, serverMode, S, D, N, log,
@@ -564,7 +567,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     sheet, openSheet: (kind, id, init) => { setSheet({ kind, id, text: "", picked: null, people: [], ...init }); setPop(null); },
     closeSheet: () => setSheet(null), patchSheet: (p) => setSheet((s) => (s ? { ...s, ...p } : s)),
     toast, showToast, menu, setMenu, dev, setDev, act, flag, resetDemo, deleteAdded, copySnippet, logout,
-    f: dayFormatter(today, S.day), href,
+    f: dayFormatter(today, S.day, locale), href,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

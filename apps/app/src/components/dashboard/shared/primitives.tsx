@@ -1,22 +1,34 @@
 // Small presentational pieces every role view uses. Props in, JSX out.
 import { ini } from "@/lib/utils/format";
+import type { MessageKey, T } from "@/i18n";
 import ui from "./ui.module.css";
 import { avatarTone } from "@/lib/avatar";
 
 export type Tone = "accent" | "ink" | "ok" | "grey" | "soft" | "ghost" | "none" | "purple";
 
 // Status pill tone, as the legacy statusStyle() decided it.
-export function statusTone(s: string): Tone {
-  if (s === "Awaiting decision" || s === "Sent" || s === "Question for you") return "accent";
-  if (s === "Shipped") return "ink";
-  if (s === "Approved") return "ok";
-  if (s === "In trial" || s === "Building") return "grey";
-  return "ghost";
-}
+// The words are the data's own (English) status values; statusText shows them in the reader's language.
+const STATUS_TONE: Record<string, Tone> = {
+  "Awaiting decision": "accent", Sent: "accent", "Question for you": "accent",
+  Shipped: "ink", Approved: "ok", "In trial": "grey", Building: "grey",
+};
+export const statusTone = (s: string): Tone => STATUS_TONE[s] ?? "ghost";
+
+/** The data's English status, trend and verdict words -> the catalog key that shows them. */
+const WORD_KEY: Record<string, MessageKey> = {
+  "Awaiting decision": "dashboard.statusAwaitingDecision", "In trial": "dashboard.statusInTrial", Building: "dashboard.statusBuilding",
+  Shipped: "dashboard.statusShipped", Sent: "dashboard.statusSent", "In discussion": "dashboard.statusInDiscussion",
+  "Question for you": "dashboard.statusQuestion", Decided: "dashboard.statusDecided", Approved: "dashboard.statusApproved",
+  Proposed: "dashboard.wordProposed", Unfunded: "dashboard.wordUnfunded",
+  Worsening: "dashboard.wordWorsening", Flat: "dashboard.wordFlat", Improving: "dashboard.wordImproving",
+  "As promised": "dashboard.wordAsPromised", "Beat it": "dashboard.verdictBeatIt", Short: "dashboard.verdictShort", Running: "dashboard.wordRunning",
+};
+export const wordText = (t: T, word: string): string => (WORD_KEY[word] ? t(WORD_KEY[word]) : word);
 export const trendTone = (t: string): Tone => (t === "Worsening" ? "accent" : t === "Improving" ? "ok" : "soft");
 export const reasonTone = (r: string): Tone => (r === "wrong department" || r === "not responsible" ? "accent" : "soft");
 export const ownerTone = (o: string): Tone => (o === "none" ? "ink" : "soft");
-export const verdictTone = (v: string): Tone => (v === "Short" ? "accent" : v === "Beat it" ? "ok" : "soft");
+const VERDICT_TONE: Record<string, Tone> = { Short: "accent", "Beat it": "ok" };
+export const verdictTone = (v: string): Tone => VERDICT_TONE[v] ?? "soft";
 
 export function Pill({ tone, children, className }: { tone: Tone; children: React.ReactNode; className?: string }) {
   return <span className={[ui.pill, className].filter(Boolean).join(" ")} data-tone={tone}>{children}</span>;

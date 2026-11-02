@@ -6,6 +6,7 @@
 import { useEffect, useRef } from "react";
 import { isBlock, PRESETS, removeBlock, type Caret, type Prompt, type Seg } from "@/features/ideas/prompts";
 import { Icon } from "./raiseIcons";
+import { useT } from "@/i18n/client";
 import s from "./Raise.module.css";
 
 // The field that takes the caret next: a piece of the body, which of a block's fields, and where (the end without pos).
@@ -20,6 +21,7 @@ export function PromptBody({ segs, onSegs, caretRef, focus, onFocus, headRef }: 
   onFocus: (f: BodyFocus) => void;
   headRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
+  const t = useT();
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!focus) return;
@@ -52,14 +54,14 @@ export function PromptBody({ segs, onSegs, caretRef, focus, onFocus, headRef }: 
     <div ref={box} className={s.promptBody}>
       {segs.map((x, i) => isBlock(x) ? (
         <div key={x.id ?? i} className={s.prompt}>
-          <input className={s.promptLabel} value={x.label} placeholder="Label" aria-label="Label" data-seg={i} data-f="label" {...track(i)}
+          <input className={s.promptLabel} value={x.label} placeholder={t("ideas.promptLabel")} aria-label={t("ideas.promptLabel")} data-seg={i} data-f="label" {...track(i)}
             onChange={(e) => set(i, { label: e.target.value })}
             onKeyDown={(e) => {
               if (!plain(e)) return;
               if (e.key === "Enter") { e.preventDefault(); onFocus({ seg: i, on: "text" }); }
               else if (e.key === "Backspace" && !x.label && !x.text) { e.preventDefault(); remove(i); }
             }} />
-          <textarea className={s.promptText} rows={1} value={x.text} placeholder="Add a line" aria-label={x.label || "Line"} data-seg={i} data-f="text" {...track(i)}
+          <textarea className={s.promptText} rows={1} value={x.text} placeholder={t("ideas.promptAddLine")} aria-label={x.label || t("ideas.promptLine")} data-seg={i} data-f="text" {...track(i)}
             onChange={(e) => set(i, { text: e.target.value })}
             onKeyDown={(e) => {
               if (!plain(e)) return;
@@ -68,11 +70,11 @@ export function PromptBody({ segs, onSegs, caretRef, focus, onFocus, headRef }: 
               else if (e.key === "Backspace" && !x.text) { e.preventDefault(); if (x.custom && x.label) onFocus({ seg: i, on: "label" }); else remove(i); }
             }} />
           <span className={s.promptXWrap}>
-            <button type="button" className={s.promptX} onClick={() => remove(i)} title="Remove" aria-label={"Remove " + (x.label || "block")}><Icon name="x" size={7.5} width={3} /></button>
+            <button type="button" className={s.promptX} onClick={() => remove(i)} title={t("ideas.promptRemove")} aria-label={t("ideas.promptRemoveBlock", { label: x.label || t("ideas.promptBlock") })}><Icon name="x" size={7.5} width={3} /></button>
           </span>
         </div>
       ) : (
-        <textarea key={"t" + (segs[i - 1]?.id ?? "")} className={s.freeLine} rows={1} value={x.text} aria-label="More context" data-empty={!x.text || undefined}
+        <textarea key={"t" + (segs[i - 1]?.id ?? "")} className={s.freeLine} rows={1} value={x.text} aria-label={t("ideas.promptMoreContext")} data-empty={!x.text || undefined}
           data-seg={i} data-f="text" {...track(i)}
           onChange={(e) => set(i, { text: e.target.value })}
           onKeyDown={(e) => { if (e.key === "Backspace" && plain(e) && i > 0 && collapsed(e.currentTarget)) { e.preventDefault(); onFocus({ seg: i - 1, on: "text" }); } }} />
@@ -84,11 +86,12 @@ export function PromptBody({ segs, onSegs, caretRef, focus, onFocus, headRef }: 
 // The mini bar under the composer: Custom first, then the presets - each can be added again and again.
 // Pressing one keeps the caret where it was, so the block lands there.
 export function PromptTray({ onAdd }: { onAdd: (p: Prompt) => void }) {
+  const t = useT();
   const keep = (e: React.MouseEvent) => e.preventDefault();
   return (
     <div className={s.tray}>
       <div className={s.trayRow}>
-        <button type="button" className={s.trayBtn} data-custom="" onMouseDown={keep} onClick={() => onAdd({ label: "", text: "", custom: true })}><Icon name="plus" size={7.5} width={3} />Custom</button>
+        <button type="button" className={s.trayBtn} data-custom="" onMouseDown={keep} onClick={() => onAdd({ label: "", text: "", custom: true })}><Icon name="plus" size={7.5} width={3} />{t("ideas.promptCustom")}</button>
         {PRESETS.map((label) => (
           <button key={label} type="button" className={s.trayBtn} onMouseDown={keep} onClick={() => onAdd({ label, text: "" })}><Icon name="plus" size={7.5} width={3} />{label}</button>
         ))}
