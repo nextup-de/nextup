@@ -1,0 +1,31 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users(id,displayName,mail,userPrincipalName,department,jobTitle,employeeId,accountEnabled,manager(id))",
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/users/delta?$deltatoken=fixtureDeltaToken2",
+  "value": [
+    {
+      "id": "a0000000-0000-4000-8000-000000000004",
+      "displayName": "Pia Demo",
+      "mail": "pia.demo@contoso-fixture.example",
+      "userPrincipalName": "pia.demo@contoso-fixture.onmicrosoft.com",
+      "department": "Engineering",
+      "jobTitle": "Developer",
+      "employeeId": null,
+      "accountEnabled": true,
+      "manager": { "@odata.type": "#microsoft.graph.user", "id": "a0000000-0000-4000-8000-000000000001" }
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000003",
+      "@removed": { "reason": "deleted" }
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000006",
+      "displayName": "Rune Newhire",
+      "mail": "rune.newhire@contoso-fixture.example",
+      "userPrincipalName": "rune.newhire@contoso-fixture.onmicrosoft.com",
+      "department": "Finance",
+      "jobTitle": "Analyst",
+      "employeeId": "P-10006",
+      "accountEnabled": true
+    }
+  ]
+}
