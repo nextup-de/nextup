@@ -4,6 +4,8 @@
 // (coach.ts) reads `missing` to decide what to ask next. Pure.
 import { closest, goalOf, words, type KnownCase } from "@/features/evaluate";
 import { propose, type RouteRow } from "@/features/routing";
+import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
+import { formatEuro } from "@/i18n/format";
 
 export type BenchmarkId = "fit" | "impact" | "feasibility" | "clarity";
 export type BenchmarkPart = { id: BenchmarkId; label: string; value: number; found: string[]; missing: string[] };
@@ -21,11 +23,18 @@ export const DEFAULT_PUBLISH_THRESHOLD = 70;
 export const canPublish = (overall: number, threshold: number) => overall >= threshold;
 
 // Labels as the page shows them; the order is the order of the bars.
+const LABEL_KEY: Record<BenchmarkId, MessageKey> = {
+  fit: "ideas.benchLabelFit",
+  impact: "ideas.benchLabelImpact",
+  feasibility: "ideas.benchLabelFeasibility",
+  clarity: "ideas.benchLabelClarity",
+};
+export const benchmarkLabel = (id: BenchmarkId, locale: Locale = DEFAULT_LOCALE) => translate(locale, LABEL_KEY[id]);
 export const BENCHMARK_LABEL: Record<BenchmarkId, string> = {
-  fit: "Strategic fit",
-  impact: "Impact & reach",
-  feasibility: "Feasibility",
-  clarity: "Novelty & clarity",
+  fit: benchmarkLabel("fit"),
+  impact: benchmarkLabel("impact"),
+  feasibility: benchmarkLabel("feasibility"),
+  clarity: benchmarkLabel("clarity"),
 };
 
 const QUANTITY = /\d+(?:[.,]\d+)?\s*(?:%|€|k\b|eur|euro|min|minutes?|hours?|h\b|days?|weeks?|people|parts|orders|shifts|per)/i;
@@ -51,18 +60,19 @@ export function amountEur(text: string): number | null {
 
 type Rule = { points: number; found?: string; missing?: string };
 // A part is the sum of the rules that hit, capped at 100. A rule with no `found` is a miss.
-function part(id: BenchmarkId, rules: Rule[]): BenchmarkPart {
+function part(id: BenchmarkId, rules: Rule[], locale: Locale): BenchmarkPart {
   const found: string[] = [], missing: string[] = [];
   let value = 0;
   for (const r of rules) {
     if (r.found !== undefined) { value += r.points; found.push(r.found); }
     else if (r.missing) missing.push(r.missing);
   }
-  return { id, label: BENCHMARK_LABEL[id], value: Math.min(100, value), found, missing };
+  return { id, label: benchmarkLabel(id, locale), value: Math.min(100, value), found, missing };
 }
 const hit = (on: boolean, points: number, found: string, missing?: string): Rule => (on ? { points, found } : { points, missing });
 
-export function benchmark(idea: IdeaInput, ctx: BenchmarkContext): Benchmark {
+export function benchmark(idea: IdeaInput, ctx: BenchmarkContext, locale: Locale = DEFAULT_LOCALE): Benchmark {
+  const t = (key: MessageKey, params?: Record<string, string | number>) => translate(locale, key, params);
   const text = idea.text.trim();
   const n = words(text).length;
   // The goal with the most keyword hits, and at least two: "wait" alone should not beat three changeover words.
@@ -74,32 +84,32 @@ export function benchmark(idea: IdeaInput, ctx: BenchmarkContext): Benchmark {
   const people = idea.affected.length;
 
   const fit = part("fit", [
-    hit(!!goal, 60, goal ? "Serves “" + goal.goal + "”" : "", "Which company goal does it serve?"),
-    hit(MEASURE.test(text), 25, "Names what it measures", "Which number would move?"),
-    hit(!!goal && QUANTITY.test(text), 15, "Puts a figure on the goal", "How far would it move that number?"),
-  ]);
+    hit(!!goal, 60, goal ? t("ideas.benchFoundServes", { goal: goal.goal }) : "", t("ideas.benchMissGoal")),
+    hit(MEASURE.test(text), 25, t("ideas.benchFoundMeasure"), t("ideas.benchMissMeasure")),
+    hit(!!goal && QUANTITY.test(text), 15, t("ideas.benchFoundFigure"), t("ideas.benchMissFigure")),
+  ], locale);
   const impact = part("impact", [
-    hit(QUANTITY.test(text), 40, "Upside has a number", "Put a number on the upside (minutes, €, %)."),
-    hit(people > 0, Math.min(30, people * 10), people + (people === 1 ? " more person affected" : " more people affected"), "Add who else it helps (Affected)."),
-    hit(REACH.test(text), 15, "Reaches beyond one person", "Does it help one team, or every shift?"),
-    hit(idea.attachments > 0, 15, "Evidence attached", "Attach a photo or a screenshot as evidence."),
-  ]);
+    hit(QUANTITY.test(text), 40, t("ideas.benchFoundNumber"), t("ideas.benchMissNumber")),
+    hit(people > 0, Math.min(30, people * 10), t("ideas.benchFoundAffected", { count: people }), t("ideas.benchMissAffected")),
+    hit(REACH.test(text), 15, t("ideas.benchFoundReach"), t("ideas.benchMissReach")),
+    hit(idea.attachments > 0, 15, t("ideas.benchFoundEvidence"), t("ideas.benchMissEvidence")),
+  ], locale);
   const feasibility = part("feasibility", [
-    hit(!!route, 35, route ? "Decided by the owner of “" + route.type + "”" : "", "Who would decide this?"),
-    !spends ? { points: 25, found: "No spend needed" }
-      : ctx.spendLimitEur === null ? { points: 10, found: "This company has no spend rule set - spend needs a sign-off" }
-      : amount !== null && amount <= ctx.spendLimitEur ? { points: 25, found: "Within team authority (≤ €" + ctx.spendLimitEur.toLocaleString("en") + ")" }
-      : amount !== null ? { points: 10, found: "Above team authority - needs a sign-off" }
-      : { points: 0, missing: "Roughly what would it cost?" },
-    hit(FIRST_STEP.test(text), 40, "Names a first step", "What is the smallest first step - a pilot, a one-week trial?"),
-  ]);
+    hit(!!route, 35, route ? t("ideas.benchFoundDecider", { route: route.type }) : "", t("ideas.benchMissDecider")),
+    !spends ? { points: 25, found: t("ideas.benchFoundNoSpend") }
+      : ctx.spendLimitEur === null ? { points: 10, found: t("ideas.benchFoundNoRule") }
+      : amount !== null && amount <= ctx.spendLimitEur ? { points: 25, found: t("ideas.benchFoundWithin", { limit: formatEuro(locale, ctx.spendLimitEur) }) }
+      : amount !== null ? { points: 10, found: t("ideas.benchFoundAbove") }
+      : { points: 0, missing: t("ideas.benchMissCost") },
+    hit(FIRST_STEP.test(text), 40, t("ideas.benchFoundStep"), t("ideas.benchMissStep")),
+  ], locale);
   const clarity = part("clarity", [
-    hit(!sameAs, 40, "Not raised before", sameAs ? "Already raised: “" + sameAs.title + "” - co-sign it instead?" : undefined),
-    hit(n >= 12, 20, "Described in more than a line", "Say a little more: what exactly would change?"),
-    hit(n >= 30, 10, "Detailed", undefined),
-    hit(WHY.test(text), 15, "Says why", "Why does it matter - what happens today?"),
-    hit(WHO.test(text) || people > 0, 15, "Says who it is for", "Who works differently afterwards?"),
-  ]);
+    hit(!sameAs, 40, t("ideas.benchFoundNew"), sameAs ? t("ideas.benchMissRaised", { title: sameAs.title }) : undefined),
+    hit(n >= 12, 20, t("ideas.benchFoundLong"), t("ideas.benchMissLong")),
+    hit(n >= 30, 10, t("ideas.benchFoundDetailed"), undefined),
+    hit(WHY.test(text), 15, t("ideas.benchFoundWhy"), t("ideas.benchMissWhy")),
+    hit(WHO.test(text) || people > 0, 15, t("ideas.benchFoundWho"), t("ideas.benchMissWho")),
+  ], locale);
 
   const parts = [fit, impact, feasibility, clarity];
   return { overall: Math.round(parts.reduce((a, p) => a + p.value, 0) / parts.length), parts, sameAs };
