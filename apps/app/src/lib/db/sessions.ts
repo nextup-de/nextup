@@ -13,11 +13,11 @@ export async function sessionStillValid(
 ): Promise<boolean> {
   const user = await getDb().user.findFirst({
     where: { id: c.uid, companyId: c.cid },
-    select: { role: true, loginCodeAt: true, company: { select: { slug: true, sessionEpoch: true } } },
+    select: { role: true, active: true, loginCodeAt: true, company: { select: { slug: true, sessionEpoch: true } } },
   });
   // Whole seconds, like the cookie: a login with the new code in the same second it was issued stays.
   const codeAt = user?.loginCodeAt ? Math.floor(user.loginCodeAt.getTime() / 1000) : 0;
   return Boolean(
-    user && user.role === c.role && user.company.slug === c.slug && user.company.sessionEpoch === c.ep && c.iat >= codeAt,
+    user && user.active && user.role === c.role && user.company.slug === c.slug && user.company.sessionEpoch === c.ep && c.iat >= codeAt,
   );
 }
