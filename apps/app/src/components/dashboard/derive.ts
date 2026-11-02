@@ -7,6 +7,7 @@ import { GOALS } from "@/features/evaluate";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectOfCase } from "@/features/projects/selectors";
 import { seesByChoice } from "@/features/cases/visibility";
+import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
 import type { DemoContext } from "./DemoProvider";
 
 // Live cases on someone's desk (open) - the number the rail shows as "Inbox" and the dev panel
@@ -113,11 +114,11 @@ export function sortIdeas(list: ReducedIdea[], sort: IdeaSort): ReducedIdea[] {
 }
 
 // The three case criteria as tags - the KPI tag is the routing criterion and gets the ink.
-export function criteriaTags(c: ReducedIdea["criteria"]): { label: string; strong: boolean; none?: boolean }[] {
+export function criteriaTags(c: ReducedIdea["criteria"], locale: Locale = DEFAULT_LOCALE): { label: string; strong: boolean; none?: boolean }[] {
   const t: { label: string; strong: boolean; none?: boolean }[] = [];
-  if (c.fit) t.push({ label: "Strategic fit", strong: false });
-  if (c.urgent) t.push({ label: "Urgent", strong: false });
-  if (c.kpi) t.push({ label: "Moves: " + c.kpi, strong: true });
-  if (!t.length) t.push({ label: "No criterion met", strong: false, none: true });
+  if (c.fit) t.push({ label: translate(locale, "dashboard.criteriaFit"), strong: false });
+  if (c.urgent) t.push({ label: translate(locale, "dashboard.criteriaUrgent"), strong: false });
+  if (c.kpi) t.push({ label: translate(locale, "dashboard.criteriaMoves", { kpi: c.kpi }), strong: true });
+  if (!t.length) t.push({ label: translate(locale, "dashboard.criteriaNone"), strong: false, none: true });
   return t;
 }

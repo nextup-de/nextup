@@ -1,10 +1,11 @@
 // evaluate(): NextHub's checks over the company context, as facts. Every step must be traceable to the seed.
 import { describe, expect, it } from "vitest";
 import { evaluate } from "@/features/evaluate";
+import { DEMO_GOALS, DEMO_RULES } from "@/features/demo/structure";
 import { PEOPLE, PROBLEMS, PROMISE_DAYS, ROLES, ROUTES } from "@/features/demo/seed";
 
 const known = [{ title: "Night shift has no one who can sign a €300 parts order", from: "S. Dahl", age: 4, open: true }];
-const ctx = { routes: ROUTES, people: PEOPLE, personas: ROLES, problems: PROBLEMS, cases: known, promiseDays: PROMISE_DAYS };
+const ctx = { routes: ROUTES, people: PEOPLE, personas: ROLES, problems: PROBLEMS, cases: known, promiseDays: PROMISE_DAYS, goals: DEMO_GOALS, spend: DEMO_RULES.spend };
 const who = { name: "J. Schmidt", line: "Production, Line 3", handle: "Anonymous #4471" };
 
 describe("evaluate", () => {

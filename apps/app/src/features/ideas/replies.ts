@@ -25,7 +25,7 @@ function candidates(idea: IdeaInput, now: Benchmark, ctx: BenchmarkContext): { i
   const about = idea.text + " " + (near ? near.type + " " + near.keys.join(" ") : "");
   const goals = byOverlap(about, ctx.goals, (g) => g.goal + " " + g.keys.join(" "));
   const has = (id: BenchmarkId, found: string) => now.parts.some((p) => p.id === id && p.found.some((f) => f.startsWith(found)));
-  const spend = Math.round(ctx.spendLimitEur * 0.4).toLocaleString("en");
+  const spend = ctx.spendLimitEur === null ? null : Math.round(ctx.spendLimitEur * 0.4).toLocaleString("en");
 
   // Whole answers, the way a colleague would actually write them: a claim, the figure behind it,
   // and where the figure comes from - each still carries the facts the benchmarks check for.
@@ -39,7 +39,7 @@ function candidates(idea: IdeaInput, now: Benchmark, ctx: BenchmarkContext): { i
   const routes = byOverlap(about, ctx.routes, (r) => r.type + " " + r.keys.join(" "));
   if (!has("feasibility", "Decided by")) for (const r of routes.slice(0, 2)) out.push({ id: "feasibility", text: `The owner of “${r.type}” would decide this; nothing outside their area has to change for a first version, so it should not need anyone above them.` });
   const cost = now.parts.find((p) => p.id === "feasibility")?.missing.some((m) => m.includes("cost"));
-  if (cost) out.push({ id: "feasibility", text: `It would cost roughly €${spend} for the first version, which is within team authority - so the team lead can decide it without a sign-off from controlling, and we only spend more if the pilot holds up.` });
+  if (cost && spend !== null) out.push({ id: "feasibility", text: `It would cost roughly €${spend} for the first version, which is within team authority - so the team lead can decide it without a sign-off from controlling, and we only spend more if the pilot holds up.` });
   out.push({ id: "feasibility", text: "First step: a one-week pilot with one team on one line, with the old way kept as a fallback, so nobody is stuck if it does not work; after that week we compare the two and decide on the rollout together." });
 
   out.push({ id: "clarity", text: "It matters because today we lose time on this every single week, and each time we build the same workaround again instead of fixing it once - the waiting is what people complain about most, and it never gets written down anywhere." });
