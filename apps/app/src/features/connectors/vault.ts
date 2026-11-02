@@ -16,10 +16,14 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 const VERSION = "v1";
 const KEY_HEX = /^[0-9a-f]{64}$/i;
 
-/** The 32-byte key, or null when CONNECTOR_VAULT_KEY is missing or not 64 hex characters. */
+const KEY_BASE64 = /^[A-Za-z0-9+/]{43}=$/;
+
+/** The 32-byte key, or null when CONNECTOR_VAULT_KEY is missing or neither 64 hex characters nor 32 bytes of base64. */
 export function vaultKey(env: Record<string, string | undefined> = process.env): Buffer | null {
-  const hex = env.CONNECTOR_VAULT_KEY?.trim();
-  return hex && KEY_HEX.test(hex) ? Buffer.from(hex, "hex") : null;
+  const raw = env.CONNECTOR_VAULT_KEY?.trim();
+  if (!raw) return null;
+  if (KEY_HEX.test(raw)) return Buffer.from(raw, "hex");
+  return KEY_BASE64.test(raw) ? Buffer.from(raw, "base64") : null;
 }
 
 /** What a sealed value is bound to: the row's company and person. */
