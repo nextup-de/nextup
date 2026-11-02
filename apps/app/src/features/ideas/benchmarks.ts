@@ -14,7 +14,7 @@ export type BenchmarkContext = {
   routes: readonly (RouteRow & { type: string })[];
   goals: readonly { goal: string; keys: string[] }[];
   cases: readonly KnownCase[]; // what is already raised, for "has this been said before?"
-  spendLimitEur: number; // team-level authority - features/evaluate SPEND_RULE
+  spendLimitEur: number | null; // team-level authority - the company's spend rule; null: none set
 };
 
 export const DEFAULT_PUBLISH_THRESHOLD = 70;
@@ -87,6 +87,7 @@ export function benchmark(idea: IdeaInput, ctx: BenchmarkContext): Benchmark {
   const feasibility = part("feasibility", [
     hit(!!route, 35, route ? "Decided by the owner of “" + route.type + "”" : "", "Who would decide this?"),
     !spends ? { points: 25, found: "No spend needed" }
+      : ctx.spendLimitEur === null ? { points: 10, found: "This company has no spend rule set - spend needs a sign-off" }
       : amount !== null && amount <= ctx.spendLimitEur ? { points: 25, found: "Within team authority (≤ €" + ctx.spendLimitEur.toLocaleString("en") + ")" }
       : amount !== null ? { points: 10, found: "Above team authority - needs a sign-off" }
       : { points: 0, missing: "Roughly what would it cost?" },

@@ -11,7 +11,6 @@ import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
 import { coachRequest, type CoachAnswer } from "@/features/ideas/brain-coach";
-import { GOALS } from "@/features/evaluate";
 import { checkinRequest, planRequest, roundSaid, type CheckinProposal, type PlanProposal } from "@/features/projects/brain";
 import { brainRequest, fromBrain, type BrainItem, type BrainProposal } from "@/features/routing/brain";
 import { findTenant } from "@/features/tenant";
@@ -134,7 +133,7 @@ export async function askBrainPlan(slug: string, caseId: string, policy: BrainPo
   const c = co?.state.cases.find((x) => x.id === caseId);
   const text = c ? co?.cleanAll([c.title, c.body]) : null;
   if (!co || !text) return null;
-  const answer = await post(slug, "/v1/plan", planRequest(co.tenant.name, { title: text[0], body: text[1] }, GOALS), PlanReply);
+  const answer = await post(slug, "/v1/plan", planRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.goals), PlanReply);
   return answer ? { steps: answer.steps, metric: answer.metric, version: answer.version } : null;
 }
 
