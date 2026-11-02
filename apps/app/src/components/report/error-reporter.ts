@@ -6,6 +6,7 @@
 // query. At most five per page load, each kind once. Sent with sendBeacon, so it also leaves a page
 // that is being closed, and never through the app's own fetch.
 import { isBrowserNoise } from "@/features/errors/noise";
+import { DEFAULT_LOCALE, translate } from "@/i18n";
 
 const MAX_PER_PAGE = 5;
 const seen = new Set<string>();
@@ -35,5 +36,5 @@ export function installErrorReporter(): void {
   if (typeof window === "undefined" || flag.__nextupErrorReporter) return;
   flag.__nextupErrorReporter = true;
   window.addEventListener("error", (e) => reportClientError(e.error ?? e.message, e.message));
-  window.addEventListener("unhandledrejection", (e) => reportClientError(e.reason, "Unhandled promise rejection"));
+  window.addEventListener("unhandledrejection", (e) => reportClientError(e.reason, translate(DEFAULT_LOCALE, "report.unhandledRejection")));
 }
