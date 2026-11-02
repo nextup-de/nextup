@@ -20,14 +20,16 @@ import { dashboardRow, overviewSteps, raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, onDesk, rescoresOn } from "@/features/cases/selectors";
 import { briefForCase, tagTone, type IdeaBrief } from "@/features/ideas/brief";
 import { profileOf } from "@/features/demo/profiles";
+import { useT } from "@/i18n/client";
+import type { T } from "@/i18n";
 import s from "./Feed.module.css";
 import { useFeedPreview } from "./feedPreview";
 import { libraryCoverFor, sampleCoverFor } from "@/features/cases/thumbs";
 
-const ALL_SITES = "All sites";
+const ALL_SITES = "*"; // the "every site" filter value; shown as feedAllSites
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
 const isHandle = (name: string) => name.startsWith("Anonymous");
-const ago = (days: number) => (days <= 0 ? "Today" : days === 1 ? "Yesterday" : days + " d ago");
+const ago = (t: T, days: number) => (days <= 0 ? t("common.today") : days === 1 ? t("common.yesterday") : t("team.feedDaysAgo", { count: days }));
 
 function UpArrow({ size, w }: { size: number; w: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>;
@@ -46,6 +48,7 @@ type Item = {
 };
 
 export function FeedView({ initialId }: { initialId?: string } = {}) {
+  const t = useT();
   const ctx = useDemo();
   const { seed, D, log, persona, ready, act, actor, f, motion, flag } = ctx;
   const [view, setView] = useState<ListView>("open");
@@ -143,19 +146,19 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     <div className={s.root} ref={rootRef}>
       <div className={s.div3}>
         <div className={s.div4}>
-          <h1 className={s.feed}>Feed</h1>
+          <h1 className={s.feed}>{t("team.feedTitle")}</h1>
           <div className={s.div5}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}
             <div className={s.div6}>
               <button type="button" className={s.toggleSite} onClick={() => setMenu(menu === "site" ? null : "site")} aria-expanded={menu === "site"} aria-haspopup="menu">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
-                {site}
+                {site === ALL_SITES ? t("team.feedAllSites") : site}
               </button>
               {menu === "site" && (
                 <div className={s.div7} role="menu">
                   {sites.map((x) => (
                     <button key={x} type="button" role="menuitemradio" aria-checked={site === x} className={s.pick} data-on={site === x ? "true" : undefined} onClick={() => { setSite(x); setMenu(null); }}>
-                      <span className={s.label}>{x}</span>
+                      <span className={s.label}>{x === ALL_SITES ? t("team.feedAllSites") : x}</span>
                       <span className={s.count}>{x === ALL_SITES ? visible.length : visible.filter((v) => v.site === x).length}</span>
                       <span className={s.check}>{site === x ? "✓" : ""}</span>
                     </button>
@@ -187,7 +190,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
         <div className={s.div8}>
           {chips.map((d) => (
             <button key={d} type="button" className={s.pick2} data-on={dept === d ? "true" : undefined} aria-pressed={dept === d} onClick={() => setDept(d)}>
-              {d}<span className={s.count2}>{d === "All" ? bySite.length : bySite.filter((x) => x.tags.includes(d)).length}</span>
+              {d === "All" ? t("team.feedAll") : d}<span className={s.count2}>{d === "All" ? bySite.length : bySite.filter((x) => x.tags.includes(d)).length}</span>
             </button>
           ))}
         </div>
@@ -214,7 +217,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                     <span className={s.initials}>{initialsOf(c.from)}</span>
                     <div className={s.div11}>
                       <span className={s.author}>{c.from}</span>
-                      <span className={s.dept}>{[c.fromDept, x.site, ago(log.day - c.raisedDay)].filter(Boolean).join(" · ")}</span>
+                      <span className={s.dept}>{[c.fromDept, x.site, ago(t, log.day - c.raisedDay)].filter(Boolean).join(" · ")}</span>
                     </div>
                     <span className={s.stage} data-tone={st.tone}>{st.label}</span>
                   </div>
@@ -232,7 +235,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                   </div>
                   <button type="button" className={s.toggleSupport} data-on={x.supported ? "true" : undefined} aria-pressed={x.supported}
                     onClick={(e) => { e.stopPropagation(); support(x); }}>
-                    {x.supported ? <Check size={13} /> : <UpArrow size={13} w={2.6} />}{x.supported ? "Supported" : "Support"}<span className={s.supCount}>{x.supporters.length + (x.supported && !x.supporters.includes(actor) ? 1 : 0)}</span>
+                    {x.supported ? <Check size={13} /> : <UpArrow size={13} w={2.6} />}{x.supported ? t("team.feedSupported") : t("team.feedSupport")}<span className={s.supCount}>{x.supporters.length + (x.supported && !x.supporters.includes(actor) ? 1 : 0)}</span>
                   </button>
                   <span className={s.commentCount}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z" /></svg>
@@ -245,7 +248,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             );
           })}
         </div>
-        {!list.length && <div className={s.div16}>{visible.length ? "No ideas match these filters." : split && view === "archive" ? "Nothing in the archive yet." : "Nothing in the feed yet."}</div>}
+        {!list.length && <div className={s.div16}>{visible.length ? t("team.feedNoMatch") : split && view === "archive" ? t("team.feedNoArchive") : t("team.feedNothing")}</div>}
       </div>
     </div>
   );
@@ -260,7 +263,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     const draft = drafts[c.id] ?? "";
     const rt = replyTo[c.id] ?? null;
     const rc = rt ? cs.find((m) => m.id === rt) ?? null : null;
-    const nameOf = (by: string) => (by === actor ? "You" : by);
+    const nameOf = (by: string) => (by === actor ? t("team.feedYou") : by);
     const count = item.supporters.length + (item.supported && !item.supporters.includes(actor) ? 1 : 0);
     const names = item.supported && !item.supporters.includes(actor) ? [actor, ...item.supporters] : item.supporters;
     const myDept = deptNameOf(persona.who.name);
@@ -286,19 +289,19 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
               <span className={s.initials2}>{initialsOf(c.from)}</span>
               <div className={s.div11}>
                 <span className={s.author2}>{c.from}</span>
-                <span className={s.role}>{[role, item.site, "raised " + f(c.raisedDay)].filter(Boolean).join(" · ")}</span>
+                <span className={s.role}>{[role, item.site, t("team.feedRaised", { when: f(c.raisedDay) })].filter(Boolean).join(" · ")}</span>
               </div>
               <span className={s.stage} data-tone={st.tone}>{st.label}</span>
-              <button type="button" className={s.closeIdea} onClick={() => close()} title="Close" aria-label="Close">
+              <button type="button" className={s.closeIdea} onClick={() => close()} title={t("common.close")} aria-label={t("common.close")}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             </div>
-            <span className={s.kind}>{c.kind === "idea" ? "Idea" : "Problem"}</span>
+            <span className={s.kind}>{c.kind === "idea" ? t("team.feedIdea") : t("team.feedProblem")}</span>
             <h2 className={s.title2}>{c.title}</h2>
             <p className={`${s.desc} ${s.ctxText}`}>{brief.description}</p>
             {(brief.depts.length > 0 || brief.people.length > 0) && (
               <div className={s.div20}>
-                <span className={s.affects}>Affects</span>
+                <span className={s.affects}>{t("team.feedAffects")}</span>
                 <div className={s.div8}>
                   {brief.depts.map((d) => <span key={d.id} className={s.a}>{d.name}</span>)}
                   {brief.people.map((p) => <span key={p.name} className={s.name}><span className={s.ini2}>{initialsOf(p.name)}</span>{p.name}</span>)}
@@ -307,7 +310,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             )}
             {brief.context && (
               <div className={s.div21}>
-                <span className={s.affects}>Context</span>
+                <span className={s.affects}>{t("team.feedContext")}</span>
                 <p className={`${s.context} ${s.ctxText}`}>{brief.context}</p>
               </div>
             )}
@@ -318,7 +321,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             )}
             {brief.files.length > 0 && (
               <div className={s.div20}>
-                <span className={s.affects}>Attachments</span>
+                <span className={s.affects}>{t("team.feedAttachments")}</span>
                 <div className={s.div23}>
                   {brief.files.map((x) => (
                     <span key={x.name} className={s.a2} title={x.name}>
@@ -345,7 +348,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                           <circle cx="36" cy="36" r="30" fill="none" stroke="#007aff" strokeWidth="10" strokeLinecap="round" strokeDasharray={((sc.value / 100) * 141.4).toFixed(1) + " 188.5"} />
                         </svg>
                         <div className={s.div29}><span className={s.v} data-long={sc.value >= 100}>{sc.value}</span><span className={s.n100}>/ 100</span></div>
-                        <button type="button" className={s.toggle} title="Show reasoning" aria-label={(on ? "Hide" : "Show") + " the reasoning for " + sc.label} aria-expanded={on}
+                        <button type="button" className={s.toggle} title={t("team.feedShowReasoning")} aria-label={on ? t("team.feedHideReasoningFor", { label: sc.label }) : t("team.feedShowReasoningFor", { label: sc.label })} aria-expanded={on}
                           onClick={() => setOpenScore((m) => ({ ...m, [c.id]: on ? null : i }))}>
                           <svg className={s.svg2} data-open={on ? "true" : undefined} viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                         </button>
@@ -373,8 +376,8 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 </div>
                 {splitBlock && splitBlock.t === "split" ? (
                   <div className={s.div36}>
-                    <div className={s.div35}><span className={s.affects}>Pulling it up</span>{splitBlock.ups.map((u) => <p key={u.t} className={s.context}>{u.t}</p>)}</div>
-                    <div className={s.div35}><span className={s.affects}>Holding it back</span>{splitBlock.downs.map((u) => <p key={u.t} className={s.context}>{u.t}</p>)}</div>
+                    <div className={s.div35}><span className={s.affects}>{t("team.feedPullingUp")}</span>{splitBlock.ups.map((u) => <p key={u.t} className={s.context}>{u.t}</p>)}</div>
+                    <div className={s.div35}><span className={s.affects}>{t("team.feedHoldingBack")}</span>{splitBlock.downs.map((u) => <p key={u.t} className={s.context}>{u.t}</p>)}</div>
                   </div>
                 ) : dial.blocks.map((b, bi) => b.t === "facts" ? (
                   <div key={bi} className={s.div22}>{b.items.map((it) => <PromptRow key={it.k} label={it.k} text={it.v} />)}</div>
@@ -386,7 +389,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
               <div className={s.div34}>
                 <div className={s.div5}>
                   <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" fill="#007aff" /></svg>
-                  <span className={s.span2}>What the AI found</span>
+                  <span className={s.span2}>{t("team.feedAiFound")}</span>
                 </div>
                 <div className={s.div37}>
                   <p className={s.note}>{brief.summary}</p>
@@ -407,13 +410,13 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 )}
                 {brief.after && <p className={s.context}>{brief.after}</p>}
                 <div className={s.div22}>
-                  {brief.rec && <><span className={s.label2}>Advice</span><span className={s.advice}>{brief.actions.find((a) => a.key === brief.rec)?.label}</span></>}
-                  <PromptRow label="Why" text={brief.recText} />
-                  {brief.next && <PromptRow label="Next step" text={brief.next} />}
-                  {brief.by && <PromptRow label="Decision by" text={brief.by} />}
+                  {brief.rec && <><span className={s.label2}>{t("team.feedAdvice")}</span><span className={s.advice}>{brief.actions.find((a) => a.key === brief.rec)?.label}</span></>}
+                  <PromptRow label={t("team.feedWhy")} text={brief.recText} />
+                  {brief.next && <PromptRow label={t("team.feedNextStep")} text={brief.next} />}
+                  {brief.by && <PromptRow label={t("team.feedDecisionBy")} text={brief.by} />}
                 </div>
                 <div className={s.div42}>
-                  <span className={s.affects}>Where it stands</span>
+                  <span className={s.affects}>{t("team.feedWhereItStands")}</span>
                   <div className={s.div43}>
                     {steps.map((t) => (
                       <div key={t.label} className={s.div44}>
@@ -438,19 +441,19 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 </div>
                 <span className={s.div11}>
                   <span className={s.supLine}>{supportLine(names, actor)}</span>
-                  {myDept && fromMine > 0 && <span className={s.size}>{fromMine + " from " + myDept + (item.supported ? ", including you" : " back this")}</span>}
+                  {myDept && fromMine > 0 && <span className={s.size}>{item.supported ? t("team.feedFromDeptIncluding", { count: fromMine, dept: myDept }) : t("team.feedFromDeptBack", { count: fromMine, dept: myDept })}</span>}
                 </span>
               </div>
               <button type="button" className={s.toggleSupport2} data-on={item.supported ? "true" : undefined} aria-pressed={item.supported} onClick={() => support(item)}>
                 {item.supported
                   ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
                   : <UpArrow size={18} w={2.8} />}
-                {item.supported ? "You support this" : "Support this " + (c.kind === "idea" ? "idea" : "problem")}
+                {item.supported ? t("team.feedYouSupport") : c.kind === "idea" ? t("team.feedSupportIdea") : t("team.feedSupportProblem")}
               </button>
-              <span className={s.mood}>{count ? brief.feed.sentiment : "Be the first to back it."}</span>
+              <span className={s.mood}>{count ? brief.feed.sentiment : t("team.feedBeFirst")}</span>
               {item.supported && preview.reasons[c.id] === "ask" && (
                 <div className={s.div48}>
-                  <span className={s.affects}>Tell {anon ? "them" : c.from} why, in one tap</span>
+                  <span className={s.affects}>{t("team.feedTellWhy", { name: anon ? t("team.feedThem") : c.from })}</span>
                   <div className={s.div8}>
                     {supportReasons(c.kind).map((t) => (
                       <button key={t} type="button" className={s.pick3} onClick={() => { act.comment(c.id, t + "."); preview.setReason(c.id, "done"); }}>{t}</button>
@@ -460,11 +463,11 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
               )}
             </div>
             <div className={s.div49}>
-              <span className={s.comments}>Comments</span>
+              <span className={s.comments}>{t("team.feedComments")}</span>
               <span className={s.affects}>{cs.length + nReplies}</span>
             </div>
             <div className={s.div50}>
-              {!cs.length && <span className={s.span3}>No comments yet. Be the first.</span>}
+              {!cs.length && <span className={s.span3}>{t("team.feedNoComments")}</span>}
               {cs.map((m) => {
                 const liked = !!preview.likes[m.id];
                 return (
@@ -478,11 +481,11 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                         </div>
                         <p className={s.text2}>{m.text}</p>
                         <div className={s.div55}>
-                          <button type="button" className={s.up} data-on={liked ? "true" : undefined} aria-pressed={liked} title="Like" onClick={() => preview.like(m.id)}>
+                          <button type="button" className={s.up} data-on={liked ? "true" : undefined} aria-pressed={liked} title={t("team.feedLike")} onClick={() => preview.like(m.id)}>
                             <Thumb />{liked ? 1 : ""}
                           </button>
                           <button type="button" className={s.onReply} data-on={rt === m.id ? "true" : undefined}
-                            onClick={() => { setReplyTo((r) => ({ ...r, [c.id]: m.id })); setTimeout(() => inputRef.current?.focus(), 0); }}>Reply</button>
+                            onClick={() => { setReplyTo((r) => ({ ...r, [c.id]: m.id })); setTimeout(() => inputRef.current?.focus(), 0); }}>{t("team.feedReply")}</button>
                         </div>
                       </div>
                     </div>
@@ -492,10 +495,10 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                         <div key={k} className={s.div56}>
                           <span className={s.ini5} data-mine="true">{initialsOf(actor)}</span>
                           <div className={s.div53}>
-                            <div className={s.div54}><span className={s.name3}>You</span><span className={s.role2}>{f(r.day)}</span></div>
+                            <div className={s.div54}><span className={s.name3}>{t("team.feedYou")}</span><span className={s.role2}>{f(r.day)}</span></div>
                             <p className={s.text2}>{r.text}</p>
                             <div className={s.div55}>
-                              <button type="button" className={s.up} data-on={rl ? "true" : undefined} aria-pressed={rl} title="Like" onClick={() => preview.like(k)}><Thumb />{rl ? 1 : ""}</button>
+                              <button type="button" className={s.up} data-on={rl ? "true" : undefined} aria-pressed={rl} title={t("team.feedLike")} onClick={() => preview.like(k)}><Thumb />{rl ? 1 : ""}</button>
                             </div>
                           </div>
                         </div>
@@ -508,23 +511,23 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             <div className={s.div57}>
               {!item.supported && (iTalked || iLiked) && (
                 <div className={s.div58}>
-                  <span className={s.nudgeText}>{iTalked ? "You joined the discussion. Back the idea too?" : "Agree with what people are saying? Add your support."}</span>
-                  <button type="button" className={s.toggleSupport3} onClick={() => support(item)}><UpArrow size={12} w={3} />Support</button>
+                  <span className={s.nudgeText}>{iTalked ? t("team.feedJoined") : t("team.feedAgree")}</span>
+                  <button type="button" className={s.toggleSupport3} onClick={() => support(item)}><UpArrow size={12} w={3} />{t("team.feedSupport")}</button>
                 </div>
               )}
               {rc && (
                 <div className={s.div59}>
-                  <span className={s.replyingTo}>Replying to<span className={s.replyName}>{nameOf(rc.by)}</span></span>
-                  <button type="button" className={s.cancelReply} onClick={() => setReplyTo((r) => ({ ...r, [c.id]: null }))} title="Cancel reply" aria-label="Cancel reply">
+                  <span className={s.replyingTo}>{t("team.feedReplyingTo")}<span className={s.replyName}>{nameOf(rc.by)}</span></span>
+                  <button type="button" className={s.cancelReply} onClick={() => setReplyTo((r) => ({ ...r, [c.id]: null }))} title={t("team.feedCancelReply")} aria-label={t("team.feedCancelReply")}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6e6e73" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
                   </button>
                 </div>
               )}
               <div className={s.div60}>
-                <input ref={inputRef} className={s.input} value={draft} placeholder={rc ? "Reply to " + nameOf(rc.by) : "Add a comment"} aria-label={rc ? "Reply to " + nameOf(rc.by) : "Add a comment"}
+                <input ref={inputRef} className={s.input} value={draft} placeholder={rc ? t("team.feedReplyTo", { name: nameOf(rc.by) }) : t("team.feedAddComment")} aria-label={rc ? t("team.feedReplyTo", { name: nameOf(rc.by) }) : t("team.feedAddComment")}
                   onChange={(e) => { const v = e.target.value; setDrafts((d) => ({ ...d, [c.id]: v })); }}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } else if (e.key === "Escape") setReplyTo((r) => ({ ...r, [c.id]: null })); }} />
-                <button type="button" className={s.send} data-live={draft.trim() ? "true" : undefined} onClick={send} title="Send" aria-label="Send">
+                <button type="button" className={s.send} data-live={draft.trim() ? "true" : undefined} onClick={send} title={t("team.feedSend")} aria-label={t("team.feedSend")}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
                 </button>
               </div>
