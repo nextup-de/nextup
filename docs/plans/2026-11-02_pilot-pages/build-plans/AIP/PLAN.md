@@ -2,27 +2,45 @@
 id: AIP
 project: nextup
 title: AI provider and quality
-state: draft
-level: 0
-approved: []
+state: active
+level: 2
+approved:
+  [
+    { level: 0, by: kevin, at: 2026-11-02, note: Workbench Control },
+    { level: 1, by: kevin, at: 2026-11-02, note: Workbench Control },
+    { level: 2, by: kevin, at: 2026-11-02, note: Workbench Control }
+  ]
 milestone: PILOT AIP
-summary: "AIP lets each company choose its AI - Bedrock in Frankfurt, Azure OpenAI, its own OpenAI-compatible
-  endpoint, or off - and puts every model call (assistant, coach, brain) behind one seam with the data-processing
-  gate, which the brain calls lack today. With AI off, raise and routing work by keywords. The routing proposal is
-  made on the server when a case is raised, and an override rate per company is recorded. An eval set of 84 cases,
-  a third in German, runs in CI with a threshold. No schema change and no new package; 6 tasks, 85 % of a window."
+summary: "AIP lets each company choose its AI - Bedrock in Frankfurt, Azure
+  OpenAI, its own OpenAI-compatible endpoint, or off - and puts every model call
+  (assistant, coach, brain) behind one seam with the data-processing gate, which
+  the brain calls lack today. With AI off, raise and routing work by keywords.
+  The routing proposal is made on the server when a case is raised, and an
+  override rate per company is recorded. An eval set of 84 cases, a third in
+  German, runs in CI with a threshold. No schema change and no new package; 6
+  tasks, 85 % of a window."
 phases:
   - { id: G, title: AI settings and the gate, wps: [ G ], gate: auto }
-  - { id: W1, title: Adapters, brain behind the gate, eval set, wps: [ A, B, E ], gate: auto }
+  - {
+      id: W1,
+      title: Adapters,
+      brain behind the gate,
+      eval set,
+      wps: [ A, B, E ],
+      gate: auto
+    }
   - { id: W2, title: Proposal on the server, wps: [ C ], gate: auto }
   - { id: Z, title: Acceptance, wps: [ Z ], gate: auto }
-max_parallel: 1
+max_parallel: 2
 decisions:
-  - { id: D1, text: "(from PILOT/HD13) Plans, code, comments and PRs are in English." }
+  - {
+      id: D1,
+      text: "(from PILOT/HD13) Plans, code, comments and PRs are in English."
+    }
   - {
       id: D2,
-      text: "(from PILOT/HD2 and HD8) Every model call goes through the
-        `AiProvider` interface of @nextup/contracts/public
+      text: "(from PILOT/HD2 and HD8) Every model call goes through the `AiProvider`
+        interface of @nextup/contracts/public
         (packages/contracts/src/public/connectors/ai-provider.ts, choices
         bedrock, azure-openai, openai-compatible, off). The provider is chosen
         per company; off is a supported choice, not an error."
@@ -35,19 +53,19 @@ decisions:
     }
   - {
       id: D4,
-      text: "(from PILOT/HD11, HD12 and HQ3) AIP changes no .prisma file (the
-        settings live in an Integration row, D5) and no package.json: Bedrock
-        uses @anthropic-ai/bedrock-sdk, which is already a dependency; Azure
-        OpenAI and OpenAI-compatible endpoints use fetch. The pilot default is
-        Bedrock eu-central-1 once a DPA is signed and off until then (HQ3)."
+      text: "(from PILOT/HD11, HD12 and HQ3) AIP changes no .prisma file (the settings
+        live in an Integration row, D5) and no package.json: Bedrock uses
+        @anthropic-ai/bedrock-sdk, which is already a dependency; Azure OpenAI
+        and OpenAI-compatible endpoints use fetch. The pilot default is Bedrock
+        eu-central-1 once a DPA is signed and off until then (HQ3)."
     }
   - {
       id: D5,
       text: "Settings (ADR 0006). The company's AI choice is its `Integration` row
-        with system \"ai\": `on` = a model may be called, `settings` = `{ choice:
-        AiProviderChoice; region: string; model: string; endpoint: string |
-        null; deployment: string | null }`, `secretSealed` = the API key for
-        azure-openai and openai-compatible, sealed with
+        with system \"ai\": `on` = a model may be called, `settings` = `{
+        choice: AiProviderChoice; region: string; model: string; endpoint:
+        string | null; deployment: string | null }`, `secretSealed` = the API
+        key for azure-openai and openai-compatible, sealed with
         features/connectors/vault.ts and `integrationContext(companyId,
         \"ai\")`. `aiSettings(row, env, stage)` in
         apps/app/src/features/ai/settings.ts (pure): a row wins; without a row a
@@ -60,8 +78,8 @@ decisions:
   - {
       id: D6,
       text: "The gate. `aiGate(a: { stage; hasDatabase; settings: AiSettings;
-        dpaSignedAt: Date | null; purpose: \"assist\" | \"routing\" | \"coach\" |
-        \"brain\"; assistantOn: boolean; aiRouting: boolean }): { on: true;
+        dpaSignedAt: Date | null; purpose: \"assist\" | \"routing\" | \"coach\"
+        | \"brain\"; assistantOn: boolean; aiRouting: boolean }): { on: true;
         settings } | { on: false; why }` in apps/app/src/features/ai/gate.ts
         (pure, fail closed): no database → only the mock, and only in a demo
         stage; demo stage → on with the settings; real stage: choice off → off;
@@ -80,9 +98,9 @@ decisions:
         `api-key: <key>` to `https://<endpoint>/openai/v1/chat/completions` with
         the deployment as the model), `index.ts` with `aiProviderFor(settings,
         key): AiProvider | null` (null for off) implementing `complete` of the
-        contract, and the assistant's streaming `Provider` (features/assist)
-        for bedrock and both OpenAI kinds. Timeouts 30 s, one retry. Nothing
-        else in the app imports the Bedrock SDK."
+        contract, and the assistant's streaming `Provider` (features/assist) for
+        bedrock and both OpenAI kinds. Timeouts 30 s, one retry. Nothing else in
+        the app imports the Bedrock SDK."
     }
   - {
       id: D8,
@@ -90,10 +108,10 @@ decisions:
         `aiGate` with the call's purpose holds (routing for askBrain, brain for
         plan and check-in, coach for the studio coach); otherwise it returns
         null at once and the caller uses its offline answer, as today. For
-        azure-openai and openai-compatible companies every brain request
-        carries `llm: { base_url, model, api_key }`; services/brain uses it for
-        that request instead of LLM_* (never logged); without it the brain uses
-        its stack model (Q1)."
+        azure-openai and openai-compatible companies every brain request carries
+        `llm: { base_url, model, api_key }`; services/brain uses it for that
+        request instead of LLM_* (never logged); without it the brain uses its
+        stack model (Q1)."
     }
   - {
       id: D9,
@@ -120,23 +138,22 @@ decisions:
       id: D11,
       text: "Eval set. services/brain/eval/routing_cases.json: at least 84 labelled
         cases `{ id, lang: \"de\" | \"en\", text, route_id }` on acme's routes
-        (eval/acme.json), at least a third German, every route at least 6
-        times, no real person or customer name. eval/run_eval.py reads it (as
-        well as test_ideas.json) and, with `--recorded <file>`, scores recorded
-        answers instead of calling a model; it exits non-zero below
-        the file's `threshold` (or `--threshold`). The
-        recorded answers of the last live run live in
-        services/brain/eval/recorded/routing.json (route id per case id, the
-        model and the prompt version)."
+        (eval/acme.json), at least a third German, every route at least 6 times,
+        no real person or customer name. eval/run_eval.py reads it (as well as
+        test_ideas.json) and, with `--recorded <file>`, scores recorded answers
+        instead of calling a model; it exits non-zero below the file's
+        `threshold` (or `--threshold`). The recorded answers of the last live
+        run live in services/brain/eval/recorded/routing.json (route id per case
+        id, the model and the prompt version)."
     }
   - {
       id: D12,
-      text: "Tests and proofs. App unit tests in apps/app/tests/unit/aip/ (`npm test -w @nextup/app --
-        tests/unit/aip/<file> -t '<title>'`); never edit a test directly under
-        apps/app/tests/unit/ (vitest only runs tests/unit/**; AIP-G1 waits for
-        CLK-G1, whose task owns tests/unit/*.test.ts). DB
-        tests in apps/app/tests/db/aip-*.test.ts and the acceptance
-        ai-provider.test.ts, run from the repo root with
+      text: "Tests and proofs. App unit tests in apps/app/tests/unit/aip/ (`npm test
+        -w @nextup/app -- tests/unit/aip/<file> -t '<title>'`); never edit a
+        test directly under apps/app/tests/unit/ (vitest only runs
+        tests/unit/**; AIP-G1 waits for CLK-G1, whose task owns
+        tests/unit/*.test.ts). DB tests in apps/app/tests/db/aip-*.test.ts and
+        the acceptance ai-provider.test.ts, run from the repo root with
         `DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
         ops/test-db.sh tests/db/<file> -t '<title>'`. Brain tests run in the uv
         image without a mount: `tar -C services/brain -c . | docker run --rm -i
@@ -168,22 +185,22 @@ decisions:
 questions:
   - {
       id: Q1,
-      text: "The Python brain speaks only the OpenAI API. Which model does it use for a
-        company on Bedrock?",
-      default: "The stack's own brain model (LLM_* of the brain container), as
-        today: with one stack per company (HD6) that is the company's choice.
-        Bedrock for the brain itself (its OpenAI-compatible endpoint or a port
-        of the prompts into the app) is a follow-up after the pilot customer's
-        choice is known."
+      text: "The Python brain speaks only the OpenAI API. Which model does it use for
+        a company on Bedrock?",
+      default: "The stack's own brain model (LLM_* of the brain container), as today:
+        with one stack per company (HD6) that is the company's choice. Bedrock
+        for the brain itself (its OpenAI-compatible endpoint or a port of the
+        prompts into the app) is a follow-up after the pilot customer's choice
+        is known."
     }
   - {
       id: Q2,
       text: "CI has no model. How does the eval run in CI with a threshold?",
-      default: "CI job `brain-eval` scores the recorded answers of the last live
-        run (eval/recorded/routing.json) against the labels with threshold 0.80,
-        and the keyword router against them as the baseline; a live run is by
-        hand (`uv run python -m eval.run_eval`) and refreshes the recorded file.
-        The threshold is set again after the first live run (PILOT brief)."
+      default: "CI job `brain-eval` scores the recorded answers of the last live run
+        (eval/recorded/routing.json) against the labels with threshold 0.80, and
+        the keyword router against them as the baseline; a live run is by hand
+        (`uv run python -m eval.run_eval`) and refreshes the recorded file. The
+        threshold is set again after the first live run (PILOT brief)."
     }
   - {
       id: Q3,
@@ -193,12 +210,23 @@ questions:
         afterwards and corrects labels in a normal PR."
     }
 autonomy:
-  merge: [low, normal]
+  merge: [ low, normal ]
   start_high: true
   replan: none
   budget_window_pct: 85 # tasks 70 % + 20 %
 talk:
-  telegram: [ question_open, blocked_twice, proof_red_twice, budget_over, gate_kevin, merge_waiting, start_high, other_repo, plan_done ]
+  telegram:
+    [
+      question_open,
+      blocked_twice,
+      proof_red_twice,
+      budget_over,
+      gate_kevin,
+      merge_waiting,
+      start_high,
+      other_repo,
+      plan_done
+    ]
   pane: [ blocked, task_merged, phase_done ]
   none: [ task_started ]
 ---
@@ -252,7 +280,7 @@ acceptance: proposal made on the server, off works, DPA gate holds` is green.
 
 | WP | Content | Tasks | depends on | Owns |
 |---|---|---|---|---|
-| G | `aiSettings`, `aiGate`, `loadAiSettings` / `saveAiSettings`, `assistGate` as a wrapper | AIP-G1 | IDN-Z1, CNX-Z1, CLK-G1 | `features/ai/{settings,gate}.ts`, `features/assist/gate.ts`, `lib/db/ai.ts` |
+| G | `aiSettings`, `aiGate`, `loadAiSettings` / `saveAiSettings`, `assistGate` as a wrapper | AIP-G1 | IDN-G1, CLK-G1 | `features/ai/{settings,gate}.ts`, `features/assist/gate.ts`, `lib/db/ai.ts` |
 | A | Adapters; assistant, coach and admin insight on them | AIP-A1 | G | `server/ai/**`, `server/assist/provider.ts`, `app/api/[company]/assist/route.ts`, `app/api/[company]/ideas/turn/route.ts`, `server/admin-insight.ts` |
 | B | Brain behind the gate, `llm` per request | AIP-B1 | G | `server/brain.ts`, `server/actions/brain.ts`, `services/brain/brain/**`, `services/brain/tests/**` |
 | E | Eval set, recorded scoring, CI job `brain-eval` | AIP-E1 | G | `services/brain/eval/**`, `.github/workflows/ci.yml` |
@@ -264,7 +292,7 @@ Paths under `apps/app/src/` unless they start with `services/`, `.github/`, `tes
 ## Risks
 
 - **AIP runs next to CLK and DIR.** → D13 lists their paths; the only shared file, `server/actions/events.ts`, is
-  ordered by `needs` (AIP-C1 after CLK-B1). `max_parallel: 1` keeps AIP to one lane while three plans share three.
+  ordered by `needs` (AIP-C1 after CLK-B1). `max_parallel: 2` since the project has five lanes (2026-11-02).
 - **The raise waits for the brain.** On a CPU-only stack the brain takes tens of seconds. → 8 s timeout at raise,
   then the keyword proposal (D9); the case is never refused because of the model.
 - **The brain on Bedrock** has no per-company endpoint (Q1). → It keeps the stack's model; Kevin decides the

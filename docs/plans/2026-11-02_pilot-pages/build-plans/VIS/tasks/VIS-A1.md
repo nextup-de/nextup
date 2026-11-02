@@ -1,8 +1,9 @@
 ---
 id: VIS-A1
-title: One visibility rule as access keys, used by the pages, and the raiser's audience by id
+title: One visibility rule as access keys, used by the pages, and the raiser's
+  audience by id
 wp: A
-needs: [ VIS-G1 ]
+needs: [ VIS-G1, CLK-Z1 ]
 host: any
 owns:
   - apps/app/src/features/cases/visibility.ts
@@ -21,9 +22,9 @@ proofs:
     says: canOpen is true exactly for raiser, desk, invitees, project people, the
       raiser's choice and, without a choice, managers and the raiser's leaders,
       and accessKeys and viewerKeys give the same answer
-    run: npm test -w @nextup/app -- tests/unit/vis/rule.test.ts -t 'VIS
-      visibility rule'
-status: open
+    run: npm test -w @nextup/app -- tests/unit/vis/rule.test.ts -t 'VIS visibility
+      rule'
+status: ready
 ---
 
 Plan VIS (sub-plan of PILOT): the rule. Today the browser decides visibility in `components/dashboard/derive.ts`

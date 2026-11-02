@@ -2,7 +2,7 @@
 id: AIP-E1
 title: An 84-case routing eval, a third German, runs in CI with a threshold
 wp: E
-needs: [ AIP-G1 ]
+needs: [ AIP-G1, IDN-Z1 ]
 host: any
 owns:
   - services/brain/eval/**
@@ -21,7 +21,11 @@ proofs:
       && tar -x && uv sync --frozen && uv run --frozen pytest
       eval/test_eval_set.py"
     expect: '[1-9]\d* passed'
-status: open
+status: merged
+lane: pc/c
+branch: orch/aip-e1
+pr: 321
+merge: "6ee7aef"
 ---
 
 Plan AIP (sub-plan of PILOT): routing quality. Read first: D11 and Q2, Q3 of the plan, `services/brain/README.md`,

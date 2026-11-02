@@ -26,7 +26,7 @@ phases:
   - { id: W2, title: Dispatcher and the switch-over, wps: [ C ], gate: auto }
   - { id: W3, title: Digests and opt-in, wps: [ D ], gate: auto }
   - { id: Z, title: Acceptance, wps: [ Z ], gate: auto }
-max_parallel: 1
+max_parallel: 2
 decisions:
   - {
       id: D1,
@@ -280,7 +280,7 @@ retries, sandbox sends nothing` is green.
 
 | WP | Content | Tasks | depends on | Owns |
 |---|---|---|---|---|
-| G | Four tables, migration, outbox and subscription helpers | NTF-G1 | CLK-Z1, AIP-Z1, LNG-Z1, CNX-Z1, DIR-G1, VIS-G1 | `prisma/schema/integrations.prisma`, `core.prisma` (integrations block), `migrations/20261120080000_ntf_outbox/`, `lib/db/{outbox,webhooks,notify-prefs}.ts` |
+| G | Four tables, migration, outbox and subscription helpers | NTF-G1 | VIS-G1 | `prisma/schema/integrations.prisma`, `core.prisma` (integrations block), `migrations/20261120080000_ntf_outbox/`, `lib/db/{outbox,webhooks,notify-prefs}.ts` |
 | A | Planner, gate, public events, mail texts | NTF-A1 | G | `features/notify/{plan,gate,public-events,templates}.ts`, `i18n/messages/mail.ts` |
 | B | Channel registry, mail and webhook channels, signing, delivery | NTF-B1 | G | `server/notify/{registry,deliver,sign}.ts`, `server/notify/channels/**` |
 | C | Dispatcher, loop, old senders switched off | NTF-C1 | A, B | `server/notify/{dispatch,loop}.ts`, `instrumentation.ts`, `server/actions/events.ts`, `server/case-notice.ts`, `server/loop-notice.ts` |

@@ -2,27 +2,59 @@
 id: ADM
 project: nextup
 title: Administration in the app
-state: draft
-level: 0
-approved: []
+state: active
+level: 2
+approved:
+  [
+    { level: 0, by: kevin, at: 2026-11-02, note: Workbench Control },
+    { level: 1, by: kevin, at: 2026-11-02, note: Workbench Control },
+    { level: 2, by: kevin, at: 2026-11-02, note: Workbench Control }
+  ]
 milestone: PILOT ADM
-summary: "ADM lets a company's managers set the company up in the app instead of /admin and the seed: company
-  profile and rules, the calendar, the org with roles and seats, the routing table, members with invites, and the
-  connectors (Microsoft 365, Jira Cloud and Data Center, the AI provider, directory status). An empty company is
-  set up end to end by a wizard, and its first case reaches the right inbox. The stack's /admin opens only for named
-  admins with a second factor; the shared admin code still works as a logged break-glass. Per-site calendars and
-  mapping Entra groups to units are left out. Added from the page specs (2026-11-02): the goals editor, the company
-  notifications page, resetting a lost second factor, and setup that stays open until it is done. 11 tasks, 180 % of
-  a window."
+summary: "ADM lets a company's managers set the company up in the app instead of
+  /admin and the seed: company profile and rules, the calendar, the org with
+  roles and seats, the routing table, members with invites, and the connectors
+  (Microsoft 365, Jira Cloud and Data Center, the AI provider, directory
+  status). An empty company is set up end to end by a wizard, and its first case
+  reaches the right inbox. The stack's /admin opens only for named admins with a
+  second factor; the shared admin code still works as a logged break-glass.
+  Per-site calendars and mapping Entra groups to units are left out. Added from
+  the page specs (2026-11-02): the goals editor, the company notifications page,
+  resetting a lost second factor, and setup that stays open until it is done. 11
+  tasks, 180 % of a window."
 phases:
   - { id: G, title: Settings frame, wps: [ G ], gate: auto }
-  - { id: W1, title: Company, rules, calendar, org and routing editors, wps: [ A, B ], gate: auto }
-  - { id: W2, title: Connectors, members, admin access and goals, wps: [ C, D, E, H ], gate: auto }
-  - { id: W3, title: Setup wizard, notifications page and second-factor reset, wps: [ F, N, R ], gate: auto }
+  - {
+      id: W1,
+      title: Company,
+      rules,
+      calendar,
+      org and routing editors,
+      wps: [ A, B ],
+      gate: auto
+    }
+  - {
+      id: W2,
+      title: Connectors,
+      members,
+      admin access and goals,
+      wps: [ C, D, E, H ],
+      gate: auto
+    }
+  - {
+      id: W3,
+      title: Setup wizard,
+      notifications page and second-factor reset,
+      wps: [ F, N, R ],
+      gate: auto
+    }
   - { id: Z, title: Acceptance, wps: [ Z ], gate: auto }
 max_parallel: 2
 decisions:
-  - { id: D1, text: "(from PILOT/HD13) Plans, code, comments and PRs are in English." }
+  - {
+      id: D1,
+      text: "(from PILOT/HD13) Plans, code, comments and PRs are in English."
+    }
   - {
       id: D2,
       text: "(from PILOT/HD4) What differs between companies is configuration in the
@@ -36,14 +68,14 @@ decisions:
         catalog and exists in German and English. ADM-G1 registers the
         namespaces `settingsCompany`, `settingsOrg`, `settingsConnectors`,
         `settingsSetup` and `adminAccess` (files
-        apps/app/src/i18n/messages/<name>.ts, empty objects, wired into de.ts and
-        en.ts); each later task adds keys only to the namespace its `owns`
+        apps/app/src/i18n/messages/<name>.ts, empty objects, wired into de.ts
+        and en.ts); each later task adds keys only to the namespace its `owns`
         names, and to `settings` / `auth` where it owns those files."
     }
   - {
       id: D4,
-      text: "(from PILOT/HD11 and HD12) ADM changes one schema file: auth.prisma,
-        in ADM-E1 only (fields of D13), with its own migration folder
+      text: "(from PILOT/HD11 and HD12) ADM changes one schema file: auth.prisma, in
+        ADM-E1 only (fields of D13), with its own migration folder
         apps/app/prisma/migrations/20261116090000_adm_admin_access/. PILOT's
         area map gives auth.prisma to DIR; ADM-E1 needs DIR-G1 and touches only
         model User. No structure.prisma change. Lane sessions never change
@@ -70,13 +102,12 @@ decisions:
   - {
       id: D7,
       text: "Settings frame. /<company>/settings has the sections, in this order:
-        Setup (while `setupStep` is not `done`, D14), Company, Rules,
-        Calendar, Org, Routing, Members, Connectors; the nav is
-        `SETTINGS_SECTIONS` in apps/app/src/features/settings/sections.ts with
-        key, path and message key. The settings index redirects to Setup while setup
-        is not done, else to Company. Every form element and step a
-        test needs has a `data-testid` `settings-<section>-<thing>` (wizard:
-        `setup-step-<key>`)."
+        Setup (while `setupStep` is not `done`, D14), Company, Rules, Calendar,
+        Org, Routing, Members, Connectors; the nav is `SETTINGS_SECTIONS` in
+        apps/app/src/features/settings/sections.ts with key, path and message
+        key. The settings index redirects to Setup while setup is not done, else
+        to Company. Every form element and step a test needs has a `data-testid`
+        `settings-<section>-<thing>` (wizard: `setup-step-<key>`)."
     }
   - {
       id: D8,
@@ -85,41 +116,41 @@ decisions:
         `updateUnit`, `removeUnit`, `addRole`, `updateRole`, `removeRole`,
         `addSeat`, `linkSeat(seatId, userId | null)`, `removeSeat`, `saveRoute`,
         `removeRoute`, `moveRoute`), each with `updatedBy` = the admin's name,
-        each checked first by pure rules in apps/app/src/features/org-edit/
-        (key 1-32 [A-Z0-9_], unique per company; title 1-120; no reportsTo
-        loop; a role whose holders own a route cannot be removed while the route
-        names it; a route needs an owner role; keywords 1-30 of 1-40 chars).
-        A refused change returns the message key of the rule that refused it."
+        each checked first by pure rules in apps/app/src/features/org-edit/ (key
+        1-32 [A-Z0-9_], unique per company; title 1-120; no reportsTo loop; a
+        role whose holders own a route cannot be removed while the route names
+        it; a route needs an owner role; keywords 1-30 of 1-40 chars). A refused
+        change returns the message key of the rule that refused it."
     }
   - {
       id: D9,
-      text: "Rules and calendar. The Rules page edits `promise_days`,
-        `outcome_days` and `spend` through `saveCompanyRules` (STR) and the loop
-        rules through `saveLoopRules` (apps/app/src/lib/db/loop.ts). The Calendar
-        page edits the one company calendar through `saveCalendar` (CLK):
-        region, workdays, extra holidays and extra workdays, and shows the
-        holidays of this and next year from `holidaysOf`. No per-site calendar
-        (CLK counts one working-day number per company)."
+      text: "Rules and calendar. The Rules page edits `promise_days`, `outcome_days`
+        and `spend` through `saveCompanyRules` (STR) and the loop rules through
+        `saveLoopRules` (apps/app/src/lib/db/loop.ts). The Calendar page edits
+        the one company calendar through `saveCalendar` (CLK): region, workdays,
+        extra holidays and extra workdays, and shows the holidays of this and
+        next year from `holidaysOf`. No per-site calendar (CLK counts one
+        working-day number per company)."
     }
   - {
       id: D10,
       text: "Connectors page. Microsoft 365: the company's search switch (the action
         behind `setM365SearchAction`) and the data block of PR D of
         docs/plans/2026-10-22_sso-and-data-access.md (how many people are
-        connected, when the last search ran; never content, never a name).
-        Jira: the form of the /admin Jira screen with both flavors, `cloud` and
-        `dc` (base URL and personal access token; the Data Center client is
+        connected, when the last search ran; never content, never a name). Jira:
+        the form of the /admin Jira screen with both flavors, `cloud` and `dc`
+        (base URL and personal access token; the Data Center client is
         server/jira/dc.ts), test, save, on/off, sync now. AI: AIP's
         `loadAiSettings` / `saveAiSettings` (provider, region, endpoint, model,
-        key write-only). Directory: DIR's `loadDirectoryStatus` read-only (source,
-        on, last run, last error). A key or token is never sent back to the
-        browser; the form shows only whether one is set."
+        key write-only). Directory: DIR's `loadDirectoryStatus` read-only
+        (source, on, last run, last error). A key or token is never sent back to
+        the browser; the form shows only whether one is set."
     }
   - {
       id: D11,
-      text: "Members. The page DIR-D1 built gains: the seats a member holds (link
-        and unlink through `linkSeat`), and Invite: the person is added as today
-        and gets a mail with their personal login code and the company's login
+      text: "Members. The page DIR-D1 built gains: the seats a member holds (link and
+        unlink through `linkSeat`), and Invite: the person is added as today and
+        gets a mail with their personal login code and the company's login
         address (the code is in the mail body, never in a URL), sent through
         `sendMail` (apps/app/src/server/mail.ts). The (auth) pages signup,
         invite/[token] and forgot-password stop saying \"coming\": signup and
@@ -130,13 +161,12 @@ decisions:
       id: D12,
       text: "Second factor. TOTP (RFC 6238, SHA-1, 6 digits, 30 s, one step of drift)
         in apps/app/src/features/auth/totp.ts with node:crypto and a base32
-        codec of its own; the secret is sealed with the connector vault
-        (`seal` / `open`, context `totp:<companyId>:<userId>`). A manager who
-        signs in with a personal code must enter a TOTP code once they enrolled;
-        a manager without one is sent to enrol (the key and an otpauth: link
-        shown as text, no QR image, Q2) before any page. Members and leaders
-        sign in by code as today. Microsoft sign-in needs no TOTP (Entra does
-        MFA)."
+        codec of its own; the secret is sealed with the connector vault (`seal`
+        / `open`, context `totp:<companyId>:<userId>`). A manager who signs in
+        with a personal code must enter a TOTP code once they enrolled; a
+        manager without one is sent to enrol (the key and an otpauth: link shown
+        as text, no QR image, Q2) before any page. Members and leaders sign in
+        by code as today. Microsoft sign-in needs no TOTP (Entra does MFA)."
     }
   - {
       id: D13,
@@ -146,31 +176,29 @@ decisions:
         opens it as break-glass: every use writes one log line `[admin]
         break-glass <ISO time>` (no personal data) and /admin shows a banner
         \"opened with the shared code\" for that session (a flag in the admin
-        cookie). Fields on
-        User (auth.prisma): `totpSecretSealed String?`, `totpEnabledAt
-        DateTime?`, `isStackAdmin Boolean @default(false)`; `isStackAdmin` is set
-        in /admin People by an admin, never by the user."
+        cookie). Fields on User (auth.prisma): `totpSecretSealed String?`,
+        `totpEnabledAt DateTime?`, `isStackAdmin Boolean @default(false)`;
+        `isStackAdmin` is set in /admin People by an admin, never by the user."
     }
   - {
       id: D14,
-      text: "Setup wizard. /<company>/settings/setup, steps `company` (name,
-        profile), `units` (at least one), `roles` (at least one role with a
-        seat), `routes` (at least one route with an owner role), `members` (add
-        or invite), `done`; each step saves through the same actions as its
-        page (no second write path) and can be left and resumed. The step is
-        derived from what exists, never stored: `setupStep(counts)` in
+      text: "Setup wizard. /<company>/settings/setup, steps `company` (name, profile),
+        `units` (at least one), `roles` (at least one role with a seat),
+        `routes` (at least one route with an owner role), `members` (add or
+        invite), `done`; each step saves through the same actions as its page
+        (no second write path) and can be left and resumed. The step is derived
+        from what exists, never stored: `setupStep(counts)` in
         features/settings/sections.ts (ADM-G1, pure) takes { named, units,
         linkedSeats, routes, members } and gives the first step not done; the
         settings menu shows Setup and the index redirects to it until it gives
-        `done`. It hands TST and PIL the step
-        test ids of D7."
+        `done`. It hands TST and PIL the step test ids of D7."
     }
   - {
       id: D15,
       text: "Tests and proofs. Unit tests in apps/app/tests/unit/adm/, run with `npm
         test -w @nextup/app -- tests/unit/adm/<file> -t '<title>'`. DB tests in
-        apps/app/tests/db/adm-*.test.ts following tests/db/setup.ts, run from the
-        repo root with
+        apps/app/tests/db/adm-*.test.ts following tests/db/setup.ts, run from
+        the repo root with
         `DATABASE_URL=postgresql://nextup:nextup@127.0.0.1:5442/nextup_test bash
         ops/test-db.sh tests/db/<file> -t '<title>'`. E2E with the DB like
         STR-Z1 (CI=1, port of playwright.db.config.ts). Run them yourself; only
@@ -186,38 +214,38 @@ decisions:
       id: D17,
       text: "Goals. The Rules page gets a Goals section (ADM-H1): company goals
         (`Goal`: title, kpi, target, period, keywords, orgUnitId null = company-
-        wide) listed company-wide first, then by unit, edited in a drawer, through
-        `addGoal`, `updateGoal`, `removeGoal` in apps/app/src/lib/db/goals-edit.ts,
-        checked first by pure rules in features/org-edit/goals.ts (title 1-120,
-        keywords 0-30 of 1-40 chars, a unit of the same company). Ideas already
-        scored keep their score."
+        wide) listed company-wide first, then by unit, edited in a drawer,
+        through `addGoal`, `updateGoal`, `removeGoal` in
+        apps/app/src/lib/db/goals-edit.ts, checked first by pure rules in
+        features/org-edit/goals.ts (title 1-120, keywords 0-30 of 1-40 chars, a
+        unit of the same company). Ideas already scored keep their score."
     }
   - {
       id: D18,
-      text: "Notifications page (ADM-N1), section `notifications` after
-        Connectors: the company's switch `CompanyConfig.notifications`, the stage
-        gate in words (a sandbox sends nothing), how many people opted out per
-        kind (counts only, below 5 shown as 'fewer than 5'), and the outbox's
-        failed messages of the last 14 days from NTF's `listOutbox(companyId,
-        { status: \"failed\" })` (kind, channel, time, error; never a body,
-        never an address of a person) with Retry for one row. Webhook
-        subscriptions are not here: API builds their editor (PILOT, API)."
+      text: "Notifications page (ADM-N1), section `notifications` after Connectors:
+        the company's switch `CompanyConfig.notifications`, the stage gate in
+        words (a sandbox sends nothing), how many people opted out per kind
+        (counts only, below 5 shown as 'fewer than 5'), and the outbox's failed
+        messages of the last 14 days from NTF's `listOutbox(companyId, { status:
+        \"failed\" })` (kind, channel, time, error; never a body, never an
+        address of a person) with Retry for one row. Webhook subscriptions are
+        not here: API builds their editor (PILOT, API)."
     }
   - {
       id: D19,
       text: "A lost second factor (ADM-R1). In Members a company admin can 'Reset
         second factor' for another manager of the company (never for
         themselves); a stack admin can do it in /admin People. It clears
-        `totpSecretSealed` and `totpEnabledAt`, logs `[auth] totp reset
-        <ISO time>` without personal data, and the person enrols again at their
-        next code login. Managers of demo-stage companies sign in through the
-        demo and never enrol."
+        `totpSecretSealed` and `totpEnabledAt`, logs `[auth] totp reset <ISO
+        time>` without personal data, and the person enrols again at their next
+        code login. Managers of demo-stage companies sign in through the demo
+        and never enrol."
     }
   - {
       id: D20,
-      text: "Company login (ADM-E1): the side panel with the sample numbers
-        (\"26 h\", \"84 %\", \"3\") shows only for demo-stage companies; a
-        real company's login shows its name and mark only."
+      text: "Company login (ADM-E1): the side panel with the sample numbers (\"26 h\",
+        \"84 %\", \"3\") shows only for demo-stage companies; a real company's
+        login shows its name and mark only."
     }
   - {
       id: D21,
@@ -258,12 +286,23 @@ questions:
         signs in by code as today or with Microsoft."
     }
 autonomy:
-  merge: [low, normal]
+  merge: [ low, normal ]
   start_high: true
   replan: none
   budget_window_pct: 180 # tasks 150 % + 20 %, rounded
 talk:
-  telegram: [ question_open, blocked_twice, proof_red_twice, budget_over, gate_kevin, merge_waiting, start_high, other_repo, plan_done ]
+  telegram:
+    [
+      question_open,
+      blocked_twice,
+      proof_red_twice,
+      budget_over,
+      gate_kevin,
+      merge_waiting,
+      start_high,
+      other_repo,
+      plan_done
+    ]
   pane: [ blocked, task_merged, phase_done ]
   none: [ task_started ]
 ---
@@ -322,7 +361,7 @@ configured in the app and its first case is routed` is green.
 
 | WP | Content | Tasks | depends on | Owns |
 |---|---|---|---|---|
-| G | Guard, sections, nav, namespaces | ADM-G1 | IDN-Z1, LNG-Z1 | `server/actions/settings/guard.ts`, `features/settings/sections.ts`, `app/[company]/(app)/settings/{layout,page}.tsx`, `i18n/{de,en}.ts`, the five new namespace files |
+| G | Guard, sections, nav, namespaces | ADM-G1 | IDN-G1, CLK-G1 | `server/actions/settings/guard.ts`, `features/settings/sections.ts`, `app/[company]/(app)/settings/{layout,page}.tsx`, `i18n/{de,en}.ts`, the five new namespace files |
 | A | Company, rules, calendar | ADM-A1 | G, CLK-G1, CLK-A1 | `app/[company]/(app)/settings/{company,rules,calendar}/**`, `components/settings/{CompanyForm,RulesForm,CalendarForm}.tsx`, `server/actions/settings/company.ts`, `i18n/messages/settingsCompany.ts` |
 | B | Org, seats, routing | ADM-B1 | G | `app/[company]/(app)/settings/{org,routing}/**`, `components/settings/{OrgEditor,RoutingEditor}.tsx`, `server/actions/settings/org.ts`, `lib/db/org-edit.ts`, `features/org-edit/**`, `i18n/messages/settingsOrg.ts` |
 | C | Connectors | ADM-C1 | G, AIP-G1, DIR-C1 | `app/[company]/(app)/settings/connectors/**`, `components/settings/connectors/**`, `server/actions/settings/connectors.ts`, `i18n/messages/settingsConnectors.ts` |
