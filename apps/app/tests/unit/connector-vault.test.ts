@@ -15,6 +15,12 @@ describe("vault key", () => {
     expect(vaultKey({ CONNECTOR_VAULT_KEY: "a".repeat(63) })).toBeNull();
     expect(vaultKey({ CONNECTOR_VAULT_KEY: "z".repeat(64) })).toBeNull();
   });
+
+  it("also takes 32 bytes as base64", () => {
+    const raw = Buffer.from("0123456789abcdef0123456789abcdef");
+    expect(vaultKey({ CONNECTOR_VAULT_KEY: raw.toString("base64") })?.equals(raw)).toBe(true);
+    expect(vaultKey({ CONNECTOR_VAULT_KEY: Buffer.alloc(16).toString("base64") })).toBeNull();
+  });
 });
 
 describe("seal and open", () => {

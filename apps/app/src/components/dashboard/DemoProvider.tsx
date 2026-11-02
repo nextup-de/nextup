@@ -23,7 +23,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname, useRouter } from "next/navigation";
 import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
 import { FLAGS, type FlagKey } from "@/config/flags";
-import type { StepColumn, SyncSystem } from "@/features/projects/types";
+import type { SeedProject, StepColumn, SyncSystem } from "@/features/projects/types";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
 import { meFor, meOfSeat, type Me } from "@/features/auth/identity";
 import { appendEvent, emptyLog, newId, type CaseEvent, type EventLog, type EventPayload } from "@/features/cases/events";
@@ -32,12 +32,13 @@ import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
 import { dayFormatter, type DayFmt } from "@/features/cases/rows";
 import { affectedOn, exportSnippet } from "@/features/cases/selectors";
-import type { Persona, RolePersona, Seed } from "@/features/demo/types";
+import type { Persona, RolePersona, Seed, SeedCase } from "@/features/demo/types";
 import { normalizeDots, type Dots } from "@/features/design/dots";
 import { counts, demoData, type Counts, type DemoData } from "@/features/metrics";
 import { clearPrefs, getServerSnapshot, getSnapshot, resetLog, setPrefs, subscribe, updateLog } from "@/lib/demo-log";
 import { clearShots, dropShots } from "@/lib/shots";
 import { deptName as deptNameOf } from "@/lib/utils/format";
+import { loadCaseLog } from "@/server/actions/case-log";
 import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction } from "@/server/actions/events";
 import { signOut } from "@/server/actions/auth";
 import { useLocale, useT } from "@/i18n/client";
@@ -125,6 +126,8 @@ export type DemoContext = {
   menu: boolean; setMenu: (b: boolean) => void;
   dev: boolean; setDev: (b: boolean) => void;
   act: Act;
+  /** Server mode: fetch a case outside the shipped window (VIS/D9) and merge it into the log; false when the viewer may not open it. */
+  loadCase: (id: string) => Promise<boolean>;
   /** A feature flag for this company (src/config/flags.ts); without a value from the server, its demo default. */
   flag: (key: FlagKey) => boolean;
   resetDemo: () => void; deleteAdded: () => void; copySnippet: () => void; logout: () => void;
@@ -184,7 +187,7 @@ type Props = {
   children: React.ReactNode;
 };
 
-export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Props) {
+export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, children }: Props) {
   const serverMode = Boolean(viewer);
   const router = useRouter();
   const router_refresh = router.refresh;
@@ -216,15 +219,31 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     setPending((p) => (p.some((e) => have.has(e.id)) ? p.filter((e) => !have.has(e.id)) : p));
   }
 
+  // Cases loaded on their own page (VIS/D9). Kept in state, so the 8 s refreshes of the same page do not drop them.
+  const [loaded, setLoaded] = useState<{ events: CaseEvent[]; cases: SeedCase[]; projects: SeedProject[] }>({ events: [], cases: [], projects: [] });
+  const seed = useMemo<Seed>(() => {
+    if (loaded.cases.length + loaded.projects.length === 0) return shippedSeed;
+    const cases = new Set(shippedSeed.cases.map((c) => c.id));
+    const projects = new Set((shippedSeed.projects ?? []).map((p) => p.id));
+    return {
+      ...shippedSeed,
+      cases: shippedSeed.cases.concat(loaded.cases.filter((c) => !cases.has(c.id))),
+      projects: (shippedSeed.projects ?? []).concat(loaded.projects.filter((p) => !projects.has(p.id))),
+    };
+  }, [shippedSeed, loaded]);
+
   const log = useMemo<EventLog>(() => {
     if (!serverMode) return persisted.log;
-    const base = initialLog ?? emptyLog();
+    const shipped = initialLog ?? emptyLog();
+    const known = new Set(shipped.events.map((e) => e.id));
+    const older = loaded.events.filter((e) => !known.has(e.id));
+    const base = older.length === 0 ? shipped : { events: older.concat(shipped.events), day: shipped.day };
     const have = new Set(base.events.map((e) => e.id));
     const extra = pending.filter((e) => !have.has(e.id));
     if (extra.length === 0) return base;
     const dayDelta = extra.reduce((n, e) => (e.type === "day.advanced" ? n + (e.payload.by ?? 1) : n), 0);
     return { events: base.events.concat(extra), day: base.day + dayDelta };
-  }, [serverMode, persisted.log, initialLog, pending]);
+  }, [serverMode, persisted.log, initialLog, pending, loaded]);
 
   // The guess is made once per page load, so following a link (/raise -> /cases/x) keeps the persona.
   const [guessedRole] = useState(() => roleFromPath(appPath));
@@ -574,6 +593,21 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     else window.prompt(t("dashboard.providerCopyPrompt"), txt);
   }, [S, showToast, t]);
 
+  const loadCase = useCallback(async (id: string): Promise<boolean> => {
+    if (!serverMode) return true;
+    const got = await loadCaseLog(slug, id);
+    if (!got.ok) return false;
+    setLoaded((cur) => {
+      const have = new Set(cur.events.map((e) => e.id));
+      return {
+        events: cur.events.concat(got.events.filter((e) => !have.has(e.id))),
+        cases: got.seedCase && !cur.cases.some((c) => c.id === got.seedCase?.id) ? cur.cases.concat(got.seedCase) : cur.cases,
+        projects: cur.projects.concat(got.seedProjects.filter((p) => !cur.projects.some((x) => x.id === p.id))),
+      };
+    });
+    return true;
+  }, [serverMode, slug]);
+
   const value: DemoContext = {
     tenant, seed, ready, serverMode, S, D, N, log,
     role, setRole, leadAs, setLeadAs, persona, actor, actorUserId, me, email,
@@ -585,9 +619,27 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
     q, setQ, pop, setPop, togglePop: (p) => setPop((cur) => (cur === p ? null : p)),
     sheet, openSheet: (kind, id, init) => { setSheet({ kind, id, text: "", picked: null, people: [], ...init }); setPop(null); },
     closeSheet: () => setSheet(null), patchSheet: (p) => setSheet((s) => (s ? { ...s, ...p } : s)),
-    toast, showToast, menu, setMenu, dev, setDev, act, flag, resetDemo, deleteAdded, copySnippet, logout,
+    toast, showToast, menu, setMenu, dev, setDev, act, loadCase, flag, resetDemo, deleteAdded, copySnippet, logout,
     locale, f: dayFormatter(today, S.day, locale, seed.clock), href,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/**
+ * Around one case's page: a case the shipped log does not hold (outside the window, VIS/D9) is
+ * fetched from the server once and merged into the log; the page renders when that is answered.
+ */
+export function LoadCase({ caseId, children }: { caseId: string; children: React.ReactNode }) {
+  const { S, serverMode, loadCase } = useDemo();
+  const present = S.cases.some((c) => c.id === caseId);
+  const [answered, setAnswered] = useState<string | null>(null);
+  useEffect(() => {
+    if (!serverMode || present) return;
+    let live = true;
+    loadCase(caseId).then(() => live && setAnswered(caseId), () => live && setAnswered(caseId));
+    return () => { live = false; };
+  }, [serverMode, present, caseId, loadCase]);
+  if (serverMode && !present && answered !== caseId) return null;
+  return <>{children}</>;
 }

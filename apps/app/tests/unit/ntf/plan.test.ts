@@ -109,6 +109,7 @@ describe("NTF planner", () => {
     const hooks = (c: PlanCtx) => planNotices(r, c).filter((x) => x.channel === "webhook");
     const d = hooks(ctx([r], { subscriptions }));
     expect(d.map((x) => [x.key, x.address, x.status])).toEqual([[`wh:${r.id}:s1`, "s1", "pending"]]);
+    expect(d[0].data).toMatchObject({ event: { type: "case.raised" } });
     expect(hooks(ctx([r], { subscriptions, company: { ...ON, n8n: false } }))[0]).toMatchObject({ status: "skipped", lastError: "switched off" });
   });
 

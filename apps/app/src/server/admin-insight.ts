@@ -5,7 +5,7 @@ import { isAdmin } from "@/server/actions/admin";
 import { SEED } from "@/features/demo/seed";
 import { DEMO_GOALS } from "@/features/demo/structure";
 import { companyBrief, NO_KNOWLEDGE, rowsFromSeed, type Knowledge, type Profile } from "@/features/knowledge";
-import { toDecision, type DecisionRow } from "@/features/admin/decisions";
+import { decisionRows, type DecisionRow } from "@/features/admin/decisions";
 import type { Route } from "@/features/demo/types";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { companySeed } from "@/lib/db/companies";
@@ -84,15 +84,18 @@ async function companyRoutes(companies: readonly CompanyRef[]): Promise<Record<s
 
 export type DecisionData = { rows: DecisionRow[]; routeNames: Record<string, Record<string, string>> };
 
-/** The newest raises across the companies given, as decision rows, plus route names to show them with. */
-export async function decisionData(companies: readonly CompanyRef[], limit = 200): Promise<DecisionData> {
+/** The newest raises of one company - the console's own - as decision rows, plus route names to show them with. */
+export async function decisionData(company: CompanyRef, limit = 200): Promise<DecisionData> {
   if (!(await isAdmin()) || !hasDatabase()) return { rows: [], routeNames: {} };
-  const [inputs, routes] = await Promise.all([decisionInputs(companies, limit), companyRoutes(companies)]);
-  const rows = inputs.map((d) => {
-    const route = routes[d.company]?.find((r) => r.id === (d.payload.proposal?.routeId ?? d.payload.routeId));
-    const desks = [d.payload.assignee, route?.owner.name, route?.deputy].filter((x): x is string => Boolean(x));
-    return toDecision({ ...d, desks });
-  });
+  const [inputs, routes] = await Promise.all([decisionInputs([company], limit), companyRoutes([company])]);
+  const rows = decisionRows(
+    inputs.map((d) => {
+      const route = routes[d.company]?.find((r) => r.id === (d.payload.proposal?.routeId ?? d.payload.routeId));
+      const desks = [d.payload.assignee, route?.owner.name, route?.deputy].filter((x): x is string => Boolean(x));
+      return { ...d, desks };
+    }),
+    company.id,
+  );
   const routeNames = Object.fromEntries(Object.entries(routes).map(([slug, rs]) => [slug, Object.fromEntries(rs.map((r) => [r.id, r.type]))]));
   return { rows, routeNames };
 }
