@@ -1,4 +1,4 @@
-// Area auth (docs/adr/0007-areas.md). Models: User, ApiToken. Changed only by: DIR. Every migration is its own folder under prisma/migrations.
+// Area auth (docs/adr/0007-areas.md). Models: User, ApiToken, DirectoryRun, ExternalIdentity, SsoReplay. Changed only by: DIR, EID. Every migration is its own folder under prisma/migrations.
 
 // A person who can sign in. `role` is a plain String, not an enum, because the three roles are
 // data in src/config/roles.ts (Kevin's file) and an enum here would be a second source of truth.
@@ -55,6 +55,7 @@ model User {
   connections Connection[]
   manager     User?        @relation("UserManager", fields: [managerId], references: [id], onDelete: SetNull)
   reports     User[]       @relation("UserManager")
+  externalIdentities ExternalIdentity[]
 
   @@unique([companyId, email])
   @@unique([companyId, entraOid])
@@ -105,4 +106,32 @@ model DirectoryRun {
   updatedBy String?
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+// A person's account at a company's own identity provider (phase EID): OIDC or SAML sign-in, or the
+// SCIM link (provider and issuer "scim", subject = the SCIM externalId or userName). Found by
+// provider, issuer and subject, once per company. companyId is a plain column, no relation to Company.
+model ExternalIdentity {
+  id         String    @id @default(cuid())
+  companyId  String
+  userId     String
+  provider   String // oidc | saml | scim
+  issuer     String
+  subject    String
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, provider, issuer, subject])
+  @@index([userId])
+}
+
+// A sign-in response seen once (SAML assertion id, OIDC state) or a request id waiting for its response.
+// A key is accepted once until expiresAt; the sweep is the helper's, not a job.
+model SsoReplay {
+  key       String   @id
+  companyId String
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }

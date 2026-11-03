@@ -26,6 +26,7 @@ import { useT } from "@/i18n/client";
 import type { T } from "@/i18n";
 import s from "./Feed.module.css";
 import { libraryCoverFor, sampleCoverFor } from "@/features/cases/thumbs";
+import { useIdInUrl } from "@/lib/use-url-id";
 
 const ALL_SITES = "*"; // the "every site" filter value; shown as feedAllSites
 const ALL_UNITS = "*"; // the "every unit" filter value; shown as feed.allUnits
@@ -49,7 +50,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const t = useT();
   const names = useCaseNames();
   const ctx = useDemo();
-  const { seed, D, log, ready, act, actor, me, f, motion, flag } = ctx; // actor is the label I post under: shown, never compared
+  const { seed, tenant, D, log, ready, act, actor, me, f, motion, flag } = ctx; // actor is the label I post under: shown, never compared
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const [view, setView] = useState<ListView>("open");
   const [archived, setArchived] = useState<ArchiveFilter>("all");
@@ -59,6 +60,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const [sort, setSort] = useState<FeedSort>("support");
   const [menu, setMenu] = useState<"site" | "unit" | "sort" | null>(null);
   const [openId, setOpenId] = useState<string | null>(initialId ?? null);
+  useIdInUrl(openId, setOpenId); // the opened card is in the address (?id=)
   const [openScore, setOpenScore] = useState<Record<string, number | null>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const rootRef = useRef<HTMLDivElement>(null);
@@ -75,7 +77,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
 
   const itemOf = (c: ReducedCase): Item => {
     const row = dashboardRow(c, P, me, log);
-    const activity = latestActivity(c.id, log, seed.seats);
+    const activity = latestActivity(c.id, log, seed.seats, tenant.actorLabels);
     // Who backs it: named when raised (no id), plus everyone who pressed "this affects me too" (their user id).
     const named = raisedWith(c).affected;
     const backing: Backer[] = [...named.map((name) => ({ userId: null, name })), ...affectedOn(log, c.id).filter((a) => !named.includes(a.name)).map((a) => ({ userId: a.userId, name: a.name }))]

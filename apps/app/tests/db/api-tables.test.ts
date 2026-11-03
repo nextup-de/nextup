@@ -104,7 +104,7 @@ describe("API tables and helpers", () => {
   it("lists importExport after members and webhooks and apiTokens after notifications, labelled in both catalogs", () => {
     const keys = SETTINGS_SECTIONS.map((s) => s.key);
     expect(keys.indexOf("importExport")).toBe(keys.indexOf("members") + 1);
-    expect(keys.slice(keys.indexOf("notifications"), keys.indexOf("notifications") + 5)).toEqual(["notifications", "webhooks", "apiTokens", "teams", "areas"]);
+    expect(keys.slice(keys.indexOf("notifications"), keys.indexOf("notifications") + 5)).toEqual(["notifications", "webhooks", "apiTokens", "signIn", "teams"]);
     for (const k of ["importExport", "webhooks", "apiTokens"] as const) {
       const [ns, key] = SETTINGS_SECTIONS.find((s) => s.key === k)!.label.split(".") as [string, string];
       expect((en as Record<string, Record<string, string>>)[ns][key]).toBeTruthy();

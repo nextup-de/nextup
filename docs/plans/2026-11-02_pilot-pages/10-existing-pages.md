@@ -250,7 +250,7 @@ From Night-shift handover checklist · raised by L. Brandt · opened 3 Oct by M.
                                               [Mark it done…]  Stop the project
 ┌ Where it stands ──────────────────────────────────────────────────────────────┐
 │ ●──────────●──────────●──────────○──────────○──────────○                      │
-│ Opened     Baseline   Started    Done       Measured   Recognised             │
+│ Opened     Set up     Started    Done       Measured   Recognised             │
 │ 3 Oct      8 Oct      10 Oct     next                                         │
 │ 5 of 9 steps done  ▬▬▬▬▬▬▬▬▬▬▬▬░░░░░░░░                                       │
 │ Needs attention: 2 blocked (longest 6 days) · 1 late · 1 without an owner      │
@@ -280,6 +280,10 @@ Board · 5 of 9 done            ( All | Mine | No owner )  (HS)(LB)    2 hidden
 
 While the project is planned, the Baseline panel and the suggested steps sit above the board (as today), because
 "Start the project" waits for the baseline.
+
+*Updated 2026-11-03:* the second stage is **Set up**, not Baseline, and while the project is setting up its Overview
+shows the setup checklist (team, roles, goal, baseline, tools, context, how we work) in place of the Baseline panel.
+See [spec 12](12-project-setup.md) and [the project setup plan](../2026-11-03_project-setup.md).
 
 Card sheet (opens from the right, 480 px, as `EditDrawer`; suggestion):
 

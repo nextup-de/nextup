@@ -34,7 +34,9 @@ export const LINK_SYSTEMS = ["jira", "azure", "planner", "teams", "sharepoint", 
 export const OLD_SCOPES = ["events:read", "events:write", "knowledge:write"] as const;
 /** The scopes of the public API v1 (the scopes named by ApiV1.endpoints). */
 export const V1_SCOPES = ["cases:read", "cases:write", "decisions:read", "projects:read", "org:read"] as const;
-export const SCOPES = [...OLD_SCOPES, ...V1_SCOPES] as const;
+/** The scope of a SCIM token (EID D7): provisioning only, never offered on the API tokens page. */
+export const SCIM_SCOPE = "scim" as const;
+export const SCOPES = [...OLD_SCOPES, ...V1_SCOPES, SCIM_SCOPE] as const;
 export type Scope = (typeof SCOPES)[number];
 
 export const MAX_LIMIT = 500;
