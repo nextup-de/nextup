@@ -16,6 +16,8 @@ import { companySeed } from "@/lib/db/companies";
 import type { Seed } from "@/features/demo/types";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { deactivateUser } from "@/lib/db/directory";
+import { pseudonymOf } from "@/lib/db/pseudonymise";
+import { hasVerifiedEmail } from "@/features/privacy/export";
 import { linkSeat } from "@/lib/db/org-edit";
 import { inviteMail } from "@/features/auth/invite-mail";
 import { companyUrl } from "@/features/tenant/urls";
@@ -30,6 +32,10 @@ const auditFailed = "Nothing was changed: the change could not be written to the
 export type SeatLabel = { id: string; label: string };
 export type MemberRow = Member & {
   dept: string; codeIssuedAt: string | null; microsoft: boolean; active: boolean;
+  /** An address a data export can be mailed to (GDP D19); the address itself is already in `email`. */
+  hasEmail: boolean;
+  /** ISO time the person was pseudonymised, or null. The name is then the pseudonym label. */
+  pseudonymisedAt: string | null;
   /** The seats this member holds (OrgRoleHolder rows, by sort). */
   seats: SeatLabel[];
 };
@@ -63,8 +69,9 @@ async function membersOf(companyId: string): Promise<MemberRow[]> {
   const rows = await getDb().user.findMany({
     where: { companyId },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, email: true, role: true, dept: true, loginCodeAt: true, entraOid: true, active: true },
+    select: { id: true, name: true, email: true, role: true, dept: true, loginCodeAt: true, entraOid: true, active: true, directorySyncedAt: true },
   });
+  const pseudonyms = await pseudonymOf(companyId, rows.map((u) => u.id));
   return rows
     .filter((u) => isRole(u.role))
     .map((u) => ({
@@ -76,6 +83,8 @@ async function membersOf(companyId: string): Promise<MemberRow[]> {
       codeIssuedAt: u.loginCodeAt?.toISOString() ?? null,
       microsoft: Boolean(u.entraOid),
       active: u.active,
+      hasEmail: !pseudonyms.has(u.id) && hasVerifiedEmail(u),
+      pseudonymisedAt: pseudonyms.get(u.id)?.at.toISOString() ?? null,
       seats: held.filter((h) => h.userId === u.id).map((h) => ({ id: h.id, label: `${h.role.title} · ${h.name}` })),
     }));
 }

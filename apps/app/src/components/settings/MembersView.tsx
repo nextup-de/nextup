@@ -4,6 +4,7 @@
 // server action from src/server/actions/members.ts; a login code comes back once and is shown once.
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { ROLES } from "@/config/roles";
+import { memberPrivacyActions } from "@/features/privacy/member-menu";
 import { shortName } from "@/features/settings/routing-view";
 import { useFormat, useT } from "@/i18n/client";
 import {
@@ -24,6 +25,8 @@ import {
   type SeatState,
 } from "@/server/actions/members";
 import { enrolledManagersAction, resetTotpAction } from "@/server/actions/settings/totp-reset";
+import { PersonExportDialog } from "./PersonExportDialog";
+import { PseudonymiseDialog } from "./PseudonymiseDialog";
 import { SettingsHead } from "./SettingsParts";
 import s from "./settings.module.css";
 import styles from "./MembersView.module.css";
@@ -72,6 +75,9 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   // Managers who enrolled a second factor: only they can have it reset (ADM D19).
   const [enrolled, setEnrolled] = useState<string[]>([]);
+  const [exporting, setExporting] = useState<MemberRow | null>(null);
+  const [pseudonymising, setPseudonymising] = useState<MemberRow | null>(null);
+  const [privacyMsg, setPrivacyMsg] = useState<string | null>(null);
   const [askingTotp, setAskingTotp] = useState<MemberRow | null>(null);
   const [totpMsg, setTotpMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [resetting, startReset] = useTransition();
@@ -144,6 +150,7 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
       {seated.error ? <p className={s.fieldError} role="alert">{seated.error}</p> : null}
       {roled.error ? <p className={s.fieldError} role="alert">{roled.error}</p> : null}
       {totpMsg ? <p className={totpMsg.ok ? s.cardHint : s.fieldError} role={totpMsg.ok ? "status" : "alert"}>{totpMsg.text}</p> : null}
+      {privacyMsg ? <p className={s.cardHint} role="status" data-testid="member-privacy-status">{privacyMsg}</p> : null}
       {roled.saved ? <p className={s.cardHint} role="status">{roled.saved}</p> : null}
 
       <div className={styles.toolbar}>
@@ -173,13 +180,15 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
         </div>
         {shown.length === 0 ? <p className={styles.noMatch}>{t("settings.noMatch", { q: query })}</p> : null}
         <ul className={styles.list}>
-          {shown.map((m) => (
+          {shown.map((m) => {
+            const privacy = memberPrivacyActions(m, me);
+            return (
             <li key={m.id} className={styles.row} data-inactive={m.active ? undefined : ""} data-testid={`settings-member-${m.id}`}>
               <span className={styles.who}>
                 <span className={styles.avatar} data-me={m.id === me ? "" : undefined}>{initials(m.name)}</span>
                 <span className={styles.whoText}>
                   <strong>{m.name}{m.id === me ? <span className={s.mute}> ({t("settings.you")})</span> : null}</strong>
-                  <span className={styles.sub}>{m.active ? m.email : t("settings.inactive")}</span>
+                  <span className={styles.sub}>{m.pseudonymisedAt ? t("privacyPerson.rowPseudonymised", { date: when(m.pseudonymisedAt) }) : m.active ? m.email : t("settings.inactive")}</span>
                 </span>
               </span>
               <span className={styles.cell} data-label={t("settings.colDept")}>{m.dept || "–"}</span>
@@ -208,7 +217,7 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
                 <details className={s.rowMenu}>
                   <summary aria-label={t("settings.memberMenu", { name: m.name })} data-testid={`settings-member-menu-${m.id}`}>···</summary>
                   <div className={s.menuList}>
-                    {m.active ? (
+                    {!privacy.deleteOnly && m.active ? (
                       <form action={codeAction} onSubmit={(e) => closeMenu(e.currentTarget)}>
                         <input type="hidden" name="slug" value={slug} />
                         <button type="submit" name="userId" value={m.id} disabled={coding || demo}>
@@ -216,11 +225,19 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
                         </button>
                       </form>
                     ) : null}
-                    {m.active ? <button type="button" onClick={(e) => { closeMenu(e.currentTarget); setSeatsFor(m); }}>{t("settings.seatsMenu")}</button> : null}
-                    {m.id !== me && m.role === "manager" && enrolled.includes(m.id) ? (
+                    {!privacy.deleteOnly && m.active ? <button type="button" onClick={(e) => { closeMenu(e.currentTarget); setSeatsFor(m); }}>{t("settings.seatsMenu")}</button> : null}
+                    {!privacy.deleteOnly && m.id !== me && m.role === "manager" && enrolled.includes(m.id) ? (
                       <button type="button" disabled={resetting} onClick={(e) => { closeMenu(e.currentTarget); setAskingTotp(m); }}>{t("settings.totpReset")}</button>
                     ) : null}
-                    {!m.active && m.id !== me ? (
+                    {privacy.exportTo.length > 0 ? (
+                      <button type="button" disabled={demo} onClick={(e) => { closeMenu(e.currentTarget); setExporting(m); }} data-testid="member-export-open">{t("privacyPerson.menuExport")}</button>
+                    ) : null}
+                    {privacy.pseudonymise !== "hidden" ? (
+                      <button type="button" className={s.danger} disabled={demo || privacy.pseudonymise === "disabled-active"}
+                        title={privacy.pseudonymise === "disabled-active" ? t("privacyPerson.menuPseudonymiseActive", { name: m.name }) : undefined}
+                        onClick={(e) => { closeMenu(e.currentTarget); setPseudonymising(m); }} data-testid="member-pseudonymise-open">{t("privacyPerson.menuPseudonymise")}</button>
+                    ) : null}
+                    {!privacy.deleteOnly && !m.active && m.id !== me ? (
                       <form action={removeAction} onSubmit={(e) => closeMenu(e.currentTarget)}>
                         {hidden(m)}
                         <button type="submit" name="intent" value="reactivate" disabled={removing || demo} data-testid={`settings-member-reactivate-${m.id}`}>{t("settings.reactivate")}</button>
@@ -235,7 +252,8 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
                 </details>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
 
@@ -324,6 +342,15 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
             </div>
           </form>
         </div>
+      ) : null}
+
+      {exporting ? (
+        <PersonExportDialog slug={slug} member={exporting} exportTo={memberPrivacyActions(exporting, me).exportTo}
+          onClose={() => setExporting(null)} onDone={(msg) => { setExporting(null); setPrivacyMsg(msg); }} />
+      ) : null}
+      {pseudonymising ? (
+        <PseudonymiseDialog slug={slug} member={pseudonymising}
+          onClose={() => setPseudonymising(null)} onDone={(msg) => { setPseudonymising(null); setPrivacyMsg(msg); }} />
       ) : null}
 
       {askingTotp ? (
