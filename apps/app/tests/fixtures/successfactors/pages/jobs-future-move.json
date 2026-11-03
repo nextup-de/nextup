@@ -1,0 +1,22 @@
+{
+  "d": {
+    "results": [
+      {
+        "userId": "u1",
+        "startDate": "/Date(1577836800000)/",
+        "department": "D100",
+        "jobTitle": "Schichtleiterin",
+        "managerId": "u2",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "userId": "u1",
+        "startDate": "/Date(1794268800000)/",
+        "department": "D200",
+        "jobTitle": "Einkaufsleiterin",
+        "managerId": "u2",
+        "lastModifiedDateTime": "/Date(1792915200000)/"
+      }
+    ]
+  }
+}
