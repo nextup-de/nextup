@@ -14,7 +14,8 @@ const UNIT = "Zephyrwerk";
 const ROLE = "Hall supervisor";
 const TITLE = `Oil on the floor by press ${STAMP}`;
 const REASON = "Not this quarter, the press is replaced in January";
-const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3101";
+// The path-mode server of playwright.db.config.ts, whichever port this checkout has (tests/e2e/ports.ts).
+const BASE = () => test.info().project.use.baseURL;
 
 test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL (.env.local)");
 test.use({ ...devices["Pixel 7"] });
@@ -22,7 +23,7 @@ test.use({ ...devices["Pixel 7"] });
 const codes = new Map<string, string>();
 
 async function signIn(browser: Browser, name: string): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext({ ...devices["Desktop Chrome"], baseURL: BASE });
+  const context = await browser.newContext({ ...devices["Desktop Chrome"], baseURL: BASE() });
   const page = await context.newPage();
   await page.goto(`/${SLUG}/login`);
   await page.locator("#code").fill(codes.get(name) ?? "");
@@ -79,7 +80,7 @@ test.describe.serial("FLR acceptance", () => {
     });
 
     // The phone: a fresh context, every request URL recorded.
-    const phone = await browser.newContext({ ...devices["Pixel 7"], baseURL: BASE });
+    const phone = await browser.newContext({ ...devices["Pixel 7"], baseURL: BASE() });
     const requested: string[] = [];
     phone.on("request", (r) => requested.push(r.url()));
     const mobile = await phone.newPage();

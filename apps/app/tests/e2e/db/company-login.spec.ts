@@ -85,7 +85,8 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     await member.getByRole("button", { name: "Answer T. Vogel" }).click();
     await confirmSheet(member, "From maintenance.", "Send the answer");
 
-    await leader.reload();
+    // The inbox without ?id=: a reload would open the case from the address, and the click would close it.
+    await leader.goto(new URL(leader.url()).pathname);
     await leader.getByRole("main").getByText(title).first().click();
     await leader.getByRole("button", { name: "Yes, do it" }).click();
     // Projects are on by default, so the yes opens a sheet that names the project's lead.
