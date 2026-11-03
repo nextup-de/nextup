@@ -1,0 +1,29 @@
+// One word per connector for the console's Connectors page: on, off, needs you, or error. Pure: the
+// facts the page already reads in, the status out. It never looks at a key, only whether one is set.
+export type ConnectorStatus = "on" | "off" | "needs" | "error";
+
+/** Jira: an error counts only while the sync is on; off is a choice, not a problem. */
+export function jiraStatus(f: { on: boolean; lastError: string | null }): ConnectorStatus {
+  if (!f.on) return "off";
+  return f.lastError ? "error" : "on";
+}
+
+/** Microsoft 365 search needs Microsoft sign-in and the vault before it can be switched on. */
+export function m365Status(f: { on: boolean; microsoft: boolean; vault: boolean }): ConnectorStatus {
+  if (!f.microsoft || !f.vault) return "needs";
+  return f.on ? "on" : "off";
+}
+
+/** The AI provider: off (keywords only), or a hosted provider that still lacks its key. */
+export function aiStatus(f: { choice: string; key: "set" | "not set"; vault: boolean }): ConnectorStatus {
+  if (f.choice === "off" || f.choice === "mock") return "off";
+  const hosted = f.choice === "azure-openai" || f.choice === "openai-compatible";
+  if (hosted && (f.key !== "set" || !f.vault)) return "needs";
+  return "on";
+}
+
+/** The directory sync is switched by NextUp's team; here it is only on, off or failing. */
+export function directoryStatus(f: { on: boolean; lastError: string | null }): ConnectorStatus {
+  if (!f.on) return "off";
+  return f.lastError ? "error" : "on";
+}

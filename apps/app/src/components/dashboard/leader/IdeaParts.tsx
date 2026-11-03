@@ -40,12 +40,12 @@ export function Cites({ ns, to }: { ns: number[]; to: string }) {
   return <>{ns.map((n) => <a key={n} href={"#" + to} className={styles.cite}>{n}</a>)}</>;
 }
 
-export function FileChip({ ext, name, title, meta, n }: { ext: string; name: string; title?: string; meta: string; n?: number }) {
+export function FileChip({ ext, name, title, meta }: { ext: string; name: string; title?: string; meta: string }) {
   return (
     <span className={styles.file} title={title}>
       <span className={styles.fileTag} data-tone={tagTone(ext)}>{ext}</span>
       <span className={styles.fileText}>
-        <span className={styles.fileName}>{n != null && <span className={styles.fileN}>{n}</span>}{name}</span>
+        <span className={styles.fileName}>{name}</span>
         <span className={styles.fileMeta}>{meta}</span>
       </span>
     </span>
@@ -138,11 +138,26 @@ export function Bar({ label, pct, display, wide = false }: { label: string; pct:
     </div>
   );
 }
-// The numbered sources. `fold` (phones) tucks them into one row - a peek at the file types and the
-// count - that opens into a compact list; a citation link opens it too (the target sits inside).
-export function Sources({ id, list, count, fold }: { id: string; list: Numbered[]; count?: boolean; fold?: boolean }) {
+// Attachments as one grouped list: type, name, size.
+export function FileRows({ files }: { files: IdeaBrief["files"] }) {
+  return (
+    <ul className={styles.group}>
+      {files.map((f) => (
+        <li key={f.name} className={styles.gRow} title={f.name}>
+          <span className={styles.srcTag} data-tone={tagTone(f.ext)}>{f.ext}</span>
+          <span className={`${styles.gMain} ${styles.gLine}`}><span className={styles.gTitle}>{f.short}</span></span>
+          <span className={styles.gEnd}>{f.size}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// The numbered sources, tucked into one row - a peek at the file types and the count - that opens
+// into a compact list; a citation link opens it too (the target sits inside).
+export function Sources({ id, list }: { id: string; list: Numbered[] }) {
   const t = useT();
-  if (fold) return (
+  return (
     <details className={`${styles.section} ${styles.srcFold}`}>
       <summary className={styles.srcSummary}>
         <span className={styles.label}>{t("leader.sources")}</span>
@@ -161,15 +176,12 @@ export function Sources({ id, list, count, fold }: { id: string; list: Numbered[
       </ol>
     </details>
   );
-  return (
-    <div className={styles.section} id={id}>
-      <div className={styles.labelRow}><span className={styles.label}>{t("leader.sources")}</span>{count && <span className={styles.count}>{t("leader.sourcesCount", { count: list.length })}</span>}</div>
-      <div className={styles.files}>{list.map((s) => <FileChip key={s.n} n={s.n} ext={s.ext} name={s.name} meta={s.where} />)}</div>
-    </div>
-  );
 }
 
-export function AiBrief({ brief, srcId, foldSources }: { brief: IdeaBrief; srcId: string; foldSources?: boolean }) {
+// What the AI found, in a fixed order: the finding and its numbers, the advice, the timeline, then
+// what to follow up on (questions, similar ideas, reviewers), the pattern, and the sources folded.
+// Every list is the same grouped list; sections are set apart by space, not lines.
+export function AiBrief({ brief, srcId }: { brief: IdeaBrief; srcId: string }) {
   const t = useT();
   const rec = brief.actions.find((d) => d.key === brief.rec);
   const questions = brief.lead ? brief.questions.slice(0, 2) : brief.questions;
@@ -207,38 +219,52 @@ export function AiBrief({ brief, srcId, foldSources }: { brief: IdeaBrief; srcId
       {questions.length > 0 && (
         <div className={styles.section}>
           <span className={styles.label}>{t("leader.worthAsking", { name: brief.author.name })}</span>
-          {questions.map((q, i) => <div key={i} className={styles.question}><span className={styles.qn}>{i + 1}</span><p className={styles.para}>{q}</p></div>)}
+          <ol className={styles.group}>
+            {questions.map((q, i) => <li key={i} className={styles.gRow}><span className={styles.gNum}>{i + 1}</span><span className={`${styles.gMain} ${styles.gText}`}>{q}</span></li>)}
+          </ol>
         </div>
       )}
-      <div className={styles.section}><span className={styles.label}>{t("leader.pattern")}</span><p className={styles.para}>{brief.pattern}<Cites ns={brief.cites.pattern} to={srcId} /></p></div>
-      <div className={styles.section}>
-        <span className={styles.label}>{t("leader.categorisedAs")}</span>
-        <div className={styles.chips}>{brief.categories.map((c) => <span key={c} className={styles.tag}>{c}</span>)}</div>
-      </div>
       {brief.similar.length > 0 && (
         <div className={styles.section}>
           <span className={styles.label}>{t("leader.similarIdeas")}</span>
-          {brief.similar.map((m) => (
-            <div key={m.title} className={styles.similar}>
-              <div className={styles.similarHead}><span className={styles.similarTitle}>{m.title}</span><span className={styles.status}>{m.status}</span>{m.match != null && <span className={styles.match}>{t("leader.matchPct", { pct: m.match })}</span>}</div>
-              <span className={styles.small}>{m.where}</span>
-              {m.note && <p className={styles.para}>{m.note}<Cites ns={brief.cites.similar} to={srcId} /></p>}
-            </div>
-          ))}
+          <ul className={styles.group}>
+            {brief.similar.map((m) => (
+              <li key={m.title} className={styles.gRow}>
+                <span className={styles.gMain}>
+                  <span className={styles.gTitle}>{m.title}</span>
+                  <span className={styles.gSub}>{m.where}</span>
+                  {m.note && <span className={styles.gSub}>{m.note}<Cites ns={brief.cites.similar} to={srcId} /></span>}
+                </span>
+                <span className={styles.gEnd}>
+                  <span className={styles.status}>{m.status}</span>
+                  {m.match != null && <span>{t("leader.matchPct", { pct: m.match })}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {brief.routing.length > 0 && (
         <div className={styles.section}>
           <span className={styles.label}>{t("leader.suggestedReviewers")}</span>
-          {brief.routing.map((r) => (
-            <div key={r.name} className={styles.reviewer}>
-              <div className={styles.quoteBy}><span className={styles.chip}><span className={styles.chipAvatar} data-avatar={avatarTone(r.name)}>{initialsOf(r.name)}</span>{r.name}</span><span className={styles.small}>{r.role}</span></div>
-              <p className={styles.para}>{r.why}</p>
-            </div>
-          ))}
+          <ul className={styles.group}>
+            {brief.routing.map((r) => (
+              <li key={r.name} className={styles.gRow}>
+                <span className={styles.chipAvatar} data-avatar={avatarTone(r.name)}>{initialsOf(r.name)}</span>
+                <span className={styles.gMain}>
+                  <span className={styles.gTitle}>{r.name}<span className={styles.gRole}> · {r.role}</span></span>
+                  <span className={styles.gSub}>{r.why}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-      <Sources id={srcId} list={brief.sources} count fold={foldSources} />
+      <dl className={styles.panel}>
+        <PanelRow k={t("leader.pattern")}>{brief.pattern}<Cites ns={brief.cites.pattern} to={srcId} /></PanelRow>
+        {brief.categories.length > 0 && <PanelRow k={t("leader.categorisedAs")}>{brief.categories.join(" · ")}</PanelRow>}
+      </dl>
+      <Sources id={srcId} list={brief.sources} />
       <span className={styles.small}>{t("leader.aiSuggestionsOnly")}</span>
     </div>
   );
