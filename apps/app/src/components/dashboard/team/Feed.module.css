@@ -260,3 +260,8 @@
 /* The number never wraps; a long one steps down a size. The line under it: two lines at most. */
 .coverStat[data-long="true"] { font-size: var(--nh-fs-xl); }
 .coverHook { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* The latest-event line, the supporters line and the window footer (MET-F1). */
+.latest { font-size: var(--nh-fs-sm); color: #6e6e73; text-wrap: pretty; }
+.supporters { font-size: var(--nh-fs-sm); font-weight: 600; color: #1c1c1e; text-wrap: pretty; }
+.windowNote { margin: 8px 0 0; font-size: var(--nh-fs-sm); color: #6e6e73; }
