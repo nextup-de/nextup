@@ -13,7 +13,6 @@ export const AUDIT_ACTIONS = [
   "audit.settings.goals",
   "audit.settings.areas",
   "audit.settings.notifications",
-  "audit.settings.areas",
   "audit.settings.metrics_baseline",
   "audit.member.added",
   "audit.member.invited",
