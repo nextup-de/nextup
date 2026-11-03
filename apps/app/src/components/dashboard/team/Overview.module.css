@@ -558,3 +558,10 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
 .mRight { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-top: 2px; }
 .mWhen { font-size: var(--nh-fs-md); color: #8e8e93; white-space: nowrap; }
 .mWhen[data-tone="late"] { color: #d70015; }
+
+/* ── the desk's escalation line, and the table's pager ── */
+.deskEsc { display: block; font-size: var(--nh-fs-xs); color: #b25e00; font-weight: 500; }
+.pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 4px 0; }
+.pagerInfo { font-size: var(--nh-fs-sm); color: #6e6e73; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.pagerBtn { width: 32px; height: 32px; border-radius: 50%; border: 0; background: #fff; color: #1c1c1e; font-size: var(--nh-fs-lg); line-height: 1; cursor: pointer; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1); }
+.pagerBtn:disabled { opacity: .35; cursor: default; }

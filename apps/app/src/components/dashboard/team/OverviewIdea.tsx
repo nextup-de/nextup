@@ -1,36 +1,34 @@
 "use client";
 // One case, opened on the dashboard: the left half of the Claude Design handoff "Overview", its
 // markup and classes 1:1 (dc-convert -> Overview.module.css). The head card (meta, title, the five
-// steps, whose desk and how much of the promise is used), then Idea | AI: the idea itself, editable
-// in place, or the five scores - one opens into its reasoning - and what the AI found. Props in,
-// JSX out; a saved edit goes up through onSave (a stand-in until editing has its event).
-import { Fragment, useEffect, useRef, useState } from "react";
+// steps, whose desk and how much of the promise is used), then Idea | AI: the idea as it was raised
+// and its revisions, or the five scores - one opens into its reasoning - and what the AI found.
+// Props in, JSX out; nothing here is edited in place (MET D17).
+import { Fragment, useState } from "react";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { useT } from "@/i18n/client";
 import type { OverviewStep } from "@/features/cases/rows";
-import { extOf, type IdeaBrief, type NumberedBlock } from "@/features/ideas/brief";
-import type { IdeaEdit, IdeaFile } from "./overviewPreview";
+import type { DeskLabel } from "@/features/overview/rows";
+import type { IdeaBrief, NumberedBlock } from "@/features/ideas/brief";
 import s from "./Overview.module.css";
 import { avatarTone } from "@/lib/avatar";
 
 export type IdeaMode = "idea" | "ai";
+export type IdeaFile = { name: string; ext: string; meta: string };
 export type OverviewIdeaProps = {
   id: string;
   title: string;
   raised: string; // "26 Sept"
   dept: string; // "Production, Line 3" (and who raised it, when it is not the viewer)
   steps: OverviewStep[];
-  desk: { name: string; role: string };
+  desk: DeskLabel;
   wait: { text: string; pct: number; tone: "open" | "late" | "done" };
   brief: IdeaBrief;
   files: IdeaFile[];
   added: { text: string; when: string }[]; // new information since it was raised
+  versions: { n: number; when: string; title: string }[]; // the raiser's revisions, oldest first; empty with one
   mode: IdeaMode;
   onMode: (m: IdeaMode) => void;
-  editSignal: number; // bumped by the chat's "Add details": back to the idea, in edit mode
-  edit: IdeaEdit | null; // the idea as last saved in edit mode
-  onSave: ((e: IdeaEdit) => void) | null; // null: this viewer cannot edit it
-  onProfile: ((e: React.MouseEvent<HTMLElement>) => void) | null;
   onClose: () => void;
   // On a phone (OverviewPhone) the same page without the close button (the bar has back), and the
   // scores as a row of rings - a tap opens the reasoning in a sheet (onOpenScore).
@@ -38,10 +36,6 @@ export type OverviewIdeaProps = {
   onOpenScore?: (i: number) => void;
 };
 
-const sizeOf = (bytes: number) => (bytes > 1e6 ? (bytes / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(bytes / 1e3)) + " KB");
-const X = () => (
-  <svg className={s.svg} width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#3a3a3c" strokeWidth="3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-);
 export const Cites = ({ ns, dark }: { ns: number[]; dark?: boolean }) => <>{ns.map((c) => <a key={c} className={dark ? s.c2 : s.c} href="#aisrc">{c}</a>)}</>;
 const Star = ({ size }: { size: number }) => (
   <svg className={s.svg2} width={size} height={size} viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" fill="#007aff" /></svg>
@@ -51,42 +45,17 @@ export function OverviewIdea(p: OverviewIdeaProps) {
   const t = useT();
   const { brief } = p;
   const [openScore, setOpenScore] = useState<number | null>(null);
-  const [editing, setEditing] = useState<IdeaEdit | null>(null);
-  const [affDraft, setAffDraft] = useState("");
-  const buildRef = useRef<HTMLDivElement>(null);
-  const shown: IdeaEdit = p.edit ?? {
-    description: brief.description, context: brief.context ?? "", prompts: brief.prompts,
-    affects: [...brief.depts.map((d) => d.name), ...brief.people.map((x) => x.name)], files: p.files,
-  };
-  const startEdit = () => { setEditing({ ...shown, prompts: shown.prompts.map((x) => ({ ...x })) }); setAffDraft(""); };
-
-  // "Add details" from the chat: the Idea tab, in edit mode, scrolled into view.
-  const [seenSignal, setSeenSignal] = useState(p.editSignal);
-  if (p.editSignal !== seenSignal) {
-    setSeenSignal(p.editSignal);
-    if (p.onSave && !editing) startEdit();
-  }
-  useEffect(() => {
-    if (p.editSignal) requestAnimationFrame(() => buildRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [p.editSignal]);
-
-  const e = editing;
-  const patch = (x: Partial<IdeaEdit>) => setEditing((d) => (d ? { ...d, ...x } : d));
-  const save = () => { if (!e || !p.onSave) return; p.onSave({ ...e, prompts: e.prompts.filter((x) => x.label.trim() || x.text.trim()) }); setEditing(null); };
-  const addFiles = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(ev.target.files ?? []).map((f) => ({ name: f.name, ext: extOf(f.name).slice(0, 4) || "FILE", meta: sizeOf(f.size) }));
-    ev.target.value = "";
-    if (e) patch({ files: [...e.files, ...picked] });
-  };
-  const files = (e ?? shown).files;
+  const files = p.files;
+  const affects = [...brief.depts.map((d) => d.name), ...brief.people.map((x) => x.name)];
   // Why each team or person is affected, where the raise page's analysis said so.
   const whyOf = (name: string) => [...brief.depts, ...brief.people].find((x) => x.name === name)?.why ?? null;
   const score = openScore == null ? null : brief.scores[openScore];
   const rec = brief.actions.find((a) => a.key === brief.rec);
   const phone = p.variant === "phone";
   // A press on either side of the slider flips it (the design toggles, whichever side you hit).
-  const flip = () => { if (p.mode === "idea") setEditing(null); p.onMode(p.mode === "idea" ? "ai" : "idea"); };
+  const flip = () => p.onMode(p.mode === "idea" ? "ai" : "idea");
   const view = p.mode;
+  const desk = p.desk;
 
   return (
     <div className={s.div22}>
@@ -114,13 +83,15 @@ export function OverviewIdea(p: OverviewIdeaProps) {
           </div>
           <div className={s.div30}>
             <span className={s.dept}>{t("team.ideaOnDeskOf")}</span>
-            {p.onProfile ? (
-              <button type="button" className={s.deskProfile} onClick={p.onProfile} title={t("team.ideaView", { name: p.desk.name })}>
-                <span className={s.initials2} data-avatar={avatarTone(p.desk.name)}>{initialsOf(p.desk.name)}</span>{p.desk.name}<span className={s.role2}>{p.desk.role}</span>
-              </button>
-            ) : (
-              <span className={s.deskProfile}><span className={s.initials2} data-avatar={avatarTone(p.desk.name)}>{initialsOf(p.desk.name)}</span>{p.desk.name}<span className={s.role2}>{p.desk.role}</span></span>
-            )}
+            <span className={s.deskProfile}>
+              <span className={s.initials2} data-avatar={avatarTone(desk.role ?? "")}>{initialsOf(desk.role ?? "?")}</span>
+              {desk.role ?? t("overview.deskNone")}
+              <span className={s.role2}>
+                {desk.names.join(", ")}{desk.more > 0 ? " " + t("overview.deskMore", { count: desk.more }) : ""}
+                {desk.role !== null && desk.names.length === 0 ? t("overview.deskVacant") : ""}
+                {desk.escalation ? <span className={s.deskEsc}>{t("overview.deskMoved", { role: desk.escalation })}</span> : null}
+              </span>
+            </span>
             <span className={s.label} />
             <span className={s.waitText} data-tone={p.wait.tone}>
               <span className={s.span3}><span className={s.span4} style={{ width: p.wait.pct + "%" }} /></span>
@@ -129,114 +100,59 @@ export function OverviewIdea(p: OverviewIdeaProps) {
           </div>
         </div>
 
-        <div className={s.div31} ref={buildRef}>
+        <div className={s.div31}>
           <div className={s.div32}>
             <div className={s.div33} data-mode={p.mode} role="tablist" aria-label={t("team.ideaShow")}>
               <span className={s.span5} />
               <button type="button" role="tab" aria-selected={p.mode === "idea"} className={s.setManual} onClick={flip}>{t("team.ideaTab")}</button>
               <button type="button" role="tab" aria-selected={p.mode === "ai"} className={s.setChat} onClick={flip}><Star size={11} />{t("team.ideaTabAi")}</button>
             </div>
-            {e && view === "idea" && (
-              <div className={s.div34}>
-                <button type="button" className={s.cancelEdit} onClick={() => setEditing(null)}>{t("common.cancel")}</button>
-                <button type="button" className={s.saveEdit} onClick={save}>{t("common.save")}</button>
-              </div>
-            )}
-            <div className={s.div35}>
-              {!e && view === "idea" && p.onSave && (
-                <button type="button" className={s.startEdit} onClick={startEdit} title={t("team.ideaEdit")} aria-label={t("team.ideaEdit")}>
-                  <svg className={s.svg} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z" /></svg>
-                </button>
-              )}
-            </div>
           </div>
 
           {view === "idea" ? (
             <div className={s.div36}>
-              {e
-                ? <textarea className={s.textarea} value={e.description} onChange={(ev) => patch({ description: ev.target.value })} rows={4} aria-label={t("team.ideaDescription")} />
-                : <p className={s.description}>{shown.description}</p>}
-              {!e && (
-                <div className={s.sec}>
-                  <span className={s.dept}>{t("team.ideaWho")}</span>
-                  <div className={s.kv}>
-                    <span className={s.label4}>{t("team.ideaRaisedBy")}</span>
-                    <span className={s.text}>{brief.author.name}{!brief.author.anonymous && brief.author.role && brief.author.role !== brief.author.dept ? " · " + brief.author.role : ""}</span>
-                    {brief.author.dept && <><span className={s.label4}>{t("team.ideaTeam")}</span><span className={s.text}>{brief.author.dept}</span></>}
-                    {brief.routing.map((r, k) => (
-                      <Fragment key={r.name + k}>
-                        <span className={s.label4}>{k === 0 ? t("team.ideaResponsible") : t("team.ideaNextInLine")}</span>
-                        <span className={s.text}>{r.name}{r.role ? " · " + r.role : ""}<span className={s.why}>{r.why}</span></span>
-                      </Fragment>
-                    ))}
-                  </div>
+              <p className={s.description}>{brief.description}</p>
+              <div className={s.sec}>
+                <span className={s.dept}>{t("team.ideaWho")}</span>
+                <div className={s.kv}>
+                  <span className={s.label4}>{t("team.ideaRaisedBy")}</span>
+                  <span className={s.text}>{brief.author.name}{!brief.author.anonymous && brief.author.role && brief.author.role !== brief.author.dept ? " · " + brief.author.role : ""}</span>
+                  {brief.author.dept && <><span className={s.label4}>{t("team.ideaTeam")}</span><span className={s.text}>{brief.author.dept}</span></>}
+                  {brief.routing.map((r, k) => (
+                    <Fragment key={r.name + k}>
+                      <span className={s.label4}>{k === 0 ? t("team.ideaResponsible") : t("team.ideaNextInLine")}</span>
+                      <span className={s.text}>{r.name}{r.role ? " · " + r.role : ""}<span className={s.why}>{r.why}</span></span>
+                    </Fragment>
+                  ))}
                 </div>
-              )}
+              </div>
               <div className={s.sec}>
                 <span className={s.dept}>{t("team.ideaAffects")}</span>
-                {e ? (
-                  <div className={s.div38}>
-                    {e.affects.map((a, k) => (
-                      <span key={a + k} className={s.label3}>
-                        {a}
-                        <button type="button" className={s.remove} onClick={() => patch({ affects: e.affects.filter((_, j) => j !== k) })} title={t("team.ideaRemove")} aria-label={t("team.ideaRemoveItem", { name: a })}><X /></button>
-                      </span>
-                    ))}
-                    <input className={s.addDepartment} value={affDraft} onChange={(ev) => setAffDraft(ev.target.value)} placeholder={t("team.ideaAddDept")} aria-label={t("team.ideaAddDeptAria")}
-                      onKeyDown={(ev) => { if (ev.key === "Enter" && affDraft.trim()) { ev.preventDefault(); patch({ affects: [...e.affects, affDraft.trim()] }); setAffDraft(""); } }} />
-                  </div>
-                ) : (
-                  // One row per team or person, with why it is affected where the analysis said so.
-                  <ul className={s.list}>
-                    {shown.affects.map((a, k) => (
-                      <li key={a + k} className={s.li}>
-                        <span className={s.liMain}><span className={s.liTitle}>{a}</span>{whyOf(a) && <span className={s.liSub}>{whyOf(a)}</span>}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {/* One row per team or person, with why it is affected where the analysis said so. */}
+                <ul className={s.list}>
+                  {affects.map((a, k) => (
+                    <li key={a + k} className={s.li}>
+                      <span className={s.liMain}><span className={s.liTitle}>{a}</span>{whyOf(a) && <span className={s.liSub}>{whyOf(a)}</span>}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
               {/* The context and its facts are one section: the paragraph, then the grouped facts. */}
               <div className={s.sec}>
                 <span className={s.dept}>{t("team.ideaContext")}</span>
-                {e
-                  ? <textarea className={s.textarea2} value={e.context} onChange={(ev) => patch({ context: ev.target.value })} rows={3} aria-label={t("team.ideaContext")} />
-                  : <p className={s.context}>{shown.context || "—"}</p>}
-                {!e && shown.prompts.length > 0 && (
+                <p className={s.context}>{brief.context || "—"}</p>
+                {brief.prompts.length > 0 && (
                   <div className={s.kv}>
-                    {shown.prompts.map((pr, k) => (
+                    {brief.prompts.map((pr, k) => (
                       <Fragment key={pr.label + k}><span className={s.label4}>{pr.label}</span><span className={s.text}>{pr.text}</span></Fragment>
                     ))}
                   </div>
                 )}
               </div>
-              {e && (
-                <div className={s.div41}>
-                  {e.prompts.map((pr, k) => (
-                    <div key={k} className={s.div42}>
-                      <input className={s.label5} value={pr.label} placeholder={t("team.ideaLabel")} aria-label={t("team.ideaFactLabel")} onChange={(ev) => patch({ prompts: e.prompts.map((y, j) => (j === k ? { ...y, label: ev.target.value } : y)) })} />
-                      <input className={s.value} value={pr.text} placeholder={t("team.ideaValue")} aria-label={t("team.ideaFactValue")} onChange={(ev) => patch({ prompts: e.prompts.map((y, j) => (j === k ? { ...y, text: ev.target.value } : y)) })} />
-                      <button type="button" className={s.remove2} onClick={() => patch({ prompts: e.prompts.filter((_, j) => j !== k) })} title={t("team.ideaRemove")} aria-label={t("team.ideaRemoveFact")}><X /></button>
-                    </div>
-                  ))}
-                  <button type="button" className={s.addPrompt} onClick={() => patch({ prompts: [...e.prompts, { label: "", text: "" }] })}>{t("team.ideaAddFact")}</button>
-                </div>
-              )}
               <div className={s.sec}>
                 <span className={s.dept}>{t("team.ideaAttachments")}</span>
-                {files.length === 0 && !e && <span className={s.noAttachments}>{t("team.ideaNoAttachments")}</span>}
-                {e ? (
-                  <div className={s.div43}>
-                    {files.map((fl, k) => (
-                      <div key={fl.name + k} className={s.div44}>
-                        <span className={s.ext}>{fl.ext}</span>
-                        <span className={s.span6}><span className={s.name}>{fl.name}</span><span className={s.dept}>{fl.meta}</span></span>
-                        <button type="button" className={s.remove3} onClick={() => patch({ files: e.files.filter((_, j) => j !== k) })} title={t("team.ideaRemove")} aria-label={t("team.ideaRemoveItem", { name: fl.name })}><X /></button>
-                      </div>
-                    ))}
-                    <label className={s.addFile}>{t("team.ideaAddFile")}<input className={s.input} type="file" multiple onChange={addFiles} /></label>
-                  </div>
-                ) : files.length > 0 && (
+                {files.length === 0 && <span className={s.noAttachments}>{t("team.ideaNoAttachments")}</span>}
+                {files.length > 0 && (
                   <ul className={s.list}>
                     {files.map((fl, k) => (
                       <li key={fl.name + k} className={s.li} title={fl.name}>
@@ -248,6 +164,18 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                   </ul>
                 )}
               </div>
+              {p.versions.length > 0 && (
+                <div className={s.sec}>
+                  <span className={s.dept}>{t("overview.versionsHeading")}</span>
+                  <ul className={s.list}>
+                    {p.versions.map((v) => (
+                      <li key={v.n} className={s.li}>
+                        <span className={s.liMain}><span className={s.liTitle}>{v.title}</span><span className={s.liSub}>{t("overview.versionRow", { n: v.n, when: v.when })}</span></span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {p.added.length > 0 && (
                 <div className={s.sec}>
                   <span className={s.dept}>{t("team.ideaAddedSince")}</span>

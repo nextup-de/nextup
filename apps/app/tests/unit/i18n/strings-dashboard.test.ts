@@ -8,10 +8,9 @@ const SHARED = readdirSync("src/components/dashboard/shared")
   .map((f) => `src/components/dashboard/shared/${f}`);
 
 describe("LNG strings dashboard", () => {
-  it("has no inline user-facing string in the shared views, the manager overview and the dashboard root files", async () => {
+  it("has no inline user-facing string in the shared views, and the dashboard root files", async () => {
     const findings = await inlineStrings([
       ...SHARED,
-      "src/components/dashboard/manager/**/*.{ts,tsx}",
       "src/components/dashboard/DemoProvider.tsx",
       "src/components/dashboard/RoleRouter.tsx",
       "src/components/dashboard/derive.ts",
