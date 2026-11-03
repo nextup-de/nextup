@@ -60,7 +60,9 @@ describe("API OpenAPI", () => {
 
   it("matches the committed docs/api/openapi.json", () => {
     const expected = renderOpenApi();
-    const actual = readFileSync(resolve(__dirname, "../../../../../docs/api/openapi.json"), "utf8");
+    const actual = readFileSync(resolve(__dirname, "../../../../../docs/api/openapi.json"), "utf8").replace(/
+/g, "
+");
     if (actual !== expected) console.log(`docs/api/openapi.json is out of date; replace it with:\n${expected}`);
     expect(actual).toBe(expected);
   });
