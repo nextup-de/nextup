@@ -82,7 +82,8 @@ describe("CLK dueNow", () => {
     const S = reduce(WD, logAt(late, raise("c_a")));
     expect(dueNow(S, late)).toEqual([{ kind: "deadline", target: "c_a", dueDay: PROMISE_DAYS, toRoleHolderId: "seat_dep", idemKey: `clk:deadline:c_a:${PROMISE_DAYS}` }]);
     const done = reduce(WD, logAt(late, raise("c_a"), fact("c_a", { kind: "deadline", dueDay: PROMISE_DAYS, toRoleHolderId: "seat_dep" })));
-    expect(dueNow(done, late)).toEqual([]);
+    // LOOP-H1: with the fact in and the rule on (default), the hand-over is what is left.
+    expect(dueNow(done, late).map((d) => d.kind)).toEqual(["handover"]);
   });
 
   it("nothing for a case not yet due, nothing in demo mode", () => {
