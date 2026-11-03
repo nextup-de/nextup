@@ -12,6 +12,9 @@ loadEnvConfig(process.cwd());
 
 const PORT = 3101;
 const vaultKey = process.env.CONNECTOR_VAULT_KEY || randomBytes(32).toString("hex");
+// The spec files seal secrets themselves (tests/db/test-company.ts) and run in worker processes that
+// inherit this env: export the key so they and both servers use the same one (CI sets none).
+process.env.CONNECTOR_VAULT_KEY = vaultKey;
 const BASE = `http://localhost:${PORT}`;
 
 // The company's IT and privacy console (ITC) exists only in a one-company stack (TENANT_MODE single,
