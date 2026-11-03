@@ -83,7 +83,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const reasons = affected.filter((a) => a.why); // leads say why it hits their team
   // The score as the dashboard scores it, re-evaluated with every piece of new information posted since.
   const updates = rescoresOn(log, c.id);
-  const score = scoreCase({ ...c, affected: standing.length, evidence: extra.attachments, updates: updates.length }, ctx.seed.promiseDays);
+  const score = scoreCase({ ...c, affected: standing.length, evidence: extra.attachments, updates: updates.length }, ctx.seed.promiseDays, t);
   // An employee re-evaluates the score with new information; a lead (or manager) stands behind it for their team, and says why.
   const lead = role !== "member";
   // Every desk it has been on, in order; the last one is where it is now.

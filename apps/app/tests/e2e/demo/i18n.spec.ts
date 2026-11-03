@@ -105,6 +105,7 @@ const clean = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 // word (a role such as "Team lead") cannot tell a leak from the data, so it is no sentinel.
 const SRC = join(__dirname, "../../../src");
 const DATA_FILES = [
+  "features/ideas/brief.ts",
   "features/ideas/brief-demo.ts",
   "features/ideas/demo-script.ts",
   "features/ideas/demo-loop.ts",

@@ -1,0 +1,47 @@
+{
+  "d": {
+    "results": [
+      {
+        "personIdExternal": "1001",
+        "userId": "u1",
+        "startDate": "/Date(1577836800000)/",
+        "endDate": null,
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "personIdExternal": "1002",
+        "userId": "u2",
+        "startDate": "/Date(1577836800000)/",
+        "endDate": null,
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "personIdExternal": "1003",
+        "userId": "u3",
+        "startDate": "/Date(1577836800000)/",
+        "endDate": null,
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "personIdExternal": "1004",
+        "userId": "u4",
+        "startDate": "/Date(1577836800000)/",
+        "endDate": "/Date(1793404800000)/",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "personIdExternal": "1005",
+        "userId": "u5",
+        "startDate": "/Date(1577836800000)/",
+        "endDate": "/Date(253402214400000)/",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "userId": "u6",
+        "startDate": "/Date(1577836800000)/",
+        "endDate": null,
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      }
+    ]
+  }
+}
