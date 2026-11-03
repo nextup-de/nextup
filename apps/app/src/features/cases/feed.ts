@@ -6,6 +6,7 @@ import type { Me, SeatRow } from "@/features/auth/identity";
 import type { Dept } from "@/features/demo/types";
 import { MIN_GROUP } from "@/features/metrics/types";
 import type { EventLog } from "./events";
+import { actorLabel, type ActorLabels } from "./actor-label";
 import type { ReducedCase } from "./reducer";
 import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
 
@@ -117,7 +118,7 @@ export type Activity = {
   kind: "raised" | "read" | "asked" | "yes" | "no" | "handed" | "discussion" | "escalated";
   role: string | null; label: string | null; day: number;
 };
-export function latestActivity(caseId: string, log: EventLog, seats: readonly SeatRow[]): Activity | null {
+export function latestActivity(caseId: string, log: EventLog, seats: readonly SeatRow[], labels?: ActorLabels): Activity | null {
   const roleOfSeat = (id: string | null | undefined) => (id ? seats.find((s) => s.id === id)?.roleId ?? null : null);
   let desk: string | null = null, escalated: string | null = null;
   let last: Activity | null = null;
@@ -125,11 +126,11 @@ export function latestActivity(caseId: string, log: EventLog, seats: readonly Se
     if (e.target !== caseId) continue;
     const uid = e.actorUserId ?? null;
     const held = uid === null ? null : seats.find((s) => s.userId === uid && (s.roleId === desk || s.roleId === escalated))?.roleId ?? null;
-    const by = { role: held, label: held === null ? e.actor : null, day: e.day };
+    const by = { role: held, label: held === null ? actorLabel(e, labels) : null, day: e.day };
     switch (e.type) {
       case "case.raised":
         desk = roleOfSeat(e.payload.assigneeRoleHolderId);
-        last = { kind: "raised", role: null, label: e.actor, day: e.day };
+        last = { kind: "raised", role: null, label: actorLabel(e, labels), day: e.day };
         break;
       case "case.read": last = { kind: "read", ...by }; break;
       case "case.asked": last = { kind: "asked", ...by }; break;
@@ -137,7 +138,7 @@ export function latestActivity(caseId: string, log: EventLog, seats: readonly Se
       case "case.decided": last = { kind: e.payload.answer === "no" ? "no" : "yes", ...by }; break;
       case "case.handed": {
         const toRole = roleOfSeat(e.payload.toRoleHolderId);
-        last = { kind: "handed", role: toRole, label: toRole === null ? e.payload.to ?? e.actor : null, day: e.day };
+        last = { kind: "handed", role: toRole, label: toRole === null ? e.payload.to ?? actorLabel(e, labels) : null, day: e.day };
         if (toRole !== null) desk = toRole;
         escalated = null;
         break;

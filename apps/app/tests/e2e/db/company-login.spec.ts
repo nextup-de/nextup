@@ -103,11 +103,11 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     // Adding a person happens in a drawer.
     await manager.getByTestId("settings-members-open-add").click();
     const drawer = manager.getByTestId("settings-members-drawer");
-    await expect(drawer).toBeVisible();
+    await expect(drawer.getByLabel("Name")).toHaveCount(1);
     await drawer.getByLabel("Name").fill("S. Dahl");
     await drawer.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
-    await drawer.getByRole("combobox", { name: "Role", exact: true }).selectOption("leader");
-    await drawer.getByRole("button", { name: "Add and issue a code" }).click();
+    await manager.getByRole("combobox", { name: "Role", exact: true }).selectOption("leader");
+    await manager.getByRole("button", { name: "Add and issue a code" }).click();
     const box = manager.getByRole("status").filter({ hasText: "Login code for S. Dahl" });
     await expect(box).toBeVisible();
     codes.set("S. Dahl", (await box.locator("span").first().innerText()).trim());
