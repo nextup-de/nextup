@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { personHref } from "@/features/people/links";
+import { personHref, personHrefByName } from "@/features/people/links";
 import { resolvePersonParam, type PersonCandidate } from "@/features/people/resolve";
 import { navbarIndex } from "@/features/search/navbar";
 import { meFor } from "@/features/auth/identity";
@@ -58,5 +58,18 @@ describe("MET person links", () => {
     const people = navbarIndex(ctx).filter((r) => r.kind === "Person");
     expect(people.map((r) => r.href).sort()).toEqual(["/acme/people/p1", "/acme/people/p2"]);
     expect(people.some((r) => r.href.includes("Vogel"))).toBe(false);
+  });
+
+  it("links a name on screen by the id of its one seat holder, and not at all when the name is ambiguous", () => {
+    const tenant = { personLinks: { a1: "Alex Meier", b1: "B. Hartmann", b2: "B. Hartmann" } };
+    const seats = [
+      { label: "Alex Meier", userId: "a1" }, { label: "Alex Meier", userId: "a1" }, // two seats, one person
+      { label: "B. Hartmann", userId: "b1" }, { label: "B. Hartmann", userId: "b2" },
+      { label: "Vacant seat", userId: null },
+    ];
+    expect(personHrefByName(tenant, seats, "Alex Meier")).toBe("/people/a1");
+    expect(personHrefByName(tenant, seats, "B. Hartmann")).toBeNull();
+    expect(personHrefByName(tenant, seats, "Vacant seat")).toBeNull();
+    expect(personHrefByName(tenant, seats, "Nobody")).toBeNull();
   });
 });

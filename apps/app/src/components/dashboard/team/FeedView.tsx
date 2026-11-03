@@ -26,6 +26,7 @@ import { useT } from "@/i18n/client";
 import type { T } from "@/i18n";
 import s from "./Feed.module.css";
 import { libraryCoverFor, sampleCoverFor } from "@/features/cases/thumbs";
+import { useIdInUrl } from "@/lib/use-url-id";
 
 const ALL_SITES = "*"; // the "every site" filter value; shown as feedAllSites
 const ALL_UNITS = "*"; // the "every unit" filter value; shown as feed.allUnits
@@ -59,6 +60,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const [sort, setSort] = useState<FeedSort>("support");
   const [menu, setMenu] = useState<"site" | "unit" | "sort" | null>(null);
   const [openId, setOpenId] = useState<string | null>(initialId ?? null);
+  useIdInUrl(openId, setOpenId); // the opened card is in the address (?id=)
   const [openScore, setOpenScore] = useState<Record<string, number | null>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const rootRef = useRef<HTMLDivElement>(null);

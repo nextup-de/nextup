@@ -16,6 +16,7 @@ import type { DashboardData, TileId } from "@/features/metrics/types";
 import { useFormat, useLocale, useT } from "@/i18n/client";
 import { exportDashboardCsvAction } from "@/server/actions/metrics";
 import s from "./DashboardBoard.module.css";
+import { personHrefByName } from "@/features/people/links";
 
 type Kind = "30d" | "quarter" | "golive";
 type Menu = "unit" | "period" | null;
