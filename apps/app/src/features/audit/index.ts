@@ -15,6 +15,7 @@ export const AUDIT_ACTIONS = [
   "audit.settings.import",
   "audit.settings.export",
   "audit.settings.notifications",
+  "audit.settings.webhooks",
   "audit.settings.metrics_baseline",
   "audit.member.added",
   "audit.member.invited",
