@@ -1,0 +1,10 @@
+.page { width: 100%; max-width: 720px; margin: 0 auto; padding: 6px 0 52px; }
+.back { display: inline-flex; margin-bottom: 14px; color: #6e6e73; font-size: var(--nh-fs-xs); font-weight: 600; }
+.back:hover { color: #007aff; }
+.hero { display: flex; align-items: center; gap: 18px; padding: 24px 28px; background: #fff; border-radius: var(--radius-md, 22px); box-shadow: 0 10px 30px rgb(40 60 100 / .08), 0 1px 2px rgb(40 60 100 / .05); }
+.avatar { width: 78px; height: 78px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--nh-avatar); color: var(--nh-avatar-ink); font-size: var(--nh-fs-2xl); font-weight: 600; }
+.text { min-width: 0; flex: 1; }
+.text h1 { font-size: var(--nh-fs-2xl); font-weight: 600; line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.text p { margin-top: 5px; color: #3a3a3c; font-size: var(--nh-fs-md); }
+.label { color: #8e8e93; font-size: var(--nh-fs-xs); margin-right: 6px; }
+@media (max-width: 760px) { .hero { flex-direction: column; align-items: flex-start; padding: 20px; } }
