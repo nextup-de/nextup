@@ -137,8 +137,12 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await readCode(manager, MEMBER);
     await readCode(manager, LEADER);
     const leaderRow = manager.locator("li").filter({ hasText: LEADER.email });
-    await leaderRow.getByLabel(`Free seat for ${LEADER.name}`).selectOption({ index: 1 });
-    await expect(leaderRow.getByRole("button", { name: /^Unlink / })).toBeVisible();
+    // Seats are linked in a dialog opened from the row's menu.
+    await leaderRow.getByLabel(`Options for ${LEADER.name}`).click();
+    await leaderRow.getByRole("button", { name: "Seats…" }).click();
+    const seats = manager.getByRole("dialog");
+    await seats.getByLabel(`Free seat for ${LEADER.name}`).selectOption({ index: 1 });
+    await expect(seats.getByRole("button", { name: /^Unlink / })).toBeVisible();
     await manager.context().close();
 
     // The member raises a case about the rig; the leader sees it in the inbox.

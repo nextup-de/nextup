@@ -1,7 +1,35 @@
-// Progress (MET-G1 adds its keys here).
+// Progress: project movement and the wait ledger after the yes (MET-E1).
 import { defineMessages } from "../define";
 
 export const progress = defineMessages({
-  en: {},
-  de: {},
+  en: {
+    title: "Does the system actually move",
+    lead: "What happened to the projects after a yes: how long they waited to start, and whether they were measured.",
+    ledgerHead: "Wait ledger, after the yes",
+    ledgerSub: "Counted from the projects. Counts and medians only.",
+    startWait: "Days from yes to start (median)",
+    startWaitSub_one: "{count} not started yet",
+    startWaitSub_other: "{count} not started yet",
+    measureWait: "Days from done to first measure (median)",
+    moved: "Late starts or measures moved to a deputy",
+    owed: "Measures owed past their due day",
+    withoutNumber: "Done without a number",
+    emptyOff: "Projects are switched off for this company, so there is no movement to show.",
+    emptyLedger: "No project has said yes yet. The ledger fills as soon as one does.",
+  },
+  de: {
+    title: "Bewegt sich das System wirklich",
+    lead: "Was nach einem Ja mit den Projekten passiert ist: wie lange sie auf den Start warteten und ob sie gemessen wurden.",
+    ledgerHead: "Wartebuch nach dem Ja",
+    ledgerSub: "Aus den Projekten gezählt. Nur Anzahlen und Mediane.",
+    startWait: "Tage vom Ja bis zum Start (Median)",
+    startWaitSub_one: "{count} noch nicht gestartet",
+    startWaitSub_other: "{count} noch nicht gestartet",
+    measureWait: "Tage von fertig bis zur ersten Messung (Median)",
+    moved: "Späte Starts oder Messungen, an die Vertretung gegangen",
+    owed: "Messungen, die über ihren Fälligkeitstag hinaus fehlen",
+    withoutNumber: "Fertig ohne Zahl",
+    emptyOff: "Projekte sind für diese Firma ausgeschaltet, deshalb gibt es keine Bewegung zu zeigen.",
+    emptyLedger: "Noch kein Projekt hat Ja gesagt. Das Wartebuch füllt sich, sobald eines es tut.",
+  },
 });

@@ -53,6 +53,8 @@ export const RULES = {
   floorPair: { limit: 5, windowMs: 15 * 60_000 },
   /** Public API v1, per token id: an integration polling, not a script hammering. Key `<token id>`. */
   apiV1: { limit: 600, windowMs: 60_000 },
+  /** SCIM provisioning, per token id: an identity provider syncing, 600 requests a minute. Key `<token id>`. */
+  scim: { limit: 600, windowMs: 60_000 },
 } satisfies Record<string, Rule>;
 
 export type Bucket = keyof typeof RULES;
