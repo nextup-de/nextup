@@ -346,7 +346,9 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       // Workdays (D11): only the latest stored deadline fact escalates, and only while the case is open.
       const fact = c.open ? [...c.history].reverse().find((e) => e.type === "clock.due" && e.payload.kind === "deadline") : undefined;
       const seat = fact ? seats.find((s) => s.id === fact.payload.toRoleHolderId) : undefined;
-      c.escalated = fact && seat
+      // LOOP-R1 (D17): a deadline hand-over after the latest fact ends the escalation; the seat now holds the case.
+      const handedAfter = fact !== undefined && c.history.indexOf(fact) < c.history.findLastIndex((e) => e.type === "case.handed" && e.payload.why === "deadline");
+      c.escalated = fact && seat && !handedAfter
         ? { to: seat.label, from: c.assignee, day: (fact.payload.dueDay ?? c.dueDay) + 1, live: true, toSeatId: seat.id, toRoleId: seat.roleId }
         : null;
     }

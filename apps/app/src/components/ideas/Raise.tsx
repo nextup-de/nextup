@@ -60,6 +60,7 @@ import { useRaisePreview, type FileItem } from "./raisePreview";
 import { Icon } from "./raiseIcons";
 import { RaisePeople } from "./RaisePerson";
 import s from "./Raise.module.css";
+import { track } from "@/lib/test-analytics";
 
 // Runs `run` after every render: how handlers made after the page's early return reach a ref.
 function Sync({ run }: { run: () => void }) { useEffect(run); return null; }
@@ -346,6 +347,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     setMenu(null); setEvalStep(0);
     setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx, locale).parts, locale) }));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
+    track("coach_message_sent", { n: 1 });
     setStage("chat"); setStartText(""); setSegs(EMPTY_BODY); caretRef.current = null;
     let step = 0;
     clearInterval(evalTimer.current);
@@ -389,6 +391,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const openLook = () => {
     if (!draft || busy || published || pubStep || prepping) return;
     setMenu(null);
+    track("publish_clicked", { exchanges: said });
     if (!mine) setLook(lookOf());
     setSb((x) => (x === "open" ? "auto" : x)); // on a phone the drawer closes, so the window is what shows
     // A second of placeholder first, while NextUp lays it out; then the last look, with Choose a desk.
@@ -419,6 +422,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
 
   const publish = async (to: Desk) => {
     if (!draft || busy || published) return;
+    track("recipient_chosen", { recommended: to.recommended, proposedBy: to.proposedBy ?? "none" });
     setBusy(true);
     const caseId = newId("c");
     const r = await step(setPubWork, t("ideas.pageStepChecking"), "solving", () => studio.publish(caseId), 500);
@@ -466,6 +470,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     if (draft && edit) preview.edit(draft.id, null);
     if (lastAi && unclear.length) setAsked((a) => (a[lastAi] ? a : { ...a, [lastAi]: unclear.map((g) => g.id) }));
     void studio.send(message, { affected, attachments: myFiles.length, skip });
+    track("coach_message_sent", { n: said + 1, unsure: Boolean(unsure) });
     setText(""); setAsk(null);
   };
 

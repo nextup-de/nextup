@@ -42,6 +42,11 @@ import { progress } from "./messages/progress";
 import { settingsAreas } from "./messages/settingsAreas";
 import { floorDevices } from "./messages/floorDevices";
 import { floor } from "./messages/floor";
+import { settingsApiTokens } from "./messages/settingsApiTokens";
+import { settingsWebhooks } from "./messages/settingsWebhooks";
+import { settingsImport } from "./messages/settingsImport";
+import { teams } from "./messages/teams";
+import { settingsTeams } from "./messages/settingsTeams";
 
 export const en = {
   common: common.en,
@@ -87,4 +92,9 @@ export const en = {
   settingsAreas: settingsAreas.en,
   floorDevices: floorDevices.en,
   floor: floor.en,
+  settingsApiTokens: settingsApiTokens.en,
+  settingsWebhooks: settingsWebhooks.en,
+  settingsImport: settingsImport.en,
+  teams: teams.en,
+  settingsTeams: settingsTeams.en,
 } as const;

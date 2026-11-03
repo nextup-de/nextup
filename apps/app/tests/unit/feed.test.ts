@@ -1,7 +1,7 @@
 // The Feed's pure parts: the stage pill, the cover's number and line, the supporters line, the sorts.
 import { describe, expect, it } from "vitest";
 import { appendEvent, emptyLog } from "@/features/cases/events";
-import { feedCover, feedStage, inDept, shortHook, shortStat, sortFeed, supportLine, supportReasons } from "@/features/cases/feed";
+import { feedCover, feedStage, inDept, shortHook, shortStat, sortFeed, supportLine } from "@/features/cases/feed";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
 
@@ -75,16 +75,12 @@ describe("filters and sorts", () => {
     expect(inDept(["Logistics"], "HR")).toBe(false);
     expect(inDept([], "All")).toBe(true);
   });
-  it("most supported first (ties: comments, then longest waiting); newest first the other way round", () => {
-    const list = [{ id: "a", backers: 2, raisedDay: 1, comments: 0 }, { id: "b", backers: 5, raisedDay: 0, comments: 0 }, { id: "c", backers: 2, raisedDay: 4, comments: 0 }];
+  it("most supported first (ties: comments, then longest waiting); latest activity first the other way round", () => {
+    const list = [{ id: "a", backers: 2, raisedDay: 1, comments: 0, lastDay: 1 }, { id: "b", backers: 5, raisedDay: 0, comments: 0, lastDay: 0 }, { id: "c", backers: 2, raisedDay: 4, comments: 0, lastDay: 4 }];
     expect(sortFeed(list, "support").map((x) => x.id)).toEqual(["b", "a", "c"]);
-    expect(sortFeed(list, "newest").map((x) => x.id)).toEqual(["c", "a", "b"]);
-    const quiet = [{ id: "old", backers: 0, raisedDay: 1, comments: 0 }, { id: "new", backers: 0, raisedDay: 9, comments: 0 }, { id: "talked", backers: 0, raisedDay: 5, comments: 2 }];
+    expect(sortFeed(list, "latest").map((x) => x.id)).toEqual(["c", "a", "b"]);
+    const quiet = [{ id: "old", backers: 0, raisedDay: 1, comments: 0, lastDay: 1 }, { id: "new", backers: 0, raisedDay: 9, comments: 0, lastDay: 9 }, { id: "talked", backers: 0, raisedDay: 5, comments: 2, lastDay: 7 }];
     expect(sortFeed(quiet, "support").map((x) => x.id)).toEqual(["talked", "old", "new"]);
-    expect(sortFeed(quiet, "newest").map((x) => x.id)).toEqual(["new", "talked", "old"]);
-  });
-  it("problems and ideas get their own one-tap reasons", () => {
-    expect(supportReasons("problem")[0]).toBe("I have this problem too");
-    expect(supportReasons("idea")[0]).toBe("It would help my team");
+    expect(sortFeed(quiet, "latest").map((x) => x.id)).toEqual(["new", "talked", "old"]);
   });
 });

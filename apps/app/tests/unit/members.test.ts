@@ -1,6 +1,6 @@
 // Settings -> Members: who may be added, whose role may change. Pure - no database.
 import { describe, expect, it } from "vitest";
-import { roleChangeProblem, validateNewMember, type Member } from "@/features/tenant/members";
+import { reactivateProblem, roleChangeProblem, validateNewMember, type Member } from "@/features/tenant/members";
 
 const people: Member[] = [
   { id: "m1", name: "P. Meier", email: "p.meier@globex.test", role: "manager" },
@@ -45,5 +45,14 @@ describe("roleChangeProblem", () => {
   it("refuses an unknown role or person", () => {
     expect(roleChangeProblem(people, "m1", "e1", "owner")).not.toBeNull();
     expect(roleChangeProblem(people, "m1", "nobody", "leader")).not.toBeNull();
+  });
+});
+
+describe("reactivateProblem", () => {
+  it("lets an inactive person back in, never oneself or someone active", () => {
+    expect(reactivateProblem({ name: "Mira", active: false }, false)).toBeNull();
+    expect(reactivateProblem({ name: "Mira", active: true }, false)).toBe("Mira is active already.");
+    expect(reactivateProblem({ name: "Mira", active: false }, true)).toBeTruthy();
+    expect(reactivateProblem(null, false)).toBe("No such person in this company.");
   });
 });
