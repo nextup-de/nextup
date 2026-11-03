@@ -10,7 +10,8 @@
 // beside it. ↑/↓ walk the list, Close / Escape puts the page back. Ideas and cases open in the same
 // view (IdeaDetail, IdeaDetailPhone on a phone): an idea with its written brief and five decisions,
 // a case with a brief built from its own facts and the four case actions.
-import { holdsRole } from "@/features/auth/identity";
+import { holdsRole, usersOfRole } from "@/features/auth/identity";
+import { deskStats } from "@/features/metrics/desk";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { askedForView, deskCases, inboxIdeas, inboxSorted, openCases } from "@/components/dashboard/derive";
@@ -27,6 +28,7 @@ import { IdeaDetailPhone } from "./IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
 import { showInboxCase } from "@/lib/demo-controls";
+import { useIdInUrl } from "@/lib/use-url-id";
 import { ProjectDesk } from "@/components/projects/ProjectDesk";
 import { useT } from "@/i18n/client";
 import type { MessageKey, T } from "@/i18n";
@@ -48,7 +50,7 @@ const onPhoneChange = (fn: () => void) => { const m = window.matchMedia(PHONE); 
 export function InboxView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
   const t = useT();
-  const { seed, S, log, demo, persona, act, openSheet, showToast, ready, f, me, motion, flag } = ctx;
+  const { seed, S, log, persona, act, openSheet, showToast, ready, f, me, motion, flag } = ctx;
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const talk = flag("discussion"), projects = flag("projects");
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
@@ -81,6 +83,8 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const isOpen = open && picked;
   // The static demo's controls follow along: a case opened here by hand is a step they pass over.
   useEffect(() => showInboxCase(isOpen ? cid : null), [isOpen, cid]);
+  // The open item is in the address (?id=), so a link, a reload and Back land on it.
+  useIdInUrl(open ? cid : null, (id) => { if (id) { setCid(id); setOpen(true); } else { setOpen(false); setTucked(false); } });
 
   // Keyboard: ↑/↓ walk the list (opening the pane if it is closed), Escape closes. The idea's
   // popovers handle their own keys first.
@@ -173,11 +177,16 @@ export function InboxView({ initialId }: { initialId?: string }) {
         : lastHand ? t(lastHand.why ? "leader.handedFromWhy" : "leader.handedFrom", { from: lastHand.from, day: f(lastHand.day), why: lastHand.why ?? "" }) : "";
 
   const overdue = openList.filter((c) => c.overdue).length + ideas.filter((i) => i.wait > P).length;
+  // The two desk numbers belong to the desk's holders (me.roleIds) and show only with 5 holders and 5 answered cases.
+  const holders = new Set(me.roleIds.flatMap((r) => usersOfRole(S.seats, r))).size;
+  const ds = deskStats(ctx.D.cases, me.roleIds, holders, P);
   const stats = [
     { v: String(desk.length + ideas.length), l: openList.length === desk.length ? t("leader.statOnDesk") : t("leader.statOnDeskPaused", { count: desk.length - openList.length }) },
     { v: String(overdue), l: t("leader.statPastPromise", { days: P }), hot: overdue > 0 },
-    { v: demo ? seed.metrics.lead.medianAnswer : "—", l: t("leader.statMedian") },
-    { v: demo ? seed.metrics.lead.withinPromise : "—", l: t("leader.statWithin") },
+    ...(me.roleIds.length === 0 ? [] : [
+      { v: ds.median === null ? "–" : t("common.days", { count: Math.round(ds.median * 10) / 10 }), l: t("leader.statMedian") },
+      { v: ds.withinPct === null ? "–" : ds.withinPct + "%", l: t("leader.statWithin") },
+    ]),
   ];
 
   // A demo day offset (0 = today) as a date; a case raised today in this browser has its real time.
