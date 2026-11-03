@@ -14,7 +14,7 @@ const UNIT = "Zephyrwerk";
 const ROLE = "Hall supervisor";
 const TITLE = `Oil on the floor by press ${STAMP}`;
 const REASON = "Not this quarter, the press is replaced in January";
-// The path-mode server of playwright.db.config.ts, whichever port this checkout has (tests/e2e/ports.ts).
+// The path-mode server of playwright.db.config.ts, whichever port this checkout has (playwright.ports.ts).
 const BASE = () => test.info().project.use.baseURL;
 
 test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL (.env.local)");

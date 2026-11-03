@@ -6,12 +6,12 @@
 import { defineConfig, devices } from "@playwright/test";
 import { loadEnvConfig } from "@next/env";
 import { randomBytes } from "node:crypto";
-import { checkoutPort } from "./tests/e2e/ports";
+import { checkoutPort } from "./playwright.ports";
 
 // The tests need ADMIN_ACCESS_CODE too, not only the server - read .env.local the way Next does.
 loadEnvConfig(process.cwd());
 
-// Its own port per checkout (tests/e2e/ports.ts); E2E_DB_PORT overrides it.
+// Its own port per checkout (playwright.ports.ts); E2E_DB_PORT overrides it.
 const PORT = Number(process.env.E2E_DB_PORT) || checkoutPort(3200);
 const vaultKey = process.env.CONNECTOR_VAULT_KEY || randomBytes(32).toString("hex");
 // The spec files seal secrets themselves (tests/db/test-company.ts) and run in worker processes that

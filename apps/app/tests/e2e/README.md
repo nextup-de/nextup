@@ -8,7 +8,7 @@ Browser tests that click through the real app. Two suites, and one check of a ru
 | `npm run e2e:db` | Postgres + `.env.local` with `ADMIN_ACCESS_CODE` | Creates a throwaway company in `/admin`, logs in with personal codes, runs the loop across real sessions, Settings -> Members, then deletes the company. |
 | `npm run e2e:live` | `INTERVIEW_URL` | The interview script against a stack that is already running - see below. |
 
-The first two build the app and start it on their own port, one per checkout (`tests/e2e/ports.ts`: demo from
+The first two build the app and start it on their own port, one per checkout (`playwright.ports.ts`: demo from
 `:4000`, database from `:3200`; `E2E_PORT` and `E2E_DB_PORT` override them), so your `npm run dev` on `:3000` and the
 suites of other worktrees can keep running. The first run of the day takes a minute or two because
 of the build.
