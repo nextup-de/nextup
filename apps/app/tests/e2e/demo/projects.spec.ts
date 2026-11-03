@@ -90,6 +90,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     const check30 = page.getByRole("group", { name: "30-day check" });
     await expect(check30).toContainText("Opens");
     await plus30(page);
+    await check30.getByRole("button", { name: "Type the number" }).click();
     await check30.getByLabel(/The number now/).fill("12");
     await expect(check30.getByRole("status")).toContainText("better");
     await check30.getByRole("button", { name: "Record the measure" }).click();
@@ -100,6 +101,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   await test.step("records the 90-day check, worse than the 30-day one but still better than before", async () => {
     await plus30(page, 2);
     const check90 = page.getByRole("group", { name: "90-day check" });
+    await check90.getByRole("button", { name: "Type the number" }).click();
     await check90.getByLabel(/The number now/).fill("14");
     await check90.getByRole("button", { name: "Record the measure" }).click();
     await expect(check90).toContainText("25 → 14 minutes");
@@ -109,11 +111,11 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 
   await test.step("a typed measure does not make the reward due until a second person confirms it (LOOP/D18)", async () => {
-    // The confirm control comes with LOOP-U1; until then the manager sees no reward offered on an unconfirmed measure.
+    // The manager sees no reward offered on an unconfirmed measure; the panel says when one will be due (LOOP-U1).
     await viewAs(page, "Manager");
     await page.goto("/acme/projects/pj4");
     await expect(head(page)).toContainText("P-4 · Measured");
-    await expect(page.getByRole("region", { name: "Reward" })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Reward" })).toContainText("A reward is due after a confirmed better result.");
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
   });
 });
