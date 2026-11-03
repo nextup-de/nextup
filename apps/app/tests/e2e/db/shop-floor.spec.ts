@@ -96,7 +96,7 @@ test.describe.serial("FLR acceptance", () => {
     await test.step("the sent page shows a reference that is in no request URL", async () => {
       reference = (await mobile.getByTestId("floor-sent-reference").innerText()).replace(/\D/g, "");
       expect(reference).toMatch(/^\d{8}$/);
-      await mobile.waitForLoadState("networkidle");
+      await mobile.waitForTimeout(1500); // let late prefetches land in the request log
       for (const url of requested) expect(url, "a request URL carries the reference").not.toContain(reference);
     });
 
@@ -118,8 +118,11 @@ test.describe.serial("FLR acceptance", () => {
       await mobile.getByTestId("floor-keypad-action").click();
       const decision = mobile.getByTestId("floor-status-decision");
       await expect(decision).toBeVisible();
-      await expect(decision).toContainText(REASON);
+      // The answer and the picked reason show; the desk's free-text comment never does (D12).
+      await expect(decision).toContainText(/^No/);
+      await expect(decision).toContainText(/no time/i);
       const text = await mobile.locator("body").innerText();
+      expect(text).not.toContain(REASON);
       expect(text).not.toContain(LEADER);
       expect(text).not.toContain(LEADER.split(" ")[0]);
       for (const url of requested) expect(url, "a request URL carries the reference").not.toContain(reference);

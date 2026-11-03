@@ -25,7 +25,7 @@ switch.
 2. `floor/sent` shows the reference once, with a printable slip whose QR opens the status page.
 3. `floor/status`: enter the reference on the keypad (or scan the slip). The page shows the title, the area, the
    step (sent, read, asked, decided, handed), the title of the role that holds the case, and for a decision the
-   answer and the reason. When the desk asked a question, one reply field appears (1-1000 chars; one reply per question).
+   answer and the reason the desk picked (never its free-text comment or a name). When the desk asked a question, one reply field appears (1-1000 chars; one reply per question).
 4. Signing in with a floor code (`floor/<key>/sign-in`) raises the case under the member's name; this is needed where
    the area does not allow anonymous raises.
 
