@@ -37,10 +37,12 @@ export async function resolveToken(raw: string): Promise<ResolvedToken | null> {
       companyId: true,
       scopes: true,
       expiresAt: true,
+      revokedAt: true,
       company: { select: { slug: true } },
     },
   });
   if (!row) return null;
+  if (row.revokedAt) return null;
   if (row.expiresAt && row.expiresAt.getTime() <= Date.now()) return null;
 
   return {
@@ -55,21 +57,29 @@ export async function markTokenUsed(id: string, companyId: string): Promise<void
   await getDb().apiToken.updateMany({ where: { id, companyId }, data: { lastUsedAt: new Date() } });
 }
 
+export type CreateTokenOptions = { createdBy?: string | null; expiresAt?: Date | null; actor?: AuditActor };
+
+/**
+ * Make a token and return the raw value, shown once. The fourth argument is either the options or, as the
+ * console and its tests call it, just the audit actor. With an actor the row and its `audit.token.created`
+ * row are written in one transaction.
+ */
 export async function createToken(
   companyId: string,
   name: string,
   scopes: string[],
-  actor?: AuditActor,
+  opts?: CreateTokenOptions | AuditActor,
 ): Promise<string> {
+  const o: CreateTokenOptions = opts && "kind" in opts ? { actor: opts } : (opts ?? {});
   const raw = generateToken();
+  const data = { companyId, name, hash: hashToken(raw), scopes, createdBy: o.createdBy ?? null, expiresAt: o.expiresAt ?? null };
+  const actor = o.actor;
   if (!actor) {
-    await getDb().apiToken.create({
-      data: { companyId, name, hash: hashToken(raw), scopes },
-    });
+    await getDb().apiToken.create({ data });
     return raw;
   }
   await getDb().$transaction(async (tx) => {
-    const row = await tx.apiToken.create({ data: { companyId, name, hash: hashToken(raw), scopes } });
+    const row = await tx.apiToken.create({ data });
     // The scopes only: never the raw token or its hash (D5).
     await recordAudit(companyId, { actor, action: "audit.token.created", target: { kind: "token", id: row.id }, changes: { scopes: { before: null, after: scopes } }, source: sourceOf(actor) }, tx);
   });
@@ -78,12 +88,38 @@ export async function createToken(
 
 const sourceOf = (actor: AuditActor): "settings" | "console" => (actor.kind === "admin" ? "settings" : "console");
 
-/** Delete a token and write `audit.token.revoked` in the same transaction. False when the company has no such token. */
-export async function revokeToken(companyId: string, id: string, actor: AuditActor): Promise<boolean> {
+export type TokenSummary = {
+  id: string;
+  name: string;
+  scopes: string[];
+  createdAt: Date;
+  createdBy: string | null;
+  lastUsedAt: Date | null;
+  expiresAt: Date | null;
+  revokedAt: Date | null;
+};
+
+/** The company's tokens, newest first, revoked ones included. Never the hash. */
+export async function listTokens(companyId: string): Promise<TokenSummary[]> {
+  return getDb().apiToken.findMany({
+    where: { companyId },
+    select: { id: true, name: true, scopes: true, createdAt: true, createdBy: true, lastUsedAt: true, expiresAt: true, revokedAt: true },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+  });
+}
+
+/**
+ * Revoke a token: `revokedAt` is set, the row stays. False when the company has no such live token.
+ * The third argument is the time, or an audit actor (then `audit.token.revoked` is written in the same
+ * transaction, as the console does).
+ */
+export async function revokeToken(companyId: string, id: string, nowOrActor: Date | AuditActor, actor?: AuditActor): Promise<boolean> {
+  const now = nowOrActor instanceof Date ? nowOrActor : new Date();
+  const by = actor ?? (nowOrActor instanceof Date ? undefined : nowOrActor);
   return getDb().$transaction(async (tx) => {
-    const { count } = await tx.apiToken.deleteMany({ where: { id, companyId } });
+    const { count } = await tx.apiToken.updateMany({ where: { id, companyId, revokedAt: null }, data: { revokedAt: now } });
     if (count === 0) return false;
-    await recordAudit(companyId, { actor, action: "audit.token.revoked", target: { kind: "token", id }, source: sourceOf(actor) }, tx);
+    if (by) await recordAudit(companyId, { actor: by, action: "audit.token.revoked", target: { kind: "token", id }, source: sourceOf(by) }, tx);
     return true;
   });
 }
