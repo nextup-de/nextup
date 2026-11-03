@@ -37,6 +37,7 @@ const ROUTES: Route[] = [
   { file: "[company]/(app)/overview/page.tsx", path: "/acme/overview", as: "Manager" },
   { file: "[company]/(app)/collaboration/page.tsx", path: "/acme/collaboration", as: "Manager" },
   { file: "[company]/(app)/feed/page.tsx", path: "/acme/feed", as: "Manager" },
+  { file: "[company]/(app)/decisions/page.tsx", path: "/acme/decisions", as: "Manager" },
   { file: "[company]/(app)/ideas/page.tsx", path: "/acme/ideas", as: "Manager" },
   { file: "[company]/(app)/problems/page.tsx", path: "/acme/problems", as: "Manager" },
   { file: "[company]/(app)/progress/page.tsx", path: "/acme/progress", as: "Manager" },

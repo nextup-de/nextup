@@ -29,7 +29,7 @@ type Section = { label: string; items: NavHit[] };
 
 const NAV_KEYS: Record<string, MessageKey> = {
   Dashboard: "shell.navDashboard", Inbox: "shell.navInbox", "My cases": "shell.navMyCases", Problems: "shell.navProblems", Ideas: "shell.navIdeas",
-  Feed: "shell.navFeed", Collaboration: "shell.navCollaboration", Projects: "shell.navProjects", Progress: "shell.navProgress", Settings: "shell.navSettings", Overview: "shell.navOverview",
+  Feed: "shell.navFeed", Decisions: "decisions.navLabel", Collaboration: "shell.navCollaboration", Projects: "shell.navProjects", Progress: "shell.navProgress", Settings: "shell.navSettings", Overview: "shell.navOverview",
 };
 /** A navigation label from src/config/nav.ts in the viewer's language; an unknown label stays as it is. */
 export function navLabel(t: (key: MessageKey) => string, label: string): string {
