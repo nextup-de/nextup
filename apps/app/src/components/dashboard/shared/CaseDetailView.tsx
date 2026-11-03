@@ -22,6 +22,22 @@ import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import { raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
 import { scoreBand, scoreCase } from "@/features/scoring";
+
+/** The score parts are built with English labels (features/scoring); show them in the reader's language. */
+function scoreLabel(t: T, label: string): string {
+  const fixed: Record<string, MessageKey> = {
+    "Route proposed by AI": "dashboard.scoreRoutedByAi", "Fits a decision type on the map": "dashboard.scoreFitsType",
+    "Upside stated": "dashboard.scoreUpside", "Described in detail": "dashboard.scoreDetailed",
+    "Past the promise": "dashboard.scorePastPromise", "Evidence attached": "dashboard.scoreEvidence", "New information": "dashboard.scoreNewInfo",
+  };
+  if (fixed[label]) return t(fixed[label]);
+  const num = (re: RegExp) => label.match(re)?.[1];
+  const waiting = num(/^Waiting (\d+) d$/), affects = num(/^Affects (\d+) more$/), info = num(/^New information ×(\d+)$/);
+  if (waiting) return t("dashboard.scoreWaiting", { n: waiting });
+  if (affects) return t("dashboard.scoreAffects", { n: affects });
+  if (info) return t("dashboard.scoreNewInfoN", { n: info });
+  return label;
+}
 import { loadShots } from "@/lib/shots";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CaseDetailView.module.css";
@@ -83,7 +99,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const reasons = affected.filter((a) => a.why); // leads say why it hits their team
   // The score as the dashboard scores it, re-evaluated with every piece of new information posted since.
   const updates = rescoresOn(log, c.id);
-  const score = scoreCase({ ...c, affected: standing.length, evidence: extra.attachments, updates: updates.length }, ctx.seed.promiseDays);
+  const score = scoreCase({ ...c, affected: standing.length, evidence: extra.attachments, updates: updates.length }, ctx.seed.promiseDays, t);
   // An employee re-evaluates the score with new information; a lead (or manager) stands behind it for their team, and says why.
   const lead = role !== "member";
   // Every desk it has been on, in order; the last one is where it is now.
@@ -172,9 +188,9 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       <div className={ui.stack}>
       <div className={ui.card}>
         <div className={ui.eyebrow}>{t("dashboard.detailYourMove")}</div>
-        <div className={styles.score} title={score.parts.map((p) => "+" + p.points + " " + p.label).join("\n") || t("dashboard.detailBaseOnly")}>
+        <div className={styles.score} title={score.parts.map((p) => "+" + p.points + " " + scoreLabel(t, p.label)).join("\n") || t("dashboard.detailBaseOnly")}>
           <span className={styles.scoreV} data-band={scoreBand(score.value)}>{score.value}</span>
-          <span className={styles.scoreL}>{t("dashboard.detailScore", { parts: score.parts.length ? score.parts.map((p) => p.label.toLowerCase()).join(", ") : t("dashboard.detailBaseOnlyLc") })}</span>
+          <span className={styles.scoreL}>{t("dashboard.detailScore", { parts: score.parts.length ? score.parts.map((p) => scoreLabel(t, p.label).toLowerCase()).join(", ") : t("dashboard.detailBaseOnlyLc") })}</span>
         </div>
         {updates.map((u) => (
           <div key={u.id} className={styles.corr}>{t("dashboard.detailCorrected", { text: u.text, by: isMe(u.byUserId) ? t("dashboard.detailYou") : u.by, date: f(u.day) })}</div>
