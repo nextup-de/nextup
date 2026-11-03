@@ -1,0 +1,22 @@
+{
+  "d": {
+    "results": [
+      {
+        "userId": "u4",
+        "startDate": "/Date(1577836800000)/",
+        "department": "D200",
+        "jobTitle": "Disponent",
+        "managerId": "u2",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "userId": "u5",
+        "startDate": "/Date(1577836800000)/",
+        "department": "D300",
+        "jobTitle": "Lagerist",
+        "managerId": "u3",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      }
+    ]
+  }
+}
