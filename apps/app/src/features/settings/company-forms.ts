@@ -28,6 +28,9 @@ const list = (f: FormFields, k: string): string[] => {
   return Array.isArray(v) ? v : v === undefined ? [] : [v];
 };
 
+/** A checkbox: present means on. */
+const on = (f: FormFields, k: string): boolean => f[k] !== undefined;
+
 /** A whole number from a field, or null when it is empty or not one. */
 function whole(s: string): number | null {
   return /^-?\d+$/.test(s) ? Number(s) : null;
@@ -114,7 +117,11 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
   return {
     ok: true,
     value: {
-      rules: { ...DEFAULT_RULES, promiseDays, outcomeDays, spend },
+      rules: {
+        ...DEFAULT_RULES, promiseDays, outcomeDays, spend,
+        deadlineHandover: on(f, "deadlineHandover"),
+        steps: { discussion: on(f, "stepDiscussion"), projects: on(f, "stepProjects"), measure: on(f, "stepMeasure"), recognition: on(f, "stepRecognition") },
+      },
       loop: loopRules({ discussEveryDays, discussMaxRounds, fastLaneEur, measureDays: measure as number[], tolerancePct, reward: { kind, amount, sharePct, capEur } }),
     },
   };

@@ -2,10 +2,11 @@
 // reach. Replaces tests/e2e/admin-flow.cjs, which still logged in with the shared company code
 // that #47 removed.
 //
-// It makes its own company in /admin ("e2e-<time>", sandbox stage = real-people rules) and
+// It makes its own company straight in the database ("e2e-<time>", sandbox stage = real-people rules) and
 // deletes it afterwards, so it leaves acme and everyone's codes alone on a shared dev database.
 import type { Browser, Page } from "@playwright/test";
 import { confirmSheet, expect, passSecondFactor, publishIdea, test } from "../helpers";
+import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
 
 const SLUG = `e2e-${Date.now().toString(36)}`;
 // Names from the demo seed, so the router and the inboxes have someone to match.
@@ -17,17 +18,7 @@ const PEOPLE = [
 type Person = (typeof PEOPLE)[number]["name"];
 const codes = new Map<string, string>();
 
-const ADMIN_CODE = process.env.ADMIN_ACCESS_CODE;
-test.skip(!ADMIN_CODE || !process.env.DATABASE_URL, "needs DATABASE_URL and ADMIN_ACCESS_CODE (.env.local)");
-
-async function adminPage(browser: Browser): Promise<Page> {
-  const page = await (await browser.newContext()).newPage();
-  await page.goto("/admin/login");
-  await page.locator("#code").fill(ADMIN_CODE ?? "");
-  await page.getByRole("button", { name: "Unlock" }).click();
-  await expect(page).toHaveURL(/\/admin$/);
-  return page;
-}
+test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL (.env.local)");
 
 /** A fresh browser (own cookies) signed in as one person with their personal code. */
 async function signIn(browser: Browser, person: Person | string): Promise<Page> {
@@ -40,43 +31,17 @@ async function signIn(browser: Browser, person: Person | string): Promise<Page> 
   return page;
 }
 
-test.describe.serial("a new company, from /admin to a decided case", () => {
-  test.beforeAll(async ({ browser }) => {
-    const page = await adminPage(browser);
-    await page.goto("/admin/companies");
-    await page.locator("#name").fill("E2E Maschinenbau");
-    await page.locator("#slug").fill(SLUG);
-    await page.locator("#stage").selectOption("sandbox");
-    for (const [i, p] of PEOPLE.entries()) {
-      await page.getByLabel(`Name ${i + 1}`).fill(p.name);
-      await page.getByLabel(`Email ${i + 1}`).fill(`${p.name.replace(/\W+/g, ".").toLowerCase()}@${SLUG}.test`);
-      await page.getByLabel(`Role ${i + 1}`).selectOption(p.role);
-      await page.getByLabel(`Department ${i + 1}`).fill(p.dept);
-    }
-    await page.getByRole("button", { name: "Create company" }).click();
-    await expect(page.getByText(`${SLUG} is live.`)).toBeVisible({ timeout: 30_000 });
-    for (const p of PEOPLE) {
-      // .last(): the innermost <div> holding this name - the outer ones hold everybody's codes.
-      const own = page.locator("div").filter({ has: page.locator(`strong:text-is("${p.name}")`) }).last();
-      const code = await own.locator('[class*="code"]').innerText();
-      codes.set(p.name, code.trim());
-    }
-    await page.context().close();
+test.describe.serial("a new company, from its codes to a decided case", () => {
+  test.beforeAll(async () => {
+    const made = await createTestCompany({
+      slug: SLUG, name: "E2E Maschinenbau", template: "demo", stage: "sandbox",
+      people: PEOPLE.map((p) => ({ ...p, email: emailOf(p.name, SLUG) })),
+    });
+    for (const [name, code] of made) codes.set(name, code);
   });
 
-  test.afterAll(async ({ browser }) => {
-    const page = await adminPage(browser);
-    await page.goto("/admin/companies");
-    // Delete asks you to type the slug into a prompt - that is the confirmation.
-    page.on("dialog", (d) => d.accept(SLUG));
-    const remove = page.locator(`form:has(input[name="slug"][value="${SLUG}"])`).filter({ has: page.getByRole("button", { name: "Delete" }) });
-    await remove.getByRole("button", { name: "Delete" }).click();
-    // The list does not refresh itself after a delete (deleteCompanyAction has no revalidate), so reload.
-    await expect(async () => {
-      await page.reload();
-      await expect(remove).toHaveCount(0, { timeout: 1_000 });
-    }).toPass({ timeout: 15_000 });
-    await page.context().close();
+  test.afterAll(async () => {
+    await deleteTestCompany(SLUG);
   });
 
   test("every person got a code of the form slug-xxxx-xxxx-xxxx", () => {
@@ -123,9 +88,11 @@ test.describe.serial("a new company, from /admin to a decided case", () => {
     await leader.reload();
     await leader.getByRole("main").getByText(title).first().click();
     await leader.getByRole("button", { name: "Yes, do it" }).click();
+    // Projects are on by default, so the yes opens a sheet that names the project's lead.
+    await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
 
     await member.reload();
-    await expect(member.getByRole("article", { name: title })).toContainText("Answered: yes");
+    await expect(member.getByRole("article", { name: title })).toContainText("Approved");
   });
 
   test("the manager adds a person in Settings, and their code works", async ({ browser }) => {

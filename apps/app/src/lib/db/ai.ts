@@ -2,7 +2,8 @@
 // is sealed with the vault and bound to the company; it comes out only here, for the adapter.
 import { integrationContext, open, seal, vaultKey } from "@/features/connectors/vault";
 import { AI_SYSTEM, aiSettings, type AiSettings } from "@/features/ai/settings";
-import { getIntegration, integrationSecrets, saveIntegration, setIntegrationOn } from "./integrations";
+import { getIntegration, integrationSecrets, saveIntegration, setIntegrationOn, type Tx } from "./integrations";
+import type { Db } from "./client";
 
 export type LoadedAi = { settings: AiSettings; key: string | null };
 
@@ -20,7 +21,7 @@ export async function loadAiSettings(companyId: string, stage: string, env: Reco
  * Save the choice. `key`: a string replaces the stored key, `null` keeps it. The row is on unless
  * the choice is off.
  */
-export async function saveAiSettings(companyId: string, settings: AiSettings, key: string | null, by: string | null): Promise<void> {
+export async function saveAiSettings(companyId: string, settings: AiSettings, key: string | null, by: string | null, client?: Tx | Db): Promise<void> {
   let secretSealed: string | undefined;
   if (key !== null) {
     const vault = vaultKey();
@@ -34,6 +35,6 @@ export async function saveAiSettings(companyId: string, settings: AiSettings, ke
     settings: { choice, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment },
     ...(secretSealed !== undefined ? { secretSealed } : {}),
     updatedBy: by,
-  });
-  await setIntegrationOn(companyId, AI_SYSTEM, choice !== "off", by);
+  }, client);
+  await setIntegrationOn(companyId, AI_SYSTEM, choice !== "off", by, new Date(), client);
 }

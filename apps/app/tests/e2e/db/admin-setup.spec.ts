@@ -1,14 +1,14 @@
-// ADM acceptance (plan ADM, ADM-Z1): a company created empty in /admin is configured in the app by
+// ADM acceptance (plan ADM, ADM-Z1): a company created empty is configured in the app by
 // its manager - second factor, setup wizard, seat link on Members - and the first case a member
-// raises reaches the leader who holds the route's owner seat. /admin is used only to create the
-// company and to delete it. Own company, like structure.spec.ts.
+// raises reaches the leader who holds the route's owner seat. The fixture creates the
+// company in the database and deletes it. Own company, like structure.spec.ts.
 import type { Browser, Locator, Page } from "@playwright/test";
 import { expect, passSecondFactor, publishIdea, test } from "../helpers";
+import { createTestCompany, deleteTestCompany } from "./company-fixture";
 
 const STAMP = Date.now().toString(36);
 const SLUG = `adm-${STAMP}`;
-const ADMIN_CODE = process.env.ADMIN_ACCESS_CODE;
-test.skip(!ADMIN_CODE || !process.env.DATABASE_URL, "needs DATABASE_URL and ADMIN_ACCESS_CODE (.env.local)");
+test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL (.env.local)");
 
 const MANAGER = { name: "Wilhelmina Quarterfoil", email: `wilhelmina@${SLUG}.test` };
 const LEADER = { name: "Ottokar Brindlemoor", email: `ottokar@${SLUG}.test` };
@@ -16,47 +16,13 @@ const MEMBER = { name: "Primrose Tallowby", email: `primrose@${SLUG}.test` };
 
 const codes = new Map<string, string>();
 
-async function adminPage(browser: Browser): Promise<Page> {
-  const page = await (await browser.newContext()).newPage();
-  await page.goto("/admin/login");
-  await page.locator("#code").fill(ADMIN_CODE ?? "");
-  await page.getByRole("button", { name: "Unlock" }).click();
-  await expect(page).toHaveURL(/\/admin$/);
-  return page;
-}
-
-/** The last thing /admin does: an empty sandbox company with one manager. */
-async function createCompany(browser: Browser) {
-  const page = await adminPage(browser);
-  await page.goto("/admin/companies");
-  await page.locator("#name").fill(`ADM ${STAMP}`);
-  await page.locator("#slug").fill(SLUG);
-  await page.locator("#template").selectOption("empty");
-  await page.locator("#stage").selectOption("sandbox");
-  await page.getByLabel("Name 1").fill(MANAGER.name);
-  await page.getByLabel("Email 1").fill(MANAGER.email);
-  await page.getByLabel("Role 1").selectOption("manager");
-  await page.getByLabel("Department 1").fill("Management");
-  await page.getByRole("button", { name: "Create company" }).click();
-  await expect(page.getByText(`${SLUG} is live.`)).toBeVisible({ timeout: 30_000 });
-  const own = page.locator("div").filter({ has: page.locator(`strong:text-is("${MANAGER.name}")`) }).last();
-  codes.set(MANAGER.name, (await own.locator('[class*="code"]').innerText()).trim());
-  await page.context().close();
-}
-
-async function deleteCompany(browser: Browser) {
-  const page = await adminPage(browser);
-  await page.goto("/admin/companies");
-  page.on("dialog", (d) => d.accept(SLUG));
-  const remove = page.locator(`form:has(input[name="slug"][value="${SLUG}"])`).filter({ has: page.getByRole("button", { name: "Delete" }) });
-  if (await remove.count()) {
-    await remove.getByRole("button", { name: "Delete" }).click();
-    await expect(async () => {
-      await page.reload();
-      await expect(remove).toHaveCount(0, { timeout: 1_000 });
-    }).toPass({ timeout: 15_000 });
-  }
-  await page.context().close();
+/** An empty sandbox company with one manager. */
+async function createCompany() {
+  const made = await createTestCompany({
+    slug: SLUG, name: `ADM ${STAMP}`, template: "empty", stage: "sandbox",
+    people: [{ ...MANAGER, role: "manager", dept: "Management" }],
+  });
+  for (const [name, code] of made) codes.set(name, code);
 }
 
 async function signIn(browser: Browser, name: string): Promise<Page> {
@@ -97,12 +63,12 @@ async function readCode(page: Page, who: { name: string; email: string }) {
 }
 
 test.describe.serial("ADM acceptance: an empty company is configured in the app and its first case is routed", () => {
-  test.beforeAll(async ({ browser }) => {
-    await createCompany(browser);
+  test.beforeAll(async () => {
+    await createCompany();
   });
 
-  test.afterAll(async ({ browser }) => {
-    await deleteCompany(browser);
+  test.afterAll(async () => {
+    await deleteTestCompany(SLUG);
   });
 
   test("the manager sets the company up in the wizard, the member's case reaches the leader of the owner seat", async ({ browser }) => {

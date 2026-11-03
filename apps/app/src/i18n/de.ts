@@ -39,6 +39,14 @@ import { people } from "./messages/people";
 import { feed } from "./messages/feed";
 import { overview } from "./messages/overview";
 import { progress } from "./messages/progress";
+import { settingsAreas } from "./messages/settingsAreas";
+import { floorDevices } from "./messages/floorDevices";
+import { floor } from "./messages/floor";
+import { settingsApiTokens } from "./messages/settingsApiTokens";
+import { settingsWebhooks } from "./messages/settingsWebhooks";
+import { settingsImport } from "./messages/settingsImport";
+import { teams } from "./messages/teams";
+import { settingsTeams } from "./messages/settingsTeams";
 
 export const de = {
   common: common.de,
@@ -81,4 +89,12 @@ export const de = {
   feed: feed.de,
   overview: overview.de,
   progress: progress.de,
+  settingsAreas: settingsAreas.de,
+  floorDevices: floorDevices.de,
+  floor: floor.de,
+  settingsApiTokens: settingsApiTokens.de,
+  settingsWebhooks: settingsWebhooks.de,
+  settingsImport: settingsImport.de,
+  teams: teams.de,
+  settingsTeams: settingsTeams.de,
 } as const;

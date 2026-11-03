@@ -8,8 +8,10 @@ import { readJiraForm, settingsFromForm } from "@/features/admin/jira-admin";
 import { vaultKey } from "@/features/connectors/vault";
 import type { JiraAccount, JiraCheck, JiraIssueType } from "@/features/integrations/jira/types";
 import { parseJiraSettings } from "@/features/integrations/jira/settings";
-import { deleteIntegration, getIntegration, JIRA, saveIntegration, setIntegrationOn } from "@/lib/db/integrations";
+import { getDb } from "@/lib/db/client";
+import { deleteIntegration, getIntegration, jiraSaveChanges, JIRA, saveIntegration, setIntegrationOn } from "@/lib/db/integrations";
 import { adminActor } from "@/server/admin-session";
+import { consoleActor, recordAudit } from "@/server/audit/record";
 import { adminCompany, newWebhookSecret, sealSecret, storedToken } from "@/server/jira-admin";
 import { testJira } from "@/server/jira/test";
 import { kickJira } from "@/server/jira-sync";
@@ -28,6 +30,10 @@ const NOT_ADMIN = "Not signed in to the admin area, or this is not a company sta
 const NO_VAULT = "CONNECTOR_VAULT_KEY is missing, so the token cannot be stored.";
 const refresh = () => revalidatePath(adminBase() + "/integrations");
 const who = async () => (await adminActor()) ?? "admin code";
+const NOT_RECORDED = "The change could not be recorded in the audit trail, so it was not made.";
+const JIRA_TARGET = { kind: "connector", id: "jira" } as const;
+/** Who is changing it, for the audit row; null when there is no console session (the write is then refused). */
+const actorOrNull = () => consoleActor().catch(() => null);
 
 /** Run the connection test with what is in the form. A token left empty uses the saved one. */
 export async function testJiraAction(raw: unknown): Promise<JiraTestState> {
@@ -56,6 +62,8 @@ export async function saveJiraAction(raw: unknown): Promise<JiraActionState> {
   const form = readJiraForm(raw);
   const parsed = settingsFromForm(form);
   if (!parsed.ok) return { error: parsed.errors.join(" ") };
+  const actor = await actorOrNull();
+  if (!actor) return { error: NOT_ADMIN };
   const existing = await getIntegration(company.id, JIRA);
   let secretSealed: string | undefined;
   if (form.token) {
@@ -70,12 +78,21 @@ export async function saveJiraAction(raw: unknown): Promise<JiraActionState> {
     const old = parseJiraSettings(existing.settings);
     return !old.ok || old.settings.siteUrl !== parsed.settings.siteUrl || old.settings.email !== parsed.settings.email || secretSealed !== undefined;
   })();
-  await saveIntegration({
-    companyId: company.id, system: JIRA, settings: parsed.settings, updatedBy: await who(),
-    ...(secretSealed !== undefined ? { secretSealed } : {}),
-    ...(settingsMoved ? { account: null } : {}),
-  });
-  console.info(`[admin] ${await who()} saved the Jira settings for ${company.slug}`);
+  const by = await who();
+  try {
+    await getDb().$transaction(async (tx) => {
+      await saveIntegration({
+        companyId: company.id, system: JIRA, settings: parsed.settings, updatedBy: by,
+        ...(secretSealed !== undefined ? { secretSealed } : {}),
+        ...(settingsMoved ? { account: null } : {}),
+      }, tx);
+      await recordAudit(company.id, { actor, action: "audit.connector.saved", target: JIRA_TARGET, changes: jiraSaveChanges(existing, parsed.settings, secretSealed), source: "console" }, tx);
+    });
+  } catch (err) {
+    console.warn("[jira-admin] save failed -", err instanceof Error ? err.message : err);
+    return { error: NOT_RECORDED };
+  }
+  console.info(`[jira-admin] saved ${company.slug}`);
   refresh();
   return { ok: true };
 }
@@ -86,8 +103,20 @@ export async function setJiraOnAction(on: boolean): Promise<JiraActionState> {
   if (!company) return { error: NOT_ADMIN };
   const row = await getIntegration(company.id, JIRA);
   if (on && !(row && row.hasSecret && parseJiraSettings(row.settings).ok)) return { error: "Save valid settings and a token first." };
-  if (!(await setIntegrationOn(company.id, JIRA, on === true, await who()))) return { error: "Nothing is saved yet." };
-  console.info(`[admin] ${await who()} switched the Jira sync ${on ? "on" : "off"} for ${company.slug}`);
+  const actor = await actorOrNull();
+  if (!actor) return { error: NOT_ADMIN };
+  const by = await who();
+  let found = false;
+  try {
+    await getDb().$transaction(async (tx) => {
+      found = await setIntegrationOn(company.id, JIRA, on === true, by, new Date(), tx);
+      if (found) await recordAudit(company.id, { actor, action: on === true ? "audit.connector.on" : "audit.connector.off", target: JIRA_TARGET, source: "console" }, tx);
+    });
+  } catch (err) {
+    console.warn("[jira-admin] on/off failed -", err instanceof Error ? err.message : err);
+    return { error: NOT_RECORDED };
+  }
+  if (!found) return { error: "Nothing is saved yet." };
   if (on) kickJira(company.slug);
   refresh();
   return { ok: true };
@@ -112,12 +141,22 @@ export async function newWebhookSecretAction(): Promise<JiraSecretState> {
   if (!key) return { error: NO_VAULT };
   const row = await getIntegration(company.id, JIRA);
   if (!row) return { error: "Save the settings first." };
+  const actor = await actorOrNull();
+  if (!actor) return { error: NOT_ADMIN };
   const secret = newWebhookSecret();
-  await saveIntegration({
-    companyId: company.id, system: JIRA, settings: row.settings, updatedBy: await who(),
-    webhookSecretSealed: sealSecret(secret, key, company.id),
-  });
-  console.info(`[admin] ${await who()} made a new Jira webhook secret for ${company.slug}`);
+  const by = await who();
+  try {
+    await getDb().$transaction(async (tx) => {
+      await saveIntegration({
+        companyId: company.id, system: JIRA, settings: row.settings, updatedBy: by,
+        webhookSecretSealed: sealSecret(secret, key, company.id),
+      }, tx);
+      await recordAudit(company.id, { actor, action: "audit.connector.secret", target: JIRA_TARGET, changes: { webhookSecret: { before: null, after: "replaced" } }, source: "console" }, tx);
+    });
+  } catch (err) {
+    console.warn("[jira-admin] new webhook secret failed -", err instanceof Error ? err.message : err);
+    return { error: NOT_RECORDED };
+  }
   refresh();
   return { ok: true, secret };
 }
@@ -128,7 +167,18 @@ export async function removeWebhookSecretAction(): Promise<JiraActionState> {
   if (!company) return { error: NOT_ADMIN };
   const row = await getIntegration(company.id, JIRA);
   if (!row) return { ok: true };
-  await saveIntegration({ companyId: company.id, system: JIRA, settings: row.settings, updatedBy: await who(), webhookSecretSealed: null });
+  const actor = await actorOrNull();
+  if (!actor) return { error: NOT_ADMIN };
+  const by = await who();
+  try {
+    await getDb().$transaction(async (tx) => {
+      await saveIntegration({ companyId: company.id, system: JIRA, settings: row.settings, updatedBy: by, webhookSecretSealed: null }, tx);
+      if (row.hasWebhookSecret) await recordAudit(company.id, { actor, action: "audit.connector.secret", target: JIRA_TARGET, changes: { webhookSecret: { before: null, after: "removed" } }, source: "console" }, tx);
+    });
+  } catch (err) {
+    console.warn("[jira-admin] remove webhook secret failed -", err instanceof Error ? err.message : err);
+    return { error: NOT_RECORDED };
+  }
   refresh();
   return { ok: true };
 }
@@ -137,8 +187,17 @@ export async function removeWebhookSecretAction(): Promise<JiraActionState> {
 export async function removeJiraAction(): Promise<JiraActionState> {
   const company = await adminCompany();
   if (!company) return { error: NOT_ADMIN };
-  await deleteIntegration(company.id, JIRA);
-  console.info(`[admin] ${await who()} removed the Jira integration for ${company.slug}`);
+  const actor = await actorOrNull();
+  if (!actor) return { error: NOT_ADMIN };
+  try {
+    await getDb().$transaction(async (tx) => {
+      if (await deleteIntegration(company.id, JIRA, tx)) await recordAudit(company.id, { actor, action: "audit.connector.removed", target: JIRA_TARGET, source: "console" }, tx);
+    });
+  } catch (err) {
+    console.warn("[jira-admin] remove failed -", err instanceof Error ? err.message : err);
+    return { error: NOT_RECORDED };
+  }
+  console.info(`[jira-admin] removed ${company.slug}`);
   refresh();
   return { ok: true };
 }
