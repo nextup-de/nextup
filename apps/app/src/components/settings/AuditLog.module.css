@@ -16,7 +16,7 @@
 .buttons { display: flex; gap: 8px; }
 .mono { font-family: var(--nh-mono); }
 .state { padding: 24px; text-align: center; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); display: grid; gap: 12px; justify-items: center; }
-.drawer { position: fixed; inset: 0 0 0 auto; width: min(480px, 100vw); z-index: 50; overflow: auto; display: grid; align-content: start; gap: 12px; padding: 20px; background: var(--nh-card); border-left: 1px solid var(--nh-line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12); }
+.drawer { position: fixed; inset: 0 0 0 auto; width: min(480px, var(--nh-screen-w)); z-index: 50; overflow: auto; display: grid; align-content: start; gap: 12px; padding: 20px; background: var(--nh-card); border-left: 1px solid var(--nh-line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12); }
 .info { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
 .info dt { color: var(--nh-mute); }
 .info dd { margin: 0; overflow-wrap: anywhere; }
