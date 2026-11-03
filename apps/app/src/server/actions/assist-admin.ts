@@ -1,14 +1,16 @@
 "use server";
 // /admin/assistant: the assistant's switches for the console's own company - on/off (the kill switch),
-// the classification ceiling, retention, the data-processing agreement date, compliance rules and
+// the classification ceiling, the data-processing agreement date, compliance rules and
 // extra redaction patterns. Every action asks consoleCompany() first and writes the guard's company id,
 // never one from the form; a support session reads and changes nothing (ITC/D4).
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { auditChanges } from "@/features/audit";
 import { ceilingOf } from "@/features/assist/classify";
 import { adminBase } from "@/features/admin/nav";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { deleteDocument } from "@/lib/db/assist";
+import { consoleActor, recordAudit } from "@/server/audit/record";
 import { consoleCompany } from "@/server/console-guard";
 
 /** Where the assistant card is shown. */
@@ -23,7 +25,6 @@ export type AssistSettingsState = { ok?: boolean; code?: AssistSettingsCode; /**
 const Form = z.object({
   assistant: z.enum(["on", "off"]),
   ceiling: z.string(),
-  retentionDays: z.coerce.number().int().min(1).max(365),
   dpaSignedAt: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/),
   rules: z.string().max(4000),
   patterns: z.string().max(2000),
@@ -48,14 +49,31 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
   const config = {
     assistant: f.assistant === "on",
     classificationCeiling: ceilingOf(f.ceiling),
-    retentionDays: f.retentionDays,
     dpaSignedAt: f.dpaSignedAt ? new Date(f.dpaSignedAt + "T00:00:00Z") : null,
     redactPatterns: patterns,
   };
-  await db.$transaction([
-    db.companyConfig.upsert({ where: { companyId }, create: { companyId, ...config }, update: config }),
-    db.companyProfile.upsert({ where: { companyId }, create: { companyId, complianceRules: f.rules.trim(), principles: [] }, update: { complianceRules: f.rules.trim() } }),
-  ]);
+  const actor = await consoleActor();
+  const day = (d: Date | null | undefined): string | null => (d ? d.toISOString().slice(0, 10) : null);
+  await db.$transaction(async (tx) => {
+    const [oldConfig, oldProfile] = await Promise.all([
+      tx.companyConfig.findUnique({ where: { companyId } }),
+      tx.companyProfile.findUnique({ where: { companyId } }),
+    ]);
+    await tx.companyConfig.upsert({ where: { companyId }, create: { companyId, ...config }, update: config });
+    await tx.companyProfile.upsert({ where: { companyId }, create: { companyId, complianceRules: f.rules.trim(), principles: [] }, update: { complianceRules: f.rules.trim() } });
+    const fields = (c: typeof oldConfig, rules: string | undefined) => ({
+      assistant: c?.assistant ?? null,
+      classificationCeiling: c?.classificationCeiling ?? null,
+      dpaSignedAt: day(c?.dpaSignedAt),
+      redactPatterns: c?.redactPatterns ?? [],
+      complianceRules: rules ?? "",
+    });
+    const changes = auditChanges(
+      fields(oldConfig, oldProfile?.complianceRules),
+      { ...fields(null, f.rules.trim()), assistant: config.assistant, classificationCeiling: config.classificationCeiling, dpaSignedAt: day(config.dpaSignedAt), redactPatterns: config.redactPatterns },
+    );
+    await recordAudit(companyId, { actor, action: "audit.assistant.saved", target: { kind: "assistant", id: "settings" }, changes, source: "console" }, tx);
+  });
   revalidateAssistant();
   return { ok: true };
 }
