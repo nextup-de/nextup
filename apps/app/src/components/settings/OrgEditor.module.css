@@ -1,11 +1,54 @@
-.wrap { display: grid; gap: 16px; max-width: 980px; }
-.add, .unit { display: grid; gap: 12px; padding: 16px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 14px); }
-.title, .sub { margin: 0; font-size: var(--nh-fs-md); }
-.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end; }
-.key { font-family: var(--nh-mono); }
-.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-.roles { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.role { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--nh-line-soft); border-radius: var(--nh-r); }
-.seats { display: grid; gap: 8px; }
-.seat { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
-@media (max-width: 760px) { .seat { grid-template-columns: 1fr; } }
+/* Org (Paper: "Pilot 01 · Settings and structure"): the unit tree, the picked unit and its roles. */
+.headButtons { display: flex; gap: 8px; flex-shrink: 0; }
+.empty { align-items: center; text-align: center; }
+.split { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+
+/* Tree. */
+.tree { gap: 14px; padding: 20px 18px; }
+.treeList { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.treeRow { display: flex; align-items: center; gap: 2px; height: 32px; padding-left: calc(var(--depth, 0) * 16px); padding-right: 10px; border-radius: 8px; }
+.treeRow[aria-current="true"] { background: #f2f2f7; }
+.twisty { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; padding: 0; border: 0; background: none; font-size: var(--nh-fs-xs); color: #6e6e73; cursor: pointer; transition: transform 0.12s; }
+.twisty[data-open] { transform: rotate(90deg); }
+.treeName { flex: 1; min-width: 0; height: 32px; padding: 0 4px; border: 0; background: none; font: inherit; font-size: var(--nh-fs-sm); text-align: left; color: #1c1c1e; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.treeName[data-top] { font-weight: 600; }
+.treeRow[aria-current="true"] .treeName { font-weight: 600; }
+.treeName:focus-visible, .twisty:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: -2px; border-radius: 6px; }
+.dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: #f5a623; }
+
+/* Detail. */
+.detail { gap: 14px; }
+.unitTitle { margin: 0; font-size: var(--nh-fs-xl); line-height: 26px; font-weight: 600; letter-spacing: -0.01em; color: #1b1d22; }
+.roles { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.role { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 10px; background: #f7f7f9; }
+.roleHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--nh-fs-md); }
+.textBtn { border: 0; background: none; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: #1c1c1e; cursor: pointer; }
+.facts { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px 0; margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; }
+.facts dt { color: #6e6e73; }
+.facts dd { margin: 0; color: #1c1c1e; }
+.seatChips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.person { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px 0 4px; border: 1px solid #e5e5ea; border-radius: 8px; background: #fff; }
+.avatar { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 6px; background: var(--nh-brand-tint); color: var(--nh-brand); font-size: var(--nh-fs-xs); font-weight: 700; }
+.vacantNote { flex-basis: 100%; color: #6e6e73; }
+.noRoles { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 24px; text-align: center; }
+.addHere { display: flex; justify-content: flex-end; }
+
+/* Drawer parts. */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.refusal { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 8px; background: #fff5f5; color: #d70015; font-size: var(--nh-fs-sm); font-weight: 600; }
+.refusal a { color: #1c1c1e; text-decoration: none; }
+.seatList { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.seatRow { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.seatName { flex: 1; min-width: 0; font-size: var(--nh-fs-md); }
+.seatSelect { width: 170px; flex-shrink: 0; }
+.seatAdd { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
+
+@media (max-width: 760px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .headButtons { width: 100%; }
+  .headButtons > * { flex: 1; }
+  .facts { grid-template-columns: 96px minmax(0, 1fr); }
+  .pair, .seatAdd { grid-template-columns: 1fr; }
+  .seatRow { flex-wrap: wrap; }
+  .seatSelect { width: 100%; }
+}

@@ -130,8 +130,8 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     await expect(leader).toHaveURL(/\/dashboard$/);
     const main = leader.getByRole("main");
     await expect(main.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
-    for (const name of ["Ideas per stage", "Ideas raised per month", "How team leads answered", "Did shipped work pay off", "Where the waiting goes"]) await expect(main.getByRole("heading", { name, level: 3 })).toBeVisible();
-    await expect(main.getByRole("button", { name: /^Idea → decision/ })).toBeVisible();
+    for (const name of ["Open cases per stage", "Cases raised per month", "How cases were answered", "By unit and role"]) await expect(main.getByRole("heading", { name, level: 3 })).toBeVisible();
+    await expect(main.getByRole("button", { name: /^Idea to decision/ })).toBeVisible();
   });
 
   await test.step("leave the company as it was found", async () => {
