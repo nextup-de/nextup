@@ -1,6 +1,5 @@
 // VIS acceptance (plan VIS, VIS-Z1): a member's browser never receives another member's private case,
-// and with 50,000 events the inbox and a case page still load in under a second. Own company through
-// /admin (demo template, sandbox stage), filled by fixtures/bulk-events.ts, deleted at the end.
+// and with 50,000 events the inbox and a case page still load in under a second. Own company (demo template, sandbox stage), filled by fixtures/bulk-events.ts, deleted at the end.
 import type { Browser, Page, Response } from "@playwright/test";
 import { expect, passSecondFactor, test } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
@@ -8,11 +7,11 @@ import { workdayOf } from "../../../src/features/clock/calendar";
 import { loadCalendar } from "../../../src/lib/db/calendar";
 import { rebuildProjections } from "../../../src/lib/db/projections/case-view";
 import { seedBulk } from "./fixtures/bulk-events";
+import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
 
 const STAMP = Date.now().toString(36);
 const SLUG = `vis-${STAMP}`;
-const ADMIN_CODE = process.env.ADMIN_ACCESS_CODE;
-test.skip(!ADMIN_CODE || !process.env.DATABASE_URL, "needs DATABASE_URL and ADMIN_ACCESS_CODE (.env.local)");
+test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL (.env.local)");
 
 const PEOPLE = [
   { name: "B. Hartmann", role: "manager", dept: "Betriebsleitung" },
@@ -34,51 +33,12 @@ const OTHER_PRIVATE = { id: `vis-other-private-${STAMP}`, title: `Zeppelin hanga
 const M_PRIVATE = { id: `vis-m-private-${STAMP}`, title: `Quarry shift swap complaint ${STAMP}` };
 const M_SHARED = { id: `vis-m-shared-${STAMP}`, title: `Canteen queue at noon ${STAMP}` };
 
-async function adminPage(browser: Browser): Promise<Page> {
-  const page = await (await browser.newContext()).newPage();
-  await page.goto("/admin/login");
-  await page.locator("#code").fill(ADMIN_CODE ?? "");
-  await page.getByRole("button", { name: "Unlock" }).click();
-  await expect(page).toHaveURL(/\/admin$/);
-  return page;
-}
-
-async function createCompany(browser: Browser) {
-  const page = await adminPage(browser);
-  await page.goto("/admin/companies");
-  await page.locator("#name").fill(`VIS ${STAMP}`);
-  await page.locator("#slug").fill(SLUG);
-  await page.locator("#template").selectOption("demo");
-  await page.locator("#stage").selectOption("sandbox");
-  for (const [i, p] of PEOPLE.entries()) {
-    if (i >= 3) await page.getByRole("button", { name: /Add person/i }).click();
-    await page.getByLabel(`Name ${i + 1}`).fill(p.name);
-    await page.getByLabel(`Email ${i + 1}`).fill(`${p.name.replace(/\W+/g, ".").toLowerCase()}@${SLUG}.test`);
-    await page.getByLabel(`Role ${i + 1}`).selectOption(p.role);
-    await page.getByLabel(`Department ${i + 1}`).fill(p.dept);
-  }
-  await page.getByRole("button", { name: "Create company" }).click();
-  await expect(page.getByText(`${SLUG} is live.`)).toBeVisible({ timeout: 30_000 });
-  for (const p of PEOPLE) {
-    const own = page.locator("div").filter({ has: page.locator(`strong:text-is("${p.name}")`) }).last();
-    codes.set(p.name, (await own.locator('[class*="code"]').innerText()).trim());
-  }
-  await page.context().close();
-}
-
-async function deleteCompany(browser: Browser) {
-  const page = await adminPage(browser);
-  await page.goto("/admin/companies");
-  page.on("dialog", (d) => d.accept(SLUG));
-  const remove = page.locator(`form:has(input[name="slug"][value="${SLUG}"])`).filter({ has: page.getByRole("button", { name: "Delete" }) });
-  if (await remove.count()) {
-    await remove.getByRole("button", { name: "Delete" }).click();
-    await expect(async () => {
-      await page.reload();
-      await expect(remove).toHaveCount(0, { timeout: 1_000 });
-    }).toPass({ timeout: 15_000 });
-  }
-  await page.context().close();
+async function createCompany() {
+  const made = await createTestCompany({
+    slug: SLUG, name: `VIS ${STAMP}`, template: "demo", stage: "sandbox",
+    people: PEOPLE.map((p) => ({ ...p, email: emailOf(p.name, SLUG) })),
+  });
+  for (const [name, code] of made) codes.set(name, code);
 }
 
 async function signIn(browser: Browser, name: string): Promise<Page> {
@@ -134,16 +94,18 @@ function recordResponses(page: Page): { bodies: string[]; actions: string[] } {
 
 async function loadTime(page: Page, path: string): Promise<number> {
   await page.goto(`/${SLUG}${path}`, { waitUntil: "load" });
-  return page.evaluate(() => {
+  const t = await page.evaluate(() => {
     const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
-    return nav.loadEventEnd - nav.startTime;
+    return { ttfb: Math.round(nav.responseStart), resp: Math.round(nav.responseEnd), dcl: Math.round(nav.domContentLoadedEventEnd), load: Math.round(nav.loadEventEnd - nav.startTime), size: nav.encodedBodySize };
   });
+  console.log("PROBE", path, JSON.stringify(t));
+  return t.load;
 }
 
 test.describe.serial("VIS acceptance: a member receives only visible cases and pages stay fast with 50,000 events", () => {
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(600_000);
-    await createCompany(browser);
+    await createCompany();
     const company = await getDb().company.findFirst({ where: { slug: SLUG }, select: { id: true } });
     if (!company) throw new Error(`company ${SLUG} was not created`);
     const now = new Date();
@@ -154,9 +116,9 @@ test.describe.serial("VIS acceptance: a member receives only visible cases and p
     expect(await rebuildProjections(company.id, now)).toBeGreaterThan(BULK.cases);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterAll(async () => {
     if (process.env.VIS_KEEP) return;
-    await deleteCompany(browser);
+    await deleteTestCompany(SLUG);
   });
 
   test("a member's browser never receives another member's private case", async ({ browser }) => {
