@@ -10,6 +10,7 @@ import { ReportInput, confirmationMail, parseScreenshot, ticketLabel, type Scree
 import { getViewerFor } from "@/features/auth/session";
 import { companyPrefix, companyUrl, singleCompany } from "@/features/tenant/urls";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { loadPrivacyPolicy } from "@/lib/db/privacy-settings";
 import { createTicket } from "@/lib/db/tickets";
 import { mailConfigured, sendMail } from "@/server/mail";
 import { throttle } from "@/server/throttle";
@@ -21,7 +22,7 @@ export type ReportResult = { ok: true; label: string } | { ok: false; error: str
 
 type Reporter = { companyId: string; slug: string; stage: string; userId: string | null; role: string; email: string | null };
 
-async function file(reporter: Reporter, raw: unknown): Promise<ReportResult> {
+async function file(reporter: Reporter, raw: unknown, applyPolicy = false): Promise<ReportResult> {
   const parsed = ReportInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "That report is not complete." };
   const input = parsed.data;
@@ -32,6 +33,9 @@ async function file(reporter: Reporter, raw: unknown): Promise<ReportResult> {
     if ("error" in shot) return { ok: false, error: shot.error };
     screenshot = shot;
   }
+
+  // The company's screenshot switch (GDP D17): off, the ticket is stored and forwarded without it.
+  if (applyPolicy && screenshot && !(await loadPrivacyPolicy(reporter.companyId)).reportScreenshots) screenshot = null;
 
   const wait = await throttle("ticketReport", `${reporter.companyId}|${reporter.userId ?? "admin"}`);
   if (wait) return { ok: false, error: wait };
@@ -85,6 +89,7 @@ export async function reportTicket(slug: string, raw: unknown): Promise<ReportRe
       email: user?.email ?? null,
     },
     raw,
+    true,
   );
 }
 

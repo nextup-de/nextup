@@ -4,6 +4,7 @@
 import { LEVELS, ceilingOf, rank, type Level } from "@/features/assist/classify";
 import type { DocHit, Source } from "@/features/assist/tools";
 import type { Hits } from "@/features/assist/redact";
+import { effectiveRules } from "@/features/privacy/retention";
 import { getDb } from "./client";
 
 export type AssistSettings = {
@@ -17,17 +18,19 @@ export type AssistSettings = {
 
 export async function loadAssistSettings(companyId: string): Promise<AssistSettings> {
   const db = getDb();
-  const [cfg, profile] = await Promise.all([
+  const [cfg, profile, rule] = await Promise.all([
     db.companyConfig.findUnique({
       where: { companyId },
       select: { assistant: true, classificationCeiling: true, retentionDays: true, dpaSignedAt: true, redactPatterns: true },
     }),
     db.companyProfile.findUnique({ where: { companyId }, select: { complianceRules: true } }),
+    db.retentionRule.findUnique({ where: { companyId_kind: { companyId, kind: "assist_turns" } }, select: { kind: true, keepDays: true } }),
   ]);
   return {
     enabled: cfg?.assistant ?? false,
     ceiling: ceilingOf(cfg?.classificationCeiling),
-    retentionDays: cfg?.retentionDays ?? 90,
+    // The assist_turns rule first, else CompanyConfig.retentionDays, else 90 (GDP D16).
+    retentionDays: effectiveRules(rule ? [rule] : [], cfg).assist_turns ?? 90,
     dpaSignedAt: cfg?.dpaSignedAt ?? null,
     patterns: cfg?.redactPatterns ?? [],
     rules: profile?.complianceRules ?? "",
