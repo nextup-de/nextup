@@ -6,8 +6,10 @@
 // Next 16 allows one `next dev` per folder (.next/dev/lock), so this never fights with the dev
 // server you already have open. The database suite is playwright.db.config.ts.
 import { defineConfig, devices } from "@playwright/test";
+import { checkoutPort } from "./playwright.ports";
 
-const PORT = 3100;
+// Its own port per checkout (playwright.ports.ts); E2E_PORT overrides it.
+const PORT = Number(process.env.E2E_PORT) || checkoutPort(4000);
 
 export default defineConfig({
   testDir: "tests/e2e/demo",
