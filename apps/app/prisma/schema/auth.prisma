@@ -76,6 +76,8 @@ model ApiToken {
   expiresAt  DateTime?
   lastUsedAt DateTime?
   createdAt  DateTime  @default(now())
+  createdBy  String? // user id of the admin who made it; null for the console's n8n token
+  revokedAt  DateTime? // set by revoke; a revoked token no longer resolves
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 

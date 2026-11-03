@@ -1,5 +1,7 @@
 # Pilot pages: what every new and changed screen looks like
 
+Design system: [NextUp Software in Paper](https://app.paper.design/file/01M55ZTX8WWCRJNW7898CQ7ECN)
+
 > **Plan · 2026-11-02 · open: Sam designs and builds every page here; the data behind each page comes from the PILOT phase named on it. Nothing is built yet.**
 > The Hauptplan PILOT adds **23 new pages**, changes **15 existing pages** and needs **27 other surfaces** (Teams cards,
 > emails, printables, dialogs, states). On top of that, **8 existing pages** that work today get a design pass

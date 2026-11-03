@@ -1,0 +1,14 @@
+{
+  "name": "NextUp",
+  "short_name": "NextUp",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "de",
+  "icons": [
+    { "src": "/icon.png", "sizes": "64x64", "type": "image/png" },
+    { "src": "/apple-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
