@@ -12,6 +12,7 @@ export const NAV: NavItem[] = [
   { label: "Problems", href: "/problems", roles: ["member", "leader", "manager"] },
   { label: "Ideas", href: "/ideas", roles: ["member", "leader", "manager"] },
   { label: "Feed", href: "/feed", roles: ["member", "leader", "manager"] },
+  { label: "Decisions", href: "/decisions", roles: ["member", "leader", "manager"] },
   { label: "Collaboration", href: "/collaboration", roles: ["member", "leader", "manager"] },
   { label: "Projects", href: "/projects", roles: ["member", "leader", "manager"], flag: "projects" },
   { label: "Progress", href: "/progress", roles: ["member", "leader", "manager"] },
@@ -33,6 +34,7 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
     { label: "Ideas", href: "/raise" },
     { label: "Inbox", href: "/leader", count: "inbox" },
     { label: "Feed", href: "/feed" },
+    { label: "Decisions", href: "/decisions" },
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
@@ -40,6 +42,7 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
     { label: "Dashboard", href: "/dashboard" },
     { label: "Inbox", href: "/leader", count: "inbox" }, // tentative: what sits on the manager's own desk (escalations, routes they own)
     { label: "Feed", href: "/feed" },
+    { label: "Decisions", href: "/decisions" },
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],

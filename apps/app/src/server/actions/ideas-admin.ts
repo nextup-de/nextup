@@ -4,8 +4,10 @@
 // changes nothing (ITC/D4).
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { auditChanges } from "@/features/audit";
 import { adminBase } from "@/features/admin/nav";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { consoleActor, recordAudit } from "@/server/audit/record";
 import { consoleCompany } from "@/server/console-guard";
 
 export type IdeaSettingsCode = "not-allowed" | "support-read-only" | "no-database" | "invalid";
@@ -21,7 +23,12 @@ export async function saveIdeaSettingsAction(_prev: IdeaSettingsState, form: For
   const p = Form.safeParse(Object.fromEntries(form));
   if (!p.success) return { ok: false, code: "invalid" };
   const companyId = guard.companyId, publishThreshold = p.data.publishThreshold;
-  await getDb().companyConfig.upsert({ where: { companyId }, create: { companyId, publishThreshold }, update: { publishThreshold } });
+  const actor = await consoleActor();
+  await getDb().$transaction(async (tx) => {
+    const old = await tx.companyConfig.findUnique({ where: { companyId }, select: { publishThreshold: true } });
+    await tx.companyConfig.upsert({ where: { companyId }, create: { companyId, publishThreshold }, update: { publishThreshold } });
+    await recordAudit(companyId, { actor, action: "audit.assistant.ideas", target: { kind: "assistant", id: "ideas" }, changes: auditChanges({ publishThreshold: old?.publishThreshold ?? null }, { publishThreshold }), source: "console" }, tx);
+  });
   revalidatePath(adminBase() + "/company-data");
   return { ok: true };
 }

@@ -4,16 +4,19 @@
 // is pure and lives in features/settings/company-forms.ts.
 import { revalidatePath } from "next/cache";
 import type { Viewer } from "@/features/auth/session";
+import { auditChanges } from "@/features/audit";
 import { calendarSpec } from "@/features/clock";
 import {
   parseCalendarForm, parseCompanyForm, parseRulesForm, type FormFields, type Parsed,
 } from "@/features/settings/company-forms";
 import { companyPrefix } from "@/features/tenant/urls";
 import type { MessageKey } from "@/i18n";
-import { getDb } from "@/lib/db/client";
-import { saveCalendar } from "@/lib/db/calendar";
-import { saveLoopRules } from "@/lib/db/loop";
-import { saveCompanyRules } from "@/lib/db/rules";
+import { invalidateFlags } from "@/features/flags";
+import { loadCalendar, saveCalendar } from "@/lib/db/calendar";
+import { loadLoopRules, saveLoopRules } from "@/lib/db/loop";
+import { loadCompanyRules, saveCompanyRules } from "@/lib/db/rules";
+import { settingsActor } from "@/server/audit/record";
+import { audited } from "./audited";
 import { companyAdminOf } from "./guard";
 
 export type SettingsFormState = { ok?: boolean; error?: MessageKey; field?: string };
@@ -44,20 +47,36 @@ function done(slug: string, section: string): SettingsFormState {
   return { ok: true };
 }
 
+// The profile's free texts are written as set/replaced/removed only: they are prose that may name people (D9).
+const PROFILE_TEXTS = ["vision", "mission", "principles", "businessModel", "complianceRules"] as const;
+
 export async function saveCompanyAction(_prev: SettingsFormState, form: FormData): Promise<SettingsFormState> {
   const r = await begin(form, parseCompanyForm);
   if (r.state) return r.state;
   const { companyId, name: by } = r.viewer;
   const { name, mark, profile } = r.value;
-  const db = getDb();
-  await db.$transaction([
-    db.company.update({ where: { id: companyId }, data: { name, mark } }),
-    db.companyProfile.upsert({
-      where: { companyId },
-      create: { companyId, ...profile, updatedBy: by },
-      update: { ...profile, updatedBy: by },
+  const saved = await audited(
+    companyId,
+    (changes: ReturnType<typeof auditChanges>) => ({
+      actor: settingsActor(r.viewer), action: "audit.company.saved", target: { kind: "company", id: companyId }, changes, source: "settings",
     }),
-  ]);
+    async (tx) => {
+      const [co, prof] = await Promise.all([
+        tx.company.findUnique({ where: { id: companyId }, select: { name: true, mark: true } }),
+        tx.companyProfile.findUnique({ where: { companyId } }),
+      ]);
+      await tx.company.update({ where: { id: companyId }, data: { name, mark } });
+      await tx.companyProfile.upsert({
+        where: { companyId },
+        create: { companyId, ...profile, updatedBy: by },
+        update: { ...profile, updatedBy: by },
+      });
+      const was: Record<string, unknown> = { name: co?.name, mark: co?.mark };
+      for (const k of PROFILE_TEXTS) was[k] = prof?.[k];
+      return auditChanges(was, { name, mark, ...profile }, PROFILE_TEXTS);
+    },
+  );
+  if (!saved.ok) return { error: "settingsCompany.auditFailed" };
   return done(r.slug, "company");
 }
 
@@ -65,14 +84,37 @@ export async function saveRulesAction(_prev: SettingsFormState, form: FormData):
   const r = await begin(form, parseRulesForm);
   if (r.state) return r.state;
   const { companyId, userId } = r.viewer;
-  await saveCompanyRules(companyId, r.value.rules, userId);
-  await saveLoopRules(companyId, r.value.loop);
+  const before = { ...(await loadCompanyRules(companyId)), ...(await loadLoopRules(companyId)) } as Record<string, unknown>;
+  const saved = await audited(
+    companyId,
+    () => ({
+      actor: settingsActor(r.viewer), action: "audit.settings.rules", target: { kind: "company", id: companyId },
+      changes: auditChanges(before, { ...r.value.rules, ...r.value.loop } as Record<string, unknown>), source: "settings",
+    }),
+    async (tx) => {
+      await saveCompanyRules(companyId, r.value.rules, userId, tx);
+      await saveLoopRules(companyId, r.value.loop, tx);
+    },
+  );
+  if (!saved.ok) return { error: "settingsCompany.auditFailed" };
+  invalidateFlags(r.slug);
   return done(r.slug, "rules");
 }
 
 export async function saveCalendarAction(_prev: SettingsFormState, form: FormData): Promise<SettingsFormState> {
   const r = await begin(form, parseCalendarForm);
   if (r.state) return r.state;
-  await saveCalendar(r.viewer.companyId, calendarSpec(r.value), r.viewer.userId);
+  const { companyId } = r.viewer;
+  const before = await loadCalendar(companyId);
+  const after = calendarSpec(r.value);
+  const saved = await audited(
+    companyId,
+    () => ({
+      actor: settingsActor(r.viewer), action: "audit.settings.calendar", target: { kind: "company", id: companyId },
+      changes: auditChanges(before, after), source: "settings",
+    }),
+    (tx) => saveCalendar(companyId, after, r.viewer.userId, tx),
+  );
+  if (!saved.ok) return { error: "settingsCompany.auditFailed" };
   return done(r.slug, "calendar");
 }

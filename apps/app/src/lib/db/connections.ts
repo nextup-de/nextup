@@ -1,7 +1,8 @@
 // People's own connections to sources NextUp reads on their behalf (Connection rows) and the company
 // switch that allows them. docs/plans/2026-10-22_sso-and-data-access.md, phase 2. Every query is
 // scoped by company; tokens go in sealed (features/connectors/vault.ts) and never come back out here.
-import { getDb } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
+import type { Tx } from "@/lib/db/integrations";
 
 export const M365 = "m365";
 
@@ -11,8 +12,8 @@ export async function m365SearchOn(companyId: string): Promise<boolean> {
   return cfg?.m365Search ?? false;
 }
 
-export async function setM365Search(companyId: string, on: boolean): Promise<void> {
-  await getDb().companyConfig.upsert({ where: { companyId }, create: { companyId, m365Search: on }, update: { m365Search: on } });
+export async function setM365Search(companyId: string, on: boolean, client: Tx | Db = getDb()): Promise<void> {
+  await client.companyConfig.upsert({ where: { companyId }, create: { companyId, m365Search: on }, update: { m365Search: on } });
 }
 
 /** Store (or replace) a person's Microsoft 365 connection. A new connection clears an old error. */
@@ -48,8 +49,8 @@ export async function deleteConnection(companyId: string, userId: string): Promi
 }
 
 /** The admin's way out: everyone in the company disconnected at once. Returns how many. */
-export async function deleteAllConnections(companyId: string): Promise<number> {
-  const r = await getDb().connection.deleteMany({ where: { companyId, provider: M365 } });
+export async function deleteAllConnections(companyId: string, client: Tx | Db = getDb()): Promise<number> {
+  const r = await client.connection.deleteMany({ where: { companyId, provider: M365 } });
   return r.count;
 }
 
