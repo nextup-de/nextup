@@ -1,16 +1,15 @@
 "use client";
-// What "Publish idea" does on the raise page: the button shows the working glyph ("Wrangling…") while
-// NextUp works out who should receive the idea, then this window offers 2-3 receivers with the reason
-// and a match score, or anyone else from the directory. Props in.
+// What "Publish idea" does on the raise page: the button shows the working glyph while NextUp works out
+// where the idea should go, then this window offers up to 3 desks (a role that owns a route, its holders
+// second, D13) with the reasons, or any other desk by search. After sending it says which role owes an
+// answer by which date. Props in.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { OrbState } from "thinking-orbs/engine";
+import Link from "next/link";
 import { useT } from "@/i18n/client";
 import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
-import type { Dept, OrgPerson } from "@/features/demo/types";
-import { initials } from "@/features/ideas/raise";
-import type { Receiver } from "@/features/ideas/receivers";
+import type { Desk } from "@/features/ideas/desks";
 import { Icon } from "./raiseIcons";
-import { PersonButton } from "./RaisePerson";
 import s from "./Raise.module.css";
 
 // What NextUp is doing right now, said in the button: our thinking orb, in the mode that fits the step,
@@ -32,20 +31,21 @@ export function Working({ work }: { work: Work }) {
 
 const PAGE = 5;
 
-export function ReceiverDialog({ options, people, depts, me, work, score, onCancel, onConfirm }: {
-  options: Receiver[];
-  people: readonly OrgPerson[];
-  depts: readonly Dept[];
-  me: string;
+export type Sent = { role: string; names: string[]; date: string };
+
+export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCancel, onConfirm }: {
+  desks: Desk[];
+  aiOff: boolean; // the proposal came from the keywords
+  search: (query: string) => Desk[]; // every other desk, by title and department
   work: Work | null; // publishing: what it is doing
-  score: (name: string) => Receiver; // someone picked by hand, scored on the same facts
+  sent: Sent | null; // after sending
+  casesHref: string;
   onCancel: () => void;
-  onConfirm: (r: Receiver) => void;
+  onConfirm: (d: Desk) => void;
 }) {
   const t = useT();
-  const start = options.find((o) => o.yours) ?? options.find((o) => o.recommended) ?? options[0];
-  const [chosen, setChosen] = useState<Receiver>(start);
-  const [custom, setCustom] = useState<Receiver | null>(null); // someone else, once picked
+  const [chosen, setChosen] = useState<Desk | null>(desks.find((d) => d.recommended) ?? null);
+  const [custom, setCustom] = useState<Desk | null>(null); // another desk, once picked
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState("");
   const busy = work !== null;
@@ -60,35 +60,29 @@ export function ReceiverDialog({ options, people, depts, me, work, score, onCanc
     return () => document.removeEventListener("keydown", onKey);
   }, [busy, onCancel]);
 
-  const deptName = (id: string) => depts.find((d) => d.id === id)?.name ?? "";
-  const needle = q.trim().toLowerCase(), taken = new Set(options.map((o) => o.name));
-  const found = people.filter((p) => p.name !== me && !taken.has(p.name))
-    .filter((p) => !needle || (p.name + " " + p.role + " " + deptName(p.dept)).toLowerCase().includes(needle))
-    .slice(0, PAGE);
-  const pick = (name: string) => { const r = score(name); setCustom(r); setChosen(r); setSearching(false); setQ(""); };
+  const taken = new Set(desks.map((d) => d.roleId));
+  const found = search(q).filter((d) => !taken.has(d.roleId)).slice(0, PAGE);
+  const pick = (d: Desk) => { setCustom(d); setChosen(d); setSearching(false); setQ(""); };
+  const select = (d: Desk) => { if (!busy) { setChosen(d); setSearching(false); } };
+  const who = (d: Desk) => (d.vacant ? t("ideas.deskVacant") : d.holders.join(", "));
+  const tag = (d: Desk) => (d.proposedBy === "ai" ? t("ideas.deskProposedAi") : d.proposedBy === "keywords" ? t("ideas.deskProposed") : "");
 
-  const row = (r: Receiver) => {
-    const on = chosen.name === r.name;
+  const row = (d: Desk) => {
+    const on = chosen?.roleId === d.roleId;
     return (
-      <div key={r.name} className={s.rcv} data-on={on}>
+      <div key={d.roleId} className={s.rcv} data-on={on} data-testid={"raise-desk-" + d.roleId}>
         <div role="radio" aria-checked={on} aria-disabled={busy || undefined} tabIndex={busy ? -1 : 0} className={s.rcvTop}
-          onClick={() => { if (!busy) { setChosen(r); setSearching(false); } }}
-          onKeyDown={(e) => { if (!busy && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setChosen(r); setSearching(false); } }}>
+          onClick={() => select(d)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(d); } }}>
           <span className={s.rcvRadio} aria-hidden="true" />
-          <PersonButton name={r.name} className={s.rcvAv}>{initials(r.name)}</PersonButton>
           <span className={s.rcvWho}>
-            <span className={s.rcvNameRow}><span className={s.rcvName}>{r.name}</span>{r.recommended && <span className={s.rcvTag}>{t("ideas.publishBest")}</span>}</span>
-            <span className={s.rcvRole}>{[r.role, r.yourLead ? t("ideas.publishYourLead") : ""].filter(Boolean).join(" · ")}</span>
-          </span>
-          <span className={s.rcvMatch} aria-label={t("ideas.publishMatch", { score: r.score })}>
-            <span className={s.rcvPct}>{r.score}%</span>
-            <span className={s.rcvBar} style={{ "--pct": r.score + "%" } as React.CSSProperties}><span className={s.rcvFill} /></span>
+            <span className={s.rcvNameRow}><span className={s.rcvName}>{d.title}</span>{tag(d) && <span className={s.rcvTag}>{tag(d)}</span>}</span>
+            <span className={s.rcvRole}>{[d.title, d.dept, who(d)].join(" · ")}</span>
           </span>
         </div>
-        {on && (
+        {on && d.reasons.length > 0 && (
           <div className={s.rcvWhy}>
-            <span className={s.rcvWhyLabel}>{t("ideas.publishWhy", { name: r.name })}</span>
-            <ul className={s.rcvReasons}>{r.reasons.map((x) => <li key={x}>{x}</li>)}</ul>
+            <span className={s.rcvWhyLabel}>{t("ideas.deskWhy")}</span>
+            <ul className={s.rcvReasons}>{d.reasons.map((x) => <li key={x}>{x}</li>)}</ul>
           </div>
         )}
       </div>
@@ -107,40 +101,52 @@ export function ReceiverDialog({ options, people, depts, me, work, score, onCanc
           <button type="button" className={s.dlgClose} onClick={onCancel} disabled={busy} title={t("common.close")} aria-label={t("common.close")}><Icon name="x" size={11} width={2.6} /></button>
         </div>
 
-        <div className={s.rcvs} role="radiogroup" aria-label={t("ideas.publishTitle")}>
-          {options.map(row)}
-          {custom && !taken.has(custom.name) && row(custom)}
-          <div className={s.rcv} data-on={searching}>
-            <button type="button" className={s.rcvTop} onClick={() => setSearching(!searching)} disabled={busy} aria-expanded={searching}>
-              <span className={s.rcvRadio} aria-hidden="true" />
-              <span className={s.rcvWho}>
-                <span className={s.rcvName}>{t("ideas.publishElse")}</span>
-                <span className={s.rcvRole}>{t("ideas.publishElseSub")}</span>
-              </span>
-              <Icon name="right" size={12} stroke="#8e8e93" width={2.4} className={s.rcvChevron} />
-            </button>
-            {searching && (
-              <div className={s.rcvSearch}>
-                <input ref={field} className={s.pickInput} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("ideas.publishSearch")} aria-label={t("ideas.publishSearchPeople")} />
-                <div className={s.rcvList}>
-                  {found.map((p) => (
-                    <button key={p.name} type="button" className={`${s.mRow} ${s.pickRow}`} onClick={() => pick(p.name)}>
-                      <span className={s.rcvAv} aria-hidden="true">{initials(p.name)}</span>
-                      <span className={s.pickText}><span className={s.pickName}>{p.name}</span><span className={s.pickMeta}>{p.role} · {deptName(p.dept)}</span></span>
-                    </button>
-                  ))}
-                  {!found.length && <span className={s.noMatch}>{t("ideas.publishNoMatches")}</span>}
-                </div>
-              </div>
-            )}
+        {sent ? (
+          <div className={s.rcvs} data-testid="raise-sent" role="status">
+            <p className={s.rcvName}>{sent.names.length ? t("ideas.deskSent", { role: sent.role, names: sent.names.join(", "), date: sent.date }) : t("ideas.deskSentVacant", { role: sent.role, date: sent.date })}</p>
+            <Link href={casesHref} className={s.rcvRole}>{t("ideas.deskFollow")}</Link>
           </div>
-        </div>
+        ) : (
+          <div className={s.rcvs} role="radiogroup" aria-label={t("ideas.publishTitle")}>
+            {!desks.length && <span className={s.rcvRole}>{t("ideas.deskNone")}</span>}
+            {desks.map(row)}
+            {custom && !taken.has(custom.roleId) && row(custom)}
+            <div className={s.rcv} data-on={searching} data-testid="raise-desk-other">
+              <button type="button" className={s.rcvTop} onClick={() => setSearching(!searching)} disabled={busy} aria-expanded={searching}>
+                <span className={s.rcvRadio} aria-hidden="true" />
+                <span className={s.rcvWho}>
+                  <span className={s.rcvName}>{t("ideas.deskOther")}</span>
+                  <span className={s.rcvRole}>{t("ideas.deskOtherSub")}</span>
+                </span>
+                <Icon name="right" size={12} stroke="#8e8e93" width={2.4} className={s.rcvChevron} />
+              </button>
+              {searching && (
+                <div className={s.rcvSearch}>
+                  <input ref={field} className={s.pickInput} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("ideas.deskOtherSub")} aria-label={t("ideas.deskOtherSub")} />
+                  <div className={s.rcvList}>
+                    {found.map((d) => (
+                      <button key={d.roleId} type="button" className={`${s.mRow} ${s.pickRow}`} onClick={() => pick(d)}>
+                        <span className={s.pickText}><span className={s.pickName}>{d.title}</span><span className={s.pickMeta}>{d.dept} · {who(d)}</span></span>
+                      </button>
+                    ))}
+                    {!found.length && <span className={s.noMatch}>{t("ideas.publishNoMatches")}</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+            {aiOff && <span className={s.rcvRole}>{t("ideas.deskAiOff")}</span>}
+          </div>
+        )}
 
         <div className={s.dlgFoot}>
-          <button type="button" className={s.dlgCancel} onClick={onCancel} disabled={busy}>{t("common.cancel")}</button>
-          <button type="button" className={s.dlgGo} onClick={() => onConfirm(chosen)} disabled={busy}>
-            {work ? <Working work={work} /> : <><Icon name="up" size={12} width={2.4} />{t("ideas.publishSend", { name: chosen.name })}</>}
-          </button>
+          {sent
+            ? <button type="button" className={s.dlgGo} onClick={onCancel}>{t("common.close")}</button>
+            : <>
+              <button type="button" className={s.dlgCancel} onClick={onCancel} disabled={busy}>{t("common.cancel")}</button>
+              <button type="button" className={s.dlgGo} data-testid="raise-send" onClick={() => chosen && onConfirm(chosen)} disabled={busy || !chosen}>
+                {work ? <Working work={work} /> : <><Icon name="up" size={12} width={2.4} />{chosen ? t("ideas.deskSend", { role: chosen.title }) : t("ideas.deskSendNone")}</>}
+              </button>
+            </>}
         </div>
       </div>
     </div>

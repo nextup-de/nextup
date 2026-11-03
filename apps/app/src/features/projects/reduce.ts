@@ -7,6 +7,7 @@ import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
 import type { CheckDue, ReducedProject, SeedProject, StepColumn } from "./types";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
+import { readImpact, readSource, sourceLabel } from "./measure-source";
 import { verdictOf } from "./verdict";
 
 export type ProjectBook = { byId: Record<string, ReducedProject>; order: string[] };
@@ -122,7 +123,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (p.startedDay !== null || !live) break; // taken before the start, never after
       if (pl.none) p.baseline = { none: true, why: pl.why ?? "", day: d, by: ev.actor };
       else if (typeof pl.value === "number" && Number.isFinite(pl.value) && pl.metric)
-        p.baseline = { none: false, metric: pl.metric, unit: pl.unit ?? "", value: pl.value, better: pl.better === "up" ? "up" : "down", source: pl.source ?? "", day: d, by: ev.actor };
+        p.baseline = { none: false, metric: pl.metric, unit: pl.unit ?? "", value: pl.value, better: pl.better === "up" ? "up" : "down", source: typeof pl.source === "string" ? pl.source : "", day: d, by: ev.actor };
       break;
     }
     case "project.started":
@@ -193,9 +194,23 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const check = pl.check;
       if (p.doneDay === null || typeof check !== "number" || !rules.measureDays.includes(check)) break;
       if (typeof pl.value !== "number" || p.measures.some((m) => m.check === check)) break;
+      // No trusted system importer exists yet: a client-supplied system source is refused (LOOP/D18).
+      if (typeof pl.source === "object" && pl.source !== null && pl.source.kind === "system") break;
+      const src = readSource(pl.source);
       const v = verdictOf(p.baseline, pl.value, rules.tolerancePct);
-      p.measures.push({ check, value: pl.value, source: pl.source ?? "", note: pl.note ?? "", day: d, by: ev.actor, ...v });
+      p.measures.push({
+        check, value: pl.value, source: sourceLabel(src), note: pl.note ?? "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null,
+        sourceKind: src.kind, sourceInfo: src, impact: readImpact(pl.impact), confirmed: false, confirmedByUserId: null, confirmedDay: null, ...v,
+      });
       p.measures.sort((a, b) => a.check - b.check);
+      break;
+    }
+    case "project.measure.confirmed": {
+      const m = p.measures.find((x) => x.check === pl.check);
+      if (!m || m.confirmed || m.sourceKind === "system") break;
+      m.confirmed = true;
+      m.confirmedByUserId = ev.actorUserId ?? null;
+      m.confirmedDay = d;
       break;
     }
     case "project.rewarded":
@@ -222,7 +237,7 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf
   const list = book.order.map((id) => book.byId[id]);
   list.forEach((p, k) => {
     p.number = k + 1;
-    const counted = p.baseline !== null && !p.baseline.none;
+    const counted = p.baseline !== null && !p.baseline.none && rules.measure;
     p.checks = p.doneDay !== null && counted
       ? rules.measureDays.map((check): CheckDue => {
           const opensDay = (p.doneDay as number) + check;
@@ -239,9 +254,12 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf
       : "planning";
 
     const last = p.measures[p.measures.length - 1];
-    p.verdict = last ? last.verdict : p.doneDay !== null && !counted ? "not measured" : null;
-    p.rewardDue = p.status === "measured" && rules.reward.kind !== "none";
-    p.closed = p.status === "stopped" || p.status === "recognised" || (p.status === "measured" && rules.reward.kind === "none");
+    p.verdict = !rules.measure ? null : last ? last.verdict : p.doneDay !== null && !counted ? "not measured" : null;
+    // A reward falls due only on a confirmed latest measure with verdict better (LOOP/D18).
+    const counts = rules.measure && last !== undefined && last.confirmed;
+    p.rewardDue = p.status === "measured" && rules.recognition && rules.reward.kind !== "none" && counts && last.verdict === "better";
+    const noRewardPossible = rules.reward.kind === "none" || !rules.recognition || !rules.measure || (counts && last.verdict !== "better");
+    p.closed = p.status === "stopped" || p.status === "recognised" || (p.status === "measured" && noRewardPossible);
 
     const nextCheck = p.checks.find((c) => !c.measured);
     p.dueDay = p.status === "planning" ? p.openedDay + promise : p.status === "measuring" && nextCheck ? nextCheck.dueDay : null;
