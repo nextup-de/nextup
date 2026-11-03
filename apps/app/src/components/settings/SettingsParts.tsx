@@ -1,5 +1,6 @@
 // Small shared pieces of the settings pages: the page head, a card, a label/field row, a card foot.
 // Props in, JSX out.
+import Link from "next/link";
 import s from "./settings.module.css";
 
 export function SettingsHead({ title, lede }: { title: string; lede?: string }) {
@@ -55,4 +56,16 @@ export function Foot({ status, tone, children, statusTestId }: { status?: string
 /** Shown on a page that renders demo data because this copy has no database. */
 export function DemoNote({ text }: { text: string }) {
   return <p className={s.cardHint} data-testid="settings-demo-note">{text}</p>;
+}
+
+/** The stage card on Company: the stage, what it means, and the way into Setup (only while setup is open). */
+export function StageCard({ title, stage, label, line, href, linkText }: { title: string; stage: string; label: string; line: string; href: string; linkText: string }) {
+  return (
+    <section className={`${s.card} ${s.stageCard}`} data-testid="settings-company-stage">
+      <h2 className={s.cardTitle}>{title}</h2>
+      <span className={s.stageBadge} data-stage={stage}>{label}</span>
+      <p className={s.stageLine}>{line}</p>
+      <Link href={href} className={s.stageLink} data-testid="settings-company-stage-setup">{linkText}</Link>
+    </section>
+  );
 }

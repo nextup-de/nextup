@@ -33,8 +33,8 @@
 .srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* the page keeps its heading for screen readers */
 
 /* The title row: the page title left, Filter and Sort right, as on the Overview; the card's width.
-   It folds by its grid row (1fr -> 0fr) when an item opens. */
-.top { flex: none; display: grid; grid-template-rows: 1fr; width: min(680px, 100%); margin: 0 auto 16px; transition: grid-template-rows 520ms var(--ease), opacity 260ms ease, margin-bottom 520ms var(--ease); }
+   It folds by its grid row (1fr -> 0fr) when an item opens; the projects desk sits 16px under it. */
+.top { flex: none; display: grid; grid-template-rows: 1fr; row-gap: 16px; width: min(680px, 100%); margin: 0 auto 16px; transition: grid-template-rows 520ms var(--ease), opacity 260ms ease, margin-bottom 520ms var(--ease); }
 .page[data-open="true"] .top { grid-template-rows: 0fr; opacity: 0; margin-bottom: 0; pointer-events: none; }
 .head { min-height: 0; overflow: hidden; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .pageTitle { margin: 0; font-weight: 600; font-size: var(--nh-fs-2xl); line-height: 1.1; letter-spacing: -0.02em; color: var(--c-title); }
@@ -87,8 +87,10 @@
 .tool:focus-visible, .tuck:focus-visible { outline: 2px solid var(--c-left); outline-offset: 2px; }
 
 /* ── rows ── */
-.scroll { position: relative; flex: 1; min-height: 0; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: none; transition: padding 380ms var(--ease); }
-.page[data-open="true"] .scroll { overflow-y: auto; padding: 6px 8px; }
+/* Closed, the list grows with the page, so the wheel over it scrolls the page; only the open list
+   scrolls on its own and keeps the wheel to itself. */
+.scroll { position: relative; flex: 1; min-height: 0; overflow-x: hidden; scrollbar-width: none; transition: padding 380ms var(--ease); }
+.page[data-open="true"] .scroll { overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px; }
 .hl { position: absolute; top: 0; left: 0; width: 0; height: 0; background: var(--p-hl); border-radius: var(--radius-sm, 12px); opacity: 0; pointer-events: none; box-shadow: 0 4px 12px rgb(10 132 255 / 0.28); will-change: transform; }
 .page:not([data-open="true"]) .hl { display: none; }
 .list { list-style: none; margin: 0; padding: 0; }
@@ -121,8 +123,6 @@
 .rowTitle { font-size: var(--nh-fs-lg); font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; text-wrap: pretty; transition: font-size 380ms var(--ease), color 380ms var(--ease); }
 .rowWho { font-size: var(--nh-fs-md); line-height: 1.35; color: var(--c-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: font-size 380ms var(--ease), color 380ms var(--ease); }
 .rowRole { color: #8e8e93; transition: color 380ms var(--ease); }
-.rowSolves { font-size: var(--nh-fs-md); line-height: 1.35; color: #8e8e93; text-wrap: pretty; transition: font-size 380ms var(--ease), color 380ms var(--ease);
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; } /* a case's body can run long */
 .rowRight { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-top: 2px; }
 .sent { font-size: var(--nh-fs-md); color: #8e8e93; white-space: nowrap; transition: font-size 380ms var(--ease), color 380ms var(--ease); }
 .badge { font-size: var(--nh-fs-xs); font-weight: 600; border-radius: var(--radius-sm, 999px); padding: 3px 9px; white-space: nowrap; transition: font-size 380ms var(--ease), padding 380ms var(--ease), color 380ms var(--ease), background-color 380ms var(--ease); }
@@ -131,11 +131,11 @@
 .badge[data-tone="left"] { color: var(--c-left); background: rgb(0 122 255 / 0.12); }
 .badge[data-tone="paused"] { color: var(--c-mute); background: var(--c-fill); }
 .page[data-open="true"] .rowTitle { font-size: var(--nh-fs-md); }
-.page[data-open="true"] :is(.rowWho, .rowSolves, .sent) { font-size: var(--nh-fs-sm); }
+.page[data-open="true"] :is(.rowWho, .sent) { font-size: var(--nh-fs-sm); }
 .page[data-open="true"] .badge { font-size: var(--nh-fs-xs); padding: 2px 7px; }
 /* The picked row sits on the blue highlight: white text. */
 .row[data-active="true"] :is(.rowTitle, .rowWho) { color: #fff; }
-.row[data-active="true"] :is(.rowRole, .rowSolves, .sent) { color: rgb(255 255 255 / 0.85); }
+.row[data-active="true"] :is(.rowRole, .sent) { color: rgb(255 255 255 / 0.85); }
 .row[data-active="true"] .badge { color: #fff; background: rgb(255 255 255 / 0.22); }
 
 .empty { padding: 40px 24px; text-align: center; font-size: var(--nh-fs-md); color: var(--c-mute); }
