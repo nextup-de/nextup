@@ -45,6 +45,8 @@ import { floor } from "./messages/floor";
 import { settingsApiTokens } from "./messages/settingsApiTokens";
 import { settingsWebhooks } from "./messages/settingsWebhooks";
 import { settingsImport } from "./messages/settingsImport";
+import { teams } from "./messages/teams";
+import { settingsTeams } from "./messages/settingsTeams";
 
 export const en = {
   common: common.en,
@@ -93,4 +95,6 @@ export const en = {
   settingsApiTokens: settingsApiTokens.en,
   settingsWebhooks: settingsWebhooks.en,
   settingsImport: settingsImport.en,
+  teams: teams.en,
+  settingsTeams: settingsTeams.en,
 } as const;

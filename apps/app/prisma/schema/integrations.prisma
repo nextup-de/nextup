@@ -1,4 +1,4 @@
-// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document, OutboxMessage, WebhookSubscription, NotifyPreference, NotifyCursor. Changed only by: CON, NTF. Every migration is its own folder under prisma/migrations.
+// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document, OutboxMessage, WebhookSubscription, NotifyPreference, NotifyCursor, TeamsConversation. Changed only by: CON, NTF, TMS. Every migration is its own folder under prisma/migrations.
 
 // Which integrations are on for this company. docs/INTEGRATIONS.md: flipped only by an event, so
 // the change is a fact with an actor, not a silent edit.
@@ -206,4 +206,22 @@ model NotifyCursor {
   leaseUntil DateTime?
   lastRunAt  DateTime?
   lastError  String?
+}
+
+// A person's one-to-one chat with the Teams bot (TMS D5). Saved when they first talk to the bot;
+// cards are sent into conversationId at serviceUrl. One row per company and person.
+model TeamsConversation {
+  id             String   @id @default(cuid())
+  companyId      String
+  userId         String
+  aadObjectId    String
+  tenantId       String
+  conversationId String
+  serviceUrl     String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
 }
