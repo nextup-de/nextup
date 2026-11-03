@@ -1,4 +1,4 @@
-// Privacy: data export (GDP-G1 adds its keys here).
+// Data exports (GDP D3). Keys are added by the tasks that build the pages.
 import { defineMessages } from "../define";
 
 export const privacyExport = defineMessages({
