@@ -13,7 +13,7 @@ const PROVIDER_LABEL = { bedrock: "Amazon Bedrock", "azure-openai": "Azure OpenA
 const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) + "%" : "-");
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
-export function AssistantAdmin({ view, t }: { view: NonNullable<AssistantView>; t: T }) {
+export function AssistantAdmin({ view, t, privacyHref }: { view: NonNullable<AssistantView>; t: T; privacyHref?: string }) {
   const { settings: s, provider: p, stats: st, documents } = view;
   const tiles: [string, string][] = [
     [String(st.answers), t("adminPrivacy.tileAnswers")],
@@ -50,7 +50,7 @@ export function AssistantAdmin({ view, t }: { view: NonNullable<AssistantView>; 
         ))}
       </div>
       <AssistSettingsForm enabled={s.enabled} ceiling={s.ceiling} retentionDays={s.retentionDays}
-        dpaSignedAt={s.dpaSignedAt ? day(s.dpaSignedAt) : ""} rules={s.rules} patterns={s.patterns} />
+        dpaSignedAt={s.dpaSignedAt ? day(s.dpaSignedAt) : ""} rules={s.rules} patterns={s.patterns} privacyHref={privacyHref} />
       <h3>{t("adminPrivacy.documents")} <span className={styles.sub}>{t("adminPrivacy.documentsReadable", { readable, total: documents.length })}</span></h3>
       {documents.length ? (
         <div className={styles.tableWrap}>
