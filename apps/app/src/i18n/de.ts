@@ -31,10 +31,6 @@ import { adminConsole } from "./messages/adminConsole";
 import { adminConnectors } from "./messages/adminConnectors";
 import { adminPrivacy } from "./messages/adminPrivacy";
 import { adminSupport } from "./messages/adminSupport";
-import { settingsPrivacy } from "./messages/settingsPrivacy";
-import { settingsAudit } from "./messages/settingsAudit";
-import { privacyExport } from "./messages/privacyExport";
-import { privacyPerson } from "./messages/privacyPerson";
 import { loopCase } from "./messages/loopCase";
 import { decisions } from "./messages/decisions";
 import { metrics } from "./messages/metrics";
@@ -77,10 +73,6 @@ export const de = {
   adminConnectors: adminConnectors.de,
   adminPrivacy: adminPrivacy.de,
   adminSupport: adminSupport.de,
-  settingsPrivacy: settingsPrivacy.de,
-  settingsAudit: settingsAudit.de,
-  privacyExport: privacyExport.de,
-  privacyPerson: privacyPerson.de,
   loopCase: loopCase.de,
   decisions: decisions.de,
   metrics: metrics.de,

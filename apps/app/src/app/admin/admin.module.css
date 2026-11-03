@@ -269,6 +269,7 @@
 }
 
 .countValue { font-size: var(--nh-fs-2xl); font-weight: 650; font-variant-numeric: tabular-nums; }
+.countText { font-size: var(--nh-fs-md); font-weight: 600; }
 .countLabel { font-size: var(--nh-fs-sm); color: var(--nh-ink-mute, #6b7280); }
 
 /* The stage, as the one control that moves a customer forward. */

@@ -2,6 +2,10 @@
 import { defineMessages } from "../define";
 
 export const loopCase = defineMessages({
-  en: {},
-  de: {},
+  en: {
+    routingTitle: "Routing",
+  },
+  de: {
+    routingTitle: "Zuordnung",
+  },
 });
