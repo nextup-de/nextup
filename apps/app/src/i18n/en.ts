@@ -23,6 +23,7 @@ import { settingsConnectors } from "./messages/settingsConnectors";
 import { settingsNotifications } from "./messages/settingsNotifications";
 import { settingsPrivacy } from "./messages/settingsPrivacy";
 import { settingsAudit } from "./messages/settingsAudit";
+import { settingsSupport } from "./messages/settingsSupport";
 import { privacyExport } from "./messages/privacyExport";
 import { privacyPerson } from "./messages/privacyPerson";
 import { settingsSetup } from "./messages/settingsSetup";
@@ -101,4 +102,5 @@ export const en = {
   settingsTeams: settingsTeams.en,
   settingsSignIn: settingsSignIn.en,
   ssoLogin: ssoLogin.en,
+  settingsSupport: settingsSupport.en,
 } as const;
