@@ -38,6 +38,7 @@ import { counts, demoData, type Counts, type DemoData } from "@/features/metrics
 import { clearPrefs, getServerSnapshot, getSnapshot, resetLog, setPrefs, subscribe, updateLog } from "@/lib/demo-log";
 import { clearShots, dropShots } from "@/lib/shots";
 import { deptName as deptNameOf } from "@/lib/utils/format";
+import { trackCaseEvent } from "@/lib/test-analytics";
 import { loadCaseLog } from "@/server/actions/case-log";
 import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction } from "@/server/actions/events";
 import { signOut } from "@/server/actions/auth";
@@ -377,6 +378,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
   // One append. Local mode writes straight to localStorage; server mode renders the event
   // optimistically (synchronously, so act.raise can return its id) and then persists it.
   const emit = useCallback((type: AppEventType, target: string | null, payload?: EventPayload, id?: string) => {
+    trackCaseEvent(type, payload); // a user test's funnel step; a no-op outside one (lib/test-analytics.ts)
     if (!serverMode) {
       updateLog(slug, (prev) => appendEvent(prev, { type, actor, actorUserId, target, payload }));
       return;
