@@ -1,0 +1,31 @@
+{
+  "d": {
+    "results": [
+      {
+        "userId": "u1",
+        "startDate": "/Date(1577836800000)/",
+        "department": "D100",
+        "jobTitle": "Schichtleiterin",
+        "managerId": "u2",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "userId": "u2",
+        "startDate": "/Date(1577836800000)/",
+        "department": "D100",
+        "jobTitle": "Werksleiter",
+        "managerId": "NO_MANAGER",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "userId": "u3",
+        "startDate": "/Date(1577836800000)/",
+        "department": "D200",
+        "jobTitle": "Einkäuferin",
+        "managerId": "u2",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      }
+    ],
+    "__next": "https://api4.example.test/odata/v2/EmpJob?$skiptoken=u3"
+  }
+}
