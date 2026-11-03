@@ -15,6 +15,8 @@ type Props = {
   dpaSignedAt: string; // YYYY-MM-DD or ""
   rules: string;
   patterns: string[];
+  /** Where retention is set: Settings → Data and privacy. */
+  privacyHref?: string;
 };
 
 const ERR = {
@@ -46,7 +48,10 @@ export function AssistSettingsForm(p: Props) {
         <input className="nh-input" id="dpaSignedAt" name="dpaSignedAt" type="date" defaultValue={p.dpaSignedAt} />
       </Field>
       <Field id="retentionDays" label={t("adminPrivacy.fieldRetention")}>
-        <input className="nh-input" id="retentionDays" name="retentionDays" type="number" min={1} max={365} defaultValue={p.retentionDays} />
+        <p className="nh-hint" data-testid="console-assistant-retention">
+          {t("settingsPrivacy.retentionFixed", { n: p.retentionDays })}
+          {p.privacyHref ? <>{" "}<a href={p.privacyHref} data-testid="console-assistant-retention-link">{t("settingsPrivacy.retentionLink")}</a></> : null}
+        </p>
       </Field>
       <Field id="rules" label={t("adminPrivacy.fieldRules")} hint={t("adminPrivacy.fieldRulesHint")}>
         <textarea className="nh-input" id="rules" name="rules" rows={4} defaultValue={p.rules} placeholder="No statements about customer projects. Export-controlled topics go to Legal." />
