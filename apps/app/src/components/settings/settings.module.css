@@ -37,6 +37,8 @@
 .item:hover { background: var(--fill); color: var(--ink); }
 .item[aria-current="page"] { background: var(--fill); color: var(--ink); font-weight: 600; }
 .item:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 1px; }
+.item[data-key="setup"] { margin-top: 4px; height: 36px; background: #111; color: #fff; font-weight: 600; box-shadow: 0 0 0 3px var(--nh-brand-tint); }
+.item[data-key="setup"]:hover { background: #2c2c2e; color: #fff; }
 .itemBadge { padding: 2px 8px; border-radius: 8px; background: var(--fill); color: var(--mute); font-size: var(--nh-fs-xs); font-weight: 600; }
 
 /* Phone: the menu folds into one sheet under a "Settings: <page>" button. */

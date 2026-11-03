@@ -14,7 +14,7 @@ function Links({ groups, current, ids }: { groups: MenuGroup[]; current: string 
     <div key={g.key} className={s.group}>
       {g.label ? <div className={s.groupLabel}>{g.label}</div> : null}
       {g.items.map((i) => (
-        <Link key={i.key} prefetch={false} href={i.href} className={s.item} aria-current={i.key === current ? "page" : undefined} data-testid={ids ? `settings-nav-${i.key}` : undefined}>
+        <Link key={i.key} prefetch={false} href={i.href} className={s.item} data-key={i.key} aria-current={i.key === current ? "page" : undefined} data-testid={ids ? `settings-nav-${i.key}` : undefined}>
           {i.label}
         </Link>
       ))}
