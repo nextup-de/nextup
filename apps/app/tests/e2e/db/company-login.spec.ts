@@ -86,7 +86,11 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     await confirmSheet(member, "From maintenance.", "Send the answer");
 
     await leader.reload();
-    await leader.getByRole("main").getByText(title).first().click();
+    // The reloaded page may take the first click before it is interactive, so click until the case opens.
+    await expect(async () => {
+      await leader.getByRole("main").getByText(title).first().click();
+      await expect(leader.getByRole("button", { name: "Yes, do it" })).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 30000 });
     await leader.getByRole("button", { name: "Yes, do it" }).click();
     // Projects are on by default, so the yes opens a sheet that names the project's lead.
     await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
