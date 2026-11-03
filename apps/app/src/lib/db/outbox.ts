@@ -35,16 +35,18 @@ export async function enqueue(companyId: string, drafts: OutboxDraft[]): Promise
   return r.count;
 }
 
-/** The company's messages, oldest first. */
-export async function listOutbox(companyId: string, f: { status?: string; template?: string; key?: string } = {}): Promise<OutboxRow[]> {
+/** The company's messages, oldest first; newest first when a `limit` is given. */
+export async function listOutbox(companyId: string, f: { status?: string; template?: string; key?: string; channel?: string; limit?: number } = {}): Promise<OutboxRow[]> {
   return getDb().outboxMessage.findMany({
     where: {
       companyId,
       ...(f.status !== undefined ? { status: f.status } : {}),
       ...(f.template !== undefined ? { template: f.template } : {}),
       ...(f.key !== undefined ? { key: f.key } : {}),
+      ...(f.channel !== undefined ? { channel: f.channel } : {}),
     },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    orderBy: f.limit !== undefined ? [{ createdAt: "desc" }, { id: "desc" }] : [{ createdAt: "asc" }, { id: "asc" }],
+    ...(f.limit !== undefined ? { take: f.limit } : {}),
   });
 }
 
