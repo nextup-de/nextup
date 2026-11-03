@@ -108,7 +108,6 @@ const DATA_FILES = [
   "features/ideas/demo-script.ts",
   "features/ideas/demo-loop.ts",
   "features/ideas/static-demo-briefs.ts",
-  "components/dashboard/shared/dashboardPreview.ts", // the dashboard's demo stand-in until the log can count it
 ];
 function dataText(): string {
   const files = pageFilesOf(join(SRC, "features/demo"), /\.tsx?$/).concat(DATA_FILES.map((f) => join(SRC, f)).filter((f) => existsSync(f)));
