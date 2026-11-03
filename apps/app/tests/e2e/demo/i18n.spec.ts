@@ -74,13 +74,16 @@ const LEFT_OUT: Record<string, string> = {
   "[company]/(app)/settings/org/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/notifications/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/audit/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/api-tokens/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/webhooks/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/[key]/poster/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/areas/devices/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/setup/page.tsx": "settings need a database and a signed-in manager",
   "[company]/floor/[area]/page.tsx": "floor pages need a database (areas, devices) and a phone session",
   "[company]/floor/[area]/sign-in/page.tsx": "floor pages need a database (areas, devices) and a phone session",
   "[company]/floor/sent/page.tsx": "floor pages need a database (areas, devices) and a phone session",
+  "[company]/floor/pair/page.tsx": "floor pages need a database (areas, devices) and a phone session",
   "[company]/floor/status/page.tsx": "floor pages need a database (areas, devices) and a phone session",
 };
 
