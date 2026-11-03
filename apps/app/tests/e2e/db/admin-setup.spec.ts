@@ -144,8 +144,9 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     // Step routes.
     await setup(manager);
     await expect(vis(manager, "setup-step-routes")).toBeVisible();
+    // The route form is a drawer; its key comes from the request type.
+    await vis(manager, "settings-routing-open-new").click();
     const route = vis(manager, "settings-routing-new");
-    await vis(route, "settings-routing-key").fill("RIG");
     await vis(route, "settings-routing-type").fill("Test rig time");
     await vis(route, "settings-routing-keywords").fill("rig, test");
     await vis(route, "settings-routing-owner").selectOption({ index: 1 });

@@ -33,10 +33,10 @@ export const SAMPLE_CALENDAR: CalendarSpec = {
 /** A small plant: one site, three teams, their leads, a few routes and two goals. */
 export const SAMPLE_KNOWLEDGE: Knowledge = {
   units: [
-    { id: "u-site", key: "werk-sued", name: "Werk Süd", kind: "site", headcount: 240, parentId: null, sort: 0 },
-    { id: "u-asm", key: "assembly", name: "Assembly", kind: "team", headcount: 86, parentId: "u-site", sort: 0 },
-    { id: "u-qa", key: "quality", name: "Quality", kind: "team", headcount: 18, parentId: "u-site", sort: 1 },
-    { id: "u-mnt", key: "maintenance", name: "Maintenance", kind: "team", headcount: 24, parentId: "u-site", sort: 2 },
+    { id: "u-site", key: "WERK_SUED", name: "Werk Süd", kind: "dept", headcount: 240, parentId: null, sort: 0 },
+    { id: "u-asm", key: "ASSEMBLY", name: "Assembly", kind: "team", headcount: 86, parentId: "u-site", sort: 0 },
+    { id: "u-qa", key: "QUALITY", name: "Quality", kind: "team", headcount: 18, parentId: "u-site", sort: 1 },
+    { id: "u-mnt", key: "MAINTENANCE", name: "Maintenance", kind: "team", headcount: 24, parentId: "u-site", sort: 2 },
   ],
   roles: [
     { id: "r-plant", orgUnitId: "u-site", title: "Plant manager", reportsToId: null, decides: ["budget", "staffing"], spendLimitEur: 25000, skills: [], sort: 0 },
@@ -51,10 +51,10 @@ export const SAMPLE_KNOWLEDGE: Knowledge = {
     { id: "h-4", roleId: "r-mnt", name: "", userId: null, sort: 0 },
   ],
   rules: [
-    { id: "rt-1", key: "safety", type: "problem", keywords: ["safety", "injury", "near miss"], ownerRoleId: "r-plant", deputyRoleId: "r-asm", buddyRoleId: null, wait: "4h", sort: 0 },
-    { id: "rt-2", key: "quality", type: "problem", keywords: ["scrap", "defect", "rework"], ownerRoleId: "r-qa", deputyRoleId: "r-plant", buddyRoleId: "r-asm", wait: "1d", sort: 1 },
-    { id: "rt-3", key: "machines", type: "problem", keywords: ["breakdown", "machine", "spare part"], ownerRoleId: "r-mnt", deputyRoleId: "r-plant", buddyRoleId: null, wait: "1d", sort: 2 },
-    { id: "rt-4", key: "ideas", type: "idea", keywords: [], ownerRoleId: "r-asm", deputyRoleId: "r-plant", buddyRoleId: null, wait: "3d", sort: 3 },
+    { id: "rt-1", key: "safety", type: "Safety, near misses", keywords: ["safety", "injury", "near miss"], ownerRoleId: "r-plant", deputyRoleId: "r-asm", buddyRoleId: null, wait: "1 d", sort: 0 },
+    { id: "rt-2", key: "quality", type: "Quality data, measurements", keywords: ["scrap", "defect", "rework", "torque", "gauge"], ownerRoleId: "r-qa", deputyRoleId: "r-plant", buddyRoleId: "r-asm", wait: "2 d", sort: 1 },
+    { id: "rt-3", key: "machines", type: "Maintenance, downtime", keywords: ["breakdown", "downtime", "spare part"], ownerRoleId: "r-mnt", deputyRoleId: "r-plant", buddyRoleId: null, wait: "2 d", sort: 2 },
+    { id: "rt-4", key: "ideas", type: "Spend under €5k", keywords: ["parts", "tools", "order"], ownerRoleId: "r-asm", deputyRoleId: "r-plant", buddyRoleId: null, wait: "2 d", sort: 3 },
   ],
   goals: [
     { id: "g-1", orgUnitId: null, parentId: null, title: "Scrap rate below 2 %", kpi: "scrap rate", target: "< 2 %", period: "2027", keywords: ["scrap"], sort: 0 },
