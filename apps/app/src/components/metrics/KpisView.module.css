@@ -1,0 +1,28 @@
+.page { display: flex; flex-direction: column; gap: 16px; padding: 4px 0 32px; }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.title { font-size: var(--nh-fs-2xl); font-weight: 800; color: var(--nh-ink); letter-spacing: -0.028em; line-height: 1.15; }
+.tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.periods { display: inline-flex; border: 1px solid var(--nh-line); border-radius: 10px; overflow: hidden; background: var(--nh-card); }
+.period, .export { padding: 7px 12px; font-size: var(--nh-fs-xs); font-weight: 700; font-family: inherit; color: #3d3d3a; background: var(--nh-card); border: 0; cursor: pointer; white-space: nowrap; }
+.period[data-on="true"] { background: var(--nh-brand); color: #fff; }
+.export { border: 1px solid var(--nh-line); border-radius: 10px; }
+.export:disabled { opacity: 0.5; cursor: default; }
+.dates { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.error { font-size: var(--nh-fs-sm); color: var(--nh-danger); }
+.note { font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--nh-card); border-radius: 14px; box-shadow: var(--nh-card-shadow); padding: 16px; }
+.tile[data-hidden="true"] .value { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.value { font-size: var(--nh-fs-xl); font-weight: 800; color: var(--nh-ink); line-height: 1.2; }
+.label { font-size: var(--nh-fs-xs); color: var(--nh-ink-2); margin-top: 4px; }
+.scroll { overflow-x: auto; background: var(--nh-card); border-radius: 14px; box-shadow: var(--nh-card-shadow); }
+.table { width: 100%; border-collapse: collapse; font-size: var(--nh-fs-sm); }
+.table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--nh-line-soft); white-space: nowrap; }
+.table thead th { font-size: var(--nh-fs-xs); color: var(--nh-mute); font-weight: 700; }
+.table tbody th { font-weight: 700; color: var(--nh-ink); }
+.hiddenCell { color: var(--nh-mute); font-style: italic; }
+.foot { font-size: var(--nh-fs-xs); color: var(--nh-mute); max-width: 720px; line-height: 1.5; }
+@media (max-width: 760px) {
+  .title { font-size: var(--nh-fs-xl); }
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+}

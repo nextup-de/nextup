@@ -153,6 +153,19 @@
 .liTitle { font-size: var(--nh-fs-sm); line-height: 1.45; font-weight: 500; color: #1c1c1e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .liSub { font-size: var(--nh-fs-sm); line-height: 1.45; color: #6e6e73; text-wrap: pretty; }
 .liText { font-size: var(--nh-fs-sm); line-height: 1.45; color: #1c1c1e; text-wrap: pretty; }
+/* The idea tab gives each section a tone (Who blue, Affects violet, Context amber): a dot by its heading
+   and the same soft tint on its grouped list, hairlines in that hue. Badge look, no gradients. */
+.sec[data-tone="who"] { --tone: var(--nh-brand); --tone-tint: var(--nh-brand-tint); --tone-line: var(--nh-brand-line); }
+.sec[data-tone="affects"] { --tone: var(--nh-idea); --tone-tint: var(--nh-idea-tint); --tone-line: var(--nh-idea-line); }
+.sec[data-tone="context"] { --tone: var(--nh-problem); --tone-tint: var(--nh-problem-tint); --tone-line: var(--nh-problem-line); }
+.sec[data-tone] > .dept { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #1c1c1e; }
+.sec[data-tone] > .dept::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--tone); flex-shrink: 0; }
+.sec[data-tone] > .kv, .sec[data-tone] > .list { background: var(--tone-tint); }
+.sec[data-tone] > .kv > *, .sec[data-tone] > .list > .li { border-top-color: var(--tone-line); }
+.sec[data-tone] .label4 { color: color-mix(in srgb, var(--tone) 55%, #6e6e73); }
+/* A person in the Who list: their tinted circle, then name and why. */
+.person { display: flex; align-items: flex-start; gap: 10px; }
+.person > .initials2 { flex-shrink: 0; margin-top: -1px; }
 .liNum { flex: none; min-width: 12px; font-size: var(--nh-fs-sm); line-height: 1.45; font-weight: 600; color: #6e6e73; font-variant-numeric: tabular-nums; }
 .liEnd { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: var(--nh-fs-sm); line-height: 1.45; color: #6e6e73; white-space: nowrap; }
 .liStatus { font-size: var(--nh-fs-xs); font-weight: 600; color: #3a3a3c; background: #fff; border-radius: var(--radius-sm, 999px); padding: 2px 8px; }

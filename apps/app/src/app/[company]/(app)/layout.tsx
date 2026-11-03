@@ -16,6 +16,7 @@ import { getViewerFor } from "@/features/auth/session";
 import { loadLogFor, seedForViewer } from "@/lib/db/viewer-log";
 import { hasDatabase, orDemo } from "@/lib/db/client";
 import { personLinksFor } from "@/lib/db/people";
+import { pseudonymLabelsFor } from "@/lib/db/pseudonymise";
 import { policyFor } from "@/features/admin/stages";
 import { flagsFor } from "@/features/flags";
 import { DemoProvider, type ViewerInfo } from "@/components/dashboard/DemoProvider";
@@ -72,6 +73,9 @@ export default async function AppLayout({
   const viewerCompanyId = viewer?.companyId;
   const personLinks = viewerCompanyId ? await orDemo(() => personLinksFor(viewerCompanyId), () => ({})) : {};
 
+  // Former members: user id -> pseudonym, so old events show the label they have now (GDP D15).
+  const actorLabels = viewerCompanyId ? await orDemo(() => pseudonymLabelsFor(viewerCompanyId), () => ({})) : {};
+
   return (
     <DemoProvider
       tenant={{
@@ -80,6 +84,7 @@ export default async function AppLayout({
         name: tenant.name,
         users: people.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
         personLinks,
+        actorLabels,
         demoTools,
         flags,
       }}

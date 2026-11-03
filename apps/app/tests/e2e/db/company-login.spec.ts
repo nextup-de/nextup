@@ -100,10 +100,12 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     await manager.goto(`/${SLUG}/settings/members`);
     for (const p of PEOPLE) await expect(manager.getByText(p.name, { exact: false }).first()).toBeVisible();
 
-    // The page streams in: for a moment the server's form and the client's are both in the DOM.
-    await expect(manager.getByLabel("Name")).toHaveCount(1);
-    await manager.getByLabel("Name").fill("S. Dahl");
-    await manager.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
+    // Adding a person happens in a drawer.
+    await manager.getByTestId("settings-members-open-add").click();
+    const drawer = manager.getByTestId("settings-members-drawer");
+    await expect(drawer.getByLabel("Name")).toHaveCount(1);
+    await drawer.getByLabel("Name").fill("S. Dahl");
+    await drawer.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
     await manager.getByRole("combobox", { name: "Role", exact: true }).selectOption("leader");
     await manager.getByRole("button", { name: "Add and issue a code" }).click();
     const box = manager.getByRole("status").filter({ hasText: "Login code for S. Dahl" });

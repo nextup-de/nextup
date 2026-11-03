@@ -41,6 +41,7 @@ const setup = (page: Page) => page.goto(`/${SLUG}/settings/setup`);
 
 /** Invite a person on the Members step; the mail carries the code, so a fresh one is issued from their row to read it. */
 async function invite(page: Page, who: { name: string; email: string }, role: "leader" | "member") {
+  await vis(page, "settings-members-open-invite").click();
   const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Add and invite by mail" }) });
   await form.locator("input[name=name]").fill(who.name);
   await form.locator("input[name=email]").fill(who.email);
@@ -50,8 +51,9 @@ async function invite(page: Page, who: { name: string; email: string }, role: "l
 
 /** Issue a fresh code from the person's row on the Members page and keep it: the invite mail carries the first one. */
 async function readCode(page: Page, who: { name: string; email: string }) {
-  const row = page.locator("li").filter({ hasText: who.email });
+  const row = page.locator('li[data-testid^="settings-member-"]').filter({ hasText: who.email });
   await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.locator('[data-testid^="settings-member-menu-"]').click(); // "New code" sits in the row's ··· menu
   const shown = page.locator('[class*="codeValue"]');
   const before = (await shown.count()) ? await shown.innerText() : ""; // the invite's own code may be on screen still
   await row.getByRole("button", { name: "New code" }).click();
@@ -86,6 +88,8 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
 
     // Step units.
     await expect(vis(manager, "setup-step-units")).toBeVisible();
+    // Units and roles are added in drawers; a role's seats are linked in its drawer.
+    await vis(manager, "settings-org-open-unit").click();
     await vis(manager, "settings-org-unit-key").fill("ENG");
     await vis(manager, "settings-org-unit-name").fill("Engineering");
     await vis(manager, "settings-org-unit-add").click();
@@ -94,24 +98,28 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     // Step roles: a role with two seats; the manager holds one, so the step is done; the other waits for the leader.
     await setup(manager);
     await expect(vis(manager, "setup-step-roles")).toBeVisible();
+    await vis(manager, "settings-org-open-role").click();
     await vis(manager, "settings-org-role-title").fill("Engineering lead");
     await vis(manager, "settings-org-role-add").click();
-    const role = manager.locator('li[data-testid^="settings-org-role-"]');
-    await expect(role).toHaveCount(1);
+    const card = manager.locator('li[data-testid^="settings-org-role-"]');
+    await expect(card).toHaveCount(1);
+    await vis(card, "settings-org-role-edit").click();
+    const role = vis(manager, "settings-org-role-drawer");
     await vis(role, "settings-org-seat-name").fill("Lead seat");
     await vis(role, "settings-org-seat-add").click();
     await expect(role.getByText("Lead seat")).toBeVisible();
     await vis(role, "settings-org-seat-name").fill("Deputy seat");
     await vis(role, "settings-org-seat-add").click();
     await expect(role.getByText("Deputy seat")).toBeVisible();
-    await role.locator('div[data-testid^="settings-org-seat-"]').filter({ hasText: "Deputy seat" })
+    await role.locator('li[data-testid^="settings-org-seat-"]').filter({ hasText: "Deputy seat" })
       .getByTestId("settings-org-seat-link").selectOption({ label: MANAGER.name });
 
     // Step routes.
     await setup(manager);
     await expect(vis(manager, "setup-step-routes")).toBeVisible();
+    // The route form is a drawer; its key comes from the request type.
+    await vis(manager, "settings-routing-open-new").click();
     const route = vis(manager, "settings-routing-new");
-    await vis(route, "settings-routing-key").fill("RIG");
     await vis(route, "settings-routing-type").fill("Test rig time");
     await vis(route, "settings-routing-keywords").fill("rig, test");
     await vis(route, "settings-routing-owner").selectOption({ index: 1 });
@@ -129,8 +137,12 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await readCode(manager, MEMBER);
     await readCode(manager, LEADER);
     const leaderRow = manager.locator("li").filter({ hasText: LEADER.email });
-    await leaderRow.getByLabel(`Free seat for ${LEADER.name}`).selectOption({ index: 1 });
-    await expect(leaderRow.getByRole("button", { name: /^Unlink / })).toBeVisible();
+    // Seats are linked in a dialog opened from the row's menu.
+    await leaderRow.locator('summary[data-testid^="settings-member-menu-"]').click();
+    await leaderRow.getByRole("button", { name: /^Seats/ }).click();
+    const seats = manager.getByRole("dialog");
+    await seats.getByLabel(`Free seat for ${LEADER.name}`).selectOption({ index: 1 });
+    await expect(seats.getByRole("button", { name: /^Unlink / })).toBeVisible();
     await manager.context().close();
 
     // The member raises a case about the rig; the leader sees it in the inbox.

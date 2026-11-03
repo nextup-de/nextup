@@ -5,16 +5,18 @@
 // place: the case, its five score dials, what the AI found, and on the right Support and comments.
 // Escape closes it, ↑/↓ step through the filtered list. ?id= opens one straight away.
 // Facts: the cases this viewer may see (derive.visibleTo), "this affects me too" as Support
-// (act.affect), comments (act.comment). Covers come from a fixed library (features/cases/thumbs.ts);
-// likes and replies are stand-ins (feedPreview).
+// (act.affect), comments (act.comment). Covers come from a fixed library (features/cases/thumbs.ts).
+// Each card shows the case's latest event (features/cases/feed.ts latestActivity); nothing here is a stand-in.
 import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCaseNames } from "@/components/cases/useCaseNames";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen, visibleTo } from "@/components/dashboard/derive";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
 import { archiveOf, inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
-import { FEED_SORT_KEY, feedCover, feedStage, inDept, sortFeed, isMe as isBacker, supportLine, supportReasons, type Backer, type FeedSort } from "@/features/cases/feed";
+import { FEED_SORT_KEY, feedCover, feedStage, inDept, inSite, inUnit, latestActivity, siteFilters, sortFeed, isMe as isBacker, supportLine, supportSummary, unitFilters, type Activity, type Backer, type FeedSort } from "@/features/cases/feed";
+import { MIN_GROUP } from "@/features/metrics/types";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { dashboardRow, overviewSteps, raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, onDeskOf, rescoresOn } from "@/features/cases/selectors";
@@ -23,10 +25,11 @@ import { profileOf } from "@/features/demo/profiles";
 import { useT } from "@/i18n/client";
 import type { T } from "@/i18n";
 import s from "./Feed.module.css";
-import { useFeedPreview } from "./feedPreview";
 import { libraryCoverFor, sampleCoverFor } from "@/features/cases/thumbs";
+import { useIdInUrl } from "@/lib/use-url-id";
 
 const ALL_SITES = "*"; // the "every site" filter value; shown as feedAllSites
+const ALL_UNITS = "*"; // the "every unit" filter value; shown as feed.allUnits
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
 const isHandle = (name: string) => name.startsWith("Anonymous");
 const ago = (t: T, days: number) => (days <= 0 ? t("common.today") : days === 1 ? t("common.yesterday") : t("team.feedDaysAgo", { count: days }));
@@ -37,46 +40,44 @@ function UpArrow({ size, w }: { size: number; w: number }) {
 function Check({ size }: { size: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 }
-function Thumb() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 10v11H4V10h3zM7 10l4-8a2.5 2.5 0 012.5 2.5V9h5.6a2 2 0 012 2.3l-1.4 8A2 2 0 0117.7 21H7" /></svg>;
-}
-
 // One case as the Feed needs it: facts from the log, nothing invented.
 type Item = {
   c: ReducedCase; mine: boolean; backing: Backer[]; supported: boolean; tags: string[];
-  site: string | null; raisedDay: number; backers: number; comments: number;
+  site: string | null; raisedDay: number; lastDay: number; activity: Activity | null; backers: number; comments: number;
 };
 
 export function FeedView({ initialId }: { initialId?: string } = {}) {
   const t = useT();
+  const names = useCaseNames();
   const ctx = useDemo();
-  const { seed, D, log, ready, act, actor, me, f, motion, flag } = ctx; // actor is the label I post under: shown, never compared
+  const { seed, tenant, D, log, ready, act, actor, me, f, motion, flag } = ctx; // actor is the label I post under: shown, never compared
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const [view, setView] = useState<ListView>("open");
   const [archived, setArchived] = useState<ArchiveFilter>("all");
   const [dept, setDept] = useState("All");
   const [site, setSite] = useState(ALL_SITES);
+  const [unit, setUnit] = useState(ALL_UNITS);
   const [sort, setSort] = useState<FeedSort>("support");
-  const [menu, setMenu] = useState<"site" | "sort" | null>(null);
+  const [menu, setMenu] = useState<"site" | "unit" | "sort" | null>(null);
   const [openId, setOpenId] = useState<string | null>(initialId ?? null);
+  useIdInUrl(openId, setOpenId); // the opened card is in the address (?id=)
   const [openScore, setOpenScore] = useState<Record<string, number | null>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [replyTo, setReplyTo] = useState<Record<string, string | null>>({}); // case id -> comment id
   const rootRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const preview = useFeedPreview();
 
   const P = seed.promiseDays;
   const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas };
   const deptNames = seed.depts.map((d) => d.name);
   const personOf = (name: string) => seed.people.find((p) => p.name === name);
   const deptNameOf = (name: string) => { const id = personOf(name)?.dept; return seed.depts.find((d) => d.id === id)?.name ?? ""; };
+  const unitIdOf = (c: ReducedCase) => seed.depts.find((d) => d.name === c.fromDept)?.id ?? null;
   const roleOf = (name: string) => personOf(name)?.role ?? "";
   const siteOf = (name: string) => (isHandle(name) ? null : profileOf(name).location);
   const top = () => rootRef.current?.scrollIntoView({ block: "start", behavior: motion ? "smooth" : "auto" });
 
   const itemOf = (c: ReducedCase): Item => {
     const row = dashboardRow(c, P, me, log);
+    const activity = latestActivity(c.id, log, seed.seats, tenant.actorLabels);
     // Who backs it: named when raised (no id), plus everyone who pressed "this affects me too" (their user id).
     const named = raisedWith(c).affected;
     const backing: Backer[] = [...named.map((name) => ({ userId: null, name })), ...affectedOn(log, c.id).filter((a) => !named.includes(a.name)).map((a) => ({ userId: a.userId, name: a.name }))]
@@ -85,23 +86,37 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     const tags = [...new Set([c.fromDept, ...(routeDept ? [routeDept] : []), ...row.affected.filter((n) => deptNames.includes(n))])];
     return {
       c, mine: row.mine, backing, supported: backing.some((b) => isBacker(b, me)), tags,
-      site: siteOf(c.from), raisedDay: c.raisedDay, backers: backing.length, comments: commentsOn(log, c.id).filter((m) => !m.rescore).length,
+      site: siteOf(c.from), raisedDay: c.raisedDay, lastDay: activity?.day ?? c.raisedDay, activity, backers: backing.length, comments: commentsOn(log, c.id).filter((m) => !m.rescore).length,
     };
   };
   // With projects on, the feed shows what is still moving; what was decided sits in the Archive.
   const split = flag("projects");
   const everything = D.cases.filter((c) => visibleTo(ctx, c)).map(itemOf);
   const visible = split ? everything.filter((x) => inView(archiveOf(x.c), view, archived)) : everything;
-  const bySite = visible.filter((x) => site === ALL_SITES || x.site === site);
+  const sites = siteFilters(seed), units = site === ALL_SITES ? [] : unitFilters(seed, site);
+  const inSites = (x: Item, id: string) => id === ALL_SITES || inSite(seed, unitIdOf(x.c), id);
+  const bySite = visible.filter((x) => inSites(x, site) && (unit === ALL_UNITS || inUnit(unitIdOf(x.c), unit)));
   const list = sortFeed(bySite.filter((x) => inDept(x.tags, dept)), sort);
-  const sites = [ALL_SITES, ...[...new Set(visible.map((x) => x.site).filter((x): x is string => !!x))].sort()];
+  const siteName = sites.find((x) => x.id === site)?.name ?? t("team.feedAllSites");
+  const unitName = units.find((x) => x.id === unit)?.name ?? t("feed.allUnits");
   const chips = ["All", ...deptNames];
 
 
   const open = (id: string) => { setOpenId(id); top(); };
-  const support = (x: Item) => {
-    const added = act.affect(x.c.id);
-    preview.setReason(x.c.id, added ? "ask" : "done");
+  const support = (x: Item) => { act.affect(x.c.id); };
+  // The latest-event line: what last happened, by whom (their desk role, else the event's label), and when.
+  const latestLine = (c: ReducedCase, a: Activity | null): string => {
+    const when = ago(t, log.day - (a?.day ?? c.raisedDay));
+    if (!a || a.kind === "raised") return t("feed.latestRaised", { when });
+    const who = (a.role ? names.roleTitle(a.role) : "") || a.label || t("feed.theDesk");
+    const key = { read: "feed.latestRead", asked: "feed.latestAsked", yes: "feed.latestYes", no: "feed.latestNo", handed: "feed.latestHanded", discussion: "feed.latestDiscussion", escalated: "feed.latestEscalated" } as const;
+    return t(key[a.kind], { who, when });
+  };
+  // The card's supporters line: a unit is named only with at least MIN_GROUP supporters from it.
+  const supportersLine = (x: Item): string => {
+    const sum = supportSummary(x.backing.map((b) => ({ ...b, unit: deptNameOf(b.name) || null })), me);
+    return sum.kind === "none" ? t("feed.supportersNone") : sum.kind === "you" ? t("feed.supportersYou")
+      : sum.kind === "unit" ? t("feed.supportersUnit", { count: sum.count, unit: sum.unit }) : t("feed.supportersCount", { count: sum.count });
   };
   // Supporter avatars: up to three, you first once you back it.
   const avatars = (x: Item) => (x.supported ? [{ name: actor, me: true }, ...x.backing.filter((b) => !isBacker(b, me)).map((b) => ({ name: b.name, me: false }))] : x.backing.map((b) => ({ name: b.name, me: false }))).slice(0, 3);
@@ -156,20 +171,38 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             <div className={s.div6}>
               <button type="button" className={s.toggleSite} onClick={() => setMenu(menu === "site" ? null : "site")} aria-expanded={menu === "site"} aria-haspopup="menu">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
-                {site === ALL_SITES ? t("team.feedAllSites") : site}
+                {siteName}
               </button>
               {menu === "site" && (
                 <div className={s.div7} role="menu">
-                  {sites.map((x) => (
-                    <button key={x} type="button" role="menuitemradio" aria-checked={site === x} className={s.pick} data-on={site === x ? "true" : undefined} onClick={() => { setSite(x); setMenu(null); }}>
-                      <span className={s.label}>{x === ALL_SITES ? t("team.feedAllSites") : x}</span>
-                      <span className={s.count}>{x === ALL_SITES ? visible.length : visible.filter((v) => v.site === x).length}</span>
-                      <span className={s.check}>{site === x ? "✓" : ""}</span>
+                  {[{ id: ALL_SITES, name: t("team.feedAllSites") }, ...sites].map((x) => (
+                    <button key={x.id} type="button" role="menuitemradio" aria-checked={site === x.id} className={s.pick} data-on={site === x.id ? "true" : undefined} onClick={() => { setSite(x.id); setUnit(ALL_UNITS); setMenu(null); }}>
+                      <span className={s.label}>{x.name}</span>
+                      <span className={s.count}>{visible.filter((v) => inSites(v, x.id)).length}</span>
+                      <span className={s.check}>{site === x.id ? "✓" : ""}</span>
                     </button>
                   ))}
                 </div>
               )}
             </div>
+            {units.length > 0 && (
+              <div className={s.div6}>
+                <button type="button" className={s.toggleSite} onClick={() => setMenu(menu === "unit" ? null : "unit")} aria-expanded={menu === "unit"} aria-haspopup="menu">
+                  {unitName}
+                </button>
+                {menu === "unit" && (
+                  <div className={s.div7} role="menu">
+                    {[{ id: ALL_UNITS, name: t("feed.allUnits") }, ...units].map((x) => (
+                      <button key={x.id} type="button" role="menuitemradio" aria-checked={unit === x.id} className={s.pick} data-on={unit === x.id ? "true" : undefined} onClick={() => { setUnit(x.id); setMenu(null); }}>
+                        <span className={s.label}>{x.name}</span>
+                        <span className={s.count}>{visible.filter((v) => inSites(v, site) && (x.id === ALL_UNITS || inUnit(unitIdOf(v.c), x.id))).length}</span>
+                        <span className={s.check}>{unit === x.id ? "✓" : ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className={s.div6}>
               <button type="button" className={s.toggleSort} onClick={() => setMenu(menu === "sort" ? null : "sort")} aria-expanded={menu === "sort"} aria-haspopup="menu">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" /></svg>
@@ -177,7 +210,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
               </button>
               {menu === "sort" && (
                 <div className={s.div7} role="menu">
-                  {(["support", "newest"] as const).map((k) => (
+                  {(["support", "latest"] as const).map((k) => (
                     <button key={k} type="button" role="menuitemradio" aria-checked={sort === k} className={s.pick} data-on={sort === k ? "true" : undefined} onClick={() => { setSort(k); setMenu(null); }}>
                       <span className={s.label}>{t(FEED_SORT_KEY[k])}</span>
                       <span className={s.check}>{sort === k ? "✓" : ""}</span>
@@ -233,6 +266,8 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                   </div>
                 </div>
                 <h3 className={s.title}>{c.title}</h3>
+                <span className={s.latest} data-testid="feed-latest">{latestLine(c, x.activity)}</span>
+                <span className={s.supporters}>{supportersLine(x)}</span>
                 <div className={s.div14}>
                   <div className={s.div15}>
                     {avatars(x).map((a) => <span key={a.name} className={s.ini} data-me={a.me ? "true" : undefined}>{initialsOf(a.name)}</span>)}
@@ -252,7 +287,8 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             );
           })}
         </div>
-        {!list.length && <div className={s.div16}>{visible.length ? t("team.feedNoMatch") : split && view === "archive" ? t("team.feedNoArchive") : t("team.feedNothing")}</div>}
+        {!list.length && <div className={s.div16}>{visible.length ? t("team.feedNoMatch") : split && view === "archive" ? t("team.feedNoArchive") : t("feed.emptyFeed")}</div>}
+        <p className={s.windowNote}>{t("feed.windowFooter")}</p>
       </div>
     </div>
   );
@@ -263,25 +299,19 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     const os = openScore[c.id] ?? null;
     const dial = os !== null ? brief.scores[os] : null;
     const cs = commentsOn(log, c.id).filter((m) => !m.rescore);
-    const nReplies = cs.reduce((n, m) => n + (preview.replies[m.id]?.length ?? 0), 0);
     const draft = drafts[c.id] ?? "";
-    const rt = replyTo[c.id] ?? null;
-    const rc = rt ? cs.find((m) => m.id === rt) ?? null : null;
     const nameOf = (m: { by: string; byUserId?: string | null }) => (isMe(m.byUserId) ? t("team.feedYou") : m.by);
     const count = item.backing.length;
     const myDept = deptNameOf(ctx.persona.who.name);
     const fromMine = item.backing.filter((b) => !isBacker(b, me) && deptNameOf(b.name) === myDept).length + (item.supported ? 1 : 0);
-    const iTalked = cs.some((m) => isMe(m.byUserId)) || cs.some((m) => preview.replies[m.id]?.length);
-    const iLiked = cs.some((m) => preview.likes[m.id]);
+    const iTalked = cs.some((m) => isMe(m.byUserId));
     const anon = isHandle(c.from);
     const role = anon ? c.fromDept : roleOf(c.from) || c.fromDept;
     const send = () => {
       const t = draft.trim();
       if (!t) return;
-      if (rc) preview.reply(rc.id, { text: t, day: log.day });
-      else act.comment(c.id, t);
+      act.comment(c.id, t);
       setDrafts((d) => ({ ...d, [c.id]: "" }));
-      setReplyTo((r) => ({ ...r, [c.id]: null }));
     };
     const splitBlock = dial?.blocks.find((b) => b.t === "split");
     return (
@@ -444,7 +474,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 </div>
                 <span className={s.div11}>
                   <span className={s.supLine}>{supportLine(item.backing, me)}</span>
-                  {myDept && fromMine > 0 && <span className={s.size}>{item.supported ? t("team.feedFromDeptIncluding", { count: fromMine, dept: myDept }) : t("team.feedFromDeptBack", { count: fromMine, dept: myDept })}</span>}
+                  {myDept && fromMine >= MIN_GROUP && <span className={s.size}>{item.supported ? t("team.feedFromDeptIncluding", { count: fromMine, dept: myDept }) : t("team.feedFromDeptBack", { count: fromMine, dept: myDept })}</span>}
                 </span>
               </div>
               <button type="button" className={s.toggleSupport2} data-on={item.supported ? "true" : undefined} aria-pressed={item.supported} onClick={() => support(item)}>
@@ -454,25 +484,14 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 {item.supported ? t("team.feedYouSupport") : c.kind === "idea" ? t("team.feedSupportIdea") : t("team.feedSupportProblem")}
               </button>
               <span className={s.mood}>{count ? brief.feed.sentiment : t("team.feedBeFirst")}</span>
-              {item.supported && preview.reasons[c.id] === "ask" && (
-                <div className={s.div48}>
-                  <span className={s.affects}>{t("team.feedTellWhy", { name: anon ? t("team.feedThem") : c.from })}</span>
-                  <div className={s.div8}>
-                    {supportReasons(c.kind).map((t) => (
-                      <button key={t} type="button" className={s.pick3} onClick={() => { act.comment(c.id, t + "."); preview.setReason(c.id, "done"); }}>{t}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
             <div className={s.div49}>
               <span className={s.comments}>{t("team.feedComments")}</span>
-              <span className={s.affects}>{cs.length + nReplies}</span>
+              <span className={s.affects}>{cs.length}</span>
             </div>
             <div className={s.div50}>
               {!cs.length && <span className={s.span3}>{t("team.feedNoComments")}</span>}
               {cs.map((m) => {
-                const liked = !!preview.likes[m.id];
                 return (
                   <div key={m.id} className={s.div51}>
                     <div className={s.div52}>
@@ -483,53 +502,23 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                           <span className={s.role2}>{[isMe(m.byUserId) ? "" : roleOf(m.by) || deptNameOf(m.by), f(m.day)].filter(Boolean).join(" · ")}</span>
                         </div>
                         <p className={s.text2}>{m.text}</p>
-                        <div className={s.div55}>
-                          <button type="button" className={s.up} data-on={liked ? "true" : undefined} aria-pressed={liked} title={t("team.feedLike")} onClick={() => preview.like(m.id)}>
-                            <Thumb />{liked ? 1 : ""}
-                          </button>
-                          <button type="button" className={s.onReply} data-on={rt === m.id ? "true" : undefined}
-                            onClick={() => { setReplyTo((r) => ({ ...r, [c.id]: m.id })); setTimeout(() => inputRef.current?.focus(), 0); }}>{t("team.feedReply")}</button>
-                        </div>
                       </div>
                     </div>
-                    {(preview.replies[m.id] ?? []).map((r, ri) => {
-                      const k = m.id + ":" + ri, rl = !!preview.likes[k];
-                      return (
-                        <div key={k} className={s.div56}>
-                          <span className={s.ini5} data-mine="true">{initialsOf(actor)}</span>
-                          <div className={s.div53}>
-                            <div className={s.div54}><span className={s.name3}>{t("team.feedYou")}</span><span className={s.role2}>{f(r.day)}</span></div>
-                            <p className={s.text2}>{r.text}</p>
-                            <div className={s.div55}>
-                              <button type="button" className={s.up} data-on={rl ? "true" : undefined} aria-pressed={rl} title={t("team.feedLike")} onClick={() => preview.like(k)}><Thumb />{rl ? 1 : ""}</button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 );
               })}
             </div>
             <div className={s.div57}>
-              {!item.supported && (iTalked || iLiked) && (
+              {!item.supported && iTalked && (
                 <div className={s.div58}>
                   <span className={s.nudgeText}>{iTalked ? t("team.feedJoined") : t("team.feedAgree")}</span>
                   <button type="button" className={s.toggleSupport3} onClick={() => support(item)}><UpArrow size={12} w={3} />{t("team.feedSupport")}</button>
                 </div>
               )}
-              {rc && (
-                <div className={s.div59}>
-                  <span className={s.replyingTo}>{t("team.feedReplyingTo")}<span className={s.replyName}>{nameOf(rc)}</span></span>
-                  <button type="button" className={s.cancelReply} onClick={() => setReplyTo((r) => ({ ...r, [c.id]: null }))} title={t("team.feedCancelReply")} aria-label={t("team.feedCancelReply")}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6e6e73" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-                  </button>
-                </div>
-              )}
               <div className={s.div60}>
-                <input ref={inputRef} className={s.input} value={draft} placeholder={rc ? t("team.feedReplyTo", { name: nameOf(rc) }) : t("team.feedAddComment")} aria-label={rc ? t("team.feedReplyTo", { name: nameOf(rc) }) : t("team.feedAddComment")}
+                <input className={s.input} value={draft} placeholder={t("team.feedAddComment")} aria-label={t("team.feedAddComment")}
                   onChange={(e) => { const v = e.target.value; setDrafts((d) => ({ ...d, [c.id]: v })); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } else if (e.key === "Escape") setReplyTo((r) => ({ ...r, [c.id]: null })); }} />
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }} />
                 <button type="button" className={s.send} data-live={draft.trim() ? "true" : undefined} onClick={send} title={t("team.feedSend")} aria-label={t("team.feedSend")}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
                 </button>

@@ -9,7 +9,7 @@
 // Who sees what (derive.visibleTo): an employee only what they raised; a team leader their own
 // and their people's; a manager everything.
 // `linkCases` (the static demo): every case has its own address, /cases/<id> - a row goes there, ✕ comes
-// back - and that page is this view with `caseId` open.
+// back - and that page is this view with `caseId` open. Otherwise the open case is ?id= on this page.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -36,6 +36,7 @@ import { OverviewIdea, type IdeaMode, type OverviewIdeaProps } from "./OverviewI
 import { OverviewPhone } from "./OverviewPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
+import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 // A phone gets its own case layout (OverviewPhone), like the inbox's IdeaDetailPhone.
@@ -108,7 +109,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const [sort, setSort] = useState<Sort>("move");
   const [menu, setMenu] = useState<"filter" | "sort" | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [sel, setSel] = useState<string | null>(caseId ?? null);
+  // The open case: from /cases/<id> (linkCases) or from ?id=, which keeps it in the address after that.
+  const urlId = useUrlId();
+  const [sel, setSel] = useState<string | null>(caseId ?? urlId);
+  useIdInUrl(linkCases ? null : sel, setSel);
   const [mode, setMode] = useState<IdeaMode>("idea");
   const [pg, setPg] = useState({ key: "", n: 1 }); // the page the table is on, forgotten when the list changes
   const paneRef = useRef<HTMLDivElement>(null);

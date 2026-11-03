@@ -11,7 +11,7 @@ import { needsHandle, newHandle } from "@/features/auth/handle";
 import { getViewerFor } from "@/features/auth/session";
 import { generateLoginCode, hashLoginCode } from "@/features/auth/login-code";
 import { initialsOf, seedNameWarnings } from "@/features/tenant/create";
-import { isRole, roleChangeProblem, validateNewMember, type Member } from "@/features/tenant/members";
+import { isRole, reactivateProblem, roleChangeProblem, validateNewMember, type Member } from "@/features/tenant/members";
 import { companySeed } from "@/lib/db/companies";
 import type { Seed } from "@/features/demo/types";
 import { getDb, hasDatabase } from "@/lib/db/client";
@@ -288,6 +288,30 @@ export async function deactivateMemberAction(_prev: RemoveState, form: FormData)
   if (failed) return { error: auditFailed };
   revalidatePath(`/${manager.slug}/settings/members`);
   return { done: `${user.name} is deactivated. Their open cases were handed on where someone else holds the role.` };
+}
+
+/**
+ * Switches an inactive person on again. Their old login code is cleared, so a code that was lost is not
+ * silently valid again: a manager issues a new one. Their seats stay vacant until someone links them.
+ */
+export async function reactivateMemberAction(_prev: RemoveState, form: FormData): Promise<RemoveState> {
+  const manager = await managerOf(String(form.get("slug") ?? ""));
+  if (!manager) return { error: forbidden };
+  const userId = String(form.get("userId") ?? "");
+  const user = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { name: true, active: true } });
+  const problem = reactivateProblem(user, userId === manager.userId);
+  if (problem || !user) return { error: problem ?? "No such person in this company." };
+  const saved = await audited(
+    manager.companyId,
+    () => ({ actor: settingsActor(manager), action: "audit.member.reactivated", target: { kind: "user", id: userId }, changes: {}, source: "settings" }),
+    (tx) => tx.user.updateMany({
+      where: { id: userId, companyId: manager.companyId, active: false },
+      data: { active: true, deactivatedAt: null, loginCodeHash: null, loginCodeAt: null },
+    }),
+  );
+  if (!saved.ok) return { error: auditFailed };
+  revalidatePath(`/${manager.slug}/settings/members`);
+  return { done: `${user.name} is active again. Their old login code no longer works: issue a new one, and link their seats in Org.` };
 }
 
 /** Removes an inactive person. Their events stay with the label; the link to the user is cleared (SetNull). */
