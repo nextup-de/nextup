@@ -46,6 +46,7 @@ export const AUDIT_ACTIONS = [
   "audit.access.support_granted",
   "audit.access.support_revoked",
   "audit.access.support_signin",
+  "audit.access.support_extended",
   "audit.privacy.exported",
   "audit.privacy.downloaded",
   "audit.privacy.pseudonymised",

@@ -2,7 +2,7 @@
 // Pure: the layout and the index page fetch the counts and hand them in.
 import type { MessageKey } from "@/i18n";
 
-export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "signIn" | "teams" | "areas" | "privacy" | "audit";
+export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "signIn" | "supportAccess" | "teams" | "areas" | "privacy" | "audit";
 export type SettingsGroup = "start" | "company" | "structure" | "data";
 export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey; group: SettingsGroup };
 
@@ -19,6 +19,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { key: "webhooks", path: "webhooks", label: "settingsWebhooks.navLabel", group: "data" },
   { key: "apiTokens", path: "api-tokens", label: "settingsApiTokens.navLabel", group: "data" },
   { key: "signIn", path: "sign-in", label: "settingsSignIn.navLabel", group: "data" },
+  { key: "supportAccess", path: "support-access", label: "settingsSupport.navLabel", group: "data" },
   { key: "teams", path: "teams", label: "settingsTeams.navLabel", group: "data" },
   { key: "areas", path: "areas", label: "settingsAreas.navLabel", group: "structure" },
   { key: "privacy", path: "privacy", label: "settingsPrivacy.navLabel", group: "data" },
