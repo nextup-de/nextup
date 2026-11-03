@@ -19,7 +19,7 @@ type Route = {
 };
 
 const CASE = "c1"; // acme seed: the first case
-const PERSON = "T.%20Vogel"; // acme seed: the team leader
+const PERSON = "u2"; // acme seed: the team leader (user id)
 
 const ROUTES: Route[] = [
   { file: "[company]/(app)/page.tsx", path: "/acme", lands: "/acme/raise" },
@@ -27,7 +27,7 @@ const ROUTES: Route[] = [
   { file: "[company]/(app)/team/page.tsx", path: "/acme/team" },
   { file: "[company]/(app)/profile/page.tsx", path: "/acme/profile" },
   { file: "[company]/(app)/reports/page.tsx", path: "/acme/reports" },
-  { file: "[company]/(app)/people/[name]/page.tsx", path: `/acme/people/${PERSON}` },
+  { file: "[company]/(app)/people/[userId]/page.tsx", path: `/acme/people/${PERSON}` },
   { file: "[company]/(app)/projects/page.tsx", path: "/acme/projects" },
   { file: "[company]/(app)/projects/[projectId]/page.tsx", path: "/acme/projects/pj2" },
   { file: "[company]/(app)/leader/page.tsx", path: "/acme/leader", as: "Team leader" },
@@ -48,7 +48,6 @@ const ROUTES: Route[] = [
   { file: "demo/(app)/raise/page.tsx", path: "/demo/raise" },
   { file: "demo/(app)/team/page.tsx", path: "/demo/team" },
   { file: "demo/(app)/profile/page.tsx", path: "/demo/profile" },
-  { file: "demo/(app)/people/[name]/page.tsx", path: `/demo/people/${PERSON}` },
   { file: "demo/(app)/projects/page.tsx", path: "/demo/projects" },
   { file: "demo/(app)/projects/[projectId]/page.tsx", path: "/demo/projects/pj2" },
   { file: "demo/(app)/leader/page.tsx", path: "/demo/leader", as: "Team leader" },
