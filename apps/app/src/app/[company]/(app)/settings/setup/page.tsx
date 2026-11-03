@@ -3,6 +3,7 @@
 import { notFound } from "next/navigation";
 import { SetupWizard, type SetupData } from "@/components/settings/SetupWizard";
 import { setupStep } from "@/features/settings/sections";
+import { appHost, companyPrefix } from "@/features/tenant/urls";
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { loadKnowledge } from "@/lib/db/knowledge";
@@ -58,6 +59,7 @@ export default async function SetupPage({ params, searchParams }: { params: Prom
         complianceRules: profile?.complianceRules ?? "",
       },
     },
+    address: `${appHost()}${companyPrefix(company)}`,
     knowledge,
     options,
     me: page.me,
