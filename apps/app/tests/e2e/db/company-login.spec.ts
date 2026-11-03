@@ -88,9 +88,11 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     await leader.reload();
     await leader.getByRole("main").getByText(title).first().click();
     await leader.getByRole("button", { name: "Yes, do it" }).click();
+    // Projects are on by default, so the yes opens a sheet that names the project's lead.
+    await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
 
     await member.reload();
-    await expect(member.getByRole("article", { name: title })).toContainText("Answered: yes");
+    await expect(member.getByRole("article", { name: title })).toContainText("Approved");
   });
 
   test("the manager adds a person in Settings, and their code works", async ({ browser }) => {
