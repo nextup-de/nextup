@@ -4,11 +4,10 @@
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
-import { adminScope } from "@/features/admin/nav";
 import { isMicrosoftError, MICROSOFT_ERRORS } from "@/features/auth/entra";
 import { companyForFlags } from "@/lib/db/flags";
 import { demoFillAllowed } from "./demo-fill";
-import { companyPrefix } from "@/features/tenant/urls";
+import { companyPrefix, singleCompany } from "@/features/tenant/urls";
 import { microsoftAdminEnabled } from "@/server/microsoft-login";
 import styles from "../admin.module.css";
 
@@ -32,7 +31,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
     <section className={styles.card}>
       <h1>Admin</h1>
       <p className="nh-hint">
-        {adminScope() === "company"
+        {singleCompany() !== null
           ? "Hand out your people’s login codes, switch on Microsoft sign-in, and set what the assistant may read."
           : "Add a company, hand out its people’s login codes, or remove it."}
       </p>

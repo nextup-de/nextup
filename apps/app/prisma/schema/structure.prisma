@@ -1,4 +1,4 @@
-// Area structure (docs/adr/0007-areas.md). Models: CompanyProfile, OrgUnit, OrgRole, OrgRoleHolder, RoutingRule, Goal. Changed only by: STR. Every migration is its own folder under prisma/migrations.
+// Area structure (docs/adr/0007-areas.md). Models: CompanyProfile, OrgUnit, OrgRole, OrgRoleHolder, RoutingRule, Goal, FloorArea, FloorDevice, FloorCode, FloorReference. Changed only by: STR, FLR. Every migration is its own folder under prisma/migrations.
 
 // ── Company knowledge ────────────────────────────────────────────────────────────────────────────
 // What the company IS, as facts a department head edits now and then and an AI can read and cite:
@@ -46,6 +46,7 @@ model OrgUnit {
 
   roles OrgRole[]
   goals Goal[]
+  floorAreas FloorArea[]
 
   updatedAt DateTime @updatedAt
   updatedBy String?
@@ -75,6 +76,7 @@ model OrgRole {
   owns    RoutingRule[]   @relation("RuleOwner")
   deputy  RoutingRule[]   @relation("RuleDeputy")
   buddy   RoutingRule[]   @relation("RuleBuddy")
+  floorAreas FloorArea[]
 
   updatedAt DateTime @updatedAt
   updatedBy String?
@@ -162,4 +164,69 @@ model CompanyRule {
   updatedBy String?
 
   @@id([companyId, key])
+}
+
+// A place on the shop floor with its own QR code: the code opens /<company>/floor/<key> on a phone
+// and the report lands with `roleId` in `unitId` (docs/adr/0007-areas.md).
+model FloorArea {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  key       String // 2-32 chars, ^[a-z0-9][a-z0-9-]{1,31}$, used in the URL
+  name      String // 1-60 chars
+  unitId    String
+  unit      OrgUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      OrgRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  anonymous Boolean @default(false)
+  on        Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique([companyId, key])
+}
+
+// A shared phone or tablet on the floor. Only hashes are stored: of the device token and of the pairing code.
+model FloorDevice {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  label         String // 1-60 chars
+  areaIds       String[] // empty = every area
+  tokenHash     String?   @unique // sha256 of the device token, null until paired
+  pairCodeHash  String?   @unique
+  pairCodeUntil DateTime?
+  pairedAt      DateTime?
+  lastUsedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  createdBy String?
+}
+
+// A person's floor code for shared-device sign-in: sha256 of companyId + ':' + code.
+model FloorCode {
+  userId    String  @id
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  codeHash  String   @unique
+  createdAt DateTime @default(now())
+  createdBy String?
+}
+
+// The reference a floor reporter keeps to look the case up again: sha256 of companyId + ':' + reference.
+model FloorReference {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  hash      String
+  caseId    String
+  areaId    String?
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, hash])
 }

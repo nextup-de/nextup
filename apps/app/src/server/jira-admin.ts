@@ -1,14 +1,14 @@
 // What /admin/integrations reads and what its actions share. Not a "use server" module: in one, every
 // export is a public action anyone can call by id.
 import { randomBytes } from "node:crypto";
-import { adminScope, type JiraNavFacts } from "@/features/admin/nav";
+import { type JiraNavFacts } from "@/features/admin/nav";
 import { formFromSettings, jiraLinkSummary, jiraWebhookUrl, type JiraForm } from "@/features/admin/jira-admin";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { integrationContext, open, seal, vaultKey } from "@/features/connectors/vault";
 import { jiraStatusView } from "@/features/integrations/jira/view";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
-import { appOrigin } from "@/features/tenant/urls";
+import { appOrigin, singleCompany } from "@/features/tenant/urls";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { companySeed } from "@/lib/db/companies";
 import { loadLogForSlug } from "@/lib/db/events";
@@ -17,7 +17,7 @@ import { isAdmin } from "@/server/actions/admin";
 
 /** The stack's own company, for a signed-in admin - the only one this page may change. Null for anyone else. */
 export async function adminCompany(): Promise<{ id: string; slug: string } | null> {
-  if (!(await isAdmin()) || !hasDatabase() || adminScope() !== "company") return null;
+  if (!(await isAdmin()) || !hasDatabase() || singleCompany() === null) return null;
   const slug = process.env.COMPANY_SLUG?.trim();
   return slug ? getDb().company.findUnique({ where: { slug }, select: { id: true, slug: true } }) : null;
 }

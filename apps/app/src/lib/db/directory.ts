@@ -8,13 +8,14 @@ import { planDirectoryDelta, type PlanRef } from "@/features/directory/apply";
 import type { DirectoryCounts, DirectorySourceKind } from "@/features/directory";
 import { getDb } from "./client";
 import { loadSeed } from "./companies";
+import type { Tx } from "./org-edit";
 import { appendEventRow, loadLog } from "./events";
 import { loadSeats } from "./holders";
 
 const ACTOR = "system:directory";
 
 /** Switch users off and vacate their seats. Returns the ids actually switched (active ones only) and the seats vacated. */
-async function switchOff(companyId: string, userIds: string[], now: Date): Promise<{ users: string[]; seatIds: Map<string, string[]> }> {
+async function switchOff(companyId: string, userIds: string[], now: Date, alsoInTx?: (tx: Tx) => Promise<void>): Promise<{ users: string[]; seatIds: Map<string, string[]> }> {
   const db = getDb();
   const users: string[] = [];
   const seatIds = new Map<string, string[]>();
@@ -24,6 +25,7 @@ async function switchOff(companyId: string, userIds: string[], now: Date): Promi
       if (r.count === 0) return null;
       const seats = await tx.orgRoleHolder.findMany({ where: { companyId, userId }, select: { id: true } });
       await tx.orgRoleHolder.updateMany({ where: { companyId, userId }, data: { userId: null } });
+      await alsoInTx?.(tx);
       return seats.map((s) => s.id);
     });
     if (done) { users.push(userId); seatIds.set(userId, done); }
@@ -59,8 +61,8 @@ async function handCases(companyId: string, vacated: string[], now: Date): Promi
 }
 
 /** One user leaves: inactive, seats vacated, open cases on them handed. Zero counts when they were inactive already. */
-export async function deactivateUser(companyId: string, userId: string, now: Date = new Date()): Promise<Pick<DirectoryCounts, "deactivated" | "handed">> {
-  const off = await switchOff(companyId, [userId], now);
+export async function deactivateUser(companyId: string, userId: string, now: Date = new Date(), alsoInTx?: (tx: Tx) => Promise<void>): Promise<Pick<DirectoryCounts, "deactivated" | "handed">> {
+  const off = await switchOff(companyId, [userId], now, alsoInTx);
   const handed = await handCases(companyId, [...off.seatIds.values()].flat(), now);
   return { deactivated: off.users.length, handed };
 }
