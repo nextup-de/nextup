@@ -41,19 +41,18 @@ describe("navbar index access and destinations", () => {
   const S = reduce(SEED, { day: 0, events: [] });
   const role = SEED.personas.find((p) => p.id === "member")!;
   const persona = { role, who: role.who };
-  const ctx = { seed: SEED, S, D: demoData(SEED, S, true), persona, actorUserId: role.who.userId ?? null, me: meFor(role.who.userId ?? null, SEED.seats), role: "member", f: () => "today", href: (path: string) => "/acme" + path, tenant: { hiddenPeople: ["T. Vogel"] } } as unknown as DemoContext;
+  const ctx = { seed: SEED, S, D: demoData(SEED, S, true), persona, actorUserId: role.who.userId ?? null, me: meFor(role.who.userId ?? null, SEED.seats), role: "member", f: () => "today", href: (path: string) => "/acme" + path, tenant: { personLinks: { u1: "Ann Example", u2: "Ann Example", [role.who.userId ?? "me"]: persona.who.name } } } as unknown as DemoContext;
   it("indexes only cases this viewer can open", () => {
     const actual = navbarIndex(ctx).filter((r) => r.go?.view === "dashboard").map((r) => r.go!.id).sort();
     expect(actual).toEqual(ctx.D.cases.filter((c) => canOpen(ctx, c)).map((c) => c.id).sort());
     expect(actual.length).toBeLessThan(ctx.D.cases.length);
   });
-  it("links people directly to profiles and excludes hidden profiles", () => {
+  it("links people by user id, never by display name, and leaves out the viewer", () => {
     const people = navbarIndex(ctx).filter((r) => r.kind === "Person");
-    expect(people.length).toBeGreaterThan(0);
-    expect(people.every((r) => r.go?.view === "people" && r.go.id === r.title)).toBe(true);
-    expect(people.some((r) => r.title === "T. Vogel")).toBe(false);
-    expect(people.some((r) => r.title === persona.who.name)).toBe(false);
-    expect(people.every((r) => r.href === "/acme/people/" + encodeURIComponent(r.title))).toBe(true);
+    expect(people.map((r) => r.go?.id).sort()).toEqual(["u1", "u2"]);
+    expect(people.every((r) => r.go?.view === "people" && r.title === "Ann Example")).toBe(true);
+    expect(people.map((r) => r.href).sort()).toEqual(["/acme/people/u1", "/acme/people/u2"]);
+    expect(people.some((r) => r.href.includes("Ann"))).toBe(false);
   });
   it("links a case to the Overview with that case open", () => {
     const cases = navbarIndex(ctx).filter((r) => r.case);

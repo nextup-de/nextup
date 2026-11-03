@@ -211,6 +211,16 @@ select.input { appearance: none; padding-right: 32px; background: #fff url("data
 .dialogText { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #3a3a3c; }
 .dangerBtn { height: 36px; padding-inline: 14px; border: 0; border-radius: 8px; background: #fff0f0; color: #d70015; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
 
+/* The stage card on Company: one line, title | badge | meaning | link. */
+.stageCard { flex-direction: row; align-items: center; gap: 16px; padding-block: 18px; }
+.stageCard > .cardTitle { flex: 0 0 200px; }
+.stageBadge { flex-shrink: 0; padding: 3px 9px; border-radius: 6px; background: var(--fill); font-size: var(--nh-fs-sm); font-weight: 600; color: var(--ink-2); }
+.stageBadge[data-stage="sandbox"] { background: #fff4e5; color: #b25000; }
+.stageBadge[data-stage="pilot"], .stageBadge[data-stage="live"] { background: #edf7f0; color: #2f8f5b; }
+.stageLine { flex: 1; min-width: 0; margin: 0; font-size: var(--nh-fs-md); color: var(--ink); }
+.stageLink { flex-shrink: 0; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--ink); text-decoration: none; }
+.stageLink:hover { text-decoration: underline; }
+
 @media (max-width: 760px) {
   .frame { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 16px; }
   .menu { display: none; }
@@ -224,6 +234,9 @@ select.input { appearance: none; padding-right: 32px; background: #fff url("data
   .input[data-size="num"], .input[data-size="money"] { height: 40px; }
   .foot { border-top: 0; padding-top: 0; }
   .foot .save { flex: 1; height: 44px; font-size: var(--nh-fs-md); }
+  .stageCard { flex-wrap: wrap; gap: 10px; }
+  .stageCard > .cardTitle { flex-basis: 100%; }
+  .stageLine { flex-basis: 100%; }
   .dateGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .well { grid-template-columns: 96px 1fr; }
   .tile { flex-direction: column; align-items: flex-start; gap: 4px; }
