@@ -6,7 +6,7 @@ import type { State } from "@/features/cases/reducer";
 import type { CaseEvent } from "@/features/cases/events";
 import type { Route } from "@/features/demo/types";
 
-export type DueKind = "deadline" | "checkin" | "start" | "measure";
+export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover";
 
 export type Due = {
   kind: DueKind;
@@ -29,9 +29,17 @@ function targetSeat(state: State, route: Route | null, atOwner: boolean): string
   return roleId === null ? null : seatsOfRole(state.seats, roleId)[0]?.id ?? null;
 }
 
+/** LOOP/D17: the seat of the deadline fact for this day, unless the case was already handed over for it. */
+function handoverSeat(history: readonly CaseEvent[], dueDay: number): string | null {
+  if (history.some((e) => e.type === "case.handed" && e.payload.why === "deadline")) return null;
+  const f = history.find((e) => e.type === "clock.due" && e.payload.kind === "deadline" && e.payload.dueDay === dueDay);
+  return f?.payload.toRoleHolderId ?? null;
+}
+
 export function dueNow(state: State, today: number): Due[] {
   if (state.clock.mode !== "workdays") return [];
   const out: Due[] = [];
+  const handovers: Due[] = []; // listed after every fact
 
   for (const c of state.cases) {
     if (!c.open || c.dueDay >= today || c.route === null) continue;
@@ -40,7 +48,11 @@ export function dueNow(state: State, today: number): Due[] {
       if (!hasFact(c.history, "checkin", c.dueDay)) out.push({ kind: "checkin", target: c.id, dueDay: c.dueDay, idemKey: idemKeyOf("checkin", c.id, c.dueDay) });
       continue;
     }
-    if (hasFact(c.history, "deadline", c.dueDay)) continue;
+    if (hasFact(c.history, "deadline", c.dueDay)) {
+      const to = state.rules.deadlineHandover && c.status === "open" ? handoverSeat(c.history, c.dueDay) : null;
+      if (to) handovers.push({ kind: "handover", target: c.id, dueDay: c.dueDay, toRoleHolderId: to, idemKey: `clk:handover:${c.id}` });
+      continue;
+    }
     const atOwner = c.assigneeRoleId !== null && c.assigneeRoleId === (c.route.ownerRoleId ?? null);
     out.push({ kind: "deadline", target: c.id, dueDay: c.dueDay, toRoleHolderId: targetSeat(state, c.route, atOwner), idemKey: idemKeyOf("deadline", c.id, c.dueDay) });
   }
@@ -61,5 +73,5 @@ export function dueNow(state: State, today: number): Due[] {
       }
     }
   }
-  return out;
+  return [...out, ...handovers];
 }
