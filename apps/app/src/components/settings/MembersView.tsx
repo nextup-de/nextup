@@ -11,6 +11,7 @@ import {
   deactivateMemberAction,
   deleteMemberAction,
   inviteMemberAction,
+  reactivateMemberAction,
   issueMemberCodeAction,
   memberSeatAction,
   setMemberRoleAction,
@@ -59,7 +60,9 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
   }, {});
 
   const [removed, removeAction, removing] = useActionState<RemoveState, FormData>(async (_prev, form) => {
-    return form.get("intent") === "delete" ? deleteMemberAction({}, form) : deactivateMemberAction({}, form);
+    const intent = form.get("intent");
+    if (intent === "reactivate") return reactivateMemberAction({}, form);
+    return intent === "delete" ? deleteMemberAction({}, form) : deactivateMemberAction({}, form);
   }, {});
   const [seated, seatAction, seating] = useActionState<SeatState, FormData>(memberSeatAction, {});
   const [asking, setAsking] = useState<MemberRow | null>(null);
@@ -216,6 +219,12 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
                     {m.active ? <button type="button" onClick={(e) => { closeMenu(e.currentTarget); setSeatsFor(m); }}>{t("settings.seatsMenu")}</button> : null}
                     {m.id !== me && m.role === "manager" && enrolled.includes(m.id) ? (
                       <button type="button" disabled={resetting} onClick={(e) => { closeMenu(e.currentTarget); setAskingTotp(m); }}>{t("settings.totpReset")}</button>
+                    ) : null}
+                    {!m.active && m.id !== me ? (
+                      <form action={removeAction} onSubmit={(e) => closeMenu(e.currentTarget)}>
+                        {hidden(m)}
+                        <button type="submit" name="intent" value="reactivate" disabled={removing || demo} data-testid={`settings-member-reactivate-${m.id}`}>{t("settings.reactivate")}</button>
+                      </form>
                     ) : null}
                     {m.id !== me ? (
                       <button type="button" className={s.danger} disabled={removing} onClick={(e) => { closeMenu(e.currentTarget); setAsking(m); }}>

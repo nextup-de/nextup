@@ -20,6 +20,7 @@ export const AUDIT_ACTIONS = [
   "audit.member.code",
   "audit.member.role",
   "audit.member.deactivated",
+  "audit.member.reactivated",
   "audit.member.deleted",
   "audit.member.seat",
   "audit.member.totp_reset",
