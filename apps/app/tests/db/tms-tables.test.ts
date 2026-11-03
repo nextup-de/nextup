@@ -50,7 +50,7 @@ describe("TMS tables", () => {
 
   it("lists the teams section after apiTokens, labelled in both catalogs", () => {
     const keys = SETTINGS_SECTIONS.map((s) => s.key);
-    expect(keys.indexOf("teams")).toBe(keys.indexOf("apiTokens") + 1);
+    expect(keys.indexOf("teams")).toBe(keys.indexOf("apiTokens") + 2);
     const s = SETTINGS_SECTIONS.find((x) => x.key === "teams")!;
     expect(s.path).toBe("teams");
     expect(s.label).toBe("settingsTeams.navLabel");
