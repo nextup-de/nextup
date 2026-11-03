@@ -1,5 +1,5 @@
 // The coach with the brain (features/ideas/brain-coach): what goes out, the message it becomes,
-// and its best guess as a suggested answer - re-scored like every other, never offered for free.
+// and its best guess as a suggested answer - offered without a gain check, marked as the AI's.
 import { describe, expect, it } from "vitest";
 import { benchmark, weakest } from "@/features/ideas/benchmarks";
 import { coachRequest, coachText, withCoachSuggestion, COACH_MAX_HISTORY, type CoachAnswer } from "@/features/ideas/brain-coach";
@@ -40,15 +40,15 @@ describe("withCoachSuggestion", () => {
   const now = benchmark(idea, ctx);
   const replies = suggestReplies(idea, now, ctx);
 
-  it("offers the brain's guess first, re-scored, without 'For example:', one per bar", () => {
+  it("offers the brain's guess first, without 'For example:', one per bar", () => {
     const out = withCoachSuggestion(answer(), idea, now, ctx, replies);
     expect(out[0].text.startsWith("About 20 minutes")).toBe(true);
     expect(out[0].id).toBe(weakest(now)?.id);
-    expect(out[0].gain).toBe(benchmark({ ...idea, text: idea.text + "\n" + out[0].text }, ctx).overall - now.overall);
+    expect(out[0].source).toBe("ai");
     expect(out.length).toBeLessThanOrEqual(3);
     expect(new Set(out.map((r) => r.id)).size).toBe(out.length);
   });
-  it("a guess that would not move the score is not offered", () => {
+  it("a guess that adds no points is still offered (no gain check); a stub or an empty one is not", () => {
     expect(withCoachSuggestion(answer({ recommended: "Yes." }), idea, now, ctx, replies)).toEqual(replies);
     expect(withCoachSuggestion(answer({ recommended: "" }), idea, now, ctx, replies)).toEqual(replies);
   });
