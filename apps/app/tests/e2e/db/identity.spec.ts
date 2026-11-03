@@ -105,7 +105,7 @@ test.describe.serial("IDN acceptance: a JIT user holding a role gets its cases",
   test("the leader of Engineering sees a test-rig case in the inbox, the leader of Marketing does not", async ({ browser }) => {
     const title = `Reserve the endurance rig for experiments ${STAMP}`;
     const member = await signIn(browser, "J. Schmidt");
-    await publishIdea(member, title, "M. Roth");
+    await publishIdea(member, title, "Engineering lead");
 
     const jana = await signIn(browser, JANA.name);
     await jana.goto(`/${SLUG}/leader`);

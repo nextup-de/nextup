@@ -1,14 +1,12 @@
 "use client";
 // The idea as the receiver's inbox will show it (Claude Design handoff "Publish Preview", the white card):
-// title, description, a requested meeting, who it was raised with, who it affects, the context with its
+// title, description, who it affects, the context with its
 // labelled lines, and the attachments - each part the author's to edit in place, the missing ones
 // addable. The publish preview (PublishPreview.tsx) and the Idea view (RaiseSheets.tsx IdeaSheet) both
 // show it, so the idea looks and edits the same in both. `locked`: published, read only. Props in.
 import { useState } from "react";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
-import { initials } from "@/features/ideas/raise";
-import type { Meeting } from "./raisePreview";
 import s from "./PublishPreview.module.css";
 
 // The author's words as the case will carry them.
@@ -16,21 +14,14 @@ export type LookPrompt = { label: string; text: string; custom?: boolean };
 export type Look = { title: string; description: string; context: string; prompts: LookPrompt[] };
 
 export type IdeaCardProps = {
-  author: string; // left out of the colleagues to add
   look: Look; onLook: (l: Look) => void;
   onTitleDone?: () => void; // the title field lost the focus
-  meet: Meeting | null; onMeet: (m: Meeting | null) => void;
-  coll: string[]; people: readonly { name: string; role: string }[]; onColl: (names: string[]) => void;
   affected: string[]; depts: readonly string[]; onAffected: (names: string[]) => void;
   files: readonly { id: string; name: string }[]; onAddFiles: (list: FileList | null) => void; onRemoveFile: (id: string) => void;
   locked?: boolean;
 };
 
 const PRESETS: MessageKey[] = ["ideas.cardPresetImpact", "ideas.cardPresetBlocked", "ideas.cardPresetTried", "ideas.cardPresetTrial", "ideas.cardPresetDeadline"];
-const DURS = ["15 min", "30 min", "45 min"], WHENS = ["this week", "next week", "no rush"];
-const DUR_KEY: Record<string, MessageKey> = { "15 min": "ideas.cardDur15", "30 min": "ideas.cardDur30", "45 min": "ideas.cardDur45" };
-const WHEN_KEY: Record<string, MessageKey> = { "this week": "ideas.cardWhenThisWeek", "next week": "ideas.cardWhenNextWeek", "no rush": "ideas.cardWhenNoRush" };
-const next = (all: string[], v: string) => all[(all.indexOf(v) + 1) % all.length];
 const toneOf = (ext: string) => (ext === "XLSX" || ext === "CSV" ? "sheet" : ext === "PDF" ? "pdf" : /^(PNG|JPG|JPEG)$/.test(ext) ? "image" : undefined);
 
 export const Plus = () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
@@ -46,54 +37,18 @@ const Remove = ({ onClick, what }: { onClick: () => void; what: string }) => {
 export function IdeaCard(p: IdeaCardProps) {
   const t = useT();
   const { look, onLook, locked = false } = p;
-  const [tray, setTray] = useState<"coll" | "aff" | null>(null);
+  const [tray, setTray] = useState<"aff" | null>(null);
   const set = (patch: Partial<Look>) => onLook({ ...look, ...patch });
   const setPrompt = (i: number, patch: Partial<LookPrompt>) => set({ prompts: look.prompts.map((x, k) => (k === i ? { ...x, ...patch } : x)) });
   const used = look.prompts.map((x) => x.label);
-  const collOpts = p.people.filter((x) => x.name !== p.author && !p.coll.includes(x.name)).slice(0, 10);
   const affOpts = p.depts.filter((d) => !p.affected.includes(d));
-  const toggle = (k: "coll" | "aff") => setTray((x) => (x === k ? null : k));
+  const toggle = (k: "aff") => setTray((x) => (x === k ? null : k));
   const presets = PRESETS.map((k) => ({ k, label: t(k) }));
 
   return (
     <div className={s.card} data-locked={locked || undefined}>
       <textarea className={s.title} rows={1} value={look.title} readOnly={locked} onChange={(e) => set({ title: e.target.value })} onBlur={p.onTitleDone} placeholder={t("ideas.cardTitlePlaceholder")} aria-label={t("ideas.cardTitle")} />
       <textarea className={s.desc} rows={2} value={look.description} readOnly={locked} onChange={(e) => set({ description: e.target.value })} placeholder={t("ideas.cardDescPlaceholder")} aria-label={t("ideas.cardDescription")} />
-
-      <div className={s.pair}>
-        <div className={s.cell}>
-          <span className={s.label}>{t("ideas.cardMeeting")}</span>
-          {p.meet ? (
-            <div className={s.meet}>
-              <span className={s.meetIcon} aria-hidden="true">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0062cc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></svg>
-              </span>
-              <span className={s.meetText}>
-                <button type="button" className={s.meetDur} disabled={locked} onClick={() => p.meet && p.onMeet({ ...p.meet, dur: next(DURS, p.meet.dur) })} title={t("ideas.cardChangeLength")}>{t("ideas.cardMeetingOf", { dur: t(DUR_KEY[p.meet.dur] ?? "ideas.cardDur15") })}</button>
-                <button type="button" className={s.meetWhen} disabled={locked} onClick={() => p.meet && p.onMeet({ ...p.meet, when: next(WHENS, p.meet.when) })} title={t("ideas.cardChangeWhen")}>{t(WHEN_KEY[p.meet.when] ?? "ideas.cardWhenThisWeek")}</button>
-              </span>
-              <Remove onClick={() => p.onMeet(null)} what={t("ideas.cardTheMeeting")} />
-            </div>
-          ) : locked ? <span className={s.none}>{t("ideas.cardNone")}</span> : (
-            <button type="button" className={s.dashed} data-solo="" onClick={() => p.onMeet({ dur: "15 min", when: "this week" })}><Plus />{t("ideas.cardRequestMeeting")}</button>
-          )}
-        </div>
-        <div className={s.cell}>
-          <span className={s.label}>{t("ideas.cardRaisedWith")}</span>
-          <div className={s.chips}>
-            {p.coll.map((n) => (
-              <span key={n} className={s.person}><span className={s.personIni} aria-hidden="true">{initials(n)}</span>{n}<Remove onClick={() => p.onColl(p.coll.filter((x) => x !== n))} what={n} /></span>
-            ))}
-            {locked && !p.coll.length && <span className={s.none}>{t("ideas.cardNoOne")}</span>}
-            <button type="button" className={s.dashed} onClick={() => toggle("coll")} aria-expanded={tray === "coll"}><Plus />{t("ideas.cardAdd")}</button>
-          </div>
-          {tray === "coll" && !locked && (
-            <div className={s.tray}>
-              {collOpts.map((o) => <button key={o.name} type="button" className={s.trayBtn} title={o.role} onClick={() => p.onColl([...p.coll, o.name])}><Plus />{o.name}</button>)}
-            </div>
-          )}
-        </div>
-      </div>
 
       <div className={s.section}>
         <span className={s.label}>{t("ideas.cardAffects")}</span>
