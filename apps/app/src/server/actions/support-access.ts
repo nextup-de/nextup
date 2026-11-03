@@ -17,6 +17,7 @@ import {
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { adminActor, issueAdminSession, supportBy } from "@/server/admin-session";
+import { consoleActor, recordAudit } from "@/server/audit/record";
 import { consoleCompany } from "@/server/console-guard";
 import { clientKey, forgive, throttle } from "@/server/throttle";
 
@@ -42,11 +43,14 @@ export async function openSupportAccess(): Promise<SupportOpenState> {
   const code = newSupportCode();
   const expiresAt = new Date(now.getTime() + SUPPORT_GRANT_HOURS * 3_600_000);
   const openedBy = (await adminActor()) ?? c.via;
-  await db.$transaction([
+  const actor = await consoleActor();
+  await db.$transaction(async (tx) => {
     // At most one active grant per company: the older one ends now.
-    db.supportGrant.updateMany({ where: { companyId: c.companyId, revokedAt: null, expiresAt: { gt: now } }, data: { revokedAt: now } }),
-    db.supportGrant.create({ data: { companyId: c.companyId, codeHash: hashSupportCode(code), expiresAt, openedBy } }),
-  ]);
+    await tx.supportGrant.updateMany({ where: { companyId: c.companyId, revokedAt: null, expiresAt: { gt: now } }, data: { revokedAt: now } });
+    const grant = await tx.supportGrant.create({ data: { companyId: c.companyId, codeHash: hashSupportCode(code), expiresAt, openedBy } });
+    // Never the code or its hash: only when the grant ends.
+    await recordAudit(c.companyId, { actor, action: "audit.access.support_granted", target: { kind: "support_grant", id: grant.id }, changes: { expiresAt: { before: null, after: expiresAt.toISOString() } }, source: "console" }, tx);
+  });
   refresh();
   return { ok: true, supportCode: code, validUntil: expiresAt.toISOString() };
 }
@@ -55,7 +59,13 @@ export async function revokeSupportAccess(): Promise<SupportRevokeState> {
   const c = await opener();
   if (!c) return { ok: false, code: "not-allowed" };
   const now = new Date();
-  await getDb().supportGrant.updateMany({ where: { companyId: c.companyId, revokedAt: null, expiresAt: { gt: now } }, data: { revokedAt: now } });
+  const actor = await consoleActor();
+  await getDb().$transaction(async (tx) => {
+    const open = await tx.supportGrant.findMany({ where: { companyId: c.companyId, revokedAt: null, expiresAt: { gt: now } }, select: { id: true } });
+    if (open.length === 0) return;
+    await tx.supportGrant.updateMany({ where: { companyId: c.companyId, revokedAt: null, expiresAt: { gt: now } }, data: { revokedAt: now } });
+    await recordAudit(c.companyId, { actor, action: "audit.access.support_revoked", target: { kind: "support_grant", id: open[0].id }, source: "console" }, tx);
+  });
   refresh();
   return { ok: true };
 }
@@ -84,7 +94,10 @@ export async function supportSignIn(code: string): Promise<SupportSignInState> {
 
   await forgive("adminLogin", who);
   console.info(`[admin] support ${now.toISOString()}`);
-  await db.supportGrant.update({ where: { id: grant.id }, data: { signins: appendSignin(grant.signins, now) } });
+  await db.$transaction(async (tx) => {
+    await tx.supportGrant.update({ where: { id: grant.id }, data: { signins: appendSignin(grant.signins, now) } });
+    await recordAudit(grant.companyId, { actor: { kind: "support", userId: null }, action: "audit.access.support_signin", target: { kind: "support_grant", id: grant.id }, source: "console" }, tx);
+  });
   await issueAdminSession(supportBy(grant.id), false, "support", grant.expiresAt);
   redirect(adminBase() || "/");
 }
