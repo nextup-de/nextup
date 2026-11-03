@@ -30,6 +30,12 @@ export type LoopRules = {
   /** An idea that costs less than this (the team's spend authority) may skip the discussion. */
   fastLaneEur: number;
   reward: RewardRule;
+  /** A passed deadline hands the case on (company rule deadline_handover). */
+  deadlineHandover: boolean;
+  /** The measure step is on (company rule loop_steps). */
+  measure: boolean;
+  /** The recognition step is on (company rule loop_steps). */
+  recognition: boolean;
 };
 
 export const LOOP_DEFAULTS: LoopRules = {
@@ -39,6 +45,9 @@ export const LOOP_DEFAULTS: LoopRules = {
   tolerancePct: 2,
   fastLaneEur: 5000,
   reward: { kind: "thanks", amount: null, sharePct: null, capEur: null },
+  deadlineHandover: true,
+  measure: true,
+  recognition: true,
 };
 
 const REWARD_KINDS: readonly RewardKind[] = ["none", "thanks", "fixed", "share"];
@@ -69,6 +78,9 @@ export function loopRules(p?: Partial<LoopRules> | null): LoopRules {
       sharePct: r.sharePct == null ? null : int(r.sharePct, 0, 100, 0),
       capEur: euros(r.capEur),
     },
+    deadlineHandover: typeof p.deadlineHandover === "boolean" ? p.deadlineHandover : d.deadlineHandover,
+    measure: typeof p.measure === "boolean" ? p.measure : d.measure,
+    recognition: typeof p.recognition === "boolean" ? p.recognition : d.recognition,
   };
 }
 

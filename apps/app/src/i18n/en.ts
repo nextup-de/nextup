@@ -21,12 +21,32 @@ import { settingsOrg } from "./messages/settingsOrg";
 import { settingsGoals } from "./messages/settingsGoals";
 import { settingsConnectors } from "./messages/settingsConnectors";
 import { settingsNotifications } from "./messages/settingsNotifications";
+import { settingsPrivacy } from "./messages/settingsPrivacy";
+import { settingsAudit } from "./messages/settingsAudit";
+import { privacyExport } from "./messages/privacyExport";
+import { privacyPerson } from "./messages/privacyPerson";
 import { settingsSetup } from "./messages/settingsSetup";
 import { adminAccess } from "./messages/adminAccess";
 import { adminConsole } from "./messages/adminConsole";
 import { adminConnectors } from "./messages/adminConnectors";
 import { adminPrivacy } from "./messages/adminPrivacy";
 import { adminSupport } from "./messages/adminSupport";
+import { loopCase } from "./messages/loopCase";
+import { decisions } from "./messages/decisions";
+import { metrics } from "./messages/metrics";
+import { kpis } from "./messages/kpis";
+import { people } from "./messages/people";
+import { feed } from "./messages/feed";
+import { overview } from "./messages/overview";
+import { progress } from "./messages/progress";
+import { settingsAreas } from "./messages/settingsAreas";
+import { floorDevices } from "./messages/floorDevices";
+import { floor } from "./messages/floor";
+import { settingsApiTokens } from "./messages/settingsApiTokens";
+import { settingsWebhooks } from "./messages/settingsWebhooks";
+import { settingsImport } from "./messages/settingsImport";
+import { teams } from "./messages/teams";
+import { settingsTeams } from "./messages/settingsTeams";
 
 export const en = {
   common: common.en,
@@ -51,10 +71,30 @@ export const en = {
   settingsGoals: settingsGoals.en,
   settingsConnectors: settingsConnectors.en,
   settingsNotifications: settingsNotifications.en,
+  settingsPrivacy: settingsPrivacy.en,
+  settingsAudit: settingsAudit.en,
+  privacyExport: privacyExport.en,
+  privacyPerson: privacyPerson.en,
   settingsSetup: settingsSetup.en,
   adminAccess: adminAccess.en,
   adminConsole: adminConsole.en,
   adminConnectors: adminConnectors.en,
   adminPrivacy: adminPrivacy.en,
   adminSupport: adminSupport.en,
+  loopCase: loopCase.en,
+  decisions: decisions.en,
+  metrics: metrics.en,
+  kpis: kpis.en,
+  people: people.en,
+  feed: feed.en,
+  overview: overview.en,
+  progress: progress.en,
+  settingsAreas: settingsAreas.en,
+  floorDevices: floorDevices.en,
+  floor: floor.en,
+  settingsApiTokens: settingsApiTokens.en,
+  settingsWebhooks: settingsWebhooks.en,
+  settingsImport: settingsImport.en,
+  teams: teams.en,
+  settingsTeams: settingsTeams.en,
 } as const;

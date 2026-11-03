@@ -2,18 +2,26 @@
 // Pure: the layout and the index page fetch the counts and hand them in.
 import type { MessageKey } from "@/i18n";
 
-export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "notifications";
-export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey };
+export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "teams" | "areas" | "privacy" | "audit";
+export type SettingsGroup = "start" | "company" | "structure" | "data";
+export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey; group: SettingsGroup };
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
-  { key: "setup", path: "setup", label: "settingsSetup.navLabel" },
-  { key: "company", path: "company", label: "settingsCompany.navLabel" },
-  { key: "rules", path: "rules", label: "settingsCompany.navRules" },
-  { key: "calendar", path: "calendar", label: "settingsCompany.navCalendar" },
-  { key: "org", path: "org", label: "settingsOrg.navLabel" },
-  { key: "routing", path: "routing", label: "settings.navRouting" },
-  { key: "members", path: "members", label: "settings.navMembers" },
-  { key: "notifications", path: "notifications", label: "settingsNotifications.navLabel" },
+  { key: "setup", path: "setup", label: "settingsSetup.navLabel", group: "start" },
+  { key: "company", path: "company", label: "settingsCompany.navLabel", group: "company" },
+  { key: "rules", path: "rules", label: "settingsCompany.navRules", group: "company" },
+  { key: "calendar", path: "calendar", label: "settingsCompany.navCalendar", group: "company" },
+  { key: "org", path: "org", label: "settingsOrg.navLabel", group: "structure" },
+  { key: "routing", path: "routing", label: "settings.navRouting", group: "structure" },
+  { key: "members", path: "members", label: "settings.navMembers", group: "structure" },
+  { key: "importExport", path: "import-export", label: "settingsImport.navLabel", group: "data" },
+  { key: "notifications", path: "notifications", label: "settingsNotifications.navLabel", group: "company" },
+  { key: "webhooks", path: "webhooks", label: "settingsWebhooks.navLabel", group: "data" },
+  { key: "apiTokens", path: "api-tokens", label: "settingsApiTokens.navLabel", group: "data" },
+  { key: "teams", path: "teams", label: "settingsTeams.navLabel", group: "data" },
+  { key: "areas", path: "areas", label: "settingsAreas.navLabel", group: "structure" },
+  { key: "privacy", path: "privacy", label: "settingsPrivacy.navLabel", group: "data" },
+  { key: "audit", path: "audit", label: "settingsAudit.navLabel", group: "data" },
 ];
 
 export type SetupStep = "company" | "units" | "roles" | "routes" | "members" | "done";

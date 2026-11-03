@@ -9,6 +9,7 @@
 import type { SeatRow } from "@/features/auth/identity";
 import type { SeedEvent } from "@/features/cases/events";
 import { rowsFromSeed, structureSeed } from "@/features/knowledge";
+import { DEFAULT_RULES } from "@/features/knowledge/rules";
 import type { SeedProject } from "@/features/projects/types";
 import type { Seed, SeedCase } from "./types";
 
@@ -90,6 +91,6 @@ export function localDemoSeed(raw: Seed): Seed {
   }
 
   const holders = knowledge.holders.map((h) => ({ ...h, userId: users.find((u) => u.name === h.name)?.id ?? null }));
-  const structured = structureSeed(raw, { ...knowledge, holders }, { promiseDays: raw.promiseDays, outcomeDays: raw.outcomeDays, spend: raw.spend });
+  const structured = structureSeed(raw, { ...knowledge, holders }, { ...DEFAULT_RULES, promiseDays: raw.promiseDays, outcomeDays: raw.outcomeDays, spend: raw.spend });
   return bindDemoIds(structured, structured.seats, users);
 }

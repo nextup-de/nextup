@@ -24,11 +24,15 @@
     "@anthropic-ai/bedrock-sdk": "^0.36.0",
     "@anthropic-ai/sdk": "^0.137.0",
     "@nextup/contracts": "*",
+    "@node-saml/node-saml": "5.1.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "@xmldom/xmldom": "0.8.15",
     "modern-screenshot": "^4.7.0",
     "next": "16.4.3",
     "nodemailer": "^10.3.1",
+    "posthog-js": "^1.445.1",
+    "qrcode": "^1.5.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "thinking-orbs": "^0.3.2",
@@ -38,6 +42,7 @@
     "@playwright/test": "^1.64.1",
     "@types/node": "^22.20.5",
     "@types/nodemailer": "^8.0.2",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
@@ -47,6 +52,7 @@
     "stylelint-declaration-strict-value": "^1.12.1",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "xml-crypto": "6.4.0"
   }
 }

@@ -6,7 +6,9 @@ import { revalidatePath } from "next/cache";
 import { adminBase } from "@/features/admin/nav";
 import { sourceKind } from "@/features/directory";
 import { loadDirectoryRun, setDirectoryOn } from "@/lib/db/directory-run";
+import { getDb } from "@/lib/db/client";
 import { adminActor } from "@/server/admin-session";
+import { consoleActor, recordAudit } from "@/server/audit/record";
 import { adminCompany } from "@/server/jira-admin";
 import { runDirectoryCompany } from "@/server/directory/sync";
 
@@ -19,9 +21,15 @@ const who = async () => (await adminActor()) ?? "admin code";
 export async function setDirectoryAction(on: boolean, source: string): Promise<DirectoryActionState> {
   const company = await adminCompany();
   if (!company) return { error: "notAdmin" };
+  const actor = await consoleActor().catch(() => null);
+  if (!actor) return { error: "notAdmin" };
   const by = await who();
-  await setDirectoryOn(company.id, on === true, sourceKind(source), by);
-  console.info(`[admin] ${by} switched the directory sync ${on === true ? "on" : "off"} for ${company.slug}`);
+  const kind = sourceKind(source);
+  await getDb().$transaction(async (tx) => {
+    await setDirectoryOn(company.id, on === true, kind, by, tx);
+    await recordAudit(company.id, { actor, action: on === true ? "audit.directory.on" : "audit.directory.off", target: { kind: "directory", id: kind }, source: "console" }, tx);
+  });
+  console.info(`[directory-admin] switched ${on === true ? "on" : "off"} ${company.slug}`);
   refresh();
   return { ok: true };
 }

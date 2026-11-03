@@ -2,7 +2,10 @@
 // back. Pure: the stage pill, the cover's number and line, the supporters line, the filters and the
 // two sort orders. The page builds the cards from these; nothing here is invented - the cover's
 // number comes from what the raiser wrote, how many back it, or how long it has been open.
-import type { Me } from "@/features/auth/identity";
+import type { Me, SeatRow } from "@/features/auth/identity";
+import type { Dept } from "@/features/demo/types";
+import { MIN_GROUP } from "@/features/metrics/types";
+import type { EventLog } from "./events";
 import type { ReducedCase } from "./reducer";
 import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
 
@@ -76,16 +79,88 @@ export function supportLine(backers: readonly Backer[], me: Me): string {
 // A card matches a department chip when it was raised there or names that department as affected.
 export const inDept = (tags: readonly string[], dept: string) => dept === "All" || tags.includes(dept);
 
-export type FeedSort = "support" | "newest";
-export const FEED_SORT_KEY = { support: "team.feedSortSupport", newest: "team.feedSortNewest" } as const satisfies Record<FeedSort, MessageKey>;
-// Most supported: backers, then comments, then the one waiting longest - so with nobody backing
-// anything yet it still differs from Newest.
-export function sortFeed<T extends { backers: number; raisedDay: number; comments: number }>(list: readonly T[], sort: FeedSort): T[] {
-  return list.slice().sort((a, b) => (sort === "newest"
-    ? b.raisedDay - a.raisedDay || b.backers - a.backers
-    : b.backers - a.backers || b.comments - a.comments || a.raisedDay - b.raisedDay));
+// The unit tree the filters read: sites are the first level, units the children of the chosen site.
+// A unit with no parent (or one the seed does not know) is first level; Dept carries no parent yet, so
+// a flat seed has sites only.
+export type UnitNode = Dept & { parentId?: string | null };
+export type UnitFilter = { id: string; name: string };
+const nodes = (seed: { depts: readonly UnitNode[] }) => seed.depts;
+const parentOf = (seed: { depts: readonly UnitNode[] }, u: UnitNode): string | null =>
+  u.parentId && u.parentId !== u.id && nodes(seed).some((x) => x.id === u.parentId) ? u.parentId : null;
+export const siteFilters = (seed: { depts: readonly UnitNode[] }): UnitFilter[] =>
+  nodes(seed).filter((u) => parentOf(seed, u) === null).map((u) => ({ id: u.id, name: u.name }));
+export const unitFilters = (seed: { depts: readonly UnitNode[] }, siteId: string): UnitFilter[] =>
+  nodes(seed).filter((u) => parentOf(seed, u) === siteId).map((u) => ({ id: u.id, name: u.name }));
+// Is the card's unit (its id) inside the chosen site, or the chosen unit?
+export const inSite = (seed: { depts: readonly UnitNode[] }, unitId: string | null, siteId: string): boolean => {
+  const u = unitId === null ? undefined : nodes(seed).find((x) => x.id === unitId);
+  return !!u && (u.id === siteId || parentOf(seed, u) === siteId);
+};
+export const inUnit = (unitId: string | null, filterId: string): boolean => unitId !== null && unitId === filterId;
+
+// The supporters line on a card: a unit is named only with at least MIN_GROUP supporters from it (a
+// disclosure control, D6); otherwise the count. "You" alone, or nobody, have their own lines.
+export type SupportSummary = { kind: "none" } | { kind: "you" } | { kind: "count"; count: number } | { kind: "unit"; count: number; unit: string };
+export function supportSummary(backers: readonly (Backer & { unit?: string | null })[], me: Me): SupportSummary {
+  if (!backers.length) return { kind: "none" };
+  if (backers.length === 1 && isMe(backers[0], me)) return { kind: "you" };
+  const per = new Map<string, number>();
+  for (const b of backers) if (b.unit) per.set(b.unit, (per.get(b.unit) ?? 0) + 1);
+  const top = [...per.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  return top && top[1] >= MIN_GROUP ? { kind: "unit", count: top[1], unit: top[0] } : { kind: "count", count: backers.length };
 }
 
-// The four one-tap reasons a supporter can post (problems and ideas ask differently).
-export const supportReasons = (kind: ReducedCase["kind"]) =>
-  kind === "problem" ? ["I have this problem too", "It slows my team down", "Happens every week", "Easy to fix"] : ["It would help my team", "Saves time", "Saves money", "Easy to try"];
+// The case's newest visible event, for the line on the card (D16). `role` is the actor's role id when
+// they held the case's desk at that moment (by seat and role id), else null and `label` is the event's
+// own label (a raiser's handle stays a handle). For handed and escalated, `role` is where it went.
+export type Activity = {
+  kind: "raised" | "read" | "asked" | "yes" | "no" | "handed" | "discussion" | "escalated";
+  role: string | null; label: string | null; day: number;
+};
+export function latestActivity(caseId: string, log: EventLog, seats: readonly SeatRow[]): Activity | null {
+  const roleOfSeat = (id: string | null | undefined) => (id ? seats.find((s) => s.id === id)?.roleId ?? null : null);
+  let desk: string | null = null, escalated: string | null = null;
+  let last: Activity | null = null;
+  for (const e of log.events) {
+    if (e.target !== caseId) continue;
+    const uid = e.actorUserId ?? null;
+    const held = uid === null ? null : seats.find((s) => s.userId === uid && (s.roleId === desk || s.roleId === escalated))?.roleId ?? null;
+    const by = { role: held, label: held === null ? e.actor : null, day: e.day };
+    switch (e.type) {
+      case "case.raised":
+        desk = roleOfSeat(e.payload.assigneeRoleHolderId);
+        last = { kind: "raised", role: null, label: e.actor, day: e.day };
+        break;
+      case "case.read": last = { kind: "read", ...by }; break;
+      case "case.asked": last = { kind: "asked", ...by }; break;
+      case "case.discussion": last = { kind: "discussion", ...by }; break;
+      case "case.decided": last = { kind: e.payload.answer === "no" ? "no" : "yes", ...by }; break;
+      case "case.handed": {
+        const toRole = roleOfSeat(e.payload.toRoleHolderId);
+        last = { kind: "handed", role: toRole, label: toRole === null ? e.payload.to ?? e.actor : null, day: e.day };
+        if (toRole !== null) desk = toRole;
+        escalated = null;
+        break;
+      }
+      case "clock.due": {
+        if (e.payload.kind !== "deadline") break;
+        const toRole = roleOfSeat(e.payload.toRoleHolderId);
+        if (toRole === null) break;
+        escalated = toRole;
+        last = { kind: "escalated", role: toRole, label: null, day: e.day };
+        break;
+      }
+      default: break;
+    }
+  }
+  return last;
+}
+export type FeedSort = "support" | "latest";
+export const FEED_SORT_KEY = { support: "team.feedSortSupport", latest: "feed.sortLatest" } as const satisfies Record<FeedSort, MessageKey>;
+// Most supported: backers, then comments, then the one waiting longest. Latest activity: the newest
+// event first (lastDay), then the most backed.
+export function sortFeed<T extends { backers: number; raisedDay: number; comments: number; lastDay: number }>(list: readonly T[], sort: FeedSort): T[] {
+  return list.slice().sort((a, b) => (sort === "latest"
+    ? b.lastDay - a.lastDay || b.backers - a.backers
+    : b.backers - a.backers || b.comments - a.comments || a.raisedDay - b.raisedDay));
+}

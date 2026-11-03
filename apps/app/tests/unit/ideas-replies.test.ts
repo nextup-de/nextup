@@ -11,15 +11,14 @@ const ctx = { routes: ROUTES, goals: DEMO_GOALS, cases: [], spendLimitEur: 5000 
 const idea = { text: "i want to change IT", affected: [], attachments: 0 };
 
 describe("suggestReplies", () => {
-  it("offers up to three answers, one per bar, each with its real gain", () => {
+  it("offers up to three answers, one per bar, each from the company", () => {
     const now = benchmark(idea, ctx);
     const replies = suggestReplies(idea, now, ctx);
     expect(replies.length).toBeGreaterThan(0);
     expect(replies.length).toBeLessThanOrEqual(3);
     expect(new Set(replies.map((r) => r.id)).size).toBe(replies.length);
     for (const r of replies) {
-      expect(r.gain).toBeGreaterThan(0);
-      expect(benchmark({ ...idea, text: idea.text + "\n" + r.text }, ctx).overall - now.overall).toBe(r.gain);
+      expect(r.source).toBe("company");
     }
   });
   it("answers the question the coach asked first, with a company goal", () => {
@@ -33,10 +32,12 @@ describe("suggestReplies", () => {
     const replies = suggestReplies({ ...idea, text }, benchmark({ ...idea, text }, ctx), ctx);
     expect(replies.some((r) => r.text.startsWith("It serves our goal"))).toBe(false);
   });
-  it("never offers an answer that gains nothing", () => {
+  it("offers nothing for a bar with no missing part", () => {
     const text = "It serves “Every changeover under 20 minutes” - saves 20 minutes per changeover on every shift for the team, because the fixture setup waits. First step: a pilot on line 3, no spend.";
     const full = { text, affected: ["A", "B", "C"], attachments: 1 };
-    expect(suggestReplies(full, benchmark(full, ctx), ctx).every((r) => r.gain > 0)).toBe(true);
+    const now = benchmark(full, ctx);
+    const open = now.parts.filter((p) => p.missing.length > 0).map((p) => p.id);
+    expect(suggestReplies(full, now, ctx).every((r) => open.includes(r.id))).toBe(true);
   });
 });
 

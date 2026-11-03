@@ -2,6 +2,7 @@
 // login code when someone joins or loses theirs, and the "Continue with Microsoft" switch.
 import { notFound, redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
+import { consoleCompany } from "@/server/console-guard";
 import { getDb } from "@/lib/db/client";
 import { getT } from "@/i18n/server";
 import { StackAdminSwitch } from "@/components/admin/StackAdminSwitch";
@@ -16,7 +17,7 @@ export default async function PeoplePage() {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
   const ctx = await adminContext();
   // The platform admin has this per company, under Companies.
-  if (ctx.scope !== "company") notFound();
+  if (!(await consoleCompany())) notFound();
   if (!ctx.company) return <CompanyMissing />;
 
   const t = await getT();

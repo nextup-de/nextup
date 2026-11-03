@@ -1,6 +1,10 @@
 // The case score: how much a raised problem or idea matters, from facts on the case - never
-// from who raised it (board §17: score the case, never the person). Deterministic, so the demo
-// can explain every point; a model can replace the arithmetic later without changing the shape.
+// from who raised it (board §17: score the case, never the person). Arithmetic over facts, so the
+// demo can explain every point; a model's proposal earns no points (HD16): a route the model
+// proposed is shown as such, and only a route the keywords found or a person chose scores.
+import type { CaseEvent } from "@/features/cases/events";
+import { routeSourceOf, type RouteSource } from "./route-source";
+
 export type ScorePart = { label: string; points: number };
 export type Score = { value: number; parts: ScorePart[] };
 
@@ -13,6 +17,8 @@ export type Scorable = {
   affected?: number; // people who said "this affects me too"
   evidence?: number; // screenshots or images attached
   updates?: number; // new information posted since, each one a re-evaluation
+  routeSource?: RouteSource | null; // who found the route; wins over `history`
+  history?: readonly CaseEvent[]; // the case's events: the route source is read from them
 };
 
 const BASE = 35;
@@ -20,7 +26,8 @@ const MAX = 96;
 
 export function scoreCase(c: Scorable, promiseDays: number): Score {
   const parts: ScorePart[] = [];
-  if (c.routeId) parts.push({ label: "Fits a decision type on the map", points: 20 });
+  const source = c.routeSource !== undefined ? c.routeSource : c.history ? routeSourceOf(c.history) : null;
+  if (c.routeId) parts.push(source === "llm" ? { label: "Route proposed by AI", points: 0 } : { label: "Fits a decision type on the map", points: 20 });
   if (c.upside.trim()) parts.push({ label: "Upside stated", points: 15 });
   if (c.body.trim().length >= 40) parts.push({ label: "Described in detail", points: 10 });
   if (c.open && c.age > 0) parts.push({ label: "Waiting " + c.age + " d", points: Math.min(15, c.age) });

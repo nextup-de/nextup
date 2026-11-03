@@ -41,6 +41,18 @@ export const RULES = {
   ticketReport: { limit: 10, windowMs: 10 * 60_000 },
   /** Browser errors (api/client-errors), per address: a tab sends at most five per page load. */
   clientError: { limit: 30, windowMs: 10 * 60_000 },
+  /** Shop floor, a report, per device and area: someone reporting, not a script. Key `<device key>|<area id>`. */
+  floorRaise: { limit: 5, windowMs: 10 * 60_000 },
+  /** Shop floor, a report, per area from every device: caps what one printed code can send. Key `<area id>`. */
+  floorRaiseAll: { limit: 60, windowMs: 60 * 60_000 },
+  /** Shop floor, a floor code tried, per device. Key `<device key>`. */
+  floorCode: { limit: 5, windowMs: 15 * 60_000 },
+  /** Shop floor, a status lookup by reference, per device. Key `<device key>`. */
+  floorStatus: { limit: 20, windowMs: 10 * 60_000 },
+  /** Shop floor, a pairing code tried, per address. Key clientKey(). */
+  floorPair: { limit: 5, windowMs: 15 * 60_000 },
+  /** Public API v1, per token id: an integration polling, not a script hammering. Key `<token id>`. */
+  apiV1: { limit: 600, windowMs: 60_000 },
 } satisfies Record<string, Rule>;
 
 export type Bucket = keyof typeof RULES;

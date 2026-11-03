@@ -17,6 +17,11 @@ export const TENANT_MODELS = new Set([
   "OrgRoleHolder",
   "RoutingRule",
   "Goal",
+  // Shop-floor access - docs/adr/0007-areas.md
+  "FloorArea",
+  "FloorDevice",
+  "FloorCode",
+  "FloorReference",
   // Raise-page assistant - docs/ASSISTANT.md
   "Document",
   "AssistTurn",
@@ -32,6 +37,8 @@ export const TENANT_MODELS = new Set([
   "Connection",
   // A company's integration with another tool (Jira) - docs/plans/2026-10-29_jira-in-app.md
   "Integration",
+  // A person's Teams chat with the bot - TMS D5
+  "TeamsConversation",
 ]);
 
 /** Operations that must narrow by company through `where`. */
@@ -75,6 +82,9 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 export const IDENTIFYING_LOOKUPS: Record<string, readonly string[]> = {
   ApiToken: ["hash"],
   User: ["loginCodeHash"],
+  FloorDevice: ["tokenHash", "pairCodeHash"],
+  FloorCode: ["codeHash"],
+  FloorReference: ["hash"],
 };
 
 /** Operations allowed to use an identifying lookup: reads of a single row, nothing else. */

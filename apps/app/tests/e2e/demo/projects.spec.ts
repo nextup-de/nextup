@@ -1,7 +1,7 @@
 // The second half of the loop through the real UI (docs/plans/2026-10-15_idea-to-project.md §3-5): the
 // lead of a planned project adds steps (one suggested by the idea's brief), takes the baseline and
 // starts it; the board is worked and the project done; the clock moves 30 days at a time to each
-// measure check; then the manager records the reward by the company's rule. Demo mode: one browser
+// measure check; then the manager finds no reward due on the unconfirmed typed measures. Demo mode: one browser
 // plays every person via the dev panel, on acme's seeded P-4 (T. Vogel's, from c9's yes).
 import type { Page } from "@playwright/test";
 import { expect, test } from "../helpers";
@@ -32,7 +32,7 @@ async function openStep(page: Page, text: string) {
   return page.getByRole("dialog", { name: text });
 }
 
-test("a lead plans, runs and measures a project; the manager records the reward", async ({ page }) => {
+test("a lead plans, runs and measures a project; no reward is due on unconfirmed measures", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await expect(page).toHaveURL(/\/acme\/leader$/);
@@ -108,15 +108,13 @@ test("a lead plans, runs and measures a project; the manager records the reward"
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
   });
 
-  await test.step("the manager records the reward by the company's rule", async () => {
+  await test.step("a typed measure does not make the reward due until a second person confirms it (LOOP/D18)", async () => {
+    // The manager sees no reward offered on an unconfirmed measure; the panel says when one will be due (LOOP-U1).
     await viewAs(page, "Manager");
     await page.goto("/acme/projects/pj4");
-    const reward = page.getByRole("region", { name: "Reward" });
-    await expect(reward).toContainText("Reward due by your rule: A thank-you, on record");
-    await reward.getByLabel("Note (optional)").fill("Thanked at the shift meeting");
-    await reward.getByRole("button", { name: "Record the reward" }).click();
-    await expect(head(page)).toContainText("P-4 · Recognised");
-    await expect(reward).toContainText("Recorded today by B. Hartmann: Thanked at the shift meeting");
+    await expect(head(page)).toContainText("P-4 · Measured");
+    await expect(page.getByRole("region", { name: "Reward" })).toContainText("A reward is due after a confirmed better result.");
+    await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
   });
 });
 

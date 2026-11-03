@@ -79,6 +79,10 @@ model Company {
   rules    RoutingRule[]
   goals    Goal[]
   companyRules CompanyRule[]
+  floorAreas      FloorArea[]
+  floorDevices    FloorDevice[]
+  floorCodes      FloorCode[]
+  floorReferences FloorReference[]
 
   // -- auth --
   users  User[]
@@ -94,11 +98,18 @@ model Company {
   webhookSubscriptions WebhookSubscription[]
   notifyPreferences    NotifyPreference[]
   notifyCursor         NotifyCursor?
+  teamsConversations   TeamsConversation[]
 
   // -- ops --
   tickets       Ticket[]
   ticketReplies TicketReply[]
   featureFlags  FeatureFlag[]
+  auditEvents    AuditEvent[]
+  dataExports    DataExport[]
+  retentionRules RetentionRule[]
+  retentionRun   RetentionRun?
+  privacyPolicy  PrivacyPolicy?
+  pseudonyms     Pseudonym[]
 }
 
 // The event log - one row per appended fact. "Events, not edits": nothing here is ever updated.
