@@ -167,7 +167,10 @@ export type TenantInfo = {
   prefix: string;
   name: string;
   users?: { id?: string; name: string; email: string; role?: Role }[];
-  hiddenPeople?: string[]; // names whose anonymous handles keep them out of public profile links
+  /** Person pages the viewer may open: user id -> display label (MET D15). Empty without a database. */
+  personLinks?: Record<string, string>;
+  /** Nothing fills this any more, so no real names reach the browser (MET D15). Kept optional for components that still read it (Q5). */
+  hiddenPeople?: string[];
   /** False for a company with real people: no dev panel, and `users` is only the viewer. */
   demoTools?: boolean;
   /** The company's feature flags (features/flags flagsFor), resolved on the server. */

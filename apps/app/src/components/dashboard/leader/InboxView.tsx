@@ -13,7 +13,7 @@
 import { holdsRole } from "@/features/auth/identity";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { askedForView, deskCases, inboxIdeas, inboxSorted, openCases, problemOf } from "@/components/dashboard/derive";
+import { askedForView, deskCases, inboxIdeas, inboxSorted, openCases } from "@/components/dashboard/derive";
 import { costEurOf, fastLane, roundState, withDiscussion } from "@/features/cases/discussion";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith, sentLabel } from "@/features/cases/rows";
@@ -184,7 +184,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const dayDate = (offset: number) => { const d = new Date(now); d.setDate(d.getDate() + offset); return d; };
   const roleOf = (name: string, dept: string) => seed.people.find((p) => p.name === name)?.role ?? dept;
 
-  // One row shape for ideas owed a decision and cases: who sent it, what it is about, when, the clock.
+  // One row shape for ideas owed a decision and cases: the title, who sent it, when, the clock.
   // A case in a discussion counts down to its next check-in; one you were asked into says so.
   const caseRow = (c: ReducedCase, view: boolean) => {
     const raised = c.history.find((e) => e.type === "case.raised" && !e.seed);
@@ -192,7 +192,6 @@ export function InboxView({ initialId }: { initialId?: string }) {
     const rs = roundState(c, S.rules, S.day);
     return {
       id: c.id, title: c.title, name: c.from, role: roleOf(c.from, c.fromDept),
-      solves: rs ? (rs.ready ? t("leader.inDiscussionReady") : t("leader.inDiscussionRoundCheckin", { round: rs.round, of: rs.of, day: f(rs.dueDay) })) : c.body,
       sent: exact && raised ? new Date(raised.ts) : dayDate(c.raisedDay - S.day), exact, due: rs ? rs.left : P - c.clock, paused: c.status === "asked", caseId: c.id,
       tag: view ? t("leader.tagYourView") : rs && !rs.ready ? (rs.left < 0 ? t("leader.tagCheckinLate", { n: -rs.left }) : t("leader.tagCheckinIn", { n: rs.left })) : null,
     };
@@ -200,7 +199,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const rows = [
     ...ideas.map((i) => {
       const [name, dept = ""] = i.proposedBy.split(", "); // "C. Ilg, Ops"
-      return { id: i.id, title: i.title, name, role: roleOf(name, dept), solves: problemOf(ctx, i)?.title ?? "", sent: dayDate(-i.wait), exact: false, due: P - i.wait, paused: false, caseId: null as string | null, tag: null as string | null };
+      return { id: i.id, title: i.title, name, role: roleOf(name, dept), sent: dayDate(-i.wait), exact: false, due: P - i.wait, paused: false, caseId: null as string | null, tag: null as string | null };
     }),
     ...inbox.map((c) => caseRow(c, false)),
     ...views.map((c) => caseRow(c, true)),
@@ -355,9 +354,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
                         <span className={styles.rowBody}>
                           <span className={styles.rowMain}>
                             <span className={styles.rowTitle}>{r.title}</span>
-                            <span className={styles.rowWho}>{r.name} <span className={styles.rowRole}>· {r.role}</span></span>
-                            {r.solves && <span className={styles.rowSolves}>{r.solves}</span>}
-                          </span>
+                            <span className={styles.rowWho}>{r.name} <span className={styles.rowRole}>· {r.role}</span></span>                          </span>
                           <span className={styles.rowRight}>
                             <span className={styles.sent}>{sentLabel(r.sent, now, r.exact)}</span>
                             <span className={styles.badge} data-tone={badgeTone(r.due, r.paused)}>{badgeOf(r)}</span>
