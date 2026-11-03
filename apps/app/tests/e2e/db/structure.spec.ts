@@ -112,7 +112,7 @@ test.describe.serial("STR acceptance: an empty company has no acme content and a
     const routing = await textOf(manager, DEMO_SLUG, "/settings/routing");
     for (const r of ROUTES) {
       expect(routing, `route type "${r.type}"`).toContain(r.type);
-      // The table names the owner by role (the seat's holder only when a user holds it).
+      // Routes name the owner seat's role; the demo template has no holder for it.
       expect(routing, `owner of "${r.type}"`).toContain(r.owner.role);
     }
     const member = await signIn(browser, DEMO_SLUG, "J. Schmidt");

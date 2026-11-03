@@ -8,3 +8,12 @@ export function personHref(tenant: Pick<TenantInfo, "personLinks">, userId: stri
   if (!links || !Object.prototype.hasOwnProperty.call(links, userId)) return null;
   return "/people/" + encodeURIComponent(userId);
 }
+
+/**
+ * The same for a name on screen: the seats carrying that name give the user id. No seat, or two
+ * people with that name: no link (the person page is found by id only, never by name).
+ */
+export function personHrefByName(tenant: Pick<TenantInfo, "personLinks">, seats: readonly { label: string; userId: string | null }[], name: string): string | null {
+  const ids = new Set(seats.filter((s) => s.label === name && s.userId !== null).map((s) => s.userId as string));
+  return ids.size === 1 ? personHref(tenant, [...ids][0]) : null;
+}

@@ -65,6 +65,7 @@ const ROUTES: Route[] = [
 /** Pages not in the table, and why. */
 const LEFT_OUT: Record<string, string> = {
   "[company]/(app)/settings/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/dashboard/kpis/page.tsx": "the KPI report needs a database and a signed-in manager",
   "[company]/(app)/settings/company/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/rules/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/import-export/page.tsx": "settings need a database and a signed-in manager",
@@ -104,11 +105,11 @@ const clean = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 // word (a role such as "Team lead") cannot tell a leak from the data, so it is no sentinel.
 const SRC = join(__dirname, "../../../src");
 const DATA_FILES = [
+  "features/ideas/brief.ts",
   "features/ideas/brief-demo.ts",
   "features/ideas/demo-script.ts",
   "features/ideas/demo-loop.ts",
   "features/ideas/static-demo-briefs.ts",
-  "components/dashboard/shared/dashboardPreview.ts", // the dashboard's demo stand-in until the log can count it
 ];
 function dataText(): string {
   const files = pageFilesOf(join(SRC, "features/demo"), /\.tsx?$/).concat(DATA_FILES.map((f) => join(SRC, f)).filter((f) => existsSync(f)));

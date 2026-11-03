@@ -17,6 +17,7 @@ import { seesRouting } from "@/features/cases/routing-trail";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
 import { roundState } from "@/features/cases/discussion";
 import type { CaseEvent } from "@/features/cases/events";
+import { actorLabel, type ActorLabels } from "@/features/cases/actor-label";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import { raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
@@ -29,9 +30,9 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped" } as const satisfies Record<string, MessageKey>;
 
 // Facts in, one sentence out - nothing here is stored.
-function sentence(e: CaseEvent, t: T): string {
+function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined): string {
   const p = e.payload;
-  const actor = e.actor;
+  const actor = actorLabel(e, labels);
   switch (e.type) {
     case "case.raised": return t("dashboard.evRaised", { actor });
     case "case.read": return t("dashboard.evRead", { actor });
@@ -82,7 +83,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const reasons = affected.filter((a) => a.why); // leads say why it hits their team
   // The score as the dashboard scores it, re-evaluated with every piece of new information posted since.
   const updates = rescoresOn(log, c.id);
-  const score = scoreCase({ ...c, affected: standing.length, evidence: extra.attachments, updates: updates.length }, ctx.seed.promiseDays);
+  const score = scoreCase({ ...c, affected: standing.length, evidence: extra.attachments, updates: updates.length }, ctx.seed.promiseDays, t);
   // An employee re-evaluates the score with new information; a lead (or manager) stands behind it for their team, and says why.
   const lead = role !== "member";
   // Every desk it has been on, in order; the last one is where it is now.
@@ -237,7 +238,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             <li key={e.id} className={styles.event}>
               <span className={styles.dot} data-seed={e.seed ? "true" : undefined} />
               <div className={styles.eventBody}>
-                <div className={styles.eventText}>{sentence(e, t)}</div>
+                <div className={styles.eventText}>{sentence(e, t, tenant.actorLabels)}</div>
                 <div className={styles.eventWhen}>{f(e.day)}</div>
               </div>
             </li>

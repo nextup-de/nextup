@@ -85,7 +85,8 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     await member.getByRole("button", { name: "Answer T. Vogel" }).click();
     await confirmSheet(member, "From maintenance.", "Send the answer");
 
-    await leader.reload();
+    // The inbox without ?id=: a reload would open the case from the address, and the click would close it.
+    await leader.goto(new URL(leader.url()).pathname);
     await leader.getByRole("main").getByText(title).first().click();
     await leader.getByRole("button", { name: "Yes, do it" }).click();
     // Projects are on by default, so the yes opens a sheet that names the project's lead.
@@ -102,9 +103,10 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
 
     // Adding a person happens in a drawer.
     await manager.getByTestId("settings-members-open-add").click();
-    await expect(manager.getByLabel("Name", { exact: true })).toHaveCount(1);
-    await manager.getByLabel("Name", { exact: true }).fill("S. Dahl");
-    await manager.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
+    const drawer = manager.getByTestId("settings-members-drawer");
+    await expect(drawer.getByLabel("Name")).toHaveCount(1);
+    await drawer.getByLabel("Name").fill("S. Dahl");
+    await drawer.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
     await manager.getByRole("combobox", { name: "Role", exact: true }).selectOption("leader");
     await manager.getByRole("button", { name: "Add and issue a code" }).click();
     const box = manager.getByRole("status").filter({ hasText: "Login code for S. Dahl" });
