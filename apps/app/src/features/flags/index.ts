@@ -11,6 +11,7 @@
 import { FLAGS, type FlagKey } from "@/config/flags";
 import { orDemo } from "@/lib/db/client";
 import { companyForFlags, flagOverrides } from "@/lib/db/flags";
+import { loadCompanyRules } from "@/lib/db/rules";
 import { flagStates, resolveFlags } from "./resolve";
 
 export type Flags = Record<FlagKey, boolean>;
@@ -28,7 +29,10 @@ export async function flagsFor(slug: string): Promise<Flags> {
       const company = await companyForFlags(slug);
       // No such company: the strictest defaults, as for an unknown stage.
       if (!company) return resolveFlags(FLAGS, "live", {});
-      return resolveFlags(FLAGS, company.stage, await flagOverrides(company.id));
+      const resolved = resolveFlags(FLAGS, company.stage, await flagOverrides(company.id));
+      // The company's own loop steps narrow the rollout flags: both must be on (LOOP D12).
+      const { steps } = await loadCompanyRules(company.id);
+      return { ...resolved, discussion: resolved.discussion && steps.discussion, projects: resolved.projects && steps.projects };
     },
     () => resolveFlags(FLAGS, "demo", {}),
   );
