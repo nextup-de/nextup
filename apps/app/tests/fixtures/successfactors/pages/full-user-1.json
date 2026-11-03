@@ -1,0 +1,28 @@
+{
+  "d": {
+    "results": [
+      {
+        "userId": "u1",
+        "firstName": "Anna",
+        "lastName": "Meier",
+        "email": "anna.meier@musterwerk.example",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "userId": "u2",
+        "firstName": "Bernd",
+        "lastName": "Keller",
+        "email": "bernd.keller@musterwerk.example",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "userId": "u3",
+        "firstName": "Carla",
+        "lastName": "Vogt",
+        "email": "Carla.Vogt@Musterwerk.example",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      }
+    ],
+    "__next": "https://api4.example.test/odata/v2/User?$skiptoken=u3"
+  }
+}
