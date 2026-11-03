@@ -75,6 +75,7 @@ const setup = (page: Page) => page.goto(`/${SLUG}/settings/setup`);
 
 /** Invite a person on the Members step; the mail carries the code, so a fresh one is issued from their row to read it. */
 async function invite(page: Page, who: { name: string; email: string }, role: "leader" | "member") {
+  await vis(page, "settings-members-open-invite").click();
   const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Add and invite by mail" }) });
   await form.locator("input[name=name]").fill(who.name);
   await form.locator("input[name=email]").fill(who.email);
@@ -84,8 +85,9 @@ async function invite(page: Page, who: { name: string; email: string }, role: "l
 
 /** Issue a fresh code from the person's row on the Members page and keep it: the invite mail carries the first one. */
 async function readCode(page: Page, who: { name: string; email: string }) {
-  const row = page.locator("li").filter({ hasText: who.email });
+  const row = page.locator('li[data-testid^="settings-member-"]').filter({ hasText: who.email });
   await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.locator('[data-testid^="settings-member-menu-"]').click(); // "New code" sits in the row's ··· menu
   const shown = page.locator('[class*="codeValue"]');
   const before = (await shown.count()) ? await shown.innerText() : ""; // the invite's own code may be on screen still
   await row.getByRole("button", { name: "New code" }).click();

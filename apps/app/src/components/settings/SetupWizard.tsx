@@ -70,7 +70,7 @@ export function SetupWizard({ slug, steps, step, blocked, data }: Props) {
       {step === "company" ? <CompanyForm slug={slug} values={data.company} address={data.address} /> : null}
       {step === "units" || step === "roles" ? <OrgEditor slug={slug} knowledge={data.knowledge} members={data.options} showHead={false} /> : null}
       {step === "routes" ? <RoutingEditor slug={slug} knowledge={data.knowledge} showHead={false} /> : null}
-      {step === "members" ? <MembersView slug={slug} me={data.me} members={data.members} freeSeats={data.freeSeats} /> : null}
+      {step === "members" ? <MembersView slug={slug} me={data.me} members={data.members} freeSeats={data.freeSeats} showHead={false} /> : null}
       <div style={{ display: "flex", gap: 12 }}>
         {prev ? <Link className="nh-btn nh-btn-ghost" href={`${base}?step=${prev}`} data-testid="setup-back">{t("settingsSetup.back")}</Link> : null}
         <Link className="nh-btn nh-btn-primary" href={`${base}?step=${next ?? "done"}`} data-testid="setup-next">{t("settingsSetup.next")}</Link>

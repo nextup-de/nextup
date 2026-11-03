@@ -4,6 +4,7 @@ import { DEFAULT_CALENDAR, type CalendarSpec } from "@/features/clock";
 import { DEFAULT_RULES } from "@/features/knowledge/rules";
 import { LOOP_DEFAULTS } from "@/features/loop/rules";
 import type { Knowledge } from "@/features/knowledge";
+import type { Member } from "@/features/tenant/members";
 import type { CompanyForm, RulesForm } from "./company-forms";
 
 export const SAMPLE_COMPANY: CompanyForm = {
@@ -67,4 +68,14 @@ export const SAMPLE_MEMBERS: { id: string; name: string }[] = [
   { id: "demo-ak", name: "Aylin Kaya" },
   { id: "demo-hs", name: "Hanna Sander" },
   { id: "demo-jw", name: "Jonas Weber" },
+];
+
+/** The sample Members table: who signs in how, and the seats they hold. */
+export type SampleMember = Member & { dept: string; codeIssuedAt: string | null; microsoft: boolean; active: boolean; seats: { id: string; label: string }[] };
+export const SAMPLE_MEMBER_ROWS: SampleMember[] = [
+  { id: "demo-hs", name: "Hanna Sander", email: "h.sander@acme.example", role: "manager", dept: "Werk Süd", codeIssuedAt: "2026-10-12T09:00:00Z", microsoft: false, active: true, seats: [{ id: "h-1", label: "Plant manager" }] },
+  { id: "demo-ak", name: "Aylin Kaya", email: "a.kaya@acme.example", role: "leader", dept: "Quality", codeIssuedAt: null, microsoft: true, active: true, seats: [{ id: "h-3", label: "Quality lead" }] },
+  { id: "demo-jw", name: "Jonas Weber", email: "j.weber@acme.example", role: "leader", dept: "Assembly", codeIssuedAt: "2026-10-20T09:00:00Z", microsoft: false, active: true, seats: [{ id: "h-2", label: "Assembly lead" }] },
+  { id: "demo-df", name: "Dario Ferraro", email: "d.ferraro@acme.example", role: "member", dept: "Assembly", codeIssuedAt: null, microsoft: false, active: true, seats: [] },
+  { id: "demo-mk", name: "Mira Keller", email: "m.keller@acme.example", role: "member", dept: "Logistics", codeIssuedAt: null, microsoft: false, active: false, seats: [] },
 ];
