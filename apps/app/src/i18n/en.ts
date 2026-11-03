@@ -39,6 +39,9 @@ import { people } from "./messages/people";
 import { feed } from "./messages/feed";
 import { overview } from "./messages/overview";
 import { progress } from "./messages/progress";
+import { settingsAreas } from "./messages/settingsAreas";
+import { floorDevices } from "./messages/floorDevices";
+import { floor } from "./messages/floor";
 
 export const en = {
   common: common.en,
@@ -81,4 +84,7 @@ export const en = {
   feed: feed.en,
   overview: overview.en,
   progress: progress.en,
+  settingsAreas: settingsAreas.en,
+  floorDevices: floorDevices.en,
+  floor: floor.en,
 } as const;
