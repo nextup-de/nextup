@@ -1,10 +1,10 @@
 "use client";
-// /projects/[projectId]: one project (docs/plans/2026-10-15_idea-to-project.md §3-5). The head says what
-// it is, where it came from and who works on it; one band shows its life and its numbers; the board
-// takes the full width, because that is where the work happens. Below it the baseline, the measure
-// checks, the reward, the activity and the idea it grew from; beside them one rail with the team, the
-// connected tools and the files. Every button is one act.project.* event, shown only when the
-// rules would let it through.
+// /projects/[projectId]: one project (docs/plans/2026-10-15_idea-to-project.md §3-5), in tabs
+// (docs/plans/2026-11-03_project-area.md). The head says what it is, where it came from and who works on
+// it, and stays on every tab. Overview: the viewer's move, where it stands and what happens next.
+// Board: the work, full width. Team, Results (baseline, measure checks, reward), Activity, and Files
+// and tools (the connected tools, the files, the idea it grew from). Every button is one
+// act.project.* event, shown only when the rules would let it through.
 import { useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
@@ -18,7 +18,9 @@ import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, suggestedBaseline, s
 import { useLocale, useT } from "@/i18n/client";
 import { withBrainSteps } from "@/features/projects/brain";
 import { useBrainPlan } from "@/lib/use-brain";
+import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";
 import { ProjectBoard } from "./ProjectBoard";
+import { NextPanel } from "./ProjectNext";
 import { ProjectSummary } from "./ProjectSummary";
 import { FilesPanel, OriginPanel } from "./ProjectOrigin";
 import { BaselinePanel, MeasurePanel, RewardPanel } from "./ProjectMeasure";
@@ -26,8 +28,8 @@ import { ActivityPanel, TeamPanel, ToolsPanel } from "./ProjectTeam";
 import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } from "./parts";
 import styles from "./Projects.module.css";
 
-/** `jira`: the company's Jira as the server read it (null: static demo, or no database). */
-export function ProjectView({ projectId, jira }: { projectId: string; jira: JiraStatusView | null }) {
+/** `jira`: the company's Jira as the server read it (null: static demo, or no database). `tab`: from ?tab=. */
+export function ProjectView({ projectId, jira, tab }: { projectId: string; jira: JiraStatusView | null; tab: ProjectTab }) {
   const ctx = useDemo();
   const t = useT();
   const { S, ready, demo, flag, href } = ctx;
@@ -43,10 +45,10 @@ export function ProjectView({ projectId, jira }: { projectId: string; jira: Jira
       </div>
     );
   }
-  return <Project p={p} jira={jira} />;
+  return <Project p={p} jira={jira} tab={tab} />;
 }
 
-function Project({ p, jira }: { p: ReducedProject; jira: JiraStatusView | null }) {
+function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | null; tab: ProjectTab }) {
   const ctx = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -73,30 +75,73 @@ function Project({ p, jira }: { p: ReducedProject; jira: JiraStatusView | null }
   return (
     <div className={styles.projectPage} data-wide="true">
       <Header p={p} jira={row} />
-      <ProjectSummary p={p} />
-      {(mine || escalatedToMe) && move && (
-        <div className={styles.yourMove} role="status">
-          <span className={styles.yourMoveLabel}>{escalatedToMe && !mine ? t("projects.movedToYou") : t("projects.yourMove")}</span>
-          <span>{escalatedToMe && !mine ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk")) : moveLabel(move, locale)}</span>
+      <Tabs p={p} tab={tab} />
+      {tab === "overview" && (
+        <div className={styles.tabLayout}>
+          <div className={styles.tabCards}>
+            {(mine || escalatedToMe) && move && (
+              <div className={styles.yourMove} role="status">
+                <span className={styles.yourMoveLabel}>{escalatedToMe && !mine ? t("projects.movedToYou") : t("projects.yourMove")}</span>
+                <span>{escalatedToMe && !mine ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk")) : moveLabel(move, locale)}</span>
+              </div>
+            )}
+            <ProjectSummary p={p} />
+            {/* While planned, the start waits for the baseline: it sits where the move says so. */}
+            {planning && <BaselinePanel p={p} hint={baseHint} />}
+            <NextPanel p={p} />
+          </div>
+          <aside className={styles.tabRail} aria-label={t("projects.railLabel")}>
+            <TeamPanel p={p} />
+          </aside>
         </div>
       )}
-      {planning && <BaselinePanel p={p} hint={baseHint} />}
-      <ProjectBoard p={p} hints={stepHints} jira={row} />
-      <div className={styles.layout}>
-        <div className={styles.main}>
-          {!planning && <BaselinePanel p={p} hint={null} />}
+      {tab === "board" && <ProjectBoard p={p} hints={stepHints} jira={row} />}
+      {tab === "team" && (
+        <div className={styles.tabNarrow}>
+          <div className={styles.tabRail}><TeamPanel p={p} /></div>
+        </div>
+      )}
+      {tab === "results" && (
+        <div className={styles.tabCards}>
+          <BaselinePanel p={p} hint={planning ? baseHint : null} />
           {(p.doneDay !== null || p.measures.length > 0) && <MeasurePanel p={p} />}
           <RewardPanel p={p} />
-          <ActivityPanel p={p} />
-          <OriginPanel p={p} />
         </div>
-        <aside className={styles.rail} aria-label={t("projects.railLabel")}>
-          <TeamPanel p={p} />
-          <ToolsPanel p={p} jira={row} />
-          <FilesPanel p={p} />
-        </aside>
-      </div>
+      )}
+      {tab === "activity" && (
+        <div className={styles.tabCards}>
+          <ActivityPanel p={p} />
+        </div>
+      )}
+      {tab === "files" && (
+        <div className={styles.tabLayout}>
+          <div className={styles.tabCards}>
+            <OriginPanel p={p} />
+          </div>
+          <aside className={styles.tabRail} aria-label={t("projects.railLabel")}>
+            <ToolsPanel p={p} jira={row} />
+            <FilesPanel p={p} />
+          </aside>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** One link per tab; the Board and Team links carry their counts. */
+function Tabs({ p, tab }: { p: ReducedProject; tab: ProjectTab }) {
+  const { href } = useDemo();
+  const t = useT();
+  const counts: Partial<Record<ProjectTab, number>> = { board: p.steps.length, team: p.members.length + 1 };
+  return (
+    <nav className={styles.tabs} aria-label={t("projects.tabsLabel")}>
+      {PROJECT_TABS.map((k) => (
+        <Link key={k} href={href("/projects/" + p.id) + tabQuery(k)} scroll={false} className={styles.tab} aria-current={k === tab ? "page" : undefined}>
+          {t(("projects.tab_" + k) as "projects.tab_overview")}
+          {counts[k] !== undefined && <span className={styles.tabCount}>{counts[k]}</span>}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
@@ -166,7 +211,7 @@ function ToolChips({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
           ? <a key={c.tool.id} href={first.url} target="_blank" rel="noreferrer noopener" className={styles.toolChip} data-on="true">{body}</a>
           : <span key={c.tool.id} className={styles.toolChip} data-on="true">{body}</span>;
       })}
-      {r.link && <a href={"#tools-" + p.id} className={styles.quietLink}>{on.length ? t("projects.connectAnother") : t("projects.connectFirst")}</a>}
+      {r.link && <a href={tabQuery("files") + "#tools-" + p.id} className={styles.quietLink}>{on.length ? t("projects.connectAnother") : t("projects.connectFirst")}</a>}
     </div>
   );
 }
