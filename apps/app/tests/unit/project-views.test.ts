@@ -99,7 +99,7 @@ describe("projectDesk", () => {
     expect(projectDeskFor(S.projects, S.day, viewer("leader", "M. Roth")).map((d) => [d.project.id, d.why])).toEqual([["pj4", "escalated"]]);
   });
   it("puts a due reward on a manager's desk only", () => {
-    const S = reduce({ ...SEED, projects: SEED.projects?.filter((p) => p.id === "pj1").map((p) => ({ ...p, seedEvents: p.seedEvents?.filter((e) => e.type !== "project.rewarded") })) }, emptyLog());
+    const S = reduce({ ...SEED, projects: SEED.projects?.filter((p) => p.id === "pj1").map((p) => ({ ...p, seedEvents: [...(p.seedEvents ?? []).filter((e) => e.type !== "project.rewarded"), { type: "project.measure.confirmed", day: -65, actor: "B. Hartmann", payload: { check: 90 } }] })) }, emptyLog());
     expect(byId(S, "pj1").rewardDue).toBe(true);
     expect(projectDeskFor(S.projects, 0, manager).map((d) => d.move)).toEqual(["reward"]);
     expect(projectDeskFor(S.projects, 0, viewer("leader", "L. Brandt"))).toEqual([]);

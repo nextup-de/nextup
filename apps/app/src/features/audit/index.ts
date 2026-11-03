@@ -11,6 +11,7 @@ export const AUDIT_ACTIONS = [
   "audit.settings.org",
   "audit.settings.routing",
   "audit.settings.goals",
+  "audit.settings.areas",
   "audit.settings.notifications",
   "audit.settings.areas",
   "audit.settings.metrics_baseline",
