@@ -17,8 +17,8 @@ const Chev = ({ dir }: { dir: "back" | "up" | "down" }) => (
   <svg className={s.phoneChev} data-dir={dir} width="10" height="14" viewBox="0 0 8 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 1L1 6l5 5" /></svg>
 );
 
-export function OverviewPhone({ idea, chats, yourMove, nav, editSignal }: {
-  idea: OverviewIdeaProps; chats: React.ReactNode; yourMove: boolean; nav: Nav; editSignal: number;
+export function OverviewPhone({ idea, chats, yourMove, nav }: {
+  idea: OverviewIdeaProps; chats: React.ReactNode; yourMove: boolean; nav: Nav;
 }) {
   const t = useT();
   const [page, setPage] = useState(0);
@@ -37,8 +37,6 @@ export function OverviewPhone({ idea, chats, yourMove, nav, editSignal }: {
   };
   const go = (i: number) => { const el = pager.current; if (el) el.scrollTo({ left: i * el.clientWidth }); };
 
-  // "Add details" from the chat: back to the Idea page (OverviewIdea opens edit mode).
-  useEffect(() => { if (editSignal) go(0); }, [editSignal]);
   // Escape closes the sheet before the page hears it.
   useEffect(() => {
     if (score === null) return;
