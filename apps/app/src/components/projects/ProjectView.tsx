@@ -74,8 +74,10 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
 
   return (
     <div className={styles.projectPage} data-wide="true">
-      <Header p={p} jira={row} />
-      <Tabs p={p} tab={tab} />
+      <div className={styles.top}>
+        <Header p={p} jira={row} />
+        <Tabs p={p} tab={tab} />
+      </div>
       {tab === "overview" && (
         <div className={styles.tabLayout}>
           <div className={styles.tabCards}>

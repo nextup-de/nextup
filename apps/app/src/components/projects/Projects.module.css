@@ -144,10 +144,19 @@ a.toolChip:hover { border-color: var(--nh-brand-line); }
 .railSection:first-child { border-top: 0; }
 .railSection > .hint:last-child { margin: 10px 0 0; }
 
+/* The head and the tabs sit on one white band from screen edge to screen edge, up to the bar: the shadow
+   paints the sides, the clip keeps it to the band's height (.content clips sideways at the screen). */
+.top {
+  position: relative; display: flex; flex-direction: column; gap: 16px;
+  margin-top: -20px; padding-top: 20px; /* the shell's top padding (SimpleShell .content) */
+  background: var(--nh-card); box-shadow: 0 0 0 100vmax var(--nh-card); clip-path: inset(0 -100vmax);
+}
+.top::after { content: ""; position: absolute; left: -100vmax; right: -100vmax; bottom: 0; height: 1px; background: var(--nh-line); }
+
 /* The tabs under the head (features/projects/tabs.ts): one question per tab. */
-.tabs { display: flex; gap: 26px; border-bottom: 1px solid var(--nh-line); overflow-x: auto; scrollbar-width: none; margin-top: 2px; }
+.tabs { position: relative; z-index: 1; display: flex; gap: 26px; overflow-x: auto; scrollbar-width: none; margin-top: 2px; }
 .tabs::-webkit-scrollbar { display: none; }
-.tab { display: inline-flex; align-items: baseline; gap: 6px; padding: 10px 0 11px; margin-bottom: -1px; border-bottom: 2px solid transparent; font-size: var(--nh-fs-md); font-weight: 500; color: var(--nh-ink-2); text-decoration: none; white-space: nowrap; }
+.tab { display: inline-flex; align-items: baseline; gap: 6px; padding: 10px 0 11px; border-bottom: 2px solid transparent; font-size: var(--nh-fs-md); font-weight: 500; color: var(--nh-ink-2); text-decoration: none; white-space: nowrap; }
 .tab:hover { color: var(--nh-ink); }
 .tab[aria-current="page"] { color: var(--nh-ink); font-weight: 600; border-bottom-color: var(--nh-ink); }
 .tab:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; border-radius: 4px; }
