@@ -28,6 +28,7 @@ import { IdeaDetailPhone } from "./IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
 import { showInboxCase } from "@/lib/demo-controls";
+import { useIdInUrl } from "@/lib/use-url-id";
 import { ProjectDesk } from "@/components/projects/ProjectDesk";
 import { useT } from "@/i18n/client";
 import type { MessageKey, T } from "@/i18n";
@@ -82,6 +83,8 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const isOpen = open && picked;
   // The static demo's controls follow along: a case opened here by hand is a step they pass over.
   useEffect(() => showInboxCase(isOpen ? cid : null), [isOpen, cid]);
+  // The open item is in the address (?id=), so a link, a reload and Back land on it.
+  useIdInUrl(open ? cid : null, (id) => { if (id) { setCid(id); setOpen(true); } else { setOpen(false); setTucked(false); } });
 
   // Keyboard: ↑/↓ walk the list (opening the pane if it is closed), Escape closes. The idea's
   // popovers handle their own keys first.

@@ -19,6 +19,7 @@ import {
   TREND, TREND_FIRST_LONG, TREND_MAX, TREND_MONTHS, TREND_YEAR, type KpiId, type KpiUnit, type ListRow,
 } from "./dashboardPreview";
 import s from "./DashboardBoard.module.css";
+import { personHrefByName } from "@/features/people/links";
 
 const KPI_COUNT = 6; // the handoff's kpiCount: "4" shows the first four, "6" all six
 const STAGES_LEFT = true; // the handoff's topRowOrder, default "Stages left"
@@ -49,7 +50,7 @@ function Row({ to, className, style, children }: { to: string | null; className:
 }
 
 export function DashboardBoard() {
-  const { seed, D, demo, ready, href } = useDemo();
+  const { seed, D, demo, ready, href, tenant } = useDemo();
   const t = useT();
   const [open, setOpen] = useState<Open>(null);
   const [ph, setPh] = useState(0); // the opened widget's height, kept by its slot
@@ -78,7 +79,7 @@ export function DashboardBoard() {
   const enter = (k: string) => () => setHov(k);
   const hovOff = () => setHov(null);
   const caseHref = (title: string) => { const c = D.cases.find((x) => x.title === title); return c ? href("/cases/" + c.id) : null; };
-  const personHref = (name: string) => (seed.people.some((x) => x.name === name) ? href("/people/" + encodeURIComponent(name)) : null);
+  const personHref = (name: string) => { const to = personHrefByName(tenant, seed.seats, name); return to ? href(to) : null; };
 
   // ── KPIs ──
   const headline: Record<KpiId, { value: string; delta: string; sub?: string }> = {
