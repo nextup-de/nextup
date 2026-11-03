@@ -90,6 +90,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     const check30 = page.getByRole("group", { name: "30-day check" });
     await expect(check30).toContainText("Opens");
     await plus30(page);
+    await check30.getByRole("button", { name: "Type the number" }).click();
     await check30.getByLabel(/The number now/).fill("12");
     await expect(check30.getByRole("status")).toContainText("better");
     await check30.getByRole("button", { name: "Record the measure" }).click();
@@ -100,6 +101,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   await test.step("records the 90-day check, worse than the 30-day one but still better than before", async () => {
     await plus30(page, 2);
     const check90 = page.getByRole("group", { name: "90-day check" });
+    await check90.getByRole("button", { name: "Type the number" }).click();
     await check90.getByLabel(/The number now/).fill("14");
     await check90.getByRole("button", { name: "Record the measure" }).click();
     await expect(check90).toContainText("25 → 14 minutes");
