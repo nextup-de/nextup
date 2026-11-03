@@ -16,6 +16,7 @@ import {
   claimDirectoryLease, companiesWithDirectoryOn, loadDirectoryRun, recordDirectoryRun, releaseDirectoryLease,
   saveDirectoryCursor,
 } from "@/lib/db/directory-run";
+import { DIRECTORY_ACTOR, recordAudit } from "@/server/audit/record";
 import { graphDirectory } from "@/server/directory/graph";
 
 /** A round that dies without releasing loses its lease after this. */
@@ -60,7 +61,19 @@ export async function runDirectoryCompany(company: DirectoryCompany, sourceFor: 
     // Past the page limit the round is not finished: the pages are applied (applying twice changes nothing),
     // the stored cursor stays and the next round starts over.
     if (finished) await saveDirectoryCursor(company.id, endOf(source) ?? cursor);
-    await recordDirectoryRun(company.id, { counts: total }, now);
+    await getDb().$transaction(async (tx) => {
+      await recordDirectoryRun(company.id, { counts: total }, now, tx);
+      if (total.added + total.updated + total.deactivated + total.handed > 0) {
+        await recordAudit(company.id, {
+          actor: DIRECTORY_ACTOR, action: "audit.directory.run", target: { kind: "directory", id: kind },
+          changes: {
+            added: { before: null, after: total.added }, updated: { before: null, after: total.updated },
+            deactivated: { before: null, after: total.deactivated }, handed: { before: null, after: total.handed },
+          },
+          source: "directory",
+        }, tx);
+      }
+    });
   } catch (err) {
     await recordDirectoryRun(company.id, { error: err instanceof Error ? err.message : "failed" }, now).catch(() => undefined);
   } finally {

@@ -2,7 +2,8 @@
 // the lease that keeps one runner per company. Same pattern as integrations.ts (claimLease, recordRun).
 import type { Prisma } from "@prisma/client";
 import { sourceKind, type DirectoryCounts, type DirectorySourceKind, type DirectoryStatus } from "@/features/directory";
-import { getDb } from "./client";
+import { getDb, type Db } from "./client";
+import type { Tx } from "./integrations";
 
 /** A failed round records its reason; cut so one bad response cannot fill the row. */
 const MAX_ERROR = 500;
@@ -15,9 +16,9 @@ export async function loadDirectoryRun(companyId: string) {
 }
 
 /** Switch it on or off and choose the source. Creates the row when missing; releases any lease. */
-export async function setDirectoryOn(companyId: string, on: boolean, source: DirectorySourceKind, by: string | null): Promise<void> {
+export async function setDirectoryOn(companyId: string, on: boolean, source: DirectorySourceKind, by: string | null, client: Tx | Db = getDb()): Promise<void> {
   const data = { on, source: sourceKind(source), leaseUntil: null, updatedBy: by };
-  await getDb().directoryRun.upsert({ where: where(companyId), create: { companyId, ...data }, update: data });
+  await client.directoryRun.upsert({ where: where(companyId), create: { companyId, ...data }, update: data });
 }
 
 /** Take the lease for `ms`. True only for the one winner, also across processes (one conditional UPDATE). */
@@ -45,12 +46,13 @@ export async function recordDirectoryRun(
   companyId: string,
   r: { counts?: DirectoryCounts; error?: string },
   now = new Date(),
+  client: Tx | Db = getDb(),
 ): Promise<void> {
   const data: Prisma.DirectoryRunUpdateManyMutationInput =
     r.error !== undefined
       ? { lastError: r.error.slice(0, MAX_ERROR) || "failed" }
       : { lastOkAt: now, lastError: null, ...(r.counts ?? {}) };
-  await getDb().directoryRun.updateMany({ where: where(companyId), data });
+  await client.directoryRun.updateMany({ where: where(companyId), data });
 }
 
 const NONE: DirectoryCounts = { added: 0, updated: 0, deactivated: 0, handed: 0 };

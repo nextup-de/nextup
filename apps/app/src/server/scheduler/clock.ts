@@ -31,6 +31,18 @@ async function runCompany(company: { id: string; slug: string; seedJson: unknown
   const state = reduce(await companySeed(company), log);
   let written = 0;
   for (const d of dueNow(state, log.day)) {
+    if (d.kind === "handover") {
+      const seat = state.seats.find((x) => x.id === d.toRoleHolderId);
+      if (!seat) continue; // the seat is gone
+      const h = await appendEventRow(
+        company.id,
+        { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: "case.handed" as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload: { to: seat.label, toRoleHolderId: seat.id, why: "deadline" } },
+        { source: CLOCK_SOURCE, idemKey: d.idemKey, now },
+      );
+      if (!h.ok) throw new Error(h.error);
+      if (!h.duplicate) written++;
+      continue;
+    }
     const payload: Record<string, unknown> = { kind: d.kind, dueDay: d.dueDay };
     if (d.check !== undefined) payload.check = d.check;
     if (d.toRoleHolderId !== undefined) payload.toRoleHolderId = d.toRoleHolderId;

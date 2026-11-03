@@ -188,7 +188,7 @@ describe("the author's line through the whole life", () => {
     expect(lifeSteps(c, f, { rules: RULES, project: null }).map((s) => s.label)).toEqual(["Sent", "Read", "Declined"]);
   });
   it("the measure reads as the verdict with before → after", () => {
-    expect(measuredLabel({ baseline: { none: false, metric: "m", unit: "min", value: 42, better: "down", source: "", day: 0, by: "" }, measures: [{ check: 30, value: 31, source: "", note: "", day: 0, by: "", verdict: "better", changePct: -26 }], verdict: "better" })).toBe("better (42 → 31 min)");
+    expect(measuredLabel({ baseline: { none: false, metric: "m", unit: "min", value: 42, better: "down", source: "", day: 0, by: "" }, measures: [{ check: 30, value: 31, source: "", note: "", day: 0, by: "", byUserId: null, sourceKind: "typed", sourceInfo: { kind: "typed" }, impact: null, confirmed: true, confirmedByUserId: null, confirmedDay: null, verdict: "better", changePct: -26 }], verdict: "better" })).toBe("better (42 → 31 min)");
     expect(measuredLabel({ baseline: null, measures: [], verdict: null })).toBe("not measured");
   });
   it("old seed cases that went to a build keep their four steps", () => {

@@ -5,9 +5,9 @@
 // Server only. It answers for the stack's own company (TENANT_MODE single, COMPANY_SLUG set) and for
 // nobody else: in multi-tenant mode there is no console, and every /admin path is a 404.
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { singleCompany } from "@/features/tenant/urls";
 import type { AdminVia } from "@/features/auth/cookie";
 import { grantActive } from "@/features/admin/support-code";
-import { adminScope } from "@/features/admin/nav";
 import { isAdmin } from "@/server/actions/admin";
 import { adminWayIn, supportGrantId } from "@/server/admin-session";
 import { loadAssistSettings } from "@/lib/db/assist";
@@ -23,7 +23,7 @@ export type ConsoleVia = AdminVia | "support";
 export type ConsoleCompany = { companyId: string; slug: string; via: ConsoleVia; supportUntil?: Date };
 
 export async function consoleCompany(): Promise<ConsoleCompany | null> {
-  if (adminScope() !== "company" || !hasDatabase()) return null;
+  if (singleCompany() === null || !hasDatabase()) return null;
   const slug = process.env.COMPANY_SLUG?.trim();
   if (!slug) return null;
   if (!(await isAdmin())) return null;
