@@ -2,6 +2,7 @@
 // without a config row gets the defaults - loopRules() fills and clamps whatever is missing.
 import { loopRules, type LoopRules, type RewardKind } from "@/features/loop/rules";
 import { getDb } from "./client";
+import type { Tx } from "./org-edit";
 
 export async function loadLoopRules(companyId: string): Promise<LoopRules> {
   const cfg = await getDb().companyConfig.findUnique({
@@ -23,7 +24,7 @@ export async function loadLoopRules(companyId: string): Promise<LoopRules> {
 }
 
 /** Admin: write the rules back. The caller has checked who is asking. */
-export async function saveLoopRules(companyId: string, rules: LoopRules): Promise<void> {
+export async function saveLoopRules(companyId: string, rules: LoopRules, tx?: Tx): Promise<void> {
   const data = {
     discussEveryDays: rules.discussEveryDays,
     discussMaxRounds: rules.discussMaxRounds,
@@ -35,5 +36,5 @@ export async function saveLoopRules(companyId: string, rules: LoopRules): Promis
     rewardSharePct: rules.reward.sharePct,
     rewardCapEur: rules.reward.capEur,
   };
-  await getDb().companyConfig.upsert({ where: { companyId }, create: { companyId, ...data }, update: data });
+  await (tx ?? getDb()).companyConfig.upsert({ where: { companyId }, create: { companyId, ...data }, update: data });
 }

@@ -31,6 +31,7 @@ export const settingsGoals = defineMessages({
     errUnit: "That unit does not belong to this company.",
     errNotFound: "That goal no longer exists.",
     errForbidden: "Only a company admin can change goals.",
+    errAudit: "Nothing was saved: the change could not be written to the audit trail. Try again.",
   },
   de: {
     title: "Ziele",
@@ -61,5 +62,6 @@ export const settingsGoals = defineMessages({
     errUnit: "Diese Einheit gehört nicht zu diesem Unternehmen.",
     errNotFound: "Dieses Ziel gibt es nicht mehr.",
     errForbidden: "Nur ein Unternehmensadmin kann Ziele ändern.",
+    errAudit: "Nichts wurde gespeichert: die Änderung konnte nicht im Audit-Protokoll festgehalten werden. Versuch es noch einmal.",
   },
 });

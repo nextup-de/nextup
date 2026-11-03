@@ -7,11 +7,13 @@ import { adminScope } from "@/features/admin/nav";
 import { companyPrefix } from "@/features/tenant/urls";
 import { getDb } from "@/lib/db/client";
 import { isAdmin } from "@/server/actions/admin";
+import { settingsActor } from "@/server/audit/record";
+import { audited, type Tx } from "./audited";
 import { companyAdminOf } from "./guard";
 
 export type TotpResetResult =
   | { ok: true }
-  | { ok: false; error: "settings.totpResetForbidden" | "settings.totpResetSelf" | "settings.totpResetNone" };
+  | { ok: false; error: "settings.totpResetForbidden" | "settings.totpResetSelf" | "settings.totpResetNone" | "settings.totpResetAudit" };
 
 export type AdminTotpResetState = { saved?: boolean; error?: string };
 
@@ -19,8 +21,8 @@ export type AdminTotpResetState = { saved?: boolean; error?: string };
 const logReset = () => console.info(`[auth] totp reset ${new Date().toISOString()}`);
 
 /** Clears the second factor of `userId` inside `companyId`; false when no such enrolled person. */
-async function clear(companyId: string, userId: string, onlyManagers: boolean): Promise<boolean> {
-  const { count } = await getDb().user.updateMany({
+async function clear(companyId: string, userId: string, onlyManagers: boolean, client: Pick<Tx, "user"> = getDb()): Promise<boolean> {
+  const { count } = await client.user.updateMany({
     where: { id: userId, companyId, totpEnabledAt: { not: null }, ...(onlyManagers ? { role: "manager" } : {}) },
     data: { totpSecretSealed: null, totpEnabledAt: null },
   });
@@ -45,7 +47,14 @@ export async function resetTotpAction(slug: string, userId: string): Promise<Tot
   const admin = await companyAdminOf(slug);
   if (!admin) return { ok: false, error: "settings.totpResetForbidden" };
   if (userId === admin.userId) return { ok: false, error: "settings.totpResetSelf" };
-  if (!(await clear(admin.companyId, userId, true))) return { ok: false, error: "settings.totpResetNone" };
+  const reset = await audited(
+    admin.companyId,
+    (cleared: boolean) =>
+      cleared ? { actor: settingsActor(admin), action: "audit.member.totp_reset", target: { kind: "user", id: userId }, changes: {}, source: "settings" } : null,
+    (tx) => clear(admin.companyId, userId, true, tx),
+  );
+  if (!reset.ok) return { ok: false, error: "settings.totpResetAudit" };
+  if (!reset.value) return { ok: false, error: "settings.totpResetNone" };
   revalidatePath(`${companyPrefix(slug)}/settings/members`);
   return { ok: true };
 }
