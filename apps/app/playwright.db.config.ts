@@ -6,11 +6,13 @@
 import { defineConfig, devices } from "@playwright/test";
 import { loadEnvConfig } from "@next/env";
 import { randomBytes } from "node:crypto";
+import { checkoutPort } from "./playwright.ports";
 
 // The tests need ADMIN_ACCESS_CODE too, not only the server - read .env.local the way Next does.
 loadEnvConfig(process.cwd());
 
-const PORT = 3101;
+// Its own port per checkout (playwright.ports.ts); E2E_DB_PORT overrides it.
+const PORT = Number(process.env.E2E_DB_PORT) || checkoutPort(3200);
 const vaultKey = process.env.CONNECTOR_VAULT_KEY || randomBytes(32).toString("hex");
 // The spec files seal secrets themselves (tests/db/test-company.ts) and run in worker processes that
 // inherit this env: export the key so they and both servers use the same one (CI sets none).
@@ -21,7 +23,7 @@ const BASE = `http://localhost:${PORT}`;
 // COMPANY_SLUG set), so its spec runs against a second server started that way; every other spec here
 // runs against the path-mode server. Both serve the one build.
 export const CONSOLE_SLUG = "itc-console";
-const CONSOLE_PORT = 3102;
+const CONSOLE_PORT = PORT + 1;
 const CONSOLE_BASE = `http://localhost:${CONSOLE_PORT}`;
 const CONSOLE_SPEC = /itc-console[.]spec[.]ts$/;
 
