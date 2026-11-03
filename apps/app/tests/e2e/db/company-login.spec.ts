@@ -101,13 +101,15 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     for (const p of PEOPLE) await expect(manager.getByText(p.name, { exact: false }).first()).toBeVisible();
 
     // Adding a person happens in a drawer.
-    await manager.getByTestId("settings-members-open-add").click();
-    await expect(manager.getByLabel("Name")).toHaveCount(1);
-    await manager.getByLabel("Name").fill("S. Dahl");
-    await manager.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
-    await manager.getByRole("combobox", { name: "Role", exact: true }).selectOption("leader");
-    await manager.getByRole("button", { name: "Add and issue a code" }).click();
-    const box = manager.getByRole("status").filter({ hasText: "Login code for S. Dahl" });
+    await manager.locator('[data-testid="settings-members-open-add"]:visible').click();
+    // The page may sit twice in the DOM (one copy hidden): work in the visible drawer.
+    const drawer = manager.locator('[data-testid="settings-members-drawer"]:visible');
+    await expect(drawer).toHaveCount(1);
+    await drawer.getByLabel("Name").fill("S. Dahl");
+    await drawer.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
+    await drawer.getByRole("combobox", { name: "Role", exact: true }).selectOption("leader");
+    await drawer.getByRole("button", { name: "Add and issue a code" }).click();
+    const box = manager.getByRole("status").filter({ hasText: "Login code for S. Dahl" }).locator("visible=true");
     await expect(box).toBeVisible();
     codes.set("S. Dahl", (await box.locator("span").first().innerText()).trim());
 
