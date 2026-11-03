@@ -79,3 +79,7 @@ export const SAMPLE_MEMBER_ROWS: SampleMember[] = [
   { id: "demo-df", name: "Dario Ferraro", email: "d.ferraro@acme.example", role: "member", dept: "Assembly", codeIssuedAt: null, microsoft: false, active: true, seats: [] },
   { id: "demo-mk", name: "Mira Keller", email: "m.keller@acme.example", role: "member", dept: "Logistics", codeIssuedAt: null, microsoft: false, active: false, seats: [] },
 ];
+
+/** The signed-in sample manager, and the seat nobody holds yet. */
+export const SAMPLE_ME = "demo-hs";
+export const SAMPLE_FREE_SEATS = [{ id: "h-4", label: "Maintenance lead" }];

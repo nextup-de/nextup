@@ -39,14 +39,20 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
   const format = useFormat();
   const when = (iso: string) => format.date(iso, "day");
   const [roled, setRole, saving] = useActionState<RoleState, FormData>(setMemberRoleAction, {});
+  const [adding, setAdding] = useState<"add" | "invite" | null>(null);
+  const [copied, setCopied] = useState(false);
   // Adding a person and "New code" share one state, so the code on screen is always the latest.
+  // A person added or invited closes the drawer; a refusal keeps it open with its problems.
   const [coded, codeAction, coding] = useActionState<Coded, FormData>(async (_prev, form) => {
+    setCopied(false);
     if (form.get("intent") === "add") {
       const r = await addMemberAction({}, form);
+      if (r.added?.code && !r.problems?.length) setAdding(null);
       return { ...r.added, problems: r.problems, warnings: r.warnings };
     }
     if (form.get("intent") === "invite") {
       const r = await inviteMemberAction({}, form);
+      if (r.added?.code && !r.problems?.length) setAdding(null);
       return { ...r.added, problems: r.problems, warnings: r.warnings, mailed: r.mailed, mailError: r.mailError };
     }
     return issueMemberCodeAction({}, form);
@@ -58,11 +64,9 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
   const [seated, seatAction, seating] = useActionState<SeatState, FormData>(memberSeatAction, {});
   const [asking, setAsking] = useState<MemberRow | null>(null);
   const [seatsFor, setSeatsFor] = useState<MemberRow | null>(null);
-  const [adding, setAdding] = useState<"add" | "invite" | null>(null);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
-  const [copied, setCopied] = useState(false);
   // Managers who enrolled a second factor: only they can have it reset (ADM D19).
   const [enrolled, setEnrolled] = useState<string[]>([]);
   const [askingTotp, setAskingTotp] = useState<MemberRow | null>(null);
@@ -74,11 +78,6 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
     enrolledManagersAction(slug).then((ids) => { if (live) setEnrolled(ids); }, () => {});
     return () => { live = false; };
   }, [slug, members, demo]);
-  // A person added or invited closes the drawer; a refusal keeps it open with its problems.
-  useEffect(() => {
-    setCopied(false);
-    if (coded.code && !coded.problems?.length) setAdding(null);
-  }, [coded]);
   const resetTotp = (m: MemberRow) => {
     setAskingTotp(null);
     startReset(async () => {
