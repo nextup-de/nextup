@@ -102,8 +102,8 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
 
     // Adding a person happens in a drawer.
     await manager.getByTestId("settings-members-open-add").click();
-    await expect(manager.getByLabel("Name")).toHaveCount(1);
-    await manager.getByLabel("Name").fill("S. Dahl");
+    await expect(manager.getByLabel("Name", { exact: true })).toHaveCount(1);
+    await manager.getByLabel("Name", { exact: true }).fill("S. Dahl");
     await manager.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
     await manager.getByRole("combobox", { name: "Role", exact: true }).selectOption("leader");
     await manager.getByRole("button", { name: "Add and issue a code" }).click();
