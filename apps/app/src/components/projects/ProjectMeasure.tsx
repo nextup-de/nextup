@@ -173,7 +173,7 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
   const [impact, setImpact] = useState<Record<string, string>>({});
-  const [mode, setMode] = useState<"type" | "import" | null>(null);
+  const [mode, setMode] = useState<"type" | "import" | null>(serverMode ? null : "type"); // demo mode has only one way in, so the form is open
   const [confirming, setConfirming] = useState(false);
   const [importMsg, setImportMsg] = useState<string[]>([]);
   const m = p.measures.find((x) => x.check === c.check);
