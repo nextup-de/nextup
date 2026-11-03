@@ -139,6 +139,9 @@ export function decide(
   // The login page itself is always reachable, or there is no way in.
   if (path === "/login" || path.startsWith("/login/")) return { kind: "allow" };
 
+  // The shop-floor pages (FLR D6) are for phones with no account: /floor and everything below it.
+  if (path === "/floor" || path.startsWith("/floor/")) return { kind: "allow" };
+
   // A cookie for another company is not a session here. This is the check that makes one
   // company's cookie useless against another's subdomain.
   if (!session || session.slug !== slug) return { kind: "login", to: "/login" };

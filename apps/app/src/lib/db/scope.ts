@@ -17,6 +17,11 @@ export const TENANT_MODELS = new Set([
   "OrgRoleHolder",
   "RoutingRule",
   "Goal",
+  // Shop-floor access - docs/adr/0007-areas.md
+  "FloorArea",
+  "FloorDevice",
+  "FloorCode",
+  "FloorReference",
   // Raise-page assistant - docs/ASSISTANT.md
   "Document",
   "AssistTurn",
@@ -75,6 +80,9 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 export const IDENTIFYING_LOOKUPS: Record<string, readonly string[]> = {
   ApiToken: ["hash"],
   User: ["loginCodeHash"],
+  FloorDevice: ["tokenHash", "pairCodeHash"],
+  FloorCode: ["codeHash"],
+  FloorReference: ["hash"],
 };
 
 /** Operations allowed to use an identifying lookup: reads of a single row, nothing else. */

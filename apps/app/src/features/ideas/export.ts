@@ -9,8 +9,6 @@ export type ExportIdea = {
   summary: string;
   context: string;
   affected: readonly string[];
-  coll: readonly string[];
-  meet: { dur: string; when: string } | null;
   prompts: readonly { label: string; text: string }[];
   author: string;
   meta?: string; // "J. Schmidt · Production · 16 October 2026" - the document's byline
@@ -24,13 +22,11 @@ export type ExportAnalysis = { rec: string; why: string; overall: number; scores
 
 export type ExportParts = { kind: string; title: string; summary: string; ctx: string; rows: [string, string][] };
 
-// The labelled rows in order - who it affects, who it was raised with, the meeting, then each filled
+// The labelled rows in order - who it affects, then each filled
 // line ("Note" where it has no label) - leaving out the empty ones.
 export function exportParts(d: ExportIdea): ExportParts {
   const rows: [string, string][] = [
     ["Affects", d.affected.join(", ")],
-    ["Raised with", d.coll.join(", ")],
-    ["Requested meeting", d.meet ? d.meet.dur + ", " + d.meet.when : ""],
     ...d.prompts.filter((p) => p.text.trim()).map((p): [string, string] => [p.label.trim() || "Note", p.text.trim()]),
   ];
   return {

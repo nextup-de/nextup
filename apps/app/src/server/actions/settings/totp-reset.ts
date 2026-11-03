@@ -3,8 +3,7 @@
 // admin resets anyone of the company in /admin People. Both clear the sealed secret and the
 // enrolment time, so the person enrols again at their next code login. Nothing else changes.
 import { revalidatePath } from "next/cache";
-import { adminScope } from "@/features/admin/nav";
-import { companyPrefix } from "@/features/tenant/urls";
+import { companyPrefix, singleCompany } from "@/features/tenant/urls";
 import { getDb } from "@/lib/db/client";
 import { isAdmin } from "@/server/actions/admin";
 import { settingsActor } from "@/server/audit/record";
@@ -63,7 +62,7 @@ export async function resetTotpAction(slug: string, userId: string): Promise<Tot
 export async function adminResetTotpAction(_prev: AdminTotpResetState, form: FormData): Promise<AdminTotpResetState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
   const slug = String(form.get("slug") ?? "");
-  if (adminScope() === "company" && slug !== process.env.COMPANY_SLUG?.trim()) return { error: "No such company." };
+  if (slug !== singleCompany()) return { error: "No such company." };
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
   if (!company || !(await clear(company.id, String(form.get("userId") ?? ""), false))) {
     return { error: "No such enrolled person in this company." };
