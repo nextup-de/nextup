@@ -2,6 +2,9 @@
 // saveCompanyAction.
 import { notFound } from "next/navigation";
 import { CompanyForm } from "@/components/settings/CompanyForm";
+import { SettingsHead } from "@/components/settings/SettingsParts";
+import { SAMPLE_COMPANY } from "@/features/settings/demo";
+import { appHost, companyPrefix } from "@/features/tenant/urls";
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { companyAdminOf } from "@/server/actions/settings/guard";
@@ -13,13 +16,12 @@ export async function generateMetadata() {
 export default async function CompanySettingsPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
   const t = await getT();
-  const head = (
-    <>
-      <h1>{t("settingsCompany.navLabel")}</h1>
-      <p className="nh-hint">{t("settingsCompany.companyHint")}</p>
-    </>
-  );
-  if (!hasDatabase() || !process.env.AUTH_SECRET) return <>{head}<p>{t("settingsCompany.noDatabase")}</p></>;
+  const address = `${appHost()}${companyPrefix(company)}`;
+  const head = (name: string) => <SettingsHead title={t("settingsCompany.navLabel")} lede={t("settingsCompany.companyLede", { company: name })} />;
+  // Without a database this copy shows the sample company; saving is off.
+  if (!hasDatabase() || !process.env.AUTH_SECRET) {
+    return <>{head(SAMPLE_COMPANY.name)}<CompanyForm slug={company} values={SAMPLE_COMPANY} address={address} demo /></>;
+  }
   const admin = await companyAdminOf(company);
   if (!admin) notFound();
   const db = getDb();
@@ -33,9 +35,10 @@ export default async function CompanySettingsPage({ params }: { params: Promise<
   if (!row) notFound();
   return (
     <>
-      {head}
+      {head(row.name)}
       <CompanyForm
         slug={company}
+        address={address}
         values={{
           name: row.name,
           mark: row.mark,

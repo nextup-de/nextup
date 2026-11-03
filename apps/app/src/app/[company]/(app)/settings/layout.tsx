@@ -1,8 +1,9 @@
 // Settings sub-navigation. Company admins only: companyAdminOf below; the proxy and ROLE_ACCESS
 // are routing, not the boundary.
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { setupStep, visibleSections } from "@/features/settings/sections";
+import { setupStep, visibleSections, type SettingsGroup } from "@/features/settings/sections";
+import { SettingsMenu, type MenuGroup } from "@/components/settings/SettingsMenu";
+import s from "@/components/settings/settings.module.css";
 import { companyPrefix } from "@/features/tenant/urls";
 import { getT } from "@/i18n/server";
 import { hasDatabase } from "@/lib/db/client";
@@ -21,16 +22,19 @@ export default async function SettingsLayout({ children, params }: { children: R
   }
   const t = await getT();
   const base = `${companyPrefix(company)}/settings`;
+  const sections = visibleSections(setupDone);
+  const groupLabel: Record<SettingsGroup, string | null> = { start: null, company: t("settings.groupCompany"), structure: t("settings.groupStructure") };
+  const groups: MenuGroup[] = (["start", "company", "structure"] as const)
+    .map((g) => ({
+      key: g,
+      label: groupLabel[g],
+      items: sections.filter((x) => x.group === g).map((x) => ({ key: x.key, href: `${base}/${x.path}`, label: t(x.label) })),
+    }))
+    .filter((g) => g.items.length > 0);
   return (
-    <div style={{ display: "grid", gap: 20 }}>
-      <nav aria-label={t("settings.navAria")} style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: "var(--nh-fs-md)" }}>
-        {visibleSections(setupDone).map((s) => (
-          <Link key={s.key} prefetch={false} href={`${base}/${s.path}`} data-testid={`settings-nav-${s.key}`}>
-            {t(s.label)}
-          </Link>
-        ))}
-      </nav>
-      {children}
+    <div className={s.frame}>
+      <SettingsMenu title={t("settings.menuTitle")} aria={t("settings.navAria")} currentLabel={t("settings.menuCurrent")} groups={groups} />
+      <div className={s.page}>{children}</div>
     </div>
   );
 }
