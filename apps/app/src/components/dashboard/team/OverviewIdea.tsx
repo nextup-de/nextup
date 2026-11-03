@@ -80,7 +80,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
   };
   const files = (e ?? shown).files;
   // Why each team or person is affected, where the raise page's analysis said so.
-  const whys = [...brief.depts, ...brief.people].filter((x): x is typeof x & { why: string } => !!x.why && (e ?? shown).affects.includes(x.name));
+  const whyOf = (name: string) => [...brief.depts, ...brief.people].find((x) => x.name === name)?.why ?? null;
   const score = openScore == null ? null : brief.scores[openScore];
   const rec = brief.actions.find((a) => a.key === brief.rec);
   const phone = p.variant === "phone";
@@ -157,9 +157,9 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                 ? <textarea className={s.textarea} value={e.description} onChange={(ev) => patch({ description: ev.target.value })} rows={4} aria-label={t("team.ideaDescription")} />
                 : <p className={s.description}>{shown.description}</p>}
               {!e && (
-                <div className={s.div37}>
+                <div className={s.sec}>
                   <span className={s.dept}>{t("team.ideaWho")}</span>
-                  <div className={s.div40}>
+                  <div className={s.kv}>
                     <span className={s.label4}>{t("team.ideaRaisedBy")}</span>
                     <span className={s.text}>{brief.author.name}{!brief.author.anonymous && brief.author.role && brief.author.role !== brief.author.dept ? " · " + brief.author.role : ""}</span>
                     {brief.author.dept && <><span className={s.label4}>{t("team.ideaTeam")}</span><span className={s.text}>{brief.author.dept}</span></>}
@@ -172,33 +172,45 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                   </div>
                 </div>
               )}
-              <div className={s.div37}>
+              <div className={s.sec}>
                 <span className={s.dept}>{t("team.ideaAffects")}</span>
-                <div className={s.div38}>
-                  {(e ?? shown).affects.map((a, k) => (
-                    <span key={a + k} className={s.label3}>
-                      {a}
-                      {e && <button type="button" className={s.remove} onClick={() => patch({ affects: e.affects.filter((_, j) => j !== k) })} title={t("team.ideaRemove")} aria-label={t("team.ideaRemoveItem", { name: a })}><X /></button>}
-                    </span>
-                  ))}
-                  {e && (
+                {e ? (
+                  <div className={s.div38}>
+                    {e.affects.map((a, k) => (
+                      <span key={a + k} className={s.label3}>
+                        {a}
+                        <button type="button" className={s.remove} onClick={() => patch({ affects: e.affects.filter((_, j) => j !== k) })} title={t("team.ideaRemove")} aria-label={t("team.ideaRemoveItem", { name: a })}><X /></button>
+                      </span>
+                    ))}
                     <input className={s.addDepartment} value={affDraft} onChange={(ev) => setAffDraft(ev.target.value)} placeholder={t("team.ideaAddDept")} aria-label={t("team.ideaAddDeptAria")}
                       onKeyDown={(ev) => { if (ev.key === "Enter" && affDraft.trim()) { ev.preventDefault(); patch({ affects: [...e.affects, affDraft.trim()] }); setAffDraft(""); } }} />
-                  )}
-                </div>
-                {!e && whys.length > 0 && (
-                  <div className={s.div40}>
-                    {whys.map((w) => <Fragment key={w.name}><span className={s.label4}>{w.name}</span><span className={s.text}>{w.why}</span></Fragment>)}
                   </div>
+                ) : (
+                  // One row per team or person, with why it is affected where the analysis said so.
+                  <ul className={s.list}>
+                    {shown.affects.map((a, k) => (
+                      <li key={a + k} className={s.li}>
+                        <span className={s.liMain}><span className={s.liTitle}>{a}</span>{whyOf(a) && <span className={s.liSub}>{whyOf(a)}</span>}</span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
-              <div className={s.div39}>
+              {/* The context and its facts are one section: the paragraph, then the grouped facts. */}
+              <div className={s.sec}>
                 <span className={s.dept}>{t("team.ideaContext")}</span>
                 {e
                   ? <textarea className={s.textarea2} value={e.context} onChange={(ev) => patch({ context: ev.target.value })} rows={3} aria-label={t("team.ideaContext")} />
                   : <p className={s.context}>{shown.context || "—"}</p>}
+                {!e && shown.prompts.length > 0 && (
+                  <div className={s.kv}>
+                    {shown.prompts.map((pr, k) => (
+                      <Fragment key={pr.label + k}><span className={s.label4}>{pr.label}</span><span className={s.text}>{pr.text}</span></Fragment>
+                    ))}
+                  </div>
+                )}
               </div>
-              {e ? (
+              {e && (
                 <div className={s.div41}>
                   {e.prompts.map((pr, k) => (
                     <div key={k} className={s.div42}>
@@ -209,29 +221,35 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                   ))}
                   <button type="button" className={s.addPrompt} onClick={() => patch({ prompts: [...e.prompts, { label: "", text: "" }] })}>{t("team.ideaAddFact")}</button>
                 </div>
-              ) : (
-                <div className={s.div40}>
-                  {shown.prompts.map((pr, k) => (
-                    <Fragment key={pr.label + k}><span className={s.label4}>{pr.label}</span><span className={s.text}>{pr.text}</span></Fragment>
-                  ))}
-                </div>
               )}
-              <div className={s.div37}>
+              <div className={s.sec}>
                 <span className={s.dept}>{t("team.ideaAttachments")}</span>
                 {files.length === 0 && !e && <span className={s.noAttachments}>{t("team.ideaNoAttachments")}</span>}
-                <div className={s.div43}>
-                  {files.map((fl, k) => (
-                    <div key={fl.name + k} className={s.div44}>
-                      <span className={s.ext}>{fl.ext}</span>
-                      <span className={s.span6}><span className={s.name}>{fl.name}</span><span className={s.dept}>{fl.meta}</span></span>
-                      {e && <button type="button" className={s.remove3} onClick={() => patch({ files: e.files.filter((_, j) => j !== k) })} title={t("team.ideaRemove")} aria-label={t("team.ideaRemoveItem", { name: fl.name })}><X /></button>}
-                    </div>
-                  ))}
-                  {e && <label className={s.addFile}>{t("team.ideaAddFile")}<input className={s.input} type="file" multiple onChange={addFiles} /></label>}
-                </div>
+                {e ? (
+                  <div className={s.div43}>
+                    {files.map((fl, k) => (
+                      <div key={fl.name + k} className={s.div44}>
+                        <span className={s.ext}>{fl.ext}</span>
+                        <span className={s.span6}><span className={s.name}>{fl.name}</span><span className={s.dept}>{fl.meta}</span></span>
+                        <button type="button" className={s.remove3} onClick={() => patch({ files: e.files.filter((_, j) => j !== k) })} title={t("team.ideaRemove")} aria-label={t("team.ideaRemoveItem", { name: fl.name })}><X /></button>
+                      </div>
+                    ))}
+                    <label className={s.addFile}>{t("team.ideaAddFile")}<input className={s.input} type="file" multiple onChange={addFiles} /></label>
+                  </div>
+                ) : files.length > 0 && (
+                  <ul className={s.list}>
+                    {files.map((fl, k) => (
+                      <li key={fl.name + k} className={s.li} title={fl.name}>
+                        <span className={s.liExt} data-ext={fl.ext}>{fl.ext}</span>
+                        <span className={s.liMain}><span className={s.liTitle}>{fl.name}</span></span>
+                        <span className={s.liEnd}>{fl.meta}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               {p.added.length > 0 && (
-                <div className={s.div37}>
+                <div className={s.sec}>
                   <span className={s.dept}>{t("team.ideaAddedSince")}</span>
                   {p.added.map((a, k) => (
                     <div key={k} className={s.div45}><span className={s.text2}>{a.text}</span><span className={s.when}>{a.when}</span></div>
@@ -288,7 +306,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                   <div className={s.div57}>
                     <div className={s.div18}><span className={s.dept}>{score.label}</span><p className={s.note}>{score.note}</p></div>
                     {score.blocks.map((b, k) => <Block key={k} b={b} />)}
-                    <div className={s.div37} id="aisrc">
+                    <div className={s.sec} id="aisrc">
                       <span className={s.dept}>{t("team.ideaSources")}</span>
                       <div className={s.div43}>
                         {score.sources.map((src) => (
@@ -327,14 +345,14 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                       </div>
                     )}
                     {brief.after && <p className={s.p}>{brief.after}<Cites ns={brief.cites.after} /></p>}
-                    <div className={s.div40}>
+                    <div className={s.kv}>
                       {rec && <><span className={s.label4}>{t("team.ideaAdvice")}</span><span className={s.advice}>{rec.label}</span></>}
                       <span className={s.label4}>{t("team.ideaWhy")}</span><span className={s.text}>{brief.recText}<Cites ns={brief.cites.rec} dark /></span>
                       {brief.next && <><span className={s.label4}>{t("team.ideaNextStep")}</span><span className={s.text}>{brief.next}</span></>}
                       {brief.by && <><span className={s.label4}>{t("team.ideaAnswerBy")}</span><span className={s.text}>{brief.by}</span></>}
                     </div>
                     {brief.timeline && (
-                      <div className={s.div64}>
+                      <div className={s.sec}>
                         <span className={s.dept}>{brief.timeline.title}</span>
                         <div className={s.div65}>
                           {brief.timeline.steps.map((tl, k) => (
@@ -344,27 +362,30 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                       </div>
                     )}
                     {brief.questions.length > 0 && (
-                      <div className={s.div39}>
+                      <div className={s.sec}>
                         <span className={s.dept}>{t("team.ideaWorthAdding")}</span>
-                        {brief.questions.map((q, k) => <div key={k} className={s.div68}><span className={s.n2}>{k + 1}</span><p className={s.p}>{q}</p></div>)}
+                        <ol className={s.list}>
+                          {brief.questions.map((q, k) => <li key={k} className={s.li}><span className={s.liNum}>{k + 1}</span><span className={`${s.liMain} ${s.liText}`}>{q}</span></li>)}
+                        </ol>
                       </div>
                     )}
-                    <div className={s.div39}><span className={s.dept}>{t("team.ideaPattern")}</span><p className={s.p}>{brief.pattern}<Cites ns={brief.cites.pattern} /></p></div>
-                    <div className={s.div37}>
-                      <span className={s.dept}>{t("team.ideaCategorised")}</span>
-                      <div className={s.div69}>{brief.categories.map((cat) => <span key={cat} className={s.cat}>{cat}</span>)}</div>
-                    </div>
                     {brief.similar.length > 0 && (
-                      <div className={s.div70}>
+                      <div className={s.sec}>
                         <span className={s.dept}>{t("team.ideaSimilar")}</span>
-                        {brief.similar.map((m) => (
-                          <div key={m.title} className={s.div9}>
-                            <div className={s.div25}><span className={s.title3}>{m.title}</span><span className={s.status2}>{m.status}</span>{m.match != null && <span className={s.match}>{t("team.ideaMatch", { pct: m.match })}</span>}</div>
-                            <span className={s.dept}>{m.where}</span>
-                          </div>
-                        ))}
+                        <ul className={s.list}>
+                          {brief.similar.map((m) => (
+                            <li key={m.title} className={s.li}>
+                              <span className={s.liMain}><span className={s.liTitle}>{m.title}</span><span className={s.liSub}>{m.where}</span></span>
+                              <span className={s.liEnd}><span className={s.liStatus}>{m.status}</span>{m.match != null && <span>{t("team.ideaMatch", { pct: m.match })}</span>}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     )}
+                    <div className={s.kv}>
+                      <span className={s.label4}>{t("team.ideaPattern")}</span><span className={s.text}>{brief.pattern}<Cites ns={brief.cites.pattern} dark /></span>
+                      {brief.categories.length > 0 && <><span className={s.label4}>{t("team.ideaCategorised")}</span><span className={s.text}>{brief.categories.join(" · ")}</span></>}
+                    </div>
                   </>
                 )}
               </div>
@@ -381,11 +402,11 @@ export function Block({ b }: { b: NumberedBlock }) {
   const t = useT();
   switch (b.t) {
     case "text":
-      return <div className={s.div39}><span className={s.dept}>{b.h}</span><p className={s.p}>{b.p}<Cites ns={b.cites} /></p></div>;
+      return <div className={s.sec}><span className={s.dept}>{b.h}</span><p className={s.p}>{b.p}<Cites ns={b.cites} /></p></div>;
     case "facts":
-      return <div className={s.div40}>{b.items.map((fa) => <Fragment key={fa.k}><span className={s.label4}>{fa.k}</span><span className={s.text}>{fa.v}<Cites ns={fa.cites} dark /></span></Fragment>)}</div>;
+      return <div className={s.kv}>{b.items.map((fa) => <Fragment key={fa.k}><span className={s.label4}>{fa.k}</span><span className={s.text}>{fa.v}<Cites ns={fa.cites} dark /></span></Fragment>)}</div>;
     case "steps":
-      return <div className={s.div40}>{b.items.map((st) => <Fragment key={st.label}><span className={s.label4}>{st.dur}</span><span className={s.text}>{st.label} · {st.owner}<Cites ns={st.cites} dark /></span></Fragment>)}</div>;
+      return <div className={s.kv}>{b.items.map((st) => <Fragment key={st.label}><span className={s.label4}>{st.dur}</span><span className={s.text}>{st.label} · {st.owner}<Cites ns={st.cites} dark /></span></Fragment>)}</div>;
     case "compare":
       return (
         <div className={s.div58}>
@@ -401,7 +422,7 @@ export function Block({ b }: { b: NumberedBlock }) {
       );
     case "quote":
       return (
-        <div className={s.div37}>
+        <div className={s.sec}>
           <span className={s.dept}>{b.h}</span>
           <p className={s.q}>“{b.q}”<Cites ns={b.cites} /></p>
           <div className={s.div16}><span className={s.who}><span className={s.ini} data-avatar={avatarTone(b.who)}>{initialsOf(b.who)}</span>{b.who}</span><span className={s.count}>{b.role}</span></div>
@@ -410,8 +431,8 @@ export function Block({ b }: { b: NumberedBlock }) {
     case "split":
       return (
         <>
-          <div className={s.div39}><span className={s.dept}>{t("team.ideaPullingUp")}</span>{b.ups.map((u) => <p key={u.t} className={s.p}>{u.t}<Cites ns={u.cites} /></p>)}</div>
-          <div className={s.div39}><span className={s.dept}>{t("team.ideaHoldingBack")}</span>{b.downs.map((u) => <p key={u.t} className={s.p}>{u.t}<Cites ns={u.cites} /></p>)}</div>
+          <div className={s.sec}><span className={s.dept}>{t("team.ideaPullingUp")}</span>{b.ups.map((u) => <p key={u.t} className={s.p}>{u.t}<Cites ns={u.cites} /></p>)}</div>
+          <div className={s.sec}><span className={s.dept}>{t("team.ideaHoldingBack")}</span>{b.downs.map((u) => <p key={u.t} className={s.p}>{u.t}<Cites ns={u.cites} /></p>)}</div>
         </>
       );
   }

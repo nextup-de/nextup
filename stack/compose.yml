@@ -113,6 +113,9 @@ services:
       # How long the app waits for an answer before the keyword router and offline coach step in.
       # Empty = the app's default (30 s). A brain on CPUs alone may need more (README there).
       BRAIN_TIMEOUT_MS: ${BRAIN_TIMEOUT_MS:-}
+      # PostHog Cloud EU project key for user tests (features/testing/analytics.ts). Only a demo-stage
+      # company is ever recorded, and only with ?tester=P01 in the URL. Unset = nothing is loaded.
+      POSTHOG_KEY: ${POSTHOG_KEY:-}
     depends_on:
       db:
         condition: service_healthy
