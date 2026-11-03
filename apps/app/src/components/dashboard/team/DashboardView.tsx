@@ -9,7 +9,7 @@
 // Who sees what (derive.visibleTo): an employee only what they raised; a team leader their own
 // and their people's; a manager everything.
 // `linkCases` (the static demo): every case has its own address, /cases/<id> - a row goes there, ✕ comes
-// back - and that page is this view with `caseId` open.
+// back - and that page is this view with `caseId` open. Otherwise the open case is ?id= on this page.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -36,6 +36,8 @@ import { OverviewIdea, type IdeaMode, type OverviewIdeaProps } from "./OverviewI
 import { OverviewPhone } from "./OverviewPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
+import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
+import { personHrefByName } from "@/features/people/links";
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 // A phone gets its own case layout (OverviewPhone), like the inbox's IdeaDetailPhone.
@@ -65,6 +67,7 @@ type Profile = { userId: string; name: string; x: number; y: number };
 function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: () => void; sheet: boolean }) {
   const { href, tenant, seed } = useDemo();
   const t = useT();
+  const profileHref = personHrefByName(tenant, seed.seats, profile.p.name);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopImmediatePropagation(); onClose(); } };
     window.addEventListener("keydown", onKey, true);
@@ -87,7 +90,7 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
             <span className={s.department}>{t("overview.personSeats")}</span>
             <span className={s.dept2}>{seats.length ? seats.join(", ") : t("overview.personNoSeat")}</span>
           </div>
-          {link && <Link className={s.viewProfile} href={href(link)} onClick={onClose}>
+          {!tenant.hiddenPeople?.includes(p.name) && profileHref && <Link className={s.viewProfile} href={href(profileHref)} onClick={onClose}>
             {t("team.dashViewProfile")}<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 1l5 5-5 5" /></svg>
           </Link>}
         </div>
@@ -108,7 +111,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const [sort, setSort] = useState<Sort>("move");
   const [menu, setMenu] = useState<"filter" | "sort" | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [sel, setSel] = useState<string | null>(caseId ?? null);
+  // The open case: from /cases/<id> (linkCases) or from ?id=, which keeps it in the address after that.
+  const urlId = useUrlId();
+  const [sel, setSel] = useState<string | null>(caseId ?? urlId);
+  useIdInUrl(linkCases ? null : sel, setSel);
   const [mode, setMode] = useState<IdeaMode>("idea");
   const [pg, setPg] = useState({ key: "", n: 1 }); // the page the table is on, forgotten when the list changes
   const paneRef = useRef<HTMLDivElement>(null);

@@ -12,7 +12,7 @@ import { getDb } from "@/lib/db/client";
 import { loadSeed } from "@/lib/db/companies";
 import { appendEventRow, loadLog } from "@/lib/db/events";
 import { writeStructure } from "@/lib/db/structure-writes";
-import { deactivateMemberAction, deleteMemberAction } from "@/server/actions/members";
+import { deactivateMemberAction, deleteMemberAction, reactivateMemberAction } from "@/server/actions/members";
 
 const db = getDb();
 const SLUG = "dir-members";
@@ -97,6 +97,22 @@ describe("DIR member actions", () => {
     expect((await db.orgRoleHolder.findFirstOrThrow({ where: { companyId, id: seats.leaver } })).userId).toBeNull();
     const state = reduce((await loadSeed(SLUG))!, await loadLog(companyId));
     expect(state.cases.find((x) => x.id === "mem-case-1")?.assigneeSeatId).toBe(seats.stay);
+  });
+
+  it("reactivates an inactive member without their old code or seats, then the leaver path again", async () => {
+    viewer = asBoss();
+    await db.user.update({ where: { id: ids.leaver, companyId }, data: { loginCodeHash: "old-code-hash", loginCodeAt: new Date() } });
+    expect((await reactivateMemberAction({}, form({ slug: SLUG, userId: ids.boss }))).error).toBeTruthy();
+    expect((await reactivateMemberAction({}, form({ slug: SLUG, userId: ids.foreign }))).error).toBeTruthy();
+    const r = await reactivateMemberAction({}, form({ slug: SLUG, userId: ids.leaver }));
+    expect(r.error).toBeUndefined();
+    const u = await db.user.findFirstOrThrow({ where: { companyId, id: ids.leaver } });
+    expect(u.active).toBe(true);
+    expect(u.deactivatedAt).toBeNull();
+    expect(u.loginCodeHash).toBeNull();
+    expect((await db.orgRoleHolder.findFirstOrThrow({ where: { companyId, id: seats.leaver } })).userId).toBeNull();
+    expect((await reactivateMemberAction({}, form({ slug: SLUG, userId: ids.leaver }))).error).toBeTruthy();
+    expect((await deactivateMemberAction({}, form({ slug: SLUG, userId: ids.leaver }))).error).toBeUndefined();
   });
 
   it("deletes an inactive member and keeps their events without the user link", async () => {

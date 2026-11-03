@@ -111,22 +111,31 @@ export function OverviewIdea(p: OverviewIdeaProps) {
 
           {view === "idea" ? (
             <div className={s.div36}>
-              <p className={s.description}>{brief.description}</p>
-              <div className={s.sec}>
-                <span className={s.dept}>{t("team.ideaWho")}</span>
-                <div className={s.kv}>
-                  <span className={s.label4}>{t("team.ideaRaisedBy")}</span>
-                  <span className={s.text}>{brief.author.name}{!brief.author.anonymous && brief.author.role && brief.author.role !== brief.author.dept ? " · " + brief.author.role : ""}</span>
-                  {brief.author.dept && <><span className={s.label4}>{t("team.ideaTeam")}</span><span className={s.text}>{brief.author.dept}</span></>}
-                  {brief.routing.map((r, k) => (
-                    <Fragment key={r.name + k}>
-                      <span className={s.label4}>{k === 0 ? t("team.ideaResponsible") : t("team.ideaNextInLine")}</span>
-                      <span className={s.text}>{r.name}{r.role ? " · " + r.role : ""}<span className={s.why}>{r.why}</span></span>
-                    </Fragment>
-                  ))}
+              {e
+                ? <textarea className={s.textarea} value={e.description} onChange={(ev) => patch({ description: ev.target.value })} rows={4} aria-label={t("team.ideaDescription")} />
+                : <p className={s.description}>{shown.description}</p>}
+              {!e && (
+                <div className={s.sec} data-tone="who">
+                  <span className={s.dept}>{t("team.ideaWho")}</span>
+                  <div className={s.kv}>
+                    <span className={s.label4}>{t("team.ideaRaisedBy")}</span>
+                    <span className={s.text}>{brief.author.name}{!brief.author.anonymous && brief.author.role && brief.author.role !== brief.author.dept ? " · " + brief.author.role : ""}</span>
+                    {brief.author.dept && <><span className={s.label4}>{t("team.ideaTeam")}</span><span className={s.text}>{brief.author.dept}</span></>}
+                    {brief.routing.map((r, k) => (
+                      <Fragment key={r.name + k}>
+                        <span className={s.label4}>{k === 0 ? t("team.ideaResponsible") : t("team.ideaNextInLine")}</span>
+                        <span className={s.text}>
+                          <span className={s.person}>
+                            <span className={s.initials2} data-avatar={avatarTone(r.name)} aria-hidden="true">{initialsOf(r.name)}</span>
+                            <span>{r.name}{r.role ? " · " + r.role : ""}<span className={s.why}>{r.why}</span></span>
+                          </span>
+                        </span>
+                      </Fragment>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className={s.sec}>
+              )}
+              <div className={s.sec} data-tone="affects">
                 <span className={s.dept}>{t("team.ideaAffects")}</span>
                 {/* One row per team or person, with why it is affected where the analysis said so. */}
                 <ul className={s.list}>
@@ -138,7 +147,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                 </ul>
               </div>
               {/* The context and its facts are one section: the paragraph, then the grouped facts. */}
-              <div className={s.sec}>
+              <div className={s.sec} data-tone="context">
                 <span className={s.dept}>{t("team.ideaContext")}</span>
                 <p className={s.context}>{brief.context || "—"}</p>
                 {brief.prompts.length > 0 && (

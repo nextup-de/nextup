@@ -1,8 +1,9 @@
-// One project: board, team, baseline, measure checks, reward, links, comments and its timeline.
+// One project: board, team, baseline, measure checks, reward, links, comments and its timeline, in tabs (?tab=).
 // The company's Jira state is read here, on the server, as the plain JiraStatusView (no secrets);
 // the static demo and a missing database give null and the page then shows Jira as off or simulated.
 import { ProjectView } from "@/components/projects/ProjectView";
 import { jiraStatusView } from "@/features/integrations/jira/view";
+import { projectTabOf } from "@/features/projects/tabs";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { hasDatabase } from "@/lib/db/client";
 import { findCompanyBySlug } from "@/lib/db/companies";
@@ -23,7 +24,11 @@ async function jiraOf(slug: string | undefined): Promise<JiraStatusView | null> 
   }
 }
 
-export default async function ProjectPage({ params }: { params: Promise<{ company?: string; projectId: string }> }) {
+export default async function ProjectPage({ params, searchParams }: {
+  params: Promise<{ company?: string; projectId: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
+}) {
   const { company, projectId } = await params;
-  return <ProjectView key={projectId} projectId={projectId} jira={await jiraOf(company)} />;
+  const tab = projectTabOf((await searchParams).tab);
+  return <ProjectView key={projectId} projectId={projectId} jira={await jiraOf(company)} tab={tab} />;
 }

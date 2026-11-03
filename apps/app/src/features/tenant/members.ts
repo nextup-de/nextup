@@ -39,3 +39,11 @@ export function roleChangeProblem(people: readonly Member[], actorId: string, ta
   if (target.role === "manager" && managers <= 1) return "This is the only manager. Make someone else a manager first.";
   return null;
 }
+
+/** Why this person may not be switched on again, or null when they may. Only someone inactive, never oneself. */
+export function reactivateProblem(target: { name: string; active: boolean } | null, isSelf: boolean): string | null {
+  if (!target) return "No such person in this company.";
+  if (isSelf) return "You can't reactivate yourself.";
+  if (target.active) return `${target.name} is active already.`;
+  return null;
+}

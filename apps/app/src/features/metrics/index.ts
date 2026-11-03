@@ -1,9 +1,8 @@
-// Everything counted from the rows: rail counts, funnel, KPIs, contributors, the wait ledger.
+// Everything counted from the rows: rail counts, people, search helpers. No per-person ranking.
 // Pure functions over seed + reduced state. Nothing here touches React or the database.
 // Port of the counting half of legacy/demo/js/dashboard.js renderVals().
 import type { ReducedCase, ReducedIdea, ReducedProblem, State } from "@/features/cases/reducer";
 import type { Buddy, Initiative, Outcome, OrgPerson, Seed, Stall, WaitingOn } from "@/features/demo/types";
-import type { T } from "@/i18n";
 
 export function median(values: readonly number[]): number | null {
   if (values.length === 0) return null;
@@ -76,64 +75,9 @@ export function people(D: DemoData): Person[] {
   return Object.keys(map).sort().map((k) => map[k]);
 }
 
-// Progress -> "Most relied-on contributors", tallied from signals, ideas and teams.
-export type Contributor = { name: string; dept: string; signals: number; ideas: number; shipped: number; building: number; awaiting: number };
-
-export function contributors(D: DemoData, handle: string | null): Contributor[] {
-  const tally: Record<string, Contributor> = {};
-  const person = (name: string | undefined, dept: string) => {
-    if (!name || name === "—") return null;
-    const k = name.trim();
-    if (!tally[k]) tally[k] = { name: k, dept: dept || "", signals: 0, ideas: 0, shipped: 0, building: 0, awaiting: 0 };
-    if (dept && !tally[k].dept) tally[k].dept = dept;
-    return tally[k];
-  };
-  D.problems.forEach((p) => p.signals.forEach((sg) => {
-    const parts = sg.by.split(" · ");
-    const r = person(parts[0], (parts[1] ?? "").replace(/,.*$/, ""));
-    if (r) r.signals++;
-  }));
-  D.ideas.forEach((i) => {
-    const parts = i.proposedBy.split(", ");
-    const r = /^\d+ people/.test(i.proposedBy) ? null : person(parts[0], parts[1] ?? "");
-    if (r) r.ideas++;
-  });
-  D.initiatives.forEach((t) => t.members.forEach((m) => {
-    const r = person(m.name, /^proposed/.test(m.role) ? "" : m.role);
-    if (!r) return;
-    if (t.status === "Shipped") r.shipped++;
-    else if (t.status === "Awaiting decision") r.awaiting++;
-    else if (t.people > 0) r.building++;
-  }));
-  return Object.values(tally)
-    .filter((r) => (r.signals + r.ideas > 0 && !r.name.startsWith("Anonymous")) || r.name === handle)
-    .sort((a, b) => b.signals + b.ideas + b.shipped - (a.signals + a.ideas + a.shipped))
-    .slice(0, 5);
-}
-
-// Progress -> "Stuck the longest": waiting or unfunded ideas, longest first.
-export const stalled = (D: DemoData) =>
-  D.ideas.filter((i) => i.status === "Awaiting decision" || i.status === "Unfunded")
-    .sort((a, b) => (b.wait || 0) - (a.wait || 0) || (a.status === "Unfunded" ? 1 : -1));
-
 // Overview -> "Answer owed": ideas awaiting a decision, longest wait first.
 export const decisionsWaiting = (D: DemoData) =>
   D.ideas.filter((i) => i.status === "Awaiting decision").sort((a, b) => b.wait - a.wait);
-
-export type FunnelStep = { n: number; label: string; sub: string; pct: number; note: string; gate: boolean };
-
-export function funnel(N: Counts, t: T): FunnelStep[] {
-  const top = Math.max(1, N.signals);
-  const w = (x: number) => Math.round((x / top) * 100);
-  return [
-    { n: N.signals, label: t("dashboard.funnelSignals"), sub: t("dashboard.funnelSignalsSub"), pct: w(N.signals), note: "", gate: false },
-    { n: N.problems, label: t("dashboard.funnelProblems"), sub: t("dashboard.funnelProblemsSub"), pct: w(N.problems), note: "", gate: false },
-    { n: N.ideas, label: t("dashboard.funnelIdeas"), sub: t("dashboard.funnelIdeasSub"), pct: w(N.ideas), note: "", gate: false },
-    { n: N.funded, label: t("dashboard.funnelFunded"), sub: t("dashboard.funnelFundedSub", { n: N.ideas - N.funded }), pct: w(N.funded),
-      note: t("dashboard.funnelFundedNote"), gate: true },
-    { n: N.shippedIdeas, label: t("dashboard.funnelShipped"), sub: t("dashboard.funnelShippedSub", { n: N.funded - N.shippedIdeas }), pct: w(N.shippedIdeas), note: "", gate: false },
-  ];
-}
 
 // Seed reads "6 of 54" (or a bare percentage); every live override adds one to both sides.
 export function overridesLabel(seedValue: string, live: number): string {
