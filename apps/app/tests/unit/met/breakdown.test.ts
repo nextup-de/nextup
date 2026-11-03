@@ -74,7 +74,7 @@ describe("MET breakdown", () => {
     const rows = breakdown(input(), period, "unit");
     const en = breakdownCsv(rows, "en", createT("en")).trim().split("\n");
     const de = breakdownCsv(rows, "de", createT("de")).trim().split("\n");
-    expect(en[0]).toBe("Unit or role;Cases;First reasoned answer (days, median);On time (%);Past the promise;Escalated");
+    expect(en[0]).toBe("Unit or role;Cases;First reasoned answer (days, median);On time (%);Open cases past promise;Escalated");
     expect(en[1]).toBe('"Plant; North";4;2;75;0;1');
     expect(en[2]).toBe("quality;too few;too few;too few;too few;too few");
     expect(de[0].startsWith("Einheit oder Rolle;Fälle;")).toBe(true);
