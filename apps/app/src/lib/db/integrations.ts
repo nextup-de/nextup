@@ -4,7 +4,12 @@
 // go in here sealed and come out only through integrationSecrets(), for the sync that opens them;
 // every other reader gets a "has a token" boolean and nothing more.
 import { Prisma } from "@prisma/client";
-import { getDb } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
+import { auditChanges, type AuditChanges } from "@/features/audit";
+import { parseJiraSettings } from "@/features/integrations/jira/settings";
+
+/** The client of a `getDb().$transaction(async (tx) => …)`; a helper given one writes inside that transaction. */
+export type Tx = Parameters<Parameters<Db["$transaction"]>[0]>[0];
 
 export const JIRA = "jira";
 
@@ -73,7 +78,7 @@ export async function saveIntegration(p: {
   webhookSecretSealed?: string | null;
   account?: unknown;
   updatedBy: string | null;
-}): Promise<void> {
+}, client: Tx | Db = getDb()): Promise<void> {
   const settings = p.settings as Prisma.InputJsonValue;
   const account = p.account === undefined ? undefined : p.account === null ? Prisma.DbNull : (p.account as Prisma.InputJsonValue);
   const data = {
@@ -84,7 +89,7 @@ export async function saveIntegration(p: {
     updatedBy: p.updatedBy,
     lastError: null,
   };
-  await getDb().integration.upsert({
+  await client.integration.upsert({
     where: where(p.companyId, p.system),
     create: { companyId: p.companyId, system: p.system, ...data },
     update: data,
@@ -96,10 +101,10 @@ export async function saveIntegration(p: {
  * themselves) and clears the last error; the cursors stay, because repeating a push is safe. False
  * when there is no row to switch.
  */
-export async function setIntegrationOn(companyId: string, system: string, on: boolean, updatedBy: string | null, now = new Date()): Promise<boolean> {
-  const before = await getDb().integration.findUnique({ where: where(companyId, system), select: { on: true } });
+export async function setIntegrationOn(companyId: string, system: string, on: boolean, updatedBy: string | null, now = new Date(), client: Tx | Db = getDb()): Promise<boolean> {
+  const before = await client.integration.findUnique({ where: where(companyId, system), select: { on: true } });
   if (!before) return false;
-  await getDb().integration.update({
+  await client.integration.update({
     where: where(companyId, system),
     data: on
       ? { on: true, ...(before.on ? {} : { enabledAt: now }), lastError: null, leaseUntil: null, updatedBy }
@@ -109,8 +114,8 @@ export async function setIntegrationOn(companyId: string, system: string, on: bo
 }
 
 /** Remove the integration row (secrets included). True when there was one. */
-export async function deleteIntegration(companyId: string, system: string): Promise<boolean> {
-  const r = await getDb().integration.deleteMany({ where: { companyId, system } });
+export async function deleteIntegration(companyId: string, system: string, client: Tx | Db = getDb()): Promise<boolean> {
+  const r = await client.integration.deleteMany({ where: { companyId, system } });
   return r.count > 0;
 }
 
@@ -163,4 +168,24 @@ export async function recordRun(
         ...(r.account ? { account: r.account } : {}),
       };
   await getDb().integration.updateMany({ where: { companyId, system }, data });
+}
+
+/**
+ * What a Jira save changed, for the audit row (GDP D12). The token and the integration account's email are
+ * secret fields: they show only as set, replaced or removed (D5, D9). `newSealed` is the sealed token of this
+ * save, or undefined when the token was left alone.
+ */
+export function jiraSaveChanges(
+  existing: IntegrationInfo | null,
+  settings: Record<string, unknown>,
+  newSealed: string | undefined,
+): AuditChanges {
+  const old = existing ? parseJiraSettings(existing.settings) : null;
+  const before = old?.ok ? { ...old.settings } : {};
+  const had = existing?.hasSecret ? "sealed" : null;
+  return auditChanges(
+    existing ? { ...before, token: had } : null,
+    { ...settings, token: newSealed !== undefined ? `new:${newSealed}` : had },
+    ["token", "email"],
+  );
 }

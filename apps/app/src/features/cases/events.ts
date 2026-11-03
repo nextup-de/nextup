@@ -3,6 +3,8 @@
 // Every event may also carry actorUserId (the person behind `actor`; null for system actors) and
 // the id fields next to the label fields above (docs/IDENTITY.md). Labels are for display only.
 // Never store display text as state: store who / which day / which route; build sentences at render.
+import type { MeasureImpact, MeasureSource } from "@/features/projects/measure-source";
+
 export type CaseEventType =
   | "case.raised" // { title, body, routeId, assignee, assigneeRoleHolderId?, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy? }
   | "case.read" // -
@@ -38,6 +40,7 @@ export type CaseEventType =
   | "project.sync" // { system: 'jira', on }  send the project to Jira / stop syncing it; lead or manager, while the project is open
   | "project.done" // { note? }  the measure checks start counting
   | "project.measured" // { check, value, source, note? }  the verdict is computed, never sent
+  | "project.measure.confirmed" // { check }  a second person confirms a typed measure (LOOP/D18)
   | "project.rewarded" // { rule, amount?, note? }
   | "project.claimed" // -  an anonymous author takes their reward
   | "project.stopped" // { why }
@@ -91,11 +94,12 @@ export type EventPayload = {
   projectId?: string; // case.decided yes: the project it opens or joins
   lead?: string; // case.decided yes: who leads it
   name?: string; on?: boolean; // project.member
-  metric?: string; unit?: string; value?: number; better?: "up" | "down"; source?: string; none?: boolean; // project.baseline, project.measured (value, source)
+  metric?: string; unit?: string; value?: number; better?: "up" | "down"; source?: string | MeasureSource; none?: boolean; // project.baseline, project.measured (value, source)
   stepId?: string; owner?: string; dueDay?: number | null; // project.step.*, project.linked (stepId)
   before?: string | null; removed?: boolean; // project.step.moved (before), project.step.edited (removed)
   external?: { system: string; key: string; url?: string }; // project.step.added from a connector
   system?: string; url?: string; key?: string; // project.linked, project.sync (system; on is above)
+  impact?: MeasureImpact; // project.measured (LOOP/D20)
   check?: number; // project.measured: days after done (30, 90)
   rule?: string; amount?: number; // project.rewarded
   // Ids next to the labels above (IDN/D5); the label fields stay for display.

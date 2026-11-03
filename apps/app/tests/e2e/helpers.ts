@@ -61,8 +61,8 @@ export async function answerCoach(page: Page, text: string) {
 }
 
 /**
- * "Publish idea", the last look before it goes out (its preview window) and "Find receiver",
- * then "Who should get this?": pick `to` among the suggestions, or find them under "Choose someone else".
+ * "Publish idea", the last look before it goes out (its preview window) and "Choose a desk",
+ * then "Where should it go?": pick the desk whose title or holders name `to`, or find it under "Choose another desk".
  * Waits until the case is raised (the chat offers "Open the case").
  * On a phone the sidebar is a drawer, opened first. An already open preview goes straight on.
  */
@@ -73,17 +73,19 @@ export async function publishTo(page: Page, to: string) {
     if (await show.isVisible()) await show.click();
     await page.getByRole("button", { name: "Publish idea" }).click();
   }
-  await look.getByRole("button", { name: /Find receiver/ }).click({ timeout: 30_000 });
-  const who = page.getByRole("dialog", { name: "Who should get this?" });
+  await look.getByRole("button", { name: /Choose a desk/ }).click({ timeout: 30_000 });
+  const who = page.getByRole("dialog", { name: "Where should it go?" });
   await expect(who).toBeVisible({ timeout: 30_000 });
   const offered = who.getByRole("radio").filter({ hasText: to }); // by its text: no pattern built from the name
   if (await offered.count()) await offered.first().click();
   else {
-    await who.getByRole("button", { name: /Choose someone else/ }).click();
-    await who.getByRole("textbox", { name: "Search people" }).fill(to);
+    await who.getByTestId("raise-desk-other").getByRole("button").first().click();
+    await who.getByRole("textbox").fill(to);
     await who.getByRole("button").filter({ hasText: to }).first().click();
   }
-  await who.getByRole("button", { name: "Send to " + to }).click();
+  await who.getByTestId("raise-send").click();
+  await expect(who.getByTestId("raise-sent")).toBeVisible({ timeout: 30_000 });
+  await who.getByRole("button", { name: "Close", exact: true }).last().click(); // the footer's
   await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
 }
 
