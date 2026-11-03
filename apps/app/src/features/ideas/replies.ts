@@ -1,16 +1,18 @@
 // Suggested answers under the coach's question: whole sentences the author can send as they are
 // or edit first. Built from the company's own facts (its goals, its routing map, the team spend
-// limit), and each one is re-scored before it is offered - a suggestion that would not move the
-// score is never shown, and the gain shown next to it is the real one. Pure.
+// limit) and offered for a bar that still has a missing part. They are not ranked or filtered by
+// score gain (HD16): the order is the bar the coach asked, then the fixed bar order; each says
+// where it came from (`source`). Pure.
 import { words } from "@/features/evaluate";
 import { proposeRoute } from "@/features/routing";
 import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
 import { formatEuro } from "@/i18n/format";
-import { benchmark, weakest, type Benchmark, type BenchmarkContext, type BenchmarkId, type IdeaInput } from "./benchmarks";
+import { weakest, type Benchmark, type BenchmarkContext, type BenchmarkId, type IdeaInput } from "./benchmarks";
 
-export type Reply = { id: BenchmarkId; text: string; gain: number };
+export type Reply = { id: BenchmarkId; text: string; source: "company" | "ai" };
 
 const MAX_REPLIES = 3;
+const BAR_ORDER: readonly BenchmarkId[] = ["fit", "impact", "feasibility", "clarity"];
 
 // Items in `list` ordered by how many words they share with the idea, best first; ties keep order.
 function byOverlap<T>(idea: string, list: readonly T[], of: (t: T) => string): T[] {
@@ -50,16 +52,16 @@ function candidates(idea: IdeaInput, now: Benchmark, ctx: BenchmarkContext, loca
   return out;
 }
 
-// Up to three answers that each raise the score, at most one per bar so the author gets a real
-// choice. Within a bar the most relevant candidate wins (the order above), not the biggest gain;
-// across bars the one the coach just asked about comes first, then the biggest gain.
+// Up to three answers, at most one per bar, for bars that still have a missing part. Within a bar
+// the most relevant candidate wins (the order above). Across bars the one the coach just asked
+// about comes first, then the fixed bar order. Never sorted or filtered by score gain (HD16).
 export function suggestReplies(idea: IdeaInput, now: Benchmark, ctx: BenchmarkContext, locale: Locale = DEFAULT_LOCALE): Reply[] {
+  const open = new Set(now.parts.filter((p) => p.missing.length > 0).map((p) => p.id));
   const best = new Map<BenchmarkId, Reply>();
   for (const c of candidates(idea, now, ctx, locale)) {
-    if (best.has(c.id)) continue;
-    const gain = benchmark({ ...idea, text: (idea.text + "\n" + c.text).trim() }, ctx, locale).overall - now.overall;
-    if (gain > 0) best.set(c.id, { ...c, gain });
+    if (open.has(c.id) && !best.has(c.id)) best.set(c.id, { ...c, source: "company" });
   }
   const asked = weakest(now)?.id;
-  return [...best.values()].sort((a, b) => Number(b.id === asked) - Number(a.id === asked) || b.gain - a.gain).slice(0, MAX_REPLIES);
+  const order = asked ? [asked, ...BAR_ORDER.filter((id) => id !== asked)] : BAR_ORDER;
+  return order.flatMap((id) => best.get(id) ?? []).slice(0, MAX_REPLIES);
 }
