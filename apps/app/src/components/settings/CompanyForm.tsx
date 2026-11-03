@@ -1,8 +1,9 @@
 "use client";
 // /settings/company: name, mark and the profile. Props in, the action out; no fetching here.
 import { useActionState, useState } from "react";
-import { useT } from "@/i18n/client";
+import { useFormat, useT } from "@/i18n/client";
 import type { CompanyForm as Values } from "@/features/settings/company-forms";
+import type { LastSaved } from "@/features/settings/last-saved";
 import { saveCompanyAction, type SettingsFormState } from "@/server/actions/settings/company";
 import { Card, Foot, Row } from "./SettingsParts";
 import s from "./settings.module.css";
@@ -48,14 +49,16 @@ function Principles({ initial, invalid }: { initial: string[]; invalid: boolean 
   );
 }
 
-export function CompanyForm({ slug, values, address, demo }: { slug: string; values: Values; address: string; demo?: boolean }) {
+export function CompanyForm({ slug, values, address, demo, lastSaved }: { slug: string; values: Values; address: string; demo?: boolean; lastSaved?: LastSaved | null }) {
   const t = useT();
+  const format = useFormat();
   const [state, act, pending] = useActionState<SettingsFormState, FormData>(saveCompanyAction, {});
   const [mark, setMark] = useState(values.mark);
   const err = (f: string) => (state.field === f && state.error ? t(state.error) : undefined);
   const p = values.profile;
   const formError = state.error && !state.field ? t(state.error) : undefined;
-  const status = formError ?? (state.ok ? t("settingsCompany.saved") : demo ? t("settingsCompany.demoData") : undefined);
+  const saved = lastSaved ? t("settingsCompany.lastSaved", { date: format.date(lastSaved.at, "dayMonth"), name: lastSaved.name ?? t(lastSaved.kindKey) }) : undefined;
+  const status = formError ?? (state.ok ? t("settingsCompany.saved") : demo ? t("settingsCompany.demoData") : saved);
   const save = (tid?: string) => (
     <button className={s.save} type="submit" disabled={pending || demo} data-testid={tid}>
       {pending ? t("settingsCompany.saving") : t("settingsCompany.save")}

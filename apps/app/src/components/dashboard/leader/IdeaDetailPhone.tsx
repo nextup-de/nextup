@@ -129,7 +129,7 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
             ))}
           </div>
           <span className={styles.hint}>{t("leader.tapScore")}</span>
-          <AiBrief brief={brief} srcId={uid + "-ai"} foldSources />
+          <AiBrief brief={brief} srcId={uid + "-ai"} />
         </section>
 
         {/* ── Feed ── */}
@@ -196,7 +196,7 @@ function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { b
             <p className={base.leadPara}>{s.note}</p>
           </div>
           <Blocks blocks={s.blocks} srcId={srcId} />
-          <Sources id={srcId} list={s.sources} fold />
+          <Sources id={srcId} list={s.sources} />
         </div>
       </>
     );

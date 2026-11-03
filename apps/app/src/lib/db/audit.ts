@@ -73,3 +73,8 @@ export async function listAudit(companyId: string, p: AuditPage): Promise<AuditR
 export async function countAudit(companyId: string, filter: AuditFilter = {}): Promise<number> {
   return getDb().auditEvent.count({ where: whereOf(companyId, filter) });
 }
+
+/** The newest row of one action, or null. For "last saved … by …" lines. */
+export async function lastAudit(companyId: string, action: string): Promise<AuditRow | null> {
+  return getDb().auditEvent.findFirst({ where: { companyId, action }, orderBy: [{ at: "desc" }, { id: "desc" }] });
+}

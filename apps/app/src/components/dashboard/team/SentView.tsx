@@ -9,6 +9,9 @@ import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { askedForView, mineRows } from "@/components/dashboard/derive";
 import { Pill, statusTone, type Tone } from "@/components/dashboard/shared/primitives";
+import { useCaseNames } from "@/components/cases/useCaseNames";
+import { answerPromise } from "@/features/cases/promise";
+import { owedLine, promiseText } from "@/features/cases/promise-text";
 import { roundState } from "@/features/cases/discussion";
 import type { MineRow, MineStatus } from "@/features/cases/rows";
 import styles from "./SentView.module.css";
@@ -37,6 +40,7 @@ export function SentView() {
   const ctx = useDemo();
   const label = (map: Partial<Record<string, MessageKey>>, k: string) => { const key = map[k]; return key ? t(key) : k; };
   const { seed, S, ready, href, openSheet, f } = ctx;
+  const names = useCaseNames();
   if (!ready) return <PageSkeleton kind="list" delay />;
 
   const P = seed.promiseDays;
@@ -106,6 +110,19 @@ export function SentView() {
             </ol>
 
             {/* Where it stands right now, in one sentence; then what the other side actually said. */}
+            {(() => {
+              const c = S.cases.find((x) => x.id === m.id);
+              if (m.kind !== "case" || !c) return null;
+              const p = answerPromise(c, { today: S.day, clock: seed.clock });
+              const pn = { holderRole: names.roleTitle(p.holderRoleId), holderPeople: names.peopleOf(p.holderRoleId, p.holderSeatId), escalatedRole: p.escalatedRoleId ? names.roleTitle(p.escalatedRoleId) : null, date: f, today: S.day };
+              const text = promiseText(p, pn, t);
+              return (
+                <p className={styles.sub} data-testid="sent-promise">
+                  {t("loopCase.withLabel")} · {text.with}<br />
+                  {owedLine(p, pn, t)}{text.note ? " · " + text.note : ""}
+                </p>
+              );
+            })()}
             <p className={styles.now} data-overdue={m.overdue ? "true" : undefined}>{m.clock}</p>
             <div className={styles.reply}>
               <p className={styles.replyText}>{m.reply}</p>
