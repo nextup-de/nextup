@@ -63,7 +63,23 @@ export function CalendarForm({ slug, calendar, holidays, nextOff, demo }: {
 }) {
   const t = useT();
   const fmt = useIsoFormat(false);
-  const [state, act, pending] = useActionState<SettingsFormState, FormData>(saveCalendarAction, {});
+  const fmtYear = useIsoFormat(true);
+  // A save started by adding or removing an extra day shows a toast; after a removal it offers Undo.
+  const [toast, setToast] = useState<{ removed: { list: "off" | "work"; date: string } | null } | null>(null);
+  const auto = useRef(false);
+  const lastRemoved = useRef<{ list: "off" | "work"; date: string } | null>(null);
+  const [state, act, pending] = useActionState<SettingsFormState, FormData>(async (prev, f) => {
+    const wasAuto = auto.current;
+    auto.current = false;
+    const r = await saveCalendarAction(prev, f);
+    setToast(r.ok && wasAuto ? { removed: lastRemoved.current } : null);
+    return r;
+  }, {});
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(id);
+  }, [toast]);
   const err = (f: string) => (state.field === f && state.error ? t(state.error) : undefined);
   const [year, setYear] = useState(holidays[0]?.year);
   const [extraOff, setExtraOff] = useState(calendar.extraHolidays);
@@ -72,10 +88,23 @@ export function CalendarForm({ slug, calendar, holidays, nextOff, demo }: {
   const form = useRef<HTMLFormElement>(null);
   const changed = useRef(false);
   useEffect(() => {
-    if (changed.current && !demo) form.current?.requestSubmit();
+    if (changed.current && !demo) {
+      auto.current = true;
+      form.current?.requestSubmit();
+    }
     changed.current = false;
   }, [extraOff, extraWork, demo]);
-  const edit = (set: (d: string[]) => void) => (next: string[]) => { changed.current = true; set(next); };
+  const edit = (list: "off" | "work", before: string[], set: (d: string[]) => void, next: string[]) => {
+    changed.current = true;
+    lastRemoved.current = next.length < before.length ? { list, date: before.find((d) => !next.includes(d)) ?? "" } : null;
+    set(next);
+  };
+  const undo = () => {
+    const r = toast?.removed;
+    if (!r) return;
+    const [list, set] = r.list === "off" ? [extraOff, setExtraOff] : [extraWork, setExtraWork];
+    edit(r.list, list, set, [...list, r.date].sort());
+  };
 
   const formError = state.error && !state.field ? t(state.error) : undefined;
   const fieldError = err("extraHolidays") ?? err("extraWorkdays");
@@ -126,8 +155,8 @@ export function CalendarForm({ slug, calendar, holidays, nextOff, demo }: {
         </Card>
       ) : null}
 
-      <DateList title={t("settingsCompany.cardExtraOff")} addLabel={t("settingsCompany.addDayOff")} name="extraHolidays" dates={extraOff} onChange={edit(setExtraOff)} tid="extra-holidays" />
-      <DateList title={t("settingsCompany.cardExtraWork")} addLabel={t("settingsCompany.addWorkday")} name="extraWorkdays" dates={extraWork} onChange={edit(setExtraWork)} tid="extra-workdays" />
+      <DateList title={t("settingsCompany.cardExtraOff")} addLabel={t("settingsCompany.addDayOff")} name="extraHolidays" dates={extraOff} onChange={(next) => edit("off", extraOff, setExtraOff, next)} tid="extra-holidays" />
+      <DateList title={t("settingsCompany.cardExtraWork")} addLabel={t("settingsCompany.addWorkday")} name="extraWorkdays" dates={extraWork} onChange={(next) => edit("work", extraWork, setExtraWork, next)} tid="extra-workdays" />
 
       {nextOff.length ? (
         <Card title={t("settingsCompany.cardNextOff")}>
@@ -140,6 +169,12 @@ export function CalendarForm({ slug, calendar, holidays, nextOff, demo }: {
             ))}
           </dl>
         </Card>
+      ) : null}
+      {toast ? (
+        <div className={s.toast} role="status" data-testid="settings-calendar-toast">
+          <span>{toast.removed ? t("settingsCompany.savedRemoved", { date: fmtYear(toast.removed.date) }) : t("settingsCompany.saved")}</span>
+          {toast.removed ? <button type="button" className={s.toastAction} onClick={undo} disabled={pending} data-testid="settings-calendar-undo">{t("settingsCompany.undo")}</button> : null}
+        </div>
       ) : null}
     </form>
   );
