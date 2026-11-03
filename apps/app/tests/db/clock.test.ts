@@ -89,6 +89,8 @@ describe("CLK acceptance: deadline hands to the deputy once on the right working
     for (const day of [...JUN(2, 12), ...JUN_13_TO_19]) await runClockOnce(at9(day));
     expect(await facts()).toHaveLength(1);
     const { c } = await reduced(at9("2026-06-19"));
-    expect(c.escalated).not.toBeNull();
+    // LOOP-R1: the scheduler has handed the case to the deputy seat by now, which ends the escalation.
+    expect(c.escalated).toBeNull();
+    expect(c.assigneeRoleId).toBe(c.route?.deputyRoleId);
   });
 });
