@@ -61,3 +61,10 @@ export const SAMPLE_KNOWLEDGE: Knowledge = {
     { id: "g-2", orgUnitId: "u-asm", parentId: "g-1", title: "OEE 85 %", kpi: "OEE", target: "85 %", period: "Q4 2026", keywords: ["oee"], sort: 0 },
   ],
 };
+
+/** The people the sample seats link to. */
+export const SAMPLE_MEMBERS: { id: string; name: string }[] = [
+  { id: "demo-ak", name: "Aylin Kaya" },
+  { id: "demo-hs", name: "Hanna Sander" },
+  { id: "demo-jw", name: "Jonas Weber" },
+];

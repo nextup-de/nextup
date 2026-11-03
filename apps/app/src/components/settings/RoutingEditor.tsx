@@ -33,7 +33,7 @@ function KeywordInput({ initial, invalid }: { initial: string[]; invalid: boolea
     setDraft("");
   };
   return (
-    <div className={r.words} data-invalid={invalid || undefined}>
+    <div className={s.words} data-invalid={invalid || undefined}>
       <input type="hidden" name="keywords" value={[...words, ...splitWords(draft)].join(",")} />
       {words.map((w) => (
         <span key={w} className={s.chip}>
@@ -42,7 +42,7 @@ function KeywordInput({ initial, invalid }: { initial: string[]; invalid: boolea
         </span>
       ))}
       <input
-        className={r.wordInput}
+        className={s.wordInput}
         value={draft}
         placeholder={t("settingsOrg.addWord")}
         aria-label={t("settingsOrg.keywords")}
@@ -105,12 +105,12 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
 
   const who = (id: string | null, empty: string) => {
     const x = role(id);
-    if (!x) return <span className={r.mute}>–{empty ? <><br />{empty}</> : null}</span>;
+    if (!x) return <span className={s.mute}>–{empty ? <><br />{empty}</> : null}</span>;
     const line = seatLine(k, x.id);
     return (
       <>
         <span className={r.cellMain}>{x.title}</span>
-        {line ? <span className={r.cellSub}>{line}</span> : <span className={r.vacant}>{t("settingsOrg.vacant")}</span>}
+        {line ? <span className={r.cellSub}>{line}</span> : <span className={s.vacant}>{t("settingsOrg.vacant")}</span>}
       </>
     );
   };
@@ -131,7 +131,7 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
   return (
     <div className={s.page} data-testid="settings-routing">
       {showHead ? (
-        <div className={r.headRow}>
+        <div className={s.headRow}>
           <SettingsHead title={t("settingsOrg.routingTitle")} lede={t("settingsOrg.routeSummary", { routes: String(sum.routes), vacant: String(sum.vacantOwners), noDeputy: String(sum.noDeputy) })} />
           {addButton}
         </div>
@@ -152,11 +152,11 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
               <>
                 <span aria-hidden="true">→</span>
                 <div>
-                  <div><strong>{hit.type}</strong> <span className={r.mute}>· {t("settingsOrg.routeHits", { n: String(hits), pct: String(proposal.confidence) })}</span></div>
-                  <div className={r.mute}>{[role(hit.ownerRoleId)?.title, seatLine(k, hit.ownerRoleId)].filter(Boolean).join(" · ")}</div>
+                  <div><strong>{hit.type}</strong> <span className={s.mute}>· {t("settingsOrg.routeHits", { n: String(hits), pct: String(proposal.confidence) })}</span></div>
+                  <div className={s.mute}>{[role(hit.ownerRoleId)?.title, seatLine(k, hit.ownerRoleId)].filter(Boolean).join(" · ")}</div>
                 </div>
               </>
-            ) : <span className={r.mute}>{t("settingsOrg.routeTestNone")}</span>}
+            ) : <span className={s.mute}>{t("settingsOrg.routeTestNone")}</span>}
           </div>
         ) : null}
       </section>
@@ -191,15 +191,15 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
                 <div role="cell" className={r.cell} data-label={t("settingsOrg.colDeputy")}>{who(rule.deputyRoleId, t("settingsOrg.managerChain"))}</div>
                 <div role="cell" className={r.cell} data-label={t("settingsOrg.colBuddy")}>{who(rule.buddyRoleId, "")}</div>
                 <div role="cell" className={r.wait} data-label={t("settingsOrg.colWait")}>{rule.wait || "–"}</div>
-                <details className={r.menu}>
+                <details className={s.rowMenu}>
                   <summary aria-label={t("settingsOrg.routeMenu", { name: rule.type })} data-testid={`settings-routing-menu-${rule.key}`}>···</summary>
-                  <div className={r.menuList}>
+                  <div className={s.menuList}>
                     <button type="button" onClick={(e) => { closeMenu(e.currentTarget); openDrawer(rule); }}>{t("settingsOrg.edit")}</button>
                     <button type="button" disabled={pending || i === 0} data-testid={`settings-routing-up-${rule.key}`}
                       onClick={(e) => { closeMenu(e.currentTarget); run(() => moveRouteAction(slug, rule.id, "up")); }}>{t("settingsOrg.moveUp")}</button>
                     <button type="button" disabled={pending || i === rules.length - 1} data-testid={`settings-routing-down-${rule.key}`}
                       onClick={(e) => { closeMenu(e.currentTarget); run(() => moveRouteAction(slug, rule.id, "down")); }}>{t("settingsOrg.moveDown")}</button>
-                    <button type="button" className={r.danger} data-testid={`settings-routing-remove-${rule.key}`}
+                    <button type="button" className={s.danger} data-testid={`settings-routing-remove-${rule.key}`}
                       onClick={(e) => { closeMenu(e.currentTarget); setDeleting(rule); }}>{t("settingsOrg.delete")}</button>
                   </div>
                 </details>
@@ -211,13 +211,13 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
       {rules.length ? <p className={r.foot}>{t("settingsOrg.routeFoot")}</p> : null}
 
       {deleting ? (
-        <div className={r.scrim} onClick={() => setDeleting(null)}>
-          <div className={r.dialog} role="alertdialog" aria-modal="true" aria-labelledby="route-delete-title" onClick={(e) => e.stopPropagation()}>
+        <div className={s.scrim} onClick={() => setDeleting(null)}>
+          <div className={s.dialog} role="alertdialog" aria-modal="true" aria-labelledby="route-delete-title" onClick={(e) => e.stopPropagation()}>
             <h2 id="route-delete-title" className={s.cardTitle}>{t("settingsOrg.deleteAsk", { name: deleting.type })}</h2>
-            <p className={r.dialogText}>{t("settingsOrg.deleteText")}</p>
-            <div className={r.dialogButtons}>
+            <p className={s.dialogText}>{t("settingsOrg.deleteText")}</p>
+            <div className={s.dialogButtons}>
               <button type="button" className={s.soft} onClick={() => setDeleting(null)}>{t("settingsOrg.cancel")}</button>
-              <button type="button" className={r.dangerBtn} disabled={pending || demo} data-testid="settings-routing-delete-yes"
+              <button type="button" className={s.dangerBtn} disabled={pending || demo} data-testid="settings-routing-delete-yes"
                 onClick={() => run(() => removeRouteAction(slug, deleting.id), () => { setDeleting(null); setOpen(null); })}>{t("settingsOrg.deleteRoute")}</button>
             </div>
           </div>
@@ -225,27 +225,27 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
       ) : null}
 
       {open ? (
-        <div className={r.scrim} onClick={() => setOpen(null)}>
-          <form key={editing?.id ?? "new"} className={r.drawer} role="dialog" aria-modal="true" aria-labelledby="route-drawer-title"
+        <div className={s.scrim} onClick={() => setOpen(null)}>
+          <form key={editing?.id ?? "new"} className={s.drawer} role="dialog" aria-modal="true" aria-labelledby="route-drawer-title"
             onClick={(e) => e.stopPropagation()} onSubmit={submit} data-testid={editing ? `settings-routing-drawer-${editing.key}` : "settings-routing-new"}>
-            <div className={r.drawerHead}>
-              <h2 id="route-drawer-title" className={r.drawerTitle}>{editing ? editing.type : t("settingsOrg.newRoute")}</h2>
-              <button type="button" className={r.close} aria-label={t("settingsOrg.close")} onClick={() => setOpen(null)}>×</button>
+            <div className={s.drawerHead}>
+              <h2 id="route-drawer-title" className={s.drawerTitle}>{editing ? editing.type : t("settingsOrg.newRoute")}</h2>
+              <button type="button" className={s.close} aria-label={t("settingsOrg.close")} onClick={() => setOpen(null)}>×</button>
             </div>
-            <div className={r.drawerBody}>
-              <label className={r.field}>
+            <div className={s.drawerBody}>
+              <label className={s.field}>
                 <span className={s.label}>{t("settingsOrg.routeType")}</span>
                 <input className={s.input} name="type" defaultValue={editing?.type ?? ""} required maxLength={120} autoFocus
                   aria-invalid={Boolean(fieldErr("settingsOrg.errRouteType")) || undefined} data-testid="settings-routing-type" />
                 {fieldErr("settingsOrg.errRouteType") ? <span className={s.fieldError}>{fieldErr("settingsOrg.errRouteType")}</span> : null}
               </label>
-              <div className={r.field}>
+              <div className={s.field}>
                 <span className={s.label}>{t("settingsOrg.keywords")}</span>
                 <KeywordInput initial={editing?.keywords ?? []} invalid={Boolean(fieldErr("settingsOrg.errKeywords"))} />
                 {fieldErr("settingsOrg.errKeywords") ? <span className={s.fieldError}>{fieldErr("settingsOrg.errKeywords")}</span> : null}
                 <span className={s.help}>{t("settingsOrg.keywordsHelp")}</span>
               </div>
-              <label className={r.field}>
+              <label className={s.field}>
                 <span className={s.label}>{t("settingsOrg.routeOwner")}</span>
                 <select className={s.input} name="owner" value={owner} onChange={(e) => setOwner(e.target.value)}
                   aria-invalid={Boolean(fieldErr("settingsOrg.errRouteNoOwner")) || undefined} data-testid="settings-routing-owner">
@@ -254,31 +254,31 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
                 {fieldErr("settingsOrg.errRouteNoOwner") ? <span className={s.fieldError}>{fieldErr("settingsOrg.errRouteNoOwner")}</span> : null}
               </label>
               {ownerRole && !seatLine(k, ownerRole.id) ? (
-                <div className={r.warn} role="note">
+                <div className={s.warn} role="note">
                   {t("settingsOrg.vacantWarn", { role: ownerRole.title })}
                   <Link href={`/${slug}/settings/org`}>{t("settingsOrg.linkInOrg")}</Link>
                 </div>
               ) : null}
-              <label className={r.field}>
+              <label className={s.field}>
                 <span className={s.label}>{t("settingsOrg.routeDeputy")}</span>
                 <select className={s.input} name="deputy" defaultValue={editing?.deputyRoleId ?? ""} data-testid="settings-routing-deputy">{roleOptions(t("settingsOrg.routeNone"))}</select>
                 <span className={s.help}>{t("settingsOrg.deputyHelp")}</span>
               </label>
-              <label className={r.field}>
+              <label className={s.field}>
                 <span className={s.label}>{t("settingsOrg.routeBuddy")}</span>
                 <select className={s.input} name="buddy" defaultValue={editing?.buddyRoleId ?? ""} data-testid="settings-routing-buddy">{roleOptions(t("settingsOrg.routeNone"))}</select>
                 <span className={s.help}>{t("settingsOrg.buddyHelp")}</span>
               </label>
-              <label className={r.field}>
+              <label className={s.field}>
                 <span className={s.label}>{t("settingsOrg.routeWait")}</span>
                 <input className={s.input} data-size="money" name="wait" defaultValue={editing?.wait ?? ""} data-testid="settings-routing-wait" />
                 <span className={s.help}>{t("settingsOrg.waitHelp")}</span>
               </label>
               {otherError && error ? <p className={s.fieldError} role="alert" data-testid="settings-routing-error">{t(error)}</p> : null}
             </div>
-            <div className={r.drawerFoot}>
-              {editing ? <span className={r.mute}>{t("settingsOrg.keyLine", { key: editing.key })}</span> : <span />}
-              <span className={r.dialogButtons}>
+            <div className={s.drawerFoot}>
+              {editing ? <span className={s.mute}>{t("settingsOrg.keyLine", { key: editing.key })}</span> : <span />}
+              <span className={s.dialogButtons}>
                 {editing ? <button type="button" className={s.ghostDanger} onClick={() => setDeleting(editing)}>{t("settingsOrg.deleteRoute")}</button> : null}
                 <button type="button" className={s.soft} onClick={() => setOpen(null)}>{t("settingsOrg.cancel")}</button>
                 <button type="submit" className={s.save} disabled={pending || demo} data-testid={editing ? `settings-routing-save-${editing.key}` : "settings-routing-add"}>{t("settingsOrg.save")}</button>

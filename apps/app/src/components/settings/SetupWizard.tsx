@@ -68,7 +68,7 @@ export function SetupWizard({ slug, steps, step, blocked, data }: Props) {
       <p className="nh-hint">{t(HINT[step])}</p>
       {blocked ? <p className="nh-error" role="alert" data-testid="setup-blocked">{t("settingsSetup.notYet")}</p> : null}
       {step === "company" ? <CompanyForm slug={slug} values={data.company} address={data.address} /> : null}
-      {step === "units" || step === "roles" ? <OrgEditor slug={slug} knowledge={data.knowledge} members={data.options} /> : null}
+      {step === "units" || step === "roles" ? <OrgEditor slug={slug} knowledge={data.knowledge} members={data.options} showHead={false} /> : null}
       {step === "routes" ? <RoutingEditor slug={slug} knowledge={data.knowledge} showHead={false} /> : null}
       {step === "members" ? <MembersView slug={slug} me={data.me} members={data.members} freeSeats={data.freeSeats} /> : null}
       <div style={{ display: "flex", gap: 12 }}>

@@ -120,6 +120,8 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
 
     // Step units.
     await expect(vis(manager, "setup-step-units")).toBeVisible();
+    // Units and roles are added in drawers; a role's seats are linked in its drawer.
+    await vis(manager, "settings-org-open-unit").click();
     await vis(manager, "settings-org-unit-key").fill("ENG");
     await vis(manager, "settings-org-unit-name").fill("Engineering");
     await vis(manager, "settings-org-unit-add").click();
@@ -128,17 +130,20 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     // Step roles: a role with two seats; the manager holds one, so the step is done; the other waits for the leader.
     await setup(manager);
     await expect(vis(manager, "setup-step-roles")).toBeVisible();
+    await vis(manager, "settings-org-open-role").click();
     await vis(manager, "settings-org-role-title").fill("Engineering lead");
     await vis(manager, "settings-org-role-add").click();
-    const role = manager.locator('li[data-testid^="settings-org-role-"]');
-    await expect(role).toHaveCount(1);
+    const card = manager.locator('li[data-testid^="settings-org-role-"]');
+    await expect(card).toHaveCount(1);
+    await vis(card, "settings-org-role-edit").click();
+    const role = vis(manager, "settings-org-role-drawer");
     await vis(role, "settings-org-seat-name").fill("Lead seat");
     await vis(role, "settings-org-seat-add").click();
     await expect(role.getByText("Lead seat")).toBeVisible();
     await vis(role, "settings-org-seat-name").fill("Deputy seat");
     await vis(role, "settings-org-seat-add").click();
     await expect(role.getByText("Deputy seat")).toBeVisible();
-    await role.locator('div[data-testid^="settings-org-seat-"]').filter({ hasText: "Deputy seat" })
+    await role.locator('li[data-testid^="settings-org-seat-"]').filter({ hasText: "Deputy seat" })
       .getByTestId("settings-org-seat-link").selectOption({ label: MANAGER.name });
 
     // Step routes.
