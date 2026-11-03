@@ -1,84 +1,146 @@
 "use client";
-// /settings/rules: promise and outcome days, the spend rule and the loop rules.
+// /settings/rules: promise and outcome days, the spend rule and the loop rules. One form in three
+// cards; any Save sends all of it.
 import { useActionState, useState } from "react";
-import { Field } from "@/components/ui/Field";
 import type { RulesForm as Values } from "@/features/settings/company-forms";
 import type { RewardKind } from "@/features/loop/rules";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { saveRulesAction, type SettingsFormState } from "@/server/actions/settings/company";
+import { Card, Foot, Row } from "./SettingsParts";
+import s from "./settings.module.css";
 
-const grid = { display: "grid", gap: 16, maxWidth: 640 } as const;
 const REWARDS: RewardKind[] = ["none", "thanks", "fixed", "share"];
 const rewardLabel = (k: RewardKind) => `settingsCompany.reward${k[0].toUpperCase()}${k.slice(1)}` as MessageKey;
 
-function Num({ id, tid, value }: { id: string; tid: string; value: number | string }) {
-  return <input className="nh-input" id={id} name={id} type="number" inputMode="numeric" defaultValue={value} data-testid={`settings-rules-${tid}`} />;
+function Num({ id, tid, value, size = "num", invalid }: { id: string; tid: string; value: number | string; size?: "num" | "money"; invalid?: boolean }) {
+  return (
+    <input className={s.input} data-size={size} id={id} name={id} type="number" inputMode="numeric" defaultValue={value}
+      aria-invalid={invalid || undefined} data-testid={`settings-rules-${tid}`} />
+  );
 }
 
-export function RulesForm({ slug, values }: { slug: string; values: Values }) {
+/** The measure days as chips; the form still sends them comma-separated. */
+function MeasureDays({ initial, unit }: { initial: number[]; unit: string }) {
+  const t = useT();
+  const [days, setDays] = useState(initial);
+  const [draft, setDraft] = useState<string | null>(null);
+  const add = () => {
+    const n = Number(draft);
+    if (Number.isInteger(n) && n > 0 && !days.includes(n)) setDays([...days, n].sort((a, b) => a - b));
+    setDraft(null);
+  };
+  return (
+    <div className={s.inline}>
+      <input type="hidden" name="measureDays" value={days.join(", ")} data-testid="settings-rules-measure-days" />
+      {days.map((d) => (
+        <span key={d} className={s.chip}>
+          {d}
+          <button type="button" className={s.chipX} aria-label={t("settingsCompany.removeItem", { name: String(d) })} onClick={() => setDays(days.filter((x) => x !== d))}>×</button>
+        </span>
+      ))}
+      {draft === null ? (
+        <button type="button" className={s.dashed} aria-label={t("settingsCompany.addMeasureDay")} onClick={() => setDraft("")}>+</button>
+      ) : (
+        <input className={s.input} data-size="num" type="number" inputMode="numeric" autoFocus value={draft} aria-label={t("settingsCompany.addMeasureDay")}
+          onChange={(e) => setDraft(e.target.value)} onBlur={add}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); add(); }
+            if (e.key === "Escape") setDraft(null);
+          }} />
+      )}
+      <span className={s.unit}>{unit}</span>
+    </div>
+  );
+}
+
+export function RulesForm({ slug, values, demo }: { slug: string; values: Values; demo?: boolean }) {
   const t = useT();
   const [state, act, pending] = useActionState<SettingsFormState, FormData>(saveRulesAction, {});
   const [kind, setKind] = useState<RewardKind>(values.loop.reward.kind);
+  const [spendOn, setSpendOn] = useState(values.rules.spend !== null);
   const err = (f: string) => (state.field === f && state.error ? t(state.error) : undefined);
   const { rules, loop } = values;
+  const days = t("settingsCompany.daysUnit");
+  const formError = state.error && !state.field ? t(state.error) : undefined;
+  const status = formError ?? (state.ok ? t("settingsCompany.saved") : demo ? t("settingsCompany.demoData") : undefined);
+  const foot = (last?: boolean) => (
+    <Foot status={last ? status : undefined} tone={formError ? "error" : undefined}
+      statusTestId={last ? (formError ? "settings-rules-error" : state.ok ? "settings-rules-saved" : undefined) : undefined}>
+      <button className={s.save} type="submit" disabled={pending || demo} data-testid={last ? "settings-rules-save" : undefined}>
+        {pending ? t("settingsCompany.saving") : t("settingsCompany.save")}
+      </button>
+    </Foot>
+  );
   return (
-    <form action={act} style={grid} data-testid="settings-rules-form">
+    <form action={act} className={s.page} data-testid="settings-rules-form">
       <input type="hidden" name="slug" value={slug} />
-      <Field id="promiseDays" label={t("settingsCompany.promiseDays")} error={err("promiseDays")}>
-        <Num id="promiseDays" tid="promise-days" value={rules.promiseDays} />
-      </Field>
-      <Field id="outcomeDays" label={t("settingsCompany.outcomeDays")} error={err("outcomeDays")}>
-        <Num id="outcomeDays" tid="outcome-days" value={rules.outcomeDays} />
-      </Field>
-      <Field id="spendLimitEur" label={t("settingsCompany.spendLimit")} hint={t("settingsCompany.spendLimitHint")} error={err("spendLimitEur")}>
-        <Num id="spendLimitEur" tid="spend-limit" value={rules.spend?.limitEur ?? ""} />
-      </Field>
-      <Field id="spendText" label={t("settingsCompany.spendText")} error={err("spendText")}>
-        <input className="nh-input" id="spendText" name="spendText" defaultValue={rules.spend?.text ?? ""} data-testid="settings-rules-spend-text" />
-      </Field>
-      <Field id="discussEveryDays" label={t("settingsCompany.discussEveryDays")} error={err("discussEveryDays")}>
-        <Num id="discussEveryDays" tid="check-in-days" value={loop.discussEveryDays} />
-      </Field>
-      <Field id="discussMaxRounds" label={t("settingsCompany.discussMaxRounds")} error={err("discussMaxRounds")}>
-        <Num id="discussMaxRounds" tid="max-rounds" value={loop.discussMaxRounds} />
-      </Field>
-      <Field id="fastLaneEur" label={t("settingsCompany.fastLaneEur")} error={err("fastLaneEur")}>
-        <Num id="fastLaneEur" tid="fast-lane" value={loop.fastLaneEur} />
-      </Field>
-      <Field id="measureDays" label={t("settingsCompany.measureDays")} hint={t("settingsCompany.measureDaysHint")} error={err("measureDays")}>
-        <input className="nh-input" id="measureDays" name="measureDays" defaultValue={loop.measureDays.join(", ")} data-testid="settings-rules-measure-days" />
-      </Field>
-      <Field id="tolerancePct" label={t("settingsCompany.tolerancePct")} error={err("tolerancePct")}>
-        <Num id="tolerancePct" tid="tolerance" value={loop.tolerancePct} />
-      </Field>
-      <Field id="rewardRule" label={t("settingsCompany.reward")} error={err("rewardRule")}>
-        <select className="nh-input" id="rewardRule" name="rewardRule" value={kind} onChange={(e) => setKind(e.target.value as RewardKind)} data-testid="settings-rules-reward">
-          {REWARDS.map((r) => <option key={r} value={r}>{t(rewardLabel(r))}</option>)}
-        </select>
-      </Field>
-      {kind === "fixed" ? (
-        <Field id="rewardAmountEur" label={t("settingsCompany.rewardAmount")} error={err("rewardAmountEur")}>
-          <Num id="rewardAmountEur" tid="reward-amount" value={loop.reward.amount ?? ""} />
-        </Field>
-      ) : null}
-      {kind === "share" ? (
-        <>
-          <Field id="rewardSharePct" label={t("settingsCompany.rewardShareLabel")} error={err("rewardSharePct")}>
-            <Num id="rewardSharePct" tid="reward-share" value={loop.reward.sharePct ?? ""} />
-          </Field>
-          <Field id="rewardCapEur" label={t("settingsCompany.rewardCap")} hint={t("settingsCompany.rewardCapHint")} error={err("rewardCapEur")}>
-            <Num id="rewardCapEur" tid="reward-cap" value={loop.reward.capEur ?? ""} />
-          </Field>
-        </>
-      ) : null}
-      {state.error && !state.field ? <p className="nh-error" role="alert" data-testid="settings-rules-error">{t(state.error)}</p> : null}
-      {state.ok ? <p className="nh-hint" role="status" data-testid="settings-rules-saved">{t("settingsCompany.saved")}</p> : null}
-      <div>
-        <button className="nh-btn nh-btn-primary" type="submit" disabled={pending} data-testid="settings-rules-save">
-          {pending ? t("settingsCompany.saving") : t("settingsCompany.save")}
-        </button>
-      </div>
+      <Card title={t("settingsCompany.cardPromises")}>
+        <Row id="promiseDays" label={t("settingsCompany.answerWithin")} wide help={t("settingsCompany.answerHelp")} error={err("promiseDays")}>
+          <div className={s.inline}><Num id="promiseDays" tid="promise-days" value={rules.promiseDays} invalid={Boolean(err("promiseDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
+        </Row>
+        <Row id="outcomeDays" label={t("settingsCompany.measureOutcome")} wide help={t("settingsCompany.outcomeHelp")} error={err("outcomeDays")}>
+          <div className={s.inline}><Num id="outcomeDays" tid="outcome-days" value={rules.outcomeDays} invalid={Boolean(err("outcomeDays"))} /><span className={s.unit}>{days}</span></div>
+        </Row>
+        {foot()}
+      </Card>
+
+      <Card title={t("settingsCompany.cardSpend")}>
+        <label className={s.switch}>
+          <input type="checkbox" role="switch" checked={spendOn} onChange={(e) => setSpendOn(e.target.checked)} data-testid="settings-rules-spend-on" />
+          {t("settingsCompany.spendSwitch")}
+        </label>
+        {spendOn ? (
+          <>
+            <Row id="spendLimitEur" label={t("settingsCompany.spendAmount")} wide error={err("spendLimitEur")}>
+              <div className={s.inline}><Num id="spendLimitEur" tid="spend-limit" size="money" value={rules.spend?.limitEur ?? ""} invalid={Boolean(err("spendLimitEur"))} /><span className={s.unit}>€</span></div>
+            </Row>
+            <Row id="spendText" label={t("settingsCompany.spendWords")} wide help={t("settingsCompany.spendHelp")} error={err("spendText")}>
+              <input className={s.input} id="spendText" name="spendText" defaultValue={rules.spend?.text ?? ""} aria-invalid={Boolean(err("spendText")) || undefined} data-testid="settings-rules-spend-text" />
+            </Row>
+          </>
+        ) : null}
+        {foot()}
+      </Card>
+
+      <Card title={t("settingsCompany.cardFlow")}>
+        <Row id="fastLaneEur" label={t("settingsCompany.fastLane")} wide help={t("settingsCompany.fastLaneHelp")} error={err("fastLaneEur")}>
+          <div className={s.inline}><Num id="fastLaneEur" tid="fast-lane" size="money" value={loop.fastLaneEur} invalid={Boolean(err("fastLaneEur"))} /><span className={s.unit}>€</span></div>
+        </Row>
+        <Row id="discussEveryDays" label={t("settingsCompany.checkIn")} wide error={err("discussEveryDays")}>
+          <div className={s.inline}><Num id="discussEveryDays" tid="check-in-days" value={loop.discussEveryDays} invalid={Boolean(err("discussEveryDays"))} /><span className={s.unit}>{days}</span></div>
+        </Row>
+        <Row id="discussMaxRounds" label={t("settingsCompany.rounds")} wide help={t("settingsCompany.roundsHelp")} error={err("discussMaxRounds")}>
+          <Num id="discussMaxRounds" tid="max-rounds" value={loop.discussMaxRounds} invalid={Boolean(err("discussMaxRounds"))} />
+        </Row>
+        <Row label={t("settingsCompany.measureProject")} wide error={err("measureDays")}>
+          <MeasureDays initial={loop.measureDays} unit={days} />
+        </Row>
+        <Row id="tolerancePct" label={t("settingsCompany.unchanged")} wide help={t("settingsCompany.unchangedHelp")} error={err("tolerancePct")}>
+          <div className={s.inline}><Num id="tolerancePct" tid="tolerance" value={loop.tolerancePct} invalid={Boolean(err("tolerancePct"))} /><span className={s.unit}>%</span></div>
+        </Row>
+        <Row id="rewardRule" label={t("settingsCompany.reward")} wide error={err("rewardRule")}>
+          <select className={s.input} id="rewardRule" name="rewardRule" value={kind} onChange={(e) => setKind(e.target.value as RewardKind)} data-testid="settings-rules-reward">
+            {REWARDS.map((r) => <option key={r} value={r}>{t(rewardLabel(r))}</option>)}
+          </select>
+        </Row>
+        {kind === "fixed" ? (
+          <Row id="rewardAmountEur" label={t("settingsCompany.rewardAmount")} wide error={err("rewardAmountEur")}>
+            <Num id="rewardAmountEur" tid="reward-amount" size="money" value={loop.reward.amount ?? ""} />
+          </Row>
+        ) : null}
+        {kind === "share" ? (
+          <>
+            <Row id="rewardSharePct" label={t("settingsCompany.rewardShareLabel")} wide error={err("rewardSharePct")}>
+              <Num id="rewardSharePct" tid="reward-share" value={loop.reward.sharePct ?? ""} />
+            </Row>
+            <Row id="rewardCapEur" label={t("settingsCompany.rewardCap")} wide help={t("settingsCompany.rewardCapHint")} error={err("rewardCapEur")}>
+              <Num id="rewardCapEur" tid="reward-cap" size="money" value={loop.reward.capEur ?? ""} />
+            </Row>
+          </>
+        ) : null}
+        {foot(true)}
+      </Card>
     </form>
   );
 }
