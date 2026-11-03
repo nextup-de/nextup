@@ -2,12 +2,11 @@
 // "Last look before it goes out" (Claude Design handoff "Publish Preview"): what "Publish" opens before
 // NextUp looks for a receiver. The idea laid out as the receiver's inbox will show it, every part the
 // author wrote editable in place and the missing ones addable (IdeaCard.tsx, shared with the Idea view); NextUp's analysis only as a locked note.
-// "Find receiver" opens the receiver suggestions (RaisePublish.tsx).
+// "Choose a desk" opens the desk window (RaisePublish.tsx).
 // "Export" (Claude Design handoff "Export button", in place of Back) opens the export view (RaiseExport.tsx). Props in.
 import { useEffect, useRef } from "react";
 import { useT } from "@/i18n/client";
 import { IdeaCard, type Look } from "./IdeaCard";
-import type { Meeting } from "./raisePreview";
 import s from "./PublishPreview.module.css";
 
 export type { Look, LookPrompt } from "./IdeaCard";
@@ -41,10 +40,7 @@ export function PreviewLoading() {
 }
 
 export function PublishPreview(p: {
-  author: string; // left out of the colleagues to add
   look: Look; onLook: (l: Look) => void;
-  meet: Meeting | null; onMeet: (m: Meeting | null) => void;
-  coll: string[]; people: readonly { name: string; role: string }[]; onColl: (names: string[]) => void;
   affected: string[]; depts: readonly string[]; onAffected: (names: string[]) => void;
   files: readonly { id: string; name: string }[]; onAddFiles: (list: FileList | null) => void; onRemoveFile: (id: string) => void;
   aiLine: string;
@@ -82,7 +78,7 @@ export function PublishPreview(p: {
         </div>
 
         <div className={s.body}>
-          <IdeaCard author={p.author} look={look} onLook={onLook} meet={p.meet} onMeet={p.onMeet} coll={p.coll} people={p.people} onColl={p.onColl}
+          <IdeaCard look={look} onLook={onLook}
             affected={p.affected} depts={p.depts} onAffected={p.onAffected} files={p.files} onAddFiles={p.onAddFiles} onRemoveFile={p.onRemoveFile} />
 
           <div className={s.ai}>
