@@ -1,0 +1,22 @@
+.wrap { display: grid; gap: 16px; max-width: 760px; }
+.card { display: grid; gap: 12px; padding: 16px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); }
+.title { margin: 0; font-size: var(--nh-fs-md); }
+.sub { margin: 0; font-size: var(--nh-fs-sm); }
+.steps { display: flex; gap: 16px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; color: var(--nh-mute); }
+.now { color: var(--nh-ink); font-weight: 600; }
+.past { color: var(--nh-ink); }
+.form { display: grid; gap: 12px; }
+.file { display: grid; gap: 4px; }
+.key { font-family: var(--nh-mono); color: var(--nh-mute); }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.result { display: grid; gap: 8px; }
+.errors { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 360px; overflow-y: auto; }
+.errors li { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--nh-line); border-radius: var(--nh-r); color: var(--nh-danger); }
+.where { font-family: var(--nh-mono); font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.error { margin: 0; color: var(--nh-danger); }
+.ok { margin: 0; }
+.exports { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.exports li { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center; }
+@media (max-width: 760px) {
+  .exports li { grid-template-columns: 1fr auto; }
+}
