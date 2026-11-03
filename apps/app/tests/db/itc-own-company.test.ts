@@ -62,7 +62,7 @@ describe("ITC own company only", () => {
     expect(await saveAssistSettingsAction({}, assistForm())).toEqual({ ok: true });
     expect(await saveIdeaSettingsAction({}, ideaForm(55))).toEqual({ ok: true });
     const a = await config(acme);
-    expect(a).toMatchObject({ assistant: true, retentionDays: 14, publishThreshold: 55 });
+    expect(a).toMatchObject({ assistant: true, publishThreshold: 55 });
     expect(await config(globex)).toEqual(before);
     expect(await db.companyProfile.findUnique({ where: { companyId: acme } })).toMatchObject({ complianceRules: "Ask Legal." });
     expect(await db.companyProfile.findUnique({ where: { companyId: globex } })).toBeNull();
@@ -74,7 +74,7 @@ describe("ITC own company only", () => {
     f.set("slug", "globex");
     f.set("companyId", globex);
     await saveAssistSettingsAction({}, f);
-    expect((await config(acme))?.retentionDays).toBe(21);
+    expect((await config(acme))?.retentionDays).toBe(90); // GDP D16: the form still sends it, the action ignores it
     expect(await config(globex)).toEqual(before);
   });
 

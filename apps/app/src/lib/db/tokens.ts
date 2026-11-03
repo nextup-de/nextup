@@ -2,6 +2,7 @@
 // stored - only sha256(raw), so a database dump does not hand anyone the keys.
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { getDb } from "./client";
+import { recordAudit, type AuditActor } from "@/server/audit/record";
 
 export const TOKEN_PREFIX = "nxt_";
 
@@ -58,12 +59,33 @@ export async function createToken(
   companyId: string,
   name: string,
   scopes: string[],
+  actor?: AuditActor,
 ): Promise<string> {
   const raw = generateToken();
-  await getDb().apiToken.create({
-    data: { companyId, name, hash: hashToken(raw), scopes },
+  if (!actor) {
+    await getDb().apiToken.create({
+      data: { companyId, name, hash: hashToken(raw), scopes },
+    });
+    return raw;
+  }
+  await getDb().$transaction(async (tx) => {
+    const row = await tx.apiToken.create({ data: { companyId, name, hash: hashToken(raw), scopes } });
+    // The scopes only: never the raw token or its hash (D5).
+    await recordAudit(companyId, { actor, action: "audit.token.created", target: { kind: "token", id: row.id }, changes: { scopes: { before: null, after: scopes } }, source: sourceOf(actor) }, tx);
   });
   return raw;
+}
+
+const sourceOf = (actor: AuditActor): "settings" | "console" => (actor.kind === "admin" ? "settings" : "console");
+
+/** Delete a token and write `audit.token.revoked` in the same transaction. False when the company has no such token. */
+export async function revokeToken(companyId: string, id: string, actor: AuditActor): Promise<boolean> {
+  return getDb().$transaction(async (tx) => {
+    const { count } = await tx.apiToken.deleteMany({ where: { id, companyId } });
+    if (count === 0) return false;
+    await recordAudit(companyId, { actor, action: "audit.token.revoked", target: { kind: "token", id }, source: sourceOf(actor) }, tx);
+    return true;
+  });
 }
 
 /** Constant-time compare for anything else that needs it. */
