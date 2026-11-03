@@ -39,6 +39,7 @@ export const AUDIT_ACTIONS = [
   "audit.directory.on",
   "audit.directory.off",
   "audit.directory.run",
+  "audit.directory.scim",
   "audit.access.break_glass",
   "audit.access.entra_tenant",
   "audit.access.stack_admin",

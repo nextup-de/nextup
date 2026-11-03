@@ -6,7 +6,7 @@ describe("API scopes", () => {
   it("holds the old three and the five v1 scopes", () => {
     expect([...OLD_SCOPES]).toEqual(["events:read", "events:write", "knowledge:write"]);
     expect([...V1_SCOPES].sort()).toEqual(["cases:read", "cases:write", "decisions:read", "org:read", "projects:read"]);
-    expect([...SCOPES]).toEqual([...OLD_SCOPES, ...V1_SCOPES]);
+    expect([...SCOPES]).toEqual([...OLD_SCOPES, ...V1_SCOPES, "scim"]);
   });
 
   it("has V1_SCOPES equal to the scopes named by ApiV1.endpoints", () => {
