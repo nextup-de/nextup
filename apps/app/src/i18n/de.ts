@@ -47,6 +47,8 @@ import { settingsWebhooks } from "./messages/settingsWebhooks";
 import { settingsImport } from "./messages/settingsImport";
 import { teams } from "./messages/teams";
 import { settingsTeams } from "./messages/settingsTeams";
+import { settingsSignIn } from "./messages/settingsSignIn";
+import { ssoLogin } from "./messages/ssoLogin";
 
 export const de = {
   common: common.de,
@@ -97,4 +99,6 @@ export const de = {
   settingsImport: settingsImport.de,
   teams: teams.de,
   settingsTeams: settingsTeams.de,
+  settingsSignIn: settingsSignIn.de,
+  ssoLogin: ssoLogin.de,
 } as const;

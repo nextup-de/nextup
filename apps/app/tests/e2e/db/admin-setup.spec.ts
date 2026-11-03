@@ -137,8 +137,8 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await readCode(manager, MEMBER);
     await readCode(manager, LEADER);
     const leaderRow = manager.locator("li").filter({ hasText: LEADER.email });
-    // Seats open in a dialog from the row's ··· menu.
-    await leaderRow.locator('[data-testid^="settings-member-menu-"]').click();
+    // Seats are linked in a dialog opened from the row's menu.
+    await leaderRow.getByLabel(`Options for ${LEADER.name}`).click();
     await leaderRow.getByRole("button", { name: "Seats…" }).click();
     const seats = manager.getByRole("dialog");
     await seats.getByLabel(`Free seat for ${LEADER.name}`).selectOption({ index: 1 });
