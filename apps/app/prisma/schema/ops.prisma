@@ -1,4 +1,4 @@
-// Area ops (docs/adr/0007-areas.md). Models: FeatureFlag, PilotRequest, PilotReply, Ticket, TicketReply, ErrorGroup. Changed only by: GDP. Every migration is its own folder under prisma/migrations.
+// Area ops (docs/adr/0007-areas.md). Models: FeatureFlag, PilotRequest, PilotReply, Ticket, TicketReply, ErrorGroup, AuditEvent, DataExport, RetentionRule, RetentionRun, PrivacyPolicy, Pseudonym. Changed only by: GDP. Every migration is its own folder under prisma/migrations.
 
 // ── Feature flags (src/config/flags.ts, src/features/flags) ───────────────────────────────────────
 // NextUp's rollout switches for this company, as admin.sellux.ch set them - the stack fetches the
@@ -142,4 +142,92 @@ model ErrorGroup {
   forwardError String?
 
   @@index([pending, lastSeenAt])
+}
+
+// ── Data protection (GDP; docs/plans/2026-11-02_pilot-pages/05-data-protection.md) ─────────────────
+// People are plain user-id strings in these tables, never a relation to User: a row outlives a deleted person.
+
+// One fact about a change to the company's setup: who (actor kind and user id), what (action), on what
+// (target), which fields (changes: { field: { before, after } }, secrets only as set/replaced/removed).
+// Never updated; only the retention run deletes.
+model AuditEvent {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  at          DateTime @default(now())
+  actorKind   String // admin | console | break-glass | support | platform | system | directory | api-token
+  actorUserId String? // a user id; null for shared codes, support, system
+  action      String // audit.<area>.<verb>, src/features/audit
+  targetKind  String?
+  targetId    String?
+  changes     Json     @default("{}")
+  source      String // settings | console | platform | scheduler | directory | api
+
+  @@index([companyId, at])
+  @@index([companyId, action, at])
+  @@index([companyId, targetKind, targetId])
+}
+
+// A requested export of the company's data or of one person's data, kept as a file until it expires.
+model DataExport {
+  id                String   @id @default(cuid())
+  companyId         String
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  kind              String // company | person
+  subjectUserId     String? // the person, for kind person
+  requestedByUserId String
+  deliverTo         String // person | admin
+  status            String   @default("preparing") // preparing | ready | expired | failed
+  sizeBytes         Int?
+  file              Bytes?
+  error             String?
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+
+  @@index([companyId, createdAt])
+}
+
+// How long one kind of data is kept. keepDays null = keep.
+model RetentionRule {
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  kind        String // assist_turns | idea_drafts | closed_cases
+  keepDays    Int? // null = keep
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@id([companyId, kind])
+}
+
+// The retention run's lease and last result, one row per company.
+model RetentionRun {
+  companyId  String    @id
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  leaseUntil DateTime?
+  lastRunAt  DateTime?
+  lastOkAt   DateTime?
+  lastError  String?
+  removed    Json      @default("{}") // what the last run removed, by kind
+}
+
+// The company's privacy switches.
+model PrivacyPolicy {
+  companyId         String   @id
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  reportScreenshots Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+  updatedById       String?
+}
+
+// A person shown under a number instead of a name after pseudonymisation.
+model Pseudonym {
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId    String
+  number    Int
+  label     String
+  at        DateTime @default(now())
+
+  @@id([companyId, userId])
+  @@unique([companyId, number])
 }
