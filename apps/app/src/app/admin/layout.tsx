@@ -1,25 +1,23 @@
 // The admin area. Outside [company] on purpose: it is not a role, it is a different surface,
 // reached at admin.<domain> (or /admin in path mode) behind ADMIN_ACCESS_CODE.
 //
-// Signed in, it is a sidebar and its pages (features/admin/nav.ts): four for a company stack's own
-// admin, seven for the platform admin. The sidebar lives here, not
+// Signed in, it is a sidebar and its pages (features/admin/nav.ts): the company's console. The sidebar lives here, not
 // in each page, so it stays put while a page loads; its badges come from adminContext(), which the
 // page shares, so they cost no extra read.
 import type { Metadata } from "next";
 import Image from "next/image";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
-import { dashboardUrl, landingUrl } from "@/features/tenant/urls";
+import { dashboardUrl, landingUrl, singleCompany } from "@/features/tenant/urls";
 import { getLocale, getT } from "@/i18n/server";
 import { formatDate } from "@/i18n/format";
 import { consoleCompany } from "@/server/console-guard";
-import { adminBase, adminScope } from "@/features/admin/nav";
+import { adminBase } from "@/features/admin/nav";
 import { adminSignOut, isAdmin } from "@/server/actions/admin";
 import { adminActor, adminBreakGlassActive } from "@/server/admin-session";
 import { adminContext } from "@/server/admin-context";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { ReportButton } from "@/components/report/ReportButton";
 import { reportFromAdmin } from "@/server/actions/tickets";
-import { singleCompany } from "@/features/tenant/urls";
 import { hasDatabase } from "@/lib/db/client";
 import styles from "./admin.module.css";
 
@@ -32,7 +30,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // The two places anyone lands in from here: the public site, and the product itself. The demo
   // tenant is the one company that exists in every mode, database or not.
   const demo = DEMO_COMPANIES[0].slug;
-  const company = adminScope() === "company";
+  const company = singleCompany() !== null;
   const signedIn = await isAdmin();
   const ctx = signedIn ? await adminContext() : null;
   const actor = signedIn ? await adminActor() : null;
