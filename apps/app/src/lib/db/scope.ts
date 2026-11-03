@@ -37,6 +37,8 @@ export const TENANT_MODELS = new Set([
   "Connection",
   // A company's integration with another tool (Jira) - docs/plans/2026-10-29_jira-in-app.md
   "Integration",
+  // A person's Teams chat with the bot - TMS D5
+  "TeamsConversation",
 ]);
 
 /** Operations that must narrow by company through `where`. */
