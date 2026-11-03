@@ -181,6 +181,8 @@ export type TenantInfo = {
   users?: { id?: string; name: string; email: string; role?: Role }[];
   /** Person pages the viewer may open: user id -> display label (MET D15). Empty without a database. */
   personLinks?: Record<string, string>;
+  /** Former members: user id -> pseudonym. Event actors resolve through it (features/cases/actor-label). */
+  actorLabels?: Record<string, string>;
   /** Nothing fills this any more, so no real names reach the browser (MET D15). Kept optional for components that still read it (Q5). */
   hiddenPeople?: string[];
   /** False for a company with real people: no dev panel, and `users` is only the viewer. */

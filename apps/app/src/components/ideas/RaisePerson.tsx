@@ -13,6 +13,7 @@ import { initials } from "@/features/ideas/raise";
 import { useT } from "@/i18n/client";
 import s from "./Raise.module.css";
 import { avatarTone } from "@/lib/avatar";
+import { personHrefByName } from "@/features/people/links";
 
 export const RaisePeople = createContext<{ people: readonly OrgPerson[]; depts: readonly Dept[] }>({ people: [], depts: [] });
 
@@ -66,7 +67,8 @@ export function PersonButton({ name, className, children, label }: { name: strin
 
 function MiniProfile({ p }: { p: Person }) {
   const t = useT();
-  const { href, tenant } = useDemo();
+  const { href, tenant, seed } = useDemo();
+  const profileHref = personHrefByName(tenant, seed.seats, p.name);
   return (
     <>
       <div className={s.mpHead}>
@@ -78,7 +80,7 @@ function MiniProfile({ p }: { p: Person }) {
         <span className={s.mpKey}>{t("ideas.personLocation")}</span><span className={s.mpVal}>{p.location || "—"}</span>
         <span className={s.mpKey}>{t("ideas.personEmail")}</span><a className={s.mpMail} href={"mailto:" + p.email}>{p.email}</a>
       </div>
-      {!tenant.hiddenPeople?.includes(p.name) && <Link className={s.mpBtn} href={href("/people/" + encodeURIComponent(p.name))}>
+      {!tenant.hiddenPeople?.includes(p.name) && profileHref && <Link className={s.mpBtn} href={href(profileHref)}>
         {t("ideas.personViewProfile")}<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 1l5 5-5 5" /></svg>
       </Link>}
     </>

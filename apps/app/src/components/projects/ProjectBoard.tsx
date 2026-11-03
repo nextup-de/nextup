@@ -15,6 +15,7 @@ import { useFormat, useLocale, useT } from "@/i18n/client";
 import { teamOf, useRights, useSend, withIds, type Person } from "./parts";
 import { StepDetail } from "./StepDetail";
 import styles from "./Projects.module.css";
+import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 
 /** Where a dragged card would land: above `before`, or at the foot of `col`. */
 type Spot = { col: StepColumn; before: string | null };
@@ -35,7 +36,9 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
 
   // A planned board with no steps opens with To do's composer, so the first step is one click away.
   const [adding, setAdding] = useState<StepColumn | null>(p.steps.length === 0 && r.addStep ? "todo" : null);
-  const [open, setOpen] = useState<string | null>(null);
+  // The open step sheet is in the address (?step=), so a link opens the card itself.
+  const [open, setOpen] = useState<string | null>(useUrlId("step"));
+  useIdInUrl(open, setOpen, "step");
   const opened = p.steps.find((s) => s.id === open) ?? null;
 
   // Drag and drop: the card in hand, where it would land, and a drop on Blocked waiting for its reason.

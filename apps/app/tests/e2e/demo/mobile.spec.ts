@@ -25,7 +25,7 @@ test("on a phone a card is dragged by its grip: up its column, then across into 
   await page.getByRole("button", { name: "Dev" }).click();
   await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: "Manager", exact: true }).click();
   await page.keyboard.press("Escape");
-  await page.goto("/acme/projects/pj2");
+  await page.goto("/acme/projects/pj2?tab=board");
   const todo = page.getByRole("group", { name: "To do" });
   const card = "Retire the paper job sheet at Ulm";
   const grip = page.getByRole("button", { name: "Drag “" + card + "”" });
