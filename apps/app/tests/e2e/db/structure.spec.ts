@@ -112,7 +112,8 @@ test.describe.serial("STR acceptance: an empty company has no acme content and a
     const routing = await textOf(manager, DEMO_SLUG, "/settings/routing");
     for (const r of ROUTES) {
       expect(routing, `route type "${r.type}"`).toContain(r.type);
-      expect(routing, `owner of "${r.type}"`).toContain(r.owner.name);
+      // The routing table names the owning seat; a seat nobody holds yet reads "Vacant".
+      expect(routing, `owner seat of "${r.type}"`).toContain(r.owner.role);
     }
     const member = await signIn(browser, DEMO_SLUG, "J. Schmidt");
     const raise = await analysisText(member, DEMO_SLUG);
