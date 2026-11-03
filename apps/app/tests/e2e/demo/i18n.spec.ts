@@ -37,6 +37,7 @@ const ROUTES: Route[] = [
   { file: "[company]/(app)/overview/page.tsx", path: "/acme/overview", as: "Manager" },
   { file: "[company]/(app)/collaboration/page.tsx", path: "/acme/collaboration", as: "Manager" },
   { file: "[company]/(app)/feed/page.tsx", path: "/acme/feed", as: "Manager" },
+  { file: "[company]/(app)/decisions/page.tsx", path: "/acme/decisions", as: "Manager" },
   { file: "[company]/(app)/ideas/page.tsx", path: "/acme/ideas", as: "Manager" },
   { file: "[company]/(app)/problems/page.tsx", path: "/acme/problems", as: "Manager" },
   { file: "[company]/(app)/progress/page.tsx", path: "/acme/progress", as: "Manager" },
@@ -72,7 +73,18 @@ const LEFT_OUT: Record<string, string> = {
   "[company]/(app)/settings/routing/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/org/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/notifications/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/audit/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/api-tokens/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/webhooks/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/areas/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/areas/[key]/poster/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/areas/devices/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/setup/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/floor/[area]/page.tsx": "floor pages need a database (areas, devices) and a phone session",
+  "[company]/floor/[area]/sign-in/page.tsx": "floor pages need a database (areas, devices) and a phone session",
+  "[company]/floor/sent/page.tsx": "floor pages need a database (areas, devices) and a phone session",
+  "[company]/floor/pair/page.tsx": "floor pages need a database (areas, devices) and a phone session",
+  "[company]/floor/status/page.tsx": "floor pages need a database (areas, devices) and a phone session",
 };
 
 function pageFilesOf(dir: string, match: RegExp, out: string[] = []): string[] {

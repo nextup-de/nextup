@@ -5,6 +5,8 @@ import type { Actor, Verdict } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import { translate, DEFAULT_LOCALE, type Locale, type MessageKey } from "@/i18n";
+import { holdsRole } from "@/features/auth/identity";
+import { isMeasureSource, readImpact } from "./measure-source";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 
 const OK: Verdict = { ok: true };
@@ -110,7 +112,23 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!check) return no("projects.permNoCheck");
       if (check.measured) return no("projects.permCheckRecorded");
       if (state.day < check.opensDay) return no("projects.permCheckOpens");
-      return typeof pl.value === "number" && Number.isFinite(pl.value) ? OK : no("projects.permMeasureNumber");
+      if (!(typeof pl.value === "number" && Number.isFinite(pl.value))) return no("projects.permMeasureNumber");
+      // A string is an old-style typed source; an object must be valid and never a client-made system source.
+      if (pl.source !== undefined && typeof pl.source !== "string") {
+        if (!isMeasureSource(pl.source)) return no("projects.permMeasureSource");
+        if (pl.source.kind === "system") return no("projects.permMeasureSystem");
+      }
+      if (pl.impact !== undefined && readImpact(pl.impact) === null) return no("projects.permMeasureImpact");
+      return OK;
+    }
+
+    case "project.measure.confirmed": {
+      const m = p.measures.find((x) => x.check === pl.check);
+      if (!m || m.confirmed || m.sourceKind === "system") return no("projects.permNothingToConfirm");
+      if (isMe(p.leadUserId) || isMe(m.byUserId)) return no("projects.permConfirmSecondPerson");
+      const deputyRoleId = state.routes.find((r) => r.id === p.routeId)?.deputyRoleId ?? null;
+      const mayConfirm = isManager || (actor.me !== undefined && holdsRole(actor.me, deputyRoleId));
+      return mayConfirm ? OK : no("projects.permConfirmWho");
     }
 
     case "project.rewarded":

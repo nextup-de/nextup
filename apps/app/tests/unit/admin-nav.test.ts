@@ -1,77 +1,8 @@
 // The sidebar carries state, so these are the rules for when it shouts. A badge that is always there
 // is wallpaper; the point is that "3 stuck" only appears when three are stuck.
 import { describe, expect, it } from "vitest";
-import { adminBase, adminNav, adminScope, companyNav, connectionProblems, jiraBadge, lockedOut } from "@/features/admin/nav";
+import { adminBase, jiraBadge, lockedOut } from "@/features/admin/nav";
 import { nextStage, STAGES, isStage } from "@/features/admin/stages";
-import type { TaskCounts } from "@/features/integrations/tasks";
-
-const counts = (over: Partial<TaskCounts> = {}): TaskCounts => ({
-  done: 0,
-  skipped: 0,
-  pending: 0,
-  failed: 0,
-  ...over,
-});
-
-const base = {
-  database: "up" as const,
-  openRequests: 0,
-  overdueRequests: 0,
-  companies: 1,
-  automation: "live" as const,
-  tasks: counts({ done: 3 }),
-  mail: "up" as const,
-};
-
-const item = (facts: typeof base | Parameters<typeof adminNav>[0], id: string) => adminNav(facts).find((i) => i.id === id);
-
-describe("adminNav", () => {
-  it("is seven pages, and quiet when everything is fine", () => {
-    const items = adminNav(base);
-    expect(items.map((i) => i.id)).toEqual(["overview", "requests", "tickets", "companies", "data", "decisions", "connections"]);
-    expect(items.map((i) => i.path)).toEqual(["", "/requests", "/tickets", "/companies", "/company-data", "/decisions", "/connections"]);
-    expect(items.filter((i) => i.tone === "bad" || i.tone === "warn")).toEqual([]);
-    expect(item(base, "connections")).toMatchObject({ badge: null, tone: "ok" });
-  });
-
-  it("counts open tickets and says nothing at zero", () => {
-    expect(item(base, "tickets")).toMatchObject({ badge: null, tone: null });
-    expect(item({ ...base, openTickets: 4 }, "tickets")).toMatchObject({ badge: "4", tone: "warn" });
-  });
-
-  it("counts unanswered requests, says nothing at zero, and shouts about overdue ones", () => {
-    expect(item({ ...base, openRequests: 2 }, "requests")).toMatchObject({ badge: "2", tone: "warn" });
-    expect(item(base, "requests")?.badge).toBeNull();
-    expect(item({ ...base, openRequests: 3, overdueRequests: 1 }, "requests")).toMatchObject({ badge: "1 overdue", tone: "bad" });
-  });
-
-  it("puts the worst connection problem on the Connections badge", () => {
-    expect(item({ ...base, database: "down", automation: null, tasks: null }, "connections")).toMatchObject({ badge: "db down", tone: "bad" });
-    expect(item({ ...base, tasks: counts({ failed: 3, pending: 1 }) }, "connections")).toMatchObject({ badge: "3 stuck", tone: "bad" });
-    expect(item({ ...base, tasks: counts({ pending: 1 }) }, "connections")).toMatchObject({ badge: "1 sending", tone: "warn" });
-    expect(item({ ...base, automation: "idle" }, "connections")).toMatchObject({ badge: "notices idle", tone: "warn" });
-    expect(item({ ...base, mail: "down" }, "connections")).toMatchObject({ badge: "mail down", tone: "bad" });
-  });
-
-  it("does not count mail that is simply not configured - replies fall back to a mail app", () => {
-    expect(connectionProblems({ ...base, mail: "off" })).toEqual([]);
-  });
-
-  it("says a dead relay once, not again as notices down - notices go out through it", () => {
-    expect(connectionProblems({ ...base, automation: "unreachable", mail: "down" })).toEqual([
-      { badge: "mail down", tone: "bad" },
-    ]);
-  });
-
-  it("warns when notices are off, because then a raise tells nobody", () => {
-    expect(item({ ...base, automation: "off", mail: "off" }, "connections")).toMatchObject({ badge: "notices off", tone: "warn" });
-  });
-
-  it("lists bad before warn", () => {
-    const tones = connectionProblems({ ...base, automation: "off", mail: "down" }).map((p) => p.tone);
-    expect(tones).toEqual(["bad", "warn"]);
-  });
-});
 
 describe("adminBase", () => {
   it("is /admin in path mode and the host root on the admin subdomain", () => {
@@ -96,48 +27,17 @@ describe("stages", () => {
   });
 });
 
-describe("adminScope", () => {
-  it("is the company's own admin only in a one-company stack with its slug set", () => {
-    expect(adminScope({ TENANT_MODE: "single", COMPANY_SLUG: "acme" })).toBe("company");
-    expect(adminScope({ TENANT_MODE: "single", COMPANY_SLUG: " " })).toBe("platform");
-    expect(adminScope({ TENANT_MODE: "path", COMPANY_SLUG: "acme" })).toBe("platform");
-    expect(adminScope({ TENANT_MODE: "subdomain" })).toBe("platform");
-    expect(adminScope({})).toBe("platform");
-  });
-});
-
-describe("companyNav", () => {
-  it("is five pages, with nothing about requests, companies or connections", () => {
-    const items = companyNav({ people: 4, locked: 0 });
-    expect(items.map((i) => i.id)).toEqual(["overview", "people", "data", "assistant", "integrations"]);
-    expect(items.map((i) => i.path)).toEqual(["", "/people", "/company-data", "/assistant", "/integrations"]);
-    expect(items.find((i) => i.id === "people")).toMatchObject({ badge: "4", tone: null });
-  });
-
-  it("warns when someone cannot sign in", () => {
-    expect(companyNav({ people: 4, locked: 2 }).find((i) => i.id === "people")).toMatchObject({ badge: "2 no access", tone: "warn" });
-  });
-});
-
-describe("Integrations in the company nav", () => {
-  const integrations = (jira: Parameters<typeof jiraBadge>[0]) =>
-    companyNav({ people: 1, locked: 0, jira }).find((i) => i.id === "integrations");
-
+describe("jiraBadge", () => {
   it("says nothing without a Jira row, while it is off, or while it runs fine", () => {
-    expect(integrations(undefined)).toMatchObject({ badge: null, tone: null });
-    expect(integrations(null)).toMatchObject({ badge: null, tone: null });
-    expect(integrations({ on: false, failing: true, tokenExpired: true })).toMatchObject({ badge: null, tone: null });
-    expect(integrations({ on: true, failing: false, tokenExpired: false })).toMatchObject({ badge: null, tone: null });
+    expect(jiraBadge(undefined)).toMatchObject({ badge: null, tone: null });
+    expect(jiraBadge(null)).toMatchObject({ badge: null, tone: null });
+    expect(jiraBadge({ on: false, failing: true, tokenExpired: true })).toMatchObject({ badge: null, tone: null });
+    expect(jiraBadge({ on: true, failing: false, tokenExpired: false })).toMatchObject({ badge: null, tone: null });
   });
 
   it("shouts when a running sync fails, loudest for a refused token", () => {
-    expect(integrations({ on: true, failing: true, tokenExpired: false })).toMatchObject({ badge: "sync error", tone: "warn" });
-    expect(integrations({ on: true, failing: true, tokenExpired: true })).toMatchObject({ badge: "token expired", tone: "bad" });
-    expect(jiraBadge({ on: true, failing: true, tokenExpired: true }).tone).toBe("bad");
-  });
-
-  it("is not in the platform admin", () => {
-    expect(adminNav(base).map((i) => i.id)).not.toContain("integrations");
+    expect(jiraBadge({ on: true, failing: true, tokenExpired: false })).toMatchObject({ badge: "sync error", tone: "warn" });
+    expect(jiraBadge({ on: true, failing: true, tokenExpired: true })).toMatchObject({ badge: "token expired", tone: "bad" });
   });
 });
 

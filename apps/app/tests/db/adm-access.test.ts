@@ -46,6 +46,8 @@ const landed = async (p: Promise<unknown>) => {
 
 beforeAll(async () => {
   process.env.CONNECTOR_VAULT_KEY = "ab".repeat(32);
+  process.env.TENANT_MODE = "single"; // the console exists only in a one-company stack (ITC/D4, D5)
+  process.env.COMPANY_SLUG = SLUG;
   process.env.AUTH_SECRET = "test-secret-test-secret-test-secret-0123456789";
   process.env.ADMIN_ACCESS_CODE = "shared-break-glass-code-9z";
   await db.company.deleteMany({});

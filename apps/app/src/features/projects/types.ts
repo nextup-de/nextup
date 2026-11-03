@@ -2,6 +2,7 @@
 // case it is never stored - reduce(seed, log) builds it from the case.decided yes that opened it
 // and the project.* events after that. Shapes only; the logic is in ./reduce.ts.
 import type { CaseEvent, SeedEvent } from "@/features/cases/events";
+import type { MeasureImpact, MeasureSource } from "./measure-source";
 
 export type StepColumn = "todo" | "doing" | "blocked" | "done";
 export const STEP_COLUMNS: readonly StepColumn[] = ["todo", "doing", "blocked", "done"];
@@ -42,6 +43,15 @@ export type Measure = {
   note: string;
   day: number;
   by: string;
+  /** The user who appended it (null when the event carried none). */
+  byUserId: string | null;
+  sourceKind: "typed" | "import" | "system";
+  sourceInfo: MeasureSource;
+  impact: MeasureImpact | null;
+  /** Counts for a KPI or a reward only when confirmed (LOOP/D18). */
+  confirmed: boolean;
+  confirmedByUserId: string | null;
+  confirmedDay: number | null;
   verdict: VerdictWord;
   /** Change against the baseline in percent, signed as measured (null without a usable baseline). */
   changePct: number | null;

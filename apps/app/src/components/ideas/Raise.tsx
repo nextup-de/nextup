@@ -7,8 +7,8 @@
 //   main      start | chat (+ progress rail) | idea | analysis             RaiseStart, RaiseChat, RaiseSheets
 //
 // The conversation, the drafts, the benchmark and publishing are the idea studio's (lib/use-idea-studio.ts).
-// The receiver, colleagues, meeting, visibility, pins, idea edits and "not sure" answers are stand-ins
-// (raisePreview.ts, RAISE-FOR-KEVIN.txt). What is open here - the conversation, the view, unsent text -
+// Kept per page, not in the draft: who sees it, pins, "not sure" answers and idea edits are stand-ins
+// (raisePreview.ts, RAISE-FOR-KEVIN.txt). The receiver is a desk chosen in the publish window (RaisePublish.tsx). What is open here - the conversation, the view, unsent text -
 // is kept per company and person (lib/use-kept.ts): a visit to the dashboard and back finds it as it was.
 //
 // `script`: the static demo (app/demo, no company behind it) - the demo controls fill the demo script's
@@ -36,7 +36,9 @@ import { DEFAULT_LOCALE, LOCALES, translate, type MessageKey } from "@/i18n";
 import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, splitIdea, splitUpdate, topicsOf, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
-import { receiverFor, receiversFor, type Receiver, type ReceiverInput } from "@/features/ideas/receivers";
+import { desksFor, otherDesks, type Desk } from "@/features/ideas/desks";
+import { raiseTarget } from "@/features/ideas/raise-actions";
+import { addWorkdays } from "@/features/clock/calendar";
 import { saveShots, shrinkImage } from "@/lib/shots";
 import { saveRaised } from "@/lib/raised";
 import { brainProposalAction } from "@/server/actions/brain";
@@ -47,7 +49,7 @@ import { RaiseComposer } from "./RaiseComposer";
 import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
 import { PromptBody, PromptTray, type BodyFocus } from "./RaisePrompts";
 import { EMPTY_BODY, insertBlock, promptContext, segsContext, splitPrompts, splitSegs, type Caret, type Seg } from "@/features/ideas/prompts";
-import { ReceiverDialog, type Work } from "./RaisePublish";
+import { DeskDialog, type Sent, type Work } from "./RaisePublish";
 import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
 import { RaiseExport } from "./RaiseExport";
 import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
@@ -62,8 +64,8 @@ import s from "./Raise.module.css";
 // Runs `run` after every render: how handlers made after the page's early return reach a ref.
 function Sync({ run }: { run: () => void }) { useEffect(run); return null; }
 
-// The start page writes its receiver, colleague and meeting choices into the first message as lines; these read them
-// back, in any language the catalog has (a draft keeps the words it was written in).
+// Older drafts carry the start page's former receiver, colleague and meeting lines in the first message; these
+// still recognise them (in any language the catalog has) so they stay hidden.
 const escapeRe = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const lineRes = (key: MessageKey) => LOCALES.map((l) => new RegExp("^" + translate(l, key).split(/\{\w+\}/).map(escapeRe).join("(.+)") + "$"));
 const RECV_LINE = lineRes("ideas.pageExtraReceiver"), COLL_LINE = lineRes("ideas.pageExtraColleagues"), MEET_LINE = lineRes("ideas.pageExtraMeeting");
@@ -73,6 +75,7 @@ const isExtraLine = (line: string) => [RECV_LINE, COLL_LINE, MEET_LINE].some((re
 const MIN_EXCHANGES = FILLED_ANSWERS + 1; // the author's messages (the idea, then answers) before it can be published
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
 const sizeOf = (bytes: number) => (bytes > 1e6 ? (bytes / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(bytes / 1e3)) + " KB");
+type DeskPlan = { desks: Desk[]; aiOff: boolean }; // the desks to choose from, and whether the keywords made the proposal
 type Menu = { at: "start" | "chat" | "card" | "add"; view: MenuView } | null; // "add": under a start-page action button
 
 // The screens of an open idea, as the URL names them (`?idea=<draft id>&view=…`, no view = the chat). The URL
@@ -91,7 +94,7 @@ export function Raise(p: { script?: boolean }) {
 function RaisePage({ script = false }: { script?: boolean }) {
   const t = useT();
   const locale = useLocale();
-  const { seed, S, persona, role, act, ready, href, tenant, showToast, serverMode } = useDemo();
+  const { seed, S, persona, role, act, ready, href, tenant, showToast, serverMode, f } = useDemo();
   const story = script && role === "member"; // the demo script is the employee's story; others raise their own
   // The static demo scores and answers in this browser, against the seed it shows.
   const local = useMemo(() => (script ? ideaContext(seed.routes, seed.goals, S.cases, seed.spend) : null), [script, seed.routes, seed.goals, seed.spend, S.cases]);
@@ -142,11 +145,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [evalStep, setEvalStep] = useState<number | null>(null); // the evaluation's step while the first reply is on its way
   const evalTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-  // Publishing: the step NextUp is on while it finds who should receive it, then the suggestions to
-  // choose from; `pubWork` is the step while the chosen one is published.
-  const [pubStep, setPubStep] = useState<null | Work | Receiver[]>(null);
+  // Publishing: the step NextUp is on while it finds where the idea should go, then the desks to
+  // choose from; `pubWork` is the step while the chosen one is published, `sent` the window afterwards.
+  const [pubStep, setPubStep] = useState<null | Work | DeskPlan>(null);
   const [pubWork, setPubWork] = useState<Work | null>(null);
-  const [rcvInput, setRcvInput] = useState<ReceiverInput | null>(null); // what the suggestions were scored on, for someone picked by hand
+  const [sent, setSent] = useState<Sent | null>(null);
   // The last look before publishing: per draft, the author's words as the case will carry them; open or not.
   const [looks, setLooks] = useKept<Record<string, Look>>(scope, "looks", {});
   // Per reply of NextUp's: the topics it left unclear, as they stood when the author answered it - they stay under it.
@@ -245,27 +248,23 @@ function RaisePage({ script = false }: { script?: boolean }) {
 
   // The dev panel's "Fill a sample idea", offered while the start view is open (lib/dev-fill.ts).
   useEffect(() => (stage === "start" ? registerDevFill(() => fillRef.current()) : undefined), [stage]);
-  // `fixed`: the demo controls' fill - the same colleague and meeting every time, where the dev panel's varies them.
+  // `fixed`: the demo controls' fill - the same sample every time.
   useEffect(() => {
     fillRef.current = (fixed = false) => {
       const x = DEV_SAMPLES[fixed ? 0 : Math.floor(Math.random() * DEV_SAMPLES.length)];
       // People from this company's own seed: the samples' names only where they exist (the static demo renames them).
       const known = (n: string) => seed.people.some((p) => p.name === n);
-      const lead = seed.people.find((p) => p.name === who.name)?.reportsTo ?? ev?.lead;
-      const coll = seed.people.filter((p) => p.name !== who.name && p.name !== lead).map((p) => p.name);
       setStartText(x.text); setSegs(splitSegs(x.ctx)); caretRef.current = null; setStartAff(x.aff.filter((a) => !/^[A-Z]\. /.test(a) || known(a))); setMenu(null);
       setFiles((f) => ({ ...f, [slot]: x.files.map((name) => ({ id: newId("f"), name, url: "", img: false, file: new File([], name) })) }));
-      const mate = coll.findIndex((n) => seed.people.find((p) => p.name === n)?.reportsTo === lead); // the demo's: a teammate
-      const pick = fixed ? Math.max(0, mate) : Math.floor(Math.random() * coll.length);
-      preview.setExtras(slot, { recv: lead ? [lead] : [], coll: coll.length ? [coll[pick]] : [], meet: fixed || Math.random() > 0.5 ? { dur: "15 min", when: "this week" } : null, vis: "public", visTo: [] });
+      preview.setExtras(slot, { vis: "public", visTo: [] });
     };
   });
 
   // The demo controls (lib/demo-controls.ts): the click the script needs next, made from the controls -
-  // fill, Ask NextUp, each answer filled and sent, the last look, Find receiver. The handlers are this render's (see below).
+  // fill, Ask NextUp, each answer filled and sent, the last look, Choose a desk. The handlers are this render's (see below).
   const scriptRef = useRef({ send: () => {}, preview: () => {}, findReceiver: () => {} });
-  const autoPick = useRef(false); // sent from the controls: the receiver NextUp ranks first gets it, no dialog to answer
-  const publishRef = useRef<(to: Receiver) => Promise<void>>(async () => {});
+  const autoPick = useRef(false); // sent from the controls: the desk NextUp proposes first gets it, no dialog to answer
+  const publishRef = useRef<(to: Desk) => Promise<void>>(async () => {});
   const idle = ready && !sending && !published && !pubStep && !busy;
   const canIdea = story && idle && stage === "start" && !evaluating;
   const canSend = story && idle && !evaluating && (stage === "start" ? (startText.trim() || segsContext(segs).trim()).length >= 3 : !!draft && view === "chat" && text.trim().length >= 3);
@@ -281,11 +280,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
     preview: canPreview ? () => scriptRef.current.preview() : null,
     findReceiver: canConfirm ? () => scriptRef.current.findReceiver() : null,
   }) : undefined), [canIdea, canSend, canAnswer, answer, canPreview, canConfirm, scriptAt, setText]);
-  // Sent from the controls: once the suggestions are in, the first one receives it after a moment to read it.
+  // Sent from the controls: once the desks are in, the first one receives it after a moment to read it.
   useEffect(() => {
-    if (!autoPick.current || !Array.isArray(pubStep) || !pubStep.length) return;
+    if (!autoPick.current || !pubStep || !("desks" in pubStep) || !pubStep.desks.length) return;
     autoPick.current = false;
-    const to = pubStep[0], t = setTimeout(() => void publishRef.current(to), 1200);
+    const to = pubStep.desks[0], t = setTimeout(() => void publishRef.current(to), 1200);
     return () => clearTimeout(t);
   }, [pubStep]);
 
@@ -342,12 +341,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const startRaise = () => {
     const main = startText.trim(), ctx = segsContext(segs);
     if (main.length < 3 || evaluating) return;
-    const extra = [
-      extras.recv.length ? t("ideas.pageExtraReceiver", { names: extras.recv.join(", ") }) : "",
-      extras.coll.length ? t("ideas.pageExtraColleagues", { names: extras.coll.join(", ") }) : "",
-      extras.meet ? t("ideas.pageExtraMeeting", { dur: extras.meet.dur, when: extras.meet.when }) : "",
-    ].filter(Boolean).join("\n");
-    const message = main + (ctx ? "\n\n" + ctx : "") + (extra ? "\n\n" + extra : "");
+    const message = main + (ctx ? "\n\n" + ctx : "");
     // Every idea, the demo script's too, lands in the chat: NextUp's reply, its short read and what is still unclear.
     setMenu(null); setEvalStep(0);
     setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx, locale).parts, locale) }));
@@ -361,14 +355,6 @@ function RaisePage({ script = false }: { script?: boolean }) {
     }, 420);
   };
 
-  // What the receiver suggestions are worked out from: the idea, the org, the routing map, and how
-  // everyone answered the cases on their desk.
-  const receiverInput = (text: string, lead: string, brain: ReceiverInput["brain"]): ReceiverInput => ({
-    text, routes: seed.routes, people: seed.people, depts: seed.depts, promiseDays: seed.promiseDays, spendLimitEur: seed.spend?.limitEur ?? null,
-    cases: S.cases.map((c) => ({ assignee: c.assignee, raisedDay: c.raisedDay, decided: c.decided })),
-    lead, me: who.name, myDept: who.line.split(",")[0].trim(), affected, brain, yours: extras.recv[0] ?? null,
-  });
-
   // One step of the work, said in the button while it runs: the label and the orb's mode, the real work,
   // and a short minimum so each step can be read.
   const step = async <T,>(set: (w: Work) => void, label: string, orb: Work["orb"], work: () => Promise<T> | T, min: number): Promise<T> => {
@@ -379,15 +365,15 @@ function RaisePage({ script = false }: { script?: boolean }) {
 
   // What the case will say: the demo script's main points, or the idea as the conversation has it - its
   // first paragraph the description, "*Label* text" lines the details, the rest context (without the
-  // start page's receiver, colleague and meeting lines: those are chips of their own).
+  // former receiver, colleague and meeting lines of an older draft).
   const outgoing = scripted ? DEMO_CASE : { body: idea.body, upside: ev?.payload.upside ?? "" };
   const mine = draft ? looks[draft.id] ?? null : null;
   const bodyOf = (l: Look) => [l.description.trim(), l.context.trim(),
     l.prompts.filter((x) => x.label.trim() && x.text.trim()).map((x) => "*" + x.label.trim() + "* " + x.text.trim()).join("\n")].filter(Boolean).join("\n\n");
   const setLook = (l: Look) => { if (draft) setLooks((x) => ({ ...x, [draft.id]: l })); };
 
-  // "Publish": first the last look (PublishPreview.tsx) - the idea as the receiver's inbox shows it, the
-  // author's part editable - and from there NextUp finds who should receive it. The look is kept per
+  // "Publish": first the last look (PublishPreview.tsx) - the idea as the desk's inbox shows it, the
+  // author's part editable - and from there NextUp proposes the desk. The look is kept per
   // draft, so closing and reopening it loses nothing.
   // The last look as NextUp first lays it out: the description is the author's own first line (the
   // script's case has its own); what they wrote under it is the context.
@@ -405,26 +391,33 @@ function RaisePage({ script = false }: { script?: boolean }) {
     setMenu(null);
     if (!mine) setLook(lookOf());
     setSb((x) => (x === "open" ? "auto" : x)); // on a phone the drawer closes, so the window is what shows
-    // A second of placeholder first, while NextUp lays it out; then the last look, with Find receiver.
+    // A second of placeholder first, while NextUp lays it out; then the last look, with Choose a desk.
     setPrepping(true);
     setTimeout(() => { setPrepping(false); nav({ view: "preview" }); }, 1000);
   };
 
   // "Publish idea": the button says what NextUp does - reads the idea, asks the router, checks the org
-  // chart, ranks who fits - then the author picks who receives it (RaisePublish.tsx).
-  const askReceiver = async () => {
+  // chart, lists the desks - then the author picks where it goes (RaisePublish.tsx).
+  const askDesk = async () => {
     if (!draft || busy || published || pubStep) return;
-    setMenu(null);
+    setMenu(null); setSent(null);
     const text = await step(setPubStep, t("ideas.pageStepReading"), "working", () => (mine ? mine.title + "\n\n" + bodyOf(mine) : idea.text), 450);
     const brain = await step(setPubStep, t("ideas.pageStepRouter"), "searching", () => (script ? null : brainProposalAction({ slug: tenant.slug, title: idea.title, body: idea.body }).catch(() => null)), 650);
-    const lead = await step(setPubStep, t("ideas.pageStepOrg"), "connecting", () => ev?.lead ?? t("ideas.pageTriageDesk"), 500);
-    const input = receiverInput(text, lead, brain ? { routeId: brain.proposal.routeId, confidence: brain.proposal.confidence, reason: brain.reason } : null);
-    setRcvInput(input);
-    const options = await step(setPubStep, t("ideas.pageStepRanking"), "weaving", () => receiversFor(input, locale), 450);
-    setPubStep(options);
+    await step(setPubStep, t("ideas.pageStepOrg"), "connecting", () => null, 500);
+    const plan = await step(setPubStep, t("ideas.pageStepRanking"), "weaving", () => {
+      const proposal = evaluate({ kind: "idea", text, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, brain).payload.proposal;
+      const desks = desksFor({ text, routes: seed.routes, seats: seed.seats, proposal, myDept: who.line.split(",")[0].trim(), affected, spendLimitEur: seed.spend?.limitEur ?? null }, locale);
+      return { desks, aiOff: proposal.source === "keywords" };
+    }, 450);
+    setPubStep(plan);
   };
 
-  const publish = async (to: Receiver) => {
+  // When the desk owes an answer: the company's promise days on the working-day calendar (the demo counts days as the page does).
+  const dueLabel = () => seed.clock.mode === "workdays"
+    ? formatDate(locale, new Date(addWorkdays(new Date().toISOString().slice(0, 10), seed.promiseDays, seed.clock.calendar) + "T12:00:00Z"), "dayMonth")
+    : f(S.day + seed.promiseDays);
+
+  const publish = async (to: Desk) => {
     if (!draft || busy || published) return;
     setBusy(true);
     const caseId = newId("c");
@@ -438,10 +431,10 @@ function RaisePage({ script = false }: { script?: boolean }) {
     // The demo script's case carries its main points instead of the raw conversation.
     const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     const body = mine ? bodyOf(mine) : made.body;
-    await step(setPubWork, t("ideas.pageStepRaising", { name: to.name }), "composing", () => act.raise({ ...e.payload, title, body, upside: made.upside, assignee: to.name, routeId: to.routeId ?? e.payload.routeId }, caseId), 600);
+    await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raise({ ...e.payload, title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId }, caseId), 600);
     // Everything the raise page worked out goes with the case: the document, the dials, every file (not only the images).
-    saveRaised(tenant.slug, caseId, briefOfDoc({ ...finalDoc, receiver: to.name }, {
-      files: myFiles.map((f) => ({ name: f.name, size: f.file.size ? sizeOf(f.file.size) : "" })), affected, categories: cats, receiverRole: to.role, depts: seed.depts, people: seed.people,
+    saveRaised(tenant.slug, caseId, briefOfDoc({ ...finalDoc, receiver: to.title }, {
+      files: myFiles.map((f) => ({ name: f.name, size: f.file.size ? sizeOf(f.file.size) : "" })), affected, categories: cats, receiverRole: to.title, depts: seed.depts, people: seed.people,
     }, locale));
     const images = myFiles.filter((f) => f.img).slice(0, MAX_SHOTS);
     if (images.length) {
@@ -451,7 +444,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
       }, 400);
       if (!kept) showToast(t("ideas.pageToastShotsFull"));
     }
-    setBusy(false); setPubWork(null); setPubStep(null);
+    setBusy(false); setPubWork(null);
+    setSent({ role: to.title, names: to.holders, date: dueLabel() }); // the window stays, now saying who owes an answer by when
     go("chat"); // published: back to the conversation, where the case is offered
     void studio.open(draft.id);
   };
@@ -475,12 +469,12 @@ function RaisePage({ script = false }: { script?: boolean }) {
     setText(""); setAsk(null);
   };
 
-  // The last look confirmed ("Find receiver"): the window closes and NextUp finds who receives it.
+  // The last look confirmed ("Choose a desk"): the window closes and NextUp proposes the desks.
   const confirmLook = () => {
     if (!draft) return;
     if (!mine && shownLook) setLook(shownLook);
     go("chat");
-    void askReceiver();
+    void askDesk();
   };
   // This render's handlers, for the demo controls (handed over after the render, see Sync).
   const syncScript = () => {
@@ -496,16 +490,13 @@ function RaisePage({ script = false }: { script?: boolean }) {
     preview.edit(draft.id, { orig: current, text: description + (context.trim() ? "\n\n" + context : "") });
   };
   // The Idea view shows the idea as the last look does (IdeaCard.tsx): its "*Label*" and "Impact:" lines
-  // as rows, the start page's receiver, colleague and meeting lines left out (the card has those as
-  // fields) but kept in the text, so the coach still reads them.
+  // as rows, the former receiver, colleague and meeting lines of an older draft left out but kept in the text.
   const ctxLines = shown.context.split("\n");
   const extraLines = ctxLines.filter(isExtraLine);
   const ideaParts = splitPrompts(ctxLines.filter((l) => !isExtraLine(l)).join("\n"));
   const ideaLook: Look = { title: draft?.title || idea.title, description: shown.description, context: ideaParts.free, prompts: ideaParts.rows };
   const editLook = (l: Look) => editIdea(l.description, [promptContext(l.context, l.prompts), extraLines.join("\n")].filter(Boolean).join("\n"));
   const cardProps = {
-    author: who.name, meet: extras.meet, onMeet: (meet: typeof extras.meet) => preview.setExtras(key, { meet }),
-    coll: extras.coll, people: seed.people, onColl: (coll: string[]) => preview.setExtras(key, { coll }),
     affected, depts: seed.depts.map((d) => d.name), onAffected: setAffected,
     files: myFiles, onAddFiles: addFiles, onRemoveFile: removeFile,
   };
@@ -518,9 +509,6 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const chips: Chip[] = (() => {
     const at = stage === "start" ? "start" : "card";
     const out: Chip[] = [];
-    extras.recv.forEach((n) => out.push({ key: "r" + n, title: n, sub: t("ideas.pageChipReceiver"), kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "receiver"), remove: () => preview.setExtras(key, { recv: [] }) }));
-    extras.coll.forEach((n) => out.push({ key: "c" + n, title: n, sub: t("ideas.pageChipColleague"), kind: "person", person: n, lead: initials(n), open: () => openMenu(at, "colleague"), remove: () => preview.setExtras(key, { coll: extras.coll.filter((x) => x !== n) }) }));
-    if (extras.meet) out.push({ key: "m", title: extras.meet.dur, sub: t("ideas.pageChipMeeting", { when: extras.meet.when }), kind: "meeting", lead: "", icon: "meeting", open: () => openMenu(at, "meeting"), remove: () => preview.setExtras(key, { meet: null }) });
     if (affected.length) out.push({ key: "a", title: affected.length === 1 ? affected[0] : affected[0] + " +" + (affected.length - 1), sub: t("ideas.pageChipAffected"), kind: "affected", lead: "", icon: "affected", open: () => openMenu(at, "affected"), remove: () => setAffected([]) });
     if (extras.vis !== "public") out.push(extras.vis === "private"
       ? { key: "v", title: t("ideas.pageChipPrivate"), sub: t("ideas.pageChipPrivateSub"), kind: "private", lead: "", icon: "lock", open: () => openMenu(at, "vis"), remove: () => preview.setExtras(key, { vis: "public", visTo: [] }) }
@@ -570,13 +558,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   if (firstText) {
     const { description, context } = splitIdea(stripTags(firstText));
     const details: { key: string; value: string }[] = affected.length ? [{ key: t("ideas.pageDetailAffected"), value: affected.join(", ") }] : [];
-    const body = context.split("\n").filter((line) => {
-      const recv = lineMatch(RECV_LINE, line.trim()), coll = lineMatch(COLL_LINE, line.trim()), meet = lineMatch(MEET_LINE, line.trim());
-      if (recv) details.push({ key: t("ideas.pageDetailReceiver"), value: recv[1] });
-      if (coll) details.push({ key: t("ideas.pageDetailColleagues"), value: coll[1] });
-      if (meet) details.push({ key: t("ideas.pageDetailMeeting"), value: meet[1] + " · " + meet[2] });
-      return !recv && !coll && !meet;
-    }).join("\n").trim();
+    const body = context.split("\n").filter((line) => !isExtraLine(line)).join("\n").trim();
     myFiles.forEach((f) => details.push({ key: t("ideas.pageDetailFile"), value: f.name }));
     msgs.unshift({ id: "idea", role: "user", text: description, idea: { body, details } });
   }
@@ -591,7 +573,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const card: DraftCard | null = stage === "chat" && draft ? {
     title: draft.title || idea.title, published, canPublish: canFinalize,
     pubHint: published ? t("ideas.pagePubHintPublished", { lead }) : t("ideas.pagePubHint", { lead }),
-    onPublish: openLook, working: pubStep && !Array.isArray(pubStep) ? pubStep : null, onRename: (title) => void studio.save({ title }),
+    onPublish: openLook, working: pubStep && !("desks" in pubStep) ? pubStep : null, onRename: (title) => void studio.save({ title }),
     hasIdea: firstIdx >= 0, ideaOn: shownView === "idea", ideaEdited: !!edit, onIdea: () => { setMenu(null); go(shownView === "idea" ? "chat" : "idea"); },
     aiOn: shownView === "analysis", analysed: turns.length > 0, onAI: () => go(shownView === "analysis" ? "chat" : "analysis"),
     acts: chips, files: fileChips,
@@ -704,7 +686,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const outLook = mine ?? shownLook;
   const exportIdea: ExportIdea = {
     kind: "idea", title: outLook?.title ?? draft?.title ?? idea.title, summary: outLook?.description ?? shown.description, context: outLook?.context ?? shown.context ?? "",
-    affected, coll: extras.coll, meet: extras.meet, prompts: outLook?.prompts ?? [], author: who.name, receiver: lead,
+    affected, prompts: outLook?.prompts ?? [], author: who.name, receiver: lead,
     meta: [who.name, affected[0] ?? team, formatDate(locale, now, "full")].filter(Boolean).join(" · "),
   };
   const exportAnalysis: ExportAnalysis = {
@@ -747,16 +729,13 @@ function RaisePage({ script = false }: { script?: boolean }) {
           onPick={openDraft} onPin={preview.togglePin} onNew={newIdea} />
       </div>
       <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label={t("ideas.pageCloseSidebar")} />
-      {Array.isArray(pubStep) && (
-        <ReceiverDialog options={pubStep} people={seed.people} depts={seed.depts} me={who.name} work={pubWork}
-          score={(name) => receiverFor(name, rcvInput ?? receiverInput(idea.text, ev?.lead ?? t("ideas.pageTriageDesk"), null), locale)}
-          onCancel={() => setPubStep(null)} onConfirm={(to) => void publish(to)} />
+      {pubStep && "desks" in pubStep && (
+        <DeskDialog desks={pubStep.desks} aiOff={pubStep.aiOff} search={(q) => otherDesks(seed.routes, seed.seats, q, locale)} work={pubWork} sent={sent} casesHref={href("/team")}
+          onCancel={() => { setPubStep(null); setSent(null); }} onConfirm={(to) => void publish(to)} />
       )}
       {prepping && <PreviewLoading />}
       {looking && shownLook && draft && !published && (
-        <PublishPreview author={who.name} look={shownLook} onLook={setLook}
-          meet={extras.meet} onMeet={(meet) => preview.setExtras(key, { meet })}
-          coll={extras.coll} people={seed.people} onColl={(coll) => preview.setExtras(key, { coll })}
+        <PublishPreview look={shownLook} onLook={setLook}
           affected={affected} depts={seed.depts.map((d) => d.name)} onAffected={setAffected}
           files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile}
           aiLine={t("ideas.pageAiLine", { n: sources.length })}

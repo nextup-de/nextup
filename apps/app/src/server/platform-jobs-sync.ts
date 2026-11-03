@@ -24,6 +24,7 @@ import { companyUrl } from "@/features/tenant/urls";
 import { getDb } from "@/lib/db/client";
 import { bindDemoCompany } from "@/lib/db/demo-identity";
 import { writeStructure } from "@/lib/db/structure-writes";
+import { PLATFORM_ACTOR, recordAudit } from "@/server/audit/record";
 import { sendMail } from "@/server/mail";
 import { call, opsConfig } from "@/server/tickets-sync";
 
@@ -42,7 +43,8 @@ async function createCompany(job: Extract<PlatformJob, { action: "create_company
   const code = email ? generateLoginCode(slug) : null;
   const person = email ? email.split("@")[0].replace(/[._-]+/g, " ").trim() || "Admin" : "";
 
-  const company = await getDb().company.create({
+  const company = await getDb().$transaction(async (tx) => {
+    const created = await tx.company.create({
     data: {
       slug,
       name: name.trim(),
@@ -68,6 +70,9 @@ async function createCompany(job: Extract<PlatformJob, { action: "create_company
             }
           : undefined,
     },
+    });
+    await recordAudit(created.id, { actor: PLATFORM_ACTOR, action: "audit.company.created", target: { kind: "company", id: created.id }, changes: { stage: { before: null, after: stage }, template: { before: null, after: template } }, source: "platform" }, tx);
+    return created;
   });
   if (template === "demo") {
     await writeStructure(company.id, writes, "admin");
@@ -89,7 +94,12 @@ async function run(job: PlatformJob): Promise<PlatformJobResult> {
       return createCompany(job);
     case "set_stage": {
       // Every session signed before the move ends, as in setCompanyStageAction.
-      await getDb().company.update({ where: { slug: job.slug }, data: { stage: job.stage, sessionEpoch: { increment: 1 } } });
+      await getDb().$transaction(async (tx) => {
+        const row = await tx.company.findUnique({ where: { slug: job.slug }, select: { id: true, stage: true } });
+        if (!row) throw new Error("company not found");
+        await tx.company.update({ where: { slug: job.slug }, data: { stage: job.stage, sessionEpoch: { increment: 1 } } });
+        await recordAudit(row.id, { actor: PLATFORM_ACTOR, action: "audit.company.stage", target: { kind: "company", id: row.id }, changes: { stage: { before: row.stage, after: job.stage } }, source: "platform" }, tx);
+      });
       return { id: job.id, ok: true };
     }
     case "delete_company": {

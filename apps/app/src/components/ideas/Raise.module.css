@@ -314,10 +314,6 @@
 .clear:hover { color: #1c1c1e; }
 .done { height: 24px; padding: 0 12px; border: none; border-radius: var(--radius-sm, 999px); background: #111; color: #fff; font-family: inherit; font-size: var(--nh-fs-xs); font-weight: 600; cursor: pointer; transition: transform 160ms cubic-bezier(.2,.8,.2,1); }
 .done:active { transform: scale(.96); }
-.meet { display: flex; flex-direction: column; gap: 6px; padding: 4.5px 9px 9px; }
-.meetLabel { font-size: var(--nh-fs-xs); font-weight: 500; color: #6e6e73; }
-.meetLabel + .meetLabel, .choices + .meetLabel { margin-top: 3px; }
-.choices { display: flex; flex-wrap: wrap; gap: 4.5px; }
 .files { padding: 3px 6px 7.5px; display: flex; flex-direction: column; gap: 6px; }
 .file { display: flex; align-items: center; gap: 7.5px; padding: 4.5px; border-radius: var(--radius-xs, 9px); background: #f7f7f9; border: 1px solid #e5e5ea; }
 .thumb { width: 36px; height: 36px; flex: none; border-radius: 7.5px; background-color: #eceef2; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-size: var(--nh-fs-xs); font-weight: 700; color: #3a3a3c; }
@@ -605,18 +601,11 @@ a.quickBtn { text-decoration: none; }
 .rcvTop:focus-visible { outline: 2px solid #b8d9ff; outline-offset: -2px; }
 .rcvRadio { flex: none; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #c6cbd4; background: #fff; transition: border 140ms ease; }
 .rcv[data-on="true"] .rcvRadio { border: 5px solid #1c1c1e; }
-.rcvAv { flex: none; width: 32px; height: 32px; border-radius: 50%; background: #eceef2; color: #6e6e73; display: flex; align-items: center; justify-content: center; font-size: var(--nh-fs-sm); font-weight: 700; letter-spacing: 0.02em; transition: background 160ms ease, color 160ms ease; }
-.rcv[data-on="true"] .rcvAv { background: #1c1c1e; color: #fff; }
 .rcvWho { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .rcvNameRow { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 2px; min-width: 0; }
 .rcvName { min-width: 0; max-width: 100%; font-size: var(--nh-fs-md); font-weight: 600; color: #1c1c1e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rcvTag { flex: none; font-size: var(--nh-fs-xs); font-weight: 600; padding: 2px 7px; border-radius: 6px; background: #e8f1ff; color: #0062cc; }
 .rcvRole { font-size: var(--nh-fs-sm); color: #6e6e73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rcvMatch { flex: none; width: 58px; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
-.rcvPct { font-size: var(--nh-fs-md); font-weight: 700; color: #1c1c1e; font-variant-numeric: tabular-nums; }
-.rcvBar { width: 100%; height: 4px; border-radius: 2px; background: #e5e5ea; overflow: hidden; }
-.rcvFill { display: block; width: var(--pct); height: 100%; border-radius: 2px; background: #8e8e93; transition: background 160ms ease; }
-.rcv[data-on="true"] .rcvFill { background: #007aff; }
 .rcvWhy { display: flex; flex-direction: column; gap: 6px; margin: 0 14px; padding: 12px 0 14px 28px; border-top: 1px solid #f0f0f3; animation: affFade 220ms ease backwards; }
 .rcvWhyLabel { font-size: var(--nh-fs-sm); font-weight: 600; color: #6e6e73; }
 .rcvReasons { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
@@ -626,7 +615,6 @@ a.quickBtn { text-decoration: none; }
 .rcvTop[aria-expanded="true"] .rcvChevron { transform: rotate(90deg); }
 .rcvSearch { display: flex; flex-direction: column; gap: 4px; padding: 0 10px 10px; animation: affFade 220ms ease backwards; }
 .rcvList { display: flex; flex-direction: column; }
-.rcvList .rcvAv { width: 28px; height: 28px; }
 .dlgFoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .dlgCancel { height: 38px; padding: 0 18px; border: none; border-radius: var(--radius-sm, 999px); background: #eceef2; color: #1c1c1e; font-family: inherit; font-size: var(--nh-fs-md); font-weight: 600; cursor: pointer; transition: background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
 .dlgCancel:hover { background: #e0e3e8; }

@@ -15,59 +15,20 @@ import { open, vaultKey } from "@/features/connectors/vault";
 import { getT } from "@/i18n/server";
 import { ADMIN_COOKIE, ADMIN_TTL_SECONDS, verifyAdmin } from "@/features/auth/cookie";
 import { issueAdminSession } from "@/server/admin-session";
-import type { CompanyRow, PilotRequestRow } from "@/features/admin/rows";
-import { seedTemplate } from "@/features/demo";
-import { toSeedJson } from "@/features/demo/parse";
-import { templateWrites } from "@/features/demo/content";
-import {
-  initialsOf,
-  markFor,
-  seedNameWarnings,
-  validateNewCompany,
-  type NewCompany,
-  type NewPerson,
-} from "@/features/tenant/create";
-import { databaseOutage, getDb, hasDatabase } from "@/lib/db/client";
-import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
-import { adminScope } from "@/features/admin/nav";
-import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
-import { bindDemoCompany } from "@/lib/db/demo-identity";
-import { writeStructure } from "@/lib/db/structure-writes";
-import { needsHandle, newHandle } from "@/features/auth/handle";
-import { createToken } from "@/lib/db/tokens";
-import type { AutomationReport } from "@/features/integrations/automation";
-import type { AutomationTaskView } from "@/features/integrations/tasks";
-import { buildRaisedNotice } from "@/features/cases/notice";
-import { companyBaseUrl, deliverRaisedNotice } from "@/server/case-notice";
-import { companySeed } from "@/lib/db/companies";
-import { loadCalendar } from "@/lib/db/calendar";
-import { companyDay } from "@/lib/db/events";
-import type { EventPayload } from "@/features/cases/events";
-import { companyUrl, dashboardUrl, landingUrl } from "@/features/tenant/urls";
+import type { CompanyRow } from "@/features/admin/rows";
+import { getDb, hasDatabase } from "@/lib/db/client";
+import { companyUrl, dashboardUrl, landingUrl, singleCompany } from "@/features/tenant/urls";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
-import { readEdit, readReply, validateEdit, validateReply, type Reply, type ReplyVia } from "@/features/admin/requests";
-import { sendMail, type MailStatus } from "@/server/mail";
-import { databaseSnapshot, noticeTasks, noticesSnapshot } from "@/server/connections";
 import { clientKey, forgive, throttle } from "@/server/throttle";
 import { usableSecret } from "@/features/admin/environment";
-import type { Role } from "@/config/roles";
+import { consoleActor, recordAudit } from "@/server/audit/record";
 
 // The row shapes live in features/admin/rows.ts, next to the demo rows that mirror them.
-export type { CompanyRow, PilotRequestRow };
+export type { CompanyRow };
 
-// A company stack's /admin is the company's own (features/admin/nav.ts, adminScope). The pages hide
-// the platform tools there; these two checks are the rule, because a server action can be called
-// without its page.
-const PLATFORM_ONLY = "That is done by the NextUp team on admin.sellux.ch, not in a company's own admin.";
-
-/** True in a company stack, where adding, deleting, staging companies and pilot requests are not ours to do. */
-function platformOnly(): boolean {
-  return adminScope() === "company";
-}
-
-/** True when a company stack's admin is asked to touch any company but its own. */
+/** True when the console is asked to touch any company but this stack's own. */
 function foreignCompany(slug: string): boolean {
-  return adminScope() === "company" && slug !== process.env.COMPANY_SLUG?.trim();
+  return slug !== singleCompany();
 }
 
 /** Compared as digests, so neither the code's content nor its length leaks through timing. */
@@ -124,6 +85,10 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   if (given && codeMatches(given, expected)) {
     await forgive("adminLogin", who);
     console.info(`[admin] break-glass ${new Date().toISOString()}`);
+    // A row for the stack's own company; the code itself is never written. A failed write stops the sign-in.
+    const own = singleCompany();
+    const home = own && hasDatabase() ? await getDb().company.findUnique({ where: { slug: own }, select: { id: true } }) : null;
+    if (home) await recordAudit(home.id, { actor: { kind: "break-glass", userId: null }, action: "audit.access.break_glass", changes: {}, source: "console" });
     await issueAdminSession(undefined, true, "break-glass");
     // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
     // is a TypeError: Invalid URL, not a redirect to the root.
@@ -139,7 +104,7 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
           include: { company: { select: { slug: true } } },
         })
       : null;
-  const ownCompany = adminScope() !== "company" || user?.company.slug === process.env.COMPANY_SLUG?.trim();
+  const ownCompany = user?.company.slug === singleCompany();
   if (!user || !user.active || !user.isStackAdmin || !ownCompany) {
     console.warn(`[admin] wrong admin code from ${who}`);
     return { error: t("adminAccess.adminWrong") };
@@ -174,10 +139,12 @@ export async function adminSignOut(form?: FormData) {
   redirect(adminHome() + "/login");
 }
 
-export async function listCompanies(): Promise<CompanyRow[]> {
-  if (!(await isAdmin()) || !hasDatabase()) return [];
-  const rows = await getDb().company.findMany({
-    orderBy: { createdAt: "desc" },
+/** This stack's own company, for the console (D4/D5): never a list, never another company. */
+export async function ownCompanyRow(): Promise<CompanyRow | null> {
+  const slug = singleCompany();
+  if (!slug || !(await isAdmin()) || !hasDatabase()) return null;
+  const r = await getDb().company.findUnique({
+    where: { slug },
     select: {
       id: true, slug: true, name: true, stage: true, createdAt: true, entraTenantId: true,
       users: {
@@ -187,7 +154,8 @@ export async function listCompanies(): Promise<CompanyRow[]> {
       _count: { select: { users: true, events: true } },
     },
   });
-  return rows.map((r) => ({
+  if (!r) return null;
+  return {
     id: r.id,
     slug: r.slug,
     name: r.name,
@@ -207,92 +175,8 @@ export async function listCompanies(): Promise<CompanyRow[]> {
       codeIssuedAt: u.loginCodeAt?.toISOString() ?? null,
       microsoft: Boolean(u.entraOid),
     })),
-  }));
-}
-
-export type CreateState =
-  | { status: "idle" }
-  | { status: "error"; problems: string[] }
-  /** Every person's login code, shown once, here, and never again - only hashes are stored. */
-  | { status: "created"; slug: string; url: string; codes: IssuedCode[]; warnings: string[] };
-
-export type IssuedCode = { name: string; email: string; code: string };
-
-export async function createCompanyAction(_prev: CreateState, form: FormData): Promise<CreateState> {
-  if (!(await isAdmin())) return { status: "error", problems: ["Not signed in to the admin area."] };
-  if (platformOnly()) return { status: "error", problems: [PLATFORM_ONLY] };
-  if (!hasDatabase()) return { status: "error", problems: ["No database is configured."] };
-
-  const input: NewCompany = {
-    slug: String(form.get("slug") ?? "").trim(),
-    name: String(form.get("name") ?? "").trim(),
-    mark: String(form.get("mark") ?? "").trim() || undefined,
-    template: form.get("template") === "empty" ? "empty" : "demo",
-    people: parsePeople(form),
-  };
-  // Demo (made-up people, demo tools on) or sandbox (real people, locked down). Anything else -
-  // a stale form, a hand-made POST - is a demo, never silently a later stage.
-  const stage = form.get("stage") === "sandbox" ? "sandbox" : "demo";
-
-  const problems = validateNewCompany(input);
-  if (problems.length) return { status: "error", problems: problems.map((p) => p.message) };
-
-  const db = getDb();
-  if (await db.company.findUnique({ where: { slug: input.slug }, select: { id: true } })) {
-    return { status: "error", problems: [`A company with the slug "${input.slug}" already exists.`] };
-  }
-
-  const seed = seedTemplate(input.template);
-  const writes = templateWrites(input.template, () => crypto.randomUUID());
-  const now = new Date();
-  const codes = input.people.map((p) => ({ name: p.name.trim(), email: p.email.trim().toLowerCase(), code: generateLoginCode(input.slug) }));
-
-  // Every member gets an anonymous handle (IDN/D11); one already given in the form stays.
-  const handles = input.people.flatMap((p) => (p.handle ? [p.handle] : []));
-  for (const p of input.people) {
-    if (needsHandle(p.role) && !p.handle) { p.handle = newHandle(handles); handles.push(p.handle); }
-  }
-
-  const company = await db.company.create({
-    data: {
-      slug: input.slug,
-      name: input.name,
-      mark: markFor(input),
-      stage,
-      seedJson: toSeedJson(writes.seedJson) as object,
-      config: { create: {} },
-      users: {
-        create: input.people.map((p, i) => ({
-          name: p.name.trim(),
-          email: p.email.trim().toLowerCase(),
-          role: p.role,
-          dept: p.dept ?? "",
-          ini: initialsOf(p.name),
-          handle: p.handle ?? null,
-          loginCodeHash: hashLoginCode(codes[i].code),
-          loginCodeAt: now,
-        })),
-      },
-    },
-  });
-
-  // The demo template's org units, roles, routing table, goals and rules as rows
-  // (docs/COMPANY_KNOWLEDGE.md). The empty template writes none.
-  if (input.template === "demo") {
-    await writeStructure(company.id, writes, "admin");
-    await bindDemoCompany(company.id);
-  }
-
-  return {
-    status: "created",
-    slug: input.slug,
-    url: companyUrl(input.slug),
-    codes,
-    warnings: seedNameWarnings(seed, input.people),
   };
 }
-
-export type RotateState = { slug?: string; error?: string };
 
 export type LoginCodeState = { slug?: string; name?: string; code?: string; error?: string };
 
@@ -314,9 +198,13 @@ export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData
   if (!company || !user) return { error: "No such person in this company." };
 
   const code = generateLoginCode(slug);
-  await getDb().user.update({
-    where: { id: user.id, companyId: company.id },
-    data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() },
+  const actor = await consoleActor();
+  await getDb().$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id, companyId: company.id },
+      data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() },
+    });
+    await recordAudit(company.id, { actor, action: "audit.member.code", target: { kind: "user", id: user.id }, changes: {}, source: "console" }, tx);
   });
   revalidatePath("/admin", "layout");
   return { slug, name: user.name, code };
@@ -339,8 +227,13 @@ export async function setStackAdminAction(_prev: StackAdminState, form: FormData
   const on = form.get("stackAdmin") === "on";
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
   if (!company) return { error: "No such person in this company." };
-  const { count } = await getDb().user.updateMany({ where: { id: userId, companyId: company.id }, data: { isStackAdmin: on } });
-  if (count === 0) return { error: "No such person in this company." };
+  const person = await getDb().user.findFirst({ where: { id: userId, companyId: company.id }, select: { id: true, isStackAdmin: true } });
+  if (!person) return { error: "No such person in this company." };
+  const actor = await consoleActor();
+  await getDb().$transaction(async (tx) => {
+    await tx.user.updateMany({ where: { id: person.id, companyId: company.id }, data: { isStackAdmin: on } });
+    await recordAudit(company.id, { actor, action: "audit.access.stack_admin", target: { kind: "user", id: person.id }, changes: { isStackAdmin: { before: person.isStackAdmin, after: on } }, source: "console" }, tx);
+  });
   revalidatePath("/admin", "layout");
   return { saved: true };
 }
@@ -358,294 +251,17 @@ export async function setEntraTenantAction(_prev: TenantState, form: FormData): 
   if (raw && !isTenantId(raw)) {
     return { slug, error: "That isn't an Entra tenant ID. It looks like 72f988bf-86f1-41af-91ab-2d7cd011db47 (Entra admin center → Overview)." };
   }
-  const { count } = await getDb().company.updateMany({ where: { slug }, data: { entraTenantId: raw || null } });
-  if (count === 0) return { slug, error: "No such company." };
+  const company = await getDb().company.findUnique({ where: { slug }, select: { id: true, entraTenantId: true } });
+  if (!company) return { slug, error: "No such company." };
+  const actor = await consoleActor();
+  await getDb().$transaction(async (tx) => {
+    await tx.company.update({ where: { id: company.id }, data: { entraTenantId: raw || null } });
+    await recordAudit(company.id, { actor, action: "audit.access.entra_tenant", target: { kind: "company", id: company.id }, changes: { entraTenantId: { before: company.entraTenantId, after: raw || null } }, source: "console" }, tx);
+  });
   revalidatePath("/admin", "layout");
   return { slug, saved: true };
 }
 
-/** Destructive and irreversible: the cascade takes the people and the whole event log with it. */
-export async function deleteCompanyAction(_prev: RotateState, form: FormData): Promise<RotateState> {
-  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
-  if (platformOnly()) return { error: PLATFORM_ONLY };
-  if (!hasDatabase()) return { error: "No database is configured." };
-
-  const slug = String(form.get("slug") ?? "");
-  // Typing the slug is the confirmation - there is no undo.
-  if (String(form.get("confirm") ?? "") !== slug) {
-    return { error: `Type "${slug}" to confirm. Deleting takes its people and its whole history with it.` };
-  }
-  await getDb().company.deleteMany({ where: { slug } });
-  return { slug };
-}
-
-export type TokenState = { slug?: string; token?: string; error?: string };
-
-/** An API token for this company's integration endpoints. Shown once; only its hash is stored. */
-export async function createApiTokenAction(_prev: TokenState, form: FormData): Promise<TokenState> {
-  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
-  if (platformOnly()) return { error: PLATFORM_ONLY };
-  if (!hasDatabase()) return { error: "No database is configured." };
-
-  const slug = String(form.get("slug") ?? "");
-  const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
-  if (!company) return { error: "No such company." };
-
-  const token = await createToken(company.id, "n8n", ["events:read", "events:write", "knowledge:write"]);
-  return { slug, token };
-}
-
-function parsePeople(form: FormData): NewPerson[] {
-  const names = form.getAll("personName").map(String);
-  const emails = form.getAll("personEmail").map(String);
-  const roles = form.getAll("personRole").map(String);
-  const depts = form.getAll("personDept").map(String);
-
-  return names
-    .map((name, i) => ({
-      name: name.trim(),
-      email: (emails[i] ?? "").trim(),
-      role: (roles[i] ?? "member") as Role,
-      dept: (depts[i] ?? "").trim() || undefined,
-    }))
-    .filter((p) => p.name || p.email);
-}
-
 function adminHome(): string {
   return process.env.TENANT_MODE === "subdomain" ? "" : "/admin";
-}
-
-// ---- Pilot requests from /contact ---------------------------------------------------------------
-
-/** Newest first, open ones before handled ones, each with its reply thread. */
-export async function listPilotRequests(): Promise<PilotRequestRow[]> {
-  if (!(await isAdmin()) || !hasDatabase()) return [];
-  const rows = await getDb().pilotRequest.findMany({
-    orderBy: [{ handledAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
-    take: 200,
-    include: { replies: { orderBy: { sentAt: "asc" } } },
-  });
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    company: r.company,
-    email: r.email,
-    decision: r.decision,
-    council: r.council,
-    message: r.message,
-    createdAt: r.createdAt.toISOString(),
-    handledAt: r.handledAt?.toISOString() ?? null,
-    notes: r.notes,
-    replies: r.replies.map((x) => ({
-      id: x.id,
-      to: x.to,
-      subject: x.subject,
-      body: x.body,
-      via: x.via,
-      sentAt: x.sentAt.toISOString(),
-    })),
-  }));
-}
-
-export type HandledState = { error?: string };
-
-/** Replied / reopened. Toggles, so a slip can be undone. */
-export async function markPilotRequestHandled(_prev: HandledState, form: FormData): Promise<HandledState> {
-  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
-  if (platformOnly()) return { error: PLATFORM_ONLY };
-  if (!hasDatabase()) return { error: "No database is configured." };
-
-  const id = String(form.get("id") ?? "");
-  const handled = String(form.get("handled") ?? "") === "1";
-  await getDb().pilotRequest.updateMany({ where: { id }, data: { handledAt: handled ? new Date() : null } });
-  revalidatePath("/admin", "layout");
-  return {};
-}
-
-export type EditRequestState = { saved?: number; problems?: string[] };
-
-/** Correct what the form captured, and keep internal notes next to it. */
-export async function updatePilotRequestAction(_prev: EditRequestState, form: FormData): Promise<EditRequestState> {
-  if (!(await isAdmin())) return { problems: ["Not signed in to the admin area."] };
-  if (platformOnly()) return { problems: [PLATFORM_ONLY] };
-  if (!hasDatabase()) return { problems: ["No database is configured."] };
-
-  const id = String(form.get("id") ?? "");
-  const edit = readEdit(form);
-  const problems = validateEdit(edit);
-  if (problems.length) return { problems };
-
-  const { count } = await getDb().pilotRequest.updateMany({ where: { id }, data: edit });
-  if (count === 0) return { problems: ["That request is gone - someone deleted it."] };
-  revalidatePath("/admin", "layout");
-  return { saved: Date.now() };
-}
-
-export type ReplyState = {
-  sent?: number;
-  via?: ReplyVia;
-  problems?: string[];
-  /** Handed back on failure, so a mail server saying no does not cost the admin the draft. */
-  draft?: Reply;
-};
-
-/**
- * Answer a request. intent=send mails it through SMTP_URL; intent=log records a reply written in
- * the admin's own mail app. Either way it lands in the thread and the request counts as replied.
- */
-export async function replyPilotRequestAction(_prev: ReplyState, form: FormData): Promise<ReplyState> {
-  if (!(await isAdmin())) return { problems: ["Not signed in to the admin area."] };
-  if (platformOnly()) return { problems: [PLATFORM_ONLY] };
-  if (!hasDatabase()) return { problems: ["No database is configured."] };
-
-  const id = String(form.get("id") ?? "");
-  const via: ReplyVia = form.get("intent") === "log" ? "manual" : "smtp";
-  const reply = readReply(form);
-  const problems = validateReply(reply);
-  if (problems.length) return { problems, draft: reply };
-
-  const request = await getDb().pilotRequest.findUnique({ where: { id }, select: { email: true } });
-  if (!request) return { problems: ["That request is gone - someone deleted it."], draft: reply };
-
-  if (via === "smtp") {
-    const result = await sendMail({ to: request.email, subject: reply.subject, text: reply.body });
-    if (!result.ok) return { problems: [result.error], draft: reply };
-  }
-
-  const now = new Date();
-  await getDb().$transaction([
-    getDb().pilotReply.create({ data: { requestId: id, to: request.email, ...reply, via, sentAt: now } }),
-    getDb().pilotRequest.update({ where: { id }, data: { handledAt: now } }),
-  ]);
-  revalidatePath("/admin", "layout");
-  return { sent: now.getTime(), via };
-}
-
-export type DeleteRequestState = { deleted?: boolean; error?: string };
-
-/** Gone for good, replies included. The panel asks twice; the second ask sets confirm=yes. */
-export async function deletePilotRequestAction(_prev: DeleteRequestState, form: FormData): Promise<DeleteRequestState> {
-  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
-  if (platformOnly()) return { error: PLATFORM_ONLY };
-  if (!hasDatabase()) return { error: "No database is configured." };
-  if (form.get("confirm") !== "yes") return { error: "Confirm the delete first." };
-
-  const id = String(form.get("id") ?? "");
-  await getDb().pilotRequest.deleteMany({ where: { id } });
-  revalidatePath("/admin", "layout");
-  redirect(adminHome() + "/requests");
-}
-
-// ── Case notices ─────────────────────────────────────────────────────────────
-// When a case is raised the app emails the route owner and notes it on the case
-// (server/case-notice.ts). "Is it working?" is assembled from the relay check the Mail card already
-// made and from the notes that exist. The wording lives in features/integrations/automation.ts
-// and is unit-tested.
-
-/** Takes the relay status rather than checking it again - adminContext already asked once. */
-export async function automationReport(mail: Pick<MailStatus, "configured" | "reachable" | "target">): Promise<AutomationReport | null> {
-  if (!(await isAdmin())) return null;
-  return noticesSnapshot(mail);
-}
-
-/** Every raise and whether its owner was told, newest first (server/connections.ts). */
-export async function automationTasks(limit = 25): Promise<AutomationTaskView[]> {
-  if (!(await isAdmin())) return [];
-  return noticeTasks(limit);
-}
-
-export type RetryState = { eventId?: string; ok?: boolean; error?: string };
-
-/**
- * Email one raise's owner again, and say what came back.
- *
- * Safe to press twice: a notice already on the case (idempotency key notify:<eventId>) is found
- * first, so the owner is not mailed a second time. Unlike the raise path this awaits the answer -
- * the whole point is to see the failure.
- */
-export async function retryNoticeAction(_prev: RetryState, form: FormData): Promise<RetryState> {
-  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
-  if (platformOnly()) return { error: PLATFORM_ONLY };
-  if (!hasDatabase()) return { error: "No database is configured." };
-
-  const eventId = String(form.get("eventId") ?? "");
-  const slug = String(form.get("slug") ?? "");
-
-  const company = await getDb().company.findUnique({
-    where: { slug },
-    select: { id: true, stage: true, demoDay: true, seedJson: true, users: { select: { id: true, name: true, email: true } } },
-  });
-  if (!company) return { eventId, error: "No such company." };
-
-  const event = await getDb().caseEvent.findFirst({
-    where: { companyId: company.id, id: eventId, type: "case.raised" },
-    select: { id: true, targetId: true, payload: true },
-  });
-  if (!event) return { eventId, error: "That raise is no longer in the log." };
-
-  const result = await deliverRaisedNotice(
-    company.id,
-    buildRaisedNotice({
-      slug,
-      eventId: event.id,
-      caseId: event.targetId ?? "",
-      payload: (event.payload ?? {}) as EventPayload,
-      seed: await companySeed(company),
-      people: company.users,
-      day: companyDay(company, await loadCalendar(company.id), new Date()),
-      baseUrl: companyBaseUrl(slug),
-    }),
-    8000, // A person is watching this one, so give the relay longer than the raise path does.
-  );
-
-  if (!result.ok) return { eventId, error: result.error };
-  revalidatePath("/admin", "layout");
-  return { eventId, ok: true };
-}
-
-// ── Database ─────────────────────────────────────────────────────────────────
-
-/** What Postgres says about itself (server/connections.ts). Signed out, only whether it is set. */
-export async function databaseReport(): Promise<DatabaseReport> {
-  if (!(await isAdmin())) {
-    return describeDatabase({ configured: Boolean(process.env.DATABASE_URL), outage: databaseOutage(), facts: null });
-  }
-  return databaseSnapshot();
-}
-
-// ── Managing a company ───────────────────────────────────────────────────────
-
-export type StageState = { slug?: string; stage?: string; error?: string };
-
-/**
- * Move a company through demo -> sandbox -> pilot -> live (docs/INTEGRATIONS.md "Stages").
- *
- * It is a column, not a branch: nothing about the code changes, it is how we describe this
- * customer to ourselves. Which is exactly why it belongs on the page where the customer was
- * created, instead of in a psql session.
- */
-export async function setCompanyStageAction(_prev: StageState, form: FormData): Promise<StageState> {
-  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
-  if (platformOnly()) return { error: PLATFORM_ONLY };
-  if (!hasDatabase()) return { error: "No database is configured." };
-
-  const slug = String(form.get("slug") ?? "");
-  const stage = String(form.get("stage") ?? "");
-  if (!isStage(stage)) return { slug, error: `"${stage}" is not one of ${STAGES.join(", ")}.` };
-
-  const current = await getDb().company.findUnique({ where: { slug }, select: { stage: true } });
-  if (!current) return { slug, error: "No such company." };
-  if (!canMoveStage(current.stage, stage)) {
-    return {
-      slug,
-      error: `${slug} holds real people. Moving it back to demo would switch the reset and "become someone else" tools back on over their cases - create a separate demo company instead.`,
-    };
-  }
-
-  // Every session signed before the move ends: a demo visitor must not keep a way into real cases.
-  await getDb().company.update({ where: { slug }, data: { stage, sessionEpoch: { increment: 1 } } });
-
-  revalidatePath("/admin", "layout");
-  revalidatePath("/", "layout");
-  return { slug, stage };
 }
