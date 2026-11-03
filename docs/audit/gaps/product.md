@@ -60,7 +60,7 @@ the phase in the row does (D3).
 | G-047 | data protection | A company stack's /admin opens with one shared ADMIN_ACCESS_CODE, no named admins and no 2FA | apps/app/src/server/actions/admin.ts:6 · apps/app/src/features/admin/environment.ts:52 | high | ADM | K |
 | G-048 | dashboards | The manager dashboard shows preview data from dashboardPreview, not the company's cases | apps/app/src/components/dashboard/shared/dashboardPreview.ts · apps/app/src/components/dashboard/shared/DashboardBoard.tsx | medium | MET | S |
 | G-049 | dashboards | The feed runs on feedPreview placeholder data | apps/app/src/components/dashboard/team/feedPreview.ts · apps/app/src/components/dashboard/team/FeedView.tsx | medium | MET | S |
-| G-050 | dashboards | The overview runs on overviewPreview placeholder data and shows "—" without demo data | apps/app/src/components/dashboard/team/overviewPreview.ts · apps/app/src/features/metrics/overview.ts | medium | MET | S |
+| G-050 | dashboards | The overview runs on overviewPreview placeholder data and shows "—" without demo data | apps/app/src/features/metrics/overview.ts | medium | MET | S |
 | G-051 | tests | The DB tests (apps/app/tests/db, run by ops/test-db.sh) are not run by any CI job | apps/app/tests/db · ops/test-db.sh · .github/workflows/ci.yml | medium | AUD | K |
 | G-052 | tests | The brain's pytest suite is not run by any CI job | services/brain/tests · .github/workflows/ci.yml | medium | AUD | K |
 | G-053 | hard-wired | The three roles and the Entra claim names (nextup.manager, nextup.leader, nextup.member, nextup.admin) are fixed in code, not configuration per company | apps/app/src/config/roles.ts:2 · apps/app/src/config/roles.ts:29 | medium | STR | K |
