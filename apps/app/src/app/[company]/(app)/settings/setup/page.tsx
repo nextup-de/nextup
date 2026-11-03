@@ -2,7 +2,9 @@
 // admin go back to a finished step. Company admins only (companyAdminOf).
 import { notFound } from "next/navigation";
 import { SetupWizard, type SetupData } from "@/components/settings/SetupWizard";
+import { SAMPLE_COMPANY, SAMPLE_FREE_SEATS, SAMPLE_KNOWLEDGE, SAMPLE_ME, SAMPLE_MEMBER_ROWS, SAMPLE_MEMBERS } from "@/features/settings/demo";
 import { setupStep } from "@/features/settings/sections";
+import { appHost, companyPrefix } from "@/features/tenant/urls";
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { loadKnowledge } from "@/lib/db/knowledge";
@@ -19,9 +21,15 @@ type Search = { step?: string | string[] };
 export default async function SetupPage({ params, searchParams }: { params: Promise<{ company: string }>; searchParams: Promise<Search> }) {
   const { company } = await params;
   const { step: asked } = await searchParams;
-  const t = await getT();
+  // Without a database every step can be looked at with the sample company; nothing saves.
   if (!hasDatabase() || !process.env.AUTH_SECRET) {
-    return <><h1>{t("settingsSetup.title")}</h1><p className="nh-hint">{t("settingsSetup.noDatabase")}</p></>;
+    const one = Array.isArray(asked) ? asked[0] : asked;
+    const shown: SetupFormStep | "done" = one === "done" ? "done" : SETUP_FORM_STEPS.find((x) => x === one) ?? "units";
+    const sample: SetupData = {
+      company: SAMPLE_COMPANY, address: `${appHost()}${companyPrefix(company)}`, knowledge: SAMPLE_KNOWLEDGE,
+      options: SAMPLE_MEMBERS, me: SAMPLE_ME, members: SAMPLE_MEMBER_ROWS, freeSeats: SAMPLE_FREE_SEATS,
+    };
+    return <SetupWizard slug={company} steps={SETUP_FORM_STEPS} step={shown} data={sample} demo />;
   }
   const admin = await companyAdminOf(company);
   if (!admin) notFound();
@@ -58,6 +66,7 @@ export default async function SetupPage({ params, searchParams }: { params: Prom
         complianceRules: profile?.complianceRules ?? "",
       },
     },
+    address: `${appHost()}${companyPrefix(company)}`,
     knowledge,
     options,
     me: page.me,

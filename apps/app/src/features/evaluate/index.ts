@@ -80,7 +80,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposa
   const spend = /€|spend|buy|order|purchase|budget|cost|invoice/.test(lower);
   // Scored exactly as the dashboard will score the stored case: the goal it serves is kept as its upside.
   const upside = goal ? goal.goal : "";
-  const score = scoreCase({ routeId: route?.id ?? null, upside, body: "", age: 0, open: true, affected: input.affected.length, evidence: input.attachments }, ctx.promiseDays);
+  const score = scoreCase({ routeId: route?.id ?? null, upside, body: "", age: 0, open: true, affected: input.affected.length, evidence: input.attachments, routeSource: brain ? "llm" : "keywords" }, ctx.promiseDays);
   const sep = " · ";
   const shots = input.attachments ? [t("structure.evalReadScreenshots", { count: input.attachments })] : [];
   const owns = route ? t("structure.evalOrgOwns", { owner: route.owner.name, type: route.type }) : t("structure.evalOrgNoMatch");

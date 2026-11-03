@@ -1,7 +1,43 @@
-// Feed (MET-G1 adds its keys here).
+// Feed: the latest-event line on a card, the supporters line, the filters and the window footer.
 import { defineMessages } from "../define";
 
 export const feed = defineMessages({
-  en: {},
-  de: {},
+  en: {
+    sortLatest: "Latest activity",
+    allUnits: "All units",
+    latestRaised: "Raised · {when}",
+    latestRead: "Read by {who} · {when}",
+    latestAsked: "Asked a question · {who} · {when}",
+    latestYes: "Answered yes by {who} · {when}",
+    latestNo: "Answered no by {who} · {when}",
+    latestHanded: "Handed to {who} · {when}",
+    latestDiscussion: "Discussion started by {who} · {when}",
+    latestEscalated: "Escalated to {who} · {when}",
+    theDesk: "the desk",
+    supportersNone: "Be the first to back it.",
+    supportersYou: "You support this",
+    supportersCount: "{count} people back this",
+    supportersUnit: "{count} from {unit} back this",
+    windowFooter: "Showing cases open now or moved in the last 90 working days.",
+    emptyFeed: "Nothing in the feed yet. What people raise shows here.",
+  },
+  de: {
+    sortLatest: "Letzte Aktivität",
+    allUnits: "Alle Einheiten",
+    latestRaised: "Eingebracht · {when}",
+    latestRead: "Gelesen von {who} · {when}",
+    latestAsked: "Rückfrage · {who} · {when}",
+    latestYes: "Mit Ja beantwortet von {who} · {when}",
+    latestNo: "Mit Nein beantwortet von {who} · {when}",
+    latestHanded: "Übergeben an {who} · {when}",
+    latestDiscussion: "Diskussion gestartet von {who} · {when}",
+    latestEscalated: "Eskaliert an {who} · {when}",
+    theDesk: "die Stelle",
+    supportersNone: "Sei die erste Person, die es unterstützt.",
+    supportersYou: "Du unterstützt das",
+    supportersCount: "{count} Personen unterstützen das",
+    supportersUnit: "{count} aus {unit} unterstützen das",
+    windowFooter: "Zu sehen sind offene Fälle und alles, was sich in den letzten 90 Arbeitstagen bewegt hat.",
+    emptyFeed: "Noch nichts im Feed. Was Leute einbringen, erscheint hier.",
+  },
 });

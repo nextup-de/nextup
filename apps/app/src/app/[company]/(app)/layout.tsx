@@ -15,6 +15,7 @@ import { seedFor } from "@/features/demo";
 import { getViewerFor } from "@/features/auth/session";
 import { loadLogFor, seedForViewer } from "@/lib/db/viewer-log";
 import { hasDatabase, orDemo } from "@/lib/db/client";
+import { personLinksFor } from "@/lib/db/people";
 import { policyFor } from "@/features/admin/stages";
 import { flagsFor } from "@/features/flags";
 import { DemoProvider, type ViewerInfo } from "@/components/dashboard/DemoProvider";
@@ -67,6 +68,10 @@ export default async function AppLayout({
   const demoTools = policyFor(tenant.stage ?? "demo").switchPerson;
   const people = demoTools ? tenant.users : tenant.users.filter((u) => u.id === viewer?.userId);
 
+  // Who has a person page: user id -> display label. Empty without a database or a viewer.
+  const viewerCompanyId = viewer?.companyId;
+  const personLinks = viewerCompanyId ? await orDemo(() => personLinksFor(viewerCompanyId), () => ({})) : {};
+
   return (
     <DemoProvider
       tenant={{
@@ -74,7 +79,7 @@ export default async function AppLayout({
         prefix: prefixFor(tenant.slug),
         name: tenant.name,
         users: people.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
-        hiddenPeople: tenant.users.filter((u) => Boolean(u.handle)).map((u) => u.name),
+        personLinks,
         demoTools,
         flags,
       }}

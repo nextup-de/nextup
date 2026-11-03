@@ -30,7 +30,11 @@ export type SystemEventType = (typeof SYSTEM_EVENT_TYPES)[number];
 /** The tools a project can link to (docs/plans/2026-10-15_idea-to-project.md, step 6). */
 export const LINK_SYSTEMS = ["jira", "azure", "planner", "teams", "sharepoint", "polarion", "codebeamer", "url"] as const;
 
-export const SCOPES = ["events:read", "events:write", "knowledge:write"] as const;
+/** The scopes of the old events and knowledge routes. */
+export const OLD_SCOPES = ["events:read", "events:write", "knowledge:write"] as const;
+/** The scopes of the public API v1 (the scopes named by ApiV1.endpoints). */
+export const V1_SCOPES = ["cases:read", "cases:write", "decisions:read", "projects:read", "org:read"] as const;
+export const SCOPES = [...OLD_SCOPES, ...V1_SCOPES] as const;
 export type Scope = (typeof SCOPES)[number];
 
 export const MAX_LIMIT = 500;

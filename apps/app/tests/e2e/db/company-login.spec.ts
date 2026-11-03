@@ -88,9 +88,11 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     await leader.reload();
     await leader.getByRole("main").getByText(title).first().click();
     await leader.getByRole("button", { name: "Yes, do it" }).click();
+    // Projects are on by default, so the yes opens a sheet that names the project's lead.
+    await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
 
     await member.reload();
-    await expect(member.getByRole("article", { name: title })).toContainText("Answered: yes");
+    await expect(member.getByRole("article", { name: title })).toContainText("Approved");
   });
 
   test("the manager adds a person in Settings, and their code works", async ({ browser }) => {
@@ -98,7 +100,8 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     await manager.goto(`/${SLUG}/settings/members`);
     for (const p of PEOPLE) await expect(manager.getByText(p.name, { exact: false }).first()).toBeVisible();
 
-    // The page streams in: for a moment the server's form and the client's are both in the DOM.
+    // Adding a person happens in a drawer.
+    await manager.getByTestId("settings-members-open-add").click();
     await expect(manager.getByLabel("Name")).toHaveCount(1);
     await manager.getByLabel("Name").fill("S. Dahl");
     await manager.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
