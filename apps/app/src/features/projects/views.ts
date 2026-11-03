@@ -8,9 +8,7 @@ import type { CaseEvent } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import type { Initiative, InitiativeStatus } from "@/features/demo/types";
 import { splitBody } from "@/features/ideas/brief";
-import { DEFAULT_LOCALE, translate, type Locale, type T } from "@/i18n";
-import type { MeasureImpact } from "./measure-source";
-import type { LoopRules } from "@/features/loop/rules";
+import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
 import { formatEuro, formatNumber } from "@/i18n/format";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
 import type { RewardRule } from "@/features/loop/rules";
@@ -395,45 +393,6 @@ export function rewardRuleText(rule: RewardRule, locale: Locale = DEFAULT_LOCALE
 /** The verdict word of a measure, as people read it. */
 export const verdictWord = (v: VerdictWord, locale: Locale = DEFAULT_LOCALE): string =>
   translate(locale, v === "not measured" ? "projects.verdictNotMeasured" : v === "better" ? "projects.verdictBetter" : v === "same" ? "projects.verdictSame" : "projects.verdictWorse");
-
-// ── the measure card: where a result comes from, what it is worth, who confirmed it (LOOP-U1) ──
-
-/** The people and the day format a source line needs: the labels are resolved by the caller (by user id), never matched by name. */
-export type SourceNames = { by: string; confirmedBy: string; day: (d: number) => string };
-
-/** "From kpi.csv · imported 3 Nov" / "Typed by … · not confirmed" / "Typed by … · Confirmed by … on 4 Nov". */
-export function measureSourceLine(m: Measure, names: SourceNames, t: T): string {
-  const date = names.day(m.day);
-  if (m.sourceInfo.kind === "import") return t("projects.srcImported", { file: m.sourceInfo.file, date });
-  if (m.sourceInfo.kind === "system") return t("projects.srcSystem", { system: m.sourceInfo.system, date });
-  if (!m.confirmed) return t("projects.srcTypedUnconfirmed", { role: names.by });
-  return t("projects.srcTypedConfirmed", { role: names.by, confirmer: names.confirmedBy, date: names.day(m.confirmedDay ?? m.day) });
-}
-
-/** One line per impact figure that was given, with its unit. */
-export function impactLines(impact: MeasureImpact | null | undefined, locale: Locale = DEFAULT_LOCALE): string[] {
-  if (!impact) return [];
-  const out: string[] = [];
-  const add = (v: number | undefined, key: "projects.impactSaving" | "projects.impactCo2" | "projects.impactEnergy" | "projects.impactScrap") => {
-    if (v !== undefined) out.push(translate(locale, key, { value: fmtNumber(v, locale) }));
-  };
-  add(impact.savingEurPerYear, "projects.impactSaving");
-  add(impact.co2KgPerYear, "projects.impactCo2");
-  add(impact.energyKwhPerYear, "projects.impactEnergy");
-  add(impact.scrapPartsPerYear, "projects.impactScrap");
-  return out;
-}
-
-/** The project's verdict as the card says it: "Not confirmed yet" while the latest result is not confirmed. */
-export function verdictLabel(p: Pick<ReducedProject, "measures" | "verdict">, locale: Locale = DEFAULT_LOCALE): string | null {
-  const latest = p.measures[p.measures.length - 1];
-  if (latest && !latest.confirmed && latest.sourceKind !== "system") return translate(locale, "projects.verdictNotConfirmed");
-  return p.verdict ? verdictWord(p.verdict, locale) : null;
-}
-
-/** The company's steps decide which panels the page shows. */
-export const measureShown = (rules: Pick<LoopRules, "measure">): boolean => rules.measure;
-export const rewardShown = (rules: Pick<LoopRules, "recognition">): boolean => rules.recognition;
 
 // ── the Wait ledger, read from the projects ──
 

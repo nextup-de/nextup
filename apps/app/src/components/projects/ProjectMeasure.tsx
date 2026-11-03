@@ -3,18 +3,13 @@
 // start - or "no number possible" and why -, the checks 30 and 90 days after done with the verdict the
 // numbers give (shown when worse too), and the reward by the company's own rule.
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { newId, type EventPayload } from "@/features/cases/events";
+import type { EventPayload } from "@/features/cases/events";
 import { suggestedReward } from "@/features/loop/rules";
-import { parseKpiCsv } from "@/features/projects/measure-import";
-import type { MeasureImpact } from "@/features/projects/measure-source";
-import type { CheckDue, Measure, ReducedProject } from "@/features/projects/types";
+import type { CheckDue, ReducedProject } from "@/features/projects/types";
 import { verdictOf } from "@/features/projects/verdict";
-import { baselineText, betterText, changeText, euros, fmtNumber, impactLines, measureShown, measureSourceLine, movement, rewardRuleText, rewardShown, type BaselineHint } from "@/features/projects/views";
+import { baselineText, betterText, changeText, euros, fmtNumber, movement, rewardRuleText, type BaselineHint } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
-import { appendEventAction } from "@/server/actions/events";
-import { importMeasuresAction, type ImportCode } from "@/server/actions/measures";
 import { useRights, useSend, VerdictChip } from "./parts";
 import styles from "./Projects.module.css";
 
@@ -130,7 +125,6 @@ export function MeasurePanel({ p }: { p: ReducedProject }) {
   const { S } = useDemo();
   const t = useT();
   const days = S.rules.measureDays.join(" " + t("projects.andWord") + " ");
-  if (!measureShown(S.rules)) return null;
   return (
     <section className={styles.panel} aria-labelledby={"measure-" + p.id}>
       <div className={styles.panelHead}>
@@ -148,90 +142,18 @@ export function MeasurePanel({ p }: { p: ReducedProject }) {
   );
 }
 
-const IMPORT_ERR: Record<ImportCode, "projects.importErr_tooLarge" | "projects.importErr_noRows" | "projects.importErr_noMetric" | "projects.importErr_notAllowed" | "projects.importErr_closedCheck"> = {
-  "too-large": "projects.importErr_tooLarge",
-  "no-rows": "projects.importErr_noRows",
-  "no-metric": "projects.importErr_noMetric",
-  "not-allowed": "projects.importErr_notAllowed",
-  "closed-check": "projects.importErr_closedCheck",
-};
-
-const IMPACT_FIELDS = [
-  ["savingEurPerYear", "projects.impactSavingField"],
-  ["co2KgPerYear", "projects.impactCo2Field"],
-  ["energyKwhPerYear", "projects.impactEnergyField"],
-  ["scrapPartsPerYear", "projects.impactScrapField"],
-] as const;
-
 function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
-  const { act, S, f, serverMode, tenant, seed, showToast } = useDemo();
+  const { act, S, f } = useDemo();
   const t = useT();
   const locale = useLocale();
   const r = useRights(p);
   const send = useSend(p);
-  const router = useRouter();
   const [value, setValue] = useState("");
-  const [note, setNote] = useState("");
-  const [impact, setImpact] = useState<Record<string, string>>({});
-  const [mode, setMode] = useState<"type" | "import" | null>(serverMode ? null : "type"); // demo mode has only one way in, so the form is open
-  const [confirming, setConfirming] = useState(false);
-  const [importMsg, setImportMsg] = useState<string[]>([]);
+  const [source, setSource] = useState("");
   const m = p.measures.find((x) => x.check === c.check);
   const isOpen = S.day >= c.opensDay;
   const v = num(value);
   const preview = v !== null ? verdictOf(p.baseline, v, S.rules.tolerancePct) : null;
-  const label = (userId: string | null, fallback: string) => seed.seats.find((s) => s.userId === userId)?.label ?? fallback;
-
-  const impactOf = (): MeasureImpact | null | "bad" => {
-    const out: MeasureImpact = {};
-    for (const [key] of IMPACT_FIELDS) {
-      const raw = impact[key] ?? "";
-      if (raw.trim() === "") continue;
-      const n = num(raw);
-      if (n === null || n < 0) return "bad";
-      out[key] = n;
-    }
-    return Object.keys(out).length ? out : null;
-  };
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const figures = serverMode ? impactOf() : null;
-    if (figures === "bad") { showToast(t("projects.impactBad")); return; }
-    const source = { kind: "typed" as const, ...(note.trim() ? { note: note.trim() } : {}) };
-    const payload: EventPayload = { check: c.check, value: v ?? Number.NaN, source, ...(figures ? { impact: figures } : {}) };
-    const went = send("project.measured", payload, () => {
-      if (!serverMode) { act.project.measure(p.id, c.check, v as number, note.trim()); return; }
-      void appendEventAction({ slug: tenant.slug, id: newId("e"), type: "project.measured", target: p.id, payload }).then((res) => {
-        if (res.ok) router.refresh(); else showToast(res.error);
-      });
-    });
-    if (went) { setValue(""); setNote(""); setImpact({}); setMode(null); }
-  };
-
-  const importFile = async (file: File | undefined) => {
-    if (!file) return;
-    let text: string;
-    try { text = await file.text(); } catch { setImportMsg([t("projects.importErr_unreadable")]); return; }
-    const lineErrors = parseKpiCsv(text).errors.map((e) => t("projects.importLineError", { line: e.line, reason: e.reason }));
-    const res = await importMeasuresAction(tenant.slug, p.id, c.check, { name: file.name, text });
-    if (res.ok) {
-      setImportMsg([t("projects.importOk", { value: fmtNumber(res.value, locale), date: res.date }), ...lineErrors]);
-      router.refresh();
-    } else {
-      setImportMsg([t(IMPORT_ERR[res.code]), ...lineErrors]);
-    }
-  };
-
-  const confirm = (x: Measure) => {
-    const payload: EventPayload = { check: x.check };
-    send("project.measure.confirmed", payload, () => {
-      void appendEventAction({ slug: tenant.slug, id: newId("e"), type: "project.measure.confirmed", target: p.id, payload }).then((res) => {
-        if (res.ok) router.refresh(); else showToast(res.error);
-      });
-    });
-    setConfirming(false);
-  };
 
   return (
     <div className={styles.check} role="group" aria-label={t("projects.checkName", { check: c.check })}>
@@ -243,68 +165,30 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
       {m ? (
         <div className={styles.result}>
           <span className={styles.big}>{movement(p.baseline, m, locale)}</span>
-          {m.confirmed ? <VerdictChip verdict={m.verdict} /> : <span className={styles.muted}>{t("projects.verdictNotConfirmed")}</span>}
+          <VerdictChip verdict={m.verdict} />
           {m.changePct !== null && <span className={styles.change} data-verdict={m.verdict}>{changeText(m.changePct, locale)}</span>}
-          <span className={styles.muted} data-testid={"measure-source-" + c.check}>
-            {measureSourceLine(m, { by: label(m.byUserId, m.by), confirmedBy: label(m.confirmedByUserId, ""), day: f }, t)}
-          </span>
-          {impactLines(m.impact, locale).map((line) => <span key={line} className={styles.muted}>{line}</span>)}
-          {serverMode && !m.confirmed && r.confirm(c.check) && (
-            confirming ? (
-              <span className={styles.actionRow} role="group">
-                <span>{t("projects.confirmAsk", { value: movement(p.baseline, m, locale), check: c.check })}</span>
-                <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => confirm(m)}>{t("projects.confirmYes")}</button>
-                <button type="button" className={styles.quiet} onClick={() => setConfirming(false)}>{t("common.cancel")}</button>
-              </span>
-            ) : (
-              <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-confirm-" + c.check} onClick={() => setConfirming(true)}>{t("projects.confirmResult")}</button>
-            )
-          )}
+          <span className={styles.muted}>{(m.source ? m.source + " · " : "") + t("projects.recorded", { day: f(m.day), name: m.by })}</span>
         </div>
       ) : !isOpen ? (
         <p className={styles.muted}>{t("projects.opensDay", { day: f(c.opensDay) })}</p>
       ) : r.measure(c.check) ? (
-        <div>
-          <span className={styles.actionRow}>
-            <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-type-" + c.check} aria-expanded={mode === "type"} onClick={() => setMode(mode === "type" ? null : "type")}>{t("projects.typeNumber")}</button>
-            {serverMode && (
-              <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-import-" + c.check} aria-expanded={mode === "import"} onClick={() => setMode(mode === "import" ? null : "import")}>{t("projects.importFromFile")}</button>
-            )}
-          </span>
-          {mode === "type" && (
-            <form className={styles.measureForm} aria-label={t("projects.recordCheck", { check: c.check })} onSubmit={submit}>
-              <label className="nh-field">
-                <span className="nh-label">{t("projects.numberNow")}{p.baseline && !p.baseline.none && p.baseline.unit ? " (" + p.baseline.unit + ")" : ""}</span>
-                <input className={`nh-input ${styles.input}`} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
-              </label>
-              <label className={`nh-field ${styles.grow}`}>
-                <span className="nh-label">{t("projects.noteField")}</span>
-                <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.baselineSource")} />
-              </label>
-              {serverMode && IMPACT_FIELDS.map(([key, msg]) => (
-                <label key={key} className="nh-field">
-                  <span className="nh-label">{t(msg)}</span>
-                  <input className={`nh-input ${styles.input}`} inputMode="decimal" value={impact[key] ?? ""} onChange={(e) => setImpact({ ...impact, [key]: e.target.value })} />
-                </label>
-              ))}
-              <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={v === null}>{t("projects.move_measure")}</button>
-              {preview && (
-                <span className={styles.preview} role="status">
-                  {t("projects.readsAs")} <VerdictChip verdict={preview.verdict} /> {changeText(preview.changePct, locale)}
-                </span>
-              )}
-            </form>
+        <form className={styles.measureForm} aria-label={t("projects.recordCheck", { check: c.check })}
+          onSubmit={(e) => { e.preventDefault(); if (send("project.measured", { check: c.check, value: v ?? Number.NaN }, () => act.project.measure(p.id, c.check, v as number, source.trim()))) { setValue(""); setSource(""); } }}>
+          <label className="nh-field">
+            <span className="nh-label">{t("projects.numberNow")}{p.baseline && !p.baseline.none && p.baseline.unit ? " (" + p.baseline.unit + ")" : ""}</span>
+            <input className={`nh-input ${styles.input}`} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
+          </label>
+          <label className={`nh-field ${styles.grow}`}>
+            <span className="nh-label">{t("projects.source")}</span>
+            <input className={`nh-input ${styles.input}`} value={source} onChange={(e) => setSource(e.target.value)} placeholder={t("projects.baselineSource")} />
+          </label>
+          <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={v === null}>{t("projects.move_measure")}</button>
+          {preview && (
+            <span className={styles.preview} role="status">
+              {t("projects.readsAs")} <VerdictChip verdict={preview.verdict} /> {changeText(preview.changePct, locale)}
+            </span>
           )}
-          {mode === "import" && serverMode && (
-            <div className={styles.measureForm}>
-              <label className={`nh-field ${styles.grow}`}>
-                <span className="nh-label">{t("projects.importFileLabel")}</span>
-                <input className={`nh-input ${styles.input}`} type="file" accept=".csv,text/csv,text/plain" onChange={(e) => { const input = e.target; void importFile(input.files?.[0]).then(() => { input.value = ""; }); }} />
-              </label>
-              {importMsg.length > 0 && <ul className={styles.muted} role="status">{importMsg.map((line, i) => <li key={i}>{line}</li>)}</ul>}
-            </div>
-          )}
-        </div>
+        </form>
       ) : (
         <p className={styles.muted}>{t("projects.openSince", { day: f(c.opensDay) })}</p>
       )}
@@ -322,9 +206,7 @@ export function RewardPanel({ p }: { p: ReducedProject }) {
   const [saving, setSaving] = useState("");
   const [amount, setAmount] = useState<string | null>(null); // null: still the rule's suggestion
   const [note, setNote] = useState("");
-  if (!rewardShown(S.rules)) return null;
-  const waiting = !p.reward && !p.rewardDue && rule.kind !== "none" && p.doneDay !== null && !p.stopped;
-  if (!p.reward && !p.rewardDue && !waiting && !(p.status === "measured" && rule.kind === "none")) return null;
+  if (!p.reward && !p.rewardDue && !(p.status === "measured" && rule.kind === "none")) return null;
 
   const suggested = suggestedReward(rule, num(saving));
   const takesAmount = rule.kind === "fixed" || rule.kind === "share";
@@ -350,8 +232,6 @@ export function RewardPanel({ p }: { p: ReducedProject }) {
             </div>
           ) : null}
         </div>
-      ) : waiting ? (
-        <p className={styles.emptyLine}>{t("projects.rewardNotDueYet")}</p>
       ) : rule.kind === "none" ? (
         <p className={styles.emptyLine}>{t("projects.rewardNone")}</p>
       ) : r.reward ? (
