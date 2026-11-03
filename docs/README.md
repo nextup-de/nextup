@@ -1,6 +1,6 @@
 # Docs
 
-> **Updated 2026-11-02.** Every file starts with an `Updated` or `Plan` line that gives its date.
+> **Updated 2026-11-03.** Every file starts with an `Updated` or `Plan` line that gives its date.
 
 ## Plans (`plans/`, newest first)
 
@@ -9,6 +9,7 @@ Each one's status line says how much of it is done.
 
 | Date | Plan | Status |
 |---|---|---|
+| 2026-11-03 | [Project area: one project, one question per tab](plans/2026-11-03_project-area.md) | exploration in Paper; structure for Sam to design, agent tab is phase 2 |
 | 2026-11-02 | [Pilot pages: what every new and changed screen looks like](plans/2026-11-02_pilot-pages.md) | open; Sam designs and builds these pages: nine spec files and a copy of the build plans in `plans/2026-11-02_pilot-pages/` |
 | 2026-11-01 | [Master plan: from today's build to a pilot-ready product](plans/2026-11-01_pilot-readiness.md) | draft, 22 phases; waits for Kevin's go |
 | 2026-11-01 | [Analysis: big corporate or mid-size company first?](plans/2026-11-01_segment-analysis.md) | open; Kevin and Marc decide |

@@ -11,6 +11,9 @@ import { canOpen } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
 import { translate, type MessageKey, type T } from "@/i18n";
 import { Avatar, Empty, Pill, reasonTone, statusTone } from "@/components/dashboard/shared/primitives";
+import { AnswerPromise } from "@/components/cases/AnswerPromise";
+import { CaseRouting } from "@/components/cases/CaseRouting";
+import { seesRouting } from "@/features/cases/routing-trail";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
 import { roundState } from "@/features/cases/discussion";
 import type { CaseEvent } from "@/features/cases/events";
@@ -116,6 +119,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     <div className={ui.split}>
       <div className={ui.stack}>
       <div className={ui.card}>
+        {seesRouting(c, me, role) && <AnswerPromise c={c} />}
         <div className={ui.eyebrow}>{t(c.kind === "idea" ? "dashboard.detailIdea" : "dashboard.detailProblem")} · {c.id}</div>
         <div className={ui.h2}>{c.title}</div>
         <div className={`${ui.chips} ${styles.meta}`}>
@@ -150,6 +154,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             {c.escalated && <span className={styles.auto}>{t("dashboard.detailAutoEscalated")}</span>}
           </span>
         </div>
+        {seesRouting(c, me, role) && <CaseRouting c={c} />}
         <div className={`${ui.grid2} ${ui.mt14}`}>
           <div className={ui.tile}><div className={ui.tileTitle}>{c.assignee}</div><div className={ui.tileL}>{t("dashboard.detailOnDesk")}{c.escalated ? " " + t("dashboard.detailAlso", { to: c.escalated.to }) : ""}</div></div>
           <div className={ui.tile}><div className={ui.tileTitle}>{c.route ? c.route.type : t("dashboard.detailNoRoute")}</div><div className={ui.tileL}>{c.route ? t("dashboard.detailDeputyBuddy", { deputy: c.route.deputy, buddy: c.route.buddy }) : t("dashboard.detailTriage")}</div></div>
