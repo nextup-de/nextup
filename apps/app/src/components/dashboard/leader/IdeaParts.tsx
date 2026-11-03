@@ -5,6 +5,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { personHref } from "@/features/people/links";
 import { type BadgeTone, type IdeaBrief, type Numbered, type NumberedBlock, type Person, tagTone } from "@/features/ideas/brief";
 import styles from "./IdeaDetail.module.css";
 import { avatarTone } from "@/lib/avatar";
@@ -53,8 +54,9 @@ export function FileChip({ ext, name, title, meta, n }: { ext: string; name: str
 
 // The small profile: who, where, how to reach them. The profile page does not exist yet, so the
 // button says so instead of going nowhere.
-export function PersonCard({ p, why }: { p: Person; why?: string | null }) {
+export function PersonCard({ p, why, userId }: { p: Person; why?: string | null; userId?: string | null }) {
   const { href, tenant } = useDemo();
+  const profile = userId ? personHref(tenant, userId) : null;
   const t = useT();
   if (p.anonymous) return (
     <>
@@ -77,7 +79,7 @@ export function PersonCard({ p, why }: { p: Person; why?: string | null }) {
         <dt>{t("leader.email")}</dt><dd><a className={styles.mail} href={"mailto:" + p.email}>{p.email}</a></dd>
       </dl>
       {why && <div className={styles.aiWhy}><Sparkle /><span>{why}</span></div>}
-      {!tenant.hiddenPeople?.includes(p.name) && <Link className={styles.profileBtn} href={href("/people/" + encodeURIComponent(p.name))}>
+      {profile && <Link className={styles.profileBtn} href={href(profile)}>
         {t("leader.viewProfile")}<Chevron />
       </Link>}
     </>
