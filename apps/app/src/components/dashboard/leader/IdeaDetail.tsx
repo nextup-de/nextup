@@ -6,7 +6,7 @@
 // Local state is view state only: which popover or score is open.
 import { useEffect, useId, useState } from "react";
 import type { AffectedDept, AffectedPerson, IdeaBrief } from "@/features/ideas/brief";
-import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileChip, initialsOf, PanelRow, PersonCard, Sources, Sparkle, StatusBox, type FeedEntry, type IdeaProps } from "./IdeaParts";
+import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileRows, initialsOf, PanelRow, PersonCard, Sources, Sparkle, StatusBox, type FeedEntry, type IdeaProps } from "./IdeaParts";
 import styles from "./IdeaDetail.module.css";
 import { avatarTone } from "@/lib/avatar";
 import { useT } from "@/i18n/client";
@@ -68,21 +68,18 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
               </div>
             </div>
           )}
-          {brief.context && (
+          {/* The context and its facts are one section: the paragraph, then the grouped facts. */}
+          {(brief.context || brief.prompts.length > 0) && (
             <div className={`${styles.section} ${styles.fade}`} data-delay="2">
               <span className={styles.label}>{t("leader.context")}</span>
-              <p className={styles.para}>{brief.context}</p>
+              {brief.context && <p className={styles.para}>{brief.context}</p>}
+              {brief.prompts.length > 0 && <dl className={styles.panel}>{brief.prompts.map((p) => <PanelRow key={p.label} k={p.label}>{p.text}</PanelRow>)}</dl>}
             </div>
           )}
-          {brief.prompts.length > 0 && (
-            <dl className={`${styles.panel} ${styles.fade}`} data-delay="3">
-              {brief.prompts.map((p) => <PanelRow key={p.label} k={p.label}>{p.text}</PanelRow>)}
-            </dl>
-          )}
           {brief.files.length > 0 && (
-            <div className={`${styles.section} ${styles.fade}`} data-delay="4">
+            <div className={`${styles.section} ${styles.fade}`} data-delay="3">
               <span className={styles.label}>{t("leader.attachments")}</span>
-              <div className={styles.files}>{brief.files.map((f) => <FileChip key={f.name} ext={f.ext} name={f.short} title={f.name} meta={f.size} />)}</div>
+              <FileRows files={brief.files} />
             </div>
           )}
         </article>
