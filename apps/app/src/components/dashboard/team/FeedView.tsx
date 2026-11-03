@@ -50,7 +50,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const t = useT();
   const names = useCaseNames();
   const ctx = useDemo();
-  const { seed, D, log, ready, act, actor, me, f, motion, flag } = ctx; // actor is the label I post under: shown, never compared
+  const { seed, tenant, D, log, ready, act, actor, me, f, motion, flag } = ctx; // actor is the label I post under: shown, never compared
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const [view, setView] = useState<ListView>("open");
   const [archived, setArchived] = useState<ArchiveFilter>("all");
@@ -77,7 +77,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
 
   const itemOf = (c: ReducedCase): Item => {
     const row = dashboardRow(c, P, me, log);
-    const activity = latestActivity(c.id, log, seed.seats);
+    const activity = latestActivity(c.id, log, seed.seats, tenant.actorLabels);
     // Who backs it: named when raised (no id), plus everyone who pressed "this affects me too" (their user id).
     const named = raisedWith(c).affected;
     const backing: Backer[] = [...named.map((name) => ({ userId: null, name })), ...affectedOn(log, c.id).filter((a) => !named.includes(a.name)).map((a) => ({ userId: a.userId, name: a.name }))]
