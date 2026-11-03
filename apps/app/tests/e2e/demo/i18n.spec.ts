@@ -81,6 +81,7 @@ const LEFT_OUT: Record<string, string> = {
   "[company]/(app)/settings/areas/[key]/poster/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/devices/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/setup/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/exports/[id]/page.tsx": "an export page needs a database and the signed-in subject of the export",
   "[company]/floor/[area]/page.tsx": "floor pages need a database (areas, devices) and a phone session",
   "[company]/floor/[area]/sign-in/page.tsx": "floor pages need a database (areas, devices) and a phone session",
   "[company]/floor/sent/page.tsx": "floor pages need a database (areas, devices) and a phone session",
