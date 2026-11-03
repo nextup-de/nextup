@@ -24,8 +24,10 @@
     "@anthropic-ai/bedrock-sdk": "^0.36.0",
     "@anthropic-ai/sdk": "^0.137.0",
     "@nextup/contracts": "*",
+    "@node-saml/node-saml": "5.1.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "@xmldom/xmldom": "0.8.15",
     "modern-screenshot": "^4.7.0",
     "next": "16.4.3",
     "nodemailer": "^10.3.1",
@@ -49,6 +51,7 @@
     "stylelint-declaration-strict-value": "^1.12.1",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "xml-crypto": "6.4.0"
   }
 }
