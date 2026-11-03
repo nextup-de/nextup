@@ -1,10 +1,10 @@
 // ITC acceptance (plan ITC, ITC-Z1): in a one-company stack /admin is the company's IT and privacy
 // console - seven sections, no platform page - and NextUp support gets a read-only session the company
-// can revoke. The company is made straight in the database (tests/db/setup.ts), never through /admin.
+// can revoke. The company is made straight in the database (tests/db/test-company.ts), never through /admin.
 // The server runs in single mode for this spec (playwright.db.config.ts).
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "../helpers";
-import { createTestCompany, deleteTestCompany, type TestCompany } from "../../db/setup";
+import { createTestCompany, deleteTestCompany, type TestCompany } from "../../db/test-company";
 import { CONSOLE_SECTIONS } from "../../../src/features/admin/nav";
 import { totpAt } from "../../../src/features/auth/totp";
 

@@ -11,12 +11,16 @@ import { randomBytes } from "node:crypto";
 loadEnvConfig(process.cwd());
 
 const PORT = 3101;
+const vaultKey = process.env.CONNECTOR_VAULT_KEY || randomBytes(32).toString("hex");
 const BASE = `http://localhost:${PORT}`;
 
 // The company's IT and privacy console (ITC) exists only in a one-company stack (TENANT_MODE single,
-// COMPANY_SLUG set), so its spec runs the server that way; every other spec here runs in path mode.
+// COMPANY_SLUG set), so its spec runs against a second server started that way; every other spec here
+// runs against the path-mode server. Both serve the one build.
 export const CONSOLE_SLUG = "itc-console";
-const consoleRun = process.argv.some((a) => a.includes("itc-console"));
+const CONSOLE_PORT = 3102;
+const CONSOLE_BASE = `http://localhost:${CONSOLE_PORT}`;
+const CONSOLE_SPEC = /itc-console[.]spec[.]ts$/;
 
 export default defineConfig({
   testDir: "tests/e2e/db",
@@ -36,16 +40,29 @@ export default defineConfig({
     screenshot: "only-on-failure",
     ...devices["Desktop Chrome"],
   },
-  webServer: {
-    // next.config.ts builds `output: "standalone"` for Docker, so `next start` prints a warning that
-    // it wants .next/standalone/server.js. It still serves the build (pages, assets, actions) fine.
-    command: `npm run build && npx next start -p ${PORT}`,
-    url: `${BASE}/api/health`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 300_000,
-    // Links and redirects the app builds from these must point at this server, not :3000.
-    // Managers enrol an authenticator (ADM-E1); the secret is sealed with the vault key. A fresh random
-    // one per run when .env.local has none, so CI needs no stored secret.
-    env: { CONNECTOR_VAULT_KEY: process.env.CONNECTOR_VAULT_KEY || randomBytes(32).toString("hex"), AUTH_URL: BASE, APP_DOMAIN: `localhost:${PORT}`, TENANT_MODE: consoleRun ? "single" : "path", ...(consoleRun ? { COMPANY_SLUG: CONSOLE_SLUG } : {}), PUBLIC_SCHEME: "http" },
-  },
+  projects: [
+    { name: "path", testIgnore: CONSOLE_SPEC },
+    { name: "console", testMatch: CONSOLE_SPEC, use: { baseURL: CONSOLE_BASE } },
+  ],
+  webServer: [
+    {
+      // next.config.ts builds `output: "standalone"` for Docker, so `next start` prints a warning that
+      // it wants .next/standalone/server.js. It still serves the build (pages, assets, actions) fine.
+      command: `npm run build && npx next start -p ${PORT}`,
+      url: `${BASE}/api/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 300_000,
+      // Links and redirects the app builds from these must point at this server, not :3000.
+      // Managers enrol an authenticator (ADM-E1); the secret is sealed with the vault key.
+      env: { CONNECTOR_VAULT_KEY: vaultKey, AUTH_URL: BASE, APP_DOMAIN: `localhost:${PORT}`, TENANT_MODE: "path", PUBLIC_SCHEME: "http" },
+    },
+    {
+      // Started after the first, so the build is there. Same vault key: the spec seals secrets itself.
+      command: `npx next start -p ${CONSOLE_PORT}`,
+      url: `${CONSOLE_BASE}/api/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      env: { CONNECTOR_VAULT_KEY: vaultKey, AUTH_URL: CONSOLE_BASE, APP_DOMAIN: `localhost:${CONSOLE_PORT}`, TENANT_MODE: "single", COMPANY_SLUG: CONSOLE_SLUG, PUBLIC_SCHEME: "http" },
+    },
+  ],
 });
