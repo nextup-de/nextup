@@ -11,6 +11,7 @@ import { Card, Foot, Row } from "./SettingsParts";
 import s from "./settings.module.css";
 
 const REWARDS: RewardKind[] = ["none", "thanks", "fixed", "share"];
+const STEPS = ["discussion", "projects", "measure", "recognition"] as const;
 const rewardLabel = (k: RewardKind) => `settingsCompany.reward${k[0].toUpperCase()}${k.slice(1)}` as MessageKey;
 
 function Num({ id, tid, value, size = "num", invalid }: { id: string; tid: string; value: number | string; size?: "num" | "money"; invalid?: boolean }) {
@@ -59,6 +60,8 @@ export function RulesForm({ slug, values, demo }: { slug: string; values: Values
   const [state, act, pending] = useActionState<SettingsFormState, FormData>(saveRulesAction, {});
   const [kind, setKind] = useState<RewardKind>(values.loop.reward.kind);
   const [spendOn, setSpendOn] = useState(values.rules.spend !== null);
+  const [steps, setSteps] = useState(values.rules.steps);
+  const [handover, setHandover] = useState(values.rules.deadlineHandover);
   const err = (f: string) => (state.field === f && state.error ? t(state.error) : undefined);
   const { rules, loop } = values;
   const days = t("settingsCompany.daysUnit");
@@ -139,6 +142,27 @@ export function RulesForm({ slug, values, demo }: { slug: string; values: Values
             </Row>
           </>
         ) : null}
+        {foot()}
+      </Card>
+
+      <Card title={t("settingsCompany.cardSteps")}>
+        {STEPS.map((k) => (
+          <label key={k} className={s.switch}>
+            <input type="checkbox" role="switch" name={`step${k[0].toUpperCase()}${k.slice(1)}`} checked={steps[k]}
+              onChange={(e) => setSteps({ ...steps, [k]: e.target.checked })} data-testid={`settings-rules-step-${k}`} />
+            {t(`settingsCompany.step${k[0].toUpperCase()}${k.slice(1)}` as MessageKey)}
+          </label>
+        ))}
+        {foot()}
+      </Card>
+
+      <Card title={t("settingsCompany.cardAnswerPromise")}>
+        <label className={s.switch}>
+          <input type="checkbox" role="switch" name="deadlineHandover" checked={handover}
+            onChange={(e) => setHandover(e.target.checked)} data-testid="settings-rules-deadline-handover" />
+          {t("settingsCompany.deadlineHandover")}
+        </label>
+        <p className={s.help}>{t("settingsCompany.deadlineHandoverHelp")}</p>
         {foot(true)}
       </Card>
     </form>

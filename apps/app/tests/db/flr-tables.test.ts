@@ -118,7 +118,7 @@ describe("FLR floor tables", () => {
 
   it("lists areas right after the API tokens section, labelled in both catalogs", () => {
     const keys = SETTINGS_SECTIONS.map((s) => s.key);
-    expect(keys[keys.indexOf("apiTokens") + 1]).toBe("areas");
+    expect(keys[keys.indexOf("apiTokens") + 2]).toBe("areas");
     expect(en.settingsAreas.navLabel).toBe("Areas");
     expect(de.settingsAreas.navLabel).toBe("Bereiche");
   });

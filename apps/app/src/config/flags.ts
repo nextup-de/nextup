@@ -36,17 +36,17 @@ export type FlagDef = {
 export const FLAGS = {
   // docs/plans/2026-10-15_idea-to-project.md, step 1
   discussion: {
-    description: "'Discuss first' before a decision: invite people, the author revises, a check-in every 3 days",
+    description: "'Discuss first' before a decision: invite people, the author revises, a check-in every 3 days. The company switches the step on its Rules page; admin.sellux.ch keeps this as a kill switch",
     owner: "Kevin",
-    defaults: { demo: true, sandbox: false, pilot: false, live: false },
+    defaults: { demo: true, sandbox: true, pilot: true, live: true },
     added: "2026-10-15",
     removeBy: "2026-12-31",
   },
   // docs/plans/2026-10-15_idea-to-project.md, steps 2-5
   projects: {
-    description: "After 'Yes, do it' the idea is archived and a project opens: board, measure, reward",
+    description: "After 'Yes, do it' the idea is archived and a project opens: board, measure, reward. The company switches the step on its Rules page; admin.sellux.ch keeps this as a kill switch",
     owner: "Kevin",
-    defaults: { demo: true, sandbox: false, pilot: false, live: false },
+    defaults: { demo: true, sandbox: true, pilot: true, live: true },
     added: "2026-10-15",
     removeBy: "2026-12-31",
   },
