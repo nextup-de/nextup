@@ -19,6 +19,18 @@ import { PrismaClient } from "@prisma/client";
 import { hasDatabase, markDatabaseReachable, markDatabaseUnreachable } from "./mode";
 import { scopeViolation } from "./scope";
 
+/** Pool size and statement timeout (VIS/D12). Anything that is not a positive whole number falls back. */
+export function poolSettings(env: Record<string, string | undefined>): { max: number; statementTimeoutMs: number } {
+  const positive = (v: string | undefined, fallback: number): number => {
+    const n = v !== undefined && /^\s*\d+\s*$/.test(v) ? Number(v) : NaN;
+    return Number.isSafeInteger(n) && n > 0 ? n : fallback;
+  };
+  return {
+    max: positive(env.DATABASE_POOL_MAX, 10),
+    statementTimeoutMs: positive(env.DATABASE_STATEMENT_TIMEOUT_MS, 15_000),
+  };
+}
+
 function createClient() {
   // Prisma 7 has no built-in engine: the client talks to Postgres through a driver adapter, and
   // `new PrismaClient()` with no adapter throws. This is also why the runtime image needs no
@@ -29,7 +41,9 @@ function createClient() {
       "DATABASE_URL is not set. Callers should check hasDatabase() and fall back to the demo tenant.",
     );
   }
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) }).$extends({
+  const pool = poolSettings(process.env);
+  const adapter = new PrismaPg({ connectionString, max: pool.max, statement_timeout: pool.statementTimeoutMs });
+  return new PrismaClient({ adapter }).$extends({
     name: "tenant-guard",
     query: {
       $allModels: {

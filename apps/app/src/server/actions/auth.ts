@@ -50,7 +50,7 @@ export async function codeLogin(_prev: LoginState, form: FormData): Promise<Logi
 
   // Every attempt counts, well-formed or not (src/server/throttle.ts).
   const who = await clientKey();
-  const blocked = throttle("loginCode", `${who}|${slug}`) ?? throttle("loginCodeAll", slug);
+  const blocked = (await throttle("loginCode", `${who}|${slug}`)) ?? (await throttle("loginCodeAll", slug));
   if (blocked) return { error: blocked };
 
   if (!looksLikeLoginCode(code, slug)) {
@@ -78,7 +78,7 @@ export async function codeLogin(_prev: LoginState, form: FormData): Promise<Logi
     const gate = await managerSecondFactor(user, slug, form);
     if (gate) return gate;
   }
-  forgive("loginCode", `${who}|${slug}`);
+  await forgive("loginCode", `${who}|${slug}`);
 
   await issueSession(user.company.id, user.company.slug, user);
   redirect(companyPrefix(slug) + (safeNext(String(form.get("next") ?? "")) || ROLE_HOME[user.role as Role]));
@@ -146,7 +146,7 @@ export async function findCompany(_prev: FindState, form: FormData): Promise<Fin
   const back = { email, company };
   if (!email && !company) return { ...back, error: "Enter your work email or your company's NextUp name." };
 
-  const blocked = throttle("findCompany", await clientKey());
+  const blocked = await throttle("findCompany", await clientKey());
   if (blocked) return { ...back, error: blocked };
 
   // The name wins when both are filled in: it is the more deliberate of the two.

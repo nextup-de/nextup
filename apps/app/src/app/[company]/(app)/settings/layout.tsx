@@ -23,8 +23,8 @@ export default async function SettingsLayout({ children, params }: { children: R
   const t = await getT();
   const base = `${companyPrefix(company)}/settings`;
   const sections = visibleSections(setupDone);
-  const groupLabel: Record<SettingsGroup, string | null> = { start: null, company: t("settings.groupCompany"), structure: t("settings.groupStructure") };
-  const groups: MenuGroup[] = (["start", "company", "structure"] as const)
+  const groupLabel: Record<SettingsGroup, string | null> = { start: null, company: t("settings.groupCompany"), structure: t("settings.groupStructure"), data: t("settings.groupData") };
+  const groups: MenuGroup[] = (["start", "company", "structure", "data"] as const)
     .map((g) => ({
       key: g,
       label: groupLabel[g],

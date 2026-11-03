@@ -38,7 +38,7 @@ export async function brainProposalAction(input: { slug: string; title: string; 
   if (!p.success) return null;
   const viewer = hasDatabase() ? await getViewerFor(p.data.slug) : null;
   if (hasDatabase() && process.env.AUTH_SECRET && !viewer) return null;
-  if (throttle("brainRoute", p.data.slug + ":" + (viewer?.userId ?? (await clientKey())))) return null;
+  if (await throttle("brainRoute", p.data.slug + ":" + (viewer?.userId ?? (await clientKey())))) return null;
   // Without a database (the local demo) there are no company settings: built-in masks, default ceiling.
   const { gate, key, settings } = await gateFor(p.data.slug, viewer, "routing");
   if (!gate.on) return null;
@@ -52,7 +52,7 @@ const CaseInput = z.object({ slug: z.string().min(1).max(64), caseId: z.string()
 async function brainPolicy(slug: string) {
   const viewer = hasDatabase() ? await getViewerFor(slug) : null;
   if (hasDatabase() && process.env.AUTH_SECRET && !viewer) return null;
-  if (throttle("brainPlan", slug + ":" + (viewer?.userId ?? (await clientKey())))) return null;
+  if (await throttle("brainPlan", slug + ":" + (viewer?.userId ?? (await clientKey())))) return null;
   const { gate, key, settings } = await gateFor(slug, viewer, "brain");
   if (!gate.on) return null;
   return { gate, key, policy: { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING } };

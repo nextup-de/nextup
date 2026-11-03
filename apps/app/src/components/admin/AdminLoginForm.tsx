@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useState } from "react";
 import { adminSignIn, type AdminLoginState } from "@/server/actions/admin";
+import { supportSignIn } from "@/server/actions/support-access";
 import { useT } from "@/i18n/client";
 import { Field } from "@/components/ui/Field";
 import styles from "@/app/admin/admin.module.css";
@@ -12,10 +13,15 @@ import styles from "@/app/admin/admin.module.css";
  */
 export function AdminLoginForm({ demoCode }: { demoCode?: string | null }) {
   const [state, act, pending] = useActionState<AdminLoginState, FormData>(adminSignIn, {});
+  const [supportState, supportAct, supportPending] = useActionState<AdminLoginState, FormData>(
+    (_prev, form) => supportSignIn(String(form.get("supportCode") ?? "")),
+    {},
+  );
   const t = useT();
   const [code, setCode] = useState("");
 
   return (
+    <>
     <form action={act} className={styles.grid} autoComplete="off">
       <Field id="code" label="Admin code or personal login code">
         <div className={styles.inputWrap}>
@@ -49,5 +55,13 @@ export function AdminLoginForm({ demoCode }: { demoCode?: string | null }) {
         {pending ? "Checking…" : "Unlock"}
       </button>
     </form>
+      <form action={supportAct} className={styles.grid} autoComplete="off" data-testid="console-support-signin">
+        <Field id="supportCode" label={t("adminSupport.codeLabel")} hint={t("adminSupport.codeHint")}>
+          <input className="nh-input" id="supportCode" name="supportCode" type="password" required />
+        </Field>
+        {supportState.error ? <p className={styles.error} role="alert">{supportState.error}</p> : null}
+        <button className="nh-btn" type="submit" disabled={supportPending}>{t("adminSupport.signIn")}</button>
+      </form>
+    </>
   );
 }

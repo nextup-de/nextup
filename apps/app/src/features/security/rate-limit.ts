@@ -1,8 +1,8 @@
 // A fixed-window attempt counter: "at most N tries per key per window".
 //
-// Pure: the clock is passed in, the store is a Map the caller owns. That keeps it unit-testable
-// and lets src/server/throttle.ts swap the in-process Map for a shared store (Postgres, Redis)
-// the day the app runs on more than one process - the rules below do not change.
+// Pure: the clock is passed in, the store is a Map the caller owns. That keeps it unit-testable.
+// src/server/throttle.ts uses it on an in-process Map when there is no database; with one,
+// src/lib/db/rate-limit.ts applies the same rule in SQL on a table shared by every instance.
 //
 // Fixed windows, not sliding: a guesser gets at most 2N tries across a window boundary, which is
 // irrelevant against a ~59-bit personal login code and costs nothing to reason about.
@@ -35,13 +35,6 @@ export function clear(store: Map<string, Window>, key: string): void {
 /** Drop expired windows so the Map cannot grow without bound under a spray of distinct keys. */
 export function sweep(store: Map<string, Window>, now: number): void {
   for (const [key, w] of store) if (w.resetAt <= now) store.delete(key);
-}
-
-/** "3 minutes", "40 seconds" - for the message a person reads. */
-export function waitText(seconds: number): string {
-  if (seconds < 60) return `${seconds} second${seconds === 1 ? "" : "s"}`;
-  const m = Math.ceil(seconds / 60);
-  return `${m} minute${m === 1 ? "" : "s"}`;
 }
 
 /**

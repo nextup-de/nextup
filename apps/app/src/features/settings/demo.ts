@@ -1,6 +1,7 @@
 // What the settings pages show when this copy of NextUp has no database (local runs, the demo):
 // the Acme sample from the designs. Pure data; nothing here is ever saved.
 import { DEFAULT_CALENDAR, type CalendarSpec } from "@/features/clock";
+import { DEFAULT_RULES } from "@/features/knowledge/rules";
 import { LOOP_DEFAULTS } from "@/features/loop/rules";
 import type { Knowledge } from "@/features/knowledge";
 import type { CompanyForm, RulesForm } from "./company-forms";
@@ -18,7 +19,7 @@ export const SAMPLE_COMPANY: CompanyForm = {
 };
 
 export const SAMPLE_RULES: RulesForm = {
-  rules: { promiseDays: 5, outcomeDays: 14, spend: { limitEur: 25000, text: "Above €25k the plant manager approves." } },
+  rules: { ...DEFAULT_RULES, promiseDays: 5, outcomeDays: 14, spend: { limitEur: 25000, text: "Above €25k the plant manager approves." } },
   loop: { ...LOOP_DEFAULTS, measureDays: [...LOOP_DEFAULTS.measureDays] },
 };
 

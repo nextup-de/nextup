@@ -21,12 +21,24 @@ import { settingsOrg } from "./messages/settingsOrg";
 import { settingsGoals } from "./messages/settingsGoals";
 import { settingsConnectors } from "./messages/settingsConnectors";
 import { settingsNotifications } from "./messages/settingsNotifications";
+import { settingsPrivacy } from "./messages/settingsPrivacy";
+import { settingsAudit } from "./messages/settingsAudit";
+import { privacyExport } from "./messages/privacyExport";
+import { privacyPerson } from "./messages/privacyPerson";
 import { settingsSetup } from "./messages/settingsSetup";
 import { adminAccess } from "./messages/adminAccess";
 import { adminConsole } from "./messages/adminConsole";
 import { adminConnectors } from "./messages/adminConnectors";
 import { adminPrivacy } from "./messages/adminPrivacy";
 import { adminSupport } from "./messages/adminSupport";
+import { loopCase } from "./messages/loopCase";
+import { decisions } from "./messages/decisions";
+import { metrics } from "./messages/metrics";
+import { kpis } from "./messages/kpis";
+import { people } from "./messages/people";
+import { feed } from "./messages/feed";
+import { overview } from "./messages/overview";
+import { progress } from "./messages/progress";
 
 export const de = {
   common: common.de,
@@ -51,10 +63,22 @@ export const de = {
   settingsGoals: settingsGoals.de,
   settingsConnectors: settingsConnectors.de,
   settingsNotifications: settingsNotifications.de,
+  settingsPrivacy: settingsPrivacy.de,
+  settingsAudit: settingsAudit.de,
+  privacyExport: privacyExport.de,
+  privacyPerson: privacyPerson.de,
   settingsSetup: settingsSetup.de,
   adminAccess: adminAccess.de,
   adminConsole: adminConsole.de,
   adminConnectors: adminConnectors.de,
   adminPrivacy: adminPrivacy.de,
   adminSupport: adminSupport.de,
+  loopCase: loopCase.de,
+  decisions: decisions.de,
+  metrics: metrics.de,
+  kpis: kpis.de,
+  people: people.de,
+  feed: feed.de,
+  overview: overview.de,
+  progress: progress.de,
 } as const;

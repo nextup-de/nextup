@@ -9,7 +9,7 @@ describe("STR rule values", () => {
     expect(rulesFromRows(rowsFromRules(DEFAULT_RULES))).toEqual(DEFAULT_RULES);
   });
   it("writes no spend row for null", () => {
-    expect(rowsFromRules(DEFAULT_RULES).map((r) => r.key)).toEqual(["promise_days", "outcome_days"]);
+    expect(rowsFromRules(DEFAULT_RULES).map((r) => r.key)).toEqual(["promise_days", "outcome_days", "deadline_handover", "loop_steps"]);
   });
   it("falls back to the default per key", () => {
     const d = DEFAULT_RULES;
@@ -23,7 +23,7 @@ describe("STR rule values", () => {
   });
   it("accepts the bounds and ignores unknown keys", () => {
     const r = rulesFromRows([{ key: "promise_days", value: { days: 60 } }, { key: "outcome_days", value: { days: 365 } }, { key: "nope", value: 1 }]);
-    expect(r).toEqual({ promiseDays: 60, outcomeDays: 365, spend: null });
+    expect(r).toEqual({ ...DEFAULT_RULES, promiseDays: 60, outcomeDays: 365 });
   });
   it("holds acme's goals and spend rule", () => {
     expect(DEMO_GOALS).toHaveLength(4);
