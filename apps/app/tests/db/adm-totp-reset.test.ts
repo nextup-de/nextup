@@ -38,6 +38,8 @@ async function makeCompany(slug: string): Promise<Co> {
 
 let log: ReturnType<typeof vi.spyOn>;
 beforeAll(async () => {
+  process.env.TENANT_MODE = "single"; // the console exists only in a one-company stack (ITC/D4, D5)
+  process.env.COMPANY_SLUG = A;
   await db.company.deleteMany({ where: { slug: { in: [A, B] } } });
   co.a = await makeCompany(A);
   co.b = await makeCompany(B);
