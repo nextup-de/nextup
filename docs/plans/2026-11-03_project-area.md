@@ -101,5 +101,9 @@ The lead sets what it may do here, under a ceiling the company admin sets: read,
    `?tab=` query? Kevin decides.
 2. **New data.** "Also involved", "How we work", the target value and the followers list are not in
    `ReducedProject` today. Each needs a new `project.*` event; Kevin decides which ones come.
+   *Answered 2026-11-03* in [the project setup plan](2026-11-03_project-setup.md): sponsor, followers and
+   contributors (`project.sponsor`, a role on `project.member`), the target and "done when" (`project.goal`), how we
+   work (`project.howwework`) and the brief (`project.brief`). "Also involved" people who are not on the team stay
+   open; the sponsor covers the main case.
 3. **Agent.** Needs its own events (suggested, accepted, dismissed), a permission per project and per company, and
    the brain on the server. It is phase 2: nothing in phase 1 waits for it.
