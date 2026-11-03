@@ -21,6 +21,7 @@ import { companyUrl, dashboardUrl, landingUrl, singleCompany } from "@/features/
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { clientKey, forgive, throttle } from "@/server/throttle";
 import { usableSecret } from "@/features/admin/environment";
+import { consoleActor, recordAudit } from "@/server/audit/record";
 
 // The row shapes live in features/admin/rows.ts, next to the demo rows that mirror them.
 export type { CompanyRow };
@@ -84,6 +85,10 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   if (given && codeMatches(given, expected)) {
     await forgive("adminLogin", who);
     console.info(`[admin] break-glass ${new Date().toISOString()}`);
+    // A row for the stack's own company; the code itself is never written. A failed write stops the sign-in.
+    const own = singleCompany();
+    const home = own && hasDatabase() ? await getDb().company.findUnique({ where: { slug: own }, select: { id: true } }) : null;
+    if (home) await recordAudit(home.id, { actor: { kind: "break-glass", userId: null }, action: "audit.access.break_glass", changes: {}, source: "console" });
     await issueAdminSession(undefined, true, "break-glass");
     // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
     // is a TypeError: Invalid URL, not a redirect to the root.
@@ -193,9 +198,13 @@ export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData
   if (!company || !user) return { error: "No such person in this company." };
 
   const code = generateLoginCode(slug);
-  await getDb().user.update({
-    where: { id: user.id, companyId: company.id },
-    data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() },
+  const actor = await consoleActor();
+  await getDb().$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id, companyId: company.id },
+      data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() },
+    });
+    await recordAudit(company.id, { actor, action: "audit.member.code", target: { kind: "user", id: user.id }, changes: {}, source: "console" }, tx);
   });
   revalidatePath("/admin", "layout");
   return { slug, name: user.name, code };
@@ -218,8 +227,13 @@ export async function setStackAdminAction(_prev: StackAdminState, form: FormData
   const on = form.get("stackAdmin") === "on";
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
   if (!company) return { error: "No such person in this company." };
-  const { count } = await getDb().user.updateMany({ where: { id: userId, companyId: company.id }, data: { isStackAdmin: on } });
-  if (count === 0) return { error: "No such person in this company." };
+  const person = await getDb().user.findFirst({ where: { id: userId, companyId: company.id }, select: { id: true, isStackAdmin: true } });
+  if (!person) return { error: "No such person in this company." };
+  const actor = await consoleActor();
+  await getDb().$transaction(async (tx) => {
+    await tx.user.updateMany({ where: { id: person.id, companyId: company.id }, data: { isStackAdmin: on } });
+    await recordAudit(company.id, { actor, action: "audit.access.stack_admin", target: { kind: "user", id: person.id }, changes: { isStackAdmin: { before: person.isStackAdmin, after: on } }, source: "console" }, tx);
+  });
   revalidatePath("/admin", "layout");
   return { saved: true };
 }
@@ -237,8 +251,13 @@ export async function setEntraTenantAction(_prev: TenantState, form: FormData): 
   if (raw && !isTenantId(raw)) {
     return { slug, error: "That isn't an Entra tenant ID. It looks like 72f988bf-86f1-41af-91ab-2d7cd011db47 (Entra admin center → Overview)." };
   }
-  const { count } = await getDb().company.updateMany({ where: { slug }, data: { entraTenantId: raw || null } });
-  if (count === 0) return { slug, error: "No such company." };
+  const company = await getDb().company.findUnique({ where: { slug }, select: { id: true, entraTenantId: true } });
+  if (!company) return { slug, error: "No such company." };
+  const actor = await consoleActor();
+  await getDb().$transaction(async (tx) => {
+    await tx.company.update({ where: { id: company.id }, data: { entraTenantId: raw || null } });
+    await recordAudit(company.id, { actor, action: "audit.access.entra_tenant", target: { kind: "company", id: company.id }, changes: { entraTenantId: { before: company.entraTenantId, after: raw || null } }, source: "console" }, tx);
+  });
   revalidatePath("/admin", "layout");
   return { slug, saved: true };
 }
