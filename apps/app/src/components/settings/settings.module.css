@@ -171,6 +171,27 @@ select.input { appearance: none; padding-right: 32px; background: #fff url("data
 .tileName { font-size: var(--nh-fs-md); font-weight: 600; color: var(--ink); }
 .tileMeta { font-size: var(--nh-fs-sm); color: var(--mute); text-align: right; }
 
+/* A short "Saved" note after an automatic save, with Undo after a removal (Calendar). */
+.toast {
+  position: fixed; left: 50%; bottom: 22px; z-index: 60; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 16px; max-width: 520px; padding: 11px 12px 11px 16px; border-radius: 10px;
+  background: var(--nh-dark); color: var(--nh-on-dark); box-shadow: 0 14px 40px rgb(20 20 20 / 30%);
+  font-size: var(--nh-fs-sm); font-weight: 600; line-height: 1.45;
+}
+.toastAction { flex-shrink: 0; padding: 4px 10px; border: 0; border-radius: 6px; background: rgb(255 255 255 / 14%); color: inherit; font: inherit; cursor: pointer; }
+.toastAction:hover { background: rgb(255 255 255 / 22%); }
+.toastAction:focus-visible { outline: 2px solid var(--nh-brand-line); outline-offset: 2px; }
+
+/* The stage card on Company: one line, title | badge | meaning | link. */
+.stageCard { flex-direction: row; align-items: center; gap: 16px; padding-block: 18px; }
+.stageCard > .cardTitle { flex: 0 0 200px; }
+.stageBadge { flex-shrink: 0; padding: 3px 9px; border-radius: 6px; background: var(--fill); font-size: var(--nh-fs-sm); font-weight: 600; color: var(--ink-2); }
+.stageBadge[data-stage="sandbox"] { background: #fff4e5; color: #b25000; }
+.stageBadge[data-stage="pilot"], .stageBadge[data-stage="live"] { background: #edf7f0; color: #2f8f5b; }
+.stageLine { flex: 1; min-width: 0; margin: 0; font-size: var(--nh-fs-md); color: var(--ink); }
+.stageLink { flex-shrink: 0; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--ink); text-decoration: none; }
+.stageLink:hover { text-decoration: underline; }
+
 @media (max-width: 760px) {
   .frame { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 16px; }
   .menu { display: none; }
@@ -184,7 +205,11 @@ select.input { appearance: none; padding-right: 32px; background: #fff url("data
   .input[data-size="num"], .input[data-size="money"] { height: 40px; }
   .foot { border-top: 0; padding-top: 0; }
   .foot .save { flex: 1; height: 44px; font-size: var(--nh-fs-md); }
+  .stageCard { flex-wrap: wrap; gap: 10px; }
+  .stageCard > .cardTitle { flex-basis: 100%; }
+  .stageLine { flex-basis: 100%; }
   .dateGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .toast { left: 12px; right: 12px; bottom: 66px; transform: none; max-width: none; justify-content: space-between; }
   .well { grid-template-columns: 96px 1fr; }
   .tile { flex-direction: column; align-items: flex-start; gap: 4px; }
   .tileMeta { text-align: left; }

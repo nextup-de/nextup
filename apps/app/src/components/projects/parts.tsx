@@ -73,6 +73,7 @@ export function useRights(p: ReducedProject) {
     stop: can("project.stopped", { why: "-" }),
     link: can("project.linked", { key: "-" }), // a key, not an address: the rules accept only real http(s) addresses
     measure: (check: number) => can("project.measured", { check, value: 0 }),
+    confirm: (check: number) => can("project.measure.confirmed", { check }),
     reward: can("project.rewarded"),
     claim: can("project.claimed"),
   };

@@ -1,12 +1,25 @@
 "use client";
 // Console connectors: the AI provider. The key is typed here and never comes back; only "set" shows.
 import { useState, useTransition } from "react";
-import { Field } from "@/components/ui/Field";
+import { aiStatus } from "@/features/connectors/status";
 import { useT } from "@/i18n/client";
+import type { MessageKey } from "@/i18n";
 import { saveConsoleAi, type ConsoleConnectorState } from "@/server/actions/console-connectors";
 import { CODE_KEY } from "./codes";
+import { ConnectorCard, Row, STATUS_KEY, type Note } from "./ConnectorCard";
 import type { AiBlockView } from "./views";
-import styles from "@/app/admin/admin.module.css";
+import c from "./Connectors.module.css";
+
+const SparkIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>
+);
+
+const CHOICES: { value: string; label: MessageKey }[] = [
+  { value: "bedrock", label: "adminConnectors.aiBedrock" },
+  { value: "azure-openai", label: "adminConnectors.aiAzure" },
+  { value: "openai-compatible", label: "adminConnectors.aiCompatible" },
+  { value: "off", label: "adminConnectors.aiOffChoice" },
+];
 
 export function AiBlock({ view, readOnly }: { view: AiBlockView; readOnly: boolean }) {
   const t = useT();
@@ -16,55 +29,65 @@ export function AiBlock({ view, readOnly }: { view: AiBlockView; readOnly: boole
   const set = (k: keyof typeof f, v: string) => setF((s) => ({ ...s, [k]: v }));
   const azure = f.choice === "azure-openai";
   const hosted = azure || f.choice === "openai-compatible";
+  const status = aiStatus(view);
+  const notes: Note[] = [];
+  if (view.choice === "mock") notes.push({ tone: "plain", text: t("adminConnectors.aiMock") });
+  if (status === "needs") notes.push({ tone: "warn", text: view.vault ? t("adminConnectors.aiNeedsKey") : t("adminConnectors.errNoVault") });
+  if (status === "off" && view.choice !== "mock") notes.push({ tone: "plain", text: t("adminConnectors.aiOffLine") });
   return (
-    <section className={styles.card} data-testid="console-connectors-ai">
-      <h2>{t("adminConnectors.aiTitle")}</h2>
-      {view.choice === "mock" ? <p className="nh-hint">{t("adminConnectors.aiMock")}</p> : null}
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <tbody><tr><th>{t("adminConnectors.aiKeyState")}</th><td data-testid="console-connectors-ai-key">{t(view.key === "set" ? "adminConnectors.set" : "adminConnectors.notSet")}</td></tr></tbody>
-        </table>
+    <ConnectorCard
+      id="ai" testId="console-connectors-ai" icon={<SparkIcon />} title={t("adminConnectors.aiTitle")}
+      status={status} statusLabel={t(STATUS_KEY[status])} lede={t("adminConnectors.aiLede")} notes={notes}
+      factsTitle={t("adminConnectors.readsTitle")}
+      facts={[
+        { label: t("adminConnectors.factSends"), value: t("adminConnectors.aiSends") },
+        { label: t("adminConnectors.factNeverSends"), value: t("adminConnectors.aiNeverSends") },
+        { label: t("adminConnectors.aiKeyState"), value: <span data-testid="console-connectors-ai-key">{t(view.key === "set" ? "adminConnectors.set" : "adminConnectors.notSet")}</span> },
+      ]}>
+      <div className={c.fields}>
+        <h3 className={c.sub}>{t("adminConnectors.aiProvider")}</h3>
+        <div className={c.radios} role="radiogroup" aria-label={t("adminConnectors.aiProvider")} data-testid="console-connectors-ai-choice">
+          {CHOICES.map((x) => (
+            <label key={x.value} className={c.radio}>
+              <input type="radio" name="ai-choice" value={x.value} checked={f.choice === x.value} disabled={readOnly} onChange={() => set("choice", x.value)} />
+              {t(x.label)}
+            </label>
+          ))}
+        </div>
+        {f.choice === "off" ? null : (
+          <>
+            <Row id="ca-region" label={t("adminConnectors.aiRegion")}>
+              <input className={c.input} id="ca-region" value={f.region} disabled={readOnly} onChange={(e) => set("region", e.target.value)} />
+            </Row>
+            {hosted ? (
+              <Row id="ca-endpoint" label={t("adminConnectors.aiEndpoint")}>
+                <input className={c.input} id="ca-endpoint" value={f.endpoint} disabled={readOnly} onChange={(e) => set("endpoint", e.target.value)} autoComplete="off" />
+              </Row>
+            ) : null}
+            <Row id="ca-model" label={t("adminConnectors.aiModel")} hint={t("adminConnectors.aiModelHint")}>
+              <input className={`${c.input} ${c.mono}`} id="ca-model" value={f.model} disabled={readOnly} onChange={(e) => set("model", e.target.value)} />
+            </Row>
+            {azure ? (
+              <Row id="ca-deployment" label={t("adminConnectors.aiDeployment")}>
+                <input className={c.input} id="ca-deployment" value={f.deployment} disabled={readOnly} onChange={(e) => set("deployment", e.target.value)} />
+              </Row>
+            ) : null}
+            {hosted ? (
+              <Row id="ca-key" label={t("adminConnectors.aiKey")} hint={t("adminConnectors.aiKeyHint")}>
+                <input className={c.input} id="ca-key" type="password" value={f.key} disabled={readOnly} onChange={(e) => set("key", e.target.value)} autoComplete="new-password" />
+              </Row>
+            ) : null}
+          </>
+        )}
       </div>
-      {!view.vault ? <p className={styles.warn}>{t("adminConnectors.errNoVault")}</p> : null}
-      <div className={styles.grid}>
-        <Field id="ca-choice" label={t("adminConnectors.aiProvider")}>
-          <select className="nh-input" id="ca-choice" data-testid="console-connectors-ai-choice" value={f.choice} disabled={readOnly} onChange={(e) => set("choice", e.target.value)}>
-            <option value="off">{t("adminConnectors.aiOff")}</option>
-            <option value="bedrock">{t("adminConnectors.aiBedrock")}</option>
-            <option value="azure-openai">{t("adminConnectors.aiAzure")}</option>
-            <option value="openai-compatible">{t("adminConnectors.aiCompatible")}</option>
-          </select>
-        </Field>
-        <Field id="ca-region" label={t("adminConnectors.aiRegion")}>
-          <input className="nh-input" id="ca-region" value={f.region} disabled={readOnly} onChange={(e) => set("region", e.target.value)} />
-        </Field>
-        {hosted ? (
-          <Field id="ca-endpoint" label={t("adminConnectors.aiEndpoint")}>
-            <input className="nh-input" id="ca-endpoint" value={f.endpoint} disabled={readOnly} onChange={(e) => set("endpoint", e.target.value)} autoComplete="off" />
-          </Field>
-        ) : null}
-        <Field id="ca-model" label={t("adminConnectors.aiModel")}>
-          <input className="nh-input" id="ca-model" value={f.model} disabled={readOnly} onChange={(e) => set("model", e.target.value)} />
-        </Field>
-        {azure ? (
-          <Field id="ca-deployment" label={t("adminConnectors.aiDeployment")}>
-            <input className="nh-input" id="ca-deployment" value={f.deployment} disabled={readOnly} onChange={(e) => set("deployment", e.target.value)} />
-          </Field>
-        ) : null}
-        {hosted ? (
-          <Field id="ca-key" label={t("adminConnectors.aiKey")} hint={t("adminConnectors.aiKeyHint")}>
-            <input className="nh-input" id="ca-key" type="password" value={f.key} disabled={readOnly} onChange={(e) => set("key", e.target.value)} autoComplete="new-password" />
-          </Field>
-        ) : null}
-      </div>
-      {note && !note.ok ? <p className={styles.error} role="alert">{t(CODE_KEY[note.code])}{note.detail ? ` (${note.detail})` : ""}</p> : null}
-      {note?.ok ? <p className="nh-hint" role="status">{t("adminConnectors.saved")}</p> : null}
-      <div className={styles.jiraActions}>
-        <button type="button" className="nh-btn nh-btn-primary" data-testid="console-connectors-ai-save" disabled={pending || readOnly}
+      <div className={c.foot}>
+        {note && !note.ok ? <p className={c.status} data-tone="error" role="alert">{t(CODE_KEY[note.code])}{note.detail ? ` (${note.detail})` : ""}</p> : null}
+        {note?.ok ? <p className={c.status} role="status">{t("adminConnectors.saved")}</p> : null}
+        <button type="button" className={c.primary} data-testid="console-connectors-ai-save" disabled={pending || readOnly}
           onClick={() => { setNote(null); start(async () => { const r = await saveConsoleAi(f); if (r.ok) set("key", ""); setNote(r); }); }}>
           {pending ? t("adminConnectors.working") : t("adminConnectors.save")}
         </button>
       </div>
-    </section>
+    </ConnectorCard>
   );
 }
