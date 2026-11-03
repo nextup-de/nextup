@@ -24,6 +24,7 @@
     "@anthropic-ai/bedrock-sdk": "^0.36.0",
     "@anthropic-ai/sdk": "^0.137.0",
     "@nextup/contracts": "*",
+    "@node-saml/node-saml": "5.1.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "modern-screenshot": "^4.7.0",
