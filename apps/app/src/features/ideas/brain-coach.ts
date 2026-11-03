@@ -7,7 +7,7 @@
 // suggestion is re-scored like every other before it is shown (features/ideas/replies).
 import type { Turn } from "@/features/assist/draft";
 import type { BrainItem } from "@/features/routing/brain";
-import { benchmark, weakest, type Benchmark, type BenchmarkContext, type IdeaInput } from "./benchmarks";
+import { weakest, type Benchmark, type BenchmarkContext, type IdeaInput } from "./benchmarks";
 import type { Reply } from "./replies";
 
 export type CoachAnswer = {
@@ -41,13 +41,14 @@ export function coachText(a: CoachAnswer): string {
 }
 
 // The brain's best guess as a suggested answer: "For example:" and quotes dropped (the author
-// edits it anyway), re-scored, and only offered when it would really move the score - the same
-// rule as every other suggestion. It answers the question just asked, so it goes first.
-export function withCoachSuggestion(a: CoachAnswer, idea: IdeaInput, now: Benchmark, ctx: BenchmarkContext, replies: readonly Reply[]): Reply[] {
+// edits it anyway). Offered, source "ai", whenever it is a real sentence and not a duplicate of an
+// offered text - no gain check (HD16: a model's text is never ranked or filtered by score). It
+// answers the question just asked, so it goes first.
+export function withCoachSuggestion(a: CoachAnswer, _idea: IdeaInput, now: Benchmark, _ctx: BenchmarkContext, replies: readonly Reply[]): Reply[] {
   const text = a.recommended.replace(/^\s*for example:\s*/i, "").replace(/^['"“]+|['"”]+$/g, "").trim();
   if (text.length < 8) return [...replies];
-  const gain = benchmark({ ...idea, text: (idea.text + "\n" + text).trim() }, ctx).overall - now.overall;
-  if (gain <= 0) return [...replies];
+  const same = (t: string) => t.trim().toLowerCase() === text.toLowerCase();
+  if (replies.some((r) => same(r.text))) return [...replies];
   const id = weakest(now)?.id ?? "clarity";
-  return [{ id, text, gain }, ...replies.filter((r) => r.id !== id)].slice(0, MAX_REPLIES);
+  return [{ id, text, source: "ai" as const }, ...replies.filter((r) => r.id !== id)].slice(0, MAX_REPLIES);
 }
