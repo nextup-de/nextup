@@ -2,7 +2,7 @@
 // Pure: the layout and the index page fetch the counts and hand them in.
 import type { MessageKey } from "@/i18n";
 
-export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "notifications" | "areas" | "privacy" | "audit";
+export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "areas" | "privacy" | "audit";
 export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey };
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
@@ -13,7 +13,10 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { key: "org", path: "org", label: "settingsOrg.navLabel" },
   { key: "routing", path: "routing", label: "settings.navRouting" },
   { key: "members", path: "members", label: "settings.navMembers" },
+  { key: "importExport", path: "import-export", label: "settingsImport.navLabel" },
   { key: "notifications", path: "notifications", label: "settingsNotifications.navLabel" },
+  { key: "webhooks", path: "webhooks", label: "settingsWebhooks.navLabel" },
+  { key: "apiTokens", path: "api-tokens", label: "settingsApiTokens.navLabel" },
   { key: "areas", path: "areas", label: "settingsAreas.navLabel" },
   { key: "privacy", path: "privacy", label: "settingsPrivacy.navLabel" },
   { key: "audit", path: "audit", label: "settingsAudit.navLabel" },
