@@ -166,8 +166,12 @@ describe("projects: measure and reward", () => {
     p = S.projects[0];
     expect(p.verdict).toBe("worse");
     expect(p.status).toBe("measured");
-    expect(p.rewardDue).toBe(true);
-    S = reduce(SEED, doneLog(93, P("project.measured", { check: 30, value: 31 }, 32), P("project.measured", { check: 90, value: 45 }, 92),
+    // LOOP/D18: a worse result never makes a reward due, confirmed or not.
+    expect(p.rewardDue).toBe(false);
+    const CONF = P("project.measure.confirmed", { check: 90 }, 92, "B. Hartmann");
+    S = reduce(SEED, doneLog(92, P("project.measured", { check: 30, value: 31 }, 32), P("project.measured", { check: 90, value: 30 }, 92), CONF));
+    expect(S.projects[0].rewardDue).toBe(true);
+    S = reduce(SEED, doneLog(93, P("project.measured", { check: 30, value: 31 }, 32), P("project.measured", { check: 90, value: 30 }, 92), CONF,
       P("project.rewarded", { rule: "thanks", note: "Thank you" }, 93, "B. Hartmann"), P("project.claimed", {}, 93, AUTHOR)));
     p = S.projects[0];
     expect(p.status).toBe("recognised");
@@ -264,7 +268,7 @@ describe("projects: who may", () => {
     const open = reduce(SEED, doneLog(32));
     expect(mayAppend(actor("L. Brandt"), q("project.measured", { check: 30, value: 30 }), open).ok).toBe(true);
     expect(mayAppend(actor("L. Brandt"), q("project.measured", { check: 45, value: 30 }), open).ok).toBe(false);
-    const measured = reduce(SEED, doneLog(92, P("project.measured", { check: 30, value: 31 }, 32), P("project.measured", { check: 90, value: 30 }, 92)));
+    const measured = reduce(SEED, doneLog(92, P("project.measured", { check: 30, value: 31 }, 32), P("project.measured", { check: 90, value: 30 }, 92), P("project.measure.confirmed", { check: 90 }, 92, "B. Hartmann")));
     expect(mayAppend(actor("L. Brandt"), q("project.rewarded", { rule: "thanks" }), measured).ok).toBe(false);
     expect(mayAppend(actor("B. Hartmann", "manager"), q("project.rewarded", { rule: "thanks" }), measured).ok).toBe(true);
     expect(mayAppend(actor("J. Schmidt", "member", AUTHOR), q("project.claimed"), measured).ok).toBe(false);

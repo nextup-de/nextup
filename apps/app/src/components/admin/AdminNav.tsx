@@ -1,5 +1,5 @@
 "use client";
-// The admin sidebar: five pages for a company, seven for the platform, each with the one badge that says whether it needs you.
+// The admin sidebar: the console's pages, each with the one badge that says whether it needs you.
 // Client only for the active link (usePathname); the badges are computed on the server.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,12 +15,7 @@ const ICONS: Record<AdminPage, React.ReactNode> = {
   support: <path d="M4 10a6 6 0 0 1 12 0M3 10v3h2.5v-3.5H3zM17 10v3h-2.5v-3.5H17zM15 13.5c0 1.5-2 2.5-5 2.5" />,
   assistant: <path d="M4 4h12v9H9l-4 3v-3H4zM7.5 8.5h.01M10 8.5h.01M12.5 8.5h.01" />,
   integrations: <path d="M7.5 3v4M12.5 3v4M5.5 7h9v3a4.5 4.5 0 0 1-9 0zM10 14.5V17" />,
-  requests: <path d="M3 5l7 5 7-5M3 5h14v10H3z" />,
-  tickets: <path d="M7 6.5a3 3 0 0 1 6 0M6.5 6.5h7v6a3.5 3.5 0 0 1-7 0zM10 9v6M3 9l3.5 1M17 9l-3.5 1M3 13.5h3.5M17 13.5h-3.5" />,
-  companies: <path d="M4 17V4h7v13M11 8h5v9M2 17h16M6.5 7h2M6.5 10h2M6.5 13h2" />,
   data: <path d="M10 3v4M10 7H5v4M10 7h5v4M3 11h4v4H3zM13 11h4v4h-4zM8 3h4v4H8z" />,
-  decisions: <path d="M3 16h14M5 13l3-4 3 2 4-6M14 5h2v2" />,
-  connections: <path d="M7 7l-3 3 3 3M13 7l3 3-3 3M11 5l-2 10" />,
 };
 
 export function AdminNav({ items, base }: { items: NavItem[]; base: string }) {

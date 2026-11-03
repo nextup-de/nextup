@@ -1,44 +1,38 @@
 "use client";
-// The actions menu behind the bolt button (and behind an item in the sidebar's lists): who receives
-// it, colleagues, a meeting, files, who is affected, who sees it. Opens upward when there is room.
+// The actions menu behind the bolt button (and behind an item in the sidebar's lists): files, who is
+// affected, who sees it (RAISE_ACTIONS). The receiver is chosen in the publish window. Opens upward when there is room.
 // The start page shows the actions as a row of buttons in its composer instead (RaiseActions); each opens its own panel under it.
-// Props in; the receiver, colleagues, meeting and visibility are stand-ins (raisePreview.ts).
+// Props in; visibility is a stand-in (raisePreview.ts).
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Dept, OrgPerson } from "@/features/demo/types";
 import { useLocale, useT } from "@/i18n/client";
 import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
 import { initials } from "@/features/ideas/raise";
+import { RAISE_ACTIONS } from "@/features/ideas/raise-actions";
 import { Icon, PATH, type IconName } from "./raiseIcons";
 import type { Extras, FileItem } from "./raisePreview";
 import s from "./Raise.module.css";
 import { avatarTone } from "@/lib/avatar";
 
-export type MenuView = "main" | "receiver" | "colleague" | "meeting" | "file" | "affected" | "vis" | "visPick";
-type PickKey = "receiver" | "colleague" | "affected" | "visPick";
+export type MenuView = "main" | "file" | "affected" | "vis" | "visPick";
+type PickKey = "affected" | "visPick";
 const PICKS: Record<PickKey, { depts: boolean; multi: boolean; ph: MessageKey }> = {
-  receiver: { depts: false, multi: false, ph: "ideas.menuSearchPeople" },
-  colleague: { depts: false, multi: true, ph: "ideas.menuSearchPeople" },
   affected: { depts: true, multi: true, ph: "ideas.menuSearchPeopleDepts" },
   visPick: { depts: true, multi: true, ph: "ideas.menuSearchPeopleDepts" },
 };
 const TITLE: Record<Exclude<MenuView, "main">, MessageKey> = {
-  receiver: "ideas.menuTitleReceiver", colleague: "ideas.menuTitleColleague", meeting: "ideas.menuTitleMeeting", file: "ideas.menuTitleFile",
+  file: "ideas.menuTitleFile",
   affected: "ideas.menuTitleAffected", vis: "ideas.menuTitleVis", visPick: "ideas.menuTitleVisPick",
 };
 const PAGE = 5;
 const isPick = (v: MenuView): v is PickKey => v in PICKS;
 
-// The six actions, in the menu's order: the panel each opens, its icon, its label and whether it holds a choice.
+// The actions, in the menu's order (RAISE_ACTIONS): the panel each opens, its icon, its label and whether it holds a choice.
 export type ActionRow = [Exclude<MenuView, "main" | "visPick">, IconName, string, boolean];
-export const actionsOf = (x: Extras, files: number, affected: number, locale: Locale = DEFAULT_LOCALE): ActionRow[] => [
-  ["receiver", "receiver", translate(locale, TITLE.receiver), x.recv.length > 0],
-  ["colleague", "colleague", translate(locale, TITLE.colleague), x.coll.length > 0],
-  ["meeting", "meeting", translate(locale, TITLE.meeting), !!x.meet],
-  ["file", "file", translate(locale, TITLE.file), files > 0],
-  ["affected", "affected", translate(locale, TITLE.affected), affected > 0],
-  ["vis", "vis", translate(locale, TITLE.vis), x.vis !== "public"],
-];
+const ICON: Record<(typeof RAISE_ACTIONS)[number], IconName> = { file: "file", affected: "affected", vis: "vis" };
+export const actionsOf = (x: Extras, files: number, affected: number, locale: Locale = DEFAULT_LOCALE): ActionRow[] =>
+  RAISE_ACTIONS.map((v) => [v, ICON[v], translate(locale, TITLE[v]), v === "file" ? files > 0 : v === "affected" ? affected > 0 : x.vis !== "public"]);
 
 export type MenuProps = {
   at: "bar" | "card" | "under";
@@ -119,7 +113,6 @@ export function RaiseMenu(p: MenuProps) {
               <span className={s.backLabel}>{t(TITLE[p.view])}</span>
             </button>
             {isPick(p.view) && <Picker key={p.view} {...p} view={p.view} done={back} />}
-            {p.view === "meeting" && <MeetingPanel {...p} />}
             {p.view === "file" && <FilePanel {...p} />}
             {p.view === "vis" && <VisPanel {...p} />}
           </div>
@@ -162,9 +155,8 @@ export function RaiseActions({ rows, open, onOpen, menu, onAddFiles }: {
 
 function MainRows(p: MenuProps) {
   const locale = useLocale();
-  return actionsOf(p.extras, p.files.length, p.affected.length, locale).map(([v, icon, label, set], i) => (
+  return actionsOf(p.extras, p.files.length, p.affected.length, locale).map(([v, icon, label, set]) => (
     <Fragment key={v}>
-      {i === 3 && <div className={s.divider} />}
       <button type="button" role="menuitem" className={s.mRow} onClick={() => p.onView(v)}>
         <Icon name={icon} size={12.75} stroke="#1c1c1e" />
         <span className={s.mLabel}>{label}</span>
@@ -187,11 +179,9 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
   const input = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => { input.current?.focus(); }, []);
 
-  const sel = p.view === "receiver" ? p.extras.recv : p.view === "colleague" ? p.extras.coll : p.view === "affected" ? p.affected : p.extras.visTo;
+  const sel = p.view === "affected" ? p.affected : p.extras.visTo;
   const set = (next: string[]) => {
-    if (p.view === "receiver") p.onExtras({ recv: next });
-    else if (p.view === "colleague") p.onExtras({ coll: next });
-    else if (p.view === "affected") p.onAffected(next);
+    if (p.view === "affected") p.onAffected(next);
     else p.onExtras({ visTo: next });
   };
   const toggle = (id: string) => set(cfg.multi ? (sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]) : (sel.includes(id) ? [] : [id]));
@@ -263,25 +253,6 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
   );
 }
 
-function MeetingPanel(p: MenuProps) {
-  const t = useT();
-  const m = p.extras.meet;
-  return (
-    <div className={s.meet}>
-      <span className={s.meetLabel}>{t("ideas.menuHowLong")}</span>
-      <div className={s.choices}>
-        {(["15 min", "30 min", "45 min"] as const).map((d) => <button key={d} type="button" className={s.choice} aria-pressed={m?.dur === d} onClick={() => p.onExtras({ meet: { dur: d, when: m?.when ?? "this week" } })}>{t(DUR_KEY[d])}</button>)}
-      </div>
-      <span className={s.meetLabel}>{t("ideas.menuWhen")}</span>
-      <div className={s.choices}>
-        {(["this week", "next week", "no rush"] as const).map((w) => <button key={w} type="button" className={s.choice} aria-pressed={m?.when === w} onClick={() => p.onExtras({ meet: { dur: m?.dur ?? "15 min", when: w } })}>{t(WHEN_KEY[w])}</button>)}
-      </div>
-    </div>
-  );
-}
-
-const DUR_KEY = { "15 min": "ideas.cardDur15", "30 min": "ideas.cardDur30", "45 min": "ideas.cardDur45" } as const;
-const WHEN_KEY = { "this week": "ideas.cardWhenThisWeek", "next week": "ideas.cardWhenNextWeek", "no rush": "ideas.cardWhenNoRush" } as const;
 const extOf = (name: string) => (name.split(".").pop() || "file").slice(0, 4).toUpperCase();
 
 function FilePanel(p: MenuProps) {
