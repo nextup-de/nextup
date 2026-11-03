@@ -13,6 +13,11 @@ loadEnvConfig(process.cwd());
 const PORT = 3101;
 const BASE = `http://localhost:${PORT}`;
 
+// The company's IT and privacy console (ITC) exists only in a one-company stack (TENANT_MODE single,
+// COMPANY_SLUG set), so its spec runs the server that way; every other spec here runs in path mode.
+export const CONSOLE_SLUG = "itc-console";
+const consoleRun = process.argv.some((a) => a.includes("itc-console"));
+
 export default defineConfig({
   testDir: "tests/e2e/db",
   // One admin session and several logins share the cookie jar per test; keep them in order.
@@ -41,6 +46,6 @@ export default defineConfig({
     // Links and redirects the app builds from these must point at this server, not :3000.
     // Managers enrol an authenticator (ADM-E1); the secret is sealed with the vault key. A fresh random
     // one per run when .env.local has none, so CI needs no stored secret.
-    env: { CONNECTOR_VAULT_KEY: process.env.CONNECTOR_VAULT_KEY || randomBytes(32).toString("hex"), AUTH_URL: BASE, APP_DOMAIN: `localhost:${PORT}`, TENANT_MODE: "path", PUBLIC_SCHEME: "http" },
+    env: { CONNECTOR_VAULT_KEY: process.env.CONNECTOR_VAULT_KEY || randomBytes(32).toString("hex"), AUTH_URL: BASE, APP_DOMAIN: `localhost:${PORT}`, TENANT_MODE: consoleRun ? "single" : "path", ...(consoleRun ? { COMPANY_SLUG: CONSOLE_SLUG } : {}), PUBLIC_SCHEME: "http" },
   },
 });
