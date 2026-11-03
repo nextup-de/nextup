@@ -1,0 +1,27 @@
+{
+  "d": {
+    "results": [
+      {
+        "userId": "u4",
+        "firstName": "Dieter",
+        "lastName": "Huber",
+        "email": "dieter.huber@musterwerk.example",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "userId": "u5",
+        "firstName": "Eva",
+        "lastName": "Brandt",
+        "email": "eva.brandt@musterwerk.example",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "userId": "u6",
+        "firstName": "Fritz",
+        "lastName": "Lang",
+        "email": "fritz.lang@musterwerk.example",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      }
+    ]
+  }
+}

@@ -96,7 +96,7 @@ export type SpendRule = { limitEur: number; text: string };
 // One company goal, matched to cases by keyword.
 export type SeedGoal = { goal: string; keys: string[] };
 
-export type SeedRole = { id: string; orgUnitId: string; reportsToId: string | null };
+export type SeedRole = { id: string; orgUnitId: string; reportsToId: string | null; title?: string };
 
 export type Seed = {
   promiseDays: number; outcomeDays: number;

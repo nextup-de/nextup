@@ -1,0 +1,34 @@
+{
+  "d": {
+    "results": [
+      {
+        "externalCode": "D001",
+        "name": "Musterwerk",
+        "parent": "",
+        "status": "A",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "externalCode": "D100",
+        "name": "Produktion",
+        "parent": "D001",
+        "status": "A",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "externalCode": "D200",
+        "name": "Einkauf",
+        "parent": "D001",
+        "status": "A",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      },
+      {
+        "externalCode": "D300",
+        "name": "Altes Lager",
+        "parent": "D001",
+        "status": "I",
+        "lastModifiedDateTime": "/Date(1792483200000)/"
+      }
+    ]
+  }
+}
