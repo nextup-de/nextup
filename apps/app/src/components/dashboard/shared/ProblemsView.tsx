@@ -14,6 +14,7 @@ import type { MessageKey } from "@/i18n";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./ProblemsView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { useIdInUrl } from "@/lib/use-url-id";
 
 const SORTS: { id: ProblemSort; msg: MessageKey }[] = [
   { id: "people", msg: "dashboard.problemsSortPeople" }, { id: "trend", msg: "dashboard.problemsSortTrend" }, { id: "age", msg: "dashboard.problemsSortAge" }, { id: "title", msg: "dashboard.sortAZ" },
@@ -32,6 +33,7 @@ export function ProblemsView({ initialId }: { initialId?: string }) {
   const [sort, setSort] = useState<ProblemSort>("people");
   const [trend, setTrend] = useState("All");
   const [owner, setOwner] = useState("All");
+  useIdInUrl(pid, setPid); // the picked problem is in the address (?id=)
   if (!ready) return <PageSkeleton kind="list" delay />;
 
   const toks = tokens(q), hasQuery = toks.length > 0;

@@ -1,4 +1,4 @@
-// Area ops (docs/adr/0007-areas.md). Models: FeatureFlag, PilotRequest, PilotReply, Ticket, TicketReply, ErrorGroup, AuditEvent, DataExport, RetentionRule, RetentionRun, PrivacyPolicy, Pseudonym. Changed only by: GDP. Every migration is its own folder under prisma/migrations.
+// Area ops (docs/adr/0007-areas.md). Models: FeatureFlag, PilotRequest, PilotReply, Ticket, TicketReply, ErrorGroup, AuditEvent, DataExport, RetentionRule, RetentionRun, PrivacyPolicy, Pseudonym, AuditExportRun. Changed only by: GDP, EID. Every migration is its own folder under prisma/migrations.
 
 // ── Feature flags (src/config/flags.ts, src/features/flags) ───────────────────────────────────────
 // NextUp's rollout switches for this company, as admin.sellux.ch set them - the stack fetches the
@@ -230,4 +230,17 @@ model Pseudonym {
 
   @@id([companyId, userId])
   @@unique([companyId, number])
+}
+// One row per company: where the audit log export stopped (phase EID). The cursor is the last event
+// sent (time and id), the lease keeps one exporter per company, and sentToday counts the day's lines.
+model AuditExportRun {
+  companyId  String    @id
+  cursorAt   DateTime?
+  cursorId   String?
+  leaseUntil DateTime?
+  lastRunAt  DateTime?
+  lastOkAt   DateTime?
+  lastError  String?
+  day        String?
+  sentToday  Int       @default(0)
 }

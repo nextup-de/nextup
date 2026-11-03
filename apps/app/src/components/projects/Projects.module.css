@@ -64,7 +64,7 @@ form .due { white-space: normal; }
 .faceStack > *:first-child { margin-left: 0; }
 .faceText { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .chips { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.projectTitle { font-size: var(--nh-fs-2xl); font-weight: 800; color: var(--nh-ink); letter-spacing: -0.025em; line-height: 1.2; margin: 2px 0 6px; }
+.projectTitle { font-size: var(--nh-fs-3xl); font-weight: 800; color: var(--nh-ink); letter-spacing: -0.025em; line-height: 1.2; margin: 2px 0 6px; }
 .link { color: var(--nh-brand); font-weight: 600; text-decoration: none; }
 .link:hover { text-decoration: underline; }
 .muted { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
@@ -143,6 +143,53 @@ a.toolChip:hover { border-color: var(--nh-brand-line); }
 .railSection { padding: 14px 16px; border-top: 1px solid var(--nh-line-soft); min-width: 0; }
 .railSection:first-child { border-top: 0; }
 .railSection > .hint:last-child { margin: 10px 0 0; }
+
+/* The head and the tabs sit on one white band from screen edge to screen edge, up to the bar: the shadow
+   paints the sides, the clip keeps it to the band's height (.content clips sideways at the screen). */
+.top {
+  position: relative; display: flex; flex-direction: column; gap: 16px;
+  margin-top: -20px; padding-top: 20px; /* the shell's top padding (SimpleShell .content) */
+  background: var(--nh-card); box-shadow: 0 0 0 100vmax var(--nh-card); clip-path: inset(0 -100vmax);
+}
+.top::after { content: ""; position: absolute; left: -100vmax; right: -100vmax; bottom: 0; height: 1px; background: var(--nh-line); }
+
+/* The tabs under the head (features/projects/tabs.ts): one question per tab. */
+.tabs { position: relative; z-index: 1; display: flex; gap: 26px; overflow-x: auto; scrollbar-width: none; margin-top: 2px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { display: inline-flex; align-items: baseline; gap: 6px; padding: 10px 0 11px; border-bottom: 2px solid transparent; font-size: var(--nh-fs-md); font-weight: 500; color: var(--nh-ink-2); text-decoration: none; white-space: nowrap; }
+.tab:hover { color: var(--nh-ink); }
+.tab[aria-current="page"] { color: var(--nh-ink); font-weight: 600; border-bottom-color: var(--nh-ink); }
+.tab:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; border-radius: 4px; }
+.tabCount { font-size: var(--nh-fs-sm); font-weight: 500; color: var(--nh-mute); font-variant-numeric: tabular-nums; }
+.tabLayout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 24px; align-items: start; }
+.tabCards { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.tabCards > .panel { border-top: 0; padding: 18px 22px 20px; background: var(--nh-card); border-radius: var(--radius-md, 18px); box-shadow: var(--nh-card-shadow); }
+.tabRail { background: var(--nh-card); border-radius: var(--radius-md, 18px); box-shadow: var(--nh-card-shadow); display: flex; flex-direction: column; min-width: 0; }
+.tabNarrow { max-width: 640px; }
+
+/* The Overview's "What happens next": state, step, owner and due in fixed lanes. */
+.nextList { list-style: none; margin: 10px 0 0; padding: 0; }
+.nextRow { display: grid; grid-template-columns: 96px minmax(0, 1fr) 160px 96px; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--nh-line-soft); }
+.nextState { justify-self: start; padding: 2px 9px; border-radius: 999px; background: var(--nh-app-ground); font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-ink-2); }
+.nextState[data-col="doing"] { background: var(--nh-brand-tint); color: var(--nh-brand); }
+.nextState[data-col="blocked"] { background: var(--nh-danger-tint); color: var(--nh-danger); }
+.nextText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nextTitle { font-size: var(--nh-fs-md); font-weight: 500; color: var(--nh-ink); }
+.nextMeta { font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
+.nextOwner { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); }
+.nextDue { justify-self: end; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nextDue[data-late="true"] { color: var(--nh-danger); font-weight: 600; }
+.code { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); color: var(--nh-ink-2); margin-right: 8px; }
+
+@media (max-width: 1100px) {
+  .tabLayout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .tabs { gap: 20px; margin-inline: -16px; padding-inline: 16px; }
+  .nextRow { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+  .nextState { grid-column: 1 / -1; }
+  .nextText { grid-column: 1 / -1; }
+}
 
 /* inputs and small forms */
 .input { height: 38px; font-size: var(--nh-fs-sm); padding: 0 11px; }

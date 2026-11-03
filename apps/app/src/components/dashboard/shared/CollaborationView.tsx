@@ -20,6 +20,7 @@ import { ini } from "@/lib/utils/format";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CollaborationView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { useIdInUrl } from "@/lib/use-url-id";
 
 type Sel = { kind: "project"; id: string } | { kind: "person"; name: string } | { kind: "none" };
 type TreeMode = "chain" | "lines";
@@ -162,6 +163,8 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   const { D, deptName, matches, ready, href } = ctx;
   const t = useT();
   const [sel, setSel] = useState<Sel>(initialId ? { kind: "project", id: initialId } : { kind: "none" });
+  // A picked initiative is in the address (?id=); a picked person is not, their page has its own.
+  useIdInUrl(sel.kind === "project" ? sel.id : null, (id) => setSel(id ? { kind: "project", id } : { kind: "none" }));
   const [treeMode, setTreeMode] = useState<TreeMode>("chain");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const { attach: canvasAttach, view: cv, dragging, zoomBy, fitBox, handlers: canvasHandlers } = useCanvas();
