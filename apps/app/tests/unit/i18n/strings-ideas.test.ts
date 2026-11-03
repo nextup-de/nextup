@@ -5,7 +5,6 @@ import { catalogIssues, inlineStrings } from "./inline";
 const OWNED = [
   "src/components/ideas/*.tsx",
   "src/features/ideas/raise.ts",
-  "src/features/ideas/receivers.ts",
   "src/features/ideas/replies.ts",
   "src/features/ideas/finalize.ts",
   "src/features/ideas/benchmarks.ts",

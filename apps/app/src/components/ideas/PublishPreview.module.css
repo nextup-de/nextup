@@ -24,17 +24,10 @@
 .title:hover, .desc:hover, .ctx:hover { background: #f7f7f9; }
 .title:focus, .desc:focus, .ctx:focus { background: #f7f7f9; box-shadow: 0 0 0 1.5px #1c1c1e; }
 
-.pair { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 16px 20px; padding-top: 14px; border-top: 1px solid #f0f0f3; }
 .cell { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .section { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid #f0f0f3; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
-.meet { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.meetIcon { width: 32px; height: 32px; border-radius: var(--radius-sm, 10px); background: #e8f1ff; display: flex; align-items: center; justify-content: center; flex: none; }
-.meetText { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
-.meetDur { padding: 0 4px; margin: 0 -4px; border: none; border-radius: var(--radius-sm, 6px); background: transparent; font-family: inherit; font-size: var(--nh-fs-md); font-weight: 600; color: #1c1c1e; cursor: pointer; }
-.meetWhen { padding: 0 4px; margin: 0 -4px; border: none; border-radius: var(--radius-sm, 6px); background: transparent; font-family: inherit; font-size: var(--nh-fs-sm); color: #6e6e73; cursor: pointer; }
-.meetDur:hover, .meetWhen:hover { background: #f2f2f7; }
 
 .x { width: 22px; height: 22px; flex: none; padding: 0; border: none; border-radius: 50%; background: transparent; color: #8e8e93; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .x:hover { background: #e5e5ea; color: #1c1c1e; }
@@ -42,8 +35,6 @@
 .dashed:hover { background: #f7f7f9; border-color: #8e8e93; }
 .dashed[data-solo] { align-self: flex-start; }
 
-.person { display: flex; align-items: center; gap: 6px; font-size: var(--nh-fs-sm); font-weight: 500; color: #1c1c1e; background: #fff; border: 1px solid #e5e5ea; border-radius: var(--radius-sm, 999px); padding: 3px 4px 3px 3px; min-height: 32px; box-sizing: border-box; white-space: nowrap; }
-.personIni { width: 22px; height: 22px; border-radius: 50%; background: #1c1c1e; color: #fff; font-size: var(--nh-fs-xs); font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .dept { display: flex; align-items: center; gap: 4px; font-size: var(--nh-fs-sm); font-weight: 500; color: #1c1c1e; background: #f2f2f7; border-radius: var(--radius-sm, 999px); padding: 0 4px 0 12px; min-height: 30px; }
 .tray { animation: affSoft 200ms ease backwards; display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border-radius: var(--radius-sm, 12px); background: #f7f7f9; }
 .trayBtn { display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #e5e5ea; border-radius: var(--radius-sm, 999px); background: #fff; color: #1c1c1e; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 500; cursor: pointer; transition: background 160ms ease; }
@@ -76,7 +67,6 @@
 .card[data-locked] .dashed, .card[data-locked] .x, .card[data-locked] .addFile { display: none; }
 .card[data-locked] .title:hover, .card[data-locked] .desc:hover, .card[data-locked] .ctx:hover, .card[data-locked] .promptText:hover,
 .card[data-locked] .title:focus, .card[data-locked] .desc:focus, .card[data-locked] .ctx:focus, .card[data-locked] .promptText:focus { background: transparent; box-shadow: none; }
-.card[data-locked] .meetDur, .card[data-locked] .meetWhen { cursor: default; }
 /* The Idea view (RaiseSheets.tsx IdeaSheet): the same card on the page, a head (once published) and a hint around it. */
 .sheetHead { display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }
 .sheetHint { padding: 0 4px; font-size: var(--nh-fs-sm); color: #6e6e73; }
