@@ -1,40 +1,46 @@
-.wrap { display: grid; gap: 16px; max-width: 880px; }
+/* Members (Paper: "Pilot 01 · Settings and structure"): toolbar, the people table, the code box. */
+.headButtons { display: flex; gap: 8px; flex-shrink: 0; }
+.empty { align-items: center; text-align: center; }
 
-.code {
-  display: grid;
-  gap: 6px;
-  padding: 14px 16px;
-  background: var(--nh-brand-tint);
-  border: 1px solid var(--nh-brand-line);
-  border-radius: var(--nh-r);
-}
-.codeValue { font-family: var(--nh-mono); font-size: var(--nh-fs-xl); letter-spacing: 0.02em; word-break: break-all; user-select: all; }
+.code { gap: 10px; }
+.codeRow { display: flex; gap: 8px; align-items: stretch; }
+.codeValue { flex: 1; display: flex; align-items: center; min-height: 40px; padding-inline: 12px; border-radius: 8px; background: #f2f2f7; font-family: var(--nh-mono); font-size: var(--nh-fs-xl); letter-spacing: 0.04em; word-break: break-all; user-select: all; }
 
-.list { list-style: none; margin: 0; padding: 0; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 14px); }
+.toolbar { display: flex; gap: 8px; }
+.toolbar > input { flex: 1; }
+.filter { width: auto; min-width: 140px; }
+
+.tableCard { padding: 0; gap: 0; }
+.list { list-style: none; margin: 0; padding: 0; }
 .row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto auto auto;
-  gap: 14px;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--nh-line-soft);
+  display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.3fr) minmax(0, 1.2fr) 40px;
+  gap: 12px; align-items: center; padding: 14px 20px; border-top: 1px solid #f0f0f3; font-size: var(--nh-fs-sm);
 }
-.row:last-child { border-bottom: 0; }
-.who { display: grid; gap: 2px; min-width: 0; }
-.who strong { font-size: var(--nh-fs-md); }
-.sub { font-size: var(--nh-fs-xs); color: var(--nh-mute); overflow-wrap: anywhere; }
-.role :global(.nh-select) { min-width: 120px; }
-
-.add { display: grid; gap: 12px; padding: 16px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 14px); }
-.addTitle { margin: 0; font-size: var(--nh-fs-md); }
-.addFields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.list .row:first-child { border-top: 1px solid #f0f0f3; }
+.th { padding-block: 16px 12px; border-top: 0; font-size: var(--nh-fs-xs); font-weight: 600; color: #6e6e73; }
+.row[data-inactive] { color: #8e8e93; }
+.who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.whoText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.whoText strong { font-size: var(--nh-fs-md); font-weight: 600; }
+.avatar { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: #f2eefb; color: #6d4fc2; font-size: var(--nh-fs-xs); font-weight: 700; }
+.avatar[data-me] { background: #111; color: #fff; }
+.row[data-inactive] .avatar { background: #e5e5ea; color: #8e8e93; }
+.sub { color: #6e6e73; overflow-wrap: anywhere; }
+.cell { min-width: 0; }
+.roleText { text-transform: capitalize; color: #6e6e73; }
+.roleSelect { height: 32px; text-transform: capitalize; }
+.seatLink { padding: 0; border: 0; background: none; font: inherit; text-align: left; color: #1c1c1e; text-decoration: underline; text-decoration-color: #c7c7cc; text-underline-offset: 3px; cursor: pointer; }
+.noMatch { margin: 0; padding: 24px; text-align: center; font-size: var(--nh-fs-md); color: #6e6e73; }
 
 @media (max-width: 760px) {
-  /* name | role, then code status | button */
-  .row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; }
-  .row > :nth-child(2) { grid-row: 2; }
-  .row > :nth-child(3) { grid-row: 1; grid-column: 2; }
-  .addFields { grid-template-columns: 1fr; }
+  .headButtons { width: 100%; }
+  .headButtons > * { flex: 1; }
+  .toolbar { flex-wrap: wrap; }
+  .toolbar > input { flex-basis: 100%; }
+  .filter { flex: 1; }
+  .th { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 14px 16px; row-gap: 10px; position: relative; }
+  .who { grid-column: 1 / -1; padding-right: 40px; }
+  .row > details { position: absolute; top: 12px; right: 10px; }
+  .cell::before { content: attr(data-label); display: block; margin-bottom: 2px; font-size: var(--nh-fs-xs); font-weight: 600; color: #8e8e93; }
 }
-.seats { display: grid; gap: 4px; min-width: 0; }
-.seats { display: grid; gap: 4px; min-width: 0; }
