@@ -1,11 +1,14 @@
 // The rules of the API token form (API-E1, D12). Pure: no database, no next/*.
-import { OLD_SCOPES, SCOPES } from "@/features/integrations";
+import { OLD_SCOPES, SCIM_SCOPE, SCOPES } from "@/features/integrations";
 import type { MessageKey } from "@/i18n";
 
 export const TOKEN_NAME_MAX = 60;
 export const EXPIRY_CHOICES = ["30d", "90d", "1y", "never"] as const;
 export type ExpiryChoice = (typeof EXPIRY_CHOICES)[number];
 export const DEFAULT_EXPIRY: ExpiryChoice = "90d";
+
+/** The scopes this page offers: every scope but `scim`, which only the sign-in page's SCIM card issues. */
+export const OFFERED_SCOPES: readonly string[] = SCOPES.filter((s) => s !== SCIM_SCOPE);
 
 export type TokenInput = { name: string; scopes: readonly string[] };
 export type TokenCheck = { ok: true; value: { name: string; scopes: string[] } } | { ok: false; error: MessageKey };
@@ -16,7 +19,7 @@ export function checkToken(input: TokenInput, namesInUse: readonly string[]): To
   if (name.length < 1 || name.length > TOKEN_NAME_MAX) return { ok: false, error: "settingsApiTokens.errName" };
   const key = name.toLowerCase();
   if (namesInUse.some((n) => n.trim().toLowerCase() === key)) return { ok: false, error: "settingsApiTokens.errNameInUse" };
-  const known = SCOPES as readonly string[];
+  const known = OFFERED_SCOPES;
   if (input.scopes.some((s) => !known.includes(s))) return { ok: false, error: "settingsApiTokens.errScopeUnknown" };
   const scopes = known.filter((s) => input.scopes.includes(s));
   if (scopes.length === 0) return { ok: false, error: "settingsApiTokens.errNoScope" };

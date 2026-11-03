@@ -15,6 +15,7 @@ import type { MessageKey } from "@/i18n";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./IdeasView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { useIdInUrl } from "@/lib/use-url-id";
 
 const SORTS: { id: IdeaSort; msg: MessageKey }[] = [
   { id: "score", msg: "dashboard.ideasSortScore" }, { id: "wait", msg: "dashboard.ideasSortWait" }, { id: "upside", msg: "dashboard.ideasSortUpside" }, { id: "title", msg: "dashboard.sortAZ" },
@@ -31,6 +32,7 @@ export function IdeasView({ initialId }: { initialId?: string }) {
   const [iid, setIid] = useState<string | null>(initialId ?? null);
   const [sort, setSort] = useState<IdeaSort>("score");
   const [status, setStatus] = useState("All");
+  useIdInUrl(iid, setIid); // the picked idea is in the address (?id=)
   if (!ready) return <PageSkeleton kind="list" delay />;
 
   const isEmployee = role === "member";

@@ -2,9 +2,8 @@ import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { catalogIssues, inlineStrings } from "./inline";
 
-// dashboardPreview.ts is placeholder data that phase MET replaces; its labels stay as they are (LNG D9).
 const SHARED = readdirSync("src/components/dashboard/shared")
-  .filter((f) => /\.tsx?$/.test(f) && f !== "dashboardPreview.ts")
+  .filter((f) => /\.tsx?$/.test(f))
   .map((f) => `src/components/dashboard/shared/${f}`);
 
 describe("LNG strings dashboard", () => {

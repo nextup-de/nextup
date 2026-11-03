@@ -26,6 +26,12 @@ async function plus30(page: Page, times = 1) {
 // The project page; its state ("P-4 · Running") is in the header, the baseline in its section and the summary.
 const head = (page: Page) => page.getByRole("main");
 
+/** Open one of the project page's tabs (the head stays on every tab). */
+async function tab(page: Page, name: "Overview" | "Board" | "Team" | "Results" | "Activity" | "Files and tools") {
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: new RegExp("^" + name) }).click();
+  await expect(page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: new RegExp("^" + name) })).toHaveAttribute("aria-current", "page");
+}
+
 /** Open a card's sheet - where its moves, owner, due day and details are. */
 async function openStep(page: Page, text: string) {
   await page.getByRole("button", { name: "Open “" + text + "”" }).click();
@@ -47,6 +53,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 
   await test.step("adds a step the brief suggests and one of their own", async () => {
+    await tab(page, "Board");
     await page.getByRole("button", { name: "Add step: " + FIRST }).click();
     await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
     await page.getByRole("button", { name: "Add step", exact: true }).click();
@@ -57,6 +64,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
 
   await test.step("Start stays locked until the baseline is taken", async () => {
     await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
+    await tab(page, "Overview");
     await page.getByLabel("What is measured").fill("Deburring queue");
     await page.getByLabel(/Today.s number/).fill("25");
     await page.getByLabel("Unit").fill("minutes");
@@ -70,6 +78,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 
   await test.step("works the board from the card sheets: blocked asks why, then both steps are done", async () => {
+    await tab(page, "Board");
     let sheet = await openStep(page, TYPED);
     await sheet.getByRole("button", { name: "Move “" + TYPED + "” to Blocked" }).click();
     await sheet.getByRole("textbox", { name: "What blocks it?" }).fill("Stopwatch is at the other site");
@@ -87,6 +96,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await page.getByRole("textbox", { name: "What is done" }).fill("Second bench in use on every shift");
     await page.getByRole("button", { name: "Mark it done" }).click();
     await expect(head(page)).toContainText("P-4 · Measuring");
+    await tab(page, "Results");
     const check30 = page.getByRole("group", { name: "30-day check" });
     await expect(check30).toContainText("Opens");
     await plus30(page);
@@ -111,7 +121,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   await test.step("a typed measure does not make the reward due until a second person confirms it (LOOP/D18)", async () => {
     // The manager sees no reward offered on an unconfirmed measure; the panel says when one will be due (LOOP-U1).
     await viewAs(page, "Manager");
-    await page.goto("/acme/projects/pj4");
+    await page.goto("/acme/projects/pj4?tab=results");
     await expect(head(page)).toContainText("P-4 · Measured");
     await expect(page.getByRole("region", { name: "Reward" })).toContainText("A reward is due after a confirmed better result.");
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
@@ -135,7 +145,7 @@ test("projects and ideas sit side by side on one page", async ({ page }) => {
 test("a step is dragged to another column; a drop on Blocked asks why", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await page.goto("/acme/projects/pj4");
+  await page.goto("/acme/projects/pj4?tab=board");
   await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
   await page.getByRole("button", { name: "Add step", exact: true }).click();
   const todo = page.getByRole("group", { name: "To do" });
@@ -154,7 +164,7 @@ test("a step is dragged to another column; a drop on Blocked asks why", async ({
 test("a step goes straight into Doing, gets an owner and details in its sheet, and is dragged to the top", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
-  await page.goto("/acme/projects/pj2");
+  await page.goto("/acme/projects/pj2?tab=board");
   const doing = page.getByRole("group", { name: "Doing" });
   await page.getByRole("button", { name: "Add a step to Doing" }).click();
   await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
@@ -174,16 +184,17 @@ test("a step goes straight into Doing, gets an owner and details in its sheet, a
 
   await card.dragTo(doing.getByRole("article").first(), { targetPosition: { x: 20, y: 4 } });
   await expect(doing.getByRole("article").first()).toHaveAccessibleName(TYPED);
+  await tab(page, "Overview");
   await expect(page.getByRole("region", { name: "Where it stands" })).toContainText("1 open without an owner");
 });
 
 test("the project page shows the idea it came from and its connected tools", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await page.goto("/acme/projects/pj4");
+  await page.goto("/acme/projects/pj4?tab=files");
   await expect(page.getByRole("heading", { name: "The idea" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Files and sources" })).toBeVisible();
-  await page.goto("/acme/projects/pj2");
+  await page.goto("/acme/projects/pj2?tab=files");
   const tools = page.getByRole("region", { name: "Connected tools" });
   await expect(tools).toContainText("Two-way sync");
   await expect(tools.getByRole("link", { name: "FS-9" })).toBeVisible();
@@ -196,31 +207,36 @@ test("the project page shows the idea it came from and its connected tools", asy
 test("the lead sends a project to Jira, links an issue and stops the sync - all simulated, no network", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await page.goto("/acme/projects/pj4");
+  await page.goto("/acme/projects/pj4?tab=board");
   await page.getByRole("button", { name: "Add step: " + FIRST }).click();
   const tools = page.getByRole("region", { name: "Connected tools" });
 
   await test.step("a project that is not sent offers Send to Jira, and says what it will create", async () => {
+    await expect(page.getByRole("article", { name: FIRST })).not.toContainText("waiting for Jira");
+    await tab(page, "Files and tools");
     await expect(tools).toContainText("Two-way sync");
     await expect(tools).toContainText("Creates an epic in NUP and 1 issue");
-    await expect(page.getByRole("article", { name: FIRST })).not.toContainText("waiting for Jira");
   });
 
   await test.step("Send to Jira shows the epic and the issue keys, with the sync chip", async () => {
     await tools.getByRole("button", { name: "Send to Jira" }).click();
     await expect(tools.getByRole("status")).toContainText(/Synced · NUP-1 · checked (just now|1 min ago)/);
-    await expect(page.getByRole("article", { name: FIRST })).toContainText("NUP-2");
     await expect(page.getByLabel("Tools in use")).toContainText("Sync");
     await expect(tools.getByRole("button", { name: "Send to Jira" })).toHaveCount(0);
+    await tab(page, "Board");
+    await expect(page.getByRole("article", { name: FIRST })).toContainText("NUP-2");
   });
 
   await test.step("a step added after the send waits for Jira", async () => {
+    // Back on the board after the tab change, the To do composer is closed again.
+    await page.getByRole("button", { name: "Add a step to To do" }).click();
     await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
     await page.getByRole("button", { name: "Add step", exact: true }).click();
     await expect(page.getByRole("article", { name: TYPED })).toContainText("waiting for Jira");
   });
 
   await test.step("an existing issue is linked to a step by its key", async () => {
+    await tab(page, "Files and tools");
     await tools.getByRole("button", { name: "Add another link to Jira" }).click();
     const form = page.getByRole("form", { name: "Link a Jira issue" });
     await form.getByLabel("Jira issue key").fill("nup");
@@ -228,13 +244,16 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
     await form.getByLabel("Jira issue key").fill("NUP-77");
     await form.getByLabel("For which step").selectOption({ label: TYPED });
     await form.getByRole("button", { name: "Link the issue" }).click();
+    await tab(page, "Board");
     await expect(page.getByRole("article", { name: TYPED })).toContainText("NUP-77");
     await expect(page.getByRole("article", { name: TYPED })).not.toContainText("waiting for Jira");
   });
 
   await test.step("Stop syncing takes the project off Jira and offers Send again", async () => {
+    await tab(page, "Files and tools");
     await tools.getByRole("button", { name: "Stop syncing" }).click();
     await expect(tools.getByRole("button", { name: "Send to Jira" })).toBeVisible();
+    await tab(page, "Board");
     await expect(page.getByRole("article", { name: TYPED })).not.toContainText("waiting for Jira");
   });
 });
@@ -242,7 +261,7 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
 test("only the lead (or a manager) gets the Jira buttons", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Employee");
-  await page.goto("/acme/projects/pj2");
+  await page.goto("/acme/projects/pj2?tab=files");
   const tools = page.getByRole("region", { name: "Connected tools" });
   await expect(tools).toContainText("Two-way sync");
   await expect(tools.getByRole("button", { name: /Send to Jira|Stop syncing/ })).toHaveCount(0);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { barHeights, pastPromise, ringOffset, shares, trendPaths, trendPoints } from "@/features/metrics/dashboard";
+import { barHeights, ringOffset, shares, trendPaths, trendPoints } from "@/features/metrics/dashboard";
 
 describe("dashboard metrics", () => {
   it("spreads trend points from 4% to 96% and scales against yMax", () => {
@@ -27,12 +27,6 @@ describe("dashboard metrics", () => {
   it("rounds shares of the total", () => {
     expect(shares([22, 19, 31, 14, 52])).toEqual([16, 14, 22, 10, 38]);
     expect(shares([0, 0])).toEqual([0, 0]);
-  });
-
-  it("flags waits past the promise, except running work", () => {
-    expect(pastPromise(6.8, 5)).toBe(true);
-    expect(pastPromise(5, 5)).toBe(false);
-    expect(pastPromise(41, 5, true)).toBe(false);
   });
 
   it("turns a share into a ring offset", () => {
