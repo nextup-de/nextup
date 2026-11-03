@@ -109,11 +109,11 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 
   await test.step("a typed measure does not make the reward due until a second person confirms it (LOOP/D18)", async () => {
-    // The confirm control comes with LOOP-U1; until then the manager sees no reward offered on an unconfirmed measure.
+    // The manager sees no reward offered on an unconfirmed measure; the panel says when one will be due (LOOP-U1).
     await viewAs(page, "Manager");
     await page.goto("/acme/projects/pj4");
     await expect(head(page)).toContainText("P-4 · Measured");
-    await expect(page.getByRole("region", { name: "Reward" })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Reward" })).toContainText("A reward is due after a confirmed better result.");
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
   });
 });
