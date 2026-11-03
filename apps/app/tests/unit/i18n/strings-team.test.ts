@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { catalogIssues, inlineStrings } from "./inline";
 
 // Placeholder data that phase MET replaces (LNG decision D9): left out of the proof.
-const PLACEHOLDERS = ["src/components/dashboard/team/feedPreview.ts", "src/components/dashboard/team/overviewPreview.ts"];
+const PLACEHOLDERS = ["src/components/dashboard/team/overviewPreview.ts"];
 
 describe("LNG strings team leader", () => {
   it("has no inline user-facing string in the team and leader views", async () => {
