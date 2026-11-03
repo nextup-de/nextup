@@ -48,8 +48,7 @@ import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
 import { m365SearchOn, saveConnection } from "@/lib/db/connections";
 import { getViewerFor } from "@/features/auth/session";
 import { seal, vaultContext, vaultKey } from "@/features/connectors/vault";
-import { adminScope } from "@/features/admin/nav";
-import { companyPrefix, safeNextPath } from "@/features/tenant/urls";
+import { companyPrefix, safeNextPath, singleCompany } from "@/features/tenant/urls";
 import { issueAdminSession } from "@/server/admin-session";
 import { issueSession, secureCookies } from "@/server/issue-session";
 
@@ -90,7 +89,7 @@ const profileWith = (slug: string, outcome: MicrosoftError | "connected") => `${
 const signInFirst = (slug: string) => `${companyPrefix(slug)}/login?next=/profile`;
 
 /** Only a one-company stack has an admin of its own, and only for its own company. */
-const isThisStacksAdmin = (slug: string) => adminScope() === "company" && process.env.COMPANY_SLUG?.trim() === slug;
+const isThisStacksAdmin = (slug: string) => singleCompany() === slug;
 
 /** The Microsoft button on /admin/login: shown when Microsoft sign-in works for this stack's company. */
 export async function microsoftAdminEnabled(): Promise<boolean> {
