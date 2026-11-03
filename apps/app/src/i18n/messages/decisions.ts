@@ -2,6 +2,10 @@
 import { defineMessages } from "../define";
 
 export const decisions = defineMessages({
-  en: {},
-  de: {},
+  en: {
+    navLabel: "Decision log",
+  },
+  de: {
+    navLabel: "Entscheidungsprotokoll",
+  },
 });

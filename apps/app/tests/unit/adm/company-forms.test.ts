@@ -33,7 +33,7 @@ describe("ADM company forms", () => {
 
   it("parses the rules and the loop rules", () => {
     const r = parseRulesForm(goodRules);
-    expect(r.ok && r.value.rules).toEqual({ promiseDays: 3, outcomeDays: 10, spend: { limitEur: 2500, text: "Up to 2500 euros without approval" } });
+    expect(r.ok && r.value.rules).toMatchObject({ promiseDays: 3, outcomeDays: 10, spend: { limitEur: 2500, text: "Up to 2500 euros without approval" } });
     expect(r.ok && r.value.loop).toMatchObject({
       discussEveryDays: 2, discussMaxRounds: 4, fastLaneEur: 1000, measureDays: [30, 90], tolerancePct: 3,
       reward: { kind: "share", amount: null, sharePct: 10, capEur: 5000 },

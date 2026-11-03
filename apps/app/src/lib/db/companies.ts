@@ -96,5 +96,5 @@ export async function companySeed(row: { id: string; seedJson: unknown; stage?: 
   const stage = row.stage ?? (await getDb().company.findUnique({ where: { id: row.id }, select: { stage: true } }))?.stage ?? "demo";
   const clock = stage === "demo" ? DEMO_CLOCK : ({ mode: "workdays", calendar } as const);
   // The rules after the routing come from CompanyConfig, never from the blob (src/features/loop/rules.ts).
-  return { ...structureSeed(parseSeed(row.seedJson), knowledge, rules), loop, clock };
+  return { ...structureSeed(parseSeed(row.seedJson), knowledge, rules), loop: { ...loop, deadlineHandover: rules.deadlineHandover, measure: rules.steps.measure, recognition: rules.steps.recognition }, clock };
 }

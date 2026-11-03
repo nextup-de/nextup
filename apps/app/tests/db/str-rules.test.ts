@@ -30,9 +30,9 @@ describe("STR company rules", () => {
     expect(await loadCompanyRules(b.id)).toEqual(DEFAULT_RULES);
   });
   it("replaces on a second save", async () => {
-    await saveCompanyRules(a.id, { promiseDays: 3, outcomeDays: 30, spend: null });
-    expect(await loadCompanyRules(a.id)).toEqual({ promiseDays: 3, outcomeDays: 30, spend: null });
-    expect(await db.companyRule.count({ where: { companyId: a.id } })).toBe(2);
+    await saveCompanyRules(a.id, { ...DEFAULT_RULES, promiseDays: 3, outcomeDays: 30 });
+    expect(await loadCompanyRules(a.id)).toEqual({ ...DEFAULT_RULES, promiseDays: 3, outcomeDays: 30 });
+    expect(await db.companyRule.count({ where: { companyId: a.id } })).toBe(4);
   });
   it("deletes the rules with the company", async () => {
     await saveCompanyRules(b.id, DEMO_RULES);
