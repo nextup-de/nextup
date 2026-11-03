@@ -18,7 +18,10 @@ import { loadCalendar } from "@/lib/db/calendar";
 import { companySeed } from "@/lib/db/companies";
 import { getDb } from "@/lib/db/client";
 import { companyDay } from "@/lib/db/events";
+import { getIntegration } from "@/lib/db/integrations";
 import { prefsOf } from "@/lib/db/notify-prefs";
+import { teamsUserIds } from "@/lib/db/teams";
+import { TEAMS_SYSTEM, teamsApp } from "@/features/teams/config";
 import { companyBaseUrl } from "@/server/case-notice";
 
 /** A run that dies without releasing loses its lease after this. */
@@ -58,6 +61,13 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
   if (firstNew === -1) return { events: 0, rows: 0 };
   const upto = Math.min(rows.length, firstNew + PLAN_BATCH);
 
+  // Teams works for the company (TMS D6): the app is set up, the switch is on, the tenant is known.
+  const [integration, tenant] = teamsApp()
+    ? await Promise.all([getIntegration(company.id, TEAMS_SYSTEM), db.company.findUnique({ where: { id: company.id }, select: { entraTenantId: true } })])
+    : [null, null];
+  const teamsOn = !!integration?.on && !!tenant?.entraTenantId;
+  const teamsIds = teamsOn ? await teamsUserIds(company.id) : new Set<string>();
+
   const [users, config, subs] = await Promise.all([
     db.user.findMany({ where: { companyId: company.id }, select: { id: true, name: true, email: true, handle: true } }),
     db.companyConfig.findUnique({ where: { companyId: company.id }, select: { notifications: true, n8n: true } }),
@@ -66,7 +76,7 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
   const people: PlanPerson[] = [];
   for (const u of users) {
     const email = u.email.trim() || null;
-    people.push({ id: u.id, email, locale: email ? await localeForEmail(company.id, email) : DEFAULT_LOCALE, name: u.name, handle: u.handle });
+    people.push({ id: u.id, email, locale: email ? await localeForEmail(company.id, email) : DEFAULT_LOCALE, name: u.name, handle: u.handle, teams: teamsIds.has(u.id) });
   }
   const ctx = {
     companyId: company.id,
@@ -75,6 +85,7 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
     company: { stage: company.stage, notifications: config?.notifications ?? false, n8n: config?.n8n ?? false },
     subscriptions: subs,
     baseUrl: companyBaseUrl(company.slug),
+    teamsOn,
   };
 
   const seed = await companySeed(company);
