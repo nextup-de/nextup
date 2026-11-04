@@ -1,6 +1,7 @@
 // What leaves the server for one browser (VIS/D8, D9): the events of the cases the viewer may open
 // inside the window, of the projects those cases opened or joined, every idea.* event and every event
 // with no target. The reducer runs on this smaller log unchanged - an absent case is simply not there.
+import { cache } from "react";
 import type { Role } from "@/config/roles";
 import { meFor } from "@/features/auth/identity";
 import type { EventLog, EventPayload } from "@/features/cases/events";
@@ -10,10 +11,11 @@ import type { Seed, SeedCase } from "@/features/demo/types";
 import type { SeedProject } from "@/features/projects/types";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 import { companySeed } from "./companies";
 import { companyDay, loadLog } from "./events";
-import { loadSeats } from "./holders";
-import { loadKnowledge, loadMembers } from "./knowledge";
+import { loadSeats as readSeats } from "./holders";
+import { loadKnowledge as readKnowledge, loadMembers as readMembers } from "./knowledge";
 import { caseView, visibleCaseIds } from "./projections/readers";
 import { relabelRows } from "./pseudonymise";
 
@@ -23,6 +25,13 @@ export const WINDOW_DAYS = 90;
 export const WINDOW_CASES = 500;
 
 const SELECT = { id: true, seq: true, day: true, ts: true, type: true, actor: true, actorUserId: true, targetId: true, payload: true } as const;
+
+// One request asks for the seats, the knowledge and the members several times (the shell's log, its people
+// without a seat, then the page's mayOpen); within one request they are read once. Outside a request, as in
+// the tests, `cache` does not remember, so a write is seen at once.
+const loadSeats = cache(readSeats);
+const loadKnowledge = cache(readKnowledge);
+const loadMembers = cache(readMembers);
 
 export type LogViewer = { userId: string; role: Role };
 
@@ -47,9 +56,11 @@ const projectIdOf = (payload: unknown): string[] => {
 };
 
 /** The company's seed as the pages see it. */
-async function seedOf(companyId: string): Promise<Seed> {
-  const row = await getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { id: true, seedJson: true, stage: true } });
-  return companySeed(row);
+function seedOf(companyId: string): Promise<Seed> {
+  return memo("viewer-seed", companyId, async () => {
+    const row = await getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { id: true, seedJson: true, stage: true } });
+    return companySeed(row);
+  });
 }
 
 /** The events of these cases and of the projects they opened or joined, in seq order; `shared` adds the idea.* and untargeted ones. */
@@ -69,17 +80,21 @@ async function eventsOf(companyId: string, caseIds: string[], seed: Seed, shared
 
 /**
  * The log for one viewer (VIS/D8). A company without CaseView rows (not projected yet) gets the
- * full log, so nothing disappears before the first rebuild.
+ * full log, so nothing disappears before the first rebuild. A caller that already holds the company seed passes it,
+ * so the structure is not read twice in one request.
  */
-export async function loadLogFor(companyId: string, viewer: LogViewer, now: Date = new Date()): Promise<ViewerLog> {
+export async function loadLogFor(companyId: string, viewer: LogViewer, now: Date = new Date(), seed?: Seed): Promise<ViewerLog> {
   const db = getDb();
-  if ((await db.caseView.count({ where: { companyId } })) === 0) return { log: await loadLog(companyId, now), caseIds: null, projectIds: null };
-  const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } });
+  const [shipped, company, keys] = await Promise.all([
+    db.caseView.count({ where: { companyId } }),
+    memo("stage", companyId, () => db.company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } })),
+    keysOf(companyId, viewer),
+  ]);
+  if (shipped === 0) return { log: await loadLog(companyId, now), caseIds: null, projectIds: null };
   const cal = company.stage === "demo" ? null : await loadCalendar(companyId);
   const day = cal ? companyDay(company, cal, now) : company.demoDay;
-  const keys = await keysOf(companyId, viewer);
   const caseIds = await visibleCaseIds(companyId, keys, { sinceDay: day - WINDOW_DAYS, limit: WINDOW_CASES });
-  const { rows, projectIds } = await eventsOf(companyId, caseIds, await seedOf(companyId), true);
+  const { rows, projectIds } = await eventsOf(companyId, caseIds, seed ?? (await seedOf(companyId)), true);
   return { log: logFromRows(rows, day), caseIds, projectIds };
 }
 
