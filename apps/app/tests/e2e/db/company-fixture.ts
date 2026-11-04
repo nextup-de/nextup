@@ -10,7 +10,7 @@ import { getDb } from "../../../src/lib/db/client";
 import { bindDemoCompany } from "../../../src/lib/db/demo-identity";
 import { writeStructure } from "../../../src/lib/db/structure-writes";
 
-type Stage = "demo" | "sandbox";
+type Stage = "demo" | "sandbox" | "pilot";
 
 /** Create a company with its people; returns each person's login code by name. */
 export async function createTestCompany(
