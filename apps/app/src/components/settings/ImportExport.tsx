@@ -2,10 +2,12 @@
 // Settings -> Import and export (API D13): choose up to four CSV files, check them, read every error, apply all
 // or nothing; and the four files out again. The server checks and writes (server/actions/settings/import-export.ts).
 import { useRef, useState, useTransition } from "react";
+import { Banner, SectionCard } from "@/components/ui/elements";
 import type { CheckResult, FileKind } from "@/features/api/structure-csv";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import { applyImportAction, checkImportAction } from "@/server/actions/settings/import-export";
+import s from "./settings.module.css";
 import styles from "./ImportExport.module.css";
 
 type Props = { slug: string; prefix: string; counts: Record<FileKind, number>; columns: Record<FileKind, readonly string[]> };
@@ -58,49 +60,49 @@ export function ImportExport({ prefix, slug, counts, columns }: Props) {
   const stepNow = done ? 3 : result ? 2 : 1;
 
   return (
-    <div className={styles.wrap}>
-      <section className={styles.card} aria-labelledby="imp-h">
-        <h2 id="imp-h" className={styles.title}>{t("settingsImport.importTitle")}</h2>
+    <div className={s.page}>
+      <SectionCard name="import" title={t("settingsImport.importTitle")}>
         <ol className={styles.steps}>
-          {(["stepUpload", "stepCheck", "stepApply"] as const).map((s, i) => (
-            <li key={s} aria-current={stepNow === i + 1 ? "step" : undefined} className={stepNow === i + 1 ? styles.now : stepNow > i + 1 ? styles.past : undefined}>
-              {t(`settingsImport.${s}`)}
+          {(["stepUpload", "stepCheck", "stepApply"] as const).map((step, i) => (
+            <li key={step} aria-current={stepNow === i + 1 ? "step" : undefined} className={stepNow === i + 1 ? styles.now : stepNow > i + 1 ? styles.past : undefined}>
+              {t(`settingsImport.${step}`)}
             </li>
           ))}
         </ol>
         <form ref={formRef} className={styles.form} onSubmit={(e) => { e.preventDefault(); check(); }}>
           {ORDER.map((k) => (
             <label key={k} className={styles.file}>
-              <span>{t(KIND_LABEL[k])} <code className={styles.key}>{file(k)}</code></span>
-              <input type="file" name={k} accept=".csv,text/csv" onChange={() => { setResult(null); setDone(null); }} aria-label={t(KIND_LABEL[k])} />
-              <span className="nh-hint">{columns[k].join(", ")}</span>
+              <span className={styles.kind}>{t(KIND_LABEL[k])} <code className={styles.key}>{file(k)}</code></span>
+              <input className={styles.picker} type="file" name={k} accept=".csv,text/csv" onChange={() => { setResult(null); setDone(null); }} aria-label={t(KIND_LABEL[k])} />
+              <span className={s.help}>{columns[k].join(", ")}</span>
             </label>
           ))}
-          <p className="nh-hint">{t("settingsImport.dropHint")} {t("settingsImport.orderHint")}</p>
+          <p className={s.cardHint}>{t("settingsImport.dropHint")} {t("settingsImport.orderHint")}</p>
           <div className={styles.buttons}>
-            <button type="submit" className="nh-btn nh-btn-primary" disabled={pending}>{t("settingsImport.check")}</button>
-            {(result || done) && <button type="button" className="nh-btn nh-btn-ghost" onClick={reset}>{t("settingsImport.uploadFixed")}</button>}
+            <button type="submit" className={s.save} disabled={pending}>{t("settingsImport.check")}</button>
+            {(result || done) && <button type="button" className={s.soft} onClick={reset}>{t("settingsImport.uploadFixed")}</button>}
           </div>
         </form>
 
-        {error && <p role="alert" className={styles.error}>{t(error)}</p>}
+        {error && <Banner tone="error">{t(error)}</Banner>}
 
         {done && (
-          <p role="status" className={styles.ok}>
-            {t("settingsImport.applied", done)}{" "}
-            <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={reset}>{t("settingsImport.importNext")}</button>
-          </p>
+          <div role="status">
+            <Banner tone="info" action={<button type="button" className={s.soft} onClick={reset}>{t("settingsImport.importNext")}</button>}>
+              {t("settingsImport.applied", done)}
+            </Banner>
+          </div>
         )}
 
         {result && plan && (
           <div className={styles.result}>
-            <p>{t("settingsImport.summary", { rows, ready: added + changed, added, changed, errors: errorRows, same: sameN })}</p>
+            <p className={styles.summary}>{t("settingsImport.summary", { rows, ready: added + changed, added, changed, errors: errorRows, same: sameN })}</p>
             {ORDER.filter((k) => plan.ignored[k]?.length).map((k) => (
-              <p key={k} className="nh-hint">{t("settingsImport.ignored", { file: file(k), names: (plan.ignored[k] ?? []).join(", ") })}</p>
+              <p key={k} className={s.cardHint}>{t("settingsImport.ignored", { file: file(k), names: (plan.ignored[k] ?? []).join(", ") })}</p>
             ))}
             {result.errors.length > 0 && (
               <>
-                <h3 className={styles.sub}>{t("settingsImport.errorsTitle")} ({result.errors.length})</h3>
+                <h3 className={s.subLabel}>{t("settingsImport.errorsTitle")} ({result.errors.length})</h3>
                 <ul className={styles.errors}>
                   {result.errors.map((e, i) => (
                     <li key={i}>
@@ -114,31 +116,31 @@ export function ImportExport({ prefix, slug, counts, columns }: Props) {
               </>
             )}
             <div className={styles.buttons}>
-              <button type="button" className="nh-btn nh-btn-primary" disabled={pending || !result.ok || added + changed === 0} onClick={apply}>
+              <button type="button" className={s.save} disabled={pending || !result.ok || added + changed === 0} onClick={apply}>
                 {t("settingsImport.apply")}
               </button>
             </div>
-            <p className="nh-hint">
+            <p className={s.cardHint}>
               {!result.ok ? t("settingsImport.applyHint") : added + changed === 0 ? t("settingsImport.nothingToDo") : t("settingsImport.applyReady")}
             </p>
           </div>
         )}
-      </section>
+      </SectionCard>
 
-      <section className={styles.card} aria-labelledby="exp-h">
-        <h2 id="exp-h" className={styles.title}>{t("settingsImport.exportTitle")}</h2>
-        <ul className={styles.exports}>
+      <SectionCard name="export" title={t("settingsImport.exportTitle")} hint={t("settingsImport.exportNote")}>
+        <ul className={s.lines}>
           {ORDER.map((k) => (
-            <li key={k}>
-              <span>{t(KIND_LABEL[k])}</span>
-              <code className={styles.key}>{file(k)}</code>
-              <span className="nh-hint">{t("settingsImport.rowsCount", { count: counts[k] })}</span>
-              <a className="nh-btn nh-btn-ghost nh-btn-sm" href={`${prefix}/settings/import-export/export/${k}`} download>{t("settingsImport.download")}</a>
+            <li key={k} className={`${s.line} ${styles.exportLine}`}>
+              <span className={styles.exportName}>
+                <strong>{t(KIND_LABEL[k])}</strong>
+                <code className={styles.key}>{file(k)}</code>
+              </span>
+              <span className={s.mute}>{t("settingsImport.rowsCount", { count: counts[k] })}</span>
+              <a className={s.soft} href={`${prefix}/settings/import-export/export/${k}`} download>{t("settingsImport.download")}</a>
             </li>
           ))}
         </ul>
-        <p className="nh-hint">{t("settingsImport.exportNote")}</p>
-      </section>
+      </SectionCard>
     </div>
   );
 }
