@@ -13,7 +13,7 @@ import { getDb } from "@/lib/db/client";
 import { appendEventRow } from "@/lib/db/events";
 import { deviceByToken, findArea, hashFloor, saveReference, touchDevice } from "@/lib/db/floor";
 import { hasDatabase } from "@/lib/db/mode";
-import { throttle } from "@/server/throttle";
+import { clientKey, throttle } from "@/server/throttle";
 
 export type FloorDevice = { key: string; deviceId: string | null };
 export type FloorRaiseInput = RaiseInput & { area: string; nonce: string };
@@ -70,7 +70,10 @@ export async function raiseFromFloor(
   );
   if (!seat) return { ok: false, reason: "vacant" };
 
-  const limited = (await throttle("floorRaise", `${device.key}|${area.id}`)) ?? (await throttle("floorRaiseAll", area.id));
+  const limited =
+    (await throttle("floorRaise", `${device.key}|${area.id}`)) ??
+    (await floorAddressLimit("floorRaiseAddress", device.key, area.id)) ??
+    (await throttle("floorRaiseAll", area.id));
   if (limited) return { ok: false, reason: "limited", message: limited };
 
   const caseId = `c_${randomUUID()}`;
@@ -119,6 +122,16 @@ export async function floorUserFromCookie(companyId: string): Promise<{ id: stri
   const claims = verifyFloorCookie((await cookies()).get(FLOOR_USER_COOKIE)?.value, secret);
   if (!claims || claims.cid !== companyId || typeof claims.uid !== "string") return null;
   return getDb().user.findFirst({ where: { id: claims.uid, companyId, active: true }, select: { id: true, name: true } });
+}
+
+/**
+ * The second limit for an anonymous browser (FX6): it can drop its cookie and be new again, so it also counts
+ * by address. A paired device does not: its token cannot be made up, and a shared tablet is many people.
+ */
+export async function floorAddressLimit(bucket: "floorCodeAddress" | "floorStatusAddress" | "floorRaiseAddress", deviceKey: string, scope?: string): Promise<string | null> {
+  if (!deviceKey.startsWith("a:")) return null;
+  const address = await clientKey();
+  return throttle(bucket, scope ? `${address}|${scope}` : address);
 }
 
 /**
