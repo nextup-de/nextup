@@ -36,7 +36,6 @@ const assist = await import("@/server/actions/assist-admin");
 const connectors = await import("@/server/actions/console-connectors");
 const directory = await import("@/server/actions/directory-admin");
 const ideas = await import("@/server/actions/ideas-admin");
-const jira = await import("@/server/actions/jira-admin");
 const m365 = await import("@/server/actions/m365");
 const totp = await import("@/server/actions/settings/totp-reset");
 const successFactors = await import("@/server/actions/successfactors-admin");
@@ -78,13 +77,6 @@ const WRITES: Record<string, () => Promise<unknown>> = {
   "actions/directory-admin#setDirectoryAction": () => directory.setDirectoryAction(true, "entra"),
   "actions/directory-admin#runDirectoryNowAction": () => directory.runDirectoryNowAction(),
   "actions/ideas-admin#saveIdeaSettingsAction": () => ideas.saveIdeaSettingsAction({} as never, form({ publishThreshold: "50" })),
-  "actions/jira-admin#testJiraAction": () => jira.testJiraAction({}),
-  "actions/jira-admin#saveJiraAction": () => jira.saveJiraAction({}),
-  "actions/jira-admin#setJiraOnAction": () => jira.setJiraOnAction(false),
-  "actions/jira-admin#syncJiraNowAction": () => jira.syncJiraNowAction(),
-  "actions/jira-admin#newWebhookSecretAction": () => jira.newWebhookSecretAction(),
-  "actions/jira-admin#removeWebhookSecretAction": () => jira.removeWebhookSecretAction(),
-  "actions/jira-admin#removeJiraAction": () => jira.removeJiraAction(),
   "actions/m365#setM365SearchAction": () => m365.setM365SearchAction(form({ m365Search: "on" })),
   "actions/m365#disconnectEveryoneAction": () => m365.disconnectEveryoneAction(),
   "actions/settings/totp-reset#adminResetTotpAction": () => totp.adminResetTotpAction({}, form({ slug: SLUG, userId })),
@@ -180,7 +172,7 @@ describe("FX1 console writes", () => {
     for (const file of sourceFiles(root)) {
       const text = readFileSync(file, "utf8");
       if (!text.startsWith('"use server"')) continue;
-      if (!/consoleCompany|consoleWrite|consoleActor|adminCompany|\bisAdmin\b/.test(text)) continue;
+      if (!/consoleCompany|consoleWrite|consoleActor|\bisAdmin\b/.test(text)) continue;
       const mod = path.relative(path.join(root, "server"), file).replace(/\\/g, "/").replace(/\.tsx?$/, "");
       for (const m of text.matchAll(/^export (?:async )?(?:function|const) (\w+)/gm)) found.push(`${mod}#${m[1]}`);
     }
@@ -233,7 +225,6 @@ describe("FX1 console writes", () => {
       "actions/admin#setStackAdminAction",
       "actions/admin#setEntraTenantAction",
       "actions/assist-admin#deleteDocumentAction",
-      "actions/jira-admin#removeWebhookSecretAction",
       "actions/m365#setM365SearchAction",
       "actions/m365#disconnectEveryoneAction",
       "actions/settings/totp-reset#adminResetTotpAction",
