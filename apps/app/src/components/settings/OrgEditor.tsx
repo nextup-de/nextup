@@ -14,6 +14,7 @@ import {
   addRoleAction, addSeatAction, addUnitAction, linkSeatAction, removeRoleAction, removeSeatAction,
   removeUnitAction, updateRoleAction, updateUnitAction, type OrgResult,
 } from "@/server/actions/settings/org";
+import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { SettingsHead } from "./SettingsParts";
 import s from "./settings.module.css";
 import o from "./OrgEditor.module.css";
@@ -29,7 +30,6 @@ const kindLabel = (kind: string): MessageKey => KIND_LABEL[kind as (typeof UNIT_
 const text = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const orNull = (v: string) => (v === "" ? null : v);
 const whole = (v: string) => (v === "" ? 0 : Number(v));
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 /** Words as chips, sent one per line under `name`. */
 function ChipField({ name, initial, label }: { name: string; initial: string[]; label: string }) {
@@ -172,7 +172,7 @@ export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true }
                   {hasChildren ? (
                     <button type="button" className={o.twisty} data-open={open.has(u.id) || query ? "" : undefined} aria-label={t("settingsOrg.toggleUnit", { name: u.name })} aria-expanded={open.has(u.id)} onClick={() => toggle(u.id)}>▸</button>
                   ) : <span className={o.twisty} />}
-                  <button type="button" className={o.treeName} data-top={depth === 0 ? "" : undefined} onClick={() => setPicked(u.key)} data-testid={`settings-org-unit-${u.key}`}>{u.name}</button>
+                  <button type="button" className={o.treeName} data-top={depth === 0 ? "" : undefined} onClick={() => setPicked(u.key)} data-testid={`settings-org-unit-${u.key}`}><DeptChip name={u.name} /></button>
                   {vacancy.has(u.id) ? <span className={o.dot} title={t("settingsOrg.vacantSeats")} aria-label={t("settingsOrg.vacantSeats")} /> : null}
                 </li>
               ))}
@@ -214,7 +214,7 @@ export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true }
                             <dt>{t("settingsOrg.seats")}</dt>
                             <dd className={o.seatChips}>
                               {seats.filter((h) => h.userId).map((h) => (
-                                <span key={h.id} className={o.person}><span className={o.avatar}>{initials(memberName(h.userId) ?? h.name)}</span>{shortName(memberName(h.userId) ?? h.name)}</span>
+                                <span key={h.id} className={o.person}><PersonFace name={memberName(h.userId) ?? h.name} size="sm" />{shortName(memberName(h.userId) ?? h.name)}</span>
                               ))}
                               {seats.some((h) => !h.userId) || seats.length === 0 ? <span className={s.vacant}>{t("settingsOrg.vacant")}</span> : null}
                               {seats.some((h) => !h.userId) || seats.length === 0 ? <span className={o.vacantNote}>{t("settingsOrg.vacantNote")}</span> : null}
@@ -298,7 +298,7 @@ export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true }
                   <ul className={o.seatList}>
                     {seatsOf(roleEdit.id).map((h) => (
                       <li key={h.id} className={o.seatRow} data-testid={`settings-org-seat-${h.id}`}>
-                        {h.userId ? <span className={o.avatar}>{initials(memberName(h.userId) ?? h.name)}</span> : <span className={s.vacant}>{t("settingsOrg.vacant")}</span>}
+                        {h.userId ? <PersonFace name={memberName(h.userId) ?? h.name} size="sm" /> : <span className={s.vacant}>{t("settingsOrg.vacant")}</span>}
                         <span className={o.seatName}>{h.userId ? memberName(h.userId) ?? h.name : h.name}</span>
                         <select className={`${s.input} ${o.seatSelect}`} aria-label={t("settingsOrg.seatMember")} value={h.userId ?? ""} disabled={pending || demo}
                           data-testid="settings-org-seat-link" onChange={(e) => run(() => linkSeatAction(slug, h.id, orNull(e.target.value)))}>

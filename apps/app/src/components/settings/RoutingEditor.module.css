@@ -24,7 +24,8 @@
 .kw em { font-style: normal; color: #8e8e93; }
 .cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--nh-fs-sm); line-height: 18px; }
 .cellMain { color: #1c1c1e; }
-.cellSub { color: #6e6e73; }
+.cellSub { display: flex; align-items: center; gap: 6px; color: #6e6e73; }
+.cellChip { display: flex; }
 .wait { font-size: var(--nh-fs-sm); font-weight: 600; }
 
 @media (max-width: 760px) {

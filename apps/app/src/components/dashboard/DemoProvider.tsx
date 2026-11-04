@@ -187,6 +187,8 @@ export type TenantInfo = {
   actorLabels?: Record<string, string>;
   /** Nothing fills this any more, so no real names reach the browser (MET D15). Kept optional for components that still read it (Q5). */
   hiddenPeople?: string[];
+  /** Where the account menu leads to the IT console, or nothing for someone who has none (lib/db/people.ts). */
+  consoleHref?: string | null;
   /** False for a company with real people: no dev panel, and `users` is only the viewer. */
   demoTools?: boolean;
   // Demo data until the dev panel switches it: on for the static demo and the demo test suite, off elsewhere.

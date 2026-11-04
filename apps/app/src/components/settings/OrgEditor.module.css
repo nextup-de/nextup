@@ -28,7 +28,6 @@
 .facts dd { margin: 0; color: #1c1c1e; }
 .seatChips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .person { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px 0 4px; border: 1px solid #e5e5ea; border-radius: 8px; background: #fff; }
-.avatar { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 6px; background: var(--nh-brand-tint); color: var(--nh-brand); font-size: var(--nh-fs-xs); font-weight: 700; }
 .vacantNote { flex-basis: 100%; color: #6e6e73; }
 .noRoles { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 24px; text-align: center; }
 .addHere { display: flex; justify-content: flex-end; }

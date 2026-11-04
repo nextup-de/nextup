@@ -2,6 +2,7 @@
 // /settings/privacy: the four cards of the Data and privacy page (GDP D18, spec 05). Company totals only (D7).
 // Shortening a rule asks first and names how many rows the next run removes.
 import { useState, useTransition } from "react";
+import { DataTable, PersonFace, SectionCard } from "@/components/ui/elements";
 import { fromRules, needsConfirm, shortened, toRuleInput, formErrors, type FormErrorKey, type PrivacyForm } from "@/features/privacy/privacy-form";
 import type { RetentionKind } from "@/features/privacy/retention";
 import { useFormat, useT } from "@/i18n/client";
@@ -10,7 +11,7 @@ import { requestExport, listExportsAction } from "@/server/actions/privacy-expor
 import {
   previewRetention, saveRetentionAction, saveScreenshotsAction, type PrivacyPageData, type SaveResult,
 } from "@/server/actions/settings/privacy";
-import { Card, Foot, Row, SettingsHead } from "./SettingsParts";
+import { Foot, Row, SettingsHead } from "./SettingsParts";
 import s from "./settings.module.css";
 import p from "./PrivacySettings.module.css";
 
@@ -105,7 +106,8 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
     <div className={s.page}>
       <SettingsHead title={t("settingsPrivacy.navLabel")} lede={t("settingsPrivacy.lede", { company: companyName })} />
 
-      <Card title={t("settingsPrivacy.cardAgreement")} testId="settings-privacy-agreement">
+      <div data-testid="settings-privacy-agreement">
+      <SectionCard name="agreement" title={t("settingsPrivacy.cardAgreement")}>
         <dl className={p.facts}>
           <div className={p.fact}>
             <dt className={p.factLabel}>{t("settingsPrivacy.agreement")}</dt>
@@ -116,10 +118,11 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
           <div className={p.fact}><dt className={p.factLabel}>{t("settingsPrivacy.where")}</dt><dd className={p.factValue}>{t("settingsPrivacy.whereValue")}</dd></div>
           <div className={p.fact}><dt className={p.factLabel}>{t("settingsPrivacy.personnel")}</dt><dd className={p.factValue}>{t("settingsPrivacy.personnelValue")}</dd></div>
         </dl>
-      </Card>
+      </SectionCard>
+      </div>
 
       <form onSubmit={submit} noValidate>
-        <Card title={t("settingsPrivacy.cardKept")}>
+        <SectionCard name="kept" title={t("settingsPrivacy.cardKept")}>
           <Row id="privacy-assist" label={t("settingsPrivacy.ruleAssist")} wide help={t("settingsPrivacy.ruleAssistHelp")} error={err("assist_turns")}>
             <div className={s.inline}>{num("assist_turns", "assist", form.assistDays, (n) => setForm({ ...form, assistDays: n }))}<span className={s.unit}>{t("settingsPrivacy.daysUnit")}</span></div>
           </Row>
@@ -152,19 +155,20 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
               {pending ? t("settingsPrivacy.saving") : t("settingsPrivacy.save")}
             </button>
           </Foot>
-        </Card>
+        </SectionCard>
       </form>
 
-      <Card title={t("settingsPrivacy.cardScreenshots")}>
+      <SectionCard name="screenshots" title={t("settingsPrivacy.cardScreenshots")}>
         <label className={s.switch}>
           <input type="checkbox" role="switch" checked={shots} disabled={pending} onChange={(e) => toggleShots(e.target.checked)} data-testid="settings-privacy-screenshots" />
           {t("settingsPrivacy.screenshotsSwitch")}
         </label>
         <p className={s.help}>{t("settingsPrivacy.screenshotsHelp")}</p>
         {shotStatus ? <Foot status={shotStatus.text} tone={shotStatus.error ? "error" : undefined}>{null}</Foot> : null}
-      </Card>
+      </SectionCard>
 
-      <Card
+      <SectionCard
+        name="exports"
         title={t("settingsPrivacy.cardExports")}
         action={<button type="button" className={s.save} disabled={pending} onClick={exportCompany} data-testid="settings-privacy-export-company">{t("settingsPrivacy.exportCompany")}</button>}
       >
@@ -172,32 +176,44 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
         {exports.length === 0 ? (
           <p className={p.empty} data-testid="settings-privacy-exports-empty">{t("settingsPrivacy.exportsEmpty")}</p>
         ) : (
-          <table className={p.table}>
-            <thead>
-              <tr><th>{t("settingsPrivacy.colWhat")}</th><th>{t("settingsPrivacy.colRequested")}</th><th>{t("settingsPrivacy.colStatus")}</th><th>{t("settingsPrivacy.colExpires")}</th></tr>
-            </thead>
-            <tbody>
-              {exports.map((e) => (
-                <tr key={e.id} data-testid="settings-privacy-exports-row">
-                  <td>
+          <DataTable
+            rows={exports}
+            rowKey={(e) => e.id}
+            empty={t("settingsPrivacy.exportsEmpty")}
+            columns={[
+              {
+                key: "what", header: t("settingsPrivacy.colWhat"),
+                render: (e) => (
+                  <span data-testid="settings-privacy-exports-row">
                     {e.kind === "company" ? t("settingsPrivacy.whatCompany") : `${t("settingsPrivacy.whatPerson")} (${t(e.deliverTo === "person" ? "settingsPrivacy.toPerson" : "settingsPrivacy.toAdmin")})`}
-                  </td>
-                  <td>{data.names[e.requestedByUserId] ?? ""}, {f.date(e.createdAt, "dayMonth")}</td>
-                  <td>
+                  </span>
+                ),
+              },
+              {
+                key: "by", header: t("settingsPrivacy.colRequested"),
+                render: (e) => {
+                  const name = data.names[e.requestedByUserId] ?? "";
+                  return name ? <span className={p.person}><PersonFace name={name} size="sm" />{name}, {f.date(e.createdAt, "dayMonth")}</span> : f.date(e.createdAt, "dayMonth");
+                },
+              },
+              {
+                key: "status", header: t("settingsPrivacy.colStatus"),
+                render: (e) => (
+                  <>
                     {statusOf(e)}
                     {e.status === "failed" ? <span className={p.err}>{t("settingsPrivacy.failedLine")}</span> : null}
                     {e.downloadable ? (
                       <>{" "}<a className={s.soft} href={`/api/${slug}/exports/${e.id}`} data-testid="settings-privacy-download">{t("settingsPrivacy.download")}</a></>
                     ) : null}
-                  </td>
-                  <td>{e.status === "expired" || e.status === "failed" ? "–" : f.date(e.expiresAt, "dayMonth")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </>
+                ),
+              },
+              { key: "expires", header: t("settingsPrivacy.colExpires"), render: (e) => (e.status === "expired" || e.status === "failed" ? "–" : f.date(e.expiresAt, "dayMonth")) },
+            ]}
+          />
         )}
         <p className={s.help}>{t("settingsPrivacy.exportsHint")}</p>
-      </Card>
+      </SectionCard>
 
       {confirm ? (
         <div className={s.scrim}>
