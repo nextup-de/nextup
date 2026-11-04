@@ -3,6 +3,7 @@
 import type { VisMember } from "@/features/cases/visibility";
 import type { HolderRow, Knowledge, Profile } from "@/features/knowledge";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 
 const unit = { id: true, key: true, name: true, kind: true, headcount: true, parentId: true, sort: true } as const;
 const role = { id: true, orgUnitId: true, title: true, reportsToId: true, decides: true, spendLimitEur: true, skills: true, sort: true } as const;
@@ -10,7 +11,11 @@ const holder = { id: true, roleId: true, name: true, userId: true, sort: true } 
 const rule = { id: true, key: true, type: true, keywords: true, ownerRoleId: true, deputyRoleId: true, buddyRoleId: true, wait: true, sort: true } as const;
 const goal = { id: true, orgUnitId: true, parentId: true, title: true, kpi: true, target: true, period: true, keywords: true, sort: true } as const;
 
-export async function loadKnowledge(companyId: string): Promise<Knowledge> {
+export function loadKnowledge(companyId: string): Promise<Knowledge> {
+  return memo("knowledge", companyId, () => readKnowledge(companyId));
+}
+
+async function readKnowledge(companyId: string): Promise<Knowledge> {
   const db = getDb();
   const where = { companyId };
   const orderBy = { sort: "asc" } as const;
@@ -30,7 +35,11 @@ export async function loadKnowledge(companyId: string): Promise<Knowledge> {
  * The active people without a seat, for the visibility rule and the metric cohorts (FX3). Their unit is the
  * one their department names, by key or name like the directory matches it; a manager who has left counts as none.
  */
-export async function loadMembers(companyId: string): Promise<VisMember[]> {
+export function loadMembers(companyId: string): Promise<VisMember[]> {
+  return memo("members", companyId, () => readMembers(companyId));
+}
+
+async function readMembers(companyId: string): Promise<VisMember[]> {
   const db = getDb();
   const [users, units, holders] = await Promise.all([
     db.user.findMany({ where: { companyId, active: true }, select: { id: true, dept: true, managerId: true } }),

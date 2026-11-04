@@ -8,8 +8,8 @@ export type Pref = { template: boolean | null; all: boolean | null };
 
 export type Gate = { send: true } | { send: false; reason: "sandbox" | "switched off" | "opted out" };
 
-/** The mail templates that go out in every real stage. Everything else needs the company's notifications switch. */
-const ALWAYS = (template: string) => template === "raised" || template.startsWith("loop.");
+/** The mail templates that go out in every real stage (pilot.report: admins chose it, PIL D12). Everything else needs the company's notifications switch. */
+const ALWAYS = (template: string) => template === "raised" || template === "pilot.report" || template.startsWith("loop.");
 
 /** Off until the person turns it on; every other template is on by default. */
 const DEFAULT_ON = (template: string) => template !== "digest";

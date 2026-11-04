@@ -4,7 +4,7 @@
 /* ---- Page header ---- */
 .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 8px; }
 .headText { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.title { margin: 0; font-size: var(--nh-fs-2xl); line-height: 30px; font-weight: 600; letter-spacing: -0.02em; color: #1b1d22; }
+.title { margin: 0; font-size: var(--nh-fs-3xl); line-height: 34px; font-weight: 600; letter-spacing: -0.02em; color: #1b1d22; }
 .lede { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #6e6e73; }
 .headAction { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 

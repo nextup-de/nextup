@@ -318,15 +318,18 @@ export type Landing =
  *   assigned the stored role stays, so a company that sets roles by hand keeps working.
  * - Someone new is created only when the customer's IT assigned a NextUp app role. The role is
  *   the proof that they meant this person to have access - no role, no account.
+ * - `former`: this account or email belonged to someone pseudonymised. They get no new account,
+ *   whatever role Entra still assigns.
  */
 export function landingFor(p: {
   found: { role: string } | null;
   emailTaken: boolean;
   email: string;
   role: Role | null;
+  former?: boolean;
 }): Landing {
   if (p.found) return { kind: "existing", setRole: p.role && p.role !== p.found.role ? p.role : null };
-  if (!p.email || p.emailTaken) return { kind: "refuse", reason: "unknown" };
+  if (!p.email || p.emailTaken || p.former) return { kind: "refuse", reason: "unknown" };
   if (!p.role) return { kind: "refuse", reason: "norole" };
   return { kind: "create", role: p.role };
 }

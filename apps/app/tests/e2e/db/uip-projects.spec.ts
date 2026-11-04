@@ -64,7 +64,8 @@ test.afterAll(async () => {
 test("UIP project area", async ({ page }) => {
   await signIn(page, company, MANAGER.name);
   const base = `/${SLUG}/projects/${PROJECT}`;
-  await sweepPages(page, [`/${SLUG}/projects`, ...TABS.map((tab) => `${base}?tab=${tab}`)], { marker: "page-header" });
+  await sweepPages(page, [`/${SLUG}/projects`], { marker: "projects-tabs", title: false }); // the tab names the page
+  await sweepPages(page, TABS.map((tab) => `${base}?tab=${tab}`), { marker: "page-header" });
 
   await test.step("the tabs are the Overview, Board, Team, Results, Activity and Files; no Agent tab", async () => {
     await page.goto(base);

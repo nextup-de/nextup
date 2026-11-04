@@ -37,7 +37,7 @@
 .top { flex: none; display: grid; grid-template-rows: 1fr; row-gap: 16px; width: min(680px, 100%); margin: 0 auto 16px; transition: grid-template-rows 520ms var(--ease), opacity 260ms ease, margin-bottom 520ms var(--ease); }
 .page[data-open="true"] .top { grid-template-rows: 0fr; opacity: 0; margin-bottom: 0; pointer-events: none; }
 .head { min-height: 0; overflow: hidden; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
-.pageTitle { margin: 0; font-weight: 600; font-size: var(--nh-fs-2xl); line-height: 1.1; letter-spacing: -0.02em; color: var(--c-title); }
+.pageTitle { margin: 0; font-weight: 600; font-size: var(--nh-fs-3xl); line-height: 1.1; letter-spacing: -0.02em; color: var(--c-title); }
 
 /* The shared stats strip as the card's head: same type, no box of its own, semibold numbers, grey labels. */
 .card .stats { flex: none; border: 0; border-bottom: 1px solid var(--c-sep-head); border-radius: 0; background: transparent; padding: 4px 0; }

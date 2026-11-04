@@ -2,7 +2,7 @@
    settings pages; it sits inside the admin shell, so it brings its own card look. */
 .page { display: flex; flex-direction: column; gap: 16px; max-width: 860px; font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1c1c1e; }
 .pageHead { display: flex; flex-direction: column; gap: 6px; }
-.pageTitle { margin: 0; font-size: var(--nh-fs-2xl); line-height: 30px; font-weight: 600; letter-spacing: -0.02em; color: #1b1d22; }
+.pageTitle { margin: 0; font-size: var(--nh-fs-3xl); line-height: 34px; font-weight: 600; letter-spacing: -0.02em; color: #1b1d22; }
 .pageLede { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #6e6e73; }
 .strip { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 4px 0 0; padding: 0; list-style: none; font-size: var(--nh-fs-sm); }
 .strip a { display: inline-flex; align-items: center; gap: 6px; color: #1c1c1e; font-weight: 600; text-decoration: none; }
