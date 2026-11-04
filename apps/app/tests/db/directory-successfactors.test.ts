@@ -93,7 +93,8 @@ const fullPages = (asOf: string, carlaMoved: boolean): Record<string, unknown> =
   [`${HOST}/odata/v2/EmpJob?$skiptoken=u3`]: page("full-job-2"),
   [url("FODepartment", { asOf })]: page("full-department"),
 });
-const SINCE = "lastModifiedDateTime gt datetimeoffset'2026-10-20T07:55:00.000Z'";
+// Anna's dated job was last changed on 2026-10-25, the highest watermark of the full read.
+const SINCE = "lastModifiedDateTime gt datetimeoffset'2026-10-25T07:55:00.000Z'";
 const deltaPages = (): Record<string, unknown> => ({
   [url("EmpEmployment", { filter: SINCE })]: page("delta-employment"),
   [url("EmpJob", { filter: SINCE, asOf: AS1 })]: page("delta-job"),
@@ -220,7 +221,7 @@ describe("SFX acceptance: SuccessFactors pages add, move and deactivate users", 
     await runDirectoryOnce(DAY1_LATER);
     expect((await loadDirectoryStatus(companyId)).lastError).toBeNull();
     const deltaReads = sapRequests.slice(before).filter((r) => new URL(r.url).pathname !== "/oauth/token");
-    expect(deltaReads.some((r) => decodeURIComponent(r.url).includes("lastModifiedDateTime gt datetimeoffset'2026-10-20T07:55:00.000Z'"))).toBe(true);
+    expect(deltaReads.some((r) => decodeURIComponent(r.url.replaceAll("+", " ")).includes("lastModifiedDateTime gt datetimeoffset'2026-10-25T07:55:00.000Z'"))).toBe(true);
     expect(deltaReads.some((r) => new URL(r.url).pathname.endsWith("/EmpEmployment") && !r.url.includes("filter"))).toBe(false);
     expect(await userByEmail("carla.vogt@musterwerk.example")).toMatchObject({ dept: "produktion", managerId: anna.id, active: true });
     expect(await userByEmail("anna.meier@musterwerk.example")).toMatchObject({ dept: "produktion" });
