@@ -28,13 +28,15 @@ test("UIP areas and floor", async ({ page, browser }) => {
   const areas = `/${SLUG}/settings/areas`;
   const devices = `/${SLUG}/settings/areas/devices`;
   await signIn(page, company, MANAGER.name);
+  // A streamed page can hold a hidden second copy for a moment: look inside the visible main.
+  const main = page.getByRole("main");
 
   await test.step("both pages show their empty state", async () => {
     await page.goto(areas);
     await expect(page.getByTestId("settings-areas")).toHaveCount(1);
     await expect(page.getByTestId("settings-areas-empty")).toBeVisible();
     await page.goto(devices);
-    await expect(page.getByText("No device yet.")).toBeVisible();
+    await expect(main.getByText("No device yet.")).toBeVisible();
   });
 
   await test.step("an area is added in the drawer and shows in its row", async () => {
@@ -65,13 +67,13 @@ test("UIP areas and floor", async ({ page, browser }) => {
     await page.getByTestId("floor-device-label").fill("Line 3 tablet");
     await page.getByRole("checkbox", { name: "Line 3" }).check();
     await page.getByTestId("floor-device-create").click();
-    const secret = page.getByTestId("floor-devices-secret");
+    const secret = main.getByTestId("floor-devices-secret");
     await expect(secret).toBeVisible();
     pairCode = (await secret.locator("code").innerText()).trim();
     expect(pairCode.length).toBeGreaterThan(3);
-    await page.getByTestId("floor-devices-secret-done").click();
+    await main.getByTestId("floor-devices-secret-done").click();
     await expect(secret).toBeHidden();
-    await expect(page.getByText("Line 3 tablet")).toBeVisible();
+    await expect(main.getByText("Line 3 tablet")).toBeVisible();
     // The manager is listed with a face in their own tint.
     await expect(page.locator("[data-person-face]").first()).toBeVisible();
   });
@@ -99,7 +101,7 @@ test("UIP areas and floor", async ({ page, browser }) => {
     await expect(page.getByTestId("floor-devices-list")).toHaveCount(1);
     await page.getByRole("button", { name: "Remove", exact: true }).click();
     await page.getByTestId("floor-device-remove-dialog").getByRole("button", { name: "Remove", exact: true }).click();
-    await expect(page.getByText("No device yet.")).toBeVisible();
+    await expect(main.getByText("No device yet.")).toBeVisible();
 
     await page.goto(areas);
     await expect(page.getByTestId("settings-areas")).toHaveCount(1);
