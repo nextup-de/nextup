@@ -39,7 +39,7 @@
 .seatList { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .seatRow { display: flex; align-items: center; gap: 10px; min-height: 40px; }
 .seatName { flex: 1; min-width: 0; font-size: var(--nh-fs-md); }
-.seatSelect { width: 170px; flex-shrink: 0; }
+.seatRow .seatSelect { width: 170px; flex-shrink: 0; } /* two classes: it must beat .input whichever module loads first */
 .seatAdd { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
 
 @media (max-width: 760px) {
