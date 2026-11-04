@@ -1,0 +1,79 @@
+# Choosing the AI provider for the pilot
+
+Plan AIB (D3). The brain runs on Amazon Bedrock (`eu-central-1`) or Azure OpenAI (EU). Kevin
+records the routing eval once per provider; `compare` applies the rule and names one.
+
+**The rule.** A provider qualifies when its recorded accuracy over the routing cases
+(`services/brain/eval/routing_cases.json`, at least 84) is **at least 0.80** and its **p95 latency
+per route call is at most 8000 ms** (the raise timeout, `DEFAULT_RAISE_TIMEOUT_MS`). Among those
+the lower `cost_usd` of the recorded run wins; on equal cost the lower p95.
+
+This extends `docs/demo/AI_DEMO.md` (section 1: AWS account, Bedrock access, IAM user, keys in
+`.env`, budget alarm). It does not repeat it.
+
+## Steps (Kevin)
+
+1. **Bedrock.** In `eu-central-1`, request model access for the model you want to test. Extend the
+   IAM policy from `AI_DEMO.md` section 1 step 3: `bedrock:InvokeModel` and
+   `bedrock:InvokeModelWithResponseStream` on that model (and its `eu.` inference profile, if you
+   use one), nothing else. Export `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` in your shell.
+2. **Azure OpenAI.** Create an Azure OpenAI resource in an EU region and a model deployment in it
+   (Q3). Note the deployment name (this is `--model`), the endpoint
+   `https://<resource>.openai.azure.com/openai/v1` and a key. `export AZURE_OPENAI_KEY=...`: the key
+   is read only from this variable, never from an argument or a file.
+3. **Prices.** Open the current Bedrock price page (region `eu-central-1`) and the Azure OpenAI
+   price page (your region and deployment type). Write down USD per million input and output
+   tokens for each. Prices differ by region, so they are passed per run and stored in the record.
+4. **Smoke.** One coach, one plan and one checkin call each; exit 1 if any fails. Run from
+   `services/brain`:
+
+   ```bash
+   uv run python -m eval.smoke --provider bedrock --model <bedrock model id>
+   uv run python -m eval.smoke --provider azure-openai --model <deployment> --endpoint <endpoint>
+   ```
+5. **Record both runs.**
+
+   ```bash
+   uv run python -m eval.run_eval --provider bedrock --model <bedrock model id> \
+       --record eval/recorded/bedrock.json --price-in <usd/MTok> --price-out <usd/MTok>
+   uv run python -m eval.run_eval --provider azure-openai --model <deployment> --endpoint <endpoint> \
+       --record eval/recorded/azure-openai.json --price-in <usd/MTok> --price-out <usd/MTok>
+   ```
+
+   Each run calls the model once per case through the same path as a request. The file holds
+   provider, the answering model, prompt version, threshold, answers, errors, token counts, p50
+   and p95 latency, the prices, `cost_usd` and the time. It holds no key, endpoint, region or
+   account id. A failed call counts as an error and a miss. `run_eval --recorded <file>` scores
+   it later without a model.
+6. **Compare.**
+
+   ```bash
+   uv run python -m eval.compare eval/recorded/bedrock.json eval/recorded/azure-openai.json
+   ```
+
+   It prints a table and the winner. It exits 1 when no provider qualifies.
+7. **Get the records to `main`.** Nothing records itself and no run is committed by an agent.
+   Branch `chore/ai-provider-records`, commit the two files in `eval/recorded/` (not
+   `routing.json`, which stays as it is), open a PR and put the compare table in the description.
+   Merging it answers Q2: the recordings are the evidence for the choice. Review them for a key or
+   endpoint before you push.
+
+## What a run costs
+
+One run is one model call per case (plus a retry when the output is invalid): roughly 90 calls of
+a few thousand input tokens and a few hundred output tokens, so about 0.3 million input and 0.03
+million output tokens. At typical Sonnet-class list prices that is **well under 5 USD per
+provider**; both runs together stay in the same range. The exact figure is `cost_usd` in each
+record. The smoke check costs a few cents.
+
+## Data-processing agreements
+
+The data-processing agreements with AWS and Microsoft are Kevin's (PILOT/HQ11). The eval sends
+only the synthetic Acme cases, but a customer's ideas go to the chosen provider in the pilot, so
+sign the agreement of the winner before any customer text leaves the box.
+
+## When neither qualifies
+
+Keep the AI off for the pilot (PILOT/HD8): `LLM_PROVIDER=mock`, as in `AI_DEMO.md`. Everything
+routes by the keyword router. Do not lower 0.80 or raise 8000 ms to fit a result. Try another
+model or deployment, record again, and compare again.
