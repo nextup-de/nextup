@@ -20,7 +20,7 @@ import { pseudonymLabelsFor } from "@/lib/db/pseudonymise";
 import { policyFor } from "@/features/admin/stages";
 import { flagsFor } from "@/features/flags";
 import { DemoProvider, type ViewerInfo } from "@/components/dashboard/DemoProvider";
-import { AppShell } from "@/components/shell/AppShell";
+import { SimpleShell } from "@/components/shell/SimpleShell";
 import { ReportButton } from "@/components/report/ReportButton";
 import { reportTicket } from "@/server/actions/tickets";
 import { reportScreenshotsAllowed } from "@/server/actions/settings/privacy";
@@ -99,7 +99,7 @@ export default async function AppLayout({
       initialLog={initialLog ?? undefined}
       viewer={viewerInfo}
     >
-      <AppShell>{children}</AppShell>
+      <SimpleShell>{children}</SimpleShell>
       {/* The bug icon (docs/plans/2026-09-27_platform.md, "Tickets"): only where a report can be stored. */}
       {hasDatabase() && viewer ? (
         <ReportButton submit={reportTicket.bind(null, tenant.slug)} reportsHref={prefixFor(tenant.slug) + "/reports"} team={demoTools}

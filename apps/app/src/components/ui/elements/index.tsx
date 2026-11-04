@@ -57,6 +57,17 @@ export function Tabs({ items, current, label }: { items: readonly TabItem[]; cur
   );
 }
 
+/** Every progress bar: done, in progress, blocked and still open, in that order. `label` says it in words; colour alone never does. */
+export function ProgressBar({ done, doing = 0, blocked = 0, open = 0, label }: { done: number; doing?: number; blocked?: number; open?: number; label: string }) {
+  const total = done + doing + blocked + open;
+  const parts = [["done", done], ["doing", doing], ["blocked", blocked], ["open", open]] as const;
+  return (
+    <div className={s.progress} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
+      {parts.filter(([, n]) => n > 0).map(([part, n]) => <span key={part} className={s.progressPart} data-part={part} style={{ flexGrow: n }} />)}
+    </div>
+  );
+}
+
 export type Column<Row> = {
   key: string;
   header: string;
