@@ -1,6 +1,6 @@
-// The tint behind a person's initials: one of five, picked by name so a person keeps theirs on every
+// The tint behind a person's initials: one of six, picked by name so a person keeps theirs on every
 // page. Anonymous people and "nobody" get none (the grey fallback). Colours: [data-avatar] in globals.css.
-const TONES = ["blue", "green", "amber", "violet", "teal"] as const;
+const TONES = ["blue", "green", "amber", "violet", "teal", "pink"] as const;
 export type AvatarTone = (typeof TONES)[number];
 
 export function avatarTone(name: string): AvatarTone | undefined {
