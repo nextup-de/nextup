@@ -6,7 +6,7 @@ import { LEVEL_LABEL, type Level } from "@/features/assist/classify";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import { saveAssistSettingsAction, type AssistSettingsState } from "@/server/actions/assist-admin";
-import styles from "@/app/admin/admin.module.css";
+import c from "@/app/admin/people/console.module.css";
 
 type Props = {
   enabled: boolean;
@@ -32,7 +32,7 @@ export function AssistSettingsForm(p: Props) {
   const t = useT();
   const [state, act, pending] = useActionState<AssistSettingsState, FormData>(saveAssistSettingsAction, {});
   return (
-    <form action={act} className={styles.grid}>
+    <form action={act} className={c.form}>
       <Field id="assistant" label={t("adminPrivacy.fieldAssistant")} hint={t("adminPrivacy.fieldAssistantHint")}>
         <select className="nh-input" id="assistant" name="assistant" defaultValue={p.enabled ? "on" : "off"}>
           <option value="off">{t("adminPrivacy.off")}</option>
@@ -48,20 +48,22 @@ export function AssistSettingsForm(p: Props) {
         <input className="nh-input" id="dpaSignedAt" name="dpaSignedAt" type="date" defaultValue={p.dpaSignedAt} />
       </Field>
       <Field id="retentionDays" label={t("adminPrivacy.fieldRetention")}>
-        <p className="nh-hint" data-testid="console-assistant-retention">
+        <p className={c.note} data-testid="console-assistant-retention">
           {t("settingsPrivacy.retentionFixed", { n: p.retentionDays })}
           {p.privacyHref ? <>{" "}<a href={p.privacyHref} data-testid="console-assistant-retention-link">{t("settingsPrivacy.retentionLink")}</a></> : null}
         </p>
       </Field>
       <Field id="rules" label={t("adminPrivacy.fieldRules")} hint={t("adminPrivacy.fieldRulesHint")}>
-        <textarea className="nh-input" id="rules" name="rules" rows={4} defaultValue={p.rules} placeholder="No statements about customer projects. Export-controlled topics go to Legal." />
+        <textarea className="nh-input" id="rules" name="rules" rows={4} defaultValue={p.rules} placeholder={t("adminPrivacy.rulesPlaceholder")} />
       </Field>
       <Field id="patterns" label={t("adminPrivacy.fieldPatterns")} hint={t("adminPrivacy.fieldPatternsHint")}>
         <textarea className="nh-input" id="patterns" name="patterns" rows={2} defaultValue={p.patterns.join("\n")} />
       </Field>
-      {state.code ? <p className={styles.error} role="alert" data-testid="console-assistant-error">{state.code === "bad-pattern" ? t("adminPrivacy.errBadPattern", { pattern: state.detail ?? "" }) : t(ERR[state.code])}</p> : null}
-      {state.ok ? <p className="nh-hint" role="status">{t("adminPrivacy.saved")}</p> : null}
-      <button className="nh-btn nh-btn-primary" type="submit" disabled={pending} data-testid="console-assistant-save">{pending ? t("adminPrivacy.saving") : t("adminPrivacy.save")}</button>
+      {state.code ? <p className={c.note} data-tone="error" role="alert" data-testid="console-assistant-error">{state.code === "bad-pattern" ? t("adminPrivacy.errBadPattern", { pattern: state.detail ?? "" }) : t(ERR[state.code])}</p> : null}
+      {state.ok ? <p className={c.note} data-tone="ok" role="status">{t("adminPrivacy.saved")}</p> : null}
+      <div className={c.foot}>
+        <button className={c.primary} type="submit" disabled={pending} data-testid="console-assistant-save">{pending ? t("adminPrivacy.saving") : t("adminPrivacy.save")}</button>
+      </div>
     </form>
   );
 }
