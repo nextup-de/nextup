@@ -1,4 +1,4 @@
-# Test phase (plan TST): where the exit criteria stand
+| 6 | Restore from the off-box backup within the written RTO; one on-prem install from scratch | `backup.sh <slug> restore-test` against `RTO_SECONDS` of `docs/ops/RPO_RTO.md`, and `stack/tests/install-clean.sh`, both by `ops/tst/vm-run.sh` / `RUNBOOK.md` (TST-V1) | not yet run: Kevin runs the script; `results/` is empty || 2 | 2,000 accounts: p95 below 1 s for inbox and case pages; no page loads the whole log | `tests/load/musterwerk-load.test.ts` (Node driver, CI) and k6 on the test VM (TST-V1) | **open: TST-FL1-1 (high)**. The stack now runs `APP_REPLICAS` app processes behind Caddy (one per core, at most 4). 200 accounts all at once on a shared PC: 1 process p95 14 s, 4 processes 5.1 s, 8 processes 3.8 s (35 and 55 requests/s); working day p95 301 ms. Needs the VM run (4 vCPU, `APP_REPLICAS=4`) or an idle PC to show p95 under 1 s; no response over 79 KB. See `findings/TST-L1.md` |# Test phase (plan TST): where the exit criteria stand
 
 The exit criteria of gate G4 are in `docs/plans/2026-11-01_pilot-readiness.md` (§ Test phase exit criteria). This page lists
 each with the test or drill that proves it and its result (D12). Medium and low findings and wishes are in `LATER.md` (D2).
@@ -42,15 +42,15 @@ The same flows run against a stack with `TST_BASE_URL`, on a company the generat
 
 The generator must have run for at least 40 people, with the default `maintenance` route. A remote run leaves the company and
 adds one case. Playwright's config still starts the local servers; point it at a config without them or let them idle.
-The VM runbook (`RUNBOOK.md`, TST-V1) is not in the repository yet; set these variables from it when it lands.
+The VM runbook is `RUNBOOK.md`; set these variables from it.
 
 ## Latest VM results
 
-None: `docs/test-phase/results/` does not exist yet (TST-V1 produces `results/<date>.md`).
+None yet: `ops/tst/vm-run.sh` writes `results/<date>.md` when Kevin runs it.
 
 ## Kevin's items
 
 - Pentest and ZAP cycle: no open high finding.
 - Two weeks of internal real-time use without a data-loss or access bug.
 - The VM run of record (2,000 accounts with k6, restore test against the RTO, on-prem install drill) and the live M365 tenant.
-- Approve the fix task for TST-FL1-1 (D7), then mark it `- **Status:** fixed` and turn its `it.fails` into an `it`.
+- TST-FL1-1: the multi-process fix is in; run the 2,000-account k6 on the VM with `APP_REPLICAS=4`. When the stress scenario passes, mark the finding `- **Status:** fixed` and turn its `it.fails` into an `it`.
