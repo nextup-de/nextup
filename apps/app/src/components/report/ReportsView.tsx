@@ -3,6 +3,7 @@
 "use client";
 
 import { personLabel } from "@nextup/contracts";
+import { PageHeader, SectionCard } from "@/components/ui/elements";
 import { isTicketStatus, ticketLabel } from "@/features/tickets";
 import { useFormat, useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
@@ -33,15 +34,9 @@ export function ReportsView({ tickets, screenshotBase, offline, admin = false }:
   const when = (d: Date) => format.date(d, "dateTime");
   return (
     <section className={styles.wrap}>
-      {!admin && (
-        <header className={styles.head}>
-          <h1 className={styles.title}>{t("report.listTitle")}</h1>
-          <p className={styles.sub}>
-            {t("report.listSub")}
-          </p>
-        </header>
-      )}
+      {!admin && <PageHeader title={t("report.listTitle")} lede={t("report.listSub")} />}
 
+      <SectionCard>
       {offline ? (
         <p className={styles.empty}>{t("report.offline")}</p>
       ) : tickets.length === 0 ? (
@@ -92,6 +87,7 @@ export function ReportsView({ tickets, screenshotBase, offline, admin = false }:
           })}
         </ol>
       )}
+      </SectionCard>
     </section>
   );
 }
