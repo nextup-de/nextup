@@ -5,6 +5,7 @@
 #   app     — npm ci, npm audit (prod, high+), lint, typecheck, unit tests, production build
 #   e2e     — Playwright, demo mode (no database): the inbox loop, role homes,
 #             escalation to the deputy, every page at phone width
+#   zap     — OWASP ZAP baseline scan of the demo app; fails on a High alert not in .zap/ignore.json
 #   e2e-db  — Playwright against Postgres: a company made in /admin, personal
 #             login codes, the loop across real sessions, Settings -> Members
 #   db-tests    — vitest against Postgres: apps/app/tests/db via ops/test-db.sh
@@ -176,6 +177,58 @@ jobs:
         with:
           name: playwright-report-demo
           path: apps/app/playwright-report/
+          retention-days: 14
+
+  # OWASP ZAP baseline (passive scan) of the demo app, D10. Starts the app like the e2e job does
+  # (production build, next start on :3100, no database, no sessions), runs the official image pinned by
+  # version and digest on the host network, then ops/zap-gate.mjs fails the job on any High alert that
+  # .zap/ignore.json does not cover. Medium and Low alerts are warnings. Not a scan of staging.
+  zap:
+    name: zap · OWASP baseline scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+
+      - name: Start the app in demo mode on :3100
+        shell: bash
+        env:
+          DATABASE_URL: ""
+          AUTH_SECRET: ""
+        run: |
+          cd apps/app
+          nohup npx next start -p 3100 > "$GITHUB_WORKSPACE/next-start.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3100/api/health > /dev/null; then echo "app is up"; exit 0; fi
+            sleep 2
+          done
+          cat "$GITHUB_WORKSPACE/next-start.log"
+          echo "::error::the app did not answer on /api/health"
+          exit 1
+
+      # ZAP 2.16.1 (12 Dec 2025) is the newest release at least two weeks old when this was written
+      # (2.17.0 followed on 3 Nov 2026). -I: the scan never fails on alerts itself, the gate decides.
+      - name: ZAP baseline scan
+        shell: bash
+        run: |
+          docker run --rm --network host --user root -v "$PWD:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:2.16.1@sha256:7840969c7c9fead565bf9734b12f49f6886db90b1d35b1f74d79710bbd081dab zap-baseline.py -t http://localhost:3100 -J zap-report.json -I
+
+      - name: Gate on High alerts
+        run: node ops/zap-gate.mjs zap-report.json .zap/ignore.json
+
+      - name: Upload the ZAP report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zap-report
+          path: zap-report.json
+          if-no-files-found: ignore
           retention-days: 14
 
   e2e-db:
