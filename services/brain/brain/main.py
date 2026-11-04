@@ -8,6 +8,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
@@ -33,6 +34,13 @@ async def lifespan(app: FastAPI):
 
 # No CORS: browsers never call this service, only the app's server does.
 app = FastAPI(title="NextUp brain", version="0.1.0", lifespan=lifespan, docs_url=None, redoc_url=None)
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """422 as FastAPI answers it, minus the submitted values: they may hold the company's model key."""
+    errors = [{k: v for k, v in e.items() if k not in ("input", "ctx", "url")} for e in exc.errors()]
+    return JSONResponse({"detail": errors}, status_code=422)
 
 
 @app.middleware("http")

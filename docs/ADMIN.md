@@ -1,5 +1,7 @@
 # The console (/admin)
 
+A console admin (`isStackAdmin`) finds the console under "IT console" in their account menu; it has its own sign-in.
+
 `/admin` is the company's own IT and privacy console. It is for the customer's IT and data-protection
 people, not for NextUp staff. It exists only in a one-company stack (`TENANT_MODE=single` with
 `COMPANY_SLUG` set); with `TENANT_MODE=multi` every `/admin` path answers 404.

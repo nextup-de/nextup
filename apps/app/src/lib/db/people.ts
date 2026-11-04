@@ -1,5 +1,7 @@
 // The minimal company directory behind the person page (MET D15): name, role and unit path of an
 // active person who has a seat and no anonymous handle. Nothing else is selected.
+import { adminBase } from "@/features/admin/nav";
+import { singleCompany } from "@/features/tenant/urls";
 import type { PersonCandidate } from "@/features/people/resolve";
 import { getDb } from "./client";
 
@@ -34,6 +36,17 @@ export async function personPage(companyId: string, userId: string): Promise<Per
 }
 
 /** user id -> display name for every active, handle-free user of the company who holds a seat. */
+/**
+ * Where this person's account menu leads to the IT console, or null. Only an active console admin
+ * (`isStackAdmin`) of a one-company stack: elsewhere there is no console. Someone whose console access
+ * comes from the Entra role is not known here, because that role is read only when they open /admin.
+ */
+export async function consoleHrefFor(companyId: string, userId: string): Promise<string | null> {
+  if (singleCompany() === null) return null;
+  const user = await getDb().user.findFirst({ where: { id: userId, companyId, active: true, isStackAdmin: true }, select: { id: true } });
+  return user ? adminBase() : null;
+}
+
 export async function personLinksFor(companyId: string): Promise<Record<string, string>> {
   const db = getDb();
   const seats = await db.orgRoleHolder.findMany({ where: { companyId, userId: { not: null } }, select: { userId: true } });

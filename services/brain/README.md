@@ -50,16 +50,34 @@ app's own rows. The coach is a later step, inside the app's existing coach.
 Limits: 50 rows, 80 earlier items. A company with hundreds of earlier items needs a shortlist in
 front of the model â€” `brain/route.py` is the one place for it.
 
-**`llm` (optional, on every request: route, coach, plan, checkin).** The company's own model endpoint
-for this one request, sent by the app for azure-openai and openai-compatible companies:
+**`llm` (optional, on every request: route, coach, plan, checkin).** The company's own model for
+this one request, sent by the app. Three shapes:
 
 ```json
-"llm": { "base_url": "https://<endpoint>/openai/v1", "model": "<deployment or model>", "api_key": "â€¦" }
+"llm": { "base_url": "https://<endpoint>/v1", "model": "<model>", "api_key": "…" }
+"llm": { "provider": "azure-openai", "base_url": "https://<resource>.openai.azure.com/openai/v1", "model": "<deployment>", "api_key": "…" }
+"llm": { "provider": "bedrock", "region": "eu-central-1", "model": "<Bedrock model id>" }
 ```
 
-With it the brain builds a client for that request and uses it instead of `LLM_*`; without it the
-stack model (`LLM_*`) answers. Nothing is kept between requests, and the key is never logged or put
-in an error message. All three fields are required, `base_url` must be `http(s)`.
+- **openai-compatible** (the default; `provider` may be left out) keeps sending `max_tokens=700` and
+  `temperature=0`. **azure-openai** sends `max_completion_tokens=1500` and no temperature: newer
+  deployments refuse the other two.
+- **bedrock** has no key. The brain signs with its own AWS credentials (the standard chain:
+  environment variables or the instance role) through the Anthropic SDK's Mantle endpoint, and
+  `region` must match `^[a-z]{2}(-[a-z]+)+-\d$`. A stack behind a firewall must allow
+  `bedrock-mantle.<region>.api.aws` (port 443) for the regions it uses. The client is only built
+  for a request that asks for it.
+- Every schema is sent strictly (`brain/strict.py`): objects closed, all properties required,
+  limits such as `maxLength` left out; Pydantic still checks them on the answer.
+
+With an override the brain builds a client for that request and uses it instead of `LLM_*`;
+without it the stack model (`LLM_*`) answers. Nothing is kept between requests, and the key is never
+logged or put in an error message (a 422 does not echo what was sent). A refusal or a cut-off answer
+counts as invalid output: retried, then the usual 502.
+
+Every answer carries `tokens_in` and `tokens_out`, summed over all calls and retries of that
+request, and `model` is the model the provider reports as having answered (an Azure deployment
+name has no price), else the configured one.
 
 `GET /health` â€” `ok` when the model server answers and has the model. No key needed.
 

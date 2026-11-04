@@ -3,6 +3,7 @@
 // yes. Counts and medians only; no funnel, no ranking, nothing per person (MET/D2, D18).
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { PageHeader, SectionCard } from "@/components/ui/elements";
 import { projectLedger } from "@/features/metrics/progress";
 import { visibleProjectsFor } from "@/features/projects/views";
 import { idViewerOf } from "@/components/projects/parts";
@@ -24,23 +25,18 @@ export function ProgressView() {
 
   return (
     <>
-      <div className={styles.head}>
-        <h1 className={styles.title}>{t("progress.title")}</h1>
-        <div className={styles.lead}>{t("progress.lead")}</div>
-      </div>
-      <div className={ui.stack14}>
+      <PageHeader title={t("progress.title")} lede={t("progress.lead")} />
+      <div className={styles.stack}>
         {!on ? (
-          <div className={ui.card}><div className={ui.emptyLine}>{t("progress.emptyOff")}</div></div>
+          <SectionCard><div className={styles.empty}>{t("progress.emptyOff")}</div></SectionCard>
         ) : (
           <>
             <ProjectMovement />
-            <div className={ui.card}>
-              <div className={ui.h}>{t("progress.ledgerHead")}</div>
-              <div className={ui.sub}>{t("progress.ledgerSub")}</div>
+            <SectionCard title={t("progress.ledgerHead")} hint={t("progress.ledgerSub")}>
               {list.length === 0 ? (
-                <div className={ui.emptyLine}>{t("progress.emptyLedger")}</div>
+                <div className={styles.empty}>{t("progress.emptyLedger")}</div>
               ) : (
-                <div className={`${ui.grid2} ${ui.mt14}`}>
+                <div className={ui.grid2}>
                   <div className={ui.tile}>
                     <div className={styles.bigV}>{days(L.startMedian)}</div>
                     <div className={ui.tileL}>{t("progress.startWait")}</div>
@@ -52,7 +48,7 @@ export function ProgressView() {
                   <div className={ui.tile}><div className={styles.bigV}>{L.withoutNumber}</div><div className={ui.tileL}>{t("progress.withoutNumber")}</div></div>
                 </div>
               )}
-            </div>
+            </SectionCard>
           </>
         )}
       </div>

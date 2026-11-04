@@ -1,9 +1,13 @@
-.wrap { display: grid; gap: 12px; max-width: 720px; }
-.head { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
-.title { margin: 0; font-size: var(--nh-fs-md); }
-.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.row { display: grid; gap: 4px; padding: 12px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); }
-.rowHead { display: flex; justify-content: space-between; gap: 8px; align-items: start; flex-wrap: wrap; }
-.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-.key { font-family: var(--nh-mono); color: var(--nh-mute); }
-.drawer { position: fixed; inset: 0 0 0 auto; width: min(420px, 100%); z-index: 50; overflow-y: auto; display: grid; align-content: start; gap: 12px; padding: 20px; background: var(--nh-card); border-left: 1px solid var(--nh-line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12); }
+/* Settings -> Areas: the area cell, the status text and the drawer form. The page, cards and buttons are settings.module.css. */
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.area { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.areaText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.key { font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-sm); color: #6e6e73; }
+.status { font-size: var(--nh-fs-sm); font-weight: 600; color: #8a5d00; }
+.status[data-on] { color: #1f7a3a; }
+.form { display: flex; flex-direction: column; gap: 18px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); color: #1c1c1e; }
+@media (max-width: 760px) {
+  .buttons { width: 100%; }
+  .buttons > * { flex: 1; }
+}

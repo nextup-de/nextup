@@ -8,7 +8,8 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { askedForView, mineRows } from "@/components/dashboard/derive";
-import { Pill, statusTone, type Tone } from "@/components/dashboard/shared/primitives";
+import { statusTone, type Tone } from "@/components/dashboard/shared/primitives";
+import { PageHeader, SectionCard } from "@/components/ui/elements";
 import { useCaseNames } from "@/components/cases/useCaseNames";
 import { answerPromise } from "@/features/cases/promise";
 import { owedLine, promiseText } from "@/features/cases/promise-text";
@@ -29,6 +30,9 @@ const STATUS_LABEL: Partial<Record<MineStatus, MessageKey>> = {
 const LIFE_TONE: Partial<Record<MineStatus, Tone>> = {
   "In discussion": "accent", Planning: "ok", "In progress": "ok", Done: "ok", Measured: "ink", Recognised: "ink", Stopped: "ghost",
 };
+
+// The status chip in a soft tint: still waiting is amber, a result is green, the rest stays grey.
+const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", ink: "green", ok: "green", grey: "grey", soft: "grey", ghost: "grey", none: "grey", purple: "grey" };
 
 // Still on someone's desk. Keyed objects, so the status names stay data and not text.
 const WAITING: Partial<Record<MineStatus, true>> = { Sent: true, "Question for you": true, "Awaiting decision": true, "In discussion": true };
@@ -55,50 +59,45 @@ export function SentView() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.head}>
-        <h1 className={styles.title}>{t("team.sentTitle")}</h1>
-        <p className={styles.sub}>{mine.length ? summary : t("team.sentNothingSent")}</p>
-      </div>
+      <PageHeader title={t("team.sentTitle")} lede={mine.length ? summary : t("team.sentNothingSent")} />
 
       {/* The promise, once, in one breath - this is the page every employee opens to check it is kept. */}
-      <p className={styles.promise}>
-        {t("team.sentPromise", { days: P })}
-      </p>
+      <SectionCard name="promise">
+        <p className={styles.promise}>{t("team.sentPromise", { days: P })}</p>
+      </SectionCard>
 
       {/* Discussions someone invited this person into: their view is asked before a decision. */}
       {asked.length > 0 && (
-        <section className={styles.asked} aria-label={t("team.sentAskedView")}>
-          <h2 className={styles.askedTitle}>{t("team.sentAskedView")}</h2>
-          {asked.map((c) => {
-            const rs = roundState(c, S.rules, S.day);
-            return (
-              <Link key={c.id} href={href("/cases/" + c.id)} className={styles.askedRow}>
-                <span className={styles.askedCase}>{c.title}</span>
-                <span className={styles.askedMeta}>{t("team.sentAskedMeta", { who: c.discussion?.by ?? "", state: rs ? (rs.ready ? t("team.sentReadyToDecide") : t("team.sentRound", { round: rs.round, of: rs.of, date: f(rs.dueDay) })) : "" })}</span>
-              </Link>
-            );
-          })}
+        <section aria-label={t("team.sentAskedView")}>
+          <SectionCard title={t("team.sentAskedView")} name="asked">
+            <div className={styles.askedList}>
+              {asked.map((c) => {
+                const rs = roundState(c, S.rules, S.day);
+                return (
+                  <Link key={c.id} href={href("/cases/" + c.id)} className={styles.askedRow}>
+                    <span className={styles.askedCase}>{c.title}</span>
+                    <span className={styles.askedMeta}>{t("team.sentAskedMeta", { who: c.discussion?.by ?? "", state: rs ? (rs.ready ? t("team.sentReadyToDecide") : t("team.sentRound", { round: rs.round, of: rs.of, date: f(rs.dueDay) })) : "" })}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </SectionCard>
         </section>
       )}
 
       {mine.length === 0 && (
-        <div className={styles.empty}>
-          <div className={styles.emptyTitle}>{t("team.sentEmptyTitle")}</div>
-          <Link href={href("/raise")} className={styles.emptyLink}>{t("team.sentRaiseLink")}</Link>
-        </div>
+        <SectionCard name="empty">
+          <div className={styles.empty}>
+            <div className={styles.emptyTitle}>{t("team.sentEmptyTitle")}</div>
+            <Link href={href("/raise")} className={styles.emptyLink}>{t("team.sentRaiseLink")}</Link>
+          </div>
+        </SectionCard>
       )}
 
       <div className={styles.cards}>
         {mine.map((m) => (
-          <article key={m.kind + m.id} className={styles.card} aria-label={m.title}>
-            <div className={styles.top}>
-              <div className={styles.titleBlock}>
-                <h2 className={styles.caseTitle}>{m.title}</h2>
-                <p className={styles.submitted}>{m.submitted}</p>
-              </div>
-              <Pill tone={LIFE_TONE[m.status] ?? statusTone(m.status)}>{label(STATUS_LABEL, m.status)}</Pill>
-            </div>
-
+          <article key={m.kind + m.id} aria-label={m.title}>
+          <SectionCard title={m.title} hint={m.submitted} name={m.id} action={<span className={styles.chip} data-tone={CHIP_TONE[LIFE_TONE[m.status] ?? statusTone(m.status)]}>{label(STATUS_LABEL, m.status)}</span>}>
             <ol className={styles.steps} aria-label={t("team.sentProgress")} data-long={m.steps.length > 4 ? "true" : undefined}>
               {m.steps.map((s) => (
                 <li key={s.label} className={styles.step} data-tone={s.tone}>
@@ -143,6 +142,7 @@ export function SentView() {
               {m.project && <Link href={href("/projects/" + m.project.id)} className={styles.more}>{m.project.label} {m.project.title} &rarr;</Link>}
               {m.kind === "case" && <Link href={href("/cases/" + m.id)} className={styles.more}>{t("team.sentHistory")}</Link>}
             </div>
+          </SectionCard>
           </article>
         ))}
       </div>

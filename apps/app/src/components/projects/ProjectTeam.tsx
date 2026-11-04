@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { Avatar } from "@/components/dashboard/shared/primitives";
+import { DeptChip } from "@/components/ui/elements";
 import { isIssueKey, jiraIssueUrl } from "@/features/integrations/jira/settings";
 import type { ReducedProject } from "@/features/projects/types";
 import { connectionsOf, safeUrl, systemFrom, timelineOf, toolName, toolOf, toolWhat, type JiraRow, type ToolId } from "@/features/projects/views";
@@ -23,6 +24,8 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
   const [why, setWhy] = useState("");
   const live = p.status !== "stopped" && p.status !== "recognised";
   const team = teamOf(p, seed.seats);
+  // The department the company's org chart gives a person; nobody on the chart, no chip.
+  const deptOf = (name: string) => seed.people.find((x) => x.name === name)?.dept ?? "";
   const onTeam = new Set(team.map((m) => m.userId));
   const others = peopleOf(seed.seats).filter((x) => !onTeam.has(x.userId));
   // How much of the board each person carries: open steps they own.
@@ -39,6 +42,7 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
           <li key={m.userId ?? m.name} className={styles.person}>
             <Avatar name={m.name} size="sm" />
             <span className={styles.grow}>{m.name}{k === 0 && <span className={styles.leadTag}>{t("projects.leadTag")}</span>}</span>
+            {deptOf(m.name) ? <DeptChip name={deptOf(m.name)} /> : null}
             <span className={styles.load} title={t("projects.openStepsTheyOwn")}>{load(m.userId) ? t("projects.openCount", { count: load(m.userId) }) : ""}</span>
             {k > 0 && m.userId !== null && r.lead && live && <button type="button" className={styles.quiet} onClick={() => send("project.member", { userId: m.userId as string, name: m.name }, () => act.project.member(p.id, { userId: m.userId as string, name: m.name }, false))} aria-label={t("projects.takeOffTeam", { name: m.name })}>{t("projects.remove")}</button>}
           </li>

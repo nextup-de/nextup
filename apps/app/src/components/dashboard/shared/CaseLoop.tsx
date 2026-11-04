@@ -15,7 +15,7 @@ import { projectStatus, raisedWith } from "@/features/cases/rows";
 import { onDeskOf } from "@/features/cases/selectors";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
-import ui from "@/components/dashboard/shared/ui.module.css";
+import { SectionCard } from "@/components/ui/elements";
 import styles from "./CaseLoop.module.css";
 
 // "Accepted on 14 Oct by T. Vogel → P-12 Shorter changeover · In progress" - or the no and its why.
@@ -54,27 +54,24 @@ export function DiscussionPanel({ c }: { c: ReducedCase }) {
   const holder = live && (role === "manager" || onDeskOf(c, me));
   const people = [c.from, ...d.invited];
   return (
-    <section className={ui.card} aria-label={t("dashboard.loopDiscussion")}>
-      <div className={styles.head}>
-        <span className={ui.eyebrow}>{t("dashboard.loopDiscussion")}</span>
-        {live && (rs.ready
-          ? <span className={styles.round}>{t("dashboard.loopReadyToDecide")}</span>
-          : <span className={styles.round} data-late={rs.late ? "true" : undefined}>{t("dashboard.loopRound", { round: rs.round, of: rs.of, tail: rs.late ? t("dashboard.loopCheckinLate", { n: -rs.left }) : t("dashboard.loopNextCheckin", { date: f(rs.dueDay) }) })}</span>)}
-      </div>
+    <section aria-label={t("dashboard.loopDiscussion")}>
+    <SectionCard title={t("dashboard.loopDiscussion")} name="discussion" action={live ? (rs.ready
+      ? <span className={styles.round}>{t("dashboard.loopReadyToDecide")}</span>
+      : <span className={styles.round} data-late={rs.late ? "true" : undefined}>{t("dashboard.loopRound", { round: rs.round, of: rs.of, tail: rs.late ? t("dashboard.loopCheckinLate", { n: -rs.left }) : t("dashboard.loopNextCheckin", { date: f(rs.dueDay) }) })}</span>) : undefined}>
       {d.missing && <p className={styles.missing}><span className={styles.k}>{t("dashboard.loopMissing")}</span>{d.missing}</p>}
       <div className={styles.people}>
         {people.map((n, i) => (
           <span key={n} className={styles.who}><Avatar name={n} size="sm" />{n}{i === 0 && <span className={styles.whoNote}>{t("dashboard.loopRaisedIt")}</span>}</span>
         ))}
       </div>
-      <span className={ui.small}>{t("dashboard.loopStartedBy", { by: d.by, date: f(d.startedDay), n: S.rules.discussEveryDays, rounds: rs.of })}</span>
+      <span className={styles.small}>{t("dashboard.loopStartedBy", { by: d.by, date: f(d.startedDay), n: S.rules.discussEveryDays, rounds: rs.of })}</span>
       {d.rounds.length > 0 && (
         <ol className={styles.checkins}>
           {d.rounds.map((r) => (
             <li key={r.round} className={styles.checkin}>
               <div className={styles.checkinHead}>
                 <span className={styles.checkinTitle}>{t("dashboard.loopCheckinTitle", { round: r.round, next: r.next === "decide" ? t("dashboard.loopReadyLc") : t("dashboard.loopAnotherRound") })}</span>
-                <span className={ui.small}>{r.by} · {f(r.day)}</span>
+                <span className={styles.small}>{r.by} · {f(r.day)}</span>
               </div>
               {r.open.length > 0 && <div className={styles.open}>{r.open.map((o) => <span key={o} className={styles.openTag}>{o}</span>)}</div>}
               {r.note && <p className={styles.note}>{r.note}</p>}
@@ -84,10 +81,11 @@ export function DiscussionPanel({ c }: { c: ReducedCase }) {
       )}
       {holder && (
         <div className={styles.actions}>
-          {!rs.ready && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => openSheet("checkin", c.id)}>{t("dashboard.loopCheckIn")}</button>}
-          <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => openSheet("invite", c.id)}>{t("dashboard.loopInviteMore")}</button>
+          {!rs.ready && <button type="button" className={styles.primary} onClick={() => openSheet("checkin", c.id)}>{t("dashboard.loopCheckIn")}</button>}
+          <button type="button" className={styles.soft} onClick={() => openSheet("invite", c.id)}>{t("dashboard.loopInviteMore")}</button>
         </div>
       )}
+    </SectionCard>
     </section>
   );
 }
@@ -116,11 +114,8 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
   };
   const open = () => { setTitle(c.title); setBody(c.body); setEditing(true); };
   return (
-    <section className={ui.card} aria-label={t("dashboard.loopVersions")}>
-      <div className={styles.head}>
-        <span className={ui.eyebrow}>{t("dashboard.loopVersions")}</span>
-        {canRevise && !editing && <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={open}>{t("dashboard.loopRevise")}</button>}
-      </div>
+    <section aria-label={t("dashboard.loopVersions")}>
+    <SectionCard title={t("dashboard.loopVersions")} name="versions" action={canRevise && !editing ? <button type="button" className={styles.soft} onClick={open}>{t("dashboard.loopRevise")}</button> : undefined}>
       <ol className={styles.versions}>
         {versions.map((v, i) => {
           const before = versions[i - 1];
@@ -130,7 +125,7 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
               <span className={styles.vTag}>v{v.version}</span>
               <span className={styles.vBody}>
                 <span className={styles.vTitle}>{v.title}</span>
-                <span className={ui.small}>{v.by} · {f(v.day)}{v.up.length > 0 && <> · <span className={styles.up}>▲ {v.up.join(", ")}</span></>}</span>
+                <span className={styles.small}>{v.by} · {f(v.day)}{v.up.length > 0 && <> · <span className={styles.up}>▲ {v.up.join(", ")}</span></>}</span>
               </span>
               <span className={styles.vScore}>
                 {v.score}
@@ -149,22 +144,23 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
       {editing && draft && (
         <div className={styles.revise}>
           <label className={styles.k} htmlFor="revise-title">{t("dashboard.loopTitle")}</label>
-          <input id="revise-title" className={`nh-input ${styles.field}`} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input id="revise-title" className={styles.field} value={title} onChange={(e) => setTitle(e.target.value)} />
           <label className={styles.k} htmlFor="revise-body">{t("dashboard.loopTheIdea", { version: draft.version })}</label>
-          <textarea id="revise-body" className={`nh-input nh-textarea ${styles.field}`} value={body} onChange={(e) => setBody(e.target.value)} rows={7} />
+          <textarea id="revise-body" className={`${styles.field} ${styles.area}`} value={body} onChange={(e) => setBody(e.target.value)} rows={7} />
           <div className={styles.dials}>
             {draft.dials.map((d) => {
               const was = now.dials.find((x) => x.key === d.key)?.value ?? d.value;
               return <span key={d.key} className={styles.dial} data-up={d.value > was ? "true" : undefined}>{d.label} {d.value}{d.value > was ? " ▲" : d.value < was ? " ▼" : ""}</span>;
             })}
           </div>
-          <span className={ui.small}>{t("dashboard.loopScoreLine", { from: now.score, to: draft.score })}</span>
+          <span className={styles.small}>{t("dashboard.loopScoreLine", { from: now.score, to: draft.score })}</span>
           <div className={styles.actions}>
-            <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={post} disabled={!changed || !body.trim()}>{t("dashboard.loopPostV", { version: draft.version })}</button>
-            <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => setEditing(false)}>{t("common.cancel")}</button>
+            <button type="button" className={styles.primary} onClick={post} disabled={!changed || !body.trim()}>{t("dashboard.loopPostV", { version: draft.version })}</button>
+            <button type="button" className={styles.soft} onClick={() => setEditing(false)}>{t("common.cancel")}</button>
           </div>
         </div>
       )}
+    </SectionCard>
     </section>
   );
 }
