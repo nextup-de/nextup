@@ -6,6 +6,8 @@ import path from "node:path";
 
 export default defineConfig({
   test: {
+    // 30 s: on a PC with five lanes a test that scans src can pass 5 s without being wrong.
+    testTimeout: 30_000,
     include: ["tests/db/**/*.test.ts"],
     setupFiles: ["tests/db/setup.ts"],
     // These suites share one database; running files in parallel would interleave truncations.
