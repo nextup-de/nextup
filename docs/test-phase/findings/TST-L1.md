@@ -99,6 +99,12 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
   company seed and `initialLog` (the viewer's events) are the bulk. Cutting the log in half would save about 25 KB per response, a few percent of
   a 47 ms request whose cost is spread over the React render, about ten queries and the socket writes; it cannot give the factor of five the
   budget needs at 100 requests/s, so it was not done. More cores can. Status: open.
+- **Last measurement on this PC (TST-Z1, 2026-11-04, final):** 200 accounts all at once, 8 `next start` processes behind the proxy, existing build, PC at
+  79-88 % CPU load from other programs before and after the run (i7-10700, 8 cores / 16 logical): 1,162 requests in 30 s = 39 requests/s, about
+  4.9 per process, inbox p95 4,702 ms, case p95 4,800 ms, 0 errors; the working day passes. At about 47 ms of CPU per request the 100 requests/s asked for
+  need 4.7 free cores; this PC delivers about 1.8 cores' worth to the run while the Workbench and other sessions use the rest. The test stays `it.fails`;
+  no budget, load or threshold was changed. **The number to carry: 4.9 requests/s per process, about 21 requests/s per free core, 39 of the 100 needed.**
+  Status: open; closes with one run on the idle test VM (`APP_REPLICAS=4`, TST-V1) or on this PC with nothing else running.
 - **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.
