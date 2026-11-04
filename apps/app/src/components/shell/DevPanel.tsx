@@ -1,6 +1,6 @@
 "use client";
 // Dev panel (bottom-right): switch the persona, view the inbox as another desk holder, advance
-// the demo clock, fill the raise page with a sample idea, demo data on/off, delete what this browser added, reset - and, on its own Design
+// the demo clock, fill the raise page with a sample idea, demo data on for this tab, delete what this browser added, reset - and, on its own Design
 // page, the design tweaks under review (animations on/off, old round corners, the dot grid - which
 // localhost can save as the default for every device). It stays open
 // while settings change; a click anywhere else or Escape closes it. Demo only - sessions replace it.
@@ -134,7 +134,7 @@ export function DevPanel() {
             </button>
           )}
 
-          <button type="button" className={styles.rowBtn} onClick={ctx.toggleDemo}>
+          <button type="button" className={styles.rowBtn} onClick={ctx.toggleDemo} title="Off by default. On for every page in this tab, until it closes." aria-pressed={demo}>
             <span className={styles.rowTitle}>Demo data</span>
             <span className={styles.track} data-on={demo ? "true" : undefined}><span className={styles.knob} /></span>
           </button>

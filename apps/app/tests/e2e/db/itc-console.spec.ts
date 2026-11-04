@@ -3,7 +3,7 @@
 // can revoke. The company is made straight in the database (tests/db/test-company.ts), never through /admin.
 // The server runs in single mode for this spec (playwright.db.config.ts).
 import type { Browser, Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { expect, test, vis } from "../helpers";
 import { createTestCompany, deleteTestCompany, type TestCompany } from "../../db/test-company";
 import { CONSOLE_SECTIONS } from "../../../src/features/admin/nav";
 import { totpAt } from "../../../src/features/auth/totp";
@@ -20,8 +20,8 @@ let company: TestCompany;
 async function consoleAsAdmin(browser: Browser): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto("/admin/login");
-  await page.locator("#code").fill(company.people[ADMIN.name].code);
-  await page.locator("#totp").fill(totpAt(company.people[ADMIN.name].totpSecret, Date.now()));
+  await page.locator("#code:visible").fill(company.people[ADMIN.name].code);
+  await page.locator("#totp:visible").fill(totpAt(company.people[ADMIN.name].totpSecret, Date.now()));
   await page.getByRole("button", { name: "Unlock" }).click();
   await expect(page).toHaveURL(/\/admin$/);
   return page;
@@ -53,9 +53,9 @@ test.describe.serial("ITC acceptance", () => {
     // A manager who is no console admin is sent to the login.
     const plain = await (await browser.newContext()).newPage();
     await plain.goto("/login");
-    await plain.locator("#code").fill(company.people[MANAGER.name].code);
+    await plain.locator("#code:visible").fill(company.people[MANAGER.name].code);
     await plain.getByRole("button", { name: "Log in", exact: true }).click();
-    await plain.locator("#totp").fill(totpAt(company.people[MANAGER.name].totpSecret, Date.now()));
+    await plain.locator("#totp:visible").fill(totpAt(company.people[MANAGER.name].totpSecret, Date.now()));
     await plain.locator("form button[type=submit]").last().click();
     await expect(plain).not.toHaveURL(/\/login/);
     await plain.goto("/admin");
@@ -64,8 +64,8 @@ test.describe.serial("ITC acceptance", () => {
 
     // Open support access: the code is shown once.
     await admin.goto("/admin/support");
-    await admin.getByTestId("console-support-open").click();
-    const code = (await admin.getByTestId("console-support-code").innerText()).trim();
+    await vis(admin, "console-support-open").click();
+    const code = (await vis(admin, "console-support-code").innerText()).trim();
     expect(code).toMatch(/^[A-HJ-NP-Z2-9]{12}$/);
     await admin.getByRole("button", { name: "Log out" }).click();
     await expect(admin).toHaveURL(/\/admin\/login$/);
@@ -73,19 +73,19 @@ test.describe.serial("ITC acceptance", () => {
     // Sign in with the support code: the banner shows, Connectors only reads.
     const support = await (await browser.newContext()).newPage();
     await support.goto("/admin/login");
-    await support.locator("#supportCode").fill(code);
-    await support.getByTestId("console-support-signin").getByRole("button").click();
+    await support.locator("#supportCode:visible").fill(code);
+    await vis(support, "console-support-signin").getByRole("button").click();
     await expect(support).toHaveURL(/\/admin$/);
-    await expect(support.getByTestId("console-support-banner")).toContainText("NextUp support until");
+    await expect(vis(support, "console-support-banner")).toContainText("NextUp support until");
     await support.goto("/admin/connectors");
     await expect(support.getByText("This is a support session: you can look, not change.")).toBeVisible();
-    await expect(support.getByTestId("console-connectors-jira-save")).toBeDisabled();
+    await expect(vis(support, "console-connectors-jira-save")).toBeDisabled();
 
     // The stack admin revokes; the support session ends on the next page.
     const again = await consoleAsAdmin(browser);
     await again.goto("/admin/support");
-    await again.getByTestId("console-support-revoke").click();
-    await expect(again.getByTestId("console-support-state")).toContainText("Support access is closed.");
+    await vis(again, "console-support-revoke").click();
+    await expect(vis(again, "console-support-state")).toContainText("Support access is closed.");
     await support.goto("/admin/connectors");
     await expect(support.getByTestId("console-support-banner")).toHaveCount(0);
     await expect(support.getByTestId("console-connectors-jira")).toHaveCount(0);
