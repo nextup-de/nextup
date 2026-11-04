@@ -13,12 +13,15 @@ const cell = (n: number | null | undefined): string => (n === null || n === unde
 /** `{slug}-pilot-report-{from}-{to}.csv` */
 export const reportCsvName = (slug: string, from: string, to: string): string => `${slug}-pilot-report-${from}-${to}.csv`;
 
+/** A unit name is user input and a spreadsheet runs a cell that starts like a formula: defuse it with a leading '. */
+const safeLabel = (s: string): string => (/^[=+\-@\t\r]/.test(s) ? `'${s}` : s);
+
 function unitRow(week: CsvWeek, u: ZiRow, hiddenText: string): string[] {
   const shown = !u.hidden;
   const metric = (key: (typeof PILOT_METRIC_KEYS)[number]) =>
     shown ? cell(key === "participationPct" ? u.participationPct : key === "implementationPct" ? u.implementationPct : null) : "";
   return [
-    week.fromDate, week.toDate, "unit", u.label, String(u.headcount), u.hidden ? hiddenText : "",
+    week.fromDate, week.toDate, "unit", safeLabel(u.label), String(u.headcount), u.hidden ? hiddenText : "",
     ...PILOT_METRIC_KEYS.map(metric),
     ...UNIT_COLUMNS.map((k) => (shown ? cell(u[k]) : "")),
   ];
