@@ -2,9 +2,14 @@
 // without a config row gets the defaults - loopRules() fills and clamps whatever is missing.
 import { loopRules, type LoopRules, type RewardKind } from "@/features/loop/rules";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 import type { Tx } from "./org-edit";
 
-export async function loadLoopRules(companyId: string): Promise<LoopRules> {
+export function loadLoopRules(companyId: string): Promise<LoopRules> {
+  return memo("loop", companyId, () => readLoopRules(companyId));
+}
+
+async function readLoopRules(companyId: string): Promise<LoopRules> {
   const cfg = await getDb().companyConfig.findUnique({
     where: { companyId },
     select: {

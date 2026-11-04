@@ -10,8 +10,8 @@ describe("ITC platform job rules", () => {
     expect(checkPlatformJob({ action: "create_company", slug: "acme-2", stage: "demo" }, "demo")).toEqual({ ok: false, code: "exists" });
   });
 
-  it("moves sandbox to live but never away from live", () => {
-    expect(checkPlatformJob({ action: "set_stage", slug: "acme", stage: "live" }, "sandbox")).toEqual({ ok: true });
+  it("moves pilot to live but never away from live", () => {
+    expect(checkPlatformJob({ action: "set_stage", slug: "acme", stage: "live" }, "pilot")).toEqual({ ok: true });
     expect(checkPlatformJob({ action: "set_stage", slug: "acme", stage: "sandbox" }, "live")).toEqual({ ok: false, code: "live-locked" });
     expect(checkPlatformJob({ action: "set_stage", slug: "acme", stage: "live" }, null)).toEqual({ ok: false, code: "missing" });
   });
