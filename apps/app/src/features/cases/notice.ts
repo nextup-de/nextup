@@ -9,6 +9,7 @@
 import type { EventPayload } from "./events";
 import type { Seed } from "@/features/demo/types";
 import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
+import { whenDue } from "@/features/notify/templates";
 
 export type RaisedNotice = {
   eventId: string;
@@ -21,6 +22,8 @@ export type RaisedNotice = {
     from: string;
     routeId: string | null;
     dueDay: number;
+    /** That day's date, ISO, when the company has a calendar. */
+    dueDate?: string | null;
   };
   route: {
     id: string | null;
@@ -65,8 +68,10 @@ export function buildRaisedNotice(args: {
   people: People;
   day: number;
   baseUrl: string;
+  /** The date of a working day, when the company has a calendar. */
+  dateOfDay?: (day: number) => string | null;
 }): RaisedNotice {
-  const { slug, eventId, caseId, payload, seed, people, day, baseUrl } = args;
+  const { slug, eventId, caseId, payload, seed, people, day, baseUrl, dateOfDay } = args;
   const route = seed.routes.find((r) => r.id === payload.routeId) ?? null;
   // The owner is a seat; its user's email is where the mail goes (none when nobody holds the seat).
   const seat = seed.seats.find((s) => s.id === (payload.assigneeRoleHolderId ?? route?.ownerSeatId ?? null)) ?? null;
@@ -84,6 +89,7 @@ export function buildRaisedNotice(args: {
       from: payload.fromDept ?? "",
       routeId: payload.routeId ?? null,
       dueDay: day + seed.promiseDays,
+      dueDate: dateOfDay?.(day + seed.promiseDays) ?? null,
     },
     route: {
       id: route?.id ?? null,
@@ -114,7 +120,7 @@ export function composeNoticeMail(n: RaisedNotice, locale: Locale = DEFAULT_LOCA
   lines.push("");
   if (n.route.label) lines.push(t("mail.noticeRoute", { label: n.route.label }));
   lines.push(
-    t("mail.noticeAnswerBy", { day: n.case.dueDay }),
+    t("mail.noticeAnswerBy", { when: whenDue(locale, n.case.dueDay, n.case.dueDate) }),
     "",
     t("mail.noticeOpenInbox", { url: n.links.inbox }),
     t("mail.noticeThisCase", { url: n.links.case }),

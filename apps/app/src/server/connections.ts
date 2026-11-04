@@ -8,7 +8,7 @@ import { databaseOutage, getDb, hasDatabase, orDemo, reconnectDatabase } from "@
 import { automationFor, raiseCountFor, raisesFor } from "@/lib/db/automation";
 import { databaseFacts, type DatabaseFacts } from "@/lib/db/health";
 import { companySeed } from "@/lib/db/companies";
-import { companyDay } from "@/lib/db/events";
+import { companyDay, dateOfCompanyDay } from "@/lib/db/events";
 import { DEFAULT_CALENDAR, type ClockSpec } from "@/features/clock";
 
 const clockCalendar = (c: ClockSpec) => (c.mode === "workdays" ? c.calendar : DEFAULT_CALENDAR);
@@ -83,6 +83,7 @@ export async function noticeTasks(limit = 25): Promise<AutomationTaskView[]> {
           seed: seeds.get(company.id)!,
           people: company.users,
           day: companyDay(company, clockCalendar(seeds.get(company.id)!.clock), new Date()),
+          dateOfDay: (n) => dateOfCompanyDay(company, clockCalendar(seeds.get(company.id)!.clock), n),
           baseUrl: companyBaseUrl(company.slug),
         })
       : null;

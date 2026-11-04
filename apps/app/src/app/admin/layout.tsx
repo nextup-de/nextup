@@ -50,14 +50,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             // Signed in, every way out of the admin area logs out first (adminSignOut, `to`), so
             // an unlocked admin session is never left behind in a tab that moved on.
             <form action={adminSignOut}>
-              <button type="submit" name="to" value="landing" className={styles.logout}>Landing page</button>
-              <button type="submit" name="to" value="dashboard" className={styles.logout}>Dashboard</button>
-              <button type="submit" className={`${styles.logout} ${styles.logoutEnd}`}>Log out</button>
+              <button type="submit" name="to" value="landing" className={styles.logout}>{t("adminConsole.frameLanding")}</button>
+              <button type="submit" name="to" value="dashboard" className={styles.logout}>{t("adminConsole.frameDashboard")}</button>
+              <button type="submit" className={`${styles.logout} ${styles.logoutEnd}`}>{t("adminConsole.frameLogOut")}</button>
             </form>
           ) : (
             <>
-              <a href={landingUrl()}>Landing page</a>
-              <a href={dashboardUrl(singleCompany() ?? demo)}>Dashboard</a>
+              <a href={landingUrl()}>{t("adminConsole.frameLanding")}</a>
+              <a href={dashboardUrl(singleCompany() ?? demo)}>{t("adminConsole.frameDashboard")}</a>
             </>
           )}
         </nav>
@@ -72,16 +72,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {supportUntil ? <p className={`${styles.card} ${styles.error}`} role="status" data-testid="console-support-banner">{t("adminSupport.banner", { time: supportUntil })}</p> : null}
             {ctx.live ? null : company ? (
               <section className={`${styles.card} ${styles.demoNotice}`}>
-                <h2>Not connected</h2>
-                <p>The database is not answering, so nothing can be changed right now. Try again in a few minutes; if it stays like this, tell the NextUp team.</p>
+                <h2>{t("adminConsole.frameNotConnected")}</h2>
+                <p>{t("adminConsole.frameNotConnectedText")}</p>
               </section>
             ) : (
               <section className={`${styles.card} ${styles.demoNotice}`}>
-                <h2>Demo data</h2>
-                <p>
-                  The real database is not being read. What is shown is the built-in demo company -
-                  the same one the dashboard runs on - so nothing here is a real customer.
-                </p>
+                <h2>{t("adminConsole.frameDemoData")}</h2>
+                <p>{t("adminConsole.frameDemoDataText")}</p>
                 <p className="nh-hint">
                   {ctx.outage ? `DATABASE_URL is set but ${ctx.outage}. ` : "No DATABASE_URL is configured. "}
                   Everything that writes is hidden until Postgres answers: start the stack with{" "}

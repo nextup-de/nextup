@@ -71,7 +71,7 @@ export async function DataOverview({ view, companyName, showMap }: { view: NonNu
       </SectionCard>
 
       {showMap ? (
-        <SectionCard title="Data map" hint="Where each kind of data comes from, which table holds it, and which part of NextUp reads it." name="data-map">
+        <SectionCard title={t("adminConsole.dataMapTitle")} hint={t("adminConsole.dataMapHint")} name="data-map">
           <DataMap />
         </SectionCard>
       ) : null}

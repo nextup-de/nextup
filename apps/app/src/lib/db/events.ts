@@ -1,7 +1,7 @@
 // Reading and appending the event log. The only place the app writes history.
 import type { EventLog } from "@/features/cases/events";
 import { logFromRows, type NewEventRow } from "@/features/cases/persist";
-import { workdayOf } from "@/features/clock/calendar";
+import { dateOfWorkday, workdayOf } from "@/features/clock/calendar";
 import { DEFAULT_CALENDAR, type CalendarSpec } from "@/features/clock";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
@@ -26,6 +26,16 @@ const SELECT = {
  */
 export function companyDay(company: { stage: string; demoDay: number }, cal: CalendarSpec, now: Date): number {
   return company.stage === "demo" ? company.demoDay : workdayOf(now, cal);
+}
+
+/** The date of a company's working day, ISO. A demo company counts simulated days, so it has none. */
+export function dateOfCompanyDay(company: { stage: string }, cal: CalendarSpec, day: number): string | null {
+  if (company.stage === "demo" || !Number.isInteger(day) || day < 1) return null;
+  try {
+    return dateOfWorkday(day, cal);
+  } catch {
+    return null; // a calendar without working days
+  }
 }
 
 /** Every event for one company, plus its clock (demoDay, or today's working-day number). */
