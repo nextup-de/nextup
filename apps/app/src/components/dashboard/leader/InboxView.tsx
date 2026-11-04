@@ -27,6 +27,7 @@ import type { IdeaProps } from "./IdeaParts";
 import { IdeaDetailPhone } from "./IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
+import { DeptChip } from "@/components/ui/elements";
 import { showInboxCase } from "@/lib/demo-controls";
 import { useIdInUrl } from "@/lib/use-url-id";
 import { ProjectDesk } from "@/components/projects/ProjectDesk";
@@ -192,6 +193,8 @@ export function InboxView({ initialId }: { initialId?: string }) {
   // A demo day offset (0 = today) as a date; a case raised today in this browser has its real time.
   const dayDate = (offset: number) => { const d = new Date(now); d.setDate(d.getDate() + offset); return d; };
   const roleOf = (name: string, dept: string) => seed.people.find((p) => p.name === name)?.role ?? dept;
+  // Without a role on record the line names the sender's department, which shows as its chip.
+  const roleIsDept = (name: string) => !seed.people.find((p) => p.name === name)?.role;
 
   // One row shape for ideas owed a decision and cases: the title, who sent it, when, the clock.
   // A case in a discussion counts down to its next check-in; one you were asked into says so.
@@ -200,7 +203,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
     const exact = !!raised && c.raisedDay === S.day;
     const rs = roundState(c, S.rules, S.day);
     return {
-      id: c.id, title: c.title, name: c.from, role: roleOf(c.from, c.fromDept),
+      id: c.id, title: c.title, name: c.from, role: roleOf(c.from, c.fromDept), roleIsDept: roleIsDept(c.from),
       sent: exact && raised ? new Date(raised.ts) : dayDate(c.raisedDay - S.day), exact, due: rs ? rs.left : P - c.clock, paused: c.status === "asked", caseId: c.id,
       tag: view ? t("leader.tagYourView") : rs && !rs.ready ? (rs.left < 0 ? t("leader.tagCheckinLate", { n: -rs.left }) : t("leader.tagCheckinIn", { n: rs.left })) : null,
     };
@@ -208,7 +211,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const rows = [
     ...ideas.map((i) => {
       const [name, dept = ""] = i.proposedBy.split(", "); // "C. Ilg, Ops"
-      return { id: i.id, title: i.title, name, role: roleOf(name, dept), sent: dayDate(-i.wait), exact: false, due: P - i.wait, paused: false, caseId: null as string | null, tag: null as string | null };
+      return { id: i.id, title: i.title, name, role: roleOf(name, dept), roleIsDept: roleIsDept(name), sent: dayDate(-i.wait), exact: false, due: P - i.wait, paused: false, caseId: null as string | null, tag: null as string | null };
     }),
     ...inbox.map((c) => caseRow(c, false)),
     ...views.map((c) => caseRow(c, true)),
@@ -363,7 +366,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
                         <span className={styles.rowBody}>
                           <span className={styles.rowMain}>
                             <span className={styles.rowTitle}>{r.title}</span>
-                            <span className={styles.rowWho}>{r.name} <span className={styles.rowRole}>· {r.role}</span></span>                          </span>
+                            <span className={styles.rowWho}>{r.name} <span className={styles.rowRole}>· {r.roleIsDept && r.role ? <DeptChip name={r.role} /> : r.role}</span></span>                          </span>
                           <span className={styles.rowRight}>
                             <span className={styles.sent}>{sentLabel(r.sent, now, r.exact)}</span>
                             <span className={styles.badge} data-tone={badgeTone(r.due, r.paused)}>{badgeOf(r)}</span>
