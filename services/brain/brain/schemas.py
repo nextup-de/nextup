@@ -14,6 +14,15 @@ class LlmOverride(Strict):
     base_url: str = Field(min_length=8, max_length=300, pattern=r"^https?://")
     model: str = Field(min_length=1, max_length=200)
     api_key: SecretStr = Field(min_length=1, max_length=500)
+    # azure-openai wants max_completion_tokens and the default temperature; the rest keeps max_tokens.
+    provider: Literal["openai-compatible", "azure-openai"] = "openai-compatible"
+
+
+# Amazon Bedrock: no key here, the brain's own AWS credentials sign the request.
+class BedrockOverride(Strict):
+    provider: Literal["bedrock"]
+    region: str = Field(pattern=r"^[a-z]{2}(-[a-z]+)+-\d$")
+    model: str = Field(min_length=1, max_length=200)
 
 
 
@@ -41,7 +50,7 @@ class RouteIn(Strict):
     idea: Idea
     routes: list[RouteRow] = Field(min_length=1, max_length=50)
     known: list[KnownItem] = Field(default=[], max_length=80)
-    llm: LlmOverride | None = None
+    llm: LlmOverride | BedrockOverride | None = None
 
 
 # ---------------------------------------------------------------- what the model answers
@@ -66,6 +75,8 @@ class RouteOut(BaseModel):
     same_as: str | None      # an earlier item that is the same idea
     related: str | None      # an earlier item about the same thing, different problem or fix
     model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
     version: str
     ms: int
 
@@ -84,7 +95,7 @@ class CoachIn(Strict):
     # numbers are the app's; the coach may not change or restate them.
     brief: str = Field(max_length=3000)
     known: list[KnownItem] = Field(default=[], max_length=80)
-    llm: LlmOverride | None = None
+    llm: LlmOverride | BedrockOverride | None = None
 
 
 # The "raised before?" check on its own, as in routing: a match found here is handed to the coach
@@ -135,6 +146,8 @@ class CoachOut(BaseModel):
     why: str
     recommended: str
     model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
     version: str
     ms: int
 
@@ -151,7 +164,7 @@ class PlanIn(Strict):
     company: str = Field(min_length=1, max_length=120)
     idea: Idea
     goals: list[Goal] = Field(default=[], max_length=20)
-    llm: LlmOverride | None = None
+    llm: LlmOverride | BedrockOverride | None = None
 
 
 class PlanDraft(Strict):
@@ -171,6 +184,8 @@ class PlanOut(BaseModel):
     steps: list[str]
     metric: PlanMetric | None
     model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
     version: str
     ms: int
 
@@ -188,7 +203,7 @@ class CheckinIn(Strict):
     said: list[Said] = Field(default=[], max_length=30, description="What was said in this round, oldest first")
     weak: list[str] = Field(default=[], max_length=10, description="The points the app's analysis still finds weak")
     round: int = Field(ge=1, le=20)
-    llm: LlmOverride | None = None
+    llm: LlmOverride | BedrockOverride | None = None
 
 
 class CheckinDraft(Strict):
@@ -202,5 +217,7 @@ class CheckinOut(BaseModel):
     open: list[str]
     note: str
     model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
     version: str
     ms: int

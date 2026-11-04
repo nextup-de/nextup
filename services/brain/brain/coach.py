@@ -174,7 +174,7 @@ def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
 
     if point == "none" and not match:
         return CoachOut(covered=done, open_point="none", earlier_id=None, note=READY, question="", why="",
-                        recommended="", model=llm.settings.llm_model, version=PROMPT_VERSION,
+                        recommended="", model=llm.model_used, tokens_in=llm.tokens_in, tokens_out=llm.tokens_out, version=PROMPT_VERSION,
                         ms=round((time.perf_counter() - started) * 1000))
 
     def check(t: CoachTurn) -> None:
@@ -212,6 +212,6 @@ def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
     return CoachOut(
         covered=done, open_point=point, earlier_id=t.earlier_id or None, note=not_you(t.note.strip()),
         question=not_you(t.question), why=not_you(t.why.strip()), recommended=t.recommended.strip(),
-        model=llm.settings.llm_model, version=PROMPT_VERSION,
+        model=llm.model_used, tokens_in=llm.tokens_in, tokens_out=llm.tokens_out, version=PROMPT_VERSION,
         ms=round((time.perf_counter() - started) * 1000),
     )
