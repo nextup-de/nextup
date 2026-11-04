@@ -23,10 +23,10 @@ const idemKeyOf = (kind: DueKind, target: string, dueDay: number, check?: number
 const hasFact = (history: readonly CaseEvent[], kind: DueKind, dueDay: number, check?: number): boolean =>
   history.some((e) => e.type === "clock.due" && e.payload.kind === kind && e.payload.dueDay === dueDay && (check === undefined || e.payload.check === check));
 
-/** IDN/D8: the deputy role when the holder sits with the owner's role, else the owner role; its first seat. */
+/** IDN/D8: the deputy role when the holder sits with the owner's role, else the owner role; its first seat with someone on it. */
 function targetSeat(state: State, route: Route | null, atOwner: boolean): string | null {
   const roleId = route ? (atOwner ? route.deputyRoleId : route.ownerRoleId) ?? null : null;
-  return roleId === null ? null : seatsOfRole(state.seats, roleId)[0]?.id ?? null;
+  return roleId === null ? null : seatsOfRole(state.seats, roleId).find((s) => s.userId !== null)?.id ?? null;
 }
 
 /** LOOP/D17: the seat of the deadline fact for this day, unless the case was already handed over for it. */

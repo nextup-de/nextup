@@ -224,7 +224,7 @@ services:
   brain:
     <<: *hardening
     image: ${NEXTUP_BRAIN_IMAGE:-nextup-brain:local}
-    profiles: [brain]
+    profiles: [brain, brain-cloud]
     read_only: true
     tmpfs:
       - /tmp
@@ -234,6 +234,9 @@ services:
       LLM_MODEL: ${BRAIN_MODEL:-mistral-nemo}
       LLM_TIMEOUT: ${BRAIN_LLM_TIMEOUT:-120}
       API_KEY: ${BRAIN_API_KEY:-}
+      # --brain-cloud: no model server, the AI provider is called with the same AWS values as the app.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       LOG_CONTENT: "false"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]

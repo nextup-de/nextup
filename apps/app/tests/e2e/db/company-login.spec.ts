@@ -5,7 +5,7 @@
 // It makes its own company straight in the database ("e2e-<time>", sandbox stage = real-people rules) and
 // deletes it afterwards, so it leaves acme and everyone's codes alone on a shared dev database.
 import type { Browser, Page } from "@playwright/test";
-import { confirmSheet, expect, passSecondFactor, publishIdea, test } from "../helpers";
+import { confirmSheet, expect, passSecondFactor, publishIdea, test, vis } from "../helpers";
 import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
 
 const SLUG = `e2e-${Date.now().toString(36)}`;
@@ -24,7 +24,7 @@ test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL (.env.local)");
 async function signIn(browser: Browser, person: Person | string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto(`/${SLUG}/login`);
-  await page.locator("#code").fill(codes.get(person) ?? "");
+  await page.locator("#code:visible").fill(codes.get(person) ?? "");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   await passSecondFactor(page, `${SLUG}|${person}`);
   await expect(page).not.toHaveURL(/\/login/);
@@ -51,7 +51,7 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
   test("a wrong code is refused; a right one lands on that person's home", async ({ browser }) => {
     const page = await (await browser.newContext()).newPage();
     await page.goto(`/${SLUG}/login`);
-    await page.locator("#code").fill(`${SLUG}-aaaa-bbbb-cccc`);
+    await page.locator("#code:visible").fill(`${SLUG}-aaaa-bbbb-cccc`);
     await page.getByRole("button", { name: "Log in", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/${SLUG}/login`));
     await expect(page.getByRole("alert").or(page.locator(".nh-error")).first()).toBeVisible();
@@ -102,8 +102,8 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     for (const p of PEOPLE) await expect(manager.getByText(p.name, { exact: false }).first()).toBeVisible();
 
     // Adding a person happens in a drawer.
-    await manager.getByTestId("settings-members-open-add").click();
-    const drawer = manager.getByTestId("settings-members-drawer");
+    await vis(manager, "settings-members-open-add").click();
+    const drawer = vis(manager, "settings-members-drawer");
     await expect(drawer.getByLabel("Name")).toHaveCount(1);
     await drawer.getByLabel("Name").fill("S. Dahl");
     await drawer.getByLabel("Work email").fill(`s.dahl@${SLUG}.test`);
