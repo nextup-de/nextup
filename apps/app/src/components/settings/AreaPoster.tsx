@@ -1,5 +1,6 @@
 // The printable QR poster of one area (FLR D13). Props in, JSX out: the page builds the SVG and the texts.
 import Link from "next/link";
+import s from "./settings.module.css";
 import styles from "./AreaPoster.module.css";
 
 export type PosterSize = "a4" | "a5";
@@ -23,11 +24,11 @@ export function AreaPoster({ name, url, svg, size, lang, texts, toolbar }: Props
   return (
     <div data-testid="settings-areas-poster-page">
       <nav className={styles.toolbar}>
-        <Link href={toolbar.backHref} className="nh-btn nh-btn-ghost nh-btn-sm">{toolbar.backLabel}</Link>
-        <span>{toolbar.sizeLabel}: {toolbar.sizes.map((s) => (
-          <Link key={s.value} href={s.href} aria-current={s.value === size} className={styles.choice}>{s.value.toUpperCase()}</Link>
+        <Link href={toolbar.backHref} className={s.soft}>{toolbar.backLabel}</Link>
+        <span className={styles.group}>{toolbar.sizeLabel}: {toolbar.sizes.map((z) => (
+          <Link key={z.value} href={z.href} aria-current={z.value === size} className={styles.choice}>{z.value.toUpperCase()}</Link>
         ))}</span>
-        <span>{toolbar.langLabel}: {toolbar.langs.map((l) => (
+        <span className={styles.group}>{toolbar.langLabel}: {toolbar.langs.map((l) => (
           <Link key={l.value} href={l.href} aria-current={l.value === lang} className={styles.choice}>{l.label}</Link>
         ))}</span>
       </nav>

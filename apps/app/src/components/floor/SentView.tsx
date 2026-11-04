@@ -38,7 +38,7 @@ export function SentView({ reference, roleTitle, named, sandbox, qrSvg, raiseHre
       {named ? <p className={styles.body} data-testid="floor-sent-named">{t("floor.sentNamed")}</p> : null}
       {sandbox ? <p className={styles.panel} data-testid="floor-sent-sandbox">{t("floor.sentSandbox")}</p> : null}
       {named ? null : <button type="button" className={styles.second} data-testid="floor-sent-print" onClick={() => window.print()}>{t("floor.sentPrint")}</button>}
-      <Link href={raiseHref} className={styles.main} data-testid="floor-sent-done" style={{ display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>{t("floor.sentDone")}</Link>
+      <Link href={raiseHref} className={`${styles.main} ${styles.mainLink}`} data-testid="floor-sent-done">{t("floor.sentDone")}</Link>
       <Link href={raiseHref} className={styles.second} data-testid="floor-sent-again">{t("floor.sentAgain")}</Link>
       {named || !qrSvg ? null : (
         <div className={styles.slip} data-testid="floor-sent-slip">
