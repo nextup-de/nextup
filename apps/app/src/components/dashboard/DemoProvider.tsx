@@ -154,6 +154,17 @@ function roleFromPath(path: string): Role {
   return "member";
 }
 
+// A page with thousands of dates asks for a few hundred distinct days, and each answer walks the calendar and builds
+// an Intl formatter: remember what a formatter has said.
+function rememberDays(fmt: DayFmt): DayFmt {
+  const seen = new Map<number, string>();
+  return (d) => {
+    let out = seen.get(d);
+    if (out === undefined) { out = fmt(d); seen.set(d, out); }
+    return out;
+  };
+}
+
 const iniOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2);
 
 // What the shell knows about the company: slug + name for chrome, and the people - used for the
@@ -615,6 +626,8 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     return true;
   }, [serverMode, slug]);
 
+  const f = useMemo<DayFmt>(() => rememberDays(dayFormatter(today, S.day, locale, seed.clock)), [today, S.day, locale, seed.clock]);
+
   const value: DemoContext = {
     tenant, seed, ready, serverMode, S, D, N, log,
     role, setRole, leadAs, setLeadAs, persona, actor, actorUserId, me, email,
@@ -627,7 +640,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     sheet, openSheet: (kind, id, init) => { setSheet({ kind, id, text: "", picked: null, people: [], ...init }); setPop(null); },
     closeSheet: () => setSheet(null), patchSheet: (p) => setSheet((s) => (s ? { ...s, ...p } : s)),
     toast, showToast, menu, setMenu, dev, setDev, act, loadCase, flag, resetDemo, deleteAdded, copySnippet, logout,
-    locale, f: dayFormatter(today, S.day, locale, seed.clock), href,
+    locale, f, href,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

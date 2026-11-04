@@ -15,7 +15,9 @@
 | `/[company]/leader` | `.../(app)/leader/page.tsx` | yes | leader, manager | Inbox |
 | `/[company]/raise` | `.../(app)/raise/page.tsx` | yes | any | Idea studio: develop an idea with the coach, publish at the threshold (member home, docs/IDEAS.md) |
 | `/api/[company]/ideas/turn` | `app/api/[company]/ideas/turn/route.ts` | yes | any | One message in the idea studio: server score + coach reply (SSE) |
-| `/[company]/dashboard` | `.../(app)/dashboard/page.tsx` | yes | any | Every problem and idea: open since, on whose desk, stage, score |
+| `/[company]/dashboard` | `.../(app)/dashboard/page.tsx` | yes | manager | The wait ledger (docs/METRICS.md): six tiles with baseline and trend, stages, answers, the unit and role breakdown with groups under 5 people hidden, CSV export. Query: `unit` and `period` (`30d`, `quarter`, `golive`). No person is named or counted |
+| `/[company]/dashboard/kpis` | `.../(app)/dashboard/kpis/page.tsx` | yes | manager | The idea-management KPI report per unit and company for fixed periods (year, last year, since go-live); small units hidden |
+| `/[company]/people/[userId]` | `.../(app)/people/[userId]/page.tsx` | yes | any | Person card for an opaque user id of an active person in this company: name, role, unit. No statistics, shared work or location. Your own id redirects to `/profile`. Old name URLs (`/people/<name>`) return not found and no name is ever looked up |
 | `/[company]/feed` | `.../(app)/feed/page.tsx` | yes | any | Every problem and idea this viewer may see as cards: filter by site and department, support, comment. `?id=` opens one in place |
 | `/[company]/team` | `.../(app)/team/page.tsx` | yes | any | What happened to what I sent (one card per case) |
 | `/[company]/problems` | `.../(app)/problems/page.tsx` | yes | any | Problems |
@@ -27,7 +29,7 @@
 | `/[company]/cases/[caseId]` | `.../(app)/cases/[caseId]/page.tsx` | yes | any | Case detail |
 | `/[company]/settings/*` | `.../(app)/settings/{company,members,routing}/page.tsx` | yes | manager | Company admin |
 | `/admin/*` | `admin/{page,people,connectors,assistant,company-data,decisions,support,login}` | own cookie | console admin | The company's IT and privacy console, one-company stacks only (`TENANT_MODE=single`; 404 in multi mode). Seven sections in `CONSOLE_SECTIONS`. Who enters: Microsoft sign-in with the `NextUp.Admin` role, a stack admin (personal code + authenticator code), the logged break-glass code, or a read-only support session. No platform pages: `/admin/companies`, `/requests`, `/tickets`, `/connections` are 404 (docs/ADMIN.md) |
-| `/demo/*` | `demo/{raise,dashboard,cases/[caseId],projects/[projectId],people/[name],leader,manager,…}/page.tsx` | - | - | Static demo: made-up data, no company, no login, nothing leaves the browser; `/demo` opens `/demo/raise`, a case opens at `/demo/cases/<id>`. On a stack whose company is `demo` (demo.sellux.ch) it is the whole host, at the root (docs/IDEAS.md, "The demo page") |
+| `/demo/*` | `demo/{raise,dashboard,cases/[caseId],projects/[projectId],leader,manager,…}/page.tsx` | - | - | Static demo: made-up data, no company, no login, nothing leaves the browser; `/demo` opens `/demo/raise`, a case opens at `/demo/cases/<id>`. On a stack whose company is `demo` (demo.sellux.ch) it is the whole host, at the root (docs/IDEAS.md, "The demo page") |
 | `/api/health` | `api/health/route.ts` | - | - | Uptime check |
 | `/api/client-errors` | `api/client-errors/route.ts` | - | - | A browser's script error (`navigator.sendBeacon` from `components/report/error-reporter.ts`), counted by kind with the server's errors (`server/errors.ts`). Same origin only, 8 KB, 204 |
 
