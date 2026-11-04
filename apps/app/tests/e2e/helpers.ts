@@ -1,6 +1,6 @@
 // Small steps both suites repeat. Locators go by role and visible text - what a person sees -
 // so a class rename never breaks a test, and a changed label does (which is worth knowing).
-import { test as base, expect, type Page } from "@playwright/test";
+import { test as base, expect, type Locator, type Page } from "@playwright/test";
 
 /** `test` with one extra rule: any uncaught error in the page fails the test, not only a wrong assertion. */
 export const test = base.extend<{ failOnPageError: void }>({
@@ -15,6 +15,9 @@ export const test = base.extend<{ failOnPageError: void }>({
   ],
 });
 export { expect };
+
+/** A test id's visible element: for a moment after a load the streamed page holds a hidden second copy, which strict mode refuses. */
+export const vis = (from: Page | Locator, id: string) => from.getByTestId(id).filter({ visible: true });
 
 // What the second message adds so any one-line idea clears the publish line (docs/IDEAS.md): a
 // goal, a number, who it reaches, why, and a first step with no spend.

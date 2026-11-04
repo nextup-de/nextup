@@ -49,3 +49,15 @@ export async function deleteTestCompany(slug: string): Promise<void> {
   await db.user.deleteMany({ where: { companyId: company.id } });
   await db.company.delete({ where: { id: company.id } });
 }
+
+/** A user for every seat label nobody has yet, so bindDemoCompany can seat them: a deadline goes only to a seat with someone on it. */
+export async function peopleForSeats(companyId: string, slug: string): Promise<void> {
+  const db = getDb();
+  const [holders, users] = await Promise.all([
+    db.orgRoleHolder.findMany({ where: { companyId }, select: { name: true } }),
+    db.user.findMany({ where: { companyId }, select: { name: true } }),
+  ]);
+  const have = new Set(users.map((u) => u.name));
+  const missing = [...new Set(holders.map((h) => h.name))].filter((name) => !have.has(name));
+  await db.user.createMany({ data: missing.map((name) => ({ companyId, name, email: name.replace(/\W+/g, "").toLowerCase() + `@${slug}.example`, role: "leader" })) });
+}

@@ -44,7 +44,7 @@ async function createCompany() {
 async function signIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto(`/${SLUG}/login`);
-  await page.locator("#code").fill(codes.get(name) ?? "");
+  await page.locator("#code:visible").fill(codes.get(name) ?? "");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   await passSecondFactor(page, `${SLUG}|${name}`);
   await expect(page).not.toHaveURL(/\/login/);

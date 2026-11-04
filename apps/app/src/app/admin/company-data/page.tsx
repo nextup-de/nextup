@@ -11,8 +11,9 @@ import { DataOverview } from "@/components/admin/DataOverview";
 import { KnowledgeView } from "@/components/admin/KnowledgeView";
 import { CompanyMissing } from "@/components/admin/CompanyOverview";
 import { IdeaStudioAdmin } from "@/components/admin/IdeaStudioAdmin";
+import { PageHeader } from "@/components/ui/elements";
 import { getT } from "@/i18n/server";
-import styles from "../admin.module.css";
+import c from "../people/console.module.css";
 
 export default async function DataPage() {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
@@ -29,23 +30,20 @@ export default async function DataPage() {
     ctx.live ? ideasView(guard.companyId) : null,
   ]);
   const name = current.name;
+  const lede =
+    knowledge.source === "tables"
+      ? t("adminPrivacy.dataLeadTables", { name })
+      : knowledge.source === "demo"
+        ? t("adminPrivacy.dataLeadDemo")
+        : t("adminPrivacy.dataLeadNone", { name });
 
   return (
-    <>
-      <section className={styles.card} data-testid="console-data">
-        <h1>{t("adminPrivacy.dataTitle")}</h1>
-        <p className="nh-hint">
-          {knowledge.source === "tables"
-            ? t("adminPrivacy.dataLeadTables", { name })
-            : knowledge.source === "demo"
-              ? t("adminPrivacy.dataLeadDemo")
-              : t("adminPrivacy.dataLeadNone", { name })}
-        </p>
-        <p className="nh-hint" data-testid="console-data-loop-link">{t("adminPrivacy.loopLink")}</p>
-      </section>
+    <div className={c.page} data-wide data-testid="console-data">
+      <PageHeader title={t("adminPrivacy.dataTitle")} lede={lede} />
+      <p className={c.note} data-testid="console-data-loop-link">{t("adminPrivacy.loopLink")}</p>
       {data ? <DataOverview view={data} companyName={name} showMap={false} /> : null}
       {knowledge.source === "none" ? null : <KnowledgeView knowledge={knowledge.knowledge} profile={knowledge.profile} brief={knowledge.brief} />}
       {ideas ? <IdeaStudioAdmin {...ideas} /> : null}
-    </>
+    </div>
   );
 }
