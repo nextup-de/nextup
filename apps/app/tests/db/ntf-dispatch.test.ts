@@ -175,5 +175,6 @@ describe("NTF old senders off", () => {
     };
     walk(path.resolve(__dirname, "../../src"));
     expect(hits).toEqual([]);
-  });
+    // Reads every file of src: 1 s warm, over 30 s cold on a lane just switched to its branch on a busy PC.
+  }, 120_000);
 });
