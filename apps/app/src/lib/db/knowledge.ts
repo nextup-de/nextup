@@ -1,5 +1,6 @@
 // Company knowledge tables <-> the plain rows in src/features/knowledge. Every query names the
 // company at the top level, so the tenant guard sees all of them (no nested includes from Company).
+import type { VisMember } from "@/features/cases/visibility";
 import type { HolderRow, Knowledge, Profile } from "@/features/knowledge";
 import { getDb } from "./client";
 
@@ -23,6 +24,28 @@ export async function loadKnowledge(companyId: string): Promise<Knowledge> {
   ]);
   const managers = withManager.flatMap((u) => (u.managerId ? [{ userId: u.id, managerId: u.managerId }] : []));
   return { units, roles, holders, rules, goals, ...(managers.length ? { managers } : {}) };
+}
+
+/**
+ * The active people without a seat, for the visibility rule and the metric cohorts (FX3). Their unit is the
+ * one their department names, by key or name like the directory matches it; a manager who has left counts as none.
+ */
+export async function loadMembers(companyId: string): Promise<VisMember[]> {
+  const db = getDb();
+  const [users, units, holders] = await Promise.all([
+    db.user.findMany({ where: { companyId, active: true }, select: { id: true, dept: true, managerId: true } }),
+    db.orgUnit.findMany({ where: { companyId }, orderBy: { sort: "asc" }, select: { id: true, key: true, name: true } }),
+    db.orgRoleHolder.findMany({ where: { companyId, userId: { not: null } }, select: { userId: true } }),
+  ]);
+  const seated = new Set(holders.map((h) => h.userId));
+  const active = new Set(users.map((u) => u.id));
+  const unitOf = new Map<string, string>();
+  for (const u of units) for (const label of [u.key, u.name]) if (!unitOf.has(label.toLowerCase())) unitOf.set(label.toLowerCase(), u.id);
+  return users.filter((u) => !seated.has(u.id)).map((u) => ({
+    userId: u.id,
+    unitId: unitOf.get(u.dept.trim().toLowerCase()) ?? null,
+    managerId: u.managerId && active.has(u.managerId) ? u.managerId : null,
+  }));
 }
 
 /** One role's holders in `sort` order, for that company only. */

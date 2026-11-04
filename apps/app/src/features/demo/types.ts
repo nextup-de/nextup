@@ -1,5 +1,6 @@
 // Shapes of the demo seed (port of legacy/demo/js/data.js). One company's rows; every count on
 // the page is derived from these. When Prisma lands these become the seed script's input.
+import type { VisMember } from "@/features/cases/visibility";
 import type { Role } from "@/config/roles";
 import type { SeatRow } from "@/features/auth/identity";
 import type { CaseKind, SeedEvent } from "@/features/cases/events";
@@ -104,6 +105,7 @@ export type Seed = {
   personas: RolePersona[]; leaders: string[]; routes: Route[]; cases: SeedCase[]; waitingOn: WaitingOn[]; buddies: Buddy[];
   seats: SeatRow[]; // filled from the OrgRoleHolder rows by structureSeed(), never from seedJson (IDN/D7)
   roles?: SeedRole[]; // the roles' unit and boss by id, filled by structureSeed() for the visibility rule (VIS/D4); missing = none
+  members?: VisMember[]; // the people without a seat this viewer's lists need, added per viewer by the app layout (FX3)
   goals: SeedGoal[]; // filled from the Goal table by companySeed(), never from seedJson (D5)
   spend: SpendRule | null; // filled from the CompanyRule table by companySeed(), never from seedJson (D5)
   stall: Stall[]; ledger: Ledger; metrics: Metrics; views: Record<string, ViewCopy>;

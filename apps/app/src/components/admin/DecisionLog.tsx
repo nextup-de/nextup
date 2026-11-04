@@ -1,8 +1,9 @@
 // /admin/decisions: every raise, what the router proposed, and whether people agreed. The summary
 // says how often the proposal holds; the table says where it did not. Props in, JSX out.
-import type { DecisionRow, DecisionSummary } from "@/features/admin/decisions";
-import type { T } from "@/i18n";
-import styles from "@/app/admin/admin.module.css";
+import type { DecisionRow, DecisionSummary, Verdict } from "@/features/admin/decisions";
+import type { MessageKey, T } from "@/i18n";
+import { DataTable, PageHeader, SectionCard } from "@/components/ui/elements";
+import c from "@/app/admin/people/console.module.css";
 
 type Props = {
   rows: DecisionRow[];
@@ -13,15 +14,23 @@ type Props = {
   t: T;
 };
 
+const VERDICT: Record<Verdict, MessageKey> = {
+  agreed: "adminPrivacy.verdictAgreed",
+  overridden: "adminPrivacy.verdictOverridden",
+  "handed elsewhere": "adminPrivacy.verdictHanded",
+  "no route": "adminPrivacy.verdictNoRoute",
+  open: "adminPrivacy.verdictOpen",
+};
+
 const pct = (x: number | null) => (x === null ? "-" : Math.round(x * 100) + "%");
 const when = (iso: string) => new Date(iso).toISOString().slice(0, 16).replace("T", " ");
 
 export function DecisionLog({ rows, summary: s, routeNames, exportHref, t }: Props) {
   const route = (company: string, id: string | null) =>
-    id === null ? <span className={styles.sub}>none</span> : (
+    id === null ? <span className={c.sub}>{t("adminPrivacy.routeNone")}</span> : (
       <>
-        <code>{id}</code>
-        <span className={styles.sub}>{routeNames[company]?.[id] ?? "not in the map"}</span>
+        <code className={c.mono}>{id}</code>
+        <span className={c.sub}>{routeNames[company]?.[id] ?? t("adminPrivacy.routeUnknown")}</span>
       </>
     );
 
@@ -37,66 +46,76 @@ export function DecisionLog({ rows, summary: s, routeNames, exportHref, t }: Pro
   ];
 
   return (
-    <>
-      <section className={styles.card}>
-        <h1>{t("adminPrivacy.routingTitle")}</h1>
-        <p className="nh-hint">{t("adminPrivacy.routingLead")}</p>
-        <div className={styles.tiles} data-testid="console-routing-tiles">
+    <div className={c.page} data-wide>
+      <PageHeader
+        title={t("adminPrivacy.routingTitle")}
+        lede={t("adminPrivacy.routingLead")}
+        action={<a className={c.btn} href={exportHref} download data-testid="console-routing-export">{t("adminPrivacy.routingExport")}</a>}
+      />
+
+      <SectionCard name="summary">
+        <div className={c.tiles} data-testid="console-routing-tiles">
           {tiles.map(([v, l]) => (
-            <div key={l} className={styles.tile}>
-              <div className={styles.tileValue}>{v}</div>
-              <div className={styles.tileLabel}>{l}</div>
+            <div key={l} className={c.tile}>
+              <div className={c.tileValue}>{v}</div>
+              <div className={c.tileLabel}>{l}</div>
             </div>
           ))}
         </div>
         {s.byVersion.length > 1 ? (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead><tr><th>Router version</th><th>Raised</th><th>Agreed</th><th>Overridden</th><th>Handed elsewhere</th><th>No route</th></tr></thead>
-              <tbody>
-                {s.byVersion.map((v) => (
-                  <tr key={v.version}><td><code>{v.version}</code></td><td>{v.raised}</td><td>{v.agreed}</td><td>{v.overridden}</td><td>{v.handedElsewhere}</td><td>{v.noRoute}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rows={s.byVersion}
+            rowKey={(v) => v.version}
+            empty={t("adminConsole.none")}
+            columns={[
+              { key: "version", header: t("adminPrivacy.colVersion"), width: "minmax(0, 1.4fr)", render: (v) => <code className={c.mono}>{v.version}</code> },
+              { key: "raised", header: t("adminPrivacy.colRaised"), render: (v) => v.raised },
+              { key: "agreed", header: t("adminPrivacy.colAgreed"), render: (v) => v.agreed },
+              { key: "overridden", header: t("adminPrivacy.colOverridden"), render: (v) => v.overridden },
+              { key: "handed", header: t("adminPrivacy.colHanded"), render: (v) => v.handedElsewhere },
+              { key: "noRoute", header: t("adminPrivacy.colNoRoute"), render: (v) => v.noRoute },
+            ]}
+          />
         ) : null}
-        <p className="nh-hint">
-          <a href={exportHref} download data-testid="console-routing-export">{t("adminPrivacy.routingExport")}</a>
-        </p>
-      </section>
+      </SectionCard>
 
-      <section className={styles.card}>
-        <h2>Raises <span className={styles.sub}>newest first · the last 200</span></h2>
-        {rows.length === 0 ? (
-          <p className="nh-hint">Nothing raised yet. Raise a case in any company and it shows up here.</p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr><th>When</th><th>Case</th><th>Proposed</th><th>Confidence</th><th>Chosen</th><th>Verdict</th><th>Handed on</th><th>n8n</th></tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.eventId}>
-                    <td className={styles.nowrap}>{when(r.raisedAt)}<span className={styles.sub}>{r.company}</span></td>
-                    <td>{r.title || <em>untitled</em>}<span className={styles.sub}>{r.answer ? "answered " + r.answer : "no answer yet"}</span></td>
-                    <td>{route(r.company, r.proposed)}</td>
-                    <td className={styles.nowrap}>
-                      {r.confidence === null ? "-" : r.confidence + "%"}
-                      <span className={styles.sub}>{r.source === "unrecorded" ? "not recorded" : r.version}</span>
-                    </td>
-                    <td>{route(r.company, r.chosen)}</td>
-                    <td><span className={styles.verdictPill} data-v={r.verdict}>{r.verdict}</span></td>
-                    <td>{r.handoffs ? r.handoffs + "×" : "-"}</td>
-                    <td className={styles.nowrap}>{r.noticeAt ? "written back" : "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    </>
+      <SectionCard title={t("adminPrivacy.raisesTitle")} hint={t("adminPrivacy.raisesMeta")} name="raises">
+        <DataTable
+          rows={rows}
+          rowKey={(r) => r.eventId}
+          empty={t("adminPrivacy.raisesNone")}
+          columns={[
+            { key: "when", header: t("adminPrivacy.colWhen"), width: "130px", render: (r) => <><span className={c.nowrap}>{when(r.raisedAt)}</span><span className={c.sub}>{r.company}</span></> },
+            {
+              key: "case",
+              header: t("adminPrivacy.colCase"),
+              width: "minmax(0, 1.6fr)",
+              render: (r) => (
+                <>
+                  {r.title || <em>{t("adminPrivacy.untitled")}</em>}
+                  <span className={c.sub}>{r.answer ? t("adminPrivacy.answered", { answer: t(r.answer === "yes" ? "adminPrivacy.answerYes" : "adminPrivacy.answerNo") }) : t("adminPrivacy.noAnswer")}</span>
+                </>
+              ),
+            },
+            { key: "proposed", header: t("adminPrivacy.colProposed"), width: "minmax(0, 1.2fr)", render: (r) => route(r.company, r.proposed) },
+            {
+              key: "confidence",
+              header: t("adminPrivacy.colConfidence"),
+              width: "100px",
+              render: (r) => (
+                <>
+                  <span className={c.nowrap}>{r.confidence === null ? "-" : r.confidence + "%"}</span>
+                  <span className={c.sub}>{r.source === "unrecorded" ? t("adminPrivacy.notRecorded") : r.version}</span>
+                </>
+              ),
+            },
+            { key: "chosen", header: t("adminPrivacy.colChosen"), width: "minmax(0, 1.2fr)", render: (r) => route(r.company, r.chosen) },
+            { key: "verdict", header: t("adminPrivacy.colVerdict"), width: "130px", render: (r) => <span className={c.verdict} data-v={r.verdict}>{t(VERDICT[r.verdict])}</span> },
+            { key: "handoffs", header: t("adminPrivacy.colHandedOn"), width: "80px", render: (r) => (r.handoffs ? r.handoffs + "×" : "-") },
+            { key: "n8n", header: t("adminPrivacy.colN8n"), width: "100px", render: (r) => <span className={c.nowrap}>{r.noticeAt ? t("adminPrivacy.writtenBack") : "-"}</span> },
+          ]}
+        />
+      </SectionCard>
+    </div>
   );
 }
