@@ -12,12 +12,26 @@ export function isStage(value: string): value is Stage {
 }
 
 /** What each stage means, so the dropdown is not four words with no definition. */
-export const STAGE_MEANING: Record<Stage, string> = {
-  demo: "Our content, shown to prospects. Demo tools on.",
-  sandbox: "Their people, our data - they are trying it out.",
-  pilot: "Their real cases, with the two-working-day promise running.",
-  live: "In production. Treat the data as theirs.",
-};
+export function stageMeaning(stage: Stage, promiseDays: number): string {
+  switch (stage) {
+    case "demo":
+      return "Our content, shown to prospects. Demo tools on.";
+    case "sandbox":
+      return "Their people, our data - they are trying it out.";
+    case "pilot":
+      return `Their real cases, with the ${promiseDays}-working-day promise running.`;
+    case "live":
+      return "In production. Treat the data as theirs.";
+  }
+}
+
+/**
+ * Whether a stage move ends every session of the company: leaving `demo`, or moving back to a lower
+ * stage. sandbox -> pilot -> live keep everyone signed in.
+ */
+export function signsOutOnMove(from: Stage, to: Stage): boolean {
+  return from === "demo" || STAGES.indexOf(to) < STAGES.indexOf(from);
+}
 
 // ── What a stage allows ─────────────────────────────────────────────────────────────────────────
 // The one line between made-up data and real people. `demo` is our content on a sales call, so
