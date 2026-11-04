@@ -15,6 +15,7 @@ import { companyDay, loadLog } from "./events";
 import { loadSeats } from "./holders";
 import { loadKnowledge, loadMembers } from "./knowledge";
 import { caseView, visibleCaseIds } from "./projections/readers";
+import { relabelRows } from "./pseudonymise";
 
 /** The window of VIS/D9: open cases, and closed ones whose last day is within this many working days. */
 export const WINDOW_DAYS = 90;
@@ -63,7 +64,7 @@ async function eventsOf(companyId: string, caseIds: string[], seed: Seed, shared
   const more: EventRow[] = projectIds.length === 0 ? [] : await db.caseEvent.findMany({ where: { companyId, targetId: { in: projectIds } }, select: SELECT });
   const seen = new Set(own.map((r) => r.id));
   const rows = [...own, ...more.filter((r) => !seen.has(r.id))].sort((a, b) => a.seq - b.seq);
-  return { rows, projectIds };
+  return { rows: [...await relabelRows(companyId, rows)], projectIds };
 }
 
 /**
