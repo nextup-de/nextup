@@ -4,3 +4,6 @@ e9c0c950d7767573f2f3288af3bd47f1721602d5:apps/app/tests/db/directory-successfact
 # Fake key-shaped fixtures in the PIL-D1 test, commits 13c989f and 040ed4c; the tree builds them at run time now and they are not credentials.
 13c989f6f26453989aa98ef886d7d1228b012547:apps/app/tests/unit/pil/bootstrap-config.test.ts:aws-access-token:39
 040ed4c9b9a763c454dedd547b2fc3bdcd9a82fa:apps/app/tests/unit/pil/bootstrap-config.test.ts:generic-api-key:10
+
+# Fake AUTH_SECRET in the PIL-F1 wip commit 98a4a3e; the tree replaced it in c579221 and it is not a credential.
+98a4a3ead1fcb827aa6872fcd6a1007a11e86070:apps/app/tests/db/pil-gaps.test.ts:generic-api-key:44
