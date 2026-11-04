@@ -1,6 +1,6 @@
 # Docs
 
-> **Updated 2026-11-03.** Every file starts with an `Updated` or `Plan` line that gives its date.
+> **Updated 2026-11-04.** Every file starts with an `Updated` or `Plan` line that gives its date.
 
 ## Plans (`plans/`, newest first)
 
@@ -42,6 +42,8 @@ is on their first line.
 | [customer/INSTALL.md](customer/INSTALL.md) | customer guide: server requirements, install, DNS and TLS, first admin |
 | [customer/OPERATIONS.md](customer/OPERATIONS.md) | customer guide: releases, backups, monitoring, key rotation, break-glass, support access |
 | [customer/SECURITY_GUIDE.md](customer/SECURITY_GUIDE.md) | customer guide: data flows, encryption, access, SSO, audit, hardening checklist |
+| [IDENTITY.md](IDENTITY.md) | identity by id, OIDC, SAML, SCIM, log export, tables, test fakes, claims (updated 2026-11-04) |
+| [customer/SSO_SETUP.md](customer/SSO_SETUP.md) | customer guide: Entra, Okta, ADFS, Keycloak, SCIM, syslog and file export (updated 2026-11-04) |
 
 Design system (tokens, components, brand assets, UI kit): `design-system/README.md`.
 
