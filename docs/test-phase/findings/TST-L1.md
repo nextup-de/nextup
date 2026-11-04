@@ -86,6 +86,10 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
   one request is about 47 ms of CPU, so the 100 requests/s asked for need about 4.7 free cores. This PC reported 96 % CPU load from other
   programs before the run began, and 8 processes delivered 55 requests/s, i.e. about 2.6 cores' worth of the 16 logical ones. **The budget
   run cannot pass here; it needs the idle test VM (4 vCPU, `APP_REPLICAS=4`, TST-V1) or this PC without the other sessions.** Status: open.
+- **Re-measured (TST-Z1, 2026-11-04, after Kevin's go-ahead):** same data, 200 accounts all at once, 8 processes, existing production build, PC at 79 % CPU
+  load from other programs (i7-10700, 8 cores / 16 logical) before the run: 1,203 requests in 30 s = 40 requests/s (5 per process), inbox p95 6,149 ms,
+  case p95 5,654 ms, 1 error in 1,203. The working day (5 virtual users) is p95 169 ms / 178 ms. Per process 5 requests/s, per busy core far
+  below the 21 requests/s one process reaches alone. The test stays `it.fails`; no budget, load or threshold was changed. Status: open (blocked on a free machine).
 - **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.
