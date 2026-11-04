@@ -65,7 +65,7 @@ test.describe.serial("FLR acceptance", () => {
       await page.goto(`/${SLUG}/settings/areas`);
       // The streamed page can hold a hidden second copy of the section for a moment: wait until there is one.
       await expect(page.getByTestId("settings-areas")).toHaveCount(1);
-      await page.getByTestId("settings-areas-add").click();
+      await page.locator('[data-testid="settings-areas-add"]:visible').click();
       await page.getByTestId("settings-areas-field-name").fill("Line 3");
       await page.getByTestId("settings-areas-field-key").fill("line-3");
       await page.getByTestId("settings-areas-field-unit").selectOption({ label: UNIT });

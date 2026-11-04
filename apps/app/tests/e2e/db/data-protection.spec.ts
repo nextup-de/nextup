@@ -77,8 +77,11 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
 
     // Deactivate Lena Brandt in Members.
     await page.goto(`/${SLUG}/settings/members`);
-    const row = () => page.locator(`[data-testid="settings-member-${lena.id}"]`);
+    // visible: for a moment after a load the streamed page holds a hidden second copy of the row.
+    const row = () => page.locator(`[data-testid="settings-member-${lena.id}"]`).filter({ visible: true });
     const menu = () => row().locator(`[data-testid="settings-member-menu-${lena.id}"]`);
+    // Streaming leaves a hidden staging copy next to the row for a moment; wait for the one real row.
+    await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await expect(row()).toBeVisible({ timeout: 15_000 });
     await menu().click();
     await row().getByRole("button", { name: /^Deactivate/ }).click();
@@ -92,6 +95,7 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
 
     // Admin-only export from her menu; the dialog says so and the reason is recorded.
     await page.goto(`/${SLUG}/settings/members`);
+    await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await menu().click();
     await row().locator('[data-testid="member-export-open"]').click();
     const dialog = page.locator('[data-testid="member-export-dialog"]');
@@ -113,6 +117,7 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
     // Pseudonymise: type the name (case ignored), confirm.
     const before = await eventRows(company.id);
     await page.goto(`/${SLUG}/settings/members`);
+    await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await menu().click();
     await row().locator('[data-testid="member-pseudonymise-open"]').click();
     await page.locator('[data-testid="member-pseudonymise-name"]').fill("lena brandt");
@@ -121,6 +126,7 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
 
     // Members list and audit view show the pseudonym; the event table is unchanged.
     await page.goto(`/${SLUG}/settings/members`);
+    await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await expect(row()).toContainText("Former member #");
     await expect(row()).not.toContainText(LENA.name);
     await page.goto(`/${SLUG}/settings/audit`);

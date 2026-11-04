@@ -1,35 +1,51 @@
 #!/usr/bin/env bash
-# ITC-E1: the break-glass code of a sandbox/live stack stays on the box. Plain bash, no framework.
+# SEC-B1 (D3): a real stack sends no secret to the admin vault; a demo stack sends what it always did;
+# the agent no longer writes BREAK_GLASS.txt. Plain bash, no framework.
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pass=0 fail=0
 ok() { pass=$((pass + 1)); }
 bad() { fail=$((fail + 1)); echo "FAIL: $1"; }
 check() { if [ "$2" = "$3" ]; then ok; else bad "$1 (got '$2', want '$3')"; fi; }
 
-# Load just the two functions; agent.sh itself runs a job when sourced.
-eval "$(sed -n '/^secrets_to_send() {/,/^}/p;/^write_break_glass() {/,/^}/p' "$here/agent.sh")"
+# Load just the function; agent.sh itself runs a job when sourced.
+eval "$(sed -n '/^secrets_to_send() {/,/^}/p' "$here/agent.sh")"
 
-has() { case " $1 " in *" $2 "*) echo yes ;; *) echo no ;; esac; }
-
-for st in sandbox live real ""; do
-  check "$st omits ADMIN_ACCESS_CODE" "$(has "$(secrets_to_send "$st")" ADMIN_ACCESS_CODE)" no
-  check "$st keeps POSTGRES_PASSWORD" "$(has "$(secrets_to_send "$st")" POSTGRES_PASSWORD)" yes
+for st in real sandbox live ""; do
+  check "'$st' sends nothing" "$(secrets_to_send "$st")" ""
 done
-check "demo sends ADMIN_ACCESS_CODE" "$(has "$(secrets_to_send demo)" ADMIN_ACCESS_CODE)" yes
-check "demo sends five" "$(secrets_to_send demo | wc -w | tr -d ' ')" 5
+check "demo sends the five, unchanged" "$(secrets_to_send demo)" \
+  "ADMIN_ACCESS_CODE POSTGRES_PASSWORD AUTH_SECRET N8N_ENCRYPTION_KEY RESTIC_PASSWORD"
 
+check "write_break_glass is gone" "$(grep -c 'write_break_glass()' "$here/agent.sh")" 0
+check "agent never names BREAK_GLASS.txt except to log it is unused" \
+  "$(grep 'BREAK_GLASS.txt' "$here/agent.sh" | grep -vc 'no longer used\|\[ -e ')" 0
+
+# collect_secrets for a real stack: the job result carries "secrets":{} and "logins":[], logs once
+# that a leftover BREAK_GLASS.txt is unused, and leaves the file in place.
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
-log="$tmp/log"; : > "$log"
-write_break_glass "$tmp" "code-1234"
-check "file written" "$([ -f "$tmp/BREAK_GLASS.txt" ] && echo yes || echo no)" yes
-if [ "$(uname -s | cut -c1-5)" != MINGW ]; then
-  check "mode 600" "$(stat -c %a "$tmp/BREAK_GLASS.txt")" 600
-fi
-check "log says written" "$(grep -c '^break-glass written$' "$log")" 1
-check "log has no value" "$(grep -c 'code-1234' "$log")" 0
-write_break_glass "$tmp" "other-code"
-check "not overwritten" "$(grep -c 'code-1234' "$tmp/BREAK_GLASS.txt")" 1
-check "second call logs nothing" "$(grep -c '^break-glass written$' "$log")" 1
+dir="$tmp/acme"; mkdir -p "$dir"
+printf 'ADMIN_ACCESS_CODE=abc123\nPOSTGRES_PASSWORD=pw\n' > "$dir/.env"
+env_file="$dir/.env" log="$tmp/log" stage=real slug=acme; : > "$log"
+box_stage() { echo real; }
+getenv() { grep -E "^$1=" "$env_file" | head -1 | cut -d= -f2-; }
+stack=/nonexistent
+eval "$(sed -n '/^collect_secrets() {/,/^}/p' "$here/agent.sh")"
+secrets_json="" logins_json="" secrets_empty=0
+collect_secrets
+check "real: no secrets json" "$secrets_json" ""
+check "real: no logins json" "$logins_json" ""
+check "real: result marked empty" "$secrets_empty" 1
+check "real: no file written" "$([ -e "$dir/BREAK_GLASS.txt" ] && echo yes || echo no)" no
+check "real: nothing logged without a file" "$(wc -c < "$log" | tr -d ' ')" 0
+echo old > "$dir/BREAK_GLASS.txt"
+collect_secrets
+check "real: leftover file kept" "$(cat "$dir/BREAK_GLASS.txt")" old
+check "real: logs it is unused" "$(grep -c '^break-glass file no longer used; open a window with stack/break-glass.sh$' "$log")" 1
+check "real: log has no code" "$(grep -c 'abc123' "$log")" 0
 
-echo "ITC break-glass: $pass passed"
+# The report shape: eval the report body builder through a stub of the pieces it prints.
+body="$(secrets_json="" logins_json="" secrets_empty=1; { [ -n "$secrets_json" ] && :; } ; sed -n '/^report() {/,/^}/p' "$here/agent.sh" | grep -c 'secrets_empty')"
+check "report prints explicit empties" "$([ "$body" -ge 2 ] && echo yes || echo no)" yes
+
+echo "SEC agent secrets: $pass passed"
 [ "$fail" -eq 0 ]

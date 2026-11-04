@@ -79,6 +79,7 @@ const LEFT_OUT: Record<string, string> = {
   "[company]/(app)/settings/api-tokens/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/teams/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/webhooks/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/support-access/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/[key]/poster/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/devices/page.tsx": "settings need a database and a signed-in manager",

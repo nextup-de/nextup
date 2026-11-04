@@ -12,6 +12,8 @@ export type PlanUser = {
   entraOid: string | null;
   employeeId: string | null;
   email: string;
+  /** SCIM only: the subject of the user's SCIM link (EID D6), null when the user has none. */
+  scimSubject?: string | null;
   active: boolean;
   managerId: string | null;
   dept: string;
@@ -63,6 +65,8 @@ export type DirectoryPlan = {
   /** Ids of active users the page switches off. */
   leavers: string[];
   skipped: PlanSkip[];
+  /** SCIM only: existing users without a SCIM link that the page matched by email; the writer links them. */
+  links: { userId: string; subject: string }[];
   /** Ids of every existing user the page named (matched, changed or not): the writer stamps directorySyncedAt. */
   seen: string[];
 };
@@ -77,18 +81,28 @@ export function planDirectoryDelta(input: {
   takenHandles: string[];
 }): DirectoryPlan {
   const { source, page, users, units } = input;
-  const keyOf = (u: PlanUser) => (source === "successfactors" ? u.employeeId : u.entraOid);
+  const keyOf = (u: PlanUser) => (source === "successfactors" ? u.employeeId : source === "scim" ? (u.scimSubject ?? null) : u.entraOid);
   const byKey = new Map<string, PlanUser>();
   for (const u of users) {
     const k = keyOf(u);
     if (k) byKey.set(k, u);
   }
-  // Graph only: a user the sign-in never bound is found by the same email, lower case.
+  // Graph and SCIM: a user the source never bound is found by the same email, lower case.
   const byEmail = new Map<string, PlanUser>();
   if (source === "graph") for (const u of users) if (!u.entraOid) byEmail.set(lower(u.email), u);
+  if (source === "scim") for (const u of users) if (!u.scimSubject) byEmail.set(lower(u.email), u);
+  // SuccessFactors (D8): an active member without a personnel number, once, by the same email.
+  const sfxByEmail = new Map<string, PlanUser[]>();
+  if (source === "successfactors") {
+    for (const u of users) {
+      if (!u.active || u.employeeId) continue;
+      const k = lower(u.email);
+      sfxByEmail.set(k, [...(sfxByEmail.get(k) ?? []), u]);
+    }
+  }
 
   const removed = new Set(page.removedExternalIds);
-  const plan: DirectoryPlan = { creates: [], updates: [], managers: [], leavers: [], skipped: [], seen: [] };
+  const plan: DirectoryPlan = { creates: [], updates: [], managers: [], leavers: [], skipped: [], links: [], seen: [] };
   const emailsInUse = new Set(users.map((u) => lower(u.email)));
   const handles = new Set(input.takenHandles);
   // The personnel number is unique per company: one already held by another user is not written again.
@@ -106,9 +120,14 @@ export function planDirectoryDelta(input: {
   for (const e of page.entries) {
     if (refOf.has(e.externalId)) { plan.skipped.push({ externalId: e.externalId, reason: "duplicate" }); continue; }
     let u = byKey.get(e.externalId);
-    if (!u && source === "graph" && e.email) {
+    let linking = false;
+    if (!u && (source === "graph" || source === "scim") && e.email) {
       const byMail = byEmail.get(lower(e.email));
-      if (byMail && !claimed.has(byMail.id)) u = byMail;
+      if (byMail && !claimed.has(byMail.id)) { u = byMail; linking = source === "scim"; }
+    }
+    if (!u && source === "successfactors" && e.email && e.active && !removed.has(e.externalId)) {
+      const cands = sfxByEmail.get(lower(e.email)) ?? [];
+      if (cands.length === 1 && !claimed.has(cands[0].id)) u = cands[0];
     }
     if (u && claimed.has(u.id)) { plan.skipped.push({ externalId: e.externalId, reason: "duplicate" }); continue; }
     const leaving = !e.active || removed.has(e.externalId);
@@ -137,6 +156,8 @@ export function planDirectoryDelta(input: {
 
     claimed.add(u.id);
     plan.seen.push(u.id);
+    // A leaver found only by email stays unlinked: nothing to bind it for.
+    if (linking && !leaving) plan.links.push({ userId: u.id, subject: e.externalId });
     const ref: PlanRef = { userId: u.id };
     refOf.set(e.externalId, ref);
     if (leaving) {
@@ -149,18 +170,21 @@ export function planDirectoryDelta(input: {
     if (u.name !== undefined && u.name !== e.displayName) fields.name = e.displayName;
     const email = lower(e.email);
     if (email && email !== lower(u.email) && !emailsInUse.has(email)) { fields.email = email; emailsInUse.add(email); }
-    const dept = unit ? unit.key : "";
+    // SCIM sends partial documents: an unknown or missing department leaves the unit alone.
+    const dept = unit ? unit.key : source === "scim" ? u.dept : "";
     if (dept !== u.dept) fields.dept = dept;
     const line = e.jobTitle ?? "";
     if (u.line !== undefined && u.line !== line) fields.line = line;
-    // A user found by email is bound to the source key now; so is a SuccessFactors one never seen by id.
+    // A user found by email is bound to the source key now; a SuccessFactors one gets its personnel number.
     if (source === "graph" && u.entraOid !== e.externalId) fields.entraOid = e.externalId;
-    if (source === "graph" && u.employeeId !== (e.employeeId ?? null)) {
+    if (source === "successfactors" && u.employeeId !== e.externalId) fields.employeeId = e.externalId;
+    if ((source === "graph" || source === "scim") && u.employeeId !== (e.employeeId ?? null)) {
       const id = employeeIdFree(e.employeeId);
       if (id) fields.employeeId = id;
     }
     if (!u.active) fields.active = true;
-    if (Object.keys(fields).length > 0) plan.updates.push({ userId: u.id, fields });
+    // Linking an existing member is a change even when no field differs.
+    if (Object.keys(fields).length > 0 || linking) plan.updates.push({ userId: u.id, fields });
   }
 
   // An id that is only named in removedExternalIds (Graph sends no entry for a deleted user) is a leaver too.
@@ -177,7 +201,8 @@ export function planDirectoryDelta(input: {
   const resolveKey = (externalId: string): PlanRef | null => {
     const r = refOf.get(externalId);
     if (r) return r;
-    const u = byKey.get(externalId);
+    // SCIM: a manager without a SCIM link is named by the user id (the SCIM id).
+    const u = byKey.get(externalId) ?? (source === "scim" ? users.find((x) => x.id === externalId) : undefined);
     return u ? { userId: u.id } : null;
   };
   const same = (a: PlanRef | null, b: PlanRef | null) =>

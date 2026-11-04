@@ -1,7 +1,7 @@
 # Directory sync
 
-NextUp reads the company's people from Microsoft Entra (Graph) and keeps its own users in step with it. It is read-only:
-NextUp never writes to the directory. Plan: `docs/plans/2026-11-02_pilot-pages/build-plans/DIR/PLAN.md`.
+NextUp reads the company's people from Microsoft Entra (Graph) or from SAP SuccessFactors and keeps its own users in step
+with it. It is read-only: NextUp never writes to the directory. Plan: `docs/plans/2026-11-02_pilot-pages/build-plans/DIR/PLAN.md`.
 
 ## What the sync does
 
@@ -34,6 +34,34 @@ never compared.
 Everyone whose department names one of the company's org units (name or key, case-insensitive). A department that matches
 nothing is skipped; an admin adds the unit first.
 
+## SuccessFactors source (plan SFX)
+
+A company can choose SAP SuccessFactors as its source (`DirectoryRun.source = successfactors`, set in the console under
+Connectors → Directory). It needs no Entra app. Its access (API server, company id, API key, API user, sealed private
+key) is one `Integration` row with system `successfactors`; setup for the customer is
+`docs/customer/SUCCESSFACTORS_SETUP.md`.
+
+- **Adapter:** `server/directory/successfactors/` reads OData v2 with an OAuth SAML bearer token and maps the rows
+  (pure mapping in `features/directory/successfactors.ts`) to the same `DirectoryPage` the Graph adapter returns, so
+  `applyDirectoryDelta` is shared. One entry per employment; `removedExternalIds` is always empty (leavers come as
+  `active: false` from the end date).
+- **Fields (D3):** `User` (userId, firstName, lastName, email), `EmpEmployment` (personIdExternal, userId, startDate,
+  endDate), `EmpJob` (userId, startDate, department, jobTitle, managerId), `FODepartment` (externalCode, name, parent,
+  status), each with `lastModifiedDateTime`, always with `$select` and `$format=json`. Only GET, plus the POST to
+  `/oauth/token`. The personnel number is stored as `User.employeeId` and is never shown, logged or sent to the AI.
+- **Daily full read, changes in between:** the first run of each UTC day reads all four entities in full (this applies a
+  move or an end date that takes effect on a day without an edit); later runs read rows changed since the stored
+  watermark (minus five minutes) and the full rows of those people. Effective-dated entities are asked with
+  `asOfDate=<today>`. The stored cursor is JSON `{ v, watermark, fullDay }`, kept only after a finished round.
+- **Email match (D8):** an entry whose personnel number matches no user is matched, once, to exactly one active user of
+  the company with the same email (case-insensitive) and no `employeeId`; that user gets the number and is updated like
+  a matched user. Several matches, or a user who already has another personnel number: skipped as `email-taken`. Graph
+  matching is unchanged.
+- **Units:** the department name (`FODepartment.name`) is matched to a unit by name or key like any other department;
+  SFX creates no units.
+- **Interval:** the same loop and interval as Graph. A company without the `successfactors` row on, or with the
+  directory off, behaves exactly as before and the core loop never waits on SAP.
+
 ## Interval (Q2)
 
 Every 15 minutes (`DIRECTORY_INTERVAL_MS`, default 900000), delta only after the first full round. The loop is a no-op
@@ -57,6 +85,11 @@ active users with a manager). A route with a deputy role keeps it.
 `apps/app/tests/db/directory.test.ts` runs the loop on the Graph adapter with an injected `fetch` serving
 `apps/app/tests/fixtures/graph-directory/`: a full round, the delta round, then the same delta again.
 
+`apps/app/tests/db/directory-successfactors.test.ts` does the same for SuccessFactors with a fake SuccessFactors serving
+`apps/app/tests/fixtures/successfactors/` (it also verifies the signed assertion): credentials saved through the console
+action, a full read, a delta later the same day, a full read on the next day (the future-dated move and the end date take
+effect), the allow-list of requested fields, and the source off with sign-in and a raise unchanged.
+
 ## DIR gaps
 
 | Gap | Question | Answered by |
@@ -65,5 +98,6 @@ active users with a manager). A route with a deputy role keeps it.
 | G-016 | No directory sync: people, managers, deputies and leavers never reached NextUp | DIR-B1 (Graph adapter), DIR-C1 (sync loop and `/admin`), DIR-D1 (manager-chain deputy) |
 | G-017 | No deactivate or delete action for users | DIR-D1 (Members actions), DIR-G1 (inactive users cannot sign in) |
 
-Open: groups from Entra are carried in the page but not stored (ADM maps groups to units); only the Graph source has an
-adapter.
+Open: groups (Entra groups, SuccessFactors departments) are carried in the page but not stored (ADM maps groups to
+units); SAP HCM on premise has no connector and is supported only through Entra; the first SuccessFactors run on a live
+customer tenant is still to be done.

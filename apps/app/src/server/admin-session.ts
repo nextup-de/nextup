@@ -5,6 +5,7 @@
 // issueAdminSession would then hand out admin cookies to anybody.
 import { cookies } from "next/headers";
 import { ADMIN_COOKIE, ADMIN_TTL_SECONDS, adminBreakGlass, adminBy, adminVia, signAdmin, type AdminVia } from "@/features/auth/cookie";
+import { BREAK_GLASS_BY } from "@/features/admin/break-glass";
 import { usableSecret } from "@/features/admin/environment";
 import { secureCookies } from "@/server/issue-session";
 
@@ -33,11 +34,18 @@ export async function issueAdminSession(by?: string, breakGlass = false, via?: A
 /** A support session carries its grant id as `by`, so a new grant ends the old session. */
 const SUPPORT_BY = "support:";
 
+/** The window this break-glass session was opened with (its openedAt), or null (shared code, or not break-glass). */
+export async function breakGlassOpenedAt(): Promise<string | null> {
+  const secret = usableSecret(process.env.AUTH_SECRET);
+  const by = secret ? adminBy((await cookies()).get(ADMIN_COOKIE)?.value, secret) : null;
+  return by?.startsWith(BREAK_GLASS_BY) ? by.slice(BREAK_GLASS_BY.length) : null;
+}
+
 /** Who is signed in to /admin with Microsoft, or null (admin code, support, or nobody). */
 export async function adminActor(): Promise<string | null> {
   const secret = usableSecret(process.env.AUTH_SECRET);
   const by = secret ? adminBy((await cookies()).get(ADMIN_COOKIE)?.value, secret) : null;
-  return by && !by.startsWith(SUPPORT_BY) ? by : null;
+  return by && !by.startsWith(SUPPORT_BY) && !by.startsWith(BREAK_GLASS_BY) ? by : null;
 }
 
 /** The support grant this session was opened with, or null (not a support session). */

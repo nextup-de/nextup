@@ -5,12 +5,14 @@ import type { DirectoryPage } from "@nextup/contracts/public";
 import { seatsOfRole } from "@/features/auth/identity";
 import { reduce } from "@/features/cases/reducer";
 import { planDirectoryDelta, type PlanRef } from "@/features/directory/apply";
+import { SCIM_LINK_ISSUER } from "@/features/identity";
 import type { DirectoryCounts, DirectorySourceKind } from "@/features/directory";
 import { getDb } from "./client";
 import { loadSeed } from "./companies";
 import type { Tx } from "./org-edit";
 import { appendEventRow, loadLog } from "./events";
 import { loadSeats } from "./holders";
+import { linkIdentity } from "./sso";
 
 const ACTOR = "system:directory";
 
@@ -75,16 +77,22 @@ export async function applyDirectoryDelta(
   now: Date = new Date(),
 ): Promise<DirectoryCounts> {
   const db = getDb();
-  const [users, units, withHandle] = await Promise.all([
+  // SCIM keys people by the subject of their SCIM link (EID D6); the other sources do not read the links.
+  const [users, units, withHandle, scimLinks] = await Promise.all([
     db.user.findMany({
       where: { companyId },
       select: { id: true, entraOid: true, employeeId: true, email: true, active: true, managerId: true, dept: true, name: true, line: true },
     }),
     db.orgUnit.findMany({ where: { companyId }, select: { key: true, name: true, sort: true } }),
     db.user.findMany({ where: { companyId, handle: { not: null } }, select: { handle: true } }),
+    source === "scim"
+      ? db.externalIdentity.findMany({ where: { companyId, provider: "scim", issuer: SCIM_LINK_ISSUER }, select: { userId: true, subject: true } })
+      : Promise.resolve([]),
   ]);
+  const subjectOf = new Map(scimLinks.map((l) => [l.userId, l.subject]));
   const plan = planDirectoryDelta({
-    source, page, users, units,
+    source, page, units,
+    users: source === "scim" ? users.map((u) => ({ ...u, scimSubject: subjectOf.get(u.id) ?? null })) : users,
     takenHandles: withHandle.flatMap((h) => (h.handle ? [h.handle] : [])),
   });
 
@@ -99,7 +107,9 @@ export async function applyDirectoryDelta(
         select: { id: true },
       });
       created.push(row.id);
+      if (source === "scim") await linkIdentity({ companyId, userId: row.id, provider: "scim", issuer: SCIM_LINK_ISSUER, subject: c.externalId }, tx);
     }
+    for (const l of plan.links) await linkIdentity({ companyId, userId: l.userId, provider: "scim", issuer: SCIM_LINK_ISSUER, subject: l.subject }, tx);
     for (const u of plan.updates) {
       const { active, ...rest } = u.fields;
       await tx.user.updateMany({

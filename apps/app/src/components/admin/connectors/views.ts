@@ -3,7 +3,7 @@
 import type { AiSettings } from "@/features/ai/settings";
 import { formFromSettings } from "@/features/admin/jira-admin";
 import type { JiraForm } from "@/features/admin/jira-admin";
-import type { DirectorySourceKind } from "@/features/directory";
+import type { DirectoryCounts, DirectorySourceKind } from "@/features/directory";
 
 export type SecretState = "set" | "not set";
 export const secretState = (has: boolean): SecretState => (has ? "set" : "not set");
@@ -66,8 +66,41 @@ export function aiBlockView(settings: AiSettings, hasKey: boolean, vault: boolea
   };
 }
 
-export type DirectoryBlockView = { on: boolean; source: DirectorySourceKind; lastRunAt: string | null; lastError: string | null };
+/** The non-secret half of the SuccessFactors credentials (D7); the private key is only "set" or "not set". */
+export type SuccessFactorsFormView = { apiHost: string; companyId: string; clientId: string; apiUserId: string };
 
-export function directoryBlockView(s: { on: boolean; source: DirectorySourceKind; lastRunAt: Date | null; lastError: string | null }): DirectoryBlockView {
-  return { on: s.on, source: s.source, lastRunAt: s.lastRunAt?.toISOString() ?? null, lastError: s.lastError };
+/** Counts and times only: never a personnel number, never the key (SFX/D3, D7). */
+export type DirectoryBlockView = {
+  on: boolean;
+  source: DirectorySourceKind;
+  lastRunAt: string | null;
+  lastOkAt: string | null;
+  lastError: string | null;
+  counts: DirectoryCounts;
+  /** The credentials form is offered for SuccessFactors only. */
+  credentials: boolean;
+  successFactors: SuccessFactorsFormView;
+  key: SecretState;
+  vault: boolean;
+};
+
+const field = (o: Record<string, unknown>, k: string): string => (typeof o[k] === "string" ? (o[k] as string) : "");
+
+export function directoryBlockView(
+  s: { on: boolean; source: DirectorySourceKind; lastRunAt: Date | null; lastOkAt?: Date | null; lastError: string | null; counts?: DirectoryCounts },
+  sf: { settings: unknown; hasSecret: boolean; vault: boolean } | null = null,
+): DirectoryBlockView {
+  const o = sf && typeof sf.settings === "object" && sf.settings !== null ? (sf.settings as Record<string, unknown>) : {};
+  return {
+    on: s.on,
+    source: s.source,
+    lastRunAt: s.lastRunAt?.toISOString() ?? null,
+    lastOkAt: s.lastOkAt?.toISOString() ?? null,
+    lastError: s.lastError,
+    counts: s.counts ?? { added: 0, updated: 0, deactivated: 0, handed: 0 },
+    credentials: s.source === "successfactors",
+    successFactors: { apiHost: field(o, "apiHost"), companyId: field(o, "companyId"), clientId: field(o, "clientId"), apiUserId: field(o, "apiUserId") },
+    key: secretState(sf?.hasSecret === true),
+    vault: sf?.vault === true,
+  };
 }
