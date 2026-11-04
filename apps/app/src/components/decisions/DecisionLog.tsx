@@ -39,7 +39,10 @@ export function DecisionLog({ t, company, lines, total, page, pageSize, filters,
 
   return (
     <div className={styles.page}>
-      <PageHeader title={t("decisions.title")} lede={t("decisions.lead")} />
+      {/* With projects on this is a tab of Projects: the tab names the page. */}
+      {projectsOn
+        ? <h2 className={styles.sectionHead}>{t("decisions.sectionTitle")}<span className={styles.sectionCount}>{total}</span></h2>
+        : <PageHeader title={t("decisions.title")} lede={t("decisions.lead")} />}
       <SectionCard name="decisions">
 
       <form method="get" className={styles.filters} role="search">

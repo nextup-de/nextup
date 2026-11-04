@@ -59,7 +59,8 @@ test.afterAll(async () => {
 test("UIP cases", async ({ page, browser }) => {
   await signIn(page, company, MANAGER.name);
   const memberId = company.people[MEMBER.name].id;
-  await sweepPages(page, [`/${SLUG}/cases/${OPEN.id}`, `/${SLUG}/cases/${DECIDED.id}`, `/${SLUG}/team`, `/${SLUG}/decisions`, `/${SLUG}/people/${memberId}`]);
+  await sweepPages(page, [`/${SLUG}/cases/${OPEN.id}`, `/${SLUG}/cases/${DECIDED.id}`, `/${SLUG}/team`, `/${SLUG}/people/${memberId}`]);
+  await sweepPages(page, [`/${SLUG}/decisions`], { title: false }); // a tab of Projects: the tab names it
 
   await test.step("the case page shows its title, its events and takes a note", async () => {
     await page.goto(`/${SLUG}/cases/${OPEN.id}`);

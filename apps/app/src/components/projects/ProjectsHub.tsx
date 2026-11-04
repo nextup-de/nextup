@@ -1,16 +1,14 @@
 "use client";
 // Projects and the Overview on one page, side by side: "Projects" (what ideas became, grouped by where
 // they stand) on the left and "Ideas" (every problem and idea, the old Overview table) on the right.
-// /projects and /overview both stay valid addresses and show the same page; ProjectsTabs leads to the other tabs. The page is a wide one
+// /projects and /overview both stay valid addresses and show the same page; it is the Overview tab of the area (ProjectsTabs, in the shell). The page is a wide one
 // (about 80% of the screen) so both columns get room; below 1100px they stack, projects first.
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
-import { PageHeader } from "@/components/ui/elements";
 import { DashboardView } from "@/components/dashboard/team/DashboardView";
 import { visibleProjectsFor } from "@/features/projects/views";
 import { useT } from "@/i18n/client";
 import { ProjectsList } from "./ProjectsView";
-import { ProjectsTabs } from "./ProjectsTabs";
 import { idViewerOf } from "./parts";
 import styles from "./Projects.module.css";
 
@@ -19,17 +17,14 @@ export type HubTab = "projects" | "ideas";
 export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases?: boolean }) {
   const ctx = useDemo();
   const t = useT();
-  const { S, ready, demo, flag, role } = ctx;
+  const { S, ready, demo, flag } = ctx;
   if (!ready) return <PageSkeleton kind={tab === "ideas" ? "dashboard" : "list"} delay />;
   if (!flag("projects")) return <DashboardView linkCases={linkCases} />;
   const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
 
   return (
     <div className={styles.hub} data-wide="true">
-      <div className={styles.head}>
-        <ProjectsTabs active="projects" />
-        <PageHeader title={t("projects.pageTitle")} lede={role === "member" ? t("projects.hubSubMember") : t("projects.hubSubLead")} />
-      </div>
+      <h1 className="nh-sr">{t("projects.pageTitle")}</h1>
       <div className={styles.hubCols}>
         <section className={styles.hubProjects} aria-label={t("projects.pageTitle")}>
           <div className={styles.hubHead}>
