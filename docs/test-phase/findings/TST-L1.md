@@ -105,6 +105,9 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
   need 4.7 free cores; this PC delivers about 1.8 cores' worth to the run while the Workbench and other sessions use the rest. The test stays `it.fails`;
   no budget, load or threshold was changed. **The number to carry: 4.9 requests/s per process, about 21 requests/s per free core, 39 of the 100 needed.**
   Status: open; closes with one run on the idle test VM (`APP_REPLICAS=4`, TST-V1) or on this PC with nothing else running.
+- **Repeated after Kevin's go-ahead (TST-Z1, 2026-11-04):** 8 processes, existing build, PC at 76 % CPU load from other programs after the run: 1,094 requests in 30 s = 36 requests/s
+  (4.6 per process), inbox p95 4,737 ms, case p95 4,632 ms, 0 errors; the working day is p95 385 ms / 272 ms. Same figures as before: about 21 requests/s per free core, 36 of
+  the 100 needed. Nothing on this PC can be stopped from a lane, so the budget run still needs the idle test VM (`APP_REPLICAS=4`) or this PC with nothing else running. Status: open.
 - **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.
