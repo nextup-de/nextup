@@ -4,6 +4,7 @@ import { adminBase } from "@/features/admin/nav";
 import { singleCompany } from "@/features/tenant/urls";
 import type { PersonCandidate } from "@/features/people/resolve";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 
 export type PersonPage = { name: string; role: string; unitPath: string[] };
 
@@ -35,7 +36,6 @@ export async function personPage(companyId: string, userId: string): Promise<Per
   return { name: user.name, role: seat.role.title, unitPath };
 }
 
-/** user id -> display name for every active, handle-free user of the company who holds a seat. */
 /**
  * Where this person's account menu leads to the IT console, or null. Only an active console admin
  * (`isStackAdmin`) of a one-company stack: elsewhere there is no console. Someone whose console access
@@ -47,7 +47,12 @@ export async function consoleHrefFor(companyId: string, userId: string): Promise
   return user ? adminBase() : null;
 }
 
-export async function personLinksFor(companyId: string): Promise<Record<string, string>> {
+/** user id -> display name for every active, handle-free user of the company who holds a seat. */
+export function personLinksFor(companyId: string): Promise<Record<string, string>> {
+  return memo("links", companyId, () => readPersonLinks(companyId));
+}
+
+async function readPersonLinks(companyId: string): Promise<Record<string, string>> {
   const db = getDb();
   const seats = await db.orgRoleHolder.findMany({ where: { companyId, userId: { not: null } }, select: { userId: true } });
   const ids = [...new Set(seats.flatMap((s) => (s.userId === null ? [] : [s.userId])))];
