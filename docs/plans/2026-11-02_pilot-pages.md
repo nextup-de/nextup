@@ -208,7 +208,7 @@ The target is [design-system/README.md](../../design-system/README.md). In short
 
 - Cool system greys, white cards with a soft shadow on the light app ground (`--nh-app-ground`), 12 px card radius,
   8 px control radius. Never a white card inside a white card: facts inside a card go on a grey panel (`InfoPanel`).
-- **Black is the action colour** (primary pill button). Grey fill for the alternatives. **Blue means state**
+- *Replaced on 4 Nov 2026: buttons and selected states use the blue token, no fill is black (`src/styles/tokens.css`). The old rule read:* **Black is the action colour** (primary pill button). Grey fill for the alternatives. **Blue means state**
   (selected, now, progress, the AI sparkle), not action. Red only for a late number and for errors.
 - Type from the fixed scale only (`--nh-fs-xs` 12 … `--nh-fs-4xl` 34); page headings `--nh-fs-2xl` 600 with
   -0.02em tracking; numbers with tabular figures. No serif or display font anywhere.
