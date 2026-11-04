@@ -3,7 +3,7 @@
 // export actors) shows the pseudonym; the case event table stays byte-for-byte; immutable comment text
 // may still hold her name. Own company in stage pilot, deleted at the end, like admin-setup.spec.ts.
 import type { Page } from "@playwright/test";
-import { expect, passSecondFactor, test } from "../helpers";
+import { expect, passSecondFactor, test, vis } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { createTestCompany, deleteTestCompany } from "./company-fixture";
 
@@ -70,7 +70,7 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
     // Sign in: code, then second factor (as ADM-Z1).
     const page = await (await browser.newContext()).newPage();
     await page.goto(`/${SLUG}/login`);
-    await page.locator("#code").fill(codes.get(MANAGER.name) ?? "");
+    await page.locator("#code:visible").fill(codes.get(MANAGER.name) ?? "");
     await page.getByRole("button", { name: "Log in", exact: true }).click();
     await passSecondFactor(page, `${SLUG}|${MANAGER.name}`);
     await expect(page).not.toHaveURL(/\/login/);
@@ -90,7 +90,7 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
 
     // The audit view shows "Deactivated" about Lena Brandt.
     await page.goto(`/${SLUG}/settings/audit`);
-    const auditRows = page.locator('[data-testid="settings-audit-row"]');
+    const auditRows = vis(page, "settings-audit-row");
     await expect(auditRows.filter({ hasText: "Deactivated" }).filter({ hasText: LENA.name }).first()).toBeVisible({ timeout: 15_000 });
 
     // Admin-only export from her menu; the dialog says so and the reason is recorded.
@@ -98,16 +98,16 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
     await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await menu().click();
     await row().locator('[data-testid="member-export-open"]').click();
-    const dialog = page.locator('[data-testid="member-export-dialog"]');
-    await expect(dialog.locator('[data-testid="member-export-inactive"]')).toContainText(/admin-only copy/i);
-    await dialog.locator('[data-testid="member-export-submit"]').click();
-    await expect(page.locator('[data-testid="member-privacy-status"]')).toBeVisible({ timeout: 15_000 });
+    const dialog = vis(page, "member-export-dialog");
+    await expect(vis(dialog, "member-export-inactive")).toContainText(/admin-only copy/i);
+    await vis(dialog, "member-export-submit").click();
+    await expect(vis(page, "member-privacy-status")).toBeVisible({ timeout: 15_000 });
     const exported = await db.auditEvent.findFirstOrThrow({ where: { companyId: company.id, action: "audit.privacy.exported" } });
     expect(JSON.stringify(exported)).toMatch(/admin-only/i);
 
     // Download from Data and privacy: her events are in it, the second member is not.
     await page.goto(`/${SLUG}/settings/privacy`);
-    const href = await page.locator('[data-testid="settings-privacy-download"]').first().getAttribute("href");
+    const href = await vis(page, "settings-privacy-download").first().getAttribute("href");
     const person = await download(page, href ?? "");
     expect(person.tables.events).toHaveLength(2);
     expect(person.tables.events.every((e) => e.actorUserId === lena.id)).toBe(true);
@@ -120,9 +120,9 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
     await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await menu().click();
     await row().locator('[data-testid="member-pseudonymise-open"]').click();
-    await page.locator('[data-testid="member-pseudonymise-name"]').fill("lena brandt");
-    await page.locator('[data-testid="member-pseudonymise-submit"]').click();
-    await expect(page.locator('[data-testid="member-privacy-status"]')).toContainText("Former member #", { timeout: 15_000 });
+    await vis(page, "member-pseudonymise-name").fill("lena brandt");
+    await vis(page, "member-pseudonymise-submit").click();
+    await expect(vis(page, "member-privacy-status")).toContainText("Former member #", { timeout: 15_000 });
 
     // Members list and audit view show the pseudonym; the event table is unchanged.
     await page.goto(`/${SLUG}/settings/members`);
@@ -136,8 +136,8 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
 
     // A new company export holds the pseudonym as identity; immutable comment text may keep the name.
     await page.goto(`/${SLUG}/settings/privacy`);
-    await page.locator('[data-testid="settings-privacy-export-company"]').click();
-    const links = page.locator('[data-testid="settings-privacy-download"]');
+    await vis(page, "settings-privacy-export-company").click();
+    const links = vis(page, "settings-privacy-download");
     await expect(links).toHaveCount(1, { timeout: 15_000 }); // her own export expired with the pseudonym;
     const all = await download(page, (await links.first().getAttribute("href")) ?? "");
     const mine = all.tables.events.filter((e) => e.actorUserId === lena.id);

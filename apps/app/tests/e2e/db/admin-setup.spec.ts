@@ -3,7 +3,7 @@
 // raises reaches the leader who holds the route's owner seat. The fixture creates the
 // company in the database and deletes it. Own company, like structure.spec.ts.
 import type { Browser, Locator, Page } from "@playwright/test";
-import { expect, passSecondFactor, publishIdea, test } from "../helpers";
+import { expect, passSecondFactor, publishIdea, test, vis } from "../helpers";
 import { createTestCompany, deleteTestCompany } from "./company-fixture";
 
 const STAMP = Date.now().toString(36);
@@ -28,7 +28,7 @@ async function createCompany() {
 async function signIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto(`/${SLUG}/login`);
-  await page.locator("#code").fill(codes.get(name) ?? "");
+  await page.locator("#code:visible").fill(codes.get(name) ?? "");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   await passSecondFactor(page, `${SLUG}|${name}`);
   await expect(page).not.toHaveURL(/\/login/);
@@ -36,7 +36,6 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
 }
 
 /** A test id as it is on screen: a page kept from the step before may still sit hidden in the DOM. */
-const vis = (from: Page | Locator, id: string) => from.locator(`[data-testid="${id}"]:visible`);
 const setup = (page: Page) => page.goto(`/${SLUG}/settings/setup`);
 
 /** Invite a person on the Members step; the mail carries the code, so a fresh one is issued from their row to read it. */

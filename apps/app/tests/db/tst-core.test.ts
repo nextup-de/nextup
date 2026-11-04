@@ -294,6 +294,9 @@ describe("TST core loop", () => {
   });
 
   it("hides unit and role numbers below 5 people and shows them from 5", async () => {
+    // People without a seat count in their unit now (FX3), so every generated unit has 5 or more: add a small one.
+    await db.orgUnit.create({ data: { companyId, key: "TINY", name: "Tiny unit", headcount: 2 } });
+    await db.user.createMany({ data: ["tiny1", "tiny2"].map((n) => ({ companyId, name: n, email: n + "@tst-core.example", role: "member", dept: "TINY" })) });
     const data = await dashboardData(companyId, { unitId: null, kind: "quarter" });
     const inputs = await ledgerInputs(companyId, data.period);
     const small = inputs.org.units.filter((u) => u.people < MIN_GROUP);

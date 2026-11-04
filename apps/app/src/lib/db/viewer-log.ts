@@ -5,7 +5,7 @@ import type { Role } from "@/config/roles";
 import { meFor } from "@/features/auth/identity";
 import type { EventLog, EventPayload } from "@/features/cases/events";
 import { logFromRows, type EventRow } from "@/features/cases/persist";
-import { unitsOf, viewerKeys } from "@/features/cases/visibility";
+import { membersForViewer, unitsOf, viewerKeys, type VisMember } from "@/features/cases/visibility";
 import type { Seed, SeedCase } from "@/features/demo/types";
 import type { SeedProject } from "@/features/projects/types";
 import { loadCalendar } from "./calendar";
@@ -13,7 +13,7 @@ import { getDb } from "./client";
 import { companySeed } from "./companies";
 import { companyDay, loadLog } from "./events";
 import { loadSeats } from "./holders";
-import { loadKnowledge } from "./knowledge";
+import { loadKnowledge, loadMembers } from "./knowledge";
 import { caseView, visibleCaseIds } from "./projections/readers";
 
 /** The window of VIS/D9: open cases, and closed ones whose last day is within this many working days. */
@@ -29,9 +29,15 @@ export type LogViewer = { userId: string; role: Role };
 export type ViewerLog = { log: EventLog; caseIds: string[] | null; projectIds: string[] | null };
 
 async function keysOf(companyId: string, viewer: LogViewer): Promise<string[]> {
-  const [seats, knowledge] = await Promise.all([loadSeats(companyId), loadKnowledge(companyId)]);
+  const [seats, knowledge, members] = await Promise.all([loadSeats(companyId), loadKnowledge(companyId), loadMembers(companyId)]);
   const me = meFor(viewer.userId, seats);
-  return viewerKeys(me, viewer.role, unitsOf(me, knowledge));
+  return viewerKeys(me, viewer.role, unitsOf(me, { roles: knowledge.roles, members }));
+}
+
+/** The people without a seat this viewer's browser needs, so its lists agree with the server (FX3). */
+export async function membersOfViewer(companyId: string, userId: string): Promise<VisMember[]> {
+  const [seats, knowledge, members] = await Promise.all([loadSeats(companyId), loadKnowledge(companyId), loadMembers(companyId)]);
+  return membersForViewer(members, meFor(userId, seats), knowledge);
 }
 
 const projectIdOf = (payload: unknown): string[] => {

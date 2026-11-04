@@ -36,6 +36,19 @@ function remove(key: string) {
   try { localStorage.removeItem(key); } catch { /* ignore */ }
 }
 
+// The dev panel's Demo data switch is temporary: it holds for every page of this company in this tab and is gone
+// when the tab closes, so sessionStorage, not the prefs above. A value an older version stored there is ignored.
+const demoKey = (slug: string) => "nextup." + slug + ".demo.v1";
+function readDemo(slug: string): boolean | undefined {
+  try { const v = sessionStorage.getItem(demoKey(slug)); return v === null ? undefined : v === "1"; } catch { return undefined; }
+}
+function writeDemo(slug: string, on: boolean | undefined) {
+  try {
+    if (on === undefined) sessionStorage.removeItem(demoKey(slug));
+    else sessionStorage.setItem(demoKey(slug), on ? "1" : "0");
+  } catch { /* private mode: until the reload */ }
+}
+
 function readLog(slug: string): EventLog {
   const cur = read<EventLog>(logKey(slug));
   return cur && Array.isArray(cur.events) ? { events: cur.events, day: cur.day | 0 } : emptyLog();
@@ -55,7 +68,7 @@ export function subscribe(fn: () => void) {
 // Client snapshot: read once per company, then served from memory (stable reference).
 export function getSnapshot(slug: string): Persisted {
   let p = cache.get(slug);
-  if (!p) { p = { log: readLog(slug), prefs: read<DemoPrefs>(prefsKey(slug)) ?? {}, loaded: true }; cache.set(slug, p); }
+  if (!p) { p = { log: readLog(slug), prefs: { ...read<DemoPrefs>(prefsKey(slug)), demo: readDemo(slug) }, loaded: true }; cache.set(slug, p); }
   return p;
 }
 export const getServerSnapshot = () => SERVER;
@@ -75,12 +88,14 @@ export function resetLog(slug: string) {
 export function setPrefs(slug: string, patch: DemoPrefs) {
   const prefs = { ...getSnapshot(slug).prefs, ...patch };
   cache.set(slug, { ...getSnapshot(slug), prefs });
-  write(prefsKey(slug), prefs);
+  if ("demo" in patch) writeDemo(slug, patch.demo);
+  write(prefsKey(slug), { ...prefs, demo: undefined });
   emit();
 }
 // Log out: forget who was looking (role, desk, scope). The event log stays - it is the company's, not the user's.
 export function clearPrefs(slug: string) {
   remove(prefsKey(slug));
+  writeDemo(slug, undefined);
   cache.set(slug, { ...getSnapshot(slug), prefs: {} });
   emit();
 }

@@ -6,6 +6,8 @@
 // invited; they are on the project it opened or joined; the raiser's choice lets them (everyone;
 // custom with their user id or one of their units; private lets nobody else); with no choice a manager
 // always, a leader when the raiser's seat reports to one of the leader's roles, a member never.
+// A person without a seat (the directory creates none) belongs to their department's unit; with no choice
+// their manager sees the case, or, without one, the head of that unit (FX3).
 // That is written as keys: accessKeys(case) holds every key that opens it, viewerKeys(me) every key a
 // viewer carries, and canOpen is "they share one".
 import type { Role } from "@/config/roles";
@@ -15,7 +17,9 @@ import type { ReducedCase } from "./reducer";
 import type { Visibility } from "./events";
 
 export type VisRole = { id: string; orgUnitId: string; reportsToId: string | null };
-export type VisCtx = { seats: SeatRow[]; roles: VisRole[]; projects: ReducedProject[] };
+/** A person without a seat: the unit their department names and their active manager. */
+export type VisMember = { userId: string; unitId: string | null; managerId: string | null };
+export type VisCtx = { seats: SeatRow[]; roles: VisRole[]; projects: ReducedProject[]; members?: VisMember[] };
 export type VisViewer = { me: Me; role: Role; unitIds: string[] };
 
 /** What the raiser chose when raising: the choice and, for custom, the ids; the old labels are never read. */
@@ -24,10 +28,28 @@ function choiceOf(c: ReducedCase): { visibility: Visibility | null; userIds: str
   return { visibility: p?.visibility ?? null, userIds: p?.seenByUserIds ?? [], unitIds: p?.seenByUnitIds ?? [] };
 }
 
-/** The unit ids of the viewer's seats' roles, without duplicates. */
-export function unitsOf(me: Me, ctx: Pick<VisCtx, "roles">): string[] {
+/** The unit ids of the viewer's seats' roles and of their department, without duplicates. */
+export function unitsOf(me: Me, ctx: Pick<VisCtx, "roles" | "members">): string[] {
   const units = ctx.roles.filter((r) => me.roleIds.includes(r.id)).map((r) => r.orgUnitId);
-  return [...new Set(units)];
+  const own = ctx.members?.find((m) => m.userId === me.userId)?.unitId;
+  return [...new Set(own ? [...units, own] : units)];
+}
+
+/** The top of a unit: its roles that report to nobody inside it. */
+function headRoles(unitId: string, roles: readonly VisRole[]): VisRole[] {
+  const unitOf = new Map(roles.map((r) => [r.id, r.orgUnitId]));
+  return roles.filter((r) => r.orgUnitId === unitId && (r.reportsToId === null || unitOf.get(r.reportsToId) !== unitId));
+}
+
+/**
+ * The rows this viewer's own view needs: themselves, the people they manage, and the people without a
+ * manager in a unit they head. A big company's staff list stays on the server, and the rule still gives the
+ * browser the server's answer for this viewer.
+ */
+export function membersForViewer(members: readonly VisMember[], me: Me, ctx: Pick<VisCtx, "roles">): VisMember[] {
+  if (me.userId === null) return [];
+  const headOf = (unitId: string | null) => unitId !== null && headRoles(unitId, ctx.roles).some((r) => me.roleIds.includes(r.id));
+  return members.filter((m) => m.userId === me.userId || m.managerId === me.userId || (m.managerId === null && headOf(m.unitId)));
 }
 
 /** Every key that opens this case. */
@@ -58,6 +80,10 @@ export function accessKeys(c: ReducedCase, ctx: VisCtx): string[] {
     // No choice: the roles the raiser's seats report to see it.
     const mine = new Set(ctx.seats.filter((s) => s.userId === c.fromUserId).map((s) => s.roleId));
     for (const r of ctx.roles) if (mine.has(r.id)) role(r.reportsToId);
+    // No seat to report from: their manager, or the head of their unit.
+    const member = mine.size === 0 ? ctx.members?.find((m) => m.userId === c.fromUserId) : undefined;
+    if (member?.managerId) user(member.managerId);
+    else if (member?.unitId) for (const r of headRoles(member.unitId, ctx.roles)) role(r.id);
   }
   return [...keys];
 }
