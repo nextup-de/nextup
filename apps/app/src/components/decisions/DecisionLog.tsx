@@ -1,6 +1,7 @@
 // The decision log (LOOP/D21): a read-only table of every yes and no the viewer may open. Plain props
 // in, JSX out; the page fetches and the filters are a GET form, so nothing here edits anything.
 import Link from "next/link";
+import { PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
 import type { T } from "@/i18n";
 import styles from "./DecisionLog.module.css";
 
@@ -38,10 +39,8 @@ export function DecisionLog({ t, company, lines, total, page, pageSize, filters,
 
   return (
     <div className={styles.page}>
-      <header>
-        <h1 className={styles.title}>{t("decisions.title")}</h1>
-        <p className={styles.lead}>{t("decisions.lead")}</p>
-      </header>
+      <PageHeader title={t("decisions.title")} lede={t("decisions.lead")} />
+      <SectionCard name="decisions">
 
       <form method="get" className={styles.filters} role="search">
         <input type="search" name="q" defaultValue={filters.q} placeholder={t("decisions.search")} aria-label={t("decisions.search")} className={styles.search} data-testid="decisions-filter-q" />
@@ -94,7 +93,7 @@ export function DecisionLog({ t, company, lines, total, page, pageSize, filters,
                   </td>
                   <td data-label={t("decisions.colDecidedBy")}>
                     {role(l)}
-                    {l.personName && <span className={styles.meta}>{l.personName}</span>}
+                    {l.personName && <span className={styles.person}><PersonFace name={l.personName} size="sm" /><span className={styles.meta}>{l.personName}</span></span>}
                   </td>
                   {projectsOn && (
                     <td data-label={t("decisions.colProject")}>
@@ -112,6 +111,7 @@ export function DecisionLog({ t, company, lines, total, page, pageSize, filters,
           </nav>
         </>
       )}
+      </SectionCard>
     </div>
   );
 }
