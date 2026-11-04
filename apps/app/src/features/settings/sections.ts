@@ -2,12 +2,13 @@
 // Pure: the layout and the index page fetch the counts and hand them in.
 import type { MessageKey } from "@/i18n";
 
-export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "signIn" | "supportAccess" | "teams" | "areas" | "privacy" | "audit";
+export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "signIn" | "supportAccess" | "teams" | "areas" | "privacy" | "audit" | "goLive" | "pilotReport";
 export type SettingsGroup = "start" | "company" | "structure" | "data";
 export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey; group: SettingsGroup };
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { key: "setup", path: "setup", label: "settingsSetup.navLabel", group: "start" },
+  { key: "goLive", path: "go-live", label: "settingsGoLive.navLabel", group: "start" },
   { key: "company", path: "company", label: "settingsCompany.navLabel", group: "company" },
   { key: "rules", path: "rules", label: "settingsCompany.navRules", group: "company" },
   { key: "calendar", path: "calendar", label: "settingsCompany.navCalendar", group: "company" },
@@ -24,6 +25,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { key: "areas", path: "areas", label: "settingsAreas.navLabel", group: "structure" },
   { key: "privacy", path: "privacy", label: "settingsPrivacy.navLabel", group: "data" },
   { key: "audit", path: "audit", label: "settingsAudit.navLabel", group: "data" },
+  { key: "pilotReport", path: "pilot-report", label: "settingsPilotReport.navLabel", group: "data" },
 ];
 
 export type SetupStep = "company" | "units" | "roles" | "routes" | "members" | "done";
