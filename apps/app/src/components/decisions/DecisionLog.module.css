@@ -2,6 +2,8 @@
    The table is a real <table> (each row keeps its test id); it looks like the DataTable element, and on a
    phone every row becomes a small card. */
 .page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: var(--nh-max); margin: 0 auto; min-width: 0; }
+.sectionHead { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; color: #1b1d22; letter-spacing: -0.01em; line-height: 22px; }
+.sectionCount { font-size: var(--nh-fs-xs); color: #8e8e93; font-weight: 500; font-variant-numeric: tabular-nums; }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .filters select, .search, .apply { box-sizing: border-box; height: 36px; padding-inline: 12px; border: 1px solid #e5e5ea; border-radius: 8px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: #1c1c1e; }
 .filters select:focus, .search:focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }

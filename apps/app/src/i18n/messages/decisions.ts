@@ -4,6 +4,8 @@ import { defineMessages } from "../define";
 export const decisions = defineMessages({
   en: {
     navLabel: "Decision log",
+    tab: "Decisions",
+    sectionTitle: "Every yes and no",
     title: "Decision log",
     lead: "Every yes and no on a case, who decided it and what came of it.",
     search: "Search case or reason",
@@ -39,6 +41,8 @@ export const decisions = defineMessages({
   },
   de: {
     navLabel: "Entscheidungsprotokoll",
+    tab: "Entscheidungen",
+    sectionTitle: "Jedes Ja und Nein",
     title: "Entscheidungsprotokoll",
     lead: "Jedes Ja und Nein zu einem Fall, wer entschieden hat und was daraus wurde.",
     search: "Fall oder Begründung suchen",

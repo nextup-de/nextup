@@ -25,8 +25,8 @@ export function ProgressView() {
 
   return (
     <>
-      <PageHeader title={t("progress.title")} lede={t("progress.lead")} />
-      <div className={styles.stack}>
+      {!on && <PageHeader title={t("progress.title")} lede={t("progress.lead")} />}
+      <div className={styles.stack} data-tab={on ? "true" : undefined}>
         {!on ? (
           <SectionCard><div className={styles.empty}>{t("progress.emptyOff")}</div></SectionCard>
         ) : (
