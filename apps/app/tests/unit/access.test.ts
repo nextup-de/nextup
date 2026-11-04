@@ -104,7 +104,8 @@ describe("single mode", () => {
   });
 
   it("lets the static demo through", () => {
-    for (const p of ["/demo", "/demo/raise"]) expect(single(p).kind).toBe("pass");
+    // A company's stack has no static demo: the path is gone, on staging too.
+    for (const p of ["/demo", "/demo/raise"]) expect(single(p)).toEqual({ kind: "gone" });
   });
 
   it("serves the static demo at the root of a stack whose company is called demo, with no login", () => {

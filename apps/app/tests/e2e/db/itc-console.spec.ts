@@ -93,4 +93,8 @@ test.describe.serial("ITC acceptance", () => {
     await support.context().close();
     await admin.context().close();
   });
+
+  test("a company stack has no static demo: /demo answers 404", async ({ request }) => {
+    for (const path of ["/demo", "/demo/raise"]) expect((await request.get(path, { maxRedirects: 0 })).status(), path).toBe(404);
+  });
 });

@@ -27,16 +27,17 @@ export type TenantMode = "path" | "subdomain" | "single";
 
 /**
  * The static demo (app/demo, docs/IDEAS.md "The demo page"): made-up data, no company behind it, no
- * login. Its path is never a company's, in path and single mode alike. Not a reserved slug: a single
- * stack whose company is called "demo" (demo.sellux.ch) IS the static demo, served at its root.
+ * login. Its path is never a company's. A single stack whose company is called "demo" (demo.sellux.ch)
+ * IS the static demo, served at its root, so it is not a reserved slug; any other single stack answers
+ * 404 for the path. Path mode, for local work and the demo e2e suite, serves it as /demo.
  */
 export const STATIC_DEMO = "demo";
 
 /**
  * Pages outside the company segment that a single-company stack still serves as they are:
- * accepting an invite and resetting a password start from a link in an e-mail; the static demo.
+ * accepting an invite and resetting a password start from a link in an e-mail.
  */
-const SINGLE_PASSTHROUGH = ["invite", "signup", "forgot-password", STATIC_DEMO] as const;
+const SINGLE_PASSTHROUGH = ["invite", "signup", "forgot-password"] as const;
 
 export function isReservedSlug(slug: string): boolean {
   return (RESERVED_SLUGS as readonly string[]).includes(slug);
@@ -54,6 +55,8 @@ export type Resolved =
   | { kind: "admin"; appPath: string; rewriteTo: string | null }
   /** The static demo at the root of a stack that is the demo: made-up data, no sessions, nothing to guard. */
   | { kind: "demo"; rewriteTo: string }
+  /** The static demo's path on a stack that is not the demo: no such page. */
+  | { kind: "gone" }
   /** Marketing, auth, anything else: not ours to guard. */
   | { kind: "pass" };
 
@@ -90,6 +93,7 @@ export function resolveRequest(
     // /admin stays a path of its own until it moves to apps/ops.
     if (first === "admin") return { kind: "admin", appPath: "/" + rest.join("/"), rewriteTo: null };
     if ((SINGLE_PASSTHROUGH as readonly string[]).includes(first)) return { kind: "pass" };
+    if (first === STATIC_DEMO) return company === STATIC_DEMO ? { kind: "pass" } : { kind: "gone" };
     if (company === STATIC_DEMO) return { kind: "demo", rewriteTo: "/" + STATIC_DEMO + (path === "/" ? "" : path) };
     if (!company || !isValidSlug(company)) return { kind: "pass" };
     return {
