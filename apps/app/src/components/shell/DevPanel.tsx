@@ -134,7 +134,7 @@ export function DevPanel() {
             </button>
           )}
 
-          <button type="button" className={styles.rowBtn} onClick={ctx.toggleDemo} title="Off by default. On for every page in this tab, until it closes." aria-pressed={demo}>
+          <button type="button" className={styles.rowBtn} onClick={ctx.toggleDemo} title="Off by default. Fills every page with sample cases, ideas and projects from a car plant, in this tab only, until it closes." aria-pressed={demo}>
             <span className={styles.rowTitle}>Demo data</span>
             <span className={styles.track} data-on={demo ? "true" : undefined}><span className={styles.knob} /></span>
           </button>
