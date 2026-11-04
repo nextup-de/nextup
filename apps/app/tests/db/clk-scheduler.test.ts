@@ -7,6 +7,7 @@ import { DEFAULT_CALENDAR } from "@/features/clock";
 import { getDb } from "@/lib/db/client";
 import { companySeed } from "@/lib/db/companies";
 import { bindDemoCompany } from "@/lib/db/demo-identity";
+import { peopleForSeats } from "./test-company";
 import { appendEventRow } from "@/lib/db/events";
 import { runClockOnce } from "@/server/scheduler/clock";
 import { writeStructure } from "@/lib/db/structure-writes";
@@ -25,6 +26,7 @@ async function company(slug: string, stage: string, demoDay = 0) {
     data: { slug, name: slug, stage, demoDay, seedJson: toSeedJson(writes.seedJson) as object, users: { create: [person("B. Hartmann", "manager"), person("T. Vogel", "leader"), person("J. Schmidt", "member")] } },
   });
   await writeStructure(c.id, writes, "test");
+  await peopleForSeats(c.id, slug);
   await bindDemoCompany(c.id);
   const seed = await companySeed({ id: c.id, seedJson: c.seedJson, stage });
   const routeId = seed.routes.find((r) => r.ownerSeatId)!.id;
