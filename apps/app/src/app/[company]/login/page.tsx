@@ -9,7 +9,9 @@ import { CompanyLoginForm } from "@/components/auth/CompanyLoginForm";
 import { DemoButton } from "@/components/auth/DemoButton";
 import { Button } from "@/components/ui/Button";
 import { findTenant } from "@/features/tenant";
-import { hasDatabase } from "@/lib/db/client";
+import { getDb, hasDatabase } from "@/lib/db/client";
+import { ssoButtonsFor } from "@/lib/db/sso-buttons";
+import type { MessageKey } from "@/i18n";
 import { SITE } from "@/config/site";
 import { getT } from "@/i18n/server";
 import { isMicrosoftError, MICROSOFT_ERRORS } from "@/features/auth/entra";
@@ -17,7 +19,14 @@ import { demoPersonFor } from "@/server/demo-login";
 import { companyPrefix, microsoftEnabledFor, safeNext } from "@/server/microsoft-login";
 import styles from "@/components/auth/forms.module.css";
 
-type Props = { params: Promise<{ company: string }>; searchParams: Promise<{ next?: string; error?: string }> };
+// The codes of server/identity/finish.ts (SsoErrorCode) and their lines. Anything else shows no message.
+const SSO_ERROR_KEY: Record<string, MessageKey> = {
+  demo_company: "ssoLogin.demo_company", not_on: "ssoLogin.not_on", state: "ssoLogin.state", expired: "ssoLogin.expired",
+  invalid_response: "ssoLogin.invalid_response", email_unverified: "ssoLogin.email_unverified", no_email: "ssoLogin.no_email",
+  unknown_user: "ssoLogin.unknown_user", ambiguous: "ssoLogin.ambiguous", inactive: "ssoLogin.inactive", failed: "ssoLogin.failed",
+};
+
+type Props = { params: Promise<{ company: string }>; searchParams: Promise<{ next?: string; error?: string; sso_error?: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const tenant = await findTenant((await params).company);
@@ -28,7 +37,7 @@ export async function generateMetadata({ params }: Props) {
 export default async function CompanyLoginPage({ params, searchParams }: Props) {
   const { company } = await params;
   const t = await getT();
-  const { next: rawNext, error } = await searchParams;
+  const { next: rawNext, error, sso_error: ssoError } = await searchParams;
   const tenant = await findTenant(company);
   if (!tenant) notFound(); // the layout 404s too, but layouts and pages render in parallel
   const short = tenant.name.split(" ")[0];
@@ -37,6 +46,9 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
   const [microsoft, demoPerson] = hasDatabase()
     ? await Promise.all([microsoftEnabledFor(tenant.slug), demoPersonFor(tenant.slug)])
     : [false, null];
+  const found = hasDatabase() ? await getDb().company.findUnique({ where: { slug: tenant.slug }, select: { id: true } }) : null;
+  const sso = found ? (await ssoButtonsFor(found.id)).map((b) => ({ ...b, href: `${companyPrefix(tenant.slug)}/login/${b.provider}${next ? `?next=${encodeURIComponent(next)}` : ""}` })) : [];
+  const ssoMessage = ssoError && SSO_ERROR_KEY[ssoError] ? t(SSO_ERROR_KEY[ssoError], { company: tenant.name }) : undefined;
   const microsoftHref = microsoft
     ? `${companyPrefix(tenant.slug)}/login/microsoft${next ? `?next=${encodeURIComponent(next)}` : ""}`
     : null;
@@ -78,6 +90,8 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
             next={next}
             microsoftHref={microsoftHref}
             microsoftError={isMicrosoftError(error) ? MICROSOFT_ERRORS[error] : undefined}
+            sso={sso}
+            ssoError={ssoMessage}
           />
           <DemoButton slug={tenant.slug} next={next} person={demoPerson} />
         </>
