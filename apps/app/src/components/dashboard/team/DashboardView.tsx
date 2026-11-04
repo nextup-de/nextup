@@ -36,6 +36,7 @@ import { OverviewIdea, type IdeaMode, type OverviewIdeaProps } from "./OverviewI
 import { OverviewPhone } from "./OverviewPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
+import { DeptChip } from "@/components/ui/elements";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
@@ -252,12 +253,13 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   }
 
   return (
-    <div className={s.root}>
+    <div className={s.root} data-embedded={embedded ? "true" : undefined}>
       <div className={s.div7}>
         <div className={s.div8}>
           <div className={s.div9}>
-            {/* On the Projects page the page title above is the heading; the column brings its own. */}
+            {/* On the Projects page the column brings its own heading, with Open | Archive beside it. */}
             {embedded ? title : <h1 className={s.overview}>{t("team.dashOverview")}</h1>}
+            {embedded && split && <ArchiveTabs quiet view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} />}
           </div>
           <div className={s.div10}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}
@@ -296,7 +298,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             </div>
           </div>
         </div>
-        {split && <div className={s.archiveBar}><ArchiveTabs view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} /></div>}
+        {split && !embedded && <div className={s.archiveBar}><ArchiveTabs view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} /></div>}
         <div className={s.div13} role="table" aria-label={t("team.dashTable")}>
           <div className={s.div14} role="row">
             <span role="columnheader">{t("team.dashColWhat")}</span><span role="columnheader">{t("team.dashColOpenSince")}</span><span role="columnheader">{t("team.dashColStage")}</span><span role="columnheader">{t("team.dashColDesk")}</span>
@@ -325,7 +327,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
                   <span className={s.mMain} role="cell">
                     <span className={s.mTitle}>{r.title}</span>
                     <span className={s.mWho}>{deskName}<span className={s.mMute}> · {stepLabel(t, r.step)}</span></span>
-                    <span className={s.mSub}>{r.mine ? r.fromDept : r.from + " · " + r.fromDept}</span>
+                    <span className={s.mSub}>{r.mine ? null : r.from + " · "}{r.fromDept ? <DeptChip name={r.fromDept} /> : null}</span>
                   </span>
                   <span className={s.mRight} role="cell">
                     <span className={s.mWhen} data-tone={late ? "late" : undefined}>{!running(r) ? t("team.dashAnswered") : late ? t("team.dashPastPromise") : t("team.dashDaysOpen", { n: r.openDays })}</span>
@@ -338,7 +340,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
               <div key={r.id} className={s.pick2} role="row" tabIndex={0} onClick={() => pick(r.id)} onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) pick(r.id); }} style={{ animationDelay: Math.min(i, 12) * 55 + "ms" }}>
                 <div className={s.div15} role="cell">
                   <span className={s.title}>{r.title}</span>
-                  <div className={s.div16}><span className={s.dept}>{r.mine ? r.fromDept : r.from + " · " + r.fromDept}</span></div>
+                  <div className={s.div16}><span className={s.dept}>{r.mine ? null : r.from + " · "}{r.fromDept ? <DeptChip name={r.fromDept} /> : null}</span></div>
                 </div>
                 <div className={s.div17} role="cell" data-tone={late ? "late" : !running(r) ? "done" : undefined}>
                   <span className={s.wait}>{os.date ? t("overview.workdays", { count: days }) : t("team.dashDaysShort", { n: days })}</span>

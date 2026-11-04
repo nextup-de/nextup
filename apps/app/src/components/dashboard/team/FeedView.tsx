@@ -11,7 +11,8 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useCaseNames } from "@/components/cases/useCaseNames";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen, visibleTo } from "@/components/dashboard/derive";
-import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
+import { DeptChip, PersonFace } from "@/components/ui/elements";
+import { deptTone } from "@/lib/dept-tone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
 import { archiveOf, inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
@@ -226,7 +227,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
 
         <div className={s.div8}>
           {chips.map((d) => (
-            <button key={d} type="button" className={s.pick2} data-on={dept === d ? "true" : undefined} aria-pressed={dept === d} onClick={() => setDept(d)}>
+            <button key={d} type="button" className={s.pick2} data-dept-tone={d === "All" ? undefined : deptTone(d)} data-on={dept === d ? "true" : undefined} aria-pressed={dept === d} onClick={() => setDept(d)}>
               {d === "All" ? t("team.feedAll") : d}<span className={s.count2}>{d === "All" ? bySite.length : bySite.filter((x) => x.tags.includes(d)).length}</span>
             </button>
           ))}
@@ -251,10 +252,10 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                   )}
                   <div className={s.scrim} aria-hidden="true" />
                   <div className={s.div10}>
-                    <span className={s.initials}>{initialsOf(c.from)}</span>
+                    <PersonFace name={c.from} />
                     <div className={s.div11}>
                       <span className={s.author}>{c.from}</span>
-                      <span className={s.dept}>{[c.fromDept, x.site, ago(t, log.day - c.raisedDay)].filter(Boolean).join(" · ")}</span>
+                      <span className={s.dept}>{c.fromDept ? <DeptChip name={c.fromDept} /> : null}{c.fromDept && (x.site || log.day - c.raisedDay >= 0) ? " · " : ""}{[x.site, ago(t, log.day - c.raisedDay)].filter(Boolean).join(" · ")}</span>
                     </div>
                     <span className={s.stage} data-tone={st.tone}>{st.label}</span>
                   </div>
@@ -270,7 +271,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 <span className={s.supporters}>{supportersLine(x)}</span>
                 <div className={s.div14}>
                   <div className={s.div15}>
-                    {avatars(x).map((a) => <span key={a.name} className={s.ini} data-me={a.me ? "true" : undefined}>{initialsOf(a.name)}</span>)}
+                    {avatars(x).map((a) => <PersonFace key={a.name} name={a.name} size="sm" />)}
                   </div>
                   <button type="button" className={s.toggleSupport} data-on={x.supported ? "true" : undefined} aria-pressed={x.supported}
                     onClick={(e) => { e.stopPropagation(); support(x); }}>
@@ -319,7 +320,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
         <div className={s.div17}>
           <div className={s.div18}>
             <div className={s.div19}>
-              <span className={s.initials2}>{initialsOf(c.from)}</span>
+              <PersonFace name={c.from} />
               <div className={s.div11}>
                 <span className={s.author2}>{c.from}</span>
                 <span className={s.role}>{[role, item.site, t("team.feedRaised", { when: f(c.raisedDay) })].filter(Boolean).join(" · ")}</span>
@@ -336,8 +337,8 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
               <div className={s.div20}>
                 <span className={s.affects}>{t("team.feedAffects")}</span>
                 <div className={s.div8}>
-                  {brief.depts.map((d) => <span key={d.id} className={s.a}>{d.name}</span>)}
-                  {brief.people.map((p) => <span key={p.name} className={s.name}><span className={s.ini2}>{initialsOf(p.name)}</span>{p.name}</span>)}
+                  {brief.depts.map((d) => <DeptChip key={d.id} name={d.name} />)}
+                  {brief.people.map((p) => <span key={p.name} className={s.name}><PersonFace name={p.name} size="sm" />{p.name}</span>)}
                 </div>
               </div>
             )}
@@ -470,7 +471,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             <div className={s.div47}>
               <div className={s.div19}>
                 <div className={s.div15}>
-                  {avatars(item).map((a) => <span key={a.name} className={s.ini3} data-me={a.me ? "true" : undefined}>{initialsOf(a.name)}</span>)}
+                  {avatars(item).map((a) => <PersonFace key={a.name} name={a.name} size="sm" />)}
                 </div>
                 <span className={s.div11}>
                   <span className={s.supLine}>{supportLine(item.backing, me)}</span>
@@ -495,7 +496,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 return (
                   <div key={m.id} className={s.div51}>
                     <div className={s.div52}>
-                      <span className={s.ini4} data-mine={isMe(m.byUserId) ? "true" : undefined}>{initialsOf(m.by)}</span>
+                      <PersonFace name={m.by} />
                       <div className={s.div53}>
                         <div className={s.div54}>
                           <span className={s.name3}>{nameOf(m)}</span>

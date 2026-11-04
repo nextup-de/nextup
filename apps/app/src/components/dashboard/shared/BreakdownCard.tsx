@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { formatNumber } from "@/features/metrics/dashboard";
 import type { BreakdownRow } from "@/features/metrics/types";
+import { DeptChip } from "@/components/ui/elements";
 import { useT } from "@/i18n/client";
 import s from "./DashboardBoard.module.css";
 
@@ -55,12 +56,12 @@ export function BreakdownCard({ units, roles, view, onView, demoClock }: {
           {shown.map((r) =>
             r.hidden ? (
               <div key={r.kind + r.id} className={s.tr} role="row" data-testid="dashboard-row">
-                <span className={s.rowName} style={{ paddingLeft: r.depth * 16 }} role="cell">{r.label}</span>
+                <span className={s.rowName} style={{ paddingLeft: r.depth * 16 }} role="cell">{r.kind === "unit" ? <DeptChip name={r.label} /> : r.label}</span>
                 <span className={s.hiddenCell} role="cell"><TooFewToShow inline /></span>
               </div>
             ) : (
               <div key={r.kind + r.id} className={s.tr} role="row" data-testid="dashboard-row">
-                <span className={s.rowName} style={{ paddingLeft: r.depth * 16 }} role="cell">{r.label}</span>
+                <span className={s.rowName} style={{ paddingLeft: r.depth * 16 }} role="cell">{r.kind === "unit" ? <DeptChip name={r.label} /> : r.label}</span>
                 <span className={s.num} role="cell">{num(r.cases)}</span>
                 <span className={s.num} role="cell">{num(r.firstReasonedAnswer)}</span>
                 <span className={s.num} role="cell">{pct(r.onTimePct)}</span>

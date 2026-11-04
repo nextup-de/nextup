@@ -11,6 +11,7 @@ import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileChip, initialsOf,
 import base from "./IdeaDetail.module.css";
 import styles from "./IdeaDetailPhone.module.css";
 import { avatarTone } from "@/lib/avatar";
+import { deptTone } from "@/lib/dept-tone";
 import { useT } from "@/i18n/client";
 
 type Nav = { index: number; count: number; onPrev: () => void; onNext: () => void };
@@ -98,7 +99,7 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
               <span className={base.label}>{t("leader.affects")}</span>
               <div className={styles.rail}>
                 {brief.depts.map((d) => (
-                  <button key={d.id} type="button" className={base.deptChip} onClick={() => setSheet({ kind: "dept", id: d.id, member: null })}>{d.name}{d.ai && <Sparkle />}</button>
+                  <button key={d.id} type="button" className={base.deptChip} data-dept-tone={deptTone(d.name)} onClick={() => setSheet({ kind: "dept", id: d.id, member: null })}>{d.name}{d.ai && <Sparkle />}</button>
                 ))}
                 {brief.people.map((p) => (
                   <button key={p.name} type="button" className={base.personChip} onClick={() => setSheet({ kind: "person", name: p.name })}><span className={base.chipAvatar} data-avatar={avatarTone(p.name)}>{initialsOf(p.name)}</span>{p.name}{p.ai && <Sparkle />}</button>

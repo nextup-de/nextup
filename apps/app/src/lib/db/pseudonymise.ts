@@ -1,16 +1,20 @@
 // Pseudonymising one person who left (GDP D15). One transaction. The event log is never touched: no
 // CaseEvent row, payload or seedJson is updated, and no free text is searched or rewritten. Historical
-// actors resolve by actorUserId through the person's Pseudonym row (features/cases/actor-label).
+// actors resolve by actorUserId through the person's Pseudonym row (features/cases/actor-label), and what
+// leaves the server is relabelled on the way out (relabelRows).
+import { relabelEvents } from "@/features/cases/relabel";
 import { pickPseudonymNumber, pseudonymLabel } from "@/features/privacy/pseudonymise";
 import { resolveLocale } from "@/i18n";
 import { getDb } from "./client";
 import { memo } from "./company-memo";
+import { keepFormerKeys } from "./former";
+import { loadSeats } from "./holders";
 import type { Tx } from "./org-edit";
 
 export type PseudonymiseCounts = {
   /** Structured identity references changed: the user row, saved-by names and seat labels. */
   identityRefs: number;
-  /** Private rows deleted: assistant turns, unpublished drafts, connections, notification choices. */
+  /** Private rows deleted: assistant turns, unpublished drafts, connections, notification choices, the Teams link, notices to them. */
   deleted: number;
   /** Exports with the person as subject that lost their file. */
   exportsExpired: number;
@@ -29,7 +33,7 @@ export async function pseudonymiseUser(companyId: string, userId: string, now: D
 }
 
 async function run(tx: Tx, companyId: string, userId: string, now: Date): Promise<Pseudonymised | null> {
-  const user = await tx.user.findFirst({ where: { id: userId, companyId }, select: { name: true } });
+  const user = await tx.user.findFirst({ where: { id: userId, companyId }, select: { name: true, email: true, entraOid: true, employeeId: true } });
   if (!user) return null;
   if (await tx.pseudonym.findUnique({ where: { companyId_userId: { companyId, userId } }, select: { userId: true } })) return null;
 
@@ -38,6 +42,7 @@ async function run(tx: Tx, companyId: string, userId: string, now: Date): Promis
   const number = pickPseudonymNumber(taken.map((p) => p.number));
   const label = pseudonymLabel(number, resolveLocale({ companyLocale: cfg?.defaultLocale }));
   await tx.pseudonym.create({ data: { companyId, userId, number, label, at: now } });
+  await keepFormerKeys(tx, companyId, userId, [user.entraOid, user.employeeId, user.email]);
 
   await tx.user.update({
     where: { id: userId, companyId },
@@ -72,6 +77,8 @@ async function run(tx: Tx, companyId: string, userId: string, now: Date): Promis
   const drafts = await tx.ideaDraft.deleteMany({ where: { companyId, userId, status: { not: "published" } } }); // their turns go with them
   const connections = await tx.connection.deleteMany({ where: { companyId, userId } });
   const prefs = await tx.notifyPreference.deleteMany({ where: { companyId, userId } });
+  const teams = await tx.teamsConversation.deleteMany({ where: { companyId, userId } });
+  const notices = await tx.outboxMessage.deleteMany({ where: { companyId, OR: [{ recipientUserId: userId }, { address: user.email }] } });
   const exports = await tx.dataExport.updateMany({
     where: { companyId, subjectUserId: userId },
     data: { file: null, sizeBytes: null, status: "expired" },
@@ -79,7 +86,7 @@ async function run(tx: Tx, companyId: string, userId: string, now: Date): Promis
 
   return {
     label, number,
-    counts: { identityRefs, deleted: turns.count + drafts.count + connections.count + prefs.count, exportsExpired: exports.count },
+    counts: { identityRefs, deleted: turns.count + drafts.count + connections.count + prefs.count + teams.count + notices.count, exportsExpired: exports.count },
   };
 }
 
@@ -96,4 +103,11 @@ export function pseudonymLabelsFor(companyId: string): Promise<Record<string, st
     const rows = await getDb().pseudonym.findMany({ where: { companyId }, select: { userId: true, label: true } });
     return Object.fromEntries(rows.map((r) => [r.userId, r.label]));
   });
+}
+
+/** Event rows as they may leave the server: the stored rows keep what they were written with (D15). */
+export async function relabelRows<T extends { actor: string; actorUserId?: string | null; payload: unknown }>(companyId: string, rows: readonly T[]): Promise<readonly T[]> {
+  const labels = await pseudonymLabelsFor(companyId);
+  if (Object.keys(labels).length === 0) return rows;
+  return relabelEvents(rows, labels, await loadSeats(companyId));
 }

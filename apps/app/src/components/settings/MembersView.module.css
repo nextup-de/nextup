@@ -1,19 +1,20 @@
-/* Members (Paper: "Pilot 01 · Settings and structure"): toolbar, the people table, the code box. */
+/* Members (Paper: "Pilot 01 · Settings and structure"): toolbar, the people table, the code box.
+   Doubled selectors: these override .card and .input of settings.module.css, whichever file loads first. */
 .headButtons { display: flex; gap: 8px; flex-shrink: 0; }
-.empty { align-items: center; text-align: center; }
+.empty.empty { align-items: center; text-align: center; }
 
-.code { gap: 10px; }
+.code.code { gap: 10px; }
 .codeRow { display: flex; gap: 8px; align-items: stretch; }
 .codeValue { flex: 1; display: flex; align-items: center; min-height: 40px; padding-inline: 12px; border-radius: 8px; background: #f2f2f7; font-family: var(--nh-mono); font-size: var(--nh-fs-xl); letter-spacing: 0.04em; word-break: break-all; user-select: all; }
 
 .toolbar { display: flex; gap: 8px; }
 .toolbar > input { flex: 1; }
-.filter { width: auto; min-width: 140px; }
+.filter.filter { width: auto; min-width: 140px; }
 
-.tableCard { padding: 0; gap: 0; }
+.tableCard.tableCard { padding: 0; gap: 0; }
 .list { list-style: none; margin: 0; padding: 0; }
 .row {
-  display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.3fr) minmax(0, 1.2fr) 40px;
+  display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr) minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1.2fr) 40px;
   gap: 12px; align-items: center; padding: 14px 20px; border-top: 1px solid #f0f0f3; font-size: var(--nh-fs-sm);
 }
 .list .row:first-child { border-top: 1px solid #f0f0f3; }
@@ -22,13 +23,11 @@
 .who { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .whoText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .whoText strong { font-size: var(--nh-fs-md); font-weight: 600; }
-.avatar { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: #f2eefb; color: #6d4fc2; font-size: var(--nh-fs-xs); font-weight: 700; }
-.avatar[data-me] { background: #111; color: #fff; }
-.row[data-inactive] .avatar { background: #e5e5ea; color: #8e8e93; }
+.row[data-inactive] [data-person-face] { opacity: 0.5; }
 .sub { color: #6e6e73; overflow-wrap: anywhere; }
 .cell { min-width: 0; }
 .roleText { text-transform: capitalize; color: #6e6e73; }
-.roleSelect { height: 32px; text-transform: capitalize; }
+.roleSelect.roleSelect { height: 32px; text-transform: capitalize; }
 .seatLink { padding: 0; border: 0; background: none; font: inherit; text-align: left; color: #1c1c1e; text-decoration: underline; text-decoration-color: #c7c7cc; text-underline-offset: 3px; cursor: pointer; }
 .noMatch { margin: 0; padding: 24px; text-align: center; font-size: var(--nh-fs-md); color: #6e6e73; }
 

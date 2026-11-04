@@ -55,8 +55,8 @@ export function EditDrawer({ title, closeLabel, onClose, foot, testId, children 
 }
 
 /** Asks before something hard to undo. With `typed`, Confirm stays off until the word is typed exactly. */
-export function ConfirmDialog({ title, text, confirmLabel, cancelLabel, danger, typed, onConfirm, onCancel, testId }: {
-  title: string; text: string; confirmLabel: string; cancelLabel: string; danger?: boolean;
+export function ConfirmDialog({ title, text, lines, confirmLabel, cancelLabel, danger, typed, onConfirm, onCancel, testId }: {
+  title: string; text: string; /** Bullets under the text. */ lines?: string[]; confirmLabel: string; cancelLabel: string; danger?: boolean;
   typed?: { word: string; label: string }; onConfirm: () => void; onCancel: () => void; testId?: string;
 }) {
   const panel = usePanel(onCancel);
@@ -67,6 +67,7 @@ export function ConfirmDialog({ title, text, confirmLabel, cancelLabel, danger, 
       <div ref={panel} tabIndex={-1} className={s.dialog} role="alertdialog" aria-modal="true" aria-label={title} data-testid={testId} onClick={(e) => e.stopPropagation()}>
         <h2 className={s.drawerTitle}>{title}</h2>
         <p className={s.dialogText}>{text}</p>
+        {lines && lines.length > 0 ? <ul className={s.dialogLines}>{lines.map((l) => <li key={l}>{l}</li>)}</ul> : null}
         {typed ? (
           <label className={s.typed}>
             {typed.label}

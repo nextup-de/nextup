@@ -15,7 +15,7 @@ import { seedFor } from "@/features/demo";
 import { getViewerFor } from "@/features/auth/session";
 import { loadLogFor, membersOfViewer, seedForViewer } from "@/lib/db/viewer-log";
 import { hasDatabase, orDemo } from "@/lib/db/client";
-import { personLinksFor } from "@/lib/db/people";
+import { consoleHrefFor, personLinksFor } from "@/lib/db/people";
 import { pseudonymLabelsFor } from "@/lib/db/pseudonymise";
 import { policyFor } from "@/features/admin/stages";
 import { flagsFor } from "@/features/flags";
@@ -83,6 +83,8 @@ export default async function AppLayout({
     ? await Promise.all([orDemo(() => personLinksFor(viewerCompanyId), () => ({})), orDemo(() => pseudonymLabelsFor(viewerCompanyId), () => ({}))])
     : [{}, {}];
 
+  const consoleHref = who && viewerCompanyId ? await orDemo(() => consoleHrefFor(viewerCompanyId, who.userId), () => null) : null;
+
   return (
     <DemoProvider
       tenant={{
@@ -92,6 +94,7 @@ export default async function AppLayout({
         users: people.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
         personLinks,
         actorLabels,
+        consoleHref,
         demoTools,
         demoDataDefault: process.env.DEMO_DATA_DEFAULT === "on",
         flags,

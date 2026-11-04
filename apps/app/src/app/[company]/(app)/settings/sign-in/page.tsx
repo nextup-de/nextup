@@ -1,7 +1,9 @@
 // Sign-in and provisioning: Personal codes, Microsoft Entra ID, OIDC, SAML, SCIM and the audit log export.
 // Company admins only (companyAdminOf). The page reads; every change goes through server/actions/settings/sign-in.ts.
 import { notFound } from "next/navigation";
+import { SettingsHead } from "@/components/settings/SettingsParts";
 import { SignInSettings, type SignInView, type TestView } from "@/components/settings/SignInSettings";
+import { SectionCard } from "@/components/ui/elements";
 import { holdsRealPeople } from "@/features/admin/stages";
 import { certStatus } from "@/features/identity/saml-metadata";
 import { parseLogExportSettings, parseOidcSettings, parseSamlSettings, parseScimSettings } from "@/features/identity/settings";
@@ -34,7 +36,7 @@ export default async function SignInSettingsPage({ params, searchParams }: { par
   const { company: slug } = await params;
   const { tested } = await searchParams;
   const t = await getT();
-  if (!hasDatabase() || !process.env.AUTH_SECRET) return <><h1>{t("settingsSignIn.title")}</h1><p>{t("settingsSignIn.noDatabase")}</p></>;
+  if (!hasDatabase() || !process.env.AUTH_SECRET) return <><SettingsHead title={t("settingsSignIn.title")} /><SectionCard><p>{t("settingsSignIn.noDatabase")}</p></SectionCard></>;
   const admin = await companyAdminOf(slug);
   if (!admin) notFound();
   const id = admin.companyId;
@@ -98,8 +100,7 @@ export default async function SignInSettingsPage({ params, searchParams }: { par
 
   return (
     <>
-      <h1>{t("settingsSignIn.title")}</h1>
-      <p className="nh-hint">{t("settingsSignIn.lead", { company: co.name })}</p>
+      <SettingsHead title={t("settingsSignIn.title")} lede={t("settingsSignIn.lead", { company: co.name })} />
       <SignInSettings view={view} />
     </>
   );

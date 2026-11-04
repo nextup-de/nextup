@@ -9,6 +9,7 @@ import { personHref } from "@/features/people/links";
 import { type BadgeTone, type IdeaBrief, type Numbered, type NumberedBlock, type Person, tagTone } from "@/features/ideas/brief";
 import styles from "./IdeaDetail.module.css";
 import { avatarTone } from "@/lib/avatar";
+import { DeptChip } from "@/components/ui/elements";
 import { useT } from "@/i18n/client";
 
 export type IdeaHeader = { id: string; kind: "idea" | "case"; title: string; badge: string; tone: BadgeTone; raised: string };
@@ -74,7 +75,7 @@ export function PersonCard({ p, why, userId }: { p: Person; why?: string | null;
         <span className={styles.popWho}><span className={styles.popName}>{p.name}</span><span className={styles.popRole}>{p.role}</span></span>
       </div>
       <dl className={styles.popGrid}>
-        <dt>{t("leader.department")}</dt><dd>{p.dept || "—"}</dd>
+        <dt>{t("leader.department")}</dt><dd>{p.dept ? <DeptChip name={p.dept} /> : "—"}</dd>
         <dt>{t("leader.location")}</dt><dd>{p.location}</dd>
         <dt>{t("leader.email")}</dt><dd><a className={styles.mail} href={"mailto:" + p.email}>{p.email}</a></dd>
       </dl>

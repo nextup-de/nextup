@@ -21,6 +21,7 @@
 .roles strong { font-size: var(--nh-fs-md); color: var(--nh-on-dark); }
 .roles small { grid-column: 2; font-size: var(--nh-fs-sm); color: var(--nh-on-dark-mute); line-height: 1.4; }
 
+.embedded { display: grid; place-items: center; padding: 24px 0; }
 .main { display: grid; place-items: center; padding: 40px var(--nh-page-x); }
 .card { width: 100%; max-width: 420px; background: var(--nh-card); border-radius: var(--nh-r-xl); padding: 32px; box-shadow: var(--nh-card-shadow); display: grid; gap: 10px; }
 .title { font-size: var(--nh-fs-3xl); font-weight: 800; }
@@ -203,7 +204,7 @@
   .artMain { padding: 18px 48px; }
   .artCard { padding: 0; }
   .artCard form { gap: 12px; margin-top: 2px; }
-  .artCard .title { font-size: var(--nh-fs-2xl); }
+  .artCard .title { font-size: var(--nh-fs-3xl); }
   .artCard .sub { margin-bottom: 4px; font-size: var(--nh-fs-sm); }
   .artContent { gap: 12px; }
   .artContent h2 { font-size: var(--nh-fs-4xl); }
@@ -225,7 +226,7 @@
   .authPanel { min-height: calc(var(--nh-screen-h) - 32px); margin: 16px; grid-template-columns: 1fr; }
   .artMain { min-height: calc(var(--nh-screen-h) - 32px); padding: 24px var(--nh-page-x); border-radius: var(--radius-md, 24px); }
   .artBack { top: 78px; left: var(--nh-page-x); }
-  .artCard { margin: auto; padding: 32px 0; }
+  .artCard { margin: auto; padding: 80px 0 32px; } /* room for the Back link above a tall card */
   .art { display: none; }
 }
 
@@ -234,5 +235,5 @@
   .authPanel, .artMain { min-height: calc(var(--nh-screen-h) - 20px); }
   .artMain { padding: 20px 22px; }
   .artBack { left: 22px; }
-  .artCard { padding: 28px 0; }
+  .artCard { padding: 84px 0 28px; }
 }

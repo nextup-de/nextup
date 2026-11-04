@@ -6,8 +6,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { Avatar, Empty, Pill, statusTone, wordText } from "@/components/dashboard/shared/primitives";
-import { ViewHead } from "@/components/dashboard/shared/ViewHead";
+import { Empty, Pill, statusTone, wordText } from "@/components/dashboard/shared/primitives";
+import { DataTable, DeptChip, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
+import { avatarTone } from "@/lib/avatar";
 import type { Initiative, InitiativeStatus, OrgPerson } from "@/features/demo/types";
 import { chainEdges, coworkersOf, layoutTree, namedMembers, pairs, projectsOf, visiblePeople } from "@/features/org";
 import type { State } from "@/features/cases/reducer";
@@ -28,7 +29,7 @@ type ProjectSort = "wait" | "status" | "title" | "people";
 type PersonSort = "name" | "dept" | "role";
 type PeopleScope = "linked" | "all";
 
-const INK = "#141414", BRAND = "#0b70d1", ACCENT = "#ff5a1f", MUTE = "#b9b9b4";
+const INK = "#141414", ACCENT = "#ff5a1f", MUTE = "#b9b9b4";
 // The statuses in the order the lists use; the first is the one that waits on a decision.
 const STATUS_ORDER = Object.keys({ "Awaiting decision": 0, "In trial": 0, Building: 0, Proposed: 0, Shipped: 0 } satisfies Record<InitiativeStatus, 0>) as InitiativeStatus[];
 const AWAITING = STATUS_ORDER[0];
@@ -63,7 +64,7 @@ const wrap2 = (s: string, max = 13): string[] => {
 };
 
 // Org tree geometry, grid units from layoutTree() to pixels.
-const TX = 74, TY = 80, TPX = 40, TPY = 34;
+const TX = 90, TY = 80, TPX = 40, TPY = 34;
 
 // Rows per page in the two windows. Fixed, so the page scrolls like every other view.
 const PROJECT_PAGE = 5, PEOPLE_PAGE = 8;
@@ -141,23 +142,6 @@ function useCanvas() {
   return { attach, view, dragging, zoomBy, fitBox, handlers: { onPointerDown, onClickCapture } };
 }
 
-function Pager({ page, pages, from, to, total, onPage }: { page: number; pages: number; from: number; to: number; total: number; onPage: (p: number) => void }) {
-  const t = useT();
-  if (total === 0) return null;
-  return (
-    <div className={styles.pager}>
-      <span>{t("dashboard.collabPager", { from, to, total })}</span>
-      {pages > 1 && (
-        <span className={styles.pageBtns}>
-          <button type="button" className={styles.pageBtn} disabled={page === 0} onClick={() => onPage(page - 1)} aria-label={t("dashboard.collabPrevPage")}>‹</button>
-          <span className={styles.pageNo}>{page + 1} / {pages}</span>
-          <button type="button" className={styles.pageBtn} disabled={page >= pages - 1} onClick={() => onPage(page + 1)} aria-label={t("dashboard.collabNextPage")}>›</button>
-        </span>
-      )}
-    </div>
-  );
-}
-
 export function CollaborationView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
   const { D, deptName, matches, ready, href } = ctx;
@@ -233,7 +217,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   const onIt = new Set(linkedRows.map((r) => r.name));
   const allRows: Row[] = D.people.map((p) => ({
     name: p.name, role: p.role, dept: p.dept, click: true,
-    right: stuck?.name === p.name ? <Pill tone="accent">{t("dashboard.collabWaitingHere")}</Pill> : onIt.has(p.name) ? <Pill tone="soft">{st ? t("dashboard.collabOnIt") : t("dashboard.collabWorksWith")}</Pill> : deptName(p.dept),
+    right: stuck?.name === p.name ? <Pill tone="accent">{t("dashboard.collabWaitingHere")}</Pill> : onIt.has(p.name) ? <Pill tone="soft">{st ? t("dashboard.collabOnIt") : t("dashboard.collabWorksWith")}</Pill> : p.dept ? <DeptChip name={deptName(p.dept)} /> : "",
   }));
   const scope: PeopleScope = st || sp ? hScope : "all";
   const hBase = scope === "linked" ? linkedRows : allRows;
@@ -246,6 +230,13 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
         : a.name.localeCompare(b.name));
   const hPages = Math.max(1, Math.ceil(hSorted.length / hSize)), hCur = Math.min(hPage, hPages - 1);
   const hRows = hSorted.slice(hCur * hSize, hCur * hSize + hSize);
+  const paging = (cur: number, pages: number, from: number, to: number, total: number, go: (p: number) => void) => ({
+    line: t("dashboard.collabPager", { from, to, total }),
+    prevLabel: t("dashboard.collabPrevPage"),
+    nextLabel: t("dashboard.collabNextPage"),
+    onPrev: cur > 0 ? () => go(cur - 1) : undefined,
+    onNext: cur < pages - 1 ? () => go(cur + 1) : undefined,
+  });
   const deptsInList = [...new Set(hSearched.map((r) => r.dept).filter(Boolean))].sort((a, b) => deptName(a).localeCompare(deptName(b)));
 
   // Clicking the selected thing again closes it.
@@ -324,15 +315,15 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
 
   return (
     <div className={`${styles.page} ${styles.enter}`}>
-      <ViewHead view="network" />
+      {!projectMode && <PageHeader title={t("dashboard.viewNetworkTitle")} lede={t("dashboard.viewNetworkSub")} />}
       <div className={styles.layout}>
         {/* ── the map: mind map above, org tree below ───────────────────────── */}
-        <div className={`${ui.card} ${styles.mapCard}`}>
+        <SectionCard name="map">
           <div className={ui.between}>
             <div>
-              <div className={ui.eyebrow}>{st ? t("dashboard.collabProjectMap") : sp ? t("dashboard.collabPersonMap") : t("dashboard.collabMap")}</div>
-              <div className={ui.h}>{st ? st.name : sp ? sp.name : emptyProjects ? t("dashboard.collabNothingToMap") : t("dashboard.collabNothingSelected")}</div>
-              <div className={ui.sub}>
+              <div className={styles.eyebrow}>{st ? t("dashboard.collabProjectMap") : sp ? t("dashboard.collabPersonMap") : t("dashboard.collabMap")}</div>
+              <div className={styles.h}>{st ? st.name : sp ? sp.name : emptyProjects ? t("dashboard.collabNothingToMap") : t("dashboard.collabNothingSelected")}</div>
+              <div className={styles.sub}>
                 {st ? (stMembers.length ? t("dashboard.collabPeopleOnIt") + " " : "") + (stuck ? t("dashboard.collabWaitingOn", { name: stuck.name, reason: stuck.reason }) : st.status === "Proposed" ? t("dashboard.collabProposedNobody") : t("dashboard.collabNothingOnePerson"))
                   : sp ? (spProjects.length ? t("dashboard.collabRoleOn", { head: sp.role + (sp.dept ? " · " + deptName(sp.dept) : ""), count: spProjects.length }) : t("dashboard.collabRoleNotOn", { role: sp.role })) + (stuckHere.length ? " " + t("dashboard.collabWaitingOnThemN", { count: stuckHere.length }) : "")
                   : emptyProjects ? t("dashboard.collabFirstCase") : t("dashboard.collabClickToMap")}
@@ -345,8 +336,8 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
           {(st || sp) && (
             <svg key={st ? st.id : sp?.name} viewBox={"0 0 " + MW + " " + MH} className={styles.mind} preserveAspectRatio={ASPECT} role="img" aria-label={t("dashboard.collabMindMap")}>
               {sats.map((s, i) => { const p = satellite(i, sats.length); return <path key={"s" + s.key} d={spoke(p.x, p.y)} fill="none" stroke={s.stroke} strokeWidth={s.hot ? 2.2 : 1.6} strokeDasharray={s.dash} strokeLinecap="round" />; })}
-              <g className={styles.node}>
-                <circle cx={MCX} cy={MCY} r={centreR} fill={INK} />
+              <g className={styles.node} data-avatar={sp ? avatarTone(sp.name) : undefined}>
+                {sp ? <circle cx={MCX} cy={MCY} r={centreR} className={styles.dot} data-lit="true" /> : <circle cx={MCX} cy={MCY} r={centreR} fill={INK} />}
                 {sp ? (
                   <text x={MCX} y={MCY} dy={5} textAnchor="middle" className={styles.centreIni}>{ini(sp.name)}</text>
                 ) : (
@@ -358,20 +349,20 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
                 const p = satellite(i, sats.length);
                 const below = p.y >= MCY;
                 return (
-                  <g key={s.key} className={styles.node} onClick={s.onClick}>
+                  <g key={s.key} className={styles.node} onClick={s.onClick} data-avatar={s.kind === "person" ? avatarTone(s.label) : undefined}>
                     {s.hot && <circle cx={p.x} cy={p.y} r={s.kind === "person" ? 22 : 20} fill="none" stroke={ACCENT} strokeWidth={2.2} />}
                     {s.kind === "person" ? (
                       <>
-                        <circle cx={p.x} cy={p.y} r={16} fill="#fff" stroke={INK} strokeWidth={1.3} />
+                        <circle cx={p.x} cy={p.y} r={16} className={styles.dot} />
                         <text x={p.x} y={p.y} dy={4} textAnchor="middle" className={styles.nodeIni}>{ini(s.label)}</text>
                       </>
                     ) : (
                       <>
                         <circle cx={p.x} cy={p.y} r={14} fill={s.stroke === MUTE ? "#fff" : s.stroke} stroke={INK} strokeWidth={1.2} strokeDasharray={s.dash} />
-                        <text x={p.x} y={p.y} dy={4} textAnchor="middle" className={styles.nodeIni} fill={s.stroke === MUTE ? INK : "#fff"}>{i + 1}</text>
+                        <text x={p.x} y={p.y} dy={4} textAnchor="middle" className={styles.nodeNum} data-light={s.stroke === MUTE ? "true" : undefined}>{i + 1}</text>
                       </>
                     )}
-                    <text x={p.x} y={below ? p.y + 30 : p.y - 34} textAnchor="middle" className={styles.nodeTitle}>{s.kind === "project" ? wrap2(s.label, 24)[0] : s.label}</text>
+                    <text x={p.x} y={below ? p.y + 30 : p.y - 37} textAnchor="middle" className={styles.nodeTitle}>{s.kind === "project" ? wrap2(s.label, 24)[0] : s.label}</text>
                     <text x={p.x} y={below ? p.y + 42 : p.y - 23} textAnchor="middle" className={styles.nodeMeta}>{s.tag ? s.tag : s.sub}</text>
                   </g>
                 );
@@ -380,7 +371,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
           )}
 
           <div className={`${ui.between} ${styles.treeHead}`}>
-            <div className={ui.eyebrow}>{t("dashboard.collabWhoReports")}</div>
+            <div className={styles.eyebrow}>{t("dashboard.collabWhoReports")}</div>
             {D.people.length > 0 && (
               <div className={styles.seg} role="group" aria-label={t("dashboard.collabHowDraw")}>
                 <button type="button" className={styles.segBtn} data-on={treeMode === "chain" ? "true" : undefined} onClick={() => setTreeMode("chain")}>{t("dashboard.collabViaOrg")}</button>
@@ -402,12 +393,12 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
                     const dim = (st || sp) && !lit;
                     const hidden = shown.folded.get(n.person.name) ?? 0;
                     return (
-                      <g key={n.person.name} className={styles.node} opacity={dim ? 0.38 : 1} onClick={() => pickPerson(n.person.name)}>
+                      <g key={n.person.name} className={styles.node} opacity={dim ? 0.38 : 1} onClick={() => pickPerson(n.person.name)} data-avatar={avatarTone(n.person.name)}>
                         {tag && <circle cx={p.x} cy={p.y} r={21} fill="none" stroke={ACCENT} strokeWidth={2.2} />}
-                        <circle cx={p.x} cy={p.y} r={15} fill={lit ? INK : "#fff"} stroke={me ? BRAND : INK} strokeWidth={me ? 2.2 : 1.2} />
-                        <text x={p.x} y={p.y} dy={4} textAnchor="middle" className={styles.nodeIni} fill={lit ? "#fff" : INK}>{ini(n.person.name)}</text>
+                        <circle cx={p.x} cy={p.y} r={15} className={styles.dot} data-lit={lit ? "true" : undefined} data-me={me ? "true" : undefined} />
+                        <text x={p.x} y={p.y} dy={4} textAnchor="middle" className={styles.nodeIni}>{ini(n.person.name)}</text>
                         <text x={p.x} y={p.y + 27} textAnchor="middle" className={styles.nodeTitle}>{n.person.name}</text>
-                        <text x={p.x} y={p.y + 38} textAnchor="middle" className={styles.nodeMeta}>{n.person.role}</text>
+                        <text x={p.x} y={p.y + 40} textAnchor="middle" className={styles.nodeMeta}>{n.person.role}</text>
                         {tag && (
                           <g>
                             <rect x={p.x - 34} y={p.y - 40} width={68} height={15} rx={7} fill={ACCENT} />
@@ -416,8 +407,8 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
                         )}
                         {hasReports.has(n.person.name) && (
                           <g className={styles.fold} onClick={(e) => { e.stopPropagation(); toggleFold(n.person.name); }}>
-                            <rect x={p.x - (hidden ? 16 : 8)} y={p.y + 43} width={hidden ? 32 : 16} height={13} rx={6.5} fill={hidden ? INK : "#fff"} stroke={INK} strokeWidth={1} />
-                            <text x={p.x} y={p.y + 49.5} dy={3} textAnchor="middle" className={styles.foldText} fill={hidden ? "#fff" : INK}>{hidden ? "+" + hidden : "\u2212"}</text>
+                            <rect x={p.x - (hidden ? 16 : 8)} y={p.y + 46} width={hidden ? 32 : 16} height={13} rx={6.5} fill={hidden ? INK : "#fff"} stroke={INK} strokeWidth={1} />
+                            <text x={p.x} y={p.y + 52.5} dy={3} textAnchor="middle" className={styles.foldText} fill={hidden ? "#fff" : INK}>{hidden ? "+" + hidden : "\u2212"}</text>
                           </g>
                         )}
                       </g>
@@ -443,13 +434,14 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
             <span className={styles.legendItem}><span className={styles.swatchDashed} /> {t("dashboard.collabLegendProposed")}</span>
             <span className={styles.legendItem}><span className={styles.ring} /> {t("dashboard.collabLegendStuck")}</span>
           </div>
-        </div>
+        </SectionCard>
 
         {/* ── right: the project window, then the people window ─────────────── */}
         <div className={styles.side}>
-          <div className={`${ui.card} ${styles.win}`} data-expanded={st ? "true" : undefined}>
+          <div className={styles.win} data-expanded={st ? "true" : undefined}>
+           <SectionCard name="projects">
             <div className={ui.between}>
-              <div className={ui.h}>{t("dashboard.collabProjects")}</div>
+              <div className={styles.h}>{t("dashboard.collabProjects")}</div>
               <span className={ui.small}>{t("dashboard.collabCountOf", { n: pSorted.length, total: initiatives.length })}</span>
             </div>
             {!emptyProjects && (
@@ -470,17 +462,17 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
             )}
             {st && (
               <div key={st.id} className={styles.detail}>
-                <div className={ui.eyebrow}>{t("dashboard.collabSelectedProject")}</div>
+                <div className={styles.eyebrow}>{t("dashboard.collabSelectedProject")}</div>
                 <div className={styles.detailTitle}>{st.name}</div>
                 <div className={`${ui.chips} ${styles.selMeta}`}>
                   <Pill tone={statusTone(st.status)}>{wordText(t, st.status)}</Pill>
                   <span className={ui.small}>{st.stage}</span>
-                  {st.depts.map((d) => <span key={d} className={styles.deptMini}>{deptName(d)}</span>)}
+                  {st.depts.map((d) => <DeptChip key={d} name={deptName(d)} />)}
                 </div>
                 <div className={`${ui.body} ${styles.why}`}>{t("dashboard.collabStartedBecause", { why: st.why })}</div>
                 {stuck && (
                   <div className={styles.stuck} onClick={() => pickPerson(stuck.name)}>
-                    <Avatar name={stuck.name} size="sm" />
+                    <PersonFace name={stuck.name} size="sm" />
                     <span><b>{t("dashboard.collabStuckAt", { name: stuck.name })}</b> - {stuck.reason}</span>
                   </div>
                 )}
@@ -501,30 +493,40 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
             <div className={styles.listBox}>
               {emptyProjects && <Empty title={t("dashboard.collabNothingYet")} sub={t("dashboard.collabFirstCase")} />}
               {!emptyProjects && pSorted.length === 0 && <div className={ui.emptyLine}>{t("dashboard.collabNoProjectMatches")}</div>}
-              <div className={ui.list}>
-                {pRows.map((row) => {
-                  const mine = sp ? row.members.some((m) => m.name === sp.name) || row.stuckOn?.name === sp.name : false;
-                  return (
-                    <div key={row.id} className={ui.row} data-active={st?.id === row.id || mine ? "true" : undefined} onClick={() => pickProject(row.id)}>
-                      <div className={ui.mark} />
-                      <div className={ui.rowBody}>
-                        <div className={styles.allRow}>
-                          <span className={ui.tileTitle}>{row.name}</span>
-                          <Pill tone={statusTone(row.status)}>{wordText(t, row.status)}</Pill>
-                        </div>
-                        <div className={styles.allMeta}>{row.depts.map(deptName).join(" × ")} · {row.people ? t("dashboard.collabNPeople", { n: row.people }) : t("dashboard.collabNobodyAssigned")}{row.stuckOn ? " · " + t("dashboard.collabStuckAtLc", { name: row.stuckOn.name }) : ""}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {pRows.length > 0 && (
+                <DataTable
+                  testId="collab-projects"
+                  rows={pRows}
+                  rowKey={(row) => row.id}
+                  empty=""
+                  columns={[
+                    {
+                      key: "name", header: t("progress.collabColProject"), render: (row) => {
+                        const mine = sp ? row.members.some((m) => m.name === sp.name) || row.stuckOn?.name === sp.name : false;
+                        return (
+                          <>
+                            <button type="button" className={styles.pick} data-active={st?.id === row.id || mine ? "true" : undefined} onClick={() => pickProject(row.id)}>{row.name}</button>
+                            <div className={styles.rowMeta}>
+                              {row.depts.map((d) => <DeptChip key={d} name={deptName(d)} />)}
+                              <span>{row.people ? t("dashboard.collabNPeople", { n: row.people }) : t("dashboard.collabNobodyAssigned")}{row.stuckOn ? " · " + t("dashboard.collabStuckAtLc", { name: row.stuckOn.name }) : ""}</span>
+                            </div>
+                          </>
+                        );
+                      },
+                    },
+                    { key: "status", header: t("progress.collabColStatus"), width: "max-content", render: (row) => <Pill tone={statusTone(row.status)}>{wordText(t, row.status)}</Pill> },
+                  ]}
+                  paging={paging(pCur, pPages, pSorted.length ? pCur * pSize + 1 : 0, Math.min(pSorted.length, (pCur + 1) * pSize), pSorted.length, setPPage)}
+                />
+              )}
             </div>
-            <Pager page={pCur} pages={pPages} from={pSorted.length ? pCur * pSize + 1 : 0} to={Math.min(pSorted.length, (pCur + 1) * pSize)} total={pSorted.length} onPage={setPPage} />
+           </SectionCard>
           </div>
 
-          <div className={`${ui.card} ${styles.win}`} data-expanded={sp ? "true" : undefined}>
+          <div className={styles.win} data-expanded={sp ? "true" : undefined}>
+           <SectionCard name="people">
             <div className={ui.between}>
-              <div className={ui.h}>{sp ? t("dashboard.collabPerson") : t("dashboard.collabPeople")}</div>
+              <div className={styles.h}>{sp ? t("dashboard.collabPerson") : t("dashboard.collabPeople")}</div>
               {(st || sp) && (
                 <div className={styles.seg} role="group" aria-label={t("dashboard.collabWhichPeople")}>
                   <button type="button" className={styles.segBtn} data-on={scope === "linked" ? "true" : undefined} onClick={() => { setHScope("linked"); setHPage(0); }}>{st ? t("dashboard.collabOnItBtn") : t("dashboard.collabWorksWithBtn")}</button>
@@ -550,10 +552,10 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
             {sp && (
               <div key={sp.name} className={styles.detail}>
                 <div className={styles.who}>
-                  <Avatar name={sp.name} size="lg" />
+                  <PersonFace name={sp.name} />
                   <div>
                     <div className={styles.detailTitle}>{sp.name}</div>
-                    <div className={ui.small}>{sp.role}{sp.dept ? " · " + deptName(sp.dept) : ""}</div>
+                    <div className={styles.rowMeta}>{sp.role}{sp.dept ? <> · <DeptChip name={deptName(sp.dept)} /></> : ""}</div>
                   </div>
                 </div>
                 <div className={`${ui.note} ${ui.mt8}`}>
@@ -573,17 +575,33 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
               {D.people.length === 0 && !st && <div className={ui.emptyLine}>{t("dashboard.collabPeopleAppear")}</div>}
               {hBase.length > 0 && hSorted.length === 0 && <div className={ui.emptyLine}>{t("dashboard.collabNobodyMatches")}</div>}
               {hBase.length === 0 && (st || sp) && <div className={ui.emptyLine}>{st ? t("dashboard.collabNobodyAssignedYet") : t("dashboard.collabWorksWithNobody")}</div>}
-              <div className={styles.members}>
-                {hRows.map((r) => (
-                  <div key={r.name + r.role} className={ui.personRow} data-click={r.click ? "true" : undefined} data-active={sp?.name === r.name ? "true" : undefined} onClick={() => r.click && pickPerson(r.name)}>
-                    <Avatar name={r.name} />
-                    <span className={styles.memberName}>{r.name === "—" ? t("dashboard.listNobodyAssigned") : r.name}</span>
-                    <span className={styles.memberRole}>{r.right}</span>
-                  </div>
-                ))}
-              </div>
+              {hRows.length > 0 && (
+                <DataTable
+                  testId="collab-people"
+                  rows={hRows}
+                  rowKey={(r) => r.name + r.role}
+                  empty=""
+                  columns={[
+                    {
+                      key: "name", header: t("progress.collabColPerson"), render: (r) => {
+                        const label = r.name === "—" ? t("dashboard.listNobodyAssigned") : r.name;
+                        return (
+                          <span className={styles.personCell}>
+                            <PersonFace name={r.name} size="sm" />
+                            {r.click
+                              ? <button type="button" className={styles.pick} data-active={sp?.name === r.name ? "true" : undefined} onClick={() => pickPerson(r.name)}>{label}</button>
+                              : <span className={styles.memberName}>{label}</span>}
+                          </span>
+                        );
+                      },
+                    },
+                    { key: "right", header: t("progress.collabColAbout"), width: "minmax(0, 0.8fr)", render: (r) => <span className={styles.memberRole}>{r.right}</span> },
+                  ]}
+                  paging={paging(hCur, hPages, hSorted.length ? hCur * hSize + 1 : 0, Math.min(hSorted.length, (hCur + 1) * hSize), hSorted.length, setHPage)}
+                />
+              )}
             </div>
-            <Pager page={hCur} pages={hPages} from={hSorted.length ? hCur * hSize + 1 : 0} to={Math.min(hSorted.length, (hCur + 1) * hSize)} total={hSorted.length} onPage={setHPage} />
+           </SectionCard>
           </div>
         </div>
       </div>
