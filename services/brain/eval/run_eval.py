@@ -3,6 +3,11 @@
     uv run python -m eval.run_eval            # uses LLM_* from .env or the environment
     uv run python -m eval.run_eval --recorded eval/recorded/routing.json   # no model: score recorded answers
     uv run python -m eval.run_eval --record-keywords                       # write the keyword router's answers
+    uv run python -m eval.run_eval --provider bedrock --model <id> --record eval/recorded/bedrock.json \
+        --price-in <usd/MTok> --price-out <usd/MTok> [--region eu-central-1]   # record one provider
+    AZURE_OPENAI_KEY=... uv run python -m eval.run_eval --provider azure-openai --model <deployment> \
+        --endpoint https://<resource>.openai.azure.com/openai/v1 --record eval/recorded/azure-openai.json \
+        --price-in <usd/MTok> --price-out <usd/MTok>
 
 acme.json is a snapshot of the demo seed (apps/app/src/features/demo/seed.ts): the rows and
 earlier items the app sends. Results land in eval/results/<timestamp>_<model>.json.
@@ -11,6 +16,7 @@ earlier items the app sends. Results land in eval/results/<timestamp>_<model>.js
 import argparse
 import json
 import math
+import os
 import statistics
 import sys
 import time
@@ -20,7 +26,7 @@ from pathlib import Path
 from brain.config import get_settings
 from brain.llm import LLMClient, LLMOutputError
 from brain.route import PROMPT_VERSION, route
-from brain.schemas import RouteIn
+from brain.schemas import BedrockOverride, LlmOverride, RouteIn
 
 HERE = Path(__file__).parent
 
@@ -106,6 +112,81 @@ def run_live_cases(llm: LLMClient, threshold: float | None) -> int:
     return 0 if got["overall"]["accuracy"] >= need else 1
 
 
+def percentile(values: list[float], q: float) -> float:
+    """Nearest-rank percentile; 0 for no values."""
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    return ordered[max(math.ceil(q * len(ordered)) - 1, 0)]
+
+
+def build_override(provider: str, model: str, region: str = "eu-central-1",
+                   endpoint: str | None = None) -> LlmOverride | BedrockOverride:
+    """The override a real request carries. The Azure key is read from the environment, never an argument."""
+    if provider == "bedrock":
+        return BedrockOverride(provider="bedrock", region=region, model=model)
+    if provider == "azure-openai":
+        key = os.environ.get("AZURE_OPENAI_KEY", "")
+        if not endpoint:
+            raise SystemExit("azure-openai needs --endpoint")
+        if not key:
+            raise SystemExit("azure-openai needs the key in the environment variable AZURE_OPENAI_KEY")
+        return LlmOverride(base_url=endpoint, model=model, api_key=key, provider="azure-openai")
+    raise SystemExit(f"unknown provider {provider!r}")
+
+
+def record_provider(override: LlmOverride | BedrockOverride, price_in: float, price_out: float,
+                    threshold: float = DEFAULT_THRESHOLD, base: LLMClient | None = None) -> dict:
+    """Run the 84 cases through one provider the way a request would (for_request) and return the record.
+
+    The record holds answers, counts and timings only: no key, endpoint, region or account id.
+    """
+    ctx = json.loads((HERE / "acme.json").read_text(encoding="utf-8"))
+    cases = load_cases()
+    base = base or LLMClient(get_settings())
+    answers: dict[str, str | None] = {}
+    errors = tokens_in = tokens_out = 0
+    ms: list[float] = []
+    model: str | None = None
+    for c in cases:
+        body = RouteIn.model_validate({"company": ctx["company"], "idea": {"title": c["text"][:300], "body": ""},
+                                       "routes": ctx["routes"], "known": ctx["known"]})
+        started = time.perf_counter()
+        llm = base.for_request(override)
+        try:
+            answers[c["id"]] = route(llm, body).route_id
+        except Exception as e:  # noqa: BLE001 - a failed call is a miss, not the end of the run
+            errors += 1
+            print(f"{c['id']}  ERROR {type(e).__name__}")
+        ms.append((time.perf_counter() - started) * 1000)
+        tokens_in += llm.tokens_in
+        tokens_out += llm.tokens_out
+        model = llm.answered_by or model
+    return {"provider": override.provider, "model": model or override.model, "prompt_version": PROMPT_VERSION,
+            "threshold": threshold, "answers": answers, "errors": errors,
+            "tokens_in": tokens_in, "tokens_out": tokens_out,
+            "latency_ms": {"p50": round(percentile(ms, 0.5)), "p95": round(percentile(ms, 0.95))},
+            "usd_per_mtok": {"in": price_in, "out": price_out},
+            "cost_usd": round(tokens_in * price_in / 1e6 + tokens_out * price_out / 1e6, 6),
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+
+
+def run_provider(args: argparse.Namespace) -> int:
+    missing = [f for f in ("model", "record", "price_in", "price_out") if getattr(args, f) is None]
+    if missing:
+        raise SystemExit("--provider needs " + ", ".join("--" + m.replace("_", "-") for m in missing))
+    override = build_override(args.provider, args.model, args.region, args.endpoint)
+    need = args.threshold if args.threshold is not None else DEFAULT_THRESHOLD
+    rec = record_provider(override, args.price_in, args.price_out, need)
+    args.record.parent.mkdir(parents=True, exist_ok=True)
+    args.record.write_text(json.dumps(rec, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(f"wrote {args.record}")
+    acc = score(load_cases(), rec["answers"])["overall"]["accuracy"]
+    print(f"{rec['provider']} {rec['model']}  accuracy {acc:.3f}  errors {rec['errors']}  "
+          f"p50 {rec['latency_ms']['p50']} ms  p95 {rec['latency_ms']['p95']} ms  cost {rec['cost_usd']:.4f} USD")
+    return 0 if acc >= need else 1
+
+
 def main(threshold: float | None = None) -> int:
     ctx = json.loads((HERE / "acme.json").read_text())
     ideas = json.loads((HERE / "test_ideas.json").read_text())
@@ -168,7 +249,16 @@ if __name__ == "__main__":
                     help="write the keyword router's answers as a recorded file (default eval/recorded/routing.json)")
     ap.add_argument("--threshold", type=float, default=None,
                     help=f"minimum overall accuracy (default: the recorded file's, else {DEFAULT_THRESHOLD})")
+    ap.add_argument("--provider", choices=("bedrock", "azure-openai"), help="record one provider's run")
+    ap.add_argument("--model", help="Bedrock model id, or the Azure deployment name")
+    ap.add_argument("--record", type=Path, metavar="FILE", help="where the record goes, e.g. eval/recorded/bedrock.json")
+    ap.add_argument("--price-in", type=float, help="USD per million input tokens")
+    ap.add_argument("--price-out", type=float, help="USD per million output tokens")
+    ap.add_argument("--region", default="eu-central-1", help="bedrock region (default eu-central-1)")
+    ap.add_argument("--endpoint", help="azure-openai endpoint; the key comes from AZURE_OPENAI_KEY")
     args = ap.parse_args()
+    if args.provider:
+        sys.exit(run_provider(args))
     if args.record_keywords:
         record_keywords(args.record_keywords)
         sys.exit(0)
