@@ -72,7 +72,7 @@ describe("DIR apply a directory page", () => {
     await db.user.update({ where: { id: firstUser, companyId }, data: { name: "oid-first" } });
 
     const counts = await applyDirectoryDelta(companyId, "graph", page);
-    expect(counts).toEqual({ added: 1, updated: 1, deactivated: 1, handed: 1 });
+    expect(counts).toMatchObject({ added: 1, updated: 1, deactivated: 1, handed: 1 });
 
     const first = await db.user.findFirstOrThrow({ where: { companyId, id: firstUser } });
     expect(first.active).toBe(false);
@@ -98,7 +98,7 @@ describe("DIR apply a directory page", () => {
       ],
       groups: [], removedExternalIds: [], nextCursor: null,
     };
-    expect(await applyDirectoryDelta(companyId, "graph", page)).toEqual({ added: 0, updated: 0, deactivated: 0, handed: 0 });
+    expect(await applyDirectoryDelta(companyId, "graph", page)).toMatchObject({ added: 0, updated: 0, deactivated: 0, handed: 0 });
     expect(await db.caseEvent.count({ where: { companyId } })).toBe(before);
   });
 });

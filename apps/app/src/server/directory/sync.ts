@@ -4,12 +4,16 @@
 // last page, record the counts - or the error, keeping the old cursor. One company's failure never stops
 // the others. Follows server/jira-sync.ts: started from instrumentation.ts, idempotent, never throws.
 //
+// A delta names a person once. So a round that could not place someone (no unit, no email, a manager not known
+// yet) keeps its cursor and says so: the next round reads them again, and the console shows the counts until then.
+//
 //   DIRECTORY_INTERVAL_MS   the round interval; default 900000 (15 minutes)
 //
 // Not a "use server" module.
 import type { DirectorySource } from "@nextup/contracts/public";
 import { entraApp } from "@/features/auth/entra";
 import { sourceKind, type DirectoryCounts, type DirectorySourceKind } from "@/features/directory";
+import { addHeld, heldSentence, NOBODY_HELD } from "@/features/directory/apply";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { applyDirectoryDelta } from "@/lib/db/directory";
 import {
@@ -53,20 +57,24 @@ export async function runDirectoryCompany(company: DirectoryCompany, sourceFor: 
     const source = await sourceFor({ ...company, entraTenantId: tenant?.entraTenantId ?? null, source: kind }, now);
     if (!source) return void (await recordDirectoryRun(company.id, { error: `no adapter for ${row.source}` }, now));
     const total: DirectoryCounts = { added: 0, updated: 0, deactivated: 0, handed: 0 };
+    let held = NOBODY_HELD;
     let cursor = row.cursor;
     let finished = false;
     for (let i = 0; i < MAX_PAGES && !finished; i++) {
       const page = await source.delta({ companyId: company.id, cursor });
       const c = await applyDirectoryDelta(company.id, kind, page, now);
       total.added += c.added; total.updated += c.updated; total.deactivated += c.deactivated; total.handed += c.handed;
+      held = addHeld(held, c.held);
       if (page.nextCursor) cursor = page.nextCursor;
       else finished = true;
     }
     // Past the page limit the round is not finished: the pages are applied (applying twice changes nothing),
     // the stored cursor stays and the next round starts over.
-    if (finished) await saveDirectoryCursor(company.id, endOf(source) ?? cursor);
+    const note = heldSentence(held);
+    if (note) console.warn(`[directory-sync] ${company.slug}: ${note}`);
+    else if (finished) await saveDirectoryCursor(company.id, endOf(source) ?? cursor);
     await getDb().$transaction(async (tx) => {
-      await recordDirectoryRun(company.id, { counts: total }, now, tx);
+      await recordDirectoryRun(company.id, { counts: total, note }, now, tx);
       if (total.added + total.updated + total.deactivated + total.handed > 0) {
         await recordAudit(company.id, {
           actor: DIRECTORY_ACTOR, action: "audit.directory.run", target: { kind: "directory", id: kind },

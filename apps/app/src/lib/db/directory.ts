@@ -4,7 +4,7 @@
 import type { DirectoryPage } from "@nextup/contracts/public";
 import { seatsOfRole } from "@/features/auth/identity";
 import { reduce } from "@/features/cases/reducer";
-import { planDirectoryDelta, type PlanRef } from "@/features/directory/apply";
+import { heldOf, planDirectoryDelta, type Held, type PlanRef } from "@/features/directory/apply";
 import { SCIM_LINK_ISSUER } from "@/features/identity";
 import type { DirectoryCounts, DirectorySourceKind } from "@/features/directory";
 import { getDb } from "./client";
@@ -75,7 +75,7 @@ export async function applyDirectoryDelta(
   source: DirectorySourceKind,
   page: DirectoryPage,
   now: Date = new Date(),
-): Promise<DirectoryCounts> {
+): Promise<DirectoryCounts & { held: Held }> {
   const db = getDb();
   // SCIM keys people by the subject of their SCIM link (EID D6); the other sources do not read the links.
   const [users, units, withHandle, scimLinks] = await Promise.all([
@@ -127,5 +127,5 @@ export async function applyDirectoryDelta(
   const off = await switchOff(companyId, plan.leavers, now);
   const handed = await handCases(companyId, [...off.seatIds.values()].flat(), now);
   // An update that only came back from leaving is an update, a leaver is not.
-  return { added: plan.creates.length, updated: plan.updates.length, deactivated: off.users.length, handed };
+  return { added: plan.creates.length, updated: plan.updates.length, deactivated: off.users.length, handed, held: heldOf(plan) };
 }
