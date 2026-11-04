@@ -27,6 +27,8 @@ export function checkPlatformJob(job: PlatformJobInput, current: string | null):
       if (job.stage !== "demo" && job.stage !== "sandbox" && job.stage !== "live") return refuse("bad-stage");
       if (current === null) return refuse("missing");
       if (current === "live" && job.stage !== "live") return refuse("live-locked");
+      // Live is reached through the pilot and its checklist, never straight from sandbox or demo.
+      if (job.stage === "live" && current !== "pilot" && current !== "live") return refuse("bad-stage");
       // Real people never go back to a demo (canMoveStage).
       return canMoveStage(current, job.stage) ? { ok: true } : refuse("bad-stage");
     case "delete_company":

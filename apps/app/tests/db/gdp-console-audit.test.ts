@@ -66,7 +66,7 @@ const source = (page: DirectoryPage): DirectorySource => ({
 
 beforeAll(async () => {
   await db.company.deleteMany({});
-  acme = (await db.company.create({ data: { slug: "acme", name: "Acme", stage: "sandbox", seedJson: {} } })).id;
+  acme = (await db.company.create({ data: { slug: "acme", name: "Acme", stage: "pilot", seedJson: {} } })).id;
   globex = (await db.company.create({ data: { slug: "globex", name: "Globex", stage: "sandbox", seedJson: {} } })).id;
   await db.orgUnit.create({ data: { companyId: acme, key: "ops", name: "Ops" } });
   await db.user.create({ data: { companyId: acme, name: "Kim Becker", email: "kim.becker@acme-gdp.test", role: "manager", dept: "", ini: "KB" } });
@@ -191,7 +191,7 @@ describe("GDP console audit", () => {
     await pullPlatformJobs();
     const rows = await rowsOf(acme, "audit.company.stage");
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ actorKind: "platform", source: "platform", targetKind: "company", targetId: acme, changes: { stage: { before: "sandbox", after: "live" } } });
+    expect(rows[0]).toMatchObject({ actorKind: "platform", source: "platform", targetKind: "company", targetId: acme, changes: { stage: { before: "pilot", after: "live" } } });
   });
 
   it("an API token: created with its scopes only, then revoked", async () => {

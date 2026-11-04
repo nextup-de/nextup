@@ -2,7 +2,8 @@
 // record the outcome. claimDue counts the attempt and leases the row, so two runs never send one row twice.
 import type { NotifyMessage, NotifyResult } from "@nextup/contracts/public";
 import { getDb } from "@/lib/db/client";
-import { claimDue, markFailed, markRetry, markSent, type OutboxRow } from "@/lib/db/outbox";
+import { claimDue, markFailed, markRetry, markSent, markSkipped, type OutboxRow } from "@/lib/db/outbox";
+import { PILOT_REPORT_TEMPLATE } from "@/features/pilot/report-mail";
 import { MAIL_WAITING } from "./channels/mail";
 import { channelFor } from "./registry";
 
@@ -31,6 +32,26 @@ function messageOf(row: OutboxRow, now: Date): NotifyMessage {
   };
 }
 
+/**
+ * The pilot report is checked again at send time, on every attempt: the row was planned days ago. Returns why it
+ * must not go out, or null. A mail a relay already took cannot be recalled; this only stops the next one.
+ */
+async function pilotReportBlock(row: OutboxRow): Promise<string | null> {
+  const db = getDb();
+  if (!row.recipientUserId) return "no recipient";
+  // Scoped by the row's company: a user of another company is simply not found.
+  const user = await db.user.findFirst({ where: { id: row.recipientUserId, companyId: row.companyId }, select: { active: true, role: true, email: true } });
+  if (!user) return "recipient is not a user of the row's company";
+  if (!user.active) return "recipient is not an active user";
+  if (user.role !== "manager") return "recipient is not a manager";
+  const pref = await db.notifyPreference.findFirst({ where: { companyId: row.companyId, userId: row.recipientUserId, template: PILOT_REPORT_TEMPLATE }, select: { on: true } });
+  if (!pref?.on) return "pilot.report is off for the recipient";
+  const company = await db.company.findUnique({ where: { id: row.companyId }, select: { stage: true } });
+  if (company?.stage !== "pilot" && company?.stage !== "live") return "company is not in pilot or live";
+  if (!row.address || row.address.trim().toLowerCase() !== user.email.trim().toLowerCase()) return "address is not the recipient's current email";
+  return null;
+}
+
 export async function deliverOnce(now: Date = new Date()): Promise<DeliverCount> {
   const count: DeliverCount = { sent: 0, retried: 0, failed: 0, waiting: 0 };
   const rows = await claimDue(now, DELIVER_BATCH);
@@ -40,6 +61,13 @@ export async function deliverOnce(now: Date = new Date()): Promise<DeliverCount>
       await markFailed(row.id, `no channel "${row.channel}" is registered`);
       count.failed++;
       continue;
+    }
+    if (row.template === PILOT_REPORT_TEMPLATE) {
+      const why = await pilotReportBlock(row).catch(() => "check failed");
+      if (why) {
+        await markSkipped(row.id, why);
+        continue;
+      }
     }
     let result: NotifyResult;
     try {
