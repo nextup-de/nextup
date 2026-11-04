@@ -3,6 +3,7 @@
 // box and the deliveries with Retry. Every change calls an action from server/actions/settings/webhooks.ts.
 import { PUBLIC_EVENT_TYPES } from "@nextup/contracts/public";
 import { useState, useTransition, type FormEvent } from "react";
+import { Banner, ConfirmDialog, DataTable, EditDrawer, SecretOnce, SectionCard } from "@/components/ui/elements";
 import type { DeliveryView } from "@/features/api/webhook-form";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
@@ -10,6 +11,7 @@ import {
   createWebhookAction, deleteWebhookAction, dropOldSecretAction, retryDeliveryAction, rotateSecretAction,
   setWebhooksSendingAction, updateWebhookAction, type WebhookResult,
 } from "@/server/actions/settings/webhooks";
+import s from "./settings.module.css";
 import styles from "./Webhooks.module.css";
 
 export type WebhookView = { id: string; url: string; host: string; events: string[]; on: boolean; secretCount: number; lastStatus: DeliveryView["status"] | null };
@@ -30,6 +32,7 @@ const STATUS_LABEL: Record<DeliveryView["status"], MessageKey> = {
 };
 const hhmm = (iso: string) => iso.slice(11, 16);
 const stamp = (iso: string) => iso.slice(0, 16).replace("T", " ");
+const FORM = "webhook-form";
 
 export function Webhooks({ slug, sending, subs, deliveries, docsHref }: Props) {
   const t = useT();
@@ -59,161 +62,192 @@ export function Webhooks({ slug, sending, subs, deliveries, docsHref }: Props) {
     else run(() => createWebhookAction(slug, input), (r) => { setSecret(r.secret ?? null); setOpen(null); }, "settingsWebhooks.saved");
   };
 
+  // A new secret shows on the page; one from Rotate shows inside the open drawer, which would cover the page.
+  const secretBox = secret ? (
+    <>
+      <SecretOnce value={secret} note={t("settingsWebhooks.secretHint")} copyLabel={t("settingsWebhooks.copy")} copiedLabel={t("settingsWebhooks.copied")} testId="settings-webhooks-secret-value" />
+      <div className={styles.actions}>
+        <button className={s.soft} type="button" onClick={() => setSecret(null)}>{t("settingsWebhooks.secretDone")}</button>
+      </div>
+    </>
+  ) : null;
+
   return (
-    <div className={styles.wrap}>
-      <section className={styles.card} data-testid="settings-webhooks-send">
-        <h2 className={styles.title}>{t("settingsWebhooks.sendTitle")}</h2>
-        <label className={styles.inline}>
-          <input type="checkbox" checked={sending} disabled={pending} data-testid="settings-webhooks-switch"
-            onChange={(e) => run(() => setWebhooksSendingAction(slug, e.currentTarget.checked))} />
-          {t("settingsWebhooks.sendLabel")}
-        </label>
-        <p className="nh-hint">{t("settingsWebhooks.sendHint")}</p>
-      </section>
+    <div className={s.page}>
+      <div data-testid="settings-webhooks-send">
+        <SectionCard name="send" title={t("settingsWebhooks.sendTitle")} hint={t("settingsWebhooks.sendHint")}>
+          <label className={s.switch}>
+            <input type="checkbox" checked={sending} disabled={pending} data-testid="settings-webhooks-switch"
+              onChange={(e) => run(() => setWebhooksSendingAction(slug, e.currentTarget.checked))} />
+            {t("settingsWebhooks.sendLabel")}
+          </label>
+        </SectionCard>
+      </div>
 
-      {error ? <p className="nh-error" role="alert" data-testid="settings-webhooks-error">{t(error)}</p> : null}
-      {note ? <p className="nh-hint" role="status" data-testid="settings-webhooks-note">{t(note)}</p> : null}
+      {error && !open ? <div data-testid="settings-webhooks-error"><Banner tone="error">{t(error)}</Banner></div> : null}
+      {note ? <div role="status" data-testid="settings-webhooks-note"><Banner tone="info">{t(note)}</Banner></div> : null}
 
-      {secret ? (
-        <section className={styles.card} data-testid="settings-webhooks-secret">
-          <h2 className={styles.title}>{t("settingsWebhooks.secretTitle")}</h2>
-          <code className={styles.mono} data-testid="settings-webhooks-secret-value">{secret}</code>
-          <p className="nh-hint">{t("settingsWebhooks.secretHint")}</p>
-          <button className="nh-btn" type="button" onClick={() => setSecret(null)}>{t("settingsWebhooks.secretDone")}</button>
-        </section>
+      {secret && !open ? (
+        <div data-testid="settings-webhooks-secret">
+          <SectionCard name="secret" title={t("settingsWebhooks.secretTitle")}>{secretBox}</SectionCard>
+        </div>
       ) : null}
 
-      <section className={styles.card} data-testid="settings-webhooks-subs">
-        <div className={styles.head}>
-          <h2 className={styles.title}>{t("settingsWebhooks.subsTitle")}</h2>
-          <button className="nh-btn nh-btn-primary" type="button" onClick={() => show("new")} data-testid="settings-webhooks-add">{t("settingsWebhooks.add")}</button>
-        </div>
-        {!sending ? <p className={styles.warn}>{t("settingsWebhooks.sendOff")}</p> : null}
-        {subs.length === 0 ? <p>{t("settingsWebhooks.subsNone")}</p> : (
-          <ul className={styles.list}>
-            {subs.map((s) => (
-              <li key={s.id} className={styles.row} data-testid={`settings-webhooks-sub-${s.id}`}>
-                <span className={styles.mono}>{s.url}</span>
-                <span className="nh-hint">
-                  {s.events.length} · {s.on ? t("settingsWebhooks.on") : t("settingsWebhooks.off")}
-                  {s.lastStatus ? ` · ${t(STATUS_LABEL[s.lastStatus], { time: "" }).trim()}` : ""}
-                </span>
-                <button className="nh-btn" type="button" onClick={() => show(s)} data-testid={`settings-webhooks-edit-${s.id}`}>{t("settingsWebhooks.edit")}</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <div data-testid="settings-webhooks-subs">
+        <SectionCard
+          name="subs"
+          title={t("settingsWebhooks.subsTitle")}
+          action={<button className={s.save} type="button" onClick={() => show("new")} data-testid="settings-webhooks-add">{t("settingsWebhooks.add")}</button>}
+        >
+          {!sending ? <Banner tone="warn">{t("settingsWebhooks.sendOff")}</Banner> : null}
+          {subs.length === 0 ? <p className={s.empty}>{t("settingsWebhooks.subsNone")}</p> : (
+            <DataTable
+              rows={subs}
+              rowKey={(w) => w.id}
+              empty={t("settingsWebhooks.subsNone")}
+              columns={[
+                { key: "url", header: t("settingsWebhooks.colAddress"), width: "minmax(0, 2fr)", render: (w) => <span className={s.mono} data-testid={`settings-webhooks-sub-${w.id}`}>{w.url}</span> },
+                { key: "events", header: t("settingsWebhooks.colEvents"), width: "80px", render: (w) => w.events.length },
+                {
+                  key: "state", header: t("settingsWebhooks.colStatus"),
+                  render: (w) => (
+                    <span className={styles.pills}>
+                      <span className={styles.pill} data-status={w.on ? "sent" : "skipped"}>{w.on ? t("settingsWebhooks.on") : t("settingsWebhooks.off")}</span>
+                      {w.lastStatus ? <span className={styles.pill} data-status={w.lastStatus}>{t(STATUS_LABEL[w.lastStatus], { time: "" }).trim()}</span> : null}
+                    </span>
+                  ),
+                },
+                { key: "edit", header: "", width: "80px", render: (w) => <button className={s.soft} type="button" onClick={() => show(w)} data-testid={`settings-webhooks-edit-${w.id}`}>{t("settingsWebhooks.edit")}</button> },
+              ]}
+            />
+          )}
+        </SectionCard>
+      </div>
 
       {open ? (
-        <form className={styles.drawer} onSubmit={submit} key={editing?.id ?? "new"} data-testid="settings-webhooks-drawer">
-          <h2 className={styles.title}>{editing ? editing.host : t("settingsWebhooks.add")}</h2>
-          <label>
-            {t("settingsWebhooks.addressLabel")}
-            <input name="url" type="url" required maxLength={2000} defaultValue={editing?.url ?? ""} data-testid="settings-webhooks-url" />
-          </label>
-          <p className="nh-hint">{t("settingsWebhooks.addressHint")}</p>
-          <fieldset className={styles.events}>
-            <legend>{t("settingsWebhooks.eventsLabel")}</legend>
-            {PUBLIC_EVENT_TYPES.map((e) => (
-              <label key={e} className={styles.inline}>
-                <input type="checkbox" name="events" value={e} defaultChecked={editing ? editing.events.includes(e) : false} />
-                {t(EVENT_LABEL[e])} <span className={styles.mono}>{e}</span>
-              </label>
-            ))}
-          </fieldset>
-          <label className={styles.inline}>
-            <input type="checkbox" name="on" defaultChecked={editing ? editing.on : true} />
-            {t("settingsWebhooks.onLabel")}
-          </label>
-          {editing ? (
-            <div className={styles.buttons}>
-              <p className="nh-hint">{t("settingsWebhooks.secrets", { n: editing.secretCount })}</p>
-              <button className="nh-btn" type="button" disabled={pending} data-testid="settings-webhooks-rotate"
-                onClick={() => run(() => rotateSecretAction(slug, editing.id), (r) => { setSecret(r.secret ?? null); setOpen({ ...editing, secretCount: editing.secretCount + 1 }); })}>
-                {t("settingsWebhooks.rotate")}
-              </button>
-              {editing.secretCount > 1 ? (
-                confirm === "dropOld" ? (
-                  <>
-                    <span>{t("settingsWebhooks.dropOldConfirm")}</span>
-                    <button className="nh-btn" type="button" disabled={pending} data-testid="settings-webhooks-dropold-yes"
-                      onClick={() => run(() => dropOldSecretAction(slug, editing.id), () => { setConfirm(null); setOpen({ ...editing, secretCount: 1 }); })}>
-                      {t("settingsWebhooks.confirm")}
-                    </button>
-                  </>
-                ) : (
-                  <button className="nh-btn" type="button" onClick={() => setConfirm("dropOld")} data-testid="settings-webhooks-dropold">{t("settingsWebhooks.dropOld")}</button>
-                )
-              ) : null}
+        <EditDrawer
+          key={editing?.id ?? "new"}
+          title={editing ? editing.host : t("settingsWebhooks.add")}
+          closeLabel={t("settingsWebhooks.cancel")}
+          onClose={() => setOpen(null)}
+          testId="settings-webhooks-drawer"
+          foot={
+            <>
+              {editing ? <button className={s.ghostDanger} type="button" onClick={() => setConfirm("delete")} data-testid="settings-webhooks-delete">{t("settingsWebhooks.delete")}</button> : null}
+              <button className={s.soft} type="button" onClick={() => setOpen(null)}>{t("settingsWebhooks.cancel")}</button>
+              <button className={s.save} type="submit" form={FORM} disabled={pending} data-testid="settings-webhooks-save">{t("settingsWebhooks.save")}</button>
+            </>
+          }
+        >
+          <form id={FORM} className={styles.form} onSubmit={submit}>
+            <label className={s.field}>
+              <span className={s.label}>{t("settingsWebhooks.addressLabel")}</span>
+              <input className={s.input} name="url" type="url" required maxLength={2000} defaultValue={editing?.url ?? ""} autoComplete="off" data-testid="settings-webhooks-url" />
+              <span className={s.help}>{t("settingsWebhooks.addressHint")}</span>
+            </label>
+            <fieldset className={styles.fieldset}>
+              <legend className={s.label}>{t("settingsWebhooks.eventsLabel")}</legend>
+              {PUBLIC_EVENT_TYPES.map((e) => (
+                <label key={e} className={styles.check}>
+                  <input type="checkbox" name="events" value={e} defaultChecked={editing ? editing.events.includes(e) : false} />
+                  <span>{t(EVENT_LABEL[e])} <span className={s.mono}>{e}</span></span>
+                </label>
+              ))}
+            </fieldset>
+            <label className={s.switch}>
+              <input type="checkbox" name="on" defaultChecked={editing ? editing.on : true} />
+              {t("settingsWebhooks.onLabel")}
+            </label>
+            {error ? <p className={s.fieldError} role="alert" data-testid="settings-webhooks-error">{t(error)}</p> : null}
+          </form>
+          {secret ? (
+            <div className={styles.secrets} data-testid="settings-webhooks-secret">
+              <h3 className={s.subLabel}>{t("settingsWebhooks.secretTitle")}</h3>
+              {secretBox}
             </div>
           ) : null}
-          <div className={styles.buttons}>
-            <button className="nh-btn nh-btn-primary" type="submit" disabled={pending} data-testid="settings-webhooks-save">{t("settingsWebhooks.save")}</button>
-            <button className="nh-btn" type="button" onClick={() => setOpen(null)}>{t("settingsWebhooks.cancel")}</button>
-            {editing ? (
-              confirm === "delete" ? (
-                <>
-                  <span>{t("settingsWebhooks.deleteConfirm")}</span>
-                  <button className="nh-btn" type="button" disabled={pending} data-testid="settings-webhooks-delete-yes"
-                    onClick={() => run(() => deleteWebhookAction(slug, editing.id), () => { setConfirm(null); setOpen(null); })}>
-                    {t("settingsWebhooks.confirm")}
-                  </button>
-                </>
-              ) : (
-                <button className="nh-btn" type="button" onClick={() => setConfirm("delete")} data-testid="settings-webhooks-delete">{t("settingsWebhooks.delete")}</button>
-              )
-            ) : null}
-          </div>
-        </form>
+          {editing ? (
+            <div className={styles.secrets}>
+              <p className={s.help}>{t("settingsWebhooks.secrets", { n: editing.secretCount })}</p>
+              <div className={styles.actions}>
+                <button className={s.soft} type="button" disabled={pending} data-testid="settings-webhooks-rotate"
+                  onClick={() => run(() => rotateSecretAction(slug, editing.id), (r) => { setSecret(r.secret ?? null); setOpen({ ...editing, secretCount: editing.secretCount + 1 }); })}>
+                  {t("settingsWebhooks.rotate")}
+                </button>
+                {editing.secretCount > 1 ? <button className={s.soft} type="button" onClick={() => setConfirm("dropOld")} data-testid="settings-webhooks-dropold">{t("settingsWebhooks.dropOld")}</button> : null}
+              </div>
+            </div>
+          ) : null}
+        </EditDrawer>
       ) : null}
 
-      <section className={styles.card} data-testid="settings-webhooks-deliveries">
-        <h2 className={styles.title}>{t("settingsWebhooks.deliveriesTitle")}</h2>
-        <p className="nh-hint">{t("settingsWebhooks.deliveriesHint")}</p>
-        {deliveries.length === 0 ? <p>{t("settingsWebhooks.deliveriesNone")}</p> : (
-          <div className={styles.scroll}>
-            <table>
-              <thead>
-                <tr>
-                  <th>{t("settingsWebhooks.colTime")}</th><th>{t("settingsWebhooks.colEvent")}</th><th>{t("settingsWebhooks.colAddress")}</th>
-                  <th>{t("settingsWebhooks.colTry")}</th><th>{t("settingsWebhooks.colStatus")}</th><th />
-                </tr>
-              </thead>
-              <tbody>
-                {deliveries.map((d) => (
-                  <tr key={d.id} data-testid={`settings-webhooks-delivery-${d.id}`}>
-                    <td><time dateTime={d.at}>{stamp(d.at)}</time></td>
-                    <td className={styles.mono}>{d.event}</td>
-                    <td>{d.host}</td>
-                    <td>{d.attempt}</td>
-                    <td>
-                      <span className={`${styles.pill} ${styles[d.status]}`}>
-                        {t(STATUS_LABEL[d.status], { time: d.nextAt ? hhmm(d.nextAt) : "" })}
-                      </span>
-                      {d.detail ? <div className="nh-hint">{d.detail}</div> : null}
-                    </td>
-                    <td>
-                      {d.status === "failed" ? (
-                        <button className="nh-btn" type="button" disabled={pending} data-testid={`settings-webhooks-retry-${d.id}`}
-                          onClick={() => run(() => retryDeliveryAction(slug, d.id), undefined, "settingsWebhooks.queued")}>
-                          {t("settingsWebhooks.retry")}
-                        </button>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      {editing && confirm === "delete" ? (
+        <ConfirmDialog
+          title={t("settingsWebhooks.delete")}
+          text={t("settingsWebhooks.deleteConfirm")}
+          confirmLabel={t("settingsWebhooks.confirm")}
+          cancelLabel={t("settingsWebhooks.cancel")}
+          danger
+          onConfirm={() => run(() => deleteWebhookAction(slug, editing.id), () => { setConfirm(null); setOpen(null); })}
+          onCancel={() => setConfirm(null)}
+          testId="settings-webhooks-delete-dialog"
+        />
+      ) : null}
+      {editing && confirm === "dropOld" ? (
+        <ConfirmDialog
+          title={t("settingsWebhooks.dropOld")}
+          text={t("settingsWebhooks.dropOldConfirm")}
+          confirmLabel={t("settingsWebhooks.confirm")}
+          cancelLabel={t("settingsWebhooks.cancel")}
+          danger
+          onConfirm={() => run(() => dropOldSecretAction(slug, editing.id), () => { setConfirm(null); setOpen({ ...editing, secretCount: 1 }); })}
+          onCancel={() => setConfirm(null)}
+          testId="settings-webhooks-dropold-dialog"
+        />
+      ) : null}
 
-      <section className={styles.card} data-testid="settings-webhooks-signature">
-        <h2 className={styles.title}>{t("settingsWebhooks.sigTitle")}</h2>
-        <p>{t("settingsWebhooks.sigBody")}</p>
-        <a href={docsHref}>{t("settingsWebhooks.sigLink")}</a>
-      </section>
+      <div data-testid="settings-webhooks-deliveries">
+        <SectionCard name="deliveries" title={t("settingsWebhooks.deliveriesTitle")} hint={t("settingsWebhooks.deliveriesHint")}>
+          {deliveries.length === 0 ? <p className={s.empty}>{t("settingsWebhooks.deliveriesNone")}</p> : (
+            <DataTable
+              rows={deliveries}
+              rowKey={(d) => d.id}
+              empty={t("settingsWebhooks.deliveriesNone")}
+              columns={[
+                { key: "time", header: t("settingsWebhooks.colTime"), width: "150px", render: (d) => <time dateTime={d.at} data-testid={`settings-webhooks-delivery-${d.id}`}>{stamp(d.at)}</time> },
+                { key: "event", header: t("settingsWebhooks.colEvent"), render: (d) => <span className={s.mono}>{d.event}</span> },
+                { key: "host", header: t("settingsWebhooks.colAddress"), render: (d) => d.host },
+                { key: "try", header: t("settingsWebhooks.colTry"), width: "60px", render: (d) => d.attempt },
+                {
+                  key: "status", header: t("settingsWebhooks.colStatus"), width: "minmax(0, 1.2fr)",
+                  render: (d) => (
+                    <span className={styles.statusCell}>
+                      <span className={styles.pill} data-status={d.status}>{t(STATUS_LABEL[d.status], { time: d.nextAt ? hhmm(d.nextAt) : "" })}</span>
+                      {d.detail ? <span className={styles.detail}>{d.detail}</span> : null}
+                    </span>
+                  ),
+                },
+                {
+                  key: "retry", header: "", width: "110px",
+                  render: (d) => (d.status === "failed" ? (
+                    <button className={s.soft} type="button" disabled={pending} data-testid={`settings-webhooks-retry-${d.id}`}
+                      onClick={() => run(() => retryDeliveryAction(slug, d.id), undefined, "settingsWebhooks.queued")}>
+                      {t("settingsWebhooks.retry")}
+                    </button>
+                  ) : null),
+                },
+              ]}
+            />
+          )}
+        </SectionCard>
+      </div>
+
+      <div data-testid="settings-webhooks-signature">
+        <SectionCard name="signature" title={t("settingsWebhooks.sigTitle")}>
+          <p className={styles.body}>{t("settingsWebhooks.sigBody")}</p>
+          <a className={styles.link} href={docsHref}>{t("settingsWebhooks.sigLink")}</a>
+        </SectionCard>
+      </div>
     </div>
   );
 }

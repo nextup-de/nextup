@@ -49,12 +49,12 @@ export function signSession(claims: SessionClaims, secret: string): string {
 export const ADMIN_TTL_SECONDS = 8 * 60 * 60;
 
 /**
- * Same for the admin cookie. It carries an expiry and, when the admin signed in with Microsoft,
- * `by`: who. The shared admin code has no person behind it, so `by` is then left out.
+ * Same for the admin cookie. It carries when it was issued, an expiry and, when the admin signed in with
+ * Microsoft, `by`: who. The shared admin code has no person behind it, so `by` is then left out.
  */
 export function signAdmin(exp: number, secret: string, by?: string, breakGlass = false, via?: AdminVia): string {
   const payload = b64url(
-    JSON.stringify({ v: 1, admin: true, exp, ...(by ? { by } : {}), ...(breakGlass ? { bg: true } : {}), ...(via ? { via } : {}) }),
+    JSON.stringify({ v: 1, admin: true, iat: Math.floor(Date.now() / 1000), exp, ...(by ? { by } : {}), ...(breakGlass ? { bg: true } : {}), ...(via ? { via } : {}) }),
   );
   return `${payload}.${sign(payload, secret)}`;
 }
@@ -76,6 +76,17 @@ export function adminVia(raw: string | undefined, secret: string, nowSeconds = M
   if (c?.bg === true) return "break-glass";
   if (c?.via === "entra" || c?.via === "stack-admin" || c?.via === "support") return c.via;
   return typeof c?.by === "string" && c.by ? "entra" : "break-glass";
+}
+
+/**
+ * When the admin cookie was issued, or null when it is not a valid one. A session can end early (support
+ * with its grant), so the expiry says nothing about this; only a cookie from before `iat` is read back from it.
+ */
+export function adminIssuedAt(raw: string | undefined, secret: string, nowSeconds = Math.floor(Date.now() / 1000)): number | null {
+  if (!verifyAdmin(raw, secret, nowSeconds)) return null;
+  const c = verifyRaw(raw, secret);
+  if (typeof c?.iat === "number") return c.iat;
+  return typeof c?.exp === "number" ? c.exp - ADMIN_TTL_SECONDS : null;
 }
 
 /** True when the admin cookie was issued by the shared ADMIN_ACCESS_CODE (break-glass). */

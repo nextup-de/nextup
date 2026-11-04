@@ -3,7 +3,7 @@
 // sets a labelled block - Impact, Who's blocked, ... or a custom label - into the text where the caret
 // was. Enter in a block goes on in the text after it; Backspace in an empty block takes it out again.
 // On send the body follows the headline as text and "*Label* text" lines (features/ideas/prompts.ts).
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isBlock, PRESETS, removeBlock, type Caret, type Prompt, type Seg } from "@/features/ideas/prompts";
 import { Icon } from "./raiseIcons";
 import { useT } from "@/i18n/client";
@@ -83,19 +83,26 @@ export function PromptBody({ segs, onSegs, caretRef, focus, onFocus, headRef }: 
   );
 }
 
-// The mini bar under the composer: Custom first, then the presets - each can be added again and again.
-// Pressing one keeps the caret where it was, so the block lands there.
+// The mini bar under the composer, folded behind it until the chevron pulls it out: Custom first, then the
+// presets - each can be added again and again. Pressing any of them keeps the caret where it was, so the block lands there.
 export function PromptTray({ onAdd }: { onAdd: (p: Prompt) => void }) {
   const t = useT();
+  const [open, setOpen] = useState(false);
   const keep = (e: React.MouseEvent) => e.preventDefault();
+  const toggle = t(open ? "ideas.promptHideDetails" : "ideas.promptAddDetails");
   return (
-    <div className={s.tray}>
-      <div className={s.trayRow}>
-        <button type="button" className={s.trayBtn} data-custom="" onMouseDown={keep} onClick={() => onAdd({ label: "", text: "", custom: true })}><Icon name="plus" size={7.5} width={3} />{t("ideas.promptCustom")}</button>
-        {PRESETS.map((label) => (
-          <button key={label} type="button" className={s.trayBtn} onMouseDown={keep} onClick={() => onAdd({ label, text: "" })}><Icon name="plus" size={7.5} width={3} />{label}</button>
-        ))}
+    <div className={s.tray} data-open={open || undefined}>
+      <div className={s.trayFold}>
+        <div className={s.trayClip}>
+          <div className={s.trayRow}>
+            <button type="button" className={s.trayBtn} data-custom="" onMouseDown={keep} onClick={() => onAdd({ label: "", text: "", custom: true })}><Icon name="plus" size={7.5} width={3} />{t("ideas.promptCustom")}</button>
+            {PRESETS.map((label) => (
+              <button key={label} type="button" className={s.trayBtn} onMouseDown={keep} onClick={() => onAdd({ label, text: "" })}><Icon name="plus" size={7.5} width={3} />{label}</button>
+            ))}
+          </div>
+        </div>
       </div>
+      <button type="button" className={s.trayToggle} onMouseDown={keep} onClick={() => setOpen((x) => !x)} aria-expanded={open} title={toggle} aria-label={toggle}><Icon name="down" size={12} width={2.4} /></button>
     </div>
   );
 }

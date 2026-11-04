@@ -1,7 +1,9 @@
 // Settings -> Microsoft Teams: the switch, the app package, a test card, the last card delivered and the newest
 // failure. Company admins only (companyAdminOf).
 import { notFound } from "next/navigation";
+import { SettingsHead } from "@/components/settings/SettingsParts";
 import { TeamsSettings } from "@/components/settings/TeamsSettings";
+import { SectionCard } from "@/components/ui/elements";
 import { TEAMS_SYSTEM, teamsApp } from "@/features/teams/config";
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
@@ -23,13 +25,8 @@ const view = (r: Row | undefined, at: "sentAt" | "createdAt") =>
 export default async function TeamsSettingsPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
   const t = await getT();
-  const head = (
-    <>
-      <h1>{t("settingsTeams.navLabel")}</h1>
-      <p className="nh-hint">{t("settingsTeams.hint")}</p>
-    </>
-  );
-  if (!hasDatabase() || !process.env.AUTH_SECRET) return <>{head}<p>{t("settingsTeams.noDatabase")}</p></>;
+  const head = <SettingsHead title={t("settingsTeams.navLabel")} lede={t("settingsTeams.hint")} />;
+  if (!hasDatabase() || !process.env.AUTH_SECRET) return <>{head}<SectionCard><p>{t("settingsTeams.noDatabase")}</p></SectionCard></>;
   const admin = await companyAdminOf(company);
   if (!admin) notFound();
   const [integration, tenant, conversation, sent, failed] = await Promise.all([

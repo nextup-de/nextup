@@ -140,10 +140,13 @@ services:
       # Server break-glass window and the JSON log export (SEC D5); the folders come from install.sh.
       BREAK_GLASS_DIR: /run/nextup/break-glass
       LOG_EXPORT_DIR: /var/log/nextup
+      # When the last backup finished (stack/backup.sh writes last.json; read-only here).
+      BACKUP_STATUS_DIR: /run/nextup/backup-status
       # The vault key being retired during a rotation (D8). Empty = no rotation under way.
       CONNECTOR_VAULT_KEY_PREVIOUS: ${CONNECTOR_VAULT_KEY_PREVIOUS:-}
     volumes:
       - ${INSTANCE_DIR:?}/break-glass:/run/nextup/break-glass:ro
+      - ${INSTANCE_DIR:?}/backup-status:/run/nextup/backup-status:ro
       - ${INSTANCE_DIR:?}/logs:/var/log/nextup
     depends_on:
       db:

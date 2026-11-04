@@ -1,5 +1,7 @@
 // Settings -> Import and export (API D13): structure in from CSV files, checked first, and out again. Admin only.
 import { ImportExport } from "@/components/settings/ImportExport";
+import { SettingsHead } from "@/components/settings/SettingsParts";
+import { SectionCard } from "@/components/ui/elements";
 import { COLUMNS, type FileKind } from "@/features/api/structure-csv";
 import { companyPrefix } from "@/features/tenant/urls";
 import { getT } from "@/i18n/server";
@@ -17,8 +19,8 @@ export default async function ImportExportPage({ params }: { params: Promise<{ c
   if (!admin) {
     return (
       <>
-        <h1>{t("settingsImport.title")}</h1>
-        <p className="nh-hint">{t("settingsImport.managerOnly")}</p>
+        <SettingsHead title={t("settingsImport.title")} />
+        <SectionCard><p>{t("settingsImport.managerOnly")}</p></SectionCard>
       </>
     );
   }
@@ -29,8 +31,7 @@ export default async function ImportExportPage({ params }: { params: Promise<{ c
   };
   return (
     <>
-      <h1>{t("settingsImport.title")}</h1>
-      <p className="nh-hint">{t("settingsImport.lead")}</p>
+      <SettingsHead title={t("settingsImport.title")} lede={t("settingsImport.lead")} />
       <ImportExport slug={company} prefix={companyPrefix(company)} counts={counts} columns={COLUMNS} />
     </>
   );
