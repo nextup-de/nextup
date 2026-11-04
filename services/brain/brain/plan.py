@@ -44,7 +44,7 @@ def plan(llm: LLMClient, body: PlanIn) -> PlanOut:
     return PlanOut(
         steps=_clean(d.steps, 5),
         metric=PlanMetric(name=metric[:80], unit=d.unit.strip()[:20], better=d.better) if metric else None,
-        model=llm.settings.llm_model,
+        model=llm.model_used, tokens_in=llm.tokens_in, tokens_out=llm.tokens_out,
         version=PLAN_VERSION,
         ms=round((time.perf_counter() - started) * 1000),
     )
@@ -67,7 +67,7 @@ def checkin(llm: LLMClient, body: CheckinIn) -> CheckinOut:
         next="decide" if d.ready and not open_ else "round",
         open=open_,
         note=" ".join(d.note.split())[:400],
-        model=llm.settings.llm_model,
+        model=llm.model_used, tokens_in=llm.tokens_in, tokens_out=llm.tokens_out,
         version=CHECKIN_VERSION,
         ms=round((time.perf_counter() - started) * 1000),
     )

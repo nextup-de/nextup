@@ -3,6 +3,7 @@
 Nothing model-specific here: model names and URLs come from config, prompts from brain/prompts.
 """
 
+import copy
 import json
 import logging
 from pathlib import Path
@@ -12,7 +13,8 @@ from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
 from brain.config import Settings
-from brain.schemas import LlmOverride
+from brain.schemas import BedrockOverride, LlmOverride
+from brain.strict import strict_schema
 
 log = logging.getLogger("brain.llm")
 PROMPT_DIR = Path(__file__).parent / "prompts"
@@ -40,35 +42,59 @@ def render(template: str, **variables: Any) -> str:
 
 
 class LLMClient:
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, provider: str = "openai-compatible"):
         self.settings = settings
+        self.provider = provider
         self.client = OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key,
                              timeout=settings.llm_timeout, max_retries=1)
+        self._reset_counters()
+
+    def _reset_counters(self) -> None:
         self.invalid = 0  # attempts that failed JSON/schema validation, for the eval
+        self.tokens_in = 0   # summed over every call (and retry) made through this object
+        self.tokens_out = 0
+        self.answered_by: str | None = None  # the model name the last answer reported
 
-    def for_request(self, override: LlmOverride | None) -> "LLMClient":
-        """The client for one request: this one, or - with the company's own endpoint - a fresh one.
+    @property
+    def model_used(self) -> str:
+        """The model that answered (a deployment name has no price), else the configured one."""
+        return self.answered_by or self.settings.llm_model
 
-        No global state: the override lives only as long as the returned client. The key is read
-        here and nowhere else, and is never logged.
+    def for_request(self, override: LlmOverride | BedrockOverride | None) -> "LLMClient":
+        """The client for one request: always a new object, so counters never mix between threads.
+
+        Without an override it is a copy sharing this one's SDK client; with the company's own
+        endpoint it is a fresh client. No global state: the override lives only as long as the
+        returned client. The key is read here and nowhere else, and is never logged.
         """
         if override is None:
-            return self
+            mine = copy.copy(self)
+            mine._reset_counters()
+            return mine
+        if isinstance(override, BedrockOverride):
+            from brain.bedrock import BedrockLLMClient  # lazy: a stack without Bedrock never builds it
+            return BedrockLLMClient(self.settings.model_copy(update={"llm_model": override.model}), override.region)
         settings = self.settings.model_copy(update={
             "llm_base_url": override.base_url, "llm_model": override.model,
             "llm_api_key": override.api_key.get_secret_value()})
-        return LLMClient(settings)
+        return LLMClient(settings, provider=override.provider)
 
     def complete_json(self, system: str, user: str, schema: dict, name: str) -> str:
         """One raw completion constrained to a JSON schema. Separate method so tests can mock it."""
+        # Azure's newer deployments refuse max_tokens and any temperature but the default.
+        limits: dict[str, Any] = ({"max_completion_tokens": 1500} if self.provider == "azure-openai"
+                                  else {"max_tokens": 700, "temperature": 0})  # a cap: answers are a few short fields
         resp = self.client.chat.completions.create(
             model=self.settings.llm_model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-            temperature=0,
-            max_tokens=700,  # a safety cap: every answer here is a few short fields
             response_format={"type": "json_schema",
                              "json_schema": {"name": name, "schema": schema, "strict": True}},
+            **limits,
         )
+        usage = getattr(resp, "usage", None)
+        self.tokens_in += getattr(usage, "prompt_tokens", 0) or 0
+        self.tokens_out += getattr(usage, "completion_tokens", 0) or 0
+        self.answered_by = getattr(resp, "model", None) or self.answered_by
         return resp.choices[0].message.content or ""
 
     def structured(self, prompt: str, model: type[T], variables: dict[str, Any],
@@ -80,7 +106,7 @@ class LLMClient:
         """
         system_tpl, user_tpl = load_prompt(prompt)
         system, user = render(system_tpl, **variables), render(user_tpl, **variables)
-        schema = schema_override or model.model_json_schema()
+        schema = strict_schema(schema_override or model.model_json_schema())
         last_error = ""
         tries = (self.settings.llm_max_retries if retries is None else retries) + 1
         for attempt in range(tries):
