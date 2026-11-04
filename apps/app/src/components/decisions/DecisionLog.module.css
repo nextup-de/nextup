@@ -1,30 +1,43 @@
-.page { display: flex; flex-direction: column; gap: 16px; padding: 24px; max-width: 1100px; }
-.title { margin: 0; font-size: var(--nh-fs-xl); color: var(--nh-ink); }
-.lead { margin: 4px 0 0; color: var(--nh-ink-2); }
+/* The decision log in the house look: a page header, then one section card holding the filters and the table.
+   The table is a real <table> (each row keeps its test id); it looks like the DataTable element, and on a
+   phone every row becomes a small card. */
+.page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: var(--nh-max); margin: 0 auto; min-width: 0; }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; }
-.filters select, .search { height: 36px; padding: 0 10px; border: 1px solid var(--nh-line); border-radius: 8px; background: var(--nh-card); color: var(--nh-ink); font: inherit; }
+.filters select, .search, .apply { box-sizing: border-box; height: 36px; padding-inline: 12px; border: 1px solid #e5e5ea; border-radius: 8px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: #1c1c1e; }
+.filters select:focus, .search:focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
 .search { flex: 1 1 220px; min-width: 0; }
-.apply { height: 36px; padding: 0 14px; border: 1px solid var(--nh-line); border-radius: 8px; background: var(--nh-card); color: var(--nh-ink); font: inherit; cursor: pointer; }
-.table { width: 100%; border-collapse: collapse; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: 12px; }
-.table th { text-align: left; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); padding: 10px 12px; border-bottom: 1px solid var(--nh-line); }
-.table td { vertical-align: top; padding: 12px; border-bottom: 1px solid var(--nh-line-soft); color: var(--nh-ink); }
-.date { white-space: nowrap; color: var(--nh-ink-2); }
-.caseLink { color: var(--nh-ink); font-weight: 600; text-decoration: none; display: block; }
-.caseLink:hover { text-decoration: underline; }
-.meta { display: block; font-size: var(--nh-fs-xs); color: var(--nh-mute); }
-.quote { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; color: var(--nh-ink-2); }
-.pillYes, .pillNo { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: var(--nh-fs-xs); font-weight: 600; }
-.pillYes { background: var(--nh-line-soft); color: var(--nh-ink); }
-.pillNo { background: var(--nh-card); color: var(--nh-ink); border: 1px solid var(--nh-ink-2); }
-.paging { display: flex; justify-content: flex-end; align-items: center; gap: 12px; color: var(--nh-ink-2); }
-.paging a { color: var(--nh-ink); text-decoration: none; padding: 0 6px; }
-.empty { padding: 32px 0; color: var(--nh-ink-2); text-align: center; }
+.apply { border: 0; background: #f2f2f7; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
+.apply:hover { background: #e5e5ea; }
+.apply:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; font-size: var(--nh-fs-sm); font-weight: 600; color: #6e6e73; padding: 10px 12px; }
+.table td { vertical-align: top; padding: 12px; border-top: 1px solid #f0f0f3; font-size: var(--nh-fs-md); color: #1c1c1e; overflow-wrap: anywhere; }
+.table tbody tr:hover { background: #f7f7f9; }
+.date { white-space: nowrap; color: #6e6e73; }
+.caseLink { display: block; color: #1c1c1e; font-weight: 600; text-decoration: none; }
+.caseLink:hover { color: #0062cc; }
+.caseLink:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.meta { display: block; font-size: var(--nh-fs-sm); color: #6e6e73; }
+.person { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.person .meta { display: inline; }
+.quote { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 6px; color: #3a3a3c; }
+/* Yes: ink on grey. No: white with a line. Never green or red. */
+.pillYes, .pillNo { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: var(--nh-fs-sm); font-weight: 600; line-height: 18px; color: #1c1c1e; }
+.pillYes { background: #e5e5ea; }
+.pillNo { background: #fff; box-shadow: inset 0 0 0 1px #8e8e93; }
+.paging { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 12px 12px 0; font-size: var(--nh-fs-sm); color: #6e6e73; }
+.paging a, .paging span[aria-hidden] { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #f2f2f7; color: #1c1c1e; text-decoration: none; }
+.paging span[aria-hidden] { background: none; color: #c7c7cc; }
+.paging a:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.empty { margin: 0; padding: 24px 0; font-size: var(--nh-fs-md); color: #6e6e73; text-align: center; }
+
 @media (max-width: 760px) {
-  .page { padding: 16px; }
+  .filters select, .search, .apply { height: 44px; font-size: var(--nh-fs-input); }
   .table, .table tbody, .table tr, .table td { display: block; }
   .table thead { display: none; }
-  .table tr { padding: 12px; border-bottom: 1px solid var(--nh-line-soft); }
+  .table tr { padding: 12px 0; border-top: 1px solid #f0f0f3; }
   .table td { padding: 2px 0; border: 0; }
-  .table td::before { content: attr(data-label) ": "; color: var(--nh-mute); font-size: var(--nh-fs-xs); }
+  .table td::before { content: attr(data-label) ": "; color: #6e6e73; font-size: var(--nh-fs-sm); }
   .table td:nth-child(2)::before { content: ""; }
 }

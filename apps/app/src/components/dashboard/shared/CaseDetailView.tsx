@@ -10,7 +10,8 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
 import { translate, type MessageKey, type T } from "@/i18n";
-import { Avatar, Empty, Pill, reasonTone, statusTone } from "@/components/dashboard/shared/primitives";
+import { Avatar, reasonTone, statusTone, type Tone } from "@/components/dashboard/shared/primitives";
+import { DeptChip, PageHeader, SectionCard } from "@/components/ui/elements";
 import { AnswerPromise } from "@/components/cases/AnswerPromise";
 import { CaseRouting } from "@/components/cases/CaseRouting";
 import { seesRouting } from "@/features/cases/routing-trail";
@@ -23,11 +24,13 @@ import { raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
 import { scoreBand, scoreCase } from "@/features/scoring";
 import { loadShots } from "@/lib/shots";
-import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CaseDetailView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped" } as const satisfies Record<string, MessageKey>;
+
+// The status and reason chips in soft tints: a case that waits is amber, a result is green, the rest stays grey.
+const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", ink: "green", ok: "green", grey: "grey", soft: "grey", ghost: "grey", none: "grey", purple: "grey" };
 
 // Facts in, one sentence out - nothing here is stored.
 function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined): string {
@@ -65,10 +68,11 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   // Someone else's case reads exactly like a missing one - the title is not leaked either way.
   if (!c || !canOpen(ctx, c)) {
     return (
-      <div className={ui.card}>
-        <Empty title={t("dashboard.detailNoCase")} sub={t("dashboard.detailNoCaseSub", { id: caseId })}>
-          <Link href={href("/")} className={ui.ghost}>{t("dashboard.detailBackHome")}</Link>
-        </Empty>
+      <div className={styles.page}>
+        <PageHeader title={t("dashboard.detailNoCase")} lede={t("dashboard.detailNoCaseSub", { id: caseId })} />
+        <SectionCard name="no-case">
+          <Link href={href("/")} className={styles.soft}>{t("dashboard.detailBackHome")}</Link>
+        </SectionCard>
       </div>
     );
   }
@@ -112,25 +116,26 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
   return (
     <>
-    <div className={styles.bar}>
-      <button type="button" className={styles.back} onClick={back}>← {t("common.back")}</button>
-      <button type="button" className={ui.textlink} onClick={share}>{t("dashboard.detailCopyLink")}</button>
-    </div>
+    <div className={styles.page}>
+    <button type="button" className={styles.back} onClick={back}>← {t("common.back")}</button>
+    <PageHeader
+      title={c.title}
+      lede={`${t(c.kind === "idea" ? "dashboard.detailIdea" : "dashboard.detailProblem")} · ${c.id}`}
+      action={<button type="button" className={styles.soft} onClick={share}>{t("dashboard.detailCopyLink")}</button>}
+    />
     {flag("projects") && <ArchiveBanner c={c} />}
-    <div className={ui.split}>
-      <div className={ui.stack}>
-      <div className={ui.card}>
+    <div className={styles.split}>
+      <div className={styles.stack}>
+      <SectionCard name="case">
         {seesRouting(c, me, role) && <AnswerPromise c={c} />}
-        <div className={ui.eyebrow}>{t(c.kind === "idea" ? "dashboard.detailIdea" : "dashboard.detailProblem")} · {c.id}</div>
-        <div className={ui.h2}>{c.title}</div>
-        <div className={`${ui.chips} ${styles.meta}`}>
-          <Pill tone={statusTone(translate("en", STATUS_LABEL[c.status]))}>{t(STATUS_LABEL[c.status])}</Pill>
-          <Pill tone={reasonTone(c.reason)}>{c.reason}</Pill>
-          <span className={ui.small}>{t("dashboard.detailRaised", { date: f(c.raisedDay), clock })}</span>
+        <div className={styles.meta}>
+          <span className={styles.chip} data-tone={CHIP_TONE[statusTone(translate("en", STATUS_LABEL[c.status]))]}>{t(STATUS_LABEL[c.status])}</span>
+          <span className={styles.chip} data-tone={CHIP_TONE[reasonTone(c.reason)]}>{c.reason}</span>
+          <span className={styles.small}>{t("dashboard.detailRaised", { date: f(c.raisedDay), clock })}</span>
         </div>
-        <div className={`${ui.quote} ${ui.mt14}`}>
-          <div className={ui.quoteText}>{c.body || "—"}</div>
-          <div className={ui.quoteBy}><Avatar name={c.from} size="sm" /> {c.from} · {c.fromDept}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
+        <div className={styles.quote}>
+          <div className={styles.quoteText}>{c.body || "—"}</div>
+          <div className={styles.quoteBy}><Avatar name={c.from} size="sm" /> {c.from}{c.fromDept ? <> · <DeptChip name={c.fromDept} /></> : null}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
           {shots.length > 0 && (
             <div className={styles.shots}>
               {shots.map((s, i) => (
@@ -144,7 +149,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           {extra.attachments > 0 && shots.length === 0 && <div className={styles.shotsGone}>{t("dashboard.detailShotsGone")}</div>}
         </div>
         <div className={styles.desks}>
-          <span className={ui.eyebrow}>{t("dashboard.detailDesks")}</span>
+          <span className={styles.label}>{t("dashboard.detailDesks")}</span>
           <span className={styles.chain}>
             {chain.map((name, i) => (
               <span key={i} className={styles.hop} data-last={i === chain.length - 1 ? "true" : undefined}>
@@ -156,22 +161,19 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           </span>
         </div>
         {seesRouting(c, me, role) && <CaseRouting c={c} />}
-        <div className={`${ui.grid2} ${ui.mt14}`}>
-          <div className={ui.tile}><div className={ui.tileTitle}>{c.assignee}</div><div className={ui.tileL}>{t("dashboard.detailOnDesk")}{c.escalated ? " " + t("dashboard.detailAlso", { to: c.escalated.to }) : ""}</div></div>
-          <div className={ui.tile}><div className={ui.tileTitle}>{c.route ? c.route.type : t("dashboard.detailNoRoute")}</div><div className={ui.tileL}>{c.route ? t("dashboard.detailDeputyBuddy", { deputy: c.route.deputy, buddy: c.route.buddy }) : t("dashboard.detailTriage")}</div></div>
+        <div className={styles.tiles}>
+          <div className={styles.tile}><div className={styles.tileTitle}>{c.assignee}</div><div className={styles.tileL}>{t("dashboard.detailOnDesk")}{c.escalated ? " " + t("dashboard.detailAlso", { to: c.escalated.to }) : ""}</div></div>
+          <div className={styles.tile}><div className={styles.tileTitle}>{c.route ? c.route.type : t("dashboard.detailNoRoute")}</div><div className={styles.tileL}>{c.route ? t("dashboard.detailDeputyBuddy", { deputy: c.route.deputy, buddy: c.route.buddy }) : t("dashboard.detailTriage")}</div></div>
+          <div className={styles.tile}><div className={styles.tileTitle}>{c.upside || t("dashboard.detailNotEstimated")}</div><div className={styles.tileL}>{t("dashboard.detailCostWaiting")}</div></div>
+          <div className={styles.tile}><div className={styles.tileTitle}>{c.shipped ? c.shipped.outcome : c.building?.expected ? t("dashboard.detailExpected", { x: c.building.expected }) : t("dashboard.detailPending")}</div><div className={styles.tileL}>{t("dashboard.detailOutcome")}</div></div>
         </div>
-        <div className={`${ui.grid2} ${ui.mt8}`}>
-          <div className={ui.tile}><div className={ui.tileTitle}>{c.upside || t("dashboard.detailNotEstimated")}</div><div className={ui.tileL}>{t("dashboard.detailCostWaiting")}</div></div>
-          <div className={ui.tile}><div className={ui.tileTitle}>{c.shipped ? c.shipped.outcome : c.building?.expected ? t("dashboard.detailExpected", { x: c.building.expected }) : t("dashboard.detailPending")}</div><div className={ui.tileL}>{t("dashboard.detailOutcome")}</div></div>
-        </div>
-      </div>
+      </SectionCard>
       {talk && <DiscussionPanel c={c} />}
       {talk && <VersionsPanel c={c} mine={mine} />}
       </div>
 
-      <div className={ui.stack}>
-      <div className={ui.card}>
-        <div className={ui.eyebrow}>{t("dashboard.detailYourMove")}</div>
+      <div className={styles.stack}>
+      <SectionCard title={t("dashboard.detailYourMove")} name="your-move">
         <div className={styles.score} title={score.parts.map((p) => "+" + p.points + " " + p.label).join("\n") || t("dashboard.detailBaseOnly")}>
           <span className={styles.scoreV} data-band={scoreBand(score.value)}>{score.value}</span>
           <span className={styles.scoreL}>{t("dashboard.detailScore", { parts: score.parts.length ? score.parts.map((p) => p.label.toLowerCase()).join(", ") : t("dashboard.detailBaseOnlyLc") })}</span>
@@ -181,29 +183,29 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         ))}
         <div className={styles.actions}>
           {c.open && lead && (
-            <button type="button" className={`nh-btn nh-btn-sm ${meToo ? "nh-btn-ghost" : "nh-btn-primary"}`} aria-pressed={meToo} aria-expanded={asking}
+            <button type="button" className={meToo ? styles.soft : styles.primary} aria-pressed={meToo} aria-expanded={asking}
               onClick={() => { if (meToo) { act.affect(c.id); showToast(t("dashboard.detailWithdrawn")); } else setAsking((v) => !v); }}>
               {meToo ? "✓ " : ""}{t("dashboard.detailAffects")}
             </button>
           )}
           {c.open && !lead && (
-            <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" aria-expanded={asking} onClick={() => setAsking((v) => !v)}>{t("dashboard.detailReevaluate")}</button>
+            <button type="button" className={styles.primary} aria-expanded={asking} onClick={() => setAsking((v) => !v)}>{t("dashboard.detailReevaluate")}</button>
           )}
-          {mine && c.status === "asked" && <button type="button" className="nh-btn nh-btn-accent nh-btn-sm" onClick={() => openSheet("reply", c.id)}>{t("dashboard.detailAnswerQuestion")}</button>}
-          {!c.open && <Link href={href("/raise")} className="nh-btn nh-btn-ghost nh-btn-sm">{t("dashboard.detailFollowUp")}</Link>}
+          {mine && c.status === "asked" && <button type="button" className={styles.primary} onClick={() => openSheet("reply", c.id)}>{t("dashboard.detailAnswerQuestion")}</button>}
+          {!c.open && <Link href={href("/raise")} className={styles.soft}>{t("dashboard.detailFollowUp")}</Link>}
         </div>
         {asking && c.open && (
           <div className={styles.whyRow}>
             <input className={styles.note} value={why} onChange={(e) => setWhy(e.target.value)} autoFocus aria-label={lead ? t("dashboard.detailWhyAffects") : t("dashboard.detailWhatIsNew")}
               placeholder={lead ? t("dashboard.detailWhyPlaceholder") : t("dashboard.detailNewPlaceholder")}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendWhy(); } if (e.key === "Escape") setAsking(false); }} />
-            <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={sendWhy} disabled={!why.trim()}>{lead ? t("dashboard.detailConfirm") : t("dashboard.detailReevaluateShort")}</button>
+            <button type="button" className={styles.primary} onClick={sendWhy} disabled={!why.trim()}>{lead ? t("dashboard.detailConfirm") : t("dashboard.detailReevaluateShort")}</button>
           </div>
         )}
         {standing.length > 0 && (
           <div className={styles.standing}>
             <span className={styles.avatars}>{standing.slice(0, 6).map((n) => <Avatar key={n} name={n} size="sm" />)}</span>
-            <span className={ui.small}>{t("dashboard.detailAffected", { count: standing.length, name: standing[0], by: mine ? t("dashboard.detailYou") : c.from })}</span>
+            <span className={styles.small}>{t("dashboard.detailAffected", { count: standing.length, name: standing[0], by: mine ? t("dashboard.detailYou") : c.from })}</span>
           </div>
         )}
         {reasons.map((a) => (
@@ -213,7 +215,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           {comments.map((m) => (
             <div key={m.id} className={styles.comment}>
               <Avatar name={m.by} size="sm" />
-              <div className={ui.rowBody}>
+              <div className={styles.commentBody}>
                 <div className={styles.commentText}>{m.text}</div>
                 <div className={styles.commentBy}>{isMe(m.byUserId) ? t("dashboard.detailYou") : m.by} · {f(m.day)}{m.rescore && <span className={styles.rescoreTag}>{t("dashboard.detailNewInfoTag")}</span>}</div>
               </div>
@@ -225,14 +227,13 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           <div className={styles.noteRow}>
             <input className={styles.note} value={note} onChange={(e) => setNote(e.target.value)} placeholder={comments.length ? t("dashboard.detailAddThread") : t("dashboard.detailAddKnow")} aria-label={t("dashboard.detailComment")}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendNote(); } }} />
-            <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={sendNote} disabled={!note.trim()}>{t("dashboard.detailPost")}</button>
+            <button type="button" className={styles.soft} onClick={sendNote} disabled={!note.trim()}>{t("dashboard.detailPost")}</button>
           </div>
           )}
         </div>
-      </div>
+      </SectionCard>
 
-      <div className={ui.card}>
-        <div className={ui.eyebrow}>{t("dashboard.detailWhatHappened")}</div>
+      <SectionCard title={t("dashboard.detailWhatHappened")} name="what-happened">
         <ol className={styles.timeline}>
           {c.history.map((e) => (
             <li key={e.id} className={styles.event}>
@@ -253,9 +254,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             </li>
           )}
         </ol>
-        <div className={`${ui.note} ${ui.mt}`}>{t("dashboard.detailLogNote")}</div>
+        <div className={styles.small}>{t("dashboard.detailLogNote")}</div>
+      </SectionCard>
       </div>
-      </div>
+    </div>
     </div>
     {big !== null && shots[big] && createPortal(
       <div className={styles.lightbox} role="dialog" aria-modal="true" aria-label={shots[big].name} onClick={() => setBig(null)}

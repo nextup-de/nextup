@@ -1,11 +1,12 @@
-.panel { display: grid; gap: 8px; margin: 0 0 14px; padding: 12px 14px; border-radius: var(--nh-r-sm); background: var(--nh-surface); }
-.title { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
+/* The answer-by and Routing panels inside the case card: a quiet grey block, like the other facts of the card. */
+.panel { display: grid; gap: 8px; margin: 0; padding: 12px 14px; border-radius: 8px; background: #f7f7f9; font-size: var(--nh-fs-md); line-height: 22px; }
+.title { font-size: var(--nh-fs-sm); font-weight: 600; color: #6e6e73; }
 .rows { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
-.rows dt { color: var(--nh-ink-soft, var(--nh-ink)); font-weight: 600; }
-.rows dd { margin: 0; color: var(--nh-ink); }
-.hint { grid-column: 2; margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-soft, var(--nh-ink)); }
-.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
-.late { color: var(--nh-accent); }
+.rows dt { color: #6e6e73; font-weight: 600; }
+.rows dd { margin: 0; color: #1c1c1e; }
+.hint { grid-column: 2; margin: 0; font-size: var(--nh-fs-sm); color: #6e6e73; }
+.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; color: #1c1c1e; }
+.late { color: #8a5d00; }
 @media (max-width: 760px) {
   .rows { grid-template-columns: 1fr; gap: 0; }
   .rows dd { margin-bottom: 6px; }
