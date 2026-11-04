@@ -4,6 +4,7 @@
 import type { ApiV1Org, CaseRef, Decision, ProjectRef } from "@nextup/contracts/public";
 import type { SeatRow } from "@/features/auth/identity";
 import type { ReducedCase } from "@/features/cases/reducer";
+import { hasClosedAudience } from "@/features/cases/visibility";
 import type { Knowledge } from "@/features/knowledge";
 import type { ReducedProject } from "@/features/projects/types";
 
@@ -30,10 +31,8 @@ const clip = (s: string, n: number): string => (s.length <= n ? s : s.slice(0, n
 const roleOfUser = (ctx: MapCtx, userId: string | null | undefined): string | null =>
   userId ? ctx.seats.find((s) => s.userId === userId)?.roleId ?? null : null;
 
-/** Cases the raiser kept private never leave through v1 (D3). */
-export function isPrivate(kase: ReducedCase): boolean {
-  return kase.history.find((e) => e.type === "case.raised")?.payload.visibility === "private";
-}
+/** Cases whose raiser chose who sees them, private or a custom audience, never leave through v1 (D3, FX4). */
+export const isPrivate = (kase: ReducedCase): boolean => hasClosedAudience(kase);
 
 export function raisedAtMs(kase: ReducedCase, ctx: MapCtx): number {
   const ev = kase.history.find((e) => e.type === "case.raised");

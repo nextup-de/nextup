@@ -8,6 +8,7 @@
 // always path-addressed and authenticates by bearer token, never by cookie.
 import { findCompanyBySlug } from "@/lib/db/companies";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { closedTargets } from "@/lib/db/audience";
 import { appendEventRow, hasIdemKey, loadLogForSlug } from "@/lib/db/events";
 import { markTokenUsed, resolveToken } from "@/lib/db/tokens";
 import {
@@ -78,14 +79,17 @@ export async function GET(request: Request, { params }: Ctx) {
   });
 
   await markTokenUsed(auth.token.id, auth.token.companyId);
-  const log = logFromRows(rows, row.demoDay);
+  // A case whose raiser chose who sees it stays inside the app. The cursor still moves past its events.
+  const closed = await closedTargets(row.id);
+  const open = rows.filter((r) => !(r.targetId && closed.has(r.targetId)));
+  const log = logFromRows(open, row.demoDay);
 
   return json({
     slug: company,
     day: log.day,
     cursor: cursorOf(rows, since),
-    count: rows.length,
-    events: rows.map((r, i) => ({ seq: r.seq, ...log.events[i] })),
+    count: open.length,
+    events: open.map((r, i) => ({ seq: r.seq, ...log.events[i] })),
   });
 }
 
