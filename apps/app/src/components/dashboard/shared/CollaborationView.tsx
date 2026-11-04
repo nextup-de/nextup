@@ -315,7 +315,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
 
   return (
     <div className={`${styles.page} ${styles.enter}`}>
-      <PageHeader title={t("dashboard.viewNetworkTitle")} lede={t("dashboard.viewNetworkSub")} />
+      {!projectMode && <PageHeader title={t("dashboard.viewNetworkTitle")} lede={t("dashboard.viewNetworkSub")} />}
       <div className={styles.layout}>
         {/* ── the map: mind map above, org tree below ───────────────────────── */}
         <SectionCard name="map">

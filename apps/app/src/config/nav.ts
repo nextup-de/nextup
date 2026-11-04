@@ -32,7 +32,7 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
     { label: "Ideas", href: "/raise" },
     { label: "Inbox", href: "/leader", count: "inbox" },
     { label: "Feed", href: "/feed" },
-    { label: "Decisions", href: "/decisions" },
+    { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of Projects while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
@@ -40,11 +40,37 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
     { label: "Dashboard", href: "/dashboard" },
     { label: "Inbox", href: "/leader", count: "inbox" }, // tentative: what sits on the manager's own desk (escalations, routes they own)
     { label: "Feed", href: "/feed" },
-    { label: "Decisions", href: "/decisions" },
+    { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of Projects while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
 };
+
+/**
+ * The tabs of the Projects area, shown in a strip under the bar. Each page in the area is named by its tab, so
+ * no page repeats it as a title. `labelKey` is a message key; `roles`: only these roles see the tab.
+ */
+export type ProjectsTabKey = "overview" | "decisions" | "collaboration" | "progress";
+export type ProjectsTabItem = {
+  key: ProjectsTabKey; href: string; roles?: readonly Role[];
+  labelKey: "shell.navOverview" | "decisions.tab" | "shell.navCollaboration" | "shell.navProgress";
+};
+export const PROJECTS_TABS: ProjectsTabItem[] = [
+  { key: "overview", labelKey: "shell.navOverview", href: "/projects" },
+  { key: "decisions", labelKey: "decisions.tab", href: "/decisions", roles: ["leader", "manager"] },
+  { key: "collaboration", labelKey: "shell.navCollaboration", href: "/projects/collaboration" },
+  { key: "progress", labelKey: "shell.navProgress", href: "/projects/progress" },
+];
+
+export function projectsTabsFor(role: Role): ProjectsTabItem[] {
+  return PROJECTS_TABS.filter((tab) => !tab.roles || tab.roles.includes(role));
+}
+
+/** Which tab an address (relative to /[company]) is, or null outside the area: a project's own page has its own tabs. */
+export function projectsTabAt(path: string): ProjectsTabKey | null {
+  if (path === "/overview") return "overview";
+  return PROJECTS_TABS.find((tab) => tab.href === path)?.key ?? null;
+}
 
 /**
  * The account menu's ways to the company's administration: Settings for a manager, while the database
