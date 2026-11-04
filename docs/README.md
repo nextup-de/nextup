@@ -44,6 +44,7 @@ is on their first line.
 | [customer/SECURITY_GUIDE.md](customer/SECURITY_GUIDE.md) | customer guide: data flows, encryption, access, SSO, audit, hardening checklist |
 | [IDENTITY.md](IDENTITY.md) | identity by id, OIDC, SAML, SCIM, log export, tables, test fakes, claims (updated 2026-11-04) |
 | [customer/SSO_SETUP.md](customer/SSO_SETUP.md) | customer guide: Entra, Okta, ADFS, Keycloak, SCIM, syslog and file export (updated 2026-11-04) |
+| [pilot/README.md](pilot/README.md) | pilot package: runbook, onboarding, training (DE/EN), support, success measures, one-pager (updated 2026-11-04) |
 
 Design system (tokens, components, brand assets, UI kit): `design-system/README.md`.
 
