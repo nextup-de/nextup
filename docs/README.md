@@ -39,6 +39,9 @@ is on their first line.
 | [RESPONSIVE.md](RESPONSIVE.md) | layout rules |
 | [DEPLOY.md](DEPLOY.md) | running it on a laptop |
 | [audit/gap-register.md](audit/gap-register.md) | gaps to the pilot, by phase |
+| [customer/INSTALL.md](customer/INSTALL.md) | customer guide: server requirements, install, DNS and TLS, first admin |
+| [customer/OPERATIONS.md](customer/OPERATIONS.md) | customer guide: releases, backups, monitoring, key rotation, break-glass, support access |
+| [customer/SECURITY_GUIDE.md](customer/SECURITY_GUIDE.md) | customer guide: data flows, encryption, access, SSO, audit, hardening checklist |
 
 Design system (tokens, components, brand assets, UI kit): `design-system/README.md`.
 
