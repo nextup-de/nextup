@@ -93,7 +93,8 @@ export async function publishTo(page: Page, to: string) {
   const offered = who.getByRole("radio").filter({ hasText: to }); // by its text: no pattern built from the name
   if (await offered.count()) await offered.first().click();
   else {
-    await who.getByTestId("raise-desk-other").getByRole("button").first().click();
+    const other = who.getByTestId("raise-desk-other").getByRole("button").first(); // the search usually starts open
+    if ((await other.getAttribute("aria-expanded")) !== "true") await other.click();
     await who.getByRole("textbox").fill(to);
     await who.getByRole("button").filter({ hasText: to }).first().click();
   }
