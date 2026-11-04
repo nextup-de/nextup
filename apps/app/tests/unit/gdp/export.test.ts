@@ -102,6 +102,11 @@ describe("GDP export shape", () => {
     expect(own.tables.ideaTurns.map((d) => d.id)).toEqual(["t1"]);
   });
 
+  it("names AiCall in no person's export: it holds no personal data", () => {
+    const r = { ...rows(), tables: { ...rows().tables, aiCalls: [{ id: "k1", companyId: "c1", purpose: "coach", tokensIn: 1, tokensOut: 2 }] } };
+    for (const toPerson of [true, false]) expect(buildPersonExport(r, { userId: "u1", toPerson }).tables.aiCalls).toBeUndefined();
+  });
+
   it("keeps no draft or discarded idea and no idea turn in the company export", () => {
     const f = buildCompanyExport(rows());
     expect(f.tables.ideaDrafts.map((d) => d.id)).toEqual(["d2"]);

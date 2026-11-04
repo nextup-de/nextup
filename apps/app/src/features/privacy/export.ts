@@ -117,6 +117,9 @@ const withShot = (t: Row): Row => {
   return { ...rest, screenshotBase64: screenshot instanceof Uint8Array ? Buffer.from(screenshot).toString("base64") : null };
 };
 
+// AiCall (plan AIB D9) holds tokens and timings, no user id and no text: a company-level table like
+// integrations, so it is in no person's export (buildPersonExport lists only what names the person).
+
 /** Tables a company export carries as the database gave them; the ones in buildCompanyExport are filtered or rewritten. */
 const COMPANY_PLAIN = [
   "users", "companyProfile", "orgUnits", "orgRoles", "seats", "routingRules", "goals", "companyRules", "floorAreas",
