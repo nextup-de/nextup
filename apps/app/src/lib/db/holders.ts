@@ -2,6 +2,7 @@
 // Every query names the company at the top level, so the tenant guard sees it.
 import type { SeatRow } from "@/features/auth/identity";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 
 const seat = { id: true, roleId: true, name: true, userId: true, sort: true } as const;
 
@@ -9,9 +10,11 @@ type HolderRow = { id: string; roleId: string; name: string; userId: string | nu
 const toSeat = (h: HolderRow): SeatRow => ({ id: h.id, roleId: h.roleId, label: h.name, userId: h.userId, sort: h.sort });
 
 /** Every seat of one company, by sort. */
-export async function loadSeats(companyId: string): Promise<SeatRow[]> {
-  const rows = await getDb().orgRoleHolder.findMany({ where: { companyId }, orderBy: { sort: "asc" }, select: seat });
-  return rows.map(toSeat);
+export function loadSeats(companyId: string): Promise<SeatRow[]> {
+  return memo("seats", companyId, async () => {
+    const rows = await getDb().orgRoleHolder.findMany({ where: { companyId }, orderBy: { sort: "asc" }, select: seat });
+    return rows.map(toSeat);
+  });
 }
 
 /** A user's first seat in this company, or null. */

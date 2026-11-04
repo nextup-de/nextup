@@ -136,7 +136,7 @@
 
 /* Start */
 .start { animation: affSoft 260ms ease backwards; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 18px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(min-content, 1fr) var(--nh-bar-h); justify-items: center; } /* the last row is the shell bar's height: the composer sits at the centre of the screen, not of the area below the bar. The row under it never shrinks below the "How it works" card: on a short laptop the composer moves up instead of the card running off the screen. */
-.h1 { align-self: end; width: 100%; max-width: 720px; margin: 0; padding-bottom: 21px; text-align: center; font-size: var(--nh-fs-2xl); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: #1b1d22; }
+.h1 { align-self: end; width: 100%; max-width: 720px; margin: 0; padding-bottom: 21px; text-align: center; font-size: var(--nh-fs-3xl); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: #1b1d22; }
 .below { grid-row: 3 / 5; width: 100%; max-width: 720px; align-self: start; padding: 21px 0 24px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 21px; }
 
 /* The composer: gold ring, breathing aura */
@@ -343,7 +343,7 @@
 .scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 18px 75px 126px; } /* room under the last message, above the composer */
 .thread { max-width: 570px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; gap: 12px; animation: affIn 260ms cubic-bezier(.2,.8,.2,1) backwards; }
 .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10.5px; text-align: center; padding: 30px 0; animation: affFade 420ms cubic-bezier(.2,.8,.2,1) backwards; }
-.emptyTitle { margin: 0; font-size: var(--nh-fs-2xl); line-height: 1.1; color: #1b1d22; }
+.emptyTitle { margin: 0; font-size: var(--nh-fs-3xl); line-height: 1.1; color: #1b1d22; }
 .emptyText { margin: 0; max-width: 330px; font-size: var(--nh-fs-sm); line-height: 1.55; color: #6e6e73; text-wrap: pretty; }
 .msg { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; animation: affFade 420ms cubic-bezier(.2,.8,.2,1) backwards; }
 .msg[data-role="user"] { align-items: flex-end; }

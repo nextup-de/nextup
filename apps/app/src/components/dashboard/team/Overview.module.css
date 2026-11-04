@@ -8,7 +8,7 @@
 .div7 { width: 100%; max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; animation: affSoft 280ms ease backwards; }
 .div8 { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .div9 { display: flex; flex-direction: column; gap: 4px; }
-.overview { margin: 0; font-weight: 600; font-size: var(--nh-fs-2xl); line-height: 1.1; letter-spacing: -0.02em; color: #1b1d22; }
+.overview { margin: 0; font-weight: 600; font-size: var(--nh-fs-3xl); line-height: 1.1; letter-spacing: -0.02em; color: #1b1d22; }
 .div10 { display: flex; align-items: center; gap: 8px; }
 .closeMenu { position: fixed; inset: 0; z-index: 20; }
 .div11 { position: relative; z-index: 21; }
@@ -25,6 +25,12 @@
 .toggleSort:hover { background: #000; }
 .toggleSort:active { transform: scale(.97); }
 .archiveBar { display: flex; }
+/* As a column of the Projects page: heading and Open | Archive on one line, and quiet buttons, so the only black
+   on the page is the bar's current place. */
+.root[data-embedded="true"] .div8 { align-items: center; }
+.root[data-embedded="true"] .div9 { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.root[data-embedded="true"] .toggleFilter, .root[data-embedded="true"] .toggleSort { background: #fff; color: var(--nh-ink); box-shadow: inset 0 0 0 1px var(--nh-line); }
+.root[data-embedded="true"] .toggleFilter:hover, .root[data-embedded="true"] .toggleSort:hover { background: #f7f7f9; }
 .div13 { background: #fff; border-radius: var(--radius-md, 22px); overflow: hidden; box-shadow: 0 10px 30px rgba(40,60,100,0.08),0 1px 2px rgba(40,60,100,0.05); }
 .div14 { display: grid; grid-template-columns: minmax(0,3fr) 110px 120px minmax(0,1.6fr) 130px; gap: 16px; padding: 12px 22px; border-bottom: 1px solid #e5e5ea; font-size: var(--nh-fs-xs); font-weight: 500; color: #6e6e73; }
 .status { text-align: right; }
@@ -60,7 +66,7 @@
 .closeOverview2:hover { background: #000; }
 .closeOverview2:active { transform: scale(.97); }
 .svg { display: block; flex: none; }
-.title2 { margin: -6px 0 0; font-weight: 600; font-size: var(--nh-fs-2xl); line-height: 1.1; letter-spacing: -0.02em; color: #1b1d22; text-wrap: pretty; }
+.title2 { margin: -6px 0 0; font-weight: 600; font-size: var(--nh-fs-3xl); line-height: 1.1; letter-spacing: -0.02em; color: #1b1d22; text-wrap: pretty; }
 .div26 { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 6px; }
 .div27 { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .div28 { height: 5px; border-radius: var(--radius-sm, 999px); transform-origin: left center; transition: background 300ms ease; }

@@ -204,7 +204,7 @@
   .artMain { padding: 18px 48px; }
   .artCard { padding: 0; }
   .artCard form { gap: 12px; margin-top: 2px; }
-  .artCard .title { font-size: var(--nh-fs-2xl); }
+  .artCard .title { font-size: var(--nh-fs-3xl); }
   .artCard .sub { margin-bottom: 4px; font-size: var(--nh-fs-sm); }
   .artContent { gap: 12px; }
   .artContent h2 { font-size: var(--nh-fs-4xl); }

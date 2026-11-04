@@ -91,3 +91,8 @@ export async function markRetry(id: string, nextAt: Date, error: string): Promis
 export async function markFailed(id: string, error: string): Promise<void> {
   await getDb().outboxMessage.updateMany({ where: { id }, data: { status: "failed", lastError: error.slice(0, MAX_ERROR) || "failed" } });
 }
+
+/** Not sent, on purpose: the reason is kept on the row. */
+export async function markSkipped(id: string, reason: string): Promise<void> {
+  await getDb().outboxMessage.updateMany({ where: { id }, data: { status: "skipped", lastError: reason.slice(0, MAX_ERROR) || "skipped" } });
+}
