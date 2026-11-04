@@ -1,0 +1,56 @@
+# Test phase (plan TST): where the exit criteria stand
+
+The exit criteria of gate G4 are in `docs/plans/2026-11-01_pilot-readiness.md` (§ Test phase exit criteria). This page lists
+each with the test or drill that proves it and its result (D12). Medium and low findings and wishes are in `LATER.md` (D2).
+Findings: `findings/<task>.md`. A high finding is open until its section says `- **Status:** fixed`.
+
+## Exit criteria
+
+| # | Criterion | Proof | Result |
+|---|---|---|---|
+| 1 | All suites green in CI, including DB tests and the brain eval | CI jobs `ci`, `db-tests`, brain eval; locally `npm run lint && npm run typecheck && npm test && npm run build` and `DATABASE_URL=…_test bash ops/test-db.sh` | green on this branch's base |
+| 2 | 2,000 accounts: p95 below 1 s for inbox and case pages; no page loads the whole log | `tests/load/musterwerk-load.test.ts` (Node driver, CI) and k6 on the test VM (TST-V1) | **open: TST-FL1-1 (high)**, pages queue beyond about 15 requests/s; no response over 77 KB at 200 people. VM run of record: not yet made |
+| 3 | Every deadline, deputy hand-over, check-in and measure fires on the real clock | `tests/db/tst-core.test.ts` (`TST core loop`), including weekend and Bavarian holiday | holds (TST-S1: 12/12) |
+| 4 | 21/21 ground-truth questions in the M365 test tenant; no document visible without access | `tests/db/tst-integrations.test.ts` (recorded Graph, 21 questions, `canRead` cross-check) | holds in the recorded run (TST-I1); the live tenant is Kevin's drill |
+| 5 | A member sees only what their role may see, tested on the server | `tst-core.test.ts` (access and decision log), `tests/e2e/db/visibility.spec.ts`, and `musterwerk.spec.ts` (`TST acceptance`, other unit gets no case) | holds |
+| 6 | Restore from the off-box backup within the written RTO; one on-prem install from scratch | `backup.sh <slug> restore-test` against `RTO_SECONDS` of `docs/ops/RPO_RTO.md`, and `stack/tests/install-clean.sh`, both by `ops/tst/vm-run.sh` / the runbook (TST-V1) | not yet run: no `RUNBOOK.md` or `results/` in the repo |
+| 7 | No open finding rated high from the pentest or ZAP cycle | Kevin (pentest, ZAP); in-repo findings: `tests/unit/tst/findings.test.ts` | **in-repo: red, TST-FL1-1 open**; pentest: Kevin's |
+| 8 | Two weeks of internal real-time use without a data-loss or access bug | Kevin | Kevin's item, not started |
+
+## The proofs
+
+- `apps/app/tests/e2e/db/musterwerk.spec.ts`, `TST acceptance: Musterwerk scenario suite`: a small Musterwerk (80 people) is
+  generated, then through the browser a member raises a case, the owner desk asks and decides, the member answers, a deputy
+  sees a handed-over case, a manager sees the dashboard with small units hidden ("Too few to show"), a member of another unit
+  cannot open the case.
+- `apps/app/tests/unit/tst/findings.test.ts`, `TST findings`: reads the findings files and the `it.fails` scenarios (D7).
+  It is red while a high finding is open or a high finding's scenario is still `it.fails`.
+
+Run the spec locally with the database suite's environment (`DATABASE_URL` of a `*_test` database, `AUTH_SECRET`,
+`ADMIN_ACCESS_CODE`, `CONNECTOR_VAULT_KEY`) and `npx playwright test -c playwright.db.config.ts tests/e2e/db/musterwerk.spec.ts -g 'TST acceptance'`.
+
+### Remote mode
+
+The same flows run against a stack with `TST_BASE_URL`, on a company the generator already made:
+
+| Variable | Meaning |
+|---|---|
+| `TST_BASE_URL` | the stack's URL, no trailing slash |
+| `TST_SLUG` | the company's slug (paths are `/<slug>/…`, path-mode tenancy) |
+| `TST_CODES_FILE` | the generator's `--codes` file (`email<TAB>code`) |
+| `DATABASE_URL` | the SSH tunnel to the stack's Postgres: the spec reads who holds which seat; it writes nothing there |
+
+The generator must have run for at least 40 people, with the default `maintenance` route. A remote run leaves the company and
+adds one case. Playwright's config still starts the local servers; point it at a config without them or let them idle.
+The VM runbook (`RUNBOOK.md`, TST-V1) is not in the repository yet; set these variables from it when it lands.
+
+## Latest VM results
+
+None: `docs/test-phase/results/` does not exist yet (TST-V1 produces `results/<date>.md`).
+
+## Kevin's items
+
+- Pentest and ZAP cycle: no open high finding.
+- Two weeks of internal real-time use without a data-loss or access bug.
+- The VM run of record (2,000 accounts with k6, restore test against the RTO, on-prem install drill) and the live M365 tenant.
+- Approve the fix task for TST-FL1-1 (D7), then mark it `- **Status:** fixed` and turn its `it.fails` into an `it`.
