@@ -30,6 +30,12 @@ async function open(page: Page, url: string) {
   await expect(dev(page).or(demoLogin).first(), "needs a demo-stage company: the Dev panel, or the demo button on its login").toBeVisible();
   if (await demoLogin.isVisible()) await demoLogin.click();
   await expect(dev(page)).toBeVisible();
+  // Demo data is off on a demo-stage stack until someone switches it, for this tab: the script shows it on.
+  await dev(page).click();
+  const demoData = controls(page).getByRole("button", { name: "Demo data" });
+  if ((await demoData.getAttribute("aria-pressed")) !== "true") await demoData.click();
+  await expect(demoData).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
 }
 
 /** Dev panel -> "Viewing as". Switching person also sends you to that person's home page. */

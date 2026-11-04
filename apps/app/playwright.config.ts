@@ -43,6 +43,7 @@ export default defineConfig({
     timeout: 300_000,
     // Empty, not unset: Next does not let .env.local fill a variable that is already defined, so
     // these switch the database and sessions off even on a machine whose .env.local has both.
-    env: { DATABASE_URL: "", AUTH_SECRET: "" },
+    // The suite reads the seed's content, which the dev panel otherwise keeps off.
+    env: { DATABASE_URL: "", AUTH_SECRET: "", DEMO_DATA_DEFAULT: "on" },
   },
 });
