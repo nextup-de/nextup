@@ -7,7 +7,7 @@ const base = {
   slug: "acme-pilot", name: "Acme GmbH", admin: { name: "Erika Muster", email: "erika@acme.example" }, calendar: "de-by",
 };
 // Built at run time so no key-shaped literal sits in the source (the CI guard greps for them).
-const ANT_KEY = ["sk", "ant", "api03", "abcdefghijklmnop1234"].join("-");
+const ANT_KEY = "sk-ant-" + "api03-" + "q".repeat(24);
 const AWS_KEY = "AK" + "IA" + "ABCDEFGHIJKLMNOP";
 const text = (extra: Record<string, unknown> = {}) => JSON.stringify({ ...base, ...extra });
 
