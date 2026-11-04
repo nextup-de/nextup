@@ -41,7 +41,7 @@ const env: Record<string, string | undefined> = { OPS_URL: process.env.OPS_URL, 
 beforeAll(async () => {
   process.env.OPS_URL = "https://admin.test";
   process.env.OPS_TOKEN = "stack-token";
-  process.env.AUTH_SECRET = "pil-gaps-secret-0123456789abcdef0123456789";
+  process.env.AUTH_SECRET = "pil-gaps-test-auth-value";
   await db.company.deleteMany({ where: { slug: { in: SLUGS } } });
   registerChannel("mail", fake);
 }, 60_000);
