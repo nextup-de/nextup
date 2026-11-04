@@ -33,7 +33,7 @@ stack. Demo companies hold made-up data and are out of scope.
 | Vault key rotation | `CONNECTOR_VAULT_KEY_PREVIOUS` lets the app open old values; a test lists every sealed field of the schema in `RESEALED_COLUMNS` | `apps/app/tests/unit/sec/vault-keys.test.ts` · "lists every sealed field of the Prisma schema in RESEALED_COLUMNS" |
 | Re-seal of stored values | `resealAll` skips values already sealed with the current key, re-seals the rest, and leaves a value that opens with neither key untouched, counted as failed | `apps/app/tests/db/sec-vault-reseal.test.ts` · "re-seals every value of both companies" |
 | Key rotation on the host | `stack/rotate-keys.sh` rotates `AUTH_SECRET`, the vault key and the restic password, edits the `.env` atomically and logs the key name, never the value | `stack/tests/rotate-keys.test.sh` · "SEC rotate keys" |
-| Backups encrypted | restic encrypts the repository with `RESTIC_PASSWORD` | `stack/tests/backup-offbox.test.sh` · "OPS hands to: stack/backup.sh with an off-box RESTIC_REPOSITORY" |
+| Backups encrypted | restic encrypts the repository with `RESTIC_PASSWORD` | `stack/tests/backup-s3.test.sh` · "OPS hands to: stack/backup.sh with an off-box RESTIC_REPOSITORY" |
 | Disk encryption of the server | **Not provided.** NextUp's install scripts do not set it up (gap G-224) | organisational · Kevin (head engineer) |
 
 ## Audit
@@ -52,7 +52,7 @@ stack. Demo companies hold made-up data and are out of scope.
 | Control | How NextUp does it | Proof |
 |---|---|---|
 | Backups | `stack/backup.sh` runs nightly (restic) and before every release migration; RPO 24 hours (`docs/ops/RPO_RTO.md`) | `stack/tests/rpo-rto.test.sh` · "OPS hands to: docs/ops/RPO_RTO.md and a restore within RTO" |
-| Off-box copy | Production stacks set an `s3:` repository and `BACKUP_OFFBOX=required`; a local repository is then refused | `stack/tests/backup-offbox.test.sh` · "OPS hands to: stack/backup.sh with an off-box RESTIC_REPOSITORY" |
+| Off-box copy | Production stacks set an `s3:` repository and `BACKUP_OFFBOX=required`; a local repository is then refused | `stack/tests/backup-s3.test.sh` · "OPS hands to: stack/backup.sh with an off-box RESTIC_REPOSITORY" |
 | Restore drill | `backup.sh <slug> restore-test` restores the latest snapshot into a throwaway database weekly and fails over the RTO of one hour | `stack/tests/rpo-rto.test.sh` · "OPS hands to: docs/ops/RPO_RTO.md and a restore within RTO" |
 | High availability, 24/7 operations | **Not provided.** One stack per company on one host (gap G-234) | organisational · Kevin (head engineer) |
 
