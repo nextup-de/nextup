@@ -566,11 +566,12 @@ its button.
 
 - **Route:** `/[company]/settings/support-access` (new)
 - **Who:** company admins
-- **Phase:** SEC (no Bauplan yet): "customer-granted, time-limited, logged break-glass"
-- **Data:** *(proposal, not in any plan:)* a grant row (granted by user id, from, until, reason, ended early by),
-  and the audit events of the grant and of every NextUp sign-in during it (`audit.*`, GDP). The company's stage.
-- **Today:** NextUp's team reaches every stack through `/admin` and the box agent's copy of the stack secrets; there
-  is nothing to grant.
+- **Phase:** SEC (built: SEC-S1; the server window SEC-B1/K1; corrected here by SEC-Z1)
+- **Data:** `SupportGrant` (granted by user id, reason, `expiresAt`, `extendedAt`, ended early by), the audit rows
+  `audit.access.support_granted`, `.support_extended`, `.support_revoked` and `.support_signin` (the page's log,
+  20 per page), and the server break-glass window read from `readBreakGlassWindow()`. The company's stage.
+- **Today:** a real stack sends no secrets to NextUp's vault; NextUp reaches it only through a grant made here or a
+  break-glass window the customer's operator opens on the server (`stack/break-glass.sh`, `docs/SECURITY.md`).
 
 **Purpose:** NextUp's team gets into the company's NextUp only when a company admin lets them, for a set time, and
 every step is on record.
@@ -609,6 +610,9 @@ grant ends by itself and is logged.
 - The open grant badge is amber ("needs you" tone): someone outside the company can get in.
 - NextUp staff are named in the log by the name of their admin account; they are not members of the company and
   are never picked in a form.
+- Under the Now card one read-only line shows the server's break-glass window: "Server break-glass open until
+  {time}" or "Server break-glass closed". The company cannot change it here; the customer's operator opens and
+  closes it on the server (`stack/break-glass.sh`).
 
 Grant dialog (`ConfirmDialog`, wider: 480 px):
 
@@ -636,7 +640,7 @@ The Now panel stacks; *End now* is full width under it. Log rows become cards: w
 | Lead | text | | NextUp's team has no access to {company} unless you grant it. Every grant ends by itself and is logged. | Das NextUp-Team hat keinen Zugang zu {company}, außer du gewährst ihn. Jede Freigabe endet von selbst und wird protokolliert. |
 | Now: none | badge + line | | No access · NextUp's team cannot sign in. Grant access when you ask them for help. | Kein Zugang · Das NextUp-Team kann sich nicht anmelden. Gewähre Zugang, wenn du um Hilfe bittest. |
 | Now: open | badge + `InfoPanel` | | Open until {time} · NextUp support may sign in to this server's admin. · Granted by · For · Reason · Used · Not used yet | Offen bis {time} · Der NextUp-Support darf sich in der Verwaltung dieses Servers anmelden. · Gewährt von · Für · Grund · Genutzt · Noch nicht genutzt |
-| Duration | segmented | 1 h, 4 h, 1 day, 3 days *(proposal)*; default 4 h | For · 1 hour · 4 hours · 1 day · 3 days | Für · 1 Stunde · 4 Stunden · 1 Tag · 3 Tage |
+| Duration | segmented | 1, 4, 24 or 72 hours (shown as 1 hour, 4 hours, 1 day, 3 days); default 4 h | For · 1 hour · 4 hours · 1 day · 3 days | Für · 1 Stunde · 4 Stunden · 1 Tag · 3 Tage |
 | Reason | text input | required, 1-200 characters | Reason · NextUp sees this reason. | Grund · NextUp sieht diesen Grund. |
 | Dialog text | text | names the end time | NextUp support can sign in to the admin of this server until {time} and see {company}'s data. You can end it any time. | Der NextUp-Support kann sich bis {time} in der Verwaltung dieses Servers anmelden und die Daten von {company} sehen. Du kannst das jederzeit beenden. |
 | Log events | `DataTable` | newest first | Granted for {duration} · Extended until {time} · Ended by {name} · Ended by itself · Signed in to admin · Signed out | Für {duration} gewährt · Verlängert bis {time} · Beendet von {name} · Von selbst beendet · In der Verwaltung angemeldet · Abgemeldet |
@@ -644,8 +648,10 @@ The Now panel stacks; *End now* is full width under it. Log rows become cards: w
 
 ### Actions
 
-- *Grant access*: toast "NextUp support has access until {time}." / "Der NextUp-Support hat Zugang bis {time}."
-- *Extend…*: the same dialog with "Extend by"; the end moves, a log line is written.
+- *Grant access*: the dialog shows the 12-character support code once (`SecretOnce`); the admin passes it to NextUp
+  and it is not shown again. Toast "NextUp support has access until {time}." / "Der NextUp-Support hat Zugang bis {time}."
+- *Extend…*: the same dialog with "Extend by"; the end moves by the chosen duration from the later of now and the
+  current end, never beyond 72 hours from now; a log line is written (`audit.access.support_extended`).
 - *End now* (`ConfirmDialog`): "End NextUp's access now? Anyone of them signed in is signed out." / "Zugang für
   NextUp jetzt beenden? Wer von ihnen angemeldet ist, wird abgemeldet." Toast "Access ended." / "Zugang beendet."
 
