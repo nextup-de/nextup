@@ -6,6 +6,7 @@ import path from "node:path";
 process.env.TZ = "Europe/Berlin";
 
 export default defineConfig({
-  test: { include: ["tests/unit/**/*.test.ts"], env: { TZ: "Europe/Berlin" } },
+  // 30 s: on a PC with five lanes a test that loads ESLint or scans src can pass 5 s without being wrong.
+  test: { include: ["tests/unit/**/*.test.ts"], env: { TZ: "Europe/Berlin" }, testTimeout: 30_000 },
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
 });
