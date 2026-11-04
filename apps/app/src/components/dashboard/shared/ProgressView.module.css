@@ -1,6 +1,4 @@
-.head { margin-bottom: 18px; }
-.title { font-size: var(--nh-fs-2xl); font-weight: 800; color: var(--nh-ink); letter-spacing: -0.028em; line-height: 1.15; }
-.lead { font-size: var(--nh-fs-sm); color: var(--nh-mute); margin-top: 5px; line-height: 1.45; max-width: 640px; }
-.bigV { font-size: var(--nh-fs-2xl); font-weight: 800; color: var(--nh-ink); letter-spacing: -0.025em; }
-.bigV[data-hot="true"] { color: #b23c07; }
-@media (max-width: 760px) { .title { font-size: var(--nh-fs-xl); } }
+.stack { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+.empty { font-size: var(--nh-fs-md); line-height: 22px; color: #6e6e73; }
+.bigV { font-size: var(--nh-fs-2xl); font-weight: 600; color: #1b1d22; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.bigV[data-hot="true"] { color: #d70015; }
