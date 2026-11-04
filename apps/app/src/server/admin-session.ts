@@ -5,8 +5,12 @@
 // issueAdminSession would then hand out admin cookies to anybody.
 import { cookies } from "next/headers";
 import { ADMIN_COOKIE, ADMIN_TTL_SECONDS, adminBreakGlass, adminBy, adminVia, signAdmin, type AdminVia } from "@/features/auth/cookie";
-import { BREAK_GLASS_BY } from "@/features/admin/break-glass";
+import { BREAK_GLASS_BY, windowOpen } from "@/features/admin/break-glass";
 import { usableSecret } from "@/features/admin/environment";
+import { grantActive } from "@/features/admin/support-code";
+import { singleCompany } from "@/features/tenant/urls";
+import { getDb, hasDatabase } from "@/lib/db/client";
+import { readBreakGlassWindow } from "@/server/break-glass-window";
 import { secureCookies } from "@/server/issue-session";
 
 /**
@@ -70,4 +74,38 @@ export async function adminBreakGlassActive(): Promise<boolean> {
 export async function adminWayIn(): Promise<AdminVia | null> {
   const secret = usableSecret(process.env.AUTH_SECRET);
   return secret ? adminVia((await cookies()).get(ADMIN_COOKIE)?.value, secret) : null;
+}
+
+/** Drops the admin cookie. A page render may not write cookies; the refusal stands either way. */
+async function clearAdminCookie(): Promise<void> {
+  try {
+    (await cookies()).delete(ADMIN_COOKIE);
+  } catch {
+    /* read-only context */
+  }
+}
+
+/**
+ * A signed cookie says how someone came in, not that they may still be here. A support session lives
+ * only as long as its grant: revoked, expired or replaced ends it. On a real stage a break-glass session
+ * lives only as long as the customer's window: closed, expired or replaced (another openedAt) ends it. A
+ * demo company's shared-code session and a personal sign-in are the cookie alone. isAdmin() asks this, so
+ * "End now" stops reads and writes at once, also in a tab that is still open.
+ */
+export async function adminSessionOpen(): Promise<boolean> {
+  const via = await adminWayIn();
+  if (via !== "support" && via !== "break-glass") return true;
+  const own = singleCompany();
+  const company = own && hasDatabase() ? await getDb().company.findUnique({ where: { slug: own }, select: { id: true, stage: true } }) : null;
+  if (via === "support") {
+    const id = await supportGrantId();
+    const grant = id && company ? await getDb().supportGrant.findUnique({ where: { id } }) : null;
+    return Boolean(grant && grant.companyId === company?.id && grantActive(grant, new Date()));
+  }
+  // The same rule as adminSignIn: a stack company that cannot be read counts as not demo - fail closed.
+  if (own === null || company?.stage === "demo") return true;
+  const window = await readBreakGlassWindow();
+  if (windowOpen(window, new Date()) && (await breakGlassOpenedAt()) === window.openedAt.toISOString()) return true;
+  await clearAdminCookie();
+  return false;
 }

@@ -1,6 +1,6 @@
 "use server";
 // /admin/company-data, idea studio card: the score an idea needs before it can be published
-// (docs/IDEAS.md). Asks consoleCompany() first and writes the guard's company id; a support session
+// (docs/IDEAS.md). Asks consoleWrite() first and writes the guard's company id; a support session
 // changes nothing (ITC/D4).
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -8,7 +8,7 @@ import { auditChanges } from "@/features/audit";
 import { adminBase } from "@/features/admin/nav";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { consoleActor, recordAudit } from "@/server/audit/record";
-import { consoleCompany } from "@/server/console-guard";
+import { consoleWrite } from "@/server/console-write";
 
 export type IdeaSettingsCode = "not-allowed" | "support-read-only" | "no-database" | "invalid";
 export type IdeaSettingsState = { ok?: boolean; code?: IdeaSettingsCode };
@@ -16,9 +16,9 @@ export type IdeaSettingsState = { ok?: boolean; code?: IdeaSettingsCode };
 const Form = z.object({ publishThreshold: z.coerce.number().int().min(0).max(100) });
 
 export async function saveIdeaSettingsAction(_prev: IdeaSettingsState, form: FormData): Promise<IdeaSettingsState> {
-  const guard = await consoleCompany();
-  if (!guard) return { ok: false, code: "not-allowed" };
-  if (guard.via === "support") return { ok: false, code: "support-read-only" };
+  const door = await consoleWrite();
+  if (!door.ok) return { ok: false, code: door.code };
+  const guard = door.c;
   if (!hasDatabase()) return { ok: false, code: "no-database" };
   const p = Form.safeParse(Object.fromEntries(form));
   if (!p.success) return { ok: false, code: "invalid" };
