@@ -58,7 +58,7 @@ describe("AIP brain gate", () => {
     const { f, calls } = fakeFetch(ROUTE);
     const gate = aiGate({ ...base, stage: "demo", settings: azure, purpose: "routing" });
     await askBrain(gate, "acme", { title: "Gauge reads off", body: "x" }, policy, { key: "sk-2", fetch: f });
-    expect(calls[0].body.llm).toEqual({ base_url: "https://res.openai.azure.com/openai/v1", model: "dep1", api_key: "sk-2" });
+    expect(calls[0].body.llm).toEqual({ provider: "azure-openai", base_url: "https://res.openai.azure.com/openai/v1", model: "dep1", api_key: "sk-2" });
   });
 
   it("a company without a key sends nothing", async () => {

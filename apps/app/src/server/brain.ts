@@ -16,30 +16,34 @@ import { coachRequest, type CoachAnswer } from "@/features/ideas/brain-coach";
 import { checkinRequest, planRequest, roundSaid, type CheckinProposal, type PlanProposal } from "@/features/projects/brain";
 import { brainRequest, fromBrain, type BrainItem, type BrainProposal } from "@/features/routing/brain";
 import { findTenant } from "@/features/tenant";
-import { hasDatabase } from "@/lib/db/client";
+import { getDb, hasDatabase } from "@/lib/db/client";
+import { recordAiCall } from "@/lib/db/ai-usage";
 import { loadLogForSlug } from "@/lib/db/events";
 
 // On a CPU-only server the model takes tens of seconds; past this the person should not wait.
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+// An old brain image sends no counts: they read as 0.
+const TOKENS = z.number().int().min(0).default(0);
+
 const RouteAnswer = z.object({
   route_id: z.string().max(40).nullable(), confidence: z.number().min(0).max(100), reason: z.string().max(1000),
   same_as: z.string().max(40).nullable(), related: z.string().max(40).nullable(),
-  model: z.string().max(200), version: z.string().max(80),
+  model: z.string().max(200), version: z.string().max(80), tokens_in: TOKENS, tokens_out: TOKENS,
 });
 const PlanReply = z.object({
   steps: z.array(z.string().max(200)).max(5),
   metric: z.object({ name: z.string().max(100), unit: z.string().max(30), better: z.enum(["up", "down"]) }).nullable(),
-  model: z.string().max(200), version: z.string().max(80),
+  model: z.string().max(200), version: z.string().max(80), tokens_in: TOKENS, tokens_out: TOKENS,
 });
 const CheckinReply = z.object({
   next: z.enum(["round", "decide"]), open: z.array(z.string().max(200)).max(6), note: z.string().max(600),
-  model: z.string().max(200), version: z.string().max(80),
+  model: z.string().max(200), version: z.string().max(80), tokens_in: TOKENS, tokens_out: TOKENS,
 });
 const CoachReply = z.object({
   open_point: z.string().max(40), earlier_id: z.string().max(40).nullable(),
   note: z.string().max(2000), question: z.string().max(1000), why: z.string().max(1000), recommended: z.string().max(2000),
-  model: z.string().max(200), version: z.string().max(80),
+  model: z.string().max(200), version: z.string().max(80), tokens_in: TOKENS, tokens_out: TOKENS,
 });
 
 export function brainConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -77,23 +81,30 @@ async function companyFor(slug: string, policy: BrainPolicy) {
 // What a call needs besides the gate: the company's API key (azure-openai, openai-compatible) and,
 // in tests, a fetch to inject.
 export type BrainOptions = { key?: string | null; fetch?: typeof fetch };
-export type BrainLlm = { base_url: string; model: string; api_key: string };
+export type BrainLlm =
+  | { provider: "bedrock"; region: string; model: string }
+  | { provider: "azure-openai"; base_url: string; model: string; api_key: string }
+  | { base_url: string; model: string; api_key: string };
 
 /**
- * The company's own endpoint for one request (docs/plans AIP D8). Only azure-openai and
- * openai-compatible carry one; everything else uses the brain's stack model. Null when the
- * settings or the key are incomplete - then nothing is sent.
+ * The company's own provider for one request (docs/plans AIP D8, AIB D8). Bedrock with a brainModel,
+ * azure-openai and openai-compatible carry one; everything else uses the brain's stack model.
+ * Null when the settings or the key are incomplete - then nothing is sent.
  */
 export function llmFor(settings: AiSettings, key: string | null | undefined): BrainLlm | null | "none" {
+  if (settings.choice === "bedrock") {
+    return settings.brainModel ? { provider: "bedrock", region: settings.region, model: settings.brainModel } : "none";
+  }
   if (settings.choice !== "azure-openai" && settings.choice !== "openai-compatible") return "none";
   if (!key) return null;
   if (settings.choice === "azure-openai") {
     const host = settings.endpoint?.trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    if (!host || !settings.deployment) return null;
-    return { base_url: `https://${host}/openai/v1`, model: settings.deployment, api_key: key };
+    const model = settings.brainModel || settings.deployment;
+    if (!host || !settings.deployment || !model) return null;
+    return { provider: "azure-openai", base_url: `https://${host}/openai/v1`, model, api_key: key };
   }
   if (!settings.endpoint || !settings.model) return null;
-  return { base_url: settings.endpoint.replace(/\/+$/, ""), model: settings.model, api_key: key };
+  return { base_url: settings.endpoint.replace(/\/+$/, ""), model: settings.brainModel || settings.model, api_key: key };
 }
 
 // Closed gate, or an incomplete endpoint: null, no request. Otherwise the body gets `llm` when the company has its own.
@@ -104,9 +115,21 @@ function withLlm(gate: AiGate, opts: BrainOptions, body: object): object | null 
   return llm === "none" ? body : { ...body, llm };
 }
 
-async function post<T>(slug: string, path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal, doFetch: typeof fetch = fetch): Promise<T | null> {
+type Counted = { model: string; tokens_in: number; tokens_out: number };
+
+// What a successful call used goes to AiCall. No database or no company: nothing is recorded; a
+// failure is logged and changes nothing for the caller.
+function record(slug: string, purpose: string, answer: Counted, latencyMs: number): void {
+  if (!hasDatabase()) return;
+  void getDb().company.findUnique({ where: { slug }, select: { id: true } })
+    .then((c) => { if (c) recordAiCall(c.id, { purpose, model: answer.model, tokensIn: answer.tokens_in, tokensOut: answer.tokens_out, latencyMs }); })
+    .catch((err: unknown) => console.error("[brain]", slug, "usage not recorded", err instanceof Error ? err.name : "failed"));
+}
+
+async function post<T extends Counted>(slug: string, purpose: string, path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal, doFetch: typeof fetch = fetch): Promise<T | null> {
   const url = process.env.BRAIN_URL, key = process.env.BRAIN_API_KEY;
   if (!url || !key) return null;
+  const started = Date.now();
   const timeout = AbortSignal.timeout(Number(process.env.BRAIN_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS);
   try {
     const res = await doFetch(url.replace(/\/$/, "") + path, {
@@ -125,6 +148,7 @@ async function post<T>(slug: string, path: string, body: unknown, schema: z.ZodT
       console.error("[brain]", slug, path, "unexpected answer");
       return null;
     }
+    record(slug, purpose, answer.data, Date.now() - started);
     return answer.data;
   } catch (err) {
     console.error("[brain]", slug, path, err instanceof Error ? err.name : "failed");
@@ -141,7 +165,7 @@ export async function askBrain(gate: AiGate, slug: string, idea: { title: string
   const req = brainRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.routes, co.seed.depts, co.known);
   const body = withLlm(gate, opts, req);
   if (!body) return null;
-  const answer = await post(slug, "/v1/route", body, RouteAnswer, undefined, opts.fetch);
+  const answer = await post(slug, "routing", "/v1/route", body, RouteAnswer, undefined, opts.fetch);
   return answer ? fromBrain(answer, req) : null;
 }
 
@@ -159,7 +183,7 @@ export async function askBrainCoach(
   const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, input.brief, co.known);
   const body = withLlm(gate, opts, req);
   if (!body) return null;
-  return post(slug, "/v1/coach", body, CoachReply, signal, opts.fetch);
+  return post(slug, "coach", "/v1/coach", body, CoachReply, signal, opts.fetch);
 }
 
 // After a yes: the first steps and the metric for the project (docs/plans/2026-10-15_idea-to-project.md).
@@ -171,7 +195,7 @@ export async function askBrainPlan(gate: AiGate, slug: string, caseId: string, p
   if (!co || !text) return null;
   const body = withLlm(gate, opts, planRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.goals));
   if (!body) return null;
-  const answer = await post(slug, "/v1/plan", body, PlanReply, undefined, opts.fetch);
+  const answer = await post(slug, "plan", "/v1/plan", body, PlanReply, undefined, opts.fetch);
   return answer ? { steps: answer.steps, metric: answer.metric, version: answer.version } : null;
 }
 
@@ -190,6 +214,6 @@ export async function askBrainCheckin(gate: AiGate, slug: string, caseId: string
   const req = checkinRequest(co.tenant.name, clean, said.map((s, i) => ({ who: s.who, text: text[i + 3] })), weak);
   const body = withLlm(gate, opts, req);
   if (!body) return null;
-  const answer = await post(slug, "/v1/checkin", body, CheckinReply, undefined, opts.fetch);
+  const answer = await post(slug, "checkin", "/v1/checkin", body, CheckinReply, undefined, opts.fetch);
   return answer ? { next: answer.next, open: answer.open, note: answer.note, version: answer.version } : null;
 }
