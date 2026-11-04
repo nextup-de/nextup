@@ -100,6 +100,14 @@ Rows of `docs/audit/gaps/product.md` that MET answers. That register is AUD's; t
 | G-049 | The feed ran on `feedPreview` placeholder data | MET-F1 (the Feed runs on real events; `feedPreview` deleted). |
 | G-050 | The overview ran on `overviewPreview` placeholder data | MET-O1 (the Overview runs on real events; `overviewPreview` deleted). |
 
+## AI usage by purpose
+
+`aiUsage` (`lib/db/ai-usage.ts`) sums the company's model use for a period, totals only, never a person. The assistant's
+turns (`AssistTurn`) and the brain's calls (`AiCall`, purposes `routing`, `coach`, `plan`, `checkin`) both count in
+`byModel`, `tokensIn`, `tokensOut` and `costUsd`; `turns` stays the number of assistant turns. `byPurpose` splits the same
+totals into `{ purpose, calls, tokensIn, tokensOut, costUsd }`, sorted by purpose, with the assistant under `assist`.
+`costUsd` is `null` as soon as one model has no price.
+
 ## Open
 
 - **Q4, shop-floor share and verbatim share.** `shopFloorPct` stays `null` / `not-recorded` until FLR records a channel on

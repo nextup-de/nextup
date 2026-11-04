@@ -137,10 +137,23 @@ route the person chose is never changed. The AI being off therefore never stops 
 
 ### The brain's endpoint
 
-`BRAIN_URL` (a service name inside the company's stack) and `BRAIN_API_KEY` are the stack's. For azure-openai and
-openai-compatible the request body carries `llm: { base_url, model, api_key }` and the brain talks to that
-endpoint; for the other choices it uses its own stack model. Incomplete settings (no key, no endpoint, no model or
-deployment) send nothing.
+`BRAIN_URL` (a service name inside the company's stack) and `BRAIN_API_KEY` are the stack's. The brain answers on the
+company's own provider: `llmFor` (`server/brain.ts`) puts one `llm` object in the request body.
+
+| Choice | `llm` in the body |
+|---|---|
+| `bedrock` with a `brainModel` | `{ provider: "bedrock", region, model: brainModel }`, no key; the brain's AWS credentials sign |
+| `bedrock` without one | none: the brain uses its stack model |
+| `azure-openai` | `{ provider: "azure-openai", base_url, model: brainModel or deployment, api_key }` |
+| `openai-compatible` | `{ base_url, model: brainModel or model, api_key }` |
+
+`brainModel` is optional, in the settings JSON. Incomplete settings (no key, no endpoint, no model or deployment) send
+nothing. The shapes are pinned by one fixture, `services/brain/tests/fixtures/llm-overrides.json`: the app's test
+(`tests/unit/aib/llm-contract.test.ts`) checks that `llmFor` gives exactly it and the brain's test
+(`services/brain/tests/test_llm_contract.py`) that its request models accept it.
+
+Each answered call is stored as an `AiCall` (purpose, model, token counts, latency; no person, no case, no text) and
+counted in `aiUsage` (see `docs/METRICS.md`).
 
 ### Acceptance
 
@@ -148,6 +161,11 @@ deployment) send nothing.
 OpenAI-compatible model and a fake brain that forwards to it: choice off gives the keyword proposal and zero
 requests; openai-compatible with a DPA and `aiRouting` stores `source: "llm"`, route r2; the same company
 without a DPA sends nothing and the gate says why.
+
+`apps/app/tests/db/aib-provider.test.ts` runs a raise through `proposeOnRaise` against a fake brain that records the
+bodies it gets and answers with tokens: bedrock and azure-openai companies with a signed agreement send their override
+and store the brain's proposal and an `AiCall`; choice off and a missing agreement send nothing and route by keywords; a
+brain slower than the timeout gives the keyword proposal in time. No real model is called.
 
 ## AIP gaps
 
