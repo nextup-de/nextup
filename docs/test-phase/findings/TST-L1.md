@@ -78,6 +78,14 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
   needs a machine that is not shared. The test stays `it.fails` and no threshold was changed. **Proof needed:** the run of record on the
   test VM (4 vCPU, TST-V1) with `APP_REPLICAS=4`, or this PC idle. If 4 free cores still miss the budget, the next step is the render
   itself (the log serialised into every page).
+- **Profile and the number for this PC (TST-Z1, 2026-11-04):** one `next start` process under the 200-account run, sampled for 38 s
+  (inspector CPU profile, wall-clock samples): 10 % idle, 21 % inside the Prisma client and `pg` (about ten queries per page), 6 % garbage
+  collection, 6 % socket writes of the 72-77 KB responses, the rest spread over the React server render; no single function above 2 %. So
+  there is no one hot spot to fix in under 50 lines, and halving the page's queries or its serialised log would be a gain of tens of
+  percent, not the 5x the budget needs. Measured per process: 15-21 requests/s alone, 8.8 with 4 and 6.9 with 8 processes sharing this PC;
+  one request is about 47 ms of CPU, so the 100 requests/s asked for need about 4.7 free cores. This PC reported 96 % CPU load from other
+  programs before the run began, and 8 processes delivered 55 requests/s, i.e. about 2.6 cores' worth of the 16 logical ones. **The budget
+  run cannot pass here; it needs the idle test VM (4 vCPU, `APP_REPLICAS=4`, TST-V1) or this PC without the other sessions.** Status: open.
 - **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.
