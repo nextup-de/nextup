@@ -40,7 +40,7 @@ export default async function ConnectorsPage() {
       <M365Block view={data.m365} readOnly={readOnly} />
       <JiraBlock view={data.jira} readOnly={readOnly} />
       <AiBlock view={data.ai} readOnly={readOnly} />
-      <DirectoryBlock view={data.directory} />
+      <DirectoryBlock view={data.directory} readOnly={readOnly} />
     </div>
   );
 }
