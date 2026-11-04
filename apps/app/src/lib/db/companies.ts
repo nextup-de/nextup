@@ -9,6 +9,7 @@ import { parseSeed } from "@/features/demo/parse";
 import { structureSeed } from "@/features/knowledge";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 import { loadKnowledge } from "./knowledge";
 import { loadCompanyRules } from "./rules";
 import { loadLoopRules } from "./loop";
@@ -61,9 +62,11 @@ function toRecord(row: Row): CompanyRecord {
 // is a single Company - the relation cannot reach another tenant's rows.
 const withUsers = { users: { orderBy: { name: "asc" } } } as const;
 
-export async function findCompanyBySlug(slug: string): Promise<CompanyRecord | null> {
-  const row = await getDb().company.findUnique({ where: { slug }, include: withUsers });
-  return row ? toRecord(row) : null;
+export function findCompanyBySlug(slug: string): Promise<CompanyRecord | null> {
+  return memo("tenant", slug, async () => {
+    const row = await getDb().company.findUnique({ where: { slug }, include: withUsers });
+    return row ? toRecord(row) : null;
+  });
 }
 
 /** Login step 1: which company owns this work-email domain? */
@@ -82,9 +85,11 @@ export async function findCompanyByEmailDomain(email: string): Promise<CompanyRe
  * goals and rules come from the tables only (docs/COMPANY_KNOWLEDGE.md); a company without rows has
  * none, whatever its blob holds.
  */
-export async function loadSeed(slug: string): Promise<Seed | null> {
-  const row = await getDb().company.findUnique({ where: { slug }, select: { id: true, seedJson: true, stage: true } });
-  return row ? companySeed(row) : null;
+export function loadSeed(slug: string): Promise<Seed | null> {
+  return memo("seed", slug, async () => {
+    const row = await getDb().company.findUnique({ where: { slug }, select: { id: true, seedJson: true, stage: true } });
+    return row ? companySeed(row) : null;
+  });
 }
 
 /** The same, for a company row already in hand. Use this, not parseSeed(seedJson), anywhere a
