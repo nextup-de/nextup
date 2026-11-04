@@ -1,5 +1,7 @@
 // The minimal company directory behind the person page (MET D15): name, role and unit path of an
 // active person who has a seat and no anonymous handle. Nothing else is selected.
+import { adminBase } from "@/features/admin/nav";
+import { singleCompany } from "@/features/tenant/urls";
 import type { PersonCandidate } from "@/features/people/resolve";
 import { getDb } from "./client";
 import { memo } from "./company-memo";

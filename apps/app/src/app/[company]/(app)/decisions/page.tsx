@@ -1,5 +1,7 @@
 // The decision log: every yes and no on a case the viewer may open (LOOP/D21). Read-only.
 import { DecisionLog, type DecisionFilters, type DecisionLine } from "@/components/decisions/DecisionLog";
+import { SampleDecisions } from "@/components/decisions/SampleDecisions";
+import { ProjectsPage } from "@/components/projects/ProjectsTabs";
 import { getViewerFor } from "@/features/auth/session";
 import { dayFormatter } from "@/features/cases/rows";
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
@@ -30,8 +32,14 @@ export default async function DecisionsPage({ params, searchParams }: { params: 
   };
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
   const base = { t, company, page, pageSize: DECISION_PAGE_SIZE, filters, projectsOn: flags.projects };
+  // The Demo data switch lives in the browser: with it on, the client shows its own lines instead of these.
+  const withSample = (served: React.ReactNode) => (
+    <ProjectsPage tab="decisions">
+      <SampleDecisions company={company} page={page} pageSize={DECISION_PAGE_SIZE} filters={filters} projectsOn={flags.projects}>{served}</SampleDecisions>
+    </ProjectsPage>
+  );
   const viewer = hasDatabase() ? await getViewerFor(company) : null;
-  if (!viewer) return <DecisionLog {...base} lines={[]} total={0} filtered={false} />;
+  if (!viewer) return withSample(<DecisionLog {...base} lines={[]} total={0} filtered={false} />);
 
   const db = getDb();
   const now = new Date();
@@ -67,5 +75,5 @@ export default async function DecisionsPage({ params, searchParams }: { params: 
     project: r.projectId ? { id: r.projectId, label: r.projectId } : null,
   }));
   const filtered = filters.period !== "all" || filters.answer !== "" || filters.project !== "" || filters.q !== "";
-  return <DecisionLog {...base} lines={lines} total={total} filtered={filtered} />;
+  return withSample(<DecisionLog {...base} lines={lines} total={total} filtered={filtered} />);
 }

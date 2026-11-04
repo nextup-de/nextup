@@ -44,8 +44,14 @@ export function sampleCoverFor(c: { title: string; body: string }, samples: read
   return hit ? { src: hit.src, fit: hit.fit, stat: hit.stat, hook: hit.hook } : null;
 }
 
+// The Demo data switch's cases (features/demo/sample-data.ts): the library picture that fits each one.
+const SAMPLE_CASE_PICTURE: Record<string, number> = {
+  "sample-c1": 8, "sample-c2": 9, "sample-c3": 7, "sample-c4": 6, "sample-c5": 4, "sample-c6": 2, "sample-c7": 4, "sample-c8": 8, "sample-c9": 1,
+};
+
 // Stable per case: the same id always lands on the same picture.
 export function libraryCoverFor(id: string, library: readonly CoverPic[] = COVER_LIBRARY): CoverPic | null {
   if (!library.length) return null;
+  if (library === COVER_LIBRARY && id in SAMPLE_CASE_PICTURE) return library[SAMPLE_CASE_PICTURE[id]];
   return library[[...id].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7) % library.length];
 }

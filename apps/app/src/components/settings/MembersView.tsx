@@ -25,6 +25,7 @@ import {
   type SeatState,
 } from "@/server/actions/members";
 import { enrolledManagersAction, resetTotpAction } from "@/server/actions/settings/totp-reset";
+import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { PersonExportDialog } from "./PersonExportDialog";
 import { PseudonymiseDialog } from "./PseudonymiseDialog";
 import { SettingsHead } from "./SettingsParts";
@@ -34,7 +35,6 @@ import styles from "./MembersView.module.css";
 type Props = { slug: string; me: string; members: MemberRow[]; freeSeats: SeatLabel[]; demo?: boolean; showHead?: boolean };
 type Coded = CodeState & Pick<InviteState, "problems" | "warnings" | "mailed" | "mailError">;
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 /** Closes the row menu a button sits in. */
 const closeMenu = (el: HTMLElement) => el.closest("details")?.removeAttribute("open");
 
@@ -185,13 +185,13 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
             return (
             <li key={m.id} className={styles.row} data-inactive={m.active ? undefined : ""} data-testid={`settings-member-${m.id}`}>
               <span className={styles.who}>
-                <span className={styles.avatar} data-me={m.id === me ? "" : undefined}>{initials(m.name)}</span>
+                <PersonFace name={m.name} />
                 <span className={styles.whoText}>
                   <strong>{m.name}{m.id === me ? <span className={s.mute}> ({t("settings.you")})</span> : null}</strong>
                   <span className={styles.sub}>{m.pseudonymisedAt ? t("privacyPerson.rowPseudonymised", { date: when(m.pseudonymisedAt) }) : m.active ? m.email : t("settings.inactive")}</span>
                 </span>
               </span>
-              <span className={styles.cell} data-label={t("settings.colDept")}>{m.dept || "–"}</span>
+              <span className={styles.cell} data-label={t("settings.colDept")}>{m.dept ? <DeptChip name={m.dept} /> : "–"}</span>
               <span className={styles.cell} data-label={t("settings.colRole")}>
                 {m.id === me || !m.active ? <span className={styles.roleText}>{m.role}</span> : (
                   <form action={setRole}>

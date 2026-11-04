@@ -112,6 +112,34 @@ test.describe.serial("ITC acceptance", () => {
     await admin.context().close();
   });
 
+  test("the account menu leads to Settings, and to the console for a console admin", async ({ browser }) => {
+    const signIn = async (person: { name: string }) => {
+      const page = await (await browser.newContext()).newPage();
+      await page.goto("/login");
+      await page.locator("#code:visible").fill(company.people[person.name].code);
+      await page.getByRole("button", { name: "Log in", exact: true }).click();
+      await page.locator("#totp:visible").fill(totpAt(company.people[person.name].totpSecret, Date.now()));
+      await page.locator("form button[type=submit]").last().click();
+      await expect(page).not.toHaveURL(/\/login/);
+      await page.getByRole("button", { name: "Profile" }).click();
+      return page;
+    };
+    const admin = await signIn(ADMIN);
+    const menu = admin.getByRole("dialog", { name: "Profile" });
+    await expect(menu.getByRole("link", { name: /Settings/ })).toHaveAttribute("href", "/settings");
+    await menu.getByRole("link", { name: /IT console/ }).click();
+    await expect(admin).toHaveURL(/\/admin\/login$/);
+    await admin.context().close();
+
+    const plain = await signIn(MANAGER);
+    const plainMenu = plain.getByRole("dialog", { name: "Profile" });
+    await plainMenu.getByRole("link", { name: /Settings/ }).click();
+    await expect(plain).toHaveURL(/\/settings/);
+    await plain.getByRole("button", { name: "Profile" }).click();
+    await expect(plain.getByRole("dialog", { name: "Profile" }).getByRole("link", { name: /IT console/ })).toHaveCount(0);
+    await plain.context().close();
+  });
+
   test("a company stack has no static demo: /demo answers 404", async ({ request }) => {
     for (const path of ["/demo", "/demo/raise"]) expect((await request.get(path, { maxRedirects: 0 })).status(), path).toBe(404);
   });

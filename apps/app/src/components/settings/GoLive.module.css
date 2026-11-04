@@ -1,0 +1,53 @@
+/* Go-live: the stage track, the meaning table, the checklist rows and the history. Cards, buttons and the
+   page frame come from settings.module.css. */
+.headRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.switchBox { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.hint { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--mute); }
+.track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; }
+.step { position: relative; display: flex; flex-direction: column; gap: 2px; padding-top: 26px; min-width: 0; }
+.step::before { content: ""; position: absolute; top: 8px; left: 0; right: 0; height: 2px; background: #e5e5ea; }
+.step[data-state="past"]::before, .step[data-state="current"]::before { background: var(--nh-brand); }
+.step:last-child::before { right: 50%; }
+.dot { position: absolute; top: 0; left: 0; width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%; border: 2px solid #c7c7cc; background: #fff; }
+.step[data-state="current"] .dot { background: var(--nh-brand); border-color: var(--nh-brand); }
+.step[data-state="past"] .dot { border-color: var(--nh-brand); }
+.stepName { font-size: var(--nh-fs-md); line-height: 20px; font-weight: 600; color: var(--ink-head); }
+.step[data-state="next"] .stepName, .step[data-state="later"] .stepName { color: var(--mute); }
+.stepNote { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--mute); }
+.meaning { display: grid; grid-template-columns: 120px repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 14px 16px; border-radius: 8px; background: #f7f7f9; font-size: var(--nh-fs-sm); line-height: 18px; }
+.meaning [role="columnheader"] { font-weight: 600; color: var(--ink); }
+.meaning [role="rowheader"] { color: var(--mute-2); }
+.meaning [data-current] { font-weight: 600; color: var(--ink-head); }
+.group { display: flex; flex-direction: column; gap: 4px; }
+.groupHead { display: flex; justify-content: space-between; gap: 12px; font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; color: var(--ink); }
+.groupCount { font-weight: 500; color: var(--mute); }
+.rows { margin: 0; padding: 0; list-style: none; }
+.check { display: grid; grid-template-columns: 22px 200px minmax(0, 1fr) auto; align-items: center; gap: 0 12px; min-height: 40px; border-top: 1px solid var(--rule); }
+.mark { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; font-size: var(--nh-fs-sm); font-weight: 700; }
+.check[data-state="done"] .mark { color: var(--nh-brand); }
+.check[data-state="needs"] .mark { color: #b25000; }
+.check[data-state="unknown"] .mark { color: var(--red); }
+.check[data-state="unset"] .mark { color: var(--mute-2); }
+.name { font-size: var(--nh-fs-md); line-height: 20px; font-weight: 600; color: var(--ink-head); }
+.result { font-size: var(--nh-fs-md); line-height: 20px; color: var(--ink-2); min-width: 0; overflow-wrap: anywhere; }
+.link { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand); text-decoration: none; white-space: nowrap; }
+.link:hover { text-decoration: underline; }
+.metaRow { display: flex; align-items: center; gap: 12px; }
+.history { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: var(--nh-fs-md); line-height: 20px; }
+.history li { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 12px; }
+.when { color: var(--mute); }
+.by { color: var(--mute); }
+@media (max-width: 760px) {
+  .headRow { flex-direction: column; }
+  .switchBox { align-items: stretch; width: 100%; }
+  .switchBox > button { height: 44px; }
+  .track { grid-template-columns: 1fr; gap: 12px; }
+  .step { padding: 0 0 0 28px; min-height: 22px; }
+  .step::before, .step:last-child::before { top: 18px; bottom: -12px; left: 8px; right: auto; width: 2px; height: auto; }
+  .step:last-child::before { display: none; }
+  .meaning { grid-template-columns: 90px repeat(3, minmax(0, 1fr)); padding: 12px; }
+  .check { grid-template-columns: 22px minmax(0, 1fr); padding-block: 8px; }
+  .check .result, .check .link { grid-column: 2; }
+  .history li { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+.titleBox { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

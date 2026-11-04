@@ -46,6 +46,7 @@ import {
 import { createMicrosoftUser, linkJitSeat } from "@/lib/db/accounts";
 import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
 import { m365SearchOn, saveConnection } from "@/lib/db/connections";
+import { formerCheck } from "@/lib/db/former";
 import { getViewerFor } from "@/features/auth/session";
 import { seal, vaultContext, vaultKey } from "@/features/connectors/vault";
 import { companyPrefix, safeNextPath, singleCompany } from "@/features/tenant/urls";
@@ -286,7 +287,9 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
     return fail("unknown");
   }
 
-  const landing = landingFor({ found, emailTaken, email, role: roleFromEntra(checked.who.roles) });
+  const isFormer = found ? null : await formerCheck(company.id);
+  const former = isFormer !== null && (isFormer(oid) || isFormer(email));
+  const landing = landingFor({ found, emailTaken, email, role: roleFromEntra(checked.who.roles), former });
   if (landing.kind === "refuse") {
     console.warn(`[microsoft] ${slug}: ${landing.reason} for ${email || "(no email)"}`);
     return fail(landing.reason);

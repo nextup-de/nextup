@@ -16,6 +16,10 @@ export const progress = defineMessages({
     withoutNumber: "Done without a number",
     emptyOff: "Projects are switched off for this company, so there is no movement to show.",
     emptyLedger: "No project has said yes yet. The ledger fills as soon as one does.",
+    collabColProject: "Project",
+    collabColStatus: "Status",
+    collabColPerson: "Person",
+    collabColAbout: "Details",
   },
   de: {
     title: "Bewegt sich das System wirklich",
@@ -31,5 +35,9 @@ export const progress = defineMessages({
     withoutNumber: "Fertig ohne Zahl",
     emptyOff: "Projekte sind für diese Firma ausgeschaltet, deshalb gibt es keine Bewegung zu zeigen.",
     emptyLedger: "Noch kein Projekt hat Ja gesagt. Das Wartebuch füllt sich, sobald eines es tut.",
+    collabColProject: "Projekt",
+    collabColStatus: "Status",
+    collabColPerson: "Person",
+    collabColAbout: "Details",
   },
 });

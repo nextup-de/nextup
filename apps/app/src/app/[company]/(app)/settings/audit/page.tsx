@@ -16,11 +16,5 @@ export default async function AuditSettingsPage({
   const filter = parseAuditFilter(await searchParams);
   const data = await loadAuditPage(company, filter);
   if (!data) notFound();
-  const t = await getT();
-  return (
-    <>
-      <h1>{t("settingsAudit.navLabel")}</h1>
-      <AuditLog slug={company} filter={filter} data={data} />
-    </>
-  );
+  return <AuditLog slug={company} filter={filter} data={data} />;
 }

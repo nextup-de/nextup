@@ -73,8 +73,8 @@
   --nh-fs-md: 15px;    /* body text, buttons, list titles */
   --nh-fs-lg: 17px;    /* ledes, card headings, the opened item's intro */
   --nh-fs-xl: 20px;    /* section headings, big numbers */
-  --nh-fs-2xl: 24px;   /* page headings, list card titles */
-  --nh-fs-3xl: 28px;   /* the opened case's title */
+  --nh-fs-2xl: 24px;   /* list card titles */
+  --nh-fs-3xl: 28px;   /* every page title */
   --nh-fs-4xl: 34px;   /* display: sign-in and empty pages */
   --nh-fs-input: 16px; /* text fields on phones - smaller makes iOS zoom in on focus (rule 6) */
 

@@ -203,8 +203,6 @@ export const projects = defineMessages({
 
     // ── the hub, the desk and the cards (ProjectsHub, ProjectDesk, parts)
     offSub: "Projects are not turned on for this company yet. When they are, every idea that gets a yes becomes one here.",
-    hubSubMember: "What your ideas became, and every idea and problem on its way there.",
-    hubSubLead: "Every idea from the first word to the measured result, and the projects it became.",
     hubEmptyTitle: "No projects yet",
     hubEmptySub: "An idea becomes a project once it gets a yes.",
     hubIdeas: "Ideas",
@@ -749,8 +747,6 @@ export const projects = defineMessages({
 
     // ── the hub, the desk and the cards (ProjectsHub, ProjectDesk, parts)
     offSub: "Projekte sind für dieses Unternehmen noch nicht eingeschaltet. Sobald sie es sind, wird hier jede Idee mit einem Ja zu einem Projekt.",
-    hubSubMember: "Was aus deinen Ideen wurde, und jede Idee und jedes Problem auf dem Weg dorthin.",
-    hubSubLead: "Jede Idee vom ersten Wort bis zum gemessenen Ergebnis, und die Projekte, die daraus wurden.",
     hubEmptyTitle: "Noch keine Projekte",
     hubEmptySub: "Eine Idee wird zum Projekt, sobald sie ein Ja bekommt.",
     hubIdeas: "Ideen",

@@ -5,7 +5,7 @@ import { isStage, type Stage } from "@/features/admin/stages";
 import type { MessageKey } from "@/i18n";
 import type { SetupStep } from "./sections";
 
-export type StageCard = { stage: Stage; label: MessageKey; line: MessageKey };
+export type StageCard = { stage: Stage; label: MessageKey; line: MessageKey; };
 
 const LABEL: Record<Stage, MessageKey> = {
   demo: "settingsCompany.stageDemo", sandbox: "settingsCompany.stageSandbox",
@@ -19,5 +19,7 @@ const LINE: Record<Stage, MessageKey> = {
 /** The card, or null when setup is done (or the stage is unknown). */
 export function stageCard(stage: string, step: SetupStep): StageCard | null {
   if (step === "done" || !isStage(stage)) return null;
+  // A real company in sandbox is one switch away from pilot: its line points at Go-live.
+  if (stage === "sandbox") return { stage, label: LABEL[stage], line: "settingsGoLive.sandboxLine" };
   return { stage, label: LABEL[stage], line: LINE[stage] };
 }

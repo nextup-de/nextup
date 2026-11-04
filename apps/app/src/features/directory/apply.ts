@@ -17,6 +17,8 @@ export type PlanUser = {
   active: boolean;
   managerId: string | null;
   dept: string;
+  /** Pseudonymised (FX5): a page never changes them, whatever it says. */
+  pseudonymised?: boolean;
   /** Optional: when missing, the field is not compared. */
   name?: string;
   line?: string;
@@ -161,6 +163,7 @@ export function planDirectoryDelta(input: {
       if (cands.length === 1 && !claimed.has(cands[0].id)) u = cands[0];
     }
     if (u && claimed.has(u.id)) { plan.skipped.push({ externalId: e.externalId, reason: "duplicate" }); continue; }
+    if (u?.pseudonymised) { plan.skipped.push({ externalId: e.externalId, reason: "inactive" }); continue; }
     const leaving = !e.active || removed.has(e.externalId);
     const unit = unitForDepartment(units, e.department);
 
