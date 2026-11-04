@@ -6,6 +6,12 @@ export const SUPPORT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const SUPPORT_CODE_LENGTH = 12;
 /** How long a grant lasts. */
 export const SUPPORT_GRANT_HOURS = 24;
+/** What a company admin can choose in Settings (SEC/D7), the default first shown, and the longest a grant may run from now. */
+export const SUPPORT_GRANT_CHOICES = [1, 4, 24, 72] as const;
+export type SupportGrantChoice = (typeof SUPPORT_GRANT_CHOICES)[number];
+export const SUPPORT_GRANT_DEFAULT_HOURS: SupportGrantChoice = 4;
+export const SUPPORT_GRANT_MAX_HOURS = 72;
+export const SUPPORT_REASON_MAX = 200;
 
 export function newSupportCode(): string {
   let out = "";
@@ -44,4 +50,37 @@ export function grantActive(grant: GrantTimes, now: Date): boolean {
 export function appendSignin(existing: unknown, at: Date): string[] {
   const old = Array.isArray(existing) ? existing.filter((x): x is string => typeof x === "string") : [];
   return [...old, at.toISOString()].slice(-20);
+}
+
+export function isGrantChoice(n: unknown): n is SupportGrantChoice {
+  return typeof n === "number" && (SUPPORT_GRANT_CHOICES as readonly number[]).includes(n);
+}
+
+/** The reason as typed: trimmed, 1-200 characters. */
+export function checkReason(raw: unknown): { ok: true; value: string } | { ok: false } {
+  const value = typeof raw === "string" ? raw.trim() : "";
+  return value.length >= 1 && value.length <= SUPPORT_REASON_MAX ? { ok: true, value } : { ok: false };
+}
+
+/** Extending moves the end by `hours` from max(now, end) and never past SUPPORT_GRANT_MAX_HOURS from now. */
+export function extendTo(expiresAt: Date, hours: number, now: Date): Date {
+  const from = Math.max(now.getTime(), expiresAt.getTime());
+  return new Date(Math.min(from + hours * 3_600_000, now.getTime() + SUPPORT_GRANT_MAX_HOURS * 3_600_000));
+}
+
+export type SupportPageState =
+  | { kind: "demo" }
+  | { kind: "none"; breakGlassUntil: Date | null }
+  | { kind: "open"; until: Date; canExtend: boolean; breakGlassUntil: Date | null };
+
+/** What the page shows, from the company's stage, its open grant and the server's break-glass window. */
+export function supportPageState(
+  input: { stage: string; grant: GrantTimes | null; breakGlassUntil: Date | null },
+  now: Date,
+): SupportPageState {
+  if (input.stage === "demo") return { kind: "demo" };
+  const bg = input.breakGlassUntil && input.breakGlassUntil.getTime() > now.getTime() ? input.breakGlassUntil : null;
+  if (!input.grant || !grantActive(input.grant, now)) return { kind: "none", breakGlassUntil: bg };
+  const limit = now.getTime() + SUPPORT_GRANT_MAX_HOURS * 3_600_000;
+  return { kind: "open", until: input.grant.expiresAt, canExtend: input.grant.expiresAt.getTime() < limit, breakGlassUntil: bg };
 }
