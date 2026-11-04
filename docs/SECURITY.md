@@ -24,18 +24,58 @@ the server actions check it - hiding a button is only a courtesy.
 An unknown stage gets the real-people policy: fail closed. Creating a company in `/admin` asks
 "Who logs in" - demo or real people (sandbox).
 
-## Break-glass code
+## Break-glass and support access
 
-`ADMIN_ACCESS_CODE` is the way into `/admin` when Microsoft sign-in is not available.
+No NextUp person holds a standing key to a company's real data. Two ways in exist, and the customer opens both.
 
-| | `demo` | `sandbox` · `live` |
+**Server break-glass window** (`stack/break-glass.sh`, `src/features/admin/break-glass.ts`). The customer's operator
+runs `stack/break-glass.sh <slug> open --hours <1-24> --reason <text>` on their host (root or the deploy user). It
+prints a fresh 24-character code once and writes `<instance>/break-glass/window.json` - only the code's sha256, the
+times, who and why. The app mounts that folder read-only (`/run/nextup/break-glass`), so it can read the window and
+cannot change it. `close` ends it, `status` prints `open until <ISO>`, `closed` or `expired <ISO>`, and every open,
+close and expiry is a line in `break-glass/log` (never the code). A replaced window ends the sessions of the old one.
+
+| | `demo` | `sandbox` · `pilot` · `live` (every stage but `demo`) |
 |---|---|---|
-| Who holds it | NextUp | **The customer** |
-| Where it is | The stack's `.env`, and the vault on admin.sellux.ch | The stack's `.env`, and `BREAK_GLASS.txt` in the stack folder on the box (mode 600, root) |
-| Does NextUp keep a copy | yes | **no** - the box agent (`stack/provision/agent.sh`) leaves it out of what it sends to admin.sellux.ch, writes the file once and never overwrites it, and logs `break-glass written` without the value |
-| Filled in on the `/admin` login (`ADMIN_DEMO_FILL`) | only when the company's stage is `demo` | never |
+| `ADMIN_ACCESS_CODE` | works as before, for the stack's own company | **never accepted** |
+| Way into `/admin` for NextUp | the shared code, held by NextUp | only a code from an open window, and only until `until`; each request of that session re-reads the window, so close, expiry or a new window refuses it |
+| What the box agent sends to admin.sellux.ch | the stack's passwords and demo login codes, as today | **nothing**: the job result carries `"secrets":{}` and no logins (`stack/provision/agent.sh`); a leftover `BREAK_GLASS.txt` is no longer used |
+| Record | - | `audit.access.break_glass` with the end time; a refused code writes no row |
 
-The other stack secrets (database, `AUTH_SECRET`, n8n, restic) still go to the vault; they follow in phase SEC.
+**Support access granted by the company** (Settings -> Support access, `/[company]/settings/support-access`). A
+company admin grants NextUp support 1, 4, 24 or 72 hours with a reason, and gets a 12-character support code shown
+once to pass on. *Extend* moves the end by the chosen duration, never beyond 72 hours from now; *End now* revokes.
+Grant, extend, revoke and every support sign-in are `audit.access.*` rows and form the page's log. The page also
+shows the server window above, read only. Demo companies see only a line that NextUp works in them directly.
+
+Key rotation: `stack/rotate-keys.sh` rotates `AUTH_SECRET`, the connector vault key and the restic password on the
+host and logs the key name, never the value; the app opens old sealed values with `CONNECTOR_VAULT_KEY_PREVIOUS`
+and re-seals every stored secret with the new key. See `docs/customer/OPERATIONS.md`.
+
+## Claims
+
+What may be said publicly about a non-demo company (PILOT D16): only what runs on `main`. "Holds since SEC" is
+tested; "still planned" must not be claimed. The landing's security and privacy pages (`nextup-landing`, a separate
+repo) are not in this checkout and were not read for this table: check each line against it before the landing says it.
+
+| Claim | State | Where it holds |
+|---|---|---|
+| NextUp staff have no standing access to real customer data | holds since SEC | `stack/tests/no-standing-access.test.sh` |
+| Break-glass is time-limited, opened by the customer, logged and cannot be written by the app | holds since SEC | `stack/break-glass.sh`, `stack/tests/break-glass-window.test.sh`, `no-standing-access.test.sh` |
+| The shared admin code does not work on a real stage | holds since SEC | `src/features/admin/break-glass.ts` |
+| Customers grant, extend and end support access and see a log | holds since SEC | Settings -> Support access |
+| Secrets of a real stack are not copied to NextUp's vault | holds since SEC | `stack/provision/agent.sh` (`secrets_to_send`) |
+| Keys can be rotated: `AUTH_SECRET`, vault key, backup password | holds since SEC | `stack/rotate-keys.sh`, `vault-keys.test.ts` |
+| Connection tokens are sealed with AES-256-GCM | holds | `src/features/connectors/vault.ts` |
+| Dependency audit, image scan (Trivy) and an OWASP ZAP baseline scan of the demo app run in CI | holds since SEC | `.github/workflows/ci.yml` (`zap` is a passive scan of the demo app, not of a customer stack) |
+| Sign-in with Microsoft (OIDC), SAML and SCIM provisioning | holds since EID | `docs/IDENTITY.md` |
+| Audit log of admin and console changes, 24 months, CSV; export to syslog or a JSON file | holds | `docs/PRIVACY.md`, EID log export |
+| DPA template, TOMs, record of processing, DPIA, works-agreement template, VDA ISA self-assessment | holds since SEC (templates, not signed contracts) | `docs/compliance/` |
+| A penetration test by an outside firm | still planned, before `live` | - |
+| Two-factor sign-in for the company admin console `/admin` | still planned | - |
+| Disk encryption of the servers | still planned (INF) | G-224 |
+| Rate limits shared across processes | still planned | G-225 |
+| Encrypted backups with a retention rule | still planned | `docs/PRIVACY.md` |
 
 ## Doors and their locks
 
@@ -43,7 +83,7 @@ The other stack secrets (database, `AUTH_SECRET`, n8n, restic) still go to the v
 |---|---|---|
 | `/[company]/login` | personal login code per person (~59 bits, sha256 stored, `src/features/auth/login-code.ts`) - the code alone says who you are | 10 tries / 10 min per address+company; 200 / 10 min per company |
 | `/[company]/login/microsoft` | Entra ID OpenID Connect, code flow + PKCE, state + nonce in a signed 10-min cookie; token's `tid` must equal the company's tenant; person matched by `oid` (bound on first sign-in by email) - `src/features/auth/entra.ts` | Microsoft's own |
-| `/admin/login` | `ADMIN_ACCESS_CODE`, constant-time compare | 5 tries / 15 min per address |
+| `/admin/login` | `demo`: `ADMIN_ACCESS_CODE`, constant-time compare; any other stage: only a code from an open break-glass window (see above) | 5 tries / 15 min per address |
 | `/contact` | honeypot + server-side validation | 5 / hour per address |
 | `/api/[company]/events` | bearer token (sha256 hash stored), scoped to one company | - (token is 192 bits) |
 | `/api/client-errors` | public on purpose (a crash on the login page must report too): `Sec-Fetch-Site: same-origin` or `Origin` = `APP_ORIGIN`, 8 KB, zod-validated; message scrubbed and route made a pattern before it is kept (`src/features/errors`); no cookie, session or address stored | 30 / 10 min per address, then silently 204 |
@@ -89,8 +129,8 @@ static files by their extension, not every path with a dot, so a person's page
 3. **Admin as people, not a shared code.** One `ADMIN_ACCESS_CODE` for everyone means no audit of
    who did what. Named admin users (magic link or SSO) plus 2FA. Started: on a company stack, a
    Microsoft account with the Entra app role `NextUp.Admin` opens `/admin`; the cookie carries who
-   (shown in the header, logged at sign-in) and the shared code is logged as break-glass. Still open:
-   2FA of our own, switching the shared code off, naming the admin on each action (item 4), and
+   (shown in the header, logged at sign-in) and the break-glass use is logged. The shared code is off on every stage but `demo`. Still open:
+   2FA of our own, naming the admin on each action (item 4), and
    the platform admin on admin.sellux.ch. Customer setup: `docs/customer/ENTRA_SETUP.md`.
 4. ~~**Audit log for admin actions.**~~ Done (GDP): every admin, console and system change to a company is written to an append-only
    `AuditEvent` in the same transaction, readable by company admins in Settings → Audit log and as CSV, kept 24 months.
@@ -125,7 +165,8 @@ static files by their extension, not every path with a dot, so a person's page
   (demo.sellux.ch) has no login at all.
   `/admin/connections` flags both. Company stacks (`stack/`) never pass `ADMIN_DEMO_FILL` at all.
 - Anything published by Docker on a laptop binds to `127.0.0.1`, never all interfaces.
-- A pentest by an outside firm before `live`.
+- A pentest by an outside firm before `live` (still planned). A ZAP baseline scan of the demo app runs in CI and fails on a High alert
+  that `.zap/ignore.json` does not cover.
 
 ## Checked and closed
 
