@@ -68,7 +68,7 @@ export function projectsTabsFor(role: Role): ProjectsTabItem[] {
 
 /** Which tab an address (relative to /[company]) is, or null outside the area: a project's own page has its own tabs. */
 export function projectsTabAt(path: string): ProjectsTabKey | null {
-  if (path === "/overview") return "overview";
+  if (path === "/overview" || path === "/idea") return "overview"; // an idea opens in place, on the same page as the table
   return PROJECTS_TABS.find((tab) => tab.href === path)?.key ?? null;
 }
 

@@ -54,9 +54,9 @@ describe("navbar index access and destinations", () => {
     expect(people.map((r) => r.href).sort()).toEqual(["/acme/people/u1", "/acme/people/u2"]);
     expect(people.some((r) => r.href.includes("Ann"))).toBe(false);
   });
-  it("links a case to the Overview with that case open", () => {
+  it("links a case to its own address, with that case open", () => {
     const cases = navbarIndex(ctx).filter((r) => r.case);
     expect(cases.length).toBeGreaterThan(0);
-    expect(cases.every((r) => r.href === "/acme/overview?id=" + encodeURIComponent(r.go!.id))).toBe(true);
+    expect(cases.every((r) => r.href === "/acme/idea?id=" + encodeURIComponent(r.go!.id))).toBe(true);
   });
 });

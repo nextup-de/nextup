@@ -16,13 +16,13 @@ export function skeletonKindFor(appPath: string): SkeletonKind {
   if (p.startsWith("/dashboard") || p.startsWith("/manager")) return "overview"; // the Dashboard (the manager home)
   if (p.startsWith("/leader")) return "inbox";
   if (p.startsWith("/raise")) return "raise";
-  if (p.startsWith("/overview")) return "dashboard"; // the Overview table
+  if (p.startsWith("/overview") || p === "/idea") return "dashboard"; // the Overview table, an idea opened from it
   if (p.startsWith("/cases/")) return "detail";
   if (p.startsWith("/settings")) return "settings";
   return "list";
 }
 
-const APP_ROUTES = new Set(["manager", "leader", "raise", "dashboard", "overview", "cases", "settings", "problems", "ideas", "collaboration", "progress", "team"]);
+const APP_ROUTES = new Set(["manager", "leader", "raise", "dashboard", "overview", "cases", "settings", "problems", "idea", "ideas", "collaboration", "progress", "team"]);
 
 /**
  * Same, from the browser's pathname, which is /acme/leader in path mode and /leader in subdomain

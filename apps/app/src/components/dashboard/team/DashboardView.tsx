@@ -9,9 +9,10 @@
 // Who sees what (derive.visibleTo): an employee only what they raised; a team leader their own
 // and their people's; a manager everything.
 // `linkCases` (the static demo): every case has its own address, /cases/<id> - a row goes there, ✕ comes
-// back - and that page is this view with `caseId` open. Otherwise the open case is ?id= on this page.
+// back - and that page is this view with `caseId` open. Otherwise the open case stays on this page and
+// the address says what it is: /idea?id=<id>, the same page. Closing goes back to where the table was.
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { useT } from "@/i18n/client";
@@ -113,7 +114,11 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   // The open case: from /cases/<id> (linkCases) or from ?id=, which keeps it in the address after that.
   const urlId = useUrlId();
   const [sel, setSel] = useState<string | null>(caseId ?? urlId);
-  useIdInUrl(linkCases ? null : sel, setSel);
+  const pathname = usePathname();
+  const ideaPath = href("/idea");
+  // Where the table is: the address this view opened on, or the table's home when it opened on an idea.
+  const [tablePath] = useState(() => (pathname === ideaPath ? href(flag("projects") ? "/projects" : "/overview") : pathname));
+  useIdInUrl(linkCases ? null : sel, setSel, "id", linkCases ? undefined : { open: ideaPath, closed: tablePath });
   const [mode, setMode] = useState<IdeaMode>("idea");
   const [pg, setPg] = useState({ key: "", n: 1 }); // the page the table is on, forgotten when the list changes
   const paneRef = useRef<HTMLDivElement>(null);

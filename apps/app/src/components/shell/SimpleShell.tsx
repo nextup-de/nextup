@@ -75,7 +75,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           {simpleNavFor(role, ctx.flag).map((n) => {
             const href = tenant.prefix + n.href;
             // A case opens from the Overview, so its page counts as the Overview - a tab of Projects while that is on.
-            const inOverview = pathname === tenant.prefix + "/overview" || pathname.startsWith(tenant.prefix + "/cases/");
+            const inOverview = pathname === tenant.prefix + "/overview" || pathname === tenant.prefix + "/idea" || pathname.startsWith(tenant.prefix + "/cases/");
             const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview) || (n.href === "/projects" && area !== null);
             const n1 = n.count ? counts[n.count] : 0;
             return (

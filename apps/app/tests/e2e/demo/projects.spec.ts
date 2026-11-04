@@ -142,6 +142,91 @@ test("projects and ideas sit side by side on one page", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
 });
 
+test("an idea opened on the Projects page has its own address, /idea?id=", async ({ page }) => {
+  const idea = /\/acme\/idea\?id=[^&]+$/;
+  const projects = /\/acme\/projects$/;
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/projects");
+  const table = page.getByRole("table", { name: "Problems and ideas" });
+  const row = table.getByRole("row").nth(1);
+  const title = (await row.getByRole("cell").first().locator("span").first().innerText()).trim();
+  await row.click();
+  await expect(page).toHaveURL(idea);
+  const heading = page.getByRole("heading", { name: title, level: 1 });
+  await expect(heading).toBeVisible();
+  const at = page.url();
+
+  // A reload and a link land on the same idea; the nav still shows where it opened from.
+  await page.reload();
+  await expect(heading).toBeVisible();
+  await expect(page).toHaveURL(at);
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true })).toHaveAttribute("aria-current", "page");
+
+  // Closing goes to the table; Back reopens the idea and Forward closes it again.
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(projects);
+  await expect(table).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(at);
+  await expect(heading).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(projects);
+  await expect(table).toBeVisible();
+
+  // The nav link leaves an idea opened in place, and the old addresses still land on the idea.
+  await table.getByRole("row").nth(1).click();
+  await expect(page).toHaveURL(idea);
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true }).click();
+  await expect(page).toHaveURL(projects);
+  await expect(table).toBeVisible();
+  const id = new URL(at).searchParams.get("id") ?? "";
+  for (const old of ["/acme/projects", "/acme/overview"]) {
+    await page.goto(old + "?id=" + encodeURIComponent(id));
+    await expect(page).toHaveURL(at);
+    await expect(heading).toBeVisible();
+  }
+});
+
+test("Back right after closing an idea reopens it, on a slow machine too", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/projects");
+  const table = page.getByRole("table", { name: "Problems and ideas" });
+  const row = table.getByRole("row").nth(1);
+  const title = (await row.getByRole("cell").first().locator("span").first().innerText()).trim();
+  await row.click();
+  const heading = page.getByRole("heading", { name: title, level: 1 });
+  await expect(heading).toBeVisible();
+  await page.reload();
+  await expect(heading).toBeVisible();
+  // The address follows at once, the router's copy of it later: this is the gap that lost the Back.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/acme\/projects$/);
+  await expect(table).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/acme\/idea\?id=/);
+  await expect(heading).toBeVisible({ timeout: 15_000 });
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+});
+
+test("Back out of the Projects page goes to the page before it", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/feed");
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true }).click();
+  await expect(page).toHaveURL(/\/acme\/projects$/);
+  const row = page.getByRole("table", { name: "Problems and ideas" }).getByRole("row").nth(1);
+  await row.click();
+  await expect(page).toHaveURL(/\/acme\/idea\?id=/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/acme\/projects$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/acme\/feed$/);
+});
+
 test("a step is dragged to another column; a drop on Blocked asks why", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
