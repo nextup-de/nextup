@@ -57,25 +57,25 @@ test.describe.serial("UIP colour", () => {
     // Members: every person has a tinted face, and a department keeps the tone its name gives it.
     await open(manager, "/settings/members");
     await expectTintedFaces(manager, PEOPLE.length);
-    const dept = manager.locator("[data-dept-tone]", { hasText: "Betriebsleitung" }).first();
+    const dept = manager.locator("[data-dept-tone]:visible", { hasText: "Betriebsleitung" }).first();
     await expect(dept).toHaveAttribute("data-dept-tone", deptTone("Betriebsleitung") ?? "");
 
     // Org and Routing name departments, and Org shows who holds each seat.
     await open(manager, "/settings/org");
-    await expect(manager.locator("[data-dept-tone]").first()).toBeVisible();
+    await expect(manager.locator("[data-dept-tone]:visible").first()).toBeVisible();
     await expectTintedFaces(manager, 0);
     await open(manager, "/settings/routing");
-    await expect(manager.locator("[data-dept-tone]").first()).toBeVisible();
+    await expect(manager.locator("[data-dept-tone]:visible").first()).toBeVisible();
     await expectTintedFaces(manager, 0);
 
     // Feed: the department filters carry a tone, and the people on the posts have tinted faces.
     await open(manager, "/feed");
-    await expect(manager.locator("[data-dept-tone]").first()).toBeVisible();
+    await expect(manager.locator("[data-dept-tone]:visible").first()).toBeVisible();
     await expectTintedFaces(manager, 1);
 
     // The manager's Dashboard breaks the wait ledger down by unit.
     await open(manager, "/dashboard");
-    await expect(manager.locator("[data-dept-tone]").first()).toBeVisible();
+    await expect(manager.locator("[data-dept-tone]:visible").first()).toBeVisible();
     await manager.context().close();
 
     // The leader's Inbox: its people are tinted too.
