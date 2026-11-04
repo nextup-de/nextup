@@ -70,3 +70,73 @@ Not moved to ids in IDN (D14): they show org data, they do not decide who someon
 | `components/profile/ProfileView.tsx` | ADM |
 | `components/shell/LoopSheets.tsx`, `SimpleShell.tsx`, `TopBar.tsx` (role beside a name; "am I the author" for the handle) | open: D14 names no phase |
 | comment in `apps/app/prisma/schema/auth.prisma` | DIR |
+
+# Enterprise identity (plan EID)
+
+> **Updated 2026-11-04.** OIDC, SAML, SCIM and the audit log export. Customer-facing setup: [customer/SSO_SETUP.md](customer/SSO_SETUP.md).
+> All four are **off for every company until an admin switches them on** on the Sign-in page; with them off, the code and
+> Microsoft sign-in and the core loop are unchanged, no button shows, SCIM answers 403 and the exporter does not run.
+
+## Sign-in and linking
+
+- **OIDC** (`/<company>/login/oidc`, callback `…/login/oidc/callback`): code flow with PKCE, state and nonce in a flow cookie,
+  ID token checked for signature, issuer, audience, nonce and expiry; RS256 only.
+- **SAML 2.0** (start `…/login/saml`, ACS `…/login/saml/acs`, SP metadata `…/login/saml/metadata`; node-saml): the assertion must
+  be signed; audience, issuer, `InResponseTo` and `NotOnOrAfter` are checked; request ids and assertion ids are single-use
+  (`SsoReplay`); an encrypted assertion is refused. `RelayState` is a signed token, not a cookie.
+- **Linking.** A sign-in finds the person through an `ExternalIdentity` row (company, provider, issuer, subject). Only without
+  one does it match, once, exactly one active user of that company by email (case-insensitive) with no link of that provider,
+  and writes the link. Display names are never compared. No match, several or an inactive user → refused with an
+  `sso_error` code on the login page. OIDC and SAML never create an account and never change a role. `lastSeenAt` updates on every sign-in.
+- An admin's `?test=1` run stores its result on the card and links and signs in nobody.
+
+## SCIM
+
+Base `/api/scim/<company>/v2` (route files under `src/app/api/scim/[company]/v2/`; `api/` bypasses the proxy, so each handler
+checks itself). Bearer token with scope `scim` for that company, rate limited, and the `scim` Integration row must be on.
+Writes go through `applyDirectoryDelta(companyId, 'scim', …)`. DELETE and `active: false` deactivate. Only these attributes
+are stored: userName, externalId, name parts, displayName, work email, active, title, and from the enterprise extension
+department, manager (a SCIM id mapped to the manager's link subject) and employeeNumber (kept as the personnel number, never
+returned, shown, logged or sent to the AI). Everything else is dropped.
+
+## Log export
+
+Only `AuditEvent` rows go out, as `LogRecord` (`id`, `companyId`, `at`, `type` = `audit.*`, `actorUserId`, `target`, `data`).
+Syslog RFC 5424 (`<110>1 …`, UDP, TCP or TLS with octet counting) or `audit-<YYYY-MM-DD>.jsonl` under `LOG_EXPORT_DIR`. The
+scheduler runs every 60 s per company with the `logsink` row on: 120 s lease on `AuditExportRun`, up to 500 rows after the cursor
+(`at`, `id`), cursor moved after the write (at least once). Switching on starts the cursor at now. A failure keeps the cursor
+and stores `lastError`. The test record (`audit.test`) moves no cursor.
+
+## Tables
+
+| Table | Holds |
+|---|---|
+| `Integration` (systems `oidc`, `saml`, `scim`, `logsink`) | settings JSON, `on`, sealed secret (OIDC client secret), `account.lastTest`, `lastOkAt`, `lastError` |
+| `ExternalIdentity` | `companyId, userId, provider (oidc, saml, scim), issuer, subject, createdAt, lastSeenAt`; unique per company, provider, issuer, subject |
+| `SsoReplay` | `key, companyId, expiresAt`: SAML request ids and assertion ids, OIDC state; swept when expired |
+| `AuditExportRun` | per company: cursor (`cursorAt`, `cursorId`), lease, last run, last ok, last error, sent today |
+| `ApiToken` | the SCIM token (scope `scim`, no expiry), replaced from the Sign-in page |
+
+## Fakes for tests
+
+`tests/fixtures/oidc/fake-issuer.ts` (local issuer with a switch per attack), `tests/fixtures/saml/idp.ts` (test IdP with key and
+certificate made at test time, attacks as options), `tests/fixtures/syslog/receiver.ts` (UDP, TCP and TLS listeners). The
+acceptance over all of them is `tests/db/enterprise-identity.test.ts` ("EID acceptance"): SCIM-provisioned person signs in through
+OIDC and SAML to the same user id, a SCIM deactivation refuses the next sign-in, the audit rows reach the receiver in order, and
+with everything off the code sign-in works and SCIM answers 403.
+
+## Claims
+
+Public claims about SSO, SCIM and SIEM export, judged by what runs on main for a non-demo company (a demo company cannot use
+OIDC, SAML or SCIM).
+
+| Claim | Where | Status |
+|---|---|---|
+| Sign in with Microsoft Entra (OIDC, tenant checked) | customer/SECURITY_GUIDE.md, ENTRA_SETUP.md | holds (before EID) |
+| Generic OIDC (Okta, Keycloak, others) | customer/SSO_SETUP.md | holds since EID |
+| SAML 2.0 with signature, audience, request and replay checks | customer/SECURITY_GUIDE.md, SSO_SETUP.md | holds since EID |
+| SCIM provisioning and deactivation, with a fixed attribute list | customer/SECURITY_GUIDE.md, SSO_SETUP.md | holds since EID |
+| Audit log export to syslog (UDP, TCP, TLS) or JSON file | SSO_SETUP.md, gap-register G-220 | holds since EID |
+| SCIM groups, bulk, SAML single logout, SAML signing or encryption, SCIM role mapping | none, deliberately not offered | still planned (not built) |
+| Named admin users via SSO plus 2FA | SECURITY.md item 3 | still planned (SSO sign-in exists; the admin area itself still opens through Entra, a stack admin or break-glass, not through OIDC or SAML) |
+| Public pricing and security pages (nextup-landing) | not in this checkout | not reviewed here; they must claim only the "holds" rows. EID does not change the landing repo. |
