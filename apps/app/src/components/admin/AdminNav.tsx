@@ -14,7 +14,6 @@ const ICONS: Record<AdminPage, React.ReactNode> = {
   routing: <path d="M3 16h14M5 13l3-4 3 2 4-6M14 5h2v2" />,
   support: <path d="M4 10a6 6 0 0 1 12 0M3 10v3h2.5v-3.5H3zM17 10v3h-2.5v-3.5H17zM15 13.5c0 1.5-2 2.5-5 2.5" />,
   assistant: <path d="M4 4h12v9H9l-4 3v-3H4zM7.5 8.5h.01M10 8.5h.01M12.5 8.5h.01" />,
-  integrations: <path d="M7.5 3v4M12.5 3v4M5.5 7h9v3a4.5 4.5 0 0 1-9 0zM10 14.5V17" />,
   data: <path d="M10 3v4M10 7H5v4M10 7h5v4M3 11h4v4H3zM13 11h4v4h-4zM8 3h4v4H8z" />,
 };
 

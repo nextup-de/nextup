@@ -1,5 +1,5 @@
 // Plan LNG, LNG-S1: what a person sees from the connectors (the Microsoft 365 card on the profile),
-// and the directory sync card on /admin/integrations (plan DIR).
+// and the directory sync card on /admin/connectors (plan DIR).
 import { defineMessages } from "../define";
 
 export const connectors = defineMessages({

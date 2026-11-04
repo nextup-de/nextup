@@ -13,7 +13,6 @@ export type AdminPage =
   | "routing"
   | "support"
   | "assistant"
-  | "integrations"
   | "data";
 
 /**
