@@ -10,6 +10,7 @@ import { demo } from "./messages/demo";
 import { dashboard } from "./messages/dashboard";
 import { team } from "./messages/team";
 import { leader } from "./messages/leader";
+import { brief } from "./messages/brief";
 import { ideas } from "./messages/ideas";
 import { projects } from "./messages/projects";
 import { cases } from "./messages/cases";
@@ -65,6 +66,7 @@ export const de = {
   dashboard: dashboard.de,
   team: team.de,
   leader: leader.de,
+  brief: brief.de,
   ideas: ideas.de,
   projects: projects.de,
   cases: cases.de,

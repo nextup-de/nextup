@@ -52,7 +52,7 @@ describe("fast lane: the cost fact", () => {
 });
 
 describe("withDiscussion: the decision card", () => {
-  const brief = (c: ReturnType<typeof kase>) => briefForCase(c, { people: PEOPLE, depts: [], ideas: [] }, { promiseDays: PROMISE_DAYS, me: "T. Vogel", affected: [], attachments: 0, updates: 0, passTo: "M. Roth", history: "" });
+  const brief = (c: ReturnType<typeof kase>) => briefForCase({ ...c, route: c.route && { ...c.route, ownerSeatId: "s-tv" } }, { people: PEOPLE, depts: [], ideas: [] }, { promiseDays: PROMISE_DAYS, viewer: { userId: "u-tv", seatIds: ["s-tv"], roleIds: [] }, affected: [], attachments: 0, updates: 0, passTo: "M. Roth", history: "" });
 
   it("adds 'Discuss first' after Yes; in the fast lane Yes stays the advice", () => {
     const c = kase(logAt(0, raised));

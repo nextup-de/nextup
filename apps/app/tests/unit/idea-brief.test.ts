@@ -91,7 +91,7 @@ describe("personFor", () => {
 describe("briefForCase", () => {
   const S = reduce(SEED, emptyLog());
   const caseOf = (id: string) => { const c = S.cases.find((x) => x.id === id); if (!c) throw new Error("no case " + id); return c; };
-  const facts = { promiseDays: SEED.promiseDays, me: "T. Vogel", affected: [], attachments: 0, updates: 0, passTo: "M. Roth", history: "" };
+  const facts = { promiseDays: SEED.promiseDays, viewer: { userId: "u-reader", seatIds: [], roleIds: [] }, affected: [], attachments: 0, updates: 0, passTo: "M. Roth", history: "" };
 
   it("keeps an anonymous raiser anonymous", () => {
     const b = briefForCase(caseOf("c1"), ctx, facts);
@@ -106,10 +106,10 @@ describe("briefForCase", () => {
     expect(b.sources.map((s) => s.n)).toEqual(b.sources.map((_, i) => i + 1));
   });
   it("suggests passing it on when the map names someone else, deciding when it is mine", () => {
-    const c = caseOf("c1");
-    const owner = c.route?.owner.name ?? "";
-    expect(briefForCase(c, ctx, { ...facts, me: owner === "T. Vogel" ? "Someone else" : "T. Vogel" }).rec).toBe("hand");
-    expect(briefForCase(c, ctx, { ...facts, me: owner }).rec).toBe(c.upside ? "yes" : "ask");
+    const plain = caseOf("c1");
+    const c = { ...plain, route: plain.route && { ...plain.route, ownerSeatId: "s-owner" } };
+    expect(briefForCase(c, ctx, { ...facts, viewer: { userId: "u1", seatIds: ["s-other"], roleIds: [] } }).rec).toBe("hand");
+    expect(briefForCase(c, ctx, { ...facts, viewer: { userId: "u1", seatIds: ["s-owner"], roleIds: [] } }).rec).toBe(c.upside ? "yes" : "ask");
   });
   it("counts everyone who stands behind it as support", () => {
     const one = briefForCase(caseOf("c1"), ctx, facts).scores[4].value;
@@ -119,19 +119,20 @@ describe("briefForCase", () => {
   });
   it("read by the person who raised it: no decisions, and the advice speaks to them", () => {
     const c = caseOf("c3");
-    const b = briefForCase(c, ctx, { ...facts, me: c.from, side: "raiser" });
+    const raiserReads = { ...facts, viewer: { userId: "u-raiser", seatIds: [], roleIds: [] }, side: "raiser" as const };
+    const b = briefForCase({ ...c, fromUserId: "u-raiser" }, ctx, raiserReads);
     expect(b.actions).toEqual([]);
     expect(b.rec).toBe("");
     expect(b.recText).toContain(c.assignee);
     expect(b.recText).not.toContain("your desk");
     const asked = reduce(SEED, appendEvent(emptyLog(), { type: "case.asked", actor: "T. Vogel", target: "c3", payload: { text: "Which six?" } })).cases.find((x) => x.id === "c3")!;
-    const qb = briefForCase(asked, ctx, { ...facts, me: c.from, side: "raiser" });
+    const qb = briefForCase({ ...asked, fromUserId: "u-raiser" }, ctx, raiserReads);
     expect(qb.recText).toBe("T. Vogel asked you a question. The clock is paused until you answer.");
     expect(qb.next).toBe("Answer T. Vogel.");
   });
   it("with a written brief for the case: its files, people and dials, but the case's own decision part", () => {
     const c = caseOf("c3");
-    const b = briefForCase(c, { ...ctx, briefs: { c3: BRIEFS.i1 } }, { ...facts, me: c.from, side: "raiser", affected: ["S. Dahl"] });
+    const b = briefForCase(c, { ...ctx, briefs: { c3: BRIEFS.i1 } }, { ...facts, side: "raiser", affected: ["S. Dahl"] });
     expect(b.written).toBe(true);
     expect(b.files.map((f) => f.name)).toEqual(BRIEFS.i1.files.map((f) => f.name));
     expect(b.routing).toEqual(BRIEFS.i1.routing);

@@ -102,7 +102,7 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
 export function DashboardView({ caseId, linkCases = false, embedded = false, title }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode } = {}) {
   const t = useT();
   const ctx = useDemo();
-  const { seed, D, log, persona, role, ready, href, tenant, act, me, f, motion, flag } = ctx;
+  const { seed, D, log, role, ready, href, tenant, act, me, f, motion, flag } = ctx;
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const router = useRouter();
   const [view, setView] = useState<ListView>("open");
@@ -154,7 +154,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   if (!ready) return <PageSkeleton kind="dashboard" delay />;
 
   const P = seed.promiseDays;
-  const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas };
+  const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, t };
   // With projects on, the table shows what is still moving; what was decided sits in the Archive.
   const split = flag("projects");
   const everyRow = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, P, me, log));
@@ -205,7 +205,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     const added = rescoresOn(log, c.id);
     // The written brief when there is one: the static demo's, or what the raise page saved when it was published here.
     const brief = briefForCase(c, { ...briefCtx, briefs: { ...seed.briefs, ...loadRaised(tenant.slug) } }, {
-      promiseDays: P, me: row.mine ? c.from : persona.who.name, affected: row.affected, attachments: raised.attachments, updates: added.length,
+      promiseDays: P, viewer: me, affected: row.affected, attachments: raised.attachments, updates: added.length,
       passTo: "", history: "", side: onDeskOf(c, me) && !row.mine ? "desk" : "raiser",
     });
     const late = row.open && row.overdue;

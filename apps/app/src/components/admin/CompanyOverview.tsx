@@ -11,6 +11,7 @@ import { consoleTodo } from "@/features/admin/console-overview";
 import { formatDate } from "@/i18n/format";
 import type { T } from "@/i18n";
 import styles from "@/app/admin/admin.module.css";
+import { getT } from "@/i18n/server";
 
 export function CompanyOverview({ company, assistant, base, promiseDays = DEFAULT_RULES.promiseDays }: { company: CompanyRow; assistant: AssistantView; base: string; promiseDays?: number }) {
   const locked = lockedOut(company);
@@ -97,11 +98,12 @@ function names(all: string[]): string {
 }
 
 /** A company stack whose database does not hold its COMPANY_SLUG yet - the seed has not run. */
-export function CompanyMissing() {
+export async function CompanyMissing() {
+  const t = await getT();
   return (
     <section className={styles.card}>
-      <h1>Not set up yet</h1>
-      <p className="nh-hint">This NextUp has no company in its database yet. The NextUp team finishes the setup - nothing to do here.</p>
+      <h1>{t("adminConsole.missingTitle")}</h1>
+      <p className="nh-hint">{t("adminConsole.missingText")}</p>
     </section>
   );
 }
