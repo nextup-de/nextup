@@ -49,13 +49,11 @@ Three rules that recur on every page of this file:
 
 - **Route:** `/[company]/dashboard` (redesign)
 - **Who:** managers (`ROLE_ACCESS["/dashboard"]`; their home page, `ROLE_HOME.manager`)
-- **Phase:** MET (no Bauplan yet). Reads VIS `metricInputs(companyId, from, to)`, AIP `overrideRate(events, from, to)`,
+- **Phase:** MET. Reads VIS `metricInputs(companyId, from, to)`, AIP `overrideRate(events, from, to)`,
   CLK's working days and `clock.due` facts; hands PIL `pilotReport(companyId, from, to)`.
-- **Data:** per case from `metricInputs` (status, route, `dueDay`, `lastDay`; MET adds the day of the first answer
-  *(MET Bauplan)*); route → owner role → unit (`Route`, `OrgRole`, `OrgUnit`); `clock.due` kind deadline (escalations);
+- **Data:** per case from `metricInputs` (status, route, `dueDay`, `lastDay`; MET derives the first response and the first reasoned answer from the `CaseEvent` rows, MET D9; VIS `firstAnswerDay` is not used because it includes hand-overs); route → owner role → unit (`Route`, `OrgRole`, `OrgUnit`); `clock.due` kind deadline (escalations);
   `case.decided`, `case.asked`, `case.handed`, `case.discussion` (how cases were answered); `case.affected` (support);
-  `project.measured` (pay-off); `overrideRate`. Baseline period *(proposal, not in any plan: MET stores `{ from, to }`
-  in `CompanyConfig`)*.
+  `project.measured` (pay-off); `overrideRate`. Baseline period: one `CompanyRule` row, key `metrics_baseline`, set on the Dashboard.
 - **Today:** `DashboardBoard.tsx`, the handoff 1:1: six KPI tiles, "Ideas raised per month", "Ideas per stage",
   "How team leads answered" with a per-lead table, "Did shipped work pay off", "Where the waiting goes", three lists.
   The figures come from `dashboardPreview.ts` and the seed's `ledger` and `metrics`, the same for every company; the
@@ -167,7 +165,7 @@ per unit (name, then "38 cases · 1.5 working days · 89 % on time"), the Units/
 | Scope menu | menu, unit tree | default all units; a unit includes its sub-units | All units | Alle Einheiten |
 | Period menu | menu | default last 30 days | Last 30 days · This quarter · Since go-live · Custom… | Letzte 30 Tage · Dieses Quartal · Seit dem Start · Eigener Zeitraum … |
 | Export | grey pill | CSV of the breakdown for the period and scope | Export CSV | CSV exportieren |
-| First answer | tile | median working days from `case.raised` to the first yes, no, question or discussion by someone else *(MET Bauplan fixes the events)* | First answer · {n} working days · median | Erste Antwort · {n} Arbeitstage · Median |
+| First answer | tile | median working days from `case.raised` to the first `case.decided` with a reason (MET D9: questions and hand-overs do not count); "Answered on time" uses the first response, a `case.decided` or `case.asked` | First answer · {n} working days · median | Erste Antwort · {n} Arbeitstage · Median |
 | Answered on time | tile | share of cases raised in the period answered within `promise_days`; open cases past the promise count as late, open ones within it do not count | Answered on time · within {days} working days | Rechtzeitig beantwortet · innerhalb von {days} Arbeitstagen |
 | Idea to decision | tile | median working days from raise to `case.decided`, ideas only | Idea to decision · {n} working days · median | Idee bis Entscheidung · {n} Arbeitstage · Median |
 | Past the promise now | tile | open cases with `dueDay` before today, of all open | Past the promise now · of {n} open | Jetzt über dem Versprechen · von {n} offenen |
@@ -185,7 +183,7 @@ per unit (name, then "38 cases · 1.5 working days · 89 % on time"), the Units/
 **Who counts as "behind" a row** (MET, minimum group size 5): for a unit row, the active members whose seats are in
 that unit or its sub-units; for a role row, the people holding its seats. Most roles have fewer than 5 holders, so
 the Roles view is mostly hidden; its numbers still count in their unit's row. A scope whose unit has fewer than 5
-people shows `TooFewToShow` in every tile. Open question 04-Q1.
+people shows `TooFewToShow` in every tile. 04-Q1 is answered: seat holders.
 
 ### Actions
 
@@ -196,8 +194,7 @@ people shows `TooFewToShow` in every tile. Open question 04-Q1.
 - *Set baseline* (link in a tile, or the period menu's last item "Baseline…"): a small dialog with a from/to date
   range and *Save*. "The baseline is the period every number is compared with. Pick the weeks before the pilot
   started." / "Die Basislinie ist der Zeitraum, mit dem jede Zahl verglichen wird. Wähle die Wochen vor dem
-  Pilotstart." Toast "Saved" / "Gespeichert". *(proposal: MET decides where it is stored and whether the company
-  admin page sets it instead)*
+  Pilotstart." Toast "Saved" / "Gespeichert". It is stored in the `CompanyRule` row `metrics_baseline` and set on the Dashboard by a company admin.
 - A list row opens the case page.
 
 ### States
@@ -422,10 +419,9 @@ screen.
 ## Person page
 
 - **Route:** `/[company]/people/[name]` (redesign). The route is keyed by display name, which HD10 rules out for
-  deciding who someone is; proposal: `/people/[userId]` with the name only shown *(proposal, not in any plan; IDN/D14
-  left the people pages to ADM, the MET brief removes their counts)*.
+  deciding who someone is; `/people/[userId]`, opaque user ids only; old name URLs return not found and are never looked up (MET D4, D15).
 - **Who:** every signed-in role. Anonymous handles have no person page.
-- **Phase:** MET (counts removed; no Bauplan yet). Before MET, TRUTH-B1 of the
+- **Phase:** MET (counts removed). Before MET, TRUTH-B1 of the
   [defensible-offer Codex plan](../2026-11-02_defensible-offer-codex.md) deletes `/people/[name]` and every profile
   link ([11](11-defensible-offer-pages.md#removed-contributor-ranking-and-person-pages)); this design is then the
   page MET builds new at `/people/[userId]`.
@@ -1132,8 +1128,8 @@ Each has a default; the page specs above follow it.
 
 | # | Question | Default |
 |---|---|---|
-| 04-Q1 | For "Too few to show": who stands behind a unit or role row of the Dashboard - the seat holders, the raisers, or both? Role rows will almost always be hidden. | Seat holders (a unit's members, a role's holders); role rows below 5 holders are hidden but count in their unit. MET's Bauplan decides. |
-| 04-Q2 | Does the Person page still list a person's ideas and collaborations? | No: it is a per-person tally (HD5). The page shows roles only. |
+| 04-Q1 | For "Too few to show": who stands behind a unit or role row of the Dashboard - the seat holders, the raisers, or both? Role rows will almost always be hidden. | Answered: seat holders (a unit's members, a role's holders); role rows below 5 holders are hidden but count in their unit (MET D11). |
+| 04-Q2 | Does the Person page still list a person's ideas and collaborations? | Answered: no, it is a per-person tally (HD5). The page shows name, role and unit only (MET D15). |
 | 04-Q3 | The Inbox's "median to answer" and "within the promise" are a desk's numbers; a desk with one holder is one person. Keep them? | Keep, shown only to the desk's own holders, with "–" below 5 answers. Never shown to anyone else. |
 | 04-Q4 | Who may open the Decision log? | Every role, each row only when its case is visible to the viewer; in the nav for leaders and managers. |
 | 04-Q5 | The Person page route is a display name (`/people/[name]`). Move it to the user id? | Decided (PILOT, MET): `/people/[userId]`; a name URL redirects when exactly one active member has the name; anonymous members have no person page. |
