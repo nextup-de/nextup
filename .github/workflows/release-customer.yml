@@ -1,0 +1,57 @@
+# Release a commit to one customer host (stack/remote/README.md, "Releasing from CI").
+#
+# By hand only: Actions -> release-customer -> Run workflow, with the customer's slug and the
+# 7-char commit sha whose images images.yml already published. A rollback is the same with an
+# older sha. The job runs in the GitHub environment `customer-<slug>`, where Kevin sets the
+# required reviewers, so a release waits for approval. The environment holds:
+#   variable DEPLOY_TARGET       user@host[:port]
+#   variable HEALTH_URL          the stack's health URL, e.g. https://acme.example.de/api/health
+#   secret   DEPLOY_SSH_KEY      private half of the forced-command key
+#   secret   DEPLOY_KNOWN_HOSTS  the host's key line(s), from ssh-keyscan
+# The key can only run `release <sha>` and `status` on the host (stack/remote/host.sh).
+#
+# Kevin owns this file.
+
+name: release-customer
+
+on:
+  workflow_dispatch:
+    inputs:
+      customer:
+        description: "customer slug, ^[a-z][a-z0-9-]{1,39}$ (names the environment customer-<slug>)"
+        required: true
+        type: string
+      tag:
+        description: "7-char short commit sha"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: release ${{ inputs.customer }} · ${{ inputs.tag }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: customer-${{ inputs.customer }}
+    # One move per customer at a time, and never cancel one halfway: a migration must finish.
+    concurrency:
+      group: release-customer-${{ inputs.customer }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # Values go through env, never ${{ }} inside the script; release-ci.sh checks every one.
+      - name: Release
+        shell: bash
+        env:
+          CUSTOMER: ${{ inputs.customer }}
+          TAG: ${{ inputs.tag }}
+          DEPLOY_TARGET: ${{ vars.DEPLOY_TARGET }}
+          HEALTH_URL: ${{ vars.HEALTH_URL }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: bash stack/remote/release-ci.sh
