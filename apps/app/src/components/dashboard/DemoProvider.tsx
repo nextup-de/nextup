@@ -187,6 +187,8 @@ export type TenantInfo = {
   hiddenPeople?: string[];
   /** False for a company with real people: no dev panel, and `users` is only the viewer. */
   demoTools?: boolean;
+  // Demo data until the dev panel switches it: on for the static demo and the demo test suite, off elsewhere.
+  demoDataDefault?: boolean;
   /** The company's feature flags (features/flags flagsFor), resolved on the server. */
   flags?: Partial<Record<FlagKey, boolean>>;
 };
@@ -272,7 +274,8 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
   // Demo figures only make sense next to demo content: a company without any (the empty template)
   // never shows the handoff's stand-in numbers, whatever the toggle says.
   const hasDemoContent = seed.problems.length + seed.ideas.length + seed.initiatives.length + seed.outcomes.length + seed.cases.length > 0;
-  const demo = hasDemoContent && (persisted.prefs.demo ?? true);
+  // A company with real people has no dev panel: its lists read through this switch, so for it the switch stays on.
+  const demo = hasDemoContent && (tenant.demoTools === false || (persisted.prefs.demo ?? tenant.demoDataDefault ?? false));
   const dept = persisted.prefs.dept ?? "PRD";
   const motion = persisted.prefs.motion ?? true;
   // Animations off is a page-wide switch: globals.css stops every transition and keyframe under it.

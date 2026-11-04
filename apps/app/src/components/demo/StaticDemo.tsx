@@ -36,6 +36,7 @@ export function StaticDemo({ seed, prefix, children }: { seed: Seed; prefix: str
     // The static demo has no person page.
     personLinks: {},
     demoTools: true,
+    demoDataDefault: true,
     // No flags: the demo shows everything built - every flag has its demo default, on. The pinned
     // interview stack (demo.sellux.ch) changes only when Kevin promotes it (deploy.sh promote demo).
   };
