@@ -3,11 +3,14 @@
 import type { Prisma } from "@prisma/client";
 import { COMPANY_RULE_KEYS, rulesFromRows, rowsFromRules, type CompanyRules } from "@/features/knowledge/rules";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 import type { Tx } from "./org-edit";
 
-export async function loadCompanyRules(companyId: string): Promise<CompanyRules> {
-  const rows = await getDb().companyRule.findMany({ where: { companyId }, select: { key: true, value: true } });
-  return rulesFromRows(rows);
+export function loadCompanyRules(companyId: string): Promise<CompanyRules> {
+  return memo("rules", companyId, async () => {
+    const rows = await getDb().companyRule.findMany({ where: { companyId }, select: { key: true, value: true } });
+    return rulesFromRows(rows);
+  });
 }
 
 /** Replace a company's rules wholesale, in one transaction. `by` is who saved it. */

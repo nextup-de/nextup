@@ -11,6 +11,7 @@ import type { Seed, SeedCase } from "@/features/demo/types";
 import type { SeedProject } from "@/features/projects/types";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 import { companySeed } from "./companies";
 import { companyDay, loadLog } from "./events";
 import { loadSeats as readSeats } from "./holders";
@@ -54,9 +55,11 @@ const projectIdOf = (payload: unknown): string[] => {
 };
 
 /** The company's seed as the pages see it. */
-async function seedOf(companyId: string): Promise<Seed> {
-  const row = await getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { id: true, seedJson: true, stage: true } });
-  return companySeed(row);
+function seedOf(companyId: string): Promise<Seed> {
+  return memo("viewer-seed", companyId, async () => {
+    const row = await getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { id: true, seedJson: true, stage: true } });
+    return companySeed(row);
+  });
 }
 
 /** The events of these cases and of the projects they opened or joined, in seq order; `shared` adds the idea.* and untargeted ones. */
@@ -83,7 +86,7 @@ export async function loadLogFor(companyId: string, viewer: LogViewer, now: Date
   const db = getDb();
   const [shipped, company, keys] = await Promise.all([
     db.caseView.count({ where: { companyId } }),
-    db.company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } }),
+    memo("stage", companyId, () => db.company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } })),
     keysOf(companyId, viewer),
   ]);
   if (shipped === 0) return { log: await loadLog(companyId, now), caseIds: null, projectIds: null };

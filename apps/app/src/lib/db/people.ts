@@ -2,6 +2,7 @@
 // active person who has a seat and no anonymous handle. Nothing else is selected.
 import type { PersonCandidate } from "@/features/people/resolve";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 
 export type PersonPage = { name: string; role: string; unitPath: string[] };
 
@@ -34,7 +35,11 @@ export async function personPage(companyId: string, userId: string): Promise<Per
 }
 
 /** user id -> display name for every active, handle-free user of the company who holds a seat. */
-export async function personLinksFor(companyId: string): Promise<Record<string, string>> {
+export function personLinksFor(companyId: string): Promise<Record<string, string>> {
+  return memo("links", companyId, () => readPersonLinks(companyId));
+}
+
+async function readPersonLinks(companyId: string): Promise<Record<string, string>> {
   const db = getDb();
   const seats = await db.orgRoleHolder.findMany({ where: { companyId, userId: { not: null } }, select: { userId: true } });
   const ids = [...new Set(seats.flatMap((s) => (s.userId === null ? [] : [s.userId])))];

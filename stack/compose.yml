@@ -107,6 +107,9 @@ services:
     environment:
       DATABASE_URL: postgresql://nextup:${POSTGRES_PASSWORD}@db:5432/nextup
       AUTH_SECRET: ${AUTH_SECRET:?}
+      # Company structure, seats and rules are read once per few seconds per process, not once per page (TST-FL1-1,
+      # src/lib/db/company-memo.ts). A change made on another replica shows within this many ms; 0 = every page reads.
+      COMPANY_CACHE_MS: ${COMPANY_CACHE_MS:-3000}
       ADMIN_ACCESS_CODE: ${ADMIN_ACCESS_CODE:?}
       TENANT_MODE: single
       COMPANY_SLUG: ${COMPANY_SLUG}

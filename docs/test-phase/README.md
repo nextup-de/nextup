@@ -1,4 +1,4 @@
-| 6 | Restore from the off-box backup within the written RTO; one on-prem install from scratch | `backup.sh <slug> restore-test` against `RTO_SECONDS` of `docs/ops/RPO_RTO.md`, and `stack/tests/install-clean.sh`, both by `ops/tst/vm-run.sh` / `RUNBOOK.md` (TST-V1) | not yet run: Kevin runs the script; `results/` is empty || 2 | 2,000 accounts: p95 below 1 s for inbox and case pages; no page loads the whole log | `tests/load/musterwerk-load.test.ts` (Node driver, CI) and k6 on the test VM (TST-V1) | **open: TST-FL1-1 (high)**. The stack now runs `APP_REPLICAS` app processes behind Caddy (one per core, at most 4). 200 accounts all at once on a shared PC: 1 process p95 14 s, 4 processes 5.1 s, 8 processes 3.8 s (35 and 55 requests/s); working day p95 301 ms. Needs the VM run (4 vCPU, `APP_REPLICAS=4`) or an idle PC to show p95 under 1 s; no response over 79 KB. See `findings/TST-L1.md` |# Test phase (plan TST): where the exit criteria stand
+# Test phase (plan TST): where the exit criteria stand
 
 The exit criteria of gate G4 are in `docs/plans/2026-11-01_pilot-readiness.md` (§ Test phase exit criteria). This page lists
 each with the test or drill that proves it and its result (D12). Medium and low findings and wishes are in `LATER.md` (D2).
@@ -9,12 +9,12 @@ Findings: `findings/<task>.md`. A high finding is open until its section says `-
 | # | Criterion | Proof | Result |
 |---|---|---|---|
 | 1 | All suites green in CI, including DB tests and the brain eval | CI jobs `ci`, `db-tests`, brain eval; locally `npm run lint && npm run typecheck && npm test && npm run build` and `DATABASE_URL=…_test bash ops/test-db.sh` | green on this branch's base |
-| 2 | 2,000 accounts: p95 below 1 s for inbox and case pages; no page loads the whole log | `tests/load/musterwerk-load.test.ts` (Node driver, CI) and k6 on the test VM (TST-V1) | **open: TST-FL1-1 (high)**, pages queue beyond about 15 requests/s; no response over 77 KB at 200 people. A fix attempt (parallel shell reads, once-per-request seats/knowledge) took p95 from 14 s to 10 s at 200 accounts at once; it needs more Node processes or a lighter page render. VM run of record: not yet made |
+| 2 | 2,000 accounts: p95 below 1 s for inbox and case pages; no page loads the whole log | `tests/load/musterwerk-load.test.ts` (Node driver, CI) and k6 on the test VM (TST-V1) | holds on a developer PC for 200 accounts all at once: inbox p95 557 ms, case p95 541 ms (8 processes, `COMPANY_CACHE_MS=3000`); working day p95 119 / 196 ms; no response over 79 KB. TST-FL1-1 fixed, see `findings/TST-L1.md`. The all-at-once run is skipped on a machine with fewer than 8 logical cores (CI). The 2,000-account k6 run of record on the VM is Kevin's |
 | 3 | Every deadline, deputy hand-over, check-in and measure fires on the real clock | `tests/db/tst-core.test.ts` (`TST core loop`), including weekend and Bavarian holiday | holds (TST-S1: 12/12) |
 | 4 | 21/21 ground-truth questions in the M365 test tenant; no document visible without access | `tests/db/tst-integrations.test.ts` (recorded Graph, 21 questions, `canRead` cross-check) | holds in the recorded run (TST-I1); the live tenant is Kevin's drill |
 | 5 | A member sees only what their role may see, tested on the server | `tst-core.test.ts` (access and decision log), `tests/e2e/db/visibility.spec.ts`, and `musterwerk.spec.ts` (`TST acceptance`, other unit gets no case) | holds |
-| 6 | Restore from the off-box backup within the written RTO; one on-prem install from scratch | `backup.sh <slug> restore-test` against `RTO_SECONDS` of `docs/ops/RPO_RTO.md`, and `stack/tests/install-clean.sh`, both by `ops/tst/vm-run.sh` / the runbook (TST-V1) | not yet run: no `RUNBOOK.md` or `results/` in the repo |
-| 7 | No open finding rated high from the pentest or ZAP cycle | Kevin (pentest, ZAP); in-repo findings: `tests/unit/tst/findings.test.ts` | **in-repo: red, TST-FL1-1 open**; pentest: Kevin's |
+| 6 | Restore from the off-box backup within the written RTO; one on-prem install from scratch | `backup.sh <slug> restore-test` against `RTO_SECONDS` of `docs/ops/RPO_RTO.md`, and `stack/tests/install-clean.sh`, both by `ops/tst/vm-run.sh` / `RUNBOOK.md` (TST-V1) | not yet run: Kevin runs the script; `results/` is empty |
+| 7 | No open finding rated high from the pentest or ZAP cycle | Kevin (pentest, ZAP); in-repo findings: `tests/unit/tst/findings.test.ts` | in-repo: green, no high finding open; pentest: Kevin's |
 | 8 | Two weeks of internal real-time use without a data-loss or access bug | Kevin | Kevin's item, not started |
 
 ## The proofs
@@ -53,4 +53,4 @@ None yet: `ops/tst/vm-run.sh` writes `results/<date>.md` when Kevin runs it.
 - Pentest and ZAP cycle: no open high finding.
 - Two weeks of internal real-time use without a data-loss or access bug.
 - The VM run of record (2,000 accounts with k6, restore test against the RTO, on-prem install drill) and the live M365 tenant.
-- TST-FL1-1: the multi-process fix is in; run the 2,000-account k6 on the VM with `APP_REPLICAS=4`. When the stress scenario passes, mark the finding `- **Status:** fixed` and turn its `it.fails` into an `it`.
+- TST-FL1-1 is fixed on a developer PC. On the VM, run the 2,000-account k6 as in `RUNBOOK.md`; if the 4 vCPU stack falls short of 100 requests per second, install with `--app-replicas 8`.

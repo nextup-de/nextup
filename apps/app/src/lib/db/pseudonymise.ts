@@ -4,6 +4,7 @@
 import { pickPseudonymNumber, pseudonymLabel } from "@/features/privacy/pseudonymise";
 import { resolveLocale } from "@/i18n";
 import { getDb } from "./client";
+import { memo } from "./company-memo";
 import type { Tx } from "./org-edit";
 
 export type PseudonymiseCounts = {
@@ -90,7 +91,9 @@ export async function pseudonymOf(companyId: string, userIds: string[]): Promise
 }
 
 /** user id -> label for every former member of the company: what event rendering resolves actorUserId through. */
-export async function pseudonymLabelsFor(companyId: string): Promise<Record<string, string>> {
-  const rows = await getDb().pseudonym.findMany({ where: { companyId }, select: { userId: true, label: true } });
-  return Object.fromEntries(rows.map((r) => [r.userId, r.label]));
+export function pseudonymLabelsFor(companyId: string): Promise<Record<string, string>> {
+  return memo("labels", companyId, async () => {
+    const rows = await getDb().pseudonym.findMany({ where: { companyId }, select: { userId: true, label: true } });
+    return Object.fromEntries(rows.map((r) => [r.userId, r.label]));
+  });
 }

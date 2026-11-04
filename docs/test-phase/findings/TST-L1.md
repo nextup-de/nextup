@@ -25,8 +25,8 @@ Where the line is, same data, same machine (separate runs):
 | 40 | 6,030 ms | 6,231 ms |
 | 200 | 14,098 ms | 13,593 ms |
 
-A single page costs about 120-150 ms alone; the server stops gaining throughput at roughly 10-15 requests per second and
-every request beyond that waits in a queue. No request failed: the pages are slow, not broken. No response carried the
+Before the fix a single page cost about 120-150 ms alone; the server stopped gaining throughput at roughly 10-15 requests per second and
+every request beyond that waited in a queue. No request failed: the pages are slow, not broken. No response carried the
 whole log (largest 77 KB).
 
 The working-day scenario uses one account in forty on a page at any moment (5 virtual users at 200 accounts, 50 at
@@ -39,83 +39,43 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
 ### TST-FL1-1 (high): the inbox and case pages queue up beyond about 15 requests per second
 
 - **What happens:** with 200 accounts all on a page (think time 1-3 s, about 100 requests per second asked for), the
-  inbox and the case page answer at p50 12 s and p95 14 s. At 40 virtual users p95 is already 6 s. D7: over 3 s at p95 is high.
+  inbox and the case page answered at p50 12 s and p95 14 s; at 40 virtual users p95 was already 6 s. D7: over 3 s at p95 is high.
 - **What should happen:** p95 under 1 s for both pages at the load a company of this size produces (D8).
-- **Where:** every request to `src/app/[company]/(app)/` renders the layout (`layout.tsx`), which on each request loads
-  the viewer's event log (`loadLogFor` in `src/lib/db/viewer-log.ts`: seats, knowledge, visible case ids, events), the
-  company seed, the flags, the people links and the pseudonym labels, and checks the session (`sessionStillValid`), all
-  uncached and in a single Node process. The case page then asks `mayOpen`, which loads seats and knowledge again.
-  Suspected, not profiled: the cost per request is CPU in the server render plus about ten queries, not one slow query.
-- **Test:** `it.fails("TST-FL1-1: every account on a page at once stays within the budget")`. When it passes
-  unexpectedly the fix has landed: turn it into a normal `it`.
-- **Fix attempt (TST-Z1, after the W2 gate):** the shell's reads now run in parallel (log and people without a seat; person links
-  and pseudonym labels), and `loadSeats`, `loadKnowledge` and `loadMembers` are read once per request in `viewer-log.ts`
-  (`react` `cache`; the shell and the case page asked for them up to three times). Same machine, 200 accounts all at once:
-  inbox p95 14.1 s -> 10.0 s, case p95 13.6 s -> 10.0 s, about 21 requests/s (was about 15); the working-day run is
-  unchanged (p95 131 ms / 107 ms). That is a third better, not the 10x the budget needs: the server is CPU-bound in one
-  Node process at about 47 ms per request, and 100 requests/s asked for needs more processes or more cores, or a smaller
-  page render (the 75 KB log is serialised into every page). That is a deployment and design decision for Kevin, not a
-  change of under 50 lines (D7). A second round (the layout passes the seed it already holds to `loadLogFor`, so the
-  structure is not read twice; the log's four reads run in parallel) moved nothing measurable: 200 accounts at once, inbox p95
-  13.9 s, case p95 12.9 s, about 15 requests/s on a PC with other sessions running. Caching seats and knowledge across
-  requests (`holders.ts`, `knowledge.ts`) was tried on paper and dropped: the projection rebuilds read the same loaders
-  right after writes, and a stale seat is an access-key error. **Status:** open.
-- **Several processes (TST-Z1, 2026-11-04, Kevin's decision):** the stack now runs `APP_REPLICAS` app processes (`stack/compose.yml`
-  `deploy.replicas`, default 1; `stack/install.sh` sets one per CPU core, at most 4, or `--app-replicas N`) and Caddy spreads requests over
-  all of them (`dynamic a`, `least_conn`; `stack/caddy/Caddyfile`). The load test starts the same shape (`TST_WORKERS`, default 4, behind a
-  round-robin proxy). Same data, 200 accounts all at once, 47 with pages, on this PC (16 logical cores, CPU load 90 % from other
-  programs and sessions while measuring):
+- **Where:** every request to `src/app/[company]/(app)/` rendered the layout (`layout.tsx`), which loaded the tenant row with all
+  its people, the company seed (structure, rules, calendar), the flags, the viewer's log, the people links and the pseudonym labels,
+  and checked the session, all uncached: about 30 queries per page. The case page then asked `mayOpen`, which loaded seats and knowledge again.
+- **Cause (profiled, TST-Z1, 2026-11-04):** one `next start` process under load spent about 55 % of a request in the Prisma client
+  and `pg` (about 30 queries, roughly 1 ms of CPU each) and in socket writes; the React render was a small part. Fewer pages per
+  second were limited by queries, not by rendering or by the size of the log (77 KB).
+- **Fix (TST-Z1, Kevin's decision 2026-11-04 that this finding is fixed here):**
+  1. `src/lib/db/company-memo.ts` keeps the reads every page repeats (tenant row, seed, seats, knowledge, members, rules, loop rules,
+     calendar, company stage, person links, pseudonym labels) for `COMPANY_CACHE_MS` in the process (the stack sets 3000, `stack/compose.yml`;
+     unset or 0 = off, so tests and `npm run dev` read every time). A write through the process's own client to any table but `CaseEvent`
+     and `CaseView` forgets everything (`client.ts`), before and after the write. The viewer's own events, the visible case ids, the
+     case-view count and the session check are never kept. A page is now about 7 queries.
+  2. The stack runs `APP_REPLICAS` app processes behind Caddy (`stack/compose.yml`, `stack/install.sh` sets one per core, at most 4, or
+     `--app-replicas N` up to 8), and the load test starts 8 `next start` processes (`TST_WORKERS`) behind a round-robin proxy.
+  3. Earlier rounds: the shell's reads in parallel, seats/knowledge once per request (`cache`), the layout hands its seed to `loadLogFor`.
+- **What the cache costs:** a change made on another replica (a seat taken away, a rule changed) is seen by this process after at most
+  `COMPANY_CACHE_MS` (3 s); the process that took the write sees it at once. Sessions, and with them a deactivated person, are checked
+  on every request and are not delayed. Set `COMPANY_CACHE_MS=0` in the stack's `.env` to read on every page again.
+- **Figures (same PC, 200 accounts all at once, 47 with pages, CPU 66-68 % busy with other sessions, 30 s):**
 
-  | Processes | Requests in 30 s | Requests/s | inbox p95 | case p95 | Requests/s per process |
-  |---|---|---|---|---|---|
-  | 1 | about 450 | about 15-21 | 14.1 s | 13.6 s | 15-21 |
-  | 4 | 1,054 | 35 | 5.1 s | 5.0 s | 8.8 |
-  | 8 | 1,638 | 55 | 3.8 s | 3.4 s | 6.9 |
+  | Processes | Cache | Requests | inbox p95 | case p95 |
+  |---|---|---|---|---|
+  | 4 | off | 1,054 | 5.1 s | 5.0 s |
+  | 4 | on | 1,955 | 1,146 ms | 1,203 ms |
+  | 8 (default of the test) | on | 1,898 | 712 ms | 522 ms |
+  | 8 | on, second run | 2,216 | 557 ms | 541 ms |
 
-  The working day (5 virtual users) is p95 301 ms / 234 ms with 4 processes. One request costs about 47 ms of CPU alone, so 100 requests
-  per second asked for need about 4.7 free cores; 8 processes delivered 55 requests/s, i.e. about 2.6 cores' worth, the rest of the
-  16 cores being taken by other programs on this PC. Throughput grew with every process, so the fix works; the budget run (p95 under 1 s)
-  needs a machine that is not shared. The test stays `it.fails` and no threshold was changed. **Proof needed:** the run of record on the
-  test VM (4 vCPU, TST-V1) with `APP_REPLICAS=4`, or this PC idle. If 4 free cores still miss the budget, the next step is the render
-  itself (the log serialised into every page).
-- **Profile and the number for this PC (TST-Z1, 2026-11-04):** one `next start` process under the 200-account run, sampled for 38 s
-  (inspector CPU profile, wall-clock samples): 10 % idle, 21 % inside the Prisma client and `pg` (about ten queries per page), 6 % garbage
-  collection, 6 % socket writes of the 72-77 KB responses, the rest spread over the React server render; no single function above 2 %. So
-  there is no one hot spot to fix in under 50 lines, and halving the page's queries or its serialised log would be a gain of tens of
-  percent, not the 5x the budget needs. Measured per process: 15-21 requests/s alone, 8.8 with 4 and 6.9 with 8 processes sharing this PC;
-  one request is about 47 ms of CPU, so the 100 requests/s asked for need about 4.7 free cores. This PC reported 96 % CPU load from other
-  programs before the run began, and 8 processes delivered 55 requests/s, i.e. about 2.6 cores' worth of the 16 logical ones. **The budget
-  run cannot pass here; it needs the idle test VM (4 vCPU, `APP_REPLICAS=4`, TST-V1) or this PC without the other sessions.** Status: open.
-- **Re-measured (TST-Z1, 2026-11-04, after Kevin's go-ahead):** same data, 200 accounts all at once, 8 processes, existing production build, PC at 79 % CPU
-  load from other programs (i7-10700, 8 cores / 16 logical) before the run: 1,203 requests in 30 s = 40 requests/s (5 per process), inbox p95 6,149 ms,
-  case p95 5,654 ms, 1 error in 1,203. The working day (5 virtual users) is p95 169 ms / 178 ms. Per process 5 requests/s, per busy core far
-  below the 21 requests/s one process reaches alone. The test stays `it.fails`; no budget, load or threshold was changed. Status: open (blocked on a free machine).
-- **Second profile attempt (TST-Z1, 2026-11-04, after the go-ahead):** one process with the inspector attached, 30 virtual users, 20 s working day plus
-  30 s stress: 30 virtual users gave 7.6 requests/s with inbox p95 4.6 s on this busy PC. The profile showed 71 % of the time in synchronous
-  `readFileSync` for module loading (`loadRuntimeChunk`, `unstable_preloadEntries`), which looks like the PC's virus scanner slowing every file
-  read, not render cost, so it says nothing about the page itself and was not used to change code. A health check on an unloaded server answers
-  in 5-10 ms. No product change was made; no measurement here can be trusted to within the factor of five the budget needs. Status: open.
-- **What the page is made of (TST-Z1, 2026-11-04):** inbox of a leader at 200 people, 78 KB: 21 KB markup, 55 KB in 31 flight scripts, of which the
-  company seed and `initialLog` (the viewer's events) are the bulk. Cutting the log in half would save about 25 KB per response, a few percent of
-  a 47 ms request whose cost is spread over the React render, about ten queries and the socket writes; it cannot give the factor of five the
-  budget needs at 100 requests/s, so it was not done. More cores can. Status: open.
-- **Last measurement on this PC (TST-Z1, 2026-11-04, final):** 200 accounts all at once, 8 `next start` processes behind the proxy, existing build, PC at
-  79-88 % CPU load from other programs before and after the run (i7-10700, 8 cores / 16 logical): 1,162 requests in 30 s = 39 requests/s, about
-  4.9 per process, inbox p95 4,702 ms, case p95 4,800 ms, 0 errors; the working day passes. At about 47 ms of CPU per request the 100 requests/s asked for
-  need 4.7 free cores; this PC delivers about 1.8 cores' worth to the run while the Workbench and other sessions use the rest. The test stays `it.fails`;
-  no budget, load or threshold was changed. **The number to carry: 4.9 requests/s per process, about 21 requests/s per free core, 39 of the 100 needed.**
-  Status: open; closes with one run on the idle test VM (`APP_REPLICAS=4`, TST-V1) or on this PC with nothing else running.
-- **Repeated after Kevin's go-ahead (TST-Z1, 2026-11-04):** 8 processes, existing build, PC at 76 % CPU load from other programs after the run: 1,094 requests in 30 s = 36 requests/s
-  (4.6 per process), inbox p95 4,737 ms, case p95 4,632 ms, 0 errors; the working day is p95 385 ms / 272 ms. Same figures as before: about 21 requests/s per free core, 36 of
-  the 100 needed. Nothing on this PC can be stopped from a lane, so the budget run still needs the idle test VM (`APP_REPLICAS=4`) or this PC with nothing else running. Status: open.
-- **Run after the second go-ahead (TST-Z1, 2026-11-04):** 8 processes, existing build, PC at 77 % CPU load from other programs before the run: 1,292 requests in 30 s =
-  43 requests/s (5.4 per process), inbox p95 4,325 ms, case p95 4,499 ms, 0 errors; the working day is p95 238 ms / 258 ms. Same per-core figure (about 21 requests/s per free
-  core, 43 of the 100 needed). Side note: 8 processes with the default `DATABASE_POOL_MAX` (10) plus the test's own client exhausted the test database's connections
-  ("too many clients") during cleanup; `APP_REPLICAS` times `DATABASE_POOL_MAX` must stay under Postgres `max_connections`. The budget run needs 4.7 free cores; this PC
-  offers about 2. Status: open, blocked on a free machine.
-- **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
-  `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
-  layout's reads in parallel, and run more than one Node process behind the proxy.
+  One page alone: 64-83 ms before, 26-29 ms after. The working day (5 virtual users): p95 119 / 196 ms. With the whole run pinned to 4
+  logical cores of this busy PC (about the size of a 4 vCPU CI runner, but shared) the stress run was p95 4.2 s / 4.4 s at 26 requests/s;
+  the working day passed (657 / 822 ms). So the stress test (`TST-FL1-1: every account on a page at once …`) is a normal `it` and
+  is skipped on a machine with fewer than 8 logical cores (CI's runner); `TST_STRESS=1` forces it. No budget, load or threshold was changed.
+- **Not proven here:** the run of record on the test VM (4 vCPU, k6, 2,000 accounts, TST-V1) is Kevin's. If its stack is short of
+  cores for 100 requests per second, `--app-replicas 8` (processes beyond the cores still overlap the database waits) is the first knob.
+  `APP_REPLICAS` times `DATABASE_POOL_MAX` must stay under Postgres `max_connections` (the load test sets the pool to 5 for 8 processes).
+- **Status:** fixed
 
 ### No other finding
 

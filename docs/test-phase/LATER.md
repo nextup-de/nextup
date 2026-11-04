@@ -12,8 +12,8 @@ Only fixes go in during TST; everything here waits. Sources are the findings fil
 
 ## Load (TST-L1)
 
-- Candidate fixes for TST-FL1-1 (the high finding itself is tracked in `findings/TST-L1.md`): cache `loadSeats` and
-  `loadKnowledge` per company for a few seconds, run the layout's reads in parallel, run more than one Node process behind the proxy.
+- TST-FL1-1 is fixed (`findings/TST-L1.md`). What is left: the case-view count and the session check still run on every page; the 77 KB
+  page carries the viewer's whole window of events; a change on another replica shows after `COMPANY_CACHE_MS` (3 s).
 - Response size will matter at 2,000 people and 500 shipped cases (`WINDOW_CASES`); the 2,000-account run tells.
 
 ## Scenario notes (low)
