@@ -7,6 +7,7 @@ import { toSeedJson } from "@/features/demo/parse";
 import { SEED } from "@/features/demo/seed";
 import { getDb } from "@/lib/db/client";
 import { applyDirectoryDelta } from "@/lib/db/directory";
+import { formerCheck } from "@/lib/db/former";
 import { appendEventRow, loadLog } from "@/lib/db/events";
 import { rebuildProjections } from "@/lib/db/projections/case-view";
 import { pseudonymiseUser } from "@/lib/db/pseudonymise";
@@ -127,6 +128,17 @@ describe("FX5 a directory push", () => {
     expect(rows).toHaveLength(3);
     const text = JSON.stringify(rows);
     for (const id of [OID, NUMBER, "greta@fx5.example"]) expect(text).not.toContain(id);
+  });
+});
+
+describe("FX5 a Microsoft sign-in", () => {
+  it("recognises them by account or email, and nobody else", async () => {
+    const isFormer = await formerCheck(ids.company);
+    expect(isFormer(OID)).toBe(true);
+    expect(isFormer("Greta@FX5.example")).toBe(true);
+    expect(isFormer("dddddddd-0000-4000-8000-000000000004")).toBe(false);
+    expect(isFormer("mia@fx5.example")).toBe(false);
+    expect(isFormer("")).toBe(false);
   });
 });
 
