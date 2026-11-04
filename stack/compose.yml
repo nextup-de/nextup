@@ -36,6 +36,27 @@ services:
       POSTGRES_USER: nextup
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
       POSTGRES_DB: nextup
+    # Sized for one company of up to 2,000 people on a 4 vCPU / 16 GB VM (docs/ops/SIZING.md, TST/D11).
+    command:
+      - postgres
+      # Page cache Postgres manages itself: about 25 % of the 16 GB.
+      - -c
+      - shared_buffers=4GB
+      # The planner's guess at all cache incl. the OS file cache; it allocates nothing.
+      - -c
+      - effective_cache_size=10GB
+      # Per sort/hash node and connection: 16 MB times the busy connections stays well under 1 GB.
+      - -c
+      - work_mem=16MB
+      # Index builds, VACUUM and the backup restore-test run one at a time and may take more.
+      - -c
+      - maintenance_work_mem=512MB
+      # App pool (DATABASE_POOL_MAX, default 10) + migrate + backup + 10, with room for a second app instance.
+      - -c
+      - max_connections=100
+      # The data sits on SSD: random reads cost almost what sequential ones do, so prefer index scans.
+      - -c
+      - random_page_cost=1.1
     volumes:
       - pgdata:/var/lib/postgresql/data
     # No ports: only this stack's app and migrate reach it, by service name.
@@ -203,7 +224,7 @@ services:
   brain:
     <<: *hardening
     image: ${NEXTUP_BRAIN_IMAGE:-nextup-brain:local}
-    profiles: [brain]
+    profiles: [brain, brain-cloud]
     read_only: true
     tmpfs:
       - /tmp
@@ -213,6 +234,9 @@ services:
       LLM_MODEL: ${BRAIN_MODEL:-mistral-nemo}
       LLM_TIMEOUT: ${BRAIN_LLM_TIMEOUT:-120}
       API_KEY: ${BRAIN_API_KEY:-}
+      # --brain-cloud: no model server, the AI provider is called with the same AWS values as the app.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       LOG_CONTENT: "false"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
