@@ -3,7 +3,7 @@ import { stageCard } from "@/features/settings/stage-card";
 
 describe("stage card on Company", () => {
   it("shows while setup is open, with the stage's own line", () => {
-    expect(stageCard("sandbox", "units")).toEqual({ stage: "sandbox", label: "settingsCompany.stageSandbox", line: "settingsCompany.stageSandboxLine" });
+    expect(stageCard("sandbox", "units")).toEqual({ stage: "sandbox", label: "settingsCompany.stageSandbox", line: "settingsGoLive.sandboxLine" });
     expect(stageCard("live", "company")?.line).toBe("settingsCompany.stageLiveLine");
   });
 

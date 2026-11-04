@@ -6,6 +6,7 @@ import { DEFAULT_CALENDAR, type CalendarSpec } from "@/features/clock";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
 import { projectCases } from "./projections/case-view";
+import { relabelRows } from "./pseudonymise";
 
 const SELECT = {
   id: true,
@@ -37,7 +38,7 @@ export async function loadLog(companyId: string, now: Date = new Date()): Promis
     orderBy: { seq: "asc" },
     select: SELECT,
   });
-  return logFromRows(rows, cal ? companyDay(company, cal, now) : company.demoDay);
+  return logFromRows(await relabelRows(companyId, rows), cal ? companyDay(company, cal, now) : company.demoDay);
 }
 
 /** Load a company's log by slug, resolving its clock in the same trip. */

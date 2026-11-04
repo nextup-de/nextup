@@ -10,6 +10,7 @@
 import type { Prisma } from "@prisma/client";
 import type { CaseEvent } from "@/features/cases/events";
 import { logFromRows } from "@/features/cases/persist";
+import { relabelRows } from "@/lib/db/pseudonymise";
 import { reduce } from "@/features/cases/reducer";
 import { planNotices, type PlanCtx, type PlanPerson } from "@/features/notify/plan";
 import { localeForEmail } from "@/i18n/server";
@@ -91,9 +92,10 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
   const seed = await companySeed(company);
   const day = companyDay(company, await loadCalendar(company.id), now);
   const drafts: (Prisma.OutboxMessageCreateManyInput)[] = [];
+  const named = await relabelRows(company.id, rows);
   let failure: string | null = null;
   for (let i = firstNew; i < upto; i++) {
-    const log = logFromRows(rows.slice(0, i + 1), day);
+    const log = logFromRows(named.slice(0, i + 1), day);
     const ev: CaseEvent = log.events[i];
     try {
       const planCtx: PlanCtx = { ...ctx, state: reduce(seed, log) };

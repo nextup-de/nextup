@@ -64,7 +64,7 @@ const wrap2 = (s: string, max = 13): string[] => {
 };
 
 // Org tree geometry, grid units from layoutTree() to pixels.
-const TX = 74, TY = 80, TPX = 40, TPY = 34;
+const TX = 90, TY = 80, TPX = 40, TPY = 34;
 
 // Rows per page in the two windows. Fixed, so the page scrolls like every other view.
 const PROJECT_PAGE = 5, PEOPLE_PAGE = 8;

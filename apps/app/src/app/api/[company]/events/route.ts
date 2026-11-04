@@ -9,6 +9,7 @@
 import { findCompanyBySlug } from "@/lib/db/companies";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { appendEventRow, hasIdemKey, loadLogForSlug } from "@/lib/db/events";
+import { relabelRows } from "@/lib/db/pseudonymise";
 import { markTokenUsed, resolveToken } from "@/lib/db/tokens";
 import {
   bearerFrom,
@@ -73,12 +74,14 @@ export async function GET(request: Request, { params }: Ctx) {
     take: limit,
     select: {
       id: true, seq: true, day: true, ts: true,
-      type: true, actor: true, targetId: true, payload: true,
+      type: true, actor: true, actorUserId: true, targetId: true, payload: true,
     },
   });
 
   await markTokenUsed(auth.token.id, auth.token.companyId);
-  const log = logFromRows(rows, row.demoDay);
+  // The user id only finds the pseudonym: it does not go out.
+  const named = (await relabelRows(row.id, rows)).map((r) => ({ ...r, actorUserId: null }));
+  const log = logFromRows(named, row.demoDay);
 
   return json({
     slug: company,

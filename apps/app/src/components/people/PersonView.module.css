@@ -6,7 +6,7 @@
 .hero { display: flex; align-items: center; gap: 18px; }
 .hero > :first-child { width: 64px; height: 64px; font-size: var(--nh-fs-xl); }
 .text { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
-.name { margin: 0; font-size: var(--nh-fs-2xl); line-height: 30px; font-weight: 600; letter-spacing: -0.02em; color: #1b1d22; overflow-wrap: anywhere; }
+.name { margin: 0; font-size: var(--nh-fs-3xl); line-height: 34px; font-weight: 600; letter-spacing: -0.02em; color: #1b1d22; overflow-wrap: anywhere; }
 .text p { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: var(--nh-fs-md); color: #1c1c1e; }
 .label { margin-right: 6px; font-size: var(--nh-fs-sm); color: #6e6e73; }
 .sep { color: #c7c7cc; }

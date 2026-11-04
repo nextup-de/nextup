@@ -68,7 +68,16 @@ confirm; this cannot be undone.
 What changes (structured identity): the name becomes "Former member #n" (random number unique in the company), email,
 initials, line, department, login code and the Entra and employee ids are cleared, seat holder names and "updated
 by" fields resolve to the pseudonym. Their assistant turns, unpublished drafts, connections and mail settings are
-deleted, and their earlier exports expire. Members list, audit view and exports then show the pseudonym.
+deleted, and so are their Teams link and the notices addressed to them. Their earlier exports expire. Members
+list, audit view and exports then show the pseudonym.
+
+**Names on old events:** the stored event keeps what it was written with. What leaves the server (browser, API,
+new notices) carries the pseudonym wherever the event says who it means by user id or by a vacated seat.
+
+**They stay gone:** a directory page never changes a pseudonymised person, and reactivating is refused. Their
+source ids and email are kept as hashes (`ExternalIdentity`, provider `former`), so Graph, SuccessFactors or SCIM
+cannot make a new person of them either, and a Microsoft sign-in creates no new account for them. Their SSO and
+SCIM links stay, so a sign-in still finds the inactive account and is refused. Deleting the person removes the hashes too.
 
 What stays, on purpose: case events are append-only and are never rewritten, so event ids, types, order and days
 stay and still point at the person's user id, shown through the pseudonym. The anonymous **handle** stays, so an
@@ -89,6 +98,8 @@ Set in Data and privacy, per company, as `RetentionRule` rows. Without a rule th
 | Idea drafts (status draft; days after the last change) | 30-730 days | 180 days |
 | Closed cases | 360-3600 days (entered in months, 1 month = 30 days) or keep | keep |
 | Audit log | fixed | 730 days (24 months), no setting |
+| Finished notices (sent, failed, skipped) | fixed | 90 days, no setting; pending ones stay |
+| Teams link of someone inactive | fixed | removed at the next run; it comes back when they write to the bot |
 
 Closed cases: when a rule is set, the events of every case that is closed and whose newest event is older than the
 limit are deleted, with its case view. Cases without a case view (seed data) are untouched. Metrics lose them.
