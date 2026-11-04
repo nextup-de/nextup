@@ -24,6 +24,8 @@
 .keyAction { background: #111; color: #fff; font-size: var(--nh-fs-md); }
 .check { width: 48px; height: 48px; border-radius: 50%; background: #111; color: #fff; display: grid; place-items: center; font-size: var(--nh-fs-2xl); }
 .reference { background: #f1f1f3; border-radius: 12px; padding: 16px; text-align: center; font-family: var(--nh-mono, monospace); font-size: var(--nh-fs-4xl); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
+.mainLink { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.place [data-dept-tone] { font-size: var(--nh-fs-md); }
 .slip { display: none; }
 .qr { width: 200px; height: 200px; }
 @media print {
