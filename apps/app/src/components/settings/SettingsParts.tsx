@@ -5,7 +5,7 @@ import s from "./settings.module.css";
 
 export function SettingsHead({ title, lede }: { title: string; lede?: string }) {
   return (
-    <header className={s.head}>
+    <header className={s.head} data-testid="page-header">
       <h1 className={s.title}>{title}</h1>
       {lede ? <p className={s.lede}>{lede}</p> : null}
     </header>

@@ -1,4 +1,4 @@
-// The pure pieces of /admin/integrations (docs/plans/2026-10-29_jira-in-app.md, "Admin page"): the
+// The pure pieces of the console's Jira connector (docs/plans/2026-10-29_jira-in-app.md, "Admin page"): the
 // form's values -> JiraSettings, the webhook address, what "linked" and "problems" mean, and how a
 // time reads. No next/*, no database - the actions and the page call these.
 import { STEP_COLUMNS, type ReducedProject, type StepColumn } from "@/features/projects/types";

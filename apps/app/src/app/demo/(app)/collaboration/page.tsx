@@ -1,7 +1,7 @@
-// Linked from the overview, on the static demo's data.
-import { getT } from "@/i18n/server";
-import CollaborationPage from "@/app/[company]/(app)/collaboration/page";
-export async function generateMetadata() {
-  return { title: (await getT())("demo.titleCollaboration") };
+// The old address: Collaboration is a tab of Projects now.
+import { redirect } from "next/navigation";
+import { staticDemoPrefix } from "@/features/tenant/urls";
+export default async function DemoOldCollaborationPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
+  const { id } = await searchParams;
+  redirect(staticDemoPrefix() + "/projects/collaboration" + (id ? "?id=" + encodeURIComponent(id) : ""));
 }
-export default CollaborationPage;

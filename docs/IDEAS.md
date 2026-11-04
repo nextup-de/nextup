@@ -155,7 +155,7 @@ company, no login, no database, no model. It opens on `/demo/raise`; the bar's D
   the router, and the event log and drafts are the local demo's, under the slug `demo`. Every page
   load starts from the seed (`components/demo/StaticDemo.tsx`); moving between the demo's pages keeps
   what was just published.
-- The proxy passes `/demo` through in path and single mode (`STATIC_DEMO` in `features/auth/request.ts`),
+- The proxy passes `/demo` through in path mode and on the demo stack; any other single stack answers 404 (`STATIC_DEMO` in `features/auth/request.ts`),
   so it is never read as a company and never asks for a login. A company's own `/raise` is unchanged.
 - **A stack that is the demo**: a single-mode stack whose company is called `demo` (`COMPANY_SLUG=demo`,
   demo.sellux.ch) serves the static demo at its root - `/raise`, `/dashboard`, `/` - with no login

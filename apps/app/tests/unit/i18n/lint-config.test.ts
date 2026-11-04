@@ -23,7 +23,7 @@ describe("LNG lint rule registered", () => {
   }, 60_000);
 
   it.each([
-    "src/components/admin/JiraAdmin.tsx",
+    "src/components/admin/AdminNav.tsx",
     "src/app/api/health/route.ts",
     "src/components/shell/DevPanel.tsx",
     "src/i18n/messages/common.ts",
