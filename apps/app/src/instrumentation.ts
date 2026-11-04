@@ -26,6 +26,9 @@ export async function register() {
   // Every message NextUp sends: new events planned into the outbox, then the due rows delivered (a no-op without a database).
   const { startNotify } = await import("@/server/notify/loop");
   startNotify();
+  // The audit log export (syslog or a daily file), every minute for each company that switched it on (a no-op without a database).
+  const { startLogExport } = await import("@/server/scheduler/log-export");
+  startLogExport();
   // Errors counted in memory go to the ErrorGroup table once a minute.
   const { startErrorFlush } = await import("@/server/errors");
   startErrorFlush();
