@@ -92,8 +92,9 @@ static files by their extension, not every path with a dot, so a person's page
    (shown in the header, logged at sign-in) and the shared code is logged as break-glass. Still open:
    2FA of our own, switching the shared code off, naming the admin on each action (item 4), and
    the platform admin on admin.sellux.ch. Customer setup: `docs/customer/ENTRA_SETUP.md`.
-4. **Audit log for admin actions** - create, stage move, issue login code, issue token, delete - as
-   events, like everything else.
+4. ~~**Audit log for admin actions.**~~ Done (GDP): every admin, console and system change to a company is written to an append-only
+   `AuditEvent` in the same transaction, readable by company admins in Settings → Audit log and as CSV, kept 24 months.
+   See [PRIVACY.md](PRIVACY.md).
 4b. **Microsoft 365 connections** (phase 2 of `docs/plans/2026-10-22_sso-and-data-access.md`). A
    person's refresh token for their own files (`Files.Read.All` + `offline_access`, nothing else)
    is stored sealed: AES-256-GCM with `CONNECTOR_VAULT_KEY`, bound to company and person, so a
@@ -105,8 +106,9 @@ static files by their extension, not every path with a dot, so a person's page
    per-instance on Vercel. Move the `Map` to a Postgres table when there is more than one process.
 6. **Role-scoped data.** The whole case log goes to every signed-in browser; roles only choose
    which pages show it. If members must not see something, filter it on the server.
-7. **GDPR basics** - a processing record, a DPA with each customer, data export and deletion per
-   company (delete exists; export does not), backup encryption and retention.
+7. **GDPR basics** - Done (GDP): data export (company and person, JSON, 7 days), person pseudonymisation (structured
+   identity only; authored free text may keep a name), deletion per company, and retention rules with a daily run; see
+   [PRIVACY.md](PRIVACY.md). Still open: a processing record, a DPA with each customer, backup encryption and backup retention.
 
 ## Ongoing
 
