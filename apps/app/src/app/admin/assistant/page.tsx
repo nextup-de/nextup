@@ -8,8 +8,9 @@ import { assistantView } from "@/server/admin-insight";
 import { adminBase } from "@/features/admin/nav";
 import { companyPrefix } from "@/features/tenant/urls";
 import { AssistantAdmin } from "@/components/admin/AssistantAdmin";
+import { PageHeader, SectionCard } from "@/components/ui/elements";
 import { getT } from "@/i18n/server";
-import styles from "../admin.module.css";
+import c from "../people/console.module.css";
 
 export default async function AssistantPage() {
   if (!(await isAdmin())) redirect(adminBase() + "/login");
@@ -19,11 +20,13 @@ export default async function AssistantPage() {
   const assistant = await assistantView(guard.companyId);
 
   return assistant ? (
-    <AssistantAdmin view={assistant} t={t} privacyHref={`${companyPrefix(guard.slug)}/settings/privacy`} />
+    <AssistantAdmin view={assistant} privacyHref={`${companyPrefix(guard.slug)}/settings/privacy`} connectorsHref={adminBase() + "/connectors"} />
   ) : (
-    <section className={styles.card} data-testid="console-assistant">
-      <h1>{t("adminPrivacy.assistantTitle")}</h1>
-      <p className="nh-hint">{t("adminPrivacy.assistantDbDown")}</p>
-    </section>
+    <div className={c.page} data-testid="console-assistant">
+      <PageHeader title={t("adminPrivacy.assistantTitle")} />
+      <SectionCard>
+        <p className={c.note}>{t("adminPrivacy.assistantDbDown")}</p>
+      </SectionCard>
+    </div>
   );
 }

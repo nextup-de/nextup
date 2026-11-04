@@ -22,6 +22,7 @@ export const adminSupport = defineMessages({
     codeHint: "From the company's console, for NextUp support only.",
     signIn: "Sign in as support",
     signInWrong: "That support code does not open anything.",
+    signinsCol: "Signed in",
   },
   de: {
     title: "Support-Zugang",
@@ -43,5 +44,6 @@ export const adminSupport = defineMessages({
     codeHint: "Aus der Konsole des Unternehmens, nur für den NextUp-Support.",
     signIn: "Als Support anmelden",
     signInWrong: "Dieser Support-Code öffnet nichts.",
+    signinsCol: "Angemeldet",
   },
 });
