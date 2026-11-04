@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { simpleNavFor } from "@/config/nav";
+import { adminMenuLinks, simpleNavFor } from "@/config/nav";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxCount, mineRows } from "@/components/dashboard/derive";
@@ -115,6 +115,9 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
                   <Link href={tenant.prefix + "/profile"} className={styles.meLink} onClick={() => setPop(null)}>{t("shell.myProfile")} <span aria-hidden="true">→</span></Link>
                   {sent && <Link href={tenant.prefix + "/team"} className={styles.meLink} onClick={() => setPop(null)}>{t("shell.whatISent")} <span aria-hidden="true">→</span></Link>}
                   {/* Bug reports need the database - the offline demo has none. */}
+                  {adminMenuLinks({ role, serverMode: ctx.serverMode, prefix: tenant.prefix, consoleHref: tenant.consoleHref ?? null }).map((l) => (
+                    <Link key={l.key} href={l.href} className={styles.meLink} onClick={() => setPop(null)}>{t(l.key)} <span aria-hidden="true">→</span></Link>
+                  ))}
                   {ctx.serverMode && <Link href={tenant.prefix + "/reports"} className={styles.meLink} onClick={() => setPop(null)}>{t("shell.myReports")} <span aria-hidden="true">→</span></Link>}
                 </span>
                 <button type="button" className={styles.logout} onClick={logout}>{t("shell.logOut")}</button>
