@@ -110,8 +110,15 @@ dump_stack() {
 write_status() {
   local dir; dir="$(get INSTANCE_DIR)"
   [ -n "$dir" ] || return 0
-  local offbox=true part="$dir/backup-status/.last.json.$$"
-  [[ "$repo" = /* ]] && offbox=false
+  local offbox=false part="$dir/backup-status/.last.json.$$"
+  # Off-box only for a restic remote scheme whose target is not this machine; anything else is false.
+  case "$repo" in
+    s3:*|b2:*|sftp:*|rest:*|azure:*|gs:*|swift:*|rclone:*)
+      offbox=true
+      case "$(printf '%s' "$repo" | tr 'A-Z' 'a-z')" in
+        *localhost*|*127.0.0.1*|*'[::1]'*|*::1*) offbox=false ;;
+      esac ;;
+  esac
   if mkdir -p "$dir/backup-status" 2>/dev/null \
      && printf '{"at": "%s", "offbox": %s}\n' "$(date -u +%FT%TZ)" "$offbox" > "$part" 2>/dev/null \
      && mv -f "$part" "$dir/backup-status/last.json" 2>/dev/null; then

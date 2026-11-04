@@ -48,8 +48,9 @@ for s in $settings; do
 done
 
 pool="$(js 'console.log(String(c.app.environment.DATABASE_POOL_MAX || 10))' | tr -d '\r')"
-need=$((pool + 1 + 1 + 10))
-t_ok "max_connections $(want max_connections) covers pool $pool + migrate + backup + 10 ($need)" \
+replicas="$(js 'console.log(String((c.app.deploy || {}).replicas || 1))' | tr -d '\r')"
+need=$((pool * replicas + 1 + 1 + 10))
+t_ok "max_connections $(want max_connections) covers $replicas app processes x pool $pool + migrate + backup + 10 ($need)" \
   test "$(want max_connections)" -ge "$need"
 
 t_ok "db image is still pinned by digest" bash -c '[[ "$1" == postgres:*@sha256:* ]]' _ "$(js 'console.log(c.db.image)' | tr -d '\r')"

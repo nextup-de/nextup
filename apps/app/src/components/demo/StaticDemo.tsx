@@ -10,7 +10,7 @@
 // dashboard keeps what was just published.
 import { useT } from "@/i18n/client";
 import { DemoProvider, type TenantInfo } from "@/components/dashboard/DemoProvider";
-import { AppShell } from "@/components/shell/AppShell";
+import { SimpleShell } from "@/components/shell/SimpleShell";
 import { staticDemoDrafts } from "@/features/demo/static-demo";
 import type { Seed } from "@/features/demo/types";
 import { clearPrefs, resetLog } from "@/lib/demo-log";
@@ -42,7 +42,7 @@ export function StaticDemo({ seed, prefix, children }: { seed: Seed; prefix: str
   };
   return (
     <DemoProvider tenant={tenant} seed={seed}>
-      <AppShell>{children}</AppShell>
+      <SimpleShell>{children}</SimpleShell>
     </DemoProvider>
   );
 }

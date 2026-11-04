@@ -25,9 +25,9 @@ export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLive
     db.orgUnit.findMany({ where: { companyId }, orderBy: [{ sort: "asc" }, { name: "asc" }], select: { name: true } }),
     db.orgRole.findMany({ where: { companyId }, orderBy: [{ sort: "asc" }, { title: "asc" }], select: { title: true, _count: { select: { holders: true } } } }),
     db.routingRule.findMany({ where: { companyId }, orderBy: { sort: "asc" }, select: { key: true, ownerRoleId: true } }),
-    db.orgRoleHolder.findMany({ where: { companyId, userId: { not: null } }, select: { roleId: true } }),
+    db.orgRoleHolder.findMany({ where: { companyId, userId: { not: null } }, select: { roleId: true, userId: true } }),
     db.companyCalendar.findUnique({ where: { companyId }, select: { companyId: true } }),
-    db.user.findMany({ where: { companyId, active: true }, select: { role: true, loginCodeAt: true, entraOid: true, totpEnabledAt: true } }),
+    db.user.findMany({ where: { companyId, active: true }, select: { id: true, role: true, loginCodeAt: true, entraOid: true, totpEnabledAt: true } }),
     db.companyConfig.findUnique({ where: { companyId }, select: { notifications: true, dpaSignedAt: true } }),
     loadAiSettings(companyId, company.stage),
     activeGrant(companyId, now),
@@ -37,7 +37,9 @@ export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLive
     deps.mailStatus().catch(() => ({ configured: true, reachable: false as boolean | null })),
     deps.readBackupStatus().catch(() => null),
   ]);
-  const withUser = new Set(seats.map((s) => s.roleId));
+  // A deactivated person does not own a route: only holders whose user is active count.
+  const activeIds = new Set(users.map((u) => u.id));
+  const withUser = new Set(seats.filter((s) => s.userId !== null && activeIds.has(s.userId)).map((s) => s.roleId));
   const managers = users.filter((u) => u.role === "manager" && u.loginCodeAt);
   return {
     now,

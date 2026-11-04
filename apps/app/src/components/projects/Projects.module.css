@@ -3,7 +3,6 @@
    --radius-* scale, so the dev panel's "Round corners" still applies. */
 
 /* ── page head ── */
-.head { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
 .off { display: flex; flex-direction: column; gap: 12px; padding: 24px 0; }
 .origin { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--nh-line-soft); }
 .origin:first-of-type { border-top: 0; }
@@ -50,8 +49,6 @@ form .due { white-space: normal; }
    Few boxes: the head and the sections below the board sit on the page itself, divided by hairlines;
    only the summary band, the board's columns and the side rail are surfaces. */
 .projectPage { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.projectPage :global(.nh-btn-primary) { background: #111; }
-.projectPage :global(.nh-btn-primary:hover) { background: #2c2c2e; }
 .hero { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 .hero .back { align-self: flex-start; margin-bottom: 0; }
 .heroTop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -389,10 +386,10 @@ a.key:hover { text-decoration: underline; }
 
 /* ── the hub: projects and ideas side by side ── */
 /* About 80% of the screen (never narrower than the normal page); the shell's data-wide lets it past 1120px. */
-.hub { width: 100%; max-width: max(80vw, 1120px); margin: 0 auto; }
+.hub { width: 100%; max-width: max(80vw, 1120px); margin: 0 auto; padding-top: 8px; }
 .hubCols { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr); gap: 28px; align-items: start; }
 .hubProjects, .hubIdeas { min-width: 0; }
-.hubHead { display: flex; align-items: flex-end; min-height: 36px; margin-bottom: 16px; } /* as tall as the ideas' Filter / Sort row */
+.hubHead { display: flex; align-items: center; min-height: 36px; margin-bottom: 16px; } /* as tall as the ideas' Filter / Sort row */
 .hubTitle { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; color: #1b1d22; letter-spacing: -0.01em; line-height: 22px; }
 .hubProjects .group:first-of-type { margin-top: 0; }
 .hubProjects .cards { grid-template-columns: minmax(0, 1fr); }
@@ -410,7 +407,6 @@ a.key:hover { text-decoration: underline; }
 .hubProjects .cardFoot { border-top: 0; padding-top: 0; }
 /* An idea opened in place fills the screen as on the Overview: the projects step aside for it. */
 .hub:has([data-open="true"]) { max-width: none; }
-.hub:has([data-open="true"]) > .head { display: none; } /* the idea has its own title; "Projects" above it read as the idea's */
 .hub:has([data-open="true"]) .hubCols { display: block; }
 .hub:has([data-open="true"]) .hubProjects { display: none; }
 
@@ -418,5 +414,3 @@ a.key:hover { text-decoration: underline; }
   .hubCols { grid-template-columns: minmax(0, 1fr); gap: 32px; }
 }
 
-/* The tabs of the Projects area (ProjectsTabs): the Tabs element, as wide as the page. */
-.areaTabs { width: 100%; max-width: max(80vw, 1120px); margin: 0 auto; }

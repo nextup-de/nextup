@@ -97,7 +97,8 @@ export function goLiveChecks(i: GoLiveInput): GoLiveCheck[] {
 
   // backups
   const b = i.backup;
-  if (!b) out.push(check("backups", "needed", "unknown", "lineBackupsUnknown", {}, null));
+  // A time in the future (more than 5 minutes ahead of now) cannot be trusted: unknown, like no file.
+  if (!b || b.at.getTime() - i.now.getTime() > 5 * 60_000) out.push(check("backups", "needed", "unknown", "lineBackupsUnknown", {}, null));
   else if (!b.offbox) out.push(check("backups", "needed", "needs", "lineBackupsNotOffbox", {}, null));
   else if (i.now.getTime() - b.at.getTime() > BACKUP_MAX_AGE_HOURS * HOUR) out.push(check("backups", "needed", "needs", "lineBackupsNeeds", { time: iso(b.at) }, null));
   else out.push(check("backups", "needed", "done", "lineBackupsDone", { time: iso(b.at) }, null));

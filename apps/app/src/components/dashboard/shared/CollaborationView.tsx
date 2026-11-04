@@ -73,6 +73,8 @@ const PROJECT_PAGE = 5, PEOPLE_PAGE = 8;
 // A click that moved less than 4px still counts as a click on a node.
 type View = { k: number; x: number; y: number };
 const KMIN = 0.25, KMAX = 3;
+// Below this the names cannot be read: a small canvas starts here, at the top of the chart.
+const READABLE = 0.7;
 const fitView = (w: number, h: number, x0: number, y0: number, x1: number, y1: number, kmax: number): View => {
   const bw = Math.max(x1 - x0, 1), bh = Math.max(y1 - y0, 1);
   const k = Math.min(kmax, (w - 24) / bw, (h - 24) / bh);
@@ -111,6 +113,13 @@ function useCanvas() {
     if (!r?.width || !r.height) return;
     setView(fitView(r.width, r.height, x0, y0, x1, y1, kmax));
   }, []);
+  // The first view: all of the chart when it can be read like that, else the top of it at a readable size.
+  const startAt = useCallback((w: number, h: number, topX: number) => {
+    const r = node.current?.getBoundingClientRect();
+    if (!r?.width || !r.height) return;
+    const fitted = fitView(r.width, r.height, 0, 0, w, h, 1.6);
+    setView(fitted.k >= READABLE ? fitted : { k: READABLE, x: r.width / 2 - topX * READABLE, y: 12 });
+  }, []);
   const swallow = useRef(false); // the click that ends a drag must not select a node
   // Pointer capture would retarget the click to the canvas and nodes would stop being clickable,
   // so the drag follows the pointer on window instead.
@@ -139,22 +148,22 @@ function useCanvas() {
     window.addEventListener("pointercancel", up);
   };
   const onClickCapture = (e: React.MouseEvent<HTMLDivElement>) => { if (swallow.current) { swallow.current = false; e.stopPropagation(); e.preventDefault(); } };
-  return { attach, view, dragging, zoomBy, fitBox, handlers: { onPointerDown, onClickCapture } };
+  return { attach, view, dragging, zoomBy, fitBox, startAt, handlers: { onPointerDown, onClickCapture } };
 }
 
 export function CollaborationView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
-  const { D, deptName, matches, ready, href } = ctx;
+  const { D, deptName, ready, href } = ctx;
   const t = useT();
   const [sel, setSel] = useState<Sel>(initialId ? { kind: "project", id: initialId } : { kind: "none" });
   // A picked initiative is in the address (?id=); a picked person is not, their page has its own.
   useIdInUrl(sel.kind === "project" ? sel.id : null, (id) => setSel(id ? { kind: "project", id } : { kind: "none" }));
   const [treeMode, setTreeMode] = useState<TreeMode>("chain");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
-  const { attach: canvasAttach, view: cv, dragging, zoomBy, fitBox, handlers: canvasHandlers } = useCanvas();
-  // Fit the whole chart when the canvas gets its size and whenever the set of drawn people changes.
-  const [fit, setFit] = useState({ key: "", w: 0, h: 0 });
-  useEffect(() => { if (fit.w) fitBox(0, 0, fit.w, fit.h, 1.6); }, [fitBox, fit]);
+  const { attach: canvasAttach, view: cv, dragging, zoomBy, fitBox, startAt, handlers: canvasHandlers } = useCanvas();
+  // Set the first view when the canvas gets its size and whenever the set of drawn people changes.
+  const [fit, setFit] = useState({ key: "", w: 0, h: 0, topX: 0 });
+  useEffect(() => { if (fit.w) startAt(fit.w, fit.h, fit.topX); }, [startAt, fit]);
   // Project window tools.
   const [pq, setPq] = useState(""), [pSort, setPSort] = useState<ProjectSort>("wait"), [pFilter, setPFilter] = useState("All"), [pPage, setPPage] = useState(0);
   // People window tools.
@@ -185,8 +194,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   // ── project window: scope + search + filter + sort, then pages ───────────────────────────
   const pToks = pq.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const pHay = (t: Initiative) => [t.name, t.why, t.status, ...t.depts.map(deptName), ...t.members.map((m) => m.name + " " + m.role), t.stuckOn?.name ?? ""].join(" ").toLowerCase();
-  const pScoped = initiatives.filter((t) => matches(t.depts));
-  const pSearched = pScoped.filter((t) => pToks.every((k) => pHay(t).includes(k)));
+  const pSearched = initiatives.filter((t) => pToks.every((k) => pHay(t).includes(k)));
   const pPool = pSearched.filter((t) => pFilter === "All" || (pFilter === "Stuck" ? !!t.stuckOn : t.status === pFilter));
   const pSorted = [...pPool].sort((a, b) =>
     pSort === "wait" ? waitDays(b) - waitDays(a) || STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)
@@ -273,7 +281,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   const pos = new Map(tree.nodes.map((n) => [n.person.name, { x: px(n.x), y: py(n.y) }]));
   const fitAll = () => fitBox(0, 0, tw, th, 1.6);
   const treeKey = shown.people.map((p) => p.name).join("|");
-  if (treeKey !== fit.key) setFit({ key: treeKey, w: tw, h: th });
+  if (treeKey !== fit.key) setFit({ key: treeKey, w: tw, h: th, topX: px(tree.nodes.find((n) => n.depth === 0)?.x ?? 0) });
   const fitSelection = () => {
     const pts = [...litNames].map((n) => pos.get(n)).filter((q): q is { x: number; y: number } => !!q);
     if (!pts.length) return fitAll();
@@ -315,7 +323,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
 
   return (
     <div className={`${styles.page} ${styles.enter}`}>
-      <PageHeader title={t("dashboard.viewNetworkTitle")} lede={t("dashboard.viewNetworkSub")} />
+      {!projectMode && <PageHeader title={t("dashboard.viewNetworkTitle")} lede={t("dashboard.viewNetworkSub")} />}
       <div className={styles.layout}>
         {/* ── the map: mind map above, org tree below ───────────────────────── */}
         <SectionCard name="map">

@@ -16,12 +16,25 @@
 .cardHint { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: #6e6e73; }
 
 /* ---- Tabs ---- */
-.tabs { display: flex; gap: 24px; overflow-x: auto; border-bottom: 1px solid #e5e5ea; }
-.tab { display: inline-flex; align-items: baseline; gap: 6px; padding: 10px 0; border-bottom: 2px solid transparent; margin-bottom: -1px; font-size: var(--nh-fs-md); color: #6e6e73; text-decoration: none; white-space: nowrap; }
-.tab:hover { color: #1c1c1e; }
-.tab[aria-current="page"] { border-bottom-color: #111; color: #1c1c1e; font-weight: 600; }
-.tab:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.tabCount { font-size: var(--nh-fs-sm); font-weight: 500; color: #8e8e93; }
+/* overflow-x alone turns overflow-y to auto as well, which draws a vertical scrollbar on Windows: both are set. */
+.tabs { display: flex; gap: 24px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-bottom: 1px solid var(--nh-line); }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { display: inline-flex; align-items: baseline; gap: 6px; padding: 10px 0; border-bottom: 2px solid transparent; font-size: var(--nh-fs-md); color: var(--nh-mute); text-decoration: none; white-space: nowrap; }
+.tab:hover { color: var(--nh-brand-ink); }
+.tab[aria-current="page"] { border-bottom-color: var(--nh-brand); color: var(--nh-brand-ink); font-weight: 600; }
+.tab:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: -2px; } /* inside: the strip clips what is outside it */
+.tabCount { font-size: var(--nh-fs-sm); font-weight: 500; color: var(--nh-mute); }
+
+/* ---- Progress ---- */
+.progress { display: flex; gap: 2px; width: 100%; height: 6px; }
+.progressPart { min-width: 3px; }
+.progressPart:first-child { border-radius: 3px 0 0 3px; }
+.progressPart:last-child { border-radius: 0 3px 3px 0; }
+.progressPart:only-child { border-radius: 3px; }
+.progressPart[data-part="done"] { background: var(--nh-progress-done); }
+.progressPart[data-part="doing"] { background: var(--nh-progress-doing); }
+.progressPart[data-part="blocked"] { background: var(--nh-progress-blocked); }
+.progressPart[data-part="open"] { background: var(--nh-progress-open); }
 
 /* ---- Data table: rows on desktop, one small card per row on a phone ---- */
 .table { display: flex; flex-direction: column; min-width: 0; }

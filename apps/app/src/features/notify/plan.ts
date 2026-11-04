@@ -6,6 +6,7 @@ import { usersOfRole, type SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import { composeNoticeMail, noticeKey, type RaisedNotice } from "@/features/cases/notice";
 import type { State } from "@/features/cases/reducer";
+import { hasClosedAudience } from "@/features/cases/visibility";
 import { loopMails } from "@/features/loop/notice";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n";
 import type { OutboxDraft } from "@/lib/db/outbox";
@@ -137,7 +138,10 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     }
   }
 
-  for (const pe of toPublicEvents(ev, state, ctx.companyId)) {
+  // A case whose raiser chose who sees it, and a project that came from one, stay inside the app (FX4).
+  const sources = state.projects.find((p) => p.id === ev.target)?.sources ?? [];
+  const closed = [kase, ...sources.map((id) => state.cases.find((c) => c.id === id))].some((c) => c && hasClosedAudience(c));
+  for (const pe of closed ? [] : toPublicEvents(ev, state, ctx.companyId)) {
     for (const sub of ctx.subscriptions) {
       if (!sub.on || !sub.events.includes(pe.type)) continue;
       push({

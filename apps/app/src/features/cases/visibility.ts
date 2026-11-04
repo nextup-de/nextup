@@ -52,6 +52,15 @@ export function membersForViewer(members: readonly VisMember[], me: Me, ctx: Pic
   return members.filter((m) => m.userId === me.userId || m.managerId === me.userId || (m.managerId === null && headOf(m.unitId)));
 }
 
+/**
+ * The raiser chose who sees it, so the case stays inside the app: not through the API, a webhook or the
+ * events endpoint (FX4). Those have no person to check an audience against.
+ */
+export function hasClosedAudience(c: Pick<ReducedCase, "history">): boolean {
+  const visibility = choiceOf(c as ReducedCase).visibility;
+  return visibility === "private" || visibility === "custom";
+}
+
 /** Every key that opens this case. */
 export function accessKeys(c: ReducedCase, ctx: VisCtx): string[] {
   const keys = new Set<string>();

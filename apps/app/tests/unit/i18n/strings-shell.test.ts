@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { catalogIssues, inlineStrings } from "./inline";
 
 const OWNED = [
-  "src/components/shell/{AppShell,Ground,InputSheet,LoopSheets,NavSearch,ShellSkeleton,SimpleShell,TopBar}.tsx",
+  "src/components/shell/{Ground,InputSheet,LoopSheets,NavSearch,SectionTabs,ShellSkeleton,SimpleShell}.tsx",
   "src/components/{auth,profile,settings,report,ui,demo}/**/*.{ts,tsx}",
   "src/app/{[company],demo,(auth)}/**/*.{ts,tsx}",
   "src/app/page.tsx",

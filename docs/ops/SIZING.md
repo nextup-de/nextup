@@ -50,6 +50,17 @@ Test VM (4 vCPU / 16 GB), 2,000 accounts:
 |---|---|---|---|---|
 | 2,000 | | | | filled from docs/test-phase/results after Kevin's run |
 
+## App processes
+
+`APP_REPLICAS` in the stack's `.env` (default 1; `install.sh` writes one per CPU core, at most 4, or `--app-replicas N`) sets how many
+app containers run; Caddy spreads requests over them. Each has its own pool of `DATABASE_POOL_MAX` connections, so replicas times pool
+plus 12 must stay under `max_connections`. Change it with `ctl.sh <slug> up -d` after editing the `.env`.
+`COMPANY_CACHE_MS` (default 3000 in `compose.yml`; 0 = off) keeps the company's structure, seats, rules and tenant row in each process for that
+many milliseconds instead of reading them on every page: about 30 queries per page became a handful. A change made on another process
+shows within that time; the process that took the write sees it at once.
+200 accounts all at once on a shared PC (TST-L1): 4 processes without the cache p95 5.1 s; 8 processes with it p95 0.56 s (inbox) and 0.54 s (case).
+Processes beyond the cores still help, because half of a page is waiting for Postgres.
+
 ## When to size up
 
 - Pages are over budget (p95 > 1,000 ms) and Postgres is not the cause: add app processes first, not RAM.

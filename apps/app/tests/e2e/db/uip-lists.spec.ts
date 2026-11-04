@@ -57,12 +57,13 @@ test.afterAll(async () => {
 
 test("UIP list pages", async ({ page }) => {
   await signIn(page, company, MANAGER.name);
-  await sweepPages(page, [`/${SLUG}/projects/collaboration`, `/${SLUG}/projects/progress`, `/${SLUG}/reports`], { marker: "section-card" });
+  await sweepPages(page, [`/${SLUG}/reports`], { marker: "section-card" });
+  await sweepPages(page, [`/${SLUG}/projects/collaboration`, `/${SLUG}/projects/progress`], { marker: "section-card", title: false }); // the tab names them
 
   await test.step("My reports lists the report and its reply", async () => {
     await page.goto(`/${SLUG}/reports`);
-    await expect(page.getByText("NU-1")).toBeVisible();
-    await expect(page.getByText("Thanks, we can see it and are on it.")).toBeVisible();
+    await expect(page.getByText("NU-1").filter({ visible: true })).toBeVisible();
+    await expect(page.getByText("Thanks, we can see it and are on it.").filter({ visible: true })).toBeVisible();
   });
 
 });

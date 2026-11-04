@@ -32,7 +32,7 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
     { label: "Ideas", href: "/raise" },
     { label: "Inbox", href: "/leader", count: "inbox" },
     { label: "Feed", href: "/feed" },
-    { label: "Decisions", href: "/decisions" },
+    { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of Projects while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
@@ -40,11 +40,74 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
     { label: "Dashboard", href: "/dashboard" },
     { label: "Inbox", href: "/leader", count: "inbox" }, // tentative: what sits on the manager's own desk (escalations, routes they own)
     { label: "Feed", href: "/feed" },
-    { label: "Decisions", href: "/decisions" },
+    { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of Projects while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
 };
+
+/**
+ * The tabs of the Projects area, shown in a strip under the bar. Each page in the area is named by its tab, so
+ * no page repeats it as a title. `labelKey` is a message key; `roles`: only these roles see the tab.
+ */
+export type ProjectsTabKey = "overview" | "decisions" | "collaboration" | "progress";
+export type ProjectsTabItem = {
+  key: ProjectsTabKey; href: string; roles?: readonly Role[];
+  labelKey: "shell.navOverview" | "decisions.tab" | "shell.navCollaboration" | "shell.navProgress";
+};
+export const PROJECTS_TABS: ProjectsTabItem[] = [
+  { key: "overview", labelKey: "shell.navOverview", href: "/projects" },
+  { key: "decisions", labelKey: "decisions.tab", href: "/decisions", roles: ["leader", "manager"] },
+  { key: "collaboration", labelKey: "shell.navCollaboration", href: "/projects/collaboration" },
+  { key: "progress", labelKey: "shell.navProgress", href: "/projects/progress" },
+];
+
+export function projectsTabsFor(role: Role): ProjectsTabItem[] {
+  return PROJECTS_TABS.filter((tab) => !tab.roles || tab.roles.includes(role));
+}
+
+/** Which tab an address (relative to /[company]) is, or null outside the area: a project's own page has its own tabs. */
+export function projectsTabAt(path: string): ProjectsTabKey | null {
+  if (path === "/overview") return "overview";
+  return PROJECTS_TABS.find((tab) => tab.href === path)?.key ?? null;
+}
+
+/**
+ * A section gets a strip of tabs under the bar when it has two or more real pages at the same level. Filters are not
+ * tabs, and more than about six pages keep a side menu (Settings, the IT console). `needsServer`: the page needs the
+ * database, so the offline demo has no such page.
+ */
+export type SectionKey = "projects" | "dashboard" | "profile";
+export type SectionTabItem = {
+  key: string; href: string; roles?: readonly Role[]; needsServer?: boolean;
+  labelKey: ProjectsTabItem["labelKey"] | "metrics.dashTitle" | "kpis.tab" | "shell.myProfile" | "shell.myReports";
+};
+export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
+  projects: PROJECTS_TABS,
+  dashboard: [
+    { key: "ledger", labelKey: "metrics.dashTitle", href: "/dashboard" },
+    { key: "kpis", labelKey: "kpis.tab", href: "/dashboard/kpis", roles: ["manager"], needsServer: true },
+  ],
+  profile: [
+    { key: "profile", labelKey: "shell.myProfile", href: "/profile" },
+    { key: "reports", labelKey: "shell.myReports", href: "/reports", needsServer: true },
+  ],
+};
+
+export function sectionTabsFor(section: SectionKey, who: { role: Role; serverMode: boolean }): SectionTabItem[] {
+  return SECTION_TABS[section].filter((tab) => (!tab.roles || tab.roles.includes(who.role)) && (!tab.needsServer || who.serverMode));
+}
+
+/** Which section and tab an address (relative to /[company]) is. Null outside them, and when only one tab would show. */
+export function sectionTabAt(path: string, who: { role: Role; serverMode: boolean; flag: (key: FlagKey) => boolean }): { section: SectionKey; tab: string } | null {
+  const projects = who.flag("projects") ? projectsTabAt(path) : null;
+  if (projects) return { section: "projects", tab: projects };
+  for (const section of ["dashboard", "profile"] as const) {
+    const tab = SECTION_TABS[section].find((item) => item.href === path);
+    if (tab) return sectionTabsFor(section, who).length > 1 ? { section, tab: tab.key } : null;
+  }
+  return null;
+}
 
 /**
  * The account menu's ways to the company's administration: Settings for a manager, while the database

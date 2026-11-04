@@ -38,6 +38,14 @@
 		}
 	}
 	handle {
-		reverse_proxy app:3000
+		# Every replica of the app service (compose APP_REPLICAS): Docker's DNS answers with all of them.
+		reverse_proxy {
+			dynamic a {
+				name app
+				port 3000
+				refresh_interval 5s
+			}
+			lb_policy least_conn
+		}
 	}
 }

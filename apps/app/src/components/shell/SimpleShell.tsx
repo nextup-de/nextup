@@ -1,11 +1,11 @@
 "use client";
-// The chrome for every role in the demo (SHELL[role] === "simple"): the logo, two or three
+// The chrome for every role: the logo, two or three
 // places (NAV_SIMPLE[role], flagged ones while on), and a profile button. Search expands into the navigation pill.
-// Shares the overlays with AppShell (input sheet, toast, dev panel) so every action still works.
+// Holds the overlays too (input sheet, toast, dev panel) so every action still works.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { adminMenuLinks, simpleNavFor } from "@/config/nav";
+import { adminMenuLinks, sectionTabAt, simpleNavFor } from "@/config/nav";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxCount, mineRows } from "@/components/dashboard/derive";
@@ -15,6 +15,7 @@ import { decisionsWaiting } from "@/features/metrics";
 import { DevPanel } from "./DevPanel";
 import { Ground } from "./Ground";
 import { InputSheet } from "./InputSheet";
+import { SectionTabs } from "./SectionTabs";
 import styles from "./SimpleShell.module.css";
 
 export function SimpleShell({ children }: { children: React.ReactNode }) {
@@ -23,7 +24,9 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const { tenant, role, persona, actor, email, pop, setPop, togglePop, sheet, toast, logout, D } = ctx;
   const pathname = usePathname();
   const who = persona.who;
-  // The ink thumb slides under the current place: measured from the active link, re-measured on resize.
+  // On a page of a section with several pages, the strip of its tabs hangs under the bar.
+  const area = sectionTabAt(pathname.slice(tenant.prefix.length), { role, serverMode: ctx.serverMode, flag: ctx.flag });
+  // The blue thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
   useLayoutEffect(() => {
@@ -73,7 +76,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
             const href = tenant.prefix + n.href;
             // A case opens from the Overview, so its page counts as the Overview - a tab of Projects while that is on.
             const inOverview = pathname === tenant.prefix + "/overview" || pathname.startsWith(tenant.prefix + "/cases/");
-            const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview);
+            const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview) || (n.href === "/projects" && area !== null);
             const n1 = n.count ? counts[n.count] : 0;
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} onClick={() => setPop(null)}>
@@ -126,6 +129,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </header>
+      {area && <SectionTabs section={area.section} active={area.tab} />}
 
       <main className={styles.content}>
         <div className={styles.contentInner}>{children}</div>
