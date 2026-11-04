@@ -1,0 +1,5 @@
+.wrap { display: grid; gap: 12px; max-width: 720px; }
+.card { display: grid; gap: 8px; padding: 12px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); }
+.title { margin: 0; font-size: var(--nh-fs-md); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.mono { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); word-break: break-word; }

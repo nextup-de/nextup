@@ -1,0 +1,48 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "${{TEAMS_APP_ID}}",
+  "developer": {
+    "name": "NextUp",
+    "websiteUrl": "https://${{HOST}}",
+    "privacyUrl": "https://${{HOST}}/privacy",
+    "termsOfUseUrl": "https://${{HOST}}/terms"
+  },
+  "name": { "short": "NextUp", "full": "NextUp - raise it, get an answer" },
+  "description": {
+    "short": "Raise a problem or an idea and get a clear answer.",
+    "full": "NextUp takes a problem or an idea from anyone to the person who can decide, and promises an answer by a date. In Teams you get new cases and deadline reminders as cards, answer or hand a case over in the chat, and raise a case from any message."
+  },
+  "icons": { "color": "color.png", "outline": "outline.png" },
+  "accentColor": "#1286FC",
+  "localizationInfo": {
+    "defaultLanguageTag": "en",
+    "additionalLanguages": [{ "languageTag": "de", "file": "de.json" }]
+  },
+  "bots": [
+    {
+      "botId": "${{TEAMS_APP_ID}}",
+      "scopes": ["personal"],
+      "isNotificationOnly": false,
+      "supportsFiles": false
+    }
+  ],
+  "composeExtensions": [
+    {
+      "botId": "${{TEAMS_APP_ID}}",
+      "commands": [
+        {
+          "id": "raise",
+          "type": "action",
+          "title": "Raise in NextUp",
+          "description": "Raise a problem or an idea from here.",
+          "fetchTask": true,
+          "context": ["compose", "commandBox", "message"]
+        }
+      ]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["${{HOST}}"]
+}
