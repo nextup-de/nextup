@@ -5,6 +5,7 @@
 // a yes waits for its start and a done project for its first measure. Counts and medians only.
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { SectionCard } from "@/components/ui/elements";
 import { projectLabel } from "@/features/projects/selectors";
 import { betterText, changeText, fmtNumber, measuredProjects, movement, projectWaits, visibleProjectsFor, type WaitStat } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
@@ -28,11 +29,9 @@ export function ProjectMovement() {
 
   return (
     <div className={styles.split}>
-      <div className={ui.card}>
-        <div className={ui.h}>{t("projects.movementTitle")}</div>
-        <div className={ui.sub}>{t("projects.movementSub")}</div>
+      <SectionCard title={t("projects.movementTitle")} hint={t("projects.movementSub")}>
         {measured.length === 0 && <div className={ui.emptyLine}>{t("projects.movementEmpty", { count: S.rules.measureDays[0] })}</div>}
-        <div className={`${ui.list} ${ui.mt}`}>
+        <div className={ui.list}>
           {measured.map((p) => (
             <div key={p.id} className={ui.listRow}>
               <div className={ui.between}>
@@ -52,19 +51,17 @@ export function ProjectMovement() {
             </div>
           ))}
         </div>
-      </div>
+      </SectionCard>
 
-      <div className={ui.card}>
-        <div className={ui.h}>{t("projects.waitTitle")}</div>
-        <div className={ui.sub}>{t("projects.waitSub")}</div>
-        <div className={`${ui.grid2} ${ui.mt14}`}>
+      <SectionCard title={t("projects.waitTitle")} hint={t("projects.waitSub")}>
+        <div className={ui.grid2}>
           <div className={ui.tile}><div className={ui.tileV}>{days(waits.started.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDecidedStarted")} · {waitSub(waits.started, t("projects.waitNotStarted"), t)}</div></div>
           <div className={ui.tile}><div className={ui.tileV}>{days(waits.measured.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDoneMeasured")} · {waitSub(waits.measured, t("projects.waitFirstCheck"), t)}</div></div>
           <div className={ui.tile}><div className={ui.tileV} data-hot={L.projectsEscalated ? "true" : undefined}>{L.projectsEscalated}</div><div className={ui.tileL}>{t("projects.waitEscalated")}</div></div>
           <div className={ui.tile}><div className={ui.tileV} data-hot={L.measuresOwed ? "true" : undefined}>{L.measuresOwed}</div><div className={ui.tileL}>{t("projects.waitOwed")}</div></div>
           <div className={ui.tile}><div className={ui.tileV}>{L.unmeasured}</div><div className={ui.tileL}>{t("projects.waitUnmeasured")}</div></div>
         </div>
-      </div>
+      </SectionCard>
     </div>
   );
 }

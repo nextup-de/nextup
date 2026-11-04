@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { Avatar } from "@/components/dashboard/shared/primitives";
+import { Banner, PageHeader, Tabs as TabBar } from "@/components/ui/elements";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { holdsRole } from "@/features/auth/identity";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
@@ -39,8 +40,7 @@ export function ProjectView({ projectId, jira, tab }: { projectId: string; jira:
   if (!p) {
     return (
       <div className={styles.off}>
-        <h1 className={styles.title}>{t("projects.noSuchTitle")}</h1>
-        <p className={styles.sub}>{t("projects.noSuchSub")}</p>
+        <PageHeader title={t("projects.noSuchTitle")} lede={t("projects.noSuchSub")} />
         <Link href={href("/projects")} className={styles.back}>{t("projects.allProjects")}</Link>
       </div>
     );
@@ -82,9 +82,11 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
         <div className={styles.tabLayout}>
           <div className={styles.tabCards}>
             {(mine || escalatedToMe) && move && (
-              <div className={styles.yourMove} role="status">
-                <span className={styles.yourMoveLabel}>{escalatedToMe && !mine ? t("projects.movedToYou") : t("projects.yourMove")}</span>
-                <span>{escalatedToMe && !mine ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk")) : moveLabel(move, locale)}</span>
+              <div role="status">
+                <Banner tone="info">
+                  <span className={styles.yourMoveLabel}>{escalatedToMe && !mine ? t("projects.movedToYou") : t("projects.yourMove")}</span>{" "}
+                  {escalatedToMe && !mine ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk")) : moveLabel(move, locale)}
+                </Banner>
               </div>
             )}
             <ProjectSummary p={p} />
@@ -135,16 +137,13 @@ function Tabs({ p, tab }: { p: ReducedProject; tab: ProjectTab }) {
   const { href } = useDemo();
   const t = useT();
   const counts: Partial<Record<ProjectTab, number>> = { board: p.steps.length, team: p.members.length + 1 };
-  return (
-    <nav className={styles.tabs} aria-label={t("projects.tabsLabel")}>
-      {PROJECT_TABS.map((k) => (
-        <Link key={k} href={href("/projects/" + p.id) + tabQuery(k)} scroll={false} className={styles.tab} aria-current={k === tab ? "page" : undefined}>
-          {t(("projects.tab_" + k) as "projects.tab_overview")}
-          {counts[k] !== undefined && <span className={styles.tabCount}>{counts[k]}</span>}
-        </Link>
-      ))}
-    </nav>
-  );
+  const items = PROJECT_TABS.map((k) => ({
+    key: k,
+    label: t(("projects.tab_" + k) as "projects.tab_overview"),
+    href: href("/projects/" + p.id) + tabQuery(k),
+    count: counts[k],
+  }));
+  return <TabBar items={items} current={tab} label={t("projects.tabsLabel")} />;
 }
 
 function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
@@ -159,33 +158,33 @@ function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const team = [p.lead, ...p.members];
 
   return (
-    <header className={styles.hero}>
+    <div className={styles.hero}>
       <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
       <div className={styles.heroTop}>
-        <span className={styles.label}>{projectLabel(p)} · {t(("projects.status_" + p.status) as "projects.status_planning")}</span>
+        <span className={styles.status}><span className={styles.code}>{projectLabel(p)}</span> · {t(("projects.status_" + p.status) as "projects.status_planning")}</span>
         <span className={styles.chips}><VerdictChip verdict={p.verdict} /><DueBadge p={p} /></span>
       </div>
-      <div className={styles.heroMain}>
-        <div className={styles.heroText}>
-          <h1 className={styles.projectTitle}>{p.title}</h1>
-          <p className={styles.heroMeta}>
-            {t("projects.heroFrom")}{" "}
-            {p.sources.map((id, k) => {
-              const s = sourceOf(id);
-              return <span key={id}>{k > 0 && ", "}{s.to ? <Link href={s.to} className={styles.link}>{s.title}</Link> : s.title}</span>;
-            })}
-            {/* As they posted: a handle stays a handle. */}
-            <span className={styles.muted}> · {t("projects.heroRaised", { authors: p.authors.join(", "), day: f(p.openedDay), name: p.openedBy })}</span>
-          </p>
-        </div>
-        <div className={styles.faces} aria-label={p.members.length ? t("projects.facesLabelTeam", { lead: p.lead, team: p.members.join(", ") }) : t("projects.facesLabel", { lead: p.lead })}>
-          <span className={styles.faceStack}>{team.slice(0, 5).map((n) => <Avatar key={n} name={n} size="sm" />)}</span>
-          <span className={styles.faceText}><span className={styles.strong}>{p.lead}</span> {t("projects.leadsSuffix")}{p.members.length ? " · " + t("projects.onTheTeam", { count: p.members.length + 1 }) : ""}</span>
-        </div>
-      </div>
+      <PageHeader
+        title={p.title}
+        action={
+          <div className={styles.faces} aria-label={p.members.length ? t("projects.facesLabelTeam", { lead: p.lead, team: p.members.join(", ") }) : t("projects.facesLabel", { lead: p.lead })}>
+            <span className={styles.faceStack}>{team.slice(0, 5).map((n) => <Avatar key={n} name={n} size="sm" />)}</span>
+            <span className={styles.faceText}><span className={styles.strong}>{p.lead}</span> {t("projects.leadsSuffix")}{p.members.length ? " · " + t("projects.onTheTeam", { count: p.members.length + 1 }) : ""}</span>
+          </div>
+        }
+      />
+      <p className={styles.heroMeta}>
+        {t("projects.heroFrom")}{" "}
+        {p.sources.map((id, k) => {
+          const s = sourceOf(id);
+          return <span key={id}>{k > 0 && ", "}{s.to ? <Link href={s.to} className={styles.link}>{s.title}</Link> : s.title}</span>;
+        })}
+        {/* As they posted: a handle stays a handle. */}
+        <span className={styles.muted}> · {t("projects.heroRaised", { authors: p.authors.join(", "), day: f(p.openedDay), name: p.openedBy })}</span>
+      </p>
       <ToolChips p={p} jira={jira} />
       <Actions p={p} />
-    </header>
+    </div>
   );
 }
 
