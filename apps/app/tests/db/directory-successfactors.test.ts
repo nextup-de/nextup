@@ -133,7 +133,7 @@ const reads = () => sapRequests.filter((r) => new URL(r.url).pathname !== "/oaut
 beforeAll(async () => {
   savedVault = process.env.CONNECTOR_VAULT_KEY;
   process.env.CONNECTOR_VAULT_KEY = VAULT;
-  process.env.AUTH_SECRET = "sfx-acceptance-secret-0123456789-abcdefghij";
+  process.env.AUTH_SECRET = "test-secret-test-secret-test-secret-0123456789";
   await db.company.deleteMany({ where: { slug: SLUG } });
   const writes = templateWrites("demo", () => crypto.randomUUID());
   const c = await db.company.create({
