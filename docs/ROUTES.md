@@ -20,10 +20,10 @@
 | `/[company]/people/[userId]` | `.../(app)/people/[userId]/page.tsx` | yes | any | Person card for an opaque user id of an active person in this company: name, role, unit. No statistics, shared work or location. Your own id redirects to `/profile`. Old name URLs (`/people/<name>`) return not found and no name is ever looked up |
 | `/[company]/feed` | `.../(app)/feed/page.tsx` | yes | any | Every problem and idea this viewer may see as cards: filter by site and department, support, comment. `?id=` opens one in place |
 | `/[company]/team` | `.../(app)/team/page.tsx` | yes | any | What happened to what I sent (one card per case) |
-| `/[company]/problems` | `.../(app)/problems/page.tsx` | yes | any | Problems |
-| `/[company]/ideas` | `.../(app)/ideas/page.tsx` | yes | any | Ideas |
-| `/[company]/collaboration` | `.../(app)/collaboration/page.tsx` | yes | any | Initiatives; with the `projects` flag, the projects |
-| `/[company]/progress` | `.../(app)/progress/page.tsx` | yes | any | Movement since baseline; with the `projects` flag, each measured project's before → after and the Wait ledger after the yes |
+| `/[company]/problems` | `.../(app)/problems/page.tsx` | yes | any | Redirects to `/feed` |
+| `/[company]/ideas` | `.../(app)/ideas/page.tsx` | yes | any | Redirects to `/feed` |
+| `/[company]/projects/collaboration` | `.../(app)/projects/collaboration/page.tsx` | yes | any | Tab of Projects. Initiatives; with the `projects` flag, the projects. `/collaboration` redirects here |
+| `/[company]/projects/progress` | `.../(app)/projects/progress/page.tsx` | yes | any | Tab of Projects (`/progress` redirects here). Movement since baseline; with the `projects` flag, each measured project's before → after and the Wait ledger after the yes |
 | `/[company]/projects` | `.../(app)/projects/page.tsx` | yes | any | Projects by state (Planning, Running, Measuring, Measured and recognised, Stopped), on one page side by side with "Ideas" (the `/overview` table), about 80% of the screen wide; `/overview` shows the same page. Below 1100px the two stack. Members see their own ideas' and the ones they are on. `projects` flag (docs/plans/2026-10-15_idea-to-project.md) |
 | `/[company]/projects/[projectId]` | `.../(app)/projects/[projectId]/page.tsx` | yes | any | One project: board (drag a card to move it), the idea it came from with versions, discussion and archive line, files and sources, team, baseline, measure checks, reward, links, comments, timeline. `projects` flag |
 | `/[company]/cases/[caseId]` | `.../(app)/cases/[caseId]/page.tsx` | yes | any | Case detail |
