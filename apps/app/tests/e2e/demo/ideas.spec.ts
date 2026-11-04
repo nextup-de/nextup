@@ -3,7 +3,7 @@
 // (features/ideas/raise.ts topicsOf); the draft
 // survives a reload; publishing asks who should get it and raises the case on their desk.
 // docs/IDEAS.md.
-import { aiMessages, answerCoach, DEVELOP, DEVELOP_MORE, expect, holdNextReply, publishTo, START, test } from "../helpers";
+import { aiMessages, answerCoach, DEVELOP, DEVELOP_MORE, expect, holdNextReply, publishTo, showSidebar, START, test } from "../helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/acme/raise");
@@ -19,6 +19,7 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   const close = page.getByRole("button", { name: "Close analysis" });
   const answer = page.getByRole("textbox", { name: "Answer, or add more detail…" });
   await expect(close.or(answer).first()).toBeVisible({ timeout: 30_000 });
+  await showSidebar(page);
   if (!(await close.isVisible())) await page.getByRole("button", { name: "Analysis", exact: true }).click();
   for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
   await close.click();
@@ -48,6 +49,7 @@ test("develop it, keep it as a draft, publish it", async ({ page }) => {
 
   // The draft is kept: after a reload it is under Ideas, with the answer.
   await page.reload();
+  await showSidebar(page);
   await page.getByRole("button", { name: new RegExp("^" + title.slice(0, 30)) }).first().click();
   await expect(page.getByText(DEVELOP)).toBeVisible();
 

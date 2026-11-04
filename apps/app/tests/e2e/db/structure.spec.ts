@@ -2,7 +2,7 @@
 // structure or demo content on its pages, and one created from the demo template still shows
 // acme's routes and goals. Own companies, deleted at the end, like company-login.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { expect, passSecondFactor, START, test } from "../helpers";
+import { expect, passSecondFactor, showSidebar, START, test } from "../helpers";
 import { BUDDIES, DEPTS, LEADERS, PEOPLE, ROLES, ROUTES } from "../../../src/features/demo/seed";
 import { DEMO_GOALS } from "../../../src/features/demo/structure";
 import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
@@ -75,6 +75,7 @@ async function analysisText(page: Page, slug: string): Promise<string> {
   const close = page.getByRole("button", { name: "Close analysis" });
   const answer = page.getByRole("textbox", { name: "Answer, or add more detail…" });
   await expect(close.or(answer).first()).toBeVisible({ timeout: 30_000 });
+  await showSidebar(page);
   if (!(await close.isVisible())) await page.getByRole("button", { name: "Analysis", exact: true }).click();
   await expect(close).toBeVisible();
   return page.locator("body").innerText();
