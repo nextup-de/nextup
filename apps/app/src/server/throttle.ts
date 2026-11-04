@@ -51,6 +51,11 @@ export const RULES = {
   floorStatus: { limit: 20, windowMs: 10 * 60_000 },
   /** Shop floor, a pairing code tried, per address. Key clientKey(). */
   floorPair: { limit: 5, windowMs: 15 * 60_000 },
+  /** FX6: a browser without a paired device can drop its cookie, so these also count per address. Sized for a shift behind one address. */
+  floorCodeAddress: { limit: 30, windowMs: 15 * 60_000 },
+  floorStatusAddress: { limit: 200, windowMs: 10 * 60_000 },
+  /** Key `<address>|<area id>`: one address cannot use up an area's floorRaiseAll. */
+  floorRaiseAddress: { limit: 30, windowMs: 10 * 60_000 },
   /** Public API v1, per token id: an integration polling, not a script hammering. Key `<token id>`. */
   apiV1: { limit: 600, windowMs: 60_000 },
   /** SCIM provisioning, per token id: an identity provider syncing, 600 requests a minute. Key `<token id>`. */
