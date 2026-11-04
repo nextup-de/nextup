@@ -5,7 +5,7 @@
 // the yes, and switching projects off on the Rules page takes Projects out of the member's nav.
 // Own company, made straight in the database and deleted at the end, like flr.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { answerCoach, DEVELOP, DEVELOP_MORE, expect, passSecondFactor, raiseLine, test } from "../helpers";
+import { answerCoach, DEVELOP, DEVELOP_MORE, expect, passSecondFactor, raiseLine, test, vis } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { workdayOf } from "../../../src/features/clock/calendar";
 import { loadCalendar } from "../../../src/lib/db/calendar";
@@ -38,7 +38,7 @@ let projectId = "";
 async function signIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto(`/${SLUG}/login`);
-  await page.locator("#code").fill(codes.get(name) ?? "");
+  await page.locator("#code:visible").fill(codes.get(name) ?? "");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   await passSecondFactor(page, `${SLUG}|${name}`);
   await expect(page).not.toHaveURL(/\/login/);
@@ -118,15 +118,15 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
       await look.getByRole("button", { name: /Choose a desk/ }).click({ timeout: 30_000 });
       const who = page.getByRole("dialog", { name: "Where should it go?" });
       await expect(who).toBeVisible({ timeout: 30_000 });
-      const desk = who.getByTestId(`raise-desk-${ownerRoleId}`);
+      const desk = vis(who, `raise-desk-${ownerRoleId}`);
       await expect(desk).toContainText(OWNER_ROLE);
       await expect(desk).toContainText("Proposed");
       await expect(desk).not.toContainText("by the AI");
       await expect(desk).toContainText(LEAD);
       await expect(who).toContainText("Routed by keywords");
       await expect(desk).toContainText(/scrap/i); // the reasons: the idea mentions the route's keywords
-      await who.getByTestId("raise-send").click();
-      const sent = who.getByTestId("raise-sent");
+      await vis(who, "raise-send").click();
+      const sent = vis(who, "raise-sent");
       await expect(sent).toBeVisible({ timeout: 30_000 });
       await expect(sent).toContainText(`Sent to ${OWNER_ROLE}`);
       await expect(sent).toContainText(/\d{4}-\d{2}-\d{2}|\d{1,2}[./]\s?\d{1,2}|\d{1,2}\s+\w{3,}/); // a date
@@ -136,11 +136,11 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await test.step("the case page shows the answer-by line, who holds it and the Routing panel", async () => {
       await page.getByRole("link", { name: "Open the case" }).click();
       await expect(page).toHaveURL(new RegExp(`/${SLUG}/`));
-      await expect(page.getByTestId("case-answer-by")).toContainText(/\d/);
-      await expect(page.getByTestId("case-holder")).toContainText(OWNER_ROLE);
-      await expect(page.getByTestId("case-holder")).toContainText(LEAD);
+      await expect(vis(page, "case-answer-by")).toContainText(/\d/);
+      await expect(vis(page, "case-holder")).toContainText(OWNER_ROLE);
+      await expect(vis(page, "case-holder")).toContainText(LEAD);
       await expect(page.getByText("With", { exact: true }).first()).toBeVisible();
-      const routing = page.getByTestId("case-routing");
+      const routing = vis(page, "case-routing");
       await expect(routing).toContainText(`Proposed and sent to ${OWNER_ROLE} · by keywords`);
     });
     await page.context().close();
@@ -168,11 +168,11 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
   test("the lead sets the baseline; the start and done are written 31 working days back so the 30-day check is open", async ({ browser }) => {
     const page = await signIn(browser, LEAD);
     await page.goto(`/${SLUG}/projects/${projectId}`);
-    await page.getByLabel("What is measured").fill(BASELINE.metric);
-    await page.getByLabel(/Today.s number/).fill(BASELINE.value);
-    await page.getByLabel("Unit").fill(BASELINE.unit);
-    await page.getByLabel("Lower is better").check();
-    await page.getByLabel("Where the number comes from").fill("Weekly scrap report");
+    await page.getByLabel("What is measured").filter({ visible: true }).fill(BASELINE.metric);
+    await page.getByLabel(/Today.s number/).filter({ visible: true }).fill(BASELINE.value);
+    await page.getByLabel("Unit").filter({ visible: true }).fill(BASELINE.unit);
+    await page.getByLabel("Lower is better").filter({ visible: true }).check();
+    await page.getByLabel("Where the number comes from").filter({ visible: true }).fill("Weekly scrap report");
     await page.getByRole("button", { name: "Save the baseline" }).click();
     await expect(page.getByRole("main")).toContainText(`${BASELINE.value} ${BASELINE.unit}`);
 
@@ -199,17 +199,17 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
   test("the lead types the 30-day result with a CO₂ figure; it is not confirmed and the lead cannot confirm it", async ({ browser }) => {
     const page = await signIn(browser, LEAD);
     await openResults(page);
-    await page.getByTestId("measure-type-30").click();
-    await page.getByLabel(/The number now/).fill(RESULT);
-    await page.getByLabel("CO₂ per year (kg)").fill(CO2);
+    await vis(page, "measure-type-30").click();
+    await page.getByLabel(/The number now/).filter({ visible: true }).fill(RESULT);
+    await page.getByLabel("CO₂ per year (kg)").filter({ visible: true }).fill(CO2);
     await page.getByRole("button", { name: "Record the measure" }).click();
 
-    await expect(page.getByTestId("measure-source-30")).toContainText(`Typed by ${LEAD} · not confirmed`); // the page names the holder's seat label (the person), not the role
+    await expect(vis(page, "measure-source-30")).toContainText(`Typed by ${LEAD} · not confirmed`); // the page names the holder's seat label (the person), not the role
     await expect(page.getByRole("main")).toContainText("Not confirmed yet");
     await expect(page.getByRole("main")).toContainText(/1[ ,.’']?200/); // the CO₂ figure
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.reload();
-    await expect(page.getByTestId("measure-source-30")).toBeVisible();
+    await expect(vis(page, "measure-source-30")).toBeVisible();
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.context().close();
   });
@@ -218,10 +218,10 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     const page = await signIn(browser, SECOND);
     await openResults(page);
     await expect(page.getByRole("main")).toContainText("Not confirmed yet");
-    await page.getByTestId("measure-confirm-30").click();
+    await vis(page, "measure-confirm-30").click();
     await page.getByRole("button", { name: "Yes, the number is right" }).click();
 
-    await expect(page.getByTestId("measure-source-30")).toContainText(`Confirmed by`);
+    await expect(vis(page, "measure-source-30")).toContainText(`Confirmed by`);
     await expect(page.getByRole("main")).toContainText(/better/i);
     await expect(page.getByRole("main")).toContainText(/Reward due by (your|the company.s) rule/);
 
@@ -255,8 +255,8 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await expect(projects).toHaveCount(1);
     await expect(projects).toBeChecked();
     await projects.uncheck();
-    await manager.getByTestId("settings-rules-save").click();
-    await expect(manager.getByTestId("settings-rules-saved")).toBeVisible();
+    await vis(manager, "settings-rules-save").click();
+    await expect(vis(manager, "settings-rules-saved")).toBeVisible();
 
     await raiser.goto(`/${SLUG}/raise`);
     await raiser.waitForLoadState("networkidle");
