@@ -22,6 +22,8 @@ import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { clientKey, forgive, throttle } from "@/server/throttle";
 import { usableSecret } from "@/features/admin/environment";
 import { consoleActor, recordAudit } from "@/server/audit/record";
+import { breakGlassBy, codeMatches as windowCodeMatches, windowOpen } from "@/features/admin/break-glass";
+import { readBreakGlassWindow } from "@/server/break-glass-window";
 
 // The row shapes live in features/admin/rows.ts, next to the demo rows that mirror them.
 export type { CompanyRow };
@@ -69,7 +71,7 @@ export type AdminLoginState = { error?: string };
 export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promise<AdminLoginState> {
   const expected = usableSecret(process.env.ADMIN_ACCESS_CODE);
   const secret = usableSecret(process.env.AUTH_SECRET);
-  if (!expected || !secret) {
+  if (!secret) {
     return { error: "ADMIN_ACCESS_CODE and AUTH_SECRET must be set on the server, and not to the .env.example placeholder." };
   }
 
@@ -81,18 +83,40 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   const given = String(form.get("code") ?? "");
   const t = await getT();
 
-  // (a) The shared code: break-glass. No person behind it, so the log line names nobody.
-  if (given && codeMatches(given, expected)) {
-    await forgive("adminLogin", who);
-    console.info(`[admin] break-glass ${new Date().toISOString()}`);
-    // A row for the stack's own company; the code itself is never written. A failed write stops the sign-in.
-    const own = singleCompany();
-    const home = own && hasDatabase() ? await getDb().company.findUnique({ where: { slug: own }, select: { id: true } }) : null;
-    if (home) await recordAudit(home.id, { actor: { kind: "break-glass", userId: null }, action: "audit.access.break_glass", changes: {}, source: "console" });
-    await issueAdminSession(undefined, true, "break-glass");
-    // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
-    // is a TypeError: Invalid URL, not a redirect to the root.
-    redirect(adminHome() || "/");
+  // The stack's own company. Its stage decides which break-glass code works (SEC/D6): on demo the
+  // shared ADMIN_ACCESS_CODE, on any other stage only the customer's open window. A stack company
+  // that cannot be read counts as not demo - fail closed.
+  const own = singleCompany();
+  const home = own && hasDatabase() ? await getDb().company.findUnique({ where: { slug: own }, select: { id: true, stage: true } }) : null;
+  const demo = own === null || home?.stage === "demo";
+
+  if (demo) {
+    if (!expected) {
+      return { error: "ADMIN_ACCESS_CODE and AUTH_SECRET must be set on the server, and not to the .env.example placeholder." };
+    }
+    // (a) The shared code: break-glass. No person behind it, so the log line names nobody.
+    if (given && codeMatches(given, expected)) {
+      await forgive("adminLogin", who);
+      console.info(`[admin] break-glass ${new Date().toISOString()}`);
+      // A row for the stack's own company; the code itself is never written. A failed write stops the sign-in.
+      if (home) await recordAudit(home.id, { actor: { kind: "break-glass", userId: null }, action: "audit.access.break_glass", changes: {}, source: "console" });
+      await issueAdminSession(undefined, true, "break-glass");
+      // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
+      // is a TypeError: Invalid URL, not a redirect to the root.
+      redirect(adminHome() || "/");
+    }
+  } else {
+    // (a') The customer's window: a code from stack/break-glass.sh, valid until it closes.
+    const window = await readBreakGlassWindow();
+    if (given && windowOpen(window, new Date()) && windowCodeMatches(given, window)) {
+      await forgive("adminLogin", who);
+      console.info(`[admin] break-glass window ${new Date().toISOString()} until ${window.until.toISOString()}`);
+      if (home) {
+        await recordAudit(home.id, { actor: { kind: "break-glass", userId: null }, action: "audit.access.break_glass", changes: { until: window.until.toISOString() }, source: "console" });
+      }
+      await issueAdminSession(breakGlassBy(window.openedAt), true, "break-glass", window.until);
+      redirect(adminHome() || "/");
+    }
   }
 
   // (b) A stack admin's personal code plus the authenticator code.
