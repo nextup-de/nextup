@@ -41,9 +41,10 @@ export function roleChangeProblem(people: readonly Member[], actorId: string, ta
 }
 
 /** Why this person may not be switched on again, or null when they may. Only someone inactive, never oneself. */
-export function reactivateProblem(target: { name: string; active: boolean } | null, isSelf: boolean): string | null {
+export function reactivateProblem(target: { name: string; active: boolean; pseudonymised?: boolean } | null, isSelf: boolean): string | null {
   if (!target) return "No such person in this company.";
   if (isSelf) return "You can't reactivate yourself.";
   if (target.active) return `${target.name} is active already.`;
+  if (target.pseudonymised) return `${target.name} was pseudonymised and cannot be reactivated.`;
   return null;
 }
