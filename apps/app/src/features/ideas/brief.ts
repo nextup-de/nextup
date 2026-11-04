@@ -10,7 +10,10 @@
 import { profileOf } from "@/features/demo/profiles";
 import type { Dept, Idea, OrgPerson } from "@/features/demo/types";
 import type { ReducedCase } from "@/features/cases/reducer";
+import type { Me } from "@/features/auth/identity";
+import { holdsRole } from "@/features/auth/identity";
 import { scoreCase } from "@/features/scoring";
+import { createT, type MessageKey, type T } from "@/i18n";
 import { BRIEFS } from "./brief-demo";
 
 // ── what a written brief contains ──
@@ -35,13 +38,16 @@ export type Action = { key: string; label: string; live: boolean; danger?: boole
 // The five decisions on an idea. Only approve and info have events today (idea.approved,
 // idea.asked); the other three wait on new event types.
 export type DecisionKey = "approve" | "pilot" | "info" | "route" | "decline";
-export const DECISIONS: (Action & { key: DecisionKey })[] = [
-  { key: "approve", label: "Approve", live: true },
-  { key: "pilot", label: "Start as pilot", live: false },
-  { key: "info", label: "More info", live: true },
-  { key: "route", label: "Route to expert", live: false },
-  { key: "decline", label: "Decline", live: false, danger: true },
+const DECISIONS: { key: DecisionKey; label: MessageKey; live: boolean; danger?: boolean }[] = [
+  { key: "approve", label: "brief.decisionApprove", live: true },
+  { key: "pilot", label: "brief.decisionPilot", live: false },
+  { key: "info", label: "brief.decisionInfo", live: true },
+  { key: "route", label: "brief.decisionRoute", live: false },
+  { key: "decline", label: "brief.decisionDecline", live: false, danger: true },
 ];
+const decisionsIn = (t: T): Action[] => DECISIONS.map((d) => ({ ...d, label: t(d.label) }));
+const IDEA_SCORE_LABEL: Record<ScoreLabel, MessageKey> = { Value: "brief.scoreValue", Feasibility: "brief.scoreFeasibility", Cost: "brief.scoreCost", Fit: "brief.scoreFit", Risk: "brief.scoreRisk" };
+const EN = createT("en");
 
 export type BriefCiteField = "summary" | "lead" | "bars" | "after" | "rec" | "pattern" | "similar";
 
@@ -116,7 +122,7 @@ export type IdeaBrief = {
   feed: WrittenBrief["feed"];
 };
 
-export type BriefContext = { people: readonly OrgPerson[]; depts: readonly Dept[]; ideas: readonly Idea[]; briefs?: Readonly<Record<string, WrittenBrief>> };
+export type BriefContext = { t?: T; people: readonly OrgPerson[]; depts: readonly Dept[]; ideas: readonly Idea[]; briefs?: Readonly<Record<string, WrittenBrief>> };
 
 // ── small pure helpers the page also uses ──
 
@@ -186,7 +192,8 @@ export function briefFor(idea: Idea, ctx: BriefContext): IdeaBrief {
 // A written brief (or one derived from the seed) as the page renders it: departments and people resolved
 // on the org chart, sources numbered in first-cited order.
 function fromWritten(w: WrittenBrief, author: Person, ctx: BriefContext, written: boolean): IdeaBrief {
-  const aiWhy = (key: string) => (w.affects.ai.includes(key) ? w.affects.why[key] ?? "Suggested by the AI from the idea description." : null);
+  const t = ctx.t ?? EN;
+  const aiWhy = (key: string) => (w.affects.ai.includes(key) ? w.affects.why[key] ?? t("brief.aiWhy") : null);
 
   const depts = w.affects.depts.map((id): AffectedDept => ({
     id, name: ctx.depts.find((d) => d.id === id)?.name ?? id, ai: w.affects.ai.includes(id), why: aiWhy(id),
@@ -194,7 +201,7 @@ function fromWritten(w: WrittenBrief, author: Person, ctx: BriefContext, written
   }));
   const people = w.affects.people.map((n): AffectedPerson => ({ ...personOf(n, ctx), ai: w.affects.ai.includes(n), why: aiWhy(n) }));
 
-  const scores = w.scores.map((s, i) => ({ label: SCORE_LABELS[i], value: s.value, note: s.note, ...numberBlocks(s.blocks, w.sources) }));
+  const scores = w.scores.map((s, i) => ({ label: t(IDEA_SCORE_LABEL[SCORE_LABELS[i]]), value: s.value, note: s.note, ...numberBlocks(s.blocks, w.sources) }));
 
   // The brief's own source list: what the brief cites first, then the attachments, then whatever
   // the score reasoning used - each once, numbered in that order.
@@ -202,7 +209,7 @@ function fromWritten(w: WrittenBrief, author: Person, ctx: BriefContext, written
   const add = (s: Source) => { if (!sources.some((x) => x.name === s.name)) sources.push({ n: sources.length + 1, ...s }); };
   const citedKeys = [...new Set(Object.values(w.cites).flat())].filter((k) => w.sources[k]);
   citedKeys.forEach((k) => add(w.sources[k]));
-  w.files.forEach((f) => add({ name: f.name, where: "Attached by " + author.name, ext: toKind(extOf(f.name)) }));
+  w.files.forEach((f) => add({ name: f.name, where: t("brief.attachedBy", { name: author.name }), ext: toKind(extOf(f.name)) }));
   scores.forEach((s) => s.sources.forEach(({ name, where, ext }) => add({ name, where, ext })));
   const numOf = (k: string) => sources.find((s) => s.name === w.sources[k]?.name)?.n ?? null;
   const cites = Object.fromEntries(
@@ -223,7 +230,7 @@ function fromWritten(w: WrittenBrief, author: Person, ctx: BriefContext, written
     lead: w.lead || null,
     bars: w.bars ? { title: w.bars.title, note: w.bars.note, rows: w.bars.rows.map((r) => ({ label: r.label, display: r.display, pct: Math.max(3, (r.value / barMax) * 100) })) } : null,
     after: w.after || null,
-    actions: DECISIONS, rec: w.rec, recText: w.recText,
+    actions: decisionsIn(t), rec: w.rec, recText: w.recText,
     next: w.next || null, by: w.by || null,
     timeline: w.timeline ?? null,
     questions: w.questions,
@@ -240,36 +247,37 @@ const toKind = (ext: string): SourceKind => (KINDS as readonly string[]).include
 
 // An idea nobody wrote a brief for: only what the seed says, nothing invented.
 function derivedBrief(idea: Idea, ctx: BriefContext): WrittenBrief {
+  const t = ctx.t ?? EN;
   const author = proposerOf(idea);
   const dept = ctx.people.find((p) => p.name === author)?.dept;
   const c = idea.criteria;
   const score = (v: number) => Math.max(10, Math.min(95, v));
   const scores: WrittenBrief["scores"] = [
-    { value: score(idea.upside.startsWith("€") ? 75 : 50), note: "Expected upside: " + idea.upside + ".", blocks: [{ t: "facts", items: [{ k: "Expected", v: idea.expected, c: ["seed"] }, { k: "Upside", v: idea.upside, c: ["seed"] }] }] },
-    { value: score(idea.blocker ? 55 : 75), note: idea.blocker ?? "No blocker named.", blocks: [{ t: "text", h: "What it would take", p: idea.teamNote, c: ["seed"] }] },
-    { value: score(70), note: "Effort: " + idea.effort + ".", blocks: [{ t: "facts", items: [{ k: "Effort", v: idea.effort, c: ["seed"] }] }] },
-    { value: score(c.fit ? 80 : 50), note: c.fit ? "Fits the strategy." : "No clear strategic fit.", blocks: [{ t: "facts", items: [{ k: "Strategic fit", v: c.fit ? "Yes" : "No", c: ["seed"] }, { k: "KPI it moves", v: c.kpi ?? "None named", c: ["seed"] }] }] },
-    { value: score(c.urgent ? 60 : 70), note: c.urgent ? "Urgent: waiting costs more." : "Not urgent.", blocks: [{ t: "text", h: "What could go wrong", p: idea.blocker ?? "Nothing named in the idea.", c: ["seed"] }] },
+    { value: score(idea.upside.startsWith("€") ? 75 : 50), note: t("brief.noteExpected", { upside: idea.upside }), blocks: [{ t: "facts", items: [{ k: t("brief.expected"), v: idea.expected, c: ["seed"] }, { k: t("brief.upside"), v: idea.upside, c: ["seed"] }] }] },
+    { value: score(idea.blocker ? 55 : 75), note: idea.blocker ?? t("brief.noBlocker"), blocks: [{ t: "text", h: t("brief.whatItTakes"), p: idea.teamNote, c: ["seed"] }] },
+    { value: score(70), note: t("brief.noteEffort", { effort: idea.effort }), blocks: [{ t: "facts", items: [{ k: t("brief.effort"), v: idea.effort, c: ["seed"] }] }] },
+    { value: score(c.fit ? 80 : 50), note: c.fit ? t("brief.noteStrategic") : t("brief.noteNoStrategic"), blocks: [{ t: "facts", items: [{ k: t("brief.strategicFit"), v: c.fit ? t("brief.yes") : t("brief.no"), c: ["seed"] }, { k: t("brief.kpiMoved"), v: c.kpi ?? t("brief.noneNamed"), c: ["seed"] }] }] },
+    { value: score(c.urgent ? 60 : 70), note: c.urgent ? t("brief.noteUrgent") : t("brief.noteNotUrgent"), blocks: [{ t: "text", h: t("brief.whatCouldGoWrong"), p: idea.blocker ?? t("brief.nothingNamed"), c: ["seed"] }] },
   ];
   return {
     description: idea.rationale,
-    prompts: [{ label: "Expected", text: idea.expected }, { label: "Effort", text: idea.effort }],
+    prompts: [{ label: t("brief.expected"), text: idea.expected }, { label: t("brief.effort"), text: idea.effort }],
     files: [],
-    categories: [c.kpi ?? "No KPI", c.fit ? "Strategic fit" : "Outside strategy"],
+    categories: [c.kpi ?? t("brief.noKpi"), c.fit ? t("brief.strategicFit") : t("brief.outsideStrategy")],
     affects: { depts: dept ? [dept] : [], people: idea.team.filter((n) => ctx.people.some((p) => p.name === n) && n !== author), ai: [], why: {} },
     scores,
     summary: idea.rationale,
     lead: "", after: "",
     rec: "info",
-    recText: "There is no written brief for this idea yet. Ask " + author + " for a cost and effort estimate first.",
+    recText: t("brief.noBriefYet", { name: author }),
     next: "", by: "",
     questions: [],
-    pattern: "No clear pattern with other ideas yet.",
+    pattern: t("brief.patternNoneIdeas"),
     similar: [],
     routing: [],
     cites: { summary: ["seed"] },
-    sources: { seed: { name: idea.title, where: "Fresh ideas · this idea", ext: "IDEA" } },
-    feed: { supporters: 0, sentiment: "Not enough comments to judge.", comments: [] },
+    sources: { seed: { name: idea.title, where: t("brief.sourceIdeaWhere"), ext: "IDEA" } },
+    feed: { supporters: 0, sentiment: t("brief.sentimentTooFew"), comments: [] },
   };
 }
 
@@ -279,7 +287,7 @@ function derivedBrief(idea: Idea, ctx: BriefContext): WrittenBrief {
 // what was attached, where it could be passed, and its hand-over history as one line.
 export type CaseFacts = {
   promiseDays: number;
-  me: string;
+  viewer: Me; // who reads it, by id: a name never says whose case it is
   affected: string[]; // named when raised, plus everyone who said "this affects me too"
   attachments: number;
   updates: number; // new information posted since (each one a re-evaluation)
@@ -308,6 +316,7 @@ export function splitBody(body: string): { description: string; context: string 
 // uses, the routing map and the promise clock. Nothing is invented; every row cites the case, the
 // map or the promise.
 export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): IdeaBrief {
+  const t = ctx.t ?? EN;
   const P = f.promiseDays, due = P - c.clock, route = c.route;
   const words = c.body.trim() ? c.body.trim().split(/\s+/).length : 0;
   const n = f.affected.length;
@@ -315,23 +324,23 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
     ? { name: c.from, role: c.fromDept, dept: c.fromDept, location: "", email: "", anonymous: true }
     : personFor(c.from, ctx) ?? { name: c.from, role: c.fromDept, dept: c.fromDept, ...profileOf(c.from) };
   const pool: Record<string, Source> = {
-    case: { name: c.title, where: "This case · raised by " + c.from, ext: "IDEA" },
-    map: { name: "Routing map", where: "Settings · Routing", ext: "DATA" },
-    promise: { name: "The " + P + "-day promise", where: "Company rules", ext: "DATA" },
+    case: { name: c.title, where: t("brief.sourceCaseWhere", { name: c.from }), ext: "IDEA" },
+    map: { name: t("brief.sourceMap"), where: t("brief.sourceMapWhere"), ext: "DATA" },
+    promise: { name: t("brief.sourcePromise", { days: P }), where: t("brief.sourcePromiseWhere"), ext: "DATA" },
   };
   const raw: { label: string; value: number; note: string; blocks: Block[] }[] = [
-    { label: "Value", value: c.upside ? 80 : 40, note: c.upside ? "Worth " + c.upside + ", in the raiser's words." : "Nobody has said what it is worth yet.",
-      blocks: [{ t: "facts", items: [{ k: "Worth", v: c.upside || "Not stated", c: ["case"] }, ...(c.reason ? [{ k: "Flagged as", v: c.reason, c: ["case"] }] : [])] }] },
-    { label: "Fit", value: route ? 85 : 35, note: route ? "Fits “" + route.type + "” on the routing map." : "No decision type on the map fits it.",
+    { label: t("brief.scoreValue"), value: c.upside ? 80 : 40, note: c.upside ? t("brief.noteWorth", { upside: c.upside }) : t("brief.noteNoWorth"),
+      blocks: [{ t: "facts", items: [{ k: t("brief.worth"), v: c.upside || t("brief.notStated"), c: ["case"] }, ...(c.reason ? [{ k: t("brief.flaggedAs"), v: c.reason, c: ["case"] }] : [])] }] },
+    { label: t("brief.scoreFit"), value: route ? 85 : 35, note: route ? t("brief.noteFits", { type: route.type }) : t("brief.noteNoFit"),
       blocks: route
-        ? [{ t: "facts", items: [{ k: "Decision type", v: route.type, c: ["map"] }, { k: "Owner", v: route.owner.name + " · " + route.owner.role, c: ["map"] }, { k: "Deputy", v: route.deputy, c: ["map"] }, { k: "Usual wait", v: route.wait, c: ["map"] }] }]
-        : [{ t: "text", h: "No match on the map", p: "No decision type on the routing map fits this case, so it lands on the triage desk and whoever holds it decides where it goes.", c: ["map"] }] },
-    { label: "Detail", value: round5(35 + words * 1.2 + (f.attachments ? 15 : 0) + f.updates * 5), note: words + " words" + (f.attachments ? ", " + f.attachments + " attached" : ", no evidence attached") + ".",
-      blocks: [{ t: "facts", items: [{ k: "Description", v: words + " words", c: ["case"] }, { k: "Evidence", v: f.attachments ? f.attachments + " attached" : "None attached", c: ["case"] }, { k: "New information", v: f.updates ? f.updates + (f.updates === 1 ? " update" : " updates") + " since" : "None since it was raised", c: ["case"] }] }] },
-    { label: "Urgency", value: round5(30 + (c.clock / Math.max(1, P)) * 50), note: c.clock + " days open against the " + P + "-day promise.",
-      blocks: [{ t: "facts", items: [{ k: "Open for", v: c.clock + " days" + (c.status === "asked" ? " (clock paused)" : ""), c: ["case"] }, { k: "Promise", v: P + " days", c: ["promise"] }, { k: "Now", v: due >= 0 ? due + " days left" : -due + " days past the promise", c: ["promise"] }] }] },
-    { label: "Support", value: round5(35 + n * 15), note: n ? n + (n === 1 ? " person says" : " people say") + " it affects them too." : "Nobody else has added their name yet.",
-      blocks: [{ t: "facts", items: [{ k: "Stand behind it", v: n ? f.affected.slice(0, 4).join(", ") + (n > 4 ? " +" + (n - 4) : "") : "Nobody yet", c: ["case"] }] }] },
+        ? [{ t: "facts", items: [{ k: t("brief.decisionType"), v: route.type, c: ["map"] }, { k: t("brief.owner"), v: route.owner.name + " · " + route.owner.role, c: ["map"] }, { k: t("brief.deputy"), v: route.deputy, c: ["map"] }, { k: t("brief.usualWait"), v: route.wait, c: ["map"] }] }]
+        : [{ t: "text", h: t("brief.noMatchTitle"), p: t("brief.noMatchText"), c: ["map"] }] },
+    { label: t("brief.scoreDetail"), value: round5(35 + words * 1.2 + (f.attachments ? 15 : 0) + f.updates * 5), note: t("brief.noteDetail", { words, evidence: f.attachments ? t("brief.attachedShort", { n: f.attachments }) : t("brief.noEvidence") }),
+      blocks: [{ t: "facts", items: [{ k: t("brief.description"), v: t("brief.wordCount", { n: words }), c: ["case"] }, { k: t("brief.evidence"), v: f.attachments ? t("brief.attachedShort", { n: f.attachments }) : t("brief.noneAttached"), c: ["case"] }, { k: t("brief.newInformation"), v: f.updates ? t("brief.updatesSince", { count: f.updates }) : t("brief.noneSinceRaised"), c: ["case"] }] }] },
+    { label: t("brief.scoreUrgency"), value: round5(30 + (c.clock / Math.max(1, P)) * 50), note: t("brief.noteUrgency", { clock: c.clock, days: P }),
+      blocks: [{ t: "facts", items: [{ k: t("brief.openFor"), v: c.status === "asked" ? t("brief.clockPausedParen", { days: t("brief.daysPlain", { n: c.clock }) }) : t("brief.daysPlain", { n: c.clock }), c: ["case"] }, { k: t("brief.promise"), v: t("brief.daysPlain", { n: P }), c: ["promise"] }, { k: t("brief.now"), v: due >= 0 ? t("brief.daysLeft", { n: due }) : t("brief.daysPastPromise", { n: -due }), c: ["promise"] }] }] },
+    { label: t("brief.scoreSupport"), value: round5(35 + n * 15), note: n ? t("brief.noteSupport", { count: n }) : t("brief.noteNoSupport"),
+      blocks: [{ t: "facts", items: [{ k: t("brief.standBehind"), v: n ? f.affected.slice(0, 4).join(", ") + (n > 4 ? " +" + (n - 4) : "") : t("brief.nobodyYet"), c: ["case"] }] }] },
   ];
   const scores = raw.map((s) => ({ label: s.label, value: s.value, note: s.note, ...numberBlocks(s.blocks, pool) }));
   const sources: Numbered[] = [];
@@ -339,30 +348,31 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
   const num = (k: string) => sources.find((s) => s.name === pool[k].name)?.n ?? null;
   const cite = (...ks: string[]) => ks.map(num).filter((x): x is number => x !== null);
 
-  const overall = scoreCase({ ...c, affected: n, evidence: f.attachments, updates: f.updates }, P);
-  const ownerIsMe = !!route && route.owner.name === f.me;
+  const overall = scoreCase({ ...c, affected: n, evidence: f.attachments, updates: f.updates }, P, t);
+  const ownerIsMe = !!route && ((!!route.ownerSeatId && f.viewer.seatIds.includes(route.ownerSeatId)) || holdsRole(f.viewer, route.ownerRoleId ?? null));
   const raiser = f.side === "raiser", holder = c.escalated?.to ?? c.assignee, q = c.question;
   const rec = !c.open || raiser ? "" : route && !ownerIsMe ? "hand" : c.upside ? "yes" : "ask";
   const actions: Action[] = c.open && !raiser
-    ? [{ key: "yes", label: "Yes, do it", live: true }, { key: "no", label: "No, and why", live: true }, { key: "hand", label: "Pass to " + f.passTo, live: true }, { key: "ask", label: "Ask a question", live: true }]
+    ? [{ key: "yes", label: t("brief.actionYes"), live: true }, { key: "no", label: t("brief.actionNo"), live: true }, { key: "hand", label: t("brief.actionHand", { name: f.passTo }), live: true }, { key: "ask", label: t("brief.actionAsk"), live: true }]
     : [];
-  const you = f.me === c.from; // the raiser side is also read by a lead following their people's cases
-  const recText = raiser ? (c.status === "asked" && q ? q.by + " asked " + (you ? "you" : c.from) + " a question. The clock is paused until " + (you ? "you answer." : "they answer.")
-      : c.decided ? c.decided.by + " answered “" + c.decided.answer + "”" + (c.decided.reason ? " — " + c.decided.reason : "") + "."
-      : !c.upside ? "The case does not say what it is worth yet. Adding that helps " + holder + " decide."
-      : "It is with " + holder + ", who owes you a yes, a no or a question.")
-    : rec === "hand" && route ? route.owner.name + " owns “" + route.type + "” on the routing map, so the decision is theirs. Passing it keeps the clock running for them, not for you."
-    : rec === "yes" ? "It is on your desk, the upside is stated, and it is described well enough to act on."
-    : rec === "ask" ? "The case does not say what it is worth yet. One question gets that before you decide, and pauses the clock while " + c.from + " answers."
-    : c.status === "asked" ? "Waiting for the answer to your question." : "Nothing left to decide on this case.";
+  const you = f.viewer.userId !== null && f.viewer.userId === c.fromUserId; // the raiser side is also read by a lead following their people's cases
+  const answer = c.decided ? (c.decided.answer === "yes" ? t("brief.answerYes") : t("brief.answerNo")) : "";
+  const recText = raiser ? (c.status === "asked" && q ? (you ? t("brief.recAskedYou", { by: q.by }) : t("brief.recAskedOther", { by: q.by, from: c.from }))
+      : c.decided ? (c.decided.reason ? t("brief.recAnsweredReason", { by: c.decided.by, answer, reason: c.decided.reason }) : t("brief.recAnswered", { by: c.decided.by, answer }))
+      : !c.upside ? t("brief.recNoWorth", { holder })
+      : t("brief.recWithHolder", { holder }))
+    : rec === "hand" && route ? t("brief.recHand", { owner: route.owner.name, type: route.type })
+    : rec === "yes" ? t("brief.recYes")
+    : rec === "ask" ? t("brief.recAsk", { from: c.from })
+    : c.status === "asked" ? t("brief.recWaiting") : t("brief.recNothing");
   const deputy = route ? personFor(route.deputy, ctx) : null;
   const routing = route ? [
-    { name: route.owner.name, role: route.owner.role, why: "Owns “" + route.type + "” on the routing map." },
-    { name: route.deputy, role: deputy?.role ?? "Deputy", why: "Deputy on the map: the case moves to them if the promise is missed." },
+    { name: route.owner.name, role: route.owner.role, why: t("brief.whyOwner", { type: route.type }) },
+    { name: route.deputy, role: deputy?.role ?? t("brief.deputy"), why: t("brief.whyDeputy") },
   ] : [];
-  const next = raiser ? (!you ? null : c.status === "asked" && q ? "Answer " + q.by + "." : c.open && !c.upside ? "Add what it is worth as a detail." : null)
-    : rec === "hand" ? "Pass it to " + f.passTo + "." : rec === "yes" ? "Say yes; " + c.from + " hears it today." : rec === "ask" ? "Ask " + c.from + " what it is worth." : null;
-  const by = !c.open ? null : raiser ? (due >= 0 ? "An answer is due within " + due + (due === 1 ? " day" : " days") : -due + " days past the " + P + "-day promise") : due >= 0 ? "Within " + due + (due === 1 ? " day" : " days") + ", to keep the " + P + "-day promise" : "Now: " + -due + " days past the " + P + "-day promise";
+  const next = raiser ? (!you ? null : c.status === "asked" && q ? t("brief.nextAnswer", { by: q.by }) : c.open && !c.upside ? t("brief.nextAddWorth") : null)
+    : rec === "hand" ? t("brief.nextHand", { name: f.passTo }) : rec === "yes" ? t("brief.nextYes", { from: c.from }) : rec === "ask" ? t("brief.nextAsk", { from: c.from }) : null;
+  const by = !c.open ? null : raiser ? (due >= 0 ? t("brief.byRaiserDue", { count: due }) : t("brief.byRaiserPast", { n: -due, days: P })) : due >= 0 ? t("brief.byDeskDue", { count: due, days: P }) : t("brief.byDeskPast", { n: -due, days: P });
 
   // A case with a written brief (what the raise page worked out, or the static demo's) shows all of it:
   // the files, who it affects and why, the five dials, who receives it. The decision part - the buttons,
@@ -382,32 +392,35 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
 
   const linked = c.linkedIdea ? ctx.ideas.find((i) => i.id === c.linkedIdea) : null;
   const body = splitBody(c.body);
+  const openDays = t("brief.openDays", { count: c.clock });
+  const from = c.kind === "idea" ? t("brief.summaryIdea", { dept: c.fromDept }) : t("brief.summaryProblem", { dept: c.fromDept });
+  const what = c.reason ? t("brief.summaryFlagged", { what: from, reason: c.reason }) : from;
   return {
     written: false, author,
     description: body.description || c.title, context: body.context,
     prompts: [
-      { label: "Worth", text: c.upside || "Not estimated yet" },
+      { label: t("brief.worth"), text: c.upside || t("brief.notEstimated") },
       ...body.facts,
-      ...(c.reason ? [{ label: "Flagged as", text: c.reason }] : []),
-      { label: "Owner on the map", text: route ? (ownerIsMe ? "You" : route.owner.name) + " · " + route.type : raiser ? "Nobody yet - the triage desk" : "Nobody yet - you triage it" },
-      { label: "Open for", text: c.clock + (c.clock === 1 ? " day" : " days") + (c.status === "asked" ? " · clock paused" : "") },
-      ...(f.history ? [{ label: "History", text: f.history }] : []),
+      ...(c.reason ? [{ label: t("brief.flaggedAs"), text: c.reason }] : []),
+      { label: t("brief.ownerOnMap"), text: route ? (ownerIsMe ? t("brief.you") : route.owner.name) + " · " + route.type : raiser ? t("brief.nobodyTriageDesk") : t("brief.nobodyYouTriage") },
+      { label: t("brief.openFor"), text: c.status === "asked" ? t("brief.openPaused", { days: openDays }) : openDays },
+      ...(f.history ? [{ label: t("brief.history"), text: f.history }] : []),
     ],
     files: [],
-    categories: [c.kind === "idea" ? "Idea" : "Problem", c.fromDept, ...(route ? [route.type] : [])],
+    categories: [c.kind === "idea" ? t("brief.idea") : t("brief.problem"), c.fromDept, ...(route ? [route.type] : [])],
     depts: route ? [{ id: route.owner.dept, name: ctx.depts.find((d) => d.id === route.owner.dept)?.name ?? route.owner.dept, ai: false, why: null, members: ctx.people.filter((p) => p.dept === route.owner.dept).map((p) => personOf(p.name, ctx)) }] : [],
     people: f.affected.map((x) => personFor(x, ctx)).filter((p): p is Person => p !== null).map((p) => ({ ...p, ai: false, why: null })),
     scores,
-    summary: (c.kind === "idea" ? "An idea" : "A problem") + " from " + c.fromDept + (c.reason ? ", flagged “" + c.reason + "”" : "") + ". The case score is " + overall.value + " / 100" + (overall.parts.length ? ": " + overall.parts.map((p) => p.label.toLowerCase()).join(", ") + "." : "."),
+    summary: overall.parts.length ? t("brief.summaryScoreParts", { what, score: overall.value, parts: overall.parts.map((p) => p.label.toLowerCase()).join(", ") }) : t("brief.summaryScore", { what, score: overall.value }),
     lead: null, bars: null, after: null,
     actions, rec, recText, next, by,
     timeline: null,
-    questions: c.upside ? [] : ["What would it be worth if it were fixed?"],
-    pattern: linked ? "Linked to the idea “" + linked.title + "”." : "No clear pattern with other cases yet.",
+    questions: c.upside ? [] : [t("brief.questionWorth")],
+    pattern: linked ? t("brief.patternLinked", { title: linked.title }) : t("brief.patternNone"),
     similar: [],
     routing,
     cites: { summary: cite("case"), lead: [], bars: [], after: [], rec: rec === "hand" ? cite("map") : cite("case"), pattern: [], similar: [] },
     sources,
-    feed: { supporters: n, sentiment: n ? n + (n === 1 ? " person stands" : " people stand") + " behind it." : "Nobody else has added their name yet.", comments: [] },
+    feed: { supporters: n, sentiment: n ? t("brief.standsBehind", { count: n }) : t("brief.noteNoSupport"), comments: [] },
   };
 }

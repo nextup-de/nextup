@@ -18,7 +18,7 @@ import { DEFAULT_LOCALE } from "@/i18n";
 import { loadCalendar } from "@/lib/db/calendar";
 import { companySeed } from "@/lib/db/companies";
 import { getDb } from "@/lib/db/client";
-import { companyDay } from "@/lib/db/events";
+import { dateOfCompanyDay, companyDay } from "@/lib/db/events";
 import { getIntegration } from "@/lib/db/integrations";
 import { prefsOf } from "@/lib/db/notify-prefs";
 import { teamsUserIds } from "@/lib/db/teams";
@@ -87,10 +87,12 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
     subscriptions: subs,
     baseUrl: companyBaseUrl(company.slug),
     teamsOn,
+    dateOfDay: (n: number) => dateOfCompanyDay(company, calendar, n),
   };
 
   const seed = await companySeed(company);
-  const day = companyDay(company, await loadCalendar(company.id), now);
+  const calendar = await loadCalendar(company.id);
+  const day = companyDay(company, calendar, now);
   const drafts: (Prisma.OutboxMessageCreateManyInput)[] = [];
   const named = await relabelRows(company.id, rows);
   let failure: string | null = null;

@@ -70,7 +70,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const navRef = useRef<{ ids: string[]; pick: (id: string) => void; close: () => void }>({ ids: [], pick: () => {}, close: () => {} });
   const prevRef = useRef<{ cid: string | null; open: boolean }>({ cid: null, open: false });
 
-  const who = persona.who, P = seed.promiseDays;
+  const P = seed.promiseDays;
   const inbox = ready ? inboxSorted(ctx) : [];
   const ideas = ready ? inboxIdeas(ctx) : [];
   // Discussions someone else holds that this person was invited into: asked for their view, no decision.
@@ -237,7 +237,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   // The open item, idea or case, in one shape for IdeaDetail / IdeaDetailPhone: its brief, the feed,
   // what is already in motion, and where each decision goes.
   const selRow = rows.find((r) => r.id === cid);
-  const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, briefs: seed.briefs };
+  const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, briefs: seed.briefs, t };
   const personOrNull = (name: string, userId: string | null | undefined) => (isMe(userId) ? null : personFor(name, briefCtx));
   const item: IdeaProps | null = !selRow ? null : (() => {
     const idea = { id: selRow.id, kind: si ? "idea" as const : "case" as const, title: selRow.title, badge: badgeOf(selRow), tone: badgeTone(selRow.due, selRow.paused), raised: raisedPhrase(t, sentLabel(selRow.sent, now, selRow.exact)) };
@@ -261,7 +261,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
     const raised = raisedWith(sc);
     const standing = [...raised.affected, ...affectedOn(log, sc.id).map((a) => a.name).filter((n) => !raised.affected.includes(n))];
     const q = sc.question;
-    const plain = briefForCase(sc, briefCtx, { promiseDays: P, me: who.name, affected: standing, attachments: raised.attachments, updates: rescoresOn(log, sc.id).length, passTo: handTo, history: handedNote });
+    const plain = briefForCase(sc, briefCtx, { promiseDays: P, viewer: me, affected: standing, attachments: raised.attachments, updates: rescoresOn(log, sc.id).length, passTo: handTo, history: handedNote });
     // The discussion stage: "Discuss first" on an open case (the advice outside the fast lane), the
     // check-in once it runs - and for someone asked for their view, no decision at all, only the thread.
     const d = sc.discussion, rs = roundState(sc, S.rules, S.day), last = d?.rounds[d.rounds.length - 1];

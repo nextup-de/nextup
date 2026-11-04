@@ -67,7 +67,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   const P = seed.promiseDays;
-  const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas };
+  const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, t };
   const deptNames = seed.depts.map((d) => d.name);
   const personOf = (name: string) => seed.people.find((p) => p.name === name);
   const deptNameOf = (name: string) => { const id = personOf(name)?.dept; return seed.depts.find((d) => d.id === id)?.name ?? ""; };
@@ -150,7 +150,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     const raised = raisedWith(c);
     const row = dashboardRow(c, P, me, log);
     const brief = briefForCase(c, briefCtx, {
-      promiseDays: P, me: current.mine ? c.from : ctx.persona.who.name, affected: row.affected, attachments: raised.attachments, updates: rescoresOn(log, c.id).length,
+      promiseDays: P, viewer: me, affected: row.affected, attachments: raised.attachments, updates: rescoresOn(log, c.id).length,
       passTo: "", history: "", side: onDeskOf(c, me) && !current.mine ? "desk" : "raiser",
     });
     return (
