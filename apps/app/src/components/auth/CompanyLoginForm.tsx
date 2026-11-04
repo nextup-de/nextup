@@ -15,9 +15,15 @@ import styles from "./forms.module.css";
  * `microsoftHref`: the start of the Microsoft sign-in, or null when this company is not on Entra
  * (then there is no button at all). `microsoftError`: why the last Microsoft attempt came back.
  */
-type Props = { slug: string; short: string; next?: string; microsoftHref: string | null; microsoftError?: string };
+type Props = {
+  slug: string; short: string; next?: string; microsoftHref: string | null; microsoftError?: string;
+  /** One button per OIDC or SAML provider that is on (EID): its button text and where it starts. */
+  sso?: { provider: "oidc" | "saml"; text: string; href: string }[];
+  /** The line for a refused single sign-on (?sso_error=). */
+  ssoError?: string;
+};
 
-export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftError }: Props) {
+export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftError, sso = [], ssoError }: Props) {
   // The action is passed directly, not wrapped in a closure: React needs the real server action
   // to give the form something to submit to before it hydrates.
   const t = useT();
@@ -47,9 +53,9 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
       <input type="hidden" name="slug" value={slug} />
       {next ? <input type="hidden" name="next" value={next} /> : null}
 
-      {microsoftError ? (
+      {microsoftError || ssoError ? (
         <p className="nh-error" role="alert">
-          <span>{microsoftError}</span>
+          <span>{microsoftError ?? ssoError}</span>
         </p>
       ) : null}
 
@@ -120,6 +126,15 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
           <p className={`nh-hint ${styles.under}`}>
             {t("auth.workAccount", { short })}
           </p>
+        </>
+      ) : null}
+
+      {sso.length > 0 ? (
+        <>
+          {microsoftHref ? null : <Divider />}
+          {sso.map((b) => (
+            <a key={b.provider} className="nh-btn nh-btn-ghost nh-btn-block" href={b.href} data-testid={`login-sso-${b.provider}`}>{b.text}</a>
+          ))}
         </>
       ) : null}
     </form>

@@ -432,7 +432,7 @@ Example error messages (each names the column):
 - **Data:** `Company.entraTenantId` (Microsoft sign-in, today set in `/admin`); for OIDC, SAML, SCIM and the log
   export, rows EID will add behind `IdentityProvider`, `DirectorySource` and `LogSink`
   (`packages/contracts/src/public/connectors/`). The URLs NextUp shows for OIDC, SAML and SCIM are *(proposals; EID
-  fixes the paths; the brief names `/scim/v2/Users` and `/Groups`)*. Second factor: `User.totpEnabledAt` of the
+  fixes the paths; the brief names `/scim/v2/Users` and `/Groups`)* **Corrected by EID-P1 (D16):** SCIM base `<origin>/api/scim/<slug>/v2` (D10, Users only); SAML entity ID `<origin>/<slug>/login/saml/metadata`, reply URL `<origin>/<slug>/login/saml/acs` (D9); OIDC redirect `<origin>/<slug>/login/oidc/callback`. Second factor: `User.totpEnabledAt` of the
   company's managers (ADM/D13).
 - **Today:** Microsoft sign-in is switched on per company in `/admin`; no other provider, no SCIM, audit lines only
   in the server log.
@@ -452,9 +452,9 @@ the audit log goes.
 │ InfoPanel: Second factor   3 of 4 managers who use a code have set it up│
 └─────────────────────────────────────────────────────────────────────────┘
 ┌ Microsoft Entra ID ───────────────────────────────── (On)   [on ] ──────┐
-│ Tenant ID          [ 00000000-0000-0000-0000-000000000000 ]             │
-│ Only accounts from this tenant get in. Entra asks for its own MFA.      │
-│                                                             [ Save ]    │
+│ Tenant ID          00000000-0000-0000-0000-000000000000                 │
+│                    Set in the console                 (read-only)       │
+│ Only accounts from this tenant get in. Entra asks for its own MFA.      │   ← corrected (D16, Q4): no input, no Save
 └─────────────────────────────────────────────────────────────────────────┘
 ┌ Another OpenID Connect provider ─────────────────────── (Off) [off] ────┐
 │ Button text        [ Acme login                          ]              │
@@ -470,7 +470,7 @@ the audit log goes.
 ┌ SAML 2.0 ──────────────────────────────────── (Needs you) [on ] ────────┐
 │ Button text        [ Acme SSO                            ]              │
 │ IdP metadata       ( URL | File )  [ https://adfs.acme.de/…/metadata ]  │
-│ Our details        Entity ID  https://nextup.app/acme/saml      [Copy]  │
+│ Our details        Entity ID  https://nextup.app/acme/login/saml/metadata [Copy] │   ← corrected (D16, D9)
 │                    Reply URL  https://nextup.app/acme/login/saml/acs    │
 │                    Metadata   Download SP metadata →                    │
 │ Certificate        IdP signing certificate expires 21 Nov 2026          │
@@ -479,7 +479,7 @@ the audit log goes.
 │                                                             [ Save ]    │
 └─────────────────────────────────────────────────────────────────────────┘
 ┌ Provisioning (SCIM 2.0) ───────────────────────────── (On) [on ] ───────┐
-│ Endpoint           https://nextup.app/api/scim/v2              [Copy]   │
+│ Endpoint           https://nextup.app/api/scim/acme/v2         [Copy]   │   ← corrected (D16, D10)
 │ Token              Set · created 14 Oct          [Replace token]        │
 │ Last request       14:05 from your identity provider                    │
 │ Last 7 days        12 created · 31 changed · 2 deactivated              │
@@ -487,7 +487,7 @@ the audit log goes.
 └─────────────────────────────────────────────────────────────────────────┘
 ┌ Audit log export ───────────────────────────────── (On) ────────────────┐
 │ Send to            ( Off | Syslog | JSON file )                         │
-│ Host               [ siem.acme.local   ]   Port [ 6514 ]                │
+│ Host               [ siem.acme.local   ]   Port [ 6514 ]    (syslog only)│
 │ Transport          ( TLS | TCP | UDP )                                  │
 │ Format             RFC 5424, one audit record per message               │
 │ Test   [Send a test record]   Sent audit.test at 14:22: accepted        │
@@ -501,8 +501,9 @@ the audit log goes.
 - The SAML badge is "Needs you" (amber) when the IdP certificate expires within 30 days, "Error" when it has expired
   or metadata cannot be read.
 - Test results are one line next to the button: blue check and text on success, `--nh-danger` text on failure.
-- JSON file target: one field "File on the server" `[ /var/log/nextup/audit.jsonl ]` and the line "One JSON record
-  per line. The file rotates daily." in place of host, port and transport *(proposal)*.
+- JSON file target **(corrected by EID-P1, D16/D13):** the server picks the path, the admin cannot. The card shows "File
+  on the server" as read-only text (`<LOG_EXPORT_DIR>/audit-YYYY-MM-DD.jsonl`, default `/var/log/nextup`) and the line
+  "One JSON record per line. The file rotates daily." in place of host, port and transport.
 
 ### Phone
 
@@ -515,7 +516,7 @@ its button.
 |---|---|---|---|---|
 | Lead | text | | How people at {company} sign in, how their accounts arrive and where the audit log goes. | Wie sich Personen bei {company} anmelden, wie ihre Konten ankommen und wohin das Audit-Log geht. |
 | Personal codes | text + `InfoPanel` | count of managers with a code login and `totpEnabledAt` *(proposal)* | Personal codes · Everyone can sign in with their personal code. Managers also enter a code from an authenticator app. · Second factor · {n} of {m} managers who use a code have set it up | Persönliche Codes · Alle können sich mit ihrem persönlichen Code anmelden. Führungskräfte geben zusätzlich einen Code aus einer Authenticator-App ein. · Zweiter Faktor · {n} von {m} Führungskräften mit Code haben ihn eingerichtet |
-| Entra tenant | text input | a GUID; edited here *(proposal, not in any plan: today `/admin`)* | Tenant ID · Only accounts from this tenant get in. Entra asks for its own MFA. | Mandanten-ID · Nur Konten aus diesem Mandanten kommen hinein. Entra fragt nach seiner eigenen MFA. |
+| Entra tenant | text input | a GUID; **read-only here, set in the console (corrected by EID-P1, D16/Q4)** | Tenant ID · Only accounts from this tenant get in. Entra asks for its own MFA. | Mandanten-ID · Nur Konten aus diesem Mandanten kommen hinein. Entra fragt nach seiner eigenen MFA. |
 | OIDC fields | inputs | issuer https; client secret write-only (ADM/D10 rule) | Another OpenID Connect provider · Button text · Issuer URL · Client ID · Client secret · Scopes · Redirect URL | Weiterer OpenID-Connect-Anbieter · Text auf der Schaltfläche · Issuer-URL · Client-ID · Client-Secret · Scopes · Weiterleitungs-URL |
 | SAML fields | inputs | metadata by URL or file (XML ≤ 1 MB) | SAML 2.0 · Button text · IdP metadata · URL · File · Our details · Entity ID · Reply URL · Download SP metadata → | SAML 2.0 · Text auf der Schaltfläche · IdP-Metadaten · URL · Datei · Unsere Angaben · Entity-ID · Antwort-URL · SP-Metadaten herunterladen → |
 | Certificate | meta + button | amber ≤ 30 days, red when expired | IdP signing certificate expires {date} (in {n} days) · Expired on {date}. Sign-in with SAML stops working. · Refresh metadata | IdP-Signaturzertifikat läuft am {date} ab (in {n} Tagen) · Am {date} abgelaufen. Die Anmeldung mit SAML funktioniert nicht mehr. · Metadaten aktualisieren |
@@ -538,6 +539,12 @@ its button.
 - Switching SCIM on while Entra directory sync (DIR) is on: the dialog adds "Entra sync is on too. Use one source,
   or both will change the same people." / "Die Entra-Synchronisierung ist auch an. Nutze eine Quelle, sonst ändern
   beide dieselben Personen." *(proposal)*
+
+- **No account is created at first sign-in (corrected by EID-P1, D16/D4).** OIDC and SAML only find an existing person: by
+  the saved link, else once by exactly one active user with the same email. No match, several matches or an inactive
+  user refuses the sign-in with an `ssoLogin` message; accounts come from SCIM, the import or an invite.
+- The log export has no *Test sign-in*; its test line is *Send a test record*. The export can be switched on only after
+  the settings are saved; switching it on starts at now (history stays in the CSV).
 
 ### States
 
@@ -843,7 +850,8 @@ What changes:
   dafür, dass jemand antwortet." *(proposal; real numbers come later from MET, company-wide only)*.
 - "Ask your team leader" becomes "ask a manager": managers issue codes in Settings → Members (ADM/D6, D11).
 - The two second-factor steps replace the card's content in place (same card, same transition).
-- *Later (EID):* one grey button per OIDC or SAML provider, text = the admin's "Button text", with the app's key icon.
+- *EID-P1 (done):* one grey button per OIDC or SAML provider that is on, linking to `/<slug>/login/oidc` or `/<slug>/login/saml`; an
+  `?sso_error=<code>` shows the `ssoLogin` line above the code field. One grey button per OIDC or SAML provider, text = the admin's "Button text", with the app's key icon.
 
 ### Layout (desktop)
 
