@@ -1,0 +1,2 @@
+# Fake AUTH_SECRET in a test of the wip commit e9c0c95; the value was replaced by f4175b9 and is not a credential.
+e9c0c950d7767573f2f3288af3bd47f1721602d5:apps/app/tests/db/directory-successfactors.test.ts:generic-api-key:135

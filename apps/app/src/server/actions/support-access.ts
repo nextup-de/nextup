@@ -8,14 +8,13 @@ import { adminBase } from "@/features/admin/nav";
 import {
   appendSignin,
   grantActive,
-  hashSupportCode,
-  newSupportCode,
   normalizeSupportCode,
   SUPPORT_GRANT_HOURS,
   verifySupportCode,
 } from "@/features/admin/support-code";
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { openGrant } from "@/lib/db/support-grants";
 import { adminActor, issueAdminSession, supportBy } from "@/server/admin-session";
 import { consoleActor, recordAudit } from "@/server/audit/record";
 import { consoleCompany } from "@/server/console-guard";
@@ -38,21 +37,14 @@ const refresh = () => revalidatePath(adminBase() + "/support");
 export async function openSupportAccess(): Promise<SupportOpenState> {
   const c = await opener();
   if (!c) return { ok: false, code: "not-allowed" };
-  const db = getDb();
-  const now = new Date();
-  const code = newSupportCode();
-  const expiresAt = new Date(now.getTime() + SUPPORT_GRANT_HOURS * 3_600_000);
-  const openedBy = (await adminActor()) ?? c.via;
-  const actor = await consoleActor();
-  await db.$transaction(async (tx) => {
-    // At most one active grant per company: the older one ends now.
-    await tx.supportGrant.updateMany({ where: { companyId: c.companyId, revokedAt: null, expiresAt: { gt: now } }, data: { revokedAt: now } });
-    const grant = await tx.supportGrant.create({ data: { companyId: c.companyId, codeHash: hashSupportCode(code), expiresAt, openedBy } });
-    // Never the code or its hash: only when the grant ends.
-    await recordAudit(c.companyId, { actor, action: "audit.access.support_granted", target: { kind: "support_grant", id: grant.id }, changes: { expiresAt: { before: null, after: expiresAt.toISOString() } }, source: "console" }, tx);
+  const { grant, code } = await openGrant(c.companyId, {
+    hours: SUPPORT_GRANT_HOURS,
+    openedBy: (await adminActor()) ?? c.via,
+    actor: await consoleActor(),
+    source: "console",
   });
   refresh();
-  return { ok: true, supportCode: code, validUntil: expiresAt.toISOString() };
+  return { ok: true, supportCode: code, validUntil: grant.expiresAt.toISOString() };
 }
 
 export async function revokeSupportAccess(): Promise<SupportRevokeState> {

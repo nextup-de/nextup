@@ -17,6 +17,7 @@ import {
   saveDirectoryCursor,
 } from "@/lib/db/directory-run";
 import { DIRECTORY_ACTOR, recordAudit } from "@/server/audit/record";
+import { successFactorsFor } from "@/server/connectors/directory";
 import { graphDirectory } from "@/server/directory/graph";
 
 /** A round that dies without releasing loses its lease after this. */
@@ -25,7 +26,10 @@ const MAX_PAGES = 50;
 
 export type DirectoryCompany = { id: string; slug: string };
 /** Which source reads this company's directory, or null when there is no adapter for it. */
-export type SourceFor = (company: DirectoryCompany & { entraTenantId: string | null; source: DirectorySourceKind }) => DirectorySource | null;
+export type SourceFor = (
+  company: DirectoryCompany & { entraTenantId: string | null; source: DirectorySourceKind },
+  now?: Date,
+) => Promise<DirectorySource | null> | DirectorySource | null;
 
 const intervalMs = (): number => {
   const n = Number(process.env.DIRECTORY_INTERVAL_MS);
@@ -39,14 +43,14 @@ const endOf = (s: DirectorySource): string | null => {
 };
 
 /** One company's round. Never throws: a failure is recorded on its DirectoryRun row. */
-export async function runDirectoryCompany(company: DirectoryCompany, sourceFor: SourceFor = graphOnly, now: Date = new Date()): Promise<void> {
+export async function runDirectoryCompany(company: DirectoryCompany, sourceFor: SourceFor = defaultSourceFor, now: Date = new Date()): Promise<void> {
   if (!(await claimDirectoryLease(company.id, LEASE_MS, now))) return;
   try {
     const row = await loadDirectoryRun(company.id);
     if (!row?.on) return;
     const kind = sourceKind(row.source);
     const tenant = await getDb().company.findUnique({ where: { id: company.id }, select: { entraTenantId: true } });
-    const source = sourceFor({ ...company, entraTenantId: tenant?.entraTenantId ?? null, source: kind });
+    const source = await sourceFor({ ...company, entraTenantId: tenant?.entraTenantId ?? null, source: kind }, now);
     if (!source) return void (await recordDirectoryRun(company.id, { error: `no adapter for ${row.source}` }, now));
     const total: DirectoryCounts = { added: 0, updated: 0, deactivated: 0, handed: 0 };
     let cursor = row.cursor;
@@ -81,12 +85,16 @@ export async function runDirectoryCompany(company: DirectoryCompany, sourceFor: 
   }
 }
 
-/** The default: the Graph adapter for a company with a tenant; null for any other source. */
+/** Graph for a company with a tenant and an Entra app (as before). */
 const graphOnly: SourceFor = (c) => {
   if (c.source !== "graph") return null;
   const app = entraApp();
   return c.entraTenantId && app ? graphDirectory({ tenantId: c.entraTenantId, app }) : null;
 };
+
+/** The default (D9): Graph as graphOnly, SuccessFactors from the company's Integration row; null when there is none. */
+export const defaultSourceFor: SourceFor = (c, now) =>
+  c.source === "successfactors" ? successFactorsFor(c.id, now) : graphOnly(c, now);
 
 /** One round over every company with the sync on. Never throws. */
 export async function runDirectoryOnce(now: Date = new Date(), source?: SourceFor): Promise<void> {
@@ -100,9 +108,9 @@ export async function runDirectoryOnce(now: Date = new Date(), source?: SourceFo
 
 const globalForDirectory = globalThis as unknown as { __nextupDirectorySync?: ReturnType<typeof setInterval> };
 
-/** Start the loop from instrumentation.ts. Idempotent (dev reloads this module). A no-op without a database or an Entra app. */
+/** Start the loop from instrumentation.ts. Idempotent (dev reloads this module). A no-op without a database. */
 export function startDirectorySync(): void {
-  if (!hasDatabase() || !entraApp() || globalForDirectory.__nextupDirectorySync) return;
+  if (!hasDatabase() || globalForDirectory.__nextupDirectorySync) return;
   globalForDirectory.__nextupDirectorySync = setInterval(() => void runDirectoryOnce(), intervalMs());
   void runDirectoryOnce();
 }
