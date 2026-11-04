@@ -1,9 +1,9 @@
 // The directory sync's shared shapes (phase DIR). Pure: no database, no Graph types - a source is
 // configuration (DirectoryRun.source), never code.
 
-export type DirectorySourceKind = "graph" | "successfactors";
+export type DirectorySourceKind = "graph" | "successfactors" | "scim";
 
-/** What the row stores is text; anything that is not a known source reads as Graph. */
+/** What the row stores is text; anything that is not a pull source reads as Graph (SCIM is pushed in, never pulled). */
 export function sourceKind(v: unknown): DirectorySourceKind {
   return v === "successfactors" ? "successfactors" : "graph";
 }
