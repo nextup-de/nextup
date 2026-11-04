@@ -21,6 +21,7 @@
 | `/[company]/feed` | `.../(app)/feed/page.tsx` | yes | any | Every problem and idea this viewer may see as cards: filter by site and department, support, comment. `?id=` opens one in place |
 | `/[company]/team` | `.../(app)/team/page.tsx` | yes | any | What happened to what I sent (one card per case) |
 | `/[company]/problems` | `.../(app)/problems/page.tsx` | yes | any | Redirects to `/feed` |
+| `/[company]/idea` | `.../(app)/idea/page.tsx` | yes | any | `?id=` is one idea or problem, open: a row of "Ideas" on `/projects` opens here, in place, and ✕ goes back. `/projects?id=` and `/overview?id=` move here; without an id it moves to `/projects` |
 | `/[company]/ideas` | `.../(app)/ideas/page.tsx` | yes | any | Redirects to `/feed` |
 | `/[company]/projects/collaboration` | `.../(app)/projects/collaboration/page.tsx` | yes | any | Tab of Projects. Initiatives; with the `projects` flag, the projects. `/collaboration` redirects here |
 | `/[company]/projects/progress` | `.../(app)/projects/progress/page.tsx` | yes | any | Tab of Projects (`/progress` redirects here). Movement since baseline; with the `projects` flag, each measured project's before → after and the Wait ledger after the yes |

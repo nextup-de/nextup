@@ -15,8 +15,11 @@ export function useUrlId(key = "id"): string | null {
  * Keep `current` (what the view has open, null: nothing) in the address under `key`. Opening and
  * closing add a history entry, so Back closes and Forward reopens; walking from one item to the next
  * replaces it. When the address changes from outside (Back, Forward), `apply` gets the new id.
+ * `paths`: an open item has its own address (`open`, the page shows the same view there) and closing
+ * goes back to `closed`. An address that says otherwise is corrected without a history entry.
  */
-export function useIdInUrl(current: string | null, apply: (id: string | null) => void, key = "id"): void {
+export function useIdInUrl(current: string | null, apply: (id: string | null) => void, key = "id", paths?: { open: string; closed: string }): void {
+  const open = paths?.open, closed = paths?.closed;
   const inUrl = useSearchParams().get(key);
   const seen = useRef(inUrl);
   // Read, not watched: only a change of the address applies.
@@ -27,12 +30,14 @@ export function useIdInUrl(current: string | null, apply: (id: string | null) =>
   useEffect(() => {
     const url = new URL(window.location.href);
     const was = url.searchParams.get(key);
-    if (was === current) return;
+    const path = (current === null ? closed : open) ?? url.pathname;
+    if (was === current && url.pathname === path) return;
     if (current === null) url.searchParams.delete(key); else url.searchParams.set(key, current);
+    url.pathname = path;
     const to = url.pathname + url.search + url.hash;
-    if (was !== null && current !== null) window.history.replaceState(null, "", to);
+    if ((was === null) === (current === null)) window.history.replaceState(null, "", to);
     else window.history.pushState(null, "", to);
-  }, [current, key]);
+  }, [current, key, open, closed]);
 
   // The address -> the view, when it moved without the view (Back, Forward).
   useEffect(() => {
