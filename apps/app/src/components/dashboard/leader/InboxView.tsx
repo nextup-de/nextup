@@ -51,7 +51,7 @@ const onPhoneChange = (fn: () => void) => { const m = window.matchMedia(PHONE); 
 export function InboxView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
   const t = useT();
-  const { seed, S, log, persona, act, openSheet, showToast, ready, f, me, motion, flag } = ctx;
+  const { seed, S, log, act, openSheet, showToast, ready, f, me, motion, flag } = ctx;
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const talk = flag("discussion"), projects = flag("projects");
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
