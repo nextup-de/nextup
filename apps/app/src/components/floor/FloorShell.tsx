@@ -7,6 +7,7 @@ import { setLocale } from "@/i18n/actions";
 import { useLocale, useT } from "@/i18n/client";
 import { LOCALES } from "@/i18n";
 import { floorSignOutAction } from "@/server/actions/floor";
+import { PersonFace } from "@/components/ui/elements";
 import styles from "./FloorShell.module.css";
 
 export function FloorShell({ slug, companyName, mark, signedInName, children }: {
@@ -43,7 +44,7 @@ export function FloorShell({ slug, companyName, mark, signedInName, children }: 
       </header>
       {signedInName ? (
         <div className={styles.who} data-testid="floor-shell-signedin">
-          <span>{t("floor.barSignedIn", { name: signedInName })}</span>
+          <span><PersonFace name={signedInName} size="sm" /> {t("floor.barSignedIn", { name: signedInName })}</span>
           <button type="button" className={styles.signOut} disabled={pending} data-testid="floor-shell-signout" onClick={signOut}>
             {t("floor.barSignOut")}
           </button>

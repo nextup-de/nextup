@@ -29,7 +29,7 @@ function download(name: string, body: string) {
 export function KpisView({ slug, initial }: { slug: string; initial: KpisData }) {
   const t = useT();
   const locale = useLocale();
-  const { sampleData, showToast } = useDemo();
+  const { sampleData, showToast, serverMode } = useDemo();
   const [served, setData] = useState<KpisData>(initial);
   // The Demo data switch: sample figures, in this browser only.
   const data: KpisData = sampleData ? { ...served, available: true, zi: SAMPLE_KPIS, projectsOn: true, baselineSource: "counted", fromDate: null, toDate: null } : served;
@@ -78,7 +78,7 @@ export function KpisView({ slug, initial }: { slug: string; initial: KpisData })
 
   return (
     <div className={styles.page} data-testid="kpis-page" aria-busy={pending}>
-      <PageHeader title={t("kpis.title")} action={tools} />
+      {serverMode ? <><h1 className="nh-sr">{t("kpis.title")}</h1>{tools}</> : <PageHeader title={t("kpis.title")} action={tools} />}
       {error && <div data-testid="kpis-error"><Banner tone="error">{t(error === "load" ? "kpis.loadFailed" : "kpis.exportFailed")}</Banner></div>}
 
       <SectionCard title={t("kpis.company")} name="kpis-company">

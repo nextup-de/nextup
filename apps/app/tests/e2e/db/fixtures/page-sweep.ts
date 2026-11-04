@@ -1,8 +1,9 @@
 // One check for any page (plan UIP, D8): at desktop and phone width the page's marker shows, nothing runs
-// off the side, no console error, and the title is Inter at 28 px.
+// off the side, no console error, the title is Inter at 28 px, and nothing is painted black.
 import { expect, type Page } from "@playwright/test";
 import { totpAt } from "../../../../src/features/auth/totp";
 import type { TestCompany } from "../../../db/test-company";
+import { checkDesign } from "../../design-check";
 
 export const SWEEP_WIDTHS = [1440, 375] as const;
 
@@ -53,6 +54,7 @@ export async function sweepPages(page: Page, paths: readonly string[], options: 
           expect(h1.size, `${where}: title size`).toBe("28px");
         }
         expect(errors, `${where}: console errors`).toEqual([]);
+        await checkDesign(page, where);
       }
     }
   } finally {

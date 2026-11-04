@@ -21,7 +21,7 @@ import { ideaContext } from "@/features/ideas/drafts";
 import { railOf } from "@/features/ideas/raise";
 import { projectById, projectLabel } from "@/features/projects/selectors";
 import { useFormat, useT } from "@/i18n/client";
-import { ini } from "@/lib/utils/format";
+import { PersonFace } from "@/components/ui/elements";
 import { brainCheckinAction } from "@/server/actions/brain";
 import base from "./InputSheet.module.css";
 import styles from "./LoopSheets.module.css";
@@ -81,7 +81,7 @@ function PeoplePicker({ suggested, picked, onToggle, skip }: { suggested: Invite
     const on = picked.includes(userId);
     return (
       <button key={userId} type="button" className={styles.person} data-on={on ? "true" : undefined} aria-pressed={on} onClick={() => onToggle(userId)}>
-        <span className={styles.ini} aria-hidden="true">{ini(name)}</span>
+        <PersonFace name={name} size="sm" />
         <span className={styles.who}><span className={styles.name}>{name}</span><span className={styles.note}>{note}</span></span>
       </button>
     );
@@ -99,7 +99,7 @@ function PeoplePicker({ suggested, picked, onToggle, skip }: { suggested: Invite
         <div className={styles.found}>
           {found.map((p) => (
             <button key={p.userId} type="button" className={styles.foundRow} onClick={() => { onToggle(p.userId as string); setQ(""); }}>
-              <span className={styles.ini} aria-hidden="true">{ini(p.label)}</span>
+              <PersonFace name={p.label} size="sm" />
               <span className={styles.who}><span className={styles.name}>{p.label}</span><span className={styles.note}>{roleOf(p.label)}</span></span>
             </button>
           ))}

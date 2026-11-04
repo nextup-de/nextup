@@ -29,7 +29,7 @@ test("the demo controls click through the whole story: raise, publish, accept, d
     await expect(aiMessages(page).first()).toContainText("I can see the value here.", { timeout: 30_000 });
     await expect(page.getByRole("button", { name: "Close analysis" })).toHaveCount(0); // in the thread, not the sheet
     const full = page.getByRole("group", { name: "Full analysis" });
-    for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(full.getByText(label, { exact: true })).toBeVisible();
+    for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(full.getByText(label, { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("group", { name: "AI analysis" })).toHaveCount(0); // the short read starts with the next reply
     await expect(page.getByRole("group", { name: "Still unclear" }).getByRole("button")).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0); // not after one exchange

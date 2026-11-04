@@ -71,7 +71,7 @@ export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true }
   const [pending, start] = useTransition();
   const rows = unitTree(k.units);
   const [picked, setPicked] = useState<string | null>(rows[0]?.unit.key ?? null);
-  const [open, setOpen] = useState<Set<string>>(() => new Set(rows.filter((r) => r.depth < 2).map((r) => r.unit.id)));
+  const [open, setOpen] = useState<Set<string>>(() => new Set(rows.map((r) => r.unit.id)));
   const [query, setQuery] = useState("");
   const [unitDrawer, setUnitDrawer] = useState<UnitRow | "new" | null>(null);
   const [roleDrawer, setRoleDrawer] = useState<RoleRow | "new" | null>(null);

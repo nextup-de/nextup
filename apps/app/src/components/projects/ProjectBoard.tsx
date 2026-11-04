@@ -7,7 +7,7 @@
 // While the project is planned, the idea's own brief offers its first steps - each added only with a click.
 import { useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { Avatar } from "@/components/dashboard/shared/primitives";
+import { PersonFace } from "@/components/ui/elements";
 import { board } from "@/features/projects/selectors";
 import { STEP_COLUMNS, type ReducedProject, type Step, type StepColumn } from "@/features/projects/types";
 import { columnLabel, safeUrl, toolName, toolOf, type JiraRow, type StepHint } from "@/features/projects/views";
@@ -135,7 +135,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
             ))}
             {owners.map(({ userId, name: n }) => (
               <button key={userId} type="button" className={styles.filterFace} aria-pressed={filter === userId} onClick={() => setFilter(filter === userId ? "all" : (userId as string))} aria-label={t("projects.filterOnly", { name: n })} title={n}>
-                <Avatar name={n} size="sm" />
+                <PersonFace name={n} size="sm" />
               </button>
             ))}
             {hidden > 0 && <span className={styles.hint}>{t("projects.filterHidden", { count: hidden })}</span>}
@@ -318,7 +318,7 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
       </div>
       {s.column === "blocked" && s.why && <div className={styles.blockedWhy}>{s.why}</div>}
       <div className={styles.stepFoot}>
-        {s.owner ? <span className={styles.owner}><Avatar name={s.owner} size="sm" /><span>{s.owner}</span></span> : <span className={styles.noOwner}>{t("projects.noOwner")}</span>}
+        {s.owner ? <span className={styles.owner}><PersonFace name={s.owner} size="sm" /><span>{s.owner}</span></span> : <span className={styles.noOwner}>{t("projects.noOwner")}</span>}
         <span className={styles.stepIcons}>
           {s.note && <span className={styles.noteMark} title={t("projects.hasDetails")} aria-label={t("projects.hasDetails")}>≡</span>}
           {s.dueDay !== null && (s.column === "done"

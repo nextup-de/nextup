@@ -36,7 +36,7 @@ import { OverviewIdea, type IdeaMode, type OverviewIdeaProps } from "./OverviewI
 import { OverviewPhone } from "./OverviewPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
-import { DeptChip } from "@/components/ui/elements";
+import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
@@ -351,7 +351,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
                   <div className={s.div19}>{OVERVIEW_STEPS.map((x, k) => <span key={x} className={s.span} data-tone={k < r.step ? "done" : k === r.step ? "now" : undefined} />)}</div>
                 </div>
                 <div className={s.onProfile} role="cell">
-                  <span className={s.initials} data-avatar={avatarTone(deskName)}>{initialsOf(deskName)}</span>
+                  <PersonFace name={deskName} size="sm" />
                   <span className={s.span2}>
                     <span className={s.desk}>{deskName}</span>
                     {deskSub && <span className={s.role}>{deskSub}</span>}

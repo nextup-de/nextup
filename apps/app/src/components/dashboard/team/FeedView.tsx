@@ -282,7 +282,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                     {x.comments}
                   </span>
                   <span className={s.label} />
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c7c7cc" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nh-ghost)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
                 </div>
               </div>
             );
@@ -327,7 +327,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
               </div>
               <span className={s.stage} data-tone={st.tone}>{st.label}</span>
               <button type="button" className={s.closeIdea} onClick={() => close()} title={t("common.close")} aria-label={t("common.close")}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             </div>
             <span className={s.kind}>{c.kind === "idea" ? t("team.feedIdea") : t("team.feedProblem")}</span>
@@ -379,12 +379,12 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                       <div className={s.div28}>
                         <svg className={s.svg} viewBox="0 0 72 72" aria-hidden="true">
                           <circle cx="36" cy="36" r="30" fill="none" stroke="#e3eaf7" strokeWidth="10" strokeLinecap="round" strokeDasharray="141.4 188.5" />
-                          <circle cx="36" cy="36" r="30" fill="none" stroke="#007aff" strokeWidth="10" strokeLinecap="round" strokeDasharray={((sc.value / 100) * 141.4).toFixed(1) + " 188.5"} />
+                          <circle cx="36" cy="36" r="30" fill="none" stroke="var(--nh-brand)" strokeWidth="10" strokeLinecap="round" strokeDasharray={((sc.value / 100) * 141.4).toFixed(1) + " 188.5"} />
                         </svg>
                         <div className={s.div29}><span className={s.v} data-long={sc.value >= 100}>{sc.value}</span><span className={s.n100}>/ 100</span></div>
                         <button type="button" className={s.toggle} title={t("team.feedShowReasoning")} aria-label={on ? t("team.feedHideReasoningFor", { label: sc.label }) : t("team.feedShowReasoningFor", { label: sc.label })} aria-expanded={on}
                           onClick={() => setOpenScore((m) => ({ ...m, [c.id]: on ? null : i }))}>
-                          <svg className={s.svg2} data-open={on ? "true" : undefined} viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          <svg className={s.svg2} data-open={on ? "true" : undefined} viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                         </button>
                       </div>
                       {on && (
@@ -422,7 +422,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             ) : (
               <div className={s.div34}>
                 <div className={s.div5}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" fill="#007aff" /></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" fill="var(--nh-brand)" /></svg>
                   <span className={s.span2}>{t("team.feedAiFound")}</span>
                 </div>
                 <div className={s.div37}>
@@ -456,7 +456,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                       <div key={t.label} className={s.div44}>
                         <div className={s.div45} data-on={t.tone !== "todo" ? "true" : undefined} />
                         <span className={s.when}>{t.label}</span>
-                        <span className={s.what}>{t.sub || "—"}</span>
+                        {t.sub && <span className={s.what}>{t.sub}</span>}
                       </div>
                     ))}
                   </div>

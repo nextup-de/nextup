@@ -1,8 +1,8 @@
 /* Support access: the open / none badge, the person with a face, the drawer form and the log pager. Cards,
    buttons, the facts grid and fields come from settings.module.css. */
-.badge { display: inline-flex; align-self: flex-start; padding: 2px 10px; border-radius: 6px; background: #f2f2f7; color: #6e6e73; font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; }
+.badge { display: inline-flex; align-self: flex-start; padding: 2px 10px; border-radius: 6px; background: var(--nh-fill); color: var(--nh-mute); font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; }
 .badge[data-open] { background: #fff4e5; color: #b25000; }
-.line { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #1c1c1e; }
+.line { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .person { display: inline-flex; align-items: center; gap: 8px; }
 .form { display: flex; flex-direction: column; gap: 18px; }

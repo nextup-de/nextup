@@ -3,9 +3,9 @@
 // DashboardData: from the log on the server, or - without a database - built here from the browser's own log
 // with the same pure functions. Six tiles open in place with a month-by-month view; no person row, list or link.
 import { useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { sectionTabsFor } from "@/config/nav";
 import { BaselineDialog } from "@/components/dashboard/shared/BaselineDialog";
 import { BreakdownCard, TooFewToShow } from "@/components/dashboard/shared/BreakdownCard";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
@@ -27,7 +27,7 @@ const STATUS_KEY = {
   asked: "metrics.stageAsked", building: "metrics.stageBuilding", shipped: "metrics.stageShipped",
 } as const;
 const PAY_KEY = { better: "metrics.payBetter", worse: "metrics.payWorse", same: "metrics.paySame", "not measured": "metrics.payMeasuring" } as const;
-const ANSWER_COLORS = ["#1c1c1e", "#0b70d1", "#8e8e93", "#5b6b82", "#c7cfdb"];
+const ANSWER_COLORS = ["var(--nh-brand)", "var(--nh-progress-doing)", "var(--nh-brand-line)", "var(--nh-mute-2)", "var(--nh-line-2)"];
 
 function Close({ onClose }: { onClose: () => void }) {
   const t = useT();
@@ -41,7 +41,8 @@ function Close({ onClose }: { onClose: () => void }) {
 export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitId: servedUnit }: {
   data: DashboardData | null; slug: string | null; kind: Kind; unitId: string | null;
 }) {
-  const { S, log, seed, ready, flag, showToast, tenant, sampleData } = useDemo();
+  const { S, log, seed, ready, flag, showToast, tenant, sampleData, role, serverMode } = useDemo();
+  const tabbed = sectionTabsFor("dashboard", { role, serverMode }).length > 1; // the strip under the bar already names this page
   // The sample data exists only in this browser, so its numbers are built here too.
   const served = sampleData ? null : fromServer;
   const t = useT();
@@ -168,7 +169,7 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
       <div className={s.page}>
         <div className={s.titleRow}>
           <div className={s.titleCol}>
-            <h1 className={s.h1}>{t("metrics.dashTitle")}</h1>
+            <h1 className={tabbed ? "nh-sr" : s.h1}>{t("metrics.dashTitle")}</h1>
             <p className={s.lead} data-testid="dashboard-lead">{lead}</p>
           </div>
           <div className={s.controls}>
@@ -336,7 +337,6 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
           )}
         </div>
 
-        <Link href={pathname.replace(/\/dashboard.*$/, "/dashboard/kpis")} className={s.kpiLink} data-testid="dashboard-kpi-link">{t("metrics.dashKpiLink")} →</Link>
       </div>
       {dialog && slug && <BaselineDialog slug={slug} demoClock={data.demoClock} current={data.baseline} onClose={() => setDialog(false)} onSaved={() => { setDialog(false); showToast(t("metrics.blSaved")); }} />}
     </div>

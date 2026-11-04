@@ -3,16 +3,16 @@
 .form { display: flex; flex-direction: column; gap: 18px; }
 .fieldset { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
 .check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); }
-.secrets { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; border-top: 1px solid #f0f0f3; }
+.secrets { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; border-top: 1px solid var(--nh-line-soft); }
 .pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .statusCell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.pill { display: inline-flex; padding: 2px 8px; border-radius: 6px; background: #f2f2f7; color: #3a3a3c; font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; }
-.pill[data-status="sent"] { background: #edf7f0; color: #1f7a3a; }
+.pill { display: inline-flex; padding: 2px 8px; border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; }
+.pill[data-status="sent"] { background: #edf7f0; color: var(--nh-ok); }
 .pill[data-status="retrying"] { background: #fff4e5; color: #b25000; }
-.pill[data-status="failed"] { background: #fff0f0; color: #d70015; }
-.detail { font-size: var(--nh-fs-sm); color: #6e6e73; overflow-wrap: anywhere; }
-.body { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #3a3a3c; overflow-wrap: anywhere; }
-.link { font-size: var(--nh-fs-sm); font-weight: 600; color: #1c1c1e; text-decoration: none; }
+.pill[data-status="failed"] { background: #fff0f0; color: var(--nh-danger); }
+.detail { font-size: var(--nh-fs-sm); color: var(--nh-mute); overflow-wrap: anywhere; }
+.body { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); overflow-wrap: anywhere; }
+.link { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); text-decoration: none; }
 .link:hover { text-decoration: underline; }
 @media (max-width: 760px) {
   .actions > * { flex: 1; height: 44px; }

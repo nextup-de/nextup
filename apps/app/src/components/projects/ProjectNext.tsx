@@ -4,7 +4,7 @@
 // itself is one tab away.
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { Avatar } from "@/components/dashboard/shared/primitives";
+import { PersonFace } from "@/components/ui/elements";
 import { nextSteps, tabQuery } from "@/features/projects/tabs";
 import type { ReducedProject } from "@/features/projects/types";
 import { columnLabel } from "@/features/projects/views";
@@ -41,7 +41,7 @@ export function NextPanel({ p }: { p: ReducedProject }) {
                   </span>
                 </span>
                 <span className={styles.nextOwner}>
-                  {s.owner ? <><Avatar name={s.owner} size="sm" /><span>{s.owner}</span></> : <span className={styles.muted}>{t("projects.noOwnerYet")}</span>}
+                  {s.owner ? <><PersonFace name={s.owner} size="sm" /><span>{s.owner}</span></> : <span className={styles.muted}>{t("projects.noOwnerYet")}</span>}
                 </span>
                 <span className={styles.nextDue} data-late={late ? "true" : undefined}>
                   {s.dueDay === null ? "" : late ? t("projects.lateShort") + " · " + f(s.dueDay) : f(s.dueDay)}

@@ -199,7 +199,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
   test("the lead types the 30-day result with a CO₂ figure; it is not confirmed and the lead cannot confirm it", async ({ browser }) => {
     const page = await signIn(browser, LEAD);
     await openResults(page);
-    await vis(page, "measure-type-30").click();
+    // the "type the figure" form starts open, so there is nothing to click first
     await page.getByLabel(/The number now/).filter({ visible: true }).fill(RESULT);
     await page.getByLabel("CO₂ per year (kg)").filter({ visible: true }).fill(CO2);
     await page.getByRole("button", { name: "Record the measure" }).click();

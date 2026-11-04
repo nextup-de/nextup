@@ -29,13 +29,13 @@ type ProjectSort = "wait" | "status" | "title" | "people";
 type PersonSort = "name" | "dept" | "role";
 type PeopleScope = "linked" | "all";
 
-const INK = "#141414", ACCENT = "#ff5a1f", MUTE = "#b9b9b4";
+const INK = "var(--nh-brand-ink)", ACCENT = "var(--nh-accent)", MUTE = "var(--nh-ghost)";
 // The statuses in the order the lists use; the first is the one that waits on a decision.
 const STATUS_ORDER = Object.keys({ "Awaiting decision": 0, "In trial": 0, Building: 0, Proposed: 0, Shipped: 0 } satisfies Record<InitiativeStatus, 0>) as InitiativeStatus[];
 const AWAITING = STATUS_ORDER[0];
 const ASPECT = ["xMidYMid", "meet"].join(" "); // the map scales to fit its box
 const edgeLook = (status: InitiativeStatus) =>
-  status === "Shipped" ? { stroke: INK, dash: "0" } : status === AWAITING ? { stroke: ACCENT, dash: "0" } : status === "Proposed" ? { stroke: MUTE, dash: "7 7" } : { stroke: "#8c8c88", dash: "0" };
+  status === "Shipped" ? { stroke: INK, dash: "0" } : status === AWAITING ? { stroke: ACCENT, dash: "0" } : status === "Proposed" ? { stroke: MUTE, dash: "7 7" } : { stroke: "var(--nh-mute-2)", dash: "0" };
 const waitDays = (t: Initiative) => (t.status === AWAITING ? Number(/(\d+)/.exec(t.stage)?.[1] ?? 0) : -1);
 const isNamed = (n: string) => n !== "—" && n !== "Anonymous";
 // "Started because: ..." for a project - the first sentence of the idea it came from.
@@ -385,7 +385,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
             <div className={styles.treeWrap} ref={canvasAttach} data-dragging={dragging ? "true" : undefined} {...canvasHandlers}>
               <svg className={styles.tree} role="img" aria-label={t("dashboard.collabOrgChart")}>
                 <g className={styles.canvas} transform={"translate(" + cv.x + " " + cv.y + ") scale(" + cv.k + ")"}>
-                  {tree.edges.map((e) => { const a = pos.get(e.from)!, b = pos.get(e.to)!, on = chain.has(e.from + ">" + e.to); return <path key={e.from + e.to} d={orth(a, b)} fill="none" stroke={on ? chainLook.stroke : "#e6e5e0"} strokeWidth={on ? 2.6 : 1.2} strokeDasharray={on ? chainLook.dash : undefined} strokeLinecap="round" />; })}
+                  {tree.edges.map((e) => { const a = pos.get(e.from)!, b = pos.get(e.to)!, on = chain.has(e.from + ">" + e.to); return <path key={e.from + e.to} d={orth(a, b)} fill="none" stroke={on ? chainLook.stroke : "var(--nh-line-2)"} strokeWidth={on ? 2.6 : 1.2} strokeDasharray={on ? chainLook.dash : undefined} strokeLinecap="round" />; })}
                   {treeMode === "lines" && treeLines.map((l) => { const a = pos.get(l.a), b = pos.get(l.b); return a && b ? <path key={l.a + l.b} d={curve(a, b)} fill="none" stroke={l.stroke} strokeWidth={1.8} strokeDasharray={l.dash} strokeLinecap="round" opacity={0.9} /> : null; })}
                   {tree.nodes.map((n) => {
                     const p = pos.get(n.person.name)!;

@@ -1,11 +1,11 @@
 /* stylelint-disable scale-unlimited/declaration-strict-value -- a printed poster is sized in pt and mm (FLR D13), not on the screen type scale */
-.toolbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; font-size: var(--nh-fs-sm); color: #6e6e73; }
+.toolbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .group { display: inline-flex; align-items: center; gap: 6px; }
-.choice { display: inline-flex; align-items: center; height: 32px; padding-inline: 12px; border-radius: 8px; background: #f2f2f7; color: #1c1c1e; font-weight: 600; text-decoration: none; }
-.choice:hover { background: #e5e5ea; }
-.choice[aria-current="true"] { background: #111; color: #fff; }
+.choice { display: inline-flex; align-items: center; height: 32px; padding-inline: 12px; border-radius: 8px; background: var(--nh-fill); color: var(--nh-ink); font-weight: 600; text-decoration: none; }
+.choice:hover { background: var(--nh-line); }
+.choice[aria-current="true"] { background: var(--nh-brand); color: var(--nh-on-brand); }
 .choice:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.sheet { background: #fff; color: #000; box-sizing: border-box; display: grid; justify-items: center; align-content: start; gap: 6mm; text-align: center; border: 1px solid var(--nh-line); margin: 0 auto; max-width: 100%; }
+.sheet { background: #fff; color: var(--nh-ink); box-sizing: border-box; display: grid; justify-items: center; align-content: start; gap: 6mm; text-align: center; border: 1px solid var(--nh-line); margin: 0 auto; max-width: 100%; }
 .a4 { width: 210mm; min-height: 297mm; padding: 15mm; --code: 120mm; --head: 72pt; }
 .a5 { width: 148mm; min-height: 210mm; padding: 15mm; --code: 85mm; --head: 48pt; }
 .headline { margin: 0; font-size: var(--head); font-weight: 700; line-height: 1.05; }

@@ -32,7 +32,7 @@ export function OriginPanel({ p }: { p: ReducedProject }) {
           {c.reason && <p className={styles.originLine}><span className={styles.originKey}>{t("projects.originWhy")}</span>{c.reason}</p>}
           {c.upside && <p className={styles.originLine}><span className={styles.originKey}>{t("projects.originUpside")}</span>{c.upside}</p>}
           {c.versions.length > 1 && (
-            <details className={styles.versions}>
+            <details className={styles.versions} open>
               <summary>{t("projects.originVersions", { count: c.versions.length })}</summary>
               {c.versions.map((v) => (
                 <div key={v.version} className={styles.version}>

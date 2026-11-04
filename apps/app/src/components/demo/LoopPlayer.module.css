@@ -5,12 +5,12 @@
   bottom: 14px;
   z-index: 50;
   width: 320px;
-  background: var(--nh-dark);
-  color: var(--nh-on-dark);
-  border: 1px solid var(--nh-dark-line);
+  background: var(--nh-card);
+  color: var(--nh-ink);
+  border: 1px solid var(--nh-line);
   border-radius: var(--radius-sm, 0);
   padding: 12px 14px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 14%);
   display: grid;
   gap: 8px;
 }
@@ -19,7 +19,7 @@
   font-size: var(--nh-fs-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--nh-on-dark-mute);
+  color: var(--nh-mute);
   display: flex;
   justify-content: space-between;
   gap: 8px;
@@ -27,13 +27,13 @@
 .say { font-size: var(--nh-fs-sm); line-height: 1.45; margin: 0; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .dots { display: flex; gap: 4px; }
-.dot { width: 6px; height: 6px; background: var(--nh-dark-line); }
-.dot[data-done="true"] { background: var(--nh-on-dark-mute); }
-.dot[data-now="true"] { background: var(--nh-brand-line); }
+.dot { width: 6px; height: 6px; background: var(--nh-line-2); }
+.dot[data-done="true"] { background: var(--nh-brand-line); }
+.dot[data-now="true"] { background: var(--nh-brand); }
 .hide {
   background: transparent;
   border: 0;
-  color: var(--nh-on-dark-mute);
+  color: var(--nh-brand-ink);
   font: inherit;
   font-size: var(--nh-fs-xs);
   cursor: pointer;

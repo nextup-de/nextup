@@ -43,7 +43,7 @@ export function RaiseSidebar({ query, onQuery, onHide, card, rows, loaded, onPic
 
       <div className={s.ideasHead}>
         <span className={s.ideasTitle}>{t("ideas.sideIdeas")}</span>
-        <button type="button" className={s.newIdea} onClick={onNew}><span className={s.plus}><Icon name="plus" size={7.5} stroke="#fff" width={3} /></span>{t("ideas.sideNew")}</button>
+        <button type="button" className={s.newIdea} onClick={onNew}><span className={s.plus}><Icon name="plus" size={7.5} stroke="var(--nh-on-brand)" width={3} /></span>{t("ideas.sideNew")}</button>
       </div>
       <div className={s.ideas}>
         {pinned.length > 0 && <span className={s.group}>{t("ideas.sidePinned")}</span>}
@@ -143,13 +143,13 @@ function Card({ c }: { c: DraftCard }) {
 
 function List({ label, icon, items }: { label: string; icon: "bolt" | "file"; items: Chip[] }) {
   const t = useT();
-  const [all, setAll] = useState(false);
+  const [all, setAll] = useState(true); // everything shown; the chevron folds the list down to the latest
   if (!items.length) return null;
   const shown = all ? items : items.slice(-1);
   return (
     <div className={s.list}>
       <div className={s.listHead}>
-        {icon === "bolt" ? <Solid name="bolt" size={10.5} fill="#6e6e73" /> : <Icon name="file" size={10.5} stroke="#6e6e73" width={2} />}
+        {icon === "bolt" ? <Solid name="bolt" size={10.5} fill="var(--nh-mute)" /> : <Icon name="file" size={10.5} stroke="var(--nh-mute)" width={2} />}
         <span className={s.listLabel}>{label}</span>
         <span className={s.listCount}>{items.length}</span>
         {items.length > 1 && (

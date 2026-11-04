@@ -31,7 +31,6 @@ export const metrics = defineMessages({
     dashLeadCases_other: "{count} cases",
     dashLeadSimulated: "simulated days",
     dashEmpty: "No cases in this period yet.",
-    dashKpiLink: "Idea management figures",
 
     tileFirstReasonedAnswer: "First reasoned answer",
     tileOnTime: "Answered on time",
@@ -179,7 +178,6 @@ export const metrics = defineMessages({
     dashLeadCases_other: "{count} Fälle",
     dashLeadSimulated: "simulierte Tage",
     dashEmpty: "In diesem Zeitraum gibt es noch keine Fälle.",
-    dashKpiLink: "Kennzahlen zum Ideenmanagement",
 
     tileFirstReasonedAnswer: "Erste begründete Antwort",
     tileOnTime: "Rechtzeitig beantwortet",

@@ -14,7 +14,7 @@ import { VerdictChip, idViewerOf } from "./parts";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./Projects.module.css";
 
-const days = (n: number | null, t: T, locale: Locale) => (n === null ? "—" : t("projects.waitDays", { count: n, value: fmtNumber(n, locale) }));
+const days = (n: number | null, t: T, locale: Locale) => (n === null ? "" : t("projects.waitDays", { count: n, value: fmtNumber(n, locale) }));
 const waitSub = (w: WaitStat, still: string, t: T) => (w.n ? t("projects.waitMedian", { count: w.n }) : t("projects.waitNothing")) + (w.waiting ? " · " + w.waiting + " " + still : "");
 
 export function ProjectMovement() {
@@ -55,8 +55,8 @@ export function ProjectMovement() {
 
       <SectionCard title={t("projects.waitTitle")} hint={t("projects.waitSub")}>
         <div className={ui.grid2}>
-          <div className={ui.tile}><div className={ui.tileV}>{days(waits.started.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDecidedStarted")} · {waitSub(waits.started, t("projects.waitNotStarted"), t)}</div></div>
-          <div className={ui.tile}><div className={ui.tileV}>{days(waits.measured.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDoneMeasured")} · {waitSub(waits.measured, t("projects.waitFirstCheck"), t)}</div></div>
+          {waits.started.medianDays !== null && <div className={ui.tile}><div className={ui.tileV}>{days(waits.started.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDecidedStarted")} · {waitSub(waits.started, t("projects.waitNotStarted"), t)}</div></div>}
+          {waits.measured.medianDays !== null && <div className={ui.tile}><div className={ui.tileV}>{days(waits.measured.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDoneMeasured")} · {waitSub(waits.measured, t("projects.waitFirstCheck"), t)}</div></div>}
           <div className={ui.tile}><div className={ui.tileV} data-hot={L.projectsEscalated ? "true" : undefined}>{L.projectsEscalated}</div><div className={ui.tileL}>{t("projects.waitEscalated")}</div></div>
           <div className={ui.tile}><div className={ui.tileV} data-hot={L.measuresOwed ? "true" : undefined}>{L.measuresOwed}</div><div className={ui.tileL}>{t("projects.waitOwed")}</div></div>
           <div className={ui.tile}><div className={ui.tileV}>{L.unmeasured}</div><div className={ui.tileL}>{t("projects.waitUnmeasured")}</div></div>

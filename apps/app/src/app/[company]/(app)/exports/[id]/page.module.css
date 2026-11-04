@@ -1,6 +1,6 @@
 /* The download page: a header and one section card holding what the file is, its size, until when, and the button. */
 .page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 40rem; margin: 0 auto; padding: 24px 0; }
-.text { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #1c1c1e; }
+.text { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink); }
 .hint { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: #6e6e73; }
 .download { display: inline-flex; align-items: center; justify-content: center; align-self: flex-start; height: 36px; padding-inline: 14px; border-radius: 8px; background: var(--nh-brand); color: var(--nh-on-brand); font-size: var(--nh-fs-sm); font-weight: 600; text-decoration: none; }
 .download:hover { background: var(--nh-brand-hover); }

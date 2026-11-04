@@ -39,7 +39,7 @@ export type OverviewIdeaProps = {
 
 export const Cites = ({ ns, dark }: { ns: number[]; dark?: boolean }) => <>{ns.map((c) => <a key={c} className={dark ? s.c2 : s.c} href="#aisrc">{c}</a>)}</>;
 const Star = ({ size }: { size: number }) => (
-  <svg className={s.svg2} width={size} height={size} viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" fill="#007aff" /></svg>
+  <svg className={s.svg2} width={size} height={size} viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" fill="var(--nh-brand)" /></svg>
 );
 
 export function OverviewIdea(p: OverviewIdeaProps) {
@@ -67,7 +67,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
             <span className={s.raised}>{t("team.ideaRaised", { raised: p.raised, dept: p.dept })}</span>
             {!phone && (
               <button type="button" className={s.closeOverview2} onClick={p.onClose} title={t("team.ideaCloseOverview")} aria-label={t("team.ideaBackOverview")}>
-                <svg className={s.svg} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                <svg className={s.svg} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             )}
           </div>
@@ -147,7 +147,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
               {/* The context and its facts are one section: the paragraph, then the grouped facts. */}
               <div className={s.sec} data-tone="context">
                 <span className={s.dept}>{t("team.ideaContext")}</span>
-                <p className={s.context}>{brief.context || "—"}</p>
+                {brief.context && <p className={s.context}>{brief.context}</p>}
                 {brief.prompts.length > 0 && (
                   <div className={s.kv}>
                     {brief.prompts.map((pr, k) => (
@@ -201,7 +201,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                       <span className={s.ringWrap}>
                         <svg viewBox="0 0 72 72" width="52" height="52" className={s.ring} aria-hidden="true">
                           <circle cx="36" cy="36" r="30" fill="none" stroke="#e3eaf7" strokeWidth="10" strokeLinecap="round" strokeDasharray="141.4 188.5" />
-                          <circle className={s.circle} cx="36" cy="36" r="30" fill="none" stroke="#007aff" strokeWidth="10" strokeLinecap="round" strokeDasharray={((sc.value / 100) * 141.4).toFixed(1) + " 188.5"} />
+                          <circle className={s.circle} cx="36" cy="36" r="30" fill="none" stroke="var(--nh-brand)" strokeWidth="10" strokeLinecap="round" strokeDasharray={((sc.value / 100) * 141.4).toFixed(1) + " 188.5"} />
                         </svg>
                         <span className={s.ringNum}>{sc.value}</span>
                       </span>
@@ -221,11 +221,11 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                           <div className={s.div51}>
                             <svg className={s.svg3} viewBox="0 0 72 72">
                               <circle cx="36" cy="36" r="30" fill="none" stroke="#e3eaf7" strokeWidth="10" strokeLinecap="round" strokeDasharray="141.4 188.5" />
-                              <circle className={s.circle} cx="36" cy="36" r="30" fill="none" stroke="#007aff" strokeWidth="10" strokeLinecap="round" strokeDasharray={((sc.value / 100) * 141.4).toFixed(1) + " 188.5"} style={{ animationDelay: i * 70 + "ms" }} />
+                              <circle className={s.circle} cx="36" cy="36" r="30" fill="none" stroke="var(--nh-brand)" strokeWidth="10" strokeLinecap="round" strokeDasharray={((sc.value / 100) * 141.4).toFixed(1) + " 188.5"} style={{ animationDelay: i * 70 + "ms" }} />
                             </svg>
                             <div className={s.div52}><span className={s.value2} data-long={sc.value >= 100}>{sc.value}</span><span className={s.n100}>/ 100</span></div>
                             <button type="button" className={s.toggle} onClick={() => setOpenScore(on ? null : i)} title={t("team.ideaShowReasoning")} aria-label={on ? t("team.ideaHideReasoningFor", { label: sc.label }) : t("team.ideaShowReasoningFor", { label: sc.label })} aria-expanded={on}>
-                              <svg className={s.svg4} viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                              <svg className={s.svg4} viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                             </button>
                           </div>
                           {on && <><div className={s.div53} />{i > 0 && <div className={s.div54} />}{i < brief.scores.length - 1 && <div className={s.div55} />}</>}
@@ -259,7 +259,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                 ) : (
                   <>
                     <div className={s.div10}>
-                      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" fill="#007aff" /></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" fill="var(--nh-brand)" /></svg>
                       <span className={s.span7}>{t("team.ideaAiFound")}</span>
                     </div>
                     <div className={s.div62}>

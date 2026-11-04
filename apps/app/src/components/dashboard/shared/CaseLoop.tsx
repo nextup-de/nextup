@@ -8,14 +8,13 @@ import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { standingOn, versionsOf } from "@/components/dashboard/derive";
 import { useLocale, useT } from "@/i18n/client";
-import { Avatar } from "@/components/dashboard/shared/primitives";
 import { roundState, scoreVersions, versionReader } from "@/features/cases/discussion";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { projectStatus, raisedWith } from "@/features/cases/rows";
 import { onDeskOf } from "@/features/cases/selectors";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
-import { SectionCard } from "@/components/ui/elements";
+import { PersonFace, SectionCard } from "@/components/ui/elements";
 import styles from "./CaseLoop.module.css";
 
 // "Accepted on 14 Oct by T. Vogel → P-12 Shorter changeover · In progress" - or the no and its why.
@@ -61,7 +60,7 @@ export function DiscussionPanel({ c }: { c: ReducedCase }) {
       {d.missing && <p className={styles.missing}><span className={styles.k}>{t("dashboard.loopMissing")}</span>{d.missing}</p>}
       <div className={styles.people}>
         {people.map((n, i) => (
-          <span key={n} className={styles.who}><Avatar name={n} size="sm" />{n}{i === 0 && <span className={styles.whoNote}>{t("dashboard.loopRaisedIt")}</span>}</span>
+          <span key={n} className={styles.who}><PersonFace name={n} size="sm" />{n}{i === 0 && <span className={styles.whoNote}>{t("dashboard.loopRaisedIt")}</span>}</span>
         ))}
       </div>
       <span className={styles.small}>{t("dashboard.loopStartedBy", { by: d.by, date: f(d.startedDay), n: S.rules.discussEveryDays, rounds: rs.of })}</span>
@@ -136,9 +135,9 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
         })}
       </ol>
       {versions.length > 1 && (
-        <details className={styles.older}>
+        <details className={styles.older} open>
           <summary>{t("dashboard.loopReadEarlier")}</summary>
-          {versions.slice(0, -1).map((v) => <div key={v.version} className={styles.oldText}><span className={styles.k}>v{v.version}</span>{v.body || "—"}</div>)}
+          {versions.slice(0, -1).map((v) => <div key={v.version} className={styles.oldText}><span className={styles.k}>v{v.version}</span>{v.body}</div>)}
         </details>
       )}
       {editing && draft && (

@@ -4,6 +4,7 @@
 // how far the board is, what is blocked or late, how long a step takes, how long it has run, and the
 // baseline against the latest measure. Read from the reduced project; nothing here is stored.
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { ProgressBar } from "@/components/ui/elements";
 import type { ReducedProject } from "@/features/projects/types";
 import { betterText, boardStats, changeText, columnLabel, fmtNumber, lifecycle, verdictWord } from "@/features/projects/views";
 import { useFormat, useLocale, useT } from "@/i18n/client";
@@ -42,9 +43,7 @@ export function ProjectSummary({ p }: { p: ReducedProject }) {
         <div className={styles.kpi}>
           <dt>{t("projects.kpiStepsDone")}</dt>
           <dd><span className={styles.kpiNum}>{st.by.done}</span><span className={styles.kpiOf}> / {st.total}</span></dd>
-          <div className={styles.segbar} role="img" aria-label={segs.map((c) => st.by[c] + " " + columnLabel(c, locale)).join(", ") || t("projects.noSteps")}>
-            {segs.map((c) => <span key={c} data-col={c} style={{ flexGrow: st.by[c] }} />)}
-          </div>
+          <ProgressBar done={st.by.done} doing={st.by.doing} blocked={st.by.blocked} open={st.by.todo} label={segs.map((c) => st.by[c] + " " + columnLabel(c, locale)).join(", ") || t("projects.noSteps")} />
           <span className={styles.kpiNote}>{st.total ? t("projects.kpiProgress", { pct: st.pct, count: st.by.doing }) : t("projects.kpiAddSteps")}</span>
         </div>
         <div className={styles.kpi} data-hot={st.by.blocked > 0 ? "true" : undefined}>
@@ -57,11 +56,11 @@ export function ProjectSummary({ p }: { p: ReducedProject }) {
           <dd><span className={styles.kpiNum}>{st.late}</span></dd>
           <span className={styles.kpiNote}>{st.unowned ? t("projects.kpiUnowned", { count: st.unowned }) : t("projects.kpiAllOwned")}</span>
         </div>
-        <div className={styles.kpi}>
+        {st.cycleDays !== null && <div className={styles.kpi}>
           <dt>{t("projects.cycleTime")}</dt>
-          <dd><span className={styles.kpiNum}>{st.cycleDays === null ? "-" : fmtNumber(st.cycleDays, locale)}</span>{st.cycleDays !== null && <span className={styles.kpiOf}> {t("projects.unitDays")}</span>}</dd>
+          <dd><span className={styles.kpiNum}>{fmtNumber(st.cycleDays, locale)}</span><span className={styles.kpiOf}> {t("projects.unitDays")}</span></dd>
           <span className={styles.kpiNote}>{t("projects.kpiCycleNote", { count: st.doneWeek })}</span>
-        </div>
+        </div>}
         <div className={styles.kpi}>
           <dt>{running !== null ? (p.doneDay !== null ? t("projects.kpiTook") : t("projects.status_running")) : t("projects.kpiOpenFor")}</dt>
           <dd><span className={styles.kpiNum}>{running ?? S.day - p.openedDay}</span><span className={styles.kpiOf}> {t("projects.unitDays")}</span></dd>

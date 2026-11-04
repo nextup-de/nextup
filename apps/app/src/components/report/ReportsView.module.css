@@ -1,26 +1,26 @@
 .wrap { display: grid; gap: 16px; max-width: 880px; }
-.empty { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #6e6e73; }
+.empty { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-mute); }
 
 .list { list-style: none; display: grid; padding: 0; margin: 0; }
-.item { display: grid; gap: 8px; padding: 16px 0; border-top: 1px solid #f0f0f3; }
+.item { display: grid; gap: 8px; padding: 16px 0; border-top: 1px solid var(--nh-line-soft); }
 .item:first-child { padding-top: 0; border-top: 0; }
 .item:last-child { padding-bottom: 0; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.label { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); font-weight: 600; color: #6e6e73; }
-.kind { font-size: var(--nh-fs-sm); color: #6e6e73; }
-.status { margin-left: auto; font-size: var(--nh-fs-xs); font-weight: 600; border-radius: 999px; padding: 3px 10px; background: #f2f2f7; color: #3a3a3c; }
-.status[data-status="in_progress"] { background: #eaf3ff; color: var(--nh-brand); }
-.status[data-status="closed"] { color: #8e8e93; }
-.text { margin: 0; font-size: var(--nh-fs-md); color: #1b1d22; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.expected { margin: 0; font-size: var(--nh-fs-sm); color: #3a3a3c; line-height: 20px; white-space: pre-wrap; }
-.meta { font-size: var(--nh-fs-sm); color: #6e6e73; }
+.label { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
+.kind { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.status { margin-left: auto; font-size: var(--nh-fs-xs); font-weight: 600; border-radius: 999px; padding: 3px 10px; background: var(--nh-fill); color: var(--nh-ink-2); }
+.status[data-status="in_progress"] { background: var(--nh-brand-tint); color: var(--nh-brand); }
+.status[data-status="closed"] { color: var(--nh-mute-2); }
+.text { margin: 0; font-size: var(--nh-fs-md); color: var(--nh-ink); line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.expected { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 20px; white-space: pre-wrap; }
+.meta { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .shotLink { display: block; max-width: 320px; }
-.shot { display: block; width: 100%; border-radius: 8px; border: 1px solid #e5e5ea; }
+.shot { display: block; width: 100%; border-radius: 8px; border: 1px solid var(--nh-line); }
 
 .replies { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 8px; }
-.reply { background: #f7f7f9; border-radius: 8px; padding: 10px 14px; }
-.replyHead { font-size: var(--nh-fs-sm); font-weight: 600; color: #3a3a3c; }
-.replyText { margin: 3px 0 0; font-size: var(--nh-fs-md); color: #1b1d22; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply { background: var(--nh-surface); border-radius: 8px; padding: 10px 14px; }
+.replyHead { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); }
+.replyText { margin: 3px 0 0; font-size: var(--nh-fs-md); color: var(--nh-ink); line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 @media (max-width: 760px) {
   .status { margin-left: 0; }
@@ -28,5 +28,6 @@
 }
 
 /* Who of the NextUp team is on it. */
-.assignee { font-weight: 600; color: #1b1d22; }
-.assignee[data-assigned="no"] { font-weight: 400; color: #6e6e73; }
+.assignee { font-weight: 600; color: var(--nh-ink); }
+.assignee[data-assigned="no"] { font-weight: 400; color: var(--nh-mute); }
+.lede { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); }

@@ -1,13 +1,13 @@
 /* The person page in the house look: a back link and one section card with the person's face, name, role and unit. */
 .page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 720px; margin: 0 auto; min-width: 0; }
-.back { align-self: flex-start; font-size: var(--nh-fs-sm); font-weight: 600; color: #6e6e73; text-decoration: none; }
-.back:hover { color: #1c1c1e; }
+.back { align-self: flex-start; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); text-decoration: none; }
+.back:hover { color: var(--nh-brand-ink); }
 .back:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .hero { display: flex; align-items: center; gap: 18px; }
 .hero > :first-child { width: 64px; height: 64px; font-size: var(--nh-fs-xl); }
 .text { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
-.name { margin: 0; font-size: var(--nh-fs-3xl); line-height: 34px; font-weight: 600; letter-spacing: -0.02em; color: #1b1d22; overflow-wrap: anywhere; }
-.text p { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: var(--nh-fs-md); color: #1c1c1e; }
-.label { margin-right: 6px; font-size: var(--nh-fs-sm); color: #6e6e73; }
-.sep { color: #c7c7cc; }
+.name { margin: 0; font-size: var(--nh-fs-3xl); line-height: 34px; font-weight: 600; letter-spacing: -0.02em; color: var(--nh-ink); overflow-wrap: anywhere; }
+.text p { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.label { margin-right: 6px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.sep { color: var(--nh-ghost); }
 @media (max-width: 760px) { .hero { flex-direction: column; align-items: flex-start; } }

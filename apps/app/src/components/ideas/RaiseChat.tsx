@@ -73,7 +73,7 @@ export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalys
                     {m.idea.details.map((d) => <li key={d.key + d.value} className={s.askDetail}><span className={s.askKey}>{d.key}</span>{d.value}</li>)}
                   </ul>
                 )}
-                {m.note && <span className={s.note}><Solid name="sparkle" size={8.25} fill="#007aff" />{m.note}</span>}
+                {m.note && <span className={s.note}><Solid name="sparkle" size={8.25} fill="var(--nh-brand)" />{m.note}</span>}
                 {m.read && !m.full && <ReadCard r={m.read} onAnalysis={onAnalysis} />}
                 {m.read && m.read.open.length > 0 && <Unclear open={m.read.open} onAsk={onAsk} />}
                 {m.asked && m.asked.length > 0 && <Unclear open={m.asked} onAsk={onAsk} past />}
@@ -107,7 +107,7 @@ function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
   return (
     <div className={s.read} role="group" aria-label={t("ideas.chatAnalysis")}>
       <div className={s.readHead}>
-        <Solid name="sparkle" size={11.25} fill="#007aff" />
+        <Solid name="sparkle" size={11.25} fill="var(--nh-brand)" />
         <span className={s.readTitle}>{t("ideas.chatAnalysis")}</span>
       </div>
       {rows.length ? (
@@ -184,7 +184,7 @@ function Rail({ gaps, onAsk }: { gaps: Topic[]; onAsk: (g: Topic) => void }) {
               <span role="button" tabIndex={0} data-rail-seg="1" className={s.seg} data-s={g.status} data-hot={hover === g.id || open === g.id} aria-label={g.label + " — " + t(STATUS[g.status])} aria-expanded={open === g.id}
                 onMouseEnter={() => setHover(g.id)} onMouseLeave={() => setHover((h) => (h === g.id ? null : h))}
                 onClick={() => setOpen((o) => (o === g.id ? null : g.id))} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((o) => (o === g.id ? null : g.id)); } }}>
-                {g.status === "clear" && <svg width="7.5" height="7.5" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5.2l2 2 4-4.4" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                {g.status === "clear" && <svg width="7.5" height="7.5" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5.2l2 2 4-4.4" fill="none" stroke="var(--nh-on-brand)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                 {g.status === "active" ? String(active + 1) : g.status === "unknown" ? "?" : ""}
                 {hover === g.id && open !== g.id && <span className={s.tip}>{g.label}</span>}
                 {open === g.id && (

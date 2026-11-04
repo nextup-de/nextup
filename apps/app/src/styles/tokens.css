@@ -14,11 +14,6 @@
   --nh-mute: #6e6e73;
   --nh-mute-2: #8e8e93;
   --nh-ghost: #c7c7cc;       /* chevrons, disabled */
-  --nh-dark: #1a1a17;        /* dark panel */
-  --nh-dark-2: #232320;
-  --nh-dark-line: #2c2c27;
-  --nh-on-dark: #fbfbf9;
-  --nh-on-dark-mute: #a0a099;
   --nh-accent: #ff5a1f;      /* time: due now, overdue, worsening */
   /* The blue. Change these values to change the blue everywhere: no file outside this one names a blue. */
   --nh-brand: #0b70d1;        /* primary button, selected states, the current place */

@@ -63,7 +63,7 @@ export function ProfileView({ m365, mailPrefs }: { m365?: M365CardData | null; m
 
   return <div className={styles.page}>
     <Link href={href("/overview")} className={styles.back}>{t("profile.backOverview")}</Link>
-    <PageHeader title={t("profile.myProfile")} action={<span className={styles.company}>{tenant.name}</span>} />
+    {ctx.serverMode ? <><h1 className="nh-sr">{t("profile.myProfile")}</h1><span className={styles.company}>{tenant.name}</span></> : <PageHeader title={t("profile.myProfile")} action={<span className={styles.company}>{tenant.name}</span>} />}
 
     <SectionCard name="identity">
       <section className={styles.identity} aria-labelledby="profile-name">

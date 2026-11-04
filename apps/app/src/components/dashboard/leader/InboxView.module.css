@@ -10,12 +10,12 @@
   display: flex; flex-direction: column;
   font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased;
   --ease: cubic-bezier(.2, .8, .2, 1);
-  --c-ink: #1c1c1e; --c-title: #1b1d22; --c-ink-2: #3a3a3c; --c-mute: #6e6e73;
-  --c-fill: #f2f2f7; --c-sep-head: #e5e5ea; --c-sep: #d1d1d6; --c-hover: #f7f7f9; --c-divider: #f0f0f3;
-  --c-late: #ff3b30; --c-left: #007aff;
+  --c-ink: var(--nh-ink); --c-title: var(--nh-ink); --c-ink-2: var(--nh-ink-2); --c-mute: var(--nh-mute);
+  --c-fill: var(--nh-fill); --c-sep-head: var(--nh-line); --c-sep: var(--nh-line-2); --c-hover: var(--nh-surface); --c-divider: var(--nh-line-soft);
+  --c-late: #ff3b30; --c-left: var(--nh-brand);
   --col-w: 300px; /* the open list and the item's side column (IdeaDetail .side) */
   /* The reasoning panels: grey. */
-  --p-bg: #f7f7f9; --p-fg: #1c1c1e; --p-sub: #8e8e93; --p-track: #e5e5ea; --p-bar: #007aff; --p-gauge: #007aff; --p-hl: #0a84ff;
+  --p-bg: var(--nh-surface); --p-fg: var(--nh-ink); --p-sub: var(--nh-mute-2); --p-track: var(--nh-line); --p-bar: var(--nh-brand); --p-gauge: var(--nh-brand); --p-hl: #0a84ff;
 }
 .page { transition: width 420ms var(--ease), margin-left 420ms var(--ease); }
 /* Open, the inbox fills the screen below the shell's 60px bar, --nh-gap (12-18px) from the sides
@@ -78,9 +78,9 @@
 .tools { display: flex; align-items: center; gap: 6px; transition: opacity 380ms var(--ease); }
 .page[data-tucked="true"] .tools { opacity: 0; pointer-events: none; }
 /* Filter / Sort: dark pills with an icon and a label (the Overview's toggles); docked beside an open item they fold to icon circles. */
-.tool { height: 32px; flex: none; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 0; border-radius: var(--radius-sm, 999px); background: #111; color: #fff; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; box-shadow: 0 1px 2px rgb(40 60 100 / 0.08); transition: background 0.15s, padding 380ms var(--ease), transform 160ms cubic-bezier(.2,.8,.2,1); }
+.tool { height: 32px; flex: none; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 0; border-radius: var(--radius-sm, 999px); background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; box-shadow: 0 1px 2px rgb(40 60 100 / 0.08); transition: background 0.15s, padding 380ms var(--ease), transform 160ms cubic-bezier(.2,.8,.2,1); }
 .tool svg { flex: none; }
-.tool:hover { background: #3a3a3c; }
+.tool:hover { background: var(--nh-brand-line); }
 .tool:active { transform: scale(.97); }
 .page[data-open="true"] .tool { width: 32px; padding: 0; }
 .page[data-open="true"] .toolLabel { display: none; }
@@ -122,13 +122,13 @@
 .rowMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .rowTitle { font-size: var(--nh-fs-lg); font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; text-wrap: pretty; transition: font-size 380ms var(--ease), color 380ms var(--ease); }
 .rowWho { font-size: var(--nh-fs-md); line-height: 1.35; color: var(--c-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: font-size 380ms var(--ease), color 380ms var(--ease); }
-.rowRole { color: #8e8e93; transition: color 380ms var(--ease); }
+.rowRole { color: var(--nh-mute-2); transition: color 380ms var(--ease); }
 .rowRight { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-top: 2px; }
-.sent { font-size: var(--nh-fs-md); color: #8e8e93; white-space: nowrap; transition: font-size 380ms var(--ease), color 380ms var(--ease); }
+.sent { font-size: var(--nh-fs-md); color: var(--nh-mute-2); white-space: nowrap; transition: font-size 380ms var(--ease), color 380ms var(--ease); }
 .badge { font-size: var(--nh-fs-xs); font-weight: 600; border-radius: var(--radius-sm, 999px); padding: 3px 9px; white-space: nowrap; transition: font-size 380ms var(--ease), padding 380ms var(--ease), color 380ms var(--ease), background-color 380ms var(--ease); }
 .badge[data-tone="late"] { color: var(--c-late); background: rgb(255 59 48 / 0.12); }
 .badge[data-tone="overdue"] { color: var(--c-mute); background: rgb(110 110 115 / 0.12); }
-.badge[data-tone="left"] { color: var(--c-left); background: rgb(0 122 255 / 0.12); }
+.badge[data-tone="left"] { color: var(--c-left); background: color-mix(in srgb, var(--nh-brand) 12%, transparent); }
 .badge[data-tone="paused"] { color: var(--c-mute); background: var(--c-fill); }
 .page[data-open="true"] .rowTitle { font-size: var(--nh-fs-md); }
 .page[data-open="true"] :is(.rowWho, .sent) { font-size: var(--nh-fs-sm); }

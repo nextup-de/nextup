@@ -9,8 +9,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
-import { Avatar } from "@/components/dashboard/shared/primitives";
-import { Banner, PageHeader, Tabs as TabBar } from "@/components/ui/elements";
+import { Banner, PageHeader, PersonFace, Tabs as TabBar } from "@/components/ui/elements";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { holdsRole } from "@/features/auth/identity";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
@@ -168,7 +167,7 @@ function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
         title={p.title}
         action={
           <div className={styles.faces} aria-label={p.members.length ? t("projects.facesLabelTeam", { lead: p.lead, team: p.members.join(", ") }) : t("projects.facesLabel", { lead: p.lead })}>
-            <span className={styles.faceStack}>{team.slice(0, 5).map((n) => <Avatar key={n} name={n} size="sm" />)}</span>
+            <span className={styles.faceStack}>{team.slice(0, 5).map((n) => <PersonFace key={n} name={n} size="sm" />)}</span>
             <span className={styles.faceText}><span className={styles.strong}>{p.lead}</span> {t("projects.leadsSuffix")}{p.members.length ? " · " + t("projects.onTheTeam", { count: p.members.length + 1 }) : ""}</span>
           </div>
         }

@@ -22,9 +22,9 @@
 .down { transform: rotate(-90deg); }
 .step { display: flex; gap: 6px; }
 .tabs { position: relative; flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; border-radius: var(--radius-sm, 999px); background: var(--c-fill); }
-.thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 3); border-radius: var(--radius-sm, 999px); background: var(--c-ink); box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); will-change: transform; }
+.thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 3); border-radius: var(--radius-sm, 999px); background: var(--nh-brand); box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); will-change: transform; }
 .tab { position: relative; z-index: 1; height: 30px; border: 0; background: transparent; font: inherit; font-size: var(--nh-fs-md); font-weight: 600; color: var(--c-ink-2); cursor: pointer; transition: color 200ms ease; }
-.tab[data-on="true"] { color: #fff; }
+.tab[data-on="true"] { color: var(--nh-on-brand); }
 
 /* ── three pages side by side; each scrolls on its own ── */
 .pager { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-behavior: smooth; overscroll-behavior-x: contain; scrollbar-width: none; }
@@ -68,7 +68,7 @@
 .dockLabel { display: flex; align-items: center; gap: 4px; font-size: var(--nh-fs-sm); color: var(--c-mute); }
 .dockLabel svg { color: var(--c-left); }
 .dockSub { font-size: var(--nh-fs-lg); font-weight: 600; color: var(--c-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.decide { flex: none; height: 44px; padding: 0 24px; border: 0; border-radius: var(--radius-sm, 999px); background: var(--c-ink); color: #fff; font: inherit; font-size: var(--nh-fs-lg); font-weight: 600; cursor: pointer; transition: transform 160ms var(--ease); }
+.decide { flex: none; height: 44px; padding: 0 24px; border: 0; border-radius: var(--radius-sm, 999px); background: var(--nh-brand); color: var(--nh-on-brand); font: inherit; font-size: var(--nh-fs-lg); font-weight: 600; cursor: pointer; transition: transform 160ms var(--ease); }
 .decide:active { transform: scale(.96); }
 
 /* ── bottom sheet ── */
@@ -81,14 +81,14 @@
 }
 /* The whole top strip is the handle; touch-action: none so a drag on it moves the sheet, not the page. */
 .handle { flex: none; align-self: stretch; height: 32px; margin: 0; padding: 0; border: 0; border-radius: var(--radius-md, 22px) var(--radius-md, 22px) 0 0; background: none; cursor: grab; position: relative; touch-action: none; }
-.handle::before { content: ""; position: absolute; left: calc(50% - 18px); width: 36px; top: 12px; height: 5px; border-radius: 3px; background: #d1d1d6; }
+.handle::before { content: ""; position: absolute; left: calc(50% - 18px); width: 36px; top: 12px; height: 5px; border-radius: 3px; background: var(--nh-line-2); }
 .sheetBody > * { flex: none; }
 .sheetBody { overflow-y: auto; overscroll-behavior: contain; padding: 4px 18px calc(22px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; }
 .members { display: flex; flex-direction: column; }
 .scoreTabs { display: flex; gap: 6px; overflow-x: auto; margin: 0 -18px; padding: 0 18px 2px; scroll-padding-inline: 18px; scrollbar-width: none; }
 .scoreTabs::-webkit-scrollbar { display: none; }
 .scoreTab { flex: none; display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 12px 4px 4px; border: 0; border-radius: var(--radius-sm, 999px); background: var(--c-fill); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--c-ink-2); cursor: pointer; }
-.scoreTab[data-on="true"] { background: var(--c-ink); color: #fff; }
+.scoreTab[data-on="true"] { background: var(--nh-brand); color: var(--nh-on-brand); }
 .scoreTabNum { min-width: 26px; height: 26px; padding: 0 4px; box-sizing: border-box; border-radius: var(--radius-sm, 999px); background: #fff; color: var(--c-ink); font-size: var(--nh-fs-xs); display: flex; align-items: center; justify-content: center; }
 .reason { display: flex; flex-direction: column; gap: 16px; animation: fadeIn 240ms ease; }
 .reasonHead { display: flex; align-items: center; gap: 14px; }

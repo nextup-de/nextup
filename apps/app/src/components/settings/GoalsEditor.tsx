@@ -6,6 +6,7 @@ import type { GoalRow, UnitRow } from "@/features/knowledge";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { addGoalAction, removeGoalAction, updateGoalAction, type GoalResult } from "@/server/actions/settings/goals";
+import { DeptChip } from "@/components/ui/elements";
 import styles from "./GoalsEditor.module.css";
 
 type Props = { slug: string; goals: GoalRow[]; units: UnitRow[] };
@@ -78,7 +79,7 @@ export function GoalsEditor({ slug, goals, units }: Props) {
 
       {groups.map((group) => (
         <div key={group.key}>
-          <h3 className={styles.scope}>{group.label}</h3>
+          <h3 className={styles.scope}>{group.key === "company" ? group.label : <DeptChip name={group.label} />}</h3>
           <ul className={styles.list}>
             {group.rows.map((g) => (
               <li key={g.id} className={styles.row} data-testid={`settings-rules-goal-${g.id}`}>

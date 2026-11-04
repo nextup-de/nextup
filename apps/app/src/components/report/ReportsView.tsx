@@ -34,7 +34,7 @@ export function ReportsView({ tickets, screenshotBase, offline, admin = false }:
   const when = (d: Date) => format.date(d, "dateTime");
   return (
     <section className={styles.wrap}>
-      {!admin && <PageHeader title={t("report.listTitle")} lede={t("report.listSub")} />}
+      {!admin && (offline ? <PageHeader title={t("report.listTitle")} lede={t("report.listSub")} /> : <><h1 className="nh-sr">{t("report.listTitle")}</h1><p className={styles.lede}>{t("report.listSub")}</p></>)}
 
       <SectionCard>
       {offline ? (

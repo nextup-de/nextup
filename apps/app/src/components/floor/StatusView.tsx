@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useFormat, useT } from "@/i18n/client";
 import { floorReplyAction, floorStatusAction } from "@/server/actions/floor-status";
 import type { StatusView as View } from "@/features/floor/status";
+import { ProgressBar } from "@/components/ui/elements";
 import { FloorKeypad } from "./FloorKeypad";
 import floor from "./Floor.module.css";
 import styles from "./StatusView.module.css";
@@ -83,9 +84,7 @@ export function StatusView({ slug }: { slug: string }) {
     <div className={styles.wrap} data-testid="floor-status-view">
       <h1 className={floor.heading}>{view.title}</h1>
       <p className={floor.place}>{meta}</p>
-      <div className={styles.track} role="img" aria-label={names[at]}>
-        {names.map((n, i) => <span key={n} className={`${styles.bar} ${i < at || at === 2 ? styles.done : i === at ? styles.now : ""}`} />)}
-      </div>
+      <ProgressBar done={at === 2 ? 3 : at} doing={at === 2 ? 0 : 1} open={at === 2 ? 0 : 2 - at} label={names[at]} />
       <div className={styles.steps} aria-hidden="true">{names.map((n) => <span key={n}>{n}</span>)}</div>
 
       {view.decision ? (

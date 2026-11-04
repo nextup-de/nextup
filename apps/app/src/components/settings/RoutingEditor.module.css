@@ -1,9 +1,9 @@
 /* Routing (Paper: "Pilot 02 · Routing and setup"). Shares the card look of settings.module.css. */
 .inlineAdd { display: flex; justify-content: flex-end; }
-.note { display: inline-flex; align-items: center; gap: 8px; font-size: var(--nh-fs-xs); color: #6e6e73; }
+.note { display: inline-flex; align-items: center; gap: 8px; font-size: var(--nh-fs-xs); color: var(--nh-mute); }
 .badge { padding: 2px 8px; border-radius: 6px; background: #fff4e5; color: #b25000; font-weight: 600; }
-.result { display: flex; gap: 12px; padding: 10px 14px; border-radius: 8px; background: #f7f7f9; font-size: var(--nh-fs-sm); line-height: 18px; }
-.foot { margin: 0; padding-inline: 4px; font-size: var(--nh-fs-sm); color: #6e6e73; }
+.result { display: flex; gap: 12px; padding: 10px 14px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-sm); line-height: 18px; }
+.foot { margin: 0; padding-inline: 4px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .empty { align-items: center; text-align: center; }
 
 /* The table. */
@@ -11,20 +11,20 @@
 .table { display: flex; flex-direction: column; }
 .tr {
   display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) 64px 40px;
-  gap: 12px; align-items: start; padding: 14px 20px; border-top: 1px solid #f0f0f3; position: relative;
+  gap: 12px; align-items: start; padding: 14px 20px; border-top: 1px solid var(--nh-line-soft); position: relative;
 }
 .tr:first-child { border-top: 0; }
-.th { padding-block: 16px 12px; font-size: var(--nh-fs-xs); font-weight: 600; color: #6e6e73; }
+.th { padding-block: 16px 12px; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
 .typeCell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.typeName { padding: 0; border: 0; background: none; font: inherit; font-size: var(--nh-fs-md); font-weight: 600; color: #1c1c1e; text-align: left; cursor: pointer; }
+.typeName { padding: 0; border: 0; background: none; font: inherit; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); text-align: left; cursor: pointer; }
 .typeName:hover { text-decoration: underline; }
 .typeName:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .kw { display: flex; flex-wrap: wrap; gap: 6px; font-size: var(--nh-fs-xs); }
-.kw span { padding: 1px 7px; border-radius: 5px; background: #f2f2f7; color: #3a3a3c; }
-.kw em { font-style: normal; color: #8e8e93; }
+.kw span { padding: 1px 7px; border-radius: 5px; background: var(--nh-fill); color: var(--nh-ink-2); }
+.kw em { font-style: normal; color: var(--nh-mute-2); }
 .cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--nh-fs-sm); line-height: 18px; }
-.cellMain { color: #1c1c1e; }
-.cellSub { display: flex; align-items: center; gap: 6px; color: #6e6e73; }
+.cellMain { color: var(--nh-ink); }
+.cellSub { display: flex; align-items: center; gap: 6px; color: var(--nh-mute); }
 .cellChip { display: flex; }
 .wait { font-size: var(--nh-fs-sm); font-weight: 600; }
 
@@ -33,5 +33,5 @@
   .tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 14px 16px; row-gap: 10px; }
   .typeCell { grid-column: 1 / -1; padding-right: 40px; }
   .tr > details { position: absolute; top: 10px; right: 10px; }
-  .cell::before, .wait::before { content: attr(data-label); display: block; font-size: var(--nh-fs-xs); font-weight: 600; color: #8e8e93; }
+  .cell::before, .wait::before { content: attr(data-label); display: block; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute-2); }
 }

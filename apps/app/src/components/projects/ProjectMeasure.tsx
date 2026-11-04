@@ -30,7 +30,7 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
   const r = useRights(p);
   const send = useSend(p);
   const b = p.baseline;
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(true); // the baseline form starts open
   const [none, setNone] = useState(false);
   const [metric, setMetric] = useState("");
   const [unit, setUnit] = useState("");
@@ -62,11 +62,11 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
         <h2 id={"baseline-" + p.id} className={styles.h2}>{t("projects.stageBaseline")}</h2>
         <span className={styles.muted}>{b ? t("projects.baselineTaken", { day: f(b.day), name: b.by }) : t("projects.baselineBefore")}</span>
       </div>
-      {b && !editing && (
+      {b && (
         <div className={styles.baseline}>
           <div className={styles.big}>{b.none ? t("projects.noNumberPossible") : fmtNumber(b.value, locale) + (b.unit ? " " + b.unit : "")}</div>
           <div className={styles.muted}>{b.none ? b.why : baselineText(b, locale).split(" · ").slice(1).join(" · ") + (b.source ? " · " + t("projects.baselineSourceIs", { source: b.source }) : "")}</div>
-          {r.baseline && <button type="button" className={styles.quiet} onClick={() => setEditing(true)}>{t("projects.takeAgain")}</button>}
+          {r.baseline && !editing && <button type="button" className={styles.quiet} onClick={() => setEditing(true)}>{t("projects.takeAgain")}</button>}
         </div>
       )}
       {!b && !r.baseline && <p className={styles.emptyLine}>{t("projects.baselineNotTaken")}</p>}
@@ -173,7 +173,7 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
   const [impact, setImpact] = useState<Record<string, string>>({});
-  const [mode, setMode] = useState<"type" | "import" | null>(serverMode ? null : "type"); // demo mode has only one way in, so the form is open
+  const [mode, setMode] = useState<"type" | "import" | null>("type"); // the form to type a figure starts open
   const [confirming, setConfirming] = useState(false);
   const [importMsg, setImportMsg] = useState<string[]>([]);
   const m = p.measures.find((x) => x.check === c.check);
