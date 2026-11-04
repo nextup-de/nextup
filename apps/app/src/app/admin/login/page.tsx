@@ -4,12 +4,14 @@
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
+import { AuthShell, AuthTitle } from "@/components/auth/AuthShell";
 import { isMicrosoftError, MICROSOFT_ERRORS } from "@/features/auth/entra";
+import { getT } from "@/i18n/server";
 import { companyForFlags } from "@/lib/db/flags";
 import { demoFillAllowed } from "./demo-fill";
 import { companyPrefix, singleCompany } from "@/features/tenant/urls";
 import { microsoftAdminEnabled } from "@/server/microsoft-login";
-import styles from "../admin.module.css";
+import styles from "@/components/auth/forms.module.css";
 
 /**
  * ADMIN_DEMO_FILL=true puts a "Demo code" button in the field so the code does not have to be
@@ -25,25 +27,21 @@ async function demoCode(slug: string | undefined): Promise<string | null> {
 export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   if (await isAdmin()) redirect(process.env.TENANT_MODE === "subdomain" ? "/" : "/admin");
   const { error } = await searchParams;
+  const t = await getT();
   const slug = process.env.COMPANY_SLUG?.trim();
   const microsoft = slug && (await microsoftAdminEnabled()) ? `${companyPrefix(slug)}/login/microsoft?as=admin` : null;
   return (
-    <section className={styles.card}>
-      <h1>Admin</h1>
-      <p className="nh-hint">
-        {singleCompany() !== null
-          ? "Hand out your people’s login codes, switch on Microsoft sign-in, and set what the assistant may read."
-          : "Add a company, hand out its people’s login codes, or remove it."}
-      </p>
+    <AuthShell embedded>
+      <AuthTitle title={t("adminAccess.loginTitle")} sub={singleCompany() !== null ? t("adminAccess.loginScopeCompany") : t("adminAccess.loginScopeStack")} />
       {microsoft ? (
         <>
           {/* A plain link: the sign-in starts on a route handler that redirects to Microsoft. */}
-          <a className="nh-btn nh-btn-primary" href={microsoft}>Continue with Microsoft</a>
-          <p className="nh-hint">Or use the admin code, kept for when Microsoft is not available.</p>
+          <a className="nh-btn nh-btn-primary nh-btn-block" href={microsoft}>{t("auth.continueWithMicrosoft")}</a>
+          <p className="nh-hint">{t("adminAccess.loginMicrosoftOr")}</p>
         </>
       ) : null}
       {isMicrosoftError(error) ? <p className={styles.error} role="alert">{MICROSOFT_ERRORS[error]}</p> : null}
       <AdminLoginForm demoCode={await demoCode(slug)} />
-    </section>
+    </AuthShell>
   );
 }

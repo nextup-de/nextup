@@ -9,10 +9,18 @@ import styles from "./AuthShell.module.css";
 
 // `step`: which login step this is (the transition's direction). `backHref`: where "← Back" goes -
 // may be another site (sellux.ch/login from a company stack), null for no Back link.
-type Props = { side: React.ReactNode; children: React.ReactNode; art?: "hand"; step?: "find" | "company"; backHref?: string | null };
+// `embedded`: the page already sits in a frame of its own (the admin area): only the card, no side panel.
+type Props = { side?: React.ReactNode; children: React.ReactNode; art?: "hand"; step?: "find" | "company"; backHref?: string | null; embedded?: boolean };
 
-export async function AuthShell({ side, children, art, step = "find", backHref = "/" }: Props) {
+export async function AuthShell({ side, children, art, step = "find", backHref = "/", embedded = false }: Props) {
   const t = await getT();
+  if (embedded) {
+    return (
+      <div className={styles.embedded} data-testid="auth-shell">
+        <div className={styles.card}>{children}</div>
+      </div>
+    );
+  }
   if (art === "hand") {
     return (
       <LoginPageTransition key={step} step={step}>
@@ -20,7 +28,7 @@ export async function AuthShell({ side, children, art, step = "find", backHref =
         <Link className={styles.artLogo} href="/" aria-label={t("auth.homeLabel", { name: SITE.name })}>
           <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} priority />
         </Link>
-        <section className={styles.authPanel}>
+        <section className={styles.authPanel} data-testid="auth-shell">
           <aside className={styles.art}>
             <Image
               className={styles.hand}
@@ -44,7 +52,7 @@ export async function AuthShell({ side, children, art, step = "find", backHref =
   }
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-testid="auth-shell">
       <Ground />
       <aside className={styles.side}>
         <Link className={styles.logo} href="/" aria-label={t("auth.homeLabel", { name: SITE.name })}>
