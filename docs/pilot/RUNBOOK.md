@@ -1,0 +1,279 @@
+# Pilot runbook: from an empty VM to stage pilot
+
+> **Updated 2026-11-04.** For NextUp's operator (Kevin or whoever Kevin names). One customer, one stack, one VM. Every
+> command here exists on `main`; where something is not built yet it says *planned for the pilot*. Commands are
+> explained once in the stack, ops and customer docs; this runbook gives the order and links there.
+
+**A green checklist does not authorise a pilot.** The Go-live page checks what the app can see. It cannot see a signed
+agreement, a works council decision, a restore test, an open security finding or an access key someone forgot. Those are
+checked by hand in the joint setup session ([below](#joint-setup-session)) and nobody moves the company to pilot before
+they are. The app can show ready while a contract is missing.
+
+## The order
+
+| # | Step | Who | Where it is described |
+|---|---|---|---|
+| 1 | Hardened VM, DNS, deploy user | NextUp (hosted) or the customer's IT (own server) | section 1 |
+| 2 | Install the stack | NextUp or the customer's IT | section 2 |
+| 3 | Write the config file and get the four CSV files | NextUp and the pilot lead | section 3 |
+| 4 | `bootstrap` in sandbox | NextUp | section 4 |
+| 5 | Read the checks, fix what is open | NextUp and the customer's IT | section 5 |
+| 6 | Joint setup session | NextUp, customer IT, pilot lead | [Joint setup session](#joint-setup-session) |
+| 7 | One real test mail | in the session | section 7 |
+| 8 | The switch: sandbox to pilot | the customer's admin | section 8 |
+| 9 | Rollback to sandbox, if needed | the customer's admin | section 9 |
+| 10 | First-week checks | NextUp | section 10 |
+| 11 | Weekly numbers | NextUp and the pilot lead | section 11 |
+| 12 | Moving to live | NextUp, after the contract | section 12 |
+
+## 1. Hardened VM and DNS
+
+- **Size.** 4 vCPU, 16 GB RAM, 160 GB SSD, one plain Linux VM per stack, up to 2,000 people. This is what the stack is
+  sized for; the load run on the test VM is not recorded yet. See `docs/ops/SIZING.md`.
+- **Hardening.** NextUp's `harden.sh` lives in the `nextup-infra` repository, not in this one. It is applied by hand to
+  every pilot VM before anything is installed; see "Before the run", step 1, in `docs/test-phase/RUNBOOK.md`. If the
+  customer hosts the VM, their IT keeps it patched and encrypted (`docs/customer/INSTALL.md`, section 1).
+- **DNS and TLS.** A name for the stack, an `A` record, ports 80 and 443 open, port 22 only from admin addresses. The
+  record exists before the install: Caddy asks for the certificate when the stack starts
+  (`docs/customer/INSTALL.md`, section 3).
+- **Deploy user and release key.** Laid out in `stack/remote/README.md`, sections 1 to 5. The release key can only
+  run `release` and `status`.
+- **Off-box backup.** An S3-compatible bucket and its keys. A backup on the VM's own disk is not a backup against losing
+  the VM (`docs/ops/RPO_RTO.md`).
+
+## 2. Install
+
+As the `deploy` user, with the image tag NextUp names (a 7-character commit id):
+
+```bash
+export BACKUP_S3_ACCESS_KEY_ID=... BACKUP_S3_SECRET_ACCESS_KEY=...
+~/nextup/stack/tests/install-clean.sh --slug acme-pilot --origin https://nextup.acme.example \
+  --images <tag> --backup-repo s3:https://<endpoint>/<bucket>
+```
+
+This runs the real-stage install, then checks health, a backup and a restore. The plain call is
+`stack/install.sh --slug <slug> --origin <url> --stage real --images <tag>`.
+
+- **AI off (the default for a pilot).** Install as above, with no brain option. Nothing calls an AI provider.
+- **AI on: add `--brain-cloud`.** The brain then calls the AI provider with the AWS keys in the stack's `.env`
+  (`--brain-cloud` and `--brain` exclude each other). Only after the data-processing agreement with the provider is
+  signed, and only after the provider was chosen with the steps in `docs/ops/AI_PROVIDER.md`. If neither provider
+  qualifies, the AI stays off. The AI choice in the bootstrap config can only be `off`; switching it on is done in the
+  admin console afterwards, with the agreement date recorded, and the Go-live AI check refuses a model without that date.
+- **Secrets.** `RESTIC_PASSWORD` and `CONNECTOR_VAULT_KEY` go into the password manager now
+  (`docs/customer/INSTALL.md`, section 4).
+- **Cron.** Nightly backup, weekly restore test, health checks every five minutes: `stack/remote/README.md`, section 5,
+  and `docs/ops/monitoring.md`. Set `BACKUP_OFFBOX=required`.
+- A real-stage start creates the company row with the stack's slug, empty, in stage `sandbox`. The bootstrap takes that
+  company over in section 4 (it works on a sandbox company, never on another stage).
+
+## 3. Config file and CSV files
+
+The config is a JSON file; `apps/app/prisma/generators/pilot/README.md` lists every key. Example:
+
+```json
+{
+  "slug": "acme-pilot",
+  "name": "Acme GmbH",
+  "admin": { "name": "Erika Muster", "email": "erika.muster@acme.example" },
+  "calendar": "de-by",
+  "promiseDays": 5,
+  "ai": { "choice": "off" },
+  "structureDir": "./pilot-files",
+  "directory": "entra"
+}
+```
+
+- No secret goes in this file. A key that is not listed is refused, and so is anything that looks like a key, token or
+  password. Mail, directory and sign-in settings are set in the console or in the stack's environment.
+- The four CSV files are `units.csv`, `roles.csv`, `members.csv` and `routes.csv` in `structureDir`. The customer's pilot
+  lead and HR produce them (`ONBOARDING.md`). To see the format or to rehearse, `sample` writes a set:
+
+```bash
+cd apps/app
+npx tsx prisma/generators/pilot/run.ts sample --people 150 --seed 1 --out ./pilot-files
+```
+
+## 4. Bootstrap
+
+Run from `apps/app`, with `DATABASE_URL` in the environment. A customer stack does not publish its database. NextUp
+reaches it the way the test phase does: the database port is opened on `127.0.0.1` of the VM only, an SSH tunnel carries
+it to the operator's machine, and both are closed afterwards (`docs/test-phase/RUNBOOK.md`, "The run"). Use a checkout of
+the same commit as the installed images.
+
+**Always start with a dry run.** It runs the same checks as a real run, prints what a real run would do (`would …`) and
+writes nothing: no company, no row, no codes file. It sends no mail either; the bootstrap never calls the function that
+mails an admin.
+
+```bash
+cd apps/app
+npx tsx prisma/generators/pilot/run.ts bootstrap --config pilot.json --dry-run
+```
+
+It checks the config, the codes file name and every CSV file before the first write, and lists all errors together. Fix
+them all, then run it for real:
+
+```bash
+npx tsx prisma/generators/pilot/run.ts bootstrap --config pilot.json --codes codes.tsv
+```
+
+- **`--codes <file>`** is optional. Without it login codes are made and stored only as hashes and nobody can read them.
+  With it the file is created exclusively with mode `0600` and holds `<email><TAB><code>` for the people who got a code in
+  this run. An existing file is refused before anything is written, so pick a new name every time. Codes never reach the
+  screen, `--json` or a log. Hand the file over through a channel the customer's IT trusts, then delete it. A customer
+  that signs in with Microsoft needs no codes for its people.
+- **A rerun is safe.** It keeps users, code hashes, preferences, AI settings and everything the config does not name,
+  never rotates a code, and resumes an interrupted run without duplicates. The CSV files still win for what they name.
+  An import never deletes. A code made by an interrupted run that never reached the file is lost: issue a new one in the
+  console.
+- **Stage.** A company not in sandbox is refused (exit 1). The bootstrap never moves the stage.
+- **`--json`** gives the same result as data.
+
+Exit codes:
+
+| Code | Meaning | What to do |
+|---|---|---|
+| 0 | Done. Open checks are listed and named; they are not an error. | Section 5. |
+| 1 | Refused (not a sandbox company) or the command failed. | Read the message; do not work around it. |
+| 2 | The config, an option or a CSV file has errors. Nothing was written. | Fix every listed error, dry-run again. |
+| 3 | The directory run failed. Everything before it is done. | Fix the connection (section 5, Directory sync), run again. |
+
+## 5. What each check needs, and which page fixes it
+
+The bootstrap ends with one line per check, `[state] level key: text`. The same checks are on
+`/<company>/settings/go-live`, where each row links to the page that fixes it. *Needed* checks block the switch; a
+check that cannot run (`unknown`) blocks too. *Recommended* checks do not.
+
+| Check | Needed? | Done when | Fixed on |
+|---|---|---|---|
+| Units and roles | needed | at least one unit and every role has a seat | Settings, Org (or the CSV files) |
+| Routes | needed | at least one route and every route's owner role has an active person in a seat | Settings, Routing |
+| Calendar | needed | the company saved its calendar | Settings, Calendar (the config's `calendar` does it) |
+| People can sign in | needed | Microsoft sign-in is on for the company, or every active person has a login code | Settings, Sign-in; Members |
+| Managers' second factor | needed | every active manager who uses a login code has a confirmed second factor | Members |
+| Mail can leave | needed | `SMTP_URL` is set and the relay answers | Notifications; the stack's `.env` |
+| AI | needed | off, or on with a recorded data-processing agreement date; a test model never passes | the console's AI settings |
+| Backups | needed | the last successful backup is off the server and less than 26 hours old | the operator (`stack/backup.sh`), not an app page |
+| Support access | needed | no support grant is open | Settings, Support access |
+| Reminders and digest | recommended | `notifications` is on | Settings, Notifications |
+| Directory sync | recommended | the last run is less than 24 hours old and without an error | the connector settings |
+| Report recipients | recommended | at least one person gets the weekly email | Settings, Pilot report |
+| Baseline | recommended | a baseline is set | the Dashboard |
+
+What the checks do **not** do:
+
+- **Mail can leave** proves the relay is set and answers. It does not prove a mail arrives (section 7).
+- **Backups** shows only the **last successful** backup, read from the status file the backup script writes after a
+  success. A failed attempt leaves the old file, so the check can stay green for up to 26 hours after the first failure.
+  A failed attempt and the restore test are therefore separate steps by hand (the list below).
+- **People can sign in** counts Microsoft being on as enough. People created at first Microsoft sign-in do not exist
+  before it, so there is nobody to count.
+- There is no evidence file and no check for signed agreements, the works council, the restore test, open security
+  findings or residual access. They are on the hand list below.
+
+## Joint setup session
+
+The first pilots are set up together, not by the customer alone. Before the session NextUp installs the stack and runs
+`bootstrap` in sandbox from the customer's CSV files, and the customer's IT connects sign-in, directory and mail with the
+handouts `docs/customer/ENTRA_SETUP.md` or `docs/customer/SUCCESSFACTORS_SETUP.md`. In one session of about half a day
+NextUp, the customer's IT and the pilot lead (who knows the units, roles and routes) check the structure and the routes,
+raise a test case and go through the Go-live checklist. The customer's admin then moves sandbox to pilot. The setup
+wizard stays as it is: it shows what is still missing and serves a company without an import. There is no second wizard.
+
+**What NextUp prepares before the session**
+
+1. The stack is installed and `/api/health` answers 200 with a valid certificate.
+2. A dry run and a real `bootstrap` ran from the customer's files with no CSV error; the output of the checks is saved.
+3. The company is in sandbox. NextUp has read the open checks and knows which need the customer's IT.
+4. The restore test ran (`stack/backup.sh <slug> restore-test`) and its seconds are written down.
+5. The hand list below is printed or open, with Kevin's record of the TST findings in front of him (`README.md`).
+6. A test person for the test mail exists at the customer (an address the IT can read).
+7. A support grant is **not** open and the break-glass window is closed.
+
+**The order within the session**
+
+1. Introductions; who may decide what; who holds the stop button for the pilot (`SUPPORT.md`).
+2. The hand list: agreements and works council first. If one is missing, the session ends as a rehearsal and nobody
+   switches.
+3. Structure: the pilot lead reads the units and roles on the Org page against the real organisation.
+4. Routes: for each route, who owns it and who is the deputy; Routing shows nobody in an owner role as a gap.
+5. People and sign-in: one admin, one manager and one member sign in; a person with no role is refused.
+6. Directory and calendar: the last directory run is green or the CSV files are the source; holidays are right.
+7. The checklist, line by line. Every *needed* line is done or the cause is named.
+8. One real test mail (section 7).
+9. Raise a test case in sandbox as a member, watch it reach the owner's inbox, answer it, read the decision log. Nothing
+   leaves in sandbox; that is the point.
+10. The switch (section 8), if and only if the hand list is clear.
+
+**What the session checks by hand**
+
+| Item | How | Who confirms |
+|---|---|---|
+| Signed agreements | The data-processing agreement is signed by both sides; with the AI on, the AI provider's agreement too. Dates are on the paper. The documents in `docs/compliance/` are drafts for legal review, not signed. | Customer's legal signatory and NextUp |
+| Works council | Where the customer has one, the works agreement is signed before any real person is in the pilot. Directory sync and the pilot report need it. | Customer |
+| Restore test | `stack/backup.sh <slug> snapshots`, then `stack/backup.sh <slug> restore-test <id>`. The seconds are under 3,600 (`docs/ops/RPO_RTO.md`). Read the last backup log for a failed attempt: the Backups check would not show it. | NextUp's operator |
+| Open TST findings | Every finding in `docs/test-phase/findings/` is, in Kevin's written record, fixed, deferred with an owner and a date, or a blocker. A merged task or a passed gate does not replace this. A deferred finding is not an accepted risk for the customer: the customer is told. | Kevin |
+| Residual access | No support grant open (Settings, Support access); `stack/break-glass.sh <slug> status` shows closed; the deploy key is the forced-command key only; test accounts, tokens and tunnels are removed; the `--codes` file is deleted; the database port is closed. | NextUp's operator and the customer's IT |
+
+If anything on this list is unclear, say so out loud and stop. A green checklist does not authorise a pilot.
+
+## 7. One real test mail
+
+In sandbox the app sends no case mail, reminder or report. The Mail check proves the relay answers, not that a mail
+arrives. The test mail is therefore one that does go out in sandbox: **invite the test person** on Settings, Members.
+The invitation mail carries the person's login code and the login address and is sent through the relay at once.
+
+- It arrives at the address the IT can read, not in spam, with the right sender, in the person's language.
+- The link opens the company's login page over HTTPS with a valid certificate.
+- Afterwards deactivate the test person (Members) so the people counts stay true.
+
+The first case mails are checked again in the first week (section 10), because they only leave in pilot.
+
+## 8. The switch
+
+Only a company admin of the customer moves the stage, on `/<company>/settings/go-live`. The page runs every check again
+on the server and refuses if a needed one is open or unknown. NextUp sits next to them; it does not do it for them.
+
+What changes: mails about a case go to the people it concerns; reminders and the daily digest go out only if
+*notifications* is on; the pilot report starts counting (the dialog names the week it counts from); every manager who is active at that
+moment gets the weekly email unless someone chose recipients before. Everyone stays signed in. The move is written to
+the audit log and the Go-live history.
+
+## 9. Rollback to sandbox
+
+A company admin can switch back at any time ("Switch back to sandbox"). Messages stop at once and waiting ones are
+skipped; the pilot report pauses (its weeks stay); everyone is signed out once and signs in again. Data is not
+touched. Use it for a broken mail setup, a wrong structure or a stop decision. The customer's pilot lead can ask for it
+through the stop route in `SUPPORT.md`. After a rollback the reason is written down and the checklist is run again
+before the next switch.
+
+## 10. First-week checks
+
+Day 1, day 2, then twice that week, NextUp looks (with a support grant only if the customer gives one):
+
+- A real case mail arrived at the owner, links work, sender is right. Ask the pilot lead; do not look into cases.
+- `stack/health.sh` has no alert, last night's backup is on the Backups line, the restore test of Sunday passed.
+- Go-live still says *Still ready?* with every needed line done.
+- The Pilot report page loads; the Monday mail went to the chosen managers (07:00 Berlin time, for the week before; on
+  the first working day if Monday is a holiday).
+- Sign-in: nobody stuck; refused people are the people without a role, as intended.
+- Directory sync ran in the last 24 hours, if used.
+- The customer's questions went through the support channel, and each has an answer or a date.
+
+## 11. Weekly numbers
+
+Every Monday NextUp and the pilot lead read the Pilot report (`SUCCESS_METRICS.md`): cases per 10 people, first answer,
+answered on time and use, against the baseline. Units under 5 people are hidden. The `report` command writes one run of
+the weekly mail for a company if the cron missed it:
+
+```bash
+cd apps/app
+npx tsx prisma/generators/pilot/run.ts report --slug acme-pilot --now 2026-11-09T09:00:00+01:00
+```
+
+## 12. Moving to live
+
+Live means a paying customer. A company admin cannot do it. NextUp moves the stage in the admin console after the
+contract is signed and after the review in `SUCCESS_METRICS.md`. Sessions stay when moving between real stages. A
+"Ready for live?" list on Go-live is *planned for the pilot*; until then the same hand list applies, plus: the pilot ran
+as agreed, the external penetration test is done and its findings are handled (Kevin's), and the agreements are signed.
