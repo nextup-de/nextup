@@ -13,7 +13,7 @@ import { loadCalendar } from "../calendar";
 import { getDb } from "../client";
 import { companySeed } from "../companies";
 import { loadSeats } from "../holders";
-import { loadKnowledge } from "../knowledge";
+import { loadKnowledge, loadMembers } from "../knowledge";
 
 type Row = { id: string; seq: number; day: number; ts: Date; type: string; actor: string; actorUserId: string | null; targetId: string | null; payload: unknown };
 
@@ -36,7 +36,7 @@ async function loadBase(companyId: string, now: Date): Promise<Base> {
   ]);
   const day = cal ? workdayOf(now, cal) : company.demoDay;
   const roles = knowledge.roles.map((r) => ({ id: r.id, orgUnitId: r.orgUnitId, reportsToId: r.reportsToId }));
-  return { seed: { ...seed, seats }, ctx: { seats, roles, projects: [] }, day };
+  return { seed: { ...seed, seats }, ctx: { seats, roles, projects: [], members: await loadMembers(companyId) }, day };
 }
 
 export type CaseViewData = {

@@ -1,8 +1,9 @@
 "use client";
 import { useState, useTransition } from "react";
 import { openSupportAccess, revokeSupportAccess } from "@/server/actions/support-access";
+import { Banner, DataTable, PageHeader, SectionCard } from "@/components/ui/elements";
 import { useFormat, useT } from "@/i18n/client";
-import styles from "@/app/admin/admin.module.css";
+import c from "@/app/admin/people/console.module.css";
 
 export type SupportAccessView = {
   /** When the open grant ends (ISO), or null when none is open. */
@@ -35,51 +36,54 @@ export function SupportAccess({ view }: { view: SupportAccessView }) {
     });
 
   return (
-    <>
-      <section className={styles.card} data-testid="console-support-intro">
-        <h1>{t("adminSupport.title")}</h1>
-        <p className="nh-hint">{t("adminSupport.intro")}</p>
-        <p data-testid="console-support-state" role="status">
-          {until ? t("adminSupport.active", { time: f.date(until, "dateTime") }) : t("adminSupport.inactive")}
-        </p>
-        {view.readOnly ? (
-          <p className="nh-hint">{t("adminSupport.viewerReadOnly")}</p>
-        ) : (
-          <div className={styles.grid}>
-            <div>
-              <button className="nh-btn nh-btn-primary" type="button" disabled={pending} onClick={open} data-testid="console-support-open">
-                {until ? t("adminSupport.openAgain") : t("adminSupport.open")}
-              </button>{" "}
-              {until ? (
-                <button className="nh-btn" type="button" disabled={pending} onClick={revoke} data-testid="console-support-revoke">
-                  {t("adminSupport.revoke")}
-                </button>
-              ) : null}
-            </div>
-            {denied ? <p className={styles.error} role="alert">{t("adminSupport.notAllowed")}</p> : null}
+    <div className={c.page}>
+      <PageHeader title={t("adminSupport.title")} />
+      <SectionCard name="support">
+        <div className={c.stack} data-testid="console-support-intro">
+          <p className={c.note}>{t("adminSupport.intro")}</p>
+          <div data-testid="console-support-state" role="status">
+            <Banner tone={until ? "warn" : "quiet"}>
+              {until ? t("adminSupport.active", { time: f.date(until, "dateTime") }) : t("adminSupport.inactive")}
+            </Banner>
           </div>
-        )}
-      </section>
+          {view.readOnly ? (
+            <p className={c.note}>{t("adminSupport.viewerReadOnly")}</p>
+          ) : (
+            <div className={c.stack}>
+              <div className={c.inline}>
+                <button className={c.primary} type="button" disabled={pending} onClick={open} data-testid="console-support-open">
+                  {until ? t("adminSupport.openAgain") : t("adminSupport.open")}
+                </button>
+                {until ? (
+                  <button className={c.btn} type="button" disabled={pending} onClick={revoke} data-testid="console-support-revoke">
+                    {t("adminSupport.revoke")}
+                  </button>
+                ) : null}
+              </div>
+              {denied ? <p className={c.note} data-tone="error" role="alert">{t("adminSupport.notAllowed")}</p> : null}
+            </div>
+          )}
+        </div>
+      </SectionCard>
       {issued ? (
-        <section className={styles.card} data-testid="console-support-code-card">
-          <h2>{t("adminSupport.codeTitle")}</h2>
-          <p><code data-testid="console-support-code">{issued.code}</code></p>
-          <p className="nh-hint">{t("adminSupport.validUntil", { time: f.date(issued.until, "dateTime") })}</p>
-          <p className="nh-hint">{t("adminSupport.codeOnce")}</p>
-        </section>
+        <SectionCard title={t("adminSupport.codeTitle")} name="support-code">
+          <div className={c.codeBox} data-testid="console-support-code-card">
+            <code className={c.code} data-testid="console-support-code">{issued.code}</code>
+            <p className={c.note}>{t("adminSupport.validUntil", { time: f.date(issued.until, "dateTime") })}</p>
+            <p className={c.note} data-tone="warn">{t("adminSupport.codeOnce")}</p>
+          </div>
+        </SectionCard>
       ) : null}
-      <section className={styles.card} data-testid="console-support-signins">
-        <h2>{t("adminSupport.signinsTitle")}</h2>
-        {view.signins.length === 0 ? (
-          <p className="nh-hint">{t("adminSupport.signinsNone")}</p>
-        ) : (
-          <ul>
-            {view.signins.map((s) => (
-              <li key={s}>{f.date(s, "dateTime")}</li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </>
+      <SectionCard title={t("adminSupport.signinsTitle")} name="support-signins">
+        <div data-testid="console-support-signins">
+          <DataTable
+            rows={view.signins}
+            rowKey={(s) => s}
+            empty={t("adminSupport.signinsNone")}
+            columns={[{ key: "at", header: t("adminSupport.signinsCol"), render: (s) => f.date(s, "dateTime") }]}
+          />
+        </div>
+      </SectionCard>
+    </div>
   );
 }

@@ -13,7 +13,7 @@ import { companyPrefix } from "@/features/tenant/urls";
 import { findTenant } from "@/features/tenant";
 import { seedFor } from "@/features/demo";
 import { getViewerFor } from "@/features/auth/session";
-import { loadLogFor, seedForViewer } from "@/lib/db/viewer-log";
+import { loadLogFor, membersOfViewer, seedForViewer } from "@/lib/db/viewer-log";
 import { hasDatabase, orDemo } from "@/lib/db/client";
 import { personLinksFor } from "@/lib/db/people";
 import { pseudonymLabelsFor } from "@/lib/db/pseudonymise";
@@ -51,7 +51,9 @@ export default async function AppLayout({
   const who = viewer;
   const shipped = who ? await orDemo(() => loadLogFor(who.companyId, { userId: who.userId, role: who.role }), () => null) : null;
   const initialLog = shipped?.log ?? null;
-  const seed = shipped?.caseIds && shipped.projectIds ? seedForViewer(fullSeed, shipped.caseIds, shipped.projectIds) : fullSeed;
+  const members = who ? await orDemo(() => membersOfViewer(who.companyId, who.userId), () => []) : [];
+  const cut = shipped?.caseIds && shipped.projectIds ? seedForViewer(fullSeed, shipped.caseIds, shipped.projectIds) : fullSeed;
+  const seed = members.length ? { ...cut, members } : cut;
   // Postgres went away between the checks above and this read: show the demo, not a 500.
   if (!hasDatabase()) viewer = null;
 
@@ -87,6 +89,7 @@ export default async function AppLayout({
         personLinks,
         actorLabels,
         demoTools,
+        demoDataDefault: process.env.DEMO_DATA_DEFAULT === "on",
         flags,
       }}
       seed={seed}

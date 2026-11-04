@@ -23,6 +23,9 @@
 #   --brain            also run the brain and its model (services/brain): the AI proposes the
 #                      routing row and spots repeats. Also works on an existing instance: adds
 #                      the brain's lines to its .env once. BRAIN_MODEL in .env picks the model.
+#   --brain-cloud      the brain without a model server: no ollama, the brain calls the AI provider with
+#                      the AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY of this environment (set them in
+#                      the .env). Writes the brain's lines once, no BRAIN_MODEL. Not with --brain.
 #   --entra-client-id ID  turn on "Continue with Microsoft": the Entra app registration's client ID.
 #                      The secret comes from the environment variable NEXTUP_ENTRA_CLIENT_SECRET, never
 #                      the command line. Also works on an existing instance: sets the two lines in
@@ -42,7 +45,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-slug="" origin="" stage="demo" landing="" n8n=false brain=false build=false dir="" proxy_port="" images="" name="" ops_url="" entra_id=""
+slug="" origin="" stage="demo" landing="" n8n=false brain=false brain_cloud=false build=false dir="" proxy_port="" images="" name="" ops_url="" entra_id=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="$2"; shift 2 ;;
@@ -54,16 +57,19 @@ while [ $# -gt 0 ]; do
     --entra-client-id) entra_id="$2"; shift 2 ;;
     --n8n) n8n=true; shift ;;
     --brain) brain=true; shift ;;
+    --brain-cloud) brain_cloud=true; shift ;;
     --build) build=true; shift ;;
     --dir) dir="$2"; shift 2 ;;
     --behind-proxy) proxy_port="$2"; shift 2 ;;
     --images) images="$2"; shift 2 ;;
-    -h|--help) sed -n '2,39p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,42p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
 
 die() { echo "install: $*" >&2; exit 1; }
+
+if $brain && $brain_cloud; then die "--brain and --brain-cloud exclude each other: --brain runs its own model, --brain-cloud calls the AI provider"; fi
 
 # Same rules as isValidSlug() in apps/app/src/features/auth/request.ts.
 [[ "$slug" =~ ^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$ ]] || die "--slug must be 2-32 of a-z, 0-9, '-' (got '$slug')"
@@ -119,7 +125,8 @@ if [ -f "$env_file" ]; then
   echo "Keeping $env_file (secrets are never regenerated)."
   if [ -n "$images" ]; then
     # Pull first: if the tag doesn't exist, the .env still names images that do.
-    # A brain only changes with the rest when this instance runs one.
+    # A brain only changes with the rest when this instance runs one (--brain or --brain-cloud:
+    # both write BRAIN_API_KEY).
     has_brain=false; grep -q '^BRAIN_API_KEY=' "$env_file" && has_brain=true
     if [ "$images" != local ]; then
       docker pull -q "$app_image" >/dev/null && docker pull -q "$migrate_image" >/dev/null \
@@ -225,17 +232,29 @@ if [ "$(id -u)" = 0 ]; then chown 1001:1001 "$dir/logs"; fi
 # <<< instance-dirs
 
 # The brain, new or existing instance: its key and settings go in once, and its profile is added.
-if $brain && ! grep -q '^BRAIN_API_KEY=' "$env_file"; then
-  cat >> "$env_file" <<ENV
-
+# --brain-cloud has no BRAIN_MODEL and no ollama; the brain uses the AWS values of the environment.
+if { $brain || $brain_cloud; } && ! grep -q '^BRAIN_API_KEY=' "$env_file"; then
+  brain_profile=brain; brain_model_line='BRAIN_MODEL=mistral-nemo'
+  if $brain_cloud; then brain_profile=brain-cloud; brain_model_line=''; fi
+  {
+    printf '
 # The brain (services/brain) - internal to this stack, called by the app only.
-BRAIN_URL=http://brain:8000
-BRAIN_API_KEY=$(openssl rand -hex 24)
-BRAIN_MODEL=mistral-nemo
-NEXTUP_BRAIN_IMAGE=$brain_image
-ENV
-  sed -i -e 's/^COMPOSE_PROFILES=$/COMPOSE_PROFILES=brain/' -e '/^COMPOSE_PROFILES=.\{1,\}/{/brain/!s/$/,brain/;}' "$env_file"
-  echo "Added the brain to $env_file (model: mistral-nemo, pulled on first start)."
+'
+    printf 'BRAIN_URL=http://brain:8000
+BRAIN_API_KEY=%s
+' "$(openssl rand -hex 24)"
+    if [ -n "$brain_model_line" ]; then printf '%s
+' "$brain_model_line"; fi
+    printf 'NEXTUP_BRAIN_IMAGE=%s
+' "$brain_image"
+  } >> "$env_file"
+  sed -i -e "s/^COMPOSE_PROFILES=\$/COMPOSE_PROFILES=$brain_profile/" \
+         -e "/^COMPOSE_PROFILES=.\{1,\}/{/\(=\|,\)$brain_profile\(,\|\$\)/!s/\$/,$brain_profile/;}" "$env_file"
+  if $brain_cloud; then
+    echo "Added the brain to $env_file (no model server: set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in it)."
+  else
+    echo "Added the brain to $env_file (model: mistral-nemo, pulled on first start)."
+  fi
 fi
 
 # Microsoft sign-in, new or existing instance: both lines are set (or replaced) in the .env. The
