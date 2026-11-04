@@ -80,7 +80,10 @@ describe("GDP admin audit", () => {
 
   it("each access action writes one row with the right action and actor kind, and no secret", async () => {
     cookie = undefined;
+    // The shared code works on a demo stage only (SEC/D6); the later actions do not depend on the stage.
+    await db.company.update({ where: { id: acme }, data: { stage: "demo" } });
     await expect(adminSignIn({}, form({ code: ADMIN_CODE }))).rejects.toMatchObject({ redirected: expect.any(String) });
+    await db.company.update({ where: { id: acme }, data: { stage: "sandbox" } });
     let all = await rows();
     expect(all).toHaveLength(1);
     expect(all[0]).toMatchObject({ action: "audit.access.break_glass", actorKind: "break-glass", actorUserId: null, source: "console", changes: {} });
