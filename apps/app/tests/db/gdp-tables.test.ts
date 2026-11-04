@@ -100,7 +100,7 @@ describe("GDP tables", () => {
     expect((await db.company.findUniqueOrThrow({ where: { id: a } })).name).toBe("gdp-a");
   });
 
-  it("SETTINGS_SECTIONS ends with privacy and audit", () => {
-    expect(SETTINGS_SECTIONS.slice(-2).map((s) => s.key)).toEqual(["privacy", "audit"]);
+  it("SETTINGS_SECTIONS ends with privacy, audit and the pilot report", () => {
+    expect(SETTINGS_SECTIONS.slice(-3).map((s) => s.key)).toEqual(["privacy", "audit", "pilotReport"]);
   });
 });

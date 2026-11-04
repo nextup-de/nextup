@@ -24,6 +24,8 @@ import { settingsNotifications } from "./messages/settingsNotifications";
 import { settingsPrivacy } from "./messages/settingsPrivacy";
 import { settingsAudit } from "./messages/settingsAudit";
 import { settingsSupport } from "./messages/settingsSupport";
+import { settingsGoLive } from "./messages/settingsGoLive";
+import { settingsPilotReport } from "./messages/settingsPilotReport";
 import { privacyExport } from "./messages/privacyExport";
 import { privacyPerson } from "./messages/privacyPerson";
 import { settingsSetup } from "./messages/settingsSetup";
@@ -103,4 +105,6 @@ export const de = {
   settingsSignIn: settingsSignIn.de,
   ssoLogin: ssoLogin.de,
   settingsSupport: settingsSupport.de,
+  settingsGoLive: settingsGoLive.de,
+  settingsPilotReport: settingsPilotReport.de,
 } as const;

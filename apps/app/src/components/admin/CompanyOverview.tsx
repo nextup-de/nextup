@@ -3,7 +3,8 @@
 // own tooling - that is admin.sellux.ch. Props in, JSX out.
 import type { CompanyRow } from "@/features/admin/rows";
 import { lockedOut } from "@/features/admin/nav";
-import { STAGE_MEANING, type Stage } from "@/features/admin/stages";
+import { stageMeaning, type Stage } from "@/features/admin/stages";
+import { DEFAULT_RULES } from "@/features/knowledge/rules";
 import type { AssistantView } from "@/server/admin-insight";
 import type { ConsoleOverviewFacts } from "@/server/console-guard";
 import { consoleTodo } from "@/features/admin/console-overview";
@@ -11,7 +12,7 @@ import { formatDate } from "@/i18n/format";
 import type { T } from "@/i18n";
 import styles from "@/app/admin/admin.module.css";
 
-export function CompanyOverview({ company, assistant, base }: { company: CompanyRow; assistant: AssistantView; base: string }) {
+export function CompanyOverview({ company, assistant, base, promiseDays = DEFAULT_RULES.promiseDays }: { company: CompanyRow; assistant: AssistantView; base: string; promiseDays?: number }) {
   const locked = lockedOut(company);
   const canSignIn = company.persons.length - locked.length;
   const todo: { text: string; href: string; action: string }[] = [];
@@ -35,7 +36,7 @@ export function CompanyOverview({ company, assistant, base }: { company: Company
       <section className={styles.card}>
         <div className={styles.cardHead}>
           <h1>{company.name}</h1>
-          <span className={styles.stage} title={STAGE_MEANING[company.stage as Stage]}>{company.stage}</span>
+          <span className={styles.stage} title={stageMeaning(company.stage as Stage, promiseDays)}>{company.stage}</span>
         </div>
         <p className={`nh-hint ${styles.lead}`}>
           <a href={company.url}>{company.url}</a> · Who can sign in, and how the assistant treats your documents.
