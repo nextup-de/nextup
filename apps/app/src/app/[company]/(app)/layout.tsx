@@ -87,6 +87,7 @@ export default async function AppLayout({
         personLinks,
         actorLabels,
         demoTools,
+        demoDataDefault: process.env.DEMO_DATA_DEFAULT === "on",
         flags,
       }}
       seed={seed}
