@@ -86,6 +86,14 @@ describe("CLK dueNow", () => {
     expect(dueNow(done, late).map((d) => d.kind)).toEqual(["handover"]);
   });
 
+  it("skips a vacant seat: the deadline goes to the first seat with someone on it, or to nobody", () => {
+    const vacant: SeatRow = { id: "seat_vac", roleId: "role_deputy", label: "Vacant", userId: null, sort: 0 };
+    const withVacant = reduce({ ...WD, seats: [vacant, ...seats] }, logAt(late, raise("c_a")));
+    expect(dueNow(withVacant, late)[0]).toMatchObject({ kind: "deadline", toRoleHolderId: "seat_dep" });
+    const onlyVacant = reduce({ ...WD, seats: [vacant, seats[0]] }, logAt(late, raise("c_a")));
+    expect(dueNow(onlyVacant, late)[0]).toMatchObject({ kind: "deadline", toRoleHolderId: null });
+  });
+
   it("nothing for a case not yet due, nothing in demo mode", () => {
     expect(dueNow(reduce(WD, logAt(1, raise("c_a"))), 1)).toEqual([]);
     expect(dueNow(reduce({ ...BASE, clock: DEMO_CLOCK }, logAt(late, raise("c_a"))), late)).toEqual([]);

@@ -41,7 +41,7 @@ export function mineRows(ctx: DemoContext): MineRow[] {
 
 // Who sees which case in the lists, and who may open one by its link: one rule, by ids
 // (features/cases/visibility). The lists show exactly the cases a viewer may open.
-const visCtx = (ctx: DemoContext) => ({ seats: ctx.seed.seats, roles: ctx.seed.roles ?? [], projects: ctx.S.projects });
+const visCtx = (ctx: DemoContext) => ({ seats: ctx.seed.seats, roles: ctx.seed.roles ?? [], projects: ctx.S.projects, members: ctx.seed.members });
 export const canOpen = (ctx: DemoContext, c: ReducedCase) =>
   canOpenCase(c, { me: ctx.me, role: ctx.role, unitIds: unitsOf(ctx.me, visCtx(ctx)) }, visCtx(ctx));
 export const visibleTo = (ctx: DemoContext, c: ReducedCase): boolean => canOpen(ctx, c);
