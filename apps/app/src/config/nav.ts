@@ -73,6 +73,43 @@ export function projectsTabAt(path: string): ProjectsTabKey | null {
 }
 
 /**
+ * A section gets a strip of tabs under the bar when it has two or more real pages at the same level. Filters are not
+ * tabs, and more than about six pages keep a side menu (Settings, the IT console). `needsServer`: the page needs the
+ * database, so the offline demo has no such page.
+ */
+export type SectionKey = "projects" | "dashboard" | "profile";
+export type SectionTabItem = {
+  key: string; href: string; roles?: readonly Role[]; needsServer?: boolean;
+  labelKey: ProjectsTabItem["labelKey"] | "metrics.dashTitle" | "kpis.tab" | "shell.myProfile" | "shell.myReports";
+};
+export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
+  projects: PROJECTS_TABS,
+  dashboard: [
+    { key: "ledger", labelKey: "metrics.dashTitle", href: "/dashboard" },
+    { key: "kpis", labelKey: "kpis.tab", href: "/dashboard/kpis", roles: ["manager"], needsServer: true },
+  ],
+  profile: [
+    { key: "profile", labelKey: "shell.myProfile", href: "/profile" },
+    { key: "reports", labelKey: "shell.myReports", href: "/reports", needsServer: true },
+  ],
+};
+
+export function sectionTabsFor(section: SectionKey, who: { role: Role; serverMode: boolean }): SectionTabItem[] {
+  return SECTION_TABS[section].filter((tab) => (!tab.roles || tab.roles.includes(who.role)) && (!tab.needsServer || who.serverMode));
+}
+
+/** Which section and tab an address (relative to /[company]) is. Null outside them, and when only one tab would show. */
+export function sectionTabAt(path: string, who: { role: Role; serverMode: boolean; flag: (key: FlagKey) => boolean }): { section: SectionKey; tab: string } | null {
+  const projects = who.flag("projects") ? projectsTabAt(path) : null;
+  if (projects) return { section: "projects", tab: projects };
+  for (const section of ["dashboard", "profile"] as const) {
+    const tab = SECTION_TABS[section].find((item) => item.href === path);
+    if (tab) return sectionTabsFor(section, who).length > 1 ? { section, tab: tab.key } : null;
+  }
+  return null;
+}
+
+/**
  * The account menu's ways to the company's administration: Settings for a manager, while the database
  * they need is there, and the IT console for whom the server names it (`consoleHref`, lib/db/people.ts).
  * `key` is a message key.

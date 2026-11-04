@@ -3,6 +3,7 @@ import { defineMessages } from "../define";
 
 export const kpis = defineMessages({
   en: {
+    tab: "KPIs",
     title: "Idea management figures",
     periodYear: "This year",
     periodLastYear: "Last year",
@@ -50,6 +51,7 @@ export const kpis = defineMessages({
     footnote: "Counted per unit, never per person. Units with fewer than 5 people are hidden. Savings, energy and CO2 count only confirmed better results, as yearly figures. Headcount is supplied by the customer. These figures are aggregates, not anonymous data.",
   },
   de: {
+    tab: "Kennzahlen",
     title: "Kennzahlen Ideenmanagement",
     periodYear: "Dieses Jahr",
     periodLastYear: "Letztes Jahr",

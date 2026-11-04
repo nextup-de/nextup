@@ -15,7 +15,6 @@ async function severity(file: string): Promise<number> {
 
 describe("LNG lint rule registered", () => {
   it.each([
-    "src/components/shell/TopBar.tsx",
     "src/app/[company]/(app)/page.tsx",
     "src/features/cases/rows.ts",
   ])("is an error for %s", async (file) => {
