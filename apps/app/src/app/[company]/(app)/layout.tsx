@@ -49,9 +49,13 @@ export default async function AppLayout({
   // Server mode ships only what this viewer may open inside the window (VIS/D8); the rest of a case
   // loads on its own page. No CaseView rows yet = the full log and the full seed.
   const who = viewer;
-  const shipped = who ? await orDemo(() => loadLogFor(who.companyId, { userId: who.userId, role: who.role }), () => null) : null;
+  const [shipped, members] = who
+    ? await Promise.all([
+        orDemo(() => loadLogFor(who.companyId, { userId: who.userId, role: who.role }, new Date(), fullSeed), () => null),
+        orDemo(() => membersOfViewer(who.companyId, who.userId), () => []),
+      ])
+    : [null, []];
   const initialLog = shipped?.log ?? null;
-  const members = who ? await orDemo(() => membersOfViewer(who.companyId, who.userId), () => []) : [];
   const cut = shipped?.caseIds && shipped.projectIds ? seedForViewer(fullSeed, shipped.caseIds, shipped.projectIds) : fullSeed;
   const seed = members.length ? { ...cut, members } : cut;
   // Postgres went away between the checks above and this read: show the demo, not a 500.
@@ -73,13 +77,13 @@ export default async function AppLayout({
   const people = demoTools ? tenant.users : tenant.users.filter((u) => u.id === viewer?.userId);
 
   // Who has a person page: user id -> display label. Empty without a database or a viewer.
+  // Former members: user id -> pseudonym, so old events show the label they have now (GDP D15).
   const viewerCompanyId = viewer?.companyId;
-  const personLinks = viewerCompanyId ? await orDemo(() => personLinksFor(viewerCompanyId), () => ({})) : {};
+  const [personLinks, actorLabels] = viewerCompanyId
+    ? await Promise.all([orDemo(() => personLinksFor(viewerCompanyId), () => ({})), orDemo(() => pseudonymLabelsFor(viewerCompanyId), () => ({}))])
+    : [{}, {}];
 
   const consoleHref = who && viewerCompanyId ? await orDemo(() => consoleHrefFor(viewerCompanyId, who.userId), () => null) : null;
-
-  // Former members: user id -> pseudonym, so old events show the label they have now (GDP D15).
-  const actorLabels = viewerCompanyId ? await orDemo(() => pseudonymLabelsFor(viewerCompanyId), () => ({})) : {};
 
   return (
     <DemoProvider
