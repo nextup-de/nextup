@@ -62,8 +62,8 @@ test("UIP list pages", async ({ page }) => {
 
   await test.step("My reports lists the report and its reply", async () => {
     await page.goto(`/${SLUG}/reports`);
-    await expect(page.getByText("NU-1")).toBeVisible();
-    await expect(page.getByText("Thanks, we can see it and are on it.")).toBeVisible();
+    await expect(page.getByText("NU-1").filter({ visible: true })).toBeVisible();
+    await expect(page.getByText("Thanks, we can see it and are on it.").filter({ visible: true })).toBeVisible();
   });
 
 });
