@@ -188,6 +188,45 @@ test("an idea opened on the Projects page has its own address, /idea?id=", async
   }
 });
 
+test("Back right after closing an idea reopens it, on a slow machine too", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/projects");
+  const table = page.getByRole("table", { name: "Problems and ideas" });
+  const row = table.getByRole("row").nth(1);
+  const title = (await row.getByRole("cell").first().locator("span").first().innerText()).trim();
+  await row.click();
+  const heading = page.getByRole("heading", { name: title, level: 1 });
+  await expect(heading).toBeVisible();
+  await page.reload();
+  await expect(heading).toBeVisible();
+  // The address follows at once, the router's copy of it later: this is the gap that lost the Back.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/acme\/projects$/);
+  await expect(table).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/acme\/idea\?id=/);
+  await expect(heading).toBeVisible({ timeout: 15_000 });
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+});
+
+test("Back out of the Projects page goes to the page before it", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/feed");
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true }).click();
+  await expect(page).toHaveURL(/\/acme\/projects$/);
+  const row = page.getByRole("table", { name: "Problems and ideas" }).getByRole("row").nth(1);
+  await row.click();
+  await expect(page).toHaveURL(/\/acme\/idea\?id=/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/acme\/projects$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/acme\/feed$/);
+});
+
 test("a step is dragged to another column; a drop on Blocked asks why", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");

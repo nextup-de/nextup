@@ -39,10 +39,27 @@ export function useIdInUrl(current: string | null, apply: (id: string | null) =>
     else window.history.pushState(null, "", to);
   }, [current, key, open, closed]);
 
-  // The address -> the view, when it moved without the view (Back, Forward).
+  // The address -> the view, when it moved without the view: a link, or Back and Forward below.
   useEffect(() => {
     if (inUrl === seen.current) return;
     seen.current = inUrl;
+    // useSearchParams can lag behind the address. What it says now may already be out of date.
+    if (inUrl !== new URLSearchParams(window.location.search).get(key)) return;
     if (inUrl !== now.current.current) now.current.apply(inUrl);
-  }, [inUrl]);
+  }, [inUrl, key]);
+
+  // Back and Forward, read from the address itself: useSearchParams follows in a transition, so right
+  // after closing it may not have seen the close yet, and then Back looks to it like no change at all.
+  useEffect(() => {
+    const onPop = () => {
+      const url = new URL(window.location.href);
+      // Back to another page: leave it to the router, or closing here would move the address again.
+      if (open !== undefined && url.pathname !== open && url.pathname !== closed) return;
+      const id = url.searchParams.get(key);
+      seen.current = id;
+      if (id !== now.current.current) now.current.apply(id);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [key, open, closed]);
 }
