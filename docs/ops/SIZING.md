@@ -50,6 +50,13 @@ Test VM (4 vCPU / 16 GB), 2,000 accounts:
 |---|---|---|---|---|
 | 2,000 | | | | filled from docs/test-phase/results after Kevin's run |
 
+## App processes
+
+`APP_REPLICAS` in the stack's `.env` (default 1; `install.sh` writes one per CPU core, at most 4, or `--app-replicas N`) sets how many
+app containers run; Caddy spreads requests over them. Each has its own pool of `DATABASE_POOL_MAX` connections, so replicas times pool
+plus 12 must stay under `max_connections`. Change it with `ctl.sh <slug> up -d` after editing the `.env`.
+200 accounts all at once on a shared PC: 1 process 15-21 requests/s, 4 processes 35, 8 processes 55 (TST-L1).
+
 ## When to size up
 
 - Pages are over budget (p95 > 1,000 ms) and Postgres is not the cause: add app processes first, not RAM.

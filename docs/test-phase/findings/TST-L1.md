@@ -60,6 +60,24 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
   13.9 s, case p95 12.9 s, about 15 requests/s on a PC with other sessions running. Caching seats and knowledge across
   requests (`holders.ts`, `knowledge.ts`) was tried on paper and dropped: the projection rebuilds read the same loaders
   right after writes, and a stale seat is an access-key error. **Status:** open.
+- **Several processes (TST-Z1, 2026-11-04, Kevin's decision):** the stack now runs `APP_REPLICAS` app processes (`stack/compose.yml`
+  `deploy.replicas`, default 1; `stack/install.sh` sets one per CPU core, at most 4, or `--app-replicas N`) and Caddy spreads requests over
+  all of them (`dynamic a`, `least_conn`; `stack/caddy/Caddyfile`). The load test starts the same shape (`TST_WORKERS`, default 4, behind a
+  round-robin proxy). Same data, 200 accounts all at once, 47 with pages, on this PC (16 logical cores, CPU load 90 % from other
+  programs and sessions while measuring):
+
+  | Processes | Requests in 30 s | Requests/s | inbox p95 | case p95 | Requests/s per process |
+  |---|---|---|---|---|---|
+  | 1 | about 450 | about 15-21 | 14.1 s | 13.6 s | 15-21 |
+  | 4 | 1,054 | 35 | 5.1 s | 5.0 s | 8.8 |
+  | 8 | 1,638 | 55 | 3.8 s | 3.4 s | 6.9 |
+
+  The working day (5 virtual users) is p95 301 ms / 234 ms with 4 processes. One request costs about 47 ms of CPU alone, so 100 requests
+  per second asked for need about 4.7 free cores; 8 processes delivered 55 requests/s, i.e. about 2.6 cores' worth, the rest of the
+  16 cores being taken by other programs on this PC. Throughput grew with every process, so the fix works; the budget run (p95 under 1 s)
+  needs a machine that is not shared. The test stays `it.fails` and no threshold was changed. **Proof needed:** the run of record on the
+  test VM (4 vCPU, TST-V1) with `APP_REPLICAS=4`, or this PC idle. If 4 free cores still miss the budget, the next step is the render
+  itself (the log serialised into every page).
 - **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.

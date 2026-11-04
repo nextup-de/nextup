@@ -92,6 +92,12 @@ services:
   app:
     <<: *hardening
     image: ${NEXTUP_APP_IMAGE:-nextup-app:local}
+    # One Node process renders about 20 pages a second (TST-FL1-1), so install.sh sets APP_REPLICAS to the
+    # machine's cores (at most 4). Unset = one process. Caddy spreads requests over all of them; sessions are
+    # signed cookies, so any replica answers any request. Replicas times DATABASE_POOL_MAX (10) must stay
+    # under max_connections (docs/ops/SIZING.md).
+    deploy:
+      replicas: ${APP_REPLICAS:-1}
     # Nothing in the image may change at runtime. Next only writes its cache, which lives in memory.
     read_only: true
     tmpfs:
