@@ -19,37 +19,6 @@ admin.sellux.ch ──(queues a job)──▶ its database
 | `agent.sh` | The agent. Allowed jobs: `create`, `credentials`, `restart`, `stop`, `purge`, `promote`. It checks every value itself: the slug pattern and the reserved list, and the port against ports.md, every `instances/*/stack.conf` and `ss -tln`. It also needs at least 600 MB of free memory before a create, and it deletes demo stacks only. |
 | `nextup-site.sh` | The only thing the agent may run as root. Install a **root-owned copy** to `/usr/local/sbin/nextup-site`; never point sudoers at this folder, because kschmid owns it and every deploy replaces it. |
 
-## What the agent sends per stage (no standing secrets)
-
-| Stage on the box | `secrets` in the job result | `logins` |
-|---|---|---|
-| `demo` | `ADMIN_ACCESS_CODE`, `POSTGRES_PASSWORD`, `AUTH_SECRET`, `N8N_ENCRYPTION_KEY`, `RESTIC_PASSWORD` | the seeded demo login codes |
-| `real` (every app stage other than demo: sandbox, pilot, live) | `{}` - nothing | `[]` |
-
-The result keeps its shape, so nextup-admin needs no change to keep working. The agent no longer
-writes `BREAK_GLASS.txt`. A file left from before stays where it is, and the agent logs once per job
-`break-glass file no longer used; open a window with stack/break-glass.sh`.
-
-## Break-glass window (`stack/break-glass.sh`)
-
-The customer's operator (root or the deploy user) opens a time-limited way in on the host:
-
-```bash
-stack/break-glass.sh <slug> open --hours <1-24> --reason "<one line, max 200 characters>"   # prints the code once
-stack/break-glass.sh <slug> status    # open until <ISO> | closed | expired <ISO>
-stack/break-glass.sh <slug> close
-```
-
-`open` writes `$NEXTUP_INSTANCES/<slug>/break-glass/window.json` (the code's sha256, `openedAt`,
-`until`, `by`, `reason`; mode 0644, it holds no secret) and replaces a window that is already open.
-Every open, close and expiry seen by `status` is one line in `break-glass/log`; the code is never
-logged. The app reads the folder read-only. `BREAK_GLASS_NOW` replaces the clock, for tests only.
-Proof: `bash stack/tests/break-glass-window.test.sh`.
-
-**Kevin's step (Q1):** the vault in nextup-admin still holds the `ADMIN_ACCESS_CODE`, database,
-`AUTH_SECRET`, n8n and restic values of real stacks it received earlier. Delete those entries there
-by hand once; the agent will not send them again and this repo cannot change nextup-admin.
-
 ## Picking the demo's version (`promote`)
 
 admin's **Version** card on a pinned stack (today only `demo`, the interview stack) queues a
