@@ -8,8 +8,10 @@ import styles from "./ArchiveTabs.module.css";
 
 const FILTERS: ArchiveFilter[] = ["all", "project", "declined"];
 
-export function ArchiveTabs({ view, filter, outcomes, onView, onFilter }: {
+export function ArchiveTabs({ view, filter, outcomes, onView, onFilter, quiet = false }: {
   view: ListView; filter: ArchiveFilter;
+  /** Grey with a white thumb instead of an ink one, where it must not compete with the bar (Projects). */
+  quiet?: boolean;
   /** One entry per case in the list before this split: null = still live. */
   outcomes: readonly (ArchiveOutcome | null)[];
   onView: (v: ListView) => void; onFilter: (f: ArchiveFilter) => void;
@@ -19,7 +21,7 @@ export function ArchiveTabs({ view, filter, outcomes, onView, onFilter }: {
   const live = outcomes.filter((o) => o === null).length;
   const count = (f: ArchiveFilter) => outcomes.filter((o) => o !== null && (f === "all" || o === f)).length;
   return (
-    <div className={styles.bar}>
+    <div className={styles.bar} data-quiet={quiet ? "true" : undefined}>
       <div className={styles.tabs} role="tablist" aria-label={t("dashboard.archiveOpenOrArchived")}>
         <button type="button" role="tab" aria-selected={view === "open"} className={styles.tab} data-on={view === "open" ? "true" : undefined} onClick={() => onView("open")}>
           {t("dashboard.archiveOpen")}<span className={styles.count}>{live}</span>

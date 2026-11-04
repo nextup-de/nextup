@@ -1,4 +1,4 @@
-// lib/avatar.ts: a person's initials get one of five tints, the same one on every page; anonymous gets none.
+// lib/avatar.ts: a person's initials get one of six tints, the same one on every page; anonymous gets none.
 import { describe, expect, it } from "vitest";
 import { avatarTone } from "@/lib/avatar";
 
@@ -6,6 +6,12 @@ describe("avatarTone", () => {
   it("gives a person the same tone every time", () => {
     expect(avatarTone("Thomas Vogel")).toBe(avatarTone("Thomas Vogel"));
     expect(avatarTone(" Thomas Vogel ")).toBe(avatarTone("Thomas Vogel"));
+  });
+
+  it("gives the short and the full form of a name the same tone", () => {
+    expect(avatarTone("T. Vogel")).toBe(avatarTone("Thomas Vogel"));
+    expect(avatarTone("J. Schmidt")).toBe(avatarTone("Jonas Schmidt"));
+    expect(avatarTone("t vogel")).toBe(avatarTone("Thomas Vogel"));
   });
 
   it("spreads people over more than one tone", () => {
