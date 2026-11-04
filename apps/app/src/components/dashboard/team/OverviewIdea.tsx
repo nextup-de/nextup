@@ -12,6 +12,7 @@ import type { DeskLabel } from "@/features/overview/rows";
 import type { IdeaBrief, NumberedBlock } from "@/features/ideas/brief";
 import s from "./Overview.module.css";
 import { avatarTone } from "@/lib/avatar";
+import { DeptChip, PersonFace } from "@/components/ui/elements";
 
 export type IdeaMode = "idea" | "ai";
 export type IdeaFile = { name: string; ext: string; meta: string };
@@ -47,6 +48,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
   const [openScore, setOpenScore] = useState<number | null>(null);
   const files = p.files;
   const affects = [...brief.depts.map((d) => d.name), ...brief.people.map((x) => x.name)];
+  const deptNames = new Set(brief.depts.map((d) => d.name));
   // Why each team or person is affected, where the raise page's analysis said so.
   const whyOf = (name: string) => [...brief.depts, ...brief.people].find((x) => x.name === name)?.why ?? null;
   const score = openScore == null ? null : brief.scores[openScore];
@@ -117,7 +119,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                 <div className={s.kv}>
                   <span className={s.label4}>{t("team.ideaRaisedBy")}</span>
                   <span className={s.text}>{brief.author.name}{!brief.author.anonymous && brief.author.role && brief.author.role !== brief.author.dept ? " · " + brief.author.role : ""}</span>
-                  {brief.author.dept && <><span className={s.label4}>{t("team.ideaTeam")}</span><span className={s.text}>{brief.author.dept}</span></>}
+                  {brief.author.dept && <><span className={s.label4}>{t("team.ideaTeam")}</span><span className={s.text}><DeptChip name={brief.author.dept} /></span></>}
                   {brief.routing.map((r, k) => (
                     <Fragment key={r.name + k}>
                       <span className={s.label4}>{k === 0 ? t("team.ideaResponsible") : t("team.ideaNextInLine")}</span>
@@ -137,7 +139,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                 <ul className={s.list}>
                   {affects.map((a, k) => (
                     <li key={a + k} className={s.li}>
-                      <span className={s.liMain}><span className={s.liTitle}>{a}</span>{whyOf(a) && <span className={s.liSub}>{whyOf(a)}</span>}</span>
+                      <span className={s.liMain}><span className={s.liTitle}>{deptNames.has(a) ? <DeptChip name={a} /> : <span className={s.person}><PersonFace name={a} size="sm" />{a}</span>}</span>{whyOf(a) && <span className={s.liSub}>{whyOf(a)}</span>}</span>
                     </li>
                   ))}
                 </ul>

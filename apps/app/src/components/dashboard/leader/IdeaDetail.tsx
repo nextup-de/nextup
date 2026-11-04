@@ -9,6 +9,7 @@ import type { AffectedDept, AffectedPerson, IdeaBrief } from "@/features/ideas/b
 import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileRows, initialsOf, PanelRow, PersonCard, Sources, Sparkle, StatusBox, type FeedEntry, type IdeaProps } from "./IdeaParts";
 import styles from "./IdeaDetail.module.css";
 import { avatarTone } from "@/lib/avatar";
+import { deptTone } from "@/lib/dept-tone";
 import { useT } from "@/i18n/client";
 
 export type { FeedEntry, IdeaHeader } from "./IdeaParts";
@@ -136,7 +137,7 @@ function DeptChip({ d, on, member, author, onToggle, onMember }: { d: AffectedDe
   const m = member ? d.members.find((x) => x.name === member) ?? null : null;
   return (
     <span className={styles.chipWrap} data-aff="1">
-      <button type="button" className={styles.deptChip} data-on={on ? "true" : undefined} onClick={onToggle} title={d.ai ? t("leader.addedByAi") : t("leader.addedBy", { name: author })} aria-expanded={on}>
+      <button type="button" className={styles.deptChip} data-dept-tone={deptTone(d.name)} data-on={on ? "true" : undefined} onClick={onToggle} title={d.ai ? t("leader.addedByAi") : t("leader.addedBy", { name: author })} aria-expanded={on}>
         {d.name}{d.ai && <Sparkle />}
       </button>
       {on && (

@@ -22,9 +22,7 @@
 .who { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .whoText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .whoText strong { font-size: var(--nh-fs-md); font-weight: 600; }
-.avatar { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: #f2eefb; color: #6d4fc2; font-size: var(--nh-fs-xs); font-weight: 700; }
-.avatar[data-me] { background: #111; color: #fff; }
-.row[data-inactive] .avatar { background: #e5e5ea; color: #8e8e93; }
+.row[data-inactive] [data-person-face] { opacity: 0.5; }
 .sub { color: #6e6e73; overflow-wrap: anywhere; }
 .cell { min-width: 0; }
 .roleText { text-transform: capitalize; color: #6e6e73; }
