@@ -23,7 +23,7 @@ const CHOICES: { value: string; label: MessageKey }[] = [
 
 export function AiBlock({ view, readOnly }: { view: AiBlockView; readOnly: boolean }) {
   const t = useT();
-  const [f, setF] = useState({ choice: view.choice === "mock" ? "off" : view.choice, region: view.region, endpoint: view.endpoint, model: view.model, deployment: view.deployment, key: "" });
+  const [f, setF] = useState({ choice: view.choice === "mock" ? "off" : view.choice, region: view.region, endpoint: view.endpoint, model: view.model, deployment: view.deployment, brainModel: view.brainModel, key: "" });
   const [note, setNote] = useState<ConsoleConnectorState | null>(null);
   const [pending, start] = useTransition();
   const set = (k: keyof typeof f, v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -66,6 +66,9 @@ export function AiBlock({ view, readOnly }: { view: AiBlockView; readOnly: boole
             ) : null}
             <Row id="ca-model" label={t("adminConnectors.aiModel")} hint={t("adminConnectors.aiModelHint")}>
               <input className={`${c.input} ${c.mono}`} id="ca-model" value={f.model} disabled={readOnly} onChange={(e) => set("model", e.target.value)} />
+            </Row>
+            <Row id="ca-brain-model" label={t("adminConnectors.aiBrainModel")} hint={t("adminConnectors.aiBrainModelHint")}>
+              <input className={`${c.input} ${c.mono}`} id="ca-brain-model" value={f.brainModel} maxLength={120} disabled={readOnly} onChange={(e) => set("brainModel", e.target.value)} autoComplete="off" />
             </Row>
             {azure ? (
               <Row id="ca-deployment" label={t("adminConnectors.aiDeployment")}>
