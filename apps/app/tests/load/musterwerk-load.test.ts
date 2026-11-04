@@ -13,7 +13,10 @@ import { BUDGET, formatReport, overBudget, runLoad, selectAccounts, type Selecti
 const SLUG = "tstload";
 const ACCOUNTS = Math.max(150, Number(process.env.TST_ACCOUNTS) || 2000);
 const BASE = process.env.TST_BASE_URL ?? `http://127.0.0.1:${Number(process.env.TST_PORT) || 3103}`;
-const VUS = Number(process.env.TST_VUS) || Math.min(200, ACCOUNTS);
+// Working-day concurrency: one account in twenty is on a page at any moment. TST_VUS overrides it.
+const VUS = Number(process.env.TST_VUS) || Math.max(10, Math.ceil(ACCOUNTS / 20));
+// Everyone at once (a shift change, a mail to all). Saturates one Node process: TST-FL1-1 in docs/test-phase/findings/TST-L1.md.
+const STRESS_VUS = Number(process.env.TST_STRESS_VUS) || ACCOUNTS;
 const DURATION = Number(process.env.TST_DURATION_S) || 60;
 
 describe("TST acceptance: 2,000 accounts within budget", () => {
@@ -32,8 +35,21 @@ describe("TST acceptance: 2,000 accounts within budget", () => {
     await getDb().$disconnect();
   });
 
+  async function within(vus: number, file: string, seconds: number) {
+    const report = await runLoad({ baseUrl: BASE, slug: SLUG, accounts: selection.accounts, vus, durationSeconds: seconds });
+    const text = formatReport(report);
+    console.log(text);
+    mkdirSync("test-results/load", { recursive: true });
+    writeFileSync(`test-results/load/${file}.json`, JSON.stringify(report, null, 2));
+    writeFileSync(`test-results/load/${file}.txt`, `${text}\n`);
+    expect(overBudget(report), `budget p95<${BUDGET.p95Ms} ms, errors<${BUDGET.maxErrorRate * 100} %\n${text}`).toEqual([]);
+  }
+
   it("inbox and case pages stay within the budget at the given accounts", async () => {
-    expect(selection.accounts.length).toBeGreaterThanOrEqual(Math.floor(ACCOUNTS * 0.9));
+    // Every leader and manager is on the inbox; members join for the cases they raised or may otherwise open.
+    const leaders = await getDb().user.count({ where: { companyId: selection.companyId, active: true, role: { in: ["leader", "manager"] } } });
+    expect(selection.accounts.filter((a) => a.inbox)).toHaveLength(leaders);
+    expect(selection.accounts.length).toBeGreaterThan(leaders);
     expect(selection.accounts.some((a) => a.inbox)).toBe(true);
     expect(selection.accounts.some((a) => a.cases.length > 0)).toBe(true);
 
@@ -43,12 +59,12 @@ describe("TST acceptance: 2,000 accounts within budget", () => {
       expect(await mayOpen(selection.companyId, { userId: a.userId, role: a.role as Role }, a.cases[0])).toBe(true);
     }
 
-    const report = await runLoad({ baseUrl: BASE, slug: SLUG, accounts: selection.accounts, vus: VUS, durationSeconds: DURATION });
-    const text = formatReport(report);
-    console.log(text);
-    mkdirSync("test-results/load", { recursive: true });
-    writeFileSync("test-results/load/figures.json", JSON.stringify(report, null, 2));
-    writeFileSync("test-results/load/figures.txt", text + "\n");
-    expect(overBudget(report), `budget p95<${BUDGET.p95Ms} ms, errors<${BUDGET.maxErrorRate * 100} %\n${text}`).toEqual([]);
+    await within(VUS, "figures", DURATION);
+  });
+
+  // D7: a page over 3 s at p95 is a high finding. Kept as it.fails until the app holds the load; then this turns red
+  // and becomes a normal it.
+  it.fails("TST-FL1-1: every account on a page at once stays within the budget", async () => {
+    await within(STRESS_VUS, "figures-stress", 30);
   });
 });
