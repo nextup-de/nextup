@@ -116,6 +116,14 @@ services:
       # PostHog Cloud EU project key for user tests (features/testing/analytics.ts). Only a demo-stage
       # company is ever recorded, and only with ?tester=P01 in the URL. Unset = nothing is loaded.
       POSTHOG_KEY: ${POSTHOG_KEY:-}
+      # Server break-glass window and the JSON log export (SEC D5); the folders come from install.sh.
+      BREAK_GLASS_DIR: /run/nextup/break-glass
+      LOG_EXPORT_DIR: /var/log/nextup
+      # The vault key being retired during a rotation (D8). Empty = no rotation under way.
+      CONNECTOR_VAULT_KEY_PREVIOUS: ${CONNECTOR_VAULT_KEY_PREVIOUS:-}
+    volumes:
+      - ${INSTANCE_DIR:?}/break-glass:/run/nextup/break-glass:ro
+      - ${INSTANCE_DIR:?}/logs:/var/log/nextup
     depends_on:
       db:
         condition: service_healthy

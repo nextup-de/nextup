@@ -63,6 +63,8 @@ test.describe.serial("FLR acceptance", () => {
     await test.step("an admin creates area line-3 and reads the URL under its poster code", async () => {
       const { context, page } = await signIn(browser, MANAGER);
       await page.goto(`/${SLUG}/settings/areas`);
+      // The streamed page can hold a hidden second copy of the section for a moment: wait until there is one.
+      await expect(page.getByTestId("settings-areas")).toHaveCount(1);
       await page.getByTestId("settings-areas-add").click();
       await page.getByTestId("settings-areas-field-name").fill("Line 3");
       await page.getByTestId("settings-areas-field-key").fill("line-3");

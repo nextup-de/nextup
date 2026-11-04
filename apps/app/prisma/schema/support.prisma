@@ -3,14 +3,17 @@
 // NextUp support access (ITC/D8): one code a console admin opens, valid 24 h or until revoked, at
 // most one active per company. Only the scrypt hash is stored; the code itself is shown once.
 model SupportGrant {
-  id        String    @id @default(cuid())
-  companyId String
-  codeHash  String // salt:hash, features/admin/support-code.ts
-  createdAt DateTime  @default(now())
-  expiresAt DateTime
-  revokedAt DateTime?
-  openedBy  String // who opened it: the console admin's sign-in name
-  signins   Json      @default("[]") // ISO times of the last 20 support sign-ins, oldest first
+  id          String    @id @default(cuid())
+  companyId   String
+  codeHash    String // salt:hash, features/admin/support-code.ts
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  reason      String? // 1-200 characters, why the company granted it (SEC D7)
+  grantedById String? // the company admin who granted it
+  extendedAt  DateTime? // last time the company extended it
+  openedBy    String // who opened it: the console admin's sign-in name
+  signins     Json      @default("[]") // ISO times of the last 20 support sign-ins, oldest first
 
   @@index([companyId])
 }

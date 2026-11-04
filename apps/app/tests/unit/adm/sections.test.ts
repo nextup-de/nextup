@@ -7,8 +7,8 @@ const full = { named: true, units: 1, linkedSeats: 1, routes: 1, members: 2 };
 
 describe("ADM settings sections", () => {
   it("lists the sections of D7 in order with their paths", () => {
-    expect(SETTINGS_SECTIONS.map((s) => s.key)).toEqual(["setup", "company", "rules", "calendar", "org", "routing", "members", "importExport", "notifications", "webhooks", "apiTokens", "signIn", "teams", "areas", "privacy", "audit"]);
-    expect(SETTINGS_SECTIONS.map((s) => s.path)).toEqual(["setup", "company", "rules", "calendar", "org", "routing", "members", "import-export", "notifications", "webhooks", "api-tokens", "sign-in", "teams", "areas", "privacy", "audit"]);
+    expect(SETTINGS_SECTIONS.map((s) => s.key)).toEqual(["setup", "company", "rules", "calendar", "org", "routing", "members", "importExport", "notifications", "webhooks", "apiTokens", "signIn", "supportAccess", "teams", "areas", "privacy", "audit"]);
+    expect(SETTINGS_SECTIONS.map((s) => s.path)).toEqual(["setup", "company", "rules", "calendar", "org", "routing", "members", "import-export", "notifications", "webhooks", "api-tokens", "sign-in", "support-access", "teams", "areas", "privacy", "audit"]);
   });
 
   it("has every label in both catalogs", () => {
