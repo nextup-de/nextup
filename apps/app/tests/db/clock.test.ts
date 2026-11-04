@@ -12,6 +12,7 @@ import { getDb } from "@/lib/db/client";
 import { saveCalendar } from "@/lib/db/calendar";
 import { companySeed } from "@/lib/db/companies";
 import { bindDemoCompany } from "@/lib/db/demo-identity";
+import { peopleForSeats } from "./test-company";
 import { appendEventRow, loadLog } from "@/lib/db/events";
 import { writeStructure } from "@/lib/db/structure-writes";
 
@@ -42,6 +43,7 @@ beforeAll(async () => {
     data: { slug: "clkz-box", name: "clkz-box", stage: "sandbox", seedJson: toSeedJson(writes.seedJson) as object, users: { create: [person("B. Hartmann", "manager"), person("T. Vogel", "leader"), person("J. Schmidt", "member")] } },
   });
   await writeStructure(c.id, writes, "test");
+  await peopleForSeats(c.id, "clkz");
   await bindDemoCompany(c.id);
   await saveCalendar(c.id, { ...DEFAULT_CALENDAR, region: "DE-BY" }, "test");
   company = { id: c.id, seedJson: c.seedJson, stage: "sandbox" };

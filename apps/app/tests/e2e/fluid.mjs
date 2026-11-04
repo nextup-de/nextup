@@ -45,7 +45,7 @@ const PAGES = [
   ["member", "/acme/raise", oneScreen], ["member", "/acme/overview"], ["member", "/acme/team"],
   ["leader", "/acme/leader"], ["leader", "/acme/raise", oneScreen],
   ["manager", "/acme/dashboard"], ["manager", "/acme/leader"], ["manager", "/acme/overview"],
-  ["manager", "/acme/problems"], ["manager", "/acme/ideas"], ["manager", "/acme/collaboration"], ["manager", "/acme/progress"],
+  ["manager", "/acme/feed"], ["manager", "/acme/projects/collaboration"], ["manager", "/acme/projects/progress"],
   ["manager", "/acme/settings"], ["manager", "/acme/settings/routing"], ["manager", "/acme/settings/members"], ["manager", "/acme/settings/company"],
   ["-", "/login"], ["-", "/signup"], ["-", "/forgot-password"], ["-", "/invite"], ["-", "/acme/login"], ["-", "/admin/login"],
 ].filter(([role, path]) => !ONLY.length || ONLY.some((o) => (role + " " + path).includes(o)))

@@ -89,3 +89,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 [data-avatar="amber"] { --nh-avatar: #fff1d1; --nh-avatar-ink: #8a5d00; }
 [data-avatar="violet"] { --nh-avatar: #f1e9fb; --nh-avatar-ink: #6b3fa0; }
 [data-avatar="teal"] { --nh-avatar: #e1f3f4; --nh-avatar-ink: #0f6b70; }
+[data-avatar="pink"] { --nh-avatar: #fce7f3; --nh-avatar-ink: #b0246e; }
+/* A department's tint: lib/dept-tone.ts picks it from the name, DeptChip reads these. */
+[data-dept-tone="blue"] { --nh-dept: rgb(191 219 254 / 50%); --nh-dept-ink: #0059b8; }
+[data-dept-tone="green"] { --nh-dept: rgb(187 240 205 / 50%); --nh-dept-ink: #1b6e34; }
+[data-dept-tone="amber"] { --nh-dept: rgb(253 224 138 / 50%); --nh-dept-ink: #7a5200; }
+[data-dept-tone="violet"] { --nh-dept: rgb(221 206 250 / 50%); --nh-dept-ink: #6b3fa0; }
+[data-dept-tone="teal"] { --nh-dept: rgb(170 232 232 / 50%); --nh-dept-ink: #0f6166; }
+[data-dept-tone="pink"] { --nh-dept: rgb(251 207 232 / 50%); --nh-dept-ink: #a81f68; }

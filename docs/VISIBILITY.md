@@ -12,6 +12,8 @@ these holds:
 - the raiser's choice lets them: `everyone`; `custom` with their user id or one of their units; `private` lets nobody
   else in (not a manager either);
 - with no choice: a manager always, a leader when the raiser's seat reports to one of the leader's roles, a member never.
+  A raiser without a seat (the directory creates none): their active manager, or without one the head of the unit their
+  department names. A person without a seat also counts in that unit for a `custom` audience.
 
 People are matched by user id, seat id, role id and org unit id, never by display name.
 

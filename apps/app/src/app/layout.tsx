@@ -17,7 +17,7 @@ const mono = localFont({
   ],
   variable: "--font-mono", display: "swap",
 });
-const inter = localFont({ src: "./fonts/inter-var.woff2", weight: "400 700", variable: "--font-inter", display: "swap", preload: false }); // the inbox card and idea detail only
+const inter = localFont({ src: "./fonts/inter-var.woff2", weight: "400 700", variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: `${SITE.name} - ${SITE.tagline}`, template: `%s · ${SITE.name}` },

@@ -49,7 +49,7 @@
   --nh-bench-clarity: #0b70d1;   /* novelty & clarity: Decision Blue */
   --nh-bench-clarity-tint: #eaf3ff;
 
-  --nh-font: var(--font-sans, "Manrope"), -apple-system, "Segoe UI", sans-serif;   /* --font-sans set by next/font in layout.tsx */
+  --nh-font: var(--font-inter, "Inter"), -apple-system, "Segoe UI", sans-serif;   /* --font-inter set by next/font in layout.tsx */
   --nh-mono: var(--font-mono, "IBM Plex Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Corners (Square Corners handoff): controls 8px (6px when tiny), containers 12px; avatars and
