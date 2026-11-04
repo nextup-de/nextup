@@ -37,12 +37,12 @@ export function ProgressView() {
                 <div className={styles.empty}>{t("progress.emptyLedger")}</div>
               ) : (
                 <div className={ui.grid2}>
-                  <div className={ui.tile}>
+                  {L.startMedian !== null && <div className={ui.tile}>
                     <div className={styles.bigV}>{days(L.startMedian)}</div>
                     <div className={ui.tileL}>{t("progress.startWait")}</div>
                     <div className={ui.rowMeta}>{t("progress.startWaitSub", { count: L.notStarted })}</div>
-                  </div>
-                  <div className={ui.tile}><div className={styles.bigV}>{days(L.measureMedian)}</div><div className={ui.tileL}>{t("progress.measureWait")}</div></div>
+                  </div>}
+                  {L.measureMedian !== null && <div className={ui.tile}><div className={styles.bigV}>{days(L.measureMedian)}</div><div className={ui.tileL}>{t("progress.measureWait")}</div></div>}
                   <div className={ui.tile}><div className={styles.bigV}>{L.moved}</div><div className={ui.tileL}>{t("progress.moved")}</div></div>
                   <div className={ui.tile}><div className={styles.bigV} data-hot={L.measuresOwed > 0 ? "true" : undefined}>{L.measuresOwed}</div><div className={ui.tileL}>{t("progress.owed")}</div></div>
                   <div className={ui.tile}><div className={styles.bigV}>{L.withoutNumber}</div><div className={ui.tileL}>{t("progress.withoutNumber")}</div></div>

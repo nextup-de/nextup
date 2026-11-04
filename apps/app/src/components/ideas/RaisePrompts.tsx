@@ -87,7 +87,7 @@ export function PromptBody({ segs, onSegs, caretRef, focus, onFocus, headRef }: 
 // presets - each can be added again and again. Pressing any of them keeps the caret where it was, so the block lands there.
 export function PromptTray({ onAdd }: { onAdd: (p: Prompt) => void }) {
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true); // the tray starts out; the chevron folds it
   const keep = (e: React.MouseEvent) => e.preventDefault();
   const toggle = t(open ? "ideas.promptHideDetails" : "ideas.promptAddDetails");
   return (

@@ -23,7 +23,7 @@ function Sheet({ closeLabel, onClose, an, children }: { closeLabel: string; onCl
     <div className={s.sheet}>
       <div className={s.sheetCol}>
         <div className={s.closeRow}>
-          <button type="button" className={s.close} onClick={onClose} title={closeLabel} aria-label={closeLabel}><Icon name="x" size={13.5} stroke="#fff" width={2.4} /></button>
+          <button type="button" className={s.close} onClick={onClose} title={closeLabel} aria-label={closeLabel}><Icon name="x" size={13.5} stroke="var(--nh-brand-ink)" width={2.4} /></button>
         </div>
         {an === undefined ? children : <div className={s.paper} data-an={an}>{children}</div>}
       </div>
@@ -84,7 +84,7 @@ export function AnalysisSheet({ ready, onClose, ...a }: AnalysisData & { ready: 
 // a card in the thread, up to the similar ideas; the reviewers and sources stay in the sheet.
 export function Analysis({ dials, company, summary, advice, pattern, cats, similar, reviewers, sources, improved, inChat = false }: AnalysisData & { inChat?: boolean }) {
   const t = useT();
-  const [open, setOpen] = useState<number | null>(null);
+  const [open, setOpen] = useState<number | null>(dials.length ? 0 : null); // the first check shows its reasoning from the start; the dial button folds it
   const d = open === null ? null : dials[open];
   const sourceList = (
     <div className={s.sources}>
@@ -105,12 +105,12 @@ export function Analysis({ dials, company, summary, advice, pattern, cats, simil
               <span className={s.dialLabel}>{x.label}{improved?.includes(x.key) && <span className={s.dialUp} role="img" aria-label={t("ideas.sheetImproved")} title={t("ideas.sheetImproved")}>▲</span>}</span>
               <div className={s.gauge}>
                 <svg viewBox="0 0 72 72" aria-hidden="true">
-                  <circle cx="36" cy="36" r="30" fill="none" stroke="#e3eaf7" strokeWidth="10" strokeLinecap="round" strokeDasharray="141.4 188.5" />
-                  <circle className={s.arc} cx="36" cy="36" r="30" fill="none" stroke="#007aff" strokeWidth="10" strokeLinecap="round" strokeDasharray={(141.4 * x.value / 100).toFixed(1) + " 188.5"} />
+                  <circle cx="36" cy="36" r="30" fill="none" stroke="var(--nh-progress-open)" strokeWidth="10" strokeLinecap="round" strokeDasharray="141.4 188.5" />
+                  <circle className={s.arc} cx="36" cy="36" r="30" fill="none" stroke="var(--nh-brand)" strokeWidth="10" strokeLinecap="round" strokeDasharray={(141.4 * x.value / 100).toFixed(1) + " 188.5"} />
                 </svg>
                 <div className={s.gaugeText}><span className={s.gaugeVal} data-long={x.scored && x.value >= 100}>{x.scored ? x.value : "–"}</span><span className={s.gaugeOf}>/ 100</span></div>
                 <button type="button" className={s.dialBtn} aria-expanded={open === i} title={t("ideas.sheetShowReasoning")} aria-label={t("ideas.sheetShowReasoningFor", { label: x.label })} onClick={() => setOpen(open === i ? null : i)}>
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="var(--nh-on-brand)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </button>
               </div>
             </div>
@@ -137,7 +137,7 @@ export function Analysis({ dials, company, summary, advice, pattern, cats, simil
         </div>
       ) : (
         <>
-          <div className={s.found}><Solid name="sparkle" size={12} fill="#007aff" /><span className={s.foundLabel}>{t("ideas.sheetAiFound")}</span></div>
+          <div className={s.found}><Solid name="sparkle" size={12} fill="var(--nh-brand)" /><span className={s.foundLabel}>{t("ideas.sheetAiFound")}</span></div>
           <div className={s.sec} data-gap="6"><p className={s.big}>{summary}</p></div>
           <div className={s.advice}>
             <span className={s.adviceKey}>{t("ideas.sheetAdvice")}</span><span className={s.adviceVal} data-strong="true">{advice.name}</span>

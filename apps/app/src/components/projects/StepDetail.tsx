@@ -4,7 +4,7 @@
 // (keyboard, phone). Each change is one project.step.* event; text and details save together.
 import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { Avatar } from "@/components/dashboard/shared/primitives";
+import { PersonFace } from "@/components/ui/elements";
 import { STEP_COLUMNS, type ReducedProject, type Step, type StepColumn } from "@/features/projects/types";
 import { columnLabel, safeUrl, systemFrom, timelineOf, toolName, toolOf, TOOLS, type JiraRow } from "@/features/projects/views";
 import { useFormat, useLocale, useT } from "@/i18n/client";
@@ -117,14 +117,14 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
                   {meOnTeam && s.ownerUserId !== meOnTeam.userId && <button type="button" className={styles.quietLink} onClick={() => change({ owner: meOnTeam.name, ownerUserId: meOnTeam.userId })}>{t("projects.takeIt")}</button>}
                 </span>
               ) : (
-                <span className={styles.owner}>{s.owner ? <><Avatar name={s.owner} size="sm" />{s.owner}</> : t("projects.noOwner")}</span>
+                <span className={styles.owner}>{s.owner ? <><PersonFace name={s.owner} size="sm" />{s.owner}</> : t("projects.noOwner")}</span>
               )}
             </div>
-            <div className={styles.sheetField}>
+            {(s.dueDay !== null || edit) && <div className={styles.sheetField}>
               <span className={styles.fieldLabel}>{t("projects.due")}</span>
-              <span className={styles.dueNow} data-late={late ? "true" : undefined}>
-                {s.dueDay === null ? t("projects.noDueDay") : late ? t("projects.lateSince", { day: f(s.dueDay) }) : f(s.dueDay)}
-              </span>
+              {s.dueDay !== null && <span className={styles.dueNow} data-late={late ? "true" : undefined}>
+                {late ? t("projects.lateSince", { day: f(s.dueDay) }) : f(s.dueDay)}
+              </span>}
               {edit && (
                 <span className={styles.chipRow}>
                   {DUE_QUICK.map((q) => (
@@ -136,7 +136,7 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
                   {s.dueDay !== null && <button type="button" className={styles.chipBtn} onClick={() => change({ dueDay: null })}>{t("projects.none")}</button>}
                 </span>
               )}
-            </div>
+            </div>}
           </div>
 
           <div className={styles.sheetField}>

@@ -8,7 +8,7 @@ import type { Route } from "@/features/demo/types";
 import type { T } from "@/i18n";
 import { Btn } from "@/components/dashboard/shared/primitives";
 import { useT } from "@/i18n/client";
-import { ini } from "@/lib/utils/format";
+import { PersonFace } from "@/components/ui/elements";
 import styles from "./InputSheet.module.css";
 import { LOOP_SHEETS, LoopSheet } from "./LoopSheets";
 
@@ -152,7 +152,7 @@ export function InputSheet() {
               return (
                 <button key={n} type="button" className={styles.person} data-on={on ? "true" : undefined}
                   onClick={() => patchSheet({ people: on ? sheet.people.filter((x) => x !== n) : sheet.people.concat([n]) })}>
-                  <span className={styles.personIni}>{ini(n)}</span>{n}
+                  <PersonFace name={n} size="sm" />{n}
                 </button>
               );
             })}

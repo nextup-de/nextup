@@ -1,8 +1,6 @@
 // Small presentational pieces every role view uses. Props in, JSX out.
-import { ini } from "@/lib/utils/format";
 import type { MessageKey, T } from "@/i18n";
 import ui from "./ui.module.css";
-import { avatarTone } from "@/lib/avatar";
 
 export type Tone = "accent" | "ink" | "ok" | "grey" | "soft" | "ghost" | "none" | "purple";
 
@@ -34,21 +32,6 @@ export function Pill({ tone, children, className }: { tone: Tone; children: Reac
   return <span className={[ui.pill, className].filter(Boolean).join(" ")} data-tone={tone}>{children}</span>;
 }
 
-// Seven-bar sparkline. Grey quarters = before the baseline, dark = since.
-export function Bars({ spark, tone, size, flat }: { spark: readonly number[]; tone?: "light"; size?: "md" | "lg"; flat?: boolean }) {
-  const vals = flat ? [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15] : spark;
-  return (
-    <div className={ui.bars} data-size={size}>
-      {vals.map((v, i) => (
-        <div key={i} className={ui.bar} data-tone={flat ? "flat" : tone ?? (i < 3 ? "before" : undefined)} style={{ height: 4 + v * 20 }} />
-      ))}
-    </div>
-  );
-}
-
-export function Avatar({ name, size, tone }: { name: string; size?: "sm" | "lg"; tone?: "light" }) {
-  return <span className={ui.avatar} data-size={size} data-tone={tone} data-avatar={tone ? undefined : avatarTone(name)} title={name}>{ini(name)}</span>;
-}
 
 export function Quote({ text, by, tone }: { text: string; by: string; tone?: "accent" }) {
   return (

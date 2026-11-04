@@ -2,55 +2,55 @@
    The four steps are a thin bar per step - ink when done, blue for now, amber where time is the story. */
 .page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 760px; margin: 0 auto; min-width: 0; }
 
-.promise { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #3a3a3c; max-width: 64ch; }
+.promise { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); max-width: 64ch; }
 
 .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 0; text-align: center; }
-.emptyTitle { font-size: var(--nh-fs-md); font-weight: 600; color: #1c1c1e; }
-.emptyLink { font-size: var(--nh-fs-sm); font-weight: 600; color: #0062cc; }
+.emptyTitle { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
+.emptyLink { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand-ink); }
 
 .cards { display: flex; flex-direction: column; gap: 16px; }
-.chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; background: #f2f2f7; color: #3a3a3c; font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 500; white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 500; white-space: nowrap; }
 .chip[data-tone="amber"] { background: #fff1d1; color: #7a5200; }
 .chip[data-tone="green"] { background: #e6f6ea; color: #1b6e34; }
 
 .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; list-style: none; padding: 0; }
 .steps[data-long="true"] { grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); row-gap: 12px; } /* the whole life: discussion and project steps too */
 .step { display: flex; flex-direction: column; min-width: 0; }
-.stepBar { height: 4px; border-radius: 999px; background: #e5e5ea; }
-.step[data-tone="done"] .stepBar { background: #1c1c1e; }
-.step[data-tone="now"] .stepBar { background: #007aff; }
+.stepBar { height: 4px; border-radius: 999px; background: var(--nh-line); }
+.step[data-tone="done"] .stepBar { background: var(--nh-progress-done); }
+.step[data-tone="now"] .stepBar { background: var(--nh-brand); }
 .step[data-tone="late"] .stepBar { background: #d98a00; }
-.stepLabel { margin-top: 8px; font-size: var(--nh-fs-sm); font-weight: 600; line-height: 18px; color: #1c1c1e; }
-.step[data-tone="todo"] .stepLabel { color: #8e8e93; }
-.step[data-tone="now"] .stepLabel { color: #0062cc; }
+.stepLabel { margin-top: 8px; font-size: var(--nh-fs-sm); font-weight: 600; line-height: 18px; color: var(--nh-ink); }
+.step[data-tone="todo"] .stepLabel { color: var(--nh-mute-2); }
+.step[data-tone="now"] .stepLabel { color: var(--nh-brand-ink); }
 .step[data-tone="late"] .stepLabel { color: #8a5d00; }
-.stepWhen { margin-top: 2px; font-size: var(--nh-fs-xs); line-height: 16px; color: #6e6e73; }
+.stepWhen { margin-top: 2px; font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); }
 
-.sub { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: #6e6e73; }
-.now { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; line-height: 22px; color: #1c1c1e; }
+.sub { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
+.now { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; line-height: 22px; color: var(--nh-ink); }
 .now[data-overdue="true"] { color: #8a5d00; }
-.reply { padding: 12px 14px; border-radius: 8px; background: #f7f7f9; }
-.replyText { margin: 0; font-size: var(--nh-fs-md); color: #3a3a3c; line-height: 22px; overflow-wrap: anywhere; }
-.replyBy { margin: 4px 0 0; font-size: var(--nh-fs-sm); color: #6e6e73; }
+.reply { padding: 12px 14px; border-radius: 8px; background: var(--nh-surface); }
+.replyText { margin: 0; font-size: var(--nh-fs-md); color: var(--nh-ink-2); line-height: 22px; overflow-wrap: anywhere; }
+.replyBy { margin: 4px 0 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 
 .outcome { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; font-size: var(--nh-fs-md); }
-.outcomeL { color: #6e6e73; }
-.outcomeV { color: #1c1c1e; font-weight: 600; }
-.outcomeNote { color: #6e6e73; }
+.outcomeL { color: var(--nh-mute); }
+.outcomeV { color: var(--nh-ink); font-weight: 600; }
+.outcomeNote { color: var(--nh-mute); }
 
 .askedList { display: flex; flex-direction: column; }
-.askedRow { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-top: 1px solid #f0f0f3; text-decoration: none; }
+.askedRow { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-top: 1px solid var(--nh-line-soft); text-decoration: none; }
 .askedRow:first-child { border-top: 0; padding-top: 0; }
-.askedCase { font-size: var(--nh-fs-md); font-weight: 600; color: #1c1c1e; line-height: 20px; overflow-wrap: anywhere; }
-.askedRow:hover .askedCase { color: #0062cc; }
-.askedMeta { font-size: var(--nh-fs-sm); color: #6e6e73; }
+.askedCase { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); line-height: 20px; overflow-wrap: anywhere; }
+.askedRow:hover .askedCase { color: var(--nh-brand-ink); }
+.askedMeta { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 
 .foot { display: flex; align-items: center; justify-content: flex-end; gap: 14px; flex-wrap: wrap; }
 .foot:empty { display: none; }
-.answer { height: 36px; padding-inline: 14px; border: 0; border-radius: 8px; background: #111; color: #fff; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
-.answer:hover { background: #2c2c2e; }
+.answer { height: 36px; padding-inline: 14px; border: 0; border-radius: 8px; background: var(--nh-brand); color: var(--nh-on-brand); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
+.answer:hover { background: var(--nh-brand-hover); }
 .answer:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.more { font-size: var(--nh-fs-sm); font-weight: 600; color: #0062cc; }
+.more { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand-ink); }
 
 @media (max-width: 560px) {
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; }

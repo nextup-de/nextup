@@ -81,7 +81,7 @@ function MiniProfile({ p }: { p: Person }) {
         <span className={s.mpKey}>{t("ideas.personEmail")}</span><a className={s.mpMail} href={"mailto:" + p.email}>{p.email}</a>
       </div>
       {!tenant.hiddenPeople?.includes(p.name) && profileHref && <Link className={s.mpBtn} href={href(profileHref)}>
-        {t("ideas.personViewProfile")}<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 1l5 5-5 5" /></svg>
+        {t("ideas.personViewProfile")}<svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="var(--nh-on-brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 1l5 5-5 5" /></svg>
       </Link>}
     </>
   );

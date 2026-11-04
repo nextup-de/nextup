@@ -48,5 +48,5 @@ export function Mic({ size }: { size: number }) {
 }
 
 export function Search({ size }: { size: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>;
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--nh-mute-2)" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>;
 }

@@ -5,16 +5,16 @@
 .hint { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--mute); }
 .track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; }
 .step { position: relative; display: flex; flex-direction: column; gap: 2px; padding-top: 26px; min-width: 0; }
-.step::before { content: ""; position: absolute; top: 8px; left: 0; right: 0; height: 2px; background: #e5e5ea; }
+.step::before { content: ""; position: absolute; top: 8px; left: 0; right: 0; height: 2px; background: var(--nh-line); }
 .step[data-state="past"]::before, .step[data-state="current"]::before { background: var(--nh-brand); }
 .step:last-child::before { right: 50%; }
-.dot { position: absolute; top: 0; left: 0; width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%; border: 2px solid #c7c7cc; background: #fff; }
+.dot { position: absolute; top: 0; left: 0; width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--nh-ghost); background: #fff; }
 .step[data-state="current"] .dot { background: var(--nh-brand); border-color: var(--nh-brand); }
 .step[data-state="past"] .dot { border-color: var(--nh-brand); }
 .stepName { font-size: var(--nh-fs-md); line-height: 20px; font-weight: 600; color: var(--ink-head); }
 .step[data-state="next"] .stepName, .step[data-state="later"] .stepName { color: var(--mute); }
 .stepNote { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--mute); }
-.meaning { display: grid; grid-template-columns: 120px repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 14px 16px; border-radius: 8px; background: #f7f7f9; font-size: var(--nh-fs-sm); line-height: 18px; }
+.meaning { display: grid; grid-template-columns: 120px repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 14px 16px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-sm); line-height: 18px; }
 .meaning [role="columnheader"] { font-weight: 600; color: var(--ink); }
 .meaning [role="rowheader"] { color: var(--mute-2); }
 .meaning [data-current] { font-weight: 600; color: var(--ink-head); }

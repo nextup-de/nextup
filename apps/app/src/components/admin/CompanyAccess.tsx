@@ -16,7 +16,7 @@ import c from "@/app/admin/people/console.module.css";
 
 type Person = CompanyRow["persons"][number];
 
-export function CompanyAccess({ company, open = false }: { company: CompanyRow; open?: boolean }) {
+export function CompanyAccess({ company, open = true }: { company: CompanyRow; open?: boolean }) {
   const t = useT();
   const f = useFormat();
   const [issued, issue, issuing] = useActionState<LoginCodeState, FormData>(issueLoginCodeAction, {});

@@ -75,8 +75,8 @@ export function PersonCard({ p, why, userId }: { p: Person; why?: string | null;
         <span className={styles.popWho}><span className={styles.popName}>{p.name}</span><span className={styles.popRole}>{p.role}</span></span>
       </div>
       <dl className={styles.popGrid}>
-        <dt>{t("leader.department")}</dt><dd>{p.dept ? <DeptChip name={p.dept} /> : "—"}</dd>
-        <dt>{t("leader.location")}</dt><dd>{p.location}</dd>
+        {p.dept ? <><dt>{t("leader.department")}</dt><dd><DeptChip name={p.dept} /></dd></> : null}
+        {p.location ? <><dt>{t("leader.location")}</dt><dd>{p.location}</dd></> : null}
         <dt>{t("leader.email")}</dt><dd><a className={styles.mail} href={"mailto:" + p.email}>{p.email}</a></dd>
       </dl>
       {why && <div className={styles.aiWhy}><Sparkle /><span>{why}</span></div>}
@@ -159,7 +159,7 @@ export function FileRows({ files }: { files: IdeaBrief["files"] }) {
 export function Sources({ id, list }: { id: string; list: Numbered[] }) {
   const t = useT();
   return (
-    <details className={`${styles.section} ${styles.srcFold}`}>
+    <details open className={`${styles.section} ${styles.srcFold}`}>
       <summary className={styles.srcSummary}>
         <span className={styles.label}>{t("leader.sources")}</span>
         <span className={styles.srcPeek} aria-hidden="true">{list.slice(0, 5).map((s) => <span key={s.n} className={styles.srcDot} data-tone={tagTone(s.ext)}>{s.ext.slice(0, 1)}</span>)}</span>

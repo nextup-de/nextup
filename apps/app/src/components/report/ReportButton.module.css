@@ -18,7 +18,7 @@
 
 .textLabel { display: block; font-size: var(--nh-fs-xs); font-weight: 700; color: var(--nh-ink-2); margin-top: 14px; }
 .textarea { display: block; width: 100%; margin-top: 7px; background: var(--nh-surface); border: 1px solid var(--nh-line); border-radius: var(--radius-xs, 10px); padding: 10px 12px; font-family: inherit; font-size: var(--nh-fs-sm); line-height: 1.5; color: var(--nh-ink); resize: vertical; outline: 0; }
-.textarea:focus { border-color: var(--nh-brand); box-shadow: 0 0 0 3px rgb(11 112 209 / 0.16); }
+.textarea:focus { border-color: var(--nh-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nh-brand) 16%, transparent); }
 
 .shot { margin-top: 14px; }
 .shotToggle { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-xs); font-weight: 700; color: var(--nh-ink-2); cursor: pointer; }

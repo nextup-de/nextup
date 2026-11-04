@@ -73,7 +73,7 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
           <div className={s.row}>
             {onMenu && (
               <div className={s.kindWrap}>
-                <button type="button" className={s.kind} onClick={onMenu} title={t("ideas.composerActions")} aria-label={t("ideas.composerActions")} aria-expanded={!!menuOpen}><Solid name="bolt" size={10.5} fill="#1c1c1e" /></button>
+                <button type="button" className={s.kind} onClick={onMenu} title={t("ideas.composerActions")} aria-label={t("ideas.composerActions")} aria-expanded={!!menuOpen}><Solid name="bolt" size={10.5} fill="var(--nh-ink)" /></button>
                 {menuOpen && menu}
               </div>
             )}
@@ -91,7 +91,7 @@ export function RaiseComposer({ value, onChange, onSubmit, placeholder, canSend,
               </button>
             )}
             <button type="button" className={s.dictate} onClick={dictate} aria-pressed={dictating} title={dictating ? t("ideas.composerStopDictation") : t("ideas.composerDictate")} aria-label={t("ideas.composerDictate")}><Mic size={13.5} /></button>
-            <button type="button" className={s.send} data-ready={canSend} onClick={onSubmit} disabled={!canSend} title={sendLabel} aria-label={sendLabel}><Icon name="up" size={11.25} stroke="#fff" width={2.6} /></button>
+            <button type="button" className={s.send} data-ready={canSend} onClick={onSubmit} disabled={!canSend} title={sendLabel} aria-label={sendLabel}><Icon name="up" size={11.25} stroke="var(--nh-on-brand)" width={2.6} /></button>
           </div>
           {strip ? (
             <div ref={stripRef} className={s.strip} data-more={more} onScroll={measure}

@@ -2,16 +2,16 @@
    come from settings.module.css. */
 .facts { display: flex; flex-direction: column; gap: 10px; margin: 0; }
 .fact { display: flex; gap: 16px; font-size: var(--nh-fs-md); line-height: 20px; }
-.factLabel { flex: 0 0 260px; font-weight: 600; color: #1c1c1e; margin: 0; }
-.factValue { margin: 0; color: #3a3a3c; }
+.factLabel { flex: 0 0 260px; font-weight: 600; color: var(--nh-ink); margin: 0; }
+.factValue { margin: 0; color: var(--nh-ink-2); }
 .warn { color: #b25e00; }
 
-.err { display: block; color: #d70015; }
+.err { display: block; color: var(--nh-danger); }
 .person { display: inline-flex; align-items: center; gap: 8px; }
-.empty { margin: 0; font-size: var(--nh-fs-md); color: #6e6e73; }
-.list { margin: 0; padding-left: 20px; font-size: var(--nh-fs-md); line-height: 22px; color: #3a3a3c; }
+.empty { margin: 0; font-size: var(--nh-fs-md); color: var(--nh-mute); }
+.list { margin: 0; padding-left: 20px; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); }
 .segment { display: inline-flex; gap: 4px; }
-.segment > button[data-on] { background: #111; color: #fff; }
+.segment > button[data-on] { background: var(--nh-brand); color: var(--nh-on-brand); }
 
 @media (max-width: 760px) {
   .fact { flex-direction: column; gap: 2px; }

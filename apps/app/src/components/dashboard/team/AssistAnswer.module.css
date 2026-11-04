@@ -31,8 +31,8 @@
 .fine { margin: 0; font-size: var(--nh-fs-xs); line-height: 1.45; color: var(--nh-mute); max-width: 52ch; }
 .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .solved, .more, .raise { display: inline-flex; align-items: center; padding: 7px 14px; border-radius: var(--radius-sm, 999px); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 500; cursor: pointer; transition: background 0.18s, border-color 0.18s; }
-.solved { background: var(--nh-ink); color: #fff; border: 1px solid var(--nh-ink); }
-.solved:hover { background: #2a2a2a; border-color: #2a2a2a; }
+.solved { background: var(--nh-brand); color: var(--nh-on-brand); border: 1px solid var(--nh-brand); }
+.solved:hover { background: var(--nh-brand-hover); border-color: var(--nh-brand-hover); }
 .more, .raise { background: var(--nh-card); color: var(--nh-ink); border: 1px solid #e6edf1; }
 .more:hover, .raise:hover { background: #f6f9fa; }
 .raise { border-color: var(--nh-brand-line); color: var(--nh-brand); }

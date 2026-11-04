@@ -6,6 +6,7 @@ import { confirmMatches } from "@/features/privacy/pseudonymise";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { pseudonymisePerson, type PseudonymiseRefusal } from "@/server/actions/privacy-person";
+import { PersonFace } from "@/components/ui/elements";
 import s from "./settings.module.css";
 
 const REFUSAL: Record<PseudonymiseRefusal, MessageKey> = {
@@ -43,7 +44,7 @@ export function PseudonymiseDialog({ slug, member, onClose, onDone }: Props) {
   return (
     <div className={s.scrim} onClick={onClose}>
       <div className={s.dialog} role="alertdialog" aria-modal="true" aria-labelledby="member-pseudonymise-title" onClick={(e) => e.stopPropagation()} data-testid="member-pseudonymise-dialog">
-        <h2 id="member-pseudonymise-title" className={s.cardTitle}>{t("privacyPerson.pseudonymiseTitle", { name: member.name })}</h2>
+        <h2 id="member-pseudonymise-title" className={s.cardTitle}><PersonFace name={member.name} size="sm" /> {t("privacyPerson.pseudonymiseTitle", { name: member.name })}</h2>
         <p className={s.dialogText}><strong>{t("privacyPerson.pseudonymiseWarning")}</strong></p>
         <ul className={s.dialogText}>
           <li>{t("privacyPerson.pseudonymisePoint1", { name: member.name, pseudonym: t("privacyPerson.pseudonym", { n: "####" }) })}</li>

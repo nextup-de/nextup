@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { SeatRow } from "@/features/auth/identity";
 import { useDemo, type DemoContext } from "@/components/dashboard/DemoProvider";
 import { Pill, type Tone } from "@/components/dashboard/shared/primitives";
-import { PageHeader } from "@/components/ui/elements";
+import { PageHeader, ProgressBar } from "@/components/ui/elements";
 import type { EventPayload } from "@/features/cases/events";
 import type { Actor } from "@/features/cases/permissions";
 import { mayAppendProject } from "@/features/projects/permissions";
@@ -176,9 +176,7 @@ function StepsBar({ p }: { p: ReducedProject }) {
   ].filter(Boolean);
   return (
     <span className={styles.cardSteps}>
-      <span className={styles.segbar} role="img" aria-label={cols.map((c) => by[c].length + " " + columnLabel(c, locale)).join(", ")}>
-        {cols.map((c) => <span key={c} data-col={c} style={{ flexGrow: by[c].length }} />)}
-      </span>
+      <ProgressBar done={by.done.length} doing={by.doing.length} blocked={by.blocked.length} open={by.todo.length} label={cols.map((c) => by[c].length + " " + columnLabel(c, locale)).join(", ")} />
       {bits.length > 0 && <span className={styles.cardStepsText}>{bits.join(" · ")}</span>}
     </span>
   );

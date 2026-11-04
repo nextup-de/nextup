@@ -1,20 +1,20 @@
 /* Import and export: the step line, the file pickers, the check result and the four export lines.
    Cards, buttons and lines come from settings.module.css. */
 .steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.steps li { padding: 4px 12px; border-radius: 8px; background: #f2f2f7; font-size: var(--nh-fs-sm); font-weight: 500; color: #6e6e73; }
-.steps .past { color: #1c1c1e; }
-.steps .now { background: #111; color: #fff; font-weight: 600; }
+.steps li { padding: 4px 12px; border-radius: 8px; background: var(--nh-fill); font-size: var(--nh-fs-sm); font-weight: 500; color: var(--nh-mute); }
+.steps .past { color: var(--nh-ink); }
+.steps .now { background: var(--nh-brand); color: var(--nh-on-brand); font-weight: 600; }
 .form { display: flex; flex-direction: column; gap: 14px; }
 .file { display: flex; flex-direction: column; gap: 6px; }
-.kind { font-size: var(--nh-fs-sm); font-weight: 600; color: #1c1c1e; }
-.key { font-family: var(--nh-mono), ui-monospace, monospace; font-weight: 400; color: #6e6e73; }
+.kind { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
+.key { font-family: var(--nh-mono), ui-monospace, monospace; font-weight: 400; color: var(--nh-mute); }
 .picker { max-width: 100%; font: inherit; font-size: var(--nh-fs-sm); }
 .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-.result { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; border-top: 1px solid #f0f0f3; }
-.summary { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; font-weight: 600; color: #1c1c1e; }
+.result { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; border-top: 1px solid var(--nh-line-soft); }
+.summary { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; font-weight: 600; color: var(--nh-ink); }
 .errors { display: flex; flex-direction: column; gap: 6px; max-height: 360px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
-.errors li { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 8px; background: #fff5f5; font-size: var(--nh-fs-sm); line-height: 18px; color: #d70015; }
-.where { font-family: var(--nh-mono), ui-monospace, monospace; color: #6e6e73; }
+.errors li { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 8px; background: var(--nh-danger-tint); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-danger); }
+.where { font-family: var(--nh-mono), ui-monospace, monospace; color: var(--nh-mute); }
 .exportLine { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; }
 .exportName { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 @media (max-width: 760px) {

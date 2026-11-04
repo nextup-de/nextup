@@ -1,11 +1,11 @@
 /* The answer-by and Routing panels inside the case card: a quiet grey block, like the other facts of the card. */
-.panel { display: grid; gap: 8px; margin: 0; padding: 12px 14px; border-radius: 8px; background: #f7f7f9; font-size: var(--nh-fs-md); line-height: 22px; }
-.title { font-size: var(--nh-fs-sm); font-weight: 600; color: #6e6e73; }
+.panel { display: grid; gap: 8px; margin: 0; padding: 12px 14px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-md); line-height: 22px; }
+.title { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
 .rows { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
-.rows dt { color: #6e6e73; font-weight: 600; }
-.rows dd { margin: 0; color: #1c1c1e; }
-.hint { grid-column: 2; margin: 0; font-size: var(--nh-fs-sm); color: #6e6e73; }
-.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; color: #1c1c1e; }
+.rows dt { color: var(--nh-mute); font-weight: 600; }
+.rows dd { margin: 0; color: var(--nh-ink); }
+.hint { grid-column: 2; margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; color: var(--nh-ink); }
 .late { color: #8a5d00; }
 @media (max-width: 760px) {
   .rows { grid-template-columns: 1fr; gap: 0; }

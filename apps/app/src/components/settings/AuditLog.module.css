@@ -3,34 +3,34 @@
 .export { align-self: flex-start; flex-shrink: 0; }
 .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .filter { display: flex; flex-direction: column; gap: 4px; }
-.group { position: relative; }
+.group { flex: 1 1 100%; }
 .group > summary { list-style: none; cursor: pointer; }
 .group > summary::-webkit-details-marker { display: none; }
-.checks { position: absolute; top: 40px; left: 0; z-index: 20; display: flex; flex-direction: column; gap: 6px; min-width: 200px; padding: 12px; border-radius: 12px; background: #fff; box-shadow: 0 10px 30px rgb(0 0 0 / 14%); font-size: var(--nh-fs-sm); }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 12px; margin-top: 8px; padding: 12px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-sm); }
 .checks label { display: flex; align-items: center; gap: 8px; }
 .table { width: 100%; border-collapse: collapse; font-size: var(--nh-fs-md); }
-.table th { padding: 8px 12px 8px 0; text-align: left; font-size: var(--nh-fs-sm); font-weight: 600; color: #6e6e73; }
-.table td { padding: 12px 12px 12px 0; border-top: 1px solid #f0f0f3; vertical-align: top; overflow-wrap: anywhere; color: #1c1c1e; }
+.table th { padding: 8px 12px 8px 0; text-align: left; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
+.table td { padding: 12px 12px 12px 0; border-top: 1px solid var(--nh-line-soft); vertical-align: top; overflow-wrap: anywhere; color: var(--nh-ink); }
 .row { cursor: pointer; }
-.row:hover td { background: #f7f7f9; }
+.row:hover td { background: var(--nh-surface); }
 .rowButton { padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .rowButton:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.sub { display: block; font-size: var(--nh-fs-sm); color: #6e6e73; }
+.sub { display: block; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .person { display: inline-flex; align-items: center; gap: 8px; }
-.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; font-size: var(--nh-fs-sm); color: #6e6e73; }
+.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .buttons { display: flex; gap: 8px; }
 .state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px; text-align: center; }
-.entry { margin-right: auto; font-size: var(--nh-fs-xs); color: #6e6e73; overflow-wrap: anywhere; }
+.entry { margin-right: auto; font-size: var(--nh-fs-xs); color: var(--nh-mute); overflow-wrap: anywhere; }
 .changes { width: 100%; border-collapse: collapse; font-size: var(--nh-fs-sm); }
-.changes th { padding: 6px 8px 6px 0; text-align: left; font-weight: 600; color: #6e6e73; }
-.changes td { padding: 8px 8px 8px 0; border-top: 1px solid #f0f0f3; vertical-align: top; overflow-wrap: anywhere; }
+.changes th { padding: 6px 8px 6px 0; text-align: left; font-weight: 600; color: var(--nh-mute); }
+.changes td { padding: 8px 8px 8px 0; border-top: 1px solid var(--nh-line-soft); vertical-align: top; overflow-wrap: anywhere; }
 @media (max-width: 760px) {
   .filter { flex: 1 1 140px; }
   .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
   .table thead { display: none; }
-  .table tr { padding: 12px 0; border-top: 1px solid #f0f0f3; }
+  .table tr { padding: 12px 0; border-top: 1px solid var(--nh-line-soft); }
   .table td { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; border: 0; text-align: right; }
-  .table td::before { content: attr(data-label); flex-shrink: 0; font-size: var(--nh-fs-sm); color: #6e6e73; text-align: left; }
+  .table td::before { content: attr(data-label); flex-shrink: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); text-align: left; }
   .row:hover td { background: none; }
   .sub { text-align: right; }
   .buttons > * { height: 44px; }

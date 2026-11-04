@@ -1,10 +1,10 @@
-.shell { min-height: var(--nh-screen-h); background: #fff; color: var(--nh-ink, #111); display: flex; flex-direction: column; }
+.shell { min-height: var(--nh-screen-h); background: #fff; color: var(--nh-ink, var(--nh-ink)); display: flex; flex-direction: column; }
 .bar { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--nh-line); background: #fff; }
-.mark { width: 32px; height: 32px; border-radius: 8px; background: #111; color: #fff; display: grid; place-items: center; font-weight: 700; flex: none; }
+.mark { width: 32px; height: 32px; border-radius: 8px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); display: grid; place-items: center; font-weight: 700; flex: none; }
 .name { flex: 1; min-width: 0; font-size: var(--nh-fs-md); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lang { display: flex; border: 1px solid var(--nh-line); border-radius: 8px; overflow: hidden; }
 .langBtn { min-width: 48px; height: 40px; border: 0; background: #fff; font: inherit; font-size: var(--nh-fs-md); font-weight: 600; cursor: pointer; }
-.langBtn[aria-checked="true"] { background: #111; color: #fff; }
+.langBtn[aria-checked="true"] { background: var(--nh-brand); color: var(--nh-on-brand); }
 .who { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; background: #f1f1f3; font-size: var(--nh-fs-md); }
 .signOut { min-height: 48px; min-width: 48px; border: 0; background: transparent; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .main { flex: 1; padding: 16px; max-width: 560px; width: 100%; margin: 0 auto; }

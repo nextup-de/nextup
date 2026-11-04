@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { MemberPrivacyActions } from "@/features/privacy/member-menu";
 import { useT } from "@/i18n/client";
 import { requestExport } from "@/server/actions/privacy-export";
+import { PersonFace } from "@/components/ui/elements";
 import s from "./settings.module.css";
 
 type Props = {
@@ -39,7 +40,7 @@ export function PersonExportDialog({ slug, member, exportTo, onClose, onDone }: 
   return (
     <div className={s.scrim} onClick={onClose}>
       <div className={s.dialog} role="dialog" aria-modal="true" aria-labelledby="member-export-title" onClick={(e) => e.stopPropagation()} data-testid="member-export-dialog">
-        <h2 id="member-export-title" className={s.cardTitle}>{t("privacyPerson.exportTitle", { name: member.name })}</h2>
+        <h2 id="member-export-title" className={s.cardTitle}><PersonFace name={member.name} size="sm" /> {t("privacyPerson.exportTitle", { name: member.name })}</h2>
         <p className={s.dialogText}>{t("privacyPerson.exportIn")}</p>
         <p className={s.dialogText}>{t("privacyPerson.exportNotIn")}</p>
         {member.active ? (

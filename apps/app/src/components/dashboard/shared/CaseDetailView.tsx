@@ -10,8 +10,8 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
 import { translate, type MessageKey, type T } from "@/i18n";
-import { Avatar, reasonTone, statusTone, type Tone } from "@/components/dashboard/shared/primitives";
-import { DeptChip, PageHeader, SectionCard } from "@/components/ui/elements";
+import { reasonTone, statusTone, type Tone } from "@/components/dashboard/shared/primitives";
+import { DeptChip, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
 import { AnswerPromise } from "@/components/cases/AnswerPromise";
 import { CaseRouting } from "@/components/cases/CaseRouting";
 import { seesRouting } from "@/features/cases/routing-trail";
@@ -61,7 +61,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const t = useT();
   const [note, setNote] = useState("");
   const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
-  const [asking, setAsking] = useState(false); // the why field is open
+  const [asking, setAsking] = useState(true); // the why field starts open
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
   if (!ready) return <PageSkeleton kind="detail" delay />;
   const c = S.cases.find((x) => x.id === caseId);
@@ -134,8 +134,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           <span className={styles.small}>{t("dashboard.detailRaised", { date: f(c.raisedDay), clock })}</span>
         </div>
         <div className={styles.quote}>
-          <div className={styles.quoteText}>{c.body || "—"}</div>
-          <div className={styles.quoteBy}><Avatar name={c.from} size="sm" /> {c.from}{c.fromDept ? <> · <DeptChip name={c.fromDept} /></> : null}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
+          {c.body && <div className={styles.quoteText}>{c.body}</div>}
+          <div className={styles.quoteBy}><PersonFace name={c.from} size="sm" /> {c.from}{c.fromDept ? <> · <DeptChip name={c.fromDept} /></> : null}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
           {shots.length > 0 && (
             <div className={styles.shots}>
               {shots.map((s, i) => (
@@ -154,7 +154,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             {chain.map((name, i) => (
               <span key={i} className={styles.hop} data-last={i === chain.length - 1 ? "true" : undefined}>
                 {i > 0 && <span className={styles.arrow} aria-hidden="true">→</span>}
-                <Avatar name={name} size="sm" />{name}
+                <PersonFace name={name} size="sm" />{name}
               </span>
             ))}
             {c.escalated && <span className={styles.auto}>{t("dashboard.detailAutoEscalated")}</span>}
@@ -204,7 +204,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         )}
         {standing.length > 0 && (
           <div className={styles.standing}>
-            <span className={styles.avatars}>{standing.slice(0, 6).map((n) => <Avatar key={n} name={n} size="sm" />)}</span>
+            <span className={styles.avatars}>{standing.slice(0, 6).map((n) => <PersonFace key={n} name={n} size="sm" />)}</span>
             <span className={styles.small}>{t("dashboard.detailAffected", { count: standing.length, name: standing[0], by: mine ? t("dashboard.detailYou") : c.from })}</span>
           </div>
         )}
@@ -214,7 +214,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         <div className={styles.thread}>
           {comments.map((m) => (
             <div key={m.id} className={styles.comment}>
-              <Avatar name={m.by} size="sm" />
+              <PersonFace name={m.by} size="sm" />
               <div className={styles.commentBody}>
                 <div className={styles.commentText}>{m.text}</div>
                 <div className={styles.commentBy}>{isMe(m.byUserId) ? t("dashboard.detailYou") : m.by} · {f(m.day)}{m.rescore && <span className={styles.rescoreTag}>{t("dashboard.detailNewInfoTag")}</span>}</div>

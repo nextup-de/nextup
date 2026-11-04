@@ -4,4 +4,4 @@
 .form { display: flex; flex-direction: column; gap: 18px; }
 .areas { display: flex; flex-direction: column; gap: 10px; border: 0; padding: 0; margin: 0; min-width: 0; }
 .areas legend { padding: 0; margin-bottom: 4px; }
-.check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); color: #1c1c1e; }
+.check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); color: var(--nh-ink); }

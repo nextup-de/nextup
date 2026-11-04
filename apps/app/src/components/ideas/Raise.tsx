@@ -134,7 +134,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     const url = pathname + (qs ? "?" + qs : "");
     if (how === "push") window.history.pushState(null, "", url); else window.history.replaceState(null, "", url);
   }, [params, urlIdea, view, pathname]);
-  const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "hidden"); // closed until asked for. auto, after a pick from an open one: stays open on screens, the drawer closes on phones (CSS)
+  const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "auto"); // open on screens from the start, a drawer on phones; the person can fold it. auto, after a pick from an open one: stays open on screens, the drawer closes on phones (CSS)
   const [query, setQuery] = useState("");
   const [startText, setStartText] = useKept(scope, "startText", "");
   const [segs, setSegs] = useKept<Seg[]>(scope, "segs", EMPTY_BODY); // the start composer's text and blocks under the headline
@@ -615,7 +615,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
         {edit && (
           <div className={s.edited}>
             <div className={s.editedRow}>
-              <Icon name="pencil" size={10.5} stroke="#1a5fd0" width={2} />
+              <Icon name="pencil" size={10.5} stroke="var(--nh-brand-ink)" width={2} />
               <span className={s.editedText}><b>{t("ideas.pageIdeaEdited")}</b> · {t("ideas.pageIdeaEditedNote")}</span>
               <button type="button" className={s.undo} onClick={() => draft && preview.edit(draft.id, null)}>{t("ideas.pageUndo")}</button>
             </div>

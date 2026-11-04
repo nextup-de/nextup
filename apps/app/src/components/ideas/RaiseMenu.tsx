@@ -8,12 +8,11 @@ import { createPortal } from "react-dom";
 import type { Dept, OrgPerson } from "@/features/demo/types";
 import { useLocale, useT } from "@/i18n/client";
 import { DEFAULT_LOCALE, translate, type Locale, type MessageKey } from "@/i18n";
-import { initials } from "@/features/ideas/raise";
 import { RAISE_ACTIONS } from "@/features/ideas/raise-actions";
 import { Icon, PATH, type IconName } from "./raiseIcons";
 import type { Extras, FileItem } from "./raisePreview";
 import s from "./Raise.module.css";
-import { avatarTone } from "@/lib/avatar";
+import { DeptChip, PersonFace } from "@/components/ui/elements";
 
 export type MenuView = "main" | "file" | "affected" | "vis" | "visPick";
 type PickKey = "affected" | "visPick";
@@ -109,7 +108,7 @@ export function RaiseMenu(p: MenuProps) {
         {p.view !== "main" && (
           <div className={s.panel} data-pick={isPick(p.view) || undefined}>
             <button type="button" className={`${s.mRow} ${s.back}`} onClick={back} title={closes ? t("common.close") : t("common.back")}>
-              <Icon name={closes ? "x" : "left"} size={10.5} stroke="#6e6e73" width={2.6} />
+              <Icon name={closes ? "x" : "left"} size={10.5} stroke="var(--nh-mute)" width={2.6} />
               <span className={s.backLabel}>{t(TITLE[p.view])}</span>
             </button>
             {isPick(p.view) && <Picker key={p.view} {...p} view={p.view} done={back} />}
@@ -158,10 +157,10 @@ function MainRows(p: MenuProps) {
   return actionsOf(p.extras, p.files.length, p.affected.length, locale).map(([v, icon, label, set]) => (
     <Fragment key={v}>
       <button type="button" role="menuitem" className={s.mRow} onClick={() => p.onView(v)}>
-        <Icon name={icon} size={12.75} stroke="#1c1c1e" />
+        <Icon name={icon} size={12.75} stroke="var(--nh-ink)" />
         <span className={s.mLabel}>{label}</span>
         <span className={s.mSet} data-on={set} />
-        <Icon name="right" size={9.75} stroke="#8e8e93" width={2.6} />
+        <Icon name="right" size={9.75} stroke="var(--nh-mute-2)" width={2.6} />
       </button>
     </Fragment>
   ));
@@ -175,7 +174,7 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
   const ph = t(cfg.ph);
   const [q, setQ] = useState("");
   const [pages, setPages] = useState<Record<string, number>>({});
-  const [openDept, setOpenDept] = useState<string | null>(null);
+  const [folded, setFolded] = useState<string[]>([]); // departments whose people the person folded away; the rest show their people
   const input = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => { input.current?.focus(); }, []);
 
@@ -202,9 +201,9 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
     const on = sel.includes(it.id);
     return (
       <button type="button" className={`${s.mRow} ${s.pickRow}`} onClick={() => toggle(it.id)} aria-pressed={on}>
-        <span className={`${s.lead} ${s.leadPick}`} data-kind={it.dept ? "dept" : "person"} data-avatar={it.dept ? undefined : avatarTone(it.label)}>{it.dept ? <Icon name="affected" size={12.75} /> : initials(it.label)}</span>
-        <span className={s.pickText}><span className={s.pickName}>{it.label}</span><span className={s.pickMeta}>{nested ? it.meta.split(" · ")[0] : it.meta}</span></span>
-        <span className={s.box15} data-on={on}><Icon name="check" size={9} stroke="#fff" width={3.2} /></span>
+        {!it.dept && <PersonFace name={it.label} />}
+        <span className={s.pickText}><span className={s.pickName}>{it.dept ? <DeptChip name={it.label} /> : it.label}</span><span className={s.pickMeta}>{nested ? it.meta.split(" · ")[0] : it.meta}</span></span>
+        <span className={s.box15} data-on={on}><Icon name="check" size={9} stroke="var(--nh-on-brand)" width={3.2} /></span>
       </button>
     );
   };
@@ -222,13 +221,13 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
               {pg.rows.map((it) => {
                 if (!it.dept) return <div key={it.id} className={s.pickLine}>{row(it)}</div>;
                 const members: Item[] = p.people.filter((x) => x.dept === it.dept && x.name !== p.me).map((x) => ({ id: x.name, label: x.name, meta: x.role }));
-                const open = openDept === it.dept, picked = members.filter((m) => sel.includes(m.id)).length, sp = page("dept:" + it.dept, members);
+                const open = !folded.includes(it.dept ?? ""), picked = members.filter((m) => sel.includes(m.id)).length, sp = page("dept:" + it.dept, members);
                 return (
                   <Fragment key={it.id}>
                     <div className={s.pickLine}>
                       {row(it)}
                       {members.length > 0 && (
-                        <button type="button" className={s.sub} aria-expanded={open} title={t("ideas.menuPickInDept")} onClick={() => setOpenDept(open ? null : it.dept ?? null)}>
+                        <button type="button" className={s.sub} aria-expanded={open} title={t("ideas.menuPickInDept")} onClick={() => setFolded((f) => (open ? [...f, it.dept ?? ""] : f.filter((x) => x !== it.dept)))}>
                           <span>{(picked ? picked + "/" : "") + members.length}</span><Icon name="right" size={9} width={2.6} />
                         </button>
                       )}
@@ -267,7 +266,7 @@ function FilePanel(p: MenuProps) {
         </div>
       ))}
       <label className={s.drop} data-more={p.files.length > 0}>
-        <Icon name="upload" size={12.75} stroke="#1c1c1e" />
+        <Icon name="upload" size={12.75} stroke="var(--nh-ink)" />
         <span className={s.dropTitle}>{p.files.length ? t("ideas.menuAddMore") : t("ideas.menuChoose")}</span>
         <span className={s.dropSub}>{t("ideas.menuPhotosPdfs")}</span>
         <input className={s.hidden} type="file" multiple accept="image/*,.pdf" onChange={(e) => { p.onAddFiles(e.target.files); e.target.value = ""; }} />
@@ -281,9 +280,9 @@ function VisPanel(p: MenuProps) {
   const opts: [Extras["vis"], string, IconName][] = [["private", t("ideas.menuPrivate"), "lock"], ["public", t("ideas.menuMyLeaders"), "vis"], ["custom", t("ideas.cardCustom"), "affected"]];
   return opts.map(([k, label, icon]) => (
     <button key={k} type="button" className={s.mRow} data-tall="true" onClick={() => { p.onExtras({ vis: k }); if (k === "custom") p.onView("visPick"); }}>
-      <Icon name={icon} size={12.75} stroke="#1c1c1e" />
+      <Icon name={icon} size={12.75} stroke="var(--nh-ink)" />
       <span className={s.mLabel}>{label}</span>
-      <svg className={s.mCheck} data-on={p.extras.vis === k} width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PATH.check} /></svg>
+      <svg className={s.mCheck} data-on={p.extras.vis === k} width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="var(--nh-ink)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PATH.check} /></svg>
     </button>
   ));
 }
