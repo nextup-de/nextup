@@ -77,7 +77,8 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
 
     // Deactivate Lena Brandt in Members.
     await page.goto(`/${SLUG}/settings/members`);
-    const row = () => page.locator(`[data-testid="settings-member-${lena.id}"]`);
+    // visible: for a moment after a load the streamed page holds a hidden second copy of the row.
+    const row = () => page.locator(`[data-testid="settings-member-${lena.id}"]`).filter({ visible: true });
     const menu = () => row().locator(`[data-testid="settings-member-menu-${lena.id}"]`);
     await expect(row()).toBeVisible({ timeout: 15_000 });
     await menu().click();
