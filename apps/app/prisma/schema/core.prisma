@@ -99,6 +99,7 @@ model Company {
   notifyPreferences    NotifyPreference[]
   notifyCursor         NotifyCursor?
   teamsConversations   TeamsConversation[]
+  aiCalls              AiCall[]
 
   // -- ops --
   tickets       Ticket[]

@@ -13,6 +13,8 @@ export type AiSettings = {
   model: string;
   endpoint: string | null;
   deployment: string | null;
+  /** The model the brain (routing, coaching, plans) uses; settings JSON, no column (plan AIB D8). */
+  brainModel?: string | null;
 };
 
 /** The part of the Integration row that decides: the switch and the saved settings. */
@@ -32,12 +34,14 @@ export function aiSettings(row: AiRow | null, env: Record<string, string | undef
   if (row) {
     const s = row.settings && typeof row.settings === "object" ? (row.settings as Record<string, unknown>) : {};
     const choice = (AI_PROVIDER_CHOICES as readonly unknown[]).includes(s.choice) ? (s.choice as AiProviderChoice) : "off";
+    const brainModel = strOrNull(s.brainModel);
     return {
       choice: row.on ? choice : "off",
       region: str(s.region, DEFAULT_REGION),
       model: str(s.model, ""),
       endpoint: strOrNull(s.endpoint),
       deployment: strOrNull(s.deployment),
+      ...(brainModel ? { brainModel } : {}), // absent, not null, so existing settings compare as before
     };
   }
   if (!policyFor(stage).demoData) return AI_OFF;
