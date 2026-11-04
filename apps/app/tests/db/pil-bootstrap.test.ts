@@ -104,25 +104,21 @@ describe("PIL bootstrap", () => {
     expect(await counts(company.id)).toEqual(before);
   });
 
-  it("lists every error of a broken CSV and writes no structure", async () => {
+  it("lists every error of a broken CSV and writes nothing, not even the company (PIL D18)", async () => {
     const r = await bootstrapPilot({ config: config("pil-b", broken), now, deps, sourceFor: () => null });
     expect(r.status).toBe("csv");
     expect(r.csvErrors.length).toBeGreaterThan(1);
     expect(r.csvErrors.every((e) => e.file === "units" && e.line > 0 && e.text.length > 0)).toBe(true);
-    const company = await db.company.findUniqueOrThrow({ where: { slug: "pil-b" } });
-    const c = await counts(company.id);
-    expect(c.units + c.roles + c.holders + c.routes).toBe(0);
-    expect(c.users).toBe(1); // only the admin
-    // The checks still end the run and name what is missing.
-    expect(r.checks.find((x) => x.key === "structure")?.state).toBe("needs");
+    expect(await db.company.count({ where: { slug: "pil-b" } })).toBe(0);
   });
 
   it("refuses a company that is not a sandbox, and keeps no login code without a file", async () => {
-    await db.company.update({ where: { slug: "pil-b" }, data: { stage: "pilot" } });
-    const r = await bootstrapPilot({ config: config("pil-b", broken), now, deps, sourceFor: () => null });
+    await bootstrapPilot({ config: config("pil-c", good), now, deps, sourceFor: () => null });
+    await db.company.update({ where: { slug: "pil-c" }, data: { stage: "pilot" } });
+    const r = await bootstrapPilot({ config: config("pil-c", good), now, deps, sourceFor: () => null });
     expect(r.status).toBe("refused");
     expect(r.checks).toEqual([]);
-    const created = await bootstrapPilot({ config: config("pil-c", good), now, deps, sourceFor: () => null });
+    const created = await bootstrapPilot({ config: config("pil-d", good), now, deps, sourceFor: () => null });
     expect(created.steps.join("\n")).toMatch(/login codes not kept/);
   });
 });
