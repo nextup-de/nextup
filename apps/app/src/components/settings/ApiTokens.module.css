@@ -1,13 +1,16 @@
-.wrap { display: grid; gap: 12px; max-width: 720px; }
-.head { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
-.title { margin: 0; font-size: var(--nh-fs-md); }
-.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.row { display: grid; gap: 6px; padding: 12px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); }
-.rowHead { display: flex; justify-content: space-between; gap: 8px; align-items: start; flex-wrap: wrap; }
-.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); padding: 2px 6px; border-radius: var(--nh-r); background: var(--nh-line); color: var(--nh-mute); }
-.mono { font-family: var(--nh-mono); word-break: break-all; }
-.shown { display: grid; gap: 8px; padding: 12px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); }
-.drawer { position: fixed; inset: 0 0 0 auto; width: min(420px, 100%); z-index: 50; overflow-y: auto; display: grid; align-content: start; gap: 12px; padding: 20px; background: var(--nh-card); border-left: 1px solid var(--nh-line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12); }
-.fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 6px; }
+/* API tokens: the token table cells and the create drawer. Cards, buttons and fields come from settings.module.css. */
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.form { display: flex; flex-direction: column; gap: 18px; }
+.fieldset { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); }
+.name { display: flex; flex-direction: column; gap: 2px; }
+.meta { font-size: var(--nh-fs-sm); color: #6e6e73; }
+.person { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 2px 8px; border-radius: 6px; background: #f2f2f7; color: #3a3a3c; font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-xs); line-height: 18px; overflow-wrap: anywhere; }
+.state { margin-left: 8px; padding: 2px 8px; border-radius: 6px; font-size: var(--nh-fs-xs); font-weight: 600; }
+.state[data-state="revoked"] { background: #fff0f0; color: #d70015; }
+.state[data-state="expired"] { background: #fff4e5; color: #b25000; }
+@media (max-width: 760px) {
+  .actions > * { flex: 1; height: 44px; }
+}

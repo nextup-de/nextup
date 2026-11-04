@@ -1,18 +1,19 @@
-.wrap { display: grid; gap: 12px; max-width: 880px; }
-.card { display: grid; gap: 8px; padding: 12px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); }
-.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.title { margin: 0; font-size: var(--nh-fs-md); }
-.inline { display: flex; gap: 8px; align-items: center; }
-.mono { font-family: var(--nh-mono); overflow-wrap: anywhere; }
-.warn { margin: 0; color: var(--nh-warn, #8a5a00); }
-.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.row { display: grid; gap: 4px; padding-block: 8px; border-top: 1px solid var(--nh-line); }
-.buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.events { display: grid; gap: 4px; border: 0; padding: 0; }
-.scroll { overflow-x: auto; }
-.drawer { position: fixed; inset: 0 0 0 auto; width: min(460px, 100%); z-index: 50; overflow-y: auto; display: grid; align-content: start; gap: 12px; padding: 20px; background: var(--nh-card); border-left: 1px solid var(--nh-line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12); }
-.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--nh-line); font-size: var(--nh-fs-sm); }
-.sent { color: var(--nh-ok, #1a5fb4); }
-.retrying { color: var(--nh-warn, #8a5a00); }
-.failed { color: var(--nh-bad, #b3261e); }
-.skipped, .waiting { color: var(--nh-mute); }
+/* Webhooks: the subscription and delivery cells, the drawer form. Cards, buttons and fields come from settings.module.css. */
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.form { display: flex; flex-direction: column; gap: 18px; }
+.fieldset { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); }
+.secrets { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; border-top: 1px solid #f0f0f3; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.statusCell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.pill { display: inline-flex; padding: 2px 8px; border-radius: 6px; background: #f2f2f7; color: #3a3a3c; font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; }
+.pill[data-status="sent"] { background: #edf7f0; color: #1f7a3a; }
+.pill[data-status="retrying"] { background: #fff4e5; color: #b25000; }
+.pill[data-status="failed"] { background: #fff0f0; color: #d70015; }
+.detail { font-size: var(--nh-fs-sm); color: #6e6e73; overflow-wrap: anywhere; }
+.body { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #3a3a3c; overflow-wrap: anywhere; }
+.link { font-size: var(--nh-fs-sm); font-weight: 600; color: #1c1c1e; text-decoration: none; }
+.link:hover { text-decoration: underline; }
+@media (max-width: 760px) {
+  .actions > * { flex: 1; height: 44px; }
+}
