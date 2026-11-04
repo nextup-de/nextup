@@ -90,6 +90,11 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
   load from other programs (i7-10700, 8 cores / 16 logical) before the run: 1,203 requests in 30 s = 40 requests/s (5 per process), inbox p95 6,149 ms,
   case p95 5,654 ms, 1 error in 1,203. The working day (5 virtual users) is p95 169 ms / 178 ms. Per process 5 requests/s, per busy core far
   below the 21 requests/s one process reaches alone. The test stays `it.fails`; no budget, load or threshold was changed. Status: open (blocked on a free machine).
+- **Second profile attempt (TST-Z1, 2026-11-04, after the go-ahead):** one process with the inspector attached, 30 virtual users, 20 s working day plus
+  30 s stress: 30 virtual users gave 7.6 requests/s with inbox p95 4.6 s on this busy PC. The profile showed 71 % of the time in synchronous
+  `readFileSync` for module loading (`loadRuntimeChunk`, `unstable_preloadEntries`), which looks like the PC's virus scanner slowing every file
+  read, not render cost, so it says nothing about the page itself and was not used to change code. A health check on an unloaded server answers
+  in 5-10 ms. No product change was made; no measurement here can be trusted to within the factor of five the budget needs. Status: open.
 - **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.
