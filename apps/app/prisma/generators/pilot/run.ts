@@ -1,15 +1,15 @@
 // The pilot bootstrap's command line (PIL D13). From apps/app:
 //
-//   npx tsx prisma/generators/pilot/run.ts bootstrap --config <file> [--codes <file>] [--json]
+//   npx tsx prisma/generators/pilot/run.ts bootstrap --config <file> [--codes <file>] [--dry-run] [--json]
 //   npx tsx prisma/generators/pilot/run.ts sample --people <n> --seed <s> --out <dir>
 //   npx tsx prisma/generators/pilot/run.ts report --slug <slug> --now <iso>
 //
-// Exit codes: 0 done (open checks are listed, not an error), 1 refused or failed, 2 the config is refused (nothing
-// written), 3 the CSV files have errors (structure unwritten). See README.md.
+// Exit codes (PIL D18): 0 done (open checks are listed, not an error), 1 refused or failed, 2 the config, the options
+// or the CSV files have errors (nothing written), 3 a failed directory run. See README.md.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { getDb, hasDatabase } from "../../../src/lib/db/client";
-import { bootstrapPilot, checkLine } from "./bootstrap";
+import { bootstrapPilot, checkLine, exitCodeOf } from "./bootstrap";
 import { parsePilotConfig } from "./config";
 import { reportOnce } from "./report";
 import { pilotSample } from "./sample";
@@ -50,15 +50,22 @@ async function main(): Promise<number> {
       else for (const p of parsed.problems) console.error(`config: ${p}`);
       return 2;
     }
-    const r = await bootstrapPilot({ config: parsed.config, now: new Date(), baseDir: path.dirname(path.resolve(file)), codesFile: a.get("codes") });
+    const codesFile = a.get("codes");
+    if (a.has("codes") && (codesFile === "true" || !codesFile)) {
+      console.error("config: --codes needs a file name");
+      return 2;
+    }
+    const r = await bootstrapPilot({ config: parsed.config, now: new Date(), baseDir: path.dirname(path.resolve(file)), codesFile, dryRun: a.get("dry-run") === "true" });
+    // The login codes themselves are never in `r`: they go to the --codes file and nowhere else.
     if (json) console.log(JSON.stringify(r, null, 2));
     else {
       for (const s of r.steps) console.log(s);
+      for (const p of r.problems) console.log(`config: ${p}`);
       for (const e of r.csvErrors) console.log(`csv ${e.file}${e.line ? `:${e.line}` : ""}${e.column ? ` ${e.column}` : ""}: ${e.text}`);
       for (const c of r.checks) console.log(checkLine(c));
       console.log(r.open.length === 0 ? "no needed check is open" : `needed and open: ${r.open.join(", ")}`);
     }
-    return r.status === "csv" ? 3 : r.status === "refused" ? 1 : 0;
+    return exitCodeOf(r);
   }
 
   if (command === "sample") {
