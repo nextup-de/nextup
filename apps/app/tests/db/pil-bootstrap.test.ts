@@ -109,12 +109,14 @@ describe("PIL bootstrap", () => {
     expect(r.status).toBe("csv");
     expect(r.csvErrors.length).toBeGreaterThan(1);
     expect(r.csvErrors.every((e) => e.file === "units" && e.line > 0 && e.text.length > 0)).toBe(true);
-    const company = await db.company.findUniqueOrThrow({ where: { slug: "pil-b" } });
-    const c = await counts(company.id);
-    expect(c.units + c.roles + c.holders + c.routes).toBe(0);
-    expect(c.users).toBe(1); // only the admin
-    // The checks still end the run and name what is missing.
-    expect(r.checks.find((x) => x.key === "structure")?.state).toBe("needs");
+    // D18: every file is checked before the first write, so not even the company exists.
+    expect(await db.company.findUnique({ where: { slug: "pil-b" } })).toBeNull();
+    expect(r.checks).toEqual([]);
+    // Once the company exists, a broken CSV still leaves its structure alone and the checks name what is open.
+    await bootstrapPilot({ config: config("pil-b", good), now, deps, sourceFor: () => null });
+    const again = await bootstrapPilot({ config: config("pil-b", broken), now, deps, sourceFor: () => null });
+    expect(again.status).toBe("csv");
+    expect(again.checks.length).toBeGreaterThan(0);
   });
 
   it("refuses a company that is not a sandbox, and keeps no login code without a file", async () => {
