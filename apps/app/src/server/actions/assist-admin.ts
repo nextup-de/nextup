@@ -1,7 +1,7 @@
 "use server";
 // /admin/assistant: the assistant's switches for the console's own company - on/off (the kill switch),
 // the classification ceiling, the data-processing agreement date, compliance rules and
-// extra redaction patterns. Every action asks consoleCompany() first and writes the guard's company id,
+// extra redaction patterns. Every action asks consoleWrite() first and writes the guard's company id,
 // never one from the form; a support session reads and changes nothing (ITC/D4).
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -11,7 +11,7 @@ import { adminBase } from "@/features/admin/nav";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { deleteDocument } from "@/lib/db/assist";
 import { consoleActor, recordAudit } from "@/server/audit/record";
-import { consoleCompany } from "@/server/console-guard";
+import { consoleWrite } from "@/server/console-write";
 
 /** Where the assistant card is shown. */
 function revalidateAssistant() {
@@ -31,9 +31,9 @@ const Form = z.object({
 });
 
 export async function saveAssistSettingsAction(_prev: AssistSettingsState, form: FormData): Promise<AssistSettingsState> {
-  const guard = await consoleCompany();
-  if (!guard) return { ok: false, code: "not-allowed" };
-  if (guard.via === "support") return { ok: false, code: "support-read-only" };
+  const door = await consoleWrite();
+  if (!door.ok) return { ok: false, code: door.code };
+  const guard = door.c;
   if (!hasDatabase()) return { ok: false, code: "no-database" };
   const p = Form.safeParse(Object.fromEntries(form));
   if (!p.success) return { ok: false, code: "invalid" };
@@ -80,8 +80,9 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
 
 /** One document out of the assistant's reach, e.g. imported with the wrong class. n8n re-adds it on its next run if the source still has it. */
 export async function deleteDocumentAction(form: FormData): Promise<void> {
-  const guard = await consoleCompany();
-  if (!guard || guard.via === "support" || !hasDatabase()) return;
+  const door = await consoleWrite();
+  if (!door.ok || !hasDatabase()) return;
+  const guard = door.c;
   const id = String(form.get("id") ?? "");
   if (!id) return;
   await deleteDocument(guard.companyId, id);

@@ -1,6 +1,6 @@
 "use server";
 // The console's connector actions (ITC-A1, replaces ADM-C1): Jira test, save, on/off and sync now; the
-// Microsoft 365 company switch and "disconnect everyone"; the AI choice. Each calls consoleCompany()
+// Microsoft 365 company switch and "disconnect everyone"; the AI choice. Each calls consoleWrite()
 // first and writes for the company id it returns, never for one from the form (ITC/D4). A support
 // session (D8) only reads. A key or token is write-only: it goes in sealed and nothing returns it.
 import { revalidatePath } from "next/cache";
@@ -18,7 +18,7 @@ import { getDb } from "@/lib/db/client";
 import { getIntegration, integrationSecrets, jiraSaveChanges, JIRA, saveIntegration, setIntegrationOn } from "@/lib/db/integrations";
 import { adminActor } from "@/server/admin-session";
 import { consoleActor, recordAudit } from "@/server/audit/record";
-import { consoleCompany } from "@/server/console-guard";
+import { consoleWrite } from "@/server/console-write";
 import { sealSecret, storedToken } from "@/server/jira-admin";
 import { kickJira } from "@/server/jira-sync";
 import { testJira } from "@/server/jira/test";
@@ -35,19 +35,12 @@ export type ConsoleJiraTestState = {
   issueTypes: JiraIssueType[];
 };
 
-type Door = { companyId: string; slug: string };
 
 const connector = (id: string) => ({ kind: "connector", id });
 /** The write could not be recorded in the audit trail, so it was rolled back. */
 const NOT_RECORDED: ConsoleConnectorState = { ok: false, code: "invalid", detail: "audit" };
 
-/** The guard, then the support rule. */
-async function door(): Promise<{ ok: true; c: Door } | { ok: false; code: "not-allowed" | "support-read-only" }> {
-  const c = await consoleCompany();
-  if (!c) return { ok: false, code: "not-allowed" };
-  if ((c.via as string) === "support") return { ok: false, code: "support-read-only" };
-  return { ok: true, c };
-}
+const door = consoleWrite;
 
 const refresh = () => revalidatePath(adminBase() + "/connectors");
 const who = async () => (await adminActor()) ?? "admin code";

@@ -16,6 +16,7 @@ import { mailConfigured, sendMail } from "@/server/mail";
 import { throttle } from "@/server/throttle";
 import { syncTickets } from "@/server/tickets-sync";
 import { isAdmin } from "@/server/actions/admin";
+import { consoleWriteRefusal } from "@/server/console-write";
 import { policyFor } from "@/features/admin/stages";
 
 export type ReportResult = { ok: true; label: string } | { ok: false; error: string };
@@ -96,6 +97,8 @@ export async function reportTicket(slug: string, raw: unknown): Promise<ReportRe
 /** The company admin (/admin) reports. Only where this deployment serves one company. */
 export async function reportFromAdmin(raw: unknown): Promise<ReportResult> {
   if (!hasDatabase() || !(await isAdmin())) return { ok: false, error: "Log in to the admin area first." };
+  const refused = await consoleWriteRefusal();
+  if (refused) return { ok: false, error: refused };
   const slug = singleCompany();
   if (!slug) return { ok: false, error: "Reports from /admin need a single-company stack." };
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true, stage: true } });
