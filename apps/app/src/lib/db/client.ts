@@ -16,8 +16,13 @@
 //     next step. This guard is the cheap 90% until then.
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { forgetMemo } from "./company-memo";
 import { hasDatabase, markDatabaseReachable, markDatabaseUnreachable } from "./mode";
 import { scopeViolation } from "./scope";
+
+// Writes that change what company-memo.ts keeps. The event log and its projection change on every case and are never kept.
+const WRITES = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "updateManyAndReturn", "upsert", "delete", "deleteMany"]);
+const NOT_KEPT = new Set(["CaseEvent", "CaseView"]);
 
 /** Pool size and statement timeout (VIS/D12). Anything that is not a positive whole number falls back. */
 export function poolSettings(env: Record<string, string | undefined>): { max: number; statementTimeoutMs: number } {
@@ -50,7 +55,14 @@ function createClient() {
         async $allOperations({ model, operation, args, query }) {
           const violation = scopeViolation(model, operation, args);
           if (violation) throw violation;
-          return query(args);
+          if (!WRITES.has(operation) || (model && NOT_KEPT.has(model))) return query(args);
+          // Forget before and after: a read between the write and its commit must not be kept past the commit.
+          forgetMemo();
+          try {
+            return await query(args);
+          } finally {
+            forgetMemo();
+          }
         },
       },
     },

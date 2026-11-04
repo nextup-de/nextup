@@ -104,21 +104,27 @@ describe("PIL bootstrap", () => {
     expect(await counts(company.id)).toEqual(before);
   });
 
-  it("lists every error of a broken CSV and writes nothing, not even the company (PIL D18)", async () => {
+  it("lists every error of a broken CSV and writes no structure", async () => {
     const r = await bootstrapPilot({ config: config("pil-b", broken), now, deps, sourceFor: () => null });
     expect(r.status).toBe("csv");
     expect(r.csvErrors.length).toBeGreaterThan(1);
     expect(r.csvErrors.every((e) => e.file === "units" && e.line > 0 && e.text.length > 0)).toBe(true);
-    expect(await db.company.count({ where: { slug: "pil-b" } })).toBe(0);
+    // D18: every file is checked before the first write, so not even the company exists.
+    expect(await db.company.findUnique({ where: { slug: "pil-b" } })).toBeNull();
+    expect(r.checks).toEqual([]);
+    // Once the company exists, a broken CSV still leaves its structure alone and the checks name what is open.
+    await bootstrapPilot({ config: config("pil-b", good), now, deps, sourceFor: () => null });
+    const again = await bootstrapPilot({ config: config("pil-b", broken), now, deps, sourceFor: () => null });
+    expect(again.status).toBe("csv");
+    expect(again.checks.length).toBeGreaterThan(0);
   });
 
   it("refuses a company that is not a sandbox, and keeps no login code without a file", async () => {
-    await bootstrapPilot({ config: config("pil-c", good), now, deps, sourceFor: () => null });
-    await db.company.update({ where: { slug: "pil-c" }, data: { stage: "pilot" } });
-    const r = await bootstrapPilot({ config: config("pil-c", good), now, deps, sourceFor: () => null });
+    await db.company.update({ where: { slug: "pil-b" }, data: { stage: "pilot" } });
+    const r = await bootstrapPilot({ config: config("pil-b", broken), now, deps, sourceFor: () => null });
     expect(r.status).toBe("refused");
     expect(r.checks).toEqual([]);
-    const created = await bootstrapPilot({ config: config("pil-d", good), now, deps, sourceFor: () => null });
+    const created = await bootstrapPilot({ config: config("pil-c", good), now, deps, sourceFor: () => null });
     expect(created.steps.join("\n")).toMatch(/login codes not kept/);
   });
 });
