@@ -148,7 +148,7 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
           <Foot status={status?.text} tone={status?.error ? "error" : undefined} statusTestId="settings-privacy-status">
             <p className={s.status} data-testid="settings-privacy-last-run">
               {lr?.at
-                ? `${t("settingsPrivacy.lastRun", { date: f.date(lr.at, "dateTime") })} · ${t("settingsPrivacy.lastRunRemoved", { turns: f.number(removed.assistTurns ?? 0), drafts: f.number(removed.drafts ?? 0), cases: f.number(removed.cases ?? 0) })}`
+                ? `${t("settingsPrivacy.lastRun", { date: f.date(lr.at, "dateTime") })} · ${t("settingsPrivacy.lastRunRemoved", { turns: f.number(removed.assistTurns ?? 0), drafts: f.number(removed.drafts ?? 0), cases: f.number(removed.cases ?? 0), outbox: f.number(removed.outbox ?? 0), teamsLinks: f.number(removed.teamsLinks ?? 0) })}`
                 : t("settingsPrivacy.lastRunNone")}
             </p>
             <button className={s.save} type="submit" disabled={pending} data-testid="settings-privacy-save-rules">
