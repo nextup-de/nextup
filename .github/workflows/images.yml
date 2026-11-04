@@ -1,11 +1,12 @@
 # Publish the stack images to GHCR (docs/plans/2026-09-27_platform.md, stage 1 step 4).
 #
-# When CI has passed on main (lint, typecheck, tests, build, both e2e suites), this builds the very
-# commit CI tested and pushes three images (the first two from ops/Dockerfile):
+# Every push to main builds that commit and pushes three images (the first two from ops/Dockerfile):
 #   ghcr.io/nextup-de/nextup-app      target `run`   - what each company stack runs
 #   ghcr.io/nextup-de/nextup-migrate  target `build` - the one-shot prisma migrate (+ demo seed)
 #   ghcr.io/nextup-de/nextup-brain    services/brain - routing proposal and repeats (--brain stacks)
-# tagged `main` (moves with every merge) and `sha-<short>` (pinned, for rollbacks).
+# tagged `sha-<short>` (pinned, for rollbacks). They build alongside CI (lint, typecheck, tests,
+# build, both e2e suites), not after it, so a green CI finds its images ready. Nothing runs them
+# until then. Only a green CI moves the tag `main` to a commit (job `ready`).
 #
 # The images hold this public repo's code and no secrets: .dockerignore keeps every .env out, and
 # the build needs no DATABASE_URL (same condition as the CI build job). Servers pull them instead of
@@ -17,15 +18,20 @@
 #   smoke    e2e:live (the interview script) against staging.sellux.ch
 #   release  deploy.yml release  -> waits for Kevin's approval, then every other stack runs it
 # So the box only ever runs code that passed CI, and customers only code that also ran on staging -
-# a red CI on main means no new image and no deploy. (Until 28 Sep this ran on every push, and a
-# failing e2e suite still reached the box.)
+# a red CI on main means no deploy, and `main` stays where it is. A red commit's `sha-` images do
+# exist on GHCR, and no automatic step moves them. (Until 28 Sep the deploy ran on every push, and
+# a failing e2e suite still reached the box. Until 4 Nov the build waited for CI, which made a
+# merge take about 17 minutes to reach staging; alongside it, about 10.)
 #
 # Kevin owns this file.
 
 name: images
 
 on:
-  # After CI, not after the push: only a green main is built and deployed.
+  # The build starts with the push, so it does not wait for CI.
+  push:
+    branches: [main]
+  # The deploy starts after CI, not after the push: only a green main is deployed.
   workflow_run:
     workflows: [CI]
     types: [completed]
@@ -43,24 +49,17 @@ permissions:
 jobs:
   publish:
     name: build and push · app + migrate + brain
-    # A workflow_run fires for every CI run on main, red ones too: build only the green pushes.
-    if: >-
-      github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
-    # On the build only, not the whole run: a run that waits days for a release approval must
-    # not hold up the next merge's build and staging. A newer PR push may cancel the older build;
-    # on main never.
+    if: github.event_name != 'workflow_run'
+    # A newer PR push may cancel the older build. On main each commit has its own group: job
+    # `ready` waits for every commit's images, and a shared group would drop a queued build when
+    # merges land close together.
     concurrency:
-      group: images-publish-${{ github.ref }}
+      group: images-publish-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    outputs:
-      commit: ${{ steps.tags.outputs.commit }}
     env:
-      # The commit CI tested. On a workflow_run, github.sha is main's tip at trigger time - which a
-      # later merge may already have moved - so it is never used for what gets built.
-      COMMIT: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
+      COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -80,7 +79,6 @@ jobs:
         shell: bash
         run: |
           short="${COMMIT::7}"
-          echo "commit=$short" >> "$GITHUB_OUTPUT"
           echo "app=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-app" >> "$GITHUB_OUTPUT"
           echo "migrate=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-migrate" >> "$GITHUB_OUTPUT"
           echo "brain=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nextup-brain" >> "$GITHUB_OUTPUT"
@@ -95,7 +93,6 @@ jobs:
           target: build
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ steps.tags.outputs.migrate }}:main
             ${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -137,7 +134,6 @@ jobs:
           build-args: NEXTUP_COMMIT=${{ env.COMMIT }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ steps.tags.outputs.app }}:main
             ${{ steps.tags.outputs.app }}:${{ steps.tags.outputs.short }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -168,7 +164,6 @@ jobs:
           file: services/brain/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ steps.tags.outputs.brain }}:main
             ${{ steps.tags.outputs.brain }}:${{ steps.tags.outputs.short }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -194,26 +189,84 @@ jobs:
         run: |
           {
             echo "### Published"
-            echo "- \`${{ steps.tags.outputs.app }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
-            echo "- \`${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
-            echo "- \`${{ steps.tags.outputs.brain }}:${{ steps.tags.outputs.short }}\` (also \`:main\`)"
+            echo "- \`${{ steps.tags.outputs.app }}:${{ steps.tags.outputs.short }}\`"
+            echo "- \`${{ steps.tags.outputs.migrate }}:${{ steps.tags.outputs.short }}\`"
+            echo "- \`${{ steps.tags.outputs.brain }}:${{ steps.tags.outputs.short }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # CI passed on a commit of main. Its images come from that commit's push run above, usually
+  # finished by now. If that build failed (the Trivy gate, say), nothing moves: re-run it, then
+  # re-run this job.
+  ready:
+    name: green CI · images ready, move main
+    # A workflow_run fires for every CI run on main, red ones too.
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      packages: write
+    outputs:
+      commit: ${{ steps.tags.outputs.commit }}
+    env:
+      # The commit CI tested. On a workflow_run, github.sha is main's tip at trigger time, which a
+      # later merge may already have moved.
+      COMMIT: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Wait for this commit's images
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for _ in $(seq 1 100); do
+            run="$(gh run list --workflow images.yml --event push --commit "$COMMIT" --limit 1 \
+                     --json status,conclusion --jq '.[0] | "\(.status) \(.conclusion)"' || true)"
+            case "$run" in
+              "completed success") echo "images of $COMMIT are on GHCR"; exit 0 ;;
+              completed*) echo "::error::the image build of $COMMIT ended: $run"; exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "::error::no finished image build for $COMMIT after 25 minutes"
+          exit 1
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The same images under a second name: nothing is rebuilt.
+      - name: Move the tag main to this commit
+        id: tags
+        shell: bash
+        run: |
+          short="${COMMIT::7}"
+          for image in nextup-app nextup-migrate nextup-brain; do
+            ref="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/$image"
+            docker buildx imagetools create --tag "$ref:main" "$ref:sha-$short"
+          done
+          echo "commit=$short" >> "$GITHUB_OUTPUT"
 
   # 1. staging.sellux.ch gets exactly this build.
   staging:
     name: staging
-    needs: publish
-    if: github.event_name == 'workflow_run' && needs.publish.result == 'success'
+    needs: ready
+    if: needs.ready.result == 'success'
     uses: ./.github/workflows/deploy.yml
     with:
       action: stage
-      tag: ${{ needs.publish.outputs.commit }}
+      tag: ${{ needs.ready.outputs.commit }}
     secrets: inherit
 
   # 2. The interview script against staging, over the internet - the way people reach it.
   smoke:
     name: smoke · e2e:live on staging
-    needs: [publish, staging]
+    needs: [ready, staging]
     if: needs.staging.outputs.deployed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -250,10 +303,10 @@ jobs:
   # manual rollback (Actions -> deploy -> release, an older sha).
   release:
     name: release
-    needs: [publish, smoke]
+    needs: [ready, smoke]
     if: needs.smoke.result == 'success'
     uses: ./.github/workflows/deploy.yml
     with:
       action: release
-      tag: ${{ needs.publish.outputs.commit }}
+      tag: ${{ needs.ready.outputs.commit }}
     secrets: inherit

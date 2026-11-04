@@ -65,7 +65,7 @@ Running `add-stack.sh` again restarts the stack. It keeps the secrets and picks 
 ## Update to new images
 
 CI publishes `ghcr.io/nextup-de/nextup-app` and `nextup-migrate` on every push to `main`
-(`.github/workflows/images.yml`), tagged `main` and `sha-<7-char sha>`. Scripts take the plain sha and add the `sha-` prefix. On the box:
+(`.github/workflows/images.yml`), tagged `sha-<7-char sha>`; the tag `main` moves once CI is green. Scripts take the plain sha and add the `sha-` prefix. On the box:
 
 ```bash
 ~/nextup/stack/nginx/deploy.sh stage a16bc06      # staging gets the commit first
@@ -93,7 +93,7 @@ first. Everyone else gets a commit only after it ran on staging, the smoke test 
 Kevin approved it in GitHub. The same image moves on; nothing is rebuilt in between.
 
 ```
-merge → CI → image sha-abc1234 → stage abc1234 (staging) → e2e:live on staging → Approve → release abc1234 (everyone else)
+merge → image sha-abc1234 and CI, side by side → CI green → stage abc1234 (staging) → e2e:live on staging → Approve → release abc1234 (everyone else)
 ```
 
 Which stack gets what is the **Track** column of `ports.md`:
@@ -170,7 +170,7 @@ are logged in `~/nextup/deploy.log`. The admin code and login codes never reach 
 
 What CI does with it (`.github/workflows/images.yml`, `deploy.yml`):
 
-1. **staging** - `stage <sha>` right after the images are pushed. No approval.
+1. **staging** - `stage <sha>` as soon as CI is green and the images are pushed. No approval.
 2. **smoke** - `npm run e2e:live` against `STAGING_URL` (the interview script). Red here = no release.
 3. **release** - waits in the GitHub environment `production` until Kevin clicks **Review
    deployments → Approve**, then `release <sha>`. A newer merge replaces a release still waiting.
