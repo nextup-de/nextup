@@ -11,11 +11,13 @@ import { getViewerFor } from "@/features/auth/session";
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
 import { APP_EVENT_TYPES, DISCUSSION_EVENT_TYPES, needsProjectsFlag } from "@/features/cases/persist";
 import { isEnabled } from "@/features/flags";
-import { mayAppend } from "@/features/cases/permissions";
+import { mayAppend, needsCaseAccess } from "@/features/cases/permissions";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
 import { appendEventRow, deleteEventsForTargets, loadLogForSlug, resetCompanyLog } from "@/lib/db/events";
+import { stampAudience } from "@/lib/db/audience";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { loadMembers } from "@/lib/db/knowledge";
 import { issueSession } from "@/server/issue-session";
 import { policyFor } from "@/features/admin/stages";
 import { stampEvent } from "@/features/cases/stamp";
@@ -80,7 +82,8 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   if (!log) return { ok: false, error: t("cases.actionSessionExpired") };
   const seed = await seedFor(slug);
   const who: Actor = { role: viewer.role, userId: viewer.userId, me: meFor(viewer.userId, seed.seats), name: viewer.name, handle: viewer.handle };
-  const verdict = mayAppend(who, { type, target, payload }, reduce(seed, log), locale);
+  const access = needsCaseAccess(type) ? { roles: seed.roles ?? [], members: await loadMembers(viewer.companyId) } : undefined;
+  const verdict = mayAppend(who, { type, target, payload }, reduce(seed, log), locale, access);
   if (!verdict.ok) return verdict;
 
   if (type === "day.advanced" && !(await mayRewriteHistory(viewer.companyId))) {
@@ -92,7 +95,7 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   const actor = actorLabel(viewer);
 
   // The seat a raise lands on is the server's call, whatever the client sent (features/cases/stamp.ts).
-  let stored = stampEvent(type, payload, seed);
+  let stored = await stampAudience(viewer.companyId, type, stampEvent(type, payload, seed));
   // So is the routing proposal: the brain's or the keywords', whatever the browser sent (server/routing.ts).
   if (type === "case.raised") stored = { ...stored, proposal: await proposeOnRaise(slug, viewer.companyId, stored) };
   const result = await appendEventRow(

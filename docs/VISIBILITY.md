@@ -17,6 +17,8 @@ these holds:
 
 People are matched by user id, seat id, role id and org unit id, never by display name.
 
+A case with `private` or `custom` stays inside the app: not in API v1, not in a webhook, not in `GET /api/[company]/events`; the same goes for the project it became. Only someone who may open a case may comment on it or back it. A raise page's "Who sees it" goes with the case; the server turns the names into ids, and a name it cannot match is dropped.
+
 ## The keys
 
 Each case has `accessKeys` (table `CaseView`, one row per case); each viewer has `viewerKeys`. A viewer may open a

@@ -44,7 +44,9 @@ describe("mayAppend", () => {
   });
 
   it("allows comments and co-signs on things that exist, and nothing on things that do not", () => {
-    expect(mayAppend(member, ev("case.commented", open.id), state).ok).toBe(true);
+    // FX4: commenting takes being able to open the case, which the manager can; a member with no seat here cannot.
+    expect(mayAppend(manager, ev("case.commented", open.id), state).ok).toBe(true);
+    expect(mayAppend(member, ev("case.commented", open.id), state).ok).toBe(false);
     expect(mayAppend(member, ev("idea.cosigned", idea.id), state).ok).toBe(true);
     expect(mayAppend(member, ev("case.commented", "nope"), state).ok).toBe(false);
     expect(mayAppend(manager, ev("case.decided", "nope"), state).ok).toBe(false);

@@ -1,5 +1,5 @@
 "use client";
-// Stand-ins for what a draft cannot store yet (visibility; pins, "not sure" answers and idea edits) - the list for Kevin is RAISE-FOR-KEVIN.txt. The
+// Stand-ins for what a draft cannot store yet (the visibility choice until the case is raised, features/ideas/audience.ts; pins, "not sure" answers and idea edits) - the list for Kevin is RAISE-FOR-KEVIN.txt. The
 // screens are the real ones; this state is not: it lives in the page's memory (lib/use-kept.ts, per
 // company and person, so it is still there after a visit to another page), a reload forgets it and
 // nobody else sees it. Each piece goes once the draft (or the case.raised payload) has a field.
