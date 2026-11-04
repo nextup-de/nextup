@@ -108,6 +108,11 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
 - **Repeated after Kevin's go-ahead (TST-Z1, 2026-11-04):** 8 processes, existing build, PC at 76 % CPU load from other programs after the run: 1,094 requests in 30 s = 36 requests/s
   (4.6 per process), inbox p95 4,737 ms, case p95 4,632 ms, 0 errors; the working day is p95 385 ms / 272 ms. Same figures as before: about 21 requests/s per free core, 36 of
   the 100 needed. Nothing on this PC can be stopped from a lane, so the budget run still needs the idle test VM (`APP_REPLICAS=4`) or this PC with nothing else running. Status: open.
+- **Run after the second go-ahead (TST-Z1, 2026-11-04):** 8 processes, existing build, PC at 77 % CPU load from other programs before the run: 1,292 requests in 30 s =
+  43 requests/s (5.4 per process), inbox p95 4,325 ms, case p95 4,499 ms, 0 errors; the working day is p95 238 ms / 258 ms. Same per-core figure (about 21 requests/s per free
+  core, 43 of the 100 needed). Side note: 8 processes with the default `DATABASE_POOL_MAX` (10) plus the test's own client exhausted the test database's connections
+  ("too many clients") during cleanup; `APP_REPLICAS` times `DATABASE_POOL_MAX` must stay under Postgres `max_connections`. The budget run needs 4.7 free cores; this PC
+  offers about 2. Status: open, blocked on a free machine.
 - **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.
