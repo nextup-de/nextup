@@ -2,7 +2,7 @@
 // on a phone, the desk of the area's role decides it, and the reference on the status page shows the answer.
 // The reference never travels in a URL (D8). Own company, deleted at the end, like structure.spec.ts.
 import { devices, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { confirmSheet, expect, passSecondFactor, sheet, test } from "../helpers";
+import { confirmSheet, expect, passSecondFactor, sheet, test, vis } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
 
@@ -26,7 +26,7 @@ async function signIn(browser: Browser, name: string): Promise<{ context: Browse
   const context = await browser.newContext({ ...devices["Desktop Chrome"], baseURL: BASE() });
   const page = await context.newPage();
   await page.goto(`/${SLUG}/login`);
-  await page.locator("#code").fill(codes.get(name) ?? "");
+  await page.locator("#code:visible").fill(codes.get(name) ?? "");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   await passSecondFactor(page, `${SLUG}|${name}`);
   await expect(page).not.toHaveURL(/\/login/);
@@ -63,20 +63,18 @@ test.describe.serial("FLR acceptance", () => {
     await test.step("an admin creates area line-3 and reads the URL under its poster code", async () => {
       const { context, page } = await signIn(browser, MANAGER);
       await page.goto(`/${SLUG}/settings/areas`);
-      // The streamed page can hold a hidden second copy of the section for a moment: wait until there is one.
-      await expect(page.getByTestId("settings-areas")).toHaveCount(1);
-      await page.locator('[data-testid="settings-areas-add"]:visible').click();
-      await page.getByTestId("settings-areas-field-name").fill("Line 3");
-      await page.getByTestId("settings-areas-field-key").fill("line-3");
-      await page.getByTestId("settings-areas-field-unit").selectOption({ label: UNIT });
-      await page.getByTestId("settings-areas-field-role").selectOption({ label: ROLE });
-      await page.getByTestId("settings-areas-field-anonymous").check();
-      await page.getByTestId("settings-areas-save").click();
-      const row = page.getByTestId("settings-areas-row-line-3");
+      await vis(page, "settings-areas-add").click();
+      await vis(page, "settings-areas-field-name").fill("Line 3");
+      await vis(page, "settings-areas-field-key").fill("line-3");
+      await vis(page, "settings-areas-field-unit").selectOption({ label: UNIT });
+      await vis(page, "settings-areas-field-role").selectOption({ label: ROLE });
+      await vis(page, "settings-areas-field-anonymous").check();
+      await vis(page, "settings-areas-save").click();
+      const row = vis(page, "settings-areas-row-line-3");
       await expect(row).toBeVisible();
-      await row.getByTestId("settings-areas-poster").click();
-      await expect(page.getByTestId("settings-areas-poster-qr")).toBeVisible();
-      areaUrl = (await page.getByTestId("settings-areas-poster-url").innerText()).trim();
+      await vis(row, "settings-areas-poster").click();
+      await expect(vis(page, "settings-areas-poster-qr")).toBeVisible();
+      areaUrl = (await vis(page, "settings-areas-poster-url").innerText()).trim();
       expect(areaUrl).toContain(`/${SLUG}/floor/line-3`);
       await context.close();
     });
@@ -90,14 +88,14 @@ test.describe.serial("FLR acceptance", () => {
     await test.step("on a phone the area URL raises a problem anonymously", async () => {
       // The poster shows the public address; the test server answers on its own host.
       await mobile.goto(new URL(areaUrl).pathname);
-      await mobile.getByTestId("floor-raise-problem").click();
-      await mobile.getByTestId("floor-raise-title").fill(TITLE);
-      await mobile.getByTestId("floor-raise-send").click();
-      await expect(mobile.getByTestId("floor-sent-page")).toBeVisible();
+      await vis(mobile, "floor-raise-problem").click();
+      await vis(mobile, "floor-raise-title").fill(TITLE);
+      await vis(mobile, "floor-raise-send").click();
+      await expect(vis(mobile, "floor-sent-page")).toBeVisible();
     });
 
     await test.step("the sent page shows a reference that is in no request URL", async () => {
-      reference = (await mobile.getByTestId("floor-sent-reference").innerText()).replace(/\D/g, "");
+      reference = (await vis(mobile, "floor-sent-reference").innerText()).replace(/\D/g, "");
       expect(reference).toMatch(/^\d{8}$/);
       await mobile.waitForTimeout(1500); // let late prefetches land in the request log
       for (const url of requested) expect(url, "a request URL carries the reference").not.toContain(reference);
@@ -117,9 +115,9 @@ test.describe.serial("FLR acceptance", () => {
 
     await test.step("on the phone the reference shows the answer and the reason, not the leader", async () => {
       await mobile.goto(`/${SLUG}/floor/status`);
-      for (const d of reference) await mobile.getByTestId(`floor-keypad-${d}`).click();
-      await mobile.getByTestId("floor-keypad-action").click();
-      const decision = mobile.getByTestId("floor-status-decision");
+      for (const d of reference) await vis(mobile, `floor-keypad-${d}`).click();
+      await vis(mobile, "floor-keypad-action").click();
+      const decision = vis(mobile, "floor-status-decision");
       await expect(decision).toBeVisible();
       // The answer and the picked reason show; the desk's free-text comment never does (D12).
       await expect(decision).toContainText(/^No/);
