@@ -8,7 +8,8 @@
 .person { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { padding: 2px 8px; border-radius: 6px; background: #f2f2f7; color: #3a3a3c; font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-xs); line-height: 18px; overflow-wrap: anywhere; }
-.state { margin-left: 8px; padding: 2px 8px; border-radius: 6px; font-size: var(--nh-fs-xs); font-weight: 600; }
+.facts { margin: 0; }
+.state { display: block; width: fit-content; margin-top: 4px; padding: 2px 8px; border-radius: 6px; font-size: var(--nh-fs-xs); font-weight: 600; }
 .state[data-state="revoked"] { background: #fff0f0; color: #d70015; }
 .state[data-state="expired"] { background: #fff4e5; color: #b25000; }
 @media (max-width: 760px) {

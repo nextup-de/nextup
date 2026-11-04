@@ -117,7 +117,7 @@ export function Webhooks({ slug, sending, subs, deliveries, docsHref }: Props) {
                     </span>
                   ),
                 },
-                { key: "edit", header: "", width: "auto", render: (w) => <button className={s.soft} type="button" onClick={() => show(w)} data-testid={`settings-webhooks-edit-${w.id}`}>{t("settingsWebhooks.edit")}</button> },
+                { key: "edit", header: "", width: "80px", render: (w) => <button className={s.soft} type="button" onClick={() => show(w)} data-testid={`settings-webhooks-edit-${w.id}`}>{t("settingsWebhooks.edit")}</button> },
               ]}
             />
           )}
@@ -228,7 +228,7 @@ export function Webhooks({ slug, sending, subs, deliveries, docsHref }: Props) {
                   ),
                 },
                 {
-                  key: "retry", header: "", width: "auto",
+                  key: "retry", header: "", width: "110px",
                   render: (d) => (d.status === "failed" ? (
                     <button className={s.soft} type="button" disabled={pending} data-testid={`settings-webhooks-retry-${d.id}`}
                       onClick={() => run(() => retryDeliveryAction(slug, d.id), undefined, "settingsWebhooks.queued")}>

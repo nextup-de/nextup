@@ -1,5 +1,5 @@
 // UIP-S2: Import and export, Webhooks and API tokens pass the page sweep with a section card at both widths.
-import { expect, test } from "../helpers";
+import { expect, test, vis } from "../helpers";
 import { createTestCompany, deleteTestCompany, type TestCompany } from "../../db/test-company";
 import { signIn, sweepPages } from "./fixtures/page-sweep";
 
@@ -23,9 +23,9 @@ test("UIP data settings", async ({ page }) => {
   await sweepPages(page, [`/${SLUG}/settings/import-export`, `/${SLUG}/settings/webhooks`, `/${SLUG}/settings/api-tokens`], { marker: "section-card" });
   // Each page keeps its own test ids.
   await page.goto(`/${SLUG}/settings/import-export`);
-  await expect(page.getByTestId("section-card").first()).toBeVisible();
+  await expect(vis(page, "section-card").first()).toBeVisible();
   await page.goto(`/${SLUG}/settings/webhooks`);
-  await expect(page.getByTestId("settings-webhooks-switch").first()).toBeVisible();
+  await expect(vis(page, "settings-webhooks-switch")).toBeVisible();
   await page.goto(`/${SLUG}/settings/api-tokens`);
-  await expect(page.getByTestId("settings-api-tokens-add").first()).toBeVisible();
+  await expect(vis(page, "settings-api-tokens-add")).toBeVisible();
 });

@@ -61,7 +61,7 @@ export function ApiTokens({ slug, baseUrl, tokens }: Props) {
   return (
     <div className={s.page} data-testid="settings-api-tokens">
       <SectionCard name="connect">
-        <dl className={s.well}>
+        <dl className={`${s.well} ${styles.facts}`}>
           <div className={s.wellRow}><dt>{t("settingsApiTokens.baseUrl")}</dt><dd className={s.mono}>{baseUrl}</dd></div>
         </dl>
         <p className={s.cardHint}>{t("settingsApiTokens.header")}</p>
@@ -123,7 +123,7 @@ export function ApiTokens({ slug, baseUrl, tokens }: Props) {
                 ),
               },
               {
-                key: "actions", header: "", width: "auto",
+                key: "actions", header: "", width: "80px",
                 render: (k) => (k.revokedAt ? null : (
                   <button className={s.ghostDanger} type="button" disabled={pending} data-testid="settings-api-tokens-revoke" onClick={() => setConfirming(k)}>{t("settingsApiTokens.revoke")}</button>
                 )),
