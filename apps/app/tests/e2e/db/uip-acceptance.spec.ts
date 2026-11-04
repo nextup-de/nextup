@@ -15,13 +15,15 @@ const page_ = (path: string) => `/${SLUG}/${path}`;
 const CARDS = [
   "settings/notifications", "settings/teams", "settings/import-export", "settings/webhooks", "settings/api-tokens",
   "settings/sign-in", "settings/support-access", "settings/privacy", "settings/audit", "settings/areas", "settings/areas/devices",
-  "dashboard/kpis", "profile", "projects/collaboration", "projects/progress", "reports",
+  "dashboard/kpis", "profile", "reports",
 ].map(page_);
 // Built by Sam, or empty without data: the page header is what they share.
 const HEADERS = [
   "settings/company", "settings/rules", "settings/calendar", "settings/org", "settings/routing", "settings/members",
-  "projects", "team", "decisions",
+  "team",
 ].map(page_);
+// The Projects area: the tab in the strip names the page, so the title is for screen readers only.
+const AREA = ["projects", "decisions", "projects/collaboration", "projects/progress"].map(page_);
 
 let company: TestCompany;
 
@@ -37,6 +39,7 @@ test("UIP acceptance", async ({ page }) => {
   await signIn(page, company, MANAGER.name);
   await sweepPages(page, CARDS);
   await sweepPages(page, HEADERS, { marker: "page-header" });
+  await sweepPages(page, AREA, { marker: "projects-tabs", title: false });
 
   // A page module must win over settings.module.css whichever loads first: the search is the wide field.
   await page.setViewportSize({ width: 1440, height: 900 });

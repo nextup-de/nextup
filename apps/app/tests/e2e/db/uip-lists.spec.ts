@@ -57,7 +57,8 @@ test.afterAll(async () => {
 
 test("UIP list pages", async ({ page }) => {
   await signIn(page, company, MANAGER.name);
-  await sweepPages(page, [`/${SLUG}/projects/collaboration`, `/${SLUG}/projects/progress`, `/${SLUG}/reports`], { marker: "section-card" });
+  await sweepPages(page, [`/${SLUG}/reports`], { marker: "section-card" });
+  await sweepPages(page, [`/${SLUG}/projects/collaboration`, `/${SLUG}/projects/progress`], { marker: "section-card", title: false }); // the tab names them
 
   await test.step("My reports lists the report and its reply", async () => {
     await page.goto(`/${SLUG}/reports`);

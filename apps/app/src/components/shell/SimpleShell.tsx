@@ -5,9 +5,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { adminMenuLinks, simpleNavFor } from "@/config/nav";
+import { adminMenuLinks, projectsTabAt, simpleNavFor } from "@/config/nav";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { ProjectsTabs } from "@/components/projects/ProjectsTabs";
 import { inboxCount, mineRows } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
 import { NavSearch, navLabel } from "./NavSearch";
@@ -23,6 +24,8 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const { tenant, role, persona, actor, email, pop, setPop, togglePop, sheet, toast, logout, D } = ctx;
   const pathname = usePathname();
   const who = persona.who;
+  // On a page of the Projects area the strip of its tabs hangs under the bar.
+  const areaTab = ctx.flag("projects") ? projectsTabAt(pathname.slice(tenant.prefix.length)) : null;
   // The ink thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -73,7 +76,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
             const href = tenant.prefix + n.href;
             // A case opens from the Overview, so its page counts as the Overview - a tab of Projects while that is on.
             const inOverview = pathname === tenant.prefix + "/overview" || pathname.startsWith(tenant.prefix + "/cases/");
-            const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview);
+            const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview) || (n.href === "/projects" && areaTab !== null);
             const n1 = n.count ? counts[n.count] : 0;
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} onClick={() => setPop(null)}>
@@ -126,6 +129,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </header>
+      {areaTab && <ProjectsTabs active={areaTab} />}
 
       <main className={styles.content}>
         <div className={styles.contentInner}>{children}</div>
