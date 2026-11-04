@@ -79,6 +79,8 @@ repo) are not in this checkout and were not read for this table: check each line
 
 ## Doors and their locks
 
+Signing out of `/admin` ends every admin cookie issued before it, also a copied one and also after a restart: the watermark is the `AdminRevocation` row. While it cannot be read, an admin cookie opens nothing.
+
 | Door | Lock | Brake (`src/server/throttle.ts`) |
 |---|---|---|
 | `/[company]/login` | personal login code per person (~59 bits, sha256 stored, `src/features/auth/login-code.ts`) - the code alone says who you are | 10 tries / 10 min per address+company; 200 / 10 min per company |
