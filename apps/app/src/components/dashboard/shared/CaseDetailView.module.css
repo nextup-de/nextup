@@ -12,6 +12,7 @@
 .soft:hover { background: #e5e5ea; }
 .primary { background: #111; color: #fff; }
 .primary:hover { background: #2c2c2e; }
+.alone { align-self: flex-start; }
 .soft:disabled, .primary:disabled { opacity: 0.5; cursor: default; }
 .soft:focus-visible, .primary:focus-visible, .back:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 

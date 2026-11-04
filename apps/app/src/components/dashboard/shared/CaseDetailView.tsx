@@ -71,7 +71,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       <div className={styles.page}>
         <PageHeader title={t("dashboard.detailNoCase")} lede={t("dashboard.detailNoCaseSub", { id: caseId })} />
         <SectionCard name="no-case">
-          <Link href={href("/")} className={styles.soft}>{t("dashboard.detailBackHome")}</Link>
+          <Link href={href("/")} className={`${styles.soft} ${styles.alone}`}>{t("dashboard.detailBackHome")}</Link>
         </SectionCard>
       </div>
     );

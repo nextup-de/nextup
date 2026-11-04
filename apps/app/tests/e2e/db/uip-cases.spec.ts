@@ -1,6 +1,6 @@
 // UIP-E1: the case page (a real case with events in it), My cases, the Decision log and a Person page pass
 // the page sweep with a section card, at 1440 and 375 px.
-import { expect, test } from "../helpers";
+import { expect, test, vis } from "../helpers";
 import { workdayOf } from "../../../src/features/clock/calendar";
 import { loadCalendar } from "../../../src/lib/db/calendar";
 import { getDb } from "../../../src/lib/db/client";
@@ -64,7 +64,7 @@ test("UIP cases", async ({ page, browser }) => {
   await test.step("the case page shows its title, its events and takes a note", async () => {
     await page.goto(`/${SLUG}/cases/${OPEN.id}`);
     await expect(page.locator("h1")).toHaveText(OPEN.title);
-    await expect(page.getByTestId("section-card").filter({ hasText: "What happened" })).toContainText("Which lines would start?");
+    await expect(vis(page, "section-card").filter({ hasText: "What happened" })).toContainText("Which lines would start?");
     await page.getByLabel("Comment").fill("Checked on site.");
     await page.getByRole("button", { name: "Post", exact: true }).click();
     await expect(page.getByText("Checked on site.")).toBeVisible();
