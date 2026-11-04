@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Stub for `docker` in stack/tests/rotate-keys.test.sh (SEC-R1). Records every call, runs nothing.
+#   ROTATE_STUB_LOG      file the calls are appended to (required)
+#   ROTATE_STUB_OLDPW    the password that counts as "old" (calls log pw=old|new)
+#   ROTATE_STUB_VAULT    ok (default) | timeout (no re-seal line) | failed (failed 2)
+#   ROTATE_STUB_FAIL     key-add | snapshots | key-remove | up  - that call exits 1
+log="${ROTATE_STUB_LOG:?}"
+args=("$@")
+fail() { [ "${ROTATE_STUB_FAIL:-}" = "$1" ]; }
+
+case "${args[0]:-}" in
+compose)
+  envf=""; sub=""
+  for ((i = 1; i < ${#args[@]}; i++)); do
+    [ "${args[i]}" = --env-file ] && envf="${args[i + 1]}"
+    case "${args[i]}" in up|logs) sub="${args[i]}"; break ;; esac
+  done
+  case "$sub" in
+  up)
+    prev=absent
+    grep -q '^CONNECTOR_VAULT_KEY_PREVIOUS=.' "$envf" 2>/dev/null && prev=set
+    echo "compose up previous=$prev" >> "$log"
+    fail up && exit 1
+    exit 0 ;;
+  logs)
+    echo "compose logs" >> "$log"
+    case "${ROTATE_STUB_VAULT:-ok}" in
+      ok) echo "app-1  | [vault] re-sealed 3, left 0, failed 0" ;;
+      failed) echo "app-1  | [vault] re-sealed 1, left 0, failed 2" ;;
+      timeout) echo "app-1  | listening on 3000" ;;
+    esac
+    exit 0 ;;
+  esac
+  echo "compose other" >> "$log"; exit 0 ;;
+run)
+  restic=()
+  for ((i = 1; i < ${#args[@]}; i++)); do
+    if [[ "${args[i]}" == restic/restic* ]]; then restic=("${args[@]:i+1}"); break; fi
+  done
+  pw=new; [ "${RESTIC_PASSWORD:-}" = "${ROTATE_STUB_OLDPW:-}" ] && pw=old
+  cmd="${restic[0]:-}${restic[1]:+ ${restic[1]}}"
+  case "${restic[0]:-}" in snapshots) cmd=snapshots ;; esac
+  echo "restic $cmd pw=$pw" >> "$log"
+  case "$cmd" in
+  "key list") printf 'repository abcd opened (version 2)\nID        User  Host   Created\n----------------------------------\n*a1b2c3d4  deploy  nextup  2026-11-01 10:00:00\n' ;;
+  "key add") fail key-add && exit 1; echo "saved new key with ID e5f6a7b8" ;;
+  snapshots) fail snapshots && exit 1; echo "ID  Time  Host  Tags" ;;
+  "key remove") fail key-remove && exit 1; echo "removed key a1b2c3d4" ;;
+  esac
+  exit 0 ;;
+esac
+echo "other ${args[*]}" >> "$log"
+exit 0
