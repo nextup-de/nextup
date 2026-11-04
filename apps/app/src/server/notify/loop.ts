@@ -5,6 +5,7 @@ import { hasDatabase } from "@/lib/db/client";
 import { deliverOnce } from "./deliver";
 import { dispatchOnce } from "./dispatch";
 import { runDigests } from "./digest";
+import { runPilotReports } from "./pilot-report";
 
 const intervalMs = (): number => {
   const n = Number(process.env.NOTIFY_INTERVAL_MS);
@@ -20,6 +21,7 @@ export async function notifyRound(now: Date = new Date()): Promise<void> {
   try {
     await dispatchOnce(now);
     await runDigests(now).catch((e) => console.warn(`[notify] digests: ${e instanceof Error ? e.message : String(e)}`));
+    await runPilotReports(now).catch((e) => console.warn(`[notify] pilot reports: ${e instanceof Error ? e.message : String(e)}`));
     await deliverOnce(now);
   } catch (e) {
     console.warn(`[notify] round: ${e instanceof Error ? e.message : String(e)}`);
