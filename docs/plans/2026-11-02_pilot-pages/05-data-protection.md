@@ -7,6 +7,38 @@
 > protection officer and a works council ask before a pilot: how long is what kept, who changed what, and how does a
 > person get or lose their data.
 
+## Corrections after GDP (GDP-Z1)
+
+> GDP is built and merged. Where the text below and this block differ, **this block wins** (GDP plan D23, HD15). The
+> behaviour is described for readers in [docs/PRIVACY.md](../../PRIVACY.md).
+
+- **Everything marked *(proposal)* or *(proposal, not in any plan)* below is built as marked, with the changes here.**
+  The tables are `AuditEvent`, `DataExport`, `RetentionRule`, `RetentionRun`, `PrivacyPolicy` and `Pseudonym`.
+- **No `CompanyConfig` columns for this page.** `CompanyConfig.draftRetentionDays` and `caseRetentionMonths` do not
+  exist: retention is `RetentionRule` rows (company, kind, `keepDays`, null = keep), kinds `assist_turns`,
+  `idea_drafts`, `closed_cases`. Without a row the defaults apply: assistant turns `CompanyConfig.retentionDays` (90),
+  drafts 180 days, closed cases keep. Limits in days: 7-730, 30-730, 360-3600 or keep; the page takes closed cases in
+  months (1 month = 30 days), so the 12-120 months above are 360-3600 days. Only drafts with status draft are
+  removed. The audit log is fixed at 730 days and has no rule.
+- **One screenshot switch (plan Q4), not two.** `PrivacyPolicy.reportScreenshots` (default on) is the only switch.
+  Screenshots attached when raising a case stay in the browser and are not a setting; open question G3 is answered
+  "one switch".
+- **The console keeps masking (D18).** The masking patterns (`redactPatterns`) stay in the NextUp console; the
+  Data and privacy page shows retention, the screenshot switch and exports, and does not edit masking.
+- **Actor kinds (D11)** are `admin`, `console`, `break-glass`, `support`, `platform`, `system`, `directory` and
+  `api-token`, with sources `settings`, `console`, `platform`, `scheduler`, `directory`, `api`; replace the kinds and
+  sources listed under "Audit log" Data. The areas are `AUDIT_AREAS` (company, settings, member, token, connector,
+  assistant, directory, access, privacy).
+- **Pseudonymise (D15)** changes structured identity, not text. The user name becomes "Former member #n" (random
+  1000-9999, unique in the company), email, department and sign-in data are cleared, the handle stays. `CaseEvent`
+  rows are never rewritten: events are shown through `actorUserId` and the current pseudonym. Open question G4 is
+  answered **no**: exact mentions of the name in comments or other free text are not replaced; the dialog and the
+  docs say so. Their assistant turns, unpublished drafts, connections and mail settings are deleted; their exports
+  expire.
+- **Export (D14)** is built synchronously; the person's copy needs an active person with a verified address. An
+  admin-only copy of a deactivated member is chosen explicitly, labelled admin-only, reason recorded; it is not
+  delivery to the subject, and there is no secure former-member delivery yet. Open question G1 stands.
+
 Context for this file:
 
 - **GDP has no Bauplan yet.** These pages follow the PILOT brief `### GDP` (plans repo
@@ -554,5 +586,5 @@ settings page (the admin).
 |---|---|---|
 | G1 | May the admin download a person's export when the person is active, drafts included? | No: active people get it themselves; the admin's copy leaves out drafts and assistant questions. |
 | G2 | What does a retention run do to closed cases: delete their events or pseudonymise them? | Delete the case's events after the period (off by default: *Keep*); MET loses them from its history and says so. |
-| G3 | Screenshot policy: two switches (bug reports, raise) as drawn, or one? | Two switches, both on. |
-| G4 | Pseudonymise free text: are exact mentions of the name in other people's comments replaced too? | Yes, exact matches of the display name, in display only. |
+| G3 | Screenshot policy: two switches (bug reports, raise) as drawn, or one? | One switch (plan Q4): reports only; the raise screenshots stay in the browser. |
+| G4 | Pseudonymise free text: are exact mentions of the name in other people's comments replaced too? | No (GDP D15): structured identity only; free text may keep the name. |
