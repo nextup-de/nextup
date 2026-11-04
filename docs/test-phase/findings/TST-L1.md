@@ -48,7 +48,15 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
   Suspected, not profiled: the cost per request is CPU in the server render plus about ten queries, not one slow query.
 - **Test:** `it.fails("TST-FL1-1: every account on a page at once stays within the budget")`. When it passes
   unexpectedly the fix has landed: turn it into a normal `it`.
-- **Not done here:** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
+- **Fix attempt (TST-Z1, after the W2 gate):** the shell's reads now run in parallel (log and people without a seat; person links
+  and pseudonym labels), and `loadSeats`, `loadKnowledge` and `loadMembers` are read once per request in `viewer-log.ts`
+  (`react` `cache`; the shell and the case page asked for them up to three times). Same machine, 200 accounts all at once:
+  inbox p95 14.1 s -> 10.0 s, case p95 13.6 s -> 10.0 s, about 21 requests/s (was about 15); the working-day run is
+  unchanged (p95 131 ms / 107 ms). That is a third better, not the 10x the budget needs: the server is CPU-bound in one
+  Node process at about 47 ms per request, and 100 requests/s asked for needs more processes or more cores, or a smaller
+  page render (the 75 KB log is serialised into every page). That is a deployment and design decision for Kevin, not a
+  change of under 50 lines (D7). **Status:** open.
+- **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.
 

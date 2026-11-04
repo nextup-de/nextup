@@ -1,6 +1,7 @@
 // What leaves the server for one browser (VIS/D8, D9): the events of the cases the viewer may open
 // inside the window, of the projects those cases opened or joined, every idea.* event and every event
 // with no target. The reducer runs on this smaller log unchanged - an absent case is simply not there.
+import { cache } from "react";
 import type { Role } from "@/config/roles";
 import { meFor } from "@/features/auth/identity";
 import type { EventLog, EventPayload } from "@/features/cases/events";
@@ -12,8 +13,8 @@ import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
 import { companySeed } from "./companies";
 import { companyDay, loadLog } from "./events";
-import { loadSeats } from "./holders";
-import { loadKnowledge, loadMembers } from "./knowledge";
+import { loadSeats as readSeats } from "./holders";
+import { loadKnowledge as readKnowledge, loadMembers as readMembers } from "./knowledge";
 import { caseView, visibleCaseIds } from "./projections/readers";
 
 /** The window of VIS/D9: open cases, and closed ones whose last day is within this many working days. */
@@ -22,6 +23,13 @@ export const WINDOW_DAYS = 90;
 export const WINDOW_CASES = 500;
 
 const SELECT = { id: true, seq: true, day: true, ts: true, type: true, actor: true, actorUserId: true, targetId: true, payload: true } as const;
+
+// One request asks for the seats, the knowledge and the members several times (the shell's log, its people
+// without a seat, then the page's mayOpen); within one request they are read once. Outside a request, as in
+// the tests, `cache` does not remember, so a write is seen at once.
+const loadSeats = cache(readSeats);
+const loadKnowledge = cache(readKnowledge);
+const loadMembers = cache(readMembers);
 
 export type LogViewer = { userId: string; role: Role };
 
