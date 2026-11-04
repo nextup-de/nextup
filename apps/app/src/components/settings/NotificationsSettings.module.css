@@ -1,0 +1,6 @@
+/* Notifications: the switch form and the Retry button in a table row. */
+.form { display: flex; flex-direction: column; gap: 18px; }
+.retry { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+@media (max-width: 760px) {
+  .retry { align-items: stretch; }
+}

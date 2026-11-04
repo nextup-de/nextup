@@ -1,6 +1,7 @@
 // Pairing a shared device with the code an admin made (FLR-D1). No session: the code is the proof.
-// A plain page; the floor layout (FLR-B1) wraps it once it exists.
+// The floor layout wraps it in the phone shell.
 import { PairForm } from "@/components/floor/PairForm";
+import styles from "@/components/floor/Floor.module.css";
 import { getT } from "@/i18n/server";
 
 export async function generateMetadata() {
@@ -11,10 +12,10 @@ export default async function FloorPairPage({ params }: { params: Promise<{ comp
   const { company } = await params;
   const t = await getT();
   return (
-    <main style={{ maxWidth: 420, margin: "0 auto", padding: "24px 16px" }}>
-      <h1>{t("floorDevices.pairTitle")}</h1>
-      <p className="nh-hint">{t("floorDevices.pairHint")}</p>
+    <div className={styles.page}>
+      <h1 className={styles.heading}>{t("floorDevices.pairTitle")}</h1>
+      <p className={styles.hint}>{t("floorDevices.pairHint")}</p>
       <PairForm slug={company} />
-    </main>
+    </div>
   );
 }

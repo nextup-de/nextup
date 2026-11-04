@@ -1,6 +1,8 @@
 // The company's notification switch, opt-out counts and failed messages. Company admins only (companyAdminOf).
 import { notFound } from "next/navigation";
 import { NotificationsSettings } from "@/components/settings/NotificationsSettings";
+import { SettingsHead } from "@/components/settings/SettingsParts";
+import { SectionCard } from "@/components/ui/elements";
 import { failedView, optOutCounts, stageLine } from "@/features/settings/notifications";
 import { getT } from "@/i18n/server";
 import { hasDatabase } from "@/lib/db/client";
@@ -15,13 +17,8 @@ export async function generateMetadata() {
 export default async function NotificationsSettingsPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
   const t = await getT();
-  const head = (
-    <>
-      <h1>{t("settingsNotifications.navLabel")}</h1>
-      <p className="nh-hint">{t("settingsNotifications.hint")}</p>
-    </>
-  );
-  if (!hasDatabase() || !process.env.AUTH_SECRET) return <>{head}<p>{t("settingsNotifications.noDatabase")}</p></>;
+  const head = <SettingsHead title={t("settingsNotifications.navLabel")} lede={t("settingsNotifications.hint")} />;
+  if (!hasDatabase() || !process.env.AUTH_SECRET) return <>{head}<SectionCard><p>{t("settingsNotifications.noDatabase")}</p></SectionCard></>;
   const admin = await companyAdminOf(company);
   if (!admin) notFound();
   const [state, prefs, failedRows] = await Promise.all([

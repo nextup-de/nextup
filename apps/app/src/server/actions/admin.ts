@@ -13,10 +13,11 @@ import { generateLoginCode, hashLoginCode, normalizeLoginCode } from "@/features
 import { totpContext, verifyTotp } from "@/features/auth/totp";
 import { open, vaultKey } from "@/features/connectors/vault";
 import { getT } from "@/i18n/server";
-import { ADMIN_COOKIE, ADMIN_TTL_SECONDS, verifyAdmin } from "@/features/auth/cookie";
+import { ADMIN_COOKIE, adminIssuedAt } from "@/features/auth/cookie";
 import { adminSessionOpen, issueAdminSession } from "@/server/admin-session";
 import { consoleWriteRefusal } from "@/server/console-write";
 import type { CompanyRow } from "@/features/admin/rows";
+import { loadAdminRevokedAt, saveAdminRevokedAt } from "@/lib/db/admin-revocation";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { companyUrl, dashboardUrl, landingUrl, singleCompany } from "@/features/tenant/urls";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
@@ -41,30 +42,30 @@ function codeMatches(given: string, expected: string): boolean {
 }
 
 // The admin cookie is stateless (signed, 8 h), so deleting it only logs out THIS browser. Logging
-// out also moves this watermark: every admin cookie issued before it stops working here, in this
-// process - a copied cookie included. In memory on purpose (one box, one process); a restart
-// clears it, which the 8 h expiry still bounds.
+// out also moves this watermark: every admin cookie issued before it stops working, a copied cookie
+// included, also after a restart (lib/db/admin-revocation.ts). The copy in memory is for a stack
+// without a database, and keeps the sign-out good when the database does not take the write.
 const adminRevocation = globalThis as unknown as { __nextupAdminRevokedAt?: number };
 
-/** When the cookie was issued, read back from its (already verified) expiry. */
-function issuedAt(raw: string): number | null {
-  try {
-    const payload = JSON.parse(Buffer.from(raw.slice(0, raw.indexOf(".")), "base64url").toString("utf8"));
-    return typeof payload.exp === "number" ? payload.exp - ADMIN_TTL_SECONDS : null;
-  } catch {
-    return null;
-  }
+/** The latest sign-out, in unix seconds. Throws when the database cannot say. */
+async function revokedAt(): Promise<number | null> {
+  const stored = hasDatabase() ? await loadAdminRevokedAt() : null;
+  const here = adminRevocation.__nextupAdminRevokedAt ?? null;
+  return stored === null ? here : here === null ? stored : Math.max(stored, here);
 }
 
 export async function isAdmin(): Promise<boolean> {
   // Not the placeholder on a public box: anyone could sign an admin cookie with it.
   const secret = usableSecret(process.env.AUTH_SECRET);
   if (!secret) return false;
-  const raw = (await cookies()).get(ADMIN_COOKIE)?.value;
-  if (!raw || !verifyAdmin(raw, secret)) return false;
-  const revokedAt = adminRevocation.__nextupAdminRevokedAt;
-  const iat = issuedAt(raw);
-  if (revokedAt !== undefined && (iat === null || iat < revokedAt)) return false;
+  const issued = adminIssuedAt((await cookies()).get(ADMIN_COOKIE)?.value, secret);
+  if (issued === null) return false;
+  // A sign-out nobody can read may be one that ended this cookie: closed, like a stack that cannot read its company.
+  const latest = await revokedAt().catch((err) => {
+    console.warn("[admin] sign-out watermark unreadable -", err instanceof Error ? err.message : err);
+    return Infinity;
+  });
+  if (latest !== null && issued < latest) return false;
   return adminSessionOpen();
 }
 
@@ -157,7 +158,12 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
  * id, and an anonymous caller moving it would log every admin out - again, every second.
  */
 export async function adminSignOut(form?: FormData) {
-  if (await isAdmin()) adminRevocation.__nextupAdminRevokedAt = Math.floor(Date.now() / 1000);
+  if (await isAdmin()) {
+    const now = Math.floor(Date.now() / 1000);
+    adminRevocation.__nextupAdminRevokedAt = now;
+    // The cookie below goes either way; a failed write leaves this process's watermark and the 8 h expiry.
+    if (hasDatabase()) await saveAdminRevokedAt(now).catch((err) => console.warn("[admin] sign-out watermark not stored -", err instanceof Error ? err.message : err));
+  }
   (await cookies()).delete(ADMIN_COOKIE);
   const to = form?.get("to");
   if (to === "landing") redirect(landingUrl());

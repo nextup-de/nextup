@@ -227,6 +227,9 @@ if ! grep -q '^INSTANCE_DIR=' "$env_file"; then
 fi
 mkdir -p "$dir/break-glass" "$dir/logs"
 chmod 0755 "$dir/break-glass"
+# backup.sh writes backup-status/last.json here; the app reads it read-only.
+mkdir -p "$dir/backup-status"
+chmod 0755 "$dir/backup-status"
 chmod 0750 "$dir/logs"
 if [ "$(id -u)" = 0 ]; then chown 1001:1001 "$dir/logs"; fi
 # <<< instance-dirs
