@@ -8,18 +8,17 @@ import { reduce } from "@/features/cases/reducer";
 import { integrationContext, open, seal, vaultKey } from "@/features/connectors/vault";
 import { jiraStatusView } from "@/features/integrations/jira/view";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
-import { appOrigin, singleCompany } from "@/features/tenant/urls";
-import { getDb, hasDatabase } from "@/lib/db/client";
+import { appOrigin } from "@/features/tenant/urls";
+import { getDb } from "@/lib/db/client";
 import { companySeed } from "@/lib/db/companies";
 import { loadLogForSlug } from "@/lib/db/events";
 import { getIntegration, integrationSecrets, JIRA } from "@/lib/db/integrations";
-import { isAdmin } from "@/server/actions/admin";
+import { consoleWrite } from "@/server/console-write";
 
-/** The stack's own company, for a signed-in admin - the only one this page may change. Null for anyone else. */
+/** The stack's own company, for an admin who may write - the only one this page may change. Null for anyone else. */
 export async function adminCompany(): Promise<{ id: string; slug: string } | null> {
-  if (!(await isAdmin()) || !hasDatabase() || singleCompany() === null) return null;
-  const slug = process.env.COMPANY_SLUG?.trim();
-  return slug ? getDb().company.findUnique({ where: { slug }, select: { id: true, slug: true } }) : null;
+  const door = await consoleWrite();
+  return door.ok ? { id: door.c.companyId, slug: door.c.slug } : null;
 }
 
 /** A webhook secret Jira is told to sign with: 32 random bytes, shown once. */
