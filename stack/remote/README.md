@@ -2,8 +2,8 @@
 
 A customer runs on a plain Linux VM with Docker Engine. The stack's own Caddy terminates TLS on 80
 and 443: no nginx, no `ports.md`, no box agent (`stack/provision`). A release moves the host's one
-stack to a commit with `stack/deploy-remote.sh` from Kevin's machine; on the host a forced command,
-`stack/remote/host.sh`, does the work. (There is no CI job for it yet.)
+stack to a commit with `stack/deploy-remote.sh` from Kevin's machine, or from CI (section 8); on the host a forced command,
+`stack/remote/host.sh`, does the work.
 
 Hardening the VM itself (updates, sshd settings, disk encryption, monitoring) belongs to INF, not here.
 
@@ -98,3 +98,34 @@ migration ran in between, the database must go back too, on the host, before or 
 NEXTUP_INSTANCES=~/nextup/instances ~/nextup/stack/backup.sh <slug> snapshots
 NEXTUP_INSTANCES=~/nextup/instances ~/nextup/stack/backup.sh <slug> restore <pre-migrate snapshot id>
 ```
+
+## 8. Releasing from CI
+
+The manual workflow `.github/workflows/release-customer.yml` does the same as section 6 without Kevin's
+machine. Actions -> release-customer -> Run workflow, with `customer` (the slug, `^[a-z][a-z0-9-]{1,39}$`)
+and `tag` (the 7-char sha whose images `images.yml` published). It runs only by hand: no push, pull
+request or schedule trigger, `permissions: contents: read`, one run per customer at a time, never
+cancelled halfway. A rollback is the same run with an older sha.
+
+The job runs in the GitHub environment `customer-<slug>`, so each customer has its own key and its own
+approval. The environment holds:
+
+| Name | Kind | Value |
+|---|---|---|
+| `DEPLOY_TARGET` | variable | `deploy@<host>[:port]` |
+| `HEALTH_URL` | variable | the stack's health URL, e.g. `https://acme.example.de/api/health` |
+| `DEPLOY_SSH_KEY` | secret | the private half of the key from section 4 (one key per customer) |
+| `DEPLOY_KNOWN_HOSTS` | secret | the host's key line(s), `ssh-keyscan -t ed25519 <host>`, fingerprint checked against the VM console |
+
+The job calls `stack/remote/release-ci.sh`. It checks every value (exit 2, naming the missing or
+malformed one, never printing a secret), writes the key and the known_hosts to `$RUNNER_TEMP` with mode
+600 and removes them on exit, runs `deploy-remote.sh <target> <tag>`, then `status`, then polls
+`HEALTH_URL` (10 tries, 15 s apart). On a failure it prints the last 50 lines of what the host said
+(`host.sh` echoes every step of `deploy.log`, so the lines are the same); the forced command gives CI no
+other way to read the host's files.
+
+**Kevin's step (Q2):** the environment is not created by the repo. For each customer, in Settings ->
+Environments, create `customer-<slug>`, set "Required reviewers" (Kevin), restrict deployment branches to
+`main`, and add the two variables and two secrets above. Until then a run of the workflow fails in its
+first step (missing values) and nothing reaches a host. A mistyped `customer` makes GitHub create an
+empty, unprotected environment of that name; delete it, it holds nothing.

@@ -8,6 +8,8 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { probeDatabase } = await import("@/lib/db/client");
   await probeDatabase();
+  // After a vault key rotation (CONNECTOR_VAULT_KEY_PREVIOUS set) every stored secret is sealed again with the current key, once.
+  void resealVault();
   // Bug reports to and replies from admin.sellux.ch, once a minute (a no-op without OPS_URL).
   const { startTicketSync } = await import("@/server/tickets-sync");
   startTicketSync();
@@ -26,9 +28,29 @@ export async function register() {
   // Every message NextUp sends: new events planned into the outbox, then the due rows delivered (a no-op without a database).
   const { startNotify } = await import("@/server/notify/loop");
   startNotify();
+  // The audit log export (syslog or a daily file), every minute for each company that switched it on (a no-op without a database).
+  const { startLogExport } = await import("@/server/scheduler/log-export");
+  startLogExport();
   // Errors counted in memory go to the ErrorGroup table once a minute.
   const { startErrorFlush } = await import("@/server/errors");
   startErrorFlush();
+}
+
+async function resealVault() {
+  try {
+    const { vaultKey, vaultPreviousKey } = await import("@/features/connectors/vault");
+    const { hasDatabase } = await import("@/lib/db/mode");
+    const current = vaultKey();
+    const previous = vaultPreviousKey();
+    if (!previous || !current || !hasDatabase()) return;
+    const { resealAll } = await import("@/lib/db/vault-reseal");
+    const failures: string[] = [];
+    const r = await resealAll({ current, previous }, undefined, (model, id) => failures.push(`${model} ${id}`));
+    console.log(`[vault] re-sealed ${r.resealed}, left ${r.left}, failed ${r.failed}`);
+    for (const f of failures) console.error(`[vault] could not open ${f} with either key`);
+  } catch (err) {
+    console.error("[vault] re-seal failed:", err instanceof Error ? err.message : "unknown error");
+  }
 }
 
 // Every error a page, server action, route handler or the proxy throws on the server: counted by
