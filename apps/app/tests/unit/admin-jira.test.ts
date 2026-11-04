@@ -1,4 +1,4 @@
-// The pure pieces of /admin/integrations: the form -> settings, the webhook address, what is linked
+// The pure pieces of the console's Jira connector: the form -> settings, the webhook address, what is linked
 // and what is still waiting, and how the status reads.
 import { describe, expect, it } from "vitest";
 import {

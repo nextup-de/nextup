@@ -1,7 +1,6 @@
-// Linked from the overview, on the static demo's data.
-import { getT } from "@/i18n/server";
-import ProgressPage from "@/app/[company]/(app)/progress/page";
-export async function generateMetadata() {
-  return { title: (await getT())("demo.titleProgress") };
+// The old address: Progress is a tab of Projects now.
+import { redirect } from "next/navigation";
+import { staticDemoPrefix } from "@/features/tenant/urls";
+export default function DemoOldProgressPage() {
+  redirect(staticDemoPrefix() + "/projects/progress");
 }
-export default ProgressPage;
