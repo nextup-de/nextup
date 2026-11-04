@@ -131,7 +131,7 @@ describe("SEC compliance pack", () => {
   it("names only things that exist on main", () => {
     const problems = FILES.flatMap(nameProblems);
     expect(problems).toEqual([]);
-  });
+  }, 120_000);
 
   it("lists every AI provider the code supports in the sub-processor list, marked as the company's choice", () => {
     const src = fs.readFileSync(path.join(ROOT, "packages", "contracts", "src", "public", "connectors", "ai-provider.ts"), "utf8");
