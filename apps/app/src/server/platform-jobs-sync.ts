@@ -15,6 +15,7 @@ import {
   PlatformJobResult,
   PlatformJobsResponse,
 } from "@nextup/contracts";
+import { isStage, signsOutOnMove } from "@/features/admin/stages";
 import { checkPlatformJob, type PlatformJobInput } from "@/features/admin/platform-jobs";
 import { generateLoginCode, hashLoginCode } from "@/features/auth/login-code";
 import { toSeedJson } from "@/features/demo/parse";
@@ -93,11 +94,12 @@ async function run(job: PlatformJob): Promise<PlatformJobResult> {
     case "create_company":
       return createCompany(job);
     case "set_stage": {
-      // Every session signed before the move ends, as in setCompanyStageAction.
+      // Sessions end only when leaving demo or moving back to a lower stage (PIL D7). An unknown stage signs out.
       await getDb().$transaction(async (tx) => {
         const row = await tx.company.findUnique({ where: { slug: job.slug }, select: { id: true, stage: true } });
         if (!row) throw new Error("company not found");
-        await tx.company.update({ where: { slug: job.slug }, data: { stage: job.stage, sessionEpoch: { increment: 1 } } });
+        const keeps = isStage(row.stage) && !signsOutOnMove(row.stage, job.stage);
+        await tx.company.update({ where: { slug: job.slug }, data: { stage: job.stage, ...(keeps ? {} : { sessionEpoch: { increment: 1 } }) } });
         await recordAudit(row.id, { actor: PLATFORM_ACTOR, action: "audit.company.stage", target: { kind: "company", id: row.id }, changes: { stage: { before: row.stage, after: job.stage } }, source: "platform" }, tx);
       });
       return { id: job.id, ok: true };

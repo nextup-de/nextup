@@ -10,6 +10,7 @@ import { findCompanyBySlug } from "@/lib/db/companies";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { closedTargets } from "@/lib/db/audience";
 import { appendEventRow, hasIdemKey, loadLogForSlug } from "@/lib/db/events";
+import { relabelRows } from "@/lib/db/pseudonymise";
 import { markTokenUsed, resolveToken } from "@/lib/db/tokens";
 import {
   bearerFrom,
@@ -74,7 +75,7 @@ export async function GET(request: Request, { params }: Ctx) {
     take: limit,
     select: {
       id: true, seq: true, day: true, ts: true,
-      type: true, actor: true, targetId: true, payload: true,
+      type: true, actor: true, actorUserId: true, targetId: true, payload: true,
     },
   });
 
@@ -82,7 +83,9 @@ export async function GET(request: Request, { params }: Ctx) {
   // A case whose raiser chose who sees it stays inside the app. The cursor still moves past its events.
   const closed = await closedTargets(row.id);
   const open = rows.filter((r) => !(r.targetId && closed.has(r.targetId)));
-  const log = logFromRows(open, row.demoDay);
+  // The user id only finds the pseudonym: it does not go out.
+  const named = (await relabelRows(row.id, open)).map((r) => ({ ...r, actorUserId: null }));
+  const log = logFromRows(named, row.demoDay);
 
   return json({
     slug: company,

@@ -1,10 +1,10 @@
 // The retention rules and the nightly run (GDP D16). Every delete names the company.
 import type { Prisma } from "@prisma/client";
-import { AUDIT_KEEP_DAYS, checkRule, cutoff, effectiveRules, type RetentionKind } from "@/features/privacy/retention";
+import { AUDIT_KEEP_DAYS, OUTBOX_KEEP_DAYS, checkRule, cutoff, effectiveRules, type RetentionKind } from "@/features/privacy/retention";
 import { SYSTEM_ACTOR, recordAudit } from "@/server/audit/record";
 import { getDb } from "./client";
 
-export type RetentionTotals = { assistTurns: number; drafts: number; cases: number; events: number; auditEvents: number; exports: number };
+export type RetentionTotals = { assistTurns: number; drafts: number; cases: number; events: number; auditEvents: number; exports: number; outbox: number; teamsLinks: number };
 
 export type RetentionState = {
   rules: Record<RetentionKind, number | null>;
@@ -68,7 +68,7 @@ const CHUNK = 1000;
 export async function runRetention(companyId: string, now = new Date()): Promise<RetentionTotals> {
   const db = getDb();
   const { rules } = await loadRetention(companyId);
-  const t: RetentionTotals = { assistTurns: 0, drafts: 0, cases: 0, events: 0, auditEvents: 0, exports: 0 };
+  const t: RetentionTotals = { assistTurns: 0, drafts: 0, cases: 0, events: 0, auditEvents: 0, exports: 0, outbox: 0, teamsLinks: 0 };
 
   if (rules.assist_turns !== null) {
     t.assistTurns = (await db.assistTurn.deleteMany({ where: { companyId, createdAt: { lt: cutoff(rules.assist_turns, now) } } })).count;
@@ -95,6 +95,11 @@ export async function runRetention(companyId: string, now = new Date()): Promise
       data: { file: null, status: "expired" },
     })
   ).count;
+
+  t.outbox = (await db.outboxMessage.deleteMany({ where: { companyId, status: { not: "pending" }, createdAt: { lt: cutoff(OUTBOX_KEEP_DAYS, now) } } })).count;
+  // Someone who left gets no Teams message: nothing needs their conversation. It comes back when they write to the bot.
+  const left = await db.user.findMany({ where: { companyId, active: false }, select: { id: true } });
+  t.teamsLinks = (await db.teamsConversation.deleteMany({ where: { companyId, userId: { in: left.map((u) => u.id) } } })).count;
 
   const removed = t as unknown as Prisma.InputJsonValue;
   const any = Object.values(t).some((n) => n > 0);

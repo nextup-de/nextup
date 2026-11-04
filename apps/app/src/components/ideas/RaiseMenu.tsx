@@ -278,7 +278,7 @@ function FilePanel(p: MenuProps) {
 
 function VisPanel(p: MenuProps) {
   const t = useT();
-  const opts: [Extras["vis"], string, IconName][] = [["private", t("ideas.menuPrivate"), "lock"], ["public", t("ideas.menuPublic"), "globe"], ["custom", t("ideas.cardCustom"), "affected"]];
+  const opts: [Extras["vis"], string, IconName][] = [["private", t("ideas.menuPrivate"), "lock"], ["public", t("ideas.menuMyLeaders"), "vis"], ["custom", t("ideas.cardCustom"), "affected"]];
   return opts.map(([k, label, icon]) => (
     <button key={k} type="button" className={s.mRow} data-tall="true" onClick={() => { p.onExtras({ vis: k }); if (k === "custom") p.onView("visPick"); }}>
       <Icon name={icon} size={12.75} stroke="#1c1c1e" />

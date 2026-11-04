@@ -16,6 +16,9 @@ export const RETENTION_LIMITS: Record<RetentionKind, Limit> = {
 /** Audit events are not a rule: they go after this many days. */
 export const AUDIT_KEEP_DAYS = 730;
 
+/** Finished notices (sent, failed, skipped) are not a rule either: their text and address go after this many days. */
+export const OUTBOX_KEEP_DAYS = 90;
+
 export const isRetentionKind = (s: unknown): s is RetentionKind => typeof s === "string" && (RETENTION_KINDS as readonly string[]).includes(s);
 
 /** Message keys of `settingsPrivacy`. */
