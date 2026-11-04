@@ -13,7 +13,7 @@
 .win { min-width: 0; }
 .win[data-expanded="true"] > section { box-shadow: 0 0 0 2px var(--nh-brand), 0 6px 20px rgb(40 60 100 / 6%); }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
-.search { flex: 1 1 120px; min-width: 0; height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid #e5e5ea; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: #1c1c1e; outline: 0; }
+.search { flex: 1 1 200px; min-width: 0; height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid #e5e5ea; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: #1c1c1e; outline: 0; }
 .search:focus { border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
 .select { flex: 0 1 auto; min-width: 0; max-width: 48%; height: 36px; appearance: none; padding: 0 32px 0 12px; border-radius: 6px; border: 1px solid #e5e5ea; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 4.5 3 3 3-3'/%3E%3C/svg%3E") no-repeat right 12px center; font: inherit; font-size: var(--nh-fs-md); color: #1c1c1e; cursor: pointer; }
 .select:focus { outline: 0; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }

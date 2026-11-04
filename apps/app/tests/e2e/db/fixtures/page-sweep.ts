@@ -1,5 +1,5 @@
 // One check for any page (plan UIP, D8): at desktop and phone width the page's marker shows, nothing runs
-// off the side, no console error, and the title is Inter at 24 px on desktop.
+// off the side, no console error, and the title is Inter at 28 px.
 import { expect, type Page } from "@playwright/test";
 import { totpAt } from "../../../../src/features/auth/totp";
 import type { TestCompany } from "../../../db/test-company";
@@ -44,13 +44,13 @@ export async function sweepPages(page: Page, paths: readonly string[], options: 
         await page.waitForLoadState("networkidle");
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(overflow, `${where}: runs ${overflow} px off the side`).toBeLessThanOrEqual(0);
-        if (title && width === 1440) {
+        if (title) {
           const h1 = await page.locator("h1").first().evaluate((el) => {
             const s = getComputedStyle(el);
             return { family: s.fontFamily, size: s.fontSize };
           });
           expect(h1.family, `${where}: title font`).toMatch(/inter/i);
-          expect(h1.size, `${where}: title size`).toBe("24px");
+          expect(h1.size, `${where}: title size`).toBe("28px");
         }
         expect(errors, `${where}: console errors`).toEqual([]);
       }
