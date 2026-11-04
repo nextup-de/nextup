@@ -5,6 +5,7 @@
 // (about 80% of the screen) so both columns get room; below 1100px they stack, projects first.
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { PageHeader } from "@/components/ui/elements";
 import { DashboardView } from "@/components/dashboard/team/DashboardView";
 import { visibleProjectsFor } from "@/features/projects/views";
 import { useT } from "@/i18n/client";
@@ -25,15 +26,10 @@ export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases
 
   return (
     <div className={styles.hub} data-wide="true">
-      <header className={styles.head}>
+      <div className={styles.head}>
         <ProjectsTabs active="projects" />
-        <h1 className={styles.title}>{t("projects.pageTitle")}</h1>
-        <p className={styles.sub}>
-          {role === "member"
-            ? t("projects.hubSubMember")
-            : t("projects.hubSubLead")}
-        </p>
-      </header>
+        <PageHeader title={t("projects.pageTitle")} lede={role === "member" ? t("projects.hubSubMember") : t("projects.hubSubLead")} />
+      </div>
       <div className={styles.hubCols}>
         <section className={styles.hubProjects} aria-label={t("projects.pageTitle")}>
           <div className={styles.hubHead}>

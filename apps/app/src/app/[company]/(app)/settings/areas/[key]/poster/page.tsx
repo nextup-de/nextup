@@ -1,6 +1,7 @@
 // The printable QR poster of one area (FLR D13): ?size=a4|a5, ?lang=en|de|both. Admin only.
 import { notFound } from "next/navigation";
 import { AreaPoster, type PosterLang, type PosterSize, type PosterText } from "@/components/settings/AreaPoster";
+import { SettingsHead } from "@/components/settings/SettingsParts";
 import { areaUrl } from "@/features/floor/areas";
 import { areaQrSvg } from "@/features/floor/qr";
 import { companyPrefix } from "@/features/tenant/urls";
@@ -21,7 +22,7 @@ export default async function AreaPosterPage({ params, searchParams }: { params:
   const [{ company, key }, query] = await Promise.all([params, searchParams]);
   const t = await getT();
   const admin = await companyAdminOf(company);
-  if (!admin) return <p className="nh-hint">{t("settings.membersManagerOnly")}</p>;
+  if (!admin) return <SettingsHead title={t("settingsAreas.poster")} lede={t("settings.membersManagerOnly")} />;
   const area = await findArea(admin.companyId, key);
   if (!area) notFound();
 

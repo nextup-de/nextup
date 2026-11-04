@@ -278,6 +278,12 @@ model CaseView {
   @@index([companyId, open, lastDay])
 }
 
+// When /admin last signed everyone out: admin cookies issued before it stop working. One row, "stack".
+model AdminRevocation {
+  id        String   @id
+  revokedAt DateTime
+}
+
 // A rate-limit window shared between server instances (VIS/D11).
 model RateCounter {
   key     String   @id

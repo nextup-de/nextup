@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { SeatRow } from "@/features/auth/identity";
 import { useDemo, type DemoContext } from "@/components/dashboard/DemoProvider";
 import { Pill, type Tone } from "@/components/dashboard/shared/primitives";
+import { PageHeader } from "@/components/ui/elements";
 import type { EventPayload } from "@/features/cases/events";
 import type { Actor } from "@/features/cases/permissions";
 import { mayAppendProject } from "@/features/projects/permissions";
@@ -94,7 +95,8 @@ export function useSend(p: ReducedProject) {
   };
 }
 
-const VERDICT_TONE: Record<VerdictWord, Tone> = { better: "ok", same: "soft", worse: "accent", "not measured": "ghost" };
+// A verdict is a word in one grey badge: never green, never red (the late number is the only red).
+const VERDICT_TONE: Record<VerdictWord, Tone> = { better: "soft", same: "soft", worse: "soft", "not measured": "ghost" };
 
 export function VerdictChip({ verdict }: { verdict: VerdictWord | null }) {
   const locale = useLocale();
@@ -140,17 +142,18 @@ export function ProjectCard({ p, note }: { p: ReducedProject; note?: string }) {
   const locale = useLocale();
   // The lead's move is theirs to read; a manager records the reward.
   const lead = (actorUserId !== null && p.leadUserId === actorUserId) || (role === "manager" && p.rewardDue);
+  const mine = lead && nextMove(p, S.day) !== null;
   return (
     <Link href={href("/projects/" + p.id)} className={styles.card} aria-label={projectLabel(p) + " " + p.title}>
       <span className={styles.cardTop}>
-        <span className={styles.label}>{projectLabel(p)}</span>
+        <span className={styles.code}>{projectLabel(p)}</span>
         <VerdictChip verdict={p.verdict} />
       </span>
       <span className={styles.cardTitle}>{p.title}</span>
       <span className={styles.cardMeta}>{t("projects.cardLead", { name: p.lead })}{p.members.length ? " · " + t("projects.peopleCount", { count: p.members.length + 1 }) : ""}</span>
       {p.steps.length > 0 && <StepsBar p={p} />}
       <span className={styles.cardFoot}>
-        <span className={styles.next} data-mine={lead && nextMove(p, S.day) ? "true" : undefined}>{note ?? nextLine(p, S.day, f, lead, t, locale)}</span>
+        <span className={styles.next} data-mine={mine ? "true" : undefined}>{note ?? (mine ? t("projects.yourMove") + ": " : "") + nextLine(p, S.day, f, lead, t, locale)}</span>
         <DueBadge p={p} />
       </span>
     </Link>
@@ -187,8 +190,7 @@ export function ProjectsOff() {
   const t = useT();
   return (
     <div className={styles.off}>
-      <h1 className={styles.title}>{t("projects.pageTitle")}</h1>
-      <p className={styles.sub}>{t("projects.offSub")}</p>
+      <PageHeader title={t("projects.pageTitle")} lede={t("projects.offSub")} />
       <Link href={href("/feed")} className={styles.back}>{t("projects.backToFeed")}</Link>
     </div>
   );

@@ -1,6 +1,8 @@
 // Settings -> API tokens: tokens of the company for API v1 and the old events API. Company admins only (D12).
 import { notFound } from "next/navigation";
 import { ApiTokens, type TokenView } from "@/components/settings/ApiTokens";
+import { SettingsHead } from "@/components/settings/SettingsParts";
+import { SectionCard } from "@/components/ui/elements";
 import { isOldApiToken } from "@/features/api/token-form";
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
@@ -16,7 +18,7 @@ export async function generateMetadata() {
 export default async function ApiTokensPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
   const t = await getT();
-  if (!hasDatabase() || !process.env.AUTH_SECRET) return <><h1>{t("settingsApiTokens.title")}</h1><p>{t("settingsApiTokens.noDatabase")}</p></>;
+  if (!hasDatabase() || !process.env.AUTH_SECRET) return <><SettingsHead title={t("settingsApiTokens.title")} /><SectionCard><p>{t("settingsApiTokens.noDatabase")}</p></SectionCard></>;
   const admin = await companyAdminOf(company);
   if (!admin) notFound();
   const rows = await listTokens(admin.companyId);
@@ -39,7 +41,7 @@ export default async function ApiTokensPage({ params }: { params: Promise<{ comp
   }));
   return (
     <>
-      <h1>{t("settingsApiTokens.title")}</h1>
+      <SettingsHead title={t("settingsApiTokens.title")} lede={t("settingsApiTokens.hint")} />
       <ApiTokens slug={company} baseUrl={`/api/v1/${company}`} tokens={tokens} />
     </>
   );

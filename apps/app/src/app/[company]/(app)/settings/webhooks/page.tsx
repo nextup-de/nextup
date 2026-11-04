@@ -1,6 +1,8 @@
 // The company's webhook subscriptions, the send switch and the latest deliveries. Company admins only (companyAdminOf).
 import { notFound } from "next/navigation";
+import { SettingsHead } from "@/components/settings/SettingsParts";
 import { Webhooks, type WebhookView } from "@/components/settings/Webhooks";
+import { SectionCard } from "@/components/ui/elements";
 import { deliveryViews, hostOf } from "@/features/api/webhook-form";
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
@@ -15,13 +17,8 @@ export async function generateMetadata() {
 export default async function WebhooksSettingsPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
   const t = await getT();
-  const head = (
-    <>
-      <h1>{t("settingsWebhooks.navLabel")}</h1>
-      <p className="nh-hint">{t("settingsWebhooks.hint")}</p>
-    </>
-  );
-  if (!hasDatabase() || !process.env.AUTH_SECRET) return <>{head}<p>{t("settingsWebhooks.noDatabase")}</p></>;
+  const head = <SettingsHead title={t("settingsWebhooks.navLabel")} lede={t("settingsWebhooks.hint")} />;
+  if (!hasDatabase() || !process.env.AUTH_SECRET) return <>{head}<SectionCard><p>{t("settingsWebhooks.noDatabase")}</p></SectionCard></>;
   const admin = await companyAdminOf(company);
   if (!admin) notFound();
   const [subs, rows, cfg] = await Promise.all([

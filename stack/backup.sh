@@ -104,6 +104,23 @@ dump_stack() {
   fi
 }
 
+# After a successful backup: $INSTANCE_DIR/backup-status/last.json for the app's Backups check (PIL D10).
+# Written to a temp file and moved, so a reader never sees half a file. A folder that cannot be written
+# is a warning, not a failed backup. Nothing is written when INSTANCE_DIR is unset.
+write_status() {
+  local dir; dir="$(get INSTANCE_DIR)"
+  [ -n "$dir" ] || return 0
+  local offbox=true part="$dir/backup-status/.last.json.$$"
+  [[ "$repo" = /* ]] && offbox=false
+  if mkdir -p "$dir/backup-status" 2>/dev/null \
+     && printf '{"at": "%s", "offbox": %s}\n' "$(date -u +%FT%TZ)" "$offbox" > "$part" 2>/dev/null \
+     && mv -f "$part" "$dir/backup-status/last.json" 2>/dev/null; then
+    return 0
+  fi
+  log "warning: could not write $dir/backup-status/last.json"
+  return 0
+}
+
 restic cat config >/dev/null 2>&1 || { restic init >/dev/null; log "created repository $repo"; }
 
 case "$action" in
@@ -111,6 +128,7 @@ case "$action" in
     dump_stack
     restic backup --quiet --tag "$slug" /data
     restic forget --quiet --tag "$slug" --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+    write_status
     log "backup done ($(du -h "$work/db.dump" | cut -f1) database dump) -> $repo"
     ;;
 

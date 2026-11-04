@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Icon } from "@/components/ideas/raiseIcons";
+import { DeptChip } from "@/components/ui/elements";
 import { useT } from "@/i18n/client";
 import { floorRaiseAction } from "@/server/actions/floor";
 import { BODY_MAX, TITLE_MAX } from "@/features/floor/raise";
@@ -49,7 +50,6 @@ export function RaiseForm({ slug, areaKey, areaName, unitName, roleTitle, vacant
     });
   };
 
-  const place = `${unitName} · ${areaName}`;
   const goesTo = (
     <>
       <p className={styles.hint} data-testid="floor-raise-goesto">{t("floor.goesTo", { role: roleTitle })}</p>
@@ -63,7 +63,7 @@ export function RaiseForm({ slug, areaKey, areaName, unitName, roleTitle, vacant
   if (!kind) {
     return (
       <div className={styles.page} data-testid="floor-raise-what">
-        <p className={styles.place} data-testid="floor-raise-place">{place}</p>
+        <p className={styles.place} data-testid="floor-raise-place"><DeptChip name={unitName} /> · {areaName}</p>
         <h1 className={styles.heading}>{t("floor.question")}</h1>
         <button type="button" className={styles.tile} data-testid="floor-raise-problem" onClick={() => setKind("problem")}>
           <Icon name="bolt" size={32} />{t("floor.tileProblem")}

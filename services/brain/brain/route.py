@@ -55,7 +55,7 @@ def route(llm: LLMClient, body: RouteIn) -> RouteOut:
         reason=j.reason.strip(),
         same_as=same,
         related=match if match and not same and j.same_topic else None,
-        model=llm.settings.llm_model,
+        model=llm.model_used, tokens_in=llm.tokens_in, tokens_out=llm.tokens_out,
         version=PROMPT_VERSION,
         ms=round((time.perf_counter() - started) * 1000),
     )

@@ -14,7 +14,7 @@ export NEXTUP_INSTANCES="$tmp/instances"
 inst="$NEXTUP_INSTANCES/acme"
 # The temp folder holds a known handful of entries; remove them one by one.
 cleanup() {
-  rmdir "$inst/break-glass" "$inst/logs" 2>/dev/null
+  rmdir "$inst/break-glass" "$inst/backup-status" "$inst/logs" 2>/dev/null
   rm -f "$inst/.env" "$tmp"/*.sh "$tmp"/*.env "$tmp"/*.json "$tmp/err"
   rmdir "$inst" "$NEXTUP_INSTANCES" "$tmp" 2>/dev/null
   return 0
