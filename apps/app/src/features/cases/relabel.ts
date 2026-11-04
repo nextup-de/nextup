@@ -33,15 +33,14 @@ function relabelPayload(payload: Record<string, unknown>, labels: ActorLabels, s
   return Object.keys(changes).length === 0 ? payload : { ...payload, ...changes };
 }
 
-/** The events with the current labels. An event that does not change comes back as the same object. */
+/** Copies of the events with the current labels. Without a pseudonym in the company, the events as they are. */
 export function relabelEvents<T extends Relabelable>(events: readonly T[], labels: ActorLabels, seats: readonly SeatRow[]): T[] {
   if (Object.keys(labels).length === 0) return [...events];
   const pseudonyms = new Set(Object.values(labels));
   const vacated = new Map(seats.filter((s) => s.userId === null && pseudonyms.has(s.label)).map((s) => [s.id, s.label]));
-  return events.map((e) => {
-    const actor = actorLabel(e, labels);
-    const before = (e.payload ?? {}) as Record<string, unknown>;
-    const payload = relabelPayload(before, labels, vacated);
-    return actor === e.actor && payload === before ? e : { ...e, actor, payload };
-  });
+  return events.map((e) => ({
+    ...e,
+    actor: actorLabel(e, labels),
+    payload: relabelPayload((e.payload ?? {}) as Record<string, unknown>, labels, vacated),
+  }));
 }
