@@ -76,17 +76,21 @@ async function eventsOf(companyId: string, caseIds: string[], seed: Seed, shared
 
 /**
  * The log for one viewer (VIS/D8). A company without CaseView rows (not projected yet) gets the
- * full log, so nothing disappears before the first rebuild.
+ * full log, so nothing disappears before the first rebuild. A caller that already holds the company seed passes it,
+ * so the structure is not read twice in one request.
  */
-export async function loadLogFor(companyId: string, viewer: LogViewer, now: Date = new Date()): Promise<ViewerLog> {
+export async function loadLogFor(companyId: string, viewer: LogViewer, now: Date = new Date(), seed?: Seed): Promise<ViewerLog> {
   const db = getDb();
-  if ((await db.caseView.count({ where: { companyId } })) === 0) return { log: await loadLog(companyId, now), caseIds: null, projectIds: null };
-  const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } });
+  const [shipped, company, keys] = await Promise.all([
+    db.caseView.count({ where: { companyId } }),
+    db.company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } }),
+    keysOf(companyId, viewer),
+  ]);
+  if (shipped === 0) return { log: await loadLog(companyId, now), caseIds: null, projectIds: null };
   const cal = company.stage === "demo" ? null : await loadCalendar(companyId);
   const day = cal ? companyDay(company, cal, now) : company.demoDay;
-  const keys = await keysOf(companyId, viewer);
   const caseIds = await visibleCaseIds(companyId, keys, { sinceDay: day - WINDOW_DAYS, limit: WINDOW_CASES });
-  const { rows, projectIds } = await eventsOf(companyId, caseIds, await seedOf(companyId), true);
+  const { rows, projectIds } = await eventsOf(companyId, caseIds, seed ?? (await seedOf(companyId)), true);
   return { log: logFromRows(rows, day), caseIds, projectIds };
 }
 

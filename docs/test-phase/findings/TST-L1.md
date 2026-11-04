@@ -55,7 +55,11 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
   unchanged (p95 131 ms / 107 ms). That is a third better, not the 10x the budget needs: the server is CPU-bound in one
   Node process at about 47 ms per request, and 100 requests/s asked for needs more processes or more cores, or a smaller
   page render (the 75 KB log is serialised into every page). That is a deployment and design decision for Kevin, not a
-  change of under 50 lines (D7). **Status:** open.
+  change of under 50 lines (D7). A second round (the layout passes the seed it already holds to `loadLogFor`, so the
+  structure is not read twice; the log's four reads run in parallel) moved nothing measurable: 200 accounts at once, inbox p95
+  13.9 s, case p95 12.9 s, about 15 requests/s on a PC with other sessions running. Caching seats and knowledge across
+  requests (`holders.ts`, `knowledge.ts`) was tried on paper and dropped: the projection rebuilds read the same loaders
+  right after writes, and a stale seat is an access-key error. **Status:** open.
 - **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.

@@ -51,7 +51,7 @@ export default async function AppLayout({
   const who = viewer;
   const [shipped, members] = who
     ? await Promise.all([
-        orDemo(() => loadLogFor(who.companyId, { userId: who.userId, role: who.role }), () => null),
+        orDemo(() => loadLogFor(who.companyId, { userId: who.userId, role: who.role }, new Date(), fullSeed), () => null),
         orDemo(() => membersOfViewer(who.companyId, who.userId), () => []),
       ])
     : [null, []];
