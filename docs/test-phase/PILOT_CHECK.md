@@ -26,14 +26,15 @@ Every step gets one result, with evidence (screenshot, log or test name):
 | Fail | Expectation not met |
 | Not testable | Access is missing. Counts as open, never as passed |
 
-**Pilot-ready** means every Must step passes. A Must step that is Not testable blocks the verdict.
+**Technical run passed** means every applicable Must step passes. A Must step that is Not testable blocks the verdict.
+**Pilot-ready** additionally requires the G4 gates and launch evidence below; a single walkthrough cannot prove them.
 
 "Known" in the tables means a review found the problem. Unless a step says otherwise it comes from reading code, not from
 running it, so the run has to confirm it.
 
 ## Order
 
-1. **Fix list** below, because a run against known failures only repeats the review.
+1. **Triage the fix list** against the frozen commit. Reproduce suspected failures in isolation; record fixed, confirmed or unverified with evidence. Fix confirmed blockers before the full run. A code-review suspicion is not a reproduced failure.
 2. **Setup.**
 3. **Stages A to J in order**, on one frozen commit. Later stages reuse what earlier ones created.
 4. **Automated suites** (listed after the stages), on the same commit.
@@ -54,8 +55,9 @@ running it, so the run has to confirm it.
 | FX9 | Teams works on a real stack: `stack/compose.yml` passes no `TEAMS_*`. Removing the bot falls back to mail. People who signed in by SCIM, SAML or OIDC can be linked | TMS, OPS, EID | Compose checked; rest from review |
 | FX10 | Make `e2e`, `e2e-db` and `db-tests` required on `main`. The ruleset requires only `guard` and `app`, which is how red merges reached `main` | AUD, all | Ruleset read 2026-11-04 |
 
-Bigger items that can wait for the run's result: per-site calendars, SFX leavers and unit creation, `/Groups` in SCIM,
-SAML RelayState binding, AI eval against a real model, incremental notification dispatch.
+Scope-dependent items: per-site calendars, SFX leavers and unit creation, `/Groups` in SCIM, and incremental notification dispatch.
+An enabled identity method must pass callback binding and replay checks before launch (K2); real-model evaluation blocks AI enablement (G13).
+Do not defer these security checks until after the pilot begins.
 
 ## Setup
 
@@ -115,7 +117,7 @@ Use real people from stage C wherever possible. This stage is the heart of the r
 | D3 | Member | Pick one colleague as audience | That colleague opens it at once; a third person cannot. Known fail: FX4 | Must | VIS |
 | D4 | Desk | Open the inbox, answer | All German, including the decision buttons. Known fail: FX7 | Must | LNG, LOOP |
 | D5 | Clock | Let the answer date pass, skipping a weekend and a holiday | One hand-over to an occupied deputy seat; submitter sees it; no earlier than the working-day count | Must | CLK, LOOP, NTF |
-| D6 | Desk | Forge a deadline hand-over | Refused. Known fail: FX8 | Should | LOOP, MET |
+| D6 | Desk | Forge a deadline hand-over | Refused. Known fail: FX8 | Must | LOOP, MET |
 | D7 | Desk | Say yes and no on two cases | Both in `/decisions` with the deciding desk's role, not a person. Known risk: shows the current desk after a hand-over | Must | LOOP |
 | D8 | Lead | The yes opens a project: baseline, start, board, done | Usable start to finish | Must | LOOP |
 | D9 | Lead, manager | Type a result at the check date, try to confirm it yourself, then confirm as manager | Self-confirm refused; not counted until confirmed; reward only when confirmed better | Must | LOOP, MET |
@@ -229,7 +231,7 @@ Scores are Delivered, Quality and Pilot fit from code reviews on 2026-11-03/04, 
 | EID | 3/4/2 | Keep, fix | Fakes only; P1 just merged, not re-reviewed | C1, C7, C8, I3, I6 |
 | SEC | 3/3/2 | Keep, fix (blocker) | Support session | A3, A4, C9, H1-H4, I7 |
 | TST | In progress | | Live checks unowned | Automated suites, J |
-| PIL | Idea only | | No plan yet | I7; add after this run |
+| PIL | Planned, not verified | Reconcile implementation | Bootstrap, stage gates and report need acceptance | L1-L5 |
 | INF | Parked | | Needs the VM decision | A5 |
 
 ## What goes into the next plans
@@ -249,5 +251,104 @@ Scores are Delivered, Quality and Pilot fit from code reviews on 2026-11-03/04, 
 
 ## Report
 
+Use the [run report template](PILOT_CHECK_REPORT_TEMPLATE.md). Complete the extended gates below as well as stages A-J.
+
 One page: commit, verdict, every step with result and evidence, new findings with severity and file, and what stayed Not
 testable. New tests from stages E and H stay in the repo so this can be repeated.
+
+
+## Review additions, 2026-11-04
+
+Review baseline: merged PR #497, main `ae75e8aa2df3073c4be5c5d9083d1e2fb30e2bb2`.
+These additions are acceptance requirements, not executed test results or confirmed product defects.
+The phase ratings above remain historical review opinions; they cannot substitute for acceptance evidence.
+
+### Run contract and applicability
+
+Before execution, Kevin names the run owner, operator, security reviewer and customer acceptance contact in the report.
+Roles in the tables are proposed responsibility slots until a named person accepts them. Record the planned date and
+finding owner for every blocked prerequisite; record access availability again rather than treating the header as current.
+
+Freeze the app SHA, image digests, schema/migration version, configuration fingerprint (no secrets), generator seed,
+clock/timezone, deployment size, browser/device versions and test tenant identifiers. Record the plans repo SHA too:
+`projects/nextup/PIL/PLAN.md` now exists there; its presence does not prove that PIL is implemented on main.
+A run with local patches records the patch and is provisional until repeated on a committed release candidate.
+
+Declare enabled channels, identity methods, directory source, AI provider, Jira variant and floor access before testing.
+Add result **Out of scope** only for an optional feature explicitly excluded from the pilot AND disabled server-side;
+record the exclusion owner and verify direct URLs, jobs and API calls cannot use it. Hiding a menu is insufficient.
+An enabled feature's security and lifecycle checks are Must even where an older row says Should.
+Unavailable access remains Not testable. Mandatory VM/recovery and core privacy checks cannot be scoped away.
+When AI is off, G13 may be Out of scope only after B6 proves that the app makes no provider calls.
+
+Use synthetic data and allowlisted recipients in isolated test resources. Before B6 or stage-change drills, pause dispatch
+and drain/quarantine old queued notices; enable only the tested integration for G. Never guess real users' floor codes.
+Capture redacted requests and fixture recordings: no cookies, bearer tokens, credentials, personal mail or document bodies
+in git or reports. Keep restricted originals separately with an owner and deletion date. Clean up tunnels, test grants,
+tokens, accounts and external tickets after the run; record completion without deleting the evidence needed for review.
+
+### K. Missing security and integrity checks
+
+All rows are Must for the relevant enabled surface. Execute adverse paths on dedicated fixtures so they do not destroy
+stage C's accounts or invalidate later stages. Keep each as a regression test when feasible.
+
+| # | Who | Action | Expected | Phases |
+|---|---|---|---|---|
+| K1 | Security tester | Use company A cookies and scoped tokens against company B case, project, export, search, events, settings and mutation endpoints; repeat signed out and after revocation | Denied without B's content or mutation; verify database and outbound queues as well as status codes | SEC, VIS, API, GDP |
+| K2 | Identity tester | For each enabled OIDC/SAML path: alter state/RelayState, replay callback/assertion, use wrong issuer/audience/tenant and expired response; deactivate or demote an existing session | Invalid login rejected; no wrong-company account link; session loses removed privileges on its next protected request. Bind callbacks to their initiating login request | EID, IDN, SEC |
+| K3 | Desk and clock | Two tabs submit opposing decisions; retry the same request, duplicate a Teams activity/webhook, run two clock workers at one due instant | One valid transition; conflicts explicit; one logical hand-over, reward and outbound notice; replay cannot change the winning decision | LOOP, CLK, TMS, NTF, API |
+| K4 | Security tester | Reuse a revoked/expired/wrong-scope API token; send an unsigned, invalid-signature or replayed inbound integration request wherever supported | Refused before side effects; valid scoped request still works; secrets absent from logs and responses | API, TMS, CNX, SEC |
+| K5 | Security tester | Change forwarded IP headers and cookies on floor requests through the actual reverse proxy; try several legitimate people behind one shared NAT | Forged headers cannot evade limits; code guessing blocked; normal shared-site traffic remains usable. Record trusted proxy configuration and configured budgets | FLR, SEC, OPS |
+| K6 | Tester | With a private/custom case, inspect list/search, SSR/network payloads, caches, exports, notifications and connected AI/M365 results as allowed and denied users | Only the permitted audience gets content; revoked access no longer retrieves cached content. Do not assume all colleague identifiers are forbidden: distinguish necessary authorized roster data from private case data | VIS, GDP, CNX, AIP |
+| K7 | Operator | Check demo recording with no code, enabled code, tester=off, and on sandbox/pilot/live with a code | Demo recording follows its gate; no replay or analytics egress from non-demo stages, including after stage changes in an open tab | SEC, GDP, PIL |
+
+FX6's proposed IP key is not an acceptance criterion by itself: K5 must establish that the trusted proxy and shared-factory
+network behave correctly. FX2's exact Graph query change remains a hypothesis until checked against Microsoft's current
+API documentation and a live delta response; test pagination, manager removal, 410 resync and retry without losing users.
+
+### L. Pilot package and launch lifecycle
+
+| # | Who | Action | Expected | Level | Phases |
+|---|---|---|---|---|---|
+| L1 | Operator | Bootstrap an empty company with the PIL configuration; rerun; submit invalid CSV/config | Starts sandbox; no duplicate/destructive rerun; invalid input reported with no partial structure import; codes never printed | Must | PIL, ADM, API |
+| L2 | Company admin | Try sandbox to pilot with each required check missing or unknown; forge a direct stage request as member and support; fix checks and retry | Server refuses every missing/unknown needed check and unauthorized actor; valid move audited; stale UI cannot bypass recheck | Must | PIL, SEC |
+| L3 | Operator | Queue notices in sandbox, move to pilot, then back to sandbox while jobs run; reuse an old session | Correct dispatch gate and session invalidation; no unexpected backlog delivery, duplicates or post-pause sends; reversal audited | Must | PIL, NTF, IDN |
+| L4 | Manager | Read first/next weekly report, CSV, print and email with baseline; rerun job; test a holiday-only period and ISO-year boundary | Same hand-computed totals and suppression everywhere; zero denominators/missing baseline are explicit, no fabricated percentage; one mail per active opted-in manager/week; nobody else receives it | Must | PIL, MET, CLK, GDP |
+| L5 | Customer contact | Use onboarding, German training, support/incident contact and pilot stop procedure; send a real test message | Named contacts accept responsibility; customer can report and stop a broken pilot; real mail arrives with working authenticated links | Must | PIL, OPS, NTF |
+
+### M. Recovery, sustained load and operational response
+
+| # | Who | Action | Expected | Level | Phases |
+|---|---|---|---|---|---|
+| M1 | Operator | Restore an off-box snapshot on an isolated replacement host with separately stored recovery credentials; compare checkpoint data, sign-in and one new case | RPO <= 24 h and RTO <= 3,600 s per docs/ops/RPO_RTO.md; record snapshot timestamp, lost interval and full recovery duration. A throwaway DB restore or health 200 alone does not prove functional recovery | Must | OPS, TST |
+| M2 | Operator | Exercise failed migration/deploy and recovery on the test stack | Backup precedes migration; documented compatible rollback or restore returns functional service; record actual lost writes and elapsed time | Must | OPS, TST |
+| M3 | Operator | During traffic, interrupt DB/network, produce integration 429/5xx, fail a worker between write and acknowledgement, then recover | No silent data loss or unauthorized output; retries bounded, backlog drains without duplicate logical effects; alerts reach named responders | Must | OPS, NTF, CNX, TST |
+| M4 | Operator | Run the existing load scripts on the declared VM with 2,000 registered accounts and explicit active VUs/request mix; add queue/clock work | Per-page p95 < 1,000 ms, errors < 1%, no full-log response (> 2 MB). Record p50/p95/p99, VUs, throughput, CPU/RAM/DB pool and queue age; do not equate accounts with concurrent users | Must | TST, VIS, NTF |
+| M5 | Operator | Repeat the production-shaped workload: proposed 5 min warm-up, 30 min steady load, 5 min recovery; burst and retry traffic | M4 budgets hold for steady load; backlog drains within a pre-agreed time and memory/connections do not grow without bound. Set exact burst, arrival rate and drain budget before running; no invented result | Must | TST, OPS |
+
+### N. Exit gates and actual pilot outcomes
+
+G4 stays with Kevin. The walkthrough supports it but cannot replace these requirements from
+`docs/plans/2026-11-01_pilot-readiness.md` and TST D12:
+
+| Gate | Evidence required | Proposed owner |
+|---|---|---|
+| Automated regression | Required CI suites including DB, browser and brain eval on candidate SHA; list failures, skipped tests and expected-failure tests separately. Green `it.fails` is still an open finding | Run owner |
+| M365 correctness | Score every one of the 21 ground-truth questions with expected source/access per persona; 21/21 and zero unauthorized documents under existing G4, or a separately recorded approved criterion change before execution | Connector tester |
+| Security review | Pentest or ZAP cycle scope/version/date, findings and retests; no high finding open. Record untested surfaces explicitly | Security reviewer |
+| Internal use | 14 consecutive real calendar days on the release candidate/configuration, incident diary, no data-loss or access bug. A simulated clock run cannot satisfy this; a material change requires documented retest and soak decision | Kevin/team |
+| Operational recovery | A5, J3 and M1-M5 on the recorded infrastructure, plus clean on-prem install evidence | Operator |
+| Launch readiness | All applicable Must steps passed, no high finding open, exclusions demonstrably disabled, customer onboarding/support and required agreements reviewed by their responsible people | Kevin/customer contact |
+
+Before the six-week pilot, the customer contact and Kevin/Marc agree its start/end dates, eligible population and baseline
+window, case types, success targets and stop rules. Use MET/PIL definitions for participation, first reasoned answer,
+within-promise percentage and verified outcomes. Record numerator, denominator, exclusions, minimum group size and source
+for each metric; missing baseline is unknown rather than improvement. Set targets before seeing pilot results, and report
+uncertainty/low case volume. Routing D1 needs a desk-approved answer set, frozen sample and pre-agreed top-3 accuracy
+threshold; recording accuracy alone cannot make a Must step pass. G13 likewise needs an approved quality threshold,
+model/prompt versions, timeout/cost budgets and zero unauthorized disclosure before AI is enabled.
+
+Review aggregate outcomes weekly without person rankings. Stop/pause on access leakage, data loss, unavailable critical
+case loop or failed recovery; name the person who triggers the pause and the customer communication contact. At six weeks,
+Kevin and Marc record G5: continue, revise or stop, with evidence against the agreed baseline and targets. Passing G4 is
+permission to start this evaluation, not proof of customer value.
