@@ -8,6 +8,7 @@
 #   zap     — OWASP ZAP baseline scan of the demo app; fails on a High alert not in .zap/ignore.json
 #   e2e-db  — Playwright against Postgres: a company made in /admin, personal
 #             login codes, the loop across real sessions, Settings -> Members
+#   load    — 200 Musterwerk accounts against the built app: inbox and case pages p95 < 1 s (apps/app/tests/load)
 #   db-tests    — vitest against Postgres: apps/app/tests/db via ops/test-db.sh
 #   brain-tests — pytest for services/brain, run in the uv image
 #   brain-eval  — routing eval set rules + recorded answers vs threshold (no model)
@@ -284,6 +285,62 @@ jobs:
         with:
           name: playwright-report-db
           path: apps/app/playwright-report/
+          retention-days: 14
+
+  load:
+    name: load · 200 Musterwerk accounts against the built app
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: nextup
+          POSTGRES_PASSWORD: nextup
+          POSTGRES_DB: nextup_load_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nextup"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    # A database that lives for this one job; the generator steps the clock for every company in it, so the name ends in _test.
+    env:
+      DATABASE_URL: postgresql://nextup:nextup@127.0.0.1:5432/nextup_load_test
+      TST_ACCOUNTS: 200
+      CI: 1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      - name: Generate AUTH_SECRET, ADMIN_ACCESS_CODE and CONNECTOR_VAULT_KEY
+        shell: bash
+        run: |
+          auth=$(openssl rand -hex 32); admin=$(openssl rand -hex 16); vault=$(openssl rand -base64 32)
+          echo "::add-mask::$auth"; echo "::add-mask::$admin"; echo "::add-mask::$vault"
+          echo "AUTH_SECRET=$auth" >> "$GITHUB_ENV"
+          echo "ADMIN_ACCESS_CODE=$admin" >> "$GITHUB_ENV"
+          echo "CONNECTOR_VAULT_KEY=$vault" >> "$GITHUB_ENV"
+
+      - name: Migrate the empty database
+        run: npm run db:migrate
+
+      # Generates a Musterwerk, builds the app, starts `next start` on :3103 and holds p95 < 1 s, errors < 1 % (TST-L1, D8).
+      - name: Run the load acceptance
+        working-directory: apps/app
+        run: npx vitest run --config vitest.load.config.ts tests/load/musterwerk-load.test.ts -t 'TST acceptance'
+
+      - name: Upload the figures
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: load-figures
+          path: apps/app/test-results/load/
+          if-no-files-found: ignore
           retention-days: 14
 
   db-tests:
