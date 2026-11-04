@@ -1,6 +1,8 @@
 // Support access: the grant NextUp's team needs, its log and the server's break-glass window. Company admins only.
 import { notFound } from "next/navigation";
+import { SettingsHead } from "@/components/settings/SettingsParts";
 import { SupportAccess, type SupportGrantView, type SupportLogView } from "@/components/settings/SupportAccess";
+import { SectionCard } from "@/components/ui/elements";
 import { supportPageState } from "@/features/admin/support-code";
 import { windowOpen } from "@/features/admin/break-glass";
 import { companyPrefix } from "@/features/tenant/urls";
@@ -31,19 +33,14 @@ export default async function SupportAccessPage({
   const { company } = await params;
   const { cursor: rawCursor } = await searchParams;
   const t = await getT();
-  const head = (
-    <>
-      <h1>{t("settingsSupport.title")}</h1>
-      <p className="nh-hint">{t("settingsSupport.lead")}</p>
-    </>
-  );
-  if (!hasDatabase() || !process.env.AUTH_SECRET) return <>{head}<p>{t("settingsSupport.noDatabase")}</p></>;
+  const head = <SettingsHead title={t("settingsSupport.title")} lede={t("settingsSupport.lead")} />;
+  if (!hasDatabase() || !process.env.AUTH_SECRET) return <>{head}<SectionCard><p>{t("settingsSupport.noDatabase")}</p></SectionCard></>;
   const admin = await companyAdminOf(company);
   if (!admin) notFound();
   const db = getDb();
   const now = new Date();
   const row = await db.company.findUnique({ where: { id: admin.companyId }, select: { stage: true } });
-  if (!row || row.stage === "demo") return <>{head}<p data-testid="settings-support-demo">{t("settingsSupport.demo")}</p></>;
+  if (!row || row.stage === "demo") return <>{head}<SectionCard><p data-testid="settings-support-demo">{t("settingsSupport.demo")}</p></SectionCard></>;
 
   const window = await readBreakGlassWindow();
   const bg = windowOpen(window, now) ? window.until : null;
