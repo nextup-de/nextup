@@ -9,6 +9,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { BaselineDialog } from "@/components/dashboard/shared/BaselineDialog";
 import { BreakdownCard, TooFewToShow } from "@/components/dashboard/shared/BreakdownCard";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { DeptChip } from "@/components/ui/elements";
 import { barHeights, dashboardFromInput, shares, tileViews, trendPaths, trendPoints, type TileView } from "@/features/metrics/dashboard";
 import { breakdownCsv, csvFileName } from "@/features/metrics/csv";
 import { ledgerInputFromState } from "@/features/metrics/from-state";
@@ -229,7 +230,7 @@ export function DashboardBoard({ data: served, slug, kind: servedKind, unitId: s
                 {sel.split === null && <span className={s.note}>{t("metrics.overlayNoSplit")}</span>}
                 {sel.split?.map((r) => (
                   <div key={r.id} className={s.splitRow}>
-                    <span className={s.rowName} style={{ paddingLeft: r.depth * 14 }}>{r.label}</span>
+                    <span className={s.rowName} style={{ paddingLeft: r.depth * 14 }}><DeptChip name={r.label} /></span>
                     {r.value === null ? <TooFewToShow inline /> : (
                       <>
                         <span className={s.track}><span className={s.fill} style={{ width: r.share + "%" }} /></span>

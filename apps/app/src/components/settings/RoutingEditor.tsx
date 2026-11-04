@@ -4,12 +4,13 @@
 // menu moves or deletes it. Every change calls an action from src/server/actions/settings/org.ts.
 import Link from "next/link";
 import { useState, useTransition, type FormEvent } from "react";
-import type { Knowledge, RoleRow, RuleRow } from "@/features/knowledge";
+import { holdersOfRole, type Knowledge, type RoleRow, type RuleRow } from "@/features/knowledge";
 import { propose } from "@/features/routing";
 import { routeKeyFor, routingSummary, seatLine } from "@/features/settings/routing-view";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import { moveRouteAction, removeRouteAction, saveRouteAction, type OrgResult } from "@/server/actions/settings/org";
+import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { SettingsHead } from "./SettingsParts";
 import s from "./settings.module.css";
 import r from "./RoutingEditor.module.css";
@@ -107,10 +108,13 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
     const x = role(id);
     if (!x) return <span className={s.mute}>–{empty ? <><br />{empty}</> : null}</span>;
     const line = seatLine(k, x.id);
+    const dept = unitName.get(x.orgUnitId);
+    const holder = holdersOfRole(k, x.id).find((h) => h.userId !== null && h.name.trim() !== "");
     return (
       <>
         <span className={r.cellMain}>{x.title}</span>
-        {line ? <span className={r.cellSub}>{line}</span> : <span className={s.vacant}>{t("settingsOrg.vacant")}</span>}
+        {dept ? <span className={r.cellChip}><DeptChip name={dept} /></span> : null}
+        {line ? <span className={r.cellSub}>{holder ? <PersonFace name={holder.name} size="sm" /> : null}{line}</span> : <span className={s.vacant}>{t("settingsOrg.vacant")}</span>}
       </>
     );
   };
