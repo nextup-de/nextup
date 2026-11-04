@@ -7,6 +7,7 @@ let viewer: Viewer | null = null;
 let stackAdmin = false;
 vi.mock("@/features/auth/session", () => ({ getViewerFor: vi.fn(async (slug: string) => (viewer && viewer.companySlug === slug ? viewer : null)) }));
 vi.mock("@/server/actions/admin", () => ({ isAdmin: vi.fn(async () => stackAdmin) }));
+vi.mock("@/server/console-write", () => ({ consoleWriteRefusal: vi.fn(async () => (stackAdmin ? null : "refused")) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { getDb } from "@/lib/db/client";

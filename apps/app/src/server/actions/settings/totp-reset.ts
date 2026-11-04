@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { companyPrefix, singleCompany } from "@/features/tenant/urls";
 import { getDb } from "@/lib/db/client";
 import { isAdmin } from "@/server/actions/admin";
+import { consoleWriteRefusal } from "@/server/console-write";
 import { settingsActor } from "@/server/audit/record";
 import { audited, type Tx } from "./audited";
 import { companyAdminOf } from "./guard";
@@ -61,6 +62,8 @@ export async function resetTotpAction(slug: string, userId: string): Promise<Tot
 /** A stack admin resets the second factor of a person of the company, in /admin People. */
 export async function adminResetTotpAction(_prev: AdminTotpResetState, form: FormData): Promise<AdminTotpResetState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  const refused = await consoleWriteRefusal();
+  if (refused) return { error: refused };
   const slug = String(form.get("slug") ?? "");
   if (slug !== singleCompany()) return { error: "No such company." };
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });

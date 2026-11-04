@@ -55,14 +55,23 @@ export type AiBlockView = {
   endpoint: string;
   model: string;
   deployment: string;
+  /** The brain's model; empty means the assistant's model (plan AIB D8). */
+  brainModel: string;
   key: SecretState;
   vault: boolean;
 };
 
+export const BRAIN_MODEL_MAX = 120;
+
+/** A typed brain model: trimmed, at most 120 characters, empty is null (so the assistant's model applies). */
+export function cleanBrainModel(v: unknown): string | null {
+  return typeof v === "string" ? v.trim().slice(0, BRAIN_MODEL_MAX).trim() || null : null;
+}
+
 export function aiBlockView(settings: AiSettings, hasKey: boolean, vault: boolean): AiBlockView {
   return {
     choice: settings.choice, region: settings.region, endpoint: settings.endpoint ?? "", model: settings.model,
-    deployment: settings.deployment ?? "", key: secretState(hasKey), vault,
+    deployment: settings.deployment ?? "", brainModel: settings.brainModel ?? "", key: secretState(hasKey), vault,
   };
 }
 

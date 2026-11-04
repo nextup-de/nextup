@@ -69,7 +69,38 @@ export type DirectoryPlan = {
   links: { userId: string; subject: string }[];
   /** Ids of every existing user the page named (matched, changed or not): the writer stamps directorySyncedAt. */
   seen: string[];
+  /** Entries whose manager is named but not known yet (a later page, or skipped): the stored manager stands. */
+  unknownManagers: number;
 };
+
+/** The people a round could not place yet. A delta names a person once, so the cursor waits for them. */
+export type Held = { noUnit: number; noEmail: number; emailTaken: number; unknownManager: number };
+export const NOBODY_HELD: Held = { noUnit: 0, noEmail: 0, emailTaken: 0, unknownManager: 0 };
+
+export function heldOf(plan: DirectoryPlan): Held {
+  const count = (reason: PlanSkip["reason"]) => plan.skipped.filter((s) => s.reason === reason).length;
+  return { noUnit: count("no-unit"), noEmail: count("no-email"), emailTaken: count("email-taken"), unknownManager: plan.unknownManagers };
+}
+
+export const addHeld = (a: Held, b: Held): Held => ({
+  noUnit: a.noUnit + b.noUnit,
+  noEmail: a.noEmail + b.noEmail,
+  emailTaken: a.emailTaken + b.emailTaken,
+  unknownManager: a.unknownManager + b.unknownManager,
+});
+
+/** What the console shows about them, or null when nobody is held. Counts only, never a name. */
+export function heldSentence(h: Held): string | null {
+  const total = h.noUnit + h.noEmail + h.emailTaken + h.unknownManager;
+  if (total === 0) return null;
+  const parts = [
+    [h.noUnit, "no unit"],
+    [h.noEmail, "no email"],
+    [h.emailTaken, "email in use"],
+    [h.unknownManager, "manager not known yet"],
+  ].filter(([n]) => n !== 0).map(([n, what]) => `${n} ${what}`);
+  return `${total} ${total === 1 ? "person" : "people"} not synced yet: ${parts.join(", ")}. The sync tries again every round.`;
+}
 
 const lower = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
 
@@ -102,7 +133,7 @@ export function planDirectoryDelta(input: {
   }
 
   const removed = new Set(page.removedExternalIds);
-  const plan: DirectoryPlan = { creates: [], updates: [], managers: [], leavers: [], skipped: [], links: [], seen: [] };
+  const plan: DirectoryPlan = { creates: [], updates: [], managers: [], leavers: [], skipped: [], links: [], seen: [], unknownManagers: 0 };
   const emailsInUse = new Set(users.map((u) => lower(u.email)));
   const handles = new Set(input.takenHandles);
   // The personnel number is unique per company: one already held by another user is not written again.
@@ -208,7 +239,12 @@ export function planDirectoryDelta(input: {
   const same = (a: PlanRef | null, b: PlanRef | null) =>
     a === null || b === null ? a === b : "userId" in a ? "userId" in b && a.userId === b.userId : "create" in b && a.create === b.create;
   for (const { entry, ref, current } of resolved) {
+    if (entry.managerUnchanged) continue;
     let manager = entry.managerExternalId ? resolveKey(entry.managerExternalId) : null;
+    if (entry.managerExternalId && !manager) {
+      plan.unknownManagers += 1;
+      continue;
+    }
     if (manager && same(manager, ref)) manager = null;
     const now: PlanRef | null = current?.managerId ? { userId: current.managerId } : null;
     if (current ? !same(manager, now) : manager !== null) plan.managers.push({ who: ref, manager });

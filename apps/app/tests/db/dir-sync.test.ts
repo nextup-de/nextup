@@ -59,6 +59,51 @@ describe("DIR sync loop", () => {
     expect(s.lastOkAt).not.toBeNull();
   });
 
+  it("keeps the cursor and says so while someone could not be placed, and moves on once they can", async () => {
+    await setDirectoryOn(a.id, true, "graph", null);
+    await saveDirectoryCursor(a.id, "delta-old");
+    const page = () => pageOf([entry(1), { ...entry(2), department: "Nowhere" }], null);
+
+    const seen: (string | null)[] = [];
+    await runDirectoryOnce(new Date(), () => serving([page()], -1, seen));
+    expect(seen).toEqual(["delta-old"]);
+    expect(await db.user.count({ where: { companyId: a.id } })).toBe(1);
+    let run = await loadDirectoryRun(a.id);
+    expect(run?.cursor).toBe("delta-old");
+    expect(run?.lastOkAt).not.toBeNull();
+    const status = await loadDirectoryStatus(a.id);
+    expect(status.lastError).toMatch(/^1 person not synced yet: 1 no unit\./);
+    expect(status.lastError).not.toContain("Person 2");
+
+    // The company adds the unit: the same cursor delivers the person, and the round moves on.
+    const unit = await db.orgUnit.create({ data: { companyId: a.id, key: "nowhere", name: "Nowhere" } });
+    await runDirectoryOnce(new Date(), () => serving([page()]));
+    expect(await db.user.count({ where: { companyId: a.id } })).toBe(2);
+    run = await loadDirectoryRun(a.id);
+    expect(run?.cursor).toBe("delta-final");
+    expect(run?.lastError).toBeNull();
+    await db.user.deleteMany({ where: { companyId: a.id } });
+    await db.orgUnit.delete({ where: { companyId_key: { companyId: unit.companyId, key: unit.key } } });
+  });
+
+  it("gets a manager from a later page on the next round, because the cursor waits", async () => {
+    await setDirectoryOn(a.id, true, "graph", null);
+    const pages = () => [pageOf([{ ...entry(1), managerExternalId: "oid-2" }], "next-1"), pageOf([entry(2)], null)];
+    await runDirectoryOnce(new Date(), () => serving(pages()));
+    const managerOf = async () => (await db.user.findFirstOrThrow({ where: { companyId: a.id, entraOid: "oid-1" }, select: { managerId: true } })).managerId;
+    expect(await managerOf()).toBeNull();
+    let run = await loadDirectoryRun(a.id);
+    expect(run?.cursor).toBeNull();
+    expect(run?.lastError).toMatch(/^1 person not synced yet: 1 manager not known yet\./);
+
+    await runDirectoryOnce(new Date(), () => serving(pages()));
+    const boss = await db.user.findFirstOrThrow({ where: { companyId: a.id, entraOid: "oid-2" }, select: { id: true } });
+    expect(await managerOf()).toBe(boss.id);
+    run = await loadDirectoryRun(a.id);
+    expect(run?.cursor).toBe("delta-final");
+    expect(run?.lastError).toBeNull();
+  });
+
   it("records the error and keeps the stored cursor when the source throws on page two", async () => {
     await setDirectoryOn(a.id, true, "graph", null);
     await saveDirectoryCursor(a.id, "old-cursor");

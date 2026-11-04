@@ -13,7 +13,7 @@ import { getDb } from "@/lib/db/client";
 import { getIntegration, integrationSecrets, saveIntegration, setIntegrationOn } from "@/lib/db/integrations";
 import { adminActor } from "@/server/admin-session";
 import { consoleActor, recordAudit } from "@/server/audit/record";
-import { consoleCompany } from "@/server/console-guard";
+import { consoleWrite } from "@/server/console-write";
 import { successFactorsClient } from "@/server/directory/successfactors/client";
 import type { ConsoleConnectorState } from "@/server/actions/console-connectors";
 
@@ -22,10 +22,8 @@ const SYSTEM = "successfactors";
 export type SuccessFactorsTestState = { ok: boolean; detail: string };
 
 async function door(): Promise<{ ok: true; companyId: string; slug: string } | { ok: false; code: "not-allowed" | "support-read-only" }> {
-  const c = await consoleCompany();
-  if (!c) return { ok: false, code: "not-allowed" };
-  if ((c.via as string) === "support") return { ok: false, code: "support-read-only" };
-  return { ok: true, companyId: c.companyId, slug: c.slug };
+  const d = await consoleWrite();
+  return d.ok ? { ok: true, companyId: d.c.companyId, slug: d.c.slug } : d;
 }
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");

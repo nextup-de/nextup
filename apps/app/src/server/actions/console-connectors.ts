@@ -1,6 +1,6 @@
 "use server";
 // The console's connector actions (ITC-A1, replaces ADM-C1): Jira test, save, on/off and sync now; the
-// Microsoft 365 company switch and "disconnect everyone"; the AI choice. Each calls consoleCompany()
+// Microsoft 365 company switch and "disconnect everyone"; the AI choice. Each calls consoleWrite()
 // first and writes for the company id it returns, never for one from the form (ITC/D4). A support
 // session (D8) only reads. A key or token is write-only: it goes in sealed and nothing returns it.
 import { revalidatePath } from "next/cache";
@@ -9,6 +9,7 @@ import { adminBase } from "@/features/admin/nav";
 import { auditChanges } from "@/features/audit";
 import { readJiraForm, settingsFromForm } from "@/features/admin/jira-admin";
 import { vaultKey } from "@/features/connectors/vault";
+import { cleanBrainModel } from "@/components/admin/connectors/views";
 import { AI_SYSTEM, DEFAULT_REGION, type AiSettings } from "@/features/ai/settings";
 import { normalizeSiteUrl, parseJiraSettings } from "@/features/integrations/jira/settings";
 import type { JiraAccount, JiraCheck, JiraIssueType } from "@/features/integrations/jira/types";
@@ -18,7 +19,7 @@ import { getDb } from "@/lib/db/client";
 import { getIntegration, integrationSecrets, jiraSaveChanges, JIRA, saveIntegration, setIntegrationOn } from "@/lib/db/integrations";
 import { adminActor } from "@/server/admin-session";
 import { consoleActor, recordAudit } from "@/server/audit/record";
-import { consoleCompany } from "@/server/console-guard";
+import { consoleWrite } from "@/server/console-write";
 import { sealSecret, storedToken } from "@/server/jira-admin";
 import { kickJira } from "@/server/jira-sync";
 import { testJira } from "@/server/jira/test";
@@ -35,19 +36,12 @@ export type ConsoleJiraTestState = {
   issueTypes: JiraIssueType[];
 };
 
-type Door = { companyId: string; slug: string };
 
 const connector = (id: string) => ({ kind: "connector", id });
 /** The write could not be recorded in the audit trail, so it was rolled back. */
 const NOT_RECORDED: ConsoleConnectorState = { ok: false, code: "invalid", detail: "audit" };
 
-/** The guard, then the support rule. */
-async function door(): Promise<{ ok: true; c: Door } | { ok: false; code: "not-allowed" | "support-read-only" }> {
-  const c = await consoleCompany();
-  if (!c) return { ok: false, code: "not-allowed" };
-  if ((c.via as string) === "support") return { ok: false, code: "support-read-only" };
-  return { ok: true, c };
-}
+const door = consoleWrite;
 
 const refresh = () => revalidatePath(adminBase() + "/connectors");
 const who = async () => (await adminActor()) ?? "admin code";
@@ -201,6 +195,7 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
     model: text(r.model, 120),
     endpoint,
     deployment: text(r.deployment, 120) || null,
+    brainModel: cleanBrainModel(r.brainModel),
   };
   const key = text(r.key, 500);
   if (key && !vaultKey()) return { ok: false, code: "no-vault" };
@@ -209,7 +204,7 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
   const by = await who();
   const beforeRow = await getIntegration(d.c.companyId, AI_SYSTEM);
   const beforeSettings = beforeRow && typeof beforeRow.settings === "object" && beforeRow.settings !== null ? (beforeRow.settings as Record<string, unknown>) : null;
-  const savedSettings = { choice: picked, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment };
+  const savedSettings = { choice: picked, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment, brainModel: settings.brainModel };
   const hadKey = beforeRow?.hasSecret ? "sealed" : null;
   const changes = auditChanges(
     beforeRow ? { ...beforeSettings, key: hadKey } : null,

@@ -9,18 +9,13 @@ import { loadDirectoryRun, setDirectoryOn } from "@/lib/db/directory-run";
 import { getDb } from "@/lib/db/client";
 import { adminActor } from "@/server/admin-session";
 import { consoleActor, recordAudit } from "@/server/audit/record";
-import { consoleCompany } from "@/server/console-guard";
+import { consoleWrite } from "@/server/console-write";
 import { runDirectoryCompany } from "@/server/directory/sync";
 import type { ConsoleConnectorState } from "@/server/actions/console-connectors";
 
 const refresh = () => revalidatePath(adminBase() + "/connectors");
 
-async function door() {
-  const c = await consoleCompany();
-  if (!c) return { ok: false as const, code: "not-allowed" as const };
-  if ((c.via as string) === "support") return { ok: false as const, code: "support-read-only" as const };
-  return { ok: true as const, c };
-}
+const door = consoleWrite;
 
 /** Switch the sync on or off and choose its source. Saving releases any lease. */
 export async function setDirectoryAction(on: boolean, source: string): Promise<ConsoleConnectorState> {

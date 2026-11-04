@@ -6,6 +6,10 @@
 // The token lives in this adapter's memory until five minutes before it expires, one per tenant (an adapter
 // is made for one tenant), and is never logged. Errors carry the HTTP status and Graph's error code only -
 // no body, no token.
+//
+// The manager is a relationship: Graph's delta query takes it through $select, refuses $expand, and answers
+// in the annotation manager@delta. Microsoft's pages do not show that annotation's shape, so this reads what
+// the same pages say of relationships in general; it has not met a live tenant yet (PILOT_CHECK C2).
 import { PUBLIC_CONTRACT_VERSION, type DirectoryEntry, type DirectoryPage, type DirectorySource } from "@nextup/contracts/public";
 import { tokenUrl, type EntraApp } from "@/features/auth/entra";
 
@@ -13,8 +17,7 @@ const GRAPH = "https://graph.microsoft.com/";
 const SCOPE = `${GRAPH}.default`;
 const EARLY_MS = 5 * 60_000;
 export const FIRST_PAGE =
-  `${GRAPH}v1.0/users/delta?$select=id,displayName,mail,userPrincipalName,department,jobTitle,employeeId,accountEnabled` +
-  "&$expand=manager($select=id)";
+  `${GRAPH}v1.0/users/delta?$select=id,displayName,mail,userPrincipalName,department,jobTitle,employeeId,accountEnabled,manager`;
 
 export type GraphDirectory = DirectorySource & {
   /** The deltaLink of the last finished round, or null before one finished: store it as the next cursor. */
@@ -30,11 +33,19 @@ type GraphUser = {
   jobTitle?: unknown;
   employeeId?: unknown;
   accountEnabled?: unknown;
-  manager?: { id?: unknown } | null;
+  "manager@delta"?: unknown;
   "@removed"?: unknown;
 };
 
 const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
+
+/** The entry without @removed is the manager; only removed ones mean none. No annotation says nothing about the manager. */
+function managerOf(u: GraphUser): Pick<DirectoryEntry, "managerExternalId" | "managerUnchanged"> {
+  const links = u["manager@delta"];
+  if (!Array.isArray(links)) return { managerExternalId: null, managerUnchanged: true };
+  const current = (links as ({ id?: unknown; "@removed"?: unknown } | null)[]).find((l) => l && l["@removed"] === undefined);
+  return { managerExternalId: text(current?.id) };
+}
 
 function entryOf(u: GraphUser, id: string): DirectoryEntry {
   const upn = text(u.userPrincipalName);
@@ -44,24 +55,34 @@ function entryOf(u: GraphUser, id: string): DirectoryEntry {
     email: text(u.mail) ?? upn,
     department: text(u.department),
     jobTitle: text(u.jobTitle),
-    managerExternalId: text(u.manager?.id),
+    ...managerOf(u),
     groupExternalIds: [],
     employeeId: text(u.employeeId),
     active: u.accountEnabled !== false,
   };
 }
 
-async function failure(what: string, res: Response): Promise<Error> {
-  let code = "";
+/** Graph's error code, cleaned, or "". Reads a copy, so the response can still be read. */
+async function errorCode(res: Response): Promise<string> {
   try {
-    const body: unknown = await res.json();
+    const body: unknown = await res.clone().json();
     const e = (body as { error?: unknown } | null)?.error;
     const c = typeof e === "string" ? e : (e as { code?: unknown } | null)?.code;
-    if (typeof c === "string") code = ` ${c.replace(/[^\w.-]/g, "").slice(0, 60)}`;
+    if (typeof c === "string") return c.replace(/[^\w.-]/g, "").slice(0, 60);
   } catch {
     // no JSON body: the status is enough
   }
-  return new Error(`${what} failed: ${res.status}${code}`);
+  return "";
+}
+
+async function failure(what: string, res: Response): Promise<Error> {
+  const code = await errorCode(res);
+  return new Error(`${what} failed: ${res.status}${code ? ` ${code}` : ""}`);
+}
+
+/** 410 Gone: Graph wants a full sync. syncStateNotFound: the delta token has expired. */
+async function fullSyncAsked(res: Response): Promise<boolean> {
+  return res.status === 410 || (res.status >= 400 && res.status < 500 && (await errorCode(res)) === "syncStateNotFound");
 }
 
 export function graphDirectory(opts: { tenantId: string; app: EntraApp; fetch?: typeof fetch }): GraphDirectory {
@@ -95,7 +116,13 @@ export function graphDirectory(opts: { tenantId: string; app: EntraApp; fetch?: 
     async delta({ cursor }): Promise<DirectoryPage> {
       const url = cursor ?? FIRST_PAGE;
       if (!url.startsWith(GRAPH)) throw new Error("Graph directory cursor refused: not a graph.microsoft.com URL");
-      const res = await doFetch(url, { headers: { authorization: `Bearer ${await token()}`, accept: "application/json" } });
+      const read = async (from: string) => doFetch(from, { headers: { authorization: `Bearer ${await token()}`, accept: "application/json" } });
+      let res = await read(url);
+      // Everyone is read again. Applying a page twice changes nothing, and nobody counts as gone for being absent.
+      if (!res.ok && cursor !== null && (await fullSyncAsked(res))) {
+        console.warn(`[directory-sync] Graph asked for a full sync: ${res.status}`);
+        res = await read(FIRST_PAGE);
+      }
       if (!res.ok) throw await failure("Graph directory request", res);
       const body = (await res.json()) as {
         value?: GraphUser[];
