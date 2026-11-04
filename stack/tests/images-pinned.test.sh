@@ -29,7 +29,7 @@ done
 
 wf=.github/workflows/images.yml
 t_ok "images.yml builds context services/brain" bash -c 'tr -d "\r" < "$1" | grep -qE "^[[:space:]]*context: services/brain$"' _ "$wf"
-t_ok "images.yml tags nextup-brain:main" bash -c 'tr -d "\r" < "$1" | grep -qE "steps\.tags\.outputs\.brain \}\}:main$"' _ "$wf"
+t_ok "images.yml moves main for nextup-brain after a green CI" bash -c 'tr -d "\r" < "$1" | grep -qE "for image in .*nextup-brain"' _ "$wf"
 t_ok "images.yml tags nextup-brain:<short>" bash -c 'tr -d "\r" < "$1" | grep -qF "steps.tags.outputs.brain }}:\${{ steps.tags.outputs.short }}"' _ "$wf"
 t_ok "images.yml: the brain output is ghcr.io/<owner>/nextup-brain" bash -c 'tr -d "\r" < "$1" | grep -q "echo \"brain=ghcr.io/.*/nextup-brain\""' _ "$wf"
 t_ok "images.yml: pull_request paths include services/brain/**" bash -c 'tr -d "\r" < "$1" | grep -E "^[[:space:]]*paths:" | grep -qF "services/brain/**"' _ "$wf"

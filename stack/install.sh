@@ -113,7 +113,7 @@ case "$images" in
   ""|local) app_image=nextup-app:local; migrate_image=nextup-migrate:local; brain_image=nextup-brain:local ;;
   *) [[ "$images" =~ ^(main|[0-9a-f]{7})$ ]] || die "--images is main, a 7-char commit sha or local"
      $build && die "--images and --build exclude each other"
-     # images.yml tags each build as :main and :sha-<7-char sha>.
+     # images.yml tags each build :sha-<7-char sha>, and :main once CI is green.
      tag="$images"; [ "$images" = main ] || tag="sha-$images"
      app_image="$registry/nextup-app:$tag"; migrate_image="$registry/nextup-migrate:$tag"
      brain_image="$registry/nextup-brain:$tag" ;;
