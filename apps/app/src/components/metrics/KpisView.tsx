@@ -3,6 +3,8 @@
 // Props in, JSX out; the numbers come from the server actions. Hidden rows say "too few" and carry no value.
 import { useState, useTransition } from "react";
 import { Banner, DeptChip, PageHeader, SectionCard, TooFewToShow } from "@/components/ui/elements";
+import { useDemo } from "@/components/dashboard/DemoProvider";
+import { SAMPLE_KPIS } from "@/features/demo/sample-data";
 import { useLocale, useT } from "@/i18n/client";
 import type { KpisData, KpiPeriodKind } from "@/lib/db/pilot-report";
 import { exportKpisCsvAction, loadKpisAction } from "@/server/actions/kpis";
@@ -27,13 +29,17 @@ function download(name: string, body: string) {
 export function KpisView({ slug, initial }: { slug: string; initial: KpisData }) {
   const t = useT();
   const locale = useLocale();
-  const [data, setData] = useState<KpisData>(initial);
+  const { sampleData, showToast } = useDemo();
+  const [served, setData] = useState<KpisData>(initial);
+  // The Demo data switch: sample figures, in this browser only.
+  const data: KpisData = sampleData ? { ...served, available: true, zi: SAMPLE_KPIS, projectsOn: true, baselineSource: "counted", fromDate: null, toDate: null } : served;
   const [error, setError] = useState<"load" | "export" | null>(null);
   const [pending, start] = useTransition();
   const view = kpiView(data.zi, t, data.projectsOn, locale);
 
   const pick = (kind: KpiPeriodKind) =>
     start(async () => {
+      if (sampleData) { setData((d) => ({ ...d, kind })); return; }
       const r = await loadKpisAction(slug, { kind });
       if ("error" in r) setError("load");
       else {
@@ -43,6 +49,7 @@ export function KpisView({ slug, initial }: { slug: string; initial: KpisData })
     });
   const exportCsv = () =>
     start(async () => {
+      if (sampleData) { showToast(t("kpis.exportFailed")); return; } // the server's export holds real counts, not these
       const r = await exportKpisCsvAction(slug, { kind: data.kind });
       if ("error" in r) setError("export");
       else {

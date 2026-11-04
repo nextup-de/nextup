@@ -38,10 +38,12 @@ function Close({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function DashboardBoard({ data: served, slug, kind: servedKind, unitId: servedUnit }: {
+export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitId: servedUnit }: {
   data: DashboardData | null; slug: string | null; kind: Kind; unitId: string | null;
 }) {
-  const { S, log, seed, ready, flag, showToast, tenant } = useDemo();
+  const { S, log, seed, ready, flag, showToast, tenant, sampleData } = useDemo();
+  // The sample data exists only in this browser, so its numbers are built here too.
+  const served = sampleData ? null : fromServer;
   const t = useT();
   const fmt = useFormat();
   const locale = useLocale();

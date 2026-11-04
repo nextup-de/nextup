@@ -32,6 +32,7 @@ import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
 import { dayFormatter, type DayFmt } from "@/features/cases/rows";
 import { affectedOn, exportSnippet } from "@/features/cases/selectors";
+import { isSampleId, SAMPLE_PREFIX, sampleDataOn, withSampleData } from "@/features/demo/sample-data";
 import type { Persona, RolePersona, Seed, SeedCase } from "@/features/demo/types";
 import { normalizeDots, type Dots } from "@/features/design/dots";
 import { counts, demoData, type Counts, type DemoData } from "@/features/metrics";
@@ -116,6 +117,7 @@ export type DemoContext = {
   leadAs: string | null; setLeadAs: (seatId: string) => void; // a seat id (looking at the leader screens as that desk)
   persona: { role: RolePersona; who: Persona }; actor: string; actorUserId: string | null; me: Me; email: string | null;
   demo: boolean; toggleDemo: () => void;
+  sampleData: boolean; // the Demo data switch is on and this tab shows the sample data (features/demo/sample-data.ts)
   motion: boolean; setMotion: (on: boolean) => void; // animations on/off, from the dev panel (html[data-motion])
   roundCorners: boolean; setRoundCorners: (on: boolean) => void; // old round corners, from the dev panel (html[data-corners])
   dots: Dots; dotsCustom: boolean; setDots: (patch: Partial<Dots>) => void; resetDots: () => void; // the Ground's dot grid, from the dev panel
@@ -242,7 +244,24 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
 
   // Cases loaded on their own page (VIS/D9). Kept in state, so the 8 s refreshes of the same page do not drop them.
   const [loaded, setLoaded] = useState<{ events: CaseEvent[]; cases: SeedCase[]; projects: SeedProject[] }>({ events: [], cases: [], projects: [] });
+
+  // The guess is made once per page load, so following a link (/raise -> /cases/x) keeps the persona.
+  const [guessedRole] = useState(() => roleFromPath(appPath));
+  // Server mode: the role is the session's, not a client preference - that is the whole point of
+  // enforcing it in proxy.ts.
+  const role: Role = viewer ? viewer.role : (persisted.prefs.role ?? guessedRole);
+
+  // The dev panel's Demo data switch: sample cases, ideas and projects around whoever is looking, in this tab only.
+  const sampleData = sampleDataOn(tenant, persisted.prefs.demo);
+  const [sampleDay] = useState(() => initialLog?.day ?? 0); // fixed at load, so +1 day still ages the sample cases
+  const sampleWho = useMemo(() => {
+    if (viewer) return { userId: viewer.userId, name: viewer.name, handle: viewer.handle };
+    const who = (shippedSeed.personas.find((r) => r.id === role) ?? shippedSeed.personas[shippedSeed.personas.length - 1]).who;
+    return { userId: who.userId ?? null, name: who.name, handle: who.handle };
+  }, [viewer, shippedSeed.personas, role]);
+
   const seed = useMemo<Seed>(() => {
+    if (sampleData) return withSampleData(shippedSeed, { ...sampleWho, role }, sampleDay);
     if (loaded.cases.length + loaded.projects.length === 0) return shippedSeed;
     const cases = new Set(shippedSeed.cases.map((c) => c.id));
     const projects = new Set((shippedSeed.projects ?? []).map((p) => p.id));
@@ -251,26 +270,23 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
       cases: shippedSeed.cases.concat(loaded.cases.filter((c) => !cases.has(c.id))),
       projects: (shippedSeed.projects ?? []).concat(loaded.projects.filter((p) => !projects.has(p.id))),
     };
-  }, [shippedSeed, loaded]);
+  }, [shippedSeed, loaded, sampleData, sampleWho, role, sampleDay]);
 
   const log = useMemo<EventLog>(() => {
     if (!serverMode) return persisted.log;
     const shipped = initialLog ?? emptyLog();
     const known = new Set(shipped.events.map((e) => e.id));
     const older = loaded.events.filter((e) => !known.has(e.id));
-    const base = older.length === 0 ? shipped : { events: older.concat(shipped.events), day: shipped.day };
+    // What was done to the sample data stays in this browser: the server has no such cases.
+    const sample = sampleData ? persisted.log.events.filter((e) => isSampleId(e.target)) : [];
+    const base = older.length + sample.length === 0 ? shipped : { events: older.concat(shipped.events, sample), day: shipped.day };
     const have = new Set(base.events.map((e) => e.id));
     const extra = pending.filter((e) => !have.has(e.id));
     if (extra.length === 0) return base;
     const dayDelta = extra.reduce((n, e) => (e.type === "day.advanced" ? n + (e.payload.by ?? 1) : n), 0);
     return { events: base.events.concat(extra), day: base.day + dayDelta };
-  }, [serverMode, persisted.log, initialLog, pending, loaded]);
+  }, [serverMode, persisted.log, initialLog, pending, loaded, sampleData]);
 
-  // The guess is made once per page load, so following a link (/raise -> /cases/x) keeps the persona.
-  const [guessedRole] = useState(() => roleFromPath(appPath));
-  // Server mode: the role is the session's, not a client preference - that is the whole point of
-  // enforcing it in proxy.ts.
-  const role: Role = viewer ? viewer.role : (persisted.prefs.role ?? guessedRole);
   // A seat id; an old stored name is not a seat of this company, so it reads as none.
   const leadAs = serverMode ? null : (seed.seats.some((s) => s.id === persisted.prefs.leadAs) ? persisted.prefs.leadAs ?? null : null);
   // Demo figures only make sense next to demo content: a company without any (the empty template)
@@ -411,6 +427,10 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
       target,
       payload: payload ?? {},
     };
+    if (isSampleId(target)) {
+      updateLog(slug, (prev) => ({ ...prev, events: prev.events.concat([ev]) }));
+      return;
+    }
     setPending((p) => p.concat([ev]));
     startTransition(async () => {
       const res = await appendEventAction({ slug, id: ev.id, type, target, payload: ev.payload });
@@ -460,7 +480,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     invite: (caseId, invited, invitedUserIds) => emit("case.invited", caseId, { invited, invitedUserIds }),
     revise: (caseId, body, title, overall) => emit("case.revised", caseId, { body, title, overall }),
     checkin: (caseId, next, open, note) => emit("case.checkin", caseId, { next, open, note }),
-    accept: (caseId, { lead, leadUserId, title, note, projectId = newId("p") }) => {
+    accept: (caseId, { lead, leadUserId, title, note, projectId = (isSampleId(caseId) ? SAMPLE_PREFIX : "") + newId("p") }) => {
       emit("case.decided", caseId, { answer: "yes", projectId, lead, ...(leadUserId ? { leadUserId } : {}), title, note });
       return projectId;
     },
@@ -557,6 +577,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     clearShots(slug);
     setQ(""); setPop(null); setSheet(null);
     if (serverMode) {
+      updateLog(slug, (prev) => ({ ...prev, events: prev.events.filter((e) => !isSampleId(e.target)) }));
       // Shared: this resets the company for everyone looking at it, not just this browser.
       startTransition(async () => {
         const res = await resetCompanyAction(slug);
@@ -636,7 +657,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
   const value: DemoContext = {
     tenant, seed, ready, serverMode, S, D, N, log,
     role, setRole, leadAs, setLeadAs, persona, actor, actorUserId, me, email,
-    demo, toggleDemo: () => setPrefs(slug, { demo: !demo }),
+    demo, toggleDemo: () => setPrefs(slug, { demo: !demo }), sampleData,
     motion, setMotion: (on) => setPrefs(slug, { motion: on }),
     roundCorners, setRoundCorners: (on) => setPrefs(slug, { roundCorners: on }),
     dots, dotsCustom, setDots: (patch) => setPrefs(slug, normalizeDots({ ...dots, ...patch })), resetDots: () => setPrefs(slug, { dotsStrength: undefined, dotSpacing: undefined }),
