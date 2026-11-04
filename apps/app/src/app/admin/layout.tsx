@@ -16,6 +16,7 @@ import { adminSignOut, isAdmin } from "@/server/actions/admin";
 import { adminActor, adminBreakGlassActive } from "@/server/admin-session";
 import { adminContext } from "@/server/admin-context";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { Ground } from "@/components/shell/Ground";
 import { ReportButton } from "@/components/report/ReportButton";
 import { reportFromAdmin } from "@/server/actions/tickets";
 import { hasDatabase } from "@/lib/db/client";
@@ -41,6 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className={styles.shell}>
+      <Ground />
       <header className={styles.bar}>
         <Image src="/brand/nextup-logo-blue.png" alt="NextUp" width={506} height={224} className={styles.logo} />
         <span className={styles.tag}>admin</span>

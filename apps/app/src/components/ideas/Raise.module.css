@@ -56,7 +56,7 @@
 .publish[data-state="published"] { background: transparent; color: var(--nh-mute); box-shadow: inset 0 0 0 1px var(--nh-line); cursor: default; }
 .publish[data-state="published"] svg { color: var(--nh-brand); }
 .halves { display: flex; gap: 6px; }
-.half { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 5px; height: 27px; border: none; border-radius: var(--radius-sm, 999px); background: var(--nh-fill-2); color: var(--nh-ink); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; transition: background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.half { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 5px; height: 27px; border: none; border-radius: var(--radius-sm, 999px); background: var(--nh-brand-tint); color: var(--nh-ink); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; transition: background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
 .half:hover { background: var(--nh-fill-3); }
 .half:active { transform: scale(.97); }
 .half[data-on="true"] { background: var(--nh-line-2); }
@@ -107,7 +107,7 @@
 .ideasHead { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 12px 12px 4.5px 15px; }
 .ideasTitle { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
 .newIdea { display: flex; align-items: center; gap: 6px; height: 25.5px; padding: 0 10.5px 0 6px; border: none; border-radius: var(--radius-sm, 999px); background: var(--nh-fill-2); color: var(--nh-ink); font-family: inherit; font-size: var(--nh-fs-xs); font-weight: 600; cursor: pointer; transition: background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
-.newIdea:hover { background: var(--nh-fill-3); }
+.newIdea:hover { background: var(--nh-brand-line); }
 .newIdea:active { transform: scale(.97); }
 .plus { width: 15px; height: 15px; flex: none; border-radius: 50%; background: var(--nh-brand); display: flex; align-items: center; justify-content: center; }
 .ideas { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 3px 6px 7.5px; display: flex; flex-direction: column; gap: 2px; }

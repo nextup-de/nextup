@@ -19,7 +19,7 @@
 .boxes > span:nth-child(3) { margin-right: 12px; }
 .box { width: 44px; height: 56px; display: grid; place-items: center; border: 2px solid #c9c9cf; border-radius: 10px; font-size: var(--nh-fs-2xl); font-weight: 600; }
 .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.key { min-height: 72px; border: 0; border-radius: 12px; background: #ececef; font: inherit; font-size: var(--nh-fs-2xl); font-weight: 600; cursor: pointer; }
+.key { min-height: 72px; border: 0; border-radius: 12px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-2xl); font-weight: 600; cursor: pointer; }
 .key:disabled { opacity: 0.45; cursor: not-allowed; }
 .keyAction { background: var(--nh-brand); color: var(--nh-on-brand); font-size: var(--nh-fs-md); }
 .check { width: 48px; height: 48px; border-radius: 50%; background: var(--nh-brand-tint); color: var(--nh-brand-ink); display: grid; place-items: center; font-size: var(--nh-fs-2xl); }

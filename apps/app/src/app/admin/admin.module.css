@@ -1,6 +1,5 @@
 .shell {
-  min-height: var(--nh-screen-h);
-  background: var(--nh-app-ground, #f6f7f9);
+  min-height: var(--nh-screen-h); /* paints nothing: the blue Ground behind it does */
   color: var(--nh-ink);
 }
 
