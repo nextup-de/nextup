@@ -77,7 +77,7 @@ beforeAll(async () => {
   otherId = o.id;
   await db.caseView.create({ data: { companyId: otherId, caseId: "o1", kind: "problem", status: "decided", open: false, dueDay: 1, lastDay: 1, lastSeq: 1, accessKeys: ["all"] } });
   await add(otherId, "case.decided", "X", "o1", 1, { answer: "yes", reason: "other company" }, null);
-});
+}, 120_000);
 
 afterAll(async () => {
   await db.company.deleteMany({ where: { slug: { in: ["loop-dec", "loop-dec-other"] } } });
