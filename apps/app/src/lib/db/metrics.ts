@@ -13,6 +13,7 @@ import { loadAiSettings } from "./ai";
 import { loadBaseline } from "./baseline";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
+import { loadMembers } from "./knowledge";
 import { companyDay } from "./events";
 import { loadCompanyRules } from "./rules";
 
@@ -30,7 +31,7 @@ async function clockOf(companyId: string): Promise<{ clock: ClockSpec; today: nu
   return { clock: { mode: "workdays", calendar }, today: companyDay(company, calendar, new Date()), stage: company.stage };
 }
 
-async function orgOf(companyId: string): Promise<{ org: MetricsOrg; unitOfRole: Map<string, string>; seatsOfUser: Map<string, string> }> {
+async function orgOf(companyId: string): Promise<{ org: MetricsOrg; unitOfRole: Map<string, string>; seatsOfUser: Map<string, string>; unitOfMember: Map<string, string> }> {
   const db = getDb();
   const [units, roles, holders] = await Promise.all([
     db.orgUnit.findMany({ where: { companyId }, orderBy: [{ sort: "asc" }, { id: "asc" }], select: { id: true, name: true, parentId: true, headcount: true } }),
@@ -41,7 +42,9 @@ async function orgOf(companyId: string): Promise<{ org: MetricsOrg; unitOfRole: 
     (await db.user.findMany({ where: { companyId, active: true, id: { in: holders.flatMap((h) => (h.userId ? [h.userId] : [])) } }, select: { id: true } })).map((u) => u.id),
   );
   const unitOfRole = new Map(roles.map((r) => [r.id, r.orgUnitId]));
-  // The raiser's unit: the unit of the user's first seat by sort.
+  // People without a seat count in the unit their department names (FX3).
+  const unitOfMember = new Map((await loadMembers(companyId)).flatMap((m) => (m.unitId ? [[m.userId, m.unitId] as const] : [])));
+  // The raiser's unit: the unit of the user's first seat by sort, else their department's.
   const seatsOfUser = new Map<string, string>();
   for (const h of holders) if (h.userId && !seatsOfUser.has(h.userId)) seatsOfUser.set(h.userId, h.roleId);
 
@@ -61,6 +64,7 @@ async function orgOf(companyId: string): Promise<{ org: MetricsOrg; unitOfRole: 
     walk(unitId);
     const people = new Set<string>();
     for (const r of roles) if (ids.has(r.orgUnitId)) peopleOfRole.get(r.id)?.forEach((p) => people.add(p));
+    for (const [userId, unit] of unitOfMember) if (ids.has(unit)) people.add(userId);
     return people.size;
   };
   return {
@@ -70,12 +74,13 @@ async function orgOf(companyId: string): Promise<{ org: MetricsOrg; unitOfRole: 
     },
     unitOfRole,
     seatsOfUser,
+    unitOfMember,
   };
 }
 
 export async function ledgerInputs(companyId: string, period: Period): Promise<LedgerInput> {
   const db = getDb();
-  const [{ clock, today }, rules, { org, unitOfRole, seatsOfUser }, views, routes] = await Promise.all([
+  const [{ clock, today }, rules, { org, unitOfRole, seatsOfUser, unitOfMember }, views, routes] = await Promise.all([
     clockOf(companyId),
     loadCompanyRules(companyId),
     orgOf(companyId),
@@ -179,7 +184,7 @@ export async function ledgerInputs(companyId: string, period: Period): Promise<L
       lastDay: v.lastDay,
       escalatedDay: a?.escalated ?? null,
       raiserKey: v.fromUserId ? createHash("sha256").update(companyId + ":" + v.fromUserId).digest("hex").slice(0, 16) : null,
-      raiserUnitId: raiserRole ? unitOfRole.get(raiserRole) ?? null : null,
+      raiserUnitId: raiserRole ? unitOfRole.get(raiserRole) ?? null : v.fromUserId ? unitOfMember.get(v.fromUserId) ?? null : null,
     });
   }
   return { cases, facts, org, promiseDays: rules.promiseDays, today, demoClock: clock.mode === "demo" };
