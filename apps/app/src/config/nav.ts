@@ -46,6 +46,19 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
   ],
 };
 
+/**
+ * The account menu's ways to the company's administration: Settings for a manager, while the database
+ * they need is there, and the IT console for whom the server names it (`consoleHref`, lib/db/people.ts).
+ * `key` is a message key.
+ */
+export type AdminMenuLink = { key: "shell.navSettings" | "shell.itConsole"; href: string };
+export function adminMenuLinks(a: { role: Role; serverMode: boolean; prefix: string; consoleHref: string | null }): AdminMenuLink[] {
+  const links: AdminMenuLink[] = [];
+  if (a.role === "manager" && a.serverMode) links.push({ key: "shell.navSettings", href: a.prefix + "/settings" });
+  if (a.consoleHref) links.push({ key: "shell.itConsole", href: a.consoleHref });
+  return links;
+}
+
 /** The rail for a role; `flag` answers whether a flagged item is on (DemoProvider's flag()). */
 export function navFor(role: Role, flag: (key: FlagKey) => boolean = () => true): NavItem[] {
   return NAV.filter((n) => n.roles.includes(role) && (!n.flag || flag(n.flag)));
