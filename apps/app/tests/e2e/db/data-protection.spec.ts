@@ -92,6 +92,7 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
 
     // Admin-only export from her menu; the dialog says so and the reason is recorded.
     await page.goto(`/${SLUG}/settings/members`);
+    await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await menu().click();
     await row().locator('[data-testid="member-export-open"]').click();
     const dialog = page.locator('[data-testid="member-export-dialog"]');
@@ -113,6 +114,7 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
     // Pseudonymise: type the name (case ignored), confirm.
     const before = await eventRows(company.id);
     await page.goto(`/${SLUG}/settings/members`);
+    await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await menu().click();
     await row().locator('[data-testid="member-pseudonymise-open"]').click();
     await page.locator('[data-testid="member-pseudonymise-name"]').fill("lena brandt");
@@ -121,6 +123,7 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
 
     // Members list and audit view show the pseudonym; the event table is unchanged.
     await page.goto(`/${SLUG}/settings/members`);
+    await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await expect(row()).toContainText("Former member #");
     await expect(row()).not.toContainText(LENA.name);
     await page.goto(`/${SLUG}/settings/audit`);

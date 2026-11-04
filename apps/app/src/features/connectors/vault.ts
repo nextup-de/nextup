@@ -26,6 +26,14 @@ export function vaultKey(env: Record<string, string | undefined> = process.env):
   return KEY_BASE64.test(raw) ? Buffer.from(raw, "base64") : null;
 }
 
+/**
+ * The key CONNECTOR_VAULT_KEY had before a rotation (same formats), or null when CONNECTOR_VAULT_KEY_PREVIOUS is
+ * missing or malformed. While it is set, `open` also tries it; the re-seal at start (lib/db/vault-reseal.ts) retires it.
+ */
+export function vaultPreviousKey(env: Record<string, string | undefined> = process.env): Buffer | null {
+  return vaultKey({ CONNECTOR_VAULT_KEY: env.CONNECTOR_VAULT_KEY_PREVIOUS });
+}
+
 /** What a sealed value is bound to: the row's company and person. */
 export const vaultContext = (companyId: string, userId: string) => `connection:${companyId}:${userId}`;
 
@@ -45,8 +53,16 @@ export function seal(plain: string, key: Buffer, context: string): string {
   return [VERSION, iv, cipher.getAuthTag(), body].map((p) => (typeof p === "string" ? p : p.toString("base64url"))).join(".");
 }
 
-/** The plain value, or null when it was sealed with another key, for another row, or tampered with. */
+/** The plain value, or null when it was sealed with another key, for another row, or tampered with. With CONNECTOR_VAULT_KEY_PREVIOUS set, a value the given key does not open is tried with that key. */
 export function open(sealed: string, key: Buffer, context: string): string | null {
+  const plain = openWith(sealed, key, context);
+  if (plain !== null) return plain;
+  const previous = vaultPreviousKey();
+  return previous && !previous.equals(key) ? openWith(sealed, previous, context) : null;
+}
+
+/** Like `open`, but with exactly the key given: no fallback to the previous key. */
+export function openWith(sealed: string, key: Buffer, context: string): string | null {
   const [version, iv, tag, body, ...rest] = sealed.split(".");
   if (version !== VERSION || !iv || !tag || body === undefined || rest.length) return null;
   try {
