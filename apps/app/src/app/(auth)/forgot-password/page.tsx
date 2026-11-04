@@ -7,7 +7,7 @@ export async function generateMetadata() {
 export default async function ForgotPasswordPage() {
   const t = await getT();
   return (
-    <AuthShell side={<h2>{t("auth.forgotSide")}</h2>}>
+    <AuthShell art="hand" side={<h2>{t("auth.forgotSide")}</h2>}>
       <AuthTitle title={t("auth.forgotTitle")} sub={t("auth.forgotSub")} />
     </AuthShell>
   );

@@ -36,3 +36,27 @@
   border-radius: var(--radius-sm, 999px);
   padding: 2px 8px;
 }
+
+/* The admin login: the code field with the optional "Demo code" fill button inside it, and its error line. */
+.inputWrap { position: relative; display: flex; align-items: center; }
+.inputWrap .inputWithFill { padding-right: 112px; }
+.fill {
+  position: absolute;
+  right: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--nh-line);
+  border-radius: var(--radius-sm, 999px);
+  background: var(--nh-surface);
+  color: var(--nh-mute);
+  font: inherit;
+  font-size: var(--nh-fs-sm);
+  cursor: pointer;
+}
+.fill:hover { border-color: var(--nh-brand); color: var(--nh-brand); }
+.fill:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.error { color: var(--nh-danger); font-size: var(--nh-fs-md); margin: 0; }
+
+/* The enrol step: the key in a box, and the long otpauth link wraps instead of running off a phone. */
+.enrolKey { display: grid; gap: 6px; }
+.enrolLink { overflow-wrap: anywhere; }

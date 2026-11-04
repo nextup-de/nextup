@@ -9,6 +9,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { BaselineDialog } from "@/components/dashboard/shared/BaselineDialog";
 import { BreakdownCard, TooFewToShow } from "@/components/dashboard/shared/BreakdownCard";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { DeptChip } from "@/components/ui/elements";
 import { barHeights, dashboardFromInput, shares, tileViews, trendPaths, trendPoints, type TileView } from "@/features/metrics/dashboard";
 import { breakdownCsv, csvFileName } from "@/features/metrics/csv";
 import { ledgerInputFromState } from "@/features/metrics/from-state";
@@ -37,10 +38,12 @@ function Close({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function DashboardBoard({ data: served, slug, kind: servedKind, unitId: servedUnit }: {
+export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitId: servedUnit }: {
   data: DashboardData | null; slug: string | null; kind: Kind; unitId: string | null;
 }) {
-  const { S, log, seed, ready, flag, showToast, tenant } = useDemo();
+  const { S, log, seed, ready, flag, showToast, tenant, sampleData } = useDemo();
+  // The sample data exists only in this browser, so its numbers are built here too.
+  const served = sampleData ? null : fromServer;
   const t = useT();
   const fmt = useFormat();
   const locale = useLocale();
@@ -229,7 +232,7 @@ export function DashboardBoard({ data: served, slug, kind: servedKind, unitId: s
                 {sel.split === null && <span className={s.note}>{t("metrics.overlayNoSplit")}</span>}
                 {sel.split?.map((r) => (
                   <div key={r.id} className={s.splitRow}>
-                    <span className={s.rowName} style={{ paddingLeft: r.depth * 14 }}>{r.label}</span>
+                    <span className={s.rowName} style={{ paddingLeft: r.depth * 14 }}><DeptChip name={r.label} /></span>
                     {r.value === null ? <TooFewToShow inline /> : (
                       <>
                         <span className={s.track}><span className={s.fill} style={{ width: r.share + "%" }} /></span>

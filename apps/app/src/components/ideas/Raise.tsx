@@ -16,8 +16,10 @@
 // prepared reply, the rail shows the script's eight topics, and nothing leaves the browser. The company's
 // /raise never sets it.
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { mineOf } from "@/features/cases/selectors";
+import { isSampleId } from "@/features/demo/sample-data";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
@@ -95,7 +97,8 @@ export function Raise(p: { script?: boolean }) {
 function RaisePage({ script = false }: { script?: boolean }) {
   const t = useT();
   const locale = useLocale();
-  const { seed, S, persona, role, act, ready, href, tenant, showToast, serverMode, f } = useDemo();
+  const { seed, S, persona, role, act, ready, href, tenant, showToast, serverMode, f, me, sampleData } = useDemo();
+  const router = useRouter();
   const story = script && role === "member"; // the demo script is the employee's story; others raise their own
   // The static demo scores and answers in this browser, against the seed it shows.
   const local = useMemo(() => (script ? ideaContext(seed.routes, seed.goals, S.cases, seed.spend) : null), [script, seed.routes, seed.goals, seed.spend, S.cases]);
@@ -599,7 +602,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
         id: d.id, title: d.title, when: whenLabel(d.updatedAt, now, locale), current, pinned: preview.pinned.includes(d.id), published: d.status === "published",
         preview: last ? stripTags(last.text) : d.status === "published" ? t("ideas.pageRowPublished") : t("ideas.pageRowContinue"),
       };
-    });
+    })
+    // The Demo data switch: the sample cases this person raised. They have no draft behind them, so a click opens the case.
+    .concat(!sampleData ? [] : mineOf(S, me).filter((c) => isSampleId(c.id) && (!needle || c.title.toLowerCase().includes(needle))).map((c) => ({
+      id: c.id, title: c.title, when: f(c.raisedDay), current: false, pinned: false, published: true, preview: t("ideas.pageRowPublished"),
+    })));
 
   const composerChat = (
     <div className={s.dock}>
@@ -731,7 +738,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       <Sync run={syncScript} />
       <div className={s.sbShell}>
         <RaiseSidebar query={query} onQuery={setQuery} onHide={() => { setSb("hidden"); setMenu(null); }} card={card} rows={rows} loaded={studio.loaded}
-          onPick={openDraft} onPin={preview.togglePin} onNew={newIdea} />
+          onPick={(id) => { if (isSampleId(id)) router.push(href("/cases/" + id)); else openDraft(id); }} onPin={preview.togglePin} onNew={newIdea} />
       </div>
       <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label={t("ideas.pageCloseSidebar")} />
       {pubStep && "desks" in pubStep && (

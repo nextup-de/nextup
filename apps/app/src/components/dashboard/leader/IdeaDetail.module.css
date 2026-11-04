@@ -96,7 +96,7 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chipWrap { position: relative; display: flex; }
 .deptChip, .personChip { display: flex; align-items: center; gap: 5px; min-height: 32px; box-sizing: border-box; white-space: nowrap; font: inherit; font-size: var(--nh-fs-sm); font-weight: 500; color: var(--c-ink); border-radius: var(--radius-sm, 999px); cursor: pointer; transition: background 180ms ease, transform 160ms var(--ease); }
-.deptChip { border: 0; background: var(--c-fill); padding: 5px 12px; }
+.deptChip { border: 0; background: var(--nh-dept, var(--c-fill)); color: var(--nh-dept-ink, var(--c-ink)); padding: 5px 12px; }
 .deptChip:hover, .deptChip[data-on="true"] { background: var(--c-sep-head); }
 .personChip { gap: 6px; border: 1px solid var(--c-sep-head); background: #fff; padding: 3px 12px 3px 3px; }
 .personChip:hover, .personChip[data-on="true"] { background: var(--c-fill); }

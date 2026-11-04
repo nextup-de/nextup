@@ -1,23 +1,19 @@
-.wrap { display: grid; gap: 12px; max-width: 880px; }
-.card { display: grid; gap: 8px; padding: 12px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); }
-.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.title { margin: 0; font-size: var(--nh-fs-md); }
-.buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.badge { display: inline-block; width: fit-content; padding: 1px 10px; border-radius: 999px; border: 1px solid var(--nh-line); font-size: var(--nh-fs-sm); color: var(--nh-mute); }
-.open { color: var(--nh-warn, #8a5a00); border-color: var(--nh-warn, #8a5a00); }
-.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
-.facts dt { color: var(--nh-mute); }
-.facts dd { margin: 0; overflow-wrap: anywhere; }
-.shown { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--nh-line); border-radius: var(--nh-r); background: var(--nh-card); }
-.mono { font-family: var(--nh-mono); overflow-wrap: anywhere; font-size: var(--nh-fs-md); }
-.dialog { display: grid; gap: 12px; padding: 16px; width: min(480px, 100%); background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r); }
-.seg { display: flex; gap: 12px; flex-wrap: wrap; border: 0; padding: 0; margin: 0; }
-.scroll { overflow-x: auto; }
-.table { width: 100%; border-collapse: collapse; }
-.table th, .table td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--nh-line); }
-.pager { display: flex; gap: 8px; justify-content: flex-end; }
+/* Support access: the open / none badge, the person with a face, the drawer form and the log pager. Cards,
+   buttons, the facts grid and fields come from settings.module.css. */
+.badge { display: inline-flex; align-self: flex-start; padding: 2px 10px; border-radius: 6px; background: #f2f2f7; color: #6e6e73; font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; }
+.badge[data-open] { background: #fff4e5; color: #b25000; }
+.line { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: #1c1c1e; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.person { display: inline-flex; align-items: center; gap: 8px; }
+.form { display: flex; flex-direction: column; gap: 18px; }
+.fieldset { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); }
+.pager { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 @media (max-width: 760px) {
-  .dialog { width: 100%; }
-  .end { width: 100%; }
-  .facts { grid-template-columns: 1fr; }
+  .actions > *, .pager > * { flex: 1; height: 44px; }
+}
+dl.facts { margin: 0; }
+dl.facts dd { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  dl.facts { grid-template-columns: 96px minmax(0, 1fr); }
 }

@@ -308,7 +308,8 @@ export async function reactivateMemberAction(_prev: RemoveState, form: FormData)
   if (!manager) return { error: forbidden };
   const userId = String(form.get("userId") ?? "");
   const user = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { name: true, active: true } });
-  const problem = reactivateProblem(user, userId === manager.userId);
+  const pseudonymised = (await pseudonymOf(manager.companyId, [userId])).has(userId);
+  const problem = reactivateProblem(user && { ...user, pseudonymised }, userId === manager.userId);
   if (problem || !user) return { error: problem ?? "No such person in this company." };
   const saved = await audited(
     manager.companyId,
