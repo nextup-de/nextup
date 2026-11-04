@@ -25,14 +25,17 @@ type Props = {
   reportsHref: string | null;
   /** Demo stacks: ask who of us opened it and who should take it. Never on a real company's stack. */
   team?: boolean;
+  /** The company's screenshot switch (GDP D17). Omitted (the console): screenshots stay on. */
+  screenshotsAllowed?: () => Promise<boolean>;
 };
 
-export function ReportButton({ submit, reportsHref, team = false }: Props) {
+export function ReportButton({ submit, reportsHref, team = false, screenshotsAllowed }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [shot, setShot] = useState<string | null>(null);
   const [withShot, setWithShot] = useState(true);
+  const [shotsOk, setShotsOk] = useState(true);
   const [kind, setKind] = useState<Kind>("bug");
   const [impact, setImpact] = useState<Impact>("annoying");
   const [description, setDescription] = useState("");
@@ -69,8 +72,11 @@ export function ReportButton({ submit, reportsHref, team = false }: Props) {
 
   async function begin() {
     setCapturing(true);
-    const image = await takeScreenshot();
+    // Switched off for the company: none is captured and the option is hidden.
+    const allowed = screenshotsAllowed ? await screenshotsAllowed().catch(() => false) : true;
+    const image = allowed ? await takeScreenshot() : null;
     setCapturing(false);
+    setShotsOk(allowed);
     setShot(image);
     setWithShot(image !== null);
     setError(null);
@@ -214,7 +220,7 @@ export function ReportButton({ submit, reportsHref, team = false }: Props) {
                     <img src={shot} alt={t("report.shotAlt")} className={styles.shotImg} data-off={!withShot} />
                     <p className={styles.fine}>{t("report.shotFine")}</p>
                   </div>
-                ) : (
+                ) : screenshotsAllowed && !shotsOk ? null : (
                   <p className={styles.fine}>{t("report.noShot")}</p>
                 )}
 

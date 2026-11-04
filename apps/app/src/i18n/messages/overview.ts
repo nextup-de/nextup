@@ -1,7 +1,43 @@
-// Overview (MET-G1 adds its keys here).
+// Overview: the desk and open-since cells, paging, the person card and the revisions of an opened case.
 import { defineMessages } from "../define";
 
 export const overview = defineMessages({
-  en: {},
-  de: {},
+  en: {
+    deskNone: "No desk yet",
+    deskVacant: "Nobody holds this role",
+    deskMore: "+{count}",
+    deskMoved: "Moved up to {role}",
+    sinceDate: "Since {date}",
+    workdays_one: "{count} working day",
+    workdays_other: "{count} working days",
+    pastPromise_one: "{count} working day past the promise",
+    pastPromise_other: "{count} working days past the promise",
+    pageRange: "{from}-{to} of {n}",
+    pagePrev: "Previous page",
+    pageNext: "Next page",
+    personSeats: "Seats",
+    personNoSeat: "No seat",
+    versionsHeading: "Revisions",
+    versionRow: "Version {n} · {when}",
+    versionFirst: "Version {n} · as raised · {when}",
+  },
+  de: {
+    deskNone: "Noch kein Schreibtisch",
+    deskVacant: "Niemand hat diese Rolle",
+    deskMore: "+{count}",
+    deskMoved: "Weitergereicht an {role}",
+    sinceDate: "Seit {date}",
+    workdays_one: "{count} Arbeitstag",
+    workdays_other: "{count} Arbeitstage",
+    pastPromise_one: "{count} Arbeitstag über dem Versprechen",
+    pastPromise_other: "{count} Arbeitstage über dem Versprechen",
+    pageRange: "{from}-{to} von {n}",
+    pagePrev: "Vorherige Seite",
+    pageNext: "Nächste Seite",
+    personSeats: "Rollen",
+    personNoSeat: "Keine Rolle",
+    versionsHeading: "Fassungen",
+    versionRow: "Fassung {n} · {when}",
+    versionFirst: "Fassung {n} · wie eingebracht · {when}",
+  },
 });

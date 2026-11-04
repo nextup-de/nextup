@@ -210,6 +210,20 @@ if ! grep -q '^CONNECTOR_VAULT_KEY=' "$env_file"; then
   echo "Added CONNECTOR_VAULT_KEY to $env_file."
 fi
 
+# Where the instance lives and the two folders the app mounts (stack/compose.yml, SEC D5): the
+# break-glass folder is read-only for the app, the logs folder is written by the app's user
+# (nextjs, uid 1001). INSTANCE_DIR is written once and never overwritten; the rest is idempotent.
+# >>> instance-dirs
+if ! grep -q '^INSTANCE_DIR=' "$env_file"; then
+  printf '\n# Where this instance lives; compose mounts break-glass/ and logs/ from here.\nINSTANCE_DIR=%s\n' "$(cd "$dir" && pwd)" >> "$env_file"
+  echo "Added INSTANCE_DIR to $env_file."
+fi
+mkdir -p "$dir/break-glass" "$dir/logs"
+chmod 0755 "$dir/break-glass"
+chmod 0750 "$dir/logs"
+if [ "$(id -u)" = 0 ]; then chown 1001:1001 "$dir/logs"; fi
+# <<< instance-dirs
+
 # The brain, new or existing instance: its key and settings go in once, and its profile is added.
 if $brain && ! grep -q '^BRAIN_API_KEY=' "$env_file"; then
   cat >> "$env_file" <<ENV

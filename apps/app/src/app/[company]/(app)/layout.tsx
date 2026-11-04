@@ -23,6 +23,7 @@ import { DemoProvider, type ViewerInfo } from "@/components/dashboard/DemoProvid
 import { AppShell } from "@/components/shell/AppShell";
 import { ReportButton } from "@/components/report/ReportButton";
 import { reportTicket } from "@/server/actions/tickets";
+import { reportScreenshotsAllowed } from "@/server/actions/settings/privacy";
 
 export default async function AppLayout({
   children,
@@ -95,7 +96,8 @@ export default async function AppLayout({
       <AppShell>{children}</AppShell>
       {/* The bug icon (docs/plans/2026-09-27_platform.md, "Tickets"): only where a report can be stored. */}
       {hasDatabase() && viewer ? (
-        <ReportButton submit={reportTicket.bind(null, tenant.slug)} reportsHref={prefixFor(tenant.slug) + "/reports"} team={demoTools} />
+        <ReportButton submit={reportTicket.bind(null, tenant.slug)} reportsHref={prefixFor(tenant.slug) + "/reports"} team={demoTools}
+          screenshotsAllowed={reportScreenshotsAllowed.bind(null, tenant.slug)} />
       ) : null}
     </DemoProvider>
   );

@@ -75,12 +75,14 @@ const LEFT_OUT: Record<string, string> = {
   "[company]/(app)/settings/org/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/notifications/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/audit/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/settings/privacy/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/api-tokens/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/webhooks/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/[key]/poster/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/devices/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/setup/page.tsx": "settings need a database and a signed-in manager",
+  "[company]/(app)/exports/[id]/page.tsx": "the export page needs a database and the person the export was made for",
   "[company]/floor/[area]/page.tsx": "floor pages need a database (areas, devices) and a phone session",
   "[company]/floor/[area]/sign-in/page.tsx": "floor pages need a database (areas, devices) and a phone session",
   "[company]/floor/sent/page.tsx": "floor pages need a database (areas, devices) and a phone session",
@@ -105,7 +107,7 @@ const clean = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 // word (a role such as "Team lead") cannot tell a leak from the data, so it is no sentinel.
 const SRC = join(__dirname, "../../../src");
 const DATA_FILES = [
-  "features/ideas/brief.ts",
+  "features/ideas/brief.ts", // builds the English case brief from demo cases; no catalog text
   "features/ideas/brief-demo.ts",
   "features/ideas/demo-script.ts",
   "features/ideas/demo-loop.ts",
