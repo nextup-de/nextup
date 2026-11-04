@@ -3,6 +3,7 @@
 // The key (digest:<user>:<workday>) makes a second run the same day write nothing. Demo companies get none.
 // Never throws: a company that fails is logged and the others go on. Not a "use server" module.
 import { logFromRows } from "@/features/cases/persist";
+import { relabelRows } from "@/lib/db/pseudonymise";
 import { reduce } from "@/features/cases/reducer";
 import { berlinDate, isWorkday, workdayOf } from "@/features/clock/calendar";
 import { digestFor } from "@/features/notify/digest";
@@ -44,7 +45,7 @@ export async function runDigests(now: Date = new Date()): Promise<number> {
         orderBy: { seq: "asc" },
         select: { id: true, seq: true, day: true, ts: true, type: true, actor: true, actorUserId: true, targetId: true, payload: true },
       });
-      const state = reduce(seed, logFromRows(rows, workdayOf(now, cal)));
+      const state = reduce(seed, logFromRows(await relabelRows(company.id, rows), workdayOf(now, cal)));
       const baseUrl = companyBaseUrl(company.slug);
       const drafts = [];
       for (const u of wanting) {

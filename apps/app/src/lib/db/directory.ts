@@ -11,6 +11,7 @@ import { getDb } from "./client";
 import { loadSeed } from "./companies";
 import type { Tx } from "./org-edit";
 import { appendEventRow, loadLog } from "./events";
+import { formerCheck } from "./former";
 import { loadSeats } from "./holders";
 import { linkIdentity } from "./sso";
 
@@ -78,7 +79,7 @@ export async function applyDirectoryDelta(
 ): Promise<DirectoryCounts & { held: Held }> {
   const db = getDb();
   // SCIM keys people by the subject of their SCIM link (EID D6); the other sources do not read the links.
-  const [users, units, withHandle, scimLinks] = await Promise.all([
+  const [users, units, withHandle, scimLinks, pseudonyms, isFormer] = await Promise.all([
     db.user.findMany({
       where: { companyId },
       select: { id: true, entraOid: true, employeeId: true, email: true, active: true, managerId: true, dept: true, name: true, line: true },
@@ -88,11 +89,21 @@ export async function applyDirectoryDelta(
     source === "scim"
       ? db.externalIdentity.findMany({ where: { companyId, provider: "scim", issuer: SCIM_LINK_ISSUER }, select: { userId: true, subject: true } })
       : Promise.resolve([]),
+    db.pseudonym.findMany({ where: { companyId }, select: { userId: true } }),
+    formerCheck(companyId),
   ]);
   const subjectOf = new Map(scimLinks.map((l) => [l.userId, l.subject]));
+  const gone = new Set(pseudonyms.map((p) => p.userId));
+  const marked = users.map((u) => ({ ...u, pseudonymised: gone.has(u.id) }));
+  // Someone pseudonymised is not on the page at all, and is nobody's manager any more: a manager the
+  // company cannot place would hold the colleague back every round.
+  const entries = page.entries
+    .filter((e) => !isFormer(e.externalId) && !isFormer(e.email))
+    .map((e) => (isFormer(e.managerExternalId) ? { ...e, managerExternalId: null } : e));
   const plan = planDirectoryDelta({
-    source, page, units,
-    users: source === "scim" ? users.map((u) => ({ ...u, scimSubject: subjectOf.get(u.id) ?? null })) : users,
+    source, units,
+    page: { ...page, entries },
+    users: source === "scim" ? marked.map((u) => ({ ...u, scimSubject: subjectOf.get(u.id) ?? null })) : marked,
     takenHandles: withHandle.flatMap((h) => (h.handle ? [h.handle] : [])),
   });
 
