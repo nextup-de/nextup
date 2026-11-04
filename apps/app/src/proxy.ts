@@ -23,6 +23,8 @@ export function proxy(request: NextRequest) {
   const resolved = resolveRequest(host, url.pathname, mode, rootDomain(), singleCompany() ?? undefined);
 
   if (resolved.kind === "pass") return NextResponse.next();
+  // No page has this address, so the app's own 404 answers.
+  if (resolved.kind === "gone") return NextResponse.rewrite(new URL("/_gone", url));
 
   const rewrite = (to: string) => NextResponse.rewrite(new URL(to + url.search, url));
 
