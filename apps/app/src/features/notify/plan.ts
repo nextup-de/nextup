@@ -6,6 +6,7 @@ import { usersOfRole, type SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import { composeNoticeMail, noticeKey, type RaisedNotice } from "@/features/cases/notice";
 import type { State } from "@/features/cases/reducer";
+import { hasClosedAudience } from "@/features/cases/visibility";
 import { loopMails } from "@/features/loop/notice";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n";
 import type { OutboxDraft } from "@/lib/db/outbox";
@@ -32,6 +33,8 @@ export type PlanCtx = {
   baseUrl: string;
   /** Teams works for the company (TMS D6): the app is set up, the switch is on, the tenant is known. */
   teamsOn?: boolean;
+  /** The date of a working day, ISO; missing or null where the company has no calendar. */
+  dateOfDay?: (day: number) => string | null;
 };
 
 export type PlanEvent = Pick<CaseEvent, "id" | "ts" | "type" | "actor" | "actorUserId" | "target" | "payload">;
@@ -83,7 +86,7 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
         // composeNoticeMail only needs someone to send to; a Teams row has no address.
         const n: RaisedNotice = {
           eventId: ev.id, slug: "", day: state.day,
-          case: { id: kase.id, title: kase.title, body: kase.body, from: kase.from, routeId: kase.routeId, dueDay: kase.dueDay },
+          case: { id: kase.id, title: kase.title, body: kase.body, from: kase.from, routeId: kase.routeId, dueDay: kase.dueDay, dueDate: ctx.dateOfDay?.(kase.dueDay) ?? null },
           route: { id: kase.route?.id ?? null, label: kase.route?.type ?? null, ownerName: p.name || null, ownerEmail: email ?? p.id, deputyName: kase.route?.deputy ?? null },
           links: { inbox: `${baseUrl}/leader`, case: caseLink(kase.id) },
         };
@@ -129,13 +132,16 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     }
     for (const userId of users) {
       mailTo(userId, (p) => {
-        const r = renderTemplate(template, p.locale, { name: p.name, title, day: ev.payload.dueDay, days: ev.payload.check, link });
+        const r = renderTemplate(template, p.locale, { name: p.name, title, day: ev.payload.dueDay, dueDate: typeof ev.payload.dueDay === "number" ? ctx.dateOfDay?.(ev.payload.dueDay) ?? null : null, days: ev.payload.check, link });
         return { key: `rem:${ev.id}:${userId}`, template, locale: p.locale, subject: r.subject, text: r.text, link: r.link, data: { eventId: ev.id, subjectId: ev.target, kind } };
       });
     }
   }
 
-  for (const pe of toPublicEvents(ev, state, ctx.companyId)) {
+  // A case whose raiser chose who sees it, and a project that came from one, stay inside the app (FX4).
+  const sources = state.projects.find((p) => p.id === ev.target)?.sources ?? [];
+  const closed = [kase, ...sources.map((id) => state.cases.find((c) => c.id === id))].some((c) => c && hasClosedAudience(c));
+  for (const pe of closed ? [] : toPublicEvents(ev, state, ctx.companyId)) {
     for (const sub of ctx.subscriptions) {
       if (!sub.on || !sub.events.includes(pe.type)) continue;
       push({

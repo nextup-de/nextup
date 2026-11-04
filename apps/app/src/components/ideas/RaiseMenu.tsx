@@ -2,7 +2,7 @@
 // The actions menu behind the bolt button (and behind an item in the sidebar's lists): files, who is
 // affected, who sees it (RAISE_ACTIONS). The receiver is chosen in the publish window. Opens upward when there is room.
 // The start page shows the actions as a row of buttons in its composer instead (RaiseActions); each opens its own panel under it.
-// Props in; visibility is a stand-in (raisePreview.ts).
+// Props in; the visibility choice waits in raisePreview.ts and goes with the case when it is raised.
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Dept, OrgPerson } from "@/features/demo/types";

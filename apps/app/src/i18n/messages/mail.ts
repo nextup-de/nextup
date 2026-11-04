@@ -5,10 +5,11 @@ import { defineMessages } from "../define";
 export const mail = defineMessages({
   en: {
     // ── features/cases/notice.ts
+    dayNumber: "day {day}",
     noticeHello: "Hello",
     noticeIntro: "someone raised this and it is on your desk:",
     noticeRoute: "Route: {label}",
-    noticeAnswerBy: "Answer by day {day} - yes, no with a reason, hand it over, or ask a question.",
+    noticeAnswerBy: "Answer by {when} - yes, no with a reason, hand it over, or ask a question.",
     noticeOpenInbox: "Open the inbox: {url}",
     noticeThisCase: "This case:      {url}",
     noticeDeputy: "If you cannot take it, {name} is the deputy.",
@@ -59,11 +60,11 @@ export const mail = defineMessages({
 
     // ── features/notify/templates.ts
     reminderDeadlineSubject: "Answer overdue: {title}",
-    reminderDeadlineIntro: "This case passed its answer date (day {day}) and is now with you or your deputy:",
+    reminderDeadlineIntro: "This case passed its answer date ({when}) and is now with you or your deputy:",
     reminderCheckinSubject: "Check-in due: {title}",
     reminderCheckinIntro: "A check-in on this discussion is due:",
     reminderStartSubject: "Project start due: {title}",
-    reminderStartIntro: "This project should have started by day {day}. Add the baseline and start it:",
+    reminderStartIntro: "This project should have started by {when}. Add the baseline and start it:",
     reminderMeasureSubject: "Measure due: {title}",
     reminderMeasureIntro: "The {days}-day check of this project is due:",
     reminderOpenCase: "Open the case: {url}",
@@ -74,10 +75,11 @@ export const mail = defineMessages({
     digestItem: "  {title} - waiting {n} d",
   },
   de: {
+    dayNumber: "Tag {day}",
     noticeHello: "Hallo",
     noticeIntro: "jemand hat das eingereicht, und es liegt bei dir auf dem Tisch:",
     noticeRoute: "Zuständigkeit: {label}",
-    noticeAnswerBy: "Antworte bis Tag {day} - Ja, Nein mit Begründung, weitergeben oder eine Frage stellen.",
+    noticeAnswerBy: "Antworte bis {when} - Ja, Nein mit Begründung, weitergeben oder eine Frage stellen.",
     noticeOpenInbox: "Posteingang öffnen: {url}",
     noticeThisCase: "Dieser Fall:       {url}",
     noticeDeputy: "Wenn du es nicht übernehmen kannst, ist {name} die Vertretung.",
@@ -127,11 +129,11 @@ export const mail = defineMessages({
 
     // ── features/notify/templates.ts
     reminderDeadlineSubject: "Antwort überfällig: {title}",
-    reminderDeadlineIntro: "Dieser Fall hat sein Antwortdatum (Tag {day}) überschritten und liegt jetzt bei dir oder deiner Vertretung:",
+    reminderDeadlineIntro: "Dieser Fall hat sein Antwortdatum ({when}) überschritten und liegt jetzt bei dir oder deiner Vertretung:",
     reminderCheckinSubject: "Zwischenstand fällig: {title}",
     reminderCheckinIntro: "Für diese Diskussion ist ein Zwischenstand fällig:",
     reminderStartSubject: "Projektstart fällig: {title}",
-    reminderStartIntro: "Dieses Projekt hätte bis Tag {day} starten sollen. Erfasse die Ausgangszahl und starte es:",
+    reminderStartIntro: "Dieses Projekt hätte bis {when} starten sollen. Erfasse die Ausgangszahl und starte es:",
     reminderMeasureSubject: "Messung fällig: {title}",
     reminderMeasureIntro: "Die Messung nach {days} Tagen für dieses Projekt ist fällig:",
     reminderOpenCase: "Fall öffnen: {url}",

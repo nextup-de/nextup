@@ -8,6 +8,7 @@ import { getDb } from "@/lib/db/client";
 import { appendEventRow, loadLog } from "@/lib/db/events";
 import { hashFloor, referenceByHash } from "@/lib/db/floor";
 import { hasDatabase } from "@/lib/db/mode";
+import { floorAddressLimit } from "@/server/floor/raise";
 import { throttle } from "@/server/throttle";
 
 export type FloorStatusResult =
@@ -36,7 +37,7 @@ async function reduced(slug: string, found: Found) {
 }
 
 export async function floorStatus(slug: string, reference: string, deviceKey: string): Promise<FloorStatusResult> {
-  const limited = await throttle("floorStatus", deviceKey);
+  const limited = (await throttle("floorStatus", deviceKey)) ?? (await floorAddressLimit("floorStatusAddress", deviceKey));
   if (limited) return { ok: false, reason: "limited", message: limited };
   const found = await find(slug, reference);
   const kase = found ? await reduced(slug, found) : null;
@@ -59,7 +60,7 @@ export async function floorReply(slug: string, reference: string, text: string, 
   const checked = checkReply(text);
   if (!checked.ok) return { ok: false, reason: "invalid" };
   // A reply also tells whether a reference exists, so it counts against the same limit as a lookup.
-  const limited = await throttle("floorStatus", deviceKey);
+  const limited = (await throttle("floorStatus", deviceKey)) ?? (await floorAddressLimit("floorStatusAddress", deviceKey));
   if (limited) return { ok: false, reason: "limited", message: limited };
   const found = await find(slug, reference);
   const kase = found ? await reduced(slug, found) : null;
