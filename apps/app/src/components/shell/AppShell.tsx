@@ -37,9 +37,7 @@ function RailShell({ children }: { children: React.ReactNode }) {
   const countFor: Record<string, string> = {
     "/team": cnt(mineRows(ctx).length),
     "/leader": cnt(openCases(ctx).length),
-    "/problems": cnt(N.problems),
-    "/ideas": cnt(N.ideas),
-    "/collaboration": cnt(N.initiatives),
+    "/projects/collaboration": cnt(N.initiatives),
   };
 
   return (
