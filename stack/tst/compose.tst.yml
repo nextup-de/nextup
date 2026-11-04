@@ -1,0 +1,11 @@
+# Test phase only (ops/tst/vm-run.sh): publishes the stack's Postgres on the VM's loopback, so the
+# generator can reach it through an SSH tunnel. Never part of a customer stack.
+#
+#   docker compose -f stack/compose.yml -f stack/tst/compose.tst.yml --env-file <.env> up -d --no-deps db
+#
+# 127.0.0.1 only: the port is not reachable from outside the VM. The next plain `up` (a release,
+# install.sh) recreates db without it.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5439:5432"
