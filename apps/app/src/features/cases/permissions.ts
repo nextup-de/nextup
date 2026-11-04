@@ -8,6 +8,7 @@ import { isProjectId, mayAppendProject } from "@/features/projects/permissions";
 import type { EventPayload } from "./events";
 import type { State } from "./reducer";
 import { onDeskOf } from "./selectors";
+import { canOpen, unitsOf, type VisCtx } from "./visibility";
 import { createT, DEFAULT_LOCALE, type Locale, type MessageKey, type T } from "@/i18n";
 
 // The identity Actor (features/auth/identity.ts). `userId` and `me` are optional so a caller that has only a
@@ -20,8 +21,10 @@ const no = (t: T, key: MessageKey): Verdict => ({ ok: false, error: t(key) });
 
 /** Events on a case that only the person holding it (or a manager) may send. */
 const DESK_EVENTS = new Set(["case.read", "case.decided", "case.handed", "case.asked"]);
-/** Anyone in the company may add these to a case that exists. */
+/** Anyone who may open the case may add these to it (FX4). */
 const OPEN_CASE_EVENTS = new Set(["case.affected", "case.unaffected", "case.commented"]);
+/** Does this event need `access`, the part of the visibility rule that is not in the state? */
+export const needsCaseAccess = (type: string): boolean => OPEN_CASE_EVENTS.has(type);
 const OPEN_IDEA_EVENTS = new Set(["idea.cosigned", "idea.uncosigned", "idea.asked"]);
 
 export function mayAppend(
@@ -29,6 +32,7 @@ export function mayAppend(
   ev: { type: string; target: string | null; payload: Readonly<Record<string, unknown>> },
   state: State,
   locale: Locale = DEFAULT_LOCALE,
+  access: Pick<VisCtx, "roles" | "members"> = { roles: [] },
 ): Verdict {
   const t = createT(locale);
   const isManager = actor.role === "manager";
@@ -89,8 +93,13 @@ export function mayAppend(
       if (!kase) return no(t, "cases.permNoCase");
       return isManager ? OK : no(t, "cases.permOverrideManager");
 
-    case OPEN_CASE_EVENTS.has(ev.type):
-      return kase ? OK : no(t, "cases.permNoCase");
+    case OPEN_CASE_EVENTS.has(ev.type): {
+      // The same answer as for no such case: a refusal must not say that a private case exists.
+      if (!kase) return no(t, "cases.permNoCase");
+      const viewer = { ...me, userId };
+      const ctx = { seats: state.seats, projects: state.projects, ...access };
+      return canOpen(kase, { me: viewer, role: actor.role, unitIds: unitsOf(viewer, access) }, ctx) ? OK : no(t, "cases.permNoCase");
+    }
 
     case OPEN_IDEA_EVENTS.has(ev.type):
       return idea ? OK : no(t, "cases.permNoIdea");

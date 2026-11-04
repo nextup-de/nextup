@@ -25,6 +25,7 @@ a { color: inherit; text-decoration: none; }
 a:hover { color: var(--nh-ink-2); }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+h1 { font-size: var(--nh-fs-3xl); }
 img { max-width: 100%; display: block; }
 button, input, textarea, select { font: inherit; color: inherit; }
 
@@ -43,12 +44,17 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .nh-btn:active { transform: translateY(1px); }
 .nh-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
-.nh-btn-primary { background: var(--nh-brand); color: #fff; }
-.nh-btn-primary:hover { background: var(--nh-brand-hover); color: #fff; }
-.nh-btn-ghost { background: transparent; color: var(--nh-ink); border-color: var(--nh-line); }
-.nh-btn-ghost:hover { background: var(--nh-card); color: var(--nh-ink); }
-.nh-btn-accent { background: var(--nh-brand); color: #fff; }
-.nh-btn-accent:hover { background: var(--nh-brand-hover); color: #fff; }
+.nh-btn-primary { background: var(--nh-brand); color: var(--nh-on-brand); }
+.nh-btn-primary:hover { background: var(--nh-brand-hover); color: var(--nh-on-brand); }
+.nh-btn-primary:active { background: var(--nh-brand-active); }
+.nh-btn-secondary { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.nh-btn-secondary:hover { background: var(--nh-brand-line); color: var(--nh-brand-ink); }
+.nh-btn-danger { background: var(--nh-danger-tint); color: var(--nh-danger); }
+.nh-btn-danger:hover { border-color: var(--nh-danger); color: var(--nh-danger); }
+.nh-btn-ghost { background: transparent; color: var(--nh-brand-ink); border-color: var(--nh-brand-line); }
+.nh-btn-ghost:hover { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.nh-btn-accent { background: var(--nh-brand); color: var(--nh-on-brand); }
+.nh-btn-accent:hover { background: var(--nh-brand-hover); color: var(--nh-on-brand); }
 .nh-btn-block { width: 100%; }
 .nh-btn-sm { height: 34px; padding: 0 14px; font-size: var(--nh-fs-sm); }
 
@@ -62,7 +68,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .nh-input::placeholder { color: var(--nh-mute-2); }
-.nh-input:focus { border-color: var(--nh-brand); box-shadow: 0 0 0 3px rgb(11 112 209 / 0.16); }
+.nh-input:focus { border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-focus); }
 /* Set by the form's own validation, never by the browser's - forms that use it carry noValidate. */
 .nh-input[aria-invalid="true"] { border-color: var(--nh-danger); }
 .nh-input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgb(179 38 30 / 0.14); }
@@ -84,7 +90,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* People's initials: a soft tint with the same hue's ink, like the app's badges. lib/avatar.ts picks the
    tone from the name; avatar styles read --nh-avatar / --nh-avatar-ink, so the grey in tokens.css is the fallback. */
-[data-avatar="blue"] { --nh-avatar: #e8f1ff; --nh-avatar-ink: #0062cc; }
+[data-avatar="blue"] { --nh-avatar: #e8f1ff; --nh-avatar-ink: var(--nh-tone-blue-ink); }
 [data-avatar="green"] { --nh-avatar: #e6f6ea; --nh-avatar-ink: #1f7a3a; }
 [data-avatar="amber"] { --nh-avatar: #fff1d1; --nh-avatar-ink: #8a5d00; }
 [data-avatar="violet"] { --nh-avatar: #f1e9fb; --nh-avatar-ink: #6b3fa0; }

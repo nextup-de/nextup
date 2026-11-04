@@ -2,13 +2,33 @@
 
 Design system: [NextUp Software in Paper](https://app.paper.design/file/01M55ZTX8WWCRJNW7898CQ7ECN)
 
-> **Plan · 2026-11-02 · open: Sam designs and builds every page here; the data behind each page comes from the PILOT phase named on it. Nothing is built yet.**
+> **Plan · 2026-11-02 · in progress: the data behind each page comes from the PILOT phase named on it. See "What is built" for who built which page.**
 > The Hauptplan PILOT adds **23 new pages**, changes **15 existing pages** and needs **27 other surfaces** (Teams cards,
 > emails, printables, dialogs, states). On top of that, **8 existing pages** that work today get a design pass
 > (spec 10). The [defensible-offer plan](2026-11-02_defensible-offer.md) adds **9 new pages**, changes **7 pages**,
 > removes **2 routes** and needs **5 other surfaces** (spec 11). This file is the map, the shared rules and the shared
 > building blocks. The pages themselves are specified in the eleven files in
 > [2026-11-02_pilot-pages/](2026-11-02_pilot-pages/), one per area.
+
+## What is built
+
+State on 2026-11-04. Sam built the Pilot 01 to 03 pages from his Paper frames. Plan UIP built the rest from his elements in `components/ui/elements/`, without a frame of their own, so Sam can still change any of them.
+
+| Pages | Built by | Still open |
+|---|---|---|
+| Settings shell, Company, Rules, Calendar, Org, Members, Routing, Setup, console Connectors | Sam (#378, #381, #411) | The "Not built" lists in those PRs: they need data first |
+| Dashboard, Feed, Inbox, Overview, Raise, `/login`, company login | Sam, before these specs | The design pass of spec 04 and 10 |
+| Notifications, Teams, Import and export, Webhooks, API tokens, Sign-in, Support access, Privacy, Audit | UIP (#521, #535, #541) | Export and pseudonymise dialogs keep their own look |
+| Areas, devices, poster, floor pages | UIP (#532) | |
+| Case, My cases, Decision log, Person | UIP (#533) | Answer date, deputy status, score panel: spec 11 |
+| Projects and project page | UIP (#530) | Agent tab; project setup: spec 12 |
+| Collaboration, Progress, My reports | UIP (#539) | `/ideas` and `/problems` only redirect to the Feed (#515) |
+| KPI report, export download, Profile | UIP (#538) | Your roles, Reports to, Same unit: no data yet |
+| Forgot code, second factor, `/admin` login | UIP (#544) | |
+| Console People, Company data, Decisions, Support, Assistant | UIP (#522) | Console overview |
+| People's and departments' colours on Sam's pages | UIP (#542) | A tint follows the written name |
+| Go-live, Pilot report | not yet | Plan PIL |
+| Spec 11 pages, spec 12 | not yet | No data and no Bauplan yet |
 
 ## Start here, Sam
 

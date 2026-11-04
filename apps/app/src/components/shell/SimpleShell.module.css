@@ -7,30 +7,30 @@
 }
 .brand { display: flex; align-items: center; justify-self: start; margin-left: calc(16px - var(--nh-page-x)); } /* the wordmark sits in the corner, 16px in, while the content keeps the page gutter */
 /* The wordmark: nextup-logo-blue.png as a mask, the colour painted underneath. The height sets its width;
-   never squeezed by a wide nav. Blue mark, black "NextUp": a black box over the word (x 221-506, y 104-180 of 506×224). */
+   never squeezed by a wide nav. Blue mark, dark "NextUp": a dark box over the word (x 221-506, y 104-180 of 506×224). */
 .logo {
   display: block; height: 28px; aspect-ratio: 506 / 224; flex: none;
   -webkit-mask: url("/brand/nextup-logo-blue.png") center / contain no-repeat; mask: url("/brand/nextup-logo-blue.png") center / contain no-repeat;
-  background: linear-gradient(#000, #000) right 0 top 72% / 57% 40% no-repeat, var(--nh-brand);
+  background: linear-gradient(var(--nh-logo-word), var(--nh-logo-word)) right 0 top 72% / 57% 40% no-repeat, var(--nh-brand);
 }
 
-/* Raise | Dashboard: one segmented control; an ink thumb slides under the current one. */
+/* Raise | Dashboard: one segmented control; a blue thumb slides under the current one. */
 .nav { position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-sm, 999px); background: rgb(0 0 0 / 0.05); }
-.navThumb { position: absolute; top: 3px; left: 0; height: calc(100% - 6px); border-radius: var(--radius-sm, 999px); background: var(--nh-ink); box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); transition: transform 0.32s cubic-bezier(0.4, 0.05, 0.2, 1), width 0.32s cubic-bezier(0.4, 0.05, 0.2, 1); }
+.navThumb { position: absolute; top: 3px; left: 0; height: calc(100% - 6px); border-radius: var(--radius-sm, 999px); background: var(--nh-brand); box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); transition: transform 0.32s cubic-bezier(0.4, 0.05, 0.2, 1), width 0.32s cubic-bezier(0.4, 0.05, 0.2, 1); }
 .navItem { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: var(--radius-sm, 999px); font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
-.navItem[data-active="true"] .navCount { background: rgb(255 255 255 / 0.22); color: #fff; }
+.navItem[data-active="true"] .navCount { background: rgb(255 255 255 / 0.22); color: var(--nh-on-brand); }
 .navCount { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); font-weight: 700; padding: 1px 6px; border-radius: var(--radius-sm, 999px); background: var(--nh-accent); color: #fff; }
 .navItem:hover { color: var(--nh-ink); }
-.navItem[data-active="true"] { color: #fff; transition-delay: 0.08s; } /* the text turns white as the thumb arrives */
+.navItem[data-active="true"] { color: var(--nh-on-brand); transition-delay: 0.08s; } /* the text turns white as the thumb arrives */
 .navItem:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 
 .right { position: relative; justify-self: end; display: flex; align-items: center; margin-right: calc(16px - var(--nh-page-x)); }
-.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--nh-ink); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); cursor: pointer; border: 0; padding: 0; outline-offset: 2px; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--nh-brand); color: var(--nh-on-brand); display: flex; align-items: center; justify-content: center; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); cursor: pointer; border: 0; padding: 0; outline-offset: 2px; }
 .avatar[data-open="true"] { outline: 2px solid var(--nh-brand); }
 
 .me { position: absolute; top: calc(100% + 10px); right: 0; width: 290px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 16px); padding: 14px; box-shadow: 0 16px 42px rgba(20, 30, 60, 0.18); z-index: 40; }
 .meHead { display: flex; align-items: center; gap: 10px; }
-.meAvatar { width: 36px; height: 36px; border-radius: 50%; background: var(--nh-dark); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); flex: none; }
+.meAvatar { width: 36px; height: 36px; border-radius: 50%; background: var(--nh-brand); color: var(--nh-on-brand); display: flex; align-items: center; justify-content: center; font-family: var(--nh-mono); font-size: var(--nh-fs-xs); flex: none; }
 .meText { display: flex; flex-direction: column; min-width: 0; }
 .meName { font-size: var(--nh-fs-sm); font-weight: 800; color: var(--nh-ink); }
 .meLine { font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.4; }
@@ -47,6 +47,15 @@
 .logout { width: 100%; margin-top: 5px; padding: 11px 9px 3px; border: 0; border-top: 1px solid var(--nh-line-soft); background: none; color: var(--nh-mute); text-align: left; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; font-family: inherit; }
 .logout:hover { color: var(--nh-ink); }
 
+/* The strip of a section's tabs (SectionTabs) hangs under the bar and stays with it. Smaller than the bar's places
+   and the page's section heads; its tabs line up with the page. */
+.sectionTabs { position: sticky; top: var(--nh-bar-h); z-index: 49; padding: 0 var(--nh-page-x); background: rgb(255 255 255 / 0.5); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid rgb(0 0 0 / 0.06); }
+.sectionTabs nav { width: 100%; max-width: var(--nh-max); margin: 0 auto; border-bottom: 0; }
+.sectionTabs a { font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 500; }
+.sectionTabs a:not([aria-current="page"]) { color: var(--nh-ink-2); }
+.sectionTabs[data-section="projects"] nav { max-width: max(80vw, 1120px); }
+@media (min-width: 1101px) { .sectionTabs[data-section="projects"] { --nh-page-x: 32px; } } /* as the wide pages */
+
 .content { flex: 1; padding: 20px var(--nh-page-x) 40px; overflow-x: clip; } /* decorative glows (the raise aura) may reach into the gutter, never past the screen edge */
 .contentInner { max-width: var(--nh-max); margin: 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 /* A page that marks itself data-wide (the projects, their boards) uses the width of the screen. */
@@ -54,7 +63,7 @@
 @media (min-width: 1101px) { .content:has([data-wide="true"]) { --nh-page-x: 32px; } }
 
 .backdrop { position: fixed; inset: 0; z-index: 10; } /* below .bar (z 20): the sticky bar is its own stacking context, so a higher backdrop would cover the popover */
-.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 87; max-width: min(92vw, 560px); padding: 11px 16px; border-radius: var(--radius-sm, 12px); background: var(--nh-dark); color: var(--nh-on-dark); font-size: var(--nh-fs-sm); line-height: 1.45; box-shadow: 0 14px 40px rgba(20, 20, 20, 0.25); } /* z 87: over the inbox's full-screen phone view (85) */
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 87; max-width: min(92vw, 560px); padding: 11px 16px; border-radius: var(--radius-sm, 12px); background: var(--nh-brand-deep); color: var(--nh-on-dark); font-size: var(--nh-fs-sm); line-height: 1.45; box-shadow: 0 14px 40px rgba(20, 20, 20, 0.25); } /* z 87: over the inbox's full-screen phone view (85) */
 
 @media (max-width: 760px) {
   .bar { grid-template-columns: auto 1fr auto; height: var(--nh-bar-h); }
@@ -107,7 +116,7 @@
 @media (prefers-reduced-motion: reduce) { .searchControl, .navGroup .nav, .searchSlot, .navGroup[data-search="true"] .searchSlot { transition: none; } }
 
 /* The results card, in the Overview's language (team/Overview.module.css): a white card on a soft
-   shadow, a black pill for the choice that is on, a row's status badge and five-step bar. */
+   shadow, a blue pill for the choice that is on, a row's status badge and five-step bar. */
 .sPanel { position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%); z-index: 3; width: min(560px, calc(var(--nh-screen-w) - 24px)); max-height: min(600px, calc(var(--nh-screen-h) - var(--nh-bar-h) - 24px)); box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #fff; border-radius: var(--radius-md, 22px); box-shadow: 0 18px 48px rgba(20,30,60,0.16), 0 1px 2px rgba(20,30,60,0.06); color: #1c1c1e; text-align: left; animation: sPop 220ms cubic-bezier(.2,.8,.2,1) both; }
 @keyframes sPop { from { opacity: 0; translate: 0 -6px; scale: .98; } to { opacity: 1; translate: 0 0; scale: 1; } }
 
@@ -115,7 +124,7 @@
 .sFilter { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 13px; border: 0; border-radius: var(--radius-sm, 999px); background: #f2f2f7; color: #3a3a3c; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 180ms ease, color 180ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
 .sFilter:hover { background: #e5e5ea; }
 .sFilter:active { transform: scale(.97); }
-.sFilter[aria-pressed="true"] { background: #111; color: #fff; }
+.sFilter[aria-pressed="true"] { background: var(--nh-brand); color: var(--nh-on-brand); }
 .sCount { font-size: var(--nh-fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; color: #8e8e93; }
 .sFilter[aria-pressed="true"] .sCount { color: rgb(255 255 255 / .6); }
 
@@ -143,8 +152,8 @@
 .sBadge[data-tone="replied"] { color: #1f7a3a; background: #eaf8ee; }
 .sSteps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; width: 56px; }
 .sSteps span { height: 4px; border-radius: var(--radius-sm, 999px); background: #e5e5ea; }
-.sSteps span[data-tone="done"] { background: #1c1c1e; }
-.sSteps span[data-tone="now"] { background: #007aff; }
+.sSteps span[data-tone="done"] { background: var(--nh-progress-done); }
+.sSteps span[data-tone="now"] { background: var(--nh-progress-doing); }
 .sGo { font-size: var(--nh-fs-sm); font-weight: 600; color: #6e6e73; }
 .sRow[aria-selected="true"] .sGo { color: #1c1c1e; }
 

@@ -76,8 +76,8 @@ new notices) carries the pseudonym wherever the event says who it means by user 
 
 **They stay gone:** a directory page never changes a pseudonymised person, and reactivating is refused. Their
 source ids and email are kept as hashes (`ExternalIdentity`, provider `former`), so Graph, SuccessFactors or SCIM
-cannot make a new person of them either. Their SSO and SCIM links stay, so a sign-in still finds the inactive
-account and is refused. Deleting the person removes the hashes too.
+cannot make a new person of them either, and a Microsoft sign-in creates no new account for them. Their SSO and
+SCIM links stay, so a sign-in still finds the inactive account and is refused. Deleting the person removes the hashes too.
 
 What stays, on purpose: case events are append-only and are never rewritten, so event ids, types, order and days
 stay and still point at the person's user id, shown through the pseudonym. The anonymous **handle** stays, so an

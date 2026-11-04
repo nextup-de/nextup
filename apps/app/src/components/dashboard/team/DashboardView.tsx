@@ -258,12 +258,13 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   }
 
   return (
-    <div className={s.root}>
+    <div className={s.root} data-embedded={embedded ? "true" : undefined}>
       <div className={s.div7}>
         <div className={s.div8}>
           <div className={s.div9}>
-            {/* On the Projects page the page title above is the heading; the column brings its own. */}
+            {/* On the Projects page the column brings its own heading, with Open | Archive beside it. */}
             {embedded ? title : <h1 className={s.overview}>{t("team.dashOverview")}</h1>}
+            {embedded && split && <ArchiveTabs quiet view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} />}
           </div>
           <div className={s.div10}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}
@@ -302,7 +303,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             </div>
           </div>
         </div>
-        {split && <div className={s.archiveBar}><ArchiveTabs view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} /></div>}
+        {split && !embedded && <div className={s.archiveBar}><ArchiveTabs view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} /></div>}
         <div className={s.div13} role="table" aria-label={t("team.dashTable")}>
           <div className={s.div14} role="row">
             <span role="columnheader">{t("team.dashColWhat")}</span><span role="columnheader">{t("team.dashColOpenSince")}</span><span role="columnheader">{t("team.dashColStage")}</span><span role="columnheader">{t("team.dashColDesk")}</span>

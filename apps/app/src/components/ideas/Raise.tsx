@@ -24,6 +24,7 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
 import { closest, evaluate } from "@/features/evaluate";
+import { audienceOf } from "@/features/ideas/audience";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
 import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
@@ -434,7 +435,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     // in the payload, so the decision log can compare it with where the case went.
     // The author's last look wins: its title and body are what the receiver reads.
     const title = mine?.title.trim() || r.title;
-    const e = evaluate({ kind: "idea", text: title, context: r.body, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, r.brain);
+    const e = evaluate({ kind: "idea", text: title, context: r.body, affected, attachments: myFiles.length, who, ...audienceOf(extras) }, { ...seed, cases: S.cases }, r.brain);
     // The demo script's case carries its main points instead of the raw conversation.
     const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     const body = mine ? bodyOf(mine) : made.body;

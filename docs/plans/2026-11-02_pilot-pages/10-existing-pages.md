@@ -142,8 +142,7 @@ Namespace `projects` unless noted.
 
 | Element | Control | Rules | EN | DE |
 |---|---|---|---|---|
-| Title | `PageHeader` | no primary action | Projects | Projekte |
-| Lead | `PageHeader` lead | member text vs leader and manager text (`hubSubMember`, `hubSubLead`) | What your ideas became, and every idea and problem on its way there. · Every idea from the first word to the measured result, and the projects it became. | Was aus deinen Ideen wurde, und jede Idee und jedes Problem auf dem Weg dorthin. · Jede Idee vom ersten Wort bis zum gemessenen Ergebnis, und die Projekte, die daraus wurden. |
+| Tabs | `Tabs` in a strip under the bar (`ProjectsTabs`, rendered by the shell) | Decisions only for leader and manager; the tab names the page, so no visible title and no lead | Overview · Decisions · Collaboration · Progress | Übersicht · Entscheidungen · Zusammenarbeit · Fortschritt |
 | Column heads | section head + count | | Projects · {n} · Ideas | Projekte · {n} · Ideen |
 | Group heads | head + count | fixed order, empty groups hidden | Planning · Running · Measuring · Measured and recognised · Stopped | In Planung · Laufend · In Messung · Gemessen und gewürdigt · Gestoppt |
 | Code | code, mono | `projectLabel(p)` | P-12 | P-12 |

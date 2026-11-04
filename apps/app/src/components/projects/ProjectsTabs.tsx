@@ -1,23 +1,21 @@
 "use client";
-// The tabs of the Projects area: the projects themselves, the map across departments, and what moved.
+// The frame of a page in the Projects area: as wide as the strip of tabs (shell/SectionTabs), so the tabs line up
+// with the page and stay put from tab to tab.
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { Tabs } from "@/components/ui/elements";
+import { PROJECTS_TABS, type ProjectsTabKey } from "@/config/nav";
 import { useT } from "@/i18n/client";
 import styles from "./Projects.module.css";
 
-export type ProjectsTab = "projects" | "collaboration" | "progress";
-
-export function ProjectsTabs({ active }: { active: ProjectsTab }) {
-  const { href } = useDemo();
+/** A page in the area. The tab is its title, so the heading is for screen readers only. Without projects there are no tabs and the page keeps its own header. */
+export function ProjectsPage({ tab, children }: { tab: ProjectsTabKey; children: React.ReactNode }) {
+  const { flag } = useDemo();
   const t = useT();
-  const items = [
-    { key: "projects", href: href("/projects"), label: t("projects.pageTitle") },
-    { key: "collaboration", href: href("/projects/collaboration"), label: t("shell.navCollaboration") },
-    { key: "progress", href: href("/projects/progress"), label: t("shell.navProgress") },
-  ];
+  if (!flag("projects")) return <>{children}</>;
+  const labelKey = PROJECTS_TABS.find((item) => item.key === tab)?.labelKey;
   return (
-    <div className={styles.areaTabs} data-testid="projects-tabs">
-      <Tabs items={items} current={active} label={t("projects.pageTitle")} />
+    <div className={styles.hub} data-wide="true">
+      {labelKey && <h1 className="nh-sr">{t(labelKey)}</h1>}
+      {children}
     </div>
   );
 }

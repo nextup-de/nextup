@@ -1,37 +1,55 @@
 /* Design tokens. Imported once by src/app/globals.css. Same palette as legacy/demo (warm greige, ink, one orange for time) plus the logo blue for actions. */
 :root {
   --nh-ground: #f9fcfc;      /* page background: the Ground's base (shell/Ground), so an overscroll edge matches it */
-  --nh-surface: #faf9f7;     /* panels */
+  --nh-surface: #f7f7f9;     /* panels inside a card */
   --nh-card: #ffffff;        /* cards, inputs */
-  --nh-line: #e6e5e0;
-  --nh-line-soft: #eeede8;
-  --nh-ink: #141414;
-  --nh-ink-2: #5b5b5b;
-  --nh-mute: #8c8c88;
-  --nh-mute-2: #a3a29a;
+  --nh-line: #e5e5ea;
+  --nh-line-2: #d1d1d6;
+  --nh-line-soft: #f0f0f3;
+  --nh-fill: #f2f2f7;        /* quiet surfaces: chips, icon wells */
+  --nh-fill-2: #eceef2;
+  --nh-fill-3: #e0e3e8;
+  --nh-ink: #1c1c1e;         /* text and icons, never a fill */
+  --nh-ink-2: #3a3a3c;
+  --nh-mute: #6e6e73;
+  --nh-mute-2: #8e8e93;
+  --nh-ghost: #c7c7cc;       /* chevrons, disabled */
   --nh-dark: #1a1a17;        /* dark panel */
   --nh-dark-2: #232320;
   --nh-dark-line: #2c2c27;
   --nh-on-dark: #fbfbf9;
   --nh-on-dark-mute: #a0a099;
   --nh-accent: #ff5a1f;      /* time: due now, overdue, worsening */
-  /* Decision Blue: the product's interactive brand colour. */
-  --nh-brand: #0b70d1;
+  /* The blue. Change these values to change the blue everywhere: no file outside this one names a blue. */
+  --nh-brand: #0b70d1;        /* primary button, selected states, the current place */
   --nh-brand-hover: #085dae;
   --nh-brand-active: #064b8c;
-  --nh-brand-tint: #eaf3ff;
-  --nh-brand-line: #b8d9ff;
+  --nh-brand-deep: #064b8c;   /* toasts and tooltips, what used to be black */
+  --nh-brand-ink: #085dae;    /* links and text on white or a tint */
+  --nh-on-brand: #ffffff;     /* text on the blue */
+  --nh-logo-word: var(--nh-ink); /* the dark word in the logo, the one dark fill allowed */
+  --nh-brand-tint: #eaf3ff;   /* secondary buttons, icon buttons, hover */
+  --nh-brand-line: #b8d9ff;   /* outlines */
+  --nh-brand-focus: color-mix(in srgb, var(--nh-brand) 16%, transparent); /* the ring around a focused field */
   --nh-brand-2: var(--nh-brand-hover); /* compatibility alias for existing components */
-  --nh-ok: #2f8f5b;
-  --nh-ok-tint: #edf7f0;
-  --nh-danger: #b3261e;      /* a field that will not go through; admin's destructive actions */
-  --nh-danger-tint: #fdf1f0;
+  /* Progress: every bar uses these (ProgressBar). */
+  --nh-progress-done: var(--nh-brand);
+  --nh-progress-doing: color-mix(in srgb, var(--nh-brand) 72%, white);
+  --nh-progress-blocked: var(--nh-danger);
+  --nh-progress-open: #e3e9f2;
+  --nh-ok: #1f7a3a;
+  --nh-ok-tint: #eaf8ee;
+  --nh-danger: #d70015;      /* a field that will not go through; late; destructive actions */
+  --nh-danger-tint: #fff5f5;
+  --nh-warn: #9a5300;        /* needs you, setting up */
+  --nh-warn-tint: #fff1dc;
   /* The signed-in app: light grey ground, white cards that float on a soft shadow instead of a border. */
   --nh-app-ground: #f5f5f7;
   --nh-card-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.12);
   /* People's initials: this grey when there is no name to go by (anonymous); a person gets a tint ([data-avatar], globals.css). "ME" and the account button stay ink. */
   --nh-avatar: #e5e5ea;
   --nh-avatar-ink: #3a3a3c;
+  --nh-tone-blue-ink: #0062cc; /* the blue person tone: stays when the brand blue changes */
   /* The two kinds of thing an employee raises. Tint the surface, never the action button. */
   --nh-problem: #c2410c;      /* terracotta: something hurts */
   --nh-problem-tint: #fff1ea;
@@ -46,8 +64,8 @@
   --nh-bench-impact-tint: #fff1e8;
   --nh-bench-feas: #2f8f5b;      /* feasibility */
   --nh-bench-feas-tint: #edf7f0;
-  --nh-bench-clarity: #0b70d1;   /* novelty & clarity: Decision Blue */
-  --nh-bench-clarity-tint: #eaf3ff;
+  --nh-bench-clarity: var(--nh-brand);   /* novelty & clarity: the blue */
+  --nh-bench-clarity-tint: var(--nh-brand-tint);
 
   --nh-font: var(--font-inter, "Inter"), -apple-system, "Segoe UI", sans-serif;   /* --font-inter set by next/font in layout.tsx */
   --nh-mono: var(--font-mono, "IBM Plex Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -73,8 +91,8 @@
   --nh-fs-md: 15px;    /* body text, buttons, list titles */
   --nh-fs-lg: 17px;    /* ledes, card headings, the opened item's intro */
   --nh-fs-xl: 20px;    /* section headings, big numbers */
-  --nh-fs-2xl: 24px;   /* page headings, list card titles */
-  --nh-fs-3xl: 28px;   /* the opened case's title */
+  --nh-fs-2xl: 24px;   /* list card titles */
+  --nh-fs-3xl: 28px;   /* every page title */
   --nh-fs-4xl: 34px;   /* display: sign-in and empty pages */
   --nh-fs-input: 16px; /* text fields on phones - smaller makes iOS zoom in on focus (rule 6) */
 

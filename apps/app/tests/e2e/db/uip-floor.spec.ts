@@ -1,6 +1,6 @@
 // UIP-F1: Areas and Devices have the house look, and the shop-floor phone pages sit in the floor shell.
 // The areas and the device are made through the pages themselves, so adding and removing is proven too.
-import { expect, test } from "../helpers";
+import { expect, test, vis } from "../helpers";
 import { createTestCompany, deleteTestCompany, type TestCompany } from "../../db/test-company";
 import { getDb } from "../../../src/lib/db/client";
 import { signIn, sweepPages } from "./fixtures/page-sweep";
@@ -34,7 +34,7 @@ test("UIP areas and floor", async ({ page, browser }) => {
   await test.step("both pages show their empty state", async () => {
     await page.goto(areas);
     await expect(page.getByTestId("settings-areas")).toHaveCount(1);
-    await expect(page.getByTestId("settings-areas-empty")).toBeVisible();
+    await expect(vis(page, "settings-areas-empty")).toBeVisible();
     await page.goto(devices);
     await expect(main.getByText("No device yet.")).toBeVisible();
   });
@@ -42,17 +42,17 @@ test("UIP areas and floor", async ({ page, browser }) => {
   await test.step("an area is added in the drawer and shows in its row", async () => {
     await page.goto(areas);
     await expect(page.getByTestId("settings-areas")).toHaveCount(1);
-    await page.getByTestId("settings-areas-add").click();
-    const drawer = page.getByTestId("settings-areas-drawer");
+    await vis(page, "settings-areas-add").click();
+    const drawer = vis(page, "settings-areas-drawer");
     await expect(drawer).toBeVisible();
-    await page.getByTestId("settings-areas-field-name").fill("Line 3");
-    await page.getByTestId("settings-areas-field-key").fill("line-3");
-    await page.getByTestId("settings-areas-field-unit").selectOption({ label: UNIT });
-    await page.getByTestId("settings-areas-field-role").selectOption({ label: ROLE });
-    await page.getByTestId("settings-areas-field-anonymous").check();
-    await page.getByTestId("settings-areas-save").click();
+    await vis(page, "settings-areas-field-name").fill("Line 3");
+    await vis(page, "settings-areas-field-key").fill("line-3");
+    await vis(page, "settings-areas-field-unit").selectOption({ label: UNIT });
+    await vis(page, "settings-areas-field-role").selectOption({ label: ROLE });
+    await vis(page, "settings-areas-field-anonymous").check();
+    await vis(page, "settings-areas-save").click();
     await expect(drawer).toBeHidden();
-    const row = page.getByTestId("settings-areas-row-line-3");
+    const row = vis(page, "settings-areas-row-line-3");
     await expect(row).toBeVisible();
     await expect(row.getByTestId("settings-areas-name")).toHaveText("Line 3");
     // The unit is a department chip in its tint (D10).
@@ -63,10 +63,10 @@ test("UIP areas and floor", async ({ page, browser }) => {
   await test.step("a device is added and its pairing code is shown once", async () => {
     await page.goto(devices);
     await expect(page.getByTestId("floor-devices-list")).toHaveCount(1);
-    await page.getByTestId("floor-device-add").click();
-    await page.getByTestId("floor-device-label").fill("Line 3 tablet");
+    await vis(page, "floor-device-add").click();
+    await vis(page, "floor-device-label").fill("Line 3 tablet");
     await page.getByRole("checkbox", { name: "Line 3" }).check();
-    await page.getByTestId("floor-device-create").click();
+    await vis(page, "floor-device-create").click();
     const secret = main.getByTestId("floor-devices-secret");
     await expect(secret).toBeVisible();
     pairCode = (await secret.locator("code").innerText()).trim();
@@ -100,13 +100,13 @@ test("UIP areas and floor", async ({ page, browser }) => {
     await page.goto(devices);
     await expect(page.getByTestId("floor-devices-list")).toHaveCount(1);
     await page.getByRole("button", { name: "Remove", exact: true }).click();
-    await page.getByTestId("floor-device-remove-dialog").getByRole("button", { name: "Remove", exact: true }).click();
+    await vis(page, "floor-device-remove-dialog").getByRole("button", { name: "Remove", exact: true }).click();
     await expect(main.getByText("No device yet.")).toBeVisible();
 
     await page.goto(areas);
     await expect(page.getByTestId("settings-areas")).toHaveCount(1);
-    await page.getByTestId("settings-areas-delete").click();
-    await page.getByTestId("settings-areas-delete-yes").click();
-    await expect(page.getByTestId("settings-areas-empty")).toBeVisible();
+    await vis(page, "settings-areas-delete").click();
+    await vis(page, "settings-areas-delete-yes").click();
+    await expect(vis(page, "settings-areas-empty")).toBeVisible();
   });
 });

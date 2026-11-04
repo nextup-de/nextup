@@ -229,6 +229,10 @@ describe("roles from Entra", () => {
     expect(landingFor({ found: { role: "leader" }, emailTaken: false, email, role: "leader" })).toEqual({ kind: "existing", setRole: null });
   });
 
+  it("makes no new account for someone pseudonymised, whatever role Entra assigns (FX5)", () => {
+    expect(landingFor({ found: null, emailTaken: false, email, role: "leader", former: true })).toEqual({ kind: "refuse", reason: "unknown" });
+  });
+
   it("creates a new person only when Entra assigned a role", () => {
     expect(landingFor({ found: null, emailTaken: false, email, role: "member" })).toEqual({ kind: "create", role: "member" });
     expect(landingFor({ found: null, emailTaken: false, email, role: null })).toEqual({ kind: "refuse", reason: "norole" });
