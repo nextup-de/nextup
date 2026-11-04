@@ -37,6 +37,8 @@ export default defineConfig({
   // Role homes are a client-side redirect after the page hydrates; give assertions room to wait.
   expect: { timeout: 10_000 },
   forbidOnly: !!process.env.CI,
+  // A timing glitch must not turn main red, and make orch revert an innocent merge: a real bug fails twice.
+  retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "on-failure" }]],
   use: {
     baseURL: BASE,

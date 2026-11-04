@@ -17,7 +17,7 @@ export async function loadConnectors(company: { companyId: string; slug: string 
   const { companyId, slug } = company;
   const db = getDb();
   const vault = vaultKey() !== null;
-  const [jiraRow, aiRow, stage, on, connected, last, microsoft, dir] = await Promise.all([
+  const [jiraRow, aiRow, stage, on, connected, last, microsoft, dir, sfRow] = await Promise.all([
     getIntegration(companyId, JIRA),
     getIntegration(companyId, AI_SYSTEM),
     db.company.findUnique({ where: { id: companyId }, select: { stage: true } }),
@@ -26,11 +26,12 @@ export async function loadConnectors(company: { companyId: string; slug: string 
     db.connection.aggregate({ where: { companyId, provider: M365 }, _max: { lastUsedAt: true } }),
     microsoftEnabledFor(slug),
     loadDirectoryStatus(companyId),
+    getIntegration(companyId, "successfactors"),
   ]);
   return {
     jira: jiraBlockView(jiraRow, vault),
     m365: m365BlockView({ on, connected, lastSearchAt: last._max.lastUsedAt, microsoft, vault }),
     ai: aiBlockView(aiSettings(aiRow ? { on: aiRow.on, settings: aiRow.settings } : null, process.env, stage?.stage ?? "demo"), aiRow?.hasSecret === true, vault),
-    directory: directoryBlockView(dir),
+    directory: directoryBlockView(dir, { settings: sfRow?.settings ?? null, hasSecret: sfRow?.hasSecret === true, vault }),
   };
 }

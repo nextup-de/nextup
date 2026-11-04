@@ -30,7 +30,7 @@ describe("ITC connector views", () => {
 
   it("holds the directory run as plain facts", () => {
     const v = directoryBlockView({ on: true, source: "graph", lastRunAt: new Date("2026-11-02T00:00:00Z"), lastError: null });
-    expect(v).toEqual({ on: true, source: "graph", lastRunAt: "2026-11-02T00:00:00.000Z", lastError: null });
+    expect(v).toMatchObject({ on: true, source: "graph", lastRunAt: "2026-11-02T00:00:00.000Z", lastError: null, credentials: false });
   });
 
   it("accepts Data Center with a base URL and a token and no email", () => {
