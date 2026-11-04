@@ -108,7 +108,7 @@ export async function handleActivity(slug: string, raw: unknown, authorization: 
   if (activity.type === "conversationUpdate") return onConversationUpdate(app, activity, locale);
   if (activity.type === "message") return onMessage(app, company, person, activity, locale);
   if (activity.type === "invoke" && typeof activity.name === "string" && activity.name.startsWith("composeExtension/")) {
-    return handleExtension();
+    return handleExtension(company, person, activity, locale);
   }
   return { status: 200 };
 }
