@@ -69,6 +69,14 @@ stack/ctl.sh acme down -v     # stop and delete the database (asks for the slug 
 | `app` env `ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET` | optional (`--entra-client-id ID`, secret in `NEXTUP_ENTRA_CLIENT_SECRET`): turns on "Continue with Microsoft". The company's tenant ID is set in `/admin`; add `<origin>/login/microsoft/callback` to the app registration |
 | `app` env `CONNECTOR_VAULT_KEY` | written once by `install.sh` (also on an existing instance), never regenerated: it seals people's Microsoft 365 connections, and a new key disconnects everyone. Back it up with the other secrets |
 | `brain` + `ollama` | profile `brain` (`--brain`): the routing AI (image `nextup-brain` built by CI like app and migrate; `--images <tag>` pulls it when the `.env` has `BRAIN_API_KEY`) and its model (`ollama/ollama`, pinned), no ports, app-only with `BRAIN_API_KEY`. See `services/brain/README.md`. On a server without 8 GB to spare, leave it out and point the stack at the AI server instead: `brain-server/README.md` |
+| `brain` (cloud) | profile `brain-cloud` (`--brain-cloud`): the same brain without `ollama` - no model server, no 8 GB. It calls the pilot's AI provider with `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` from the `.env`; the install writes no `BRAIN_MODEL`. Not together with `--brain` |
+
+Which brain flag: `--brain` when the server has the memory for its own model and must stay offline;
+`--brain-cloud` for a pilot without a model server. With `--brain-cloud` the brain reaches the AI
+provider, so a firewall must allow outbound HTTPS to the provider's host (Amazon Bedrock:
+`bedrock-runtime.<region>.amazonaws.com`, region `eu-central-1` unless `LLM_REGION` says otherwise).
+Put the AWS key in the instance `.env`, never in a committed file. `--images` keeps pulling the brain
+image on either, because both write `BRAIN_API_KEY`.
 
 Every third-party image is pinned as `<name>:<exact version>@sha256:<digest>` (`mailpit`, `n8n` and
 `ollama` too); no `:latest` remains in `compose.yml` or `brain-server/compose.yml`.
