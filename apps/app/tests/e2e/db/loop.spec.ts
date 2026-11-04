@@ -234,7 +234,8 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     for (const who of [PLANT, RAISER]) {
       const page = await signIn(browser, who);
       await page.goto(`/${SLUG}/decisions`);
-      const row = page.getByTestId("decisions-row").filter({ hasText: TITLE });
+      // visible: for a moment after a load the streamed page holds a hidden second copy of the row.
+      const row = page.getByTestId("decisions-row").filter({ hasText: TITLE, visible: true });
       await expect(row, `${who} sees the yes`).toHaveCount(1);
       await expect(row).toContainText(OWNER_ROLE);
       await expect(row).toContainText("Yes");
@@ -249,8 +250,8 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
 
     const manager = await signIn(browser, PLANT);
     await manager.goto(`/${SLUG}/settings/rules`);
-    const projects = manager.getByTestId("settings-rules-step-projects");
-    // Streaming leaves a hidden staging copy next to the switch for a moment; wait for the one real switch.
+    // visible: streaming can add a hidden staging copy of the switch after the first one has rendered.
+    const projects = manager.getByTestId("settings-rules-step-projects").filter({ visible: true });
     await expect(projects).toHaveCount(1);
     await expect(projects).toBeChecked();
     await projects.uncheck();
