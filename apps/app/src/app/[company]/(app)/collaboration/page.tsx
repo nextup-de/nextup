@@ -1,10 +1,7 @@
-// Shared view. Cross-team initiatives and members: ?id= selects an initiative.
-import { CollaborationView } from "@/components/dashboard/shared/CollaborationView";
-import { getT } from "@/i18n/server";
-export async function generateMetadata() {
-  return { title: (await getT())("shell.navCollaboration") };
-}
-export default async function CollaborationPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
-  const { id } = await searchParams;
-  return <CollaborationView key={id ?? ""} initialId={id} />;
+// The old address: Collaboration is a tab of Projects now.
+import { redirect } from "next/navigation";
+import { companyPrefix } from "@/features/tenant/urls";
+export default async function OldCollaborationPage({ params, searchParams }: { params: Promise<{ company: string }>; searchParams: Promise<{ id?: string }> }) {
+  const [{ company }, { id }] = await Promise.all([params, searchParams]);
+  redirect(companyPrefix(company) + "/projects/collaboration" + (id ? "?id=" + encodeURIComponent(id) : ""));
 }

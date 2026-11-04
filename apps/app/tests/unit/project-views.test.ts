@@ -1,6 +1,6 @@
 // The project pages' helpers (features/projects/views.ts) and the projects in the seeds: who sees which
 // project, the list's groups, the desk of moves, the brief's suggestions, the numbers, the wait lines,
-// /collaboration's rows and the timeline.
+// /projects/collaboration's rows and the timeline.
 import { describe, expect, it } from "vitest";
 import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "@/features/cases/events";
 import { emptyLog } from "@/features/cases/events";
@@ -166,7 +166,7 @@ describe("projectWaits", () => {
 
 describe("asInitiatives", () => {
   const deptOf = (name: string) => SEED.people.find((p) => p.name === name)?.dept ?? null;
-  it("turns projects into /collaboration's rows, stuck where they wait", () => {
+  it("turns projects into /projects/collaboration's rows, stuck where they wait", () => {
     const rows = asInitiatives(S0.projects, deptOf, (id) => id, (p) => "because " + p.id);
     expect(rows.map((r) => [r.id, r.status])).toEqual([["pj1", "Shipped"], ["pj2", "Building"], ["pj3", "Shipped"], ["pj4", "Proposed"]]);
     const pj2 = rows.find((r) => r.id === "pj2")!;

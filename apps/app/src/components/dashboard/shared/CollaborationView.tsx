@@ -490,7 +490,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
                   ) : st.idea ? (
                     <Link href={href("/ideas?id=" + st.idea)} className={styles.goBtn}>{t("dashboard.collabOpenIdeas")}</Link>
                   ) : st.status === "Shipped" ? (
-                    <Link href={href("/progress")} className={styles.goBtn}>{t("dashboard.collabSeeOutcome")}</Link>
+                    <Link href={href("/projects/progress")} className={styles.goBtn}>{t("dashboard.collabSeeOutcome")}</Link>
                   ) : (
                     <span className={styles.goNone}>{t("dashboard.collabNoIdeaPage")}</span>
                   )}
