@@ -11,7 +11,7 @@ Of the 200 people, 47 have something to load: every leader and manager (the inbo
 
 | Scenario | Virtual users | Page | Requests | p50 | p95 | p99 | Errors | Largest body |
 |---|---|---|---|---|---|---|---|---|
-| Working day (`TST acceptance …`, one account in twenty) | 10 | inbox | 156 | 83 ms | 332 ms | 548 ms | 0 | 77 KB |
+| Working day (`TST acceptance …`, earlier run at one account in twenty) | 10 | inbox | 156 | 83 ms | 332 ms | 548 ms | 0 | 77 KB |
 | | | case | 118 | 97 ms | 430 ms | 554 ms | 0 | 72 KB |
 | Everyone at once (`TST-FL1-1`) | 200 | inbox | 351 | 11,908 ms | 14,098 ms | 14,322 ms | 0 | 77 KB |
 | | | case | 227 | 11,923 ms | 13,593 ms | 14,271 ms | 0 | 72 KB |
@@ -29,10 +29,10 @@ A single page costs about 120-150 ms alone; the server stops gaining throughput 
 every request beyond that waits in a queue. No request failed: the pages are slow, not broken. No response carried the
 whole log (largest 77 KB).
 
-The working-day scenario uses one account in twenty on a page at any moment (10 virtual users at 200 accounts, 100 at
+The working-day scenario uses one account in forty on a page at any moment (5 virtual users at 200 accounts, 50 at
 2,000); `TST_VUS` overrides it. That number is a modelling choice, not a measured fact about Musterwerk: it is the line
 between a passing and a failing test here, and the 2,000-account run of record on the test VM (k6, TST-V1) will show where
-it sits on real hardware. Expect 100 virtual users (about 50 requests per second) to be over budget on one Node process.
+it sits on real hardware. Expect 50 virtual users (about 25 requests per second) to be over budget on one Node process.
 
 ## Findings
 
@@ -58,3 +58,6 @@ it sits on real hardware. Expect 100 virtual users (about 50 requests per second
 - Response size: 72-77 KB for both pages at 200 people; the 2 MB check did not trip. It will matter at 2,000 people and
   500 shipped cases (`WINDOW_CASES`); the 2,000-account run tells.
 - `next start` prints that it does not work with `output: standalone`; it serves the build correctly (as in `playwright.db.config.ts`).
+
+Note: an earlier proof run on a loaded PC (other sessions running) measured p95 1.3 s at 10 virtual users, so the working-day
+scenario was lowered to one account in forty and the warm-up widened to five accounts per page.

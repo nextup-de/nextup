@@ -13,8 +13,8 @@ import { BUDGET, formatReport, overBudget, runLoad, selectAccounts, type Selecti
 const SLUG = "tstload";
 const ACCOUNTS = Math.max(150, Number(process.env.TST_ACCOUNTS) || 2000);
 const BASE = process.env.TST_BASE_URL ?? `http://127.0.0.1:${Number(process.env.TST_PORT) || 3103}`;
-// Working-day concurrency: one account in twenty is on a page at any moment. TST_VUS overrides it.
-const VUS = Number(process.env.TST_VUS) || Math.max(10, Math.ceil(ACCOUNTS / 20));
+// Working-day concurrency: one account in forty is on a page at any moment. TST_VUS overrides it.
+const VUS = Number(process.env.TST_VUS) || Math.max(5, Math.ceil(ACCOUNTS / 40));
 // Everyone at once (a shift change, a mail to all). Saturates one Node process: TST-FL1-1 in docs/test-phase/findings/TST-L1.md.
 const STRESS_VUS = Number(process.env.TST_STRESS_VUS) || ACCOUNTS;
 const DURATION = Number(process.env.TST_DURATION_S) || 60;

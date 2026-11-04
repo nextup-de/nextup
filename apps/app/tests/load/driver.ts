@@ -200,11 +200,15 @@ export async function runLoad(o: RunOptions): Promise<Report> {
   const think = o.thinkMs ?? THINK_MS;
   const samples: Sample[] = [];
   const end = Date.now() + o.durationSeconds * 1000;
-  // One warm-up visit per page, not counted: the first render of a freshly started server fills caches.
+  // Warm-up, not counted: a few visits per page on different accounts, so the first renders of a freshly started
+  // server (module loading, connection pool, per-company caches) do not land in the figures.
   for (const page of PAGES) {
-    const a = o.accounts.find((x) => pickRequest(x, page === "inbox" ? 0 : 1)?.page === page);
-    const r = a ? pickRequest(a, page === "inbox" ? 0 : 1) : null;
-    if (a && r) await visit(o, a, r.page, r.path);
+    const turn = page === "inbox" ? 0 : 1;
+    const warm = o.accounts.filter((x) => pickRequest(x, turn)?.page === page).slice(0, 5);
+    for (const a of warm) {
+      const r = pickRequest(a, turn);
+      if (r) await visit(o, a, r.page, r.path);
+    }
   }
   // Own small PRNG for the think time: the virtual user's pause does not need to be reproducible, but nothing here uses Math.random.
   let state = 0x9e3779b9;
