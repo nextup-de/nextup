@@ -12,7 +12,7 @@ export MSYS_NO_PATHCONV=1
 source stack/tests/lib/assert.sh
 source stack/tests/lib/host.sh
 
-t_init "TST vm-run: ops/tst/vm-run.sh on the Docker test host"
+t_init "TST vm-run"
 trap 'host_down; [ -z "${work:-}" ] || { rm -f "$work"/bin/* "$work"/results/* "$work"/* 2>/dev/null; rmdir "$work"/bin "$work"/results "$work" 2>/dev/null; }' EXIT
 
 work="$(mktemp -d)"; mkdir "$work/bin"
