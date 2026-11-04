@@ -14,7 +14,11 @@ import { toPublicEvents } from "./public-events";
 import { REMINDER_KINDS, renderTemplate, type ReminderKind, type ReminderTemplate } from "./templates";
 
 /** Who can get a mail. Name and handle only greet; who gets what is decided by id. */
-export type PlanPerson = { id: string; email: string | null; locale: Locale; name?: string; handle?: string | null };
+export type PlanPerson = {
+  id: string; email: string | null; locale: Locale; name?: string; handle?: string | null;
+  /** Has a Teams conversation with the bot (TMS D9). Only counts when `PlanCtx.teamsOn`. */
+  teams?: boolean;
+};
 export type PlanPref = { userId: string; template: string; on: boolean };
 export type PlanSubscription = { id: string; events: readonly string[]; on: boolean };
 
@@ -26,6 +30,8 @@ export type PlanCtx = {
   company: GateCompany;
   subscriptions: PlanSubscription[];
   baseUrl: string;
+  /** Teams works for the company (TMS D6): the app is set up, the switch is on, the tenant is known. */
+  teamsOn?: boolean;
 };
 
 export type PlanEvent = Pick<CaseEvent, "id" | "ts" | "type" | "actor" | "actorUserId" | "target" | "payload">;
@@ -54,13 +60,16 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     const gate = gateOf(ctx.company, channel, d.template, userId ? prefOf(ctx.prefs, userId, d.template) : NO_PREF);
     drafts.push({ ...d, channel, status: gate.send ? "pending" : "skipped", lastError: gate.send ? null : gate.reason });
   };
-  // Never to the actor, never without an address. Returns false when no row was written.
-  const mailTo = (userId: string, d: (p: PlanPerson, email: string) => Omit<OutboxDraft, "channel" | "recipientUserId" | "address" | "status" | "lastError"> | null): boolean => {
+  // Never to the actor. A person with a Teams chat gets a teams row (no address) when Teams works, otherwise a
+  // mail row, which needs an address. Returns false when no row was written.
+  const mailTo = (userId: string, d: (p: PlanPerson, email: string | null) => Omit<OutboxDraft, "channel" | "recipientUserId" | "address" | "status" | "lastError"> | null): boolean => {
     const p = person(userId);
-    if (!p?.email || (ev.actorUserId && ev.actorUserId === userId)) return false;
+    if (!p || (ev.actorUserId && ev.actorUserId === userId)) return false;
+    const viaTeams = !!ctx.teamsOn && !!p.teams;
+    if (!viaTeams && !p.email) return false;
     const rest = d(p, p.email);
     if (!rest) return false;
-    push({ ...rest, recipientUserId: userId, address: p.email }, "mail", userId);
+    push({ ...rest, recipientUserId: userId, address: viaTeams ? null : p.email }, viaTeams ? "teams" : "mail", userId);
     return true;
   };
 
@@ -71,10 +80,11 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     let first = true;
     for (const userId of usersOfSeat(seatId)) {
       mailTo(userId, (p, email) => {
+        // composeNoticeMail only needs someone to send to; a Teams row has no address.
         const n: RaisedNotice = {
           eventId: ev.id, slug: "", day: state.day,
           case: { id: kase.id, title: kase.title, body: kase.body, from: kase.from, routeId: kase.routeId, dueDay: kase.dueDay },
-          route: { id: kase.route?.id ?? null, label: kase.route?.type ?? null, ownerName: p.name || null, ownerEmail: email, deputyName: kase.route?.deputy ?? null },
+          route: { id: kase.route?.id ?? null, label: kase.route?.type ?? null, ownerName: p.name || null, ownerEmail: email ?? p.id, deputyName: kase.route?.deputy ?? null },
           links: { inbox: `${baseUrl}/leader`, case: caseLink(kase.id) },
         };
         const mail = composeNoticeMail(n, p.locale);
