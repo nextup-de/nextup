@@ -95,6 +95,10 @@ it sits on real hardware. Expect 50 virtual users (about 25 requests per second)
   `readFileSync` for module loading (`loadRuntimeChunk`, `unstable_preloadEntries`), which looks like the PC's virus scanner slowing every file
   read, not render cost, so it says nothing about the page itself and was not used to change code. A health check on an unloaded server answers
   in 5-10 ms. No product change was made; no measurement here can be trusted to within the factor of five the budget needs. Status: open.
+- **What the page is made of (TST-Z1, 2026-11-04):** inbox of a leader at 200 people, 78 KB: 21 KB markup, 55 KB in 31 flight scripts, of which the
+  company seed and `initialLog` (the viewer's events) are the bulk. Cutting the log in half would save about 25 KB per response, a few percent of
+  a 47 ms request whose cost is spread over the React render, about ten queries and the socket writes; it cannot give the factor of five the
+  budget needs at 100 requests/s, so it was not done. More cores can. Status: open.
 - **Not done here (TST-L1):** no product performance fix (TST-L1 scope). Candidates for a fix task: cache `loadSeats` and
   `loadKnowledge` per company for a few seconds (they are read twice per case request and once per log load), run the
   layout's reads in parallel, and run more than one Node process behind the proxy.
