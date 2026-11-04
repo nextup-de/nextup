@@ -1,4 +1,4 @@
-// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document, OutboxMessage, WebhookSubscription, NotifyPreference, NotifyCursor, TeamsConversation. Changed only by: CON, NTF, TMS. Every migration is its own folder under prisma/migrations.
+// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document, OutboxMessage, WebhookSubscription, NotifyPreference, NotifyCursor, TeamsConversation, AiCall. Changed only by: CON, NTF, TMS, AIB. Every migration is its own folder under prisma/migrations.
 
 // Which integrations are on for this company. docs/INTEGRATIONS.md: flipped only by an event, so
 // the change is a fact with an actor, not a silent edit.
@@ -224,4 +224,21 @@ model TeamsConversation {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, userId])
+}
+
+// One call of the brain to the company's model (plan AIB D9): what it cost, never what was said. No
+// user id, no case id, no text (PILOT/HD5), so it is a company's table and not in a person's export.
+model AiCall {
+  id        String   @id @default(cuid())
+  companyId String
+  purpose   String // routing | coach | plan | checkin
+  model     String
+  tokensIn  Int
+  tokensOut Int
+  latencyMs Int
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
 }

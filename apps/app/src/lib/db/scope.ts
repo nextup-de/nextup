@@ -39,6 +39,8 @@ export const TENANT_MODELS = new Set([
   "Integration",
   // A person's Teams chat with the bot - TMS D5
   "TeamsConversation",
+  // What the brain's calls cost, no text and no person - plan AIB D9
+  "AiCall",
 ]);
 
 /** Operations that must narrow by company through `where`. */
