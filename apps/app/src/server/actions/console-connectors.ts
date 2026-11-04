@@ -9,6 +9,7 @@ import { adminBase } from "@/features/admin/nav";
 import { auditChanges } from "@/features/audit";
 import { readJiraForm, settingsFromForm } from "@/features/admin/jira-admin";
 import { vaultKey } from "@/features/connectors/vault";
+import { cleanBrainModel } from "@/components/admin/connectors/views";
 import { AI_SYSTEM, DEFAULT_REGION, type AiSettings } from "@/features/ai/settings";
 import { normalizeSiteUrl, parseJiraSettings } from "@/features/integrations/jira/settings";
 import type { JiraAccount, JiraCheck, JiraIssueType } from "@/features/integrations/jira/types";
@@ -201,6 +202,7 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
     model: text(r.model, 120),
     endpoint,
     deployment: text(r.deployment, 120) || null,
+    brainModel: cleanBrainModel(r.brainModel),
   };
   const key = text(r.key, 500);
   if (key && !vaultKey()) return { ok: false, code: "no-vault" };
@@ -209,7 +211,7 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
   const by = await who();
   const beforeRow = await getIntegration(d.c.companyId, AI_SYSTEM);
   const beforeSettings = beforeRow && typeof beforeRow.settings === "object" && beforeRow.settings !== null ? (beforeRow.settings as Record<string, unknown>) : null;
-  const savedSettings = { choice: picked, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment };
+  const savedSettings = { choice: picked, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment, brainModel: settings.brainModel };
   const hadKey = beforeRow?.hasSecret ? "sealed" : null;
   const changes = auditChanges(
     beforeRow ? { ...beforeSettings, key: hadKey } : null,
