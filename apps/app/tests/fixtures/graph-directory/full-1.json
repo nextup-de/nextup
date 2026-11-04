@@ -21,7 +21,7 @@
       "jobTitle": "Developer",
       "employeeId": null,
       "accountEnabled": true,
-      "manager": { "@odata.type": "#microsoft.graph.user", "id": "a0000000-0000-4000-8000-000000000001" }
+      "manager@delta": [{ "@odata.type": "#microsoft.graph.user", "id": "a0000000-0000-4000-8000-000000000001" }]
     },
     {
       "id": "a0000000-0000-4000-8000-000000000003",

@@ -32,7 +32,7 @@ export async function saveAiSettings(companyId: string, settings: AiSettings, ke
   await saveIntegration({
     companyId,
     system: AI_SYSTEM,
-    settings: { choice, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment },
+    settings: { choice, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment, brainModel: settings.brainModel ?? null },
     ...(secretSealed !== undefined ? { secretSealed } : {}),
     updatedBy: by,
   }, client);

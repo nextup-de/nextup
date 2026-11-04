@@ -11,6 +11,8 @@ export const DirectoryEntry = z.object({
   department: z.string().nullable(),
   jobTitle: z.string().nullable(),
   managerExternalId: z.string().nullable(),
+  /** This page says nothing about the manager: keep the stored one, whatever managerExternalId holds. */
+  managerUnchanged: z.boolean().optional(),
   groupExternalIds: z.array(z.string()),
   /** The personnel number (HD14). For matching only: never shown, never logged, never sent to the AI. */
   employeeId: z.string().nullable().optional(),

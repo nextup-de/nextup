@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { graphDirectory } from "@/server/directory/graph";
 
 const TENANT = "11111111-2222-4333-8444-555555555555";
@@ -47,9 +47,9 @@ describe("DIR Graph directory", () => {
     const u = new URL(s.calls[1].url);
     expect(u.origin + u.pathname).toBe("https://graph.microsoft.com/v1.0/users/delta");
     expect(u.searchParams.get("$select")).toBe(
-      "id,displayName,mail,userPrincipalName,department,jobTitle,employeeId,accountEnabled",
+      "id,displayName,mail,userPrincipalName,department,jobTitle,employeeId,accountEnabled,manager",
     );
-    expect(u.searchParams.get("$expand")).toBe("manager($select=id)");
+    expect(u.searchParams.has("$expand")).toBe(false);
     expect(new Headers(s.calls[1].init?.headers).get("authorization")).toBe("Bearer fixture-access-token-not-a-real-token");
     expect(p1.nextCursor).toBe(NEXT);
     expect(src.deltaLink()).toBeNull();
@@ -112,5 +112,69 @@ describe("DIR Graph directory", () => {
       .delta({ companyId: "c", cursor: null })
       .catch((e: Error) => e);
     expect((err as Error).message).toBe("Graph token request failed: 403 Authorization_RequestDenied");
+  });
+
+  /** Answers every directory request from `answer`; the token comes from the fixture. */
+  function answering(answer: (url: string) => Response): { fetch: typeof fetch; urls: string[] } {
+    const urls: string[] = [];
+    const f = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/oauth2/v2.0/token")) return new Response(JSON.stringify(load("token.json")), { status: 200 });
+      urls.push(url);
+      return answer(url);
+    }) as typeof fetch;
+    return { fetch: f, urls };
+  }
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+  const person = (o: Record<string, unknown>) => ({ id: "b1", displayName: "Pat", mail: "pat@x.example", ...o });
+  const onePage = (u: Record<string, unknown>) => json({ value: [u], "@odata.deltaLink": DELTA1 });
+  const read = (u: Record<string, unknown>) =>
+    graphDirectory({ tenantId: TENANT, app: APP, fetch: answering(() => onePage(u)).fetch }).delta({ companyId: "c", cursor: DELTA1 });
+
+  it("reads the manager from manager@delta, and a removed manager as none", async () => {
+    const set = await read(person({ "manager@delta": [{ "@odata.type": "#microsoft.graph.user", id: "m1" }] }));
+    expect(set.entries[0].managerExternalId).toBe("m1");
+    expect(set.entries[0].managerUnchanged).toBeUndefined();
+
+    const removed = await read(person({ "manager@delta": [{ "@odata.type": "#microsoft.graph.user", id: "m1", "@removed": { reason: "deleted" } }] }));
+    expect(removed.entries[0].managerExternalId).toBeNull();
+    expect(removed.entries[0].managerUnchanged).toBeUndefined();
+
+    const moved = await read(person({ "manager@delta": [{ id: "m1", "@removed": { reason: "deleted" } }, { id: "m2" }] }));
+    expect(moved.entries[0].managerExternalId).toBe("m2");
+  });
+
+  it("says the manager is unchanged when manager@delta is absent, never that there is none", async () => {
+    const p = await read(person({ department: "Engineering" }));
+    expect(p.entries[0]).toMatchObject({ managerExternalId: null, managerUnchanged: true });
+  });
+
+  it.each([
+    ["410 Gone", () => json({ error: { code: "Gone" } }, 410)],
+    ["an expired token", () => json({ error: { code: "syncStateNotFound", message: "secret detail" } }, 400)],
+  ])("restarts from a full sync on %s, also in the middle of a round", async (_name, refuse) => {
+    const s = answering((url) => (url === NEXT ? refuse() : onePage(person({}))));
+    const src = graphDirectory({ tenantId: TENANT, app: APP, fetch: s.fetch });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const p = await src.delta({ companyId: "c", cursor: NEXT });
+    expect(s.urls).toHaveLength(2);
+    expect(s.urls[1]).toContain("$select=");
+    expect(s.urls[1]).not.toContain("token");
+    expect(p.entries).toHaveLength(1);
+    expect(src.deltaLink()).toBe(DELTA1);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it("does not loop when the full sync itself is refused, and does not restart on another error", async () => {
+    const gone = answering(() => json({ error: { code: "Gone" } }, 410));
+    const first = await graphDirectory({ tenantId: TENANT, app: APP, fetch: gone.fetch }).delta({ companyId: "c", cursor: null }).catch((e: Error) => e);
+    expect((first as Error).message).toBe("Graph directory request failed: 410 Gone");
+    expect(gone.urls).toHaveLength(1);
+
+    const busy = answering(() => json({ error: { code: "TooManyRequests" } }, 429));
+    const other = await graphDirectory({ tenantId: TENANT, app: APP, fetch: busy.fetch }).delta({ companyId: "c", cursor: DELTA1 }).catch((e: Error) => e);
+    expect((other as Error).message).toBe("Graph directory request failed: 429 TooManyRequests");
+    expect(busy.urls).toEqual([DELTA1]);
   });
 });
