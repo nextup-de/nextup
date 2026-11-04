@@ -812,7 +812,7 @@ Namespace `dashboard`.
 - **Phase:** TRUTH-A1 of the [defensible-offer Codex plan](../2026-11-02_defensible-offer-codex.md) removes the
   "most relied-on contributors" ranking and every per-person number now, ahead of MET (spec
   [11](11-defensible-offer-pages.md#removed-contributor-ranking-and-person-pages)); MET (numbers from the log instead
-  of the seed; no Bauplan yet), LOOP (projects switch). HD5.
+  of the seed), LOOP (projects switch). HD5.
 - **Data:** with projects on, `ProjectMovement` (`measuredProjects`, `movement`, `projectWaits`, and three counts from
   the seed's `S.ledger`: `projectsEscalated`, `measuresOwed`, `unmeasured`); then `funnel(N, t)` (demo numbers only),
   `D.outcomes`, `stalled(D)`, `seed.metrics.answered`, `contributors(D, handle)`.
@@ -833,7 +833,7 @@ Namespace `dashboard`.
   - The funnel, "Did anyone answer them" and "Stuck the longest" either come from the log (MET) or go; they are seed
     numbers today. The answered numbers duplicate the Dashboard's tiles (04). 10-Q4.
   - The ledger's three seed counts come from the projects (`p.escalated`, open checks past due, done without a
-    number) *(MET Bauplan)*.
+    number) *(MET D18)*.
   - Fewer, calmer numbers: one stat tile style; red only for a late count.
 - Design after the pages in the navigation, once 10-Q4 is answered.
 
@@ -959,7 +959,7 @@ Namespace `report`.
 | 10-Q1 | Ideas (`/ideas`) is not in the navigation and shows the seed's ideas model, not the cases raised on `/raise`; a real company sees it empty. Does it stay, merge into another page (Feed or the Projects hub's Ideas column, which show the real cases), or go? | Keep the route out of the navigation; design it only after the pages in the navigation. MET or LOOP decides whether it reads cases. |
 | 10-Q2 | Problems (`/problems`): same question. Its people counts, trend and discovery round are seed data. | Keep the route out of the navigation; design it after the pages in the navigation; the discovery box shows on demo companies only. |
 | 10-Q3 | Collaboration (`/collaboration`) is person-centric (who is "waiting here") and draws its org chart from names. Stays, merges, or goes? | Keep the route out of the navigation; design it after the pages in the navigation, role-centric: waiting at a role, the Org tree read-only, a plain directory. |
-| 10-Q4 | Progress (`/progress`) overlaps the Dashboard (04) and carries MET's removed ranking. Stays, merges, or goes? | Keep the route out of the navigation; design it after the pages in the navigation with only Movement since baseline and the wait ledger after the yes; the rest goes in MET. |
+| 10-Q4 | Progress (`/progress`) overlaps the Dashboard (04) and carries MET's removed ranking. Stays, merges, or goes? | Answered as MET D18: `/progress` keeps project movement and the wait ledger after the yes; funnels, rankings and stale counts go. Projects off shows the empty state. |
 | 10-Q5 | My reports (`/reports`) is reached only from the profile menu and the bug dialog. Stays, merges into Profile, or goes? | Keep the route and those two links; design it after the pages in the navigation. |
 | 10-Q6 | The project page's team list shows "{n} open" per person (open steps they own). Remove it as a per-person count (HD5, MET)? | Remove; the board's person filter shows a person's steps on demand. |
 | 10-Q7 | Project day counts (step age, cycle time, running, due) count calendar days. Move them to working days like cases (CLK/D9)? | Dates on the page now; counts stay calendar days, written out ("4 days"), until LOOP or CLK moves projects onto the working-day clock. |
