@@ -250,6 +250,8 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     const manager = await signIn(browser, PLANT);
     await manager.goto(`/${SLUG}/settings/rules`);
     const projects = manager.getByTestId("settings-rules-step-projects");
+    // Streaming leaves a hidden staging copy next to the switch for a moment; wait for the one real switch.
+    await expect(projects).toHaveCount(1);
     await expect(projects).toBeChecked();
     await projects.uncheck();
     await manager.getByTestId("settings-rules-save").click();

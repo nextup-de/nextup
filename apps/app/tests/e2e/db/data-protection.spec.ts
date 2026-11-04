@@ -80,6 +80,8 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
     // visible: for a moment after a load the streamed page holds a hidden second copy of the row.
     const row = () => page.locator(`[data-testid="settings-member-${lena.id}"]`).filter({ visible: true });
     const menu = () => row().locator(`[data-testid="settings-member-menu-${lena.id}"]`);
+    // Streaming leaves a hidden staging copy next to the row for a moment; wait for the one real row.
+    await expect(row()).toHaveCount(1, { timeout: 15_000 });
     await expect(row()).toBeVisible({ timeout: 15_000 });
     await menu().click();
     await row().getByRole("button", { name: /^Deactivate/ }).click();

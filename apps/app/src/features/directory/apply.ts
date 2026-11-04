@@ -91,6 +91,15 @@ export function planDirectoryDelta(input: {
   const byEmail = new Map<string, PlanUser>();
   if (source === "graph") for (const u of users) if (!u.entraOid) byEmail.set(lower(u.email), u);
   if (source === "scim") for (const u of users) if (!u.scimSubject) byEmail.set(lower(u.email), u);
+  // SuccessFactors (D8): an active member without a personnel number, once, by the same email.
+  const sfxByEmail = new Map<string, PlanUser[]>();
+  if (source === "successfactors") {
+    for (const u of users) {
+      if (!u.active || u.employeeId) continue;
+      const k = lower(u.email);
+      sfxByEmail.set(k, [...(sfxByEmail.get(k) ?? []), u]);
+    }
+  }
 
   const removed = new Set(page.removedExternalIds);
   const plan: DirectoryPlan = { creates: [], updates: [], managers: [], leavers: [], skipped: [], links: [], seen: [] };
@@ -115,6 +124,10 @@ export function planDirectoryDelta(input: {
     if (!u && (source === "graph" || source === "scim") && e.email) {
       const byMail = byEmail.get(lower(e.email));
       if (byMail && !claimed.has(byMail.id)) { u = byMail; linking = source === "scim"; }
+    }
+    if (!u && source === "successfactors" && e.email && e.active && !removed.has(e.externalId)) {
+      const cands = sfxByEmail.get(lower(e.email)) ?? [];
+      if (cands.length === 1 && !claimed.has(cands[0].id)) u = cands[0];
     }
     if (u && claimed.has(u.id)) { plan.skipped.push({ externalId: e.externalId, reason: "duplicate" }); continue; }
     const leaving = !e.active || removed.has(e.externalId);
@@ -162,8 +175,9 @@ export function planDirectoryDelta(input: {
     if (dept !== u.dept) fields.dept = dept;
     const line = e.jobTitle ?? "";
     if (u.line !== undefined && u.line !== line) fields.line = line;
-    // A user found by email is bound to the source key now; so is a SuccessFactors one never seen by id.
+    // A user found by email is bound to the source key now; a SuccessFactors one gets its personnel number.
     if (source === "graph" && u.entraOid !== e.externalId) fields.entraOid = e.externalId;
+    if (source === "successfactors" && u.employeeId !== e.externalId) fields.employeeId = e.externalId;
     if ((source === "graph" || source === "scim") && u.employeeId !== (e.employeeId ?? null)) {
       const id = employeeIdFree(e.employeeId);
       if (id) fields.employeeId = id;
