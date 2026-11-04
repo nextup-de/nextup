@@ -93,4 +93,22 @@ test.describe.serial("ITC acceptance", () => {
     await support.context().close();
     await admin.context().close();
   });
+
+  // The story above only opens three sections; a section that throws on its own query needs opening
+  // to be seen. The error screen comes after the loading boxes, so wait for a heading before judging.
+  test("every console section opens, and Access lists the company's people", async ({ browser }) => {
+    const admin = await consoleAsAdmin(browser);
+    for (const { path } of CONSOLE_SECTIONS) {
+      await admin.goto(path);
+      const heading = admin.getByRole("heading", { level: 1 }).first();
+      await expect(heading, path).toBeVisible();
+      await expect(heading, path).not.toHaveText("This page could not be shown");
+    }
+
+    await admin.goto("/admin/people");
+    for (const person of [ADMIN, MANAGER]) {
+      await expect(admin.getByRole("checkbox", { name: `Stack admin: ${person.name}` })).toBeVisible();
+    }
+    await admin.context().close();
+  });
 });
