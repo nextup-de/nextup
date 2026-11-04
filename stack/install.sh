@@ -40,12 +40,15 @@
 #   --behind-proxy PORT  a server whose 80/443 already belong to a reverse proxy (nginx) that
 #                      terminates TLS: Caddy serves plain http on 127.0.0.1:PORT, mailpit on
 #                      PORT+1, n8n on PORT+2. Point the proxy at PORT (stack/nginx/site.sh).
+#   --app-replicas N   run N app processes behind Caddy (a new instance only; 1-8). Default: one per CPU core,
+#                      at most 4. One Node process renders about 20 pages a second (TST-FL1-1). Edit
+#                      APP_REPLICAS in the instance's .env and run ctl.sh up -d to change it later.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-slug="" origin="" stage="demo" landing="" n8n=false brain=false brain_cloud=false build=false dir="" proxy_port="" images="" name="" ops_url="" entra_id=""
+slug="" origin="" stage="demo" landing="" n8n=false brain=false brain_cloud=false build=false dir="" proxy_port="" images="" app_replicas="" name="" ops_url="" entra_id=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="$2"; shift 2 ;;
@@ -62,6 +65,7 @@ while [ $# -gt 0 ]; do
     --dir) dir="$2"; shift 2 ;;
     --behind-proxy) proxy_port="$2"; shift 2 ;;
     --images) images="$2"; shift 2 ;;
+    --app-replicas) app_replicas="$2"; shift 2 ;;
     -h|--help) sed -n '2,42p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
@@ -164,6 +168,13 @@ else
     site="$host"; http_port="80"; https_port="${port:-443}"; secure=true
   fi
 
+  if [ -z "$app_replicas" ]; then
+    app_replicas="$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
+    [[ "$app_replicas" =~ ^[0-9]+$ ]] || app_replicas=1
+    [ "$app_replicas" -le 4 ] || app_replicas=4
+  fi
+  [[ "$app_replicas" =~ ^[1-8]$ ]] || die "--app-replicas takes a number from 1 to 8"
+
   profiles=""; seed=false; demo_login=false; smtp=""
   if [ "$stage" = demo ]; then
     # Every demo stack is seeded: acme as acme, any other slug with the same demo people and
@@ -185,6 +196,7 @@ SITE_ADDRESS=$site
 HTTP_PORT=$http_port
 HTTPS_PORT=$https_port
 COOKIE_SECURE=$secure
+APP_REPLICAS=$app_replicas
 TRUSTED_PROXIES=$trusted
 MAILPIT_PORT=$mail_port
 N8N_PORT=$n8n_port

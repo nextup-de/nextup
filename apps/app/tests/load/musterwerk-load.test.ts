@@ -3,6 +3,7 @@
 // pages, errors < 1 %, no response over 2 MB. The figures are printed and written to test-results/load/.
 // TST_KEEP=1 keeps the company afterwards (the k6 run of record needs it).
 import { mkdirSync, writeFileSync } from "node:fs";
+import { availableParallelism } from "node:os";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Role } from "@/config/roles";
 import { getDb } from "@/lib/db/client";
@@ -15,8 +16,12 @@ const ACCOUNTS = Math.max(150, Number(process.env.TST_ACCOUNTS) || 2000);
 const BASE = process.env.TST_BASE_URL ?? `http://127.0.0.1:${Number(process.env.TST_PORT) || 3103}`;
 // Working-day concurrency: one account in forty is on a page at any moment. TST_VUS overrides it.
 const VUS = Number(process.env.TST_VUS) || Math.max(5, Math.ceil(ACCOUNTS / 40));
-// Everyone at once (a shift change, a mail to all). Saturates one Node process: TST-FL1-1 in docs/test-phase/findings/TST-L1.md.
+// Everyone at once (a shift change, a mail to all). Used to saturate one Node process: TST-FL1-1 in docs/test-phase/findings/TST-L1.md.
 const STRESS_VUS = Number(process.env.TST_STRESS_VUS) || ACCOUNTS;
+// Everyone at once asks for about 100 requests per second, which takes about five free cores of page rendering plus the driver, the proxy and
+// Postgres. A machine with fewer than eight logical cores (a 4 vCPU CI runner) cannot host that and skips it, as the k6 run on a named machine
+// does not run in CI either; TST_STRESS=1 runs it anyway, and a TST_BASE_URL run is always asked (the server is elsewhere).
+const STRESS_HOST = availableParallelism() >= 8 || process.env.TST_STRESS === "1" || Boolean(process.env.TST_BASE_URL);
 const DURATION = Number(process.env.TST_DURATION_S) || 60;
 
 describe("TST acceptance: 2,000 accounts within budget", () => {
@@ -62,9 +67,9 @@ describe("TST acceptance: 2,000 accounts within budget", () => {
     await within(VUS, "figures", DURATION);
   });
 
-  // D7: a page over 3 s at p95 is a high finding. Kept as it.fails until the app holds the load; then this turns red
-  // and becomes a normal it.
-  it.fails("TST-FL1-1: every account on a page at once stays within the budget", async () => {
+  // TST-FL1-1 (fixed): the pages used to queue beyond about 15 requests per second. Company reads are kept for a few seconds
+  // (COMPANY_CACHE_MS) and the app runs as several processes; see docs/test-phase/findings/TST-L1.md.
+  it.skipIf(!STRESS_HOST)("TST-FL1-1: every account on a page at once stays within the budget", async () => {
     await within(STRESS_VUS, "figures-stress", 30);
   });
 });
