@@ -41,17 +41,20 @@ export async function saveDirectoryCursor(companyId: string, cursor: string | nu
   await getDb().directoryRun.updateMany({ where: where(companyId), data: { cursor } });
 }
 
-/** A good round (no `error`) sets lastOkAt, clears lastError and stores its counts; a failed one only says why. */
+/**
+ * A good round (no `error`) sets lastOkAt, stores its counts and clears lastError, or puts its `note` there
+ * when it left someone behind; a failed one only says why.
+ */
 export async function recordDirectoryRun(
   companyId: string,
-  r: { counts?: DirectoryCounts; error?: string },
+  r: { counts?: DirectoryCounts; error?: string; note?: string | null },
   now = new Date(),
   client: Tx | Db = getDb(),
 ): Promise<void> {
   const data: Prisma.DirectoryRunUpdateManyMutationInput =
     r.error !== undefined
       ? { lastError: r.error.slice(0, MAX_ERROR) || "failed" }
-      : { lastOkAt: now, lastError: null, ...(r.counts ?? {}) };
+      : { lastOkAt: now, lastError: r.note ?? null, ...(r.counts ?? {}) };
   await client.directoryRun.updateMany({ where: where(companyId), data });
 }
 

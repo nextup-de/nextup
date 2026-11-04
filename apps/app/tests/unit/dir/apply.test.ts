@@ -62,6 +62,25 @@ describe("DIR plan a directory page", () => {
     expect(plan.managers).toEqual([{ who: { create: 0 }, manager: { create: 1 } }]);
   });
 
+  it("leaves the stored manager alone when the entry says it is unchanged", () => {
+    const users = [user({ id: "u1", entraOid: "o1", managerId: "u2" }), user({ id: "u2", entraOid: "o2" })];
+    const plan = run(page([entry({ externalId: "o1", managerExternalId: null, managerUnchanged: true })]), users);
+    expect(plan.managers).toEqual([]);
+    expect(plan.unknownManagers).toBe(0);
+  });
+
+  it("still clears the manager when the entry says there is none", () => {
+    const users = [user({ id: "u1", entraOid: "o1", managerId: "u2" }), user({ id: "u2", entraOid: "o2" })];
+    expect(run(page([entry({ externalId: "o1", managerExternalId: null })]), users).managers).toEqual([{ who: { userId: "u1" }, manager: null }]);
+  });
+
+  it("keeps the stored manager and counts it when the named manager is not known yet", () => {
+    const users = [user({ id: "u1", entraOid: "o1", managerId: "u2" }), user({ id: "u2", entraOid: "o2" })];
+    const plan = run(page([entry({ externalId: "o1", managerExternalId: "o-later" })]), users);
+    expect(plan.managers).toEqual([]);
+    expect(plan.unknownManagers).toBe(1);
+  });
+
   it("marks active false and removed ids as leavers", () => {
     const users = [user({ id: "u1", entraOid: "o1" }), user({ id: "u2", entraOid: "o2" }), user({ id: "u3", entraOid: "o3", active: false })];
     const plan = run(page([entry({ externalId: "o1", active: false })], ["o2", "o3"]), users);

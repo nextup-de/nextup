@@ -14,7 +14,8 @@ import { totpContext, verifyTotp } from "@/features/auth/totp";
 import { open, vaultKey } from "@/features/connectors/vault";
 import { getT } from "@/i18n/server";
 import { ADMIN_COOKIE, ADMIN_TTL_SECONDS, verifyAdmin } from "@/features/auth/cookie";
-import { issueAdminSession } from "@/server/admin-session";
+import { adminSessionOpen, issueAdminSession } from "@/server/admin-session";
+import { consoleWriteRefusal } from "@/server/console-write";
 import type { CompanyRow } from "@/features/admin/rows";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { companyUrl, dashboardUrl, landingUrl, singleCompany } from "@/features/tenant/urls";
@@ -63,7 +64,8 @@ export async function isAdmin(): Promise<boolean> {
   if (!raw || !verifyAdmin(raw, secret)) return false;
   const revokedAt = adminRevocation.__nextupAdminRevokedAt;
   const iat = issuedAt(raw);
-  return revokedAt === undefined || (iat !== null && iat >= revokedAt);
+  if (revokedAt !== undefined && (iat === null || iat < revokedAt)) return false;
+  return adminSessionOpen();
 }
 
 export type AdminLoginState = { error?: string };
@@ -211,6 +213,8 @@ export type LoginCodeState = { slug?: string; name?: string; code?: string; erro
 export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData): Promise<LoginCodeState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
   if (!hasDatabase()) return { error: "No database is configured." };
+  const refused = await consoleWriteRefusal();
+  if (refused) return { error: refused };
 
   const slug = String(form.get("slug") ?? "");
   if (foreignCompany(slug)) return { error: "No such company." };
@@ -244,6 +248,8 @@ export type StackAdminState = { saved?: boolean; error?: string };
 export async function setStackAdminAction(_prev: StackAdminState, form: FormData): Promise<StackAdminState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
   if (!hasDatabase()) return { error: "No database is configured." };
+  const refused = await consoleWriteRefusal();
+  if (refused) return { error: refused };
 
   const slug = String(form.get("slug") ?? "");
   if (foreignCompany(slug)) return { error: "No such company." };
@@ -268,6 +274,8 @@ export type TenantState = { slug?: string; saved?: boolean; error?: string };
 export async function setEntraTenantAction(_prev: TenantState, form: FormData): Promise<TenantState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
   if (!hasDatabase()) return { error: "No database is configured." };
+  const refused = await consoleWriteRefusal();
+  if (refused) return { error: refused };
 
   const slug = String(form.get("slug") ?? "");
   if (foreignCompany(slug)) return { error: "No such company." };
