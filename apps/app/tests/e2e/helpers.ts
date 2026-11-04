@@ -64,16 +64,27 @@ export async function answerCoach(page: Page, text: string) {
 }
 
 /**
+ * The raise page's sidebar starts closed: opened first for what lives there (Publish idea, Analysis, the drafts, ...).
+ * Open already: nothing to do. Right after a reload the first click can land before the page is hydrated, so it tries again.
+ */
+export async function showSidebar(page: Page) {
+  const show = page.getByRole("button", { name: "Show sidebar" });
+  await expect(async () => {
+    if (await show.isVisible()) await show.click();
+    await expect(show).toBeHidden({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+}
+
+/**
  * "Publish idea", the last look before it goes out (its preview window) and "Choose a desk",
  * then "Where should it go?": pick the desk whose title or holders name `to`, or find it under "Choose another desk".
  * Waits until the case is raised (the chat offers "Open the case").
- * On a phone the sidebar is a drawer, opened first. An already open preview goes straight on.
+ * An already open preview goes straight on.
  */
 export async function publishTo(page: Page, to: string) {
   const look = page.getByRole("dialog", { name: "Last look before it goes out" });
   if (!(await look.isVisible())) {
-    const show = page.getByRole("button", { name: "Show sidebar" });
-    if (await show.isVisible()) await show.click();
+    await showSidebar(page);
     await page.getByRole("button", { name: "Publish idea" }).click();
   }
   await look.getByRole("button", { name: /Choose a desk/ }).click({ timeout: 30_000 });
