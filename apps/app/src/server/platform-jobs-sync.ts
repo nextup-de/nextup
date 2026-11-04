@@ -105,6 +105,16 @@ async function run(job: PlatformJob): Promise<PlatformJobResult> {
       return { id: job.id, ok: true };
     }
     case "delete_company": {
+      // A company rolled back from a pilot is still a former pilot: its history says so, and it stays.
+      const target = await getDb().company.findUnique({ where: { slug: job.slug }, select: { id: true } });
+      if (target) {
+        const moves = await getDb().auditEvent.findMany({ where: { companyId: target.id, action: "audit.company.stage" }, select: { changes: true } });
+        const wasPilot = moves.some((m) => {
+          const after = (m.changes as { stage?: { after?: unknown } } | null)?.stage?.after;
+          return after === "pilot" || after === "live";
+        });
+        if (wasPilot) return fail(job.id, "live-locked");
+      }
       const { count } = await getDb().company.deleteMany({ where: { slug: job.slug, stage: { in: ["demo", "sandbox"] } } });
       return count > 0 ? { id: job.id, ok: true } : fail(job.id, "missing");
     }
