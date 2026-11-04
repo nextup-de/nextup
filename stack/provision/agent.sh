@@ -134,7 +134,6 @@ done < "$work/job"
 log="$work/log"; : > "$log"
 secrets_json=""
 logins_json=""
-secrets_empty=0   # a real stack reports "secrets":{} and "logins":[] explicitly
 
 # Codes and tokens never reach agent.log or admin in clear (same filter as deploy.sh, plus tokens).
 scrub() { sed -E -e 's/(code:[[:space:]]*)[^[:space:]]+/\1[hidden]/g' \
@@ -145,10 +144,8 @@ report() {  # status (done|failed|needs_nginx)
   local status="$1" body="$work/report.json"
   {
     printf '{"status":"%s","log_b64":"%s"' "$status" "$(scrub < "$log" | tail -c 60000 | base64 | tr -d '\n')"
-    if [ -n "$secrets_json" ]; then printf ',"secrets":{%s}' "$secrets_json"
-    elif [ "$secrets_empty" = 1 ]; then printf ',"secrets":{}'; fi
-    if [ -n "$logins_json" ]; then printf ',"logins":[%s]' "$logins_json"
-    elif [ "$secrets_empty" = 1 ]; then printf ',"logins":[]'; fi
+    [ -n "$secrets_json" ] && printf ',"secrets":{%s}' "$secrets_json"
+    [ -n "$logins_json" ] && printf ',"logins":[%s]' "$logins_json"
     printf '}\n'
   } > "$body"
   local rc
@@ -239,24 +236,29 @@ port_taken_elsewhere() {  # the port belongs to another slug in ports.md or a st
   return 1
 }
 
-# Which of the stack's secrets go to admin's vault (D3, no standing secrets). Only a demo stack sends
-# anything. A real stack (sandbox, pilot, live - anything not demo, unknown included) sends nothing:
-# access is a window the customer opens with stack/break-glass.sh.
+# Which of the stack's secrets go to admin's vault. Break-glass stays with the customer (D7): only a
+# demo stack sends ADMIN_ACCESS_CODE. Sandbox, live, real - and anything unknown - keep it back.
 secrets_to_send() {  # <stage>
   case "$1" in
     demo) echo "ADMIN_ACCESS_CODE POSTGRES_PASSWORD AUTH_SECRET N8N_ENCRYPTION_KEY RESTIC_PASSWORD" ;;
-    *) ;;
+    *) echo "POSTGRES_PASSWORD AUTH_SECRET N8N_ENCRYPTION_KEY RESTIC_PASSWORD" ;;
   esac
+}
+
+write_break_glass() {  # <stack folder> <code>: written once, mode 600, never overwritten; the value is never logged
+  local f="$1/BREAK_GLASS.txt"
+  [ -e "$f" ] && return 0
+  [ -n "$2" ] || return 0
+  ( umask 077; printf 'NextUp admin break-glass code. Keep it safe: NextUp holds no copy.\n%s\n' "$2" > "$f" ) || return 1
+  chmod 600 "$f"
+  if [ "$(id -u)" = 0 ]; then chown root "$f" 2>/dev/null || true; fi
+  echo "break-glass written" >> "${log:-/dev/null}"
 }
 
 collect_secrets() {  # the stack's passwords (+ demo login codes) for admin's vault
   local k v parts=() st
   st="$(box_stage)"; [ -n "$st" ] || st="$stage"
-  if [ "$st" != demo ]; then
-    secrets_empty=1
-    [ -e "$dir/BREAK_GLASS.txt" ] && echo "break-glass file no longer used; open a window with stack/break-glass.sh" >> "$log"
-    return 0
-  fi
+  [ "$st" = demo ] || write_break_glass "$dir" "$(getenv ADMIN_ACCESS_CODE)" || echo "break-glass NOT written" >> "$log"
   for k in $(secrets_to_send "$st"); do
     v="$(getenv "$k")"
     [[ "$v" =~ ^[A-Za-z0-9_+/=.-]{1,200}$ ]] && parts+=("\"$k\":\"$v\"")
