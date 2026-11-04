@@ -9,13 +9,11 @@ export const NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", roles: ["manager"] },
   { label: "Inbox", href: "/leader", roles: ["leader", "manager"] },
   { label: "My cases", href: "/team", roles: ["member", "leader", "manager"] },
-  { label: "Problems", href: "/problems", roles: ["member", "leader", "manager"] },
-  { label: "Ideas", href: "/ideas", roles: ["member", "leader", "manager"] },
   { label: "Feed", href: "/feed", roles: ["member", "leader", "manager"] },
   { label: "Decisions", href: "/decisions", roles: ["member", "leader", "manager"] },
-  { label: "Collaboration", href: "/collaboration", roles: ["member", "leader", "manager"] },
+  { label: "Collaboration", href: "/projects/collaboration", roles: ["member", "leader", "manager"] },
   { label: "Projects", href: "/projects", roles: ["member", "leader", "manager"], flag: "projects" },
-  { label: "Progress", href: "/progress", roles: ["member", "leader", "manager"] },
+  { label: "Progress", href: "/projects/progress", roles: ["member", "leader", "manager"] },
   { label: "Settings", href: "/settings", roles: ["manager"] },
 ];
 

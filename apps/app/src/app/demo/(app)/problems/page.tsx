@@ -1,7 +1,7 @@
-// Linked from the overview and the inbox, on the static demo's data.
-import { getT } from "@/i18n/server";
-import ProblemsPage from "@/app/[company]/(app)/problems/page";
-export async function generateMetadata() {
-  return { title: (await getT())("demo.titleProblems") };
+// The old problems list: the Feed shows every idea and problem.
+import { redirect } from "next/navigation";
+import { staticDemoPrefix } from "@/features/tenant/urls";
+export default async function DemoProblemsPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
+  const { id } = await searchParams;
+  redirect(staticDemoPrefix() + "/feed" + (id ? "?id=" + encodeURIComponent(id) : ""));
 }
-export default ProblemsPage;

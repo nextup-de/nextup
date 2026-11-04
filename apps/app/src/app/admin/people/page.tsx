@@ -25,7 +25,7 @@ export default async function PeoplePage() {
   const slug = ctx.company.slug;
   const people = ctx.live
     ? await getDb().user.findMany({
-        where: { company: { slug }, active: true },
+        where: { companyId: ctx.company.id, active: true },
         orderBy: { name: "asc" },
         select: { id: true, name: true, isStackAdmin: true, totpEnabledAt: true },
       })
