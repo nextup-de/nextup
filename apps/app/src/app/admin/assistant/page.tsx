@@ -6,6 +6,7 @@ import { isAdmin } from "@/server/actions/admin";
 import { consoleCompany } from "@/server/console-guard";
 import { assistantView } from "@/server/admin-insight";
 import { adminBase } from "@/features/admin/nav";
+import { companyPrefix } from "@/features/tenant/urls";
 import { AssistantAdmin } from "@/components/admin/AssistantAdmin";
 import { getT } from "@/i18n/server";
 import styles from "../admin.module.css";
@@ -18,7 +19,7 @@ export default async function AssistantPage() {
   const assistant = await assistantView(guard.companyId);
 
   return assistant ? (
-    <AssistantAdmin view={assistant} t={t} />
+    <AssistantAdmin view={assistant} t={t} privacyHref={`${companyPrefix(guard.slug)}/settings/privacy`} />
   ) : (
     <section className={styles.card} data-testid="console-assistant">
       <h1>{t("adminPrivacy.assistantTitle")}</h1>
