@@ -48,7 +48,7 @@ form .due { white-space: normal; }
 /* ── one project ──
    Few boxes: the head and the sections below the board sit on the page itself, divided by hairlines;
    only the summary band, the board's columns and the side rail are surfaces. */
-.projectPage { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.projectPage { display: flex; flex-direction: column; gap: 16px; width: 100%; min-width: 0; max-width: max(80vw, 1120px); margin: 0 auto; } /* as wide as .hub and the strip of tabs */
 .hero { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 .hero .back { align-self: flex-start; margin-bottom: 0; }
 .heroTop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
