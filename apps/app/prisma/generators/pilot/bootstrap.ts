@@ -257,7 +257,7 @@ export async function bootstrapPilot(opts: BootstrapOptions): Promise<BootstrapR
       try {
         const tenant = await db.company.findUnique({ where: { id: companyId }, select: { entraTenantId: true } });
         const source = await sourceFor({ id: companyId, slug: config.slug, entraTenantId: tenant?.entraTenantId ?? null, source: kind }, now);
-        if (!source) steps.push(`directory ${config.directory} is not configured here: set it in the console, then run again`);
+        if (!source || "missing" in source) steps.push(`directory ${config.directory} is not configured here: set it in the console, then run again`);
         else {
           await setDirectoryOn(companyId, true, kind, null);
           await runDirectoryCompany({ id: companyId, slug: config.slug }, async () => source, now);
