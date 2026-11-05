@@ -1,19 +1,23 @@
 "use client";
-// One step of the setup process, showing the step's own editor. Props in; every save goes through the
-// editor's own action, so there is no write path here (ADM D14).
+// One step of the setup process: title, progress, the step's card (Paper: "Pilot 02 · Routing and
+// setup") and Back / Next. Props in; every save goes through the card's form and its action, the same
+// action the matching Settings page uses, so there is no write path here (ADM D14).
+import { useState } from "react";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import type { CompanyForm as CompanyValues } from "@/features/settings/company-forms";
 import type { Knowledge } from "@/features/knowledge";
 import type { SetupFormStep } from "@/server/actions/settings/setup";
 import type { MemberRow, SeatLabel } from "@/server/actions/members";
-import { CompanyForm } from "@/components/settings/CompanyForm";
-import { MembersView } from "@/components/settings/MembersView";
-import { OrgEditor, type MemberOption } from "@/components/settings/OrgEditor";
-import { RoutingEditor } from "@/components/settings/RoutingEditor";
+import type { MemberOption } from "@/components/settings/OrgEditor";
 import { SettingsHead } from "@/components/settings/SettingsParts";
+import { CompanyStep } from "./CompanyStep";
+import { MembersStep } from "./MembersStep";
+import { RolesStep } from "./RolesStep";
+import { RoutesStep } from "./RoutesStep";
 import { SetupFooter } from "./SetupFooter";
 import { SetupProgress } from "./SetupProgress";
+import { UnitsStep } from "./UnitsStep";
 import s from "./Setup.module.css";
 
 export type SetupData = {
@@ -42,42 +46,46 @@ type Props = {
   demo?: boolean;
 };
 
-const HINT: Record<SetupFormStep, MessageKey> = {
-  company: "settingsSetup.hintCompany", units: "settingsSetup.hintUnits", roles: "settingsSetup.hintRoles",
-  routes: "settingsSetup.hintRoutes", members: "settingsSetup.hintMembers",
-};
 const NEEDS: Record<SetupFormStep, MessageKey> = {
   company: "settingsSetup.needsCompany", units: "settingsSetup.needsUnits", roles: "settingsSetup.needsRoles",
   routes: "settingsSetup.needsRoutes", members: "settingsSetup.needsMembers",
 };
+const THING: Record<SetupFormStep, MessageKey> = {
+  company: "settingsSetup.thingCompany", units: "settingsSetup.thingUnit", roles: "settingsSetup.thingRole",
+  routes: "settingsSetup.thingRoute", members: "settingsSetup.thingMember",
+};
 
 export function SetupStepView({ base, slug, steps, step, data, ready, resume, demo }: Props) {
   const t = useT();
+  const [dirty, setDirty] = useState(false);
   const i = steps.indexOf(step);
   const prev = steps[i - 1];
   const next = steps[i + 1];
   const company = data.company.name || t("settingsSetup.title");
+  const k = data.knowledge;
   const added: Record<SetupFormStep, string> = {
     company: "",
-    units: t("settingsSetup.hasUnits", { n: String(data.knowledge.units.length) }),
-    roles: t("settingsSetup.hasRoles", { n: String(data.knowledge.roles.length) }),
-    routes: t("settingsSetup.hasRoutes", { n: String(data.knowledge.rules.length) }),
+    units: t("settingsSetup.hasUnits", { n: String(k.units.length) }),
+    roles: t("settingsSetup.hasRoles", { n: String(k.roles.length) }),
+    routes: t("settingsSetup.hasRoutes", { n: String(k.rules.length) }),
     members: t("settingsSetup.hasMembers", { n: String(data.members.filter((m) => m.active).length) }),
   };
+  const form = { slug, formId: "setup-form", onDirty: setDirty, demo };
   return (
     <section className={s.page} data-testid={`setup-step-${step}`}>
       <SettingsHead title={t("settingsSetup.titleOf", { company })} lede={t("settingsSetup.lede")} />
       <SetupProgress base={base} steps={steps} step={step} resume={resume} />
-      <p className={s.hint}>{t(HINT[step])}</p>
-      {step === "company" ? <CompanyForm slug={slug} values={data.company} address={data.address} demo={demo} /> : null}
-      {step === "units" || step === "roles" ? <OrgEditor slug={slug} knowledge={data.knowledge} members={data.options} showHead={false} demo={demo} /> : null}
-      {step === "routes" ? <RoutingEditor slug={slug} knowledge={data.knowledge} showHead={false} demo={demo} /> : null}
-      {step === "members" ? <MembersView slug={slug} me={data.me} members={data.members} freeSeats={data.freeSeats} showHead={false} demo={demo} /> : null}
+      {step === "company" ? <CompanyStep {...form} values={data.company} /> : null}
+      {step === "units" ? <UnitsStep {...form} knowledge={k} /> : null}
+      {step === "roles" ? <RolesStep {...form} knowledge={k} members={data.options} /> : null}
+      {step === "routes" ? <RoutesStep {...form} knowledge={k} /> : null}
+      {step === "members" ? <MembersStep {...form} me={data.me} members={data.members} knowledge={k} options={data.options} /> : null}
       <SetupFooter
         backHref={prev ? `${base}/${prev}` : null}
         nextHref={`${base}/${next ?? "done"}`}
         ready={ready}
         hint={ready ? added[step] : t(NEEDS[step])}
+        unsaved={dirty ? { thing: t(THING[step]), formId: form.formId } : null}
       />
     </section>
   );

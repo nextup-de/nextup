@@ -17,9 +17,9 @@ export async function setupMetadata() {
 export async function SetupStepPage({ params, searchParams, step }: SetupPageProps & { step: SetupStep }) {
   const { company } = await params;
   const { resume } = await searchParams;
-  const { data, demo, ready } = await loadSetupPage(company, step);
+  const { data, demo, ready, facts } = await loadSetupPage(company, step);
   const prefix = companyPrefix(company);
-  if (step === "done") return <SetupDone prefix={prefix} data={data} />;
+  if (step === "done") return <SetupDone prefix={prefix} data={data} facts={facts} />;
   return (
     <SetupStepView base={`${prefix}/setup`} slug={company} steps={SETUP_FORM_STEPS} step={step} data={data} ready={ready} resume={resume !== undefined} demo={demo} />
   );

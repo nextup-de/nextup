@@ -4,6 +4,12 @@ import { notFound, redirect } from "next/navigation";
 import type { SetupData } from "@/components/setup/SetupStepView";
 import { SAMPLE_COMPANY, SAMPLE_FREE_SEATS, SAMPLE_KNOWLEDGE, SAMPLE_ME, SAMPLE_MEMBER_ROWS, SAMPLE_MEMBERS } from "@/features/settings/demo";
 import { setupStep, type SetupStep } from "@/features/settings/sections";
+import { setupDoneFacts, type SetupDoneFacts } from "@/features/settings/setup-done";
+import { DEFAULT_CALENDAR } from "@/features/clock";
+import { DEFAULT_RULES } from "@/features/knowledge/rules";
+import { loadCalendar } from "@/lib/db/calendar";
+import { consoleHrefFor } from "@/lib/db/people";
+import { loadCompanyRules } from "@/lib/db/rules";
 import { appHost, companyPrefix } from "@/features/tenant/urls";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { loadKnowledge } from "@/lib/db/knowledge";
@@ -34,6 +40,8 @@ export type SetupPageData = {
   demo: boolean;
   /** This step is done, so Next may go on. */
   ready: boolean;
+  /** What the finish page shows about rules, calendar and connectors. */
+  facts: SetupDoneFacts;
 };
 
 /** One step's data. A step past the first unfinished one sends the visitor back to that one. */
@@ -43,6 +51,7 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
     return {
       demo: true,
       ready: true,
+      facts: setupDoneFacts(DEFAULT_RULES, DEFAULT_CALENDAR, null),
       data: {
         company: SAMPLE_COMPANY, address, knowledge: SAMPLE_KNOWLEDGE,
         options: SAMPLE_MEMBERS, me: SAMPLE_ME, members: SAMPLE_MEMBER_ROWS, freeSeats: SAMPLE_FREE_SEATS,
@@ -56,7 +65,7 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
   if (ORDER.indexOf(step) > ORDER.indexOf(first)) redirect(setupHref(slug, first));
 
   const db = getDb();
-  const [row, profile, knowledge, options, page] = await Promise.all([
+  const [row, profile, knowledge, options, page, rules, calendar, consoleHref] = await Promise.all([
     db.company.findUnique({ where: { id: admin.companyId }, select: { name: true, mark: true } }),
     db.companyProfile.findUnique({
       where: { companyId: admin.companyId },
@@ -65,11 +74,15 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
     loadKnowledge(admin.companyId),
     db.user.findMany({ where: { companyId: admin.companyId, active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     loadMembers(slug),
+    loadCompanyRules(admin.companyId),
+    loadCalendar(admin.companyId),
+    consoleHrefFor(admin.companyId, admin.userId),
   ]);
   if (!row || page.status !== "ok") notFound();
   return {
     demo: false,
     ready: ORDER.indexOf(step) < ORDER.indexOf(first),
+    facts: setupDoneFacts(rules, calendar, consoleHref),
     data: {
       company: {
         name: row.name,

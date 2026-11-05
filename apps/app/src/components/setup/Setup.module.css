@@ -31,8 +31,7 @@
   background: var(--nh-brand); color: var(--nh-on-brand); font-family: var(--nh-mono); font-size: var(--nh-fs-xs);
 }
 
-/* The editors of Org and Members need more room than a form until the step cards land. */
-.column { position: relative; width: 100%; max-width: var(--nh-max); margin: 0 auto; padding: 40px 16px 64px; }
+.column { position: relative; width: 100%; max-width: 752px; margin: 0 auto; padding: 40px 16px 64px; }
 .page { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .hint { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); }
 
@@ -63,9 +62,73 @@
 .back:focus-visible, .next:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .nextHint { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-mute); text-align: right; }
 
-.page .counts { flex-direction: row; flex-wrap: wrap; gap: 8px 22px; padding: 14px 16px; font-size: var(--nh-fs-md); color: var(--nh-mute); }
-.page .counts strong { color: var(--nh-ink); }
-.page .checks { padding: 0; gap: 0; }
+.card { display: flex; flex-direction: column; gap: 16px; padding: var(--nh-pad-card); border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: 0 6px 20px rgb(40 60 100 / 6%); }
+.cardHead { display: flex; flex-direction: column; gap: 6px; }
+.cardTitle { margin: 0; font-size: var(--nh-fs-lg); line-height: 22px; font-weight: 600; color: var(--nh-ink); }
+.cardText { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); }
+.subLabel { margin: 0; font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; color: var(--nh-mute); }
+.mono { font-family: var(--nh-mono); }
+
+.added { display: flex; flex-direction: column; margin: 0; padding: 6px 16px; border-radius: 8px; background: var(--nh-fill); list-style: none; }
+.addedRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 36px; padding-block: 6px; font-size: var(--nh-fs-sm); line-height: 16px; }
+.addedName { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.addedName strong { font-weight: 500; color: var(--nh-ink); }
+.addedName strong[data-top] { font-weight: 600; }
+.addedSub { font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 400; color: var(--nh-mute); }
+.addedSide { display: flex; flex-shrink: 0; align-items: center; gap: 16px; color: var(--nh-mute); }
+.person { display: inline-flex; align-items: center; gap: 8px; }
+.badge { display: inline-flex; align-items: center; flex-shrink: 0; height: 20px; padding-inline: 8px; border-radius: 6px; background: var(--nh-warn-tint); color: var(--nh-warn); font-size: var(--nh-fs-xs); line-height: 16px; font-weight: 600; }
+.textBtn { flex-shrink: 0; align-self: flex-start; padding: 0; border: 0; background: none; font: inherit; font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; color: var(--nh-brand-ink); cursor: pointer; }
+.addedSide .textBtn { align-self: center; }
+.textBtn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.textBtn:disabled { opacity: 0.5; cursor: default; }
+.textBtn:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+
+.form { display: flex; flex-direction: column; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fieldSide { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: start; gap: 16px; }
+.fieldSide > .fieldLabel { padding-top: 9px; }
+.fieldLabel { font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; color: var(--nh-ink); }
+.fieldBody { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fieldHelp { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-mute); }
+.fieldBody .monoInput { width: 120px; font-family: var(--nh-mono); text-transform: uppercase; }
+.fieldBody .shortInput { width: 120px; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.refusal { margin: 0; font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-danger); }
+.formFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--nh-line-soft); }
+.formButtons { display: flex; flex-shrink: 0; gap: 8px; }
+.secondary, .submit {
+  display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; height: 36px; padding-inline: 14px; border: 0; border-radius: 8px;
+  font: inherit; font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; cursor: pointer;
+}
+.secondary, .submit { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.secondary:hover, .submit:hover { background: var(--nh-brand-line); }
+.secondary:disabled, .submit:disabled { opacity: 0.5; cursor: default; }
+.secondary:focus-visible, .submit:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+
+.segment { display: inline-flex; gap: 2px; width: fit-content; padding: 3px; border-radius: 8px; background: var(--nh-fill); }
+.segment label { display: flex; cursor: pointer; }
+.segment input { position: absolute; opacity: 0; pointer-events: none; }
+.segment span { display: flex; align-items: center; height: 30px; padding-inline: 14px; border-radius: 6px; font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; color: var(--nh-mute); }
+.segment input:checked + span { background: var(--nh-card); color: var(--nh-ink); box-shadow: 0 1px 3px rgb(40 60 100 / 12%); }
+.segment input:focus-visible + span { outline: 2px solid var(--nh-brand); outline-offset: 1px; }
+
+.seats { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.seat { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.seatName { font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; color: var(--nh-ink); }
+.seatX { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: none; font: inherit; color: var(--nh-mute); cursor: pointer; }
+.seatX:hover { background: var(--nh-fill); }
+.seatX:disabled { opacity: 0.5; cursor: default; }
+.vacantSeat { display: grid; grid-template-columns: minmax(0, 1fr) 220px; align-items: center; gap: 16px; }
+.note { display: flex; gap: 10px; margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--nh-fill); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink-2); }
+.noteMark { color: var(--nh-brand); }
+.code { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px; border-radius: 8px; background: var(--nh-brand-tint); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink); }
+
+.counts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0; padding: 14px 16px; border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: 0 6px 20px rgb(40 60 100 / 6%); font-size: var(--nh-fs-md); color: var(--nh-mute); }
+.counts strong { color: var(--nh-ink); }
+.checks { display: flex; flex-direction: column; border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: 0 6px 20px rgb(40 60 100 / 6%); overflow: hidden; }
+.isDefault { color: var(--nh-mute); }
+.doneFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 4px; }
 .check { display: grid; grid-template-columns: 126px minmax(0, 1fr) 20px; gap: 12px; align-items: center; padding: 16px 20px; border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-md); color: var(--nh-ink-2); text-decoration: none; }
 .check:first-child { border-top: 0; }
 .check strong { color: var(--nh-ink); }
@@ -83,6 +146,14 @@
   .footer > :last-child { flex: 2; }
   .forward { align-items: stretch; }
   .nextHint { display: none; }
+  .card { padding: var(--nh-pad-card-sm); }
+  .fieldSide { display: flex; flex-direction: column; gap: 6px; }
+  .fieldSide > .fieldLabel { padding-top: 0; }
+  .pair { grid-template-columns: minmax(0, 1fr); }
+  .formFoot { flex-direction: column; align-items: stretch; }
+  .formFoot .secondary, .formFoot .submit, .formButtons > * { flex: 1; }
+  .vacantSeat { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .doneFoot { flex-direction: column-reverse; align-items: stretch; }
   .check { grid-template-columns: minmax(0, 1fr) 20px; }
   .check > span:nth-child(2) { grid-column: 1; grid-row: 2; }
 }

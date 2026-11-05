@@ -1,16 +1,19 @@
 "use client";
-// The finish page of the setup process: what now exists, and the way into the app.
+// The finish page of the setup process (Paper: "setup-step-done"): what now exists, what is worth
+// checking with its current value, and the way into the app.
 import Link from "next/link";
-import { useT } from "@/i18n/client";
+import { useLocale, useT } from "@/i18n/client";
+import type { MessageKey } from "@/i18n";
 import { orgSummary } from "@/features/settings/org-view";
+import { workdayRange, type SetupDoneFacts } from "@/features/settings/setup-done";
 import { SettingsHead } from "@/components/settings/SettingsParts";
-import settings from "@/components/settings/settings.module.css";
 import type { SetupData } from "./SetupStepView";
 import s from "./Setup.module.css";
 
 /** `prefix` is the company's address part, so links work in every tenant mode. */
-export function SetupDone({ prefix, data }: { prefix: string; data: SetupData }) {
+export function SetupDone({ prefix, data, facts }: { prefix: string; data: SetupData; facts: SetupDoneFacts }) {
   const t = useT();
+  const locale = useLocale();
   const sum = orgSummary(data.knowledge);
   const counts: [number, string][] = [
     [sum.units, t("settingsSetup.countUnits")],
@@ -19,20 +22,33 @@ export function SetupDone({ prefix, data }: { prefix: string; data: SetupData })
     [data.knowledge.rules.length, t("settingsSetup.countRoutes")],
     [data.members.filter((m) => m.active).length, t("settingsSetup.countMembers")],
   ];
+  const standard = (isDefault: boolean) => (isDefault ? <span className={s.isDefault}> {t("settingsSetup.isDefault")}</span> : null);
+  const connectors = <><strong>{t("settingsSetup.checkConnectors")}</strong><span>{t("settingsSetup.checkConnectorsLine")}</span></>;
   return (
     <section className={s.page} data-testid="setup-step-done">
       <SettingsHead title={data.company.name ? t("settingsSetup.doneTitleOf", { company: data.company.name }) : t("settingsSetup.doneTitle")} />
-      <p className={`${settings.card} ${s.counts}`}>
+      <p className={s.counts}>
         {counts.map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
       </p>
       <p className={s.hint}>{t("settingsSetup.doneNow")}</p>
-      <h2 className={settings.subLabel}>{t("settingsSetup.worthChecking")}</h2>
-      <nav className={`${settings.card} ${s.checks}`}>
-        <Link href={`${prefix}/settings/rules`} className={s.check}><strong>{t("settingsCompany.navRules")}</strong><span>{t("settingsSetup.checkRules")}</span><span aria-hidden="true">→</span></Link>
-        <Link href={`${prefix}/settings/calendar`} className={s.check}><strong>{t("settingsCompany.navCalendar")}</strong><span>{t("settingsSetup.checkCalendar")}</span><span aria-hidden="true">→</span></Link>
+      <h2 className={s.subLabel}>{t("settingsSetup.worthChecking")}</h2>
+      <nav className={s.checks}>
+        <Link href={`${prefix}/settings/rules`} className={s.check}>
+          <strong>{t("settingsCompany.navRules")}</strong>
+          <span>{t("settingsSetup.checkRulesLine", { n: String(facts.promiseDays) })}{standard(facts.rulesDefault)}</span>
+          <span aria-hidden="true">→</span>
+        </Link>
+        <Link href={`${prefix}/settings/calendar`} className={s.check}>
+          <strong>{t("settingsCompany.navCalendar")}</strong>
+          <span>{t(`settingsCompany.region${facts.region}` as MessageKey)}, {workdayRange(facts.workdays, locale)}{standard(facts.calendarDefault)}</span>
+          <span aria-hidden="true">→</span>
+        </Link>
+        {facts.consoleHref
+          ? <Link href={`${facts.consoleHref}/connectors`} className={s.check}>{connectors}<span aria-hidden="true">→</span></Link>
+          : <div className={s.check}>{connectors}<span /></div>}
       </nav>
-      <div className={s.footer}>
-        <span />
+      <div className={s.doneFoot}>
+        <Link className={s.back} href={`${prefix}/raise`} data-testid="setup-test-case">{t("settingsSetup.raiseTestCase")}</Link>
         <Link className={s.next} href={`${prefix}/leader`} data-testid="setup-to-inbox">{t("settingsSetup.toInbox")}</Link>
       </div>
     </section>

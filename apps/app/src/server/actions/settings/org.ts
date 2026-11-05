@@ -98,6 +98,24 @@ export async function addRoleAction(slug: string, role: RoleInput): Promise<OrgR
     (_k, id) => ({ action: "audit.settings.org", target: { kind: "role", id: id ?? "" }, changes: auditChanges(null, roleFields(role)) }),
   );
 }
+/** A new role and its seats, as the setup step adds them. Each seat goes through addSeatAction and its rules. */
+export async function addRoleWithSeatsAction(slug: string, role: RoleInput, seats: readonly { name: string; userId: string | null }[]): Promise<OrgResult> {
+  let roleId: string | undefined;
+  const made = await apply(
+    slug, { kind: "addRole", role },
+    async (c, by, tx) => {
+      roleId = await write.addRole(c, by, role, tx);
+      return { id: roleId };
+    },
+    (_k, id) => ({ action: "audit.settings.org", target: { kind: "role", id: id ?? "" }, changes: auditChanges(null, roleFields(role)) }),
+  );
+  if (!made.ok || roleId === undefined) return made;
+  for (const seat of seats) {
+    const added = await addSeatAction(slug, roleId, seat.name, seat.userId);
+    if (!added.ok) return added;
+  }
+  return { ok: true };
+}
 export async function updateRoleAction(slug: string, id: string, role: RoleInput): Promise<OrgResult> {
   return apply(
     slug, { kind: "updateRole", id, role },

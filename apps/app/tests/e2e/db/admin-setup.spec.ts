@@ -84,56 +84,49 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await manager.goto(`/${SLUG}/setup/routes`);
     await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup/company`));
 
-    // Step company.
-    await vis(manager, "settings-company-name").fill(`ADM Test Works ${STAMP}`);
+    // Step company: only the name is required.
+    await vis(manager, "setup-company-name").fill(`ADM Test Works ${STAMP}`);
     await expect(vis(manager, "setup-next")).toBeDisabled();
-    await vis(manager, "settings-company-save").click(); // only the name is required
+    await vis(manager, "setup-company-save").click();
     await next(manager);
 
-    // Step units.
+    // Step units: Next stays closed until the first unit is there.
     await expect(vis(manager, "setup-step-units")).toBeVisible();
-    // Units and roles are added in drawers; a role's seats are linked in its drawer.
-    await vis(manager, "settings-org-open-unit").click();
-    await vis(manager, "settings-org-unit-key").fill("ENG");
-    await vis(manager, "settings-org-unit-name").fill("Engineering");
-    await vis(manager, "settings-org-unit-add").click();
-    await expect(vis(manager, "settings-org-unit-ENG")).toBeVisible();
+    await expect(vis(manager, "setup-next")).toBeDisabled();
+    await vis(manager, "setup-unit-name").fill("Engineering");
+    await vis(manager, "setup-unit-key").fill("ENG");
+    await vis(manager, "setup-unit-add").click();
+    await expect(vis(manager, "setup-unit-ENG")).toBeVisible();
     await next(manager);
 
-    // Step roles: a role with two seats; the manager holds one, the other waits for the leader.
+    // Step roles: a role with two seats. The manager holds one, the other stays vacant for the leader.
     await expect(vis(manager, "setup-step-roles")).toBeVisible();
-    await vis(manager, "settings-org-open-role").click();
-    await vis(manager, "settings-org-role-title").fill("Engineering lead");
-    await vis(manager, "settings-org-role-add").click();
-    const card = manager.locator('li[data-testid^="settings-org-role-"]');
-    await expect(card).toHaveCount(1);
-    await vis(card, "settings-org-role-edit").click();
-    const role = vis(manager, "settings-org-role-drawer");
-    await vis(role, "settings-org-seat-name").fill("Lead seat");
-    await vis(role, "settings-org-seat-add").click();
-    await expect(role.getByText("Lead seat")).toBeVisible();
-    await vis(role, "settings-org-seat-name").fill("Deputy seat");
-    await vis(role, "settings-org-seat-add").click();
-    await expect(role.getByText("Deputy seat")).toBeVisible();
-    await role.locator('li[data-testid^="settings-org-seat-"]').filter({ hasText: "Deputy seat" })
-      .getByTestId("settings-org-seat-link").selectOption({ label: MANAGER.name });
-    await manager.goto(`/${SLUG}/setup/routes`); // the role's drawer is still open, over Next
+    await vis(manager, "setup-role-title").fill("Engineering lead");
+    await vis(manager, "setup-seat-add").click();
+    await manager.getByTestId("setup-seat-link").nth(1).selectOption({ label: MANAGER.name });
+    await vis(manager, "setup-role-add").click();
+    await expect(manager.locator('li[data-testid^="setup-role-"]')).toHaveCount(1);
+    await next(manager);
 
     // Step routes.
     await expect(vis(manager, "setup-step-routes")).toBeVisible();
-    // The route form is a drawer; its key comes from the request type.
-    await vis(manager, "settings-routing-open-new").click();
-    const route = vis(manager, "settings-routing-new");
-    await vis(route, "settings-routing-type").fill("Test rig time");
-    await vis(route, "settings-routing-keywords").fill("rig, test");
-    await vis(route, "settings-routing-owner").selectOption({ index: 1 });
-    await vis(route, "settings-routing-add").click();
+    await vis(manager, "setup-route-type").fill("Test rig time");
+    await vis(manager, "settings-routing-keywords").fill("rig, test");
+    await vis(manager, "setup-route-owner").selectOption({ index: 1 });
+    await vis(manager, "setup-route-add").click();
+    await expect(manager.locator('li[data-testid^="setup-route-"]')).toHaveCount(1);
+    // Next never saves a half-filled form: it asks first, and Discard moves on.
+    await vis(manager, "setup-route-type").fill("Half a route");
     await next(manager);
+    await vis(manager, "setup-unsaved-discard").click();
 
-    // Step members: invite the leader and the member.
+    // Step members: invite the leader. One more person than the admin and Setup is done.
     await expect(vis(manager, "setup-step-members")).toBeVisible();
-    await invite(manager, LEADER, "leader");
-    // One more person than the admin and Setup is done.
+    await vis(manager, "setup-member-name").fill(LEADER.name);
+    await vis(manager, "setup-member-email").fill(LEADER.email);
+    await vis(manager, "setup-member-role").selectOption("leader");
+    await vis(manager, "setup-member-add").click();
+    await expect(manager.locator(`li[data-testid^="setup-member-"]`).filter({ hasText: LEADER.name })).toBeVisible();
     await next(manager);
     await expect(vis(manager, "setup-step-done")).toBeVisible();
 
@@ -153,7 +146,7 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
 
     // The member raises a case about the rig; the leader sees it in the inbox.
     const member = await signIn(browser, MEMBER.name);
-    await publishIdea(member, title, "Lead seat"); // the route owner is offered by its seat name
+    await publishIdea(member, title, "Engineering lead"); // the route owner is offered by its seat name
     await member.context().close();
 
     const leader = await signIn(browser, LEADER.name);
