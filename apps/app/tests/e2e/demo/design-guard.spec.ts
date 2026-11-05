@@ -37,7 +37,9 @@ test("changing one token changes the blue of the nav, the tabs and a button", as
   expect(thumb).toBe(SWAP);
   const underline = await page.getByTestId("projects-tabs").locator('[aria-current="page"]').evaluate((el) => getComputedStyle(el).borderBottomColor);
   expect(underline).toBe(SWAP);
-  const on = await page.locator('[class*="segment"] [aria-pressed="true"], [role="tablist"] [aria-selected="true"], button[data-active="true"]').first().evaluate((el) => getComputedStyle(el).backgroundColor).catch(() => null);
+  // A filled selected control, when the page has one (the ideas column's Open | Archive tabs became a menu).
+  const selected = page.locator('[class*="segment"] [aria-pressed="true"], [role="tablist"] [aria-selected="true"], button[data-active="true"]').first();
+  const on = (await selected.count()) > 0 ? await selected.evaluate((el) => getComputedStyle(el).backgroundColor) : null;
   if (on !== null && on !== "rgba(0, 0, 0, 0)" && on !== "rgb(255, 255, 255)") expect(on).toBe(SWAP);
 });
 

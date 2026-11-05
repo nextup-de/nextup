@@ -18,8 +18,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { useT } from "@/i18n/client";
 import type { MessageKey, T } from "@/i18n";
 import { visibleTo } from "@/components/dashboard/derive";
-import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
-import { inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
+import { archiveLabel, inStatus, LIST_STATUSES, type ListStatus } from "@/features/cases/discussion";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { dashboardRow, OVERVIEW_STEPS, overviewSteps, raisedWith, type DashRow, type OverviewStatus } from "@/features/cases/rows";
@@ -105,11 +104,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const { seed, D, log, role, ready, href, tenant, act, me, f, motion, flag } = ctx;
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const router = useRouter();
-  const [view, setView] = useState<ListView>("open");
-  const [archived, setArchived] = useState<ArchiveFilter>("all");
+  const [status, setStatus] = useState<ListStatus>("open");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("move");
-  const [menu, setMenu] = useState<"filter" | "sort" | null>(null);
+  const [menu, setMenu] = useState<"status" | "filter" | "sort" | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   // The open case: from /cases/<id> (linkCases) or from ?id=, which keeps it in the address after that.
   const urlId = useUrlId();
@@ -155,10 +153,13 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
 
   const P = seed.promiseDays;
   const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, t };
-  // With projects on, the table shows what is still moving; what was decided sits in the Archive.
+  // With projects on, the table shows what is still moving; what was decided is one pick away in the
+  // status menu: became a project, or declined.
   const split = flag("projects");
   const everyRow = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, P, me, log));
-  const rows = split ? everyRow.filter((r) => inView(r.archive, view, archived) || r.id === sel) : everyRow;
+  const rows = split ? everyRow.filter((r) => inStatus(r.archive, status) || r.id === sel) : everyRow;
+  const statusLabelOf = (k: ListStatus) => (k === "open" ? t("dashboard.archiveOpen") : archiveLabel(k, ctx.locale));
+  const statusCount = (k: ListStatus) => everyRow.filter((r) => inStatus(r.archive, k)).length;
   const filters: Filter[] = role === "member" ? ["all", "move", "problem", "idea"] : ["all", "move", "problem", "idea", "mine"]; // every row is the employee's own
   // Your move: a question for you, or someone's case on your desk, waiting for your answer.
   const onMyDesk = (r: DashRow) => { const x = D.cases.find((k) => k.id === r.id); return !!x && onDeskOf(x, me); };
@@ -173,7 +174,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     if (sort === "move" && yourMove(a) !== yourMove(b)) return yourMove(a) ? -1 : 1;
     return b.openDays - a.openDays;
   });
-  const pageKey = [filter, sort, view, archived].join("|");
+  const pageKey = [filter, sort, status].join("|");
   const lastPage = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
   const page = Math.min(pg.key === pageKey ? pg.n : 1, lastPage);
   const pageRows = pageOf(shown, page, PAGE_SIZE);
@@ -262,12 +263,31 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       <div className={s.div7}>
         <div className={s.div8}>
           <div className={s.div9}>
-            {/* On the Projects page the column brings its own heading, with Open | Archive beside it. */}
+            {/* On the Projects page the column brings its own heading. */}
             {embedded ? title : <h1 className={s.overview}>{t("team.dashOverview")}</h1>}
-            {embedded && split && <ArchiveTabs quiet view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} />}
           </div>
           <div className={s.div10}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}
+            {/* One status menu, where Open | Archive and the archive's outcome chips used to be two rows of controls. */}
+            {split && (
+              <div className={s.div11}>
+                <button type="button" className={s.toggleFilter} onClick={() => setMenu(menu === "status" ? null : "status")} aria-expanded={menu === "status"} aria-haspopup="menu">
+                  {statusLabelOf(status)}<span className={s.count}>{statusCount(status)}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                {menu === "status" && (
+                  <div className={s.div12} data-first="true" role="menu" aria-label={t("dashboard.archiveOpenOrArchived")}>
+                    {LIST_STATUSES.map((k) => (
+                      <button key={k} type="button" role="menuitemradio" aria-checked={status === k} className={s.pick} data-on={status === k ? "true" : undefined} onClick={() => { setStatus(k); setMenu(null); }}>
+                        <span className={s.label}>{statusLabelOf(k)}</span>
+                        <span className={s.count}>{statusCount(k)}</span>
+                        <span className={s.check}>{status === k ? "✓" : ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className={s.div11}>
               <button type="button" className={s.toggleFilter} onClick={() => setMenu(menu === "filter" ? null : "filter")} aria-expanded={menu === "filter"} aria-haspopup="menu">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
@@ -303,7 +323,6 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             </div>
           </div>
         </div>
-        {split && !embedded && <div className={s.archiveBar}><ArchiveTabs view={view} filter={archived} outcomes={everyRow.map((r) => r.archive)} onView={setView} onFilter={setArchived} /></div>}
         <div className={s.div13} role="table" aria-label={t("team.dashTable")}>
           <div className={s.div14} role="row">
             <span role="columnheader">{t("team.dashColWhat")}</span><span role="columnheader">{t("team.dashColOpenSince")}</span><span role="columnheader">{t("team.dashColStage")}</span><span role="columnheader">{t("team.dashColDesk")}</span>

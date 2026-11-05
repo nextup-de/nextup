@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "@/features/cases/events";
 import {
-  archiveOf, checkinDraft, costEurOf, fastLane, headOf, inView, inviteSuggestions, invitedTo, roundState,
+  archiveOf, checkinDraft, costEurOf, fastLane, headOf, inStatus, inView, inviteSuggestions, invitedTo, LIST_STATUSES, roundState,
   scoreVersions, versionReader, weakDials, withDiscussion,
 } from "@/features/cases/discussion";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
@@ -151,6 +151,15 @@ describe("open lists and the archive", () => {
     expect(inView("project", "open")).toBe(false);
     expect(inView("project", "archive", "all")).toBe(true);
     expect(inView("project", "archive", "declined")).toBe(false);
+  });
+
+  it("the status menu shows one status at a time: open, became a project, or declined", () => {
+    expect(LIST_STATUSES).toEqual(["open", "project", "declined"]);
+    expect(inStatus(null, "open")).toBe(true);
+    expect(inStatus("project", "open")).toBe(false);
+    expect(inStatus("project", "project")).toBe(true);
+    expect(inStatus("declined", "project")).toBe(false);
+    expect(inStatus(null, "declined")).toBe(false);
   });
 });
 

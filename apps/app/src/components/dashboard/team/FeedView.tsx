@@ -14,8 +14,7 @@ import { canOpen, visibleTo } from "@/components/dashboard/derive";
 import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { deptTone } from "@/lib/dept-tone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
-import { ArchiveTabs } from "@/components/dashboard/shared/ArchiveTabs";
-import { archiveOf, inView, type ArchiveFilter, type ListView } from "@/features/cases/discussion";
+import { archiveOf, inView, type ListView } from "@/features/cases/discussion";
 import { FEED_SORT_KEY, feedCover, feedStage, inDept, inSite, inUnit, latestActivity, siteFilters, sortFeed, isMe as isBacker, supportLine, supportSummary, unitFilters, type Activity, type Backer, type FeedSort } from "@/features/cases/feed";
 import { MIN_GROUP } from "@/features/metrics/types";
 import type { ReducedCase } from "@/features/cases/reducer";
@@ -54,8 +53,8 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const { seed, tenant, D, log, ready, act, actor, me, f, motion, flag } = ctx; // actor is the label I post under: shown, never compared
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const [view, setView] = useState<ListView>("open");
-  const [archived, setArchived] = useState<ArchiveFilter>("all");
   const [dept, setDept] = useState("All");
+  const [moreDepts, setMoreDepts] = useState(false); // departments with nothing to show stay behind "More"
   const [site, setSite] = useState(ALL_SITES);
   const [unit, setUnit] = useState(ALL_UNITS);
   const [sort, setSort] = useState<FeedSort>("support");
@@ -93,15 +92,17 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   // With projects on, the feed shows what is still moving; what was decided sits in the Archive.
   const split = flag("projects");
   const everything = D.cases.filter((c) => visibleTo(ctx, c)).map(itemOf);
-  const visible = split ? everything.filter((x) => inView(archiveOf(x.c), view, archived)) : everything;
+  const visible = split ? everything.filter((x) => inView(archiveOf(x.c), view)) : everything;
+  const otherView: ListView = view === "open" ? "archive" : "open";
   const sites = siteFilters(seed), units = site === ALL_SITES ? [] : unitFilters(seed, site);
   const inSites = (x: Item, id: string) => id === ALL_SITES || inSite(seed, unitIdOf(x.c), id);
   const bySite = visible.filter((x) => inSites(x, site) && (unit === ALL_UNITS || inUnit(unitIdOf(x.c), unit)));
   const list = sortFeed(bySite.filter((x) => inDept(x.tags, dept)), sort);
   const siteName = sites.find((x) => x.id === site)?.name ?? t("team.feedAllSites");
   const unitName = units.find((x) => x.id === unit)?.name ?? t("feed.allUnits");
-  const chips = ["All", ...deptNames];
-
+  const deptCount = (d: string) => bySite.filter((x) => x.tags.includes(d)).length;
+  const emptyDepts = deptNames.filter((d) => deptCount(d) === 0 && d !== dept);
+  const chips = ["All", ...deptNames.filter((d) => moreDepts || !emptyDepts.includes(d))];
 
   const open = (id: string) => { setOpenId(id); top(); };
   const support = (x: Item) => { act.affect(x.c.id); };
@@ -165,8 +166,21 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   return (
     <div className={s.root} ref={rootRef}>
       <div className={s.div3}>
+        {/* One row: the department chips are the filter that shows; site, sort and the archive sit quietly on the right. */}
+        <h1 className="nh-sr">{t("team.feedTitle")}</h1>
         <div className={s.div4}>
-          <h1 className={s.feed}>{t("team.feedTitle")}</h1>
+          <div className={s.chips}>
+            {chips.map((d) => (
+              <button key={d} type="button" className={s.pick2} data-dept-tone={d === "All" ? undefined : deptTone(d)} data-on={dept === d ? "true" : undefined} aria-pressed={dept === d} onClick={() => setDept(d)}>
+                {d === "All" ? t("team.feedAll") : d}<span className={s.count2}>{d === "All" ? bySite.length : deptCount(d)}</span>
+              </button>
+            ))}
+            {emptyDepts.length > 0 && (
+              <button type="button" className={s.more} aria-expanded={moreDepts} onClick={() => setMoreDepts(!moreDepts)}>
+                {moreDepts ? t("feed.lessDepts") : t("feed.moreDepts")}
+              </button>
+            )}
+          </div>
           <div className={s.div5}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}
             <div className={s.div6}>
@@ -175,7 +189,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 {siteName}
               </button>
               {menu === "site" && (
-                <div className={s.div7} role="menu">
+                <div className={s.div7} data-first="true" role="menu">
                   {[{ id: ALL_SITES, name: t("team.feedAllSites") }, ...sites].map((x) => (
                     <button key={x.id} type="button" role="menuitemradio" aria-checked={site === x.id} className={s.pick} data-on={site === x.id ? "true" : undefined} onClick={() => { setSite(x.id); setUnit(ALL_UNITS); setMenu(null); }}>
                       <span className={s.label}>{x.name}</span>
@@ -220,17 +234,13 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 </div>
               )}
             </div>
+            {split && (
+              <button type="button" className={s.toggleArchive} onClick={() => { setView(otherView); setMenu(null); }}>
+                {view === "open" ? t("dashboard.archiveArchive") : t("feed.backToOpen")}
+                <span className={s.count}>{everything.filter((x) => inView(archiveOf(x.c), otherView)).length}</span>
+              </button>
+            )}
           </div>
-        </div>
-
-        {split && <ArchiveTabs view={view} filter={archived} outcomes={everything.map((x) => archiveOf(x.c))} onView={setView} onFilter={setArchived} />}
-
-        <div className={s.div8}>
-          {chips.map((d) => (
-            <button key={d} type="button" className={s.pick2} data-dept-tone={d === "All" ? undefined : deptTone(d)} data-on={dept === d ? "true" : undefined} aria-pressed={dept === d} onClick={() => setDept(d)}>
-              {d === "All" ? t("team.feedAll") : d}<span className={s.count2}>{d === "All" ? bySite.length : bySite.filter((x) => x.tags.includes(d)).length}</span>
-            </button>
-          ))}
         </div>
 
         <div className={s.div9}>

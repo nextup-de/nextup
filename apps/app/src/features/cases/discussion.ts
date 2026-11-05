@@ -266,3 +266,8 @@ export type ArchiveFilter = "all" | ArchiveOutcome;
 /** The open lists show live cases; the archive the rest, by outcome. */
 export const inView = (outcome: ArchiveOutcome | null, view: ListView, filter: ArchiveFilter = "all") =>
   view === "open" ? outcome === null : outcome !== null && (filter === "all" || filter === outcome);
+
+/** One status menu above a list: still open, or where it went. */
+export type ListStatus = "open" | ArchiveOutcome;
+export const LIST_STATUSES: readonly ListStatus[] = ["open", "project", "declined"];
+export const inStatus = (outcome: ArchiveOutcome | null, status: ListStatus) => (status === "open" ? outcome === null : outcome === status);
