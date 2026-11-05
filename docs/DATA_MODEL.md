@@ -20,7 +20,8 @@ Phase 2 target (`apps/app/prisma/schema/`: `Company` in `core.prisma`, the rest 
 | `CASES` | `Case` | `title, body, fromUserId, routeId, assigneeUserId, raisedAt, reason, upside` - status/assignee/clock are **derived** from events |
 | `store.js` log | `CaseEvent` | append-only: `caseId, actorUserId, type, payload, at` |
 | - | `IdeaDraft` / `IdeaTurn` | the idea studio (docs/IDEAS.md): a draft per author, its chat turns and score snapshot; private to the author, `caseId` once published |
-| - | `AiCall` | one call of the brain to the company's model (plan AIB D9): `purpose` (routing, coach, plan, checkin), `model`, `tokensIn`, `tokensOut`, `latencyMs`, `createdAt`; index `(companyId, createdAt)`. No user id, no case id, no text |
+| - | `AiCall` | one call of the brain to the company's model (plan AIB D9): `purpose` (routing, coach, plan, checkin, context), `model`, `tokensIn`, `tokensOut`, `latencyMs`, `createdAt`; index `(companyId, createdAt)`. No user id, no case id, no text |
+| - | `CompanyContextRun` | the latest background draft of the company profile, one row per company (`docs/COMPANY_KNOWLEDGE.md`, "The context draft"): `status` (running, ready, failed), `startedById`, `startedAt`, `finishedAt`, `error` (a code), `draft` (file names, links and proposed text), `reviewedAt`, `mailedAt`, and its lease `leaseUntil`, `attempts`; index `status`. The draft is emptied after review and after 30 days at most |
 | - | `FeatureFlag` | NextUp's rollout switches for the company, as admin.sellux.ch set them: `(companyId, key)`, `enabled`, `updatedAt`. A flag with no row gets its stage default from `src/config/flags.ts`. Not `CompanyConfig` - the company never sees these |
 | `PROBLEMS` / `IDEAS` / `INITIATIVES` | `Problem` / `Idea` / `Initiative` | |
 | `METRICS` | - | computed by `features/metrics`; baseline values become `Company.baseline` |

@@ -33,10 +33,10 @@ const USER_OMIT = { employeeId: true, loginCodeHash: true, entraOid: true, totpS
 export async function companyExportRows(companyId: string): Promise<ExportRows> {
   const db = getDb();
   const w = { where: { companyId } };
-  const [company, identities, users, companyProfile, orgUnits, orgRoles, seats, routingRules, goals, companyRules, floorAreas, floorDevices, calendar, companyConfig, events, caseViews, assistTurns, ideaDrafts, tickets, ticketReplies, integrations, auditEvents, retentionRules, privacyPolicy] = await Promise.all([
+  const [company, identities, users, companyProfile, companyContextRun, orgUnits, orgRoles, seats, routingRules, goals, companyRules, floorAreas, floorDevices, calendar, companyConfig, events, caseViews, assistTurns, ideaDrafts, tickets, ticketReplies, integrations, auditEvents, retentionRules, privacyPolicy] = await Promise.all([
     head(companyId), identitiesOf(companyId),
     db.user.findMany({ ...w, omit: USER_OMIT, orderBy: { createdAt: "asc" } }),
-    db.companyProfile.findMany(w), db.orgUnit.findMany(w), db.orgRole.findMany(w), db.orgRoleHolder.findMany(w),
+    db.companyProfile.findMany(w), db.companyContextRun.findMany(w), db.orgUnit.findMany(w), db.orgRole.findMany(w), db.orgRoleHolder.findMany(w),
     db.routingRule.findMany(w), db.goal.findMany(w), db.companyRule.findMany(w), db.floorArea.findMany(w),
     db.floorDevice.findMany({ ...w, omit: { tokenHash: true, pairCodeHash: true } }),
     db.companyCalendar.findMany(w), db.companyConfig.findMany(w),
@@ -52,7 +52,7 @@ export async function companyExportRows(companyId: string): Promise<ExportRows> 
   return {
     company, exportedAt: new Date(), identities,
     tables: {
-      users: rows(users), companyProfile: rows(companyProfile), orgUnits: rows(orgUnits), orgRoles: rows(orgRoles), seats: rows(seats),
+      users: rows(users), companyProfile: rows(companyProfile), companyContextRun: rows(companyContextRun), orgUnits: rows(orgUnits), orgRoles: rows(orgRoles), seats: rows(seats),
       routingRules: rows(routingRules), goals: rows(goals), companyRules: rows(companyRules), floorAreas: rows(floorAreas),
       floorDevices: rows(floorDevices), calendar: rows(calendar), companyConfig: rows(companyConfig), events: rows(events),
       caseViews: rows(caseViews), assistTurns: rows(assistTurns), ideaDrafts: rows(ideaDrafts), tickets: rows(tickets),

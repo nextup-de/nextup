@@ -73,6 +73,7 @@ model Company {
 
   // -- structure --
   profile  CompanyProfile?
+  contextRun CompanyContextRun?
   orgUnits OrgUnit[]
   orgRoles OrgRole[]
   holders  OrgRoleHolder[]

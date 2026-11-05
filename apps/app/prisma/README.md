@@ -5,7 +5,7 @@ The database schema, its migrations and the seed scripts. Postgres, Prisma 7.
 ```
 schema/                one .prisma file per area (Prisma reads the whole folder)
   core.prisma            generator, datasource, Company, CaseEvent, IdeaDraft, IdeaTurn, AssistTurn
-  structure.prisma       CompanyProfile, OrgUnit, OrgRole, OrgRoleHolder, RoutingRule, Goal
+  structure.prisma       CompanyProfile, CompanyContextRun, OrgUnit, OrgRole, OrgRoleHolder, RoutingRule, Goal
   auth.prisma            User, ApiToken
   integrations.prisma    CompanyConfig, Connection, Integration, Document
   ops.prisma             FeatureFlag, PilotRequest, PilotReply, Ticket, TicketReply, ErrorGroup

@@ -19,7 +19,7 @@ its brief names (PILOT/HD11).
 | File | Models | Phases that may change it |
 |---|---|---|
 | `core.prisma` | `generator client`, `datasource db`, `Company`, `CaseEvent`, `IdeaDraft`, `IdeaTurn`, `AssistTurn` | IDN, CLK, VIS |
-| `structure.prisma` | `CompanyProfile`, `OrgUnit`, `OrgRole`, `OrgRoleHolder`, `RoutingRule`, `Goal` | STR |
+| `structure.prisma` | `CompanyProfile`, `CompanyContextRun`, `OrgUnit`, `OrgRole`, `OrgRoleHolder`, `RoutingRule`, `Goal` | STR |
 | `auth.prisma` | `User`, `ApiToken` | DIR |
 | `integrations.prisma` | `CompanyConfig`, `Connection`, `Integration`, `Document` | CON, NTF |
 | `ops.prisma` | `FeatureFlag`, `PilotRequest`, `PilotReply`, `Ticket`, `TicketReply`, `ErrorGroup` | GDP |

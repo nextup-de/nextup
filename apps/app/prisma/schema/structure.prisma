@@ -1,4 +1,4 @@
-// Area structure (docs/adr/0007-areas.md). Models: CompanyProfile, OrgUnit, OrgRole, OrgRoleHolder, RoutingRule, Goal, FloorArea, FloorDevice, FloorCode, FloorReference. Changed only by: STR, FLR. Every migration is its own folder under prisma/migrations.
+// Area structure (docs/adr/0007-areas.md). Models: CompanyProfile, CompanyContextRun, OrgUnit, OrgRole, OrgRoleHolder, RoutingRule, Goal, FloorArea, FloorDevice, FloorCode, FloorReference. Changed only by: STR, FLR. Every migration is its own folder under prisma/migrations.
 
 // ── Company knowledge ────────────────────────────────────────────────────────────────────────────
 // What the company IS, as facts a department head edits now and then and an AI can read and cite:
@@ -27,6 +27,32 @@ model CompanyProfile {
 
   updatedAt DateTime @updatedAt
   updatedBy String? // display name of whoever saved it last
+}
+
+// The background draft of the profile from the company's connected sources: one row per company, the
+// latest run; a new run replaces it. People review the draft in setup and only what they save reaches
+// CompanyProfile. `draft` holds text that came from a file (titles, the model's wording), so it is
+// emptied once reviewed and after 30 days at most. docs/COMPANY_KNOWLEDGE.md.
+model CompanyContextRun {
+  companyId String  @id
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  status      String // running | ready | failed
+  startedById String // the person it searches as and who gets the mail; a user id, never a name
+  startedAt   DateTime
+  finishedAt  DateTime?
+  // A code from features/settings/context-draft.ts, never text from a provider or a file.
+  error       String?
+  // { sources: [{ id, title, url }], fields: { vision: { text, sources: [id] }, ... } }
+  draft       Json?
+  reviewedAt  DateTime?
+  mailedAt    DateTime?
+
+  // The per-company lease, on the row itself: one runner at a time, and a run that dies is picked up again.
+  leaseUntil DateTime?
+  attempts   Int       @default(0)
+
+  @@index([status])
 }
 
 // A department, team or board. `key` is the id the seed and the event log already use ("PRD").

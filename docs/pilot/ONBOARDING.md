@@ -144,5 +144,5 @@ ends with the names of the contacts for the pilot (`docs/pilot/SUPPORT.md`) and 
 ## What we ask from you
 
 Honesty about what is not ready, one pilot lead with time, and a written stop rule that you and NextUp agree before the
-start. What we do not ask: personal data beyond the people list, access to your Microsoft 365 content, or any change to
-your directory. NextUp only reads, and only the fields named in the handouts.
+start. What we do not ask: personal data beyond the people list, access to your Microsoft 365 content (unless one of your admins starts the company
+context draft, which searches as that admin, `docs/COMPANY_KNOWLEDGE.md`), or any change to your directory. NextUp only reads, and only the fields named in the handouts.
