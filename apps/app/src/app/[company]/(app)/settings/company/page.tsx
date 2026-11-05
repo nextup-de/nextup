@@ -28,7 +28,7 @@ export default async function CompanySettingsPage({ params }: { params: Promise<
     const card = stageCard(value, step);
     return card ? (
       <StageCard title={t("settingsCompany.cardStage")} stage={card.stage} label={t(card.label)} line={t(card.line)}
-        href={`${companyPrefix(company)}/settings/setup`} linkText={t("settingsCompany.finishSetup")} />
+        href={`${companyPrefix(company)}/setup`} linkText={t("settingsCompany.finishSetup")} />
     ) : null;
   };
   // Without a database this copy shows the sample company, a sandbox halfway through setup; saving is off.

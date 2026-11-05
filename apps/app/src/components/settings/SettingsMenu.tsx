@@ -22,7 +22,8 @@ function Links({ groups, current, ids }: { groups: MenuGroup[]; current: string 
   ));
 }
 
-export function SettingsMenu({ title, aria, currentLabel, groups }: { title: string; aria: string; currentLabel: string; groups: MenuGroup[] }) {
+/** `setup`: the way into the setup process, while it is open. Setup is not a section of Settings. */
+export function SettingsMenu({ title, aria, currentLabel, groups, setup }: { title: string; aria: string; currentLabel: string; groups: MenuGroup[]; setup?: { href: string; label: string } }) {
   const path = usePathname();
   const items = groups.flatMap((g) => g.items);
   const current = items.find((i) => path === i.href || path.startsWith(`${i.href}/`));
@@ -30,6 +31,7 @@ export function SettingsMenu({ title, aria, currentLabel, groups }: { title: str
     <>
       <nav aria-label={aria} className={s.menu}>
         <h2 className={s.menuTitle}>{title}</h2>
+        {setup ? <Link href={setup.href} className={s.setupPill} data-testid="settings-setup-pill">{setup.label}</Link> : null}
         <Links groups={groups} current={current?.key} ids />
       </nav>
       <details className={s.sheet} key={path}>
@@ -38,6 +40,7 @@ export function SettingsMenu({ title, aria, currentLabel, groups }: { title: str
           <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m3 4.5 3 3 3-3" /></svg>
         </summary>
         <div className={s.sheetBody}>
+          {setup ? <Link href={setup.href} className={s.setupPill}>{setup.label}</Link> : null}
           <Links groups={groups} current={current?.key} />
         </div>
       </details>

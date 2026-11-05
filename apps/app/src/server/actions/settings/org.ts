@@ -11,6 +11,7 @@ import { companyPrefix } from "@/features/tenant/urls";
 import { loadKnowledge } from "@/lib/db/knowledge";
 import * as write from "@/lib/db/org-edit";
 import { settingsActor, type AuditEntry } from "@/server/audit/record";
+import { revalidateSetup } from "@/server/setup-paths";
 import { audited, type Tx } from "./audited";
 import { companyAdminOf } from "./guard";
 
@@ -58,6 +59,7 @@ async function apply(
   if (!saved.ok) return { ok: false, error: "settingsOrg.errAudit" };
   if (saved.value.late) return { ok: false, error: saved.value.late };
   for (const part of ["org", "routing"]) revalidatePath(`${companyPrefix(slug)}/settings/${part}`);
+  revalidateSetup();
   return { ok: true };
 }
 

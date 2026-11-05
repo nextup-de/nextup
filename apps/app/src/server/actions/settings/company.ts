@@ -16,6 +16,7 @@ import { loadCalendar, saveCalendar } from "@/lib/db/calendar";
 import { loadLoopRules, saveLoopRules } from "@/lib/db/loop";
 import { loadCompanyRules, saveCompanyRules } from "@/lib/db/rules";
 import { settingsActor } from "@/server/audit/record";
+import { revalidateSetup } from "@/server/setup-paths";
 import { audited } from "./audited";
 import { companyAdminOf } from "./guard";
 
@@ -44,6 +45,7 @@ async function begin<T>(form: FormData, parse: (f: FormFields) => Parsed<T>): Pr
 
 function done(slug: string, section: string): SettingsFormState {
   revalidatePath(`${companyPrefix(slug)}/settings/${section}`);
+  revalidateSetup();
   return { ok: true };
 }
 

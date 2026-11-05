@@ -1,17 +1,8 @@
-import { notFound, redirect } from "next/navigation";
-import { setupStep } from "@/features/settings/sections";
+import { redirect } from "next/navigation";
 import { companyPrefix } from "@/features/tenant/urls";
-import { hasDatabase } from "@/lib/db/client";
-import { loadSetupCounts } from "@/lib/db/setup-counts";
-import { companyAdminOf } from "@/server/actions/settings/guard";
 
+// Settings holds the results; setup has its own pages. The layout checks who is asking.
 export default async function SettingsIndexPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
-  let target = "company";
-  if (hasDatabase() && process.env.AUTH_SECRET) {
-    const admin = await companyAdminOf(company);
-    if (!admin) notFound();
-    if (setupStep(await loadSetupCounts(admin.companyId)) !== "done") target = "setup";
-  }
-  redirect(`${companyPrefix(company)}/settings/${target}`);
+  redirect(`${companyPrefix(company)}/settings/company`);
 }

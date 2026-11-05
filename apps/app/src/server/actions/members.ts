@@ -7,6 +7,7 @@
 // cookie carries the role the person had when they logged in, and a manager demoted a minute ago
 // must not keep handing out codes until their session expires.
 import { revalidatePath } from "next/cache";
+import { revalidateSetup } from "@/server/setup-paths";
 import { needsHandle, newHandle } from "@/features/auth/handle";
 import { getViewerFor } from "@/features/auth/session";
 import { generateLoginCode, hashLoginCode } from "@/features/auth/login-code";
@@ -137,6 +138,7 @@ export async function issueMemberCodeAction(_prev: CodeState, form: FormData): P
   );
   if (!saved.ok) return { error: auditFailed };
   revalidatePath(`/${manager.slug}/settings/members`);
+  revalidateSetup();
   return { name: user.name, code };
 }
 
@@ -164,6 +166,7 @@ export async function setMemberRoleAction(_prev: RoleState, form: FormData): Pro
   );
   if (!saved.ok) return { error: auditFailed };
   revalidatePath(`/${manager.slug}/settings/members`);
+  revalidateSetup();
   return { saved: `${members.find((m) => m.id === userId)?.name} is now a ${role}. It applies from their next login.` };
 }
 
@@ -214,6 +217,7 @@ async function createMember(manager: Scope & { userId: string }, form: FormData,
   );
   if (!saved.ok) return { problems: [auditFailed] };
   revalidatePath(`/${manager.slug}/settings/members`);
+  revalidateSetup();
   return { added: { name: person.name, code }, warnings: seed ? seedNameWarnings(seed, [person]) : [], email: person.email.toLowerCase() };
 }
 
@@ -267,6 +271,7 @@ export async function memberSeatAction(_prev: SeatState, form: FormData): Promis
   if (!saved.ok) return { error: auditFailed };
   if (!saved.value) return { error: "That person is not an active member of this company." };
   revalidatePath(`/${admin.companySlug}/settings/members`);
+  revalidateSetup();
   return { done: true };
 }
 
@@ -296,6 +301,7 @@ export async function deactivateMemberAction(_prev: RemoveState, form: FormData)
   });
   if (failed) return { error: auditFailed };
   revalidatePath(`/${manager.slug}/settings/members`);
+  revalidateSetup();
   return { done: `${user.name} is deactivated. Their open cases were handed on where someone else holds the role.` };
 }
 
@@ -321,6 +327,7 @@ export async function reactivateMemberAction(_prev: RemoveState, form: FormData)
   );
   if (!saved.ok) return { error: auditFailed };
   revalidatePath(`/${manager.slug}/settings/members`);
+  revalidateSetup();
   return { done: `${user.name} is active again. Their old login code no longer works: issue a new one, and link their seats in Org.` };
 }
 
@@ -343,5 +350,6 @@ export async function deleteMemberAction(_prev: RemoveState, form: FormData): Pr
   );
   if (!saved.ok) return { error: auditFailed };
   revalidatePath(`/${manager.slug}/settings/members`);
+  revalidateSetup();
   return { done: `${user.name} is deleted.` };
 }
