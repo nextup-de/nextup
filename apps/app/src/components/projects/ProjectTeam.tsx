@@ -83,7 +83,7 @@ export function ToolsPanel({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const [url, setUrl] = useState("");
   const [key, setKey] = useState("");
   const [stepId, setStepId] = useState("");
-  const all = true; // every tool is in view
+  const [all, setAll] = useState(false);
   // Send to Jira and Stop syncing are the lead's (or a manager's): the same rule the server checks for project.sync.
   const mayShare = r.check("project.sync", { system: "jira", on: true }).ok;
   const stepText = (id: string | null) => (id ? p.steps.find((s) => s.id === id)?.text : undefined);
@@ -138,7 +138,10 @@ export function ToolsPanel({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
           );
         })}
       </ul>
-      {r.link && adding === "jira" && jira.canLink && <JiraLinkForm p={p} jira={jira} onDone={() => { setAdding(null) }} />}
+      {!all && rows.length > visible.length && (
+        <button type="button" className={styles.quietLink} onClick={() => setAll(true)}>{on.length ? t("projects.moreTools") : t("projects.showTools")} ({rows.length - visible.length})</button>
+      )}
+      {r.link && adding === "jira" && jira.canLink && <JiraLinkForm p={p} jira={jira} onDone={() => { setAdding(null); setAll(false); }} />}
       {r.link && adding && !(adding === "jira" && jira.canLink) && (
         <form className={styles.form} aria-label={t("projects.connectTool", { tool: toolName(toolOf(adding), locale) })} onSubmit={(e) => {
           e.preventDefault();
@@ -147,7 +150,7 @@ export function ToolsPanel({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
           const u = url.trim();
           // The address decides the tool when it clearly names one; else the row it was added from.
           const system = u && systemFrom(u, k) !== "url" ? systemFrom(u, k) : adding;
-          if (send("project.linked", { url: u, key: k }, () => act.project.link(p.id, u, system, k || undefined, stepId || undefined))) { setAdding(null) }
+          if (send("project.linked", { url: u, key: k }, () => act.project.link(p.id, u, system, k || undefined, stepId || undefined))) { setAdding(null); setAll(false); }
         }}>
           <div className={styles.formHead}>{t("projects.connectTool", { tool: toolName(toolOf(adding), locale) })}</div>
           <input className={`nh-input ${styles.input}`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={placeholder(adding)} aria-label={t("projects.linkAddress")} aria-invalid={badUrl ? "true" : undefined} autoFocus />
@@ -260,7 +263,8 @@ export function ActivityPanel({ p }: { p: ReducedProject }) {
   const locale = useLocale();
   const send = useSend(p);
   const [text, setText] = useState("");
-    // The project's history holds every event in the order it happened, seed and live, comments too:
+  const [more, setMore] = useState(false);
+  // The project's history holds every event in the order it happened, seed and live, comments too:
   // read backwards, it is the feed, newest first.
   const lines = new Map(timelineOf(p, locale).map((l) => [l.id, l]));
   const feed = p.history.slice().reverse().flatMap((e): FeedItem[] => {
@@ -270,7 +274,7 @@ export function ActivityPanel({ p }: { p: ReducedProject }) {
   });
   const comments = feed.filter((x) => x.kind === "comment");
   const events = feed.filter((x) => x.kind === "event");
-  const shown = feed;
+  const shown = more ? feed : feed.slice(0, 8);
 
   return (
     <section className={`${styles.panel} ${styles.activity}`} aria-labelledby={"activity-" + p.id}>
@@ -298,6 +302,7 @@ export function ActivityPanel({ p }: { p: ReducedProject }) {
           </li>
         ))}
       </ol>
+      {feed.length > 8 && <button type="button" className={styles.quietLink} onClick={() => setMore(!more)}>{more ? t("projects.showLess") : t("projects.showAll", { count: feed.length })}</button>}
     </section>
   );
 }

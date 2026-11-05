@@ -61,7 +61,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const t = useT();
   const [note, setNote] = useState("");
   const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
-  const [asking, setAsking] = useState(true); // the why field starts open
+  const [asking, setAsking] = useState(false); // the why field is open
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
   if (!ready) return <PageSkeleton kind="detail" delay />;
   const c = S.cases.find((x) => x.id === caseId);
