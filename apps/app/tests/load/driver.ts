@@ -5,6 +5,9 @@
 //   npx tsx tests/load/driver.ts --slug mw --base-url http://127.0.0.1:3103 --vus 200 --duration 60
 //   npx tsx tests/load/driver.ts --slug mw --write-cookies /tmp/cookies.json     (for k6: tests/load/k6/run.sh)
 //
+// --single: the server runs TENANT_MODE=single, as every stack does, so addresses carry no slug.
+// --accounts <n>: at most this many accounts; a smaller company gives fewer, and the output says how many.
+//
 // The cookies are signed here, not obtained by logging in (D8): AUTH_SECRET must be the server's. No person is
 // ranked: the figures are per page, never per account (D4).
 import { chmodSync, writeFileSync } from "node:fs";
@@ -98,17 +101,20 @@ export async function selectAccounts(opts: SelectOptions): Promise<Selection> {
 
 // ---- cookie file for k6 (D9) ---------------------------------------------------------------------------------
 
-export type CookieFile = { format: 1; baseUrl: string; slug: string; cookieName: string; thinkMs: [number, number]; accounts: LoadAccount[] };
+export type CookieFile = { format: 1; baseUrl: string; slug: string; prefix: string; cookieName: string; thinkMs: [number, number]; accounts: LoadAccount[] };
 
-export function buildCookieFile(baseUrl: string, slug: string, accounts: LoadAccount[]): CookieFile {
-  return { format: 1, baseUrl, slug, cookieName: SESSION_COOKIE, thinkMs: [THINK_MS[0], THINK_MS[1]], accounts };
+/** What comes before a page's path: the slug in path mode, nothing on a one-company stack. */
+export const prefixOf = (slug: string, single: boolean) => (single ? "" : `/${slug}`);
+
+export function buildCookieFile(baseUrl: string, slug: string, accounts: LoadAccount[], single = false): CookieFile {
+  return { format: 1, baseUrl, slug, prefix: prefixOf(slug, single), cookieName: SESSION_COOKIE, thinkMs: [THINK_MS[0], THINK_MS[1]], accounts };
 }
 
 /** Throws on a file k6/musterwerk.js could not use. */
 export function parseCookieFile(raw: string): CookieFile {
   const f = JSON.parse(raw) as Partial<CookieFile>;
   if (f.format !== 1) throw new Error("cookie file: format must be 1");
-  if (typeof f.baseUrl !== "string" || typeof f.slug !== "string" || typeof f.cookieName !== "string") throw new Error("cookie file: baseUrl, slug and cookieName are required");
+  if (typeof f.baseUrl !== "string" || typeof f.slug !== "string" || typeof f.prefix !== "string" || typeof f.cookieName !== "string") throw new Error("cookie file: baseUrl, slug, prefix and cookieName are required");
   if (!Array.isArray(f.accounts) || f.accounts.length === 0) throw new Error("cookie file: accounts must be a non-empty list");
   for (const a of f.accounts) {
     if (typeof a.cookie !== "string" || !a.cookie.includes(".")) throw new Error("cookie file: every account needs a signed cookie");
@@ -152,13 +158,15 @@ export type RunOptions = {
   accounts: LoadAccount[];
   vus: number;
   durationSeconds: number;
+  /** TENANT_MODE=single: addresses carry no slug. */
+  single?: boolean;
   /** Test hook: think time in ms, default 1-3 s (D8). */
   thinkMs?: readonly [number, number];
   requestTimeoutMs?: number;
 };
 
-/** Where the slug sits in the URL: path mode puts it first (TENANT_MODE=path, as the acceptance server runs). */
-const urlOf = (o: RunOptions, path: string) => `${o.baseUrl.replace(/\/$/, "")}/${o.slug}${path}`;
+/** Where the slug sits in the URL: path mode puts it first (TENANT_MODE=path, as the acceptance server runs); a stack has none. */
+const urlOf = (o: RunOptions, path: string) => `${o.baseUrl.replace(/\/$/, "")}${prefixOf(o.slug, !!o.single)}${path}`;
 
 async function visit(o: RunOptions, a: LoadAccount, page: Page, path: string): Promise<Sample> {
   const t0 = performance.now();
@@ -278,13 +286,14 @@ async function main() {
   const baseUrl = a.get("base-url") ?? "http://127.0.0.1:3103";
   const { accounts, skipped } = await selectAccounts({ slug, secret, limit: a.has("accounts") ? Number(a.get("accounts")) : undefined });
   console.log(`${accounts.length} accounts (${accounts.filter((x) => x.inbox).length} with the inbox), ${skipped} without anything to load`);
+  const single = a.get("single") === "true";
   const cookieFile = a.get("write-cookies");
   if (cookieFile) {
-    writeCookieFile(cookieFile, buildCookieFile(baseUrl, slug, accounts));
+    writeCookieFile(cookieFile, buildCookieFile(baseUrl, slug, accounts, single));
     console.log(`cookies written to ${cookieFile} (mode 600)`);
     return;
   }
-  const report = await runLoad({ baseUrl, slug, accounts, vus: Number(a.get("vus") ?? Math.min(200, accounts.length)), durationSeconds: Number(a.get("duration") ?? 60) });
+  const report = await runLoad({ baseUrl, slug, accounts, single, vus: Number(a.get("vus") ?? Math.min(200, accounts.length)), durationSeconds: Number(a.get("duration") ?? 60) });
   console.log(formatReport(report));
   const over = overBudget(report);
   if (over.length > 0) {

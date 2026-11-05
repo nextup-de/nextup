@@ -36,12 +36,12 @@ The same flows run against a stack with `TST_BASE_URL`, on a company the generat
 | Variable | Meaning |
 |---|---|
 | `TST_BASE_URL` | the stack's URL, no trailing slash |
-| `TST_SLUG` | the company's slug (paths are `/<slug>/…`, path-mode tenancy) |
+| `TST_SLUG` | the company's slug. A stack runs `TENANT_MODE=single`, so its paths carry no slug; `TST_TENANT_MODE=path` is for a path-mode server |
 | `TST_CODES_FILE` | the generator's `--codes` file (`email<TAB>code`) |
 | `DATABASE_URL` | the SSH tunnel to the stack's Postgres: the spec reads who holds which seat; it writes nothing there |
 
 The generator must have run for at least 40 people, with the default `maintenance` route. A remote run leaves the company and
-adds one case. Playwright's config still starts the local servers; point it at a config without them or let them idle.
+adds one case. With `TST_BASE_URL` set, Playwright's config starts no local server.
 The VM runbook is `RUNBOOK.md`; set these variables from it.
 
 ## Latest VM results

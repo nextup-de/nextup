@@ -2,13 +2,14 @@
 # The test phase's run of record on the dedicated test VM (docs/test-phase/RUNBOOK.md, plan TST D10).
 # Run it from a checkout, on Kevin's machine. It is the only thing that reaches the VM.
 #
-#   ops/tst/vm-run.sh <user@host[:port]> <sha7> [--skip-k6] [--people 1500 --weeks 8]
+#   ops/tst/vm-run.sh <user@host[:port]> <sha7> [--skip-k6] [--people 2000 --weeks 8]
 #
 # In order, one status line each:
 #   1 release        stack/deploy-remote.sh <target> <sha7>            (the forced-command deploy key)
 #   2 db port        the stack's db published on the VM's 127.0.0.1:5439 (stack/tst/compose.tst.yml)
 #   3 tunnel         ssh -L 127.0.0.1:<local>:127.0.0.1:5439           (never another interface)
-#   4 generator      Musterwerk, --people/--weeks, through the tunnel
+#   4 generator      Musterwerk, --people/--weeks, through the tunnel. It replaces the stack's empty company or
+#                    an earlier Musterwerk, and refuses any other company, so it cannot wipe a customer's data
 #   5 scenario       the Playwright acceptance spec against the VM's address (TST_BASE_URL)
 #   6 k6             cookies for 2,000 accounts, then the k6 run        (skipped by --skip-k6)
 #   7 restore test   backup.sh <slug> backup, then restore-test; seconds against RTO_SECONDS
@@ -28,11 +29,12 @@
 # Environment (all optional):
 #   TST_SSH_KEY_FILE    key for the admin login                       TST_LOCAL_PORT  tunnel port (5439)
 #   TST_SEED            generator seed (1)                            TST_ACCOUNTS    k6 accounts (2000)
+#   TST_VUS             k6 virtual users (200: about 100 requests/s)  TST_K6_DURATION k6 duration (5m)
 #   TST_GENERATOR       a command instead of `npx tsx prisma/generators/musterwerk/run.ts` (given the same options)
-#   TST_E2E_CMD         the scenario command, run in apps/app with TST_BASE_URL, TST_SLUG set
-#                       (default `npx playwright test tests/e2e/musterwerk`)
-#   TST_K6_RUN          default apps/app/tests/load/k6/run.sh; given TST_BASE_URL, TST_SLUG,
-#                       TST_COOKIES_FILE, TST_K6_SUMMARY (a k6 --summary-export json to write)
+#   TST_E2E_CMD         the scenario command, run in apps/app with TST_BASE_URL, TST_SLUG, TST_CODES_FILE set
+#                       (default: the TST acceptance spec through playwright.db.config.ts)
+#   TST_K6_RUN          default apps/app/tests/load/k6/run.sh; given the cookies file as its argument, and
+#                       BASE_URL, VUS, DURATION, TST_K6_SUMMARY (a k6 --summary-export json to write)
 #   TST_RESULTS_DIR     default docs/test-phase/results
 set -uo pipefail
 umask 077
@@ -48,7 +50,7 @@ die2() { echo "vm-run: $*" >&2; exit 2; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 [ "$#" -ge 2 ] || { usage; exit 2; }
 target="$1" sha="$2"; shift 2
-people=1500 weeks=8 skip_k6=false
+people=2000 weeks=8 skip_k6=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --skip-k6) skip_k6=true; shift ;;
@@ -66,6 +68,10 @@ port="${TST_LOCAL_PORT:-5439}"
 seed="${TST_SEED:-1}"; accounts="${TST_ACCOUNTS:-2000}"
 [[ "$seed" =~ ^[0-9]+$ ]] || die2 "TST_SEED is a number"
 [[ "$accounts" =~ ^[1-9][0-9]{0,5}$ ]] || die2 "TST_ACCOUNTS is a number"
+vus="${TST_VUS:-200}"; k6_duration="${TST_K6_DURATION:-5m}"
+[[ "$vus" =~ ^[1-9][0-9]{0,5}$ ]] || die2 "TST_VUS is a number"
+[[ "$k6_duration" =~ ^[1-9][0-9]*[smh]$ ]] || die2 "TST_K6_DURATION is like 300s, 5m or 1h"
+if ! $skip_k6; then command -v jq >/dev/null || die2 "the results file needs jq (or use --skip-k6)"; fi
 
 app_dir="$repo/apps/app"
 results_dir="${TST_RESULTS_DIR:-$repo/docs/test-phase/results}"
@@ -79,7 +85,7 @@ TST_STEP_TOTAL=9
 declare -A result secs detail
 order=(release dbport tunnel generator scenario k6 restore close results)
 slug="" origin="" db_open=false tunnel_pid="" scenario_line="" restore_secs=""
-k6_summary="" k6_note=""
+k6_summary="" k6_note="" k6_accounts=""
 started="$(date -u +%FT%TZ)"
 failed=0
 
@@ -156,7 +162,7 @@ do_generator() {
   local codes gen
   codes="$(tst_secret_file codes)" || return 1
   if [ -n "${TST_GENERATOR:-}" ]; then gen=("$TST_GENERATOR"); else gen=(npx tsx prisma/generators/musterwerk/run.ts); fi
-  with_secrets "$app_dir" "${gen[@]}" --slug "$slug" --people "$people" --weeks "$weeks" --seed "$seed" --codes "$codes" \
+  with_secrets "$app_dir" "${gen[@]}" --slug "$slug" --people "$people" --weeks "$weeks" --seed "$seed" --codes "$codes" --replace-generated \
     | sed -E 's/[a-z0-9]+-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}[[:space:]]*$/<code hidden>/'
   return "${PIPESTATUS[0]}"
 }
@@ -167,9 +173,12 @@ do_scenario() {
     tst_remote "curl -fs -o /dev/null --max-time 5 '$origin/api/health'" && break
     sleep 2
   done
-  if [ -n "${TST_E2E_CMD:-}" ]; then read -r -a cmd <<< "$TST_E2E_CMD"; else cmd=(npx playwright test tests/e2e/musterwerk); fi
-  with_secrets "$app_dir" "${cmd[@]}"; local rc=$?
-  return "$rc"
+  if [ -n "${TST_E2E_CMD:-}" ]; then read -r -a cmd <<< "$TST_E2E_CMD"
+  else cmd=(npx playwright test -c playwright.db.config.ts tests/e2e/db/musterwerk.spec.ts -g "TST acceptance"); fi
+  TST_CODES_FILE="$TST_TMP/codes" with_secrets "$app_dir" "${cmd[@]}"; local rc=$?
+  [ "$rc" -eq 0 ] || return "$rc"
+  # Playwright exits 0 when every test skips: that is a step that tested nothing, not a pass.
+  [ -n "${TST_E2E_CMD:-}" ] || grep -Eq '[1-9][0-9]* passed' "$TST_TMP/scenario.log" || { echo "no test of the scenario passed"; return 1; }
 }
 
 do_k6() {
@@ -177,9 +186,10 @@ do_k6() {
   cookies="$(tst_secret_file cookies)" || return 1
   k6_summary="$TST_TMP/k6-summary.json"; ( umask 077; : > "$k6_summary" )
   run="${TST_K6_RUN:-$app_dir/tests/load/k6/run.sh}"
-  export TST_ACCOUNTS="$accounts"
-  with_secrets "$app_dir" npx tsx tests/load/driver.ts --write-cookies "$cookies" || return 1
-  TST_COOKIES_FILE="$cookies" TST_K6_SUMMARY="$k6_summary" with_secrets "$app_dir" "$run"
+  with_secrets "$app_dir" npx tsx tests/load/driver.ts --slug "$slug" --base-url "$origin" --single --accounts "$accounts" --write-cookies "$cookies" || return 1
+  k6_accounts="$(jq -r '.accounts | length' "$cookies" 2>/dev/null)"
+  detail[k6]="$k6_accounts accounts, $vus virtual users, $k6_duration"
+  BASE_URL="$origin" VUS="$vus" DURATION="$k6_duration" TST_K6_SUMMARY="$k6_summary" with_secrets "$app_dir" "$run" "$cookies"
 }
 
 do_restore() {
@@ -238,7 +248,7 @@ write_results() {
       done
       rate="$(jq -r '(.metrics.http_req_failed.value // .metrics.http_req_failed.rate) // "-"' "$k6_summary" 2>/dev/null)"
       echo
-      echo "Failed requests: $rate (accounts: $accounts)"
+      echo "Failed requests: $rate (accounts: ${k6_accounts:-?} of $accounts asked for, virtual users: $vus, duration: $k6_duration)"
     fi
     echo
     echo "## Restore test"

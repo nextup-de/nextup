@@ -5,6 +5,7 @@
 // already generated (docs/test-phase/README.md, "Remote mode"):
 //   TST_BASE_URL   the stack's URL            TST_SLUG        its company slug
 //   TST_CODES_FILE the generator's --codes    DATABASE_URL    the SSH tunnel to its Postgres (reads who sits where)
+// A stack runs TENANT_MODE=single, so its addresses carry no slug; TST_TENANT_MODE=path is for a path-mode server.
 // A remote run leaves the company in place; it only adds the cases it raises.
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,6 +17,7 @@ import { generateMusterwerk } from "../../../prisma/generators/musterwerk";
 
 const REMOTE = process.env.TST_BASE_URL?.replace(/\/+$/, "") ?? "";
 const SLUG = REMOTE ? (process.env.TST_SLUG ?? "") : `tst-${Date.now().toString(36)}`;
+const PREFIX = REMOTE && process.env.TST_TENANT_MODE !== "path" ? "" : `/${SLUG}`;
 const PEOPLE = 80;
 const STAMP = Date.now().toString(36);
 const TITLE = `Presse 4 verliert Oeldruck nach dem Anfahren ${STAMP}`;
@@ -38,7 +40,7 @@ let handedId = "";
 let caseId = "";
 let smallUnitId = "";
 
-const url = (path: string) => `/${SLUG}${path}`;
+const url = (path: string) => `${PREFIX}${path}`;
 
 /** A fresh browser (own cookies) signed in as one person with their personal code. */
 async function signIn(browser: Browser, who: Who): Promise<Page> {
@@ -121,7 +123,7 @@ test.describe.serial("TST acceptance: Musterwerk scenario suite", () => {
 
   test("a member raises a case and it lands on the owner desk of the route", async ({ browser }) => {
     const member = await signIn(browser, raiser);
-    await expect(member).toHaveURL(new RegExp(`/${SLUG}/raise$`));
+    await expect(member).toHaveURL(new RegExp(`${PREFIX}/raise$`));
     await publishIdea(member, TITLE, "Leiter Instandhaltung Werk Nord");
 
     const raised = await getDb().caseEvent.findFirstOrThrow({ where: { companyId, type: "case.raised", payload: { path: ["title"], equals: TITLE } } });

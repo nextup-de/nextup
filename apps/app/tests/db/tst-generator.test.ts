@@ -148,6 +148,22 @@ describe("TST generator", () => {
     expect(await db.company.findUnique({ where: { slug: "mw-small" } })).toBeNull();
   });
 
+  it("replaceGenerated takes an empty sandbox company or an earlier Musterwerk, and refuses anything else", async () => {
+    const empty = await db.company.create({ data: { slug: "mw-empty", name: "Stack bootstrap", mark: "S", stage: "sandbox", seedJson: {}, config: { create: {} } } });
+    const fresh = await generateMusterwerk(db, { slug: "mw-empty", people: 40, weeks: 1, seed: 7, now, replaceGenerated: true });
+    expect(fresh.companyId).not.toBe(empty.id);
+    const again = await generateMusterwerk(db, { slug: "mw-empty", people: 40, weeks: 1, seed: 7, now, replaceGenerated: true });
+    expect(again.companyId).not.toBe(fresh.companyId);
+
+    // Real people under another name: it stays, and so does a generated company past sandbox.
+    await db.company.update({ where: { id: again.companyId }, data: { name: "Acme GmbH" } });
+    await expect(generateMusterwerk(db, { slug: "mw-empty", people: 40, weeks: 1, seed: 7, now, replaceGenerated: true })).rejects.toThrow(/refusing/);
+    await db.company.update({ where: { id: again.companyId }, data: { name: "Musterwerk GmbH", stage: "pilot" } });
+    await expect(generateMusterwerk(db, { slug: "mw-empty", people: 40, weeks: 1, seed: 7, now, replaceGenerated: true })).rejects.toThrow(/refusing/);
+    expect(await db.company.findUnique({ where: { id: again.companyId }, select: { id: true } })).not.toBeNull();
+    await db.company.delete({ where: { id: again.companyId } });
+  }, 180_000);
+
   it("finishes 150 people and 2 weeks in under 60 s", () => {
     expect(seconds).toBeLessThan(60);
   });
