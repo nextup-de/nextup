@@ -5,8 +5,10 @@
 # The test host is the "VM". An `ssh` shim first in PATH turns every ssh of the script into a docker
 # exec on the host: the deploy key's call runs the forced command (stack/remote/host.sh), the admin
 # login runs a shell, and `-L` becomes a real local listener that reaches the host's 127.0.0.1:5439.
-# The generator is a stub (TST_GENERATOR) that talks to Postgres through that tunnel; the scenario
-# command is `true`; k6 is skipped. No real server is ever reached.
+# The generator is a stub (TST_GENERATOR) that talks to Postgres through that tunnel. An `npx` shim records
+# what the scenario and the load driver are really given, and TST_K6_RUN records what the runner gets. These
+# check the commands, not the product: the spec and k6 against a real stack are the VM run itself.
+# No real server is ever reached.
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 export MSYS_NO_PATHCONV=1
 source stack/tests/lib/assert.sh
@@ -18,6 +20,10 @@ trap 'host_down; [ -z "${work:-}" ] || { rm -f "$work"/bin/* "$work"/results/* "
 work="$(mktemp -d)"; mkdir "$work/bin"
 port=$((20000 + RANDOM % 20000))
 slug=tstvm
+
+# A machine with one core runs one app process, and would not show this by itself.
+t_ok "install.sh waits for all app processes, not for one line of output" grep -q "ps app --format '{{.Health}}' .*| sort -u" stack/install.sh
+t_ok "install-clean.sh does too" grep -q "ps app --format '{{.Health}}' .*| sort -u" stack/tests/install-clean.sh
 
 host_up || { echo "host_up failed" >&2; exit 1; }
 host_registry_up || exit 1
@@ -82,9 +88,28 @@ echo "postgres_answer \$ans" >> "$work/gen.log"
 case "\$ans" in N|S) ;; *) echo "no postgres behind the tunnel"; exit 1 ;; esac
 echo "login codes written to \$codes (SECRETMARK123)"
 STUB
-chmod +x "$work/bin/ssh" "$work/gen.sh"
+cat > "$work/bin/npx" <<STUB
+#!/usr/bin/env bash
+# test shim: the scenario and the load driver, as vm-run really calls them
+echo "npx \$*" >> "$work/npx.log"
+echo "env base=\$TST_BASE_URL slug=\$TST_SLUG codes_filled=\$([ -s "\$TST_CODES_FILE" ] && echo yes || echo no)" >> "$work/npx.log"
+if [ -f "$work/all-skipped" ]; then echo "  6 skipped"; else echo "  6 passed (1.0m)"; fi
+while [ \$# -gt 0 ]; do
+  [ "\$1" = --write-cookies ] && printf '{"accounts":[{},{},{}]}' > "\$2"
+  shift
+done
+STUB
+cat > "$work/k6.sh" <<STUB
+#!/usr/bin/env bash
+# the k6 stub: records what the runner gets and writes the summary it would write
+echo "args \$*" >> "$work/k6.log"
+echo "env base=\$BASE_URL vus=\$VUS duration=\$DURATION" >> "$work/k6.log"
+echo "cookies_accounts \$(jq -r '.accounts | length' "\$1")" >> "$work/k6.log"
+printf '{"metrics":{"http_req_duration{page:inbox}":{"p(95)":412.34,"p(99)":800},"http_req_duration{page:case}":{"p(95)":390,"p(99)":700},"http_req_failed":{"value":0}}}' > "\$TST_K6_SUMMARY"
+STUB
+chmod +x "$work/bin/ssh" "$work/bin/npx" "$work/gen.sh" "$work/k6.sh"
 
-run() { PATH="$work/bin:$PATH" TST_GENERATOR="$work/gen.sh" TST_E2E_CMD=true TST_LOCAL_PORT="$port" \
+run() { PATH="$work/bin:$PATH" TST_GENERATOR="$work/gen.sh" TST_K6_RUN="$work/k6.sh" TST_LOCAL_PORT="$port" \
   TST_RESULTS_DIR="$work/results" DEPLOY_SSH_KEY_FILE="$work/no-key" "$@"; }
 cli=ops/tst/vm-run.sh
 
@@ -122,6 +147,14 @@ t_ok "the db port is closed again after the run" bash -c '! docker exec "$1" doc
 
 # the generator
 t_ok "the generator got the slug, people, weeks and seed" grep -q -- "args --slug $slug --people 50 --weeks 2 --seed 1 --codes " "$work/gen.log"
+t_ok "it may replace only an empty company or an earlier Musterwerk" grep -Eq -- "args .* --replace-generated$" "$work/gen.log"
+t_ok "the plain --replace is never passed" bash -c '! grep -Eq -- "--replace( |$)" "$1"' _ "$work/gen.log"
+
+# the scenario
+t_ok "the scenario is the acceptance spec through the database config" \
+  grep -q -- "^npx playwright test -c playwright.db.config.ts tests/e2e/db/musterwerk.spec.ts -g TST acceptance$" "$work/npx.log"
+t_ok "the scenario gets the stack's address, its slug and the filled codes file" \
+  grep -Eq "^env base=https?://[^ ]+ slug=$slug codes_filled=yes$" "$work/npx.log"
 t_ok "its DATABASE_URL is the tunnel on 127.0.0.1:$port" grep -q "^database 127.0.0.1:$port/nextup$" "$work/gen.log"
 t_ok "Postgres answered through the tunnel" grep -Eq '^postgres_answer [NS]$' "$work/gen.log"
 t_ok "it had AUTH_SECRET" grep -q '^auth_secret_set yes$' "$work/gen.log"
@@ -145,6 +178,33 @@ for what in "$auth" "$pgpw" SECRETMARK123; do
   [ -n "$what" ] || { t_eq "secret value was read" set empty; continue; }
   t_ok "'${what:0:4}...' is in no output, results file or ssh log" bash -c '! printf "%s" "$1" | grep -qF -- "$2" && ! grep -rqF -- "$2" "$3" "$4"' _ "$out" "$what" "$f" "$work/ssh.log"
 done
+
+# --- a scenario that tested nothing is a failure -----------------------------------------------------
+touch "$work/all-skipped"
+out4="$(run bash $cli deploy@vm.test:2222 bbbbbbb --skip-k6 --people 50 --weeks 2 2>&1)"; rc=$?
+rm -f "$work/all-skipped"
+t_eq "a scenario where every test skips fails the run" 1 "$rc"
+t_ok "it is step 5 that fails" bash -c '[[ "$1" == *"scenario spec against "*"... FAILED"* ]]' _ "$out4"
+
+# --- the k6 step -----------------------------------------------------------------------------------
+: > "$work/npx.log"
+if command -v jq >/dev/null; then
+  out3="$(run env TST_ACCOUNTS=20 TST_VUS=4 TST_K6_DURATION=10s bash $cli deploy@vm.test:2222 bbbbbbb --people 50 --weeks 2 2>&1)"; rc=$?
+  printf '%s\n' "$out3" | sed 's/^/    | /'
+  t_eq "a run with k6 exits 0" 0 "$rc"
+  t_ok "the driver gets the slug, the address, one-company paths and the accounts" \
+    grep -Eq -- "^npx tsx tests/load/driver.ts --slug $slug --base-url https?://[^ ]+ --single --accounts 20 --write-cookies " "$work/npx.log"
+  t_ok "the runner gets the cookies file as its argument" grep -q "^cookies_accounts 3$" "$work/k6.log"
+  t_ok "the runner gets the address, the virtual users and the duration" grep -Eq "^env base=https?://[^ ]+ vus=4 duration=10s$" "$work/k6.log"
+  f3="$(ls "$work"/results/*.md | head -n 1)"
+  t_ok "the results hold the p95 per page" grep -q '^| inbox | 412.3 | 800 |$' "$f3"
+  t_ok "the results say how many accounts really ran" grep -q 'accounts: 3 of 20 asked for, virtual users: 4, duration: 10s' "$f3"
+  t_ok "the cookies are gone after the run" bash -c '! ls "${TMPDIR:-/tmp}"/tmp.*/cookies 2>/dev/null | grep -q .'
+else
+  echo "    (no jq on this machine: the k6 step is not checked)"
+fi
+PATH="$work/bin:$PATH" bash $cli deploy@vm.test bbbbbbb --people x >/dev/null 2>&1
+t_eq "a bad option still exits 2" 2 "$?"
 
 # a failing step stops the run and the results say so
 host_exec "sed -i 's/^SLUG=.*/SLUG=missing/' ~/nextup/host.conf"

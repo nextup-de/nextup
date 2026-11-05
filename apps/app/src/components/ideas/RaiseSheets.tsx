@@ -84,7 +84,7 @@ export function AnalysisSheet({ ready, onClose, ...a }: AnalysisData & { ready: 
 // a card in the thread, up to the similar ideas; the reviewers and sources stay in the sheet.
 export function Analysis({ dials, company, summary, advice, pattern, cats, similar, reviewers, sources, improved, inChat = false }: AnalysisData & { inChat?: boolean }) {
   const t = useT();
-  const [open, setOpen] = useState<number | null>(dials.length ? 0 : null); // the first check shows its reasoning from the start; the dial button folds it
+  const [open, setOpen] = useState<number | null>(null);
   const d = open === null ? null : dials[open];
   const sourceList = (
     <div className={s.sources}>

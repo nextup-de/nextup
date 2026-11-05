@@ -166,7 +166,7 @@ export function AuditLog({ slug, filter, data }: Props) {
             {AUDIT_PERIODS.map((p) => <option key={p} value={p}>{t(key(`period_${p}`))}</option>)}
           </select>
         </label>
-        <details open className={styles.group} data-testid="settings-audit-filter-area">
+        <details className={styles.group} data-testid="settings-audit-filter-area">
           <summary className={s.soft}>{t(key("filterArea"))}{filter.areas ? ` (${filter.areas.length})` : ""}</summary>
           <div className={styles.checks}>
             {AUDIT_AREAS.map((a) => (
@@ -177,7 +177,7 @@ export function AuditLog({ slug, filter, data }: Props) {
             ))}
           </div>
         </details>
-        <details open className={styles.group} data-testid="settings-audit-filter-actor">
+        <details className={styles.group} data-testid="settings-audit-filter-actor">
           <summary className={s.soft}>{t(key("filterActor"))}{filter.actorKinds ? ` (${filter.actorKinds.length})` : ""}</summary>
           <div className={styles.checks}>
             {ACTOR_KINDS.map((k) => (

@@ -303,7 +303,8 @@ fi
 
 echo -n "Waiting for the app to be healthy "
 for _ in $(seq 1 60); do
-  state="$("${compose[@]}" ps app --format '{{.Health}}' 2>/dev/null || true)"
+  # One line per app process (APP_REPLICAS): "healthy" only when they all say it.
+  state="$("${compose[@]}" ps app --format '{{.Health}}' 2>/dev/null | sort -u || true)"
   [ "$state" = healthy ] && break
   echo -n "."; sleep 3
 done

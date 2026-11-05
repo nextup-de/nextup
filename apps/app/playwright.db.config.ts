@@ -29,6 +29,9 @@ export const CONSOLE_SLUG = "itc-console";
 const CONSOLE_PORT = PORT + 1;
 const CONSOLE_BASE = `http://localhost:${CONSOLE_PORT}`;
 const CONSOLE_SPEC = /itc-console[.]spec[.]ts$/;
+// TST_BASE_URL: the spec runs against a server that already runs (ops/tst/vm-run.sh), so nothing starts here,
+// and no report server waits for someone to close it.
+const REMOTE = !!process.env.TST_BASE_URL;
 
 // "Open NextUp" needs mail that answers and a fresh off-box backup, like the move to pilot. Its spec gets its own
 // server with both, so no other spec here starts mailing: a small relay (fixtures/smtp-sink.mjs) that keeps what
@@ -55,7 +58,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   // A timing glitch must not turn main red, and make orch revert an innocent merge: a real bug fails twice.
   retries: process.env.CI ? 1 : 0,
-  reporter: [["list"], ["html", { open: "on-failure" }]],
+  reporter: REMOTE ? [["list"]] : [["list"], ["html", { open: "on-failure" }]],
   use: {
     baseURL: BASE,
     reducedMotion: "reduce",
@@ -68,7 +71,7 @@ export default defineConfig({
     { name: "console", testMatch: CONSOLE_SPEC, use: { baseURL: CONSOLE_BASE } },
     { name: "setup", testMatch: SETUP_SPEC, use: { baseURL: SETUP_BASE } },
   ],
-  webServer: [
+  webServer: REMOTE ? undefined : [
     {
       // next.config.ts builds `output: "standalone"` for Docker, so `next start` prints a warning that
       // it wants .next/standalone/server.js. It still serves the build (pages, assets, actions) fine.

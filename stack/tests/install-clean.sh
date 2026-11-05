@@ -73,7 +73,8 @@ run_install() {
   return "$rc"
 }
 
-app_health() { "$stack/ctl.sh" "$slug" ps app --format '{{.Health}}' 2>/dev/null; }
+# One line per app process (APP_REPLICAS): "healthy" only when they all say it.
+app_health() { "$stack/ctl.sh" "$slug" ps app --format '{{.Health}}' 2>/dev/null | sort -u; }
 
 origin_health() { [ "$(curl -s -o /dev/null -w '%{http_code}' "$origin/api/health")" = 200 ]; }
 

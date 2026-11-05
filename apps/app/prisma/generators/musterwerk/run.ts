@@ -9,6 +9,7 @@
 //   --now <iso>       the moment "now" is (default: the real time)
 //   --codes <file>    write "<email> TAB <login code>" per person; without it the codes are not kept
 //   --replace         delete a company with this slug first (otherwise an existing slug is refused)
+//   --replace-generated  the same, but only for an empty sandbox company or a Musterwerk of an earlier run
 import { getDb } from "../../../src/lib/db/client";
 import { generateMusterwerk } from "./index";
 
@@ -49,6 +50,7 @@ async function main() {
     now: a.has("now") ? new Date(a.get("now")!) : new Date(),
     codesFile: a.get("codes"),
     replace: a.get("replace") === "true",
+    replaceGenerated: a.get("replace-generated") === "true",
   });
   console.log(`${slug} (${companyId}): ${JSON.stringify(counts)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   if (a.get("codes")) console.log(`login codes written to ${a.get("codes")}`);
