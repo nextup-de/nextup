@@ -10,6 +10,7 @@ import type { Knowledge } from "@/features/knowledge";
 import type { SetupFormStep } from "@/server/actions/settings/setup";
 import type { MemberRow, SeatLabel } from "@/server/actions/members";
 import type { MemberOption } from "@/components/settings/OrgEditor";
+import type { ContextPanelData } from "@/server/setup-context";
 import { SettingsHead } from "@/components/settings/SettingsParts";
 import { CompanyStep } from "./CompanyStep";
 import { MembersStep } from "./MembersStep";
@@ -29,6 +30,8 @@ export type SetupData = {
   me: string;
   members: MemberRow[];
   freeSeats: SeatLabel[];
+  /** The company context draft, on the Company step. */
+  context: ContextPanelData;
 };
 type Props = {
   /** The company's setup address, without a step. */
@@ -75,7 +78,7 @@ export function SetupStepView({ base, slug, steps, step, data, ready, resume, de
     <section className={s.page} data-testid={`setup-step-${step}`}>
       <SettingsHead title={t("settingsSetup.titleOf", { company })} lede={t("settingsSetup.lede")} />
       <SetupProgress base={base} steps={steps} step={step} resume={resume} />
-      {step === "company" ? <CompanyStep {...form} values={data.company} /> : null}
+      {step === "company" ? <CompanyStep {...form} values={data.company} context={data.context} /> : null}
       {step === "units" ? <UnitsStep {...form} knowledge={k} /> : null}
       {step === "roles" ? <RolesStep {...form} knowledge={k} members={data.options} /> : null}
       {step === "routes" ? <RoutesStep {...form} knowledge={k} /> : null}

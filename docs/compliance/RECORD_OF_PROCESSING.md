@@ -20,6 +20,7 @@ One record per customer; the fields in brackets are filled in per customer.
 | Sign-in | All members | Login-code hash, sealed second-factor secret (managers), Entra or SAML identifiers, session epoch | App and database; Microsoft or the customer's SAML provider sign the person in |
 | Directory sync (SCIM, SuccessFactors) | Employees in the customer's directory | Name, email, unit, manager, active flag, personnel number (never returned by SCIM) | `src/server/scim`, `features/directory` |
 | Assistant and routing proposals | Employees who ask | Masked question text and knowledge snippets; AssistTurn rows with sources and counts | The stack; a model provider only when the company chooses it |
+| Company context draft (setup) | The admin who starts it; people named in files, masked before sending | File names and short snippets from files that admin may open; proposed profile text, which can repeat a file. Stored in `CompanyContextRun` until reviewed, at most 30 days; what a person saves stays in `CompanyProfile` | The stack; Microsoft 365 searched as that admin; the model provider the company chose |
 | Notifications | Recipients of cases | Address, subject, text | The mail relay set in `SMTP_URL` |
 | Metrics | Managers (aggregates only) | Counts per unit or role with at least 5 people; no person ranking | The stack |
 | Audit log | Admins, NextUp support, system | Who, what, when, changed fields without names or secrets | The stack; optionally a syslog receiver of the customer |

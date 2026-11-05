@@ -1,6 +1,6 @@
 # Company knowledge
 
-> **Updated 2026-11-02** · reference + plan: the tables are built, the later sections are still a plan.
+> **Updated 2026-11-05** · reference + plan: the tables are built, the later sections are still a plan.
 
 How NextUp stores what a company *is* (vision, structure, who decides what, goals, its public
 papers) so that people can edit it and an AI can read it, cite it and never leak it to another
@@ -85,6 +85,51 @@ cases, waitingOn, stall, ledger, metrics, views, briefs, projects, personas, lea
 3. **Output.** The model's answer is `route.proposed` with `source: "llm"`, `confidence`,
    `promptVersion` and `citations[]`. There is a keyword fallback after 800 ms
    (`INTEGRATIONS.md`).
+
+## The context draft (built)
+
+Vision, mission and similar fields are not typed in setup. A background run drafts them from the connected
+sources, people review the draft, and only what they accept and save is stored. Documents are not imported.
+
+1. **Start.** A company admin presses the button on the setup's Company step (`startContextRunAction`). It needs a
+   source (`knowledgeSourcesFor`), the AI gate (`aiGate`, purpose `brain`: the choice is not off and the agreement
+   is signed) and that person's own connected Microsoft account. Without a source or the agreement the status is
+   `notUsed`, the panel says the fields can be filled in under Settings → Company, and setup still finishes.
+2. **Run.** `server/scheduler/context-run.ts`, every 15 seconds (`CONTEXT_RUN_INTERVAL_MS`), under a lease on the
+   company's `CompanyContextRun` row. It searches `CONTEXT_QUERIES` **as the person who started it**, so it finds only
+   what they may open, at most at level `internal` (a stricter company ceiling wins) and at most 24 hits. Titles and
+   snippets go through `redact`, and text marked above the ceiling is left out. Then one call to the company's
+   provider (`aiProviderFor`, plain `complete`). The mock answers in the demo stage.
+3. **Parse.** `parseContextAnswer` in `features/settings/context-draft.ts` (pure, unit tested). A proposal survives
+   only with a source that was really found, and within what the company form accepts. The answer is redacted too.
+4. **Mail.** The starter gets one mail in their language when the draft is ready or has failed, with a link and without
+   any of the draft. A mail the relay refused is tried again for a day.
+5. **Review.** The Company step shows each proposal with its sources, to accept or edit. `saveCompanyAction` replaces the
+   whole profile, so the form sends the accepted text for accepted fields and the current value for all others.
+   Nothing reaches `CompanyProfile` before that. What was saved leaves the draft; the rest stays to decide later.
+
+| Status (`loadContextStatus`) | Meaning |
+|---|---|
+| `notUsed` | no source, or no AI with its agreement, and no draft to show |
+| `idle` | can be started |
+| `running` | waiting for the scheduler or in progress |
+| `ready` | a draft to review, or it has been reviewed, or it expired |
+| `failed` | ended without a draft: `error` is a code, never text from a provider or a file |
+
+**What this changes about "nothing is copied".** The assistant still copies nothing. The draft does store text:
+
+- `CompanyContextRun.draft` holds file names, links and the model's proposed wording, which can repeat a file closely.
+  It is emptied when the review is finished or discarded, replaced by a new run, and cleared after 30 days without a
+  review. The snippets themselves are sent to the provider and not stored.
+- **A saved field is text that came from a file**, kept in `CompanyProfile` like anything else typed there, and from then
+  on it goes to the assistant's model with the company brief. Saving it is a person's decision.
+- **Every company admin sees the draft and its sources**, also for files only the starter may open. The panel says so.
+- `complianceRules` goes into the assistant's system prompt as written (`docs/ASSISTANT.md`), so a reviewer should read
+  that proposal with particular care: it was written by a model from a file.
+
+**What is logged.** An audit row when a run starts, finishes (status, counts or an error code) or is discarded; one
+`AiCall` with purpose `context`; console lines with counts and timings. Never a query's result, a snippet, a file name or
+the model's text.
 
 ## Where the team can look
 

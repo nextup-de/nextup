@@ -12,6 +12,7 @@ export const TENANT_MODELS = new Set([
   "CompanyConfig",
   // Company knowledge - docs/COMPANY_KNOWLEDGE.md
   "CompanyProfile",
+  "CompanyContextRun",
   "OrgUnit",
   "OrgRole",
   "OrgRoleHolder",

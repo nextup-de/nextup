@@ -31,6 +31,9 @@ export async function register() {
   // The audit log export (syslog or a daily file), every minute for each company that switched it on (a no-op without a database).
   const { startLogExport } = await import("@/server/scheduler/log-export");
   startLogExport();
+  // The company context draft a person started in setup, under a lease per company (a no-op without a database).
+  const { startContextRuns } = await import("@/server/scheduler/context-run");
+  startContextRuns();
   // Errors counted in memory go to the ErrorGroup table once a minute.
   const { startErrorFlush } = await import("@/server/errors");
   startErrorFlush();

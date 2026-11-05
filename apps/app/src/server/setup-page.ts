@@ -17,6 +17,7 @@ import { loadMembers } from "@/server/actions/members";
 import { companyAdminOf } from "@/server/actions/settings/guard";
 import { SETUP_FORM_STEPS, setupCounts } from "@/server/actions/settings/setup";
 import { guardPage } from "@/server/page-guard";
+import { CONTEXT_NOT_USED, loadContextPanel } from "@/server/setup-context";
 
 const ORDER: readonly SetupStep[] = [...SETUP_FORM_STEPS, "done"];
 
@@ -48,7 +49,7 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
       facts: setupDoneFacts(DEFAULT_RULES, DEFAULT_CALENDAR, null),
       data: {
         company: SAMPLE_COMPANY, address, knowledge: SAMPLE_KNOWLEDGE,
-        options: SAMPLE_MEMBERS, me: SAMPLE_ME, members: SAMPLE_MEMBER_ROWS, freeSeats: SAMPLE_FREE_SEATS,
+        options: SAMPLE_MEMBERS, me: SAMPLE_ME, members: SAMPLE_MEMBER_ROWS, freeSeats: SAMPLE_FREE_SEATS, context: CONTEXT_NOT_USED,
       },
     };
   }
@@ -59,7 +60,7 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
   if (ORDER.indexOf(step) > ORDER.indexOf(first)) redirect(setupHref(slug, first));
 
   const db = getDb();
-  const [row, profile, knowledge, options, page, rules, calendar, consoleHref] = await Promise.all([
+  const [row, profile, knowledge, options, page, rules, calendar, consoleHref, context] = await Promise.all([
     db.company.findUnique({ where: { id: admin.companyId }, select: { name: true, mark: true, openedAt: true } }),
     db.companyProfile.findUnique({
       where: { companyId: admin.companyId },
@@ -71,6 +72,7 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
     loadCompanyRules(admin.companyId),
     loadCalendar(admin.companyId),
     consoleHrefFor(admin.companyId, admin.userId),
+    step === "company" ? loadContextPanel(admin.companyId, slug, admin.userId) : CONTEXT_NOT_USED,
   ]);
   if (!row || page.status !== "ok") notFound();
   return {
@@ -96,6 +98,7 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
       me: page.me,
       members: page.members,
       freeSeats: page.freeSeats,
+      context,
     },
   };
 }

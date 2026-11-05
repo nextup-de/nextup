@@ -1,0 +1,47 @@
+/* The company context draft on setup's Company step. Tokens only; Paper's black is the brand blue. */
+
+.anchor { scroll-margin-top: calc(var(--nh-bar-h) + 16px); }
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 36px; padding-block: 6px; font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-ink); }
+.value { flex-shrink: 0; font-weight: 600; color: var(--nh-mute); }
+.value[data-on] { color: var(--nh-brand-ink); }
+
+.notice { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--nh-warn-tint); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink); }
+.notice a { font-weight: 600; color: var(--nh-brand-ink); }
+
+.primary {
+  display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; height: 36px; padding-inline: 14px; border: 0; border-radius: 8px;
+  background: var(--nh-brand); color: var(--nh-on-brand); font: inherit; font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; cursor: pointer;
+}
+.primary:hover { background: var(--nh-brand-hover); }
+.primary:disabled { opacity: 0.5; cursor: default; }
+.primary:disabled:hover { background: var(--nh-brand); }
+.primary:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+
+.wait { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-radius: 8px; background: var(--nh-brand-tint); }
+.waitText { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink); }
+.pulse { flex-shrink: 0; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--nh-brand); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+.failed { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-radius: 8px; background: var(--nh-danger-tint); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink); }
+.failed strong { font-weight: 600; color: var(--nh-danger); }
+
+.reviewTitle { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; font-weight: 600; color: var(--nh-ink); }
+.proposals { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.proposal { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 12px 16px 14px; border-radius: 8px; background: var(--nh-fill); }
+.proposal[data-accepted] { background: var(--nh-brand-tint); }
+.proposalHead { display: flex; align-items: center; gap: 12px; }
+.proposalHead > label { flex: 1; min-width: 0; }
+.proposalHead > button { align-self: center; }
+.acceptedTag { flex-shrink: 0; font-size: var(--nh-fs-xs); line-height: 16px; font-weight: 600; color: var(--nh-brand-ink); }
+.current { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); overflow-wrap: anywhere; }
+.sources { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; font-size: var(--nh-fs-sm); line-height: 18px; }
+.sourcesLabel { flex-shrink: 0; font-weight: 600; color: var(--nh-mute); }
+.sourceList { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.sourceList a { color: var(--nh-brand-ink); overflow-wrap: anywhere; }
+.saveSide { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; text-align: right; }
+
+@media (max-width: 760px) {
+  .saveSide { flex-direction: column; align-items: flex-end; gap: 6px; }
+}

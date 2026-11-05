@@ -42,10 +42,10 @@ function wholeIn(s: string, min: number, max: number): number | null {
 
 export const NAME_MAX = 120;
 export const MARK_MAX = 8;
-const LONG_MAX = 2000;
-const COMPLIANCE_MAX = 4000;
-const PRINCIPLES_MAX = 12;
-const PRINCIPLE_MAX = 200;
+export const LONG_MAX = 2000;
+export const COMPLIANCE_MAX = 4000;
+export const PRINCIPLES_MAX = 12;
+export const PRINCIPLE_MAX = 200;
 
 export function parseCompanyForm(f: FormFields): Parsed<CompanyForm> {
   const name = text(f, "name");
