@@ -8,10 +8,10 @@ function lookup(catalog: unknown, key: string): unknown {
 }
 
 describe("ITC console sections", () => {
-  it("has the seven sections of D3 in order", () => {
-    expect(CONSOLE_SECTIONS.map((s) => s.key)).toEqual(["overview", "access", "connectors", "assistant", "data", "routing", "support"]);
+  it("has the sections of D3, and Setup, in order", () => {
+    expect(CONSOLE_SECTIONS.map((s) => s.key)).toEqual(["overview", "setup", "access", "connectors", "assistant", "data", "routing", "support"]);
     expect(CONSOLE_SECTIONS.map((s) => s.path)).toEqual([
-      "/admin", "/admin/people", "/admin/connectors", "/admin/assistant", "/admin/company-data", "/admin/decisions", "/admin/support",
+      "/admin", "/admin/setup", "/admin/people", "/admin/connectors", "/admin/assistant", "/admin/company-data", "/admin/decisions", "/admin/support",
     ]);
   });
 

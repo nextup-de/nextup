@@ -78,6 +78,8 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await manager.goto(`/${SLUG}/settings`);
     await expect(manager).toHaveURL(/\/settings\/company/); // Settings holds the results; the pill leads to setup
     await vis(manager, "settings-setup-pill").click();
+    await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup$`));
+    await vis(manager, "setup-phase-company").getByTestId("setup-phase-link").click();
     await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup/company`));
     await expect(vis(manager, "setup-step-company")).toBeVisible();
     // A later step in the address leads back to the first one not done.

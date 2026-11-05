@@ -38,10 +38,44 @@ results. How far a company is gets derived from what exists on every load (`setu
 - `routes`: at least one route.
 - `members`: more than the admin alone.
 
-Each step uses the same actions as its own page. `/setup` opens the first step not done, a later step in the address
-leads back to it, and *Next* opens once the step is done.
+Each step uses the same actions as its own page. A later step in the address leads back to the first one not done,
+and *Next* opens once the step is done.
 A case reaches a route's owner through the seat: a seat a leader is linked to puts the case in that leader's inbox,
 and the raise page offers the seat by its name.
+
+### The overview
+
+`/<company>/setup` shows every phase with its owner, its status and a link, so people can leave and come back. The
+status is one of done, your turn, waiting, problem or not used. `setupPhases(facts)` in
+`features/settings/setup-phases.ts` derives it on every load from what exists, and nothing is stored.
+
+| # | Phase | Owner | Waits on |
+|---|---|---|---|
+| 1 | Server | NextUp and customer IT | mail relay, first good off-server backup |
+| 2 | Sign-in and directory | Customer IT | Microsoft sign-in, first good directory sync |
+| 3 | Connectors and AI | Customer IT | Microsoft 365, Jira, AI provider, signed agreement |
+| 4 | Company context | System, started by a person | the background run |
+| 5 | Company to Members | Pilot lead | the five steps above |
+| 6 | Check and open | Customer admin | the five steps, the needed go-live checks, then opening |
+
+- **Who.** `setupPersonOf(slug)` lets in active managers and, on a one-company stack, stack admins; anyone else gets a
+  404. A manager acts on phases 4 to 6, a stack admin on phases 1 to 3, someone who is both on all of them. What a
+  person cannot act on has no link, and "your turn" reads "open" for them.
+- **One-company stacks only.** Phases 1 to 3 do not show in multi-tenant mode, which has no console.
+- **Links.** Phase 1 has none, since the install is in the runbook and nothing in the app changes it. Phases 2 and 3 go
+  to the console block that has the missing thing: `/admin/people#microsoft`, `/admin/connectors`, or `/admin/assistant`
+  for the agreement. Phase 5 goes to the first step not done, and that page says the person is coming back.
+- **Context.** The run's `ready` stays after the review, so phase 4 reads done once the run is over, and its line says a
+  draft is reviewed on the Company step.
+- **Waiting.** The page refreshes itself every 15 seconds while phase 1 to 5 waits, and not at all otherwise. A hidden
+  tab does not poll. Open's own waiting does not count: it waits for people, or for a backup phase 1 already waits for.
+- **Optional things.** No line in phases 2 and 3 stops Open by itself: only the go-live checks do. A company that decides
+  against Microsoft sign-in or every connector keeps "your turn" there, because nothing records that decision.
+- **NextUp's view.** `/admin/setup`, behind `consoleCompany()`, shows the same overview read-only, also to a support
+  session. It only links to console pages, which keep their own rule for support.
+
+Tests: `apps/app/tests/unit/adm/setup-phases.test.ts`, `apps/app/tests/e2e/db/setup-overview.spec.ts`, and the stack
+admin and support session in `apps/app/tests/e2e/db/itc-console.spec.ts`.
 
 ## Second factor and break-glass
 

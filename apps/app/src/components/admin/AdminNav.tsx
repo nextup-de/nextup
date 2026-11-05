@@ -8,6 +8,7 @@ import styles from "@/app/admin/admin.module.css";
 
 const ICONS: Record<AdminPage, React.ReactNode> = {
   overview: <path d="M3 3h6v6H3zM11 3h6v4h-6zM11 9h6v8h-6zM3 11h6v6H3z" />,
+  setup: <path d="M4 5h2M4 10h2M4 15h2M9 5h7M9 10h7M9 15h7" />,
   people: <path d="M7.5 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 17a5.5 5.5 0 0 1 11 0M13 3.5a3 3 0 0 1 0 5.5M15 12a5 5 0 0 1 3 5" />,
   access: <path d="M10 2.5l6 2.5v4.5c0 4-2.6 6.6-6 8-3.4-1.4-6-4-6-8V5zM7.5 10l2 2 3.5-4" />,
   connectors: <path d="M7.5 3v4M12.5 3v4M5.5 7h9v3a4.5 4.5 0 0 1-9 0zM10 14.5V17" />,

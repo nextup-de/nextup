@@ -30,6 +30,7 @@ import { settingsPilotReport } from "./messages/settingsPilotReport";
 import { privacyExport } from "./messages/privacyExport";
 import { privacyPerson } from "./messages/privacyPerson";
 import { settingsSetup } from "./messages/settingsSetup";
+import { settingsSetupPhases } from "./messages/settingsSetupPhases";
 import { adminAccess } from "./messages/adminAccess";
 import { adminConsole } from "./messages/adminConsole";
 import { adminConnectors } from "./messages/adminConnectors";
@@ -83,6 +84,7 @@ export const de = {
   privacyExport: privacyExport.de,
   privacyPerson: privacyPerson.de,
   settingsSetup: settingsSetup.de,
+  settingsSetupPhases: settingsSetupPhases.de,
   adminAccess: adminAccess.de,
   adminConsole: adminConsole.de,
   adminConnectors: adminConnectors.de,
