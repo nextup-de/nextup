@@ -24,7 +24,7 @@ const splitWords = (v: string) => v.split(",").map((w) => w.trim()).filter(Boole
 const closeMenu = (el: HTMLElement) => el.closest("details")?.removeAttribute("open");
 
 /** Keywords as chips. A comma or Enter makes a chip; the form sends the chips plus what is still typed. */
-function KeywordInput({ initial, invalid }: { initial: string[]; invalid: boolean }) {
+export function KeywordInput({ initial, invalid }: { initial: string[]; invalid: boolean }) {
   const t = useT();
   const [words, setWords] = useState(initial);
   const [draft, setDraft] = useState("");

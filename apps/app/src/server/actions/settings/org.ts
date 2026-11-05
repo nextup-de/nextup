@@ -15,7 +15,7 @@ import { revalidateSetup } from "@/server/setup-paths";
 import { audited, type Tx } from "./audited";
 import { companyAdminOf } from "./guard";
 
-export type OrgResult = { ok: true } | { ok: false; error: OrgError };
+export type OrgResult = { ok: true; id?: string } | { ok: false; error: OrgError };
 
 /** What a change records; the actor and the source are the same for all of them. */
 type Described = Pick<AuditEntry, "action" | "target" | "changes">;
@@ -60,7 +60,7 @@ async function apply(
   if (saved.value.late) return { ok: false, error: saved.value.late };
   for (const part of ["org", "routing"]) revalidatePath(`${companyPrefix(slug)}/settings/${part}`);
   revalidateSetup();
-  return { ok: true };
+  return { ok: true, id: saved.value.id };
 }
 
 export async function addUnitAction(slug: string, unit: UnitInput): Promise<OrgResult> {
