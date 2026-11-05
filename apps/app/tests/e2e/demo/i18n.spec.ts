@@ -94,7 +94,7 @@ const LEFT_OUT: Record<string, string> = {
   "[company]/(app)/settings/areas/[key]/poster/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/areas/devices/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/settings/setup/page.tsx": "only redirects to /setup",
-  "[company]/setup/page.tsx": "only redirects to the first step not done",
+  "[company]/setup/page.tsx": "the overview is walked through in tests/e2e/db/setup-overview.spec.ts",
   "[company]/setup/company/page.tsx": "setup is walked through in tests/e2e/db/admin-setup.spec.ts",
   "[company]/setup/units/page.tsx": "setup is walked through in tests/e2e/db/admin-setup.spec.ts",
   "[company]/setup/roles/page.tsx": "setup is walked through in tests/e2e/db/admin-setup.spec.ts",

@@ -27,15 +27,6 @@ export const setupIsDemo = () => !hasDatabase() || !process.env.AUTH_SECRET;
 /** The address of a setup step. */
 export const setupHref = (slug: string, step: SetupStep) => `${companyPrefix(slug)}/setup/${step}`;
 
-/** The first step not done, for the page that only sends people on. Company admins only. */
-export async function currentSetupStep(slug: string): Promise<SetupStep> {
-  if (setupIsDemo()) return "company";
-  await guardPage(slug, "/setup");
-  const admin = await companyAdminOf(slug);
-  if (!admin) notFound();
-  return setupStep(await setupCounts(admin.companyId));
-}
-
 export type SetupPageData = {
   data: SetupData;
   demo: boolean;

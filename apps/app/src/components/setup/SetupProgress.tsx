@@ -19,6 +19,7 @@ export function SetupProgress({ base, steps, step, resume }: Props) {
   const i = steps.indexOf(step);
   return (
     <div className={s.progress}>
+      <Link className={s.allPhases} href={base} data-testid="setup-all-phases">← {t("settingsSetupPhases.allPhases")}</Link>
       <ol className={s.steps} aria-label={t("settingsSetup.stepsAria")}>
         {steps.map((x, n) => (
           <li key={x} className={s.step} data-state={n < i ? "done" : n === i ? "now" : undefined} aria-current={n === i ? "step" : undefined}>

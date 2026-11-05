@@ -36,6 +36,9 @@
 .hint { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); }
 
 .progress { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; padding-bottom: 4px; }
+.allPhases { width: fit-content; font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; color: var(--nh-brand-ink); text-decoration: none; }
+.allPhases:hover { text-decoration: underline; text-underline-offset: 3px; }
+.allPhases:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
 .step { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-mute); }
 .step::before { content: ""; height: 4px; border-radius: 8px; background: var(--nh-line); }

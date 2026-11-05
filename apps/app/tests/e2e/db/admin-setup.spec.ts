@@ -83,10 +83,12 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
 
     // Sign in: code, then the second factor enrolment. While the company is closed, setup is home.
     const manager = await signIn(browser, MANAGER.name);
-    await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup/company`));
+    await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup$`));
     await manager.goto(`/${SLUG}/settings`);
     await expect(manager).toHaveURL(/\/settings\/company/); // Settings holds the results; the pill leads to setup
     await vis(manager, "settings-setup-pill").click();
+    await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup$`));
+    await vis(manager, "setup-phase-company").getByTestId("setup-phase-link").click();
     await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup/company`));
     await expect(vis(manager, "setup-step-company")).toBeVisible();
     // A later step in the address leads back to the first one not done.

@@ -7,6 +7,7 @@ export type Tone = "ok" | "warn" | "bad";
 
 export type AdminPage =
   | "overview"
+  | "setup"
   | "people"
   | "access"
   | "connectors"
@@ -22,6 +23,7 @@ export type AdminPage =
  */
 export const CONSOLE_SECTIONS = [
   { key: "overview", path: "/admin", labelKey: "adminConsole.sectionOverview" },
+  { key: "setup", path: "/admin/setup", labelKey: "settingsSetupPhases.consoleNav" },
   { key: "access", path: "/admin/people", labelKey: "adminConsole.sectionAccess" },
   { key: "connectors", path: "/admin/connectors", labelKey: "adminConsole.sectionConnectors" },
   { key: "assistant", path: "/admin/assistant", labelKey: "adminConsole.sectionAssistant" },
