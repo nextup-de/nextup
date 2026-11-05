@@ -54,12 +54,22 @@ describe("TST k6 and CI", () => {
       const parsed = parseCookieFile(readFileSync(file, "utf8"));
       expect(parsed).toMatchObject({ format: 1, slug: "mw", cookieName: "nextup_session", thinkMs: [1000, 3000] });
       // Every field musterwerk.js reads.
-      for (const field of ["file.accounts", "file.slug", "file.baseUrl", "file.cookieName", "file.thinkMs", "a.cookie", "a.inbox", "a.cases"]) expect(SCRIPT).toContain(field);
+      for (const field of ["file.accounts", "file.prefix", "file.baseUrl", "file.cookieName", "file.thinkMs", "a.cookie", "a.inbox", "a.cases"]) expect(SCRIPT).toContain(field);
       if (process.platform !== "win32") expect(statSync(file).mode & 0o777).toBe(0o600);
       expect(() => parseCookieFile(JSON.stringify({ ...parsed, accounts: [] }))).toThrow();
+      // A path-mode server puts the slug first; a stack (TENANT_MODE=single) rewrites every address onto its company.
+      expect(parsed.prefix).toBe("/mw");
+      expect(buildCookieFile("https://x.test", "mw", accounts, true).prefix).toBe("");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("run.sh takes the cookies file and writes the summary vm-run reads", () => {
+    expect(RUN_SH).toContain("--summary-export=/summary/");
+    expect(RUN_SH).toContain("p(99)");
+    expect(RUN_SH).toContain("TST_K6_SUMMARY");
+    expect(RUN_SH).toContain('cookies="${1:?');
   });
 
   it("the driver and the script pick the same page on the same turn", () => {

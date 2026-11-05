@@ -135,7 +135,7 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
         })}
       </ol>
       {versions.length > 1 && (
-        <details className={styles.older} open>
+        <details className={styles.older}>
           <summary>{t("dashboard.loopReadEarlier")}</summary>
           {versions.slice(0, -1).map((v) => <div key={v.version} className={styles.oldText}><span className={styles.k}>v{v.version}</span>{v.body}</div>)}
         </details>

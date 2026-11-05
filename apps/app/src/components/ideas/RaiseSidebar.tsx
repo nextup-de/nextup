@@ -143,7 +143,7 @@ function Card({ c }: { c: DraftCard }) {
 
 function List({ label, icon, items }: { label: string; icon: "bolt" | "file"; items: Chip[] }) {
   const t = useT();
-  const [all, setAll] = useState(true); // everything shown; the chevron folds the list down to the latest
+  const [all, setAll] = useState(false);
   if (!items.length) return null;
   const shown = all ? items : items.slice(-1);
   return (

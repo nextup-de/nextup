@@ -140,10 +140,10 @@
 .h1 { align-self: end; width: 100%; max-width: 720px; margin: 0; padding-bottom: 21px; text-align: center; font-size: var(--nh-fs-3xl); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: var(--nh-ink); }
 .below { grid-row: 3 / 5; width: 100%; max-width: 720px; align-self: start; padding: 21px 0 24px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 21px; }
 
-/* The composer: a 2px brand ring, breathing aura */
+/* The composer: gold ring, breathing aura */
 .composer { position: relative; width: 100%; max-width: 720px; animation: affSoft 320ms ease backwards; }
-.aura { position: absolute; inset: -15px; border-radius: var(--radius-md, 22.5px); filter: blur(12px); pointer-events: none; background: radial-gradient(60% 120% at 22% 50%, color-mix(in srgb, var(--nh-brand) 18%, transparent) 0%, transparent 69%), radial-gradient(60% 120% at 78% 50%, color-mix(in srgb, var(--nh-brand) 18%, transparent) 0%, transparent 72%); animation: affBreathe 5.5s ease-in-out infinite; }
-.ring { position: relative; padding: 2px; border-radius: var(--radius-md, 18px); background: var(--nh-brand); box-shadow: 0 7.5px 22.5px rgba(40,60,100,0.08), 0 1px 2px rgba(40,60,100,0.05); }
+.aura { position: absolute; inset: -15px; border-radius: var(--radius-md, 22.5px); filter: blur(12px); pointer-events: none; background: var(--nh-composer-aura); animation: affBreathe 5.5s ease-in-out infinite; }
+.ring { position: relative; padding: 2px; border-radius: var(--radius-md, 18px); background: var(--nh-composer-ring); box-shadow: 0 7.5px 22.5px rgba(40,60,100,0.08), 0 1px 2px rgba(40,60,100,0.05); }
 .inner { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 4.5px; padding: 13.5px 13.5px 10.5px 16.5px; border-radius: var(--radius-sm, 16.5px); background: var(--nh-card); }
 .row { display: flex; align-items: flex-start; gap: 9px; }
 .kindWrap { position: relative; flex: none; margin-top: -1px; }
