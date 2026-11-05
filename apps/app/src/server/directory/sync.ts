@@ -29,11 +29,16 @@ const LEASE_MS = 10 * 60_000;
 const MAX_PAGES = 50;
 
 export type DirectoryCompany = { id: string; slug: string };
-/** Which source reads this company's directory, or null when there is no adapter for it. */
+/** A source that cannot be built yet: `missing` is the sentence the admin reads as the last error. */
+export type SourceMissing = { missing: string };
+/** Which source reads this company's directory; what is missing for it; or null when there is no adapter for it. */
 export type SourceFor = (
   company: DirectoryCompany & { entraTenantId: string | null; source: DirectorySourceKind },
   now?: Date,
-) => Promise<DirectorySource | null> | DirectorySource | null;
+) => Promise<DirectorySource | SourceMissing | null> | DirectorySource | SourceMissing | null;
+
+export const NO_TENANT = "No Entra tenant ID is saved for this company. Save it in the console under Access.";
+export const NO_ENTRA_APP = "This server has no Entra app: ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET are not set.";
 
 const intervalMs = (): number => {
   const n = Number(process.env.DIRECTORY_INTERVAL_MS);
@@ -55,7 +60,9 @@ export async function runDirectoryCompany(company: DirectoryCompany, sourceFor: 
     const kind = sourceKind(row.source);
     const tenant = await getDb().company.findUnique({ where: { id: company.id }, select: { entraTenantId: true } });
     const source = await sourceFor({ ...company, entraTenantId: tenant?.entraTenantId ?? null, source: kind }, now);
-    if (!source) return void (await recordDirectoryRun(company.id, { error: `no adapter for ${row.source}` }, now));
+    if (!source || "missing" in source) {
+      return void (await recordDirectoryRun(company.id, { error: source?.missing ?? `no adapter for ${row.source}` }, now));
+    }
     const total: DirectoryCounts = { added: 0, updated: 0, deactivated: 0, handed: 0 };
     let held = NOBODY_HELD;
     let cursor = row.cursor;
@@ -93,11 +100,12 @@ export async function runDirectoryCompany(company: DirectoryCompany, sourceFor: 
   }
 }
 
-/** Graph for a company with a tenant and an Entra app (as before). */
+/** Graph for a company with a tenant and an Entra app; without one of them, which one is missing. */
 const graphOnly: SourceFor = (c) => {
   if (c.source !== "graph") return null;
+  if (!c.entraTenantId) return { missing: NO_TENANT };
   const app = entraApp();
-  return c.entraTenantId && app ? graphDirectory({ tenantId: c.entraTenantId, app }) : null;
+  return app ? graphDirectory({ tenantId: c.entraTenantId, app }) : { missing: NO_ENTRA_APP };
 };
 
 /** The default (D9): Graph as graphOnly, SuccessFactors from the company's Integration row; null when there is none. */
