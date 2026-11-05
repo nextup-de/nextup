@@ -174,7 +174,7 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
   const ph = t(cfg.ph);
   const [q, setQ] = useState("");
   const [pages, setPages] = useState<Record<string, number>>({});
-  const [folded, setFolded] = useState<string[]>([]); // departments whose people the person folded away; the rest show their people
+  const [openDept, setOpenDept] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => { input.current?.focus(); }, []);
 
@@ -221,13 +221,13 @@ function Picker(p: MenuProps & { view: PickKey; done: () => void }) {
               {pg.rows.map((it) => {
                 if (!it.dept) return <div key={it.id} className={s.pickLine}>{row(it)}</div>;
                 const members: Item[] = p.people.filter((x) => x.dept === it.dept && x.name !== p.me).map((x) => ({ id: x.name, label: x.name, meta: x.role }));
-                const open = !folded.includes(it.dept ?? ""), picked = members.filter((m) => sel.includes(m.id)).length, sp = page("dept:" + it.dept, members);
+                const open = openDept === it.dept, picked = members.filter((m) => sel.includes(m.id)).length, sp = page("dept:" + it.dept, members);
                 return (
                   <Fragment key={it.id}>
                     <div className={s.pickLine}>
                       {row(it)}
                       {members.length > 0 && (
-                        <button type="button" className={s.sub} aria-expanded={open} title={t("ideas.menuPickInDept")} onClick={() => setFolded((f) => (open ? [...f, it.dept ?? ""] : f.filter((x) => x !== it.dept)))}>
+                        <button type="button" className={s.sub} aria-expanded={open} title={t("ideas.menuPickInDept")} onClick={() => setOpenDept(open ? null : it.dept ?? null)}>
                           <span>{(picked ? picked + "/" : "") + members.length}</span><Icon name="right" size={9} width={2.6} />
                         </button>
                       )}

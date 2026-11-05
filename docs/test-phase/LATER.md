@@ -23,4 +23,3 @@ Only fixes go in during TST; everything here waits. Sources are the findings fil
 - Core loop (TST-S1): generated check-ins have all fallen due by the generator's own clock run, so the scenario starts its own round;
   the scenarios share one company and move the clock forward only, so their order matters.
 - Acceptance spec: a streamed not-found for a case the viewer may not open answers 200; the proof reads the page and payload, not the status.
-- Playwright's config starts local servers even in remote mode; a config without `webServer` for remote runs.

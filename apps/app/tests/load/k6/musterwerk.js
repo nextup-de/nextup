@@ -1,7 +1,7 @@
 // Grafana k6 script for the Musterwerk load test (TST-L1, D9). Same pages, think time and budget as the Node driver
 // (tests/load/driver.ts, D8). Accounts and cookies come from the JSON file the driver writes:
 //
-//     npx tsx tests/load/driver.ts --slug mw --base-url http://host:3103 --write-cookies cookies.json
+//     npx tsx tests/load/driver.ts --slug mw --base-url http://host:3103 --write-cookies cookies.json     (--single for a stack)
 //     tests/load/k6/run.sh cookies.json
 //
 // Environment: COOKIES_FILE (path inside the container), BASE_URL (default: the file's), VUS (200), DURATION (60s).
@@ -16,7 +16,7 @@ const VUS = Number(__ENV.VUS || 200);
 // `k6 inspect` runs this without a file: then there is simply nobody to log in.
 const file = __ENV.COOKIES_FILE
   ? JSON.parse(open(__ENV.COOKIES_FILE))
-  : { baseUrl: "", slug: "", cookieName: "nextup_session", thinkMs: [1000, 3000], accounts: [] };
+  : { baseUrl: "", slug: "", prefix: "", cookieName: "nextup_session", thinkMs: [1000, 3000], accounts: [] };
 const accounts = new SharedArray("accounts", () => file.accounts);
 const oversize = new Counter("oversize_responses");
 
@@ -34,7 +34,7 @@ export const options = {
 
 function visit(a, page, path) {
   const base = (__ENV.BASE_URL || file.baseUrl).replace(/\/$/, "");
-  const res = http.get(`${base}/${file.slug}${path}`, {
+  const res = http.get(`${base}${file.prefix}${path}`, {
     headers: { Cookie: `${file.cookieName}=${a.cookie}` },
     redirects: 0,
     tags: { page },

@@ -15,6 +15,9 @@
   --nh-mute-2: #8e8e93;
   --nh-ghost: #c7c7cc;       /* chevrons, disabled */
   --nh-accent: #ff5a1f;      /* time: due now, overdue, worsening */
+  /* The composer on the raise page keeps its gold: the ring around the box and the glow behind it. Everything else that acts is blue. */
+  --nh-composer-ring: linear-gradient(110deg, #f0c23a 0%, #f7dd93 30%, #fff3d0 52%, #f2cb55 78%, #e6a919 100%);
+  --nh-composer-aura: radial-gradient(60% 120% at 22% 50%, #e6a9192e 0%, #e6a91900 69%), radial-gradient(60% 120% at 78% 50%, #f2cb552e 0%, #f2cb5500 72%);
   /* The blue. Change these values to change the blue everywhere: no file outside this one names a blue. */
   --nh-brand: #0b70d1;        /* primary button, selected states, the current place */
   --nh-brand-hover: #085dae;

@@ -30,7 +30,7 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
   const r = useRights(p);
   const send = useSend(p);
   const b = p.baseline;
-  const [editing, setEditing] = useState(true); // the baseline form starts open
+  const [editing, setEditing] = useState(false);
   const [none, setNone] = useState(false);
   const [metric, setMetric] = useState("");
   const [unit, setUnit] = useState("");
@@ -173,7 +173,7 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
   const [impact, setImpact] = useState<Record<string, string>>({});
-  const [mode, setMode] = useState<"type" | "import" | null>("type"); // the form to type a figure starts open
+  const [mode, setMode] = useState<"type" | "import" | null>(serverMode ? null : "type"); // demo mode has only one way in, so the form is open
   const [confirming, setConfirming] = useState(false);
   const [importMsg, setImportMsg] = useState<string[]>([]);
   const m = p.measures.find((x) => x.check === c.check);

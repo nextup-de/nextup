@@ -46,14 +46,13 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
   const t = useT();
   const [chosen, setChosen] = useState<Desk | null>(desks.find((d) => d.recommended) ?? null);
   const [custom, setCustom] = useState<Desk | null>(null); // another desk, once picked
-  const [searching, setSearching] = useState(true); // the desk search starts open
+  const [searching, setSearching] = useState(false);
   const [q, setQ] = useState("");
   const busy = work !== null;
   const field = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
 
-  const searched = useRef(false); // no autofocus on arrival: the field is open but the person has not asked for it
-  useEffect(() => { if (searching && searched.current) field.current?.focus(); }, [searching]);
+  useEffect(() => { if (searching) field.current?.focus(); }, [searching]);
   useEffect(() => {
     dialog.current?.focus();
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onCancel(); };
@@ -113,7 +112,7 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
             {desks.map(row)}
             {custom && !taken.has(custom.roleId) && row(custom)}
             <div className={s.rcv} data-on={searching && !chosen} data-testid="raise-desk-other">
-              <button type="button" className={s.rcvTop} onClick={() => { searched.current = true; setSearching(!searching); }} disabled={busy} aria-expanded={searching}>
+              <button type="button" className={s.rcvTop} onClick={() => setSearching(!searching)} disabled={busy} aria-expanded={searching}>
                 <span className={s.rcvRadio} aria-hidden="true" />
                 <span className={s.rcvWho}>
                   <span className={s.rcvName}>{t("ideas.deskOther")}</span>

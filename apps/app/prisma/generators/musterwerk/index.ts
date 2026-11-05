@@ -33,6 +33,8 @@ export type GenerateOptions = {
   codesFile?: string;
   /** Delete a company with this slug first. Without it an existing slug is refused. */
   replace?: boolean;
+  /** Delete a company with this slug only when nothing real can be lost: a sandbox company with no people, or a Musterwerk of an earlier run. */
+  replaceGenerated?: boolean;
 };
 
 export type GenerateResult = {
@@ -43,6 +45,7 @@ export type GenerateResult = {
 /** German federal holidays plus Bavaria. Per-site calendars do not exist in the product. */
 export const MUSTERWERK_CALENDAR: CalendarSpec = { ...DEFAULT_CALENDAR, region: "DE-BY" };
 
+const MUSTERWERK_NAME = "Musterwerk GmbH";
 const CHUNK_USERS = 500;
 const CHUNK_EVENTS = 1000;
 
@@ -51,8 +54,14 @@ export async function generateMusterwerk(db: Db, opts: GenerateOptions): Promise
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) throw new Error(`slug "${slug}" must be lower-case letters, digits and hyphens`);
   if (!Number.isInteger(weeks) || weeks < 1) throw new Error("weeks must be a whole number of at least 1");
 
-  const existing = await db.company.findUnique({ where: { slug }, select: { id: true } });
-  if (existing && !opts.replace) throw new Error(`company "${slug}" exists; pass --replace to delete it and generate again`);
+  const existing = await db.company.findUnique({ where: { slug }, select: { id: true, name: true, stage: true } });
+  if (existing && !opts.replace) {
+    if (!opts.replaceGenerated) throw new Error(`company "${slug}" exists; pass --replace to delete it and generate again`);
+    const people = await db.user.count({ where: { companyId: existing.id } });
+    if (existing.stage !== "sandbox" || (people > 0 && existing.name !== MUSTERWERK_NAME)) {
+      throw new Error(`company "${slug}" (stage ${existing.stage}, ${people} people) is not an empty sandbox or an earlier Musterwerk; refusing to delete it`);
+    }
+  }
 
   const rng = makeRng(opts.seed);
   // Built before anything is written: a bad people count fails with the database untouched.
@@ -64,7 +73,7 @@ export async function generateMusterwerk(db: Db, opts: GenerateOptions): Promise
   if (existing) await db.company.delete({ where: { id: existing.id } });
   const company = await db.company.create({
     data: {
-      slug, name: "Musterwerk GmbH", mark: "M", stage: "sandbox",
+      slug, name: MUSTERWERK_NAME, mark: "M", stage: "sandbox",
       seedJson: toSeedJson(templateWrites("empty", () => crypto.randomUUID()).seedJson) as object,
       config: { create: { aiRouting: false, assistant: false } },
     },
