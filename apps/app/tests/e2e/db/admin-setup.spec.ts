@@ -194,7 +194,7 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await expect(manager.getByTestId("setup-open-dialog")).toContainText("Works council");
     await manager.getByRole("button", { name: "Yes, open NextUp" }).click();
     await expect(vis(manager, "setup-open-opened")).toBeVisible({ timeout: 30_000 });
-    await expect(vis(manager, "setup-open-sent")).toContainText("1 invitations sent");
+    await expect(vis(manager, "setup-open-sent")).toContainText("1 invitation sent");
     const [mail] = await mailsTo(LEADER.email);
     const mailed = new RegExp(`${SLUG}-[a-z0-9-]+`, "i").exec(mail ?? "")?.[0];
     expect(mailed).toBeTruthy();

@@ -56,7 +56,7 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
     }
     if (form.get("intent") === "invite") {
       const r = await inviteMemberAction({}, form);
-      if (r.added?.code && !r.problems?.length) setAdding(null);
+      if (r.added && !r.problems?.length) setAdding(null);
       return { ...r.added, problems: r.problems, warnings: r.warnings, mailed: r.mailed, mailError: r.mailError, held: r.held };
     }
     return issueMemberCodeAction({}, form);

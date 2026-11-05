@@ -64,11 +64,11 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
         <SettingsHead title={t("settingsSetupOpen.openedTitle", { company })} />
         <section className={s.card} data-testid="setup-open-opened">
           <p className={s.cardText}>{t("settingsSetupOpen.openedLine", { date: f.date(openedAt, "day") })}</p>
-          {invitations && invitations.sent > 0 ? <p className={s.cardText} role="status" data-testid="setup-open-sent">{t("settingsSetupOpen.sentLine", { n: invitations.sent })}</p> : null}
-          {invitations && invitations.failed > 0 ? <p className={s.refusal} role="alert" data-testid="setup-open-failed">{t("settingsSetupOpen.failedLine", { n: invitations.failed })}</p> : null}
+          {invitations && invitations.sent > 0 ? <p className={s.cardText} role="status" data-testid="setup-open-sent">{t("settingsSetupOpen.sentLine", { count: invitations.sent, n: invitations.sent })}</p> : null}
+          {invitations && invitations.failed > 0 ? <p className={s.refusal} role="alert" data-testid="setup-open-failed">{t("settingsSetupOpen.failedLine", { count: invitations.failed, n: invitations.failed })}</p> : null}
           {waiting > 0 ? (
             <div className={o.waiting}>
-              <span className={s.cardText} data-testid="setup-open-waiting">{t("settingsSetupOpen.stillWaiting", { n: waiting })}</span>
+              <span className={s.cardText} data-testid="setup-open-waiting">{t("settingsSetupOpen.stillWaiting", { count: waiting, n: waiting })}</span>
               <button type="button" className={s.secondary} disabled={pending} onClick={again} data-testid="setup-open-send">{t("settingsSetupOpen.sendAgain")}</button>
             </div>
           ) : null}
@@ -156,7 +156,7 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
         {group("needed", "settingsGoLive.needed")}
         {group("recommended", "settingsGoLive.recommended")}
       </section>
-      {held > 0 ? <p className={s.hint} data-testid="setup-open-held">{t("settingsSetupOpen.waitingLine", { n: held })}</p> : null}
+      {held > 0 ? <p className={s.hint} data-testid="setup-open-held">{t("settingsSetupOpen.waitingLine", { count: held, n: held })}</p> : null}
       <div className={s.footer}>
         <Link className={s.back} href={`${prefix}/setup/done`} data-testid="setup-back">← {t("settingsSetup.back")}</Link>
         <div className={s.forward}>
@@ -164,7 +164,7 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
             {t("settingsSetupOpen.openButton")}
           </button>
           <span className={s.nextHint} data-testid="setup-open-hint">
-            {demo ? t("settingsSetupOpen.demoHint") : ready ? t("settingsSetupOpen.readyHint") : t("settingsSetupOpen.blockedHint", { n: open })}
+            {demo ? t("settingsSetupOpen.demoHint") : ready ? t("settingsSetupOpen.readyHint") : t("settingsSetupOpen.blockedHint", { count: open, n: open })}
           </span>
         </div>
       </div>
