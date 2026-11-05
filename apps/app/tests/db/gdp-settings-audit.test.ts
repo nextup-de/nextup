@@ -36,7 +36,7 @@ const as = (c: Co, userId: string, role: Viewer["role"]): Viewer => ({
 
 let n = 0;
 async function makeCompany(slug: string): Promise<Co> {
-  const c = await db.company.create({ data: { slug, name: `Co ${slug}`, seedJson: toSeedJson(SEED) as object } });
+  const c = await db.company.create({ data: { openedAt: new Date(), slug, name: `Co ${slug}`, seedJson: toSeedJson(SEED) as object } });
   const mk = (name: string, role: string, mail: string) =>
     db.user.create({ data: { companyId: c.id, name, email: `${mail}@${slug}.example`, role }, select: { id: true } });
   const u = await db.orgUnit.create({ data: { companyId: c.id, key: "OPS", name: "Operations", kind: "dept", headcount: 2, sort: 0 } });

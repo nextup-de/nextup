@@ -21,7 +21,7 @@ let deviceN = 0;
 const devKey = () => `a:flr-status-device-${++deviceN}`;
 
 async function company(slug: string) {
-  const c = await db.company.create({ data: { slug, name: slug, seedJson: toSeedJson(SEED) as object } });
+  const c = await db.company.create({ data: { openedAt: new Date(), slug, name: slug, seedJson: toSeedJson(SEED) as object } });
   const unit = await db.orgUnit.create({ data: { companyId: c.id, key: "OPS", name: "Montage", kind: "dept", sort: 0 } });
   const role = await db.orgRole.create({ data: { companyId: c.id, orgUnitId: unit.id, title: "Shift lead", decides: [], sort: 0 } });
   const user = await db.user.create({ data: { companyId: c.id, name: "Lena Lead", email: `lena@${slug}.example`, role: "leader" }, select: { id: true } });

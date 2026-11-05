@@ -38,7 +38,7 @@ async function limitedOf(times: number, ask: () => Promise<{ ok: boolean; reason
 beforeAll(async () => {
   process.env.AUTH_SECRET = "test-secret-test-secret-test-secret-0123456789";
   await db.company.deleteMany({});
-  const c = await db.company.create({ data: { slug: SLUG, name: SLUG, seedJson: toSeedJson(SEED) as object } });
+  const c = await db.company.create({ data: { openedAt: new Date(), slug: SLUG, name: SLUG, seedJson: toSeedJson(SEED) as object } });
   companyId = c.id;
   const unit = await db.orgUnit.create({ data: { companyId, key: "OPS", name: "Montage", kind: "dept", sort: 0 } });
   const role = await db.orgRole.create({ data: { companyId, orgUnitId: unit.id, title: "Shift lead", decides: [], sort: 0 } });

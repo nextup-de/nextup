@@ -1,7 +1,8 @@
-// ADM acceptance (plan ADM, ADM-Z1): a company created empty is configured in the app by
-// its manager - second factor, setup wizard, seat link on Members - and the first case a member
-// raises reaches the leader who holds the route's owner seat. The fixture creates the
-// company in the database and deletes it. Own company, like structure.spec.ts.
+// ADM acceptance (plan ADM, ADM-Z1): a company created empty and closed is configured in the app by
+// its manager - second factor, setup wizard, seat link on Members - and opened. Nobody else can sign in
+// before that, invitations wait for it, and the first case a member raises reaches the leader who holds
+// the route's owner seat. The fixture creates the company in the database and deletes it. Own company, like
+// structure.spec.ts. Runs on its own server, with a mail relay and a backup file (playwright.db.config.ts).
 import type { Browser, Locator, Page } from "@playwright/test";
 import { expect, passSecondFactor, publishIdea, test, vis } from "../helpers";
 import { createTestCompany, deleteTestCompany } from "./company-fixture";
@@ -16,23 +17,30 @@ const MEMBER = { name: "Primrose Tallowby", email: `primrose@${SLUG}.test` };
 
 const codes = new Map<string, string>();
 
-/** An empty sandbox company with one manager. */
+/** An empty, closed sandbox company with one manager. */
 async function createCompany() {
   const made = await createTestCompany({
-    slug: SLUG, name: `ADM ${STAMP}`, template: "empty", stage: "sandbox",
+    slug: SLUG, name: `ADM ${STAMP}`, template: "empty", stage: "sandbox", closed: true,
     people: [{ ...MANAGER, role: "manager", dept: "Management" }],
   });
   for (const [name, code] of made) codes.set(name, code);
 }
 
-async function signIn(browser: Browser, name: string): Promise<Page> {
+async function signIn(browser: Browser, name: string, next = ""): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
-  await page.goto(`/${SLUG}/login`);
+  await page.goto(`/${SLUG}/login${next ? `?next=${encodeURIComponent(next)}` : ""}`);
   await page.locator("#code:visible").fill(codes.get(name) ?? "");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   await passSecondFactor(page, `${SLUG}|${name}`);
   await expect(page).not.toHaveURL(/\/login/);
   return page;
+}
+
+/** The mails the relay kept for this address. */
+async function mailsTo(email: string): Promise<string[]> {
+  const res = await fetch(`${process.env.E2E_SMTP_SINK}/mails`);
+  const mails = (await res.json()) as { to: string[]; data: string }[];
+  return mails.filter((m) => m.to.includes(email)).map((m) => m.data);
 }
 
 /** Next moves to the next page; it only opens once the step is done. */
@@ -70,11 +78,12 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await deleteTestCompany(SLUG);
   });
 
-  test("the manager sets the company up in the wizard, the member's case reaches the leader of the owner seat", async ({ browser }) => {
+  test("the manager sets the company up and opens it, the member's case reaches the leader of the owner seat", async ({ browser }) => {
     const title = `Reserve the test rig for a week ${STAMP}`;
 
-    // Sign in: code, then the second factor enrolment, then Setup.
+    // Sign in: code, then the second factor enrolment. While the company is closed, setup is home.
     const manager = await signIn(browser, MANAGER.name);
+    await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup/company`));
     await manager.goto(`/${SLUG}/settings`);
     await expect(manager).toHaveURL(/\/settings\/company/); // Settings holds the results; the pill leads to setup
     await vis(manager, "settings-setup-pill").click();
@@ -126,15 +135,20 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await vis(manager, "setup-member-email").fill(LEADER.email);
     await vis(manager, "setup-member-role").selectOption("leader");
     await vis(manager, "setup-member-add").click();
-    await expect(manager.locator(`li[data-testid^="setup-member-"]`).filter({ hasText: LEADER.name })).toBeVisible();
+    const leaderAdded = manager.locator(`li[data-testid^="setup-member-"]`).filter({ hasText: LEADER.name });
+    await expect(leaderAdded).toBeVisible();
+    // The company is closed, so the invitation waits: no mail yet, and no code on screen.
+    await expect(leaderAdded.getByTestId("setup-member-held")).toBeVisible();
+    await expect(manager.getByTestId("setup-member-code")).toHaveCount(0);
+    expect(await mailsTo(LEADER.email)).toEqual([]);
     await next(manager);
     await expect(vis(manager, "setup-step-done")).toBeVisible();
 
-    // The rest happens on the Members page: the member, both codes, and the leader's seat.
+    // The rest happens on the Members page: the member, their code by hand, and the leader's seat.
     await manager.goto(`/${SLUG}/settings/members`);
     await invite(manager, MEMBER, "member");
+    await expect(manager.getByTestId("settings-member-held")).toBeVisible();
     await readCode(manager, MEMBER);
-    await readCode(manager, LEADER);
     const leaderRow = manager.locator("li").filter({ hasText: LEADER.email });
     // Seats are linked in a dialog opened from the row's menu.
     await leaderRow.locator('summary[data-testid^="settings-member-menu-"]').click();
@@ -142,6 +156,51 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     const seats = manager.getByRole("dialog");
     await seats.getByLabel(`Free seat for ${LEADER.name}`).selectOption({ index: 1 });
     await expect(seats.getByRole("button", { name: /^Unlink / })).toBeVisible();
+
+    // A member cannot sign in while the company is closed, and the login page says why.
+    const early = await (await browser.newContext()).newPage();
+    await early.goto(`/${SLUG}/login`);
+    await expect(early.getByTestId("login-not-open")).toBeVisible();
+    await early.locator("#code:visible").fill(codes.get(MEMBER.name) ?? "");
+    await early.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(early.getByText("NextUp is not open yet at")).toBeVisible();
+    await expect(early).toHaveURL(/\/login/);
+    await early.context().close();
+
+    // A `next` target wins over setup as home.
+    const again = await signIn(browser, MANAGER.name, "/settings/members");
+    await expect(again).toHaveURL(new RegExp(`/${SLUG}/settings/members`));
+    await again.context().close();
+
+    // The finish page leads to Open. The calendar was never saved, so a needed check is open and Open is refused.
+    await manager.goto(`/${SLUG}/setup/done`);
+    await vis(manager, "setup-to-open").click();
+    await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup/open`));
+    await expect(vis(manager, "setup-open-check-calendar")).toHaveAttribute("data-state", "needs");
+    await expect(vis(manager, "setup-open-button")).toBeDisabled();
+
+    // Fix it where the check's link leads, and check again.
+    await vis(manager, "setup-open-check-calendar").getByRole("link").click();
+    await expect(manager).toHaveURL(/\/settings\/calendar/);
+    await expect(vis(manager, "settings-setup-pill")).toBeVisible(); // the pill shows while closed
+    await manager.getByTestId("settings-calendar-save").click();
+    await expect(manager.getByTestId("settings-calendar-saved")).toBeVisible();
+    await manager.goto(`/${SLUG}/setup/open`);
+    await expect(vis(manager, "setup-open-check-calendar")).toHaveAttribute("data-state", "done");
+    await expect(vis(manager, "setup-open-held")).toBeVisible();
+
+    // Open repeats the hand list, then opens. The held invitation goes out with a code that works.
+    await vis(manager, "setup-open-button").click();
+    await expect(manager.getByTestId("setup-open-dialog")).toContainText("Works council");
+    await manager.getByRole("button", { name: "Yes, open NextUp" }).click();
+    await expect(vis(manager, "setup-open-opened")).toBeVisible({ timeout: 30_000 });
+    await expect(vis(manager, "setup-open-sent")).toContainText("1 invitation sent");
+    const [mail] = await mailsTo(LEADER.email);
+    const mailed = new RegExp(`${SLUG}-[a-z0-9-]+`, "i").exec(mail ?? "")?.[0];
+    expect(mailed).toBeTruthy();
+    codes.set(LEADER.name, mailed ?? "");
+    await manager.goto(`/${SLUG}/settings/company`);
+    await expect(manager.getByTestId("settings-setup-pill")).toHaveCount(0);
     await manager.context().close();
 
     // The member raises a case about the rig; the leader sees it in the inbox.

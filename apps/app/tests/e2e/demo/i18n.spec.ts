@@ -101,6 +101,7 @@ const LEFT_OUT: Record<string, string> = {
   "[company]/setup/routes/page.tsx": "setup is walked through in tests/e2e/db/admin-setup.spec.ts",
   "[company]/setup/members/page.tsx": "setup is walked through in tests/e2e/db/admin-setup.spec.ts",
   "[company]/setup/done/page.tsx": "setup is walked through in tests/e2e/db/admin-setup.spec.ts",
+  "[company]/setup/open/page.tsx": "setup is walked through in tests/e2e/db/admin-setup.spec.ts",
   "[company]/(app)/exports/[id]/page.tsx": "the export page needs a database and the person the export was made for",
   "[company]/floor/[area]/page.tsx": "floor pages need a database (areas, devices) and a phone session",
   "[company]/floor/[area]/sign-in/page.tsx": "floor pages need a database (areas, devices) and a phone session",

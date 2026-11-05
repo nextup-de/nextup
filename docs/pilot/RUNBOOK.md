@@ -1,13 +1,17 @@
 # Pilot runbook: from an empty VM to stage pilot
 
-> **Updated 2026-11-04.** For NextUp's operator (Kevin or whoever Kevin names). One customer, one stack, one VM. Every
+> **Updated 2026-11-05.** For NextUp's operator (Kevin or whoever Kevin names). One customer, one stack, one VM. Every
 > command here exists on `main`; where something is not built yet it says *planned for the pilot*. Commands are
 > explained once in the stack, ops and customer docs; this runbook gives the order and links there.
 
 **A green checklist does not authorise a pilot.** The Go-live page checks what the app can see. It cannot see a signed
 agreement, a works council decision, a restore test, an open security finding or an access key someone forgot. Those are
-checked by hand in the joint setup session ([below](#joint-setup-session)) and nobody moves the company to pilot before
-they are. The app can show ready while a contract is missing.
+checked by hand in the joint setup session ([below](#joint-setup-session)) and nobody opens the company or moves it to
+pilot before they are. The app can show ready while a contract is missing.
+
+**A new company is closed.** Until someone presses "Open NextUp" (`/<company>/setup/open`), only active managers and
+stack admins get a session. Everyone else sees on the login page that NextUp is not open yet. Companies that were
+running before this rule came in stay open.
 
 ## The order
 
@@ -20,6 +24,7 @@ they are. The app can show ready while a contract is missing.
 | 5 | Read the checks, fix what is open | NextUp and the customer's IT | section 5 |
 | 6 | Joint setup session | NextUp, customer IT, pilot lead | [Joint setup session](#joint-setup-session) |
 | 7 | One real test mail | in the session | section 7 |
+| 7a | Open NextUp | the customer's admin | [Open NextUp](#open-nextup) |
 | 8 | The switch: sandbox to pilot | the customer's admin | section 8 |
 | 9 | Rollback to sandbox, if needed | the customer's admin | section 9 |
 | 10 | First-week checks | NextUp | section 10 |
@@ -141,8 +146,8 @@ Exit codes:
 ## 5. What each check needs, and which page fixes it
 
 The bootstrap ends with one line per check, `[state] level key: text`. The same checks are on
-`/<company>/settings/go-live`, where each row links to the page that fixes it. *Needed* checks block the switch; a
-check that cannot run (`unknown`) blocks too. *Recommended* checks do not.
+`/<company>/setup/open` and `/<company>/settings/go-live`, where each row links to the page that fixes it. *Needed*
+checks block Open and the switch; a check that cannot run (`unknown`) blocks too. *Recommended* checks do not.
 
 | Check | Needed? | Done when | Fixed on |
 |---|---|---|---|
@@ -177,8 +182,9 @@ The first pilots are set up together, not by the customer alone. Before the sess
 `bootstrap` in sandbox from the customer's CSV files, and the customer's IT connects sign-in, directory and mail with the
 handouts `docs/customer/ENTRA_SETUP.md` or `docs/customer/SUCCESSFACTORS_SETUP.md`. In one session of about half a day
 NextUp, the customer's IT and the pilot lead (who knows the units, roles and routes) check the structure and the routes,
-raise a test case and go through the Go-live checklist. The customer's admin then moves sandbox to pilot. The setup
-wizard stays as it is: it shows what is still missing and serves a company without an import. There is no second wizard.
+go through the checklist on the Open page and open the company, then raise a test case. The customer's admin then moves
+sandbox to pilot. Setup at `/<company>/setup` covers the steps below that happen in the app: it shows what is still
+missing, an imported company simply shows its steps as done, and it serves a company without an import too.
 
 **What NextUp prepares before the session**
 
@@ -197,13 +203,15 @@ wizard stays as it is: it shows what is still missing and serves a company witho
    switches.
 3. Structure: the pilot lead reads the units and roles on the Org page against the real organisation.
 4. Routes: for each route, who owns it and who is the deputy; Routing shows nobody in an owner role as a gap.
-5. People and sign-in: one admin, one manager and one member sign in; a person with no role is refused.
+5. People and sign-in: one admin and one manager sign in and land in setup; a member is refused with the "not open yet"
+   line (the company is still closed).
 6. Directory and calendar: the last directory run is green or the CSV files are the source; holidays are right.
-7. The checklist, line by line. Every *needed* line is done or the cause is named.
+7. The checklist on the Open page, line by line. Every *needed* line is done or the cause is named.
 8. One real test mail (section 7).
-9. Raise a test case in sandbox as a member, watch it reach the owner's inbox, answer it, read the decision log. Nothing
-   leaves in sandbox; that is the point.
-10. The switch (section 8), if and only if the hand list is clear.
+9. [Open NextUp](#open-nextup), if and only if the hand list is clear. The member from step 5 can now sign in.
+10. Raise a test case in sandbox as a member, watch it reach the owner's inbox, answer it, read the decision log. Nothing
+    leaves in sandbox; that is the point.
+11. The switch (section 8), if and only if the hand list is clear.
 
 **What the session checks by hand**
 
@@ -220,19 +228,36 @@ If anything on this list is unclear, say so out loud and stop. A green checklist
 ## 7. One real test mail
 
 In sandbox the app sends no case mail, reminder or report. The Mail check proves the relay answers, not that a mail
-arrives. The test mail is therefore one that does go out in sandbox: **invite the test person** on Settings, Members.
-The invitation mail carries the person's login code and the login address and is sent through the relay at once.
+arrives. The test mail is therefore one that does go out in sandbox: **invite the test person as a manager** on Settings,
+Members. The invitation mail carries the person's login code and the login address and is sent through the relay at once.
+While the company is closed only a manager's invitation goes out at once: a member's or a leader's waits for Open.
 
 - It arrives at the address the IT can read, not in spam, with the right sender, in the person's language.
 - The link opens the company's login page over HTTPS with a valid certificate.
-- Afterwards deactivate the test person (Members) so the people counts stay true.
+- Afterwards deactivate the test person (Members) so the people counts stay true, and because a manager without a second
+  factor keeps the Managers' second factor check open.
 
 The first case mails are checked again in the first week (section 10), because they only leave in pilot.
 
+## Open NextUp
+
+Only a company admin of the customer opens the company, on `/<company>/setup/open`, which the setup finish page leads to.
+NextUp sits next to them; it does not do it for them. The page runs every check again on the server and refuses if a
+needed one is open or unknown. There is no override. A dialog repeats the hand list above, which the app cannot check.
+
+What changes: everyone with an active account can sign in. Invitations held back so far go out, each with a new login
+code; a person whose code was handed out by hand keeps it and gets no mail. A mail that fails stays in the queue and the
+page offers to send it again. Nobody is signed out and the stage does not move. The time is stored on the company and
+written to the audit log. There is no way to close a company again; to stop a pilot, use section 9 and deactivate people.
+
+Before Open the shop-floor pages say the area is paused, and the Teams bot answers as if Teams were off. API tokens and
+SCIM work, because they belong to the setup people and the customer's IT.
+
 ## 8. The switch
 
-Only a company admin of the customer moves the stage, on `/<company>/settings/go-live`. The page runs every check again
-on the server and refuses if a needed one is open or unknown. NextUp sits next to them; it does not do it for them.
+Only a company admin of the customer moves the stage, on `/<company>/settings/go-live`, and only after Open. The page runs
+every check again on the server and refuses if a needed one is open or unknown. NextUp sits next to them; it does not do
+it for them.
 
 What changes: mails about a case go to the people it concerns; reminders and the daily digest go out only if
 *notifications* is on; the pilot report starts counting (the dialog names the week it counts from); every manager who is active at that

@@ -10,6 +10,7 @@ import { getDb } from "@/lib/db/client";
 import { floorUserByCode, hashFloor } from "@/lib/db/floor";
 import { hasDatabase } from "@/lib/db/mode";
 import { floorAddressLimit, floorDeviceOf, floorPath, floorSecret, floorUserFromCookie, raiseFromFloor, type FloorRaiseResult } from "@/server/floor/raise";
+import { loadOpenedAt } from "@/server/setup-open";
 import { throttle } from "@/server/throttle";
 
 const SENT_TTL_SECONDS = 120;
@@ -64,6 +65,7 @@ export async function floorSignInAction(slug: string, code: string): Promise<Flo
   const secret = floorSecret();
   const companyId = await companyIdOf(slug);
   if (!secret || !companyId) return { ok: false, reason: "unavailable" };
+  if (!(await loadOpenedAt(companyId))) return { ok: false, reason: "unavailable" }; // closed until opened
 
   const device = await floorDeviceOf(slug, companyId, true);
   const limited = (await throttle("floorCode", device.key)) ?? (await floorAddressLimit("floorCodeAddress", device.key));

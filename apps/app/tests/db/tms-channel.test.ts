@@ -48,6 +48,7 @@ beforeAll(async () => {
   });
   const c = await db.company.create({
     data: {
+      openedAt: new Date(),
       slug: SLUG, name: "TMS channel", entraTenantId: "tenant-1", seedJson: toSeedJson(writes.seedJson) as object,
       users: { create: [person("B. Hartmann", "manager"), person("T. Vogel", "leader"), person("J. Schmidt", "member", "Anonymous #4471")] },
     },

@@ -8,8 +8,24 @@ AI off: every offline-safe question below is routed by the keyword router (`feat
 
 1. An AWS account.
 2. Bedrock model access for Claude Sonnet 5.5 in `eu-central-1`.
-3. An IAM user whose policy allows only `bedrock:InvokeModel` and
-   `bedrock:InvokeModelWithResponseStream` on that model.
+3. An IAM user whose policy allows only inference on that model. The app and the brain call the
+   Mantle endpoint (`bedrock-mantle.<region>.api.aws`), which checks `bedrock-mantle:CreateInference`,
+   not `bedrock:InvokeModel`. That action has no per-model ARN, so a condition narrows it:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [{
+       "Effect": "Allow",
+       "Action": "bedrock-mantle:CreateInference",
+       "Resource": "*",
+       "Condition": { "StringEquals": { "bedrock-mantle:Model": "<Bedrock model id>" } }
+     }]
+   }
+   ```
+
+   AWS shows this condition only with an OpenAI model id, so it is untested with `anthropic.<model>`.
+   If the first call answers AccessDenied, read which action or condition it names before widening.
 4. Its keys as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in `instances/<slug>/.env` on the box
    and in the sops copy in nextup-infra. Never in this repo.
 5. In the same `.env`: `LLM_PROVIDER=bedrock`, `LLM_MODEL=<Bedrock model id>`,

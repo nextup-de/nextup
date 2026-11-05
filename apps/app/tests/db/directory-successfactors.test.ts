@@ -137,7 +137,7 @@ beforeAll(async () => {
   await db.company.deleteMany({ where: { slug: SLUG } });
   const writes = templateWrites("demo", () => crypto.randomUUID());
   const c = await db.company.create({
-    data: { slug: SLUG, name: "SFX acceptance", stage: "sandbox", seedJson: toSeedJson(writes.seedJson) as object },
+    data: { openedAt: new Date(), slug: SLUG, name: "SFX acceptance", stage: "sandbox", seedJson: toSeedJson(writes.seedJson) as object },
   });
   companyId = c.id;
   guard = { companyId, slug: SLUG, via: "entra" };

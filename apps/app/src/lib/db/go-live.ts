@@ -3,12 +3,15 @@
 // ones are passed by server/actions/settings/go-live.ts, server-side only.
 import { signsOutOnMove, type Stage } from "@/features/admin/stages";
 import { blockers, goLiveChecks, type GoLiveCheck, type GoLiveInput } from "@/features/pilot/go-live";
+import { canOpen, type OpenRefusal } from "@/features/pilot/open";
+import { setupStep } from "@/features/settings/sections";
 import { settingsActor, recordAudit } from "@/server/audit/record";
 import { listAudit } from "./audit";
 import { loadAiSettings } from "./ai";
 import { loadBaseline } from "./baseline";
 import { getDb } from "./client";
 import { loadDirectoryStatus } from "./directory-run";
+import { loadSetupCounts } from "./setup-counts";
 import { activeGrant } from "./support-grants";
 
 export const PILOT_REPORT_TEMPLATE = "pilot.report";
@@ -67,21 +70,23 @@ export async function runGoLiveChecks(companyId: string, now: Date, deps: GoLive
 
 export type MoveResult =
   | { ok: true; from: Stage; to: Stage }
-  | { ok: false; reason: "refused" | "blocked" | "changed"; checks?: GoLiveCheck[] };
+  | { ok: false; reason: "refused" | "closed" | "blocked" | "changed"; checks?: GoLiveCheck[] };
 
 /**
- * D8: sandbox -> pilot only when no needed check is open after a fresh run; pilot -> sandbox with no checks.
+ * D8: sandbox -> pilot only when the company is open and no needed check is open after a fresh run; pilot ->
+ * sandbox with no checks.
  * Everything else is refused. One transaction: the stage, the epoch (signsOutOnMove), the audit row and, when
  * the company never had a pilot.report row, an `on` row for each active manager.
  */
 export async function moveStage(companyId: string, to: Stage, byUserId: string, now: Date, deps: GoLiveDeps): Promise<MoveResult> {
   const db = getDb();
-  const company = await db.company.findUnique({ where: { id: companyId }, select: { stage: true } });
+  const company = await db.company.findUnique({ where: { id: companyId }, select: { stage: true, openedAt: true } });
   if (!company) return { ok: false, reason: "refused" };
   const from = company.stage;
   const allowed = (from === "sandbox" && to === "pilot") || (from === "pilot" && to === "sandbox");
   if (!allowed) return { ok: false, reason: "refused" };
   if (to === "pilot") {
+    if (!company.openedAt) return { ok: false, reason: "closed" }; // Open comes first: a pilot nobody can sign in to counts nothing
     const checks = await runGoLiveChecks(companyId, now, deps);
     if (blockers(checks).length > 0) return { ok: false, reason: "blocked", checks };
   }
@@ -102,6 +107,28 @@ export async function moveStage(companyId: string, to: Stage, byUserId: string, 
     }
     await recordAudit(companyId, { actor: settingsActor({ userId: byUserId }), action: "audit.company.stage", target: { kind: "company", id: companyId }, changes: { stage: { before: from, after: to } }, source: "settings" }, tx);
     return { ok: true, from: from as Stage, to } as const;
+  });
+}
+
+export type OpenResult =
+  | { ok: true; openedAt: Date }
+  | { ok: false; reason: OpenRefusal | "changed"; checks?: GoLiveCheck[] };
+
+/**
+ * "Open NextUp": after a fresh run of the checks, the same rule as the move to pilot, with no override. One
+ * transaction: the time and the audit row. The stage does not move, and nobody is signed out.
+ */
+export async function openCompany(companyId: string, byUserId: string, now: Date, deps: GoLiveDeps): Promise<OpenResult> {
+  const db = getDb();
+  const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, select: { openedAt: true } });
+  const [checks, counts] = await Promise.all([runGoLiveChecks(companyId, now, deps), loadSetupCounts(companyId)]);
+  const verdict = canOpen({ openedAt: company.openedAt, step: setupStep(counts), checks });
+  if (!verdict.ok) return { ok: false, reason: verdict.reason, checks };
+  return db.$transaction(async (tx) => {
+    const { count } = await tx.company.updateMany({ where: { id: companyId, openedAt: null }, data: { openedAt: now } });
+    if (count !== 1) return { ok: false, reason: "changed" } as const; // opened by someone else meanwhile
+    await recordAudit(companyId, { actor: settingsActor({ userId: byUserId }), action: "audit.company.opened", target: { kind: "company", id: companyId }, changes: { openedAt: { before: null, after: now.toISOString() } }, source: "settings" }, tx);
+    return { ok: true, openedAt: now } as const;
   });
 }
 

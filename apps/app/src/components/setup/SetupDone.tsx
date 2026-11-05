@@ -11,7 +11,7 @@ import type { SetupData } from "./SetupStepView";
 import s from "./Setup.module.css";
 
 /** `prefix` is the company's address part, so links work in every tenant mode. */
-export function SetupDone({ prefix, data, facts }: { prefix: string; data: SetupData; facts: SetupDoneFacts }) {
+export function SetupDone({ prefix, data, facts, opened }: { prefix: string; data: SetupData; facts: SetupDoneFacts; opened: boolean }) {
   const t = useT();
   const locale = useLocale();
   const sum = orgSummary(data.knowledge);
@@ -30,7 +30,7 @@ export function SetupDone({ prefix, data, facts }: { prefix: string; data: Setup
       <p className={s.counts}>
         {counts.map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
       </p>
-      <p className={s.hint}>{t("settingsSetup.doneNow")}</p>
+      <p className={s.hint}>{opened ? t("settingsSetup.doneNow") : t("settingsSetupOpen.doneClosedLine")}</p>
       <h2 className={s.subLabel}>{t("settingsSetup.worthChecking")}</h2>
       <nav className={s.checks}>
         <Link href={`${prefix}/settings/rules`} className={s.check}>
@@ -49,7 +49,9 @@ export function SetupDone({ prefix, data, facts }: { prefix: string; data: Setup
       </nav>
       <div className={s.doneFoot}>
         <Link className={s.back} href={`${prefix}/raise`} data-testid="setup-test-case">{t("settingsSetup.raiseTestCase")}</Link>
-        <Link className={s.next} href={`${prefix}/leader`} data-testid="setup-to-inbox">{t("settingsSetup.toInbox")}</Link>
+        {opened
+          ? <Link className={s.next} href={`${prefix}/leader`} data-testid="setup-to-inbox">{t("settingsSetup.toInbox")}</Link>
+          : <Link className={s.next} href={`${prefix}/setup/open`} data-testid="setup-to-open">{t("settingsSetupOpen.doneOpen")}</Link>}
       </div>
     </section>
   );

@@ -1,13 +1,12 @@
 // Settings sub-navigation. Company admins only: companyAdminOf below; the proxy and ROLE_ACCESS
 // are routing, not the boundary.
 import { notFound } from "next/navigation";
-import { SETTINGS_SECTIONS, setupStep, type SettingsGroup } from "@/features/settings/sections";
+import { SETTINGS_SECTIONS, type SettingsGroup } from "@/features/settings/sections";
 import { SettingsMenu, type MenuGroup } from "@/components/settings/SettingsMenu";
 import s from "@/components/settings/settings.module.css";
 import { companyPrefix } from "@/features/tenant/urls";
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
-import { loadSetupCounts } from "@/lib/db/setup-counts";
 import { companyAdminOf } from "@/server/actions/settings/guard";
 
 export default async function SettingsLayout({ children, params }: { children: React.ReactNode; params: Promise<{ company: string }> }) {
@@ -16,15 +15,13 @@ export default async function SettingsLayout({ children, params }: { children: R
   const live = hasDatabase() && Boolean(process.env.AUTH_SECRET);
   const t = await getT();
   const prefix = companyPrefix(company);
-  // Setup is its own process, not a section: while it is open, the menu only leads there.
+  // Setup is its own process, not a section: while the company is closed, the menu only leads there.
   let setup: { href: string; label: string } | undefined;
   if (live) {
     const admin = await companyAdminOf(company);
     if (!admin) notFound();
-    if (setupStep(await loadSetupCounts(admin.companyId)) !== "done") {
-      const row = await getDb().company.findUnique({ where: { id: admin.companyId }, select: { name: true } });
-      setup = { href: `${prefix}/setup`, label: t("settingsSetup.menuPill", { company: row?.name ?? "" }) };
-    }
+    const row = await getDb().company.findUnique({ where: { id: admin.companyId }, select: { name: true, openedAt: true } });
+    if (row && !row.openedAt) setup = { href: `${prefix}/setup`, label: t("settingsSetup.menuPill", { company: row.name }) };
   }
   const base = `${prefix}/settings`;
   const groupLabel: Record<SettingsGroup, string | null> = { start: null, company: t("settings.groupCompany"), structure: t("settings.groupStructure"), data: t("settings.groupData") };

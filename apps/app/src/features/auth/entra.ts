@@ -345,6 +345,7 @@ export const MICROSOFT_ERRORS = {
   token: "Microsoft sent back something we couldn't read. Please try again.",
   unknown: "Your Microsoft account isn't set up here yet. Ask your team leader to add you.",
   norole: "Your Microsoft account has no NextUp role yet. Ask your IT administrator to assign you one.",
+  closed: "NextUp is not open yet for this company. You can sign in once it opens.",
   noadmin: "Your Microsoft account isn't a NextUp administrator. Ask your IT administrator to assign you the NextUp.Admin role.",
   failed: "We couldn't reach Microsoft just now. Please try again in a moment.",
   // "Connect Microsoft 365" (phase 2): shown on the profile page, not the login page.

@@ -45,7 +45,7 @@ const events = () => db.caseEvent.findMany({ where: { companyId, type: "case.rai
 beforeAll(async () => {
   process.env.AUTH_SECRET = SECRET;
   await db.company.deleteMany({});
-  const c = await db.company.create({ data: { slug: "flr-raise", name: "Raise Co", seedJson: toSeedJson(SEED) as object } });
+  const c = await db.company.create({ data: { openedAt: new Date(), slug: "flr-raise", name: "Raise Co", seedJson: toSeedJson(SEED) as object } });
   companyId = c.id;
   const unit = await db.orgUnit.create({ data: { companyId, key: "OPS", name: "Montage", kind: "dept", sort: 0 } });
   unitId = unit.id;
