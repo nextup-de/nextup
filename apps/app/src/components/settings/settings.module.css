@@ -37,8 +37,9 @@
 .item:hover { background: var(--fill); color: var(--ink); }
 .item[aria-current="page"] { background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-weight: 600; }
 .item:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 1px; }
-.item[data-key="setup"] { margin-top: 4px; height: 36px; font-weight: 600; color: var(--nh-brand-ink); }
-.item[data-key="setup"]:hover { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.setupPill { display: flex; align-items: center; min-height: 36px; margin-top: 12px; padding: 8px 12px; border-radius: 8px; background: var(--nh-brand); color: var(--nh-on-brand); font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; text-decoration: none; }
+.setupPill:hover { background: var(--nh-brand-hover); }
+.setupPill:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .itemBadge { padding: 2px 8px; border-radius: 8px; background: var(--fill); color: var(--mute); font-size: var(--nh-fs-xs); font-weight: 600; }
 
 /* Phone: the menu folds into one sheet under a "Settings: <page>" button. */

@@ -2,12 +2,11 @@
 // Pure: the layout and the index page fetch the counts and hand them in.
 import type { MessageKey } from "@/i18n";
 
-export type SettingsSectionKey = "setup" | "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "signIn" | "supportAccess" | "teams" | "areas" | "privacy" | "audit" | "goLive" | "pilotReport";
+export type SettingsSectionKey = "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "signIn" | "supportAccess" | "teams" | "areas" | "privacy" | "audit" | "goLive" | "pilotReport";
 export type SettingsGroup = "start" | "company" | "structure" | "data";
 export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey; group: SettingsGroup };
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
-  { key: "setup", path: "setup", label: "settingsSetup.navLabel", group: "start" },
   { key: "goLive", path: "go-live", label: "settingsGoLive.navLabel", group: "start" },
   { key: "company", path: "company", label: "settingsCompany.navLabel", group: "company" },
   { key: "rules", path: "rules", label: "settingsCompany.navRules", group: "company" },
@@ -29,19 +28,14 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
 ];
 
 export type SetupStep = "company" | "units" | "roles" | "routes" | "members" | "done";
-export type SetupCounts = { named: boolean; units: number; linkedSeats: number; routes: number; members: number };
+export type SetupCounts = { named: boolean; units: number; seats: number; routes: number; members: number };
 
 /** The first step not yet done. Derived from what exists, never stored. */
 export function setupStep(c: SetupCounts): SetupStep {
   if (!c.named) return "company";
   if (c.units < 1) return "units";
-  if (c.linkedSeats < 1) return "roles";
+  if (c.seats < 1) return "roles"; // a seat may stay vacant; Members links people to it
   if (c.routes < 1) return "routes";
   if (c.members <= 1) return "members"; // the admin alone is not a team
   return "done";
-}
-
-/** Setup shows only while it is not done. */
-export function visibleSections(setupDone: boolean): readonly SettingsSection[] {
-  return setupDone ? SETTINGS_SECTIONS.filter((s) => s.key !== "setup") : SETTINGS_SECTIONS;
 }

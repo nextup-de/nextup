@@ -35,8 +35,8 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
   return page;
 }
 
-/** A test id as it is on screen: a page kept from the step before may still sit hidden in the DOM. */
-const setup = (page: Page) => page.goto(`/${SLUG}/settings/setup`);
+/** Next moves to the next page; it only opens once the step is done. */
+const next = (page: Page) => vis(page, "setup-next").click();
 
 /** Invite a person on the Members step; the mail carries the code, so a fresh one is issued from their row to read it. */
 async function invite(page: Page, who: { name: string; email: string }, role: "leader" | "member") {
@@ -76,14 +76,19 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     // Sign in: code, then the second factor enrolment, then Setup.
     const manager = await signIn(browser, MANAGER.name);
     await manager.goto(`/${SLUG}/settings`);
-    await expect(manager).toHaveURL(/\/settings\/setup/);
+    await expect(manager).toHaveURL(/\/settings\/company/); // Settings holds the results; the pill leads to setup
+    await vis(manager, "settings-setup-pill").click();
+    await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup/company`));
     await expect(vis(manager, "setup-step-company")).toBeVisible();
+    // A later step in the address leads back to the first one not done.
+    await manager.goto(`/${SLUG}/setup/routes`);
+    await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup/company`));
 
     // Step company.
     await vis(manager, "settings-company-name").fill(`ADM Test Works ${STAMP}`);
-    await vis(manager, "settings-company-mission").fill("We build and test machines.");
-    await vis(manager, "settings-company-save").click();
-    // Saving makes the page derive the next step: the form gives way to Units on its own.
+    await expect(vis(manager, "setup-next")).toBeDisabled();
+    await vis(manager, "settings-company-save").click(); // only the name is required
+    await next(manager);
 
     // Step units.
     await expect(vis(manager, "setup-step-units")).toBeVisible();
@@ -93,9 +98,9 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await vis(manager, "settings-org-unit-name").fill("Engineering");
     await vis(manager, "settings-org-unit-add").click();
     await expect(vis(manager, "settings-org-unit-ENG")).toBeVisible();
+    await next(manager);
 
-    // Step roles: a role with two seats; the manager holds one, so the step is done; the other waits for the leader.
-    await setup(manager);
+    // Step roles: a role with two seats; the manager holds one, the other waits for the leader.
     await expect(vis(manager, "setup-step-roles")).toBeVisible();
     await vis(manager, "settings-org-open-role").click();
     await vis(manager, "settings-org-role-title").fill("Engineering lead");
@@ -112,9 +117,9 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await expect(role.getByText("Deputy seat")).toBeVisible();
     await role.locator('li[data-testid^="settings-org-seat-"]').filter({ hasText: "Deputy seat" })
       .getByTestId("settings-org-seat-link").selectOption({ label: MANAGER.name });
+    await manager.goto(`/${SLUG}/setup/routes`); // the role's drawer is still open, over Next
 
     // Step routes.
-    await setup(manager);
     await expect(vis(manager, "setup-step-routes")).toBeVisible();
     // The route form is a drawer; its key comes from the request type.
     await vis(manager, "settings-routing-open-new").click();
@@ -123,11 +128,13 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await vis(route, "settings-routing-keywords").fill("rig, test");
     await vis(route, "settings-routing-owner").selectOption({ index: 1 });
     await vis(route, "settings-routing-add").click();
+    await next(manager);
 
-    // Step members: invite the leader and the member (the saved route moved the wizard on).
+    // Step members: invite the leader and the member.
     await expect(vis(manager, "setup-step-members")).toBeVisible();
     await invite(manager, LEADER, "leader");
-    // One more person than the admin and Setup is done: the wizard says so by itself.
+    // One more person than the admin and Setup is done.
+    await next(manager);
     await expect(vis(manager, "setup-step-done")).toBeVisible();
 
     // The rest happens on the Members page: the member, both codes, and the leader's seat.

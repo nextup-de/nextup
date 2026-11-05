@@ -12,11 +12,10 @@ no settings; they sign in with their code (or Microsoft) as before.
 
 ## Sections
 
-In this order. Setup shows only while it is not done.
+In this order. Setup is not a section: it has its own pages, and while it is open the menu shows a pill that leads there.
 
 | Section | Path | What it does |
 |---|---|---|
-| Setup | `settings/setup` | The wizard below. |
 | Company | `settings/company` | Name, mark, vision, mission, principles, business model, compliance rules. |
 | Rules | `settings/rules` | Spend text, reward, measure days, and the company goals (title, KPI, target, period, keywords, unit). |
 | Calendar | `settings/calendar` | Region, workdays, extra holidays and extra workdays (one calendar per company). |
@@ -25,20 +24,22 @@ In this order. Setup shows only while it is not done.
 | Members | `settings/members` | Add or invite people, new login codes, roles, seats, deactivate or delete, reset a manager's second factor. |
 | Notifications | `settings/notifications` | The company's switch, opt-out counts, failed outbox rows with Retry. |
 
-Test ids are `settings-<section>-<thing>`; the wizard's steps are `setup-step-<key>`.
+Test ids are `settings-<section>-<thing>`; the setup steps are `setup-step-<key>`.
 
-## Setup wizard
+## Setup
 
-Steps `company`, `units`, `roles`, `routes`, `members`, `done`. The step is derived from what exists on every load
-(`setupStep(counts)`), never stored:
+Setup is its own process at `/<company>/setup`, outside the app shell and outside Settings, with one page per step:
+`setup/company`, `setup/units`, `setup/roles`, `setup/routes`, `setup/members`, `setup/done`. Settings holds the
+results. How far a company is gets derived from what exists on every load (`setupStep(counts)`), never stored:
 
-- `company`: a name and a mission or vision.
+- `company`: saved once with a name. Only the name is required.
 - `units`: at least one unit.
-- `roles`: at least one seat **held by a person** (a seat linked to a user).
+- `roles`: at least one seat. It may stay vacant.
 - `routes`: at least one route.
-- `members`: more than the admin alone, so the first invited person finishes Setup.
+- `members`: more than the admin alone.
 
-Each step uses the same actions as its own page. The settings index redirects to Setup until it gives `done`.
+Each step uses the same actions as its own page. `/setup` opens the first step not done, a later step in the address
+leads back to it, and *Next* opens once the step is done.
 A case reaches a route's owner through the seat: a seat a leader is linked to puts the case in that leader's inbox,
 and the raise page offers the seat by its name.
 

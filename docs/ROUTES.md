@@ -29,6 +29,7 @@
 | `/[company]/projects/[projectId]` | `.../(app)/projects/[projectId]/page.tsx` | yes | any | One project: board (drag a card to move it), the idea it came from with versions, discussion and archive line, files and sources, team, baseline, measure checks, reward, links, comments, timeline. `projects` flag |
 | `/[company]/cases/[caseId]` | `.../(app)/cases/[caseId]/page.tsx` | yes | any | Case detail |
 | `/[company]/settings/*` | `.../(app)/settings/{company,members,routing}/page.tsx` | yes | manager | Company admin |
+| `/[company]/setup/*` | `.../setup/{company,units,roles,routes,members,done}/page.tsx` | yes | manager | The setup process: own frame, one page per step, outside the app shell. `/setup` opens the first step not done; `/settings/setup` redirects here (docs/SETTINGS.md) |
 | `/admin/*` | `admin/{page,people,connectors,assistant,company-data,decisions,support,login}` | own cookie | console admin | The company's IT and privacy console, one-company stacks only (`TENANT_MODE=single`; 404 in multi mode). Seven sections in `CONSOLE_SECTIONS`. Who enters: Microsoft sign-in with the `NextUp.Admin` role, a stack admin (personal code + authenticator code), the logged break-glass code, or a read-only support session. No platform pages: `/admin/companies`, `/requests`, `/tickets`, `/connections` are 404 (docs/ADMIN.md) |
 | `/demo/*` | `demo/{raise,dashboard,cases/[caseId],projects/[projectId],leader,manager,…}/page.tsx` | - | - | Static demo: made-up data, no company, no login, nothing leaves the browser; `/demo` opens `/demo/raise`, a case opens at `/demo/cases/<id>`. On a stack whose company is `demo` (demo.sellux.ch) it is the whole host, at the root (docs/IDEAS.md, "The demo page") |
 | `/api/health` | `api/health/route.ts` | - | - | Uptime check |
@@ -41,4 +42,5 @@ sessions in Phase 2; until then every app page renders with the demo tenant as m
 
 Layouts nest: `app/layout.tsx` (html, fonts) ->
 `[company]/layout.tsx` (resolve tenant, 404) -> `(app)/layout.tsx` (AppShell: rail + top bar)
--> `settings/layout.tsx` (sub-nav). Auth pages compose `AuthShell` themselves.
+-> `settings/layout.tsx` (sub-nav). `[company]/setup/layout.tsx` is the setup frame, beside `(app)`. Auth pages compose
+`AuthShell` themselves.

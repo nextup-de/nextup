@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { SETTINGS_SECTIONS, setupStep, visibleSections } from "@/features/settings/sections";
+import { SETTINGS_SECTIONS, setupStep } from "@/features/settings/sections";
 import { en } from "@/i18n/en";
 import { de } from "@/i18n/de";
 
-const full = { named: true, units: 1, linkedSeats: 1, routes: 1, members: 2 };
+const full = { named: true, units: 1, seats: 1, routes: 1, members: 2 };
 
 describe("ADM settings sections", () => {
   it("lists the sections of D7 in order with their paths", () => {
-    expect(SETTINGS_SECTIONS.map((s) => s.key)).toEqual(["setup", "goLive", "company", "rules", "calendar", "org", "routing", "members", "importExport", "notifications", "webhooks", "apiTokens", "signIn", "supportAccess", "teams", "areas", "privacy", "audit", "pilotReport"]);
-    expect(SETTINGS_SECTIONS.map((s) => s.path)).toEqual(["setup", "go-live", "company", "rules", "calendar", "org", "routing", "members", "import-export", "notifications", "webhooks", "api-tokens", "sign-in", "support-access", "teams", "areas", "privacy", "audit", "pilot-report"]);
+    expect(SETTINGS_SECTIONS.map((s) => s.key)).toEqual(["goLive", "company", "rules", "calendar", "org", "routing", "members", "importExport", "notifications", "webhooks", "apiTokens", "signIn", "supportAccess", "teams", "areas", "privacy", "audit", "pilotReport"]);
+    expect(SETTINGS_SECTIONS.map((s) => s.path)).toEqual(["go-live", "company", "rules", "calendar", "org", "routing", "members", "import-export", "notifications", "webhooks", "api-tokens", "sign-in", "support-access", "teams", "areas", "privacy", "audit", "pilot-report"]);
   });
 
   it("has every label in both catalogs", () => {
@@ -19,15 +19,10 @@ describe("ADM settings sections", () => {
     }
   });
 
-  it("shows Setup first while setup is open and not at all when done", () => {
-    expect(visibleSections(false)[0].key).toBe("setup");
-    expect(visibleSections(true).some((s) => s.key === "setup")).toBe(false);
-  });
-
   it("gives the first step not done", () => {
     expect(setupStep({ ...full, named: false })).toBe("company");
     expect(setupStep({ ...full, units: 0 })).toBe("units");
-    expect(setupStep({ ...full, linkedSeats: 0 })).toBe("roles");
+    expect(setupStep({ ...full, seats: 0 })).toBe("roles");
     expect(setupStep({ ...full, routes: 0 })).toBe("routes");
     expect(setupStep({ ...full, members: 1 })).toBe("members");
     expect(setupStep(full)).toBe("done");
