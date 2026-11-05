@@ -122,7 +122,7 @@ const withShot = (t: Row): Row => {
 
 /** Tables a company export carries as the database gave them; the ones in buildCompanyExport are filtered or rewritten. */
 const COMPANY_PLAIN = [
-  "users", "companyProfile", "orgUnits", "orgRoles", "seats", "routingRules", "goals", "companyRules", "floorAreas",
+  "users", "companyProfile", "companyContextRun", "orgUnits", "orgRoles", "seats", "routingRules", "goals", "companyRules", "floorAreas",
   "floorDevices", "calendar", "companyConfig", "caseViews", "assistTurns", "ticketReplies", "integrations", "auditEvents",
   "retentionRules", "privacyPolicy",
 ] as const;

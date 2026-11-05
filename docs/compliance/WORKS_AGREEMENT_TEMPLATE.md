@@ -36,7 +36,7 @@ handle. The employer does not use the data for personnel decisions, appraisals o
 ## 5. Artificial intelligence
 
 A model provider is called only if the employer chose one and recorded a DPA date; the works council is told which
-(`SUBPROCESSORS.md`). Questions are masked before they leave the stack. **[Parties decide whether the assistant is switched on at all.]**
+(`SUBPROCESSORS.md`). Questions are masked before they leave the stack. During setup an admin may start a draft of the company profile: it searches the files that admin may open, sends masked file names and short snippets to the provider, and stores only what a person reviews and saves, which is then text that came from a file. It reads no mail or chats and assesses no person. **[Parties decide whether the assistant is switched on at all.]**
 
 ## 6. Rights of employees
 
