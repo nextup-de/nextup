@@ -6,6 +6,9 @@
 import { defineConfig, devices } from "@playwright/test";
 import { loadEnvConfig } from "@next/env";
 import { randomBytes } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { checkoutPort } from "./playwright.ports";
 
 // The tests need ADMIN_ACCESS_CODE too, not only the server - read .env.local the way Next does.
@@ -30,6 +33,19 @@ const CONSOLE_SPEC = /itc-console[.]spec[.]ts$/;
 // and no report server waits for someone to close it.
 const REMOTE = !!process.env.TST_BASE_URL;
 
+// "Open NextUp" needs mail that answers and a fresh off-box backup, like the move to pilot. Its spec gets its own
+// server with both, so no other spec here starts mailing: a small relay (fixtures/smtp-sink.mjs) that keeps what
+// it gets, and the status file the nightly backup would leave.
+const SETUP_PORT = PORT + 2;
+const SETUP_BASE = `http://localhost:${SETUP_PORT}`;
+const SETUP_SPEC = /admin-setup[.]spec[.]ts$/;
+const SMTP_PORT = PORT + 3;
+const SINK_PORT = PORT + 4;
+process.env.E2E_SMTP_SINK = `http://127.0.0.1:${SINK_PORT}`; // the spec reads what went out
+const backupDir = path.join(tmpdir(), `nextup-e2e-backup-${SETUP_PORT}`);
+mkdirSync(backupDir, { recursive: true });
+writeFileSync(path.join(backupDir, "last.json"), JSON.stringify({ at: new Date().toISOString(), offbox: true }));
+
 export default defineConfig({
   testDir: "tests/e2e/db",
   // One admin session and several logins share the cookie jar per test; keep them in order.
@@ -51,8 +67,9 @@ export default defineConfig({
     ...devices["Desktop Chrome"],
   },
   projects: [
-    { name: "path", testIgnore: CONSOLE_SPEC },
+    { name: "path", testIgnore: [CONSOLE_SPEC, SETUP_SPEC] },
     { name: "console", testMatch: CONSOLE_SPEC, use: { baseURL: CONSOLE_BASE } },
+    { name: "setup", testMatch: SETUP_SPEC, use: { baseURL: SETUP_BASE } },
   ],
   webServer: REMOTE ? undefined : [
     {
@@ -73,6 +90,22 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       env: { CONNECTOR_VAULT_KEY: vaultKey, AUTH_URL: CONSOLE_BASE, APP_DOMAIN: `localhost:${CONSOLE_PORT}`, TENANT_MODE: "single", COMPANY_SLUG: CONSOLE_SLUG, PUBLIC_SCHEME: "http" },
+    },
+    {
+      command: `node tests/e2e/db/fixtures/smtp-sink.mjs ${SMTP_PORT} ${SINK_PORT}`,
+      url: `http://127.0.0.1:${SINK_PORT}/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      command: `npx next start -p ${SETUP_PORT}`,
+      url: `${SETUP_BASE}/api/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      env: {
+        CONNECTOR_VAULT_KEY: vaultKey, AUTH_URL: SETUP_BASE, APP_DOMAIN: `localhost:${SETUP_PORT}`, TENANT_MODE: "path", PUBLIC_SCHEME: "http",
+        SMTP_URL: `smtp://127.0.0.1:${SMTP_PORT}`, BACKUP_STATUS_DIR: backupDir,
+      },
     },
   ],
 });

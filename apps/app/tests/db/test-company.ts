@@ -18,7 +18,7 @@ export async function createTestCompany(slug: string, people: TestPerson[]): Pro
   const db = getDb();
   const company = await db.company.upsert({
     where: { slug },
-    create: { slug, name: `Test ${slug}`, seedJson: JSON.parse(JSON.stringify(EMPTY_SEED)), stage: "sandbox" },
+    create: { slug, name: `Test ${slug}`, seedJson: JSON.parse(JSON.stringify(EMPTY_SEED)), stage: "sandbox", openedAt: new Date() },
     update: {},
   });
   const out: TestCompany["people"] = {};

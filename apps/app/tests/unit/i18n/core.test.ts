@@ -16,7 +16,7 @@ import {
   type MessageKey,
 } from "@/i18n";
 
-const NAMESPACES = ["common", "errors", "shell", "auth", "profile", "settings", "report", "demo", "dashboard", "team", "leader", "brief", "ideas", "projects", "cases", "mail", "structure", "connectors", "settingsCompany", "settingsOrg", "settingsGoals", "settingsConnectors", "settingsNotifications", "settingsPrivacy", "settingsAudit", "privacyExport", "privacyPerson", "settingsSetup", "settingsSetupPhases", "adminAccess", "adminConsole", "adminConnectors", "adminPrivacy", "adminSupport", "loopCase", "decisions", "metrics", "kpis", "people", "feed", "overview", "progress", "settingsAreas", "floorDevices", "floor", "settingsApiTokens", "settingsWebhooks", "settingsImport", "teams", "settingsTeams", "settingsSignIn", "ssoLogin", "settingsSupport", "settingsGoLive", "settingsPilotReport"];
+const NAMESPACES = ["common", "errors", "shell", "auth", "profile", "settings", "report", "demo", "dashboard", "team", "leader", "brief", "ideas", "projects", "cases", "mail", "structure", "connectors", "settingsCompany", "settingsOrg", "settingsGoals", "settingsConnectors", "settingsNotifications", "settingsPrivacy", "settingsAudit", "privacyExport", "privacyPerson", "settingsSetup", "settingsSetupPhases", "settingsSetupOpen", "adminAccess", "adminConsole", "adminConnectors", "adminPrivacy", "adminSupport", "loopCase", "decisions", "metrics", "kpis", "people", "feed", "overview", "progress", "settingsAreas", "floorDevices", "floor", "settingsApiTokens", "settingsWebhooks", "settingsImport", "teams", "settingsTeams", "settingsSignIn", "ssoLogin", "settingsSupport", "settingsGoLive", "settingsPilotReport"];
 const flat = (s: string) => s.replace(/[  ]/g, " ");
 
 describe("LNG catalog core", () => {

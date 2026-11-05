@@ -28,6 +28,11 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
 }
 
 const NOT_FOUND = "Page not found";
+
+async function setOpenedAt(openedAt: Date | null) {
+  await getDb().company.updateMany({ where: { slug: SLUG }, data: { openedAt } });
+}
+
 const phase = (page: Page, key: string) => vis(page, `setup-phase-${key}`);
 
 /** A streamed not-found can still answer 200, so the proof is what the page shows. */
@@ -71,6 +76,7 @@ test.describe.serial("setup overview, multi-tenant", () => {
   });
 
   test("a manager sees the company phases only, and coming back leads to the right step", async ({ browser }) => {
+    await setOpenedAt(null);
     const manager = await signIn(browser, MANAGER.name);
     await manager.goto(`/${SLUG}/setup`);
     await expect(vis(manager, "setup-overview")).toBeVisible();
@@ -97,6 +103,15 @@ test.describe.serial("setup overview, multi-tenant", () => {
     await phase(manager, "company").getByTestId("setup-phase-link").click();
     await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup/units\\?resume=1$`));
     await expect(vis(manager, "setup-resume")).toBeVisible();
+    await manager.context().close();
+  });
+
+  test("phase 6 reads done once the company is opened", async ({ browser }) => {
+    await setOpenedAt(new Date());
+    const manager = await signIn(browser, MANAGER.name);
+    await manager.goto(`/${SLUG}/setup`);
+    await expect(phase(manager, "open")).toHaveAttribute("data-status", "done");
+    await expect(phase(manager, "open")).toContainText("NextUp was opened on");
     await manager.context().close();
   });
 

@@ -19,6 +19,7 @@ import { stampAudience } from "@/lib/db/audience";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { loadMembers } from "@/lib/db/knowledge";
 import { issueSession } from "@/server/issue-session";
+import { entryFor } from "@/server/setup-open";
 import { policyFor } from "@/features/admin/stages";
 import { stampEvent } from "@/features/cases/stamp";
 import { kickJira } from "@/server/jira-sync";
@@ -160,6 +161,7 @@ export async function switchUserAction(slug: string, userId: string): Promise<Ap
   }
   const user = await getDb().user.findFirst({ where: { companyId: company.id, id: userId } });
   if (!user) return { ok: false, error: t("cases.actionNoPerson") };
+  if ((await entryFor(company.id, user)) === "refused") return { ok: false, error: t("settingsSetupOpen.refused", { company: slug }) };
 
   await issueSession(company.id, slug, user);
   revalidatePath("/" + slug, "layout");

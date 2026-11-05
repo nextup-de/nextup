@@ -11,7 +11,7 @@ import { readBackupStatus } from "@/server/backup-status";
 import { mailStatus } from "@/server/mail";
 import { companyAdminOf } from "./guard";
 
-export type GoLiveFailure = "forbidden" | "refused" | "blocked" | "changed" | "failed";
+export type GoLiveFailure = "forbidden" | "refused" | "closed" | "blocked" | "changed" | "failed";
 export type CheckGoLiveResult = { ok: true; checks: GoLiveCheck[]; at: string } | { ok: false; reason: GoLiveFailure };
 export type MoveStageResult = { ok: true; stage: Stage } | { ok: false; reason: GoLiveFailure; checks?: GoLiveCheck[] };
 

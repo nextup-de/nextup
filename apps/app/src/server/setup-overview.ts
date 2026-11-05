@@ -11,6 +11,7 @@ import { loadConnectors } from "@/app/admin/connectors/load";
 import { getDb } from "@/lib/db/client";
 import { loadGoLiveInput } from "@/lib/db/go-live";
 import { readBackupStatus } from "@/server/backup-status";
+import { loadOpenedAt } from "@/server/setup-open";
 import { consoleOverviewFacts } from "@/server/console-guard";
 import { mailStatus } from "@/server/mail";
 import { guardPage } from "@/server/page-guard";
@@ -41,13 +42,11 @@ const viewerOf = (p: SetupPerson): SetupViewer => (p.manager && p.stackAdmin ? "
 
 /**
  * ==== INTEGRATION POINT ====
- * The two facts other PRs bring, in this one place. Give it the company id and replace the body with
- *   const [openedAt, context] = await Promise.all([loadOpenedAt(companyId), loadContextStatus(companyId)]);
- *   return { openedAt, context };
- * once `server/setup-open.ts` (loadOpenedAt) and `server/setup-context.ts` (loadContextStatus) are merged.
+ * The context status comes with the context run's PR. Then this becomes loadContextStatus(companyId)
+ * from `server/setup-context.ts`, and the company id comes along as a parameter.
  */
-async function pendingFacts(): Promise<{ openedAt: Date | null; context: ContextStatus }> {
-  return { openedAt: null, context: "notUsed" };
+async function contextStatus(): Promise<ContextStatus> {
+  return "notUsed";
 }
 
 async function itFacts(company: { companyId: string; slug: string }): Promise<ItFacts | null> {
@@ -74,13 +73,14 @@ export type SetupOverviewData = {
 
 async function overviewOf(company: { companyId: string; slug: string }, viewer: SetupViewer): Promise<SetupOverviewData> {
   try {
-    const [goLive, it, counts, pending] = await Promise.all([
+    const [goLive, it, counts, openedAt, context] = await Promise.all([
       loadGoLiveInput(company.companyId, new Date(), { mailStatus, readBackupStatus }),
       itFacts(company),
       setupCounts(company.companyId),
-      pendingFacts(),
+      loadOpenedAt(company.companyId),
+      contextStatus(),
     ]);
-    const phases = setupPhases({ viewer, prefix: companyPrefix(company.slug), goLive, it, counts, ...pending });
+    const phases = setupPhases({ viewer, prefix: companyPrefix(company.slug), goLive, it, counts, openedAt, context });
     return { phases, poll: setupIsWaiting(phases) };
   } catch {
     return { phases: null, poll: true };

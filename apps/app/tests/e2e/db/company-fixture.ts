@@ -14,7 +14,8 @@ type Stage = "demo" | "sandbox" | "pilot";
 
 /** Create a company with its people; returns each person's login code by name. */
 export async function createTestCompany(
-  input: Omit<NewCompany, "people" | "mark"> & { stage: Stage; people: readonly NewPerson[] },
+  // Open from the start unless `closed`: most specs are about what happens after "Open NextUp".
+  input: Omit<NewCompany, "people" | "mark"> & { stage: Stage; people: readonly NewPerson[]; closed?: boolean },
 ): Promise<Map<string, string>> {
   const db = getDb();
   const people = input.people.map((p) => ({ ...p }));
@@ -32,6 +33,7 @@ export async function createTestCompany(
       name: input.name,
       mark: markFor({ name: input.name }),
       stage: input.stage,
+      openedAt: input.closed ? null : now,
       seedJson: toSeedJson(writes.seedJson) as object,
       config: { create: {} },
       users: {

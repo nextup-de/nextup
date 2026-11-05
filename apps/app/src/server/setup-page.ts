@@ -33,6 +33,8 @@ export type SetupPageData = {
   ready: boolean;
   /** What the finish page shows about rules, calendar and connectors. */
   facts: SetupDoneFacts;
+  /** Someone pressed "Open NextUp". */
+  opened: boolean;
 };
 
 /** One step's data. A step past the first unfinished one sends the visitor back to that one. */
@@ -42,6 +44,7 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
     return {
       demo: true,
       ready: true,
+      opened: false,
       facts: setupDoneFacts(DEFAULT_RULES, DEFAULT_CALENDAR, null),
       data: {
         company: SAMPLE_COMPANY, address, knowledge: SAMPLE_KNOWLEDGE,
@@ -57,7 +60,7 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
 
   const db = getDb();
   const [row, profile, knowledge, options, page, rules, calendar, consoleHref] = await Promise.all([
-    db.company.findUnique({ where: { id: admin.companyId }, select: { name: true, mark: true } }),
+    db.company.findUnique({ where: { id: admin.companyId }, select: { name: true, mark: true, openedAt: true } }),
     db.companyProfile.findUnique({
       where: { companyId: admin.companyId },
       select: { vision: true, mission: true, principles: true, businessModel: true, complianceRules: true },
@@ -73,6 +76,7 @@ export async function loadSetupPage(slug: string, step: SetupStep): Promise<Setu
   return {
     demo: false,
     ready: ORDER.indexOf(step) < ORDER.indexOf(first),
+    opened: row.openedAt !== null,
     facts: setupDoneFacts(rules, calendar, consoleHref),
     data: {
       company: {

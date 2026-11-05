@@ -60,3 +60,6 @@
 /* The enrol step: the key in a box, and the long otpauth link wraps instead of running off a phone. */
 .enrolKey { display: grid; gap: 6px; }
 .enrolLink { overflow-wrap: anywhere; }
+
+/* The company is closed until it opens (features/pilot/open.ts). */
+.notOpen { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--nh-brand-tint); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink); }

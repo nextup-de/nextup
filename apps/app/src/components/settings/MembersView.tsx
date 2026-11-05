@@ -33,7 +33,7 @@ import s from "./settings.module.css";
 import styles from "./MembersView.module.css";
 
 type Props = { slug: string; me: string; members: MemberRow[]; freeSeats: SeatLabel[]; demo?: boolean; showHead?: boolean };
-type Coded = CodeState & Pick<InviteState, "problems" | "warnings" | "mailed" | "mailError">;
+type Coded = CodeState & Pick<InviteState, "problems" | "warnings" | "mailed" | "mailError" | "held">;
 
 /** Closes the row menu a button sits in. */
 const closeMenu = (el: HTMLElement) => el.closest("details")?.removeAttribute("open");
@@ -56,8 +56,8 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
     }
     if (form.get("intent") === "invite") {
       const r = await inviteMemberAction({}, form);
-      if (r.added?.code && !r.problems?.length) setAdding(null);
-      return { ...r.added, problems: r.problems, warnings: r.warnings, mailed: r.mailed, mailError: r.mailError };
+      if (r.added && !r.problems?.length) setAdding(null);
+      return { ...r.added, problems: r.problems, warnings: r.warnings, mailed: r.mailed, mailError: r.mailError, held: r.held };
     }
     return issueMemberCodeAction({}, form);
   }, {});
@@ -128,6 +128,7 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
       {demo ? <p className={s.cardHint} data-testid="settings-demo-note">{t("settingsCompany.demoData")}</p> : null}
       <p className={s.cardHint}>{members.some((m) => m.microsoft) ? t("settings.hintCodeMicrosoft") : t("settings.hintCode")} {t("settings.hintNewCode")}</p>
 
+      {coded.held && coded.name ? <p className={s.cardHint} role="status" data-testid="settings-member-held">{t("settingsSetupOpen.heldAdded", { name: coded.name })}</p> : null}
       {fresh && mailedOk ? <p className={s.cardHint} role="status">{t("settings.invited", { name: fresh.name })}</p> : null}
       {fresh && coded.mailed === false ? (
         <p className={s.fieldError} role="alert">{t("settings.inviteMailFailed", { name: fresh.name, error: coded.mailError ?? "" })}</p>
@@ -211,7 +212,7 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
                 )}
               </span>
               <span className={`${styles.cell} ${styles.sub}`} data-label={t("settings.colSignIn")}>
-                {m.microsoft ? t("settings.microsoft") : m.codeIssuedAt ? t("settings.codeSince", { date: when(m.codeIssuedAt) }) : t("settings.noCode")}
+                {m.held ? t("settingsSetupOpen.heldBadge") : m.microsoft ? t("settings.microsoft") : m.codeIssuedAt ? t("settings.codeSince", { date: when(m.codeIssuedAt) }) : t("settings.noCode")}
               </span>
               {m.id === me && !m.active ? <span /> : (
                 <details className={s.rowMenu}>

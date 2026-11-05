@@ -5,6 +5,7 @@
 export const AUDIT_ACTIONS = [
   "audit.company.created",
   "audit.company.stage",
+  "audit.company.opened",
   "audit.company.saved",
   "audit.settings.rules",
   "audit.settings.calendar",

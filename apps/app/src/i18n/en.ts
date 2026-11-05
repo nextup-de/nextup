@@ -31,6 +31,7 @@ import { privacyExport } from "./messages/privacyExport";
 import { privacyPerson } from "./messages/privacyPerson";
 import { settingsSetup } from "./messages/settingsSetup";
 import { settingsSetupPhases } from "./messages/settingsSetupPhases";
+import { settingsSetupOpen } from "./messages/settingsSetupOpen";
 import { adminAccess } from "./messages/adminAccess";
 import { adminConsole } from "./messages/adminConsole";
 import { adminConnectors } from "./messages/adminConnectors";
@@ -85,6 +86,7 @@ export const en = {
   privacyPerson: privacyPerson.en,
   settingsSetup: settingsSetup.en,
   settingsSetupPhases: settingsSetupPhases.en,
+  settingsSetupOpen: settingsSetupOpen.en,
   adminAccess: adminAccess.en,
   adminConsole: adminConsole.en,
   adminConnectors: adminConnectors.en,

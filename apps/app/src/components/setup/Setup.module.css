@@ -154,7 +154,7 @@
   .fieldSide > .fieldLabel { padding-top: 0; }
   .pair { grid-template-columns: minmax(0, 1fr); }
   .formFoot { flex-direction: column; align-items: stretch; }
-  .formFoot .secondary, .formFoot .submit, .formButtons > * { flex: 1; }
+  .formButtons > * { flex: 1; }
   .vacantSeat { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .doneFoot { flex-direction: column-reverse; align-items: stretch; }
   .check { grid-template-columns: minmax(0, 1fr) 20px; }

@@ -56,6 +56,10 @@ model Company {
   // company changes stage, so a demo visitor's session ends the moment real people move in.
   sessionEpoch Int @default(0)
 
+  // When someone pressed "Open NextUp" (/setup/open). Null: closed, only setup people get a session
+  // (features/pilot/open.ts). Separate from the stage: Open comes first, sandbox to pilot after it.
+  openedAt DateTime?
+
   // One `Seed` (src/features/demo/types.ts), verbatim. Cloned from a template when the company is
   // created in /admin.
   seedJson Json
