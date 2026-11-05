@@ -21,6 +21,10 @@ work="$(mktemp -d)"; mkdir "$work/bin"
 port=$((20000 + RANDOM % 20000))
 slug=tstvm
 
+# A machine with one core runs one app process, and would not show this by itself.
+t_ok "install.sh waits for all app processes, not for one line of output" grep -q "ps app --format '{{.Health}}' .*| sort -u" stack/install.sh
+t_ok "install-clean.sh does too" grep -q "ps app --format '{{.Health}}' .*| sort -u" stack/tests/install-clean.sh
+
 host_up || { echo "host_up failed" >&2; exit 1; }
 host_registry_up || exit 1
 host_fake_images || exit 1
