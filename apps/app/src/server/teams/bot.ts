@@ -74,7 +74,7 @@ export async function handleActivity(slug: string, raw: unknown, authorization: 
 
   const company = await getDb().company.findUnique({
     where: { slug },
-    select: { id: true, slug: true, name: true, stage: true, entraTenantId: true },
+    select: { id: true, slug: true, name: true, stage: true, entraTenantId: true, openedAt: true },
   });
   if (!company) return { status: 404, body: { error: "No such company." } };
 
@@ -83,7 +83,8 @@ export async function handleActivity(slug: string, raw: unknown, authorization: 
     return { status: 403, body: { error: "Wrong tenant." } };
   }
   const integration = company.entraTenantId ? await getIntegration(company.id, TEAMS_SYSTEM) : null;
-  if (!company.entraTenantId || !integration?.on) {
+  // Closed until opened: nobody raises from Teams yet, whatever the switch says.
+  if (!company.entraTenantId || !integration?.on || !company.openedAt) {
     const locale = await companyLocale(company.id);
     await replyTo(app, activity, { card: notSetUpCard({ reason: "off", company: company.name }, locale) });
     return { status: 200 };

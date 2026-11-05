@@ -51,6 +51,8 @@ async function createCompany(job: Extract<PlatformJob, { action: "create_company
       name: name.trim(),
       mark: markFor({ name }),
       stage,
+      // A demo company is open from the start; a real one is closed until someone presses "Open NextUp".
+      openedAt: stage === "demo" || template === "demo" ? new Date() : null,
       seedJson: toSeedJson(writes.seedJson) as object,
       config: { create: {} },
       users:

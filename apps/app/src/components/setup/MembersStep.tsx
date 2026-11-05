@@ -21,7 +21,7 @@ export function MembersStep({ slug, formId, onDirty, demo, me, members, knowledg
   const [round, setRound] = useState(0); // a new round gives an empty form
   const [state, act, pending] = useActionState<InviteState, FormData>(async (_prev, form) => {
     const r = form.get("intent") === "invite" ? await inviteMemberAction({}, form) : await addMemberAction({}, form);
-    if (r.added?.code && !r.problems?.length) { setRound((n) => n + 1); onDirty(false); }
+    if (r.added && !r.problems?.length) { setRound((n) => n + 1); onDirty(false); }
     return r;
   }, {});
   const { error, pending: linking, run } = useRun();
@@ -35,9 +35,10 @@ export function MembersStep({ slug, formId, onDirty, demo, me, members, knowledg
         {members.filter((m) => m.active).map((m) => (
           <AddedRow key={m.id} testId={`setup-member-${m.id}`}
             name={<span className={s.person}><PersonFace name={m.name} size="sm" />{m.name}{m.id === me ? <span className={s.addedSub}>{t("settings.you")}</span> : null}</span>}
-            side={<span>{m.role}</span>} />
+            side={<>{m.held ? <span className={s.badge} data-testid="setup-member-held">{t("settingsSetupOpen.heldBadge")}</span> : null}<span>{m.role}</span></>} />
         ))}
       </Added>
+      {state.held && state.added ? <p className={s.fieldHelp} role="status">{t("settingsSetupOpen.heldAdded", { name: state.added.name })}</p> : null}
       {fresh && state.mailed === true ? <p className={s.fieldHelp} role="status">{t("settings.invited", { name: fresh.name })}</p> : null}
       {fresh && state.mailed === false ? <p className={s.refusal} role="alert">{t("settings.inviteMailFailed", { name: fresh.name, error: state.mailError ?? "" })}</p> : null}
       {fresh && state.mailed !== true ? (

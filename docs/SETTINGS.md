@@ -12,7 +12,7 @@ no settings; they sign in with their code (or Microsoft) as before.
 
 ## Sections
 
-In this order. Setup is not a section: it has its own pages, and while it is open the menu shows a pill that leads there.
+In this order. Setup is not a section: it has its own pages, and while the company is closed the menu shows a pill that leads there.
 
 | Section | Path | What it does |
 |---|---|---|
@@ -29,7 +29,7 @@ Test ids are `settings-<section>-<thing>`; the setup steps are `setup-step-<key>
 ## Setup
 
 Setup is its own process at `/<company>/setup`, outside the app shell and outside Settings, with one page per step:
-`setup/company`, `setup/units`, `setup/roles`, `setup/routes`, `setup/members`, `setup/done`. Settings holds the
+`setup/company`, `setup/units`, `setup/roles`, `setup/routes`, `setup/members`, `setup/done`, `setup/open`. Settings holds the
 results. How far a company is gets derived from what exists on every load (`setupStep(counts)`), never stored:
 
 - `company`: saved once with a name. Only the name is required.
@@ -40,6 +40,24 @@ results. How far a company is gets derived from what exists on every load (`setu
 
 Each step uses the same actions as its own page. `/setup` opens the first step not done, a later step in the address
 leads back to it, and *Next* opens once the step is done.
+
+**Closed until opened.** A new company starts closed (`Company.openedAt` null): a demo company is opened when it is
+created, and a company that existed before this rule stays open. While closed:
+
+- Only setup people get a session: active managers and stack admins (`features/pilot/open.ts`, `signInEntry`). Every path
+  that issues one asks first: the personal code, Microsoft, OIDC and SAML, the demo button, the dev panel's switch.
+  Everyone else sees on the login page that NextUp is not open yet. Microsoft creates and binds nobody before the answer.
+- Setup people land on `/setup` after sign-in; a `next` target still wins.
+- Sessionless ways to raise a case are off too: a shop-floor area says it is paused and the floor code refuses, and the
+  Teams bot answers as if Teams were off.
+- Inviting mails only setup people. Anyone else's invitation is held (`User.invitationHeldAt`) and shown as waiting on
+  Members. Their first code was never seen by anyone; Open mails a new one. Issuing a code by hand ends the wait.
+- The move to pilot is refused: Open comes first.
+
+`setup/open` shows the go-live checks and a dialog repeating the runbook's hand list. *Open NextUp* runs the checks again
+on the server (`canOpen`): every step and every needed check done, the same rule as the move to pilot, with no override.
+It stores the time, writes `audit.company.opened`, then sends the held invitations. A mail that fails stays held, and the
+page offers to send again. The stage does not move and nobody is signed out.
 A case reaches a route's owner through the seat: a seat a leader is linked to puts the case in that leader's inbox,
 and the raise page offers the seat by its name.
 
@@ -81,5 +99,6 @@ Open items from the plan's questions, decided by their defaults:
 - **Q3 Entra group mapping to units: open.** Units come from the department attribute (IDN, DIR); a group mapping waits
   for a pilot customer that needs it.
 
-Acceptance: `apps/app/tests/e2e/db/admin-setup.spec.ts` creates an empty company in `/admin`, and its manager enrols
-TOTP, runs the wizard, links the leader to the seat on Members; a member's case about the rig reaches that leader.
+Acceptance: `apps/app/tests/e2e/db/admin-setup.spec.ts` creates an empty closed company, and its manager enrols TOTP,
+runs the steps and links the leader to the seat on Members. A member cannot sign in; Open is refused until the calendar is
+saved; after Open the leader's held invitation goes out, and a member's case about the rig reaches that leader.

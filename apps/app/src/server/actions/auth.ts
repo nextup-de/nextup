@@ -11,7 +11,6 @@
 // Demo boxes keep a one-click "open the demo" button (demoSignIn below) - but only with
 // LOGIN_DEMO_FILL set on the server AND for a company still in demo stage, whose people are made up.
 import { redirect } from "next/navigation";
-import { ROLE_HOME, type Role } from "@/config/roles";
 import { hashLoginCode, looksLikeLoginCode, looksLikeSharedCode, normalizeLoginCode } from "@/features/auth/login-code";
 import { generateTotpSecret, base32Decode, otpauthUrl, totpContext, verifyTotp } from "@/features/auth/totp";
 import { open, seal, vaultKey } from "@/features/connectors/vault";
@@ -23,6 +22,7 @@ import { tenantMode, companyUrl } from "@/features/tenant/urls";
 import { demoLoginOpen, demoPersonOf } from "@/server/demo-login";
 import { companyPrefix, safeNext } from "@/server/microsoft-login";
 import { clearSession, issueSession } from "@/server/issue-session";
+import { entryFor, homeOf } from "@/server/setup-open";
 import { clientKey, forgive, throttle } from "@/server/throttle";
 
 /**
@@ -65,13 +65,17 @@ export async function codeLogin(_prev: LoginState, form: FormData): Promise<Logi
     () =>
       getDb().user.findUnique({
         where: { loginCodeHash: hashLoginCode(code) },
-        include: { company: { select: { id: true, slug: true } } },
+        include: { company: { select: { id: true, slug: true, name: true } } },
       }),
     () => null,
   );
   if (!hasDatabase()) return noDatabase;
   // A code for another company is simply a wrong code here - never "it belongs to X".
   if (!user || !user.active || user.company.slug !== slug) return wrongCode;
+
+  // Closed until opened (features/pilot/open.ts): the code is right, but only setup people get in yet.
+  const entry = await entryFor(user.company.id, user);
+  if (entry === "refused") return { error: (await getT())("settingsSetupOpen.refused", { company: user.company.name }) };
 
   // A manager needs a second factor; members and leaders sign in with the code alone.
   if (user.role === "manager") {
@@ -81,7 +85,7 @@ export async function codeLogin(_prev: LoginState, form: FormData): Promise<Logi
   await forgive("loginCode", `${who}|${slug}`);
 
   await issueSession(user.company.id, user.company.slug, user);
-  redirect(companyPrefix(slug) + (safeNext(String(form.get("next") ?? "")) || ROLE_HOME[user.role as Role]));
+  redirect(companyPrefix(slug) + (safeNext(String(form.get("next") ?? "")) || homeOf(entry, user.role)));
 }
 
 type Manager = { id: string; companyId: string; email: string; totpSecretSealed: string | null; totpEnabledAt: Date | null };
@@ -132,9 +136,11 @@ export async function demoSignIn(form: FormData): Promise<void> {
   const company = await demoLoginOpen(slug);
   const user = company ? demoPersonOf(company) : null;
   if (!company || !user) redirect(companyPrefix(slug) + "/login");
+  const entry = await entryFor(company.id, { role: user.role, active: true, isStackAdmin: false });
+  if (entry === "refused") redirect(companyPrefix(slug) + "/login");
 
   await issueSession(company.id, company.slug, user);
-  redirect(companyPrefix(slug) + (next || ROLE_HOME[user.role as Role]));
+  redirect(companyPrefix(slug) + (next || homeOf(entry, user.role)));
 }
 
 export type FindState = { error?: string; email?: string; company?: string };

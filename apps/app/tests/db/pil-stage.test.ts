@@ -28,7 +28,7 @@ const SLUGS = ["pil-sb", "pil-pilot", "pil-demo", "pil-live", "pil-job"];
 const ids: Record<string, { companyId: string; managerId: string }> = {};
 
 async function make(slug: string, stage: string) {
-  const c = await db.company.create({ data: { slug, name: `Name ${slug}`, mark: "M", seedJson: JSON.parse(JSON.stringify(SEED)), stage } });
+  const c = await db.company.create({ data: { openedAt: new Date(), slug, name: `Name ${slug}`, mark: "M", seedJson: JSON.parse(JSON.stringify(SEED)), stage } });
   const manager = await db.user.create({ data: { companyId: c.id, name: "m", email: `m@${slug}.example`, role: "manager", active: true, loginCodeAt: new Date(), totpEnabledAt: new Date() } });
   const second = await db.user.create({ data: { companyId: c.id, name: "m2", email: `m2@${slug}.example`, role: "manager", active: true, loginCodeAt: new Date(), totpEnabledAt: new Date() } });
   await db.user.create({ data: { companyId: c.id, name: "gone", email: `g@${slug}.example`, role: "manager", active: false } });

@@ -92,7 +92,7 @@ A typical order. The weeks are a plan, not a promise; the long items are agreeme
 | Weeks 0 to 3 | IT: DNS, mail relay, Entra registration (or the SuccessFactors API user). HR: people file. Pilot lead: units, roles, routes. Works council talks, if any. |
 | Week 3 or 4 | NextUp installs the stack and runs the import in sandbox from your files. You receive the list of what is still open. |
 | Joint setup session | Half a day, see below. |
-| Pilot week 1 | Training for staff and managers (30 minutes, `docs/pilot/TRAINING.en.md`), switch to pilot, first-week checks. |
+| Pilot week 1 | Training for staff and managers (30 minutes, `docs/pilot/TRAINING.en.md`), switch to pilot, first-week checks. Your staff can sign in from the moment your admin opens NextUp in the setup session. |
 | Pilot weeks 1 to 6 | The weekly report every Monday; a short review with NextUp each week. |
 | After week 6 | Review against the success measures; you and NextUp decide: stop, extend, or move to live. |
 
@@ -107,7 +107,8 @@ together, in person or on a call.
 - **Your IT:** the person who connected sign-in, mail and the directory and can change DNS, the relay and Entra.
 - **The pilot lead:** the person who knows the units, the roles and the routes and can say who is whose deputy.
 - Your legal signatory or data protection officer, or a clear written statement from them, for the agreements.
-- Your admin: the person who will switch the company from sandbox to pilot. They move the stage; NextUp does not.
+- Your admin: the person who will press "Open NextUp" and switch the company from sandbox to pilot. They do both; NextUp
+  does not.
 
 **What each brings**
 
@@ -124,10 +125,11 @@ together, in person or on a call.
    left open. A green checklist in the app does not authorise a pilot; it cannot see a signature or a council decision.
 2. Structure: the Org page reads like your company.
 3. Routes: every route has an owner and a deputy, and the pilot lead agrees with them.
-4. Sign-in: an admin, a manager and a member sign in; someone without a role is refused.
+4. Sign-in: an admin and a manager sign in. Until NextUp is open, nobody else can: a member sees that it is not open yet.
 5. One real test mail arrives where it should.
 6. A test case: raised, routed, answered, in the decision log.
-7. The Go-live checklist, line by line, in the app: every needed line is done.
+7. The checklist on the Open page, line by line, in the app: every needed line is done. Then your admin presses "Open
+   NextUp". From here on everyone with an account can sign in, and invitations that were waiting go out.
 
 **What the session ends with**
 

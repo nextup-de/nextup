@@ -14,7 +14,6 @@
 //
 // Not a "use server" module: helpers the route handlers call, not actions.
 import { cookies } from "next/headers";
-import { ROLE_HOME, type Role } from "@/config/roles";
 import {
   authorizeUrl,
   canSearchFiles,
@@ -52,6 +51,7 @@ import { seal, vaultContext, vaultKey } from "@/features/connectors/vault";
 import { companyPrefix, safeNextPath, singleCompany } from "@/features/tenant/urls";
 import { issueAdminSession } from "@/server/admin-session";
 import { issueSession, secureCookies } from "@/server/issue-session";
+import { entryFor, homeOf } from "@/server/setup-open";
 
 export { companyPrefix };
 
@@ -295,6 +295,19 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
     return fail(landing.reason);
   }
 
+  // Closed until opened (features/pilot/open.ts): asked before anything is created or bound, with the role
+  // this sign-in would give the person.
+  const entry = await entryFor(
+    company.id,
+    landing.kind === "create"
+      ? { role: landing.role, active: true, isStackAdmin: false }
+      : { role: landing.setRole ?? found?.role ?? "", active: found?.active ?? false, isStackAdmin: found?.isStackAdmin ?? false },
+  );
+  if (entry === "refused") {
+    console.info(`[microsoft] ${slug}: closed, ${email || "(no email)"} has to wait until it opens`);
+    return fail("closed");
+  }
+
   let user = found;
   if (landing.kind === "create") {
     // The customer's IT assigned this person a NextUp role in Entra: that is the invitation.
@@ -321,7 +334,7 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
   if (!user) return fail("failed");
 
   await issueSession(company.id, company.slug, user);
-  return companyPrefix(slug) + (flow.next || ROLE_HOME[user.role as Role]);
+  return companyPrefix(slug) + (flow.next || homeOf(entry, user.role));
 }
 
 /**

@@ -236,7 +236,8 @@ export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData
   await getDb().$transaction(async (tx) => {
     await tx.user.update({
       where: { id: user.id, companyId: company.id },
-      data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() },
+      // A code handed out by hand ends the wait for "Open NextUp": their mail would replace this code.
+      data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date(), invitationHeldAt: null },
     });
     await recordAudit(company.id, { actor, action: "audit.member.code", target: { kind: "user", id: user.id }, changes: {}, source: "console" }, tx);
   });

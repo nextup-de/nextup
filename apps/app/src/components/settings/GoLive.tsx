@@ -99,7 +99,7 @@ export function GoLive(p: Props) {
       }
       if (r.checks) { setChecks(r.checks); setAt(new Date().toISOString()); }
       const first = r.checks ? blockers(r.checks)[0] : undefined;
-      setError(r.reason === "blocked" && first ? t("settingsGoLive.errChanged", { check: t(checkName(first)) }) : t("settingsGoLive.errFailed"));
+      setError(r.reason === "closed" ? t("settingsSetupOpen.stageClosed") : r.reason === "blocked" && first ? t("settingsGoLive.errChanged", { check: t(checkName(first)) }) : t("settingsGoLive.errFailed"));
       if (r.reason === "changed") router.refresh();
     });
   };

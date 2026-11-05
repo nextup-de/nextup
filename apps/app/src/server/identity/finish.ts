@@ -5,7 +5,6 @@
 // the company whose email equals the claimed one and who has no link of this provider yet - and then the
 // link is written. Display names are never compared. Never creates an account, never changes a role.
 import type { IdentityClaims } from "@nextup/contracts/public";
-import { ROLE_HOME, type Role } from "@/config/roles";
 import { holdsRealPeople } from "@/features/admin/stages";
 import { getDb } from "@/lib/db/client";
 import { getIntegration, saveIntegration } from "@/lib/db/integrations";
@@ -13,10 +12,11 @@ import { findIdentity, linkIdentity, touchIdentity } from "@/lib/db/sso";
 import { companyPrefix } from "@/features/tenant/urls";
 import { issueSession } from "@/server/issue-session";
 import { safeNext } from "@/server/microsoft-login";
+import { entryFor, homeOf } from "@/server/setup-open";
 
 export const SSO_ERRORS = [
   "demo_company", "not_on", "state", "expired", "invalid_response", "email_unverified",
-  "no_email", "unknown_user", "ambiguous", "inactive", "failed",
+  "no_email", "unknown_user", "ambiguous", "inactive", "closed", "failed",
 ] as const;
 export type SsoErrorCode = (typeof SSO_ERRORS)[number];
 
@@ -33,7 +33,7 @@ export type SsoProvider = "oidc" | "saml";
 export const loginErrorUrl = (slug: string, code: SsoErrorCode) => `${companyPrefix(slug)}/login?sso_error=${code}`;
 export const testedUrl = (slug: string, provider: SsoProvider) => `${companyPrefix(slug)}/settings/sign-in?tested=${provider}`;
 
-type Found = { id: string; name: string; handle: string | null; role: string; active: boolean };
+type Found = { id: string; name: string; handle: string | null; role: string; active: boolean; isStackAdmin: boolean };
 
 /** Remembers the last test on the provider's card. `detail` is a user id or an error code, never a token. */
 async function storeTest(companyId: string, provider: SsoProvider, ok: boolean, detail: string): Promise<void> {
@@ -49,7 +49,7 @@ async function storeTest(companyId: string, provider: SsoProvider, ok: boolean, 
 /** Finds the person (link, else one-time email match). Throws SsoError. `link` false writes nothing. */
 async function matchUser(companyId: string, provider: SsoProvider, claims: IdentityClaims, link: boolean): Promise<{ user: Found; identityId: string | null }> {
   const db = getDb();
-  const select = { id: true, name: true, handle: true, role: true, active: true } as const;
+  const select = { id: true, name: true, handle: true, role: true, active: true, isStackAdmin: true } as const;
 
   const known = await findIdentity(companyId, provider, claims.issuer, claims.subject);
   if (known) {
@@ -119,7 +119,10 @@ export async function finishSsoLogin(p: {
     return { redirect: testedUrl(slug, provider) };
   }
 
+  // Closed until opened: only setup people get a session (features/pilot/open.ts). A test above signs nobody in.
+  const entry = await entryFor(companyId, found.user);
+  if (entry === "refused") return fail("closed");
   if (found.identityId) await touchIdentity(found.identityId);
   await issueSession(companyId, slug, found.user);
-  return { redirect: companyPrefix(slug) + (safeNext(p.next) || ROLE_HOME[found.user.role as Role]) };
+  return { redirect: companyPrefix(slug) + (safeNext(p.next) || homeOf(entry, found.user.role)) };
 }
