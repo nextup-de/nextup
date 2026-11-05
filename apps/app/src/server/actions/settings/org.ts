@@ -15,7 +15,7 @@ import { revalidateSetup } from "@/server/setup-paths";
 import { audited, type Tx } from "./audited";
 import { companyAdminOf } from "./guard";
 
-export type OrgResult = { ok: true; id?: string } | { ok: false; error: OrgError };
+export type OrgResult = { ok: true } | { ok: false; error: OrgError };
 
 /** What a change records; the actor and the source are the same for all of them. */
 type Described = Pick<AuditEntry, "action" | "target" | "changes">;
@@ -60,7 +60,7 @@ async function apply(
   if (saved.value.late) return { ok: false, error: saved.value.late };
   for (const part of ["org", "routing"]) revalidatePath(`${companyPrefix(slug)}/settings/${part}`);
   revalidateSetup();
-  return { ok: true, id: saved.value.id };
+  return { ok: true };
 }
 
 export async function addUnitAction(slug: string, unit: UnitInput): Promise<OrgResult> {
@@ -97,6 +97,24 @@ export async function addRoleAction(slug: string, role: RoleInput): Promise<OrgR
     async (c, by, tx) => ({ id: await write.addRole(c, by, role, tx) }),
     (_k, id) => ({ action: "audit.settings.org", target: { kind: "role", id: id ?? "" }, changes: auditChanges(null, roleFields(role)) }),
   );
+}
+/** A new role and its seats, as the setup step adds them. Each seat goes through addSeatAction and its rules. */
+export async function addRoleWithSeatsAction(slug: string, role: RoleInput, seats: readonly { name: string; userId: string | null }[]): Promise<OrgResult> {
+  let roleId: string | undefined;
+  const made = await apply(
+    slug, { kind: "addRole", role },
+    async (c, by, tx) => {
+      roleId = await write.addRole(c, by, role, tx);
+      return { id: roleId };
+    },
+    (_k, id) => ({ action: "audit.settings.org", target: { kind: "role", id: id ?? "" }, changes: auditChanges(null, roleFields(role)) }),
+  );
+  if (!made.ok || roleId === undefined) return made;
+  for (const seat of seats) {
+    const added = await addSeatAction(slug, roleId, seat.name, seat.userId);
+    if (!added.ok) return added;
+  }
+  return { ok: true };
 }
 export async function updateRoleAction(slug: string, id: string, role: RoleInput): Promise<OrgResult> {
   return apply(

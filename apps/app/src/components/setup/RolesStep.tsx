@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import type { Knowledge, RoleRow } from "@/features/knowledge";
 import { unitTree } from "@/features/settings/org-view";
 import { useT } from "@/i18n/client";
-import { addRoleAction, addSeatAction, linkSeatAction, removeSeatAction, updateRoleAction, type OrgResult } from "@/server/actions/settings/org";
+import { addRoleWithSeatsAction, addSeatAction, linkSeatAction, removeSeatAction, updateRoleAction } from "@/server/actions/settings/org";
 import type { MemberOption } from "@/components/settings/OrgEditor";
 import settings from "@/components/settings/settings.module.css";
 import { Added, AddedRow, Field, Refusal, StepCard, useRun, type StepFormProps } from "./parts";
@@ -47,15 +47,8 @@ export function RolesStep({ slug, formId, onDirty, demo, knowledge: k, members }
       run(() => updateRoleAction(slug, id, { ...role, decides, spendLimitEur }), finish);
       return;
     }
-    run(async (): Promise<OrgResult> => {
-      const made = await addRoleAction(slug, { ...role, decides: [], spendLimitEur: null });
-      if (!made.ok || !made.id) return made;
-      for (const [n, userId] of seats.entries()) {
-        const seat = await addSeatAction(slug, made.id, seatName(role.title, n, memberName(userId)), userId === "" ? null : userId);
-        if (!seat.ok) return seat;
-      }
-      return { ok: true };
-    }, finish);
+    const newSeats = seats.map((userId, n) => ({ name: seatName(role.title, n, memberName(userId)), userId: userId === "" ? null : userId }));
+    run(() => addRoleWithSeatsAction(slug, { ...role, decides: [], spendLimitEur: null }, newSeats), finish);
   };
 
   const options = (
