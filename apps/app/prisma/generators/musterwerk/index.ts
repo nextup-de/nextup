@@ -64,7 +64,7 @@ export async function generateMusterwerk(db: Db, opts: GenerateOptions): Promise
   if (existing) await db.company.delete({ where: { id: existing.id } });
   const company = await db.company.create({
     data: {
-      slug, name: "Musterwerk GmbH", mark: "M", stage: "sandbox",
+      slug, name: "Musterwerk GmbH", mark: "M", stage: "sandbox", openedAt: now,
       seedJson: toSeedJson(templateWrites("empty", () => crypto.randomUUID()).seedJson) as object,
       config: { create: { aiRouting: false, assistant: false } },
     },

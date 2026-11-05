@@ -66,6 +66,7 @@ async function main() {
       mark: demo.mark,
       anonymousHandles: demo.anonymousHandles,
       stage: "demo",
+      openedAt: new Date(), // a demo company has no setup to wait for
       seedJson: toSeedJson(contentOnly(seedTemplate("demo"))) as object,
       config: { create: {} },
     },

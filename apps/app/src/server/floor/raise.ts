@@ -34,8 +34,9 @@ export async function raiseFromFloor(
   if (!checked.ok || !/^[A-Za-z0-9_-]{8,64}$/.test(input.nonce)) return { ok: false, reason: "invalid" };
 
   const db = getDb();
-  const company = await db.company.findUnique({ where: { slug }, select: { id: true } });
+  const company = await db.company.findUnique({ where: { slug }, select: { id: true, openedAt: true } });
   if (!company) return { ok: false, reason: "unknown" };
+  if (!company.openedAt) return { ok: false, reason: "paused" }; // closed until opened: no cases from the floor yet
   const companyId = company.id;
 
   const area = await findArea(companyId, input.area);

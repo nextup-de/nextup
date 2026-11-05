@@ -51,7 +51,7 @@ beforeAll(async () => {
   process.env.AUTH_SECRET = "test-secret-test-secret-test-secret-0123456789";
   process.env.ADMIN_ACCESS_CODE = "shared-break-glass-code-9z";
   await db.company.deleteMany({});
-  const c = await db.company.create({ data: { slug: SLUG, name: "Adm Access", seedJson: {} } });
+  const c = await db.company.create({ data: { openedAt: new Date(), slug: SLUG, name: "Adm Access", seedJson: {} } });
   companyId = c.id;
   const mk = async (key: string, role: string, isStackAdmin = false) => {
     codes[key] = generateLoginCode(SLUG);

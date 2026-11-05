@@ -5,7 +5,8 @@
 // A demo stack gets its company from prisma/seed.ts. A real stack (stack/install.sh --stage real)
 // is not seeded, so without this its database has no company and every page, /login included,
 // is a 404. This adds only the company itself: the empty template, sandbox stage (real people,
-// demo tools off), no people. Its admin adds the people at <origin>/admin -> People.
+// demo tools off), no people, closed until someone presses "Open NextUp" in setup. Its admin adds the
+// people at <origin>/admin -> People.
 //
 // Idempotent and hands-off: an existing company is never touched, so a restart or a new image
 // cannot undo what the company's admin changed.

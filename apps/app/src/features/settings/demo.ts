@@ -1,5 +1,6 @@
 // What the settings pages show when this copy of NextUp has no database (local runs, the demo):
 // the Acme sample from the designs. Pure data; nothing here is ever saved.
+import type { GoLiveInput } from "@/features/pilot/go-live";
 import { DEFAULT_CALENDAR, type CalendarSpec } from "@/features/clock";
 import { DEFAULT_RULES } from "@/features/knowledge/rules";
 import { LOOP_DEFAULTS } from "@/features/loop/rules";
@@ -71,15 +72,37 @@ export const SAMPLE_MEMBERS: { id: string; name: string }[] = [
 ];
 
 /** The sample Members table: who signs in how, and the seats they hold. */
-export type SampleMember = Member & { dept: string; codeIssuedAt: string | null; microsoft: boolean; active: boolean; hasEmail: boolean; pseudonymisedAt: string | null; seats: { id: string; label: string }[] };
+export type SampleMember = Member & { dept: string; codeIssuedAt: string | null; microsoft: boolean; active: boolean; hasEmail: boolean; pseudonymisedAt: string | null; seats: { id: string; label: string }[]; held: boolean };
 export const SAMPLE_MEMBER_ROWS: SampleMember[] = [
-  { id: "demo-hs", name: "Hanna Sander", email: "h.sander@acme.example", role: "manager", dept: "Werk Süd", codeIssuedAt: "2026-10-12T09:00:00Z", microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-1", label: "Plant manager" }] },
-  { id: "demo-ak", name: "Aylin Kaya", email: "a.kaya@acme.example", role: "leader", dept: "Quality", codeIssuedAt: null, microsoft: true, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-3", label: "Quality lead" }] },
-  { id: "demo-jw", name: "Jonas Weber", email: "j.weber@acme.example", role: "leader", dept: "Assembly", codeIssuedAt: "2026-10-20T09:00:00Z", microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-2", label: "Assembly lead" }] },
-  { id: "demo-df", name: "Dario Ferraro", email: "d.ferraro@acme.example", role: "member", dept: "Assembly", codeIssuedAt: null, microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [] },
-  { id: "demo-mk", name: "Mira Keller", email: "m.keller@acme.example", role: "member", dept: "Logistics", codeIssuedAt: null, microsoft: false, active: false, hasEmail: true, pseudonymisedAt: null, seats: [] },
+  { id: "demo-hs", name: "Hanna Sander", email: "h.sander@acme.example", role: "manager", dept: "Werk Süd", codeIssuedAt: "2026-10-12T09:00:00Z", microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-1", label: "Plant manager" }], held: false },
+  { id: "demo-ak", name: "Aylin Kaya", email: "a.kaya@acme.example", role: "leader", dept: "Quality", codeIssuedAt: null, microsoft: true, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-3", label: "Quality lead" }], held: false },
+  { id: "demo-jw", name: "Jonas Weber", email: "j.weber@acme.example", role: "leader", dept: "Assembly", codeIssuedAt: "2026-10-20T09:00:00Z", microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-2", label: "Assembly lead" }], held: false },
+  { id: "demo-df", name: "Dario Ferraro", email: "d.ferraro@acme.example", role: "member", dept: "Assembly", codeIssuedAt: null, microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [], held: false },
+  { id: "demo-mk", name: "Mira Keller", email: "m.keller@acme.example", role: "member", dept: "Logistics", codeIssuedAt: null, microsoft: false, active: false, hasEmail: true, pseudonymisedAt: null, seats: [], held: false },
 ];
 
 /** The signed-in sample manager, and the seat nobody holds yet. */
 export const SAMPLE_ME = "demo-hs";
 export const SAMPLE_FREE_SEATS = [{ id: "h-4", label: "Maintenance lead" }];
+
+/** The Open step's sample: a company almost ready, every needed check done but the backup, so the page shows both states. */
+export function sampleOpenInput(now: Date): GoLiveInput {
+  return {
+    now,
+    units: [{ name: "Werk Süd" }],
+    roles: [{ title: "Plant manager", holders: 1 }],
+    routes: [{ key: "spend", ownerHasUser: true }],
+    hasCalendar: true,
+    people: { active: 5, canSignIn: 5 },
+    microsoftOn: false,
+    managers: { withCode: 1, withTotp: 1 },
+    mail: "ok",
+    ai: { choice: "off", dpaSignedAt: null },
+    backup: null,
+    supportOpenUntil: null,
+    notifications: false,
+    directory: null,
+    recipients: 0,
+    baseline: false,
+  };
+}

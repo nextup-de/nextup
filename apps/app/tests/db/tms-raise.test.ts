@@ -58,6 +58,7 @@ beforeAll(async () => {
   const person = (name: string, role: string) => ({ name, email: `${name.replace(/\W+/g, "").toLowerCase()}@${SLUG}.example`, role, dept: "", ini: "XX", handle: null });
   const c = await db.company.create({
     data: {
+      openedAt: new Date(),
       slug: SLUG, name: "Tms Raise Co", stage: "sandbox", entraTenantId: TENANT,
       seedJson: toSeedJson(writes.seedJson) as object,
       users: { create: [person("B. Hartmann", "manager"), person("J. Schmidt", "member")] },

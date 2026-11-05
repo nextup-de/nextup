@@ -24,6 +24,7 @@ const SSO_ERROR_KEY: Record<string, MessageKey> = {
   demo_company: "ssoLogin.demo_company", not_on: "ssoLogin.not_on", state: "ssoLogin.state", expired: "ssoLogin.expired",
   invalid_response: "ssoLogin.invalid_response", email_unverified: "ssoLogin.email_unverified", no_email: "ssoLogin.no_email",
   unknown_user: "ssoLogin.unknown_user", ambiguous: "ssoLogin.ambiguous", inactive: "ssoLogin.inactive", failed: "ssoLogin.failed",
+  closed: "settingsSetupOpen.refused",
 };
 
 type Props = { params: Promise<{ company: string }>; searchParams: Promise<{ next?: string; error?: string; sso_error?: string }> };
@@ -46,7 +47,7 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
   const [microsoft, demoPerson] = hasDatabase()
     ? await Promise.all([microsoftEnabledFor(tenant.slug), demoPersonFor(tenant.slug)])
     : [false, null];
-  const found = hasDatabase() ? await getDb().company.findUnique({ where: { slug: tenant.slug }, select: { id: true } }) : null;
+  const found = hasDatabase() ? await getDb().company.findUnique({ where: { slug: tenant.slug }, select: { id: true, openedAt: true } }) : null;
   const sso = found ? (await ssoButtonsFor(found.id)).map((b) => ({ ...b, href: `${companyPrefix(tenant.slug)}/login/${b.provider}${next ? `?next=${encodeURIComponent(next)}` : ""}` })) : [];
   const ssoMessage = ssoError && SSO_ERROR_KEY[ssoError] ? t(SSO_ERROR_KEY[ssoError], { company: tenant.name }) : undefined;
   const microsoftHref = microsoft
@@ -84,12 +85,13 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
             title={t("auth.welcomeBack")}
             sub={microsoftHref ? t("auth.subCodeMicrosoft") : t("auth.subCode")}
           />
+          {found && !found.openedAt ? <p className={styles.notOpen} role="status" data-testid="login-not-open">{t("settingsSetupOpen.loginNotice", { company: tenant.name })}</p> : null}
           <CompanyLoginForm
             slug={tenant.slug}
             short={short}
             next={next}
             microsoftHref={microsoftHref}
-            microsoftError={isMicrosoftError(error) ? MICROSOFT_ERRORS[error] : undefined}
+            microsoftError={error === "closed" ? t("settingsSetupOpen.refused", { company: tenant.name }) : isMicrosoftError(error) ? MICROSOFT_ERRORS[error] : undefined}
             sso={sso}
             ssoError={ssoMessage}
           />

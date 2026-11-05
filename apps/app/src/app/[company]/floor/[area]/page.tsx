@@ -21,8 +21,9 @@ export default async function FloorAreaPage({ params }: { params: Promise<{ comp
   if (!hasDatabase()) return message("floor.unknownTitle");
 
   const db = getDb();
-  const co = await db.company.findUnique({ where: { slug: company }, select: { id: true } });
+  const co = await db.company.findUnique({ where: { slug: company }, select: { id: true, openedAt: true } });
   if (!co) notFound();
+  if (!co.openedAt) return message("floor.pausedTitle"); // closed until opened
   const area = await findArea(co.id, areaKey);
   if (!area) return message("floor.unknownTitle");
   if (!area.on) return message("floor.pausedTitle");

@@ -21,6 +21,9 @@ model User {
   // companies because the login finds the person from the code alone. Null = no code issued.
   loginCodeHash String?   @unique
   loginCodeAt   DateTime? // when the current code was issued - shown in /admin, never the code
+  // An invitation that waits for "Open NextUp": the person could not sign in yet, so no mail went out.
+  // Open mails them a new code (server/setup-open.ts); a code handed out by hand ends the wait.
+  invitationHeldAt DateTime?
 
   // Microsoft's object id for this person, bound on their first Microsoft sign-in (matched by
   // email then). After that the account is matched by this, which Microsoft never reassigns.

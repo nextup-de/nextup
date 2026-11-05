@@ -20,10 +20,7 @@ import { deactivateUser } from "@/lib/db/directory";
 import { pseudonymOf } from "@/lib/db/pseudonymise";
 import { hasVerifiedEmail } from "@/features/privacy/export";
 import { linkSeat } from "@/lib/db/org-edit";
-import { inviteMail } from "@/features/auth/invite-mail";
-import { companyUrl } from "@/features/tenant/urls";
-import { localeForEmail } from "@/i18n/server";
-import { sendMail } from "@/server/mail";
+import { loadOpenedAt, mailInvitation } from "@/server/setup-open";
 import { recordAudit, settingsActor } from "@/server/audit/record";
 import { audited } from "./settings/audited";
 import { companyAdminOf } from "./settings/guard";
@@ -39,6 +36,8 @@ export type MemberRow = Member & {
   pseudonymisedAt: string | null;
   /** The seats this member holds (OrgRoleHolder rows, by sort). */
   seats: SeatLabel[];
+  /** Their invitation waits for "Open NextUp". */
+  held: boolean;
 };
 
 type Manager = { userId: string; companyId: string; slug: string };
@@ -70,7 +69,7 @@ async function membersOf(companyId: string): Promise<MemberRow[]> {
   const rows = await getDb().user.findMany({
     where: { companyId },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, email: true, role: true, dept: true, loginCodeAt: true, entraOid: true, active: true, directorySyncedAt: true },
+    select: { id: true, name: true, email: true, role: true, dept: true, loginCodeAt: true, entraOid: true, active: true, directorySyncedAt: true, invitationHeldAt: true },
   });
   const pseudonyms = await pseudonymOf(companyId, rows.map((u) => u.id));
   return rows
@@ -87,6 +86,7 @@ async function membersOf(companyId: string): Promise<MemberRow[]> {
       hasEmail: !pseudonyms.has(u.id) && hasVerifiedEmail(u),
       pseudonymisedAt: pseudonyms.get(u.id)?.at.toISOString() ?? null,
       seats: held.filter((h) => h.userId === u.id).map((h) => ({ id: h.id, label: `${h.role.title} · ${h.name}` })),
+      held: u.invitationHeldAt !== null,
     }));
 }
 
@@ -133,7 +133,8 @@ export async function issueMemberCodeAction(_prev: CodeState, form: FormData): P
     () => ({ actor: settingsActor(manager), action: "audit.member.code", target: { kind: "user", id: user.id }, changes: {}, source: "settings" }),
     (tx) => tx.user.update({
       where: { id: user.id, companyId: manager.companyId },
-      data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() },
+      // A code handed out by hand ends the wait for "Open NextUp": their mail would replace this code.
+      data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date(), invitationHeldAt: null },
     }),
   );
   if (!saved.ok) return { error: auditFailed };
@@ -175,7 +176,7 @@ export type AddState = { added?: { name: string; code: string }; problems?: stri
 type Scope = { companyId: string; slug: string };
 
 /** Validates and creates one member with a fresh login code; the code is returned, never stored. */
-async function createMember(manager: Scope & { userId: string }, form: FormData, action: "audit.member.added" | "audit.member.invited"): Promise<AddState & { email?: string }> {
+async function createMember(manager: Scope & { userId: string }, form: FormData, action: "audit.member.added" | "audit.member.invited", holdInvitation = false): Promise<AddState & { email?: string }> {
   const person = {
     name: String(form.get("name") ?? "").trim(),
     email: String(form.get("email") ?? "").trim(),
@@ -211,6 +212,7 @@ async function createMember(manager: Scope & { userId: string }, form: FormData,
         ini: initialsOf(person.name),
         loginCodeHash: hashLoginCode(code),
         loginCodeAt: new Date(),
+        ...(holdInvitation ? { invitationHeldAt: new Date() } : {}),
       },
       select: { id: true },
     }),
@@ -229,24 +231,23 @@ export async function addMemberAction(_prev: AddState, form: FormData): Promise<
   return { added: created.added, problems: created.problems, warnings: created.warnings };
 }
 
-export type InviteState = AddState & { mailed?: boolean; mailError?: string };
+/** `held`: added, and the invitation waits for "Open NextUp". No code leaves: Open mails a new one. */
+export type InviteState = AddState & { mailed?: boolean; mailError?: string; held?: boolean };
 
-/** Add, then mail the person their code and the company's login address (ADM D11). The code is in the body only. */
+/**
+ * Add, then mail the person their code and the company's login address (ADM D11). While the company is
+ * closed only a setup person gets the mail: anyone else could not sign in with it, so theirs waits for Open.
+ */
 export async function inviteMemberAction(_prev: InviteState, form: FormData): Promise<InviteState> {
   const admin = await companyAdminOf(String(form.get("slug") ?? ""));
   if (!admin) return { problems: [forbidden] };
-  const { email, ...result } = await createMember({ companyId: admin.companyId, slug: admin.companySlug, userId: admin.userId }, form, "audit.member.invited");
+  const hold = (await loadOpenedAt(admin.companyId)) === null && String(form.get("role") ?? "member") !== "manager";
+  const { email, ...result } = await createMember({ companyId: admin.companyId, slug: admin.companySlug, userId: admin.userId }, form, "audit.member.invited", hold);
   if (!result.added || !email) return result;
+  if (hold) return { ...result, added: { name: result.added.name, code: "" }, held: true };
 
   const company = await getDb().company.findUnique({ where: { id: admin.companyId }, select: { name: true } });
-  const locale = await localeForEmail(admin.companyId, email);
-  const mail = inviteMail(
-    { name: result.added.name },
-    { name: company?.name ?? admin.companySlug, loginUrl: `${companyUrl(admin.companySlug)}/login` },
-    result.added.code,
-    locale,
-  );
-  const sent = await sendMail({ to: email, subject: mail.subject, text: mail.text });
+  const sent = await mailInvitation({ id: admin.companyId, slug: admin.companySlug, name: company?.name ?? admin.companySlug }, { name: result.added.name, email }, result.added.code);
   return sent.ok ? { ...result, mailed: true } : { ...result, mailed: false, mailError: sent.error };
 }
 
