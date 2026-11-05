@@ -13,10 +13,9 @@ This extends `docs/demo/AI_DEMO.md` (section 1: AWS account, Bedrock access, IAM
 
 ## Steps (Kevin)
 
-1. **Bedrock.** In `eu-central-1`, request model access for the model you want to test. Extend the
-   IAM policy from `AI_DEMO.md` section 1 step 3: `bedrock:InvokeModel` and
-   `bedrock:InvokeModelWithResponseStream` on that model (and its `eu.` inference profile, if you
-   use one), nothing else. Export `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` in your shell.
+1. **Bedrock.** In `eu-central-1`, check the model on the Bedrock console's Model access page; the
+   criteria differ per model. Give an IAM user the policy of `AI_DEMO.md` section 1 step 3, with the
+   model you test. Export `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` in your shell.
 2. **Azure OpenAI.** Create an Azure OpenAI resource in an EU region and a model deployment in it
    (Q3). Note the deployment name (this is `--model`), the endpoint
    `https://<resource>.openai.azure.com/openai/v1` and a key. `export AZURE_OPENAI_KEY=...`: the key
@@ -71,6 +70,11 @@ record. The smoke check costs a few cents.
 The data-processing agreements with AWS and Microsoft are Kevin's (PILOT/HQ11). The eval sends
 only the synthetic Acme cases, but a customer's ideas go to the chosen provider in the pilot, so
 sign the agreement of the winner before any customer text leaves the box.
+
+The same goes for where a request runs. Anthropic's Bedrock page lists `eu-central-1` with Global and
+EU routing, not in-region only, and global routing can leave the EU. Neither it nor AWS's pages say
+which of the two a plain `anthropic.<model>` id on `bedrock-mantle.eu-central-1.api.aws` gets. Confirm
+that with AWS (and how to ask for EU routing) before customer text goes there.
 
 ## When neither qualifies
 
