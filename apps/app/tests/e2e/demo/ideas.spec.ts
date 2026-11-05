@@ -9,6 +9,15 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/acme/raise");
 });
 
+test("the page opens calm: side panel closed, details tray folded, the box in its gold ring", async ({ page }) => {
+  const start = page.getByRole("textbox", { name: START });
+  await expect(start).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show sidebar" })).toBeVisible();
+  await expect(page.locator("[data-raise-root]")).toHaveAttribute("data-sb", "hidden");
+  await expect(page.getByRole("button", { name: "Add details" })).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("[class*='ring']").filter({ has: start })).toHaveCSS("background-image", /linear-gradient.*rgb\(240, 194, 58\)/);
+});
+
 test("one line is evaluated, analysed, and the rail shows what a decision still needs", async ({ page }) => {
   await page.getByRole("textbox", { name: START }).fill("A shared calendar for the endurance rig");
   await holdNextReply(page);
@@ -21,7 +30,7 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   await expect(close.or(answer).first()).toBeVisible({ timeout: 30_000 });
   await showSidebar(page);
   if (!(await close.isVisible())) await page.getByRole("button", { name: "Analysis", exact: true }).click();
-  for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true }).first()).toBeVisible(); // first: its reasoning starts open
+  for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
   await close.click();
 
   // The chat: the coach's first answer under the full analysis, one point still unclear, and the
