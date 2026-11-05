@@ -6,22 +6,24 @@
 .root input::placeholder { color: var(--nh-mute); }
 .root button:focus:not(:focus-visible), .root input:focus { outline: none; }
 .div3 { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; animation: affSoft 280ms ease backwards; }
-.div4 { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.feed { margin: 0; font-weight: 600; font-size: var(--nh-fs-3xl); line-height: 1.1; letter-spacing: -0.02em; color: var(--nh-ink); }
+/* The one bar above the cards: department chips left, the quiet menus (site, unit, sort) and the archive right. */
+.div4 { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 320px; min-width: 0; }
 .div5 { display: flex; align-items: center; gap: 8px; }
+.div4 > .div5 { margin-left: auto; gap: 2px; flex-wrap: wrap; justify-content: flex-end; }
 .closeMenu { position: fixed; inset: 0; z-index: 20; }
 .div6 { position: relative; z-index: 21; }
-.toggleSite { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: none; border-radius: var(--radius-sm, 999px); background: #fff; color: var(--nh-ink); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(40,60,100,0.08); transition: transform 160ms cubic-bezier(.2,.8,.2,1); }
-.toggleSite:active { transform: scale(.97); }
+.toggleSite, .toggleSort, .toggleArchive, .more { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border: none; border-radius: var(--radius-sm, 999px); background: transparent; color: var(--nh-ink-2); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 180ms ease,transform 160ms cubic-bezier(.2,.8,.2,1); }
+.toggleSite:hover, .toggleSort:hover, .toggleArchive:hover, .more:hover, .toggleSite[aria-expanded="true"], .toggleSort[aria-expanded="true"] { background: var(--nh-card); }
+.toggleSite:active, .toggleSort:active, .toggleArchive:active, .more:active { transform: scale(.97); }
+.toggleArchive { color: var(--nh-brand-ink); }
+.more { color: var(--nh-mute); }
 .div7 { position: absolute; top: calc(100% + 6px); right: 0; min-width: 190px; padding: 6px; background: #fff; border-radius: var(--radius-sm, 14px); box-shadow: 0 12px 32px rgba(20,30,60,0.16),0 1px 2px rgba(20,30,60,0.06); display: flex; flex-direction: column; gap: 2px; animation: affPop 220ms cubic-bezier(.2,.8,.2,1) both; }
 .pick { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: none; border-radius: var(--radius-xs, 10px); color: var(--nh-ink); font-family: inherit; font-size: var(--nh-fs-md); cursor: pointer; text-align: left; }
 .pick:hover { background: var(--nh-fill); }
 .label { flex: 1; }
 .count { font-size: var(--nh-fs-xs); color: var(--nh-mute); }
 .check { width: 14px; color: var(--nh-brand); font-size: var(--nh-fs-sm); }
-.toggleSort { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: none; border-radius: var(--radius-sm, 999px); background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(40,60,100,0.08); transition: background 180ms ease,transform 160ms cubic-bezier(.2,.8,.2,1); }
-.toggleSort:hover { background: var(--nh-brand-line); }
-.toggleSort:active { transform: scale(.97); }
 .div8 { display: flex; flex-wrap: wrap; gap: 6px; }
 .pick2 { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: none; border-radius: var(--radius-sm, 999px); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(40,60,100,0.06); transition: background 180ms ease,transform 160ms cubic-bezier(.2,.8,.2,1); }
 .pick2:active { transform: scale(.97); }
@@ -235,6 +237,7 @@
   .div50 { max-height: none; }
   .input { font-size: var(--nh-fs-input); }
   .div5 { min-width: 0; }
+  .div7[data-first="true"] { left: 0; right: auto; } /* the leftmost menu opens to the right, inside the screen */
   .label3 { font-size: var(--nh-fs-xs); }
   /* Five dials in a row are too small to read on a phone: three, then two, each its own card. */
   .div26 { grid-template-columns: repeat(3, minmax(0, 1fr)); }

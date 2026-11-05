@@ -122,8 +122,8 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await page.goto("/acme/overview");
     const ideas = page.getByRole("region", { name: "Ideas" });
     await expect(ideas.getByText(TITLE)).toHaveCount(0);
-    await page.getByRole("tab", { name: /Archive/ }).click();
-    await page.getByRole("button", { name: /Became a project/ }).click();
+    await ideas.getByRole("button", { name: /^Open\s*\d+$/ }).click();
+    await ideas.getByRole("menuitemradio", { name: /Became a project/ }).click();
     await expect(ideas.getByText(TITLE)).toBeVisible();
   });
 });

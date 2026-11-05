@@ -5,6 +5,9 @@ export const feed = defineMessages({
   en: {
     sortLatest: "Latest activity",
     allUnits: "All units",
+    moreDepts: "More",
+    lessDepts: "Less",
+    backToOpen: "Back to open",
     latestRaised: "Raised · {when}",
     latestRead: "Read by {who} · {when}",
     latestAsked: "Asked a question · {who} · {when}",
@@ -24,6 +27,9 @@ export const feed = defineMessages({
   de: {
     sortLatest: "Letzte Aktivität",
     allUnits: "Alle Einheiten",
+    moreDepts: "Mehr",
+    lessDepts: "Weniger",
+    backToOpen: "Zurück zu Offen",
     latestRaised: "Eingebracht · {when}",
     latestRead: "Gelesen von {who} · {when}",
     latestAsked: "Rückfrage · {who} · {when}",

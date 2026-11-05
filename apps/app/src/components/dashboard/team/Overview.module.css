@@ -19,14 +19,14 @@
 .pick:hover { background: var(--nh-fill); }
 .pick:active { transform: scale(.97); }
 .label { flex: 1; }
+.div12 .label { white-space: nowrap; } /* "Became a project" stays on one line */
 .count { font-size: var(--nh-fs-xs); color: var(--nh-mute); }
 .check { width: 14px; color: var(--nh-brand); font-size: var(--nh-fs-sm); }
 .toggleSort { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: none; border-radius: var(--radius-sm, 999px); background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(40,60,100,0.08); transition: background 180ms ease,transform 160ms cubic-bezier(.2,.8,.2,1); }
 .toggleSort:hover { background: var(--nh-brand-line); }
 .toggleSort:active { transform: scale(.97); }
-.archiveBar { display: flex; }
-/* As a column of the Projects page: heading and Open | Archive on one line, and quiet buttons, so the only black
-   on the page is the bar's current place. */
+/* As a column of the Projects page: the heading left, the three quiet menus (status, filter, sort) right, so the
+   only filled control on the page is the bar's current place. */
 .root[data-embedded="true"] .div8 { align-items: center; }
 .root[data-embedded="true"] .div9 { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .root[data-embedded="true"] .toggleFilter, .root[data-embedded="true"] .toggleSort { background: #fff; color: var(--nh-ink); box-shadow: inset 0 0 0 1px var(--nh-line); }
@@ -476,6 +476,7 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
 
 /* ── phones: one column, the chats under the case ── */
 @media (max-width: 760px) {
+  .div12[data-first="true"] { left: 0; right: auto; } /* the leftmost menu opens to the right, inside the screen */
   .div14 { display: none; }
   .pick2 { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "what open" "what status" "desk stage"; row-gap: 10px; column-gap: 12px; align-items: start; padding: 14px 16px; }
   .pick2 > :nth-child(1) { grid-area: what; }
