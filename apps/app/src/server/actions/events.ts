@@ -21,7 +21,8 @@ import { loadMembers } from "@/lib/db/knowledge";
 import { issueSession } from "@/server/issue-session";
 import { entryFor } from "@/server/setup-open";
 import { policyFor } from "@/features/admin/stages";
-import { stampEvent } from "@/features/cases/stamp";
+import { stampDept, stampEvent, underHandle } from "@/features/cases/stamp";
+import { loadUnitPeople } from "@/lib/db/pseudonymise";
 import { kickJira } from "@/server/jira-sync";
 import { proposeOnRaise } from "@/server/routing";
 import { getLocale } from "@/i18n/server";
@@ -97,6 +98,10 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
 
   // The seat a raise lands on is the server's call, whatever the client sent (features/cases/stamp.ts).
   let stored = await stampAudience(viewer.companyId, type, stampEvent(type, payload, seed));
+  // So is the department next to a handle: kept only when the raiser's own unit is big enough to hide in.
+  if (type === "case.raised" && underHandle(actor) && stored.fromDept) {
+    stored = stampDept(type, stored, { label: actor, userId: viewer.userId }, await loadUnitPeople(viewer.companyId));
+  }
   // So is the routing proposal: the brain's or the keywords', whatever the browser sent (server/routing.ts).
   if (type === "case.raised") stored = { ...stored, proposal: await proposeOnRaise(slug, viewer.companyId, stored) };
   const result = await appendEventRow(
