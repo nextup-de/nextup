@@ -1,8 +1,8 @@
 "use client";
-// TEAM LEADER home: open items addressed to me, sorted by age, one action each - yes /
+// TEAM LEADER home: open items addressed to me, most urgent first, one action each - yes /
 // no+why / hand over / ask one question. Port of the INBOX block in legacy/demo/index.html.
 // A manager sees the same list with the ideas waiting on their decision on top.
-// The "Fresh ideas" title with filter (all / late / on time) and sort (oldest / newest first), then
+// The "Fresh ideas" title with filter (all / late / on time) and sort (most urgent / newest / highest score), then
 // the card (Claude Design handoff "Inbox App"): the stats strip as its head, one row per item - who
 // sent it, what it is about, when it came in, the promise clock. Nothing is open until a row is
 // picked; then the title row folds away, the head turns into the list's title bar, the card docks
@@ -14,7 +14,8 @@ import { holdsRole, usersOfRole } from "@/features/auth/identity";
 import { deskStats } from "@/features/metrics/desk";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { askedForView, deskCases, inboxIdeas, inboxSorted, openCases } from "@/components/dashboard/derive";
+import { askedForView, caseScore, deskCases, inboxIdeas, inboxSorted, openCases } from "@/components/dashboard/derive";
+import { INBOX_SORTS, sortInbox, withoutLinkedCases, type InboxSort } from "@/components/dashboard/inbox-order";
 import { costEurOf, fastLane, roundState, withDiscussion } from "@/features/cases/discussion";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith, sentLabel } from "@/features/cases/rows";
@@ -38,6 +39,8 @@ type Filter = "all" | "late" | "ontime";
 const FILTERS: Filter[] = ["all", "late", "ontime"];
 const FILTER_TITLE: Record<Filter, MessageKey> = { all: "leader.filterAll", late: "leader.filterLate", ontime: "leader.filterOntime" };
 const FILTER_LABEL: Record<Filter, MessageKey> = { all: "leader.filter", late: "leader.late", ontime: "leader.onTime" };
+const SORT_TITLE: Record<InboxSort, MessageKey> = { urgent: "leader.sortUrgent", newest: "leader.sortNewest", score: "leader.sortScore" };
+const SORT_LABEL: Record<InboxSort, MessageKey> = { urgent: "leader.urgent", newest: "leader.newest", score: "leader.topScore" };
 const initialsOf = (name: string) => (name.startsWith("Anonymous") ? "?" : name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase());
 // "Yesterday" -> "yesterday", "Monday" -> "on Monday", "09:14" -> "today"
 const raisedPhrase = (t: T, label: string) => (/\d:\d/.test(label) || label === "Today" ? t("leader.raisedToday") : label === "Yesterday" ? t("leader.raisedYesterday") : t("leader.raisedOn", { day: label }));
@@ -58,7 +61,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const [cid, setCid] = useState<string | null>(initialId ?? null);
   const [open, setOpen] = useState(!!initialId);
   const [tucked, setTucked] = useState(false);
-  const [newest, setNewest] = useState(false);
+  const [sort, setSort] = useState<InboxSort>("urgent");
   const [filter, setFilter] = useState<Filter>("all");
   const [now] = useState(() => new Date()); // views render only once `ready`, so this never meets the server render
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
@@ -165,7 +168,9 @@ export function InboxView({ initialId }: { initialId?: string }) {
     }
   }, [cid, isOpen, motion]);
 
-  const desk = deskCases(ctx), openList = openCases(ctx);
+  // A case that became an idea waiting in this inbox is listed and counted once, as the idea.
+  const ideaIds = new Set(ideas.map((i) => i.id));
+  const desk = withoutLinkedCases(deskCases(ctx), ideaIds), openList = withoutLinkedCases(openCases(ctx), ideaIds);
   const route = sc?.route ?? null;
   const scMine = !!route && holdsRole(me, route.ownerRoleId ?? null);
   const handTo = route ? (scMine ? route.deputy : route.owner.name) : t("leader.triageDesk");
@@ -204,21 +209,21 @@ export function InboxView({ initialId }: { initialId?: string }) {
     const rs = roundState(c, S.rules, S.day);
     return {
       id: c.id, title: c.title, name: c.from, role: roleOf(c.from, c.fromDept), roleIsDept: roleIsDept(c.from),
-      sent: exact && raised ? new Date(raised.ts) : dayDate(c.raisedDay - S.day), exact, due: rs ? rs.left : P - c.clock, paused: c.status === "asked", caseId: c.id,
+      sent: exact && raised ? new Date(raised.ts) : dayDate(c.raisedDay - S.day), exact, due: rs ? rs.left : P - c.clock, paused: c.status === "asked", caseId: c.id, score: caseScore(ctx, c) as number | null, linkedIdea: c.linkedIdea,
       tag: view ? t("leader.tagYourView") : rs && !rs.ready ? (rs.left < 0 ? t("leader.tagCheckinLate", { n: -rs.left }) : t("leader.tagCheckinIn", { n: rs.left })) : null,
     };
   };
   const rows = [
     ...ideas.map((i) => {
       const [name, dept = ""] = i.proposedBy.split(", "); // "C. Ilg, Ops"
-      return { id: i.id, title: i.title, name, role: roleOf(name, dept), roleIsDept: roleIsDept(name), sent: dayDate(-i.wait), exact: false, due: P - i.wait, paused: false, caseId: null as string | null, tag: null as string | null };
+      return { id: i.id, title: i.title, name, role: roleOf(name, dept), roleIsDept: roleIsDept(name), sent: dayDate(-i.wait), exact: false, due: P - i.wait, paused: false, caseId: null as string | null, score: null, linkedIdea: null, tag: null as string | null };
     }),
     ...inbox.map((c) => caseRow(c, false)),
     ...views.map((c) => caseRow(c, true)),
   ];
-  const shown = rows
-    .filter((r) => filter === "all" || (filter === "late" ? r.due < 0 : r.due >= 0))
-    .sort((a, b) => (newest ? b.sent.getTime() - a.sent.getTime() : a.sent.getTime() - b.sent.getTime()));
+  // `rows` keeps every item, so a link to a case still opens it; the list leaves out the case its idea row already shows.
+  const listed = withoutLinkedCases(rows, ideaIds);
+  const shown = sortInbox(listed.filter((r) => filter === "all" || (filter === "late" ? r.due < 0 : r.due >= 0)), sort);
   const badgeOf = (r: (typeof rows)[number]) => r.tag ?? (r.paused ? t("leader.badgePaused") : r.due < 0 ? t("leader.badgeLate", { n: -r.due }) : t("leader.badgeLeft", { n: r.due }));
 
   // Open a row; the open row again closes the pane. The first open tucks the list to its avatars.
@@ -307,9 +312,9 @@ export function InboxView({ initialId }: { initialId?: string }) {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
         <span className={styles.toolLabel}>{t(FILTER_LABEL[filter])}</span>
       </button>
-      <button type="button" className={styles.tool} onClick={() => setNewest((v) => !v)} title={t(newest ? "leader.sortNewest" : "leader.sortOldest")} aria-label={t(newest ? "leader.sortNewest" : "leader.sortOldest")}>
+      <button type="button" className={styles.tool} onClick={() => setSort((v) => INBOX_SORTS[(INBOX_SORTS.indexOf(v) + 1) % INBOX_SORTS.length])} title={t(SORT_TITLE[sort])} aria-label={t(SORT_TITLE[sort])} data-testid="inbox-sort" data-sort={sort}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" /></svg>
-        <span className={styles.toolLabel}>{t(newest ? "leader.newest" : "leader.sort")}</span>
+        <span className={styles.toolLabel}>{t(SORT_LABEL[sort])}</span>
       </button>
     </div>
   );
@@ -351,7 +356,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
 
           <div className={styles.scroll} ref={listRef} data-selected={isOpen && cid ? cid : ""}>
             <div className={styles.hl} ref={hlRef} aria-hidden="true" />
-            {rows.length === 0 ? (
+            {listed.length === 0 ? (
               <div className={styles.empty}>{t("leader.nothingWaiting")}</div>
             ) : shown.length === 0 ? (
               <div className={styles.empty}>{t("leader.noIdeasMatch")}</div>
@@ -368,7 +373,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
                             <span className={styles.rowTitle}>{r.title}</span>
                             <span className={styles.rowWho}>{r.name} <span className={styles.rowRole}>· {r.roleIsDept && r.role ? <DeptChip name={r.role} /> : r.role}</span></span>                          </span>
                           <span className={styles.rowRight}>
-                            <span className={styles.sent}>{sentLabel(r.sent, now, r.exact)}</span>
+                            <span className={styles.sent}>{sort === "score" && r.score !== null ? t("leader.rowScore", { n: r.score }) : sentLabel(r.sent, now, r.exact)}</span>
                             <span className={styles.badge} data-tone={badgeTone(r.due, r.paused)}>{badgeOf(r)}</span>
                           </span>
                         </span>
