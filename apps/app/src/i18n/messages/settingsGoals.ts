@@ -36,7 +36,7 @@ export const settingsGoals = defineMessages({
   de: {
     title: "Ziele",
     hint: "Worauf das Unternehmen hinarbeitet. Ideen werden über ihre Stichwörter diesen Zielen zugeordnet.",
-    empty: "Noch keine Ziele. Füge das erste hinzu.",
+    empty: "Noch keine Ziele. Fügen Sie das erste hinzu.",
     add: "Ziel hinzufügen",
     edit: "Bearbeiten",
     remove: "Löschen",
@@ -62,6 +62,6 @@ export const settingsGoals = defineMessages({
     errUnit: "Diese Einheit gehört nicht zu diesem Unternehmen.",
     errNotFound: "Dieses Ziel gibt es nicht mehr.",
     errForbidden: "Nur ein Unternehmensadmin kann Ziele ändern.",
-    errAudit: "Nichts wurde gespeichert: die Änderung konnte nicht im Audit-Protokoll festgehalten werden. Versuch es noch einmal.",
+    errAudit: "Nichts wurde gespeichert: die Änderung konnte nicht im Audit-Protokoll festgehalten werden. Versuchen Sie es noch einmal.",
   },
 });
