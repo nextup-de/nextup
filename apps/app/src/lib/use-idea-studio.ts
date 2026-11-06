@@ -28,8 +28,34 @@ export type Delta = Record<BenchmarkId, number> & { overall: number };
 export type Live = { parts: BenchmarkPart[]; overall: number; delta: Delta | null; sameAs: KnownCase | null; replies: Reply[]; reading: Reading | null };
 export type Sending = { text: string; reply: string } | null;
 export type Meta = { title?: string; affected?: string[]; attachments?: number };
+export type Sent = "ok" | "failed" | "dropped"; // what became of a message; failed: it was not stored
+export type Recovered = { text: string; first: boolean }; // first: it was the idea itself, so its draft is gone too
 
 type ScoresEvent = { overall: number; parts: BenchmarkPart[]; sameAs: KnownCase | null; threshold: number; delta: Delta | null; replies?: Reply[]; reading?: Reading | null };
+
+// A message on its way, which can take half a minute with a model. It outlives the page that sent it: leave and
+// come back and the page finds it here, shows it as still on its way and reloads the draft when it lands.
+type Flight = { id: string; text: string; landed: Promise<void> };
+const flights = new Map<string, Flight>(); // by draft
+const watching = new Map<string, string>(); // this person -> the draft their page had open
+// A reload cuts the answer off and the turn is only stored with it, so the message waits here (this tab only)
+// until it landed, for the next load to put it back in the box.
+const PENDING = (mine: string) => "nextup.ideas.pending." + mine;
+let unloading = false; // the reload itself fails the open request: that message is still to be put back
+const pending = {
+  keep(mine: string, p: { id: string; text: string }) {
+    window.addEventListener("beforeunload", () => { unloading = true; }, { once: true });
+    try { window.sessionStorage.setItem(PENDING(mine), JSON.stringify(p)); } catch { /* blocked: only this safety net goes */ }
+  },
+  clear(mine: string) { if (unloading) return; try { window.sessionStorage.removeItem(PENDING(mine)); } catch { /* as above */ } },
+  take(mine: string): { id: string; text: string } | null {
+    try {
+      const raw = window.sessionStorage.getItem(PENDING(mine));
+      window.sessionStorage.removeItem(PENDING(mine));
+      return raw ? (JSON.parse(raw) as { id: string; text: string }) : null;
+    } catch { return null; }
+  },
+};
 
 export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, local: BenchmarkContext | null = null) {
   const mine = draftScope(slug, owner); // this browser's drafts are their author's alone, as in the database
@@ -40,7 +66,8 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
   const [sending, setSending] = useState<Sending>(null);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
-  const abort = useRef<AbortController | null>(null);
+  const [recovered, setRecovered] = useState<Recovered | null>(null);
+  const abort = useRef<AbortController | null>(null); // the static demo's pause; a real message is never cut off (see Flight)
   const opened = useRef<string | null>(null); // the draft last opened, so a slow answer for another one is dropped
 
   // The drafts list, from the server or this browser. Always async, so an effect can call it.
@@ -61,44 +88,86 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     return () => { on = false; };
   }, [fetchList]);
 
+  const load = useCallback(async (id: string) => (serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(mine, id)), [slug, serverMode, mine]);
   const fromView = (d: DraftView | null): Live | null => (d && d.scores.length ? { parts: d.scores, overall: d.overall, delta: null, sameAs: null, replies: [], reading: latestReading(d.turns) } : null);
+
+  // The page shows a message still on its way, sent before it last left, until that lands.
+  const follow = useCallback((f: Flight) => {
+    setSending({ text: f.text, reply: "" });
+    void f.landed.then(async () => {
+      const d = await load(f.id);
+      if (opened.current !== f.id) return;
+      setDraft(d); setLive(fromView(d)); setSending(null);
+      void refresh();
+    });
+  }, [load, refresh]);
+
+  // Back on the page: the message it had open and still on its way. A reload instead lost its message: put it back.
+  useEffect(() => {
+    const id = watching.get(mine), f = id ? flights.get(id) : undefined;
+    if (f) {
+      opened.current = f.id;
+      void load(f.id).then((d) => { if (opened.current === f.id) { setDraft(d); follow(f); } });
+      return;
+    }
+    const p = pending.take(mine);
+    if (!p) return;
+    void load(p.id).then(async (d) => {
+      if (d?.turns.some((x) => x.role === "user" && x.text === p.text)) return; // it landed before the reload
+      const first = !d || !d.turns.length;
+      if (first && d) { if (serverMode) await discardIdeaDraftAction({ slug, id: p.id }); else localDrafts.discard(mine, p.id); void refresh(); }
+      setRecovered({ text: p.text, first });
+    });
+  }, [mine]); // eslint-disable-line react-hooks/exhaustive-deps -- once per person, when the page arrives
 
   // Resolves to the draft, or null when it could not be opened.
   const open = useCallback(async (id: string): Promise<DraftView | null> => {
     abort.current?.abort();
     setError(""); setSending(null);
     opened.current = id;
-    const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(mine, id);
+    watching.set(mine, id);
+    const d = await load(id);
     if (opened.current !== id) return d;
     setDraft(d); setLive(fromView(d));
+    const f = flights.get(id);
+    if (f) follow(f);
     if (!d) { setError("That draft could not be opened."); return null; }
     // The suggested answers are worked out on the server, where the company's goals and routes are.
     if (d.status !== "draft" || local) return d;
     const r = await ideaRepliesAction({ slug, id: d.id, turns: d.turns.map(({ role, text }) => ({ role, text })), affected: d.affected, attachments: d.attachments });
     if (r.ok && opened.current === id) setLive((l) => (l ? { ...l, replies: r.replies } : l));
     return d;
-  }, [slug, serverMode, local, mine]);
+  }, [slug, local, mine, load, follow]);
 
   const startNew = useCallback(() => {
     abort.current?.abort();
     opened.current = null;
+    watching.delete(mine);
     setDraft(null); setLive(null); setSending(null); setError("");
-  }, []);
+  }, [mine]);
 
   // One message: make sure a draft exists, stream the score and the coach, then reload the draft.
-  const send = useCallback(async (text: string, meta: { affected: string[]; attachments: number; skip?: string[] }) => {
+  const send = useCallback(async (text: string, meta: { affected: string[]; attachments: number; skip?: string[] }): Promise<Sent> => {
     const t = text.trim();
-    if (t.length < 3 || sending) return;
+    if (t.length < 3 || sending) return "dropped";
     setError("");
     let id = draft?.id ?? null;
     if (!id) {
       id = serverMode ? (await createIdeaDraftAction({ slug })).id : localDrafts.create(mine);
-      if (!id) { setError("Could not start a draft. Sign in again and retry."); return; }
+      if (!id) { setError("Could not start a draft. Sign in again and retry."); return "failed"; }
       if (serverMode && (meta.affected.length || meta.attachments)) await saveIdeaDraftAction({ slug, id, affected: meta.affected, attachments: meta.attachments });
       else if (!serverMode) localDrafts.saveMeta(mine, id, meta);
     }
     const history = (draft?.turns ?? []).map(({ role, text: x }) => ({ role, text: x }));
     setSending({ text: t, reply: "" });
+    const draftId = id;
+    opened.current = draftId;
+    watching.set(mine, draftId);
+    const here = () => opened.current === draftId; // still the draft on screen: what comes in may show
+    let land = () => {};
+    flights.set(draftId, { id: draftId, text: t, landed: new Promise<void>((done) => { land = done; }) });
+    if (!local) pending.keep(mine, { id: draftId, text: t });
+    const off = () => { flights.delete(draftId); pending.clear(mine); land(); };
     const ctl = (abort.current = new AbortController());
     let scores: ScoresEvent | null = null, reply = "";
     if (local) {
@@ -108,14 +177,13 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
       scores = { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold: DEFAULT_PUBLISH_THRESHOLD, delta: prev ? deltas(prev, now) : null };
       setLive({ parts: now.parts, overall: now.overall, delta: scores.delta, sameAs: now.sameAs, replies: [], reading: null });
       await new Promise((done) => setTimeout(done, SCRIPT_THINK_MS));
-      if (ctl.signal.aborted) return;
+      if (ctl.signal.aborted) { off(); return "dropped"; }
       reply = scriptReply(history, t) ?? coachMock(prev, withoutSkipped(now, meta.skip ?? []), DEFAULT_PUBLISH_THRESHOLD, t, 0);
     } else try {
       const res = await fetch(`/api/${encodeURIComponent(slug)}/ideas/turn`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text: t, draftId: serverMode ? id : undefined, history, affected: meta.affected, attachments: meta.attachments, skip: meta.skip ?? [] }),
-        signal: ctl.signal,
       });
       if (!res.ok || !res.body) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
@@ -138,22 +206,25 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
           if (event === "scores") {
             scores = data as unknown as ScoresEvent;
             setThreshold(scores.threshold);
-            setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs, replies: scores.replies ?? [], reading: scores.reading ?? null });
+            if (here()) setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs, replies: scores.replies ?? [], reading: scores.reading ?? null });
           } else if (event === "replies") {
             // The brain's own suggested answer arrives with its reply, after the scores.
             const replies = (data.replies ?? []) as Reply[];
-            setLive((l) => (l ? { ...l, replies } : l));
+            if (here()) setLive((l) => (l ? { ...l, replies } : l));
           } else if (event === "text") {
             reply = String(data.text ?? "");
-            setSending((s) => (s ? { ...s, reply } : s));
+            if (here()) setSending((s) => (s ? { ...s, reply } : s));
           } else if (event === "error") throw new Error(String(data.message ?? ""));
         }
       }
     } catch (e) {
-      if ((e as Error).name === "AbortError") return;
+      off();
+      if (!here()) return "failed";
       setSending(null);
       setError((e as Error).message || "The coach could not answer just now.");
-      return;
+      // A first message's draft stays open, so sending it again does not start another.
+      if (!draft) setDraft(await load(draftId));
+      return "failed";
     }
     // The local demo stores the turn itself; the server already did in server mode.
     if (!serverMode && scores) {
@@ -161,10 +232,12 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
       localDrafts.addTurns(mine, id, [{ role: "user", text: t }, { role: "assistant", text: reply, overall: scores.overall, reading: scores.reading ?? null }],
         { title: ideaFromTurns(turns).title, overall: scores.overall, scores: scores.parts });
     }
-    const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(mine, id);
-    setDraft(d); setSending(null);
+    const d = await load(draftId);
+    off();
+    if (here()) { setDraft(d); setSending(null); }
     void refresh();
-  }, [draft, sending, slug, serverMode, local, mine, refresh]);
+    return "ok";
+  }, [draft, sending, slug, serverMode, local, mine, refresh, load]);
 
   // The static demo only: prepared turns added to the open draft in one go, each reply scored as if the
   // conversation had been had one message at a time (the demo controls' "Full conversation").
@@ -222,5 +295,5 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
   }, [draft, slug, serverMode, local, mine, refresh]);
 
   const overall = live?.overall ?? draft?.overall ?? 0;
-  return { drafts, threshold, draft, live, sending, error, loaded, overall, open, startNew, send, addScripted, save, discard, publish, setError };
+  return { drafts, threshold, draft, live, sending, error, loaded, overall, recovered, setRecovered, open, startNew, send, addScripted, save, discard, publish, setError };
 }

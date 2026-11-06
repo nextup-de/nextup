@@ -16,18 +16,25 @@ import s from "./Raise.module.css";
 
 // `read`: the five dials as they stand after this reply. `moved`: the dials the answer before
 // it moved - the only ones shown. `open`: the point still unclear - one at most.
-export type Read = { dials: Dial[]; moved: Partial<Record<DialKey, Move>>; open: Topic[]; byAi: boolean };
+// `firstRead`: the first reading of an idea the rules read until now: nothing to compare it with.
+export type Read = { dials: Dial[]; moved: Partial<Record<DialKey, Move>>; open: Topic[]; byAi: boolean; firstRead?: boolean };
 // `idea`: the first message - the idea as asked, its title, what was written under it and its details
 // (affected, files, receiver, colleagues, meeting).
 // `full`: NextUp's first reply - the full analysis stands above it, in place of the short read.
 // `publish`: the one "Publish" button under the latest reply, once the conversation is long enough; it opens
 // the last look, from which the final document is sent.
 // `asked`: under an earlier reply, the point it left unclear, with where it stands now (ticked once clear).
-export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; idea?: { body: string; details: { key: string; value: string }[] }; read?: Read; full?: AnalysisData; asked?: Topic[]; publish?: boolean; link?: { label: string; href: string } };
+export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: string | null; idea?: { body: string; details: { key: string; value: string }[] }; read?: Read; full?: AnalysisData; asked?: PastTopic[]; publish?: boolean; link?: { label: string; href: string } };
+// A point an earlier reply asked. `settled`: it is no longer on the list and nothing says it was answered - the
+// model words its questions anew each turn - so it stays as it was asked, no tick and nothing to click.
+export type PastTopic = Topic & { settled?: boolean };
+// A reading's point is one question, so its short name is the same words: said once.
+export const repeatsAsk = (g: Topic) => g.label === g.ask.replace(/[.?]$/, "");
 
-export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalysis, onPublish, dock, followKey }: {
+export function RaiseChat({ msgs, typing, slowNote, thinking, error, gaps, onAsk, onAnalysis, onPublish, dock, followKey }: {
   msgs: ChatMsg[];
   typing: boolean;
+  slowNote: string | null; // said beside the dots once a reply takes a while (a model can take half a minute)
   thinking: { step: number; sub: string } | null; // the first reply on its way: the orb and the evaluation's steps
   error: string;
   gaps: Topic[];
@@ -86,7 +93,7 @@ export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalys
               </div>
             ))}
             {thinking ? <Evaluating step={thinking.step} sub={thinking.sub} inChat /> : typing && (
-              <div className={s.typing} aria-label={t("ideas.chatTyping")}><i /><i /><i /></div>
+              <div className={s.typing} aria-label={t("ideas.chatTyping")}><i /><i /><i />{slowNote && <span className={`${s.typingLabel} ${s.typingSlow}`}>{slowNote}</span>}</div>
             )}
             {error && <p className={s.error} role="alert">{error}</p>}
           </div>
@@ -105,7 +112,7 @@ function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
   const locale = useLocale();
   const rows = r.dials.filter((d) => r.moved[d.key]);
   return (
-    <div className={s.read} role="group" aria-label={t("ideas.chatAnalysis")}>
+    <div className={s.read} role="group" aria-label={t(r.byAi ? "ideas.chatAnalysis" : "ideas.chatAnalysisRules")}>
       <div className={s.readHead}>
         <Solid name="sparkle" size={11.25} fill="var(--nh-brand)" />
         <span className={s.readTitle}>{t(r.byAi ? "ideas.chatAnalysis" : "ideas.chatAnalysisRules")}</span>
@@ -123,7 +130,7 @@ function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
             </div>
           ))}
         </div>
-      ) : <p className={s.readSame}>{t("ideas.chatSame")}</p>}
+      ) : <p className={s.readSame}>{t(r.firstRead ? "ideas.chatFirstRead" : "ideas.chatSame")}</p>}
       <div className={s.readFoot}>
         <button type="button" className={s.readMore} onClick={onAnalysis}>{t("ideas.chatViewFull")}<Icon name="right" size={9.75} width={2.6} /></button>
       </div>
@@ -133,7 +140,7 @@ function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
 
 // The point the idea still leaves open, as a plain question; a click answers it next. Under an earlier
 // reply (`past`): "Asked", ticked once answered (no longer a button: there is nothing left to ask).
-function Unclear({ open, onAsk, past = false }: { open: Topic[]; onAsk: (g: Topic) => void; past?: boolean }) {
+function Unclear({ open, onAsk, past = false }: { open: PastTopic[]; onAsk: (g: Topic) => void; past?: boolean }) {
   const t = useT();
   return (
     <div className={s.unclear} role="group" aria-label={past ? t("ideas.chatAsked") : t("ideas.chatStillUnclear")} data-past={past || undefined}>
@@ -142,11 +149,11 @@ function Unclear({ open, onAsk, past = false }: { open: Topic[]; onAsk: (g: Topi
         const inner = (
           <>
             <span className={s.unclearN}>{i + 1}</span>
-            <span className={s.unclearText}><span className={s.unclearLabel}>{g.label}</span>{g.ask}</span>
+            <span className={s.unclearText}>{!repeatsAsk(g) && <span className={s.unclearLabel}>{g.label}</span>}{g.ask}</span>
             {g.status === "clear" && <span className={s.unclearDone} aria-label={t("ideas.chatAnswered")}><Icon name="check" size={12} width={2.6} /></span>}
           </>
         );
-        return g.status === "clear"
+        return g.status === "clear" || g.settled
           ? <div key={g.id} className={s.unclearQ} data-done="true">{inner}</div>
           : <button key={g.id} type="button" className={s.unclearQ} onClick={() => onAsk(g)} title={t("ideas.chatAnswerNext")}>{inner}</button>;
       })}
@@ -194,7 +201,7 @@ function Rail({ gaps, onAsk }: { gaps: Topic[]; onAsk: (g: Topic) => void }) {
                       <span className={s.popStatus}>{t(STATUS[g.status])}</span>
                       <button type="button" className={s.popX} title={t("common.close")} aria-label={t("common.close")} onClick={() => setOpen(null)}><Icon name="x" size={7.5} width={3} /></button>
                     </div>
-                    {g.ask && (
+                    {g.ask && !repeatsAsk(g) && (
                       <div className={s.popBlock}>
                         <span className={s.popKey}>{g.status === "unknown" ? t("ideas.chatKeyUnknown") : g.status === "active" ? t("ideas.chatKeyActive") : t("ideas.chatKeyOpen")}</span>
                         <span>{g.ask}</span>
