@@ -1,6 +1,6 @@
 # Route map
 
-> **Updated 2026-10-06** · reference: every URL and its file.
+> **Updated 2026-11-06** · reference: every URL and its file.
 
 | URL | File (`src/app/`) | Session | Role | Purpose |
 |---|---|---|---|---|
@@ -14,7 +14,7 @@
 | `/[company]/manager` | `.../(app)/manager/page.tsx` | yes | manager | Overview |
 | `/[company]/leader` | `.../(app)/leader/page.tsx` | yes | leader, manager | Inbox |
 | `/[company]/raise` | `.../(app)/raise/page.tsx` | yes | any | Idea studio: develop an idea with the coach, publish at the threshold (member home, docs/IDEAS.md) |
-| `/api/[company]/ideas/turn` | `app/api/[company]/ideas/turn/route.ts` | yes | any | One message in the idea studio: server score + coach reply (SSE) |
+| `/api/[company]/ideas/turn` | `app/api/[company]/ideas/turn/route.ts` | yes | any | One message in the idea studio (SSE): the server's benchmark and, where the brain is on, the model's reading of the idea, then the coach's reply. Events `scores` (overall, benchmark bars, suggested answers, `reading` or null), `replies` (brain only), `text`, `done`, `error`; docs/IDEAS.md |
 | `/[company]/dashboard` | `.../(app)/dashboard/page.tsx` | yes | manager | The wait ledger (docs/METRICS.md): six tiles with baseline and trend, stages, answers, the unit and role breakdown with groups under 5 people hidden, CSV export. Query: `unit` and `period` (`30d`, `quarter`, `golive`). No person is named or counted |
 | `/[company]/dashboard/kpis` | `.../(app)/dashboard/kpis/page.tsx` | yes | manager | The idea-management KPI report per unit and company for fixed periods (year, last year, since go-live); small units hidden |
 | `/[company]/people/[userId]` | `.../(app)/people/[userId]/page.tsx` | yes | any | Person card for an opaque user id of an active person in this company: name, role, unit. No statistics, shared work or location. Your own id redirects to `/profile`. Old name URLs (`/people/<name>`) return not found and no name is ever looked up |
