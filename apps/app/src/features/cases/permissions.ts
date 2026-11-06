@@ -5,6 +5,7 @@
 // is answered against the same state everybody sees.
 import { NOBODY, type Actor as IdentityActor } from "@/features/auth/identity";
 import { isProjectId, mayAppendProject } from "@/features/projects/permissions";
+import { isClockReason } from "@/features/clock/actor";
 import type { EventPayload } from "./events";
 import type { State } from "./reducer";
 import { onDeskOf } from "./selectors";
@@ -55,6 +56,8 @@ export function mayAppend(
       if (ev.type === "case.handed") {
         const seat = (ev.payload as EventPayload).toRoleHolderId;
         if (typeof seat !== "string" || !state.seats.some((s) => s.id === seat)) return no(t, "cases.permHandSeat");
+        // FX8: "deadline" and "escalation" are the clock's reasons. The clock never comes through here.
+        if (isClockReason(ev.payload.why)) return no(t, "cases.permHandReason");
       }
       return ev.type === "case.decided" ? mayDecide(ev.payload as EventPayload, kase, state, t) : OK;
     }

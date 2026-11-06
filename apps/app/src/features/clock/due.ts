@@ -4,6 +4,7 @@
 import { seatsOfRole } from "@/features/auth/identity";
 import type { State } from "@/features/cases/reducer";
 import type { CaseEvent } from "@/features/cases/events";
+import { byClock } from "./actor";
 import type { Route } from "@/features/demo/types";
 
 export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover";
@@ -31,8 +32,9 @@ function targetSeat(state: State, route: Route | null, atOwner: boolean): string
 
 /** LOOP/D17: the seat of the deadline fact for this day, unless the case was already handed over for it. */
 function handoverSeat(history: readonly CaseEvent[], dueDay: number): string | null {
-  if (history.some((e) => e.type === "case.handed" && e.payload.why === "deadline")) return null;
-  const f = history.find((e) => e.type === "clock.due" && e.payload.kind === "deadline" && e.payload.dueDay === dueDay);
+  // FX8: only the clock's own events count, so a hand-over a person labelled "deadline" cannot stop the real one.
+  if (history.some((e) => e.type === "case.handed" && e.payload.why === "deadline" && byClock(e))) return null;
+  const f = history.find((e) => e.type === "clock.due" && e.payload.kind === "deadline" && e.payload.dueDay === dueDay && byClock(e));
   return f?.payload.toRoleHolderId ?? null;
 }
 

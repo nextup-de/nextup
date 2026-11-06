@@ -4,6 +4,7 @@
 // "Nothing outside the app ever touches the database." n8n reads the event log through GET and
 // writes back only by appending, through a narrow allow-list.
 import type { EventPayload } from "@/features/cases/events";
+import { CLOCK_REASONS, isClockReason } from "@/features/clock/actor";
 import type { Verdict } from "@/features/cases/permissions";
 import type { State } from "@/features/cases/reducer";
 import { isProjectId } from "@/features/projects/permissions";
@@ -112,6 +113,10 @@ export function parseInbound(body: unknown, idempotencyKey?: string | null): Par
 
   if (b.type === "case.handed" && typeof (payload as EventPayload).to !== "string") {
     return { ok: false, error: "case.handed needs payload.to - who it moved to." };
+  }
+  // FX8: the app's own clock hands a case over when its deadline passes. A connector never writes that reason.
+  if (b.type === "case.handed" && isClockReason((payload as EventPayload).why)) {
+    return { ok: false, error: `case.handed payload.why may not be one of ${CLOCK_REASONS.join(", ")}: the app's clock sets those.` };
   }
   if (b.type === "case.commented" && typeof (payload as EventPayload).text !== "string") {
     return { ok: false, error: "case.commented needs payload.text." };

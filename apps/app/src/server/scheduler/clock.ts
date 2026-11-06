@@ -9,6 +9,7 @@
 // Not a "use server" module.
 import { reduce } from "@/features/cases/reducer";
 import type { CaseEventType } from "@/features/cases/events";
+import { CLOCK_ACTOR } from "@/features/clock/actor";
 import { dueNow } from "@/features/clock/due";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { claimClockLease, recordClockRun, releaseClockLease } from "@/lib/db/clock-lease";
@@ -17,7 +18,6 @@ import { appendEventRow, loadLog } from "@/lib/db/events";
 
 /** A run that dies without releasing loses its lease after this. */
 const LEASE_MS = 5 * 60_000;
-const CLOCK_ACTOR = "system:clock";
 const CLOCK_SOURCE = "clock";
 
 const intervalMs = (): number => {
