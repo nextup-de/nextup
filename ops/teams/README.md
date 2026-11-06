@@ -11,8 +11,17 @@ in (`apps/app/src/server/teams/package.ts`). Redraw the icons with `node ops/tea
 2. Bot **Configuration** -> Messaging endpoint: `https://<host>/api/<company>/teams/messages`
    (the endpoint is TMS-E1; use the company slug of the stack).
 3. Bot **Channels** -> add **Microsoft Teams**.
-4. Put the three values in the stack's env: `TEAMS_APP_ID`, `TEAMS_APP_PASSWORD` (the client secret) and
-   `TEAMS_TENANT_ID`. Restart the app.
+4. Give the stack the three values through its install path, on the server, as the deploy user. The client
+   secret comes from the environment, never from the command line:
+   ```bash
+   read -rs NEXTUP_TEAMS_APP_PASSWORD && export NEXTUP_TEAMS_APP_PASSWORD
+   stack/install.sh --slug <company> --origin https://<host> --teams-app-id <Microsoft App ID> --teams-tenant-id <Tenant ID>
+   ```
+   This works on a new and on an existing instance. It writes `TEAMS_APP_ID`, `TEAMS_APP_PASSWORD` and
+   `TEAMS_TENANT_ID` to the instance's `.env` (`stack/instances/<company>/.env`, or `$NEXTUP_INSTANCES/<company>/.env`;
+   a second run replaces them), `stack/compose.yml` hands them to the app, and the install restarts the app with them.
+   If you edit the `.env` by hand instead, run `stack/ctl.sh <company> up -d` afterwards: a plain restart does not
+   read the file again.
 5. In NextUp as a company admin: Settings -> Microsoft Teams. The company needs its Microsoft tenant id
    (Settings -> Sign-in). Switch Teams on.
 6. **Download the app package**. In Teams: Apps -> Manage your apps -> Upload an app -> *Upload a custom app*
