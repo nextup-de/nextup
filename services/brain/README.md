@@ -121,7 +121,9 @@ app keeps.
   author wrote since gives a reason to change it, and says what changed. Send nothing for a first reading.
 - **`skip`** are the questions the author said they cannot answer yet; `open` never repeats one.
   `open` holds real questions only (ending in a question mark), each once, the most important first.
-- **Checked in code.** A summary, pattern, advice or note that shows an item ID is rejected and retried.
+- **Checked in code.** A summary, pattern, advice, route reason, note or basis that shows an item or row
+  ID is rejected and retried. Advice `info` with no question left to ask is pushed back once. `open` keeps
+  at most six questions and drops one over 200 characters, so the app never rejects the reading for it.
   `route_id` is limited to a row of `routes` (else `null`); the closest earlier item must be one of
   `known`. It comes back as `same_as` only when solving it would also solve this idea, otherwise as
   `related`.
@@ -155,7 +157,7 @@ prompts `match.md` and `sheet.md` are gone). What replaced them:
 
 - **The point is the reading's first open question.** `open_point` is `open` or `none`; with nothing
   open `question`, `why` and `recommended` come back empty and the coach says the idea is ready for the
-  person who decides. The old fixed order of points (problem → context → evidence → …) is gone.
+  person who decides, unless a dial is at 50 or below: then it says it is not ready and what it lacks most. The old fixed order of points (problem → context → evidence → …) is gone.
 - **An earlier item is raised from the reading**, not found by the coach: when `reading.same_as` names an
   item in `known`, the coach is told to raise it first (`earlier_id`).
 - **`answer`** is filled when the latest message asks something; the coach answers from `goals` and
@@ -214,6 +216,7 @@ and saves the run in `eval/results/`. Rerun it after every prompt change and bum
 
 ```bash
 uv run python -m eval.run_coach           # the studio's turn on 8 first messages: reading, then coach, printed
+uv run python -m eval.run_read            # the reading alone on 10 cases (injection, mashing, German, repeats...); --offline checks the checks with a fake model
 uv run python -m eval.chat                # talk to it yourself; --prompt shows what the model is sent
 uv run python -m eval.smoke --provider bedrock --model <id>   # one read, coach, plan and checkin call; exits 1 on a failure
 uv run python -m eval.compare eval/recorded/bedrock.json eval/recorded/azure-openai.json   # recorded routing runs, cheaper one that qualifies

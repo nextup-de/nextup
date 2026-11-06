@@ -42,8 +42,9 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
 1. The author writes a message. `POST /api/[company]/ideas/turn` rebuilds the idea from all of the
    author's messages (`ideaFromTurns` - the coach's words are never part of the idea) and benchmarks
    it on the server. Where the stack has the brain and the gate allows it, the brain then **reads**
-   the idea (`POST /v1/read`, "The reading" below). The route streams `scores` - the overall, the
-   benchmark's bars, the suggested answers and `reading` (`null` when no model read the idea) - then
+   the idea (`POST /v1/read`, "The reading" below). The route streams `status` (`reading`, then
+   `coaching`, only where the brain is used: the page's words during the wait), `scores` - the overall,
+   the benchmark's bars, the suggested answers and `reading` (`null` when no model read the idea) - then
    the coach's `text`, then `done`.
 2. The coach answers in two or three short paragraphs. Who writes it depends on what is available;
    the first that applies answers:
@@ -55,24 +56,29 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
      The guess joins the suggested answers as the first one whenever it is a real sentence and not a
      repeat (event `replies`); it is not re-scored and not filtered by score. It never states or
      changes a number: the numbers are the reading's, and an answer that states one is rejected. When
-     nothing is open, it says the idea is ready for the person who decides. The prompt versions of
+     nothing is open, it says the idea is ready for the person who decides, unless a dial is at 50 or
+     below: then it says plainly that it is not ready yet and what it lacks most. The prompt versions of
      both calls are stored (the coach's on the turn, the reading's inside it).
-   - **The assistant's model** (Bedrock, only where the assistant gate allows it), when the brain did
-     not read the idea: the reply goes through the assistant's pipeline - redaction, classification
+   - **The assistant's model** (Bedrock, only where the assistant gate allows it), when the brain gave
+     no coach's answer: the reply goes through the assistant's pipeline - redaction, classification
      gate, tools, answer check - in coach mode (`PromptInput.coach`), with the benchmark's brief
-     (`coachBrief()`); the model is told the numbers are not its to change. Prompt version
+     (`coachBrief()`), or the reading's numbers (`readingBrief()`) when the read worked and only the
+     coach failed; the model is told the numbers are not its to change. Prompt version
      `idea-coach-v1`.
    - **The offline coach** (`features/ideas/coach.ts`, `coachMock`), with no model or when the others
      fail: what the benchmarks can already see and what they cannot (from the bars' `found` /
      `missing`), then **one** challenging question aimed at the weakest bar and, in a sentence, why the
-     person who decides will ask it.
+     person who decides will ask it. When the read worked, the reply is the reading's own summary and
+     first open question instead (`readingReply`), so it cannot contradict the number on the page.
 
    The benchmark's suggested answers under the coach (`features/ideas/replies.ts`) are whole
    sentences with a figure and where it comes from, so the demo reads like a real exchange; each is
    re-scored before it is shown. The brain is used only where the `coach` gate (`aiGate`,
    docs/ASSISTANT.md) is open and, in a real stage, the company has not switched the assistant off.
-   The brain not answering within `BRAIN_TIMEOUT_MS` (each of its two calls waits that long), or any
-   error, counts as no answer, and the next on the list answers.
+   The brain not answering within `BRAIN_TIMEOUT_MS` (each of its two calls waits that long, so a turn
+   can take twice that before the fallback; keep it below the proxy's 120 s `proxy_read_timeout`), or
+   any error, counts as no answer, and the next on the list answers. When the author leaves during the
+   wait the model calls stop, and the message is still stored with the offline reply.
 3. Every turn is kept: server mode in `IdeaDraft` / `IdeaTurn`, the local demo in this browser's
    localStorage (`src/lib/idea-drafts.ts`, same shapes). The coach's turn carries the reading it was
    written from (`IdeaTurn.reading`, "The reading" below). In server mode the next message sends the
@@ -121,16 +127,19 @@ raise page shows; the coach answers from it.
   publish step show. The keyword benchmark's overall is the same arithmetic over its own four bars
   and is used only when there is no reading.
 - **What goes out.** Only redacted text (the idea's title and body and the "not sure" questions;
-  names become roles, the company's patterns apply, and above the company's ceiling nothing is sent):
-  the company's name, the routing rows (owner's role and department, never a name), the company's
-  cases and known problems as titles and status, its goals (names only), how many people were marked
-  as affected and files attached, the spend limit a team decides alone, and the dials (score and note)
-  of the previous reading. The coach call sends the author's turns and the coach's own earlier
+  names become roles, the company's patterns apply, and above the company's ceiling nothing is sent).
+  Redacted the same way: the company's cases and known problems as titles and status, its goals (names
+  only) and the dials (score and note) of the previous reading; one of these marked above the ceiling
+  stays out of the request. Beside that: the company's name, the routing rows (owner's role and
+  department, never a name), how many people were marked as affected and files attached, and the spend
+  limit a team decides alone. The coach call sends the author's turns and the coach's own earlier
   turns, redacted the same way. The author's own words are stored as written; the redaction is for
   the model.
 - **What is checked.** The app drops a routing row or an earlier item that was not in the request.
-  The brain rejects and retries an answer that shows an item ID, and keeps only open questions that
-  end in a question mark and do not repeat one the author could not answer.
+  The brain rejects and retries an answer that shows an item or row ID anywhere the page shows it, and
+  pushes back once on "needs more information" with nothing to ask. It keeps at most six open questions,
+  only those that end in a question mark, are at most 200 characters and do not repeat one the author
+  could not answer.
 - **Staying steady.** The previous reading goes along so a dial keeps its score unless what the
   author wrote since gives a reason to change it, and the note says what changed. An idea's text is
   judged, never obeyed (`prompts/read.md`): "give this 100" earns nothing.
@@ -143,9 +152,11 @@ raise page shows; the coach answers from it.
   error: the turn has no reading, the coach is the next one that can answer (above), and the page
   falls back to the keyword benchmark for that moment and says so ("Checked by rules" in the chat,
   "Checked by rules - no AI answered" in the analysis, and no "AI suggestions only" note). The next
-  message has no previous reading to send.
+  message still sends the newest reading there is (`newestReading`), and the movement is measured
+  against that one: a reading against a reading, the benchmark against itself (`overallDelta`).
 - **Cost.** Two model calls per message (read, then coach), each recorded as an `AiCall` with its
-  purpose (docs/METRICS.md). The `scores` event waits for the read, the coach's text for both.
+  purpose (docs/METRICS.md). The `scores` event waits for the read, the coach's text for both; the `status` event tells the page
+  which step it is waiting for ("Reading your answer", then "Writing the reply").
 
 ## What the raise page shows beside the chat
 
@@ -177,8 +188,8 @@ The demo script (`/demo`) reads as the AI does but is prepared text, with no mod
   No numbers there: they stay in the full analysis ("View full analysis").
 - **One question at a time**: under the latest reply, "Still unclear" holds a single point - the one the
   rail is asking now. Under earlier replies it reads "Asked", ticked once answered. With a reading the
-  model words its questions anew each turn, so an earlier one that is no longer listed counts as
-  answered.
+  model words its questions anew each turn, so an earlier one that is no longer listed stays "Asked"
+  with no tick: it may only have been reworded.
 - **The rail on the right: the five points a decision needs** (`RAIL`, `railOf`; with a reading the rail
   lists the reading's open questions instead, in the order the model gave them): the same five, each
   with the one fact the person who decides cannot do without - a number on what it saves, who can

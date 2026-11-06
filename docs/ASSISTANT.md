@@ -149,10 +149,11 @@ answer is not retried by the app; the studio then falls back as described in doc
 goes out only redacted: the idea's title and body, the author's "not sure" questions (read) or the turns of the
 conversation, the coach's own included (coach), go through `redact` with the company's patterns, and nothing goes out
 when any of it is marked above the company's classification ceiling. The titles of the earlier cases and known problems
-are redacted the same way. Beside that the calls carry company data that is not run through the redaction: the company's name, its
-routing rows (owner's role and department, never a name) and its goals (names only); the read call adds the counts of people marked as
-affected and files attached, the spend limit a team decides alone, and the dials (score, note) of the previous
-reading. The answer is stored on the coach's turn as `IdeaTurn.reading` (docs/DATA_MODEL.md). Unlike the assistant,
+and the company's goals (names only) are redacted the same way, and one marked above the ceiling stays out of the request. So are the
+words of a reading going back out: the previous reading's dials (read) and the reading the coach works from (coach). One above the ceiling
+is left out of the read call and stops the coach call. Beside that the calls carry company data that is not run through the redaction: the
+company's name and its routing rows (owner's role and department, never a name); the read call adds the counts of people marked as
+affected and files attached, and the spend limit a team decides alone. The answer is stored on the coach's turn as `IdeaTurn.reading` (docs/DATA_MODEL.md). Unlike the assistant,
 neither call writes an `AssistTurn`; each answered call is an `AiCall` (below).
 
 ### The brain's endpoint
