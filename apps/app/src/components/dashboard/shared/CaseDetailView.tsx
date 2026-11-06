@@ -205,7 +205,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         {standing.length > 0 && (
           <div className={styles.standing}>
             <span className={styles.avatars}>{standing.slice(0, 6).map((n) => <PersonFace key={n} name={n} size="sm" />)}</span>
-            <span className={styles.small}>{t("dashboard.detailAffected", { count: standing.length, name: standing[0], by: mine ? t("dashboard.detailYou") : c.from })}</span>
+            <span className={styles.small}>{t("dashboard.detailAffected", { count: standing.length, name: standing[0], by: mine ? t("dashboard.detailByYou") : c.from })}</span>
           </div>
         )}
         {reasons.map((a) => (
