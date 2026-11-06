@@ -26,7 +26,7 @@ import {
 
 export type Delta = Record<BenchmarkId, number> & { overall: number };
 export type Live = { parts: BenchmarkPart[]; overall: number; delta: Delta | null; sameAs: KnownCase | null; replies: Reply[]; reading: Reading | null };
-export type Sending = { text: string; reply: string } | null;
+export type Sending = { text: string; reply: string; step?: "reading" | "coaching" } | null;
 export type Meta = { title?: string; affected?: string[]; attachments?: number };
 export type Sent = "ok" | "failed" | "dropped"; // what became of a message; failed: it was not stored
 export type Recovered = { text: string; first: boolean }; // first: it was the idea itself, so its draft is gone too
@@ -203,7 +203,11 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
           const raw = block.match(/^data: (.+)$/m)?.[1];
           if (!event || !raw) continue;
           const data = JSON.parse(raw) as Record<string, unknown>;
-          if (event === "scores") {
+          if (event === "status") {
+            // Which step the brain is on, for the words beside the dots.
+            const step = data.step === "coaching" ? "coaching" : "reading";
+            if (here()) setSending((s) => (s ? { ...s, step } : s));
+          } else if (event === "scores") {
             scores = data as unknown as ScoresEvent;
             setThreshold(scores.threshold);
             if (here()) setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs, replies: scores.replies ?? [], reading: scores.reading ?? null });

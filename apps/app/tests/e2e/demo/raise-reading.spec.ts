@@ -132,6 +132,40 @@ test("a slow answer shows it is on its way, and nothing can be sent meanwhile", 
   await expect(page.getByLabel("NextUp is typing")).toHaveCount(0);
 });
 
+test("the wait says which step the brain is on", async ({ page }) => {
+  // A real stream, held open between events: route.fulfill can only hand over a whole body.
+  const event = (name: string, data: unknown) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+  const later = reading(HIGH, []);
+  await page.addInitScript(({ first, reading, coaching, rest }) => {
+    const real = window.fetch;
+    let n = 0;
+    window.fetch = async (input, init) => {
+      if (!String(input instanceof Request ? input.url : input).includes("/ideas/turn")) return real(input, init);
+      if (n++ === 0) return new Response(first, { headers: { "Content-Type": "text/event-stream" } });
+      const bytes = new TextEncoder();
+      return new Response(new ReadableStream({
+        start(c) {
+          c.enqueue(bytes.encode(reading));
+          setTimeout(() => c.enqueue(bytes.encode(coaching)), 1_500);
+          setTimeout(() => { c.enqueue(bytes.encode(rest)); c.close(); }, 4_000);
+        },
+      }), { headers: { "Content-Type": "text/event-stream" } });
+    };
+  }, {
+    first: sse("First reply.", reading(LOW, [Q1])),
+    reading: event("status", { step: "reading" }),
+    coaching: event("scores", { overall: later.overall, parts: PARTS, sameAs: null, threshold: 70, delta: null, replies: [], reading: later }) + event("status", { step: "coaching" }),
+    rest: event("text", { text: "Second reply." }) + event("done", { text: "Second reply.", overall: later.overall }),
+  });
+  await raise(page);
+  await expect(aiMessages(page).first()).toContainText("First reply.");
+
+  await say(page, "About 20 minutes per changeover.");
+  await expect(page.getByLabel("NextUp is typing")).toContainText("Reading your answer.");
+  await expect(page.getByLabel("NextUp is typing")).toContainText("Writing the reply.");
+  await expect(aiMessages(page).last()).toContainText("Second reply.", { timeout: 20_000 });
+});
+
 test("leaving during the wait and coming back finds the message still on its way", async ({ page }) => {
   await answers(page, [{ reply: "First reply.", read: reading(LOW, [Q1]) }, { reply: "Second reply.", read: reading(HIGH, []), wait: 6_000 }]);
   await raise(page);

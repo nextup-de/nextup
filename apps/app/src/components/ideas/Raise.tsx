@@ -773,7 +773,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} {...analysis} />
   ) : (
-    <RaiseChat msgs={thread} typing={!!sending && !sending.reply} slowNote={script ? null : t("ideas.chatSlow")} error={studio.error}
+    <RaiseChat msgs={thread} typing={!!sending && !sending.reply} slowNote={script ? null : t(sending?.step === "coaching" ? "ideas.chatSlowCoach" : "ideas.chatSlow")} error={studio.error}
       thinking={evaluating && evalStep !== null && firstText ? { step: evalStep, sub: t("ideas.pageWordsFrom", { n: (firstText.match(/\S+/g) || []).length, who: who.handle ?? who.name, line: who.line }) } : null}
       gaps={railGaps} onAsk={(g) => { setAsk(g.ask); setTimeout(() => chatField.current?.focus(), 0); }}
       onAnalysis={() => go("analysis")} onPublish={openLook}
