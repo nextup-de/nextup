@@ -40,6 +40,14 @@ describe("LOOP deadline hand-over", () => {
     expect(dues(WD, raise(), fact("seat_dep"), handed())).toEqual([]);
   });
 
+  it("a hand-over a person labelled deadline does not stand in for the clock's (FX8)", () => {
+    const forged = ev("case.handed", "T. Vogel", "c_a", { to: "H. Sander", toRoleHolderId: "seat_dep", why: "deadline" });
+    expect(dues(WD, raise(), fact("seat_dep"), forged).map((d) => d.kind)).toEqual(["handover"]);
+    // Nor does a name: a person's event carries their user id, the clock's never does.
+    const named = { ...handed(), actorUserId: "u_tv" };
+    expect(dues(WD, raise(), fact("seat_dep"), named).map((d) => d.kind)).toEqual(["handover"]);
+  });
+
   it("none with the rule off", () => {
     expect(dues(OFF, raise(), fact("seat_dep"))).toEqual([]);
   });

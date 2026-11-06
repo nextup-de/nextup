@@ -2,7 +2,7 @@
 // A missing key or a value that fails its check gives the default for that key.
 import type { SpendRule } from "@/features/demo/types";
 
-export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "loop_steps"] as const;
+export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps"] as const;
 export type CompanyRuleKey = (typeof COMPANY_RULE_KEYS)[number];
 
 export type LoopSteps = { discussion: boolean; projects: boolean; measure: boolean; recognition: boolean };
@@ -11,6 +11,8 @@ export type CompanyRules = {
   outcomeDays: number;
   spend: SpendRule | null;
   deadlineHandover: boolean;
+  /** Working days after the answer date until the case goes one level up; 0 = never. Missing (no row) = the default of features/loop/rules.ts. */
+  escalationDays?: number;
   steps: LoopSteps;
 };
 export const DEFAULT_RULES: CompanyRules = {
@@ -20,14 +22,16 @@ export const DEFAULT_RULES: CompanyRules = {
   deadlineHandover: true,
   steps: { discussion: true, projects: true, measure: true, recognition: true },
 };
+/** The most working days an escalation may wait, as promise_days. */
+export const ESCALATION_DAYS_MAX = 60;
 
 export type RuleRow = { key: string; value: unknown };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const intIn = (v: unknown, min: number, max: number): v is number => typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
 
-function days(value: unknown, max: number): number | null {
-  return isObj(value) && intIn(value.days, 1, max) ? value.days : null;
+function days(value: unknown, max: number, min = 1): number | null {
+  return isObj(value) && intIn(value.days, min, max) ? value.days : null;
 }
 
 function spendOf(value: unknown): SpendRule | null {
@@ -61,6 +65,10 @@ export function rulesFromRows(rows: readonly RuleRow[]): CompanyRules {
     else if (key === "outcome_days") out.outcomeDays = days(value, 365) ?? DEFAULT_RULES.outcomeDays;
     else if (key === "spend") out.spend = spendOf(value);
     else if (key === "deadline_handover") out.deadlineHandover = handoverOf(value);
+    else if (key === "escalation_days") {
+      const n = days(value, ESCALATION_DAYS_MAX, 0);
+      if (n !== null) out.escalationDays = n;
+    }
     else if (key === "loop_steps") out.steps = stepsOf(value);
   }
   return out;
@@ -73,6 +81,7 @@ export function rowsFromRules(r: CompanyRules): RuleRow[] {
     { key: "deadline_handover", value: { on: r.deadlineHandover } },
     { key: "loop_steps", value: { ...r.steps } },
   ];
+  if (r.escalationDays !== undefined) rows.push({ key: "escalation_days", value: { days: r.escalationDays } });
   if (r.spend) rows.push({ key: "spend", value: { limitEur: r.spend.limitEur, text: r.spend.text } });
   return rows;
 }

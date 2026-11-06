@@ -2,7 +2,7 @@
 
 How to run the AI part of a customer demo, and what it costs. Plan AID. The demo works with the
 AI off: every offline-safe question below is routed by the keyword router (`features/routing`
-`propose`, `keywords-v1`) on acme's routes.
+`propose`, `keywords-v2`) on acme's routes.
 
 ## 1. Before the first demo (Kevin, once)
 

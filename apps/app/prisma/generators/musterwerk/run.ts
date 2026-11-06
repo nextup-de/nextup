@@ -10,7 +10,14 @@
 //   --codes <file>    write "<email> TAB <login code>" per person; without it the codes are not kept
 //   --replace         delete a company with this slug first (otherwise an existing slug is refused)
 //   --replace-generated  the same, but only for an empty sandbox company or a Musterwerk of an earlier run
+//   --email-domain <domain>  what stands after the @ of every address (default musterwerk.test); the
+//                     same seed gives the same people under any domain
+//   --export-people <file>  write the people as JSON (name, email, department = unit key, jobTitle,
+//                     managerEmail, enabled) for ops/tst/entra-users.ts
+//   --export-only     with --export-people: write the file and stop. No database is read or written
+//   --ai-on           switch AI routing and the assistant on for the company (default: both off)
 import { getDb } from "../../../src/lib/db/client";
+import { DEFAULT_EMAIL_DOMAIN, musterwerkCrew, writePeopleExport } from "./export";
 import { generateMusterwerk } from "./index";
 
 // Same rule as prisma/seed.ts: .env.local on a laptop, the environment everywhere else.
@@ -35,25 +42,45 @@ function args(argv: string[]): Map<string, string> {
   return out;
 }
 
+let usedDb = false;
+
 async function main() {
   const a = args(process.argv.slice(2));
   const slug = a.get("slug");
   if (!slug) throw new Error("--slug is required");
   const num = (key: string, fallback: number) => (a.has(key) ? Number(a.get(key)) : fallback);
   const seedArg = a.get("seed") ?? "1";
+  const seed = /^\d+$/.test(seedArg) ? Number(seedArg) : seedArg;
+  const emailDomain = a.get("email-domain") ?? DEFAULT_EMAIL_DOMAIN;
+  const exportFile = a.get("export-people");
+  if (exportFile === "true") throw new Error("--export-people needs a file name");
+
+  if (a.get("export-only") === "true") {
+    if (!exportFile) throw new Error("--export-only needs --export-people <file>");
+    const { people } = musterwerkCrew({ slug, people: num("people", 150), seed, emailDomain });
+    writePeopleExport(exportFile, people.users, emailDomain);
+    console.log(`${people.users.length} people written to ${exportFile} (no database touched)`);
+    return;
+  }
+
   const t0 = performance.now();
+  usedDb = true;
   const { companyId, counts } = await generateMusterwerk(getDb(), {
     slug,
     people: num("people", 150),
     weeks: num("weeks", 2),
-    seed: /^\d+$/.test(seedArg) ? Number(seedArg) : seedArg,
+    seed,
     now: a.has("now") ? new Date(a.get("now")!) : new Date(),
     codesFile: a.get("codes"),
     replace: a.get("replace") === "true",
     replaceGenerated: a.get("replace-generated") === "true",
+    emailDomain,
+    exportFile,
+    aiOn: a.get("ai-on") === "true",
   });
   console.log(`${slug} (${companyId}): ${JSON.stringify(counts)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   if (a.get("codes")) console.log(`login codes written to ${a.get("codes")}`);
+  if (exportFile) console.log(`people written to ${exportFile}`);
 }
 
 main()
@@ -61,4 +88,4 @@ main()
     console.error(err);
     process.exitCode = 1;
   })
-  .finally(() => getDb().$disconnect());
+  .finally(() => (usedDb ? getDb().$disconnect() : undefined));

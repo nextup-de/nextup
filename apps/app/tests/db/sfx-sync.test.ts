@@ -8,7 +8,7 @@ import { SF_SELECT } from "@/features/directory/successfactors";
 import { getDb } from "@/lib/db/client";
 import { loadDirectoryRun, loadDirectoryStatus, setDirectoryOn } from "@/lib/db/directory-run";
 import { saveIntegration, setIntegrationOn } from "@/lib/db/integrations";
-import { runDirectoryOnce, startDirectorySync } from "@/server/directory/sync";
+import { NO_ENTRA_APP, NO_TENANT, runDirectoryOnce, startDirectorySync } from "@/server/directory/sync";
 import { fakeSuccessFactors } from "../fixtures/successfactors/fake-fetch";
 import { makeTestKeys } from "../fixtures/successfactors/keys";
 
@@ -95,14 +95,30 @@ describe("SFX sync", () => {
     expect(await db.user.count({ where: { companyId: a.id } })).toBe(0);
   });
 
-  it("runs a Graph company as before: no adapter without a tenant, and SAP is never asked", async () => {
+  it("runs a Graph company as before: without a tenant it says so, and SAP is never asked", async () => {
     await row(sealedKey());
     await setDirectoryOn(a.id, true, "graph", null);
     const sf = fakeSuccessFactors({ pages: PAGES, cert: keys.certPem });
     vi.stubGlobal("fetch", sf.fetch);
     await runDirectoryOnce(NOW);
-    expect((await loadDirectoryStatus(a.id)).lastError).toBe("no adapter for graph");
+    expect((await loadDirectoryStatus(a.id)).lastError).toBe(NO_TENANT);
     expect(sf.requests).toEqual([]);
+  });
+
+  it("says the server has no Entra app when a Graph company has a tenant but the app is not set", async () => {
+    const saved = { id: process.env.ENTRA_CLIENT_ID, secret: process.env.ENTRA_CLIENT_SECRET };
+    delete process.env.ENTRA_CLIENT_ID;
+    delete process.env.ENTRA_CLIENT_SECRET;
+    await db.company.update({ where: { id: a.id }, data: { entraTenantId: "72f988bf-86f1-41af-91ab-2d7cd011db47" } });
+    try {
+      await setDirectoryOn(a.id, true, "graph", null);
+      await runDirectoryOnce(NOW);
+      expect((await loadDirectoryStatus(a.id)).lastError).toBe(NO_ENTRA_APP);
+    } finally {
+      await db.company.update({ where: { id: a.id }, data: { entraTenantId: null } });
+      if (saved.id !== undefined) process.env.ENTRA_CLIENT_ID = saved.id;
+      if (saved.secret !== undefined) process.env.ENTRA_CLIENT_SECRET = saved.secret;
+    }
   });
 
   it("starts the loop without an Entra app", async () => {

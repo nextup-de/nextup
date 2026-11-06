@@ -203,6 +203,10 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     codes.set(LEADER.name, mailed ?? "");
     await manager.goto(`/${SLUG}/settings/company`);
     await expect(manager.getByTestId("settings-setup-pill")).toHaveCount(0);
+    // Open: the pill is gone, a plain link still leads to the setup overview.
+    await expect(vis(manager, "settings-setup-link")).toHaveText("Setup overview");
+    await vis(manager, "settings-setup-link").click();
+    await expect(manager).toHaveURL(new RegExp(`/${SLUG}/setup$`));
     await manager.context().close();
 
     // The member raises a case about the rig; the leader sees it in the inbox.

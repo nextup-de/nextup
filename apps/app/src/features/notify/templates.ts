@@ -3,7 +3,7 @@
 import { createT, type Locale } from "@/i18n";
 import { formatDate } from "@/i18n/format";
 
-export const REMINDER_KINDS = ["deadline", "checkin", "start", "measure"] as const;
+export const REMINDER_KINDS = ["deadline", "checkin", "start", "measure", "escalation"] as const;
 export type ReminderKind = (typeof REMINDER_KINDS)[number];
 
 export type ReminderTemplate = `reminder.${ReminderKind}`;
@@ -22,6 +22,12 @@ export type TemplateInput = {
   days?: number | null;
   /** The case or project page, or for the digest the inbox. */
   link: string;
+  /** Escalation only: who reads it - the seat above that gets the case, the desk that had it, or the raiser. */
+  reader?: "above" | "desk" | "raiser";
+  /** Escalation only: the seat label of who has the case from now on. */
+  holder?: string;
+  /** Escalation only: the case moved to `holder`; false = nobody is above, it stays where it is. */
+  moved?: boolean;
 };
 
 export type Rendered = { subject: string; text: string; link: string };
@@ -52,6 +58,15 @@ export function renderTemplate(template: NoticeTemplate, locale: Locale, input: 
       return compose(t("mail.reminderStartSubject", { title }), t("mail.reminderStartIntro", { when }), t("mail.reminderOpenProject", { url }));
     case "reminder.measure":
       return compose(t("mail.reminderMeasureSubject", { title }), t("mail.reminderMeasureIntro", { days }), t("mail.reminderOpenProject", { url }));
+    case "reminder.escalation": {
+      const holder = input.holder ?? "";
+      const open = t("mail.reminderOpenCase", { url });
+      if (input.reader === "raiser") {
+        return compose(t("mail.escalationRaiserSubject", { title }), t(input.moved ? "mail.escalationRaiserMoved" : "mail.escalationRaiserStays", { when, holder }), open);
+      }
+      if (input.reader === "above") return compose(t("mail.escalationAboveSubject", { title }), t("mail.escalationAboveIntro", { when }), open);
+      return compose(t("mail.escalationDeskSubject", { title }), t(input.moved ? "mail.escalationDeskMoved" : "mail.escalationDeskStays", { when, holder }), open);
+    }
     case "digest":
       return compose(t("mail.digestSubject"), t("mail.digestIntro"), t("mail.digestOpen", { url }), false);
   }

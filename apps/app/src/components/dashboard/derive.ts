@@ -3,12 +3,14 @@
 import { invitedTo, scoreVersions, versionReader, type VersionScore } from "@/features/cases/discussion";
 import type { Me } from "@/features/auth/identity";
 import { cosignRow, mineRow, raisedWith, type MineRow } from "@/features/cases/rows";
-import { affectedOn, onDeskOf } from "@/features/cases/selectors";
+import { affectedOn, onDeskOf, rescoresOn } from "@/features/cases/selectors";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectOfCase } from "@/features/projects/selectors";
+import { scoreCase } from "@/features/scoring";
 import { canOpen as canOpenCase, unitsOf } from "@/features/cases/visibility";
 import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
 import type { DemoContext } from "./DemoProvider";
+import { withoutLinkedCases } from "./inbox-order";
 
 // Live cases on someone's desk (open) - the number the rail shows as "Inbox" and the dev panel
 // shows next to each leader; the desk including those paused on a question.
@@ -23,8 +25,10 @@ export const inboxSorted = (ctx: DemoContext) =>
 // A manager's inbox also holds the ideas waiting on their decision (the Overview's "Waiting on
 // you"): oldest wait on top. Leaders and members decide no ideas, so they get none.
 export const inboxIdeas = (ctx: DemoContext) => (ctx.role === "manager" ? decisionsWaiting(ctx.D) : []);
+// The ids of those ideas: a case that became one of them is not listed or counted a second time.
+export const inboxIdeaIds = (ctx: DemoContext): ReadonlySet<string> => new Set(inboxIdeas(ctx).map((i) => i.id));
 // What the Inbox badge counts: live cases on the desk plus the decisions owed.
-export const inboxCount = (ctx: DemoContext) => openCases(ctx).length + inboxIdeas(ctx).length;
+export const inboxCount = (ctx: DemoContext) => withoutLinkedCases(openCases(ctx), inboxIdeaIds(ctx)).length + inboxIdeas(ctx).length;
 
 // My cases: what I raised plus the ideas I co-signed, newest first. "I" is my user id (ctx.me): the
 // cases whose raiser it is, the ideas it co-signed. The names on the rows are labels, only shown.
@@ -51,6 +55,10 @@ export function standingOn(ctx: DemoContext, c: ReducedCase): string[] {
   const raised = raisedWith(c).affected;
   return [...raised, ...affectedOn(ctx.log, c.id).map((a) => a.name).filter((n) => !raised.includes(n))];
 }
+
+// The case score as the case page shows it: the case's facts, who stands behind it, the evidence and the news since.
+export const caseScore = (ctx: DemoContext, c: ReducedCase): number =>
+  scoreCase({ ...c, affected: standingOn(ctx, c).length, evidence: raisedWith(c).attachments, updates: rescoresOn(ctx.log, c.id).length }, ctx.seed.promiseDays).value;
 
 // Every version of a case, scored by the idea benchmarks (v1 as raised, then each revision), with the ▲.
 export function versionsOf(ctx: DemoContext, c: ReducedCase): VersionScore[] {

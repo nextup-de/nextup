@@ -3,7 +3,7 @@
 // server actions call these; nothing here touches the database or React.
 import { calendarSpec, REGIONS, type CalendarSpec, type Region } from "@/features/clock";
 import { loopRules, type LoopRules, type RewardKind } from "@/features/loop/rules";
-import { DEFAULT_RULES, type CompanyRules } from "@/features/knowledge/rules";
+import { DEFAULT_RULES, ESCALATION_DAYS_MAX, type CompanyRules } from "@/features/knowledge/rules";
 import type { MessageKey } from "@/i18n";
 
 /** The raw form: a field is one string, or a list of strings (checkboxes). */
@@ -72,6 +72,10 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
   if (promiseDays === null) return fail("promiseDays", "settingsCompany.errPromiseDays");
   const outcomeDays = wholeIn(text(f, "outcomeDays"), 1, 365);
   if (outcomeDays === null) return fail("outcomeDays", "settingsCompany.errOutcomeDays");
+  // 0 switches the second level off; an empty field stores no rule, so the default applies.
+  const escalation = text(f, "escalationDays");
+  const escalationDays = escalation === "" ? undefined : wholeIn(escalation, 0, ESCALATION_DAYS_MAX);
+  if (escalationDays === null) return fail("escalationDays", "settingsCompany.errEscalationDays");
 
   // The spend rule: an empty limit means no rule; a limit needs its sentence.
   let spend: CompanyRules["spend"] = null;
@@ -119,7 +123,7 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
     value: {
       rules: {
         ...DEFAULT_RULES, promiseDays, outcomeDays, spend,
-        deadlineHandover: on(f, "deadlineHandover"),
+        deadlineHandover: on(f, "deadlineHandover"), ...(escalationDays === undefined ? {} : { escalationDays }),
         steps: { discussion: on(f, "stepDiscussion"), projects: on(f, "stepProjects"), measure: on(f, "stepMeasure"), recognition: on(f, "stepRecognition") },
       },
       loop: loopRules({ discussEveryDays, discussMaxRounds, fastLaneEur, measureDays: measure as number[], tolerancePct, reward: { kind, amount, sharePct, capEur } }),

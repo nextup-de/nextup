@@ -31,6 +31,19 @@ describe("mayAppend", () => {
     }
   });
 
+  it("refuses a hand-over that borrows the clock's reason, from the desk holder and from a manager (FX8)", () => {
+    const to = { toRoleHolderId: state.seats[0].id };
+    for (const why of ["deadline", "escalation"]) {
+      const holder = mayAppend(leader("Holder", holderMe), ev("case.handed", open.id, { ...to, why }), state);
+      expect(holder).toEqual({ ok: false, error: "The system sets this reason when a deadline passes. Write the reason in your own words." });
+      expect(mayAppend(manager, ev("case.handed", open.id, { ...to, why }), state).ok).toBe(false);
+    }
+    expect(mayAppend(leader("Holder", holderMe), ev("case.handed", open.id, { ...to, why: "deadline" }), state, "de")).toMatchObject({ ok: false, error: expect.stringContaining("Frist") });
+    // A reason in the person's own words is theirs to give, also when it mentions the deadline.
+    expect(mayAppend(leader("Holder", holderMe), ev("case.handed", open.id, { ...to, why: "The deadline is close and I am away" }), state).ok).toBe(true);
+    expect(mayAppend(leader("Holder", holderMe), ev("case.handed", open.id, to), state).ok).toBe(true);
+  });
+
   it("lets only the raiser answer a question", () => {
     expect(mayAppend({ role: "member", name: "x", handle: open.from, userId: open.fromUserId, me: { ...NOBODY, userId: open.fromUserId } }, ev("case.answered", open.id), state).ok).toBe(true);
     expect(mayAppend(leader("Somebody Else"), ev("case.answered", open.id), state).ok).toBe(false);

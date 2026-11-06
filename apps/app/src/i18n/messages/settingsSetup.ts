@@ -75,6 +75,7 @@ export const settingsSetup = defineMessages({
     doneNow: "A case raised now goes to the role its route names.",
     worthChecking: "Worth checking next",
     menuPill: "Set up {company}",
+    menuOverview: "Setup overview",
   },
   de: {
     navLabel: "Einrichtung",
@@ -149,5 +150,6 @@ export const settingsSetup = defineMessages({
     doneNow: "Ein jetzt gemeldeter Fall geht an die Rolle, die seine Route nennt.",
     worthChecking: "Als Nächstes prüfen",
     menuPill: "{company} einrichten",
+    menuOverview: "Setup-Übersicht",
   },
 });

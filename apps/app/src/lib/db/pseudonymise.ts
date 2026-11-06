@@ -3,12 +3,14 @@
 // actors resolve by actorUserId through the person's Pseudonym row (features/cases/actor-label), and what
 // leaves the server is relabelled on the way out (relabelRows).
 import { relabelEvents } from "@/features/cases/relabel";
+import { hideSmallDepts, namesDeptUnderHandle, unitPeople, type UnitPeople } from "@/features/cases/stamp";
 import { pickPseudonymNumber, pseudonymLabel } from "@/features/privacy/pseudonymise";
 import { resolveLocale } from "@/i18n";
 import { getDb } from "./client";
 import { memo } from "./company-memo";
 import { keepFormerKeys } from "./former";
 import { loadSeats } from "./holders";
+import { loadMembers } from "./knowledge";
 import type { Tx } from "./org-edit";
 
 export type PseudonymiseCounts = {
@@ -105,9 +107,32 @@ export function pseudonymLabelsFor(companyId: string): Promise<Record<string, st
   });
 }
 
-/** Event rows as they may leave the server: the stored rows keep what they were written with (D15). */
-export async function relabelRows<T extends { actor: string; actorUserId?: string | null; payload: unknown }>(companyId: string, rows: readonly T[]): Promise<readonly T[]> {
+/** How many active people each person's unit has, for the department on an anonymous raise (features/cases/stamp.ts). */
+export function loadUnitPeople(companyId: string): Promise<UnitPeople> {
+  return memo("unit-people", companyId, async () => {
+    const db = getDb();
+    const [units, roles, holders, members] = await Promise.all([
+      db.orgUnit.findMany({ where: { companyId }, select: { id: true, parentId: true } }),
+      db.orgRole.findMany({ where: { companyId }, select: { id: true, orgUnitId: true } }),
+      db.orgRoleHolder.findMany({ where: { companyId, userId: { not: null } }, orderBy: [{ sort: "asc" }, { id: "asc" }], select: { roleId: true, userId: true } }),
+      loadMembers(companyId),
+    ]);
+    const seated = holders.flatMap((h) => (h.userId ? [{ roleId: h.roleId, userId: h.userId }] : []));
+    const active = new Set(
+      (await db.user.findMany({ where: { companyId, active: true, id: { in: seated.map((h) => h.userId) } }, select: { id: true } })).map((u) => u.id),
+    );
+    return unitPeople({ units, roles, seats: seated.filter((h) => active.has(h.userId)), members });
+  });
+}
+
+/**
+ * Event rows as they may leave the server: the stored rows keep what they were written with (D15). A raise
+ * under a handle loses its department where the raiser's unit is too small today, and the people who have
+ * left carry their pseudonym.
+ */
+export async function relabelRows<T extends { type: string; actor: string; actorUserId?: string | null; payload: unknown }>(companyId: string, rows: readonly T[]): Promise<readonly T[]> {
+  const shown = rows.some(namesDeptUnderHandle) ? hideSmallDepts(rows, await loadUnitPeople(companyId)) : rows;
   const labels = await pseudonymLabelsFor(companyId);
-  if (Object.keys(labels).length === 0) return rows;
-  return relabelEvents(rows, labels, await loadSeats(companyId));
+  if (Object.keys(labels).length === 0) return shown;
+  return relabelEvents(shown, labels, await loadSeats(companyId));
 }

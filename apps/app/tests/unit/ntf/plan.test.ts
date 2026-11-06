@@ -12,6 +12,7 @@ const seats: SeatRow[] = [
   { id: "s_dep", roleId: "role_deputy", label: "Deputy", userId: "u_dep", sort: 2 },
   { id: "s_dep2", roleId: "role_deputy", label: "Deputy Two", userId: "u_dep2", sort: 3 },
   { id: "s_raiser", roleId: "role_member", label: "Raiser", userId: "u_raiser", sort: 4 },
+  { id: "s_head", roleId: "role_head", label: "Head", userId: "u_head", sort: 5 },
 ];
 const routes = LOCAL_SEED.routes.map((r) =>
   r.id === "r2" ? { ...r, ownerRoleId: "role_owner", ownerSeatId: "s_own1", deputyRoleId: "role_deputy", deputySeatId: "s_dep" } : r,
@@ -25,6 +26,7 @@ const people: PlanPerson[] = [
   { id: "u_dep2", email: null, locale: "en", name: "No Mail" },
   { id: "u_raiser", email: "raiser@x.test", locale: "en", name: "Raiser" },
   { id: "u_lead", email: "lead@x.test", locale: "en", name: "Lead" },
+  { id: "u_head", email: "head@x.test", locale: "en", name: "Head" },
 ];
 
 let n = 0;
@@ -122,6 +124,46 @@ describe("NTF planner", () => {
     expect(d2.map((x) => [x.recipientUserId, x.status])).toEqual([["u_o1", "skipped"], ["u_o2", "pending"]]);
     // A digest preference touches nothing else.
     expect(plan([r], { prefs: [{ userId: "u_o1", template: "digest", on: false }] }).map((x) => x.status)).toEqual(["pending", "pending"]);
+  });
+
+  it("an escalation goes to the seat above, the desk that had the case and the raiser, each with their own text", () => {
+    const f = due("c_a", { kind: "escalation", dueDay: 3, toRoleHolderId: "s_head" });
+    const d = plan([raise(), f], { dateOfDay: () => "2026-11-04" });
+    expect(d.every((x) => x.template === "reminder.escalation" && x.status === "pending")).toBe(true);
+    expect(users(d)).toEqual(["u_head", "u_o1", "u_o2", "u_raiser"]);
+    expect(d.map((x) => x.key).sort()).toEqual([`rem:${f.id}:u_head`, `rem:${f.id}:u_o1`, `rem:${f.id}:u_o2`, `rem:${f.id}:u_raiser`]);
+    const of = (id: string) => d.find((x) => x.recipientUserId === id)!;
+    expect(of("u_head").subject).toBe("Escalated to you: Printer broken");
+    expect(of("u_head").text).toContain("should have been answered by 4 Nov 2026");
+    expect(of("u_o1").text).toContain("It has been handed to Head:");
+    expect(of("u_o2").subject).toBe("Eskaliert: Printer broken");
+    expect(of("u_o2").text).toContain("4. Nov. 2026");
+    expect(of("u_raiser").subject).toBe("Still no answer: Printer broken");
+    expect(of("u_raiser").text).toContain("It is now with Head, one level up:");
+    expect(of("u_raiser").link).toBe("https://app.test/acme/cases/c_a");
+    // Nobody but the raiser reads who raised it.
+    for (const id of ["u_head", "u_o1", "u_o2"]) expect(of(id).subject + of(id).text).not.toContain("Raiser");
+  });
+
+  it("an escalation with nobody above still tells the desk and the raiser, and the case stays", () => {
+    const f = due("c_a", { kind: "escalation", dueDay: 3, toRoleHolderId: null });
+    const d = plan([raise(), f]);
+    expect(users(d)).toEqual(["u_o1", "u_o2", "u_raiser"]);
+    const of = (id: string) => d.find((x) => x.recipientUserId === id)!;
+    expect(of("u_o1").text).toContain("it stays with you");
+    expect(of("u_raiser").text).toContain("It is with Owner One, who has been reminded:");
+    expect(of("u_raiser").text).toContain("day 3");
+  });
+
+  it("a raiser who is also on the desk gets the desk's text once, and reminders follow the company switch", () => {
+    const own = ev("case.raised", "Owner One", "u_o1", "c_a", { title: "T", routeId: "r2", assignee: "Owner One", assigneeRoleHolderId: "s_own1" });
+    const f = due("c_a", { kind: "escalation", dueDay: 3, toRoleHolderId: "s_head" });
+    const d = plan([own, f]);
+    expect(users(d)).toEqual(["u_head", "u_o1", "u_o2"]);
+    expect(d.find((x) => x.recipientUserId === "u_o1")!.subject).toBe("Escalated: T");
+    const off = plan([raise(), f], { company: { ...ON, notifications: false } });
+    expect(off.length).toBe(4);
+    expect(off.every((x) => x.status === "skipped" && x.lastError === "switched off")).toBe(true);
   });
 
   it("a user without an email gets no mail row", () => {

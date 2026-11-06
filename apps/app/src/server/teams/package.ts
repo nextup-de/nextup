@@ -7,7 +7,12 @@ import { crc32 } from "node:zlib";
 const FILES = ["manifest.json", "de.json", "color.png", "outline.png"] as const;
 type PackageFile = (typeof FILES)[number];
 
-/** ops/teams/ sits at the repo root, two levels above apps/app (the cwd of `next` and of the standalone server). */
+/**
+ * ops/teams/ sits at the repo root, two levels above apps/app (the cwd of `next` and of the standalone server).
+ * The runtime image has the folder at /app/ops/teams only because Next's file tracing follows this read
+ * (ops/Dockerfile copies nothing else; checked in an image built from 46f2fd4d). Keep the path a plain
+ * path.join on process.cwd(), or add the folder to outputFileTracingIncludes.
+ */
 function read(name: PackageFile): Buffer {
   const here = path.join(process.cwd(), "..", "..", "ops", "teams", name);
   try {

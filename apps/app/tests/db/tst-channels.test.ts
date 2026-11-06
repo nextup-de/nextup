@@ -123,6 +123,9 @@ beforeAll(async () => {
   await db.company.update({ where: { id: companyId }, data: { stage: "pilot", entraTenantId: TENANT } });
   await db.companyConfig.upsert({ where: { companyId }, create: { companyId, notifications: true }, update: { notifications: true } });
   await db.integration.create({ data: { companyId, system: "teams", on: true, settings: {} } });
+  // These proofs run the clock for weeks and are about the channels of the first reminder. The second level
+  // (escalation_days) would hand the case on and add its own notices; it is tested in clk-escalation and outbox.
+  await db.companyRule.create({ data: { companyId, key: "escalation_days", value: { days: 0 } } });
 
   const k = await loadKnowledge(companyId);
   const unitById = new Map(k.units.map((u) => [u.id, u]));

@@ -29,7 +29,9 @@ const JUN = (from: number, to: number): string[] => Array.from({ length: to - fr
 const UNTIL_JUN_12 = [...MAY_22_TO_31, ...JUN(1, 12)];
 const JUN_13_TO_19 = JUN(13, 19);
 
-const facts = () => db.caseEvent.findMany({ where: { companyId: company.id, type: "clock.due", targetId: CASE } });
+// The deadline's facts. The second level (escalation_days) writes a fact of its own a few days later (clk-escalation.test.ts).
+const facts = async () =>
+  (await db.caseEvent.findMany({ where: { companyId: company.id, type: "clock.due", targetId: CASE } })).filter((r) => (r.payload as { kind?: string }).kind === "deadline");
 const reduced = async (now: Date) => {
   const state = reduce(await companySeed(company), await loadLog(company.id, now));
   return { state, c: state.cases.find((x) => x.id === CASE)! };
@@ -90,9 +92,13 @@ describe("CLK acceptance: deadline hands to the deputy once on the right working
     const { runClockOnce } = await import("@/server/scheduler/clock");
     for (const day of [...JUN(2, 12), ...JUN_13_TO_19]) await runClockOnce(at9(day));
     expect(await facts()).toHaveLength(1);
-    const { c } = await reduced(at9("2026-06-19"));
+    const { state, c } = await reduced(at9("2026-06-19"));
     // LOOP-R1: the scheduler has handed the case to the deputy seat by now, which ends the escalation.
     expect(c.escalated).toBeNull();
-    expect(c.assigneeRoleId).toBe(c.route?.deputyRoleId);
+    const first = c.handed.find((h) => h.why === "deadline")!;
+    expect(state.seats.find((s) => s.id === first.toSeatId)!.roleId).toBe(c.route?.deputyRoleId);
+    // Still unanswered three working days later, the second level took it off the deputy's desk, once.
+    expect(c.handed.map((h) => h.why)).toEqual(["deadline", "escalation"]);
+    expect(c.assigneeRoleId).not.toBe(c.route?.deputyRoleId);
   });
 });

@@ -9,15 +9,17 @@
 // Not a "use server" module.
 import { reduce } from "@/features/cases/reducer";
 import type { CaseEventType } from "@/features/cases/events";
+import { CLOCK_ACTOR } from "@/features/clock/actor";
 import { dueNow } from "@/features/clock/due";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { claimClockLease, recordClockRun, releaseClockLease } from "@/lib/db/clock-lease";
 import { companySeed } from "@/lib/db/companies";
 import { appendEventRow, loadLog } from "@/lib/db/events";
+import { seatAbove } from "@/features/knowledge";
+import { loadKnowledge } from "@/lib/db/knowledge";
 
 /** A run that dies without releasing loses its lease after this. */
 const LEASE_MS = 5 * 60_000;
-const CLOCK_ACTOR = "system:clock";
 const CLOCK_SOURCE = "clock";
 
 const intervalMs = (): number => {
@@ -28,15 +30,16 @@ const intervalMs = (): number => {
 /** One company's run. Throws on failure; the caller records it. Returns how many facts were newly written. */
 async function runCompany(company: { id: string; slug: string; seedJson: unknown; stage: string }, now: Date): Promise<number> {
   const log = await loadLog(company.id, now);
-  const state = reduce(await companySeed(company), log);
+  const knowledge = await loadKnowledge(company.id);
+  const state = reduce(await companySeed(company, knowledge), log);
   let written = 0;
-  for (const d of dueNow(state, log.day)) {
+  for (const d of dueNow(state, log.day, (roleId, skip) => seatAbove(knowledge, roleId, skip)?.id ?? null)) {
     if (d.kind === "handover") {
       const seat = state.seats.find((x) => x.id === d.toRoleHolderId);
       if (!seat) continue; // the seat is gone
       const h = await appendEventRow(
         company.id,
-        { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: "case.handed" as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload: { to: seat.label, toRoleHolderId: seat.id, why: "deadline" } },
+        { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: "case.handed" as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload: { to: seat.label, toRoleHolderId: seat.id, why: d.why ?? "deadline" } },
         { source: CLOCK_SOURCE, idemKey: d.idemKey, now },
       );
       if (!h.ok) throw new Error(h.error);

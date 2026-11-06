@@ -17,6 +17,7 @@ import argparse
 import json
 import math
 import os
+import re
 import statistics
 import sys
 import time
@@ -31,11 +32,41 @@ from brain.schemas import BedrockOverride, LlmOverride, RouteIn
 HERE = Path(__file__).parent
 
 
+# features/routing keywords-v2, mirrored: tests/unit/routing.test.ts in apps/app holds the app's matcher
+# to the answers this one records.
+ROUTER_VERSION = "keywords-v2"
+SHORT_KEYWORD = 4
+_FOLD = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
+_NOT_WORD = re.compile(r"[\W_]+")
+
+
+def _fold(s: str) -> str:
+    """Lower case, and ä ö ü ß written out."""
+    return s.lower().translate(_FOLD)
+
+
+def _spaced(s: str) -> str:
+    """The words of a text, one space between them and one at each end."""
+    return " " + _NOT_WORD.sub(" ", _fold(s)).strip() + " "
+
+
+def keyword_found(text: str, key: str) -> bool:
+    """A short keyword is a whole word (a plural -s allowed), a longer one may sit inside a word."""
+    k = _spaced(key).strip()
+    if not k:  # no letter or digit, such as "€": anywhere in the text
+        sign = _fold(key).strip()
+        return sign != "" and sign in _fold(text)
+    words = _spaced(text)
+    if len(k) <= SHORT_KEYWORD:
+        return f" {k} " in words or f" {k}s " in words
+    return k in words
+
+
 def keyword_route(text: str, keys: dict[str, list[str]]) -> str | None:
     """features/routing proposeRoute(): the row with the most keyword hits, first one on a tie."""
-    t, best, hits = text.lower() + " ", None, 0
+    best, hits = None, 0
     for rid, ks in keys.items():
-        n = sum(k in t for k in ks)
+        n = sum(keyword_found(text, k) for k in ks)
         if n > hits:
             best, hits = rid, n
     return best
@@ -90,7 +121,7 @@ def record_keywords(path: Path) -> None:
     answers = keyword_answers(cases, ctx["baseline_keys"])
     acc = score(cases, answers)["overall"]["accuracy"]
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"model": "keywords-v1", "prompt_version": PROMPT_VERSION,
+    path.write_text(json.dumps({"model": ROUTER_VERSION, "prompt_version": PROMPT_VERSION,
                                 "threshold": math.floor(acc * 100) / 100, "answers": answers},
                                ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"wrote {path} (keyword accuracy {acc:.3f})")

@@ -201,3 +201,5 @@ is not reachable. Every use of it is logged.
 | Microsoft says `AADSTS50011` | the redirect URI in step 1 does not match the address exactly |
 | Microsoft says `AADSTS7000215` / `AADSTS7000222` | wrong or expired client secret (step 3) |
 | Microsoft says `AADSTS90094` / needs approval | admin consent is missing (step 5) |
+| Directory: "No Entra tenant ID is saved for this company" | the tenant ID is not saved in NextUp (step 6); save it under **Access** in `/admin`, then press **Run now** |
+| Directory: "This server has no Entra app" | the client ID and secret (step 3) are not set on the NextUp server; whoever runs it adds them and restarts |
