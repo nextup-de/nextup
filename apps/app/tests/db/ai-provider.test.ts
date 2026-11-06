@@ -127,7 +127,7 @@ describe("AIP acceptance: proposal made on the server, off works, DPA gate holds
   it("choice off: the keyword proposal is stored, the case lands on its route's seat, no model request", async () => {
     expect((await loadAiSettings(off.id, "sandbox")).settings.choice).toBe("off");
     const r = await raise("aip-off", off.id, "r1");
-    expect(r.stored.proposal).toMatchObject({ source: "keywords", version: "keywords-v1", routeId: "r1" });
+    expect(r.stored.proposal).toMatchObject({ source: "keywords", version: "keywords-v2", routeId: "r1" });
     const seat = r.seed.routes.find((x) => x.id === "r1")?.ownerSeatId;
     expect(seat).toBeTruthy();
     expect(r.state.cases.find((c) => c.id === r.id)?.assigneeSeatId).toBe(seat);
@@ -150,7 +150,7 @@ describe("AIP acceptance: proposal made on the server, off works, DPA gate holds
 
   it("the same choice without a DPA: no request reaches either fake, the proposal is keywords, the gate says why", async () => {
     const r = await raise("aip-nodpa", noDpa.id, "r1");
-    expect(r.stored.proposal).toMatchObject({ source: "keywords", version: "keywords-v1" });
+    expect(r.stored.proposal).toMatchObject({ source: "keywords", version: "keywords-v2" });
     expect(model.requests).toHaveLength(0);
     expect(brain.requests).toHaveLength(0);
 

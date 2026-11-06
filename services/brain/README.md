@@ -1,7 +1,7 @@
 # services/brain — the routing AI
 
 One question, asked when an idea or problem is raised: **which routing row owns this, and was it
-raised before?** The app's keyword router (`features/routing`, `keywords-v1`) answers it by
+raised before?** The app's keyword router (`features/routing`, `keywords-v2`) answers it by
 counting words; the brain answers it with a language model. The app keeps the keyword answer as
 the fallback, so the brain being off, slow or wrong never stops a raise.
 
@@ -46,7 +46,7 @@ app's own rows. The coach is a later step, inside the app's existing coach.
 ```
 
 `route_id` is `null` when no row covers it. `version` goes into the stored proposal
-(`case.raised` → `proposal.version`), so `/admin/decisions` can compare it with `keywords-v1`.
+(`case.raised` → `proposal.version`), so `/admin/decisions` can compare it with `keywords-v2`.
 Limits: 50 rows, 80 earlier items. A company with hundreds of earlier items needs a shortlist in
 front of the model — `brain/route.py` is the one place for it.
 

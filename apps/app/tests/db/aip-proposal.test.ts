@@ -34,7 +34,7 @@ describe("AIP proposal on the server", () => {
   it("gives the keyword proposal without a DPA, whatever the client sent", async () => {
     const p = await proposeOnRaise("aip-sb", sandbox.id, payload, { ask: async () => answer });
     expect(p.source).toBe("keywords");
-    expect(p.version).toBe("keywords-v1");
+    expect(p.version).toBe("keywords-v2");
     expect(p.routeId).toBe("r1");
   });
 
