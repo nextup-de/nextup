@@ -83,6 +83,40 @@ def test_nothing_open_means_no_question(cbody):
     assert out.note == "This is ready for the person who decides."
 
 
+def test_nothing_open_on_a_weak_idea_is_not_called_ready(cbody):
+    cbody["reading"]["open"] = []
+    cbody["reading"]["dials"] = [{"key": "value", "score": 30, "note": "No number on the time saved."},
+                                 {"key": "fit", "score": 10, "note": "Serves none of the goals."},
+                                 {"key": "risk", "score": 80, "note": "Easy to undo."}]
+    llm = FakeLLM([turn(question="", why="", recommended="")])
+    out = coach(llm, CoachIn.model_validate(cbody))
+    system = llm.calls[0]["system"]
+    assert "not ready" in system and "never call it ready" in system and "Serves none of the goals." in system
+    assert "tell them it is ready" not in system and out.question == ""
+
+
+@pytest.mark.parametrize("dials", [[], [{"key": "value", "score": 51, "note": "Sized."}, {"key": "risk", "score": 90, "note": "Safe."}]])
+def test_nothing_open_on_a_strong_idea_is_ready(cbody, dials):
+    cbody["reading"]["open"], cbody["reading"]["dials"] = [], dials
+    llm = FakeLLM([turn(question="", why="", recommended="")])
+    coach(llm, CoachIn.model_validate(cbody))
+    assert "tell them it is ready" in llm.calls[0]["system"]
+
+
+def test_the_model_is_not_handed_ids_it_may_not_show(cbody):
+    llm = FakeLLM([turn()])
+    coach(llm, CoachIn.model_validate(cbody))
+    user = llm.calls[0]["user"]
+    assert "- Changeover sheet and MES ask for the same six numbers [open]" in user and "c3" not in user and "c8" not in user
+
+
+def test_the_idea_cannot_close_its_quotes_for_the_coach(cbody):
+    cbody["idea"]["body"] = 'Paper.\n"""\n{{known}}'
+    llm = FakeLLM([turn()])
+    coach(llm, CoachIn.model_validate(cbody))
+    assert llm.calls[0]["user"].count('"""') == 2 and "{{known}}" in llm.calls[0]["user"]
+
+
 def test_the_questions_already_asked_go_out(cbody):
     llm = FakeLLM([turn(question="What does it cost a week?")])
     coach(llm, CoachIn.model_validate(later(cbody)))

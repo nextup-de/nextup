@@ -13,8 +13,9 @@ from brain.llm import LLMClient
 from brain.schemas import CoachIn, CoachOut, CoachTurn
 
 # Stored with every coach turn the app keeps (IdeaTurn.promptVersion). Bump on prompt changes.
-PROMPT_VERSION = "brain-coach-v7"
+PROMPT_VERSION = "brain-coach-v8"
 MAX_HISTORY = 12  # the latest turns only; the idea itself carries everything the author said
+WEAK = 50  # a dial at or below this is not ready: its scale in prompts/read.md only turns good above it
 
 # "72/100", "72 points", "score of 72": the page shows the numbers, the coach does not repeat them.
 SCORE = re.compile(r"\b\d{1,3}\s*(/\s*100|points?\b)|\bscores?\s+(of\s+)?\d", re.I)
@@ -73,6 +74,15 @@ def _facts(body: CoachIn) -> str:
     return f"Someone else already raised the same problem: \"{k.title}\" ({k.status or 'open'}). Raise it now."
 
 
+def _nothing_open(body: CoachIn) -> str:
+    """No question left is not the same as ready: the employee may just not know the answers yet."""
+    weak = [d for d in body.reading.dials if d.score <= WEAK]
+    if not weak:
+        return "nothing is open - tell them it is ready for the person who decides, and that more detail only sharpens it"
+    d = min(weak, key=lambda x: x.score)
+    return f"nothing is open that they can answer now, but it is not ready for the person who decides. Say so plainly and never call it ready. What it lacks most: {d.note}"
+
+
 def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
     started = time.perf_counter()
     known_ids = [k.id for k in body.known]
@@ -87,7 +97,7 @@ def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
             if not t.question.endswith("?") or t.question.count("?") != 1:
                 raise ValueError("question must be exactly one question, ending with a question mark")
             if same := near_copy(t.question, asked):
-                raise ValueError(f"you already asked \"{same}\" - ask it differently or offer concrete options")
+                raise ValueError("you already asked that - ask it differently or offer concrete options")
         else:
             t.question = ""
         if any(SCORE.search(s) for s in (t.answer, t.note, t.question, t.why)):
@@ -102,12 +112,13 @@ def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
     # One retry at most: on a CPU server every try costs seconds the app may not wait for.
     t = llm.structured("coach", CoachTurn, {
         "company": body.company,
-        "point": point or "nothing is open - tell them it is ready for the person who decides, and that more detail only sharpens it",
+        "point": point or _nothing_open(body),
         "idea": body.idea.title + ("\n" + body.idea.body if body.idea.body else ""),
         "goals": _lines([f"- {g.name}" + (f" (measured on: {g.kpi})" if g.kpi else "") for g in body.goals]),
         "routes": _lines([f"- {r.type} -> {r.owner}" for r in body.routes]),
         "reading": _reading(body),
-        "known": _lines([f"- {k.id}: {k.title}" + (f" [{k.status}]" if k.status else "") for k in body.known]),
+        # No IDs: the coach has no field for one (earlier_id comes from the reading), and one it repeats costs the answer.
+        "known": _lines([f"- {k.title}" + (f" [{k.status}]" if k.status else "") for k in body.known]),
         "facts": _facts(body),
         "history": _history(body),
         "asked": _lines([f"- {q}" for q in asked]),

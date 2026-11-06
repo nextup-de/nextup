@@ -7,7 +7,7 @@ never from a request.
 from anthropic import AnthropicBedrockMantle
 
 from brain.config import Settings
-from brain.llm import LLMClient
+from brain.llm import OUTPUT_CAP, LLMClient
 
 
 class BedrockLLMClient(LLMClient):
@@ -22,7 +22,7 @@ class BedrockLLMClient(LLMClient):
         # No temperature, top_p, top_k, thinking budget, prefill or forced tool_choice: each is a 400.
         resp = self.client.messages.create(
             model=self.settings.llm_model,
-            max_tokens=1500,
+            max_tokens=OUTPUT_CAP.get(name, 1500),
             system=system,
             messages=[{"role": "user", "content": user}],
             output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}},

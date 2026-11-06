@@ -3,8 +3,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 
+# hide_input_in_errors: a validation error is logged, and the model's answer in it is about the idea.
 class Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
 
 
 # ---------------------------------------------------------------- request (sent by the app)
@@ -140,7 +141,8 @@ class IdeaRead(Strict):
     pattern: str = Field(max_length=300, description="One sentence: a one-off, or part of something bigger")
     advice: Literal["approve", "pilot", "info"]
     advice_why: str = Field(max_length=300, description="One sentence: why this advice, for this idea")
-    open: list[str] = Field(max_length=6, description="What the person who decides would still ask, most important first")
+    # No limit here: read.py keeps the first six, and a seventh question is no reason to redo the reading.
+    open: list[str] = Field(description="What the person who decides would still ask, most important first, at most six")
 
 
 class ReadDial(BaseModel):
