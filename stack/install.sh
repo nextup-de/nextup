@@ -30,7 +30,11 @@
 #                      The secret comes from the environment variable NEXTUP_ENTRA_CLIENT_SECRET, never
 #                      the command line. Also works on an existing instance: sets the two lines in
 #                      its .env. The company's tenant ID is set afterwards in /admin.
-#   --build            build the images from this repo first (until CI publishes them)
+#   --teams-app-id ID  turn on the Teams bot (ops/teams/README.md): the Azure Bot's Microsoft App ID.
+#   --teams-tenant-id ID  the bot's tenant ID. Both flags go together, and the bot's client secret comes
+#                      from the environment variable NEXTUP_TEAMS_APP_PASSWORD, never the command line.
+#                      Also works on an existing instance: sets the three lines in its .env.
+#   --build           build the images from this repo first (until CI publishes them)
 #   --dir DIR          instance folder (default: stack/instances/SLUG, or $NEXTUP_INSTANCES/SLUG)
 #   --images TAG       run the images CI publishes to GHCR (docs: .github/workflows/images.yml):
 #                      main, or a commit's 7-char short sha. 'local' goes back to local builds. Also
@@ -48,7 +52,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-slug="" origin="" stage="demo" landing="" n8n=false brain=false brain_cloud=false build=false dir="" proxy_port="" images="" app_replicas="" name="" ops_url="" entra_id=""
+slug="" origin="" stage="demo" landing="" n8n=false brain=false brain_cloud=false build=false dir="" proxy_port="" images="" app_replicas="" name="" ops_url="" entra_id="" teams_id="" teams_tenant=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="$2"; shift 2 ;;
@@ -58,6 +62,8 @@ while [ $# -gt 0 ]; do
     --name) name="$2"; shift 2 ;;
     --ops-url) ops_url="${2%/}"; shift 2 ;;
     --entra-client-id) entra_id="$2"; shift 2 ;;
+    --teams-app-id) teams_id="$2"; shift 2 ;;
+    --teams-tenant-id) teams_tenant="$2"; shift 2 ;;
     --n8n) n8n=true; shift ;;
     --brain) brain=true; shift ;;
     --brain-cloud) brain_cloud=true; shift ;;
@@ -66,7 +72,7 @@ while [ $# -gt 0 ]; do
     --behind-proxy) proxy_port="$2"; shift 2 ;;
     --images) images="$2"; shift 2 ;;
     --app-replicas) app_replicas="$2"; shift 2 ;;
-    -h|--help) sed -n '2,42p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,49p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -102,6 +108,18 @@ if [ -n "$entra_id" ]; then
   [ -n "$entra_secret" ] || die "--entra-client-id needs the client secret in NEXTUP_ENTRA_CLIENT_SECRET"
   case "$entra_secret" in
     *'$'* | *'`'* | *'"'* | *"'"* | *\\* | *' '* | *$'\n'* | *$'\r'*) die "NEXTUP_ENTRA_CLIENT_SECRET must not contain \$, quotes, a backtick, a backslash, a space or a line break" ;;
+  esac
+fi
+teams_password="${NEXTUP_TEAMS_APP_PASSWORD:-}"
+if [ -n "$teams_id" ] || [ -n "$teams_tenant" ]; then
+  guid='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+  [ -n "$teams_id" ] && [ -n "$teams_tenant" ] || die "--teams-app-id and --teams-tenant-id go together: the bot needs both"
+  [[ "$teams_id" =~ $guid ]] || die "--teams-app-id must be the bot's Microsoft App ID (a GUID)"
+  [[ "$teams_tenant" =~ $guid ]] || die "--teams-tenant-id must be the bot's tenant ID (a GUID)"
+  # The secret lands in a compose env file: no quotes, $, backslash, backtick or line break.
+  [ -n "$teams_password" ] || die "--teams-app-id needs the bot's client secret in NEXTUP_TEAMS_APP_PASSWORD"
+  case "$teams_password" in
+    *'$'* | *'`'* | *'"'* | *"'"* | *\\* | *' '* | *$'\n'* | *$'\r'*) die "NEXTUP_TEAMS_APP_PASSWORD must not contain \$, quotes, a backtick, a backslash, a space or a line break" ;;
   esac
 fi
 if [ -n "$proxy_port" ]; then
@@ -279,6 +297,15 @@ if [ -n "$entra_id" ]; then
   printf 'ENTRA_CLIENT_ID=%s\nENTRA_CLIENT_SECRET=%s\n' "$entra_id" "$entra_secret" >> "$env_file"
   echo "Set the Entra app in $env_file - add the company's tenant ID in /admin, and this callback to the app registration:"
   echo "  $origin/login/microsoft/callback"
+fi
+
+# The Teams bot, new or existing instance: the three lines are set (or replaced) in the .env, the
+# same way as the Entra app's. The `up` below restarts the app with them.
+if [ -n "$teams_id" ]; then
+  sed -i '/^TEAMS_APP_ID=/d;/^TEAMS_APP_PASSWORD=/d;/^TEAMS_TENANT_ID=/d' "$env_file"
+  printf 'TEAMS_APP_ID=%s\nTEAMS_APP_PASSWORD=%s\nTEAMS_TENANT_ID=%s\n' "$teams_id" "$teams_password" "$teams_tenant" >> "$env_file"
+  echo "Set the Teams bot in $env_file - the Azure Bot's messaging endpoint is:"
+  echo "  $origin/api/$slug/teams/messages"
 fi
 
 if $build; then

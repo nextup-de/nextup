@@ -127,6 +127,11 @@ services:
       # button stays hidden. The company's tenant is set in /admin; install.sh --entra-client-id sets both.
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      # The Teams bot of this stack (ops/teams/README.md). Unset = Teams stays off: the settings page
+      # says the bot is not registered. install.sh --teams-app-id sets all three.
+      TEAMS_APP_ID: ${TEAMS_APP_ID:-}
+      TEAMS_APP_PASSWORD: ${TEAMS_APP_PASSWORD:-}
+      TEAMS_TENANT_ID: ${TEAMS_TENANT_ID:-}
       # Seals people's Microsoft 365 connections (phase 2, features/connectors/vault.ts). install.sh
       # writes it once; a new key makes every stored connection unreadable. Unset = nobody can connect.
       CONNECTOR_VAULT_KEY: ${CONNECTOR_VAULT_KEY:-}
