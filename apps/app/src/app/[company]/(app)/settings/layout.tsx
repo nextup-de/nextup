@@ -15,13 +15,17 @@ export default async function SettingsLayout({ children, params }: { children: R
   const live = hasDatabase() && Boolean(process.env.AUTH_SECRET);
   const t = await getT();
   const prefix = companyPrefix(company);
-  // Setup is its own process, not a section: while the company is closed, the menu only leads there.
-  let setup: { href: string; label: string } | undefined;
+  // Setup is its own process, not a section. While the company is closed the menu leads there with a
+  // pill; once it is open a plain link stays, so the overview can still be reached.
+  let setup: { href: string; label: string; open: boolean } | undefined;
   if (live) {
     const admin = await companyAdminOf(company);
     if (!admin) notFound();
     const row = await getDb().company.findUnique({ where: { id: admin.companyId }, select: { name: true, openedAt: true } });
-    if (row && !row.openedAt) setup = { href: `${prefix}/setup`, label: t("settingsSetup.menuPill", { company: row.name }) };
+    if (row) {
+      const open = Boolean(row.openedAt);
+      setup = { href: `${prefix}/setup`, open, label: open ? t("settingsSetup.menuOverview") : t("settingsSetup.menuPill", { company: row.name }) };
+    }
   }
   const base = `${prefix}/settings`;
   const groupLabel: Record<SettingsGroup, string | null> = { start: null, company: t("settings.groupCompany"), structure: t("settings.groupStructure"), data: t("settings.groupData") };

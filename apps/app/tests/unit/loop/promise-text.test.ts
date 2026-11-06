@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createT } from "@/i18n";
 import type { AnswerPromise } from "@/features/cases/promise";
-import { promiseText, routingText, type PromiseNames } from "@/features/cases/promise-text";
+import { owedLine, promiseText, routingText, type PromiseNames } from "@/features/cases/promise-text";
+import { dayFormatter } from "@/features/cases/rows";
 
 const en = createT("en");
 const de = createT("de");
@@ -63,10 +64,27 @@ describe("LOOP promise text", () => {
     expect(promiseText(p, names, de).note).toBe("Die Vertretung wurde am D11 informiert; der Fall bleibt bei Quality lead Süd.");
   });
 
-  it("demo mode counts days of the demo", () => {
+  it("demo mode shows the date, without working days left", () => {
     const p = { ...base, dueDate: null };
-    expect(promiseText(p, names, en).answerBy).toBe("day 10 of the demo");
-    expect(promiseText(p, names, de).answerBy).toBe("Tag 10 der Demo");
+    expect(promiseText(p, names, en).answerBy).toBe("D10");
+    expect(promiseText(p, names, de).answerBy).toBe("D10");
+    expect(owedLine(p, names, en)).toBe("They owe you an answer by D10");
+  });
+
+  // A sample case raised six days ago is due on day -1: the page used to read "day -1 of the demo · late since day 0".
+  it("a past due day on the demo clock reads as dates, never as a zero or negative day", () => {
+    const p = { ...base, dueDay: -3, dueDate: null, state: "late" as const, escalatedRoleId: "dep" };
+    const now = new Date(2026, 10, 6, 12);
+    for (const [t, locale] of [[en, "en"], [de, "de"]] as const) {
+      const text = promiseText(p, { ...names, date: dayFormatter(now, 0, locale), today: 0 }, t);
+      const owed = owedLine(p, { ...names, date: dayFormatter(now, 0, locale), today: 0 }, t);
+      for (const line of [text.answerBy, text.note ?? "", owed]) expect(line).not.toMatch(/-\d|\b0\b|demo/i);
+    }
+    const text = promiseText(p, { ...names, date: dayFormatter(now, 0, "en"), today: 0 }, en);
+    expect(text.answerBy).toBe("3 Nov · late since 4 Nov");
+    expect(text.note).toBe("The deputy was told on 4 Nov; the case stays with Quality lead Süd.");
+    const yesterday = promiseText({ ...p, dueDay: -1 }, { ...names, date: dayFormatter(now, 0, "de"), today: 0 }, de);
+    expect(yesterday.answerBy).toBe("gestern · überfällig seit heute");
   });
 
   it("routing text names the AI or the keywords as the source", () => {

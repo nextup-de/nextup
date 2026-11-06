@@ -8,31 +8,26 @@ export type PromiseNames = {
   holderRole: string; // the title of the role that holds the case now
   holderPeople: string[]; // the people in the holder seat, shown, never compared
   escalatedRole: string | null; // the deputy role told while the owner keeps the case
-  date: (day: number) => string; // workday -> "Fri 14 Nov"; only used in workdays mode
+  date: (day: number) => string; // a day of the log -> "14 Nov", in both clock modes
   today?: number; // the working day now, for "n working days left"
 };
 
 export type PromiseText = { answerBy: string; with: string; note: string | null };
 
-// A day as a date, or as "day n" when the company runs the demo clock (no calendar date).
-const dayText = (p: AnswerPromise, names: PromiseNames, t: T, day: number): string =>
-  p.dueDate === null ? t("loopCase.demoDay", { n: day }) : names.date(day);
-
-function dueText(p: AnswerPromise, names: PromiseNames, t: T): string {
-  return p.dueDate === null ? t("loopCase.demoDue", { n: p.dueDay }) : names.date(p.dueDay);
-}
-
+// Every day goes through names.date, on the demo clock too: a demo day is an offset from today and
+// can be zero or negative, so the raw number ("day -1 of the demo") is never shown.
 function answerByText(p: AnswerPromise, names: PromiseNames, t: T): string {
-  const date = dueText(p, names, t);
+  const date = names.date(p.dueDay);
   switch (p.state) {
     case "waiting":
+      // Working days left only where days are working days; a demo day is a calendar day.
       return p.dueDate !== null && names.today !== undefined
         ? t("loopCase.answerWaiting", { date, count: Math.max(0, p.dueDay - names.today) })
         : date;
     case "due-today": return t("loopCase.answerDueToday");
-    case "late": return t("loopCase.answerLate", { date, since: dayText(p, names, t, p.dueDay + 1) });
-    case "answered-on-time": return t("loopCase.answerOnTime", { date: dayText(p, names, t, p.answeredDay ?? p.dueDay) });
-    case "answered-late": return t("loopCase.answerAfter", { date: dayText(p, names, t, p.answeredDay ?? p.dueDay) });
+    case "late": return t("loopCase.answerLate", { date, since: names.date(p.dueDay + 1) });
+    case "answered-on-time": return t("loopCase.answerOnTime", { date: names.date(p.answeredDay ?? p.dueDay) });
+    case "answered-late": return t("loopCase.answerAfter", { date: names.date(p.answeredDay ?? p.dueDay) });
   }
 }
 
@@ -43,16 +38,16 @@ export function promiseText(p: AnswerPromise, names: PromiseNames, t: T): Promis
   const people = names.holderPeople.filter(Boolean);
   const withText = people.length ? t("loopCase.holder", { role, people: people.join(", ") }) : t("loopCase.holderVacant", { role });
   let note: string | null = null;
-  if (p.holder === "deputy" && p.handedDay !== null) note = t("loopCase.handedNote", { date: dayText(p, names, t, p.handedDay) });
-  else if (p.holder === "owner" && p.escalatedRoleId !== null) note = t("loopCase.flagNote", { date: dayText(p, names, t, p.dueDay + 1), role });
+  if (p.holder === "deputy" && p.handedDay !== null) note = t("loopCase.handedNote", { date: names.date(p.handedDay) });
+  else if (p.holder === "owner" && p.escalatedRoleId !== null) note = t("loopCase.flagNote", { date: names.date(p.dueDay + 1), role });
   return { answerBy: answerByText(p, names, t), with: withText, note };
 }
 
 /** My cases: "They owe you an answer by {date}" - or what happened to it - without the note. */
 export function owedLine(p: AnswerPromise, names: PromiseNames, t: T): string {
-  if (p.answeredDay !== null) return t("loopCase.owedAnswered", { date: dayText(p, names, t, p.answeredDay) });
+  if (p.answeredDay !== null) return t("loopCase.owedAnswered", { date: names.date(p.answeredDay) });
   if (p.state === "due-today") return t("loopCase.owedByToday");
-  return t("loopCase.owedBy", { date: dueText(p, names, t) });
+  return t("loopCase.owedBy", { date: names.date(p.dueDay) });
 }
 
 export type RoutingNames = {
