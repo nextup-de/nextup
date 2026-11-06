@@ -765,7 +765,7 @@ export const ideas = defineMessages({
     pageJumpTo: "Springen wir zu „{topic}“. {ask}",
     pageNothingToSummarise: "Noch nichts zusammenzufassen.",
     pageOpenCase: "Fall öffnen",
-    pagePatternAlone: "Sie steht für sich allein.",
+    pagePatternAlone: "Die Idee steht für sich allein.",
     pagePatternWide: "Das Problem betrifft mehr als ein Team: {teams}.",
     pagePubHint: "Geht an Ihre Teamleitung, {lead}",
     pagePubHintPublished: "Auf dem Tisch von {lead} · verfolgen Sie es in der Übersicht",

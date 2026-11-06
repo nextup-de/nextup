@@ -89,7 +89,7 @@ export const settingsPrivacy = defineMessages({
     ruleAssist: "Gespräche mit dem Assistenten",
     ruleAssistHelp: "Fragen und Antworten auf der Seite zum Einreichen, maskiert gespeichert. 7 bis 730 Tage.",
     ruleDrafts: "Nicht veröffentlichte Ideenentwürfe",
-    ruleDraftsHelp: "Tage nach der letzten Änderung, 30 bis 730. Veröffentlichte Ideen bleiben: Sie sind Fälle.",
+    ruleDraftsHelp: "Tage nach der letzten Änderung, 30 bis 730. Veröffentlichte Ideen bleiben: Das sind Fälle.",
     ruleCases: "Abgeschlossene Fälle",
     ruleCasesHelp: "12 bis 120 Monate. Entfernte Fälle fehlen auch im Verlauf der Dashboards.",
     caseKeep: "Behalten",

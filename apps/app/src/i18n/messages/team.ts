@@ -357,7 +357,7 @@ export const team = defineMessages({
     sentLive: "{n} umgesetzt",
     sentTitle: "Was aus meinen Meldungen wurde",
     sentNothingSent: "Noch nichts gesendet",
-    sentPromise: "Alles, was Sie senden, landet auf dem Schreibtisch einer genannten Person. Sie schuldet Ihnen innerhalb von {days} Tagen ein Ja, ein Nein oder eine Rückfrage. Verpasst sie die Frist, geht es von selbst an die Vertretung – nichts, was Sie senden, geht verloren.",
+    sentPromise: "Alles, was Sie senden, landet auf dem Schreibtisch einer genannten Person. Diese Person schuldet Ihnen innerhalb von {days} Tagen ein Ja, ein Nein oder eine Rückfrage. Verpasst sie die Frist, geht es von selbst an die Vertretung – nichts, was Sie senden, geht verloren.",
     sentAskedView: "Ihre Sicht ist gefragt",
     sentAskedMeta: "{who} hat gefragt · {state}",
     sentReadyToDecide: "bereit zur Entscheidung",

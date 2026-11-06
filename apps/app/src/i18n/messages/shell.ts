@@ -314,7 +314,7 @@ export const shell = defineMessages({
     searchNothing: "Nichts passt zu „{query}“",
     searchTry: "Versuchen Sie es mit weniger Wörtern, dem Namen einer Person oder einem Teil des Titels.",
     searchShowAll: "Alle {count} Treffer anzeigen",
-    searchGoTo: "Gehen zu",
+    searchGoTo: "Wechseln zu",
     searchCount_one: "{count} Treffer",
     searchCount_other: "{count} Treffer",
     searchHint: "Suche nach Titel, Person, Team oder Schreibtisch",

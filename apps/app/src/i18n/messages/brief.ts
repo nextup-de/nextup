@@ -275,7 +275,7 @@ export const brief = defineMessages({ en: {
   nothingNamed: "In der Idee ist nichts genannt.",
   noKpi: "Keine Kennzahl",
   outsideStrategy: "Ausserhalb der Strategie",
-  noBriefYet: "Für diese Idee gibt es noch keine Ausarbeitung. Frage {name} zuerst nach einer Schätzung von Kosten und Aufwand.",
+  noBriefYet: "Für diese Idee gibt es noch keine Ausarbeitung. Fragen Sie {name} zuerst nach einer Schätzung von Kosten und Aufwand.",
   patternNoneIdeas: "Noch kein klares Muster mit anderen Ideen.",
   sourceIdeaWhere: "Neue Ideen · diese Idee",
   sentimentTooFew: "Zu wenige Kommentare für eine Einschätzung.",
