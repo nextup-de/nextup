@@ -224,11 +224,11 @@ test.describe("in German", () => {
   test("the page's own words are German with a reading and without", async ({ page }) => {
     await answers(page, [{ reply: "Erste Antwort.", read: reading(LOW, [Q1]) }, { reply: "Regeln.", read: null }]);
     await page.goto("/acme/raise");
-    await page.getByRole("textbox", { name: /Teile eine Idee/ }).fill("Prüfstand nach Slots buchen");
+    await page.getByRole("textbox", { name: /Teilen Sie eine Idee/ }).fill("Prüfstand nach Slots buchen");
     await page.getByRole("button", { name: "NextUp fragen" }).click();
     await expect(full(page).or(page.getByRole("group", { name: "Vollständige Analyse" })).first()).toContainText("Das hat die KI gefunden");
 
-    const box = page.getByRole("textbox", { name: /Antworte oder ergänze/ });
+    const box = page.getByRole("textbox", { name: /Antworten Sie oder ergänzen Sie/ });
     await box.fill("Etwa 20 Minuten pro Umrüstung.");
     await box.press("Enter");
     await expect(page.getByRole("group", { name: "Nach Regeln geprüft" })).toBeVisible();
