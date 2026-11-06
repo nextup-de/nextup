@@ -2,8 +2,8 @@
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.Localization.schema.json",
   "name.short": "NextUp",
   "name.full": "NextUp - melden und eine Antwort bekommen",
-  "description.short": "Melde ein Problem oder eine Idee und bekomme eine klare Antwort.",
-  "description.full": "NextUp bringt ein Problem oder eine Idee von jedem zu der Person, die entscheiden kann, und verspricht eine Antwort bis zu einem Datum. In Teams bekommst du neue Fälle und Fristerinnerungen als Karten, beantwortest oder übergibst einen Fall im Chat und meldest einen Fall aus jeder Nachricht.",
+  "description.short": "Melden Sie ein Problem oder eine Idee und bekommen Sie eine klare Antwort.",
+  "description.full": "NextUp bringt ein Problem oder eine Idee von jedem zu der Person, die entscheiden kann, und verspricht eine Antwort bis zu einem Datum. In Teams bekommen Sie neue Fälle und Fristerinnerungen als Karten, beantworten oder übergeben einen Fall im Chat und melden einen Fall aus jeder Nachricht.",
   "composeExtensions[0].commands[0].title": "In NextUp melden",
-  "composeExtensions[0].commands[0].description": "Melde von hier ein Problem oder eine Idee."
+  "composeExtensions[0].commands[0].description": "Melden Sie von hier ein Problem oder eine Idee."
 }
