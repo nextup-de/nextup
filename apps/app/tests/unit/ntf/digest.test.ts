@@ -37,8 +37,8 @@ describe("NTF digest content", () => {
   it("German locale gives German text", () => {
     const d = digestFor("u_second", state, seats, "de", BASE)!;
     expect(d.locale).toBe("de");
-    expect(d.subject).toBe("Deine NextUp-Zusammenfassung");
-    expect(d.text).toContain("Das wartet auf dich:");
+    expect(d.subject).toBe("Ihre NextUp-Zusammenfassung");
+    expect(d.text).toContain("Das wartet auf Sie:");
     expect(d.text).toContain("wartet seit");
     expect(d.text).not.toContain("waiting");
   });
