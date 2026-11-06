@@ -42,7 +42,7 @@ const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…"
 
 export type ReadExtras = { goals: readonly { goal: string }[]; affected: number; attachments: number; spendLimitEur: number | null; skip: readonly string[]; previous: Reading | null };
 
-export const goalsOut = (goals: readonly { goal: string }[]) => goals.slice(0, 20).map((g) => ({ name: clip(g.goal, 200), kpi: "" }));
+export const goalsOut = (goals: readonly { goal: string }[]) => goals.filter((g) => g.goal.trim()).slice(0, 20).map((g) => ({ name: clip(g.goal, 200), kpi: "" }));
 
 export function readRequest(company: string, idea: { title: string; body: string }, routes: readonly Route[], depts: readonly Dept[], known: readonly BrainItem[], x: ReadExtras) {
   return {
@@ -62,6 +62,15 @@ const dialBriefs = (r: Reading) => r.dials.map((d) => ({ key: d.key, score: d.sc
 export const coachReading = (r: Reading) => ({
   summary: clip(r.summary, 800), dials: dialBriefs(r), open: r.open.slice(0, COACH_MAX_OPEN).map((q) => clip(q, 300)), same_as: r.same_as,
 });
+
+// The reading's words as they may go back out to a model: the same masking as the idea's own text. It
+// was written from masked text, but it is stored, and the company's people and patterns change. Null
+// when anything in it reads as above the company's ceiling (`cleanAll`: features of server/brain.ts).
+export function maskedReading(r: Reading, cleanAll: (texts: readonly string[]) => string[] | null): Reading | null {
+  const out = cleanAll([r.summary, ...r.dials.map((d) => d.note), ...r.open]);
+  if (!out) return null;
+  return { ...r, summary: out[0], dials: r.dials.map((d, i) => ({ ...d, note: out[i + 1] })), open: out.slice(1 + r.dials.length) };
+}
 
 // Checks the answer against what was sent: a row or an item the request did not contain is dropped.
 export function readingFrom(a: BrainReading, req: { routes: readonly { id: string }[]; known: readonly BrainItem[] }): Reading {
@@ -90,6 +99,35 @@ export function readingOf(raw: unknown): Reading | null {
 export function latestReading(turns: readonly { role: string; reading?: Reading | null }[]): Reading | null {
   for (let i = turns.length - 1; i >= 0; i--) if (turns[i].role === "assistant") return turns[i].reading ?? null;
   return null;
+}
+
+// The newest reading anywhere in the conversation, for what compares against the last one: the model's
+// next reading and its movement. A reply without a reading in between does not reset that comparison.
+export function newestReading(turns: readonly { reading?: Reading | null }[]): Reading | null {
+  for (let i = turns.length - 1; i >= 0; i--) if (turns[i].reading) return turns[i].reading ?? null;
+  return null;
+}
+
+// How far the overall moved with this message, like with like: a reading against the last reading, the
+// benchmark against itself. The two are different scales, so a first reading has moved nothing yet.
+export const overallDelta = (benchmark: number, reading: Reading | null, last: Reading | null): number =>
+  reading ? (last ? reading.overall - last.overall : 0) : benchmark;
+
+// The reply when the read worked and the coach did not: the reading's own words, no new model call. The
+// offline coach (coachMock) speaks in benchmark points, which would contradict the number on the page.
+export function readingReply(r: Reading): string {
+  return [r.summary.trim(), (r.open[0] ?? r.advice_why).trim()].filter(Boolean).join("\n\n");
+}
+
+// What the assistant model is told when it stands in for the coach: the reading's numbers, as coachBrief
+// does with the benchmark's. Keys and numbers only, so nothing here needs masking.
+export function readingBrief(r: Reading, threshold: number): string {
+  const weakest = r.dials.reduce((a, b) => (b.score < a.score ? b : a));
+  return [
+    `The idea scores ${r.overall}/100; it can be published at ${threshold}. The scores are computed, not yours to change - never state a different number.`,
+    ...r.dials.map((d) => `- ${d.key}: ${d.score}/100`),
+    r.open.length ? `Ask exactly one short, challenging question that would raise "${weakest.key}". Do not answer it yourself.` : "Tell them it is ready for the person who decides.",
+  ].join("\n");
 }
 
 // The routing as the page's evaluation takes it (features/evaluate): the same shape as a brain proposal.

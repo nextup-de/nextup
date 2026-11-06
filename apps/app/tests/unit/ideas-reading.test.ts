@@ -5,7 +5,7 @@ import { coachText } from "@/features/ideas/brain-coach";
 import { DEPTS, ROUTES } from "@/features/demo/seed";
 import { DEMO_GOALS } from "@/features/demo/structure";
 import {
-  adviceFromReading, BrainReading, coachReading, dialsFromReading, gapsFromReading, latestReading, proposalOf, readingFrom, readingOf, readRequest, type Reading,
+  adviceFromReading, BrainReading, coachReading, dialsFromReading, gapsFromReading, goalsOut, latestReading, maskedReading, newestReading, overallDelta, proposalOf, readingBrief, readingFrom, readingOf, readingReply, readRequest, type Reading,
 } from "@/features/ideas/reading";
 
 const brain = (over: Partial<BrainReading> = {}): BrainReading => ({
@@ -53,6 +53,62 @@ describe("the brain's answer", () => {
     expect(BrainReading.safeParse(brain()).success).toBe(true);
     expect(BrainReading.safeParse(brain({ dials: brain().dials.slice(0, 4) })).success).toBe(false);
     expect(BrainReading.safeParse(brain({ dials: brain().dials.map((d) => ({ ...d, score: 140 })) })).success).toBe(false);
+  });
+});
+
+describe("maskedReading", () => {
+  const clean = (texts: readonly string[]) => texts.map((t) => t.replace("Greta", "a colleague"));
+  it("cleans every word of it that can go back out, and keeps each in its place", () => {
+    const r = maskedReading(reading({ summary: "Greta said so", open: ["Ask Greta?", "Why?"], dials: brain().dials.map((d) => ({ ...d, note: "Greta " + d.key })) }), clean)!;
+    expect(r.summary).toBe("a colleague said so");
+    expect(r.dials.map((d) => d.note)).toEqual(["a colleague value", "a colleague feasibility", "a colleague cost", "a colleague fit", "a colleague risk"]);
+    expect(r.open).toEqual(["Ask a colleague?", "Why?"]);
+    expect(coachReading(r).summary).toBe("a colleague said so");
+  });
+  it("is null when anything reads as above the ceiling", () => {
+    expect(maskedReading(reading(), () => null)).toBeNull();
+  });
+});
+
+describe("newestReading and overallDelta", () => {
+  const a = reading({ overall: 60 }), b = reading({ overall: 72 });
+  it("finds the last reading past a reply without one, where latestReading stops", () => {
+    const turns: { role: string; reading?: Reading | null }[] = [{ role: "assistant", reading: a }, { role: "user" }, { role: "assistant", reading: b }, { role: "user" }, { role: "assistant", reading: null }];
+    expect(newestReading(turns)).toBe(b);
+    expect(latestReading(turns)).toBeNull();
+    expect(newestReading([{ reading: null }, {}])).toBeNull();
+  });
+  it("compares a reading with a reading and the benchmark with itself, never one with the other", () => {
+    expect(overallDelta(5, b, a)).toBe(12);
+    expect(overallDelta(5, a, b)).toBe(-12);
+    expect(overallDelta(5, null, b)).toBe(5);
+    expect(overallDelta(5, null, null)).toBe(5);
+    expect(overallDelta(5, a, null)).toBe(0);
+  });
+});
+
+describe("when the coach fails after the read", () => {
+  it("the reply is the reading's own summary and first question, with no number", () => {
+    const text = readingReply(reading({ overall: 64 }));
+    expect(text).toBe("Free water on every desk, with no sign that thirst is a problem.\n\nWhat does thirst cost today?");
+    expect(text).not.toMatch(/\d/);
+  });
+  it("with nothing open it is the advice", () => {
+    expect(readingReply(reading({ open: [] }))).toContain("Nothing yet shows what it would gain.");
+  });
+  it("the assistant model is told the reading's numbers and its weakest dial, in no words of the model's", () => {
+    const brief = readingBrief(reading({ overall: 64, summary: "SECRET-ISH", open: ["SECRET-ISH?"] }), 70);
+    expect(brief).toContain("64/100; it can be published at 70");
+    expect(brief).toContain("- value: 10/100");
+    expect(brief).toContain('would raise "value"');
+    expect(brief).not.toContain("SECRET-ISH");
+    expect(readingBrief(reading({ open: [] }), 70)).toContain("ready for the person who decides");
+  });
+});
+
+describe("goalsOut", () => {
+  it("sends no empty goal: the brain refuses the whole request for one", () => {
+    expect(goalsOut([{ goal: " " }, { goal: "Less scrap" }])).toEqual([{ name: "Less scrap", kpi: "" }]);
   });
 });
 
