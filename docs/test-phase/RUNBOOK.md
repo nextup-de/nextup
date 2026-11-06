@@ -125,6 +125,83 @@ on it.
 3. Record the result in the findings if anything fails; otherwise note the date, sha and the pass count in the PR
    that adds the results file.
 
+## Demo people in the test tenant
+
+For a demo with real directory sync: the same people in NextUp and in the Entra test tenant, so the sync links them
+instead of creating everyone. `ops/tst/entra-users.ts` writes them to the tenant; NextUp's own Entra app stays
+read-only. Run everything from your machine, in this order. `<domain>` is a verified domain of the test tenant
+(`<tenant>.onmicrosoft.com` works).
+
+1. **Generate Musterwerk with the tenant's domain**, against the stack's database. Reach it the way the VM run does
+   (`stack/tst/compose.tst.yml` publishes `db` on the VM's `127.0.0.1:5439`, then
+   `ssh -N -L 127.0.0.1:5439:127.0.0.1:5439 deploy@<host>`), and in `apps/app` with `DATABASE_URL` set to
+   `postgresql://nextup:<POSTGRES_PASSWORD of the instance>@127.0.0.1:5439/nextup`:
+   ```bash
+   npx tsx prisma/generators/musterwerk/run.ts --slug <slug> --people 500 --weeks 8 --seed 1 --replace-generated --email-domain <domain> --ai-on --codes codes.txt --export-people people.json
+   ```
+   `--ai-on` switches AI routing and the assistant on. `people.json` holds name, email, department (the unit KEY:
+   unit names repeat across the sites), job title, manager and the enabled state. To get the file without a database,
+   add `--export-only`: the same seed, people count and domain give the same people. Afterwards `stack/ctl.sh <slug>
+   up -d --no-deps db` on the VM closes the port again. Keep `codes.txt` and `people.json` out of the repo.
+2. **A token of a tenant admin.** `az login --tenant <tenant id> --allow-no-subscriptions` as a User Administrator
+   (or higher), then in the same shell:
+   ```bash
+   export GRAPH_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv)"
+   ```
+   It lasts about an hour and is never printed by the script.
+3. **Dry run.** Reads the tenant, writes nothing, prints one line per user:
+   ```bash
+   npx tsx ops/tst/entra-users.ts --people people.json --email-domain <domain> --extra-joiners 20 --leavers 1 --dry-run
+   ```
+   It stops with "not a verified domain" when the token belongs to another tenant.
+4. **Two-user trial.** `--limit 2` creates the first two people (the managing director and one plant manager). Check
+   them in the Entra admin center: department, job title, employee ID `NXTST-P0001` / `NXTST-P0002`, the manager of
+   the second.
+   ```bash
+   npx tsx ops/tst/entra-users.ts --people people.json --email-domain <domain> --limit 2
+   ```
+5. **Full run.** 500 people, 20 joiners who are not in NextUp, 1 switched-off account. About 1,000 requests, a few
+   minutes; on 429 it waits as long as Graph asks. Run it again any time: it creates only what is missing.
+   ```bash
+   npx tsx ops/tst/entra-users.ts --people people.json --email-domain <domain> --extra-joiners 20 --leavers 1
+   ```
+   Expected last lines: `Created 521, updated 0, …, failed 0` (519 after the trial, with 2 unchanged) and `Managers set: 520`.
+6. **One person who signs in with Microsoft.** Everybody gets a random password nobody knows. For the one test
+   person, put a password of at least 12 characters in the environment and name the person; works on a first run and
+   on a later one:
+   ```bash
+   read -rs ENTRA_TEST_PASSWORD && export ENTRA_TEST_PASSWORD
+   npx tsx ops/tst/entra-users.ts --people people.json --email-domain <domain> --extra-joiners 20 --leavers 1 --sign-in <email of the person>
+   ```
+   For Teams that person also needs a usage location and a licence (admin center); the tenant may ask them to set up
+   MFA at the first sign-in.
+7. **The stack's Entra app.** `stack/install.sh … --entra-client-id <id>` with `NEXTUP_ENTRA_CLIENT_SECRET` set; the
+   app registration needs the application permission `User.Read.All` with admin consent.
+8. **The tenant ID** in `/admin` → the company → Access. Without it the sync's last error says so.
+9. **Switch the sync on** in `/admin` → Connectors → Directory: source Microsoft Entra, Sync on, then **Run now**.
+10. **Counts to expect** after the first run with the numbers above:
+
+    | Line | Count | Who |
+    |---|---|---|
+    | updated (linked) | 500 | the generated people, found by email and bound to their Entra account |
+    | added (created) | 20 | the joiners: members of their unit, no seat, manager set |
+    | deactivated, handed over | 0 | |
+    | skipped, not counted | 1 | the switched-off account: NextUp never knew it |
+    | "not synced yet: no unit" | the tenant's own accounts | every user whose department is not a unit key (your admin account). The note stays until they have one; it is not an error |
+
+    A second **Run now** shows `Added 0 · updated 0`. To see a leaver: set `"enabled": false` for one person in
+    `people.json`, run the script again, Run now: deactivated 1.
+11. **Delete the users again.** Only users with an employee ID starting `NXTST-` and an address in `<domain>` go:
+    ```bash
+    npx tsx ops/tst/entra-users.ts --delete --email-domain <domain> --dry-run
+    npx tsx ops/tst/entra-users.ts --delete --email-domain <domain>
+    ```
+    Switch the sync off first if the people should stay active in NextUp: with the sync on, the next round
+    deactivates everyone who was deleted. Entra keeps deleted users for 30 days under "Deleted users".
+
+Not yet run against a live tenant: the script's Graph calls are tested with a faked `fetch` only (see the PR that
+added it).
+
 ## Tear down
 
 - After a run nothing needs tearing down: the tunnel and the db port are already closed. Check on VM 1:
