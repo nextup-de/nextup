@@ -72,6 +72,21 @@ describe("LOOP hand-over once", () => {
     expect(state.seats.find((s) => s.id === to)!.roleId).toBe(c.route!.deputyRoleId);
   });
 
+  it("still hands over when a person's hand-over carried the clock's reason (FX8)", async () => {
+    const forged = await company("loph-forged", true);
+    const seat = (await companySeed(forged)).seats.find((s) => s.userId !== null)!;
+    await appendEventRow(
+      forged.id,
+      { id: "loph-forged-hand", day: 0, type: "case.handed", actor: "T. Vogel", targetId: "loph-forged-case", payload: { to: seat.label, toRoleHolderId: seat.id, why: "deadline" } } as never,
+      { actorUserId: seat.userId, now: earlier },
+    );
+    await runClockOnce(now);
+    await runClockOnce(hourLater);
+    const rows = (await handed(forged.id)).filter((r) => r.targetId === "loph-forged-case");
+    expect(rows.map((r) => r.actor).sort()).toEqual(["T. Vogel", "system:clock"]);
+    expect(rows.find((r) => r.actor === "system:clock")).toMatchObject({ source: "clock", idemKey: "clk:handover:loph-forged-case" });
+  });
+
   it("writes no case.handed with the rule off, only the deadline fact", async () => {
     await runClockOnce(now);
     expect(await handed(off.id)).toHaveLength(0);

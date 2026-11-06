@@ -20,7 +20,7 @@ import {
   type SystemEventType,
 } from "@/features/integrations";
 
-const handed = { type: "case.handed", target: "c1", payload: { to: "M. Roth", why: "deadline" } };
+const handed = { type: "case.handed", target: "c1", payload: { to: "M. Roth", why: "owner is away" } };
 
 describe("the allow-list", () => {
   it("permits only what docs/INTEGRATIONS.md permits", () => {
@@ -79,6 +79,15 @@ describe("parseInbound", () => {
       expect(r.event.target).toBe("c1");
       expect(r.event.idempotencyKey).toBe("n8n:exec:1");
     }
+  });
+
+  it("refuses a hand-over with one of the clock's reasons (FX8)", () => {
+    for (const why of ["deadline", "escalation"]) {
+      const r = parseInbound({ ...handed, payload: { to: "M. Roth", why } });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toContain("clock");
+    }
+    expect(parseInbound({ ...handed, payload: { to: "M. Roth" } }).ok).toBe(true);
   });
 
   it("requires the fields each type's sentence is built from", () => {
