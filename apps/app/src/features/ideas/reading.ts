@@ -65,7 +65,7 @@ export const coachReading = (r: Reading) => ({
 
 // The reading's words as they may go back out to a model: the same masking as the idea's own text. It
 // was written from masked text, but it is stored, and the company's people and patterns change. Null
-// when anything in it reads as above the company's ceiling (`cleanAll`: features of server/brain.ts).
+// when anything in it reads as above the company's ceiling.
 export function maskedReading(r: Reading, cleanAll: (texts: readonly string[]) => string[] | null): Reading | null {
   const out = cleanAll([r.summary, ...r.dials.map((d) => d.note), ...r.open]);
   if (!out) return null;
