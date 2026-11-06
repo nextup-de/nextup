@@ -41,10 +41,10 @@ const watching = new Map<string, string>(); // this person -> the draft their pa
 // A reload cuts the answer off and the turn is only stored with it, so the message waits here (this tab only)
 // until it landed, for the next load to put it back in the box.
 const PENDING = (mine: string) => "nextup.ideas.pending." + mine;
-let unloading = false; // the reload itself fails the open request: that message is still to be put back
+let unloading = false, watchingUnload = false; // the reload itself fails the open request: that message is still to be put back
 const pending = {
   keep(mine: string, p: { id: string; text: string }) {
-    window.addEventListener("beforeunload", () => { unloading = true; }, { once: true });
+    if (!watchingUnload) { watchingUnload = true; window.addEventListener("beforeunload", () => { unloading = true; }); }
     try { window.sessionStorage.setItem(PENDING(mine), JSON.stringify(p)); } catch { /* blocked: only this safety net goes */ }
   },
   clear(mine: string) { if (unloading) return; try { window.sessionStorage.removeItem(PENDING(mine)); } catch { /* as above */ } },
