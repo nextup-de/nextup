@@ -19,9 +19,7 @@ import { rebuildProjections } from "../../../src/lib/db/projections/case-view";
 import { writeStructure } from "../../../src/lib/db/structure-writes";
 import { runClockOnce } from "../../../src/server/scheduler/clock";
 import { musterwerkHistory, windowDays } from "./cases";
-import { musterwerkPeople } from "./people";
-import { makeRng } from "./rng";
-import { musterwerkStructure } from "./structure";
+import { DEFAULT_EMAIL_DOMAIN, musterwerkCrew, writePeopleExport } from "./export";
 
 export type GenerateOptions = {
   slug: string;
@@ -35,6 +33,12 @@ export type GenerateOptions = {
   replace?: boolean;
   /** Delete a company with this slug only when nothing real can be lost: a sandbox company with no people, or a Musterwerk of an earlier run. */
   replaceGenerated?: boolean;
+  /** What stands after the @ of every address (default musterwerk.test). The people stay the same. */
+  emailDomain?: string;
+  /** Write the people as JSON here (export.ts), for ops/tst/entra-users.ts. */
+  exportFile?: string;
+  /** Switch AI routing and the assistant on for the company (default: both off). */
+  aiOn?: boolean;
 };
 
 export type GenerateResult = {
@@ -63,10 +67,9 @@ export async function generateMusterwerk(db: Db, opts: GenerateOptions): Promise
     }
   }
 
-  const rng = makeRng(opts.seed);
   // Built before anything is written: a bad people count fails with the database untouched.
-  const knowledge = musterwerkStructure(rng, people, slug);
-  const crew = musterwerkPeople(rng, knowledge, people, slug);
+  const emailDomain = opts.emailDomain ?? DEFAULT_EMAIL_DOMAIN;
+  const { rng, knowledge, people: crew } = musterwerkCrew({ slug, people, seed: opts.seed, emailDomain });
   const withUsers = { ...knowledge, holders: crew.holders };
   const history = musterwerkHistory(rng.fork("cases"), { slug, knowledge: withUsers, users: crew.users, holders: crew.holders, calendar: MUSTERWERK_CALENDAR }, weeks, now);
 
@@ -75,7 +78,7 @@ export async function generateMusterwerk(db: Db, opts: GenerateOptions): Promise
     data: {
       slug, name: "Musterwerk GmbH", mark: "M", stage: "sandbox", openedAt: now,
       seedJson: toSeedJson(templateWrites("empty", () => crypto.randomUUID()).seedJson) as object,
-      config: { create: { aiRouting: false, assistant: false } },
+      config: { create: { aiRouting: opts.aiOn === true, assistant: opts.aiOn === true } },
     },
   });
   const companyId = company.id;
@@ -108,6 +111,7 @@ export async function generateMusterwerk(db: Db, opts: GenerateOptions): Promise
   await runClockOnce(now);
 
   if (opts.codesFile) writeFileSync(opts.codesFile, crew.codes.map((c) => `${c.email}\t${c.code}`).join("\n") + "\n");
+  if (opts.exportFile) writePeopleExport(opts.exportFile, crew.users, emailDomain);
 
   const clockFacts = await db.caseEvent.count({ where: { companyId, type: "clock.due" } });
   const events = await db.caseEvent.count({ where: { companyId } });

@@ -36,7 +36,7 @@ export const userIdOf = (slug: string, index: number): string => `${slug}-p${ind
 const initials = (name: string): string => name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
 /** `n` people for `structure`: its holders first (in seat order), then members. */
-export function musterwerkPeople(rng: Rng, structure: Knowledge, n: number, slug = "mw"): PeopleResult {
+export function musterwerkPeople(rng: Rng, structure: Knowledge, n: number, slug = "mw", emailDomain = "musterwerk.test"): PeopleResult {
   const order = namePermutation(rng);
   const roleById = new Map(structure.roles.map((r) => [r.id, r]));
   const unitById = new Map(structure.units.map((u) => [u.id, u]));
@@ -48,7 +48,7 @@ export function musterwerkPeople(rng: Rng, structure: Knowledge, n: number, slug
   const add = (name: string, role: UserRow["role"], dept: string, line: string, managerId: string | null, handle: string | null): UserRow => {
     const index = users.length;
     const [first, ...rest] = name.split(" ");
-    const email = `${ascii(first)}.${ascii(rest.join(""))}${index}@musterwerk.test`;
+    const email = `${ascii(first)}.${ascii(rest.join(""))}${index}@${emailDomain}`;
     const code = loginCodeFor(slug, index);
     const row: UserRow = { id: userIdOf(slug, index), name, email, role, dept, line, ini: initials(name), handle, managerId, loginCodeHash: hashLoginCode(code) };
     users.push(row);

@@ -164,6 +164,31 @@ describe("TST generator", () => {
     await db.company.delete({ where: { id: again.companyId } });
   }, 180_000);
 
+  it("with an email domain, AI on and a people export: the same people, the AI switched on, the file matching the rows", async () => {
+    const exportFile = join(tmpdir(), "tst-generator-people.json");
+    try {
+      const r = await generateMusterwerk(db, { slug: "mw-ai", people: 40, weeks: 1, seed: 7, now, emailDomain: "nextuptest.example", exportFile, aiOn: true });
+      const plain = musterwerkPeople(makeRng(7), musterwerkStructure(makeRng(7), 40, "mw-ai"), 40, "mw-ai");
+      expect((await db.companyConfig.findUnique({ where: { companyId: r.companyId } }))).toMatchObject({ aiRouting: true, assistant: true });
+      const users = await db.user.findMany({ where: { companyId: r.companyId }, select: { id: true, name: true, email: true, dept: true, line: true, managerId: true } });
+      expect(users).toHaveLength(40);
+      expect(users.every((u) => u.email.endsWith("@nextuptest.example"))).toBe(true);
+      // The names are those of the same seed without the flags.
+      expect(users.map((u) => u.name).sort()).toEqual(plain.users.map((u) => u.name).sort());
+      const emailOf = new Map(users.map((u) => [u.id, u.email]));
+      const file = JSON.parse(readFileSync(exportFile, "utf8")) as { emailDomain: string; people: { name: string; email: string; department: string; jobTitle: string; managerEmail: string | null; enabled: boolean }[] };
+      expect(file.emailDomain).toBe("nextuptest.example");
+      const byEmail = new Map(file.people.map((p) => [p.email, p]));
+      expect(byEmail.size).toBe(40);
+      for (const u of users) {
+        expect(byEmail.get(u.email)).toEqual({ name: u.name, email: u.email, department: u.dept, jobTitle: u.line, managerEmail: u.managerId ? emailOf.get(u.managerId) : null, enabled: true });
+      }
+      await db.company.delete({ where: { id: r.companyId } });
+    } finally {
+      rmSync(exportFile, { force: true });
+    }
+  }, 180_000);
+
   it("finishes 150 people and 2 weeks in under 60 s", () => {
     expect(seconds).toBeLessThan(60);
   });
