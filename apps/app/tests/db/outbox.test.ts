@@ -152,8 +152,13 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
     const reminders = (await db.outboxMessage.findMany({ where: { companyId: box.id, template: "reminder.deadline" } })).filter((r) => mine(r.data));
     expect(reminders.map((r) => r.recipientUserId).sort()).toEqual([...box.recipients].sort());
     expect(reminders.every((r) => r.status === "sent" && r.attempt === 1 && r.sentAt !== null)).toBe(true);
-    const facts = await db.caseEvent.findMany({ where: { companyId: box.id, type: "clock.due", targetId: "c_ntfz-r1" } });
-    expect(facts).toHaveLength(1);
+    // Ten days is past escalation_days too: the second level's fact is there as well, with its own notices.
+    const due = await db.caseEvent.findMany({ where: { companyId: box.id, type: "clock.due", targetId: "c_ntfz-r1" }, orderBy: { seq: "asc" } });
+    expect(due.map((f) => (f.payload as { kind: string }).kind)).toEqual(["deadline", "escalation"]);
+    const facts = due.slice(0, 1);
+    const up = (await db.outboxMessage.findMany({ where: { companyId: box.id, template: "reminder.escalation" } })).filter((r) => mine(r.data));
+    expect(up.map((r) => r.recipientUserId)).toContain(box.raiserId); // the raiser hears that the answer is late
+    expect(up.every((r) => r.status === "sent" && r.key === `rem:${due[1].id}:${r.recipientUserId}`)).toBe(true);
     expect(reminders.every((r) => r.key === `rem:${facts[0].id}:${r.recipientUserId}`)).toBe(true);
 
     const seen = () => mail.filter((m) => m.template === "reminder.deadline" && mine(m.data)).map((m) => m.recipient.userId).sort();

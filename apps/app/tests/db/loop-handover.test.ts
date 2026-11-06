@@ -33,6 +33,8 @@ async function company(slug: string, handover: boolean) {
       create: { companyId: c.id, key: "deadline_handover", value: { on: false } },
       update: { value: { on: false } },
     });
+    // The second level would hand the case on after all; it has its own test (clk-escalation.test.ts).
+    await db.companyRule.create({ data: { companyId: c.id, key: "escalation_days", value: { days: 0 } } });
   }
   const ref = { id: c.id, seedJson: c.seedJson, stage: "sandbox" };
   const seed = await companySeed(ref);

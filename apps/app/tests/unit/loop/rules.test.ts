@@ -30,6 +30,28 @@ describe("LOOP company rules", () => {
     expect(keys).toContain("deadline_handover");
     expect(keys).toContain("loop_steps");
   });
+  it("escalation_days: no row means the default of 3, 0 switches it off, a bad value is no rule", () => {
+    expect(rulesFromRows([]).escalationDays).toBeUndefined();
+    expect(loopRules({ escalationDays: rulesFromRows([]).escalationDays }).escalationDays).toBe(3);
+    expect(rulesFromRows([{ key: "escalation_days", value: { days: 0 } }]).escalationDays).toBe(0);
+    expect(rulesFromRows([{ key: "escalation_days", value: { days: 60 } }]).escalationDays).toBe(60);
+    for (const value of [{ days: 61 }, { days: -1 }, { days: 2.5 }, { days: "4" }, 4, null]) {
+      expect(rulesFromRows([{ key: "escalation_days", value }]).escalationDays).toBeUndefined();
+    }
+  });
+  it("escalation_days round-trips, and is only written once it was set", () => {
+    const set = rulesFromRows([{ key: "escalation_days", value: { days: 7 } }]);
+    expect(rowsFromRules(set)).toContainEqual({ key: "escalation_days", value: { days: 7 } });
+    expect(rulesFromRows(rowsFromRules(set))).toEqual(set);
+    expect(rowsFromRules({ ...DEFAULT_RULES, escalationDays: 0 })).toContainEqual({ key: "escalation_days", value: { days: 0 } });
+    expect(rowsFromRules(DEFAULT_RULES).map((x) => x.key)).not.toContain("escalation_days");
+  });
+  it("loopRules keeps escalationDays inside 0 to 60", () => {
+    expect(loopRules({}).escalationDays).toBe(3);
+    expect(loopRules({ escalationDays: 0 }).escalationDays).toBe(0);
+    expect(loopRules({ escalationDays: 99 }).escalationDays).toBe(60);
+    expect(loopRules({ escalationDays: -2 }).escalationDays).toBe(0);
+  });
   it("loopRules defaults the new fields to true and keeps a boolean", () => {
     const d = loopRules({});
     expect([d.deadlineHandover, d.measure, d.recognition]).toEqual([true, true, true]);

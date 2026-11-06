@@ -32,6 +32,8 @@ export type LoopRules = {
   reward: RewardRule;
   /** A passed deadline hands the case on (company rule deadline_handover). */
   deadlineHandover: boolean;
+  /** Working days after the answer date until the case goes one level up; 0 = never (company rule escalation_days). */
+  escalationDays: number;
   /** The measure step is on (company rule loop_steps). */
   measure: boolean;
   /** The recognition step is on (company rule loop_steps). */
@@ -46,6 +48,7 @@ export const LOOP_DEFAULTS: LoopRules = {
   fastLaneEur: 5000,
   reward: { kind: "thanks", amount: null, sharePct: null, capEur: null },
   deadlineHandover: true,
+  escalationDays: 3,
   measure: true,
   recognition: true,
 };
@@ -79,6 +82,7 @@ export function loopRules(p?: Partial<LoopRules> | null): LoopRules {
       capEur: euros(r.capEur),
     },
     deadlineHandover: typeof p.deadlineHandover === "boolean" ? p.deadlineHandover : d.deadlineHandover,
+    escalationDays: int(p.escalationDays, 0, 60, d.escalationDays),
     measure: typeof p.measure === "boolean" ? p.measure : d.measure,
     recognition: typeof p.recognition === "boolean" ? p.recognition : d.recognition,
   };

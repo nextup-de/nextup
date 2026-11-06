@@ -7,7 +7,7 @@ import type { CaseEvent } from "@/features/cases/events";
 import { byClock } from "./actor";
 import type { Route } from "@/features/demo/types";
 
-export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover";
+export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation";
 
 export type Due = {
   kind: DueKind;
@@ -15,8 +15,12 @@ export type Due = {
   dueDay: number;
   check?: number; // measure only
   toRoleHolderId?: string | null; // the seat the fact escalates to
+  why?: "escalation"; // handover only: the second level's hand-over; missing = the deadline's
   idemKey: string;
 };
+
+/** The seat above a desk's role, not counting the roles in `skip`; null when nobody is above (features/knowledge seatAbove). */
+export type SeatAbove = (roleId: string, skip: readonly string[]) => string | null;
 
 const idemKeyOf = (kind: DueKind, target: string, dueDay: number, check?: number): string =>
   `clk:${kind}:${target}:${dueDay}` + (check === undefined ? "" : `:${check}`);
@@ -38,7 +42,25 @@ function handoverSeat(history: readonly CaseEvent[], dueDay: number): string | n
   return f?.payload.toRoleHolderId ?? null;
 }
 
-export function dueNow(state: State, today: number): Due[] {
+/**
+ * The second level (company rule escalation_days): a case still open that many working days after its
+ * answer date goes to the seat above the desk that owes the answer, once per case. First the fact, which
+ * sends the mails, also when nobody is above; a run later the hand-over to the fact's seat.
+ */
+function escalation(c: State["cases"][number], days: number, today: number, above: SeatAbove): Due | null {
+  if (days <= 0 || c.dueDay + days >= today) return null;
+  const fact = c.history.find((e) => e.type === "clock.due" && e.payload.kind === "escalation");
+  if (!fact) {
+    const desk = c.route?.ownerRoleId ?? c.assigneeRoleId;
+    const to = desk ? above(desk, c.assigneeRoleId ? [c.assigneeRoleId] : []) : null;
+    return { kind: "escalation", target: c.id, dueDay: c.dueDay, toRoleHolderId: to, idemKey: `clk:escalate:${c.id}` };
+  }
+  const to = fact.payload.toRoleHolderId ?? null;
+  if (to === null || to === c.assigneeSeatId || c.history.some((e) => e.type === "case.handed" && e.payload.why === "escalation")) return null;
+  return { kind: "handover", why: "escalation", target: c.id, dueDay: c.dueDay, toRoleHolderId: to, idemKey: `clk:escalate:${c.id}:handover` };
+}
+
+export function dueNow(state: State, today: number, above: SeatAbove = () => null): Due[] {
   if (state.clock.mode !== "workdays") return [];
   const out: Due[] = [];
   const handovers: Due[] = []; // listed after every fact
@@ -51,8 +73,12 @@ export function dueNow(state: State, today: number): Due[] {
       continue;
     }
     if (hasFact(c.history, "deadline", c.dueDay)) {
-      const to = state.rules.deadlineHandover && c.status === "open" ? handoverSeat(c.history, c.dueDay) : null;
+      // The first level comes first; once the second has started, the deputy no longer takes the case.
+      const second = c.history.some((e) => e.type === "clock.due" && e.payload.kind === "escalation");
+      const to = state.rules.deadlineHandover && c.status === "open" && !second ? handoverSeat(c.history, c.dueDay) : null;
+      const up = to ? null : escalation(c, state.rules.escalationDays, today, above);
       if (to) handovers.push({ kind: "handover", target: c.id, dueDay: c.dueDay, toRoleHolderId: to, idemKey: `clk:handover:${c.id}` });
+      else if (up) (up.kind === "handover" ? handovers : out).push(up);
       continue;
     }
     const atOwner = c.assigneeRoleId !== null && c.assigneeRoleId === (c.route.ownerRoleId ?? null);

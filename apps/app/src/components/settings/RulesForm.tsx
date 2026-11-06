@@ -3,7 +3,7 @@
 // cards; any Save sends all of it.
 import { useActionState, useState } from "react";
 import type { RulesForm as Values } from "@/features/settings/company-forms";
-import type { RewardKind } from "@/features/loop/rules";
+import { LOOP_DEFAULTS, type RewardKind } from "@/features/loop/rules";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { saveRulesAction, type SettingsFormState } from "@/server/actions/settings/company";
@@ -163,6 +163,9 @@ export function RulesForm({ slug, values, demo }: { slug: string; values: Values
           {t("settingsCompany.deadlineHandover")}
         </label>
         <p className={s.help}>{t("settingsCompany.deadlineHandoverHelp")}</p>
+        <Row id="escalationDays" label={t("settingsCompany.escalateAfter")} wide help={t("settingsCompany.escalateHelp")} error={err("escalationDays")}>
+          <div className={s.inline}><Num id="escalationDays" tid="escalation-days" value={rules.escalationDays ?? LOOP_DEFAULTS.escalationDays} invalid={Boolean(err("escalationDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
+        </Row>
         {foot(true)}
       </Card>
     </form>

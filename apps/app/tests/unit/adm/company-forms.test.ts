@@ -40,6 +40,15 @@ describe("ADM company forms", () => {
     });
   });
 
+  it("takes the escalation days from 0 to 60, and an empty field as no rule", () => {
+    const of = (escalationDays?: string) => parseRulesForm({ ...goodRules, escalationDays });
+    const days = (v?: string) => { const r = of(v); return r.ok ? r.value.rules.escalationDays : "refused"; };
+    expect([days("0"), days("3"), days("60"), days(""), days(undefined)]).toEqual([0, 3, 60, undefined, undefined]);
+    for (const bad of ["61", "-1", "2.5", "soon"]) {
+      expect(of(bad)).toMatchObject({ ok: false, error: "settingsCompany.errEscalationDays", field: "escalationDays" });
+    }
+  });
+
   it("takes an empty spend limit as no spend rule", () => {
     const r = parseRulesForm({ ...goodRules, spendLimitEur: "", spendText: "" });
     expect(r.ok && r.value.rules.spend).toBeNull();

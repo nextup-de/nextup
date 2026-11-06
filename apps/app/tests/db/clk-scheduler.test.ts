@@ -64,6 +64,8 @@ describe("CLK scheduler", () => {
 
   it("writes nothing on a second call", async () => {
     await runClockOnce(now); // LOOP-H1: the hand-over follows the fact by one run
+    await runClockOnce(now); // ten working days late is past escalation_days too: the second level's fact
+    await runClockOnce(now); // and its hand-over (tests/db/clk-escalation.test.ts)
     const before = await db.caseEvent.count({ where: { companyId: box.id, type: "clock.due" } });
     const again = await runClockOnce(now);
     expect(again.find((r) => r.slug === "clks-box")!.written).toBe(0);

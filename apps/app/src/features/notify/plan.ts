@@ -120,7 +120,20 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     let users: string[] = [];
     let title: string | undefined;
     let link = "";
-    if (kind === "deadline" && kase) {
+    // Escalation only: each reader gets their own sentence, and nobody but the raiser is told who raised it.
+    let escalated: { holder: string; moved: boolean; readerOf: (userId: string) => "above" | "desk" | "raiser" } | undefined;
+    if (kind === "escalation" && kase) {
+      const toSeat = state.seats.find((s: SeatRow) => s.id === ev.payload.toRoleHolderId);
+      const above = toSeat ? usersOfSeat(toSeat.id) : [];
+      const desk = usersOfSeat(kase.assigneeSeatId);
+      const raiser = kase.fromUserId ?? kase.history.find((h) => h.type === "case.raised")?.actorUserId ?? null;
+      users = uniq([...above, ...desk, ...(raiser ? [raiser] : [])]);
+      escalated = {
+        holder: toSeat?.label ?? kase.assignee, moved: toSeat !== undefined,
+        readerOf: (userId) => (above.includes(userId) ? "above" : desk.includes(userId) ? "desk" : "raiser"),
+      };
+      title = kase.title; link = caseLink(kase.id);
+    } else if (kind === "deadline" && kase) {
       users = uniq([...usersOfSeat(ev.payload.toRoleHolderId), ...usersOfSeat(kase.assigneeSeatId)]);
       title = kase.title; link = caseLink(kase.id);
     } else if (kind === "checkin" && kase) {
@@ -132,7 +145,7 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     }
     for (const userId of users) {
       mailTo(userId, (p) => {
-        const r = renderTemplate(template, p.locale, { name: p.name, title, day: ev.payload.dueDay, dueDate: typeof ev.payload.dueDay === "number" ? ctx.dateOfDay?.(ev.payload.dueDay) ?? null : null, days: ev.payload.check, link });
+        const r = renderTemplate(template, p.locale, { name: p.name, title, day: ev.payload.dueDay, dueDate: typeof ev.payload.dueDay === "number" ? ctx.dateOfDay?.(ev.payload.dueDay) ?? null : null, days: ev.payload.check, link, ...(escalated ? { reader: escalated.readerOf(userId), holder: escalated.holder, moved: escalated.moved } : {}) });
         return { key: `rem:${ev.id}:${userId}`, template, locale: p.locale, subject: r.subject, text: r.text, link: r.link, data: { eventId: ev.id, subjectId: ev.target, kind } };
       });
     }
