@@ -75,12 +75,12 @@ describe("dates in mails", () => {
 
   it("names the date on a raise", () => {
     const text = composeNoticeMail(notice("2026-11-20"), "de")?.text ?? "";
-    expect(text).toContain("Antworte bis 20. Nov. 2026");
+    expect(text).toContain("Antworten Sie bis 20. Nov. 2026");
     expect(text).not.toContain("Tag 12");
   });
 
   it("falls back to the day number where a company has no calendar", () => {
-    expect(composeNoticeMail(notice(), "de")?.text).toContain("Antworte bis Tag 12");
+    expect(composeNoticeMail(notice(), "de")?.text).toContain("Antworten Sie bis Tag 12");
     expect(composeNoticeMail(notice(), "en")?.text).toContain("Answer by day 12");
   });
 

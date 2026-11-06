@@ -217,7 +217,7 @@ export const settingsAudit = defineMessages({
     empty: "Noch keine Änderungen erfasst. Jede Admin-Aktion erscheint ab jetzt hier.",
     noMatch: "Keine Einträge passen zu diesen Filtern.",
     clearFilters: "Filter zurücksetzen",
-    error: "Das Protokoll konnte nicht geladen werden. Versuch es noch einmal.",
+    error: "Das Protokoll konnte nicht geladen werden. Versuchen Sie es noch einmal.",
     tryAgain: "Erneut versuchen",
     drawerWhen: "Wann",
     drawerBy: "Von",

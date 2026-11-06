@@ -41,6 +41,6 @@ describe("PIL scaffold", () => {
     }
     expect(en.settingsPilotReport.lead).not.toContain("total");
     expect(en.settingsPilotReport.mailSubject).toContain("{week}");
-    expect(de.settingsGoLive.blockedHint_other).toBe("Zuerst brauchen {n} Prüfungen dich.");
+    expect(de.settingsGoLive.blockedHint_other).toBe("Zuerst brauchen {n} Prüfungen Sie.");
   });
 });
