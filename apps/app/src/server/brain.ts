@@ -13,7 +13,7 @@ import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
 import { coachRequest, type CoachAnswer } from "@/features/ideas/brain-coach";
-import { BrainReading, readRequest, readingFrom, type Reading } from "@/features/ideas/reading";
+import { BrainReading, maskedReading, readRequest, readingFrom, type Reading } from "@/features/ideas/reading";
 import { checkinRequest, planRequest, roundSaid, type CheckinProposal, type PlanProposal } from "@/features/projects/brain";
 import { brainRequest, fromBrain, type BrainItem, type BrainProposal } from "@/features/routing/brain";
 import { findTenant } from "@/features/tenant";
@@ -57,9 +57,20 @@ export function brainConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
 // and text marked above the company's ceiling does not go out at all.
 export type BrainPolicy = { patterns: readonly string[]; ceiling: Level };
 
-// What every call sends along: the company's name, its routing map, and what was raised before -
-// newest cases first, then the known problems - with the redaction for that company.
+// Every failure is null, this one too: without the company there is no request to make.
 async function companyFor(slug: string, policy: BrainPolicy) {
+  try {
+    return await loadCompany(slug, policy);
+  } catch (err) {
+    console.error("[brain]", slug, "company not loaded", err instanceof Error ? err.name : "failed");
+    return null;
+  }
+}
+
+// What every call sends along: the company's name, its routing map, its goals and what was raised
+// before - newest cases first, then the known problems - with the redaction for that company. A goal
+// or an earlier item marked above the ceiling stays home.
+async function loadCompany(slug: string, policy: BrainPolicy) {
   const tenant = await findTenant(slug);
   if (!tenant) return null;
   const seed = await seedFor(slug);
@@ -68,16 +79,27 @@ async function companyFor(slug: string, policy: BrainPolicy) {
   const cases = [...state.cases].sort((a, b) => b.raisedDay - a.raisedDay);
   const people = [...seed.people.map((p) => ({ name: p.name, role: p.role })), ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" }))];
   const clean = (text: string) => redact(text, { people, patterns: policy.patterns });
+  const allowed = (text: string): string | null => {
+    const r = clean(text);
+    return isAboveCeiling(r, policy.ceiling) ? null : r.text;
+  };
   const known: BrainItem[] = [
     ...cases.map((c) => ({ id: c.id, title: c.title, status: c.status })),
     ...seed.problems.map((p) => ({ id: p.id, title: p.title + " - " + p.sub, status: "known problem" })),
-  ].map((k) => ({ ...k, title: clean(k.title).text }));
+  ].flatMap((k) => {
+    const title = allowed(k.title);
+    return title === null ? [] : [{ ...k, title }];
+  });
+  const goals = seed.goals.flatMap((g) => {
+    const goal = allowed(g.goal);
+    return goal === null ? [] : [{ ...g, goal }];
+  });
   // Redacts, or null when anything is marked above the company's ceiling - then nothing is sent.
   const cleanAll = (texts: readonly string[]): string[] | null => {
     const r = texts.map(clean);
     return r.some((x) => isAboveCeiling(x, policy.ceiling)) ? null : r.map((x) => x.text);
   };
-  return { tenant, seed, known, cleanAll, clean, state, log };
+  return { tenant, seed, known, goals, cleanAll, clean, state, log };
 }
 
 // What a call needs besides the gate: the company's API key (azure-openai, openai-compatible) and,
@@ -182,8 +204,8 @@ export async function askBrainRead(
   const text = co?.cleanAll([input.idea.title, input.idea.body, ...input.skip]);
   if (!co || !text) return null;
   const req = readRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.routes, co.seed.depts, co.known, {
-    goals: co.seed.goals, affected: input.affected, attachments: input.attachments, spendLimitEur: co.seed.spend?.limitEur ?? null,
-    skip: text.slice(2), previous: input.previous,
+    goals: co.goals, affected: input.affected, attachments: input.attachments, spendLimitEur: co.seed.spend?.limitEur ?? null,
+    skip: text.slice(2), previous: input.previous ? maskedReading(input.previous, co.cleanAll) : null, // above the ceiling: read without it
   });
   const body = withLlm(gate, opts, req);
   if (!body) return null;
@@ -201,9 +223,10 @@ export async function askBrainCoach(
   if (!gate.on || !brainConfigured()) return null;
   const co = await companyFor(slug, policy);
   const text = co?.cleanAll([input.idea.title, input.idea.body, ...input.turns.map((t) => t.text)]);
-  if (!co || !text) return null;
+  const reading = co ? maskedReading(input.reading, co.cleanAll) : null;
+  if (!co || !text || !reading) return null;
   const turns = input.turns.map((t, i) => ({ role: t.role, text: text[i + 2] }));
-  const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, input.reading, co.known, co.seed.routes, co.seed.depts, co.seed.goals);
+  const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, reading, co.known, co.seed.routes, co.seed.depts, co.goals);
   const body = withLlm(gate, opts, req);
   if (!body) return null;
   return post(slug, "coach", "/v1/coach", body, CoachReply, signal, opts.fetch);
@@ -216,7 +239,7 @@ export async function askBrainPlan(gate: AiGate, slug: string, caseId: string, p
   const c = co?.state.cases.find((x) => x.id === caseId);
   const text = c ? co?.cleanAll([c.title, c.body]) : null;
   if (!co || !text) return null;
-  const body = withLlm(gate, opts, planRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.goals));
+  const body = withLlm(gate, opts, planRequest(co.tenant.name, { title: text[0], body: text[1] }, co.goals));
   if (!body) return null;
   const answer = await post(slug, "plan", "/v1/plan", body, PlanReply, undefined, opts.fetch);
   return answer ? { steps: answer.steps, metric: answer.metric, version: answer.version } : null;
