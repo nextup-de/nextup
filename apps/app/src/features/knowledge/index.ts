@@ -181,6 +181,36 @@ export function holdersOfRole(k: Knowledge, roleId: string): HolderRow[] {
   return k.holders.filter((h) => h.roleId === roleId).sort((a, b) => a.sort - b.sort);
 }
 
+/**
+ * The seat above a desk, for the second escalation level: the first seat with someone on it up the
+ * org chart (the role this one reports to, then that one's boss), else up the directory (the manager
+ * of the person on the desk, then theirs; D12). Never a seat of the role itself or of a role in
+ * `skip` (whoever holds the case already). null when nobody is above.
+ */
+export function seatAbove(k: Pick<Knowledge, "roles" | "holders" | "managers">, roleId: string, skip: readonly string[] = []): HolderRow | null {
+  const roleById = new Map(k.roles.map((r) => [r.id, r]));
+  const taken = [...k.holders].sort((a, b) => a.sort - b.sort).filter((h) => h.userId !== null);
+  const usable = (h: HolderRow) => h.roleId !== roleId && !skip.includes(h.roleId);
+
+  const seenRoles = new Set([roleId]);
+  for (let up = roleById.get(roleId)?.reportsToId ?? null; up !== null && !seenRoles.has(up); up = roleById.get(up)?.reportsToId ?? null) {
+    seenRoles.add(up);
+    const seat = taken.find((h) => h.roleId === up && usable(h));
+    if (seat) return seat;
+  }
+
+  const managerOf = new Map((k.managers ?? []).map((m) => [m.userId, m.managerId]));
+  const seenUsers = new Set<string>();
+  for (let user = taken.find((h) => h.roleId === roleId)?.userId ?? null; user !== null && !seenUsers.has(user); ) {
+    seenUsers.add(user);
+    const boss = managerOf.get(user) ?? null;
+    const seat = boss === null ? undefined : taken.find((h) => h.userId === boss && usable(h));
+    if (seat) return seat;
+    user = boss;
+  }
+  return null;
+}
+
 export type Profile = { vision: string; mission: string; principles: string[]; businessModel: string };
 
 export type RoleNode = { role: RoleRow; unit: string; holders: string[]; depth: number };

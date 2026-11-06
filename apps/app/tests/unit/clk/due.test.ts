@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CALENDAR, DEMO_CLOCK, type ClockSpec } from "@/features/clock";
-import { dueNow } from "@/features/clock/due";
+import { dueNow, type SeatAbove } from "@/features/clock/due";
 import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "@/features/cases/events";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { meFor, type SeatRow } from "@/features/auth/identity";
@@ -123,5 +123,78 @@ describe("CLK dueNow", () => {
     const S2 = reduce(WD, logAt(day, ...evs, fact("p_one", { kind: "measure", dueDay: 1 + 30 + PROMISE_DAYS, check: 30, toRoleHolderId: "seat_tv" })));
     expect(dueNow(S2, day).filter((d) => d.kind === "measure")).toEqual([]);
     expect(S2.projects[0].escalated?.what).toBe("measure");
+  });
+});
+
+describe("CLK second level (escalation_days)", () => {
+  const head: SeatRow = { id: "seat_head", roleId: "role_head", label: "K. Head", userId: "u_kh", sort: 2 };
+  const ORG: ReduceSeed = { ...WD, seats: [...seats, head] };
+  const DUE = PROMISE_DAYS;
+  const N = 3; // the default
+  const above: SeatAbove = () => "seat_head";
+  const deadline = (to: string | null) => fact("c_a", { kind: "deadline", dueDay: DUE, toRoleHolderId: to });
+  const toDeputy = () => ev("case.handed", "system:clock", "c_a", { to: "H. Sander", toRoleHolderId: "seat_dep", why: "deadline" });
+  const up = (to: string | null) => fact("c_a", { kind: "escalation", dueDay: DUE, toRoleHolderId: to });
+  const toHead = () => ev("case.handed", "system:clock", "c_a", { to: "K. Head", toRoleHolderId: "seat_head", why: "escalation" });
+  const dues = (seed: ReduceSeed, day: number, events: CaseEvent[], find: SeatAbove = above) => dueNow(reduce(seed, logAt(day, ...events)), day, find);
+
+  it("fires once N working days after the answer date have passed, to the seat above the owner's desk", () => {
+    const first = [raise("c_a"), deadline("seat_dep"), toDeputy()];
+    expect(dues(ORG, DUE + N, first)).toEqual([]);
+    const asked: [string, readonly string[]][] = [];
+    const out = dues(ORG, DUE + N + 1, first, (roleId, skip) => { asked.push([roleId, skip]); return "seat_head"; });
+    expect(out).toEqual([{ kind: "escalation", target: "c_a", dueDay: DUE, toRoleHolderId: "seat_head", idemKey: "clk:escalate:c_a" }]);
+    // Above the desk that owes the answer, never the role that holds the case now.
+    expect(asked).toEqual([["role_owner", ["role_deputy"]]]);
+  });
+
+  it("the fact first, the hand-over a run later, then nothing: once per case", () => {
+    const fired = [raise("c_a"), deadline("seat_dep"), toDeputy(), up("seat_head")];
+    expect(dues(ORG, DUE + N + 1, fired)).toEqual([
+      { kind: "handover", why: "escalation", target: "c_a", dueDay: DUE, toRoleHolderId: "seat_head", idemKey: "clk:escalate:c_a:handover" },
+    ]);
+    const done = [...fired, toHead()];
+    expect(dues(ORG, DUE + N + 1, done)).toEqual([]);
+    expect(dues(ORG, DUE + N + 20, done)).toEqual([]);
+    expect(find(reduce(ORG, logAt(DUE + N + 1, ...done)).cases, "c_a").assigneeSeatId).toBe("seat_head");
+  });
+
+  it("the first level comes first, and the deputy no longer takes a case the second level has", () => {
+    expect(dues(ORG, DUE + 10, [raise("c_a")]).map((d) => d.kind)).toEqual(["deadline"]);
+    expect(dues(ORG, DUE + 10, [raise("c_a"), deadline("seat_dep")])).toMatchObject([{ kind: "handover", idemKey: "clk:handover:c_a" }]);
+    expect(dues(ORG, DUE + 10, [raise("c_a"), deadline("seat_dep"), toDeputy()]).map((d) => d.kind)).toEqual(["escalation"]);
+    // Hand-over off: the deputy was only told, and the second level still fires.
+    const OFF: ReduceSeed = { ...ORG, loop: { deadlineHandover: false } };
+    expect(dues(OFF, DUE + 10, [raise("c_a"), deadline("seat_dep")]).map((d) => d.kind)).toEqual(["escalation"]);
+    expect(dues(ORG, DUE + 10, [raise("c_a"), deadline("seat_dep"), up("seat_head")])).toMatchObject([{ kind: "handover", why: "escalation" }]);
+  });
+
+  it("fires with no occupied deputy, and records the fact when nobody is above", () => {
+    const none = [raise("c_a"), deadline(null)];
+    expect(dues(ORG, DUE + N + 1, none)).toMatchObject([{ kind: "escalation", toRoleHolderId: "seat_head" }]);
+    expect(dues(ORG, DUE + N + 1, none, () => null)).toEqual([{ kind: "escalation", target: "c_a", dueDay: DUE, toRoleHolderId: null, idemKey: "clk:escalate:c_a" }]);
+    // dueNow without a lookup finds nobody, as in the demo data.
+    expect(dueNow(reduce(ORG, logAt(DUE + N + 1, ...none)), DUE + N + 1)).toMatchObject([{ kind: "escalation", toRoleHolderId: null }]);
+    expect(dues(ORG, DUE + N + 1, [...none, up(null)])).toEqual([]);
+  });
+
+  it("follows the rule: another number of days, and 0 switches it off", () => {
+    const first = [raise("c_a"), deadline("seat_dep"), toDeputy()];
+    const rule = (escalationDays: number): ReduceSeed => ({ ...ORG, loop: { escalationDays } });
+    expect(dues(rule(1), DUE + 1, first)).toEqual([]);
+    expect(dues(rule(1), DUE + 2, first).map((d) => d.kind)).toEqual(["escalation"]);
+    expect(dues(rule(0), DUE + 50, first)).toEqual([]);
+  });
+
+  it("not for a paused or a closed case, and not in demo mode", () => {
+    const first = [raise("c_a"), deadline("seat_dep"), toDeputy()];
+    const asked = ev("case.asked", "H. Sander", "c_a", { text: "Which line?" }, DUE + 1);
+    expect(dues(ORG, DUE + 10, [...first, asked])).toEqual([]);
+    const no = ev("case.decided", "H. Sander", "c_a", { answer: "no" }, DUE + 1);
+    expect(dues(ORG, DUE + 10, [...first, no])).toEqual([]);
+    expect(dues({ ...ORG, clock: DEMO_CLOCK }, DUE + 10, first)).toEqual([]);
+    // A case already on the seat above is not handed to it again.
+    const manual = ev("case.handed", "H. Sander", "c_a", { to: "K. Head", toRoleHolderId: "seat_head", why: "she knows the line" }, DUE + 2);
+    expect(dues(ORG, DUE + 10, [...first, up("seat_head"), manual])).toEqual([]);
   });
 });

@@ -6,6 +6,7 @@ import { inboxOf } from "@/features/cases/selectors";
 import type { State } from "@/features/cases/reducer";
 import { createT, type Locale } from "@/i18n";
 import type { OutboxDraft } from "@/lib/db/outbox";
+import { REMINDER_KINDS } from "./templates";
 
 export const DIGEST_TEMPLATE = "digest";
 
@@ -42,7 +43,7 @@ const LOOP_TEMPLATES = [
   "case.discussion", "case.invited", "case.checkin", "case.decided",
   "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.rewarded",
 ].map((t) => `loop.${t}`);
-const REMINDER_TEMPLATES = ["deadline", "checkin", "start", "measure"].map((k) => `reminder.${k}`);
+const REMINDER_TEMPLATES = REMINDER_KINDS.map((k) => `reminder.${k}`);
 
 export type NotifyGroup = "raised" | "loop" | "reminders" | "digest";
 export const NOTIFY_GROUPS: Record<NotifyGroup, readonly string[]> = {
