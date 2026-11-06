@@ -7,6 +7,8 @@ import { usableSecret } from "@/features/admin/environment";
 import { FLOOR_ANON_COOKIE, FLOOR_DEVICE_COOKIE, FLOOR_USER_COOKIE, verifyFloorCookie } from "@/features/floor/cookies";
 import { companyPrefix, servedOverHttps } from "@/features/tenant/urls";
 import { actorLabel } from "@/features/auth/identity";
+import { deptIsBigEnough, underHandle } from "@/features/cases/stamp";
+import { loadUnitPeople } from "@/lib/db/pseudonymise";
 import type { Role } from "@/config/roles";
 import { checkRaise, floorRaisePayload, newReference, pickSeat, type RaiseInput } from "@/features/floor/raise";
 import { getDb } from "@/lib/db/client";
@@ -77,6 +79,11 @@ export async function raiseFromFloor(
     (await throttle("floorRaiseAll", area.id));
   if (limited) return { ok: false, reason: "limited", message: limited };
 
+  // The department a floor raise names is the area's unit. Next to an unnamed raiser (nobody, or a handle) it
+  // is stored only when that unit is big enough to hide in (features/cases/stamp.ts).
+  const named = who !== "anonymous" && !underHandle(actor);
+  const unitName = named || deptIsBigEnough((await loadUnitPeople(companyId)).ofUnit(area.unitId)) ? area.unit.name : "";
+
   const caseId = `c_${randomUUID()}`;
   const result = await appendEventRow(
     companyId,
@@ -86,7 +93,7 @@ export async function raiseFromFloor(
       type: "case.raised",
       actor,
       targetId: caseId,
-      payload: floorRaisePayload({ ...checked.value, seat, unitName: area.unit.name }),
+      payload: floorRaisePayload({ ...checked.value, seat, unitName }),
     },
     { actorUserId, source: "floor", idemKey: `floor:${input.nonce}` },
   );

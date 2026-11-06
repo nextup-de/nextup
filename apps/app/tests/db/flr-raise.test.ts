@@ -84,8 +84,9 @@ describe("FLR raise from an area", () => {
     const rows = await events();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ actor: "system:floor", actorUserId: null, source: "floor" });
+    // The area's unit has one active person: next to an unnamed raiser its name is not stored (features/cases/stamp.ts).
     expect(rows[0].payload).toMatchObject({
-      title: "Oil on the floor", body: "Near the press", kind: "problem", routeId: null, assignee: "Seat lena", fromDept: "Montage", visibility: "everyone",
+      title: "Oil on the floor", body: "Near the press", kind: "problem", routeId: null, assignee: "Seat lena", fromDept: "", visibility: "everyone",
     });
     const seat = await db.orgRoleHolder.findFirstOrThrow({ where: { companyId, name: "Seat lena" } });
     expect((rows[0].payload as { assigneeRoleHolderId: string }).assigneeRoleHolderId).toBe(seat.id);
@@ -126,6 +127,7 @@ describe("FLR raise from an area", () => {
     const rows = await events();
     expect(rows).toHaveLength(before + 1);
     expect(rows[rows.length - 1]).toMatchObject({ actor: "Lena Lead", actorUserId: userId, source: "floor" });
+    expect(rows[rows.length - 1].payload).toMatchObject({ fromDept: "Montage" }); // by name: the unit stays, however small
     expect(jar.has(FLOOR_USER_COOKIE)).toBe(false);
     const sent = verifyFloorCookie(jar.get(FLOOR_SENT_COOKIE), SECRET);
     expect(sent).toMatchObject({ named: true, role: "Shift lead" });
@@ -149,5 +151,21 @@ describe("FLR raise from an area", () => {
     expect((await events()).length).toBe(before + 5);
     // Another device in the same area is not held up by it.
     expect(await raiseFromFloor("flr-raise", input("busy"), "anonymous", { key: "a:flr-device-other", deviceId: null })).toMatchObject({ ok: true });
+  });
+
+  it("an unnamed raise names the area's unit once the unit has five active people, and a handle counts as unnamed", async () => {
+    const fresh = (key: string) => ({ key: "a:flr-device-" + key, deviceId: null });
+    const last = async () => (await events()).at(-1)!;
+    const member = await db.user.create({ data: { companyId, name: "Mia Member", email: "mia@flr.example", role: "member", dept: "OPS", handle: "Anonymous #7001" }, select: { id: true } });
+    for (const n of [1, 2]) await db.user.create({ data: { companyId, name: `Worker ${n}`, email: `w${n}@flr.example`, role: "member", dept: "Montage" } });
+    // Four active people now (the lead on the seat and three by department).
+    expect(await raiseFromFloor("flr-raise", input("open"), { userId: member.id }, fresh("four"))).toMatchObject({ ok: true });
+    expect(await last()).toMatchObject({ actor: "Anonymous #7001", actorUserId: member.id, payload: { fromDept: "" } });
+
+    await db.user.create({ data: { companyId, name: "Worker 3", email: "w3@flr.example", role: "member", dept: "OPS" } });
+    expect(await raiseFromFloor("flr-raise", input("open"), "anonymous", fresh("five"))).toMatchObject({ ok: true });
+    expect(await last()).toMatchObject({ actor: "system:floor", payload: { fromDept: "Montage" } });
+    expect(await raiseFromFloor("flr-raise", input("open"), { userId: member.id }, fresh("five-b"))).toMatchObject({ ok: true });
+    expect(await last()).toMatchObject({ actor: "Anonymous #7001", payload: { fromDept: "Montage" } });
   });
 });
