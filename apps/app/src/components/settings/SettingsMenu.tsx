@@ -22,17 +22,25 @@ function Links({ groups, current, ids }: { groups: MenuGroup[]; current: string 
   ));
 }
 
-/** `setup`: the way into the setup process, while it is open. Setup is not a section of Settings. */
-export function SettingsMenu({ title, aria, currentLabel, groups, setup }: { title: string; aria: string; currentLabel: string; groups: MenuGroup[]; setup?: { href: string; label: string } }) {
+export type SetupLink = { href: string; label: string; open: boolean };
+
+/**
+ * `setup`: the way into the setup process, which is not a section of Settings. A pill above the
+ * sections while the company is still closed; a plain link below them once it is open.
+ */
+export function SettingsMenu({ title, aria, currentLabel, groups, setup }: { title: string; aria: string; currentLabel: string; groups: MenuGroup[]; setup?: SetupLink }) {
   const path = usePathname();
   const items = groups.flatMap((g) => g.items);
   const current = items.find((i) => path === i.href || path.startsWith(`${i.href}/`));
+  const pill = setup && !setup.open ? setup : undefined;
+  const after = setup?.open ? setup : undefined;
   return (
     <>
       <nav aria-label={aria} className={s.menu}>
         <h2 className={s.menuTitle}>{title}</h2>
-        {setup ? <Link href={setup.href} className={s.setupPill} data-testid="settings-setup-pill">{setup.label}</Link> : null}
+        {pill ? <Link href={pill.href} className={s.setupPill} data-testid="settings-setup-pill">{pill.label}</Link> : null}
         <Links groups={groups} current={current?.key} ids />
+        {after ? <div className={s.group}><Link prefetch={false} href={after.href} className={s.item} data-testid="settings-setup-link">{after.label}</Link></div> : null}
       </nav>
       <details className={s.sheet} key={path}>
         <summary>
@@ -40,8 +48,9 @@ export function SettingsMenu({ title, aria, currentLabel, groups, setup }: { tit
           <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m3 4.5 3 3 3-3" /></svg>
         </summary>
         <div className={s.sheetBody}>
-          {setup ? <Link href={setup.href} className={s.setupPill}>{setup.label}</Link> : null}
+          {pill ? <Link href={pill.href} className={s.setupPill}>{pill.label}</Link> : null}
           <Links groups={groups} current={current?.key} />
+          {after ? <div className={s.group}><Link prefetch={false} href={after.href} className={s.item}>{after.label}</Link></div> : null}
         </div>
       </details>
     </>
