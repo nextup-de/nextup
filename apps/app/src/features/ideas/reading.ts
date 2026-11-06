@@ -40,7 +40,7 @@ export type Reading = z.infer<typeof Reading>;
 export const COACH_MAX_OPEN = 8;
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
-export type ReadExtras = { goals: readonly { goal: string }[]; affected: number; attachments: number; spendLimitEur: number | null; skip: readonly string[]; previous: Reading | null };
+export type ReadExtras = { goals: readonly { goal: string }[]; affected: number; attachments: number; spendLimitEur: number | null; skip: readonly string[]; previous: Reading | null; locale: Locale };
 
 export const goalsOut = (goals: readonly { goal: string }[]) => goals.filter((g) => g.goal.trim()).slice(0, 20).map((g) => ({ name: clip(g.goal, 200), kpi: "" }));
 
@@ -53,6 +53,7 @@ export function readRequest(company: string, idea: { title: string; body: string
     spend_limit_eur: x.spendLimitEur,
     skip: x.skip.slice(0, 20).map((q) => clip(q, 300)),
     previous: x.previous ? dialBriefs(x.previous) : [],
+    locale: x.locale, // the language of the page: what the model writes is shown there as it is
   };
 }
 

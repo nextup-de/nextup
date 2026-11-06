@@ -21,9 +21,10 @@ const reading = (over: Partial<BrainReading> = {}): Reading => readingFrom(brain
 describe("readRequest", () => {
   it("sends the idea with the company's goals, routes, earlier items and spend rule", () => {
     const r = readRequest("Acme", { title: " Water ", body: "" }, ROUTES, DEPTS, req.known, {
-      goals: DEMO_GOALS, affected: 3, attachments: 1, spendLimitEur: 5000, skip: ["Which goal?"], previous: reading(),
+      goals: DEMO_GOALS, affected: 3, attachments: 1, spendLimitEur: 5000, skip: ["Which goal?"], previous: reading(), locale: "de",
     });
     expect(r.idea.title).toBe("Water");
+    expect(r.locale).toBe("de");
     expect(r.goals[0]).toEqual({ name: DEMO_GOALS[0].goal, kpi: "" });
     expect(r.routes[0].owner).not.toContain(ROUTES[0].owner.name); // a role, never a name
     expect(r.spend_limit_eur).toBe(5000);

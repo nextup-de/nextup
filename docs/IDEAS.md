@@ -113,7 +113,10 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
 Where the stack runs the brain (`BRAIN_URL`, `BRAIN_API_KEY`) and the gate allows it, the model reads
 the idea on **every message**: `POST /v1/read` (`services/brain/brain/read.py`, `askBrainRead` in
 `src/server/brain.ts`, the pure half in `src/features/ideas/reading.ts`). The reading is what the
-raise page shows; the coach answers from it.
+raise page shows; the coach answers from it. Both write in the language of the page (`locale`), in
+German with the formal "Sie"; the checks on what the coach writes know both languages. The fallback
+when the brain is not there stays as it was: the assistant model answers in the language the employee
+writes, the offline coach in English.
 
 - **What it holds.** Five dials - value, feasibility, cost, fit, risk - each with a score, a note on
   why (naming what is in this idea) and what would move it most; a one-sentence summary; the advice
@@ -305,6 +308,11 @@ decision", `CompanyConfig` → `Seed.loop`, `features/loop/rules.ts`).
   published. What the model made of them is stored too: the reading on each coach turn
   (`IdeaTurn.reading`), which includes the titles of the earlier items it named, with the draft and
   under the same rules (private to the author, in the author's own export, deleted with an unpublished draft).
+- A case the author may not open (`features/cases/visibility.ts`) counts for nothing in the studio: its
+  title goes to no model on read or coach and comes back in no keyword hint, and the score is computed
+  the same way on the message and at publish. So a member's reading finds fewer repeats than a manager's;
+  known problems count for everyone. Routing at publish still compares with every case, and only an ID
+  and a reason come back from it. A reading stored before this rule keeps the titles it named.
 - Discarded drafts are deleted after the company's retention period (purged on use, like assistant turns).
 
 ## Not in this step

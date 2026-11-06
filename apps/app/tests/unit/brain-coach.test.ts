@@ -25,7 +25,8 @@ describe("coachRequest", () => {
       dials: (["value", "feasibility", "cost", "fit", "risk"] as const).map((key) => ({ key, score: 40, note: "n", basis: "b" })), overall: 40, summary: "Paper twice.",
       advice: "info", advice_why: "w", pattern: "p", route_id: null, route_reason: "", same_as: null, related: null, open: ["How long does a sheet take?"], model: "m", version: "v",
     }, { routes: [], known });
-    const r = coachRequest("Acme", { title: " Sheets ", body: "" }, turns, reading, known, ROUTES, DEPTS, DEMO_GOALS);
+    const r = coachRequest("Acme", { title: " Sheets ", body: "" }, turns, reading, known, ROUTES, DEPTS, DEMO_GOALS, "de");
+    expect(r.locale).toBe("de");
     expect(r.history).toHaveLength(COACH_MAX_HISTORY);
     expect(r.history[0].text).toBe("turn 10");
     expect(r.idea.title).toBe("Sheets");
@@ -48,6 +49,11 @@ describe("coachText", () => {
 describe("withCoachSuggestion", () => {
   const now = benchmark(idea, ctx);
   const replies = suggestReplies(idea, now, ctx);
+
+  it("drops the German 'Zum Beispiel:' the same way", () => {
+    const offered = withCoachSuggestion(answer({ recommended: "Zum Beispiel: etwa 20 Minuten pro Umrüstung." }), idea, now, ctx, replies);
+    expect(offered[0].text).toBe("etwa 20 Minuten pro Umrüstung.");
+  });
 
   it("offers the brain's guess first, without 'For example:', one per bar", () => {
     const out = withCoachSuggestion(answer(), idea, now, ctx, replies);

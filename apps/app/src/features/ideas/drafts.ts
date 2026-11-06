@@ -3,6 +3,7 @@
 // (lib/idea-drafts.ts), so both sides always agree on the number. Pure.
 import type { Turn } from "@/features/assist/draft";
 import type { SpendRule } from "@/features/demo/types";
+import type { Locale } from "@/i18n";
 import { benchmark, type Benchmark, type BenchmarkContext, type BenchmarkPart } from "./benchmarks";
 import { ideaFromTurns } from "./coach";
 import type { Reading } from "./reading";
@@ -15,8 +16,8 @@ export type DraftView = DraftSummary & { scores: BenchmarkPart[]; affected: stri
 export const MAX_TURN = 2000; // characters in one message
 export const MAX_TURNS = 40; // messages in one draft (both sides)
 
-export function scoreDraft(d: { turns: readonly Turn[]; affected: readonly string[]; attachments: number }, ctx: BenchmarkContext): Benchmark {
-  return benchmark({ text: ideaFromTurns(d.turns).text, affected: d.affected, attachments: d.attachments }, ctx);
+export function scoreDraft(d: { turns: readonly Turn[]; affected: readonly string[]; attachments: number }, ctx: BenchmarkContext, locale?: Locale): Benchmark {
+  return benchmark({ text: ideaFromTurns(d.turns).text, affected: d.affected, attachments: d.attachments }, ctx, locale);
 }
 
 export const summaryOf = (d: DraftView): DraftSummary =>

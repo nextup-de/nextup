@@ -13,16 +13,19 @@ import { buildCompanyExport, buildPersonExport } from "@/features/privacy/export
 import { pseudonymiseUser } from "@/lib/db/pseudonymise";
 import { companyExportRows, personExportRows } from "@/lib/db/privacy-export";
 import { publishIdeaDraftAction } from "@/server/actions/ideas";
-import { serverIdeaContext } from "@/server/ideas";
+import { casesFor, serverIdeaContext } from "@/server/ideas";
+import type { Locale } from "@/i18n";
 
-type TestViewer = { userId: string; companyId: string; companySlug: string; name: string; handle: null; role: "member"; epoch: number; issuedAt: number };
+type TestViewer = { userId: string; companyId: string; companySlug: string; name: string; handle: null; role: "member" | "manager"; epoch: number; issuedAt: number };
 const mocks = vi.hoisted(() => ({
   viewer: null as TestViewer | null,
   assist: null as ((a: AssistArgs) => Promise<AssistOutcome>) | null,
   logCalls: null as number | null, // counting: the route's own read of the log works, the brain's next one fails
+  locale: "en" as Locale,
 }));
 
 vi.mock("@/features/auth/session", async (orig) => ({ ...(await orig<typeof import("@/features/auth/session")>()), getViewerFor: async () => mocks.viewer }));
+vi.mock("@/i18n/server", async (orig) => ({ ...(await orig<typeof import("@/i18n/server")>()), getLocale: async () => mocks.locale }));
 vi.mock("@/features/assist", async (orig) => {
   const real = await orig<typeof import("@/features/assist")>();
   return { ...real, assist: (a: AssistArgs) => (mocks.assist ? mocks.assist(a) : real.assist(a)) };
@@ -92,11 +95,11 @@ async function turn(text: string, draftId: string, extra: object = {}): Promise<
 }
 
 // A new author with an empty draft: the throttle counts per person.
-async function author(): Promise<{ userId: string; draftId: string }> {
+async function author(role: "member" | "manager" = "member"): Promise<{ userId: string; draftId: string }> {
   const tag = randomUUID().slice(0, 8);
-  const u = await db.user.create({ data: { companyId: co.id, name: "Author " + tag, email: `a${tag}@turn.test`, role: "member" } });
+  const u = await db.user.create({ data: { companyId: co.id, name: "Author " + tag, email: `a${tag}@turn.test`, role } });
   const d = await db.ideaDraft.create({ data: { companyId: co.id, userId: u.id } });
-  mocks.viewer = { userId: u.id, companyId: co.id, companySlug: co.slug, name: u.name, handle: null, role: "member", epoch: 0, issuedAt: 0 };
+  mocks.viewer = { userId: u.id, companyId: co.id, companySlug: co.slug, name: u.name, handle: null, role, epoch: 0, issuedAt: 0 };
   return { userId: u.id, draftId: d.id };
 }
 
@@ -126,6 +129,7 @@ beforeEach(() => {
   vi.stubEnv("BRAIN_API_KEY", "k");
   mocks.assist = null;
   mocks.logCalls = null;
+  mocks.locale = "en";
 });
 
 afterEach(() => {
@@ -319,7 +323,7 @@ describe("delta compares like with like", () => {
     fakeBrain({ read: [READ(60), READ(72), "500", READ(50)], coach: [COACH] });
     silenced();
     const said = [FIRST, "It would cost about 200 euros a month.", "It serves the goal of less scrap and saves 10 minutes a shift.", "The first step is one desk."];
-    const ctx = await serverIdeaContext(co.slug);
+    const ctx = await serverIdeaContext(co.slug, mocks.viewer);
     const bench = (n: number) => scoreDraft({ turns: said.slice(0, n).map((text) => ({ role: "user" as const, text })), affected: [], attachments: 0 }, ctx).overall;
 
     const delta = async (i: number) => one(await turn(said[i], draftId), "scores").delta as { overall: number } | null;
@@ -480,6 +484,87 @@ describe("what goes out", () => {
     await turn("It would cost about 200 euros a month.", draftId);
     expect(b.of("/v1/read")[1].body.previous).toEqual([]);
     expect(b.of("/v1/read")[1].raw).not.toMatch(/strictly confidential/i);
+  });
+});
+
+describe("earlier cases only count for someone who may open them", () => {
+  const TITLE = "Grinding coolant leaks at station nine every night";
+  const IDEA = "Fix the grinding coolant leaks at station nine every night";
+  const raise = async (id: string, by: string, extra: object) => {
+    await db.caseEvent.create({ data: { id: randomUUID(), companyId: co.id, day: 0, type: "case.raised", actor: "x", actorUserId: by, targetId: id,
+      payload: { title: TITLE + " " + id, body: "b", routeId: null, assignee: "Desk", fromDept: "PRD", kind: "problem", ...extra } } });
+  };
+  afterEach(async () => { await db.caseEvent.deleteMany({ where: { companyId: co.id, targetId: { startsWith: "vis-" } } }); });
+
+  it("someone else's private case goes to no model and comes back in no hint", async () => {
+    const raiser = await author();
+    await raise("vis-private", raiser.userId, { visibility: "private" });
+    const { draftId } = await author("manager"); // a manager opens everything except a private case
+    const b = fakeBrain({ read: [READ(50)], coach: [COACH] });
+    const evs = await turn(IDEA, draftId);
+    expect(b.of("/v1/read")).toHaveLength(1);
+    expect(b.of("/v1/coach")).toHaveLength(1);
+    for (const c of b.calls) expect(c.raw, c.path).not.toContain(TITLE);
+    expect(one(evs, "scores").sameAs).toBeNull();
+    expect(JSON.stringify(evs)).not.toContain(TITLE);
+  });
+
+  it("the raiser's own private case does count for the raiser", async () => {
+    const { userId, draftId } = await author();
+    await raise("vis-mine", userId, { visibility: "private" });
+    const b = fakeBrain({ read: [READ(50)], coach: [COACH] });
+    const evs = await turn(IDEA, draftId);
+    expect(b.of("/v1/read")[0].raw).toContain(TITLE);
+    expect(b.of("/v1/coach")[0].raw).toContain(TITLE);
+    expect((one(evs, "scores").sameAs as unknown as { id: string } | null)?.id).toBe("vis-mine");
+  });
+
+  it("with no choice made a manager's reading compares with it and a colleague's does not", async () => {
+    const raiser = await author();
+    await raise("vis-default", raiser.userId, {});
+
+    const colleague = await author();
+    const seen = fakeBrain({ read: [READ(50)], coach: [COACH] });
+    await turn(IDEA, colleague.draftId);
+    expect(seen.of("/v1/read")[0].raw).not.toContain(TITLE);
+
+    const manager = await author("manager");
+    const boss = fakeBrain({ read: [READ(50)], coach: [COACH] });
+    await turn(IDEA, manager.draftId);
+    expect(boss.of("/v1/read")[0].raw).toContain(TITLE);
+  });
+
+  it("known problems are no one's case and still count for everyone", async () => {
+    const { draftId } = await author();
+    const b = fakeBrain({ read: [READ(50)], coach: [COACH] });
+    await turn(IDEA, draftId);
+    expect((b.of("/v1/read")[0].body.known as { id: string }[]).map((k) => k.id)).toContain(SEED.problems[0].id);
+  });
+
+  it("nobody signed in, with a database: no case counts at all", async () => {
+    const cases = [{ id: "x" }] as unknown as Parameters<typeof casesFor>[0]["cases"];
+    await expect(casesFor({ cases, projects: [] }, null)).resolves.toEqual([]);
+  });
+});
+
+describe("the language of the page", () => {
+  it("goes to the read and the coach, and the keyword hints follow it", async () => {
+    mocks.locale = "de";
+    const { draftId } = await author();
+    const b = fakeBrain({ read: [READ(50)], coach: [COACH] });
+    const evs = await turn(FIRST, draftId);
+    expect(b.of("/v1/read")[0].body.locale).toBe("de");
+    expect(b.of("/v1/coach")[0].body.locale).toBe("de");
+    expect(JSON.stringify(one(evs, "scores").parts)).toBe(JSON.stringify(scoreDraft({ turns: [{ role: "user", text: FIRST }], affected: [], attachments: 0 }, await serverIdeaContext(co.slug, mocks.viewer), "de").parts));
+    expect(JSON.stringify(one(evs, "scores").parts)).not.toBe(JSON.stringify(scoreDraft({ turns: [{ role: "user", text: FIRST }], affected: [], attachments: 0 }, await serverIdeaContext(co.slug, mocks.viewer), "en").parts));
+  });
+
+  it("English is what goes out on an English page", async () => {
+    const { draftId } = await author();
+    const b = fakeBrain({ read: [READ(50)], coach: [COACH] });
+    await turn(FIRST, draftId);
+    expect(b.of("/v1/read")[0].body.locale).toBe("en");
+    expect(b.of("/v1/coach")[0].body.locale).toBe("en");
   });
 });
 

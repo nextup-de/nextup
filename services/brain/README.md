@@ -89,7 +89,8 @@ name has no price), else the configured one.
 studio. It is what the raise page shows (docs/IDEAS.md, "The reading"): five dials, a summary, the
 advice, the routing row, an earlier item about the same problem, and what the person who decides
 would still ask. Prompt `read.md`, code `brain/read.py`; its `version` is stored inside the reading the
-app keeps.
+app keeps. `locale` (`en`, the default, or `de`) is the language it writes in, also on `/v1/coach`. The
+app always sends it, and a brain older than the app refuses it: update both together.
 
 ```json
 {

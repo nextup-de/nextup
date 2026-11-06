@@ -102,6 +102,9 @@ class Goal(Strict):
     kpi: str = Field("", max_length=200, description="What the goal is measured on, e.g. minutes per changeover")
 
 
+Locale = Literal["en", "de"]
+
+
 class ReadIn(Strict):
     company: str = Field(min_length=1, max_length=120)
     idea: Idea                                   # the author's own words so far, never the coach's
@@ -113,6 +116,7 @@ class ReadIn(Strict):
     spend_limit_eur: float | None = None
     skip: list[str] = Field(default=[], max_length=20)
     previous: list[DialBrief] = Field(default=[], max_length=5)
+    locale: Locale = "en"                        # the language of the page that shows the answer
     llm: LlmOverride | BedrockOverride | None = None
 
 
@@ -187,6 +191,7 @@ class CoachIn(Strict):
     goals: list[Goal] = Field(default=[], max_length=20)
     routes: list[RouteRow] = Field(default=[], max_length=50)
     known: list[KnownItem] = Field(default=[], max_length=80)
+    locale: Locale = "en"                        # the language of the page that shows the answer
     llm: LlmOverride | BedrockOverride | None = None
 
 

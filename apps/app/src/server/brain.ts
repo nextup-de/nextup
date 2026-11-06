@@ -12,6 +12,7 @@ import type { Turn } from "@/features/assist/draft";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
+import type { Locale } from "@/i18n";
 import { coachRequest, type CoachAnswer } from "@/features/ideas/brain-coach";
 import { BrainReading, maskedReading, readRequest, readingFrom, type Reading } from "@/features/ideas/reading";
 import { checkinRequest, planRequest, roundSaid, type CheckinProposal, type PlanProposal } from "@/features/projects/brain";
@@ -20,6 +21,7 @@ import { findTenant } from "@/features/tenant";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { recordAiCall } from "@/lib/db/ai-usage";
 import { loadLogForSlug } from "@/lib/db/events";
+import { casesFor, type Audience } from "@/server/ideas";
 
 // On a CPU-only server the model takes tens of seconds; past this the person should not wait.
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -58,9 +60,9 @@ export function brainConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
 export type BrainPolicy = { patterns: readonly string[]; ceiling: Level };
 
 // Every failure is null, this one too: without the company there is no request to make.
-async function companyFor(slug: string, policy: BrainPolicy) {
+async function companyFor(slug: string, policy: BrainPolicy, audience?: Audience) {
   try {
-    return await loadCompany(slug, policy);
+    return await loadCompany(slug, policy, audience);
   } catch (err) {
     console.error("[brain]", slug, "company not loaded", err instanceof Error ? err.name : "failed");
     return null;
@@ -69,14 +71,16 @@ async function companyFor(slug: string, policy: BrainPolicy) {
 
 // What every call sends along: the company's name, its routing map, its goals and what was raised
 // before - newest cases first, then the known problems - with the redaction for that company. A goal
-// or an earlier item marked above the ceiling stays home.
-async function loadCompany(slug: string, policy: BrainPolicy) {
+// or an earlier item marked above the ceiling stays home. With an audience (the studio, where the
+// answer goes straight back to the author) only the cases they may open go out; without one (routing
+// at publish, a project's plan and check-in) the whole company's.
+async function loadCompany(slug: string, policy: BrainPolicy, audience?: Audience) {
   const tenant = await findTenant(slug);
   if (!tenant) return null;
   const seed = await seedFor(slug);
   const log = (hasDatabase() ? await loadLogForSlug(slug) : null) ?? emptyLog();
   const state = reduce(seed, log);
-  const cases = [...state.cases].sort((a, b) => b.raisedDay - a.raisedDay);
+  const cases = [...(audience === undefined ? state.cases : await casesFor(state, audience))].sort((a, b) => b.raisedDay - a.raisedDay);
   const people = [...seed.people.map((p) => ({ name: p.name, role: p.role })), ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" }))];
   const clean = (text: string) => redact(text, { people, patterns: policy.patterns });
   const allowed = (text: string): string | null => {
@@ -196,16 +200,17 @@ export async function askBrain(gate: AiGate, slug: string, idea: { title: string
 // In the studio, on every message: the model's reading of the idea - what the raise page shows.
 export async function askBrainRead(
   gate: AiGate, slug: string,
-  input: { idea: { title: string; body: string }; affected: number; attachments: number; skip: readonly string[]; previous: Reading | null },
+  input: { idea: { title: string; body: string }; affected: number; attachments: number; skip: readonly string[]; previous: Reading | null; audience: Audience; locale: Locale },
   policy: BrainPolicy, signal?: AbortSignal, opts: BrainOptions = {},
 ): Promise<Reading | null> {
   if (!gate.on || !brainConfigured()) return null;
-  const co = await companyFor(slug, policy);
+  const co = await companyFor(slug, policy, input.audience);
   const text = co?.cleanAll([input.idea.title, input.idea.body, ...input.skip]);
   if (!co || !text) return null;
   const req = readRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.routes, co.seed.depts, co.known, {
     goals: co.goals, affected: input.affected, attachments: input.attachments, spendLimitEur: co.seed.spend?.limitEur ?? null,
     skip: text.slice(2), previous: input.previous ? maskedReading(input.previous, co.cleanAll) : null, // above the ceiling: read without it
+    locale: input.locale,
   });
   const body = withLlm(gate, opts, req);
   if (!body) return null;
@@ -217,16 +222,16 @@ export async function askBrainRead(
 
 // In the studio: one coach turn, working from the reading the page shows.
 export async function askBrainCoach(
-  gate: AiGate, slug: string, input: { idea: { title: string; body: string }; turns: readonly Turn[]; reading: Reading },
+  gate: AiGate, slug: string, input: { idea: { title: string; body: string }; turns: readonly Turn[]; reading: Reading; audience: Audience; locale: Locale },
   policy: BrainPolicy, signal?: AbortSignal, opts: BrainOptions = {},
 ): Promise<CoachAnswer | null> {
   if (!gate.on || !brainConfigured()) return null;
-  const co = await companyFor(slug, policy);
+  const co = await companyFor(slug, policy, input.audience);
   const text = co?.cleanAll([input.idea.title, input.idea.body, ...input.turns.map((t) => t.text)]);
   const reading = co ? maskedReading(input.reading, co.cleanAll) : null;
   if (!co || !text || !reading) return null;
   const turns = input.turns.map((t, i) => ({ role: t.role, text: text[i + 2] }));
-  const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, reading, co.known, co.seed.routes, co.seed.depts, co.goals);
+  const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, reading, co.known, co.seed.routes, co.seed.depts, co.goals, input.locale);
   const body = withLlm(gate, opts, req);
   if (!body) return null;
   return post(slug, "coach", "/v1/coach", body, CoachReply, signal, opts.fetch);

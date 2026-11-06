@@ -13,27 +13,51 @@ from brain.llm import LLMClient
 from brain.schemas import CoachIn, CoachOut, CoachTurn
 
 # Stored with every coach turn the app keeps (IdeaTurn.promptVersion). Bump on prompt changes.
-PROMPT_VERSION = "brain-coach-v8"
+PROMPT_VERSION = "brain-coach-v9"
 MAX_HISTORY = 12  # the latest turns only; the idea itself carries everything the author said
 WEAK = 50  # a dial at or below this is not ready: its scale in prompts/read.md only turns good above it
 
 # "72/100", "72 points", "score of 72": the page shows the numbers, the coach does not repeat them.
-SCORE = re.compile(r"\b\d{1,3}\s*(/\s*100|points?\b)|\bscores?\s+(of\s+)?\d", re.I)
+SCORE = re.compile(r"\b\d{1,3}\s*(/\s*100|points?\b|punkte?n?\b)|\bscores?\s+(of\s+)?\d|\b(bewertung|punktzahl)\s+(von\s+)?\d", re.I)
 
 # "You've raised this issue before": earlier items are almost always someone else's, and small
 # models keep writing it anyway - so it is reworded here rather than retried.
 YOU_RAISED = re.compile(r"\b([Yy])ou(?:'ve| have)?(?: already)? raised (?:this|that|it)( issue| idea| problem)?")
+# The same in German, in both word orders; only the capitalised, formal "Sie".
+SIE_RAISED = re.compile(r"\bSie haben (?:das|dies|es)(?: Problem| Thema)?(?: bereits| schon)? (gemeldet|eingebracht|vorgeschlagen|angesprochen)")
+SIE_RAISED_FRONT = re.compile(r"\b(?:Das|Dies) haben Sie(?: bereits| schon)? (gemeldet|eingebracht|vorgeschlagen|angesprochen)")
 
 # "You said your idea is...": repeating the message back is not a reaction to it.
-PARROT = re.compile(r"^\s*(?:so\s+)?you(?:'ve| have)?\s+(?:just\s+)?(?:said|say|want|asked|ask|mentioned|wrote|stated|explained|told|described)\b", re.I)
+PARROT = re.compile(
+    r"^\s*(?:so\s+)?you(?:'ve| have)?\s+(?:just\s+)?(?:said|say|want|asked|ask|mentioned|wrote|stated|explained|told|described)\b"
+    r"|^\s*(?:also\s+)?sie\s+(?:haben\s+)?(?:gerade\s+|eben\s+)?(?:sagen|sagten|gesagt|schreiben|geschrieben|möchten|wollen|fragen|gefragt|erwähnen|erwähnt|erklären|erklärt|beschreiben|beschrieben)\b",
+    re.I)
 
 QUESTION = re.compile(r"[^.?!\n]*\?")
 STOP = {"the", "a", "an", "is", "are", "do", "does", "this", "that", "it", "you", "your", "of", "to", "in", "on", "for",
         "how", "what", "why", "which", "who", "when", "and", "or", "with", "there", "be", "can", "would"}
+STOP_DE = {"wie", "viel", "viele", "was", "wer", "wann", "warum", "wo", "ist", "sind", "der", "die", "das", "den", "dem", "des",
+           "ein", "eine", "es", "und", "oder", "für", "mit", "wird", "kann", "gibt", "sie", "ihre", "ihr", "ihnen", "zu", "von",
+           "bei", "nach", "auf", "im", "hat", "haben", "nicht", "wenn", "dann"}
+
+# What the prompts say in place of the language: the page shows the model's words as they are.
+_FORMAL = 'Address the employee formally with "Sie", never "du".'
+LANGUAGE = {
+    "en": {"language_rule": "Always write in English, even when {writes} in German.", "address": 'Talk to the employee directly as "you".',
+           "for_example": "For example:", "nothing_more": "Nothing more is needed."},
+    "de": {"language_rule": f"Always write in German, even when {{writes}} in English. {_FORMAL}", "address": 'Talk to the employee directly, as "Sie".',
+           "for_example": "Zum Beispiel:", "nothing_more": "Mehr ist nicht nötig."},
+}
+
+
+def language(locale: str, writes: str) -> dict[str, str]:
+    words = LANGUAGE[locale]
+    return {**words, "language_rule": words["language_rule"].format(writes=writes)}
 
 
 def not_you(text: str) -> str:
-    return YOU_RAISED.sub(lambda m: ("T" if m.group(1) == "Y" else "t") + "his" + (m.group(2) or "") + " was raised", text)
+    text = YOU_RAISED.sub(lambda m: ("T" if m.group(1) == "Y" else "t") + "his" + (m.group(2) or "") + " was raised", text)
+    return SIE_RAISED_FRONT.sub(r"Das wurde bereits \1", SIE_RAISED.sub(r"Das wurde bereits \1", text))
 
 
 def asked_before(body: CoachIn) -> list[str]:
@@ -42,7 +66,7 @@ def asked_before(body: CoachIn) -> list[str]:
 
 
 def _words(s: str) -> set[str]:
-    return set(re.findall(r"[a-z0-9]+", s.lower())) - STOP
+    return set(re.findall(r"[a-zäöüß0-9]+", s.lower())) - STOP - STOP_DE
 
 
 def near_copy(question: str, earlier: list[str]) -> str:
@@ -111,6 +135,7 @@ def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
 
     # One retry at most: on a CPU server every try costs seconds the app may not wait for.
     t = llm.structured("coach", CoachTurn, {
+        **language(body.locale, "the employee writes"),
         "company": body.company,
         "point": point or _nothing_open(body),
         "idea": body.idea.title + ("\n" + body.idea.body if body.idea.body else ""),

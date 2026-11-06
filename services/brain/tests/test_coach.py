@@ -198,3 +198,60 @@ def test_coach_endpoint_and_key(monkeypatch, cbody):
         assert c.post("/v1/coach", json={**cbody, "extra": 1}, headers={"x-api-key": "s3cret"}).status_code == 422
     finally:
         del main.app.state.llm
+
+
+# ---------------------------------------------------------------- the language of the page
+def test_english_stays_what_it_was_when_no_locale_comes(cbody):
+    llm = FakeLLM([turn()])
+    coach(llm, CoachIn.model_validate(cbody))
+    system = llm.calls[0]["system"]
+    assert "Always write in English, even when the employee writes in German." in system
+    assert 'Talk to the employee directly as "you".' in system
+    assert 'starting with "For example:"' in system
+    assert "{{" not in system
+
+
+def test_a_german_page_gets_german_and_the_formal_address(cbody):
+    llm = FakeLLM([turn()])
+    coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
+    system = llm.calls[0]["system"]
+    assert "Always write in German, even when the employee writes in English." in system
+    assert '"Sie", never "du"' in system
+    assert 'starting with "Zum Beispiel:"' in system
+    assert "Always write in English" not in system and "{{" not in system
+
+
+def de(**over) -> dict:
+    return turn(**{"note": "Zwölf Umrüstungen pro Schicht machen dieses Papier zum meistgenutzten an der Linie.",
+                   "question": "Wie lange dauert ein Umrüstblatt?", "why": "Die Minuten entscheiden, ob es schnell geht.",
+                   "recommended": "Etwa fünf Minuten pro Blatt.", **over})
+
+
+@pytest.mark.parametrize("note", ["Das sind 72 Punkte.", "Das gibt eine Bewertung von 72.", "Das ergibt eine Punktzahl 40."])
+def test_a_german_score_is_pushed_back(cbody, note):
+    llm = FakeLLM([de(note=note), de()])
+    out = coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
+    assert len(llm.calls) == 2 and "Zwölf" in out.note
+
+
+@pytest.mark.parametrize("note", ["Sie wollen also das Papier ersetzen.", "Sie haben gerade gesagt, dass es länger dauert."])
+def test_repeating_them_in_german_is_pushed_back_once(cbody, note):
+    llm = FakeLLM([de(note=note), de()])
+    out = coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
+    assert len(llm.calls) == 2 and "Zwölf" in out.note
+
+
+def test_a_german_question_with_umlauts_counts_as_asked_before(cbody):
+    cbody["history"] += [{"role": "assistant", "text": "Wie lange dauert das Prüfen eines Blatts?"}, {"role": "user", "text": "Weiß ich nicht."}]
+    llm = FakeLLM([de(question="Wie lange dauert das Prüfen des Blatts?"), de()])
+    coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
+    assert len(llm.calls) == 2
+
+
+@pytest.mark.parametrize("said,means", [
+    ("Sie haben das bereits eingebracht.", "Das wurde bereits eingebracht."),
+    ("Sie haben dieses Thema", "Sie haben dieses Thema"),
+    ("Das haben Sie schon gemeldet.", "Das wurde bereits gemeldet."),
+])
+def test_it_never_says_they_raised_it_in_german(said, means):
+    assert not_you(said) == means

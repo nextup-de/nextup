@@ -274,3 +274,34 @@ def test_read_endpoint_and_key(monkeypatch, rbody):
         assert c.post("/v1/read", json={**rbody, "extra": 1}, headers={"x-api-key": "s3cret"}).status_code == 422
     finally:
         del main.app.state.llm
+
+
+# ---------------------------------------------------------------- the language of the page
+def test_english_stays_what_it_was_when_no_locale_comes(rbody):
+    llm = FakeLLM([answer()])
+    read_idea(llm, ReadIn.model_validate(rbody))
+    system = llm.calls[0]["system"]
+    assert "Always write in English, even when the idea is in German." in system
+    assert '"Nothing more is needed."' in system
+    assert "{{" not in system
+
+
+def test_a_german_page_gets_german_and_the_formal_address(rbody):
+    llm = FakeLLM([answer()])
+    read_idea(llm, ReadIn.model_validate({**rbody, "locale": "de"}))
+    system = llm.calls[0]["system"]
+    assert "Always write in German, even when the idea is in English." in system
+    assert '"Sie", never "du"' in system
+    assert '"Mehr ist nicht nötig."' in system
+    assert "Always write in English" not in system and "{{" not in system
+
+
+def test_a_language_the_app_does_not_have_is_refused(rbody):
+    with pytest.raises(ValueError):
+        ReadIn.model_validate({**rbody, "locale": "fr"})
+
+
+def test_a_german_question_they_cannot_answer_is_not_asked_again(rbody):
+    llm = FakeLLM([answer(open=["Wie viel kostet der Prüfstand pro Monat?", "Welches Ziel unterstützt die Idee?"])])
+    out = read_idea(llm, ReadIn.model_validate({**rbody, "locale": "de", "skip": ["Was kostet der Prüfstand im Monat?"]}))
+    assert out.open == ["Welches Ziel unterstützt die Idee?"]

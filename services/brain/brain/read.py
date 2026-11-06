@@ -8,19 +8,18 @@ model cannot state a different one. The idea's text is judged, never obeyed (pro
 import re
 import time
 
-from brain.coach import STOP
+from brain.coach import STOP, STOP_DE, language
 from brain.llm import LLMClient
 from brain.schemas import DIALS, IdeaRead, ReadDial, ReadIn, ReadOut
 
 # Stored with every reading (IdeaTurn.reading). Bump on prompt changes.
-PROMPT_VERSION = "brain-read-v2"
+PROMPT_VERSION = "brain-read-v3"
 MAX_OPEN = 6
 # The app rejects the whole reading for one question over 400 UTF-16 units (features/ideas/reading.ts).
 # 200 characters is 400 units at worst, and far past "one short question".
 MAX_QUESTION = 200
 _WORD = re.compile(r"[a-zäöüß0-9]+")
-_STOP = STOP | {"wie", "viel", "viele", "was", "wer", "wann", "warum", "wo", "ist", "sind", "der", "die", "das",
-                "ein", "eine", "es", "und", "oder", "für", "mit", "wird", "kann", "gibt"}
+_STOP = STOP | STOP_DE
 
 
 def _key(question: str) -> set[str]:
@@ -79,6 +78,7 @@ def read_idea(llm: LLMClient, body: ReadIn) -> ReadOut:
     schema["properties"]["closest_id"]["enum"] = known_ids + [""]
     schema["properties"]["route_id"]["enum"] = route_ids + ["none"]
     r = llm.structured("read", IdeaRead, {
+        **language(body.locale, "the idea is"),
         "company": body.company,
         "idea": body.idea.title + ("\n" + body.idea.body if body.idea.body else ""),
         "affected": str(body.affected),

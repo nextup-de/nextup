@@ -20,6 +20,9 @@
 // Whatever fails, and when the author has left, the message and a reply are stored; `error` only says
 // the turn could not be stored.
 //
+// The comparison with earlier cases only uses the ones the viewer may open, and the model writes in
+// the language of the page.
+//
 // Events:  status {step}                                        the brain is working: "reading", then "coaching"
 //          scores {overall, parts, sameAs, threshold, delta,    the reading (null: none) and the benchmark
 //                  replies, reading}                            after this message, and suggested answers
@@ -32,6 +35,7 @@ import { z } from "zod";
 import { findTenant } from "@/features/tenant";
 import { seedFor } from "@/features/demo";
 import { getViewerFor } from "@/features/auth/session";
+import { getLocale } from "@/i18n/server";
 import { assist } from "@/features/assist";
 import { aiGate } from "@/features/ai/gate";
 import { aiSettings } from "@/features/ai/settings";
@@ -111,14 +115,15 @@ export async function POST(request: Request, { params }: Ctx) {
     threshold = DEFAULT_PUBLISH_THRESHOLD;
   }
 
-  const ctx = await serverIdeaContext(tenant.slug);
+  const locale = await getLocale();
+  const ctx = await serverIdeaContext(tenant.slug, viewer);
   const after: Turn[] = [...before, { role: "user", text: body.text }];
-  const prev = before.some((t) => t.role === "user") ? scoreDraft({ turns: before, affected, attachments }, ctx) : null;
-  const now = scoreDraft({ turns: after, affected, attachments }, ctx);
+  const prev = before.some((t) => t.role === "user") ? scoreDraft({ turns: before, affected, attachments }, ctx, locale) : null;
+  const now = scoreDraft({ turns: after, affected, attachments }, ctx, locale);
   // The coach asks from the benchmark without the skipped questions; the scores sent are the full ones.
   const askNow = withoutSkipped(now, body.skip);
   const brief = coachBrief(askNow, threshold);
-  const replies = suggestReplies({ text: ideaFromTurns(after).text, affected, attachments }, now, ctx);
+  const replies = suggestReplies({ text: ideaFromTurns(after).text, affected, attachments }, now, ctx, locale);
 
   // A model only where the assistant is allowed to answer for this company, with its audit trail.
   const settings = viewer ? await loadAssistSettings(viewer.companyId) : null;
@@ -143,7 +148,7 @@ export async function POST(request: Request, { params }: Ctx) {
         // Nothing else reaches the page until the model has read the idea: tens of seconds on a CPU server.
         if (useBrain) send("status", { step: "reading" });
         const reading = useBrain
-          ? await askBrainRead(gate, tenant.slug, { idea, affected: affected.length, attachments, skip: body.skip, previous }, policy, signal, { key: ai.key })
+          ? await askBrainRead(gate, tenant.slug, { idea, affected: affected.length, attachments, skip: body.skip, previous, audience: viewer, locale }, policy, signal, { key: ai.key })
           : null;
         const overall = reading?.overall ?? now.overall;
         const benchDelta = deltas(prev, now);
@@ -156,7 +161,7 @@ export async function POST(request: Request, { params }: Ctx) {
         const ask = reading !== null && !signal.aborted;
         if (ask) send("status", { step: "coaching" });
         const coached = ask
-          ? await askBrainCoach(gate, tenant.slug, { idea, turns: after, reading }, policy, signal, { key: ai.key })
+          ? await askBrainCoach(gate, tenant.slug, { idea, turns: after, reading, audience: viewer, locale }, policy, signal, { key: ai.key })
           : null;
         const coachedText = coached ? coachText(coached) : "";
         if (coached && coachedText) {
