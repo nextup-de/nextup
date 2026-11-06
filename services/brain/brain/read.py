@@ -8,17 +8,25 @@ model cannot state a different one. The idea's text is judged, never obeyed (pro
 import re
 import time
 
+from brain.coach import STOP
 from brain.llm import LLMClient
 from brain.schemas import DIALS, IdeaRead, ReadDial, ReadIn, ReadOut
 
 # Stored with every reading (IdeaTurn.reading). Bump on prompt changes.
-PROMPT_VERSION = "brain-read-v1"
+PROMPT_VERSION = "brain-read-v2"
 MAX_OPEN = 6
+# The app rejects the whole reading for one question over 400 UTF-16 units (features/ideas/reading.ts).
+# 200 characters is 400 units at worst, and far past "one short question".
+MAX_QUESTION = 200
 _WORD = re.compile(r"[a-zäöüß0-9]+")
+_STOP = STOP | {"wie", "viel", "viele", "was", "wer", "wann", "warum", "wo", "ist", "sind", "der", "die", "das",
+                "ein", "eine", "es", "und", "oder", "für", "mit", "wird", "kann", "gibt"}
 
 
 def _key(question: str) -> set[str]:
-    return set(_WORD.findall(question.lower()))
+    """The words that tell two questions apart: "how much does it cost/save" share only "much"."""
+    words = set(_WORD.findall(question.lower()))
+    return (words - _STOP) or words
 
 
 def _lines(items: list[str]) -> str:
@@ -38,7 +46,7 @@ def _open(found: list[str], skip: list[str]) -> list[str]:
     for raw in found:
         q = raw.strip()
         k = _key(q)
-        if not q.endswith("?") or not k:
+        if not q.endswith("?") or not k or len(q) > MAX_QUESTION:
             continue
         if any(len(k & s) / len(k | s) >= 0.6 for s in known):
             continue
@@ -51,12 +59,21 @@ def read_idea(llm: LLMClient, body: ReadIn) -> ReadOut:
     started = time.perf_counter()
     known_ids = [k.id for k in body.known]
     route_ids = [r.id for r in body.routes]
-    ids = re.compile(r"\b(" + "|".join(map(re.escape, known_ids)) + r")\b") if known_ids else None
+    shown = known_ids + route_ids
+    ids = re.compile(r"\b(" + "|".join(map(re.escape, shown)) + r")\b") if shown else None
+    pushed_back = {"open": False}
 
     def check(r: IdeaRead) -> None:
-        texts = [r.summary, r.pattern, r.advice_why, *r.open, *(getattr(r, k).note for k in DIALS)]
+        # Everything the page shows; `comparison` is the model's own reasoning and goes nowhere.
+        texts = [r.summary, r.pattern, r.advice_why, r.route_reason, *r.open,
+                 *(getattr(r, k).note for k in DIALS), *(getattr(r, k).basis for k in DIALS)]
         if ids and ids.search(" ".join(texts)):
-            raise ValueError("never show item IDs - name an earlier item by its title")
+            raise ValueError("never show item IDs or row IDs - name an earlier item by its title and a row by its owner")
+        # "More is needed" with nothing to ask leaves the coach no question. Pushed back once only:
+        # it is no reason to lose the whole reading.
+        if r.advice == "info" and not _open(r.open, body.skip) and not pushed_back["open"]:
+            pushed_back["open"] = True
+            raise ValueError('advice "info" needs at least one short question in open, ending in a question mark, not one from "They do not know yet"')
 
     schema = IdeaRead.model_json_schema()
     schema["properties"]["closest_id"]["enum"] = known_ids + [""]

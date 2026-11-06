@@ -6,6 +6,7 @@ Nothing model-specific here: model names and URLs come from config, prompts from
 import copy
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -19,6 +20,12 @@ from brain.strict import strict_schema
 log = logging.getLogger("brain.llm")
 PROMPT_DIR = Path(__file__).parent / "prompts"
 T = TypeVar("T", bound=BaseModel)
+_VARIABLE = re.compile(r"\{\{(\w+)\}\}")
+
+# Most answers are a few short fields. A reading is five dials and a dozen sentences: up to about
+# 7,500 characters of JSON at its schema's limits. Under this cap it comes back cut off, every retry
+# is cut off the same way, and the reading is lost.
+OUTPUT_CAP = {"read": 2600}
 
 
 class LLMOutputError(RuntimeError):
@@ -34,11 +41,14 @@ def load_prompt(name: str) -> tuple[str, str]:
 
 
 def render(template: str, **variables: Any) -> str:
-    for key, value in variables.items():
-        if not isinstance(value, str):
-            value = json.dumps(value, ensure_ascii=False, indent=1)
-        template = template.replace("{{" + key + "}}", value)
-    return template
+    """Fills the template in one pass: "{{known}}" in an employee's text stays text. No value can
+    close the triple quotes around the idea and go on as if it were the prompt."""
+    def value(m: re.Match[str]) -> str:
+        if m.group(1) not in variables:
+            return m.group(0)
+        v = variables[m.group(1)]
+        return (v if isinstance(v, str) else json.dumps(v, ensure_ascii=False, indent=1)).replace('"""', "'''")
+    return _VARIABLE.sub(value, template)
 
 
 class LLMClient:
@@ -82,8 +92,8 @@ class LLMClient:
     def complete_json(self, system: str, user: str, schema: dict, name: str) -> str:
         """One raw completion constrained to a JSON schema. Separate method so tests can mock it."""
         # Azure's newer deployments refuse max_tokens and any temperature but the default.
-        limits: dict[str, Any] = ({"max_completion_tokens": 1500} if self.provider == "azure-openai"
-                                  else {"max_tokens": 700, "temperature": 0})  # a cap: answers are a few short fields
+        limits: dict[str, Any] = ({"max_completion_tokens": OUTPUT_CAP.get(name, 1500)} if self.provider == "azure-openai"
+                                  else {"max_tokens": OUTPUT_CAP.get(name, 700), "temperature": 0})
         resp = self.client.chat.completions.create(
             model=self.settings.llm_model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
