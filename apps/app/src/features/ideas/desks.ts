@@ -5,6 +5,7 @@ import type { Route } from "@/features/demo/types";
 import { seatsOfRole, type SeatRow } from "@/features/auth/identity";
 import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
 import { formatEuro } from "@/i18n/format";
+import { keywordHits } from "@/features/routing";
 import { amountEur } from "./benchmarks";
 
 export type Desk = {
@@ -48,10 +49,8 @@ function deskOf(route: Route, roleId: string, seats: readonly SeatRow[], propose
   };
 }
 
-function keysIn(text: string, route: Route): string[] {
-  const t = text.toLowerCase();
-  return route.keys.filter((k) => k.toLowerCase().length > 0 && t.includes(k.toLowerCase()));
-}
+// The route keywords found in the text: the matcher the proposal uses (features/routing).
+const keysIn = (text: string, route: Route): string[] => keywordHits(text, route.keys);
 
 export function desksFor(input: DeskInput, locale: Locale = DEFAULT_LOCALE): Desk[] {
   const t = (key: "ideas.deskOwns" | "ideas.deskMentions" | "ideas.deskArea" | "ideas.deskApproves", params: Record<string, string | number>) => translate(locale, key, params);

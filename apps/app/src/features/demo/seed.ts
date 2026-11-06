@@ -207,22 +207,33 @@ export const LEADERS: string[] = ['T. Vogel', 'M. Roth', 'H. Sander'];
 // by a department head. The intake box matches typed text against `keys` and
 // *proposes* the row — it never decides (§11.2). Owner and deputy are always
 // two of LEADERS; the buddy is the sideways contact and may be anyone.
+// Keywords: English on the first line, German on the second - general words for the row's area. How
+// one is found in a text (whole word when short, inside compounds when long) is in features/routing.
+// services/brain/eval/acme.json `baseline_keys` copies them; tests/unit/routing.test.ts checks that.
 export const ROUTES: Route[] = [
-  { id: 'r1', type: 'Spend under €5k (parts, tools, consumables)', keys: ['spend', 'buy', 'order', 'purchase', 'sensor', 'part', 'budget', '€', 'invoice', 'supplier'],
+  { id: 'r1', type: 'Spend under €5k (parts, tools, consumables)', keys: ['spend', 'buy', 'order', 'purchase', 'sensor', 'part', 'budget', '€', 'invoice', 'supplier',
+      'bestell', 'einkauf', 'kaufen', 'beschaff', 'anschaff', 'ersatzteil', 'verbrauchsmaterial', 'lieferant', 'angebot', 'euro'],
     owner: { name: 'T. Vogel', role: 'Team lead, 4-series', dept: 'PRD' }, deputy: 'M. Roth', buddy: 'C. Ilg · Ops & Admin', wait: '3 d' },
-  { id: 'r2', type: 'Test-rig or machine time', keys: ['rig', 'test', 'machine', 'booking', 'slot', 'validation', 'endurance'],
+  { id: 'r2', type: 'Test-rig or machine time', keys: ['rig', 'test', 'machine', 'booking', 'slot', 'validation', 'endurance',
+      'prüfstand', 'maschine', 'versuchs', 'erprobung', 'dauerlauf', 'buchung', 'buchen', 'reservier', 'validierung', 'belegung'],
     owner: { name: 'M. Roth', role: 'Engineering lead', dept: 'ENG' }, deputy: 'H. Sander', buddy: 'M. Roth · Engineering', wait: '4 d' },
-  { id: 'r3', type: 'Quality data, measurements, tolerances', keys: ['quality', 'tolerance', 'measurement', 'mes', 'rework', 'scrap', 'drift', 'defect'],
+  { id: 'r3', type: 'Quality data, measurements, tolerances', keys: ['quality', 'tolerance', 'measurement', 'mes', 'rework', 'scrap', 'drift', 'defect',
+      'qualität', 'toleranz', 'messung', 'messwert', 'gemessen', 'messmittel', 'prüfmittel', 'nacharbeit', 'ausschuss', 'abweichung'],
     owner: { name: 'H. Sander', role: 'Quality lead', dept: 'QUA' }, deputy: 'T. Vogel', buddy: 'H. Sander · Quality', wait: '2 d' },
-  { id: 'r4', type: 'System access, logins, IT equipment', keys: ['access', 'login', 'laptop', 'account', 'password', 'it ', 'software', 'system', 'vpn'],
+  { id: 'r4', type: 'System access, logins, IT equipment', keys: ['access', 'login', 'laptop', 'account', 'password', 'it', 'software', 'system', 'vpn',
+      'zugang', 'zugriff', 'anmeld', 'passwort', 'kennwort', 'benutzerkonto', 'berechtigung', 'freischalt', 'rechner', 'computer', 'bildschirm', 'drucker'],
     owner: { name: 'M. Roth', role: 'Engineering lead', dept: 'ENG' }, deputy: 'H. Sander', buddy: 'L. Brandt · HR / IT', wait: '4 d' },
-  { id: 'r5', type: 'Product change reaching the field', keys: ['customer', 'firmware', 'change note', 'release', 'field', 'shipped', 'sales'],
+  { id: 'r5', type: 'Product change reaching the field', keys: ['customer', 'firmware', 'change note', 'release', 'field', 'shipped', 'sales',
+      'endkunde', 'kundendienst', 'beim kunden', 'zum kunden', 'produktänderung', 'änderungsmitteilung', 'freigabe', 'auslieferung', 'ausgeliefert', 'vertrieb', 'feld', 'rückruf'],
     owner: { name: 'H. Sander', role: 'Quality lead', dept: 'QUA' }, deputy: 'M. Roth', buddy: 'N. Kaya · Sales', wait: '2 d' },
-  { id: 'r6', type: 'Shift plan, staffing, overtime', keys: ['shift', 'overtime', 'staff', 'holiday', 'roster', 'capacity', 'hours', 'people'],
+  { id: 'r6', type: 'Shift plan, staffing, overtime', keys: ['shift', 'overtime', 'staff', 'holiday', 'roster', 'capacity', 'hours', 'people',
+      'schicht', 'überstunden', 'personal', 'urlaub', 'dienstplan', 'besetzung', 'kapazität', 'vertretung', 'krank'],
     owner: { name: 'T. Vogel', role: 'Team lead, 4-series', dept: 'PRD' }, deputy: 'H. Sander', buddy: 'D. Ferraro · Field Service', wait: '1 d' },
-  { id: 'r7', type: 'Fixture, tooling or line layout', keys: ['fixture', 'tooling', 'layout', 'line', 'housing', 'jig', 'setup', 'changeover'],
+  { id: 'r7', type: 'Fixture, tooling or line layout', keys: ['fixture', 'tooling', 'layout', 'line', 'housing', 'jig', 'setup', 'changeover',
+      'vorrichtung', 'werkzeug', 'linie', 'gehäuse', 'rüstzeit', 'rüsten', 'umbau'],
     owner: { name: 'T. Vogel', role: 'Team lead, 4-series', dept: 'PRD' }, deputy: 'M. Roth', buddy: 'M. Roth · Engineering', wait: '2 d' },
-  { id: 'r8', type: 'Paperwork done twice (forms, job sheets)', keys: ['paper', 'form', 'twice', 'double', 'sheet', 'excel', 'report', 'manual'],
+  { id: 'r8', type: 'Paperwork done twice (forms, job sheets)', keys: ['paper', 'form', 'twice', 'double', 'sheet', 'excel', 'report', 'manual',
+      'papier', 'formular', 'doppelt', 'zweimal', 'zettel', 'bericht', 'händisch', 'von hand', 'abtippen', 'ausfüllen'],
     owner: { name: 'H. Sander', role: 'Quality lead', dept: 'QUA' }, deputy: 'T. Vogel', buddy: 'D. Ferraro · Field Service', wait: '3 d' }
 ];
 

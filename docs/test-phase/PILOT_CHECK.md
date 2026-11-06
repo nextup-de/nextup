@@ -112,7 +112,7 @@ Use real people from stage C wherever possible. This stage is the heart of the r
 
 | # | Who | Action | Expected | Level | Phases |
 |---|---|---|---|---|---|
-| D1 | Member | Raise an idea at `/raise` | Up to 3 desks, role and date shown. Record how often the proposal is right on 20 German cases (recorded 26.5 % with English keywords) | Must | LOOP, AIP, LNG |
+| D1 | Member | Raise an idea at `/raise` | Up to 3 desks, role and date shown. Record how often the proposal is right on 20 German cases (recorded on the eval set: 79.4 % with `keywords-v2` and German keywords, 26.5 % before with English keywords only; a company's own routes need German keywords in Settings, Routing) | Must | LOOP, AIP, LNG |
 | D2 | Member | Check "Who sees it" and raise with no choice | The member's leader sees it. Known fail: FX3 | Must | VIS, DIR |
 | D3 | Member | Pick one colleague as audience | That colleague opens it at once; a third person cannot. Known fail: FX4 | Must | VIS |
 | D4 | Desk | Open the inbox, answer | All German, including the decision buttons. Known fail: FX7 | Must | LNG, LOOP |

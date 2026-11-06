@@ -130,7 +130,17 @@
    "budget",
    "€",
    "invoice",
-   "supplier"
+   "supplier",
+   "bestell",
+   "einkauf",
+   "kaufen",
+   "beschaff",
+   "anschaff",
+   "ersatzteil",
+   "verbrauchsmaterial",
+   "lieferant",
+   "angebot",
+   "euro"
   ],
   "r2": [
    "rig",
@@ -139,7 +149,17 @@
    "booking",
    "slot",
    "validation",
-   "endurance"
+   "endurance",
+   "prüfstand",
+   "maschine",
+   "versuchs",
+   "erprobung",
+   "dauerlauf",
+   "buchung",
+   "buchen",
+   "reservier",
+   "validierung",
+   "belegung"
   ],
   "r3": [
    "quality",
@@ -149,7 +169,17 @@
    "rework",
    "scrap",
    "drift",
-   "defect"
+   "defect",
+   "qualität",
+   "toleranz",
+   "messung",
+   "messwert",
+   "gemessen",
+   "messmittel",
+   "prüfmittel",
+   "nacharbeit",
+   "ausschuss",
+   "abweichung"
   ],
   "r4": [
    "access",
@@ -157,10 +187,22 @@
    "laptop",
    "account",
    "password",
-   "it ",
+   "it",
    "software",
    "system",
-   "vpn"
+   "vpn",
+   "zugang",
+   "zugriff",
+   "anmeld",
+   "passwort",
+   "kennwort",
+   "benutzerkonto",
+   "berechtigung",
+   "freischalt",
+   "rechner",
+   "computer",
+   "bildschirm",
+   "drucker"
   ],
   "r5": [
    "customer",
@@ -169,7 +211,19 @@
    "release",
    "field",
    "shipped",
-   "sales"
+   "sales",
+   "endkunde",
+   "kundendienst",
+   "beim kunden",
+   "zum kunden",
+   "produktänderung",
+   "änderungsmitteilung",
+   "freigabe",
+   "auslieferung",
+   "ausgeliefert",
+   "vertrieb",
+   "feld",
+   "rückruf"
   ],
   "r6": [
    "shift",
@@ -179,7 +233,16 @@
    "roster",
    "capacity",
    "hours",
-   "people"
+   "people",
+   "schicht",
+   "überstunden",
+   "personal",
+   "urlaub",
+   "dienstplan",
+   "besetzung",
+   "kapazität",
+   "vertretung",
+   "krank"
   ],
   "r7": [
    "fixture",
@@ -189,7 +252,14 @@
    "housing",
    "jig",
    "setup",
-   "changeover"
+   "changeover",
+   "vorrichtung",
+   "werkzeug",
+   "linie",
+   "gehäuse",
+   "rüstzeit",
+   "rüsten",
+   "umbau"
   ],
   "r8": [
    "paper",
@@ -199,7 +269,17 @@
    "sheet",
    "excel",
    "report",
-   "manual"
+   "manual",
+   "papier",
+   "formular",
+   "doppelt",
+   "zweimal",
+   "zettel",
+   "bericht",
+   "händisch",
+   "von hand",
+   "abtippen",
+   "ausfüllen"
   ]
  }
 }

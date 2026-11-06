@@ -141,14 +141,14 @@ describe("AIB acceptance: a raise gets the proposal through the chosen provider 
 
   it("choice off: nothing is sent and the keywords route", async () => {
     const { proposal } = await raise("aib-off");
-    expect(proposal).toMatchObject({ source: "keywords", version: "keywords-v1" });
+    expect(proposal).toMatchObject({ source: "keywords", version: "keywords-v2" });
     expect(brain.seen).toHaveLength(0);
     expect(await db.aiCall.count({ where: { companyId: company["aib-off"].id } })).toBe(0);
   });
 
   it("a chosen provider without a signed agreement: nothing is sent and the keywords route", async () => {
     const { proposal } = await raise("aib-nodpa");
-    expect(proposal).toMatchObject({ source: "keywords", version: "keywords-v1" });
+    expect(proposal).toMatchObject({ source: "keywords", version: "keywords-v2" });
     expect(brain.seen).toHaveLength(0);
     expect(await db.aiCall.count({ where: { companyId: company["aib-nodpa"].id } })).toBe(0);
   });
@@ -156,7 +156,7 @@ describe("AIB acceptance: a raise gets the proposal through the chosen provider 
   it("a brain slower than the timeout: the keyword proposal arrives in time", async () => {
     delayMs = SLOW_MS;
     const { proposal, ms } = await raise("aib-slow", TIMEOUT_MS);
-    expect(proposal).toMatchObject({ source: "keywords", version: "keywords-v1" });
+    expect(proposal).toMatchObject({ source: "keywords", version: "keywords-v2" });
     expect(brain.seen).toHaveLength(1); // it was asked, it was just too slow
     expect(ms).toBeLessThan(SLOW_MS - 500);
     expect(ms).toBeGreaterThanOrEqual(TIMEOUT_MS - 50);

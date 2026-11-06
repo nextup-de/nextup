@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { useState, useTransition, type FormEvent } from "react";
 import { holdersOfRole, type Knowledge, type RoleRow, type RuleRow } from "@/features/knowledge";
-import { propose } from "@/features/routing";
+import { keywordHits, propose } from "@/features/routing";
 import { routeKeyFor, routingSummary, seatLine } from "@/features/settings/routing-view";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
@@ -102,7 +102,7 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
   // The keyword proposal for the test box: the same matcher the intake box uses.
   const proposal = propose(probe, rules.map((x) => ({ ...x, keys: x.keywords })));
   const hit = proposal?.route ?? null;
-  const hits = hit ? hit.keys.filter((w) => probe.toLowerCase().includes(w.toLowerCase())).length : 0;
+  const hits = hit ? keywordHits(probe, hit.keys).length : 0;
 
   const who = (id: string | null, empty: string) => {
     const x = role(id);
