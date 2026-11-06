@@ -16,6 +16,7 @@ import { coachMock, ideaFromTurns } from "@/features/ideas/coach";
 import { SCRIPT_THINK_MS, scriptReply } from "@/features/ideas/demo-script";
 import { scoreDraft } from "@/features/ideas/drafts";
 import { withoutSkipped } from "@/features/ideas/raise";
+import { latestReading, type Reading } from "@/features/ideas/reading";
 import type { BrainProposal } from "@/features/routing/brain";
 import { draftScope, localDrafts } from "@/lib/idea-drafts";
 import { brainProposalAction } from "@/server/actions/brain";
@@ -24,11 +25,11 @@ import {
 } from "@/server/actions/ideas";
 
 export type Delta = Record<BenchmarkId, number> & { overall: number };
-export type Live = { parts: BenchmarkPart[]; overall: number; delta: Delta | null; sameAs: KnownCase | null; replies: Reply[] };
+export type Live = { parts: BenchmarkPart[]; overall: number; delta: Delta | null; sameAs: KnownCase | null; replies: Reply[]; reading: Reading | null };
 export type Sending = { text: string; reply: string } | null;
 export type Meta = { title?: string; affected?: string[]; attachments?: number };
 
-type ScoresEvent = { overall: number; parts: BenchmarkPart[]; sameAs: KnownCase | null; threshold: number; delta: Delta | null; replies?: Reply[] };
+type ScoresEvent = { overall: number; parts: BenchmarkPart[]; sameAs: KnownCase | null; threshold: number; delta: Delta | null; replies?: Reply[]; reading?: Reading | null };
 
 export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, local: BenchmarkContext | null = null) {
   const mine = draftScope(slug, owner); // this browser's drafts are their author's alone, as in the database
@@ -60,7 +61,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     return () => { on = false; };
   }, [fetchList]);
 
-  const fromView = (d: DraftView | null): Live | null => (d && d.scores.length ? { parts: d.scores, overall: d.overall, delta: null, sameAs: null, replies: [] } : null);
+  const fromView = (d: DraftView | null): Live | null => (d && d.scores.length ? { parts: d.scores, overall: d.overall, delta: null, sameAs: null, replies: [], reading: latestReading(d.turns) } : null);
 
   // Resolves to the draft, or null when it could not be opened.
   const open = useCallback(async (id: string): Promise<DraftView | null> => {
@@ -105,7 +106,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
       const prev = history.some((x) => x.role === "user") ? scoreDraft({ turns: history, affected: meta.affected, attachments: meta.attachments }, local) : null;
       const now = scoreDraft({ turns: [...history, { role: "user", text: t }], affected: meta.affected, attachments: meta.attachments }, local);
       scores = { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold: DEFAULT_PUBLISH_THRESHOLD, delta: prev ? deltas(prev, now) : null };
-      setLive({ parts: now.parts, overall: now.overall, delta: scores.delta, sameAs: now.sameAs, replies: [] });
+      setLive({ parts: now.parts, overall: now.overall, delta: scores.delta, sameAs: now.sameAs, replies: [], reading: null });
       await new Promise((done) => setTimeout(done, SCRIPT_THINK_MS));
       if (ctl.signal.aborted) return;
       reply = scriptReply(history, t) ?? coachMock(prev, withoutSkipped(now, meta.skip ?? []), DEFAULT_PUBLISH_THRESHOLD, t, 0);
@@ -137,7 +138,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
           if (event === "scores") {
             scores = data as unknown as ScoresEvent;
             setThreshold(scores.threshold);
-            setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs, replies: scores.replies ?? [] });
+            setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs, replies: scores.replies ?? [], reading: scores.reading ?? null });
           } else if (event === "replies") {
             // The brain's own suggested answer arrives with its reply, after the scores.
             const replies = (data.replies ?? []) as Reply[];
@@ -157,7 +158,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     // The local demo stores the turn itself; the server already did in server mode.
     if (!serverMode && scores) {
       const turns = [...history, { role: "user" as const, text: t }];
-      localDrafts.addTurns(mine, id, [{ role: "user", text: t }, { role: "assistant", text: reply, overall: scores.overall }],
+      localDrafts.addTurns(mine, id, [{ role: "user", text: t }, { role: "assistant", text: reply, overall: scores.overall, reading: scores.reading ?? null }],
         { title: ideaFromTurns(turns).title, overall: scores.overall, scores: scores.parts });
     }
     const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(mine, id);

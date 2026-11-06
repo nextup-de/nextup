@@ -87,60 +87,119 @@ class Turn(Strict):
     text: str = Field(max_length=4000)
 
 
+# ---------------------------------------------------------------- the reading of an idea (brain/read.py)
+# Everything the model judges the idea against comes with the request. `skip` holds the questions the
+# author said they cannot answer yet; `previous` the last reading, so a score only moves for a reason.
+class DialBrief(Strict):
+    key: Literal["value", "feasibility", "cost", "fit", "risk"]
+    score: int = Field(ge=0, le=100)
+    note: str = Field(max_length=500)
+
+
+class Goal(Strict):
+    name: str = Field(min_length=1, max_length=200)
+    kpi: str = Field("", max_length=200, description="What the goal is measured on, e.g. minutes per changeover")
+
+
+class ReadIn(Strict):
+    company: str = Field(min_length=1, max_length=120)
+    idea: Idea                                   # the author's own words so far, never the coach's
+    goals: list[Goal] = Field(default=[], max_length=20)
+    routes: list[RouteRow] = Field(default=[], max_length=50)
+    known: list[KnownItem] = Field(default=[], max_length=80)
+    affected: int = Field(0, ge=0, le=50)
+    attachments: int = Field(0, ge=0, le=20)
+    spend_limit_eur: float | None = None
+    skip: list[str] = Field(default=[], max_length=20)
+    previous: list[DialBrief] = Field(default=[], max_length=5)
+    llm: LlmOverride | BedrockOverride | None = None
+
+
+DIALS = ("value", "feasibility", "cost", "fit", "risk")
+
+
+# The reasoning fields come first, so the model reasons before it commits to a number.
+class DialRead(Strict):
+    note: str = Field(max_length=500, description="One or two sentences on why it has this score, naming what is in this idea")
+    basis: str = Field(max_length=300, description="One sentence on what would move this score most")
+    score: int = Field(ge=0, le=100)
+
+
+class IdeaRead(Strict):
+    value: DialRead
+    feasibility: DialRead
+    cost: DialRead
+    fit: DialRead
+    risk: DialRead
+    summary: str = Field(max_length=600, description="What this idea really is and whether it holds up, in your own words")
+    closest_id: str = Field(description="ID of the closest earlier item about the same thing, or empty string")
+    comparison: str = Field(max_length=400, description="One sentence: this idea's problem against the closest item's problem")
+    same_problem: bool = Field(description="True only if solving the closest item would also solve this idea")
+    route_id: str = Field(description="ID of the routing row that owns this decision, or 'none'")
+    route_reason: str = Field(max_length=300, description="One sentence: why that row")
+    pattern: str = Field(max_length=300, description="One sentence: a one-off, or part of something bigger")
+    advice: Literal["approve", "pilot", "info"]
+    advice_why: str = Field(max_length=300, description="One sentence: why this advice, for this idea")
+    open: list[str] = Field(max_length=6, description="What the person who decides would still ask, most important first")
+
+
+class ReadDial(BaseModel):
+    key: Literal["value", "feasibility", "cost", "fit", "risk"]
+    score: int = Field(ge=0, le=100)
+    note: str
+    basis: str
+
+
+class ReadOut(BaseModel):
+    dials: list[ReadDial]
+    overall: int = Field(ge=0, le=100)           # the mean of the five dials, computed here
+    summary: str
+    advice: Literal["approve", "pilot", "info"]
+    advice_why: str
+    pattern: str
+    route_id: str | None
+    route_reason: str
+    same_as: str | None                          # an earlier item with the same problem
+    related: str | None                          # an earlier item about the same thing
+    open: list[str]
+    model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    version: str
+    ms: int
+
+
+# ---------------------------------------------------------------- the coach, sent by the app
+class CoachReading(Strict):
+    summary: str = Field(max_length=800)
+    dials: list[DialBrief] = Field(max_length=5)
+    open: list[str] = Field(default=[], max_length=8)
+    same_as: str | None = Field(None, max_length=40)
+
+
 class CoachIn(Strict):
     company: str = Field(min_length=1, max_length=120)
     idea: Idea                                   # the author's own words so far, never the coach's
     history: list[Turn] = Field(default=[], max_length=20)
-    # What the app computed: the scores, what each bar is missing, the gap to ask about. The
-    # numbers are the app's; the coach may not change or restate them.
-    brief: str = Field(max_length=3000)
+    reading: CoachReading                        # the same judgement the page shows
+    goals: list[Goal] = Field(default=[], max_length=20)
+    routes: list[RouteRow] = Field(default=[], max_length=50)
     known: list[KnownItem] = Field(default=[], max_length=80)
     llm: LlmOverride | BedrockOverride | None = None
 
 
-# The "raised before?" check on its own, as in routing: a match found here is handed to the coach
-# as a fact to raise. The model alone rarely brings up history; this check finds 10 of 13 repeats.
-class Match(Strict):
-    closest_id: str = Field(description="ID of the earlier item closest to the new idea, or empty string")
-    comparison: str = Field(description="One sentence: the new idea's problem against the closest item's problem")
-    same_problem: bool = Field(description="True only if solving the closest item would also solve the new idea")
-
-
-Point = Literal["problem", "context", "impact", "solution", "evidence", "risks", "success_measure"]
-OpenPoint = Literal["problem", "context", "impact", "solution", "evidence", "risks", "success_measure", "none"]
-
-
-# The coach's notes: per point, the employee's own words so far ("n/a" when the point does not
-# matter for this idea). A separate, short model call writes them (brain/coach.py, prompt
-# sheet.md); quoting is something a small model does reliably, judging "what is still open" is not.
-class Sheet(Strict):
-    # Which points the coach's own questions were about. Every question got a reply (the last
-    # message is always the employee's), so these points are done whatever the reply said - the
-    # code never asks about one again. Sorting a question is easier than sorting an answer.
-    asked: list[Point] = Field(max_length=20, description="The points the coach's earlier questions were about, one per question")
-    problem: str = Field(max_length=120, description="What goes wrong, in the employee's words; empty if not said")
-    context: str = Field(max_length=120, description="Where, since when, how often; empty if not said")
-    impact: str = Field(max_length=120, description="Time, cost, quality, safety or people affected; empty if not said")
-    solution: str = Field(max_length=120, description="What they propose, or the first step; empty if not said")
-    evidence: str = Field(max_length=120, description="Numbers, observations or examples that show it; empty if not said")
-    risks: str = Field(max_length=120, description="What could go wrong or who might object; empty if not said")
-    success_measure: str = Field(max_length=120, description="How we would know it worked; empty if not said")
-
-
-# One question about the point the code chose (the first one the notes leave empty). The model
-# only phrases - it cannot pick a point that was already answered.
 class CoachTurn(Strict):
-    earlier_id: str = Field(max_length=40, description="ID of an earlier item about the same problem, or empty string")
-    note: str = Field(max_length=300, description="One or two sentences reacting to the latest message, naming something specific in it")
-    question: str = Field(max_length=200, description="Exactly one short question about the chosen point, ending with a question mark")
-    why: str = Field(max_length=250, description="One sentence: why the person who decides will ask this")
-    recommended: str = Field(max_length=300, description="Your concrete best-guess answer, written as the employee would say it, one or two sentences")
+    answer: str = Field(max_length=800, description="The answer to what their latest message asks, from the company's facts; empty if it asks nothing")
+    note: str = Field(max_length=400, description="Your honest read of their latest message: what it adds, leaves out, or what you doubt. Never repeat it back")
+    question: str = Field(max_length=300, description="Exactly one short question about the chosen point, ending with a question mark; empty if nothing is open")
+    why: str = Field(max_length=250, description="One sentence: what the person who decides does differently once they know; empty if no question")
+    recommended: str = Field(max_length=300, description="Your concrete best-guess answer, written as the employee would say it; empty if no question")
 
 
 class CoachOut(BaseModel):
-    covered: list[Point]
-    open_point: OpenPoint
+    open_point: Literal["open", "none"]
     earlier_id: str | None
+    answer: str
     note: str
     question: str
     why: str
@@ -155,11 +214,6 @@ class CoachOut(BaseModel):
 # ---------------------------------------------------------------- after the decision (docs/plans/2026-10-15_idea-to-project.md)
 # Plan: an accepted idea in, the first steps and what to measure out. The lead adds what fits; the
 # number itself is always taken by people, never by the model.
-class Goal(Strict):
-    name: str = Field(min_length=1, max_length=200)
-    kpi: str = Field("", max_length=200, description="What the goal is measured on, e.g. minutes per changeover")
-
-
 class PlanIn(Strict):
     company: str = Field(min_length=1, max_length=120)
     idea: Idea

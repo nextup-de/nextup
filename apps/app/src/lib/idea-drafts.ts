@@ -56,7 +56,7 @@ export const localDrafts = {
     const at = new Date().toISOString();
     return update(slug, id, (d) => ({
       ...d, title: snap.title, overall: snap.overall, scores: snap.scores,
-      turns: [...d.turns, ...turns.map((t) => ({ id: mint("t"), role: t.role, text: t.text, overall: t.overall ?? null, at }))],
+      turns: [...d.turns, ...turns.map((t) => ({ id: mint("t"), role: t.role, text: t.text, overall: t.overall ?? null, at, reading: t.reading ?? null }))],
     }));
   },
   saveMeta(slug: string, id: string, meta: { title?: string; affected?: string[]; attachments?: number }): boolean {

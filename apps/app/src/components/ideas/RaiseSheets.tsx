@@ -62,6 +62,7 @@ export type AnalysisData = {
   summary: string; advice: Advice; pattern: string; cats: string[];
   similar: Similar[]; reviewers: Reviewer[]; sources: Source[];
   improved?: DialKey[]; // the first feedback in the chat: the checks that came out better than the idea as written
+  byAi: boolean; // false: no model answered, this is the keyword benchmark, and the page says so
 };
 
 export function AnalysisSheet({ ready, onClose, ...a }: AnalysisData & { ready: boolean; onClose: () => void }) {
@@ -82,7 +83,7 @@ export function AnalysisSheet({ ready, onClose, ...a }: AnalysisData & { ready: 
 
 // The five dials (each opens to its reasoning) and what the AI found. `inChat`: under NextUp's first reply -
 // a card in the thread, up to the similar ideas; the reviewers and sources stay in the sheet.
-export function Analysis({ dials, company, summary, advice, pattern, cats, similar, reviewers, sources, improved, inChat = false }: AnalysisData & { inChat?: boolean }) {
+export function Analysis({ dials, company, summary, advice, pattern, cats, similar, reviewers, sources, improved, byAi, inChat = false }: AnalysisData & { inChat?: boolean }) {
   const t = useT();
   const [open, setOpen] = useState<number | null>(null);
   const d = open === null ? null : dials[open];
@@ -137,7 +138,7 @@ export function Analysis({ dials, company, summary, advice, pattern, cats, simil
         </div>
       ) : (
         <>
-          <div className={s.found}><Solid name="sparkle" size={12} fill="var(--nh-brand)" /><span className={s.foundLabel}>{t("ideas.sheetAiFound")}</span></div>
+          <div className={s.found}><Solid name="sparkle" size={12} fill="var(--nh-brand)" /><span className={s.foundLabel}>{t(byAi ? "ideas.sheetAiFound" : "ideas.sheetRulesFound")}</span></div>
           <div className={s.sec} data-gap="6"><p className={s.big}>{summary}</p></div>
           <div className={s.advice}>
             <span className={s.adviceKey}>{t("ideas.sheetAdvice")}</span><span className={s.adviceVal} data-strong="true">{advice.name}</span>
@@ -174,7 +175,7 @@ export function Analysis({ dials, company, summary, advice, pattern, cats, simil
             <div className={s.secHead}><span className={s.secLabel}>{t("ideas.sheetSources")}</span><span className={s.secCount}>{sources.length}</span></div>
             {sourceList}
           </div>
-          <span className={s.disclaimer}>{t("ideas.sheetDisclaimer")}</span>
+          {byAi && <span className={s.disclaimer}>{t("ideas.sheetDisclaimer")}</span>}
           </>}
         </>
       )}

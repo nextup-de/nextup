@@ -1,22 +1,23 @@
 // POST /api/[company]/ideas/turn - one message in the idea studio (docs/IDEAS.md).
 //
-// The message is added to the idea, the idea is benchmarked on the server (features/ideas), and
-// the coach answers with one question aimed at the weakest bar. The numbers are always computed
-// here, never by a model. Same rules as the assistant route next door: the company comes from the
-// URL and must match the viewer; nothing from the body names a company or a person.
+// The message is added to the idea, the model reads the idea (the five dials, what it found, what is
+// still open) and the coach answers from that reading. With no model, or when it fails, the keyword
+// benchmark and the offline coach answer instead, and the page says so. Same rules as the assistant
+// route next door: the company comes from the URL and must match the viewer; nothing from the body
+// names a company or a person.
 //
 //   server mode   a session and a database: `draftId` names the viewer's own draft; both turns
 //                 and the score are stored. The model (Bedrock) coaches when the assistant gate
 //                 allows it; otherwise the offline coach does.
 //   local demo    no database: the browser keeps the draft and sends its turns along; nothing
 //                 is stored here and only the offline coach answers.
-//   the brain     where the stack runs it (BRAIN_URL), it coaches - the grilling, one question
-//                 per turn - while the idea is below the publish line, in either mode, unless the
-//                 company switched the assistant off. The data-processing gate (purpose coach) applies like everywhere else.
-//                 No answer in time, or any error, and the coach above answers instead.
+//   the brain     where the stack runs it (BRAIN_URL), it reads the idea and coaches on every message,
+//                 in either mode, unless the company switched the assistant off. The data-processing
+//                 gate (purpose coach) applies like everywhere else. No answer in time, or any
+//                 error, and the coach above answers instead.
 //
-// Events:  scores {overall, parts, sameAs, threshold, delta,    the benchmark after this message
-//                  replies}                                     and suggested answers (features/ideas/replies)
+// Events:  scores {overall, parts, sameAs, threshold, delta,    the reading (null: none) and the benchmark
+//                  replies, reading}                            after this message, and suggested answers
 //          replies {replies}                                    the suggested answers again, with the
 //                                                               brain's own guess first (brain only)
 //          text   {text}                                        the coach so far (replace)
@@ -36,6 +37,7 @@ import { coachText, withCoachSuggestion } from "@/features/ideas/brain-coach";
 import { coachBrief, coachMock, ideaFromTurns, IDEA_PROMPT_VERSION } from "@/features/ideas/coach";
 import { withoutSkipped } from "@/features/ideas/raise";
 import { MAX_TURN, MAX_TURNS, scoreDraft } from "@/features/ideas/drafts";
+import { latestReading, type Reading } from "@/features/ideas/reading";
 import { suggestReplies } from "@/features/ideas/replies";
 import { hasDatabase } from "@/lib/db/client";
 import { loadAssistSettings } from "@/lib/db/assist";
@@ -48,7 +50,7 @@ import { clientKey, throttle } from "@/server/throttle";
 import { streamingFor } from "@/server/ai";
 import { DEFAULT_CEILING } from "@/features/assist/classify";
 import { policyFor } from "@/features/admin/stages";
-import { askBrainCoach, brainConfigured } from "@/server/brain";
+import { askBrainCoach, askBrainRead, brainConfigured } from "@/server/brain";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +88,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const body = parsed.data;
 
   // The idea as it stands before this message, from the database in server mode.
-  let before: Turn[], affected: string[], attachments: number, threshold: number;
+  let before: Turn[], affected: string[], attachments: number, threshold: number, previous: Reading | null = null;
   if (viewer) {
     if (!body.draftId) return json({ error: "No draft." }, 400);
     const d = await getDraft(viewer.companyId, viewer.userId, body.draftId);
@@ -96,6 +98,7 @@ export async function POST(request: Request, { params }: Ctx) {
     affected = d.affected;
     attachments = d.attachments;
     threshold = await loadPublishThreshold(viewer.companyId);
+    previous = latestReading(d.turns);
   } else {
     before = body.history;
     affected = body.affected;
@@ -118,10 +121,9 @@ export async function POST(request: Request, { params }: Ctx) {
   const ai = viewer ? await loadAiSettings(viewer.companyId, stage) : { settings: aiSettings(null, process.env, stage), key: null };
   const gate = aiGate({ stage, hasDatabase: viewer !== null, settings: ai.settings, dpaSignedAt: settings?.dpaSignedAt ?? null, purpose: "coach", assistantOn: settings?.enabled ?? false, aiRouting: false });
   const useModel = viewer !== null && settings !== null && settings.enabled && gate.on && gate.settings.choice !== "mock" && gate.settings.choice !== "off";
-  // The brain grills while there is something to find; at the line the offline coach's "ready"
-  // is always right. The company's switch in /admin/knowledge still turns it off.
-  // Real people (a real stage) need a database and the switch on, like the assistant's gate.
-  const useBrain = gate.on && brainConfigured() && now.overall < threshold &&
+  // The company's switch in /admin/knowledge turns the brain off. Real people (a real stage) need a
+  // database and the switch on, like the assistant's gate.
+  const useBrain = gate.on && brainConfigured() &&
     (policyFor(tenant.stage ?? "demo").demoData || (viewer !== null && (settings?.enabled ?? false)));
 
   const encoder = new TextEncoder();
@@ -129,21 +131,26 @@ export async function POST(request: Request, { params }: Ctx) {
     async start(controller) {
       const send = (event: string, data: unknown) => controller.enqueue(encoder.encode(sse(event, data)));
       try {
-        send("scores", { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold, delta: prev ? deltas(prev, now) : null, replies });
+        const policy = { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING };
+        const idea = ideaFromTurns(after);
+        const reading = useBrain
+          ? await askBrainRead(gate, tenant.slug, { idea, affected: affected.length, attachments, skip: body.skip, previous }, policy, request.signal, { key: ai.key })
+          : null;
+        const overall = reading?.overall ?? now.overall;
+        const delta = prev ? { ...deltas(prev, now), overall: overall - (previous?.overall ?? prev.overall) } : null;
+        send("scores", { overall, parts: now.parts, sameAs: now.sameAs, threshold, delta, replies, reading });
 
         // prev as it was: after a "not sure" the coach asks the next question fresh, not "I still need this".
         let reply = coachMock(prev, askNow, threshold, body.text, 0); // the raise page shows no suggested answers, so the coach does not point to them
         let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
-        const coached = useBrain
-          ? await askBrainCoach(gate, tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },
-            { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING }, request.signal, { key: ai.key })
+        const coached = reading
+          ? await askBrainCoach(gate, tenant.slug, { idea, turns: after, reading }, policy, request.signal, { key: ai.key })
           : null;
         if (coached) {
           reply = coachText(coached);
           model = coached.model;
           promptVersion = coached.version;
-          const idea = { text: ideaFromTurns(after).text, affected, attachments };
-          const offered = withCoachSuggestion(coached, idea, now, ctx, replies);
+          const offered = withCoachSuggestion(coached, { text: idea.text, affected, attachments }, now, ctx, replies);
           if (offered[0] !== replies[0]) send("replies", { replies: offered });
         } else if (useModel) {
           const seed = await seedFor(tenant.slug);
@@ -172,10 +179,10 @@ export async function POST(request: Request, { params }: Ctx) {
         if (viewer && body.draftId) {
           await addTurns(viewer.companyId, viewer.userId, body.draftId, [
             { role: "user", text: body.text },
-            { role: "assistant", text: stripTags(reply), overall: now.overall, model, promptVersion },
-          ], { title: ideaFromTurns(after).title, overall: now.overall, scores: now.parts });
+            { role: "assistant", text: stripTags(reply), overall, model, promptVersion, reading },
+          ], { title: idea.title, overall, scores: now.parts });
         }
-        send("done", { text: reply, overall: now.overall });
+        send("done", { text: reply, overall });
       } catch (err) {
         console.error("[ideas]", tenant.slug, err instanceof Error ? err.message : err);
         send("error", { message: "The coach could not answer just now. Your idea is still here." });

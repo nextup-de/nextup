@@ -5,7 +5,8 @@ import { benchmark, weakest } from "@/features/ideas/benchmarks";
 import { coachRequest, coachText, withCoachSuggestion, COACH_MAX_HISTORY, type CoachAnswer } from "@/features/ideas/brain-coach";
 import { suggestReplies } from "@/features/ideas/replies";
 import { DEMO_GOALS } from "@/features/demo/structure";
-import { ROUTES } from "@/features/demo/seed";
+import { DEPTS, ROUTES } from "@/features/demo/seed";
+import { readingFrom } from "@/features/ideas/reading";
 
 const ctx = { routes: ROUTES, goals: DEMO_GOALS, cases: [], spendLimitEur: 5000 };
 const idea = { text: "Paper changeover sheets are a waste", affected: [], attachments: 0 };
@@ -17,13 +18,21 @@ const answer = (over: Partial<CoachAnswer> = {}): CoachAnswer => ({
 });
 
 describe("coachRequest", () => {
-  it("sends the idea, the latest turns, the brief and the earlier items, within the brain's limits", () => {
+  it("sends the idea, the latest turns, the reading, the goals and the earlier items, within the brain's limits", () => {
     const turns = Array.from({ length: 30 }, (_, i) => ({ role: (i % 2 ? "assistant" : "user") as "user" | "assistant", text: "turn " + i }));
-    const r = coachRequest("Acme", { title: " Sheets ", body: "" }, turns, "brief", [{ id: "c3", title: "Changeover sheet", status: "open" }]);
+    const known = [{ id: "c3", title: "Changeover sheet", status: "open" }];
+    const reading = readingFrom({
+      dials: (["value", "feasibility", "cost", "fit", "risk"] as const).map((key) => ({ key, score: 40, note: "n", basis: "b" })), overall: 40, summary: "Paper twice.",
+      advice: "info", advice_why: "w", pattern: "p", route_id: null, route_reason: "", same_as: null, related: null, open: ["How long does a sheet take?"], model: "m", version: "v",
+    }, { routes: [], known });
+    const r = coachRequest("Acme", { title: " Sheets ", body: "" }, turns, reading, known, ROUTES, DEPTS, DEMO_GOALS);
     expect(r.history).toHaveLength(COACH_MAX_HISTORY);
     expect(r.history[0].text).toBe("turn 10");
     expect(r.idea.title).toBe("Sheets");
     expect(r.known[0].id).toBe("c3");
+    expect(r.reading.open).toEqual(["How long does a sheet take?"]);
+    expect(r.goals[0].name).toBe(DEMO_GOALS[0].goal);
+    expect(r.routes.length).toBe(ROUTES.length);
   });
 });
 

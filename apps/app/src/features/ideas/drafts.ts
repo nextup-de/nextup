@@ -5,9 +5,10 @@ import type { Turn } from "@/features/assist/draft";
 import type { SpendRule } from "@/features/demo/types";
 import { benchmark, type Benchmark, type BenchmarkContext, type BenchmarkPart } from "./benchmarks";
 import { ideaFromTurns } from "./coach";
+import type { Reading } from "./reading";
 
 export type DraftStatus = "draft" | "published" | "discarded";
-export type DraftTurn = Turn & { id: string; overall: number | null; at: string };
+export type DraftTurn = Turn & { id: string; overall: number | null; at: string; reading?: Reading | null };
 export type DraftSummary = { id: string; title: string; status: DraftStatus; overall: number; updatedAt: string; caseId: string | null };
 export type DraftView = DraftSummary & { scores: BenchmarkPart[]; affected: string[]; attachments: number; turns: DraftTurn[] };
 

@@ -201,5 +201,20 @@
    "report",
    "manual"
   ]
- }
+ },
+ "goals": [
+  {
+   "name": "No line stops waiting for a signature"
+  },
+  {
+   "name": "Scrap and rework on the 4-series down 20 %"
+  },
+  {
+   "name": "Every changeover under 20 minutes"
+  },
+  {
+   "name": "New hires productive in week one"
+  }
+ ],
+ "spend_limit_eur": 5000
 }

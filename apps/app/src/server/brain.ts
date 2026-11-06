@@ -13,6 +13,7 @@ import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
 import { coachRequest, type CoachAnswer } from "@/features/ideas/brain-coach";
+import { BrainReading, readRequest, readingFrom, type Reading } from "@/features/ideas/reading";
 import { checkinRequest, planRequest, roundSaid, type CheckinProposal, type PlanProposal } from "@/features/projects/brain";
 import { brainRequest, fromBrain, type BrainItem, type BrainProposal } from "@/features/routing/brain";
 import { findTenant } from "@/features/tenant";
@@ -40,9 +41,10 @@ const CheckinReply = z.object({
   next: z.enum(["round", "decide"]), open: z.array(z.string().max(200)).max(6), note: z.string().max(600),
   model: z.string().max(200), version: z.string().max(80), tokens_in: TOKENS, tokens_out: TOKENS,
 });
+const ReadReply = BrainReading.extend({ tokens_in: TOKENS, tokens_out: TOKENS });
 const CoachReply = z.object({
   open_point: z.string().max(40), earlier_id: z.string().max(40).nullable(),
-  note: z.string().max(2000), question: z.string().max(1000), why: z.string().max(1000), recommended: z.string().max(2000),
+  answer: z.string().max(2000).default(""), note: z.string().max(2000), question: z.string().max(1000), why: z.string().max(1000), recommended: z.string().max(2000),
   model: z.string().max(200), version: z.string().max(80), tokens_in: TOKENS, tokens_out: TOKENS,
 });
 
@@ -75,7 +77,7 @@ async function companyFor(slug: string, policy: BrainPolicy) {
     const r = texts.map(clean);
     return r.some((x) => isAboveCeiling(x, policy.ceiling)) ? null : r.map((x) => x.text);
   };
-  return { tenant, seed, known, cleanAll, state, log };
+  return { tenant, seed, known, cleanAll, clean, state, log };
 }
 
 // What a call needs besides the gate: the company's API key (azure-openai, openai-compatible) and,
@@ -169,10 +171,31 @@ export async function askBrain(gate: AiGate, slug: string, idea: { title: string
   return answer ? fromBrain(answer, req) : null;
 }
 
-// In the studio: one coach turn (the grilling). `brief` is coachBrief() - the scores and gaps the
-// app computed; the coach may not change them.
+// In the studio, on every message: the model's reading of the idea - what the raise page shows.
+export async function askBrainRead(
+  gate: AiGate, slug: string,
+  input: { idea: { title: string; body: string }; affected: number; attachments: number; skip: readonly string[]; previous: Reading | null },
+  policy: BrainPolicy, signal?: AbortSignal, opts: BrainOptions = {},
+): Promise<Reading | null> {
+  if (!gate.on || !brainConfigured()) return null;
+  const co = await companyFor(slug, policy);
+  const text = co?.cleanAll([input.idea.title, input.idea.body, ...input.skip]);
+  if (!co || !text) return null;
+  const req = readRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.routes, co.seed.depts, co.known, {
+    goals: co.seed.goals, affected: input.affected, attachments: input.attachments, spendLimitEur: co.seed.spend?.limitEur ?? null,
+    skip: text.slice(2), previous: input.previous,
+  });
+  const body = withLlm(gate, opts, req);
+  if (!body) return null;
+  const answer = await post(slug, "read", "/v1/read", body, ReadReply, signal, opts.fetch);
+  if (!answer) return null;
+  const { tokens_in: _in, tokens_out: _out, ...reading } = answer;
+  return readingFrom(reading, req);
+}
+
+// In the studio: one coach turn, working from the reading the page shows.
 export async function askBrainCoach(
-  gate: AiGate, slug: string, input: { idea: { title: string; body: string }; turns: readonly Turn[]; brief: string },
+  gate: AiGate, slug: string, input: { idea: { title: string; body: string }; turns: readonly Turn[]; reading: Reading },
   policy: BrainPolicy, signal?: AbortSignal, opts: BrainOptions = {},
 ): Promise<CoachAnswer | null> {
   if (!gate.on || !brainConfigured()) return null;
@@ -180,7 +203,7 @@ export async function askBrainCoach(
   const text = co?.cleanAll([input.idea.title, input.idea.body, ...input.turns.map((t) => t.text)]);
   if (!co || !text) return null;
   const turns = input.turns.map((t, i) => ({ role: t.role, text: text[i + 2] }));
-  const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, input.brief, co.known);
+  const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, input.reading, co.known, co.seed.routes, co.seed.depts, co.seed.goals);
   const body = withLlm(gate, opts, req);
   if (!body) return null;
   return post(slug, "coach", "/v1/coach", body, CoachReply, signal, opts.fetch);

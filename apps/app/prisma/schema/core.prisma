@@ -232,6 +232,7 @@ model IdeaTurn {
   overall       Int? // on assistant turns: the score this reply was about
   model         String   @default("")
   promptVersion String   @default("")
+  reading       Json? // on assistant turns: the model's reading of the idea (features/ideas/reading.ts); null: the keyword benchmark answered
   createdAt     DateTime @default(now())
 
   @@index([companyId, draftId, createdAt])

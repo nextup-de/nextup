@@ -188,14 +188,17 @@ def test_aib_tokens_openai_usage_and_a_missing_usage_counts_zero(client, body):
 def test_aib_tokens_count_every_call_of_coach_plan_and_checkin(monkeypatch):
     plan = {"steps": ["Do it"], "metric": "", "unit": "", "better": "down"}
     checkin = {"note": "n", "open": [], "ready": True}
-    turn = {"earlier_id": "", "note": "Noted.", "question": "How often?", "why": "w", "recommended": "r"}
-    match = {"closest_id": "", "comparison": "-", "same_problem": False}
-    answers = {"/v1/plan": [plan], "/v1/checkin": [checkin], "/v1/coach": [match, turn]}
+    turn = {"answer": "", "note": "Noted.", "question": "How often?", "why": "w", "recommended": "r"}
+    dial = {"note": "n", "basis": "b", "score": 50}
+    read = {**{k: dial for k in ("value", "feasibility", "cost", "fit", "risk")}, "summary": "s", "closest_id": "", "comparison": "-",
+            "same_problem": False, "route_id": "none", "route_reason": "r", "pattern": "p", "advice": "info", "advice_why": "w", "open": []}
+    answers = {"/v1/plan": [plan], "/v1/checkin": [checkin], "/v1/coach": [turn], "/v1/read": [read]}
     bodies = {
         "/v1/plan": {"company": "A", "idea": {"title": "Idea one"}},
         "/v1/checkin": {"company": "A", "idea": {"title": "Idea one"}, "round": 1},
-        "/v1/coach": {"company": "A", "idea": {"title": "Idea one"}, "brief": "b",
-                      "history": [{"role": "user", "text": "Idea one"}]},
+        "/v1/coach": {"company": "A", "idea": {"title": "Idea one"}, "history": [{"role": "user", "text": "Idea one"}],
+                      "reading": {"summary": "s", "dials": [], "open": ["How often?"]}},
+        "/v1/read": {"company": "A", "idea": {"title": "Idea one"}},
     }
     monkeypatch.setattr(main.settings, "api_key", "")
     main.app.state.llm = FakeLLM([])

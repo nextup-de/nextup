@@ -4,6 +4,7 @@
 import type { BenchmarkPart } from "@/features/ideas/benchmarks";
 import { DEFAULT_PUBLISH_THRESHOLD } from "@/features/ideas/benchmarks";
 import type { DraftStatus, DraftSummary, DraftView } from "@/features/ideas/drafts";
+import { readingOf, type Reading } from "@/features/ideas/reading";
 import { getDb } from "./client";
 
 const status = (s: string): DraftStatus => (s === "published" || s === "discarded" ? s : "draft");
@@ -35,7 +36,7 @@ export async function getDraft(companyId: string, userId: string, id: string): P
     scores: (d.scores as unknown as BenchmarkPart[]) ?? [],
     affected: d.affected,
     attachments: d.attachments,
-    turns: turns.map((t) => ({ id: t.id, role: t.role === "assistant" ? "assistant" : "user", text: t.text, overall: t.overall, at: t.createdAt.toISOString() })),
+    turns: turns.map((t) => ({ id: t.id, role: t.role === "assistant" ? "assistant" : "user", text: t.text, overall: t.overall, at: t.createdAt.toISOString(), reading: readingOf(t.reading) })),
   };
 }
 
@@ -44,7 +45,7 @@ export async function createDraft(companyId: string, userId: string): Promise<st
   return d.id;
 }
 
-export type TurnRow = { role: "user" | "assistant"; text: string; overall?: number; model?: string; promptVersion?: string };
+export type TurnRow = { role: "user" | "assistant"; text: string; overall?: number; model?: string; promptVersion?: string; reading?: Reading | null };
 export type Snapshot = { title: string; overall: number; scores: BenchmarkPart[] };
 
 /** Appends turns and the score they led to. False when the draft is not this author's open draft. */
@@ -54,7 +55,7 @@ export async function addTurns(companyId: string, userId: string, draftId: strin
   if (!owned) return false;
   await db.$transaction([
     ...turns.map((t) => db.ideaTurn.create({
-      data: { companyId, draftId, role: t.role, text: t.text, overall: t.overall ?? null, model: t.model ?? "", promptVersion: t.promptVersion ?? "" },
+      data: { companyId, draftId, role: t.role, text: t.text, overall: t.overall ?? null, model: t.model ?? "", promptVersion: t.promptVersion ?? "", reading: t.reading ?? undefined },
     })),
     db.ideaDraft.updateMany({ where: { companyId, userId, id: draftId }, data: { title: snap.title, overall: snap.overall, scores: snap.scores } }),
   ]);

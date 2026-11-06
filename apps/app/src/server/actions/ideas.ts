@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { getViewerFor } from "@/features/auth/session";
 import { scoreDraft, type DraftSummary, type DraftView } from "@/features/ideas/drafts";
+import { latestReading } from "@/features/ideas/reading";
 import { ideaFromTurns } from "@/features/ideas/coach";
 import { hasDatabase } from "@/lib/db/client";
 import { createDraft, discardDraft, getDraft, listDrafts, loadPublishThreshold, markPublished, purgeDiscardedDrafts, saveDraftMeta } from "@/lib/db/ideas";
@@ -109,7 +110,8 @@ export async function publishIdeaDraftAction(input: { slug: string; id: string; 
   const score = scoreDraft(d, await serverIdeaContext(p.data.slug));
   const idea = ideaFromTurns(d.turns);
   const title = d.title || idea.title;
-  const done = await markPublished(v.companyId, v.userId, d.id, p.data.caseId, { title, overall: score.overall, scores: score.parts });
+  const overall = latestReading(d.turns)?.overall ?? score.overall; // the number the author was shown
+  const done = await markPublished(v.companyId, v.userId, d.id, p.data.caseId, { title, overall, scores: score.parts });
   if (!done) return { ok: false, reason: "This draft is no longer open." };
-  return { ok: true, title, body: idea.body, overall: score.overall };
+  return { ok: true, title, body: idea.body, overall };
 }

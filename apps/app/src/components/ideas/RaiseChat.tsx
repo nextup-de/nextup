@@ -16,7 +16,7 @@ import s from "./Raise.module.css";
 
 // `read`: the five dials as they stand after this reply. `moved`: the dials the answer before
 // it moved - the only ones shown. `open`: the point still unclear - one at most.
-export type Read = { dials: Dial[]; moved: Partial<Record<DialKey, Move>>; open: Topic[] };
+export type Read = { dials: Dial[]; moved: Partial<Record<DialKey, Move>>; open: Topic[]; byAi: boolean };
 // `idea`: the first message - the idea as asked, its title, what was written under it and its details
 // (affected, files, receiver, colleagues, meeting).
 // `full`: NextUp's first reply - the full analysis stands above it, in place of the short read.
@@ -108,7 +108,7 @@ function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
     <div className={s.read} role="group" aria-label={t("ideas.chatAnalysis")}>
       <div className={s.readHead}>
         <Solid name="sparkle" size={11.25} fill="var(--nh-brand)" />
-        <span className={s.readTitle}>{t("ideas.chatAnalysis")}</span>
+        <span className={s.readTitle}>{t(r.byAi ? "ideas.chatAnalysis" : "ideas.chatAnalysisRules")}</span>
       </div>
       {rows.length ? (
         <div className={s.readRows}>

@@ -48,7 +48,7 @@ afterAll(async () => {
 describe("AIB usage", () => {
   it("a brain answer writes one AiCall per purpose", async () => {
     await askBrain(gate("routing"), a.slug, { title: "Gauge reads off", body: "x" }, policy, { fetch: fakeFetch(ROUTE) });
-    await askBrainCoach(gate("brain"), a.slug, { idea: { title: "t", body: "b" }, turns: [], brief: "-" }, policy, undefined, { fetch: fakeFetch(COACH) });
+    await askBrainCoach(gate("brain"), a.slug, { idea: { title: "t", body: "b" }, turns: [], reading: READING }, policy, undefined, { fetch: fakeFetch(COACH) });
     await until(async () => (await db.aiCall.count({ where: { companyId: a.id } })) >= 2);
     const rows = await db.aiCall.findMany({ where: { companyId: a.id }, orderBy: { purpose: "asc" } });
     expect(rows.map((r) => r.purpose)).toEqual(["coach", "routing"]);
