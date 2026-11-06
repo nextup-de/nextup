@@ -103,10 +103,15 @@ Rows of `docs/audit/gaps/product.md` that MET answers. That register is AUD's; t
 ## AI usage by purpose
 
 `aiUsage` (`lib/db/ai-usage.ts`) sums the company's model use for a period, totals only, never a person. The assistant's
-turns (`AssistTurn`) and the brain's calls (`AiCall`, purposes `routing`, `coach`, `plan`, `checkin`) both count in
+turns (`AssistTurn`) and the brain's calls (`AiCall`, purposes `routing`, `read`, `coach`, `plan`, `checkin`) both count in
 `byModel`, `tokensIn`, `tokensOut` and `costUsd`; `turns` stays the number of assistant turns. `byPurpose` splits the same
 totals into `{ purpose, calls, tokensIn, tokensOut, costUsd }`, sorted by purpose, with the assistant under `assist`.
 `costUsd` is `null` as soon as one model has no price.
+
+In the idea studio the brain is called twice per message: `read` (the reading of the idea, docs/IDEAS.md) and then
+`coach`, each recorded on its own once it answered, so one message adds one call to each purpose (and none when the brain
+did not answer: nothing is recorded for a failed or timed-out call). Both are in `byModel` and `byPurpose` like the
+others. The counts say how often the studio used the model, never whose idea it was.
 
 ## Open
 

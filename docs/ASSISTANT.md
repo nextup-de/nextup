@@ -128,12 +128,32 @@ wrapper over it for the assistant.
 
 Every "no" carries a `why` in plain words. With the gate closed no request leaves, not to the brain and not to the model.
 
+The idea studio calls the gate with purpose `coach` (`api/[company]/ideas/turn`). Like `brain` and `coach`, that
+purpose has no switch of its own in the gate, so a real stage needs the choice not off and the agreement on record. The
+route adds two conditions before the brain reads or coaches: the stack has a brain (`BRAIN_URL`, `BRAIN_API_KEY`), and the
+stage is a demo stage or the viewer's company has the assistant switched on (`CompanyConfig.assistant`).
+
 ### The proposal at raise
 
 At `case.raised`, `appendEventAction` replaces whatever proposal the browser sent with `proposeOnRaise`
 (`server/routing.ts`): the brain's proposal when the gate (purpose `routing`) holds and the brain answers within
 `BRAIN_RAISE_TIMEOUT_MS` (default 8000), else the keyword proposal (`source: "keywords"`, `ROUTER_VERSION`). The
 route the person chose is never changed. The AI being off therefore never stops a raise (HD7).
+
+### The idea studio's reading and coach
+
+On every message in the idea studio (`api/[company]/ideas/turn`, docs/IDEAS.md) the brain makes up to two calls, each
+through `llmFor` and the gate above: **`read`** (`POST /v1/read`, `askBrainRead` in `server/brain.ts`) and, when that
+answered, **`coach`** (`POST /v1/coach`, `askBrainCoach`). Each waits `BRAIN_TIMEOUT_MS` (default 30000) and an error or no
+answer is not retried by the app; the studio then falls back as described in docs/IDEAS.md. What the employee wrote
+goes out only redacted: the idea's title and body, the author's "not sure" questions (read) or the turns of the
+conversation, the coach's own included (coach), go through `redact` with the company's patterns, and nothing goes out
+when any of it is marked above the company's classification ceiling. The titles of the earlier cases and known problems
+are redacted the same way. Beside that the calls carry company data that is not run through the redaction: the company's name, its
+routing rows (owner's role and department, never a name) and its goals (names only); the read call adds the counts of people marked as
+affected and files attached, the spend limit a team decides alone, and the dials (score, note) of the previous
+reading. The answer is stored on the coach's turn as `IdeaTurn.reading` (docs/DATA_MODEL.md). Unlike the assistant,
+neither call writes an `AssistTurn`; each answered call is an `AiCall` (below).
 
 ### The brain's endpoint
 
@@ -152,8 +172,8 @@ nothing. The shapes are pinned by one fixture, `services/brain/tests/fixtures/ll
 (`tests/unit/aib/llm-contract.test.ts`) checks that `llmFor` gives exactly it and the brain's test
 (`services/brain/tests/test_llm_contract.py`) that its request models accept it.
 
-Each answered call is stored as an `AiCall` (purpose, model, token counts, latency; no person, no case, no text) and
-counted in `aiUsage` (see `docs/METRICS.md`).
+Each answered call is stored as an `AiCall` (purpose - `routing`, `read`, `coach`, `plan`, `checkin` or `context` -, model,
+token counts, latency; no person, no case, no text) and counted in `aiUsage` (see `docs/METRICS.md`).
 
 ### Acceptance
 
