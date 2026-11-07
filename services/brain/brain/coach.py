@@ -74,6 +74,13 @@ def slipped_into_english(texts: list[str], locale: str) -> bool:
     return False
 
 
+def id_pattern(ids: list[str]) -> re.Pattern[str] | None:
+    """What a sentence must not show. A company may name its routing rows with plain words ("it",
+    "budget"), and those are ordinary words in a sentence: only what looks like an ID counts."""
+    real = [i for i in ids if re.search(r"[\d_-]", i)]
+    return re.compile(r"\b(" + "|".join(map(re.escape, real)) + r")\b") if real else None
+
+
 def not_you(text: str) -> str:
     text = YOU_RAISED.sub(lambda m: ("T" if m.group(1) == "Y" else "t") + "his" + (m.group(2) or "") + " was raised", text)
     return SIE_RAISED_FRONT.sub(r"Das wurde bereits \1", SIE_RAISED.sub(r"Das wurde bereits \1", text))
@@ -129,7 +136,7 @@ def _nothing_open(body: CoachIn) -> str:
 def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
     started = time.perf_counter()
     known_ids = [k.id for k in body.known]
-    ids = re.compile(r"\b(" + "|".join(map(re.escape, known_ids)) + r")\b") if known_ids else None
+    ids = id_pattern(known_ids)
     asked = asked_before(body)
     point = body.reading.open[0] if body.reading.open else ""
     pushed_back = {"parrot": False, "language": False}

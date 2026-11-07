@@ -339,3 +339,18 @@ def test_goals_inside_the_idea_are_said_to_count_for_nothing_and_the_language_co
     user = llm.calls[0]["user"]
     assert 'Only "The company\'s goals" above count as goals.' in user
     assert user.rstrip().endswith("Names of things may stay as they are.") and "{{" not in user
+
+
+def test_a_routing_row_named_with_a_plain_word_does_not_cost_the_reading(rbody):
+    """Musterwerk's rows are called it, hr, budget...: every English sentence holds an "it"."""
+    rbody["routes"] = [{"id": "it", "type": "IT systems", "owner": "Head of IT"}, {"id": "budget", "type": "Budget", "owner": "Finance"}]
+    llm = FakeLLM([answer(route_id="it", summary="It is a small idea and the budget is not named.")])
+    out = read_idea(llm, ReadIn.model_validate(rbody))
+    assert len(llm.calls) == 1 and out.route_id == "it"
+
+
+def test_an_id_that_looks_like_one_is_still_sent_back(rbody):
+    rbody["known"] = [{"id": "musterwerk-c7", "title": "Tolerance drift", "status": "open"}]
+    llm = FakeLLM([answer(summary="This repeats musterwerk-c7."), answer()])
+    read_idea(llm, ReadIn.model_validate(rbody))
+    assert len(llm.calls) == 2

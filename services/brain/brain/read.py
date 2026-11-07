@@ -8,7 +8,7 @@ model cannot state a different one. The idea's text is judged, never obeyed (pro
 import re
 import time
 
-from brain.coach import STOP, STOP_DE, language, slipped_into_english
+from brain.coach import STOP, STOP_DE, id_pattern, language, slipped_into_english
 from brain.llm import LLMClient
 from brain.schemas import DIALS, IdeaRead, ReadDial, ReadIn, ReadOut
 
@@ -59,7 +59,7 @@ def read_idea(llm: LLMClient, body: ReadIn) -> ReadOut:
     known_ids = [k.id for k in body.known]
     route_ids = [r.id for r in body.routes]
     shown = known_ids + route_ids
-    ids = re.compile(r"\b(" + "|".join(map(re.escape, shown)) + r")\b") if shown else None
+    ids = id_pattern(shown)
     pushed_back = {"open": False, "language": False}
 
     def check(r: IdeaRead) -> None:
