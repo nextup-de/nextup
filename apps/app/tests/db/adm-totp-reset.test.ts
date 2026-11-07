@@ -8,6 +8,11 @@ let stackAdmin = false;
 vi.mock("@/features/auth/session", () => ({ getViewerFor: vi.fn(async (slug: string) => (viewer && viewer.companySlug === slug ? viewer : null)) }));
 vi.mock("@/server/actions/admin", () => ({ isAdmin: vi.fn(async () => stackAdmin) }));
 vi.mock("@/server/console-write", () => ({ consoleWriteRefusal: vi.fn(async () => (stackAdmin ? null : "refused")) }));
+// isAdmin above is faked without a cookie, so there is no console session to name the actor from.
+vi.mock("@/server/audit/record", async (actual) => ({
+  ...(await actual<typeof import("@/server/audit/record")>()),
+  consoleActor: vi.fn(async () => ({ kind: "console", userId: null })),
+}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { getDb } from "@/lib/db/client";
@@ -86,6 +91,8 @@ describe("ADM second factor reset", () => {
     stackAdmin = true;
     expect(await adminResetTotpAction({}, f)).toEqual({ saved: true });
     expect(await state(co.a.other, co.a.id)).toEqual({ totpSecretSealed: null, totpEnabledAt: null });
+    const audit = await db.auditEvent.findMany({ where: { companyId: co.a.id, action: "audit.member.totp_reset", source: "console" } });
+    expect(audit.map((r) => [r.targetId, r.actorKind])).toEqual([[co.a.other, "console"]]);
     // a person of another company is not reachable through this company's slug
     expect(await adminResetTotpAction({}, form({ slug: A, userId: co.b.admin }))).toMatchObject({ error: expect.any(String) });
     expect((await state(co.b.admin, co.b.id)).totpEnabledAt).not.toBeNull();

@@ -181,7 +181,7 @@ export async function ownCompanyRow(): Promise<CompanyRow | null> {
       id: true, slug: true, name: true, stage: true, createdAt: true, entraTenantId: true,
       users: {
         orderBy: { name: "asc" },
-        select: { id: true, name: true, email: true, role: true, loginCodeAt: true, entraOid: true },
+        select: { id: true, name: true, email: true, role: true, active: true, isStackAdmin: true, totpEnabledAt: true, loginCodeAt: true, entraOid: true },
       },
       _count: { select: { users: true, events: true } },
     },
@@ -206,17 +206,26 @@ export async function ownCompanyRow(): Promise<CompanyRow | null> {
       role: u.role,
       codeIssuedAt: u.loginCodeAt?.toISOString() ?? null,
       microsoft: Boolean(u.entraOid),
+      active: u.active,
+      isStackAdmin: u.isStackAdmin,
+      hasTotp: Boolean(u.totpEnabledAt),
     })),
   };
 }
 
-export type LoginCodeState = { slug?: string; name?: string; code?: string; error?: string };
+/** The ids a console form sent: one `userId` field per selected person. */
+const selectedIds = (form: FormData) => [...new Set(form.getAll("userId").map(String).filter(Boolean))];
+
+/** A whole selection goes through together or not at all, and a big company takes more than Prisma's default 5 s. */
+const BULK_TX = { timeout: 60_000 };
+
+export type LoginCodeState = { codes?: { id: string; name: string; code: string }[]; error?: string };
 
 /**
- * A new personal login code for one person. The previous one stops working at once - this is
- * also how a lost or leaked code is revoked. Shown once; only its hash is stored.
+ * A new personal login code for each selected person. Their previous one stops working at once - this
+ * is also how a lost or leaked code is revoked. Shown once; only the hashes are stored.
  */
-export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData): Promise<LoginCodeState> {
+export async function issueLoginCodesAction(_prev: LoginCodeState, form: FormData): Promise<LoginCodeState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
   if (!hasDatabase()) return { error: "No database is configured." };
   const refused = await consoleWriteRefusal();
@@ -224,32 +233,34 @@ export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData
 
   const slug = String(form.get("slug") ?? "");
   if (foreignCompany(slug)) return { error: "No such company." };
-  const userId = String(form.get("userId") ?? "");
+  const ids = selectedIds(form);
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
-  const user = company
-    ? await getDb().user.findFirst({ where: { id: userId, companyId: company.id }, select: { id: true, name: true } })
-    : null;
-  if (!company || !user) return { error: "No such person in this company." };
+  const users = company
+    ? await getDb().user.findMany({ where: { id: { in: ids }, companyId: company.id }, orderBy: { name: "asc" }, select: { id: true, name: true } })
+    : [];
+  if (!company || ids.length === 0 || users.length !== ids.length) return { error: "No such person in this company." };
 
-  const code = generateLoginCode(slug);
+  const codes = users.map((u) => ({ id: u.id, name: u.name, code: generateLoginCode(slug) }));
   const actor = await consoleActor();
   await getDb().$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: user.id, companyId: company.id },
-      // A code handed out by hand ends the wait for "Open NextUp": their mail would replace this code.
-      data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date(), invitationHeldAt: null },
-    });
-    await recordAudit(company.id, { actor, action: "audit.member.code", target: { kind: "user", id: user.id }, changes: {}, source: "console" }, tx);
-  });
+    for (const { id, code } of codes) {
+      await tx.user.update({
+        where: { id, companyId: company.id },
+        // A code handed out by hand ends the wait for "Open NextUp": their mail would replace this code.
+        data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date(), invitationHeldAt: null },
+      });
+      await recordAudit(company.id, { actor, action: "audit.member.code", target: { kind: "user", id }, changes: {}, source: "console" }, tx);
+    }
+  }, BULK_TX);
   revalidatePath("/admin", "layout");
-  return { slug, name: user.name, code };
+  return { codes };
 }
 
 export type StackAdminState = { saved?: boolean; error?: string };
 
 /**
- * Lets one person open /admin with their own code and authenticator (or takes it away). Only an
- * admin sets it, never the person; the shared code is not enough to hand it out on the platform
+ * Lets the selected people open /admin with their own code and authenticator (or takes it away). Only
+ * an admin sets it, never the person; the shared code is not enough to hand it out on the platform
  * stack's behalf of another company (foreignCompany).
  */
 export async function setStackAdminAction(_prev: StackAdminState, form: FormData): Promise<StackAdminState> {
@@ -260,17 +271,19 @@ export async function setStackAdminAction(_prev: StackAdminState, form: FormData
 
   const slug = String(form.get("slug") ?? "");
   if (foreignCompany(slug)) return { error: "No such company." };
-  const userId = String(form.get("userId") ?? "");
+  const ids = selectedIds(form);
   const on = form.get("stackAdmin") === "on";
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
   if (!company) return { error: "No such person in this company." };
-  const person = await getDb().user.findFirst({ where: { id: userId, companyId: company.id }, select: { id: true, isStackAdmin: true } });
-  if (!person) return { error: "No such person in this company." };
+  const people = await getDb().user.findMany({ where: { id: { in: ids }, companyId: company.id }, select: { id: true, isStackAdmin: true } });
+  if (ids.length === 0 || people.length !== ids.length) return { error: "No such person in this company." };
   const actor = await consoleActor();
   await getDb().$transaction(async (tx) => {
-    await tx.user.updateMany({ where: { id: person.id, companyId: company.id }, data: { isStackAdmin: on } });
-    await recordAudit(company.id, { actor, action: "audit.access.stack_admin", target: { kind: "user", id: person.id }, changes: { isStackAdmin: { before: person.isStackAdmin, after: on } }, source: "console" }, tx);
-  });
+    for (const person of people) {
+      await tx.user.updateMany({ where: { id: person.id, companyId: company.id }, data: { isStackAdmin: on } });
+      await recordAudit(company.id, { actor, action: "audit.access.stack_admin", target: { kind: "user", id: person.id }, changes: { isStackAdmin: { before: person.isStackAdmin, after: on } }, source: "console" }, tx);
+    }
+  }, BULK_TX);
   revalidatePath("/admin", "layout");
   return { saved: true };
 }

@@ -7,7 +7,7 @@ import { companyPrefix, singleCompany } from "@/features/tenant/urls";
 import { getDb } from "@/lib/db/client";
 import { isAdmin } from "@/server/actions/admin";
 import { consoleWriteRefusal } from "@/server/console-write";
-import { settingsActor } from "@/server/audit/record";
+import { consoleActor, recordAudit, settingsActor } from "@/server/audit/record";
 import { audited, type Tx } from "./audited";
 import { companyAdminOf } from "./guard";
 
@@ -16,6 +16,9 @@ export type TotpResetResult =
   | { ok: false; error: "settings.totpResetForbidden" | "settings.totpResetSelf" | "settings.totpResetNone" | "settings.totpResetAudit" };
 
 export type AdminTotpResetState = { saved?: boolean; error?: string };
+
+/** One of the selected people has no second factor to reset: the whole selection rolls back. */
+class NotEnrolled extends Error {}
 
 /** The one log line: no name, id, email or company. */
 const logReset = () => console.info(`[auth] totp reset ${new Date().toISOString()}`);
@@ -59,17 +62,28 @@ export async function resetTotpAction(slug: string, userId: string): Promise<Tot
   return { ok: true };
 }
 
-/** A stack admin resets the second factor of a person of the company, in /admin People. */
+/** A stack admin resets the second factor of the selected people of the company, in /admin People. All or nothing. */
 export async function adminResetTotpAction(_prev: AdminTotpResetState, form: FormData): Promise<AdminTotpResetState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
   const refused = await consoleWriteRefusal();
   if (refused) return { error: refused };
   const slug = String(form.get("slug") ?? "");
   if (slug !== singleCompany()) return { error: "No such company." };
+  const ids = [...new Set(form.getAll("userId").map(String).filter(Boolean))];
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
-  if (!company || !(await clear(company.id, String(form.get("userId") ?? ""), false))) {
-    return { error: "No such enrolled person in this company." };
-  }
+  if (!company || ids.length === 0) return { error: "No such enrolled person in this company." };
+  const actor = await consoleActor();
+  const done = await getDb().$transaction(async (tx) => {
+    for (const id of ids) {
+      if (!(await clear(company.id, id, false, tx))) throw new NotEnrolled();
+      await recordAudit(company.id, { actor, action: "audit.member.totp_reset", target: { kind: "user", id }, changes: {}, source: "console" }, tx);
+    }
+    return true;
+  }, { timeout: 60_000 }).catch((err: unknown) => {
+    if (err instanceof NotEnrolled) return false;
+    throw err;
+  });
+  if (!done) return { error: "No such enrolled person in this company." };
   revalidatePath("/admin", "layout");
   return { saved: true };
 }

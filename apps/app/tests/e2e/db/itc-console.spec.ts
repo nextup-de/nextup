@@ -128,8 +128,10 @@ test.describe.serial("ITC acceptance", () => {
     }
 
     await admin.goto("/admin/people");
+    await admin.getByTestId("console-people-picker").click();
     for (const person of [ADMIN, MANAGER]) {
-      await expect(admin.getByRole("checkbox", { name: `Stack admin: ${person.name}` })).toBeVisible();
+      await admin.getByRole("combobox").fill(person.name);
+      await expect(admin.getByRole("option", { name: new RegExp(person.name) })).toBeVisible();
     }
     await admin.context().close();
   });
