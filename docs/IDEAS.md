@@ -64,7 +64,7 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
      gate, tools, answer check - in coach mode (`PromptInput.coach`), with the benchmark's brief
      (`coachBrief()`), or the reading's numbers (`readingBrief()`) when the read worked and only the
      coach failed; the model is told the numbers are not its to change. Prompt version
-     `idea-coach-v1`.
+     `idea-coach-v2`.
    - **The offline coach** (`features/ideas/coach.ts`, `coachMock`), with no model or when the others
      fail: what the benchmarks can already see and what they cannot (from the bars' `found` /
      `missing`), then **one** challenging question aimed at the weakest bar and, in a sentence, why the

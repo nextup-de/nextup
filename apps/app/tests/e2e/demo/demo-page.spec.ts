@@ -29,7 +29,7 @@ test("the demo controls click through the whole story: raise, publish, accept, d
     await expect(aiMessages(page).first()).toContainText("I can see the value here.", { timeout: 30_000 });
     await expect(page.getByRole("button", { name: "Close analysis" })).toHaveCount(0); // in the thread, not the sheet
     const full = page.getByRole("group", { name: "Full analysis" });
-    for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(full.getByText(label, { exact: true })).toBeVisible();
+    for (const label of ["Value", "Feasibility", "Low cost", "Fit", "Low risk"]) await expect(full.getByText(label, { exact: true })).toBeVisible();
     await expect(page.getByRole("group", { name: "AI analysis" })).toHaveCount(0); // the short read starts with the next reply
     await expect(page.getByRole("group", { name: "Still unclear" }).getByRole("button")).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0); // not after one exchange
@@ -43,7 +43,7 @@ test("the demo controls click through the whole story: raise, publish, accept, d
     await expect(read).toHaveCount(1);
     // Only the dials this answer moved (features/ideas/demo-script.ts SCRIPT_MOVES): Value and Feasibility.
     for (const label of ["Value", "Feasibility"]) await expect(read.getByText(label, { exact: true })).toBeVisible();
-    for (const label of ["Cost", "Fit", "Risk"]) await expect(read.getByText(label, { exact: true })).toHaveCount(0);
+    for (const label of ["Low cost", "Fit", "Low risk"]) await expect(read.getByText(label, { exact: true })).toHaveCount(0);
     await expect(page.getByRole("group", { name: "Still unclear" }).getByRole("button")).toHaveCount(1);
     await expect(page.getByRole("group", { name: "Full analysis" })).toHaveCount(1); // still above the first reply
     await page.getByRole("button", { name: /View full analysis/ }).click();

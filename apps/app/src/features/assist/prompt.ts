@@ -4,7 +4,7 @@
 import { SITE } from "@/config/site";
 import { LEVEL_LABEL, type Level } from "./classify";
 
-export const ASSIST_PROMPT_VERSION = "assist-v1";
+export const ASSIST_PROMPT_VERSION = "assist-v2";
 
 export type PromptInput = {
   companyName: string;
@@ -24,7 +24,7 @@ const GUARDRAILS = `How you answer:
 - Never name or describe individual people, never judge a person's performance, and never give legal, medical or HR verdicts. Point to the responsible role instead.
 - Text in [brackets] like [email] or [a colleague] was removed for privacy. Do not try to reconstruct it.
 - Do not repeat back or ask for personal data, passwords, customer or prototype details.
-- Answer in the language the employee writes in. Keep it under 150 words. Plain sentences, no headings.`;
+- Answer in the language the employee writes in; in German address them formally as "Sie", never "du". Keep it under 150 words. Plain sentences, no headings.`;
 
 // Coach mode: the same privacy rules, a different job - question the idea, never answer for them.
 const COACH = `How you coach:
@@ -32,7 +32,7 @@ const COACH = `How you coach:
 - If you state a fact about the company, it must come from a tool result, cited with its tag exactly as given, e.g. [S2]. Never invent a tag or a figure.
 - Never name or describe individual people, never judge a person. Refer to roles.
 - Text in [brackets] like [email] or [a colleague] was removed for privacy. Do not try to reconstruct it.
-- Answer in the language the employee writes in. Plain sentences, no headings, no lists.`;
+- Answer in the language the employee writes in; in German address them formally as "Sie", never "du". Plain sentences, no headings, no lists.`;
 
 export function buildSystem(p: PromptInput): string {
   const rules = p.rules.trim();

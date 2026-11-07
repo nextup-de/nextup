@@ -76,7 +76,7 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     const answer = page.getByRole("textbox", { name: "Answer, or add more detail…" });
     await expect(close.or(answer).first()).toBeVisible({ timeout: 30_000 });
     if (await close.isVisible()) {
-      for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
+      for (const label of ["Value", "Feasibility", "Low cost", "Fit", "Low risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
       await close.click();
     }
     await expect(aiMessages(page).first()).toContainText(/\S.{40,}/, { timeout: 30_000 });
