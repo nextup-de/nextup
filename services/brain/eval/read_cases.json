@@ -71,5 +71,14 @@
   "good": {"scores": [35, 40, 60, 55, 70], "advice": "info", "route_id": "r7", "open": ["How much time does it cost?"]},
   "good_then": {"scores": [35, 40, 60, 55, 70], "advice": "info", "route_id": "r7", "open": ["How much time does it cost?"]},
   "bad_then": {"scores": [65, 60, 70, 75, 80], "advice": "pilot", "route_id": "r7", "open": ["Who keeps the board stocked?"]},
-  "caught": "value moved 35 -> 65"}
+  "caught": "value moved 35 -> 65"},
+{
+  "id": "problem_only",
+  "what": "a real, recurring problem with no fix proposed: worth something, cost and risk unknown",
+  "idea": {"title": "An Linie 3 fällt der Sensor seit Montag täglich aus", "body": ""},
+  "expect": {"min": {"value": 21}, "max": {"value": 50, "cost": 40, "risk": 50}, "overall_max": 45, "advice": ["info"]},
+  "good": {"scores": [35, 35, 30, 30, 35], "advice": "info", "route_id": "none", "open": ["Wie oft steht die Linie dadurch still?"]},
+  "bad": {"scores": [20, 40, 60, 50, 80], "advice": "info", "route_id": "none", "open": ["Wie oft steht die Linie dadurch still?"]},
+  "caught": "cost 60 above 40"
+}
 ]

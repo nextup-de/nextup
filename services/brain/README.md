@@ -217,7 +217,7 @@ and saves the run in `eval/results/`. Rerun it after every prompt change and bum
 
 ```bash
 uv run python -m eval.run_coach           # the studio's turn on 8 first messages: reading, then coach, printed
-uv run python -m eval.run_read            # the reading alone on 10 cases (injection, mashing, German, repeats...); --offline checks the checks with a fake model
+uv run python -m eval.run_read            # the reading alone on 11 cases (injection, mashing, German, repeats...); --offline checks the checks with a fake model
 uv run python -m eval.run_read --locale de   # the same as on a German page, also in run_coach: German in every field, "Sie", never "du"
 uv run python -m eval.chat                # talk to it yourself; --prompt shows what the model is sent
 uv run python -m eval.smoke --provider bedrock --model <id>   # one read, coach, plan and checkin call; exits 1 on a failure

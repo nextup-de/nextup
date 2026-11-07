@@ -13,7 +13,7 @@ from brain.llm import LLMClient
 from brain.schemas import DIALS, IdeaRead, ReadDial, ReadIn, ReadOut
 
 # Stored with every reading (IdeaTurn.reading). Bump on prompt changes.
-PROMPT_VERSION = "brain-read-v4"
+PROMPT_VERSION = "brain-read-v5"
 MAX_OPEN = 6
 # The app rejects the whole reading for one question over 400 UTF-16 units (features/ideas/reading.ts).
 # 200 characters is 400 units at worst, and far past "one short question".

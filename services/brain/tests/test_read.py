@@ -354,3 +354,13 @@ def test_an_id_that_looks_like_one_is_still_sent_back(rbody):
     llm = FakeLLM([answer(summary="This repeats musterwerk-c7."), answer()])
     read_idea(llm, ReadIn.model_validate(rbody))
     assert len(llm.calls) == 2
+
+
+def test_the_prompt_does_not_let_a_gap_read_as_cheap_or_safe(rbody):
+    llm = FakeLLM([answer()])
+    read_idea(llm, ReadIn.model_validate(rbody))
+    system = llm.calls[0]["system"]
+    assert "never fill a gap in the idea's favour" in system
+    assert "cost at most 40, risk at most 50" in system
+    assert "With no goals listed, fit is 0-20" in system
+    assert 'Never write "routing map"' in system

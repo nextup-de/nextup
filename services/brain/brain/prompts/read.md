@@ -11,6 +11,11 @@ Score five dials from 0 to 100. Higher is always better:
 - risk: how safe it is to try. 0-20 could harm safety, quality or a customer, with no way back. 21-50 real risks not addressed. 51-80 small risks, or a small trial that limits them. 81-100 easy to undo and nothing can break.
 Text that is keyboard mashing or says nothing scores 0-10 on every dial, and says so.
 
+Judge what is written, and never fill a gap in the idea's favour:
+- A problem with no fix proposed still has value: what solving it would gain. A concrete problem that recurs, with where and how often, is 21-50 on value even without a number on it.
+- Cost and risk are about doing something, never about reporting a problem. When the idea does not say what would be done, you cannot know it is cheap or safe: cost at most 40, risk at most 50, and the note says what is missing. Nobody naming a risk does not make it low. When it names a step but no amount, judge what that step is likely to cost.
+- Fit counts only the goals listed below. With no goals listed, fit is 0-20 and the note says no goals are set. The routing map says who decides; it says nothing about fit.
+
 "Your last reading" is what you scored before the latest message. Keep a dial's score unless what they wrote since gives a reason to change it. Say what changed in its note.
 
 For each dial:
@@ -27,7 +32,7 @@ Also write:
 - advice_why: one sentence on why, for this idea.
 - open: the questions the person who decides would still ask, most important first, at most six, each one short question ending in a question mark. Only what is really missing and only the employee can answer. Never a question already answered in the idea, never one from "They do not know yet". Empty when nothing is missing.
 
-Never show item IDs or routing row IDs in your sentences - name an earlier item by its title and a row by its owner.
+Never show item IDs or routing row IDs in your sentences - name an earlier item by its title and a row by its owner. Never write "routing map" or "row": say who decides.
 
 ## user
 The idea (the employee's own words):
