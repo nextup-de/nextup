@@ -212,7 +212,7 @@ def test_english_stays_what_it_was_when_no_locale_comes(cbody):
 
 
 def test_a_german_page_gets_german_and_the_formal_address(cbody):
-    llm = FakeLLM([turn()])
+    llm = FakeLLM([de()])
     coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
     system = llm.calls[0]["system"]
     assert "Always write in German, even when the employee writes in English." in system
@@ -255,3 +255,23 @@ def test_a_german_question_with_umlauts_counts_as_asked_before(cbody):
 ])
 def test_it_never_says_they_raised_it_in_german(said, means):
     assert not_you(said) == means
+
+
+def test_on_a_german_page_an_english_note_is_sent_back_once(cbody):
+    llm = FakeLLM([de(note="The sheet is touched more than anything else on the line and that is not sized."), de()])
+    out = coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
+    assert len(llm.calls) == 2 and "Zwölf" in out.note
+
+
+def test_a_quoted_english_title_in_a_german_note_is_no_reason_to_send_it_back(cbody):
+    llm = FakeLLM([de(note='Das wurde schon als "Stop double-entering job data on paper" eingebracht, und die Idee nennt keine Zahl.')])
+    coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
+    assert len(llm.calls) == 1
+
+
+def test_a_german_note_may_run_longer_than_an_english_one(cbody):
+    long_note = "Zwölf Umrüstungen pro Schicht " * 18
+    assert 500 < len(long_note) < 600
+    llm = FakeLLM([de(note=long_note)])
+    out = coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
+    assert len(llm.calls) == 1 and out.note == long_note.strip()

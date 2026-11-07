@@ -86,3 +86,12 @@ def test_app_rejects_knows_what_the_app_refuses(over, why):
 
 def test_app_rejects_lets_a_normal_reading_through():
     assert app_rejects(reading()) == []
+
+
+def test_on_a_german_page_english_and_du_are_both_caught():
+    case = BY_ID["sized"]
+    english = run_case(case, CTX, offline_ask(case["good"], None), "de")[1]
+    assert any("written in en" in b for b in english)
+    du = {**case["good"], "text": "Das ist die Idee und du hast nicht gesagt, was sie für die Linie mit sich bringt."}
+    informal = run_case(case, CTX, offline_ask(du, None), "de")[1]
+    assert any("informal 'du'" in b for b in informal) and not any("written in" in b for b in informal)

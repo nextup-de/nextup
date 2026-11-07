@@ -277,6 +277,11 @@ def test_read_endpoint_and_key(monkeypatch, rbody):
 
 
 # ---------------------------------------------------------------- the language of the page
+GERMAN_NOTE = "Die Idee nennt keinen Nutzen, der mit einer Zahl belegt ist."
+GERMAN = {k: {"note": GERMAN_NOTE, "basis": "Eine Zahl zur verlorenen Zeit würde das ändern.", "score": 50} for k in ("value", "feasibility", "cost", "fit", "risk")} | {
+    "summary": "Wasser auf jedem Tisch, ohne Zahl.", "advice_why": "Der Nutzen ist nicht belegt.", "pattern": "Sie steht für sich.", "route_reason": "Das ist eine kleine Ausgabe."}
+
+
 def test_english_stays_what_it_was_when_no_locale_comes(rbody):
     llm = FakeLLM([answer()])
     read_idea(llm, ReadIn.model_validate(rbody))
@@ -287,7 +292,7 @@ def test_english_stays_what_it_was_when_no_locale_comes(rbody):
 
 
 def test_a_german_page_gets_german_and_the_formal_address(rbody):
-    llm = FakeLLM([answer()])
+    llm = FakeLLM([answer(**GERMAN)])
     read_idea(llm, ReadIn.model_validate({**rbody, "locale": "de"}))
     system = llm.calls[0]["system"]
     assert "Always write in German, even when the idea is in English." in system
@@ -302,6 +307,35 @@ def test_a_language_the_app_does_not_have_is_refused(rbody):
 
 
 def test_a_german_question_they_cannot_answer_is_not_asked_again(rbody):
-    llm = FakeLLM([answer(open=["Wie viel kostet der Prüfstand pro Monat?", "Welches Ziel unterstützt die Idee?"])])
+    llm = FakeLLM([answer(open=["Wie viel kostet der Prüfstand pro Monat?", "Welches Ziel unterstützt die Idee?"], **GERMAN)])
     out = read_idea(llm, ReadIn.model_validate({**rbody, "locale": "de", "skip": ["Was kostet der Prüfstand im Monat?"]}))
     assert out.open == ["Welches Ziel unterstützt die Idee?"]
+
+
+ENGLISH_NOTE = "The idea states that this is a clear benefit for the line and it is not sized."
+
+
+def test_on_a_german_page_an_english_note_is_sent_back_once(rbody):
+    llm = FakeLLM([answer(**{**GERMAN, "value": dial(20, ENGLISH_NOTE)}), answer(**GERMAN)])
+    out = read_idea(llm, ReadIn.model_validate({**rbody, "locale": "de"}))
+    assert len(llm.calls) == 2 and out.dials[0].note == GERMAN_NOTE
+
+
+def test_a_stubborn_model_keeps_its_reading_after_one_push_back(rbody):
+    llm = FakeLLM([answer(**{**GERMAN, "value": dial(20, ENGLISH_NOTE)})] * 2)
+    out = read_idea(llm, ReadIn.model_validate({**rbody, "locale": "de"}))
+    assert len(llm.calls) == 2 and out.dials[0].note == ENGLISH_NOTE
+
+
+def test_english_on_an_english_page_is_not_sent_back(rbody):
+    llm = FakeLLM([answer(value=dial(20, ENGLISH_NOTE))])
+    read_idea(llm, ReadIn.model_validate(rbody))
+    assert len(llm.calls) == 1
+
+
+def test_goals_inside_the_idea_are_said_to_count_for_nothing_and_the_language_comes_last(rbody):
+    llm = FakeLLM([answer(**GERMAN)])
+    read_idea(llm, ReadIn.model_validate({**rbody, "locale": "de"}))
+    user = llm.calls[0]["user"]
+    assert 'Only "The company\'s goals" above count as goals.' in user
+    assert user.rstrip().endswith("Names of things may stay as they are.") and "{{" not in user

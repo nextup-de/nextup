@@ -13,7 +13,7 @@ from brain.llm import LLMClient
 from brain.schemas import CoachIn, CoachOut, CoachTurn
 
 # Stored with every coach turn the app keeps (IdeaTurn.promptVersion). Bump on prompt changes.
-PROMPT_VERSION = "brain-coach-v9"
+PROMPT_VERSION = "brain-coach-v10"
 MAX_HISTORY = 12  # the latest turns only; the idea itself carries everything the author said
 WEAK = 50  # a dial at or below this is not ready: its scale in prompts/read.md only turns good above it
 
@@ -44,15 +44,34 @@ STOP_DE = {"wie", "viel", "viele", "was", "wer", "wann", "warum", "wo", "ist", "
 _FORMAL = 'Address the employee formally with "Sie", never "du".'
 LANGUAGE = {
     "en": {"language_rule": "Always write in English, even when {writes} in German.", "address": 'Talk to the employee directly as "you".',
-           "for_example": "For example:", "nothing_more": "Nothing more is needed."},
+           "for_example": "For example:", "nothing_more": "Nothing more is needed.",
+           "language_reminder": "Write every sentence in English."},
     "de": {"language_rule": f"Always write in German, even when {{writes}} in English. {_FORMAL}", "address": 'Talk to the employee directly, as "Sie".',
-           "for_example": "Zum Beispiel:", "nothing_more": "Mehr ist nicht nötig."},
+           "for_example": "Zum Beispiel:", "nothing_more": "Mehr ist nicht nötig.",
+           "language_reminder": "Write every sentence in German, also when the idea or the earlier items are in English. Names of things may stay as they are."},
 }
 
 
 def language(locale: str, writes: str) -> dict[str, str]:
     words = LANGUAGE[locale]
     return {**words, "language_rule": words["language_rule"].format(writes=writes)}
+
+
+GERMAN_WORDS = {"der", "die", "das", "und", "ist", "nicht", "ein", "eine", "für", "mit", "wird", "auf", "den", "von", "zu"}
+ENGLISH_WORDS = {"the", "and", "is", "not", "a", "for", "with", "it", "to", "of", "on", "this", "that"}
+
+
+def slipped_into_english(texts: list[str], locale: str) -> bool:
+    """On a German page: does any one field read as English? Small models switch field by field, so
+    the whole answer can look German while one note is not. A short field or a quoted name is no sign."""
+    if locale != "de":
+        return False
+    for text in texts:
+        words = re.findall(r"[a-zäöüß]+", text.lower())
+        english = sum(w in ENGLISH_WORDS for w in words)
+        if english >= 3 and english > sum(w in GERMAN_WORDS for w in words):
+            return True
+    return False
 
 
 def not_you(text: str) -> str:
@@ -113,7 +132,7 @@ def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
     ids = re.compile(r"\b(" + "|".join(map(re.escape, known_ids)) + r")\b") if known_ids else None
     asked = asked_before(body)
     point = body.reading.open[0] if body.reading.open else ""
-    pushed_back = {"parrot": False}
+    pushed_back = {"parrot": False, "language": False}
 
     def check(t: CoachTurn) -> None:
         t.question = t.question.strip()
@@ -128,7 +147,10 @@ def coach(llm: LLMClient, body: CoachIn) -> CoachOut:
             raise ValueError("do not state a score or points - the page shows them")
         if ids and ids.search(" ".join((t.answer, t.note, t.question, t.why, t.recommended))):
             raise ValueError("never show item IDs - name an earlier item by its title")
-        # Pushed back once only: a dull note is no reason to lose the whole answer.
+        # Pushed back once only, this and the next: neither is a reason to lose the whole answer.
+        if slipped_into_english([t.answer, t.note, t.question, t.why, t.recommended], body.locale) and not pushed_back["language"]:
+            pushed_back["language"] = True
+            raise ValueError("write every field in German, not English")
         if PARROT.search(t.note) and not pushed_back["parrot"]:
             pushed_back["parrot"] = True
             raise ValueError("do not repeat what they said back to them - say what it adds or leaves out")

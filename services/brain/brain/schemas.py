@@ -197,10 +197,10 @@ class CoachIn(Strict):
 
 class CoachTurn(Strict):
     answer: str = Field(max_length=800, description="The answer to what their latest message asks, from the company's facts; empty if it asks nothing")
-    note: str = Field(max_length=400, description="Your honest read of their latest message: what it adds, leaves out, or what you doubt. Never repeat it back")
+    note: str = Field(max_length=600, description="Your honest read of their latest message: what it adds, leaves out, or what you doubt. Never repeat it back")
     question: str = Field(max_length=300, description="Exactly one short question about the chosen point, ending with a question mark; empty if nothing is open")
-    why: str = Field(max_length=250, description="One sentence: what the person who decides does differently once they know; empty if no question")
-    recommended: str = Field(max_length=300, description="Your concrete best-guess answer, written as the employee would say it; empty if no question")
+    why: str = Field(max_length=350, description="One sentence: what the person who decides does differently once they know; empty if no question")
+    recommended: str = Field(max_length=400, description="Your concrete best-guess answer, written as the employee would say it; empty if no question")
 
 
 class CoachOut(BaseModel):

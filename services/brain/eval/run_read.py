@@ -4,6 +4,7 @@
     uv run python -m eval.run_read --offline   # no model: canned answers through the real code
     uv run python -m eval.run_read --provider bedrock --model <id> [--region eu-central-1]
     AZURE_OPENAI_KEY=... uv run python -m eval.run_read --provider azure-openai --model <deployment> --endpoint <url>
+    uv run python -m eval.run_read --locale de  # as on a German page: every case must come back in German, with "Sie"
 
 --offline proves the eval, not the model: a good canned answer has to pass and a bad one has to be
 caught, so a check that can never fail shows up here. It says nothing about what a real model does.
@@ -18,11 +19,12 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+from brain.coach import ENGLISH_WORDS as _ENGLISH, GERMAN_WORDS as _GERMAN, slipped_into_english
 from brain.config import Settings
 from brain.llm import LLMClient, LLMOutputError
 from brain.read import PROMPT_VERSION, read_idea
 from brain.schemas import DIALS, ReadIn, ReadOut
-from eval.run_coach import client
+from eval.run_coach import INFORMAL, client, page_locale
 
 HERE = Path(__file__).parent
 STABLE_WITHIN = 10  # a dial with no reason to move may wobble this much, not cross a band of the scale
@@ -33,8 +35,6 @@ APP_MAX = {"note": 1000, "basis": 600, "summary": 1200, "advice_why": 600, "patt
            "route_id": 40, "same_as": 40, "related": 40, "model": 200, "version": 80}
 APP_MAX_OPEN, APP_MAX_QUESTION = 8, 400
 
-_GERMAN = {"der", "die", "das", "und", "ist", "nicht", "ein", "eine", "für", "mit", "wird", "auf", "den", "von", "zu"}
-_ENGLISH = {"the", "and", "is", "not", "a", "for", "with", "it", "to", "of", "on", "this", "that"}
 
 
 def units(s: str) -> int:
@@ -93,8 +93,12 @@ def judge(expect: dict, out: ReadOut, ctx: dict) -> list[str]:
         bad.append(f"route {out.route_id}, expected {expect['route']}")
     if "same_as" in expect and out.same_as not in expect["same_as"]:
         bad.append(f"same_as {out.same_as}, expected {expect['same_as']}")
+    if expect.get("writes") == "de" and language(out) == "de" and slipped_into_english(shown, "de"):
+        bad.append("one field is in English, the rest in German")
     if "writes" in expect and language(out) != expect["writes"]:
         bad.append(f"written in {language(out)}, prompts/read.md asks for {expect['writes']}")
+    if expect.get("writes") == "de" and (slip := INFORMAL.search(" ".join(shown))):
+        bad.append(f"informal {slip.group(0)!r}, a German page says Sie")
     return bad
 
 
@@ -105,27 +109,28 @@ def judge_second(then: dict, first: ReadOut, second: ReadOut) -> list[str]:
     return bad
 
 
-def request(ctx: dict, case: dict, idea: dict, previous: list[dict]) -> ReadIn:
+def request(ctx: dict, case: dict, idea: dict, previous: list[dict], locale: str = "en") -> ReadIn:
     """The request as the app builds it (readRequest, features/ideas/reading.ts)."""
     return ReadIn.model_validate({
         "company": ctx["company"], "idea": idea, "goals": ctx["goals"], "routes": ctx["routes"], "known": ctx["known"],
-        "spend_limit_eur": ctx["spend_limit_eur"], "skip": case.get("skip", []), "previous": previous})
+        "spend_limit_eur": ctx["spend_limit_eur"], "skip": case.get("skip", []), "previous": previous, "locale": locale})
 
 
 Ask = Callable[[ReadIn, str], ReadOut]
 
 
-def run_case(case: dict, ctx: dict, ask: Ask) -> tuple[list[ReadOut], list[str]]:
+def run_case(case: dict, ctx: dict, ask: Ask, locale: str = "en") -> tuple[list[ReadOut], list[str]]:
     """The readings of one case and what is wrong with them. A reading that never came back is wrong."""
     readings: list[ReadOut] = []
+    expect = {**case["expect"], "writes": "de"} if locale == "de" else case["expect"]
     try:
-        first = ask(request(ctx, case, case["idea"], []), "first")
+        first = ask(request(ctx, case, case["idea"], [], locale), "first")
         readings.append(first)
-        bad = judge(case["expect"], first, ctx)
+        bad = judge(expect, first, ctx)
         if then := case.get("then"):
             idea = {**case["idea"], "body": (case["idea"]["body"] + "\n" + then["add"]).strip()}
             previous = [d.model_dump(exclude={"basis"}) for d in first.dials]
-            second = ask(request(ctx, case, idea, previous), "then")
+            second = ask(request(ctx, case, idea, previous, locale), "then")
             readings.append(second)
             bad += judge({}, second, ctx) + judge_second(then, first, second)
     except LLMOutputError as e:
@@ -196,11 +201,11 @@ def show(r: ReadOut) -> None:
     print("  open:    " + " | ".join(r.open))
 
 
-def run_live(cases: list[dict], ctx: dict, ask: Ask, model: str) -> int:
+def run_live(cases: list[dict], ctx: dict, ask: Ask, model: str, locale: str = "en") -> int:
     passed, answered, seen = 0, 0, []
     for c in cases:
         print(f"\n{c['id']}  {c['what']}\n  {c['idea']['title']}")
-        readings, bad = run_case(c, ctx, ask)
+        readings, bad = run_case(c, ctx, ask, locale)
         for r in readings:
             show(r)
         seen += readings
@@ -210,7 +215,7 @@ def run_live(cases: list[dict], ctx: dict, ask: Ask, model: str) -> int:
     if not answered:
         print("\nNo model answered: this run says nothing about the reading.")
     print(json.dumps({
-        "model": model, "prompt": PROMPT_VERSION, "passed": f"{passed}/{len(cases)}",
+        "model": model, "prompt": PROMPT_VERSION, "locale": locale, "passed": f"{passed}/{len(cases)}",
         "seconds_median": round(statistics.median(r.ms for r in seen) / 1000, 1) if seen else None,
         "seconds_max": round(max(r.ms for r in seen) / 1000, 1) if seen else None,
         "tokens_out_max": max((r.tokens_out for r in seen), default=None),
@@ -228,7 +233,7 @@ def main(argv: list[str] | None = None) -> int:
     if "--offline" in args:
         return run_offline(cases, ctx)
     llm = client(args)
-    return run_live(cases, ctx, lambda body, _: read_idea(llm.for_request(None), body), llm.settings.llm_model)
+    return run_live(cases, ctx, lambda body, _: read_idea(llm.for_request(None), body), llm.settings.llm_model, page_locale(args))
 
 
 if __name__ == "__main__":

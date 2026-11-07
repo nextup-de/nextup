@@ -43,3 +43,5 @@ Conversation so far:
 
 Questions you already asked:
 {{asked}}
+
+{{language_reminder}}

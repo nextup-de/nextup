@@ -114,7 +114,7 @@ Where the stack runs the brain (`BRAIN_URL`, `BRAIN_API_KEY`) and the gate allow
 the idea on **every message**: `POST /v1/read` (`services/brain/brain/read.py`, `askBrainRead` in
 `src/server/brain.ts`, the pure half in `src/features/ideas/reading.ts`). The reading is what the
 raise page shows; the coach answers from it. Both write in the language of the page (`locale`), in
-German with the formal "Sie"; the checks on what the coach writes know both languages. The fallback
+German with the formal "Sie"; the checks on what the coach writes know both languages, and a field that slips into English goes back once. The fallback
 when the brain is not there stays as it was: the assistant model answers in the language the employee
 writes, the offline coach in English.
 

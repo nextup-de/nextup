@@ -8,12 +8,12 @@ model cannot state a different one. The idea's text is judged, never obeyed (pro
 import re
 import time
 
-from brain.coach import STOP, STOP_DE, language
+from brain.coach import STOP, STOP_DE, language, slipped_into_english
 from brain.llm import LLMClient
 from brain.schemas import DIALS, IdeaRead, ReadDial, ReadIn, ReadOut
 
 # Stored with every reading (IdeaTurn.reading). Bump on prompt changes.
-PROMPT_VERSION = "brain-read-v3"
+PROMPT_VERSION = "brain-read-v4"
 MAX_OPEN = 6
 # The app rejects the whole reading for one question over 400 UTF-16 units (features/ideas/reading.ts).
 # 200 characters is 400 units at worst, and far past "one short question".
@@ -60,7 +60,7 @@ def read_idea(llm: LLMClient, body: ReadIn) -> ReadOut:
     route_ids = [r.id for r in body.routes]
     shown = known_ids + route_ids
     ids = re.compile(r"\b(" + "|".join(map(re.escape, shown)) + r")\b") if shown else None
-    pushed_back = {"open": False}
+    pushed_back = {"open": False, "language": False}
 
     def check(r: IdeaRead) -> None:
         # Everything the page shows; `comparison` is the model's own reasoning and goes nowhere.
@@ -68,6 +68,10 @@ def read_idea(llm: LLMClient, body: ReadIn) -> ReadOut:
                  *(getattr(r, k).note for k in DIALS), *(getattr(r, k).basis for k in DIALS)]
         if ids and ids.search(" ".join(texts)):
             raise ValueError("never show item IDs or row IDs - name an earlier item by its title and a row by its owner")
+        # A page in one language with one note in another. Pushed back once only, like the next one.
+        if slipped_into_english(texts, body.locale) and not pushed_back["language"]:
+            pushed_back["language"] = True
+            raise ValueError("write every field in German, not English")
         # "More is needed" with nothing to ask leaves the coach no question. Pushed back once only:
         # it is no reason to lose the whole reading.
         if r.advice == "info" and not _open(r.open, body.skip) and not pushed_back["open"]:
