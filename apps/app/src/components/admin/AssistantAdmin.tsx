@@ -7,7 +7,8 @@ import { LEVEL_LABEL, canUse, isLevel } from "@/features/assist/classify";
 import type { AssistantView } from "@/server/admin-insight";
 import { AssistSettingsForm } from "./AssistSettingsForm";
 import { deleteDocumentAction } from "@/server/actions/assist-admin";
-import { Banner, ConfirmDialog, DataTable, PageHeader, SectionCard } from "@/components/ui/elements";
+import { Banner, ConfirmDialog, PageHeader, SectionCard } from "@/components/ui/elements";
+import { SearchTable } from "./SearchTable";
 import { useT } from "@/i18n/client";
 import c from "@/app/admin/people/console.module.css";
 
@@ -83,9 +84,10 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
       </SectionCard>
 
       <SectionCard title={t("adminPrivacy.documents")} hint={t("adminPrivacy.documentsReadable", { readable, total: documents.length })} name="documents">
-        <DataTable
+        <SearchTable
           rows={documents}
           rowKey={(d) => d.id}
+          searchText={(d) => `${d.title} ${d.externalId} ${d.source} ${isLevel(d.classification) ? LEVEL_LABEL[d.classification] : d.classification}`}
           empty={t("adminPrivacy.documentsNone")}
           columns={[
             { key: "title", header: t("adminPrivacy.colTitle"), width: "minmax(0, 2fr)", render: (d) => <>{d.title} <span className={c.sub}>{d.externalId}</span></> },

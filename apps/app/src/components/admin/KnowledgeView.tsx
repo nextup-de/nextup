@@ -3,11 +3,16 @@
 // Props in, JSX out.
 import type { CSSProperties } from "react";
 import { roleTree, type Knowledge, type Profile } from "@/features/knowledge";
-import { DataTable, DeptChip, PersonFace, SectionCard } from "@/components/ui/elements";
+import { someNames } from "@/features/admin/list";
+import { DeptChip, PersonFace, SectionCard } from "@/components/ui/elements";
 import { getT } from "@/i18n/server";
+import { SearchTable } from "./SearchTable";
 import c from "@/app/admin/people/console.module.css";
 
 type Props = { knowledge: Knowledge; profile: Profile | null; brief: string };
+
+/** Names in a cell before "+12 more": a role held by half the plant must not fill the page. */
+const NAMES_IN_CELL = 3;
 
 export async function KnowledgeView({ knowledge: k, profile, brief }: Props) {
   const t = await getT();
@@ -15,7 +20,11 @@ export async function KnowledgeView({ knowledge: k, profile, brief }: Props) {
   const unitName = new Map(k.units.map((u) => [u.id, u.name]));
   const tree = roleTree(k);
   const roleById = new Map(k.roles.map((r) => [r.id, r]));
-  const holders = (roleId: string | null) => tree.find((n) => n.role.id === roleId)?.holders.join(", ") ?? "";
+  const more = (n: number) => t("adminConsole.moreNames", { n });
+  const holders = (roleId: string | null) => {
+    const some = someNames(tree.find((n) => n.role.id === roleId)?.holders ?? [], NAMES_IN_CELL);
+    return [...some.names, ...(some.more ? [more(some.more)] : [])].join(", ");
+  };
   const role = (id: string | null) => {
     const r = id ? roleById.get(id) : undefined;
     if (!r) return <span className={c.sub}>{t("adminPrivacy.kNone")}</span>;
@@ -51,9 +60,10 @@ export async function KnowledgeView({ knowledge: k, profile, brief }: Props) {
       </SectionCard>
 
       <SectionCard title={t("adminPrivacy.kUnits")} hint={t("adminPrivacy.kUnitsMeta", { n: k.units.length })} name="units">
-        <DataTable
+        <SearchTable
           rows={bySort(k.units)}
           rowKey={(u) => u.id}
+          searchText={(u) => `${u.key} ${u.name} ${u.kind} ${unitName.get(u.parentId ?? "") ?? ""}`}
           empty={none}
           columns={[
             { key: "key", header: t("adminPrivacy.colKey"), width: "minmax(0, 0.8fr)", render: (u) => <code className={c.mono}>{u.key}</code> },
@@ -76,9 +86,10 @@ export async function KnowledgeView({ knowledge: k, profile, brief }: Props) {
       </SectionCard>
 
       <SectionCard title={t("adminPrivacy.kRoles")} hint={`${t("adminPrivacy.kRolesMeta", { roles: k.roles.length, holders: k.holders.length })} - ${t("adminPrivacy.kRolesLead")}`} name="roles">
-        <DataTable
+        <SearchTable
           rows={tree}
           rowKey={(n) => n.role.id}
+          searchText={(n) => [n.role.title, n.unit, ...n.holders, ...n.role.decides, ...n.role.skills].filter(Boolean).join(" ")}
           empty={none}
           columns={[
             {
@@ -93,10 +104,11 @@ export async function KnowledgeView({ knowledge: k, profile, brief }: Props) {
               header: t("adminPrivacy.colHeldBy"),
               width: "minmax(0, 1.3fr)",
               render: (n) => (
-                <span className={c.whoNames}>
-                  {n.holders.map((h) => (
+                <span className={c.whoNames} title={n.holders.length > NAMES_IN_CELL ? n.holders.join(", ") : undefined}>
+                  {n.holders.slice(0, NAMES_IN_CELL).map((h) => (
                     <span key={h} className={c.whoName}><PersonFace name={h} size="sm" />{h}</span>
                   ))}
+                  {n.holders.length > NAMES_IN_CELL ? <span className={c.sub}>{more(n.holders.length - NAMES_IN_CELL)}</span> : null}
                 </span>
               ),
             },
@@ -119,9 +131,10 @@ export async function KnowledgeView({ knowledge: k, profile, brief }: Props) {
       </SectionCard>
 
       <SectionCard title={t("adminPrivacy.kRouting")} hint={t("adminPrivacy.kRoutingMeta", { n: k.rules.length })} name="routing">
-        <DataTable
+        <SearchTable
           rows={bySort(k.rules)}
           rowKey={(r) => r.id}
+          searchText={(r) => [r.key, r.type, ...r.keywords, ...[r.ownerRoleId, r.deputyRoleId, r.buddyRoleId].map((id) => (id ? roleById.get(id)?.title : ""))].filter(Boolean).join(" ")}
           empty={none}
           columns={[
             { key: "key", header: t("adminPrivacy.colKey"), width: "minmax(0, 0.6fr)", render: (r) => <code className={c.mono}>{r.key}</code> },
@@ -136,9 +149,10 @@ export async function KnowledgeView({ knowledge: k, profile, brief }: Props) {
       </SectionCard>
 
       <SectionCard title={t("adminPrivacy.kGoals")} hint={t("adminPrivacy.kGoalsMeta", { n: k.goals.length })} name="goals">
-        <DataTable
+        <SearchTable
           rows={bySort(k.goals)}
           rowKey={(g) => g.id}
+          searchText={(g) => [g.title, g.kpi, g.target, g.period, g.orgUnitId ? unitName.get(g.orgUnitId) : "", ...g.keywords].filter(Boolean).join(" ")}
           empty={t("adminPrivacy.kNoGoals")}
           columns={[
             { key: "goal", header: t("adminPrivacy.colGoal"), width: "minmax(0, 1.6fr)", render: (g) => g.title },

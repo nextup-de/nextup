@@ -43,6 +43,9 @@ export function demoCompanies(): CompanyRow[] {
       role: u.role,
       codeIssuedAt: null,
       microsoft: false,
+      active: true,
+      isStackAdmin: false,
+      hasTotp: false,
     })),
   }));
 }

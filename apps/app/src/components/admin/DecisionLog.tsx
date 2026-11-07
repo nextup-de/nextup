@@ -3,6 +3,7 @@
 import type { DecisionRow, DecisionSummary, Verdict } from "@/features/admin/decisions";
 import type { MessageKey, T } from "@/i18n";
 import { DataTable, PageHeader, SectionCard } from "@/components/ui/elements";
+import { SearchTable } from "./SearchTable";
 import c from "@/app/admin/people/console.module.css";
 
 type Props = {
@@ -80,9 +81,10 @@ export function DecisionLog({ rows, summary: s, routeNames, exportHref, t }: Pro
       </SectionCard>
 
       <SectionCard title={t("adminPrivacy.raisesTitle")} hint={t("adminPrivacy.raisesMeta")} name="raises">
-        <DataTable
+        <SearchTable
           rows={rows}
           rowKey={(r) => r.eventId}
+          searchText={(r) => [r.title, r.company, r.proposed, r.chosen, r.proposed && routeNames[r.company]?.[r.proposed], r.chosen && routeNames[r.company]?.[r.chosen], t(VERDICT[r.verdict])].filter(Boolean).join(" ")}
           empty={t("adminPrivacy.raisesNone")}
           columns={[
             { key: "when", header: t("adminPrivacy.colWhen"), width: "130px", render: (r) => <><span className={c.nowrap}>{when(r.raisedAt)}</span><span className={c.sub}>{r.company}</span></> },

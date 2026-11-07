@@ -43,7 +43,7 @@ describe("jiraBadge", () => {
 
 describe("lockedOut", () => {
   const person = (over: Partial<{ codeIssuedAt: string | null; microsoft: boolean }>) => ({
-    id: "u", name: "A", email: "a@x", role: "employee", codeIssuedAt: null, microsoft: false, ...over,
+    id: "u", name: "A", email: "a@x", role: "employee", codeIssuedAt: null, microsoft: false, active: true, isStackAdmin: false, hasTotp: false, ...over,
   });
 
   it("counts people with neither a code nor a Microsoft account the company still accepts", () => {

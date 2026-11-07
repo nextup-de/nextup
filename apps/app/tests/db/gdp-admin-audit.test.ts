@@ -30,7 +30,9 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const { adminSignIn, setEntraTenantAction, issueLoginCodeAction, setStackAdminAction } = await import("@/server/actions/admin");
+const { adminSignIn, setEntraTenantAction, issueLoginCodesAction, setStackAdminAction } = await import("@/server/actions/admin");
+
+const { adminResetTotpAction } = await import("@/server/actions/settings/totp-reset");
 
 const db = getDb();
 const env = { ...process.env };
@@ -91,8 +93,8 @@ describe("GDP admin audit", () => {
     // The stack-admin session does the rest.
     cookie = signAdmin(exp(), SECRET, "Kim Becker", false, "stack-admin");
     expect(await setEntraTenantAction({}, form({ slug: "acme", tenantId: TENANT }))).toMatchObject({ saved: true });
-    const issued = await issueLoginCodeAction({}, form({ slug: "acme", userId }));
-    expect(issued.code).toBeTruthy();
+    const issued = await issueLoginCodesAction({}, form({ slug: "acme", userId }));
+    expect(issued.codes?.[0]?.code).toBeTruthy();
     expect(await setStackAdminAction({}, form({ slug: "acme", userId, stackAdmin: "on" }))).toMatchObject({ saved: true });
 
     all = await rows();
@@ -110,7 +112,53 @@ describe("GDP admin audit", () => {
     expect(hash).not.toBe("");
     const text = JSON.stringify(all);
     expect(text).not.toContain(ADMIN_CODE);
-    expect(text).not.toContain(issued.code as string);
+    expect(text).not.toContain(issued.codes?.[0]?.code as string);
     expect(text).not.toContain(hash);
+  });
+
+  it("a bulk action writes one row per person, and a selection with a stranger in it changes nobody", async () => {
+    cookie = signAdmin(exp(), SECRET, "Kim Becker", false, "stack-admin");
+    const second = (await db.user.create({ data: { companyId: acme, name: "Lea Vogel", email: "lea.vogel@acme-gdp-k1.test", role: "member", dept: "", ini: "LV" } })).id;
+    const many = (fields: Record<string, string>, ids: string[]) => {
+      const f = form(fields);
+      for (const id of ids) f.append("userId", id);
+      return f;
+    };
+    const before = (await rows()).length;
+
+    const refused = await issueLoginCodesAction({}, many({ slug: "acme" }, [second, "not-a-person"]));
+    expect(refused.error).toBeTruthy();
+    expect((await db.user.findFirstOrThrow({ where: { id: second, companyId: acme } })).loginCodeHash).toBeNull();
+    expect(await rows()).toHaveLength(before);
+
+    const issued = await issueLoginCodesAction({}, many({ slug: "acme" }, [userId, second]));
+    expect(issued.codes?.map((c) => c.name)).toEqual(["Kim Becker", "Lea Vogel"]);
+    expect(new Set(issued.codes?.map((c) => c.code)).size).toBe(2);
+    expect(await setStackAdminAction({}, many({ slug: "acme", stackAdmin: "on" }, [userId, second]))).toMatchObject({ saved: true });
+    expect((await db.user.findFirstOrThrow({ where: { id: second, companyId: acme } })).isStackAdmin).toBe(true);
+
+    const added = (await rows()).slice(before).map((r) => r.action);
+    expect(added.filter((a) => a === "audit.member.code")).toHaveLength(2);
+    expect(added.filter((a) => a === "audit.access.stack_admin")).toHaveLength(2);
+  });
+
+  it("resetting second factors is all or nothing, and audited per person", async () => {
+    cookie = signAdmin(exp(), SECRET, "Kim Becker", false, "stack-admin");
+    const enrolled = (await db.user.create({ data: { companyId: acme, name: "Mo Enrolled", email: "mo@acme-gdp-k1.test", role: "manager", dept: "", ini: "ME", totpSecretSealed: "sealed", totpEnabledAt: new Date() } })).id;
+    const never = (await db.user.create({ data: { companyId: acme, name: "Nia Never", email: "nia@acme-gdp-k1.test", role: "member", dept: "", ini: "NN" } })).id;
+    const before = (await rows()).length;
+    const select = (ids: string[]) => {
+      const f = form({ slug: "acme" });
+      for (const id of ids) f.append("userId", id);
+      return f;
+    };
+
+    expect((await adminResetTotpAction({}, select([enrolled, never]))).error).toBeTruthy();
+    expect((await db.user.findFirstOrThrow({ where: { id: enrolled, companyId: acme } })).totpEnabledAt).not.toBeNull();
+    expect(await rows()).toHaveLength(before);
+
+    expect(await adminResetTotpAction({}, select([enrolled]))).toMatchObject({ saved: true });
+    expect((await db.user.findFirstOrThrow({ where: { id: enrolled, companyId: acme } })).totpSecretSealed).toBeNull();
+    expect((await rows()).slice(before).map((r) => r.action)).toEqual(["audit.member.totp_reset"]);
   });
 });

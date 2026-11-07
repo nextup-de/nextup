@@ -62,7 +62,7 @@ const exp = () => Math.floor(Date.now() / 1000) + 3600;
 
 // Every console write, called the way its page calls it. The values would change something if they got through.
 const WRITES: Record<string, () => Promise<unknown>> = {
-  "actions/admin#issueLoginCodeAction": () => admin.issueLoginCodeAction({}, form({ slug: SLUG, userId })),
+  "actions/admin#issueLoginCodesAction": () => admin.issueLoginCodesAction({}, form({ slug: SLUG, userId })),
   "actions/admin#setStackAdminAction": () => admin.setStackAdminAction({}, form({ slug: SLUG, userId, stackAdmin: "on" })),
   "actions/admin#setEntraTenantAction": () => admin.setEntraTenantAction({}, form({ slug: SLUG, tenantId: TENANT })),
   "actions/assist-admin#saveAssistSettingsAction": () => assist.saveAssistSettingsAction({} as never, form({})),
@@ -221,7 +221,7 @@ describe("FX1 console writes", () => {
   it("the guard does not get in the way of the people it should let through", async () => {
     asStackAdmin();
     for (const key of [
-      "actions/admin#issueLoginCodeAction",
+      "actions/admin#issueLoginCodesAction",
       "actions/admin#setStackAdminAction",
       "actions/admin#setEntraTenantAction",
       "actions/assist-admin#deleteDocumentAction",
