@@ -8,7 +8,7 @@ import { useT } from "@/i18n/client";
 import { saveRouteAction } from "@/server/actions/settings/org";
 import { KeywordInput } from "@/components/settings/RoutingEditor";
 import settings from "@/components/settings/settings.module.css";
-import { Added, AddedRow, Field, Refusal, StepCard, useRun, type StepFormProps } from "./parts";
+import { Added, AddedRow, Field, Refusal, StepCard, StepSection, useRun, type StepFormProps } from "./parts";
 import s from "./Setup.module.css";
 
 const words = (v: string) => v.split(",").map((w) => w.trim()).filter(Boolean);
@@ -40,43 +40,47 @@ export function RoutesStep({ slug, formId, onDirty, demo, knowledge: k }: StepFo
   };
 
   return (
-    <StepCard title={t("settingsSetup.cardRoutes")} text={t("settingsSetup.cardRoutesText")}>
-      <p className={s.note}><span className={s.noteMark} aria-hidden="true">✦</span>{t("settingsSetup.routesAiNote")}</p>
-      {k.rules.length ? (
-        <Added>
-          {[...k.rules].sort((a, b) => a.sort - b.sort).map((rule) => (
-            <AddedRow key={rule.id} name={rule.type} sub={title(rule.ownerRoleId)} testId={`setup-route-${rule.key}`}
-              onEdit={() => { clear(); setEditing(rule); setRound((n) => n + 1); }} />
-          ))}
-        </Added>
-      ) : null}
-      <form key={round} id={formId} className={s.form} onSubmit={submit} onInput={() => onDirty(true)}>
-        <Field label={t("settingsOrg.routeType")}>
-          <input className={settings.input} name="type" required maxLength={120} defaultValue={editing?.type ?? ""} data-testid="setup-route-type" />
-        </Field>
-        <div className={s.field}>
-          <span className={s.fieldLabel}>{t("settingsOrg.keywords")}</span>
-          <KeywordInput initial={editing?.keywords ?? []} invalid={error === "settingsOrg.errKeywords"} />
-        </div>
-        <Field label={t("settingsOrg.routeOwner")} help={t("settingsSetup.routeExample")}>
-          <select className={settings.input} name="owner" defaultValue={editing?.ownerRoleId ?? ""} data-testid="setup-route-owner">
-            <option value="">{t("settingsOrg.pickRole")}</option>
-            {k.roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {`${role.title} · ${unitName.get(role.orgUnitId) ?? "?"}${seatLine(k, role.id) ? "" : ` · ${t("settingsOrg.vacant")}`}`}
-              </option>
+    <>
+      <StepCard title={t("settingsSetup.cardRoutes")} text={t("settingsSetup.cardRoutesText")}>
+        <p className={s.note}><span className={s.noteMark} aria-hidden="true">✦</span>{t("settingsSetup.routesAiNote")}</p>
+        {k.rules.length ? (
+          <Added>
+            {[...k.rules].sort((a, b) => a.sort - b.sort).map((rule) => (
+              <AddedRow key={rule.id} name={rule.type} sub={title(rule.ownerRoleId)} testId={`setup-route-${rule.key}`}
+                onEdit={() => { clear(); setEditing(rule); setRound((n) => n + 1); }} />
             ))}
-          </select>
-        </Field>
-        <Refusal error={error} />
-        <div className={s.formFoot}>
-          <span className={s.fieldHelp}>{demo ? t("settingsCompany.demoData") : ""}</span>
-          <span className={s.formButtons}>
-            {editing ? <button type="button" className={s.secondary} onClick={finish}>{t("settingsOrg.cancel")}</button> : null}
-            <button type="submit" className={s.secondary} disabled={pending || demo} data-testid="setup-route-add">{t("settingsSetup.saveRoute")}</button>
-          </span>
-        </div>
-      </form>
-    </StepCard>
+          </Added>
+        ) : null}
+      </StepCard>
+      <StepSection title={editing ? editing.type : t("settingsOrg.addRoute")}>
+        <form key={round} id={formId} className={s.form} onSubmit={submit} onInput={() => onDirty(true)}>
+          <Field label={t("settingsOrg.routeType")}>
+            <input className={settings.input} name="type" required maxLength={120} defaultValue={editing?.type ?? ""} data-testid="setup-route-type" />
+          </Field>
+          <div className={s.field}>
+            <span className={s.fieldLabel}>{t("settingsOrg.keywords")}</span>
+            <KeywordInput initial={editing?.keywords ?? []} invalid={error === "settingsOrg.errKeywords"} />
+          </div>
+          <Field label={t("settingsOrg.routeOwner")} help={t("settingsSetup.routeExample")}>
+            <select className={settings.input} name="owner" defaultValue={editing?.ownerRoleId ?? ""} data-testid="setup-route-owner">
+              <option value="">{t("settingsOrg.pickRole")}</option>
+              {k.roles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {`${role.title} · ${unitName.get(role.orgUnitId) ?? "?"}${seatLine(k, role.id) ? "" : ` · ${t("settingsOrg.vacant")}`}`}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Refusal error={error} />
+          <div className={s.formFoot}>
+            <span className={s.fieldHelp}>{demo ? t("settingsCompany.demoData") : ""}</span>
+            <span className={s.formButtons}>
+              {editing ? <button type="button" className={s.secondary} onClick={finish}>{t("settingsOrg.cancel")}</button> : null}
+              <button type="submit" className={s.secondary} disabled={pending || demo} data-testid="setup-route-add">{t("settingsSetup.saveRoute")}</button>
+            </span>
+          </div>
+        </form>
+      </StepSection>
+    </>
   );
 }
