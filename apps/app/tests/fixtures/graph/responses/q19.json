@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "when is the plant shutdown in 2026"
+          "queryString": "when OR is OR the OR plant OR shutdown OR in OR 2026"
         },
         "from": 0,
         "size": 10

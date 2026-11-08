@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "what are the salary bands at acme"
+          "queryString": "what OR are OR the OR salary OR bands OR at OR acme"
         },
         "from": 0,
         "size": 10

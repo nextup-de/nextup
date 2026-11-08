@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "bis zu welchem betrag dürfen teamleiter ersatzteile bestellen"
+          "queryString": "bis OR zu OR welchem OR betrag OR dürfen OR teamleiter OR ersatzteile OR bestellen"
         },
         "from": 0,
         "size": 10

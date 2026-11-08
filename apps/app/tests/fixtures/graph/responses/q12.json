@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "summarise the notes for ai assistants in standards folder"
+          "queryString": "summarise OR the OR notes OR for OR ai OR assistants OR in OR standards OR folder"
         },
         "from": 0,
         "size": 10

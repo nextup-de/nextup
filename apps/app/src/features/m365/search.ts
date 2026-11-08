@@ -18,13 +18,17 @@ const MAX_TERMS = 12;
 const MAX_SNIPPET = 400;
 
 /**
- * The query as KQL: words only, lower-cased. Lower case turns KQL's operators (AND, OR, NOT, NEAR,
- * which are upper case only) into plain words; quotes, colons (property restrictions), wildcards
- * and brackets never get through. Empty when nothing searchable is left.
+ * The query as KQL: words only, lower-cased, joined by OR. Lower case turns KQL's operators (AND, OR,
+ * NOT, NEAR, which are upper case only) into plain words; quotes, colons (property restrictions),
+ * wildcards and brackets never get through. The only operator is the OR we put between the words:
+ * Microsoft Search otherwise needs every word in the file, so a whole question ("how long should a
+ * changeover on Line 3 take") finds nothing. With OR, Graph ranks the files that match most words
+ * first (live test against the Acme pack in the M365 test tenant, 2026-11-08). Empty when nothing
+ * searchable is left.
  */
 export function kqlQuery(text: string): string {
   const words = text.toLowerCase().match(/[\p{L}\p{N}](?:[\p{L}\p{N}.-]*[\p{L}\p{N}])?/gu) ?? [];
-  return [...new Set(words.filter((w) => w.length > 1 || /\d/.test(w)).map((w) => w.slice(0, 40)))].slice(0, MAX_TERMS).join(" ");
+  return [...new Set(words.filter((w) => w.length > 1 || /\d/.test(w)).map((w) => w.slice(0, 40)))].slice(0, MAX_TERMS).join(" OR ");
 }
 
 export type SearchRequest = {
