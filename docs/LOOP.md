@@ -1,6 +1,6 @@
 # The case loop on a real company
 
-> **Updated 2026-11-08.** Plan LOOP «Case loop v1» (LOOP-Z1). Describes what runs on `main` for a non-demo company.
+> **Updated 2026-11-04.** Plan LOOP «Case loop v1» (LOOP-Z1). Describes what runs on `main` for a non-demo company.
 > The proof of the whole loop is `apps/app/tests/e2e/db/loop.spec.ts`.
 
 The loop: an idea is **raised to a desk**, the desk owes an **answer by a date**, a breached date **hands the case to the
@@ -92,13 +92,4 @@ Register rows of phase LOOP (D24).
 - **Q3, metric presets, an emission factor and a confirmer role.** Open: managers and the route's deputy role confirm (D18);
   saving, CO₂, energy and scrap are plain optional figures (D20). Presets, the factor and a confirmer role wait for the PROOF
   follow-up after the pilot start.
-- **Q4, co-authors and team credit.** Open: not built; the brief allows no feature beyond the loop. Planned in phase REC
-  of [the decision-stages master plan](plans/2026-11-08_decision-stages.md).
-
-## Planned next (not on `main`)
-
-[The decision-stages master plan](plans/2026-11-08_decision-stages.md) (draft, 8 Nov 2026) extends this loop: a no
-needs a written reason and gets one second look (NOR), the raiser sees the whole journey (SEE), an idea manager can
-review before the desk and a desk can say "yes, if approved" with budget, council and role approvals (GAT), projects
-start from templates (TPL), recognition reaches HR and payroll (REC), and a project agent plans and follows the work
-as an add-on (AGT). This file describes the loop as it runs; each phase updates it when it lands.
+- **Q4, co-authors and team credit.** Open: not built; the brief allows no feature beyond the loop.

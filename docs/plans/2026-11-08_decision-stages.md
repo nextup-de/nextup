@@ -1,6 +1,9 @@
 # Master plan: review, approvals, a reasoned no, the raiser's view, recognition and the project agent
 
-> **Plan · 2026-11-08 · draft, waits for Kevin's decisions (D1–D12) before any phase is built.**
+> **Plan · 2026-11-08 · roadmap after funding, not part of the demo or the pilot.** The product shown today is the main
+> app as it runs on `main` and in the large demo. This plan collects the add-ons we would build once there is
+> investment, possibly together with a launch customer. Nothing here is built, and nothing here blocks the demo.
+> Kevin's decisions (D1–D12) are needed before any phase starts.
 > Everything between "an idea arrives at a desk" and "the raiser is recognised" that the team discussed and the
 > interviews asked for, and that no plan covers yet. It builds on what runs on `main` ([LOOP.md](../LOOP.md)), on the
 > [project setup plan](2026-11-03_project-setup.md) and on the [project area](2026-11-03_project-area.md). Each phase
@@ -384,7 +387,7 @@ the customer security guide, the works-council paper (AI Act Art. 26(7) informat
 
 ## Docs this plan changes
 
-Now (this PR): this file, a row in [docs/README.md](../README.md), and a pointer from [LOOP.md](../LOOP.md)'s open
-items. Each phase then updates the reference docs listed in its section **in the same PR as the code**, so the docs
+Now (this PR): this file and its row in [docs/README.md](../README.md), listed as a roadmap after funding. The reference
+docs that describe the running app ([LOOP.md](../LOOP.md) and the others) stay unchanged until a phase is built. Each phase then updates the reference docs listed in its section **in the same PR as the code**, so the docs
 describe what runs on `main`, and moves its row in the README status column. GAT writes the new reference
 `docs/DECISION_PATH.md`. The nextup-admin roadmap (`handbook/roadmap.ts`) gets the phases once D1 is decided.

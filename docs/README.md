@@ -9,7 +9,7 @@ Each one's status line says how much of it is done.
 
 | Date | Plan | Status |
 |---|---|---|
-| 2026-11-08 | [Master plan: review, approvals, a reasoned no, the raiser's view, recognition and the project agent](plans/2026-11-08_decision-stages.md) | draft, waits for Kevin's decisions D1–D12; seven phases NOR, SEE, SET, GAT, TPL, REC, AGT; nothing built |
+| 2026-11-08 | [Master plan: review, approvals, a reasoned no, the raiser's view, recognition and the project agent](plans/2026-11-08_decision-stages.md) | roadmap after funding, not demo or pilot scope; seven phases NOR, SEE, SET, GAT, TPL, REC, AGT; nothing built; waits for Kevin's decisions D1–D12 |
 | 2026-11-03 | [Project setup: from "Yes" to "Start"](plans/2026-11-03_project-setup.md) | draft, waits for review; setup checklist, project roles, asking for new people, goal, brief, kickoff; Sam's part in spec 12 |
 | 2026-11-03 | [Project area: one project, one question per tab](plans/2026-11-03_project-area.md) | exploration in Paper; structure for Sam to design, agent tab is phase 2 |
 | 2026-11-02 | [Pilot pages: what every new and changed screen looks like](plans/2026-11-02_pilot-pages.md) | open; Sam designs and builds these pages: nine spec files and a copy of the build plans in `plans/2026-11-02_pilot-pages/` |
