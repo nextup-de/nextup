@@ -89,7 +89,7 @@ questions, then 13 more for keyword and single-word retries such as "Werksurlaub
 - **Effect:** a whole question, or the model's own few words in German against an English file, matches nothing.
   As Kevin (who can read everything), `how long should changeover on line 3 take` finds only the pack's
   `queries.json`; `changeover line 3` finds the checklist first.
-- **Fix:** PR `fix/m365-search-any-word` joins the words with OR. Same questions as Kevin with OR: right file at
+- **Fix:** nextup-de/nextup#606 joins the words with OR. Same questions as Kevin with OR: right file at
   rank 1 for q02, q04, q18, rank 2 for q01, rank 6 for q03 (folders rank above it); q11 and q19 find the pack's
   English twins ("Handbook - who does what", "News - plant shutdown"); q12 nothing.
 - **Why the CNX acceptance said 21/21:** it ran on synthetic Graph answers (`responses/*.json`, `source:
