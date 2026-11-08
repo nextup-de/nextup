@@ -60,10 +60,12 @@ export function railOf(parts: readonly BenchmarkPart[], unknown: readonly string
 
 // ── The grilling rail: the unclear topics, worked through one by one ──────────────────────────
 // The rail the chat shows. When the idea is first raised, the questions its benchmark cannot answer yet
-// become a fixed list of 2-8 topics - the preparation for the grilling. Each topic is checked off once
-// the idea answers it, or marked unknown when the author does not know yet either.
+// become a fixed list of topics - the preparation for the grilling: a precise idea gets one or two, a vague
+// one every question the benchmark still has (up to 20). Each topic is checked off once the idea answers it,
+// or once the author has answered it when it was asked (answeredOf), or marked unknown when the author does
+// not know yet either. The idea can be published once none is open (components/ideas/Raise.tsx).
 export const MIN_TOPICS = 2;
-export const MAX_TOPICS = 8;
+export const MAX_TOPICS = 20;
 
 // Short names for the benchmark's questions (benchmarks.ts), as the rail shows them.
 const TOPIC_LABEL: readonly (readonly [MessageKey, MessageKey])[] = [
@@ -82,13 +84,19 @@ const TOPIC_LABEL: readonly (readonly [MessageKey, MessageKey])[] = [
   ["ideas.benchMissWhy", "ideas.topicWhy"],
   ["ideas.benchMissWho", "ideas.topicWho"],
 ];
+// A topic as another language words it: the page names topics in the author's language, the turn route's
+// coach reads them in the default one (the `skip` it is sent).
+export const topicIn = (key: string, from: Locale, to: Locale = DEFAULT_LOCALE) => {
+  const hit = TOPIC_LABEL.find(([question]) => translate(from, question) === key);
+  return hit ? translate(to, hit[0]) : key;
+};
 export const topicLabel = (key: string, locale: Locale = DEFAULT_LOCALE) => {
   const hit = TOPIC_LABEL.find(([question]) => translate(locale, question) === key);
   return hit ? translate(locale, hit[1]) : key.replace(/[.?]$/, "");
 };
 
 // The topics for an idea, from the benchmark of its first message: the open questions in the order the
-// coach takes them - the weakest bar's first (ties: the earlier bar, as weakest() does) - at most 8.
+// coach takes them - the weakest bar's first (ties: the earlier bar, as weakest() does) - at most MAX_TOPICS.
 // Fewer than 2 open: the weakest found points fill up.
 export function topicsOf(parts: readonly BenchmarkPart[], locale: Locale = DEFAULT_LOCALE): string[] {
   const byNeed = [...parts].sort((a, b) => a.value - b.value);
@@ -101,16 +109,36 @@ export function topicsOf(parts: readonly BenchmarkPart[], locale: Locale = DEFAU
 
 export type Topic = { id: string; label: string; status: GapStatus; ask: string };
 
-// Where each topic stands now. Clear: the benchmark no longer asks it. Unknown: the author said they
-// do not know yet. Active: the first topic from the top still open - the rail works down, one by one.
-export function gapsOf(topics: readonly string[], parts: readonly BenchmarkPart[], unknown: readonly string[] = [], locale: Locale = DEFAULT_LOCALE): Topic[] {
+// Where each topic stands now. Clear: the benchmark no longer asks it, or the author answered it when it was
+// asked (`answered`, answeredOf). Unknown: the author said they do not know yet. Active: the first topic from
+// the top still open - the rail works down, one by one.
+export function gapsOf(topics: readonly string[], parts: readonly BenchmarkPart[], unknown: readonly string[] = [], locale: Locale = DEFAULT_LOCALE, answered: readonly string[] = []): Topic[] {
   const asks = new Map(parts.flatMap((p) => p.missing.map((m): [string, string] => [topicKey(m, locale), m])));
-  const active = topics.find((k) => asks.has(k) && !unknown.includes(k)) ?? null;
+  const open = (k: string) => asks.has(k) && !answered.includes(k);
+  const active = topics.find((k) => open(k) && !unknown.includes(k)) ?? null;
   return topics.map((k) => ({
     id: k, label: topicLabel(k, locale), ask: asks.get(k) ?? k,
-    status: !asks.has(k) ? "clear" : unknown.includes(k) ? "unknown" : k === active ? "active" : "open",
+    status: !open(k) ? "clear" : unknown.includes(k) ? "unknown" : k === active ? "active" : "open",
   }));
 }
+
+// The topics the author has answered, read from the conversation itself (so a reload keeps them): each answer
+// checks off the topic that was being asked when it was given - the first still open, by the benchmark as it
+// stood just before. A "not sure" or an empty answer checks off nothing. `rounds`: per answer after the idea,
+// what was said and the benchmark before it.
+export function answeredOf(topics: readonly string[], rounds: readonly { said: string; parts: readonly BenchmarkPart[] }[], unknown: readonly string[] = [], locale: Locale = DEFAULT_LOCALE): string[] {
+  const done: string[] = [];
+  for (const r of rounds) {
+    const said = stripTags(splitUpdate(r.said).said).trim();
+    if (!said || isUnsure(said) || isGibberish(said)) continue;
+    const asked = gapsOf(topics, r.parts, unknown, locale, done).find((g) => g.status === "active");
+    if (asked) done.push(asked.id);
+  }
+  return done;
+}
+
+// How many topics are still to answer: open or being asked. Unknown ones count as answered - the author said so.
+export const openCount = (gaps: readonly Topic[]) => gaps.filter((g) => g.status === "open" || g.status === "active").length;
 
 // The benchmark as the coach should ask from it: the questions the author answered "not sure" to are
 // left out, so the coach moves on instead of asking them again. The scores stay as they are.

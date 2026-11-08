@@ -1,9 +1,9 @@
 // The raise page, demo mode (no database: drafts in this browser, the offline coach). One line is
-// evaluated and analysed; the chat shows the AI analysis and the rail of the 2-8 topics still unclear
+// evaluated and analysed; the chat shows the AI analysis and the rail of the topics still unclear
 // (features/ideas/raise.ts topicsOf); the draft
 // survives a reload; publishing asks who should get it and raises the case on their desk.
 // docs/IDEAS.md.
-import { aiMessages, answerCoach, DEVELOP, DEVELOP_MORE, expect, holdNextReply, publishTo, showSidebar, START, test } from "../helpers";
+import { aiMessages, answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, holdNextReply, publishTo, showSidebar, START, test } from "../helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/acme/raise");
@@ -34,15 +34,15 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   await close.click();
 
   // The chat: the coach's first answer under the full analysis, one point still unclear, and the
-  // rail of the 2-8 unclear topics, the coach asking one of them now.
+  // rail of the unclear topics (2 to 20, MAX_TOPICS), the coach asking one of them now.
   await expect(aiMessages(page).first()).toContainText(/\S.{40,}/);
   await expect(page.getByRole("group", { name: "Full analysis" })).toHaveCount(1);
   await expect(page.getByRole("group", { name: "Still unclear" }).getByRole("button")).toHaveCount(1);
   const segs = page.locator("[data-rail-seg]");
   await expect.poll(() => segs.count()).toBeGreaterThanOrEqual(2);
-  expect(await segs.count()).toBeLessThanOrEqual(8);
+  expect(await segs.count()).toBeLessThanOrEqual(20);
   await expect(page.locator('[data-rail-seg][aria-label$="asking now"]')).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled(); // three messages from the author first
+  await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled(); // points on the rail are still open
 });
 
 test("develop it, keep it as a draft, publish it", async ({ page }) => {
@@ -63,6 +63,7 @@ test("develop it, keep it as a draft, publish it", async ({ page }) => {
   await expect(page.getByText(DEVELOP)).toBeVisible();
 
   await answerCoach(page, DEVELOP_MORE);
+  await answerRail(page);
   await publishTo(page, "T. Vogel");
   await expect(page.getByText(/on T\. Vogel’s desk/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Published", exact: true })).toBeDisabled(); // a status now, not a button

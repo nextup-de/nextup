@@ -27,6 +27,12 @@ export type PersonRow = {
   codeIssuedAt: string | null;
   /** Has signed in with Microsoft at least once (their account is bound). */
   microsoft: boolean;
+  /** Off once they left the company; they stay listed, with their history. */
+  active: boolean;
+  /** May open /admin with their own code and authenticator. */
+  isStackAdmin: boolean;
+  /** Has enrolled an authenticator. */
+  hasTotp: boolean;
 };
 
 export type PilotRequestRow = {

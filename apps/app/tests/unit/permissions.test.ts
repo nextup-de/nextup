@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mayAppend, type Actor } from "@/features/cases/permissions";
+import { appendEvent } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { LOCAL_SEED } from "@/features/demo";
 import { meOfSeat, NOBODY } from "@/features/auth/identity";
@@ -29,6 +30,21 @@ describe("mayAppend", () => {
       expect(mayAppend(leader("Somebody Else"), ev(type, open.id, payload), state).ok).toBe(false);
       expect(mayAppend(manager, ev(type, open.id, payload), state).ok).toBe(true);
     }
+  });
+
+  it("allows one decision per case: a second one, or a question after it, is refused for the holder and a manager (K3, TMS-L1)", () => {
+    const holder = leader("Holder", holderMe);
+    const decided = reduce(LOCAL_SEED, appendEvent({ day: 0, events: [] }, {
+      type: "case.decided", actor: "Holder", actorUserId: holderMe.userId, target: open.id, payload: { answer: "no", reason: "wrong department" },
+    }));
+    expect(decided.cases.find((c) => c.id === open.id)?.decided?.reason).toBe("wrong department");
+    for (const who of [holder, manager]) {
+      expect(mayAppend(who, ev("case.decided", open.id, { answer: "no", reason: "another reason" }), decided)).toEqual({ ok: false, error: "This case is already decided." });
+      expect(mayAppend(who, ev("case.decided", open.id, { answer: "yes" }), decided).ok).toBe(false);
+      expect(mayAppend(who, ev("case.asked", open.id, { text: "Why?" }), decided).ok).toBe(false);
+      expect(mayAppend(who, ev("case.read", open.id), decided).ok).toBe(true);
+    }
+    expect(mayAppend(holder, ev("case.decided", open.id, { answer: "no", reason: "x" }), decided, "de")).toEqual({ ok: false, error: "Dieser Fall ist bereits entschieden." });
   });
 
   it("refuses a hand-over that borrows the clock's reason, from the desk holder and from a manager (FX8)", () => {

@@ -17,6 +17,8 @@ import { SCRIPT_THINK_MS, scriptReply } from "@/features/ideas/demo-script";
 import { scoreDraft } from "@/features/ideas/drafts";
 import { withoutSkipped } from "@/features/ideas/raise";
 import { latestReading, type Reading } from "@/features/ideas/reading";
+import type { Coach, Phase, Progress, Timings } from "@/features/ideas/progress";
+import { DEFAULT_TIMINGS, finished, learn, startProgress } from "@/features/ideas/progress";
 import type { BrainProposal } from "@/features/routing/brain";
 import { draftScope, localDrafts } from "@/lib/idea-drafts";
 import { brainProposalAction } from "@/server/actions/brain";
@@ -30,6 +32,16 @@ export type Sending = { text: string; reply: string; step?: "reading" | "coachin
 export type Meta = { title?: string; affected?: string[]; attachments?: number };
 export type Sent = "ok" | "failed" | "dropped"; // what became of a message; failed: it was not stored
 export type Recovered = { text: string; first: boolean }; // first: it was the idea itself, so its draft is gone too
+
+// The evaluation while a message is on its way: what has happened so far, and the phase times this browser expects.
+export type EvalRun = { progress: Progress; timings: Timings };
+
+// How long each phase took here before, so the orb's bars and "seconds left" follow this company's real waits.
+const TIMINGS_KEY = "nextup:eval-timings";
+const readTimings = (): Timings => {
+  try { const v = localStorage.getItem(TIMINGS_KEY); return v ? { ...DEFAULT_TIMINGS, ...(JSON.parse(v) as Timings) } : { ...DEFAULT_TIMINGS }; } catch { return { ...DEFAULT_TIMINGS }; }
+};
+const writeTimings = (t: Timings) => { try { localStorage.setItem(TIMINGS_KEY, JSON.stringify(t)); } catch { /* private window: the defaults next time */ } };
 
 type ScoresEvent = { overall: number; parts: BenchmarkPart[]; sameAs: KnownCase | null; threshold: number; delta: Delta | null; replies?: Reply[]; reading?: Reading | null };
 
@@ -64,6 +76,8 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
   const [draft, setDraft] = useState<DraftView | null>(null); // null = a new idea, not stored yet
   const [live, setLive] = useState<Live | null>(null);
   const [sending, setSending] = useState<Sending>(null);
+  const [evalRun, setEvalRun] = useState<EvalRun | null>(null);
+  const learned = useRef<Timings | null>(null);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [recovered, setRecovered] = useState<Recovered | null>(null);
@@ -143,7 +157,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     abort.current?.abort();
     opened.current = null;
     watching.delete(mine);
-    setDraft(null); setLive(null); setSending(null); setError("");
+    setDraft(null); setLive(null); setSending(null); setError(""); setEvalRun(null);
   }, [mine]);
 
   // One message: make sure a draft exists, stream the score and the coach, then reload the draft.
@@ -151,16 +165,38 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     const t = text.trim();
     if (t.length < 3 || sending) return "dropped";
     setError("");
+    // The evaluation, phase by phase as the work really happens: each phase begins when the one before has
+    // answered, and the time it took teaches the next wait (features/ideas/progress).
+    const clock = () => performance.now();
+    const times = (learned.current ??= readTimings());
+    let run = startProgress(clock()), coachDone = false;
+    let runFor: string | null = null; // the draft this evaluation belongs to, once it has one
+    const show = () => { if (runFor === null || opened.current === runFor) setEvalRun({ progress: run, timings: learned.current ?? times }); };
+    const begin = (phase: Phase, patch: Partial<Progress> = {}) => {
+      const now = clock(), done = finished(run, phase, now);
+      if (done) learned.current = learn(learned.current ?? times, done.phase, run.coach, done.ms);
+      run = { ...run, ...patch, at: run.at[phase] === undefined ? { ...run.at, [phase]: now } : run.at };
+      show();
+    };
+    const answered = () => {
+      if (coachDone || run.at.coach === undefined) return;
+      coachDone = true;
+      learned.current = learn(learned.current ?? times, "coach", run.coach, clock() - run.at.coach);
+      writeTimings(learned.current);
+    };
+    show();
     let id = draft?.id ?? null;
     if (!id) {
       id = serverMode ? (await createIdeaDraftAction({ slug })).id : localDrafts.create(mine);
-      if (!id) { setError("Could not start a draft. Sign in again and retry."); return "failed"; }
+      if (!id) { setEvalRun(null); setError("Could not start a draft. Sign in again and retry."); return "failed"; }
       if (serverMode && (meta.affected.length || meta.attachments)) await saveIdeaDraftAction({ slug, id, affected: meta.affected, attachments: meta.attachments });
       else if (!serverMode) localDrafts.saveMeta(mine, id, meta);
     }
     const history = (draft?.turns ?? []).map(({ role, text: x }) => ({ role, text: x }));
+    begin("score");
     setSending({ text: t, reply: "" });
     const draftId = id;
+    runFor = draftId;
     opened.current = draftId;
     watching.set(mine, draftId);
     const here = () => opened.current === draftId; // still the draft on screen: what comes in may show
@@ -176,8 +212,10 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
       const now = scoreDraft({ turns: [...history, { role: "user", text: t }], affected: meta.affected, attachments: meta.attachments }, local);
       scores = { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold: DEFAULT_PUBLISH_THRESHOLD, delta: prev ? deltas(prev, now) : null };
       setLive({ parts: now.parts, overall: now.overall, delta: scores.delta, sameAs: now.sameAs, replies: [], reading: null });
+      begin("coach", { coach: "offline", overall: now.overall, threshold: DEFAULT_PUBLISH_THRESHOLD, similar: now.sameAs?.title ?? null });
       await new Promise((done) => setTimeout(done, SCRIPT_THINK_MS));
       if (ctl.signal.aborted) { off(); return "dropped"; }
+      answered();
       reply = scriptReply(history, t) ?? coachMock(prev, withoutSkipped(now, meta.skip ?? []), DEFAULT_PUBLISH_THRESHOLD, t, 0);
     } else try {
       const res = await fetch(`/api/${encodeURIComponent(slug)}/ideas/turn`, {
@@ -211,11 +249,17 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
             scores = data as unknown as ScoresEvent;
             setThreshold(scores.threshold);
             if (here()) setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs, replies: scores.replies ?? [], reading: scores.reading ?? null });
+            begin("coach", { overall: scores.overall, threshold: scores.threshold, similar: scores.sameAs?.title ?? null });
+          } else if (event === "stage") {
+            // Which coach is answering - the brain, the model, or the offline one - so the wait is said and timed as its own.
+            const by = data.by;
+            if (by === "brain" || by === "model" || by === "offline") { run = { ...run, coach: by as Coach }; show(); }
           } else if (event === "replies") {
             // The brain's own suggested answer arrives with its reply, after the scores.
             const replies = (data.replies ?? []) as Reply[];
             if (here()) setLive((l) => (l ? { ...l, replies } : l));
           } else if (event === "text") {
+            answered();
             reply = String(data.text ?? "");
             if (here()) setSending((s) => (s ? { ...s, reply } : s));
           } else if (event === "error") throw new Error(String(data.message ?? ""));
@@ -224,6 +268,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     } catch (e) {
       off();
       if (!here()) return "failed";
+      setEvalRun(null);
       setSending(null);
       setError((e as Error).message || "The coach could not answer just now.");
       // A first message's draft stays open, so sending it again does not start another.
@@ -238,7 +283,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     }
     const d = await load(draftId);
     off();
-    if (here()) { setDraft(d); setSending(null); }
+    if (here()) { setDraft(d); setSending(null); setEvalRun(null); }
     void refresh();
     return "ok";
   }, [draft, sending, slug, serverMode, local, mine, refresh, load]);
@@ -299,5 +344,5 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
   }, [draft, slug, serverMode, local, mine, refresh]);
 
   const overall = live?.overall ?? draft?.overall ?? 0;
-  return { drafts, threshold, draft, live, sending, error, loaded, overall, recovered, setRecovered, open, startNew, send, addScripted, save, discard, publish, setError };
+  return { drafts, threshold, draft, live, sending, evalRun, error, loaded, overall, recovered, setRecovered, open, startNew, send, addScripted, save, discard, publish, setError };
 }

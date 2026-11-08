@@ -29,6 +29,16 @@ export function StepCard({ title, text, children }: { title: string; text: strin
   );
 }
 
+/** A card of its own below the step's card, such as the add form, so it does not read as part of the list. */
+export function StepSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className={s.card}>
+      <h2 className={s.cardTitle}>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
 export function Added({ children }: { children: React.ReactNode }) {
   const t = useT();
   return (

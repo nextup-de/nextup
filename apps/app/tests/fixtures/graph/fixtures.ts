@@ -82,7 +82,7 @@ export const levelOf = (c: FileClass): Level => (c === "strict" ? "strictly_conf
 /** Copy of features/m365/search.ts `kqlQuery`; graph-fixtures.test.ts checks the two agree. */
 function kqlQuery(text: string): string {
   const words = text.toLowerCase().match(/[\p{L}\p{N}](?:[\p{L}\p{N}.-]*[\p{L}\p{N}])?/gu) ?? [];
-  return [...new Set(words.filter((w) => w.length > 1 || /\d/.test(w)).map((w) => w.slice(0, 40)))].slice(0, 12).join(" ");
+  return [...new Set(words.filter((w) => w.length > 1 || /\d/.test(w)).map((w) => w.slice(0, 40)))].slice(0, 12).join(" OR ");
 }
 
 /** Copy of features/m365/search.ts `searchRequest`. */

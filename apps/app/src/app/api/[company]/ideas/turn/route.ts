@@ -28,6 +28,8 @@
 //                  replies, reading}                            after this message, and suggested answers
 //          replies {replies}                                    the suggested answers again, with the
 //                                                               brain's own guess first (brain only)
+//          stage  {by: brain | model | offline}                 which coach is answering now - the wait the
+//                                                               raise page's orb shows and times (features/ideas/progress)
 //          text   {text}                                        the coach so far (replace)
 //          done   {text, overall}
 //          error  {message}
@@ -160,6 +162,7 @@ export async function POST(request: Request, { params }: Ctx) {
         let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
         const ask = reading !== null && !signal.aborted;
         if (ask) send("status", { step: "coaching" });
+        send("stage", { by: ask ? "brain" : useModel ? "model" : "offline" });
         const coached = ask
           ? await askBrainCoach(gate, tenant.slug, { idea, turns: after, reading, audience: viewer, locale }, policy, signal, { key: ai.key })
           : null;
@@ -171,6 +174,7 @@ export async function POST(request: Request, { params }: Ctx) {
           const offered = withCoachSuggestion(coached, { text: idea.text, affected, attachments }, now, ctx, replies);
           if (offered[0] !== replies[0]) send("replies", { replies: offered });
         } else if (useModel && !signal.aborted) {
+          if (ask) send("stage", { by: "model" }); // the brain had no answer in time: the model takes over
           try {
             const seed = await seedFor(tenant.slug);
             let knowledge: Knowledge = await loadKnowledge(viewer.companyId);

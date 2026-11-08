@@ -24,8 +24,8 @@ export type ContextDraft = { sources: ContextSource[]; fields: Partial<Record<Co
 export type ContextHit = { id: string; title: string; snippet: string };
 
 /**
- * One search per word: a query's words all have to match (kqlQuery in features/m365/search.ts), so
- * "vision mission" would only find files with both. German and English, the languages the pilots write in.
+ * One search per topic, so each topic gets its own hits; within a query any word may match (kqlQuery in
+ * features/m365/search.ts). German and English, the languages the pilots write in.
  */
 export const CONTEXT_QUERIES = [
   "vision", "mission", "leitbild", "strategy", "strategie", "values", "werte", "grundsätze",

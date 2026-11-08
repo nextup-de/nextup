@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "how long should changeover on line 3 take"
+          "queryString": "how OR long OR should OR changeover OR on OR line OR 3 OR take"
         },
         "from": 0,
         "size": 10

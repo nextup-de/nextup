@@ -49,11 +49,12 @@ describe("the idea turn in the local demo", () => {
     vi.restoreAllMocks();
   });
 
-  it("with no brain the offline coach answers, and nothing is announced", async () => {
+  it("with no brain the offline coach answers, and only which coach it is is announced", async () => {
     const paths = brain(READ(50));
     const evs = await turn(FIRST);
     expect(paths).toEqual([]);
-    expect(evs.map((e) => e.event)).toEqual(["scores", "text", "done"]);
+    expect(evs.map((e) => e.event)).toEqual(["scores", "stage", "text", "done"]);
+    expect(one(evs, "stage").by).toBe("offline");
     expect(one(evs, "scores").reading).toBeNull();
     expect(String(one(evs, "done").text)).toContain("of 100");
   });
@@ -68,7 +69,8 @@ describe("the idea turn in the local demo", () => {
       const paths = brain(READ(64));
       const evs = await turn(FIRST);
       expect(paths).toEqual(["/v1/read", "/v1/coach"]);
-      expect(evs.map((e) => e.event)).toEqual(["status", "scores", "status", "text", "done"]);
+      expect(evs.map((e) => e.event)).toEqual(["status", "scores", "status", "stage", "text", "done"]);
+      expect(one(evs, "stage").by).toBe("brain");
       expect(one(evs, "scores")).toMatchObject({ overall: 64, delta: null, reading: { overall: 64 } });
       expect(String(one(evs, "done").text)).toContain("Water is cheap.");
     });

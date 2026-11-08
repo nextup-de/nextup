@@ -1,7 +1,7 @@
 // The Feed's pure parts: the stage pill, the cover's number and line, the supporters line, the sorts.
 import { describe, expect, it } from "vitest";
 import { appendEvent, emptyLog } from "@/features/cases/events";
-import { feedCover, feedStage, inDept, shortHook, shortStat, sortFeed, supportLine } from "@/features/cases/feed";
+import { deptChips, feedCover, feedStage, inDept, shortHook, shortStat, sortFeed, supportLine } from "@/features/cases/feed";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
 
@@ -82,5 +82,24 @@ describe("filters and sorts", () => {
     const quiet = [{ id: "old", backers: 0, raisedDay: 1, comments: 0, lastDay: 1 }, { id: "new", backers: 0, raisedDay: 9, comments: 0, lastDay: 9 }, { id: "talked", backers: 0, raisedDay: 5, comments: 2, lastDay: 7 }];
     expect(sortFeed(quiet, "support").map((x) => x.id)).toEqual(["talked", "old", "new"]);
     expect(sortFeed(quiet, "latest").map((x) => x.id)).toEqual(["new", "talked", "old"]);
+  });
+});
+
+describe("deptChips", () => {
+  // Two sites with the same departments under each, as a multi-site tenant has them.
+  const u = (id: string, name: string, parentId: string | null = null) => ({ id, name, people: 5, parentId });
+  const seed = { depts: [u("n", "Werk Nord"), u("s", "Werk Süd"), u("n1", "Produktion", "n"), u("n2", "Qualität", "n"), u("n3", "Logistik", "n"), u("s1", "Produktion", "s"), u("s2", "IT", "s"), u("s3", "Einkauf", "s")] };
+  const counts: Record<string, number> = { Produktion: 9, Qualität: 7, Logistik: 5, IT: 7, Einkauf: 0 };
+  const countOf = (n: string) => counts[n] ?? 0;
+
+  it("each department once, no sites, the busiest three as chips and the rest behind More", () => {
+    expect(deptChips(seed, countOf, "All")).toEqual({ chips: ["Produktion", "Qualität", "IT"], more: ["Logistik", "Einkauf"] });
+  });
+  it("a department picked from More takes the last chip, so there are never more than three", () => {
+    expect(deptChips(seed, countOf, "Einkauf")).toEqual({ chips: ["Produktion", "Qualität", "Einkauf"], more: ["IT", "Logistik"] });
+  });
+  it("a flat tenant (no sites with children) keeps every unit as a department", () => {
+    const flat = { depts: [u("a", "Sales"), u("b", "Ops")] };
+    expect(deptChips(flat, () => 1, "All")).toEqual({ chips: ["Sales", "Ops"], more: [] });
   });
 });

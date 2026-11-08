@@ -7,21 +7,23 @@ import { kqlQuery, plainSnippet, readSearchResponse, searchRequest } from "@/fea
 import { GRAPH_SCOPE, readRedeemed, refreshRequestBody } from "@/features/m365/token";
 
 describe("kqlQuery", () => {
-  it("keeps the words, lower-cased", () => {
-    expect(kqlQuery("Changeover target Line 3")).toBe("changeover target line 3");
-    expect(kqlQuery("Wer entscheidet über Ersatzteile?")).toBe("wer entscheidet über ersatzteile");
-    expect(kqlQuery("8D bracket B-114, 5.000 EUR")).toBe("8d bracket b-114 5.000 eur");
+  it("keeps the words, lower-cased, any of them may match", () => {
+    expect(kqlQuery("Changeover target Line 3")).toBe("changeover OR target OR line OR 3");
+    expect(kqlQuery("Wer entscheidet über Ersatzteile?")).toBe("wer OR entscheidet OR über OR ersatzteile");
+    expect(kqlQuery("8D bracket B-114, 5.000 EUR")).toBe("8d OR bracket OR b-114 OR 5.000 OR eur");
   });
 
-  it("lets no KQL operator or syntax through", () => {
-    expect(kqlQuery('budget OR NOT "salary" AND x*')).toBe("budget or not salary and");
-    expect(kqlQuery("author:lena filetype:docx")).toBe("author lena filetype docx");
-    expect(kqlQuery("(a) -secret NEAR(3) <c0>x</c0>")).toBe("secret near 3 c0");
+  it("lets no KQL operator or syntax through but its own OR", () => {
+    expect(kqlQuery('budget OR NOT "salary" AND x*')).toBe("budget OR or OR not OR salary OR and");
+    expect(kqlQuery("author:lena filetype:docx")).toBe("author OR lena OR filetype OR docx");
+    expect(kqlQuery("(a) -secret NEAR(3) <c0>x</c0>")).toBe("secret OR near OR 3 OR c0");
+    // The only upper-case words are the ORs between the terms.
+    expect(kqlQuery("AND OR NOT NEAR ONEAR").split(" OR ").every((w) => w === w.toLowerCase())).toBe(true);
   });
 
   it("drops duplicates, caps the number of words, and can be empty", () => {
     expect(kqlQuery("line line LINE")).toBe("line");
-    expect(kqlQuery(Array.from({ length: 30 }, (_, i) => "w" + i).join(" ")).split(" ")).toHaveLength(12);
+    expect(kqlQuery(Array.from({ length: 30 }, (_, i) => "w" + i).join(" ")).split(" OR ")).toHaveLength(12);
     expect(kqlQuery("?! -- **")).toBe("");
     expect(searchRequest("?!")).toBeNull();
   });
@@ -30,7 +32,7 @@ describe("kqlQuery", () => {
 describe("searchRequest", () => {
   it("asks for files only, five by default", () => {
     expect(searchRequest("changeover line 3")).toEqual({
-      requests: [{ entityTypes: ["driveItem"], query: { queryString: "changeover line 3" }, from: 0, size: 5 }],
+      requests: [{ entityTypes: ["driveItem"], query: { queryString: "changeover OR line OR 3" }, from: 0, size: 5 }],
     });
     expect(searchRequest("x1", 50)?.requests[0].size).toBe(10);
   });

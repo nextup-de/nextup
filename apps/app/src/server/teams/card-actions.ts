@@ -7,7 +7,7 @@ import { handPayload } from "@/features/cases/hand";
 import { mayAppend } from "@/features/cases/permissions";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
-import { confirmCard, parseSubmit, textCard, type Card } from "@/features/teams/cards";
+import { confirmCard, decidedAt, parseSubmit, textCard, type Card } from "@/features/teams/cards";
 import { createT, INTL_LOCALE, type Locale } from "@/i18n";
 import { appendEventRow, hasIdemKey, loadLog } from "@/lib/db/events";
 import { companyBaseUrl } from "@/server/case-notice";
@@ -38,6 +38,12 @@ export async function handleSubmit(company: BotCompany, person: BotPerson, activ
     name: person.name,
     handle: person.handle,
   };
+
+  // The card stays in the chat after the case is decided elsewhere (the app, another card): say who answered and
+  // write nothing (K3). mayAppend refuses it too; this names the first decision.
+  const kase = state.cases.find((c) => c.id === submit.caseId);
+  const first = kase?.decided ? kase.history.find((e) => e.type === "case.decided") : undefined;
+  if (first) return refusal(t("teams.refusedAnswered", { name: first.actor, time: decidedAt(first.ts, locale) }), locale);
 
   let type: "case.decided" | "case.asked" | "case.handed";
   let payload: EventPayload;
@@ -76,7 +82,6 @@ export async function handleSubmit(company: BotCompany, person: BotPerson, activ
   if (result.duplicate) return null;
   if (type === "case.decided") kickJira(company.slug);
 
-  const kase = state.cases.find((c) => c.id === submit.caseId);
   return confirmCard(
     {
       outcome,

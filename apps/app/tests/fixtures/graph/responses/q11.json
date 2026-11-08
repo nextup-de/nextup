@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "who decides about test-rig time"
+          "queryString": "who OR decides OR about OR test-rig OR time"
         },
         "from": 0,
         "size": 10

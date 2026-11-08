@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "what is in the competitor notes"
+          "queryString": "what OR is OR in OR the OR competitor OR notes"
         },
         "from": 0,
         "size": 10
