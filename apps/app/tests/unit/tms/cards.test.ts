@@ -3,6 +3,7 @@ import {
   attachment,
   cardSize,
   confirmCard,
+  decidedAt,
   notSetUpCard,
   parseSubmit,
   raiseTask,
@@ -256,5 +257,14 @@ describe("TMS cards", () => {
       expect(parseSubmit(bad), JSON.stringify(bad)).toBeNull();
     }
     expect(parseSubmit({ ...ok, text: "x".repeat(1000) })).not.toBeNull();
+  });
+
+  it("names when an earlier answer was given: the time today, date and time before (TMS-L1)", () => {
+    const at = Date.UTC(2026, 10, 8, 1, 10);
+    expect(decidedAt(at, "de", Date.UTC(2026, 10, 8, 9, 0), "UTC")).toBe("01:10");
+    expect(decidedAt(at, "en", Date.UTC(2026, 10, 8, 9, 0), "UTC")).toBe("01:10");
+    expect(decidedAt(at, "de", Date.UTC(2026, 10, 10, 9, 0), "UTC")).toBe("08.11., 01:10");
+    const t = createT("de");
+    expect(t("teams.refusedAnswered", { name: "Julia Rossi", time: "01:10" })).toBe("Dieser Fall wurde schon von Julia Rossi um 01:10 beantwortet.");
   });
 });

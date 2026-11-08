@@ -59,6 +59,8 @@ export function mayAppend(
         // FX8: "deadline" and "escalation" are the clock's reasons. The clock never comes through here.
         if (isClockReason(ev.payload.why)) return no(t, "cases.permHandReason");
       }
+      // A question on a decided case would put it back to "asked" and hide the decision (K3).
+      if (ev.type === "case.asked" && kase.decided) return no(t, "cases.permAlreadyDecided");
       return ev.type === "case.decided" ? mayDecide(ev.payload as EventPayload, kase, state, t) : OK;
     }
 
@@ -122,11 +124,14 @@ export function mayAppend(
   }
 }
 
-/** A yes that names a project opens it, or joins one that is still open - only as the case's first decision. */
+/**
+ * One decision per case (K3): a second one, from the app, the API or a card still open in Teams, would replace the
+ * first in the reducer. A yes that names a project opens it, or joins one that is still open.
+ */
 function mayDecide(pl: EventPayload, kase: State["cases"][number], state: State, t: T): Verdict {
+  if (kase.decided) return no(t, "cases.permAlreadyDecided");
   if (pl.projectId === undefined) return OK;
   if (pl.answer !== "yes") return no(t, "cases.permYesOpensProject");
-  if (kase.decided) return no(t, "cases.permAlreadyDecided");
   if (!isProjectId(pl.projectId)) return no(t, "cases.permProjectId");
   if (typeof pl.lead !== "string" || !pl.lead.trim() || pl.lead.length > 120) return no(t, "cases.permProjectLead");
   const project = state.projects.find((p) => p.id === pl.projectId);
