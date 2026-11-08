@@ -150,8 +150,9 @@ describe("the reading and the coach answer", () => {
     fakeBrain({ read: [READ(64)], coach: [COACH] });
     const evs = await turn(FIRST, draftId);
 
-    expect(evs.map((e) => e.event)).toEqual(["status", "scores", "status", "text", "done"]);
+    expect(evs.map((e) => e.event)).toEqual(["status", "scores", "status", "stage", "text", "done"]);
     expect(evs.filter((e) => e.event === "status").map((e) => e.data.step)).toEqual(["reading", "coaching"]);
+    expect(one(evs, "stage").by).toBe("brain");
     const scores = one(evs, "scores");
     expect(scores.overall).toBe(64);
     expect(scores.delta).toBeNull();
@@ -375,7 +376,8 @@ describe("at and above the publish line", () => {
     expect(b.calls).toHaveLength(0);
     expect(one(evs, "scores").reading).toBeNull();
     expect(String(one(evs, "done").text)).toContain("enough to publish");
-    expect(evs.map((e) => e.event)).toEqual(["scores", "text", "done"]); // nothing to wait for, nothing to announce
+    expect(evs.map((e) => e.event)).toEqual(["scores", "stage", "text", "done"]); // no brain status, only who answers
+    expect(one(evs, "stage").by).toBe("offline");
   });
 });
 
