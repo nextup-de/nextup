@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "up to which amount may team lead order spare parts without second"
+          "queryString": "up OR to OR which OR amount OR may OR team OR lead OR order OR spare OR parts OR without OR second"
         },
         "from": 0,
         "size": 10

@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "what is projekt falke"
+          "queryString": "what OR is OR projekt OR falke"
         },
         "from": 0,
         "size": 10

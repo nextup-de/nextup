@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "what are the price terms of nordwerk automotive framework agreement"
+          "queryString": "what OR are OR the OR price OR terms OR of OR nordwerk OR automotive OR framework OR agreement"
         },
         "from": 0,
         "size": 10

@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "show me the test results of prototype b-300"
+          "queryString": "show OR me OR the OR test OR results OR of OR prototype OR b-300"
         },
         "from": 0,
         "size": 10

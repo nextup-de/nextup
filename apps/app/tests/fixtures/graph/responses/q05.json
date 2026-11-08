@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "what do we pay sensotec for the temperature sensor ts-20"
+          "queryString": "what OR do OR we OR pay OR sensotec OR for OR the OR temperature OR sensor OR ts-20"
         },
         "from": 0,
         "size": 10
