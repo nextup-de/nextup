@@ -19,7 +19,8 @@ export const mailChannel: NotifyChannel = {
     const to = message.recipient.address;
     if (!to) return { ok: false, error: "the message has no address", retryable: false };
 
-    const text = message.link ? `${message.text}\n\n${message.link}` : message.text;
+    // The link once: most templates already name it in their text ("Open the case: ..."), so it is only added when missing.
+    const text = message.link && !message.text.includes(message.link) ? `${message.text}\n\n${message.link}` : message.text;
     const sent = await sendMail({ to, subject: message.subject, text });
     if (!sent.ok) return { ok: false, error: sent.error.slice(0, 500), retryable: true };
 

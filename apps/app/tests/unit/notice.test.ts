@@ -1,7 +1,7 @@
 // The email a route owner gets when a case is raised. buildRaisedNotice and composeNoticeMail are
 // pure, so this needs no server and no mail relay.
 import { describe, expect, it } from "vitest";
-import { buildRaisedNotice, composeNoticeMail, noticeKey } from "@/features/cases/notice";
+import { bodyBelowTitle, buildRaisedNotice, composeNoticeMail, noticeKey } from "@/features/cases/notice";
 import { LOCAL_SEED } from "@/features/demo";
 
 const seed = LOCAL_SEED;
@@ -64,6 +64,25 @@ describe("composeNoticeMail", () => {
   it("leaves out an empty body rather than printing a blank quote", () => {
     const m = composeNoticeMail(notice({ body: "" }));
     expect(m?.text).not.toMatch(/\n {2}\n/);
+  });
+
+  it("says the title, each detail and the case link once (the raise page repeats the title as the first paragraph)", () => {
+    const m = composeNoticeMail(notice({ body: "line 3 stops.\n\nSensor on belt 3 broken\nsince 6 am\n\nSensor on belt 3 broken\nsince 6 am" }));
+    const count = (s: string) => m!.text.split(s).length - 1;
+    expect(count("Line 3 stops")).toBe(1);
+    expect(count("line 3 stops")).toBe(0);
+    expect(count("Sensor on belt 3 broken")).toBe(1);
+    expect(count("http://acme.localhost/cases/c_1")).toBe(1);
+    // every line of the body is quoted the same way
+    expect(m!.text).toContain("  Sensor on belt 3 broken\n  since 6 am");
+  });
+});
+
+describe("bodyBelowTitle", () => {
+  it("keeps a first paragraph that says more than the title", () => {
+    expect(bodyBelowTitle("Line 3 stops every night\n\nmore", "Line 3 stops")).toBe("Line 3 stops every night\n\nmore");
+    expect(bodyBelowTitle("Line 3 stops!\n\nmore", "Line 3 stops")).toBe("more");
+    expect(bodyBelowTitle("", "Line 3 stops")).toBe("");
   });
 });
 
