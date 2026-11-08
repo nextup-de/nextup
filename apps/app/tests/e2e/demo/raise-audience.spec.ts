@@ -1,7 +1,7 @@
 // FX4: the raise page's "Who sees it" goes with the case. In demo mode the log is in this browser, so the test
 // reads the raised event from there.
 import type { Page } from "@playwright/test";
-import { answerCoach, DEVELOP, DEVELOP_MORE, expect, publishIdea, publishTo, raiseLine, test } from "../helpers";
+import { answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, publishIdea, publishTo, raiseLine, test } from "../helpers";
 
 /** The payload of the case.raised event with this title, from the log in localStorage. */
 const raisedPayload = (page: Page, title: string) =>
@@ -37,6 +37,7 @@ test("a case raised as Private is stored as private", async ({ page }) => {
   await page.keyboard.press("Escape"); // a backdrop covers the page while the menu is open
   await answerCoach(page, DEVELOP);
   await answerCoach(page, DEVELOP_MORE);
+  await answerRail(page);
   await publishTo(page, "T. Vogel");
   await expect.poll(() => raisedPayload(page, "Night shift rota")).toMatchObject({ visibility: "private" });
 });

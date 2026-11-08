@@ -22,7 +22,7 @@ export const vis = (from: Page | Locator, id: string) => from.getByTestId(id).fi
 // What the second message adds so any one-line idea clears the publish line (docs/IDEAS.md): a
 // goal, a number, who it reaches, why, and a first step with no spend.
 export const DEVELOP_MORE = "Thomas Vogel owns it and checks the slot plan every Monday; if the rig is needed for a customer test, our day moves, it is never dropped.";
-// Publishing waits for three messages from the author (the idea, then two answers).
+// The usual first answer. Publishing waits until every point on the rail is answered (answerRail).
 export const DEVELOP = "It serves the changeover goal: setup waits cost about 20 minutes per changeover on every shift, because the team waits for a slot. First step: a one-week pilot on line 3, no spend needed.";
 
 // The raise page (docs/IDEAS.md): the start composer, the chat composer, and the window that asks
@@ -112,7 +112,26 @@ export async function publishIdea(page: Page, title: string, to = "T. Vogel") {
   await raiseLine(page, title);
   await answerCoach(page, DEVELOP);
   await answerCoach(page, DEVELOP_MORE);
+  await answerRail(page);
   await publishTo(page, to);
+}
+
+// Plain answers for the points the rail still asks: each one checks off the point being asked (answeredOf).
+const RAIL_ANSWERS = [
+  "The team lead of line 3 decides it; it needs no budget beyond our own hours.",
+  "We measure it on the weekly report: waiting minutes per changeover, before and after.",
+  "It reaches the eight people of the late shift on line 3 first.",
+  "If it does not help within two weeks we stop and go back to the old plan.",
+];
+
+/**
+ * Publishing waits until the rail is done (components/ideas/Raise.tsx, railDone): answer the point the coach
+ * is asking until none is open or being asked. A precise idea needs no extra answer, a vague one several.
+ */
+export async function answerRail(page: Page) {
+  const open = page.locator('[data-rail-seg][data-s="open"], [data-rail-seg][data-s="active"]');
+  for (let i = 0; i < 20 && (await open.count()) > 0; i++) await answerCoach(page, RAIL_ANSWERS[i % RAIL_ANSWERS.length]);
+  await expect(open).toHaveCount(0);
 }
 
 /** The sheet that opens for "No, and why", "Ask a question", "Answer …". */

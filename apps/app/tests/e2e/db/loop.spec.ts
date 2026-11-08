@@ -5,7 +5,7 @@
 // the yes, and switching projects off on the Rules page takes Projects out of the member's nav.
 // Own company, made straight in the database and deleted at the end, like flr.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { answerCoach, DEVELOP, DEVELOP_MORE, expect, passSecondFactor, raiseLine, test, vis } from "../helpers";
+import { answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, passSecondFactor, raiseLine, test, vis } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { workdayOf } from "../../../src/features/clock/calendar";
 import { loadCalendar } from "../../../src/lib/db/calendar";
@@ -108,6 +108,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
       await raiseLine(page, TITLE);
       await answerCoach(page, DEVELOP);
       await answerCoach(page, DEVELOP_MORE);
+      await answerRail(page);
     });
 
     await test.step("'Where should it go?' proposes the desk by keywords, and the send names the role and a date", async () => {
