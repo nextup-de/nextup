@@ -99,6 +99,19 @@ export const inSite = (seed: { depts: readonly UnitNode[] }, unitId: string | nu
 };
 export const inUnit = (unitId: string | null, filterId: string): boolean => unitId !== null && unitId === filterId;
 
+// The department chips: each name once (a department at three sites is one chip), sites left out (the
+// site menu has them), the busiest few as chips and the rest behind "More". The chosen one is always
+// a chip: picked from "More", it takes the last place. Busiest first; a tie keeps the seed's order.
+export const DEPT_CHIPS = 3;
+export function deptChips(seed: { depts: readonly UnitNode[] }, countOf: (name: string) => number, chosen: string, max = DEPT_CHIPS): { chips: string[]; more: string[] } {
+  const sites = new Set(siteFilters(seed).filter((s) => nodes(seed).some((u) => parentOf(seed, u) === s.id)).map((s) => s.name));
+  const names = [...new Set(nodes(seed).map((u) => u.name))].filter((n) => !sites.has(n));
+  const ranked = names.map((name, i) => ({ name, n: countOf(name), i })).sort((a, b) => b.n - a.n || a.i - b.i);
+  const chips = ranked.filter((x) => x.n > 0).slice(0, max).map((x) => x.name);
+  if (chosen !== "All" && names.includes(chosen) && !chips.includes(chosen)) chips.splice(Math.min(chips.length, max - 1), 1, chosen);
+  return { chips, more: ranked.map((x) => x.name).filter((n) => !chips.includes(n)) };
+}
+
 // The supporters line on a card: a unit is named only with at least MIN_GROUP supporters from it (a
 // disclosure control, D6); otherwise the count. "You" alone, or nobody, have their own lines.
 export type SupportSummary = { kind: "none" } | { kind: "you" } | { kind: "count"; count: number } | { kind: "unit"; count: number; unit: string };
