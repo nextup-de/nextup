@@ -111,6 +111,7 @@ The agent reads this file line by line and never sources it.
 | `NEXTUP_IMAGES` | `released` | image tag for new stacks: `released` (the last sha in `~/nextup/released`, so a new company gets what the others run; `main` until there is one), `main`, a 7-char sha, or `local` |
 | `SITE_HELPER` | `/usr/local/sbin/nextup-site` | or `none` (laptop) |
 | `MIN_MEM_MB` | `600` | refuse a new stack below this much MemAvailable |
+| `APP_REPLICAS` | `1` | app processes for a new stack (1-8). install.sh would start one per core (4 on the box): four Node processes, which on the shared box ran past the health wait (initech, 6 Nov). Raise a stack later with `APP_REPLICAS` in its `.env` and `ctl.sh <slug> up -d`. |
 
 ## Try it on a laptop
 
