@@ -10,7 +10,7 @@
 // the live check against a stack that is already up (`npm run e2e:live`, playwright.live.config.ts),
 // where the company has a database and the demo login. Everything else is the same clicks.
 import type { Page } from "@playwright/test";
-import { aiMessages, answerCoach, expect, holdNextReply, publishTo, showSidebar, START, test } from "../helpers";
+import { aiMessages, answerCoach, answerRail, expect, holdNextReply, publishTo, showSidebar, START, test } from "../helpers";
 
 const TITLE = "A shared setup cart for line 3, so a changeover never waits for tools";
 const SHOWN = "A shared setup cart for line 3"; // the title NextUp makes of it: cut at a natural break (features/ideas/coach.ts finishTitle)
@@ -80,7 +80,7 @@ test("the interview script: employee raises, team leader finds it, manager sees 
       await close.click();
     }
     await expect(aiMessages(page).first()).toContainText(/\S.{40,}/, { timeout: 30_000 });
-    // Publishing waits for three messages from the author; the coach keeps asking what is unclear.
+    // Publishing waits until the rail is done; the coach keeps asking what is unclear.
     await showSidebar(page);
     await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled();
   });
@@ -93,6 +93,7 @@ test("the interview script: employee raises, team leader finds it, manager sees 
   });
 
   await test.step("employee: publishes it to T. Vogel, and it lands on his desk", async () => {
+    await answerRail(page);
     await publishTo(page, "T. Vogel");
     await expect(page.getByText(/on T\. Vogel’s desk/)).toBeVisible();
     await page.getByRole("link", { name: "Open the case" }).click();

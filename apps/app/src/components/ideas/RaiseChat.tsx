@@ -93,6 +93,7 @@ export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalys
           </div>
         </div>
         {gaps.length > 0 && <Rail gaps={gaps} onAsk={onAsk} />}
+        {gaps.length > 0 && <OpenCount gaps={gaps} className={s.openPill} />}
       </div>
       {dock}
     </div>
@@ -159,6 +160,14 @@ const STATUS = { open: "ideas.chatStatusOpen", active: "ideas.chatStatusActive",
 
 // The unclear topics, one segment each, worked down from the top. A segment opens to its question and
 // "Ask this now"; the name shows on hover.
+// How many points are still to answer - publishing waits for 0 - or "done". Above the rail; on a phone,
+// where the rail does not fit, as a pill above the composer.
+function OpenCount({ gaps, className }: { gaps: Topic[]; className: string }) {
+  const t = useT();
+  const left = gaps.filter((g) => g.status === "open" || g.status === "active").length;
+  return <span className={className} data-done={left === 0 || undefined} aria-live="polite">{left ? t("ideas.chatPointsOpen", { n: left }) : t("ideas.chatPointsDone")}</span>;
+}
+
 function Rail({ gaps, onAsk }: { gaps: Topic[]; onAsk: (g: Topic) => void }) {
   const t = useT();
   const [hover, setHover] = useState<string | null>(null);
@@ -174,6 +183,7 @@ function Rail({ gaps, onAsk }: { gaps: Topic[]; onAsk: (g: Topic) => void }) {
   const n = gaps.length, active = gaps.findIndex((g) => g.status === "active");
   return (
     <div className={s.rail} aria-label={t("ideas.chatPointsClear", { clear: gaps.filter((g) => g.status === "clear").length, total: n })}>
+      <OpenCount gaps={gaps} className={s.railLeft} />
       {/* The window is as tall as its segments at full size (the active one 81px, the rest 54px, 6px links,
           15px padding), so a short list does not float in an empty window. */}
       <div className={s.railStack} style={{ "--rail-h": Math.min(390, 81 + (n - 1) * 60 + 15) + "px" } as React.CSSProperties}>
