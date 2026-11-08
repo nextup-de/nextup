@@ -1,7 +1,15 @@
 // What Teams shows (TMS D11; page spec 06 § Teams). Adaptive Cards 1.5, built as plain data. Pure: no I/O.
 // Every text comes from the `teams` namespace in the recipient's locale. The caller hands in dates and names
 // already formatted for the recipient; a card never looks anything up.
-import { createT, type Locale, type MessageKey } from "@/i18n";
+import { createT, INTL_LOCALE, type Locale, type MessageKey } from "@/i18n";
+
+/** When an earlier answer was given, for the caller to hand in: the time on the same day, else date and time. */
+export function decidedAt(ts: number, locale: Locale, now: number = Date.now(), timeZone?: string): string {
+  const day = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
+  const time: Intl.DateTimeFormatOptions = { timeZone, hour: "2-digit", minute: "2-digit" };
+  const opts: Intl.DateTimeFormatOptions = day(ts) === day(now) ? time : { ...time, day: "2-digit", month: "2-digit" };
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], opts).format(ts);
+}
 
 type Json = string | number | boolean | null | Json[] | { [k: string]: Json | undefined };
 /** One element or action of a card. */
