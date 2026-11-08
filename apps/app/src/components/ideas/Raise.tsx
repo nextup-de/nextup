@@ -377,7 +377,9 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // script's case has its own); what they wrote under it is the context.
   const lookOf = (): Look => {
     const parts = splitBody(outgoing.body);
-    const description = scripted ? parts.description : (idea.text.split(/\n\s*\n/)[0] ?? "").trim();
+    // The first message's first paragraph only: idea.text joins later answers with a single newline, so its first
+    // paragraph would swallow them and the context below would say them a second time.
+    const description = scripted ? parts.description : splitIdea(current).description.trim();
     const rest = scripted ? parts.context ?? "" : [parts.description, parts.context].filter(Boolean).join("\n\n");
     const context = rest.split("\n").filter((l) => !isExtraLine(l)).join("\n").trim();
     return { title: finishTitle(draft?.title || idea.title), description, context, prompts: parts.facts };

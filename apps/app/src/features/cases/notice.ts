@@ -104,6 +104,23 @@ export function buildRaisedNotice(args: {
 
 export type NoticeMail = { to: string; subject: string; text: string };
 
+const sameWords = (a: string, b: string) => {
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/[\s.!?:;,]+$/, "").trim();
+  return norm(a) === norm(b);
+};
+
+/**
+ * The body as the mail quotes it: without a first paragraph that only repeats the title (the raise page writes the
+ * author's first line as both), and without a second copy of a paragraph it already has.
+ */
+export function bodyBelowTitle(body: string, title: string): string {
+  const paras = body.trim().split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  if (paras.length > 0 && sameWords(paras[0], title)) paras.shift();
+  const kept: string[] = [];
+  for (const p of paras) if (!kept.some((k) => sameWords(k, p))) kept.push(p);
+  return kept.join("\n\n");
+}
+
 /** The message itself, or null when there is nobody to send it to. */
 export function composeNoticeMail(n: RaisedNotice, locale: Locale = DEFAULT_LOCALE): NoticeMail | null {
   if (!n.route.ownerEmail) return null;
@@ -116,7 +133,8 @@ export function composeNoticeMail(n: RaisedNotice, locale: Locale = DEFAULT_LOCA
     "",
     `  ${n.case.title}`,
   ];
-  if (n.case.body) lines.push("", `  ${n.case.body}`);
+  const body = bodyBelowTitle(n.case.body, n.case.title);
+  if (body) lines.push("", ...body.split("\n").map((l) => (l.trim() ? `  ${l}` : "")));
   lines.push("");
   if (n.route.label) lines.push(t("mail.noticeRoute", { label: n.route.label }));
   lines.push(
