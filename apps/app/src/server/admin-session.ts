@@ -17,8 +17,12 @@ import { secureCookies } from "@/server/issue-session";
  * Unlock /admin in this browser. `by` is the Microsoft sign-in name when there is one; with the
  * shared admin code there is nobody to name.
  *
- * strict: the admin area is never entered from a link on another site, so the cookie never needs
- * to travel on one - which also takes cross-site request forgery off the table.
+ * lax, not strict: "Continue with Microsoft" comes back from login.microsoftonline.com, so the first
+ * /admin request after the sign-in is cross-site. A strict cookie would stay at home on that request
+ * and /admin would show the login page again until a reload. Lax still keeps the cookie off
+ * cross-site POSTs, so a server action cannot be triggered from another site (Next.js also checks
+ * the Origin), and the only cross-site GETs under /admin are page reads and an export that
+ * downloads into the admin's own browser - the same rule the app session cookie lives with.
  */
 export async function issueAdminSession(by?: string, breakGlass = false, via?: AdminVia, expiresAt?: Date): Promise<void> {
   const secret = usableSecret(process.env.AUTH_SECRET);
@@ -28,7 +32,7 @@ export async function issueAdminSession(by?: string, breakGlass = false, via?: A
   const exp = expiresAt ? Math.min(Math.floor(expiresAt.getTime() / 1000), now + ADMIN_TTL_SECONDS) : now + ADMIN_TTL_SECONDS;
   (await cookies()).set(ADMIN_COOKIE, signAdmin(exp, secret, by, breakGlass, via ?? (breakGlass ? "break-glass" : undefined)), {
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: "lax",
     path: "/",
     secure: secureCookies(),
     maxAge: Math.max(exp - now, 1),

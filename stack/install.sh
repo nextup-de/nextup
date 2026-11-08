@@ -328,8 +328,12 @@ else
 fi
 "${compose[@]}" up -d --remove-orphans
 
+# Three minutes for the first app process, two more for each further one: they start side by side
+# and share the CPU and memory, so four on a busy box can take longer than three minutes.
+replicas="$(sed -n 's/^APP_REPLICAS=\([1-8]\)$/\1/p' "$env_file" | tail -n 1)"
+tries=$(( 60 + 40 * (${replicas:-1} - 1) ))
 echo -n "Waiting for the app to be healthy "
-for _ in $(seq 1 60); do
+for _ in $(seq 1 "$tries"); do
   # One line per app process (APP_REPLICAS): "healthy" only when they all say it.
   state="$("${compose[@]}" ps app --format '{{.Health}}' 2>/dev/null | sort -u || true)"
   [ "$state" = healthy ] && break
