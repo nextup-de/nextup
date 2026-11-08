@@ -16,6 +16,8 @@ import { coachMock, ideaFromTurns } from "@/features/ideas/coach";
 import { SCRIPT_THINK_MS, scriptReply } from "@/features/ideas/demo-script";
 import { scoreDraft } from "@/features/ideas/drafts";
 import { withoutSkipped } from "@/features/ideas/raise";
+import type { Coach, Phase, Progress, Timings } from "@/features/ideas/progress";
+import { DEFAULT_TIMINGS, finished, learn, startProgress } from "@/features/ideas/progress";
 import type { BrainProposal } from "@/features/routing/brain";
 import { draftScope, localDrafts } from "@/lib/idea-drafts";
 import { brainProposalAction } from "@/server/actions/brain";
@@ -28,6 +30,16 @@ export type Live = { parts: BenchmarkPart[]; overall: number; delta: Delta | nul
 export type Sending = { text: string; reply: string } | null;
 export type Meta = { title?: string; affected?: string[]; attachments?: number };
 
+// The evaluation while a message is on its way: what has happened so far, and the phase times this browser expects.
+export type EvalRun = { progress: Progress; timings: Timings };
+
+// How long each phase took here before, so the orb's bars and "seconds left" follow this company's real waits.
+const TIMINGS_KEY = "nextup:eval-timings";
+const readTimings = (): Timings => {
+  try { const v = localStorage.getItem(TIMINGS_KEY); return v ? { ...DEFAULT_TIMINGS, ...(JSON.parse(v) as Timings) } : { ...DEFAULT_TIMINGS }; } catch { return { ...DEFAULT_TIMINGS }; }
+};
+const writeTimings = (t: Timings) => { try { localStorage.setItem(TIMINGS_KEY, JSON.stringify(t)); } catch { /* private window: the defaults next time */ } };
+
 type ScoresEvent = { overall: number; parts: BenchmarkPart[]; sameAs: KnownCase | null; threshold: number; delta: Delta | null; replies?: Reply[] };
 
 export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, local: BenchmarkContext | null = null) {
@@ -37,6 +49,8 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
   const [draft, setDraft] = useState<DraftView | null>(null); // null = a new idea, not stored yet
   const [live, setLive] = useState<Live | null>(null);
   const [sending, setSending] = useState<Sending>(null);
+  const [evalRun, setEvalRun] = useState<EvalRun | null>(null);
+  const learned = useRef<Timings | null>(null);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const abort = useRef<AbortController | null>(null);
@@ -81,7 +95,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
   const startNew = useCallback(() => {
     abort.current?.abort();
     opened.current = null;
-    setDraft(null); setLive(null); setSending(null); setError("");
+    setDraft(null); setLive(null); setSending(null); setError(""); setEvalRun(null);
   }, []);
 
   // One message: make sure a draft exists, stream the score and the coach, then reload the draft.
@@ -89,14 +103,34 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     const t = text.trim();
     if (t.length < 3 || sending) return;
     setError("");
+    // The evaluation, phase by phase as the work really happens: each phase begins when the one before has
+    // answered, and the time it took teaches the next wait (features/ideas/progress).
+    const clock = () => performance.now();
+    const times = (learned.current ??= readTimings());
+    let run = startProgress(clock()), coachDone = false;
+    const show = () => setEvalRun({ progress: run, timings: learned.current ?? times });
+    const begin = (phase: Phase, patch: Partial<Progress> = {}) => {
+      const now = clock(), done = finished(run, phase, now);
+      if (done) learned.current = learn(learned.current ?? times, done.phase, run.coach, done.ms);
+      run = { ...run, ...patch, at: run.at[phase] === undefined ? { ...run.at, [phase]: now } : run.at };
+      show();
+    };
+    const answered = () => {
+      if (coachDone || run.at.coach === undefined) return;
+      coachDone = true;
+      learned.current = learn(learned.current ?? times, "coach", run.coach, clock() - run.at.coach);
+      writeTimings(learned.current);
+    };
+    show();
     let id = draft?.id ?? null;
     if (!id) {
       id = serverMode ? (await createIdeaDraftAction({ slug })).id : localDrafts.create(mine);
-      if (!id) { setError("Could not start a draft. Sign in again and retry."); return; }
+      if (!id) { setEvalRun(null); setError("Could not start a draft. Sign in again and retry."); return; }
       if (serverMode && (meta.affected.length || meta.attachments)) await saveIdeaDraftAction({ slug, id, affected: meta.affected, attachments: meta.attachments });
       else if (!serverMode) localDrafts.saveMeta(mine, id, meta);
     }
     const history = (draft?.turns ?? []).map(({ role, text: x }) => ({ role, text: x }));
+    begin("score");
     setSending({ text: t, reply: "" });
     const ctl = (abort.current = new AbortController());
     let scores: ScoresEvent | null = null, reply = "";
@@ -106,8 +140,10 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
       const now = scoreDraft({ turns: [...history, { role: "user", text: t }], affected: meta.affected, attachments: meta.attachments }, local);
       scores = { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold: DEFAULT_PUBLISH_THRESHOLD, delta: prev ? deltas(prev, now) : null };
       setLive({ parts: now.parts, overall: now.overall, delta: scores.delta, sameAs: now.sameAs, replies: [] });
+      begin("coach", { coach: "offline", overall: now.overall, threshold: DEFAULT_PUBLISH_THRESHOLD, similar: now.sameAs?.title ?? null });
       await new Promise((done) => setTimeout(done, SCRIPT_THINK_MS));
       if (ctl.signal.aborted) return;
+      answered();
       reply = scriptReply(history, t) ?? coachMock(prev, withoutSkipped(now, meta.skip ?? []), DEFAULT_PUBLISH_THRESHOLD, t, 0);
     } else try {
       const res = await fetch(`/api/${encodeURIComponent(slug)}/ideas/turn`, {
@@ -138,17 +174,24 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
             scores = data as unknown as ScoresEvent;
             setThreshold(scores.threshold);
             setLive({ parts: scores.parts, overall: scores.overall, delta: scores.delta, sameAs: scores.sameAs, replies: scores.replies ?? [] });
+            begin("coach", { overall: scores.overall, threshold: scores.threshold, similar: scores.sameAs?.title ?? null });
+          } else if (event === "stage") {
+            // Which coach is answering - the brain, the model, or the offline one - so the wait is said and timed as its own.
+            const by = data.by;
+            if (by === "brain" || by === "model" || by === "offline") { run = { ...run, coach: by as Coach }; show(); }
           } else if (event === "replies") {
             // The brain's own suggested answer arrives with its reply, after the scores.
             const replies = (data.replies ?? []) as Reply[];
             setLive((l) => (l ? { ...l, replies } : l));
           } else if (event === "text") {
+            answered();
             reply = String(data.text ?? "");
             setSending((s) => (s ? { ...s, reply } : s));
           } else if (event === "error") throw new Error(String(data.message ?? ""));
         }
       }
     } catch (e) {
+      setEvalRun(null);
       if ((e as Error).name === "AbortError") return;
       setSending(null);
       setError((e as Error).message || "The coach could not answer just now.");
@@ -161,7 +204,7 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
         { title: ideaFromTurns(turns).title, overall: scores.overall, scores: scores.parts });
     }
     const d = serverMode ? (await getIdeaDraftAction({ slug, id })).draft : localDrafts.get(mine, id);
-    setDraft(d); setSending(null);
+    setDraft(d); setSending(null); setEvalRun(null);
     void refresh();
   }, [draft, sending, slug, serverMode, local, mine, refresh]);
 
@@ -221,5 +264,5 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
   }, [draft, slug, serverMode, local, mine, refresh]);
 
   const overall = live?.overall ?? draft?.overall ?? 0;
-  return { drafts, threshold, draft, live, sending, error, loaded, overall, open, startNew, send, addScripted, save, discard, publish, setError };
+  return { drafts, threshold, draft, live, sending, evalRun, error, loaded, overall, open, startNew, send, addScripted, save, discard, publish, setError };
 }

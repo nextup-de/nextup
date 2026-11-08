@@ -19,6 +19,8 @@
 //                  replies}                                     and suggested answers (features/ideas/replies)
 //          replies {replies}                                    the suggested answers again, with the
 //                                                               brain's own guess first (brain only)
+//          stage  {by: brain | model | offline}                 which coach is answering now - the wait the
+//                                                               raise page's orb shows and times (features/ideas/progress)
 //          text   {text}                                        the coach so far (replace)
 //          done   {text, overall}
 //          error  {message}
@@ -134,6 +136,7 @@ export async function POST(request: Request, { params }: Ctx) {
         // prev as it was: after a "not sure" the coach asks the next question fresh, not "I still need this".
         let reply = coachMock(prev, askNow, threshold, body.text, 0); // the raise page shows no suggested answers, so the coach does not point to them
         let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
+        send("stage", { by: useBrain ? "brain" : useModel ? "model" : "offline" });
         const coached = useBrain
           ? await askBrainCoach(gate, tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },
             { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING }, request.signal, { key: ai.key })
@@ -146,6 +149,7 @@ export async function POST(request: Request, { params }: Ctx) {
           const offered = withCoachSuggestion(coached, idea, now, ctx, replies);
           if (offered[0] !== replies[0]) send("replies", { replies: offered });
         } else if (useModel) {
+          if (useBrain) send("stage", { by: "model" }); // the brain had no answer in time: the model takes over
           const seed = await seedFor(tenant.slug);
           let knowledge: Knowledge = await loadKnowledge(viewer.companyId);
           if (!hasKnowledge(knowledge)) {

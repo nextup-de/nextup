@@ -257,13 +257,15 @@
 .orb { display: block; flex: none; width: 78px; height: 78px; }
 .evalTitle { margin: 2px 0 0; font-size: var(--nh-fs-xl); line-height: 1.1; color: var(--nh-ink); }
 .evalLine { display: flex; align-items: baseline; gap: 9px; }
-.evalStep { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink-2); }
-.evalCount { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
+.evalStep { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink-2); text-align: center; }
+.evalCount { flex: none; white-space: nowrap; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
 .evalSub { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .evalBars { display: flex; gap: 5.25px; margin-top: 3px; }
-.evalBar { width: 41.25px; height: 3.75px; border-radius: var(--radius-sm, 999px); background: var(--nh-progress-open); transition: background 400ms ease; }
-.evalBar[data-s="done"] { background: var(--nh-progress-done); }
-.evalBar[data-s="now"] { background: var(--nh-progress-doing); }
+.evalBar { position: relative; overflow: hidden; width: 41.25px; height: 3.75px; border-radius: var(--radius-sm, 999px); background: var(--nh-progress-open); }
+/* The bar fills by the phase's real time (features/ideas/progress); a finished phase is full at once. */
+.evalFill { position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--fill, 0)); background: var(--nh-progress-doing); transition: transform 200ms linear, background 400ms ease; }
+.evalBar[data-s="done"] .evalFill { background: var(--nh-progress-done); }
+.evalTime { font-size: var(--nh-fs-xs); color: var(--nh-mute); font-variant-numeric: tabular-nums; margin-top: 2px; }
 /* In the chat, under the first message until the first reply is ready: as tall as it needs, bars that fit a phone. */
 .eval[data-chat] { height: auto; padding: 18px 16.5px 16.5px; box-shadow: 0 1px 2px rgba(40,60,100,0.05); border: 1px solid var(--nh-progress-open); }
 .eval[data-chat] .evalBars { width: 100%; max-width: 367px; }
