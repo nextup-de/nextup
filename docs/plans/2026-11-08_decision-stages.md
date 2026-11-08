@@ -96,7 +96,7 @@ raise ─▶ [Review]  idea manager: forward · back to the author · merge with
 | 2 | SEE | The raiser's view of the whole journey | M | 0 (uses 1 when there) | Sam, Kevin |
 | 3 | SET | Project setup, as already planned | M | 0 | Kevin, Sam |
 | 4 | GAT | Review, "yes, if approved", approvals (budget, council, role) | L | 1, 3 | Kevin, Sam |
-| 5 | TPL | Project templates and joined / related projects | M | 3 | Kevin, Sam |
+| 5 | TPL | Project workflows and templates per department; joined / related projects | M–L | 3 (stage gates: 4) | Kevin, Sam |
 | 6 | REC | Recognition up to HR and payroll | M–L (+ legal per country) | 2 | Kevin, Sam, Marc |
 | 7 | AGT | The project agent, with a planning run before the decision | L | 3, 5; AI server | Victor, Kevin, Sam |
 
@@ -104,7 +104,7 @@ raise ─▶ [Review]  idea manager: forward · back to the author · merge with
 (an approval's no is a reasoned no) and after SET (a provisional yes opens a project that sets up while it waits).
 TPL needs the setup checklist; AGT needs templates to plan from. REC needs the raiser's view to show the credit.
 
-**Pages.** Sam gets one spec per phase with pages: spec 13 (NOR + SEE), spec 14 (GAT), spec 15 (TPL + REC),
+**Pages.** Sam gets one spec per phase with pages: spec 13 (NOR + SEE), spec 14 (GAT), spec 15 (TPL, see the workflows plan), spec 15b (REC),
 spec 16 (AGT), in `plans/2026-11-02_pilot-pages/`, like spec 12 for the setup.
 
 ---
@@ -291,25 +291,33 @@ council (what is and is not stored about a council's vote).
 
 ---
 
-## 5 · TPL — project templates, joined and related projects
+## 5 · TPL — project workflows and templates per department, joined and related projects
 
-**Result.** A yes starts from the kind of project it is, and a new idea can join or support a project next to it.
+**Result.** A yes starts from the kind of project it is and the way the company wants to run it, and a new idea can
+join or support a project next to it. Worked out in detail in
+[the project workflows plan](2026-11-08_project-workflows.md).
 
-- **Templates** (`ProjectTemplate`, company-level, with defaults NextUp ships): Quick win (KVP), 8D quality case,
-  Purchase or investment, IT change, Safety measure, Process change. A template carries the setup checklist's
-  defaults (which soft items are needed), first steps with roles (not people), the project roles it needs, a metric
-  with unit and direction, the measure days, and which approvals usually apply.
-- A route may name a default template; the Yes sheet and the provisional-yes sheet offer it, and the brain may
-  suggest another. Applying it writes `project.template { key, version }` and the steps as ordinary
-  `project.step.added` events, so the board stays the same.
+- **Five workflow modes:** Board (today's, for quick wins), External tool (Jira now, Azure DevOps, Planner and
+  Polarion later; NextUp keeps decision, setup, measure and recognition), Stage gate (investments: stages closed by
+  approvals from phase 4), Fixed procedure (8D, ECR/ECN, safety: fixed steps with their own deadlines), and
+  AI-orchestrated (large projects, with the agent of phase 7).
+- **Templates per department.** NextUp ships a library (Quick win, 8D, Investment request, IT change, …, in DE and
+  EN); a company copies and adapts them, limits them to departments and routes, and names a role per department
+  that owns them. Templates are versioned; a running project keeps its version.
+- **Choosing.** The Yes sheets propose the route's default template, else the department's template that fits the
+  kind and the cost, else the brain's suggestion; a person confirms. Applying it writes `project.template`,
+  `project.mode` and the steps as ordinary `project.step.added` events with roles, not people.
+- **Sales.** The shipped templates also form a public gallery: a buyer sees their 8D, KVP and investment request ready
+  on day one.
 - **Joining.** The data already lets a yes join an open project (`openOrJoin` in `features/projects/reduce.ts`). The
   Yes sheet gets "Join P-12 instead", with the close projects found by shared words now and by embeddings later.
 - **Related projects.** `project.related { projectId, why }` links two projects both ways, shown on Overview. A
   member of one can be added to the other as a contributor (role from phase 3), which is how a team "supports the
   neighbouring project".
 
-**Code.** `features/projects/*`, new `features/templates/`, Settings → Projects, the Yes sheets.
-**Docs.** [LOOP.md](../LOOP.md), [DATA_MODEL.md](../DATA_MODEL.md), [SETTINGS.md](../SETTINGS.md).
+**Code, steps, events, tests and decisions (W1–W8):** in [the project workflows plan](2026-11-08_project-workflows.md).
+**Docs.** [LOOP.md](../LOOP.md), [DATA_MODEL.md](../DATA_MODEL.md), [SETTINGS.md](../SETTINGS.md),
+[INTEGRATIONS.md](../INTEGRATIONS.md), and a new reference `docs/TEMPLATES.md`.
 
 ---
 

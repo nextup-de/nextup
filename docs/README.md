@@ -9,6 +9,7 @@ Each one's status line says how much of it is done.
 
 | Date | Plan | Status |
 |---|---|---|
+| 2026-11-08 | [Project workflows and templates per department](plans/2026-11-08_project-workflows.md) | roadmap after funding; phase TPL of the master plan in detail: five modes (board, external tool, stage gate, fixed procedure, AI-orchestrated), shipped library, department templates; waits for W1–W8 |
 | 2026-11-08 | [Master plan: review, approvals, a reasoned no, the raiser's view, recognition and the project agent](plans/2026-11-08_decision-stages.md) | roadmap after funding, not demo or pilot scope; seven phases NOR, SEE, SET, GAT, TPL, REC, AGT; nothing built; waits for Kevin's decisions D1–D12 |
 | 2026-11-03 | [Project setup: from "Yes" to "Start"](plans/2026-11-03_project-setup.md) | draft, waits for review; setup checklist, project roles, asking for new people, goal, brief, kickoff; Sam's part in spec 12 |
 | 2026-11-03 | [Project area: one project, one question per tab](plans/2026-11-03_project-area.md) | exploration in Paper; structure for Sam to design, agent tab is phase 2 |
