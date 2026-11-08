@@ -171,8 +171,10 @@ function Rail({ gaps, onAsk }: { gaps: Topic[]; onAsk: (g: Topic) => void }) {
     return () => { document.removeEventListener("click", off); document.removeEventListener("keydown", esc); };
   }, [open]);
   const n = gaps.length, active = gaps.findIndex((g) => g.status === "active");
+  const left = gaps.filter((g) => g.status === "open" || g.status === "active").length; // still to answer; publishing waits for 0
   return (
     <div className={s.rail} aria-label={t("ideas.chatPointsClear", { clear: gaps.filter((g) => g.status === "clear").length, total: n })}>
+      <span className={s.railLeft} data-done={left === 0 || undefined} aria-live="polite">{left ? t("ideas.chatPointsOpen", { n: left }) : t("ideas.chatPointsDone")}</span>
       {/* The window is as tall as its segments at full size (the active one 81px, the rest 54px, 6px links,
           15px padding), so a short list does not float in an empty window. */}
       <div className={s.railStack} style={{ "--rail-h": Math.min(390, 81 + (n - 1) * 60 + 15) + "px" } as React.CSSProperties}>

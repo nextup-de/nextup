@@ -36,7 +36,7 @@ import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, SCRIPT_MOVES, scriptDials, scri
 import { useLocale, useT } from "@/i18n/client";
 import { formatDate } from "@/i18n/format";
 import { DEFAULT_LOCALE, LOCALES, translate, type MessageKey } from "@/i18n";
-import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, splitIdea, splitUpdate, topicsOf, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
+import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicsOf, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { desksFor, otherDesks, type Desk } from "@/features/ideas/desks";
@@ -76,7 +76,7 @@ const RECV_LINE = lineRes("ideas.pageExtraReceiver"), COLL_LINE = lineRes("ideas
 const lineMatch = (res: RegExp[], line: string) => { for (const re of res) { const m = line.match(re); if (m) return m; } return null; };
 const isExtraLine = (line: string) => [RECV_LINE, COLL_LINE, MEET_LINE].some((res) => lineMatch(res, line.trim()));
 
-const MIN_EXCHANGES = FILLED_ANSWERS + 1; // the author's messages (the idea, then answers) before it can be published
+const MIN_EXCHANGES = FILLED_ANSWERS + 1; // the demo script's messages (the idea, then answers) before it can be published
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
 const sizeOf = (bytes: number) => (bytes > 1e6 ? (bytes / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(bytes / 1e3)) + " KB");
 type DeskPlan = { desks: Desk[]; aiOff: boolean }; // the desks to choose from, and whether the keywords made the proposal
@@ -181,11 +181,28 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const shown = splitIdea(edit ? edit.text : current);
   // The demo script: where this conversation stands in it (-1 once the author wrote their own words).
   const scriptAt = story ? scriptStep(turns) : -1;
-  // Publishing waits for a real conversation: at least MIN_EXCHANGES messages from the author, each answered.
-  // In the demo that is the idea and the two answers the controls fill (FILLED_ANSWERS).
+  // The rail: the topics prepared when the idea was raised - for a draft from an earlier visit, worked out
+  // again from its first message. As many as the idea needs: one or two for a precise one, many for a vague one.
+  const benchCtx = useMemo(() => ideaContext(seed.routes, seed.goals, S.cases, seed.spend), [seed.routes, seed.goals, seed.spend, S.cases]);
+  // The scores come from the studio in the default language; in another one they are read again from the conversation.
+  const parts = locale === DEFAULT_LOCALE || !turns.length ? storedParts : benchmark({ text: idea.text, affected, attachments: myFiles.length }, benchCtx, locale).parts;
+  const myTopics = topics[slot] ?? (firstIdx >= 0 ? topicsOf(benchmark({ text: turns[firstIdx].text, affected: [], attachments: 0 }, benchCtx, locale).parts, locale) : []);
+  // Each answer since the idea, with the benchmark as it stood just before it: answeredOf replays them, so a
+  // topic is checked off once the author has answered it, in their own words, even where the benchmark cannot tell.
+  const rounds = useMemo(() => turns.flatMap((tn, i) => (i <= firstIdx || tn.role !== "user" ? []
+    : [{ said: tn.text, parts: benchmark({ text: ideaFromTurns(turns.slice(0, i)).text, affected, attachments: myFiles.length }, benchCtx, locale).parts }])),
+  [turns, firstIdx, affected, myFiles.length, benchCtx, locale]);
+  const unknownHere = draft ? preview.unknown[draft.id] ?? [] : [];
+  // The demo script has its own eight topics, cleared one per answer, as long as the conversation follows it.
+  const gaps: Topic[] = !draft || !turns.length ? [] : scriptAt >= 1 ? scriptRail(scriptAt)
+    : gapsOf(myTopics, parts, unknownHere, locale, answeredOf(myTopics, rounds, unknownHere, locale));
+  // Publishing waits until the rail is done: every topic answered, checked off or "not sure", and NextUp has
+  // replied - after one answer for a precise idea, after many for a vague one. The demo script keeps its
+  // own pace: the idea and the two answers the controls fill (FILLED_ANSWERS).
   const said = turns.filter((t) => t.role === "user").length;
   const scripted = story && scriptAt >= MIN_EXCHANGES;
-  const canFinalize = turns.length > 0 && !busy && !sending && (said >= MIN_EXCHANGES || published);
+  const railDone = scriptAt >= 1 ? said >= MIN_EXCHANGES : turns.some((t) => t.role === "assistant") && openCount(gaps) === 0;
+  const canFinalize = turns.length > 0 && !busy && !sending && (railDone || published);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
 
@@ -232,13 +249,13 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const evaluating = evalStep !== null && !replied;
   useEffect(() => { if (replied) clearInterval(evalTimer.current); }, [replied]);
 
-  // A screen the idea cannot show (the last look or the export of a published idea, or before three messages):
+  // A screen the idea cannot show (the last look or the export of a published idea, or before the rail is done):
   // the chat instead. Checked once the idea in the URL is the one loaded, and not while it is being worked on.
   useEffect(() => {
     if (!draft || draft.id !== urlIdea || sending || busy || pubStep || view === "chat") return;
-    const ok = view === "preview" || view === "export" ? !published && said >= MIN_EXCHANGES : true;
+    const ok = view === "preview" || view === "export" ? !published && railDone : true;
     if (!ok) nav({ view: "chat" }, "replace");
-  }, [draft, urlIdea, sending, busy, pubStep, view, published, said, nav]);
+  }, [draft, urlIdea, sending, busy, pubStep, view, published, railDone, nav]);
 
   // What the evaluation and the analysis say about who receives it: the routing, run here on the open idea.
   const ev = useMemo(() => {
@@ -297,14 +314,6 @@ function RaisePage({ script = false }: { script?: boolean }) {
 
   // The chat shows NextUp's reply with its short read; the full analysis opens only when asked for.
   const shownView = view === "preview" ? "chat" : view; // the last look opens over the chat
-  // The rail: the topics prepared when the idea was raised - for a draft from an earlier visit, worked out
-  // again from its first message.
-  const benchCtx = ideaContext(seed.routes, seed.goals, S.cases, seed.spend);
-  // The scores come from the studio in the default language; in another one they are read again from the conversation.
-  const parts = locale === DEFAULT_LOCALE || !turns.length ? storedParts : benchmark({ text: idea.text, affected, attachments: myFiles.length }, benchCtx, locale).parts;
-  const myTopics = topics[slot] ?? (firstIdx >= 0 ? topicsOf(benchmark({ text: turns[firstIdx].text, affected: [], attachments: 0 }, benchCtx, locale).parts, locale) : []);
-  // The demo script has its own eight topics, cleared one per answer, as long as the conversation follows it.
-  const gaps: Topic[] = !draft || !turns.length ? [] : scriptAt >= 1 ? scriptRail(scriptAt) : gapsOf(myTopics, parts, preview.unknown[draft.id] ?? [], locale);
   // Under the latest reply: the one point still unclear - the one being asked, else the next still open.
   const lastAi = [...turns].reverse().find((t) => t.role === "assistant")?.id ?? null;
   const unclear = [...gaps.filter((g) => g.status === "active"), ...gaps.filter((g) => g.status === "open" || g.status === "unknown")].slice(0, 1);
@@ -465,15 +474,18 @@ function RaisePage({ script = false }: { script?: boolean }) {
     if (/^(review analysis|analyse prüfen)$/i.test(typed)) { setText(""); go("analysis"); return; }
     if (published) { showToast(t("ideas.pageToastPublished")); return; }
     if (typed.length < 3) return;
-    // "Not sure": the active topic becomes unknown, and the coach is told not to ask it again.
+    // "Not sure": the active topic becomes unknown, and the coach is told not to ask it again - nor the ones
+    // the author has answered, this message included, so the coach and the rail agree on what is still open.
     const skip = draft ? [...(preview.unknown[draft.id] ?? [])] : [];
     const unsure = draft && isUnsure(typed) ? (gaps.find((g) => g.ask === ask) ?? gaps.find((g) => g.status === "active")) : undefined;
     if (draft && unsure) { preview.markUnknown(draft.id, unsure.id); skip.push(unsure.id); }
+    // This answer counts as the replay will count it (answeredOf), so the coach does not ask the same point straight back.
+    if (draft && scriptAt < 1) skip.push(...answeredOf(myTopics, [...rounds, { said: typed, parts }], skip, locale));
     // Edits made in the Idea view travel with this message, so the coach and the score see them.
     const message = edit ? typed + IDEA_UPDATE + edit.text : typed;
     if (draft && edit) preview.edit(draft.id, null);
     if (lastAi && unclear.length) setAsked((a) => (a[lastAi] ? a : { ...a, [lastAi]: unclear.map((g) => g.id) }));
-    void studio.send(message, { affected, attachments: myFiles.length, skip });
+    void studio.send(message, { affected, attachments: myFiles.length, skip: [...new Set(skip.map((k) => topicIn(k, locale)))].slice(0, MAX_TOPICS) }); // in the route's language; it takes at most 20
     track("coach_message_sent", { n: said + 1, unsure: Boolean(unsure) });
     setText(""); setAsk(null);
   };
