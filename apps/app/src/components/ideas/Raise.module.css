@@ -434,7 +434,9 @@ a.quickBtn { text-decoration: none; }
 .railStack { flex: 1; min-height: 0; max-height: var(--rail-h, 390px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 7.5px 6px; box-sizing: border-box; background: var(--nh-card); border-radius: var(--radius-md, 18px); box-shadow: 0 7.5px 22.5px rgba(40,60,100,0.08), 0 1px 2px rgba(40,60,100,0.05); } /* a thin white window, so the rail does not fade into the ground */
 /* Above the rail: how many points are still to answer - "done" once the idea can be published. */
 .railLeft { flex: none; margin-bottom: 6px; padding: 2px 7px; border-radius: var(--radius-sm, 999px); background: var(--nh-card); box-shadow: 0 1px 2px rgba(40,60,100,0.08); font-size: var(--nh-fs-xs); font-weight: 700; color: var(--nh-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.railLeft[data-done] { background: var(--nh-progress-done); color: var(--nh-on-brand); }
+.railLeft[data-done], .openPill[data-done] { background: var(--nh-progress-done); color: var(--nh-on-brand); }
+/* The same count on a phone, where the rail is hidden: a pill just above the composer, in the room the thread keeps free there. */
+.openPill { display: none; position: absolute; z-index: 5; bottom: 10px; right: 16px; padding: 3px 9px; border-radius: var(--radius-sm, 999px); background: var(--nh-card); box-shadow: 0 1px 3px rgba(40,60,100,0.14); font-size: var(--nh-fs-xs); font-weight: 700; color: var(--nh-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
 .link { flex: none; width: 1.5px; height: 6px; background: var(--nh-mute-2); transition: background 420ms ease; }
 .link[data-s="open"] { background: var(--nh-line); }
 .seg { position: relative; z-index: 1; cursor: pointer; box-sizing: border-box; flex: 1 1 0; min-height: 13.5px; max-height: 54px; width: 15px; border: none; padding: 0; border-radius: var(--radius-sm, 999px); background: var(--nh-line); display: flex; align-items: center; justify-content: center; color: var(--nh-on-brand); font-family: inherit; font-size: var(--nh-fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; transition: all 480ms cubic-bezier(.34,1.56,.64,1); }
@@ -671,6 +673,7 @@ a.quickBtn { text-decoration: none; }
   .scroll { padding: 52px 16px 96px; }
   .dock { padding: 9px 12px 12px; }
   .rail { display: none; }
+  .openPill { display: block; }
   .field, .pickInput, .searchInput, .titleInput { font-size: var(--nh-fs-input); }
   .spacer { height: 6px; }
   .sheet { padding: 12px 12px 20px; }
