@@ -1,8 +1,9 @@
 # Plan: project workflows and templates per department
 
-> **Plan · 2026-11-08 · roadmap after funding, not part of the demo or the pilot.** Phase TPL of
-> [the decision-stages master plan](2026-11-08_decision-stages.md), worked out in detail. Nothing here is built.
-> Kevin's decisions W1–W8 are needed before it starts.
+> **Plan · 2026-11-08 · decided: it will come, as the roadmap after funding.** Planned on the weekend of 7–8 Nov 2026;
+> Kevin decided on 8 Nov that workflow modes and department templates are part of NextUp. Phase TPL of
+> [the decision-stages master plan](2026-11-08_decision-stages.md), worked out in detail. Not part of the demo or the
+> pilot, and nothing here is built. The detailed decisions W1–W8 are taken before it starts.
 
 ## Why
 

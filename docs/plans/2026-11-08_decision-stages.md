@@ -1,9 +1,11 @@
 # Master plan: review, approvals, a reasoned no, the raiser's view, recognition and the project agent
 
-> **Plan · 2026-11-08 · roadmap after funding, not part of the demo or the pilot.** The product shown today is the main
-> app as it runs on `main` and in the large demo. This plan collects the add-ons we would build once there is
-> investment, possibly together with a launch customer. Nothing here is built, and nothing here blocks the demo.
-> Kevin's decisions (D1–D12) are needed before any phase starts.
+> **Plan · 2026-11-08 · decided: it will come, as the roadmap after funding.** Planned on the weekend of 7–8 Nov 2026;
+> Kevin decided on 8 Nov that these add-ons are part of NextUp
+> ([decision](https://github.com/nextup-de/nextup-context/blob/main/decisions/2026-11-08_roadmap-after-funding.md)).
+> They are not part of the demo or the pilot: the product shown today is the main app as it runs on `main` and in the
+> large demo. Building starts once there is investment, possibly together with a launch customer. Nothing here is
+> built, and nothing here blocks the demo. The detailed decisions D1–D12 are taken before each phase starts.
 > Everything between "an idea arrives at a desk" and "the raiser is recognised" that the team discussed and the
 > interviews asked for, and that no plan covers yet. It builds on what runs on `main` ([LOOP.md](../LOOP.md)), on the
 > [project setup plan](2026-11-03_project-setup.md) and on the [project area](2026-11-03_project-area.md). Each phase
