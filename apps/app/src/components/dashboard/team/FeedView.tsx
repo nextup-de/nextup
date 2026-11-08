@@ -15,7 +15,7 @@ import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { deptTone } from "@/lib/dept-tone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { archiveOf, inView, type ListView } from "@/features/cases/discussion";
-import { FEED_SORT_KEY, feedCover, feedStage, inDept, inSite, inUnit, latestActivity, siteFilters, sortFeed, isMe as isBacker, supportLine, supportSummary, unitFilters, type Activity, type Backer, type FeedSort } from "@/features/cases/feed";
+import { deptChips, FEED_SORT_KEY, feedCover, feedStage, inDept, inSite, inUnit, latestActivity, siteFilters, sortFeed, isMe as isBacker, supportLine, supportSummary, unitFilters, type Activity, type Backer, type FeedSort } from "@/features/cases/feed";
 import { MIN_GROUP } from "@/features/metrics/types";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { dashboardRow, overviewSteps, raisedWith } from "@/features/cases/rows";
@@ -54,11 +54,10 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const [view, setView] = useState<ListView>("open");
   const [dept, setDept] = useState("All");
-  const [moreDepts, setMoreDepts] = useState(false); // departments with nothing to show stay behind "More"
   const [site, setSite] = useState(ALL_SITES);
   const [unit, setUnit] = useState(ALL_UNITS);
   const [sort, setSort] = useState<FeedSort>("support");
-  const [menu, setMenu] = useState<"site" | "unit" | "sort" | null>(null);
+  const [menu, setMenu] = useState<"dept" | "site" | "unit" | "sort" | null>(null);
   const [openId, setOpenId] = useState<string | null>(initialId ?? null);
   useIdInUrl(openId, setOpenId); // the opened card is in the address (?id=)
   const [openScore, setOpenScore] = useState<Record<string, number | null>>({});
@@ -101,8 +100,8 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const siteName = sites.find((x) => x.id === site)?.name ?? t("team.feedAllSites");
   const unitName = units.find((x) => x.id === unit)?.name ?? t("feed.allUnits");
   const deptCount = (d: string) => bySite.filter((x) => x.tags.includes(d)).length;
-  const emptyDepts = deptNames.filter((d) => deptCount(d) === 0 && d !== dept);
-  const chips = ["All", ...deptNames.filter((d) => moreDepts || !emptyDepts.includes(d))];
+  const { chips: deptChipNames, more: moreDepts } = deptChips(seed, deptCount, dept); // at most three, the rest in a menu
+  const chips = ["All", ...deptChipNames];
 
   const open = (id: string) => { setOpenId(id); top(); };
   const support = (x: Item) => { act.affect(x.c.id); };
@@ -175,10 +174,24 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                 {d === "All" ? t("team.feedAll") : d}<span className={s.count2}>{d === "All" ? bySite.length : deptCount(d)}</span>
               </button>
             ))}
-            {emptyDepts.length > 0 && (
-              <button type="button" className={s.more} aria-expanded={moreDepts} onClick={() => setMoreDepts(!moreDepts)}>
-                {moreDepts ? t("feed.lessDepts") : t("feed.moreDepts")}
-              </button>
+            {moreDepts.length > 0 && (
+              <div className={s.div6}>
+                <button type="button" className={s.more} aria-expanded={menu === "dept"} aria-haspopup="menu" onClick={() => setMenu(menu === "dept" ? null : "dept")}>
+                  {t("feed.moreDepts")}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                {menu === "dept" && (
+                  <div className={s.div7} data-first="true" role="menu">
+                    {moreDepts.map((d) => (
+                      <button key={d} type="button" role="menuitemradio" aria-checked={dept === d} className={s.pick} data-empty={deptCount(d) === 0 ? "true" : undefined} onClick={() => { setDept(d); setMenu(null); }}>
+                        <span className={s.label}>{d}</span>
+                        <span className={s.count}>{deptCount(d)}</span>
+                        <span className={s.check} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
           <div className={s.div5}>

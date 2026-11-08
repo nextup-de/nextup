@@ -18,6 +18,8 @@
 .toggleSite:active, .toggleSort:active, .toggleArchive:active, .more:active { transform: scale(.97); }
 .toggleArchive { color: var(--nh-brand-ink); }
 .more { color: var(--nh-mute); }
+.chips .div7 { left: 0; right: auto; } /* the department menu sits under "More", on the left */
+.pick[data-empty="true"] { color: var(--nh-mute); }
 .div7 { position: absolute; top: calc(100% + 6px); right: 0; min-width: 190px; padding: 6px; background: #fff; border-radius: var(--radius-sm, 14px); box-shadow: 0 12px 32px rgba(20,30,60,0.16),0 1px 2px rgba(20,30,60,0.06); display: flex; flex-direction: column; gap: 2px; animation: affPop 220ms cubic-bezier(.2,.8,.2,1) both; }
 .pick { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: none; border-radius: var(--radius-xs, 10px); color: var(--nh-ink); font-family: inherit; font-size: var(--nh-fs-md); cursor: pointer; text-align: left; }
 .pick:hover { background: var(--nh-fill); }
