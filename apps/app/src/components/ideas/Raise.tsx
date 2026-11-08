@@ -58,7 +58,7 @@ import { RaiseExport } from "./RaiseExport";
 import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
 import { AnalysisSheet, IdeaSheet, type AnalysisData, type Reviewer, type Similar, type Source } from "./RaiseSheets";
 import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
-import { EVAL_STEPS, RaiseStart } from "./RaiseStart";
+import { RaiseStart } from "./RaiseStart";
 import { useRaisePreview, type FileItem } from "./raisePreview";
 import { Icon } from "./raiseIcons";
 import { RaisePeople } from "./RaisePerson";
@@ -147,8 +147,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [text, setText] = useKept(scope, "text", "");
   const [ask, setAsk] = useState<string | null>(null); // a rail question the author chose to answer now
   const [menu, setMenu] = useState<Menu>(null);
-  const [evalStep, setEvalStep] = useState<number | null>(null); // the evaluation's step while the first reply is on its way
-  const evalTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const [evalOn, setEvalOn] = useState(false); // the first message is sent: the evaluation shows until the first reply (its phases: studio.evalRun)
   const [busy, setBusy] = useState(false);
   // Publishing: the step NextUp is on while it finds where the idea should go, then the desks to
   // choose from; `pubWork` is the step while the chosen one is published, `sent` the window afterwards.
@@ -191,8 +190,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
 
   // The start page, empty: a new idea, or where the browser's back led from an open one.
   const toStart = useCallback(() => {
-    studio.startNew(); setText(""); setAsk(null); setMenu(null); setOpenId(null); clearInterval(evalTimer.current);
-    setStage("start"); setStartText(""); setSegs(EMPTY_BODY); caretRef.current = null; setStartAff([]); setEvalStep(null); setSlot(newId("n"));
+    studio.startNew(); setText(""); setAsk(null); setMenu(null); setOpenId(null);
+    setStage("start"); setStartText(""); setSegs(EMPTY_BODY); caretRef.current = null; setStartAff([]); setEvalOn(false); setSlot(newId("n"));
   }, [studio.startNew, setText, setOpenId, setStage, setStartText, setSegs, setStartAff, setSlot]); // eslint-disable-line react-hooks/exhaustive-deps -- studio.startNew is stable
 
   // The URL changed (a link, the back button, a reload): open the idea it names, or go to the start page.
@@ -208,7 +207,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       if (studio.draft?.id === urlIdea) return;
       void studio.open(urlIdea).then((d) => {
         if (!d) { studio.setError(""); toStart(); setMissing(urlIdea); return; } // not this person's, or gone: never rewrite the history
-        setText(""); setAsk(null); setMenu(null); setEvalStep(null);
+        setText(""); setAsk(null); setMenu(null); setEvalOn(false);
         setStage("chat"); setOpenId(urlIdea); setSlot(aliases[urlIdea] ?? urlIdea);
       });
     } else if (before === undefined) {
@@ -229,8 +228,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
 
   // The first reply is ready, or failed: the orb under the first message goes.
   const replied = !!draft?.turns.some((t) => t.role === "assistant") || !!sending?.reply || !!studio.error;
-  const evaluating = evalStep !== null && !replied;
-  useEffect(() => { if (replied) clearInterval(evalTimer.current); }, [replied]);
+  const evaluating = evalOn && !replied;
 
   // A screen the idea cannot show (the last look or the export of a published idea, or before three messages):
   // the chat instead. Checked once the idea in the URL is the one loaded, and not while it is being worked on.
@@ -348,17 +346,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
     if (main.length < 3 || evaluating) return;
     const message = main + (ctx ? "\n\n" + ctx : "");
     // Every idea, the demo script's too, lands in the chat: NextUp's reply, its short read and what is still unclear.
-    setMenu(null); setEvalStep(0);
+    setMenu(null); setEvalOn(true);
     setTopics((x) => ({ ...x, [slot]: topicsOf(benchmark({ text: message, affected: startAff, attachments: myFiles.length }, benchCtx, locale).parts, locale) }));
     void studio.send(message, { affected: startAff, attachments: myFiles.length });
     track("coach_message_sent", { n: 1 });
     setStage("chat"); setStartText(""); setSegs(EMPTY_BODY); caretRef.current = null;
-    let step = 0;
-    clearInterval(evalTimer.current);
-    evalTimer.current = setInterval(() => {
-      step += 1;
-      if (step < EVAL_STEPS.length) setEvalStep(step); else clearInterval(evalTimer.current); // the last step holds until the reply
-    }, 420);
   };
 
   // One step of the work, said in the button while it runs: the label and the orb's mode, the real work,
@@ -727,7 +719,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} {...analysis} />
   ) : (
     <RaiseChat msgs={thread} typing={!!sending && !sending.reply} error={studio.error}
-      thinking={evaluating && evalStep !== null && firstText ? { step: evalStep, sub: t("ideas.pageWordsFrom", { n: (firstText.match(/\S+/g) || []).length, who: who.handle ?? who.name, line: who.line }) } : null}
+      thinking={evaluating && studio.evalRun && firstText ? { run: studio.evalRun, sub: t("ideas.pageWordsFrom", { n: (firstText.match(/\S+/g) || []).length, who: who.handle ?? who.name, line: who.line }) } : null}
       gaps={railGaps} onAsk={(g) => { setAsk(g.ask); setTimeout(() => chatField.current?.focus(), 0); }}
       onAnalysis={() => go("analysis")} onPublish={openLook}
       dock={composerChat} followKey={turns.length + ":" + (sending ? sending.reply.length : -1) + ":" + (draft?.id ?? "") + ":" + (asking?.id ?? "")} />

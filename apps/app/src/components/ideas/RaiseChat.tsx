@@ -12,6 +12,7 @@ import { levelOf, type Dial, type DialKey, type Move, type Topic } from "@/featu
 import { Icon, Solid } from "./raiseIcons";
 import { Analysis, type AnalysisData } from "./RaiseSheets";
 import { Evaluating } from "./RaiseStart";
+import type { EvalRun } from "@/lib/use-idea-studio";
 import s from "./Raise.module.css";
 
 // `read`: the five dials as they stand after this reply. `moved`: the dials the answer before
@@ -28,7 +29,7 @@ export type ChatMsg = { id: string; role: "ai" | "user"; text: string; note?: st
 export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalysis, onPublish, dock, followKey }: {
   msgs: ChatMsg[];
   typing: boolean;
-  thinking: { step: number; sub: string } | null; // the first reply on its way: the orb and the evaluation's steps
+  thinking: { run: EvalRun; sub: string } | null; // the first reply on its way: the orb and the evaluation's real phases
   error: string;
   gaps: Topic[];
   onAsk: (g: Topic) => void;
@@ -85,7 +86,7 @@ export function RaiseChat({ msgs, typing, thinking, error, gaps, onAsk, onAnalys
                 )}
               </div>
             ))}
-            {thinking ? <Evaluating step={thinking.step} sub={thinking.sub} inChat /> : typing && (
+            {thinking ? <Evaluating run={thinking.run} sub={thinking.sub} inChat /> : typing && (
               <div className={s.typing} aria-label={t("ideas.chatTyping")}><i /><i /><i /></div>
             )}
             {error && <p className={s.error} role="alert">{error}</p>}
