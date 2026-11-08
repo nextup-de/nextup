@@ -19,6 +19,10 @@
 #   SITE_HELPER=/usr/local/sbin/nextup-site  root helper for nginx + certbot (see that file), or none
 #   MIN_MEM_MB=600                         refuse a new stack below this much MemAvailable
 #   MIN_DISK_MB=6000                       refuse a create/restart below this much free disk (images ~3.3 GB)
+#   APP_REPLICAS=1                         app processes for a NEW stack (1-8). The box is shared: install.sh's
+#                                          default of one per core (4 here) is four Node processes and starts too slowly
+#                                          for its health wait - that is how initech failed on 2026-11-06.
+#                                          More later: APP_REPLICAS in the stack's .env, then ctl.sh up -d.
 #
 # What admin may ask for - nothing else, and every value is checked here again:
 #   create       install a new stack (install.sh via add-stack.sh), nginx + TLS, report its passwords
@@ -48,7 +52,7 @@ die() { say "agent: $*" >&2; exit 1; }
 
 # ── Config ───────────────────────────────────────────────────────────────────────────────────────
 [ -f "$config" ] || die "no config at $config"
-ADMIN_URL="" PROVISION_TOKEN="" OPS_PUBLIC_URL="https://admin.sellux.ch" NEXTUP_IMAGES="released" SITE_HELPER="/usr/local/sbin/nextup-site" MIN_MEM_MB=600 MIN_DISK_MB=6000
+ADMIN_URL="" PROVISION_TOKEN="" OPS_PUBLIC_URL="https://admin.sellux.ch" NEXTUP_IMAGES="released" SITE_HELPER="/usr/local/sbin/nextup-site" MIN_MEM_MB=600 MIN_DISK_MB=6000 APP_REPLICAS=1
 while IFS='=' read -r k v; do
   v="${v%$'\r'}"
   case "$k" in
@@ -59,6 +63,7 @@ while IFS='=' read -r k v; do
     SITE_HELPER) SITE_HELPER="$v" ;;
     MIN_MEM_MB) MIN_MEM_MB="$v" ;;
     MIN_DISK_MB) MIN_DISK_MB="$v" ;;
+    APP_REPLICAS) APP_REPLICAS="$v" ;;
   esac
 done < "$config"
 [[ "$ADMIN_URL" =~ ^(http://127\.0\.0\.1:[0-9]{2,5}|https://[a-z0-9.-]+)$ ]] || die "ADMIN_URL must be http://127.0.0.1:PORT or https://host"
@@ -72,6 +77,7 @@ if [ "$NEXTUP_IMAGES" = released ]; then
   [[ "$NEXTUP_IMAGES" =~ ^[0-9a-f]{7}$ ]] || NEXTUP_IMAGES=main
 fi
 [[ "$MIN_MEM_MB" =~ ^[0-9]{1,6}$ ]] || die "MIN_MEM_MB is a number"
+[[ "$APP_REPLICAS" =~ ^[1-8]$ ]] || die "APP_REPLICAS is a number from 1 to 8"
 [[ "$MIN_DISK_MB" =~ ^[0-9]{1,7}$ ]] || die "MIN_DISK_MB is a number"
 [ "$SITE_HELPER" = none ] || [[ "$SITE_HELPER" =~ ^/usr/local/sbin/[a-z-]+$ ]] || die "SITE_HELPER is none or /usr/local/sbin/<name>"
 
@@ -321,7 +327,7 @@ case "$action" in
     [ -f "$conf" ] || printf 'PORT=%s\nSTAGE=%s\n' "$port" "$stage" > "$conf"
     progress install
     NEXTUP_OPS_TOKEN="$ops_token" run_watched "$stack/nginx/add-stack.sh" "$slug" "$port" "$stage" \
-      --images "$NEXTUP_IMAGES" --name "$name" --ops-url "$OPS_PUBLIC_URL" || { stop_half_built; fail "add-stack.sh failed"; }
+      --images "$NEXTUP_IMAGES" --name "$name" --ops-url "$OPS_PUBLIC_URL" --app-replicas "$APP_REPLICAS" || { stop_half_built; fail "add-stack.sh failed"; }
     progress health
     health || { stop_half_built; fail "the app does not answer on 127.0.0.1:$port"; }
     echo "The app answers on 127.0.0.1:$port." >> "$log"
