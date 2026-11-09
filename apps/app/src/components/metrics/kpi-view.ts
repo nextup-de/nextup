@@ -7,7 +7,8 @@ import { formatEuro, formatNumber } from "@/i18n/format";
 
 type Zi = { company: ZiRow; units: ZiRow[] };
 
-export type KpiCell = { id: string; label: string; value: string };
+/** `empty`: no number or zero, which the page leaves out. `share`: a percentage cell's value, for its bar. */
+export type KpiCell = { id: string; label: string; value: string; empty: boolean; share: number | null };
 export type KpiRowView = { key: string; label: string; depth: number; hidden: boolean; cells: KpiCell[] };
 export type KpiView = {
   tiles: KpiCell[];
@@ -31,6 +32,14 @@ const IDS = [
 const PROJECT_IDS: readonly string[] = ["savings", "energy", "co2", "premiums"];
 const DASH = "–";
 
+function raw(row: ZiRow): Record<string, number | null> {
+  return {
+    participation: row.participationPct, ideasPer100: row.ideasPer100, implemented: row.implementationPct, days: row.medianDaysToDecision,
+    savings: row.savingsEur, energy: row.energyKwh, co2: row.co2Kg, premiums: row.premiumsEur,
+  };
+}
+const PCT_IDS: readonly string[] = ["participation", "implemented"];
+
 function values(row: ZiRow, locale: Locale, t: T): Record<string, string> {
   const pct = (v: number | null) => (v === null ? DASH : `${formatNumber(locale, v)} %`);
   const eur = (v: number | null) => (v === null ? DASH : formatEuro(locale, Math.round(v)));
@@ -51,7 +60,14 @@ export function kpiView(zi: Zi, t: T, projectsOn: boolean, locale: Locale): KpiV
   const ids = IDS.filter(([id]) => projectsOn || !PROJECT_IDS.includes(id));
   const cellsOf = (row: ZiRow, kind: "tile" | "col"): KpiCell[] => {
     const text = values(row, locale, t);
-    return ids.map(([id, tile, col]) => ({ id, label: t(kind === "tile" ? tile : col), value: row.hidden ? t("kpis.tooFew") : text[id] }));
+    const num = raw(row);
+    return ids.map(([id, tile, col]) => {
+      const v = row.hidden ? null : num[id];
+      return {
+        id, label: t(kind === "tile" ? tile : col), value: row.hidden ? t("kpis.tooFew") : text[id],
+        empty: v === null || v === 0, share: v !== null && PCT_IDS.includes(id) ? Math.max(0, Math.min(100, v)) : null,
+      };
+    });
   };
   return {
     tiles: cellsOf(zi.company, "tile"),

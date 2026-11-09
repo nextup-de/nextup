@@ -88,7 +88,7 @@ export function formatTileValue(id: TileId, v: number | null, demoClock: boolean
   if (v === null) return t("metrics.valueNone");
   const n = formatNumber(v, t);
   const kind = KIND[id];
-  if (kind === "days") return t(demoClock ? "metrics.unitDaysDemo" : "metrics.unitDays", { n });
+  if (kind === "days") return v === 1 ? t(demoClock ? "metrics.unitDayDemo" : "metrics.unitDay", { n }) : t(demoClock ? "metrics.unitDaysDemo" : "metrics.unitDays", { n });
   return kind === "pct" ? t("metrics.unitPct", { n }) : n;
 }
 
