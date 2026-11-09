@@ -53,6 +53,7 @@ Fill one row per run:
 
 | Date | Stack | Model | Ceiling | Pass rate all | German | English | Leaks | Median seconds |
 |---|---|---|---|---|---|---|---|---|
-| | | | | | | | | |
+| 2026-11-08 | musterwerk.sellux.ch, `4d44d91`, 0 documents | Azure `gpt-4.1-mini` | internal | not measurable: 0 documents (`findings/AIT-live-2026-11-08.md`) | 10 / 10 | 1 / 6 | 0 | 1.1 (server) |
+| 2026-11-09 | musterwerk.sellux.ch, `0db9d91`, 51 documents, as Julia (not the four personas) | as configured | internal | 14 / 53 by `ask.ts` (19 / 53 matching titles); answerable: 13 / 26 correct (`findings/AIT-live-2026-11-09.md`) | 48 / 48 | 19 / 19 | 0 | 2.8 (browser) |
 
 **Leaks above zero stop the pilot.** Weak pass rates are findings, not fixes; Kevin decides any change.
