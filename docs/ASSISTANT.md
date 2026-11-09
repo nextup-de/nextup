@@ -1,6 +1,6 @@
 # The raise-page assistant
 
-> **Updated 2026-09-24** · reference: how the raise-page assistant works. The plan it came from: `docs/plans/2026-09-24_raise-assistant.md`.
+> **Updated 2026-09-24, provider and gate sections 2026-11-04** · reference: how the raise-page assistant works. Live on Musterwerk: Azure OpenAI (gpt-4.1-mini, Sweden Central) with a signed data-processing agreement; Bedrock is built but not measured. The plan it came from: `docs/plans/2026-09-24_raise-assistant.md`.
 
 An employee with a problem or an idea types one line on the raise page. Before anything is raised,
 NextUp answers from the company's own knowledge: who handles this, what already exists, which goal

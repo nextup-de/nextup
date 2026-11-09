@@ -1,7 +1,7 @@
 # Master plan: from today's build to a pilot-ready product
 
-> **Plan · 2026-11-01 · draft, waiting for Kevin's go on the phases. Phase 0 (audit) is done: the gap register is in [../audit/gap-register.md](../audit/gap-register.md).**
-> The rough plan (L0) for everything between today's `main` (984f3b0, #249) and the first pilot with a company
+> **Plan · 2026-11-01 · in progress. Status 9 Nov, from the team report "Where we stand" v1.4 (nextup-context `reports/2026-11-08_where-we-stand/`): gates G1–G3 are done in effect (1–4 Nov), gate G4 (test phase) is open with 0 of 8 exit criteria formally signed off, G5 (pilot review) has not started. Phase 0 (audit) is done: the gap register is in [../audit/gap-register.md](../audit/gap-register.md).**
+> The rough plan (L0) for everything between `main` as of 1 Nov (984f3b0, #249) and the first pilot with a company
 > of 1,000–2,000 employees. Each phase below gets its own detailed plan before it is built. Why this order and
 > this segment: [2026-11-01_segment-analysis.md](2026-11-01_segment-analysis.md).
 

@@ -1,6 +1,6 @@
 # Plan: single sign-on and direct access to company data
 
-> **Plan · 2026-10-22 · phase 1 built (#233-#235); phase 2 decided 2026-10-23, PR A in progress.** How a company signs in with its own identity provider, and how
+> **Plan · 2026-10-22 · phases 1 and 2 built and live-tested on 8–9 Nov: Microsoft sign-in with app roles, the Entra directory sync (every 15 minutes, read-only) and Microsoft 365 search as the asking person (11 of 21 live questions pass, 0 leaks; the recorded set passes 21/21). OIDC, SAML and SCIM are built and tested with fakes. Phases 3 and 4 are not built.** The phase tables below keep the 22–23 Oct wording. How a company signs in with its own identity provider, and how
 > NextUp then reads the company's data for AI context without becoming a copy of the company. Follows the
 > data-access research of 20 Oct 2026 (vault: "nextup – Recherche Datenzugang (Okt 2026)") and the phases in
 > `docs/plans/2026-10-21_company-data-page.md` (SSO + role table → directory sync → read-only connectors).
