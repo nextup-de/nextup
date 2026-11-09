@@ -71,7 +71,8 @@ retention, sub-processors and incident handling (see *Before a pilot*).
 | Abuse / cost | Throttles `assistAsk` (20 per 10 min per person) and `assistAskAll` (600 per 10 min per company) |
 
 For the customer's records: the processing record names AWS (Bedrock, EU regions per the chosen routing) as sub-processor
-for redacted question text and knowledge snippets. The DPA date in `/admin` is the switch that
+for redacted question text and knowledge snippets, and for the redacted whole text of short company documents (see
+Documents below). The DPA date in `/admin` is the switch that
 allows model calls for real people.
 
 ## Operating it
@@ -81,7 +82,9 @@ allows model calls for real people.
   `LLM_REGION`, and AWS credentials in the stack's `.env`. Enable the model in the AWS account's
   Bedrock console for that region first.
 - **Documents**: `ops/n8n/erp-knowledge-sync.json`, described in `ops/n8n/README.md`. Tokens made in `/admin` carry
-  `knowledge:write`.
+  `knowledge:write`. A company document of at most 4,000 characters reaches the model whole (redacted, up to 8,000
+  characters per search, `WHOLE_DOC_CHARS` and `WHOLE_TEXT_BUDGET` in `features/assist/tools.ts`), unless its text is
+  marked above the ceiling; longer ones and Microsoft 365 files as a short excerpt. Nothing of it is stored.
 - **Prompt changes**: bump `ASSIST_PROMPT_VERSION`. It is stored on every turn.
 
 ## Before a pilot

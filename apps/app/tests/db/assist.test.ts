@@ -6,6 +6,7 @@ import { SEED } from "@/features/demo/seed";
 import { toSeedJson } from "@/features/demo/parse";
 import { getDb, TenantScopeError } from "@/lib/db/client";
 import { assistStats, purgeAssistTurns, recordTurns, searchDocuments, tsQuery, upsertDocuments } from "@/lib/db/assist";
+import { WHOLE_DOC_CHARS } from "@/features/assist/tools";
 
 const db = getDb();
 let acme: { id: string };
@@ -61,6 +62,25 @@ describe("searchDocuments", () => {
     expect((await searchDocuments(acme.id, "internal", "Wie bestelle ich Sensoren?")).map((h) => h.title)).toEqual(["Ordering spare sensors"]);
     expect((await searchDocuments(acme.id, "internal", "Ersatzteile")).map((h) => h.title)).toEqual(["Ordering spare sensors"]);
     expect((await searchDocuments(acme.id, "internal", "supplier prices")).some((h) => h.title === "Sensor supplier prices")).toBe(false);
+  });
+
+  it("returns a short document's whole text, and only the excerpt of a long one (AIT live 2026-11-09, F1)", async () => {
+    const table = "Nr;Name;Status\nL-101;Lieferant 101 GmbH;aktiv\nL-102;Lieferant 102 GmbH;gesperrt";
+    const filler = (w: string) => Array.from({ length: 400 }, (_, i) => `${w}${i}`).join(" ");
+    const long = `Kühlmittel am Anfang. ${filler("eins")} Kühlmittel in der Mitte. ${filler("zwei")} Kühlmittel am Ende.`;
+    expect(long.length).toBeGreaterThan(WHOLE_DOC_CHARS);
+    await upsertDocuments(globex.id, [
+      { source: "erp", externalId: "g-2", title: "Lieferantenstamm", body: table, classification: "internal" },
+      { source: "erp", externalId: "g-3", title: "Kühlmittel-Handbuch", body: long, classification: "internal" },
+    ]);
+    const [short] = await searchDocuments(globex.id, "internal", "Lieferant gesperrt");
+    expect(short.title).toBe("Lieferantenstamm");
+    expect(short.text).toBe(table);
+    const [big] = await searchDocuments(globex.id, "internal", "Kühlmittel");
+    expect(big.title).toBe("Kühlmittel-Handbuch");
+    expect(big.text).toBeNull();
+    expect(big.snippet).toContain("Kühlmittel");
+    expect(big.snippet.length).toBeLessThan(1000);
   });
 
   it("upserts by source and external id", async () => {

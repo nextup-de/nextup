@@ -4,7 +4,16 @@
 // exercised, without a network call. Deterministic.
 import type { Provider } from ".";
 
-const first = (out: string) => out.split("\n").find((l) => /^\[S\d+\]/.test(l)) ?? null;
+const WHOLE = ", whole document:";
+/** The first hit as one line: a whole document (features/assist/tools.ts) by its title and first line, cut short. */
+const first = (out: string) => {
+  const lines = out.split("\n");
+  const i = lines.findIndex((l) => /^\[S\d+\]/.test(l));
+  if (i < 0) return null;
+  if (!lines[i].endsWith(WHOLE)) return lines[i];
+  const line = (lines[i + 1] ?? "").trim();
+  return `${lines[i].slice(0, -WHOLE.length)}: ${line.length > 160 ? line.slice(0, 159).replace(/\s+\S*$/, "") + "…" : line}`;
+};
 const body = (line: string) => line.replace(/^\[S\d+\]\s*/, "").replace(/[.\s…]+$/, "");
 const tagOf = (line: string) => line.match(/^\[(S\d+)\]/)?.[0] ?? "";
 
