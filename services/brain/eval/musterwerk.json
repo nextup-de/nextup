@@ -1,0 +1,160 @@
+{
+ "_source": "apps/app/prisma/generators/musterwerk: structure.ts ROUTES (id = key, owner = the owner role) and cases.ts TITLES (one case per title, open). The stack sends roles, never names; Musterwerk has no goals and no spend limit set.",
+ "company": "Musterwerk GmbH",
+ "routes": [
+  {
+   "id": "maintenance",
+   "type": "Machine or equipment defect",
+   "owner": "Leiter Instandhaltung Werk Nord"
+  },
+  {
+   "id": "quality",
+   "type": "Quality issue",
+   "owner": "Leiter Qualität Werk Süd"
+  },
+  {
+   "id": "safety",
+   "type": "Safety concern",
+   "owner": "Werkleiter Nord"
+  },
+  {
+   "id": "material",
+   "type": "Material shortage",
+   "owner": "Leiter Logistik Werk Nord"
+  },
+  {
+   "id": "it",
+   "type": "IT problem",
+   "owner": "Leiter IT Zentrale"
+  },
+  {
+   "id": "hr",
+   "type": "HR question",
+   "owner": "Leiter Personal Zentrale"
+  },
+  {
+   "id": "purchasing",
+   "type": "Purchase request",
+   "owner": "Leiter Einkauf Zentrale"
+  },
+  {
+   "id": "process",
+   "type": "Process improvement",
+   "owner": "Leiter Produktion Werk Süd"
+  },
+  {
+   "id": "budget",
+   "type": "Budget or expense",
+   "owner": "Leiter Finanzen Zentrale"
+  },
+  {
+   "id": "tooling",
+   "type": "Design or tooling change",
+   "owner": "Leiter Entwicklung Werk Süd"
+  }
+ ],
+ "known": [
+  {
+   "id": "mw-c1",
+   "title": "Presse 4 verliert Öldruck",
+   "status": "open"
+  },
+  {
+   "id": "mw-c2",
+   "title": "Förderband hakt",
+   "status": "open"
+  },
+  {
+   "id": "mw-c3",
+   "title": "Ausschuss bei Gehäuse G12 steigt",
+   "status": "open"
+  },
+  {
+   "id": "mw-c4",
+   "title": "Reklamation Kunde Alpha",
+   "status": "open"
+  },
+  {
+   "id": "mw-c5",
+   "title": "Stolperstelle am Lagertor",
+   "status": "open"
+  },
+  {
+   "id": "mw-c6",
+   "title": "Schutzgitter fehlt",
+   "status": "open"
+  },
+  {
+   "id": "mw-c7",
+   "title": "Dichtungen fast aufgebraucht",
+   "status": "open"
+  },
+  {
+   "id": "mw-c8",
+   "title": "Palettenmangel im Wareneingang",
+   "status": "open"
+  },
+  {
+   "id": "mw-c9",
+   "title": "Scanner verbindet sich nicht",
+   "status": "open"
+  },
+  {
+   "id": "mw-c10",
+   "title": "Zugriff auf Schichtplan gesperrt",
+   "status": "open"
+  },
+  {
+   "id": "mw-c11",
+   "title": "Urlaubsantrag seit Wochen offen",
+   "status": "open"
+  },
+  {
+   "id": "mw-c12",
+   "title": "Schichtwechsel mit Kollegen",
+   "status": "open"
+  },
+  {
+   "id": "mw-c13",
+   "title": "Ersatzfilter bestellen",
+   "status": "open"
+  },
+  {
+   "id": "mw-c14",
+   "title": "Anderer Lieferant für Schrauben?",
+   "status": "open"
+  },
+  {
+   "id": "mw-c15",
+   "title": "Rüstzeit an Linie A verkürzen",
+   "status": "open"
+  },
+  {
+   "id": "mw-c16",
+   "title": "Übergabeprotokoll digital",
+   "status": "open"
+  },
+  {
+   "id": "mw-c17",
+   "title": "Freigabe für Schulung",
+   "status": "open"
+  },
+  {
+   "id": "mw-c18",
+   "title": "Mehrkosten Wartungsvertrag",
+   "status": "open"
+  },
+  {
+   "id": "mw-c19",
+   "title": "Werkzeug für Variante B anpassen",
+   "status": "open"
+  },
+  {
+   "id": "mw-c20",
+   "title": "Zeichnung stimmt nicht mit Teil überein",
+   "status": "open"
+  }
+ ],
+ "goals": [],
+ "spend_limit_eur": null
+}

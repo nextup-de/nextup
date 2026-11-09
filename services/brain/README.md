@@ -171,6 +171,24 @@ prompts `match.md` and `sheet.md` are gone). What replaced them:
 
 The scores are the reading's, shown by the page; the coach never states or changes them.
 
+**Guarded in code, for reading, coach and routing** (`brain/guard.py`; the faults of the 8 Nov live run,
+`docs/test-phase/findings/AIT-coach-2026-11-09.md`). Each is pushed back to the model once, all together,
+and what the retry leaves is fixed in code, so none depends on the model listening:
+
+- **Safety.** An idea that reports a hazard to people (emergency stop, guard, near miss, slippery floor,
+  bridged light curtain, blocked escape route...) goes to the row that owns safety when the company has one
+  (`safety`, "Sicherheit", "Arbeitsschutz", EHS), in the reading and in `/v1/route`. The coach's note says it
+  is a safety matter that cannot wait and names that row's owner; an "is that acceptable?" question is never
+  asked, by the reading or the coach.
+- **No discipline.** No warning, dismissal or other disciplinary step in any field; such a sentence is dropped.
+- **Names.** "Herr Becker", "Frau Dr. Weber", "bei Herrn Schulz", "Mr. Novak" reach the model as
+  "[Kollege]", "[Kollegin]", "[a colleague]", and a name still written is scrubbed. The app masks the same
+  before sending (`apps/app/src/features/ai/names.ts`, after its directory's names).
+- **No invented facts.** `answer` stays empty unless the latest message asks something; a number in `answer`,
+  `note` or `why` that the employee and the company's records never gave is dropped with its sentence; a
+  suggested answer with such a figure is offered as an example ("Zum Beispiel: ..."). Salaries and IBANs are
+  never stated, whatever an idea or an earlier item says.
+
 After a decision (docs/plans/2026-10-15_idea-to-project.md, `brain/plan.py`), two proposals the app
 shows next to its own offline ones - people decide, the model never enters a number:
 
@@ -240,6 +258,23 @@ coach no longer keeps notes per point or chooses the point itself, so "does it a
 answered" is now the reading's job (it never lists a question the author said they cannot answer) and
 the coach's check for repeats. Bump `PROMPT_VERSION` in `brain/read.py` or `brain/coach.py` after a
 prompt change; the app stores both.
+
+```bash
+uv run python -m eval.run_studio --recorded   # recorded studio turns scored as they are (the 8 Nov baseline)
+uv run python -m eval.run_studio --replay     # the same answers through today's code, the same one on every retry
+AZURE_OPENAI_KEY=... uv run python -m eval.run_studio --provider azure-openai --model <deployment> --endpoint <url> --save <file outside the repo>
+```
+
+`run_studio` scores whole studio turns (reading, then coach) the way the 8 Nov live run was scored by hand:
+good to show, invents a fact, mishandles safety (or offers a disciplinary step), leaks a name - plus asks
+for what the idea already says, "nothing new" to a message that adds facts, the wrong desk or a desk that
+moves between turns. Cases are `eval/studio_cases.json`: the 13 turns of 8 Nov on Musterwerk (with their hand
+scores) and 13 new ones - hazards, named colleagues, an injection inside an earlier item (m14's file, as the
+studio meets it), and two that must pass untouched. Company data is `eval/musterwerk.json`. The recorded
+answers (`eval/recorded/studio.json`) are reconstructed and written, not a model's: `--recorded` and
+`--replay` measure the checks and the code, only a live run measures the model. Live, turns are paced under
+40,000 tokens a minute and every error is reported per turn. `eval/test_studio.py` keeps both offline runs
+honest.
 
 **On the AI server**, without touching the live brain: copy `services/brain` to `/root/brain-eval`
 and run an eval in a throwaway container on the brain's network against its Ollama. Live answers

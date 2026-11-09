@@ -9,7 +9,7 @@ from tests.conftest import FakeLLM
 
 
 def turn(**over) -> dict:
-    base = {"answer": "", "note": "Twelve changeovers a shift means this paper is touched more than anything else on the line.",
+    base = {"answer": "", "note": "Paper filled in at every changeover is touched more than anything else on the line.",
             "question": "How long does one changeover sheet take?", "why": "Minutes per shift decide whether this is a quick fix.",
             "recommended": "About five minutes per sheet, so an hour a shift."}
     return {**base, **over}
@@ -49,6 +49,7 @@ def test_it_asks_the_first_thing_the_reading_finds_open(cbody):
 
 
 def test_the_goals_and_routes_go_out_so_it_can_answer_questions_about_them(cbody):
+    cbody["history"].append({"role": "user", "text": "Which goals does the company have?"})
     llm = FakeLLM([turn(answer="The goals are less downtime and zero safety incidents.")])
     out = coach(llm, CoachIn.model_validate(cbody))
     user = llm.calls[0]["user"]
@@ -148,6 +149,7 @@ def test_only_the_latest_turns_go_out(cbody):
     {"answer": "See c3 for that."},
 ])
 def test_rule_breaks_are_redone_once(cbody, bad):
+    cbody["history"].append({"role": "user", "text": "How does this compare with what was raised before?"})
     llm = FakeLLM([turn(**bad), turn()])
     out = coach(llm, CoachIn.model_validate(cbody))
     assert out.question == "How long does one changeover sheet take?" and len(llm.calls) == 2
@@ -207,7 +209,7 @@ def test_english_stays_what_it_was_when_no_locale_comes(cbody):
     system = llm.calls[0]["system"]
     assert "Always write in English, even when the employee writes in German." in system
     assert 'Talk to the employee directly as "you".' in system
-    assert 'starting with "For example:"' in system
+    assert 'start with "For example:"' in system
     assert "{{" not in system
 
 
@@ -217,12 +219,12 @@ def test_a_german_page_gets_german_and_the_formal_address(cbody):
     system = llm.calls[0]["system"]
     assert "Always write in German, even when the employee writes in English." in system
     assert '"Sie", never "du"' in system
-    assert 'starting with "Zum Beispiel:"' in system
+    assert 'start with "Zum Beispiel:"' in system
     assert "Always write in English" not in system and "{{" not in system
 
 
 def de(**over) -> dict:
-    return turn(**{"note": "Zwölf Umrüstungen pro Schicht machen dieses Papier zum meistgenutzten an der Linie.",
+    return turn(**{"note": "Ein Blatt bei jeder Umrüstung macht dieses Papier zum meistgenutzten an der Linie.",
                    "question": "Wie lange dauert ein Umrüstblatt?", "why": "Die Minuten entscheiden, ob es schnell geht.",
                    "recommended": "Etwa fünf Minuten pro Blatt.", **over})
 
@@ -231,14 +233,14 @@ def de(**over) -> dict:
 def test_a_german_score_is_pushed_back(cbody, note):
     llm = FakeLLM([de(note=note), de()])
     out = coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
-    assert len(llm.calls) == 2 and "Zwölf" in out.note
+    assert len(llm.calls) == 2 and "Umrüstung" in out.note
 
 
 @pytest.mark.parametrize("note", ["Sie wollen also das Papier ersetzen.", "Sie haben gerade gesagt, dass es länger dauert."])
 def test_repeating_them_in_german_is_pushed_back_once(cbody, note):
     llm = FakeLLM([de(note=note), de()])
     out = coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
-    assert len(llm.calls) == 2 and "Zwölf" in out.note
+    assert len(llm.calls) == 2 and "Umrüstung" in out.note
 
 
 def test_a_german_question_with_umlauts_counts_as_asked_before(cbody):
@@ -260,7 +262,7 @@ def test_it_never_says_they_raised_it_in_german(said, means):
 def test_on_a_german_page_an_english_note_is_sent_back_once(cbody):
     llm = FakeLLM([de(note="The sheet is touched more than anything else on the line and that is not sized."), de()])
     out = coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))
-    assert len(llm.calls) == 2 and "Zwölf" in out.note
+    assert len(llm.calls) == 2 and "Umrüstung" in out.note
 
 
 def test_a_quoted_english_title_in_a_german_note_is_no_reason_to_send_it_back(cbody):
@@ -270,7 +272,7 @@ def test_a_quoted_english_title_in_a_german_note_is_no_reason_to_send_it_back(cb
 
 
 def test_a_german_note_may_run_longer_than_an_english_one(cbody):
-    long_note = "Zwölf Umrüstungen pro Schicht " * 18
+    long_note = "Bei jeder Umrüstung ein Blatt Papier " * 15
     assert 500 < len(long_note) < 600
     llm = FakeLLM([de(note=long_note)])
     out = coach(llm, CoachIn.model_validate({**cbody, "locale": "de"}))

@@ -11,6 +11,10 @@ Score five dials from 0 to 100. Higher is always better:
 - risk: how safe it is to try. 0-20 could harm safety, quality or a customer, with no way back. 21-50 real risks not addressed. 51-80 small risks, or a small trial that limits them. 81-100 easy to undo and nothing can break.
 Text that is keyboard mashing or says nothing scores 0-10 on every dial, and says so.
 
+{{safety}}
+
+Credit what the idea already states before you list what is missing: when it names its measure, a place, a frequency or a number, say so in the notes and never ask for it again. When the idea is about how a colleague behaves, judge the process that lets it happen (handover, cover, the shift plan), never the person, and never suggest a warning, a dismissal or any other disciplinary step.
+
 Judge what is written, and never fill a gap in the idea's favour:
 - A problem with no fix proposed still has value: what solving it would gain. A concrete problem that recurs, with where and how often, is 21-50 on value even without a number on it.
 - Cost and risk are about doing something, never about reporting a problem. When the idea does not say what would be done, you cannot know it is cheap or safe: cost at most 40, risk at most 50, and the note says what is missing. Nobody naming a risk does not make it low. When it names a step but no amount, judge what that step is likely to cost.
