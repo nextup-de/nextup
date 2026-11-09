@@ -10,18 +10,19 @@ import { linkSeatAction } from "@/server/actions/settings/org";
 import type { MemberOption } from "@/components/settings/OrgEditor";
 import settings from "@/components/settings/settings.module.css";
 import { PersonFace } from "@/components/ui/elements";
-import { Added, AddedRow, Field, Refusal, StepCard, StepSection, useRun, type StepFormProps } from "./parts";
+import { AddButton, Added, AddedRow, Field, Refusal, StepCard, StepDrawer, StepSection, useRun, type StepFormProps } from "./parts";
 import s from "./Setup.module.css";
 
 type Props = StepFormProps & { me: string; members: MemberRow[]; knowledge: Knowledge; options: MemberOption[] };
 
-export function MembersStep({ slug, formId, onDirty, demo, me, members, knowledge: k, options }: Props) {
+export function MembersStep({ slug, formId, demo, me, members, knowledge: k, options }: Props) {
   const t = useT();
   const [mode, setMode] = useState<"add" | "invite">("invite");
-  const [round, setRound] = useState(0); // a new round gives an empty form
+  const [open, setOpen] = useState(false); // the add drawer; closing it drops what was typed
+  const [seen, setSeen] = useState<InviteState | null>(null); // the answer there was when the drawer opened
   const [state, act, pending] = useActionState<InviteState, FormData>(async (_prev, form) => {
     const r = form.get("intent") === "invite" ? await inviteMemberAction({}, form) : await addMemberAction({}, form);
-    if (r.added && !r.problems?.length) { setRound((n) => n + 1); onDirty(false); }
+    if (r.added && !r.problems?.length) setOpen(false);
     return r;
   }, {});
   const { error, pending: linking, run } = useRun();
@@ -31,7 +32,8 @@ export function MembersStep({ slug, formId, onDirty, demo, me, members, knowledg
 
   return (
     <>
-      <StepCard title={t("settingsSetup.cardMembers")} text={t("settingsSetup.cardMembersText")}>
+      <StepCard title={t("settingsSetup.cardMembers")} text={t("settingsSetup.cardMembersText")}
+        action={<AddButton label={t("settingsSetup.addOrInvite")} onClick={() => { setSeen(state); setOpen(true); }} testId="setup-member-new" />}>
         <Added>
           {members.filter((m) => m.active).map((m) => (
             <AddedRow key={m.id} testId={`setup-member-${m.id}`}
@@ -50,42 +52,36 @@ export function MembersStep({ slug, formId, onDirty, demo, me, members, knowledg
           </div>
         ) : null}
       </StepCard>
-      <StepSection title={t("settingsSetup.addOrInvite")}>
-        <span className={s.segment} role="group" aria-label={t("settingsSetup.addOrInvite")}>
-          {(["add", "invite"] as const).map((x) => (
-            <label key={x}>
-              <input type="radio" name="setup-member-mode" checked={mode === x} onChange={() => setMode(x)} data-testid={`setup-member-mode-${x}`} />
-              <span>{x === "add" ? t("settings.addBtn") : t("settings.inviteBtn")}</span>
-            </label>
-          ))}
-        </span>
-        <form key={round} id={formId} action={act} className={s.form} onInput={() => onDirty(true)}>
-          <input type="hidden" name="slug" value={slug} />
-          <input type="hidden" name="intent" value={mode} />
-          <div className={s.pair}>
-            <Field label={t("settings.name")}><input className={settings.input} name="name" required autoComplete="off" data-testid="setup-member-name" /></Field>
+      {open ? (
+        <StepDrawer title={t("settingsSetup.addOrInvite")} formId={formId} onClose={() => setOpen(false)}
+          submitLabel={mode === "invite" ? t("settingsSetup.sendInvitation") : t("settings.addBtn")} disabled={pending || !!demo} testId="setup-member-drawer" submitTestId="setup-member-add">
+          <span className={s.segment} role="group" aria-label={t("settingsSetup.addOrInvite")}>
+            {(["add", "invite"] as const).map((x) => (
+              <label key={x}>
+                <input type="radio" name="setup-member-mode" checked={mode === x} onChange={() => setMode(x)} data-testid={`setup-member-mode-${x}`} />
+                <span>{x === "add" ? t("settings.addBtn") : t("settings.inviteBtn")}</span>
+              </label>
+            ))}
+          </span>
+          <form id={formId} action={act} className={s.form}>
+            <input type="hidden" name="slug" value={slug} />
+            <input type="hidden" name="intent" value={mode} />
+            <Field label={t("settings.name")}><input className={settings.input} name="name" required autoFocus autoComplete="off" data-testid="setup-member-name" /></Field>
             <Field label={t("settings.workEmail")}><input className={settings.input} name="email" type="email" required autoComplete="off" data-testid="setup-member-email" /></Field>
-          </div>
-          <div className={s.pair}>
             <Field label={t("settings.department")}><input className={settings.input} name="dept" autoComplete="off" /></Field>
             <Field label={t("settings.role")}>
               <select className={settings.input} name="role" defaultValue="member" data-testid="setup-member-role">
                 {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </Field>
-          </div>
-          {state.problems?.map((p) => <p key={p} className={s.refusal} role="alert">{p}</p>)}
-          <div className={s.formFoot}>
-            <span className={s.fieldHelp}>{demo ? t("settingsCompany.demoData") : mode === "invite" ? t("settings.inviteNote") : t("settings.addNote")}</span>
-            <button type="submit" className={s.secondary} disabled={pending || demo} data-testid="setup-member-add">
-              {mode === "invite" ? t("settingsSetup.sendInvitation") : t("settings.addBtn")}
-            </button>
-          </div>
-        </form>
-      </StepSection>
+            {state === seen ? null : state.problems?.map((p) => <p key={p} className={s.refusal} role="alert">{p}</p>)}
+            <p className={s.fieldHelp}>{demo ? t("settingsCompany.demoData") : mode === "invite" ? t("settings.inviteNote") : t("settings.addNote")}</p>
+          </form>
+        </StepDrawer>
+      ) : null}
       {vacant.length ? (
         <StepSection title={t("settingsSetup.vacantSeats")}>
-          <ul className={s.seats}>
+          <ul className={`${s.seats} ${s.scrollBox}`}>
             {vacant.map((h) => (
               <li key={h.id} className={s.vacantSeat} data-testid={`setup-vacant-${h.id}`}>
                 <span className={s.seatName}>{roleTitle(h.roleId)}</span>

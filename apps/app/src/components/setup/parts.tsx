@@ -5,6 +5,8 @@ import { useState, useTransition } from "react";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import type { OrgResult } from "@/server/actions/settings/org";
+import settings from "@/components/settings/settings.module.css";
+import { EditDrawer } from "@/components/ui/elements";
 import s from "./Setup.module.css";
 
 /** What a step's form needs from the step around it. */
@@ -17,19 +19,46 @@ export type StepFormProps = {
   demo?: boolean;
 };
 
-export function StepCard({ title, text, children }: { title: string; text: string; children: React.ReactNode }) {
+/** `action` sits top right of the card, such as the button that opens the add drawer. */
+export function StepCard({ title, text, action, children }: { title: string; text: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className={s.card}>
       <div className={s.cardHead}>
-        <h2 className={s.cardTitle}>{title}</h2>
-        <p className={s.cardText}>{text}</p>
+        <div className={s.cardHeadText}>
+          <h2 className={s.cardTitle}>{title}</h2>
+          <p className={s.cardText}>{text}</p>
+        </div>
+        {action}
       </div>
       {children}
     </section>
   );
 }
 
-/** A card of its own below the step's card, such as the add form, so it does not read as part of the list. */
+/** The button top right of a step's card that opens its add drawer. */
+export function AddButton({ label, onClick, testId }: { label: string; onClick: () => void; testId: string }) {
+  return <button type="button" className={s.secondary} onClick={onClick} data-testid={testId}>+ {label}</button>;
+}
+
+/** A step's add or edit form, in a panel from the right: Cancel and the form's submit sit in its foot. */
+export function StepDrawer({ title, formId, submitLabel, disabled, onClose, testId, submitTestId, children }: {
+  title: string; formId: string; submitLabel: string; disabled: boolean; onClose: () => void; testId: string; submitTestId: string; children: React.ReactNode;
+}) {
+  const t = useT();
+  return (
+    <EditDrawer title={title} closeLabel={t("settingsOrg.close")} onClose={onClose} testId={testId}
+      foot={(
+        <>
+          <button type="button" className={s.secondary} onClick={onClose}>{t("settingsOrg.cancel")}</button>
+          <button type="submit" form={formId} className={settings.save} disabled={disabled} data-testid={submitTestId}>{submitLabel}</button>
+        </>
+      )}>
+      {children}
+    </EditDrawer>
+  );
+}
+
+/** A card of its own below the step's card, such as the vacant seats. */
 export function StepSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className={s.card}>
@@ -39,17 +68,18 @@ export function StepSection({ title, children }: { title: string; children: Reac
   );
 }
 
+/** "Added so far": a long list scrolls inside its own box, so Back / Next stay near. */
 export function Added({ children }: { children: React.ReactNode }) {
   const t = useT();
   return (
     <>
       <h3 className={s.subLabel}>{t("settingsSetup.addedSoFar")}</h3>
-      <ul className={s.added}>{children}</ul>
+      <ul className={`${s.added} ${s.scrollBox}`} data-testid="setup-added">{children}</ul>
     </>
   );
 }
 
-/** One row of "Added so far". `depth` indents it; `onEdit` opens it in the form below. */
+/** One row of "Added so far". `depth` indents it; `onEdit` opens it in the drawer. */
 export function AddedRow({ name, sub, side, depth = 0, onEdit, testId }: {
   name: React.ReactNode; sub?: string; side?: React.ReactNode; depth?: number; onEdit?: () => void; testId?: string;
 }) {
@@ -68,10 +98,10 @@ export function AddedRow({ name, sub, side, depth = 0, onEdit, testId }: {
   );
 }
 
-/** A label above its control. `side` puts the label to the left instead, as Paper's Units form has it. */
-export function Field({ label, side, help, children }: { label: string; side?: boolean; help?: string; children: React.ReactNode }) {
+/** A label above its control. */
+export function Field({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) {
   return (
-    <label className={side ? s.fieldSide : s.field}>
+    <label className={s.field}>
       <span className={s.fieldLabel}>{label}</span>
       <span className={s.fieldBody}>
         {children}

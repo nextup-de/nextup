@@ -8,17 +8,19 @@ import { useT } from "@/i18n/client";
 import { saveRouteAction } from "@/server/actions/settings/org";
 import { KeywordInput } from "@/components/settings/RoutingEditor";
 import settings from "@/components/settings/settings.module.css";
-import { Added, AddedRow, Field, Refusal, StepCard, StepSection, useRun, type StepFormProps } from "./parts";
+import { AddButton, Added, AddedRow, Field, Refusal, StepCard, StepDrawer, useRun, type StepFormProps } from "./parts";
 import s from "./Setup.module.css";
 
 const words = (v: string) => v.split(",").map((w) => w.trim()).filter(Boolean);
 
-export function RoutesStep({ slug, formId, onDirty, demo, knowledge: k }: StepFormProps & { knowledge: Knowledge }) {
+export function RoutesStep({ slug, formId, demo, knowledge: k }: StepFormProps & { knowledge: Knowledge }) {
   const t = useT();
   const { error, pending, run, clear } = useRun();
-  const [editing, setEditing] = useState<RuleRow | null>(null);
-  const [round, setRound] = useState(0); // a new round gives an empty form
-  const finish = () => { setEditing(null); setRound((n) => n + 1); onDirty(false); };
+  // The drawer: closed, open for a new route, or open on one route. Closing it drops what was typed.
+  const [drawer, setDrawer] = useState<{ editing: RuleRow | null } | null>(null);
+  const editing = drawer?.editing ?? null;
+  const show = (rule: RuleRow | null) => { clear(); setDrawer({ editing: rule }); };
+  const finish = () => setDrawer(null);
   const unitName = new Map(k.units.map((u) => [u.id, u.name]));
   const title = (id: string) => k.roles.find((r) => r.id === id)?.title ?? "";
 
@@ -41,46 +43,44 @@ export function RoutesStep({ slug, formId, onDirty, demo, knowledge: k }: StepFo
 
   return (
     <>
-      <StepCard title={t("settingsSetup.cardRoutes")} text={t("settingsSetup.cardRoutesText")}>
+      <StepCard title={t("settingsSetup.cardRoutes")} text={t("settingsSetup.cardRoutesText")}
+        action={<AddButton label={t("settingsOrg.addRoute")} onClick={() => show(null)} testId="setup-route-new" />}>
         <p className={s.note}><span className={s.noteMark} aria-hidden="true">✦</span>{t("settingsSetup.routesAiNote")}</p>
         {k.rules.length ? (
           <Added>
             {[...k.rules].sort((a, b) => a.sort - b.sort).map((rule) => (
               <AddedRow key={rule.id} name={rule.type} sub={title(rule.ownerRoleId)} testId={`setup-route-${rule.key}`}
-                onEdit={() => { clear(); setEditing(rule); setRound((n) => n + 1); }} />
+                onEdit={() => show(rule)} />
             ))}
           </Added>
         ) : null}
       </StepCard>
-      <StepSection title={editing ? editing.type : t("settingsOrg.addRoute")}>
-        <form key={round} id={formId} className={s.form} onSubmit={submit} onInput={() => onDirty(true)}>
-          <Field label={t("settingsOrg.routeType")}>
-            <input className={settings.input} name="type" required maxLength={120} defaultValue={editing?.type ?? ""} data-testid="setup-route-type" />
-          </Field>
-          <div className={s.field}>
-            <span className={s.fieldLabel}>{t("settingsOrg.keywords")}</span>
-            <KeywordInput initial={editing?.keywords ?? []} invalid={error === "settingsOrg.errKeywords"} />
-          </div>
-          <Field label={t("settingsOrg.routeOwner")} help={t("settingsSetup.routeExample")}>
-            <select className={settings.input} name="owner" defaultValue={editing?.ownerRoleId ?? ""} data-testid="setup-route-owner">
-              <option value="">{t("settingsOrg.pickRole")}</option>
-              {k.roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {`${role.title} · ${unitName.get(role.orgUnitId) ?? "?"}${seatLine(k, role.id) ? "" : ` · ${t("settingsOrg.vacant")}`}`}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Refusal error={error} />
-          <div className={s.formFoot}>
-            <span className={s.fieldHelp}>{demo ? t("settingsCompany.demoData") : ""}</span>
-            <span className={s.formButtons}>
-              {editing ? <button type="button" className={s.secondary} onClick={finish}>{t("settingsOrg.cancel")}</button> : null}
-              <button type="submit" className={s.secondary} disabled={pending || demo} data-testid="setup-route-add">{t("settingsSetup.saveRoute")}</button>
-            </span>
-          </div>
-        </form>
-      </StepSection>
+      {drawer ? (
+        <StepDrawer title={editing ? editing.type : t("settingsOrg.addRoute")} formId={formId} onClose={finish}
+          submitLabel={t("settingsSetup.saveRoute")} disabled={pending || !!demo} testId="setup-route-drawer" submitTestId="setup-route-add">
+          <form id={formId} className={s.form} onSubmit={submit}>
+            <Field label={t("settingsOrg.routeType")}>
+              <input className={settings.input} name="type" required autoFocus maxLength={120} defaultValue={editing?.type ?? ""} data-testid="setup-route-type" />
+            </Field>
+            <div className={s.field}>
+              <span className={s.fieldLabel}>{t("settingsOrg.keywords")}</span>
+              <KeywordInput initial={editing?.keywords ?? []} invalid={error === "settingsOrg.errKeywords"} />
+            </div>
+            <Field label={t("settingsOrg.routeOwner")} help={t("settingsSetup.routeExample")}>
+              <select className={settings.input} name="owner" defaultValue={editing?.ownerRoleId ?? ""} data-testid="setup-route-owner">
+                <option value="">{t("settingsOrg.pickRole")}</option>
+                {k.roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {`${role.title} · ${unitName.get(role.orgUnitId) ?? "?"}${seatLine(k, role.id) ? "" : ` · ${t("settingsOrg.vacant")}`}`}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Refusal error={error} />
+            {demo ? <p className={s.fieldHelp}>{t("settingsCompany.demoData")}</p> : null}
+          </form>
+        </StepDrawer>
+      ) : null}
     </>
   );
 }
