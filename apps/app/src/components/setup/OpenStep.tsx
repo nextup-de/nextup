@@ -76,8 +76,11 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
         </section>
         {error ? <Banner tone="error">{error}</Banner> : null}
         <div className={s.doneFoot}>
-          <Link className={s.back} href={`${prefix}/settings/go-live`} data-testid="setup-open-golive">{t("settingsSetupOpen.toGoLive")}</Link>
-          <Link className={s.next} href={`${prefix}/leader`} data-testid="setup-to-inbox">{t("settingsSetup.toInbox")}</Link>
+          <Link className={s.back} href={`${prefix}/setup/done`} data-testid="setup-back">← {t("settingsSetup.back")}</Link>
+          <span className={s.doneEnd}>
+            <Link className={s.back} href={`${prefix}/settings/go-live`} data-testid="setup-open-golive">{t("settingsSetupOpen.toGoLive")}</Link>
+            <Link className={s.next} href={`${prefix}/leader`} data-testid="setup-to-inbox">{t("settingsSetup.toInbox")}</Link>
+          </span>
         </div>
       </section>
     );

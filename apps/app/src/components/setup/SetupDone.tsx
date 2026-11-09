@@ -10,8 +10,8 @@ import { SettingsHead } from "@/components/settings/SettingsParts";
 import type { SetupData } from "./SetupStepView";
 import s from "./Setup.module.css";
 
-/** `prefix` is the company's address part, so links work in every tenant mode. */
-export function SetupDone({ prefix, data, facts, opened }: { prefix: string; data: SetupData; facts: SetupDoneFacts; opened: boolean }) {
+/** `prefix` is the company's address part, so links work in every tenant mode; `backHref` is the last step. */
+export function SetupDone({ prefix, backHref, data, facts, opened }: { prefix: string; backHref: string; data: SetupData; facts: SetupDoneFacts; opened: boolean }) {
   const t = useT();
   const locale = useLocale();
   const sum = orgSummary(data.knowledge);
@@ -48,10 +48,13 @@ export function SetupDone({ prefix, data, facts, opened }: { prefix: string; dat
           : <div className={s.check}>{connectors}<span /></div>}
       </nav>
       <div className={s.doneFoot}>
-        <Link className={s.back} href={`${prefix}/raise`} data-testid="setup-test-case">{t("settingsSetup.raiseTestCase")}</Link>
-        {opened
-          ? <Link className={s.next} href={`${prefix}/leader`} data-testid="setup-to-inbox">{t("settingsSetup.toInbox")}</Link>
-          : <Link className={s.next} href={`${prefix}/setup/open`} data-testid="setup-to-open">{t("settingsSetupOpen.doneOpen")}</Link>}
+        <Link className={s.back} href={backHref} data-testid="setup-back">← {t("settingsSetup.back")}</Link>
+        <span className={s.doneEnd}>
+          <Link className={s.back} href={`${prefix}/raise`} data-testid="setup-test-case">{t("settingsSetup.raiseTestCase")}</Link>
+          {opened
+            ? <Link className={s.next} href={`${prefix}/leader`} data-testid="setup-to-inbox">{t("settingsSetup.toInbox")}</Link>
+            : <Link className={s.next} href={`${prefix}/setup/open`} data-testid="setup-to-open">{t("settingsSetupOpen.doneOpen")}</Link>}
+        </span>
       </div>
     </section>
   );

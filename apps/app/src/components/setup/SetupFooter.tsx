@@ -22,14 +22,18 @@ export function SetupFooter({ backHref, nextHref, ready, hint, unsaved }: Props)
   const t = useT();
   const router = useRouter();
   const [asking, setAsking] = useState(false);
+  // The dialog sits beside the bar, not in it: the pinned bar is its own layer under the top bar, and a
+  // scrim inside it would leave the top bar uncovered and take no click there.
   return (
-    <div className={s.footer}>
-      {backHref ? <Link className={s.back} href={backHref} data-testid="setup-back">← {t("settingsSetup.back")}</Link> : <span />}
-      <div className={s.forward}>
-        {ready
-          ? <Link className={s.next} href={nextHref} data-testid="setup-next" onClick={(e) => { if (unsaved) { e.preventDefault(); setAsking(true); } }}>{t("settingsSetup.next")} →</Link>
-          : <button type="button" className={s.next} disabled data-testid="setup-next">{t("settingsSetup.next")} →</button>}
-        {hint ? <span className={s.nextHint} data-testid="setup-next-hint">{hint}</span> : null}
+    <>
+      <div className={s.footer}>
+        {backHref ? <Link className={s.back} href={backHref} data-testid="setup-back">← {t("settingsSetup.back")}</Link> : <span />}
+        <div className={s.forward}>
+          {ready
+            ? <Link className={s.next} href={nextHref} data-testid="setup-next" onClick={(e) => { if (unsaved) { e.preventDefault(); setAsking(true); } }}>{t("settingsSetup.next")} →</Link>
+            : <button type="button" className={s.next} disabled data-testid="setup-next">{t("settingsSetup.next")} →</button>}
+          {hint ? <span className={s.nextHint} data-testid="setup-next-hint">{hint}</span> : null}
+        </div>
       </div>
       {asking && unsaved ? (
         <div className={settings.scrim} onClick={() => setAsking(false)}>
@@ -42,6 +46,6 @@ export function SetupFooter({ backHref, nextHref, ready, hint, unsaved }: Props)
           </div>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }
