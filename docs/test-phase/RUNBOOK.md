@@ -8,6 +8,9 @@ second, fresh VM is the on-prem install drill. Only Kevin runs them. No lane rea
 | The run of record | your machine, against VM 1 | `ops/tst/vm-run.sh <user@host[:port]> <sha7>` |
 | The install drill | VM 2, fresh | `stack/tests/install-clean.sh --slug … --origin … --images <sha7>` |
 
+For gate G4 (criteria 2 and 6) the order, the three drill scripts and what counts as a pass are in
+[G4_DRILLS.md](G4_DRILLS.md).
+
 ## Before the run (once)
 
 1. **VM 1.** Created by hand to the size and region decided in TST/Q1, then hardened with nextup-infra's
