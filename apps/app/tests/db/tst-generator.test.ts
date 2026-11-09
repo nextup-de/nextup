@@ -17,6 +17,7 @@ import { loginCodeFor, musterwerkPeople } from "../../prisma/generators/musterwe
 import { makeRng } from "../../prisma/generators/musterwerk/rng";
 import { musterwerkStructure } from "../../prisma/generators/musterwerk/structure";
 import { MUSTERWERK_CALENDAR } from "../../prisma/generators/musterwerk";
+import { MUSTERWERK_PROFILE } from "../../prisma/generators/musterwerk/profile";
 
 const db = getDb();
 const now = new Date("2026-11-03T09:00:00+01:00");
@@ -46,9 +47,10 @@ afterAll(async () => {
 
 describe("TST generator", () => {
   it("makes a sandbox Musterwerk with its config, calendar and flags", async () => {
-    const c = await db.company.findUniqueOrThrow({ where: { id: companyId }, include: { config: true, calendar: true } });
+    const c = await db.company.findUniqueOrThrow({ where: { id: companyId }, include: { config: true, calendar: true, profile: true } });
     expect(c).toMatchObject({ name: "Musterwerk GmbH", stage: "sandbox" });
     expect(c.config).toMatchObject({ aiRouting: false, assistant: false });
+    expect(c.profile).toMatchObject({ ...MUSTERWERK_PROFILE, updatedBy: "generator" });
     expect(c.calendar).toMatchObject({ region: "DE-BY" });
     expect(await flagOverrides(companyId)).toEqual({ discussion: true, projects: true });
   });
