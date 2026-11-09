@@ -47,3 +47,18 @@ Schichtleiterin Linie A, German). Times are UTC. Evidence is the stack's own `Ca
 - G5 (remove the app, next notice by mail) not run.
 - The unused first bot secret (made 2026-11-07) is still on the `nextupbot` registration; it can be removed.
 - The stack is pinned (`PINNED=4d44d91`); nothing here changed an image.
+
+## Re-check on release c940f83 (#609)
+
+Follow-up of 2026-11-08, times UTC. At 02:31 (03:31 local) Musterwerk took release `c940f83` from main: #600, #603, #606,
+#608 and #609 are live; #604 and #610 are not (their staging deploy failed). The stack line at the top (image `sha-4d44d91`)
+and the pin note under "Left open" describe the run before this release. The fix for TMS-L1 is #608. Same people and tenant
+as above. Evidence here is what Teams and the case page showed.
+
+| Step | What happened | Evidence | Result |
+|---|---|---|---|
+| TMS-L1: second answer on a decided case | 02:33: Julia Rossi pressed "Nein" with the reason "Test: zweite Antwort auf einen entschiedenen Fall" on the Teams card of the already decided case `c_teams_a7b9f05ce2eb5cafeb540e46` | Teams showed "Ihre Antwort wurde an die App gesendet"; the bot answered "Dieser Fall wurde schon von Julia Rossi um 01:10 beantwortet." The case page afterwards still showed only the two decided rows from before the fix ("wrong department", "ist nur verschmutzung"); nothing new was written | **pass** |
+
+- **TMS-L1: fixed (#608) and verified live.** A card answer on a decided case is refused with the "already answered" text
+  and nothing new is written to the case.
+- **TMS-L2 (history says "per E-Mail" after a Teams notice) is still open.**
