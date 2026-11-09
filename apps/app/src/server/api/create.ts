@@ -4,10 +4,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { ApiV1CaseCreate, CaseRef } from "@nextup/contracts/public";
 import type { EventPayload } from "@/features/cases/events";
-import { stampEvent } from "@/features/cases/stamp";
+import { raiserDept, stampEvent } from "@/features/cases/stamp";
 import { seedFor } from "@/features/demo";
 import { getDb } from "@/lib/db/client";
 import { appendEventRow, hasIdemKey } from "@/lib/db/events";
+import { loadUnitPeople } from "@/lib/db/pseudonymise";
 import { V1Failure } from "@/server/api/handle";
 import { getCase } from "@/server/api/read";
 import { proposeOnRaise } from "@/server/routing";
@@ -41,9 +42,12 @@ export async function createCase(
   // A repeat is answered before anything else is checked or written.
   if (idemKey !== null && (await hasIdemKey(companyId, idemKey))) return existing(200);
 
+  let fromDept = "";
   if (body.raisedByUserId !== null) {
-    const user = await getDb().user.findFirst({ where: { id: body.raisedByUserId, companyId, active: true }, select: { id: true } });
+    const user = await getDb().user.findFirst({ where: { id: body.raisedByUserId, companyId, active: true }, select: { id: true, dept: true } });
     if (!user) throw new V1Failure("bad_request", "raisedByUserId: no active user of this company has this id.");
+    // The raiser's department, as the web raise names it. system:api does not name them, so a small unit's is left out.
+    fromDept = raiserDept(user.dept, { label: API_ACTOR, userId: user.id }, await loadUnitPeople(companyId));
   }
 
   const seed = await seedFor(slug);
@@ -51,7 +55,7 @@ export async function createCase(
     title: body.title,
     body: body.body,
     kind: body.kind,
-    fromDept: "",
+    fromDept,
     visibility: "everyone",
   };
   const proposal = await proposeOnRaise(slug, companyId, base);
