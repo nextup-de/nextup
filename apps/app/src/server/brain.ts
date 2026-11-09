@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { AiGate } from "@/features/ai/gate";
 import type { AiSettings } from "@/features/ai/settings";
 import { isAboveCeiling, redact } from "@/features/assist/redact";
+import { maskAddressed } from "@/features/ai/names";
 import type { Level } from "@/features/assist/classify";
 import type { Turn } from "@/features/assist/draft";
 import { emptyLog } from "@/features/cases/events";
@@ -82,7 +83,11 @@ async function loadCompany(slug: string, policy: BrainPolicy, audience?: Audienc
   const state = reduce(seed, log);
   const cases = [...(audience === undefined ? state.cases : await casesFor(state, audience))].sort((a, b) => b.raisedDay - a.raisedDay);
   const people = [...seed.people.map((p) => ({ name: p.name, role: p.role })), ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" }))];
-  const clean = (text: string) => redact(text, { people, patterns: policy.patterns });
+  // Directory names first ("Herr Thomas Becker" -> "Herr [role]"), then any surname after a form of address.
+  const clean = (text: string) => {
+    const r = redact(text, { people, patterns: policy.patterns });
+    return { ...r, text: maskAddressed(r.text) };
+  };
   const allowed = (text: string): string | null => {
     const r = clean(text);
     return isAboveCeiling(r, policy.ceiling) ? null : r.text;
