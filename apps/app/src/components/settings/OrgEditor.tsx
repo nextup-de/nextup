@@ -20,7 +20,8 @@ import s from "./settings.module.css";
 import o from "./OrgEditor.module.css";
 
 export type MemberOption = { id: string; name: string };
-type Props = { slug: string; knowledge: Knowledge; members: MemberOption[]; demo?: boolean; showHead?: boolean };
+/** `people`: unit id -> active people, sub-units included (features/settings/org-view peoplePerUnit). Without it, the stored head count. */
+type Props = { slug: string; knowledge: Knowledge; members: MemberOption[]; demo?: boolean; showHead?: boolean; people?: Record<string, number> };
 
 const KIND_LABEL: Record<(typeof UNIT_KINDS)[number], MessageKey> = {
   board: "settingsOrg.unitKindBoard", dept: "settingsOrg.unitKindDept", team: "settingsOrg.unitKindTeam",
@@ -64,7 +65,7 @@ function ChipField({ name, initial, label }: { name: string; initial: string[]; 
   );
 }
 
-export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true }: Props) {
+export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true, people }: Props) {
   const t = useT();
   const fmt = useFormat();
   const [error, setError] = useState<MessageKey | null>(null);
@@ -80,6 +81,7 @@ export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true }
   const unit = k.units.find((u) => u.key === picked) ?? null;
   const parentOf = (u: UnitRow) => k.units.find((p) => p.id === u.parentId) ?? null;
   const vacancy = unitsWithVacancy(k);
+  const peopleOf = (u: UnitRow) => people?.[u.id] ?? u.headcount;
   const sum = orgSummary(k);
   const roleTitle = (id: string | null) => k.roles.find((r) => r.id === id)?.title ?? null;
   const seatsOf = (roleId: string) => k.holders.filter((h) => h.roleId === roleId).sort((a, b) => a.sort - b.sort);
@@ -173,6 +175,7 @@ export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true }
                     <button type="button" className={o.twisty} data-open={open.has(u.id) || query ? "" : undefined} aria-label={t("settingsOrg.toggleUnit", { name: u.name })} aria-expanded={open.has(u.id)} onClick={() => toggle(u.id)}>▸</button>
                   ) : <span className={o.twisty} />}
                   <button type="button" className={o.treeName} data-top={depth === 0 ? "" : undefined} onClick={() => setPicked(u.key)} data-testid={`settings-org-unit-${u.key}`}><DeptChip name={u.name} /></button>
+                  <span className={o.people} title={t("settingsOrg.unitPeople", { n: fmt.number(peopleOf(u)) })} data-testid={`settings-org-people-${u.key}`}>{fmt.number(peopleOf(u))}</span>
                   {vacancy.has(u.id) ? <span className={o.dot} title={t("settingsOrg.vacantSeats")} aria-label={t("settingsOrg.vacantSeats")} /> : null}
                 </li>
               ))}
@@ -186,7 +189,7 @@ export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true }
                   <div className={s.cardTitleBox}>
                     <h2 className={o.unitTitle}>{[parentOf(unit)?.name, unit.name].filter(Boolean).join(" · ")}</h2>
                     <p className={s.cardHint}>
-                      {[t(kindLabel(unit.kind)), parentOf(unit) ? t("settingsOrg.unitIn", { parent: parentOf(unit)?.name ?? "" }) : null, t("settingsOrg.unitPeople", { n: fmt.number(unit.headcount) })].filter(Boolean).join(" · ")} · <span className={s.mono}>{unit.key}</span>
+                      {[t(kindLabel(unit.kind)), parentOf(unit) ? t("settingsOrg.unitIn", { parent: parentOf(unit)?.name ?? "" }) : null, t("settingsOrg.unitPeople", { n: fmt.number(peopleOf(unit)) })].filter(Boolean).join(" · ")} · <span className={s.mono}>{unit.key}</span>
                     </p>
                   </div>
                   <button type="button" className={s.soft} onClick={() => openUnit(unit)} data-testid="settings-org-unit-edit">{t("settingsOrg.editUnit")}</button>
