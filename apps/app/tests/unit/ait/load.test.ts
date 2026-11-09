@@ -5,6 +5,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { batches, loadPack, toInbound } from "../../../prisma/generators/musterwerk-docs/load";
 import type { PackFile } from "../../../prisma/generators/musterwerk-docs/manifest";
 import { main } from "../../../prisma/generators/musterwerk-docs/run-load";
+import { musterwerkDocs } from "../../../prisma/generators/musterwerk-docs/pack";
 import { writePack } from "../../../prisma/generators/musterwerk-docs/write";
 import { parseDocuments } from "../../../src/features/assist/documents";
 
@@ -32,14 +33,25 @@ const okFetch = (calls: Call[]): typeof fetch =>
   }) as unknown as typeof fetch;
 
 describe("AIT loader", () => {
-  it("drops m365 and strictly confidential files", () => {
+  it("keeps api files and the m365 files every employee may open; drops site files and strictly confidential ones", () => {
     const docs = toInbound([
       file({ path: "api/a" }),
-      file({ path: "Musterwerk Finance/x.md", channel: "m365" }),
+      file({ path: "Musterwerk Finance/x.md", channel: "m365", readers: ["MW-FIN", "MW-EXEC"] }),
+      file({ path: "Musterwerk Company/Richtlinien/Reisekosten.md", channel: "m365", readers: ["MW-ALL"] }),
+      file({ path: "Musterwerk Board/Adler.md", channel: "m365", readers: ["MW-ALL"], classification: "strictly_confidential" }),
       file({ path: "api/b", classification: "strictly_confidential" }),
     ]);
-    expect(docs.map((d) => d.externalId)).toEqual(["api/a"]);
+    expect(docs.map((d) => d.externalId)).toEqual(["api/a", "Musterwerk Company/Richtlinien/Reisekosten.md"]);
     expect(docs[0]).toMatchObject({ source: "upload", classification: "internal" });
+  });
+
+  it("loads 51 of the 256 files of seed 1: 13 api files and 38 Company-site files, none above internal", () => {
+    const docs = toInbound(musterwerkDocs(1));
+    const paths = new Set(docs.map((d) => d.externalId.replace(/#\d+$/, "")));
+    expect(paths.size).toBe(51);
+    expect([...paths].filter((p) => p.startsWith("api/"))).toHaveLength(13);
+    expect([...paths].every((p) => p.startsWith("api/") || p.startsWith("Musterwerk Company/"))).toBe(true);
+    expect(docs.every((d) => d.classification === "internal" || d.classification === "public")).toBe(true);
   });
 
   it("splits a 45,000-character body into three numbered parts", () => {

@@ -1,4 +1,5 @@
-// Loads the api part of the pack into the document API the way a customer's middleware would (AIT-C1, D7).
+// Loads the company-wide part of the pack (api files and the Company site, see companyWide) into the
+// document API the way a customer's middleware would (AIT-C1, D7).
 // toInbound and batches are pure; loadPack takes an injectable fetch. The token is never logged.
 import { MAX_BODY, MAX_DOCUMENTS, type InboundDocument } from "../../../src/features/assist/documents";
 import type { PackFile } from "./manifest";
@@ -29,10 +30,22 @@ function splitBody(body: string, max: number): string[] {
   return parts;
 }
 
+/**
+ * What the document API may hold without leaking: the company's own documents have no per-person
+ * permissions, so every employee's assistant searches all of them. That is the api part (ERP
+ * extracts, no site permissions) and the m365 files every employee may open (readers MW-ALL, the
+ * Company site). Files of the other sites stay out: they are for Microsoft 365, which trims them
+ * to the person. Strictly confidential never goes in.
+ */
+export function companyWide(f: PackFile): boolean {
+  if (f.classification === "strictly_confidential") return false;
+  return f.channel === "api" || f.readers.includes("MW-ALL");
+}
+
 export function toInbound(files: readonly PackFile[]): InboundDocument[] {
   const docs: InboundDocument[] = [];
   for (const f of files) {
-    if (f.channel !== "api" || f.classification === "strictly_confidential") continue;
+    if (!companyWide(f)) continue;
     const base = { source: "upload", classification: f.classification };
     if (f.body.length <= MAX_BODY) {
       docs.push({ ...base, externalId: f.path, title: f.title, body: f.body });

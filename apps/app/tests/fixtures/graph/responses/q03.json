@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "how OR long OR should OR changeover OR on OR line OR 3 OR take"
+          "queryString": "long OR changeover OR line OR 3 OR take OR changeov* OR changeovers OR umrüstung OR umrüsten OR rüstzeit OR linie"
         },
         "from": 0,
         "size": 10

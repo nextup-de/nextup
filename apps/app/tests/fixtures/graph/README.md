@@ -9,7 +9,8 @@ without calling Microsoft (plan CNX).
   `request` is what `searchRequest(question, 10)` of `src/features/m365/search.ts` builds; `body` is the answer of
   `POST /v1.0/search/query`. A recorded file never holds a token or an Authorization header.
 - `fixtures.ts`: loaders, `PERSONA_GROUPS`, `ceilingFor`, `synthesizeResponse`, `toRecordedFixture`, `checkGroundTruth`.
-  Pure; runs under Node's type stripping (Node 22.18+).
+  Pure; no imports from `src/`. The two scripts take the request from the app's own `searchRequest`, so they run with
+  `npx tsx`.
 
 ## D8: synthetic bodies
 
@@ -28,8 +29,8 @@ the four. The answer text and Microsoft's own permission trimming are checked li
 ## Commands (from `apps/app`)
 
 ```
-node tests/fixtures/graph/synthesize.mjs          # (re)write the synthetic files; recorded ones are kept
-GRAPH_TOKEN_LENA=... node tests/fixtures/graph/record.mjs lena [--ids q01,q05]
+npx tsx tests/fixtures/graph/synthesize.mjs          # (re)write the synthetic files; recorded ones are kept
+GRAPH_TOKEN_LENA=... npx tsx tests/fixtures/graph/record.mjs lena [--ids q01,q05]
 ```
 
 Recording (Kevin, against `nextuptest.onmicrosoft.com`): get a Graph access token per persona with the

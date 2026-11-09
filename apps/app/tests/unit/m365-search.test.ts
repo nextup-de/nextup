@@ -8,33 +8,49 @@ import { GRAPH_SCOPE, readRedeemed, refreshRequestBody } from "@/features/m365/t
 
 describe("kqlQuery", () => {
   it("keeps the words, lower-cased, any of them may match", () => {
-    expect(kqlQuery("Changeover target Line 3")).toBe("changeover OR target OR line OR 3");
-    expect(kqlQuery("Wer entscheidet über Ersatzteile?")).toBe("wer OR entscheidet OR über OR ersatzteile");
+    expect(kqlQuery("Changeover target Line 3", false)).toBe("changeover OR target OR line OR 3 OR changeovers OR umrüstung OR umrüsten OR rüstzeit OR linie");
     expect(kqlQuery("8D bracket B-114, 5.000 EUR")).toBe("8d OR bracket OR b-114 OR 5.000 OR eur");
   });
 
-  it("lets no KQL operator or syntax through but its own OR", () => {
-    expect(kqlQuery('budget OR NOT "salary" AND x*')).toBe("budget OR or OR not OR salary OR and");
-    expect(kqlQuery("author:lena filetype:docx")).toBe("author OR lena OR filetype OR docx");
+  it("leaves stop words out and adds the German stem as a prefix and the English twin", () => {
+    expect(kqlQuery("Wer entscheidet über Ersatzteile?")).toBe(
+      "entscheidet OR ersatzteile OR ersatzteil* OR decides OR decide OR decision OR entscheidung OR spare OR ersatzteil",
+    );
+    expect(kqlQuery("Wer entscheidet über Ersatzteile?", false)).not.toContain("*");
+    // "why" is a stop word, but asks for a cause.
+    expect(kqlQuery("Why did press P-12 stop this year?")).toBe("press OR p-12 OR stop OR year OR cause OR ursache OR presse");
+    expect(kqlQuery("the of and wie der")).toBe("");
+    // A hyphenated word finds its twin by its parts: test-rig -> Prüfstand.
+    expect(kqlQuery("Who decides about test-rig time?").split(" OR ")).toContain("prüfstand");
+  });
+
+  it("lets no KQL operator or syntax through but its own OR and its own stem prefix", () => {
+    expect(kqlQuery('budget OR NOT "salary" AND x*', false)).toBe("budget OR salary OR salaries OR gehalt OR gehälter OR gehaltsband");
+    expect(kqlQuery("author:lena filetype:docx", false)).toBe("author OR lena OR filetype OR docx");
     expect(kqlQuery("(a) -secret NEAR(3) <c0>x</c0>")).toBe("secret OR near OR 3 OR c0");
     // The only upper-case words are the ORs between the terms.
     expect(kqlQuery("AND OR NOT NEAR ONEAR").split(" OR ").every((w) => w === w.toLowerCase())).toBe(true);
+    // A star only ever follows letters we cut ourselves, never something typed.
+    for (const text of ["bestell* x*", "Bestellungen*", "a* OR *b", "*"]) {
+      for (const term of kqlQuery(text).split(" OR ").filter(Boolean)) expect(term).toMatch(/^[\p{L}\p{N}](?:[\p{L}\p{N}.-]*[\p{L}\p{N}])?\*?$/u);
+    }
+    expect(kqlQuery("Bestellungen*")).toBe("bestellungen OR bestell* OR order OR orders OR bestellung OR bestellen OR bestellsumme");
   });
 
   it("drops duplicates, caps the number of words, and can be empty", () => {
-    expect(kqlQuery("line line LINE")).toBe("line");
-    expect(kqlQuery(Array.from({ length: 30 }, (_, i) => "w" + i).join(" ")).split(" OR ")).toHaveLength(12);
+    expect(kqlQuery("line line LINE")).toBe("line OR linie");
+    expect(kqlQuery(Array.from({ length: 30 }, (_, i) => "w" + i).join(" ")).split(" OR ")).toHaveLength(20);
     expect(kqlQuery("?! -- **")).toBe("");
     expect(searchRequest("?!")).toBeNull();
   });
 });
 
 describe("searchRequest", () => {
-  it("asks for files only, five by default", () => {
-    expect(searchRequest("changeover line 3")).toEqual({
-      requests: [{ entityTypes: ["driveItem"], query: { queryString: "changeover OR line OR 3" }, from: 0, size: 5 }],
+  it("asks for files only, eight by default, at most 25", () => {
+    expect(searchRequest("changeover line 3", undefined, false)).toEqual({
+      requests: [{ entityTypes: ["driveItem"], query: { queryString: "changeover OR line OR 3 OR changeovers OR umrüstung OR umrüsten OR rüstzeit OR linie" }, from: 0, size: 8 }],
     });
-    expect(searchRequest("x1", 50)?.requests[0].size).toBe(10);
+    expect(searchRequest("x1", 50)?.requests[0].size).toBe(25);
   });
 });
 
@@ -104,6 +120,12 @@ describe("readSearchResponse", () => {
       "junk",
     );
     expect(readSearchResponse(body, "internal").map((h) => h.title)).toEqual(["c.docx"]);
+  });
+
+  it("leaves folders out: they have a name but nothing to read", () => {
+    const folder = (name: string, extra: Record<string, unknown>) => ({ ...hit(name, "x"), resource: { ...hit(name, "x").resource, ...extra } });
+    const out = readSearchResponse(answer(hit("Changeovers", "x"), folder("Line 3", { folder: { childCount: 4 } }), folder("Checklist.docx", { folder: {} }), hit("Changeover checklist Line 3.docx", "x"), folder("README", { file: { mimeType: "text/plain" } })), "internal");
+    expect(out.map((h) => h.title)).toEqual(["Changeover checklist Line 3.docx", "README"]);
   });
 
   it("reads nothing from an answer it doesn't know", () => {

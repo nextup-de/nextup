@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "up OR to OR which OR amount OR may OR team OR lead OR order OR spare OR parts OR without OR second"
+          "queryString": "amount OR team OR lead OR order OR spare OR parts OR second OR signature OR signatur* OR betrag OR limit OR grenze OR wertgrenze OR orders OR bestellung OR bestellen OR bestellsumme OR ersatzteile OR ersatzteil OR approval OR approve"
         },
         "from": 0,
         "size": 10

@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "what OR was OR the OR root OR cause OR of OR burrs OR on OR bracket OR b-114"
+          "queryString": "root OR cause OR burrs OR bracket OR b-114 OR reason OR ursache OR grund"
         },
         "from": 0,
         "size": 10

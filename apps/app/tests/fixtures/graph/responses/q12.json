@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "summarise OR the OR notes OR for OR ai OR assistants OR in OR standards OR folder"
+          "queryString": "summarise OR notes OR ai OR assistants OR standards OR folder OR summaris* OR assistant* OR standard*"
         },
         "from": 0,
         "size": 10

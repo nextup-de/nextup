@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "when OR is OR the OR plant OR shutdown OR in OR 2026"
+          "queryString": "plant OR shutdown OR 2026 OR shutdow* OR werk OR werksurlaub OR betriebsurlaub OR betriebsferien"
         },
         "from": 0,
         "size": 10

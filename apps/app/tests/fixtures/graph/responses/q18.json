@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "why OR did OR press OR p-12 OR stop OR this OR year"
+          "queryString": "press OR p-12 OR stop OR year OR cause OR ursache OR presse"
         },
         "from": 0,
         "size": 10
