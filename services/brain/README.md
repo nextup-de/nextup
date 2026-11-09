@@ -1,6 +1,10 @@
-# services/brain — the routing AI
+# services/brain — the routing and reading AI
 
-One question, asked when an idea or problem is raised: **which routing row owns this, and was it
+Three jobs for a language model, all for the app and none stored here: routing (below), reading and
+coaching an idea in the idea studio (`/v1/read`, `/v1/coach`), and after the decision the plan and
+the check-in (`/v1/plan`, `/v1/checkin`).
+
+The first, asked when an idea or problem is raised: **which routing row owns this, and was it
 raised before?** The app's keyword router (`features/routing`, `keywords-v2`) answers it by
 counting words; the brain answers it with a language model. The app keeps the keyword answer as
 the fallback, so the brain being off, slow or wrong never stops a raise.
@@ -24,8 +28,8 @@ app (server side) ── POST /v1/route, X-API-Key ──▶ brain ── /v1/ch
   `BRAIN_API_KEY`.
 
 It came out of a standalone prototype (people-level routing for a fictional company, a grilling
-coach). What is here is the part the app needs today: the routing and duplicate check against the
-app's own rows. The coach is a later step, inside the app's existing coach.
+coach). The routing and duplicate check against the app's own rows came first; the studio's reading
+and coach followed (below).
 
 ## API
 
@@ -50,7 +54,7 @@ app's own rows. The coach is a later step, inside the app's existing coach.
 Limits: 50 rows, 80 earlier items. A company with hundreds of earlier items needs a shortlist in
 front of the model — `brain/route.py` is the one place for it.
 
-**`llm` (optional, on every request: route, coach, plan, checkin).** The company's own model for
+**`llm` (optional, on every request: route, read, coach, plan, checkin).** The company's own model for
 this one request, sent by the app. Three shapes:
 
 ```json
@@ -81,34 +85,91 @@ name has no price), else the configured one.
 
 `GET /health` — `ok` when the model server answers and has the model. No key needed.
 
-`POST /v1/coach` (header `X-API-Key`) — one turn of the idea coach, the "grilling" method: the
-first open point in the order problem → context → evidence → impact → solution → risks → success
-measure, one question at a time, an earlier item about the same problem raised first, and the
-coach's own best-guess answer the employee can accept or edit.
+`POST /v1/read` (header `X-API-Key`) — the **reading** of an idea, on every message in the idea
+studio. It is what the raise page shows (docs/IDEAS.md, "The reading"): five dials, a summary, the
+advice, the routing row, an earlier item about the same problem, and what the person who decides
+would still ask. Prompt `read.md`, code `brain/read.py`; its `version` is stored inside the reading the
+app keeps. `locale` (`en`, the default, or `de`) is the language it writes in, also on `/v1/coach`. The
+app always sends it, and a brain older than the app refuses it: update both together.
+
+```json
+{
+  "company": "Acme Maschinenbau GmbH",
+  "idea": { "title": "Paper changeover sheets are a waste", "body": "…" },
+  "goals": [{ "name": "Less downtime", "kpi": "" }],
+  "routes": [{ "id": "r3", "type": "Quality data, measurements, tolerances", "owner": "Quality lead, Quality" }],
+  "known": [{ "id": "c3", "title": "Changeover sheet and MES ask for the same six numbers", "status": "open" }],
+  "affected": 2, "attachments": 0, "spend_limit_eur": 5000,
+  "skip": ["Who pays for it?"],
+  "previous": [{ "key": "value", "score": 40, "note": "…" }]
+}
+```
+
+```json
+{ "dials": [{ "key": "value", "score": 55, "note": "…", "basis": "…" }, "… feasibility, cost, fit, risk"],
+  "overall": 52, "summary": "…", "advice": "pilot", "advice_why": "…", "pattern": "…",
+  "route_id": "r3", "route_reason": "…", "same_as": null, "related": "c3",
+  "open": ["How many sheets are filled in per shift?"],
+  "model": "mistral-nemo", "version": "brain-read-v…", "tokens_in": 0, "tokens_out": 0, "ms": 9100 }
+```
+
+- **One model call.** Only `company` and `idea` are required; the rest sharpens the judgement. The
+  idea is judged, never obeyed (the prompt says so).
+- **The overall is computed here** — the rounded mean of the five dials — so the model cannot state a
+  different one. Each dial's note and basis come first in the model's schema and the score last, so it
+  reasons before it commits to a number.
+- **`previous`** is the last reading's dials (score and note). The model keeps a score unless what the
+  author wrote since gives a reason to change it, and says what changed. Send nothing for a first reading.
+- **`skip`** are the questions the author said they cannot answer yet; `open` never repeats one.
+  `open` holds real questions only (ending in a question mark), each once, the most important first.
+- **Checked in code.** A summary, pattern, advice, route reason, note or basis that shows an item or row
+  ID is rejected and retried. Advice `info` with no question left to ask is pushed back once. `open` keeps
+  at most six questions and drops one over 200 characters, so the app never rejects the reading for it.
+  `route_id` is limited to a row of `routes` (else `null`); the closest earlier item must be one of
+  `known`. It comes back as `same_as` only when solving it would also solve this idea, otherwise as
+  `related`.
+
+`POST /v1/coach` (header `X-API-Key`) — one turn of the idea coach, written **from the reading**. It
+answers what the employee asked, says what it really thinks of the latest message, and asks the one
+question the reading finds most open, with its own best-guess answer the employee can accept or edit.
 
 ```json
 {
   "company": "Acme Maschinenbau GmbH",
   "idea": { "title": "Paper changeover sheets are a waste", "body": "" },
   "history": [{ "role": "user", "text": "Paper changeover sheets are a waste" }],
-  "brief": "The idea scores 38/100; it can be published at 70. …",
+  "reading": { "summary": "…", "dials": [{ "key": "value", "score": 40, "note": "…" }],
+               "open": ["How many sheets are filled in per shift?"], "same_as": "c3" },
+  "goals": [{ "name": "Less downtime", "kpi": "" }],
+  "routes": [{ "id": "r3", "type": "Quality data, measurements, tolerances", "owner": "Quality lead, Quality" }],
   "known": [{ "id": "c3", "title": "Changeover sheet and MES ask for the same six numbers", "status": "open" }]
 }
 ```
 
 ```json
-{ "open_point": "impact", "earlier_id": null, "note": "…", "question": "How often do these sheets cause delays or errors?",
-  "why": "…", "recommended": "About once a shift, on average.", "model": "mistral-nemo", "version": "brain-coach-v1", "ms": 6700 }
+{ "open_point": "open", "earlier_id": "c3", "answer": "", "note": "…",
+  "question": "How many sheets are filled in per shift?", "why": "…",
+  "recommended": "About twelve, one per changeover.", "model": "mistral-nemo",
+  "version": "brain-coach-v…", "tokens_in": 0, "tokens_out": 0, "ms": 6700 }
 ```
 
-Two model calls per turn: on an idea's first message the "raised before?" check (the routing
-check's method, prompt `match.md`) - a match is handed to the coach as a fact to raise, because the
-model alone rarely brings up history - and on later messages the notes (`sheet.md`). Then one call
-for the question.
+One model call per turn; there are no longer separate "raised before?" and notes calls (the former
+prompts `match.md` and `sheet.md` are gone). What replaced them:
 
-`brief` is the app's `coachBrief()`: the scores and what each bar misses. The numbers are the
-app's - an answer that states a score, asks two questions, leaves `recommended` empty or shows an
-item ID is rejected and retried (`brain/coach.py`).
+- **The point is the reading's first open question.** `open_point` is `open` or `none`; with nothing
+  open `question`, `why` and `recommended` come back empty and the coach says the idea is ready for the
+  person who decides, unless a dial is at 50 or below: then it says it is not ready and what it lacks most. The old fixed order of points (problem → context → evidence → …) is gone.
+- **An earlier item is raised from the reading**, not found by the coach: when `reading.same_as` names an
+  item in `known`, the coach is told to raise it first (`earlier_id`).
+- **`answer`** is filled when the latest message asks something; the coach answers from `goals` and
+  `routes`, and says so when those do not say. Empty otherwise.
+- **Checked in code** (`brain/coach.py`): an answer that states a score or points ("72/100"), shows an
+  item ID, asks two questions or none while a point is open, or repeats a question the coach already asked
+  in `history` is rejected and retried; a `note` that only repeats the employee back is pushed back once.
+  "You raised this before" is reworded to "this was raised before", since earlier items are usually
+  someone else's. One retry at most: on a CPU server every try costs seconds the app may not wait for.
+
+The scores are the reading's, shown by the page; the coach never states or changes them.
 
 After a decision (docs/plans/2026-10-15_idea-to-project.md, `brain/plan.py`), two proposals the app
 shows next to its own offline ones - people decide, the model never enters a number:
@@ -155,39 +216,30 @@ and saves the run in `eval/results/`. Rerun it after every prompt change and bum
 `PROMPT_VERSION` in `brain/route.py`.
 
 ```bash
-uv run python -m eval.run_coach           # the coach: 8 first messages, printed, rules checked
-uv run python -m eval.run_dialogs         # the coach: 8 whole conversations - repeats, order, coverage
-uv run python -m eval.chat                # talk to the coach yourself; --prompt shows what it is sent
+uv run python -m eval.run_coach           # the studio's turn on 8 first messages: reading, then coach, printed
+uv run python -m eval.run_read            # the reading alone on 11 cases (injection, mashing, German, repeats...); --offline checks the checks with a fake model
+uv run python -m eval.run_read --locale de   # the same as on a German page, also in run_coach: German in every field, "Sie", never "du"
+uv run python -m eval.chat                # talk to it yourself; --prompt shows what the model is sent
+uv run python -m eval.smoke --provider bedrock --model <id>   # one read, coach, plan and checkin call; exits 1 on a failure
+uv run python -m eval.compare eval/recorded/bedrock.json eval/recorded/azure-openai.json   # recorded routing runs, cheaper one that qualifies
 ```
 
-`run_dialogs` plays both sides: scripted employees (`eval/coach_dialogs.json`) who know the
-answer to every point and answer what they are asked - some vaguely the first time - and the app,
-which sends the brief it would and stops at the publish line. It counts questions about a point
-already answered, near-copies of an earlier question, solution-before-problem and how many of
-problem, context, impact and solution got answered. That is the number to watch for "it keeps
-asking the same thing".
+`run_coach` and `chat` run a turn the way the app does: first the reading (`brain/read.py`), then the
+coach working from it (`brain/coach.py`). They print the dials with the overall, the advice, the
+routing row and the earlier item found, the summary, pattern and each dial's note, the open questions,
+then the coach's answer, note, question and suggested answer. `run_coach` checks that every case got a
+valid reading and answer and, where a case has an earlier item about the same problem
+(`eval/coach_cases.json`), that the reading found it; tone and quality are not something a script can
+score, so read the printed turns after a prompt change. `chat` keeps the previous reading between
+messages as the app does, and piped lines replay a conversation. Both take `--provider`, `--model`,
+`--region` and `--endpoint` (as `run_eval` does) to run against a company's provider, and use the
+Acme snapshot (`eval/acme.json`). `eval.smoke` and the recorded runs are for choosing a provider.
 
-The coach cannot ask about something already answered, by construction (`brain/coach.py`):
-
-1. **Notes** - a short call (`prompts/sheet.md`) writes, per point, what the employee said so far,
-   in their own words. Quoting is what a small model does reliably.
-2. **The code picks** the first point the notes leave empty, in NextUp's order: problem → where /
-   how often → impact → first step → evidence → risks → success. The model never chooses.
-3. **The question** - the model only phrases one question about that point (`prompts/coach.md`),
-   with its best guess as a suggested answer.
-
-Two safeguards on the notes, both in code: a point the coach already asked about is done once the
-employee replied, whatever the reply (at most one point per question asked - so it is never asked
-twice); and a note only counts if it shares a word with what the employee actually wrote, and the
-core four (problem, where/how often, impact, first step) cannot be waved away as "n/a". When every
-point has been asked but the app still calls (the idea is below the publish line), the coach does
-not say "ready": it sharpens the point the weakest score needs.
-
-On an idea's first message the notes are the idea itself, and the "raised before?" check runs
-instead. A question worded like an earlier one is redone once; every try costs seconds on a CPU
-server, so there is no second retry - the app's offline coach answers then. Tone is not something
-a script can score - read the printed turns after a prompt change, and bump `PROMPT_VERSION` in
-`brain/coach.py`.
+The earlier coach eval (`run_dialogs`, `eval/coach_dialogs.json`) is gone with the method it tested: the
+coach no longer keeps notes per point or chooses the point itself, so "does it ask something already
+answered" is now the reading's job (it never lists a question the author said they cannot answer) and
+the coach's check for repeats. Bump `PROMPT_VERSION` in `brain/read.py` or `brain/coach.py` after a
+prompt change; the app stores both.
 
 **On the AI server**, without touching the live brain: copy `services/brain` to `/root/brain-eval`
 and run an eval in a throwaway container on the brain's network against its Ollama. Live answers
@@ -195,7 +247,7 @@ wait while it runs (the model answers one request at a time).
 
 ```bash
 docker run --rm --user 0 --network nextup-brain_default -v /root/brain-eval:/src -w /src \
-  -e PYTHONPATH=/src -e LLM_BASE_URL=http://ollama:11434/v1 nextup-brain:local python -u -m eval.run_dialogs
+  -e PYTHONPATH=/src -e LLM_BASE_URL=http://ollama:11434/v1 nextup-brain:local python -u -m eval.run_coach
 ```
 
 ## In a stack

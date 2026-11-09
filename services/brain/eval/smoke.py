@@ -1,4 +1,4 @@
-"""One coach, one plan and one checkin call through a provider; exits 1 when one fails.
+"""One read, one coach, one plan and one checkin call through a provider; exits 1 when one fails.
 
     uv run python -m eval.smoke --provider bedrock --model <id> [--region eu-central-1]
     AZURE_OPENAI_KEY=... uv run python -m eval.smoke --provider azure-openai --model <deployment> --endpoint <url>
@@ -11,7 +11,8 @@ from brain.coach import coach
 from brain.config import get_settings
 from brain.llm import LLMClient
 from brain.plan import checkin, plan
-from brain.schemas import CheckinIn, CoachIn, PlanIn
+from brain.read import read_idea
+from brain.schemas import CheckinIn, CoachIn, PlanIn, ReadIn
 from eval.run_eval import build_override
 
 COMPANY = "Acme Maschinenbau GmbH"
@@ -19,12 +20,16 @@ IDEA = {"title": "Fixture changeover on line 4 takes 40 minutes",
         "body": "Every shift we lose time looking for the right clamps."}
 
 
+GOALS = [{"name": "Less downtime", "kpi": "minutes per changeover"}]
+
+
 def calls() -> dict[str, tuple]:
     return {
+        "read": (read_idea, ReadIn.model_validate({"company": COMPANY, "idea": IDEA, "goals": GOALS})),
         "coach": (coach, CoachIn.model_validate({
-            "company": COMPANY, "idea": IDEA, "history": [{"role": "user", "text": IDEA["title"]}],
-            "brief": "The idea scores 38/100; it can be published at 70.\n- impact: 20/100 (missing: what it costs)\n"
-                     "Ask exactly one short question that would raise \"impact\"."})),
+            "company": COMPANY, "idea": IDEA, "history": [{"role": "user", "text": IDEA["title"]}], "goals": GOALS,
+            "reading": {"summary": "Lost time at changeovers, not sized yet.", "dials": [{"key": "value", "score": 30, "note": "No number yet."}],
+                        "open": ["How many changeovers happen per week?"]}})),
         "plan": (plan, PlanIn.model_validate({"company": COMPANY, "idea": IDEA,
                                               "goals": [{"name": "Less downtime", "kpi": "minutes per changeover"}]})),
         "checkin": (checkin, CheckinIn.model_validate({

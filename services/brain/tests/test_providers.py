@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from brain import main
 from brain.config import Settings
-from brain.llm import LLMClient
+from brain.llm import OUTPUT_CAP, LLMClient
 from brain.schemas import CheckinDraft, CoachTurn, Judgement, PlanDraft
 from brain.strict import strict_schema
 from tests.conftest import FakeLLM, judgement
@@ -104,6 +104,46 @@ def test_aib_bedrock_rejects_a_bad_region_or_a_key(client, body):
     assert client.post("/v1/route", json={**body, "llm": {**BEDROCK, "api_key": "x"}}).status_code == 422
 
 
+def _reading() -> str:
+    dial = {"note": "n", "basis": "b", "score": 50}
+    return json.dumps({**{k: dial for k in ("value", "feasibility", "cost", "fit", "risk")}, "summary": "s", "closest_id": "", "comparison": "-",
+                       "same_problem": False, "route_id": "none", "route_reason": "r", "pattern": "p", "advice": "pilot", "advice_why": "w", "open": []})
+
+
+READ_BODY = {"company": "A", "idea": {"title": "Idea one"}}
+
+
+def test_a_reading_gets_room_on_bedrock(client):
+    FakeMantle.script = [reply(_reading())]
+    assert client.post("/v1/read", json={**READ_BODY, "llm": BEDROCK}).status_code == 200
+    assert FakeMantle.built[0].calls[0]["max_tokens"] == OUTPUT_CAP["read"]
+
+
+def test_a_reading_gets_room_on_openai_compatible_and_azure():
+    llm = LLMClient(Settings(llm_model="m", _env_file=None))
+    seen: list[dict] = []
+
+    def create(**kw):
+        seen.append(kw)
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))])
+
+    llm.client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    llm.complete_json("s", "u", {}, "read")
+    llm.complete_json("s", "u", {}, "route")
+    llm.provider = "azure-openai"
+    llm.complete_json("s", "u", {}, "read")
+    assert (seen[0]["max_tokens"], seen[1]["max_tokens"], seen[2]["max_completion_tokens"]) == (OUTPUT_CAP["read"], 700, OUTPUT_CAP["read"])
+
+
+def test_the_cap_holds_a_reading_at_its_schemas_limits():
+    # About three characters a token for German JSON. Below this a long valid reading is cut off and every retry with it.
+    full = {"note": "x" * 500, "basis": "x" * 300, "score": 100}
+    answer = {**{k: full for k in ("value", "feasibility", "cost", "fit", "risk")}, "summary": "x" * 600, "closest_id": "", "comparison": "x" * 400,
+              "same_problem": False, "route_id": "none", "route_reason": "x" * 300, "pattern": "x" * 300, "advice": "pilot", "advice_why": "x" * 300,
+              "open": ["x" * 199 + "?"] * 6}
+    assert len(json.dumps(answer)) / 3 <= OUTPUT_CAP["read"]
+
+
 def test_aib_bedrock_is_not_built_without_an_override(client, body):
     client.post("/v1/route", json=body)
     assert FakeMantle.built == []
@@ -188,14 +228,17 @@ def test_aib_tokens_openai_usage_and_a_missing_usage_counts_zero(client, body):
 def test_aib_tokens_count_every_call_of_coach_plan_and_checkin(monkeypatch):
     plan = {"steps": ["Do it"], "metric": "", "unit": "", "better": "down"}
     checkin = {"note": "n", "open": [], "ready": True}
-    turn = {"earlier_id": "", "note": "Noted.", "question": "How often?", "why": "w", "recommended": "r"}
-    match = {"closest_id": "", "comparison": "-", "same_problem": False}
-    answers = {"/v1/plan": [plan], "/v1/checkin": [checkin], "/v1/coach": [match, turn]}
+    turn = {"answer": "", "note": "Noted.", "question": "How often?", "why": "w", "recommended": "r"}
+    dial = {"note": "n", "basis": "b", "score": 50}
+    read = {**{k: dial for k in ("value", "feasibility", "cost", "fit", "risk")}, "summary": "s", "closest_id": "", "comparison": "-",
+            "same_problem": False, "route_id": "none", "route_reason": "r", "pattern": "p", "advice": "pilot", "advice_why": "w", "open": []}
+    answers = {"/v1/plan": [plan], "/v1/checkin": [checkin], "/v1/coach": [turn], "/v1/read": [read]}
     bodies = {
         "/v1/plan": {"company": "A", "idea": {"title": "Idea one"}},
         "/v1/checkin": {"company": "A", "idea": {"title": "Idea one"}, "round": 1},
-        "/v1/coach": {"company": "A", "idea": {"title": "Idea one"}, "brief": "b",
-                      "history": [{"role": "user", "text": "Idea one"}]},
+        "/v1/coach": {"company": "A", "idea": {"title": "Idea one"}, "history": [{"role": "user", "text": "Idea one"}],
+                      "reading": {"summary": "s", "dials": [], "open": ["How often?"]}},
+        "/v1/read": {"company": "A", "idea": {"title": "Idea one"}},
     }
     monkeypatch.setattr(main.settings, "api_key", "")
     main.app.state.llm = FakeLLM([])

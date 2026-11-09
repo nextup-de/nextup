@@ -6,7 +6,9 @@ import type { Role } from "@/config/roles";
 import { meFor } from "@/features/auth/identity";
 import type { EventLog, EventPayload } from "@/features/cases/events";
 import { logFromRows, type EventRow } from "@/features/cases/persist";
-import { membersForViewer, unitsOf, viewerKeys, type VisMember } from "@/features/cases/visibility";
+import type { ReducedCase } from "@/features/cases/reducer";
+import { canOpen, membersForViewer, unitsOf, viewerKeys, type VisMember } from "@/features/cases/visibility";
+import type { ReducedProject } from "@/features/projects/types";
 import type { Seed, SeedCase } from "@/features/demo/types";
 import type { SeedProject } from "@/features/projects/types";
 import { loadCalendar } from "./calendar";
@@ -124,6 +126,15 @@ export async function loadCaseFor(companyId: string, viewer: LogViewer, caseId: 
     seedCase: seed.cases.find((c) => c.id === caseId) ?? null,
     seedProjects: (seed.projects ?? []).filter((p) => projectIds.includes(p.id)),
   };
+}
+
+/** The rule itself for a caller holding the whole state, so it holds before the first projection too (no CaseView rows, Q3). */
+export async function caseFilterFor(companyId: string, viewer: LogViewer, projects: ReducedProject[]): Promise<(c: ReducedCase) => boolean> {
+  const [seats, knowledge, members] = await Promise.all([loadSeats(companyId), loadKnowledge(companyId), loadMembers(companyId)]);
+  const me = meFor(viewer.userId, seats);
+  const ctx = { seats, roles: knowledge.roles, projects, members };
+  const who = { me, role: viewer.role, unitIds: unitsOf(me, ctx) };
+  return (c) => canOpen(c, who, ctx);
 }
 
 /** May this viewer open this case? null when the case has no row (not projected), so the caller cannot tell. */

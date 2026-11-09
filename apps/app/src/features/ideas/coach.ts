@@ -9,7 +9,7 @@ import { stripTags } from "@/features/assist/check";
 import type { Turn } from "@/features/assist/draft";
 import { deltas, weakest, type Benchmark } from "./benchmarks";
 
-export const IDEA_PROMPT_VERSION = "idea-coach-v1";
+export const IDEA_PROMPT_VERSION = "idea-coach-v2";
 
 // A title as the idea shows it: never cut with "…". Over 56 characters it ends at the first natural break
 // (a comma, a dash, "because", "so", "that"…) after the 12th; with none, at the last word that fits. Then

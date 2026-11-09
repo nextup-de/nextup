@@ -61,7 +61,7 @@ describe("the rail: the five points a decision needs", () => {
 
 describe("dialsOf", () => {
   it("gives the five dials in the design's order", () => {
-    expect(dialsOf(oneLiner.parts).map((d) => d.label)).toEqual(["Value", "Feasibility", "Cost", "Fit", "Risk"]);
+    expect(dialsOf(oneLiner.parts).map((d) => d.label)).toEqual(["Value", "Feasibility", "Low cost", "Fit", "Low risk"]);
   });
   it("scores every dial - cost and risk too", () => {
     const d = dialsOf(oneLiner.parts);

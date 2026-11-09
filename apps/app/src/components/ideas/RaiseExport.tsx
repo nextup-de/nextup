@@ -12,9 +12,10 @@ const Copy = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" s
 const Doc = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>;
 const Pdf = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>;
 
-export function RaiseExport({ idea, analysis, onBack, onClose }: {
+export function RaiseExport({ idea, analysis, byAi, onBack, onClose }: {
   idea: ExportIdea; // what the author wrote and chose, with the byline and receiver
   analysis: ExportAnalysis; // NextUp's assessment, shown and exported only when switched on
+  byAi: boolean; // false: the keyword benchmark made that assessment, and the switch says so
   onBack: () => void; // back to the last look, edits kept
   onClose: () => void; // closes the view and the last look
 }) {
@@ -104,7 +105,7 @@ export function RaiseExport({ idea, analysis, onBack, onClose }: {
             <div className={s.group}>
               <span className={s.groupLabel}>{t("ideas.exportInclude")}</span>
               <button type="button" className={s.switch} role="switch" aria-checked={withAi} onClick={() => setWithAi((x) => !x)}>
-                <span className={s.switchText}><span className={s.switchTitle}>{t("ideas.exportAi")}</span><span className={s.switchSub}>{t("ideas.exportAiSub")}</span></span>
+                <span className={s.switchText}><span className={s.switchTitle}>{t(byAi ? "ideas.exportAi" : "ideas.chatAnalysisRules")}</span><span className={s.switchSub}>{t("ideas.exportAiSub")}</span></span>
                 <span className={s.track} data-on={withAi}><span className={s.knob} /></span>
               </button>
             </div>

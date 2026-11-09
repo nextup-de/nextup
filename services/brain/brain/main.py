@@ -16,8 +16,9 @@ from brain.coach import coach
 from brain.config import get_settings
 from brain.llm import LLMClient, LLMOutputError
 from brain.plan import checkin, plan
+from brain.read import read_idea
 from brain.route import route
-from brain.schemas import CheckinIn, CheckinOut, CoachIn, CoachOut, PlanIn, PlanOut, RouteIn, RouteOut
+from brain.schemas import CheckinIn, CheckinOut, CoachIn, CoachOut, PlanIn, PlanOut, ReadIn, ReadOut, RouteIn, RouteOut
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -63,6 +64,19 @@ async def post_route(body: RouteIn, request: Request) -> RouteOut:
         log.info("route idea=%r -> %s", body.idea.title, out.route_id)
     log.info("route rows=%d known=%d route=%s same_as=%s ms=%d",
              len(body.routes), len(body.known), out.route_id, out.same_as, out.ms)
+    return out
+
+
+@app.post("/v1/read", response_model=ReadOut)
+async def post_read(body: ReadIn, request: Request) -> ReadOut:
+    """The reading of an idea: what the raise page shows on every turn."""
+    try:
+        out = await run_in_threadpool(read_idea, request.app.state.llm.for_request(body.llm), body)
+    except LLMOutputError as e:
+        log.error("read failed: %s", e)
+        raise HTTPException(502, "The language model returned invalid output. Please retry.")
+    log.info("read known=%d overall=%d route=%s same_as=%s open=%d ms=%d",
+             len(body.known), out.overall, out.route_id, out.same_as, len(out.open), out.ms)
     return out
 
 

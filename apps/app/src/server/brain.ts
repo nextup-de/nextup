@@ -12,13 +12,16 @@ import type { Turn } from "@/features/assist/draft";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
+import type { Locale } from "@/i18n";
 import { coachRequest, type CoachAnswer } from "@/features/ideas/brain-coach";
+import { BrainReading, maskedReading, readRequest, readingFrom, type Reading } from "@/features/ideas/reading";
 import { checkinRequest, planRequest, roundSaid, type CheckinProposal, type PlanProposal } from "@/features/projects/brain";
 import { brainRequest, fromBrain, type BrainItem, type BrainProposal } from "@/features/routing/brain";
 import { findTenant } from "@/features/tenant";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { recordAiCall } from "@/lib/db/ai-usage";
 import { loadLogForSlug } from "@/lib/db/events";
+import { casesFor, type Audience } from "@/server/ideas";
 
 // On a CPU-only server the model takes tens of seconds; past this the person should not wait.
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -40,9 +43,10 @@ const CheckinReply = z.object({
   next: z.enum(["round", "decide"]), open: z.array(z.string().max(200)).max(6), note: z.string().max(600),
   model: z.string().max(200), version: z.string().max(80), tokens_in: TOKENS, tokens_out: TOKENS,
 });
+const ReadReply = BrainReading.extend({ tokens_in: TOKENS, tokens_out: TOKENS });
 const CoachReply = z.object({
   open_point: z.string().max(40), earlier_id: z.string().max(40).nullable(),
-  note: z.string().max(2000), question: z.string().max(1000), why: z.string().max(1000), recommended: z.string().max(2000),
+  answer: z.string().max(2000).default(""), note: z.string().max(2000), question: z.string().max(1000), why: z.string().max(1000), recommended: z.string().max(2000),
   model: z.string().max(200), version: z.string().max(80), tokens_in: TOKENS, tokens_out: TOKENS,
 });
 
@@ -55,27 +59,51 @@ export function brainConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
 // and text marked above the company's ceiling does not go out at all.
 export type BrainPolicy = { patterns: readonly string[]; ceiling: Level };
 
-// What every call sends along: the company's name, its routing map, and what was raised before -
-// newest cases first, then the known problems - with the redaction for that company.
-async function companyFor(slug: string, policy: BrainPolicy) {
+// Every failure is null, this one too: without the company there is no request to make.
+async function companyFor(slug: string, policy: BrainPolicy, audience?: Audience) {
+  try {
+    return await loadCompany(slug, policy, audience);
+  } catch (err) {
+    console.error("[brain]", slug, "company not loaded", err instanceof Error ? err.name : "failed");
+    return null;
+  }
+}
+
+// What every call sends along: the company's name, its routing map, its goals and what was raised
+// before - newest cases first, then the known problems - with the redaction for that company. A goal
+// or an earlier item marked above the ceiling stays home. With an audience (the studio, where the
+// answer goes straight back to the author) only the cases they may open go out; without one (routing
+// at publish, a project's plan and check-in) the whole company's.
+async function loadCompany(slug: string, policy: BrainPolicy, audience?: Audience) {
   const tenant = await findTenant(slug);
   if (!tenant) return null;
   const seed = await seedFor(slug);
   const log = (hasDatabase() ? await loadLogForSlug(slug) : null) ?? emptyLog();
   const state = reduce(seed, log);
-  const cases = [...state.cases].sort((a, b) => b.raisedDay - a.raisedDay);
+  const cases = [...(audience === undefined ? state.cases : await casesFor(state, audience))].sort((a, b) => b.raisedDay - a.raisedDay);
   const people = [...seed.people.map((p) => ({ name: p.name, role: p.role })), ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" }))];
   const clean = (text: string) => redact(text, { people, patterns: policy.patterns });
+  const allowed = (text: string): string | null => {
+    const r = clean(text);
+    return isAboveCeiling(r, policy.ceiling) ? null : r.text;
+  };
   const known: BrainItem[] = [
     ...cases.map((c) => ({ id: c.id, title: c.title, status: c.status })),
     ...seed.problems.map((p) => ({ id: p.id, title: p.title + " - " + p.sub, status: "known problem" })),
-  ].map((k) => ({ ...k, title: clean(k.title).text }));
+  ].flatMap((k) => {
+    const title = allowed(k.title);
+    return title === null ? [] : [{ ...k, title }];
+  });
+  const goals = seed.goals.flatMap((g) => {
+    const goal = allowed(g.goal);
+    return goal === null ? [] : [{ ...g, goal }];
+  });
   // Redacts, or null when anything is marked above the company's ceiling - then nothing is sent.
   const cleanAll = (texts: readonly string[]): string[] | null => {
     const r = texts.map(clean);
     return r.some((x) => isAboveCeiling(x, policy.ceiling)) ? null : r.map((x) => x.text);
   };
-  return { tenant, seed, known, cleanAll, state, log };
+  return { tenant, seed, known, goals, cleanAll, clean, state, log };
 }
 
 // What a call needs besides the gate: the company's API key (azure-openai, openai-compatible) and,
@@ -169,18 +197,41 @@ export async function askBrain(gate: AiGate, slug: string, idea: { title: string
   return answer ? fromBrain(answer, req) : null;
 }
 
-// In the studio: one coach turn (the grilling). `brief` is coachBrief() - the scores and gaps the
-// app computed; the coach may not change them.
+// In the studio, on every message: the model's reading of the idea - what the raise page shows.
+export async function askBrainRead(
+  gate: AiGate, slug: string,
+  input: { idea: { title: string; body: string }; affected: number; attachments: number; skip: readonly string[]; previous: Reading | null; audience: Audience; locale: Locale },
+  policy: BrainPolicy, signal?: AbortSignal, opts: BrainOptions = {},
+): Promise<Reading | null> {
+  if (!gate.on || !brainConfigured()) return null;
+  const co = await companyFor(slug, policy, input.audience);
+  const text = co?.cleanAll([input.idea.title, input.idea.body, ...input.skip]);
+  if (!co || !text) return null;
+  const req = readRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.routes, co.seed.depts, co.known, {
+    goals: co.goals, affected: input.affected, attachments: input.attachments, spendLimitEur: co.seed.spend?.limitEur ?? null,
+    skip: text.slice(2), previous: input.previous ? maskedReading(input.previous, co.cleanAll) : null, // above the ceiling: read without it
+    locale: input.locale,
+  });
+  const body = withLlm(gate, opts, req);
+  if (!body) return null;
+  const answer = await post(slug, "read", "/v1/read", body, ReadReply, signal, opts.fetch);
+  if (!answer) return null;
+  const { tokens_in: _in, tokens_out: _out, ...reading } = answer;
+  return readingFrom(reading, req);
+}
+
+// In the studio: one coach turn, working from the reading the page shows.
 export async function askBrainCoach(
-  gate: AiGate, slug: string, input: { idea: { title: string; body: string }; turns: readonly Turn[]; brief: string },
+  gate: AiGate, slug: string, input: { idea: { title: string; body: string }; turns: readonly Turn[]; reading: Reading; audience: Audience; locale: Locale },
   policy: BrainPolicy, signal?: AbortSignal, opts: BrainOptions = {},
 ): Promise<CoachAnswer | null> {
   if (!gate.on || !brainConfigured()) return null;
-  const co = await companyFor(slug, policy);
+  const co = await companyFor(slug, policy, input.audience);
   const text = co?.cleanAll([input.idea.title, input.idea.body, ...input.turns.map((t) => t.text)]);
-  if (!co || !text) return null;
+  const reading = co ? maskedReading(input.reading, co.cleanAll) : null;
+  if (!co || !text || !reading) return null;
   const turns = input.turns.map((t, i) => ({ role: t.role, text: text[i + 2] }));
-  const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, input.brief, co.known);
+  const req = coachRequest(co.tenant.name, { title: text[0], body: text[1] }, turns, reading, co.known, co.seed.routes, co.seed.depts, co.goals, input.locale);
   const body = withLlm(gate, opts, req);
   if (!body) return null;
   return post(slug, "coach", "/v1/coach", body, CoachReply, signal, opts.fetch);
@@ -193,7 +244,7 @@ export async function askBrainPlan(gate: AiGate, slug: string, caseId: string, p
   const c = co?.state.cases.find((x) => x.id === caseId);
   const text = c ? co?.cleanAll([c.title, c.body]) : null;
   if (!co || !text) return null;
-  const body = withLlm(gate, opts, planRequest(co.tenant.name, { title: text[0], body: text[1] }, co.seed.goals));
+  const body = withLlm(gate, opts, planRequest(co.tenant.name, { title: text[0], body: text[1] }, co.goals));
   if (!body) return null;
   const answer = await post(slug, "plan", "/v1/plan", body, PlanReply, undefined, opts.fetch);
   return answer ? { steps: answer.steps, metric: answer.metric, version: answer.version } : null;

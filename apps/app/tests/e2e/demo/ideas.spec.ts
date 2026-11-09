@@ -30,7 +30,7 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   await expect(close.or(answer).first()).toBeVisible({ timeout: 30_000 });
   await showSidebar(page);
   if (!(await close.isVisible())) await page.getByRole("button", { name: "Analysis", exact: true }).click();
-  for (const label of ["Value", "Feasibility", "Cost", "Fit", "Risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
+  for (const label of ["Value", "Feasibility", "Low cost", "Fit", "Low risk"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
   await close.click();
 
   // The chat: the coach's first answer under the full analysis, one point still unclear, and the

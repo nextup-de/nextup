@@ -9,11 +9,12 @@
 import { z } from "zod";
 import { getViewerFor } from "@/features/auth/session";
 import { scoreDraft, type DraftSummary, type DraftView } from "@/features/ideas/drafts";
+import { latestReading } from "@/features/ideas/reading";
 import { ideaFromTurns } from "@/features/ideas/coach";
 import { hasDatabase } from "@/lib/db/client";
 import { createDraft, discardDraft, getDraft, listDrafts, loadPublishThreshold, markPublished, purgeDiscardedDrafts, saveDraftMeta } from "@/lib/db/ideas";
 import { loadAssistSettings } from "@/lib/db/assist";
-import { serverIdeaContext } from "@/server/ideas";
+import { serverIdeaContext, type Audience } from "@/server/ideas";
 import { suggestReplies, type Reply } from "@/features/ideas/replies";
 
 const Slug = z.string().min(1).max(64);
@@ -83,14 +84,16 @@ export async function ideaRepliesAction(input: z.input<typeof RepliesIn>): Promi
   const p = RepliesIn.safeParse(input);
   if (!p.success) return { ok: false, replies: [] };
   let d: { turns: { role: "user" | "assistant"; text: string }[]; affected: string[]; attachments: number } = p.data;
+  let audience: Audience = null;
   if (hasDatabase()) {
     const v = await me(p.data.slug);
     const stored = v && p.data.id ? await getDraft(v.companyId, v.userId, p.data.id) : null;
     if (!stored || stored.status !== "draft") return { ok: false, replies: [] };
     d = stored;
+    audience = v;
   }
   if (!d.turns.some((t) => t.role === "user")) return { ok: true, replies: [] };
-  const ctx = await serverIdeaContext(p.data.slug);
+  const ctx = await serverIdeaContext(p.data.slug, audience);
   const now = scoreDraft(d, ctx);
   return { ok: true, replies: suggestReplies({ text: ideaFromTurns(d.turns).text, affected: d.affected, attachments: d.attachments }, now, ctx) };
 }
@@ -106,10 +109,11 @@ export async function publishIdeaDraftAction(input: { slug: string; id: string; 
   if (!p.success || !v) return { ok: false, reason: "Sign in first." };
   const d = await getDraft(v.companyId, v.userId, p.data.id);
   if (!d || d.status !== "draft") return { ok: false, reason: "This draft is no longer open." };
-  const score = scoreDraft(d, await serverIdeaContext(p.data.slug));
+  const score = scoreDraft(d, await serverIdeaContext(p.data.slug, v));
   const idea = ideaFromTurns(d.turns);
   const title = d.title || idea.title;
-  const done = await markPublished(v.companyId, v.userId, d.id, p.data.caseId, { title, overall: score.overall, scores: score.parts });
+  const overall = latestReading(d.turns)?.overall ?? score.overall; // the number the author was shown
+  const done = await markPublished(v.companyId, v.userId, d.id, p.data.caseId, { title, overall, scores: score.parts });
   if (!done) return { ok: false, reason: "This draft is no longer open." };
-  return { ok: true, title, body: idea.body, overall: score.overall };
+  return { ok: true, title, body: idea.body, overall };
 }

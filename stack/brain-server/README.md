@@ -28,7 +28,7 @@ server 1: the stacks                         server 2: the AI (this folder)
 ```bash
 git clone --depth 1 https://github.com/nextup-de/nextup.git ~/nextup-src
 ~/nextup-src/stack/brain-server/brain-server.sh install   # Docker, the brain, the model (~7 GB)
-~/nextup-src/stack/brain-server/brain-server.sh test      # one routing and one coach answer, with the seconds
+~/nextup-src/stack/brain-server/brain-server.sh test      # one routing answer, one reading and one coach answer, with the seconds
 ```
 
 `install` finds the server's private address by itself and refuses a public one. `--model NAME`

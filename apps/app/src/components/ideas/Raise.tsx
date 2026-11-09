@@ -36,7 +36,8 @@ import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, SCRIPT_MOVES, scriptDials, scri
 import { useLocale, useT } from "@/i18n/client";
 import { formatDate } from "@/i18n/format";
 import { DEFAULT_LOCALE, LOCALES, translate, type MessageKey } from "@/i18n";
-import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicsOf, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
+import { adviceFromReading, dialsFromReading, gapsFromReading, latestReading, proposalOf } from "@/features/ideas/reading";
+import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicLabel, topicsOf, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { desksFor, otherDesks, type Desk } from "@/features/ideas/desks";
@@ -55,7 +56,7 @@ import { EMPTY_BODY, insertBlock, promptContext, segsContext, splitPrompts, spli
 import { DeskDialog, type Sent, type Work } from "./RaisePublish";
 import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
 import { RaiseExport } from "./RaiseExport";
-import { RaiseChat, type ChatMsg, type Read } from "./RaiseChat";
+import { RaiseChat, repeatsAsk, type ChatMsg, type PastTopic, type Read } from "./RaiseChat";
 import { AnalysisSheet, IdeaSheet, type AnalysisData, type Reviewer, type Similar, type Source } from "./RaiseSheets";
 import { RaiseSidebar, type DraftCard, type IdeaRow } from "./RaiseSidebar";
 import { RaiseStart } from "./RaiseStart";
@@ -76,7 +77,12 @@ const RECV_LINE = lineRes("ideas.pageExtraReceiver"), COLL_LINE = lineRes("ideas
 const lineMatch = (res: RegExp[], line: string) => { for (const re of res) { const m = line.match(re); if (m) return m; } return null; };
 const isExtraLine = (line: string) => [RECV_LINE, COLL_LINE, MEET_LINE].some((res) => lineMatch(res, line.trim()));
 
-const MIN_EXCHANGES = FILLED_ANSWERS + 1; // the demo script's messages (the idea, then answers) before it can be published
+// An earlier item's status as the reading carries it (the case's own word, or "known problem"), in the page's language.
+const SIM_STATUS: Record<string, MessageKey> = { open: "ideas.pageSimOpen", discussion: "ideas.pageSimDiscussion", decided: "ideas.pageSimDecided", asked: "ideas.pageSimAsked", building: "ideas.pageSimBuilding", shipped: "ideas.pageSimShipped", "known problem": "ideas.pageSimProblem" };
+
+// The author's messages (the idea, then answers) before it can be published: the demo script's pace, and the most a
+// rail from the AI reading can hold it back (its questions are asked afresh each turn, so they cannot be checked off).
+const MIN_EXCHANGES = FILLED_ANSWERS + 1;
 const MAX_SHOTS = 4; // screenshots kept with the case in this browser (lib/shots.ts)
 const sizeOf = (bytes: number) => (bytes > 1e6 ? (bytes / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(bytes / 1e3)) + " KB");
 type DeskPlan = { desks: Desk[]; aiOff: boolean }; // the desks to choose from, and whether the keywords made the proposal
@@ -172,6 +178,10 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const idea = useMemo(() => ideaFromTurns(turns), [turns]);
   const affected = draft?.affected ?? startAff;
   const storedParts = live?.parts ?? draft?.scores ?? [];
+  // The model's reading of the idea: what the page shows. Null: no model, or it failed - the keyword benchmark answers.
+  // While a message is on its way the page stays with the reply it answers: the new reading lands with its own
+  // reply, so the dials under the old one do not jump and jump back.
+  const reading = script ? null : live && !sending ? live.reading : latestReading(turns);
   const overall = studio.overall;
   const published = draft?.status === "published";
   const firstIdx = turns.findIndex((t) => t.role === "user");
@@ -193,14 +203,16 @@ function RaisePage({ script = false }: { script?: boolean }) {
   [turns, firstIdx, affected, myFiles.length, benchCtx, locale]);
   const unknownHere = draft ? preview.unknown[draft.id] ?? [] : [];
   // The demo script has its own eight topics, cleared one per answer, as long as the conversation follows it.
-  const gaps: Topic[] = !draft || !turns.length ? [] : scriptAt >= 1 ? scriptRail(scriptAt)
+  // With the AI reading on, the rail is the reading's open questions instead.
+  const gaps: Topic[] = !draft || !turns.length ? [] : reading ? gapsFromReading(reading, unknownHere) : scriptAt >= 1 ? scriptRail(scriptAt)
     : gapsOf(myTopics, parts, unknownHere, locale, answeredOf(myTopics, rounds, unknownHere, locale));
   // Publishing waits until the rail is done: every topic answered, checked off or "not sure", and NextUp has
   // replied - after one answer for a precise idea, after many for a vague one. The demo script keeps its
   // own pace: the idea and the two answers the controls fill (FILLED_ANSWERS).
   const said = turns.filter((t) => t.role === "user").length;
   const scripted = story && scriptAt >= MIN_EXCHANGES;
-  const railDone = scriptAt >= 1 ? said >= MIN_EXCHANGES : turns.some((t) => t.role === "assistant") && openCount(gaps) === 0;
+  const railDone = scriptAt >= 1 ? said >= MIN_EXCHANGES
+    : turns.some((t) => t.role === "assistant") && (openCount(gaps) === 0 || (reading !== null && said >= MIN_EXCHANGES));
   const canFinalize = turns.length > 0 && !busy && !sending && (railDone || published);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
@@ -224,13 +236,27 @@ function RaisePage({ script = false }: { script?: boolean }) {
       if (studio.draft?.id === urlIdea) return;
       void studio.open(urlIdea).then((d) => {
         if (!d) { studio.setError(""); toStart(); setMissing(urlIdea); return; } // not this person's, or gone: never rewrite the history
-        setText(""); setAsk(null); setMenu(null); setEvalOn(false);
+        if (before !== undefined) setText(""); // arriving, the box is empty or holds a message a reload cut off
+        setAsk(null); setMenu(null); setEvalOn(false);
         setStage("chat"); setOpenId(urlIdea); setSlot(aliases[urlIdea] ?? urlIdea);
       });
     } else if (before === undefined) {
       if (openId && stage === "chat") nav({ idea: openId }, "replace");
     } else toStart();
   }, [ready, urlIdea]); // eslint-disable-line react-hooks/exhaustive-deps -- on a change of the URL's idea only
+
+  // A reload cut off a message before it was answered: it is back in the box, the idea itself on the start page.
+  useEffect(() => {
+    const r = studio.recovered;
+    if (!r) return;
+    studio.setRecovered(null);
+    if (r.first) {
+      const at = r.text.indexOf("\n\n");
+      setStartText(at < 0 ? r.text : r.text.slice(0, at));
+      setSegs(at < 0 ? EMPTY_BODY : splitSegs(r.text.slice(at + 2)));
+    } else setText(splitUpdate(r.text).said);
+    showToast(t("ideas.pageToastRecovered"));
+  }, [studio.recovered]); // eslint-disable-line react-hooks/exhaustive-deps -- when one comes back
 
   // A new idea got its id (NextUp's first reply): the URL names it from now on, without a new history entry.
   // The reply can come while the evaluation still plays on the start page, so it waits for the chat too.
@@ -258,8 +284,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // What the evaluation and the analysis say about who receives it: the routing, run here on the open idea.
   const ev = useMemo(() => {
     if (!idea.text && !startText.trim()) return null;
-    return evaluate({ kind: "idea", text: idea.text || startText, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases });
-  }, [idea.text, startText, affected, myFiles.length, who, seed, S.cases]);
+    return evaluate({ kind: "idea", text: idea.text || startText, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, reading ? proposalOf(reading) : null);
+  }, [idea.text, startText, affected, myFiles.length, who, seed, S.cases, reading]);
 
   const similar = useMemo(() => {
     if (!idea.text) return null;
@@ -474,12 +500,14 @@ function RaisePage({ script = false }: { script?: boolean }) {
     const unsure = draft && isUnsure(typed) ? (gaps.find((g) => g.ask === ask) ?? gaps.find((g) => g.status === "active")) : undefined;
     if (draft && unsure) { preview.markUnknown(draft.id, unsure.id); skip.push(unsure.id); }
     // This answer counts as the replay will count it (answeredOf), so the coach does not ask the same point straight back.
-    if (draft && scriptAt < 1) skip.push(...answeredOf(myTopics, [...rounds, { said: typed, parts }], skip, locale));
+    if (draft && scriptAt < 1 && !reading) skip.push(...answeredOf(myTopics, [...rounds, { said: typed, parts }], skip, locale));
     // Edits made in the Idea view travel with this message, so the coach and the score see them.
     const message = edit ? typed + IDEA_UPDATE + edit.text : typed;
     if (draft && edit) preview.edit(draft.id, null);
     if (lastAi && unclear.length) setAsked((a) => (a[lastAi] ? a : { ...a, [lastAi]: unclear.map((g) => g.id) }));
-    void studio.send(message, { affected, attachments: myFiles.length, skip: [...new Set(skip.map((k) => topicIn(k, locale)))].slice(0, MAX_TOPICS) }); // in the route's language; it takes at most 20
+    // In the route's language, at most 20; a reading's question is cut to the 300 characters the route takes (they say which).
+    void studio.send(message, { affected, attachments: myFiles.length, skip: [...new Set(skip.map((k) => topicIn(k, locale).slice(0, 300)))].slice(0, MAX_TOPICS) })
+      .then((r) => { if (r === "failed") setText((x) => x || typed); });
     track("coach_message_sent", { n: said + 1, unsure: Boolean(unsure) });
     setText(""); setAsk(null);
   };
@@ -539,7 +567,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   ) : null;
 
   // The conversation without the first message - that is the idea, shown in the Idea view.
-  const advice = adviceOf(story && scriptAt >= 1 ? scriptOverall(scriptAt - 1) : overall, threshold, team || t("ideas.pageYourTeam"), locale);
+  const advice = reading ? adviceFromReading(reading, locale) : adviceOf(story && scriptAt >= 1 ? scriptOverall(scriptAt - 1) : overall, threshold, team || t("ideas.pageYourTeam"), locale);
   // Under the latest reply: the five dials as bars and words (the numbers stay in the full analysis), and the
   // point still unclear. Under an earlier one: what it asked, ticked once that is clear.
   // What the latest answer moved: the conversation read up to it, against the one up to the answer before.
@@ -547,9 +575,15 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const scoreAt = (ts: typeof turns, aff: readonly string[], att: number) => benchmark({ text: ideaFromTurns(ts).text, affected: aff, attachments: att }, benchCtx, locale);
   const readAt = (n: number) => dialsOf(scoreAt(turns.slice(0, n), affected, myFiles.length).parts, locale);
   // In the demo script each answer moves a prepared one to three dials (SCRIPT_MOVES), so the card never says nothing changed.
-  const moved = lastSaid <= firstIdx ? {} : scriptAt >= 2 && SCRIPT_MOVES[scriptAt - 1] ? SCRIPT_MOVES[scriptAt - 1] : dialsMoved(readAt(lastSaid), readAt(lastSaid + 1));
+  // Against the reading before it, also when the rules answered in between: dials on the two scales do not compare.
+  const aiReads = turns.flatMap((x) => (x.role === "assistant" && x.reading ? [x.reading] : []));
+  const readBefore = aiReads.length >= 2 ? aiReads[aiReads.length - 2] : null, readNow = aiReads[aiReads.length - 1] ?? null;
+  const moved = lastSaid <= firstIdx ? {} : reading ? (readBefore && readNow ? dialsMoved(dialsFromReading(readBefore, locale), dialsFromReading(readNow, locale)) : {})
+    : scriptAt >= 2 && SCRIPT_MOVES[scriptAt - 1] ? SCRIPT_MOVES[scriptAt - 1] : dialsMoved(readAt(lastSaid), readAt(lastSaid + 1));
   const scripted0 = (d: Dial[], answers: number) => (story && scriptAt >= 1 ? scriptDials(answers, d) : d); // the demo script reads the five checks its own way
-  const read: Read = { dials: scripted0(dialsOf(parts, locale), scriptAt - 1), moved, open: published ? [] : unclear };
+  const byAi = !!reading || !!script; // the demo script reads as the AI does; a live page without a model says it does not
+  const liveDials = reading ? dialsFromReading(reading, locale) : scripted0(dialsOf(parts, locale), scriptAt - 1);
+  const read: Read = { dials: liveDials, moved, open: published ? [] : unclear, byAi, firstRead: !!reading && !readBefore };
   const ideaChanged = t("ideas.pageIdeaChanged");
   const msgs: ChatMsg[] = turns.flatMap((turn, i): ChatMsg[] => {
     if (i === firstIdx) return [];
@@ -559,7 +593,12 @@ function RaisePage({ script = false }: { script?: boolean }) {
       id: turn.id, role: "ai", text: stripTags(turn.text),
       note: i === firstIdx + 1 ? t("ideas.pageTitleAdded") : null,
       read: turn.id === lastAi ? read : undefined, // stays while the next reply is on its way, so the page does not jump
-      asked: turn.id === lastAi ? undefined : (asked[turn.id] ?? []).flatMap((id) => gaps.filter((g) => g.id === id)),
+      // The reading words its questions anew each turn, and the rules ask their own: a point no longer on the list
+      // may be answered or only worded differently, so it stays as it was asked, without a tick.
+      asked: turn.id === lastAi ? undefined : (asked[turn.id] ?? []).flatMap((id): PastTopic[] => {
+        const g = gaps.filter((x) => x.id === id);
+        return g.length || script ? g : [{ id, label: topicLabel(id, locale), ask: id, status: "open", settled: true }];
+      }),
       publish: isLast && !published && canFinalize,
     }];
   });
@@ -582,7 +621,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // "Ask this now" on the rail: the coach asks that step straight away, and the rail shows it as the one
   // being asked, until the answer is sent.
   const asking = !sending && !published && ask ? gaps.find((g) => g.ask === ask) ?? null : null;
-  if (asking) msgs.push({ id: "ask:" + asking.id, role: "ai", text: t(asking.status === "unknown" ? "ideas.pageBackTo" : "ideas.pageJumpTo", { topic: locale === DEFAULT_LOCALE ? asking.label.toLowerCase() : asking.label, ask: asking.ask }) });
+  if (asking) msgs.push({ id: "ask:" + asking.id, role: "ai", text: repeatsAsk(asking) ? asking.ask : t(asking.status === "unknown" ? "ideas.pageBackTo" : "ideas.pageJumpTo", { topic: locale === DEFAULT_LOCALE ? asking.label.toLowerCase() : asking.label, ask: asking.ask }) });
   const railGaps: Topic[] = asking ? gaps.map((g) => ({ ...g, status: g.id === asking.id ? "active" : g.status === "active" ? "open" : g.status })) : gaps;
 
   const card: DraftCard | null = stage === "chat" && draft ? {
@@ -658,28 +697,41 @@ function RaisePage({ script = false }: { script?: boolean }) {
     ] as const).filter(([, n]) => n > 0).map(([name, , where, ext]) => ({ name, where, ext })),
     ...(myFiles.length ? [{ name: t("ideas.pageSrcEvidence"), where: t("ideas.pageSrcFiles", { count: myFiles.length }), ext: "DATA" as const }] : []),
   ];
-  const sims: Similar[] = similar
+  const inCase = (id: string) => S.cases.some((c) => c.id === id);
+  const simsOf = (r: typeof reading): Similar[] => r ? (r.similar.length
+    ? r.similar.map((m) => ({ title: m.title, status: SIM_STATUS[m.status] ? t(SIM_STATUS[m.status]) : m.status || t("ideas.pageSimOpen"), where: t(m.same ? "ideas.pageSimSame" : "ideas.pageSimRelated"), href: inCase(m.id) ? href("/cases/" + m.id) : null }))
+    : [{ title: t("ideas.pageSimNone"), status: "–", where: t("ideas.pageSimChecked", { n: r.checked }), href: null }])
+    : similar
     ? [{ title: similar.title, status: t("ideas.pageSimOpen"), where: t("ideas.pageSimRaisedBy"), by: similar.from, href: href("/cases/" + similar.id) }]
     : [{ title: t("ideas.pageSimNone"), status: "–", where: t("ideas.pageSimSearched", { n: openCases }), href: null }];
+  const sims = simsOf(reading);
   const cats = [...new Set([ev?.route?.type, affected[0] ?? t("ideas.pageCatGeneral"), t("ideas.pageCatIdea")].filter((x): x is string => !!x))];
-  const pattern = affected.length > 1 ? t("ideas.pagePatternWide", { teams: affected.join(", ") }) : t("ideas.pagePatternAlone");
-  const company = companyRead({
+  const rulesPattern = affected.length > 1 ? t("ideas.pagePatternWide", { teams: affected.join(", ") }) : t("ideas.pagePatternAlone");
+  const pattern = reading?.pattern ?? rulesPattern;
+  // The keyword lookups under each dial: the reading's own notes replace them.
+  const noLookups = { value: [], feas: [], cost: [], fit: [], risk: [] };
+  const lookups = () => companyRead({
     text: idea.text, lead: ev?.lead ?? lead, myDept: who.line.split(",")[0].trim(), affected, people: seed.people, depts: seed.depts,
     routes: seed.routes, goals: seed.goals, problems: seed.problems, ideas: seed.ideas, initiatives: seed.initiatives, outcomes: seed.outcomes,
     cases: S.cases, promiseDays: seed.promiseDays, spendLimitEur: seed.spend?.limitEur ?? null,
   }, locale);
+  const company = reading ? noLookups : lookups();
   const summaryOf = (text: string) => ((x) => (x.length > 320 ? x.slice(0, 320).replace(/\s+\S*$/, "") + "…" : x))(text.replace(/\s+/g, " ").trim()) || t("ideas.pageNothingToSummarise");
-  const analysis: AnalysisData = { dials: scripted0(dialsOf(parts, locale), scriptAt - 1), company, summary: summaryOf(idea.text || ""), advice, pattern, cats, similar: sims, reviewers, sources };
+  const analysis: AnalysisData = { dials: liveDials, company, summary: reading?.summary ?? summaryOf(idea.text || ""), advice, pattern, cats, similar: sims, reviewers, sources, byAi };
   // NextUp's first reply stands under the full analysis: as the idea reads now while that reply is the latest,
   // after that as its first message was read - the scores it was answered with, not today's.
   const firstAi = turns[firstIdx + 1]?.role === "assistant" ? turns[firstIdx + 1].id : null;
-  const firstRead: AnalysisData = !firstAi || firstAi === lastAi ? analysis : (() => {
+  const firstReading = firstAi ? turns[firstIdx + 1].reading ?? null : null;
+  // Whichever answered that first reply says so, whatever answers now: the rules' words never stand over the model's, or the other way round.
+  const firstRead: AnalysisData = !firstAi || firstAi === lastAi ? analysis : firstReading
+    ? { ...analysis, dials: dialsFromReading(firstReading, locale), advice: adviceFromReading(firstReading, locale), summary: firstReading.summary, pattern: firstReading.pattern, company: noLookups, similar: simsOf(firstReading), byAi: true }
+    : (() => {
     const b = scoreAt(turns.slice(0, firstIdx + 1), affected, myFiles.length);
-    return { ...analysis, dials: scripted0(dialsOf(b.parts, locale), 0), advice: adviceOf(story ? scriptOverall(0) : b.overall, threshold, team || t("ideas.pageYourTeam"), locale), summary: summaryOf(ideaFromTurns(turns.slice(0, firstIdx + 1)).text) };
+    return { ...analysis, dials: scripted0(dialsOf(b.parts, locale), 0), advice: adviceOf(story ? scriptOverall(0) : b.overall, threshold, team || t("ideas.pageYourTeam"), locale), summary: summaryOf(ideaFromTurns(turns.slice(0, firstIdx + 1)).text), pattern: rulesPattern, company: reading ? lookups() : company, similar: simsOf(null), byAi: !!script };
   })();
   // The first feedback marks the checks that came out better than the idea as written (before its affected people and
   // files counted): at most three. The demo script shows none: its first look is the low one.
-  const improved: DialKey[] = !firstAi || story ? [] : (() => {
+  const improved: DialKey[] = !firstAi || story || (firstAi === lastAi ? reading : firstReading) ? [] : (() => {
     const asWritten = dialsOf(scoreAt(turns.slice(0, firstIdx + 1), [], 0).parts, locale);
     return firstRead.dials.filter((d) => d.scored).map((d) => ({ key: d.key, gain: d.value - (asWritten.find((b) => b.key === d.key)?.value ?? d.value) }))
       .filter((x) => x.gain > 0).sort((a, b) => b.gain - a.gain).slice(0, 3).map((x) => x.key);
@@ -691,11 +743,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const finalDoc = ideaDoc({
     title: mine?.title.trim() || draft?.title || idea.title, author: who.name, team: team || "", receiver: lead,
     date: formatDate(locale, now, "full"),
-    advice, overall: parts.some((p) => p.value > 0) ? Math.round(overall) : null,
+    advice, overall: reading || parts.some((p) => p.value > 0) ? Math.round(overall) : null,
     description: mine ? mine.description : shown.description,
     context: mine ? [mine.context.trim(), ...mine.prompts.filter((x) => x.label.trim() && x.text.trim()).map((x) => x.label.trim() + ": " + x.text.trim())].filter(Boolean).join("\n") : shown.context, dials,
     company, pattern,
-    openTopics: gaps.filter((g) => g.status !== "clear").map((g) => g.label + (g.ask ? ": " + g.ask : "")),
+    openTopics: gaps.filter((g) => g.status !== "clear").map((g) => (repeatsAsk(g) ? g.ask : g.label + (g.ask ? ": " + g.ask : ""))),
     similar: sims.filter((m) => m.href).map((m) => ({ title: m.title, status: m.status, by: m.by ?? "" })),
     sources: sources.map((x) => ({ name: x.name, where: x.where })), turns,
   }, locale);
@@ -728,11 +780,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
     <IdeaSheet key={draft?.id ?? "none"} initial={ideaLook} card={cardProps} locked={published} onChange={editLook}
       onTitle={(t) => { if (t.trim() && t.trim() !== draft?.title) void studio.save({ title: t.trim() }); }} onClose={() => go("chat")} />
   ) : shownView === "export" && draft ? (
-    <RaiseExport idea={exportIdea} analysis={exportAnalysis} onBack={() => go("preview")} onClose={() => go("chat")} />
+    <RaiseExport idea={exportIdea} analysis={exportAnalysis} byAi={byAi} onBack={() => go("preview")} onClose={() => go("chat")} />
   ) : shownView === "analysis" ? (
     <AnalysisSheet ready={turns.length > 0} onClose={() => go("chat")} {...analysis} />
   ) : (
-    <RaiseChat msgs={thread} typing={!!sending && !sending.reply} error={studio.error}
+    <RaiseChat msgs={thread} typing={!!sending && !sending.reply} slowNote={script ? null : t(sending?.step === "coaching" ? "ideas.chatSlowCoach" : "ideas.chatSlow")} error={studio.error}
       thinking={evaluating && studio.evalRun && firstText ? { run: studio.evalRun, sub: t("ideas.pageWordsFrom", { n: (firstText.match(/\S+/g) || []).length, who: who.handle ?? who.name, line: who.line }) } : null}
       gaps={railGaps} onAsk={(g) => { setAsk(g.ask); setTimeout(() => chatField.current?.focus(), 0); }}
       onAnalysis={() => go("analysis")} onPublish={openLook}

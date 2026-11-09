@@ -101,7 +101,8 @@ case "$action" in
   test)
     installed
     command -v python3 >/dev/null || die "test needs python3"
-    # The same Acme snapshot and brief shape as the evals (services/brain/eval). The key goes in
+    # The same Acme snapshot as the evals (services/brain/eval), and a studio turn as the app makes it:
+    # the reading, then the coach working from it. The key goes in
     # through the environment, never the command line.
     BRAIN_TEST_URL="$(base)" BRAIN_TEST_KEY="$(get BRAIN_API_KEY)" BRAIN_TEST_EVAL="$repo/services/brain/eval/acme.json" python3 - <<'PY'
 import json, os, time, urllib.error, urllib.request
@@ -125,14 +126,20 @@ row = next((r["type"] for r in ctx["routes"] if r["id"] == out["route_id"]), "no
 print(f"routing  {s:5.1f} s   {out['route_id']} ({row})   same as: {out['same_as']}   model: {out['model']}")
 print(f"  reason: {out['reason']}")
 
-brief = ("The idea scores 38/100; it can be published at 70. The scores are computed, not yours to change - never state a different number.\n"
-         "- Feasibility: 20/100 (missing: Who would decide)\n"
-         'Ask exactly one short, challenging question that would raise "Feasibility". Do not answer it yourself.')
 idea = {"title": "New colleagues wait weeks for their logins", "body": ""}
+read, s = ask("/v1/read", {"company": ctx["company"], "idea": idea, "goals": ctx["goals"], "routes": ctx["routes"],
+                           "known": ctx["known"], "spend_limit_eur": ctx["spend_limit_eur"]})
+print(f"reading  {s:5.1f} s   overall: {read['overall']}   advice: {read['advice']}   same as: {read['same_as']}")
+print(f"  summary: {read['summary']}")
+for q in read["open"]:
+    print(f"  open: {q}")
+
+reading = {"summary": read["summary"][:800], "open": read["open"], "same_as": read["same_as"],
+           "dials": [{"key": d["key"], "score": d["score"], "note": d["note"][:500]} for d in read["dials"]]}
 out, s = ask("/v1/coach", {"company": ctx["company"], "idea": idea, "history": [{"role": "user", "text": idea["title"]}],
-                           "brief": brief, "known": ctx["known"]})
+                           "reading": reading, "goals": ctx["goals"], "routes": ctx["routes"], "known": ctx["known"]})
 print(f"coach    {s:5.1f} s   point: {out['open_point']}   earlier: {out['earlier_id']}")
-for label, field in (("note", "note"), ("asks", "question"), ("why", "why"), ("suggests", "recommended")):
+for label, field in (("answer", "answer"), ("note", "note"), ("asks", "question"), ("why", "why"), ("suggests", "recommended")):
     print(f"  {label}: {out[field]}")
 PY
     ;;

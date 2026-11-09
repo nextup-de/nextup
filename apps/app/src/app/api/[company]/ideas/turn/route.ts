@@ -1,22 +1,31 @@
 // POST /api/[company]/ideas/turn - one message in the idea studio (docs/IDEAS.md).
 //
-// The message is added to the idea, the idea is benchmarked on the server (features/ideas), and
-// the coach answers with one question aimed at the weakest bar. The numbers are always computed
-// here, never by a model. Same rules as the assistant route next door: the company comes from the
-// URL and must match the viewer; nothing from the body names a company or a person.
+// The message is added to the idea, the model reads the idea (the five dials, what it found, what is
+// still open) and the coach answers from that reading. With no model, or when it fails, the keyword
+// benchmark and the offline coach answer instead, and the page says so. Same rules as the assistant
+// route next door: the company comes from the URL and must match the viewer; nothing from the body
+// names a company or a person.
 //
 //   server mode   a session and a database: `draftId` names the viewer's own draft; both turns
 //                 and the score are stored. The model (Bedrock) coaches when the assistant gate
 //                 allows it; otherwise the offline coach does.
 //   local demo    no database: the browser keeps the draft and sends its turns along; nothing
 //                 is stored here and only the offline coach answers.
-//   the brain     where the stack runs it (BRAIN_URL), it coaches - the grilling, one question
-//                 per turn - while the idea is below the publish line, in either mode, unless the
-//                 company switched the assistant off. The data-processing gate (purpose coach) applies like everywhere else.
-//                 No answer in time, or any error, and the coach above answers instead.
+//   the brain     where the stack runs it (BRAIN_URL), it reads the idea and coaches on every message,
+//                 in either mode, unless the company switched the assistant off. The data-processing
+//                 gate (purpose coach) applies like everywhere else. No answer in time, or any
+//                 error, and the coach above answers instead. BRAIN_TIMEOUT_MS is per call, so a
+//                 turn with the brain can take twice that before the coach above takes over.
 //
-// Events:  scores {overall, parts, sameAs, threshold, delta,    the benchmark after this message
-//                  replies}                                     and suggested answers (features/ideas/replies)
+// Whatever fails, and when the author has left, the message and a reply are stored; `error` only says
+// the turn could not be stored.
+//
+// The comparison with earlier cases only uses the ones the viewer may open, and the model writes in
+// the language of the page.
+//
+// Events:  status {step}                                        the brain is working: "reading", then "coaching"
+//          scores {overall, parts, sameAs, threshold, delta,    the reading (null: none) and the benchmark
+//                  replies, reading}                            after this message, and suggested answers
 //          replies {replies}                                    the suggested answers again, with the
 //                                                               brain's own guess first (brain only)
 //          stage  {by: brain | model | offline}                 which coach is answering now - the wait the
@@ -28,6 +37,7 @@ import { z } from "zod";
 import { findTenant } from "@/features/tenant";
 import { seedFor } from "@/features/demo";
 import { getViewerFor } from "@/features/auth/session";
+import { getLocale } from "@/i18n/server";
 import { assist } from "@/features/assist";
 import { aiGate } from "@/features/ai/gate";
 import { aiSettings } from "@/features/ai/settings";
@@ -38,6 +48,7 @@ import { coachText, withCoachSuggestion } from "@/features/ideas/brain-coach";
 import { coachBrief, coachMock, ideaFromTurns, IDEA_PROMPT_VERSION } from "@/features/ideas/coach";
 import { withoutSkipped } from "@/features/ideas/raise";
 import { MAX_TURN, MAX_TURNS, scoreDraft } from "@/features/ideas/drafts";
+import { newestReading, overallDelta, readingBrief, readingReply, type Reading } from "@/features/ideas/reading";
 import { suggestReplies } from "@/features/ideas/replies";
 import { hasDatabase } from "@/lib/db/client";
 import { loadAssistSettings } from "@/lib/db/assist";
@@ -50,7 +61,7 @@ import { clientKey, throttle } from "@/server/throttle";
 import { streamingFor } from "@/server/ai";
 import { DEFAULT_CEILING } from "@/features/assist/classify";
 import { policyFor } from "@/features/admin/stages";
-import { askBrainCoach, brainConfigured } from "@/server/brain";
+import { askBrainCoach, askBrainRead, brainConfigured } from "@/server/brain";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +99,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const body = parsed.data;
 
   // The idea as it stands before this message, from the database in server mode.
-  let before: Turn[], affected: string[], attachments: number, threshold: number;
+  let before: Turn[], affected: string[], attachments: number, threshold: number, previous: Reading | null = null;
   if (viewer) {
     if (!body.draftId) return json({ error: "No draft." }, 400);
     const d = await getDraft(viewer.companyId, viewer.userId, body.draftId);
@@ -98,6 +109,7 @@ export async function POST(request: Request, { params }: Ctx) {
     affected = d.affected;
     attachments = d.attachments;
     threshold = await loadPublishThreshold(viewer.companyId);
+    previous = newestReading(d.turns);
   } else {
     before = body.history;
     affected = body.affected;
@@ -105,14 +117,15 @@ export async function POST(request: Request, { params }: Ctx) {
     threshold = DEFAULT_PUBLISH_THRESHOLD;
   }
 
-  const ctx = await serverIdeaContext(tenant.slug);
+  const locale = await getLocale();
+  const ctx = await serverIdeaContext(tenant.slug, viewer);
   const after: Turn[] = [...before, { role: "user", text: body.text }];
-  const prev = before.some((t) => t.role === "user") ? scoreDraft({ turns: before, affected, attachments }, ctx) : null;
-  const now = scoreDraft({ turns: after, affected, attachments }, ctx);
+  const prev = before.some((t) => t.role === "user") ? scoreDraft({ turns: before, affected, attachments }, ctx, locale) : null;
+  const now = scoreDraft({ turns: after, affected, attachments }, ctx, locale);
   // The coach asks from the benchmark without the skipped questions; the scores sent are the full ones.
   const askNow = withoutSkipped(now, body.skip);
   const brief = coachBrief(askNow, threshold);
-  const replies = suggestReplies({ text: ideaFromTurns(after).text, affected, attachments }, now, ctx);
+  const replies = suggestReplies({ text: ideaFromTurns(after).text, affected, attachments }, now, ctx, locale);
 
   // A model only where the assistant is allowed to answer for this company, with its audit trail.
   const settings = viewer ? await loadAssistSettings(viewer.companyId) : null;
@@ -120,73 +133,93 @@ export async function POST(request: Request, { params }: Ctx) {
   const ai = viewer ? await loadAiSettings(viewer.companyId, stage) : { settings: aiSettings(null, process.env, stage), key: null };
   const gate = aiGate({ stage, hasDatabase: viewer !== null, settings: ai.settings, dpaSignedAt: settings?.dpaSignedAt ?? null, purpose: "coach", assistantOn: settings?.enabled ?? false, aiRouting: false });
   const useModel = viewer !== null && settings !== null && settings.enabled && gate.on && gate.settings.choice !== "mock" && gate.settings.choice !== "off";
-  // The brain grills while there is something to find; at the line the offline coach's "ready"
-  // is always right. The company's switch in /admin/knowledge still turns it off.
-  // Real people (a real stage) need a database and the switch on, like the assistant's gate.
-  const useBrain = gate.on && brainConfigured() && now.overall < threshold &&
+  // The company's switch in /admin/knowledge turns the brain off. Real people (a real stage) need a
+  // database and the switch on, like the assistant's gate.
+  const useBrain = gate.on && brainConfigured() &&
     (policyFor(tenant.stage ?? "demo").demoData || (viewer !== null && (settings?.enabled ?? false)));
 
   const encoder = new TextEncoder();
+  const left = new AbortController(); // the author is gone: no more model calls and nothing more to send
+  const signal = AbortSignal.any([request.signal, left.signal]);
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (event: string, data: unknown) => controller.enqueue(encoder.encode(sse(event, data)));
+      const send = (event: string, data: unknown) => { if (!signal.aborted) controller.enqueue(encoder.encode(sse(event, data))); };
       try {
-        send("scores", { overall: now.overall, parts: now.parts, sameAs: now.sameAs, threshold, delta: prev ? deltas(prev, now) : null, replies });
+        const policy = { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING };
+        const idea = ideaFromTurns(after);
+        // Nothing else reaches the page until the model has read the idea: tens of seconds on a CPU server.
+        if (useBrain) send("status", { step: "reading" });
+        const reading = useBrain
+          ? await askBrainRead(gate, tenant.slug, { idea, affected: affected.length, attachments, skip: body.skip, previous, audience: viewer, locale }, policy, signal, { key: ai.key })
+          : null;
+        const overall = reading?.overall ?? now.overall;
+        const benchDelta = deltas(prev, now);
+        const delta = prev ? { ...benchDelta, overall: overallDelta(benchDelta.overall, reading, previous) } : null;
+        send("scores", { overall, parts: now.parts, sameAs: now.sameAs, threshold, delta, replies, reading });
 
         // prev as it was: after a "not sure" the coach asks the next question fresh, not "I still need this".
-        let reply = coachMock(prev, askNow, threshold, body.text, 0); // the raise page shows no suggested answers, so the coach does not point to them
+        let reply = reading ? readingReply(reading) : coachMock(prev, askNow, threshold, body.text, 0); // the raise page shows no suggested answers, so the coach does not point to them
         let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
-        send("stage", { by: useBrain ? "brain" : useModel ? "model" : "offline" });
-        const coached = useBrain
-          ? await askBrainCoach(gate, tenant.slug, { idea: ideaFromTurns(after), turns: after, brief },
-            { patterns: settings?.patterns ?? [], ceiling: settings?.ceiling ?? DEFAULT_CEILING }, request.signal, { key: ai.key })
+        const ask = reading !== null && !signal.aborted;
+        if (ask) send("status", { step: "coaching" });
+        send("stage", { by: ask ? "brain" : useModel ? "model" : "offline" });
+        const coached = ask
+          ? await askBrainCoach(gate, tenant.slug, { idea, turns: after, reading, audience: viewer, locale }, policy, signal, { key: ai.key })
           : null;
-        if (coached) {
-          reply = coachText(coached);
+        const coachedText = coached ? coachText(coached) : "";
+        if (coached && coachedText) {
+          reply = coachedText;
           model = coached.model;
           promptVersion = coached.version;
-          const idea = { text: ideaFromTurns(after).text, affected, attachments };
-          const offered = withCoachSuggestion(coached, idea, now, ctx, replies);
+          const offered = withCoachSuggestion(coached, { text: idea.text, affected, attachments }, now, ctx, replies);
           if (offered[0] !== replies[0]) send("replies", { replies: offered });
-        } else if (useModel) {
-          if (useBrain) send("stage", { by: "model" }); // the brain had no answer in time: the model takes over
-          const seed = await seedFor(tenant.slug);
-          let knowledge: Knowledge = await loadKnowledge(viewer.companyId);
-          if (!hasKnowledge(knowledge)) {
-            let n = 0;
-            knowledge = rowsFromSeed(seed, seed.goals, () => "k" + ++n);
+        } else if (useModel && !signal.aborted) {
+          if (ask) send("stage", { by: "model" }); // the brain had no answer in time: the model takes over
+          try {
+            const seed = await seedFor(tenant.slug);
+            let knowledge: Knowledge = await loadKnowledge(viewer.companyId);
+            if (!hasKnowledge(knowledge)) {
+              let n = 0;
+              knowledge = rowsFromSeed(seed, seed.goals, () => "k" + ++n);
+            }
+            const profile = await loadProfile(viewer.companyId);
+            const people = [...seed.people.map((p) => ({ name: p.name, role: p.role })), ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" }))];
+            const out = await assist({
+              question: body.text,
+              history: before,
+              ctx: { knowledge, profile, ceiling: settings.ceiling, searchDocuments: searchDocumentsFor(viewer, settings.ceiling) },
+              prompt: { companyName: tenant.name, brief: companyBrief(knowledge, profile), rules: settings.rules, coach: reading ? readingBrief(reading, threshold) : brief },
+              redaction: { people, patterns: settings.patterns },
+              provider: streamingFor(ai.settings, ai.key),
+              onChecked: (c) => send("text", { text: c.text }),
+              signal,
+            });
+            // Blocked (above the classification ceiling): the offline coach still answers - it sends nothing anywhere.
+            if (!out.blocked) { reply = out.answer.text; model = out.model; }
+          } catch (err) {
+            // The offline reply above stands; the text event below replaces whatever had streamed.
+            console.error("[ideas]", tenant.slug, "model failed", err instanceof Error ? err.name : "failed");
           }
-          const profile = await loadProfile(viewer.companyId);
-          const people = [...seed.people.map((p) => ({ name: p.name, role: p.role })), ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" }))];
-          const out = await assist({
-            question: body.text,
-            history: before,
-            ctx: { knowledge, profile, ceiling: settings.ceiling, searchDocuments: searchDocumentsFor(viewer, settings.ceiling) },
-            prompt: { companyName: tenant.name, brief: companyBrief(knowledge, profile), rules: settings.rules, coach: brief },
-            redaction: { people, patterns: settings.patterns },
-            provider: streamingFor(ai.settings, ai.key),
-            onChecked: (c) => send("text", { text: c.text }),
-            signal: request.signal,
-          });
-          // Blocked (above the classification ceiling): the offline coach still answers - it sends nothing anywhere.
-          if (!out.blocked) { reply = out.answer.text; model = out.model; }
         }
         send("text", { text: reply });
 
         if (viewer && body.draftId) {
-          await addTurns(viewer.companyId, viewer.userId, body.draftId, [
+          const saved = await addTurns(viewer.companyId, viewer.userId, body.draftId, [
             { role: "user", text: body.text },
-            { role: "assistant", text: stripTags(reply), overall: now.overall, model, promptVersion },
-          ], { title: ideaFromTurns(after).title, overall: now.overall, scores: now.parts });
+            { role: "assistant", text: stripTags(reply), overall, model, promptVersion, reading },
+          ], { title: idea.title, overall, scores: now.parts });
+          // Closed while the model worked (discarded or published in another tab).
+          if (!saved) { send("error", { message: "This draft is no longer open." }); return; }
         }
-        send("done", { text: reply, overall: now.overall });
+        send("done", { text: reply, overall });
       } catch (err) {
         console.error("[ideas]", tenant.slug, err instanceof Error ? err.message : err);
         send("error", { message: "The coach could not answer just now. Your idea is still here." });
       } finally {
-        controller.close();
+        if (!left.signal.aborted) controller.close();
       }
     },
+    cancel() { left.abort(); },
   });
 
   return new Response(stream, {

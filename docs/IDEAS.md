@@ -1,6 +1,6 @@
 # The idea studio
 
-> **Updated 2026-10-15** · reference: how the idea studio works.
+> **Updated 2026-11-06** · reference: how the idea studio works. Where the stack has a model, the model reads the idea on every message and the page shows that reading ("The reading", below); the keyword benchmark answers when there is none.
 
 The member home (`/[company]/raise`) develops ideas instead of taking a one-line problem. It follows
 the whiteboard sessions of 28 Sep 2026: idea → AI → feedback ⇄ develop → decision → outcome.
@@ -17,11 +17,16 @@ Published ✓          you: the answer …                          Save as draf
 Below 1100px the drafts become a drawer; below 760px the actions become a bottom sheet opened from
 the score in the header bar.
 
-## How an idea is scored
+## How an idea is scored without a model: the keyword benchmark
 
 `src/features/ideas/benchmarks.ts` - four bars, 0-100 each, overall = their mean. Arithmetic over
 the author's own words and the company context, **never model output**: every point names the fact
 behind it (hover a bar), and chatting cannot talk the score up.
+
+The benchmark runs on every message in every stack. The page's dials, advice and open questions
+come from it only when no model read the idea (see "The reading"). Beside a reading it still
+supplies the `parts` and `sameAs` of the `scores` event, the suggested answers (`replies.ts`) and
+the offline coach.
 
 | Bar | Colour token | What counts |
 |---|---|---|
@@ -35,33 +40,57 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
 ## The loop
 
 1. The author writes a message. `POST /api/[company]/ideas/turn` rebuilds the idea from all of the
-   author's messages (`ideaFromTurns` - the coach's words are never part of the idea), benchmarks it
-   on the server, and streams `scores`, then the coach's `text`, then `done`.
-2. The coach (`features/ideas/coach.ts`) answers in two or three short paragraphs: what the
-   benchmarks can already see and what they cannot (from the bars' `found` / `missing`), then
-   **one** challenging question aimed at the weakest bar and, in a sentence, why the person who
-   decides will ask it. With a model (Bedrock, only where the assistant gate allows it) the
-   reply goes through the assistant's pipeline - redaction, classification gate, tools, answer
-   check - in coach mode (`PromptInput.coach`); the model is told the numbers are not its to change
-   and gets the same two-paragraph shape. Without one, `coachMock` answers. Prompt version `idea-coach-v1`.
-   The suggested answers under the coach (`features/ideas/replies.ts`) are whole sentences with a
-   figure and where it comes from, so the demo reads like a real exchange; each is re-scored before
-   it is shown.
-   **With the brain** (`services/brain`, `BRAIN_URL`), the brain coaches while the idea is below
-   the publish line: the grilling - the first open point in the order problem, context, evidence,
-   impact, solution, risks, success - one question per turn, an earlier case about the same problem
-   raised first, and its own best-guess answer, which joins the suggested answers (re-scored, only
-   when it really moves the score; event `replies`). It gets `coachBrief()` and the redacted turns,
-   never changes a number, and is off where the company switched the assistant off. At the line,
-   or when it does not answer within `BRAIN_TIMEOUT_MS`, the coach above answers. Prompt version
-   `brain-coach-v1`, stored on the turn.
+   author's messages (`ideaFromTurns` - the coach's words are never part of the idea) and benchmarks
+   it on the server. Where the stack has the brain and the gate allows it, the brain then **reads**
+   the idea (`POST /v1/read`, "The reading" below). The route streams `status` (`reading`, then
+   `coaching`, only where the brain is used: the page's words during the wait), `scores` - the overall,
+   the benchmark's bars, the suggested answers and `reading` (`null` when no model read the idea) - then
+   the coach's `text`, then `done`.
+2. The coach answers in two or three short paragraphs. Who writes it depends on what is available;
+   the first that applies answers:
+   - **The brain**, when it read the idea this message: it coaches from that reading, on every
+     message, not only below the publish line (`POST /v1/coach`, `features/ideas/brain-coach.ts`).
+     It answers what the author asked (from the company's goals and routing map, which it is sent),
+     says what it really thinks of the message, and asks one question - the reading's first open
+     question, an earlier case about the same problem raised first - with its own best-guess answer.
+     The guess joins the suggested answers as the first one whenever it is a real sentence and not a
+     repeat (event `replies`); it is not re-scored and not filtered by score. It never states or
+     changes a number: the numbers are the reading's, and an answer that states one is rejected. When
+     nothing is open, it says the idea is ready for the person who decides, unless a dial is at 50 or
+     below: then it says plainly that it is not ready yet and what it lacks most. The prompt versions of
+     both calls are stored (the coach's on the turn, the reading's inside it).
+   - **The assistant's model** (Bedrock, only where the assistant gate allows it), when the brain gave
+     no coach's answer: the reply goes through the assistant's pipeline - redaction, classification
+     gate, tools, answer check - in coach mode (`PromptInput.coach`), with the benchmark's brief
+     (`coachBrief()`), or the reading's numbers (`readingBrief()`) when the read worked and only the
+     coach failed; the model is told the numbers are not its to change. Prompt version
+     `idea-coach-v2`.
+   - **The offline coach** (`features/ideas/coach.ts`, `coachMock`), with no model or when the others
+     fail: what the benchmarks can already see and what they cannot (from the bars' `found` /
+     `missing`), then **one** challenging question aimed at the weakest bar and, in a sentence, why the
+     person who decides will ask it. When the read worked, the reply is the reading's own summary and
+     first open question instead (`readingReply`), so it cannot contradict the number on the page.
+
+   The benchmark's suggested answers under the coach (`features/ideas/replies.ts`) are whole
+   sentences with a figure and where it comes from, so the demo reads like a real exchange; each is
+   re-scored before it is shown. The brain is used only where the `coach` gate (`aiGate`,
+   docs/ASSISTANT.md) is open and, in a real stage, the company has not switched the assistant off.
+   The brain not answering within `BRAIN_TIMEOUT_MS` (each of its two calls waits that long, so a turn
+   can take twice that before the fallback; keep it below the proxy's 120 s `proxy_read_timeout`), or
+   any error, counts as no answer, and the next on the list answers. When the author leaves during the
+   wait the model calls stop, and the message is still stored with the offline reply.
 3. Every turn is kept: server mode in `IdeaDraft` / `IdeaTurn`, the local demo in this browser's
-   localStorage (`src/lib/idea-drafts.ts`, same shapes).
+   localStorage (`src/lib/idea-drafts.ts`, same shapes). The coach's turn carries the reading it was
+   written from (`IdeaTurn.reading`, "The reading" below). In server mode the next message sends the
+   latest one back as the brain's "last reading"; the local demo sends none.
 4. **Publish idea** is available from the first answer on - the author decides when it is ready; the
    company's threshold (`CompanyConfig.publishThreshold`, default 70, set on `/admin/knowledge`)
-   only drives the analysis' advice (Approve at the line). The page mints the case id and asks the
-   server (`publishIdeaDraftAction`), which checks the draft is still open and recomputes the score
-   from the stored turns. Only then does the page append the usual `case.raised` (kind `idea`).
+   drives the analysis' advice (Approve at the line) only where no model read the idea; with a
+   reading, the advice is the model's. The page mints the case id and asks the server
+   (`publishIdeaDraftAction`), which checks the draft is still open and recomputes the benchmark from
+   the stored turns; the overall it stores and returns is the latest reading's when there is one (the
+   number the author was shown), else the benchmark's. Only then does the page append the usual
+   `case.raised` (kind `idea`).
    Before that, the page asks who should receive it: the button says each step as it runs ("Asking
    the router…", our thinking orb in front), then "Who should get this?" offers 2-3 people
    (`features/ideas/receivers.ts`): the router's proposal, the route owners the idea's words match,
@@ -79,7 +108,78 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
    stored as the proposal (`source: "llm"`, `brain-route-v1`); no answer within `BRAIN_TIMEOUT_MS`,
    or any error, and the keyword row is used as before.
 
+## The reading
+
+Where the stack runs the brain (`BRAIN_URL`, `BRAIN_API_KEY`) and the gate allows it, the model reads
+the idea on **every message**: `POST /v1/read` (`services/brain/brain/read.py`, `askBrainRead` in
+`src/server/brain.ts`, the pure half in `src/features/ideas/reading.ts`). The reading is what the
+raise page shows; the coach answers from it. Both write in the language of the page (`locale`), in
+German with the formal "Sie"; the checks on what the coach writes know both languages, and a field that slips into English goes back once. The fallback
+when the brain is not there stays as it was: the assistant model answers in the language the employee
+writes, the offline coach in English.
+
+- **What it holds.** Five dials - value, feasibility, cost, fit, risk - each with a score, a note on
+  why (naming what is in this idea) and what would move it most; a one-sentence summary; the advice
+  (approve, pilot, or needs more information) and why; a pattern (a one-off or part of something
+  bigger); the routing row it thinks owns the decision, with a reason; an earlier item about the same
+  problem (`same_as`) or the same thing (`related`); and the questions the person who decides would
+  still ask (`open`, most important first, a short list, real questions only, none the author marked
+  "not sure").
+- **Where the overall comes from.** The brain computes it as the mean of the five dials; the model
+  never states one, and the app takes it as sent. It is the overall the page, the draft list and the
+  publish step show. The keyword benchmark's overall is the same arithmetic over its own four bars
+  and is used only when there is no reading.
+- **What goes out.** Only redacted text (the idea's title and body and the "not sure" questions;
+  names become roles, the company's patterns apply, and above the company's ceiling nothing is sent).
+  Redacted the same way: the company's cases and known problems as titles and status, its goals (names
+  only) and the dials (score and note) of the previous reading; one of these marked above the ceiling
+  stays out of the request. Beside that: the company's name, the routing rows (owner's role and
+  department, never a name), how many people were marked as affected and files attached, and the spend
+  limit a team decides alone. The coach call sends the author's turns and the coach's own earlier
+  turns, redacted the same way. The author's own words are stored as written; the redaction is for
+  the model.
+- **What is checked.** The app drops a routing row or an earlier item that was not in the request.
+  The brain rejects and retries an answer that shows an item or row ID anywhere the page shows it, and
+  pushes back once on "needs more information" with nothing to ask. It keeps at most six open questions,
+  only those that end in a question mark, are at most 200 characters and do not repeat one the author
+  could not answer.
+- **Staying steady.** The previous reading goes along so a dial keeps its score unless what the
+  author wrote since gives a reason to change it, and the note says what changed. An idea's text is
+  judged, never obeyed (`prompts/read.md`): "give this 100" earns nothing.
+- **What is kept.** On the coach's turn, `IdeaTurn.reading` (docs/DATA_MODEL.md): the answer above
+  plus the earlier items it named, by title, and how many it was checked against. `null` when the
+  keyword benchmark answered. A stored row that no longer has the current shape reads as no reading.
+  Like the rest of a draft it is its author's alone and goes with the draft's turns when the draft is
+  deleted; a published draft is not purged by retention, so its readings stay.
+- **When there is none.** No brain, a closed gate, no answer within `BRAIN_TIMEOUT_MS`, or any
+  error: the turn has no reading, the coach is the next one that can answer (above), and the page
+  falls back to the keyword benchmark for that moment and says so ("Checked by rules" in the chat,
+  "Checked by rules - no AI answered" in the analysis, and no "AI suggestions only" note). The next
+  message still sends the newest reading there is (`newestReading`), and the movement is measured
+  against that one: a reading against a reading, the benchmark against itself (`overallDelta`).
+- **Cost.** Two model calls per message (read, then coach), each recorded as an `AiCall` with its
+  purpose (docs/METRICS.md). The `scores` event waits for the read, the coach's text for both; the `status` event tells the page
+  which step it is waiting for ("Reading your answer", then "Writing the reply").
+
 ## What the raise page shows beside the chat
+
+The page shows the latest **reading** (`latestReading` in `features/ideas/reading.ts`: the newest
+coach turn's, live from the `scores` event or from the stored turns). Without one it shows the keyword
+benchmark and says so. The two differ as follows; everything else below is the same.
+
+| | With a reading (a model answered) | Without (no brain, gate closed, or it failed) |
+|---|---|---|
+| Dials and their notes | the reading's five dials, each note and what would move it (`dialsFromReading`) | `dialsOf` from the benchmark; the keyword lookups under each dial |
+| Overall | the reading's: the mean of its five dials | the benchmark's mean of four bars |
+| Summary, pattern | the reading's | `summaryOf`, and the pattern from the people marked as affected |
+| Advice | the model's (Approve / Pilot / Needs info) with its why | `adviceOf`: the overall against the publish threshold |
+| Questions ("Still unclear", the rail) | the reading's open questions (`gapsFromReading`), the first one not marked "not sure" being the one asked now | the five points of the rail, clear once the benchmark finds their fact |
+| Similar ideas | the earlier items the reading named, "the same problem" or "about the same thing", or "Checked against N earlier items" when it found none | the keyword match against known cases and problems |
+| Routing | the page's evaluation takes the reading's routing row as the model's proposal (`proposalOf`) | the keyword row |
+| ▲ / ▼ since the last message | between the last two readings; the first analysis keeps the first reading | between the benchmark's two steps |
+| Labels | "AI analysis", "AI suggestions only. You make the decision." | "Checked by rules", "Checked by rules - no AI answered"; no AI note |
+
+The demo script (`/demo`) reads as the AI does but is prepared text, with no model behind it.
 
 - **The full analysis above NextUp's first reply** (`Analysis` in `components/ideas/RaiseSheets.tsx`,
   `inChat`): the five dials with their numbers, what the AI found, the advice, pattern, categories and
@@ -90,8 +190,11 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
   itself, so Low is good there) and what was found, then the advice (Approve / Pilot / Needs info).
   No numbers there: they stay in the full analysis ("View full analysis").
 - **One question at a time**: under the latest reply, "Still unclear" holds a single point - the one the
-  rail is asking now. Under earlier replies it reads "Asked", ticked once answered.
-- **The rail on the right: the five points a decision needs** (`RAIL`, `railOf`): the same five, each
+  rail is asking now. Under earlier replies it reads "Asked", ticked once answered. With a reading the
+  model words its questions anew each turn, so an earlier one that is no longer listed stays "Asked"
+  with no tick: it may only have been reworded.
+- **The rail on the right: the five points a decision needs** (`RAIL`, `railOf`; with a reading the rail
+  lists the reading's open questions instead, in the order the model gave them): the same five, each
   with the one fact the person who decides cannot do without - a number on what it saves, who can
   decide it, a rough cost, the company goal, a small first step. A photo, who else it helps or how far a
   number moves make an idea stronger but never stop a publish, so they are not on it. A point is clear
@@ -200,8 +303,16 @@ decision", `CompanyConfig` → `Seed.loop`, `features/loop/rules.ts`).
 
 - A draft is its author's alone: every query names the company **and** the author. No lead, manager
   or admin reads drafts; `/admin/knowledge` shows counts only (BetrVG §87).
-- Only redacted text reaches a model. The author's own words are stored as written - they become the
-  case body when published.
+- Only redacted text reaches a model, on every message since the brain reads the idea each time
+  ("The reading"). The author's own words are stored as written - they become the case body when
+  published. What the model made of them is stored too: the reading on each coach turn
+  (`IdeaTurn.reading`), which includes the titles of the earlier items it named, with the draft and
+  under the same rules (private to the author, in the author's own export, deleted with an unpublished draft).
+- A case the author may not open (`features/cases/visibility.ts`) counts for nothing in the studio: its
+  title goes to no model on read or coach and comes back in no keyword hint, and the score is computed
+  the same way on the message and at publish. So a member's reading finds fewer repeats than a manager's;
+  known problems count for everyone. Routing at publish still compares with every case, and only an ID
+  and a reason come back from it. A reading stored before this rule keeps the titles it named.
 - Discarded drafts are deleted after the company's retention period (purged on use, like assistant turns).
 
 ## Not in this step

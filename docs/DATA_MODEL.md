@@ -1,6 +1,6 @@
 # Data model
 
-> **Updated 2026-11-01** · reference. The source of truth is `apps/app/prisma/schema/` (one file per area, see `adr/0007-areas.md`); the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
+> **Updated 2026-11-06** · reference. The source of truth is `apps/app/prisma/schema/` (one file per area, see `adr/0007-areas.md`); the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
 
 Everything is scoped by company. Today (Phase 1) the only store is
 `src/features/tenant/demo-companies.ts`: `slug, name, mark, anonymousHandles, users[]` with
@@ -19,12 +19,28 @@ Phase 2 target (`apps/app/prisma/schema/`: `Company` in `core.prisma`, the rest 
 | `ROUTES` | `Route` | the routing table: `label, ownerUserId, deputyUserId, buddyUserId?, keys[]` |
 | `CASES` | `Case` | `title, body, fromUserId, routeId, assigneeUserId, raisedAt, reason, upside` - status/assignee/clock are **derived** from events |
 | `store.js` log | `CaseEvent` | append-only: `caseId, actorUserId, type, payload, at` |
-| - | `IdeaDraft` / `IdeaTurn` | the idea studio (docs/IDEAS.md): a draft per author, its chat turns and score snapshot; private to the author, `caseId` once published |
-| - | `AiCall` | one call of the brain to the company's model (plan AIB D9): `purpose` (routing, coach, plan, checkin, context), `model`, `tokensIn`, `tokensOut`, `latencyMs`, `createdAt`; index `(companyId, createdAt)`. No user id, no case id, no text |
+| - | `IdeaDraft` / `IdeaTurn` | the idea studio (docs/IDEAS.md): a draft per author, its chat turns and score snapshot; private to the author, `caseId` once published. A turn has `role`, `text`, `overall`, `model`, `promptVersion` and, on a coach (assistant) turn, `reading` (below) |
+| - | `AiCall` | one call of the brain to the company's model (plan AIB D9): `purpose` (routing, read, coach, plan, checkin, context), `model`, `tokensIn`, `tokensOut`, `latencyMs`, `createdAt`; index `(companyId, createdAt)`. No user id, no case id, no text |
 | - | `CompanyContextRun` | the latest background draft of the company profile, one row per company (`docs/COMPANY_KNOWLEDGE.md`, "The context draft"): `status` (running, ready, failed), `startedById`, `startedAt`, `finishedAt`, `error` (a code), `draft` (file names, links and proposed text), `reviewedAt`, `mailedAt`, and its lease `leaseUntil`, `attempts`; index `status`. The draft is emptied after review and after 30 days at most |
 | - | `FeatureFlag` | NextUp's rollout switches for the company, as admin.sellux.ch set them: `(companyId, key)`, `enabled`, `updatedAt`. A flag with no row gets its stage default from `src/config/flags.ts`. Not `CompanyConfig` - the company never sees these |
 | `PROBLEMS` / `IDEAS` / `INITIATIVES` | `Problem` / `Idea` / `Initiative` | |
 | `METRICS` | - | computed by `features/metrics`; baseline values become `Company.baseline` |
+
+**`IdeaTurn.reading`** (`Json?`, migration `idea_turn_reading`): the model's reading of the idea that
+the coach's reply was written from (`features/ideas/reading.ts`, docs/IDEAS.md "The reading"). Only on
+assistant turns, and `null` when the keyword benchmark answered, on every user turn, and on turns from
+before the column existed. When there is one it holds: `dials` (five: `key` value, feasibility, cost,
+fit or risk; `score` 0-100; `note`; `basis`), `overall` (the mean of the five, computed by the brain),
+`summary`, `advice` (`approve`, `pilot` or `info`) and `advice_why`, `pattern`, `route_id` (a routing
+row of the company, or null) and `route_reason`, `same_as` and `related` (an earlier item or null),
+`open` (the questions still open), `model`, `version` (the reading prompt's), and two the app adds
+before it is stored: `similar` (the earlier items it named, as `id`, `title`, `status`, `same`) and
+`checked` (how many earlier items it was compared with). Read through `readingOf`: a row that does not
+parse as this shape reads as no reading, so the shape can change without a migration of old rows. It is
+model output written from redacted text (names reach the model as roles, as far as the redaction
+catches them), and it is not a score the app computes.
+`IdeaTurn.overall` is the reading's `overall` when there is one. The draft's `scores` snapshot stays
+the keyword benchmark's four bars.
 
 Not every table is a company's. **`ErrorGroup`** belongs to the stack: one row per kind of error
 the stack ran into by itself (`fingerprint` unique; `source, name, message, frame, route, count,

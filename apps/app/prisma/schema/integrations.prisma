@@ -231,7 +231,7 @@ model TeamsConversation {
 model AiCall {
   id        String   @id @default(cuid())
   companyId String
-  purpose   String // routing | coach | plan | checkin
+  purpose   String // routing | read | coach | plan | checkin
   model     String
   tokensIn  Int
   tokensOut Int
