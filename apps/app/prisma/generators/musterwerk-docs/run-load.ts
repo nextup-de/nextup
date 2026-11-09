@@ -1,4 +1,4 @@
-// Loads the api part of a written pack into a running app. From apps/app:
+// Loads the company-wide part of a written pack (api files and the Company site) into a running app. From apps/app:
 //
 //     NEXTUP_KNOWLEDGE_TOKEN=... npx tsx prisma/generators/musterwerk-docs/run-load.ts --base http://localhost:3000 --slug acme --pack ../../../ait-pack
 //
@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadPack } from "./load";
+import { companyWide, loadPack } from "./load";
 import type { PackFile } from "./manifest";
 
 export function parseArgs(argv: string[]): { base: string; slug: string; pack: string } {
@@ -21,12 +21,12 @@ export function parseArgs(argv: string[]): { base: string; slug: string; pack: s
   return { base, slug, pack: resolve(pack) };
 }
 
-/** Reads manifest.json and the api files of a pack written by run-pack. */
+/** Reads manifest.json and the company-wide files (companyWide in load.ts) of a pack written by run-pack. */
 export function readPack(dir: string): PackFile[] {
   const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as Omit<PackFile, "body">[];
   return manifest
-    .filter((m) => m.channel === "api")
-    .map((m) => ({ ...m, body: readFileSync(join(dir, m.path), "utf8") }));
+    .filter((m) => companyWide({ ...m, body: "" }))
+    .map((m) => ({ ...m, body: readFileSync(join(dir, m.channel === "api" ? m.path : join("sites", m.path)), "utf8") }));
 }
 
 /** Returns the exit code. */

@@ -48,8 +48,19 @@ describe("searchDocuments", () => {
   });
 
   it("builds a query only from letters and digits", () => {
-    expect(tsQuery("sensor'); DROP TABLE \"Document\";--")).toBe("sensor:* | drop:* | table:* | document:*");
+    expect(tsQuery("sensor'); DROP TABLE \"Document\";--")).toBe("sensor:* | drop:* | tabl:* | document:*");
     expect(tsQuery("?!")).toBe("");
+  });
+
+  it("leaves stop words out, searches German stems and adds the English or German twin", () => {
+    expect(tsQuery("Wie viele Bestellungen hat der Lieferant?")).toBe("bestell:* | lieferant:* | order:* | bestellsumm:* | suppli:* | supplier:* | vendor:*");
+    expect(tsQuery("the and of")).toBe("");
+  });
+
+  it("finds a German document for an English question and an inflected word by its stem, still within the ceiling", async () => {
+    expect((await searchDocuments(acme.id, "internal", "Wie bestelle ich Sensoren?")).map((h) => h.title)).toEqual(["Ordering spare sensors"]);
+    expect((await searchDocuments(acme.id, "internal", "Ersatzteile")).map((h) => h.title)).toEqual(["Ordering spare sensors"]);
+    expect((await searchDocuments(acme.id, "internal", "supplier prices")).some((h) => h.title === "Sensor supplier prices")).toBe(false);
   });
 
   it("upserts by source and external id", async () => {

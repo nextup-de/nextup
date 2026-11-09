@@ -2,6 +2,7 @@
 // switches. docs/ASSISTANT.md. Every query names the company; the one raw query (full-text search,
 // which Prisma cannot express) names it in SQL and re-applies the classification ceiling there.
 import { LEVELS, ceilingOf, rank, type Level } from "@/features/assist/classify";
+import { expandTerms, stem } from "@/features/assist/terms";
 import type { DocHit, Source } from "@/features/assist/tools";
 import type { Hits } from "@/features/assist/redact";
 import { effectiveRules } from "@/features/privacy/retention";
@@ -43,27 +44,38 @@ export async function loadAiRouting(companyId: string): Promise<boolean> {
   return cfg?.aiRouting ?? false;
 }
 
-/** Search terms as an OR tsquery: letters and digits only, so nothing reaches to_tsquery unescaped. */
+/**
+ * Search terms as an OR tsquery: letters and digits only, so nothing reaches to_tsquery unescaped.
+ * Stop words out, each word as its light German stem with a prefix match, plus its German/English
+ * glossary twins (features/assist/terms.ts): "Bestellungen" finds "bestellen", "spare parts" finds
+ * "Ersatzteile". The index stays the `simple` one; the stemming happens on the query side only.
+ */
 export function tsQuery(text: string): string {
-  const words = [...new Set((text.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []))].slice(0, 12);
+  const { own, twins } = expandTerms(text.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? [], MAX_TERMS);
+  const words = [...new Set([...own, ...twins].map(stem))].filter((w) => /^[\p{L}\p{N}]+$/u.test(w));
   return words.map((w) => w + ":*").join(" | ");
 }
 
+const MAX_TERMS = 20;
+/** Most hits one search returns. The assistant asks for 8 (features/assist/tools.ts). */
+export const MAX_DOC_HITS = 10;
+
 type DocRow = { id: string; title: string; snippet: string; classification: string; source: string };
 
+/** Best match first; on a tie the shorter title, so "Richtlinie" comes before its "Richtlinie - Kopie". */
 export async function searchDocuments(companyId: string, ceiling: Level, text: string, limit = 4): Promise<DocHit[]> {
   const q = tsQuery(text);
   if (!q) return [];
   const allowed = LEVELS.filter((l) => rank(l) <= rank(ceilingOf(ceiling)));
   return getDb().$queryRaw<DocRow[]>`
     SELECT "id", "title", "classification", "source",
-           ts_headline('simple', "body", to_tsquery('simple', ${q}), 'MaxWords=40, MinWords=15, StartSel="", StopSel=""') AS "snippet"
+           ts_headline('simple', "body", to_tsquery('simple', ${q}), 'MaxWords=60, MinWords=20, StartSel="", StopSel=""') AS "snippet"
     FROM "Document"
     WHERE "companyId" = ${companyId}
       AND "classification" = ANY(${allowed}::text[])
       AND "search" @@ to_tsquery('simple', ${q})
-    ORDER BY ts_rank("search", to_tsquery('simple', ${q})) DESC, "updatedAt" DESC
-    LIMIT ${Math.min(Math.max(limit, 1), 8)}`;
+    ORDER BY ts_rank("search", to_tsquery('simple', ${q})) DESC, length("title") ASC, "updatedAt" DESC
+    LIMIT ${Math.min(Math.max(limit, 1), MAX_DOC_HITS)}`;
 }
 
 export type DocumentInput = { source: string; externalId: string; title: string; body: string; classification: string };

@@ -1,6 +1,6 @@
 // Graph fixtures for the 21 ground-truth questions of the Acme test pack (D8, D9 of plan CNX). Pure: no
-// test-runner imports and no imports from src/, so record.mjs and synthesize.mjs run it directly with Node's
-// type stripping (Node 22.18+), like tests/fake-jira/fake-jira.ts - plain syntax that erases cleanly.
+// test-runner imports and no imports from src/, so record.mjs and synthesize.mjs can run it outside vitest
+// (with tsx, which also gives them the app's searchRequest) - plain syntax that erases cleanly.
 import { readFileSync } from "node:fs";
 
 export type Level = "public" | "internal" | "confidential" | "strictly_confidential";
@@ -79,19 +79,6 @@ export function ceilingFor(question: Question): Level {
 
 export const levelOf = (c: FileClass): Level => (c === "strict" ? "strictly_confidential" : c);
 
-/** Copy of features/m365/search.ts `kqlQuery`; graph-fixtures.test.ts checks the two agree. */
-function kqlQuery(text: string): string {
-  const words = text.toLowerCase().match(/[\p{L}\p{N}](?:[\p{L}\p{N}.-]*[\p{L}\p{N}])?/gu) ?? [];
-  return [...new Set(words.filter((w) => w.length > 1 || /\d/.test(w)).map((w) => w.slice(0, 40)))].slice(0, 12).join(" OR ");
-}
-
-/** Copy of features/m365/search.ts `searchRequest`. */
-export function graphSearchRequest(text: string, size: number): GraphSearchRequest | null {
-  const queryString = kqlQuery(text);
-  if (!queryString) return null;
-  return { requests: [{ entityTypes: ["driveItem"], query: { queryString }, from: 0, size: Math.min(Math.max(size, 1), 10) }] };
-}
-
 export function canRead(persona: string, file: FileRow): boolean {
   const groups = PERSONA_GROUPS[persona] ?? [];
   return file.readers.some((g) => groups.includes(g));
@@ -106,7 +93,8 @@ function webUrlOf(file: FileRow): string {
 const MARKER: Record<FileClass, string> = { public: "", internal: "", confidential: "Vertraulich. ", strict: "Streng vertraulich. " };
 
 /** A made-up Graph answer: one hit per readable file the question names, marked the way the file is classified. */
-export function synthesizeResponse(question: Question, files: FileRow[]): ResponseFixture {
+/** `request`: what features/m365/search.ts `searchRequest(question, 10)` builds (synthesize.mjs passes it). */
+export function synthesizeResponse(question: Question, files: FileRow[], request: GraphSearchRequest | null): ResponseFixture {
   const byPath = new Map(files.map((f) => [f.path, f]));
   const named = [...question.shouldFind, ...question.mustNotFind];
   const hits = [];
@@ -134,7 +122,7 @@ export function synthesizeResponse(question: Question, files: FileRow[]): Respon
     persona: question.asPersona,
     source: "synthetic",
     recordedAt: null,
-    request: graphSearchRequest(question.question, 10),
+    request,
     status: 200,
     body,
   };

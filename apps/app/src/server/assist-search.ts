@@ -27,6 +27,9 @@ async function sourceHits(v: { companyId: string; userId: string }, ceiling: Lev
 export function searchDocumentsFor(v: { companyId: string; userId: string }, ceiling: Level) {
   return async (query: string, limit: number): Promise<DocHit[]> => {
     const [local, external] = await Promise.all([searchDocuments(v.companyId, ceiling, query, limit), sourceHits(v, ceiling, query, limit)]);
-    return mergeHits(local, external, limit);
+    const hits = mergeHits(local, external, limit);
+    // Counts only, never the query or a title: shows whether the model searched and what came back (TST-M365-LIVE F9).
+    console.info(`[assist] search_documents: ${local.length} local, ${external.length} m365, ${hits.length} handed on`);
+    return hits;
   };
 }

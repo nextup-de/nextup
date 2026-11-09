@@ -1,11 +1,12 @@
 // Records the real Graph answers for a persona's ground-truth questions against the test tenant (Kevin runs
 // this; D8):
-//   node tests/fixtures/graph/record.mjs <persona> [--ids q01,q05]
+//   npx tsx tests/fixtures/graph/record.mjs <persona> [--ids q01,q05]
 // The persona's Graph access token comes from the environment variable GRAPH_TOKEN_<PERSONA> (upper case). It is
 // only sent to graph.microsoft.com as the Authorization header; it is never printed or written, and neither is
-// any header. Needs Node 22.18 or newer (it runs fixtures.ts through Node's type stripping).
+// any header. tsx, because the request comes from the app's own searchRequest (src/features/m365/search.ts).
 import { writeFileSync } from "node:fs";
-import { graphSearchRequest, loadQuestions, toRecordedFixture } from "./fixtures.ts";
+import { searchRequest } from "../../../src/features/m365/search.ts";
+import { loadQuestions, toRecordedFixture } from "./fixtures.ts";
 
 const SEARCH_URL = "https://graph.microsoft.com/v1.0/search/query";
 const args = process.argv.slice(2);
@@ -14,7 +15,7 @@ const idsAt = args.indexOf("--ids");
 const only = idsAt >= 0 ? (args[idsAt + 1] ?? "").split(",").filter(Boolean) : null;
 
 if (!persona || persona.startsWith("--")) {
-  console.error("usage: node tests/fixtures/graph/record.mjs <persona> [--ids q01,q05]");
+  console.error("usage: npx tsx tests/fixtures/graph/record.mjs <persona> [--ids q01,q05]");
   process.exit(2);
 }
 const varName = `GRAPH_TOKEN_${persona.toUpperCase()}`;
@@ -31,7 +32,7 @@ if (questions.length === 0) {
 }
 
 for (const q of questions) {
-  const request = graphSearchRequest(q.question, 10);
+  const request = searchRequest(q.question, 10);
   if (!request) {
     console.log(`${q.id}: nothing searchable, skipped`);
     continue;

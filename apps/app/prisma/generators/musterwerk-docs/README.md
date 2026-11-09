@@ -36,6 +36,20 @@ Stale files (2021–2022), the superseded spending policy (2.500 EUR vs 5.000 EU
 ("Kopie", "(v2)", "final_neu"), personal data in HR and finance, one file that tells an assistant to ignore its rules
 (`Hinweise für KI-Assistenten.md`) and strictly confidential Board files ("Projekt Adler").
 
+## Load it into the assistant
+
+`run-load.ts` pushes the **company-wide part** to `/api/<slug>/knowledge/documents` (a token with `knowledge:write`):
+the 13 `api/` files and the 38 files of the Company site (readers `MW-ALL`), 51 of 256 for seed 1 (`companyWide` in
+`load.ts`). The company's own documents have no per-person permissions, so every employee's assistant searches all
+of them; files of the other sites are left out on purpose and belong in the Microsoft 365 test tenant, which trims
+them to the person. Strictly confidential never goes in.
+
+```
+NEXTUP_KNOWLEDGE_TOKEN=... npx tsx prisma/generators/musterwerk-docs/run-load.ts --base https://<stack> --slug <slug> --pack ../../../../ait-pack
+```
+
+Loading the same pack again updates the rows (same `externalId`), it does not add copies.
+
 ## Layout
 
 `pack.ts` joins the modules in `content/`; `write.ts` writes; `run-pack.ts` is the command line. Randomness comes

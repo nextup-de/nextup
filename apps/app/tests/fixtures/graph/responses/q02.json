@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "bis OR zu OR welchem OR betrag OR dürfen OR teamleiter OR ersatzteile OR bestellen"
+          "queryString": "betrag OR teamleiter OR ersatzteile OR bestellen OR teamleit* OR ersatzteil* OR bestell* OR amount OR limit OR grenze OR wertgrenze OR spare OR ersatzteil OR order OR orders OR bestellung OR bestellsumme"
         },
         "from": 0,
         "size": 10

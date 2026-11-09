@@ -51,12 +51,15 @@ export type ToolDef = { name: string; description: string; input_schema: { type:
 
 const q = { query: { type: "string", description: "A few words describing what to look for." } };
 
+/** Documents one search hands the model. 4 lost the right file behind look-alikes (TST-M365-LIVE F9, AIT-Z1). */
+export const DOC_HITS = 8;
+
 export const TOOLS: ToolDef[] = [
   { name: "list_routes", description: "Find who handles a kind of request: the routing table rows that best match, with owner, deputy and buddy ROLES and the expected wait.", input_schema: { type: "object", properties: q, required: ["query"] } },
   { name: "get_role", description: "What a role decides, its spend limit, its skills and whom it reports to. Look up by (part of) the role title.", input_schema: { type: "object", properties: { title: { type: "string" } }, required: ["title"] } },
   { name: "get_goals", description: "The company's goals with KPI, target and period. Optionally filtered by a query.", input_schema: { type: "object", properties: q } },
   { name: "get_company_profile", description: "Vision, mission, principles and business model.", input_schema: { type: "object", properties: {} } },
-  { name: "search_documents", description: "Search the company's documents (process descriptions, ERP extracts, policies). Returns titles and snippets.", input_schema: { type: "object", properties: q, required: ["query"] } },
+  { name: "search_documents", description: "Search the company's documents and the person's Microsoft 365 files (policies, handbooks, process descriptions, checklists, reports, minutes, ERP extracts). Returns titles and snippets. Use the document's own words; German and English both work.", input_schema: { type: "object", properties: q, required: ["query"] } },
 ];
 
 const WORD = /[\p{L}\p{N}€-]{3,}/gu;
@@ -139,7 +142,7 @@ export async function runTool(name: string, input: unknown, ctx: ToolContext, sr
       if (!query.trim()) return "Give a query.";
       // The search is already scoped; the ceiling is checked again here because this is the last
       // line before the text reaches the model.
-      const hits = (await ctx.searchDocuments(query, 4)).filter((d) => canUse(d.classification, ctx.ceiling));
+      const hits = (await ctx.searchDocuments(query, DOC_HITS)).filter((d) => canUse(d.classification, ctx.ceiling));
       if (!hits.length) return "No document matches.";
       return hits.map((d) => {
         const tag = src.add("doc", d.id, d.title, d.classification as Level, d.url);

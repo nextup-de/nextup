@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "what OR did OR the OR iatf OR audit OR find OR in OR 2026"
+          "queryString": "iatf OR audit OR 2026"
         },
         "from": 0,
         "size": 10

@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "what OR are OR the OR price OR terms OR of OR nordwerk OR automotive OR framework OR agreement"
+          "queryString": "price OR terms OR nordwerk OR automotive OR framework OR agreement OR automotiv* OR prices OR preis OR preise OR konditionen OR bedingungen"
         },
         "from": 0,
         "size": 10
