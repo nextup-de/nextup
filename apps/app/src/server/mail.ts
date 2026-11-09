@@ -8,7 +8,8 @@
 import { appHost } from "@/features/tenant/urls";
 import nodemailer from "nodemailer";
 
-export type MailResult = { ok: true } | { ok: false; error: string };
+/** `permanent`: the relay refused the recipient or the message for good (a hard bounce); sending again cannot help. */
+export type MailResult = { ok: true } | { ok: false; error: string; permanent?: boolean };
 
 export type MailStatus = {
   configured: boolean;
@@ -57,8 +58,23 @@ export async function sendMail(
     await transport(timeoutMs).sendMail({ from: mailFrom(), to: msg.to, subject: msg.subject, text: msg.text });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: `The mail server did not take it: ${e instanceof Error ? e.message : String(e)}` };
+    const why = e instanceof Error ? e.message : String(e);
+    if (isHardBounce(e)) return { ok: false, permanent: true, error: `Hard bounce: the mail server refused it for good, so it is not sent again: ${why}` };
+    return { ok: false, permanent: false, error: `The mail server did not take it: ${why}` };
   }
+}
+
+/**
+ * A hard bounce at the relay: a permanent reply (5xx, not 503) to RCPT TO or DATA, so the recipient or this
+ * message was refused ("550 5.1.1 User unknown"). A 4xx there is a soft bounce (mailbox full, greylisting) and
+ * is retried. A 5xx to MAIL FROM or AUTH is the relay's setup, not the recipient, so it is retried as well: once
+ * the setup is fixed, the waiting mail goes out. A bounce the relay sends later, by mail, never reaches the app.
+ */
+function isHardBounce(e: unknown): boolean {
+  if (typeof e !== "object" || e === null) return false;
+  const { responseCode, command } = e as { responseCode?: unknown; command?: unknown };
+  return typeof responseCode === "number" && responseCode >= 500 && responseCode < 600 && responseCode !== 503
+    && (command === "RCPT TO" || command === "DATA");
 }
 
 /** For /admin/connections. Never throws; a dead relay is an answer, not an error page. */

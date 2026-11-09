@@ -16,7 +16,11 @@ import { companySeed } from "@/lib/db/companies";
 import { bindDemoCompany } from "@/lib/db/demo-identity";
 import { appendEventRow } from "@/lib/db/events";
 import { writeStructure } from "@/lib/db/structure-writes";
+import { DEFAULT_CALENDAR } from "@/features/clock";
+import { workdayOf } from "@/features/clock/calendar";
+import { enqueue } from "@/lib/db/outbox";
 import { saveSubscription } from "@/lib/db/webhooks";
+import { startFakeSmtp } from "../fixtures/smtp/fake-smtp";
 
 const db = getDb();
 const savedKey = process.env.CONNECTOR_VAULT_KEY;
@@ -179,6 +183,30 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
     expect(hits[box.hook]).toBe(1);
   }, 60_000);
 
+  it("the working-day clock: answer date on a Friday, no reminder that Friday or over the weekend, the first one just after midnight on Monday", async () => {
+    // The shape of Musterwerk's first live reminder (answer date Fri 13 Nov 2026), in a year after the real clock.
+    const berlin = (iso: string) => new Date(iso + "+01:00"); // November: CET
+    const box = await company("ntfz-clock", "pilot");
+    const n = await load();
+    await n.dispatchOnce(berlin("2030-11-08T09:00:00"));
+    await raise(box, "ntfz-c1", berlin("2030-11-08T09:00:00")); // Friday; five working days to answer
+
+    const mine = async () => (await db.outboxMessage.findMany({ where: { companyId: box.id, template: "reminder.deadline" } }))
+      .filter((r) => (r.data as { subjectId?: string }).subjectId === "c_ntfz-c1");
+    for (const t of ["2030-11-15T09:00:00", "2030-11-15T23:59:00", "2030-11-16T12:00:00", "2030-11-17T23:59:00"]) {
+      await day(n, berlin(t));
+      expect(await mine(), `no reminder at ${t} Berlin`).toEqual([]);
+    }
+    await day(n, berlin("2030-11-18T00:01:00")); // Monday, 23:01 UTC on Sunday
+    const fact = await db.caseEvent.findFirstOrThrow({ where: { companyId: box.id, type: "clock.due", targetId: "c_ntfz-c1" } });
+    expect(fact.payload).toMatchObject({ kind: "deadline", dueDay: workdayOf(berlin("2030-11-15T12:00:00"), DEFAULT_CALENDAR) });
+    const rows = await mine();
+    expect(rows.map((r) => r.recipientUserId).sort()).toEqual([...box.recipients].sort());
+    expect(rows.every((r) => r.status === "sent" && r.sentAt?.getTime() === berlin("2030-11-18T00:01:00").getTime())).toBe(true);
+    await day(n, berlin("2030-11-18T09:00:00"));
+    expect(await mine()).toHaveLength(box.recipients.length);
+  }, 60_000);
+
   it("a receiver answering 500 is tried on the backoff schedule and the row is failed after attempt 6", async () => {
     const box = await company("ntfz-retry", "pilot");
     answers[box.hook] = 500;
@@ -210,6 +238,55 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
     expect(last.lastError).toContain("500");
     await n.deliverOnce(new Date(now.getTime() + 24 * 60 * MIN));
     expect(hits[box.hook]).toBe(6);
+  }, 60_000);
+
+  it("through the real mail channel, a hard bounce is failed after one try and a soft bounce walks the ladder", async () => {
+    const smtp = await startFakeSmtp((to) => (to.startsWith("gone@") ? "550 5.1.1 User unknown" : to.startsWith("full@") ? "452 4.2.2 Mailbox full" : "250 OK"));
+    const savedSmtp = process.env.SMTP_URL;
+    process.env.SMTP_URL = smtp.url;
+    try {
+      const box = await company("ntfz-bounce", "pilot");
+      const [registry, channel, deliver] = await Promise.all([
+        import("@/server/notify/registry"), import("@/server/notify/channels/mail"), import("@/server/notify/deliver"),
+      ]);
+      registry.registerChannel("mail", channel.mailChannel);
+      const draft = (key: string, address: string) => ({
+        channel: "mail", key, recipientUserId: box.recipients[0], address, template: "reminder.deadline", locale: "de",
+        subject: "Antwort fällig", text: "Die Antwort ist fällig.", link: null, data: {}, status: "pending" as const, lastError: null,
+      });
+      expect(await enqueue(box.id, [draft("bounce:hard", "gone@x.test"), draft("bounce:soft", "full@x.test")])).toBe(2);
+      const row = (key: string) => db.outboxMessage.findFirstOrThrow({ where: { companyId: box.id, key } });
+      const tries = (address: string) => smtp.rcpts.filter((r) => r === address).length;
+
+      let now = at9(2);
+      for (let i = 0; i < 6; i++) {
+        await deliver.deliverOnce(now);
+        const hard = await row("bounce:hard");
+        expect(hard).toMatchObject({ status: "failed", attempt: 1, sentAt: null });
+        expect(hard.lastError).toMatch(/^Hard bounce: .*550 5\.1\.1 User unknown/);
+        expect(tries("gone@x.test")).toBe(1);
+
+        const soft = await row("bounce:soft");
+        expect(soft.attempt).toBe(i + 1);
+        expect(tries("full@x.test")).toBe(i + 1);
+        expect(soft.lastError).toContain("452 4.2.2 Mailbox full");
+        if (i < 5) {
+          expect(soft.status).toBe("pending");
+          expect(soft.nextAt.getTime()).toBe(now.getTime() + BACKOFF_MIN[i] * MIN);
+          await deliver.deliverOnce(new Date(soft.nextAt.getTime() - 1));
+          expect(tries("full@x.test")).toBe(i + 1);
+          now = soft.nextAt;
+        }
+      }
+      expect((await row("bounce:soft")).status).toBe("failed");
+      await deliver.deliverOnce(new Date(now.getTime() + 24 * 60 * MIN));
+      expect([tries("gone@x.test"), tries("full@x.test")]).toEqual([1, 6]);
+      expect(smtp.accepted).toEqual([]);
+    } finally {
+      if (savedSmtp === undefined) delete process.env.SMTP_URL;
+      else process.env.SMTP_URL = savedSmtp;
+      await smtp.close();
+    }
   }, 60_000);
 
   it("a sandbox company with the same setup sends nothing and writes every row as skipped", async () => {

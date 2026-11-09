@@ -22,7 +22,8 @@ export const mailChannel: NotifyChannel = {
     // The link once: most templates already name it in their text ("Open the case: ..."), so it is only added when missing.
     const text = message.link && !message.text.includes(message.link) ? `${message.text}\n\n${message.link}` : message.text;
     const sent = await sendMail({ to, subject: message.subject, text });
-    if (!sent.ok) return { ok: false, error: sent.error.slice(0, 500), retryable: true };
+    // A hard bounce is failed at once (deliver.ts); anything else follows the retry ladder.
+    if (!sent.ok) return { ok: false, error: sent.error.slice(0, 500), retryable: !sent.permanent };
 
     if (message.template === "raised") {
       const eventId = str(message.data.eventId);

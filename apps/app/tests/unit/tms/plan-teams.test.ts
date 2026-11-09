@@ -51,9 +51,10 @@ describe("TMS planner", () => {
     expect(Object.values(channels(plan([raise()], { teamsOn: undefined }))).every((c) => c === "mail")).toBe(true);
   });
 
-  it("a Teams person without an email gets a row; a mail person without one does not", () => {
+  it("a Teams person without an email gets a row; a mail person without one gets a failed one", () => {
     expect(channels(plan([raise()]))).toEqual({ u_o1: "teams", u_o2: "teams" });
-    expect(channels(plan([raise()], { teamsOn: false }))).toEqual({ u_o1: "mail" });
+    expect(channels(plan([raise()], { teamsOn: false }))).toEqual({ u_o1: "mail", u_o2: "mail" });
+    expect(plan([raise()], { teamsOn: false }).find((x) => x.recipientUserId === "u_o2")).toMatchObject({ status: "failed", address: null });
   });
 
   it("never two rows for one notice, and the keys do not change with the channel", () => {
