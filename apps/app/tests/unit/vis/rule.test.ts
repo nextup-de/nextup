@@ -6,6 +6,7 @@ import { appendEvent, emptyLog, type EventLog, type EventPayload, type NewEvent 
 import { reduce } from "@/features/cases/reducer";
 import { accessKeys, canOpen, unitsOf, viewerKeys, type VisCtx } from "@/features/cases/visibility";
 import { LOCAL_SEED } from "@/features/demo";
+import { floorRaisePayload } from "@/features/floor/raise";
 
 const seats = LOCAL_SEED.seats;
 const roles = LOCAL_SEED.roles ?? [];
@@ -53,6 +54,13 @@ describe("VIS visibility rule", () => {
     expect(open(mate)).toBe(false);
     expect(open(manager)).toBe(false);
     expect(open(leader)).toBe(false);
+  });
+
+  it("an anonymous shop-floor report: the desk opens it, nobody else, managers neither (6 Nov decision)", () => {
+    const payload = floorRaisePayload({ title: "Shift lead shouts", body: "b", kind: "problem", seat: { id: seat(DESK).id, label: DESK }, unitName: "", anonymous: true });
+    const open = check(run({ type: "case.raised", actor: "system:floor", target: "f1", payload }), "f1");
+    expect(open(desk)).toBe(true);
+    for (const w of [raiser, mate, leader, otherLeader, manager]) expect(open(w)).toBe(false);
   });
 
   it("no choice: a manager opens it, the raiser's leader opens it, another leader and a member do not", () => {

@@ -93,7 +93,7 @@ export async function raiseFromFloor(
       type: "case.raised",
       actor,
       targetId: caseId,
-      payload: floorRaisePayload({ ...checked.value, seat, unitName }),
+      payload: floorRaisePayload({ ...checked.value, seat, unitName, anonymous: who === "anonymous" }),
     },
     { actorUserId, source: "floor", idemKey: `floor:${input.nonce}` },
   );

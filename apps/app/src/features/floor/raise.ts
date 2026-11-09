@@ -16,13 +16,18 @@ export function pickSeat<H extends Holder>(holders: readonly H[], activeUserIds:
   return sorted.find((h) => h.userId !== null && active.has(h.userId)) ?? sorted[0] ?? null;
 }
 
-/** The payload of the case.raised event of D7. */
+/**
+ * The payload of the case.raised event of D7. An anonymous report is seen by the desk only (decision of 6 Nov
+ * 2026): it can name a supervisor. "private" lets nobody but the desk and its escalation in, and keeps the case
+ * out of API v1 and the webhooks (features/cases/visibility.ts). A signed-in floor user's raise stays open to everyone.
+ */
 export function floorRaisePayload(input: {
   title: string;
   body: string;
   kind: CaseKind;
   seat: Pick<Holder, "id" | "label">;
   unitName: string;
+  anonymous: boolean;
 }): EventPayload {
   return {
     title: input.title,
@@ -32,7 +37,7 @@ export function floorRaisePayload(input: {
     assignee: input.seat.label,
     assigneeRoleHolderId: input.seat.id,
     fromDept: input.unitName,
-    visibility: "everyone",
+    visibility: input.anonymous ? "private" : "everyone",
   };
 }
 
