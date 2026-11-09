@@ -27,6 +27,7 @@ import { settingsAudit } from "./messages/settingsAudit";
 import { settingsSupport } from "./messages/settingsSupport";
 import { settingsGoLive } from "./messages/settingsGoLive";
 import { settingsPilotReport } from "./messages/settingsPilotReport";
+import { preview } from "./messages/preview";
 import { privacyExport } from "./messages/privacyExport";
 import { privacyPerson } from "./messages/privacyPerson";
 import { settingsSetup } from "./messages/settingsSetup";
@@ -115,4 +116,5 @@ export const en = {
   settingsSupport: settingsSupport.en,
   settingsGoLive: settingsGoLive.en,
   settingsPilotReport: settingsPilotReport.en,
+  preview: preview.en,
 } as const;

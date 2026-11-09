@@ -13,6 +13,6 @@ describe("LNG strings shell", () => {
     expect(await inlineStrings(OWNED)).toEqual([]);
   }, 120_000);
   it("has complete namespaces", () => {
-    for (const ns of ["shell", "auth", "profile", "settings", "report", "demo"]) expect(catalogIssues(ns)).toEqual([]);
+    for (const ns of ["shell", "auth", "profile", "settings", "report", "demo", "preview"]) expect(catalogIssues(ns)).toEqual([]);
   });
 });

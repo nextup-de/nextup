@@ -1,0 +1,73 @@
+/* The click-through preview at /demo/preview. Cards and tabs are the shared elements'; this file adds
+   the frame, the lists and the board. */
+
+.page { display: flex; flex-direction: column; gap: 16px; width: 100%; min-width: 0; max-width: 1120px; margin: 0 auto; }
+.path { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pathLink { padding: 6px 12px; border-radius: 999px; background: var(--nh-fill); font-size: var(--nh-fs-sm); color: var(--nh-ink-2); text-decoration: none; }
+.pathLink:hover { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.pathLink[aria-current="page"] { background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-weight: 600; }
+.pathLink:focus-visible, .quiet:focus-visible, .chipButton:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.quiet { margin-left: auto; padding: 0; border: 0; background: none; font: inherit; font-size: var(--nh-fs-sm); color: var(--nh-mute); text-decoration: underline; cursor: pointer; }
+.quiet:hover { color: var(--nh-brand-ink); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 16px; align-items: start; }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.meta { margin: 0; font-size: var(--nh-fs-sm); line-height: 20px; color: var(--nh-mute); }
+.metaRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.text { margin: 0; font-size: var(--nh-fs-md); line-height: 24px; color: var(--nh-ink-2); }
+.strong { font-weight: 600; color: var(--nh-ink); }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.link { color: var(--nh-brand-ink); font-weight: 600; text-decoration: none; }
+.link:hover { text-decoration: underline; }
+
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: var(--nh-fill); font-size: var(--nh-fs-sm); font-weight: 500; color: var(--nh-ink-2); white-space: nowrap; }
+.badge[data-tone="ai"] { background: var(--nh-idea-tint); color: var(--nh-idea); }
+.badge[data-tone="ok"] { background: var(--nh-ok-tint); color: var(--nh-ok); }
+.badge[data-tone="warn"] { background: var(--nh-warn-tint); color: var(--nh-warn); }
+.badge[data-tone="brand"] { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.clock { color: var(--nh-accent); font-weight: 600; }
+
+/* A labelled list: the agent's draft, a template's content. */
+.facts { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px 16px; margin: 0; }
+.facts dt { font-size: var(--nh-fs-sm); line-height: 22px; color: var(--nh-mute); }
+.facts dd { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); }
+.list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.note { flex-shrink: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); white-space: nowrap; }
+
+/* The Yes sheet's choices and the setup checklist: one bordered row each. */
+.rows { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.option, .check { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--nh-line); border-radius: 12px; background: var(--nh-card); }
+.choices { min-width: 0; margin-top: 14px; border: 0; }
+.choices legend { margin-bottom: 8px; padding: 0; }
+.sheetCheck { margin-top: 14px; }
+.option { cursor: pointer; }
+.option[data-on="true"] { border-color: var(--nh-brand); background: var(--nh-brand-tint); }
+.option input { margin-top: 4px; }
+.body { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.check[data-mark] { background: var(--nh-surface); }
+.checkActions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.draft { margin: 4px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--nh-idea-tint); font-size: var(--nh-fs-sm); line-height: 20px; color: var(--nh-ink-2); }
+
+/* The board: three columns, one below the other on a phone. */
+.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.column { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 12px; border-radius: 12px; background: var(--nh-fill); }
+.columnHead { display: flex; align-items: baseline; justify-content: space-between; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); }
+.step { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; background: var(--nh-card); box-shadow: var(--nh-card-shadow); font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.step button { align-self: flex-start; }
+
+/* The agent's suggestions. */
+.suggestion { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--nh-line); border-radius: 12px; }
+.suggestion[data-answer] { background: var(--nh-surface); }
+.chipButton { padding: 6px 12px; border: 1px solid var(--nh-brand-line); border-radius: 999px; background: var(--nh-card); font: inherit; font-size: var(--nh-fs-sm); color: var(--nh-brand-ink); cursor: pointer; }
+.chipButton[aria-pressed="true"] { background: var(--nh-brand-tint); font-weight: 600; }
+
+.templates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+
+@media (width <= 900px) {
+  .layout, .board, .templates { grid-template-columns: minmax(0, 1fr); }
+  .facts { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .facts dd { margin-bottom: 8px; }
+  .check { flex-direction: column; }
+  .checkActions { justify-content: flex-start; }
+}
