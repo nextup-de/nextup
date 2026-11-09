@@ -5,7 +5,8 @@ import { SITE } from "@/config/site";
 import { LEVEL_LABEL, type Level } from "./classify";
 import type { QuestionLanguage } from "./language";
 
-export const ASSIST_PROMPT_VERSION = "assist-v3";
+// v4: search_documents hands short company documents over whole (its description says so).
+export const ASSIST_PROMPT_VERSION = "assist-v4";
 
 export type PromptInput = {
   companyName: string;
