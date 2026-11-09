@@ -3,6 +3,7 @@
 > **Updated 2026-11-02 (afternoon)** · copy of the plans repo (`selluxhenner/plans`, private) at commit `139bbd3`, folder
 > `projects/nextup/`. The plans repo is the source of truth; this copy is refreshed when the page specs change.
 > If something here looks out of date, ask Kevin.
+> **The `status:` lines in the task files (`ready`, `running`, `built`, `merged`) are those of 2 Nov and are not kept up to date.** Most of the plans have been built since (identity, clock, directory sync, Jira, Microsoft 365, settings, notifications, Teams). For what is built and live, read the team report "Where we stand" (nextup-context `reports/2026-11-08_where-we-stand/`, status board in section 1).
 
 The page specs point to these plans for decisions, function names, fields and limits. Sam has no access to the plans
 repo, so the plans the specs use are copied here unchanged, except that the test secrets in the acceptance commands

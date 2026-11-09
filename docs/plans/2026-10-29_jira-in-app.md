@@ -1,6 +1,6 @@
 # Plan: Jira for every NextUp company, synced from inside the app
 
-> **Plan · 2026-10-29 · decided by Kevin the same day. WP0 (the contract) built; the engine, the admin page and the lead UI not yet.**
+> **Plan · 2026-10-29 · decided by Kevin the same day. Built and merged: the contract (WP0), the sync engine, the admin page and the lead UI. Jira Cloud passed its live check G7 on 9 Nov (out and back); Jira Data Center is tested only against the fake Jira; G8 (an expired token shows an error) and new child issues and comments coming back are still open.** The work-package list below is the plan as written on 29 Oct; read "built" and "not yet" in it as of that day. How it works now: `docs/INTEGRATIONS.md`, "Jira in the app".
 > Approved projects and their steps go out to Jira, and progress comes back. Replaces the n8n workflow
 > `ops/n8n/jira-projects.json` (step 6 B of `docs/plans/2026-10-15_idea-to-project.md`). The contract in
 > one place: `docs/INTEGRATIONS.md`, "Jira in the app".

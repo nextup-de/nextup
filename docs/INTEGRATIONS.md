@@ -1,6 +1,6 @@
 # NextHub - integrations, AI, tenants, phases
 
-> **Updated 2026-11-01** · reference + plan. Written as a proposal on 21 Sep 2026; since then the events API, tokens, stages and tenant guard are built and the code points here as the contract. Jira moved from n8n into the app on 29 Oct 2026 (*Jira in the app* below: the contract is in, the engine follows); deadline and digests are still a plan.
+> **Updated 2026-11-01, Jira status 2026-11-09** · reference + plan. Written as a proposal on 21 Sep 2026; since then the events API, tokens, stages and tenant guard are built and the code points here as the contract. Jira moved from n8n into the app on 29 Oct 2026 (*Jira in the app* below: the contract, the sync engine and the admin page are built; Jira Cloud passed its live check on 9 Nov, Jira Data Center is tested against the fake Jira only); deadline and digests are still a plan.
 
 **Contracts.** Every external system sits behind one of eight connector interfaces exported from
 `@nextup/contracts/public` (`packages/contracts/src/public/connectors/`): see

@@ -1,6 +1,6 @@
 # Plan: from accepted idea to measured project
 
-> **Plan · 2026-10-15 · built the same day.** A discussion stage before the decision, the second half of the loop
+> **Plan · 2026-10-15 · built the same day, and released since: projects, the board, the measure and the reward run on `main` and on Musterwerk; Jira runs in the app now (see `2026-10-29_jira-in-app.md`), not through n8n.** A discussion stage before the decision, the second half of the loop
 > (build together, measure, recognise), and how we test it on the sellux.ch subdomains. Follows `docs/IDEAS.md` ("Not in this step") and
 > the moat board (Close the loop · Trusted numbers · Plant-floor fit).
 
