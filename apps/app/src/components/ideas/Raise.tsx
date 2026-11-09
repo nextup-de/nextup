@@ -680,7 +680,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
 
   // ── Analysis ────────────────────────────────────────────────────────────────────────────────
   const reviewers: Reviewer[] = ev ? [
-    { initials: initials(ev.lead), name: ev.lead, role: t("ideas.pageRoleReceives"), why: team ? t("ideas.pageWhyLeadTeam", { team }) : t("ideas.pageWhyLead") },
+    // The first desk, and why it is that one: no team lead known sends it to the route's desk, or to triage.
+    ((name: string) => ({ initials: initials(name), name, role: t("ideas.pageRoleReceives"),
+      why: ev.leadIs === "route" ? t("ideas.pageWhyRouteDesk", { route: ev.route?.type ?? t("ideas.pageThisArea") })
+        : ev.leadIs === "triage" ? t("ideas.pageWhyTriage")
+        : team ? t("ideas.pageWhyLeadTeam", { team }) : t("ideas.pageWhyLead") }))(ev.leadIs === "triage" ? t("ideas.pageTriageDesk") : ev.lead),
     ...(ev.passesTo && ev.passesTo !== ev.lead ? [{ initials: initials(ev.passesTo), name: ev.passesTo, role: t("ideas.pageRoleInformed"), why: t("ideas.pageWhyPasses", { route: ev.route?.type ?? t("ideas.pageThisArea") }) }] : []),
   ] : [];
   const openCases = S.cases.filter((c) => c.open).length;

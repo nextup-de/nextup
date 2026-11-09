@@ -71,7 +71,8 @@ export type BreakdownRow = {
   hidden: boolean;
 };
 
-export type TrendMonth = { month: string; raised: number; answered: number; onTime: number; baseline: boolean };
+/** One step of the trend: `month` is its first day number, `endDay` its last, `endDate` that day as ISO where the company has a calendar. */
+export type TrendMonth = { month: string; endDay: number; endDate: string | null; raised: number; answered: number; onTime: number; baseline: boolean };
 export type StageRow = { status: string; open: number; avgDays: number | null };
 
 /** D14: the keys, in this order. */

@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
-import { levelOf, type Dial, type DialKey, type Move, type Topic } from "@/features/ideas/raise";
+import { moveView, type Dial, type DialKey, type Move, type Topic } from "@/features/ideas/raise";
 import { Icon, Solid } from "./raiseIcons";
 import { Analysis, type AnalysisData } from "./RaiseSheets";
 import { Evaluating } from "./RaiseStart";
@@ -121,16 +121,19 @@ function ReadCard({ r, onAnalysis }: { r: Read; onAnalysis: () => void }) {
       </div>
       {rows.length ? (
         <div className={s.readRows}>
-          {rows.map((d) => (
-            <div key={d.key} className={s.readRow}>
-              <span className={s.readLabel}>{d.label}</span>
-              <span className={s.readBar} aria-hidden="true"><i style={{ width: (d.scored ? Math.max(4, d.value) : 0) + "%" }} /></span>
-              <span className={s.readLevel} data-move={r.moved[d.key]}>
-                <span className={s.readArrow} aria-label={r.moved[d.key] === "up" ? t("ideas.chatBetter") : t("ideas.chatWorse")}>{r.moved[d.key] === "up" ? "▲" : "▼"}</span>{levelOf(d, locale)}
-              </span>
-              <span className={s.readNote}>{d.note}</span>
-            </div>
-          ))}
+          {rows.map((d) => {
+            const v = moveView(d, r.moved[d.key] as Move, locale);
+            return (
+              <div key={d.key} className={s.readRow}>
+                <span className={s.readLabel}>{v.label}</span>
+                <span className={s.readBar} aria-hidden="true"><i style={{ width: v.bar + "%" }} /></span>
+                <span className={s.readLevel} data-move={v.better ? "up" : "down"}>
+                  <span className={s.readArrow} aria-label={t(v.better ? "ideas.chatBetter" : "ideas.chatWorse")}>{v.arrow}</span>{v.level}
+                </span>
+                <span className={s.readNote}>{d.note}</span>
+              </div>
+            );
+          })}
         </div>
       ) : <p className={s.readSame}>{t(r.firstRead ? "ideas.chatFirstRead" : "ideas.chatSame")}</p>}
       <div className={s.readFoot}>

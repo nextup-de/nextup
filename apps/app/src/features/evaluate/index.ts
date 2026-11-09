@@ -20,6 +20,7 @@ export type Evaluation = {
   steps: EvalStep[];
   route: Route | null; confidence: number;
   lead: string; // the desk it lands on first: the raiser's own team lead
+  leadIs: "lead" | "route" | "triage"; // what `lead` is: the team lead, the proposed route's owner (no lead known), or the triage desk
   passesTo: string | null; // where the lead passes it if it is not theirs
   similar: Problem | null; // a known problem it looks like
   sameAs: KnownCase | null; // a case someone already raised that reads like this one
@@ -71,7 +72,13 @@ export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposa
   const route = brain ? ctx.routes.find((r) => r.id === brain.proposal.routeId) ?? null : keywords?.route ?? null;
   const confidence = brain ? (route ? brain.proposal.confidence : 0) : keywords?.confidence ?? 0;
   const me = ctx.people.find((p) => p.name === input.who.name);
-  const lead = me?.reportsTo ?? ctx.personas.find((r) => r.id === "leader")?.who.name ?? "Triage desk"; // eslint-disable-line -- stored as the case assignee: data, not display text
+  // The first desk: the raiser's team lead, else (a company whose personas have no names) the owner of the route
+  // it is proposed for, else the triage desk. An empty name is no desk: it showed as "?" in the studio.
+  const named = (s: string | null | undefined) => (s && s.trim() ? s.trim() : null);
+  const teamLead = named(me?.reportsTo) ?? named(ctx.personas.find((r) => r.id === "leader")?.who.name);
+  const routeDesk = route ? named(route.owner.name) ?? named(route.owner.role) : null;
+  const leadIs: Evaluation["leadIs"] = teamLead ? "lead" : routeDesk ? "route" : "triage";
+  const lead = teamLead ?? routeDesk ?? "Triage desk"; // eslint-disable-line -- stored as the case assignee: data, not display text
   const leadRow = ctx.people.find((p) => p.name === lead);
   const passesTo = route && route.owner.name !== lead ? route.owner.name : null;
   const similar = brain ? ctx.problems.find((p) => p.id === brain.sameAs) ?? null : closest(full, ctx.problems, (p) => p.title + " " + p.sub);
@@ -99,7 +106,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposa
   ];
 
   return {
-    steps, route, confidence, lead, passesTo, similar, sameAs, score,
+    steps, route, confidence, lead, leadIs, passesTo, similar, sameAs, score,
     payload: { kind: input.kind, title: text, body: context, upside, routeId: route?.id ?? null, assignee: lead, fromDept: input.who.line, reason: route ? "triage" : "not responsible", affected: input.affected, attachments: input.attachments,
       proposal: brain ? { ...brain.proposal, routeId: route?.id ?? null, confidence } : { routeId: route?.id ?? null, confidence, source: "keywords", version: ROUTER_VERSION },
       ...(input.visibility ? { visibility: input.visibility } : {}), ...(input.visibility === "custom" ? { seenBy: input.seenBy ?? [] } : {}) },

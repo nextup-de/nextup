@@ -11,7 +11,7 @@ import { BaselineDialog } from "@/components/dashboard/shared/BaselineDialog";
 import { BreakdownCard } from "@/components/dashboard/shared/BreakdownCard";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { DeptChip } from "@/components/ui/elements";
-import { barHeights, dashboardFromInput, shares, tileViews, type TileView } from "@/features/metrics/dashboard";
+import { barHeights, dashboardFromInput, shares, tileViews, trendLabels, type TileView } from "@/features/metrics/dashboard";
 import { breakdownCsv, csvFileName } from "@/features/metrics/csv";
 import { ledgerInputFromState } from "@/features/metrics/from-state";
 import type { DashboardData, TileId } from "@/features/metrics/types";
@@ -133,7 +133,7 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
 
   const unitLabel = unitId ? data.units.find((u) => u.id === unitId)?.label ?? t("metrics.dashUnitAll") : t("metrics.dashUnitAll");
   const periodLabel = t(kind === "30d" ? "metrics.dashPeriod30d" : kind === "quarter" ? "metrics.dashPeriodQuarter" : "metrics.dashPeriodGolive");
-  const stepLabel = (i: number, of: number) => (i === of - 1 ? t("metrics.bucketNow") : t("metrics.bucketAgo", { n: of - 1 - i }));
+  const labels = trendLabels(data.trend, t);
 
   // ── tiles: only those with a number ──
   const shownTiles = tiles.filter((v, i) => !v.hidden && data.tiles[i]?.value !== null);
@@ -249,7 +249,7 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
                       <div key={j} className={s.month}>
                         <span className={s.monthVal}>{m}</span>
                         <span className={s.monthBar} data-base={data.trend[off + j]?.baseline ? "true" : undefined} style={{ height: mh[j] + "%" }} />
-                        <span className={s.note}>{stepLabel(j, sel.months.length)}</span>
+                        <span className={s.note}>{labels[off + j]}</span>
                       </div>
                     ));
                   })()}
@@ -293,7 +293,7 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
                           </span>
                         ))}
                       </div>
-                      <span className={s.step} role="rowheader">{stepLabel(m.at, data.trend.length)}</span>
+                      <span className={s.step} role="rowheader">{labels[m.at]}</span>
                     </div>
                   ))}
                 </div>

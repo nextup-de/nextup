@@ -214,7 +214,11 @@ export async function dashboardData(companyId: string, input: DashboardInput): P
     fromDate: dates ? dateOfWorkday(period.from, clock.calendar) : null,
     toDate: dates ? dateOfWorkday(period.to, clock.calendar) : null,
     baseline,
-    ...(scope.hidden ? { tiles: hiddenTiles(ledger.tiles), trend: [], stages: [], answers: NO_FACTS.answers, caseCount: 0 } : ledger),
+    ...(scope.hidden ? { tiles: hiddenTiles(ledger.tiles), trend: [], stages: [], answers: NO_FACTS.answers, caseCount: 0 } : {
+      ...ledger,
+      // Each step named by the month its last working day falls in (the axis of "Cases raised per month").
+      trend: ledger.trend.map((m) => ({ ...m, endDate: clock.mode === "workdays" && m.endDay >= 1 ? dateOfWorkday(m.endDay, clock.calendar) : null })),
+    }),
     units: breakdown(now, period, "unit"),
     roles: breakdown(now, period, "role"),
     scopeHidden: scope.hidden,

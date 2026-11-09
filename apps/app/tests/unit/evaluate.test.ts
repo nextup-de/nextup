@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { evaluate } from "@/features/evaluate";
 import { DEMO_GOALS, DEMO_RULES } from "@/features/demo/structure";
+import { NEUTRAL_PERSONAS } from "@/features/demo";
 import { PEOPLE, PROBLEMS, PROMISE_DAYS, ROLES, ROUTES } from "@/features/demo/seed";
 
 const known = [{ title: "Night shift has no one who can sign a €300 parts order", from: "S. Dahl", age: 4, open: true }];
@@ -30,6 +31,20 @@ describe("evaluate", () => {
     expect(ev.payload.reason).toBe("triage");
     expect(ev.sameAs).toBeNull();
     expect(ev.steps[4].detail).toContain("Nothing similar");
+  });
+  it("with no team lead known (a real company's personas have no names), the first desk is never blank", () => {
+    // Was "" - the studio showed "?" with no name as the desk that receives it.
+    const bare = { ...ctx, people: [], personas: NEUTRAL_PERSONAS };
+    const routed = evaluate({ kind: "idea", text: "Reserve the endurance rig on Fridays for unscheduled trials", affected: [], attachments: 0, who }, bare);
+    expect(routed.route?.id).toBe("r2");
+    expect(routed).toMatchObject({ lead: "M. Roth", leadIs: "route", passesTo: null });
+    expect(routed.payload.assignee).toBe("M. Roth");
+    const vacant = evaluate({ kind: "idea", text: "Reserve the endurance rig on Fridays for unscheduled trials", affected: [], attachments: 0, who },
+      { ...bare, routes: ROUTES.map((r) => ({ ...r, owner: { ...r.owner, name: "" } })) });
+    expect(vacant.lead, "a vacant route desk is named by its role").toBe(ROUTES.find((r) => r.id === "r2")?.owner.role);
+    const nowhere = evaluate({ kind: "problem", text: "The canteen coffee is cold every morning", affected: [], attachments: 0, who }, bare);
+    expect(nowhere).toMatchObject({ lead: "Triage desk", leadIs: "triage" });
+    expect(evaluate({ kind: "idea", text: "Reserve the endurance rig on Fridays", affected: [], attachments: 0, who }, ctx).leadIs).toBe("lead");
   });
   it("text the map does not know still lands somewhere, honestly", () => {
     const ev = evaluate({ kind: "problem", text: "The canteen coffee is cold every morning", affected: [], attachments: 0, who }, ctx);

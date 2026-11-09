@@ -74,8 +74,9 @@ export const metrics = defineMessages({
     overlayNoSplit: "This number is not split: it is counted for the whole company only.",
     overlayProvenance: "Baseline from {source} · file {hash} · {date}",
     bucketNow: "now",
-    bucketAgo: "−{n}",
-    bucketCaptionWd: "Each step is 30 working days; the last one ends with the period.",
+    bucketAgo_one: "{count} mo ago",
+    bucketAgo_other: "{count} mo ago",
+    bucketCaptionWd: "Each step is 30 working days, named by the month it ends in; the last one ends with the period.",
     bucketCaptionDemo: "Each step is 30 simulated days; the last one ends with the period.",
 
     trendTitle: "Cases raised per month",
@@ -231,8 +232,9 @@ export const metrics = defineMessages({
     overlayNoSplit: "Diese Zahl wird nicht aufgeteilt: Sie wird nur für die ganze Firma gezählt.",
     overlayProvenance: "Basislinie aus {source} · Datei {hash} · {date}",
     bucketNow: "jetzt",
-    bucketAgo: "−{n}",
-    bucketCaptionWd: "Jeder Schritt sind 30 Arbeitstage; der letzte endet mit dem Zeitraum.",
+    bucketAgo_one: "vor {count} Mon.",
+    bucketAgo_other: "vor {count} Mon.",
+    bucketCaptionWd: "Jeder Schritt sind 30 Arbeitstage, benannt nach dem Monat, in dem er endet; der letzte endet mit dem Zeitraum.",
     bucketCaptionDemo: "Jeder Schritt sind 30 simulierte Tage; der letzte endet mit dem Zeitraum.",
 
     trendTitle: "Eingebrachte Fälle pro Monat",
