@@ -9,10 +9,17 @@ import type { Source, Sources } from "./tools";
 export type Checked = { text: string; cited: Source[]; unsourced: boolean; hits: Hits };
 
 const TAG = /\[(S\d{1,3})\]/g;
+/** "[S1, S4]", "[S1;S4]", "[S1 S4]": one bracket for several tags, which models write although told not to. */
+const TAG_LIST = /\[(S\d{1,3}(?:\s*[,;]?\s*S\d{1,3})+)\]/g;
+
+/** Every tag in its own brackets: "[S1, S4]" -> "[S1][S4]" (TST-M365-LIVE F5: the list lost every source). */
+export function splitTagLists(text: string): string {
+  return text.replace(TAG_LIST, (_m, list: string) => (list.match(/S\d{1,3}/g) ?? []).map((t) => `[${t}]`).join(""));
+}
 
 export function checkAnswer(raw: string, sources: Sources, ceiling: Level, opts: RedactOptions): Checked {
   const cited: Source[] = [];
-  const text = raw.replace(TAG, (_m, tag: string) => {
+  const text = splitTagLists(raw).replace(TAG, (_m, tag: string) => {
     const s = sources.get(tag);
     if (!s || !canUse(s.level, ceiling)) return ""; // made up, or above the ceiling: gone
     if (!cited.includes(s)) cited.push(s);
@@ -24,5 +31,5 @@ export function checkAnswer(raw: string, sources: Sources, ceiling: Level, opts:
 
 /** The answer without its tags - what is stored and what goes into a raise draft. */
 export function stripTags(text: string): string {
-  return text.replace(TAG, "").replace(/[ \t]+([.,;:!?])/g, "$1").replace(/[ \t]{2,}/g, " ").trim();
+  return splitTagLists(text).replace(TAG, "").replace(/[ \t]+([.,;:!?])/g, "$1").replace(/[ \t]{2,}/g, " ").trim();
 }

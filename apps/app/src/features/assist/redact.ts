@@ -41,6 +41,11 @@ function luhn(num: string): boolean {
   return d.length >= 13 && sum % 10 === 0;
 }
 
+// A date or a date range is not a phone number: "07.12. - 03.01.2027" was masked as one, and the
+// assistant then lost the start of the plant shutdown (TST-M365-LIVE F4).
+const DATE = String.raw`(?:\d{1,2}[./-]\d{1,2}(?:[./-](?:\d{4}|\d{2}))?\.?|\d{4}-\d{2}-\d{2})`;
+const DATES = new RegExp(String.raw`^${DATE}(?:\s*(?:-|/|bis|to)\s*${DATE})?$`);
+
 // Order matters: secrets and emails first, so a token inside an email-looking string goes as one.
 const RULES: { kind: HitKind; re: RegExp; keep?: (m: string) => boolean }[] = [
   { kind: "secret", re: /\b(?:sk-(?:ant-)?|nxt_|AKIA|ASIA|ghp_|gho_|xox[abp]-)[A-Za-z0-9_-]{10,}/g },
@@ -51,7 +56,7 @@ const RULES: { kind: HitKind; re: RegExp; keep?: (m: string) => boolean }[] = [
   { kind: "card", re: /\b(?:\d[ -]?){12,18}\d\b/g, keep: luhn },
   // A VIN: 17 characters, no I/O/Q, letters AND digits (a 17-digit order number is not one).
   { kind: "vin", re: /\b[A-HJ-NPR-Z0-9]{17}\b/g, keep: (m) => /[A-Z]/.test(m) && /\d/.test(m) },
-  { kind: "phone", re: /(?:\+|\b00|\b0)\d[\d ()/.-]{5,}\d\b/g, keep: (m) => digits(m) >= 8 && digits(m) <= 15 && !/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(m.trim()) },
+  { kind: "phone", re: /(?:\+|\b00|\b0)\d[\d ()/.-]{5,}\d\b/g, keep: (m) => digits(m) >= 8 && digits(m) <= 15 && !DATES.test(m.trim()) },
 ];
 
 // Strongest first: "streng vertraulich" must not be read as plain "vertraulich".
