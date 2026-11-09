@@ -52,3 +52,12 @@ export function unitsWithVacancy(k: Knowledge): Set<string> {
   const unitOf = new Map(k.roles.map((r) => [r.id, r.orgUnitId]));
   return new Set(k.holders.filter((h) => h.userId === null).map((h) => unitOf.get(h.roleId)).filter((u): u is string => Boolean(u)));
 }
+
+/**
+ * How many active people each unit has, its sub-units included: the people on its seats and the members whose
+ * department names it, each once (features/cases/stamp.ts unitPeople, as the metrics count). Members hold no
+ * seat, so a seat count would show a unit of 90 as 2; this counts people.
+ */
+export function peoplePerUnit(units: readonly Pick<UnitRow, "id">[], ofUnit: (unitId: string) => number): Record<string, number> {
+  return Object.fromEntries(units.map((u) => [u.id, ofUnit(u.id)]));
+}

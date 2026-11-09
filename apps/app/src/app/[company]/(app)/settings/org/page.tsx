@@ -3,8 +3,10 @@
 import { OrgEditor } from "@/components/settings/OrgEditor";
 import { SettingsHead } from "@/components/settings/SettingsParts";
 import { SAMPLE_KNOWLEDGE, SAMPLE_MEMBERS } from "@/features/settings/demo";
+import { peoplePerUnit } from "@/features/settings/org-view";
 import { loadKnowledge } from "@/lib/db/knowledge";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { loadUnitPeople } from "@/lib/db/pseudonymise";
 import { companyAdminOf } from "@/server/actions/settings/guard";
 import { getT } from "@/i18n/server";
 
@@ -25,9 +27,10 @@ export default async function OrgSettingsPage({ params }: { params: Promise<{ co
       </>
     );
   }
-  const [knowledge, members] = await Promise.all([
+  const [knowledge, members, unitPeople] = await Promise.all([
     loadKnowledge(admin.companyId),
     getDb().user.findMany({ where: { companyId: admin.companyId, active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    loadUnitPeople(admin.companyId),
   ]);
-  return <OrgEditor slug={company} knowledge={knowledge} members={members} />;
+  return <OrgEditor slug={company} knowledge={knowledge} members={members} people={peoplePerUnit(knowledge.units, unitPeople.ofUnit)} />;
 }
