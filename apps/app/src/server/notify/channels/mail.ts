@@ -37,7 +37,7 @@ export const mailChannel: NotifyChannel = {
             type: "case.commented",
             actor: NOTICE_ACTOR,
             targetId: caseId,
-            payload: { text: noticeText(message.locale) },
+            payload: { text: noticeText(message.locale), channel: "mail" },
           },
           { source: "mail", idemKey: key },
         );

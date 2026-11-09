@@ -81,7 +81,7 @@ export const teamsChannel: NotifyChannel = {
         const key = noticeKey(eventId);
         const noted = await appendEventRow(
           message.companyId,
-          { id: "e_" + key.replace(":", "_"), day: 0, type: "case.commented", actor: NOTICE_ACTOR, targetId: caseId, payload: { text: noticeText(message.locale) } },
+          { id: "e_" + key.replace(":", "_"), day: 0, type: "case.commented", actor: NOTICE_ACTOR, targetId: caseId, payload: { text: noticeText(message.locale), channel: "teams" } },
           { source: "teams", idemKey: key },
         );
         // The card is out; a failed note must not send it again.

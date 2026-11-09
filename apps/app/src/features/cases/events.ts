@@ -78,6 +78,7 @@ export type EventPayload = {
   affected?: string[]; // names the raiser says are hit by the problem too
   attachments?: number; // screenshots attached when raised (the files stay in the browser; only the count is a fact)
   rescore?: boolean; // on case.commented: the comment is new information, the score is re-evaluated with it
+  channel?: "mail" | "teams"; // on case.commented by system:mail: what carried the raise notice (none on notes before 9 Nov: mail)
   by?: number;
   proposal?: RouteProposal; // on case.raised
   visibility?: Visibility; // on case.raised

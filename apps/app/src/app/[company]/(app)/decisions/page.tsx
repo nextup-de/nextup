@@ -7,6 +7,7 @@ import { dayFormatter } from "@/features/cases/rows";
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { workdayOf } from "@/features/clock/calendar";
 import { flagsFor } from "@/features/flags";
+import { companyPrefix } from "@/features/tenant/urls";
 import { getLocale, getT } from "@/i18n/server";
 import { loadCalendar } from "@/lib/db/calendar";
 import { getDb } from "@/lib/db/client";
@@ -31,11 +32,13 @@ export default async function DecisionsPage({ params, searchParams }: { params: 
     q: (sp.q ?? "").slice(0, 200),
   };
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
-  const base = { t, company, page, pageSize: DECISION_PAGE_SIZE, filters, projectsOn: flags.projects };
+  // Links carry the company only where the path does: a one-company stack has none (it gave 404s).
+  const prefix = companyPrefix(company);
+  const base = { t, base: prefix, page, pageSize: DECISION_PAGE_SIZE, filters, projectsOn: flags.projects };
   // The Demo data switch lives in the browser: with it on, the client shows its own lines instead of these.
   const withSample = (served: React.ReactNode) => (
     <ProjectsPage tab="decisions">
-      <SampleDecisions company={company} page={page} pageSize={DECISION_PAGE_SIZE} filters={filters} projectsOn={flags.projects}>{served}</SampleDecisions>
+      <SampleDecisions base={prefix} page={page} pageSize={DECISION_PAGE_SIZE} filters={filters} projectsOn={flags.projects}>{served}</SampleDecisions>
     </ProjectsPage>
   );
   const viewer = hasDatabase() ? await getViewerFor(company) : null;

@@ -3,6 +3,8 @@
 // inbox (a hand-over changes it), an escalation puts it on a second desk too.
 import { holdsRole, type Me } from "@/features/auth/identity";
 import type { SeatRow } from "@/features/auth/identity";
+import type { NoticeChannel } from "./notice";
+import { byNotice } from "@/features/notify/notice-actor";
 import type { EventLog } from "./events";
 import type { ReducedCase, ReducedIdea, State } from "./reducer";
 
@@ -61,7 +63,8 @@ export function exportSnippet(state: State): string {
 // Read straight from the log - these events do not change a case's state, so the reducer leaves
 // them alone; they are facts about who stands behind a case and what was said under it.
 export type Affected = { name: string; userId: string | null; day: number; why?: string };
-export type Comment = { id: string; by: string; byUserId?: string | null; text: string; day: number; rescore: boolean };
+/** `notice`: on the raise notice's note (by system:mail), the channel that carried it; null on any other comment. */
+export type Comment = { id: string; by: string; byUserId?: string | null; text: string; day: number; rescore: boolean; notice?: NoticeChannel | null };
 
 export function affectedOn(log: EventLog, caseId: string): Affected[] {
   const out: Affected[] = [];
@@ -76,7 +79,8 @@ export function affectedOn(log: EventLog, caseId: string): Affected[] {
 }
 
 export const commentsOn = (log: EventLog, caseId: string): Comment[] =>
-  log.events.filter((e) => e.target === caseId && e.type === "case.commented").map((e) => ({ id: e.id, by: e.actor, byUserId: e.actorUserId ?? null, text: e.payload.text ?? "", day: e.day, rescore: !!e.payload.rescore }));
+  log.events.filter((e) => e.target === caseId && e.type === "case.commented").map((e) => ({ id: e.id, by: e.actor, byUserId: e.actorUserId ?? null, text: e.payload.text ?? "", day: e.day, rescore: !!e.payload.rescore,
+    notice: byNotice(e) ? (e.payload.channel === "teams" ? "teams" : "mail") : null }));
 
 // New information posted since the case was raised - each one re-evaluates the score (scoring: `updates`).
 export const rescoresOn = (log: EventLog, caseId: string): Comment[] => commentsOn(log, caseId).filter((m) => m.rescore);
