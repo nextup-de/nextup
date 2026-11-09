@@ -10,7 +10,7 @@
           "driveItem"
         ],
         "query": {
-          "queryString": "decides OR test-rig OR time OR decid* OR decide OR decision OR entscheidet OR entscheidung"
+          "queryString": "decides OR test-rig OR time OR decid* OR decide OR decision OR entscheidet OR entscheidung OR prüfstand"
         },
         "from": 0,
         "size": 10

@@ -20,6 +20,8 @@ describe("kqlQuery", () => {
     // "why" is a stop word, but asks for a cause.
     expect(kqlQuery("Why did press P-12 stop this year?")).toBe("press OR p-12 OR stop OR year OR cause OR ursache OR presse");
     expect(kqlQuery("the of and wie der")).toBe("");
+    // A hyphenated word finds its twin by its parts: test-rig -> Prüfstand.
+    expect(kqlQuery("Who decides about test-rig time?").split(" OR ")).toContain("prüfstand");
   });
 
   it("lets no KQL operator or syntax through but its own OR and its own stem prefix", () => {

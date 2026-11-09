@@ -130,7 +130,9 @@ export function expandTerms(words: readonly string[], max: number): { own: strin
   const twins: string[] = [];
   const add = (t: string) => { if (!seen.has(t)) { seen.add(t); twins.push(t); } };
   // Question words are stop words, but their intent ("why" -> cause) is worth searching for.
-  for (const w of [...lower.filter((x) => Object.hasOwn(INTENT, x)), ...own]) twinsOf(w).forEach(add);
+  // A hyphenated word ("test-rig") also by its parts.
+  const parts = own.flatMap((w) => (w.includes("-") ? w.split("-").filter((x) => x.length > 2) : []));
+  for (const w of [...lower.filter((x) => Object.hasOwn(INTENT, x)), ...own, ...parts]) twinsOf(w).forEach(add);
   // A German compound that ends in a glossary word: "Maschinenausfall" also searches "ausfall" and its twins.
   for (const w of own) {
     if (w.length < 9) continue;
