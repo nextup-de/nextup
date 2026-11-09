@@ -19,7 +19,7 @@ export type OutboxDraft = {
   text: string;
   link: string | null;
   data: Prisma.InputJsonValue;
-  status: "pending" | "skipped";
+  status: "pending" | "skipped" | "failed";
   lastError: string | null;
 };
 

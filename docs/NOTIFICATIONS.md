@@ -40,8 +40,11 @@ starts the cursor at its newest event, so history sends nothing.
 | the daily digest | `digest` | `digest:<userId>:<workday number>` |
 
 Reminder recipients: deadline, the users of the seat it escalates to and of the case's current seat; checkin, the users
-of the case's seat; start and measure, the project's lead. The actor never gets a mail about their own event, and a
-user without an address gets no mail row. A reminder has the key of the `clock.due` fact, and the clock writes each
+of the case's seat; start and measure, the project's lead. The actor never gets a mail about their own event. A user
+without an address (and no Teams chat) still gets the mail row, written as `failed` with "no mail address for <name>",
+so Settings → Notifications shows that a notice reached nobody; in a sandbox, or with the switch off, it is `skipped`
+like every other row. For a raise, the pairing key `notify:<eventId>` goes to the first holder who can be reached.
+Loop mails (`loop.*`) still go only to people with an address. A reminder has the key of the `clock.due` fact, and the clock writes each
 fact once, so a deadline gives each recipient one reminder however many days or restarts follow.
 
 ## Gating
@@ -65,6 +68,11 @@ leases the row, so two instances never send one row twice), sends each through i
 - sent: `status = sent`, `sentAt` set.
 - retryable failure: `attempt + 1` and `nextAt = now` plus 1 min, 5 min, 30 min, 2 h, 12 h after attempts 1 to 5.
 - after attempt 6, or a result that is not retryable: `failed`, kept for the admin.
+- a hard bounce at the relay (a permanent 5xx, not 503, to RCPT TO or DATA: "550 5.1.1 User unknown") is not
+  retryable: the row is `failed` after one try, `lastError` "Hard bounce: …". A soft bounce (4xx: mailbox full,
+  greylisting) and a 5xx to MAIL FROM or AUTH (the relay's setup) are retried on the ladder above. A bounce the relay
+  sends later by mail (Brevo does this) never reaches the app: the row stays `sent`. Proof: `tests/unit/ntf/mail-bounce.test.ts`
+  and `tests/db/outbox.test.ts`, against a local fake relay (`tests/fixtures/smtp/fake-smtp.ts`).
 - mail without `SMTP_URL`: the row waits (stays `pending`, no attempt counted) instead of failing.
 
 Time is always passed in (`now`), so tests walk a schedule without waiting.

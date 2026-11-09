@@ -59,20 +59,24 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
   };
   const uniq = (xs: string[]) => [...new Set(xs)];
 
-  const push = (d: Omit<OutboxDraft, "status" | "lastError" | "channel">, channel: string, userId: string | null) => {
+  /** `undeliverable`: why a message that may leave cannot; it is written as failed, so /admin lists it. */
+  const push = (d: Omit<OutboxDraft, "status" | "lastError" | "channel">, channel: string, userId: string | null, undeliverable: string | null = null) => {
     const gate = gateOf(ctx.company, channel, d.template, userId ? prefOf(ctx.prefs, userId, d.template) : NO_PREF);
-    drafts.push({ ...d, channel, status: gate.send ? "pending" : "skipped", lastError: gate.send ? null : gate.reason });
+    const status = !gate.send ? "skipped" : undeliverable ? "failed" : "pending";
+    drafts.push({ ...d, channel, status, lastError: !gate.send ? gate.reason : undeliverable });
   };
   // Never to the actor. A person with a Teams chat gets a teams row (no address) when Teams works, otherwise a
-  // mail row, which needs an address. Returns false when no row was written.
-  const mailTo = (userId: string, d: (p: PlanPerson, email: string | null) => Omit<OutboxDraft, "channel" | "recipientUserId" | "address" | "status" | "lastError"> | null): boolean => {
+  // mail row. A person with neither still gets the mail row, failed with "no mail address", so the admin sees
+  // that a notice reached nobody (Settings -> Notifications) instead of nothing. `reachable` tells the composer
+  // which row that is. Returns false when no row was written.
+  const mailTo = (userId: string, d: (p: PlanPerson, email: string | null, reachable: boolean) => Omit<OutboxDraft, "channel" | "recipientUserId" | "address" | "status" | "lastError"> | null): boolean => {
     const p = person(userId);
     if (!p || (ev.actorUserId && ev.actorUserId === userId)) return false;
     const viaTeams = !!ctx.teamsOn && !!p.teams;
-    if (!viaTeams && !p.email) return false;
-    const rest = d(p, p.email);
+    const reachable = viaTeams || !!p.email;
+    const rest = d(p, p.email, reachable);
     if (!rest) return false;
-    push({ ...rest, recipientUserId: userId, address: viaTeams ? null : p.email }, viaTeams ? "teams" : "mail", userId);
+    push({ ...rest, recipientUserId: userId, address: viaTeams ? null : p.email }, viaTeams ? "teams" : "mail", userId, reachable ? null : `no mail address for ${p.name || p.id}`);
     return true;
   };
 
@@ -82,7 +86,7 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     const seatId = ev.payload.assigneeRoleHolderId ?? kase.assigneeSeatId ?? kase.route?.ownerSeatId ?? null;
     let first = true;
     for (const userId of usersOfSeat(seatId)) {
-      mailTo(userId, (p, email) => {
+      mailTo(userId, (p, email, reachable) => {
         // composeNoticeMail only needs someone to send to; a Teams row has no address.
         const n: RaisedNotice = {
           eventId: ev.id, slug: "", day: state.day,
@@ -92,8 +96,9 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
         };
         const mail = composeNoticeMail(n, p.locale);
         if (!mail) return null;
-        const key = first ? noticeKey(ev.id) : `${noticeKey(ev.id)}:${userId}`;
-        first = false;
+        // The pairing key (what /admin's "send again" finds) goes to the first holder who can be reached.
+        const key = first && reachable ? noticeKey(ev.id) : `${noticeKey(ev.id)}:${userId}`;
+        if (reachable) first = false;
         return { key, template: "raised", locale: p.locale, subject: mail.subject, text: mail.text, link: n.links.case, data: { eventId: ev.id, caseId: kase.id } };
       });
     }

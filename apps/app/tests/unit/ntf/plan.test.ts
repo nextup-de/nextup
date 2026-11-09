@@ -67,8 +67,8 @@ describe("NTF planner", () => {
     const events = [raise(), f];
     const d = plan(events);
     expect(d.every((x) => x.template === "reminder.deadline")).toBe(true);
-    expect(users(d)).toEqual(["u_dep", "u_o1", "u_o2"]);
-    expect(d.map((x) => x.key).sort()).toEqual([`rem:${f.id}:u_dep`, `rem:${f.id}:u_o1`, `rem:${f.id}:u_o2`]);
+    expect(users(d)).toEqual(["u_dep", "u_dep2", "u_o1", "u_o2"]);
+    expect(d.map((x) => x.key).sort()).toEqual([`rem:${f.id}:u_dep`, `rem:${f.id}:u_dep2`, `rem:${f.id}:u_o1`, `rem:${f.id}:u_o2`]);
     expect(plan(events).map((x) => x.key)).toEqual(d.map((x) => x.key));
   });
 
@@ -97,7 +97,8 @@ describe("NTF planner", () => {
     const r = raise();
     expect(plan([r], { company }).every((x) => x.status === "pending")).toBe(true);
     const d = plan([r, due("c_a", { kind: "deadline", dueDay: 3, toRoleHolderId: "s_dep" })], { company });
-    expect(d.length).toBe(3);
+    expect(d.length).toBe(4);
+    // Switched off wins over "no mail address": nothing would have left anyway.
     expect(d.every((x) => x.status === "skipped" && x.lastError === "switched off")).toBe(true);
   });
 
@@ -166,9 +167,23 @@ describe("NTF planner", () => {
     expect(off.every((x) => x.status === "skipped" && x.lastError === "switched off")).toBe(true);
   });
 
-  it("a user without an email gets no mail row", () => {
+  it("a user without an email gets a failed mail row the admin sees, never a pending one", () => {
     const f = due("c_a", { kind: "deadline", dueDay: 3, toRoleHolderId: "s_dep" });
-    expect(users(plan([raise(), f]))).not.toContain("u_dep2");
+    const d = plan([raise(), f]).filter((x) => x.recipientUserId === "u_dep2");
+    expect(d).toHaveLength(1);
+    expect(d[0]).toMatchObject({ channel: "mail", address: null, status: "failed", lastError: "no mail address for No Mail", key: `rem:${f.id}:u_dep2` });
+    // In a sandbox it is skipped like every other row.
+    expect(plan([raise(), f], { company: { ...ON, stage: "sandbox" } }).find((x) => x.recipientUserId === "u_dep2")).toMatchObject({ status: "skipped", lastError: "sandbox" });
+  });
+
+  it("a route owner without an email: the raise's pairing key goes to the first holder who can be reached", () => {
+    const r = raise();
+    const noMail = people.map((p) => (p.id === "u_o1" ? { ...p, email: null } : p));
+    const d = plan([r], { people: noMail });
+    expect(d.map((x) => [x.recipientUserId, x.key, x.status])).toEqual([
+      ["u_o1", `notify:${r.id}:u_o1`, "failed"],
+      ["u_o2", `notify:${r.id}`, "pending"],
+    ]);
   });
 
   it("a loop event gives its recipients a loop row keyed by event and user, never the actor", () => {
