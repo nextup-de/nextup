@@ -86,7 +86,7 @@ describe("FLR raise from an area", () => {
     expect(rows[0]).toMatchObject({ actor: "system:floor", actorUserId: null, source: "floor" });
     // The area's unit has one active person: next to an unnamed raiser its name is not stored (features/cases/stamp.ts).
     expect(rows[0].payload).toMatchObject({
-      title: "Oil on the floor", body: "Near the press", kind: "problem", routeId: null, assignee: "Seat lena", fromDept: "", visibility: "everyone",
+      title: "Oil on the floor", body: "Near the press", kind: "problem", routeId: null, assignee: "Seat lena", fromDept: "", visibility: "private",
     });
     const seat = await db.orgRoleHolder.findFirstOrThrow({ where: { companyId, name: "Seat lena" } });
     expect((rows[0].payload as { assigneeRoleHolderId: string }).assigneeRoleHolderId).toBe(seat.id);
@@ -127,7 +127,7 @@ describe("FLR raise from an area", () => {
     const rows = await events();
     expect(rows).toHaveLength(before + 1);
     expect(rows[rows.length - 1]).toMatchObject({ actor: "Lena Lead", actorUserId: userId, source: "floor" });
-    expect(rows[rows.length - 1].payload).toMatchObject({ fromDept: "Montage" }); // by name: the unit stays, however small
+    expect(rows[rows.length - 1].payload).toMatchObject({ fromDept: "Montage", visibility: "everyone" }); // by name: the unit stays, however small; open to everyone
     expect(jar.has(FLOOR_USER_COOKIE)).toBe(false);
     const sent = verifyFloorCookie(jar.get(FLOOR_SENT_COOKIE), SECRET);
     expect(sent).toMatchObject({ named: true, role: "Shift lead" });

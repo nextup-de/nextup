@@ -14,9 +14,13 @@ describe("FLR raise", () => {
   });
 
   it("floorRaisePayload builds the case.raised payload of D7", () => {
-    expect(floorRaisePayload({ title: "Leak", body: "", kind: "problem", seat: { id: "s1", label: "Seat 1" }, unitName: "Montage" })).toEqual({
+    expect(floorRaisePayload({ title: "Leak", body: "", kind: "problem", seat: { id: "s1", label: "Seat 1" }, unitName: "Montage", anonymous: false })).toEqual({
       title: "Leak", body: "", kind: "problem", routeId: null, assignee: "Seat 1", assigneeRoleHolderId: "s1", fromDept: "Montage", visibility: "everyone",
     });
+  });
+
+  it("an anonymous report is private: only the desk sees it (6 Nov decision)", () => {
+    expect(floorRaisePayload({ title: "Leak", body: "", kind: "problem", seat: { id: "s1", label: "Seat 1" }, unitName: "", anonymous: true })).toMatchObject({ visibility: "private" });
   });
 
   it("newReference gives eight digits", () => {
