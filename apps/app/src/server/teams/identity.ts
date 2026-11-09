@@ -4,14 +4,14 @@ import { getDb } from "@/lib/db/client";
 import { saveConversation } from "@/lib/db/teams";
 import type { BotActivity } from "./bot";
 
-export type TeamsPerson = { id: string; name: string; role: string; handle: string | null; locale: string | null };
+export type TeamsPerson = { id: string; name: string; role: string; handle: string | null; locale: string | null; dept: string };
 
 /** The active user of this company with this Entra object id, or null. Never matched by name or email. */
 export async function personOf(companyId: string, aadObjectId: string): Promise<TeamsPerson | null> {
   if (!aadObjectId) return null;
   return getDb().user.findFirst({
     where: { companyId, active: true, entraOid: { equals: aadObjectId, mode: "insensitive" } },
-    select: { id: true, name: true, role: true, handle: true, locale: true },
+    select: { id: true, name: true, role: true, handle: true, locale: true, dept: true },
   });
 }
 

@@ -89,6 +89,19 @@ export function stampDept(type: string, payload: EventPayload, raiser: { label: 
   return deptIsBigEnough(people.ofUser(raiser.userId)) ? payload : { ...payload, fromDept: "" };
 }
 
+/** Does this actor label leave the person unnamed? A handle does, and so does a system actor (system:api). */
+const hidesRaiser = (label: string): boolean => underHandle(label) || label.startsWith("system:");
+
+/**
+ * The department on a raise the server writes for a person (Teams, API v1): their own users.dept, which is what
+ * the web raise sends. Next to a label that does not name them it follows stampDept's rule. No person: none.
+ */
+export function raiserDept(dept: string | null | undefined, raiser: { label: string; userId: string | null }, people: UnitPeople): string {
+  const own = (dept ?? "").trim();
+  if (!own || raiser.userId === null) return "";
+  return !hidesRaiser(raiser.label) || deptIsBigEnough(people.ofUser(raiser.userId)) ? own : "";
+}
+
 type RaisedRow = { type: string; actor: string; actorUserId?: string | null; payload: unknown };
 
 /** Would the rule look at this stored row at all? Lets a caller skip loading the org. */

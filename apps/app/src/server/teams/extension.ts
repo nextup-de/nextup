@@ -7,11 +7,12 @@ import { createHash } from "node:crypto";
 import type { CaseRef } from "@nextup/contracts/public";
 import { actorLabel } from "@/features/auth/identity";
 import type { EventPayload } from "@/features/cases/events";
-import { stampEvent } from "@/features/cases/stamp";
+import { raiserDept, stampEvent } from "@/features/cases/stamp";
 import { seedFor } from "@/features/demo";
 import { attachment, raiseTask, RAISE_BODY_MAX, RAISE_TITLE_MAX } from "@/features/teams/cards";
 import { createT, type Locale } from "@/i18n";
 import { appendEventRow, hasIdemKey } from "@/lib/db/events";
+import { loadUnitPeople } from "@/lib/db/pseudonymise";
 import { companyBaseUrl } from "@/server/case-notice";
 import { kickJira } from "@/server/jira-sync";
 import { proposeOnRaise } from "@/server/routing";
@@ -58,14 +59,17 @@ async function submitAction(company: BotCompany, person: BotPerson, activity: Bo
 
   const visibility = formData(activity.value).visibility === "private" ? "private" : "everyone";
   const seed = await seedFor(company.slug);
-  const base: EventPayload = { title: input.title, body: input.body, kind: input.kind, fromDept: "", visibility };
+  const actor = actorLabel({ role: person.role as "manager" | "leader" | "member", name: person.name, handle: person.handle });
+  // The raiser's department, as the web raise names it (and hides it next to a handle in a small unit).
+  const fromDept = raiserDept(person.dept, { label: actor, userId: person.id }, await loadUnitPeople(company.id));
+  const base: EventPayload = { title: input.title, body: input.body, kind: input.kind, fromDept, visibility };
   const proposal = await proposeOnRaise(company.slug, company.id, base);
   const route = seed.routes.find((r) => r.id === proposal.routeId);
   const stamped = stampEvent("case.raised", { ...base, routeId: proposal.routeId, assignee: route?.owner.name ?? "" }, seed);
 
   const result = await appendEventRow(
     company.id,
-    { id: eventId, day: 0, type: "case.raised", actor: actorLabel({ role: person.role as "manager" | "leader" | "member", name: person.name, handle: person.handle }), targetId: caseId, payload: { ...stamped, proposal } },
+    { id: eventId, day: 0, type: "case.raised", actor, targetId: caseId, payload: { ...stamped, proposal } },
     { actorUserId: person.id, source: "teams", idemKey },
   );
   if (!result.ok) return message(t("teams.refused", { reason: result.error }));

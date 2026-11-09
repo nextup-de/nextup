@@ -1,7 +1,7 @@
 // The department next to a handle: kept only when the raiser's own unit has at least MIN_GROUP people.
 // At write time (stampDept) and for events already stored, as they leave the server (hideSmallDepts).
 import { describe, expect, it } from "vitest";
-import { deptIsBigEnough, hideSmallDepts, namesDeptUnderHandle, NO_UNITS, stampDept, underHandle, unitPeople, type DeptOrg } from "@/features/cases/stamp";
+import { deptIsBigEnough, hideSmallDepts, namesDeptUnderHandle, NO_UNITS, raiserDept, stampDept, underHandle, unitPeople, type DeptOrg } from "@/features/cases/stamp";
 import { MIN_GROUP } from "@/features/metrics/types";
 
 const members = (unitId: string | null, ...ids: string[]) => ids.map((userId) => ({ userId, unitId }));
@@ -107,5 +107,26 @@ describe("hideSmallDepts (events already stored, on the way out)", () => {
     const grown = unitPeople({ ...org, members: [...org.members, ...members("small", "s4")] });
     expect(depts(hideSmallDepts([small], grown))).toEqual(["Line 3"]);
     expect(depts(hideSmallDepts([big], NO_UNITS))).toEqual([""]);
+  });
+});
+
+describe("raiserDept (Teams and API v1 raises)", () => {
+  it("names the raiser's own department next to their name, also from a small unit, as the web raise does", () => {
+    expect(raiserDept("Line 3", { label: "T. Vogel", userId: "u_lead" }, people)).toBe("Line 3");
+    expect(raiserDept("  Logistics ", { label: "J. Schmidt", userId: "u_free" }, people)).toBe("Logistics");
+  });
+
+  it("next to a handle or system:api, keeps it only for a unit of at least MIN_GROUP", () => {
+    expect(raiserDept("Big", { label: "Anonymous #4471", userId: "b1" }, people)).toBe("Big");
+    expect(raiserDept("Small", { label: "Anonymous #4471", userId: "s1" }, people)).toBe("");
+    expect(raiserDept("Big", { label: "system:api", userId: "b1" }, people)).toBe("Big");
+    expect(raiserDept("Small", { label: "system:api", userId: "s1" }, people)).toBe("");
+    expect(raiserDept("Free", { label: "system:api", userId: "u_free" }, people)).toBe("");
+  });
+
+  it("no person or no department: none", () => {
+    expect(raiserDept("Line 3", { label: "system:api", userId: null }, people)).toBe("");
+    expect(raiserDept("", { label: "T. Vogel", userId: "u_lead" }, people)).toBe("");
+    expect(raiserDept(null, { label: "T. Vogel", userId: "u_lead" }, people)).toBe("");
   });
 });

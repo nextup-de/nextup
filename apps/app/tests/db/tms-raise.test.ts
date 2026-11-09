@@ -146,6 +146,20 @@ describe("TMS raise from Teams", () => {
     expect(row?.payload).toMatchObject({ kind: "idea", visibility: "private" });
   });
 
+  it("carries the raiser's department, as the web raise does; under a handle only for a unit of five or more", async () => {
+    const deptOf = async (title: string) => {
+      await post(invoke(PERSON_AAD, "composeExtension/submitAction", form({ title })));
+      const row = (await raised()).find((r) => (r.payload as { title?: string }).title === title);
+      return (row?.payload as { fromDept?: string } | undefined)?.fromDept;
+    };
+    await db.user.update({ where: { id: personId, companyId }, data: { dept: "Production, Line 3" } });
+    expect(await deptOf("Named raise with a dept")).toBe("Production, Line 3");
+    // A handle and a department nobody else belongs to: the department would name the person.
+    await db.user.update({ where: { id: personId, companyId }, data: { handle: "Anonymous #7001", dept: "Nobody else here" } });
+    expect(await deptOf("Handle raise from a lone dept")).toBe("");
+    await db.user.update({ where: { id: personId, companyId }, data: { handle: null, dept: "" } });
+  });
+
   it("an unknown person raises nothing", async () => {
     const before = (await raised()).length;
     const res = await post(invoke(STRANGER_AAD, "composeExtension/submitAction", form({ title: "Not me" })));

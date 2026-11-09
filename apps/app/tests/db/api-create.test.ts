@@ -11,7 +11,7 @@ import { POST } from "@/app/api/v1/[company]/cases/route";
 
 const db = getDb();
 const slug = "api-c-a";
-let companyId = "", writer = "", reader = "", userId = "", gone = "";
+let companyId = "", writer = "", reader = "", userId = "", gone = "", painter = "", toolmaker = "";
 let routeKey = "", seatRole: string | null = null;
 
 const post = (body: unknown, token: string | null, raw = false) =>
@@ -44,6 +44,11 @@ beforeAll(async () => {
   seatRole = route.ownerRoleId ?? null;
   userId = (await db.user.create({ data: { companyId, name: "Ann", email: "ann@example.test", role: "member" } })).id;
   gone = (await db.user.create({ data: { companyId, name: "Bob", email: "bob@example.test", role: "member", active: false } })).id;
+  // Units: "Paint shop" has five people, "Tool room" one. Their users.dept names the unit, as the directory writes it.
+  await db.orgUnit.createMany({ data: [{ companyId, key: "paint", name: "Paint shop" }, { companyId, key: "tool", name: "Tool room" }] });
+  const paint = await Promise.all([1, 2, 3, 4, 5].map((n) => db.user.create({ data: { companyId, name: `P${n}`, email: `p${n}@example.test`, role: "member", dept: "Paint shop" } })));
+  painter = paint[0].id;
+  toolmaker = (await db.user.create({ data: { companyId, name: "Tom", email: "tom@example.test", role: "member", dept: "Tool room" } })).id;
   writer = await createToken(companyId, "w", ["cases:write", "cases:read"]);
   reader = await createToken(companyId, "r", ["cases:read"]);
 });
@@ -70,6 +75,17 @@ describe("API v1 case creation", () => {
     expect(payload.visibility).toBe("everyone");
     expect(payload.proposal).toBeTruthy();
     expect(payload.assigneeRoleHolderId).toBeTruthy();
+  });
+
+  it("carries the raiser's department, as the web raise does; a unit under five people is left out next to system:api", async () => {
+    const deptOf = async (raisedByUserId: string | null) => {
+      const { data } = ApiV1CaseCreated.parse(await (await post(valid({ raisedByUserId }), writer)).json());
+      const row = await db.caseEvent.findFirstOrThrow({ where: { companyId, targetId: data.id } });
+      return (row.payload as { fromDept?: string }).fromDept;
+    };
+    expect(await deptOf(painter)).toBe("Paint shop");
+    expect(await deptOf(toolmaker)).toBe("");
+    expect(await deptOf(null)).toBe("");
   });
 
   it("falls back to the proposal when the routeHint names no route, and mints random ids without externalId", async () => {
