@@ -166,7 +166,8 @@ describe("MET acceptance: dashboard numbers match the fixture", () => {
     expect(data.answers).toEqual({ yes: 5, yesProject: 1, question: 2, handed: 1, no: 1 });
     // Last bucket ends today and holds both periods: 8 + 13 = 21 raised, answered 6 (B1 B2 B3 B5 B6 B7) + 8 (N1 N2 N3 N4 N5 N6 N9 N11) = 14, on time 5 + 7 = 12.
     expect(data.trend).toHaveLength(6);
-    expect(data.trend[5]).toEqual({ month: String(D0 - 10), raised: 21, answered: 14, onTime: 12, baseline: true });
+    // It ends on D0+19, Friday 2 Oct 2026: the axis names it by that month ("Oct").
+    expect(data.trend[5]).toEqual({ month: String(D0 - 10), endDay: D0 + 19, endDate: "2026-10-02", raised: 21, answered: 14, onTime: 12, baseline: true });
   });
 
   it("hides every tile for a unit under 5 people", async () => {
