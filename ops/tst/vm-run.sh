@@ -34,7 +34,9 @@
 #   TST_E2E_CMD         the scenario command, run in apps/app with TST_BASE_URL, TST_SLUG, TST_CODES_FILE set
 #                       (default: the TST acceptance spec through playwright.db.config.ts)
 #   TST_K6_RUN          default apps/app/tests/load/k6/run.sh; given the cookies file as its argument, and
-#                       BASE_URL, VUS, DURATION, TST_K6_SUMMARY (a k6 --summary-export json to write)
+#                       BASE_URL, VUS, DURATION, TST_K6_SUMMARY (a k6 --summary-export json to write), G4_PEOPLE,
+#                       PEAK_VUS. apps/app/tests/load/k6/g4-stages.sh runs the three G4 stages instead of one
+#                       (docs/test-phase/G4_DRILLS.md)
 #   TST_RESULTS_DIR     default docs/test-phase/results
 set -uo pipefail
 umask 077
@@ -82,7 +84,9 @@ trap tst_exit_handler EXIT
 trap 'exit 130' INT TERM
 
 TST_STEP_TOTAL=9
-declare -A result secs detail
+# result, secs and detail per step key, as plain variables: the Mac's /bin/bash is 3.2 and has no `declare -A`.
+kv_set() { printf -v "kv_${1}_$2" '%s' "$3"; }        # <map> <key> <value>
+kv_get() { local n="kv_${1}_$2"; printf '%s' "${!n:-}"; } # <map> <key>
 order=(release dbport tunnel generator scenario k6 restore close results)
 slug="" origin="" db_open=false tunnel_pid="" scenario_line="" restore_secs=""
 k6_summary="" k6_note="" k6_accounts=""
@@ -91,25 +95,26 @@ failed=0
 
 # step <key> <label> <fatal: yes|no> <function>: one status line, time taken, log kept in the temp dir.
 step() {
-  local key="$1" label="$2" fatal="$3" fn="$4" t0 rc log
+  local key="$1" label="$2" fatal="$3" fn="$4" t0 rc log d
   TST_STEP_N=$((TST_STEP_N + 1))
   log="$TST_TMP/$key.log"; ( umask 077; : > "$log" )
   t0=$(date +%s)
   "$fn" >"$log" 2>&1; rc=$?
-  secs[$key]=$(( $(date +%s) - t0 ))
+  kv_set secs "$key" "$(( $(date +%s) - t0 ))"
   if [ "$rc" -eq 0 ]; then
-    result[$key]=ok
-    tst_status "$label" ok "${secs[$key]}s${detail[$key]:+, ${detail[$key]}}"
+    kv_set result "$key" ok
+    d="$(kv_get detail "$key")"
+    tst_status "$label" ok "$(kv_get secs "$key")s${d:+, $d}"
   else
-    result[$key]=FAILED; failed=1
-    tst_status "$label" FAILED "${secs[$key]}s, exit $rc"
+    kv_set result "$key" FAILED; failed=1
+    tst_status "$label" FAILED "$(kv_get secs "$key")s, exit $rc"
     tail -n 15 "$log" | sed 's/^/    | /' >&2
     if [ "$fatal" = yes ]; then return 1; fi
   fi
   return 0
 }
 skip_step() { # <key> <label> <why>
-  TST_STEP_N=$((TST_STEP_N + 1)); result[$1]=skipped; secs[$1]=0
+  TST_STEP_N=$((TST_STEP_N + 1)); kv_set result "$1" skipped; kv_set secs "$1" 0
   tst_status "$2" skipped "$3"
 }
 
@@ -188,8 +193,10 @@ do_k6() {
   run="${TST_K6_RUN:-$app_dir/tests/load/k6/run.sh}"
   with_secrets "$app_dir" npx tsx tests/load/driver.ts --slug "$slug" --base-url "$origin" --single --accounts "$accounts" --write-cookies "$cookies" || return 1
   k6_accounts="$(jq -r '.accounts | length' "$cookies" 2>/dev/null)"
-  detail[k6]="$k6_accounts accounts, $vus virtual users, $k6_duration"
-  BASE_URL="$origin" VUS="$vus" DURATION="$k6_duration" TST_K6_SUMMARY="$k6_summary" with_secrets "$app_dir" "$run" "$cookies"
+  kv_set detail k6 "$k6_accounts accounts, $vus virtual users, $k6_duration"
+  # G4_PEOPLE and PEAK_VUS are for apps/app/tests/load/k6/g4-stages.sh (the G4 stages); run.sh ignores them.
+  BASE_URL="$origin" VUS="$vus" DURATION="$k6_duration" TST_K6_SUMMARY="$k6_summary" G4_PEOPLE="$people" PEAK_VUS="$vus" \
+    with_secrets "$app_dir" "$run" "$cookies"
 }
 
 do_restore() {
@@ -211,7 +218,7 @@ close_db() {
 tst_on_exit 'close_db'
 
 write_results() {
-  local f d k page p95 p99 rate
+  local f d k page p95 p99 rate r s
   mkdir -p "$results_dir" || return 1
   d="$(date -u +%F)"; f="$results_dir/$d.md"
   {
@@ -228,17 +235,19 @@ write_results() {
     echo "|---|---|---|"
     for k in "${order[@]}"; do
       [ "$k" != results ] || continue
-      echo "| $k | ${result[$k]:-not run} | ${secs[$k]:--} |"
+      r="$(kv_get result "$k")" s="$(kv_get secs "$k")"
+      echo "| $k | ${r:-not run} | ${s:--} |"
     done
     echo
     echo "## Scenario"
     echo
-    echo "${result[scenario]:-not run}${scenario_line:+ - $scenario_line}"
+    r="$(kv_get result scenario)"; echo "${r:-not run}${scenario_line:+ - $scenario_line}"
     echo
     echo "## k6 (budget: p95 < 1000 ms per page, errors < 1 %)"
     echo
-    if [ "${result[k6]:-}" = skipped ] || [ ! -s "${k6_summary:-/nonexistent}" ]; then
-      echo "${k6_note:-${result[k6]:-not run}}"
+    r="$(kv_get result k6)"
+    if [ "$r" = skipped ] || [ ! -s "${k6_summary:-/nonexistent}" ]; then
+      echo "${k6_note:-${r:-not run}}"
     else
       echo "| Page | p95 ms | p99 ms |"
       echo "|---|---|---|"
@@ -256,7 +265,7 @@ write_results() {
     if [ -n "$restore_secs" ]; then
       echo "restore-test took **$restore_secs s**, RTO_SECONDS is **$rto** (docs/ops/RPO_RTO.md): $([ "$restore_secs" -le "$rto" ] && echo within || echo OVER) the RTO."
     else
-      echo "${result[restore]:-not run} - no seconds recorded (RTO_SECONDS $rto)."
+      r="$(kv_get result restore)"; echo "${r:-not run} - no seconds recorded (RTO_SECONDS $rto)."
     fi
     echo
     echo "## Versions"
@@ -290,7 +299,7 @@ run
 # Steps a failure kept from running still get their line. Then, whatever happened, the port closes
 # and the results are written.
 for i in 0 1 2 3 4 5 6; do
-  [ -z "${result[${order[$i]}]:-}" ] || continue
+  [ -z "$(kv_get result "${order[$i]}")" ] || continue
   TST_STEP_N=$i; skip_step "${order[$i]}" "${order[$i]}" "not run: an earlier step failed"
 done
 TST_STEP_N=7
