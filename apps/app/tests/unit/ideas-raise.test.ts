@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { benchmark, weakest } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
-import { adviceOf, dialsMoved, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, levelOf, RAIL, railOf, splitIdea, splitUpdate, whenLabel, withoutSkipped } from "@/features/ideas/raise";
+import { adviceOf, dialsMoved, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, levelOf, moveView, RAIL, railOf, splitIdea, splitUpdate, whenLabel, withoutSkipped } from "@/features/ideas/raise";
 import { DEMO_GOALS } from "@/features/demo/structure";
 import { ROUTES } from "@/features/demo/seed";
 
@@ -102,6 +102,17 @@ describe("advice and the chat's card", () => {
     expect(levelOf(d("cost", 85))).toBe("Low");
     expect(levelOf(d("risk", 30))).toBe("High");
     expect(levelOf({ ...d("value", 0), scored: false })).toBe("Not yet");
+  });
+  it("names Cost and Risk as themselves on the chat card, so low cost reads as good: arrow down, colour better", () => {
+    const d = (key: "value" | "cost" | "risk", value: number) => ({ key, label: key === "cost" ? "Low cost" : key === "risk" ? "Low risk" : "Value", value, note: "", basis: "", scored: true });
+    expect(moveView(d("cost", 85), "up")).toEqual({ label: "Cost", arrow: "▼", better: true, level: "Low", bar: 15 });
+    expect(moveView(d("risk", 75), "up")).toMatchObject({ label: "Risk", arrow: "▼", better: true, level: "Low" });
+    expect(moveView(d("cost", 35), "down")).toMatchObject({ label: "Cost", arrow: "▲", better: false, level: "High" });
+    expect(moveView(d("value", 90), "up")).toEqual({ label: "Value", arrow: "▲", better: true, level: "Strong", bar: 90 });
+    expect(moveView(d("risk", 75), "up", "de")).toMatchObject({ label: "Risiko", level: "Niedrig" });
+    // Never the old contradiction: "Low cost ▲ Low".
+    const v = moveView(d("cost", 85), "up");
+    expect(`${v.label} ${v.arrow} ${v.level}`).not.toBe("Low cost ▲ Low");
   });
   it("marks only the dials an answer made better", () => {
     const later = benchmark({ text: "A shared calendar for the endurance rig. A pilot for one week on line 3 saves 20 minutes per shift.", affected: [], attachments: 0 }, ctx);

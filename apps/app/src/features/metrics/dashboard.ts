@@ -5,7 +5,7 @@ import { DEMO_CLOCK } from "@/features/clock";
 import type { T } from "@/i18n";
 import { breakdown } from "./breakdown";
 import { hiddenTiles, periodRange, scopeCases, waitLedger } from "./ledger";
-import type { Baseline, DashboardData, LedgerFacts, LedgerInput, Period, PilotMetricKey, Tile, TileId } from "./types";
+import type { Baseline, DashboardData, LedgerFacts, LedgerInput, Period, PilotMetricKey, Tile, TileId, TrendMonth } from "./types";
 
 /** One point of the "cases raised per month" line, in the chart's 0-100 box. */
 export type TrendPoint = { x: number; y: number; v: number };
@@ -22,6 +22,28 @@ export function trendPaths(points: readonly TrendPoint[]): { line: string; area:
   const line = points.map((p, i) => (i ? "L" : "M") + p.x.toFixed(2) + " " + p.y.toFixed(2)).join(" ");
   const first = points[0], last = points[points.length - 1];
   return { line, area: `${line} L${last.x.toFixed(2)} 100 L${first.x.toFixed(2)} 100 Z` };
+}
+
+const MONTHS = [
+  "ideas.monthJan", "ideas.monthFeb", "ideas.monthMar", "ideas.monthApr", "ideas.monthMay", "ideas.monthJun",
+  "ideas.monthJul", "ideas.monthAug", "ideas.monthSep", "ideas.monthOct", "ideas.monthNov", "ideas.monthDec",
+] as const;
+
+/**
+ * The axis label of each trend step, oldest first: the month its last day falls in ("Oct", "Dec ’25" when the steps
+ * cross a year), or - in a simulated company, which has no calendar - how far back it is ("now", "1 mo ago").
+ * The catalog's month names, not Intl's: the server and the browser then render the same text.
+ */
+export function trendLabels(trend: readonly Pick<TrendMonth, "endDate">[], t: T): string[] {
+  const dates = trend.map((m) => (m.endDate && /^\d{4}-\d{2}/.test(m.endDate) ? m.endDate : null));
+  if (!dates.length || dates.some((d) => d === null)) {
+    return trend.map((_, i) => (i === trend.length - 1 ? t("metrics.bucketNow") : t("metrics.bucketAgo", { count: trend.length - 1 - i })));
+  }
+  const crossesYear = new Set(dates.map((d) => (d as string).slice(0, 4))).size > 1;
+  return dates.map((d) => {
+    const month = t(MONTHS[Number((d as string).slice(5, 7)) - 1]);
+    return crossesYear ? `${month} ’${(d as string).slice(2, 4)}` : month;
+  });
 }
 
 /** Bar heights in % of the largest value, never under `floor` so a small month stays visible. */

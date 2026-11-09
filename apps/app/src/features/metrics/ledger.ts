@@ -142,8 +142,10 @@ function trendOf(input: LedgerInput, p: Period, baseline: Period | null): TrendM
     const raised = input.cases.filter((c) => inPeriod(c.raisedDay, b));
     const answered = raised.filter((c) => c.firstResponseDay !== null);
     return {
-      // The bucket's first day number; the page turns it into a month name with the company clock.
+      // The bucket's first day number; the server adds the date of its last day where there is a calendar.
       month: String(b.from),
+      endDate: null,
+      endDay: b.to,
       raised: raised.length,
       answered: answered.length,
       onTime: answered.filter((c) => answeredOnTime(c, input.promiseDays)).length,

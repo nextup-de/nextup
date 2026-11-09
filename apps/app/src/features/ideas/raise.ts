@@ -245,6 +245,18 @@ export function levelOf(d: Dial, locale: Locale = DEFAULT_LOCALE): string {
   return translate(locale, words[band]);
 }
 
+// One moved dial as the chat's card shows it. Cost and Risk are named as the cost and the risk themselves
+// ("Cost", not "Low cost"), so the word, the arrow and the bar follow that quantity: cost that fell reads
+// "Cost ▼ Low" with a short bar. `better` is whether the idea gained - it, not the arrow, gives the colour.
+export type MoveView = { label: string; arrow: "▲" | "▼"; better: boolean; level: string; bar: number };
+export function moveView(d: Dial, move: Move, locale: Locale = DEFAULT_LOCALE): MoveView {
+  const better = move === "up";
+  const inverse = d.key === "cost" || d.key === "risk";
+  const label = d.key === "cost" ? translate(locale, "ideas.dialCostPlain") : d.key === "risk" ? translate(locale, "ideas.dialRiskPlain") : d.label;
+  const bar = d.scored ? Math.max(4, inverse ? 100 - d.value : d.value) : 0;
+  return { label, arrow: better !== inverse ? "▲" : "▼", better, level: levelOf(d, locale), bar };
+}
+
 // The dials that got better from one reading of the idea to the next (the ▲ in the chat's card).
 export function dialsUp(before: readonly Dial[], now: readonly Dial[]): DialKey[] {
   return now.filter((d) => d.value > (before.find((b) => b.key === d.key)?.value ?? d.value)).map((d) => d.key);
