@@ -167,9 +167,13 @@ test.describe.serial("TST acceptance: Musterwerk scenario suite", () => {
     const page = await signIn(browser, manager);
     await page.goto(url("/dashboard?period=quarter"));
     await expect(page.getByRole("main")).toBeVisible();
-    await expect(page.getByText("Too few to show").first()).toBeVisible();
+    // The small unit is left out of the breakdown; one line counts what is not shown.
+    await expect(page.getByTestId("dashboard-hidden-count")).toBeVisible();
     await page.goto(url(`/dashboard?period=quarter&unit=${smallUnitId}`));
-    await expect(page.getByText("Too few to show").first()).toBeVisible();
+    // Scoped to the small unit: one sentence, and no tile or chart with a number.
+    await expect(page.getByTestId("dashboard-scope-hidden")).toBeVisible();
+    await expect(page.locator('[data-testid^="dashboard-tile-"]')).toHaveCount(0);
+    await expect(page.getByTestId("dashboard-trend")).toHaveCount(0);
   });
 
   test("a member of another unit cannot open the case", async ({ browser }) => {
