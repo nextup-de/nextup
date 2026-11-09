@@ -73,9 +73,12 @@ test.describe.serial("UIP colour", () => {
     await expect(manager.locator("[data-dept-tone]:visible").first()).toBeVisible();
     await expectTintedFaces(manager, 1);
 
-    // The manager's Dashboard breaks the wait ledger down by unit.
+    // The manager's Dashboard breaks the wait ledger down by unit, and every unit it shows carries its tone.
+    // This company has three people, so every unit is under 5 and the breakdown may show none at all.
     await open(manager, "/dashboard");
-    await expect(manager.locator("[data-dept-tone]:visible").first()).toBeVisible();
+    await expect(manager.getByTestId("dashboard-board")).toBeVisible();
+    const units = manager.getByTestId("dashboard-row");
+    await expect(units.locator("[data-dept-tone]")).toHaveCount(await units.count());
     await manager.context().close();
 
     // The leader's Inbox: its people are tinted too.
