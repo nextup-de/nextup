@@ -7,12 +7,13 @@ rows come with the request; a company with hundreds of earlier items will need a
 
 import time
 
+from brain import guard
 from brain.llm import LLMClient
 from brain.schemas import Judgement, RouteIn, RouteOut
 
 # Stored with every proposal the app keeps (case.raised payload.proposal.version).
 # Bump it whenever the prompt or the rules below change.
-PROMPT_VERSION = "brain-route-v1"
+PROMPT_VERSION = "brain-route-v2"
 NONE = "none"
 
 
@@ -41,11 +42,17 @@ def route(llm: LLMClient, body: RouteIn) -> RouteOut:
     schema["properties"]["closest_id"]["enum"] = known_ids + [""]
     j = llm.structured("route", Judgement, {
         "company": body.company,
-        "idea": body.idea.title + ("\n" + body.idea.body if body.idea.body else ""),
+        # A colleague by name never reaches the model (brain/guard.py).
+        "idea": guard.mask_names(body.idea.title + ("\n" + body.idea.body if body.idea.body else ""))[0],
         "routes": _rows(body),
         "known": _known(body),
     }, schema_override=schema, check=check)
 
+    # A hazard to people goes to whoever owns safety, also when a defect causes it (8 Nov, D1: the
+    # Not-Halt went to maintenance). Only where the company has such a row.
+    safe = guard.safety_row(body.routes) if guard.is_safety(body.idea.title + " " + body.idea.body) else None
+    if safe and j.route_id != safe.id:
+        j.route_id, j.reason = safe.id, f"A hazard to people goes to {guard.owner_of(safe, 'en')}."
     routed = j.route_id != NONE
     match = j.closest_id or None
     same = match if j.same_problem else None

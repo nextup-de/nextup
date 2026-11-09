@@ -83,6 +83,9 @@ def main() -> None:
         except LLMOutputError as e:
             print(f"  ERROR {str(e)[:120]}")
             continue
+        except Exception as e:  # noqa: BLE001 - a 429 or a filter refusal is one case's error, not the end of the run
+            print(f"  ERROR {type(e).__name__}: {str(e)[:120]}")
+            continue
         ok += 1
         ms.append(r.ms + out.ms)
         if c["earlier"]:
