@@ -30,7 +30,8 @@ export function JiraBlock({ view, readOnly }: { view: JiraBlockView; readOnly: b
   const off = pending || readOnly;
   const status = jiraStatus(view);
   const notes: Note[] = [];
-  if (status === "error" && view.lastError) notes.push({ tone: "error", text: `${t("adminConnectors.jiraLastError")}: ${view.lastError}` }, { tone: "plain", text: t("adminConnectors.jiraWaits") });
+  if (status === "error" && view.lastError && view.tokenRefused) notes.push({ tone: "error", text: t("adminConnectors.jiraTokenRefused") }, { tone: "plain", text: `${t("adminConnectors.jiraLastError")}: ${view.lastError}` }, { tone: "plain", text: t("adminConnectors.jiraWaits") });
+  else if (status === "error" && view.lastError) notes.push({ tone: "error", text: `${t("adminConnectors.jiraLastError")}: ${view.lastError}` }, { tone: "plain", text: t("adminConnectors.jiraWaits") });
   if (!view.vault) notes.push({ tone: "warn", text: t("adminConnectors.errNoVault") });
   const site = [view.form.siteUrl, view.form.projectKey].filter(Boolean).join(" · ");
 

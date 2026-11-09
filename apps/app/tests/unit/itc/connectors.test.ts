@@ -18,6 +18,10 @@ describe("ITC connector views", () => {
     expect(jira.token).toBe("set");
     expect(ai.key).toBe("set");
     expect(jiraBlockView(null, true).token).toBe("not set");
+    // G8: a refused token is named as such, so the block can say "enter a new token" instead of only "401".
+    expect(jiraBlockView({ ...row, lastError: "401 Unauthorized" }, true).tokenRefused).toBe(true);
+    expect(jiraBlockView({ ...row, lastError: "0 No answer from jira.acme.example" }, true).tokenRefused).toBe(false);
+    expect(jiraBlockView(row, true).tokenRefused).toBe(false);
     expect(aiBlockView({ choice: "off", region: "eu", model: "", endpoint: null, deployment: null }, false, true).key).toBe("not set");
   });
 

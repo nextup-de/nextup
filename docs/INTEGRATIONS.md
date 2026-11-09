@@ -171,6 +171,13 @@ write has an idempotency key (`jira:epic:<projectId>`, `jira:issue:<stepId>`,
 the label `nextup-<projectId>` or `nextup-step-<stepId>`, and the sync searches for it before it
 creates.
 
+**An expired or revoked token** (PILOT_CHECK G8): Jira answers 401, the round ends at once and moves no cursor, and
+`lastError` starts with the status. /admin → Connectors → Jira then says the token was refused and to enter a new
+one, and the project page's Jira chip says the token expired. Saving a new token clears the error and forgets the
+account; the next round asks `/myself`, pushes what people did in the meantime and pulls what changed in Jira since
+the last good round (moves, renames, comments, new children). Proof: `tests/unit/jira-sync.test.ts` and
+`tests/db/tst-integrations.test.ts` ("G8"); live checklist: `docs/test-phase/JIRA_G8_CHECKLIST.md`.
+
 **The seam in code.** `JiraApi` (`features/integrations/jira/types.ts`) is the only way anything talks
 to Jira; `Job` is what the push plans; `JiraStatusView` is what the screens read; `TestJira` is the
 admin's connection test. The implementations (`server/jira/cloud.ts`, the planner, the loop) are the

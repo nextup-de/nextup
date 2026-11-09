@@ -4,6 +4,7 @@ import type { AiSettings } from "@/features/ai/settings";
 import { formFromSettings } from "@/features/admin/jira-admin";
 import type { JiraForm } from "@/features/admin/jira-admin";
 import type { DirectoryCounts, DirectorySourceKind } from "@/features/directory";
+import { isTokenError } from "@/features/integrations/jira/view";
 
 export type SecretState = "set" | "not set";
 export const secretState = (has: boolean): SecretState => (has ? "set" : "not set");
@@ -25,6 +26,8 @@ export type JiraBlockView = {
   lastRunAt: string | null;
   lastOkAt: string | null;
   lastError: string | null;
+  /** The last round failed because Jira refused the token (401/403): expired or revoked (PILOT_CHECK G8). */
+  tokenRefused: boolean;
   vault: boolean;
 };
 
@@ -38,6 +41,7 @@ export function jiraBlockView(row: JiraRowFacts | null, vault: boolean): JiraBlo
     lastRunAt: row?.lastRunAt?.toISOString() ?? null,
     lastOkAt: row?.lastOkAt?.toISOString() ?? null,
     lastError: row?.lastError ?? null,
+    tokenRefused: isTokenError(row?.lastError ?? null),
     vault,
   };
 }
