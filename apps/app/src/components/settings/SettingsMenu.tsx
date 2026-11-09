@@ -28,10 +28,11 @@ export type SetupLink = { href: string; label: string; open: boolean };
  * `setup`: the way into the setup process, which is not a section of Settings. A pill above the
  * sections while the company is still closed; a plain link below them once it is open.
  */
-export function SettingsMenu({ title, aria, currentLabel, groups, setup }: { title: string; aria: string; currentLabel: string; groups: MenuGroup[]; setup?: SetupLink }) {
+export function SettingsMenu({ title, aria, currentLabel, groups, setup, offMenu = [] }: { title: string; aria: string; currentLabel: string; groups: MenuGroup[]; setup?: SetupLink; offMenu?: MenuGroup["items"] }) {
   const path = usePathname();
   const items = groups.flatMap((g) => g.items);
-  const current = items.find((i) => path === i.href || path.startsWith(`${i.href}/`));
+  // offMenu: pages with an address but no menu entry; they only name the page on the phone's menu line.
+  const current = [...items, ...offMenu].find((i) => path === i.href || path.startsWith(`${i.href}/`));
   const pill = setup && !setup.open ? setup : undefined;
   const after = setup?.open ? setup : undefined;
   return (

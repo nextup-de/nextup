@@ -4,7 +4,8 @@ import type { MessageKey } from "@/i18n";
 
 export type SettingsSectionKey = "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "signIn" | "supportAccess" | "teams" | "areas" | "privacy" | "audit" | "goLive" | "pilotReport";
 export type SettingsGroup = "start" | "company" | "structure" | "data";
-export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey; group: SettingsGroup };
+/** `menu: false`: the page keeps its address but is not in the settings menu. */
+export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey; group: SettingsGroup; menu?: false };
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { key: "goLive", path: "go-live", label: "settingsGoLive.navLabel", group: "start" },
@@ -16,8 +17,9 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { key: "members", path: "members", label: "settings.navMembers", group: "structure" },
   { key: "importExport", path: "import-export", label: "settingsImport.navLabel", group: "data" },
   { key: "notifications", path: "notifications", label: "settingsNotifications.navLabel", group: "company" },
-  { key: "webhooks", path: "webhooks", label: "settingsWebhooks.navLabel", group: "data" },
-  { key: "apiTokens", path: "api-tokens", label: "settingsApiTokens.navLabel", group: "data" },
+  // Out of the menu by the 6 Nov decision (CSV import stays); still at /settings/webhooks and /settings/api-tokens.
+  { key: "webhooks", path: "webhooks", label: "settingsWebhooks.navLabel", group: "data", menu: false },
+  { key: "apiTokens", path: "api-tokens", label: "settingsApiTokens.navLabel", group: "data", menu: false },
   { key: "signIn", path: "sign-in", label: "settingsSignIn.navLabel", group: "data" },
   { key: "supportAccess", path: "support-access", label: "settingsSupport.navLabel", group: "data" },
   { key: "teams", path: "teams", label: "settingsTeams.navLabel", group: "data" },
@@ -26,6 +28,9 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { key: "audit", path: "audit", label: "settingsAudit.navLabel", group: "data" },
   { key: "pilotReport", path: "pilot-report", label: "settingsPilotReport.navLabel", group: "data" },
 ];
+
+/** The sections the settings menu lists, in order. */
+export const SETTINGS_MENU: readonly SettingsSection[] = SETTINGS_SECTIONS.filter((s) => s.menu !== false);
 
 export type SetupStep = "company" | "units" | "roles" | "routes" | "members" | "done";
 export type SetupCounts = { named: boolean; units: number; seats: number; routes: number; members: number };

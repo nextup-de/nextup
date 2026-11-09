@@ -1,7 +1,7 @@
 // Settings sub-navigation. Company admins only: companyAdminOf below; the proxy and ROLE_ACCESS
 // are routing, not the boundary.
 import { notFound } from "next/navigation";
-import { SETTINGS_SECTIONS, type SettingsGroup } from "@/features/settings/sections";
+import { SETTINGS_MENU, SETTINGS_SECTIONS, type SettingsGroup } from "@/features/settings/sections";
 import { SettingsMenu, type MenuGroup } from "@/components/settings/SettingsMenu";
 import s from "@/components/settings/settings.module.css";
 import { companyPrefix } from "@/features/tenant/urls";
@@ -33,12 +33,13 @@ export default async function SettingsLayout({ children, params }: { children: R
     .map((g) => ({
       key: g,
       label: groupLabel[g],
-      items: SETTINGS_SECTIONS.filter((x) => x.group === g).map((x) => ({ key: x.key, href: `${base}/${x.path}`, label: t(x.label) })),
+      items: SETTINGS_MENU.filter((x) => x.group === g).map((x) => ({ key: x.key, href: `${base}/${x.path}`, label: t(x.label) })),
     }))
     .filter((g) => g.items.length > 0);
+  const offMenu = SETTINGS_SECTIONS.filter((x) => x.menu === false).map((x) => ({ key: x.key, href: `${base}/${x.path}`, label: t(x.label) }));
   return (
     <div className={s.frame}>
-      <SettingsMenu title={t("settings.menuTitle")} aria={t("settings.navAria")} currentLabel={t("settings.menuCurrent")} groups={groups} setup={setup} />
+      <SettingsMenu title={t("settings.menuTitle")} aria={t("settings.navAria")} currentLabel={t("settings.menuCurrent")} groups={groups} setup={setup} offMenu={offMenu} />
       <div className={s.page}>{children}</div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SETTINGS_SECTIONS, setupStep } from "@/features/settings/sections";
+import { SETTINGS_MENU, SETTINGS_SECTIONS, setupStep } from "@/features/settings/sections";
 import { en } from "@/i18n/en";
 import { de } from "@/i18n/de";
 
@@ -9,6 +9,14 @@ describe("ADM settings sections", () => {
   it("lists the sections of D7 in order with their paths", () => {
     expect(SETTINGS_SECTIONS.map((s) => s.key)).toEqual(["goLive", "company", "rules", "calendar", "org", "routing", "members", "importExport", "notifications", "webhooks", "apiTokens", "signIn", "supportAccess", "teams", "areas", "privacy", "audit", "pilotReport"]);
     expect(SETTINGS_SECTIONS.map((s) => s.path)).toEqual(["go-live", "company", "rules", "calendar", "org", "routing", "members", "import-export", "notifications", "webhooks", "api-tokens", "sign-in", "support-access", "teams", "areas", "privacy", "audit", "pilot-report"]);
+  });
+
+  it("leaves webhooks and API tokens out of the menu and keeps CSV import in it (6 Nov decision)", () => {
+    const menu = SETTINGS_MENU.map((s) => s.key);
+    expect(menu).not.toContain("webhooks");
+    expect(menu).not.toContain("apiTokens");
+    expect(menu).toContain("importExport");
+    expect(menu).toEqual(SETTINGS_SECTIONS.map((s) => s.key).filter((k) => k !== "webhooks" && k !== "apiTokens"));
   });
 
   it("has every label in both catalogs", () => {
