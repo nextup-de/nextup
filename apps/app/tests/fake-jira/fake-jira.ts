@@ -11,6 +11,8 @@
 //  - a JQL subset: `project = K`, `labels = "x"`, `updated >= "-Nm"`, `key in (..)`, `key = K`,
 //    `parent in (..)`, joined by AND, with an optional ORDER BY that is ignored;
 //  - 429 injection (`fake.inject429(n, retryAfterSeconds)`);
+//  - a revoked token (`fake.setToken(other)`): from then on the old token gets 401, as Jira answers an
+//    expired or revoked API token;
 //  - a request log (`fake.requests`), so a test can say "this round wrote nothing to Jira".
 // People act through `fake.human.*` (or the /__fake/* endpoints, for a browser test): the integration
 // account's own writes go through the REST API like the real client's.
@@ -45,6 +47,11 @@ export type FakeOptions = {
   /** What /mypermissions says. Everything is allowed by default. */
   permissions?: Partial<Record<"BROWSE_PROJECTS" | "CREATE_ISSUES" | "EDIT_ISSUES" | "TRANSITION_ISSUES" | "ADD_COMMENTS", boolean>>;
   now?: () => number;
+  /**
+   * Added to the comment and history ids, so a second fake in one test file (one company) does not repeat the
+   * first one's ids: the sync's idempotency keys carry them. Below 5000.
+   */
+  idBase?: number;
   /** Port to listen on; 0 (default) picks a free one. */
   port?: number;
 };
@@ -69,7 +76,7 @@ export type FakeJira = Awaited<ReturnType<typeof startFakeJira>>;
 
 export async function startFakeJira(opts: FakeOptions = {}) {
   const dc = opts.flavor === "dc";
-  const token = opts.token ?? "fake-token";
+  let token = opts.token ?? "fake-token";
   const email = opts.email ?? "jira-bot@example.com";
   const bot = { accountId: opts.accountId ?? "acc-bot", displayName: "NextUp Bot" };
   const projectKey = opts.projectKey ?? "NUP";
@@ -87,8 +94,8 @@ export async function startFakeJira(opts: FakeOptions = {}) {
   const issues = new Map<string, FakeIssue>();
   const requests: Req[] = [];
   let nextIssue = 1;
-  let nextHistory = 10000;
-  let nextComment = 20000;
+  let nextHistory = 10000 + (opts.idBase ?? 0);
+  let nextComment = 20000 + (opts.idBase ?? 0);
   let fail429 = 0;
   let retryAfter = 1;
 
@@ -326,6 +333,8 @@ export async function startFakeJira(opts: FakeOptions = {}) {
     server, url, email, token, projectKey, accountId: bot.accountId, issues, requests, human, get,
     /** The next `n` calls answer 429 with Retry-After. */
     inject429(n: number, retryAfterSeconds = 1) { fail429 = n; retryAfter = retryAfterSeconds; },
+    /** Accept only this token from now on: the one the sync holds is revoked and answers 401. */
+    setToken(next: string) { token = next; },
     /** Requests that changed something in Jira (everything but reads and searches). */
     writes(): Req[] { return requests.filter((r) => r.method !== "GET" && !r.path.endsWith("/search/jql")); },
     close: () => new Promise<void>((r) => { server.closeAllConnections(); server.close(() => r()); }),

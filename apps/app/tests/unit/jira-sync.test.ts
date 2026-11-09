@@ -67,7 +67,12 @@ afterEach(async () => {
 function company(over: { enabledAt?: Date; settings?: Partial<JiraSettings> } = {}) {
   const log = new MemoryLog();
   const enabledAt = over.enabledAt ?? new Date(Date.now() - 60_000);
-  const api = createCloudApi({ ...settings, ...over.settings }, "tok");
+  let api = createCloudApi({ ...settings, ...over.settings }, "tok");
+  /** The admin saves a new token: the client is rebuilt with it, and the account is looked up again. */
+  const useToken = (token: string) => {
+    api = createCloudApi({ ...settings, ...over.settings }, token);
+    cur.account = null;
+  };
   const cur: { pushedSeq: number; pulledAt: Date | null; account: JiraAccount | null; n: number } = { pushedSeq: 0, pulledAt: null, account: null, n: 0 };
   const round = async (reconcile = false): Promise<RoundResult> => {
     const r = await runRound(api, log.store, {
@@ -98,7 +103,7 @@ function company(over: { enabledAt?: Date; settings?: Partial<JiraSettings> } = 
     expect(log.events).toHaveLength(events);
     expect(fake.writes()).toHaveLength(writes);
   };
-  return { log, api, round, open, expectSilent, cur };
+  return { log, round, open, expectSilent, cur, useToken };
 }
 
 describe("jira sync: a whole project through the fake Jira", () => {
@@ -290,6 +295,45 @@ describe("jira sync: Jira says no", () => {
   it("a wrong token is a 401 that starts the error line, so the admin sees 'expired'", async () => {
     const api = createCloudApi({ ...settings }, "wrong");
     await expect(api.myself()).rejects.toMatchObject({ status: 401, message: expect.stringMatching(/^401 /) });
+  });
+
+  it("G8: a revoked token ends every round with a 401 and moves no cursor; a new token picks up what waited", async () => {
+    const c = company();
+    c.open([{ id: "s1", text: "Pre-stage the tools" }, { id: "s2", text: "Label the bins" }]);
+    await c.round();
+    const epic = c.log.project().links.find((l) => l.stepId === null)!.key;
+    const [k1, k2] = c.log.project().steps.map((s) => s.external!.key);
+    const good = { ...c.cur };
+    const appended = c.log.appended.length;
+
+    fake.setToken("tok-2"); // revoked in Atlassian
+    await new Promise((r) => setTimeout(r, 1100)); // Jira stamps whole milliseconds; keep the outage after the last read
+    // While it is revoked: a person moves a step in NextUp, and people work in Jira.
+    c.log.human("project.step.moved", { stepId: "s1", to: "doing" });
+    fake.human.move(k2, "In Progress");
+    fake.human.comment(epic, "Parts arrive Friday.");
+    const child = fake.human.createChild(epic, "Check the torque wrench");
+
+    for (let i = 0; i < 3; i++) {
+      const err = await c.round().catch((e: unknown) => e);
+      // The error line the admin reads starts with the status, so jiraStatusView calls it an expired token.
+      expect(err).toBeInstanceOf(JiraError);
+      expect(err).toMatchObject({ status: 401, message: expect.stringMatching(/^401 /) });
+    }
+    expect(c.cur).toMatchObject({ pushedSeq: good.pushedSeq, pulledAt: good.pulledAt });
+    expect(c.log.appended).toHaveLength(appended);
+    expect(fake.get(k1).status.name).toBe("To Do");
+
+    c.useToken("tok-2"); // the admin enters the new token
+    const r = await c.round();
+    expect(r.warnings).toEqual([]);
+    expect(r.account.id).toBe(fake.accountId);
+    expect(fake.get(k1).status.name).toBe("In Progress"); // what waited in NextUp reached Jira
+    const p = c.log.project();
+    expect(p.steps.find((s) => s.id === "s2")?.column).toBe("doing"); // and what happened in Jira came back
+    expect(p.steps.find((s) => s.id === "jira-" + child)).toMatchObject({ text: "Check the torque wrench", external: { key: child } });
+    expect(p.history.filter((e) => e.type === "project.commented").map((e) => e.payload.text)).toEqual([`Jira ${epic}: Parts arrive Friday.`]);
+    await c.expectSilent(3);
   });
 
   it("a step Jira's workflow cannot reach is one warning, not a stuck round", async () => {

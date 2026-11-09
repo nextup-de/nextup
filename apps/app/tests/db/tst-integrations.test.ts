@@ -50,6 +50,8 @@ import { m365SearchOn, saveConnection, setM365Search } from "@/lib/db/connection
 import { loadDirectoryStatus, setDirectoryOn } from "@/lib/db/directory-run";
 import { loadLog } from "@/lib/db/events";
 import { getIntegration, JIRA, saveIntegration, setIntegrationOn } from "@/lib/db/integrations";
+import { jiraHeadline } from "@/features/admin/jira-admin";
+import { jiraStatusView } from "@/features/integrations/jira/view";
 import { loadKnowledge } from "@/lib/db/knowledge";
 import { createToken } from "@/lib/db/tokens";
 import { samlAcsUrl, samlEntityId } from "@/server/identity/saml";
@@ -211,6 +213,63 @@ describe("TST integrations", () => {
       expect((await workTrackerFor(companyId))?.info.id).toBe("jira-cloud");
     } finally {
       await setIntegrationOn(companyId, JIRA, false, "tst-i1").catch(() => undefined);
+      await jira.close();
+    }
+  });
+
+  it("Jira G8: a revoked token shows the admin 'Token expired' and moves nothing; a new token resumes the sync", async () => {
+    // Its own project key and ids: the first Jira test's links and comment keys are still in this company's log.
+    const jira = await startFakeJira({ flavor: "cloud", token: "g8-token-1", projectKey: "GEE", idBase: 4000 });
+    const sealed = (t: string) => seal(t, Buffer.from(VAULT_KEY, "hex"), integrationContext(companyId, JIRA));
+    const settings = { flavor: "cloud", siteUrl: jira.url, email: jira.email, projectKey: jira.projectKey, epicTypeId: EPIC_TYPE.id, stepTypeId: TASK_TYPE.id, autoEpic: true, pullNewIssues: true, pullComments: true };
+    const row = async () => (await db.integration.findUniqueOrThrow({ where: { companyId_system: { companyId, system: JIRA } } }));
+    const headline = async () => jiraHeadline(jiraStatusView(await getIntegration(companyId, JIRA)), new Date());
+    try {
+      await saveIntegration({ companyId, system: JIRA, settings, secretSealed: sealed("g8-token-1"), account: null, updatedBy: "tst-g8" });
+      expect(await setIntegrationOn(companyId, JIRA, true, "tst-g8")).toBe(true);
+      await new Promise((r) => setTimeout(r, 25));
+      const projectId = "pj-tst-g8";
+      await raise("int-jira-g8");
+      expect(await send(people.owner, "case.decided", "int-jira-g8", { answer: "yes", reason: "Go", projectId, lead: people.owner.name, leadUserId: people.owner.id, title: "Token test" })).toEqual({ ok: true });
+      expect(await send(people.owner, "project.step.added", projectId, { stepId: "s1", text: "Pre-stage the tools" })).toEqual({ ok: true });
+      await syncCompany({ id: companyId, slug: SLUG });
+      const epic = [...jira.issues.values()].find((i) => i.labels.includes(`nextup-${projectId}`))!;
+      const step = [...jira.issues.values()].find((i) => i.parentKey === epic.key)!;
+      expect(step).toBeTruthy();
+      const good = await row();
+      expect(good.lastError).toBeNull();
+      expect((await headline()).tone).toBe("ok");
+
+      // Revoked in Atlassian. Meanwhile a person moves the step in NextUp, and people work in Jira.
+      jira.setToken("g8-token-2");
+      await new Promise((r) => setTimeout(r, 1100));
+      expect(await send(people.owner, "project.step.moved", projectId, { stepId: "s1", to: "doing" })).toEqual({ ok: true });
+      jira.human.comment(epic.key, "Parts arrive Friday.");
+      const child = jira.human.createChild(epic.key, "Check the torque wrench");
+      for (let i = 0; i < 2; i++) await syncCompany({ id: companyId, slug: SLUG }, new Date());
+
+      const bad = await row();
+      expect(bad.lastError).toMatch(/^401 /);
+      expect(bad).toMatchObject({ on: true, pushedSeq: good.pushedSeq, pulledAt: good.pulledAt, lastOkAt: good.lastOkAt, leaseUntil: null });
+      expect(await headline()).toEqual({ tone: "bad", text: "Token expired - Jira refused it. Enter a new API token and save." });
+      expect(jira.get(step.key).status.name).toBe("To Do");
+
+      // The admin enters the new token: what saveConsoleJira writes for a typed token (new sealed secret, account
+      // forgotten so the next round asks /myself; saving clears lastError).
+      await saveIntegration({ companyId, system: JIRA, settings, secretSealed: sealed("g8-token-2"), account: null, updatedBy: "tst-g8" });
+      await syncCompany({ id: companyId, slug: SLUG }, new Date());
+      const after = await row();
+      expect(after.lastError).toBeNull();
+      expect(after.lastOkAt!.getTime()).toBeGreaterThan(good.lastOkAt!.getTime());
+      expect(after.pushedSeq).toBeGreaterThan(good.pushedSeq);
+      expect(after.account).toMatchObject({ id: jira.accountId });
+      expect((await headline()).tone).toBe("ok");
+      expect(jira.get(step.key).status.name).toBe("In Progress");
+      const project = (await reduced()).projects.find((p) => p.id === projectId)!;
+      expect(project.steps.find((s) => s.id === "jira-" + child)?.text).toBe("Check the torque wrench");
+      expect(project.history.some((e) => e.type === "project.commented" && String(e.payload.text).includes("Parts arrive Friday."))).toBe(true);
+    } finally {
+      await setIntegrationOn(companyId, JIRA, false, "tst-g8").catch(() => undefined);
       await jira.close();
     }
   });
