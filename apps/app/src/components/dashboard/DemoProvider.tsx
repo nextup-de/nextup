@@ -213,6 +213,11 @@ type Props = {
 export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, children }: Props) {
   const serverMode = Boolean(viewer);
   const router = useRouter();
+  // Only the poll below refreshes by hand. The server actions here all end in revalidatePath, so their
+  // answer already carries the page as it now is (node_modules/next/dist/docs: revalidatePath, "Server
+  // Functions"). A router.refresh() after one is a second fetch of the old address: when it lands after the
+  // click that follows (Open the case, a row in the inbox, another person in the dev panel), Next goes back
+  // to that address or falls back to loading the whole page - the e2e:live smoke on staging hung on both.
   const router_refresh = router.refresh;
   const pathname = usePathname();
   const slug = tenant.slug;
@@ -438,9 +443,8 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
         setPending((p) => p.filter((x) => x.id !== ev.id));
         showToast(res.error);
       }
-      router_refresh();
     });
-  }, [serverMode, slug, actor, actorUserId, log.day, router_refresh, showToast]);
+  }, [serverMode, slug, actor, actorUserId, log.day, showToast]);
 
   const act = useMemo<Act>(() => ({
     // Stays synchronous and still returns the id: the idea studio hands it straight to saveShots().
@@ -539,14 +543,13 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
         const res = await switchUserAction(slug, target.id!);
         if (!res.ok) { showToast(res.error); return; }
         router.push(href(ROLE_HOME[r]));
-        router_refresh();
       });
       return;
     }
     setPrefs(slug, { role: r, leadAs: null, dept: rp?.dept ?? dept });
     closeAll();
     router.push(href(ROLE_HOME[r]));
-  }, [seed.personas, slug, dept, closeAll, router, href, serverMode, tenant.users, showToast, router_refresh]);
+  }, [seed.personas, slug, dept, closeAll, router, href, serverMode, tenant.users, showToast]);
 
   // Dev panel: look at the team-leader screens as another desk holder.
   const setLeadAs = useCallback((seatId: string) => {
@@ -560,7 +563,6 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
         const res = await switchUserAction(slug, target.id!);
         if (!res.ok) { showToast(res.error); return; }
         router.push(href(ROLE_HOME.leader));
-        router_refresh();
       });
       return;
     }
@@ -571,7 +573,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     setPrefs(slug, { role: "leader", leadAs: lead && seat.userId !== null && seat.userId === lead.who.userId ? null : seat.id, dept: nextDept });
     closeAll();
     router.push(href(ROLE_HOME.leader));
-  }, [seed, slug, closeAll, router, href, serverMode, tenant.users, showToast, router_refresh]);
+  }, [seed, slug, closeAll, router, href, serverMode, tenant.users, showToast]);
 
   const resetDemo = useCallback(() => {
     clearShots(slug);
@@ -582,14 +584,13 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
       startTransition(async () => {
         const res = await resetCompanyAction(slug);
         showToast(res.ok ? t("dashboard.providerResetShared") : res.error);
-        router_refresh();
       });
       return;
     }
     resetLog(slug);
     setPrefs(slug, { leadAs: null });
     showToast(t("dashboard.providerResetLocal"));
-  }, [slug, showToast, serverMode, router_refresh, t]);
+  }, [slug, showToast, serverMode, t]);
 
   // Dev panel: drop the cases raised in this browser (and everything done to them); seed cases and
   // what was done to them stay. A log purge, not an event - it only exists for the demo.
@@ -603,13 +604,12 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
       startTransition(async () => {
         const res = await deleteAddedAction(slug, [...ids]);
         showToast(res.ok ? said : res.error);
-        router_refresh();
       });
       return;
     }
     updateLog(slug, (prev) => ({ ...prev, events: prev.events.filter((e) => !(e.target && ids.has(e.target))) }));
     showToast(said);
-  }, [S, slug, showToast, serverMode, router_refresh, t]);
+  }, [S, slug, showToast, serverMode, t]);
 
   // Log out: forget the persona in this browser and go back to the company login. Demo log stays.
   // `leaving` first: clearing the prefs drops the role to the page-load guess, and without the
