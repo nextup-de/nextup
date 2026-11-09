@@ -8,7 +8,7 @@
 // sends the mail itself (server/case-notice.ts) and writes the note in the same process.
 import type { EventPayload } from "./events";
 import type { Seed } from "@/features/demo/types";
-import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
+import { DEFAULT_LOCALE, translate, type Locale, type T } from "@/i18n";
 import { whenDue } from "@/features/notify/templates";
 
 export type RaisedNotice = {
@@ -40,6 +40,19 @@ export const NOTICE_ACTOR = "system:mail";
 
 /** What the case timeline says once the owner has been emailed. */
 export const NOTICE_TEXT = translate("en", "mail.noticeNote");
+
+/** What carried the raise notice: a fact on the note, so the case page can name it in the reader's language. */
+export type NoticeChannel = "mail" | "teams";
+
+/**
+ * A comment as people read it. The raise notice's note is built here from its channel, in the reader's
+ * language and from NextUp, never shown as the text stored with it (that was the owner's language and
+ * always said "by email", also for a Teams notice: TMS-L2). Every other comment is returned as it is.
+ */
+export function readableComment<C extends { by: string; text: string; notice?: NoticeChannel | null }>(m: C, t: T): C {
+  if (!m.notice) return m; // set by commentsOn only on a note the notice channels wrote
+  return { ...m, by: t("mail.noticeBy"), text: t(m.notice === "teams" ? "mail.noticeNoteTeams" : "mail.noticeNote") };
+}
 
 /** The note in the recipient's language; English stays the constant /admin matches on. */
 export const noticeText = (locale: Locale): string => (locale === "de" ? translate("de", "mail.noticeNote") : NOTICE_TEXT);

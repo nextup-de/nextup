@@ -17,6 +17,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { askedForView, caseScore, deskCases, inboxIdeas, inboxSorted, openCases } from "@/components/dashboard/derive";
 import { INBOX_SORTS, sortInbox, withoutLinkedCases, type InboxSort } from "@/components/dashboard/inbox-order";
 import { costEurOf, fastLane, roundState, withDiscussion } from "@/features/cases/discussion";
+import { readableComment } from "@/features/cases/notice";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith, sentLabel } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
@@ -286,7 +287,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
     return {
       idea, onClose: close,
       brief,
-      feed: commentsOn(log, sc.id).map((m) => ({ name: isMe(m.byUserId) ? t("leader.you") : m.by, role: m.rescore ? t("leader.newInformation") : t("leader.comment"), text: m.text, when: f(m.day), mine: isMe(m.byUserId), person: personOrNull(m.by, m.byUserId) })),
+      feed: commentsOn(log, sc.id).map((m) => readableComment(m, t)).map((m) => ({ name: isMe(m.byUserId) ? t("leader.you") : m.by, role: m.rescore ? t("leader.newInformation") : t("leader.comment"), text: m.text, when: f(m.day), mine: isMe(m.byUserId), person: personOrNull(m.by, m.byUserId) })),
       status: talkNote ?? (!q ? null : {
         label: q.answer ? t("leader.answeredBy", { name: sc.from }) : t("leader.questionOut"),
         lines: [t("leader.youAsked", { text: q.text || t("leader.oneQuestion"), day: f(q.day) }), ...(q.answer ? [t("leader.answerLine", { text: q.answer.text, day: f(q.answer.day) })] : [])],

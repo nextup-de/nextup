@@ -15,11 +15,12 @@ export type DecisionLine = {
 export type DecisionFilters = { period: "30" | "90" | "year" | "all"; answer: "" | "yes" | "no"; project: "" | "with" | "without"; q: string };
 
 type Props = {
-  t: T; company: string; lines: DecisionLine[]; total: number; page: number; pageSize: number;
+  /** The company's paths as links see them (companyPrefix): "/acme" in path mode, "" on a one-company stack. */
+  t: T; base: string; lines: DecisionLine[]; total: number; page: number; pageSize: number;
   filters: DecisionFilters; projectsOn: boolean; filtered: boolean;
 };
 
-function href(company: string, f: DecisionFilters, page: number): string {
+function href(base: string, f: DecisionFilters, page: number): string {
   const p = new URLSearchParams();
   if (f.period !== "90") p.set("period", f.period);
   if (f.answer) p.set("answer", f.answer);
@@ -27,10 +28,10 @@ function href(company: string, f: DecisionFilters, page: number): string {
   if (f.q) p.set("q", f.q);
   if (page > 1) p.set("page", String(page));
   const qs = p.toString();
-  return `/${company}/decisions${qs ? `?${qs}` : ""}`;
+  return `${base}/decisions${qs ? `?${qs}` : ""}`;
 }
 
-export function DecisionLog({ t, company, lines, total, page, pageSize, filters, projectsOn, filtered }: Props) {
+export function DecisionLog({ t, base, lines, total, page, pageSize, filters, projectsOn, filtered }: Props) {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
   const role = (l: DecisionLine) => (l.roleFormer ? t("decisions.formerRole") : l.roleTitle ?? t("decisions.roleManager"));
@@ -87,7 +88,7 @@ export function DecisionLog({ t, company, lines, total, page, pageSize, filters,
                 <tr key={`${l.caseId}-${i}`} data-testid="decisions-row">
                   <td data-label={t("decisions.colDate")} className={styles.date}>{l.dateLabel}</td>
                   <td data-label={t("decisions.colCase")}>
-                    <Link href={`/${company}/cases/${l.caseId}`} className={styles.caseLink}>{l.title}</Link>
+                    <Link href={`${base}/cases/${l.caseId}`} className={styles.caseLink}>{l.title}</Link>
                     <span className={styles.meta}>{l.caseId} · {kind(l.kind)}</span>
                   </td>
                   <td data-label={t("decisions.colDecision")}>
@@ -100,7 +101,7 @@ export function DecisionLog({ t, company, lines, total, page, pageSize, filters,
                   </td>
                   {projectsOn && (
                     <td data-label={t("decisions.colProject")}>
-                      {l.project ? <Link href={`/${company}/projects/${l.project.id}`} className={styles.caseLink}>{l.project.label}</Link> : t("decisions.noProject")}
+                      {l.project ? <Link href={`${base}/projects/${l.project.id}`} className={styles.caseLink}>{l.project.label}</Link> : t("decisions.noProject")}
                     </td>
                   )}
                 </tr>
@@ -109,8 +110,8 @@ export function DecisionLog({ t, company, lines, total, page, pageSize, filters,
           </table>
           <nav className={styles.paging} aria-label={t("decisions.title")}>
             <span>{t("decisions.pageRange", { from, to, n: total })}</span>
-            {page > 1 ? <Link href={href(company, filters, page - 1)} aria-label={t("decisions.prev")} rel="prev">‹</Link> : <span aria-hidden="true">‹</span>}
-            {to < total ? <Link href={href(company, filters, page + 1)} aria-label={t("decisions.next")} rel="next">›</Link> : <span aria-hidden="true">›</span>}
+            {page > 1 ? <Link href={href(base, filters, page - 1)} aria-label={t("decisions.prev")} rel="prev">‹</Link> : <span aria-hidden="true">‹</span>}
+            {to < total ? <Link href={href(base, filters, page + 1)} aria-label={t("decisions.next")} rel="next">›</Link> : <span aria-hidden="true">›</span>}
           </nav>
         </>
       )}

@@ -1,7 +1,10 @@
 // The email a route owner gets when a case is raised. buildRaisedNotice and composeNoticeMail are
 // pure, so this needs no server and no mail relay.
 import { describe, expect, it } from "vitest";
-import { bodyBelowTitle, buildRaisedNotice, composeNoticeMail, noticeKey } from "@/features/cases/notice";
+import { bodyBelowTitle, buildRaisedNotice, composeNoticeMail, NOTICE_ACTOR, noticeKey, readableComment } from "@/features/cases/notice";
+import { commentsOn } from "@/features/cases/selectors";
+import type { EventLog } from "@/features/cases/events";
+import { createT } from "@/i18n";
 import { LOCAL_SEED } from "@/features/demo";
 
 const seed = LOCAL_SEED;
@@ -89,5 +92,26 @@ describe("bodyBelowTitle", () => {
 describe("noticeKey", () => {
   it("is the key the old n8n workflow wrote back with, so its notes still pair with their raise", () => {
     expect(noticeKey("e_1")).toBe("notify:e_1");
+  });
+});
+
+describe("the raise notice's note on the case (TMS-L2)", () => {
+  // As the channels write it: the text in the owner's language, which always said "by email".
+  const note = (id: string, channel?: "mail" | "teams") => ({ id, ts: 0, day: 1, type: "case.commented" as const, actor: NOTICE_ACTOR, actorUserId: null, target: "c1",
+    payload: { text: "Routenverantwortliche Person per E-Mail benachrichtigt.", ...(channel ? { channel } : {}) } });
+  const log = { day: 1, events: [note("e1", "teams"), note("e2", "mail"), note("e3"),
+    { id: "e4", ts: 0, day: 1, type: "case.commented" as const, actor: "M. Roth", actorUserId: "u4", target: "c1", payload: { text: "Can do Friday." } }] } as EventLog;
+
+  it("names the channel that carried it, in the reader's language, from NextUp", () => {
+    const en = commentsOn(log, "c1").map((m) => readableComment(m, createT("en")));
+    expect(en.map((m) => [m.by, m.text])).toEqual([
+      ["NextUp", "Route owner notified in Teams."],
+      ["NextUp", "Route owner notified by email."],
+      ["NextUp", "Route owner notified by email."], // a note from before the channel was stored: those were mail
+      ["M. Roth", "Can do Friday."], // a person's comment is shown as written
+    ]);
+    const de = commentsOn(log, "c1").map((m) => readableComment(m, createT("de")));
+    expect(de[0].text).toBe("Routenverantwortliche Person in Teams benachrichtigt.");
+    expect(de[3].text).toBe("Can do Friday.");
   });
 });

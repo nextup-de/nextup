@@ -22,6 +22,7 @@ import { actorLabel, type ActorLabels } from "@/features/cases/actor-label";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import { raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
+import { readableComment } from "@/features/cases/notice";
 import { scoreBand, scoreCase } from "@/features/scoring";
 import { loadShots } from "@/lib/shots";
 import styles from "./CaseDetailView.module.css";
@@ -80,7 +81,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const extra = raisedWith(c);
   const shots = loadShots(tenant.slug, c.id); // whatever this browser kept when the case was raised
   const mine = me.userId !== null && c.fromUserId === me.userId;
-  const affected = affectedOn(log, c.id), comments = commentsOn(log, c.id);
+  const affected = affectedOn(log, c.id), comments = commentsOn(log, c.id).map((m) => readableComment(m, t));
   const meToo = me.userId !== null && affected.some((a) => a.userId === me.userId);
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const standing = [...extra.affected, ...affected.map((a) => a.name).filter((n) => !extra.affected.includes(n))];
