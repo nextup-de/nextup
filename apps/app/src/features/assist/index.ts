@@ -10,6 +10,7 @@
 // Only redacted text ever reaches the provider or the audit table.
 import { type Level, LEVEL_LABEL } from "./classify";
 import { checkAnswer, stripTags, type Checked } from "./check";
+import { questionLanguage } from "./language";
 import { buildSystem, type PromptInput } from "./prompt";
 import { isAboveCeiling, redact, type Hits, type RedactOptions } from "./redact";
 import { runTool, Sources, TOOLS, type ToolContext, type ToolDef } from "./tools";
@@ -39,7 +40,7 @@ export type AssistArgs = {
   question: string;
   history: readonly ChatMessage[];
   ctx: ToolContext;
-  prompt: Omit<PromptInput, "ceiling">;
+  prompt: Omit<PromptInput, "ceiling" | "language">;
   redaction: RedactOptions;
   provider: Provider;
   /** The answer so far, already checked - safe to show. Called with the whole text each time. */
@@ -76,7 +77,7 @@ export async function assist(a: AssistArgs): Promise<AssistOutcome> {
   };
 
   const result = await a.provider.run({
-    system: buildSystem({ ...a.prompt, ceiling }),
+    system: buildSystem({ ...a.prompt, ceiling, language: questionLanguage(q.text) }),
     history,
     question: q.text,
     tools: TOOLS,
