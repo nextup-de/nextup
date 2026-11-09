@@ -3,7 +3,7 @@
 //
 //   const { companyId, counts } = await generateMusterwerk(getDb(), { slug: "mw", people: 150, weeks: 2, seed: 1, now })
 //
-// Order: company (stage sandbox, config, calendar, flags) -> people -> structure -> case history ->
+// Order: company (stage sandbox, config, profile, calendar, flags) -> people -> structure -> case history ->
 // rebuildProjections -> the clock scheduler stepped day by day up to `now`.
 //
 // runClockOnce visits every non-demo company in the database, not just this one; the generator is
@@ -20,6 +20,7 @@ import { writeStructure } from "../../../src/lib/db/structure-writes";
 import { runClockOnce } from "../../../src/server/scheduler/clock";
 import { musterwerkHistory, windowDays } from "./cases";
 import { DEFAULT_EMAIL_DOMAIN, musterwerkCrew, writePeopleExport } from "./export";
+import { MUSTERWERK_PROFILE } from "./profile";
 
 export type GenerateOptions = {
   slug: string;
@@ -79,6 +80,7 @@ export async function generateMusterwerk(db: Db, opts: GenerateOptions): Promise
       slug, name: "Musterwerk GmbH", mark: "M", stage: "sandbox", openedAt: now,
       seedJson: toSeedJson(templateWrites("empty", () => crypto.randomUUID()).seedJson) as object,
       config: { create: { aiRouting: opts.aiOn === true, assistant: opts.aiOn === true } },
+      profile: { create: { ...MUSTERWERK_PROFILE, updatedBy: "generator" } },
     },
   });
   const companyId = company.id;
