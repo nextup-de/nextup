@@ -71,7 +71,7 @@ status is one of done, your turn, waiting, problem or not used. `setupPhases(fac
 |---|---|---|---|
 | 1 | Server | NextUp and customer IT | mail relay, first good off-server backup |
 | 2 | Sign-in and directory | Customer IT | Microsoft sign-in, first good directory sync |
-| 3 | Connectors and AI | Customer IT | Microsoft 365, Jira, AI provider, signed agreement |
+| 3 | Connectors and AI | Customer IT | Microsoft 365, Jira, AI provider, signed agreement (none for the model on this stack, which waits on the stack's brain instead) |
 | 4 | Company context | System, started by a person | the background run |
 | 5 | Company to Members | Pilot lead | the five steps above |
 | 6 | Check and open | Customer admin | the five steps, the needed go-live checks, then opening |

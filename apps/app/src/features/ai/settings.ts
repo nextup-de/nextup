@@ -20,6 +20,13 @@ export type AiSettings = {
   prices?: ModelPrices;
 };
 
+/**
+ * The stack's brain service, for the choice `local` (the model on this stack, Q8.4): `ok` it answers with its model
+ * loaded, `none` this stack runs no brain (BRAIN_URL or BRAIN_API_KEY unset), `down` it is set but does not answer
+ * or its model is not there (yet). server/brain-health.ts reads it.
+ */
+export type BrainState = "ok" | "none" | "down";
+
 /** The part of the Integration row that decides: the switch and the saved settings. */
 export type AiRow = { on: boolean; settings: unknown };
 

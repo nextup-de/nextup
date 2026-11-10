@@ -136,7 +136,8 @@ describe("SEC compliance pack", () => {
   it("lists every AI provider the code supports in the sub-processor list, marked as the company's choice", () => {
     const src = fs.readFileSync(path.join(ROOT, "packages", "contracts", "src", "public", "connectors", "ai-provider.ts"), "utf8");
     const list = /AI_PROVIDER_CHOICES\s*=\s*\[([^\]]+)\]/.exec(src)?.[1] ?? "";
-    const providers = [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== "off");
+    // `local` is the model on the company's own stack (Q8.4): nothing leaves, so it is no sub-processor.
+    const providers = [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== "off" && p !== "local");
     expect(providers.length).toBeGreaterThan(0);
     const sub = read("SUBPROCESSORS.md");
     for (const p of providers) {
@@ -144,5 +145,7 @@ describe("SEC compliance pack", () => {
       expect(row, `${p} has a row`).toBeTruthy();
       expect(row, `${p} is marked`).toContain("Only when the company chooses it");
     }
+    const notSub = sub.split(/^## Not sub-processors$/m)[1] ?? "";
+    expect(notSub, "local is listed as not a sub-processor").toContain("`local`");
   });
 });

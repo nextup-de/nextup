@@ -21,6 +21,19 @@ The list is `CONSOLE_SECTIONS` in `apps/app/src/features/admin/nav.ts`, in this 
 6. **Routing review** (`/admin/decisions`): the log of routing decisions.
 7. **Support access** (`/admin/support`): open or revoke a code for NextUp support; the last 20 sign-ins (time only).
 
+### The AI provider on Connectors
+
+Five choices: Amazon Bedrock, Azure OpenAI, OpenAI-compatible, **Model on this stack**, and Off. The first three
+send redacted text to a provider and need the data-processing agreement's date on Assistant before any model is
+called for real people. **Model on this stack** (`local`, Q8.4) needs no endpoint, no key and no agreement: every
+model call (routing, reading and coaching, plans and check-ins, the assistant, the context draft) goes to this
+stack's brain service and its model, and the card says "Model on this stack · nothing leaves the server". Values
+typed for another choice are dropped when it is saved. While the stack has no brain service (installed without
+`--brain`) the card says so and shows "Needs you"; while the brain does not answer or its model is not loaded yet it
+shows "Error". In both cases no model is called and raise and routing work by keywords. The monthly budget on
+Assistant counts these calls too: give the stack's model a price (0 is allowed) or it is held to the token limit.
+Setup: docs/ops/AI_PROVIDER.md, "Model on this stack".
+
 ## Who can enter
 
 Every page and every action calls `consoleCompany()` (`src/server/console-guard.ts`) first. A page

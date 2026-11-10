@@ -250,6 +250,7 @@ company's own provider: `llmFor` (`server/brain.ts`) puts one `llm` object in th
 | `bedrock` without one | none: the brain uses its stack model |
 | `azure-openai` | `{ provider: "azure-openai", base_url, model: brainModel or deployment, api_key }` |
 | `openai-compatible` | `{ base_url, model: brainModel or model, api_key }` |
+| `local` (model on this stack) | none, whatever else is saved: the brain uses its stack model. The assistant and the context draft go to the brain's `/v1/chat/completions` too (docs/ops/AI_PROVIDER.md, "Model on this stack") |
 
 `brainModel` is optional, in the settings JSON. Incomplete settings (no key, no endpoint, no model or deployment) send
 nothing. The shapes are pinned by one fixture, `services/brain/tests/fixtures/llm-overrides.json`: the app's test

@@ -57,11 +57,13 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
       t("adminPrivacy.rowModel"),
       p.choice === "off" || p.choice === "mock" ? (
         <>{t("adminPrivacy.rowNoModel")} <span className={c.sub}>{p.choice === "off" ? t("adminPrivacy.rowAiOff") : t("adminPrivacy.rowLookupsOnly")}</span></>
+      ) : p.choice === "local" ? (
+        <span data-testid="console-assistant-local">{t("adminPrivacy.rowModelLocal")}</span>
       ) : (
         <><code className={c.mono}>{p.choice === "azure-openai" ? p.deployment || p.model : p.model}</code> <span className={c.sub}>{providerLabel[p.choice]}{p.choice === "bedrock" ? ", " + p.region : ""}</span></>
       ),
     ],
-    [t("adminPrivacy.rowDpa"), s.dpaSignedAt ? t("adminPrivacy.rowDpaSigned", { date: day(s.dpaSignedAt) }) : <span className={c.note} data-tone="warn">{t("adminPrivacy.rowDpaMissing")}</span>],
+    [t("adminPrivacy.rowDpa"), s.dpaSignedAt ? t("adminPrivacy.rowDpaSigned", { date: day(s.dpaSignedAt) }) : p.choice === "local" ? t("adminPrivacy.rowDpaNotNeeded") : <span className={c.note} data-tone="warn">{t("adminPrivacy.rowDpaMissing")}</span>],
     [t("adminPrivacy.rowCeiling"), <>{LEVEL_LABEL[s.ceiling]} <span className={c.sub}>{t("adminPrivacy.rowCeilingNote")}</span></>],
     [
       t("adminPrivacy.rowBudget"),
