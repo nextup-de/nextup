@@ -50,7 +50,8 @@ It holds no company data by construction - scrubbed message, route pattern - so 
 days (`src/lib/db/errors.ts`).
 
 Event types (`src/features/cases/events.ts`), as in the demo:
-  `case.read, case.decided, case.handed, case.asked, case.answered, case.override, case.shipped,
+  `case.read, case.decided, case.handed, case.asked, case.answered, case.unanswered` (the clock's own, when a
+  question got no answer in time), `case.override, case.shipped,
   idea.cosigned, idea.approved, idea.funded` - plus, new here: `member.invited, member.role,
   route.upsert, dept.upsert` so settings pages also store facts, not edited copies of the seed.
 

@@ -46,6 +46,16 @@ async function runCompany(company: { id: string; slug: string; seedJson: unknown
       if (!h.duplicate) written++;
       continue;
     }
+    if (d.kind === "unanswered") {
+      const u = await appendEventRow(
+        company.id,
+        { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: "case.unanswered" as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload: {} },
+        { source: CLOCK_SOURCE, idemKey: d.idemKey, now },
+      );
+      if (!u.ok) throw new Error(u.error);
+      if (!u.duplicate) written++;
+      continue;
+    }
     const payload: Record<string, unknown> = { kind: d.kind, dueDay: d.dueDay };
     if (d.check !== undefined) payload.check = d.check;
     if (d.toRoleHolderId !== undefined) payload.toRoleHolderId = d.toRoleHolderId;

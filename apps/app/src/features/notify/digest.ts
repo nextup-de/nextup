@@ -41,7 +41,7 @@ export function digestFor(userId: string, state: State, seats: readonly SeatRow[
 /** The loop templates, as features/notify/plan.ts names them (`loop.<event type>`). */
 const LOOP_TEMPLATES = [
   "case.discussion", "case.invited", "case.checkin", "case.decided",
-  "case.asked", "case.answered", "case.handed",
+  "case.asked", "case.answered", "case.unanswered", "case.handed",
   "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.rewarded",
 ].map((t) => `loop.${t}`);
 const REMINDER_TEMPLATES = REMINDER_KINDS.map((k) => `reminder.${k}`);
@@ -62,6 +62,7 @@ const SWITCHABLE = new Set(Object.values(NOTIFY_GROUPS).flat());
  */
 const FOLLOWS: Record<string, string> = {
   "loop.case.asked": "loop.case.decided", "loop.case.answered": "loop.case.decided", "loop.case.handed": "loop.case.decided",
+  "loop.case.unanswered": "loop.case.decided", "reminder.question": "reminder.deadline",
 };
 export const followsTemplate = (template: string): string | null => FOLLOWS[template] ?? null;
 

@@ -7,6 +7,7 @@
 // Time: `log.day` is the demo clock, 0 = today. Seed cases carry `raisedDay` as a negative
 // offset; age = day - raisedDay. A paused clock (question sent) does not count towards the promise.
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
+import { byClock } from "@/features/clock/actor";
 import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import type { Idea, Problem, Route, SeedCase } from "@/features/demo/types";
@@ -18,7 +19,8 @@ import type { ReducedProject, SeedProject } from "@/features/projects/types";
 export type Decision = { answer: "yes" | "no"; reason: string; note: string; by: string; day: number; projectId?: string | null; lead?: string | null; byUserId?: string | null };
 export type HandOver = { from: string; fromUserId: string | null; to: string; toSeatId: string | null; why: string; day: number };
 export type Answer = { text: string; by: string; byUserId: string | null; day: number };
-export type Question = { text: string; by: string; byUserId: string | null; day: number; answer: Answer | null };
+/** `unanswered`: the day the clock gave the case back to the desk without an answer; null while it waits or once answered. */
+export type Question = { text: string; by: string; byUserId: string | null; day: number; answer: Answer | null; unanswered: number | null };
 export type Building = { day: number; days: number; expected: string; by: string; byUserId: string | null };
 export type Shipped = { day: number; outcome: string; outcomeNote: string; by: string; byUserId: string | null };
 export type Override = { proposed: string | null; chosen: string; day: number; by: string; byUserId: string | null };
@@ -218,7 +220,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "open") break;
         if (c.read === null) c.read = d;
-        c.question = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d, answer: null };
+        c.question = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d, answer: null, unanswered: null };
         c.status = "asked";
         c.pausedSince = d;
         c.history.push(ev);
@@ -228,6 +230,17 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "asked" || !c.question) break;
         c.question.answer = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d };
+        c.pausedDays += d - (c.pausedSince ?? d);
+        c.pausedSince = null;
+        c.status = "open";
+        c.history.push(ev);
+        break;
+      }
+      case "case.unanswered": {
+        // The clock's own event (as its hand-overs, FX8): nobody else may end a question without an answer.
+        const c = cases[target];
+        if (!c || c.status !== "asked" || !c.question || !byClock(ev)) break;
+        c.question.unanswered = d;
         c.pausedDays += d - (c.pausedSince ?? d);
         c.pausedSince = null;
         c.status = "open";

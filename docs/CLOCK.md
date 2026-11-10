@@ -7,6 +7,15 @@ Every event carries a `day`, and the log carries today's `day`. What that number
 - **Demo** (stage `demo`): `day` is the simulated counter `Company.demoDay`. `day.advanced` moves it, the reducer escalates at render time, the scheduler skips these companies.
 - **Workdays** (any other stage): `day` is a working-day number. `appendEventRow` stamps `workdayOf(now, calendar)`, `loadLog` sets `log.day` to the same, and `Company.demoDay` is ignored. `companyDay()` in `lib/db/events.ts` is the one place that chooses.
 
+## An unanswered question
+
+A case that is `asked` is paused, so its answer date never falls due. `dueNow` looks at the question itself: 3 working
+days after it was asked it yields one `clock.due` fact of kind `question` (the reminder to the raiser), and after 5 a
+due of kind `unanswered`, which the scheduler writes as the event `case.unanswered` with actor `system:clock`. The
+reducer accepts that event from the clock only; it opens the case, adds the paused days and keeps the question with
+`unanswered` set to the day. Idempotency keys: `clk:question:<case>:<asked day>` and `clk:unanswered:<case>:<asked day>`,
+so a second question on the same case counts again from its own day.
+
 ## Working-day numbers and the epoch
 
 `workdayOf(date, cal)` counts the working days of the calendar in (2025-01-01, d], where d is the Europe/Berlin date of `date`. A weekend or holiday has the number of the working day before it. `dateOfWorkday(n, cal)` is the inverse (n >= 1). Pages show day n as that date, "Today" for `log.day`, "Yesterday" for `log.day - 1`.

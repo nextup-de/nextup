@@ -208,6 +208,21 @@ describe("NTF planner", () => {
     expect(status([{ userId: "u_raiser", template: "reminder.checkin", on: false }])).toEqual([["pending", null]]);
   });
 
+  it("the reminder for an unanswered question goes to the raiser; the return tells the desk and the raiser", () => {
+    const asked = ev("case.asked", "Owner One", "u_o1", "c_a", { text: "Which printer?" });
+    const f = due("c_a", { kind: "question", dueDay: 3 });
+    const d = plan([raise(), asked, f]);
+    expect(d.map((x) => [x.template, x.recipientUserId, x.key])).toEqual([["reminder.question", "u_raiser", `rem:${f.id}:u_raiser`]]);
+    expect(d[0].subject).toBe("Still waiting for your answer: Printer broken");
+    expect(d[0].text).toContain("in 2 working days");
+    const back = ev("case.unanswered", "system:clock", null, "c_a", {});
+    const rows = plan([raise(), asked, back]).filter((x) => x.template === "loop.case.unanswered");
+    expect(rows.map((x) => [x.recipientUserId, x.subject])).toEqual([
+      ["u_o1", "No answer from the raiser: Printer broken"], ["u_o2", "Keine Antwort auf Ihre Frage: Printer broken"],
+      ["u_raiser", "Your idea goes on without your answer: Printer broken"],
+    ]);
+  });
+
   it("a no gives the raiser a loop row", () => {
     const no = ev("case.decided", "Owner One", "u_o1", "c_a", { answer: "no", reason: "not now" });
     const d = plan([raise(), no]).filter((x) => x.template.startsWith("loop."));

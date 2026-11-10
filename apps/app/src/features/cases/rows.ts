@@ -135,6 +135,7 @@ export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: num
   const reply = dec ? decidedReply(t, dec)
     : c.status === "asked" && q ? t("cases.quoted", { text: q.text || t("cases.replyQuestionDefault") })
       : answered && q && q.answer ? t("cases.replyAnswered", { question: q.text || t("cases.replyQuestionShort"), answer: q.answer.text })
+        : q && q.unanswered !== null ? t("cases.replyUnanswered", { question: q.text || t("cases.replyQuestionShort") })
         : last ? t("cases.replyHanded", { from: last.from, to: c.assignee, date: f(last.day) })
           : t("cases.replyNone", { who: c.assignee, deputy });
   const replyBy = dec ? dec.by + " · " + f(dec.day)
@@ -231,6 +232,7 @@ function lifeRow(c: ReducedCase, day: number, f: DayFmt, P: number, loop: MineLo
       : talk ? (talk.missing ? t("cases.replyMissing", { text: talk.missing }) : t("cases.replyAsked", { count: talk.invited.length }))
         : c.status === "asked" && q ? t("cases.quoted", { text: q.text || t("cases.replyQuestionDefault") })
           : answered && q && q.answer ? t("cases.replyAnswered", { question: q.text || t("cases.replyQuestionShort"), answer: q.answer.text })
+        : q && q.unanswered !== null ? t("cases.replyUnanswered", { question: q.text || t("cases.replyQuestionShort") })
             : hand ? t("cases.replyHanded", { from: hand.from, to: c.assignee, date: f(hand.day) })
               : t("cases.replyNoneOn", { who: c.assignee });
   const replyBy = dec ? dec.by + " · " + f(dec.day)
