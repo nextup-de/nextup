@@ -50,6 +50,10 @@ is on their first line.
 | [customer/INSTALL.md](customer/INSTALL.md) | customer guide: server requirements, install, DNS and TLS, first admin |
 | [customer/OPERATIONS.md](customer/OPERATIONS.md) | customer guide: releases, backups, monitoring, key rotation, break-glass, support access |
 | [customer/SECURITY_GUIDE.md](customer/SECURITY_GUIDE.md) | customer guide: data flows, encryption, access, SSO, audit, hardening checklist |
+| [customer/ORDER_FORM.md](customer/ORDER_FORM.md) | customer form: where the stack runs and which AI, filled in before the server (draft for Marc, 2026-11-11) |
+| [customer/HANDOVER.md](customer/HANDOVER.md) | customer sheet: what each side keeps, alerts, secrets, break-glass, confirming the hand-over (draft for Marc, 2026-11-11) |
+| [customer/TEAMS_SETUP.md](customer/TEAMS_SETUP.md) | customer guide: the Teams bot in the customer's own tenant (draft for Marc, 2026-11-11; not live-tested) |
+| [ops/RELEASE_MAIL.md](ops/RELEASE_MAIL.md), [ops/INCIDENT.md](ops/INCIDENT.md), [ops/CONTRACT_END.md](ops/CONTRACT_END.md) | NextUp's mails and runbooks: release, incident, end of a contract and the deletion statement (draft for Marc, 2026-11-11) |
 | [IDENTITY.md](IDENTITY.md) | identity by id, OIDC, SAML, SCIM, log export, tables, test fakes, claims (updated 2026-11-04) |
 | [customer/SSO_SETUP.md](customer/SSO_SETUP.md) | customer guide: Entra, Okta, ADFS, Keycloak, SCIM, syslog and file export (updated 2026-11-04) |
 | [pilot/README.md](pilot/README.md) | pilot package: runbook, onboarding, training (DE/EN), support, success measures, one-pager (updated 2026-11-04) |
