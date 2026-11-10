@@ -24,8 +24,8 @@ exist. Each item below is one small PR.
 | 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | built, without the sponsor (#645) |
 | 7 | The event that closes a project sends one summary to team, sponsor, followers and raiser | Q6.20 | P6 | built, to lead, team and raiser (#647) |
 | 8 | Stopping a project: lead, managers and sponsor may, with a reason; raiser and team are told | Q6.21 | P6 | built, without the sponsor (#648) |
-| 9 | The raiser can withdraw an idea that is not decided (`case.withdrawn`) | Q1.14 | P1 | built |
-| 10 | Anonymity is chosen per idea on the last look; the company sets the default | Q1.7 | P1 | open; Marc checks the works-agreement text first |
+| 9 | The raiser can withdraw an idea that is not decided (`case.withdrawn`) | Q1.14 | P1 | built (#651) |
+| 10 | Anonymity is chosen per idea on the last look; the company sets the default | Q1.7 | P1 | built; Marc's check of the works-agreement text still open |
 | 11 | A monthly AI cost cap per company in the gate, with warnings at 70 and 90 % | Q7.3 | P7 | built (#646, its own branch off `main`, not in this stack). Limits named in that PR: a model without a price is not counted, the warning is a banner only (no mail), every purpose stops at 100 % |
 
 Items 2 to 4, 6 and 9 need a new event or clock fact and so start with Kevin's contract (events, reducer, rights,
@@ -140,6 +140,19 @@ invited to the discussion get `loop.case.withdrawn`, which names the raiser as t
 
 Not built: a withdrawn idea is not a public event for webhooks, and it cannot be sent again from its page ("Raise a
 follow-up" starts a new raise).
+
+## Item 10: anonymous or by name, per idea
+
+Today a member always posts under their handle and a leader always by name. Now the last look asks a member "Posted
+as": their handle or their name, for this idea only. The company preselects one on Settings → Rules (CompanyRule
+`posting`, default the handle). The server decides the label (`features/ideas/posting.ts`) and keeps `asName: true` on
+the raise only when it took effect. On their own case the raiser keeps that label for everything they do later
+(answer, revise, comment, withdraw), so a handle and a name never meet on one case. A raise from Teams follows the
+company's preselection.
+
+The works-agreement template now describes the choice and leaves a bracketed clause for a company that preselects the
+name. Built before Marc's check, on Kevin's word of 10 Nov; the template text and the help on Settings → Rules are
+what he should look at.
 
 ## Docs this plan changes
 

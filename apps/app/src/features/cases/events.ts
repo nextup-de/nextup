@@ -84,6 +84,7 @@ export type EventPayload = {
   by?: number;
   proposal?: RouteProposal; // on case.raised
   visibility?: Visibility; // on case.raised
+  asName?: boolean; // on case.raised: a member posted it by name instead of their handle (decision Q1.7); the server keeps it only when it took effect
   seenBy?: string[]; // on case.raised with visibility "custom": people and department names (shown, never compared)
   seenByUserIds?: string[]; // on case.raised with visibility "custom": the picked people by user id (VIS/D10)
   seenByUnitIds?: string[]; // on case.raised with visibility "custom": the picked departments by org unit id (VIS/D10)

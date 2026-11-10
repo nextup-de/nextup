@@ -6,7 +6,8 @@
 // decides who the actor is. A client cannot post as somebody else, and cannot pick the day.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { actorLabel, meFor, type Actor } from "@/features/auth/identity";
+import { meFor, type Actor } from "@/features/auth/identity";
+import { choosesPosting, DEFAULT_POST_AS, eventLabel } from "@/features/ideas/posting";
 import { getViewerFor } from "@/features/auth/session";
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
 import { APP_EVENT_TYPES, DISCUSSION_EVENT_TYPES, needsProjectsFlag } from "@/features/cases/persist";
@@ -85,19 +86,28 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   const seed = await seedFor(slug);
   const who: Actor = { role: viewer.role, userId: viewer.userId, me: meFor(viewer.userId, seed.seats), name: viewer.name, handle: viewer.handle };
   const access = needsCaseAccess(type) ? { roles: seed.roles ?? [], members: await loadMembers(viewer.companyId) } : undefined;
-  const verdict = mayAppend(who, { type, target, payload }, reduce(seed, log), locale, access);
+  const state = reduce(seed, log);
+  const verdict = mayAppend(who, { type, target, payload }, state, locale, access);
   if (!verdict.ok) return verdict;
 
   if (type === "day.advanced" && !(await mayRewriteHistory(viewer.companyId))) {
     return { ok: false, error: t("cases.actionRealCompany") };
   }
 
-  // The actor is derived here, never taken from the client: a member posts under their handle,
-  // everyone else by name. Same rule the demo had.
-  const actor = actorLabel(viewer);
+  // The actor is derived here, never taken from the client: a member posts under their handle, or by name when they
+  // chose so for this raise (decision Q1.7); everyone else by name. On their own case a raiser keeps the label they
+  // raised it with, so a handle and a name never meet on one case (features/ideas/posting.ts).
+  const own = target ? state.cases.find((c) => c.id === target) : undefined;
+  const actor = eventLabel(viewer, { type, payload }, own, seed.postAs ?? DEFAULT_POST_AS);
 
   // The seat a raise lands on is the server's call, whatever the client sent (features/cases/stamp.ts).
   let stored = await stampAudience(viewer.companyId, type, stampEvent(type, payload, seed));
+  // The choice is kept as a fact only where it took effect: a member who posted by name.
+  if (type === "case.raised") {
+    const rest = { ...stored };
+    delete rest.asName;
+    stored = choosesPosting(viewer) && actor === viewer.name ? { ...rest, asName: true } : rest;
+  }
   // So is the department next to a handle: kept only when the raiser's own unit is big enough to hide in.
   if (type === "case.raised" && underHandle(actor) && stored.fromDept) {
     stored = stampDept(type, stored, { label: actor, userId: viewer.userId }, await loadUnitPeople(viewer.companyId));

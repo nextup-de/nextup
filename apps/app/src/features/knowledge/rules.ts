@@ -1,8 +1,9 @@
 // The values of the CompanyRule rows: one key per rule, a JSON value checked here (pure, no database).
 // A missing key or a value that fails its check gives the default for that key.
 import type { SpendRule } from "@/features/demo/types";
+import { DEFAULT_POST_AS, postAsOf, type PostAs } from "@/features/ideas/posting";
 
-export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps"] as const;
+export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps", "posting"] as const;
 export type CompanyRuleKey = (typeof COMPANY_RULE_KEYS)[number];
 
 export type LoopSteps = { discussion: boolean; projects: boolean; measure: boolean; recognition: boolean };
@@ -14,6 +15,8 @@ export type CompanyRules = {
   /** Working days after the answer date until the case goes one level up; 0 = never. Missing (no row) = the default of features/loop/rules.ts. */
   escalationDays?: number;
   steps: LoopSteps;
+  /** Who a member's raise is preselected as on the last look (decision Q1.7); the member can change it per raise. */
+  postAs: PostAs;
 };
 export const DEFAULT_RULES: CompanyRules = {
   promiseDays: 5,
@@ -21,6 +24,7 @@ export const DEFAULT_RULES: CompanyRules = {
   spend: null,
   deadlineHandover: true,
   steps: { discussion: true, projects: true, measure: true, recognition: true },
+  postAs: DEFAULT_POST_AS,
 };
 /** The most working days an escalation may wait, as promise_days. */
 export const ESCALATION_DAYS_MAX = 60;
@@ -70,6 +74,7 @@ export function rulesFromRows(rows: readonly RuleRow[]): CompanyRules {
       if (n !== null) out.escalationDays = n;
     }
     else if (key === "loop_steps") out.steps = stepsOf(value);
+    else if (key === "posting") out.postAs = postAsOf(isObj(value) ? value.as : undefined);
   }
   return out;
 }
@@ -80,6 +85,7 @@ export function rowsFromRules(r: CompanyRules): RuleRow[] {
     { key: "outcome_days", value: { days: r.outcomeDays } },
     { key: "deadline_handover", value: { on: r.deadlineHandover } },
     { key: "loop_steps", value: { ...r.steps } },
+    { key: "posting", value: { as: r.postAs } },
   ];
   if (r.escalationDays !== undefined) rows.push({ key: "escalation_days", value: { days: r.escalationDays } });
   if (r.spend) rows.push({ key: "spend", value: { limitEur: r.spend.limitEur, text: r.spend.text } });

@@ -1,6 +1,7 @@
 // Parsing and checking the company, rules and calendar forms of /settings (ADM-A1). Pure: form
 // fields in, the values the stores take out, or the message key of the first thing wrong. The
 // server actions call these; nothing here touches the database or React.
+import { postAsOf } from "@/features/ideas/posting";
 import { calendarSpec, REGIONS, type CalendarSpec, type Region } from "@/features/clock";
 import { loopRules, type LoopRules, type RewardKind } from "@/features/loop/rules";
 import { DEFAULT_RULES, ESCALATION_DAYS_MAX, type CompanyRules } from "@/features/knowledge/rules";
@@ -124,6 +125,8 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
       rules: {
         ...DEFAULT_RULES, promiseDays, outcomeDays, spend,
         deadlineHandover: on(f, "deadlineHandover"), ...(escalationDays === undefined ? {} : { escalationDays }),
+        // Who a member's raise is preselected as (decision Q1.7); anything but "name" keeps the handle.
+        postAs: postAsOf(text(f, "postAs")),
         steps: { discussion: on(f, "stepDiscussion"), projects: on(f, "stepProjects"), measure: on(f, "stepMeasure"), recognition: on(f, "stepRecognition") },
       },
       loop: loopRules({ discussEveryDays, discussMaxRounds, fastLaneEur, measureDays: measure as number[], tolerancePct, reward: { kind, amount, sharePct, capEur } }),

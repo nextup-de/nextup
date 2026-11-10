@@ -17,7 +17,7 @@ In this order. Setup is not a section: it has its own pages, and while the compa
 | Section | Path | What it does |
 |---|---|---|
 | Company | `settings/company` | Name, mark, vision, mission, principles, business model, compliance rules. |
-| Rules | `settings/rules` | Spend text, reward, measure days, and the company goals (title, KPI, target, period, keywords, unit). |
+| Rules | `settings/rules` | Spend text, reward, measure days, who a member's idea is preselected as on the last look (handle or name; CompanyRule `posting`), and the company goals (title, KPI, target, period, keywords, unit). |
 | Calendar | `settings/calendar` | Region, workdays, extra holidays and extra workdays (one calendar per company). |
 | Org | `settings/org` | Units, roles under a unit, seats under a role, and linking a seat to a member. |
 | Routing | `settings/routing` | Request types with keywords, owner / deputy / buddy role, wait, and order. |

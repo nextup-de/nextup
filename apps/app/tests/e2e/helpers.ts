@@ -167,3 +167,25 @@ export async function passSecondFactor(page: Page, who: string) {
   await field.fill(totpAt(secret, Date.now()));
   await page.locator("form button[type=submit]").last().click();
 }
+
+/** Demo mode: the id of the case raised with this title, from the log in this browser's localStorage. */
+export const raisedCaseId = (page: Page, title: string) =>
+  page.evaluate((wanted) => {
+    for (const key of Object.keys(localStorage)) {
+      const text = localStorage.getItem(key) ?? "";
+      if (!text.includes("case.raised") || !text.includes(wanted)) continue;
+      const found: Record<string, unknown>[] = [];
+      const walk = (v: unknown) => {
+        if (Array.isArray(v)) v.forEach(walk);
+        else if (v && typeof v === "object") {
+          const o = v as Record<string, unknown>;
+          if (o.type === "case.raised") found.push(o);
+          Object.values(o).forEach(walk);
+        }
+      };
+      walk(JSON.parse(text) as unknown);
+      const hit = found.find((e) => JSON.stringify(e.payload).includes(wanted));
+      if (hit && typeof hit.target === "string") return hit.target;
+    }
+    return null;
+  }, title);

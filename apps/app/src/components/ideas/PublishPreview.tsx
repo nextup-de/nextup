@@ -46,6 +46,8 @@ export function PublishPreview(p: {
   aiLine: string;
   onClose: () => void; onConfirm: () => void;
   onExport: () => void; // the export view (RaiseExport.tsx): the A4 page, copied, saved as .doc or PDF
+  /** A member with a handle chooses who it is posted as (decision Q1.7); missing for everyone else, who posts by name. */
+  posting?: { handle: string; name: string; asName: boolean; onChange: (asName: boolean) => void };
 }) {
   const t = useT();
   const { look, onLook } = p;
@@ -80,6 +82,23 @@ export function PublishPreview(p: {
         <div className={s.body}>
           <IdeaCard look={look} onLook={onLook}
             affected={p.affected} depts={p.depts} onAffected={p.onAffected} files={p.files} onAddFiles={p.onAddFiles} onRemoveFile={p.onRemoveFile} />
+
+          {p.posting && (
+            <fieldset className={s.posting} data-testid="raise-posting">
+              <legend className={s.postingLegend}>{t("ideas.pubPostedAs")}</legend>
+              <div className={s.postingOptions}>
+                <label className={s.postingOption}>
+                  <input type="radio" name="posting" checked={!p.posting.asName} onChange={() => p.posting?.onChange(false)} data-testid="raise-posting-handle" />
+                  <span><span className={s.postingName}>{p.posting.handle}</span> <span className={s.postingSub}>{t("ideas.pubPostedHandle")}</span></span>
+                </label>
+                <label className={s.postingOption}>
+                  <input type="radio" name="posting" checked={p.posting.asName} onChange={() => p.posting?.onChange(true)} data-testid="raise-posting-name" />
+                  <span><span className={s.postingName}>{p.posting.name}</span> <span className={s.postingSub}>{t("ideas.pubPostedName")}</span></span>
+                </label>
+              </div>
+              <p className={s.postingHelp}>{p.posting.asName ? t("ideas.pubPostedNameHelp") : t("ideas.pubPostedHandleHelp")}</p>
+            </fieldset>
+          )}
 
           <div className={s.ai}>
             <span className={s.aiIcon} aria-hidden="true">

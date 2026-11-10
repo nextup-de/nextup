@@ -1,36 +1,12 @@
-// Decision Q1.14: the raiser withdraws an idea nobody has decided yet, from the case page. In demo mode the log is
-// in this browser, so the case id is read from there.
-import type { Page } from "@playwright/test";
-import { expect, publishIdea, test } from "../helpers";
-
-/** The id of the case raised with this title, from the log in localStorage. */
-const caseIdOf = (page: Page, title: string) =>
-  page.evaluate((wanted) => {
-    for (const key of Object.keys(localStorage)) {
-      const text = localStorage.getItem(key) ?? "";
-      if (!text.includes("case.raised") || !text.includes(wanted)) continue;
-      const found: Record<string, unknown>[] = [];
-      const walk = (v: unknown) => {
-        if (Array.isArray(v)) v.forEach(walk);
-        else if (v && typeof v === "object") {
-          const o = v as Record<string, unknown>;
-          if (o.type === "case.raised") found.push(o);
-          Object.values(o).forEach(walk);
-        }
-      };
-      walk(JSON.parse(text) as unknown);
-      const hit = found.find((e) => JSON.stringify(e.payload).includes(wanted));
-      if (hit && typeof hit.target === "string") return hit.target;
-    }
-    return null;
-  }, title);
+// Decision Q1.14: the raiser withdraws an idea nobody has decided yet, from the case page. In demo mode.
+import { expect, publishIdea, raisedCaseId, test } from "../helpers";
 
 test("the raiser withdraws an undecided idea with a reason, and it reads as withdrawn", async ({ page }) => {
   const title = "Small tools have no tray on the changeover cart";
   await page.goto("/acme/raise");
   await publishIdea(page, title);
-  await expect.poll(() => caseIdOf(page, "Small tools have no tray")).not.toBeNull();
-  const id = await caseIdOf(page, "Small tools have no tray");
+  await expect.poll(() => raisedCaseId(page, "Small tools have no tray")).not.toBeNull();
+  const id = await raisedCaseId(page, "Small tools have no tray");
 
   await page.goto(`/acme/cases/${id}`);
   await expect(page.getByTestId("case-answer-by")).toBeVisible();

@@ -25,6 +25,7 @@ import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
 import { closest, evaluate } from "@/features/evaluate";
 import { audienceOf } from "@/features/ideas/audience";
+import { choosesPosting } from "@/features/ideas/posting";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
 import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
@@ -114,6 +115,9 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const preview = useRaisePreview(scope);
   const { draft, live, threshold, sending } = studio;
   const who = persona.who;
+  // Who the idea goes out as (decision Q1.7): the company preselects, the member can change it on the last look.
+  const [asName, setAsName] = useState<boolean | null>(null);
+  const postsByName = asName ?? seed.postAs === "name";
 
   const [keptStage, setStage] = useKept<"start" | "chat">(scope, "stage", "start");
   const [openId, setOpenId] = useKept<string | null>(scope, "open", null); // the draft open in the chat, reopened on the next visit
@@ -468,7 +472,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     // The demo script's case carries its main points instead of the raw conversation.
     const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     const body = mine ? bodyOf(mine) : made.body;
-    await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raise({ ...e.payload, title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId }, caseId), 600);
+    await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raise({ ...e.payload, ...(choosesPosting({ role, name: who.name, handle: who.handle ?? null }) ? { asName: postsByName } : {}), title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId }, caseId), 600);
     // Everything the raise page worked out goes with the case: the document, the dials, every file (not only the images).
     saveRaised(tenant.slug, caseId, briefOfDoc({ ...finalDoc, receiver: to.title }, {
       files: myFiles.map((f) => ({ name: f.name, size: f.file.size ? sizeOf(f.file.size) : "" })), affected, categories: cats, receiverRole: to.title, depts: seed.depts, people: seed.people,
@@ -815,7 +819,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
           files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile}
           aiLine={t("ideas.pageAiLine", { n: sources.length })}
           onClose={() => go("chat")} onConfirm={confirmLook}
-          onExport={() => { if (!mine && shownLook) setLook(shownLook); go("export"); }} />
+          onExport={() => { if (!mine && shownLook) setLook(shownLook); go("export"); }}
+          posting={choosesPosting({ role, name: who.name, handle: who.handle ?? null }) && who.handle ? { handle: who.handle, name: who.name, asName: postsByName, onChange: setAsName } : undefined} />
       )}
       <div className={s.main}>
         <div className={s.showSb}><button type="button" className={s.iconBtn} onClick={() => setSb("open")} title={t("ideas.pageShowSidebar")} aria-label={t("ideas.pageShowSidebar")}><Icon name="sidebar" size={12} /></button></div>

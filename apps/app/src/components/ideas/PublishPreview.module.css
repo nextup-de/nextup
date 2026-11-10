@@ -72,6 +72,14 @@
 .sheetHint { padding: 0 4px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 
 /* NextUp's analysis travels with it, but is not the author's to edit. */
+/* Who it is posted as (decision Q1.7): the member's handle or their name. */
+.posting { margin: 0; padding: 14px 16px; border: 1px solid var(--nh-line); border-radius: var(--radius-md, 16px); display: flex; flex-direction: column; gap: 10px; }
+.postingLegend { padding: 0 6px; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
+.postingOptions { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.postingOption { display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; font-size: var(--nh-fs-sm); }
+.postingName { font-weight: 600; color: var(--nh-ink); }
+.postingSub { color: var(--nh-mute); }
+.postingHelp { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .ai { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md, 16px); border: 1px dashed var(--nh-ghost); }
 .aiIcon { width: 32px; height: 32px; flex: none; border-radius: var(--radius-sm, 10px); background: var(--nh-line); display: flex; align-items: center; justify-content: center; }
 .aiText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }

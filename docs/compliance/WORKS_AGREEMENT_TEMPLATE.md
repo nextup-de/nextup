@@ -1,4 +1,4 @@
-Updated 2026-11-04 · Draft for legal review, not legal advice.
+Updated 2026-11-10 · Draft for legal review, not legal advice.
 
 # Works agreement — template (BetrVG § 87(1) no. 6)
 
@@ -22,7 +22,11 @@ not a tool for monitoring performance or behaviour. The agreement covers all emp
 ## 3. Data
 
 The data categories are in `RECORD_OF_PROCESSING.md`. Raising can be anonymous: the author is shown by an anonymous
-handle. The employer does not use the data for personnel decisions, appraisals or discipline. **[Parties may widen this.]**
+handle. Before an idea goes out, the employee chooses for that idea whether it carries the handle or their name; the
+handle is preselected. Nobody else can make this choice for them, and a choice for one idea does not name their other
+ideas. Team leads and managers raise by name. **[If the employer wants the name preselected instead (Settings →
+Rules), the parties agree it here. The employee can still choose the handle for every idea.]** The employer does not
+use the data for personnel decisions, appraisals or discipline. **[Parties may widen this.]**
 
 ## 4. Access to the audit log
 
