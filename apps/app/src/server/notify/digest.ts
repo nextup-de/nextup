@@ -34,7 +34,7 @@ export async function runDigests(now: Date = new Date()): Promise<number> {
       if (!isWorkday(berlinDate(now), cal)) continue;
       const config = await db.companyConfig.findUnique({ where: { companyId: company.id }, select: { notifications: true, n8n: true } });
       const gateCompany = { stage: company.stage, notifications: config?.notifications ?? false, n8n: config?.n8n ?? false };
-      const users = await db.user.findMany({ where: { companyId: company.id }, select: { id: true, email: true } });
+      const users = await db.user.findMany({ where: { companyId: company.id, active: true }, select: { id: true, email: true } }); // no digest for a leaver (Q10.18)
       const prefs = await prefsOf(company.id, users.map((u) => u.id));
       const wanting = users.filter((u) => u.email.trim() && gateOf(gateCompany, "mail", "digest", prefOf(prefs, u.id, "digest")).send);
       if (wanting.length === 0) continue;

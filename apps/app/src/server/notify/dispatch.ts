@@ -70,7 +70,7 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
   const teamsIds = teamsOn ? await teamsUserIds(company.id) : new Set<string>();
 
   const [users, config, subs] = await Promise.all([
-    db.user.findMany({ where: { companyId: company.id }, select: { id: true, name: true, email: true, handle: true, role: true } }),
+    db.user.findMany({ where: { companyId: company.id, active: true }, select: { id: true, name: true, email: true, handle: true, role: true } }), // a leaver gets no notice (Q10.18)
     db.companyConfig.findUnique({ where: { companyId: company.id }, select: { notifications: true, n8n: true } }),
     db.webhookSubscription.findMany({ where: { companyId: company.id }, select: { id: true, events: true, on: true } }),
   ]);
