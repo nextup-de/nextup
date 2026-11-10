@@ -9,12 +9,13 @@ import type { CaseEvent } from "@/features/cases/events";
 import type { NoticeMail } from "@/features/cases/notice";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import { byClock } from "@/features/clock/actor";
+import { CONFIRM_DAYS, confirmerIds, unconfirmedOf } from "@/features/projects/confirm";
 import { projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
 import { createT, DEFAULT_LOCALE, type Locale, type MessageKey, type T } from "@/i18n";
 
 /** A person who can get mail: their user id, their name (shown in the greeting) and the handle they post under. */
-export type Person = { id: string; name: string; email: string; handle?: string | null };
+export type Person = { id: string; name: string; email: string; handle?: string | null; manager?: boolean };
 
 type Args = { ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload">; state: State; people: Person[]; baseUrl: string };
 
@@ -207,6 +208,16 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
         const reward = r?.rule === "thanks" || r?.amount == null ? t("mail.rewardThanks") : t("mail.rewardAmount", { amount: r.amount });
         return r?.note ? t("mail.whatRecognisedNote", { reward, note: r.note }) : t("mail.whatRecognised", { reward });
       };
+      // A typed result needs a second person (decision Q6.15): who may confirm it is asked first, so someone who
+      // is also an author gets the request, not the news.
+      const waiting = ev.type === "project.measured" ? unconfirmedOf(project).find((x) => x.check === pl.check) : undefined;
+      if (waiting) {
+        const deputyRoleId = state.routes.find((r) => r.id === project.routeId)?.deputyRoleId ?? null;
+        const managers = people.filter((p) => p.manager).map((p) => p.id);
+        for (const id of confirmerIds(project, waiting, deputyRoleId, state.seats, managers, "desk")) {
+          send(id, (t) => t("mail.confirmSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.confirmIntro", { name: waiting.measure.by, days: waiting.check, n: CONFIRM_DAYS }), "", projectLink(project)]);
+        }
+      }
       for (const a of project.authorUserIds) send(a, (t) => t("mail.stepSubject", { label: projectLabel(project), step: t(step), title: project.title }), (t) => [t("mail.stepIntro", { what: what(t) }), "", projectLink(project)]);
       break;
     }

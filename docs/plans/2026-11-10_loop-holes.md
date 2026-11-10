@@ -20,13 +20,13 @@ exist. Each item below is one small PR.
 | 2 | An unanswered question: a reminder to the raiser after 3 working days, back on the desk as open after 5, marked "no answer" | Q4.3 | P4 | built (#641) |
 | 3 | A case without a route goes to a triage seat with a deadline; a raise with no fitting desk goes to a fallback desk | Q2.1, Q1.9 | P2, P1 | built, without the setting (#642) |
 | 4 | A raise onto a vacant desk is handed to the route's deputy seat at once, on the web and on the floor | Q1.10 | P1 | built (#643) |
-| 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | built |
-| 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | open |
+| 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | built (#644) |
+| 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | built, without the sponsor |
 | 7 | The event that closes a project sends one summary to team, sponsor, followers and raiser | Q6.20 | P6 | open |
 | 8 | Stopping a project: lead, managers and sponsor may, with a reason; raiser and team are told | Q6.21 | P6 | open |
 | 9 | The raiser can withdraw an idea that is not decided (`case.withdrawn`) | Q1.14 | P1 | open |
 | 10 | Anonymity is chosen per idea on the last look; the company sets the default | Q1.7 | P1 | open; Marc checks the works-agreement text first |
-| 11 | A monthly AI cost cap per company in the gate, with warnings at 70 and 90 % | Q7.3 | P7 | open (block H1 of the build order) |
+| 11 | A monthly AI cost cap per company in the gate, with warnings at 70 and 90 % | Q7.3 | P7 | built (#646, its own branch off `main`, not in this stack). Limits named in that PR: a model without a price is not counted, the warning is a banner only (no mail), every purpose stops at 100 % |
 
 Items 2 to 4, 6 and 9 need a new event or clock fact and so start with Kevin's contract (events, reducer, rights,
 tests). Items 1, 5, 7 and 8 only plan notices from events that exist.
@@ -94,6 +94,19 @@ The failed card stays on Settings → Notifications and says that a mail was wri
 
 Not covered: a person without a mail address still gets nothing (the card keeps retrying); "Retry" on a failed card
 sends the card again, so the person can end up with the mail and the card.
+
+## Item 6: a result nobody confirms
+
+Today a typed result waits for a second person who is never asked: no notice, nothing in the inbox, no date. The
+reward and the KPI wait with it. Now every manager and every holder of the route's deputy role is mailed when the
+result is typed and finds "Confirm the result" under "Projects waiting on you", due in 5 working days. The project page
+says "Waiting for a second person until {date}". The clock reminds them once when the date has passed
+(`reminder.confirm`), and 3 working days later asks the seat above the deputy's desk, whose holders may then confirm
+too. No new event type: two `clock.due` facts of the new kind `confirm`.
+
+Decided and not built here: the sponsor as a third confirmer (a project has no sponsor until the project draft of
+chapter 5 exists), and sending a doubtful number back once (Q6.16). The demo has no second person and no scheduler,
+so it shows none of this.
 
 ## Docs this plan changes
 
