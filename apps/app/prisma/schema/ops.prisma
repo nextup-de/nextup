@@ -155,13 +155,13 @@ model AuditEvent {
   companyId   String
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   at          DateTime @default(now())
-  actorKind   String // admin | console | break-glass | support | platform | system | directory | api-token
+  actorKind   String // admin | console | break-glass | support | platform | system | directory | api-token | install
   actorUserId String? // a user id; null for shared codes, support, system
   action      String // audit.<area>.<verb>, src/features/audit
   targetKind  String?
   targetId    String?
   changes     Json     @default("{}")
-  source      String // settings | console | platform | scheduler | directory | api
+  source      String // settings | console | platform | scheduler | directory | api | install
 
   @@index([companyId, at])
   @@index([companyId, action, at])
