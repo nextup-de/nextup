@@ -1,8 +1,11 @@
 // The assistant's and the brain's tokens and estimated cost per company and period (AID D5, AIB D10).
 // Totals only: no user id, no text, no per-person number leaves this function.
-import { capOf, monthOf, spendOf, type AiBudget } from "@/features/ai/budget";
+import { capOf, monthOf, spendOf, tokenCapOf, type AiBudget } from "@/features/ai/budget";
+import { pricesOf } from "@/features/ai/prices";
+import { AI_SYSTEM } from "@/features/ai/settings";
 import { aiCost } from "@/features/ai/usage";
 import { getDb } from "./client";
+import { getIntegration } from "./integrations";
 
 export type AiUsage = {
   turns: number;
@@ -89,14 +92,17 @@ export async function aiUsage(companyId: string, from: Date, to: Date): Promise<
 }
 
 /**
- * The company's cap and what its assistant turns and brain calls of the calendar month cost so far (decision Q7.3):
- * what the gate asks before a model call. Only answered calls are stored, so the sum reads low by whatever timed out.
+ * The company's caps and what its assistant turns and brain calls of the calendar month cost so far (decisions Q7.3,
+ * Q7.5): what the gate asks before a model call. Priced with the company's own prices from its AI settings first.
+ * Only answered calls are stored, so the sum reads low by whatever timed out.
  */
 export async function loadAiBudget(companyId: string, now: Date = new Date()): Promise<AiBudget> {
   const { from, to } = monthOf(now);
-  const [cfg, usage] = await Promise.all([
-    getDb().companyConfig.findUnique({ where: { companyId }, select: { aiMonthlyCapEur: true } }),
+  const [cfg, usage, ai] = await Promise.all([
+    getDb().companyConfig.findUnique({ where: { companyId }, select: { aiMonthlyCapEur: true, aiMonthlyTokenCap: true } }),
     aiUsage(companyId, from, to),
+    getIntegration(companyId, AI_SYSTEM),
   ]);
-  return { capEur: capOf(cfg?.aiMonthlyCapEur), ...spendOf(usage.byModel) };
+  const settings = ai?.settings && typeof ai.settings === "object" ? (ai.settings as Record<string, unknown>) : {};
+  return { capEur: capOf(cfg?.aiMonthlyCapEur), tokenCap: tokenCapOf(cfg?.aiMonthlyTokenCap), ...spendOf(usage.byModel, pricesOf(settings.prices)) };
 }

@@ -109,8 +109,9 @@ totals into `{ purpose, calls, tokensIn, tokensOut, costUsd }`, sorted by purpos
 `costUsd` is `null` as soon as one model has no price.
 
 `loadAiBudget` in the same file is what the gate asks before a model call: the company's monthly cap and the cost of
-the calendar month so far, with the models that have no price named instead of counted (docs/ASSISTANT.md, "The monthly
-budget").
+the calendar month so far, priced with the company's own prices first, and the tokens of models that have no price
+against the company's token limit (docs/ASSISTANT.md, "The monthly budget"). `aiUsage`'s `costUsd` stays a list-price
+figure.
 
 In the idea studio the brain is called twice per message: `read` (the reading of the idea, docs/IDEAS.md) and then
 `coach`, each recorded on its own once it answered, so one message adds one call to each purpose (and none when the brain

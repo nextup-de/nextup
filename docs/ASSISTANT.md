@@ -1,6 +1,6 @@
 # The raise-page assistant
 
-> **Updated 2026-09-24, provider and gate sections 2026-11-04, monthly budget 2026-11-10** · reference: how the raise-page assistant works. Live on Musterwerk: Azure OpenAI (gpt-4.1-mini, Sweden Central) with a signed data-processing agreement; Bedrock is built but not measured. The plan it came from: `docs/plans/2026-09-24_raise-assistant.md`.
+> **Updated 2026-09-24, provider and gate sections 2026-11-04, monthly budget and prices 2026-11-10** · reference: how the raise-page assistant works. Live on Musterwerk: Azure OpenAI (gpt-4.1-mini, Sweden Central) with a signed data-processing agreement; Bedrock is built but not measured. The plan it came from: `docs/plans/2026-09-24_raise-assistant.md`.
 
 An employee with a problem or an idea types one line on the raise page. Before anything is raised,
 NextUp answers from the company's own knowledge: who handles this, what already exists, which goal
@@ -78,8 +78,10 @@ allows model calls for real people.
 ## Operating it
 
 - **Turn on** in `/admin/knowledge` → Assistant: On, ceiling, DPA date, rules, extra patterns.
-- **Budget**: `/admin/assistant` → "AI budget per month (EUR)", 50 by default. The page shows what the month has cost
-  and warns from 70 %.
+- **Budget**: `/admin/assistant` → "AI budget per month (EUR)", 50 by default, and "Token limit per month for models
+  without a price", 20 million by default. The page shows what the month has cost and warns from 70 %.
+- **Prices**: `/admin/connectors` → AI provider → "Prices per model", one line per model: name, EUR per million input
+  tokens, EUR per million output tokens. The form lists the models called this month that have no price yet.
 - **Model**: set `LLM_PROVIDER=bedrock`, `LLM_MODEL` (default `anthropic.claude-opus-5`),
   `LLM_REGION`, and AWS credentials in the stack's `.env`. Enable the model in the AWS account's
   Bedrock console for that region first.
@@ -130,7 +132,7 @@ wrapper over it for the assistant.
 | real stage, any choice other than mock, no `dpaSignedAt` | off ("waits for the data-processing agreement") |
 | purpose `assist`, `CompanyConfig.assistant` off | off |
 | purpose `routing`, `CompanyConfig.aiRouting` off | off |
-| any stage with a database, the month's budget used up, unless the choice is off or it is the mock answering the assistant | off ("This month's AI budget for this company is used up.") |
+| any stage with a database, the month's budget or the token limit of models without a price used up, unless the assistant is answered by the mock (choice mock, or off in the demo stage) or the choice is off outside the demo stage |  off ("This month's AI budget for this company is used up.") |
 
 Every "no" carries a `why` in plain words. With the gate closed no request leaves, not to the brain and not to the model.
 
@@ -152,7 +154,7 @@ first of the month (UTC). Once the cost reaches the cap the gate answers off for
 the demo stage included, because a real model costs the same there. The callers then do what they do for any closed
 gate: the assistant says why, a raise is routed by keywords, the idea studio scores by rules, first steps and the
 check-in draft fall back to the page's own suggestion, the context draft does not run. The mock assistant is never
-stopped, it costs nothing; but with the mock chosen the brain's purposes (`routing`, `coach`, `brain`) still call the
+stopped, it costs nothing; but with the mock chosen (or, in the demo stage, the AI off) the brain's purposes (`routing`, `coach`, `brain`) still call the
 brain's own model and are capped like any other, so a cap of 0 stops them too. On the first of the next month the sum
 starts at zero; raising the cap opens the gate at once.
 
@@ -163,12 +165,36 @@ change.
 `/admin/assistant` shows "AI budget this month: spent of cap (share)" and a banner from 70 % and from 90 % of the cap,
 and an error banner when it is used up (`budgetLevel`).
 
+#### Prices per model, and a token limit for the rest
+
+How a usage row is priced (decision Q7.5, `spendOf` in `features/ai/budget.ts`):
+
+1. **The company's own price**, typed on `/admin/connectors` → AI provider → "Prices per model" and stored in the AI
+   settings (`settings.prices` of the Integration row `ai`, `features/ai/prices.ts`), in euros per million input and
+   output tokens. It wins over the list price, because it is what the company pays. A price of 0 makes a model free
+   (a model on the company's own server), which is not the same as no price.
+2. Else **the built-in list price** (`features/ai/usage.ts`, Claude models only), in US dollars counted one dollar as
+   one euro (`EUR_PER_USD`).
+3. Else the model has **no price**: its input and output tokens are summed, and the gate closes when they reach the
+   company's token limit, `CompanyConfig.aiMonthlyTokenCap` (20 million when empty, `DEFAULT_MONTHLY_TOKEN_CAP`). The
+   limit is set on `/admin/assistant` next to the euro budget, with the same rules: the default saved back unchanged
+   keeps the column empty, and the change is audited. Only tokens of a model without a price count, so a limit of 0
+   lets the first such call through and stops the next. When it closes, it closes for every call of the company, as
+   the euro budget does; a price for the model, or a higher limit, opens it again at once.
+
+The name a price is typed under is the one **the model reports**, which is what the usage rows carry: on Azure the
+model version (`gpt-4.1-mini-2025-04-14`), not the deployment name. A typed name covers every recorded name that
+contains it, so `gpt-4.1-mini` prices the dated versions too; where two typed names fit, the longer one wins. Names
+are lower case and may hold any character but a space (paths such as `/models/mistral-nemo`, tags, ARNs). An amount
+takes a decimal point or comma and up to four decimals; "1.000" or "1,000" is refused, because it reads as a thousand
+to some and as one to others. The connectors form lists the models called this month that have no price yet, and `/admin/assistant`
+shows their tokens against the limit with a link to it. Prices are not secret and are audited with the AI choice
+(`audit.connector.saved`). The settings JSON is written whole, so the prices must be typed on that form; a save
+without them removes them. Changing a price re-prices the whole month at once.
+
 What the number is, and is not:
 
-- An estimate from list prices in US dollars (`features/ai/usage.ts`), counted one dollar as one euro (`EUR_PER_USD`).
-- **A model without a price is not counted.** The page names it ("cost unknown and not counted"), and the gate
-  never closes on its account. Today that is every model that is not a Claude model, including the Azure
-  gpt-4.1-mini Musterwerk runs on. A price per model in the AI settings is proposed (Q7.5) and not built.
+- An estimate: list prices, or the prices the company typed.
 - Only answered calls are stored. A call the app gave up on after its timeout may still have been billed by the
   provider, so the sum reads low. The idea studio's own model answer (when the brain gave none) is stored as an
   `AiCall` with purpose `coach`, because the idea turn keeps no tokens.
@@ -177,9 +203,15 @@ What the number is, and is not:
 - Not built: a warning by mail or to NextUp support at 70 and 90 % (Q7.6), and letting the raise path run on to
   120 % while only an agent pauses at 100 % (Q7.4; there is no agent yet). The warning is the banner on the page.
 
-Proof: `apps/app/tests/unit/aip/budget.test.ts` (cap, month, levels, the gate) and `apps/app/tests/db/aib-budget.test.ts`
-(the sum from stored calls, last month and other companies left out, a raise at the cap routed by keywords without
-asking the brain).
+- A call whose provider reports no token counts is stored with 0 tokens and counts neither in euros nor against the
+  token limit (some OpenAI-compatible servers when streaming, an old brain image). A row whose model name is empty
+  counts as free.
+
+Proof: `apps/app/tests/unit/aip/budget.test.ts` (cap, month, levels, the gate), `apps/app/tests/unit/aip/prices.test.ts`
+(the form's lines, which price a recorded name gets, the spend with company prices, the token limit and its levels),
+`apps/app/tests/db/aib-budget.test.ts` (the sum from stored calls, last month and other companies left out, a stored
+price and token limit, a raise at the cap routed by keywords without asking the brain) and
+`apps/app/tests/db/itc-connectors.test.ts` (prices saved, refused by line, shown back).
 
 ### The proposal at raise
 
@@ -247,4 +279,4 @@ Register rows of `docs/audit/gaps` whose phase is AIP:
 | G-037 | Eval set too small, too little German | #321: an 84-case routing eval, a third German |
 | G-038 | Brain eval not in CI | #321: runs in CI with a threshold |
 | G-236 | Bedrock off everywhere, no AWS account attached | open: needs an AWS account on a stack, which is hosting, not code |
-| G-237 | No AI gateway for keys, quotas, logging | open: the per-company choice, sealed keys and a monthly budget per company in the gate exist (models without a price are not counted); request logging in front of providers does not |
+| G-237 | No AI gateway for keys, quotas, logging | open: the per-company choice, sealed keys and a monthly budget per company in the gate, with a price per model and a token limit for models without one, exist; request logging in front of providers does not |

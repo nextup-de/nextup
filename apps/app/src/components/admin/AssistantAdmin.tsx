@@ -3,7 +3,7 @@
 // (counts only: no per-person view, BetrVG §87) and the documents it may search.
 // Client for the confirm step before a document is removed.
 import { useState, useTransition } from "react";
-import { budgetLevel, budgetShare } from "@/features/ai/budget";
+import { budgetLevel, budgetShare, tokenLevel, tokenShare, type BudgetLevel } from "@/features/ai/budget";
 import { LEVEL_LABEL, canUse, isLevel } from "@/features/assist/classify";
 import type { AssistantView } from "@/server/admin-insight";
 import { AssistSettingsForm } from "./AssistSettingsForm";
@@ -31,8 +31,15 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
   };
   const locale = useLocale();
   const { settings: s, provider: p, stats: st, documents, budget } = view;
-  const level = budgetLevel(budget);
+  const euroLevel = budgetLevel(budget);
   const share = budgetShare(budget);
+  const tokens = tokenLevel(budget);
+  // The banner speaks of whichever cap is closer: the euro budget, or the token limit of models without a price.
+  const RANK: Record<BudgetLevel, number> = { ok: 0, warn70: 1, warn90: 2, reached: 3 };
+  const byTokens = RANK[tokens] > RANK[euroLevel];
+  const level = byTokens ? tokens : euroLevel;
+  const count = (n: number) => new Intl.NumberFormat(locale).format(n);
+  const tokenWords = { used: count(budget.tokensUnpriced), cap: count(budget.tokenCap), share: tokenShare(budget), models: budget.unpriced.join(", ") };
   const euro = (n: number) => new Intl.NumberFormat(locale, { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
   const budgetWords = { spent: euro(budget.spentEur), cap: euro(budget.capEur), share };
   const providerLabel = { bedrock: "Amazon Bedrock", "azure-openai": "Azure OpenAI", "openai-compatible": t("adminPrivacy.providerOpenaiCompat") } as const;
@@ -60,7 +67,12 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
       t("adminPrivacy.rowBudget"),
       <span key="budget" data-testid="console-assistant-budget" data-level={level}>
         {t("adminPrivacy.rowBudgetValue", budgetWords)}
-        {budget.unpriced.length ? <> <span className={`${c.sub} ${c.note}`} data-tone="warn" data-testid="console-assistant-budget-unpriced">{t("adminPrivacy.rowBudgetUnpriced", { models: budget.unpriced.join(", ") })}</span></> : null}
+        {budget.unpriced.length ? (
+          <span className={`${c.sub} ${c.note}`} data-tone="warn" data-testid="console-assistant-budget-unpriced" data-level={tokens}>
+            {t("adminPrivacy.rowBudgetUnpriced", tokenWords)}{" "}
+            <a href={connectorsHref} data-testid="console-assistant-budget-price-link">{t("adminPrivacy.rowBudgetPriceLink")}</a>
+          </span>
+        ) : null}
       </span>,
     ],
   ];
@@ -75,7 +87,11 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
       {level === "ok" ? null : (
         <div data-testid="console-assistant-budget-banner" data-level={level}>
           <Banner tone={level === "reached" ? "error" : "warn"}>
-            {t(level === "reached" ? "adminPrivacy.budgetReached" : "adminPrivacy.budgetWarn", budgetWords)}
+            {byTokens
+              ? t(level === "reached" ? "adminPrivacy.tokensReached" : "adminPrivacy.tokensWarn", tokenWords)
+              : t(level === "reached" ? "adminPrivacy.budgetReached" : "adminPrivacy.budgetWarn", budgetWords)}
+            {/* Both used up: raising one alone does not open the gate, so both are named. */}
+            {level === "reached" && !byTokens && tokens === "reached" ? <> {t("adminPrivacy.tokensReached", tokenWords)}</> : null}
           </Banner>
         </div>
       )}
@@ -101,7 +117,7 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
 
       <SectionCard title={t("adminPrivacy.settingsTitle")} name="settings">
         <AssistSettingsForm enabled={s.enabled} ceiling={s.ceiling} retentionDays={s.retentionDays}
-          dpaSignedAt={s.dpaSignedAt ? day(s.dpaSignedAt) : ""} rules={s.rules} patterns={s.patterns} monthlyCapEur={budget.capEur} privacyHref={privacyHref} />
+          dpaSignedAt={s.dpaSignedAt ? day(s.dpaSignedAt) : ""} rules={s.rules} patterns={s.patterns} monthlyCapEur={budget.capEur} monthlyTokenCap={budget.tokenCap} privacyHref={privacyHref} />
       </SectionCard>
 
       <SectionCard title={t("adminPrivacy.documents")} hint={t("adminPrivacy.documentsReadable", { readable, total: documents.length })} name="documents">
