@@ -9,6 +9,7 @@ import type { CaseEvent } from "@/features/cases/events";
 import type { NoticeMail } from "@/features/cases/notice";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import { byClock } from "@/features/clock/actor";
+import { closingEvent } from "@/features/projects/close";
 import { CONFIRM_DAYS, confirmerIds, unconfirmedOf } from "@/features/projects/confirm";
 import { projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
@@ -17,7 +18,7 @@ import { createT, DEFAULT_LOCALE, type Locale, type MessageKey, type T } from "@
 /** A person who can get mail: their user id, their name (shown in the greeting) and the handle they post under. */
 export type Person = { id: string; name: string; email: string; handle?: string | null; manager?: boolean };
 
-type Args = { ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload">; state: State; people: Person[]; baseUrl: string };
+type Args = { ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload"> & { id?: string }; state: State; people: Person[]; baseUrl: string };
 
 /** One language for all mails, or the language of each recipient by address. */
 export type MailLocale = Locale | ((email: string) => Locale);
@@ -197,8 +198,21 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
     case "project.started":
     case "project.done":
     case "project.measured":
+    case "project.measure.confirmed":
     case "project.rewarded": {
       if (!project) break;
+      // The event that closes the project (decision Q6.20): one summary to the lead, the team and who raised the
+      // idea, in place of the author's step mail for the same event.
+      const closes = ev.id !== undefined && closingEvent(project, state.rules)?.id === ev.id;
+      const summary = () => {
+        for (const who of [project.leadUserId, ...project.memberUserIds, ...project.authorUserIds]) {
+          send(who, (t) => t("mail.closedSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.closedIntro"), "", ...closedLines(t, project), "", projectLink(project)]);
+        }
+      };
+      if (ev.type === "project.measure.confirmed") {
+        if (closes) summary();
+        break;
+      }
       const step = ev.type === "project.started" ? "mail.stepStarted" : ev.type === "project.done" ? "mail.stepDone" : ev.type === "project.measured" ? "mail.stepMeasured" : "mail.stepRewarded";
       const what = (t: T): string => {
         if (ev.type === "project.started") return t("mail.whatStarted");
@@ -218,6 +232,7 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
           send(id, (t) => t("mail.confirmSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.confirmIntro", { name: waiting.measure.by, days: waiting.check, n: CONFIRM_DAYS }), "", projectLink(project)]);
         }
       }
+      if (closes) summary();
       for (const a of project.authorUserIds) send(a, (t) => t("mail.stepSubject", { label: projectLabel(project), step: t(step), title: project.title }), (t) => [t("mail.stepIntro", { what: what(t) }), "", projectLink(project)]);
       break;
     }
@@ -225,6 +240,21 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
       break;
   }
   return out;
+}
+
+const VERDICTS: Record<string, MessageKey> = { better: "projects.verdictBetter", same: "projects.verdictSame", worse: "projects.verdictWorse" };
+
+/** How a closed project ended: its latest result against the baseline, and the recognition if there was one. */
+function closedLines(t: T, p: ReducedProject): string[] {
+  const m = p.measures[p.measures.length - 1];
+  const b = p.baseline && !p.baseline.none ? p.baseline : null;
+  const numbers = m && b ? ` ${b.metric}: ${b.value} → ${m.value}${b.unit ? " " + b.unit : ""}` : "";
+  const verdict = m ? (VERDICTS[m.verdict] ? t(VERDICTS[m.verdict]) : m.verdict) : "";
+  const result = m ? t(m.confirmed || m.sourceKind === "system" ? "mail.closedResult" : "mail.closedResultOpen", { days: m.check, verdict, numbers }) : t("mail.closedNoResult");
+  const r = p.reward;
+  if (!r) return [`  ${result}`];
+  const reward = r.rule === "thanks" || r.amount == null ? t("mail.rewardThanks") : t("mail.rewardAmount", { amount: r.amount });
+  return [`  ${result}`, `  ${r.note ? t("mail.closedRewardNote", { reward, note: r.note }) : t("mail.closedReward", { reward })}`];
 }
 
 function measured(t: T, p: ReducedProject, check: number | undefined): string {
