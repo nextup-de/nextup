@@ -80,6 +80,13 @@ leases the row, so two instances never send one row twice), sends each through i
   sends later by mail (Brevo does this) never reaches the app: the row stays `sent`. Proof: `tests/unit/ntf/mail-bounce.test.ts`
   and `tests/db/outbox.test.ts`, against a local fake relay (`tests/fixtures/smtp/fake-smtp.ts`).
 - mail without `SMTP_URL`: the row waits (stays `pending`, no attempt counted) instead of failing.
+- a Teams card that cannot be delivered becomes a mail (decision Q2.11): when a `teams` row fails for good, or still
+  fails on its third try (about six minutes in), the delivery writes one `mail` row for the same notice to the
+  person's address: key `<key>:mail`, the same template, text, link and data plus `insteadOf` (the card's row id).
+  The card is then `failed`, with "a mail was written instead" after its error, and is not tried again. A person
+  without an address, or who is deactivated, gets no mail row: the card keeps the whole ladder. A retried card that
+  fails again finds the key taken, so there is never a second mail. Pure part: `src/features/notify/fallback.ts`;
+  proof: `tests/unit/ntf/fallback.test.ts` and `tests/db/tms-channel.test.ts`.
 
 Time is always passed in (`now`), so tests walk a schedule without waiting.
 

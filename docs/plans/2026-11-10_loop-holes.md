@@ -19,8 +19,8 @@ exist. Each item below is one small PR.
 | 1 | The raiser is told about a question, a pass and a no; the desk is told about the answer; a yes without a project tells the raiser too | Q4.1 | P4 | built (#640) |
 | 2 | An unanswered question: a reminder to the raiser after 3 working days, back on the desk as open after 5, marked "no answer" | Q4.3 | P4 | built (#641) |
 | 3 | A case without a route goes to a triage seat with a deadline; a raise with no fitting desk goes to a fallback desk | Q2.1, Q1.9 | P2, P1 | built, without the setting (#642) |
-| 4 | A raise onto a vacant desk is handed to the route's deputy seat at once, on the web and on the floor | Q1.10 | P1 | built |
-| 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | open |
+| 4 | A raise onto a vacant desk is handed to the route's deputy seat at once, on the web and on the floor | Q1.10 | P1 | built (#643) |
+| 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | built |
 | 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | open |
 | 7 | The event that closes a project sends one summary to team, sponsor, followers and raiser | Q6.20 | P6 | open |
 | 8 | Stopping a project: lead, managers and sponsor may, with a reason; raiser and team are told | Q6.21 | P6 | open |
@@ -83,6 +83,17 @@ form says which role that is; only with nobody above is the raise still refused.
 
 Not covered: a vacant desk with no deputy and nobody above still waits for its deadline; a seat whose user is
 deactivated counts as occupied; the demo has no scheduler, so nothing moves there.
+
+## Item 5: a card that does not arrive
+
+Today a Teams row that fails stays failed: the person who added the bot and later removed it, or whose tenant refuses
+the card, is told nothing. Now the delivery writes one mail row for the same notice when a card fails for good, with
+the key `<key>:mail`. A card that keeps failing with an error worth retrying is given up on its third try, about six
+minutes in, instead of after the whole ladder of about fifteen hours: a deadline reminder is of no use the next day.
+The failed card stays on Settings → Notifications and says that a mail was written.
+
+Not covered: a person without a mail address still gets nothing (the card keeps retrying); "Retry" on a failed card
+sends the card again, so the person can end up with the mail and the card.
 
 ## Docs this plan changes
 
