@@ -32,7 +32,8 @@ describe("STR company rules", () => {
   it("replaces on a second save", async () => {
     await saveCompanyRules(a.id, { ...DEFAULT_RULES, promiseDays: 3, outcomeDays: 30 });
     expect(await loadCompanyRules(a.id)).toEqual({ ...DEFAULT_RULES, promiseDays: 3, outcomeDays: 30 });
-    expect(await db.companyRule.count({ where: { companyId: a.id } })).toBe(4);
+    // promise_days, outcome_days, deadline_handover, loop_steps and posting (decision Q1.7); no spend row for null.
+    expect(await db.companyRule.count({ where: { companyId: a.id } })).toBe(5);
   });
   it("deletes the rules with the company", async () => {
     await saveCompanyRules(b.id, DEMO_RULES);

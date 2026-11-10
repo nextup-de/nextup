@@ -49,6 +49,17 @@ describe("ADM company forms", () => {
     }
   });
 
+  it("takes who an idea is posted as: the name only when chosen, anything else the handle (decision Q1.7)", () => {
+    const postAs = (v?: string) => {
+      const r = parseRulesForm(v === undefined ? goodRules : { ...goodRules, postAs: v });
+      return r.ok ? r.value.rules.postAs : null;
+    };
+    expect(postAs()).toBe("handle");
+    expect(postAs("name")).toBe("name");
+    expect(postAs("handle")).toBe("handle");
+    expect(postAs("everyone")).toBe("handle");
+  });
+
   it("takes an empty spend limit as no spend rule", () => {
     const r = parseRulesForm({ ...goodRules, spendLimitEur: "", spendText: "" });
     expect(r.ok && r.value.rules.spend).toBeNull();

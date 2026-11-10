@@ -24,7 +24,7 @@ Plan IDN. People are identified by id, never by display name.
 
 IDN-G1 only adds the types, the ids and the data flow; **nothing reads the new ids yet**. The readers switch in later tasks (permissions, selectors, projects, structure). The desk rule (a case is on the desk of a seat, matched by seat id and role id) applies from IDN-A1 on.
 
-Anonymous handles for members (`features/auth/handle.ts`, `newHandle`, `needsHandle`) are given when a member is created; an existing handle never changes.
+Anonymous handles for members (`features/auth/handle.ts`, `newHandle`, `needsHandle`) are given when a member is created; an existing handle never changes. A member may post a single idea by name instead (decision Q1.7, `features/ideas/posting.ts`); their own later events on that case carry the same label, so the handle is never shown next to the name.
 
 ## Backfill
 

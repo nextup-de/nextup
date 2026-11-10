@@ -9,7 +9,15 @@ describe("STR rule values", () => {
     expect(rulesFromRows(rowsFromRules(DEFAULT_RULES))).toEqual(DEFAULT_RULES);
   });
   it("writes no spend row for null", () => {
-    expect(rowsFromRules(DEFAULT_RULES).map((r) => r.key)).toEqual(["promise_days", "outcome_days", "deadline_handover", "loop_steps"]);
+    expect(rowsFromRules(DEFAULT_RULES).map((r) => r.key)).toEqual(["promise_days", "outcome_days", "deadline_handover", "loop_steps", "posting"]);
+  });
+  it("posting: the handle until a company chooses the name (decision Q1.7); anything else is the handle", () => {
+    expect(DEFAULT_RULES.postAs).toBe("handle");
+    expect(rulesFromRows([]).postAs).toBe("handle");
+    expect(rulesFromRows([{ key: "posting", value: { as: "name" } }]).postAs).toBe("name");
+    expect(rulesFromRows([{ key: "posting", value: { as: "everyone" } }]).postAs).toBe("handle");
+    expect(rulesFromRows([{ key: "posting", value: "name" }]).postAs).toBe("handle");
+    expect(rulesFromRows(rowsFromRules({ ...DEFAULT_RULES, postAs: "name" })).postAs).toBe("name");
   });
   it("falls back to the default per key", () => {
     const d = DEFAULT_RULES;

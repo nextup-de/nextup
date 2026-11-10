@@ -40,6 +40,7 @@ import { clearPrefs, getServerSnapshot, getSnapshot, resetLog, setPrefs, subscri
 import { clearShots, dropShots } from "@/lib/shots";
 import { deptName as deptNameOf } from "@/lib/utils/format";
 import { trackCaseEvent } from "@/lib/test-analytics";
+import { DEFAULT_POST_AS, eventLabel } from "@/features/ideas/posting";
 import { loadCaseLog } from "@/server/actions/case-log";
 import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction } from "@/server/actions/events";
 import { signOut } from "@/server/actions/auth";
@@ -420,8 +421,13 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
   // optimistically (synchronously, so act.raise can return its id) and then persists it.
   const emit = useCallback((type: AppEventType, target: string | null, payload?: EventPayload, id?: string) => {
     trackCaseEvent(type, payload); // a user test's funnel step; a no-op outside one (lib/test-analytics.ts)
+    // The label this event goes out under, by the server's rule: a raise as the member chose (decision Q1.7), their
+    // own case under the label it was raised with. In server mode the server decides again; this is the optimistic copy.
+    const own = target ? S.cases.find((c) => c.id === target) : undefined;
+    const poster = { role: persona.role.id, name: persona.who.name, handle: persona.who.handle ?? null, userId: actorUserId };
+    const label = eventLabel(poster, { type, payload: payload ?? {} }, own, seed.postAs ?? DEFAULT_POST_AS);
     if (!serverMode) {
-      updateLog(slug, (prev) => appendEvent(prev, { type, actor, actorUserId, target, payload }));
+      updateLog(slug, (prev) => appendEvent(prev, { type, actor: label, actorUserId, target, payload }));
       return;
     }
     const ev: CaseEvent = {
@@ -429,7 +435,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
       ts: Date.now(),
       day: log.day,
       type,
-      actor,
+      actor: label,
       actorUserId,
       target,
       payload: payload ?? {},
@@ -446,7 +452,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
         showToast(res.error);
       }
     });
-  }, [serverMode, slug, actor, actorUserId, log.day, showToast]);
+  }, [serverMode, slug, S.cases, persona, seed.postAs, actorUserId, log.day, showToast]);
 
   const act = useMemo<Act>(() => ({
     // Stays synchronous and still returns the id: the idea studio hands it straight to saveShots().

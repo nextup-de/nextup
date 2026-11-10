@@ -314,6 +314,12 @@ decision", `CompanyConfig` → `Seed.loop`, `features/loop/rules.ts`).
   known problems count for everyone. Routing at publish still compares with every case, and only an ID
   and a reason come back from it. A reading stored before this rule keeps the titles it named.
 - Discarded drafts are deleted after the company's retention period (purged on use, like assistant turns).
+- **Who an idea is posted as** (decision Q1.7). On the last look a member chooses, for this idea, between their
+  anonymous handle and their name ("Posted as"). The company preselects one on Settings → Rules (default: the
+  handle). Leaders and managers post by name. The server decides the label from the choice and the rule
+  (`features/ideas/posting.ts`), never takes it from the browser, and stores `asName: true` on the raise only when it
+  took effect. Everything the raiser does on that case afterwards carries the same label, so a case never shows a
+  handle and a name side by side. A raise from Teams has no last look and follows the company's preselection.
 
 ## Not in this step
 

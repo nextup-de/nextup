@@ -6,6 +6,7 @@ import type { SeatRow } from "@/features/auth/identity";
 import type { CaseKind, SeedEvent } from "@/features/cases/events";
 import type { ClockSpec } from "@/features/clock";
 import type { WrittenBrief } from "@/features/ideas/brief";
+import type { PostAs } from "@/features/ideas/posting";
 import type { LoopRules } from "@/features/loop/rules";
 import type { SeedProject } from "@/features/projects/types";
 
@@ -108,6 +109,7 @@ export type Seed = {
   members?: VisMember[]; // the people without a seat this viewer's lists need, added per viewer by the app layout (FX3)
   goals: SeedGoal[]; // filled from the Goal table by companySeed(), never from seedJson (D5)
   spend: SpendRule | null; // filled from the CompanyRule table by companySeed(), never from seedJson (D5)
+  postAs?: PostAs; // who a member's raise is preselected as (CompanyRule "posting", decision Q1.7); missing = the handle
   stall: Stall[]; ledger: Ledger; metrics: Metrics; views: Record<string, ViewCopy>;
   briefs?: Record<string, WrittenBrief>; // written AI briefs per idea id, instead of features/ideas/brief-demo (the static demo's renamed copy)
   projects?: SeedProject[]; // accepted ideas being worked on, in every state (features/projects)

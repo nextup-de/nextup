@@ -166,6 +166,23 @@ export function RulesForm({ slug, values, demo }: { slug: string; values: Values
         <Row id="escalationDays" label={t("settingsCompany.escalateAfter")} wide help={t("settingsCompany.escalateHelp")} error={err("escalationDays")}>
           <div className={s.inline}><Num id="escalationDays" tid="escalation-days" value={rules.escalationDays ?? LOOP_DEFAULTS.escalationDays} invalid={Boolean(err("escalationDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
         </Row>
+        {foot()}
+      </Card>
+
+      {/* Decision Q1.7: who a member's raise is preselected as. The member can change it per raise on the last look. */}
+      <Card title={t("settingsCompany.cardPosting")}>
+        <fieldset className={s.radioGroup}>
+          <legend className={s.help}>{t("settingsCompany.postAsLegend")}</legend>
+          <label className={s.radio}>
+            <input type="radio" name="postAs" value="handle" defaultChecked={rules.postAs !== "name"} data-testid="settings-rules-post-handle" />
+            {t("settingsCompany.postAsHandle")}
+          </label>
+          <label className={s.radio}>
+            <input type="radio" name="postAs" value="name" defaultChecked={rules.postAs === "name"} data-testid="settings-rules-post-name" />
+            {t("settingsCompany.postAsName")}
+          </label>
+        </fieldset>
+        <p className={s.help}>{t("settingsCompany.postAsHelp")}</p>
         {foot(true)}
       </Card>
     </form>
