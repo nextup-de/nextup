@@ -45,7 +45,7 @@ function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined): string {
     case "case.invited": return t("dashboard.evInvited", { actor, names: (p.invited ?? []).join(", ") });
     case "case.revised": return t("dashboard.evRevised", { actor }) + (typeof p.overall === "number" ? " " + t("dashboard.evScore", { n: p.overall }) : "");
     case "case.checkin": return t("dashboard.evCheckin", { actor, next: p.next === "decide" ? t("dashboard.evReadyToDecide") : t("dashboard.evAnotherRound") }) + (p.open?.length ? " " + t("dashboard.evOpenList", { list: p.open.join(", ") }) : "");
-    case "case.handed": return t("dashboard.evHanded", { actor, to: p.to ?? "" }) + (p.why ? " " + t("dashboard.evHandedWhy", { why: p.why }) : "");
+    case "case.handed": return p.why === "vacant" ? t("dashboard.evHandedVacant", { to: p.to ?? "" }) : t("dashboard.evHanded", { actor, to: p.to ?? "" }) + (p.why ? " " + t("dashboard.evHandedWhy", { why: p.why }) : "");
     case "case.asked": return t("dashboard.evAsked", { actor, text: p.text || t("dashboard.evOneQuestion") });
     case "case.answered": return t("dashboard.evAnswered", { actor, text: p.text ?? "" });
     case "case.unanswered": return t("dashboard.evUnanswered");

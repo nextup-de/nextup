@@ -5,7 +5,9 @@ import styles from "@/components/floor/Floor.module.css";
 import { pickSeat } from "@/features/floor/raise";
 import { companyPrefix } from "@/features/tenant/urls";
 import { getT } from "@/i18n/server";
+import { seatAbove } from "@/features/knowledge";
 import { getDb } from "@/lib/db/client";
+import { loadKnowledge } from "@/lib/db/knowledge";
 import { findArea } from "@/lib/db/floor";
 import { hasDatabase } from "@/lib/db/mode";
 import { floorUserFromCookie } from "@/server/floor/raise";
@@ -37,6 +39,10 @@ export default async function FloorAreaPage({ params }: { params: Promise<{ comp
     select: { id: true, name: true, userId: true, sort: true },
   });
   const seat = pickSeat(holders.map((h) => ({ id: h.id, label: h.name, userId: h.userId, sort: h.sort })), []);
+  // Nobody sits in the role: the raise goes to the seat above it, and the form says which role that is.
+  const knowledge = seat === null ? await loadKnowledge(co.id) : null;
+  const above = knowledge ? seatAbove(knowledge, area.roleId) : null;
+  const viaRole = above ? knowledge?.roles.find((r) => r.id === above.roleId)?.title ?? null : null;
 
   return (
     <RaiseForm
@@ -46,6 +52,7 @@ export default async function FloorAreaPage({ params }: { params: Promise<{ comp
       unitName={area.unit.name}
       roleTitle={area.role.title}
       vacant={seat === null}
+      viaRole={viaRole}
       anonymousAllowed={area.anonymous}
       signedInName={signedIn?.name ?? null}
       signInHref={`${base}/sign-in`}

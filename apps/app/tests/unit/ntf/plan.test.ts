@@ -195,6 +195,9 @@ describe("NTF planner", () => {
     // The deputy without an address gets no loop mail; the one with an address and the raiser do.
     const passed = ev("case.handed", "Owner One", "u_o1", "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "Their machine" });
     expect(loop([raise(), passed])).toEqual([["loop.case.handed", "u_dep"], ["loop.case.handed", "u_raiser"]]);
+    // Off a desk nobody sits at, the clock's hand-over has no reminder: the new desk and the raiser get a loop row.
+    const vacant = ev("case.handed", "system:clock", null, "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "vacant" });
+    expect(loop([raise(), vacant])).toEqual([["loop.case.handed", "u_dep"], ["loop.case.handed", "u_raiser"]]);
     // The clock's hand-over is told by its reminder, not twice.
     const late = ev("case.handed", "system:clock", null, "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "deadline" });
     expect(loop([raise(), late])).toEqual([]);

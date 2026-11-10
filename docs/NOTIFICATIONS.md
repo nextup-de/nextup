@@ -47,8 +47,9 @@ like every other row. For a raise, the pairing key `notify:<eventId>` goes to th
 Loop mails (`loop.*`) still go only to people with an address. Who gets which is decided by the pure `loopMails`
 (`src/features/loop/notice.ts`): a question (`case.asked`) and a no go to the raiser; the answer (`case.answered`) goes to
 every holder of the case's desk and to who asked; a pass by a person (`case.handed`) goes to every holder of the new desk
-and to the raiser; a yes tells the raiser, and the new lead when it opens a project. A hand-over the clock wrote sends no
-loop mail, because its reminder already does. When the clock gives a case back without an answer (`case.unanswered`),
+and to the raiser; a yes tells the raiser, and the new lead when it opens a project. A hand-over the clock wrote for a deadline or
+an escalation sends no loop mail, because its reminder already does; the one off a desk nobody sits at (`why: "vacant"`)
+has no reminder, so the new desk and the raiser get a `loop.case.handed` mail for it. When the clock gives a case back without an answer (`case.unanswered`),
 every holder of the desk and who asked are told that it can be decided without the answer, and the raiser that it goes on. A reminder has the key of the `clock.due` fact, and the clock writes each
 fact once, so a deadline gives each recipient one reminder however many days or restarts follow.
 

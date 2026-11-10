@@ -20,6 +20,9 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
    Its holder passes it on or answers it; a manager can still give it a route (`case.override`). It has the same answer
    date as any case, and the desk is reminded to pass it on after one working day. Without an org chart it lands on no
    desk, as before, and only a manager can pick it up.
+   A raise onto a desk nobody sits at does not wait: within a minute the clock writes `case.handed` with
+   `why: "vacant"` to the route's deputy desk, or to the seat above when that desk is vacant too (`features/clock/due.ts`).
+   The desk card and the sent line of the raise already name who gets it. The new desk and the raiser are told.
 2. **Answer promise.** The case page (and "My cases") shows "Answer by {date}" and "With · {role} · {people}"
    (`answerPromise`, `features/cases/promise.ts`). The date counts working days of the company calendar. A yes, a no or a
    question answers; a hand-over does not. A question pauses the answer date until the raiser replies. If no reply
