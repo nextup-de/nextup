@@ -10,6 +10,7 @@ import { auditChanges } from "@/features/audit";
 import { readJiraForm, settingsFromForm } from "@/features/admin/jira-admin";
 import { vaultKey } from "@/features/connectors/vault";
 import { cleanBrainModel } from "@/components/admin/connectors/views";
+import { parsePriceLines } from "@/features/ai/prices";
 import { AI_SYSTEM, DEFAULT_REGION, type AiSettings } from "@/features/ai/settings";
 import { normalizeSiteUrl, parseJiraSettings } from "@/features/integrations/jira/settings";
 import type { JiraAccount, JiraCheck, JiraIssueType } from "@/features/integrations/jira/types";
@@ -189,6 +190,12 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
   if (endpointRaw && !endpoint) return { ok: false, code: "invalid", detail: "endpoint" };
   const needsEndpoint = picked === "azure-openai" || picked === "openai-compatible";
   if (needsEndpoint && !endpoint) return { ok: false, code: "invalid", detail: "endpoint" };
+  // The company's own prices, one model per line (features/ai/prices.ts); a line that does not read is refused by number.
+  const pricesText = typeof r.prices === "string" ? r.prices : "";
+  if (pricesText.length > 5000) return { ok: false, code: "invalid", detail: "prices" };
+  const priced = parsePriceLines(pricesText);
+  if (!priced.ok) return { ok: false, code: "invalid", detail: `prices, line ${priced.line}` };
+  const prices = Object.keys(priced.prices).length ? priced.prices : undefined;
   const settings: AiSettings = {
     choice: picked,
     region: text(r.region, 40) || DEFAULT_REGION,
@@ -196,6 +203,7 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
     endpoint,
     deployment: text(r.deployment, 120) || null,
     brainModel: cleanBrainModel(r.brainModel),
+    ...(prices ? { prices } : {}),
   };
   const key = text(r.key, 500);
   if (key && !vaultKey()) return { ok: false, code: "no-vault" };
@@ -204,7 +212,7 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
   const by = await who();
   const beforeRow = await getIntegration(d.c.companyId, AI_SYSTEM);
   const beforeSettings = beforeRow && typeof beforeRow.settings === "object" && beforeRow.settings !== null ? (beforeRow.settings as Record<string, unknown>) : null;
-  const savedSettings = { choice: picked, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment, brainModel: settings.brainModel };
+  const savedSettings = { choice: picked, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment, brainModel: settings.brainModel, prices: prices ?? null };
   const hadKey = beforeRow?.hasSecret ? "sealed" : null;
   const changes = auditChanges(
     beforeRow ? { ...beforeSettings, key: hadKey } : null,

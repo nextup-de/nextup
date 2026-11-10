@@ -6,7 +6,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auditChanges } from "@/features/audit";
-import { DEFAULT_MONTHLY_CAP_EUR, MAX_MONTHLY_CAP_EUR } from "@/features/ai/budget";
+import { DEFAULT_MONTHLY_CAP_EUR, DEFAULT_MONTHLY_TOKEN_CAP, MAX_MONTHLY_CAP_EUR, MAX_MONTHLY_TOKEN_CAP } from "@/features/ai/budget";
 import { ceilingOf } from "@/features/assist/classify";
 import { adminBase } from "@/features/admin/nav";
 import { getDb, hasDatabase } from "@/lib/db/client";
@@ -31,6 +31,8 @@ const Form = z.object({
   patterns: z.string().max(2000),
   // Whole euros per month; 0 stops every model call. A form without the field leaves the cap as it is.
   monthlyCapEur: z.string().regex(/^\d{1,6}$/).optional(),
+  // Tokens per month of models without a price; the same rules.
+  monthlyTokenCap: z.string().regex(/^\d{1,10}$/).optional(),
 });
 
 export async function saveAssistSettingsAction(_prev: AssistSettingsState, form: FormData): Promise<AssistSettingsState> {
@@ -44,6 +46,8 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
 
   const posted = f.monthlyCapEur === undefined ? undefined : Number(f.monthlyCapEur);
   if (posted !== undefined && posted > MAX_MONTHLY_CAP_EUR) return { ok: false, code: "invalid" };
+  const postedTokens = f.monthlyTokenCap === undefined ? undefined : Number(f.monthlyTokenCap);
+  if (postedTokens !== undefined && postedTokens > MAX_MONTHLY_TOKEN_CAP) return { ok: false, code: "invalid" };
 
   const patterns = f.patterns.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 20);
   for (const x of patterns) {
@@ -54,14 +58,17 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
   const companyId = guard.companyId;
   // The form always shows a cap, the default when none is stored. Sending that default back unchanged keeps the
   // column empty ("follow the default"), so a save of another field writes and audits no budget change.
-  const stored = (await db.companyConfig.findUnique({ where: { companyId }, select: { aiMonthlyCapEur: true } }))?.aiMonthlyCapEur ?? null;
-  const cap = posted === undefined || (stored === null && posted === DEFAULT_MONTHLY_CAP_EUR) ? undefined : posted;
+  const stored = await db.companyConfig.findUnique({ where: { companyId }, select: { aiMonthlyCapEur: true, aiMonthlyTokenCap: true } });
+  const keep = (sent: number | undefined, was: number | null | undefined, fallback: number) => (sent === undefined || ((was ?? null) === null && sent === fallback) ? undefined : sent);
+  const cap = keep(posted, stored?.aiMonthlyCapEur, DEFAULT_MONTHLY_CAP_EUR);
+  const tokenCap = keep(postedTokens, stored?.aiMonthlyTokenCap, DEFAULT_MONTHLY_TOKEN_CAP);
   const config = {
     assistant: f.assistant === "on",
     classificationCeiling: ceilingOf(f.ceiling),
     dpaSignedAt: f.dpaSignedAt ? new Date(f.dpaSignedAt + "T00:00:00Z") : null,
     redactPatterns: patterns,
     ...(cap !== undefined ? { aiMonthlyCapEur: cap } : {}),
+    ...(tokenCap !== undefined ? { aiMonthlyTokenCap: tokenCap } : {}),
   };
   const actor = await consoleActor();
   const day = (d: Date | null | undefined): string | null => (d ? d.toISOString().slice(0, 10) : null);
@@ -78,11 +85,12 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
       dpaSignedAt: day(c?.dpaSignedAt),
       redactPatterns: c?.redactPatterns ?? [],
       aiMonthlyCapEur: c?.aiMonthlyCapEur ?? null,
+      aiMonthlyTokenCap: c?.aiMonthlyTokenCap ?? null,
       complianceRules: rules ?? "",
     });
     const changes = auditChanges(
       fields(oldConfig, oldProfile?.complianceRules),
-      { ...fields(null, f.rules.trim()), assistant: config.assistant, classificationCeiling: config.classificationCeiling, dpaSignedAt: day(config.dpaSignedAt), redactPatterns: config.redactPatterns, aiMonthlyCapEur: cap ?? oldConfig?.aiMonthlyCapEur ?? null },
+      { ...fields(null, f.rules.trim()), assistant: config.assistant, classificationCeiling: config.classificationCeiling, dpaSignedAt: day(config.dpaSignedAt), redactPatterns: config.redactPatterns, aiMonthlyCapEur: cap ?? oldConfig?.aiMonthlyCapEur ?? null, aiMonthlyTokenCap: tokenCap ?? oldConfig?.aiMonthlyTokenCap ?? null },
     );
     await recordAudit(companyId, { actor, action: "audit.assistant.saved", target: { kind: "assistant", id: "settings" }, changes, source: "console" }, tx);
   });

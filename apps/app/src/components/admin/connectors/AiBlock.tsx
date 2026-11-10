@@ -23,7 +23,7 @@ const CHOICES: { value: string; label: MessageKey }[] = [
 
 export function AiBlock({ view, readOnly }: { view: AiBlockView; readOnly: boolean }) {
   const t = useT();
-  const [f, setF] = useState({ choice: view.choice === "mock" ? "off" : view.choice, region: view.region, endpoint: view.endpoint, model: view.model, deployment: view.deployment, brainModel: view.brainModel, key: "" });
+  const [f, setF] = useState({ choice: view.choice === "mock" ? "off" : view.choice, region: view.region, endpoint: view.endpoint, model: view.model, deployment: view.deployment, brainModel: view.brainModel, prices: view.prices, key: "" });
   const [note, setNote] = useState<ConsoleConnectorState | null>(null);
   const [pending, start] = useTransition();
   const set = (k: keyof typeof f, v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -82,6 +82,15 @@ export function AiBlock({ view, readOnly }: { view: AiBlockView; readOnly: boole
             ) : null}
           </>
         )}
+        {/* Also with the AI off: in the demo stage the brain still answers with its own model, which may need a price
+            and is capped (features/ai/gate.ts). */}
+        <Row id="ca-prices" label={t("adminConnectors.aiPrices")} hint={t("adminConnectors.aiPricesHint")}>
+          <textarea className={`${c.input} ${c.mono} ${c.area}`} id="ca-prices" rows={3} value={f.prices} disabled={readOnly} spellCheck={false}
+            placeholder="gpt-4.1-mini 0.42 1.68" onChange={(e) => set("prices", e.target.value)} data-testid="console-connectors-ai-prices" />
+          {view.unpriced.length ? (
+            <span className={c.hint} data-testid="console-connectors-ai-unpriced">{t("adminConnectors.aiPricesUnpriced", { models: view.unpriced.join(", ") })}</span>
+          ) : null}
+        </Row>
       </div>
       <div className={c.foot}>
         {note && !note.ok ? <p className={c.status} data-tone="error" role="alert">{t(CODE_KEY[note.code])}{note.detail ? ` (${note.detail})` : ""}</p> : null}

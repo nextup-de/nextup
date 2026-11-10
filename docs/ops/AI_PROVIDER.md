@@ -22,7 +22,9 @@ This extends `docs/demo/AI_DEMO.md` (section 1: AWS account, Bedrock access, IAM
    is read only from this variable, never from an argument or a file.
 3. **Prices.** Open the current Bedrock price page (region `eu-central-1`) and the Azure OpenAI
    price page (your region and deployment type). Write down USD per million input and output
-   tokens for each. Prices differ by region, so they are passed per run and stored in the record.
+   tokens for each. Prices differ by region, so they are passed per run and stored in the record. Enter the
+   customer's price in euros on `/admin/connectors` → AI provider → "Prices per model" as well, under the name the
+   model reports, so the monthly budget counts it (docs/ASSISTANT.md, "The monthly budget").
 4. **Smoke.** One coach, one plan and one checkin call each; exit 1 if any fails. Run from
    `services/brain`:
 

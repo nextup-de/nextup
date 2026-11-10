@@ -2,7 +2,7 @@
 // gets its fallbacks instead of a model. Real Postgres, own companies; the brain is a spy.
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { DEFAULT_MONTHLY_CAP_EUR, monthOf } from "@/features/ai/budget";
+import { DEFAULT_MONTHLY_CAP_EUR, DEFAULT_MONTHLY_TOKEN_CAP, monthOf } from "@/features/ai/budget";
 import { aiGate } from "@/features/ai/gate";
 import { seedTemplate } from "@/features/demo";
 import { toSeedJson } from "@/features/demo/parse";
@@ -37,7 +37,7 @@ afterAll(async () => {
 
 describe("AI budget from the stored calls", () => {
   it("a company without a cap of its own has the default, and nothing spent", async () => {
-    expect(await loadAiBudget(a.id, now)).toEqual({ capEur: DEFAULT_MONTHLY_CAP_EUR, spentEur: 0, unpriced: [] });
+    expect(await loadAiBudget(a.id, now)).toEqual({ capEur: DEFAULT_MONTHLY_CAP_EUR, spentEur: 0, unpriced: [], tokensUnpriced: 0, tokenCap: DEFAULT_MONTHLY_TOKEN_CAP });
   });
 
   it("the month's brain calls and assistant turns add up; last month and other companies do not count", async () => {
@@ -47,7 +47,7 @@ describe("AI budget from the stored calls", () => {
     await call(b.id, SONNET, 50_000_000, 5_000_000, now);
     await db.assistTurn.create({ data: { companyId: a.id, sessionId: randomUUID(), role: "assistant", text: "x", model: SONNET, tokensIn: 500_000, tokensOut: 50_000, createdAt: now } }); // 1 + 0.5
     await call(a.id, "mistral-nemo", 9_000_000, 9_000_000, now);
-    expect(await loadAiBudget(a.id, now)).toEqual({ capEur: 50, spentEur: 6.5, unpriced: ["mistral-nemo"] });
+    expect(await loadAiBudget(a.id, now)).toEqual({ capEur: 50, spentEur: 6.5, unpriced: ["mistral-nemo"], tokensUnpriced: 18_000_000, tokenCap: DEFAULT_MONTHLY_TOKEN_CAP });
     // The 1st starts from nothing.
     expect((await loadAiBudget(a.id, new Date("2026-12-01T00:00:01Z"))).spentEur).toBe(0);
   });
@@ -59,6 +59,21 @@ describe("AI budget from the stored calls", () => {
     expect(aiGate({ stage: "demo", hasDatabase: true, settings: { choice: "bedrock", region: "eu-central-1", model: HAIKU, endpoint: null, deployment: null }, dpaSignedAt: null, purpose: "routing", assistantOn: true, aiRouting: true, budget }).on).toBe(false);
     await db.companyConfig.update({ where: { companyId: a.id }, data: { aiMonthlyCapEur: 0 } });
     expect((await loadAiBudget(a.id, now)).capEur).toBe(0);
+    await db.companyConfig.update({ where: { companyId: a.id }, data: { aiMonthlyCapEur: null } });
+  });
+
+  it("a price in the AI settings counts the model in euros; the stored token limit is read", async () => {
+    await db.companyConfig.update({ where: { companyId: a.id }, data: { aiMonthlyTokenCap: 18_000_000 } });
+    const before = await loadAiBudget(a.id, now);
+    expect(before).toMatchObject({ tokensUnpriced: 18_000_000, tokenCap: 18_000_000 });
+    const settings = { choice: "openai-compatible" as const, region: "eu-central-1", model: "mistral-nemo", endpoint: "https://llm.example/v1", deployment: null };
+    expect(aiGate({ stage: "demo", hasDatabase: true, settings, dpaSignedAt: null, purpose: "routing", assistantOn: true, aiRouting: true, budget: before })).toEqual({ on: false, why: expect.stringContaining("token limit") });
+    // 9M in and 9M out at 0.1 and 0.3 EUR per million: 3.6 EUR more, no unpriced tokens left.
+    await saveAiSettings(a.id, { ...settings, prices: { "mistral-nemo": { in: 0.1, out: 0.3 } } }, null, "t");
+    expect(await loadAiBudget(a.id, now)).toEqual({ capEur: 50, spentEur: 10.1, unpriced: [], tokensUnpriced: 0, tokenCap: 18_000_000 });
+    // A later save without prices removes them: the settings are written whole.
+    await saveAiSettings(a.id, settings, null, "t");
+    expect((await loadAiBudget(a.id, now)).unpriced).toEqual(["mistral-nemo"]);
   });
 });
 

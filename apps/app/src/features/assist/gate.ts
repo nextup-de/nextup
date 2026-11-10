@@ -1,7 +1,7 @@
 // May the assistant answer for this company right now, and with which provider? Pure; the route
 // asks this before anything else. Fail closed: every "no" names the switch that is missing.
 // A thin wrapper over the one gate for every model call (features/ai/gate.ts), purpose "assist".
-import type { AiBudget } from "@/features/ai/budget";
+import type { GateBudget } from "@/features/ai/budget";
 import { aiGate } from "@/features/ai/gate";
 import { DEFAULT_REGION } from "@/features/ai/settings";
 
@@ -14,7 +14,7 @@ export function assistGate(a: {
   enabled: boolean;
   dpaSignedAt: Date | null;
   /** The month's cap and spend; left out where nothing is counted (no database). */
-  budget?: Pick<AiBudget, "capEur" | "spentEur"> | null;
+  budget?: GateBudget | null;
 }): Gate {
   const g = aiGate({
     stage: a.stage,

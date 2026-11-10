@@ -3,6 +3,7 @@
 // key (azure-openai, openai-compatible), sealed by features/connectors/vault.ts. Pure.
 import { AI_PROVIDER_CHOICES, type AiProviderChoice } from "@nextup/contracts/public";
 import { policyFor } from "@/features/admin/stages";
+import { pricesOf, type ModelPrices } from "./prices";
 
 export const AI_SYSTEM = "ai";
 export const DEFAULT_REGION = "eu-central-1";
@@ -15,6 +16,8 @@ export type AiSettings = {
   deployment: string | null;
   /** The model the brain (routing, coaching, plans) uses; settings JSON, no column (plan AIB D8). */
   brainModel?: string | null;
+  /** The company's own prices per model, EUR per million tokens (prices.ts, decision Q7.5); settings JSON, no column. */
+  prices?: ModelPrices;
 };
 
 /** The part of the Integration row that decides: the switch and the saved settings. */
@@ -35,6 +38,7 @@ export function aiSettings(row: AiRow | null, env: Record<string, string | undef
     const s = row.settings && typeof row.settings === "object" ? (row.settings as Record<string, unknown>) : {};
     const choice = (AI_PROVIDER_CHOICES as readonly unknown[]).includes(s.choice) ? (s.choice as AiProviderChoice) : "off";
     const brainModel = strOrNull(s.brainModel);
+    const prices = pricesOf(s.prices);
     return {
       choice: row.on ? choice : "off",
       region: str(s.region, DEFAULT_REGION),
@@ -42,6 +46,7 @@ export function aiSettings(row: AiRow | null, env: Record<string, string | undef
       endpoint: strOrNull(s.endpoint),
       deployment: strOrNull(s.deployment),
       ...(brainModel ? { brainModel } : {}), // absent, not null, so existing settings compare as before
+      ...(Object.keys(prices).length ? { prices } : {}),
     };
   }
   if (!policyFor(stage).demoData) return AI_OFF;

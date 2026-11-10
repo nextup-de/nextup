@@ -17,6 +17,8 @@ type Props = {
   patterns: string[];
   /** The month's budget for model calls in whole euros. */
   monthlyCapEur: number;
+  /** Tokens per month of models without a price. */
+  monthlyTokenCap: number;
   /** Where retention is set: Settings → Data and privacy. */
   privacyHref?: string;
 };
@@ -57,6 +59,9 @@ export function AssistSettingsForm(p: Props) {
       </Field>
       <Field id="monthlyCapEur" label={t("adminPrivacy.fieldBudget")} hint={t("adminPrivacy.fieldBudgetHint")}>
         <input className="nh-input" id="monthlyCapEur" name="monthlyCapEur" type="number" inputMode="numeric" min={0} max={100000} step={1} required defaultValue={p.monthlyCapEur} data-testid="console-assistant-budget-input" />
+      </Field>
+      <Field id="monthlyTokenCap" label={t("adminPrivacy.fieldTokenCap")} hint={t("adminPrivacy.fieldTokenCapHint")}>
+        <input className="nh-input" id="monthlyTokenCap" name="monthlyTokenCap" type="number" inputMode="numeric" min={0} max={2000000000} step={1} required defaultValue={p.monthlyTokenCap} data-testid="console-assistant-token-cap-input" />
       </Field>
       <Field id="rules" label={t("adminPrivacy.fieldRules")} hint={t("adminPrivacy.fieldRulesHint")}>
         <textarea className="nh-input" id="rules" name="rules" rows={4} defaultValue={p.rules} placeholder={t("adminPrivacy.rulesPlaceholder")} />

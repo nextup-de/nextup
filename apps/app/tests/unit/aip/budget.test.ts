@@ -7,7 +7,8 @@ import { assistGate } from "@/features/assist/gate";
 
 const bedrock: AiSettings = { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null };
 const real = { stage: "pilot", hasDatabase: true, settings: bedrock, dpaSignedAt: new Date("2026-10-01"), purpose: "assist" as const, assistantOn: true, aiRouting: true };
-const of50 = (spentEur: number) => ({ capEur: 50, spentEur });
+const NO_TOKENS = { tokensUnpriced: 0, tokenCap: 20_000_000 };
+const of50 = (spentEur: number) => ({ capEur: 50, spentEur, ...NO_TOKENS });
 
 describe("AI budget", () => {
   it("the cap is the stored whole number of euros, or the default of 50", () => {
@@ -36,8 +37,8 @@ describe("AI budget", () => {
       { model: "mistral-nemo", tokensIn: 5_000_000, tokensOut: 5_000_000 },
       { model: "gpt-4.1-mini", tokensIn: 1, tokensOut: 1 },
     ]);
-    expect(s).toEqual({ spentEur: 12.6, unpriced: ["gpt-4.1-mini", "mistral-nemo"] });
-    expect(spendOf([])).toEqual({ spentEur: 0, unpriced: [] });
+    expect(s).toEqual({ spentEur: 12.6, unpriced: ["gpt-4.1-mini", "mistral-nemo"], tokensUnpriced: 10_000_002 });
+    expect(spendOf([])).toEqual({ spentEur: 0, unpriced: [], tokensUnpriced: 0 });
   });
 
   it("the levels: quiet below 70 %, a warning from 70 and from 90, used up at 100", () => {
@@ -72,8 +73,19 @@ describe("AI gate with the budget", () => {
     const mock = { ...bedrock, choice: "mock" as const };
     expect(aiGate({ ...real, settings: mock, budget: of50(500) })).toEqual({ on: true, settings: mock });
     expect(aiGate({ ...real, stage: "demo", settings: mock, budget: of50(500) }).on).toBe(true);
-    expect(aiGate({ ...real, stage: "demo", settings: mock, budget: { capEur: 0, spentEur: 0 } }).on).toBe(true);
+    expect(aiGate({ ...real, stage: "demo", settings: mock, budget: { capEur: 0, spentEur: 0, ...NO_TOKENS } }).on).toBe(true);
     expect(aiGate({ ...real, stage: "demo", hasDatabase: false, budget: null }).on).toBe(true);
+  });
+
+  it("a demo company saved as off is capped like the mock: the brain still answers with its own model", () => {
+    const off = { ...bedrock, choice: "off" as const };
+    for (const purpose of ["routing", "coach", "brain"] as const) {
+      expect(aiGate({ ...real, stage: "demo", settings: off, purpose, budget: { capEur: 0, spentEur: 0, ...NO_TOKENS } }).on).toBe(false);
+      expect(aiGate({ ...real, stage: "demo", settings: off, purpose, budget: of50(10) }).on).toBe(true);
+    }
+    // The assistant answers with the mock, which costs nothing; a real stage says it is switched off.
+    expect(aiGate({ ...real, stage: "demo", settings: off, budget: { capEur: 0, spentEur: 0, ...NO_TOKENS } }).on).toBe(true);
+    expect(aiGate({ ...real, settings: off, purpose: "routing", budget: of50(60) })).toEqual({ on: false, why: expect.stringContaining("switched off") });
   });
 
   it("with the mock chosen the brain still calls its own model: routing, coach and brain are capped", () => {
@@ -82,7 +94,7 @@ describe("AI gate with the budget", () => {
       expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: of50(10) }).on).toBe(true);
       expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: of50(50) })).toEqual({ on: false, why: expect.stringContaining("budget") });
       // A cap of 0 stops them from the first day, as the form says.
-      expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: { capEur: 0, spentEur: 0 } }).on).toBe(false);
+      expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: { capEur: 0, spentEur: 0, ...NO_TOKENS } }).on).toBe(false);
     }
   });
 
