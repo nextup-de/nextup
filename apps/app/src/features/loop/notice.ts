@@ -1,13 +1,17 @@
 // The mails after the routing (docs/plans/2026-10-15_idea-to-project.md): people asked for their view,
 // everyone in a discussion at each check-in, and the author at every step of what their idea became.
+// Also what a desk does with an idea before a yes (docs/plans/2026-11-10_loop-holes.md, item 1): a question
+// and a no go to the raiser, the answer to the desk, a pass to the new desk and the raiser.
 // Pure like features/cases/notice.ts - the state after the event in, the messages out - so who gets
 // what is unit-tested without a relay. server/loop-notice.ts sends them, never blocking the event.
+import { usersOfRole } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import type { NoticeMail } from "@/features/cases/notice";
 import type { ReducedCase, State } from "@/features/cases/reducer";
+import { byClock } from "@/features/clock/actor";
 import { projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
-import { createT, DEFAULT_LOCALE, type Locale, type T } from "@/i18n";
+import { createT, DEFAULT_LOCALE, type Locale, type MessageKey, type T } from "@/i18n";
 
 /** A person who can get mail: their user id, their name (shown in the greeting) and the handle they post under. */
 export type Person = { id: string; name: string; email: string; handle?: string | null };
@@ -16,6 +20,12 @@ type Args = { ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | 
 
 /** One language for all mails, or the language of each recipient by address. */
 export type MailLocale = Locale | ((email: string) => Locale);
+
+/** The No sheet's categories (components/shell/InputSheet.tsx), by the id the event stores. */
+const NO_REASONS: Record<string, MessageKey> = {
+  "not now": "shell.noNotNow", "wrong department": "shell.noWrongDept", "not responsible": "shell.noNobody",
+  "no time": "shell.noNoTime", "is it important": "shell.noNoRank",
+};
 
 const inDays = (t: T, n: number) => (n <= 0 ? t("mail.inToday") : n === 1 ? t("mail.inTomorrow") : t("mail.inDays", { n }));
 
@@ -43,6 +53,11 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
     (c as { fromUserId?: string | null }).fromUserId ?? c.history.find((h) => h.type === "case.raised")?.actorUserId ?? null;
   const invitedOf = (c: ReducedCase): string[] =>
     [...new Set(c.history.flatMap((h) => (h.type === "case.discussion" || h.type === "case.invited" ? h.payload.invitedUserIds ?? [] : [])))];
+  // Everyone on a seat's desk: the users of the seat's role.
+  const deskOf = (seatId: string | null | undefined): string[] => {
+    const roleId = seatId ? state.seats.find((s) => s.id === seatId)?.roleId : undefined;
+    return roleId ? usersOfRole(state.seats, roleId) : [];
+  };
 
   switch (ev.type) {
     case "case.discussion":
@@ -80,9 +95,60 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
       for (const who of [authorOf(kase), ...invitedOf(kase)]) send(who, (t) => t("mail.checkinSubject", { title: kase.title }), lines);
       break;
     }
+    case "case.asked": {
+      // Only the question this event asked: the reducer ignores one on a case that is not open.
+      const q = kase?.status === "asked" ? kase.question : null;
+      if (!kase || !q || q.text !== (pl.text ?? "")) break;
+      send(authorOf(kase), (t) => t("mail.askedSubject", { title: kase.title }), (t) => [
+        t("mail.askedIntro", { actor: ev.actor }), "", `  ${q.text}`, "", t("mail.askedNext", { url: caseLink(kase) }),
+      ]);
+      break;
+    }
+    case "case.answered": {
+      const q = kase?.question;
+      if (!kase || !q?.answer || q.answer.text !== (pl.text ?? "")) break;
+      const answer = q.answer.text;
+      for (const who of [...deskOf(kase.assigneeSeatId), q.byUserId]) {
+        send(who, (t) => t("mail.answeredSubject", { title: kase.title }), (t) => [
+          t("mail.answeredIntro", { actor: ev.actor }), "", `  ${answer}`, "",
+          t("mail.answeredNext", { when: inDays(t, kase.dueDay - state.day), url: caseLink(kase) }),
+        ]);
+      }
+      break;
+    }
+    case "case.handed": {
+      // The clock's own hand-overs (deadline, escalation) are told by its reminders.
+      if (!kase || byClock(ev) || !pl.to || kase.assigneeSeatId !== (pl.toRoleHolderId ?? null)) break;
+      const to = pl.to;
+      const why = (t: T) => (pl.why ? ["", t("mail.passedWhy", { why: pl.why })] : []);
+      for (const who of deskOf(pl.toRoleHolderId)) {
+        send(who, (t) => t("mail.passedDeskSubject", { title: kase.title }), (t) => [
+          t("mail.passedDeskIntro", { actor: ev.actor }), "", `  ${kase.title}`, ...why(t), "",
+          t("mail.passedDeskNext", { when: inDays(t, kase.dueDay - state.day), url: caseLink(kase) }),
+        ]);
+      }
+      send(authorOf(kase), (t) => t("mail.passedRaiserSubject", { title: kase.title }), (t) => [
+        t("mail.passedRaiserIntro", { actor: ev.actor, to }), ...why(t), "", caseLink(kase),
+      ]);
+      break;
+    }
     case "case.decided": {
-      const p = kase?.decided?.projectId ? state.projects.find((x) => x.id === kase.decided?.projectId) : undefined;
-      if (!kase || !p) break;
+      const d = kase?.decided;
+      // One decision per case: a later event is not the one that decided it.
+      if (!kase || !d || (ev.actorUserId ?? null) !== d.byUserId) break;
+      if (d.answer === "no") {
+        const reason = (t: T) => [NO_REASONS[d.reason] ? t(NO_REASONS[d.reason]) : d.reason, d.note].filter(Boolean).join(" - ") || t("mail.declinedNoReason");
+        send(authorOf(kase), (t) => t("mail.declinedSubject", { title: kase.title }), (t) => [
+          t("mail.declinedIntro", { actor: ev.actor, reason: reason(t) }), "", caseLink(kase),
+        ]);
+        break;
+      }
+      const p = d.projectId ? state.projects.find((x) => x.id === d.projectId) : undefined;
+      if (!p) {
+        // A yes that opens no project (projects off, or a yes from a Teams card).
+        send(authorOf(kase), (t) => t("mail.acceptedSubject", { title: kase.title }), (t) => [t("mail.acceptedPlain", { actor: ev.actor }), "", caseLink(kase)]);
+        break;
+      }
       send(authorOf(kase), (t) => t("mail.acceptedSubject", { title: kase.title }), (t) => [
         t("mail.acceptedIntro", { actor: ev.actor, label: projectLabel(p), title: p.title, lead: p.lead }),
         "", t("mail.acceptedNext"), "", projectLink(p),
