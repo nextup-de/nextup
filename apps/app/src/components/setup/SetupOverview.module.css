@@ -39,6 +39,23 @@
 .line[data-status="problem"] { color: var(--nh-danger); }
 .line[data-status="notUsed"] { color: var(--nh-mute); }
 
+/* "We do not use this" under an optional line (Q9.1). */
+.decline { margin-top: 2px; }
+.textButton { padding: 0; border: 0; background: none; font: inherit; font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; color: var(--nh-brand-ink); cursor: pointer; }
+.textButton:hover { text-decoration: underline; }
+.textButton:disabled { opacity: 0.5; cursor: default; }
+.textButton:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.declineForm { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.declineLabel { font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; color: var(--nh-ink); }
+.declineRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.declineInput {
+  flex: 1 1 240px; min-width: 0; height: 36px; padding-inline: 10px; border: 1px solid var(--nh-line); border-radius: 8px;
+  background: var(--nh-card); font: inherit; font-size: var(--nh-fs-sm); color: var(--nh-ink);
+}
+.declineInput:focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
+.declineHint { margin: 0; font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); }
+.declineError { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-danger); }
+
 .end { display: flex; justify-content: flex-end; }
 .primary, .quiet {
   display: inline-flex; align-items: center; justify-content: center; height: 36px; padding-inline: 14px; border-radius: 8px;

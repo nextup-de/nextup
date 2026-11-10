@@ -3,15 +3,18 @@
 // Dates in `values` are ISO strings; the page formats them.
 import type { MessageKey } from "@/i18n";
 import type { SettingsSectionKey } from "@/features/settings/sections";
+import { AGREEMENT_NAME, missingAgreements, type Agreements } from "./agreements";
 
 export const BACKUP_MAX_AGE_HOURS = 26;
 export const DIRECTORY_MAX_AGE_HOURS = 24;
 const HOUR = 3_600_000;
 
 export type CheckKey =
-  | "structure" | "routes" | "calendar" | "signIn" | "secondFactor" | "mail" | "ai" | "backups" | "support"
+  | "structure" | "routes" | "calendar" | "signIn" | "secondFactor" | "mail" | "ai" | "backups" | "support" | "agreements"
   | "notifications" | "directory" | "recipients" | "baseline";
 export type CheckLevel = "needed" | "recommended";
+/** What a check is asked for: Open, or the move to pilot (which also asks for every check Open asks for). */
+export type CheckGate = "open" | "pilot";
 export type CheckState = "done" | "needs" | "unknown" | "unset";
 export type LineValues = Record<string, string | number>;
 
@@ -22,6 +25,8 @@ export type GoLiveCheck = {
   line: MessageKey;
   values: LineValues;
   section: SettingsSectionKey | null;
+  /** Recommended for Open, but needed for the move to pilot (Q9.7). */
+  pilot?: true;
 };
 
 export type GoLiveInput = {
@@ -46,6 +51,8 @@ export type GoLiveInput = {
   directory: { on: boolean; lastRunAt: Date | null; lastOkAt: Date | null; lastError: string | null } | null;
   recipients: number;
   baseline: boolean;
+  /** The agreements recorded on Go-live (Q9.4). */
+  agreements: Agreements;
 };
 
 const K = (k: string): MessageKey => `settingsGoLive.${k}` as MessageKey;
@@ -106,8 +113,14 @@ export function goLiveChecks(i: GoLiveInput): GoLiveCheck[] {
   // support
   out.push(i.supportOpenUntil ? check("support", "needed", "needs", "lineSupportNeeds", { time: iso(i.supportOpenUntil) }, "supportAccess") : check("support", "needed", "done", "lineSupportDone", {}, "supportAccess"));
 
-  // recommended
-  out.push(i.notifications ? check("notifications", "recommended", "done", "lineNotificationsDone", {}, "notifications") : check("notifications", "recommended", "needs", "lineNotificationsNeeds", {}, "notifications"));
+  // agreements: signed outside the software, recorded on Go-live. The AI counts as on unless it is off.
+  const missing = missingAgreements(i.agreements, i.ai.choice !== "off");
+  out.push(missing.length === 0
+    ? check("agreements", "needed", "done", "lineAgreementsDone", {}, "goLive")
+    : check("agreements", "needed", "needs", "lineAgreementsNeeds", { count: missing.length, agreementKeys: missing.map((k) => AGREEMENT_NAME[k]).join(",") }, "goLive"));
+
+  // recommended. Reminders and the digest carry the promise and the deputy hand-over, so the pilot needs them (Q9.7).
+  out.push({ ...(i.notifications ? check("notifications", "recommended", "done", "lineNotificationsDone", {}, "notifications") : check("notifications", "recommended", "needs", "lineNotificationsNeeds", {}, "notifications")), pilot: true });
 
   const d = i.directory;
   if (!d || (!d.on && !d.lastRunAt)) out.push(check("directory", "recommended", "unset", "lineDirectoryUnset", {}, null));
@@ -120,7 +133,12 @@ export function goLiveChecks(i: GoLiveInput): GoLiveCheck[] {
   return out;
 }
 
-/** Needed checks that are not done. `needs` and `unknown` both block. */
-export function blockers(checks: readonly GoLiveCheck[]): GoLiveCheck[] {
-  return checks.filter((c) => c.level === "needed" && c.state !== "done");
+/** The level a check has for a gate: a pilot check is needed for the move to pilot, recommended for Open. */
+export function levelAt(c: GoLiveCheck, gate: CheckGate): CheckLevel {
+  return gate === "pilot" && c.pilot ? "needed" : c.level;
+}
+
+/** Needed checks (for this gate) that are not done. `needs` and `unknown` both block. */
+export function blockers(checks: readonly GoLiveCheck[], gate: CheckGate = "open"): GoLiveCheck[] {
+  return checks.filter((c) => levelAt(c, gate) === "needed" && c.state !== "done");
 }

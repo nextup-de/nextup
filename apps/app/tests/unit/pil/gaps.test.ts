@@ -7,6 +7,11 @@ import type { PilotReport, ZiRow } from "@/features/metrics/types";
 const now = new Date("2026-11-04T12:00:00Z");
 const minutes = (m: number) => new Date(now.getTime() + m * 60_000);
 
+/** The agreements an AI that is off needs (Q9.4): the DPA, and no works council. */
+const AGREEMENTS: GoLiveInput["agreements"] = {
+  dpa: { kind: "dpa", status: "signed", date: "2026-10-01", signer: "Managing director", at: "2026-10-01T09:00:00.000Z" },
+  works: { kind: "works", status: "notNeeded", reason: "No works council", at: "2026-10-01T09:00:00.000Z" },
+};
 const INPUT: GoLiveInput = {
   now,
   units: [{ name: "Assembly" }],
@@ -24,6 +29,7 @@ const INPUT: GoLiveInput = {
   directory: { on: false, lastRunAt: null, lastOkAt: null, lastError: null },
   recipients: 1,
   baseline: true,
+  agreements: AGREEMENTS,
 };
 
 const backups = (at: Date) => goLiveChecks({ ...INPUT, backup: { at, offbox: true } }).find((c) => c.key === "backups");

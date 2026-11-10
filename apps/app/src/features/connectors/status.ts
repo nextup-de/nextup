@@ -22,6 +22,11 @@ export function aiStatus(f: { choice: string; key: "set" | "not set"; vault: boo
   return "on";
 }
 
+/** Teams works only with the switch on, the stack's bot set up and the company's tenant known (as dispatch decides). */
+export function teamsStatus(f: { on: boolean; app: boolean; tenant: boolean }): ConnectorStatus {
+  return f.on && f.app && f.tenant ? "on" : "off";
+}
+
 /** The directory sync is switched by NextUp's team; here it is only on, off or failing. */
 export function directoryStatus(f: { on: boolean; lastError: string | null }): ConnectorStatus {
   if (!f.on) return "off";

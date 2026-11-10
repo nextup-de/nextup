@@ -16,6 +16,12 @@ export const RETENTION_LIMITS: Record<RetentionKind, Limit> = {
 /** Audit events are not a rule: they go after this many days. */
 export const AUDIT_KEEP_DAYS = 730;
 
+/**
+ * Audit rows that are state, not history: the agreements of Go-live (Q9.4) and the "we do not use this" of setup
+ * (Q9.1) exist only as these rows, so they are kept past AUDIT_KEEP_DAYS. They hold no name and no address.
+ */
+export const AUDIT_KEPT_ACTIONS: readonly string[] = ["audit.company.agreement", "audit.connector.declined", "audit.connector.reopened"];
+
 /** Finished notices (sent, failed, skipped) are not a rule either: their text and address go after this many days. */
 export const OUTBOX_KEEP_DAYS = 90;
 

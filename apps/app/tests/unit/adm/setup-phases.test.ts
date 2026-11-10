@@ -6,6 +6,12 @@ const NOW = new Date("2026-11-05T12:00:00Z");
 const HOUR = 3_600_000;
 
 /** A company with everything finished: each test breaks the one thing it is about. */
+/** The agreements an AI that is on needs (Q9.4): the DPA, the works agreement and the information about the AI. */
+const AGREEMENTS: GoLiveInput["agreements"] = {
+  dpa: { kind: "dpa", status: "signed", date: "2026-10-01", signer: "Managing director", at: "2026-10-01T09:00:00.000Z" },
+  works: { kind: "works", status: "signed", date: "2026-10-02", signer: "Works council chair", at: "2026-10-02T09:00:00.000Z" },
+  aiInfo: { kind: "aiInfo", status: "signed", date: "2026-10-03", signer: "Plant manager", at: "2026-10-03T09:00:00.000Z" },
+};
 const GO_LIVE: GoLiveInput = {
   now: NOW,
   units: [{ name: "Plant" }],
@@ -23,8 +29,9 @@ const GO_LIVE: GoLiveInput = {
   directory: { on: true, lastRunAt: NOW, lastOkAt: new Date(NOW.getTime() - HOUR), lastError: null },
   recipients: 1,
   baseline: true,
+  agreements: AGREEMENTS,
 };
-const IT: ItFacts = { consoleBase: "/admin", admins: 1, connectors: { m365: "on", jira: "on", ai: "on", directory: "on" } };
+const IT: ItFacts = { consoleBase: "/admin", admins: 1, connectors: { m365: "on", jira: "on", ai: "on", directory: "on", teams: "on" }, declined: {} };
 const FACTS: SetupFacts = {
   viewer: "both",
   prefix: "/acme",
@@ -125,7 +132,7 @@ describe("setupPhases: phase 2, sign-in and directory", () => {
 });
 
 describe("setupPhases: phase 3, connectors and AI", () => {
-  const off = connectors({ m365: "off", jira: "off", ai: "off" });
+  const off = connectors({ m365: "off", jira: "off", ai: "off", teams: "off" });
   const aiOff = goLive({ ai: { choice: "off", dpaSignedAt: null } });
 
   it("is done when what is on works, and off is a choice", () => {

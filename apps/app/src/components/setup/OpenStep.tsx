@@ -8,7 +8,7 @@ import { useState, useTransition } from "react";
 import { Banner, ConfirmDialog } from "@/components/ui/elements";
 import { SettingsHead } from "@/components/settings/SettingsParts";
 import { blockers, type GoLiveCheck } from "@/features/pilot/go-live";
-import { checkName } from "@/features/pilot/go-live-view";
+import { checkName, checkValues } from "@/features/pilot/go-live-view";
 import { useFormat, useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { checkGoLiveAction } from "@/server/actions/settings/go-live";
@@ -37,10 +37,8 @@ type Props = {
 };
 
 const MARK: Record<GoLiveCheck["state"], string> = { done: "✓", needs: "▲", unknown: "✕", unset: "–" };
-const HAND: MessageKey[] = [
-  "settingsSetupOpen.handAgreements", "settingsSetupOpen.handCouncil", "settingsSetupOpen.handRestore",
-  "settingsSetupOpen.handFindings", "settingsSetupOpen.handAccess",
-];
+// The agreements and the works council are a check now (Q9.4); these stay outside the app.
+const HAND: MessageKey[] = ["settingsSetupOpen.handRestore", "settingsSetupOpen.handFindings", "settingsSetupOpen.handAccess"];
 
 export function OpenStep({ slug, company, prefix, openedAt, checks: first, checkedAt, held, links, demo }: Props) {
   const t = useT();
@@ -88,12 +86,7 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
 
   const open = checks ? blockers(checks).length : 0;
   const ready = checks !== null && open === 0 && !demo;
-  const line = (c: GoLiveCheck) => {
-    const v: Record<string, string | number> = { ...c.values };
-    if (typeof v.time === "string") v.time = f.date(v.time, "dateTime");
-    if (typeof v.date === "string") v.date = f.date(v.date, "day");
-    return t(c.line, v);
-  };
+  const line = (c: GoLiveCheck) => t(c.line, checkValues(c, t, f.date));
   const recheck = () => start(async () => {
     const r = await checkGoLiveAction(slug);
     if (!r.ok) return setError(t("settingsSetupOpen.checksFailed"));
@@ -125,13 +118,15 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
         <h3 className={s.subLabel}>{t(label)}</h3>
         <ul className={o.rows}>
           {list.map((c) => {
-            const link = c.section ? links[c.section] : undefined;
+            const found = c.section ? links[c.section] : undefined;
+            const link = found && c.key === "agreements" ? { ...found, href: `${found.href}#agreements` } : found;
             return (
               <li key={c.key} className={o.row} data-state={c.state} data-testid={`setup-open-check-${c.key}`}>
                 <span className={o.mark} aria-hidden="true">{MARK[c.state]}</span>
                 <span className={o.text}>
                   <strong>{t(checkName(c))}</strong>
                   <span>{line(c)}</span>
+                  {c.pilot && c.state !== "done" ? <span className={o.pilot} data-testid="setup-open-pilot-needed">{t("settingsGoLive.pilotNeeded")}</span> : null}
                 </span>
                 {link && c.state !== "done" ? <Link className={s.textBtn} href={link.href}>{link.label}</Link> : <span />}
               </li>

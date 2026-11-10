@@ -198,9 +198,27 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await expect(vis(manager, "setup-open-check-calendar")).toHaveAttribute("data-state", "done");
     await expect(vis(manager, "setup-open-held")).toBeVisible();
 
+    // The agreements are a needed check too (Q9.4): record the DPA and "no works council" on Go-live.
+    await expect(vis(manager, "setup-open-check-agreements")).toHaveAttribute("data-state", "needs");
+    await expect(vis(manager, "setup-open-button")).toBeDisabled();
+    await manager.goto(`/${SLUG}/settings/go-live`);
+    await vis(manager, "settings-agreement-edit-dpa").click();
+    await vis(manager, "settings-agreement-date-dpa").fill("2026-11-02");
+    await vis(manager, "settings-agreement-signer-dpa").fill("Managing director");
+    await vis(manager, "settings-agreement-save-dpa").click();
+    await expect(vis(manager, "settings-agreement-state-dpa")).toContainText("Managing director");
+    await vis(manager, "settings-agreement-edit-works").click();
+    await vis(manager, "settings-agreement-notneeded-works").check();
+    await vis(manager, "settings-agreement-reason-works").fill("The plant has no works council");
+    await vis(manager, "settings-agreement-save-works").click();
+    await expect(vis(manager, "settings-agreement-state-works")).toContainText("No works council");
+    await expect(vis(manager, "settings-golive-check-agreements")).toHaveAttribute("data-state", "done");
+    await manager.goto(`/${SLUG}/setup/open`);
+    await expect(vis(manager, "setup-open-check-agreements")).toHaveAttribute("data-state", "done");
+
     // Open repeats the hand list, then opens. The held invitation goes out with a code that works.
     await vis(manager, "setup-open-button").click();
-    await expect(manager.getByTestId("setup-open-dialog")).toContainText("Works council");
+    await expect(manager.getByTestId("setup-open-dialog")).toContainText("Restore test");
     await manager.getByRole("button", { name: "Yes, open NextUp" }).click();
     await expect(vis(manager, "setup-open-opened")).toBeVisible({ timeout: 30_000 });
     await expect(vis(manager, "setup-open-sent")).toContainText("1 invitation sent");
