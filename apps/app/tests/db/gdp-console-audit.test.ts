@@ -150,15 +150,28 @@ describe("GDP console audit", () => {
 
     // The month's AI budget (decision Q7.3): saved and audited when the form sends it, left alone when it does not.
     expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBeNull();
+    // The page always sends the cap it shows; the default sent back unchanged stays "follow the default".
+    form.set("monthlyCapEur", "50");
+    expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBeNull();
+    const same = await rowsOf(acme, "audit.assistant.saved");
+    expect(same).toHaveLength(2);
+    expect(Object.keys(same[1].changes as object)).not.toContain("aiMonthlyCapEur");
     form.set("monthlyCapEur", "80");
     expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
     expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBe(80);
     const again = await rowsOf(acme, "audit.assistant.saved");
-    expect(again).toHaveLength(2);
-    expect(again[1].changes).toEqual({ aiMonthlyCapEur: { before: null, after: 80 } });
+    expect(again).toHaveLength(3);
+    expect(again[2].changes).toEqual({ aiMonthlyCapEur: { before: null, after: 80 } });
     form.delete("monthlyCapEur");
     expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
     expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBe(80);
+    // Once a cap is stored, 50 is a choice like any other, and 0 stops every call.
+    for (const [sent, kept] of [["50", 50], ["0", 0]] as const) {
+      form.set("monthlyCapEur", sent);
+      expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+      expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBe(kept);
+    }
     for (const bad of ["-1", "12.5", "100001", "abc"]) {
       form.set("monthlyCapEur", bad);
       expect(await saveAssistSettingsAction({}, form)).toEqual({ ok: false, code: "invalid" });

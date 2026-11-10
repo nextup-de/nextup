@@ -130,7 +130,7 @@ wrapper over it for the assistant.
 | real stage, any choice other than mock, no `dpaSignedAt` | off ("waits for the data-processing agreement") |
 | purpose `assist`, `CompanyConfig.assistant` off | off |
 | purpose `routing`, `CompanyConfig.aiRouting` off | off |
-| any stage with a database, a choice other than mock or off, the month's budget used up | off ("This month's AI budget for this company is used up.") |
+| any stage with a database, the month's budget used up, unless the choice is off or it is the mock answering the assistant | off ("This month's AI budget for this company is used up.") |
 
 Every "no" carries a `why` in plain words. With the gate closed no request leaves, not to the brain and not to the model.
 
@@ -151,8 +151,14 @@ the cap, and the estimated cost of the company's assistant turns (`AssistTurn`) 
 first of the month (UTC). Once the cost reaches the cap the gate answers off for every purpose and in every stage,
 the demo stage included, because a real model costs the same there. The callers then do what they do for any closed
 gate: the assistant says why, a raise is routed by keywords, the idea studio scores by rules, first steps and the
-check-in draft fall back to the page's own suggestion, the context draft does not run. The mock is never stopped, it
-costs nothing. On the first of the next month the sum starts at zero; raising the cap opens the gate at once.
+check-in draft fall back to the page's own suggestion, the context draft does not run. The mock assistant is never
+stopped, it costs nothing; but with the mock chosen the brain's purposes (`routing`, `coach`, `brain`) still call the
+brain's own model and are capped like any other, so a cap of 0 stops them too. On the first of the next month the sum
+starts at zero; raising the cap opens the gate at once.
+
+The form always shows a cap, the default when none is stored. Saving the default unchanged keeps the column empty, so
+a company that never chose a cap follows the default if it changes, and a save of another setting audits no budget
+change.
 
 `/admin/assistant` shows "AI budget this month: spent of cap (share)" and a banner from 70 % and from 90 % of the cap,
 and an error banner when it is used up (`budgetLevel`).
@@ -164,7 +170,10 @@ What the number is, and is not:
   never closes on its account. Today that is every model that is not a Claude model, including the Azure
   gpt-4.1-mini Musterwerk runs on. A price per model in the AI settings is proposed (Q7.5) and not built.
 - Only answered calls are stored. A call the app gave up on after its timeout may still have been billed by the
-  provider, so the sum reads low.
+  provider, so the sum reads low. The idea studio's own model answer (when the brain gave none) is stored as an
+  `AiCall` with purpose `coach`, because the idea turn keeps no tokens.
+- Assistant turns are deleted by retention (7 days at the least) and when a person is pseudonymised. A company with
+  a retention shorter than a month therefore counts less of the month than it spent.
 - Not built: a warning by mail or to NextUp support at 70 and 90 % (Q7.6), and letting the raise path run on to
   120 % while only an agent pauses at 100 % (Q7.4; there is no agent yet). The warning is the banner on the page.
 

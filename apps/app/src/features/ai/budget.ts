@@ -58,7 +58,7 @@ export const capReached = (b: Pick<AiBudget, "capEur" | "spentEur">): boolean =>
 /** The share of the cap that is spent, in whole percent, rounded down; 100 for a cap of 0. */
 export function budgetShare(b: Pick<AiBudget, "capEur" | "spentEur">): number {
   if (b.capEur <= 0) return 100;
-  return Math.floor((b.spentEur / b.capEur) * 100);
+  return Math.floor((b.spentEur * 100) / b.capEur);
 }
 
 export function budgetLevel(b: Pick<AiBudget, "capEur" | "spentEur">): BudgetLevel {

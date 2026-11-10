@@ -6,7 +6,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auditChanges } from "@/features/audit";
-import { MAX_MONTHLY_CAP_EUR } from "@/features/ai/budget";
+import { DEFAULT_MONTHLY_CAP_EUR, MAX_MONTHLY_CAP_EUR } from "@/features/ai/budget";
 import { ceilingOf } from "@/features/assist/classify";
 import { adminBase } from "@/features/admin/nav";
 import { getDb, hasDatabase } from "@/lib/db/client";
@@ -42,8 +42,8 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
   if (!p.success) return { ok: false, code: "invalid" };
   const f = p.data;
 
-  const cap = f.monthlyCapEur === undefined ? undefined : Number(f.monthlyCapEur);
-  if (cap !== undefined && cap > MAX_MONTHLY_CAP_EUR) return { ok: false, code: "invalid" };
+  const posted = f.monthlyCapEur === undefined ? undefined : Number(f.monthlyCapEur);
+  if (posted !== undefined && posted > MAX_MONTHLY_CAP_EUR) return { ok: false, code: "invalid" };
 
   const patterns = f.patterns.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 20);
   for (const x of patterns) {
@@ -52,6 +52,10 @@ export async function saveAssistSettingsAction(_prev: AssistSettingsState, form:
 
   const db = getDb();
   const companyId = guard.companyId;
+  // The form always shows a cap, the default when none is stored. Sending that default back unchanged keeps the
+  // column empty ("follow the default"), so a save of another field writes and audits no budget change.
+  const stored = (await db.companyConfig.findUnique({ where: { companyId }, select: { aiMonthlyCapEur: true } }))?.aiMonthlyCapEur ?? null;
+  const cap = posted === undefined || (stored === null && posted === DEFAULT_MONTHLY_CAP_EUR) ? undefined : posted;
   const config = {
     assistant: f.assistant === "on",
     classificationCeiling: ceilingOf(f.ceiling),

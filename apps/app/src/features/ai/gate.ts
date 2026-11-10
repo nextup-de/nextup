@@ -6,7 +6,9 @@
 //   real stages  the choice must not be off; anything but the mock needs the signed data-processing
 //                agreement; assist needs the assistant switch, routing needs aiRouting.
 //   every stage  a real model is not called once the month's budget is used up (budget.ts, decision Q7.3);
-//                the callers' fallbacks answer and the rest of the app goes on.
+//                the callers' fallbacks answer and the rest of the app goes on. The mock is spared only for the
+//                assistant, which it answers itself; with the mock chosen the brain's purposes still call the
+//                brain's own model (server/brain.ts llmFor), and that is counted and capped like any other.
 import { policyFor } from "@/features/admin/stages";
 import { capReached, type AiBudget } from "./budget";
 import type { AiSettings } from "./settings";
@@ -26,8 +28,9 @@ export function aiGate(a: {
   budget: Pick<AiBudget, "capEur" | "spentEur"> | null;
 }): AiGate {
   const demo = policyFor(a.stage).demoData;
-  // The mock costs nothing, and "off" already has its own answer.
-  const usedUp = a.budget !== null && a.settings.choice !== "mock" && a.settings.choice !== "off" && capReached(a.budget);
+  // "off" already has its own answer; the mock costs nothing where it answers itself.
+  const free = a.settings.choice === "off" || (a.settings.choice === "mock" && a.purpose === "assist");
+  const usedUp = a.budget !== null && !free && capReached(a.budget);
   const USED_UP: AiGate = { on: false, why: "This month's AI budget for this company is used up." };
   if (!a.hasDatabase) {
     return demo ? { on: true, settings: { ...a.settings, choice: "mock" } } : { on: false, why: "The assistant needs the database for its audit trail." };

@@ -43,6 +43,8 @@ describe("AI budget", () => {
   it("the levels: quiet below 70 %, a warning from 70 and from 90, used up at 100", () => {
     expect([0, 34.99, 35, 44.99, 45, 49.99, 50, 80].map((n) => budgetLevel(of50(n)))).toEqual(["ok", "ok", "warn70", "warn70", "warn90", "warn90", "reached", "reached"]);
     expect([0, 34.99, 35, 49.99, 50, 80].map((n) => budgetShare(of50(n)))).toEqual([0, 69, 70, 99, 100, 160]);
+    // Whole percents without the float error of dividing first (57 / 100 * 100 = 56.99...).
+    expect([29, 57, 58].map((n) => budgetShare({ capEur: 100, spentEur: n }))).toEqual([29, 57, 58]);
     expect(capReached(of50(49.9999))).toBe(false);
   });
 
@@ -66,11 +68,22 @@ describe("AI gate with the budget", () => {
     expect(aiGate({ ...real, stage: "demo", dpaSignedAt: null, budget: of50(50) })).toEqual({ on: false, why: expect.stringContaining("budget") });
   });
 
-  it("the mock costs nothing and goes on; no database means nothing to count", () => {
+  it("the mock assistant costs nothing and goes on; no database means nothing to count", () => {
     const mock = { ...bedrock, choice: "mock" as const };
     expect(aiGate({ ...real, settings: mock, budget: of50(500) })).toEqual({ on: true, settings: mock });
     expect(aiGate({ ...real, stage: "demo", settings: mock, budget: of50(500) }).on).toBe(true);
+    expect(aiGate({ ...real, stage: "demo", settings: mock, budget: { capEur: 0, spentEur: 0 } }).on).toBe(true);
     expect(aiGate({ ...real, stage: "demo", hasDatabase: false, budget: null }).on).toBe(true);
+  });
+
+  it("with the mock chosen the brain still calls its own model: routing, coach and brain are capped", () => {
+    const mock = { ...bedrock, choice: "mock" as const };
+    for (const purpose of ["routing", "coach", "brain"] as const) {
+      expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: of50(10) }).on).toBe(true);
+      expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: of50(50) })).toEqual({ on: false, why: expect.stringContaining("budget") });
+      // A cap of 0 stops them from the first day, as the form says.
+      expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: { capEur: 0, spentEur: 0 } }).on).toBe(false);
+    }
   });
 
   it("an earlier no keeps its own reason", () => {
