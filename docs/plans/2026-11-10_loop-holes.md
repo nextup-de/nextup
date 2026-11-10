@@ -23,8 +23,8 @@ exist. Each item below is one small PR.
 | 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | built (#644) |
 | 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | built, without the sponsor (#645) |
 | 7 | The event that closes a project sends one summary to team, sponsor, followers and raiser | Q6.20 | P6 | built, to lead, team and raiser (#647) |
-| 8 | Stopping a project: lead, managers and sponsor may, with a reason; raiser and team are told | Q6.21 | P6 | built, without the sponsor |
-| 9 | The raiser can withdraw an idea that is not decided (`case.withdrawn`) | Q1.14 | P1 | open |
+| 8 | Stopping a project: lead, managers and sponsor may, with a reason; raiser and team are told | Q6.21 | P6 | built, without the sponsor (#648) |
+| 9 | The raiser can withdraw an idea that is not decided (`case.withdrawn`) | Q1.14 | P1 | built |
 | 10 | Anonymity is chosen per idea on the last look; the company sets the default | Q1.7 | P1 | open; Marc checks the works-agreement text first |
 | 11 | A monthly AI cost cap per company in the gate, with warnings at 70 and 90 % | Q7.3 | P7 | built (#646, its own branch off `main`, not in this stack). Limits named in that PR: a model without a price is not counted, the warning is a banner only (no mail), every purpose stops at 100 % |
 
@@ -128,6 +128,18 @@ reward, changes nothing in the reducer and tells nobody.
 
 Decided and not built here: the sponsor (a project has none yet), and letting the person who stops choose to send
 the idea back to its desk (Q6.22, needs a new event `case.reopened`).
+
+## Item 9: an idea the raiser wants back
+
+Today a raiser cannot take an idea back: it waits on the desk until someone decides it. Now the case page offers
+"Withdraw" to the raiser while nobody has decided, with one optional line why. The new event `case.withdrawn {note?}`
+sets the status "withdrawn": archived, off the desk, clock stopped, no decision, so it is not in the decision log. The
+reducer takes it only from the raiser's own user id and only before a decision. The desk's holders and everyone
+invited to the discussion get `loop.case.withdrawn`, which names the raiser as they posted it. "My cases" shows it as
+"Withdrawn" with the reason.
+
+Not built: a withdrawn idea is not a public event for webhooks, and it cannot be sent again from its page ("Raise a
+follow-up" starts a new raise).
 
 ## Docs this plan changes
 

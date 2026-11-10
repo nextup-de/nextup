@@ -30,6 +30,10 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
    on the desk again, the question stays on it marked "no answer", and the answer date runs on
    (`QUESTION_REMIND_DAYS`, `QUESTION_RETURN_DAYS` in `features/clock/due.ts`; fixed numbers, not company rules yet).
    Demo companies have no scheduler, so there a question waits.
+   While nobody has decided, the raiser can **withdraw** the idea on the case page, with one optional line why
+   (`case.withdrawn`, decision Q1.14). It is archived with status "Withdrawn", its clock stops, it leaves the desk, and
+   it is not in the decision log. The desk's holders and everyone invited to its discussion get a mail naming the raiser
+   as they posted it. After a yes only the project can be stopped.
 3. **Hand-over rule.** With the company rule `deadline_handover` on (default for new companies), a breached answer date
    writes one `case.handed` with `why: "deadline"` to the deputy seat; the submitter sees the date and who holds the case. With
    the rule off, the deputy role is told and the owner keeps the case.

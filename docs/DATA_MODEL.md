@@ -51,7 +51,8 @@ days (`src/lib/db/errors.ts`).
 
 Event types (`src/features/cases/events.ts`), as in the demo:
   `case.read, case.decided, case.handed, case.asked, case.answered, case.unanswered` (the clock's own, when a
-  question got no answer in time), `case.override, case.shipped,
+  question got no answer in time), `case.withdrawn` (the raiser takes back an idea nobody decided; status
+  `withdrawn`, archived, no decision), `case.override, case.shipped,
   idea.cosigned, idea.approved, idea.funded` - plus, new here: `member.invited, member.role,
   route.upsert, dept.upsert` so settings pages also store facts, not edited copies of the seed.
 

@@ -133,6 +133,19 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
       ]);
       break;
     }
+    case "case.withdrawn": {
+      // Decision Q1.14: the desk and everyone invited to the discussion hear that the raiser took the idea back. The
+      // raiser is named as they posted it (a handle stays a handle), never by the actor's name.
+      const w = kase?.withdrawn;
+      if (!kase || !w || (ev.actorUserId ?? null) !== w.byUserId) break;
+      const why = (t: T) => (w.note ? ["", t("mail.withdrawnWhy", { why: w.note })] : []);
+      for (const who of [...deskOf(kase.assigneeSeatId), ...invitedOf(kase)]) {
+        send(who, (t) => t("mail.withdrawnSubject", { title: kase.title }), (t) => [
+          t("mail.withdrawnIntro", { from: kase.from }), "", `  ${kase.title}`, ...why(t), "", t("mail.withdrawnNext", { url: caseLink(kase) }),
+        ]);
+      }
+      break;
+    }
     case "case.handed": {
       // The clock's hand-overs for a deadline or an escalation are told by its reminders. The one off a desk
       // nobody sits at has no reminder, so the new desk and the raiser hear it here.
