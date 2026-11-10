@@ -108,6 +108,10 @@ turns (`AssistTurn`) and the brain's calls (`AiCall`, purposes `routing`, `read`
 totals into `{ purpose, calls, tokensIn, tokensOut, costUsd }`, sorted by purpose, with the assistant under `assist`.
 `costUsd` is `null` as soon as one model has no price.
 
+`loadAiBudget` in the same file is what the gate asks before a model call: the company's monthly cap and the cost of
+the calendar month so far, with the models that have no price named instead of counted (docs/ASSISTANT.md, "The monthly
+budget").
+
 In the idea studio the brain is called twice per message: `read` (the reading of the idea, docs/IDEAS.md) and then
 `coach`, each recorded on its own once it answered, so one message adds one call to each purpose (and none when the brain
 did not answer: nothing is recorded for a failed or timed-out call). Both are in `byModel` and `byPurpose` like the

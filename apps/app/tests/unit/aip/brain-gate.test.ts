@@ -6,7 +6,7 @@ import { askBrain, askBrainPlan } from "@/server/brain";
 const compatible: AiSettings = { choice: "openai-compatible", region: "eu-central-1", model: "llama-x", endpoint: "https://llm.example/v1", deployment: null };
 const azure: AiSettings = { choice: "azure-openai", region: "eu-central-1", model: "gpt", endpoint: "https://res.openai.azure.com/", deployment: "dep1" };
 const DPA = new Date("2026-10-01");
-const base = { stage: "pilot", hasDatabase: true, dpaSignedAt: DPA, assistantOn: true, aiRouting: true };
+const base = { stage: "pilot", hasDatabase: true, dpaSignedAt: DPA, assistantOn: true, aiRouting: true, budget: null };
 const policy = { patterns: [], ceiling: "confidential" as const };
 const ROUTE = { route_id: null, confidence: 0, reason: "-", same_as: null, related: null, model: "m", version: "v" };
 const PLAN = { steps: ["a"], metric: null, model: "m", version: "v" };

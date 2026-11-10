@@ -32,7 +32,7 @@ const READING: Reading = readingFrom(READ, { routes: [], known: [] });
 
 const fakeFetch = (answer: unknown) => vi.fn(async () => new Response(JSON.stringify(answer), { status: 200 })) as unknown as typeof fetch;
 const gate = (purpose: "routing" | "brain") =>
-  aiGate({ stage: "demo", hasDatabase: true, dpaSignedAt: null, assistantOn: true, aiRouting: true, settings: aiSettings(null, {}, "demo"), purpose });
+  aiGate({ stage: "demo", hasDatabase: true, dpaSignedAt: null, assistantOn: true, aiRouting: true, settings: aiSettings(null, {}, "demo"), purpose, budget: null });
 
 async function until(check: () => Promise<boolean>) {
   for (let i = 0; i < 50; i++) { if (await check()) return; await new Promise((r) => setTimeout(r, 40)); }

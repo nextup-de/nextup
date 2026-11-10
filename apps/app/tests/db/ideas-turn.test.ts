@@ -304,6 +304,17 @@ describe("the assistant model behind the brain", () => {
     expect(brief).toContain("never state a different number");
   });
 
+  it("counts what the model used, so the monthly budget sees it", async () => {
+    const { draftId } = await author();
+    fakeBrain({ read: [READ(64)], coach: ["500"] });
+    silenced();
+    mocks.assist = async (a) => ({ blocked: false, question: a.question, hits: {}, answer: { text: "From the model.", sources: [], flags: [] } as never, model: "studio-model", tokensIn: 700, tokensOut: 90 });
+    await turn(FIRST, draftId);
+    const counted = async () => db.aiCall.findFirst({ where: { companyId: co.id, model: "studio-model" } });
+    for (let i = 0; i < 50 && !(await counted()); i++) await new Promise((r) => setTimeout(r, 40));
+    expect(await counted()).toMatchObject({ purpose: "coach", tokensIn: 700, tokensOut: 90 });
+  });
+
   it("falling over leaves the offline coach, and the turn is stored", async () => {
     const { userId, draftId } = await author();
     fakeBrain({ read: ["500"], coach: [COACH] });

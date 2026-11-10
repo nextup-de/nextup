@@ -53,6 +53,7 @@ import { suggestReplies } from "@/features/ideas/replies";
 import { hasDatabase } from "@/lib/db/client";
 import { loadAssistSettings } from "@/lib/db/assist";
 import { loadAiSettings } from "@/lib/db/ai";
+import { loadAiBudget, recordAiCall } from "@/lib/db/ai-usage";
 import { addTurns, getDraft, loadPublishThreshold } from "@/lib/db/ideas";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
 import { searchDocumentsFor } from "@/server/assist-search";
@@ -131,7 +132,8 @@ export async function POST(request: Request, { params }: Ctx) {
   const settings = viewer ? await loadAssistSettings(viewer.companyId) : null;
   const stage = tenant.stage ?? "demo";
   const ai = viewer ? await loadAiSettings(viewer.companyId, stage) : { settings: aiSettings(null, process.env, stage), key: null };
-  const gate = aiGate({ stage, hasDatabase: viewer !== null, settings: ai.settings, dpaSignedAt: settings?.dpaSignedAt ?? null, purpose: "coach", assistantOn: settings?.enabled ?? false, aiRouting: false });
+  const budget = viewer ? await loadAiBudget(viewer.companyId) : null;
+  const gate = aiGate({ stage, hasDatabase: viewer !== null, settings: ai.settings, dpaSignedAt: settings?.dpaSignedAt ?? null, purpose: "coach", assistantOn: settings?.enabled ?? false, aiRouting: false, budget });
   const useModel = viewer !== null && settings !== null && settings.enabled && gate.on && gate.settings.choice !== "mock" && gate.settings.choice !== "off";
   // The company's switch in /admin/knowledge turns the brain off. Real people (a real stage) need a
   // database and the switch on, like the assistant's gate.
@@ -184,6 +186,7 @@ export async function POST(request: Request, { params }: Ctx) {
             }
             const profile = await loadProfile(viewer.companyId);
             const people = [...seed.people.map((p) => ({ name: p.name, role: p.role })), ...tenant.users.map((u) => ({ name: u.name, role: "a colleague" }))];
+            const asked = Date.now();
             const out = await assist({
               question: body.text,
               history: before,
@@ -195,7 +198,12 @@ export async function POST(request: Request, { params }: Ctx) {
               signal,
             });
             // Blocked (above the classification ceiling): the offline coach still answers - it sends nothing anywhere.
-            if (!out.blocked) { reply = out.answer.text; model = out.model; }
+            if (!out.blocked) {
+              reply = out.answer.text;
+              model = out.model;
+              // The idea turn keeps no tokens, so the call is counted here, or the monthly budget never sees it.
+              recordAiCall(viewer.companyId, { purpose: "coach", model: out.model, tokensIn: out.tokensIn, tokensOut: out.tokensOut, latencyMs: Date.now() - asked });
+            }
           } catch (err) {
             // The offline reply above stands; the text event below replaces whatever had streamed.
             console.error("[ideas]", tenant.slug, "model failed", err instanceof Error ? err.name : "failed");

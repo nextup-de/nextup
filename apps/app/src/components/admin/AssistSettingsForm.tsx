@@ -15,6 +15,8 @@ type Props = {
   dpaSignedAt: string; // YYYY-MM-DD or ""
   rules: string;
   patterns: string[];
+  /** The month's budget for model calls in whole euros. */
+  monthlyCapEur: number;
   /** Where retention is set: Settings → Data and privacy. */
   privacyHref?: string;
 };
@@ -52,6 +54,9 @@ export function AssistSettingsForm(p: Props) {
           {t("settingsPrivacy.retentionFixed", { n: p.retentionDays })}
           {p.privacyHref ? <>{" "}<a href={p.privacyHref} data-testid="console-assistant-retention-link">{t("settingsPrivacy.retentionLink")}</a></> : null}
         </p>
+      </Field>
+      <Field id="monthlyCapEur" label={t("adminPrivacy.fieldBudget")} hint={t("adminPrivacy.fieldBudgetHint")}>
+        <input className="nh-input" id="monthlyCapEur" name="monthlyCapEur" type="number" inputMode="numeric" min={0} max={100000} step={1} required defaultValue={p.monthlyCapEur} data-testid="console-assistant-budget-input" />
       </Field>
       <Field id="rules" label={t("adminPrivacy.fieldRules")} hint={t("adminPrivacy.fieldRulesHint")}>
         <textarea className="nh-input" id="rules" name="rules" rows={4} defaultValue={p.rules} placeholder={t("adminPrivacy.rulesPlaceholder")} />

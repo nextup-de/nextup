@@ -13,6 +13,8 @@ import { decisionInputs } from "@/lib/db/decisions";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
 import { assistStats, listDocuments, loadAssistSettings, type AssistSettings, type AssistStats } from "@/lib/db/assist";
 import { loadAiSettings } from "@/lib/db/ai";
+import { loadAiBudget } from "@/lib/db/ai-usage";
+import type { AiBudget } from "@/features/ai/budget";
 import type { AiSettings } from "@/features/ai/settings";
 import { ideaStats, loadPublishThreshold } from "@/lib/db/ideas";
 import { inventoryCounts } from "@/lib/db/inventory";
@@ -106,6 +108,8 @@ export type AssistantView = {
   provider: AiSettings;
   stats: AssistStats;
   documents: Awaited<ReturnType<typeof listDocuments>>;
+  /** The month's budget for model calls and what is spent of it (decision Q7.3). */
+  budget: AiBudget;
 } | null;
 
 /** The raise-page assistant for one company: its switches, 30 days of counts, the documents it may search. */
@@ -113,10 +117,10 @@ export async function assistantView(companyId: string | null): Promise<Assistant
   if (!(await isAdmin()) || !hasDatabase() || !companyId) return null;
   const since = new Date(Date.now() - 30 * 86_400_000);
   const company = await getDb().company.findUnique({ where: { id: companyId }, select: { stage: true } });
-  const [settings, stats, documents, ai] = await Promise.all([
-    loadAssistSettings(companyId), assistStats(companyId, since), listDocuments(companyId), loadAiSettings(companyId, company?.stage ?? "demo"),
+  const [settings, stats, documents, ai, budget] = await Promise.all([
+    loadAssistSettings(companyId), assistStats(companyId, since), listDocuments(companyId), loadAiSettings(companyId, company?.stage ?? "demo"), loadAiBudget(companyId),
   ]);
-  return { settings, provider: ai.settings, stats, documents };
+  return { settings, provider: ai.settings, stats, documents, budget };
 }
 
 export type IdeasView = { threshold: number; drafts: number; published: number } | null;

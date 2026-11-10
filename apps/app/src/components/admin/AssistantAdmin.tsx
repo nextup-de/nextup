@@ -3,13 +3,14 @@
 // (counts only: no per-person view, BetrVG §87) and the documents it may search.
 // Client for the confirm step before a document is removed.
 import { useState, useTransition } from "react";
+import { budgetLevel, budgetShare } from "@/features/ai/budget";
 import { LEVEL_LABEL, canUse, isLevel } from "@/features/assist/classify";
 import type { AssistantView } from "@/server/admin-insight";
 import { AssistSettingsForm } from "./AssistSettingsForm";
 import { deleteDocumentAction } from "@/server/actions/assist-admin";
 import { Banner, ConfirmDialog, PageHeader, SectionCard } from "@/components/ui/elements";
 import { SearchTable } from "./SearchTable";
-import { useT } from "@/i18n/client";
+import { useLocale, useT } from "@/i18n/client";
 import c from "@/app/admin/people/console.module.css";
 
 type Doc = NonNullable<AssistantView>["documents"][number];
@@ -28,7 +29,12 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
     setRemoving(null);
     start(() => deleteDocumentAction(form));
   };
-  const { settings: s, provider: p, stats: st, documents } = view;
+  const locale = useLocale();
+  const { settings: s, provider: p, stats: st, documents, budget } = view;
+  const level = budgetLevel(budget);
+  const share = budgetShare(budget);
+  const euro = (n: number) => new Intl.NumberFormat(locale, { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  const budgetWords = { spent: euro(budget.spentEur), cap: euro(budget.capEur), share };
   const providerLabel = { bedrock: "Amazon Bedrock", "azure-openai": "Azure OpenAI", "openai-compatible": t("adminPrivacy.providerOpenaiCompat") } as const;
   const tiles: [string, string][] = [
     [String(st.answers), t("adminPrivacy.tileAnswers")],
@@ -50,6 +56,13 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
     ],
     [t("adminPrivacy.rowDpa"), s.dpaSignedAt ? t("adminPrivacy.rowDpaSigned", { date: day(s.dpaSignedAt) }) : <span className={c.note} data-tone="warn">{t("adminPrivacy.rowDpaMissing")}</span>],
     [t("adminPrivacy.rowCeiling"), <>{LEVEL_LABEL[s.ceiling]} <span className={c.sub}>{t("adminPrivacy.rowCeilingNote")}</span></>],
+    [
+      t("adminPrivacy.rowBudget"),
+      <span key="budget" data-testid="console-assistant-budget" data-level={level}>
+        {t("adminPrivacy.rowBudgetValue", budgetWords)}
+        {budget.unpriced.length ? <> <span className={`${c.sub} ${c.note}`} data-tone="warn" data-testid="console-assistant-budget-unpriced">{t("adminPrivacy.rowBudgetUnpriced", { models: budget.unpriced.join(", ") })}</span></> : null}
+      </span>,
+    ],
   ];
 
   return (
@@ -58,6 +71,14 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
       <Banner tone="quiet" action={<a href={connectorsHref} data-testid="console-assistant-connectors-link">{t("adminPrivacy.connectorsOpen")}</a>}>
         {t("adminPrivacy.connectorsLink")}
       </Banner>
+
+      {level === "ok" ? null : (
+        <div data-testid="console-assistant-budget-banner" data-level={level}>
+          <Banner tone={level === "reached" ? "error" : "warn"}>
+            {t(level === "reached" ? "adminPrivacy.budgetReached" : "adminPrivacy.budgetWarn", budgetWords)}
+          </Banner>
+        </div>
+      )}
 
       <SectionCard name="status">
         <dl className={c.facts}>
@@ -80,7 +101,7 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
 
       <SectionCard title={t("adminPrivacy.settingsTitle")} name="settings">
         <AssistSettingsForm enabled={s.enabled} ceiling={s.ceiling} retentionDays={s.retentionDays}
-          dpaSignedAt={s.dpaSignedAt ? day(s.dpaSignedAt) : ""} rules={s.rules} patterns={s.patterns} privacyHref={privacyHref} />
+          dpaSignedAt={s.dpaSignedAt ? day(s.dpaSignedAt) : ""} rules={s.rules} patterns={s.patterns} monthlyCapEur={budget.capEur} privacyHref={privacyHref} />
       </SectionCard>
 
       <SectionCard title={t("adminPrivacy.documents")} hint={t("adminPrivacy.documentsReadable", { readable, total: documents.length })} name="documents">
