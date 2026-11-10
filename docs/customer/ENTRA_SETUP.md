@@ -117,8 +117,22 @@ sign-in permissions above (Microsoft adds `User.Read`, "sign in and read the sig
 - Directory (tenant) ID
 - the client secret (see step 3)
 
-We set the tenant in your NextUp admin and install the client ID and secret on your stack. Then we test with you:
-first an Admin, then a Member.
+We install the client ID and secret on your stack (`install.sh --entra-client-id`) and put the tenant into your company
+at the install (`install.sh --entra-tenant-id`), so the admin console opens with Microsoft from the start. Your IT can
+change or remove the tenant later in the console (**Access**); the install never overwrites that. Then we test with you:
+first an Admin, then a Manager, then a Member.
+
+### 7. The first people
+
+The stack starts with nobody in it, and the app roles are what lets people in:
+
+- `NextUp.Admin` opens the admin console (`/admin`), with or without a NextUp account. Each sign-in is in the audit log.
+- `NextUp.Manager` is **created as a manager at the first sign-in, even while the company is still closed**: managers
+  set the company up. Assign it to your pilot lead first.
+- `NextUp.Leader` and `NextUp.Member` are refused until a manager opens NextUp, and created at their first sign-in after.
+
+So with Microsoft sign-in no bootstrap and no login codes are needed. Without Microsoft, the first people come from the
+bootstrap ([`INSTALL.md`](INSTALL.md), section 5).
 
 ## Optional: let the assistant search people's files (Microsoft 365)
 
@@ -188,14 +202,16 @@ without anyone typing the structure in by hand.
 4. The NextUp session lasts eight hours. It does not follow your Conditional Access after sign-in.
 
 The admin area (`https://<company>.sellux.ch/admin`) works the same way with the Admin role, and the name of the
-administrator is shown in the header. An access code for the admin area stays available as a way in when Microsoft
-is not reachable. Every use of it is logged.
+administrator is shown in the header. Each Microsoft sign-in there is in the audit log. When Microsoft is not reachable,
+the way in is a time-limited break-glass window that the host's operator opens with `stack/break-glass.sh`; every use of
+it is logged. The shared admin code works on a demo stack only.
 
 ## If something does not work
 
 | What you see | Usually |
 |---|---|
 | "belongs to another organisation" | the tenant ID in NextUp does not match the account's tenant |
+| "NextUp is not open yet" | the company is still closed; only `NextUp.Manager` (and console admins) get in before **Open NextUp** |
 | "has no NextUp role yet" | the person is not in a group that holds a role (step 4) |
 | "isn't a NextUp administrator" | the Admin role is missing for that person |
 | Microsoft says `AADSTS50011` | the redirect URI in step 1 does not match the address exactly |
