@@ -6,7 +6,7 @@ import { assistGate } from "@/features/assist/gate";
 const bedrock: AiSettings = { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null };
 const off: AiSettings = { ...bedrock, choice: "off" };
 const DPA = new Date("2026-10-01");
-const real = { stage: "pilot", hasDatabase: true, settings: bedrock, dpaSignedAt: DPA, purpose: "assist" as const, assistantOn: true, aiRouting: true };
+const real = { stage: "pilot", hasDatabase: true, settings: bedrock, dpaSignedAt: DPA, purpose: "assist" as const, assistantOn: true, aiRouting: true, budget: null };
 
 describe("AIP gate", () => {
   it("settings: a demo company without a row follows the environment, any other stage is off", () => {

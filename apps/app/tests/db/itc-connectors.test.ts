@@ -67,6 +67,22 @@ describe("ITC console connectors", () => {
     expect((await getIntegration(acme.id, JIRA))?.on).toBe(true);
   });
 
+  it("stores the prices per model with the AI choice, refuses a line that does not read, and shows them back", async () => {
+    const base = { choice: "azure-openai", region: "eu", model: "gpt", endpoint: "https://aoai.acme.example", deployment: "d1", key: "" };
+    expect(await saveConsoleAi({ ...base, prices: "GPT-4.1-mini 0,42 1.68\nmistral-nemo 0 0" })).toEqual({ ok: true });
+    expect((await getIntegration(acme.id, AI_SYSTEM))?.settings).toMatchObject({ prices: { "gpt-4.1-mini": { in: 0.42, out: 1.68 }, "mistral-nemo": { in: 0, out: 0 } } });
+    expect((await loadConnectors({ companyId: acme.id, slug: acme.slug })).ai.prices).toBe("gpt-4.1-mini 0.42 1.68\nmistral-nemo 0 0");
+    expect(await saveConsoleAi({ ...base, prices: "gpt-4.1-mini 0.42 1.68\ngpt-4.1 two 8" })).toEqual({ ok: false, code: "invalid", detail: "prices, line 2" });
+    expect((await getIntegration(acme.id, AI_SYSTEM))?.settings).toMatchObject({ prices: { "mistral-nemo": { in: 0, out: 0 } } });
+    expect(await getIntegration(other.id, AI_SYSTEM)).toBeNull();
+    // Too long is refused, never cut: a cut inside a number would store a wrong price.
+    expect(await saveConsoleAi({ ...base, prices: "gpt-4o 2.5 10" + " ".repeat(5000) })).toEqual({ ok: false, code: "invalid", detail: "prices" });
+    // An empty field removes them.
+    expect(await saveConsoleAi({ ...base, prices: "" })).toEqual({ ok: true });
+    expect((await getIntegration(acme.id, AI_SYSTEM))?.settings).toMatchObject({ prices: null });
+    expect((await loadConnectors({ companyId: acme.id, slug: acme.slug })).ai.prices).toBe("");
+  });
+
   it("flips the Microsoft 365 switch for acme only", async () => {
     expect(await setConsoleM365(true)).toEqual({ ok: true });
     expect(await m365SearchOn(acme.id)).toBe(true);

@@ -156,7 +156,7 @@ describe("AIP acceptance: proposal made on the server, off works, DPA gate holds
 
     const [ai, assist, aiRouting] = await Promise.all([loadAiSettings(noDpa.id, "sandbox"), loadAssistSettings(noDpa.id), loadAiRouting(noDpa.id)]);
     expect(ai.settings.choice).toBe("openai-compatible");
-    const routing = aiGate({ stage: "sandbox", hasDatabase: true, settings: ai.settings, dpaSignedAt: assist.dpaSignedAt, purpose: "routing", assistantOn: assist.enabled, aiRouting });
+    const routing = aiGate({ stage: "sandbox", hasDatabase: true, settings: ai.settings, dpaSignedAt: assist.dpaSignedAt, purpose: "routing", assistantOn: assist.enabled, aiRouting, budget: null });
     expect(routing).toEqual({ on: false, why: expect.stringContaining("data-processing agreement") });
     const gate = assistGate({ stage: "sandbox", hasDatabase: true, configured: "bedrock", enabled: assist.enabled, dpaSignedAt: assist.dpaSignedAt });
     expect(gate.on).toBe(false);

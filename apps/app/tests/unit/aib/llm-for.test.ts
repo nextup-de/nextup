@@ -42,7 +42,7 @@ describe("AIB llmFor", () => {
     it("a closed gate sends nothing", async () => {
       const f = vi.fn() as unknown as typeof fetch;
       const gate = aiGate({
-        stage: "sandbox", hasDatabase: true, dpaSignedAt: null, assistantOn: true, aiRouting: true,
+        stage: "sandbox", hasDatabase: true, dpaSignedAt: null, assistantOn: true, aiRouting: true, budget: null,
         settings: { ...bedrock, brainModel: "anthropic.claude-haiku-5-5" }, purpose: "routing",
       });
       expect(gate.on).toBe(false);

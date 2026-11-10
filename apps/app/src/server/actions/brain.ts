@@ -12,6 +12,7 @@ import { aiSettings } from "@/features/ai/settings";
 import { findTenant } from "@/features/tenant";
 import { hasDatabase } from "@/lib/db/client";
 import { loadAiSettings } from "@/lib/db/ai";
+import { loadAiBudget } from "@/lib/db/ai-usage";
 import { loadAiRouting, loadAssistSettings } from "@/lib/db/assist";
 import { askBrain, askBrainCheckin, askBrainPlan, brainConfigured } from "@/server/brain";
 import type { CheckinProposal, PlanProposal } from "@/features/projects/brain";
@@ -23,10 +24,10 @@ import { clientKey, throttle } from "@/server/throttle";
 async function gateFor(slug: string, viewer: { companyId: string } | null, purpose: AiPurpose) {
   const stage = (await findTenant(slug))?.stage ?? "demo";
   if (!viewer) {
-    return { gate: aiGate({ stage, hasDatabase: false, settings: aiSettings(null, process.env, stage), dpaSignedAt: null, purpose, assistantOn: false, aiRouting: false }), key: null, settings: null };
+    return { gate: aiGate({ stage, hasDatabase: false, settings: aiSettings(null, process.env, stage), dpaSignedAt: null, purpose, assistantOn: false, aiRouting: false, budget: null }), key: null, settings: null };
   }
-  const [ai, settings, aiRouting] = await Promise.all([loadAiSettings(viewer.companyId, stage), loadAssistSettings(viewer.companyId), loadAiRouting(viewer.companyId)]);
-  const gate = aiGate({ stage, hasDatabase: true, settings: ai.settings, dpaSignedAt: settings.dpaSignedAt, purpose, assistantOn: settings.enabled, aiRouting });
+  const [ai, settings, aiRouting, budget] = await Promise.all([loadAiSettings(viewer.companyId, stage), loadAssistSettings(viewer.companyId), loadAiRouting(viewer.companyId), loadAiBudget(viewer.companyId)]);
+  const gate = aiGate({ stage, hasDatabase: true, settings: ai.settings, dpaSignedAt: settings.dpaSignedAt, purpose, assistantOn: settings.enabled, aiRouting, budget });
   return { gate, key: ai.key, settings };
 }
 

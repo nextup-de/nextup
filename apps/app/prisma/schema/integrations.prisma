@@ -22,6 +22,12 @@ model CompanyConfig {
   dpaSignedAt           DateTime?
   // Company patterns masked before anything reaches the model (regex source), e.g. prototype codes.
   redactPatterns        String[]
+  // The month's budget for model calls in euros (features/ai/budget.ts); the gate closes when it is used up.
+  // NULL = the default (DEFAULT_MONTHLY_CAP_EUR).
+  aiMonthlyCapEur       Int?
+  // Input and output tokens per month of models that have no price (decision Q7.5); the gate closes when they reach
+  // it. NULL = the default (DEFAULT_MONTHLY_TOKEN_CAP).
+  aiMonthlyTokenCap     Int?
 
   // The idea studio (docs/IDEAS.md): the benchmark score an idea needs before it can be published.
   publishThreshold Int @default(70)
@@ -231,7 +237,7 @@ model TeamsConversation {
 model AiCall {
   id        String   @id @default(cuid())
   companyId String
-  purpose   String // routing | read | coach | plan | checkin
+  purpose   String // routing | read | coach | plan | checkin | context | assist (each assistant answer, beside its AssistTurn)
   model     String
   tokensIn  Int
   tokensOut Int
