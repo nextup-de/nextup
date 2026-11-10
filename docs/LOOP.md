@@ -40,9 +40,12 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
 6. **Projects.** A yes opens a project with the person who said yes as lead. The lead takes the baseline (metric, unit, which
    way is better, source), starts the project, works the board and marks it done.
 7. **Measure and confirmation.** The check opens 30 days (or the company's days) after done. The lead types the result,
-   optionally with saving, CO₂, energy and scrap figures; the card reads "Typed by … · not confirmed" and "Not confirmed yet".
-   A manager or a holder of the route's deputy role confirms ("Confirm result"); never the lead and never the person who typed
-   it. A file import is provenance only and is confirmed the same way; a trusted system source is not available to people.
+   optionally with saving, CO₂, energy and scrap figures; the card reads "Typed by … · not confirmed" and "Waiting for a
+   second person until {date}". A manager or a holder of the route's deputy role confirms ("Confirm result"); never the lead
+   and never the person who typed it. The confirmation has a desk and a date (decision Q6.15, `features/projects/confirm.ts`):
+   who may confirm is mailed when the result is typed, finds "Confirm the result" under "Projects waiting on you" in the
+   inbox, and has 5 working days. After that the clock reminds them once; 3 working days later it asks the seat above the
+   deputy's desk, whose holders may confirm from then on. A file import is provenance only and is confirmed the same way; a trusted system source is not available to people.
 8. **Recognition.** Only a confirmed latest result with the verdict *better* makes the reward due, by the company's reward
    rule; a manager records it. Same or worse closes the project without a reward.
 
@@ -71,7 +74,7 @@ with no AI, n8n, Jira or Microsoft 365; "db" tests run against a company in the 
 | The deputy hand-over: a breached date hands the case to the deputy once | db `tests/db/loop-handover.test.ts` (one `case.handed`, also when run twice; none with the rule off); unit `tests/unit/loop/handover.test.ts`, `handover-reducer.test.ts`. Not exercised in the e2e: a sandbox clock cannot be moved to breach a date. |
 | Desks, not people: ideas go to a role, with no score or track record of a person | e2e (the desk "Quality lead" with its holder, tagged "Proposed", reasons from the keywords); unit `tests/unit/loop/desks.test.ts` ("no score, no person, no answered-case count"). |
 | The score does not count model output | unit `tests/unit/loop/truth.test.ts`. Not exercised in the e2e: with the AI off no model proposes a route. |
-| Verified outcomes: a measured result counts only with a second person's confirmation | e2e (the lead's result is "Not confirmed yet" and the lead finds no confirm button; the second manager confirms); unit `tests/unit/loop/measure.test.ts`; db `tests/db/loop-measure-import.test.ts`. |
+| Verified outcomes: a measured result counts only with a second person's confirmation | e2e (the lead's result is "Waiting for a second person until …" and the lead finds no confirm button; the second manager finds it on the desk and confirms); unit `tests/unit/projects-confirm.test.ts`; unit `tests/unit/loop/measure.test.ts`; db `tests/db/loop-measure-import.test.ts`. |
 | Reward only after a better result | e2e (verdict better, then the reward is due and recorded); unit `tests/unit/loop/measure.test.ts` ("a confirmed same or worse latest verdict gives no reward"; "recognition off"). |
 
 Also proved in the e2e: the decision log lists the yes for a manager and for the raiser, and a manager who switches

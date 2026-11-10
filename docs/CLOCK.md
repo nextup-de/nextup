@@ -16,6 +16,15 @@ reducer accepts that event from the clock only; it opens the case, adds the paus
 `unanswered` set to the day. Idempotency keys: `clk:question:<case>:<asked day>` and `clk:unanswered:<case>:<asked day>`,
 so a second question on the same case counts again from its own day.
 
+## A result nobody confirmed
+
+A typed result that still has no second person (`unconfirmedOf`, `features/projects/confirm.ts`) is chased with two
+`clock.due` facts of kind `confirm`, each with the measure's `check`. The first falls due the working day after the
+result's date (the day it was typed plus `CONFIRM_DAYS`, 5) and has no seat: it reminds who may confirm. The second
+falls due `CONFIRM_ESCALATE_DAYS` (3) later and names the seat above the deputy's desk in `toRoleHolderId`; that seat's
+role may confirm from then on. It is only written when someone sits above, and never names the desk of the lead or of
+who typed the number. Keys: `clk:confirm:<project>:<dueDay>:<check>`. A confirmed result, or a stopped project, is not chased.
+
 ## A desk nobody sits at
 
 An open case whose desk has no occupied seat of its role is handed on at once: `dueNow` yields a hand-over with

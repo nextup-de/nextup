@@ -3,7 +3,7 @@
 import { createT, type Locale } from "@/i18n";
 import { formatDate } from "@/i18n/format";
 
-export const REMINDER_KINDS = ["deadline", "checkin", "start", "measure", "escalation", "question", "triage"] as const;
+export const REMINDER_KINDS = ["deadline", "checkin", "start", "measure", "escalation", "question", "triage", "confirm"] as const;
 export type ReminderKind = (typeof REMINDER_KINDS)[number];
 
 export type ReminderTemplate = `reminder.${ReminderKind}`;
@@ -22,7 +22,7 @@ export type TemplateInput = {
   days?: number | null;
   /** The case or project page, or for the digest the inbox. */
   link: string;
-  /** Escalation only: who reads it - the seat above that gets the case, the desk that had it, or the raiser. */
+  /** Escalation: who reads it - the seat above that gets the case, the desk that had it, or the raiser. Confirm: "above" is the seat the clock passed the result up to. */
   reader?: "above" | "desk" | "raiser";
   /** Escalation only: the seat label of who has the case from now on. */
   holder?: string;
@@ -58,6 +58,8 @@ export function renderTemplate(template: NoticeTemplate, locale: Locale, input: 
       return compose(t("mail.reminderStartSubject", { title }), t("mail.reminderStartIntro", { when }), t("mail.reminderOpenProject", { url }));
     case "reminder.measure":
       return compose(t("mail.reminderMeasureSubject", { title }), t("mail.reminderMeasureIntro", { days }), t("mail.reminderOpenProject", { url }));
+    case "reminder.confirm":
+      return compose(t("mail.reminderConfirmSubject", { title }), t(input.reader === "above" ? "mail.reminderConfirmAbove" : "mail.reminderConfirmIntro", { days }), t("mail.reminderOpenProject", { url }));
     case "reminder.triage":
       return compose(t("mail.reminderTriageSubject", { title }), t("mail.reminderTriageIntro", { when }), t("mail.reminderOpenCase", { url }));
     case "reminder.question":
