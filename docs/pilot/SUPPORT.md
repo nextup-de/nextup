@@ -1,17 +1,17 @@
 # Pilot support: channels, severity, response times
 
-> **Updated 2026-11-04.** What a pilot customer can expect, and what the NextUp team does, in a team of three people with
-> no night shift. Anything marked **KEVIN: fill in** is not decided. **There is no SLA and no price yet**; the response
-> targets below are what the team believes it can keep, not a promise in a contract.
+> **Updated 2026-11-11.** What a pilot customer can expect, and what the NextUp team does, in a team of three people with
+> no night shift. Anything marked **KEVIN: fill in** or **`<named by Kevin>`** is not decided. **There is no SLA and no
+> price yet**; the response targets below are what the team believes it can keep, not a promise in a contract.
 
 ## Who owns what
 
 | Role | Person | Does |
 |---|---|---|
-| Support owner | **KEVIN: fill in — name and a deputy** | owns every ticket until closed; decides severity; reports to the customer |
-| Incident lead | **KEVIN: fill in — name and a deputy** | runs an incident (severity 1 and 2): stops the harm, restores service, writes the note |
+| Support owner | **`<named by Kevin>`**, deputy **`<named by Kevin>`** | owns every ticket until closed; decides severity; reports to the customer |
+| Incident lead | **`<named by Kevin>`**, deputy **`<named by Kevin>`** | runs an incident (severity 1 and 2): has host access, stops the harm, restores service, writes the note; not the support owner |
 | Escalation | Kevin (head engineer); then Marc | decides on a stop, a rollback, an exception, anything legal |
-| Customer contacts | named at the joint setup session | the pilot lead (product questions), the IT contact (server, sign-in, mail), the admin (settings, support access) |
+| Customer contacts | named on the order form (`docs/customer/ORDER_FORM.md`), confirmed at the joint setup session | the pilot lead (product questions), the IT contact (server, sign-in, mail), the admin (settings, support access) |
 
 A person who is not yet decided stays marked until Kevin fills them in. Until then nothing in this file promises that a
 named person answers. The first pilot does not start until the support owner and the incident lead are filled in.
@@ -26,7 +26,7 @@ rollback to sandbox or a stop of the pilot and tells the customer's pilot lead t
 |---|---|---|
 | The problem button in the app | a person who finds something broken | opens a ticket with NextUp; the person gets a mail with the answer |
 | Support mailbox: **KEVIN: fill in — address** | the pilot lead, IT and admin | the main channel for the pilot; read on working days |
-| Phone: **KEVIN: fill in — number, or say none** | severity 1 only | during the hours below; no night or weekend cover |
+| Phone: **`<named by Kevin>`** | severity 1 only | during the hours below; no night or weekend cover |
 | Weekly call | pilot lead and NextUp, once a week during the pilot | the report, open tickets, what changes |
 | Customer's own helpdesk | their people's first-line questions | the pilot lead trains their first line with `TRAINING.en.md` |
 
@@ -47,8 +47,8 @@ talked.
 
 ## Response targets
 
-Working hours, Monday to Friday, **KEVIN: fill in — hours and time zone, for example 09:00 to 17:00 Europe/Berlin**, on
-working days of the company's calendar. There is no night, weekend or holiday cover and no high availability.
+Working hours: 09:00 to 17:00 Europe/Berlin, on working days of the company's calendar. There is no night, weekend or
+holiday cover and no high availability.
 
 | Level | First reply | Aim to resolve or work around | When it is outside hours |
 |---|---|---|---|
@@ -60,8 +60,10 @@ working days of the company's calendar. There is no night, weekend or holiday co
 These are targets. The first pilot tells whether the team can keep them; they are reviewed at the end of the pilot. Nothing
 here is a service level agreement. **SLA: undecided. Price: undecided.**
 
-Data restore targets are separate and written down: at most 24 hours of data lost, a restore within 1 hour
-(`docs/ops/RPO_RTO.md`). They hold for a restore on working days; they are not a promise of 24-hour cover.
+Data restore targets are separate: at most 24 hours of data lost; a whole restore within 4 hours in business hours.
+The weekly restore test must finish within 1 hour (`docs/ops/RPO_RTO.md`); that is our test limit, not the number we
+name to customers. **Until Kevin decides** (Q10.4), the 4 hours are the recommendation. They are not a promise of
+24-hour cover.
 
 ## Support access: through the customer's grant
 
@@ -82,11 +84,15 @@ open it too. Details: `docs/customer/OPERATIONS.md`.
 
 ## What NextUp does for an incident
 
-1. Say so within the first-reply time: what is known, what is not, when the next update comes.
+The steps and the mail texts in full: `docs/ops/INCIDENT.md`.
+
+1. Say so within the first-reply time, by mail to the pilot lead, the IT contact and the admin, and for severity 1 also
+   by phone: what is known, what is not, when the next update comes.
 2. Stop the harm: switch the company back to sandbox if mails or data are the problem; the customer's admin can do it too.
 3. Restore: the release job and the backup routines in `docs/customer/OPERATIONS.md`.
 4. Write a short note the same week: what happened, who was affected, what changes. Where personal data was involved, tell
-   the customer's data protection officer the same day; the customer decides about any report to a supervisory authority.
+   the customer's data protection officer the same day (the DPA's limit is 72 hours); the customer decides about any report
+   to a supervisory authority.
 5. A new finding goes into `docs/test-phase/findings/` style, with an owner and a date.
 
 ## What we do not offer in the pilot

@@ -33,9 +33,10 @@ older commit; if a migration ran in between, restore the `pre-migrate` snapshot 
 
 ## Backups and the restore drill
 
-The numbers: at most **24 hours** of data lost (RPO), a restore within **1 hour** (RTO). Snapshots are encrypted with
-restic and hold the database, the stack's `.env` and, if used, n8n's data. Full detail and the restore steps:
-[`docs/ops/RPO_RTO.md`](../ops/RPO_RTO.md).
+The numbers: at most **24 hours** of data lost (RPO); the weekly restore test must finish within **1 hour** (RTO, the
+test limit). For a whole restore NextUp names **4 hours in business hours** (until Kevin decides,
+[`docs/pilot/SUPPORT.md`](../pilot/SUPPORT.md)). Snapshots are encrypted with restic and hold the database, the
+stack's `.env` and, if used, n8n's data. Full detail and the restore steps: [`docs/ops/RPO_RTO.md`](../ops/RPO_RTO.md).
 
 - Nightly backup and a weekly restore test run from cron (setup in `stack/remote/README.md`, section 5). A backup older
   than 26 hours raises an alert.
@@ -72,6 +73,20 @@ stack/rotate-keys.sh <slug> restic   # new backup password; the old one keeps wo
 
 Each asks for `--yes` after telling you what will happen. If the vault rotation times out or fails, it stops and keeps both
 keys (exit 1): nothing is lost, run it again. Update the password manager afterwards.
+
+## Renewing the Entra client secret
+
+The Entra client secret lasts at most 24 months; when it expires, Microsoft sign-in stops. Make a new secret in the
+NextUp app registration ([`ENTRA_SETUP.md`](ENTRA_SETUP.md), step 3) before the old one runs out. On a stack NextUp
+hosts, send it to NextUp by a one-time link and NextUp installs it. On your own server your operator re-runs the install
+with it, as the deploy user:
+
+```bash
+read -rs NEXTUP_ENTRA_CLIENT_SECRET && export NEXTUP_ENTRA_CLIENT_SECRET
+stack/install.sh --slug <slug> --origin https://<host> --entra-client-id <Application (client) ID>
+```
+
+It replaces the old values in the `.env` and restarts the app. Sign in with Microsoft once to check.
 
 ## Break-glass window
 
