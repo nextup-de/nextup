@@ -26,7 +26,7 @@ exist. Each item below is one small PR.
 | 8 | Stopping a project: lead, managers and sponsor may, with a reason; raiser and team are told | Q6.21 | P6 | open |
 | 9 | The raiser can withdraw an idea that is not decided (`case.withdrawn`) | Q1.14 | P1 | open |
 | 10 | Anonymity is chosen per idea on the last look; the company sets the default | Q1.7 | P1 | open; Marc checks the works-agreement text first |
-| 11 | A monthly AI cost cap per company in the gate, with warnings at 70 and 90 % | Q7.3 | P7 | open (block H1 of the build order); built apart from this stack, on its own branch off `main` |
+| 11 | A monthly AI cost cap per company in the gate, with warnings at 70 and 90 % | Q7.3 | P7 | built (#646, its own branch off `main`, not in this stack). Limits named in that PR: a model without a price is not counted, the warning is a banner only (no mail), every purpose stops at 100 % |
 
 Items 2 to 4, 6 and 9 need a new event or clock fact and so start with Kevin's contract (events, reducer, rights,
 tests). Items 1, 5, 7 and 8 only plan notices from events that exist.
