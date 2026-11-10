@@ -50,6 +50,7 @@ import { getViewerFor } from "@/features/auth/session";
 import { seal, vaultContext, vaultKey } from "@/features/connectors/vault";
 import { companyPrefix, safeNextPath, singleCompany } from "@/features/tenant/urls";
 import { issueAdminSession } from "@/server/admin-session";
+import { recordAudit } from "@/server/audit/record";
 import { issueSession, secureCookies } from "@/server/issue-session";
 import { entryFor, homeOf } from "@/server/setup-open";
 
@@ -265,6 +266,9 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
       console.warn(`[admin] ${email || oid} tried Microsoft sign-in without the NextUp.Admin role`);
       return fail("noadmin");
     }
+    // The trail names nobody (D9): the console cookie has no user id, and the address stays in the server log.
+    // Written first, like break-glass: a failed write stops the sign-in.
+    await recordAudit(company.id, { actor: { kind: "console", userId: null }, action: "audit.access.console_signin", changes: {}, source: "console" });
     await issueAdminSession(email || name || oid, false, "entra");
     console.info(`[admin] ${email || oid} signed in with Microsoft`);
     return adminHome() || "/";

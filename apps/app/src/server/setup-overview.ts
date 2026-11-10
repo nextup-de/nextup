@@ -5,9 +5,11 @@ import { aiStatus, directoryStatus, jiraStatus, m365Status } from "@/features/co
 import { adminBase } from "@/features/admin/nav";
 import { getViewerFor, type Viewer } from "@/features/auth/session";
 import type { GoLiveInput } from "@/features/pilot/go-live";
+import { handOverOf, type HandOver } from "@/features/settings/hand-over";
 import { setupIsWaiting, setupPhases, type ContextStatus, type ItFacts, type SetupPhase, type SetupViewer } from "@/features/settings/setup-phases";
 import { companyPrefix, singleCompany } from "@/features/tenant/urls";
 import { loadConnectors } from "@/app/admin/connectors/load";
+import { lastAudit } from "@/lib/db/audit";
 import { getDb } from "@/lib/db/client";
 import { loadGoLiveInput } from "@/lib/db/go-live";
 import { readBackupStatus } from "@/server/backup-status";
@@ -69,21 +71,29 @@ export type SetupOverviewData = {
   phases: SetupPhase[] | null;
   /** The page looks again by itself. Off when nothing is waiting. */
   poll: boolean;
+  /** The customer's IT confirmed the hand-over (audit.setup.handed_over, Q8.6); null while it has not. */
+  handedOver: HandOver | null;
 };
+
+/** The newest confirmed hand-over of the company, from its audit trail. */
+export async function loadHandOver(companyId: string): Promise<HandOver | null> {
+  return handOverOf(await lastAudit(companyId, "audit.setup.handed_over"));
+}
 
 async function overviewOf(company: { companyId: string; slug: string }, viewer: SetupViewer): Promise<SetupOverviewData> {
   try {
-    const [goLive, it, counts, openedAt, context] = await Promise.all([
+    const [goLive, it, counts, openedAt, context, handedOver] = await Promise.all([
       loadGoLiveInput(company.companyId, new Date(), { mailStatus, readBackupStatus }),
       itFacts(company),
       setupCounts(company.companyId),
       loadOpenedAt(company.companyId),
       contextStatus(),
+      loadHandOver(company.companyId),
     ]);
-    const phases = setupPhases({ viewer, prefix: companyPrefix(company.slug), goLive, it, counts, openedAt, context });
-    return { phases, poll: setupIsWaiting(phases) };
+    const phases = setupPhases({ viewer, prefix: companyPrefix(company.slug), goLive, it, counts, openedAt, context, handedOver });
+    return { phases, poll: setupIsWaiting(phases), handedOver };
   } catch {
-    return { phases: null, poll: true };
+    return { phases: null, poll: true, handedOver: null };
   }
 }
 
@@ -110,6 +120,7 @@ const SAMPLE_GO_LIVE: GoLiveInput = {
 function sampleOverview(slug: string): SetupOverviewData {
   return {
     poll: false,
+    handedOver: null,
     phases: setupPhases({
       viewer: "manager",
       prefix: companyPrefix(slug),
