@@ -48,6 +48,7 @@ function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined): string {
     case "case.handed": return t("dashboard.evHanded", { actor, to: p.to ?? "" }) + (p.why ? " " + t("dashboard.evHandedWhy", { why: p.why }) : "");
     case "case.asked": return t("dashboard.evAsked", { actor, text: p.text || t("dashboard.evOneQuestion") });
     case "case.answered": return t("dashboard.evAnswered", { actor, text: p.text ?? "" });
+    case "case.unanswered": return t("dashboard.evUnanswered");
     case "case.building": return t("dashboard.evBuilding", { actor }) + (p.expected ? " " + t("dashboard.evExpected", { x: p.expected }) : "") + (p.days ? t("dashboard.evDaysSuffix", { n: p.days }) : "");
     case "case.shipped": return t("dashboard.evShipped", { actor, outcome: p.outcome ?? "" }) + (p.outcomeNote ? " " + t("dashboard.evParen", { note: p.outcomeNote }) : "");
     case "case.override": return t("dashboard.evOverride", { actor });

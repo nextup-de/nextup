@@ -17,7 +17,11 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
    route-owning role. The send names the role and a date.
 2. **Answer promise.** The case page (and "My cases") shows "Answer by {date}" and "With · {role} · {people}"
    (`answerPromise`, `features/cases/promise.ts`). The date counts working days of the company calendar. A yes, a no or a
-   question answers; a hand-over does not.
+   question answers; a hand-over does not. A question pauses the answer date until the raiser replies. If no reply
+   comes, the raiser is reminded after 3 working days, and after 5 the clock writes `case.unanswered`: the case is open
+   on the desk again, the question stays on it marked "no answer", and the answer date runs on
+   (`QUESTION_REMIND_DAYS`, `QUESTION_RETURN_DAYS` in `features/clock/due.ts`; fixed numbers, not company rules yet).
+   Demo companies have no scheduler, so there a question waits.
 3. **Hand-over rule.** With the company rule `deadline_handover` on (default for new companies), a breached answer date
    writes one `case.handed` with `why: "deadline"` to the deputy seat; the submitter sees the date and who holds the case. With
    the rule off, the deputy role is told and the owner keeps the case.

@@ -7,7 +7,12 @@ import type { CaseEvent } from "@/features/cases/events";
 import { byClock } from "./actor";
 import type { Route } from "@/features/demo/types";
 
-export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation";
+export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation" | "question" | "unanswered";
+
+/** A question the raiser has not answered: a reminder after this many working days ... */
+export const QUESTION_REMIND_DAYS = 3;
+/** ... and after this many the case is open on the desk again, without an answer (decision Q4.3). */
+export const QUESTION_RETURN_DAYS = 5;
 
 export type Due = {
   kind: DueKind;
@@ -83,6 +88,19 @@ export function dueNow(state: State, today: number, above: SeatAbove = () => nul
     }
     const atOwner = c.assigneeRoleId !== null && c.assigneeRoleId === (c.route.ownerRoleId ?? null);
     out.push({ kind: "deadline", target: c.id, dueDay: c.dueDay, toRoleHolderId: targetSeat(state, c.route, atOwner), idemKey: idemKeyOf("deadline", c.id, c.dueDay) });
+  }
+
+  // A question nobody answers must not pause a case for ever: one reminder to the raiser, then the case goes
+  // back to the desk as open (the scheduler writes case.unanswered) and its answer date runs again.
+  for (const c of state.cases) {
+    const q = c.status === "asked" ? c.question : null;
+    if (!q || q.answer) continue;
+    const waited = today - q.day;
+    if (waited >= QUESTION_RETURN_DAYS) {
+      handovers.push({ kind: "unanswered", target: c.id, dueDay: q.day + QUESTION_RETURN_DAYS, idemKey: idemKeyOf("unanswered", c.id, q.day) });
+    } else if (waited >= QUESTION_REMIND_DAYS && !hasFact(c.history, "question", q.day + QUESTION_REMIND_DAYS)) {
+      out.push({ kind: "question", target: c.id, dueDay: q.day + QUESTION_REMIND_DAYS, idemKey: idemKeyOf("question", c.id, q.day) });
+    }
   }
 
   for (const p of state.projects) {

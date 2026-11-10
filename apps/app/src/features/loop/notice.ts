@@ -116,6 +116,21 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
       }
       break;
     }
+    case "case.unanswered": {
+      // The clock gave the case back to the desk: the desk can decide without the answer, and the raiser knows.
+      const q = kase?.question;
+      if (!kase || !q || q.unanswered === null || kase.status !== "open") break;
+      for (const who of [...deskOf(kase.assigneeSeatId), q.byUserId]) {
+        send(who, (t) => t("mail.unansweredDeskSubject", { title: kase.title }), (t) => [
+          t("mail.unansweredDeskIntro", { from: kase.from }), "", `  ${q.text}`, "",
+          t("mail.unansweredDeskNext", { when: inDays(t, kase.dueDay - state.day), url: caseLink(kase) }),
+        ]);
+      }
+      send(authorOf(kase), (t) => t("mail.unansweredRaiserSubject", { title: kase.title }), (t) => [
+        t("mail.unansweredRaiserIntro"), "", `  ${q.text}`, "", t("mail.unansweredRaiserNext", { url: caseLink(kase) }),
+      ]);
+      break;
+    }
     case "case.handed": {
       // The clock's own hand-overs (deadline, escalation) are told by its reminders.
       if (!kase || byClock(ev) || !pl.to || kase.assigneeSeatId !== (pl.toRoleHolderId ?? null)) break;

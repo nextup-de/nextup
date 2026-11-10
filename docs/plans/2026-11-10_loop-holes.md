@@ -16,8 +16,8 @@ exist. Each item below is one small PR.
 
 | # | What | Decision | Charts | Status |
 |---|---|---|---|---|
-| 1 | The raiser is told about a question, a pass and a no; the desk is told about the answer; a yes without a project tells the raiser too | Q4.1 | P4 | this PR |
-| 2 | An unanswered question: a reminder to the raiser after 3 working days, back on the desk as open after 5, marked "no answer" | Q4.3 | P4 | open |
+| 1 | The raiser is told about a question, a pass and a no; the desk is told about the answer; a yes without a project tells the raiser too | Q4.1 | P4 | built (#640) |
+| 2 | An unanswered question: a reminder to the raiser after 3 working days, back on the desk as open after 5, marked "no answer" | Q4.3 | P4 | built |
 | 3 | A case without a route goes to a triage seat with a deadline; a raise with no fitting desk goes to a fallback desk | Q2.1, Q1.9 | P2, P1 | open |
 | 4 | A raise onto a vacant desk is handed to the route's deputy seat at once, on the web and on the floor | Q1.10 | P1 | open |
 | 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | open |
@@ -48,6 +48,16 @@ own event.
 
 Not in this item: these rows are mails only, as every `loop.*` row is today. Whether a notice goes to Teams, to mail or
 to both is decided per notice group in block B (Q2.9), together with the in-app list of notices.
+
+## Item 2: a question nobody answers
+
+A new event, `case.unanswered`, that only the clock writes; no schema change. The clock counts from the day the question
+was asked: on day 3 one `clock.due` fact of kind `question` reminds the raiser (`reminder.question`), on day 5 the
+scheduler writes `case.unanswered`. The reducer opens the case again, adds the paused days to the answer date and keeps
+the question with `unanswered` set. The desk and who asked are told that they can decide without the answer, and the
+raiser that the idea goes on. The desk's inbox shows "No answer from {name}", the raiser's row and the timeline say the
+same. The numbers 3 and 5 are constants in `features/clock/due.ts`; they become company rules when Settings → Rules is
+next touched. The raiser can no longer answer the returned question, only comment.
 
 ## Docs this plan changes
 

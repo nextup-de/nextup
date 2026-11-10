@@ -189,12 +189,52 @@ describe("CLK second level (escalation_days)", () => {
   it("not for a paused or a closed case, and not in demo mode", () => {
     const first = [raise("c_a"), deadline("seat_dep"), toDeputy()];
     const asked = ev("case.asked", "H. Sander", "c_a", { text: "Which line?" }, DUE + 1);
-    expect(dues(ORG, DUE + 10, [...first, asked])).toEqual([]);
+    // The second level does not fire for a paused case; what is due there is the question's own return.
+    expect(dues(ORG, DUE + 10, [...first, asked]).map((d) => d.kind)).toEqual(["unanswered"]);
     const no = ev("case.decided", "H. Sander", "c_a", { answer: "no" }, DUE + 1);
     expect(dues(ORG, DUE + 10, [...first, no])).toEqual([]);
     expect(dues({ ...ORG, clock: DEMO_CLOCK }, DUE + 10, first)).toEqual([]);
     // A case already on the seat above is not handed to it again.
     const manual = ev("case.handed", "H. Sander", "c_a", { to: "K. Head", toRoleHolderId: "seat_head", why: "she knows the line" }, DUE + 2);
     expect(dues(ORG, DUE + 10, [...first, up("seat_head"), manual])).toEqual([]);
+  });
+});
+
+describe("CLK an unanswered question (decision Q4.3)", () => {
+  const ask = (day: number) => ev("case.asked", "T. Vogel", "c_a", { text: "Which line?" }, day);
+  const at = (day: number, ...more: CaseEvent[]) => reduce(WD, logAt(day, raise("c_a"), ask(1), ...more));
+  const back = (day: number, actor = "system:clock") => ev("case.unanswered", actor, "c_a", {}, day);
+
+  it("nothing for two working days, then one reminder for the raiser", () => {
+    expect(dueNow(at(3), 3)).toEqual([]);
+    expect(dueNow(at(4), 4)).toEqual([{ kind: "question", target: "c_a", dueDay: 4, idemKey: "clk:question:c_a:1" }]);
+    expect(dueNow(at(5, fact("c_a", { kind: "question", dueDay: 4 }, 4)), 5)).toEqual([]);
+  });
+
+  it("after five working days the case goes back to the desk, also when the reminder never ran", () => {
+    expect(dueNow(at(6), 6)).toEqual([{ kind: "unanswered", target: "c_a", dueDay: 6, idemKey: "clk:unanswered:c_a:1" }]);
+    expect(dueNow(at(9, fact("c_a", { kind: "question", dueDay: 4 }, 4)), 9).map((d) => d.kind)).toEqual(["unanswered"]);
+  });
+
+  it("the clock's return opens the case again, keeps the question and lets the answer date run", () => {
+    const c = find(at(6, back(6)).cases, "c_a");
+    expect(c.status).toBe("open");
+    expect(c.question).toMatchObject({ text: "Which line?", answer: null, unanswered: 6 });
+    expect([c.pausedDays, c.pausedSince]).toEqual([5, null]);
+    expect(c.dueDay).toBe(PROMISE_DAYS + 5);
+    expect(dueNow(at(6, back(6)), 6)).toEqual([]);
+  });
+
+  it("only the clock may end a question without an answer", () => {
+    const c = find(at(6, back(6, "T. Vogel")).cases, "c_a");
+    expect([c.status, c.question?.unanswered]).toEqual(["asked", null]);
+  });
+
+  it("an answer in time stops both, a second question starts its own count, and the demo clock does nothing", () => {
+    const answered = ev("case.answered", "L. Brandt", "c_a", { text: "Line 3" }, 2);
+    expect(dueNow(at(9, answered), 9).some((d) => d.kind === "question" || d.kind === "unanswered")).toBe(false);
+    const again = ev("case.asked", "T. Vogel", "c_a", { text: "And which shift?" }, 7);
+    expect(dueNow(at(10, back(6), again), 10)).toEqual([{ kind: "question", target: "c_a", dueDay: 10, idemKey: "clk:question:c_a:7" }]);
+    expect(dueNow(reduce({ ...BASE, clock: DEMO_CLOCK }, logAt(9, raise("c_a"), ask(1))), 9)).toEqual([]);
   });
 });
