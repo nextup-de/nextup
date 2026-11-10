@@ -22,7 +22,7 @@ import { stripTags } from "@/features/assist/check";
 import { hasDatabase } from "@/lib/db/client";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
 import { loadAiSettings } from "@/lib/db/ai";
-import { loadAiBudget } from "@/lib/db/ai-usage";
+import { loadAiBudget, recordAiCall } from "@/lib/db/ai-usage";
 import { loadAssistSettings, purgeAssistTurns, recordTurns, type AssistSettings } from "@/lib/db/assist";
 import { searchDocumentsFor } from "@/server/assist-search";
 import { clientKey, throttle } from "@/server/throttle";
@@ -131,6 +131,9 @@ export async function POST(request: Request, { params }: Ctx) {
                   latencyMs: Date.now() - started, tokensIn: out.tokensIn, tokensOut: out.tokensOut,
                 },
               ]);
+          // The same answer as a call without person or text: retention and pseudonymising delete the turn, the month's
+          // budget must still count it. Stamped with the start, so it lies before its turn (lib/db/ai-usage.ts aiUsage).
+          if (!out.blocked) recordAiCall(viewer.companyId, { purpose: "assist", model: out.model, tokensIn: out.tokensIn, tokensOut: out.tokensOut, latencyMs: Date.now() - started, at: new Date(started) });
         }
         send("done", out.blocked
           ? { turnId, blocked: true, reason: out.reason, text: "", sources: [], unsourced: true, retentionDays }
