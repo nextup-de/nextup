@@ -17,8 +17,8 @@ exist. Each item below is one small PR.
 | # | What | Decision | Charts | Status |
 |---|---|---|---|---|
 | 1 | The raiser is told about a question, a pass and a no; the desk is told about the answer; a yes without a project tells the raiser too | Q4.1 | P4 | built (#640) |
-| 2 | An unanswered question: a reminder to the raiser after 3 working days, back on the desk as open after 5, marked "no answer" | Q4.3 | P4 | built |
-| 3 | A case without a route goes to a triage seat with a deadline; a raise with no fitting desk goes to a fallback desk | Q2.1, Q1.9 | P2, P1 | open |
+| 2 | An unanswered question: a reminder to the raiser after 3 working days, back on the desk as open after 5, marked "no answer" | Q4.3 | P4 | built (#641) |
+| 3 | A case without a route goes to a triage seat with a deadline; a raise with no fitting desk goes to a fallback desk | Q2.1, Q1.9 | P2, P1 | built, without the setting |
 | 4 | A raise onto a vacant desk is handed to the route's deputy seat at once, on the web and on the floor | Q1.10 | P1 | open |
 | 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | open |
 | 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | open |
@@ -58,6 +58,19 @@ the question with `unanswered` set. The desk and who asked are told that they ca
 raiser that the idea goes on. The desk's inbox shows "No answer from {name}", the raiser's row and the timeline say the
 same. The numbers 3 and 5 are constants in `features/clock/due.ts`; they become company rules when Settings → Rules is
 next touched. The raiser can no longer answer the returned question, only comment.
+
+## Item 3: a raise no desk owns
+
+Today such a raise is stored with no seat: it is in nobody's inbox, nobody is told, and the clock skips it. Now the
+server puts it on the **fallback desk** when it stamps the raise: the occupied seat at the head of the org chart, the
+top role with the most roles under it. Everything else then works as for any case: the desk's holders get the raise
+notice, it shows in their inbox, they pass it on or answer it, and the raiser's answer date runs from the raise. The
+clock reminds the desk after one working day while it has not moved (`reminder.triage`) and gives the case its deadline
+fact and the second level like any other.
+
+Decided and not built here: the decisions name a role chosen in Settings (the review role once the review exists, else a
+"triage role"). There is no such setting yet, so the head of the org chart stands in. A company without an org chart
+has no fallback desk. Cases raised without a route before this release keep sitting on no desk; a manager can pass them.
 
 ## Docs this plan changes
 

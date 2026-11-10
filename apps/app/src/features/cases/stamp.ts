@@ -1,18 +1,43 @@
 // What the server decides about a raise, whatever the client sent (IDN/D13). Pure: the seed or the
 // org in, the payload out.
 import { HANDLE_PREFIX } from "@/features/auth/handle";
-import type { Seed } from "@/features/demo/types";
+import type { SeatRow } from "@/features/auth/identity";
+import type { Seed, SeedRole } from "@/features/demo/types";
 import { MIN_GROUP } from "@/features/metrics/types";
 import type { EventPayload } from "./events";
 
 /**
- * case.raised: assigneeRoleHolderId is the owner seat of the route the payload names, or null.
- * Whatever the client sent there is dropped. Every other type passes unchanged.
+ * The desk for a raise that no route owns (decisions Q2.1 and Q1.9): the head of the org chart, which passes it
+ * on or answers it. That is the occupied seat of the top role with the most roles under it, so a stray role
+ * without a boss is not taken for the head; ties go to the seat listed first. null when the company has no
+ * org chart or nobody sits at its top - the raise then lands on no desk, as before.
  */
-export function stampEvent(type: string, payload: EventPayload, seed: Pick<Seed, "routes">): EventPayload {
+export function fallbackSeat(seed: { seats?: readonly SeatRow[]; roles?: readonly SeedRole[] }): SeatRow | null {
+  const roles = seed.roles ?? [];
+  const known = new Set(roles.map((r) => r.id));
+  const under = (id: string, seen: Set<string>): number =>
+    roles.filter((r) => r.reportsToId === id && !seen.has(r.id)).reduce((n, r) => n + 1 + under(r.id, seen.add(r.id)), 0);
+  const seats = [...(seed.seats ?? [])].sort((a, b) => a.sort - b.sort);
+  const heads = roles
+    .filter((r) => r.reportsToId === null || !known.has(r.reportsToId))
+    .flatMap((r) => {
+      const seat = seats.find((s) => s.roleId === r.id && s.userId !== null);
+      return seat ? [{ seat, below: under(r.id, new Set([r.id])) }] : [];
+    });
+  return heads.sort((a, b) => b.below - a.below || a.seat.sort - b.seat.sort)[0]?.seat ?? null;
+}
+
+/**
+ * case.raised: assigneeRoleHolderId is the owner seat of the route the payload names. A raise without a route,
+ * or onto a route without an owner seat, goes to the fallback desk and carries that seat's label. null only
+ * when there is no fallback either. Whatever the client sent there is dropped. Every other type passes unchanged.
+ */
+export function stampEvent(type: string, payload: EventPayload, seed: Pick<Seed, "routes"> & { seats?: readonly SeatRow[]; roles?: readonly SeedRole[] }): EventPayload {
   if (type !== "case.raised") return payload;
-  const route = seed.routes.find((r) => r.id === payload.routeId);
-  return { ...payload, assigneeRoleHolderId: route?.ownerSeatId ?? null };
+  const owner = seed.routes.find((r) => r.id === payload.routeId)?.ownerSeatId ?? null;
+  if (owner !== null) return { ...payload, assigneeRoleHolderId: owner };
+  const fallback = fallbackSeat(seed);
+  return fallback ? { ...payload, assignee: fallback.label, assigneeRoleHolderId: fallback.id } : { ...payload, assigneeRoleHolderId: null };
 }
 
 // ── The department on an anonymous raise ─────────────────────────────────────────────────────────

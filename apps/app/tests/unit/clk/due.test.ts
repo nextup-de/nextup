@@ -238,3 +238,28 @@ describe("CLK an unanswered question (decision Q4.3)", () => {
     expect(dueNow(reduce({ ...BASE, clock: DEMO_CLOCK }, logAt(9, raise("c_a"), ask(1))), 9)).toEqual([]);
   });
 });
+
+describe("CLK a raise without a route (decision Q2.1)", () => {
+  const head: SeatRow = { id: "seat_head", roleId: "role_head", label: "K. Head", userId: "u_kh", sort: 2 };
+  const SEED: ReduceSeed = { ...WD, seats: [...seats, head] };
+  const noRoute = (seatId: string | null, day = 0) => ev("case.raised", "L. Brandt", "c_n", { kind: "idea", title: "No desk", routeId: null, assignee: "K. Head", assigneeRoleHolderId: seatId }, day);
+  const at = (day: number, ...events: CaseEvent[]) => dueNow(reduce(SEED, logAt(day, ...events)), day, () => null);
+
+  it("the fallback desk is reminded to pass it on after one working day, once", () => {
+    expect(at(0, noRoute("seat_head"))).toEqual([]);
+    expect(at(1, noRoute("seat_head"))).toEqual([{ kind: "triage", target: "c_n", dueDay: 1, idemKey: "clk:triage:c_n:1" }]);
+    expect(at(2, noRoute("seat_head"), fact("c_n", { kind: "triage", dueDay: 1 }, 1))).toEqual([]);
+  });
+
+  it("no reminder once it is passed on, and none for a case on no desk", () => {
+    const passed = ev("case.handed", "K. Head", "c_n", { to: "T. Vogel", toRoleHolderId: "seat_tv", why: "Their line" }, 0);
+    expect(at(1, noRoute("seat_head"), passed)).toEqual([]);
+    expect(at(PROMISE_DAYS + 3, noRoute(null))).toEqual([]);
+  });
+
+  it("it has the answer date of any case: a deadline fact for its desk, with nobody to hand it to", () => {
+    const late = PROMISE_DAYS + 1;
+    const dues = at(late, noRoute("seat_head"), fact("c_n", { kind: "triage", dueDay: 1 }, 1));
+    expect(dues).toEqual([{ kind: "deadline", target: "c_n", dueDay: PROMISE_DAYS, toRoleHolderId: null, idemKey: `clk:deadline:c_n:${PROMISE_DAYS}` }]);
+  });
+});

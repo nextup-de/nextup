@@ -16,6 +16,13 @@ reducer accepts that event from the clock only; it opens the case, adds the paus
 `unanswered` set to the day. Idempotency keys: `clk:question:<case>:<asked day>` and `clk:unanswered:<case>:<asked day>`,
 so a second question on the same case counts again from its own day.
 
+## A raise without a route
+
+A case with no route used to be skipped by `dueNow`. It now gets the deadline fact of any case once it sits on a desk
+(its hand-over seat is nobody, because a route names the deputy) and, after `escalation_days`, the second level to the
+seat above its desk. While it still sits on the fallback desk, one working day after the raise `dueNow` yields a fact of
+kind `triage` (`clk:triage:<case>:<day>`), the reminder to pass it on. A case on no desk at all still yields nothing.
+
 ## Working-day numbers and the epoch
 
 `workdayOf(date, cal)` counts the working days of the calendar in (2025-01-01, d], where d is the Europe/Berlin date of `date`. A weekend or holiday has the number of the working day before it. `dateOfWorkday(n, cal)` is the inverse (n >= 1). Pages show day n as that date, "Today" for `log.day`, "Yesterday" for `log.day - 1`.

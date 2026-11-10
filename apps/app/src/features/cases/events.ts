@@ -68,7 +68,7 @@ export type RouteProposal = {
 
 // Every field an event may carry. Which ones apply is documented per type above.
 export type EventPayload = {
-  title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind | "deadline" | "checkin" | "start" | "measure" | "escalation" | "question"; reason?: string; upside?: string;
+  title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind | "deadline" | "checkin" | "start" | "measure" | "escalation" | "question" | "triage"; reason?: string; upside?: string;
   answer?: "yes" | "no"; note?: string;
   to?: string; why?: string;
   text?: string;

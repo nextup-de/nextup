@@ -62,7 +62,7 @@ const SWITCHABLE = new Set(Object.values(NOTIFY_GROUPS).flat());
  */
 const FOLLOWS: Record<string, string> = {
   "loop.case.asked": "loop.case.decided", "loop.case.answered": "loop.case.decided", "loop.case.handed": "loop.case.decided",
-  "loop.case.unanswered": "loop.case.decided", "reminder.question": "reminder.deadline",
+  "loop.case.unanswered": "loop.case.decided", "reminder.question": "reminder.deadline", "reminder.triage": "reminder.deadline",
 };
 export const followsTemplate = (template: string): string | null => FOLLOWS[template] ?? null;
 

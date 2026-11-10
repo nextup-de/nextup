@@ -3,7 +3,7 @@
 import { createT, type Locale } from "@/i18n";
 import { formatDate } from "@/i18n/format";
 
-export const REMINDER_KINDS = ["deadline", "checkin", "start", "measure", "escalation", "question"] as const;
+export const REMINDER_KINDS = ["deadline", "checkin", "start", "measure", "escalation", "question", "triage"] as const;
 export type ReminderKind = (typeof REMINDER_KINDS)[number];
 
 export type ReminderTemplate = `reminder.${ReminderKind}`;
@@ -58,6 +58,8 @@ export function renderTemplate(template: NoticeTemplate, locale: Locale, input: 
       return compose(t("mail.reminderStartSubject", { title }), t("mail.reminderStartIntro", { when }), t("mail.reminderOpenProject", { url }));
     case "reminder.measure":
       return compose(t("mail.reminderMeasureSubject", { title }), t("mail.reminderMeasureIntro", { days }), t("mail.reminderOpenProject", { url }));
+    case "reminder.triage":
+      return compose(t("mail.reminderTriageSubject", { title }), t("mail.reminderTriageIntro", { when }), t("mail.reminderOpenCase", { url }));
     case "reminder.question":
       return compose(t("mail.reminderQuestionSubject", { title }), t("mail.reminderQuestionIntro", { days }), t("mail.reminderQuestionOpen", { url }));
     case "reminder.escalation": {

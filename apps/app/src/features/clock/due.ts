@@ -7,7 +7,10 @@ import type { CaseEvent } from "@/features/cases/events";
 import { byClock } from "./actor";
 import type { Route } from "@/features/demo/types";
 
-export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation" | "question" | "unanswered";
+export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation" | "question" | "unanswered" | "triage";
+
+/** A raise no route owns sits on the fallback desk (features/cases/stamp.ts): after this many working days it is reminded to pass it on (decision Q2.1). */
+export const TRIAGE_REMIND_DAYS = 1;
 
 /** A question the raiser has not answered: a reminder after this many working days ... */
 export const QUESTION_REMIND_DAYS = 3;
@@ -71,7 +74,8 @@ export function dueNow(state: State, today: number, above: SeatAbove = () => nul
   const handovers: Due[] = []; // listed after every fact
 
   for (const c of state.cases) {
-    if (!c.open || c.dueDay >= today || c.route === null) continue;
+    // A case without a route has a deadline like any other once it sits on a desk; on no desk there is nobody to tell.
+    if (!c.open || c.dueDay >= today || (c.route === null && c.assigneeSeatId === null)) continue;
     const talk = c.status === "discussion" ? c.discussion : null;
     if (talk && !talk.ready) {
       if (!hasFact(c.history, "checkin", c.dueDay)) out.push({ kind: "checkin", target: c.id, dueDay: c.dueDay, idemKey: idemKeyOf("checkin", c.id, c.dueDay) });
@@ -86,8 +90,16 @@ export function dueNow(state: State, today: number, above: SeatAbove = () => nul
       else if (up) (up.kind === "handover" ? handovers : out).push(up);
       continue;
     }
-    const atOwner = c.assigneeRoleId !== null && c.assigneeRoleId === (c.route.ownerRoleId ?? null);
+    const atOwner = c.assigneeRoleId !== null && c.assigneeRoleId === (c.route?.ownerRoleId ?? null);
     out.push({ kind: "deadline", target: c.id, dueDay: c.dueDay, toRoleHolderId: targetSeat(state, c.route, atOwner), idemKey: idemKeyOf("deadline", c.id, c.dueDay) });
+  }
+
+  // A raise without a route waits on the fallback desk to be passed on: one reminder to that desk, while it
+  // has neither a route (a manager's case.override gives it one) nor a hand-over.
+  for (const c of state.cases) {
+    if (c.status !== "open" || c.route !== null || c.assigneeSeatId === null || c.handed.length > 0) continue;
+    const due = c.raisedDay + TRIAGE_REMIND_DAYS;
+    if (today >= due && !hasFact(c.history, "triage", due)) out.push({ kind: "triage", target: c.id, dueDay: due, idemKey: idemKeyOf("triage", c.id, due) });
   }
 
   // A question nobody answers must not pause a case for ever: one reminder to the raiser, then the case goes
