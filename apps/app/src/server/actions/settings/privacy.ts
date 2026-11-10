@@ -23,7 +23,7 @@ export type PrivacyPageData = {
   dpaSignedAt: string | null;
   reportScreenshots: boolean;
   exports: ExportListItem[];
-  /** Display names for the requester of each export, by user id. */
+  /** Display names for the requester of each export, whoever marked one as delivered, and the admin, by user id. */
   names: Record<string, string>;
 };
 
@@ -41,7 +41,7 @@ export async function loadPrivacyPage(slug: string): Promise<PrivacyPageData | n
     listExportsAction(slug),
   ]);
   const list = exports ?? [];
-  const ids = [...new Set(list.map((e) => e.requestedByUserId))];
+  const ids = [...new Set([admin.userId, ...list.flatMap((e) => [e.requestedByUserId, e.delivered?.byUserId ?? admin.userId])])];
   const users = ids.length ? await getDb().user.findMany({ where: { companyId, id: { in: ids } }, select: { id: true, name: true } }) : [];
   return {
     rules: retention.rules,

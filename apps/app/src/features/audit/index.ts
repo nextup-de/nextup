@@ -54,6 +54,7 @@ export const AUDIT_ACTIONS = [
   "audit.access.support_extended",
   "audit.privacy.exported",
   "audit.privacy.downloaded",
+  "audit.privacy.delivered",
   "audit.privacy.pseudonymised",
   "audit.privacy.retention",
   "audit.privacy.retention_run",

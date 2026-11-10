@@ -11,10 +11,11 @@ vi.mock("@/lib/db/audit", async (orig) => {
   return { ...m, appendAudit: ((...a: Parameters<typeof m.appendAudit>) => (flags.failAudit ? Promise.reject(new Error("down")) : m.appendAudit(...a))) as typeof m.appendAudit };
 });
 vi.mock("@/features/auth/session", () => ({ getViewerFor: vi.fn(async (slug: string) => (viewer && viewer.companySlug === slug ? viewer : null)) }));
+vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
 import { getDb } from "@/lib/db/client";
 import { exportFile, listExports } from "@/lib/db/privacy-export";
-import { requestExport } from "@/server/actions/privacy-export";
+import { listExportsAction, markExportDelivered, requestExport } from "@/server/actions/privacy-export";
 import { GET } from "@/app/api/[company]/exports/[id]/route";
 
 const db = getDb();
@@ -199,6 +200,87 @@ describe("GDP export", () => {
       flags.failAudit = false;
       err.mockRestore();
     }
+  });
+
+  it("a company admin marks a leaver's downloaded admin copy as delivered, once, with the channel; never a NextUp download for the leaver", async () => {
+    viewer = as(co.a, co.a.manager, "manager");
+    const r = await requestExport(A, { kind: "person", subjectUserId: co.a.leaver, deliverTo: "admin", adminOnlyReason: "Request by mail" });
+    if (!r.ok) throw new Error("export failed");
+    const item = async () => (await listExportsAction(A))!.find((e) => e.id === r.id)!;
+
+    // not before the admin has the file
+    expect(await item()).toMatchObject({ delivered: null, markable: false });
+    expect((await markExportDelivered(A, r.id, "by HR")).ok).toBe(false);
+    expect(await auditOf(co.a.id, "audit.privacy.delivered")).toHaveLength(0);
+    expect((await req(co.a, r.id)).status).toBe(200);
+    expect((await item()).markable).toBe(true);
+
+    // a member, another company's admin and an id of another company are refused
+    viewer = as(co.a, co.a.member, "member");
+    expect((await markExportDelivered(A, r.id, "x")).ok).toBe(false);
+    viewer = as(co.b, co.b.manager, "manager");
+    expect((await markExportDelivered(B, r.id, "x")).ok).toBe(false);
+    expect((await markExportDelivered(A, r.id, "x")).ok).toBe(false);
+    // the leaver (were they ever signed in) gets nothing from NextUp
+    viewer = as(co.a, co.a.leaver, "member");
+    expect((await req(co.a, r.id)).status).toBe(404);
+    expect(await auditOf(co.a.id, "audit.privacy.delivered")).toHaveLength(0);
+
+    // any company admin may mark it, not only the requester
+    viewer = as(co.a, co.a.manager2, "manager");
+    expect(await markExportDelivered(A, r.id, "  by HR,\n 12 Nov ")).toEqual({ ok: true });
+    const row = await db.dataExport.findUniqueOrThrow({ where: { id: r.id } });
+    expect(row).toMatchObject({ deliveredByUserId: co.a.manager2, deliveryNote: "by HR, 12 Nov" });
+    expect(row.deliveredAt).toBeInstanceOf(Date);
+    const [audit] = await auditOf(co.a.id, "audit.privacy.delivered");
+    expect(audit).toMatchObject({ actorKind: "admin", actorUserId: co.a.manager2, targetKind: "user", targetId: co.a.leaver, source: "settings" });
+    expect(audit.changes).toMatchObject({ exportId: { before: null, after: r.id }, note: { before: null, after: "by HR, 12 Nov" }, deliveredAt: { after: row.deliveredAt!.toISOString() } });
+    expect(await item()).toMatchObject({ markable: false, delivered: { at: row.deliveredAt!.toISOString(), byUserId: co.a.manager2, note: "by HR, 12 Nov" } });
+
+    // once only, also in a race
+    expect((await markExportDelivered(A, r.id, "again")).ok).toBe(false);
+    viewer = as(co.a, co.a.manager, "manager");
+    expect((await markExportDelivered(A, r.id)).ok).toBe(false);
+    expect(await auditOf(co.a.id, "audit.privacy.delivered")).toHaveLength(1);
+    expect((await db.dataExport.findUniqueOrThrow({ where: { id: r.id } })).deliveryNote).toBe("by HR, 12 Nov");
+  });
+
+  it("marks two at once only once, needs no note, and refuses a copy NextUp sent or a company export", async () => {
+    viewer = as(co.a, co.a.manager, "manager");
+    const r = await requestExport(A, { kind: "person", subjectUserId: co.a.member, deliverTo: "admin" });
+    const sent = await requestExport(A, { kind: "person", subjectUserId: co.a.member, deliverTo: "person" });
+    const whole = await requestExport(A, { kind: "company", deliverTo: "admin" });
+    if (!r.ok || !sent.ok || !whole.ok) throw new Error("export failed");
+    expect((await req(co.a, r.id)).status).toBe(200);
+    expect((await req(co.a, whole.id)).status).toBe(200);
+    viewer = as(co.a, co.a.member, "member");
+    expect((await req(co.a, sent.id)).status).toBe(200);
+    viewer = as(co.a, co.a.manager, "manager");
+    expect((await markExportDelivered(A, sent.id)).ok).toBe(false);
+    expect((await markExportDelivered(A, whole.id)).ok).toBe(false);
+
+    const both = await Promise.all([markExportDelivered(A, r.id), markExportDelivered(A, r.id)]);
+    expect(both.filter((x) => x.ok)).toHaveLength(1);
+    const marked = await auditOf(co.a.id, "audit.privacy.delivered");
+    expect(marked.filter((a) => (a.changes as Record<string, { after: unknown }>).exportId.after === r.id)).toHaveLength(1);
+    expect(marked.find((a) => (a.changes as Record<string, { after: unknown }>).exportId.after === r.id)!.changes).not.toHaveProperty("note");
+    expect((await db.dataExport.findUniqueOrThrow({ where: { id: r.id } })).deliveryNote).toBeNull();
+  });
+
+  it("keeps the export unmarked when the audit row cannot be written", async () => {
+    viewer = as(co.a, co.a.manager, "manager");
+    const r = await requestExport(A, { kind: "person", subjectUserId: co.a.leaver, deliverTo: "admin", adminOnlyReason: "Request by mail" });
+    if (!r.ok) throw new Error("export failed");
+    expect((await req(co.a, r.id)).status).toBe(200);
+    flags.failAudit = true;
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      expect((await markExportDelivered(A, r.id, "by HR")).ok).toBe(false);
+    } finally {
+      flags.failAudit = false;
+      err.mockRestore();
+    }
+    expect((await db.dataExport.findUniqueOrThrow({ where: { id: r.id } })).deliveredAt).toBeNull();
   });
 
   it("keeps no ready export when the audit row cannot be written", async () => {
