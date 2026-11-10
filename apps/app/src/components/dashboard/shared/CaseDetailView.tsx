@@ -28,7 +28,7 @@ import { loadShots } from "@/lib/shots";
 import styles from "./CaseDetailView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
-const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped" } as const satisfies Record<string, MessageKey>;
+const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped", withdrawn: "dashboard.statusWithdrawn" } as const satisfies Record<string, MessageKey>;
 
 // The status and reason chips in soft tints: a case that waits is amber, a result is green, the rest stays grey.
 const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", ink: "green", ok: "green", grey: "grey", soft: "grey", ghost: "grey", none: "grey", purple: "grey" };
@@ -49,6 +49,7 @@ function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined): string {
     case "case.asked": return t("dashboard.evAsked", { actor, text: p.text || t("dashboard.evOneQuestion") });
     case "case.answered": return t("dashboard.evAnswered", { actor, text: p.text ?? "" });
     case "case.unanswered": return t("dashboard.evUnanswered");
+    case "case.withdrawn": return p.note ? t("dashboard.evWithdrawnWhy", { actor, why: p.note }) : t("dashboard.evWithdrawn", { actor });
     case "case.building": return t("dashboard.evBuilding", { actor }) + (p.expected ? " " + t("dashboard.evExpected", { x: p.expected }) : "") + (p.days ? t("dashboard.evDaysSuffix", { n: p.days }) : "");
     case "case.shipped": return t("dashboard.evShipped", { actor, outcome: p.outcome ?? "" }) + (p.outcomeNote ? " " + t("dashboard.evParen", { note: p.outcomeNote }) : "");
     case "case.override": return t("dashboard.evOverride", { actor });
@@ -64,6 +65,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const [note, setNote] = useState("");
   const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
   const [asking, setAsking] = useState(false); // the why field is open
+  const [withdrawing, setWithdrawing] = useState(false); // the raiser's "Withdraw" line is open (decision Q1.14)
+  const [withdrawWhy, setWithdrawWhy] = useState("");
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
   if (!ready) return <PageSkeleton kind="detail" delay />;
   const c = S.cases.find((x) => x.id === caseId);
@@ -129,7 +132,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     <div className={styles.split}>
       <div className={styles.stack}>
       <SectionCard name="case">
-        {seesRouting(c, me, role) && <AnswerPromise c={c} />}
+        {/* A withdrawn idea promises no answer any more (decision Q1.14). */}
+        {seesRouting(c, me, role) && !c.withdrawn && <AnswerPromise c={c} />}
         <div className={styles.meta}>
           <span className={styles.chip} data-tone={CHIP_TONE[statusTone(translate("en", STATUS_LABEL[c.status]))]}>{t(STATUS_LABEL[c.status])}</span>
           <span className={styles.chip} data-tone={CHIP_TONE[reasonTone(c.reason)]}>{c.reason}</span>
@@ -194,8 +198,24 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             <button type="button" className={styles.primary} aria-expanded={asking} onClick={() => setAsking((v) => !v)}>{t("dashboard.detailReevaluate")}</button>
           )}
           {mine && c.status === "asked" && <button type="button" className={styles.primary} onClick={() => openSheet("reply", c.id)}>{t("dashboard.detailAnswerQuestion")}</button>}
+          {/* Decision Q1.14: the raiser takes the idea back while nobody has decided it. */}
+          {mine && !c.decided && (c.open || c.status === "asked") && !withdrawing && (
+            <button type="button" className={styles.soft} data-testid="case-withdraw" onClick={() => setWithdrawing(true)}>{t("dashboard.detailWithdraw")}</button>
+          )}
           {!c.open && <Link href={href("/raise")} className={styles.soft}>{t("dashboard.detailFollowUp")}</Link>}
         </div>
+        {withdrawing && mine && !c.decided && (
+          <div className={styles.whyRow} role="group" aria-label={t("dashboard.detailWithdraw")}>
+            <input className={styles.note} value={withdrawWhy} onChange={(e) => setWithdrawWhy(e.target.value)} maxLength={500} autoFocus
+              aria-label={t("dashboard.detailWithdrawWhy")} placeholder={t("dashboard.detailWithdrawWhy")}
+              onKeyDown={(e) => { if (e.key === "Escape") setWithdrawing(false); }} />
+            <button type="button" className={styles.primary} data-testid="case-withdraw-confirm"
+              onClick={() => { act.withdraw(c.id, withdrawWhy.trim()); setWithdrawing(false); setWithdrawWhy(""); showToast(t("dashboard.detailWithdrawDone")); }}>
+              {t("dashboard.detailWithdrawConfirm")}
+            </button>
+            <button type="button" className={styles.soft} onClick={() => setWithdrawing(false)}>{t("common.cancel")}</button>
+          </div>
+        )}
         {asking && c.open && (
           <div className={styles.whyRow}>
             <input className={styles.note} value={why} onChange={(e) => setWhy(e.target.value)} autoFocus aria-label={lead ? t("dashboard.detailWhyAffects") : t("dashboard.detailWhatIsNew")}

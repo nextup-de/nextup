@@ -57,6 +57,8 @@ export type Act = {
   hand: (id: string, seatId: string, why?: string) => void; // the seat id; its label rides along as `to` (IDN/D5, D13)
   ask: (id: string, text: string) => void;
   answer: (id: string, text: string) => void;
+  /** The raiser takes back an idea nobody decided yet (decision Q1.14); `note` is the optional line why. */
+  withdraw: (id: string, note: string) => void;
   override: (id: string, proposed: string | null, chosen: string) => void;
   cosign: (ideaId: string) => boolean; // true when the co-sign was added, false when withdrawn
   affect: (caseId: string, why?: string) => boolean; // "this affects me too" (+ why, from a lead) - true when added, false when withdrawn
@@ -454,6 +456,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     hand: (id, seatId, why) => emit("case.handed", id, handPayload(seed.seats, seatId, why)),
     ask: (id, text) => emit("case.asked", id, { text }),
     answer: (id, text) => emit("case.answered", id, { text }),
+    withdraw: (id, note) => emit("case.withdrawn", id, note ? { note } : {}),
     override: (id, proposed, chosen) => emit("case.override", id, { proposed, chosen }),
     cosign: (ideaId) => {
       const already = actorUserId !== null && (S.ideas.find((x) => x.id === ideaId)?.cosigners.some((x) => x.userId === actorUserId) ?? false);

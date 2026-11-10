@@ -16,6 +16,7 @@ export type CaseEventType =
   | "case.handed" // { to, toRoleHolderId?, why? }
   | "case.asked" // { text }
   | "case.answered" // { text }
+  | "case.withdrawn" // { note? }  the raiser takes back an idea nobody decided yet (decision Q1.14): archived, no decision
   | "case.unanswered" // {}  the raiser did not answer in time: the case is open on the desk again. internal: only the scheduler appends it, as actor system:clock (features/clock/due.ts)
   | "case.building" // { days, expected? }            (seed history)
   | "case.shipped" // { outcome, outcomeNote }        (seed history)

@@ -47,7 +47,7 @@ export type PlanEvent = Pick<CaseEvent, "id" | "ts" | "type" | "actor" | "actorU
 /** The loop events of server/loop-notice.ts. */
 const LOOP_TYPES = new Set([
   "case.discussion", "case.invited", "case.checkin", "case.decided",
-  "case.asked", "case.answered", "case.unanswered", "case.handed",
+  "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
   "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded", "project.stopped",
 ]);
 
