@@ -21,8 +21,8 @@ exist. Each item below is one small PR.
 | 3 | A case without a route goes to a triage seat with a deadline; a raise with no fitting desk goes to a fallback desk | Q2.1, Q1.9 | P2, P1 | built, without the setting (#642) |
 | 4 | A raise onto a vacant desk is handed to the route's deputy seat at once, on the web and on the floor | Q1.10 | P1 | built (#643) |
 | 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | built (#644) |
-| 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | built, without the sponsor |
-| 7 | The event that closes a project sends one summary to team, sponsor, followers and raiser | Q6.20 | P6 | open |
+| 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | built, without the sponsor (#645) |
+| 7 | The event that closes a project sends one summary to team, sponsor, followers and raiser | Q6.20 | P6 | built, to lead, team and raiser |
 | 8 | Stopping a project: lead, managers and sponsor may, with a reason; raiser and team are told | Q6.21 | P6 | open |
 | 9 | The raiser can withdraw an idea that is not decided (`case.withdrawn`) | Q1.14 | P1 | open |
 | 10 | Anonymity is chosen per idea on the last look; the company sets the default | Q1.7 | P1 | open; Marc checks the works-agreement text first |
@@ -107,6 +107,17 @@ too. No new event type: two `clock.due` facts of the new kind `confirm`.
 Decided and not built here: the sponsor as a third confirmer (a project has no sponsor until the project draft of
 chapter 5 exists), and sending a doubtful number back once (Q6.16). The demo has no second person and no scheduler,
 so it shows none of this.
+
+## Item 7: a project that closes without a word
+
+Today a project closes silently, except that the author hears of a reward. "Closed" is derived and stays so; the new
+`closingEvent` names the one event that made it true: the reward, the confirmation of a result that is not better,
+or - where no reward can follow - the last result or "done". With that event one summary goes to the lead, the team
+and who raised the idea: the latest result against the baseline, whether a second person confirmed it, and the
+recognition. `project.measure.confirmed` becomes a loop event for this (`loop.project.measure.confirmed`).
+
+Decided and not built here: the sponsor and followers as recipients (a project has neither yet). A stopped project is
+item 8. A project that is done without a baseline while rewards are on never closes; that is not changed here.
 
 ## Docs this plan changes
 
