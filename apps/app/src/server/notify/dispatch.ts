@@ -70,14 +70,14 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
   const teamsIds = teamsOn ? await teamsUserIds(company.id) : new Set<string>();
 
   const [users, config, subs] = await Promise.all([
-    db.user.findMany({ where: { companyId: company.id }, select: { id: true, name: true, email: true, handle: true } }),
+    db.user.findMany({ where: { companyId: company.id }, select: { id: true, name: true, email: true, handle: true, role: true } }),
     db.companyConfig.findUnique({ where: { companyId: company.id }, select: { notifications: true, n8n: true } }),
     db.webhookSubscription.findMany({ where: { companyId: company.id }, select: { id: true, events: true, on: true } }),
   ]);
   const people: PlanPerson[] = [];
   for (const u of users) {
     const email = u.email.trim() || null;
-    people.push({ id: u.id, email, locale: email ? await localeForEmail(company.id, email) : DEFAULT_LOCALE, name: u.name, handle: u.handle, teams: teamsIds.has(u.id) });
+    people.push({ id: u.id, email, locale: email ? await localeForEmail(company.id, email) : DEFAULT_LOCALE, name: u.name, handle: u.handle, teams: teamsIds.has(u.id), manager: u.role === "manager" });
   }
   const ctx = {
     companyId: company.id,

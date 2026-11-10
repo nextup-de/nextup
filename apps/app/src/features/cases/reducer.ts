@@ -7,6 +7,7 @@
 // Time: `log.day` is the demo clock, 0 = today. Seed cases carry `raisedDay` as a negative
 // offset; age = day - raisedDay. A paused clock (question sent) does not count towards the promise.
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
+import { byClock } from "@/features/clock/actor";
 import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import type { Idea, Problem, Route, SeedCase } from "@/features/demo/types";
@@ -18,7 +19,8 @@ import type { ReducedProject, SeedProject } from "@/features/projects/types";
 export type Decision = { answer: "yes" | "no"; reason: string; note: string; by: string; day: number; projectId?: string | null; lead?: string | null; byUserId?: string | null };
 export type HandOver = { from: string; fromUserId: string | null; to: string; toSeatId: string | null; why: string; day: number };
 export type Answer = { text: string; by: string; byUserId: string | null; day: number };
-export type Question = { text: string; by: string; byUserId: string | null; day: number; answer: Answer | null };
+/** `unanswered`: the day the clock gave the case back to the desk without an answer; null while it waits or once answered. */
+export type Question = { text: string; by: string; byUserId: string | null; day: number; answer: Answer | null; unanswered: number | null };
 export type Building = { day: number; days: number; expected: string; by: string; byUserId: string | null };
 export type Shipped = { day: number; outcome: string; outcomeNote: string; by: string; byUserId: string | null };
 export type Override = { proposed: string | null; chosen: string; day: number; by: string; byUserId: string | null };
@@ -36,19 +38,22 @@ export type Discussion = {
 };
 // v1 is the case as raised; each case.revised adds the next one.
 export type Version = { version: number; day: number; by: string; byUserId?: string | null; title: string; body: string; overall: number | null };
-export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building" | "shipped";
+export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building" | "shipped" | "withdrawn";
+
+/** The raiser took the idea back before anyone decided it (decision Q1.14). */
+export type Withdrawal = { day: number; by: string; byUserId: string | null; note: string };
 
 export type ReducedCase = {
   id: string; seed: boolean; kind: CaseKind; title: string; body: string; from: string; fromDept: string;
   // Ids next to the labels (IDN/D6): who raised it, and the seat and role it sits on. Null when unknown.
   fromUserId: string | null; assigneeSeatId: string | null; assigneeRoleId: string | null;
   routeId: string | null; assignee: string; raisedDay: number; reason: string; upside: string; linkedIdea: string | null;
-  status: CaseStatus; read: number | null; decided: Decision | null; question: Question | null; handed: HandOver[];
+  status: CaseStatus; read: number | null; decided: Decision | null; withdrawn: Withdrawal | null; question: Question | null; handed: HandOver[];
   building: Building | null; shipped: Shipped | null; override: Override | null;
   discussion: Discussion | null; versions: Version[];
   pausedDays: number; pausedSince: number | null; history: CaseEvent[];
   // derived once every event is applied. `open` = still on a desk, waiting for a move: open or in discussion.
-  // `archived` = decided either way; a yes then lives on as `decided.projectId`.
+  // `archived` = decided either way, or withdrawn by the raiser; a yes then lives on as `decided.projectId`.
   route: Route | null; age: number; clock: number; open: boolean; archived: boolean; overdue: boolean; dueDay: number; escalated: Escalation | null;
 };
 
@@ -98,7 +103,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       fromUserId: row.fromUserId ?? null, assigneeSeatId: row.seatId ?? null, assigneeRoleId: roleOfSeat(row.seatId ?? null),
       routeId: row.routeId ?? null, assignee: row.assignee, raisedDay: row.raisedDay ?? 0,
       reason: row.reason ?? "", upside: row.upside ?? "", linkedIdea: row.linkedIdea ?? null,
-      status: "open", read: null, decided: null, question: null, handed: [], building: null, shipped: null,
+      status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [], building: null, shipped: null,
       override: null, discussion: null, versions: [], pausedDays: 0, pausedSince: null, history: [],
       route: null, age: 0, clock: 0, open: true, archived: false, overdue: false, dueDay: 0, escalated: null,
     };
@@ -218,7 +223,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "open") break;
         if (c.read === null) c.read = d;
-        c.question = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d, answer: null };
+        c.question = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d, answer: null, unanswered: null };
         c.status = "asked";
         c.pausedSince = d;
         c.history.push(ev);
@@ -228,6 +233,28 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "asked" || !c.question) break;
         c.question.answer = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d };
+        c.pausedDays += d - (c.pausedSince ?? d);
+        c.pausedSince = null;
+        c.status = "open";
+        c.history.push(ev);
+        break;
+      }
+      case "case.withdrawn": {
+        // Only the raiser, only before a decision (features/cases/permissions.ts); the clock stops with it.
+        const c = cases[target];
+        if (!c || c.fromUserId === null || uid !== c.fromUserId || c.decided || c.withdrawn) break;
+        if (c.status !== "open" && c.status !== "discussion" && c.status !== "asked") break;
+        if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
+        c.withdrawn = { day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 500) };
+        c.status = "withdrawn";
+        c.history.push(ev);
+        break;
+      }
+      case "case.unanswered": {
+        // The clock's own event (as its hand-overs, FX8): nobody else may end a question without an answer.
+        const c = cases[target];
+        if (!c || c.status !== "asked" || !c.question || !byClock(ev)) break;
+        c.question.unanswered = d;
         c.pausedDays += d - (c.pausedSince ?? d);
         c.pausedSince = null;
         c.status = "open";
@@ -316,11 +343,11 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     const route = routeOf(c.routeId);
     c.route = route;
     c.age = day - c.raisedDay;
-    const stopDay = c.decided ? c.decided.day : c.building ? c.building.day : c.shipped ? c.shipped.day : null;
+    const stopDay = c.decided ? c.decided.day : c.withdrawn ? c.withdrawn.day : c.building ? c.building.day : c.shipped ? c.shipped.day : null;
     const paused = c.pausedDays + (c.pausedSince !== null ? day - c.pausedSince : 0);
     c.clock = Math.max(0, (stopDay !== null ? stopDay : day) - c.raisedDay - paused);
     c.open = c.status === "open" || c.status === "discussion";
-    c.archived = c.status === "decided";
+    c.archived = c.status === "decided" || c.status === "withdrawn";
     const talk = c.status === "discussion" ? c.discussion : null;
     if (talk) {
       // In a discussion the next check-in is what is due - or, once it said "decide", the decision.

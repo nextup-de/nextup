@@ -67,6 +67,57 @@ describe("loopMails", () => {
     expect(out[0].text).toContain("measured after 30 days: worse. Changeover: 42 → 45 min");
   });
 
+  it("a question goes to the raiser with its text, never to who asked", () => {
+    const out = mails(ev("case.asked", "T. Vogel", "c_m", { text: "Which line is it?" }));
+    expect(out.map((m) => [m.to, m.subject])).toEqual([["js@acme.test", "A question about your idea: Shorter changeover"]]);
+    expect(out[0].text).toContain("T. Vogel asks before deciding:");
+    expect(out[0].text).toContain("  Which line is it?");
+    expect(out[0].text).toContain("The answer date waits for your reply: https://acme.sellux.ch/cases/c_m");
+  });
+
+  it("the answer goes back to who asked, never to the raiser who wrote it", () => {
+    const asked = ev("case.asked", "T. Vogel", "c_m", { text: "Which line is it?" });
+    const out = mails(ev("case.answered", AUTHOR, "c_m", { text: "Line 3" }, 1), asked);
+    expect(out.map((m) => [m.to, m.subject])).toEqual([["tv@acme.test", "Your question was answered: Shorter changeover"]]);
+    expect(out[0].text).toContain("  Line 3");
+    expect(out[0].text).toContain("The idea is open on the desk again");
+  });
+
+  it("a pass tells the raiser who has it now and why", () => {
+    const out = mails(ev("case.handed", "T. Vogel", "c_m", { to: "H. Sander", why: "Quality owns the form" }));
+    expect(out.map((m) => [m.to, m.subject])).toEqual([["js@acme.test", "Your idea was passed on: Shorter changeover"]]);
+    expect(out[0].text).toContain("T. Vogel passed your idea to H. Sander. The answer date stays.");
+    expect(out[0].text).toContain("Why: Quality owns the form");
+  });
+
+  it("the clock's own hand-over sends nothing here: its reminder tells them", () => {
+    const byClock: CaseEvent = { id: "clk", ts: 0, type: "case.handed", actor: "system:clock", actorUserId: null, target: "c_m", payload: { to: "H. Sander", why: "deadline" }, day: 6 };
+    expect(mails(byClock)).toEqual([]);
+  });
+
+  it("the clock's hand-over off a desk nobody sits at tells the raiser who has it", () => {
+    const off: CaseEvent = { id: "vac", ts: 0, type: "case.handed", actor: "system:clock", actorUserId: null, target: "c_m", payload: { to: "H. Sander", why: "vacant" }, day: 0 };
+    const out = mails(off);
+    expect(out.map((m) => [m.to, m.subject])).toEqual([["js@acme.test", "Your idea was passed on: Shorter changeover"]]);
+    expect(out[0].text).toContain("Nobody holds the desk you raised this to right now, so H. Sander has it. The answer date stays.");
+    expect(out[0].text).not.toContain("system:clock");
+  });
+
+  it("a no tells the raiser the reason in words, with the line the desk wrote", () => {
+    const out = mails(ev("case.decided", "T. Vogel", "c_m", { answer: "no", reason: "no time", note: "Ask again in spring" }));
+    expect(out.map((m) => [m.to, m.subject])).toEqual([["js@acme.test", "Your idea was declined: Shorter changeover"]]);
+    expect(out[0].text).toContain("T. Vogel said no. Reason: No time this quarter - Ask again in spring");
+    expect(out[0].text).toContain("https://acme.sellux.ch/cases/c_m");
+    const bare = mails(ev("case.decided", "T. Vogel", "c_m", { answer: "no" }));
+    expect(bare[0].text).toContain("Reason: none given");
+  });
+
+  it("a yes that opens no project still tells the raiser", () => {
+    const out = mails(ev("case.decided", "T. Vogel", "c_m", { answer: "yes" }));
+    expect(out.map((m) => [m.to, m.subject])).toEqual([["js@acme.test", "Your idea was accepted: Shorter changeover"]]);
+    expect(out[0].text).toContain("T. Vogel said yes.");
+  });
+
   it("other events send nothing", () => {
     expect(mails(ev("case.read", "T. Vogel", "c_m"))).toEqual([]);
   });

@@ -5,5 +5,6 @@ import type { CaseEventType } from "@/features/cases/events";
 
 export const LOOP_MAIL_TYPES: ReadonlySet<CaseEventType> = new Set<CaseEventType>([
   "case.discussion", "case.invited", "case.checkin", "case.decided",
-  "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.rewarded",
+  "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
+  "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded", "project.stopped",
 ]);

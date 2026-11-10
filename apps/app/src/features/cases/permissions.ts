@@ -81,6 +81,15 @@ export function mayAppend(
       return ev.payload.next === "round" && lastRound && !isManager ? no(t, "cases.permLastRound") : OK;
     }
 
+    case ev.type === "case.withdrawn": {
+      // Decision Q1.14: the raiser, while nobody has decided; one optional line why. After a yes only the project stops.
+      if (!kase) return no(t, "cases.permNoCase");
+      if (!isRaiser(kase)) return no(t, "cases.permWithdrawOwner");
+      if (kase.decided || kase.withdrawn || (kase.status !== "open" && kase.status !== "discussion" && kase.status !== "asked")) return no(t, "cases.permIdeaDecided");
+      const note = ev.payload.note;
+      return note === undefined || (typeof note === "string" && note.length <= 500) ? OK : no(t, "cases.permWithdrawNote");
+    }
+
     case ev.type === "case.revised":
       if (!kase) return no(t, "cases.permNoCase");
       if (!isRaiser(kase)) return no(t, "cases.permReviseOwner");
