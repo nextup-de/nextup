@@ -186,6 +186,35 @@ describe("NTF planner", () => {
     ]);
   });
 
+  it("a question goes to the raiser, its answer to every holder of the desk, a pass to the new desk and the raiser", () => {
+    const loop = (events: CaseEvent[]) => plan(events).filter((x) => x.template.startsWith("loop.")).map((x) => [x.template, x.recipientUserId]);
+    const asked = ev("case.asked", "Owner One", "u_o1", "c_a", { text: "Which printer?" });
+    expect(loop([raise(), asked])).toEqual([["loop.case.asked", "u_raiser"]]);
+    const answered = ev("case.answered", "Raiser", "u_raiser", "c_a", { text: "The one in hall 2" });
+    expect(loop([raise(), asked, answered])).toEqual([["loop.case.answered", "u_o1"], ["loop.case.answered", "u_o2"]]);
+    // The deputy without an address gets no loop mail; the one with an address and the raiser do.
+    const passed = ev("case.handed", "Owner One", "u_o1", "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "Their machine" });
+    expect(loop([raise(), passed])).toEqual([["loop.case.handed", "u_dep"], ["loop.case.handed", "u_raiser"]]);
+    // The clock's hand-over is told by its reminder, not twice.
+    const late = ev("case.handed", "system:clock", null, "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "deadline" });
+    expect(loop([raise(), late])).toEqual([]);
+  });
+
+  it("an opt-out made before the new notices existed still covers them, until the person chooses again", () => {
+    const asked = ev("case.asked", "Owner One", "u_o1", "c_a", { text: "Which printer?" });
+    const status = (prefs: PlanCtx["prefs"]) => plan([raise(), asked], { prefs }).filter((x) => x.template === "loop.case.asked").map((x) => [x.status, x.lastError]);
+    expect(status([{ userId: "u_raiser", template: "loop.case.decided", on: false }])).toEqual([["skipped", "opted out"]]);
+    expect(status([{ userId: "u_raiser", template: "loop.case.decided", on: false }, { userId: "u_raiser", template: "loop.case.asked", on: true }])).toEqual([["pending", null]]);
+    expect(status([{ userId: "u_raiser", template: "reminder.checkin", on: false }])).toEqual([["pending", null]]);
+  });
+
+  it("a no gives the raiser a loop row", () => {
+    const no = ev("case.decided", "Owner One", "u_o1", "c_a", { answer: "no", reason: "not now" });
+    const d = plan([raise(), no]).filter((x) => x.template.startsWith("loop."));
+    expect(d.map((x) => [x.template, x.recipientUserId, x.status])).toEqual([["loop.case.decided", "u_raiser", "pending"]]);
+    expect(d[0].subject).toBe("Your idea was declined: Printer broken");
+  });
+
   it("a loop event gives its recipients a loop row keyed by event and user, never the actor", () => {
     const events = [raise(), open()];
     const loop = plan(events).filter((x) => x.template.startsWith("loop."));
