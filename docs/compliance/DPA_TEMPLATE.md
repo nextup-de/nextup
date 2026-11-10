@@ -1,4 +1,4 @@
-Updated 2026-11-04 · Draft for legal review, not legal advice.
+Updated 2026-11-11 · Draft for legal review, not legal advice. Sections 4, 7, 9, 10 and annex 4 changed for plan S: draft for Marc.
 
 # Data processing agreement (Art. 28 GDPR) — template
 
@@ -30,8 +30,10 @@ product, and written requests. It tells the controller if it thinks an instructi
 ## 4. Confidentiality
 
 People at the processor who can reach the data are bound to confidentiality. Access to a customer stack is not
-standing: the processor holds no stack secrets, break-glass is a window the customer's operator opens (`stack/break-glass.sh`),
-and support access is a time-limited grant the customer's admin gives in the product and can end (`TOMS.md`, Access control).
+standing. On the controller's own server the processor holds no stack secrets and break-glass is a window the
+controller's operator opens (`stack/break-glass.sh`). On a server the processor hosts, the processor holds root and the
+stack secrets, and opens break-glass only as annex 4 says. On both, support access is a time-limited grant the
+controller's admin gives in the product and can end (`TOMS.md`, Access control).
 
 ## 5. Security (Art. 32)
 
@@ -49,7 +51,8 @@ a sub-processor in a written contract.
 ## 7. Rights of data subjects
 
 The product lets a company admin export a company or one person as JSON (kept 7 days), pseudonymise a person who
-has left, delete a person or the company, and set retention rules (`docs/PRIVACY.md`). The processor passes on any
+has left, delete a person, and set retention rules (`docs/PRIVACY.md`). No admin deletes the company: at the end the
+processor destroys the whole stack (section 10). The processor passes on any
 request it receives. **Limits:** pseudonymising does not scrub free text an employee wrote or that others wrote
 about them; case events are append-only and keep their ids; copies outside NextUp are not changed.
 
@@ -60,13 +63,19 @@ The processor helps with the controller's duties under Art. 32 to 36 with the do
 
 ## 9. Personal data breach
 
-The processor tells the controller without undue delay after it becomes aware of a breach affecting the controller's
-data, with what it knows. **[Contact and time limit to be agreed.]** Not provided: a 24/7 on-call service.
+The processor tells the controller without undue delay, and at the latest within **72 hours** after it becomes aware
+of a breach affecting the controller's data, with what it knows; it sends what it learns later as it learns it.
+Contact at the controller: **[name, mail, phone]**. Not provided: a 24/7 on-call service.
 
 ## 10. Return and deletion
 
-At the end the controller can export its data; the processor then deletes the company and its stack. Backups made
-before are pruned by the restic retention of the stack and are not erased on the day (`docs/ops/RPO_RTO.md`).
+After the end date the stack stays up for **30 days** for the controller's company admins only, so they can export
+its data; invitations and mails stop on the end date. On day 30 the processor destroys, on one day, the stack with
+its database and volumes, its server, and the backup bucket with every snapshot, and removes its own access to the
+stack (`docs/ops/CONTRACT_END.md`). Backups go with the bucket; none is kept. On the controller's own server the
+controller's IT removes the stack, the server and the bucket and confirms this in writing. Within 5 working days of
+day 30 the processor sends the controller's data protection officer a deletion statement that names each item, its
+date and who deleted it, signed by the processor.
 
 ## 11. Audits
 
@@ -83,6 +92,18 @@ Data stays on the stack's host. A transfer to a third country can arise only thr
 1. Description of processing: sections 1 and 2 and `RECORD_OF_PROCESSING.md`.
 2. Technical and organisational measures: `TOMS.md`.
 3. Sub-processors: `SUBPROCESSORS.md`.
+4. Break-glass on a server the processor hosts (below).
+
+## Annex 4: break-glass on a server the processor hosts
+
+> **Kevin decides; this is the recommendation** (Q8.7, Q10.9). It applies only where the processor hosts the server.
+
+The processor opens a break-glass window into the admin console only:
+
+- for a ticket: a written request from the controller's company admin or IT contact;
+- with the ticket number as the recorded reason, for at most 4 hours;
+- after telling the controller's IT contact before it opens;
+- and it sends the controller's IT contact the log of the window (opened, closed, expired; never the code) afterwards.
 
 | Controller | Processor |
 |---|---|
