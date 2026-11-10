@@ -2,8 +2,24 @@
 // so a class rename never breaks a test, and a changed label does (which is worth knowing).
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 
-/** `test` with one extra rule: any uncaught error in the page fails the test, not only a wrong assertion. */
+/**
+ * A client address of its own for each test (and each retry). The server's rate limits count per address
+ * (server/throttle.ts), and the whole suite runs as one person from one machine: without this, the coach chats of
+ * the tests before use up the next test's 40 turns in 10 minutes and its coach stops answering.
+ */
+function testAddress(id: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619) >>> 0;
+  return `10.${(h >>> 16) & 255}.${(h >>> 8) & 255}.${h & 255}`;
+}
+
+/** `test` with two extra rules: any uncaught error in the page fails the test, and each test has its own address. */
 export const test = base.extend<{ failOnPageError: void }>({
+  // Playwright's `use`, renamed: the React hooks lint reads a call named use() inside "context" as a hook.
+  context: async ({ context }, provide, testInfo) => {
+    await context.setExtraHTTPHeaders({ "x-forwarded-for": testAddress(`${testInfo.testId}:${testInfo.retry}`) });
+    await provide(context);
+  },
   failOnPageError: [
     async ({ page }, use) => {
       const errors: string[] = [];
