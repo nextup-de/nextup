@@ -129,6 +129,14 @@ describe("TMS channel", () => {
     const row = await db.outboxMessage.findFirstOrThrow({ where: { companyId, key: "tms:noconv" } });
     expect(row.status).toBe("failed");
     expect(row.lastError).toContain("no Teams chat");
+    // Decision Q2.11: the same notice is written as one mail to the person's address.
+    expect(row.lastError).toContain("a mail was written instead");
+    const mail = await db.outboxMessage.findFirstOrThrow({ where: { companyId, key: "tms:noconv:mail" } });
+    expect(mail).toMatchObject({ channel: "mail", status: "pending", recipientUserId: other.id, address: other.email, template: "digest", subject: "s", text: "t" });
+    // Retry on Settings -> Notifications fails again and writes no second mail.
+    await db.outboxMessage.updateMany({ where: { id: row.id }, data: { status: "pending", attempt: 0, nextAt: new Date() } });
+    await deliverOnce(later());
+    expect(await db.outboxMessage.count({ where: { companyId, key: { startsWith: "tms:noconv" } } })).toBe(2);
   });
 
   it("a 503 from the fake is retried", async () => {
@@ -141,5 +149,36 @@ describe("TMS channel", () => {
     expect(row.status).toBe("pending");
     expect(row.attempt).toBe(1);
     expect(row.lastError).toContain("503");
+  });
+
+  it("a card Teams keeps refusing is given up after three tries and written as mail", async () => {
+    await db.outboxMessage.create({
+      data: { companyId, channel: "teams", key: "tms:down", recipientUserId: holderId, address: null, template: "digest", locale: "en", subject: "s", text: "t", status: "pending", data: {} },
+    });
+    const rowNow = () => db.outboxMessage.findFirstOrThrow({ where: { companyId, key: "tms:down" } });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      fake.failNext(503);
+      await deliverOnce(new Date(Date.now() + attempt * 3_600_000));
+      expect(await db.outboxMessage.count({ where: { companyId, key: "tms:down:mail" } })).toBe(attempt === 3 ? 1 : 0);
+    }
+    const row = await rowNow();
+    expect(row).toMatchObject({ status: "failed", attempt: 3 });
+    expect(row.lastError).toContain("503");
+    expect(row.lastError).toContain("a mail was written instead");
+  });
+
+  it("a person without an address keeps the whole retry ladder", async () => {
+    const nobody = await db.user.create({ data: { companyId, name: "No Mail", email: "", role: "member" }, select: { id: true } });
+    await saveConversation(companyId, { userId: nobody.id, aadObjectId: "aad-2", tenantId: "tenant-1", conversationId: "conv-2", serviceUrl: fake.serviceUrl });
+    await db.outboxMessage.create({
+      data: { companyId, channel: "teams", key: "tms:nomail", recipientUserId: nobody.id, address: null, template: "digest", locale: "en", subject: "s", text: "t", status: "pending", data: {} },
+    });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      fake.failNext(503);
+      await deliverOnce(new Date(Date.now() + attempt * 3_600_000));
+    }
+    const row = await db.outboxMessage.findFirstOrThrow({ where: { companyId, key: "tms:nomail" } });
+    expect(row).toMatchObject({ status: "pending", attempt: 3 });
+    expect(await db.outboxMessage.count({ where: { companyId, key: "tms:nomail:mail" } })).toBe(0);
   });
 });

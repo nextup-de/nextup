@@ -16,13 +16,15 @@ const DEFAULT_ON = (template: string) => template !== "digest";
 
 export const NO_PREF: Pref = { template: null, all: null };
 
-/** The choices one user made, from the stored rows. */
-export function prefOf(rows: readonly { userId: string; template: string; on: boolean }[], userId: string, template: string): Pref {
+/**
+ * The choices one user made, from the stored rows. `follows`: for a template added after people made their
+ * choices, the older template whose row it uses while it has none of its own, so an opt-out made before the new
+ * notice existed still covers it.
+ */
+export function prefOf(rows: readonly { userId: string; template: string; on: boolean }[], userId: string, template: string, follows: string | null = null): Pref {
   const mine = rows.filter((r) => r.userId === userId);
-  return {
-    template: mine.find((r) => r.template === template)?.on ?? null,
-    all: mine.find((r) => r.template === "*")?.on ?? null,
-  };
+  const row = (name: string | null) => (name === null ? null : mine.find((r) => r.template === name)?.on ?? null);
+  return { template: row(template) ?? row(follows), all: row("*") };
 }
 
 export function gateOf(company: GateCompany, channel: string, template: string, pref: Pref = NO_PREF): Gate {

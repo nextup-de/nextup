@@ -186,6 +186,62 @@ describe("NTF planner", () => {
     ]);
   });
 
+  it("a question goes to the raiser, its answer to every holder of the desk, a pass to the new desk and the raiser", () => {
+    const loop = (events: CaseEvent[]) => plan(events).filter((x) => x.template.startsWith("loop.")).map((x) => [x.template, x.recipientUserId]);
+    const asked = ev("case.asked", "Owner One", "u_o1", "c_a", { text: "Which printer?" });
+    expect(loop([raise(), asked])).toEqual([["loop.case.asked", "u_raiser"]]);
+    const answered = ev("case.answered", "Raiser", "u_raiser", "c_a", { text: "The one in hall 2" });
+    expect(loop([raise(), asked, answered])).toEqual([["loop.case.answered", "u_o1"], ["loop.case.answered", "u_o2"]]);
+    // The deputy without an address gets no loop mail; the one with an address and the raiser do.
+    const passed = ev("case.handed", "Owner One", "u_o1", "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "Their machine" });
+    expect(loop([raise(), passed])).toEqual([["loop.case.handed", "u_dep"], ["loop.case.handed", "u_raiser"]]);
+    // Off a desk nobody sits at, the clock's hand-over has no reminder: the new desk and the raiser get a loop row.
+    const vacant = ev("case.handed", "system:clock", null, "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "vacant" });
+    expect(loop([raise(), vacant])).toEqual([["loop.case.handed", "u_dep"], ["loop.case.handed", "u_raiser"]]);
+    // The clock's hand-over is told by its reminder, not twice.
+    const late = ev("case.handed", "system:clock", null, "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "deadline" });
+    expect(loop([raise(), late])).toEqual([]);
+  });
+
+  it("an opt-out made before the new notices existed still covers them, until the person chooses again", () => {
+    const asked = ev("case.asked", "Owner One", "u_o1", "c_a", { text: "Which printer?" });
+    const status = (prefs: PlanCtx["prefs"]) => plan([raise(), asked], { prefs }).filter((x) => x.template === "loop.case.asked").map((x) => [x.status, x.lastError]);
+    expect(status([{ userId: "u_raiser", template: "loop.case.decided", on: false }])).toEqual([["skipped", "opted out"]]);
+    expect(status([{ userId: "u_raiser", template: "loop.case.decided", on: false }, { userId: "u_raiser", template: "loop.case.asked", on: true }])).toEqual([["pending", null]]);
+    expect(status([{ userId: "u_raiser", template: "reminder.checkin", on: false }])).toEqual([["pending", null]]);
+  });
+
+  it("the reminder for an unanswered question goes to the raiser; the return tells the desk and the raiser", () => {
+    const asked = ev("case.asked", "Owner One", "u_o1", "c_a", { text: "Which printer?" });
+    const f = due("c_a", { kind: "question", dueDay: 3 });
+    const d = plan([raise(), asked, f]);
+    expect(d.map((x) => [x.template, x.recipientUserId, x.key])).toEqual([["reminder.question", "u_raiser", `rem:${f.id}:u_raiser`]]);
+    expect(d[0].subject).toBe("Still waiting for your answer: Printer broken");
+    expect(d[0].text).toContain("in 2 working days");
+    const back = ev("case.unanswered", "system:clock", null, "c_a", {});
+    const rows = plan([raise(), asked, back]).filter((x) => x.template === "loop.case.unanswered");
+    expect(rows.map((x) => [x.recipientUserId, x.subject])).toEqual([
+      ["u_o1", "No answer from the raiser: Printer broken"], ["u_o2", "Keine Antwort auf Ihre Frage: Printer broken"],
+      ["u_raiser", "Your idea goes on without your answer: Printer broken"],
+    ]);
+  });
+
+  it("the reminder for a raise without a route goes to its desk and names the promised answer date", () => {
+    const r = ev("case.raised", "Raiser", "u_raiser", "c_n", { kind: "idea", title: "No desk", routeId: null, assignee: "Head", assigneeRoleHolderId: "s_head" });
+    const f = due("c_n", { kind: "triage", dueDay: 1 });
+    const d = plan([r, f]);
+    expect(d.map((x) => [x.template, x.recipientUserId])).toEqual([["reminder.triage", "u_head"]]);
+    expect(d[0].subject).toBe("No desk owns this yet: No desk");
+    expect(d[0].text).toContain("Pass it to the desk it belongs to");
+  });
+
+  it("a no gives the raiser a loop row", () => {
+    const no = ev("case.decided", "Owner One", "u_o1", "c_a", { answer: "no", reason: "not now" });
+    const d = plan([raise(), no]).filter((x) => x.template.startsWith("loop."));
+    expect(d.map((x) => [x.template, x.recipientUserId, x.status])).toEqual([["loop.case.decided", "u_raiser", "pending"]]);
+    expect(d[0].subject).toBe("Your idea was declined: Printer broken");
+  });
+
   it("a loop event gives its recipients a loop row keyed by event and user, never the actor", () => {
     const events = [raise(), open()];
     const loop = plan(events).filter((x) => x.template.startsWith("loop."));

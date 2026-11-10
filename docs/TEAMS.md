@@ -13,6 +13,8 @@ What Teams does in NextUp, how a company switches it on, and what is not built. 
 - **Raise from Teams.** The message extension (`raise`) opens a form, prefilled from the message when started on one,
   and raises a case with source `teams`, routed like an app raise (same route proposal), as the mapped person.
 - **Fallback.** A person without a Teams chat, or any person while Teams is off for the company, gets mail as before.
+  A card that cannot be delivered (the bot was removed, Teams refuses it, or it still fails on the third try) is
+  written as a mail for the same notice instead; see `docs/NOTIFICATIONS.md`, Delivery and retries.
 
 ## Switching it on for a company
 
