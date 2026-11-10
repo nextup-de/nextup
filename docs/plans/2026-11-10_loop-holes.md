@@ -22,8 +22,8 @@ exist. Each item below is one small PR.
 | 4 | A raise onto a vacant desk is handed to the route's deputy seat at once, on the web and on the floor | Q1.10 | P1 | built (#643) |
 | 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | built (#644) |
 | 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | built, without the sponsor (#645) |
-| 7 | The event that closes a project sends one summary to team, sponsor, followers and raiser | Q6.20 | P6 | built, to lead, team and raiser |
-| 8 | Stopping a project: lead, managers and sponsor may, with a reason; raiser and team are told | Q6.21 | P6 | open |
+| 7 | The event that closes a project sends one summary to team, sponsor, followers and raiser | Q6.20 | P6 | built, to lead, team and raiser (#647) |
+| 8 | Stopping a project: lead, managers and sponsor may, with a reason; raiser and team are told | Q6.21 | P6 | built, without the sponsor |
 | 9 | The raiser can withdraw an idea that is not decided (`case.withdrawn`) | Q1.14 | P1 | open |
 | 10 | Anonymity is chosen per idea on the last look; the company sets the default | Q1.7 | P1 | open; Marc checks the works-agreement text first |
 | 11 | A monthly AI cost cap per company in the gate, with warnings at 70 and 90 % | Q7.3 | P7 | built (#646, its own branch off `main`, not in this stack). Limits named in that PR: a model without a price is not counted, the warning is a banner only (no mail), every purpose stops at 100 % |
@@ -118,6 +118,16 @@ recognition. `project.measure.confirmed` becomes a loop event for this (`loop.pr
 
 Decided and not built here: the sponsor and followers as recipients (a project has neither yet). A stopped project is
 item 8. A project that is done without a baseline while rewards are on never closes; that is not changed here.
+
+## Item 8: a project that stops in silence
+
+Who may stop was already right: the lead or a manager, with a reason, before the reward. What was missing is that
+anyone hears of it. Now `project.stopped` sends the lead, the team and who raised the idea one mail with who stopped
+it, the reason, and that the idea stays in the archive (`loop.project.stopped`). A second stop, or one after the
+reward, changes nothing in the reducer and tells nobody.
+
+Decided and not built here: the sponsor (a project has none yet), and letting the person who stops choose to send
+the idea back to its desk (Q6.22, needs a new event `case.reopened`).
 
 ## Docs this plan changes
 

@@ -48,7 +48,9 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
    deputy's desk, whose holders may confirm from then on. A file import is provenance only and is confirmed the same way; a trusted system source is not available to people.
 8. **Recognition.** Only a confirmed latest result with the verdict *better* makes the reward due, by the company's reward
    rule; a manager records it. Same or worse closes the project without a reward.
-9. **Closed.** Still derived, never an event. The event that closes the project sends one summary to the lead, the team
+9. **Stopped.** The lead or a manager stops a project at any time before its reward, with a reason. The lead, the team
+   and who raised the idea get a mail with who stopped it and why (decision Q6.21); the idea stays in the archive.
+10. **Closed.** Still derived, never an event. The event that closes the project sends one summary to the lead, the team
    and who raised the idea: the latest result against the baseline and the recognition (decision Q6.20,
    `features/projects/close.ts`, `docs/NOTIFICATIONS.md`).
 

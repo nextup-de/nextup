@@ -192,6 +192,19 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
     case "project.handed":
       if (project) send(project.leadUserId, (t) => t("mail.leadSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.handedIntro", { actor: ev.actor }), ...(pl.why ? ["", pl.why] : []), "", projectLink(project)]);
       break;
+    case "project.stopped": {
+      // Decision Q6.21: the lead, the team and who raised the idea hear that it stopped, and why. Only the stop that
+      // took effect: one after the reward, or a second one, changed nothing (features/projects/reduce.ts).
+      const stop = project?.history.find((e) => e.type === "project.stopped");
+      if (!project?.stopped || (ev.id !== undefined && stop?.id !== ev.id)) break;
+      const why = project.stopped.why;
+      for (const who of [project.leadUserId, ...project.memberUserIds, ...project.authorUserIds]) {
+        send(who, (t) => t("mail.stoppedSubject", { label: projectLabel(project), title: project.title }), (t) => [
+          t("mail.stoppedIntro", { actor: ev.actor }), "", `  ${why}`, "", t("mail.stoppedIdea"), "", projectLink(project),
+        ]);
+      }
+      break;
+    }
     case "project.member":
       if (project && pl.on !== false && pl.userId) send(pl.userId, (t) => t("mail.memberSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.memberIntro", { actor: ev.actor }), "", projectLink(project)]);
       break;
