@@ -15,6 +15,11 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
    tagged "Proposed" and the line "Routed by keywords - the AI is off for this company." says where it came from. The reasons
    are facts about the route and the role, never a score or a person's track record. "Choose another desk" lists every
    route-owning role. The send names the role and a date.
+   A raise that no route owns, or whose route has no owner seat, lands on the **fallback desk**: the occupied seat at
+   the head of the org chart (`fallbackSeat`, `features/cases/stamp.ts`), set by the server like every seat of a raise.
+   Its holder passes it on or answers it; a manager can still give it a route (`case.override`). It has the same answer
+   date as any case, and the desk is reminded to pass it on after one working day. Without an org chart it lands on no
+   desk, as before, and only a manager can pick it up.
 2. **Answer promise.** The case page (and "My cases") shows "Answer by {date}" and "With · {role} · {people}"
    (`answerPromise`, `features/cases/promise.ts`). The date counts working days of the company calendar. A yes, a no or a
    question answers; a hand-over does not. A question pauses the answer date until the raiser replies. If no reply

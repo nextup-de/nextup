@@ -144,6 +144,9 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     } else if (kind === "deadline" && kase) {
       users = uniq([...usersOfSeat(ev.payload.toRoleHolderId), ...usersOfSeat(kase.assigneeSeatId)]);
       title = kase.title; link = caseLink(kase.id);
+    } else if (kind === "triage" && kase) {
+      users = usersOfSeat(kase.assigneeSeatId);
+      title = kase.title; link = caseLink(kase.id);
     } else if (kind === "question" && kase) {
       const raiser = kase.fromUserId ?? kase.history.find((h) => h.type === "case.raised")?.actorUserId ?? null;
       users = raiser ? [raiser] : [];
@@ -155,9 +158,11 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
       users = project.leadUserId ? [project.leadUserId] : [];
       title = project.title; link = projectLink(project.id);
     }
+    // The day a reminder names: the day its fact fell due; for triage, the answer date the raiser was promised.
+    const shownDay = kind === "triage" && kase ? kase.dueDay : ev.payload.dueDay;
     for (const userId of users) {
       mailTo(userId, (p) => {
-        const r = renderTemplate(template, p.locale, { name: p.name, title, day: ev.payload.dueDay, dueDate: typeof ev.payload.dueDay === "number" ? ctx.dateOfDay?.(ev.payload.dueDay) ?? null : null, days: kind === "question" ? QUESTION_RETURN_DAYS - QUESTION_REMIND_DAYS : ev.payload.check, link, ...(escalated ? { reader: escalated.readerOf(userId), holder: escalated.holder, moved: escalated.moved } : {}) });
+        const r = renderTemplate(template, p.locale, { name: p.name, title, day: shownDay, dueDate: typeof shownDay === "number" ? ctx.dateOfDay?.(shownDay) ?? null : null, days: kind === "question" ? QUESTION_RETURN_DAYS - QUESTION_REMIND_DAYS : ev.payload.check, link, ...(escalated ? { reader: escalated.readerOf(userId), holder: escalated.holder, moved: escalated.moved } : {}) });
         return { key: `rem:${ev.id}:${userId}`, template, locale: p.locale, subject: r.subject, text: r.text, link: r.link, data: { eventId: ev.id, subjectId: ev.target, kind } };
       });
     }

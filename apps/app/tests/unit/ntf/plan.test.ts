@@ -223,6 +223,15 @@ describe("NTF planner", () => {
     ]);
   });
 
+  it("the reminder for a raise without a route goes to its desk and names the promised answer date", () => {
+    const r = ev("case.raised", "Raiser", "u_raiser", "c_n", { kind: "idea", title: "No desk", routeId: null, assignee: "Head", assigneeRoleHolderId: "s_head" });
+    const f = due("c_n", { kind: "triage", dueDay: 1 });
+    const d = plan([r, f]);
+    expect(d.map((x) => [x.template, x.recipientUserId])).toEqual([["reminder.triage", "u_head"]]);
+    expect(d[0].subject).toBe("No desk owns this yet: No desk");
+    expect(d[0].text).toContain("Pass it to the desk it belongs to");
+  });
+
   it("a no gives the raiser a loop row", () => {
     const no = ev("case.decided", "Owner One", "u_o1", "c_a", { answer: "no", reason: "not now" });
     const d = plan([raise(), no]).filter((x) => x.template.startsWith("loop."));
