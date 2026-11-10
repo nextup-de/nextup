@@ -22,6 +22,9 @@ model CompanyConfig {
   dpaSignedAt           DateTime?
   // Company patterns masked before anything reaches the model (regex source), e.g. prototype codes.
   redactPatterns        String[]
+  // The month's budget for model calls in euros (features/ai/budget.ts); the gate closes when it is used up.
+  // NULL = the default (DEFAULT_MONTHLY_CAP_EUR).
+  aiMonthlyCapEur       Int?
 
   // The idea studio (docs/IDEAS.md): the benchmark score an idea needs before it can be published.
   publishThreshold Int @default(70)

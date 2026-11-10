@@ -1,5 +1,6 @@
 // The assistant's and the brain's tokens and estimated cost per company and period (AID D5, AIB D10).
 // Totals only: no user id, no text, no per-person number leaves this function.
+import { capOf, monthOf, spendOf, type AiBudget } from "@/features/ai/budget";
 import { aiCost } from "@/features/ai/usage";
 import { getDb } from "./client";
 
@@ -85,4 +86,17 @@ export async function aiUsage(companyId: string, from: Date, to: Date): Promise<
     byPurpose,
     costUsd: byModel.some((m) => m.costUsd === null) ? null : round4(byModel.reduce((s, m) => s + (m.costUsd ?? 0), 0)),
   };
+}
+
+/**
+ * The company's cap and what its assistant turns and brain calls of the calendar month cost so far (decision Q7.3):
+ * what the gate asks before a model call. Only answered calls are stored, so the sum reads low by whatever timed out.
+ */
+export async function loadAiBudget(companyId: string, now: Date = new Date()): Promise<AiBudget> {
+  const { from, to } = monthOf(now);
+  const [cfg, usage] = await Promise.all([
+    getDb().companyConfig.findUnique({ where: { companyId }, select: { aiMonthlyCapEur: true } }),
+    aiUsage(companyId, from, to),
+  ]);
+  return { capEur: capOf(cfg?.aiMonthlyCapEur), ...spendOf(usage.byModel) };
 }

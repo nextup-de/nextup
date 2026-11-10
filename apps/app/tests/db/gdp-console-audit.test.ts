@@ -148,6 +148,23 @@ describe("GDP console audit", () => {
     expect(Object.keys(saved[0].changes as object)).not.toContain("retentionDays");
     expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).retentionDays).not.toBe(30);
 
+    // The month's AI budget (decision Q7.3): saved and audited when the form sends it, left alone when it does not.
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBeNull();
+    form.set("monthlyCapEur", "80");
+    expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBe(80);
+    const again = await rowsOf(acme, "audit.assistant.saved");
+    expect(again).toHaveLength(2);
+    expect(again[1].changes).toEqual({ aiMonthlyCapEur: { before: null, after: 80 } });
+    form.delete("monthlyCapEur");
+    expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBe(80);
+    for (const bad of ["-1", "12.5", "100001", "abc"]) {
+      form.set("monthlyCapEur", bad);
+      expect(await saveAssistSettingsAction({}, form)).toEqual({ ok: false, code: "invalid" });
+    }
+    await db.auditEvent.deleteMany({ where: { companyId: acme, action: "audit.assistant.saved", NOT: { id: saved[0].id } } });
+
     const ideas = new FormData();
     ideas.set("publishThreshold", "55");
     expect((await saveIdeaSettingsAction({}, ideas)).ok).toBe(true);

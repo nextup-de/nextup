@@ -5,7 +5,10 @@
 //   demo stage   our made-up content: on, with the settings.
 //   real stages  the choice must not be off; anything but the mock needs the signed data-processing
 //                agreement; assist needs the assistant switch, routing needs aiRouting.
+//   every stage  a real model is not called once the month's budget is used up (budget.ts, decision Q7.3);
+//                the callers' fallbacks answer and the rest of the app goes on.
 import { policyFor } from "@/features/admin/stages";
+import { capReached, type AiBudget } from "./budget";
 import type { AiSettings } from "./settings";
 
 export type AiPurpose = "assist" | "routing" | "coach" | "brain";
@@ -19,15 +22,21 @@ export function aiGate(a: {
   purpose: AiPurpose;
   assistantOn: boolean;
   aiRouting: boolean;
+  /** The month's cap and spend (lib/db/ai-usage.ts loadAiBudget); null only where there is no database to count in. */
+  budget: Pick<AiBudget, "capEur" | "spentEur"> | null;
 }): AiGate {
   const demo = policyFor(a.stage).demoData;
+  // The mock costs nothing, and "off" already has its own answer.
+  const usedUp = a.budget !== null && a.settings.choice !== "mock" && a.settings.choice !== "off" && capReached(a.budget);
+  const USED_UP: AiGate = { on: false, why: "This month's AI budget for this company is used up." };
   if (!a.hasDatabase) {
     return demo ? { on: true, settings: { ...a.settings, choice: "mock" } } : { on: false, why: "The assistant needs the database for its audit trail." };
   }
-  if (demo) return { on: true, settings: a.settings };
+  if (demo) return usedUp ? USED_UP : { on: true, settings: a.settings };
   if (a.settings.choice === "off") return { on: false, why: "AI is switched off for this company." };
   if (a.purpose === "assist" && !a.assistantOn) return { on: false, why: "The assistant is switched off for this company." };
   if (a.purpose === "routing" && !a.aiRouting) return { on: false, why: "AI routing is switched off for this company." };
   if (a.settings.choice !== "mock" && !a.dpaSignedAt) return { on: false, why: "The assistant waits for the data-processing agreement." };
+  if (usedUp) return USED_UP;
   return { on: true, settings: a.settings };
 }

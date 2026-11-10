@@ -8,6 +8,7 @@ import type { EventPayload, RouteProposal } from "@/features/cases/events";
 import { seedFor } from "@/features/demo";
 import { propose, ROUTER_VERSION } from "@/features/routing";
 import { loadAiSettings } from "@/lib/db/ai";
+import { loadAiBudget } from "@/lib/db/ai-usage";
 import { loadAiRouting, loadAssistSettings } from "@/lib/db/assist";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { askBrain } from "@/server/brain";
@@ -33,10 +34,10 @@ async function brainProposal(slug: string, companyId: string, payload: EventPayl
   if (!hasDatabase()) return null;
   const company = await getDb().company.findUnique({ where: { id: companyId }, select: { stage: true } });
   if (!company) return null;
-  const [ai, assist, aiRouting] = await Promise.all([loadAiSettings(companyId, company.stage), loadAssistSettings(companyId), loadAiRouting(companyId)]);
+  const [ai, assist, aiRouting, budget] = await Promise.all([loadAiSettings(companyId, company.stage), loadAssistSettings(companyId), loadAiRouting(companyId), loadAiBudget(companyId)]);
   const gate = aiGate({
     stage: company.stage, hasDatabase: true, settings: ai.settings,
-    dpaSignedAt: assist.dpaSignedAt, purpose: "routing", assistantOn: assist.enabled, aiRouting,
+    dpaSignedAt: assist.dpaSignedAt, purpose: "routing", assistantOn: assist.enabled, aiRouting, budget,
   });
   if (!gate.on) return null;
   const answer = await ask(

@@ -1,6 +1,6 @@
 # The raise-page assistant
 
-> **Updated 2026-09-24, provider and gate sections 2026-11-04** · reference: how the raise-page assistant works. Live on Musterwerk: Azure OpenAI (gpt-4.1-mini, Sweden Central) with a signed data-processing agreement; Bedrock is built but not measured. The plan it came from: `docs/plans/2026-09-24_raise-assistant.md`.
+> **Updated 2026-09-24, provider and gate sections 2026-11-04, monthly budget 2026-11-10** · reference: how the raise-page assistant works. Live on Musterwerk: Azure OpenAI (gpt-4.1-mini, Sweden Central) with a signed data-processing agreement; Bedrock is built but not measured. The plan it came from: `docs/plans/2026-09-24_raise-assistant.md`.
 
 An employee with a problem or an idea types one line on the raise page. Before anything is raised,
 NextUp answers from the company's own knowledge: who handles this, what already exists, which goal
@@ -68,7 +68,7 @@ retention, sub-processors and incident handling (see *Before a pilot*).
 | Retention | `CompanyConfig.retentionDays` (default 90). The assist route purges hourly per company |
 | Kill switch | `/admin/knowledge` → Assistant → Off |
 | Works council (BetrVG §87) | Admin sees counts only (answers, solved, raised anyway, unsourced, blocked). There is no per-person view |
-| Abuse / cost | Throttles `assistAsk` (20 per 10 min per person) and `assistAskAll` (600 per 10 min per company) |
+| Abuse / cost | Throttles `assistAsk` (20 per 10 min per person) and `assistAskAll` (600 per 10 min per company); a monthly budget per company closes the gate when it is used up (see "The monthly budget") |
 
 For the customer's records: the processing record names AWS (Bedrock, EU regions per the chosen routing) as sub-processor
 for redacted question text and knowledge snippets, and for the redacted whole text of short company documents (see
@@ -78,6 +78,8 @@ allows model calls for real people.
 ## Operating it
 
 - **Turn on** in `/admin/knowledge` → Assistant: On, ceiling, DPA date, rules, extra patterns.
+- **Budget**: `/admin/assistant` → "AI budget per month (EUR)", 50 by default. The page shows what the month has cost
+  and warns from 70 %.
 - **Model**: set `LLM_PROVIDER=bedrock`, `LLM_MODEL` (default `anthropic.claude-opus-5`),
   `LLM_REGION`, and AWS credentials in the stack's `.env`. Enable the model in the AWS account's
   Bedrock console for that region first.
@@ -128,6 +130,7 @@ wrapper over it for the assistant.
 | real stage, any choice other than mock, no `dpaSignedAt` | off ("waits for the data-processing agreement") |
 | purpose `assist`, `CompanyConfig.assistant` off | off |
 | purpose `routing`, `CompanyConfig.aiRouting` off | off |
+| any stage with a database, a choice other than mock or off, the month's budget used up | off ("This month's AI budget for this company is used up.") |
 
 Every "no" carries a `why` in plain words. With the gate closed no request leaves, not to the brain and not to the model.
 
@@ -135,6 +138,39 @@ The idea studio calls the gate with purpose `coach` (`api/[company]/ideas/turn`)
 purpose has no switch of its own in the gate, so a real stage needs the choice not off and the agreement on record. The
 route adds two conditions before the brain reads or coaches: the stack has a brain (`BRAIN_URL`, `BRAIN_API_KEY`), and the
 stage is a demo stage or the viewer's company has the assistant switched on (`CompanyConfig.assistant`).
+
+### The monthly budget
+
+Each company has a budget for model calls per calendar month (decision Q7.3 of 10 Nov 2026):
+`CompanyConfig.aiMonthlyCapEur`, whole euros, 50 when the column is empty (`DEFAULT_MONTHLY_CAP_EUR` in
+`features/ai/budget.ts`). The console admin sets it on `/admin/assistant`; the change is audited with the other
+assistant settings. 0 stops every model call.
+
+Before a model call the caller loads the budget (`loadAiBudget` in `lib/db/ai-usage.ts`) and hands it to the gate:
+the cap, and the estimated cost of the company's assistant turns (`AssistTurn`) and brain calls (`AiCall`) since the
+first of the month (UTC). Once the cost reaches the cap the gate answers off for every purpose and in every stage,
+the demo stage included, because a real model costs the same there. The callers then do what they do for any closed
+gate: the assistant says why, a raise is routed by keywords, the idea studio scores by rules, first steps and the
+check-in draft fall back to the page's own suggestion, the context draft does not run. The mock is never stopped, it
+costs nothing. On the first of the next month the sum starts at zero; raising the cap opens the gate at once.
+
+`/admin/assistant` shows "AI budget this month: spent of cap (share)" and a banner from 70 % and from 90 % of the cap,
+and an error banner when it is used up (`budgetLevel`).
+
+What the number is, and is not:
+
+- An estimate from list prices in US dollars (`features/ai/usage.ts`), counted one dollar as one euro (`EUR_PER_USD`).
+- **A model without a price is not counted.** The page names it ("cost unknown and not counted"), and the gate
+  never closes on its account. Today that is every model that is not a Claude model, including the Azure
+  gpt-4.1-mini Musterwerk runs on. A price per model in the AI settings is proposed (Q7.5) and not built.
+- Only answered calls are stored. A call the app gave up on after its timeout may still have been billed by the
+  provider, so the sum reads low.
+- Not built: a warning by mail or to NextUp support at 70 and 90 % (Q7.6), and letting the raise path run on to
+  120 % while only an agent pauses at 100 % (Q7.4; there is no agent yet). The warning is the banner on the page.
+
+Proof: `apps/app/tests/unit/aip/budget.test.ts` (cap, month, levels, the gate) and `apps/app/tests/db/aib-budget.test.ts`
+(the sum from stored calls, last month and other companies left out, a raise at the cap routed by keywords without
+asking the brain).
 
 ### The proposal at raise
 
@@ -202,4 +238,4 @@ Register rows of `docs/audit/gaps` whose phase is AIP:
 | G-037 | Eval set too small, too little German | #321: an 84-case routing eval, a third German |
 | G-038 | Brain eval not in CI | #321: runs in CI with a threshold |
 | G-236 | Bedrock off everywhere, no AWS account attached | open: needs an AWS account on a stack, which is hosting, not code |
-| G-237 | No AI gateway for keys, quotas, logging | open: the per-company choice and sealed keys exist, but quotas and request logging in front of providers do not |
+| G-237 | No AI gateway for keys, quotas, logging | open: the per-company choice, sealed keys and a monthly budget per company in the gate exist (models without a price are not counted); request logging in front of providers does not |
