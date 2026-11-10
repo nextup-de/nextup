@@ -200,6 +200,14 @@ describe("NTF planner", () => {
     expect(loop([raise(), late])).toEqual([]);
   });
 
+  it("an opt-out made before the new notices existed still covers them, until the person chooses again", () => {
+    const asked = ev("case.asked", "Owner One", "u_o1", "c_a", { text: "Which printer?" });
+    const status = (prefs: PlanCtx["prefs"]) => plan([raise(), asked], { prefs }).filter((x) => x.template === "loop.case.asked").map((x) => [x.status, x.lastError]);
+    expect(status([{ userId: "u_raiser", template: "loop.case.decided", on: false }])).toEqual([["skipped", "opted out"]]);
+    expect(status([{ userId: "u_raiser", template: "loop.case.decided", on: false }, { userId: "u_raiser", template: "loop.case.asked", on: true }])).toEqual([["pending", null]]);
+    expect(status([{ userId: "u_raiser", template: "reminder.checkin", on: false }])).toEqual([["pending", null]]);
+  });
+
   it("a no gives the raiser a loop row", () => {
     const no = ev("case.decided", "Owner One", "u_o1", "c_a", { answer: "no", reason: "not now" });
     const d = plan([raise(), no]).filter((x) => x.template.startsWith("loop."));

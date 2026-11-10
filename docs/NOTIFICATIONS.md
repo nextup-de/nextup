@@ -109,7 +109,10 @@ also gated by `CompanyConfig.notifications`.
 
 Each person chooses on their profile page; the choice is a `NotifyPreference` row (`template` or `*`, `on`), read
 through `src/lib/db/notify-prefs.ts`. Every template is on by default except `digest`, which is off until the person
-turns it on. A person's choice for a template wins over `*`, which wins over the default.
+turns it on. A person's choice for a template wins over `*`, which wins over the default. A template added after
+people made their choices (`loop.case.asked`, `loop.case.answered`, `loop.case.handed`) follows the person's row for an
+older template of its group while it has none of its own (`followsTemplate` in `src/features/notify/digest.ts`), so an
+earlier opt-out covers it; the profile switch writes a row for every template of its group.
 
 ## Subscriptions
 

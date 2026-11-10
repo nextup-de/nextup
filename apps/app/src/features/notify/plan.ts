@@ -10,6 +10,7 @@ import { hasClosedAudience } from "@/features/cases/visibility";
 import { loopMails } from "@/features/loop/notice";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n";
 import type { OutboxDraft } from "@/lib/db/outbox";
+import { followsTemplate } from "./digest";
 import { gateOf, prefOf, NO_PREF, type GateCompany } from "./gate";
 import { toPublicEvents } from "./public-events";
 import { REMINDER_KINDS, renderTemplate, type ReminderKind, type ReminderTemplate } from "./templates";
@@ -62,7 +63,7 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
 
   /** `undeliverable`: why a message that may leave cannot; it is written as failed, so /admin lists it. */
   const push = (d: Omit<OutboxDraft, "status" | "lastError" | "channel">, channel: string, userId: string | null, undeliverable: string | null = null) => {
-    const gate = gateOf(ctx.company, channel, d.template, userId ? prefOf(ctx.prefs, userId, d.template) : NO_PREF);
+    const gate = gateOf(ctx.company, channel, d.template, userId ? prefOf(ctx.prefs, userId, d.template, followsTemplate(d.template)) : NO_PREF);
     const status = !gate.send ? "skipped" : undeliverable ? "failed" : "pending";
     drafts.push({ ...d, channel, status, lastError: !gate.send ? gate.reason : undeliverable });
   };
