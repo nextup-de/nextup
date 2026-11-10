@@ -13,10 +13,8 @@ import styles from "./Floor.module.css";
 type Kind = "problem" | "idea";
 const MIN_TITLE = 3;
 
-export function RaiseForm({ slug, areaKey, areaName, unitName, roleTitle, vacant, viaRole, anonymousAllowed, signedInName, signInHref }: {
+export function RaiseForm({ slug, areaKey, areaName, unitName, roleTitle, vacant, anonymousAllowed, signedInName, signInHref }: {
   slug: string; areaKey: string; areaName: string; unitName: string; roleTitle: string; vacant: boolean;
-  /** Nobody sits in the role: the role above it that gets the raise, or null when nobody is above. */
-  viaRole: string | null;
   anonymousAllowed: boolean; signedInName: string | null; signInHref: string;
 }) {
   const t = useT();
@@ -55,7 +53,7 @@ export function RaiseForm({ slug, areaKey, areaName, unitName, roleTitle, vacant
   const goesTo = (
     <>
       <p className={styles.hint} data-testid="floor-raise-goesto">{t("floor.goesTo", { role: roleTitle })}</p>
-      {vacant ? <p className={styles.hint} data-testid="floor-raise-vacant">{viaRole ? t("floor.vacantGoesTo", { role: viaRole }) : t("floor.vacant")}</p> : null}
+      {vacant ? <p className={styles.hint} data-testid="floor-raise-vacant">{t("floor.vacant")}</p> : null}
       <p className={styles.hint} data-testid="floor-raise-name">
         {signedInName ? t("floor.raisedAs", { name: signedInName }) : anonymousAllowed ? t("floor.withoutName") : t("floor.codeOnly")}
       </p>

@@ -198,8 +198,11 @@ What the number is, and is not:
 - Only answered calls are stored. A call the app gave up on after its timeout may still have been billed by the
   provider, so the sum reads low. The idea studio's own model answer (when the brain gave none) is stored as an
   `AiCall` with purpose `coach`, because the idea turn keeps no tokens.
-- Assistant turns are deleted by retention (7 days at the least) and when a person is pseudonymised. A company with
-  a retention shorter than a month therefore counts less of the month than it spent.
+- Assistant turns are deleted by retention (7 days at the least) and when a person is pseudonymised, so each answer is
+  also stored as an `AiCall` with purpose `assist` (no person, no text, never purged), stamped with the time the call
+  started. The sum takes the turns only up to the company's first such call and the calls from then on, so nothing
+  is counted twice and nothing deleted is lost. Answers before this release exist only as turns and still shrink with
+  retention until the month they fall in has passed.
 - Not built: a warning by mail or to NextUp support at 70 and 90 % (Q7.6), and letting the raise path run on to
   120 % while only an agent pauses at 100 % (Q7.4; there is no agent yet). The warning is the banner on the page.
 
@@ -253,7 +256,8 @@ nothing. The shapes are pinned by one fixture, `services/brain/tests/fixtures/ll
 (`tests/unit/aib/llm-contract.test.ts`) checks that `llmFor` gives exactly it and the brain's test
 (`services/brain/tests/test_llm_contract.py`) that its request models accept it.
 
-Each answered call is stored as an `AiCall` (purpose - `routing`, `read`, `coach`, `plan`, `checkin` or `context` -, model,
+Each answered call is stored as an `AiCall` (purpose - `routing`, `read`, `coach`, `plan`, `checkin`, `context`, or
+`assist` for each answer of the raise-page assistant beside its `AssistTurn` -, model,
 token counts, latency; no person, no case, no text) and counted in `aiUsage` (see `docs/METRICS.md`).
 
 ### Acceptance

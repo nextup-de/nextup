@@ -34,24 +34,17 @@ starts the cursor at its newest event, so history sends nothing.
 | Source | Template | Key |
 |---|---|---|
 | `case.raised`, to the users of the seat it sits on | `raised` | `notify:<eventId>` for the first user, `notify:<eventId>:<userId>` for the rest |
-| loop events (`case.discussion`, `case.invited`, `case.checkin`, `case.asked`, `case.answered`, `case.unanswered`, `case.handed`, `case.withdrawn`, `case.decided`, `project.*` including `project.measure.confirmed`) | `loop.<event type>` | `loop:<eventId>:<userId>` |
-| `clock.due` (CLK) | `reminder.deadline`, `.checkin`, `.start`, `.measure`, `.escalation`, `.question`, `.triage`, `.confirm` | `rem:<eventId>:<userId>` |
+| loop events (`case.discussion`, `case.decided`, `project.*` ...) | `loop.<event type>` | `loop:<eventId>:<userId>` |
+| `clock.due` (CLK) | `reminder.deadline`, `.checkin`, `.start`, `.measure` | `rem:<eventId>:<userId>` |
 | public event (`case.raised`, `case.handed`, `case.answered`, `case.decided`, `project.started`, `project.done`, `project.stopped`) | `webhook` | `wh:<eventId>:<subscriptionId>` |
 | the daily digest | `digest` | `digest:<userId>:<workday number>` |
 
 Reminder recipients: deadline, the users of the seat it escalates to and of the case's current seat; checkin, the users
-of the case's seat; start and measure, the project's lead; confirm, every manager and every holder of the route's deputy role, or for the second fact the holders of the seat above it names, never the lead or who typed the result; question, the raiser who has not answered; triage, the users of the desk a raise without a route sits on. The actor never gets a mail about their own event. A user
+of the case's seat; start and measure, the project's lead. The actor never gets a mail about their own event. A user
 without an address (and no Teams chat) still gets the mail row, written as `failed` with "no mail address for <name>",
 so Settings → Notifications shows that a notice reached nobody; in a sandbox, or with the switch off, it is `skipped`
 like every other row. For a raise, the pairing key `notify:<eventId>` goes to the first holder who can be reached.
-Loop mails (`loop.*`) still go only to people with an address. Who gets which is decided by the pure `loopMails`
-(`src/features/loop/notice.ts`): a question (`case.asked`) and a no go to the raiser; the answer (`case.answered`) goes to
-every holder of the case's desk and to who asked; a pass by a person (`case.handed`) goes to every holder of the new desk
-and to the raiser; a withdrawn idea (`case.withdrawn`) goes to every holder of its desk and everyone invited to its
-discussion; a yes tells the raiser, and the new lead when it opens a project. A typed result (`project.measured`) asks every manager and every holder of the route's deputy role to confirm it, before the authors hear the news. The event that closes a project (`closingEvent`, `src/features/projects/close.ts`: the reward, the confirmation of a result that is not better, or the last result or "done" where no reward can follow) sends one summary to the lead, the team and the authors, with the latest result and the recognition; an author gets it in place of the step mail of that event. A stop is not such an event: `project.stopped` tells the lead, the team and the authors who stopped it and the reason given (decision Q6.21), once, for the stop that took effect. A hand-over the clock wrote for a deadline or
-an escalation sends no loop mail, because its reminder already does; the one off a desk nobody sits at (`why: "vacant"`)
-has no reminder, so the new desk and the raiser get a `loop.case.handed` mail for it. When the clock gives a case back without an answer (`case.unanswered`),
-every holder of the desk and who asked are told that it can be decided without the answer, and the raiser that it goes on. A reminder has the key of the `clock.due` fact, and the clock writes each
+Loop mails (`loop.*`) still go only to people with an address. A reminder has the key of the `clock.due` fact, and the clock writes each
 fact once, so a deadline gives each recipient one reminder however many days or restarts follow.
 
 ## Gating
@@ -81,13 +74,6 @@ leases the row, so two instances never send one row twice), sends each through i
   sends later by mail (Brevo does this) never reaches the app: the row stays `sent`. Proof: `tests/unit/ntf/mail-bounce.test.ts`
   and `tests/db/outbox.test.ts`, against a local fake relay (`tests/fixtures/smtp/fake-smtp.ts`).
 - mail without `SMTP_URL`: the row waits (stays `pending`, no attempt counted) instead of failing.
-- a Teams card that cannot be delivered becomes a mail (decision Q2.11): when a `teams` row fails for good, or still
-  fails on its third try (about six minutes in), the delivery writes one `mail` row for the same notice to the
-  person's address: key `<key>:mail`, the same template, text, link and data plus `insteadOf` (the card's row id).
-  The card is then `failed`, with "a mail was written instead" after its error, and is not tried again. A person
-  without an address, or who is deactivated, gets no mail row: the card keeps the whole ladder. A retried card that
-  fails again finds the key taken, so there is never a second mail. Pure part: `src/features/notify/fallback.ts`;
-  proof: `tests/unit/ntf/fallback.test.ts` and `tests/db/tms-channel.test.ts`.
 
 Time is always passed in (`now`), so tests walk a schedule without waiting.
 
@@ -119,10 +105,7 @@ also gated by `CompanyConfig.notifications`.
 
 Each person chooses on their profile page; the choice is a `NotifyPreference` row (`template` or `*`, `on`), read
 through `src/lib/db/notify-prefs.ts`. Every template is on by default except `digest`, which is off until the person
-turns it on. A person's choice for a template wins over `*`, which wins over the default. A template added after
-people made their choices (`loop.case.asked`, `loop.case.answered`, `loop.case.handed`, `loop.case.unanswered`, `loop.case.withdrawn`, `loop.project.measure.confirmed`, `loop.project.stopped`, `reminder.question`, `reminder.triage`, `reminder.confirm`) follows the person's row for an
-older template of its group while it has none of its own (`followsTemplate` in `src/features/notify/digest.ts`), so an
-earlier opt-out covers it; the profile switch writes a row for every template of its group.
+turns it on. A person's choice for a template wins over `*`, which wins over the default.
 
 ## Subscriptions
 

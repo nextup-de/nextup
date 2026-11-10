@@ -206,7 +206,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await page.getByRole("button", { name: "Record the measure" }).click();
 
     await expect(vis(page, "measure-source-30")).toContainText(`Typed by ${LEAD} · not confirmed`); // the page names the holder's seat label (the person), not the role
-    await expect(vis(page, "measure-waiting-30")).toContainText("Waiting for a second person until"); // decision Q6.15: it has a date
+    await expect(page.getByRole("main")).toContainText("Not confirmed yet");
     await expect(page.getByRole("main")).toContainText(/1[ ,.’']?200/); // the CO₂ figure
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.reload();
@@ -217,13 +217,8 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
 
   test("the second manager confirms; the verdict is better, the reward is due and a manager records it", async ({ browser }) => {
     const page = await signIn(browser, SECOND);
-    // Decision Q6.15: the result waits on the desk of who may confirm it, with its date.
-    await page.goto(`/${SLUG}/leader`);
-    const waiting = page.getByRole("link", { name: /Confirm the result/ }).filter({ visible: true });
-    await expect(waiting).toContainText("a second person checks the number");
-    await expect(waiting).toContainText(/Due /);
     await openResults(page);
-    await expect(vis(page, "measure-waiting-30")).toContainText("Waiting for a second person until");
+    await expect(page.getByRole("main")).toContainText("Not confirmed yet");
     await vis(page, "measure-confirm-30").click();
     await page.getByRole("button", { name: "Yes, the number is right" }).click();
 

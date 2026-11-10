@@ -14,7 +14,6 @@ import type { LoopRules } from "@/features/loop/rules";
 import { formatEuro, formatNumber } from "@/i18n/format";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
 import type { RewardRule } from "@/features/loop/rules";
-import { mayConfirm, unconfirmedOf } from "./confirm";
 import { nextMove, type ProjectMove } from "./selectors";
 import type { Baseline, Measure, ProjectStatus, ReducedProject, Step, StepColumn, VerdictWord } from "./types";
 
@@ -56,31 +55,15 @@ export function groupProjects(list: readonly ReducedProject[], locale: Locale = 
 export const moveLabel = (move: NonNullable<ProjectMove>, locale: Locale = DEFAULT_LOCALE): string =>
   translate(locale, ("projects.move_" + move) as "projects.move_baseline");
 
-export type DeskItem = {
-  project: ReducedProject; move: NonNullable<ProjectMove>; why: "lead" | "escalated" | "reward" | "confirm" | "confirmUp";
-  /** A result to confirm only: the last day the confirmation is on time. */
-  dueDay?: number;
-};
+export type DeskItem = { project: ReducedProject; move: NonNullable<ProjectMove>; why: "lead" | "escalated" | "reward" };
 
 // What is most pressing first: a late move, then the moves that unblock the loop, then the board.
-const MOVE_RANK: Record<NonNullable<ProjectMove>, number> = { measure: 0, start: 1, confirm: 2, baseline: 3, reward: 4, done: 5, steps: 6 };
+const MOVE_RANK: Record<NonNullable<ProjectMove>, number> = { measure: 0, start: 1, baseline: 2, reward: 3, done: 4, steps: 5 };
 
-/**
- * projectDesk by id: the lead's own moves by user id, a late move by the role of the seat it moved to. With
- * `desks` (the routes and seats), also a typed result that waits for this person as the second one (decision Q6.15).
- */
-export function projectDeskFor(list: readonly ReducedProject[], day: number, v: IdViewer, desks?: Pick<State, "routes" | "seats">): DeskItem[] {
+/** projectDesk by id: the lead's own moves by user id, a late move by the role of the seat it moved to. */
+export function projectDeskFor(list: readonly ReducedProject[], day: number, v: IdViewer): DeskItem[] {
   const out: DeskItem[] = [];
   for (const p of list) {
-    if (desks) {
-      const deputyRoleId = desks.routes.find((r) => r.id === p.routeId)?.deputyRoleId ?? null;
-      const who = { userId: v.userId, manager: v.role === "manager", me: v.me };
-      const u = unconfirmedOf(p).find((x) => mayConfirm(p, x, who, deputyRoleId, desks.seats));
-      if (u) {
-        const up = v.role !== "manager" && !(v.me && holdsRole(v.me, deputyRoleId));
-        out.push({ project: p, move: "confirm", why: up ? "confirmUp" : "confirm", dueDay: u.dueDay });
-      }
-    }
     const move = nextMove(p, day);
     if (!move) continue;
     if (move === "reward") {
@@ -88,14 +71,11 @@ export function projectDeskFor(list: readonly ReducedProject[], day: number, v: 
     } else if (v.userId !== null && p.leadUserId === v.userId) out.push({ project: p, move, why: "lead" });
     else if (v.me && holdsRole(v.me, p.escalated?.toRoleId ?? null)) out.push({ project: p, move, why: "escalated" });
   }
-  return sortDesk(out, day);
+  return sortDesk(out);
 }
 
-const sortDesk = (out: DeskItem[], day: number): DeskItem[] => {
-  // A confirmation is late by its own date, every other move by the project's.
-  const late = (x: DeskItem) => (x.dueDay !== undefined ? day > x.dueDay : x.project.overdue);
-  return out.sort((a, b) => Number(late(b)) - Number(late(a)) || MOVE_RANK[a.move] - MOVE_RANK[b.move] || a.project.number - b.project.number);
-};
+const sortDesk = (out: DeskItem[]): DeskItem[] =>
+  out.sort((a, b) => Number(b.project.overdue) - Number(a.project.overdue) || MOVE_RANK[a.move] - MOVE_RANK[b.move] || a.project.number - b.project.number);
 
 // ── AI suggests, people decide: the offline proposals, read from the source case's brief ──
 

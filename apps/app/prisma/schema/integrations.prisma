@@ -237,7 +237,7 @@ model TeamsConversation {
 model AiCall {
   id        String   @id @default(cuid())
   companyId String
-  purpose   String // routing | read | coach | plan | checkin
+  purpose   String // routing | read | coach | plan | checkin | context | assist (each assistant answer, beside its AssistTurn)
   model     String
   tokensIn  Int
   tokensOut Int

@@ -11,9 +11,7 @@ import { deptIsBigEnough, underHandle } from "@/features/cases/stamp";
 import { loadUnitPeople } from "@/lib/db/pseudonymise";
 import type { Role } from "@/config/roles";
 import { checkRaise, floorRaisePayload, newReference, pickSeat, type RaiseInput } from "@/features/floor/raise";
-import { seatAbove } from "@/features/knowledge";
 import { getDb } from "@/lib/db/client";
-import { loadKnowledge } from "@/lib/db/knowledge";
 import { appendEventRow } from "@/lib/db/events";
 import { deviceByToken, findArea, hashFloor, saveReference, touchDevice } from "@/lib/db/floor";
 import { hasDatabase } from "@/lib/db/mode";
@@ -73,10 +71,7 @@ export async function raiseFromFloor(
     holders.map((h) => ({ id: h.id, label: h.name, userId: h.userId, sort: h.sort })),
     active.map((u) => u.id),
   );
-  // A role nobody sits in (decision Q1.10): the seat above it takes the raise. With nobody above, nothing is written.
-  const above = seat ? null : seatAbove(await loadKnowledge(companyId), area.roleId);
-  const landed = seat ?? (above ? { id: above.id, label: above.name } : null);
-  if (!landed) return { ok: false, reason: "vacant" };
+  if (!seat) return { ok: false, reason: "vacant" };
 
   const limited =
     (await throttle("floorRaise", `${device.key}|${area.id}`)) ??
@@ -98,7 +93,7 @@ export async function raiseFromFloor(
       type: "case.raised",
       actor,
       targetId: caseId,
-      payload: floorRaisePayload({ ...checked.value, seat: landed, unitName, anonymous: who === "anonymous" }),
+      payload: floorRaisePayload({ ...checked.value, seat, unitName, anonymous: who === "anonymous" }),
     },
     { actorUserId, source: "floor", idemKey: `floor:${input.nonce}` },
   );

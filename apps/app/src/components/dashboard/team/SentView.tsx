@@ -25,11 +25,10 @@ const STATUS_LABEL: Partial<Record<MineStatus, MessageKey>> = {
   Sent: "team.sentStatusSent", Approved: "team.sentStatusApproved", Declined: "team.sentStatusDeclined", Building: "team.sentStatusBuilding", Shipped: "team.sentStatusShipped",
   "Question for you": "team.sentStatusQuestion", "Awaiting decision": "team.sentStatusAwaiting", "In trial": "team.sentStatusTrial", "In discussion": "team.sentStatusDiscussion",
   Planning: "team.sentStatusPlanning", "In progress": "team.sentStatusInProgress", Done: "team.sentStatusDone", Measured: "team.sentStatusMeasured", Recognised: "team.sentStatusRecognised", Stopped: "team.sentStatusStopped",
-  Withdrawn: "team.sentStatusWithdrawn",
 };
 // The second half of the life: still moving is the accent, a result is green, the rest stays quiet.
 const LIFE_TONE: Partial<Record<MineStatus, Tone>> = {
-  "In discussion": "accent", Planning: "ok", "In progress": "ok", Done: "ok", Measured: "ink", Recognised: "ink", Stopped: "ghost", Withdrawn: "ghost",
+  "In discussion": "accent", Planning: "ok", "In progress": "ok", Done: "ok", Measured: "ink", Recognised: "ink", Stopped: "ghost",
 };
 
 // The status chip in a soft tint: still waiting is amber, a result is green, the rest stays grey.

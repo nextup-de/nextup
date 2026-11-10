@@ -16,7 +16,11 @@ export type AiUsage = {
   costUsd: number | null;
 };
 
-export type AiCallInput = { purpose: string; model: string; tokensIn: number; tokensOut: number; latencyMs: number };
+export type AiCallInput = {
+  purpose: string; model: string; tokensIn: number; tokensOut: number; latencyMs: number;
+  /** When the call was made; default: when the row is written. */
+  at?: Date;
+};
 
 /**
  * Stores what one brain call used. Never throws and never delays the answer: the write is not
@@ -25,7 +29,7 @@ export type AiCallInput = { purpose: string; model: string; tokensIn: number; to
 export function recordAiCall(companyId: string, call: AiCallInput): void {
   try {
     void getDb()
-      .aiCall.create({ data: { companyId, ...call } })
+      .aiCall.create({ data: { companyId, purpose: call.purpose, model: call.model, tokensIn: call.tokensIn, tokensOut: call.tokensOut, latencyMs: call.latencyMs, ...(call.at ? { createdAt: call.at } : {}) } })
       .catch((err: unknown) => console.error("[ai-usage] record failed", err instanceof Error ? err.name : "failed"));
   } catch (err) {
     console.error("[ai-usage] record failed", err instanceof Error ? err.name : "failed");
@@ -52,13 +56,22 @@ const total = (xs: Part[]) => ({
   tokensOut: xs.reduce((s, x) => s + x.tokensOut, 0),
 });
 
-/** Assistant turns and brain calls of the company with from <= createdAt < to, summed per model and per purpose. */
+/**
+ * Assistant turns and brain calls of the company with from <= createdAt < to, summed per model and per purpose.
+ *
+ * Every assistant answer is also stored as an AiCall with purpose "assist" (no person, no text, never purged), so the
+ * sum holds when retention or pseudonymising deletes the turns. Turns count only before the company's first such call:
+ * from then on the AiCall row stands for the turn, and counting both would count it twice. The AiCall carries the
+ * time the call started, before its turn is written, so the turn of that first call is already past the line.
+ */
 export async function aiUsage(companyId: string, from: Date, to: Date): Promise<AiUsage> {
   const createdAt = { gte: from, lt: to };
+  const first = await getDb().aiCall.findFirst({ where: { companyId, purpose: "assist" }, orderBy: { createdAt: "asc" }, select: { createdAt: true } });
+  const turnsUntil = first && first.createdAt < to ? first.createdAt : to;
   const [turns, calls] = await Promise.all([
     getDb().assistTurn.groupBy({
       by: ["model"],
-      where: { companyId, role: "assistant", createdAt },
+      where: { companyId, role: "assistant", createdAt: { gte: from, lt: turnsUntil } },
       _count: { _all: true },
       _sum: { tokensIn: true, tokensOut: true },
       orderBy: { model: "asc" },
@@ -74,16 +87,19 @@ export async function aiUsage(companyId: string, from: Date, to: Date): Promise<
     ...turns.map((g) => ({ purpose: "assist", model: g.model, calls: g._count._all, tokensIn: g._sum.tokensIn ?? 0, tokensOut: g._sum.tokensOut ?? 0 })),
     ...calls.map((g) => ({ purpose: g.purpose, model: g.model, calls: g._count._all, tokensIn: g._sum.tokensIn ?? 0, tokensOut: g._sum.tokensOut ?? 0 })),
   ];
+  // Assistant answers: the turns before the line and the "assist" calls after it.
+  const answers = (xs: Part[]) => xs.filter((p) => p.purpose === "assist").reduce((s, x) => s + x.calls, 0);
   const byModel = [...new Set(parts.map((p) => p.model))].sort().map((model) => {
-    const t = total(parts.filter((p) => p.model === model));
-    return { model, turns: turns.find((g) => g.model === model)?._count._all ?? 0, ...t, costUsd: aiCost(model, t.tokensIn, t.tokensOut) };
+    const mine = parts.filter((p) => p.model === model);
+    const t = total(mine);
+    return { model, turns: answers(mine), ...t, costUsd: aiCost(model, t.tokensIn, t.tokensOut) };
   });
   const byPurpose = [...new Set(parts.map((p) => p.purpose))].sort().map((purpose) => {
     const mine = parts.filter((p) => p.purpose === purpose);
     return { purpose, calls: mine.reduce((s, x) => s + x.calls, 0), ...total(mine), costUsd: costOf(mine) };
   });
   return {
-    turns: turns.reduce((s, g) => s + g._count._all, 0),
+    turns: answers(parts),
     ...total(parts),
     byModel,
     byPurpose,

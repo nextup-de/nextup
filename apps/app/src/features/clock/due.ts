@@ -6,25 +6,16 @@ import type { State } from "@/features/cases/reducer";
 import type { CaseEvent } from "@/features/cases/events";
 import { byClock } from "./actor";
 import type { Route } from "@/features/demo/types";
-import { CONFIRM_ESCALATE_DAYS, unconfirmedOf } from "@/features/projects/confirm";
 
-export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation" | "question" | "unanswered" | "triage" | "confirm";
-
-/** A raise no route owns sits on the fallback desk (features/cases/stamp.ts): after this many working days it is reminded to pass it on (decision Q2.1). */
-export const TRIAGE_REMIND_DAYS = 1;
-
-/** A question the raiser has not answered: a reminder after this many working days ... */
-export const QUESTION_REMIND_DAYS = 3;
-/** ... and after this many the case is open on the desk again, without an answer (decision Q4.3). */
-export const QUESTION_RETURN_DAYS = 5;
+export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation";
 
 export type Due = {
   kind: DueKind;
   target: string; // the case or project id
   dueDay: number;
-  check?: number; // measure and confirm
+  check?: number; // measure only
   toRoleHolderId?: string | null; // the seat the fact escalates to
-  why?: "escalation" | "vacant"; // handover only: the second level's hand-over, or off a desk nobody sits at; missing = the deadline's
+  why?: "escalation"; // handover only: the second level's hand-over; missing = the deadline's
   idemKey: string;
 };
 
@@ -75,8 +66,7 @@ export function dueNow(state: State, today: number, above: SeatAbove = () => nul
   const handovers: Due[] = []; // listed after every fact
 
   for (const c of state.cases) {
-    // A case without a route has a deadline like any other once it sits on a desk; on no desk there is nobody to tell.
-    if (!c.open || c.dueDay >= today || (c.route === null && c.assigneeSeatId === null)) continue;
+    if (!c.open || c.dueDay >= today || c.route === null) continue;
     const talk = c.status === "discussion" ? c.discussion : null;
     if (talk && !talk.ready) {
       if (!hasFact(c.history, "checkin", c.dueDay)) out.push({ kind: "checkin", target: c.id, dueDay: c.dueDay, idemKey: idemKeyOf("checkin", c.id, c.dueDay) });
@@ -91,41 +81,8 @@ export function dueNow(state: State, today: number, above: SeatAbove = () => nul
       else if (up) (up.kind === "handover" ? handovers : out).push(up);
       continue;
     }
-    const atOwner = c.assigneeRoleId !== null && c.assigneeRoleId === (c.route?.ownerRoleId ?? null);
+    const atOwner = c.assigneeRoleId !== null && c.assigneeRoleId === (c.route.ownerRoleId ?? null);
     out.push({ kind: "deadline", target: c.id, dueDay: c.dueDay, toRoleHolderId: targetSeat(state, c.route, atOwner), idemKey: idemKeyOf("deadline", c.id, c.dueDay) });
-  }
-
-  // A desk nobody sits at cannot answer (decision Q1.10): the case goes on at once, to the route's other desk
-  // (the deputy's, or back to the owner's) when someone sits there, else to the seat above. Once per seat.
-  const occupied = (roleId: string) => seatsOfRole(state.seats, roleId).some((s) => s.userId !== null);
-  for (const c of state.cases) {
-    if ((c.status !== "open" && c.status !== "discussion") || c.assigneeSeatId === null || c.assigneeRoleId === null || occupied(c.assigneeRoleId)) continue;
-    const atOwner = c.assigneeRoleId === (c.route?.ownerRoleId ?? null);
-    const to = (c.route ? targetSeat(state, c.route, atOwner) : null) ?? above(c.assigneeRoleId, []);
-    if (to !== null && to !== c.assigneeSeatId) {
-      handovers.push({ kind: "handover", why: "vacant", target: c.id, dueDay: c.dueDay, toRoleHolderId: to, idemKey: `clk:vacant:${c.id}:${c.assigneeSeatId}` });
-    }
-  }
-
-  // A raise without a route waits on the fallback desk to be passed on: one reminder to that desk, while it
-  // has neither a route (a manager's case.override gives it one) nor a hand-over.
-  for (const c of state.cases) {
-    if (c.status !== "open" || c.route !== null || c.assigneeSeatId === null || c.handed.length > 0) continue;
-    const due = c.raisedDay + TRIAGE_REMIND_DAYS;
-    if (today >= due && !hasFact(c.history, "triage", due)) out.push({ kind: "triage", target: c.id, dueDay: due, idemKey: idemKeyOf("triage", c.id, due) });
-  }
-
-  // A question nobody answers must not pause a case for ever: one reminder to the raiser, then the case goes
-  // back to the desk as open (the scheduler writes case.unanswered) and its answer date runs again.
-  for (const c of state.cases) {
-    const q = c.status === "asked" ? c.question : null;
-    if (!q || q.answer) continue;
-    const waited = today - q.day;
-    if (waited >= QUESTION_RETURN_DAYS) {
-      handovers.push({ kind: "unanswered", target: c.id, dueDay: q.day + QUESTION_RETURN_DAYS, idemKey: idemKeyOf("unanswered", c.id, q.day) });
-    } else if (waited >= QUESTION_REMIND_DAYS && !hasFact(c.history, "question", q.day + QUESTION_REMIND_DAYS)) {
-      out.push({ kind: "question", target: c.id, dueDay: q.day + QUESTION_REMIND_DAYS, idemKey: idemKeyOf("question", c.id, q.day) });
-    }
   }
 
   for (const p of state.projects) {
@@ -142,23 +99,6 @@ export function dueNow(state: State, today: number, above: SeatAbove = () => nul
         if (k.measured || k.dueDay >= today || hasFact(p.history, "measure", k.dueDay, k.check)) continue;
         out.push({ kind: "measure", target: p.id, dueDay: k.dueDay, check: k.check, toRoleHolderId: targetSeat(state, route, leadIsOwner), idemKey: idemKeyOf("measure", p.id, k.dueDay, k.check) });
       }
-    }
-  }
-  // A typed result waits for a second person (decision Q6.15): when its date has passed, one reminder to who may
-  // confirm; CONFIRM_ESCALATE_DAYS later the seat above the deputy's desk is asked, once, and may confirm from then.
-  for (const p of state.projects) {
-    const route = state.routes.find((r) => r.id === p.routeId) ?? null;
-    const desk = route?.deputyRoleId ?? route?.ownerRoleId ?? null;
-    for (const u of unconfirmedOf(p)) {
-      if (u.dueDay < today && !hasFact(p.history, "confirm", u.dueDay, u.check)) {
-        out.push({ kind: "confirm", target: p.id, dueDay: u.dueDay, check: u.check, idemKey: idemKeyOf("confirm", p.id, u.dueDay, u.check) });
-      }
-      const upDay = u.dueDay + CONFIRM_ESCALATE_DAYS;
-      if (desk === null || upDay >= today || hasFact(p.history, "confirm", upDay, u.check)) continue;
-      // Never the lead's own desk or the desk of who typed the number: they cannot be the second person.
-      const own = state.seats.filter((s) => s.userId !== null && (s.userId === p.leadUserId || s.userId === u.measure.byUserId)).map((s) => s.roleId);
-      const to = above(desk, own);
-      if (to !== null) out.push({ kind: "confirm", target: p.id, dueDay: upDay, check: u.check, toRoleHolderId: to, idemKey: idemKeyOf("confirm", p.id, upDay, u.check) });
     }
   }
   return [...out, ...handovers];

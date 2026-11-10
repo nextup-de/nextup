@@ -7,7 +7,7 @@ import { aiGate } from "@/features/ai/gate";
 import { seedTemplate } from "@/features/demo";
 import { toSeedJson } from "@/features/demo/parse";
 import { saveAiSettings } from "@/lib/db/ai";
-import { loadAiBudget } from "@/lib/db/ai-usage";
+import { aiUsage, loadAiBudget } from "@/lib/db/ai-usage";
 import { getDb } from "@/lib/db/client";
 import type { askBrain } from "@/server/brain";
 import { proposeOnRaise } from "@/server/routing";
@@ -74,6 +74,40 @@ describe("AI budget from the stored calls", () => {
     // A later save without prices removes them: the settings are written whole.
     await saveAiSettings(a.id, settings, null, "t");
     expect((await loadAiBudget(a.id, now)).unpriced).toEqual(["mistral-nemo"]);
+  });
+});
+
+describe("assistant answers survive retention", () => {
+  it("turns count until the first assist call; after it the call stands for the turn, also once the turn is deleted", async () => {
+    const tag = randomUUID().slice(0, 8);
+    const c = await db.company.create({ data: { slug: `cap-c-${tag}`, name: "cap-c", seedJson: toSeedJson(seedTemplate("demo")) as object, stage: "demo" } });
+    try {
+      const turn = (at: Date, tokensIn: number) =>
+        db.assistTurn.create({ data: { companyId: c.id, sessionId: randomUUID(), role: "assistant", text: "x", model: SONNET, tokensIn, tokensOut: 0, createdAt: at } });
+      // Before the release: only turns. 1M in at 2 USD = 2.
+      await turn(new Date("2026-11-03T09:00:00Z"), 1_000_000);
+      // After it: each answer is a call stamped with its start and a turn written when it ended. 2 + 2.
+      const asked = new Date("2026-11-05T09:00:00Z");
+      await call(c.id, SONNET, 1_000_000, 0, asked);
+      await db.aiCall.updateMany({ where: { companyId: c.id }, data: { purpose: "assist" } });
+      await turn(new Date(asked.getTime() + 4_000), 1_000_000);
+      await db.aiCall.create({ data: { companyId: c.id, purpose: "assist", model: SONNET, tokensIn: 1_000_000, tokensOut: 0, latencyMs: 1, createdAt: new Date("2026-11-07T09:00:00Z") } });
+      await turn(new Date("2026-11-07T09:00:03Z"), 1_000_000);
+      expect((await loadAiBudget(c.id, now)).spentEur).toBe(6);
+      const usage = await aiUsage(c.id, monthOf(now).from, monthOf(now).to);
+      expect(usage.turns).toBe(3);
+      expect(usage.byPurpose).toEqual([expect.objectContaining({ purpose: "assist", calls: 3, tokensIn: 3_000_000 })]);
+      // Retention or pseudonymising deletes every turn: what was spent after the first call stays counted.
+      await db.assistTurn.deleteMany({ where: { companyId: c.id } });
+      expect((await loadAiBudget(c.id, now)).spentEur).toBe(4);
+    } finally {
+      await db.company.delete({ where: { id: c.id } });
+    }
+  });
+
+  it("a company that never had an assist call counts its turns as before", async () => {
+    const usage = await aiUsage(b.id, monthOf(now).from, monthOf(now).to);
+    expect(usage.byPurpose.some((p) => p.purpose === "assist")).toBe(false);
   });
 });
 

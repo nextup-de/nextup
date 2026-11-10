@@ -5,7 +5,7 @@ import type { Actor, Verdict } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import { translate, DEFAULT_LOCALE, type Locale, type MessageKey } from "@/i18n";
-import { mayConfirm, unconfirmedOf } from "./confirm";
+import { holdsRole } from "@/features/auth/identity";
 import { isMeasureSource, readImpact } from "./measure-source";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 
@@ -127,9 +127,8 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!m || m.confirmed || m.sourceKind === "system") return no("projects.permNothingToConfirm");
       if (isMe(p.leadUserId) || isMe(m.byUserId)) return no("projects.permConfirmSecondPerson");
       const deputyRoleId = state.routes.find((r) => r.id === p.routeId)?.deputyRoleId ?? null;
-      // A stopped project waits for nobody (unconfirmedOf), but its number can still be confirmed as before.
-      const waiting = unconfirmedOf(p).find((x) => x.check === m.check) ?? { check: m.check, measure: m, dueDay: m.day, upSeatId: null };
-      return mayConfirm(p, waiting, { userId: uid, manager: isManager, me: actor.me }, deputyRoleId, state.seats) ? OK : no("projects.permConfirmWho");
+      const mayConfirm = isManager || (actor.me !== undefined && holdsRole(actor.me, deputyRoleId));
+      return mayConfirm ? OK : no("projects.permConfirmWho");
     }
 
     case "project.rewarded":

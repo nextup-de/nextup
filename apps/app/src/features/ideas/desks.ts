@@ -16,7 +16,6 @@ export type Desk = {
   type: string; // route.type
   holders: string[]; // labels of the role's seats that have a user
   vacant: boolean;
-  deputies: string[]; // on a vacant desk: who gets it instead, the holders of the route's deputy role (features/clock/due.ts)
   proposedBy: "ai" | "keywords" | null;
   reasons: string[];
   recommended: boolean;
@@ -46,8 +45,7 @@ function deskOf(route: Route, roleId: string, seats: readonly SeatRow[], propose
   const holders = holdersOf(seats, roleId);
   return {
     roleId, routeId: route.id, title: route.owner.role, dept: route.owner.dept, type: route.type,
-    holders, vacant: holders.length === 0, deputies: holders.length === 0 && route.deputyRoleId ? holdersOf(seats, route.deputyRoleId) : [],
-    proposedBy, reasons, recommended: false,
+    holders, vacant: holders.length === 0, proposedBy, reasons, recommended: false,
   };
 }
 

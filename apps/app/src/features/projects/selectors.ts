@@ -24,8 +24,8 @@ export const authoredByMe = (state: Pick<State, "projects">, me: Me): ReducedPro
 export const escalatedToMe = (state: Pick<State, "projects">, me: Me): ReducedProject[] =>
   state.projects.filter((p) => holdsRole(me, p.escalated?.toRoleId ?? null));
 
-/** What a lead must do next on a project, as a fact - the page builds the sentence. "confirm" is the second person's move, never the lead's. */
-export type ProjectMove = "baseline" | "start" | "steps" | "done" | "measure" | "reward" | "confirm" | null;
+/** What a lead must do next on a project, as a fact - the page builds the sentence. */
+export type ProjectMove = "baseline" | "start" | "steps" | "done" | "measure" | "reward" | null;
 
 export function nextMove(p: ReducedProject, day: number): ProjectMove {
   switch (p.status) {

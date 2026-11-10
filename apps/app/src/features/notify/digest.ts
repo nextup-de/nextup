@@ -41,8 +41,7 @@ export function digestFor(userId: string, state: State, seats: readonly SeatRow[
 /** The loop templates, as features/notify/plan.ts names them (`loop.<event type>`). */
 const LOOP_TEMPLATES = [
   "case.discussion", "case.invited", "case.checkin", "case.decided",
-  "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
-  "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded", "project.stopped",
+  "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.rewarded",
 ].map((t) => `loop.${t}`);
 const REMINDER_TEMPLATES = REMINDER_KINDS.map((k) => `reminder.${k}`);
 
@@ -54,19 +53,6 @@ export const NOTIFY_GROUPS: Record<NotifyGroup, readonly string[]> = {
   digest: [DIGEST_TEMPLATE],
 };
 const SWITCHABLE = new Set(Object.values(NOTIFY_GROUPS).flat());
-
-/**
- * Templates added after people set their switches, each with the older template of its group it follows while a
- * person has no row for it (features/notify/gate.ts prefOf). The profile switch writes a row for every template of
- * its group, so the next time the person uses the switch the new template gets its own.
- */
-const FOLLOWS: Record<string, string> = {
-  "loop.case.asked": "loop.case.decided", "loop.case.answered": "loop.case.decided", "loop.case.handed": "loop.case.decided",
-  "loop.case.unanswered": "loop.case.decided", "loop.case.withdrawn": "loop.case.decided", "reminder.question": "reminder.deadline", "reminder.triage": "reminder.deadline",
-  "reminder.confirm": "reminder.measure", "loop.project.measure.confirmed": "loop.project.measured",
-  "loop.project.stopped": "loop.project.done",
-};
-export const followsTemplate = (template: string): string | null => FOLLOWS[template] ?? null;
 
 export type PrefChange = { ok: true; userId: string; template: string; on: boolean } | { ok: false; error: "not signed in" | "unknown template" };
 

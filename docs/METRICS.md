@@ -103,10 +103,14 @@ Rows of `docs/audit/gaps/product.md` that MET answers. That register is AUD's; t
 ## AI usage by purpose
 
 `aiUsage` (`lib/db/ai-usage.ts`) sums the company's model use for a period, totals only, never a person. The assistant's
-turns (`AssistTurn`) and the brain's calls (`AiCall`, purposes `routing`, `read`, `coach`, `plan`, `checkin`) both count in
+turns and the brain's calls (`AiCall`, purposes `routing`, `read`, `coach`, `plan`, `checkin`, `context`) both count in
 `byModel`, `tokensIn`, `tokensOut` and `costUsd`; `turns` stays the number of assistant turns. `byPurpose` splits the same
 totals into `{ purpose, calls, tokensIn, tokensOut, costUsd }`, sorted by purpose, with the assistant under `assist`.
 `costUsd` is `null` as soon as one model has no price.
+
+Each assistant answer is stored twice: as an `AssistTurn` (with the text, deleted by retention) and as an `AiCall` with
+purpose `assist` (tokens only, kept). `aiUsage` counts the turns up to the company's first `assist` call and the calls
+from then on, so retention cannot shrink the month and no answer counts twice.
 
 `loadAiBudget` in the same file is what the gate asks before a model call: the company's monthly cap and the cost of
 the calendar month so far, priced with the company's own prices first, and the tokens of models that have no price

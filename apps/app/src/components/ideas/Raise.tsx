@@ -482,7 +482,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       if (!kept) showToast(t("ideas.pageToastShotsFull"));
     }
     setBusy(false); setPubWork(null);
-    setSent({ role: to.title, names: to.holders, deputies: to.deputies, date: dueLabel() }); // the window stays, now saying who owes an answer by when
+    setSent({ role: to.title, names: to.holders, date: dueLabel() }); // the window stays, now saying who owes an answer by when
     go("chat"); // published: back to the conversation, where the case is offered
     void studio.open(draft.id);
   };

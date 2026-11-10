@@ -6,13 +6,10 @@ import { usersOfRole, type SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import { composeNoticeMail, noticeKey, type RaisedNotice } from "@/features/cases/notice";
 import type { State } from "@/features/cases/reducer";
-import { QUESTION_REMIND_DAYS, QUESTION_RETURN_DAYS } from "@/features/clock/due";
 import { hasClosedAudience } from "@/features/cases/visibility";
 import { loopMails } from "@/features/loop/notice";
-import { confirmerIds, unconfirmedOf } from "@/features/projects/confirm";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n";
 import type { OutboxDraft } from "@/lib/db/outbox";
-import { followsTemplate } from "./digest";
 import { gateOf, prefOf, NO_PREF, type GateCompany } from "./gate";
 import { toPublicEvents } from "./public-events";
 import { REMINDER_KINDS, renderTemplate, type ReminderKind, type ReminderTemplate } from "./templates";
@@ -22,8 +19,6 @@ export type PlanPerson = {
   id: string; email: string | null; locale: Locale; name?: string; handle?: string | null;
   /** Has a Teams conversation with the bot (TMS D9). Only counts when `PlanCtx.teamsOn`. */
   teams?: boolean;
-  /** A manager: may confirm any typed result as the second person (features/projects/confirm.ts). */
-  manager?: boolean;
 };
 export type PlanPref = { userId: string; template: string; on: boolean };
 export type PlanSubscription = { id: string; events: readonly string[]; on: boolean };
@@ -47,8 +42,7 @@ export type PlanEvent = Pick<CaseEvent, "id" | "ts" | "type" | "actor" | "actorU
 /** The loop events of server/loop-notice.ts. */
 const LOOP_TYPES = new Set([
   "case.discussion", "case.invited", "case.checkin", "case.decided",
-  "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
-  "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded", "project.stopped",
+  "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.rewarded",
 ]);
 
 const isReminder = (k: unknown): k is ReminderKind => (REMINDER_KINDS as readonly unknown[]).includes(k);
@@ -67,7 +61,7 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
 
   /** `undeliverable`: why a message that may leave cannot; it is written as failed, so /admin lists it. */
   const push = (d: Omit<OutboxDraft, "status" | "lastError" | "channel">, channel: string, userId: string | null, undeliverable: string | null = null) => {
-    const gate = gateOf(ctx.company, channel, d.template, userId ? prefOf(ctx.prefs, userId, d.template, followsTemplate(d.template)) : NO_PREF);
+    const gate = gateOf(ctx.company, channel, d.template, userId ? prefOf(ctx.prefs, userId, d.template) : NO_PREF);
     const status = !gate.send ? "skipped" : undeliverable ? "failed" : "pending";
     drafts.push({ ...d, channel, status, lastError: !gate.send ? gate.reason : undeliverable });
   };
@@ -111,7 +105,7 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
   }
 
   if (LOOP_TYPES.has(ev.type)) {
-    const named = ctx.people.filter((p): p is PlanPerson & { email: string } => !!p.email).map((p) => ({ id: p.id, name: p.name ?? "", email: p.email, handle: p.handle ?? null, manager: !!p.manager }));
+    const named = ctx.people.filter((p): p is PlanPerson & { email: string } => !!p.email).map((p) => ({ id: p.id, name: p.name ?? "", email: p.email, handle: p.handle ?? null }));
     const byEmail = (email: string) => ctx.people.find((p) => p.email === email);
     const args = { ev, state, people: named, baseUrl };
     for (const mail of loopMails(args, (email) => byEmail(email)?.locale ?? DEFAULT_LOCALE)) {
@@ -133,7 +127,6 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     let link = "";
     // Escalation only: each reader gets their own sentence, and nobody but the raiser is told who raised it.
     let escalated: { holder: string; moved: boolean; readerOf: (userId: string) => "above" | "desk" | "raiser" } | undefined;
-    let confirmAbove = false;
     if (kind === "escalation" && kase) {
       const toSeat = state.seats.find((s: SeatRow) => s.id === ev.payload.toRoleHolderId);
       const above = toSeat ? usersOfSeat(toSeat.id) : [];
@@ -148,33 +141,16 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): OutboxDraft[] {
     } else if (kind === "deadline" && kase) {
       users = uniq([...usersOfSeat(ev.payload.toRoleHolderId), ...usersOfSeat(kase.assigneeSeatId)]);
       title = kase.title; link = caseLink(kase.id);
-    } else if (kind === "triage" && kase) {
-      users = usersOfSeat(kase.assigneeSeatId);
-      title = kase.title; link = caseLink(kase.id);
-    } else if (kind === "question" && kase) {
-      const raiser = kase.fromUserId ?? kase.history.find((h) => h.type === "case.raised")?.actorUserId ?? null;
-      users = raiser ? [raiser] : [];
-      title = kase.title; link = caseLink(kase.id);
     } else if (kind === "checkin" && kase) {
       users = usersOfSeat(kase.assigneeSeatId);
       title = kase.title; link = caseLink(kase.id);
-    } else if (kind === "confirm" && project) {
-      // A result nobody confirmed in time: who may confirm it, or the seat above the clock passed it up to.
-      const u = unconfirmedOf(project).find((x) => x.check === ev.payload.check);
-      const deputyRoleId = state.routes.find((r) => r.id === project.routeId)?.deputyRoleId ?? null;
-      const managers = ctx.people.filter((p) => p.manager).map((p) => p.id);
-      confirmAbove = !!ev.payload.toRoleHolderId;
-      users = u ? confirmerIds(project, u, deputyRoleId, state.seats, managers, confirmAbove ? "above" : "desk") : [];
-      title = project.title; link = projectLink(project.id);
     } else if ((kind === "start" || kind === "measure") && project) {
       users = project.leadUserId ? [project.leadUserId] : [];
       title = project.title; link = projectLink(project.id);
     }
-    // The day a reminder names: the day its fact fell due; for triage, the answer date the raiser was promised.
-    const shownDay = kind === "triage" && kase ? kase.dueDay : ev.payload.dueDay;
     for (const userId of users) {
       mailTo(userId, (p) => {
-        const r = renderTemplate(template, p.locale, { name: p.name, title, day: shownDay, dueDate: typeof shownDay === "number" ? ctx.dateOfDay?.(shownDay) ?? null : null, days: kind === "question" ? QUESTION_RETURN_DAYS - QUESTION_REMIND_DAYS : ev.payload.check, link, ...(escalated ? { reader: escalated.readerOf(userId), holder: escalated.holder, moved: escalated.moved } : {}), ...(confirmAbove ? { reader: "above" as const } : {}) });
+        const r = renderTemplate(template, p.locale, { name: p.name, title, day: ev.payload.dueDay, dueDate: typeof ev.payload.dueDay === "number" ? ctx.dateOfDay?.(ev.payload.dueDay) ?? null : null, days: ev.payload.check, link, ...(escalated ? { reader: escalated.readerOf(userId), holder: escalated.holder, moved: escalated.moved } : {}) });
         return { key: `rem:${ev.id}:${userId}`, template, locale: p.locale, subject: r.subject, text: r.text, link: r.link, data: { eventId: ev.id, subjectId: ev.target, kind } };
       });
     }

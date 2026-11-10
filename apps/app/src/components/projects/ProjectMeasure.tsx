@@ -6,7 +6,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { newId, type EventPayload } from "@/features/cases/events";
-import { CONFIRM_DAYS } from "@/features/projects/confirm";
 import { suggestedReward } from "@/features/loop/rules";
 import { parseKpiCsv } from "@/features/projects/measure-import";
 import type { MeasureImpact } from "@/features/projects/measure-source";
@@ -244,14 +243,7 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
       {m ? (
         <div className={styles.result}>
           <span className={styles.big}>{movement(p.baseline, m, locale)}</span>
-          {m.confirmed ? <VerdictChip verdict={m.verdict} /> : (
-            <span className={styles.muted} data-testid={"measure-waiting-" + c.check}>
-              {/* A second person has CONFIRM_DAYS working days (decision Q6.15); the demo has no second person. */}
-              {!serverMode || m.sourceKind === "system" ? t("projects.verdictNotConfirmed")
-                : S.day > m.day + CONFIRM_DAYS ? t("projects.verdictWaitingLate", { day: f(m.day + CONFIRM_DAYS) })
-                : t("projects.verdictWaiting", { day: f(m.day + CONFIRM_DAYS) })}
-            </span>
-          )}
+          {m.confirmed ? <VerdictChip verdict={m.verdict} /> : <span className={styles.muted}>{t("projects.verdictNotConfirmed")}</span>}
           {m.changePct !== null && <span className={styles.change} data-verdict={m.verdict}>{changeText(m.changePct, locale)}</span>}
           <span className={styles.muted} data-testid={"measure-source-" + c.check}>
             {measureSourceLine(m, { by: label(m.byUserId, m.by), confirmedBy: label(m.confirmedByUserId, ""), day: f }, t)}
