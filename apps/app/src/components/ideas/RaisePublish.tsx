@@ -31,7 +31,7 @@ export function Working({ work }: { work: Work }) {
 
 const PAGE = 5;
 
-export type Sent = { role: string; names: string[]; date: string };
+export type Sent = { role: string; names: string[]; deputies: string[]; date: string };
 
 export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCancel, onConfirm }: {
   desks: Desk[];
@@ -64,7 +64,7 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
   const found = search(q).filter((d) => !taken.has(d.roleId)).slice(0, PAGE);
   const pick = (d: Desk) => { setCustom(d); setChosen(d); setSearching(false); setQ(""); };
   const select = (d: Desk) => { if (!busy) { setChosen(d); setSearching(false); } };
-  const who = (d: Desk) => (d.vacant ? t("ideas.deskVacant") : d.holders.join(", "));
+  const who = (d: Desk) => (!d.vacant ? d.holders.join(", ") : d.deputies.length ? t("ideas.deskVacantDeputy", { names: d.deputies.join(", ") }) : t("ideas.deskVacant"));
   const tag = (d: Desk) => (d.proposedBy === "ai" ? t("ideas.deskProposedAi") : d.proposedBy === "keywords" ? t("ideas.deskProposed") : "");
 
   const row = (d: Desk) => {
@@ -103,7 +103,9 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
 
         {sent ? (
           <div className={s.rcvs} data-testid="raise-sent" role="status">
-            <p className={s.rcvName}>{sent.names.length ? t("ideas.deskSent", { role: sent.role, names: sent.names.join(", "), date: sent.date }) : t("ideas.deskSentVacant", { role: sent.role, date: sent.date })}</p>
+            <p className={s.rcvName}>{sent.names.length ? t("ideas.deskSent", { role: sent.role, names: sent.names.join(", "), date: sent.date })
+              : sent.deputies.length ? t("ideas.deskSentDeputy", { role: sent.role, names: sent.deputies.join(", "), date: sent.date })
+                : t("ideas.deskSentVacant", { role: sent.role, date: sent.date })}</p>
             <Link href={casesHref} className={s.rcvRole}>{t("ideas.deskFollow")}</Link>
           </div>
         ) : (

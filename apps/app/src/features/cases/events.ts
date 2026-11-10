@@ -16,6 +16,8 @@ export type CaseEventType =
   | "case.handed" // { to, toRoleHolderId?, why? }
   | "case.asked" // { text }
   | "case.answered" // { text }
+  | "case.withdrawn" // { note? }  the raiser takes back an idea nobody decided yet (decision Q1.14): archived, no decision
+  | "case.unanswered" // {}  the raiser did not answer in time: the case is open on the desk again. internal: only the scheduler appends it, as actor system:clock (features/clock/due.ts)
   | "case.building" // { days, expected? }            (seed history)
   | "case.shipped" // { outcome, outcomeNote }        (seed history)
   | "case.override" // { proposed, chosen }  (route ids)
@@ -67,7 +69,7 @@ export type RouteProposal = {
 
 // Every field an event may carry. Which ones apply is documented per type above.
 export type EventPayload = {
-  title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind | "deadline" | "checkin" | "start" | "measure" | "escalation"; reason?: string; upside?: string;
+  title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind | "deadline" | "checkin" | "start" | "measure" | "escalation" | "question" | "triage" | "confirm"; reason?: string; upside?: string;
   answer?: "yes" | "no"; note?: string;
   to?: string; why?: string;
   text?: string;

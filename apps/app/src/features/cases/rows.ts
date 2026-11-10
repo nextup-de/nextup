@@ -23,7 +23,7 @@ export type Step = { label: string; when: string; tone: StepTone };
 export type MineStatus = "Shipped" | "Building" | "Approved" | "Declined" | "Question for you" | "Sent" | LifeStatus | ReducedIdea["status"];
 // The second half of the loop (docs/plans/2026-10-15_idea-to-project.md): a discussion before the
 // decision, and the project a yes opens - planned, worked on, done, measured, recognised (or stopped).
-export type LifeStatus = "In discussion" | "Planning" | "In progress" | "Done" | "Measured" | "Recognised" | "Stopped";
+export type LifeStatus = "In discussion" | "Planning" | "In progress" | "Done" | "Measured" | "Recognised" | "Stopped" | "Withdrawn";
 const PROJECT_STATUS_KEY: Record<ReducedProject["status"], MessageKey> = {
   planning: "cases.statusPlanning", running: "cases.statusInProgress", measuring: "cases.statusDone",
   measured: "cases.statusMeasured", recognised: "cases.statusRecognised", stopped: "cases.statusStopped",
@@ -110,6 +110,7 @@ export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: num
   const P = promiseDays;
   const t = withLocale(locale);
   // The whole life, once the loop is on - except old seed cases that went straight to a build.
+  if (c.withdrawn) return withdrawnRow(c, f, t);
   if (loop && !c.building && !c.shipped) return lifeRow(c, day, f, P, loop, t);
   const deputy = c.route ? (c.assigneeRoleId !== null && c.assigneeRoleId === c.route.ownerRoleId ? c.route.deputy : c.route.owner.name) : t("cases.deputyFallback");
   const q = c.question, dec = c.decided, b = c.building, sh = c.shipped;
@@ -135,7 +136,8 @@ export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: num
   const reply = dec ? decidedReply(t, dec)
     : c.status === "asked" && q ? t("cases.quoted", { text: q.text || t("cases.replyQuestionDefault") })
       : answered && q && q.answer ? t("cases.replyAnswered", { question: q.text || t("cases.replyQuestionShort"), answer: q.answer.text })
-        : last ? t("cases.replyHanded", { from: last.from, to: c.assignee, date: f(last.day) })
+        : q && q.unanswered !== null ? t("cases.replyUnanswered", { question: q.text || t("cases.replyQuestionShort") })
+        : last ? (last.why === "vacant" ? t("cases.replyHandedVacant", { to: c.assignee, date: f(last.day) }) : t("cases.replyHanded", { from: last.from, to: c.assignee, date: f(last.day) }))
           : t("cases.replyNone", { who: c.assignee, deputy });
   const replyBy = dec ? dec.by + " · " + f(dec.day)
     : c.status === "asked" && q ? q.by + " · " + f(q.day)
@@ -206,6 +208,24 @@ export function lifeSteps(c: ReducedCase, f: DayFmt, loop: MineLoop, locale: Loc
   return steps;
 }
 
+/** An idea the raiser took back (decision Q1.14): the steps up to that day, then "Withdrawn". */
+function withdrawnRow(c: ReducedCase, f: DayFmt, t: LT): MineRow {
+  const w = c.withdrawn as NonNullable<ReducedCase["withdrawn"]>;
+  return {
+    id: c.id, kind: "case", sortDay: c.raisedDay, title: c.title, status: t("cases.statusWithdrawn") as MineStatus, overdue: false,
+    canReply: false, replyTo: "",
+    submitted: t("cases.submitted", { date: f(c.raisedDay), from: c.from }),
+    clock: t("cases.clockWithdrawn", { date: f(w.day) }),
+    steps: [
+      step(t("cases.statusSent"), f(c.raisedDay), "done"),
+      ...(c.read !== null ? [step(t("cases.statusReadByHuman"), f(c.read), "done")] : []),
+      step(t("cases.statusWithdrawn"), f(w.day), "done"),
+    ],
+    reply: w.note ? t("cases.quoted", { text: w.note }) : t("cases.replyWithdrawn"), replyBy: w.by + " · " + f(w.day),
+    outcome: "—", outcomeNote: "", project: null,
+  };
+}
+
 function lifeRow(c: ReducedCase, day: number, f: DayFmt, P: number, loop: MineLoop, t: LT): MineRow {
   const dec = c.decided, talk = c.discussion, q = c.question, p = loop.project;
   const locale = t.locale;
@@ -231,7 +251,8 @@ function lifeRow(c: ReducedCase, day: number, f: DayFmt, P: number, loop: MineLo
       : talk ? (talk.missing ? t("cases.replyMissing", { text: talk.missing }) : t("cases.replyAsked", { count: talk.invited.length }))
         : c.status === "asked" && q ? t("cases.quoted", { text: q.text || t("cases.replyQuestionDefault") })
           : answered && q && q.answer ? t("cases.replyAnswered", { question: q.text || t("cases.replyQuestionShort"), answer: q.answer.text })
-            : hand ? t("cases.replyHanded", { from: hand.from, to: c.assignee, date: f(hand.day) })
+        : q && q.unanswered !== null ? t("cases.replyUnanswered", { question: q.text || t("cases.replyQuestionShort") })
+            : hand ? (hand.why === "vacant" ? t("cases.replyHandedVacant", { to: c.assignee, date: f(hand.day) }) : t("cases.replyHanded", { from: hand.from, to: c.assignee, date: f(hand.day) }))
               : t("cases.replyNoneOn", { who: c.assignee });
   const replyBy = dec ? dec.by + " · " + f(dec.day)
     : last ? t("cases.replyByCheckin", { by: last.by, round: last.round, date: f(last.day) })

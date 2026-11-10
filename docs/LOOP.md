@@ -15,9 +15,25 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
    tagged "Proposed" and the line "Routed by keywords - the AI is off for this company." says where it came from. The reasons
    are facts about the route and the role, never a score or a person's track record. "Choose another desk" lists every
    route-owning role. The send names the role and a date.
+   A raise that no route owns, or whose route has no owner seat, lands on the **fallback desk**: the occupied seat at
+   the head of the org chart (`fallbackSeat`, `features/cases/stamp.ts`), set by the server like every seat of a raise.
+   Its holder passes it on or answers it; a manager can still give it a route (`case.override`). It has the same answer
+   date as any case, and the desk is reminded to pass it on after one working day. Without an org chart it lands on no
+   desk, as before, and only a manager can pick it up.
+   A raise onto a desk nobody sits at does not wait: within a minute the clock writes `case.handed` with
+   `why: "vacant"` to the route's deputy desk, or to the seat above when that desk is vacant too (`features/clock/due.ts`).
+   The desk card and the sent line of the raise already name who gets it. The new desk and the raiser are told.
 2. **Answer promise.** The case page (and "My cases") shows "Answer by {date}" and "With · {role} · {people}"
    (`answerPromise`, `features/cases/promise.ts`). The date counts working days of the company calendar. A yes, a no or a
-   question answers; a hand-over does not.
+   question answers; a hand-over does not. A question pauses the answer date until the raiser replies. If no reply
+   comes, the raiser is reminded after 3 working days, and after 5 the clock writes `case.unanswered`: the case is open
+   on the desk again, the question stays on it marked "no answer", and the answer date runs on
+   (`QUESTION_REMIND_DAYS`, `QUESTION_RETURN_DAYS` in `features/clock/due.ts`; fixed numbers, not company rules yet).
+   Demo companies have no scheduler, so there a question waits.
+   While nobody has decided, the raiser can **withdraw** the idea on the case page, with one optional line why
+   (`case.withdrawn`, decision Q1.14). It is archived with status "Withdrawn", its clock stops, it leaves the desk, and
+   it is not in the decision log. The desk's holders and everyone invited to its discussion get a mail naming the raiser
+   as they posted it. After a yes only the project can be stopped.
 3. **Hand-over rule.** With the company rule `deadline_handover` on (default for new companies), a breached answer date
    writes one `case.handed` with `why: "deadline"` to the deputy seat; the submitter sees the date and who holds the case. With
    the rule off, the deputy role is told and the owner keeps the case.
@@ -28,11 +44,19 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
 6. **Projects.** A yes opens a project with the person who said yes as lead. The lead takes the baseline (metric, unit, which
    way is better, source), starts the project, works the board and marks it done.
 7. **Measure and confirmation.** The check opens 30 days (or the company's days) after done. The lead types the result,
-   optionally with saving, CO₂, energy and scrap figures; the card reads "Typed by … · not confirmed" and "Not confirmed yet".
-   A manager or a holder of the route's deputy role confirms ("Confirm result"); never the lead and never the person who typed
-   it. A file import is provenance only and is confirmed the same way; a trusted system source is not available to people.
+   optionally with saving, CO₂, energy and scrap figures; the card reads "Typed by … · not confirmed" and "Waiting for a
+   second person until {date}". A manager or a holder of the route's deputy role confirms ("Confirm result"); never the lead
+   and never the person who typed it. The confirmation has a desk and a date (decision Q6.15, `features/projects/confirm.ts`):
+   who may confirm is mailed when the result is typed, finds "Confirm the result" under "Projects waiting on you" in the
+   inbox, and has 5 working days. After that the clock reminds them once; 3 working days later it asks the seat above the
+   deputy's desk, whose holders may confirm from then on. A file import is provenance only and is confirmed the same way; a trusted system source is not available to people.
 8. **Recognition.** Only a confirmed latest result with the verdict *better* makes the reward due, by the company's reward
    rule; a manager records it. Same or worse closes the project without a reward.
+9. **Stopped.** The lead or a manager stops a project at any time before its reward, with a reason. The lead, the team
+   and who raised the idea get a mail with who stopped it and why (decision Q6.21); the idea stays in the archive.
+10. **Closed.** Still derived, never an event. The event that closes the project sends one summary to the lead, the team
+   and who raised the idea: the latest result against the baseline and the recognition (decision Q6.20,
+   `features/projects/close.ts`, `docs/NOTIFICATIONS.md`).
 
 ## Switches per company, and who sets them
 
@@ -59,7 +83,7 @@ with no AI, n8n, Jira or Microsoft 365; "db" tests run against a company in the 
 | The deputy hand-over: a breached date hands the case to the deputy once | db `tests/db/loop-handover.test.ts` (one `case.handed`, also when run twice; none with the rule off); unit `tests/unit/loop/handover.test.ts`, `handover-reducer.test.ts`. Not exercised in the e2e: a sandbox clock cannot be moved to breach a date. |
 | Desks, not people: ideas go to a role, with no score or track record of a person | e2e (the desk "Quality lead" with its holder, tagged "Proposed", reasons from the keywords); unit `tests/unit/loop/desks.test.ts` ("no score, no person, no answered-case count"). |
 | The score does not count model output | unit `tests/unit/loop/truth.test.ts`. Not exercised in the e2e: with the AI off no model proposes a route. |
-| Verified outcomes: a measured result counts only with a second person's confirmation | e2e (the lead's result is "Not confirmed yet" and the lead finds no confirm button; the second manager confirms); unit `tests/unit/loop/measure.test.ts`; db `tests/db/loop-measure-import.test.ts`. |
+| Verified outcomes: a measured result counts only with a second person's confirmation | e2e (the lead's result is "Waiting for a second person until …" and the lead finds no confirm button; the second manager finds it on the desk and confirms); unit `tests/unit/projects-confirm.test.ts`; unit `tests/unit/loop/measure.test.ts`; db `tests/db/loop-measure-import.test.ts`. |
 | Reward only after a better result | e2e (verdict better, then the reward is due and recorded); unit `tests/unit/loop/measure.test.ts` ("a confirmed same or worse latest verdict gives no reward"; "recognition off"). |
 
 Also proved in the e2e: the decision log lists the yes for a manager and for the raiser, and a manager who switches
