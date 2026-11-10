@@ -95,6 +95,14 @@ describe("loopMails", () => {
     expect(mails(byClock)).toEqual([]);
   });
 
+  it("the clock's hand-over off a desk nobody sits at tells the raiser who has it", () => {
+    const off: CaseEvent = { id: "vac", ts: 0, type: "case.handed", actor: "system:clock", actorUserId: null, target: "c_m", payload: { to: "H. Sander", why: "vacant" }, day: 0 };
+    const out = mails(off);
+    expect(out.map((m) => [m.to, m.subject])).toEqual([["js@acme.test", "Your idea was passed on: Shorter changeover"]]);
+    expect(out[0].text).toContain("Nobody holds the desk you raised this to right now, so H. Sander has it. The answer date stays.");
+    expect(out[0].text).not.toContain("system:clock");
+  });
+
   it("a no tells the raiser the reason in words, with the line the desk wrote", () => {
     const out = mails(ev("case.decided", "T. Vogel", "c_m", { answer: "no", reason: "no time", note: "Ask again in spring" }));
     expect(out.map((m) => [m.to, m.subject])).toEqual([["js@acme.test", "Your idea was declined: Shorter changeover"]]);

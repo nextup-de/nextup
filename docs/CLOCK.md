@@ -16,6 +16,15 @@ reducer accepts that event from the clock only; it opens the case, adds the paus
 `unanswered` set to the day. Idempotency keys: `clk:question:<case>:<asked day>` and `clk:unanswered:<case>:<asked day>`,
 so a second question on the same case counts again from its own day.
 
+## A desk nobody sits at
+
+An open case whose desk has no occupied seat of its role is handed on at once: `dueNow` yields a hand-over with
+`why: "vacant"` to the route's other desk (the deputy's, or back to the owner's) when someone sits there, else to the
+seat above; with nobody there either it stays. The key is `clk:vacant:<case>:<seat it leaves>`, so each seat is left
+once. `vacant` is one of the clock's own reasons (`CLOCK_REASONS`): a person cannot write it. It also catches a desk
+that empties later, when its last holder is taken off the seat. A seat whose user is deactivated still counts as
+occupied here.
+
 ## A raise without a route
 
 A case with no route used to be skipped by `dueNow`. It now gets the deadline fact of any case once it sits on a desk

@@ -23,7 +23,7 @@ export type Due = {
   dueDay: number;
   check?: number; // measure only
   toRoleHolderId?: string | null; // the seat the fact escalates to
-  why?: "escalation"; // handover only: the second level's hand-over; missing = the deadline's
+  why?: "escalation" | "vacant"; // handover only: the second level's hand-over, or off a desk nobody sits at; missing = the deadline's
   idemKey: string;
 };
 
@@ -92,6 +92,18 @@ export function dueNow(state: State, today: number, above: SeatAbove = () => nul
     }
     const atOwner = c.assigneeRoleId !== null && c.assigneeRoleId === (c.route?.ownerRoleId ?? null);
     out.push({ kind: "deadline", target: c.id, dueDay: c.dueDay, toRoleHolderId: targetSeat(state, c.route, atOwner), idemKey: idemKeyOf("deadline", c.id, c.dueDay) });
+  }
+
+  // A desk nobody sits at cannot answer (decision Q1.10): the case goes on at once, to the route's other desk
+  // (the deputy's, or back to the owner's) when someone sits there, else to the seat above. Once per seat.
+  const occupied = (roleId: string) => seatsOfRole(state.seats, roleId).some((s) => s.userId !== null);
+  for (const c of state.cases) {
+    if ((c.status !== "open" && c.status !== "discussion") || c.assigneeSeatId === null || c.assigneeRoleId === null || occupied(c.assigneeRoleId)) continue;
+    const atOwner = c.assigneeRoleId === (c.route?.ownerRoleId ?? null);
+    const to = (c.route ? targetSeat(state, c.route, atOwner) : null) ?? above(c.assigneeRoleId, []);
+    if (to !== null && to !== c.assigneeSeatId) {
+      handovers.push({ kind: "handover", why: "vacant", target: c.id, dueDay: c.dueDay, toRoleHolderId: to, idemKey: `clk:vacant:${c.id}:${c.assigneeSeatId}` });
+    }
   }
 
   // A raise without a route waits on the fallback desk to be passed on: one reminder to that desk, while it

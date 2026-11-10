@@ -18,8 +18,8 @@ exist. Each item below is one small PR.
 |---|---|---|---|---|
 | 1 | The raiser is told about a question, a pass and a no; the desk is told about the answer; a yes without a project tells the raiser too | Q4.1 | P4 | built (#640) |
 | 2 | An unanswered question: a reminder to the raiser after 3 working days, back on the desk as open after 5, marked "no answer" | Q4.3 | P4 | built (#641) |
-| 3 | A case without a route goes to a triage seat with a deadline; a raise with no fitting desk goes to a fallback desk | Q2.1, Q1.9 | P2, P1 | built, without the setting |
-| 4 | A raise onto a vacant desk is handed to the route's deputy seat at once, on the web and on the floor | Q1.10 | P1 | open |
+| 3 | A case without a route goes to a triage seat with a deadline; a raise with no fitting desk goes to a fallback desk | Q2.1, Q1.9 | P2, P1 | built, without the setting (#642) |
+| 4 | A raise onto a vacant desk is handed to the route's deputy seat at once, on the web and on the floor | Q1.10 | P1 | built |
 | 5 | A Teams card that cannot be delivered becomes a mail for the same notice | Q2.11 | P2 | open |
 | 6 | "Confirm result" gets a desk, a deadline of 5 working days, one reminder, then the seat above | Q6.15 | P6 | open |
 | 7 | The event that closes a project sends one summary to team, sponsor, followers and raiser | Q6.20 | P6 | open |
@@ -71,6 +71,18 @@ fact and the second level like any other.
 Decided and not built here: the decisions name a role chosen in Settings (the review role once the review exists, else a
 "triage role"). There is no such setting yet, so the head of the org chart stands in. A company without an org chart
 has no fallback desk. Cases raised without a route before this release keep sitting on no desk; a manager can pass them.
+
+## Item 4: a desk nobody sits at
+
+Today the web raise accepts a vacant desk and the case waits five working days for the deadline; the floor refuses a
+role without a seat. Now the clock, the one writer for every way of raising, hands such a case on at its next run:
+`case.handed` with `why: "vacant"` to the route's deputy desk, else to the seat above. The same rule catches a desk that
+empties after the raise. The new desk and the raiser are mailed. On the web the desk card says "Vacant - goes to
+{names}" and the sent line names them. On the floor a role with no seat at all now lands on the seat above it, and the
+form says which role that is; only with nobody above is the raise still refused.
+
+Not covered: a vacant desk with no deputy and nobody above still waits for its deadline; a seat whose user is
+deactivated counts as occupied; the demo has no scheduler, so nothing moves there.
 
 ## Docs this plan changes
 

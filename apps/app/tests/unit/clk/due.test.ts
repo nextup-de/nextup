@@ -263,3 +263,35 @@ describe("CLK a raise without a route (decision Q2.1)", () => {
     expect(dues).toEqual([{ kind: "deadline", target: "c_n", dueDay: PROMISE_DAYS, toRoleHolderId: null, idemKey: `clk:deadline:c_n:${PROMISE_DAYS}` }]);
   });
 });
+
+describe("CLK a desk nobody sits at (decision Q1.10)", () => {
+  const empty: SeatRow = { id: "seat_tv", roleId: "role_owner", label: "T. Vogel", userId: null, sort: 0 };
+  const head: SeatRow = { id: "seat_head", roleId: "role_head", label: "K. Head", userId: "u_kh", sort: 2 };
+  const up: SeatAbove = () => "seat_head";
+  const dues = (seatRows: SeatRow[], above: SeatAbove, ...events: CaseEvent[]) => dueNow(reduce({ ...WD, seats: seatRows }, logAt(0, ...events)), 0, above);
+  const moved = (to: string, idemKey: string) => [{ kind: "handover", why: "vacant", target: "c_a", dueDay: PROMISE_DAYS, toRoleHolderId: to, idemKey }];
+
+  it("a raise onto a vacant owner desk goes to the route's deputy at once, and only once", () => {
+    expect(dues([empty, seats[1]], () => null, raise("c_a"))).toEqual(moved("seat_dep", "clk:vacant:c_a:seat_tv"));
+    const handed = ev("case.handed", "system:clock", "c_a", { to: "H. Sander", toRoleHolderId: "seat_dep", why: "vacant" });
+    expect(dues([empty, seats[1]], () => null, raise("c_a"), handed)).toEqual([]);
+  });
+
+  it("with the deputy desk vacant too it goes to the seat above, and stays when nobody is above", () => {
+    const noDeputy: SeatRow = { ...seats[1], userId: null };
+    expect(dues([empty, noDeputy, head], up, raise("c_a"))).toEqual(moved("seat_head", "clk:vacant:c_a:seat_tv"));
+    expect(dues([empty, noDeputy, head], () => null, raise("c_a"))).toEqual([]);
+  });
+
+  it("a floor raise without a route goes to the seat above its vacant desk", () => {
+    const floor = ev("case.raised", "L. Brandt", "c_a", { kind: "problem", title: "Case c_a", routeId: null, assignee: "T. Vogel", assigneeRoleHolderId: "seat_tv" });
+    expect(dues([empty, seats[1], head], up, floor)).toEqual(moved("seat_head", "clk:vacant:c_a:seat_tv"));
+  });
+
+  it("nothing for a desk someone sits at, a second seat of the role counts, and nothing for an asked or decided case", () => {
+    expect(dues(seats, up, raise("c_a"))).toEqual([]);
+    const second: SeatRow = { id: "seat_tv2", roleId: "role_owner", label: "Second", userId: "u_2", sort: 5 };
+    expect(dues([empty, second, seats[1]], up, raise("c_a"))).toEqual([]);
+    expect(dues([empty, seats[1]], up, raise("c_a"), ev("case.decided", "H. Sander", "c_a", { answer: "no" }))).toEqual([]);
+  });
+});

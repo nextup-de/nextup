@@ -132,9 +132,21 @@ export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLoca
       break;
     }
     case "case.handed": {
-      // The clock's own hand-overs (deadline, escalation) are told by its reminders.
-      if (!kase || byClock(ev) || !pl.to || kase.assigneeSeatId !== (pl.toRoleHolderId ?? null)) break;
+      // The clock's hand-overs for a deadline or an escalation are told by its reminders. The one off a desk
+      // nobody sits at has no reminder, so the new desk and the raiser hear it here.
+      const vacant = byClock(ev) && pl.why === "vacant";
+      if (!kase || (byClock(ev) && !vacant) || !pl.to || kase.assigneeSeatId !== (pl.toRoleHolderId ?? null)) break;
       const to = pl.to;
+      if (vacant) {
+        for (const who of deskOf(pl.toRoleHolderId)) {
+          send(who, (t) => t("mail.passedDeskSubject", { title: kase.title }), (t) => [
+            t("mail.vacantDeskIntro"), "", `  ${kase.title}`, "",
+            t("mail.passedDeskNext", { when: inDays(t, kase.dueDay - state.day), url: caseLink(kase) }),
+          ]);
+        }
+        send(authorOf(kase), (t) => t("mail.passedRaiserSubject", { title: kase.title }), (t) => [t("mail.vacantRaiserIntro", { to }), "", caseLink(kase)]);
+        break;
+      }
       const why = (t: T) => (pl.why ? ["", t("mail.passedWhy", { why: pl.why })] : []);
       for (const who of deskOf(pl.toRoleHolderId)) {
         send(who, (t) => t("mail.passedDeskSubject", { title: kase.title }), (t) => [

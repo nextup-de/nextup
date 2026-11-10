@@ -35,7 +35,9 @@ switch.
 - The floor code cookie lasts 2 minutes and is cleared by the next send. A wrong code and a deactivated user get the
   same message.
 - The status page never shows a person's name, handle, comment, or who raised the case.
-- A role without holders cannot receive a floor case: the raise is refused as vacant and nothing is written.
+- A role with no seat at all sends its floor case to the seat above it in the org chart, and the form says which role
+  that is. Only with nobody above is the raise refused as vacant, and nothing is written. A seat that exists but is
+  empty takes the case, and the clock hands it to the deputy at its next run (`docs/CLOCK.md`).
 - Raises and lookups are rate limited.
 
 ## The reference (D8)
