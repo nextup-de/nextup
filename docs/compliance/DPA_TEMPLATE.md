@@ -1,6 +1,8 @@
-Updated 2026-11-11 · Draft for legal review, not legal advice. Sections 4, 7, 9, 10 and annex 4 changed for plan S: draft for Marc.
+Updated 2026-11-11 · Draft for legal review, not legal advice.
 
 # Data processing agreement (Art. 28 GDPR) — template
+
+> Sections 4, 7, 9, 10 and annex 4 changed for block S (2026-11-11): draft for Marc.
 
 Between **[Customer, address]** (the controller) and **[NextUp operator, address]** (the processor). Party names,
 dates and signatures are filled in by the parties. This template says only what the product does today.

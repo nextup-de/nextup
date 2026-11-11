@@ -1,15 +1,15 @@
 # Pilot support: channels, severity, response times
 
 > **Updated 2026-11-11.** What a pilot customer can expect, and what the NextUp team does, in a team of three people with
-> no night shift. Anything marked **KEVIN: fill in** or **`<named by Kevin>`** is not decided. **There is no SLA and no
+> no night shift. Anything marked **KEVIN: fill in** is not decided. **There is no SLA and no
 > price yet**; the response targets below are what the team believes it can keep, not a promise in a contract.
 
 ## Who owns what
 
 | Role | Person | Does |
 |---|---|---|
-| Support owner | **`<named by Kevin>`**, deputy **`<named by Kevin>`** | owns every ticket until closed; decides severity; reports to the customer |
-| Incident lead | **`<named by Kevin>`**, deputy **`<named by Kevin>`** | runs an incident (severity 1 and 2): has host access, stops the harm, restores service, writes the note; not the support owner |
+| Support owner | **KEVIN: fill in — name and a deputy** | owns every ticket until closed; decides severity; reports to the customer |
+| Incident lead | **KEVIN: fill in — name and a deputy** | runs an incident (severity 1 and 2): has host access, stops the harm, restores service, writes the note; not the support owner |
 | Escalation | Kevin (head engineer); then Marc | decides on a stop, a rollback, an exception, anything legal |
 | Customer contacts | named on the order form (`docs/customer/ORDER_FORM.md`), confirmed at the joint setup session | the pilot lead (product questions), the IT contact (server, sign-in, mail), the admin (settings, support access) |
 
@@ -26,7 +26,7 @@ rollback to sandbox or a stop of the pilot and tells the customer's pilot lead t
 |---|---|---|
 | The problem button in the app | a person who finds something broken | opens a ticket with NextUp; the person gets a mail with the answer |
 | Support mailbox: **KEVIN: fill in — address** | the pilot lead, IT and admin | the main channel for the pilot; read on working days |
-| Phone: **`<named by Kevin>`** | severity 1 only | during the hours below; no night or weekend cover |
+| Phone: **KEVIN: fill in — number, or say none** | severity 1 only | during the hours below; no night or weekend cover |
 | Weekly call | pilot lead and NextUp, once a week during the pilot | the report, open tickets, what changes |
 | Customer's own helpdesk | their people's first-line questions | the pilot lead trains their first line with `TRAINING.en.md` |
 
@@ -47,8 +47,8 @@ talked.
 
 ## Response targets
 
-Working hours: 09:00 to 17:00 Europe/Berlin, on working days of the company's calendar. There is no night, weekend or
-holiday cover and no high availability.
+Working hours: 09:00 to 17:00 Europe/Berlin, on working days of the company's calendar. There is
+no night, weekend or holiday cover and no high availability.
 
 | Level | First reply | Aim to resolve or work around | When it is outside hours |
 |---|---|---|---|
