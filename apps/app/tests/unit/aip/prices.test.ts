@@ -88,9 +88,9 @@ describe("the token limit", () => {
     expect(tokenCapOf(1234.9)).toBe(1234);
     expect(tokenCapOf(1e12)).toBe(MAX_MONTHLY_TOKEN_CAP);
   });
-  it("levels at 70, 90 and 100 % of the limit; nothing to count is never reached, also at a limit of 0", () => {
+  it("levels at 70, 90, 100 and 120 % of the limit; nothing to count is never reached, also at a limit of 0", () => {
     const at = (tokensUnpriced: number, tokenCap = 1000) => ({ tokensUnpriced, tokenCap });
-    expect([0, 699, 700, 899, 900, 999, 1000].map((n) => tokenLevel(at(n)))).toEqual(["ok", "ok", "warn70", "warn70", "warn90", "warn90", "reached"]);
+    expect([0, 699, 700, 899, 900, 999, 1000, 1199, 1200].map((n) => tokenLevel(at(n)))).toEqual(["ok", "ok", "warn70", "warn70", "warn90", "warn90", "reached", "reached", "stopped"]);
     expect(tokenShare(at(570))).toBe(57);
     expect(tokensReached(at(0, 0))).toBe(false);
     expect(tokenShare(at(0, 0))).toBe(0);
@@ -106,10 +106,12 @@ describe("the token limit", () => {
 describe("the gate and the token limit", () => {
   const azure: AiSettings = { choice: "azure-openai", region: "eu-central-1", model: "gpt-4.1-mini", endpoint: "https://x.example", deployment: "d", prices: undefined };
   const real = { stage: "pilot", hasDatabase: true, settings: azure, dpaSignedAt: new Date("2026-10-01"), purpose: "assist" as const, assistantOn: true, aiRouting: true };
-  it("closes for every purpose when the models without a price used their limit, and says so", () => {
+  it("closes when the models without a price used their limit, the raise path at 120 % of it, and says so", () => {
     const budget = { capEur: 50, spentEur: 0, tokensUnpriced: 20_000_000, tokenCap: 20_000_000 };
-    for (const purpose of ["assist", "routing", "coach", "brain"] as const) {
-      expect(aiGate({ ...real, purpose, budget })).toEqual({ on: false, why: expect.stringContaining("token limit") });
+    expect(aiGate({ ...real, purpose: "brain", budget })).toEqual({ on: false, why: expect.stringContaining("token limit") });
+    for (const purpose of ["assist", "routing", "coach"] as const) {
+      expect(aiGate({ ...real, purpose, budget }).on).toBe(true);
+      expect(aiGate({ ...real, purpose, budget: { ...budget, tokensUnpriced: 24_000_000 } })).toEqual({ on: false, why: expect.stringContaining("token limit") });
     }
     expect(aiGate({ ...real, budget: { ...budget, tokensUnpriced: 19_999_999 } }).on).toBe(true);
   });

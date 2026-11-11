@@ -79,7 +79,8 @@ allows model calls for real people.
 
 - **Turn on** in `/admin/knowledge` → Assistant: On, ceiling, DPA date, rules, extra patterns.
 - **Budget**: `/admin/assistant` → "AI budget per month (EUR)", 50 by default, and "Token limit per month for models
-  without a price", 20 million by default. The page shows what the month has cost and warns from 70 %.
+  without a price", 20 million by default. The page shows what the month has cost and warns from 70 %; the console
+  admins also get a mail at 70, 90, 100 and 120 % (see "The monthly budget").
 - **Prices**: `/admin/connectors` → AI provider → "Prices per model", one line per model: name, EUR per million input
   tokens, EUR per million output tokens. The form lists the models called this month that have no price yet.
 - **Model**: set `LLM_PROVIDER=bedrock`, `LLM_MODEL` (default `anthropic.claude-opus-5`),
@@ -132,7 +133,7 @@ wrapper over it for the assistant.
 | real stage, any choice other than mock, no `dpaSignedAt` | off ("waits for the data-processing agreement") |
 | purpose `assist`, `CompanyConfig.assistant` off | off |
 | purpose `routing`, `CompanyConfig.aiRouting` off | off |
-| any stage with a database, the month's budget or the token limit of models without a price used up, unless the assistant is answered by the mock (choice mock, or off in the demo stage) or the choice is off outside the demo stage |  off ("This month's AI budget for this company is used up.") |
+| any stage with a database, the month's budget or the token limit of models without a price used up (for the raise path, `assist`, `routing` and `coach`: 120 % of it), unless the assistant is answered by the mock (choice mock, or off in the demo stage) or the choice is off outside the demo stage |  off ("This month's AI budget for this company is used up.") |
 
 Every "no" carries a `why` in plain words. With the gate closed no request leaves, not to the brain and not to the model.
 
@@ -150,9 +151,12 @@ assistant settings. 0 stops every model call.
 
 Before a model call the caller loads the budget (`loadAiBudget` in `lib/db/ai-usage.ts`) and hands it to the gate:
 the cap, and the estimated cost of the company's assistant turns (`AssistTurn`) and brain calls (`AiCall`) since the
-first of the month (UTC). Once the cost reaches the cap the gate answers off for every purpose and in every stage,
-the demo stage included, because a real model costs the same there. The callers then do what they do for any closed
-gate: the assistant says why, a raise is routed by keywords, the idea studio scores by rules, first steps and the
+first of the month (UTC). Once the cost reaches the cap the gate answers off in every stage, the demo stage included,
+because a real model costs the same there: at 100 % for `brain` (first steps, the check-in draft, the context draft),
+at 120 % (`GRACE_PCT`) for the raise path, so ideas can still be raised with AI help past the cap (decision Q7.4 of
+10 Nov 2026). The raise path is `RAISE_PATH_PURPOSES` in `features/ai/budget.ts`: `routing` (the proposal at the raise
+step), `assist` (the raise page's assistant) and `coach` (the idea studio). The token limit of models without a price
+works the same way. The callers then do what they do for any closed gate: the assistant says why, a raise is routed by keywords, the idea studio scores by rules, first steps and the
 check-in draft fall back to the page's own suggestion, the context draft does not run. The mock assistant is never
 stopped, it costs nothing; but with the mock chosen (or, in the demo stage, the AI off) the brain's purposes (`routing`, `coach`, `brain`) still call the
 brain's own model and are capped like any other, so a cap of 0 stops them too. On the first of the next month the sum
@@ -163,7 +167,19 @@ a company that never chose a cap follows the default if it changes, and a save o
 change.
 
 `/admin/assistant` shows "AI budget this month: spent of cap (share)" and a banner from 70 % and from 90 % of the cap,
-and an error banner when it is used up (`budgetLevel`).
+and an error banner from 100 % ("AI paused; ideas can still be raised with AI help up to 120 %") and from 120 % ("All
+AI paused until" the 1st of next month) (`budgetLevel`, `tokenLevel`, `monthLevel`).
+
+When the month first reaches 70, 90, 100 or 120 % of a cap, the company's console admins get one mail (decision Q7.6,
+template `ai.budget`, docs/NOTIFICATIONS.md): the level, spent against the cap, what pauses, and a link to
+`/admin/assistant`. Recipients are the active users with `isStackAdmin` and a mail address; a company without one
+mails its active managers. It is checked after each `AiCall` is written (`recordAiCall` in `lib/db/ai-usage.ts` runs
+`warnAiBudget` in `server/notify/ai-budget.ts`); neither is awaited, so the request that made the call does not wait
+for it. The outbox key `ai.budget:<companyId>:<YYYY-MM>:<level>` stops a second mail for the level in the month,
+also after the cap was raised and crossed again. A month that jumps past a level in one call gets the mail of the level
+it stands at. The euro budget and the token limit share the four levels: whichever is further used names the level.
+A demo company gets no mail (its people are ours); a sandbox's rows are written as `skipped`. Not built: the ntfy line to NextUp support that Q7.6 also names. The app sends nothing to ntfy; the health report to
+admin.sellux.ch does not carry the budget yet (a follow-up for nextup-admin).
 
 #### Prices per model, and a token limit for the rest
 
@@ -203,8 +219,9 @@ What the number is, and is not:
   started. The sum takes the turns only up to the company's first such call and the calls from then on, so nothing
   is counted twice and nothing deleted is lost. Answers before this release exist only as turns and still shrink with
   retention until the month they fall in has passed.
-- Not built: a warning by mail or to NextUp support at 70 and 90 % (Q7.6), and letting the raise path run on to
-  120 % while only an agent pauses at 100 % (Q7.4; there is no agent yet). The warning is the banner on the page.
+- The raise path's grace to 120 % (Q7.4) and the warning mails (Q7.6) are built; the ntfy line to NextUp support is
+  not (see above). Q7.4 also names the agent (daily run, ask box, planning run) as what pauses at 100 %; there is no
+  agent yet, so today `brain` is what pauses.
 
 - A call whose provider reports no token counts is stored with 0 tokens and counts neither in euros nor against the
   token limit (some OpenAI-compatible servers when streaming, an old brain image). A row whose model name is empty
@@ -213,8 +230,11 @@ What the number is, and is not:
 Proof: `apps/app/tests/unit/aip/budget.test.ts` (cap, month, levels, the gate), `apps/app/tests/unit/aip/prices.test.ts`
 (the form's lines, which price a recorded name gets, the spend with company prices, the token limit and its levels),
 `apps/app/tests/db/aib-budget.test.ts` (the sum from stored calls, last month and other companies left out, a stored
-price and token limit, a raise at the cap routed by keywords without asking the brain) and
-`apps/app/tests/db/itc-connectors.test.ts` (prices saved, refused by line, shown back).
+price and token limit, a raise at the cap still asking the brain and one at 120 % routed by keywords),
+`apps/app/tests/unit/aip/budget-grace.test.ts` (each purpose at 99, 100, 119 and 120 % of either cap, the mail's
+levels, key, text and gate), `apps/app/tests/db/aib-budget-mail.test.ts` (one row per level and month, none for a
+second crossing, the recipients, sandbox and demo) and `apps/app/tests/db/itc-connectors.test.ts` (prices saved,
+refused by line, shown back).
 
 ### The proposal at raise
 
