@@ -4,17 +4,17 @@
 // in the browser instead (lib/idea-drafts.ts) - these return { ok: false } in that case.
 //
 // Publishing is checked here, not in the browser: the draft must still be open and the score is
-// recomputed from the stored turns; only then may the page append case.raised. The score does not gate
-// publishing - the author decides when it is ready.
+// recomputed from the stored turns; only then may the page append case.raised. The draft is marked
+// published by that append, in the same transaction (appendEventAction, Q1.11): a refused raise leaves
+// it open. The score does not gate publishing - the author decides when it is ready.
 import { z } from "zod";
 import { getViewerFor } from "@/features/auth/session";
 import { scoreDraft, type DraftSummary, type DraftView } from "@/features/ideas/drafts";
-import { latestReading } from "@/features/ideas/reading";
 import { ideaFromTurns } from "@/features/ideas/coach";
 import { hasDatabase } from "@/lib/db/client";
-import { createDraft, discardDraft, getDraft, listDrafts, loadPublishThreshold, markPublished, purgeDiscardedDrafts, saveDraftMeta } from "@/lib/db/ideas";
+import { createDraft, discardDraft, getDraft, listDrafts, loadPublishThreshold, purgeDiscardedDrafts, saveDraftMeta } from "@/lib/db/ideas";
 import { loadAssistSettings } from "@/lib/db/assist";
-import { serverIdeaContext, type Audience } from "@/server/ideas";
+import { draftToPublish, serverIdeaContext, type Audience } from "@/server/ideas";
 import { suggestReplies, type Reply } from "@/features/ideas/replies";
 
 const Slug = z.string().min(1).max(64);
@@ -102,18 +102,13 @@ export type PublishResult =
   | { ok: true; title: string; body: string; overall: number }
   | { ok: false; reason: string; overall?: number; threshold?: number };
 
-// The page mints the case id (so the case.raised it appends next carries it) and asks first.
+// The page mints the case id (so the case.raised it appends next carries it) and asks first. This writes
+// nothing: the case.raised that names this draft publishes it (appendEventAction).
 export async function publishIdeaDraftAction(input: { slug: string; id: string; caseId: string }): Promise<PublishResult> {
   const p = z.object({ slug: Slug, id: Id, caseId: z.string().regex(/^c_[a-z0-9]{4,40}$/) }).safeParse(input);
   const v = p.success ? await me(p.data.slug) : null;
   if (!p.success || !v) return { ok: false, reason: "Sign in first." };
-  const d = await getDraft(v.companyId, v.userId, p.data.id);
-  if (!d || d.status !== "draft") return { ok: false, reason: "This draft is no longer open." };
-  const score = scoreDraft(d, await serverIdeaContext(p.data.slug, v));
-  const idea = ideaFromTurns(d.turns);
-  const title = d.title || idea.title;
-  const overall = latestReading(d.turns)?.overall ?? score.overall; // the number the author was shown
-  const done = await markPublished(v.companyId, v.userId, d.id, p.data.caseId, { title, overall, scores: score.parts });
-  if (!done) return { ok: false, reason: "This draft is no longer open." };
-  return { ok: true, title, body: idea.body, overall };
+  const d = await draftToPublish(p.data.slug, v, p.data.id);
+  if (!d) return { ok: false, reason: "This draft is no longer open." };
+  return { ok: true, title: d.title, body: d.body, overall: d.overall };
 }
