@@ -13,3 +13,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* A step dropped on the Done sheet (plan RES, D13) stays in its column, struck through; its title says why. */
+.step[data-dropped="true"] { opacity: 0.7; }
+.step[data-dropped="true"] .stepOpen { text-decoration: line-through; }

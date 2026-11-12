@@ -223,8 +223,14 @@ describe("MOV rights", () => {
       expect(yesFor("lead", "project.update", { text: "x".repeat(4000), week: 5 }, world())).toBe(true);
     });
 
-    it("not the sponsor, a member or a stranger", () => {
-      for (const who of ["sponsor", "member", "stranger", "desk"] as const) expect(yesFor(who, "project.update", { text, week: 5 }, world()), who).toBe(false);
+    it("the accepted sponsor may send it too (AGT D15), under the same text and week rules; a member, a stranger and the desk may not", () => {
+      expect(yesFor("sponsor", "project.update", { text, week: 5 }, world())).toBe(true);
+      expect(yesFor("sponsor", "project.update", { text: "", week: 5 }, world())).toBe(false);
+      expect(yesFor("sponsor", "project.update", { text, week: 3 }, world())).toBe(false);
+      expect(yesFor("sponsor", "project.update", { text, week: 5 }, world({}, 7, "planning"))).toBe(false);
+      for (const who of ["member", "stranger", "desk"] as const) expect(yesFor(who, "project.update", { text, week: 5 }, world()), who).toBe(false);
+      // No flag in the payload grants a right: an AI draft is the sender's own update.
+      expect(yesFor("stranger", "project.update", { text, week: 5, aiDrafted: true } as EventPayload, world())).toBe(false);
     });
   });
 
