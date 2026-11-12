@@ -20,6 +20,8 @@ import { roundState } from "@/features/cases/discussion";
 import type { CaseEvent } from "@/features/cases/events";
 import { actorLabel, type ActorLabels } from "@/features/cases/actor-label";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
+import { isOpenDraft, mayReadDraft } from "@/features/projects/views";
+import { isPrivateIdea } from "@/features/cases/visibility";
 import { raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
 import { readableComment } from "@/features/cases/notice";
@@ -116,7 +118,12 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     : c.status === "discussion" && rs ? (rs.ready ? t("dashboard.evReadyToDecide") : t("dashboard.detailRound", { round: rs.round, of: rs.of, tail: rs.late ? t("dashboard.detailCheckinLate", { n: -rs.left }) : t("dashboard.detailCheckinOn", { date: f(rs.dueDay) }) }))
       : c.open ? (c.overdue ? t("dashboard.detailPastPromise", { n: c.clock - P }) : t("dashboard.detailLeftPromise", { n: P - c.clock })) : t("dashboard.detailAnsweredIn", { n: c.clock });
   // Archived and a project: read-only here, the conversation goes on at the project.
-  const project = c.archived && flag("projects") ? projectOfCase(S, c) : undefined;
+  const accepted = c.archived && flag("projects") ? projectOfCase(S, c) : undefined;
+  // A draft is for the people on it, the holder of its escalated seat and (unless the idea is private) managers (SET D13): anyone else gets the
+  // banner's "being set up" line and no link here, and no comment box either, since the conversation goes on at the draft.
+  const hiddenDraft = accepted !== undefined && isOpenDraft(accepted)
+    && !mayReadDraft(accepted, { role, userId: ctx.actorUserId }, S.cases.some((x) => accepted.sources.includes(x.id) && isPrivateIdea(x)));
+  const project = hiddenDraft ? undefined : accepted;
   const talk = flag("discussion");
 
   return (
@@ -245,7 +252,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           ))}
           {project ? (
             <div className={styles.moved}>{t("dashboard.detailArchivedMoved")} <Link href={href("/projects/" + project.id)}>{projectLabel(project)} {project.title} →</Link></div>
-          ) : (
+          ) : hiddenDraft ? null : (
           <div className={styles.noteRow}>
             <input className={styles.note} value={note} onChange={(e) => setNote(e.target.value)} placeholder={comments.length ? t("dashboard.detailAddThread") : t("dashboard.detailAddKnow")} aria-label={t("dashboard.detailComment")}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendNote(); } }} />
