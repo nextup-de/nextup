@@ -280,7 +280,7 @@ export function ActivityPanel({ p }: { p: ReducedProject }) {
     <section className={`${styles.panel} ${styles.activity}`} aria-labelledby={"activity-" + p.id}>
       <div className={styles.panelHead}>
         <h2 id={"activity-" + p.id} className={styles.h2}>{t("projects.activityTitle")}</h2>
-        <span className={styles.muted}>{t("projects.commentCount", { count: comments.length })} · {t("projects.eventCount", { count: events.length })}</span>
+        <span className={styles.muted}>{[comments.length ? t("projects.commentCount", { count: comments.length }) : "", events.length ? t("projects.eventCount", { count: events.length }) : ""].filter(Boolean).join(" · ")}</span>
       </div>
       <form className={styles.form} onSubmit={(e) => { e.preventDefault(); if (send("project.commented", { text }, () => act.project.comment(p.id, text.trim()))) setText(""); }}>
         <textarea className={`nh-input nh-textarea ${styles.textarea}`} value={text} onChange={(e) => setText(e.target.value)} placeholder={t("projects.commentPlaceholder")} aria-label={t("projects.comment")} maxLength={2000} />
