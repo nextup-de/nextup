@@ -93,3 +93,21 @@ it("OVL answer picks the sent line key for each why", () => {
   // The corrected line says who answers a vacant desk, not that it waits.
   expect(translate("en", "ideas.deskSentVacant", { role: "Quality lead", date: "3 Mar" })).toBe("Nobody holds Quality lead right now; the person above it answers by 3 Mar.");
 });
+
+it("OVL answer never throws on the partial state the raise page has in server mode", () => {
+  const full = stateOf(5, cases(1));
+  const { overload, rules, approvals, cases: own, projects, ...rest } = full; // what a client's reduced state may not carry, one part at a time
+  void overload; void rules; void approvals; void own; void projects;
+  const normal = { roleId: "role_owner", why: "holder", names: ["T. Vogel", "N. Keller"] };
+  for (const partial of [
+    full, { ...full, overload: undefined }, { ...full, rules: undefined }, { ...full, approvals: undefined }, { ...full, projects: undefined }, { ...full, cases: undefined },
+    { seats: full.seats, routes: full.routes }, rest,
+  ]) expect(answeringDesk(partial, "r1", 5, up), JSON.stringify(Object.keys(partial))).toEqual(normal);
+  // Nothing at all, or only what the page cannot do without: nobody is named, nothing is thrown.
+  expect(answeringDesk({}, "r1", 5, up)).toBeNull();
+  expect(answeringDesk({ routes: full.routes }, "r1", 5, up)).toBeNull();
+  expect(answeringDesk({ seats: full.seats }, "r1", 5, up)).toBeNull();
+  // A case the state holds without its history (a part cut out of a viewer's log) cannot break the answer: the load is unreadable, so the desk answers itself.
+  const broken = { ...full, cases: [{ id: "x", status: "open", assigneeRoleId: "role_owner" }] } as unknown as typeof full;
+  expect(answeringDesk(broken, "r1", 5, up)).toEqual(normal);
+});

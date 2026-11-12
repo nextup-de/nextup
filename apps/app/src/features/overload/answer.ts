@@ -4,6 +4,8 @@
 import { seatsOfRole } from "@/features/auth/identity";
 import type { SeatAbove } from "@/features/clock/due";
 import type { State } from "@/features/cases/reducer";
+import { EMPTY_APPROVAL_CONFIG } from "@/features/approvals/types";
+import { LOOP_DEFAULTS } from "@/features/loop/rules";
 import type { MessageKey } from "@/i18n";
 import { awayCoverSeat, overflowSeat, seatPresent } from "./away";
 import { deskLoads } from "./load";
@@ -14,6 +16,14 @@ export type AnswerWhy = "holder" | "away" | "overflow" | "vacant" | "above";
 export type AnsweringDesk = { roleId: string; why: AnswerWhy; names: string[] };
 
 type AnswerState = Pick<State, "seats" | "overload" | "routes" | "cases" | "projects" | "rules" | "approvals">;
+
+const safely = <T>(run: () => T, otherwise: T): T => {
+  try {
+    return run();
+  } catch {
+    return otherwise;
+  }
+};
 
 /** The sent line of each reason (D25): the same line as today for a holder, one for each of the others. */
 export const SENT_LINE: Record<AnswerWhy, MessageKey> = {
@@ -31,7 +41,12 @@ export const SENT_LINE: Record<AnswerWhy, MessageKey> = {
  * - every holder is away: the role of awayCoverSeat (why away); with nobody to cover, the holders keep it;
  * - nobody holds the role: the first present seat of the route's deputy role (why vacant), else the seat above (why above).
  */
-export function answeringDesk(state: AnswerState, routeId: string | null, today: number, above: SeatAbove): AnsweringDesk | null {
+export function answeringDesk(given: Partial<AnswerState>, routeId: string | null, today: number, above: SeatAbove): AnsweringDesk | null {
+  // The raise page hands over the state it has: a company's reduced state in server mode, where a part can be missing; what is missing is empty, never a throw.
+  const state: AnswerState = {
+    seats: given.seats ?? [], routes: given.routes ?? [], cases: given.cases ?? [], projects: given.projects ?? [],
+    rules: given.rules ?? LOOP_DEFAULTS, approvals: given.approvals ?? { ...EMPTY_APPROVAL_CONFIG, roles: [] }, overload: given.overload,
+  };
   const route = state.routes.find((r) => r.id === routeId);
   const roleId = route?.ownerRoleId ?? null;
   if (!route || roleId === null) return null;
@@ -46,9 +61,11 @@ export function answeringDesk(state: AnswerState, routeId: string | null, today:
   const present = owners.filter((s) => seatPresent(state, s.id, today));
   if (owners.length > 0) {
     const episode = overloadOf(state).desks.find((d) => d.roleId === roleId && d.clearedDay === null);
-    const full = deskLoads(state, today).find((l) => l.roleId === roleId)?.level === "overflow" || (episode !== undefined && episode.coverSeatId !== null);
+    // The load is worked out from every case and project of the state: a part of it that cannot be read means no overflow, the desk answers itself.
+    const level = safely(() => deskLoads(state, today).find((l) => l.roleId === roleId)?.level, undefined);
+    const full = level === "overflow" || (episode !== undefined && episode.coverSeatId !== null);
     if (full) {
-      const over = at(overflowSeat(state, roleId, route.id, today), "overflow");
+      const over = at(safely(() => overflowSeat(state, roleId, route.id, today), null), "overflow");
       if (over) return over;
     }
     if (present.length > 0) return { roleId, why: "holder", names: present.map((s) => s.label) };

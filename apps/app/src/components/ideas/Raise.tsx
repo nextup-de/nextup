@@ -457,9 +457,17 @@ function RaisePage({ script = false }: { script?: boolean }) {
   };
 
   // Who really answers a raise to this desk (plan OVL, D25): known where the page holds the company's reduced state (server mode); the demo keeps today's line.
+  // The page never waits on it: where working it out fails, the desk is offered as it is, without an answer.
+  const answerOf = (d: Desk) => {
+    if (!serverMode) return undefined;
+    try {
+      return answeringDesk(S, d.routeId, S.day, (roleId) => seatAboveRole(seed.seats ?? [], seed.roles ?? [], roleId)?.id ?? null);
+    } catch {
+      return undefined;
+    }
+  };
   const withAnswer = (d: Desk): Desk => {
-    if (!serverMode) return d;
-    const answer = answeringDesk(S, d.routeId, S.day, (roleId) => seatAboveRole(seed.seats ?? [], seed.roles ?? [], roleId)?.id ?? null);
+    const answer = answerOf(d);
     return answer ? { ...d, answer: { why: answer.why, names: answer.names } } : d;
   };
 
@@ -515,7 +523,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       if (!kept) showToast(t("ideas.pageToastShotsFull"));
     }
     setBusy(false); setPubWork(null);
-    setSent({ role: to.title, names: to.answer?.names ?? to.holders, deputies: to.deputies, date: dueLabel(), why: to.answer?.why, nobody: serverMode && to.answer === null }); // the window stays, now saying who owes an answer by when
+    setSent({ role: to.title, names: to.answer?.names ?? to.holders, deputies: to.deputies, date: dueLabel(), why: to.answer?.why, nobody: to.answer === null && answerOf(to) === null }); // the window stays, now saying who owes an answer by when; `nobody`: it is known that nobody can answer, not that working it out failed
     go("chat"); // published: back to the conversation, where the case is offered
     void studio.open(draft.id);
   };
