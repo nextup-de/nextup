@@ -12,7 +12,7 @@ import { rebuildProjections } from "../../../src/lib/db/projections/case-view";
 const SLUG = "uip-projects";
 const PROJECT = "pj-uip";
 const CASE = "c-uip";
-const TABS = ["overview", "board", "team", "results", "activity", "files"] as const;
+const TABS = ["overview", "board", "team", "results", "activity", "files", "agent"] as const; // agent: the manager sees the Agent tab (plan AGT, D15)
 test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL");
 
 const MANAGER = { name: "Mara Sweep", email: `mara@${SLUG}.test`, role: "manager" as const };
