@@ -57,6 +57,10 @@ check-in is always asked of `previousCheckInDayOf`, never computed as `checkInDa
 
 ## Clock
 
+The order of the project facts inside `projectDues` (`features/clock/kinds/project.ts`, handed to OVL): start, measure,
+SET's draft facts, confirm, then MOV's six loops late, blocked, quiet, stalled, update, vacant. A new kind goes at the end
+of the list it belongs to, never between.
+
 ## Notices
 
 ## Release note
