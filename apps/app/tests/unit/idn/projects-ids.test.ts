@@ -2,6 +2,7 @@
 // by those ids, and the project mails find their recipients by id (docs/IDENTITY.md). Labels only show.
 import { describe, expect, it } from "vitest";
 import { meFor, type SeatRow } from "@/features/auth/identity";
+import { EMPTY_APPROVAL_CONFIG } from "@/features/approvals/types";
 import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
@@ -35,7 +36,7 @@ type Book = ReturnType<typeof newBook>;
 const finish = (book: Book, day: number) =>
   finishProjects(book, { day, promise: PROMISE_DAYS, rules: LOOP_DEFAULTS, routeOf: () => route, seats });
 const P = (type: CaseEventType, payload: EventPayload = {}, actor = "L. Brandt", uid: string | null = "u_lead") => ev(type, actor, uid, "p1", payload);
-const stateOf = (book: Book) => ({ projects: finish(book, 0) }) as unknown as State;
+const stateOf = (book: Book) => ({ projects: finish(book, 0), cases: [], approvals: { ...EMPTY_APPROVAL_CONFIG, roles: [] }, rules: { fastLaneEur: 0 } }) as unknown as State;
 const actor = (name: string, userId: string | null, role: "leader" | "member" | "manager" = "leader") => ({ role, name, handle: null, userId, me: meFor(userId, []) });
 
 describe("IDN projects on ids", () => {

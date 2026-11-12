@@ -45,15 +45,32 @@ export type AcceptInput = {
 };
 
 const MAX_ID = 64;
-/** A stable, id-shaped name derived from the suggestion's id (the id of an event, a step): the same suggestion gives the same name, always. */
+/** A 53-bit string hash (cyrb53), base 36: the same text always gives the same short name. */
+function shortHash(text: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+/**
+ * A stable, id-shaped name derived from the suggestion's id (the id of an event): the same suggestion gives the same name, always, and two suggestions
+ * never the same one. An id that is too long for an event's id is not cut (two long ids share their start) but hashed whole.
+ */
 function derived(id: string, suffix: string): string {
   const s = `${id}-${suffix}`;
-  return s.length <= MAX_ID ? s : `${id.slice(0, MAX_ID - suffix.length - 1)}-${suffix}`;
+  return s.length <= MAX_ID ? s : `h${shortHash(id)}-${suffix}`;
 }
 export const acceptedIdOf = (suggestionId: string): string => derived(suggestionId, "ac");
 export const dismissedIdOf = (suggestionId: string): string => derived(suggestionId, "di");
 export const followUpIdOf = (suggestionId: string): string => derived(suggestionId, "fu");
-export const stepIdOf = (suggestionId: string): string => derived(suggestionId, "st");
+/** The step a Plan adds is read by the brain on every later run: its id is short (the contract allows 40 characters), whatever the suggestion's id. */
+export const stepIdOf = (suggestionId: string): string => `s${shortHash(suggestionId)}`;
 
 /** The idempotency keys of D14: the answer's own, and its follow-up's per kind. */
 export const acceptKeyOf = (suggestionId: string): string => `agt:acc:${suggestionId}`;

@@ -7,6 +7,8 @@ import type { State } from "@/features/cases/reducer";
 import { translate, DEFAULT_LOCALE, type Locale, type MessageKey } from "@/i18n";
 import { holdsRole, seatsOfRole, type Me } from "@/features/auth/identity";
 import type { Route } from "@/features/demo/types";
+import { unmetApprovals } from "@/features/approvals/rights";
+import { stepLabel } from "@/features/approvals/steps";
 import { byClock } from "@/features/clock/actor";
 import { PAUSE_MAX_DAYS } from "@/features/clock/kinds/project";
 import { TEMPLATES } from "@/features/templates/library";
@@ -184,6 +186,20 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       // A draft starts only once the lead has taken it, the goal is set and the baseline is taken (D17).
       if (draft && p.leadState === "pending") return no("projects.permStartLeadPending");
       if (draft && !p.goal) return no("projects.permStartNeedsGoal");
+      // Approvals (plan GAT, D21, D33): the draft waits for its run, and the requirements are recomputed now - a higher cost, a changed limit, a new rule
+      // or a refused supplement leave a step unmet, and a rule that names a role or council that is gone cannot be met by anyone.
+      if (p.waitsForApproval ?? false) return no("approvals.permStartWaits");
+      const opener = state.cases.find((c) => c.decided?.answer === "yes" && c.decided.projectId === p.id);
+      if (opener) {
+        const { missing, broken } = unmetApprovals(opener, state);
+        const first = broken[0];
+        if (first) return no("approvals.approverMissing", { rule: first.id });
+        if (missing.length > 0) {
+          const names = missing.map((m) => stepLabel(m, state.approvals, state.approvals.roles).name).filter(Boolean).join(", ");
+          const verdict = no("approvals.permStartNewApproval");
+          return names && !verdict.ok ? { ok: false, error: `${verdict.error} ${names}` } : verdict;
+        }
+      }
       if (!p.baseline) return no("projects.permStartNeedsBaseline");
       // Where a reward is possible a number baseline waits for a second person first (plan RES, D16).
       return baselineNeedsConfirm(p, state.rules) ? no("projectResult.permStartNeedsConfirm") : OK;

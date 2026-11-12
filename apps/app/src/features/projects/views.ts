@@ -5,7 +5,8 @@
 import type { Role } from "@/config/roles";
 import { holdsRole, type Me, type SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
-import type { State } from "@/features/cases/reducer";
+import { approverRoleIds } from "@/features/approvals/rights";
+import type { ReducedCase, State } from "@/features/cases/reducer";
 import { isPrivateIdea } from "@/features/cases/visibility";
 import type { Initiative, InitiativeStatus } from "@/features/demo/types";
 import { splitBody } from "@/features/ideas/brief";
@@ -41,23 +42,39 @@ export function escalatedToViewer(p: ReducedProject, v: IdViewer): boolean {
   return e !== null && e.what === "draft" && e.live && e.toSeatId !== null && v.me?.seatIds.includes(e.toSeatId) === true;
 }
 
-/** A draft is only for the people on it, the holder of the seat it was escalated to and, unless the idea is private, managers (D13). `privateIdea`: the raiser made the idea private. */
-export function mayReadDraft(p: ReducedProject, v: IdViewer, privateIdea: boolean): boolean {
-  return onDraft(p, v.userId) || escalatedToViewer(p, v) || (v.role === "manager" && !privateIdea);
+/**
+ * The viewer holds the role of a step of an approval run of the draft's case, a council's secretary or member role, or the role of a seat a late step
+ * was handed to (plan GAT, D24). By role id from `me`, never by name. `cases` are the cases the draft came from.
+ */
+export function approverOfDraft(cases: readonly ReducedCase[], v: IdViewer, state: Pick<State, "seats" | "approvals">): boolean {
+  const me = v.me;
+  if (me === undefined) return false;
+  return cases.some((c) => approverRoleIds(c, state).some((r) => me.roleIds.includes(r)));
+}
+
+/**
+ * A draft is only for the people on it, the holder of the seat it was escalated to and, unless the idea is private, managers and the approvers of
+ * its yes (D13, GAT D24). `privateIdea`: the raiser made the idea private. `approver`: see approverOfDraft.
+ */
+export function mayReadDraft(p: ReducedProject, v: IdViewer, privateIdea: boolean, approver = false): boolean {
+  return onDraft(p, v.userId) || escalatedToViewer(p, v) || ((v.role === "manager" || approver) && !privateIdea);
 }
 
 /** A draft that has not started: the only kind D13 hides. A legacy project and a started one are as before. */
 export const isOpenDraft = (p: ReducedProject): boolean => p.draft && p.status === "planning";
 
 /** The projects this person may see: a member sees the projects they lead, are on, or whose idea they raised; a draft only who is on it (D13). */
-export function visibleProjectsFor(state: Pick<State, "projects"> & { cases?: State["cases"] }, v: IdViewer, demo = true): ReducedProject[] {
+export function visibleProjectsFor(state: Pick<State, "projects"> & { cases?: State["cases"]; seats?: State["seats"]; approvals?: State["approvals"] }, v: IdViewer, demo = true): ReducedProject[] {
   const all = demo ? state.projects : state.projects.filter((p) => !p.seed);
-  const privateIdea = (p: ReducedProject) => p.sources.some((id) => { const c = state.cases?.find((x) => x.id === id); return c !== undefined && isPrivateIdea(c); });
-  const open = all.filter((p) => !isOpenDraft(p) || mayReadDraft(p, v, privateIdea(p)));
+  const casesOf = (p: ReducedProject) => (state.cases ?? []).filter((c) => p.sources.includes(c.id));
+  const privateIdea = (p: ReducedProject) => casesOf(p).some(isPrivateIdea);
+  // The approvers of the draft's yes read it too (GAT D24); without the company's roles and seats there are none to know.
+  const approver = (p: ReducedProject) => state.seats !== undefined && state.approvals !== undefined && approverOfDraft(casesOf(p), v, { seats: state.seats, approvals: state.approvals });
+  const open = all.filter((p) => !isOpenDraft(p) || mayReadDraft(p, v, privateIdea(p), approver(p)));
   if (v.role !== "member") return open;
   const id = v.userId;
   if (id === null) return [];
-  return open.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id) || onDraft(p, id) || (isOpenDraft(p) && escalatedToViewer(p, v)));
+  return open.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id) || onDraft(p, id) || (isOpenDraft(p) && (escalatedToViewer(p, v) || (!privateIdea(p) && approver(p)))));
 }
 
 /** The line a viewer who may not read a draft gets (D13): the lead's seat role and the start day; `roleTitle` says a role's label. */

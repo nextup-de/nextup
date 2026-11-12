@@ -70,7 +70,7 @@ it("GAT scaffold has the clock kinds review approval council and no Due yet", ()
   for (const k of APPROVAL_DUE_KINDS) expect(DUE_KINDS as readonly string[], k).toContain(k);
   expect(REVIEW_REMIND_DAYS).toBe(1);
   for (const f of FIXTURES) expect(approvalDues(f.state, f.today, above)).toEqual([]);
-  expect(approvalDues({} as State, TODAY, above)).toEqual([]);
+  expect(approvalDues({ clock: { mode: "demo" } } as State, TODAY, above)).toEqual([]);
   for (const kind of APPROVAL_DUE_KINDS) expect(approvalAfterFacts({ kind, target: "x", dueDay: 1, idemKey: "k" })).toBe(false);
 });
 
