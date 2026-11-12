@@ -1,0 +1,6 @@
+.hint { margin-top: 6px; }
+.link { padding: 0; border: 0; background: none; font: inherit; font-size: var(--nh-fs-xs); color: var(--nh-mute); text-decoration: underline; cursor: pointer; }
+.link:hover:not(:disabled) { color: var(--nh-ink); }
+.link:disabled { opacity: 0.5; cursor: default; }
+.link:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.answer { margin: 4px 0 0; font-size: var(--nh-fs-xs); line-height: 1.45; color: var(--nh-ink-2); overflow-wrap: anywhere; }

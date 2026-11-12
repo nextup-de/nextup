@@ -121,6 +121,17 @@ def test_agt_agent_drops_an_unblock_whose_fact_is_not_in_the_request():
     assert out.suggestions == []
 
 
+def test_agt_agent_takes_the_clocks_own_fact_id_of_about_65_characters():
+    late = "e_clk_cmwe0qzip0000sg06syua8y5r_clk:late:p_mwe0u3ws:477:s_mwe0u3wt0"
+    assert len(late) > 60
+    facts = [{"id": late, "kind": "late", "step_id": "s2", "day": 38}]
+    out, _ = run([draft(unblock(fact_id=late))], project={"facts": facts})
+    assert kinds(out) == ["unblock"] and out.suggestions[0].fact_id == late
+    with pytest.raises(ValueError):  # a fact id is capped, but well above what the clock writes
+        AgentIn.model_validate(request(project={"facts": [{**facts[0], "id": "f" * 201}]}))
+    AgentIn.model_validate(request(project={"facts": [{**facts[0], "id": "f" * 200}]}))
+
+
 def test_agt_agent_drops_a_plan_without_a_step_or_with_a_step_the_project_has():
     out, llm = run([draft(plan(step=None)), draft(plan(step=None))])
     assert out.suggestions == [] and "fill in step" in llm.calls[1]["user"]
