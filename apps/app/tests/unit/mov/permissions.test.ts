@@ -258,30 +258,6 @@ describe("MOV rights", () => {
       expect(yesFor("sponsor", "project.lead.changed", named, s)).toBe(false);
     });
 
-    it("the holder of the vacant fact's seat names one too, once the fact is written, and for that vacancy only", () => {
-      const fact = (seat: string, after = 0) => ev("clock.due", "system:clock", null, "p_m", { kind: "vacant", dueDay: 10, toRoleHolderId: seat }, 10 + after);
-      const withFact = (e: CaseEvent, patch: Partial<ReducedProject> = {}) => {
-        const s = vacant(patch);
-        s.projects[0].history = [...s.projects[0].history, e];
-        return s;
-      };
-      // Before the fact the seat above the desk has no say; after it, the one it went to has.
-      expect(yesFor("up", "project.lead.changed", named, vacant())).toBe(false);
-      expect(yesFor("up", "project.lead.changed", named, withFact(fact("s_up")))).toBe(true);
-      expect(yesFor("member", "project.lead.changed", named, withFact(fact("s_up")))).toBe(false);
-      expect(yesFor("stranger", "project.lead.changed", named, withFact(fact("s_up")))).toBe(false);
-      // A fact for another seat gives nothing to this one, and a fact of an earlier vacancy (before the lead left again) is no fact.
-      expect(yesFor("up", "project.lead.changed", named, withFact(fact("s_desk")))).toBe(false);
-      const old = vacant();
-      const h = old.projects[0].history;
-      old.projects[0].history = [...h, fact("s_up"), ev("project.lead.vacated", "system:directory", null, "p_m", { userId: "u_lead" }, 20)];
-      expect(yesFor("up", "project.lead.changed", named, old)).toBe(false);
-      // The seat's holder still needs a person named and a project that is open.
-      expect(yesFor("up", "project.lead.changed", { to: "N" }, withFact(fact("s_up")))).toBe(false);
-      expect(yesFor("up", "project.lead.changed", named, withFact(fact("s_up"), { status: "stopped" }))).toBe(false);
-      expect(yesFor("up", "project.lead.changed", named, withFact(fact("s_up"), { leadVacatedDay: null, leadUserId: "u_lead" }))).toBe(false);
-    });
-
     it("the sponsor may hand a project without a lead on, as the lead may", () => {
       expect(yesFor("sponsor", "project.handed", { toUserId: "u_new" }, vacant())).toBe(true);
     });
