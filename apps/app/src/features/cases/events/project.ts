@@ -10,6 +10,9 @@ export const PROJECT_EVENT_TYPES = [
   "project.measured", "project.measure.confirmed", "project.rewarded", "project.claimed", "project.stopped",
   "project.lead.answered", "project.template", "project.invited", "project.invite.answered", "project.goal",
   "project.start.moved",
+  "project.doneby.moved", "project.paused", "project.resumed", "project.howwework", "project.update", "project.lead.vacated",
+  "project.lead.changed",
+  "project.measure.questioned", "project.baseline.confirmed", "project.help.asked",
 ] as const;
 
 /** Every project.* type, with the fields it carries. */
@@ -25,9 +28,9 @@ export type ProjectAreaEventType =
   | "project.linked" // { system, url, key?, stepId? }
   | "project.commented" // { text }
   | "project.sync" // { system: 'jira', on }  send the project to Jira / stop syncing it; lead or manager, while the project is open
-  | "project.done" // { note? }  the measure checks start counting
-  | "project.measured" // { check, value, source, note? }  the verdict is computed, never sent
-  | "project.measure.confirmed" // { check }  a second person confirms a typed measure (LOOP/D18)
+  | "project.done" // { note?, openSteps? }  the measure checks start counting; openSteps: how each step not in Done ends (D13, D28)
+  | "project.measured" // { check, value, source, note?, measureEventId? }  the verdict is computed, never sent; after a send-back it re-enters that check once (D14), naming the revision it replaces
+  | "project.measure.confirmed" // { check, measureEventId? }  a second person confirms a typed measure (LOOP/D18); measureEventId names the revision confirmed
   | "project.rewarded" // { rule, amount?, note? }
   | "project.claimed" // -  an anonymous author takes their reward
   | "project.stopped" // { why }
@@ -37,7 +40,19 @@ export type ProjectAreaEventType =
   | "project.invited" // { userId, role }  the lead or a manager invites; the event's own id is the invitation's identity (Invite.id)
   | "project.invite.answered" // { inviteId, userId, take, reason?, lapsed? }  inviteId names the project.invited event; a legacy answer without it counts only when the person has exactly one pending invitation, else it is rejected
   | "project.goal" // { goal, doneWhen, doneBy?, brief? }  goal and doneWhen 3 to 400 characters, brief up to 1200
-  | "project.start.moved"; // { dueDay, why }  the seat above keeps a late draft with a new start day
+  | "project.start.moved" // { dueDay, why }  the seat above keeps a late draft with a new start day
+  // A project that keeps moving (plan MOV, D14 to D22).
+  | "project.doneby.moved" // { doneBy, why }  a new done-by working day on a running project; the lead once, then the sponsor or a manager
+  | "project.paused" // { why, untilDay }  the lead or a manager pauses a running project, at most PAUSE_MAX_DAYS ahead
+  | "project.resumed" // -  the lead, the sponsor or a manager ends a pause early
+  | "project.howwework" // { checkInWeekday, note? }  the weekly check-in weekday (1-5) and a note on how the team works
+  | "project.update" // { text, week }  the lead's weekly update; week is the check-in day number
+  | "project.lead.vacated" // { userId }  the lead left; written only by system:directory
+  | "project.lead.changed" // { to, toUserId, why? }  a new lead while the project has none
+  // A result that closes properly (plan RES, D13 to D19).
+  | "project.measure.questioned" // { check, why, measureEventId? }  a person who may confirm sends a typed result back (D14); measureEventId names the revision questioned
+  | "project.baseline.confirmed" // { baselineEventId? }  a second person confirms the current baseline number (D16); baselineEventId names the revision confirmed
+  | "project.help.asked"; // { stepId, text }  the lead or a member asks the sponsor for help on a step (D19)
 
 // Compile-time: every app type is a member of the area's union.
 const _appTypesAreMembers: readonly ProjectAreaEventType[] = PROJECT_EVENT_TYPES;
@@ -58,4 +73,17 @@ export type ProjectAreaPayload = {
   version?: number; // project.template
   goal?: string; doneWhen?: string; doneBy?: number; brief?: string; // project.goal (doneBy: a working-day number)
   role?: "sponsor" | "member" | "contributor" | "follower"; // project.invited
+  // A project that keeps moving (plan MOV). doneBy is shared with project.goal above (project.doneby.moved reuses it).
+  untilDay?: number; // project.paused (a working-day number)
+  checkInWeekday?: number; // project.howwework (1 = Monday ... 5 = Friday)
+  week?: number; // project.update: the check-in day number of the week it is for
+  unassign?: boolean; // project.member with on: false (D22): also clears the person's open steps and drops them as sponsor and follower
+  originEventId?: string; // clock.due of a project: the event the occurrence belongs to (a block or vacancy cycle)
+  // A result that closes properly (plan RES). check, why, stepId and text are shared (CorePayload).
+  openSteps?: { stepId: string; end: "done" | "dropped"; why?: string }[]; // project.done (D13, D28): every step not in Done, how it ends ("open" is case.checkin's)
+  // The revision a confirmation, a questioning or a re-entry is about (RES review, 12 Nov): the id of the project.measured / project.baseline
+  // event that wrote the number. An event naming a revision that has since been replaced is refused, so a confirmation for revision A never
+  // confirms its replacement B. A missing field (every event stored before RES) names the revision that stood when it was written.
+  measureEventId?: string; // project.measure.confirmed, project.measure.questioned, project.measured (a re-entry)
+  baselineEventId?: string; // project.baseline.confirmed
 };

@@ -62,3 +62,8 @@
   .area { height: auto; }
   .soft, .primary { height: 44px; }
 }
+
+/* The block of a no (plan SEE, D12): the reason and what comes next, one stack, wrapping on a phone. */
+.noBlock { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 12px 16px; border-radius: 8px; background: var(--nh-surface); overflow-wrap: anywhere; }
+.noBlock .missing { overflow-wrap: anywhere; }
+.noBlock .soft { text-decoration: none; white-space: normal; height: auto; min-height: 36px; padding-block: 6px; text-align: center; }

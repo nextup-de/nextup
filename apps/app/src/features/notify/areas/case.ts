@@ -25,7 +25,8 @@ export const CASE_FOLLOWS: Record<string, string> = {
   "reminder.appeal": "reminder.deadline", "reminder.view": "reminder.checkin",
 };
 
-export const CASE_REMINDER_KINDS = ["deadline", "checkin", "escalation", "question", "triage"] as const;
+// appeal and view: the second look and an invitee view (plan NOR, D14, D18). A revisit has no reminder: the clock writes case.reopened.
+export const CASE_REMINDER_KINDS = ["deadline", "checkin", "escalation", "question", "triage", "appeal", "view"] as const;
 type CaseReminderKind = (typeof CASE_REMINDER_KINDS)[number];
 
 /** The render entries of the case reminders. */
@@ -36,6 +37,12 @@ export const CASE_REMINDER_TEXTS: Record<`reminder.${CaseReminderKind}`, Reminde
     compose(t("mail.reminderCheckinSubject", { title }), t("mail.reminderCheckinIntro"), t("mail.reminderOpenCase", { url })),
   "reminder.triage": (_i, t, compose, { title, when, url }) =>
     compose(t("mail.reminderTriageSubject", { title }), t("mail.reminderTriageIntro", { when }), t("mail.reminderOpenCase", { url })),
+  "reminder.appeal": (input, t, compose, { title, when, url }) =>
+    input.reader === "above"
+      ? compose(t("caseNo.reminderAppealAboveSubject", { title }), t("caseNo.reminderAppealAbove", { when }), t("mail.reminderOpenCase", { url }))
+      : compose(t("caseNo.reminderAppealSubject", { title }), t("caseNo.reminderAppealIntro", { when }), t("mail.reminderOpenCase", { url })),
+  "reminder.view": (_i, t, compose, { title, url }) =>
+    compose(t("caseNo.reminderViewSubject", { title }), t("caseNo.reminderViewIntro"), t("mail.reminderOpenCase", { url })),
   "reminder.question": (_i, t, compose, { title, days, url }) =>
     compose(t("mail.reminderQuestionSubject", { title }), t("mail.reminderQuestionIntro", { days }), t("mail.reminderQuestionOpen", { url })),
   "reminder.escalation": (input, t, compose, { title, when, url }) => {
@@ -73,6 +80,25 @@ export const CASE_REMINDER_AUDIENCE: Record<CaseReminderKind, ReminderAudienceFn
     if (!kase) return null;
     const raiser = kase.fromUserId ?? kase.history.find((h) => h.type === "case.raised")?.actorUserId ?? null;
     return { users: raiser ? [raiser] : [], title: kase.title, link: caseLink(kase.id), varsFor: () => ({ days: QUESTION_RETURN_DAYS - QUESTION_REMIND_DAYS }) };
+  },
+  appeal: (ev, { kase, caseLink, usersOfSeat }) => {
+    if (!kase) return null;
+    // The deciding desk of a second look nobody has answered; on check 2 the seat above it. Never the person who said no (D18).
+    const a = kase.appeal;
+    if (!a || a.decided !== null) return { users: [], title: kase.title, link: caseLink(kase.id) };
+    const noSayer = kase.decided?.answer === "no" ? kase.decided.byUserId ?? null : null;
+    const above = ev.payload.check === 2;
+    const users = usersOfSeat(above ? ev.payload.toRoleHolderId : a.seatId).filter((id) => id !== noSayer);
+    return { users, title: kase.title, link: caseLink(kase.id), varsFor: () => ({ reader: above ? "above" : "desk" }) };
+  },
+  view: (_ev, { kase, caseLink }) => {
+    if (!kase?.discussion) return null;
+    // Every invitee who has neither said it is not for them nor commented since the round began (D14, Q3.9).
+    const talk = kase.discussion;
+    const round = kase.history.findLastIndex((e) => e.type === "case.discussion" || e.type === "case.checkin");
+    const heard = new Set(kase.history.slice(round + 1).filter((e) => e.type === "case.commented").map((e) => e.actorUserId ?? ""));
+    const users = talk.invitedUserIds.filter((id) => !talk.declinedUserIds.includes(id) && !heard.has(id));
+    return { users, title: kase.title, link: caseLink(kase.id) };
   },
   triage: (_ev, { kase, caseLink, usersOfSeat }) =>
     // The day it names is the answer date the raiser was promised.
