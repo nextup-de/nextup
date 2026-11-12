@@ -19,6 +19,8 @@ export const common = defineMessages({
     yesterday: "Yesterday",
     days_one: "{count} day",
     days_other: "{count} days",
+    showAll: "Show all {count}",
+    showLess: "Show less",
   },
   de: {
     save: "Speichern",
@@ -37,5 +39,7 @@ export const common = defineMessages({
     yesterday: "Gestern",
     days_one: "{count} Tag",
     days_other: "{count} Tage",
+    showAll: "Alle {count} anzeigen",
+    showLess: "Weniger anzeigen",
   },
 });

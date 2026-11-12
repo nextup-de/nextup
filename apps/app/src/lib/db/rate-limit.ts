@@ -29,6 +29,13 @@ export async function hitShared(key: string, rule: Rule, now: number): Promise<V
   return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((row.resetAt.getTime() - now) / 1000)) };
 }
 
+/** Give back one attempt in a live window (the pure `refund`): one statement, so two refunds cannot both read the same count. */
+export async function refundShared(key: string, now: number): Promise<void> {
+  await getDb().$executeRaw`
+    UPDATE "RateCounter" SET "count" = GREATEST("count" - 1, 0)
+    WHERE "key" = ${key} AND "resetAt" > ${new Date(now)}`;
+}
+
 /** Forget a key - after a successful login, so a typo or two earlier do not linger. */
 export async function clearShared(key: string): Promise<void> {
   await getDb().$executeRaw`DELETE FROM "RateCounter" WHERE "key" = ${key}`;

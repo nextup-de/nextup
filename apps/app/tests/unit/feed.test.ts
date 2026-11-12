@@ -83,6 +83,16 @@ describe("filters and sorts", () => {
     expect(sortFeed(quiet, "support").map((x) => x.id)).toEqual(["talked", "old", "new"]);
     expect(sortFeed(quiet, "latest").map((x) => x.id)).toEqual(["new", "talked", "old"]);
   });
+
+  it("puts what matters now first under Most relevant: support fades with quiet weeks, the reader's unit weighs more", () => {
+    const list = [
+      { id: "oldHit", backers: 6, raisedDay: 1, comments: 2, lastDay: 1 }, // 8 points, 8 weeks quiet
+      { id: "fresh", backers: 2, raisedDay: 55, comments: 0, lastDay: 57 },
+      { id: "mine", backers: 1, raisedDay: 50, comments: 0, lastDay: 56, own: true },
+    ];
+    expect(sortFeed(list, "relevant", 57).map((x) => x.id)).toEqual(["fresh", "mine", "oldHit"]);
+    expect(sortFeed(list, "support", 57).map((x) => x.id)).toEqual(["oldHit", "fresh", "mine"]);
+  });
 });
 
 describe("deptChips", () => {

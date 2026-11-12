@@ -3,56 +3,22 @@
 // Every event may also carry actorUserId (the person behind `actor`; null for system actors) and
 // the id fields next to the label fields above (docs/IDENTITY.md). Labels are for display only.
 // Never store display text as state: store who / which day / which route; build sentences at render.
-import type { MeasureImpact, MeasureSource } from "@/features/projects/measure-source";
+import type { DueKind } from "@/features/clock/due";
+import type { MeasureSource } from "@/features/projects/measure-source";
+import type { AgentAreaEventType, AgentAreaPayload } from "./events/agent";
+import type { ApprovalAreaEventType, ApprovalAreaPayload } from "./events/approval";
+import type { CaseAreaEventType, CaseAreaPayload } from "./events/case";
+import type { OverloadAreaEventType, OverloadAreaPayload } from "./events/overload";
+import type { ProjectAreaEventType, ProjectAreaPayload } from "./events/project";
 
-export type CaseEventType =
-  | "case.raised" // { title, body, routeId, assignee, assigneeRoleHolderId?, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy? }
-  | "case.read" // -
-  | "case.decided" // { answer: 'yes'|'no', reason?, note?, projectId?, lead?, leadUserId?, title?, draft?, raiserNote? }  a yes with projectId opens (or joins) that project; draft: true opens it as a draft (plan SET, D8)
-  | "case.discussion" // { invited, invitedUserIds?, missing }  "Discuss first": round 1 starts (docs/plans/2026-10-15_idea-to-project.md)
-  | "case.invited" // { invited, invitedUserIds? }  more people asked for their view
-  | "case.revised" // { body, title?, overall? }  the raiser's next version; the reducer numbers it
-  | "case.checkin" // { next: 'round'|'decide', open, note }  ends a round
-  | "case.handed" // { to, toRoleHolderId?, why? }
-  | "case.asked" // { text }
-  | "case.answered" // { text }
-  | "case.withdrawn" // { note? }  the raiser takes back an idea nobody decided yet (decision Q1.14): archived, no decision
-  | "case.unanswered" // {}  the raiser did not answer in time: the case is open on the desk again. internal: only the scheduler appends it, as actor system:clock (features/clock/due.ts)
-  | "case.building" // { days, expected? }            (seed history)
-  | "case.shipped" // { outcome, outcomeNote }        (seed history)
-  | "case.override" // { proposed, chosen }  (route ids)
-  | "case.affected" // { why? }  the actor says the problem hits them too - a lead says why (read from the log by selectors; the reducer ignores it)
-  | "case.unaffected" // - withdraws that
-  | "case.commented" // { text, rescore? }  rescore: the text is new information and corrects the score
+// The core types: the idea.* events, day.advanced and clock.due. The case.* and project.* types (and the stubs of
+// the other areas) are in events/<area>.ts and composed into CaseEventType below.
+export type CoreEventType =
   | "idea.cosigned" // -
   | "idea.uncosigned" // -
   | "idea.asked" // { text }
   | "idea.approved" // { team?: [names], note? }
   | "idea.funded" // { team?: [names], note? }
-  // A project, target = its id. It opens with the case.decided yes above (a yes with draft: true opens a draft, D8), never with an event of its own.
-  | "project.member" // { name, userId?, on }
-  | "project.handed" // { to, toUserId?, why? }  a new lead; the old one stays on the team
-  | "project.baseline" // { metric, unit, value, better: 'up'|'down', source } or { none: true, why }
-  | "project.started" // -  refused without a baseline
-  | "project.step.added" // { stepId, text, owner?, ownerUserId?, dueDay?, note?, to?, external? }  to: the column it starts in (To do when missing)
-  | "project.step.moved" // { stepId, to: 'todo'|'doing'|'blocked'|'done', why?, before? }  before: the card it lands above (null = the bottom)
-  | "project.step.edited" // { stepId, text?, owner?, ownerUserId?, dueDay?, note?, removed? }  only the fields sent change; owner "" and dueDay null clear
-  | "project.linked" // { system, url, key?, stepId? }
-  | "project.commented" // { text }
-  | "project.sync" // { system: 'jira', on }  send the project to Jira / stop syncing it; lead or manager, while the project is open
-  | "project.done" // { note? }  the measure checks start counting
-  | "project.measured" // { check, value, source, note? }  the verdict is computed, never sent
-  | "project.measure.confirmed" // { check }  a second person confirms a typed measure (LOOP/D18)
-  | "project.rewarded" // { rule, amount?, note? }
-  | "project.claimed" // -  an anonymous author takes their reward
-  | "project.stopped" // { why }
-  // The project draft (plan SET, D11 to D17).
-  | "project.lead.answered" // { take, reason?, lapsed? }  the lead takes the draft or declines it; lapsed: the clock wrote it after LEAD_RETURN_DAYS (system:clock). Carries askId when the clock or a later cycle needs to name the ask it answers
-  | "project.template" // { key, version, title? }  seeds the board steps from that exact template version; refused after the start
-  | "project.invited" // { userId, role }  the lead or a manager invites; the event's own id is the invitation's identity (Invite.id)
-  | "project.invite.answered" // { inviteId, userId, take, reason?, lapsed? }  inviteId names the project.invited event; a legacy answer without it counts only when the person has exactly one pending invitation, else it is rejected
-  | "project.goal" // { goal, doneWhen, doneBy?, brief? }  goal and doneWhen 3 to 400 characters, brief up to 1200
-  | "project.start.moved" // { dueDay, why }  the seat above keeps a late draft with a new start day
   | "day.advanced" // { by }
   | "clock.due"; // { kind, dueDay, check?, toRoleHolderId?, userId?, inviteId?, askId?, lapse? }  kind lead / invite / draft: userId = the person waited for, inviteId = the project.invited event, askId = the event that asked the lead (cycle-specific idempotency), lapse = the second fact that writes the lapse; kind escalation: the second level, toRoleHolderId = the seat above (null: nobody).  internal: the scheduler appends it as actor system:clock, never a browser or integration (CLK/D10)
 
@@ -74,65 +40,38 @@ export type RouteProposal = {
   version: string; // which matcher or prompt - features/routing ROUTER_VERSION
 };
 
-// Every field an event may carry. Which ones apply is documented per type above.
-export type EventPayload = {
-  title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind | "deadline" | "checkin" | "start" | "measure" | "escalation" | "question" | "triage" | "confirm" | "lead" | "invite" | "draft"; reason?: string; upside?: string;
-  answer?: "yes" | "no"; note?: string;
+// The fields that core events carry, and every field more than one file uses (an area file declares only the fields
+// that its own events carry). Which ones apply is documented per type in the area files.
+export type CorePayload = {
+  title?: string; routeId?: string | null; kind?: CaseKind | DueKind; reason?: string;
+  note?: string;
   to?: string; why?: string;
   text?: string;
-  days?: number; expected?: string;
-  outcome?: string; outcomeNote?: string;
-  proposed?: string | null; chosen?: string;
-  team?: string[];
-  affected?: string[]; // names the raiser says are hit by the problem too
-  attachments?: number; // screenshots attached when raised (the files stay in the browser; only the count is a fact)
-  rescore?: boolean; // on case.commented: the comment is new information, the score is re-evaluated with it
-  channel?: "mail" | "teams"; // on case.commented by system:mail: what carried the raise notice (none on notes before 9 Nov: mail)
-  by?: number;
-  proposal?: RouteProposal; // on case.raised
-  visibility?: Visibility; // on case.raised
-  asName?: boolean; // on case.raised: a member posted it by name instead of their handle (decision Q1.7); the server keeps it only when it took effect
-  seenBy?: string[]; // on case.raised with visibility "custom": people and department names (shown, never compared)
-  seenByUserIds?: string[]; // on case.raised with visibility "custom": the picked people by user id (VIS/D10)
-  seenByUnitIds?: string[]; // on case.raised with visibility "custom": the picked departments by org unit id (VIS/D10)
-  // The discussion stage
-  invited?: string[]; // case.discussion, case.invited: names
-  missing?: string; // case.discussion: what is still missing, in the desk holder's words
-  overall?: number; // case.revised: the benchmark score of the new version, 0-100
-  next?: "round" | "decide"; // case.checkin
-  open?: string[]; // case.checkin: the points still open (dial names or short notes)
-  // Projects
+  team?: string[]; // idea.approved, idea.funded
+  by?: number; // day.advanced
+  // Projects (case.decided yes opens one; the fields are shared with the project events)
   projectId?: string; // case.decided yes: the project it opens or joins
   lead?: string; // case.decided yes: who leads it
   name?: string; on?: boolean; // project.member
-  metric?: string; unit?: string; value?: number; better?: "up" | "down"; source?: string | MeasureSource; none?: boolean; // project.baseline, project.measured (value, source)
-  stepId?: string; owner?: string; dueDay?: number | null; // project.step.*, project.linked (stepId)
-  before?: string | null; removed?: boolean; // project.step.moved (before), project.step.edited (removed)
-  external?: { system: string; key: string; url?: string }; // project.step.added from a connector
-  system?: string; url?: string; key?: string; // project.linked, project.sync (system; on is above)
-  impact?: MeasureImpact; // project.measured (LOOP/D20)
-  check?: number; // project.measured: days after done (30, 90)
-  rule?: string; amount?: number; // project.rewarded
+  source?: string | MeasureSource; // project.baseline, project.measured
+  stepId?: string; dueDay?: number | null; // project.step.*, project.linked (stepId), project.start.moved, clock.due
+  system?: string; url?: string; key?: string; // project.linked, project.sync (system; on is above), project.template (key)
+  check?: number; // project.measured: days after done (30, 90); clock.due
   // Ids next to the labels above (IDN/D5); the label fields stay for display.
-  assigneeRoleHolderId?: string | null; // case.raised: the seat it lands on
-  toRoleHolderId?: string | null; // case.handed
-  invitedUserIds?: string[]; // case.discussion, case.invited
+  toRoleHolderId?: string | null; // case.handed, clock.due
   leadUserId?: string | null; // case.decided yes with projectId
-  userId?: string | null; // project.member
+  userId?: string | null; // project.member, project.invited, clock.due
   toUserId?: string | null; // project.handed
-  ownerUserId?: string | null; // project.step.added, project.step.edited (null clears)
-  // The project draft (plan SET)
-  draft?: boolean; // case.decided yes: opens a draft (D8)
-  raiserNote?: string; // case.decided yes: one line to the raiser (D10)
-  take?: boolean; // project.lead.answered, project.invite.answered: accepted or declined
-  lapsed?: boolean; // project.lead.answered, project.invite.answered: nobody answered, the clock wrote it
   lapse?: boolean; // clock.due kind lead / invite: the fact that leads to the lapse, not the reminder
-  version?: number; // project.template
-  goal?: string; doneWhen?: string; doneBy?: number; brief?: string; // project.goal (doneBy: a working-day number)
-  role?: "sponsor" | "member" | "contributor" | "follower"; // project.invited
   inviteId?: string; // project.invite.answered, clock.due kind invite: the project.invited event it is about
   askId?: string; // clock.due kind lead: the event that asked the lead (the yes, or a project.handed on the draft)
 };
+
+// Composer (docs/process/README.md): a phase adds event types and fields to its area file under events/, never here.
+export type CaseEventType = CoreEventType | CaseAreaEventType | ProjectAreaEventType | AgentAreaEventType | ApprovalAreaEventType | OverloadAreaEventType;
+
+// Every field an event may carry: the core fields and each area's own.
+export type EventPayload = CorePayload & CaseAreaPayload & ProjectAreaPayload & AgentAreaPayload & ApprovalAreaPayload & OverloadAreaPayload;
 
 export type CaseEvent = {
   id: string;
