@@ -27,3 +27,4 @@
 @media (max-width: 760px) {
   .search, .field { font-size: var(--nh-fs-input); }
 }
+.noView { margin-top: 12px; font-size: var(--nh-fs-xs); color: var(--nh-ink-2); line-height: 1.5; }
