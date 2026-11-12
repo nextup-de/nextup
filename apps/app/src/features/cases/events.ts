@@ -8,7 +8,7 @@ import type { MeasureImpact, MeasureSource } from "@/features/projects/measure-s
 export type CaseEventType =
   | "case.raised" // { title, body, routeId, assignee, assigneeRoleHolderId?, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy? }
   | "case.read" // -
-  | "case.decided" // { answer: 'yes'|'no', reason?, note?, projectId?, lead?, leadUserId?, title? }  a yes with projectId opens (or joins) that project
+  | "case.decided" // { answer: 'yes'|'no', reason?, note?, projectId?, lead?, leadUserId?, title?, draft?, raiserNote? }  a yes with projectId opens (or joins) that project; draft: true opens it as a draft (plan SET, D8)
   | "case.discussion" // { invited, invitedUserIds?, missing }  "Discuss first": round 1 starts (docs/plans/2026-10-15_idea-to-project.md)
   | "case.invited" // { invited, invitedUserIds? }  more people asked for their view
   | "case.revised" // { body, title?, overall? }  the raiser's next version; the reducer numbers it
@@ -29,7 +29,7 @@ export type CaseEventType =
   | "idea.asked" // { text }
   | "idea.approved" // { team?: [names], note? }
   | "idea.funded" // { team?: [names], note? }
-  // A project, target = its id. It opens with the case.decided yes above, never with an event of its own.
+  // A project, target = its id. It opens with the case.decided yes above (a yes with draft: true opens a draft, D8), never with an event of its own.
   | "project.member" // { name, userId?, on }
   | "project.handed" // { to, toUserId?, why? }  a new lead; the old one stays on the team
   | "project.baseline" // { metric, unit, value, better: 'up'|'down', source } or { none: true, why }
@@ -46,8 +46,15 @@ export type CaseEventType =
   | "project.rewarded" // { rule, amount?, note? }
   | "project.claimed" // -  an anonymous author takes their reward
   | "project.stopped" // { why }
+  // The project draft (plan SET, D11 to D17).
+  | "project.lead.answered" // { take, reason?, lapsed? }  the lead takes the draft or declines it; lapsed: the clock wrote it after LEAD_RETURN_DAYS (system:clock). Carries askId when the clock or a later cycle needs to name the ask it answers
+  | "project.template" // { key, version, title? }  seeds the board steps from that exact template version; refused after the start
+  | "project.invited" // { userId, role }  the lead or a manager invites; the event's own id is the invitation's identity (Invite.id)
+  | "project.invite.answered" // { inviteId, userId, take, reason?, lapsed? }  inviteId names the project.invited event; a legacy answer without it counts only when the person has exactly one pending invitation, else it is rejected
+  | "project.goal" // { goal, doneWhen, doneBy?, brief? }  goal and doneWhen 3 to 400 characters, brief up to 1200
+  | "project.start.moved" // { dueDay, why }  the seat above keeps a late draft with a new start day
   | "day.advanced" // { by }
-  | "clock.due"; // { kind, dueDay, check?, toRoleHolderId? }  kind escalation: the second level, toRoleHolderId = the seat above (null: nobody).  internal: the scheduler appends it as actor system:clock, never a browser or integration (CLK/D10)
+  | "clock.due"; // { kind, dueDay, check?, toRoleHolderId?, userId?, inviteId?, askId?, lapse? }  kind lead / invite / draft: userId = the person waited for, inviteId = the project.invited event, askId = the event that asked the lead (cycle-specific idempotency), lapse = the second fact that writes the lapse; kind escalation: the second level, toRoleHolderId = the seat above (null: nobody).  internal: the scheduler appends it as actor system:clock, never a browser or integration (CLK/D10)
 
 // What an employee raises: something that hurts, or something that could be. Missing = problem.
 export type CaseKind = "problem" | "idea";
@@ -69,7 +76,7 @@ export type RouteProposal = {
 
 // Every field an event may carry. Which ones apply is documented per type above.
 export type EventPayload = {
-  title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind | "deadline" | "checkin" | "start" | "measure" | "escalation" | "question" | "triage" | "confirm"; reason?: string; upside?: string;
+  title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind | "deadline" | "checkin" | "start" | "measure" | "escalation" | "question" | "triage" | "confirm" | "lead" | "invite" | "draft"; reason?: string; upside?: string;
   answer?: "yes" | "no"; note?: string;
   to?: string; why?: string;
   text?: string;
@@ -114,6 +121,17 @@ export type EventPayload = {
   userId?: string | null; // project.member
   toUserId?: string | null; // project.handed
   ownerUserId?: string | null; // project.step.added, project.step.edited (null clears)
+  // The project draft (plan SET)
+  draft?: boolean; // case.decided yes: opens a draft (D8)
+  raiserNote?: string; // case.decided yes: one line to the raiser (D10)
+  take?: boolean; // project.lead.answered, project.invite.answered: accepted or declined
+  lapsed?: boolean; // project.lead.answered, project.invite.answered: nobody answered, the clock wrote it
+  lapse?: boolean; // clock.due kind lead / invite: the fact that leads to the lapse, not the reminder
+  version?: number; // project.template
+  goal?: string; doneWhen?: string; doneBy?: number; brief?: string; // project.goal (doneBy: a working-day number)
+  role?: "sponsor" | "member" | "contributor" | "follower"; // project.invited
+  inviteId?: string; // project.invite.answered, clock.due kind invite: the project.invited event it is about
+  askId?: string; // clock.due kind lead: the event that asked the lead (the yes, or a project.handed on the draft)
 };
 
 export type CaseEvent = {
