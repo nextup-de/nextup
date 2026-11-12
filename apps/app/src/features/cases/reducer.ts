@@ -353,15 +353,17 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         const destId = pl.into;
         const dest = typeof destId === "string" ? cases[destId] : undefined;
-        if (!c || !dest || dest === c) break;
+        // The target may be missing from a reader's log (viewer-log cuts a case they may not open, SEE D24): the merged case is still marked merged,
+        // and only the target's side is skipped. A target the log does hold keeps every rule below.
+        if (!c || typeof destId !== "string" || destId === c.id || dest === c) break;
         if (!(c.status === "open" || c.status === "asked" || c.status === "discussion") || c.decided !== null || c.withdrawn !== null || c.merged !== null) break;
-        if (dest.merged !== null || dest.withdrawn !== null) break;
+        if (dest && (dest.merged !== null || dest.withdrawn !== null)) break;
         // A case that absorbed repeats stays the destination: it is not merged again, so every merge points at a case that stays and no chain or cycle can form.
         if (c.mergedIn.length > 0) break;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
-        c.merged = { into: dest.id, day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 300) };
+        c.merged = { into: destId, day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 300) };
         c.status = "merged";
-        dest.mergedIn.push({ id: c.id, userId: c.fromUserId, day: d });
+        dest?.mergedIn.push({ id: c.id, userId: c.fromUserId, day: d });
         c.history.push(ev);
         break;
       }
