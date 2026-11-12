@@ -79,6 +79,7 @@ export const APP_EVENT_TYPES = [
   "case.withdrawn",
   "project.member", "project.handed", "project.baseline", "project.started", "project.step.added", "project.step.moved",
   "project.step.edited", "project.linked", "project.sync", "project.commented", "project.done", "project.measured", "project.measure.confirmed","project.rewarded", "project.claimed", "project.stopped",
+  "project.lead.answered", "project.template", "project.invited", "project.invite.answered", "project.goal", "project.start.moved",
   "day.advanced",
 ] as const;
 
