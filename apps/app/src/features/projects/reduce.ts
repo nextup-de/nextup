@@ -20,6 +20,8 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
     startedDay: null, doneDay: null, doneNote: "", stopped: null, baseline: null,
     steps: [], links: [], sync: null, measures: [], checks: [], verdict: null, reward: null, claimed: null,
     status: "planning", closed: false, rewardDue: false, dueDay: null, overdue: false, escalated: null, history: [],
+    draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
+    goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
   };
   book.byId[id] = project;
   book.order.push(id);

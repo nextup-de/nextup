@@ -18,6 +18,8 @@ export const NOTICE_RULE_DEFAULT: Record<NotifyGroup, NoticeChannelRule> = {
 /** The notices a person cannot switch off, only move between Teams and mail (D8). */
 export const DUTY_TEMPLATES: readonly string[] = [
   "raised", "reminder.deadline", "reminder.escalation", "reminder.triage", "reminder.confirm", "reminder.start", "reminder.measure",
+  // The project draft (plan SET): a person waited for, or a start that is late, cannot be switched off.
+  "reminder.lead", "reminder.invite", "reminder.draft",
 ];
 
 export const isDuty = (template: string): boolean => DUTY_TEMPLATES.includes(template);

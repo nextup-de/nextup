@@ -18,7 +18,14 @@ import { createT, DEFAULT_LOCALE, type Locale, type MessageKey, type T } from "@
 /** A person who can get mail: their user id, their name (shown in the greeting) and the handle they post under. */
 export type Person = { id: string; name: string; email: string; handle?: string | null; manager?: boolean };
 
-type Args = { ev: Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload"> & { id?: string }; state: State; people: Person[]; baseUrl: string };
+/** A person a notice can be addressed to: the address is optional, a member without one still gets the in-app notice (INB/D16). */
+export type NoticePerson = Omit<Person, "email"> & { email: string | null };
+
+type EventArg = Pick<CaseEvent, "type" | "actor" | "actorUserId" | "target" | "payload"> & { id?: string };
+type Args = { ev: EventArg; state: State; people: Person[]; baseUrl: string };
+
+/** One notice to one person, kept by user id; `to` is their address when they have one. */
+export type LoopNotice = { userId: string; to: string | null; subject: string; text: string };
 
 /** One language for all mails, or the language of each recipient by address. */
 export type MailLocale = Locale | ((email: string) => Locale);
@@ -31,19 +38,38 @@ const NO_REASONS: Record<string, MessageKey> = {
 
 const inDays = (t: T, n: number) => (n <= 0 ? t("mail.inToday") : n === 1 ? t("mail.inTomorrow") : t("mail.inDays", { n }));
 
+/**
+ * The mails after the routing: one per person with an address, never to whoever did it, never twice to one address
+ * (two people sharing an address get one mail, the first in order). Built on loopNotices; callers that also
+ * write for people without an address (the planner) use that directly.
+ */
 export function loopMails({ ev, state, people, baseUrl }: Args, locale: MailLocale = DEFAULT_LOCALE): NoticeMail[] {
-  // Who gets a mail is a user id; names and handles only greet (IDN/D2).
-  const find = (userId: string | null | undefined) => (userId ? people.find((p) => p.id === userId) : undefined);
+  const actorEmail = ev.actorUserId ? people.find((p) => p.id === ev.actorUserId)?.email : undefined;
+  const seen = new Set<string>();
   const out: NoticeMail[] = [];
+  const localeOf = (p: NoticePerson): Locale => (typeof locale === "function" ? (p.email ? locale(p.email) : DEFAULT_LOCALE) : locale);
+  for (const n of loopNotices({ ev, state, people, baseUrl }, localeOf)) {
+    if (!n.to || n.to === actorEmail || seen.has(n.to)) continue;
+    seen.add(n.to);
+    out.push({ to: n.to, subject: n.subject, text: n.text });
+  }
+  return out;
+}
+
+/** Who is told what after the routing, by user id: every addressed person, with or without an address. */
+export function loopNotices({ ev, state, people, baseUrl }: { ev: EventArg; state: State; people: readonly NoticePerson[]; baseUrl: string }, localeOf: (p: NoticePerson) => Locale = () => DEFAULT_LOCALE): LoopNotice[] {
+  // Who gets a notice is a user id; names and handles only greet (IDN/D2).
+  const find = (userId: string | null | undefined) => (userId ? people.find((p) => p.id === userId) : undefined);
+  const out: LoopNotice[] = [];
   const seen = new Set<string>();
   // Subjects and lines are built per recipient, in that recipient's language.
   const send = (who: string | null | undefined, subject: (t: T) => string, lines: (t: T) => string[]) => {
     const p = find(who);
-    // Never write to whoever did it, never twice, never without an address.
-    if (!p?.email || (ev.actorUserId && (who === ev.actorUserId || find(ev.actorUserId)?.email === p.email)) || seen.has(p.email)) return;
-    seen.add(p.email);
-    const t = createT(typeof locale === "function" ? locale(p.email) : locale);
-    out.push({ to: p.email, subject: subject(t), text: [`${p.name},`, "", ...lines(t)].join("\n") });
+    // Never to whoever did it, never twice to one person.
+    if (!p || (ev.actorUserId && who === ev.actorUserId) || seen.has(p.id)) return;
+    seen.add(p.id);
+    const t = createT(localeOf(p));
+    out.push({ userId: p.id, to: p.email || null, subject: subject(t), text: [`${p.name},`, "", ...lines(t)].join("\n") });
   };
   const caseLink = (c: ReducedCase) => `${baseUrl}/cases/${encodeURIComponent(c.id)}`;
   const projectLink = (p: ReducedProject) => `${baseUrl}/projects/${encodeURIComponent(p.id)}`;
