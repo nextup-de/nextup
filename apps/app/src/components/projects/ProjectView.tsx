@@ -7,6 +7,7 @@
 // act.project.* event, shown only when the rules would let it through.
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { Banner, PageHeader, PersonFace, Tabs as TabBar } from "@/components/ui/elements";
@@ -26,6 +27,8 @@ import { FilesPanel, OriginPanel } from "./ProjectOrigin";
 import { BaselinePanel, MeasurePanel, RewardPanel } from "./ProjectMeasure";
 import { ActivityPanel, TeamPanel, ToolsPanel } from "./ProjectTeam";
 import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } from "./parts";
+import { CustomPageView } from "./CustomPageView";
+import { useProjectPages } from "./projectPagesPreview";
 import styles from "./Projects.module.css";
 
 /** `jira`: the company's Jira as the server read it (null: static demo, or no database). `tab`: from ?tab=. */
@@ -70,6 +73,11 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
   // The lead's own move (a manager may act as lead too, but it is not on their desk), or a reward a manager records.
   const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);
   const escalatedToMe = holdsRole(ctx.me, p.escalated?.toRoleId ?? null);
+  // A page the team added (?page=, from the sidebar) takes the place of the tabs' content.
+  const pageId = useSearchParams().get("page");
+  const [pages] = useProjectPages(ctx.tenant.slug, p.id);
+  const custom = pageId ? pages.pages.find((x) => x.id === pageId) : undefined;
+  const shown: ProjectTab | null = custom ? null : tab;
 
   return (
     <div className={styles.projectPage} data-wide="true">
@@ -77,7 +85,8 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
         <Header p={p} jira={row} />
         <Tabs p={p} tab={tab} />
       </div>
-      {tab === "overview" && (
+      {custom && <CustomPageView p={p} page={custom} />}
+      {shown === "overview" && (
         <div className={styles.tabLayout}>
           <div className={styles.tabCards}>
             {(mine || escalatedToMe) && move && (
@@ -98,25 +107,25 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
           </aside>
         </div>
       )}
-      {tab === "board" && <ProjectBoard p={p} hints={stepHints} jira={row} />}
-      {tab === "team" && (
+      {shown === "board" && <ProjectBoard p={p} hints={stepHints} jira={row} />}
+      {shown === "team" && (
         <div className={styles.tabNarrow}>
           <div className={styles.tabRail}><TeamPanel p={p} /></div>
         </div>
       )}
-      {tab === "results" && (
+      {shown === "results" && (
         <div className={styles.tabCards}>
           <BaselinePanel p={p} hint={planning ? baseHint : null} />
           {(p.doneDay !== null || p.measures.length > 0) && <MeasurePanel p={p} />}
           <RewardPanel p={p} />
         </div>
       )}
-      {tab === "activity" && (
+      {shown === "activity" && (
         <div className={styles.tabCards}>
           <ActivityPanel p={p} />
         </div>
       )}
-      {tab === "files" && (
+      {shown === "files" && (
         <div className={styles.tabLayout}>
           <div className={styles.tabCards}>
             <OriginPanel p={p} />

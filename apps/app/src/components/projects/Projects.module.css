@@ -409,3 +409,12 @@ a.key:hover { text-decoration: underline; }
   .hubCols { grid-template-columns: minmax(0, 1fr); gap: 32px; }
 }
 
+
+/* Next to the projects sidebar (ProjectsFrame) the sidebar lists the project's pages and the way back: the strip of tabs and the back link step aside. Phones and a hidden sidebar keep them. */
+@media (min-width: 761px) {
+  :global([data-psb="open"]) .top > nav, :global([data-psb="open"]) .hero > .back { display: none; }
+}
+/* The sidebar takes 256px: the Overview's two columns stack 256px sooner than they do without it. */
+@media (min-width: 761px) and (max-width: 1356px) {
+  :global([data-psb="open"]) .hubCols { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+}
