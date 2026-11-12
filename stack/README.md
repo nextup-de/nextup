@@ -44,8 +44,11 @@ nginx hop (`TRUSTED_PROXIES=private_ranges`), so the app's rate limiter sees the
 | globex | 3111 |
 | demo | 3121 |
 
-`--stage real` starts with an empty database. Open `/admin` and create the company with the
-same slug.
+`--stage real` starts with the company alone: the stack creates it at its first start (migrate runs
+`prisma/bootstrap-company.ts`: `--slug`, `--name`, empty, sandbox, closed, no people). Nobody creates it in
+`/admin`. `--entra-tenant-id` puts the customer's Entra tenant into it once (docs/ADMIN.md, "First access
+and the hand-over"). A real stage prints no admin code: the console opens with Microsoft, a console admin's
+code, or a window from `stack/break-glass.sh`.
 
 ## Run
 
@@ -66,7 +69,8 @@ stack/ctl.sh acme down -v     # stop and delete the database (asks for the slug 
 | `caddy` | `caddy:2.11.7`, pinned by digest. The only published service. `SITE_ADDRESS=:80` for plain http, a host name for automatic https |
 | `mailpit` | profile `demo`: catches all mail, inbox on `127.0.0.1:8025` |
 | `n8n` | profile `n8n` (`--n8n`): editor on `127.0.0.1:5678`, own encryption key. Only its production webhooks can be reached from outside, and only with `N8N_WEBHOOKS=public` (below) |
-| `app` env `ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET` | optional (`--entra-client-id ID`, secret in `NEXTUP_ENTRA_CLIENT_SECRET`): turns on "Continue with Microsoft". The company's tenant ID is set in `/admin`; add `<origin>/login/microsoft/callback` to the app registration |
+| `app` env `ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET` | optional (`--entra-client-id ID`, secret in `NEXTUP_ENTRA_CLIENT_SECRET`): turns on "Continue with Microsoft". The company's tenant ID comes from `ENTRA_TENANT_ID` or `/admin`; add `<origin>/login/microsoft/callback` to the app registration |
+| `migrate` env `ENTRA_TENANT_ID` | optional (`--entra-tenant-id ID`): the customer's Entra tenant, copied into the company once at a real stage's first start (audit actor `install`), never over a tenant set or removed in `/admin` |
 | `app` env `TEAMS_APP_ID` / `TEAMS_APP_PASSWORD` / `TEAMS_TENANT_ID` | optional (`--teams-app-id ID --teams-tenant-id ID`, the bot's client secret in `NEXTUP_TEAMS_APP_PASSWORD`): the Teams bot of this stack. Unset = Teams stays off. Registering the bot: `ops/teams/README.md` |
 | `app` env `CONNECTOR_VAULT_KEY` | written once by `install.sh` (also on an existing instance), never regenerated: it seals people's Microsoft 365 connections, and a new key disconnects everyone. Back it up with the other secrets |
 | `brain` + `ollama` | profile `brain` (`--brain`): the routing AI (image `nextup-brain` built by CI like app and migrate; `--images <tag>` pulls it when the `.env` has `BRAIN_API_KEY`) and its model (`ollama/ollama`, pinned), no ports, app-only with `BRAIN_API_KEY`. See `services/brain/README.md`. On a server without 8 GB to spare, leave it out and point the stack at the AI server instead: `brain-server/README.md` |

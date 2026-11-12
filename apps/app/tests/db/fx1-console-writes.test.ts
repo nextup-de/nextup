@@ -40,6 +40,7 @@ const m365 = await import("@/server/actions/m365");
 const totp = await import("@/server/actions/settings/totp-reset");
 const successFactors = await import("@/server/actions/successfactors-admin");
 const support = await import("@/server/actions/support-access");
+const handOver = await import("@/server/actions/setup-handover");
 const tickets = await import("@/server/actions/tickets");
 const { openGrant } = await import("@/lib/db/support-grants");
 const { breakGlassBy } = await import("@/features/admin/break-glass");
@@ -84,6 +85,7 @@ const WRITES: Record<string, () => Promise<unknown>> = {
   "actions/successfactors-admin#testSuccessFactorsAction": () => successFactors.testSuccessFactorsAction(),
   "actions/support-access#openSupportAccess": () => support.openSupportAccess(),
   "actions/support-access#revokeSupportAccess": () => support.revokeSupportAccess(),
+  "actions/setup-handover#confirmHandOverAction": () => handOver.confirmHandOverAction(),
   "actions/tickets#reportFromAdmin": () => tickets.reportFromAdmin({}),
 };
 

@@ -108,8 +108,10 @@ admin and support session in `apps/app/tests/e2e/db/itc-console.spec.ts`.
   sealed secret, logs `[auth] totp reset <ISO time>` without personal data, and the person enrols again at their next
   login. Nobody resets their own.
 - **Stack admin (`/admin`).** Opens for a Microsoft sign-in with the `NextUp.Admin` role, or for a user with
-  `isStackAdmin` who signs in with code and TOTP. `ADMIN_ACCESS_CODE` still opens it as **break-glass**: every use
-  writes `[admin] break-glass <ISO time>` and `/admin` shows the banner "Opened with the shared code" for that session.
+  `isStackAdmin` who signs in with code and TOTP. **Break-glass** on a real stage is a window the host's operator opens
+  with `stack/break-glass.sh` (its code works until the window closes); `ADMIN_ACCESS_CODE` opens it on a demo stage
+  only. Every use writes `[admin] break-glass <ISO time>` and an `audit.access.break_glass` row, and `/admin` shows the
+  banner for that session.
   After a company is created, `/admin` is not needed to configure it.
 
 ## ADM gaps

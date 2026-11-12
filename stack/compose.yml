@@ -85,6 +85,8 @@ services:
       # The seed labels a non-acme demo stack with these; a real stack's company is created from them.
       COMPANY_SLUG: ${COMPANY_SLUG}
       COMPANY_NAME: ${COMPANY_NAME:-}
+      # install.sh --entra-tenant-id: copied into the company once, never over a value set in /admin.
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
     depends_on:
       db:
         condition: service_healthy
@@ -124,7 +126,8 @@ services:
       OPS_TOKEN: ${OPS_TOKEN:-}
       MAIL_FROM: ${MAIL_FROM:-}
       # "Continue with Microsoft" (docs/plans/2026-10-22_sso-and-data-access.md, phase 1). Unset = the
-      # button stays hidden. The company's tenant is set in /admin; install.sh --entra-client-id sets both.
+      # button stays hidden. install.sh --entra-client-id sets both; the company's tenant comes from
+      # install.sh --entra-tenant-id (copied in once by migrate) or from /admin -> Access.
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
       # The Teams bot of this stack (ops/teams/README.md). Unset = Teams stays off: the settings page
