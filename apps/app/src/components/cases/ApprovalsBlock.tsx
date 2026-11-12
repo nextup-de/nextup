@@ -2,11 +2,12 @@
 // The approvals of a case on its page (plan GAT, D21 to D23, D33): every run with its steps in order, what each step said (conditions, the reason of a
 // send-back or a no, how many were present at a council), the day it is due and, for the one who holds the current step, the form to answer it. A step
 // never shows who answered and a council never how it voted (D3). In the demo the block is read-only (D8): the answer is written by the settle
-// operation on the server, so the form needs a server behind the page.
-import { useState } from "react";
+// operation on the server (answerApprovalAction), so the form needs a server behind the page.
+import { useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { caseApprovalView, type RunView, type StepView } from "@/features/approvals/case-view";
 import { BACK_REASON_MIN, CONDITIONS_MAX, PRESENT_MAX } from "@/features/approvals/types";
+import { answerApprovalAction, type ApprovalAnswerInput } from "@/server/actions/approvals";
 import { noCategoryLabel, noCategorySub, type NoCategory } from "@/features/cases/no";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { dayOfDate, noSheet } from "@/features/cases/sheets";
@@ -81,8 +82,11 @@ type Mode = "conditions" | "back" | "refuse" | null;
  * keyed by the step and its revision, so it starts empty again when either changes, and it sends once: the button is off while the answer is on its way.
  */
 function ApproverForm({ c, mine, council }: { c: ReducedCase; mine: { runId: string; stepId: string; dueRev: number }; council: boolean }) {
-  const { S, act, showToast, f } = useDemo();
+  const { S, showToast, f, tenant } = useDemo();
   const t = useT();
+  // One id for this form's submit: a double click and a retry after a lost answer are one answer, the second one read back by the server (D32).
+  const requestId = useRef<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(null);
   const [text, setText] = useState("");
   const [present, setPresent] = useState("");
@@ -92,25 +96,38 @@ function ApproverForm({ c, mine, council }: { c: ReducedCase; mine: { runId: str
   const [sent, setSent] = useState(false);
   const [today] = useState(() => new Date());
 
-  const index = Number(mine.stepId.slice(mine.stepId.lastIndexOf(":") + 1));
   const seen = present.trim() === "" ? null : Number(present);
   const presentOk = !council || seen === null || (Number.isInteger(seen) && seen >= 0 && seen <= PRESENT_MAX);
   const day = date === "" ? null : dayOfDate(date, S.clock, today, S.day) ?? Number.NaN;
   const no = noSheet(c, S.rules, S.day, { category, reason: text, changeIf, revisitDay: day }, []);
-  const send = (answer: "yes" | "conditions" | "back" | "no", fields: Record<string, unknown> = {}) => {
+  const send = async (answer: ApprovalAnswerInput["approvalAnswer"], fields: Partial<ApprovalAnswerInput> = {}) => {
     if (sent || !presentOk) return;
     setSent(true); // one answer per form: a second click is not a second answer
-    act.answerApproval(c.id, mine.runId, mine.stepId, answer, { dueRev: mine.dueRev, step: index, ...(council && seen !== null ? { present: seen } : {}), ...fields });
-    showToast(t(answer === "no" ? "approvals.refuse" : answer === "back" ? "approvals.sendBack" : answer === "conditions" ? "approvals.approveConditions" : "approvals.approve"));
+    setError(null);
+    requestId.current ??= crypto.randomUUID();
+    try {
+      const done = await answerApprovalAction(tenant.slug, c.id, {
+        runId: mine.runId, stepId: mine.stepId, dueRev: mine.dueRev, approvalAnswer: answer, requestId: requestId.current,
+        ...(council && seen !== null ? { present: seen } : {}), ...fields,
+      });
+      if (done.ok) showToast(t(answer === "no" ? "approvals.refuse" : answer === "back" ? "approvals.sendBack" : answer === "conditions" ? "approvals.approveConditions" : "approvals.approve"));
+      else { setError(done.error); setSent(false); }
+    } catch {
+      setError(t("floor.offline")); // the answer may or may not have arrived: the same request id asks the server to settle it once
+      setSent(false);
+    }
   };
   const trimmed = text.trim();
   const ready = mode === "conditions" ? trimmed.length >= 1 && trimmed.length <= CONDITIONS_MAX
     : mode === "back" ? trimmed.length >= BACK_REASON_MIN
     : mode === "refuse" ? no.ok : false;
   const confirm = () => {
-    if (mode === "conditions") send("conditions", { conditions: trimmed });
-    else if (mode === "back") send("back", { reason: trimmed });
-    else if (mode === "refuse") { const payload = no.payload(); if (payload) send("no", { reason: payload.reason, category: payload.category, ...(payload.changeIf ? { changeIf: payload.changeIf } : {}), ...(payload.revisitDay !== undefined ? { revisitDay: payload.revisitDay } : {}) }); }
+    if (mode === "conditions") void send("conditions", { conditions: trimmed });
+    else if (mode === "back") void send("back", { reason: trimmed });
+    else if (mode === "refuse") {
+      const payload = no.payload();
+      if (payload && payload.category !== undefined) void send("no", { reason: payload.reason, category: payload.category as ApprovalAnswerInput["category"], ...(payload.changeIf ? { changeIf: payload.changeIf } : {}), ...(payload.revisitDay !== undefined ? { revisitDay: payload.revisitDay } : {}) });
+    }
   };
   const tomorrow = new Date(today.getTime() + 864e5).toISOString().slice(0, 10);
 
@@ -123,11 +140,12 @@ function ApproverForm({ c, mine, council }: { c: ReducedCase; mine: { runId: str
         </>
       )}
       <div className={styles.row}>
-        <button type="button" className={dash.primary} disabled={sent || !presentOk} data-testid="approval-approve" onClick={() => send("yes")}>{t("approvals.approve")}</button>
+        <button type="button" className={dash.primary} disabled={sent || !presentOk} data-testid="approval-approve" onClick={() => void send("yes")}>{t("approvals.approve")}</button>
         <button type="button" className={dash.soft} disabled={sent} aria-pressed={mode === "conditions"} data-testid="approval-conditions" onClick={() => { setMode("conditions"); setText(""); }}>{t("approvals.approveConditions")}</button>
         <button type="button" className={dash.soft} disabled={sent} aria-pressed={mode === "back"} data-testid="approval-back" onClick={() => { setMode("back"); setText(""); }}>{t("approvals.sendBack")}</button>
         <button type="button" className={dash.soft} disabled={sent} aria-pressed={mode === "refuse"} data-testid="approval-refuse" onClick={() => { setMode("refuse"); setText(""); }}>{t("approvals.refuse")}</button>
       </div>
+      {error !== null && <p className={styles.flag} role="alert" data-testid="approval-error">{error}</p>}
       {mode !== null && (
         <>
           {mode === "refuse" && (
