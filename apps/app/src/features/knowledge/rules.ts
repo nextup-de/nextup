@@ -3,7 +3,7 @@
 import type { SpendRule } from "@/features/demo/types";
 import { DEFAULT_POST_AS, postAsOf, type PostAs } from "@/features/ideas/posting";
 
-export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps", "posting", "project_start_days"] as const;
+export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps", "posting", "project_start_days", "blocked_days", "no_reason_min", "appeal_days", "question_days"] as const;
 export type CompanyRuleKey = (typeof COMPANY_RULE_KEYS)[number];
 
 export type LoopSteps = { discussion: boolean; projects: boolean; measure: boolean; recognition: boolean };
@@ -16,6 +16,14 @@ export type CompanyRules = {
   escalationDays?: number;
   /** Working days a project draft has to start, counted from the lead taking it (1 to 60); missing (no row) = the default of features/loop/rules.ts. */
   projectStartDays?: number;
+  /** Working days a blocked step may stand before the project counts as stalled, 1 to 10 (plan MOV); missing (no row) = the default of features/loop/rules.ts. */
+  blockedDays?: number;
+  /** The fewest characters a reason for a no needs, 20 to 400 (plan NOR). */
+  noReasonMin?: number;
+  /** Working days the raiser has to appeal a no, 1 to 60 (plan NOR). */
+  appealDays?: number;
+  /** Working days a question to the raiser waits for an answer, 2 to 30 (plan NOR). */
+  questionDays?: number;
   steps: LoopSteps;
   /** Who a member's raise is preselected as on the last look (decision Q1.7); the member can change it per raise. */
   postAs: PostAs;
@@ -32,6 +40,12 @@ export const DEFAULT_RULES: CompanyRules = {
 export const ESCALATION_DAYS_MAX = 60;
 /** The most working days a project draft may have to start. */
 export const PROJECT_START_DAYS_MAX = 60;
+
+/**
+ * The key of the day MOV went live for a company (plan MOV, D17). It is not in COMPANY_RULE_KEYS on purpose: saving
+ * the rules (lib/db/rules.ts saveCompanyRules) deletes only those keys, so it can never delete this one.
+ */
+export const MOV_SINCE_KEY = "mov_since_day";
 
 export type RuleRow = { key: string; value: unknown };
 
@@ -81,6 +95,20 @@ export function rulesFromRows(rows: readonly RuleRow[]): CompanyRules {
       const n = days(value, PROJECT_START_DAYS_MAX);
       if (n !== null) out.projectStartDays = n;
     }
+    else if (key === "blocked_days") {
+      const n = days(value, 10);
+      if (n !== null) out.blockedDays = n;
+    }
+    else if (key === "no_reason_min") {
+      if (isObj(value) && intIn(value.chars, 20, 400)) out.noReasonMin = value.chars;
+    }
+    else if (key === "appeal_days") {
+      const n = days(value, 60);
+      if (n !== null) out.appealDays = n;
+    }
+    else if (key === "question_days") {
+      if (isObj(value) && intIn(value.days, 2, 30)) out.questionDays = value.days;
+    }
     else if (key === "loop_steps") out.steps = stepsOf(value);
     else if (key === "posting") out.postAs = postAsOf(isObj(value) ? value.as : undefined);
   }
@@ -97,6 +125,16 @@ export function rowsFromRules(r: CompanyRules): RuleRow[] {
   ];
   if (r.escalationDays !== undefined) rows.push({ key: "escalation_days", value: { days: r.escalationDays } });
   if (r.projectStartDays !== undefined) rows.push({ key: "project_start_days", value: { days: r.projectStartDays } });
+  if (r.blockedDays !== undefined) rows.push({ key: "blocked_days", value: { days: r.blockedDays } });
+  if (r.noReasonMin !== undefined) rows.push({ key: "no_reason_min", value: { chars: r.noReasonMin } });
+  if (r.appealDays !== undefined) rows.push({ key: "appeal_days", value: { days: r.appealDays } });
+  if (r.questionDays !== undefined) rows.push({ key: "question_days", value: { days: r.questionDays } });
   if (r.spend) rows.push({ key: "spend", value: { limitEur: r.spend.limitEur, text: r.spend.text } });
   return rows;
+}
+
+/** The day MOV went live, from the rows of one company; null while there is no such row or it is not a whole day number >= 0. */
+export function movSinceOf(rows: readonly RuleRow[]): number | null {
+  const v = rows.find((r) => r.key === MOV_SINCE_KEY)?.value;
+  return isObj(v) && typeof v.day === "number" && Number.isInteger(v.day) && v.day >= 0 ? v.day : null;
 }

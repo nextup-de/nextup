@@ -1,0 +1,23 @@
+{
+  "dueKinds": [
+    "blocked",
+    "checkin",
+    "confirm",
+    "deadline",
+    "draft",
+    "escalation",
+    "handover",
+    "invite",
+    "late",
+    "lead",
+    "measure",
+    "question",
+    "quiet",
+    "stalled",
+    "start",
+    "triage",
+    "unanswered",
+    "update",
+    "vacant"
+  ]
+}

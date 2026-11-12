@@ -17,6 +17,12 @@ import { companySeed } from "@/lib/db/companies";
 import { appendEventRow, loadLog } from "@/lib/db/events";
 import { seatAbove } from "@/features/knowledge";
 import { loadKnowledge } from "@/lib/db/knowledge";
+import { beforeAgentRun, writeAgentDue } from "./writers/agent";
+import { beforeApprovalRun, writeApprovalDue } from "./writers/approval";
+import { beforeCaseRun, writeCaseDue } from "./writers/case";
+import { beforeOverloadRun, writeOverloadDue } from "./writers/overload";
+import { beforeProjectRun, writeProjectDue } from "./writers/project";
+import { clockDuePayload } from "./writers/shared";
 
 /** A run that dies without releasing loses its lease after this. */
 const LEASE_MS = 5 * 60_000;
@@ -30,55 +36,24 @@ const intervalMs = (): number => {
 /** One company's run. Throws on failure; the caller records it. Returns how many facts were newly written. */
 async function runCompany(company: { id: string; slug: string; seedJson: unknown; stage: string }, now: Date): Promise<number> {
   const log = await loadLog(company.id, now);
+  // Composer: a phase writes events in its writers/<area>.ts, never here.
+  await beforeCaseRun(company.id, log.day);
+  await beforeProjectRun(company.id, log.day);
+  await beforeAgentRun(company.id, log.day);
+  await beforeApprovalRun(company.id, log.day);
+  await beforeOverloadRun(company.id, log.day);
   const knowledge = await loadKnowledge(company.id);
   const state = reduce(await companySeed(company, knowledge), log);
+  const ctx = { state, today: log.day, companyId: company.id };
   let written = 0;
   for (const d of dueNow(state, log.day, (roleId, skip) => seatAbove(knowledge, roleId, skip)?.id ?? null)) {
-    if (d.kind === "handover") {
-      const seat = state.seats.find((x) => x.id === d.toRoleHolderId);
-      if (!seat) continue; // the seat is gone
-      const h = await appendEventRow(
-        company.id,
-        { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: "case.handed" as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload: { to: seat.label, toRoleHolderId: seat.id, why: d.why ?? "deadline" } },
-        { source: CLOCK_SOURCE, idemKey: d.idemKey, now },
-      );
-      if (!h.ok) throw new Error(h.error);
-      if (!h.duplicate) written++;
-      continue;
-    }
-    if (d.kind === "unanswered") {
-      const u = await appendEventRow(
-        company.id,
-        { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: "case.unanswered" as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload: {} },
-        { source: CLOCK_SOURCE, idemKey: d.idemKey, now },
-      );
-      if (!u.ok) throw new Error(u.error);
-      if (!u.duplicate) written++;
-      continue;
-    }
-    // A lapse is the answer itself (D11, D12): the draft goes back to the decider, or the invitation is let go.
-    if (d.lapse && (d.kind === "lead" || d.kind === "invite")) {
-      const lead = d.kind === "lead";
-      const payload: Record<string, unknown> = lead ? { take: false, lapsed: true } : { inviteId: d.inviteId, userId: d.userId, take: false, lapsed: true };
-      if (lead && d.askId !== undefined) payload.askId = d.askId;
-      const a = await appendEventRow(
-        company.id,
-        { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: (lead ? "project.lead.answered" : "project.invite.answered") as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload },
-        { source: CLOCK_SOURCE, idemKey: d.idemKey, now },
-      );
-      if (!a.ok) throw new Error(a.error);
-      if (!a.duplicate) written++;
-      continue;
-    }
-    const payload: Record<string, unknown> = { kind: d.kind, dueDay: d.dueDay };
-    if (d.check !== undefined) payload.check = d.check;
-    if (d.toRoleHolderId !== undefined) payload.toRoleHolderId = d.toRoleHolderId;
-    if (d.userId !== undefined) payload.userId = d.userId;
-    if (d.inviteId !== undefined) payload.inviteId = d.inviteId;
-    if (d.askId !== undefined) payload.askId = d.askId;
+    // The first area that writes an event for this Due wins; none: the Due is stored as a clock.due fact.
+    const w = writeCaseDue(d, ctx) ?? writeProjectDue(d, ctx) ?? writeAgentDue(d, ctx) ?? writeApprovalDue(d, ctx) ?? writeOverloadDue(d, ctx);
+    if (w && "skip" in w) continue;
+    const row = w ?? { type: "clock.due" as CaseEventType, payload: clockDuePayload(d) };
     const r = await appendEventRow(
       company.id,
-      { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: "clock.due" as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload },
+      { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: row.type, actor: CLOCK_ACTOR, targetId: d.target, payload: row.payload },
       { source: CLOCK_SOURCE, idemKey: d.idemKey, now },
     );
     if (!r.ok) throw new Error(r.error);

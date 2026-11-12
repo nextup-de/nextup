@@ -27,6 +27,7 @@ export const AUDIT_ACTIONS = [
   "audit.member.invited",
   "audit.member.code",
   "audit.member.role",
+  "audit.member.saved",
   "audit.member.deactivated",
   "audit.member.reactivated",
   "audit.member.deleted",
