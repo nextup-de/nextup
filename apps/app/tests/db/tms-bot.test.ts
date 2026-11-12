@@ -61,7 +61,7 @@ async function raiseCase(id: string): Promise<void> {
   );
 }
 
-const events = (type: string, targetId: string) => db.caseEvent.findMany({ where: { companyId, type, targetId, source: "teams" } });
+const events = (type: string, targetId: string) => db.caseEvent.findMany({ where: { companyId, type, targetId, source: "teams" }, orderBy: { seq: "asc" } });
 const lastCardText = () => JSON.stringify(fake.activities.at(-1)?.activity ?? "");
 
 beforeAll(async () => {

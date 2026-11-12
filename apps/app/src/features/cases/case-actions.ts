@@ -6,6 +6,7 @@ import type { Role } from "@/config/roles";
 import type { State } from "./reducer";
 import type { ReducedCase } from "./reducer";
 import { invitedTo } from "./discussion";
+import { mayFollow, mayLink, mayMerge } from "./links";
 import { appealOpen, mayAnswerAppeal } from "./no";
 import { onDeskOf } from "./selectors";
 
@@ -18,17 +19,43 @@ export type CaseActions = {
   declineInvite: boolean;
   /** A manager may move an open or asked case to another desk (D21). */
   moveToDesk: boolean;
+  // The raiser sees the whole way (plan SEE, D15 to D18). Whether a given target qualifies is the picker's and the server's call (mayMerge, mayLink).
+  /** The desk or a manager may close this case as a duplicate of another (D17). */
+  merge: boolean;
+  /** The desk or a manager may mark this case as related to another (D17). */
+  link: boolean;
+  /** The raiser may start a better idea from a no, any category, any time (D15). */
+  betterIdea: boolean;
+  /** The raiser may write the next version of an undecided case that is not in a discussion (the discussion has its own); the Versions panel decides what to show (D18). */
+  revise: boolean;
+  /** The case the raise looked like, when the viewer is on the desk or a manager and may open that case; null otherwise (D16). The raiser never gets it. */
+  maybeSame: string | null;
 };
 
-const NONE: CaseActions = { appeal: null, answerAppeal: false, declineInvite: false, moveToDesk: false };
+const NONE: CaseActions = { appeal: null, answerAppeal: false, declineInvite: false, moveToDesk: false, merge: false, link: false, betterIdea: false, revise: false, maybeSame: null };
 
-export function caseActions(kase: ReducedCase, me: Me, role: Role, state: Pick<State, "day" | "rules" | "seats">): CaseActions {
+/** Any other case: the rules of merging and linking ask for one, and the question "may this person do it at all" does not depend on which. */
+const ANY: { id: string; status: "open"; withdrawn: null; merged: null } = { id: "", status: "open", withdrawn: null, merged: null };
+
+/**
+ * What the viewer may do on this case page. `mayOpenCase` says whether the viewer may open another case (components/dashboard/derive canOpen):
+ * the 'Maybe the same as' case is offered only when they may, so a hidden case's title never leaks (D16).
+ */
+export function caseActions(kase: ReducedCase, me: Me, role: Role, state: Pick<State, "day" | "rules" | "seats">, mayOpenCase: (caseId: string) => boolean = () => false): CaseActions {
   // A case its raiser took back has nothing left to do on it.
   if (kase.withdrawn !== null) return NONE;
   const isManager = role === "manager";
   const raiser = me.userId !== null && kase.fromUserId === me.userId;
   const d = kase.decided;
+  const merge = mayMerge(kase, ANY, me, isManager);
+  const link = mayLink(kase, ANY, me, isManager);
   return {
+    merge,
+    link,
+    betterIdea: mayFollow(kase, me.userId),
+    revise: raiser && d === null && kase.merged === null && kase.status !== "discussion",
+    // Only to who may act on it: the same people merge and link, so a viewer without either never sees it (the raiser, a member).
+    maybeSame: (merge || link) && kase.sameAs !== null && mayOpenCase(kase.sameAs) ? kase.sameAs : null,
     appeal: raiser && d !== null && appealOpen(kase, state.day, state.rules.appealDays) ? { until: d.day + state.rules.appealDays } : null,
     answerAppeal: mayAnswerAppeal(kase, me, isManager, state.seats),
     declineInvite: invitedTo(kase, me) && !raiser && !onDeskOf(kase, me),
