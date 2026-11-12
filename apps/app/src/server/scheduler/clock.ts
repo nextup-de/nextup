@@ -56,9 +56,26 @@ async function runCompany(company: { id: string; slug: string; seedJson: unknown
       if (!u.duplicate) written++;
       continue;
     }
+    // A lapse is the answer itself (D11, D12): the draft goes back to the decider, or the invitation is let go.
+    if (d.lapse && (d.kind === "lead" || d.kind === "invite")) {
+      const lead = d.kind === "lead";
+      const payload: Record<string, unknown> = lead ? { take: false, lapsed: true } : { inviteId: d.inviteId, userId: d.userId, take: false, lapsed: true };
+      if (lead && d.askId !== undefined) payload.askId = d.askId;
+      const a = await appendEventRow(
+        company.id,
+        { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: (lead ? "project.lead.answered" : "project.invite.answered") as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload },
+        { source: CLOCK_SOURCE, idemKey: d.idemKey, now },
+      );
+      if (!a.ok) throw new Error(a.error);
+      if (!a.duplicate) written++;
+      continue;
+    }
     const payload: Record<string, unknown> = { kind: d.kind, dueDay: d.dueDay };
     if (d.check !== undefined) payload.check = d.check;
     if (d.toRoleHolderId !== undefined) payload.toRoleHolderId = d.toRoleHolderId;
+    if (d.userId !== undefined) payload.userId = d.userId;
+    if (d.inviteId !== undefined) payload.inviteId = d.inviteId;
+    if (d.askId !== undefined) payload.askId = d.askId;
     const r = await appendEventRow(
       company.id,
       { id: `e_clk_${company.id}_${d.idemKey}`, day: 0, type: "clock.due" as CaseEventType, actor: CLOCK_ACTOR, targetId: d.target, payload },
