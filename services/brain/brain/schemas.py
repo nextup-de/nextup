@@ -221,10 +221,23 @@ class CoachOut(BaseModel):
 # ---------------------------------------------------------------- after the decision (docs/plans/2026-10-15_idea-to-project.md)
 # Plan: an accepted idea in, the first steps and what to measure out. The lead adds what fits; the
 # number itself is always taken by people, never by the model.
+class PlanTemplateStep(Strict):
+    title: str = Field(max_length=200)
+    role: str = Field(max_length=80, description="lead, sponsor or team")
+
+
+class PlanTemplate(Strict):
+    key: str = Field(min_length=1, max_length=40)
+    title: str = Field(max_length=120)
+    steps: list[PlanTemplateStep] = Field(max_length=20)
+
+
 class PlanIn(Strict):
     company: str = Field(min_length=1, max_length=120)
     idea: Idea
     goals: list[Goal] = Field(default=[], max_length=20)
+    # Present: a whole plan against these templates (version 2, brain-plan-v2). Absent: the first steps and the metric, as before (v1).
+    templates: list[PlanTemplate] | None = Field(None, max_length=10)
     llm: LlmOverride | BedrockOverride | None = None
 
 
@@ -241,9 +254,76 @@ class PlanMetric(BaseModel):
     better: Literal["up", "down"]
 
 
+# Plan v2 (plan AGT, D19): the whole plan a request with templates gets. Shapes fixed in apps/app/src/features/agent/contract.ts (PlanV2Reply).
+class PlanStepV2(Strict):
+    title: str = Field(max_length=200, description="One action a person can finish, at most 15 words, no names, no numbers you made up")
+    role: str = Field(max_length=80, description="The role that does it, never a name: lead, sponsor, team or a role of the company")
+
+
+class PlanMetricV2(Strict):
+    name: str = Field(max_length=100)
+    unit: str = Field(max_length=30)
+    better: Literal["up", "down"]
+    target: float | None = Field(description="The number to reach, or null when none can be justified")
+
+
+class PlanEffort(Strict):
+    min_days: int = Field(description="Working days at the least")
+    max_days: int = Field(description="Working days at the most")
+
+
+class PlanV2Draft(Strict):
+    template: str | None = Field(description="The key of the fitting template from the request, or null when none fits")
+    template_why: str = Field(max_length=300, description="One sentence: why this template, or why none fits")
+    steps: list[PlanStepV2] = Field(min_length=1, max_length=20, description="The plan's steps in order, with roles, at most 12")
+    team_roles: list[str] = Field(max_length=10, description="The roles the team needs, at most 6")
+    metric: PlanMetricV2 | None
+    effort: PlanEffort
+    risks: list[str] = Field(max_length=10, description="What could go wrong, at most 5, each one sentence")
+    approvals: list[str] = Field(max_length=10, description="The approvals this likely needs, at most 3; empty if none")
+
+
+class PlanV2(BaseModel):
+    template: str | None
+    template_why: str
+    steps: list[PlanStepV2]
+    team_roles: list[str]
+    metric: PlanMetricV2 | None
+    effort: PlanEffort
+    risks: list[str]
+    approvals: list[str]
+
+
 class PlanOut(BaseModel):
     steps: list[str]
     metric: PlanMetric | None
+    model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    version: str
+    ms: int
+    # Only on a version 2 answer; a version 1 answer is exactly as before (the endpoint leaves an unset field out).
+    plan: PlanV2 | None = None
+
+
+# ---------------------------------------------------------------- the hint on a no's reason (brain/hint.py, plan AGT, D24)
+class HintIn(Strict):
+    company: str = Field(min_length=1, max_length=120)
+    idea: str = Field(max_length=5000)
+    category: str = Field(max_length=80)
+    reason: str = Field(max_length=2000)
+    locale: Locale
+    llm: LlmOverride | BedrockOverride | None = None
+
+
+class HintDraft(Strict):
+    ok: bool = Field(description="True when the reason says why and what would make it a yes, in the sense of its category")
+    hint: str = Field(max_length=400, description="When not ok: one sentence on what is missing; empty when ok")
+
+
+class HintOut(BaseModel):
+    ok: bool
+    hint: str
     model: str
     tokens_in: int = 0
     tokens_out: int = 0
