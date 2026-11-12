@@ -26,7 +26,9 @@ const RequestStep = z.object({
   owner: z.string().max(80),
   blocked_why: z.string().max(400).nullable(),
 });
-const RidingFact = z.object({ id: z.string().min(1).max(60), kind: z.enum(RIDE_KINDS), step_id: z.string().max(40).nullable(), day: z.number().int() });
+// A fact id is the clock's event id: the company, the kind, the project, the day and a step make about 65 characters with the app's own ids.
+const FACT_ID_MAX = 200;
+const RidingFact = z.object({ id: z.string().min(1).max(FACT_ID_MAX), kind: z.enum(RIDE_KINDS), step_id: z.string().max(40).nullable(), day: z.number().int() });
 
 export const AgentRequest = z.object({
   company: z.string().min(1).max(120),
@@ -59,7 +61,7 @@ const Suggestion = z.object({
   /** unblock: the step. */
   step_id: z.string().max(40).nullable(),
   /** The riding fact it was made on. */
-  fact_id: z.string().max(60).nullable(),
+  fact_id: z.string().max(FACT_ID_MAX).nullable(),
   title: z.string().min(1).max(120),
   why: z.string().max(300),
   draft: z.string().max(600),
