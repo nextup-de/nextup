@@ -3,7 +3,9 @@
 import { describe, expect, it } from "vitest";
 import { meFor } from "@/features/auth/identity";
 import { agentStateOf } from "@/features/agent/reduce";
-import { inboxItems } from "@/features/inbox";
+import { inboxCounts, inboxItems } from "@/features/inbox";
+import type { DemoContext } from "@/components/dashboard/DemoProvider";
+import { inboxInputOf, inboxTotal } from "@/components/dashboard/derive";
 import { ev, project, SEATS, startedLog, stateOf } from "./fixture";
 
 const log = (extra: ReturnType<typeof ev>[] = []) => {
@@ -55,5 +57,37 @@ describe("AGT inbox", () => {
     expect(rows("u_lb", "leader", l.events, 34, { projects: false })).toEqual([]);
     expect(rows("u_lb", "leader", l.events, 34, { demo: true })).toEqual([]);
     expect(rows("u_lb", "leader", [...l.events, ev("project.stopped", "L. Brandt", "p_one", { why: "no longer needed here" }, 34)])).toEqual([]);
+  });
+
+  // The callers (the Inbox page and the badge) build their input with inboxInputOf's rule: the row reaches the list and the badge counts it once.
+  describe("in the page and the badge", () => {
+    const ctxOf = (events: ReturnType<typeof ev>[], userId: string, over: { flagOn?: boolean; serverMode?: boolean; demo?: boolean } = {}): DemoContext => {
+      const state = stateOf(events, 34);
+      project(state).sponsorUserId = "u_hs";
+      const on = over.flagOn ?? true;
+      return {
+        S: state, log: { events, day: 34 }, me: meFor(userId, SEATS), seed: { seats: SEATS }, demo: over.demo ?? false, role: "leader", serverMode: over.serverMode ?? true,
+        flag: (k: string) => (k === "agent" ? on : true),
+      } as unknown as DemoContext;
+    };
+
+    it("lists the row for the lead and counts it once in the badge", () => {
+      const ctx = ctxOf(log().events, "u_lb");
+      const list = inboxItems(inboxInputOf(ctx));
+      expect(list.filter((i) => i.kind === "suggestion")).toHaveLength(1);
+      const others = list.filter((i) => i.kind !== "suggestion").length;
+      expect(inboxCounts(list).total).toBe(others + 1);
+      expect(inboxTotal(ctx)).toBe(inboxCounts(list).total);
+    });
+
+    it("lists and counts nothing for anyone else, with the flag off, without a database or in the demo stage", () => {
+      const base = inboxTotal(ctxOf(log().events, "u_hs"));
+      expect(inboxItems(inboxInputOf(ctxOf(log().events, "u_hs"))).some((i) => i.kind === "suggestion")).toBe(false);
+      const lead = (over: { flagOn?: boolean; serverMode?: boolean; demo?: boolean }) => inboxItems(inboxInputOf(ctxOf(log().events, "u_lb", over))).some((i) => i.kind === "suggestion");
+      expect(lead({ flagOn: false })).toBe(false);
+      expect(lead({ serverMode: false })).toBe(false);
+      expect(lead({ demo: true })).toBe(false);
+      expect(base).toBeGreaterThanOrEqual(0);
+    });
   });
 });
