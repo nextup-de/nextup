@@ -28,7 +28,7 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
 
   await test.step("it is in the team leader's inbox at 0 days", async () => {
     await viewAs(page, "Team leader");
-    await expect(page).toHaveURL(/\/acme\/leader$/);
+    await expect(page).toHaveURL(/\/acme\/inbox$/);
     const row = page.getByRole("main").getByText(SHOWN).first();
     await expect(row).toBeVisible();
     await row.click();
@@ -80,7 +80,7 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
 test("each person lands on their own home page", async ({ page }) => {
   await expect(page).toHaveURL(/\/acme\/raise$/);
   await viewAs(page, "Team leader");
-  await expect(page).toHaveURL(/\/acme\/leader$/);
+  await expect(page).toHaveURL(/\/acme\/inbox$/);
   await viewAs(page, "Manager");
   await expect(page).toHaveURL(/\/acme\/dashboard$/);
 });
@@ -108,7 +108,7 @@ test("IDN inbox by seat", async ({ page }) => {
     await page.keyboard.press("Escape");
   };
   await viewAs(page, "Team leader");
-  await expect(page).toHaveURL(/\/acme\/leader$/);
+  await expect(page).toHaveURL(/\/acme\/inbox$/);
   await expect(page.getByRole("main").getByText(R1_CASE).first()).toBeVisible();
 
   await inboxOf("M. Roth");
