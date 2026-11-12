@@ -7,7 +7,8 @@ import { fromRules, needsConfirm, shortened, toRuleInput, formErrors, type FormE
 import type { RetentionKind } from "@/features/privacy/retention";
 import { useFormat, useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
-import { requestExport, listExportsAction } from "@/server/actions/privacy-export";
+import { requestExport, listExportsAction, markExportDelivered } from "@/server/actions/privacy-export";
+import { DELIVERY_NOTE_MAX } from "@/features/privacy/export";
 import {
   previewRetention, saveRetentionAction, saveScreenshotsAction, type PrivacyPageData, type SaveResult,
 } from "@/server/actions/settings/privacy";
@@ -32,6 +33,7 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
   const [shotStatus, setShotStatus] = useState<{ text: string; error?: boolean } | null>(null);
   const [exports, setExports] = useState(data.exports);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [marking, setMarking] = useState<{ id: string; note: string; error: string | null } | null>(null);
   const [pending, start] = useTransition();
 
   const failure = (r: Extract<SaveResult, { ok: false }>) =>
@@ -85,6 +87,18 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
     start(async () => {
       const r = await requestExport(slug, { kind: "company", deliverTo: "admin" });
       if (!r.ok) setExportStatus(r.error || t("settingsPrivacy.errorExport"));
+      const list = await listExportsAction(slug);
+      if (list) setExports(list);
+    });
+  }
+
+  function markDelivered() {
+    if (!marking) return;
+    const { id, note } = marking;
+    start(async () => {
+      const r = await markExportDelivered(slug, id, note);
+      if (!r.ok) { setMarking({ id, note, error: r.error }); return; }
+      setMarking(null);
       const list = await listExportsAction(slug);
       if (list) setExports(list);
     });
@@ -205,6 +219,15 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
                     {e.downloadable ? (
                       <>{" "}<a className={s.soft} href={`/api/${slug}/exports/${e.id}`} data-testid="settings-privacy-download">{t("settingsPrivacy.download")}</a></>
                     ) : null}
+                    {e.delivered ? (
+                      <span className={p.delivered} data-testid="settings-privacy-delivered">
+                        {t("settingsPrivacy.deliveredLine", { date: f.date(e.delivered.at, "dayMonth") })}
+                        {e.delivered.byUserId && data.names[e.delivered.byUserId] ? ` · ${t("settingsPrivacy.deliveredBy", { name: data.names[e.delivered.byUserId] })}` : ""}
+                        {e.delivered.note ? ` · ${e.delivered.note}` : ""}
+                      </span>
+                    ) : e.markable ? (
+                      <>{" "}<button type="button" className={s.soft} disabled={pending} onClick={() => setMarking({ id: e.id, note: "", error: null })} data-testid="settings-privacy-mark-delivered">{t("settingsPrivacy.markDelivered")}</button></>
+                    ) : null}
                   </>
                 ),
               },
@@ -214,6 +237,27 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
         )}
         <p className={s.help}>{t("settingsPrivacy.exportsHint")}</p>
       </SectionCard>
+
+      {marking ? (
+        <div className={s.scrim} onClick={() => setMarking(null)}>
+          <div className={s.dialog} role="dialog" aria-modal="true" aria-labelledby="privacy-delivered-title" onClick={(e) => e.stopPropagation()} data-testid="settings-privacy-delivered-dialog">
+            <h2 id="privacy-delivered-title" className={s.cardTitle}>{t("settingsPrivacy.deliveredTitle")}</h2>
+            <p className={s.dialogText}>{t("settingsPrivacy.deliveredIntro")}</p>
+            <label className={p.note}>
+              <span className={s.label}>{t("settingsPrivacy.deliveredNote")}</span>
+              <input className={s.input} type="text" maxLength={DELIVERY_NOTE_MAX} value={marking.note} placeholder={t("settingsPrivacy.deliveredNotePlaceholder")}
+                onChange={(e) => setMarking({ ...marking, note: e.target.value })} data-testid="settings-privacy-delivered-note" />
+              <span className={s.cardHint}>{t("settingsPrivacy.deliveredNoteHint")}</span>
+            </label>
+            <p className={s.dialogText}>{t("settingsPrivacy.deliveredOnce")}</p>
+            {marking.error ? <p className={s.fieldError} role="alert">{marking.error}</p> : null}
+            <div className={s.dialogButtons}>
+              <button type="button" className={s.soft} onClick={() => setMarking(null)}>{t("settingsPrivacy.deliveredCancel")}</button>
+              <button type="button" className={s.save} disabled={pending} onClick={markDelivered} data-testid="settings-privacy-delivered-save">{t("settingsPrivacy.markDelivered")}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {confirm ? (
         <div className={s.scrim}>

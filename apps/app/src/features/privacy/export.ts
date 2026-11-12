@@ -189,6 +189,23 @@ export function formatSize(bytes: number, locale: Locale): string {
 
 export const addDays = (from: Date, days: number): Date => new Date(from.getTime() + days * 86_400_000);
 
+/** The longest channel note on a delivered export ("by HR, 12 Nov"). */
+export const DELIVERY_NOTE_MAX = 200;
+
+/** The channel note as stored: one line, trimmed, capped; null when empty or not text. */
+export function cleanDeliveryNote(note: unknown): string | null {
+  if (typeof note !== "string") return null;
+  return note.replace(/\s+/g, " ").trim().slice(0, DELIVERY_NOTE_MAX) || null;
+}
+
+/**
+ * Whether a company admin can mark an export as handed over (Q10.13): one person's admin-only copy that an admin
+ * has downloaded, not marked yet. The company hands it over through its own channel; NextUp never sends it.
+ */
+export function canMarkDelivered(e: { kind: string; deliverTo: string; deliveredAt: Date | string | null; downloaded: boolean }): boolean {
+  return e.kind === "person" && e.deliverTo === "admin" && e.deliveredAt === null && e.downloaded;
+}
+
 /** The address of a person is good enough to mail a link to: well-formed, and it came from the directory or Microsoft sign-in. */
 export function hasVerifiedEmail(u: { email: string; entraOid: string | null; directorySyncedAt: Date | null }): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email.trim()) && (u.entraOid !== null || u.directorySyncedAt !== null);

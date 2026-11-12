@@ -183,6 +183,10 @@ model DataExport {
   error             String?
   expiresAt         DateTime
   createdAt         DateTime @default(now())
+  // Handed over by the company through its own channel (Q10.13), marked once by a company admin.
+  deliveredAt       DateTime?
+  deliveredByUserId String?
+  deliveryNote      String? // how it went: "by HR, 12 Nov"
 
   @@index([companyId, createdAt])
 }
