@@ -338,7 +338,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     return () => clearTimeout(t);
   }, [pubStep]);
 
-  if (!ready) return <PageSkeleton kind="raise" delay />;
+  if (!ready) return <PageSkeleton kind="raise" />;
 
   // The chat shows NextUp's reply with its short read; the full analysis opens only when asked for.
   const shownView = view === "preview" ? "chat" : view; // the last look opens over the chat
