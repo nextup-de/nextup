@@ -1,0 +1,15 @@
+/* The small role label on a board step card (a template step's lead, sponsor or team). */
+.roleLabel {
+  display: inline-block;
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: var(--nh-fs-xs);
+  font-weight: 600;
+  color: var(--nh-ink-2);
+  background: var(--nh-fill);
+  border-radius: var(--radius-xs, 6px);
+  padding: 1px 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

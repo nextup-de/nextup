@@ -6,6 +6,7 @@ import { SEED } from "@/features/demo/seed";
 let viewer: Viewer | null = null;
 vi.mock("@/features/auth/session", () => ({ getViewerFor: vi.fn(async (slug: string) => (viewer && viewer.companySlug === slug ? viewer : null)) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/i18n/server", async (orig) => ({ ...(await orig<typeof import("@/i18n/server")>()), getLocale: vi.fn(async () => "en") }));
 vi.mock("@/server/mail", () => ({ sendMail: vi.fn(async () => ({ ok: true })) }));
 
 import { getDb } from "@/lib/db/client";
