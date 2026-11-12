@@ -23,6 +23,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname, useRouter } from "next/navigation";
 import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
 import { FLAGS, type FlagKey } from "@/config/flags";
+import { acceptPayload, type AcceptPerson } from "@/features/projects/accept";
 import type { InviteRole, SeedProject, StepColumn, SyncSystem } from "@/features/projects/types";
 import type { TemplateKey } from "@/features/templates/library";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
@@ -78,8 +79,9 @@ export type Act = {
   invite: (caseId: string, invited: string[], invitedUserIds: string[]) => void;
   revise: (caseId: string, body: string, title?: string, overall?: number) => void;
   checkin: (caseId: string, next: "round" | "decide", open: string[], note: string) => void;
-  // "Yes, do it" that opens a project - or joins `projectId` when that one is already open. Returns the project id.
-  accept: (caseId: string, p: { lead: string; leadUserId?: string | null; title: string; note?: string; projectId?: string }) => string;
+  // "Yes, do it" that opens a draft (features/projects/accept, D10) - or adds the idea to the open project `join`.
+  // The deciding person, the case title and a new project id are filled in here. Returns the project id.
+  accept: (caseId: string, p: { lead?: AcceptPerson; join?: string; raiserNote?: string }) => string;
   project: ProjectAct;
 };
 
@@ -522,9 +524,13 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     invite: (caseId, invited, invitedUserIds) => emit("case.invited", caseId, { invited, invitedUserIds }),
     revise: (caseId, body, title, overall) => emit("case.revised", caseId, { body, title, overall }),
     checkin: (caseId, next, open, note) => emit("case.checkin", caseId, { next, open, note }),
-    accept: (caseId, { lead, leadUserId, title, note, projectId = (isSampleId(caseId) ? SAMPLE_PREFIX : "") + newId("p") }) => {
-      emit("case.decided", caseId, { answer: "yes", projectId, lead, ...(leadUserId ? { leadUserId } : {}), title, note });
-      return projectId;
+    accept: (caseId, { lead, join, raiserNote }) => {
+      const payload = acceptPayload({
+        caseTitle: S.cases.find((c) => c.id === caseId)?.title ?? "", decider: { userId: actorUserId, name: actor }, lead, join, raiserNote,
+        newProjectId: (isSampleId(caseId) ? SAMPLE_PREFIX : "") + newId("p"),
+      });
+      emit("case.decided", caseId, payload);
+      return payload.projectId as string;
     },
     project: {
       member: (id, who, on) => emit("project.member", id, { name: who.name, userId: who.userId, on }),
@@ -564,7 +570,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
       setGoal: (id, g) => emit("project.goal", id, { goal: g.goal, doneWhen: g.doneWhen, ...(g.doneBy !== undefined ? { doneBy: g.doneBy } : {}), ...(g.brief ? { brief: g.brief } : {}) }),
       moveStart: (id, dueDay, why) => emit("project.start.moved", id, { dueDay, why }),
     },
-  }), [emit, seed.seats, S.ideas, S.projects, actor, actorUserId, slug, serverMode, log]);
+  }), [emit, seed.seats, S.cases, S.ideas, S.projects, actor, actorUserId, slug, serverMode, log]);
 
   const flags = tenant.flags;
   const flag = useCallback((key: FlagKey) => flags?.[key] ?? FLAGS[key].defaults.demo, [flags]);

@@ -148,7 +148,7 @@ test.describe.serial("TST acceptance: Musterwerk scenario suite", () => {
     await desk.reload();
     await expect(desk.getByRole("main").getByText(TITLE).first()).toBeVisible();
     await desk.getByRole("button", { name: "Yes, do it" }).click();
-    await desk.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
+    await desk.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
 
     await member.reload();
     await expect(member.getByRole("article", { name: TITLE })).toContainText("Approved");
