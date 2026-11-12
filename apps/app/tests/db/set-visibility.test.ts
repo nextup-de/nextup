@@ -149,6 +149,32 @@ describe("SET draft visibility", () => {
     expect((await projectEvents(viewer("K. Lead"), "p_q")).map((e) => e.type)).toContain("project.step.added");
   });
 
+  it("the holder of the seat a late draft was given to reads it like the people on it, until the escalation ends (D22)", async () => {
+    const route = (await companySeed({ id: companyId, seedJson: (await db.company.findUniqueOrThrow({ where: { id: companyId }, select: { seedJson: true } })).seedJson, stage: "sandbox" })).routes.find((r) => r.ownerSeatId)!;
+    const append = async (id: string, type: string, actor: string, actorUserId: string | null, targetId: string, payload: Record<string, unknown>, source = "app") => {
+      const r = await appendEventRow(companyId, { id, day: 0, type, actor, targetId, payload } as never, { actorUserId, now, source });
+      if (!r.ok) throw new Error(r.error);
+    };
+    await append("v-x-raised", "case.raised", "J. Schmidt", user["J. Schmidt"], "v-x-case", { kind: "idea", title: "Idea x", routeId: route.id, visibility: "everyone" });
+    // The decider leads it himself, so it is taken at the yes and has a start day.
+    await append("v-x-yes", "case.decided", "T. Vogel", user["T. Vogel"], "v-x-case", { answer: "yes", projectId: "p_x", lead: "T. Vogel", leadUserId: user["T. Vogel"], title: "Project x", draft: true });
+    await append("v-x-step", "project.step.added", "T. Vogel", user["T. Vogel"], "p_x", { text: "SECRET STEP" });
+    const seat = await db.orgRoleHolder.findFirstOrThrow({ where: { companyId, name: "M. Roth" } });
+    const holder: LogViewer = { userId: user["M. Roth"], role: "leader" };
+    // Before the clock gave it away the seat's holder is a reader like any other.
+    expect(await projectEvents(holder, "p_x")).toEqual([]);
+    await append("v-x-late", "clock.due", "system:clock", null, "p_x", { kind: "draft", dueDay: 1, toRoleHolderId: seat.id }, "clock");
+    expect((await projectEvents(holder, "p_x")).map((e) => e.type), "the seat the draft went to").toEqual(expect.arrayContaining(["project.step.added"]));
+    // Someone else, with no seat of the draft's, still reads no more than the line.
+    expect((await projectEvents(viewer("O. Outsider"), "p_x")).map((e) => e.type)).not.toContain("project.step.added");
+    const got = await loadCaseFor(companyId, holder, "v-x-case");
+    expect(everything(got!.events)).toContain("SECRET STEP");
+    // The holder keeps it with a new date: the escalation ends and so does the access.
+    await append("v-x-moved", "project.start.moved", "M. Roth", user["M. Roth"], "p_x", { dueDay: 30, why: "SECRET REASON" });
+    expect((await projectEvents(holder, "p_x")).map((e) => e.type)).toEqual(["project.start.moved"]);
+    expect(everything((await loadCaseFor(companyId, holder, "v-x-case"))!.events)).not.toContain("SECRET");
+  });
+
   it("another company's viewer gets nothing of it", async () => {
     const v: LogViewer = { userId: other.userId, role: "manager" };
     expect(await loadCaseFor(other.companyId, v, "v-d-case")).toBeNull();

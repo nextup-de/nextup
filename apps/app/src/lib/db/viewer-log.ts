@@ -3,7 +3,7 @@
 // with no target. The reducer runs on this smaller log unchanged - an absent case is simply not there.
 import { cache } from "react";
 import type { Role } from "@/config/roles";
-import { meFor } from "@/features/auth/identity";
+import { meFor, type SeatRow } from "@/features/auth/identity";
 import type { EventLog, EventPayload } from "@/features/cases/events";
 import { logFromRows, type EventRow } from "@/features/cases/persist";
 import { reduce, type ReducedCase } from "@/features/cases/reducer";
@@ -97,6 +97,16 @@ const pick = (payload: unknown, keys: readonly string[]): EventPayload => {
 };
 
 /**
+ * The person who holds the seat a late draft was given to reads it like the people on it, while that escalation is live
+ * (D15, D22): they keep, hand on or stop it, which they cannot do blind. By seat and user id, never by name.
+ */
+function holdsDraftEscalation(p: ReducedProject, viewer: LogViewer, seats: readonly SeatRow[]): boolean {
+  const up = p.escalated;
+  if (up === null || up.what !== "draft" || !up.live || up.toSeatId === null) return false;
+  return seats.some((s) => s.id === up.toSeatId && s.userId === viewer.userId);
+}
+
+/**
  * The boundary of a draft (SET D13, D20): a viewer who may open the idea but is not on the draft does not receive the
  * draft's steps, invitations, comments or any other event of it, only the summary events above. The reducer then rebuilds
  * a draft that visibleProjectsFor hides and the case page describes as "being set up". Pure over the rows; the case
@@ -105,12 +115,13 @@ const pick = (payload: unknown, keys: readonly string[]): EventPayload => {
 export async function cutDrafts(companyId: string, viewer: LogViewer, rows: EventRow[], seed: Seed, day: number): Promise<EventRow[]> {
   const drafts = new Set(rows.flatMap((r) => (r.type === "case.decided" && (r.payload as EventPayload | null)?.draft === true ? projectIdOf(r.payload) : [])));
   if (drafts.size === 0) return rows;
-  const state = reduce({ ...seed, seats: await loadSeats(companyId) }, logFromRows(rows, day));
+  const seats = await loadSeats(companyId);
+  const state = reduce({ ...seed, seats }, logFromRows(rows, day));
   const cut = new Map<string, readonly string[]>();
   for (const p of state.projects) {
     if (!drafts.has(p.id) || !isOpenDraft(p)) continue;
     const cases = state.cases.filter((c) => p.sources.includes(c.id));
-    if (mayReadDraft(p, viewer, cases.some(isPrivateIdea))) continue;
+    if (mayReadDraft(p, viewer, cases.some(isPrivateIdea)) || holdsDraftEscalation(p, viewer, seats)) continue;
     cut.set(p.id, cases.some((c) => c.fromUserId === viewer.userId) ? Object.keys(RAISER_SUMMARY) : Object.keys(DRAFT_SUMMARY));
   }
   if (cut.size === 0) return rows;
