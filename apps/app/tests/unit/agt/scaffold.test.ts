@@ -70,6 +70,18 @@ describe("AGT scaffold", () => {
       expect(AgentReply.safeParse({ ...reply, suggestions: [{ ...suggestion, step: null, fact_id: null, step_id: null }] }).success).toBe(true);
     });
 
+    it("takes the clock's own fact ids: about 65 characters with real ids, up to 200", () => {
+      const late = "e_clk_cmwe0qzip0000sg06syua8y5r_clk:late:p_mwe0u3ws:477:s_mwe0u3wt0"; // the clock's key for a late step with the app's own ids
+      expect(late.length).toBeGreaterThan(60);
+      const req = (id: string) => ({ ...request, project: { ...request.project, facts: [{ id, kind: "late", step_id: "s1", day: 41 }] } });
+      expect(AgentRequest.safeParse(req(late)).success).toBe(true);
+      expect(AgentRequest.safeParse(req("f".repeat(200))).success).toBe(true);
+      expect(AgentRequest.safeParse(req("f".repeat(201))).success).toBe(false);
+      expect(AgentReply.safeParse({ ...reply, suggestions: [{ ...suggestion, fact_id: late }] }).success).toBe(true);
+      expect(AgentReply.safeParse({ ...reply, suggestions: [{ ...suggestion, fact_id: "f".repeat(200) }] }).success).toBe(true);
+      expect(AgentReply.safeParse({ ...reply, suggestions: [{ ...suggestion, fact_id: "f".repeat(201) }] }).success).toBe(false);
+    });
+
     it("refuses a kind outside the three, a fourth suggestion and a draft over 600 characters", () => {
       expect(AgentReply.safeParse({ ...reply, suggestions: [{ ...suggestion, kind: "decide" }] }).success).toBe(false);
       expect(AgentReply.safeParse({ ...reply, suggestions: [suggestion, { ...suggestion, kind: "report" }, { ...suggestion, kind: "plan" }, suggestion] }).success).toBe(false);

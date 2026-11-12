@@ -67,11 +67,11 @@ test("UIP project area", async ({ page }) => {
   await sweepPages(page, [`/${SLUG}/projects`], { marker: "projects-tabs", title: false }); // the tab names the page
   await sweepPages(page, TABS.map((tab) => `${base}?tab=${tab}`), { marker: "page-header" });
 
-  await test.step("the tabs are the Overview, Board, Team, Results, Activity and Files; no Agent tab", async () => {
+  await test.step("the tabs are the Overview, Board, Team, Results, Activity, Files and, for a manager, Agent (AGT D15)", async () => {
     await page.goto(base);
     const tabs = page.getByRole("navigation", { name: "Project sections" });
     await expect(tabs.getByRole("link")).toHaveCount(TABS.length);
-    await expect(tabs.getByRole("link", { name: /agent/i })).toHaveCount(0);
+    await expect(tabs.getByRole("link", { name: "Agent", exact: true })).toHaveCount(1); // the lead, the sponsor and managers see it (D15)
     for (const name of ["Overview", "Board", "Team", "Results"]) {
       await tabs.getByRole("link", { name: new RegExp("^" + name) }).click();
       await expect(tabs.getByRole("link", { name: new RegExp("^" + name) })).toHaveAttribute("aria-current", "page");
