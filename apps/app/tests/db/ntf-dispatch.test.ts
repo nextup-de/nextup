@@ -44,7 +44,8 @@ async function raise(id: string): Promise<void> {
   expect(r.ok).toBe(true);
 }
 
-const rowsOf = (prefix: string) => db.outboxMessage.findMany({ where: { companyId, key: { startsWith: prefix } }, orderBy: { key: "asc" } });
+// The in-app copies (INB/D5) are tested in tests/db/inb-notices.test.ts; here only the outside rows.
+const rowsOf = (prefix: string) => db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, key: { startsWith: prefix } }, orderBy: { key: "asc" } });
 const seqOf = async (id: string) => (await db.caseEvent.findFirstOrThrow({ where: { companyId, id } })).seq;
 const cursor = () => db.notifyCursor.findUniqueOrThrow({ where: { companyId } });
 

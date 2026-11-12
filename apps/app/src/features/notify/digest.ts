@@ -6,6 +6,7 @@ import { inboxOf } from "@/features/cases/selectors";
 import type { State } from "@/features/cases/reducer";
 import { createT, type Locale } from "@/i18n";
 import type { OutboxDraft } from "@/lib/db/outbox";
+import { ADD_MAIL_PREFIX, isDuty } from "./channels";
 import { REMINDER_KINDS } from "./templates";
 
 export const DIGEST_TEMPLATE = "digest";
@@ -54,6 +55,8 @@ export const NOTIFY_GROUPS: Record<NotifyGroup, readonly string[]> = {
   digest: [DIGEST_TEMPLATE],
 };
 const SWITCHABLE = new Set(Object.values(NOTIFY_GROUPS).flat());
+/** `+mail:<group>` for each of the four groups: the person's choice to get mail where Teams was chosen (INB/D7). */
+const ADD_MAIL = new Set(Object.keys(NOTIFY_GROUPS).map((g) => `${ADD_MAIL_PREFIX}${g}`));
 
 /**
  * Templates added after people set their switches, each with the older template of its group it follows while a
@@ -68,12 +71,13 @@ const FOLLOWS: Record<string, string> = {
 };
 export const followsTemplate = (template: string): string | null => FOLLOWS[template] ?? null;
 
-export type PrefChange = { ok: true; userId: string; template: string; on: boolean } | { ok: false; error: "not signed in" | "unknown template" };
+export type PrefChange = { ok: true; userId: string; template: string; on: boolean } | { ok: false; error: "not signed in" | "unknown template" | "duty" };
 
 /** What setNotifyPrefAction stores: always for the signed-in viewer of this company, never for anybody else. */
 export function prefChange(viewer: { userId: string; companySlug: string } | null, slug: string, template: string, on: boolean): PrefChange {
   if (!viewer || viewer.companySlug !== slug) return { ok: false, error: "not signed in" };
-  if (!SWITCHABLE.has(template)) return { ok: false, error: "unknown template" };
+  if (!SWITCHABLE.has(template) && !ADD_MAIL.has(template)) return { ok: false, error: "unknown template" };
+  if (!on && isDuty(template)) return { ok: false, error: "duty" };
   return { ok: true, userId: viewer.userId, template, on };
 }
 
