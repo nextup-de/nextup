@@ -3,7 +3,7 @@
 // appendEvent, Date.now or the reducer - with a raise, an ask and its answer, a no with NOR's payload, a yes with a draft, a join, a
 // merge and a reopen. The golden in ./snapshot/replay.json was written from the reducer at the base commit, before any GAT change;
 // the projection below drops the fields GAT adds.
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import { parseApprovalConfig } from "@/features/approvals/config";
 import { EMPTY_APPROVAL_CONFIG } from "@/features/approvals/types";
 import type { SeatRow } from "@/features/auth/identity";
@@ -65,31 +65,29 @@ const without = (o: object, keys: readonly string[]) => Object.fromEntries(Objec
 export const beforeCase = (c: ReducedCase) => without(c, GAT_CASE_FIELDS);
 export const beforeProject = (p: ReducedProject) => without(p, GAT_PROJECT_FIELDS);
 
-describe("GAT replay", () => {
-  const state = reduce(SEED, logFromRows(ROWS, 14));
+const state = reduce(SEED, logFromRows(ROWS, 14));
 
-  it("reduces a pre-GAT log to the golden", async () => {
-    await expect(JSON.stringify({ cases: state.cases.map(beforeCase), projects: state.projects.map(beforeProject) }, null, 2)).toMatchFileSnapshot("./snapshot/replay.json");
-  });
+it("GAT replay reduces a pre-GAT log to the golden", async () => {
+  await expect(JSON.stringify({ cases: state.cases.map(beforeCase), projects: state.projects.map(beforeProject) }, null, 2)).toMatchFileSnapshot("./snapshot/replay.json");
+});
 
-  it("copies the seed config into State.approvals", () => {
-    // Without a config the state carries the empty one and the roles as the approval rules read them (title, spend limit); the old log reduced above shows no GAT field.
-    expect(state.approvals).toEqual({ ...EMPTY_APPROVAL_CONFIG, roles: ROLES.map((r) => ({ id: r.id, title: "", reportsToId: r.reportsToId, spendLimitEur: null })) });
-    for (const c of state.cases) expect([c.review, c.cost, c.approvals, c.approvalRuns, c.openingRunId, c.status === "approval"]).toEqual([null, null, null, [], null, false]);
-    for (const p of state.projects) expect(p.waitsForApproval ?? false).toBe(false);
-    // With a config the seed carried, that config is State.approvals' content, key for key.
-    const config = parseApprovalConfig([
-      { key: "review", value: { on: true, roleId: "role_owner", days: 3, deputyRoleId: "role_head", routes: { r1: "always" } } },
-      { key: "approval_days", value: { days: 7 } },
-      { key: "councils", value: [{ id: "k1", name: "Council", memberRoleIds: ["role_head"], secretaryRoleId: "role_head", everyDays: 10, firstDay: 20 }] },
-    ]);
-    const roles: SeedRole[] = ROLES.map((r) => (r.id === "role_head" ? { ...r, title: "Head", spendLimitEur: 20_000 } : r));
-    const withConfig = reduce({ ...SEED, approvals: config, roles }, logFromRows(ROWS, 14));
-    const { roles: seen, ...rest } = withConfig.approvals;
-    expect(rest).toEqual(config);
-    expect(seen.find((r) => r.id === "role_head")).toEqual({ id: "role_head", title: "Head", reportsToId: null, spendLimitEur: 20_000 });
-    // The config changes nothing else: the cases and projects reduce to the golden either way.
-    expect(withConfig.cases.map(beforeCase)).toEqual(state.cases.map(beforeCase));
-    expect(withConfig.projects.map(beforeProject)).toEqual(state.projects.map(beforeProject));
-  });
+it("GAT replay copies the seed config into State.approvals", () => {
+  // Without a config the state carries the empty one and the roles as the approval rules read them (title, spend limit); the old log reduced above shows no GAT field.
+  expect(state.approvals).toEqual({ ...EMPTY_APPROVAL_CONFIG, roles: ROLES.map((r) => ({ id: r.id, title: "", reportsToId: r.reportsToId, spendLimitEur: null })) });
+  for (const c of state.cases) expect([c.review, c.cost, c.approvals, c.approvalRuns, c.openingRunId, c.status === "approval"]).toEqual([null, null, null, [], null, false]);
+  for (const p of state.projects) expect(p.waitsForApproval ?? false).toBe(false);
+  // With a config the seed carried, that config is State.approvals' content, key for key.
+  const config = parseApprovalConfig([
+    { key: "review", value: { on: true, roleId: "role_owner", days: 3, deputyRoleId: "role_head", routes: { r1: "always" } } },
+    { key: "approval_days", value: { days: 7 } },
+    { key: "councils", value: [{ id: "k1", name: "Council", memberRoleIds: ["role_head"], secretaryRoleId: "role_head", everyDays: 10, firstDay: 20 }] },
+  ]);
+  const roles: SeedRole[] = ROLES.map((r) => (r.id === "role_head" ? { ...r, title: "Head", spendLimitEur: 20_000 } : r));
+  const withConfig = reduce({ ...SEED, approvals: config, roles }, logFromRows(ROWS, 14));
+  const { roles: seen, ...rest } = withConfig.approvals;
+  expect(rest).toEqual(config);
+  expect(seen.find((r) => r.id === "role_head")).toEqual({ id: "role_head", title: "Head", reportsToId: null, spendLimitEur: 20_000 });
+  // The config changes nothing else: the cases and projects reduce to the golden either way.
+  expect(withConfig.cases.map(beforeCase)).toEqual(state.cases.map(beforeCase));
+  expect(withConfig.projects.map(beforeProject)).toEqual(state.projects.map(beforeProject));
 });
