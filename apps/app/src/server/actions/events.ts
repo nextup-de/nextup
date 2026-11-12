@@ -23,6 +23,11 @@ import { stampAudience } from "@/lib/db/audience";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { loadMembers } from "@/lib/db/knowledge";
 import { issueSession } from "@/server/issue-session";
+import { prepareAgentAppend } from "./append/agent";
+import { prepareApprovalAppend } from "./append/approval";
+import { prepareCaseAppend } from "./append/case";
+import { prepareOverloadAppend } from "./append/overload";
+import { prepareProjectAppend } from "./append/project";
 import { entryFor } from "@/server/setup-open";
 import { policyFor } from "@/features/admin/stages";
 import { stampDept, stampEvent, underHandle } from "@/features/cases/stamp";
@@ -71,7 +76,8 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
 
   const parsed = Input.safeParse(input);
   if (!parsed.success) return { ok: false, error: t("cases.actionBadEvent") };
-  const { slug, id, type, target, payload, draftId } = parsed.data;
+  const { slug, id, type, target, draftId } = parsed.data;
+  let { payload } = parsed.data;
   if (draftId && type !== "case.raised") return { ok: false, error: t("cases.actionBadEvent") };
 
   const viewer = await getViewerFor(slug);
@@ -93,6 +99,12 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   const who: Actor = { role: viewer.role, userId: viewer.userId, me: meFor(viewer.userId, seed.seats), name: viewer.name, handle: viewer.handle };
   const access = needsCaseAccess(type) ? { roles: seed.roles ?? [], members: await loadMembers(viewer.companyId) } : undefined;
   const state = reduce(seed, log);
+  // Composer (docs/process/README.md): a phase checks or stamps its events in append/<area>.ts, never here.
+  for (const prepare of [prepareCaseAppend, prepareProjectAppend, prepareAgentAppend, prepareApprovalAppend, prepareOverloadAppend]) {
+    const hook = await prepare({ companyId: viewer.companyId, viewer: { userId: viewer.userId, role: viewer.role }, type, target, payload, state, seed, locale });
+    if (!hook.ok) return { ok: false, error: hook.error };
+    payload = hook.payload;
+  }
   const verdict = mayAppend(who, { type, target, payload }, state, locale, access);
   if (!verdict.ok) return verdict;
 
