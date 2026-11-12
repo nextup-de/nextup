@@ -57,6 +57,7 @@ const LOOP_TEMPLATES = [
   "case.discussion", "case.invited", "case.checkin", "case.decided",
   "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
   "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded", "project.stopped",
+  "project.lead.answered", "project.invited", "project.invite.answered", "project.start.moved",
 ].map((t) => `loop.${t}`);
 const REMINDER_TEMPLATES = REMINDER_KINDS.map((k) => `reminder.${k}`);
 
@@ -81,6 +82,10 @@ const FOLLOWS: Record<string, string> = {
   "loop.case.unanswered": "loop.case.decided", "loop.case.withdrawn": "loop.case.decided", "reminder.question": "reminder.deadline", "reminder.triage": "reminder.deadline",
   "reminder.confirm": "reminder.measure", "loop.project.measure.confirmed": "loop.project.measured",
   "loop.project.stopped": "loop.project.done",
+  // The project draft (plan SET): an opt-out of the project mails covers the new ones until the person chooses again.
+  "loop.project.lead.answered": "loop.project.member", "loop.project.invited": "loop.project.member",
+  "loop.project.invite.answered": "loop.project.member", "loop.project.start.moved": "loop.project.member",
+  "reminder.lead": "reminder.start", "reminder.invite": "reminder.start", "reminder.draft": "reminder.start",
 };
 export const followsTemplate = (template: string): string | null => FOLLOWS[template] ?? null;
 
@@ -89,8 +94,10 @@ export type PrefChange = { ok: true; userId: string; template: string; on: boole
 /** What setNotifyPrefAction stores: always for the signed-in viewer of this company, never for anybody else. */
 export function prefChange(viewer: { userId: string; companySlug: string } | null, slug: string, template: string, on: boolean): PrefChange {
   if (!viewer || viewer.companySlug !== slug) return { ok: false, error: "not signed in" };
-  if (!SWITCHABLE.has(template) && !ADD_MAIL.has(template)) return { ok: false, error: "unknown template" };
+  // A duty is refused before the list of switches is asked: reminder.lead and its kin are duties from plan SET on,
+  // before SET-E1 adds their kinds to the groups.
   if (!on && isDuty(template)) return { ok: false, error: "duty" };
+  if (!SWITCHABLE.has(template) && !ADD_MAIL.has(template)) return { ok: false, error: "unknown template" };
   return { ok: true, userId: viewer.userId, template, on };
 }
 
