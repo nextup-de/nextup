@@ -11,7 +11,9 @@ const project = (o: Partial<ReducedProject>): ReducedProject => ({
   leadUserId: null, memberUserIds: [], authorUserIds: [], openedDay: 0, openedBy: "b", startedDay: null, doneDay: null,
   doneNote: "", stopped: null, baseline: null, steps: [], links: [], sync: null, measures: [], checks: [], verdict: null,
   reward: null, claimed: null, status: "planning", closed: false, rewardDue: false, dueDay: null, overdue: false,
-  escalated: null, history: [], ...o,
+  escalated: null, history: [],
+  draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
+  goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null, ...o,
 });
 const answered = (raisedDay: number, decidedDay: number, roleId = "r1"): ReducedCase =>
   ({ assigneeRoleId: roleId, raisedDay, pausedDays: 0, decided: { answer: "yes", reason: "", note: "", by: "x", day: decidedDay } }) as unknown as ReducedCase;

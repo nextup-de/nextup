@@ -27,7 +27,21 @@ export type Step = {
   startedDay: number | null;
   doneDay: number | null;
   external: { system: string; key: string; url?: string } | null;
+  /** Who the step is for: the lead, the sponsor or the team (a template's step, F6). Absent on a step added by hand and on legacy steps. */
+  role?: StepRole;
 };
+
+/** The role a template step is for. */
+export type StepRole = "lead" | "sponsor" | "team";
+
+/** What a person is invited as to a project draft (project.invited). A follower is added at once, the others answer. */
+export type InviteRole = "sponsor" | "member" | "contributor" | "follower";
+
+/**
+ * One invitation. Its identity is the project.invited event that made it (`id`): an answer and the clock's facts
+ * name it, so a second invitation of the same person is another one.
+ */
+export type Invite = { id: string; userId: string; role: InviteRole; state: "pending" | "accepted" | "declined" | "lapsed"; day: number; reason: string };
 
 /** The number taken before the start - or, honestly, none and why. */
 export type Baseline =
@@ -78,7 +92,7 @@ export type Reward = { rule: string; amount: number | null; note: string; day: n
 export type ProjectStatus = "planning" | "running" | "measuring" | "measured" | "recognised" | "stopped";
 
 /** Late start or late measure: on the deputy's desk too, like a late decision. */
-export type ProjectEscalation = { to: string; toSeatId: string | null; toRoleId: string | null; from: string; day: number; live: boolean; what: "start" | "measure" };
+export type ProjectEscalation = { to: string; toSeatId: string | null; toRoleId: string | null; from: string; day: number; live: boolean; what: "start" | "measure" | "draft" };
 
 export type ReducedProject = {
   id: string;
@@ -124,6 +138,30 @@ export type ReducedProject = {
   overdue: boolean;
   escalated: ProjectEscalation | null;
   history: CaseEvent[];
+  // The project draft (plan SET). A project opened without `draft: true` has the empty values.
+  /** A yes with draft: true opened it and it has not started (D8, D9: still status "planning"). */
+  draft: boolean;
+  /** "pending" while the person named to set it up has not answered; "taken" otherwise, also for every legacy project (D11). */
+  leadState: "taken" | "pending";
+  /** The working day the lead was asked (the yes, or a project.handed on the draft); null when nobody was. */
+  leadAskedDay: number | null;
+  /** The template the board steps came from, by key and exact version (D16). */
+  template: { key: string; version: number } | null;
+  invites: Invite[];
+  /** The one accepted sponsor (a new accepted sponsor replaces the old). */
+  sponsorUserId: string | null;
+  /** People invited as followers (added at once). */
+  followerUserIds: string[];
+  /** project.goal: what for and what counts as done (D17); doneBy is a working-day number. */
+  goal: { goal: string; doneWhen: string; doneBy: number | null; brief: string } | null;
+  /** The draft's start day while it has one (D14); null before the lead takes it. The project's `dueDay` follows it. */
+  startDay: number | null;
+  /** The day the last approval was asked for; always null until GAT (D14). */
+  approvalsPendingSince: number | null;
+  /** The decider's line to the raiser (D10). */
+  raiserNote: string;
+  /** Who said yes (the decider's user id); null on a legacy log without one. */
+  deciderUserId: string | null;
 };
 
 /** A project in a company's seed, for demo data in every state. Its history is seed events. */

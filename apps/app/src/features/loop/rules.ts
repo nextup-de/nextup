@@ -34,6 +34,8 @@ export type LoopRules = {
   deadlineHandover: boolean;
   /** Working days after the answer date until the case goes one level up; 0 = never (company rule escalation_days). */
   escalationDays: number;
+  /** Working days a project draft has to start, counted from the lead taking it (company rule project_start_days). */
+  projectStartDays: number;
   /** The measure step is on (company rule loop_steps). */
   measure: boolean;
   /** The recognition step is on (company rule loop_steps). */
@@ -49,6 +51,7 @@ export const LOOP_DEFAULTS: LoopRules = {
   reward: { kind: "thanks", amount: null, sharePct: null, capEur: null },
   deadlineHandover: true,
   escalationDays: 3,
+  projectStartDays: 10,
   measure: true,
   recognition: true,
 };
@@ -83,6 +86,7 @@ export function loopRules(p?: Partial<LoopRules> | null): LoopRules {
     },
     deadlineHandover: typeof p.deadlineHandover === "boolean" ? p.deadlineHandover : d.deadlineHandover,
     escalationDays: int(p.escalationDays, 0, 60, d.escalationDays),
+    projectStartDays: int(p.projectStartDays, 1, 60, d.projectStartDays),
     measure: typeof p.measure === "boolean" ? p.measure : d.measure,
     recognition: typeof p.recognition === "boolean" ? p.recognition : d.recognition,
   };

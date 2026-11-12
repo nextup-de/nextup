@@ -34,7 +34,8 @@ const ctx = (events: CaseEvent[], over: Partial<PlanCtx> = {}): PlanCtx => ({
   companyId: "co1", state: reduce(seed, { events, day: 1 }), people, prefs: [],
   company: { stage: "pilot", notifications: true, n8n: true }, subscriptions: [], baseUrl: "https://app.test/acme", teamsOn: true, ...over,
 });
-const plan = (events: CaseEvent[], over: Partial<PlanCtx> = {}) => planNotices(events[events.length - 1], ctx(events, over));
+// The in-app copy of each notice (INB/D5) is tested in tests/unit/inb/channels.test.ts; here only the outside rows count.
+const plan = (events: CaseEvent[], over: Partial<PlanCtx> = {}) => planNotices(events[events.length - 1], ctx(events, over)).filter((d) => d.channel !== "inapp");
 const channels = (d: { recipientUserId: string | null; channel: string }[]) => Object.fromEntries(d.map((x) => [x.recipientUserId, x.channel]));
 
 describe("TMS planner", () => {

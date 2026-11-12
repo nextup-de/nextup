@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_SEED } from "@/features/demo";
 import { DEMO_GOALS, DEMO_RULES } from "@/features/demo/structure";
 import { DEFAULT_RULES, rowsFromRules, rulesFromRows } from "@/features/knowledge/rules";
+import { LOOP_DEFAULTS, loopRules } from "@/features/loop/rules";
 
 describe("STR rule values", () => {
   it("round-trips through rows", () => {
@@ -40,5 +41,31 @@ describe("STR rule values", () => {
   it("starts an empty seed without goals or spend", () => {
     expect(EMPTY_SEED.goals).toEqual([]);
     expect(EMPTY_SEED.spend).toBeNull();
+  });
+});
+
+describe("SET project_start_days", () => {
+  it("reads {days} between 1 and 60 and ignores anything else", () => {
+    expect(rulesFromRows([{ key: "project_start_days", value: { days: 10 } }]).projectStartDays).toBe(10);
+    expect(rulesFromRows([{ key: "project_start_days", value: { days: 1 } }]).projectStartDays).toBe(1);
+    expect(rulesFromRows([{ key: "project_start_days", value: { days: 60 } }]).projectStartDays).toBe(60);
+    for (const bad of [{ days: 0 }, { days: 61 }, { days: 2.5 }, { days: "7" }, "7", null]) {
+      expect(rulesFromRows([{ key: "project_start_days", value: bad }]).projectStartDays, JSON.stringify(bad)).toBeUndefined();
+    }
+    expect(rulesFromRows([]).projectStartDays).toBeUndefined();
+  });
+  it("round-trips through rowsFromRules, and writes no row while it is unset", () => {
+    const rules = { ...DEFAULT_RULES, projectStartDays: 15 };
+    expect(rowsFromRules(rules)).toContainEqual({ key: "project_start_days", value: { days: 15 } });
+    expect(rulesFromRows(rowsFromRules(rules))).toEqual(rules);
+    expect(rowsFromRules(DEFAULT_RULES).map((r) => r.key)).not.toContain("project_start_days");
+  });
+  it("reaches LoopRules.projectStartDays: 10 by default, clamped to 1 to 60", () => {
+    expect(LOOP_DEFAULTS.projectStartDays).toBe(10);
+    expect(loopRules({}).projectStartDays).toBe(10);
+    expect(loopRules(null).projectStartDays).toBe(10);
+    expect(loopRules({ projectStartDays: 20 }).projectStartDays).toBe(20);
+    expect(loopRules({ projectStartDays: 0 }).projectStartDays).toBe(1);
+    expect(loopRules({ projectStartDays: 99 }).projectStartDays).toBe(60);
   });
 });
