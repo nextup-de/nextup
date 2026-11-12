@@ -26,6 +26,8 @@ export function ProjectMovement() {
   const measured = measuredProjects(list);
   const waits = projectWaits(list);
   const L = S.ledger;
+  // The Wait card shows only the numbers that say something; with none, the card goes too (lib/utils/quiet.ts).
+  const hasWait = waits.started.medianDays !== null || waits.measured.medianDays !== null || L.projectsEscalated > 0 || L.measuresOwed > 0 || L.unmeasured > 0;
 
   return (
     <div className={styles.split}>
@@ -53,15 +55,15 @@ export function ProjectMovement() {
         </div>
       </SectionCard>
 
-      <SectionCard title={t("projects.waitTitle")} hint={t("projects.waitSub")}>
+      {hasWait && <SectionCard title={t("projects.waitTitle")} hint={t("projects.waitSub")}>
         <div className={ui.grid2}>
           {waits.started.medianDays !== null && <div className={ui.tile}><div className={ui.tileV}>{days(waits.started.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDecidedStarted")} · {waitSub(waits.started, t("projects.waitNotStarted"), t)}</div></div>}
           {waits.measured.medianDays !== null && <div className={ui.tile}><div className={ui.tileV}>{days(waits.measured.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDoneMeasured")} · {waitSub(waits.measured, t("projects.waitFirstCheck"), t)}</div></div>}
-          <div className={ui.tile}><div className={ui.tileV} data-hot={L.projectsEscalated ? "true" : undefined}>{L.projectsEscalated}</div><div className={ui.tileL}>{t("projects.waitEscalated")}</div></div>
-          <div className={ui.tile}><div className={ui.tileV} data-hot={L.measuresOwed ? "true" : undefined}>{L.measuresOwed}</div><div className={ui.tileL}>{t("projects.waitOwed")}</div></div>
-          <div className={ui.tile}><div className={ui.tileV}>{L.unmeasured}</div><div className={ui.tileL}>{t("projects.waitUnmeasured")}</div></div>
+          {L.projectsEscalated > 0 && <div className={ui.tile}><div className={ui.tileV} data-hot="true">{L.projectsEscalated}</div><div className={ui.tileL}>{t("projects.waitEscalated")}</div></div>}
+          {L.measuresOwed > 0 && <div className={ui.tile}><div className={ui.tileV} data-hot="true">{L.measuresOwed}</div><div className={ui.tileL}>{t("projects.waitOwed")}</div></div>}
+          {L.unmeasured > 0 && <div className={ui.tile}><div className={ui.tileV}>{L.unmeasured}</div><div className={ui.tileL}>{t("projects.waitUnmeasured")}</div></div>}
         </div>
-      </SectionCard>
+      </SectionCard>}
     </div>
   );
 }

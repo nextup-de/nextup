@@ -85,6 +85,15 @@ describe("groupProjects", () => {
       ["Planning", ["pj4"]], ["Running", ["pj2"]], ["Measuring", ["pj3"]], ["Measured and recognised", ["pj1"]], ["Stopped", []],
     ]);
   });
+  it("puts the reader's own first in a group, then late ones, then the next move due soonest", () => {
+    const base = S0.projects.find((p) => p.id === "pj4")!;
+    const pj = (id: string, number: number, x: Partial<typeof base>) => ({ ...base, id, number, leadUserId: null, memberUserIds: [], overdue: false, dueDay: null, ...x });
+    const list = [
+      pj("a", 1, {}), pj("b", 2, { dueDay: 9 }), pj("c", 3, { dueDay: 4 }), pj("d", 4, { overdue: true }), pj("e", 5, { memberUserIds: ["u7"] }),
+    ];
+    expect(groupProjects(list, "en", "u7")[0].projects.map((p) => p.id)).toEqual(["e", "d", "c", "b", "a"]);
+    expect(groupProjects(list)[0].projects.map((p) => p.id)).toEqual(["d", "c", "b", "a", "e"]);
+  });
 });
 
 describe("projectDesk", () => {

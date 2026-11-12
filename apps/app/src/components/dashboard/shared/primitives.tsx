@@ -1,5 +1,6 @@
 // Small presentational pieces every role view uses. Props in, JSX out.
 import type { MessageKey, T } from "@/i18n";
+import { shows } from "@/lib/utils/quiet";
 import ui from "./ui.module.css";
 
 export type Tone = "accent" | "ink" | "ok" | "grey" | "soft" | "ghost" | "none" | "purple";
@@ -42,11 +43,24 @@ export function Quote({ text, by, tone }: { text: string; by: string; tone?: "ac
   );
 }
 
-export function Tile({ v, l, hot, onClick }: { v: React.ReactNode; l: string; hot?: boolean; onClick?: () => void }) {
+/** One number of a stats strip. `n` decides whether it shows (0 or null: not at all); `v` is how it reads, `n` when left out. `echo`: the page already says this number elsewhere. */
+export type Stat = { n: number | null; v?: React.ReactNode; l: string; hot?: boolean; echo?: boolean };
+
+/**
+ * A row of numbers, one card with hairlines between. A number that is 0 or missing is left out, and the strip
+ * is left out when nothing is left that the page does not already say. `cls` adds a page's own classes.
+ */
+export function StatStrip({ stats, cls }: { stats: readonly Stat[]; cls?: { strip?: string; stat?: string; v?: string; l?: string } }) {
+  const shown = stats.filter((k) => shows(k.n));
+  if (shown.every((k) => k.echo)) return null;
   return (
-    <div className={[ui.tile, onClick ? ui.tileClick : ""].join(" ")} onClick={onClick}>
-      <div className={ui.tileV} data-hot={hot ? "true" : undefined}>{v}</div>
-      <div className={ui.tileL}>{l}</div>
+    <div className={[ui.stats, cls?.strip].filter(Boolean).join(" ")}>
+      {shown.map((k) => (
+        <div key={k.l} className={[ui.stat, cls?.stat].filter(Boolean).join(" ")}>
+          <div className={[ui.statV, cls?.v].filter(Boolean).join(" ")} data-hot={k.hot ? "true" : undefined}>{k.v ?? k.n}</div>
+          <div className={[ui.statL, cls?.l].filter(Boolean).join(" ")}>{k.l}</div>
+        </div>
+      ))}
     </div>
   );
 }
