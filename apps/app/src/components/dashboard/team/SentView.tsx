@@ -106,7 +106,7 @@ export function SentView() {
           const c = m.kind === "case" ? S.cases.find((x) => x.id === m.id) : undefined;
           // An old seed case that went straight to a build keeps its four steps; every other case draws its journey.
           const track = c && !c.building && !c.shipped
-            ? journeySteps(journeyOf(c, projectOfCase(S, c) ?? null, { discussion: flag("discussion"), projects: flag("projects"), today: S.day }), f, { roleTitle: names.roleTitle, caseTitle: (id) => S.cases.find((x) => x.id === id)?.title ?? null }, locale)
+            ? journeySteps(journeyOf(c, projectOfCase(S, c) ?? null, { discussion: flag("discussion"), projects: flag("projects"), today: S.day, seats: S.seats, councils: S.approvals.councils }), f, { roleTitle: names.roleTitle, caseTitle: (id) => S.cases.find((x) => x.id === id)?.title ?? null }, locale)
             : m.steps;
           const titleOf = (id: string) => S.cases.find((x) => x.id === id)?.title ?? null;
           const merged = c?.merged ? titleOf(c.merged.into) : null;
@@ -119,8 +119,8 @@ export function SentView() {
           <article key={m.kind + m.id} aria-label={m.title}>
           <SectionCard title={m.title} hint={m.submitted} name={m.id} action={<span className={styles.chip} data-tone={CHIP_TONE[LIFE_TONE[m.status] ?? statusTone(m.status)]}>{label(STATUS_LABEL, m.status)}</span>}>
             <ol className={styles.steps} aria-label={t("team.sentProgress")} data-long={track.length > 4 ? "true" : undefined}>
-              {track.map((s) => (
-                <li key={s.label} className={styles.step} data-tone={s.tone}>
+              {track.map((s, i) => (
+                <li key={i + s.label} className={styles.step} data-tone={s.tone}>
                   <span className={styles.stepBar} />
                   <span className={styles.stepLabel}>{label(STEP_LABEL, s.label)}</span>
                   <span className={styles.stepWhen}>{s.when}</span>

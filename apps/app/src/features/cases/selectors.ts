@@ -10,6 +10,8 @@ import { noCategoryOf, type AnyNoCategory } from "./no";
 import { expectedByDay } from "./raiser-view";
 import type { ReducedCase, ReducedIdea, State } from "./reducer";
 import type { ReducedProject } from "@/features/projects/types";
+import { currentStep, runsOf } from "@/features/approvals/steps";
+import type { CaseApprovals } from "@/features/approvals/types";
 
 export type Acted = "decided" | "handed" | "asked";
 
@@ -112,7 +114,7 @@ export const rescoresOn = (log: EventLog, caseId: string): Comment[] => comments
 
 // ── The journey of one case (plan SEE, D11, D13): where it has been and where it is, as plain ids and day numbers ──────────────────────────
 
-export type JourneyStageId = "raised" | "desk" | "discussion" | "decision" | "project";
+export type JourneyStageId = "raised" | "review" | "desk" | "discussion" | "decision" | "approval" | "project";
 export type JourneyState = "done" | "now" | "late" | "todo" | "skipped";
 /** What a stage came to, when it came to something; the words are built where the journey is drawn. */
 export type JourneyOutcome =
@@ -121,14 +123,59 @@ export type JourneyOutcome =
   | { kind: "withdrawn" }
   | { kind: "merged"; into: string }
   | { kind: "cameBack"; day: number }
+  // Review and approvals (plan GAT, D12, D21, D32): the review forwarded the idea (the clock when `auto`), sent it back to its author or ended with the case;
+  // the yes waits for approval; an approval run ended with its final yes or with a no.
+  | { kind: "forwarded"; auto: boolean }
+  | { kind: "sentBack" }
+  | { kind: "reviewEnded" }
+  | { kind: "provisional" }
+  | { kind: "approved" }
+  | { kind: "refused" }
   | { kind: "project"; status: "settingUp" | "started" | "done" | "measured" | "recognised" | "stopped" };
 /** `roleId`: the role that holds the stage (null for raised and project); `day`: when it was done; `dueDay`: by when it is due. */
-export type JourneyStage = { id: JourneyStageId; state: JourneyState; roleId: string | null; day: number | null; dueDay: number | null; outcome: JourneyOutcome | null };
-export type JourneyOpts = { discussion: boolean; projects: boolean; today: number };
+export type JourneyStage = {
+  id: JourneyStageId; state: JourneyState; roleId: string | null; day: number | null; dueDay: number | null; outcome: JourneyOutcome | null;
+  /** An approval stage: the run it shows (several runs of one case are several stages, oldest first) and whether it asked only what a decided case lacked (D33). */
+  runId?: string; supplement?: boolean;
+};
+/** `seats` and `councils` name the role of the review seat and of a council step's secretary; without them those stages have no role. */
+export type JourneyOpts = {
+  discussion: boolean; projects: boolean; today: number;
+  seats?: readonly Pick<SeatRow, "id" | "roleId">[]; councils?: readonly { id: string; secretaryRoleId: string }[];
+};
 
 const PROJECT_OUTCOME: Record<ReducedProject["status"], Extract<JourneyOutcome, { kind: "project" }>["status"]> = {
   planning: "settingUp", running: "started", measuring: "done", measured: "measured", recognised: "recognised", stopped: "stopped",
 };
+
+/** The review stage (plan GAT, D12, D14): only for a case that had a review. Pending it is now, or late past the days it was given; forwarded it is done, with the day the forward was written. */
+function reviewStage(c: ReducedCase, opts: JourneyOpts): JourneyStage | null {
+  const r = c.review;
+  if (r === null) return null;
+  const roleId = opts.seats?.find((s) => s.id === r.seatId)?.roleId ?? null;
+  if (r.state === "forwarded") {
+    const day = c.history.findLast((e) => e.type === "case.reviewed")?.day ?? null;
+    return { id: "review", state: "done", roleId, day, dueDay: null, outcome: { kind: "forwarded", auto: r.auto } };
+  }
+  if (r.state === "ended") return { id: "review", state: "done", roleId, day: null, dueDay: null, outcome: { kind: "reviewEnded" } };
+  return { id: "review", state: opts.today > r.dueDay && r.waitsOn === null ? "late" : "now", roleId, day: null, dueDay: r.dueDay, outcome: r.waitsOn === "raiser" ? { kind: "sentBack" } : null };
+}
+
+const stepRole = (step: NonNullable<ReturnType<typeof currentStep>>, opts: JourneyOpts): string | null =>
+  step.kind === "council" ? opts.councils?.find((k) => k.id === step.councilId)?.secretaryRoleId ?? null : step.roleId ?? null;
+
+/** One approval run as a stage (plan GAT, D21, D32, D33): waiting on its current step, or done with the final yes or the no, with the day of its last answer. */
+function approvalStage(run: CaseApprovals, opts: JourneyOpts): JourneyStage {
+  const base = { id: "approval" as const, runId: run.runId, supplement: run.supplement };
+  const step = currentStep(run);
+  if (!run.done && step !== null) {
+    const late = step.dueDay !== null && opts.today > step.dueDay;
+    return { ...base, state: late ? "late" : "now", roleId: stepRole(step, opts), day: null, dueDay: step.dueDay, outcome: null };
+  }
+  const answered = run.steps.flatMap((s) => s.answers.map((a) => ({ step: s, day: a.day })));
+  const last = answered[answered.length - 1];
+  return { ...base, state: "done", roleId: last ? stepRole(last.step, opts) : null, day: last?.day ?? run.since, dueDay: null, outcome: { kind: run.outcome === "yes" ? "approved" : "refused" } };
+}
 
 /**
  * The stages of one case, in order: raised, desk, discussion, decision, project (D11). A stage the company switched off is not in the list; a
@@ -145,11 +192,18 @@ export function journeyOf(c: ReducedCase, project: ReducedProject | null | undef
   const talkLate = inTalk && !talk.ready && expected !== null && opts.today > expected;
   const stages: JourneyStage[] = [{ id: "raised", state: "done", roleId: null, day: c.raisedDay, dueDay: null, outcome: null }];
 
+  // The review (plan GAT, D12): between the raise and the desk, only for a case that had one.
+  const review = reviewStage(c, opts);
+  if (review) stages.push(review);
+  // While the review holds the raise the desk has not got it yet; while the yes waits for approval the case is off the desk (D21).
+  const inReview = c.review !== null && c.review.state === "pending";
+  const approving = c.approvals !== null && !c.approvals.done && !c.approvals.supplement && c.decided === null;
+
   // The desk: it holds the case until the discussion starts or the case ends. Before the first read it has not seen it.
-  const deskDone = ended || inTalk;
+  const deskDone = ended || inTalk || approving;
   stages.push({
-    id: "desk", roleId, day: c.read, dueDay: deskDone ? null : c.dueDay,
-    state: deskDone ? (w !== null && c.read === null ? "skipped" : "done") : c.overdue ? "late" : "now",
+    id: "desk", roleId: inReview ? null : roleId, day: c.read, dueDay: deskDone || inReview ? null : c.dueDay,
+    state: inReview && !ended ? "todo" : deskDone ? (w !== null && c.read === null ? "skipped" : "done") : c.overdue ? "late" : "now",
     outcome: back !== null ? { kind: "cameBack", day: back.day } : null,
   });
 
@@ -170,16 +224,26 @@ export function journeyOf(c: ReducedCase, project: ReducedProject | null | undef
     decision = { id: "decision", state: "done", roleId: null, day: w.day, dueDay: null, outcome: { kind: "withdrawn" } };
   } else if (m !== null) {
     decision = { id: "decision", state: "done", roleId: null, day: m.day, dueDay: null, outcome: { kind: "merged", into: m.into } };
+  } else if (approving && c.approvals) {
+    // The desk said 'Yes, if approved': that is its answer; the decision is final when the approval run ends (D21).
+    decision = { id: "decision", state: "done", roleId: null, day: c.approvals.since, dueDay: null, outcome: { kind: "provisional" } };
   } else {
     // Only a discussion that is ready, or no discussion once the desk is on it, leaves the decision itself as the open step.
     decision = { id: "decision", state: inTalk && talk.ready ? "now" : "todo", roleId: inTalk && talk.ready ? roleId : null, day: null, dueDay: expected ?? c.dueDay, outcome: null };
   }
   stages.push(decision);
 
+  // The approvals (plan GAT, D21, D32, D33): one stage per run, oldest first - every finished run and the active one. A run the case's reopen ended stays
+  // before the run that follows it, and a supplement run is a later approval in the same place.
+  if (c.approvals !== null || c.approvalRuns.length > 0) {
+    for (const { run } of [...runsOf(c)].reverse()) stages.push(approvalStage(run, opts));
+  }
+
   if (opts.projects) {
     const gone = w !== null || m !== null || dec?.answer === "no";
     if (gone) stages.push({ id: "project", state: "skipped", roleId: null, day: null, dueDay: null, outcome: null });
-    else if (!project) stages.push({ id: "project", state: "todo", roleId: null, day: null, dueDay: null, outcome: null });
+    // A draft that opened with 'Yes, if approved' does not begin until the approvals are in (plan GAT, D21).
+    else if (!project || (project.waitsForApproval && c.decided === null)) stages.push({ id: "project", state: "todo", roleId: null, day: null, dueDay: null, outcome: null });
     else {
       const stopped = project.stopped !== null, recognised = project.status === "recognised";
       stages.push({

@@ -7,6 +7,7 @@ import type { Seed } from "@/features/demo/types";
 import { DEMO_CLOCK } from "@/features/clock";
 import { parseSeed } from "@/features/demo/parse";
 import { structureSeed, type Knowledge } from "@/features/knowledge";
+import { loadApprovalConfig } from "./approvals-config";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
 import { memo } from "./company-memo";
@@ -96,11 +97,15 @@ export function loadSeed(slug: string): Promise<Seed | null> {
  *  route owner, the org chart, goals or rules matter - the blob's structure is ignored (no fallback). */
 export async function companySeed(row: { id: string; seedJson: unknown; stage?: string }, loaded?: Knowledge): Promise<Seed> {
   // `loaded`: the caller already read the company's knowledge (the clock needs it for the seat above a desk).
-  const [knowledge, rules, loop, calendar, movSince] = await Promise.all([loaded ?? loadKnowledge(row.id), loadCompanyRules(row.id), loadLoopRules(row.id), loadCalendar(row.id), loadMovSinceDay(row.id)]);
+  const [knowledge, rules, loop, calendar, movSince, approvals, managers] = await Promise.all([
+    loaded ?? loadKnowledge(row.id), loadCompanyRules(row.id), loadLoopRules(row.id), loadCalendar(row.id), loadMovSinceDay(row.id), loadApprovalConfig(row.id),
+    // The people with the app role manager (plan GAT, D16): the fallback seat of a company without a review or triage role is theirs.
+    getDb().user.findMany({ where: { companyId: row.id, role: "manager", active: true }, select: { id: true }, orderBy: { id: "asc" } }),
+  ]);
   // A demo company runs on the simulated day; every other stage on the working-day calendar (CLK/D8).
   // Callers that did not select the stage get it looked up, so no row is ever guessed to be a real company.
   const stage = row.stage ?? (await getDb().company.findUnique({ where: { id: row.id }, select: { stage: true } }))?.stage ?? "demo";
   const clock = stage === "demo" ? DEMO_CLOCK : ({ mode: "workdays", calendar } as const);
   // The rules after the routing come from CompanyConfig, never from the blob (src/features/loop/rules.ts).
-  return { ...structureSeed(parseSeed(row.seedJson), knowledge, rules), loop: { ...loop, deadlineHandover: rules.deadlineHandover, escalationDays: rules.escalationDays, projectStartDays: rules.projectStartDays, blockedDays: rules.blockedDays ?? loop.blockedDays, noReasonMin: rules.noReasonMin ?? loop.noReasonMin, appealDays: rules.appealDays ?? loop.appealDays, questionDays: rules.questionDays ?? loop.questionDays, movSinceDay: movSince ?? 0, measure: rules.steps.measure, recognition: rules.steps.recognition }, clock };
+  return { ...structureSeed(parseSeed(row.seedJson), knowledge, rules), loop: { ...loop, deadlineHandover: rules.deadlineHandover, escalationDays: rules.escalationDays, projectStartDays: rules.projectStartDays, blockedDays: rules.blockedDays ?? loop.blockedDays, noReasonMin: rules.noReasonMin ?? loop.noReasonMin, appealDays: rules.appealDays ?? loop.appealDays, questionDays: rules.questionDays ?? loop.questionDays, movSinceDay: movSince ?? 0, measure: rules.steps.measure, recognition: rules.steps.recognition }, clock, approvals, managerUserIds: managers.map((u) => u.id) };
 }

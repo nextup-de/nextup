@@ -1,0 +1,14 @@
+/* The approvals of a draft (ApprovalSteps.tsx, DraftView.tsx): the badge, the runs with their steps, and the note under the Start button. */
+.badge { display: inline-flex; align-items: center; align-self: flex-start; padding: 2px 8px; border-radius: 6px; background: #fff1d1; color: #7a5200; font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; }
+.runs { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.run { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.step { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 4px 12px; padding: 8px 10px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 10px); background: var(--nh-surface); min-width: 0; }
+.step[data-state="yes"], .step[data-state="conditions"] { border-color: transparent; background: #e6f6ea; }
+.step[data-state="no"] { border-color: transparent; background: var(--nh-fill); }
+.stepLabel { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); overflow-wrap: anywhere; }
+.stepState { font-size: var(--nh-fs-sm); color: var(--nh-ink-2); white-space: nowrap; }
+.stepMeta { grid-column: 1 / -1; font-size: var(--nh-fs-xs); color: var(--nh-mute); }
+.runHead { font-size: var(--nh-fs-xs); font-weight: 700; color: var(--nh-mute); margin: 0; }
+.note { margin: 6px 0 0; font-size: var(--nh-fs-xs); line-height: 1.45; color: var(--nh-ink-2); }
+.note[data-tone="hold"] { color: var(--nh-ink); }

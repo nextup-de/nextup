@@ -5,12 +5,16 @@
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageHeader } from "@/components/ui/elements";
+import { stepLabel } from "@/features/approvals/steps";
+import { unmetApprovals } from "@/features/approvals/rights";
+import type { ApprovalRule, ApprovalStepInput } from "@/features/approvals/types";
 import { draftView } from "@/features/projects/draft";
 import type { ReducedProject } from "@/features/projects/types";
 import { useT } from "@/i18n/client";
 import { BaselinePanel } from "../ProjectMeasure";
 import { HowWeWork } from "../move/HowWeWork";
 import { actorOf, useRights, useSend } from "../parts";
+import { ApprovalSteps } from "./ApprovalSteps";
 import { DraftGoal } from "./DraftGoal";
 import { InvitePanel } from "./DraftInvites";
 import { DraftLate } from "./DraftLate";
@@ -18,6 +22,7 @@ import { DraftLead } from "./DraftLead";
 import { DraftTemplate } from "./DraftTemplate";
 import { useProjectHints } from "./useProjectHints";
 import styles from "./Draft.module.css";
+import approvalStyles from "./ApprovalSteps.module.css";
 
 const CHECKS = [
   ["lead", "projectDraft.checkLead"],
@@ -35,6 +40,19 @@ export function DraftView({ p }: { p: ReducedProject }) {
   const send = useSend(p);
   const view = draftView(p, actorOf(ctx), S);
   const { stepHints, baseHint } = useProjectHints(p);
+  // The approvals of the yes that opened this draft (plan GAT, D21, D33): the case with its runs, whether the draft waits for them and what Start still lacks.
+  const kase = S.cases.find((c) => p.sources.includes(c.id) && (c.approvals !== null || c.approvalRuns.length > 0)) ?? null;
+  const waits = p.waitsForApproval ?? false;
+  const unmet = kase ? unmetApprovals(kase, S) : { missing: [] as ApprovalStepInput[], broken: [] as ApprovalRule[] };
+  const lacks = !waits && unmet.missing.length > 0;
+  const broken = !waits && unmet.broken.length > 0;
+  const mayAsk = kase !== null && (r.lead || (kase.decided?.byUserId ?? null) === ctx.actorUserId);
+  const missingList = unmet.missing.map((m) => stepLabel(m, S.approvals, S.approvals.roles).name).filter(Boolean).join(", ");
+  const ruleText = (rule: ApprovalRule) => [rule.kind, rule.roleId ?? rule.councilId, rule.minEur !== null ? `≥ ${rule.minEur}` : ""].filter(Boolean).join(" ");
+  const askMissing = () => {
+    if (!kase || !lacks) return;
+    act.provisional(kase.id, { supplement: true, approvals: unmet.missing.map((m) => ({ kind: m.kind, ...(m.roleId !== undefined ? { roleId: m.roleId } : {}), ...(m.councilId !== undefined ? { councilId: m.councilId } : {}), byHand: m.byHand === true })) });
+  };
 
   return (
     <div className={styles.page} data-testid="project-draft">
@@ -43,6 +61,7 @@ export function DraftView({ p }: { p: ReducedProject }) {
         {view.startDay === null ? t("projectDraft.topLineNoStart", { name: p.lead }) : t("projectDraft.topLine", { date: f(view.startDay) })}
       </p>
       <PageHeader title={p.title} />
+      {waits && <span className={approvalStyles.badge} data-testid="draft-waits-approval">{t("approvals.waitsForApproval")}</span>}
 
       <DraftLead p={p} view={view} />
       {view.late && view.may.moveStart && view.startDay !== null && <DraftLate p={p} startDay={view.startDay} />}
@@ -85,17 +104,32 @@ export function DraftView({ p }: { p: ReducedProject }) {
         </section>
       ) : null}
 
+      {kase && (
+        <section className={styles.section} aria-labelledby={"approvals-" + p.id}>
+          <h2 id={"approvals-" + p.id} className={styles.h2}>{t("approvals.title")}</h2>
+          <ApprovalSteps kase={kase} />
+        </section>
+      )}
+
       <BaselinePanel p={p} hint={baseHint} />
 
       <section className={styles.section} aria-labelledby={"start-" + p.id}>
         <h2 id={"start-" + p.id} className={styles.h2}>{t("projectDraft.startTitle")}</h2>
         {r.lead && (
           <span className={styles.actionRow}>
-            <button type="button" className="nh-btn nh-btn-primary" disabled={!view.canStart || !view.may.start} onClick={() => send("project.started", {}, () => act.project.start(p.id))}>{t("projectDraft.startAction")}</button>
+            <button type="button" className="nh-btn nh-btn-primary" disabled={!view.canStart || !view.may.start || waits || lacks || broken} onClick={() => send("project.started", {}, () => act.project.start(p.id))}>{t("projectDraft.startAction")}</button>
           </span>
         )}
         {view.baselineWaits && <p className={styles.hint} data-testid="draft-baseline-waits">{t("projectResult.baselineWaits")}</p>}
-        {!view.canStart && <p className={styles.hint}>{t("projectDraft.startWait")}</p>}
+        {waits && <p className={approvalStyles.note} data-tone="hold" data-testid="draft-start-waits">{t("approvals.permStartWaits")}</p>}
+        {lacks && (
+          <>
+            <p className={approvalStyles.note} data-tone="hold" data-testid="draft-needs-approval">{t("approvals.needsNewApproval", { list: missingList })}</p>
+            {mayAsk && <span className={styles.actionRow}><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid="draft-ask-approval" onClick={askMissing}>{t("approvals.askMissingApproval")}</button></span>}
+          </>
+        )}
+        {broken && <p className={approvalStyles.note} data-tone="hold" data-testid="draft-approver-missing">{t("approvals.approverMissing", { rule: unmet.broken.map(ruleText).join("; ") })}</p>}
+        {!view.canStart && !waits && !lacks && !broken && <p className={styles.hint}>{t("projectDraft.startWait")}</p>}
       </section>
     </div>
   );

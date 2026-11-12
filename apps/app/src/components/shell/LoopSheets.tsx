@@ -9,6 +9,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen, standingOn, versionsOf } from "@/components/dashboard/derive";
 import { Btn } from "@/components/dashboard/shared/primitives";
 import { peopleOf } from "@/components/projects/parts";
+import { yesSheetModel } from "@/features/approvals/yes-sheet";
 import { checkinDraft, inviteSuggestions, roundState, versionText, type InviteSuggestion } from "@/features/cases/discussion";
 import { checkinSheet } from "@/features/cases/sheets";
 import type { ReducedCase } from "@/features/cases/reducer";
@@ -22,7 +23,7 @@ import { ideaContext } from "@/features/ideas/drafts";
 import { railOf } from "@/features/ideas/raise";
 import { joinableProjects, RAISER_NOTE_MAX } from "@/features/projects/accept";
 import { projectById, projectLabel } from "@/features/projects/selectors";
-import { useFormat, useT } from "@/i18n/client";
+import { useFormat, useLocale, useT } from "@/i18n/client";
 import { PersonFace } from "@/components/ui/elements";
 import { brainCheckinAction } from "@/server/actions/brain";
 import base from "./InputSheet.module.css";
@@ -281,9 +282,10 @@ function CheckinSheet({ c }: { c: ReducedCase }) {
 // ── Yes, do it ──
 
 function AcceptSheet({ c }: { c: ReducedCase }) {
-  const { S, seed, actorUserId, demo, act, href, closeSheet, showToast } = useDemo();
+  const { S, seed, actor, actorUserId, demo, act, href, closeSheet, showToast } = useDemo();
   const t = useT();
   const fmt = useFormat();
+  const locale = useLocale();
   // The one who sets it up is a user id; the names only label the options.
   const people = peopleOf(seed.seats);
   const seatUser = (seatId: string | null | undefined) => seed.seats.find((s) => s.id === seatId)?.userId ?? null;
@@ -294,6 +296,12 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
   const [join, setJoin] = useState("");
   const [note, setNote] = useState("");
   const [opened, setOpened] = useState<{ id: string; joined: boolean } | null>(null); // the project id, once the yes is sent
+  // Approvals (plan GAT, D20): where rules apply the yes waits for them and the plain yes is not offered; the desk may add roles that must approve.
+  const [byHand, setByHand] = useState<string[]>([]);
+  const joined = joinable.find((x) => x.id === join);
+  const model = yesSheetModel(c, S, byHand, joined ? { projectId: joined.id, title: joined.title } : null, locale);
+  const addable = S.approvals.roles.filter((r) => r.id !== c.assigneeRoleId && !byHand.includes(r.id) && !model.approvers.some((a) => a.label === r.title));
+  const roleName = (id: string) => S.approvals.roles.find((r) => r.id === id)?.title ?? id;
   const ok = !!lead;
   // The decider first, then the route's owner and deputy, then the rest of the directory.
   const first = [actorUserId, seatUser(c.route?.ownerSeatId), seatUser(c.route?.deputySeatId)].filter((x): x is string => x !== null && people.some((p) => p.userId === x));
@@ -305,6 +313,14 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
     setOpened({ id, joined: join !== "" });
     showToast(t(join ? "shell.acceptDoneJoin" : "shell.acceptDone", { days: fmt.days(c.clock), from: c.from }));
   };
+  // 'Yes, if approved': one case.provisional; the server computes the steps and keeps only the roles added by hand (D20, D21).
+  const confirmProvisional = () => {
+    if (!lead || opened || !model.provisional) return;
+    const payload = model.payload({ decider: { userId: actorUserId, name: actor }, lead: { userId: lead.userId, name: lead.name }, raiserNote: note });
+    act.provisional(c.id, payload);
+    setOpened({ id: payload.projectId as string, joined: join !== "" });
+    showToast(t("approvals.yesIfApproved"));
+  };
   if (opened) {
     const p = projectById(S, opened.id);
     const name = p ? projectLabel(p) : t("shell.acceptTheProject");
@@ -315,7 +331,11 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
   }
   return (
     <Frame label={t("shell.acceptLabel")} title={c.title} sub={t("shell.acceptSub", { from: c.from })}
-      actions={<><Btn kind={ok ? "accent" : "disabled"} onClick={confirm}>{ok ? t("shell.acceptSend") : t("shell.acceptName")}</Btn><Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn></>}>
+      actions={<>
+        {!model.onlyIfApproved && <Btn kind={ok ? "accent" : "disabled"} onClick={confirm}>{ok ? t("shell.acceptSend") : t("shell.acceptName")}</Btn>}
+        {(model.onlyIfApproved || byHand.length > 0) && <Btn kind={ok && model.provisional ? (model.onlyIfApproved ? "accent" : "muted") : "disabled"} onClick={confirmProvisional}>{ok ? t("approvals.yesIfApproved") : t("shell.acceptName")}</Btn>}
+        <Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn>
+      </>}>
       <label className={base.textLabel} htmlFor="accept-lead">{t("shell.acceptLead")}</label>
       <select id="accept-lead" className={`nh-input nh-select ${styles.field}`} value={leadId} onChange={(e) => setLeadId(e.target.value)}>
         {order.map((id) => { const p = people.find((x) => x.userId === id)!; return <option key={id} value={id}>{p.name}{roleOf(id, p.name) ? " · " + roleOf(id, p.name) : ""}</option>; })}
@@ -327,6 +347,28 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
           <select id="accept-join" className={`nh-input nh-select ${styles.field}`} value={join} onChange={(e) => setJoin(e.target.value)}>
             <option value="">{t("shell.acceptJoinNew")}</option>
             {joinable.map((p) => <option key={p.id} value={p.id}>{t("shell.acceptJoinTo", { name: projectLabel(p), title: p.title })}</option>)}
+          </select>
+        </>
+      )}
+      {model.onlyIfApproved && <div className={styles.none} data-testid="yes-only-if-approved">{t("approvals.onlyIfApproved")}</div>}
+      {model.approvers.length > 0 && (
+        <div className={styles.approvers} data-testid="yes-approvers">
+          <div className={styles.none}>{t("approvals.approversNeeded", { list: model.approvers.map((a) => a.label).join(", ") })}</div>
+          {model.noBudgetCheck && <div className={styles.none}>{t("approvals.noBudgetCheck")}</div>}
+          {model.joinLine && <div className={styles.none}>{model.joinLine}</div>}
+        </div>
+      )}
+      {byHand.length > 0 && (
+        <div className={styles.points} aria-label={t("approvals.addApprover")}>
+          {byHand.map((id) => <button key={id} type="button" className={styles.point} data-on="true" onClick={() => setByHand(byHand.filter((x) => x !== id))}>{roleName(id)} ×</button>)}
+        </div>
+      )}
+      {addable.length > 0 && (
+        <>
+          <label className={base.textLabel} htmlFor="accept-approver">{t("approvals.addApprover")}</label>
+          <select id="accept-approver" className={`nh-input nh-select ${styles.field}`} value="" onChange={(e) => { if (e.target.value) setByHand([...byHand, e.target.value]); }}>
+            <option value="">—</option>
+            {addable.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
           </select>
         </>
       )}

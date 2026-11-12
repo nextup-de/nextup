@@ -228,7 +228,7 @@ export function lifeSteps(c: ReducedCase, f: DayFmt, loop: MineLoop, locale: Loc
 
 export type JourneyNames = { roleTitle: (roleId: string | null) => string; caseTitle?: (id: string) => string | null };
 
-const STAGE_LABEL: Record<JourneyStage["id"], MessageKey> = {
+const STAGE_LABEL: Record<Exclude<JourneyStage["id"], "review" | "approval">, MessageKey> = {
   raised: "caseSee.stageRaised", desk: "caseSee.stageDesk", discussion: "caseSee.stageDiscussion", decision: "caseSee.stageDecision", project: "caseSee.stageProject",
 };
 const PROJECT_LABEL: Record<Extract<NonNullable<JourneyStage["outcome"]>, { kind: "project" }>["status"], MessageKey> = {
@@ -245,12 +245,22 @@ export function journeySteps(stages: readonly JourneyStage[], f: DayFmt, names: 
   const talk = stages.find((x) => x.id === "discussion");
   return stages.map((s): Step => {
     const role = s.roleId !== null ? names.roleTitle(s.roleId) : "";
-    const label = role ? `${t(STAGE_LABEL[s.id])} · ${role}` : t(STAGE_LABEL[s.id]);
+    // The review and the approvals name their role in the words themselves (plan GAT, D31): 'With {role}', 'Approval: {role}'.
+    const label = s.id === "review" ? (role ? t("approvals.reviewStage", { role }) : t("approvals.reviewStage", { role: "" }).trim())
+      : s.id === "approval" ? (role ? t("approvals.stepRole", { role }) : t("approvals.waitsForApproval"))
+      : role ? `${t(STAGE_LABEL[s.id])} · ${role}` : t(STAGE_LABEL[s.id]);
     const tone: StepTone = s.state === "skipped" ? "todo" : s.state;
     const o = s.outcome;
     let when: string;
     if (s.state === "skipped") when = t("caseSee.outcomeNotNeeded");
     else if (o?.kind === "cameBack") when = t("caseSee.outcomeCameBack", { date: f(o.day) });
+    else if (o?.kind === "forwarded") when = s.day !== null ? f(s.day) : "—";
+    else if (o?.kind === "sentBack") when = t("approvals.stepBack");
+    else if (o?.kind === "reviewEnded") when = "—";
+    else if (o?.kind === "provisional") when = `${t("approvals.yesIfApproved")} · ${f(s.day ?? 0)}`;
+    else if (o?.kind === "approved") when = `${t("approvals.stepYes")} · ${f(s.day ?? 0)}`;
+    else if (o?.kind === "refused") when = `${t("approvals.stepNo")} · ${f(s.day ?? 0)}`;
+    else if (s.id === "approval" && s.dueDay !== null) when = t("approvals.stepDue", { date: f(s.dueDay) });
     else if (o?.kind === "yes") when = `${t("caseSee.outcomeYes")} · ${f(s.day ?? 0)}`;
     else if (o?.kind === "no") when = `${t("caseSee.outcomeNo", { category: t(noCategoryLabel(o.category)) })} · ${f(s.day ?? 0)}`;
     else if (o?.kind === "withdrawn") when = `${t("caseSee.outcomeWithdrawn")} · ${f(s.day ?? 0)}`;
@@ -316,6 +326,7 @@ function lifeRow(c: ReducedCase, day: number, f: DayFmt, P: number, loop: MineLo
   const locale = t.locale;
   const status = (p && dec?.answer === "yes" ? projectStatus(p.status, locale)
     : dec ? t(dec.answer === "yes" ? "cases.statusApproved" : "cases.statusDeclined")
+      : c.status === "approval" ? t("approvals.waitsForApproval") // a 'Yes, if approved' waits for its approvals (plan GAT, D21)
       : c.status === "discussion" ? t("cases.statusInDiscussion") : c.status === "asked" ? t("cases.statusQuestionForYou") : t("cases.statusSent")) as MineStatus;
   const last = talk?.rounds[talk.rounds.length - 1];
   const round = talk ? t("cases.roundOf", { round: Math.max(1, talk.round), max: loop.rules.discussMaxRounds }) : "";
@@ -326,6 +337,7 @@ function lifeRow(c: ReducedCase, day: number, f: DayFmt, P: number, loop: MineLo
   const clock = p && dec ? (p.stopped ? t("cases.clockStopped", { named, date: f(p.stopped.day), why: p.stopped.why })
       : t("cases.clockProject", { date: f(dec.day), by: dec.by, named, status: translate(locale, PROJECT_STATUS_LOWER[p.status]), progress, lead: p.lead }))
     : dec ? answeredClock(t, c, dec)
+      : c.status === "approval" ? t("approvals.waitsForApproval")
       : talk ? (talk.ready ? t("cases.clockTalkReady", { who: c.assignee })
         // The raiser reads the day the decision is expected, not the next check-in (SEE D13).
         : `${t("cases.statusInDiscussion")} · ${round} · ${expectedLine(t, c, day, f)}.`)

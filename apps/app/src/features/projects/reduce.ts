@@ -28,6 +28,26 @@ const factsOf = (p: ReducedProject): DraftFacts => {
 };
 /** Template steps nobody moved, edited or linked: the ones a changed template may swap (Q5.5). */
 const touchedSteps = new WeakSet<Step>();
+/** The paragraphs approvers added to the brief as conditions (plan GAT, D22), in the order given; joined to the goal's brief when the project is finished. */
+const conditionsOf = new WeakMap<ReducedProject, string[]>();
+
+/** A new draft waits for the last approval (plan GAT, D21): no start day, no draft escalation and no start until it is answered. A project the run did not open is left alone. */
+export function setWaitingForApproval(p: ReducedProject, waiting: boolean): void {
+  p.waitsForApproval = waiting;
+}
+
+/** The run's last yes decided the case on day `d`: the draft no longer waits, and its start day counts from the later of the lead taking it and this day (SET D14). */
+export function approvalGiven(p: ReducedProject, d: number): void {
+  p.waitsForApproval = false;
+  p.approvalsPendingSince = Math.max(p.approvalsPendingSince ?? d, d);
+}
+
+/** An approver said yes with conditions: one more paragraph of the project's brief (D22). */
+export function addCondition(p: ReducedProject, text: string): void {
+  const list = conditionsOf.get(p) ?? [];
+  list.push(text);
+  conditionsOf.set(p, list);
+}
 
 export type ProjectBook = { byId: Record<string, ReducedProject>; order: string[] };
 
@@ -331,7 +351,8 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       break;
     }
     case "project.started":
-      if (p.baseline && p.startedDay === null && live) p.startedDay = d;
+      // A draft that waits for its approval does not start (plan GAT, D21); the server refuses it too.
+      if (p.baseline && p.startedDay === null && live && !(p.waitsForApproval ?? false)) p.startedDay = d;
       break;
     case "project.step.added": {
       const stepId = pl.stepId;
@@ -602,8 +623,13 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, project
     // A draft in planning has the start day of D14, none while the lead has not taken it; every other project keeps today's rule.
     const draftPlanning = p.draft && p.status === "planning";
     const facts = draftPlanning ? factsOf(p) : null;
+    // The conditions approvers named join the brief the lead wrote (GAT D22); the goal's own text stays what it was written as.
+    const conditions = conditionsOf.get(p) ?? [];
+    if (p.goal !== null && conditions.length > 0) p.goal = { ...p.goal, brief: [p.goal.brief, ...conditions].filter(Boolean).join("\n\n") };
+    // A draft that waits for approval has no start day, like one whose lead has not taken it (GAT D21).
+    const waiting = p.waitsForApproval ?? false;
     if (facts) {
-      const taken = p.leadState === "taken" ? facts.takenDay : null;
+      const taken = p.leadState === "taken" && !waiting ? facts.takenDay : null;
       p.startDay = taken === null ? null : facts.movedStart ?? Math.max(taken, p.approvalsPendingSince ?? taken) + projectStartDays;
     }
     p.dueDay = facts ? p.startDay : p.status === "planning" ? p.openedDay + promise : p.status === "measuring" && nextCheck ? nextCheck.dueDay : null;
@@ -628,7 +654,7 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, project
       const at = p.history.findLastIndex((e, i) => i >= from && e.type === "clock.due" && e.payload.kind === "draft" && (e.payload.userId === undefined || e.payload.userId === null || e.payload.userId === p.leadUserId));
       const fact = at >= 0 ? p.history[at] : undefined;
       const seat = fact ? seats.find((s) => s.id === fact.payload.toRoleHolderId) : undefined;
-      p.escalated = fact && seat && p.leadState === "taken"
+      p.escalated = fact && seat && p.leadState === "taken" && !waiting
         ? { to: seat.label, toSeatId: seat.id, toRoleId: seat.roleId, from: p.lead, day: (fact.payload.dueDay ?? p.dueDay ?? 0) + 1, live: facts.movedAt < at, what: "draft" }
         : null;
       return;
