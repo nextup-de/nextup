@@ -695,3 +695,6 @@ a.quickBtn { text-decoration: none; }
   .dlgCancel { flex: none; }
   .dlg .pickInput { font-size: var(--nh-fs-input); }
 }
+
+/* "Follows up on “{title}”" above the start composer (plan SEE, D15). */
+.follows { margin: 0 0 10px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.4; text-align: center; }
