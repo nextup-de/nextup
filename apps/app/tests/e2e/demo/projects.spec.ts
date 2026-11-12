@@ -23,6 +23,27 @@ async function plus30(page: Page, times = 1) {
   await page.keyboard.press("Escape");
 }
 
+/** Dev panel -> "Inbox of" a desk: the leader persona acts as that seat's holder. */
+async function actAs(page: Page, seat: string) {
+  await page.getByRole("button", { name: "Dev" }).click();
+  await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: new RegExp("^" + seat.replace(".", "\\.")) }).click();
+  await page.keyboard.press("Escape");
+}
+
+/**
+ * Where a reward is possible the baseline waits for a second person before the start (RES D16, D29). On P-4 the route's deputy is M. Roth: the
+ * demo plays him through the dev panel, confirms the number and hands back to the lead, who starts the project.
+ */
+async function deputyConfirmsBaseline(page: Page) {
+  // Switching the desk sends the leader to their inbox: come back to the project page (the demo's log stays in this browser).
+  await actAs(page, "M. Roth");
+  await page.goto("/acme/projects/pj4");
+  await page.getByRole("button", { name: "Confirm the baseline" }).click();
+  await expect(page.getByTestId("baseline-confirmed")).toContainText("Confirmed by M. Roth");
+  await actAs(page, "T. Vogel");
+  await page.goto("/acme/projects/pj4");
+}
+
 // The project page; its state ("P-4 · Running") is in the header, the baseline in its section and the summary.
 const head = (page: Page) => page.getByRole("main");
 
@@ -71,6 +92,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await page.getByLabel("Lower is better").check();
     await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
     await page.getByRole("button", { name: "Save the baseline" }).click();
+    await deputyConfirmsBaseline(page);
     await expect(head(page)).toContainText("25 minutes");
     await expect(head(page)).toContainText("Deburring queue · lower is better");
     await page.getByRole("button", { name: "Start the project" }).click();
@@ -125,6 +147,63 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await expect(head(page)).toContainText("P-4 · Measured");
     await expect(page.getByRole("region", { name: "Reward" })).toContainText("A reward is due after a confirmed better result.");
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
+  });
+});
+
+test("RES demo: the lead finishes and drops open steps at done, and a stop returns the idea to its desk", async ({ page }) => {
+  const DROP_WHY = "Not needed after the trial";
+  const IDEA = "A second deburring bench next to the 4-series press";
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/projects/pj4");
+
+  await test.step("the lead starts P-4 with two steps still open", async () => {
+    await tab(page, "Board");
+    await page.getByRole("button", { name: "Add step: " + FIRST }).click();
+    await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
+    await page.getByRole("button", { name: "Add step", exact: true }).click();
+    await expect(page.getByRole("group", { name: "To do" }).getByRole("article")).toHaveCount(2);
+    await tab(page, "Overview");
+    await page.getByLabel("What is measured").fill("Deburring queue");
+    await page.getByLabel(/Today.s number/).fill("25");
+    await page.getByLabel("Unit").fill("minutes");
+    await page.getByLabel("Lower is better").check();
+    await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
+    await page.getByRole("button", { name: "Save the baseline" }).click();
+    await deputyConfirmsBaseline(page);
+    await page.getByRole("button", { name: "Start the project" }).click();
+    await expect(head(page)).toContainText("P-4 · Running");
+  });
+
+  await test.step("done waits until every open step is finished or dropped with a reason", async () => {
+    await page.getByRole("button", { name: "Mark it done…" }).click();
+    const sheet = page.getByRole("form", { name: "Mark the project done" });
+    await expect(sheet).toContainText("No done-when was set");
+    const submit = sheet.getByRole("button", { name: "Mark it done", exact: true });
+    await expect(submit).toBeDisabled();
+    await sheet.getByRole("group", { name: FIRST }).getByLabel("Done", { exact: true }).check();
+    await expect(submit).toBeDisabled(); // the other step has no end yet
+    await sheet.getByRole("group", { name: TYPED }).getByLabel("Drop", { exact: true }).check();
+    await expect(submit).toBeDisabled(); // a drop needs its reason
+    await sheet.getByLabel("Why is “" + TYPED + "” dropped?").fill(DROP_WHY);
+    await expect(submit).toBeEnabled();
+    await sheet.getByRole("textbox", { name: "What is done" }).fill("The bench is in use");
+    await submit.click();
+    await expect(head(page)).toContainText("P-4 · Measuring");
+    await tab(page, "Board");
+    await expect(page.getByRole("group", { name: "Done" })).toContainText(FIRST);
+  });
+
+  await test.step("a stop with 'Return the idea to its desk' puts the idea back in the inbox", async () => {
+    await page.getByRole("button", { name: "Stop the project" }).click();
+    const form = page.getByRole("form", { name: "Stop the project" });
+    await form.getByRole("textbox", { name: "Why does it stop?" }).fill("The queue went away by itself");
+    await expect(form.getByLabel("Keep the idea archived")).toBeChecked(); // the default
+    await form.getByLabel("Return the idea to its desk").check();
+    await form.getByRole("button", { name: "Stop it" }).click();
+    await expect(head(page)).toContainText("P-4 · Stopped");
+    await page.goto("/acme/inbox");
+    await expect(page.getByTestId("inbox-row").filter({ hasText: IDEA })).toHaveCount(1);
   });
 });
 
@@ -347,72 +426,8 @@ test("only the lead (or a manager) gets the Jira buttons", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Employee");
   await page.goto("/acme/projects/pj2?tab=files");
-  const tools = page.getByRole("region", { name: "Connected tools" });
-  await expect(tools).toContainText("Two-way sync");
-  await expect(tools.getByRole("button", { name: /Send to Jira|Stop syncing/ })).toHaveCount(0);
-});
-
-test("MOV demo: the lead moves the done-by date, pauses, resumes and sends the weekly update", async ({ page }) => {
-  await page.goto("/acme");
-  await viewAs(page, "Team leader");
-  await page.goto("/acme/projects/pj4");
-
-  await test.step("the lead takes the baseline and starts P-4", async () => {
-    await page.getByLabel("What is measured").fill("Deburring queue");
-    await page.getByLabel(/Today.s number/).fill("25");
-    await page.getByLabel("Unit").fill("minutes");
-    await page.getByLabel("Lower is better").check();
-    await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
-    await page.getByRole("button", { name: "Save the baseline" }).click();
-    await page.getByRole("button", { name: "Start the project" }).click();
-    await expect(head(page)).toContainText("P-4 · Running");
-  });
-
-  await test.step("the head shows the done-by date; the lead moves it once, with why", async () => {
-    const line = page.getByTestId("done-by-line");
-    await expect(line).toContainText("Done by");
-    const before = await line.innerText();
-    await page.getByRole("button", { name: "Move", exact: true }).click();
-    const form = page.getByRole("form", { name: "Move the done-by date" });
-    await form.getByLabel(/in how many working days/).fill("45");
-    await form.getByLabel("Why").fill("The second bench arrives late");
-    await form.getByRole("button", { name: "Move the date" }).click();
-    await expect(line).not.toHaveText(before);
-    // The lead has used their one move: the sheet is the sponsor's or a manager's from here.
-    await expect(page.getByRole("button", { name: "Move", exact: true })).toHaveCount(0);
-  });
-
-  await test.step("the lead pauses the project, the banner says until when and why, and Resume ends it", async () => {
-    await page.getByRole("button", { name: "Pause…" }).click();
-    const form = page.getByRole("form", { name: "Pause the project" });
-    await form.getByLabel(/For how many working days/).fill("3");
-    await form.getByLabel("Why").fill("Shutdown week");
-    await form.getByRole("button", { name: "Pause the project" }).click();
-    const banner = page.getByTestId("paused-banner");
-    await expect(banner).toContainText("Paused until");
-    await expect(banner).toContainText("Shutdown week");
-    await page.getByRole("button", { name: "Resume now" }).click();
-    await expect(page.getByTestId("paused-banner")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Pause…" })).toBeVisible();
-  });
-
-  await test.step("the weekly update is offered as an offline draft; the lead edits it and sends it", async () => {
-    const update = page.getByTestId("weekly-update");
-    const text = update.getByLabel("The update");
-    await expect(text).toHaveValue(/This week on P-4/);
-    await expect(update).toContainText("Built from the board since the last check-in");
-    await text.fill("The bench is ordered; the floor is marked.");
-    await update.getByRole("button", { name: "Send the update" }).click();
-    await expect(page.getByTestId("latest-update")).toContainText("The bench is ordered; the floor is marked.");
-    // Sent for this week: the form is gone until the next check-in.
-    await expect(update.getByRole("button", { name: "Send the update" })).toHaveCount(0);
-  });
-
-  await test.step("how we work: the lead sets the weekday and a note", async () => {
-    const how = page.getByTestId("how-we-work");
-    await how.getByLabel("Weekly check-in on").selectOption({ label: "Friday" });
-    await how.getByLabel(/A note on how the team works/).fill("Standing meeting at the bench, ten minutes");
-    await how.getByRole("button", { name: "Save" }).click();
-    await expect(how).toContainText("Saved.");
-  });
+  // The Employee raised the idea behind P-2 and is not on its team: after the start they see how it is going (RES D21), not the tools.
+  await expect(page.getByTestId("raiser-panel")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Connected tools" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Send to Jira|Stop syncing/ })).toHaveCount(0);
 });

@@ -391,10 +391,12 @@ export type BoardStats = {
 };
 
 export function boardStats(p: Pick<ReducedProject, "steps">, day: number): BoardStats {
+  // A step dropped on the Done sheet counts in no x/y total, no percentage and no list of open work (plan RES, D31).
+  const steps = p.steps.filter((s) => !s.dropped);
   const by: Record<StepColumn, number> = { todo: 0, doing: 0, blocked: 0, done: 0 };
-  for (const s of p.steps) by[s.column]++;
-  const open = p.steps.filter((s) => s.column !== "done");
-  const cycles = p.steps
+  for (const s of steps) by[s.column]++;
+  const open = steps.filter((s) => s.column !== "done");
+  const cycles = steps
     .filter((s) => s.column === "done" && s.startedDay !== null && s.doneDay !== null)
     .map((s) => (s.doneDay as number) - (s.startedDay as number));
   let stalest: BoardStats["stalest"] = null;
@@ -404,11 +406,11 @@ export function boardStats(p: Pick<ReducedProject, "steps">, day: number): Board
     if (!stalest || days > stalest.days) stalest = { step: s, days };
   }
   return {
-    total: p.steps.length, by,
-    pct: p.steps.length ? Math.round((by.done / p.steps.length) * 100) : 0,
+    total: steps.length, by,
+    pct: steps.length ? Math.round((by.done / steps.length) * 100) : 0,
     late: open.filter((s) => s.dueDay !== null && day > s.dueDay).length,
     unowned: open.filter((s) => !s.owner).length,
-    doneWeek: p.steps.filter((s) => s.column === "done" && s.doneDay !== null && day - s.doneDay <= 7).length,
+    doneWeek: steps.filter((s) => s.column === "done" && s.doneDay !== null && day - s.doneDay <= 7).length,
     cycleDays: median(cycles),
     stalest,
   };
@@ -569,9 +571,10 @@ export function asInitiatives(list: readonly ReducedProject[], deptOf: (name: st
     const team = [p.lead, ...p.members];
     const depts = [...new Set(team.map(deptOf).filter((d): d is string => !!d))];
     const blocked = p.steps.find((s) => s.column === "blocked");
-    const done = p.steps.filter((s) => s.column === "done").length;
+    const counted = p.steps.filter((s) => !s.dropped); // D31: a dropped step counts in no total
+    const done = counted.filter((s) => s.column === "done").length;
     const stage = p.status === "planning" ? (p.overdue ? t("projects.stagePlanningLate") : t("projects.stagePlanning"))
-      : p.status === "running" ? t("projects.stepsDoneOf", { done, total: p.steps.length })
+      : p.status === "running" ? t("projects.stepsDoneOf", { done, total: counted.length })
       : p.status === "measuring" ? t("projects.stageDoneMeasuring")
       : p.verdict ? t("projects.stageMeasuredVerdict", { verdict: verdictWord(p.verdict, locale) }) : t("projects.stageMeasuredPlain");
     out.push({
