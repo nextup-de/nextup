@@ -51,6 +51,13 @@ export function useIdeaEditor(c: IdeaContent, onSave: ((changes: PageChanges) =>
   return { can: !!onSave, open, all, draft, setDraft, editing, begin, editAll, cancel, save, dirty, content: c };
 }
 
+/** Focus a field that just opened with the caret after its text, so editing continues where it ends. */
+const focusEnd = (el: HTMLTextAreaElement | null) => {
+  if (!el) return;
+  el.focus();
+  el.setSelectionRange(el.value.length, el.value.length);
+};
+
 /** A double-click opens the part (nothing changes on hover). */
 const dbl = (ed: IdeaEditor, k: Part, hint: string) => (ed.can && !ed.editing(k) ? { title: hint, onDoubleClick: () => ed.begin(k) } : {});
 
@@ -72,7 +79,7 @@ export function IdeaTitle({ ed, className }: { ed: IdeaEditor; className: string
   if (!ed.editing("title")) return <h1 className={className} {...dbl(ed, "title", t("team.ideaDoubleClick"))}>{ed.content.title}</h1>;
   return (
     <div className={s.fieldWrap}>
-      <textarea className={s.titleField} rows={1} value={ed.draft.title} autoFocus maxLength={200} aria-label={t("ideas.cardTitle")} placeholder={t("ideas.cardTitlePlaceholder")}
+      <textarea className={s.titleField} rows={1} value={ed.draft.title} ref={focusEnd} maxLength={200} aria-label={t("ideas.cardTitle")} placeholder={t("ideas.cardTitlePlaceholder")}
         onChange={(e) => ed.setDraft({ ...ed.draft, title: e.target.value })}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (!ed.all) ed.save(); } }} />
       <OwnButtons ed={ed} part="title" />
@@ -120,7 +127,7 @@ export function IdeaSections({ ed, who, depts, whyOf, after }: {
     <div className={s.sections} data-all={ed.all || undefined}>
       {ed.editing("description") ? (
         <div className={s.fieldWrap}>
-          <textarea className={s.descField} rows={2} value={d.description} autoFocus={!ed.editing("title")} aria-label={t("ideas.cardDescription")} placeholder={t("ideas.cardDescPlaceholder")}
+          <textarea className={s.descField} rows={2} value={d.description} ref={ed.editing("title") ? undefined : focusEnd} aria-label={t("ideas.cardDescription")} placeholder={t("ideas.cardDescPlaceholder")}
             onChange={(e) => ed.setDraft({ ...d, description: e.target.value })} />
           <OwnButtons ed={ed} part="description" />
         </div>
@@ -155,7 +162,7 @@ export function IdeaSections({ ed, who, depts, whyOf, after }: {
         {ed.editing("context") ? (
           <>
             <textarea className={s.ctxField} rows={2} value={d.context} aria-label={t("team.ideaContext")} placeholder={t("ideas.cardContextPlaceholder")}
-              autoFocus={!ed.all} onChange={(e) => ed.setDraft({ ...d, context: e.target.value })} />
+              ref={ed.all ? undefined : focusEnd} onChange={(e) => ed.setDraft({ ...d, context: e.target.value })} />
             {d.lines.length > 0 && (
               <div className={s.lines}>
                 {(d.lines as DraftLine[]).map((l, i) => (
