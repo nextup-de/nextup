@@ -50,6 +50,14 @@ export const FLAGS = {
     added: "2026-10-15",
     removeBy: "2026-12-31",
   },
+  // docs/process/AGT.md, plan AGT (D26)
+  agent: {
+    description: "The project agent: the switch on a project, the daily suggestions, the planning run and the reason hint",
+    owner: "Victor",
+    defaults: { demo: true, sandbox: true, pilot: false, live: false },
+    added: "2026-11-12",
+    removeBy: "2027-06-30",
+  },
 } as const satisfies Record<string, FlagDef>;
 
 export type FlagKey = keyof typeof FLAGS;
