@@ -11,7 +11,8 @@ import { canOpen as canOpenCase, unitsOf } from "@/features/cases/visibility";
 import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
 import type { DemoContext } from "./DemoProvider";
 import { withoutLinkedCases } from "./inbox-order";
-import { inboxCounts, inboxItems, type InboxSourceInput } from "@/features/inbox";
+import { inboxCounts, inboxItems, type AgentInboxInput } from "@/features/inbox";
+import { agentForInbox } from "@/features/inbox/sources/agent";
 
 // Live cases on someone's desk (open) - the number the rail shows as "Inbox" and the dev panel
 // shows next to each leader; the desk including those paused on a question.
@@ -29,9 +30,11 @@ export const inboxIdeas = (ctx: DemoContext) => (ctx.role === "manager" ? decisi
 // The ids of those ideas: a case that became one of them is not listed or counted a second time.
 export const inboxIdeaIds = (ctx: DemoContext): ReadonlySet<string> => new Set(inboxIdeas(ctx).map((i) => i.id));
 // What the one inbox lists for the person looking: the input of `inboxItems`, built the way components/inbox/InboxPage builds it.
-export const inboxInputOf = (ctx: DemoContext): InboxSourceInput => ({
+export const inboxInputOf = (ctx: DemoContext): AgentInboxInput => ({
   state: ctx.S, me: ctx.me, seats: ctx.seed.seats ?? [], today: ctx.S.day, demo: ctx.demo, role: ctx.role,
   flags: { projects: ctx.flag("projects"), discussion: ctx.flag("discussion") },
+  // The lead's open agent suggestions (plan AGT, D18): only where the agent exists, so the list and this badge count the same rows.
+  agent: agentForInbox(ctx.log, ctx.S, { flagOn: ctx.flag("agent"), serverMode: ctx.serverMode, demo: ctx.demo }),
 });
 // What the Inbox badge counts: every item in the one inbox (features/inbox inboxCounts total, never a sum of the overlapping counts).
 export const inboxTotal = (ctx: DemoContext): number => inboxCounts(inboxItems(inboxInputOf(ctx))).total;

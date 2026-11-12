@@ -44,6 +44,8 @@ export type LoopRules = {
   appealDays: number;
   /** Working days a question to the raiser waits for an answer (company rule question_days; plan NOR). */
   questionDays: number;
+  /** The thresholds of an overloaded desk (company rule overload_at; plan OVL, D17). Optional, so LoopRules literals stay valid: read it through overloadAtOf(rules). */
+  overloadAt?: { triage: number; up: number; overflow: number; late: number };
   /** The working day MOV went live for the company; projects older than it are not judged by MOV's rules (not a company rule: lib/db/rules.ts loadMovSinceDay; plan MOV). */
   movSinceDay: number;
   /** The measure step is on (company rule loop_steps). */
@@ -70,6 +72,12 @@ export const LOOP_DEFAULTS: LoopRules = {
   measure: true,
   recognition: true,
 };
+
+/** What a desk counts as overloaded without a rule (plan OVL, D17): triage from 10 open items per present holder, up from 20, overflow from 30, or 3 late ones. */
+export const OVERLOAD_AT_DEFAULT = { triage: 10, up: 20, overflow: 30, late: 3 } as const;
+
+/** The overload thresholds of these rules, the defaults when the company set none. */
+export const overloadAtOf = (rules: Pick<LoopRules, "overloadAt">): { triage: number; up: number; overflow: number; late: number } => rules.overloadAt ?? OVERLOAD_AT_DEFAULT;
 
 const REWARD_KINDS: readonly RewardKind[] = ["none", "thanks", "fixed", "share"];
 
@@ -106,6 +114,7 @@ export function loopRules(p?: Partial<LoopRules> | null): LoopRules {
     noReasonMin: int(p.noReasonMin, 20, 400, d.noReasonMin),
     appealDays: int(p.appealDays, 1, 60, d.appealDays),
     questionDays: int(p.questionDays, 2, 30, d.questionDays),
+    ...(p.overloadAt ? { overloadAt: p.overloadAt } : {}),
     movSinceDay: int(p.movSinceDay, 0, 100_000, d.movSinceDay),
     measure: typeof p.measure === "boolean" ? p.measure : d.measure,
     recognition: typeof p.recognition === "boolean" ? p.recognition : d.recognition,

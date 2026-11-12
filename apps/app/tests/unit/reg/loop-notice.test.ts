@@ -33,7 +33,7 @@ describe("REG loop notice split", () => {
     for (const type of projectTypes) expect(typeof (PROJECT_NOTICES as Record<string, unknown>)[type], type).toBe("function");
   });
 
-  it("the overload area is empty until its phase fills it; the agent area has the one notice of an accepted nudge (AGT-K1); the approval area has GAT's three builders", () => {
+  it("the overload area is empty until its phase fills it; the agent area has the one notice of an accepted nudge (AGT-K1), the approval area GAT's three builders", () => {
     expect(OVERLOAD_NOTICES).toEqual({});
     expect(Object.keys(AGENT_NOTICES)).toEqual(["agent.accepted"]);
     expect(typeof (AGENT_NOTICES as Record<string, unknown>)["agent.accepted"]).toBe("function");

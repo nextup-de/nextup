@@ -24,13 +24,15 @@ describe("REG events split", () => {
     // GAT's four types are case.* by name and live in the approval area.
     expect([...CASE_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("case.") && !(APPROVAL_EVENT_TYPES as readonly string[]).includes(t)));
     expect([...PROJECT_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("project.")));
-    expect([...CORE_APP_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => !t.startsWith("case.") && !t.startsWith("project.") && !t.startsWith("agent.")));
+    expect([...CORE_APP_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => !t.startsWith("case.") && !t.startsWith("project.") && !t.startsWith("agent.") && !(OVERLOAD_EVENT_TYPES as readonly string[]).includes(t)));
   });
-  it("the agent list holds AGT's six types, GAT's four types are the approval list, the overload list is empty until OVL", () => {
+  it("the agent list holds AGT's six types, GAT's four types are the approval list, the overload list holds OVL's three app types", () => {
     expect([...AGENT_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("agent.")));
     expect(AGENT_EVENT_TYPES).toEqual(["agent.switched", "agent.suggested", "agent.accepted", "agent.dismissed", "agent.planned", "agent.ran"]);
     expect(APPROVAL_EVENT_TYPES).toEqual(["case.reviewed", "case.costed", "case.provisional", "case.approval"]);
-    expect(OVERLOAD_EVENT_TYPES).toEqual([]);
+    // OVL's app types are the ones its own server actions write; desk.overloaded, desk.cleared and org.seat.vacant are internal and are not in the list.
+    expect(OVERLOAD_EVENT_TYPES).toEqual(["person.away", "person.back", "desk.covered"]);
+    expect([...OVERLOAD_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("person.") || t.startsWith("desk.")));
   });
   it("APP_EVENT_TYPES as a set equals the snapshot recorded before the split, with no type twice", () => {
     expect([...APP_EVENT_TYPES].sort()).toEqual(recorded);

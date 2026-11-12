@@ -34,14 +34,23 @@ describe("REG notices split", () => {
     expect(sorted(LOOP_MAIL_TYPES)).toEqual(snapshot.loopMailTypes);
   });
 
-  it("each area file exports the names of D10, and the overload stub is empty", () => {
+  it("each area file exports the names of D10, and the overload area declares OVL's lists and nothing else", () => {
     const areas = { CASE: kase, PROJECT: project, AGENT: agent, APPROVAL: approval, OVERLOAD: overload } as Record<string, Record<string, unknown>>;
     for (const [name, mod] of Object.entries(areas)) {
       for (const part of ["LOOP_TYPES", "LOOP_TEMPLATES", "FOLLOWS", "REMINDER_KINDS", "REMINDER_TEXTS", "REMINDER_AUDIENCE", "DUTY_TEMPLATES", "LOOP_MAIL_TYPES"]) {
         expect(mod, `${name}_${part}`).toHaveProperty(`${name}_${part}`);
       }
     }
-    for (const value of Object.values(overload)) expect(Array.isArray(value) ? value : Object.keys(value as object)).toEqual([]);
+    // The overload area (plan OVL, D22): five loop types, four of them templates of the loop group and org.seat.vacant a duty template; no reminders and no
+    // texts or audiences until OVL-N1.
+    expect(overload.OVERLOAD_LOOP_TYPES).toEqual(["person.away", "desk.overloaded", "desk.covered", "desk.cleared", "org.seat.vacant"]);
+    expect(overload.OVERLOAD_LOOP_TEMPLATES).toEqual(["loop.person.away", "loop.desk.overloaded", "loop.desk.covered", "loop.desk.cleared"]);
+    expect(overload.OVERLOAD_LOOP_MAIL_TYPES).toEqual(["person.away", "desk.overloaded", "desk.covered", "desk.cleared", "org.seat.vacant"]);
+    expect(overload.OVERLOAD_DUTY_TEMPLATES).toEqual(["loop.org.seat.vacant"]);
+    expect(Object.keys(overload.OVERLOAD_FOLLOWS).sort()).toEqual(overload.OVERLOAD_LOOP_TEMPLATES.slice().sort());
+    expect(Object.values(overload.OVERLOAD_FOLLOWS)).toEqual(overload.OVERLOAD_LOOP_TEMPLATES.map(() => "loop.case.decided"));
+    for (const none of [overload.OVERLOAD_REMINDER_KINDS]) expect(none).toEqual([]);
+    for (const none of [overload.OVERLOAD_REMINDER_TEXTS, overload.OVERLOAD_REMINDER_AUDIENCE]) expect(Object.keys(none)).toEqual([]);
     // The approval area (plan GAT): three loop notices, three duty reminders; their texts and audiences exist for every kind, the real audiences come with GAT-C1.
     expect(approval.APPROVAL_LOOP_TYPES).toEqual(["case.reviewed", "case.provisional", "case.approval"]);
     expect(approval.APPROVAL_LOOP_TEMPLATES).toEqual(["loop.case.reviewed", "loop.case.provisional", "loop.case.approval"]);
@@ -62,6 +71,6 @@ describe("REG notices split", () => {
     // A kind, a loop type and a duty template live in one area only.
     const kinds = [...kase.CASE_REMINDER_KINDS, ...project.PROJECT_REMINDER_KINDS, ...approval.APPROVAL_REMINDER_KINDS];
     expect(new Set(kinds).size).toBe(kinds.length);
-    expect(DUTY_TEMPLATES.filter((t) => t !== "raised")).toEqual([...kase.CASE_DUTY_TEMPLATES, ...project.PROJECT_DUTY_TEMPLATES, ...approval.APPROVAL_DUTY_TEMPLATES]);
+    expect(DUTY_TEMPLATES.filter((t) => t !== "raised")).toEqual([...kase.CASE_DUTY_TEMPLATES, ...project.PROJECT_DUTY_TEMPLATES, ...approval.APPROVAL_DUTY_TEMPLATES, ...overload.OVERLOAD_DUTY_TEMPLATES]);
   });
 });

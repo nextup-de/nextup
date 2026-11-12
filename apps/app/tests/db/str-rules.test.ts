@@ -78,4 +78,17 @@ describe("REG rule keys", () => {
     const bare = (await companySeed({ id: plain.id, seedJson: plain.seedJson, stage: "sandbox" })).loop;
     expect(bare).toMatchObject({ movSinceDay: 0, blockedDays: 3, appealDays: 10, noReasonMin: 40, questionDays: 5 });
   });
+
+  it("overload_at is stored once it is set and companySeed carries it into loop; without it the default stands (plan OVL, D17)", async () => {
+    const at = { triage: 8, up: 15, overflow: 25, late: 2 };
+    await saveCompanyRules(sand.id, { ...DEFAULT_RULES, overloadAt: at }, "test");
+    const rows = await db.companyRule.findMany({ where: { companyId: sand.id }, select: { key: true, value: true } });
+    expect(rows.find((r) => r.key === "overload_at")?.value).toEqual(at);
+    expect(rows.find((r) => r.key === MOV_SINCE_KEY)?.value).toEqual({ day: 40 }); // the MOV row is still there
+    expect((await companySeed({ id: sand.id, seedJson: sand.seedJson, stage: "sandbox" })).loop?.overloadAt).toEqual(at);
+    expect((await companySeed({ id: plain.id, seedJson: plain.seedJson, stage: "sandbox" })).loop?.overloadAt).toBeUndefined();
+    // Saving the rules without it removes the row: the default stands again.
+    await saveCompanyRules(sand.id, { ...DEFAULT_RULES }, "test");
+    expect((await db.companyRule.findMany({ where: { companyId: sand.id }, select: { key: true } })).map((r) => r.key)).not.toContain("overload_at");
+  });
 });
