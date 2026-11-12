@@ -15,7 +15,8 @@ Add a row **before** running `add-stack.sh`. It refuses a slug/port pair that is
 **Track** says which versions a company stack gets (`deploy.sh`, RUNBOOK "Staging and the release
 track"): `main` = every green merge, straight from CI (the staging stack); `release` = only a commit
 that passed staging and was approved. A stack started from admin.sellux.ch has no row here and is
-always on `release`. A pinned stack (`PINNED=` in its stack.conf) ignores its track.
+always on `release`. A pinned stack (`PINNED=` in its stack.conf) ignores its track. Stage `preview`
+marks a PR preview slot: no track, no backups, no health alerts (RUNBOOK "PR previews").
 
 | Slug | Port | Stage | Track | Host | Notes |
 |---|---|---|---|---|---|
@@ -25,6 +26,9 @@ always on `release`. A pinned stack (`PINNED=` in its stack.conf) ignores its tr
 | admin | 3131 | - | - | admin.sellux.ch | reserved: our developer tool, apps/ops (step 7); not a company stack |
 | automation | 3141 | - | - | automation.sellux.ch | n8n for building/testing (step 8), `stack/automation/`. nginx basic auth + n8n's own login |
 | landing | 3151 | - | - | sellux.ch, www | public site: one container from `nextup-landing` (`~/nextup/landing`, not a company stack) |
+| preview1 | 3961 | preview | - | preview1.sellux.ch | PR preview slot (`deploy.sh preview`, RUNBOOK "PR previews"): a fresh demo stack of one PR's commit, emptied when the PR closes. Never staged or released |
+| preview2 | 3971 | preview | - | preview2.sellux.ch | PR preview slot, as preview1 |
+| preview3 | 3981 | preview | - | preview3.sellux.ch | PR preview slot, as preview1 |
 | staging | 3991 | demo | main | staging.sellux.ch | the test stack: acme's demo data, gets every green merge first (`deploy.sh stage`); the rest only get a sha that passed it (`deploy.sh release`). The LAST block on purpose: admin.sellux.ch hands out new companies' blocks from 3161 upwards (test1 has 3161), and keeps 3991 for staging |
 
 Ports the box's other sites use (don't take them): 3001-3038, 3306/3307, 3999, 25565. To check

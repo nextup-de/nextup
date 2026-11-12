@@ -122,8 +122,9 @@ check() { results+=("$1|$2|$3"); }
 
 # --- web + cert -----------------------------------------------------------------------------
 urls=()
-# A stack stopped on purpose from admin.sellux.ch (stack.conf STOPPED=true) is not "down".
-stopped() { grep -qx 'STOPPED=true' "$(dirname "$1")/stack.conf" 2>/dev/null; }
+# A stack stopped on purpose from admin.sellux.ch (stack.conf STOPPED=true) is not "down", and a
+# PR preview slot (PREVIEW_PR=, deploy.sh preview) is a throwaway: no alert, no backup expected.
+stopped() { grep -qE '^(STOPPED=true|PREVIEW_PR=[0-9]+)$' "$(dirname "$1")/stack.conf" 2>/dev/null; }
 for env in "$instances"/*/.env; do
   [ -f "$env" ] || continue
   stopped "$env" && continue
