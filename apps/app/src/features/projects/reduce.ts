@@ -5,10 +5,27 @@ import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
-import type { CheckDue, ReducedProject, SeedProject, StepColumn } from "./types";
+import { templateSteps } from "@/features/templates/library";
+import type { CheckDue, Invite, InviteRole, ReducedProject, SeedProject, Step, StepColumn } from "./types";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 import { readImpact, readSource, sourceLabel } from "./measure-source";
 import { verdictOf } from "./verdict";
+
+/**
+ * What a draft needs beyond its public fields, derived from the log as it replays (never from today's day): the event
+ * that asked the lead, the day the lead took it, a start day the seat above moved it to, and where in the project's
+ * history the lead last changed (an escalation or a moved day before that no longer counts). Kept beside the project,
+ * so the reduced shape has no field for it.
+ */
+type DraftFacts = { askId: string | null; takenDay: number | null; movedStart: number | null; movedAt: number; reassignedAt: number };
+const draftFacts = new WeakMap<ReducedProject, DraftFacts>();
+const factsOf = (p: ReducedProject): DraftFacts => {
+  let f = draftFacts.get(p);
+  if (!f) draftFacts.set(p, (f = { askId: null, takenDay: null, movedStart: null, movedAt: -1, reassignedAt: -1 }));
+  return f;
+};
+/** Template steps nobody moved, edited or linked: the ones a changed template may swap (Q5.5). */
+const touchedSteps = new WeakSet<Step>();
 
 export type ProjectBook = { byId: Record<string, ReducedProject>; order: string[] };
 
@@ -67,6 +84,20 @@ export function openOrJoin(book: ProjectBook, ev: CaseEvent, source: Source): Re
     lead, members: [], leadUserId: pl.leadUserId ?? ev.actorUserId ?? null, memberUserIds: [],
     authorUserIds: source.fromUserId ? [source.fromUserId] : [], openedDay: ev.day | 0, openedBy: ev.actor, seed: Boolean(ev.seed),
   });
+  if (pl.draft === true) {
+    // A draft (D8, D10, D11): the decider asks the lead to take it, unless they lead it themselves.
+    const f = factsOf(p);
+    p.draft = true;
+    p.raiserNote = pl.raiserNote?.trim() ?? "";
+    p.deciderUserId = ev.actorUserId ?? null;
+    f.askId = ev.id;
+    if (p.leadUserId !== null && p.leadUserId !== (ev.actorUserId ?? null)) {
+      p.leadState = "pending";
+      p.leadAskedDay = ev.day | 0;
+    } else {
+      f.takenDay = ev.day | 0;
+    }
+  }
   p.history.push(ev);
   return p;
 }
@@ -81,6 +112,21 @@ function placeStep(p: ReducedProject, stepId: string, before: string | null): vo
   const at = before && before !== stepId ? p.steps.findIndex((x) => x.id === before) : -1;
   if (at < 0) p.steps.push(s);
   else p.steps.splice(at, 0, s);
+}
+
+const INVITE_ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
+
+/** The lead takes the draft on day `d`: its start window opens, and template steps without a day get theirs. */
+function takeLead(p: ReducedProject, f: DraftFacts, d: number): void {
+  p.leadState = "taken";
+  f.takenDay = d;
+  const t = p.template;
+  if (!t) return;
+  const steps = templateSteps(t.key, t.version);
+  p.steps.forEach((x) => {
+    const at = x.id.startsWith(`t:${t.key}:${t.version}:`) ? Number(x.id.slice(`t:${t.key}:${t.version}:`.length)) : -1;
+    if (at >= 0 && at < steps.length && x.dueDay === null && !touchedSteps.has(x)) x.dueDay = d + steps[at].day;
+  });
 }
 
 /** One project.* event. Returns false when the event is not a project event at all. */
@@ -110,8 +156,9 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const toUserId = pl.toUserId ?? null;
       const to = pl.to?.trim() ?? "";
       if (!live || toUserId === null || toUserId === p.leadUserId) break;
-      // The old lead joins the team (by id; the label list only follows for display).
-      if (p.leadUserId !== null && !p.memberUserIds.includes(p.leadUserId)) {
+      const draftAsk = p.draft && p.startedDay === null;
+      // The old lead joins the team (by id; the label list only follows for display). A draft lead who never took it does not.
+      if (p.leadUserId !== null && !(draftAsk && p.leadState === "pending") && !p.memberUserIds.includes(p.leadUserId)) {
         p.memberUserIds.push(p.leadUserId);
         if (p.lead) p.members.push(p.lead);
       }
@@ -119,6 +166,101 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (to) p.members = p.members.filter((m) => m !== to);
       p.leadUserId = toUserId;
       if (to) p.lead = to;
+      if (draftAsk) {
+        // The new lead is asked again, unless the one handing it over is the new lead (D11); a new window starts.
+        const f = factsOf(p);
+        f.askId = ev.id;
+        f.movedStart = null;
+        f.reassignedAt = p.history.length;
+        if (toUserId === (ev.actorUserId ?? null)) takeLead(p, f, d);
+        else { p.leadState = "pending"; p.leadAskedDay = d; f.takenDay = null; }
+      }
+      break;
+    }
+    case "project.lead.answered": {
+      const f = factsOf(p);
+      if (!p.draft || p.startedDay !== null || !live || p.leadState !== "pending") break;
+      if (pl.askId !== undefined && pl.askId !== f.askId) break; // an answer to an earlier ask
+      if (pl.take === true) takeLead(p, f, d);
+      else {
+        // Declined, or nobody answered: it goes back to the decider, who leads it from this day (D11).
+        p.leadUserId = p.deciderUserId;
+        p.lead = p.openedBy;
+        p.memberUserIds = p.memberUserIds.filter((u) => u !== p.leadUserId);
+        f.movedStart = null;
+        f.reassignedAt = p.history.length;
+        takeLead(p, f, d);
+      }
+      break;
+    }
+    case "project.template": {
+      if (!p.draft || p.startedDay !== null || !live) break;
+      const key = typeof pl.key === "string" ? pl.key : "";
+      const version = typeof pl.version === "number" ? pl.version : 0;
+      const steps = templateSteps(key, version);
+      if (steps.length === 0) break;
+      const f = factsOf(p);
+      // Steps of the old template nobody touched go; touched ones stay (Q5.5).
+      const old = p.template;
+      if (old) p.steps = p.steps.filter((x) => !x.id.startsWith(`t:${old.key}:${old.version}:`) || touchedSteps.has(x));
+      steps.forEach((t, i) => {
+        const id = `t:${key}:${version}:${i}`;
+        if (p.steps.some((x) => x.id === id)) return;
+        p.steps.push({
+          id, text: t.text, owner: null, ownerUserId: null, dueDay: f.takenDay === null ? null : f.takenDay + t.day, column: "todo", why: "", note: "",
+          addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d, startedDay: null, doneDay: null, external: null, role: t.role,
+        });
+      });
+      p.template = { key, version };
+      const title = pl.title?.trim();
+      if (title) p.title = title;
+      break;
+    }
+    case "project.invited": {
+      if (!p.draft || !live || p.reward !== null) break;
+      const userId = pl.userId;
+      const role = INVITE_ROLES.find((r) => r === pl.role);
+      if (!userId || !role) break;
+      if (role === "follower") {
+        if (!p.followerUserIds.includes(userId)) p.followerUserIds.push(userId);
+        break;
+      }
+      // An open invitation stays; a declined or lapsed one is replaced by a new one (a new generation, its own id).
+      const same = p.invites.find((i) => i.userId === userId && i.role === role && i.state !== "declined" && i.state !== "lapsed");
+      if (same) break;
+      p.invites = p.invites.filter((i) => !(i.userId === userId && i.role === role));
+      p.invites.push({ id: ev.id, userId, role, state: "pending", day: d, reason: "" });
+      break;
+    }
+    case "project.invite.answered": {
+      if (!p.draft || !live || p.reward !== null) break;
+      const userId = pl.userId;
+      // The answer names its invitation. One without (a legacy write) counts only when the person has exactly one pending.
+      const pending = p.invites.filter((i) => i.userId === userId && i.state === "pending");
+      const invite: Invite | undefined = pl.inviteId !== undefined ? pending.find((i) => i.id === pl.inviteId) : pending.length === 1 ? pending[0] : undefined;
+      if (!invite) break;
+      invite.reason = pl.reason?.trim() ?? "";
+      if (pl.take === true) {
+        invite.state = "accepted";
+        if (invite.role === "sponsor") p.sponsorUserId = invite.userId;
+        else if ((invite.role === "member" || invite.role === "contributor") && invite.userId !== p.leadUserId && !p.memberUserIds.includes(invite.userId)) p.memberUserIds.push(invite.userId);
+      } else invite.state = pl.lapsed === true ? "lapsed" : "declined";
+      break;
+    }
+    case "project.goal": {
+      if (!p.draft || p.startedDay !== null || !live) break;
+      const goal = pl.goal?.trim();
+      const doneWhen = pl.doneWhen?.trim();
+      if (!goal || !doneWhen) break;
+      p.goal = { goal, doneWhen, doneBy: typeof pl.doneBy === "number" ? pl.doneBy : null, brief: pl.brief?.trim() ?? "" };
+      break;
+    }
+    case "project.start.moved": {
+      const f = factsOf(p);
+      if (!p.draft || p.startedDay !== null || !live || p.leadState !== "taken" || typeof pl.dueDay !== "number") break;
+      f.movedStart = pl.dueDay;
+      f.movedAt = p.history.length;
+      p.startDay = pl.dueDay;
       break;
     }
     case "project.baseline": {
@@ -148,6 +290,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
     case "project.step.moved": {
       const s = p.steps.find((x) => x.id === pl.stepId);
       if (!s || !isColumn(pl.to)) break;
+      touchedSteps.add(s);
       const changed = s.column !== pl.to;
       s.column = pl.to;
       // A reorder inside the column keeps its day (and, without a new one, its reason).
@@ -164,6 +307,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const s = p.steps.find((x) => x.id === pl.stepId);
       if (!s) break;
       if (pl.removed) { p.steps = p.steps.filter((x) => x !== s); break; }
+      touchedSteps.add(s);
       const text = pl.text?.trim();
       if (text) s.text = text;
       if (pl.owner !== undefined) s.owner = pl.owner.trim() || null;
@@ -179,7 +323,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const stepId = pl.stepId ?? null;
       p.links.push({ system: pl.system ?? "url", url, key: pl.key ?? "", stepId, day: d });
       const s = stepId ? p.steps.find((x) => x.id === stepId) : undefined;
-      if (s && pl.key) s.external = { system: pl.system ?? "url", key: pl.key, url: url || undefined };
+      if (s && pl.key) { s.external = { system: pl.system ?? "url", key: pl.key, url: url || undefined }; touchedSteps.add(s); }
       break;
     }
     case "project.sync": {
@@ -232,10 +376,10 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
   return true;
 }
 
-type Finish = { day: number; promise: number; rules: LoopRules; routeOf: (id: string | null) => Route | null; seats?: readonly SeatRow[]; workdays?: boolean };
+type Finish = { day: number; promise: number; rules: LoopRules; projectStartDays?: number; routeOf: (id: string | null) => Route | null; seats?: readonly SeatRow[]; workdays?: boolean };
 
 /** Derived per project once every event is applied: status, checks, due day, escalation. */
-export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf, seats = [], workdays = false }: Finish): ReducedProject[] {
+export function finishProjects(book: ProjectBook, { day, promise, rules, projectStartDays = rules.projectStartDays, routeOf, seats = [], workdays = false }: Finish): ReducedProject[] {
   const list = book.order.map((id) => book.byId[id]);
   list.forEach((p, k) => {
     p.number = k + 1;
@@ -264,7 +408,14 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf
     p.closed = p.status === "stopped" || p.status === "recognised" || (p.status === "measured" && noRewardPossible);
 
     const nextCheck = p.checks.find((c) => !c.measured);
-    p.dueDay = p.status === "planning" ? p.openedDay + promise : p.status === "measuring" && nextCheck ? nextCheck.dueDay : null;
+    // A draft in planning has the start day of D14, none while the lead has not taken it; every other project keeps today's rule.
+    const draftPlanning = p.draft && p.status === "planning";
+    const facts = draftPlanning ? factsOf(p) : null;
+    if (facts) {
+      const taken = p.leadState === "taken" ? facts.takenDay : null;
+      p.startDay = taken === null ? null : facts.movedStart ?? Math.max(taken, p.approvalsPendingSince ?? taken) + projectStartDays;
+    }
+    p.dueDay = facts ? p.startDay : p.status === "planning" ? p.openedDay + promise : p.status === "measuring" && nextCheck ? nextCheck.dueDay : null;
     p.overdue = p.dueDay !== null && day > p.dueDay;
     const route = routeOf(p.routeId);
     // The lead is the route owner when the owner seat's user is the lead's user (by id, never by name).
@@ -275,7 +426,18 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf
     const toRoleId = route ? (leadIsOwner ? route.deputyRoleId : route.ownerRoleId) ?? null : null;
     if (!workdays) {
       p.escalated = p.overdue && to && p.dueDay !== null
-        ? { to, toSeatId, toRoleId, from: p.lead, day: p.dueDay + 1, live: p.dueDay + 1 >= 0, what: p.status === "planning" ? "start" : "measure" }
+        ? { to, toSeatId, toRoleId, from: p.lead, day: p.dueDay + 1, live: p.dueDay + 1 >= 0, what: draftPlanning ? "draft" : p.status === "planning" ? "start" : "measure" }
+        : null;
+      return;
+    }
+    if (facts) {
+      // A draft (D15): the latest draft fact since the lead last changed, for the lead now; it ends when the start day is moved.
+      const from = facts.reassignedAt + 1;
+      const at = p.history.findLastIndex((e, i) => i >= from && e.type === "clock.due" && e.payload.kind === "draft" && (e.payload.userId === undefined || e.payload.userId === null || e.payload.userId === p.leadUserId));
+      const fact = at >= 0 ? p.history[at] : undefined;
+      const seat = fact ? seats.find((s) => s.id === fact.payload.toRoleHolderId) : undefined;
+      p.escalated = fact && seat && p.leadState === "taken"
+        ? { to: seat.label, toSeatId: seat.id, toRoleId: seat.roleId, from: p.lead, day: (fact.payload.dueDay ?? p.dueDay ?? 0) + 1, live: facts.movedAt < at, what: "draft" }
         : null;
       return;
     }

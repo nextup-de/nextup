@@ -381,7 +381,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     }
   });
 
-  const projects = finishProjects(book, { day, promise, rules, routeOf, seats: seed.seats ?? [], workdays });
+  const projects = finishProjects(book, { day, promise, rules, projectStartDays: rules.projectStartDays, routeOf, seats: seed.seats ?? [], workdays });
 
   const ledger: LedgerCounts = {
     handedOver: order.reduce((a, id) => a + cases[id].handed.length, 0),

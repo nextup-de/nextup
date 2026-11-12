@@ -100,13 +100,13 @@ describe("SET scaffold", () => {
     expect(escalation?.what).toBe("draft");
   });
 
-  it("the template library has a placeholder version 1 per key, no steps, and answers for unknown names", () => {
+  it("the template library has a version 1 per key and answers for unknown names", () => {
     expect(Object.keys(TEMPLATES).sort()).toEqual(["8d", "investment", "quick-win"]);
     for (const [key, all] of Object.entries(TEMPLATES)) {
-      expect(all.map((t) => [t.key, t.version, t.steps, t.agent])).toEqual([[key, 1, [], false]]);
+      expect(all.map((t) => [t.key, t.version, t.agent])).toEqual([[key, 1, false]]);
       expect(latestTemplate(key)?.version).toBe(1);
     }
-    expect(templateSteps("quick-win", 1)).toEqual([]);
+    expect(templateSteps("quick-win", 1).length).toBeGreaterThan(0);
     expect(templateSteps("nope", 1)).toEqual([]);
     expect(templateSteps("quick-win", 9)).toEqual([]);
     expect(templateSteps("toString", 1)).toEqual([]);
