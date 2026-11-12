@@ -18,8 +18,8 @@ follow `loop.project.measured` (`features/notify/areas/project.ts`).
 | `project.baseline.confirmed` | `{ baselineEventId? }` | a second person confirms the current baseline number (D16) |
 | `project.help.asked` | `{ stepId, text }` | the lead or a member asks the sponsor for help on a step (D19); `text` 1-1000 characters |
 
-`project.done` becomes `{ note?, open? }` (D13): `open` is `{ stepId, end: "done" | "dropped", why? }[]`, one entry for every
-step not in Done. `project.measure.confirmed` and `project.measured` (a re-entry) also take `measureEventId?`.
+`project.done` becomes `{ note?, openSteps? }` (D13, D28): `openSteps` is `{ stepId, end: "done" | "dropped", why? }[]`, one entry
+for every step not in Done. It is not called `open`: `case.checkin` already carries `open?: string[]`, and one payload type cannot hold both. `project.measure.confirmed` and `project.measured` (a re-entry) also take `measureEventId?`.
 `project.claimed` becomes a loop notice (Q2.14).
 
 ### Revision identity

@@ -28,7 +28,7 @@ export type ProjectAreaEventType =
   | "project.linked" // { system, url, key?, stepId? }
   | "project.commented" // { text }
   | "project.sync" // { system: 'jira', on }  send the project to Jira / stop syncing it; lead or manager, while the project is open
-  | "project.done" // { note?, open? }  the measure checks start counting; open: how each step not in Done ends (D13)
+  | "project.done" // { note?, openSteps? }  the measure checks start counting; openSteps: how each step not in Done ends (D13, D28)
   | "project.measured" // { check, value, source, note?, measureEventId? }  the verdict is computed, never sent; after a send-back it re-enters that check once (D14), naming the revision it replaces
   | "project.measure.confirmed" // { check, measureEventId? }  a second person confirms a typed measure (LOOP/D18); measureEventId names the revision confirmed
   | "project.rewarded" // { rule, amount?, note? }
@@ -80,8 +80,7 @@ export type ProjectAreaPayload = {
   unassign?: boolean; // project.member with on: false (D22): also clears the person's open steps and drops them as sponsor and follower
   originEventId?: string; // clock.due of a project: the event the occurrence belongs to (a block or vacancy cycle)
   // A result that closes properly (plan RES). check, why, stepId and text are shared (CorePayload).
-  // project.done (D13) also carries `open`: every step not in Done, how it ends. Not declared yet: case.checkin's `open?: string[]`
-  // (features/cases/events/case.ts, NOR) has that name, and one payload type cannot hold both.
+  openSteps?: { stepId: string; end: "done" | "dropped"; why?: string }[]; // project.done (D13, D28): every step not in Done, how it ends ("open" is case.checkin's)
   // The revision a confirmation, a questioning or a re-entry is about (RES review, 12 Nov): the id of the project.measured / project.baseline
   // event that wrote the number. An event naming a revision that has since been replaced is refused, so a confirmation for revision A never
   // confirms its replacement B. A missing field (every event stored before RES) names the revision that stood when it was written.

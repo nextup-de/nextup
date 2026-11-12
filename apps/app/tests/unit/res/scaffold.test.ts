@@ -65,6 +65,14 @@ describe("RES scaffold", () => {
   const step = (id: string, patch: Partial<Step> = {}): Step =>
     ({ id, text: id, owner: null, ownerUserId: null, dueDay: null, column: "doing", why: "", note: "", addedDay: 1, by: "L", movedDay: 1, startedDay: 1, doneDay: null, external: null, dropped: null, ...patch });
 
+  it("project.done carries openSteps: a typed payload of the decided shape", () => {
+    const payload: EventPayload = { note: "Live", openSteps: [{ stepId: "s1", end: "done" }, { stepId: "s2", end: "dropped", why: "no longer needed" }] };
+    expect(payload.openSteps?.map((o) => o.end)).toEqual(["done", "dropped"]);
+    // case.checkin keeps its own `open`
+    const checkin: EventPayload = { open: ["torque", "cost"] };
+    expect(checkin.open).toEqual(["torque", "cost"]);
+  });
+
   it("rewardPossible: the company measures, recognises and has a reward rule", () => {
     expect(rewardPossible(rules())).toBe(true);
     expect(rewardPossible(rules({ measure: false }))).toBe(false);
