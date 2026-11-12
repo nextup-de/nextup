@@ -25,7 +25,7 @@ const input = (extra: ReturnType<typeof unit>[] = []): LedgerInput => ({
     units: [unit("plant", null, 20), unit("quality", "plant", 6), unit("lab", "quality", 3), ...extra],
     roles: [{ id: "r-big", title: 'Lead "A"', unitId: "quality", people: 6 }, { id: "r-small", title: "Tech", unitId: "lab", people: 2 }],
   },
-  promiseDays: 5, today: 100, demoClock: true,
+  promiseDays: 5, today: 100, demoClock: true, stalled: [],
 });
 const period = { from: 71, to: 100 };
 

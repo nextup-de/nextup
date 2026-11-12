@@ -6,6 +6,7 @@
 import { NOBODY, type Actor as IdentityActor } from "@/features/auth/identity";
 import { isProjectId, mayAppendProject } from "@/features/projects/permissions";
 import { isClockReason } from "@/features/clock/actor";
+import { mayLink, mayMerge } from "./links";
 import type { EventPayload } from "./events";
 import type { State } from "./reducer";
 import { onDeskOf } from "./selectors";
@@ -32,8 +33,8 @@ const afterLastDay = (c: State["cases"][number], state: State): boolean =>
 const DESK_EVENTS = new Set(["case.read", "case.decided", "case.handed", "case.asked"]);
 /** Anyone who may open the case may add these to it (FX4). */
 const OPEN_CASE_EVENTS = new Set(["case.affected", "case.unaffected", "case.commented"]);
-/** Does this event need `access`, the part of the visibility rule that is not in the state? */
-export const needsCaseAccess = (type: string): boolean => OPEN_CASE_EVENTS.has(type);
+/** Does this event need `access`, the part of the visibility rule that is not in the state? A merge and a link name a second case the person must be able to open. */
+export const needsCaseAccess = (type: string): boolean => OPEN_CASE_EVENTS.has(type) || type === "case.merged" || type === "case.linked";
 const OPEN_IDEA_EVENTS = new Set(["idea.cosigned", "idea.uncosigned", "idea.asked"]);
 
 export function mayAppend(
@@ -51,6 +52,9 @@ export function mayAppend(
   const userId = actor.userId ?? me.userId;
   const onMyDesk = (c: State["cases"][number]) => onDeskOf(c, me);
   const isRaiser = (c: State["cases"][number]) => c.fromUserId !== null && c.fromUserId === userId;
+
+  // A merged case is closed (plan SEE, D17, D23): nobody adds to it. The clock writes without mayAppend; this is every person's event.
+  if (kase && kase.status === "merged" && ev.type.startsWith("case.") && ev.type !== "case.raised") return no(t, "cases.permMerged");
 
   switch (true) {
     case ev.type === "case.raised":
@@ -121,6 +125,23 @@ export function mayAppend(
       // Move to a desk (D21): an open or asked case, to a route the company has.
       if (kase.status !== "open" && kase.status !== "asked") return no(t, "cases.permOverrideOpen");
       return typeof ev.payload.chosen === "string" && state.routes.some((r) => r.id === ev.payload.chosen) ? OK : no(t, "cases.permOverrideRoute");
+
+    case ev.type === "case.merged":
+    case ev.type === "case.linked": {
+      // A duplicate is closed into another case, or two cases are marked as related (D17): the desk's holders, the escalated role and
+      // managers. The other case comes from the state; the server adds it only when the person may open it (append/case.ts), so a case
+      // that is private to them, foreign or unknown is the same missing case here.
+      if (!kase) return no(t, "cases.permNoCase");
+      if (!(isManager || onMyDesk(kase))) return no(t, "cases.permDeskOnly");
+      const other = ev.payload[ev.type === "case.merged" ? "into" : "to"];
+      const target = typeof other === "string" ? state.cases.find((c) => c.id === other) ?? null : null;
+      const who = { ...me, userId };
+      if (ev.type === "case.merged") {
+        if (ev.payload.note !== undefined && typeof ev.payload.note !== "string") return no(t, "cases.permMergeNote");
+        return mayMerge(kase, target, who, isManager) ? OK : no(t, "cases.permMerge");
+      }
+      return mayLink(kase, target, who, isManager) ? OK : no(t, "cases.permLink");
+    }
 
     case ev.type === "case.appealed": {
       // The second look (D18): the raiser, once, within appeal_days of the latest no.

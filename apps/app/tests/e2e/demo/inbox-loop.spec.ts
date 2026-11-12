@@ -76,6 +76,8 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
     const card = page.getByRole("article", { name: SHOWN });
     await expect(card).toContainText("Answered: no");
     await expect(card).toContainText(`Answered “no” in 0 days — ${NO_REASON}.`);
+    // SEE D12: the reply is the category and the reason in the desk's own words.
+    await expect(card).toContainText(`No budget this year: ${NO_REASON}`);
     await expect(card).toContainText("T. Vogel · today");
     await page.reload();
     await expect(page.getByRole("article", { name: SHOWN })).toContainText("Answered: no");
