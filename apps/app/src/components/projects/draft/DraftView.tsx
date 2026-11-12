@@ -94,6 +94,7 @@ export function DraftView({ p }: { p: ReducedProject }) {
             <button type="button" className="nh-btn nh-btn-primary" disabled={!view.canStart || !view.may.start} onClick={() => send("project.started", {}, () => act.project.start(p.id))}>{t("projectDraft.startAction")}</button>
           </span>
         )}
+        {view.baselineWaits && <p className={styles.hint} data-testid="draft-baseline-waits">{t("projectResult.baselineWaits")}</p>}
         {!view.canStart && <p className={styles.hint}>{t("projectDraft.startWait")}</p>}
       </section>
     </div>
