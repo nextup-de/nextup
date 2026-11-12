@@ -7,7 +7,7 @@ import { MERGE_NOTE_MAX } from "@/features/cases/links";
 import { reduce, type ReduceSeed, type State } from "@/features/cases/reducer";
 import { DEMO_GOALS, DEMO_RULES } from "@/features/demo/structure";
 import { LOCAL_SEED } from "@/features/demo";
-import { DEPTS, PEOPLE, PROBLEMS, PROMISE_DAYS, ROLES, ROUTES } from "@/features/demo/seed";
+import { PEOPLE, PROBLEMS, PROMISE_DAYS, ROLES, ROUTES } from "@/features/demo/seed";
 import type { Seed } from "@/features/demo/types";
 import { evaluate } from "@/features/evaluate";
 import type { BrainProposal } from "@/features/routing/brain";
@@ -41,7 +41,7 @@ const deps = (blocked: readonly string[] = ["c_private"]): CaseAppendDeps => ({
   openable: async (_company, _viewer, id) => state.cases.some((c) => c.id === id) && !blocked.includes(id),
   reducedCases: async (_c, ids) => state.cases.filter((c) => ids.includes(c.id)),
 });
-const ctx = (type: CaseEventType, target: string | null, payload: EventPayload, s: State = state): AppendCtx =>
+const ctx = (type: AppendCtx["type"], target: string | null, payload: EventPayload, s: State = state): AppendCtx =>
   ({ companyId: "co", viewer: { userId: "u_me", role: "member" }, type, target, payload, state: s, seed, locale: "en" });
 const raise = async (payload: EventPayload) => {
   const out = await prepareCaseAppend(ctx("case.raised", "c_new", { title: "A better idea", ...payload }), deps());

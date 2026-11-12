@@ -5,6 +5,7 @@
 // choice and is never touched. Not a "use server" module: server/actions/events.ts calls it.
 import { aiGate } from "@/features/ai/gate";
 import type { EventPayload, RouteProposal } from "@/features/cases/events";
+import type { CaseProposal } from "@/features/cases/events/case";
 import { seedFor } from "@/features/demo";
 import { propose, ROUTER_VERSION } from "@/features/routing";
 import { loadAiSettings } from "@/lib/db/ai";
@@ -48,19 +49,30 @@ async function brainProposal(slug: string, companyId: string, payload: EventPayl
 }
 
 /**
+ * The "raised before?" answer a raise keeps (plan SEE, D16): the case it looked like and the cases related to it. Routing is the server's
+ * own, but these are not routing: append/case.ts has already kept only those the person may open, so they ride along. A writer that does
+ * not go through that hook (Teams, API v1) has none to carry.
+ */
+function withLooksLike(proposal: RouteProposal, payload: EventPayload): CaseProposal {
+  const sent = payload.proposal;
+  const related = Array.isArray(sent?.related) ? sent.related.filter((id): id is string => typeof id === "string") : [];
+  return { ...proposal, ...(typeof sent?.sameAs === "string" && sent.sameAs ? { sameAs: sent.sameAs } : {}), ...(related.length ? { related } : {}) };
+}
+
+/**
  * What is stored as payload.proposal of a case.raised. Never throws and never waits longer than
  * the timeout: any failure is the keyword proposal.
  */
-export async function proposeOnRaise(slug: string, companyId: string, payload: EventPayload, opts: ProposeOptions = {}): Promise<RouteProposal> {
+export async function proposeOnRaise(slug: string, companyId: string, payload: EventPayload, opts: ProposeOptions = {}): Promise<CaseProposal> {
   const ask = opts.ask ?? askBrain;
   const timeoutMs = opts.timeoutMs ?? raiseTimeout();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const slow = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), timeoutMs); });
     const brain = await Promise.race([brainProposal(slug, companyId, payload, ask).catch(() => null), slow]);
-    if (brain) return brain;
+    if (brain) return withLooksLike(brain, payload);
   } finally {
     clearTimeout(timer);
   }
-  return keywordProposal(slug, payload);
+  return withLooksLike(await keywordProposal(slug, payload), payload);
 }
