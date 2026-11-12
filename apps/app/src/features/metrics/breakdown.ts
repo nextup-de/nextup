@@ -6,11 +6,11 @@
 import { onTimeOf, reasonedWaitOf, unitSubtree } from "./ledger";
 import { MIN_GROUP, type BreakdownRow, type LedgerCase, type LedgerInput, type MetricsUnit, type Period } from "./types";
 
-type Figures = Pick<BreakdownRow, "cases" | "firstReasonedAnswer" | "onTimePct" | "pastPromise" | "escalated">;
+type Figures = Pick<BreakdownRow, "cases" | "firstReasonedAnswer" | "onTimePct" | "pastPromise" | "escalated" | "stalled">;
 
-const HIDDEN_FIGURES: Figures = { cases: null, firstReasonedAnswer: null, onTimePct: null, pastPromise: null, escalated: null };
+const HIDDEN_FIGURES: Figures = { cases: null, firstReasonedAnswer: null, onTimePct: null, pastPromise: null, escalated: null, stalled: null };
 
-function figures(cases: LedgerCase[], input: LedgerInput, p: Period): Figures {
+function figures(cases: LedgerCase[], input: LedgerInput, p: Period, stalled: number | null = null): Figures {
   const raised = cases.filter((c) => c.raisedDay >= p.from && c.raisedDay <= p.to);
   const open = cases.filter((c) => c.open);
   return {
@@ -19,6 +19,7 @@ function figures(cases: LedgerCase[], input: LedgerInput, p: Period): Figures {
     onTimePct: onTimeOf(raised, input.promiseDays, input.today).value,
     pastPromise: p.to === input.today ? open.filter((c) => c.dueDay < input.today).length : null,
     escalated: cases.filter((c) => c.escalatedDay !== null && c.escalatedDay >= p.from && c.escalatedDay <= p.to).length,
+    stalled,
   };
 }
 
@@ -43,7 +44,9 @@ function unitRows(input: LedgerInput, p: Period): BreakdownRow[] {
     const ids = unitSubtree(input, u.id);
     const rolled = input.cases.filter((c) => c.unitId !== null && ids.has(c.unitId));
     const isHidden = hidden.has(u.id);
-    rows.push({ kind: "unit", id: u.id, label: u.name, depth, hidden: isHidden, ...(isHidden ? HIDDEN_FIGURES : figures(rolled, input, p)) });
+    // Stalled projects stand today, so only the current period has a number; a unit counts the ones of its whole subtree (plan RES, D22).
+    const stalled = p.to === input.today ? input.stalled.filter((s) => s.unitId !== null && ids.has(s.unitId)).length : null;
+    rows.push({ kind: "unit", id: u.id, label: u.name, depth, hidden: isHidden, ...(isHidden ? HIDDEN_FIGURES : figures(rolled, input, p, stalled)) });
     childrenOf(u.id).forEach((k) => walk(k, depth + 1));
   };
   childrenOf(null).forEach((u) => walk(u, 0));

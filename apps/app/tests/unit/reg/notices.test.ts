@@ -52,7 +52,7 @@ describe("REG notices split", () => {
     for (const none of [agent.AGENT_REMINDER_KINDS, agent.AGENT_DUTY_TEMPLATES]) expect(none).toEqual([]);
     for (const none of [agent.AGENT_REMINDER_TEXTS, agent.AGENT_REMINDER_AUDIENCE]) expect(Object.keys(none)).toEqual([]);
     expect(kase.CASE_REMINDER_KINDS).toEqual(["deadline", "checkin", "escalation", "question", "triage", "appeal", "view"]);
-    expect(project.PROJECT_REMINDER_KINDS).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"]);
+    expect(project.PROJECT_REMINDER_KINDS).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant", "reward"]);
     expect(Object.keys(kase.CASE_REMINDER_AUDIENCE).sort()).toEqual([...kase.CASE_REMINDER_KINDS].sort());
     expect(Object.keys(project.PROJECT_REMINDER_TEXTS).sort()).toEqual(project.PROJECT_REMINDER_KINDS.map((k) => `reminder.${k}`).sort());
     // A kind, a loop type and a duty template live in one area only.
