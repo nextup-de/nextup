@@ -450,7 +450,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
            <SectionCard name="projects">
             <div className={ui.between}>
               <div className={styles.h}>{t("dashboard.collabProjects")}</div>
-              <span className={ui.small}>{t("dashboard.collabCountOf", { n: pSorted.length, total: initiatives.length })}</span>
+              {initiatives.length > 0 && <span className={ui.small}>{t("dashboard.collabCountOf", { n: pSorted.length, total: initiatives.length })}</span>}
             </div>
             {!emptyProjects && (
               <div className={styles.tools}>
