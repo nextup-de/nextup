@@ -133,6 +133,14 @@ describe("MOV inbox items", () => {
       expect(idsFor(named, "u_tv", 12)).toEqual([]);
     });
 
+    it("the seat the vacant fact went to gets it too, from the fact on (D31), as the rights allow it", () => {
+      const above = P("clock.due", { kind: "vacant", dueDay: 11, toRoleHolderId: "seat_head" }, 11, null);
+      expect(idsFor(stateOf(withSponsor(), 12), "u_head", 12)).toEqual([]);
+      const after = stateOf(withSponsor(above), 12);
+      expect(projectMoveItems(input(after, "u_head", 12))[0]).toMatchObject({ id: "move:vacant:p_one", ask: "decide", kind: "vacant", dueDay: 11, late: true });
+      expect(idsFor(after, "u_ci", 12)).toEqual([]);
+    });
+
     it("a stopped project has none", () => {
       const state = stateOf(withSponsor(P("project.stopped", { why: "no" }, 7, "u_mr")), 8);
       expect(idsFor(state, "u_mr", 8)).toEqual([]);
