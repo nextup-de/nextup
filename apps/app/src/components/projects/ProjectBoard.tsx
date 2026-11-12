@@ -181,7 +181,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
               <div className={styles.colHead}>
                 <span className={styles.colDot} aria-hidden="true" />
                 <span className={styles.colName}>{columnLabel(col, locale)}</span>
-                <span className={styles.count}>{cols[col].length}</span>
+                {cols[col].length > 0 && <span className={styles.count}>{cols[col].length}</span>}
               </div>
               <div className={styles.colCards}>
                 {list.map((s) => (

@@ -18,7 +18,7 @@ export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases
   const ctx = useDemo();
   const t = useT();
   const { S, ready, demo, flag } = ctx;
-  if (!ready) return <PageSkeleton kind={tab === "ideas" ? "dashboard" : "list"} delay />;
+  if (!ready) return <PageSkeleton kind={tab === "ideas" ? "dashboard" : "list"} />;
   if (!flag("projects")) return <DashboardView linkCases={linkCases} />;
   const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
 
@@ -28,10 +28,10 @@ export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases
       <div className={styles.hubCols}>
         <section className={styles.hubProjects} aria-label={t("projects.pageTitle")}>
           <div className={styles.hubHead}>
-            <h2 className={styles.hubTitle}>{t("projects.pageTitle")}<span className={styles.count}>{projects.length}</span></h2>
+            <h2 className={styles.hubTitle}>{t("projects.pageTitle")}{projects.length > 0 && <span className={styles.count}>{projects.length}</span>}</h2>
           </div>
           {projects.length > 0 ? (
-            <ProjectsList list={projects} />
+            <ProjectsList list={projects} userId={ctx.actorUserId} />
           ) : (
             <div className={styles.empty}>
               <div className={styles.emptyTitle}>{t("projects.hubEmptyTitle")}</div>

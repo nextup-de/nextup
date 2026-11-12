@@ -53,9 +53,10 @@ describe("AI budget from the stored calls", () => {
   });
 
   it("the stored cap is read, and 0 is a cap", async () => {
-    await db.companyConfig.upsert({ where: { companyId: a.id }, create: { companyId: a.id, aiMonthlyCapEur: 6 }, update: { aiMonthlyCapEur: 6 } });
+    // 6.5 spent against 5 is 130 %: past the raise path's grace too (Q7.4).
+    await db.companyConfig.upsert({ where: { companyId: a.id }, create: { companyId: a.id, aiMonthlyCapEur: 5 }, update: { aiMonthlyCapEur: 5 } });
     const budget = await loadAiBudget(a.id, now);
-    expect(budget.capEur).toBe(6);
+    expect(budget.capEur).toBe(5);
     expect(aiGate({ stage: "demo", hasDatabase: true, settings: { choice: "bedrock", region: "eu-central-1", model: HAIKU, endpoint: null, deployment: null }, dpaSignedAt: null, purpose: "routing", assistantOn: true, aiRouting: true, budget }).on).toBe(false);
     await db.companyConfig.update({ where: { companyId: a.id }, data: { aiMonthlyCapEur: 0 } });
     expect((await loadAiBudget(a.id, now)).capEur).toBe(0);
@@ -67,7 +68,8 @@ describe("AI budget from the stored calls", () => {
     const before = await loadAiBudget(a.id, now);
     expect(before).toMatchObject({ tokensUnpriced: 18_000_000, tokenCap: 18_000_000 });
     const settings = { choice: "openai-compatible" as const, region: "eu-central-1", model: "mistral-nemo", endpoint: "https://llm.example/v1", deployment: null };
-    expect(aiGate({ stage: "demo", hasDatabase: true, settings, dpaSignedAt: null, purpose: "routing", assistantOn: true, aiRouting: true, budget: before })).toEqual({ on: false, why: expect.stringContaining("token limit") });
+    // At 100 % of the token limit: a purpose off the raise path stops (routing would go on to 120 %, Q7.4).
+    expect(aiGate({ stage: "demo", hasDatabase: true, settings, dpaSignedAt: null, purpose: "brain", assistantOn: true, aiRouting: true, budget: before })).toEqual({ on: false, why: expect.stringContaining("token limit") });
     // 9M in and 9M out at 0.1 and 0.3 EUR per million: 3.6 EUR more, no unpriced tokens left.
     await saveAiSettings(a.id, { ...settings, prices: { "mistral-nemo": { in: 0.1, out: 0.3 } } }, null, "t");
     expect(await loadAiBudget(a.id, now)).toEqual({ capEur: 50, spentEur: 10.1, unpriced: [], tokensUnpriced: 0, tokenCap: 18_000_000 });
@@ -115,7 +117,7 @@ describe("a raise when the budget is used up", () => {
   const answer = { proposal: { routeId: "r2", confidence: 80, source: "llm" as const, version: "spy" } };
   const payload = { title: "The scanner at gate 3 does not read", body: "It fails on every second pallet.", kind: "problem" as const };
 
-  it("the brain is asked below the cap and not at it; the keyword proposal answers instead", async () => {
+  it("the brain is asked below the cap and in the grace to 120 %, not past it; the keyword proposal answers instead", async () => {
     await saveAiSettings(b.id, { choice: "bedrock", region: "eu-central-1", model: HAIKU, endpoint: null, deployment: null }, null, "t");
     // b spent 150 this month (the Sonnet call above) against the default of 50: raise it first.
     await db.companyConfig.upsert({ where: { companyId: b.id }, create: { companyId: b.id, aiRouting: true, aiMonthlyCapEur: 1000 }, update: { aiRouting: true, aiMonthlyCapEur: 1000 } });
@@ -126,9 +128,15 @@ describe("a raise when the budget is used up", () => {
     expect(await proposeOnRaise(b.slug, b.id, payload, { ask })).toEqual(answer.proposal);
     expect(ask).toHaveBeenCalledTimes(1);
 
+    // At the cap (150 spent of 150) routing at the raise step goes on (decision Q7.4).
     await db.companyConfig.update({ where: { companyId: b.id }, data: { aiMonthlyCapEur: 150 } });
+    expect(await proposeOnRaise(b.slug, b.id, payload, { ask })).toEqual(answer.proposal);
+    expect(ask).toHaveBeenCalledTimes(2);
+
+    // 150 of 125 is 120 %: the grace is used up too.
+    await db.companyConfig.update({ where: { companyId: b.id }, data: { aiMonthlyCapEur: 125 } });
     const proposal = await proposeOnRaise(b.slug, b.id, payload, { ask });
-    expect(ask).toHaveBeenCalledTimes(1);
+    expect(ask).toHaveBeenCalledTimes(2);
     expect(proposal.source).toBe("keywords");
   });
 });

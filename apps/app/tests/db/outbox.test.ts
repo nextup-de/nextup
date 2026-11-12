@@ -153,14 +153,14 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
 
     // The demo template's own cases fall due too; this proof is about the case raised here.
     const mine = (data: unknown) => (data as { subjectId?: string }).subjectId === "c_ntfz-r1";
-    const reminders = (await db.outboxMessage.findMany({ where: { companyId: box.id, template: "reminder.deadline" } })).filter((r) => mine(r.data));
+    const reminders = (await db.outboxMessage.findMany({ where: { companyId: box.id, channel: { not: "inapp" }, template: "reminder.deadline" } })).filter((r) => mine(r.data));
     expect(reminders.map((r) => r.recipientUserId).sort()).toEqual([...box.recipients].sort());
     expect(reminders.every((r) => r.status === "sent" && r.attempt === 1 && r.sentAt !== null)).toBe(true);
     // Ten days is past escalation_days too: the second level's fact is there as well, with its own notices.
     const due = await db.caseEvent.findMany({ where: { companyId: box.id, type: "clock.due", targetId: "c_ntfz-r1" }, orderBy: { seq: "asc" } });
     expect(due.map((f) => (f.payload as { kind: string }).kind)).toEqual(["deadline", "escalation"]);
     const facts = due.slice(0, 1);
-    const up = (await db.outboxMessage.findMany({ where: { companyId: box.id, template: "reminder.escalation" } })).filter((r) => mine(r.data));
+    const up = (await db.outboxMessage.findMany({ where: { companyId: box.id, channel: { not: "inapp" }, template: "reminder.escalation" } })).filter((r) => mine(r.data));
     expect(up.map((r) => r.recipientUserId)).toContain(box.raiserId); // the raiser hears that the answer is late
     expect(up.every((r) => r.status === "sent" && r.key === `rem:${due[1].id}:${r.recipientUserId}`)).toBe(true);
     expect(reminders.every((r) => r.key === `rem:${facts[0].id}:${r.recipientUserId}`)).toBe(true);
@@ -169,7 +169,7 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
     expect(seen()).toEqual([...box.recipients].sort());
 
     // The raise itself: its mail and its webhook went out once as well.
-    expect((await db.outboxMessage.findMany({ where: { companyId: box.id, template: "raised" } })).every((r) => r.status === "sent")).toBe(true);
+    expect((await db.outboxMessage.findMany({ where: { companyId: box.id, channel: { not: "inapp" }, template: "raised" } })).every((r) => r.status === "sent")).toBe(true);
     expect(hits[box.hook]).toBe(1);
 
     // A restart: fresh modules, the same database, five more days.
@@ -178,7 +178,7 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
     const before = await db.outboxMessage.count({ where: { companyId: box.id } });
     for (const d of FIVE_MORE) await day(n, d);
     expect(await db.outboxMessage.count({ where: { companyId: box.id } })).toBe(before);
-    expect((await db.outboxMessage.findMany({ where: { companyId: box.id, template: "reminder.deadline" } })).filter((r) => mine(r.data))).toHaveLength(box.recipients.length);
+    expect((await db.outboxMessage.findMany({ where: { companyId: box.id, channel: { not: "inapp" }, template: "reminder.deadline" } })).filter((r) => mine(r.data))).toHaveLength(box.recipients.length);
     expect(seen()).toEqual([...box.recipients].sort());
     expect(hits[box.hook]).toBe(1);
   }, 60_000);
@@ -191,7 +191,7 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
     await n.dispatchOnce(berlin("2030-11-08T09:00:00"));
     await raise(box, "ntfz-c1", berlin("2030-11-08T09:00:00")); // Friday; five working days to answer
 
-    const mine = async () => (await db.outboxMessage.findMany({ where: { companyId: box.id, template: "reminder.deadline" } }))
+    const mine = async () => (await db.outboxMessage.findMany({ where: { companyId: box.id, channel: { not: "inapp" }, template: "reminder.deadline" } }))
       .filter((r) => (r.data as { subjectId?: string }).subjectId === "c_ntfz-c1");
     for (const t of ["2030-11-15T09:00:00", "2030-11-15T23:59:00", "2030-11-16T12:00:00", "2030-11-17T23:59:00"]) {
       await day(n, berlin(t));
@@ -297,7 +297,10 @@ describe("NTF acceptance: reminders once, webhook retries, sandbox sends nothing
 
     for (const d of TEN_DAYS) await day(n, d);
 
-    const rows = await db.outboxMessage.findMany({ where: { companyId: box.id } });
+    // The in-app copies never leave the stack, so a sandbox writes them as sent (INB/D5); everything outside is skipped.
+    const all = await db.outboxMessage.findMany({ where: { companyId: box.id } });
+    expect(all.filter((r) => r.channel === "inapp").every((r) => r.status === "sent")).toBe(true);
+    const rows = all.filter((r) => r.channel !== "inapp");
     const templates = new Set(rows.map((r) => r.template));
     expect(templates).toContain("raised");
     expect(templates).toContain("reminder.deadline");

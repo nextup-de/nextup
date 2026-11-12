@@ -2,7 +2,7 @@
 // counter, and which post-login redirects may leave the site (none).
 import { describe, expect, it } from "vitest";
 import { canMoveStage, holdsRealPeople, policyFor, STAGES } from "@/features/admin/stages";
-import { clientAddress, hit, sweep, type Window } from "@/features/security/rate-limit";
+import { clientAddress, hit, refund, sweep, type Window } from "@/features/security/rate-limit";
 import { usableSecret } from "@/features/admin/environment";
 import { safeNextPath } from "@/features/tenant/urls";
 
@@ -50,6 +50,19 @@ describe("rate limit", () => {
     for (let i = 0; i < 3; i++) hit(store, "a", rule, 0);
     expect(hit(store, "a", rule, 0).ok).toBe(false);
     expect(hit(store, "b", rule, 0).ok).toBe(true);
+  });
+
+  it("a refund gives one attempt back in a live window, never below zero, never in an expired one", () => {
+    const store = new Map<string, Window>();
+    for (let i = 0; i < 3; i++) hit(store, "k", rule, 0);
+    expect(hit(store, "k", rule, 0).ok).toBe(false);
+    refund(store, "k", 1);
+    expect(hit(store, "k", rule, 2)).toEqual({ ok: true, remaining: 0 });
+    for (let i = 0; i < 5; i++) refund(store, "k", 3);
+    expect(store.get("k")?.count).toBe(0);
+    refund(store, "k", 60_000); // the window is over: nothing to give back
+    refund(store, "none", 0); // no window at all: nothing happens
+    expect(store.has("none")).toBe(false);
   });
 
   it("sweeps expired windows", () => {

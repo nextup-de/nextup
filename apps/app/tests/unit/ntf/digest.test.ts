@@ -54,4 +54,17 @@ describe("NTF digest content", () => {
     expect(prefChange(null, "acme", "digest", true).ok).toBe(false);
     expect(prefChange(viewer, "acme", "webhook", true).ok).toBe(false);
   });
+
+  it("a duty notice cannot be switched off, only on; the add-mail choice is stored per group (INB/D7, D8)", () => {
+    const viewer = { userId: "u1", companySlug: "acme" };
+    for (const t of ["raised", "reminder.deadline", "reminder.escalation", "reminder.triage", "reminder.confirm", "reminder.start", "reminder.measure"]) {
+      expect(prefChange(viewer, "acme", t, false)).toEqual({ ok: false, error: "duty" });
+      expect(prefChange(viewer, "acme", t, true).ok).toBe(true);
+    }
+    expect(prefChange(viewer, "acme", "reminder.checkin", false).ok).toBe(true);
+    for (const g of ["raised", "loop", "reminders", "digest"]) {
+      expect(prefChange(viewer, "acme", `+mail:${g}`, true)).toEqual({ ok: true, userId: "u1", template: `+mail:${g}`, on: true });
+    }
+    expect(prefChange(viewer, "acme", "+mail:other", true)).toEqual({ ok: false, error: "unknown template" });
+  });
 });

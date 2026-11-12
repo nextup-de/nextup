@@ -3,7 +3,8 @@
 // (counts only: no per-person view, BetrVG §87) and the documents it may search.
 // Client for the confirm step before a document is removed.
 import { useState, useTransition } from "react";
-import { budgetLevel, budgetShare, tokenLevel, tokenShare, type BudgetLevel } from "@/features/ai/budget";
+import { budgetShare, LEVEL_RANK, monthLevel, monthOf, tokenLevel, tokenShare, type BudgetLevel } from "@/features/ai/budget";
+import { formatDate } from "@/i18n/format";
 import { LEVEL_LABEL, canUse, isLevel } from "@/features/assist/classify";
 import type { AssistantView } from "@/server/admin-insight";
 import { AssistSettingsForm } from "./AssistSettingsForm";
@@ -31,17 +32,20 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
   };
   const locale = useLocale();
   const { settings: s, provider: p, stats: st, documents, budget } = view;
-  const euroLevel = budgetLevel(budget);
   const share = budgetShare(budget);
   const tokens = tokenLevel(budget);
   // The banner speaks of whichever cap is closer: the euro budget, or the token limit of models without a price.
-  const RANK: Record<BudgetLevel, number> = { ok: 0, warn70: 1, warn90: 2, reached: 3 };
-  const byTokens = RANK[tokens] > RANK[euroLevel];
-  const level = byTokens ? tokens : euroLevel;
+  const { level, by } = monthLevel(budget);
+  const byTokens = by === "tokens";
+  // At the cap only the raise path goes on (decision Q7.4); at 120 % everything waits for the 1st of next month.
+  const reset = formatDate(locale, monthOf(new Date()).to, "day");
+  const paused = LEVEL_RANK[level] >= LEVEL_RANK.reached;
   const count = (n: number) => new Intl.NumberFormat(locale).format(n);
-  const tokenWords = { used: count(budget.tokensUnpriced), cap: count(budget.tokenCap), share: tokenShare(budget), models: budget.unpriced.join(", ") };
+  const tokenWords = { used: count(budget.tokensUnpriced), cap: count(budget.tokenCap), share: tokenShare(budget), models: budget.unpriced.join(", "), reset };
   const euro = (n: number) => new Intl.NumberFormat(locale, { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-  const budgetWords = { spent: euro(budget.spentEur), cap: euro(budget.capEur), share };
+  const budgetWords = { spent: euro(budget.spentEur), cap: euro(budget.capEur), share, reset };
+  const tokenText = (l: BudgetLevel) => (l === "stopped" ? "adminPrivacy.tokensStopped" : l === "reached" ? "adminPrivacy.tokensReached" : "adminPrivacy.tokensWarn");
+  const budgetText = (l: BudgetLevel) => (l === "stopped" ? "adminPrivacy.budgetStopped" : l === "reached" ? "adminPrivacy.budgetReached" : "adminPrivacy.budgetWarn");
   const providerLabel = { bedrock: "Amazon Bedrock", "azure-openai": "Azure OpenAI", "openai-compatible": t("adminPrivacy.providerOpenaiCompat") } as const;
   const tiles: [string, string][] = [
     [String(st.answers), t("adminPrivacy.tileAnswers")],
@@ -88,12 +92,12 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
 
       {level === "ok" ? null : (
         <div data-testid="console-assistant-budget-banner" data-level={level}>
-          <Banner tone={level === "reached" ? "error" : "warn"}>
+          <Banner tone={paused ? "error" : "warn"}>
             {byTokens
-              ? t(level === "reached" ? "adminPrivacy.tokensReached" : "adminPrivacy.tokensWarn", tokenWords)
-              : t(level === "reached" ? "adminPrivacy.budgetReached" : "adminPrivacy.budgetWarn", budgetWords)}
+              ? t(tokenText(level), tokenWords)
+              : t(budgetText(level), budgetWords)}
             {/* Both used up: raising one alone does not open the gate, so both are named. */}
-            {level === "reached" && !byTokens && tokens === "reached" ? <> {t("adminPrivacy.tokensReached", tokenWords)}</> : null}
+            {paused && !byTokens && LEVEL_RANK[tokens] >= LEVEL_RANK.reached ? <> {t(tokenText(tokens), tokenWords)}</> : null}
           </Banner>
         </div>
       )}

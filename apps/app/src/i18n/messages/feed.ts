@@ -4,6 +4,7 @@ import { defineMessages } from "../define";
 export const feed = defineMessages({
   en: {
     sortLatest: "Latest activity",
+    sortRelevant: "Most relevant",
     allUnits: "All units",
     moreDepts: "More",
     backToOpen: "Back to open",
@@ -25,6 +26,7 @@ export const feed = defineMessages({
   },
   de: {
     sortLatest: "Letzte Aktivität",
+    sortRelevant: "Am relevantesten",
     allUnits: "Alle Einheiten",
     moreDepts: "Mehr",
     backToOpen: "Zurück zu Offen",
