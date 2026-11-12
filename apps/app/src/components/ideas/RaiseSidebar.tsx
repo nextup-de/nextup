@@ -1,8 +1,10 @@
 "use client";
 // The raise page's sidebar: search, the open draft (publish, Idea / Analysis, what was added), and
-// the ideas list with pinned ones on top, one line per idea: a dashed circle after the title marks a draft, and a title too long
+// the ideas list with pinned ones on top, then drafts before published ones, one line per idea: a dashed circle after the title marks a draft, and a title too long
 // for the row glides left on hover so it can be read in full. Collapsible; a drawer on phones. Props in, JSX out.
 import { useRef, useState } from "react";
+import { ShowAll, useCapped } from "@/components/ui/elements";
+import { LIST_TOP } from "@/lib/utils/quiet";
 import { useT } from "@/i18n/client";
 import { Icon, Search, Solid } from "./raiseIcons";
 import { Working, type Work } from "./RaisePublish";
@@ -29,7 +31,11 @@ export function RaiseSidebar({ query, onQuery, onHide, card, rows, loaded, onPic
   onPick: (id: string) => void; onPin: (id: string) => void; onNew: () => void;
 }) {
   const t = useT();
-  const pinned = rows.filter((r) => r.pinned), recent = rows.filter((r) => !r.pinned);
+  // Pinned on top. Below them the unfinished drafts (still the writer's move) before the published ones,
+  // each newest first as they come; a long list shows its top few, and stays open while a row past them is open.
+  const pinned = rows.filter((r) => r.pinned);
+  const recent = [...rows.filter((r) => !r.pinned && !r.published), ...rows.filter((r) => !r.pinned && r.published)];
+  const list = useCapped(recent, query, recent.findIndex((r) => r.current) >= LIST_TOP);
   return (
     <div className={s.sb}>
       <div className={s.sbTop}>
@@ -51,7 +57,8 @@ export function RaiseSidebar({ query, onQuery, onHide, card, rows, loaded, onPic
         {pinned.length > 0 && <span className={s.group}>{t("ideas.sidePinned")}</span>}
         {pinned.map((r) => <Row key={r.id} r={r} onPick={onPick} onPin={onPin} />)}
         {pinned.length > 0 && <span className={s.group}>{t("ideas.sideRecent")}</span>}
-        {recent.map((r) => <Row key={r.id} r={r} onPick={onPick} onPin={onPin} />)}
+        {list.shown.map((r) => <Row key={r.id} r={r} onPick={onPick} onPin={onPin} />)}
+        <ShowAll list={list} showAll={(count) => t("common.showAll", { count })} showLess={t("common.showLess")} />
         {loaded && !rows.length && <span className={s.ideasEmpty}>{query ? t("ideas.publishNoMatches") : t("ideas.sideEmpty")}</span>}
       </div>
     </div>

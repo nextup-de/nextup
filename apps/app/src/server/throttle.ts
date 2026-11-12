@@ -7,17 +7,21 @@
 //
 // Not a "use server" module: helpers the actions call, not actions themselves.
 import { headers } from "next/headers";
-import { clear, clientAddress, hit, sweep, type Rule, type Verdict, type Window } from "@/features/security/rate-limit";
+import { clear, clientAddress, hit, refund as refundOne, sweep, type Rule, type Verdict, type Window } from "@/features/security/rate-limit";
 import { getT } from "@/i18n/server";
 import { isConnectionError } from "@/lib/db/client";
-import { clearShared, hitShared, sweepShared } from "@/lib/db/rate-limit";
+import { clearShared, hitShared, refundShared, sweepShared } from "@/lib/db/rate-limit";
 import { hasDatabase } from "@/lib/db/mode";
 
 /** Every limit in one table, so tuning them is one diff. */
 export const RULES = {
   /** Personal login code, per address and company: a person mistyping, not a script guessing. */
   loginCode: { limit: 10, windowMs: 10 * 60_000 },
-  /** Personal login code, per company from everywhere: caps a distributed guess at one company. */
+  /**
+   * Personal login code, per company from everywhere: caps a distributed guess at one company. A right code is
+   * refunded (server/actions/auth.ts), so only wrong ones use it up - a rollout morning of a few thousand
+   * people signing in does not lock the company out of its own login.
+   */
   loginCodeAll: { limit: 200, windowMs: 10 * 60_000 },
   /** Login step 1, "find your company": a person finding theirs, not a script mapping domains. */
   findCompany: { limit: 30, windowMs: 10 * 60_000 },
@@ -121,6 +125,18 @@ export async function forgive(bucket: Bucket, key: string): Promise<void> {
   if (!hasDatabase()) return;
   try {
     await clearShared(`${bucket}|${key}`);
+  } catch (err) {
+    if (!isConnectionError(err)) throw err;
+  }
+}
+
+/** Give back one attempt: it was counted before it could be checked and turned out not to be a guess. */
+export async function refund(bucket: Bucket, key: string): Promise<void> {
+  const now = Date.now();
+  refundOne(storeFor(bucket), key, now);
+  if (!hasDatabase()) return;
+  try {
+    await refundShared(`${bucket}|${key}`, now);
   } catch (err) {
     if (!isConnectionError(err)) throw err;
   }

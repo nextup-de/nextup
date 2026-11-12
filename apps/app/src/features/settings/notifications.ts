@@ -1,6 +1,8 @@
 // The notifications page's pure part (ADM D18): what is shown of the outbox and the opt-outs.
 // Counts only, never who; failed rows without body, subject, recipient or address.
 import type { MessageKey } from "@/i18n";
+import { ADD_MAIL_PREFIX, isDuty, NOTICE_RULE_DEFAULT, type NoticeChannelRule } from "@/features/notify/channels";
+import { groupOn, NOTIFY_GROUPS, type NotifyGroup } from "@/features/notify/digest";
 
 /** Below this many people a count is not shown as a number. */
 export const MIN_SHOWN = 5;
@@ -39,4 +41,49 @@ export function failedView(rows: readonly FailedSource[], now: Date): FailedRow[
 export function stageLine(stage: string, on: boolean): MessageKey {
   if (stage === "sandbox") return "settingsNotifications.stageSandbox";
   return on ? "settingsNotifications.stageOn" : "settingsNotifications.stageOff";
+}
+
+/** The groups in the order the settings and the profile list them. */
+export const NOTICE_GROUP_ORDER: readonly NotifyGroup[] = ["raised", "loop", "reminders", "digest"];
+/** The rules in the order the select lists them. */
+export const NOTICE_RULE_ORDER: readonly NoticeChannelRule[] = ["teams-else-mail", "mail", "both"];
+
+/** The name of a group's select in the "How notices travel" form. */
+export const noticeRuleField = (group: NotifyGroup): string => `rule:${group}`;
+
+/** The company's rule per group from the form: only the four groups and the three rules; anything else is the default (D6). */
+export function noticeChannelsFromForm(form: FormData): Record<NotifyGroup, NoticeChannelRule> {
+  const out = { ...NOTICE_RULE_DEFAULT };
+  for (const group of NOTICE_GROUP_ORDER) {
+    const value = form.get(noticeRuleField(group));
+    const rule = NOTICE_RULE_ORDER.find((r) => r === value);
+    if (rule) out[group] = rule;
+  }
+  return out;
+}
+
+/** What is stored: the groups that differ from the default; a missing group means the default (D6). */
+export function storedNoticeChannels(rules: Record<NotifyGroup, NoticeChannelRule>): Partial<Record<NotifyGroup, NoticeChannelRule>> {
+  const out: Partial<Record<NotifyGroup, NoticeChannelRule>> = {};
+  for (const group of NOTICE_GROUP_ORDER) if (rules[group] !== NOTICE_RULE_DEFAULT[group]) out[group] = rules[group];
+  return out;
+}
+
+export type ProfileNoticeRow = { group: NotifyGroup; on: boolean; duty: boolean; addMail: boolean; canAddMail: boolean };
+
+/**
+ * One row per group on the person's profile. A duty group (D8) is always on and has no switch: raised when its template is
+ * a duty, reminders when any of its templates is. "Also by mail" can be chosen where Teams can reach the person (D7).
+ */
+export function profileNoticeRows(
+  groups: readonly NotifyGroup[],
+  prefs: readonly { template: string; on: boolean }[],
+  teamsReachable: boolean,
+): ProfileNoticeRow[] {
+  return groups.map((group) => {
+    const templates = NOTIFY_GROUPS[group];
+    const duty = group === "reminders" ? templates.some(isDuty) : templates.length > 0 && templates.every(isDuty);
+    const addMail = prefs.some((r) => r.template === `${ADD_MAIL_PREFIX}${group}` && r.on);
+    return { group, on: duty || groupOn(group, prefs), duty, addMail, canAddMail: teamsReachable };
+  });
 }

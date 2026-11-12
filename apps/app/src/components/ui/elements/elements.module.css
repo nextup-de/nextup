@@ -126,3 +126,8 @@
   .soft, .danger, .primary { height: 44px; }
   .typedInput { height: 44px; font-size: var(--nh-fs-input); }
 }
+
+/* "Show all" under a capped list (capped.tsx): a quiet link, not a button. */
+.showAll { align-self: flex-start; margin: 10px 0 0; padding: 4px 0; background: none; border: 0; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand); cursor: pointer; }
+.showAll:hover { text-decoration: underline; }
+.showAll:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; border-radius: 4px; }
