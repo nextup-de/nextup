@@ -44,6 +44,11 @@ export type CaseActs = {
   answerAppeal: (caseId: string, uphold: boolean, reason: string) => void;
   /** An invited person says the discussion is not for them. */
   declineInvite: (caseId: string, why?: string) => void;
+  // The raiser sees the whole way (plan SEE): thin wrappers over emit. The raise needs no new act: raiseDraft passes `follows` and `proposal` as they are.
+  /** The desk closes this undecided case as a duplicate of `into`. */
+  merge: (caseId: string, into: string, note?: string) => void;
+  /** The desk marks this case and `to` as related. */
+  link: (caseId: string, to: string) => void;
 };
 
 export function caseActs(d: ActDeps): CaseActs {
@@ -92,5 +97,7 @@ export function caseActs(d: ActDeps): CaseActs {
     appeal: (caseId, text) => emit("case.appealed", caseId, { text }),
     answerAppeal: (caseId, uphold, reason) => emit("case.appeal.decided", caseId, { uphold, reason }),
     declineInvite: (caseId, why) => emit("case.invite.declined", caseId, why ? { why } : {}),
+    merge: (caseId, into, note) => emit("case.merged", caseId, { into, ...(note ? { note } : {}) }),
+    link: (caseId, to) => emit("case.linked", caseId, { to }),
   };
 }

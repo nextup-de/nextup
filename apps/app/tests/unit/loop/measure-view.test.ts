@@ -9,6 +9,7 @@ const base: Measure = {
   check: 30, value: 12, source: "", note: "", day: 5, by: "Lena", byUserId: "u1",
   sourceKind: "typed", sourceInfo: { kind: "typed" }, impact: null,
   confirmed: false, confirmedByUserId: null, confirmedDay: null, verdict: "better", changePct: -40,
+  sentBack: false, reentered: false, managerOnly: false, questions: [], previous: [],
 };
 const day = (d: number) => "day " + d;
 const names = { by: "Lena", confirmedBy: "Max", day };

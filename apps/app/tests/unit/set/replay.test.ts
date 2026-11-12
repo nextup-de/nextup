@@ -6,6 +6,7 @@ import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/ev
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { LOCAL_SEED } from "@/features/demo";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS } from "@/features/demo/seed";
+import type { ReducedProject } from "@/features/projects/types";
 
 const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: LOCAL_SEED.routes, promiseDays: PROMISE_DAYS, seats: LOCAL_SEED.seats };
 const UID: Record<string, string> = { "L. Brandt": "u_lb", "T. Vogel": "u_tv", "Anonymous #4471": "u_js" };
@@ -29,6 +30,15 @@ const LOG = [
   raise("c_b"), yes("c_b", "p_two", 1),
 ];
 
+// The fields plan RES added (RES-G1) are not part of what a log from before the draft reduced to: take them off before comparing.
+const without = <T extends object>(o: T, keys: readonly string[]): T => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k))) as T;
+const beforeRes = (p: ReducedProject): unknown => ({
+  ...without(p, ["rewardDueDay", "helpAsks"]),
+  baseline: p.baseline === null ? null : without(p.baseline, ["byUserId", "eventId", "confirmed"]),
+  steps: p.steps.map((s) => without(s, ["dropped"])),
+  measures: p.measures.map((m) => without(m, ["eventId", "sentBack", "reentered", "managerOnly", "questions", "previous"])),
+});
+
 describe("SET replay", () => {
   const projects = reduce(SEED, { events: LOG, day: 40 }).projects;
 
@@ -37,7 +47,7 @@ describe("SET replay", () => {
     for (const p of projects) {
       expect(p).toMatchObject({ draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [], goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null });
     }
-    expect(JSON.parse(JSON.stringify(projects))).toEqual(SNAPSHOT);
+    expect(JSON.parse(JSON.stringify(projects.map(beforeRes)))).toEqual(SNAPSHOT);
   });
 
   it("gives the same projects whatever day it is replayed on", () => {
@@ -306,7 +316,16 @@ const SNAPSHOT: unknown = [
   "startDay": null,
   "approvalsPendingSince": null,
   "raiserNote": "",
-  "deciderUserId": null
+  "deciderUserId": null,
+  "doneBy": 31,
+  "doneByMoves": [],
+  "pausedUntil": null,
+  "pauseWhy": "",
+  "lastActivityDay": 2,
+  "checkInWeekday": null,
+  "howWeWorkNote": "",
+  "leadVacatedDay": null,
+  "latestUpdate": null
  },
  {
   "id": "p_two",
@@ -385,6 +404,15 @@ const SNAPSHOT: unknown = [
   "startDay": null,
   "approvalsPendingSince": null,
   "raiserNote": "",
-  "deciderUserId": null
+  "deciderUserId": null,
+  "doneBy": null,
+  "doneByMoves": [],
+  "pausedUntil": null,
+  "pauseWhy": "",
+  "lastActivityDay": null,
+  "checkInWeekday": null,
+  "howWeWorkNote": "",
+  "leadVacatedDay": null,
+  "latestUpdate": null
  }
 ];
