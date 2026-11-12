@@ -10,8 +10,10 @@ import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
 import { IdeaDetailPhone } from "@/components/dashboard/leader/IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { PageHeader, SectionCard } from "@/components/ui/elements";
-import { inboxCounts, inboxItems, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
-import { useT } from "@/i18n/client";
+import { inboxCounts, inboxItems, type InboxAsk, type InboxInput, type InboxItem, type InboxKind } from "@/features/inbox";
+import { projectDesk } from "@/features/inbox/sources/projects";
+import { moveLabel } from "@/features/projects/views";
+import { useLocale, useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { showInboxCase } from "@/lib/demo-controls";
 import { useIdInUrl } from "@/lib/use-url-id";
@@ -38,6 +40,7 @@ const onPhoneChange = (fn: () => void) => { const m = window.matchMedia(PHONE); 
 export function InboxPage({ initialId, notices }: { initialId?: string; notices: NoticeView[] }) {
   const ctx = useDemo();
   const t = useT();
+  const locale = useLocale();
   const router = useRouter();
   const { S, me, seed, role, demo, flag, ready, href, f, serverMode, tenant } = ctx;
   const [cid, setCid] = useState<string | null>(initialId ?? null);
@@ -55,7 +58,14 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
 
   if (!ready) return <PageSkeleton kind="inbox" />;
 
-  const items = inboxItems({ state: S, me, seats: seed.seats ?? [], today: S.day, demo, role, flags: { projects: flag("projects"), discussion: flag("discussion") } });
+  const input: InboxInput & { role: typeof role } = { state: S, me, seats: seed.seats ?? [], today: S.day, demo, role, flags: { projects: flag("projects"), discussion: flag("discussion") } };
+  const items = inboxItems(input);
+  // A result to confirm says what is asked and why it is on this desk (decision Q6.15), as the project desk words it.
+  const desk = projectDesk(input);
+  const confirmNote = (i: InboxItem): string | null => {
+    const d = i.kind === "confirm" ? desk.find((x) => x.move === "confirm" && x.project.id === i.projectId) : undefined;
+    return d ? `${moveLabel(d.move, locale)} · ${t(d.why === "confirmUp" ? "projects.deskConfirmLate" : "projects.deskSecondPerson")}` : null;
+  };
   const counts = inboxCounts(items);
   const decide = items.filter((i) => i.ask === "decide");
   const navIds = decide.map(openId);
@@ -110,7 +120,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
                       <>
                         <span className={styles.rowMain}>
                           <span className={styles.rowTitle}>{i.title}</span>
-                          <span className={styles.rowKind}>{t(KIND[i.kind])}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
+                          <span className={styles.rowKind}>{confirmNote(i) ?? t(KIND[i.kind])}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
                         </span>
                         {i.late ? <span className={styles.badge} data-tone="late">{t("inbox.late")}</span> : i.dueSoon ? <span className={styles.badge} data-tone="soon">{t("inbox.dueSoon")}</span> : null}
                       </>
