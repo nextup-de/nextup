@@ -39,11 +39,22 @@ export function raisedAtMs(kase: ReducedCase, ctx: MapCtx): number {
   return atOf(ev?.ts, kase.raisedDay, ctx);
 }
 
+/** The event of the latest decision of the case (D25): where the reducer put it, else the last case.decided of the history. */
+function latestDecidedEvent(kase: ReducedCase) {
+  const at = kase.decidedSeq !== null ? kase.history[kase.decidedSeq] : undefined;
+  return at?.type === "case.decided" ? at : [...kase.history].reverse().find((e) => e.type === "case.decided");
+}
+
 export function decidedAtMs(kase: ReducedCase, ctx: MapCtx): number | null {
   if (!kase.decided) return null;
-  const ev = kase.history.find((e) => e.type === "case.decided");
-  return atOf(ev?.ts, kase.decided.day, ctx);
+  return atOf(latestDecidedEvent(kase)?.ts, kase.decided.day, ctx);
 }
+
+/** dec_<caseId> for the first decision of a case, dec_<caseId>_<n> for the n-th (D25). */
+export const decisionIdOf = (kase: Pick<ReducedCase, "id" | "decisions">): string => {
+  const n = Math.max(1, kase.decisions.length);
+  return n === 1 ? `dec_${kase.id}` : `dec_${kase.id}_${n}`;
+};
 
 export function caseRefOf(kase: ReducedCase, ctx: MapCtx): CaseRef {
   const projectId = kase.decided?.projectId ?? null;
@@ -62,12 +73,12 @@ export function caseRefOf(kase: ReducedCase, ctx: MapCtx): CaseRef {
   };
 }
 
-/** The decision on a case, or null while it has none. decidedByUserId is always null (D3). */
+/** The latest decision on a case, or null while it has none; a reopened case has none. decidedByUserId is always null (D3). */
 export function decisionOf(kase: ReducedCase, ctx: MapCtx): Decision | null {
   const at = decidedAtMs(kase, ctx);
   if (!kase.decided || at === null) return null;
   return {
-    id: `dec_${kase.id}`,
+    id: decisionIdOf(kase),
     companyId: ctx.companyId,
     caseId: kase.id,
     answer: kase.decided.answer,

@@ -15,8 +15,8 @@ describe("feedStage", () => {
   });
   it("a question out, a decision, building and shipped each get their own pill", () => {
     expect(feedStage({ ...base, status: "asked" }).label).toBe("Needs info");
-    expect(feedStage({ ...base, decided: { answer: "yes", reason: "", note: "", by: "M. Roth", day: 2 } })).toEqual({ label: "Approved", tone: "approved" });
-    expect(feedStage({ ...base, decided: { answer: "no", reason: "", note: "", by: "M. Roth", day: 2 } }).label).toBe("Not now");
+    expect(feedStage({ ...base, decided: { answer: "yes", reason: "", note: "", by: "M. Roth", day: 2, category: null, changeIf: "", revisitDay: null, duplicateOf: null } })).toEqual({ label: "Approved", tone: "approved" });
+    expect(feedStage({ ...base, decided: { answer: "no", reason: "", note: "", by: "M. Roth", day: 2, category: null, changeIf: "", revisitDay: null, duplicateOf: null } }).label).toBe("Not now");
     const c = reduce(SEED, emptyLog()).cases.find((x) => x.shipped);
     if (c) expect(feedStage(c).label).toBe("Shipped");
   });

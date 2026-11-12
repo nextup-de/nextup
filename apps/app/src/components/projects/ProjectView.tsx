@@ -18,6 +18,11 @@ import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, toolName, visiblePro
 import { useLocale, useT } from "@/i18n/client";
 import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";
 import { DraftView } from "./draft/DraftView";
+import { DoneByLine } from "./move/DoneByLine";
+import { HowWeWork } from "./move/HowWeWork";
+import { NoLeadBanner } from "./move/NoLeadBanner";
+import { PausePanel } from "./move/PausePanel";
+import { WeeklyUpdate } from "./move/WeeklyUpdate";
 import { useProjectHints } from "./draft/useProjectHints";
 import { ProjectBoard } from "./ProjectBoard";
 import { NextPanel } from "./ProjectNext";
@@ -86,6 +91,8 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
             {/* While planned, the start waits for the baseline: it sits where the move says so. */}
             {planning && <BaselinePanel p={p} hint={baseHint} />}
             <NextPanel p={p} />
+            {p.status === "running" && <WeeklyUpdate p={p} />}
+            <HowWeWork p={p} />
           </div>
           <aside className={styles.tabRail} aria-label={t("projects.railLabel")}>
             <TeamPanel p={p} />
@@ -176,6 +183,10 @@ function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
         <span className={styles.muted}> · {t("projects.heroRaised", { authors: p.authors.join(", "), day: f(p.openedDay), name: p.openedBy })}</span>
       </p>
       <ToolChips p={p} jira={jira} />
+      {/* A project that keeps moving (plan MOV): the done-by date, a pause, and No lead when the lead left. */}
+      <DoneByLine p={p} />
+      <PausePanel p={p} />
+      <NoLeadBanner p={p} />
       <Actions p={p} />
     </div>
   );
