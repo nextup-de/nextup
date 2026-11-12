@@ -22,6 +22,8 @@ describe("REG loop notice split", () => {
     const projectTypes = [
       "project.handed", "project.stopped", "project.lead.answered", "project.invited", "project.invite.answered", "project.start.moved", "project.member",
       "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded",
+      // A project that keeps moving (plan MOV, D23); project.howwework tells nobody.
+      "project.lead.changed", "project.doneby.moved", "project.paused", "project.resumed", "project.update", "project.lead.vacated",
     ];
     expect(Object.keys(CASE_NOTICES).sort()).toEqual([...caseTypes].sort());
     expect(Object.keys(PROJECT_NOTICES).sort()).toEqual([...projectTypes].sort());
