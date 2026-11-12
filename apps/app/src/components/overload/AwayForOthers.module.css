@@ -1,0 +1,15 @@
+/* "Set someone away" on the viewer's own profile (plan OVL, D31): one row per person the viewer may set away. */
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.filter { height: 34px; padding-inline: 10px; border: 1px solid var(--nh-line); border-radius: 6px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.filter:focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
+.rows { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; background: var(--nh-surface); }
+.name { flex: 1 1 140px; min-width: 0; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); overflow-wrap: anywhere; }
+.span { flex: 1 1 140px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.actions { display: flex; gap: 8px; }
+.button { height: 30px; padding-inline: 10px; border: 0; border-radius: 8px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
+.button:hover { background: var(--nh-brand-line); }
+.button:disabled { opacity: 0.5; cursor: default; }
+.button:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.error { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-danger); }
+.dialog { padding: 12px; border-radius: 8px; border: 1px solid var(--nh-line-soft); }
