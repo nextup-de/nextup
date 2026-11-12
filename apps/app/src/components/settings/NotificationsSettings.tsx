@@ -2,10 +2,12 @@
 // /settings/notifications: the switch, the stage line, opt-out counts and the failed messages with Retry.
 import { useActionState } from "react";
 import { Banner, DataTable, SectionCard } from "@/components/ui/elements";
-import type { FailedRow, OptOutCount } from "@/features/settings/notifications";
+import type { NoticeChannelRule } from "@/features/notify/channels";
+import type { NotifyGroup } from "@/features/notify/digest";
+import { NOTICE_GROUP_ORDER, NOTICE_RULE_ORDER, noticeRuleField, type FailedRow, type OptOutCount } from "@/features/settings/notifications";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
-import { retryOutboxAction, saveNotificationsSwitchAction } from "@/server/actions/settings/notifications";
+import { retryOutboxAction, saveNoticeChannelsAction, saveNotificationsSwitchAction } from "@/server/actions/settings/notifications";
 import type { SettingsFormState } from "@/server/actions/settings/company";
 import { Foot } from "./SettingsParts";
 import s from "./settings.module.css";
@@ -15,8 +17,22 @@ export type NotificationsSettingsProps = {
   slug: string;
   on: boolean;
   stageLine: MessageKey;
+  /** The company's rule per notice group, the default where it set none. */
+  noticeRules: Record<NotifyGroup, NoticeChannelRule>;
   optOuts: OptOutCount[];
   failed: FailedRow[];
+};
+
+const GROUP_LABEL: Record<NotifyGroup, MessageKey> = {
+  raised: "settingsNotifications.noticeGroupRaised",
+  loop: "settingsNotifications.noticeGroupLoop",
+  reminders: "settingsNotifications.noticeGroupReminders",
+  digest: "settingsNotifications.noticeGroupDigest",
+};
+const RULE_LABEL: Record<NoticeChannelRule, MessageKey> = {
+  "teams-else-mail": "settingsNotifications.noticeRuleTeamsElseMail",
+  mail: "settingsNotifications.noticeRuleMail",
+  both: "settingsNotifications.noticeRuleBoth",
 };
 
 /** A sandbox sends nothing whatever the switch says (warn); a live switch reads as info; off is a quiet state. */
@@ -37,7 +53,34 @@ function RetryButton({ slug, id }: { slug: string; id: string }) {
   );
 }
 
-export function NotificationsSettings({ slug, on, stageLine, optOuts, failed }: NotificationsSettingsProps) {
+function NoticeChannels({ slug, rules }: { slug: string; rules: Record<NotifyGroup, NoticeChannelRule> }) {
+  const t = useT();
+  const [state, act, pending] = useActionState<SettingsFormState, FormData>(saveNoticeChannelsAction.bind(null, slug), {});
+  const status = state.error ? t(state.error) : state.ok ? t("settingsNotifications.saved") : undefined;
+  return (
+    <SectionCard name="notices" title={t("settingsNotifications.noticesTitle")} hint={t("settingsNotifications.noticesHint")}>
+      <form action={act} className={styles.form} data-testid="settings-notices-form">
+        <ul className={styles.rules}>
+          {NOTICE_GROUP_ORDER.map((group) => (
+            <li key={group} className={styles.rule}>
+              <label htmlFor={`notice-rule-${group}`}>{t(GROUP_LABEL[group])}</label>
+              <select id={`notice-rule-${group}`} className={s.input} name={noticeRuleField(group)} defaultValue={rules[group]} data-testid={`settings-notices-rule-${group}`}>
+                {NOTICE_RULE_ORDER.map((rule) => <option key={rule} value={rule}>{t(RULE_LABEL[rule])}</option>)}
+              </select>
+            </li>
+          ))}
+        </ul>
+        <Foot status={status} tone={state.error ? "error" : undefined} statusTestId={state.error ? "settings-notices-error" : state.ok ? "settings-notices-saved" : undefined}>
+          <button className={s.save} type="submit" disabled={pending} data-testid="settings-notices-save">
+            {t("settingsNotifications.noticesSave")}
+          </button>
+        </Foot>
+      </form>
+    </SectionCard>
+  );
+}
+
+export function NotificationsSettings({ slug, on, stageLine, noticeRules, optOuts, failed }: NotificationsSettingsProps) {
   const t = useT();
   const [state, act, pending] = useActionState<SettingsFormState, FormData>(saveNotificationsSwitchAction, {});
   const status = state.error ? t(state.error) : state.ok ? t("settingsNotifications.saved") : undefined;
@@ -60,6 +103,8 @@ export function NotificationsSettings({ slug, on, stageLine, optOuts, failed }: 
           </Foot>
         </form>
       </SectionCard>
+
+      <NoticeChannels slug={slug} rules={noticeRules} />
 
       <div data-testid="settings-notifications-optouts">
         <SectionCard name="optouts" title={t("settingsNotifications.optOutsTitle")} hint={t("settingsNotifications.optOutsHint")}>
