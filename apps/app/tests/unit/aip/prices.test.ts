@@ -64,19 +64,21 @@ describe("which price a recorded name gets", () => {
 });
 
 describe("the month's spend with company prices", () => {
+  // An Azure model with no list price in usage.ts (gpt-4.1-mini has one since AIB-Z2).
+  const UNLISTED = "gpt-4o-mini-2024-07-18";
   const rows = [
-    { model: AZURE, tokensIn: 10_000_000, tokensOut: 1_000_000 },
+    { model: UNLISTED, tokensIn: 10_000_000, tokensOut: 1_000_000 },
     { model: "eu.anthropic.claude-sonnet-5-5", tokensIn: 1_000_000, tokensOut: 1_000_000 }, // list: 2 + 10
     { model: "mistral-nemo", tokensIn: 3_000_000, tokensOut: 1_000_000 },
   ];
   it("a model with a company price is counted in euros, at that price", () => {
-    expect(spendOf(rows, { "gpt-4.1-mini": { in: 0.4, out: 1.6 } })).toEqual({ spentEur: 4 + 1.6 + 12, unpriced: ["mistral-nemo"], tokensUnpriced: 4_000_000 });
+    expect(spendOf(rows, { "gpt-4o-mini": { in: 0.4, out: 1.6 } })).toEqual({ spentEur: 4 + 1.6 + 12, unpriced: ["mistral-nemo"], tokensUnpriced: 4_000_000 });
   });
   it("without one its tokens are summed for the token limit", () => {
-    expect(spendOf(rows)).toEqual({ spentEur: 12, unpriced: ["gpt-4.1-mini-2025-04-14", "mistral-nemo"], tokensUnpriced: 15_000_000 });
+    expect(spendOf(rows)).toEqual({ spentEur: 12, unpriced: [UNLISTED, "mistral-nemo"], tokensUnpriced: 15_000_000 });
   });
   it("the company price wins over the list price; a price of 0 makes a model free, not unknown", () => {
-    expect(spendOf(rows, { "claude-sonnet-5-5": { in: 1, out: 1 }, "mistral-nemo": { in: 0, out: 0 }, "gpt-4.1-mini": { in: 0, out: 0 } })).toEqual({ spentEur: 2, unpriced: [], tokensUnpriced: 0 });
+    expect(spendOf(rows, { "claude-sonnet-5-5": { in: 1, out: 1 }, "mistral-nemo": { in: 0, out: 0 }, "gpt-4o-mini": { in: 0, out: 0 } })).toEqual({ spentEur: 2, unpriced: [], tokensUnpriced: 0 });
   });
 });
 
