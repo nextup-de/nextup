@@ -11,6 +11,7 @@ import { canOpen as canOpenCase, unitsOf } from "@/features/cases/visibility";
 import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
 import type { DemoContext } from "./DemoProvider";
 import { withoutLinkedCases } from "./inbox-order";
+import { inboxCounts, inboxItems, type InboxSourceInput } from "@/features/inbox";
 
 // Live cases on someone's desk (open) - the number the rail shows as "Inbox" and the dev panel
 // shows next to each leader; the desk including those paused on a question.
@@ -27,8 +28,15 @@ export const inboxSorted = (ctx: DemoContext) =>
 export const inboxIdeas = (ctx: DemoContext) => (ctx.role === "manager" ? decisionsWaiting(ctx.D) : []);
 // The ids of those ideas: a case that became one of them is not listed or counted a second time.
 export const inboxIdeaIds = (ctx: DemoContext): ReadonlySet<string> => new Set(inboxIdeas(ctx).map((i) => i.id));
-// What the Inbox badge counts: live cases on the desk plus the decisions owed.
-export const inboxCount = (ctx: DemoContext) => withoutLinkedCases(openCases(ctx), inboxIdeaIds(ctx)).length + inboxIdeas(ctx).length;
+// What the one inbox lists for the person looking: the input of `inboxItems`, built the way components/inbox/InboxPage builds it.
+export const inboxInputOf = (ctx: DemoContext): InboxSourceInput => ({
+  state: ctx.S, me: ctx.me, seats: ctx.seed.seats ?? [], today: ctx.S.day, demo: ctx.demo, role: ctx.role,
+  flags: { projects: ctx.flag("projects"), discussion: ctx.flag("discussion") },
+});
+// What the Inbox badge counts: every item in the one inbox (features/inbox inboxCounts total, never a sum of the overlapping counts).
+export const inboxTotal = (ctx: DemoContext): number => inboxCounts(inboxItems(inboxInputOf(ctx))).total;
+/** @deprecated Use `inboxTotal`. Kept so nothing that still imports it breaks; it is the same number now. */
+export const inboxCount = inboxTotal;
 
 // My cases: what I raised plus the ideas I co-signed, newest first. "I" is my user id (ctx.me): the
 // cases whose raiser it is, the ideas it co-signed. The names on the rows are labels, only shown.

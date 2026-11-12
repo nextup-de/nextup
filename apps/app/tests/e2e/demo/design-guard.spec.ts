@@ -13,11 +13,11 @@ async function viewAs(page: Page, persona: Persona) {
   await page.keyboard.press("Escape");
 }
 
-const EVERYONE = ["raise", "feed", "projects", "projects/collaboration", "projects/progress", "profile", "team", "projects/pj2", "projects/pj2?tab=board", "projects/pj2?tab=team", "projects/pj2?tab=results", "projects/pj2?tab=activity", "projects/pj2?tab=files", "cases/c9"];
+const EVERYONE = ["raise", "inbox", "feed", "projects", "projects/collaboration", "projects/progress", "profile", "team", "projects/pj2", "projects/pj2?tab=board", "projects/pj2?tab=team", "projects/pj2?tab=results", "projects/pj2?tab=activity", "projects/pj2?tab=files", "cases/c9"];
 const PAGES: Record<Persona, string[]> = {
   Employee: EVERYONE,
-  "Team leader": [...EVERYONE, "leader", "decisions"],
-  Manager: [...EVERYONE, "leader", "decisions", "dashboard"],
+  "Team leader": [...EVERYONE, "decisions"],
+  Manager: [...EVERYONE, "decisions", "dashboard"],
 };
 
 test("a tab strip has no vertical scrollbar", async ({ page }) => {

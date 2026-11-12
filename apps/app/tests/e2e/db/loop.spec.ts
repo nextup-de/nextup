@@ -149,7 +149,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
 
   test("the quality lead says yes and the project opens", async ({ browser }) => {
     const page = await signIn(browser, LEAD);
-    await expect(page).toHaveURL(new RegExp(`/${SLUG}/leader$`));
+    await expect(page).toHaveURL(new RegExp(`/${SLUG}/inbox$`));
     await page.getByRole("main").getByText(TITLE).first().click();
     await page.getByRole("button", { name: "Yes, do it" }).click();
     await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
