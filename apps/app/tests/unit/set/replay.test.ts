@@ -306,7 +306,16 @@ const SNAPSHOT: unknown = [
   "startDay": null,
   "approvalsPendingSince": null,
   "raiserNote": "",
-  "deciderUserId": null
+  "deciderUserId": null,
+  "doneBy": 31,
+  "doneByMoves": [],
+  "pausedUntil": null,
+  "pauseWhy": "",
+  "lastActivityDay": 2,
+  "checkInWeekday": null,
+  "howWeWorkNote": "",
+  "leadVacatedDay": null,
+  "latestUpdate": null
  },
  {
   "id": "p_two",
@@ -385,6 +394,15 @@ const SNAPSHOT: unknown = [
   "startDay": null,
   "approvalsPendingSince": null,
   "raiserNote": "",
-  "deciderUserId": null
+  "deciderUserId": null,
+  "doneBy": null,
+  "doneByMoves": [],
+  "pausedUntil": null,
+  "pauseWhy": "",
+  "lastActivityDay": null,
+  "checkInWeekday": null,
+  "howWeWorkNote": "",
+  "leadVacatedDay": null,
+  "latestUpdate": null
  }
 ];
