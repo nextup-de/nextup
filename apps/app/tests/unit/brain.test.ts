@@ -61,7 +61,7 @@ describe("evaluate with the brain", () => {
     expect(ev.confidence).toBe(90);
     expect(ev.sameAs?.title).toContain("€300 parts order");
     expect(ev.steps[1].detail).toContain("A small parts order is spend.");
-    expect(ev.payload.proposal).toEqual({ routeId: "r1", confidence: 90, source: "llm", version: "brain-route-v1" });
+    expect(ev.payload.proposal).toEqual({ routeId: "r1", confidence: 90, source: "llm", version: "brain-route-v1", sameAs: "c2", related: [] });
     expect(ev.payload.routeId).toBe("r1");
   });
   it("no row from the brain means no row - it does not fall back to keywords silently", () => {

@@ -52,7 +52,7 @@ describe("benchmark", () => {
   it("an open case that reads the same costs novelty and is named", () => {
     const b = benchmark({ text: "Let the night shift sign a €300 parts order", affected: [], attachments: 0 }, ctx);
     expect(b.sameAs?.from).toBe("S. Dahl");
-    expect(b.parts[3].missing[0]).toContain("co-sign");
+    expect(b.parts[3].missing[0]).toContain("Say what is different about yours");
   });
   it("time is not money: \"costs 20 minutes\" does not ask for a price", () => {
     const b = benchmark({ text: "Fixed rig day - the wait costs about 20 minutes per changeover", affected: [], attachments: 0 }, ctx);

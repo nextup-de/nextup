@@ -155,7 +155,7 @@ export function coachMock(prev: Benchmark | null, now: Benchmark, threshold: num
     read.push(`Still at ${now.overall}. I read that, but the four benchmarks only move on things they can check - a goal, a number, a decider, a first step - and there was none of that in it${gaps ? ". Still open: " + gaps : ""}.`);
   }
   // Said once, when the match first appears; the chip and the side panel keep showing it.
-  if (now.sameAs && !prev?.sameAs) read.push(`One more thing: something close is already raised, “${now.sameAs.title}”. You can co-sign it instead, or say in a sentence what is different about yours.`);
+  if (now.sameAs && !prev?.sameAs) read.push(`One more thing: something close is already raised, “${now.sameAs.title}”. Say in a sentence what is different about yours: the desk sees both and can merge them.`);
 
   const ask: string[] = [];
   if (w && again) {
@@ -176,7 +176,7 @@ export function coachBrief(now: Benchmark, threshold: number): string {
   return [
     `The idea scores ${now.overall}/100; it can be published at ${threshold}. The scores are computed, not yours to change - never state a different number.`,
     bars,
-    now.sameAs ? `A close match is already raised: "${now.sameAs.title}". Mention it and suggest co-signing.` : "",
+    now.sameAs ? `A close match is already raised: "${now.sameAs.title}". Mention it and ask what is different about theirs: the desk sees both and can merge them.` : "",
     w ? `Ask exactly one short, challenging question that would raise "${w.label}". Do not answer it yourself.` : "Tell them it is ready to publish.",
   ].filter(Boolean).join("\n");
 }
