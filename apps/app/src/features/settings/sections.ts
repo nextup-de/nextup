@@ -2,7 +2,7 @@
 // Pure: the layout and the index page fetch the counts and hand them in.
 import type { MessageKey } from "@/i18n";
 
-export type SettingsSectionKey = "company" | "rules" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "signIn" | "supportAccess" | "teams" | "areas" | "privacy" | "audit" | "goLive" | "pilotReport";
+export type SettingsSectionKey = "company" | "rules" | "approvals" | "calendar" | "org" | "routing" | "members" | "importExport" | "notifications" | "webhooks" | "apiTokens" | "signIn" | "supportAccess" | "teams" | "areas" | "privacy" | "audit" | "goLive" | "pilotReport";
 export type SettingsGroup = "start" | "company" | "structure" | "data";
 /** `menu: false`: the page keeps its address but is not in the settings menu. */
 export type SettingsSection = { key: SettingsSectionKey; path: string; label: MessageKey; group: SettingsGroup; menu?: false };
@@ -11,6 +11,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { key: "goLive", path: "go-live", label: "settingsGoLive.navLabel", group: "start" },
   { key: "company", path: "company", label: "settingsCompany.navLabel", group: "company" },
   { key: "rules", path: "rules", label: "settingsCompany.navRules", group: "company" },
+  { key: "approvals", path: "approvals", label: "approvals.navApprovals", group: "company" },
   { key: "calendar", path: "calendar", label: "settingsCompany.navCalendar", group: "company" },
   { key: "org", path: "org", label: "settingsOrg.navLabel", group: "structure" },
   { key: "routing", path: "routing", label: "settings.navRouting", group: "structure" },

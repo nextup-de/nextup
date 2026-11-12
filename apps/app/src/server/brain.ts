@@ -62,7 +62,7 @@ export function brainConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
 export type BrainPolicy = { patterns: readonly string[]; ceiling: Level };
 
 // Every failure is null, this one too: without the company there is no request to make.
-async function companyFor(slug: string, policy: BrainPolicy, audience?: Audience) {
+export async function companyFor(slug: string, policy: BrainPolicy, audience?: Audience) {
   try {
     return await loadCompany(slug, policy, audience);
   } catch (err) {
@@ -144,14 +144,17 @@ export function llmFor(settings: AiSettings, key: string | null | undefined): Br
 }
 
 // Closed gate, or an incomplete endpoint: null, no request. Otherwise the body gets `llm` when the company has its own.
-function withLlm(gate: AiGate, opts: BrainOptions, body: object): object | null {
+export function withLlm(gate: AiGate, opts: BrainOptions, body: object): object | null {
   if (!gate.on) return null;
   const llm = llmFor(gate.settings, opts.key);
   if (llm === null) return null;
   return llm === "none" ? body : { ...body, llm };
 }
 
-type Counted = { model: string; tokens_in: number; tokens_out: number };
+export type Counted = { model: string; tokens_in: number; tokens_out: number };
+
+/** What a call needs of the company: the loaded name, routes, redaction and reduced state (the agent reads `clean` and `cleanAll`). */
+export type BrainCompany = NonNullable<Awaited<ReturnType<typeof companyFor>>>;
 
 // What a successful call used goes to AiCall. No database or no company: nothing is recorded; a
 // failure is logged and changes nothing for the caller.
@@ -162,11 +165,12 @@ function record(slug: string, purpose: string, answer: Counted, latencyMs: numbe
     .catch((err: unknown) => console.error("[brain]", slug, "usage not recorded", err instanceof Error ? err.name : "failed"));
 }
 
-async function post<T extends Counted>(slug: string, purpose: string, path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal, doFetch: typeof fetch = fetch): Promise<T | null> {
+/** `timeoutMs`: how long this call waits; left out, BRAIN_TIMEOUT_MS or the default (AGT's longer calls pass their own). */
+export async function post<T extends Counted>(slug: string, purpose: string, path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal, doFetch: typeof fetch = fetch, timeoutMs?: number): Promise<T | null> {
   const url = process.env.BRAIN_URL, key = process.env.BRAIN_API_KEY;
   if (!url || !key) return null;
   const started = Date.now();
-  const timeout = AbortSignal.timeout(Number(process.env.BRAIN_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS);
+  const timeout = AbortSignal.timeout(timeoutMs ?? (Number(process.env.BRAIN_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS));
   try {
     const res = await doFetch(url.replace(/\/$/, "") + path, {
       method: "POST",
