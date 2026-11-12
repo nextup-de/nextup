@@ -142,8 +142,9 @@ describe("SET notices", () => {
     expect(f.map((m) => [m.to, m.subject])).toEqual([["ci@acme.test", "You follow P-1: Changeover cart"]]);
     expect(f[0].text).toContain("added you as a follower");
     // An invitation the reducer refused is not told.
-    expect(mails(inv, [draftYes()], draft())).toEqual([]);
-    expect(mails(follow, [draftYes()], draft())).toEqual([]);
+    // (The reducer takes both events now, so the state is set back by hand to the one a refusal leaves.)
+    expect(mails(inv, [draftYes()], draft({ invites: [] }))).toEqual([]);
+    expect(mails(follow, [draftYes()], draft({ followerUserIds: [] }))).toEqual([]);
   });
 
   it("an invitation on a private or custom idea says that being invited lets the person read it", () => {
