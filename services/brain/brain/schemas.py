@@ -282,3 +282,97 @@ class CheckinOut(BaseModel):
     tokens_out: int = 0
     version: str
     ms: int
+
+
+# ---------------------------------------------------------------- the project agent (brain/agent.py, plan AGT)
+# The shapes are fixed in apps/app/src/features/agent/contract.ts (AgentRequest, AgentReply): a change goes to both. A step's owner is a
+# role or "no owner", never a name; the brain stores nothing and sees only the reduced project.
+AgentKind = Literal["unblock", "report", "plan"]
+AgentColumn = Literal["todo", "doing", "blocked", "done"]
+RideKind = Literal["quiet", "stalled", "late", "blocked"]
+
+
+class AgentStep(Strict):
+    id: str = Field(min_length=1, max_length=40)
+    title: str = Field(max_length=200)
+    role: str | None = Field(None, max_length=80, description="The role the step waits on, or null")
+    column: AgentColumn
+    due_day: int | None = None
+    owner: str = Field(max_length=80, description="A role, or 'no owner': never a name")
+    blocked_why: str | None = Field(None, max_length=400)
+
+
+class AgentFact(Strict):
+    id: str = Field(min_length=1, max_length=60)
+    kind: RideKind
+    step_id: str | None = Field(None, max_length=40)
+    day: int
+
+
+class AgentUpdate(Strict):
+    week: int
+    day: int
+
+
+class AgentProject(Strict):
+    id: str = Field(min_length=1, max_length=40)
+    title: str = Field(max_length=300)
+    goal: str | None = Field(None, max_length=400)
+    done_when: str | None = Field(None, max_length=400)
+    done_by: int | None = None
+    paused_until: int | None = None
+    last_activity_day: int | None = None
+    latest_update: AgentUpdate | None = None
+    check_in_day: int | None = None
+    week_sent: bool
+    steps: list[AgentStep] = Field(max_length=60)
+    facts: list[AgentFact] = Field(max_length=40)
+
+
+class AgentIn(Strict):
+    company: str = Field(min_length=1, max_length=120)
+    locale: Locale
+    today: int
+    project: AgentProject
+    kinds: list[AgentKind] = Field(max_length=3, description="The kinds the app can take today")
+    llm: LlmOverride | BedrockOverride | None = None
+
+
+class AgentStepProposal(Strict):
+    title: str = Field(max_length=120, description="The one missing step, one action, at most 15 words")
+    role: str = Field(max_length=80, description="The role that should do it, never a name")
+    due_in_days: int = Field(ge=1, le=60, description="Working days from today")
+
+
+# The why comes before the draft: the model says why before it writes.
+class AgentSuggestionDraft(Strict):
+    kind: AgentKind
+    step_id: str | None = Field(description="unblock: the open step it is about; otherwise null")
+    fact_id: str | None = Field(description="unblock: the id of the clock fact it rides on; otherwise null")
+    title: str = Field(max_length=120, description="A short line naming what is suggested")
+    why: str = Field(max_length=300, description="One or two sentences: why now, from what the project shows")
+    draft: str = Field(max_length=1500, description="unblock: the nudge to the role the step waits on; report: the week's update; plan: one sentence on why the step is missing")
+    step: AgentStepProposal | None = Field(description="plan: the step to add; otherwise null")
+
+
+class AgentDraft(Strict):
+    suggestions: list[AgentSuggestionDraft] = Field(max_length=3, description="At most one per kind; empty when there is nothing to say")
+
+
+class AgentSuggestion(BaseModel):
+    kind: AgentKind
+    step_id: str | None
+    fact_id: str | None
+    title: str
+    why: str
+    draft: str
+    step: AgentStepProposal | None
+
+
+class AgentOut(BaseModel):
+    suggestions: list[AgentSuggestion]
+    model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    version: str
+    ms: int
