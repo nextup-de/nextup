@@ -24,6 +24,8 @@ describe("REG loop notice split", () => {
       "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded",
       // A project that keeps moving (plan MOV, D23); project.howwework tells nobody.
       "project.lead.changed", "project.doneby.moved", "project.paused", "project.resumed", "project.update", "project.lead.vacated",
+      // A result that closes properly (plan RES, D18).
+      "project.claimed", "project.measure.questioned", "project.help.asked", "project.baseline.confirmed",
     ];
     expect(Object.keys(CASE_NOTICES).sort()).toEqual([...caseTypes].sort());
     expect(Object.keys(PROJECT_NOTICES).sort()).toEqual([...projectTypes].sort());
