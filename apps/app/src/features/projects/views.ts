@@ -43,12 +43,19 @@ const GROUPS: { key: "planning" | "running" | "measuring" | "measured" | "stoppe
   { key: "stopped", has: ["stopped"] },
 ];
 
-/** The list's groups, in the order a project moves through them. Late ones first, then by number. Empty groups stay (the page hides them). */
-export function groupProjects(list: readonly ReducedProject[], locale: Locale = DEFAULT_LOCALE): ProjectGroup[] {
+/**
+ * The list's groups, in the order a project moves through them. Inside a group the most relevant first: the
+ * reader's own (lead or on the team, by `userId`), then late ones, then the next move due soonest, then by
+ * number. Empty groups stay (the page hides them).
+ */
+export function groupProjects(list: readonly ReducedProject[], locale: Locale = DEFAULT_LOCALE, userId: string | null = null): ProjectGroup[] {
+  const mine = (p: ReducedProject) => userId !== null && (p.leadUserId === userId || p.memberUserIds.includes(userId));
+  const due = (p: ReducedProject) => p.dueDay ?? Infinity;
   return GROUPS.map((g) => ({
     key: g.key,
     label: translate(locale, ("projects.group_" + g.key) as "projects.group_planning"),
-    projects: list.filter((p) => g.has.includes(p.status)).sort((a, b) => Number(b.overdue) - Number(a.overdue) || a.number - b.number),
+    projects: list.filter((p) => g.has.includes(p.status))
+      .sort((a, b) => Number(mine(b)) - Number(mine(a)) || Number(b.overdue) - Number(a.overdue) || due(a) - due(b) || a.number - b.number),
   }));
 }
 

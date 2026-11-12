@@ -181,8 +181,8 @@ export function OverviewChats(p: OverviewChatsProps) {
         <div key="feed" className={s.div78}>
           <div className={s.div79}>
             <div className={s.div94}>
-              <div className={s.div95}><span className={s.supporters}>{p.supporters}</span><span className={s.dept}>{t("team.chatsSupporterWord")}</span></div>
-              <div className={s.div95}><span className={s.supporters}>{p.feed.length}</span><span className={s.dept}>{t("team.chatsCommentWord", { count: p.feed.length })}</span></div>
+              {p.supporters > 0 && <div className={s.div95}><span className={s.supporters}>{p.supporters}</span><span className={s.dept}>{t("team.chatsSupporterWord")}</span></div>}
+              {p.feed.length > 0 && <div className={s.div95}><span className={s.supporters}>{p.feed.length}</span><span className={s.dept}>{t("team.chatsCommentWord", { count: p.feed.length })}</span></div>}
             </div>
             <span className={s.sentiment}>{p.sentiment}</span>
             {p.feed.length === 0 && <span className={s.dept}>{t("team.chatsNoComments")}</span>}

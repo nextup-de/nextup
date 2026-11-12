@@ -42,7 +42,7 @@ export function DecisionLog({ t, base, lines, total, page, pageSize, filters, pr
     <div className={styles.page}>
       {/* With projects on this is a tab of Projects: the tab names the page. */}
       {projectsOn
-        ? <h2 className={styles.sectionHead}>{t("decisions.sectionTitle")}<span className={styles.sectionCount}>{total}</span></h2>
+        ? <h2 className={styles.sectionHead}>{t("decisions.sectionTitle")}{total > 0 && <span className={styles.sectionCount}>{total}</span>}</h2>
         : <PageHeader title={t("decisions.title")} lede={t("decisions.lead")} />}
       <SectionCard name="decisions">
 
