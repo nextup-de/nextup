@@ -21,11 +21,17 @@ import { pseudonymOf } from "@/lib/db/pseudonymise";
 import { hasVerifiedEmail } from "@/features/privacy/export";
 import { linkSeat } from "@/lib/db/org-edit";
 import { loadOpenedAt, mailInvitation } from "@/server/setup-open";
+import { getLocale } from "@/i18n/server";
+import { createT, type MessageKey } from "@/i18n";
+import { fromDirectory, memberEditProblem } from "@/features/tenant/member-edit";
 import { recordAudit, settingsActor } from "@/server/audit/record";
 import { audited } from "./settings/audited";
 import { companyAdminOf } from "./settings/guard";
 
-const auditFailed = "Nothing was changed: the change could not be written to the audit trail. Try again.";
+/** A message of this file's actions, in the language of the request (D5). */
+async function say(key: MessageKey, params?: Record<string, string | number>): Promise<string> {
+  return createT(await getLocale())(key, params);
+}
 
 export type SeatLabel = { id: string; label: string };
 export type MemberRow = Member & {
@@ -38,6 +44,8 @@ export type MemberRow = Member & {
   seats: SeatLabel[];
   /** Their invitation waits for "Open NextUp". */
   held: boolean;
+  /** The person comes from the directory (a sync or Microsoft sign-in): their name and email are corrected there. */
+  fromDirectory: boolean;
 };
 
 type Manager = { userId: string; companyId: string; slug: string };
@@ -87,6 +95,7 @@ async function membersOf(companyId: string): Promise<MemberRow[]> {
       pseudonymisedAt: pseudonyms.get(u.id)?.at.toISOString() ?? null,
       seats: held.filter((h) => h.userId === u.id).map((h) => ({ id: h.id, label: `${h.role.title} · ${h.name}` })),
       held: u.invitationHeldAt !== null,
+      fromDirectory: fromDirectory(u),
     }));
 }
 
@@ -113,19 +122,17 @@ export async function loadMembers(slug: string): Promise<MembersPage> {
   return { status: "ok", me: manager.userId, members: await membersOf(manager.companyId), freeSeats: await freeSeatsOf(manager.companyId) };
 }
 
-const forbidden = "Only a manager of this company can do that.";
-
 export type CodeState = { name?: string; code?: string; error?: string };
 
 /** A new personal login code. The previous one stops working at once. Shown once. */
 export async function issueMemberCodeAction(_prev: CodeState, form: FormData): Promise<CodeState> {
   const manager = await managerOf(String(form.get("slug") ?? ""));
-  if (!manager) return { error: forbidden };
+  if (!manager) return { error: await say("settings.memberForbidden") };
   const user = await getDb().user.findFirst({
     where: { id: String(form.get("userId") ?? ""), companyId: manager.companyId },
     select: { id: true, name: true },
   });
-  if (!user) return { error: "No such person in this company." };
+  if (!user) return { error: await say("settings.memberNoSuchPerson") };
 
   const code = generateLoginCode(manager.slug);
   const saved = await audited(
@@ -137,7 +144,7 @@ export async function issueMemberCodeAction(_prev: CodeState, form: FormData): P
       data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date(), invitationHeldAt: null },
     }),
   );
-  if (!saved.ok) return { error: auditFailed };
+  if (!saved.ok) return { error: await say("settings.memberAuditFailed") };
   revalidatePath(`/${manager.slug}/settings/members`);
   revalidateSetup();
   return { name: user.name, code };
@@ -148,7 +155,7 @@ export type RoleState = { saved?: string; error?: string };
 /** Takes effect at the person's next login - the session cookie carries the role it was issued with. */
 export async function setMemberRoleAction(_prev: RoleState, form: FormData): Promise<RoleState> {
   const manager = await managerOf(String(form.get("slug") ?? ""));
-  if (!manager) return { error: forbidden };
+  if (!manager) return { error: await say("settings.memberForbidden") };
   const userId = String(form.get("userId") ?? "");
   const role = String(form.get("role") ?? "");
 
@@ -165,7 +172,7 @@ export async function setMemberRoleAction(_prev: RoleState, form: FormData): Pro
     () => ({ actor: settingsActor(manager), action: "audit.member.role", target: { kind: "user", id: userId }, changes: { role: { before: wasRole, after: role } }, source: "settings" }),
     (tx) => tx.user.update({ where: { id: userId, companyId: manager.companyId }, data: { role, ...(handle ? { handle } : {}) } }),
   );
-  if (!saved.ok) return { error: auditFailed };
+  if (!saved.ok) return { error: await say("settings.memberAuditFailed") };
   revalidatePath(`/${manager.slug}/settings/members`);
   revalidateSetup();
   return { saved: `${members.find((m) => m.id === userId)?.name} is now a ${role}. It applies from their next login.` };
@@ -217,7 +224,7 @@ async function createMember(manager: Scope & { userId: string }, form: FormData,
       select: { id: true },
     }),
   );
-  if (!saved.ok) return { problems: [auditFailed] };
+  if (!saved.ok) return { problems: [await say("settings.memberAuditFailed")] };
   revalidatePath(`/${manager.slug}/settings/members`);
   revalidateSetup();
   return { added: { name: person.name, code }, warnings: seed ? seedNameWarnings(seed, [person]) : [], email: person.email.toLowerCase() };
@@ -226,7 +233,7 @@ async function createMember(manager: Scope & { userId: string }, form: FormData,
 /** Adds a person and issues their first login code in one step - there is no code-less state worth having. */
 export async function addMemberAction(_prev: AddState, form: FormData): Promise<AddState> {
   const manager = await managerOf(String(form.get("slug") ?? ""));
-  if (!manager) return { problems: [forbidden] };
+  if (!manager) return { problems: [await say("settings.memberForbidden")] };
   const created = await createMember(manager, form, "audit.member.added");
   return { added: created.added, problems: created.problems, warnings: created.warnings };
 }
@@ -240,7 +247,7 @@ export type InviteState = AddState & { mailed?: boolean; mailError?: string; hel
  */
 export async function inviteMemberAction(_prev: InviteState, form: FormData): Promise<InviteState> {
   const admin = await companyAdminOf(String(form.get("slug") ?? ""));
-  if (!admin) return { problems: [forbidden] };
+  if (!admin) return { problems: [await say("settings.memberForbidden")] };
   const hold = (await loadOpenedAt(admin.companyId)) === null && String(form.get("role") ?? "member") !== "manager";
   const { email, ...result } = await createMember({ companyId: admin.companyId, slug: admin.companySlug, userId: admin.userId }, form, "audit.member.invited", hold);
   if (!result.added || !email) return result;
@@ -256,21 +263,21 @@ export type SeatState = { done?: boolean; error?: string };
 /** Link a free seat to a member, or (intent "unlink") clear a seat that member holds. Through linkSeat. */
 export async function memberSeatAction(_prev: SeatState, form: FormData): Promise<SeatState> {
   const admin = await companyAdminOf(String(form.get("slug") ?? ""));
-  if (!admin) return { error: forbidden };
+  if (!admin) return { error: await say("settings.memberForbidden") };
   const userId = String(form.get("userId") ?? "");
   const seatId = String(form.get("seatId") ?? "");
   const unlink = form.get("intent") === "unlink";
   const seat = await getDb().orgRoleHolder.findFirst({ where: { id: seatId, companyId: admin.companyId }, select: { userId: true } });
-  if (!seat) return { error: "No such seat in this company." };
-  if (unlink ? seat.userId !== userId : seat.userId !== null) return { error: unlink ? "That member does not hold this seat." : "That seat is taken." };
+  if (!seat) return { error: await say("settings.memberNoSuchSeat") };
+  if (unlink ? seat.userId !== userId : seat.userId !== null) return { error: await say(unlink ? "settings.memberNotHoldSeat" : "settings.memberSeatTaken") };
   const after = unlink ? null : userId;
   const saved = await audited(
     admin.companyId,
     (ok: boolean) => (ok ? { actor: settingsActor(admin), action: "audit.member.seat", target: { kind: "seat", id: seatId }, changes: { userId: { before: seat.userId, after } }, source: "settings" } : null),
     (tx) => linkSeat(admin.companyId, seatId, after, tx),
   );
-  if (!saved.ok) return { error: auditFailed };
-  if (!saved.value) return { error: "That person is not an active member of this company." };
+  if (!saved.ok) return { error: await say("settings.memberAuditFailed") };
+  if (!saved.value) return { error: await say("settings.seatErrMember") };
   revalidatePath(`/${admin.companySlug}/settings/members`);
   revalidateSetup();
   return { done: true };
@@ -281,12 +288,12 @@ export type RemoveState = { done?: string; error?: string };
 /** The leaver path of the directory sync for one person: inactive, seats vacated, open cases handed. Never oneself. */
 export async function deactivateMemberAction(_prev: RemoveState, form: FormData): Promise<RemoveState> {
   const manager = await managerOf(String(form.get("slug") ?? ""));
-  if (!manager) return { error: forbidden };
+  if (!manager) return { error: await say("settings.memberForbidden") };
   const userId = String(form.get("userId") ?? "");
-  if (userId === manager.userId) return { error: "You can't deactivate yourself. Ask another manager." };
+  if (userId === manager.userId) return { error: await say("settings.memberSelfDeactivate") };
   const user = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { name: true, active: true } });
-  if (!user) return { error: "No such person in this company." };
-  if (!user.active) return { error: `${user.name} is inactive already.` };
+  if (!user) return { error: await say("settings.memberNoSuchPerson") };
+  if (!user.active) return { error: await say("settings.memberInactiveAlready", { name: user.name }) };
   // The user switch-off and the audit row commit together; the hand-over of open cases follows (idempotent events).
   let failed = false;
   await deactivateUser(manager.companyId, userId, new Date(), async (tx) => {
@@ -300,7 +307,7 @@ export async function deactivateMemberAction(_prev: RemoveState, form: FormData)
   }).catch((err: unknown) => {
     if (!failed) throw err;
   });
-  if (failed) return { error: auditFailed };
+  if (failed) return { error: await say("settings.memberAuditFailed") };
   revalidatePath(`/${manager.slug}/settings/members`);
   revalidateSetup();
   return { done: `${user.name} is deactivated. Their open cases were handed on where someone else holds the role.` };
@@ -312,12 +319,12 @@ export async function deactivateMemberAction(_prev: RemoveState, form: FormData)
  */
 export async function reactivateMemberAction(_prev: RemoveState, form: FormData): Promise<RemoveState> {
   const manager = await managerOf(String(form.get("slug") ?? ""));
-  if (!manager) return { error: forbidden };
+  if (!manager) return { error: await say("settings.memberForbidden") };
   const userId = String(form.get("userId") ?? "");
   const user = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { name: true, active: true } });
   const pseudonymised = (await pseudonymOf(manager.companyId, [userId])).has(userId);
   const problem = reactivateProblem(user && { ...user, pseudonymised }, userId === manager.userId);
-  if (problem || !user) return { error: problem ?? "No such person in this company." };
+  if (problem || !user) return { error: problem ?? await say("settings.memberNoSuchPerson") };
   const saved = await audited(
     manager.companyId,
     () => ({ actor: settingsActor(manager), action: "audit.member.reactivated", target: { kind: "user", id: userId }, changes: {}, source: "settings" }),
@@ -326,7 +333,7 @@ export async function reactivateMemberAction(_prev: RemoveState, form: FormData)
       data: { active: true, deactivatedAt: null, loginCodeHash: null, loginCodeAt: null },
     }),
   );
-  if (!saved.ok) return { error: auditFailed };
+  if (!saved.ok) return { error: await say("settings.memberAuditFailed") };
   revalidatePath(`/${manager.slug}/settings/members`);
   revalidateSetup();
   return { done: `${user.name} is active again. Their old login code no longer works: issue a new one, and link their seats in Org.` };
@@ -335,12 +342,12 @@ export async function reactivateMemberAction(_prev: RemoveState, form: FormData)
 /** Removes an inactive person. Their events stay with the label; the link to the user is cleared (SetNull). */
 export async function deleteMemberAction(_prev: RemoveState, form: FormData): Promise<RemoveState> {
   const manager = await managerOf(String(form.get("slug") ?? ""));
-  if (!manager) return { error: forbidden };
+  if (!manager) return { error: await say("settings.memberForbidden") };
   const userId = String(form.get("userId") ?? "");
-  if (userId === manager.userId) return { error: "You can't delete yourself. Ask another manager." };
+  if (userId === manager.userId) return { error: await say("settings.memberSelfDelete") };
   const user = await getDb().user.findFirst({ where: { id: userId, companyId: manager.companyId }, select: { name: true, active: true } });
-  if (!user) return { error: "No such person in this company." };
-  if (user.active) return { error: `${user.name} is still active. Deactivate them first.` };
+  if (!user) return { error: await say("settings.memberNoSuchPerson") };
+  if (user.active) return { error: await say("settings.memberStillActive", { name: user.name }) };
   const saved = await audited(
     manager.companyId,
     () => ({ actor: settingsActor(manager), action: "audit.member.deleted", target: { kind: "user", id: userId }, changes: {}, source: "settings" }),
@@ -349,8 +356,55 @@ export async function deleteMemberAction(_prev: RemoveState, form: FormData): Pr
       await tx.user.delete({ where: { id: userId, companyId: manager.companyId } });
     },
   );
-  if (!saved.ok) return { error: auditFailed };
+  if (!saved.ok) return { error: await say("settings.memberAuditFailed") };
   revalidatePath(`/${manager.slug}/settings/members`);
   revalidateSetup();
   return { done: `${user.name} is deleted.` };
+}
+
+export type EditState = { saved?: boolean; error?: string };
+
+/**
+ * Corrects the name and the email of a person NextUp created itself (Q10.12, D23). A person from the directory is
+ * corrected at the source, a pseudonymised one not at all. Only a company admin; the change and its one audit row
+ * (the fields that changed, before and after) commit together. Nothing changed: nothing is written.
+ */
+export async function saveMemberDetailsAction(_prev: EditState, form: FormData): Promise<EditState> {
+  const admin = await companyAdminOf(String(form.get("slug") ?? ""));
+  if (!admin) return { error: await say("settings.memberForbidden") };
+  const userId = String(form.get("userId") ?? "");
+  const input = { name: String(form.get("name") ?? ""), email: String(form.get("email") ?? "") };
+
+  const user = await getDb().user.findFirst({
+    where: { id: userId, companyId: admin.companyId },
+    select: { name: true, email: true, entraOid: true, directorySyncedAt: true },
+  });
+  if (!user) return { error: await say("settings.memberNoSuchPerson") };
+  const pseudonymisedAt = (await pseudonymOf(admin.companyId, [userId])).get(userId)?.at ?? null;
+  const email = input.email.trim().toLowerCase();
+  const taken = email !== "" && (await getDb().user.findFirst({
+    where: { companyId: admin.companyId, id: { not: userId }, email: { equals: email, mode: "insensitive" } },
+    select: { id: true },
+  })) !== null;
+  const problem = memberEditProblem(input, { entraOid: user.entraOid, directorySyncedAt: user.directorySyncedAt, pseudonymisedAt }, taken);
+  if (problem) return { error: await say(problem) };
+
+  const name = input.name.trim();
+  const changes: { name?: { before: string; after: string }; email?: { before: string; after: string } } = {};
+  if (name !== user.name) changes.name = { before: user.name, after: name };
+  if (email !== user.email) changes.email = { before: user.email, after: email };
+  if (!changes.name && !changes.email) return { saved: true };
+
+  const saved = await audited(
+    admin.companyId,
+    () => ({ actor: settingsActor(admin), action: "audit.member.saved", target: { kind: "user", id: userId }, changes, source: "settings" }),
+    (tx) => tx.user.update({
+      where: { id: userId, companyId: admin.companyId },
+      data: { ...(changes.name ? { name, ini: initialsOf(name) } : {}), ...(changes.email ? { email } : {}) },
+    }),
+  );
+  if (!saved.ok) return { error: await say("settings.memberAuditFailed") };
+  revalidatePath(`/${admin.companySlug}/settings/members`);
+  revalidateSetup();
+  return { saved: true };
 }

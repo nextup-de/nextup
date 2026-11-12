@@ -26,6 +26,7 @@ import {
 } from "@/server/actions/members";
 import { enrolledManagersAction, resetTotpAction } from "@/server/actions/settings/totp-reset";
 import { DeptChip, PersonFace } from "@/components/ui/elements";
+import { MemberEditDialog } from "./MemberEditDialog";
 import { PersonExportDialog } from "./PersonExportDialog";
 import { PseudonymiseDialog } from "./PseudonymiseDialog";
 import { SettingsHead } from "./SettingsParts";
@@ -77,6 +78,7 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
   const [enrolled, setEnrolled] = useState<string[]>([]);
   const [exporting, setExporting] = useState<MemberRow | null>(null);
   const [pseudonymising, setPseudonymising] = useState<MemberRow | null>(null);
+  const [editing, setEditing] = useState<MemberRow | null>(null);
   const [privacyMsg, setPrivacyMsg] = useState<string | null>(null);
   const [askingTotp, setAskingTotp] = useState<MemberRow | null>(null);
   const [totpMsg, setTotpMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -227,6 +229,11 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
                       </form>
                     ) : null}
                     {!privacy.deleteOnly && m.active ? <button type="button" onClick={(e) => { closeMenu(e.currentTarget); setSeatsFor(m); }}>{t("settings.seatsMenu")}</button> : null}
+                    {m.pseudonymisedAt ? null : m.fromDirectory ? (
+                      <button type="button" disabled data-testid="member-edit-directory">{t("settings.memberEditFromDirectory")}</button>
+                    ) : (
+                      <button type="button" disabled={demo} onClick={(e) => { closeMenu(e.currentTarget); setEditing(m); }} data-testid="member-edit-open">{t("settings.memberEditMenu")}</button>
+                    )}
                     {!privacy.deleteOnly && m.id !== me && m.role === "manager" && enrolled.includes(m.id) ? (
                       <button type="button" disabled={resetting} onClick={(e) => { closeMenu(e.currentTarget); setAskingTotp(m); }}>{t("settings.totpReset")}</button>
                     ) : null}
@@ -335,6 +342,7 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
             <input type="hidden" name="intent" value={asking.active ? "deactivate" : "delete"} />
             <h2 id="remove-title" className={s.cardTitle}>{t(asking.active ? "settings.deactivateAsk" : "settings.deleteAsk", { name: asking.name })}</h2>
             <p className={s.dialogText}>{asking.active ? t("settings.deactivateText") : t("settings.deleteText")}</p>
+            {!asking.active && asking.fromDirectory && !asking.pseudonymisedAt ? <p className={s.dialogText} data-testid="member-delete-sync-warning"><strong>{t("settings.deleteSyncWarning")}</strong></p> : null}
             <div className={s.dialogButtons}>
               <button type="button" className={s.soft} onClick={() => setAsking(null)}>{t("settings.cancel")}</button>
               <button type="submit" className={s.dangerBtn} disabled={removing || demo}>
@@ -348,6 +356,9 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
       {exporting ? (
         <PersonExportDialog slug={slug} member={exporting} exportTo={memberPrivacyActions(exporting, me).exportTo}
           onClose={() => setExporting(null)} onDone={(msg) => { setExporting(null); setPrivacyMsg(msg); }} />
+      ) : null}
+      {editing ? (
+        <MemberEditDialog slug={slug} member={editing} onClose={() => setEditing(null)} onDone={() => setEditing(null)} />
       ) : null}
       {pseudonymising ? (
         <PseudonymiseDialog slug={slug} member={pseudonymising}
