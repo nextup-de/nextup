@@ -253,7 +253,7 @@ describe("TST channels", () => {
       const d = await appendEventRow(companyId, { id: `e_tstc_dec_${++n}`, day: 0, type: "case.decided", actor: "Desk", targetId: raised.targetId!, payload: { answer: "yes", reason: "Fixed on Monday" } }, { actorUserId: area.deskUserId });
       expect(d.ok).toBe(true);
       seed = await seedOf();
-      expect(await floorStatus(SLUG, res.reference, `a:tstc-look-${device}`)).toMatchObject({ ok: true, view: { step: "decided", decision: { answer: "yes", reason: "Fixed on Monday" } } });
+      expect(await floorStatus(SLUG, res.reference, `a:tstc-look-${device}`)).toMatchObject({ ok: true, view: { step: "decided", decision: { answer: "yes", reason: null } } }); // NOR D25: the floor shows the answer, never the desk's text
     }
     // The desk of the Teams site is told on Teams, the others by mail.
     await flush(at9(41));
