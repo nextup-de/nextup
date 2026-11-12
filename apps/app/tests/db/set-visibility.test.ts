@@ -175,6 +175,35 @@ describe("SET draft visibility", () => {
     expect(everything((await loadCaseFor(companyId, holder, "v-x-case"))!.events)).not.toContain("SECRET");
   });
 
+  it("the desk's line to the raiser reaches the raiser and the people on the draft, and nobody else who reads the case (D23)", async () => {
+    const append = async (id: string, type: string, actor: string, targetId: string, payload: Record<string, unknown>) => {
+      const r = await appendEventRow(companyId, { id, day: 0, type, actor, targetId, payload } as never, { actorUserId: user[actor], now });
+      if (!r.ok) throw new Error(r.error);
+    };
+    const route = (await companySeed({ id: companyId, seedJson: (await db.company.findUniqueOrThrow({ where: { id: companyId }, select: { seedJson: true } })).seedJson, stage: "sandbox" })).routes.find((r) => r.ownerSeatId)!;
+    await append("v-n-raised", "case.raised", "J. Schmidt", "v-n-case", { kind: "idea", title: "Idea n", routeId: route.id, visibility: "everyone" });
+    await append("v-n-yes", "case.decided", "T. Vogel", "v-n-case", { answer: "yes", projectId: "p_n", lead: "K. Lead", leadUserId: user["K. Lead"], title: "Project n", draft: true, raiserNote: "NOTE FOR THE RAISER" });
+    await append("v-n-inv", "project.invited", "K. Lead", "p_n", { userId: user["I. Invitee"], role: "contributor" });
+    await append("v-n-fol", "project.invited", "K. Lead", "p_n", { userId: user["F. Follower"], role: "follower" });
+    const noteOf = async (name: string) => {
+      const got = await loadCaseFor(companyId, viewer(name), "v-n-case");
+      expect(got, `${name} reads the case`).not.toBeNull();
+      const decided = got!.events.find((e) => e.type === "case.decided");
+      expect(decided, `${name} gets the yes`).toBeDefined();
+      // The same in the whole log the page is built from.
+      const inLog = (await loadLogFor(companyId, viewer(name), now)).log.events.find((e) => e.id === "v-n-yes");
+      expect(JSON.stringify(inLog?.payload), name).toBe(JSON.stringify(decided!.payload));
+      return (decided!.payload as { raiserNote?: string }).raiserNote;
+    };
+    for (const name of ["J. Schmidt", "T. Vogel", "K. Lead", "I. Invitee", "F. Follower", "B. Hartmann"]) expect(await noteOf(name), name).toBe("NOTE FOR THE RAISER");
+    for (const name of ["O. Outsider", "D. Decliner"]) {
+      expect(await noteOf(name), name).toBeUndefined();
+      expect(JSON.stringify((await loadCaseFor(companyId, viewer(name), "v-n-case"))!.events), name).not.toContain("NOTE FOR THE RAISER");
+      // Everything else of the yes stays: the answer, the project and its lead.
+      expect((await loadCaseFor(companyId, viewer(name), "v-n-case"))!.events.find((e) => e.type === "case.decided")!.payload).toMatchObject({ answer: "yes", projectId: "p_n", draft: true });
+    }
+  });
+
   it("another company's viewer gets nothing of it", async () => {
     const v: LogViewer = { userId: other.userId, role: "manager" };
     expect(await loadCaseFor(other.companyId, v, "v-d-case")).toBeNull();

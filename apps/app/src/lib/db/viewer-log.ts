@@ -124,8 +124,22 @@ export async function cutDrafts(companyId: string, viewer: LogViewer, rows: Even
     if (mayReadDraft(p, viewer, cases.some(isPrivateIdea)) || holdsDraftEscalation(p, viewer, seats)) continue;
     cut.set(p.id, cases.some((c) => c.fromUserId === viewer.userId) ? Object.keys(RAISER_SUMMARY) : Object.keys(DRAFT_SUMMARY));
   }
-  if (cut.size === 0) return rows;
+  // The desk's line to the raiser (D23) is for the raiser and the people on the draft, not for everyone who may read the case.
+  const noteHeld = (r: EventRow): boolean => {
+    const pl = r.payload as EventPayload | null;
+    if (r.type !== "case.decided" || pl?.draft !== true || pl.raiserNote === undefined) return true;
+    const p = state.projects.find((x) => projectIdOf(r.payload).includes(x.id));
+    const cases = state.cases.filter((c) => c.id === r.targetId);
+    if (cases.some((c) => c.fromUserId === viewer.userId)) return true;
+    return p !== undefined && (mayReadDraft(p, viewer, cases.some(isPrivateIdea)) || holdsDraftEscalation(p, viewer, seats));
+  };
+  const stripped = new Set(rows.filter((r) => !noteHeld(r)).map((r) => r.id));
+  if (cut.size === 0 && stripped.size === 0) return rows;
   return rows.flatMap((r) => {
+    if (stripped.has(r.id)) {
+      const rest = Object.entries((r.payload ?? {}) as Record<string, unknown>).filter(([k]) => k !== "raiserNote");
+      return [{ ...r, payload: Object.fromEntries(rest) as EventPayload }];
+    }
     const keep = r.targetId === null ? undefined : cut.get(r.targetId);
     if (keep === undefined) return [r];
     if (!keep.includes(r.type)) return [];
