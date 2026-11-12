@@ -15,6 +15,8 @@ export type Step = {
   ownerUserId?: string | null;
   dueDay: number | null;
   column: StepColumn;
+  /** Dropped on the Done sheet (D13): it stays on the board, struck through, and counts in no total. Null/absent while it is not. */
+  dropped?: { why: string; day: number; byUserId: string | null } | null;
   /** Why it moved last (a blocked step says what blocks it). */
   why: string;
   /** The card's details: what "done" means, where to look. Empty when nobody wrote any. */
@@ -45,8 +47,18 @@ export type Invite = { id: string; userId: string; role: InviteRole; state: "pen
 
 /** The number taken before the start - or, honestly, none and why. */
 export type Baseline =
-  | { none: false; metric: string; unit: string; value: number; better: "up" | "down"; source: string; day: number; by: string }
-  | { none: true; why: string; day: number; by: string };
+  | ({ none: false; metric: string; unit: string; value: number; better: "up" | "down"; source: string; day: number; by: string } & BaselineRevision)
+  | ({ none: true; why: string; day: number; by: string } & BaselineRevision);
+
+/** What RES adds to either baseline (D16): who typed it, the revision's identity, and the second person's confirmation. */
+export type BaselineRevision = {
+  /** The user who typed it (the actorUserId of project.baseline): never the one who confirms it. */
+  byUserId?: string | null;
+  /** The project.baseline event that wrote it: the revision's identity. A confirmation names it, so it never confirms a replacement. */
+  eventId?: string | null;
+  /** Set by project.baseline.confirmed; a new project.baseline clears it. */
+  confirmed?: { byUserId: string | null; day: number } | null;
+};
 
 export type VerdictWord = "better" | "same" | "worse" | "not measured";
 
@@ -69,7 +81,23 @@ export type Measure = {
   verdict: VerdictWord;
   /** Change against the baseline in percent, signed as measured (null without a usable baseline). */
   changePct: number | null;
+  /** The project.measured event that wrote this revision: its identity. A questioning or confirmation names it (RES review, 12 Nov). Absent on a seed. */
+  eventId?: string | null;
+  // A result that closes properly (plan RES, D14).
+  /** Questioned once: the check counts as not measured until the lead enters it again. */
+  sentBack: boolean;
+  /** The lead entered the check again after a send-back; the confirm clock started over. */
+  reentered: boolean;
+  /** Questioned a second time: only a manager may confirm it now. */
+  managerOnly: boolean;
+  /** Every questioning, in order. */
+  questions: MeasureQuestion[];
+  /** The numbers this check had before each re-entry, oldest first. */
+  previous: { value: number; day: number; byUserId: string | null }[];
 };
+
+/** One project.measure.questioned: when, why, by whom. */
+export type MeasureQuestion = { day: number; why: string; byUserId: string | null };
 
 /** A measure check: opens `check` days after done, due `promiseDays` later, then goes to the deputy. */
 export type CheckDue = { check: number; opensDay: number; dueDay: number; measured: boolean; late: boolean };
@@ -182,6 +210,20 @@ export type ReducedProject = {
   leadVacatedDay: number | null;
   /** The latest project.update. */
   latestUpdate: { text: string; week: number; day: number; byUserId: string | null } | null;
+  // A result that closes properly (plan RES). A project nobody touched with those events has the empty values.
+  /** The day the latest result's confirmation made the reward due (D17), while rewardDue holds; else null. */
+  rewardDueDay: number | null;
+  /** Every project.help.asked (D19). */
+  helpAsks: HelpAsk[];
+};
+
+/** One 'ask the sponsor' on a step: the ask's id is its event's id. */
+export type HelpAsk = {
+  id: string; stepId: string; text: string; day: number; byUserId: string | null;
+  /** The accepted sponsor, when there is one who is not the lead; else the role of the desk that is asked. */
+  toUserId: string | null; toRoleId: string | null;
+  /** The day the asked person answered (a project.commented); null while open. */
+  answeredDay: number | null;
 };
 
 /** One project.doneby.moved: byLead says the mover was the lead at that event (the lead may move it once). */

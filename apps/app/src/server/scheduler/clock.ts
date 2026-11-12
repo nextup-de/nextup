@@ -15,6 +15,7 @@ import { getDb, hasDatabase } from "@/lib/db/client";
 import { claimClockLease, recordClockRun, releaseClockLease } from "@/lib/db/clock-lease";
 import { companySeed } from "@/lib/db/companies";
 import { appendEventRow, loadLog } from "@/lib/db/events";
+import { fallbackSeat } from "@/features/cases/stamp";
 import { seatAbove } from "@/features/knowledge";
 import { loadKnowledge } from "@/lib/db/knowledge";
 import { beforeAgentRun, writeAgentDue } from "./writers/agent";
@@ -43,10 +44,13 @@ async function runCompany(company: { id: string; slug: string; seedJson: unknown
   await beforeApprovalRun(company.id, log.day);
   await beforeOverloadRun(company.id, log.day);
   const knowledge = await loadKnowledge(company.id);
-  const state = reduce(await companySeed(company, knowledge), log);
-  const ctx = { state, today: log.day, companyId: company.id };
+  const seed = await companySeed(company, knowledge);
+  const state = reduce(seed, log);
+  // What the reduced state does not carry (plan NOR): the company's answer length and its fallback desk.
+  const extra = { promiseDays: seed.promiseDays, fallbackSeatId: fallbackSeat(seed)?.id ?? null };
+  const ctx = { state, today: log.day, companyId: company.id, promiseDays: extra.promiseDays };
   let written = 0;
-  for (const d of dueNow(state, log.day, (roleId, skip) => seatAbove(knowledge, roleId, skip)?.id ?? null)) {
+  for (const d of dueNow(state, log.day, (roleId, skip) => seatAbove(knowledge, roleId, skip)?.id ?? null, extra)) {
     // The first area that writes an event for this Due wins; none: the Due is stored as a clock.due fact.
     const w = writeCaseDue(d, ctx) ?? writeProjectDue(d, ctx) ?? writeAgentDue(d, ctx) ?? writeApprovalDue(d, ctx) ?? writeOverloadDue(d, ctx);
     if (w && "skip" in w) continue;

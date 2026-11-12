@@ -18,12 +18,14 @@ describe("REG loop notice split", () => {
   });
 
   it("every case.* type the old switch handled has a builder in CASE_NOTICES, and every project.* one in PROJECT_NOTICES", () => {
-    const caseTypes = ["case.discussion", "case.invited", "case.checkin", "case.asked", "case.answered", "case.unanswered", "case.withdrawn", "case.handed", "case.decided"];
+    const caseTypes = ["case.discussion", "case.invited", "case.checkin", "case.asked", "case.answered", "case.unanswered", "case.withdrawn", "case.handed", "case.decided", "case.reopened", "case.appealed", "case.appeal.decided", "case.override"];
     const projectTypes = [
       "project.handed", "project.stopped", "project.lead.answered", "project.invited", "project.invite.answered", "project.start.moved", "project.member",
       "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded",
       // A project that keeps moving (plan MOV, D23); project.howwework tells nobody.
       "project.lead.changed", "project.doneby.moved", "project.paused", "project.resumed", "project.update", "project.lead.vacated",
+      // A result that closes properly (plan RES, D18).
+      "project.claimed", "project.measure.questioned", "project.help.asked", "project.baseline.confirmed",
     ];
     expect(Object.keys(CASE_NOTICES).sort()).toEqual([...caseTypes].sort());
     expect(Object.keys(PROJECT_NOTICES).sort()).toEqual([...projectTypes].sort());

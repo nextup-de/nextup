@@ -68,7 +68,7 @@ describe("MET dashboard view", () => {
 
   it("splits by unit, hides small units, and leaves overruled unsplit", () => {
     const row = (id: string, hidden: boolean, v: number | null) => ({
-      kind: "unit" as const, id, label: id, depth: 0, cases: v, firstReasonedAnswer: v, onTimePct: v, pastPromise: v, escalated: v, hidden,
+      kind: "unit" as const, id, label: id, depth: 0, cases: v, firstReasonedAnswer: v, onTimePct: v, pastPromise: v, escalated: v, stalled: null, hidden,
     });
     const d = data({ units: [row("a", false, 4), row("b", true, null)] });
     const split = view(d, "firstReasonedAnswer").split!;

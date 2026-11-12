@@ -29,11 +29,17 @@ const ASK_TITLE: Record<InboxAsk, MessageKey> = { decide: "inbox.askDecide", con
 const KIND: Record<InboxKind, MessageKey> = {
   case: "inbox.kindCase", idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
   reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindMove", invitation: "inbox.kindView", approval: "inbox.kindConfirm",
-  stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "inbox.kindCase",
+  stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "caseNo.secondLook",
+  help: "inbox.kindMove", baseline: "inbox.kindConfirm", suggestion: "inbox.kindMove",
+};
+/** Why a case is back on the list (plan NOR, D26). */
+const CAUSE: Record<NonNullable<InboxItem["cause"]>, MessageKey> = {
+  reopened: "caseNo.cameBack", passed: "caseNo.passedToYou", back: "inbox.causeBack", up: "inbox.causeUp", moved: "caseNo.movedToYou",
 };
 // A decide item is opened by the id of its case or idea (the ?id= of its link). A project's own decide item (a stalled project, one with no
 // lead) has no case detail: its row is the link to the project page (plan MOV, D28).
-const opensInPlace = (i: InboxItem) => i.projectId === undefined;
+// A second look is answered on its case page (a link), not in this list's pane.
+const opensInPlace = (i: InboxItem) => i.projectId === undefined && i.kind !== "appeal";
 const openId = (i: InboxItem) => i.caseId ?? i.id.slice(i.id.indexOf(":") + 1);
 
 const PHONE = "(max-width: 760px)";
@@ -122,7 +128,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
                       <>
                         <span className={styles.rowMain}>
                           <span className={styles.rowTitle}>{i.title}</span>
-                          <span className={styles.rowKind}>{confirmNote(i) ?? t(KIND[i.kind])}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
+                          <span className={styles.rowKind}>{i.cause ? <span className={styles.cause} data-testid="inbox-cause" data-cause={i.cause}>{t(CAUSE[i.cause])} · </span> : null}{confirmNote(i) ?? t(KIND[i.kind])}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
                         </span>
                         {i.late ? <span className={styles.badge} data-tone="late">{t("inbox.late")}</span> : i.dueSoon ? <span className={styles.badge} data-tone="soon">{t("inbox.dueSoon")}</span> : null}
                       </>

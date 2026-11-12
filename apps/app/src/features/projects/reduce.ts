@@ -10,6 +10,7 @@ import { templateSteps } from "@/features/templates/library";
 import type { CheckDue, Invite, InviteRole, ReducedProject, SeedProject, Step, StepColumn } from "./types";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 import { readImpact, readSource, sourceLabel } from "./measure-source";
+import { revisionMatches } from "./result";
 import { verdictOf } from "./verdict";
 
 /**
@@ -41,6 +42,7 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
     draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
     goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
     doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null,
+    rewardDueDay: null, helpAsks: [],
   };
   book.byId[id] = project;
   book.order.push(id);
@@ -250,7 +252,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
         if (p.steps.some((x) => x.id === id)) return;
         p.steps.push({
           id, text: t.text, owner: null, ownerUserId: null, dueDay: f.takenDay === null ? null : f.takenDay + t.day, column: "todo", why: "", note: "",
-          addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d, startedDay: null, doneDay: null, external: null, role: t.role,
+          addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d, startedDay: null, doneDay: null, external: null, role: t.role, dropped: null,
         });
       });
       p.template = { key, version };
@@ -307,9 +309,25 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
     }
     case "project.baseline": {
       if (p.startedDay !== null || !live) break; // taken before the start, never after
-      if (pl.none) p.baseline = { none: true, why: pl.why ?? "", day: d, by: ev.actor };
+      if (pl.none) p.baseline = { none: true, why: pl.why ?? "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null, eventId: ev.id, confirmed: null };
       else if (typeof pl.value === "number" && Number.isFinite(pl.value) && pl.metric)
-        p.baseline = { none: false, metric: pl.metric, unit: pl.unit ?? "", value: pl.value, better: pl.better === "up" ? "up" : "down", source: typeof pl.source === "string" ? pl.source : "", day: d, by: ev.actor };
+        p.baseline = { none: false, metric: pl.metric, unit: pl.unit ?? "", value: pl.value, better: pl.better === "up" ? "up" : "down", source: typeof pl.source === "string" ? pl.source : "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null, eventId: ev.id, confirmed: null };
+      break;
+    }
+    case "project.baseline.confirmed": {
+      // A second person confirms the number that stands (RES D16): the one named, while the project has not started. A new baseline cleared the confirmation.
+      const b = p.baseline;
+      if (!b || b.none || b.confirmed || p.startedDay !== null || !live || !revisionMatches(pl.baselineEventId, b.eventId)) break;
+      b.confirmed = { byUserId: ev.actorUserId ?? null, day: d };
+      break;
+    }
+    case "project.help.asked": {
+      // 'Ask the sponsor' (RES D19): a step still to do on a running project. The sponsor is the addressee; without one the role is filled in by finishProjects.
+      const s = p.steps.find((x) => x.id === pl.stepId);
+      const text = pl.text?.trim();
+      if (!s || !text || s.column === "done" || s.dropped || p.startedDay === null || p.doneDay !== null || !live) break;
+      const toUserId = p.sponsorUserId !== null && p.sponsorUserId !== p.leadUserId ? p.sponsorUserId : null;
+      p.helpAsks.push({ id: ev.id, stepId: s.id, text, day: d, byUserId: ev.actorUserId ?? null, toUserId, toRoleId: null, answeredDay: null });
       break;
     }
     case "project.started":
@@ -325,7 +343,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
         id: stepId, text, owner: pl.owner?.trim() || null, ownerUserId: pl.ownerUserId ?? null, dueDay: typeof pl.dueDay === "number" ? pl.dueDay : null,
         column, why: "", note: pl.note?.trim() ?? "", addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d,
         startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
-        external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null,
+        external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null, dropped: null,
       });
       break;
     }
@@ -376,26 +394,71 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       break;
     }
     case "project.done":
-      if (p.startedDay !== null && p.doneDay === null && live) { p.doneDay = d; p.doneNote = pl.note ?? ""; }
+      if (p.startedDay !== null && p.doneDay === null && live) {
+        p.doneDay = d;
+        p.doneNote = pl.note ?? "";
+        // The Done sheet (RES D13, D28): each open step ends as done or as dropped with its reason. A step the list does not know, or that is
+        // done already, is left alone; without the list (every old log) nothing else changes.
+        if (Array.isArray(pl.openSteps)) {
+          for (const o of pl.openSteps) {
+            const s = p.steps.find((x) => x.id === o.stepId);
+            if (!s || s.column === "done") continue;
+            touchedSteps.add(s);
+            if (o.end === "done") {
+              s.column = "done";
+              s.movedDay = d;
+              s.doneDay = d;
+              if (s.startedDay === null) s.startedDay = d;
+            } else if (o.end === "dropped" && !s.dropped) {
+              s.dropped = { why: o.why?.trim() ?? "", day: d, byUserId: ev.actorUserId ?? null };
+            }
+          }
+        }
+      }
       break;
     case "project.measured": {
       const check = pl.check;
       if (p.doneDay === null || typeof check !== "number" || !rules.measureDays.includes(check)) break;
-      if (typeof pl.value !== "number" || p.measures.some((m) => m.check === check)) break;
+      if (typeof pl.value !== "number") break;
+      const have = p.measures.find((m) => m.check === check);
+      // A second result for a check is taken once, and only as the re-entry of a number that was sent back (RES D14); it names the revision it replaces.
+      if (have && !(have.sentBack && !have.reentered && revisionMatches(pl.measureEventId, have.eventId))) break;
       // No trusted system importer exists yet: a client-supplied system source is refused (LOOP/D18).
       if (typeof pl.source === "object" && pl.source !== null && pl.source.kind === "system") break;
       const src = readSource(pl.source);
       const v = verdictOf(p.baseline, pl.value, rules.tolerancePct);
+      if (have) {
+        // The replacement is a new revision: it has the re-entry's own identity, and nothing confirmed or questioned about the old number carries over.
+        have.previous.push({ value: have.value, day: have.day, byUserId: have.byUserId });
+        Object.assign(have, {
+          value: pl.value, source: sourceLabel(src), note: pl.note ?? "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null,
+          sourceKind: src.kind, sourceInfo: src, impact: readImpact(pl.impact), confirmed: false, confirmedByUserId: null, confirmedDay: null, ...v,
+          eventId: ev.id, sentBack: false, reentered: true,
+        });
+        break;
+      }
       p.measures.push({
         check, value: pl.value, source: sourceLabel(src), note: pl.note ?? "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null,
         sourceKind: src.kind, sourceInfo: src, impact: readImpact(pl.impact), confirmed: false, confirmedByUserId: null, confirmedDay: null, ...v,
+        eventId: ev.id, sentBack: false, reentered: false, managerOnly: false, questions: [], previous: [],
       });
       p.measures.sort((a, b) => a.check - b.check);
       break;
     }
+    case "project.measure.questioned": {
+      const m = p.measures.find((x) => x.check === pl.check);
+      if (!m || m.confirmed || m.sourceKind === "system" || m.managerOnly || m.sentBack || !revisionMatches(pl.measureEventId, m.eventId)) break;
+      // The first questioning sends the check back; one after the re-entry leaves it to the managers (RES D14); any other is ignored.
+      if (m.reentered) m.managerOnly = true;
+      else if (m.questions.length === 0) m.sentBack = true;
+      else break;
+      m.questions.push({ day: d, why: pl.why?.trim() ?? "", byUserId: ev.actorUserId ?? null });
+      break;
+    }
     case "project.measure.confirmed": {
       const m = p.measures.find((x) => x.check === pl.check);
-      if (!m || m.confirmed || m.sourceKind === "system") break;
+      // A number that was sent back is not confirmed, and a confirmation names the revision it is for: one for a replaced number never confirms its replacement (RES review).
+      if (!m || m.confirmed || m.sentBack || m.sourceKind === "system" || !revisionMatches(pl.measureEventId, m.eventId)) break;
       m.confirmed = true;
       m.confirmedByUserId = ev.actorUserId ?? null;
       m.confirmedDay = d;
@@ -467,6 +530,30 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
 
 type Finish = { day: number; promise: number; rules: LoopRules; projectStartDays?: number; routeOf: (id: string | null) => Route | null; seats?: readonly SeatRow[]; workdays?: boolean };
 
+/**
+ * The help asks of a project once its log is replayed (RES D19). An ask with no sponsor goes to a role: the route's owner role, or the deputy's when
+ * the lead holds the owner seat (`toRoleId`, the same rule the stalled escalation uses; no route, no role). It is answered by the asked person's next
+ * project.commented (the sponsor, or a holder of a seat of that role) in the log's order, and it stops waiting when its step is done, dropped or
+ * removed, or the project is no longer running.
+ */
+function finishHelpAsks(p: ReducedProject, roleId: string | null, seats: readonly SeatRow[], day: number): void {
+  for (const ask of p.helpAsks) {
+    ask.toRoleId = ask.toUserId === null ? roleId : null;
+    const at = p.history.findIndex((e) => e.id === ask.id);
+    const asked = (e: CaseEvent) => e.actorUserId != null && (e.actorUserId === ask.toUserId
+      || (ask.toRoleId !== null && seats.some((s) => s.roleId === ask.toRoleId && s.userId === e.actorUserId)));
+    const answered = p.history.find((e, i) => i > at && e.type === "project.commented" && asked(e))?.day;
+    const step = p.steps.find((x) => x.id === ask.stepId);
+    const ended = !step ? p.history.find((e) => e.type === "project.step.edited" && e.payload.stepId === ask.stepId && e.payload.removed)?.day ?? day
+      : step.dropped ? step.dropped.day
+      : step.column === "done" ? step.doneDay ?? day
+      : p.status !== "running" ? p.stopped?.day ?? p.doneDay ?? p.reward?.day ?? day
+      : undefined;
+    const days = [answered, ended].filter((x): x is number => x !== undefined);
+    ask.answeredDay = days.length > 0 ? Math.min(...days) : null;
+  }
+}
+
 /** Derived per project once every event is applied: status, checks, due day, escalation. */
 export function finishProjects(book: ProjectBook, { day, promise, rules, projectStartDays = rules.projectStartDays, routeOf, seats = [], workdays = false }: Finish): ReducedProject[] {
   const list = book.order.map((id) => book.byId[id]);
@@ -476,8 +563,11 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, project
     p.checks = p.doneDay !== null && counted
       ? rules.measureDays.map((check): CheckDue => {
           const opensDay = (p.doneDay as number) + check;
-          const measured = p.measures.some((m) => m.check === check);
-          return { check, opensDay, dueDay: opensDay + promise, measured, late: !measured && day > opensDay + promise };
+          // A number that was sent back counts as not measured; it is due again `promise` working days after the latest questioning (RES D14).
+          const measured = p.measures.some((m) => m.check === check && !m.sentBack);
+          const back = p.measures.find((m) => m.check === check && m.sentBack)?.questions.at(-1);
+          const dueDay = Math.max(opensDay + promise, back ? back.day + promise : 0);
+          return { check, opensDay, dueDay, measured, late: !measured && day > dueDay };
         })
       : [];
     const allMeasured = p.checks.every((c) => c.measured);
@@ -488,11 +578,15 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, project
       : p.startedDay !== null ? "running"
       : "planning";
 
-    const last = p.measures[p.measures.length - 1];
+    // The latest result that stands: a number sent back is not one (RES D14).
+    const standing = p.measures.filter((m) => !m.sentBack);
+    const last = standing[standing.length - 1];
     p.verdict = !rules.measure ? null : last ? last.verdict : p.doneDay !== null && !counted ? "not measured" : null;
     // A reward falls due only on a confirmed latest measure with verdict better (LOOP/D18).
     const counts = rules.measure && last !== undefined && last.confirmed;
     p.rewardDue = p.status === "measured" && rules.recognition && rules.reward.kind !== "none" && counts && last.verdict === "better";
+    // The day the confirmation made the reward due (RES D17): the later of the result's day and its confirmation's.
+    p.rewardDueDay = p.rewardDue && last ? Math.max(last.day, last.confirmedDay ?? last.day) : null;
     const noRewardPossible = rules.reward.kind === "none" || !rules.recognition || !rules.measure || (counts && last.verdict !== "better");
     // A project done without a baseline number is "not measured" and closes at done, also under a reward rule (MOV D24).
     p.closed = p.status === "stopped" || p.status === "recognised" || (p.status === "measured" && (noRewardPossible || p.baseline?.none === true));
@@ -521,6 +615,7 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, project
     const to = route ? (leadIsOwner ? route.deputy : route.owner.name) : null;
     const toSeatId = route ? (leadIsOwner ? route.deputySeatId : route.ownerSeatId) ?? null : null;
     const toRoleId = route ? (leadIsOwner ? route.deputyRoleId : route.ownerRoleId) ?? null : null;
+    finishHelpAsks(p, toRoleId, seats, day);
     if (!workdays) {
       p.escalated = p.overdue && to && p.dueDay !== null
         ? { to, toSeatId, toRoleId, from: p.lead, day: p.dueDay + 1, live: p.dueDay + 1 >= 0, what: draftPlanning ? "draft" : p.status === "planning" ? "start" : "measure" }
