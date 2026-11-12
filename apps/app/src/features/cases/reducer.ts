@@ -47,7 +47,7 @@ export type Discussion = {
 };
 // v1 is the case as raised; each case.revised adds the next one.
 export type Version = { version: number; day: number; by: string; byUserId?: string | null; title: string; body: string; overall: number | null };
-export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building" | "shipped" | "withdrawn";
+export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building" | "shipped" | "withdrawn" | "merged";
 
 /** The raiser took the idea back before anyone decided it (decision Q1.14). */
 export type Withdrawal = { day: number; by: string; byUserId: string | null; note: string };
@@ -57,6 +57,9 @@ export type Appeal = {
   text: string; day: number; by: string; byUserId: string | null; seatId: string | null;
   decided: { uphold: boolean; reason: string; by: string; byUserId: string | null; day: number } | null;
 };
+
+/** The desk closed the case as a duplicate of `into` (plan SEE, D17): archived, off the desk, its clock stopped on `day`. */
+export type Merge = { into: string; day: number; by: string; byUserId: string | null; note: string };
 
 /** The case is open on a desk again (plan NOR, D12): a no came back on its revisit day, a second look was not upheld, or a stopped project's idea went back. */
 export type Reopen = { why: "revisit" | "appeal" | "stopped"; day: number; by: string };
@@ -75,6 +78,11 @@ export type ReducedCase = {
   // Event order (D12, review of 12 Nov): the place in `history` of the latest reopen and of the latest decision, null when none.
   // Two events of one day have a total order only by this place; see features/cases/no.ts decisionKey and cycleEvents.
   reopenSeq: number | null; decidedSeq: number | null;
+  // The raiser sees the whole way (plan SEE): the case this one follows up and the cases that follow it (D15), the cases the
+  // raise looked like (D16), the merge into another case and the raisers merged into this one (D17), the cases linked as related.
+  // `mergedIn` carries user ids for the reducer's readers (the affected count by user id); a page shows only the count.
+  follows: string | null; followedBy: string[]; sameAs: string | null; related: string[]; merged: Merge | null;
+  mergedIn: { id: string; userId: string | null; day: number }[]; links: string[];
   pausedDays: number; pausedSince: number | null; history: CaseEvent[];
   // derived once every event is applied. `open` = still on a desk, waiting for a move: open or in discussion.
   // `archived` = decided either way, or withdrawn by the raiser; a yes then lives on as `decided.projectId`.
@@ -134,6 +142,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [], building: null, shipped: null,
       override: null, discussion: null, versions: [],
       decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: row.raisedDay ?? 0, dueFloor: null, reopenSeq: null, decidedSeq: null,
+      follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [],
       pausedDays: 0, pausedSince: null, history: [],
       route: null, age: 0, clock: 0, open: true, archived: false, overdue: false, dueDay: 0, escalated: null,
     };
@@ -198,6 +207,14 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       case "case.raised": {
         const seatId = pl.assigneeRoleHolderId ?? routeOf(pl.routeId ?? null)?.ownerSeatId ?? null;
         const c = freshCase(target, { kind: pl.kind === "problem" || pl.kind === "idea" ? pl.kind : undefined, title: pl.title ?? "Untitled", body: pl.body, from: ev.actor, fromUserId: uid, fromDept: pl.fromDept, routeId: pl.routeId, assignee: pl.assignee ?? "Triage desk", raisedDay: d, reason: pl.reason ?? "triage", upside: pl.upside ?? "", seatId }, false);
+        // The cases this raise follows up and looked like, when they exist and are not this one (plan SEE, D15, D16).
+        const known = (id: unknown): id is string => typeof id === "string" && id !== target && cases[id] !== undefined;
+        if (known(pl.follows)) {
+          c.follows = pl.follows;
+          if (!cases[pl.follows].followedBy.includes(target)) cases[pl.follows].followedBy.push(target);
+        }
+        if (known(pl.proposal?.sameAs)) c.sameAs = pl.proposal.sameAs;
+        c.related = [...new Set((pl.proposal?.related ?? []).filter(known))];
         c.history.push(ev);
         break;
       }
@@ -210,7 +227,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       }
       case "case.decided": {
         const c = cases[target];
-        if (!c) break;
+        if (!c || c.status === "merged") break; // a merged case is closed (plan SEE)
         if (c.read === null) c.read = d;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
         const answer = pl.answer === "no" ? "no" : "yes";
@@ -328,6 +345,34 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "discussion" || !c.discussion || uid === null || !c.discussion.invitedUserIds.includes(uid)) break;
         if (!c.discussion.declinedUserIds.includes(uid)) c.discussion.declinedUserIds.push(uid);
+        c.history.push(ev);
+        break;
+      }
+      case "case.merged": {
+        // The desk closes an undecided case as a duplicate of another (plan SEE, D17). The reducer does not check who wrote it (the server does).
+        const c = cases[target];
+        const destId = pl.into;
+        const dest = typeof destId === "string" ? cases[destId] : undefined;
+        if (!c || !dest || dest === c) break;
+        if (!(c.status === "open" || c.status === "asked" || c.status === "discussion") || c.decided !== null || c.withdrawn !== null || c.merged !== null) break;
+        if (dest.merged !== null || dest.withdrawn !== null) break;
+        // A case that absorbed repeats stays the destination: it is not merged again, so every merge points at a case that stays and no chain or cycle can form.
+        if (c.mergedIn.length > 0) break;
+        if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
+        c.merged = { into: dest.id, day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 300) };
+        c.status = "merged";
+        dest.mergedIn.push({ id: c.id, userId: c.fromUserId, day: d });
+        c.history.push(ev);
+        break;
+      }
+      case "case.linked": {
+        // Two cases marked as related: both stay as they are (plan SEE, D17).
+        const c = cases[target];
+        const peerId = pl.to;
+        const other = typeof peerId === "string" ? cases[peerId] : undefined;
+        if (!c || !other || other === c || c.merged !== null || other.merged !== null || c.withdrawn !== null || c.links.includes(other.id)) break;
+        c.links.push(other.id);
+        other.links.push(c.id);
         c.history.push(ev);
         break;
       }
@@ -455,12 +500,12 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     const route = routeOf(c.routeId);
     c.route = route;
     c.age = day - c.raisedDay;
-    const stopDay = c.decided ? c.decided.day : c.withdrawn ? c.withdrawn.day : c.building ? c.building.day : c.shipped ? c.shipped.day : null;
+    const stopDay = c.decided ? c.decided.day : c.withdrawn ? c.withdrawn.day : c.merged ? c.merged.day : c.building ? c.building.day : c.shipped ? c.shipped.day : null;
     const paused = c.pausedDays + (c.pausedSince !== null ? day - c.pausedSince : 0);
     // The answer date and the clock count from the cycle's start: the raise day, until the case is reopened (D12).
     c.clock = Math.max(0, (stopDay !== null ? stopDay : day) - c.cycleStartDay - paused);
     c.open = c.status === "open" || c.status === "discussion";
-    c.archived = c.status === "decided" || c.status === "withdrawn";
+    c.archived = c.status === "decided" || c.status === "withdrawn" || c.status === "merged";
     const talk = c.status === "discussion" ? c.discussion : null;
     if (talk) {
       // In a discussion the next check-in is what is due - or, once it said "decide", the decision.

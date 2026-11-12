@@ -1,0 +1,1118 @@
+[
+  {
+    "id": "ca",
+    "seed": false,
+    "kind": "problem",
+    "title": "Case ca",
+    "body": "Body ca",
+    "from": "J. Schmidt",
+    "fromDept": "PRD",
+    "fromUserId": "u_ra",
+    "assigneeSeatId": "s_own",
+    "assigneeRoleId": "role_owner",
+    "routeId": "r1",
+    "assignee": "T. Vogel",
+    "raisedDay": 0,
+    "reason": "triage",
+    "upside": "",
+    "linkedIdea": null,
+    "status": "shipped",
+    "read": 1,
+    "decided": {
+      "answer": "yes",
+      "reason": "",
+      "note": "",
+      "by": "T. Vogel",
+      "byUserId": "u_own",
+      "day": 13,
+      "projectId": "p_ca",
+      "lead": "T. Vogel",
+      "category": null,
+      "changeIf": "",
+      "revisitDay": null,
+      "duplicateOf": null
+    },
+    "withdrawn": null,
+    "question": null,
+    "handed": [
+      {
+        "from": "T. Vogel",
+        "fromUserId": "u_own",
+        "to": "H. Sander",
+        "toSeatId": "s_dep",
+        "why": "Quality owns it",
+        "day": 3,
+        "fromSeatId": "s_own",
+        "back": false,
+        "up": false
+      }
+    ],
+    "building": {
+      "day": 14,
+      "days": 20,
+      "expected": "A trial",
+      "by": "T. Vogel",
+      "byUserId": "u_own"
+    },
+    "shipped": {
+      "day": 20,
+      "outcome": "Trial done",
+      "outcomeNote": "Works",
+      "by": "T. Vogel",
+      "byUserId": "u_own"
+    },
+    "override": {
+      "proposed": "r1",
+      "chosen": "r1",
+      "day": 3,
+      "by": "K. Head",
+      "byUserId": "u_head"
+    },
+    "discussion": null,
+    "versions": [
+      {
+        "version": 1,
+        "day": 0,
+        "by": "J. Schmidt",
+        "byUserId": "u_ra",
+        "title": "Case ca",
+        "body": "Body ca",
+        "overall": null
+      }
+    ],
+    "decisions": [
+      {
+        "answer": "no",
+        "reason": "Not before the audit is over this quarter",
+        "note": "",
+        "by": "H. Sander",
+        "byUserId": "u_dep",
+        "day": 4,
+        "projectId": null,
+        "lead": null,
+        "category": "not-now",
+        "changeIf": "A free week",
+        "revisitDay": 12,
+        "duplicateOf": null
+      },
+      {
+        "answer": "yes",
+        "reason": "",
+        "note": "",
+        "by": "T. Vogel",
+        "byUserId": "u_own",
+        "day": 13,
+        "projectId": "p_ca",
+        "lead": "T. Vogel",
+        "category": null,
+        "changeIf": "",
+        "revisitDay": null,
+        "duplicateOf": null
+      }
+    ],
+    "passes": 1,
+    "notNowInRow": 0,
+    "appeal": null,
+    "reopens": [
+      {
+        "why": "revisit",
+        "day": 12,
+        "by": "system:clock"
+      }
+    ],
+    "cycleStartDay": 12,
+    "dueFloor": null,
+    "reopenSeq": 7,
+    "decidedSeq": 8,
+    "pausedDays": 0,
+    "pausedSince": null,
+    "history": [
+      {
+        "id": "e_raise_ca",
+        "ts": 0,
+        "type": "case.raised",
+        "actor": "J. Schmidt",
+        "actorUserId": "u_ra",
+        "target": "ca",
+        "payload": {
+          "kind": "problem",
+          "title": "Case ca",
+          "body": "Body ca",
+          "routeId": "r1",
+          "assignee": "T. Vogel",
+          "assigneeRoleHolderId": "s_own",
+          "fromDept": "PRD"
+        },
+        "day": 0
+      },
+      {
+        "id": "e1",
+        "ts": 0,
+        "type": "case.read",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "ca",
+        "payload": {},
+        "day": 1
+      },
+      {
+        "id": "e2",
+        "ts": 0,
+        "type": "case.asked",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "ca",
+        "payload": {
+          "text": "Which line?"
+        },
+        "day": 1
+      },
+      {
+        "id": "e3",
+        "ts": 0,
+        "type": "case.answered",
+        "actor": "J. Schmidt",
+        "actorUserId": "u_ra",
+        "target": "ca",
+        "payload": {
+          "text": "Line 3"
+        },
+        "day": 2
+      },
+      {
+        "id": "e7",
+        "ts": 0,
+        "type": "case.override",
+        "actor": "K. Head",
+        "actorUserId": "u_head",
+        "target": "ca",
+        "payload": {
+          "proposed": "r1",
+          "chosen": "r1"
+        },
+        "day": 3
+      },
+      {
+        "id": "e8",
+        "ts": 0,
+        "type": "case.handed",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "ca",
+        "payload": {
+          "to": "H. Sander",
+          "toRoleHolderId": "s_dep",
+          "why": "Quality owns it",
+          "back": false,
+          "routeId": "r1",
+          "dueDay": 8
+        },
+        "day": 3
+      },
+      {
+        "id": "e9",
+        "ts": 0,
+        "type": "case.decided",
+        "actor": "H. Sander",
+        "actorUserId": "u_dep",
+        "target": "ca",
+        "payload": {
+          "answer": "no",
+          "category": "not-now",
+          "reason": "Not before the audit is over this quarter",
+          "changeIf": "A free week",
+          "revisitDay": 12
+        },
+        "day": 4
+      },
+      {
+        "id": "e10",
+        "ts": 0,
+        "type": "case.reopened",
+        "actor": "system:clock",
+        "actorUserId": null,
+        "target": "ca",
+        "payload": {
+          "why": "revisit",
+          "dueDay": 17,
+          "toRoleHolderId": "s_own"
+        },
+        "day": 12
+      },
+      {
+        "id": "e11",
+        "ts": 0,
+        "type": "case.decided",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "ca",
+        "payload": {
+          "answer": "yes",
+          "projectId": "p_ca",
+          "lead": "T. Vogel",
+          "leadUserId": "u_own",
+          "title": "Case ca"
+        },
+        "day": 13
+      },
+      {
+        "id": "e12",
+        "ts": 0,
+        "type": "case.building",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "ca",
+        "payload": {
+          "days": 20,
+          "expected": "A trial"
+        },
+        "day": 14
+      },
+      {
+        "id": "e13",
+        "ts": 0,
+        "type": "case.shipped",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "ca",
+        "payload": {
+          "outcome": "Trial done",
+          "outcomeNote": "Works"
+        },
+        "day": 20
+      }
+    ],
+    "route": {
+      "id": "r1",
+      "type": "Type",
+      "keys": [
+        "k"
+      ],
+      "owner": {
+        "name": "T. Vogel",
+        "role": "Owner",
+        "dept": "PRD"
+      },
+      "deputy": "H. Sander",
+      "buddy": "B",
+      "wait": "2 days",
+      "ownerSeatId": "s_own",
+      "ownerRoleId": "role_owner",
+      "deputySeatId": "s_dep",
+      "deputyRoleId": "role_deputy"
+    },
+    "age": 24,
+    "clock": 1,
+    "open": false,
+    "archived": false,
+    "overdue": false,
+    "dueDay": 17,
+    "escalated": null
+  },
+  {
+    "id": "cb",
+    "seed": false,
+    "kind": "problem",
+    "title": "Case cb v2",
+    "body": "A better body",
+    "from": "M. Roth",
+    "fromDept": "PRD",
+    "fromUserId": "u_rb",
+    "assigneeSeatId": "s_own",
+    "assigneeRoleId": "role_owner",
+    "routeId": "r1",
+    "assignee": "T. Vogel",
+    "raisedDay": 0,
+    "reason": "triage",
+    "upside": "",
+    "linkedIdea": null,
+    "status": "open",
+    "read": 1,
+    "decided": null,
+    "withdrawn": null,
+    "question": {
+      "text": "Which shift?",
+      "by": "T. Vogel",
+      "byUserId": "u_own",
+      "day": 9,
+      "answer": null,
+      "unanswered": 14
+    },
+    "handed": [],
+    "building": null,
+    "shipped": null,
+    "override": null,
+    "discussion": null,
+    "versions": [
+      {
+        "version": 1,
+        "day": 0,
+        "by": "M. Roth",
+        "byUserId": "u_rb",
+        "title": "Case cb",
+        "body": "Body cb",
+        "overall": null
+      },
+      {
+        "version": 2,
+        "day": 3,
+        "by": "M. Roth",
+        "byUserId": "u_rb",
+        "title": "Case cb v2",
+        "body": "A better body",
+        "overall": 70
+      }
+    ],
+    "decisions": [
+      {
+        "answer": "no",
+        "reason": "Already in work under another case",
+        "note": "",
+        "by": "T. Vogel",
+        "byUserId": "u_own",
+        "day": 6,
+        "projectId": null,
+        "lead": null,
+        "category": "duplicate",
+        "changeIf": "",
+        "revisitDay": null,
+        "duplicateOf": "ca"
+      }
+    ],
+    "passes": 0,
+    "notNowInRow": 0,
+    "appeal": {
+      "text": "Please look again, it is a different line",
+      "day": 7,
+      "by": "M. Roth",
+      "byUserId": "u_rb",
+      "seatId": "s_dep",
+      "decided": {
+        "uphold": false,
+        "reason": "The line is a different one",
+        "by": "H. Sander",
+        "byUserId": "u_dep",
+        "day": 8
+      }
+    },
+    "reopens": [
+      {
+        "why": "appeal",
+        "day": 8,
+        "by": "H. Sander"
+      }
+    ],
+    "cycleStartDay": 8,
+    "dueFloor": null,
+    "reopenSeq": 8,
+    "decidedSeq": 6,
+    "pausedDays": 5,
+    "pausedSince": null,
+    "history": [
+      {
+        "id": "e_raise_cb",
+        "ts": 0,
+        "type": "case.raised",
+        "actor": "M. Roth",
+        "actorUserId": "u_rb",
+        "target": "cb",
+        "payload": {
+          "kind": "problem",
+          "title": "Case cb",
+          "body": "Body cb",
+          "routeId": "r1",
+          "assignee": "T. Vogel",
+          "assigneeRoleHolderId": "s_own",
+          "fromDept": "PRD"
+        },
+        "day": 0
+      },
+      {
+        "id": "e14",
+        "ts": 0,
+        "type": "case.discussion",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "cb",
+        "payload": {
+          "invited": [
+            "H. Sander",
+            "K. Head"
+          ],
+          "invitedUserIds": [
+            "u_dep",
+            "u_head"
+          ],
+          "missing": "The saving"
+        },
+        "day": 1
+      },
+      {
+        "id": "e15",
+        "ts": 0,
+        "type": "case.invited",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "cb",
+        "payload": {
+          "invited": [
+            "L. Brandt"
+          ],
+          "invitedUserIds": [
+            "u_rc"
+          ]
+        },
+        "day": 2
+      },
+      {
+        "id": "e16",
+        "ts": 0,
+        "type": "case.invite.declined",
+        "actor": "L. Brandt",
+        "actorUserId": "u_rc",
+        "target": "cb",
+        "payload": {
+          "why": "Not for me"
+        },
+        "day": 2
+      },
+      {
+        "id": "e17",
+        "ts": 0,
+        "type": "case.revised",
+        "actor": "M. Roth",
+        "actorUserId": "u_rb",
+        "target": "cb",
+        "payload": {
+          "body": "A better body",
+          "title": "Case cb v2",
+          "overall": 70
+        },
+        "day": 3
+      },
+      {
+        "id": "e18",
+        "ts": 0,
+        "type": "case.checkin",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "cb",
+        "payload": {
+          "next": "decide",
+          "open": [
+            "Cost"
+          ],
+          "note": "Ready"
+        },
+        "day": 5
+      },
+      {
+        "id": "e19",
+        "ts": 0,
+        "type": "case.decided",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "cb",
+        "payload": {
+          "answer": "no",
+          "category": "duplicate",
+          "reason": "Already in work under another case",
+          "duplicateOf": "ca"
+        },
+        "day": 6
+      },
+      {
+        "id": "e20",
+        "ts": 0,
+        "type": "case.appealed",
+        "actor": "M. Roth",
+        "actorUserId": "u_rb",
+        "target": "cb",
+        "payload": {
+          "text": "Please look again, it is a different line",
+          "toRoleHolderId": "s_dep"
+        },
+        "day": 7
+      },
+      {
+        "id": "e21",
+        "ts": 0,
+        "type": "case.appeal.decided",
+        "actor": "H. Sander",
+        "actorUserId": "u_dep",
+        "target": "cb",
+        "payload": {
+          "uphold": false,
+          "reason": "The line is a different one"
+        },
+        "day": 8
+      },
+      {
+        "id": "e22",
+        "ts": 0,
+        "type": "case.asked",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "cb",
+        "payload": {
+          "text": "Which shift?"
+        },
+        "day": 9
+      },
+      {
+        "id": "e23",
+        "ts": 0,
+        "type": "case.unanswered",
+        "actor": "system:clock",
+        "actorUserId": null,
+        "target": "cb",
+        "payload": {},
+        "day": 14
+      }
+    ],
+    "route": {
+      "id": "r1",
+      "type": "Type",
+      "keys": [
+        "k"
+      ],
+      "owner": {
+        "name": "T. Vogel",
+        "role": "Owner",
+        "dept": "PRD"
+      },
+      "deputy": "H. Sander",
+      "buddy": "B",
+      "wait": "2 days",
+      "ownerSeatId": "s_own",
+      "ownerRoleId": "role_owner",
+      "deputySeatId": "s_dep",
+      "deputyRoleId": "role_deputy"
+    },
+    "age": 24,
+    "clock": 11,
+    "open": true,
+    "archived": false,
+    "overdue": true,
+    "dueDay": 18,
+    "escalated": {
+      "to": "H. Sander",
+      "from": "T. Vogel",
+      "day": 19,
+      "live": true,
+      "toSeatId": "s_dep",
+      "toRoleId": "role_deputy"
+    }
+  },
+  {
+    "id": "cc",
+    "seed": false,
+    "kind": "problem",
+    "title": "Case cc",
+    "body": "Body cc",
+    "from": "L. Brandt",
+    "fromDept": "PRD",
+    "fromUserId": "u_rc",
+    "assigneeSeatId": "s_own",
+    "assigneeRoleId": "role_owner",
+    "routeId": "r1",
+    "assignee": "T. Vogel",
+    "raisedDay": 1,
+    "reason": "triage",
+    "upside": "",
+    "linkedIdea": null,
+    "status": "withdrawn",
+    "read": null,
+    "decided": null,
+    "withdrawn": {
+      "day": 3,
+      "by": "L. Brandt",
+      "byUserId": "u_rc",
+      "note": "Changed my mind"
+    },
+    "question": null,
+    "handed": [],
+    "building": null,
+    "shipped": null,
+    "override": null,
+    "discussion": null,
+    "versions": [
+      {
+        "version": 1,
+        "day": 1,
+        "by": "L. Brandt",
+        "byUserId": "u_rc",
+        "title": "Case cc",
+        "body": "Body cc",
+        "overall": null
+      }
+    ],
+    "decisions": [],
+    "passes": 0,
+    "notNowInRow": 0,
+    "appeal": null,
+    "reopens": [],
+    "cycleStartDay": 1,
+    "dueFloor": null,
+    "reopenSeq": null,
+    "decidedSeq": null,
+    "pausedDays": 0,
+    "pausedSince": null,
+    "history": [
+      {
+        "id": "e_raise_cc",
+        "ts": 0,
+        "type": "case.raised",
+        "actor": "L. Brandt",
+        "actorUserId": "u_rc",
+        "target": "cc",
+        "payload": {
+          "kind": "problem",
+          "title": "Case cc",
+          "body": "Body cc",
+          "routeId": "r1",
+          "assignee": "T. Vogel",
+          "assigneeRoleHolderId": "s_own",
+          "fromDept": "PRD"
+        },
+        "day": 1
+      },
+      {
+        "id": "e24",
+        "ts": 0,
+        "type": "case.withdrawn",
+        "actor": "L. Brandt",
+        "actorUserId": "u_rc",
+        "target": "cc",
+        "payload": {
+          "note": "Changed my mind"
+        },
+        "day": 3
+      }
+    ],
+    "route": {
+      "id": "r1",
+      "type": "Type",
+      "keys": [
+        "k"
+      ],
+      "owner": {
+        "name": "T. Vogel",
+        "role": "Owner",
+        "dept": "PRD"
+      },
+      "deputy": "H. Sander",
+      "buddy": "B",
+      "wait": "2 days",
+      "ownerSeatId": "s_own",
+      "ownerRoleId": "role_owner",
+      "deputySeatId": "s_dep",
+      "deputyRoleId": "role_deputy"
+    },
+    "age": 23,
+    "clock": 2,
+    "open": false,
+    "archived": true,
+    "overdue": false,
+    "dueDay": 6,
+    "escalated": null
+  },
+  {
+    "id": "cd",
+    "seed": false,
+    "kind": "problem",
+    "title": "Case cd",
+    "body": "Body cd",
+    "from": "J. Schmidt",
+    "fromDept": "PRD",
+    "fromUserId": "u_ra",
+    "assigneeSeatId": "s_own",
+    "assigneeRoleId": "role_owner",
+    "routeId": "r1",
+    "assignee": "T. Vogel",
+    "raisedDay": 1,
+    "reason": "triage",
+    "upside": "",
+    "linkedIdea": null,
+    "status": "open",
+    "read": null,
+    "decided": null,
+    "withdrawn": null,
+    "question": null,
+    "handed": [],
+    "building": null,
+    "shipped": null,
+    "override": null,
+    "discussion": null,
+    "versions": [
+      {
+        "version": 1,
+        "day": 1,
+        "by": "J. Schmidt",
+        "byUserId": "u_ra",
+        "title": "Case cd",
+        "body": "Body cd",
+        "overall": null
+      }
+    ],
+    "decisions": [],
+    "passes": 0,
+    "notNowInRow": 0,
+    "appeal": null,
+    "reopens": [],
+    "cycleStartDay": 1,
+    "dueFloor": null,
+    "reopenSeq": null,
+    "decidedSeq": null,
+    "pausedDays": 0,
+    "pausedSince": null,
+    "history": [
+      {
+        "id": "e_raise_cd",
+        "ts": 0,
+        "type": "case.raised",
+        "actor": "J. Schmidt",
+        "actorUserId": "u_ra",
+        "target": "cd",
+        "payload": {
+          "kind": "problem",
+          "title": "Case cd",
+          "body": "Body cd",
+          "routeId": "r1",
+          "assignee": "T. Vogel",
+          "assigneeRoleHolderId": "s_own",
+          "fromDept": "PRD"
+        },
+        "day": 1
+      }
+    ],
+    "route": {
+      "id": "r1",
+      "type": "Type",
+      "keys": [
+        "k"
+      ],
+      "owner": {
+        "name": "T. Vogel",
+        "role": "Owner",
+        "dept": "PRD"
+      },
+      "deputy": "H. Sander",
+      "buddy": "B",
+      "wait": "2 days",
+      "ownerSeatId": "s_own",
+      "ownerRoleId": "role_owner",
+      "deputySeatId": "s_dep",
+      "deputyRoleId": "role_deputy"
+    },
+    "age": 23,
+    "clock": 23,
+    "open": true,
+    "archived": false,
+    "overdue": true,
+    "dueDay": 6,
+    "escalated": {
+      "to": "H. Sander",
+      "from": "T. Vogel",
+      "day": 7,
+      "live": true,
+      "toSeatId": "s_dep",
+      "toRoleId": "role_deputy"
+    }
+  },
+  {
+    "id": "ce",
+    "seed": false,
+    "kind": "problem",
+    "title": "Case ce",
+    "body": "Body ce",
+    "from": "M. Roth",
+    "fromDept": "PRD",
+    "fromUserId": "u_rb",
+    "assigneeSeatId": "s_dep",
+    "assigneeRoleId": "role_deputy",
+    "routeId": "r1",
+    "assignee": "H. Sander",
+    "raisedDay": 2,
+    "reason": "triage",
+    "upside": "",
+    "linkedIdea": null,
+    "status": "asked",
+    "read": 3,
+    "decided": null,
+    "withdrawn": null,
+    "question": {
+      "text": "Since when?",
+      "by": "T. Vogel",
+      "byUserId": "u_own",
+      "day": 3,
+      "answer": null,
+      "unanswered": null
+    },
+    "handed": [
+      {
+        "from": "T. Vogel",
+        "fromUserId": "u_own",
+        "to": "H. Sander",
+        "toSeatId": "s_dep",
+        "why": "Quality owns it",
+        "day": 4,
+        "fromSeatId": "s_own",
+        "back": false,
+        "up": false
+      }
+    ],
+    "building": null,
+    "shipped": null,
+    "override": null,
+    "discussion": null,
+    "versions": [
+      {
+        "version": 1,
+        "day": 2,
+        "by": "M. Roth",
+        "byUserId": "u_rb",
+        "title": "Case ce",
+        "body": "Body ce",
+        "overall": null
+      }
+    ],
+    "decisions": [],
+    "passes": 1,
+    "notNowInRow": 0,
+    "appeal": null,
+    "reopens": [],
+    "cycleStartDay": 2,
+    "dueFloor": null,
+    "reopenSeq": null,
+    "decidedSeq": null,
+    "pausedDays": 0,
+    "pausedSince": 3,
+    "history": [
+      {
+        "id": "e_raise_ce",
+        "ts": 0,
+        "type": "case.raised",
+        "actor": "M. Roth",
+        "actorUserId": "u_rb",
+        "target": "ce",
+        "payload": {
+          "kind": "problem",
+          "title": "Case ce",
+          "body": "Body ce",
+          "routeId": "r1",
+          "assignee": "T. Vogel",
+          "assigneeRoleHolderId": "s_own",
+          "fromDept": "PRD"
+        },
+        "day": 2
+      },
+      {
+        "id": "e26",
+        "ts": 0,
+        "type": "case.asked",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "ce",
+        "payload": {
+          "text": "Since when?"
+        },
+        "day": 3
+      },
+      {
+        "id": "e27",
+        "ts": 0,
+        "type": "case.handed",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "ce",
+        "payload": {
+          "to": "H. Sander",
+          "toRoleHolderId": "s_dep",
+          "why": "Quality owns it",
+          "keepsQuestion": true,
+          "up": false
+        },
+        "day": 4
+      }
+    ],
+    "route": {
+      "id": "r1",
+      "type": "Type",
+      "keys": [
+        "k"
+      ],
+      "owner": {
+        "name": "T. Vogel",
+        "role": "Owner",
+        "dept": "PRD"
+      },
+      "deputy": "H. Sander",
+      "buddy": "B",
+      "wait": "2 days",
+      "ownerSeatId": "s_own",
+      "ownerRoleId": "role_owner",
+      "deputySeatId": "s_dep",
+      "deputyRoleId": "role_deputy"
+    },
+    "age": 22,
+    "clock": 1,
+    "open": false,
+    "archived": false,
+    "overdue": false,
+    "dueDay": 28,
+    "escalated": null
+  },
+  {
+    "id": "cf",
+    "seed": false,
+    "kind": "problem",
+    "title": "Case cf",
+    "body": "Body cf",
+    "from": "L. Brandt",
+    "fromDept": "PRD",
+    "fromUserId": "u_rc",
+    "assigneeSeatId": "s_own",
+    "assigneeRoleId": "role_owner",
+    "routeId": "r1",
+    "assignee": "T. Vogel",
+    "raisedDay": 2,
+    "reason": "triage",
+    "upside": "",
+    "linkedIdea": null,
+    "status": "decided",
+    "read": 9,
+    "decided": {
+      "answer": "no",
+      "reason": "no time",
+      "note": "The plan is full",
+      "by": "T. Vogel",
+      "byUserId": "u_own",
+      "day": 9,
+      "projectId": null,
+      "lead": null,
+      "category": "no-time",
+      "changeIf": "",
+      "revisitDay": null,
+      "duplicateOf": null
+    },
+    "withdrawn": null,
+    "question": null,
+    "handed": [],
+    "building": null,
+    "shipped": null,
+    "override": null,
+    "discussion": null,
+    "versions": [
+      {
+        "version": 1,
+        "day": 2,
+        "by": "L. Brandt",
+        "byUserId": "u_rc",
+        "title": "Case cf",
+        "body": "Body cf",
+        "overall": null
+      }
+    ],
+    "decisions": [
+      {
+        "answer": "no",
+        "reason": "no time",
+        "note": "The plan is full",
+        "by": "T. Vogel",
+        "byUserId": "u_own",
+        "day": 9,
+        "projectId": null,
+        "lead": null,
+        "category": "no-time",
+        "changeIf": "",
+        "revisitDay": null,
+        "duplicateOf": null
+      }
+    ],
+    "passes": 0,
+    "notNowInRow": 0,
+    "appeal": null,
+    "reopens": [],
+    "cycleStartDay": 2,
+    "dueFloor": null,
+    "reopenSeq": null,
+    "decidedSeq": 2,
+    "pausedDays": 0,
+    "pausedSince": null,
+    "history": [
+      {
+        "id": "e_raise_cf",
+        "ts": 0,
+        "type": "case.raised",
+        "actor": "L. Brandt",
+        "actorUserId": "u_rc",
+        "target": "cf",
+        "payload": {
+          "kind": "problem",
+          "title": "Case cf",
+          "body": "Body cf",
+          "routeId": "r1",
+          "assignee": "T. Vogel",
+          "assigneeRoleHolderId": "s_own",
+          "fromDept": "PRD"
+        },
+        "day": 2
+      },
+      {
+        "id": "e28",
+        "ts": 0,
+        "type": "clock.due",
+        "actor": "system:clock",
+        "actorUserId": null,
+        "target": "cf",
+        "payload": {
+          "kind": "deadline",
+          "dueDay": 7,
+          "toRoleHolderId": "s_dep"
+        },
+        "day": 8
+      },
+      {
+        "id": "e29",
+        "ts": 0,
+        "type": "case.decided",
+        "actor": "T. Vogel",
+        "actorUserId": "u_own",
+        "target": "cf",
+        "payload": {
+          "answer": "no",
+          "reason": "no time",
+          "note": "The plan is full"
+        },
+        "day": 9
+      }
+    ],
+    "route": {
+      "id": "r1",
+      "type": "Type",
+      "keys": [
+        "k"
+      ],
+      "owner": {
+        "name": "T. Vogel",
+        "role": "Owner",
+        "dept": "PRD"
+      },
+      "deputy": "H. Sander",
+      "buddy": "B",
+      "wait": "2 days",
+      "ownerSeatId": "s_own",
+      "ownerRoleId": "role_owner",
+      "deputySeatId": "s_dep",
+      "deputyRoleId": "role_deputy"
+    },
+    "age": 22,
+    "clock": 7,
+    "open": false,
+    "archived": true,
+    "overdue": false,
+    "dueDay": 7,
+    "escalated": null
+  }
+]
