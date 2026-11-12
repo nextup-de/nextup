@@ -36,7 +36,7 @@ async function loadBase(companyId: string, now: Date): Promise<Base> {
   ]);
   const day = cal ? workdayOf(now, cal) : company.demoDay;
   const roles = knowledge.roles.map((r) => ({ id: r.id, orgUnitId: r.orgUnitId, reportsToId: r.reportsToId }));
-  return { seed: { ...seed, seats }, ctx: { seats, roles, projects: [], members: await loadMembers(companyId) }, day };
+  return { seed: { ...seed, seats }, ctx: { seats, roles, projects: [], members: await loadMembers(companyId), approvals: seed.approvals }, day };
 }
 
 export type CaseViewData = {

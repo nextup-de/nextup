@@ -2,6 +2,8 @@
 // desk's answer to it, an invitee's "Not for me" and a manager's "Move to a desk". Pure: the reduced case, who is looking and
 // the state in, plain facts out. The rules are the ones the server checks (./no, ./discussion); none is written down twice.
 import type { Me } from "@/features/auth/identity";
+import { caseApprovalView } from "@/features/approvals/case-view";
+import { isOwnIdea, mayCost, mayMoveToDesk, mayReview } from "@/features/approvals/rights";
 import type { Role } from "@/config/roles";
 import type { State } from "./reducer";
 import type { ReducedCase } from "./reducer";
@@ -30,9 +32,30 @@ export type CaseActions = {
   revise: boolean;
   /** The case the raise looked like, when the viewer is on the desk or a manager and may open that case; null otherwise (D16). The raiser never gets it. */
   maybeSame: string | null;
+  // Review and approvals (plan GAT, GAT-U1, D12, D13, D18, D22). The rules are those of features/approvals/rights; none is written down twice.
+  /** The reviewer may send the raise on to its desk (D13): the routes to pick from, the one it was proposed for first; null for anyone else. */
+  forward: { id: string; type: string; owner: string; proposed: boolean }[] | null;
+  /** The reviewer may send the raise back to the author: an ordinary question, the review stays pending (D13). */
+  back: boolean;
+  /** The reviewer may give a reasoned no (NOR's), the only decision the review has (D13). */
+  no: boolean;
+  /** The viewer may say yes from here: on the desk, not while the review is pending and not while the case waits for approval (D13, D21). */
+  yes: boolean;
+  /** The viewer may record the cost estimate (D18). */
+  cost: boolean;
+  /** The current step of the active run and the identity an answer to it must carry, when the viewer may answer it (D22); null otherwise. */
+  answer: { runId: string; stepId: string; dueRev: number } | null;
+  /** The four answers of that step: each is open to whoever holds `answer`. */
+  approve: boolean;
+  approveConditions: boolean;
+  sendBack: boolean;
+  refuse: boolean;
 };
 
-const NONE: CaseActions = { appeal: null, answerAppeal: false, declineInvite: false, moveToDesk: false, merge: false, link: false, betterIdea: false, revise: false, maybeSame: null };
+const NONE: CaseActions = {
+  appeal: null, answerAppeal: false, declineInvite: false, moveToDesk: false, merge: false, link: false, betterIdea: false, revise: false, maybeSame: null,
+  forward: null, back: false, no: false, yes: false, cost: false, answer: null, approve: false, approveConditions: false, sendBack: false, refuse: false,
+};
 
 /** Any other case: the rules of merging and linking ask for one, and the question "may this person do it at all" does not depend on which. */
 const ANY: { id: string; status: "open"; withdrawn: null; merged: null } = { id: "", status: "open", withdrawn: null, merged: null };
@@ -41,14 +64,22 @@ const ANY: { id: string; status: "open"; withdrawn: null; merged: null } = { id:
  * What the viewer may do on this case page. `mayOpenCase` says whether the viewer may open another case (components/dashboard/derive canOpen):
  * the 'Maybe the same as' case is offered only when they may, so a hidden case's title never leaks (D16).
  */
-export function caseActions(kase: ReducedCase, me: Me, role: Role, state: Pick<State, "day" | "rules" | "seats">, mayOpenCase: (caseId: string) => boolean = () => false): CaseActions {
+export function caseActions(
+  kase: ReducedCase, me: Me, role: Role, state: Pick<State, "day" | "rules" | "seats" | "routes" | "approvals" | "projects">, mayOpenCase: (caseId: string) => boolean = () => false,
+): CaseActions {
   // A case its raiser took back has nothing left to do on it.
   if (kase.withdrawn !== null) return NONE;
   const isManager = role === "manager";
   const raiser = me.userId !== null && kase.fromUserId === me.userId;
   const d = kase.decided;
-  const merge = mayMerge(kase, ANY, me, isManager);
-  const link = mayLink(kase, ANY, me, isManager);
+  const actor = { role, name: "", handle: null, userId: me.userId, me };
+  // On their own idea nobody takes part in its review, a manager included (D13): merging and linking are review actions too.
+  const own = kase.review?.state === "pending" && isOwnIdea(actor, kase);
+  const merge = !own && mayMerge(kase, ANY, me, isManager);
+  const link = !own && mayLink(kase, ANY, me, isManager);
+  const reviewing = mayReview(actor, kase, state);
+  const step = caseApprovalView(kase, state, me).myStep;
+  const onDesk = isManager || onDeskOf(kase, me);
   return {
     merge,
     link,
@@ -59,7 +90,18 @@ export function caseActions(kase: ReducedCase, me: Me, role: Role, state: Pick<S
     appeal: raiser && d !== null && appealOpen(kase, state.day, state.rules.appealDays) ? { until: d.day + state.rules.appealDays } : null,
     answerAppeal: mayAnswerAppeal(kase, me, isManager, state.seats),
     declineInvite: invitedTo(kase, me) && !raiser && !onDeskOf(kase, me),
-    moveToDesk: isManager && (kase.open || kase.status === "asked"),
+    moveToDesk: mayMoveToDesk(actor, kase, state),
+    // A pending review forwards a raise to a desk; the proposed route comes first (D13). The routes are the company's.
+    forward: reviewing ? [...state.routes].sort((a, b) => Number(b.id === kase.routeId) - Number(a.id === kase.routeId)).map((r) => ({ id: r.id, type: r.type, owner: r.owner.name, proposed: r.id === kase.routeId })) : null,
+    back: reviewing && kase.status === "open",
+    no: reviewing && (kase.status === "open" || kase.status === "asked"),
+    yes: onDesk && kase.open && kase.review?.state !== "pending" && kase.status !== "approval",
+    cost: mayCost(actor, kase, state),
+    answer: step,
+    approve: step !== null,
+    approveConditions: step !== null,
+    sendBack: step !== null,
+    refuse: step !== null,
   };
 }
 

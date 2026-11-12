@@ -9,13 +9,13 @@
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { byClock } from "@/features/clock/actor";
 import type { SeatRow } from "@/features/auth/identity";
-import { EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo, type CaseApprovals, type CaseCost, type CaseReview } from "@/features/approvals/types";
+import { COST_BASIS_MAX, COST_EUR_MAX, EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo, type ApprovalStep, type CaseApprovals, type CaseCost, type CaseReview } from "@/features/approvals/types";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import { cycleEvents, noCategoryOf, type AnyNoCategory } from "./no";
 import { fallbackSeat } from "./stamp";
 import type { Idea, Problem, Route, SeedCase, SeedRole } from "@/features/demo/types";
 import { loopRules, type LoopRules } from "@/features/loop/rules";
-import { applyProjectEvent, finishProjects, newBook, openOrJoin, seedProject } from "@/features/projects/reduce";
+import { addCondition, applyProjectEvent, approvalGiven, finishProjects, newBook, openOrJoin, seedProject, setWaitingForApproval } from "@/features/projects/reduce";
 import type { ReducedProject, SeedProject } from "@/features/projects/types";
 
 // A yes that names a project opens it (or adds this idea to it): the idea is archived from then on.
@@ -205,6 +205,26 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     }
   };
 
+  // The review of a raise ends when the case leaves the review seat's hands for another reason than the forward (plan GAT, D13).
+  const endReview = (c: ReducedCase) => { if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, state: "ended" }; };
+
+  // ── Approval runs (plan GAT, D21 to D23, D32, D33) ───────────────────────────────────────────────────────────────────────────────────
+  const stepDone = (st: ApprovalStep) => st.state === "yes" || st.state === "conditions";
+  /** The step waiting for an answer: the lowest one not yet yes or conditions. */
+  const currentOf = (run: CaseApprovals): ApprovalStep | null => (run.done ? null : run.steps.find((st) => st.state === "pending") ?? null);
+  /** Who a step is named after in the conditions line: the role's title or the council's name, else whoever answered. */
+  const approverOf = (st: ApprovalStep, by: string): string => {
+    const name = st.kind === "council" ? seed.approvals?.councils.find((k) => k.id === st.councilId)?.name : seed.roles?.find((r) => r.id === st.roleId)?.title;
+    return name || by;
+  };
+  /** A run that is over leaves the case's place for the next one and is kept in the history of runs (D32). */
+  const finishRun = (c: ReducedCase, run: CaseApprovals, outcome: "yes" | "no") => {
+    run.done = true;
+    run.outcome = outcome;
+    c.approvalRuns.push(run);
+    c.approvals = null;
+  };
+
   const apply = (ev: CaseEvent) => {
     if (applyProjectEvent(book, ev, rules)) return;
     const pl = ev.payload ?? {};
@@ -223,6 +243,11 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         }
         if (known(pl.proposal?.sameAs)) c.sameAs = pl.proposal.sameAs;
         c.related = [...new Set((pl.proposal?.related ?? []).filter(known))];
+        // A raise the server stamped as reviewed starts a pending review on its seat; without the stamp the case has none (plan GAT, D12, D14).
+        if (pl.review === true) {
+          const dueDay = Number.isInteger(pl.reviewDueDay) ? (pl.reviewDueDay as number) : d;
+          c.review = { state: "pending", seatId, since: d, dueDay, forwardFrom: dueDay, waitsOn: null, auto: false };
+        }
         c.history.push(ev);
         break;
       }
@@ -236,14 +261,25 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       case "case.decided": {
         const c = cases[target];
         if (!c || c.status === "merged") break; // a merged case is closed (plan SEE)
+        // A case waiting for approval is decided only by the settle operation, once, from its run (plan GAT, D21, D32); nobody else's decision counts,
+        // and the settle operation decides nothing else. A supplement run decides nothing (D33): its last yes ends the run in case.approval.
+        const run = c.approvals;
+        const bySettle = uid === null && ev.actor.startsWith("system:approvals");
+        const settling = c.status === "approval" && run !== null && !run.supplement && bySettle;
+        if ((c.status === "approval" || bySettle) && !settling) break;
+        if (settling && run !== null && pl.answer !== "no" && !run.steps.every(stepDone)) break;
         if (c.read === null) c.read = d;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
         const answer = pl.answer === "no" ? "no" : "yes";
         // Only the first yes opens a project: a decision cannot fork an idea into two projects. After a reopen the case may
         // open a new one, unless an earlier decision's project is still open (not stopped).
         const stillOpen = c.decisions.some((x) => x.projectId != null && book.byId[x.projectId] !== undefined && !book.byId[x.projectId].stopped);
-        const first = c.decided === null && !stillOpen;
-        const project = first && answer === "yes" ? openOrJoin(book, ev, { id: c.id, from: c.from, fromUserId: c.fromUserId, routeId: c.routeId, title: c.title }) : null;
+        const first = settling || (c.decided === null && !stillOpen);
+        const source = { id: c.id, from: c.from, fromUserId: c.fromUserId, routeId: c.routeId, title: c.title };
+        // The run's draft is already open: the yes decides onto it, no second project. A join links the case to the project now (D21).
+        const project = !first || answer !== "yes" ? null
+          : settling && run !== null ? (run.opened ? book.byId[run.projectId ?? ""] ?? null : openOrJoin(book, { ...ev, payload: { ...pl, projectId: run.projectId ?? undefined } }, source))
+          : openOrJoin(book, ev, source);
         const category = noCategoryOf({ answer, reason: pl.reason ?? "", category: pl.category });
         const decision: Decision = {
           answer, reason: pl.reason ?? "", note: pl.note ?? "", by: ev.actor, byUserId: uid, day: d,
@@ -253,11 +289,24 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
           duplicateOf: typeof pl.duplicateOf === "string" && pl.duplicateOf !== "" ? pl.duplicateOf : null,
         };
         c.notNowInRow = category === "not-now" ? c.notNowInRow + 1 : 0;
+        endReview(c);
         c.decisions.push(decision);
         c.decided = decision;
         c.status = "decided";
         c.history.push(ev);
         c.decidedSeq = c.history.length - 1;
+        if (settling && run !== null) {
+          const onProject = run.projectId === null ? undefined : book.byId[run.projectId];
+          if (answer === "yes") {
+            c.openingRunId = run.runId;
+            if (onProject) {
+              if (run.opened) approvalGiven(onProject, d);
+              // A join takes the conditions its approvers named into the brief of the project it joined, now that the case is linked to it (D22).
+              else run.steps.forEach((st) => { const said = st.answers.at(-1); if (st.state === "conditions" && said?.conditions) addCondition(onProject, `Conditions (${approverOf(st, said.by)}): ${said.conditions}`); });
+            }
+          } else if (onProject && run.opened) setWaitingForApproval(onProject, false);
+          finishRun(c, run, answer);
+        }
         break;
       }
       case "case.discussion": {
@@ -312,6 +361,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         c.assignee = pl.to;
         c.assigneeSeatId = toSeat;
         c.assigneeRoleId = roleOfSeat(toSeat);
+        endReview(c);
         // The case's route moves with the pass; the new desk gets at least the date the writer asked for (Q4.9, Q4.10).
         if (typeof pl.routeId === "string" && routeOf(pl.routeId) !== null) c.routeId = pl.routeId;
         if (Number.isInteger(pl.dueDay)) c.dueFloor = Math.max(c.dueFloor ?? -Infinity, pl.dueDay as number);
@@ -370,6 +420,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (c.mergedIn.length > 0) break;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
         c.merged = { into: destId, day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 300) };
+        endReview(c);
         c.status = "merged";
         dest?.mergedIn.push({ id: c.id, userId: c.fromUserId, day: d });
         c.history.push(ev);
@@ -391,6 +442,8 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (!c || c.status !== "open") break;
         if (c.read === null) c.read = d;
         c.question = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d, answer: null, unanswered: null };
+        // The clock never forwards a review while the case waits on the raiser (D14).
+        if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, waitsOn: "raiser" };
         c.status = "asked";
         c.pausedSince = d;
         c.history.push(ev);
@@ -400,6 +453,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "asked" || !c.question) break;
         c.question.answer = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d };
+        if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, forwardFrom: Math.max(c.review.dueDay, d + 1), waitsOn: null };
         c.pausedDays += d - (c.pausedSince ?? d);
         c.pausedSince = null;
         c.status = "open";
@@ -413,6 +467,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (c.status !== "open" && c.status !== "discussion" && c.status !== "asked") break;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
         c.withdrawn = { day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 500) };
+        endReview(c);
         c.status = "withdrawn";
         c.history.push(ev);
         break;
@@ -422,6 +477,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "asked" || !c.question || !byClock(ev)) break;
         c.question.unanswered = d;
+        if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, forwardFrom: Math.max(c.review.dueDay, d + 1), waitsOn: null };
         c.pausedDays += d - (c.pausedSince ?? d);
         c.pausedSince = null;
         c.status = "open";
@@ -453,6 +509,110 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
           c.routeId = chosen.id; c.assignee = chosen.owner.name;
           c.assigneeSeatId = chosen.ownerSeatId ?? null; c.assigneeRoleId = roleOfSeat(c.assigneeSeatId);
         }
+        endReview(c);
+        c.history.push(ev);
+        break;
+      }
+      case "case.provisional": {
+        // A yes that waits for approval starts a run whose id is this event's (plan GAT, D21, D32). The server stamped the steps, their limits, the first
+        // due day, the deciding role and the cost into the event; nothing is read from the configuration here.
+        const c = cases[target];
+        const steps = Array.isArray(pl.approvals) ? pl.approvals : [];
+        const supplement = pl.supplement === true;
+        if (!c || c.approvals !== null || c.withdrawn !== null || c.status === "merged" || steps.length === 0) break;
+        if (supplement ? c.decided?.answer !== "yes" : c.decided !== null) break;
+        // A supplement asks what the decided case still lacks, for the draft it opened (D33). It needs that draft, not started and not stopped.
+        const decidedProject = supplement ? book.byId[c.decided?.projectId ?? ""] : undefined;
+        if (supplement && (!decidedProject || decidedProject.stopped !== null || decidedProject.startedDay !== null)) break;
+        const named = typeof pl.projectId === "string" && pl.projectId !== "" ? pl.projectId : null;
+        const joins = !supplement && named !== null && book.byId[named] !== undefined;
+        const projectId = supplement ? decidedProject?.id ?? null : joins ? named : named ?? `p_${ev.id}`;
+        if (!supplement && !joins) {
+          // A new draft opens exactly as SET's yes with a draft does; the decider is the actor.
+          openOrJoin(book, { ...ev, payload: { ...pl, projectId: projectId ?? undefined, draft: true } }, { id: c.id, from: c.from, fromUserId: c.fromUserId, routeId: c.routeId, title: c.title });
+        }
+        const opened = !joins;
+        const project = projectId === null ? undefined : book.byId[projectId];
+        if (opened && project) setWaitingForApproval(project, true);
+        c.approvals = {
+          runId: ev.id, deciderUserId: uid, decidingRoleId: pl.decidingRoleId ?? null, since: d, projectId, opened, supplement, costEur: typeof pl.costEur === "number" ? pl.costEur : null,
+          steps: steps.map((a, i): ApprovalStep => ({ ...a, id: `${ev.id}:${i}`, state: "pending", dueDay: i === 0 && typeof pl.stepDueDay === "number" ? pl.stepDueDay : null, dueRev: 0, seatId: null, answers: [] })),
+          done: false, outcome: null,
+        };
+        if (!supplement) {
+          // The case leaves the desk and its promise clock stops until the run decides it (D21).
+          if (c.read === null) c.read = d;
+          if (c.pausedSince !== null) c.pausedDays += d - c.pausedSince;
+          c.pausedSince = d;
+          c.status = "approval";
+        }
+        c.history.push(ev);
+        break;
+      }
+      case "case.approval": {
+        // One answer of the current step (plan GAT, D22). An answer for another run, another step or an older revision of the step (a form opened before
+        // a send-back) is ignored; the server refuses it before it is written.
+        const c = cases[target];
+        const run = c?.approvals ?? null;
+        if (!c || run === null || run.done || pl.runId !== run.runId) break;
+        const step = currentOf(run);
+        const answer = pl.approvalAnswer;
+        if (step === null || step.id !== pl.stepId || step.dueRev !== (pl.dueRev ?? 0)) break;
+        if (answer !== "yes" && answer !== "conditions" && answer !== "back" && answer !== "no") break;
+        const conditions = (pl.conditions ?? "").trim();
+        step.answers.push({
+          answer, reason: pl.reason ?? "", conditions: conditions === "" ? null : conditions, present: Number.isInteger(pl.present) ? (pl.present as number) : null,
+          day: d, by: ev.actor, byUserId: uid,
+        });
+        const index = run.steps.indexOf(step);
+        const project = run.projectId === null ? undefined : book.byId[run.projectId];
+        if (answer === "back") {
+          step.dueRev += 1;
+          if (typeof pl.nextStepDueDay === "number") step.dueDay = pl.nextStepDueDay;
+        } else if (answer === "no") {
+          step.state = "no";
+          if (run.supplement) {
+            // A refused supplement ends its run; the decision and the draft stay, and Start stays held by what is still missing (D33).
+            finishRun(c, run, "no");
+            if (project) setWaitingForApproval(project, false);
+          }
+        } else {
+          step.state = answer;
+          if (answer === "conditions" && conditions !== "" && run.opened && project) addCondition(project, `Conditions (${approverOf(step, ev.actor)}): ${conditions}`);
+          const next = run.steps[index + 1];
+          if (next) next.dueDay = typeof pl.nextStepDueDay === "number" ? pl.nextStepDueDay : null;
+          else if (run.supplement) {
+            // The last yes of a supplement adds coverage and ends the run; no case.decided follows (D33).
+            finishRun(c, run, "yes");
+            if (project) approvalGiven(project, d);
+          }
+        }
+        c.history.push(ev);
+        break;
+      }
+      case "case.reviewed": {
+        // The review seat sends the raise on to its desk (plan GAT, D12, D13), or the clock does when nobody did (D14). The route and the seat move
+        // as a hand-over moves them, but this is no pass and no hand-over, and the answer date does not move.
+        const c = cases[target];
+        if (!c || c.review === null || c.review.state !== "pending" || pl.outcome !== "forward") break;
+        if (!(c.status === "open" || c.status === "asked")) break;
+        if (c.read === null) c.read = d;
+        const toSeat = pl.toRoleHolderId ?? null;
+        const seat = toSeat === null ? null : seats.find((s) => s.id === toSeat) ?? null;
+        if (typeof pl.routeId === "string" && routeOf(pl.routeId) !== null) c.routeId = pl.routeId;
+        c.assignee = pl.to ?? seat?.label ?? c.assignee;
+        c.assigneeSeatId = toSeat;
+        c.assigneeRoleId = roleOfSeat(toSeat);
+        c.review = { ...c.review, state: "forwarded", auto: Boolean(pl.auto) };
+        c.history.push(ev);
+        break;
+      }
+      case "case.costed": {
+        // The cost estimate, the latest one counts (D18). Who may write it is the server's call; a case that is gone takes none.
+        const c = cases[target];
+        if (!c || c.withdrawn !== null || c.merged !== null) break;
+        if (!Number.isInteger(pl.eur) || (pl.eur as number) < 0 || (pl.eur as number) > COST_EUR_MAX) break;
+        c.cost = { eur: pl.eur as number, basis: (pl.basis ?? "").trim().slice(0, COST_BASIS_MAX), day: d, by: ev.actor, byUserId: uid };
         c.history.push(ev);
         break;
       }
@@ -490,7 +650,17 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       case "clock.due": {
         // A fact the scheduler stored (CLK/D10). It stays in the case's history; the escalation reads it below.
         const c = cases[target];
-        if (c) c.history.push(ev);
+        if (c) {
+          c.history.push(ev);
+          // An approval fact counts only for the current step at its current revision (plan GAT, D23): a late hand-over names the seat that answers it now,
+          // a council that did not meet moves the step to its next meeting.
+          const run = c.approvals;
+          const step = run === null ? null : currentOf(run);
+          if (run !== null && step !== null && pl.originEventId === run.runId && pl.stepId === `${step.id}@${step.dueRev}`) {
+            if (pl.kind === "approval" && pl.check === 2 && typeof pl.toRoleHolderId === "string") step.seatId = pl.toRoleHolderId;
+            else if (pl.kind === "council" && typeof pl.dueDay === "number") step.dueDay = pl.dueDay;
+          }
+        }
         break;
       }
       case "day.advanced":
