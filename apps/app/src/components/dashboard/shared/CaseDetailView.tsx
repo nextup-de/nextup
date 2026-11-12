@@ -14,6 +14,7 @@ import { reasonTone, statusTone, type Tone } from "@/components/dashboard/shared
 import { DeptChip, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
 import { AnswerPromise } from "@/components/cases/AnswerPromise";
 import { CaseRouting } from "@/components/cases/CaseRouting";
+import { MoveToDesk } from "@/components/cases/MoveToDesk";
 import { seesRouting } from "@/features/cases/routing-trail";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
 import { roundState } from "@/features/cases/discussion";
@@ -30,7 +31,7 @@ import { loadShots } from "@/lib/shots";
 import styles from "./CaseDetailView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
-const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped", withdrawn: "dashboard.statusWithdrawn" } as const satisfies Record<string, MessageKey>;
+const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped", withdrawn: "dashboard.statusWithdrawn", merged: "caseSee.statusMerged" } as const satisfies Record<string, MessageKey>;
 
 // The status and reason chips in soft tints: a case that waits is amber, a result is green, the rest stays grey.
 const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", ink: "green", ok: "green", grey: "grey", soft: "grey", ghost: "grey", none: "grey", purple: "grey" };
@@ -210,6 +211,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             <button type="button" className={styles.soft} data-testid="case-withdraw" onClick={() => setWithdrawing(true)}>{t("dashboard.detailWithdraw")}</button>
           )}
           {!c.open && <Link href={href("/raise")} className={styles.soft}>{t("dashboard.detailFollowUp")}</Link>}
+          <MoveToDesk c={c} />
         </div>
         {withdrawing && mine && !c.decided && (
           <div className={styles.whyRow} role="group" aria-label={t("dashboard.detailWithdraw")}>
