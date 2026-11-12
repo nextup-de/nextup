@@ -61,6 +61,8 @@ export const profile = defineMessages({
     mailsLoop: "Discussions and projects",
     mailsReminders: "Reminders",
     mailsDigest: "Daily digest of my open cases",
+    mailsAlways: "Always on",
+    mailsAlsoByMail: "Also by mail",
     mailsNotSaved: "That choice could not be saved. Try again.",
   },
   de: {
@@ -122,6 +124,8 @@ export const profile = defineMessages({
     mailsLoop: "Diskussionen und Projekte",
     mailsReminders: "Erinnerungen",
     mailsDigest: "Tägliche Zusammenfassung meiner offenen Fälle",
+    mailsAlways: "Immer an",
+    mailsAlsoByMail: "Auch per E-Mail",
     mailsNotSaved: "Die Auswahl konnte nicht gespeichert werden. Versuchen Sie es erneut.",
   },
 });
