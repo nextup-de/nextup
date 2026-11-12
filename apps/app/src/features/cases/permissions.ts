@@ -3,6 +3,7 @@
 //
 // Pure: state in, verdict out. The caller reduces the company's log first, so "is this your case"
 // is answered against the same state everybody sees.
+import { isOwnIdea, mayCost, mayMoveToDesk, mayReview, unmetApprovals, validCost, yesNeedsApproval } from "@/features/approvals/rights";
 import { NOBODY, type Actor as IdentityActor } from "@/features/auth/identity";
 import { isProjectId, mayAppendProject } from "@/features/projects/permissions";
 import { isClockReason } from "@/features/clock/actor";
@@ -36,6 +37,8 @@ const OPEN_CASE_EVENTS = new Set(["case.affected", "case.unaffected", "case.comm
 /** Does this event need `access`, the part of the visibility rule that is not in the state? A merge and a link name a second case the person must be able to open. */
 export const needsCaseAccess = (type: string): boolean => OPEN_CASE_EVENTS.has(type) || type === "case.merged" || type === "case.linked";
 const OPEN_IDEA_EVENTS = new Set(["idea.cosigned", "idea.uncosigned", "idea.asked"]);
+/** What a review holder does to a raise while its review is pending (plan GAT, D13): each needs the review right and is never done to one's own idea. case.decided no is added where it is read. */
+const REVIEW_ACTIONS = new Set(["case.reviewed", "case.asked", "case.merged", "case.linked", "case.override", "case.handed"]);
 
 export function mayAppend(
   actor: Actor,
@@ -55,6 +58,16 @@ export function mayAppend(
 
   // A merged case is closed (plan SEE, D17, D23): nobody adds to it. The clock writes without mayAppend; this is every person's event.
   if (kase && kase.status === "merged" && ev.type.startsWith("case.") && ev.type !== "case.raised") return no(t, "cases.permMerged");
+
+  // Review (plan GAT, D13): while a raise is in review, every review action needs the review right and is refused for the raiser's own idea,
+  // managers included. The server checks it on each write, not only when it places the raise. Outside a review the rules below hold.
+  const who: Actor = { ...actor, userId };
+  // A case in approval is decided by its approvals only: nobody writes a decision on it, whoever they are (GAT D21).
+  if (kase?.status === "approval" && ev.type === "case.decided") return no(t, "approvals.permNotProvisional");
+  if (kase && kase.review?.state === "pending" && (REVIEW_ACTIONS.has(ev.type) || (ev.type === "case.decided" && ev.payload.answer === "no"))) {
+    if (isOwnIdea(who, kase)) return no(t, "approvals.permSelfReview");
+    if (!(ev.type === "case.override" ? mayMoveToDesk(who, kase, state) : mayReview(who, kase, state))) return no(t, "approvals.permReviewOnly");
+  }
 
   switch (true) {
     case ev.type === "case.raised":
@@ -82,6 +95,7 @@ export function mayAppend(
     case ev.type === "case.discussion":
       if (!kase) return no(t, "cases.permNoCase");
       if (!(isManager || onMyDesk(kase))) return no(t, "cases.permDeskDiscussion");
+      if (kase.review?.state === "pending") return no(t, "approvals.permReviewNoYes"); // forward it to its desk first (GAT D13)
       return kase.status === "open" ? OK : no(t, "cases.permOpenForDiscussion");
 
     case ev.type === "case.invited":
@@ -121,10 +135,46 @@ export function mayAppend(
 
     case ev.type === "case.override":
       if (!kase) return no(t, "cases.permNoCase");
-      if (!isManager) return no(t, "cases.permOverrideManager");
-      // Move to a desk (D21): an open or asked case, to a route the company has.
-      if (kase.status !== "open" && kase.status !== "asked") return no(t, "cases.permOverrideOpen");
+      // Move to a desk (D21; GAT D16): managers, and the holders of the review, triage and fallback roles on a case without a route or in review;
+      // never on one's own idea. An open or asked case, to a route the company has.
+      if (!mayMoveToDesk(who, kase, state)) {
+        if (isOwnIdea(who, kase)) return no(t, "approvals.permSelfReview");
+        return no(t, isManager ? "cases.permOverrideOpen" : "cases.permOverrideManager");
+      }
       return typeof ev.payload.chosen === "string" && state.routes.some((r) => r.id === ev.payload.chosen) ? OK : no(t, "cases.permOverrideRoute");
+
+    case ev.type === "case.reviewed": {
+      // The review seat sends the raise on to its desk (GAT D13). Send-back is a case.asked; the clock's own forward does not come through here.
+      if (!kase) return no(t, "cases.permNoCase");
+      if (kase.review?.state !== "pending") return no(t, "approvals.permReviewOnly");
+      if (ev.payload.outcome !== "forward" || Object.keys(ev.payload).includes("auto")) return no(t, "approvals.permReviewOnly");
+      const route = ev.payload.routeId;
+      return route === undefined || (typeof route === "string" && state.routes.some((r) => r.id === route)) ? OK : no(t, "cases.permOverrideRoute");
+    }
+
+    case ev.type === "case.costed": {
+      // The cost estimate (GAT D18): a whole number of euros in range, written by the desk, the review seat, the lead and managers.
+      if (!kase) return no(t, "cases.permNoCase");
+      if (kase.review?.state === "pending" && isOwnIdea(who, kase)) return no(t, "approvals.permSelfReview");
+      if (!validCost(ev.payload.eur, ev.payload.basis ?? "")) return no(t, "approvals.permCostRange");
+      return mayCost(who, kase, state) ? OK : no(t, "approvals.permCostRights");
+    }
+
+    case ev.type === "case.provisional": {
+      // 'Yes, if approved' (GAT D20, D21, D33): the rights of a yes, not while the raise is in review; a supplement asks for the approvals a decided case still lacks.
+      if (!kase) return no(t, "cases.permNoCase");
+      if (ev.payload.supplement === true) {
+        const project = state.projects.find((p) => p.id === kase.decided?.projectId);
+        if (kase.decided?.answer !== "yes" || !project || project.startedDay !== null || project.status === "stopped" || project.status === "recognised") return no(t, "approvals.permNotProvisional");
+        if (!(userId !== null && (project.leadUserId === userId || kase.decided.byUserId === userId))) return no(t, "cases.permDeskOnly");
+        if (kase.approvals !== null && !kase.approvals.done) return no(t, "approvals.permNotProvisional"); // a run is active already
+        return unmetApprovals(kase, state).missing.length > 0 ? OK : no(t, "approvals.permNotProvisional");
+      }
+      if (!(isManager || onMyDesk(kase))) return no(t, "cases.permDeskOnly");
+      if (kase.review?.state === "pending") return no(t, "approvals.permReviewNoYes");
+      if (kase.status === "approval") return no(t, "cases.permAlreadyDecided");
+      return mayDecide({ ...(ev.payload as EventPayload), answer: "yes" }, kase, state, t, userId, true);
+    }
 
     case ev.type === "case.merged":
     case ev.type === "case.linked": {
@@ -214,12 +264,19 @@ export function mayAppend(
  * One decision per case (K3): a second one, from the app, the API or a card still open in Teams, would replace the
  * first in the reducer. A yes that names a project opens it, or joins one that is still open.
  */
-function mayDecide(pl: EventPayload, kase: State["cases"][number], state: State, t: T, userId: string | null): Verdict {
+function mayDecide(pl: EventPayload, kase: State["cases"][number], state: State, t: T, userId: string | null, provisional = false): Verdict {
+  // A case in approval is decided by its approvals only: nobody writes a decision on it (GAT D21).
+  if (kase.status === "approval") return no(t, "approvals.permNotProvisional");
   // Decided in the current cycle: a case that was reopened (a no that came back, a second look, a stopped project) has no decision until the next (D12).
   if (kase.decided) return no(t, "cases.permAlreadyDecided");
   if (pl.answer === "no") {
     const reasoned = mayNo(pl, kase, state, t);
     if (!reasoned.ok) return reasoned;
+  }
+  // A plain yes: not while the raise is in review, and not where approvals apply - only 'Yes, if approved' is (GAT D13, D20).
+  if (pl.answer !== "no" && !provisional) {
+    if (kase.review?.state === "pending") return no(t, "approvals.permReviewNoYes");
+    if (yesNeedsApproval(kase, state)) return no(t, "approvals.permNeedsApproval");
   }
   // Plan SET (D8, D10): a yes may open a draft and carry one line to the raiser; a yes without `draft` keeps its rules.
   if (pl.draft !== undefined && typeof pl.draft !== "boolean") return no(t, "cases.permDraftFlag");
