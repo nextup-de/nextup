@@ -94,7 +94,7 @@ describe("SEE scaffold", () => {
       expect(by(s, "cb")).toMatchObject({ status: "decided", mergedIn: [{ id: "ca", userId: "u_ca", day: 2 }] });
     });
 
-    it("is ignored for a decided, withdrawn or merged case, into itself, into a merged or withdrawn case and into an unknown one", () => {
+    it("is ignored for a decided, withdrawn or merged case, into itself and into a merged or withdrawn case", () => {
       const ignored = (events: CaseEvent[], id: string) => expect(by(run(events), id).merged, id).toBeNull();
       ignored([raise("ca"), raise("cb"), no("ca"), merge("ca", "cb", 2)], "ca"); // decided
       ignored([raise("ca"), raise("cb"), yes("ca"), merge("ca", "cb", 2)], "ca");
@@ -102,13 +102,25 @@ describe("SEE scaffold", () => {
       ignored([raise("ca"), raise("cb"), merge("ca", "ca", 1)], "ca"); // into itself
       ignored([raise("ca"), raise("cb"), raise("cc"), merge("cb", "cc", 1), merge("ca", "cb", 2)], "ca"); // into a merged case
       ignored([raise("ca"), raise("cb"), ev("case.withdrawn", "u_cb", "cb", {}, 1), merge("ca", "cb", 2)], "ca"); // into a withdrawn case
-      ignored([raise("ca"), merge("ca", "c_unknown", 1)], "ca");
       ignored([raise("ca"), ev("case.merged", "u_own", "ca", {}, 1)], "ca"); // no target
       // merging twice changes nothing: the first merge stands
       const twice = run([raise("ca"), raise("cb"), raise("cc"), merge("ca", "cb", 1), merge("ca", "cc", 2)]);
       expect(by(twice, "ca").merged?.into).toBe("cb");
       expect(by(twice, "cc").mergedIn).toEqual([]);
       expect(by(twice, "cb").mergedIn).toHaveLength(1);
+    });
+
+    it("still marks the merged case when its target is not in the log (a reader who may not open the target, D24), and skips only the target's side", () => {
+      const s = run([raise("ca"), merge("ca", "c_cut", 2, "Same fault")]);
+      expect(by(s, "ca")).toMatchObject({ status: "merged", archived: true, open: false, overdue: false, clock: 2, decided: null });
+      expect(by(s, "ca").merged).toEqual({ into: "c_cut", day: 2, by: "T. Vogel", byUserId: "u_own", note: "Same fault" });
+      // The same rules hold for the case itself: decided or withdrawn stays as it is, a repeat changes nothing, a case that absorbed stays a destination.
+      expect(by(run([raise("ca"), no("ca"), merge("ca", "c_cut", 2)]), "ca").merged).toBeNull();
+      expect(by(run([raise("ca"), ev("case.withdrawn", "u_ca", "ca", {}, 1), merge("ca", "c_cut", 2)]), "ca").merged).toBeNull();
+      expect(by(run([raise("ca"), merge("ca", "c_cut", 1), merge("ca", "c_other", 2)]), "ca").merged?.into).toBe("c_cut");
+      expect(by(run([raise("ca"), raise("cb"), merge("cb", "ca", 1), merge("ca", "c_cut", 2)]), "ca").merged).toBeNull();
+      // Into itself, or with no target, is still ignored.
+      expect(by(run([raise("ca"), merge("ca", "ca", 1)]), "ca").merged).toBeNull();
     });
 
     it("never forms a cycle or a chain: after A merged into B, B cannot merge into A, nor into another case", () => {
