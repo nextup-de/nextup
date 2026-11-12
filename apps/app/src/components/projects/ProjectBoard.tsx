@@ -29,6 +29,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
   const r = useRights(p);
   const send = useSend(p);
   const cols = board(p);
+  const counted = p.steps.filter((s) => !s.dropped).length; // D31: a dropped step counts in no total
   const team = teamOf(p, seed.seats);
   const mine = (s: Step) => actorUserId !== null && s.ownerUserId === actorUserId;
   const [filter, setFilter] = useState("all"); // "all" | "mine" | "unowned" | an owner's user id
@@ -128,7 +129,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
       <div className={styles.boardHead}>
         <div className={styles.boardTitle}>
           <h2 id={"board-" + p.id} className={styles.h2}>{t("projects.boardTitle")}</h2>
-          <span className={styles.muted}>{p.steps.length ? t("projects.boardDone", { done: cols.done.length, total: p.steps.length }) : t("projects.boardNoSteps")}</span>
+          <span className={styles.muted}>{counted ? t("projects.boardDone", { done: cols.done.length, total: counted }) : t("projects.boardNoSteps")}</span>
         </div>
         {p.steps.length > 0 && (
           <div className={styles.filters} role="group" aria-label={t("projects.filterLabel")}>
@@ -291,7 +292,8 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
 
   return (
     <article
-      className={styles.step} aria-label={s.text} draggable={canDrag} data-step={s.id} data-col={s.column}
+      className={styles.step} aria-label={s.text} draggable={canDrag} data-step={s.id} data-col={s.column} data-dropped={s.dropped ? "true" : undefined}
+      title={s.dropped ? t("projectResult.dropped", { why: s.dropped.why }) : undefined}
       data-dragging={dragging ? "true" : undefined} data-mine={mine ? "true" : undefined} data-late={late ? "true" : undefined}
       onDragStart={(e) => { if (!canDrag) return; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", s.id); onDragStart(); }}
       onDragEnd={onDragEnd} onDragOver={onDragOver}
