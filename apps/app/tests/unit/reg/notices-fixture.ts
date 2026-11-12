@@ -71,7 +71,8 @@ const project = (id: string, over: Partial<ReducedProject> = {}): ReducedProject
   startedDay: null, doneDay: null, doneNote: "", stopped: null, baseline: null, steps: [], links: [], sync: null, measures: [], checks: [], verdict: null,
   reward: null, claimed: null, status: "planning", closed: false, rewardDue: false, dueDay: 5, overdue: false, escalated: null, history: [],
   draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [], goal: null, startDay: null,
-  approvalsPendingSince: null, raiserNote: "", deciderUserId: null, ...over,
+  approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
+  doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null, ...over,
 });
 
 const step = (id: string, text: string, owner: string | null) => ({
