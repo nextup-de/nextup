@@ -12,6 +12,7 @@ export const PROJECT_EVENT_TYPES = [
   "project.start.moved",
   "project.doneby.moved", "project.paused", "project.resumed", "project.howwework", "project.update", "project.lead.vacated",
   "project.lead.changed",
+  "project.measure.questioned", "project.baseline.confirmed", "project.help.asked",
 ] as const;
 
 /** Every project.* type, with the fields it carries. */
@@ -27,9 +28,9 @@ export type ProjectAreaEventType =
   | "project.linked" // { system, url, key?, stepId? }
   | "project.commented" // { text }
   | "project.sync" // { system: 'jira', on }  send the project to Jira / stop syncing it; lead or manager, while the project is open
-  | "project.done" // { note? }  the measure checks start counting
-  | "project.measured" // { check, value, source, note? }  the verdict is computed, never sent
-  | "project.measure.confirmed" // { check }  a second person confirms a typed measure (LOOP/D18)
+  | "project.done" // { note?, open? }  the measure checks start counting; open: how each step not in Done ends (D13)
+  | "project.measured" // { check, value, source, note?, measureEventId? }  the verdict is computed, never sent; after a send-back it re-enters that check once (D14), naming the revision it replaces
+  | "project.measure.confirmed" // { check, measureEventId? }  a second person confirms a typed measure (LOOP/D18); measureEventId names the revision confirmed
   | "project.rewarded" // { rule, amount?, note? }
   | "project.claimed" // -  an anonymous author takes their reward
   | "project.stopped" // { why }
@@ -47,7 +48,11 @@ export type ProjectAreaEventType =
   | "project.howwework" // { checkInWeekday, note? }  the weekly check-in weekday (1-5) and a note on how the team works
   | "project.update" // { text, week }  the lead's weekly update; week is the check-in day number
   | "project.lead.vacated" // { userId }  the lead left; written only by system:directory
-  | "project.lead.changed"; // { to, toUserId, why? }  a new lead while the project has none
+  | "project.lead.changed" // { to, toUserId, why? }  a new lead while the project has none
+  // A result that closes properly (plan RES, D13 to D19).
+  | "project.measure.questioned" // { check, why, measureEventId? }  a person who may confirm sends a typed result back (D14); measureEventId names the revision questioned
+  | "project.baseline.confirmed" // { baselineEventId? }  a second person confirms the current baseline number (D16); baselineEventId names the revision confirmed
+  | "project.help.asked"; // { stepId, text }  the lead or a member asks the sponsor for help on a step (D19)
 
 // Compile-time: every app type is a member of the area's union.
 const _appTypesAreMembers: readonly ProjectAreaEventType[] = PROJECT_EVENT_TYPES;
@@ -74,4 +79,12 @@ export type ProjectAreaPayload = {
   week?: number; // project.update: the check-in day number of the week it is for
   unassign?: boolean; // project.member with on: false (D22): also clears the person's open steps and drops them as sponsor and follower
   originEventId?: string; // clock.due of a project: the event the occurrence belongs to (a block or vacancy cycle)
+  // A result that closes properly (plan RES). check, why, stepId and text are shared (CorePayload).
+  // project.done (D13) also carries `open`: every step not in Done, how it ends. Not declared yet: case.checkin's `open?: string[]`
+  // (features/cases/events/case.ts, NOR) has that name, and one payload type cannot hold both.
+  // The revision a confirmation, a questioning or a re-entry is about (RES review, 12 Nov): the id of the project.measured / project.baseline
+  // event that wrote the number. An event naming a revision that has since been replaced is refused, so a confirmation for revision A never
+  // confirms its replacement B. A missing field (every event stored before RES) names the revision that stood when it was written.
+  measureEventId?: string; // project.measure.confirmed, project.measure.questioned, project.measured (a re-entry)
+  baselineEventId?: string; // project.baseline.confirmed
 };

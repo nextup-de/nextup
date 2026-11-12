@@ -36,7 +36,7 @@ describe("REG clock split", () => {
     expect([...DUE_KINDS].sort()).toEqual([...snapshot.dueKinds].sort());
     expect(new Set(DUE_KINDS).size).toBe(DUE_KINDS.length);
     expect([...CASE_DUE_KINDS]).toEqual(["deadline", "checkin", "handover", "escalation", "question", "unanswered", "triage"]);
-    expect([...PROJECT_DUE_KINDS]).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"]);
+    expect([...PROJECT_DUE_KINDS]).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant", "reward"]);
     for (const none of [AGENT_DUE_KINDS, APPROVAL_DUE_KINDS, OVERLOAD_DUE_KINDS]) expect(none).toEqual([]);
   });
 
@@ -90,7 +90,7 @@ describe("REG clock split", () => {
     expect(writeProjectDue(due({ kind: "lead", lapse: true, askId: "y1", userId: "u_lead" }), ctx)).toEqual({ type: "project.lead.answered", payload: { take: false, lapsed: true, askId: "y1" } });
     expect(writeProjectDue(due({ kind: "lead", lapse: true }), ctx)).toEqual({ type: "project.lead.answered", payload: { take: false, lapsed: true } });
     expect(writeProjectDue(due({ kind: "invite", lapse: true, inviteId: "i1", userId: "u_x" }), ctx)).toEqual({ type: "project.invite.answered", payload: { inviteId: "i1", userId: "u_x", take: false, lapsed: true } });
-    for (const kind of ["lead", "invite", "draft", "start", "measure", "confirm", "late", "blocked", "quiet", "stalled", "update", "vacant"] as const) expect(writeProjectDue(due({ kind }), ctx), kind).toBeNull();
+    for (const kind of ["lead", "invite", "draft", "start", "measure", "confirm", "late", "blocked", "quiet", "stalled", "update", "vacant", "reward"] as const) expect(writeProjectDue(due({ kind }), ctx), kind).toBeNull();
     for (const kind of ["handover", "unanswered", "deadline"] as const) expect(writeProjectDue(due({ kind }), ctx), kind).toBeNull();
   });
 

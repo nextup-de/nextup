@@ -30,6 +30,7 @@ const KIND: Record<InboxKind, MessageKey> = {
   case: "inbox.kindCase", idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
   reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindMove", invitation: "inbox.kindView", approval: "inbox.kindConfirm",
   stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "inbox.kindCase",
+  help: "inbox.kindMove", baseline: "inbox.kindConfirm", suggestion: "inbox.kindMove",
 };
 // A decide item is opened by the id of its case or idea (the ?id= of its link).
 const openId = (i: InboxItem) => i.caseId ?? i.id.slice(i.id.indexOf(":") + 1);
