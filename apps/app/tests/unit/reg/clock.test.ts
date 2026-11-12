@@ -37,7 +37,8 @@ describe("REG clock split", () => {
     expect(new Set(DUE_KINDS).size).toBe(DUE_KINDS.length);
     expect([...CASE_DUE_KINDS]).toEqual(["deadline", "checkin", "handover", "escalation", "question", "unanswered", "triage", "revisit", "appeal", "view"]);
     expect([...PROJECT_DUE_KINDS]).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant", "reward"]);
-    for (const none of [AGENT_DUE_KINDS, OVERLOAD_DUE_KINDS]) expect(none).toEqual([]);
+    expect(AGENT_DUE_KINDS).toEqual([]);
+    expect([...OVERLOAD_DUE_KINDS]).toEqual(["away", "overflow", "overloaded", "cleared"]); // plan OVL: the kinds exist, overloadDues gives nothing until OVL-C1
     expect([...APPROVAL_DUE_KINDS]).toEqual(["review", "approval", "council"]); // plan GAT: the kinds exist, approvalDues gives nothing until GAT-C1
   });
 

@@ -3,8 +3,11 @@
 import type { SpendRule } from "@/features/demo/types";
 import { DEFAULT_POST_AS, postAsOf, type PostAs } from "@/features/ideas/posting";
 
-export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps", "posting", "project_start_days", "blocked_days", "no_reason_min", "appeal_days", "question_days"] as const;
+export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps", "posting", "project_start_days", "blocked_days", "no_reason_min", "appeal_days", "question_days", "overload_at"] as const;
 export type CompanyRuleKey = (typeof COMPANY_RULE_KEYS)[number];
+
+/** The thresholds of an overloaded desk (plan OVL, D17): open work items per present holder from which it is triage, up and overflow, and how many late ones make it triage. */
+export type OverloadAt = { triage: number; up: number; overflow: number; late: number };
 
 export type LoopSteps = { discussion: boolean; projects: boolean; measure: boolean; recognition: boolean };
 export type CompanyRules = {
@@ -24,6 +27,8 @@ export type CompanyRules = {
   appealDays?: number;
   /** Working days a question to the raiser waits for an answer, 2 to 30 (plan NOR). */
   questionDays?: number;
+  /** The thresholds of an overloaded desk, 1 <= triage < up < overflow <= 200 and 1 <= late <= 50 (plan OVL, D17). */
+  overloadAt?: OverloadAt;
   steps: LoopSteps;
   /** Who a member's raise is preselected as on the last look (decision Q1.7); the member can change it per raise. */
   postAs: PostAs;
@@ -80,6 +85,12 @@ function stepsOf(value: unknown): LoopSteps {
   };
 }
 
+/** A valid overload_at value or null: whole numbers, 1 <= triage < up < overflow <= 200 and 1 <= late <= 50; anything else is ignored (plan OVL, D17). */
+function overloadAtOf(value: unknown): OverloadAt | null {
+  if (!isObj(value) || !intIn(value.triage, 1, 200) || !intIn(value.up, 1, 200) || !intIn(value.overflow, 1, 200) || !intIn(value.late, 1, 50)) return null;
+  return value.triage < value.up && value.up < value.overflow ? { triage: value.triage, up: value.up, overflow: value.overflow, late: value.late } : null;
+}
+
 export function rulesFromRows(rows: readonly RuleRow[]): CompanyRules {
   const out: CompanyRules = { ...DEFAULT_RULES, steps: { ...DEFAULT_RULES.steps } };
   for (const { key, value } of rows) {
@@ -109,6 +120,10 @@ export function rulesFromRows(rows: readonly RuleRow[]): CompanyRules {
     else if (key === "question_days") {
       if (isObj(value) && intIn(value.days, 2, 30)) out.questionDays = value.days;
     }
+    else if (key === "overload_at") {
+      const at = overloadAtOf(value);
+      if (at !== null) out.overloadAt = at;
+    }
     else if (key === "loop_steps") out.steps = stepsOf(value);
     else if (key === "posting") out.postAs = postAsOf(isObj(value) ? value.as : undefined);
   }
@@ -129,6 +144,7 @@ export function rowsFromRules(r: CompanyRules): RuleRow[] {
   if (r.noReasonMin !== undefined) rows.push({ key: "no_reason_min", value: { chars: r.noReasonMin } });
   if (r.appealDays !== undefined) rows.push({ key: "appeal_days", value: { days: r.appealDays } });
   if (r.questionDays !== undefined) rows.push({ key: "question_days", value: { days: r.questionDays } });
+  if (r.overloadAt !== undefined) rows.push({ key: "overload_at", value: { ...r.overloadAt } });
   if (r.spend) rows.push({ key: "spend", value: { limitEur: r.spend.limitEur, text: r.spend.text } });
   return rows;
 }

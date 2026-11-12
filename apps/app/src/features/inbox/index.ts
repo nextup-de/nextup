@@ -1,8 +1,9 @@
 // The one inbox (plan INB): every role's items in three asks and one order.
+import { pinItems } from "@/features/overload/pinned";
 import { markDue, orderItems } from "./order";
 import { agentItems, type AgentInboxInput } from "./sources/agent";
 import { approvalItems } from "./sources/approvals";
-import { caseItems, type InboxSourceInput } from "./sources/cases";
+import { caseItems } from "./sources/cases";
 import { projectDraftItems } from "./sources/project-draft";
 import { projectMoveItems } from "./sources/project-move";
 import { projectResultItems } from "./sources/project-result";
@@ -28,7 +29,8 @@ export function inboxItems(input: AgentInboxInput): InboxItem[] {
     seen.add(i.id);
     return i.caseId === undefined || !linked.has(i.caseId);
   });
-  return orderItems(items.map((i) => markDue(i, input.today)), input.today);
+  // A case the seat above left alone is pinned for every holder of the desk it sits on (plan OVL, D20).
+  return orderItems(pinItems(items, input).map((i) => markDue(i, input.today)), input.today);
 }
 
 /**

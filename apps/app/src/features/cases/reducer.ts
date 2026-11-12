@@ -9,6 +9,8 @@
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { byClock } from "@/features/clock/actor";
 import type { SeatRow } from "@/features/auth/identity";
+import { applyOverload, emptyOverload } from "@/features/overload/reduce";
+import type { OverloadState } from "@/features/overload/types";
 import { COST_BASIS_MAX, COST_EUR_MAX, EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo, type ApprovalStep, type CaseApprovals, type CaseCost, type CaseReview } from "@/features/approvals/types";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import { cycleEvents, noCategoryOf, type AnyNoCategory } from "./no";
@@ -109,6 +111,8 @@ export type State = {
   ledger: LedgerCounts; rules: LoopRules; seats: SeatRow[]; routes: Route[]; clock: ClockSpec;
   /** The company's review and approval settings and its roles' titles and spend limits, as the seed carried them (plan GAT, D27); the empty config and no roles without. */
   approvals: ApprovalConfig & { roles: ApprovalRoleInfo[] };
+  /** Absences and desk episodes (plan OVL, D16). Absent = empty: read it through overloadOf(state), so State literals in tests stay valid. */
+  overload?: OverloadState;
 };
 
 export type ReduceSeed = {
@@ -122,6 +126,7 @@ export type ReduceSeed = {
 type CaseRow = { kind?: CaseKind; title: string; body?: string; from: string; fromDept?: string; routeId?: string | null; assignee: string; raisedDay?: number; reason?: string; upside?: string; linkedIdea?: string; fromUserId?: string | null; seatId?: string | null };
 
 export function reduce(seed: ReduceSeed, log: EventLog): State {
+  const overload = emptyOverload();
   const day = log.day | 0;
   const routes = seed.routes;
   const routeOf = (id: string | null) => routes.find((r) => r.id === id) ?? null;
@@ -229,6 +234,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     if (applyProjectEvent(book, ev, rules)) return;
     const pl = ev.payload ?? {};
     const d = ev.day | 0;
+    if (applyOverload(overload, ev, d)) return; // OVL's six events reach no other branch (plan OVL, D16)
     const target = ev.target ?? "";
     const uid = ev.actorUserId ?? null;
     switch (ev.type) {
@@ -744,6 +750,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     seats: seed.seats ?? [],
     routes,
     clock,
+    overload,
     approvals: { ...(seed.approvals ?? EMPTY_APPROVAL_CONFIG), roles: (seed.roles ?? []).map((r) => ({ id: r.id, title: r.title ?? "", reportsToId: r.reportsToId, spendLimitEur: r.spendLimitEur ?? null })) },
   };
 }
