@@ -144,7 +144,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     const url = pathname + (qs ? "?" + qs : "");
     if (how === "push") window.history.pushState(null, "", url); else window.history.replaceState(null, "", url);
   }, [params, urlIdea, view, pathname]);
-  const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "hidden"); // closed until asked for. auto, after a pick from an open one: stays open on screens, the drawer closes on phones (CSS)
+  const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "auto"); // open from the start on screens; on phones the drawer stays closed until asked for (CSS). auto, after a pick from an open one: stays open on screens, the drawer closes on phones (CSS)
   const [query, setQuery] = useState("");
   const [startText, setStartText] = useKept(scope, "startText", "");
   const [segs, setSegs] = useKept<Seg[]>(scope, "segs", EMPTY_BODY); // the start composer's text and blocks under the headline
