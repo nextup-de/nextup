@@ -1,6 +1,5 @@
 // SET-G1: the scaffold of the project draft. No behaviour: the types, the names and the empty values every later
 // SET task builds on.
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/events";
 import { APP_EVENT_TYPES, needsProjectsFlag } from "@/features/cases/persist";
@@ -11,6 +10,7 @@ import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS } from "@/features/demo/seed";
 import { DUTY_TEMPLATES, isDuty } from "@/features/notify/channels";
 import { followsTemplate, NOTIFY_GROUPS, prefChange } from "@/features/notify/digest";
 import { gateOf, NO_PREF } from "@/features/notify/gate";
+import { LOOP_TYPES } from "@/features/notify/plan";
 import { LOOP_MAIL_TYPES } from "@/server/loop-notice";
 import { latestTemplate, TEMPLATES, templateSteps } from "@/features/templates/library";
 import type { Invite, ReducedProject, Step, StepRole } from "@/features/projects/types";
@@ -36,12 +36,10 @@ describe("SET scaffold", () => {
 
   it("the four notice events are loop events, listed as loop templates that follow loop.project.member", () => {
     expect(NEW_LOOP).toHaveLength(4);
-    // plan.ts keeps LOOP_TYPES to itself: read the set as it is written.
-    const loopTypes = /const LOOP_TYPES = new Set\(\[([\s\S]*?)\]\)/.exec(readFileSync("src/features/notify/plan.ts", "utf8"))?.[1] ?? "";
     for (const t of NEW_LOOP) {
       expect(NOTIFY_GROUPS.loop, t).toContain(t);
       expect(followsTemplate(t), t).toBe("loop.project.member");
-      expect(loopTypes, t).toContain(`"${t.slice("loop.".length)}"`);
+      expect(LOOP_TYPES.has(t.slice("loop.".length)), t).toBe(true);
       expect(LOOP_MAIL_TYPES.has(t.slice("loop.".length) as CaseEventType), t).toBe(true);
     }
     for (const t of NEW_DUTIES) expect(followsTemplate(t), t).toBe("reminder.start");
@@ -100,13 +98,13 @@ describe("SET scaffold", () => {
     expect(escalation?.what).toBe("draft");
   });
 
-  it("the template library has a placeholder version 1 per key, no steps, and answers for unknown names", () => {
+  it("the template library has a version 1 per key and answers for unknown names", () => {
     expect(Object.keys(TEMPLATES).sort()).toEqual(["8d", "investment", "quick-win"]);
     for (const [key, all] of Object.entries(TEMPLATES)) {
-      expect(all.map((t) => [t.key, t.version, t.steps, t.agent])).toEqual([[key, 1, [], false]]);
+      expect(all.map((t) => [t.key, t.version, t.agent])).toEqual([[key, 1, false]]);
       expect(latestTemplate(key)?.version).toBe(1);
     }
-    expect(templateSteps("quick-win", 1)).toEqual([]);
+    expect(templateSteps("quick-win", 1).length).toBeGreaterThan(0);
     expect(templateSteps("nope", 1)).toEqual([]);
     expect(templateSteps("quick-win", 9)).toEqual([]);
     expect(templateSteps("toString", 1)).toEqual([]);

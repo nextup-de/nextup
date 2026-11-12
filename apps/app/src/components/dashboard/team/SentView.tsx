@@ -54,7 +54,8 @@ export function SentView() {
   const waiting = mine.filter((m) => WAITING[m.status]).length;
   const live = mine.filter((m) => m.status === "Shipped").length;
   const answered = mine.length - waiting;
-  const summary = [t("team.sentWaiting", { n: waiting }), t("team.sentAnswered", { n: answered }), t("team.sentLive", { n: live })].join(" · ");
+  // Only the parts above 0: "2 waiting", not "2 waiting · 0 answered · 0 live".
+  const summary = [waiting ? t("team.sentWaiting", { n: waiting }) : "", answered ? t("team.sentAnswered", { n: answered }) : "", live ? t("team.sentLive", { n: live }) : ""].filter(Boolean).join(" · ");
   const changed = (m: MineRow) => m.status === "Shipped" || m.status === "Measured" || m.status === "Recognised"; // a result is in
   const hasOutcome = (m: MineRow) => changed(m) || m.status === "Building" || !!TRIAL[m.status];
 
