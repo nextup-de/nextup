@@ -19,6 +19,8 @@ export type AnswerPromise = {
   answeredDay: number | null;
   /** While the case is in a discussion: the day the decision is expected (D13), shown in place of the answer date; null otherwise. */
   expectedBy: number | null;
+  /** The case is in review (the answer date still runs, D15) or waits for approval (its clock is stopped, D21); absent on every other case. */
+  stage?: "review" | "approval";
 };
 
 export function answerPromise(c: ReducedCase, ctx: { today: number; clock: ClockSpec }): AnswerPromise {
@@ -44,5 +46,6 @@ export function answerPromise(c: ReducedCase, ctx: { today: number; clock: Clock
     escalatedRoleId: holder === "owner" ? c.escalated?.toRoleId ?? null : null,
     answeredDay,
     expectedBy: expectedByDay(c),
+    ...(c.status === "approval" ? { stage: "approval" as const } : c.review?.state === "pending" ? { stage: "review" as const } : {}),
   };
 }
