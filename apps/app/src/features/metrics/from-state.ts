@@ -4,6 +4,7 @@ import type { ReducedCase, State } from "@/features/cases/reducer";
 import type { CaseEvent, EventLog } from "@/features/cases/events";
 import type { Seed } from "@/features/demo/types";
 import { overrideRate } from "@/features/routing/override";
+import { stalledOf } from "./stalled";
 import type { LedgerCase, LedgerFacts, LedgerInput, MetricsOrg } from "./types";
 
 /** A decision with its reason (or a yes), or a question with its text: an answer that says something. A hand-over is none. */
@@ -69,12 +70,15 @@ export function ledgerInputFromState(S: State, log: EventLog, seed: Seed, today:
   const org = orgOf(seed);
   const unitOfRole = new Map(org.roles.filter((r) => r.unitId !== "").map((r) => [r.id, r.unitId]));
   const unitOfDept = (label: string) => org.units.find((u) => u.id === label || u.name === label)?.id ?? null;
+  const cases = S.cases.map((c) => ledgerCase(c, unitOfRole, unitOfDept));
+  const unitOfCase = new Map(cases.map((c) => [c.caseId, c.unitId]));
   return {
-    cases: S.cases.map((c) => ledgerCase(c, unitOfRole, unitOfDept)),
+    cases,
     facts: factsOf(S, log),
     org,
     promiseDays: seed.promiseDays || 5,
     today,
     demoClock,
+    stalled: stalledOf(S.projects, (id) => unitOfCase.get(id) ?? null),
   };
 }
