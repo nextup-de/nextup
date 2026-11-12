@@ -16,6 +16,7 @@ import { breakdownCsv, csvFileName } from "@/features/metrics/csv";
 import { ledgerInputFromState } from "@/features/metrics/from-state";
 import type { DashboardData, TileId } from "@/features/metrics/types";
 import { useFormat, useLocale, useT } from "@/i18n/client";
+import { shows } from "@/lib/utils/quiet";
 import { exportDashboardCsvAction } from "@/server/actions/metrics";
 import s from "./DashboardBoard.module.css";
 
@@ -126,7 +127,7 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
   const day = (iso: string | null, n: number) => (iso ? fmt.date(iso, "day") : t("metrics.dashDay", { n }));
   const lead = [
     `${day(data.fromDate, data.period.from)} – ${day(data.toDate, data.period.to)}`,
-    t("metrics.dashLeadCases", { count: data.caseCount }),
+    ...(data.caseCount > 0 ? [t("metrics.dashLeadCases", { count: data.caseCount })] : []), // with none, the empty line below says so
     ...(data.baseline ? [t("metrics.dashLeadBaseline", { from: day(data.baseline.fromDate, data.baseline.fromDay), to: day(data.baseline.toDate, data.baseline.toDay) })] : []),
     ...(data.demoClock ? [t("metrics.dashLeadSimulated")] : []),
   ].join(" · ");
@@ -135,8 +136,9 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
   const periodLabel = t(kind === "30d" ? "metrics.dashPeriod30d" : kind === "quarter" ? "metrics.dashPeriodQuarter" : "metrics.dashPeriodGolive");
   const labels = trendLabels(data.trend, t);
 
-  // ── tiles: only those with a number ──
-  const shownTiles = tiles.filter((v, i) => !v.hidden && data.tiles[i]?.value !== null);
+  // ── tiles: only those with a number above 0 (lib/utils/quiet.ts); a 0 against a baseline that was not 0 is the result, so it stays ──
+  const tileSays = (x: (typeof data.tiles)[number] | undefined) => !!x && (shows(x.value) || (x.value === 0 && shows(x.baseline)));
+  const shownTiles = tiles.filter((v, i) => !v.hidden && tileSays(data.tiles[i]));
 
   // ── trend: months before the first case are left out ──
   const first = data.trend.findIndex((m) => m.raised + m.answered + m.onTime > 0);

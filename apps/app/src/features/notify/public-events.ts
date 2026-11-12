@@ -9,7 +9,7 @@ type Source = Pick<CaseEvent, "id" | "ts" | "type" | "target" | "payload" | "act
 
 const VERSION = 1;
 
-/** The public events one internal event becomes: none, one, or two (a yes that opens a project). */
+/** The public events one internal event becomes: none or one. A yes is the public case.decided only; the project's kickoff is project.started (SET/D18). */
 export function toPublicEvents(ev: Source, state: State, companyId: string): PublicEvent[] {
   const target = ev.target;
   if (!target) return [];
@@ -41,12 +41,7 @@ export function toPublicEvents(ev: Source, state: State, companyId: string): Pub
     case "case.decided": {
       const answer = pl.answer === "no" ? "no" : "yes";
       const projectId = answer === "yes" ? pl.projectId ?? kase?.decided?.projectId ?? null : null;
-      const out = [make("", "case.decided", "case", target, { answer, projectId })];
-      if (projectId) {
-        const project = state.projects.find((p) => p.id === projectId);
-        out.push(make(":project", "project.started", "project", projectId, { caseId: target, leadUserId: pl.leadUserId ?? project?.leadUserId ?? null }));
-      }
-      return out;
+      return [make("", "case.decided", "case", target, { answer, projectId })];
     }
     case "project.started":
       return [make("", "project.started", "project", target, { leadUserId: state.projects.find((p) => p.id === target)?.leadUserId ?? null })];

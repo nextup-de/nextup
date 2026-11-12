@@ -169,12 +169,25 @@ export function latestActivity(caseId: string, log: EventLog, seats: readonly Se
   }
   return last;
 }
-export type FeedSort = "support" | "latest";
-export const FEED_SORT_KEY = { support: "team.feedSortSupport", latest: "feed.sortLatest" } as const satisfies Record<FeedSort, MessageKey>;
-// Most supported: backers, then comments, then the one waiting longest. Latest activity: the newest
-// event first (lastDay), then the most backed.
-export function sortFeed<T extends { backers: number; raisedDay: number; comments: number; lastDay: number }>(list: readonly T[], sort: FeedSort): T[] {
+export type FeedSort = "relevant" | "support" | "latest";
+export const FEED_SORTS: readonly FeedSort[] = ["relevant", "support", "latest"];
+export const FEED_SORT_KEY = { relevant: "feed.sortRelevant", support: "team.feedSortSupport", latest: "feed.sortLatest" } as const satisfies Record<FeedSort, MessageKey>;
+type FeedOrderRow = { backers: number; raisedDay: number; comments: number; lastDay: number; own?: boolean };
+
+/** Days until an idea's pull halves when nothing happens on it. */
+export const RELEVANCE_HALF_LIFE = 14;
+/**
+ * How much an idea matters to this reader today: its backers and half its comments (plus one, so a quiet idea
+ * still counts), halved for every two weeks without activity, and half again as much from the reader's own unit.
+ */
+export const feedRelevance = (x: FeedOrderRow, today: number): number =>
+  (1 + x.backers + x.comments / 2) * 0.5 ** (Math.max(0, today - x.lastDay) / RELEVANCE_HALF_LIFE) * (x.own ? 1.5 : 1);
+
+// Most relevant: feedRelevance, ties as Most supported. Most supported: backers, then comments, then the
+// one waiting longest. Latest activity: the newest event first (lastDay), then the most backed.
+export function sortFeed<T extends FeedOrderRow>(list: readonly T[], sort: FeedSort, today = Math.max(0, ...list.map((x) => x.lastDay))): T[] {
+  const bySupport = (a: T, b: T) => b.backers - a.backers || b.comments - a.comments || a.raisedDay - b.raisedDay;
   return list.slice().sort((a, b) => (sort === "latest"
     ? b.lastDay - a.lastDay || b.backers - a.backers
-    : b.backers - a.backers || b.comments - a.comments || a.raisedDay - b.raisedDay));
+    : sort === "relevant" ? feedRelevance(b, today) - feedRelevance(a, today) || bySupport(a, b) : bySupport(a, b)));
 }
