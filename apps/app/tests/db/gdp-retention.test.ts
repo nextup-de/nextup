@@ -98,7 +98,7 @@ describe("GDP retention run", () => {
     const globexBefore = await snapshot(globex);
 
     const totals = await runRetention(acme.id, now);
-    expect(totals).toEqual({ assistTurns: 1, drafts: 1, cases: 1, events: 2, auditEvents: 1, exports: 1, outbox: 0, teamsLinks: 0 });
+    expect(totals).toEqual({ assistTurns: 1, agentTexts: 0, drafts: 1, cases: 1, events: 2, auditEvents: 1, exports: 1, outbox: 0, teamsLinks: 0 });
 
     expect(await snapshot(globex)).toEqual(globexBefore); // another company is untouched
     expect(await snapshot(acme)).toEqual({ turns: 1, drafts: 2, views: 2, events: 3, audit: 2, files: 1 });
