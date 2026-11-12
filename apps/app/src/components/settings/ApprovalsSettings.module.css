@@ -1,0 +1,14 @@
+/* Settings -> Approvals (plan GAT, D27): the review, the approval rules and the councils. Shares the card look of settings.module.css. */
+.list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.item {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px 12px; align-items: end;
+  padding: 12px 14px; border-radius: 8px; background: var(--nh-surface);
+}
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fieldLabel { font-size: var(--nh-fs-xs); line-height: 16px; font-weight: 600; color: var(--nh-mute); }
+.wide { grid-column: 1 / -1; }
+.members { height: auto; min-height: 96px; padding-block: 6px; max-width: none; background-image: none; padding-right: 12px; }
+.itemFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; grid-column: 1 / -1; }
+.meeting { font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
+.empty { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
+.add { align-self: flex-start; }
