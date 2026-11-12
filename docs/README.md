@@ -3,6 +3,8 @@
 > **Updated 2026-11-09.** Every file starts with an `Updated` or `Plan` line that gives its date.
 > What is built and live today, and what is not: the team report "Where we stand" v1.4 (nextup-context `reports/2026-11-08_where-we-stand/`, status board in section 1). Where a plan below disagrees with it, the report wins.
 
+Phase additions after REG: see [docs/process/](process/README.md).
+
 ## Plans (`plans/`, newest first)
 
 File names start with the date the plan was made, so the newest plan sorts last in the folder.
@@ -38,12 +40,14 @@ is on their first line.
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | folders and layers |
 | [ROUTES.md](ROUTES.md) | every URL and its file |
+| [INBOX.md](INBOX.md) | the one inbox for every role: what it holds, the order, the Today line, the notices (plan INB) |
 | [DATA_MODEL.md](DATA_MODEL.md) | tables and events |
 | [SECURITY.md](SECURITY.md) | stages, doors, the list before real customers |
 | [INTEGRATIONS.md](INTEGRATIONS.md) | events API, tokens, stages, n8n |
 | [ASSISTANT.md](ASSISTANT.md) | the raise-page assistant |
 | [COMPANY_KNOWLEDGE.md](COMPANY_KNOWLEDGE.md) | company knowledge tables |
 | [IDEAS.md](IDEAS.md) | the idea studio |
+| [DESIGN_RULES.md](DESIGN_RULES.md) | the fixed design rules every screen follows (calm, quiet, privacy, copy, colour) and where each is tested |
 | [RESPONSIVE.md](RESPONSIVE.md) | layout rules |
 | [DEPLOY.md](DEPLOY.md) | running it on a laptop |
 | [audit/gap-register.md](audit/gap-register.md) | gaps to the pilot, by phase |
