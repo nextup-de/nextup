@@ -1,7 +1,8 @@
 // AGT-K1 (B1): what an accepted or dismissed suggestion writes (D12-D15), as pure functions of the person, the reduced project, the suggestion
 // and its words. Nothing is written when anything about it is wrong; the follow-up of a Report or a Plan is one the project's own rules allow.
 import { describe, expect, it } from "vitest";
-import { acceptPlan, dismissPlan, dueWeekOf, type AcceptInput } from "@/features/agent/accept";
+import { acceptedIdOf, acceptPlan, dismissPlan, dismissedIdOf, dueWeekOf, followUpIdOf, stepIdOf, type AcceptInput } from "@/features/agent/accept";
+import { isProjectId } from "@/features/projects/permissions";
 import type { AgentSuggestion, SuggestionText } from "@/features/agent/types";
 import { meFor, type Actor } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
@@ -219,6 +220,44 @@ describe("AGT accept", () => {
       expect(dismiss("unblock", LEAD, "x".repeat(401))).toEqual({ ok: false, key: "projectAgent.permText" });
       expect(dismiss("unblock", LEAD, "x".repeat(400)).ok).toBe(true);
       expect(dismiss("unblock", LEAD, "ok", "accepted")).toEqual({ ok: false, key: "projectAgent.permOpenOnly" });
+    });
+  });
+
+  // The daily run names a suggestion after the company, the project, the day and the kind: well over 64 characters with real ids (AGT D28).
+  describe("with long ids", () => {
+    const LONG = "e_agt_cmwe0qzip0000sg06syua8y5r_agt_sug_p_0123456789abcdefghij0123456789abcdefghij_477_";
+    const ids = ["unblock", "plan", "report"].map((k) => LONG + k);
+
+    it("names the answer, the follow-up and the step in ids that fit, and never the same for two suggestions", () => {
+      expect(ids.every((i) => i.length > 64)).toBe(true);
+      const all = ids.flatMap((i) => [acceptedIdOf(i), dismissedIdOf(i), followUpIdOf(i), stepIdOf(i)]);
+      expect(new Set(all).size, "no two names alike").toBe(all.length);
+      for (const id of all) expect(id).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
+      // The step is read by the brain on every later run: its id fits the contract's 40 characters and is an id a project accepts.
+      for (const i of ids) { expect(stepIdOf(i).length).toBeLessThanOrEqual(40); expect(isProjectId(stepIdOf(i))).toBe(true); }
+      // the same suggestion always gives the same names, so a retry collides on them instead of writing twice
+      expect(followUpIdOf(ids[1])).toBe(followUpIdOf(ids[1]));
+      expect(stepIdOf(ids[1])).toBe(stepIdOf(ids[1]));
+    });
+
+    it("a short id keeps its readable names", () => {
+      expect(acceptedIdOf("sug1")).toBe("sug1-ac");
+      expect(followUpIdOf("sug1")).toBe("sug1-fu");
+    });
+
+    it("accepts a Plan and a Report that carry long ids, each with its own follow-up", () => {
+      const plan = accept("plan", LEAD, {}, { id: ids[1] });
+      const report = accept("report", LEAD, {}, { id: ids[2] });
+      expect(plan.ok && report.ok).toBe(true);
+      if (!plan.ok || !report.ok) return;
+      const [pAccepted, pStep] = plan.events;
+      const [rAccepted, rUpdate] = report.events;
+      expect(pStep.payload.stepId).toBe(stepIdOf(ids[1]));
+      expect(pAccepted.payload).toMatchObject({ suggestionId: ids[1], followUpId: pStep.id });
+      expect(rAccepted.payload).toMatchObject({ suggestionId: ids[2], followUpId: rUpdate.id });
+      const written = [...plan.events, ...report.events].map((e) => e.id);
+      expect(new Set(written).size).toBe(written.length);
+      expect(new Set([pStep.idemKey, rUpdate.idemKey, pAccepted.idemKey, rAccepted.idemKey]).size).toBe(4);
     });
   });
 });

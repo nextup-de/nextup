@@ -13,14 +13,16 @@ export function AnswerPromise({ c }: { c: ReducedCase }) {
   const { S, seed } = useDemo();
   const n = useCaseNames();
   const p = answerPromise(c, { today: S.day, clock: seed.clock });
+  // A role that owns no route (the review role, an approver) is named from the company's roles (GAT).
+  const roleTitle = (roleId: string | null) => n.roleTitle(roleId) || (roleId === null ? "" : S.approvals.roles.find((r) => r.id === roleId)?.title ?? "");
   const text = promiseText(p, {
-    holderRole: n.roleTitle(p.holderRoleId), holderPeople: n.peopleOf(p.holderRoleId, p.holderSeatId),
-    escalatedRole: p.escalatedRoleId ? n.roleTitle(p.escalatedRoleId) : null, date: n.date, today: S.day,
+    holderRole: roleTitle(p.holderRoleId), holderPeople: n.peopleOf(p.holderRoleId, p.holderSeatId),
+    escalatedRole: p.escalatedRoleId ? roleTitle(p.escalatedRoleId) : null, date: n.date, today: S.day,
   }, t);
   return (
     <dl className={`${styles.panel} ${styles.rows}`}>
       <dt>{t("loopCase.answerByLabel")}</dt>
-      <dd data-testid="case-answer-by" className={p.state === "late" ? styles.late : undefined}>{text.answerBy}</dd>
+      <dd data-testid="case-answer-by" className={p.state === "late" && p.stage === undefined ? styles.late : undefined}>{text.answerBy}</dd>
       <dt>{t("loopCase.withLabel")}</dt>
       <dd data-testid="case-holder">{text.with}</dd>
       {text.note && <p className={styles.hint}>{text.note}</p>}
