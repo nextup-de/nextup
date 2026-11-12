@@ -9,7 +9,7 @@
 .card { border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 8px); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; background: var(--nh-card, transparent); }
 .head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .kind { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
-.cardTitle { margin: 0; font-size: var(--nh-fs-md, 15px); font-weight: 600; color: var(--nh-ink); line-height: 1.35; overflow-wrap: anywhere; }
+.cardTitle { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); line-height: 1.35; overflow-wrap: anywhere; }
 .meta { margin: 0; font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.45; }
 .why { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.5; overflow-wrap: anywhere; }
 .draft { margin: 0; padding: 10px 12px; border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
