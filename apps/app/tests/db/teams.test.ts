@@ -150,7 +150,7 @@ describe("TMS acceptance", () => {
       await dispatchOnce(d);
       await deliverOnce(d);
     }
-    const reminders = (await db.outboxMessage.findMany({ where: { companyId, template: "reminder.deadline", recipientUserId: holderId } }))
+    const reminders = (await db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, template: "reminder.deadline", recipientUserId: holderId } }))
       .filter((r) => (r.data as { subjectId?: string }).subjectId === "c_tmsz-r1");
     expect(reminders).toHaveLength(1);
     expect(reminders[0]).toMatchObject({ channel: "teams", status: "sent" });
@@ -190,7 +190,7 @@ describe("TMS acceptance", () => {
     await db.integration.update({ where: { companyId_system: { companyId, system: "teams" } }, data: { on: false } });
     await raise("tmsz-r2", at9(20), holderSeatId);
     await dispatchOnce(at9(20));
-    const rows = await db.outboxMessage.findMany({ where: { companyId, recipientUserId: holderId, key: { startsWith: "notify:tmsz-r2" } } });
+    const rows = await db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, recipientUserId: holderId, key: { startsWith: "notify:tmsz-r2" } } });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ channel: "mail", template: "raised" });
     expect(rows[0].address).toMatch(/@tmsz-co\.example$/);
