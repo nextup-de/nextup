@@ -5,14 +5,17 @@ import type { Actor } from "@/features/cases/permissions";
 import type { State } from "@/features/cases/reducer";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n";
 import { mayAppendProject } from "./permissions";
+import { baselineNeedsConfirm } from "./result";
 import type { Invite, ReducedProject } from "./types";
 
 export type ChecklistState = "done" | "open";
 
 export type DraftView = {
   checklist: { lead: ChecklistState; template: ChecklistState; team: ChecklistState; goal: ChecklistState; baseline: ChecklistState };
-  /** The lead has taken it, the goal with its done-when is set and the baseline is set (D17). Says nothing about who may press start. */
+  /** The lead has taken it, the goal with its done-when is set and the baseline is set - and, where a reward is possible, confirmed by a second person (D17, RES D16). Says nothing about who may press start. */
   canStart: boolean;
+  /** The baseline number waits for a second person before the start, because a reward is possible (RES D16). */
+  baselineWaits: boolean;
   /** The day the start is expected; null while the lead has not taken the draft (D14). */
   startDay: number | null;
   /** Past the start day and still a draft: it went to the seat above (D15). */
@@ -25,6 +28,8 @@ export type DraftView = {
     answerInvite: boolean;
     setGoal: boolean;
     setBaseline: boolean;
+    /** The viewer may confirm the baseline number: the sponsor, the route's deputy, a manager where neither exists - never the lead or who typed it. */
+    confirmBaseline: boolean;
     start: boolean;
     moveStart: boolean;
   };
@@ -44,7 +49,8 @@ export function draftView(p: ReducedProject, viewer: Actor, state: State, locale
     mayAppendProject(viewer, { type, target: p.id, payload }, state, locale).ok;
   const invite = pendingInviteOf(p, viewer.userId ?? null);
   const taken = p.leadState === "taken";
-  const canStart = p.draft && p.status === "planning" && taken && p.goal !== null && p.baseline !== null;
+  const baselineWaits = baselineNeedsConfirm(p, state.rules);
+  const canStart = p.draft && p.status === "planning" && taken && p.goal !== null && p.baseline !== null && !baselineWaits;
   const open = isOpenDraftOf(p);
   const team = p.invites.some((i) => i.state === "accepted") || p.memberUserIds.length > 0 || p.sponsorUserId !== null || p.followerUserIds.length > 0;
   return {
@@ -53,9 +59,11 @@ export function draftView(p: ReducedProject, viewer: Actor, state: State, locale
       template: p.template !== null ? "done" : "open",
       team: team ? "done" : "open",
       goal: p.goal !== null ? "done" : "open",
-      baseline: p.baseline !== null ? "done" : "open",
+      // Taken, and where a reward is possible also confirmed by a second person: until then it is still open.
+      baseline: p.baseline !== null && !baselineWaits ? "done" : "open",
     },
     canStart,
+    baselineWaits,
     startDay: p.startDay,
     late: open && p.startDay !== null && state.day > p.startDay,
     may: {
@@ -65,6 +73,7 @@ export function draftView(p: ReducedProject, viewer: Actor, state: State, locale
       answerInvite: invite !== null && ok("project.invite.answered", { inviteId: invite.id, take: true }),
       setGoal: ok("project.goal", { goal: "-".repeat(3), doneWhen: "-".repeat(3) }),
       setBaseline: ok("project.baseline", { none: true, why: "-" }),
+      confirmBaseline: baselineWaits && ok("project.baseline.confirmed", p.baseline?.eventId ? { baselineEventId: p.baseline.eventId } : {}),
       start: canStart && ok("project.started"),
       moveStart: open && ok("project.start.moved", { dueDay: state.day + 1, why: "-" }),
     },

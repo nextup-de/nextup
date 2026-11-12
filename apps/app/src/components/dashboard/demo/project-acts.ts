@@ -1,6 +1,8 @@
 // The demo's project acts (plan REG, decision D14): each one event as the current persona. A phase that adds a project
 // act adds it here, never to DemoProvider.tsx.
-import { newId } from "@/features/cases/events";
+import { newId, type EventPayload } from "@/features/cases/events";
+import { stopChoice, type StopPick } from "@/features/projects/stop-choice";
+import type { AppendOutcome } from "@/server/actions/events";
 import type { InviteRole, StepColumn, SyncSystem } from "@/features/projects/types";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
 import type { TemplateKey } from "@/features/templates/library";
@@ -29,7 +31,8 @@ export type ProjectAct = {
    */
   sync: (projectId: string, on: boolean, system?: SyncSystem) => void;
   comment: (projectId: string, text: string) => void;
-  done: (projectId: string, note?: string) => void;
+  /** `open`: how each step not in Done ends on the Done sheet (D13): finished or dropped with a reason. */
+  done: (projectId: string, note?: string, open?: NonNullable<EventPayload["openSteps"]>) => void;
   measure: (projectId: string, check: number, value: number, source: string, note?: string) => void;
   reward: (projectId: string, rule: string, amount?: number, note?: string) => void;
   claim: (projectId: string) => void;
@@ -58,6 +61,17 @@ export type ProjectAct = {
   update: (projectId: string, text: string, week: number) => void;
   /** A new lead while the project has none (D14). */
   changeLead: (projectId: string, to: { userId: string; name: string }, why?: string) => void;
+  // A result that closes properly (plan RES): each one event, except stopAndReturn.
+  /** Send a typed result back (D14). */
+  question: (projectId: string, check: number, why: string) => void;
+  /** A second person confirms the baseline number (D16). */
+  confirmBaseline: (projectId: string) => void;
+  /** Ask the sponsor for help on a step (D19). */
+  askHelp: (projectId: string, stepId: string, text: string) => void;
+  /** A stopped project's idea goes back to its desk (D24); the reducer sets the answer date in the demo. */
+  reopen: (caseId: string, why: "stopped") => void;
+  /** Stop, then - for `return` - reopen each source case whose latest decision is this project's yes, in that order, each awaiting the one before. */
+  stopAndReturn: (projectId: string, why: string, pick: StopPick) => Promise<AppendOutcome>;
 };
 
 export function projectActs(d: ActDeps): ProjectAct {
@@ -89,7 +103,7 @@ export function projectActs(d: ActDeps): ProjectAct {
       }
     },
     comment: (id, text) => emit("project.commented", id, { text }),
-    done: (id, note) => emit("project.done", id, { note }),
+    done: (id, note, open) => emit("project.done", id, { note, ...(open !== undefined ? { openSteps: open } : {}) }),
     measure: (id, check, value, source, note) => emit("project.measured", id, { check, value, source, note }),
     reward: (id, rule, amount, note) => emit("project.rewarded", id, { rule, amount, note }),
     claim: (id) => emit("project.claimed", id),
@@ -106,5 +120,21 @@ export function projectActs(d: ActDeps): ProjectAct {
     howWeWork: (id, checkInWeekday, note) => emit("project.howwework", id, { checkInWeekday, ...(note ? { note } : {}) }),
     update: (id, text, week) => emit("project.update", id, { text, week }),
     changeLead: (id, to, why) => emit("project.lead.changed", id, { to: to.name, toUserId: to.userId, ...(why ? { why } : {}) }),
+    question: (id, check, why) => emit("project.measure.questioned", id, { check, why }),
+    confirmBaseline: (id) => emit("project.baseline.confirmed", id),
+    askHelp: (id, stepId, text) => emit("project.help.asked", id, { stepId, text }),
+    reopen: (caseId, why) => emit("case.reopened", caseId, { why }),
+    stopAndReturn: async (id, why, pick) => {
+      // The cases are read before the stop: afterwards the project is stopped and the choice is the same cases.
+      const p = S.projects.find((x) => x.id === id);
+      const cases = pick === "return" && p ? stopChoice(p, S).cases : [];
+      const stopped = await emit("project.stopped", id, { why });
+      if (!stopped.ok) return stopped;
+      for (const c of cases) {
+        const back = await emit("case.reopened", c.id, { why: "stopped" });
+        if (!back.ok) return back;
+      }
+      return { ok: true };
+    },
   };
 }
