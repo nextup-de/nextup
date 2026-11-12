@@ -23,7 +23,7 @@ import { demoLoginOpen, demoPersonOf } from "@/server/demo-login";
 import { companyPrefix, safeNext } from "@/server/microsoft-login";
 import { clearSession, issueSession } from "@/server/issue-session";
 import { entryFor, homeOf } from "@/server/setup-open";
-import { clientKey, forgive, throttle } from "@/server/throttle";
+import { clientKey, forgive, refund, throttle } from "@/server/throttle";
 
 /**
  * `step` is set when the code was right but a manager still owes the second factor: "totp" asks for
@@ -72,6 +72,8 @@ export async function codeLogin(_prev: LoginState, form: FormData): Promise<Logi
   if (!hasDatabase()) return noDatabase;
   // A code for another company is simply a wrong code here - never "it belongs to X".
   if (!user || !user.active || user.company.slug !== slug) return wrongCode;
+  // A right code is not a guess: give its slot back, so the company-wide limit counts wrong codes only.
+  await refund("loginCodeAll", slug);
 
   // Closed until opened (features/pilot/open.ts): the code is right, but only setup people get in yet.
   const entry = await entryFor(user.company.id, user);
