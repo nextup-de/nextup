@@ -81,9 +81,10 @@ async function project(name: string) {
 }
 
 /** A suggestion as the daily run writes it: the event of system:agent and the AgentText row it points at. */
-async function suggest(projectId: string, kind: "unblock" | "report" | "plan", over: Partial<SuggestionText> & { stepId?: string; week?: number } = {}): Promise<string> {
+async function suggest(projectId: string, kind: "unblock" | "report" | "plan", over: Partial<SuggestionText> & { stepId?: string; week?: number; long?: boolean } = {}): Promise<string> {
   const name = projectId.replace(/-p$/, "");
-  const id = `${name}-sug-${kind}-${++seq}`;
+  // `long`: named the way the daily run names it (company, project, day, kind), well over 64 characters.
+  const id = over.long ? `e_agt_cmwe0qzip0000sg06syua8y5r_agt_sug_${name}-0123456789abcdefghij0123456789abcdefghij_477_${kind}${++seq}` : `${name}-sug-${kind}-${++seq}`;
   const textId = newAgentTextId();
   const words: SuggestionText = {
     title: "t", why: "w", draft: kind === "plan" ? "" : kind === "report" ? "The fixture is built; the trial is next week." : "Can you take the crane slot today?",
@@ -185,6 +186,23 @@ describe("AGT actions", () => {
     const { state, agent } = await worldNow();
     expect(state.projects.find((x) => x.id === p)!.steps.find((x) => x.id === stepIdOf(s))).toMatchObject({ text: "Book the crane for the trial", column: "todo" });
     expect(agent.projects[p].suggestions.find((x) => x.id === s)).toMatchObject({ status: "accepted", followUpId: added.id });
+  });
+
+  it("accepts suggestions named with long ids, each with its own follow-up and a step id the brain's contract takes", async () => {
+    const p = await project("longid");
+    const plan = await suggest(p, "plan", { long: true });
+    const report = await suggest(p, "report", { long: true });
+    expect(plan.length).toBeGreaterThan(64);
+    expect(await accept(lead(), plan)).toEqual({ ok: true, duplicate: false });
+    expect(await accept(lead(), report)).toEqual({ ok: true, duplicate: false });
+    expect(await accept(lead(), plan)).toEqual({ ok: true, duplicate: true });
+    const step = (await rows("project.step.added", p)).find((r) => r.id === followUpIdOf(plan))!;
+    expect(step).toBeTruthy();
+    expect((step.payload as { stepId: string }).stepId).toBe(stepIdOf(plan));
+    expect(stepIdOf(plan).length).toBeLessThanOrEqual(40);
+    expect((await rows("project.update", p)).filter((r) => r.id === followUpIdOf(report))).toHaveLength(1);
+    expect(await rows("agent.accepted", p)).toHaveLength(2);
+    expect(followUpIdOf(plan)).not.toBe(followUpIdOf(report));
   });
 
   it("the sponsor may accept a Report and not a Plan; a Report is the week's update with aiDrafted", async () => {

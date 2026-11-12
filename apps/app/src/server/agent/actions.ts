@@ -39,7 +39,8 @@ import { randomUUID } from "node:crypto";
 export type AgentOutcome = { ok: true; /** The answer was given before: nothing was written now. */ duplicate: boolean } | { ok: false; error: string };
 export type TextsOutcome = { ok: true; texts: Record<string, SuggestionText | null> } | { ok: false; error: string };
 
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
+// An event id is as long as the writer made it: the daily run builds the suggestion's from the company, the project, the day and the kind.
+const ID = /^[A-Za-z0-9_-]{1,200}$/;
 const EDIT_MAX = 20_000;
 /** An interactive transaction that waits for a lock and reads the log again needs more than the default five seconds. */
 const TX_OPTIONS = { timeout: 30_000, maxWait: 10_000 } as const;
