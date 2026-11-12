@@ -99,6 +99,12 @@
 .startEdit { width: 40px; height: 40px; flex: none; border-radius: 50%; border: none; background: var(--nh-fill-2); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; transition: background 180ms ease,transform 160ms cubic-bezier(.2,.8,.2,1); }
 .startEdit:hover { background: var(--nh-fill-3); }
 .startEdit:active { transform: scale(.94); }
+.startEdit { color: var(--nh-ink); }
+.div32 > .div35 { margin-left: auto; }
+.saveEdit:disabled { opacity: .45; cursor: default; }
+.editFields { display: flex; flex-direction: column; gap: 10px; }
+.editTitle { width: 100%; box-sizing: border-box; border: 1px solid var(--nh-brand); border-radius: var(--radius-sm, 12px); padding: 10px 12px; font-family: inherit; font-size: var(--nh-fs-lg); font-weight: 600; color: var(--nh-ink); background: #fff; outline: none; }
+@media (max-width: 760px) { .editTitle, .textarea { font-size: var(--nh-fs-input); } }
 .div36 { display: flex; flex-direction: column; gap: 28px; padding: 22px 26px 24px; background: #fff; border-radius: var(--radius-sm, 14px); box-shadow: 0 6px 20px rgba(40,60,100,0.06); animation: affSoft 240ms ease backwards; }
 .description { margin: 0; font-size: var(--nh-fs-lg); line-height: 1.55; color: var(--nh-ink-2); text-wrap: pretty; }
 .textarea { width: 100%; box-sizing: border-box; resize: vertical; border: 1px solid var(--nh-brand); border-radius: var(--radius-sm, 12px); padding: 10px 12px; font-family: inherit; font-size: var(--nh-fs-lg); line-height: 1.55; color: var(--nh-ink); background: #fff; outline: none; }

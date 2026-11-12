@@ -237,6 +237,14 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       versions: c.versions.length > 1 ? c.versions.map((v) => ({ n: v.version, when: f(v.day), title: v.title })) : [],
       mode, onMode: setMode, onClose: closeCase,
+      // The raiser edits it until it is decided: Save posts the next version (case.revised; the rules say who may).
+      edit: row.mine && !c.decided && !c.withdrawn ? {
+        title: c.title, body: c.body,
+        onSave: (title, body) => {
+          act.revise(c.id, body, title !== c.title ? title : undefined);
+          ctx.showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 }));
+        },
+      } : null,
     };
     const chats = (
           <OverviewChats key={c.id} me={me} talk={talk} status={row.status} yourMove={yourMove(row)} entries={deskThread(c, log, seed.seats)} f={f}

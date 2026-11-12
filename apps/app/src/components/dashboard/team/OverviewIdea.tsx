@@ -3,7 +3,8 @@
 // markup and classes 1:1 (dc-convert -> Overview.module.css). The head card (meta, title, the five
 // steps, whose desk and how much of the promise is used), then Idea | AI: the idea as it was raised
 // and its revisions, or the five scores - one opens into its reasoning - and what the AI found.
-// Props in, JSX out; nothing here is edited in place (MET D17).
+// Props in, JSX out. The raiser may edit it until it is decided: the pencil opens the title and the text,
+// Save posts the next version (case.revised, a real event - not the old in-place stand-in MET D17 removed).
 import { Fragment, useState } from "react";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { useT } from "@/i18n/client";
@@ -35,6 +36,8 @@ export type OverviewIdeaProps = {
   // scores as a row of rings - a tap opens the reasoning in a sheet (onOpenScore).
   variant?: "desk" | "phone";
   onOpenScore?: (i: number) => void;
+  /** The raiser, before the decision: the text as it stands and where a saved edit goes (null: read only). */
+  edit?: { title: string; body: string; onSave: (title: string, body: string) => void } | null;
 };
 
 export const Cites = ({ ns, dark }: { ns: number[]; dark?: boolean }) => <>{ns.map((c) => <a key={c} className={dark ? s.c2 : s.c} href="#aisrc">{c}</a>)}</>;
@@ -46,6 +49,10 @@ export function OverviewIdea(p: OverviewIdeaProps) {
   const t = useT();
   const { brief } = p;
   const [openScore, setOpenScore] = useState<number | null>(null);
+  const [draft, setDraft] = useState<{ title: string; body: string } | null>(null); // editing: the title and text being written
+  const startEdit = () => p.edit && setDraft({ title: p.edit.title, body: p.edit.body });
+  const changed = !!draft && !!p.edit && (draft.title.trim() !== p.edit.title.trim() || draft.body.trim() !== p.edit.body.trim());
+  const save = () => { if (!draft || !p.edit || !draft.body.trim() || !changed) return; p.edit.onSave(draft.title.trim() || p.edit.title, draft.body.trim()); setDraft(null); };
   const files = p.files;
   const affects = [...brief.depts.map((d) => d.name), ...brief.people.map((x) => x.name)];
   const deptNames = new Set(brief.depts.map((d) => d.name));
@@ -109,11 +116,30 @@ export function OverviewIdea(p: OverviewIdeaProps) {
               <button type="button" role="tab" aria-selected={p.mode === "idea"} className={s.setManual} onClick={flip}>{t("team.ideaTab")}</button>
               <button type="button" role="tab" aria-selected={p.mode === "ai"} className={s.setChat} onClick={flip}><Star size={11} />{t("team.ideaTabAi")}</button>
             </div>
+            {draft && view === "idea" && (
+              <div className={s.div34}>
+                <button type="button" className={s.cancelEdit} onClick={() => setDraft(null)}>{t("team.ideaEditCancel")}</button>
+                <button type="button" className={s.saveEdit} onClick={save} disabled={!changed || !draft.body.trim()}>{t("team.ideaEditSave")}</button>
+              </div>
+            )}
+            <div className={s.div35}>
+              {!draft && view === "idea" && p.edit && (
+                <button type="button" className={s.startEdit} onClick={startEdit} title={t("team.ideaEdit")} aria-label={t("team.ideaEdit")}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" /></svg>
+                </button>
+              )}
+            </div>
           </div>
 
           {view === "idea" ? (
             <div className={s.div36}>
-              <p className={s.description}>{brief.description}</p>
+              {draft ? (
+                <div className={s.editFields}>
+                  <input className={s.editTitle} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label={t("team.ideaEditTitle")} placeholder={t("team.ideaEditTitle")} maxLength={200} />
+                  <textarea className={s.textarea} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={6} aria-label={t("team.ideaEditText")} placeholder={t("team.ideaEditText")} autoFocus
+                    onKeyDown={(e) => { if (e.key === "Escape") setDraft(null); if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save(); }} />
+                </div>
+              ) : <p className={s.description}>{brief.description}</p>}
               <div className={s.sec} data-tone="who">
                 <span className={s.dept}>{t("team.ideaWho")}</span>
                 <div className={s.kv}>
