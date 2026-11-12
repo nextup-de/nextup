@@ -101,3 +101,17 @@
   .note { height: 44px; font-size: var(--nh-fs-input); }
   .whyRow, .noteRow { flex-wrap: wrap; }
 }
+
+/* The cases around a case (plan SEE, D15 to D17): links, 'maybe the same as', and the picker. Nothing is wider than the card. */
+.relations { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.relation { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; min-width: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); overflow-wrap: anywhere; }
+.relation a { color: var(--nh-brand-ink); font-weight: 600; text-decoration: none; }
+.relActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.picker { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px 12px; border-radius: 8px; background: var(--nh-surface); }
+.pickItem { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px 12px; border: 0; border-radius: 8px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.pickItem:hover { background: var(--nh-brand-tint); }
+.inactive { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
+@media (max-width: 760px) {
+  .relActions .soft, .relActions .primary { height: 44px; }
+  .pickItem { min-height: 44px; }
+}
