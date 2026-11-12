@@ -29,7 +29,11 @@ const ASK_TITLE: Record<InboxAsk, MessageKey> = { decide: "inbox.askDecide", con
 const KIND: Record<InboxKind, MessageKey> = {
   case: "inbox.kindCase", idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
   reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindMove", invitation: "inbox.kindView", approval: "inbox.kindConfirm",
-  stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "inbox.kindCase",
+  stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "caseNo.secondLook",
+};
+/** Why a case is back on the list (plan NOR, D26). */
+const CAUSE: Record<NonNullable<InboxItem["cause"]>, MessageKey> = {
+  reopened: "caseNo.cameBack", passed: "caseNo.passedToYou", back: "inbox.causeBack", up: "inbox.causeUp", moved: "caseNo.movedToYou",
 };
 // A decide item is opened by the id of its case or idea (the ?id= of its link).
 const openId = (i: InboxItem) => i.caseId ?? i.id.slice(i.id.indexOf(":") + 1);
@@ -68,7 +72,8 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   };
   const counts = inboxCounts(items);
   const decide = items.filter((i) => i.ask === "decide");
-  const navIds = decide.map(openId);
+  // A second look is answered on its case page (a link), not in this list's pane.
+  const navIds = decide.filter((i) => i.kind !== "appeal").map(openId);
   const at = cid ? navIds.indexOf(cid) : -1;
   const pick = (id: string) => setCid(id);
   const unread = notices.filter((n) => !n.read && !readIds.has(n.id));
@@ -115,19 +120,19 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
               <SectionCard key={ask} title={t(ASK_TITLE[ask])} name={`inbox-${ask}`}>
                 <ul className={styles.list}>
                   {list.map((i) => {
-                    const open = ask === "decide" && cid === openId(i);
+                    const open = ask === "decide" && i.kind !== "appeal" && cid === openId(i);
                     const body = (
                       <>
                         <span className={styles.rowMain}>
                           <span className={styles.rowTitle}>{i.title}</span>
-                          <span className={styles.rowKind}>{confirmNote(i) ?? t(KIND[i.kind])}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
+                          <span className={styles.rowKind}>{i.cause ? <span className={styles.cause} data-testid="inbox-cause" data-cause={i.cause}>{t(CAUSE[i.cause])} · </span> : null}{confirmNote(i) ?? t(KIND[i.kind])}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
                         </span>
                         {i.late ? <span className={styles.badge} data-tone="late">{t("inbox.late")}</span> : i.dueSoon ? <span className={styles.badge} data-tone="soon">{t("inbox.dueSoon")}</span> : null}
                       </>
                     );
                     return (
                       <li key={i.id}>
-                        {ask === "decide"
+                        {ask === "decide" && i.kind !== "appeal"
                           ? <button type="button" className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined} data-active={open ? "true" : undefined} aria-current={open ? "true" : undefined} onClick={() => pick(openId(i))}>{body}</button>
                           : <Link href={href(i.href)} className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined}>{body}</Link>}
                       </li>
