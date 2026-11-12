@@ -200,6 +200,14 @@ shows next to its own offline ones - people decide, the model never enters a num
   (`decide` only when the model calls it ready and leaves nothing open). Prompt `checkin.md`,
   version `brain-checkin-v1`.
 
+For the company choice "model on this stack" (the app's AI choice `local`, docs/ops/AI_PROVIDER.md):
+
+- `POST /v1/chat/completions` - an OpenAI chat request (`messages`, optional `tools`, `max_tokens`, `stream`)
+  passed to this brain's own model server (`LLM_BASE_URL`, `LLM_MODEL`) and nowhere else; the model the request
+  names is ignored and the answer names the stack's model. Streamed as server-sent events with the usage last.
+  The app's raise-page assistant and company context draft use it (`brain/chat.py`); its text is never logged.
+  A model server that fails is a 502.
+
 ## Run it on a laptop
 
 ```bash

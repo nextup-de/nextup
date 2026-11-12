@@ -2,7 +2,7 @@
 // The setup overview (Paper: "setup-overview"): every phase with its owner, its status, what it waits
 // for and a link. Used by /setup and, read-only, by /admin/setup. While something is waiting it looks
 // again by itself; a hidden tab does not poll.
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MessageKey } from "@/i18n";
@@ -78,7 +78,8 @@ function Row({ phase, n }: { phase: SetupPhase; n: number }) {
   );
 }
 
-export function SetupOverview({ phases, poll, ledeKey }: { phases: SetupPhase[] | null; poll: boolean; ledeKey: MessageKey }) {
+/** `after` is what a page adds below the phases: /admin/setup puts the hand-over there. */
+export function SetupOverview({ phases, poll, ledeKey, after }: { phases: SetupPhase[] | null; poll: boolean; ledeKey: MessageKey; after?: ReactNode }) {
   const t = useT();
   usePoll(poll);
   const done = phases?.filter((p) => p.status === "done" || p.status === "notUsed").length ?? 0;
@@ -93,6 +94,7 @@ export function SetupOverview({ phases, poll, ledeKey }: { phases: SetupPhase[] 
       {phases
         ? <ol className={s.list} aria-label={t("settingsSetupPhases.phasesAria")}>{phases.map((p, i) => <Row key={p.key} phase={p} n={i + 1} />)}</ol>
         : <p className={s.watching} role="status" data-testid="setup-overview-unreadable">{t("settingsSetupPhases.unreadable")}</p>}
+      {after}
     </section>
   );
 }

@@ -133,7 +133,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const stage = tenant.stage ?? "demo";
   const ai = viewer ? await loadAiSettings(viewer.companyId, stage) : { settings: aiSettings(null, process.env, stage), key: null };
   const budget = viewer ? await loadAiBudget(viewer.companyId) : null;
-  const gate = aiGate({ stage, hasDatabase: viewer !== null, settings: ai.settings, dpaSignedAt: settings?.dpaSignedAt ?? null, purpose: "coach", assistantOn: settings?.enabled ?? false, aiRouting: false, budget });
+  const gate = aiGate({ stage, hasDatabase: viewer !== null, settings: ai.settings, dpaSignedAt: settings?.dpaSignedAt ?? null, purpose: "coach", assistantOn: settings?.enabled ?? false, aiRouting: false, budget, stackBrain: brainConfigured() });
   const useModel = viewer !== null && settings !== null && settings.enabled && gate.on && gate.settings.choice !== "mock" && gate.settings.choice !== "off";
   // The company's switch in /admin/knowledge turns the brain off. Real people (a real stage) need a
   // database and the switch on, like the assistant's gate.

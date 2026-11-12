@@ -114,6 +114,16 @@ test.describe.serial("GDP acceptance: audit, export and pseudonymise", () => {
     expect(person.text).not.toContain(OTHER.name);
     expect(person.text).not.toContain(OTHER.email);
 
+    // The company hands the copy over itself (Q10.13); the admin marks the row as delivered, with the channel.
+    await page.goto(`/${SLUG}/settings/privacy`);
+    await vis(page, "settings-privacy-mark-delivered").first().click();
+    await vis(page, "settings-privacy-delivered-note").fill("by HR, 12 Nov");
+    await vis(page, "settings-privacy-delivered-save").click();
+    await expect(vis(page, "settings-privacy-delivered").first()).toContainText("by HR, 12 Nov", { timeout: 15_000 });
+    await expect(vis(page, "settings-privacy-mark-delivered")).toHaveCount(0);
+    await page.goto(`/${SLUG}/settings/audit`);
+    await expect(auditRows.filter({ hasText: "Export marked as delivered" }).first()).toBeVisible({ timeout: 15_000 });
+
     // Pseudonymise: type the name (case ignored), confirm.
     const before = await eventRows(company.id);
     await page.goto(`/${SLUG}/settings/members`);

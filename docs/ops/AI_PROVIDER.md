@@ -78,6 +78,42 @@ EU routing, not in-region only, and global routing can leave the EU. Neither it 
 which of the two a plain `anthropic.<model>` id on `bedrock-mantle.eu-central-1.api.aws` gets. Confirm
 that with AWS (and how to ask for EU routing) before customer text goes there.
 
+## Model on this stack
+
+The fifth company choice (`local`, Q8.4, decision 2026-11-10): the model runs on the company's own stack and nothing
+leaves it. No endpoint, no key, no data-processing agreement date, so it is the choice to offer on a customer's own
+VM next to their own provider (Q8.8), and it is not a sub-processor (`docs/compliance/SUBPROCESSORS.md`).
+
+**What the stack needs.** The brain with its own model: `stack/install.sh --brain` (Ollama with `mistral-nemo`,
+about 8 GB more memory, pulled once on first start, then offline). `--brain-cloud` is not enough: it has no model
+server of its own, so the choice shows a problem. A stack may point `BRAIN_LLM_URL` at a model server of its own
+elsewhere (a GPU box on the private network); then that server's operator is named per customer.
+
+**Where each call goes.** Everything to `BRAIN_URL` with `BRAIN_API_KEY`, inside the stack:
+
+| Call | Path |
+|---|---|
+| routing, reading, coach, plan, check-in | `/v1/route`, `/v1/read`, `/v1/coach`, `/v1/plan`, `/v1/checkin` with no `llm` in the body (`llmFor` gives `"none"`), so the brain uses its stack model |
+| the raise-page assistant (streamed, with its lookups as tools) and the idea studio's fallback | `/v1/chat/completions`, OpenAI chat format (`apps/app/src/server/ai/openai.ts`, kind `local`) |
+| the company context draft | `/v1/chat/completions`, not streamed |
+
+The brain's `/v1/chat/completions` (`services/brain/brain/chat.py`) passes the call to its own model server only; the
+model a request names is ignored and the answer names the stack's model. The app sends `stack` as the name.
+
+**Setting it.** `/admin/connectors` → AI provider → "Model on this stack" → Save. The card then reads "Model on
+this stack · nothing leaves the server". The app asks the brain's `/health` (status `ok` only with the model loaded)
+on the Connectors page, the setup overview and Settings → Go-live; the go-live AI check is done only while it says
+`ok`, "needs" without a brain service and "unknown" while it does not answer. The model calls themselves check only
+that `BRAIN_URL` and `BRAIN_API_KEY` are set (`aiGate`, `stackBrain`); a brain that fails answers as today: the
+keyword proposal, the offline coach, the assistant's "could not answer".
+
+**Budget.** The monthly budget applies as to every model (`docs/ASSISTANT.md`, "The monthly budget"). The calls are
+recorded under the name the model reports (`mistral-nemo`). A model on our own hardware costs no tokens, so enter it
+with price 0 on "Prices per model" (`mistral-nemo 0 0`); without a price it is held to the monthly token limit.
+
+**Release.** The brain's chat path ships in the brain image; a stack on the choice needs app and brain of the same
+release (`install.sh` moves both together when the instance runs a brain).
+
 ## When neither qualifies
 
 Keep the AI off for the pilot (PILOT/HD8): `LLM_PROVIDER=mock`, as in `AI_DEMO.md`. Everything

@@ -13,18 +13,19 @@
 #   --images main|SHA   the images CI published: main, or a 7-char commit sha
 #   --registry R        where the images live (default ghcr.io/nextup-de)
 #   --name NAME         the company's display name (default: slug)
+#   --entra-tenant-id ID  the customer's Entra tenant ID, handed to install.sh (copied into the company once)
 #   --backup-repo REPO  restic repository for an off-box backup (optional; an absolute path is
 #                       a folder on this machine). Keys of the environment are copied into the
 #                       stack's .env: BACKUP_S3_ACCESS_KEY_ID, BACKUP_S3_SECRET_ACCESS_KEY.
 #
-# Never runs `down -v` and never touches another slug. The install's own output (it contains the
-# admin code) goes to $NEXTUP_HOME/install-<slug>.log, mode 600, and is never printed.
+# Never runs `down -v` and never touches another slug. The install's own output goes to
+# $NEXTUP_HOME/install-<slug>.log, mode 600, and is never printed (a real stage prints no admin code).
 set -u
 
 here="$(cd "$(dirname "$0")" && pwd)"
 stack="$(cd "$here/.." && pwd)"
 
-slug="" origin="" images="" registry="ghcr.io/nextup-de" name="" backup_repo=""
+slug="" origin="" images="" registry="ghcr.io/nextup-de" name="" backup_repo="" entra_tenant=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="${2:?--slug needs a value}"; shift 2 ;;
@@ -32,8 +33,9 @@ while [ $# -gt 0 ]; do
     --images) images="${2:?--images needs a value}"; shift 2 ;;
     --registry) registry="${2:?--registry needs a value}"; shift 2 ;;
     --name) name="${2:?--name needs a value}"; shift 2 ;;
+    --entra-tenant-id) entra_tenant="${2:?--entra-tenant-id needs a value}"; shift 2 ;;
     --backup-repo) backup_repo="${2:?--backup-repo needs a value}"; shift 2 ;;
-    -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -66,6 +68,7 @@ run_install() {
   ( umask 077; : > "$log" )
   local args=(--slug "$slug" --origin "$origin" --stage real --images "$images")
   [ -z "$name" ] || args+=(--name "$name")
+  [ -z "$entra_tenant" ] || args+=(--entra-tenant-id "$entra_tenant")
   NEXTUP_REGISTRY="$registry" "$stack/install.sh" "${args[@]}" >> "$log" 2>&1
   local rc=$?
   # Only the tail of a failed install is shown, without the line that holds the admin code.
@@ -127,5 +130,6 @@ fi
 t_ok "backup.sh $slug backup exits 0" "$stack/backup.sh" "$slug" backup
 t_ok "backup.sh $slug restore-test exits 0" "$stack/backup.sh" "$slug" restore-test
 
-echo "admin: $origin/admin (code in $env_file)"
+# A real stage has no shared code: /admin opens with Microsoft, a console admin's code, or a break-glass window.
+echo "admin: $origin/admin (no way in yet? stack/break-glass.sh $slug open --hours 2 --reason \"<why>\")"
 t_done

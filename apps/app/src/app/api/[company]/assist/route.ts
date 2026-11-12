@@ -27,6 +27,7 @@ import { loadAssistSettings, purgeAssistTurns, recordTurns, type AssistSettings 
 import { searchDocumentsFor } from "@/server/assist-search";
 import { clientKey, throttle } from "@/server/throttle";
 import { streamingFor } from "@/server/ai";
+import { brainTarget } from "@/server/brain-health";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const stage = tenant.stage ?? "demo";
   const ai = audited ? await loadAiSettings(viewer.companyId, stage) : { settings: aiSettings(null, process.env, stage), key: null };
   const budget = audited ? await loadAiBudget(viewer.companyId) : null;
-  const gate = aiGate({ stage, hasDatabase: audited, settings: ai.settings, dpaSignedAt: settings.dpaSignedAt, purpose: "assist", assistantOn: settings.enabled, aiRouting: false, budget });
+  const gate = aiGate({ stage, hasDatabase: audited, settings: ai.settings, dpaSignedAt: settings.dpaSignedAt, purpose: "assist", assistantOn: settings.enabled, aiRouting: false, budget, stackBrain: brainTarget() !== null });
   if (!gate.on) return json({ error: gate.why, off: true }, 403);
 
   const seed = await seedFor(tenant.slug);

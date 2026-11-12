@@ -9,17 +9,31 @@ people, not for NextUp staff. It exists only in a one-company stack (`TENANT_MOD
 The managers' business setup is a different place: `/<company>/settings` (company, rules, calendar,
 org, routing, members, goals, notifications, setup). The console holds what IT and privacy own.
 
-## The seven sections
+## The sections
 
 The list is `CONSOLE_SECTIONS` in `apps/app/src/features/admin/nav.ts`, in this order:
 
 1. **Overview** (`/admin`): who can get in, what is switched on, whether support access is open.
-2. **Access** (`/admin/people`): people, console admins, authenticator reset.
-3. **Connectors** (`/admin/connectors`): Jira Cloud and Data Center, Microsoft 365, the AI provider, directory status. Connectors exist only here.
-4. **Assistant and data protection** (`/admin/assistant`): what the assistant may read.
-5. **Company data** (`/admin/company-data`): what is stored, and exports.
-6. **Routing review** (`/admin/decisions`): the log of routing decisions.
-7. **Support access** (`/admin/support`): open or revoke a code for NextUp support; the last 20 sign-ins (time only).
+2. **Setup** (`/admin/setup`): the setup phases, read-only, and the hand-over (below).
+3. **Access** (`/admin/people`): people, console admins, authenticator reset.
+4. **Connectors** (`/admin/connectors`): Jira Cloud and Data Center, Microsoft 365, the AI provider, directory status. Connectors exist only here.
+5. **Assistant and data protection** (`/admin/assistant`): what the assistant may read.
+6. **Company data** (`/admin/company-data`): what is stored, and exports.
+7. **Routing review** (`/admin/decisions`): the log of routing decisions.
+8. **Support access** (`/admin/support`): open or revoke a code for NextUp support; the last 20 sign-ins (time only).
+
+### The AI provider on Connectors
+
+Five choices: Amazon Bedrock, Azure OpenAI, OpenAI-compatible, **Model on this stack**, and Off. The first three
+send redacted text to a provider and need the data-processing agreement's date on Assistant before any model is
+called for real people. **Model on this stack** (`local`, Q8.4) needs no endpoint, no key and no agreement: every
+model call (routing, reading and coaching, plans and check-ins, the assistant, the context draft) goes to this
+stack's brain service and its model, and the card says "Model on this stack · nothing leaves the server". Values
+typed for another choice are dropped when it is saved. While the stack has no brain service (installed without
+`--brain`) the card says so and shows "Needs you"; while the brain does not answer or its model is not loaded yet it
+shows "Error". In both cases no model is called and raise and routing work by keywords. The monthly budget on
+Assistant counts these calls too: give the stack's model a price (0 is allowed) or it is held to the token limit.
+Setup: docs/ops/AI_PROVIDER.md, "Model on this stack".
 
 ## Who can enter
 
@@ -27,12 +41,34 @@ Every page and every action calls `consoleCompany()` (`src/server/console-guard.
 without a result answers 404, an action returns `{ ok: false, code: 'not-allowed' }`. A write names the
 company id from the guard, never from a form.
 
-- **Microsoft sign-in** with the `NextUp.Admin` app role (`via: 'entra'`).
+- **Microsoft sign-in** with the `NextUp.Admin` app role (`via: 'entra'`). Each sign-in writes `audit.access.console_signin`
+  (actor `console`, no name: the address stays in the server log).
 - **Stack admin**: a person with `isStackAdmin` signs in on `/admin/login` with the personal login code and an authenticator code (`via: 'stack-admin'`).
-- **Break-glass**: the shared `ADMIN_ACCESS_CODE`. Each use is logged and the console shows a banner (`via: 'break-glass'`).
+- **Break-glass**: on a real stage a window the host's operator opens with `stack/break-glass.sh <slug> open`; on a demo
+  stage the shared `ADMIN_ACCESS_CODE`. Each use writes `audit.access.break_glass` and the console shows a banner
+  (`via: 'break-glass'`). `stack/install.sh` prints the shared code on a demo stage only.
 - **Support session**: see below (`via: 'support'`).
 
 A manager who is no console admin is sent to `/admin/login`.
+
+## First access and the hand-over
+
+A real stack's company is created by the stack at its first start (`apps/app/src/lib/db/bootstrap-company.ts`, run by the
+migrate service): empty, sandbox, closed, no people. The app cannot create a company, and the console cannot create a
+person.
+
+- **Tenant at install.** `stack/install.sh --entra-tenant-id` writes `ENTRA_TENANT_ID` to the stack's `.env`; the first
+  start copies it into the company once, with `audit.access.entra_tenant` and `audit.company.created` rows whose actor and
+  source are `install`. Later starts copy it only while the company has no tenant and the console never set or removed
+  one (no `audit.access.entra_tenant` row), so a value from **Access** is never overwritten.
+- **The first people.** With Microsoft, the Entra roles create them: `NextUp.Admin` opens the console, and a
+  `NextUp.Manager` is created as a manager at the first sign-in even while the company is closed
+  (`features/pilot/open.ts`, `createMicrosoftUser`). Without Microsoft, the bootstrap (`docs/pilot/RUNBOOK.md`, section 4).
+- **The hand-over.** On `/admin/setup`, once the server phase is done, a console admin who came in via Microsoft or as
+  stack admin presses **Confirm the hand-over** (`confirmHandOverAction`, `server/actions/setup-handover.ts`). It writes
+  one `audit.setup.handed_over` row (actor `console`, `changes.by` = `entra` or `stack-admin`); a second press answers with
+  the first. The page and the server phase then say "Handed over on <date> by <role>". Break-glass and support see the
+  card without a button.
 
 ## Support access
 
@@ -66,7 +102,7 @@ there (docs/plans/2026-09-27_platform.md).
 ## Where it differs from the page specs
 
 The page specs in the Nextup repo (`docs/plans/2026-11-02_pilot-pages*`) describe `/admin` differently
-in places. The ITC plan wins: seven sections, connectors only in the console (not in `/settings`), no
+in places. The ITC plan wins: these sections, connectors only in the console (not in `/settings`), no
 platform pages, and the support session of this document.
 
 ## Proof

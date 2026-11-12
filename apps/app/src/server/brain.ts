@@ -21,6 +21,7 @@ import { brainRequest, fromBrain, type BrainItem, type BrainProposal } from "@/f
 import { findTenant } from "@/features/tenant";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { recordAiCall } from "@/lib/db/ai-usage";
+import { brainTarget } from "@/server/brain-health";
 import { loadLogForSlug } from "@/lib/db/events";
 import { casesFor, type Audience } from "@/server/ideas";
 
@@ -52,7 +53,7 @@ const CoachReply = z.object({
 });
 
 export function brainConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
-  return !!env.BRAIN_URL && !!env.BRAIN_API_KEY;
+  return brainTarget(env) !== null;
 }
 
 // The same rule as every other model call (docs/IDEAS.md, Privacy): only redacted text goes out -
@@ -121,10 +122,12 @@ export type BrainLlm =
 
 /**
  * The company's own provider for one request (docs/plans AIP D8, AIB D8). Bedrock with a brainModel,
- * azure-openai and openai-compatible carry one; everything else uses the brain's stack model.
+ * azure-openai and openai-compatible carry one; everything else uses the brain's stack model. `local` (the model
+ * on this stack, Q8.4) never carries one, whatever else is saved: that is the point of the choice.
  * Null when the settings or the key are incomplete - then nothing is sent.
  */
 export function llmFor(settings: AiSettings, key: string | null | undefined): BrainLlm | null | "none" {
+  if (settings.choice === "local") return "none";
   if (settings.choice === "bedrock") {
     return settings.brainModel ? { provider: "bedrock", region: settings.region, model: settings.brainModel } : "none";
   }

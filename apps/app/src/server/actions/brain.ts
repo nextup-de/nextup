@@ -27,7 +27,7 @@ async function gateFor(slug: string, viewer: { companyId: string } | null, purpo
     return { gate: aiGate({ stage, hasDatabase: false, settings: aiSettings(null, process.env, stage), dpaSignedAt: null, purpose, assistantOn: false, aiRouting: false, budget: null }), key: null, settings: null };
   }
   const [ai, settings, aiRouting, budget] = await Promise.all([loadAiSettings(viewer.companyId, stage), loadAssistSettings(viewer.companyId), loadAiRouting(viewer.companyId), loadAiBudget(viewer.companyId)]);
-  const gate = aiGate({ stage, hasDatabase: true, settings: ai.settings, dpaSignedAt: settings.dpaSignedAt, purpose, assistantOn: settings.enabled, aiRouting, budget });
+  const gate = aiGate({ stage, hasDatabase: true, settings: ai.settings, dpaSignedAt: settings.dpaSignedAt, purpose, assistantOn: settings.enabled, aiRouting, budget, stackBrain: brainConfigured() });
   return { gate, key: ai.key, settings };
 }
 
