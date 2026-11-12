@@ -288,7 +288,7 @@ the same flip the other way. No deploy, no branch, no migration.
 | Env | Deploys from | Database | n8n | Purpose |
 |---|---|---|---|---|
 | `local` | working tree | local Postgres, seed `acme` | off | development |
-| `preview` | every PR (Vercel) | a database branch per PR (Neon) | off | review |
+| `preview` | a PR with the label `preview` (previewN.sellux.ch, stack/nginx/RUNBOOK.md "PR previews") | a fresh demo database per push, in the slot | off | review |
 | `staging` | `main` | staging, synthetic companies at every stage | `n8n-staging` | prove workflows |
 | `production` | tagged release, Kevin merges | production | `n8n` | customers |
 

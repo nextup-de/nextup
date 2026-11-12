@@ -58,6 +58,9 @@ export function mayAppend(
         if (typeof seat !== "string" || !state.seats.some((s) => s.id === seat)) return no(t, "cases.permHandSeat");
         // FX8: "deadline" and "escalation" are the clock's reasons. The clock never comes through here.
         if (isClockReason(ev.payload.why)) return no(t, "cases.permHandReason");
+        // Q4.21: the reducer moves a case only while it is open or in a discussion; anything else would be dropped.
+        if (kase.status === "asked") return no(t, "cases.permHandAsked");
+        if (kase.status !== "open" && kase.status !== "discussion") return no(t, "cases.permHandNotOpen");
       }
       // A question on a decided case would put it back to "asked" and hide the decision (K3).
       if (ev.type === "case.asked" && kase.decided) return no(t, "cases.permAlreadyDecided");
