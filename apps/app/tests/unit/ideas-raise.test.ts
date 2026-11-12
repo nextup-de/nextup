@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { benchmark, weakest } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
-import { adviceOf, dialsMoved, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, levelOf, moveView, RAIL, railOf, splitIdea, splitUpdate, whenLabel, withoutSkipped } from "@/features/ideas/raise";
+import { adviceOf, dialsMoved, dialsOf, dialsUp, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, levelOf, moveView, RAIL, railOf, splitIdea, splitUpdate, whenGroup, whenLabel, withoutSkipped } from "@/features/ideas/raise";
 import { DEMO_GOALS } from "@/features/demo/structure";
 import { ROUTES } from "@/features/demo/seed";
 
@@ -139,6 +139,14 @@ describe("labels", () => {
     expect(whenLabel(new Date(2026, 9, 4, 9, 5).toISOString(), now)).toBe("Yesterday");
     expect(whenLabel(new Date(2026, 9, 1, 9, 5).toISOString(), now)).toBe("Thu");
     expect(whenLabel(new Date(2026, 8, 3, 9, 5).toISOString(), now)).toBe("3 Sep");
+  });
+  it("groups the sidebar's ideas by calendar day: today, the six days before, earlier", () => {
+    const now = new Date(2026, 9, 5, 14, 30);
+    expect(whenGroup(new Date(2026, 9, 5, 0, 5).toISOString(), now)).toBe("today");
+    expect(whenGroup(new Date(2026, 9, 4, 23, 55).toISOString(), now)).toBe("week");
+    expect(whenGroup(new Date(2026, 8, 29, 9, 0).toISOString(), now)).toBe("week");
+    expect(whenGroup(new Date(2026, 8, 28, 9, 0).toISOString(), now)).toBe("earlier");
+    expect(whenGroup("not a date", now)).toBe("earlier");
   });
   it("greets by first name, or the whole name after an initial", () => {
     expect(greetName("Sam Timmers")).toBe("Sam");
