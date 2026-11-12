@@ -34,16 +34,20 @@ describe("REG notices split", () => {
     expect(sorted(LOOP_MAIL_TYPES)).toEqual(snapshot.loopMailTypes);
   });
 
-  it("each area file exports the names of D10, and the stubs (approval, overload) are empty", () => {
+  it("each area file exports the names of D10, and the overload stub is empty", () => {
     const areas = { CASE: kase, PROJECT: project, AGENT: agent, APPROVAL: approval, OVERLOAD: overload } as Record<string, Record<string, unknown>>;
     for (const [name, mod] of Object.entries(areas)) {
       for (const part of ["LOOP_TYPES", "LOOP_TEMPLATES", "FOLLOWS", "REMINDER_KINDS", "REMINDER_TEXTS", "REMINDER_AUDIENCE", "DUTY_TEMPLATES", "LOOP_MAIL_TYPES"]) {
         expect(mod, `${name}_${part}`).toHaveProperty(`${name}_${part}`);
       }
     }
-    for (const mod of [approval, overload]) {
-      for (const value of Object.values(mod)) expect(Array.isArray(value) ? value : Object.keys(value as object)).toEqual([]);
-    }
+    for (const value of Object.values(overload)) expect(Array.isArray(value) ? value : Object.keys(value as object)).toEqual([]);
+    // The approval area (plan GAT): three loop notices, three duty reminders; their texts and audiences exist for every kind, the real audiences come with GAT-C1.
+    expect(approval.APPROVAL_LOOP_TYPES).toEqual(["case.reviewed", "case.provisional", "case.approval"]);
+    expect(approval.APPROVAL_LOOP_TEMPLATES).toEqual(["loop.case.reviewed", "loop.case.provisional", "loop.case.approval"]);
+    expect(approval.APPROVAL_LOOP_MAIL_TYPES).toEqual(["case.reviewed", "case.provisional", "case.approval"]);
+    expect(approval.APPROVAL_REMINDER_KINDS).toEqual(["review", "approval", "council"]);
+    expect(approval.APPROVAL_DUTY_TEMPLATES).toEqual(["reminder.review", "reminder.approval", "reminder.council"]);
     // The agent area (plan AGT): one loop notice, an accepted Unblock; no reminders, no duty notices.
     expect(agent.AGENT_LOOP_TYPES).toEqual(["agent.accepted"]);
     expect(agent.AGENT_LOOP_TEMPLATES).toEqual(["loop.agent.accepted"]);
@@ -56,8 +60,8 @@ describe("REG notices split", () => {
     expect(Object.keys(kase.CASE_REMINDER_AUDIENCE).sort()).toEqual([...kase.CASE_REMINDER_KINDS].sort());
     expect(Object.keys(project.PROJECT_REMINDER_TEXTS).sort()).toEqual(project.PROJECT_REMINDER_KINDS.map((k) => `reminder.${k}`).sort());
     // A kind, a loop type and a duty template live in one area only.
-    const kinds = [...kase.CASE_REMINDER_KINDS, ...project.PROJECT_REMINDER_KINDS];
+    const kinds = [...kase.CASE_REMINDER_KINDS, ...project.PROJECT_REMINDER_KINDS, ...approval.APPROVAL_REMINDER_KINDS];
     expect(new Set(kinds).size).toBe(kinds.length);
-    expect(DUTY_TEMPLATES.filter((t) => t !== "raised")).toEqual([...kase.CASE_DUTY_TEMPLATES, ...project.PROJECT_DUTY_TEMPLATES]);
+    expect(DUTY_TEMPLATES.filter((t) => t !== "raised")).toEqual([...kase.CASE_DUTY_TEMPLATES, ...project.PROJECT_DUTY_TEMPLATES, ...approval.APPROVAL_DUTY_TEMPLATES]);
   });
 });
