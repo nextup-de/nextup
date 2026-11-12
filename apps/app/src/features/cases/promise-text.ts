@@ -14,9 +14,17 @@ export type PromiseNames = {
 
 export type PromiseText = { answerBy: string; with: string; note: string | null };
 
+/** "Decision expected by {date}", or past that day "Decision was expected by {date}". */
+function decisionExpectedText(day: number, names: PromiseNames, t: T): string {
+  const late = names.today !== undefined && names.today > day;
+  return t(late ? "caseSee.decisionExpectedLate" : "caseSee.decisionExpected", { date: names.date(day) });
+}
+
 // Every day goes through names.date, on the demo clock too: a demo day is an offset from today and
 // can be zero or negative, so the raw number ("day -1 of the demo") is never shown.
 function answerByText(p: AnswerPromise, names: PromiseNames, t: T): string {
+  // In a discussion the raiser reads the day the decision is expected, not the answer date (D13); past it, it reads as late.
+  if (p.expectedBy !== null) return decisionExpectedText(p.expectedBy, names, t);
   const date = names.date(p.dueDay);
   switch (p.state) {
     case "waiting":
@@ -45,6 +53,7 @@ export function promiseText(p: AnswerPromise, names: PromiseNames, t: T): Promis
 
 /** My cases: "They owe you an answer by {date}" - or what happened to it - without the note. */
 export function owedLine(p: AnswerPromise, names: PromiseNames, t: T): string {
+  if (p.expectedBy !== null && p.answeredDay === null) return decisionExpectedText(p.expectedBy, names, t);
   if (p.answeredDay !== null) return t("loopCase.owedAnswered", { date: names.date(p.answeredDay) });
   if (p.state === "due-today") return t("loopCase.owedByToday");
   return t("loopCase.owedBy", { date: names.date(p.dueDay) });

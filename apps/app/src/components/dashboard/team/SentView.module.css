@@ -20,17 +20,17 @@
 .step[data-tone="done"] .stepBar { background: var(--nh-progress-done); }
 .step[data-tone="now"] .stepBar { background: var(--nh-brand); }
 .step[data-tone="late"] .stepBar { background: #d98a00; }
-.stepLabel { margin-top: 8px; font-size: var(--nh-fs-sm); font-weight: 600; line-height: 18px; color: var(--nh-ink); }
+.stepLabel { margin-top: 8px; font-size: var(--nh-fs-sm); font-weight: 600; line-height: 18px; color: var(--nh-ink); overflow-wrap: anywhere; }
 .step[data-tone="todo"] .stepLabel { color: var(--nh-mute-2); }
 .step[data-tone="now"] .stepLabel { color: var(--nh-brand-ink); }
 .step[data-tone="late"] .stepLabel { color: #8a5d00; }
-.stepWhen { margin-top: 2px; font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); }
+.stepWhen { margin-top: 2px; font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); overflow-wrap: anywhere; }
 
 .sub { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
 .now { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; line-height: 22px; color: var(--nh-ink); }
 .now[data-overdue="true"] { color: #8a5d00; }
 .reply { padding: 12px 14px; border-radius: 8px; background: var(--nh-surface); }
-.replyText { margin: 0; font-size: var(--nh-fs-md); color: var(--nh-ink-2); line-height: 22px; overflow-wrap: anywhere; }
+.replyText { margin: 0; font-size: var(--nh-fs-md); color: var(--nh-ink-2); line-height: 22px; overflow-wrap: anywhere; white-space: pre-line; }
 .replyBy { margin: 4px 0 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 
 .outcome { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; font-size: var(--nh-fs-md); }
@@ -56,3 +56,6 @@
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; }
   .answer { height: 44px; }
 }
+
+.links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; }
+.link { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand-ink); overflow-wrap: anywhere; }

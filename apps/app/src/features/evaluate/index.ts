@@ -5,7 +5,8 @@
 //
 // Demo honesty: this is arithmetic over the seed, not a model. Every step names the fact it
 // used, so a manager can ask "where did that come from?" and get an answer.
-import type { CaseKind, RouteProposal, Visibility } from "@/features/cases/events";
+import type { CaseKind, Visibility } from "@/features/cases/events";
+import type { CaseProposal } from "@/features/cases/events/case";
 import type { OrgPerson, Problem, RolePersona, Route, SeedGoal, SpendRule } from "@/features/demo/types";
 import { propose, ROUTER_VERSION } from "@/features/routing";
 import type { BrainProposal } from "@/features/routing/brain";
@@ -25,7 +26,7 @@ export type Evaluation = {
   similar: Problem | null; // a known problem it looks like
   sameAs: KnownCase | null; // a case someone already raised that reads like this one
   score: Score;
-  payload: { kind: CaseKind; title: string; body: string; upside: string; routeId: string | null; assignee: string; fromDept: string; reason: string; affected: string[]; attachments: number; proposal: RouteProposal; visibility?: Visibility; seenBy?: string[] };
+  payload: { kind: CaseKind; title: string; body: string; upside: string; routeId: string | null; assignee: string; fromDept: string; reason: string; affected: string[]; attachments: number; proposal: CaseProposal; visibility?: Visibility; seenBy?: string[] };
 };
 
 // Words that say nothing about what a text is about, however often two texts share them.
@@ -108,7 +109,12 @@ export function evaluate(input: EvalInput, ctx: EvalContext, brain: BrainProposa
   return {
     steps, route, confidence, lead, leadIs, passesTo, similar, sameAs, score,
     payload: { kind: input.kind, title: text, body: context, upside, routeId: route?.id ?? null, assignee: lead, fromDept: input.who.line, reason: route ? "triage" : "not responsible", affected: input.affected, attachments: input.attachments,
-      proposal: brain ? { ...brain.proposal, routeId: route?.id ?? null, confidence } : { routeId: route?.id ?? null, confidence, source: "keywords", version: ROUTER_VERSION },
+      // The "raised before?" answer is kept (plan SEE, D16): the case it looked like, and the brain's related case when it is a known one.
+      proposal: {
+        ...(brain ? { ...brain.proposal, routeId: route?.id ?? null, confidence } : { routeId: route?.id ?? null, confidence, source: "keywords" as const, version: ROUTER_VERSION }),
+        sameAs: sameAs?.id ?? null,
+        related: brain?.related && ctx.cases.some((k) => k.id === brain.related) ? [brain.related] : [],
+      },
       ...(input.visibility ? { visibility: input.visibility } : {}), ...(input.visibility === "custom" ? { seenBy: input.seenBy ?? [] } : {}) },
   };
 }

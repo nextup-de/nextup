@@ -75,6 +75,7 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     const card = page.getByRole("article", { name: TITLE });
     await expect(card).toContainText("In discussion");
     await expect(card).toContainText(/round 1 of 3/);
+    await expect(card).toContainText(/Decision expected by/); // SEE D13: the day the decision is expected, not the check-in
     await card.getByRole("link", { name: /Revise it/ }).click();
     await page.getByRole("button", { name: "Revise" }).click();
     await page.getByRole("textbox", { name: "The idea, v2" }).fill(V2);

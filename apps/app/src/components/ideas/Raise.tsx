@@ -53,6 +53,7 @@ import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
 import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
 import { PromptBody, PromptTray, type BodyFocus } from "./RaisePrompts";
+import { followDraft, mayFollow } from "@/features/cases/links";
 import { EMPTY_BODY, insertBlock, promptContext, segsContext, splitPrompts, splitSegs, type Caret, type Seg } from "@/features/ideas/prompts";
 import { DeskDialog, type Sent, type Work } from "./RaisePublish";
 import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
@@ -123,6 +124,12 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [openId, setOpenId] = useKept<string | null>(scope, "open", null); // the draft open in the chat, reopened on the next visit
   const pathname = usePathname(), params = useSearchParams();
   const urlIdea = params.get("idea");
+  // "Start a better idea from it" (plan SEE, D15): /raise?follows=<case>. Only the raiser of a no may follow it up; any other value is ignored and the page works as without it.
+  const urlFollows = params.get("follows");
+  const follows = useMemo(() => {
+    const c = urlFollows ? S.cases.find((x) => x.id === urlFollows) : undefined;
+    return c && mayFollow(c, me.userId) ? c : null;
+  }, [urlFollows, S.cases, me.userId]);
   const urlView = params.get("view") ?? "";
   // An idea in the URL that this person cannot open (wiped by the demo's fresh start, or someone else's when the
   // back button replays a page as another person): the start page shows, and the URL is left as the history has it.
@@ -147,6 +154,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "hidden"); // closed until asked for. auto, after a pick from an open one: stays open on screens, the drawer closes on phones (CSS)
   const [query, setQuery] = useState("");
   const [startText, setStartText] = useKept(scope, "startText", "");
+  const followed = useRef<string | null>(null); // the follow-up whose start was filled in: once, so a person's own edits are never overwritten
   const [segs, setSegs] = useKept<Seg[]>(scope, "segs", EMPTY_BODY); // the start composer's text and blocks under the headline
   const [bodyFocus, setBodyFocus] = useState<BodyFocus | null>(null);
   const [startAff, setStartAff] = useKept<string[]>(scope, "startAff", []);
@@ -295,6 +303,16 @@ function RaisePage({ script = false }: { script?: boolean }) {
     if (!idea.text) return null;
     return closest(idea.text, S.cases.filter((c) => c.open && c.id !== draft?.caseId), (c) => c.title);
   }, [idea.text, S.cases, draft?.caseId]);
+
+  // The follow-up starts with the old title as its line and the editable context about the answer, while both are empty (D15).
+  useEffect(() => {
+    if (!follows || followed.current === follows.id || stage !== "start") return;
+    followed.current = follows.id;
+    if (startText.trim() || segsContext(segs).trim()) return;
+    const start = followDraft(follows, t);
+    setStartText(start.text);
+    setSegs(splitSegs(start.context));
+  }, [follows, stage, startText, segs, t, setStartText, setSegs]);
 
   // The dev panel's "Fill a sample idea", offered while the start view is open (lib/dev-fill.ts).
   useEffect(() => (stage === "start" ? registerDevFill(() => fillRef.current()) : undefined), [stage]);
@@ -473,7 +491,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     const body = mine ? bodyOf(mine) : made.body;
     // The raise publishes the draft with it, or neither (Q1.11): refused, the draft stays open and the toast says why.
-    const raised = await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raiseDraft({ ...e.payload, ...(choosesPosting({ role, name: who.name, handle: who.handle ?? null }) ? { asName: postsByName } : {}), title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId }, caseId, draft.id), 600);
+    const raised = await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raiseDraft({ ...e.payload, ...(choosesPosting({ role, name: who.name, handle: who.handle ?? null }) ? { asName: postsByName } : {}), title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId, ...(follows ? { follows: follows.id } : {}) }, caseId, draft.id), 600);
     if (!raised.ok) { setBusy(false); setPubWork(null); setPubStep(null); return; }
     // Everything the raise page worked out goes with the case: the document, the dials, every file (not only the images).
     saveRaised(tenant.slug, caseId, briefOfDoc({ ...finalDoc, receiver: to.title }, {
@@ -778,6 +796,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const main = stage === "start" ? (
     <RaiseStart name={greetName(who.name)}
       composer={
+        <>
+        {follows && <p className={s.follows} data-testid="raise-follows">{t("caseSee.followsUp", { title: follows.title })}</p>}
         <RaiseComposer value={startText} onChange={setStartText} onSubmit={startRaise} fieldRef={startField} sendLabel={t("ideas.pageAskNextUp")}
           placeholder={t("ideas.pageSharePlaceholder")} canSend={startText.trim().length >= 3 && !evaluating}
           chips={[...chips, ...fileChips]} strip
@@ -785,6 +805,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
           body={<PromptBody segs={segs} onSegs={setSegs} caretRef={caretRef} focus={bodyFocus} onFocus={setBodyFocus} headRef={startField} />}
           tray={<PromptTray onAdd={(p) => { const r = insertBlock(segs, caretRef.current, p); setSegs(r.segs); setBodyFocus({ seg: r.at, on: p.custom ? "label" : "text" }); }} />}
           onUnsupported={() => showToast(t("ideas.pageToastNoDictation"))} />
+        </>
       } />
   ) : shownView === "idea" ? (
     <IdeaSheet key={draft?.id ?? "none"} initial={ideaLook} card={cardProps} locked={published} onChange={editLook}
