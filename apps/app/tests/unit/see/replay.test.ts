@@ -77,11 +77,18 @@ describe("SEE replay", () => {
 
   it("the log has at least one event of every case type there was before SEE", () => {
     const used = new Set(EVENTS.map((e) => e.type));
-    for (const t of [...CASE_EVENT_TYPES, "case.unanswered", "case.building", "case.shipped"]) expect(used.has(t as CaseEventType), t).toBe(true);
-    expect(CASE_EVENT_TYPES).not.toContain("case.merged"); // the golden predates SEE's events
+    const sinceSee = ["case.merged", "case.linked"]; // SEE's own events: the golden predates them
+    for (const t of [...CASE_EVENT_TYPES.filter((x) => !sinceSee.includes(x)), "case.unanswered", "case.building", "case.shipped"]) expect(used.has(t as CaseEventType), t).toBe(true);
+    for (const t of sinceSee) expect(used.has(t as CaseEventType), t).toBe(false);
   });
 
   it("every case reduces as it did before SEE (golden written at the base commit)", async () => {
     await expect(JSON.stringify(state.cases.map(before), null, 2)).toMatchFileSnapshot("./snapshot/replay.json");
+  });
+
+  it("the SEE fields of an old log are at their empty values", () => {
+    for (const c of state.cases) {
+      expect(c, c.id).toMatchObject({ follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [] });
+    }
   });
 });

@@ -8,12 +8,12 @@ import type { RouteProposal, Visibility } from "../events";
 export const CASE_EVENT_TYPES = [
   "case.raised", "case.read", "case.decided", "case.handed", "case.asked", "case.answered", "case.override",
   "case.affected", "case.unaffected", "case.commented", "case.discussion", "case.invited", "case.revised",
-  "case.checkin", "case.withdrawn", "case.reopened", "case.appealed", "case.appeal.decided", "case.invite.declined",
+  "case.checkin", "case.withdrawn", "case.reopened", "case.appealed", "case.appeal.decided", "case.invite.declined", "case.merged", "case.linked",
 ] as const;
 
 /** Every case.* type, with the fields it carries; the app list above plus the internal case.unanswered (the clock's) and the seed-only case.building and case.shipped. */
 export type CaseAreaEventType =
-  | "case.raised" // { title, body, routeId, assignee, assigneeRoleHolderId?, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy? }
+  | "case.raised" // { title, body, routeId, assignee, assigneeRoleHolderId?, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy?, follows? }  follows: the case this one follows up (plan SEE, D15); proposal.sameAs / proposal.related: the cases the raise looked like (D16)
   | "case.read" // -
   | "case.decided" // yes: { answer: 'yes', note?, projectId?, lead?, leadUserId?, title?, draft?, raiserNote? }  a yes with projectId opens (or joins) that project; draft: true opens it as a draft (plan SET, D8). no: { answer: 'no', category, reason, changeIf?, revisitDay?, duplicateOf? } (plan NOR, D17); an old no carries the picked id in `reason` and the text in `note`
   | "case.discussion" // { invited, invitedUserIds?, missing }  "Discuss first": round 1 starts (docs/plans/2026-10-15_idea-to-project.md)
@@ -28,6 +28,8 @@ export type CaseAreaEventType =
   | "case.appealed" // { text, toRoleHolderId? }  the raiser asks for a second look at a no, once per case (D18); the server sets the desk (toRoleHolderId)
   | "case.appeal.decided" // { uphold, reason }  the second look's answer: uphold true keeps the no, final; uphold false reopens the case (D18)
   | "case.invite.declined" // { why? }  an invited person says the discussion is not for them: off the list, no view item (D14)
+  | "case.merged" // { into, note? }  the desk closes this undecided case as a duplicate of `into` (plan SEE, D17): status merged, no notice, no unmerge
+  | "case.linked" // { to }  the desk marks this case and `to` (the other case's id) as related: both stay as they are, no unlink (plan SEE, D17)
   | "case.unanswered" // {}  the raiser did not answer in time: the case is open on the desk again. internal: only the scheduler appends it, as actor system:clock (features/clock/due.ts)
   | "case.building" // { days, expected? }            (seed history)
   | "case.shipped" // { outcome, outcomeNote }        (seed history)
@@ -40,6 +42,9 @@ export type CaseAreaEventType =
 const _appTypesAreMembers: readonly CaseAreaEventType[] = CASE_EVENT_TYPES;
 void _appTypesAreMembers;
 
+/** What a raise looked like: the route it proposed, and the cases it looked like (plan SEE, D16). RouteProposal in ../events.ts stays as it is. */
+export type CaseProposal = RouteProposal & { sameAs?: string | null; related?: string[] };
+
 /** The EventPayload fields only case events carry. */
 export type CaseAreaPayload = {
   body?: string; assignee?: string; fromDept?: string; upside?: string; // case.raised, case.revised (body)
@@ -51,7 +56,7 @@ export type CaseAreaPayload = {
   attachments?: number; // screenshots attached when raised (the files stay in the browser; only the count is a fact)
   rescore?: boolean; // on case.commented: the comment is new information, the score is re-evaluated with it
   channel?: "mail" | "teams"; // on case.commented by system:mail: what carried the raise notice (none on notes before 9 Nov: mail)
-  proposal?: RouteProposal; // on case.raised
+  proposal?: CaseProposal; // on case.raised
   visibility?: Visibility; // on case.raised
   asName?: boolean; // on case.raised: a member posted it by name instead of their handle (decision Q1.7); the server keeps it only when it took effect
   seenBy?: string[]; // on case.raised with visibility "custom": people and department names (shown, never compared)
@@ -78,4 +83,7 @@ export type CaseAreaPayload = {
   up?: boolean; // case.handed: Send up, to the seat above
   keepsQuestion?: boolean; // case.handed: the open question stays open for the new holder
   uphold?: boolean; // case.appeal.decided: true keeps the no, false reopens the case
+  // The raiser sees the whole way (plan SEE)
+  follows?: string; // case.raised: the id of the case this one follows up
+  into?: string; // case.merged: the id of the case this one is closed into
 };
