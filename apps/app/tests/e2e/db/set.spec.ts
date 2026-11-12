@@ -300,7 +300,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await expect(page.getByTestId("draft-raiser-panel")).toHaveCount(0);
       await expect(page.locator(`a[href*="/projects/${projectA}"]`)).toHaveCount(0); // no link to the draft
       expect(body, "the server sent the case").toContain(IDEA);
-      for (const secret of [SECRET_STEP, SECRET_COMMENT, GOAL, DONE_WHEN, "project.invited", "project.invite.answered", "project.template"]) {
+      for (const secret of [SECRET_STEP, SECRET_COMMENT, GOAL, DONE_WHEN, NOTE, "project.invited", "project.invite.answered", "project.template"]) { // NOTE: the desk's line to the raiser (D23)
         expect(body, `the payload for a reader outside the draft must not hold: ${secret}`).not.toContain(secret);
       }
 
