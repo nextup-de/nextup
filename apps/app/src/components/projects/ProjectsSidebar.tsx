@@ -1,43 +1,63 @@
 "use client";
-// The Projects sidebar (Paper page "Projects page", frames C1-C6). On top the area's pages (Overview,
-// Decisions, Collaboration, Progress). Below them two layers: layer 1 lists your projects, one line each,
-// with a ring that fills as the project moves along and an orange dot when it is late; pick one and layer 2
-// takes its place: a way back, the project's title and status, and its pages. A project's team may add
-// pages (page, checklist, table, link), drag any page to a new place, and rename, re-icon or delete their
-// own; viewers only read. The added pages are a stand-in (projectPagesPreview.ts).
+// The Projects sidebar (Paper page "Projects page", frames C1-C6 and D1-D2). On top the area's pages
+// (Overview, Decisions, Collaboration, Progress). Below them two layers. Layer 1 lists the open ideas from
+// the Overview, by stage (three dashes that fill: with the team lead, then on the way to a decision), and
+// your projects (a ring that fills as the project moves along); a blue dot says it is your move, an orange
+// dot that it is late. Pick one and layer 2 takes its place: a way back, its title and status, and its
+// pages - a project's six, an idea's Overview, Files and Chats - plus the pages its people added. Everyone
+// added who is not only a viewer may add pages (page, checklist, table, link), drag any page to a new
+// place, and rename, re-icon or delete the added ones. The added pages are a stand-in (projectPagesPreview.ts).
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { visibleTo } from "@/components/dashboard/derive";
 import { sectionTabsFor, type ProjectsTabKey } from "@/config/nav";
+import { holdsRole } from "@/features/auth/identity";
+import { dashboardRow, raisedWith } from "@/features/cases/rows";
+import { commentsOn } from "@/features/cases/selectors";
 import { decisionsWaiting } from "@/features/metrics";
 import { PROJECT_TABS, projectTabOf, tabQuery, type ProjectTab } from "@/features/projects/tabs";
 import {
-  PAGE_ICONS, PAGE_KINDS, addPage, daysLate, movePage, pageList, removePage, ringOf, sidebarProjects, updatePage,
-  type CustomPage, type PageEntry, type PageIcon, type PageKind, type Ring,
+  IDEA_TABS, PAGE_ICONS, PAGE_KINDS, addPage, daysLate, mayEditIdeaPages, movePage, pageList, removePage, ringOf, sidebarIdeas, sidebarProjects, updatePage,
+  type CustomPage, type IdeaStage, type PageEntry, type PageIcon, type PageKind, type Ring, type SidebarIdea,
 } from "@/features/projects/sidebar";
 import { visibleProjectsFor } from "@/features/projects/views";
 import type { ReducedProject } from "@/features/projects/types";
+import type { ReducedCase } from "@/features/cases/reducer";
 import { useT } from "@/i18n/client";
 import { idViewerOf, useRights } from "./parts";
-import { newPageId, useProjectPages } from "./projectPagesPreview";
+import { ideaPagesId, newPageId, useProjectPages } from "./projectPagesPreview";
 import s from "./ProjectsSidebar.module.css";
 
-const MAX_ROWS = 8; // layer 1 shows this many; "All n projects" opens the rest
+const MAX_ROWS = 8; // layer 1 shows this many projects; "All n projects" opens the rest
+const MAX_IDEAS = 6;
 
-export function ProjectsSidebar({ area, projectId, onHide }: { area: ProjectsTabKey | null; projectId: string | null; onHide: () => void }) {
+export function ProjectsSidebar({ area, projectId, caseId, onHide }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; onHide: () => void }) {
   const ctx = useDemo();
   const t = useT();
-  const { S, D, demo, href, role, serverMode } = ctx;
+  const { S, D, demo, href, role, serverMode, me, log } = ctx;
+  const params = useSearchParams();
   const [query, setQuery] = useState("");
-  // Layer 2 shows while a project is open; "‹ Your projects" (or a search) goes back to layer 1 without leaving the page.
-  const [listFor, setListFor] = useState<string | null>(null); // the project whose page was open when the list was asked for
-  const listOpen = projectId !== null && listFor === projectId;
-  const all = visibleProjectsFor(S, idViewerOf(ctx), demo);
-  const open = projectId ? all.find((p) => p.id === projectId) ?? null : null;
-  const layer2 = open && !listOpen && !query;
+  // An idea opens on the Overview (/idea?id=…, the table's own page); the older /cases/<id> counts too.
+  const ideaId = caseId ?? (area === "overview" ? params.get("id") : null);
+  // Layer 2 shows while a project or idea is open; "‹ back" (or a search) goes back to layer 1 without leaving the page.
+  const openId = projectId ?? ideaId;
+  const [listFor, setListFor] = useState<string | null>(null); // what was open when the list was asked for
+  const listOpen = openId !== null && listFor === openId;
+  const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
+  const project = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
+  const idea = ideaId ? S.cases.find((c) => c.id === ideaId && visibleTo(ctx, c)) ?? null : null;
+  const layer2 = !listOpen && !query && (project || idea);
   const nav = sectionTabsFor("projects", { role, serverMode });
   const waiting = decisionsWaiting(D).length;
+  // The ideas as the Overview's table has them: still moving, the stage, whether it waits on this person.
+  const myMove = (c: ReducedCase) => holdsRole(me, c.assigneeRoleId) && c.status !== "asked";
+  const rows = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, ctx.seed.promiseDays, me, log));
+  const ideas = sidebarIdeas(rows, (id) => {
+    const r = rows.find((x) => x.id === id), c = D.cases.find((x) => x.id === id);
+    return r?.status === "move" || (!!c && myMove(c));
+  }, query);
 
   return (
     <div className={s.sb}>
@@ -53,7 +73,7 @@ export function ProjectsSidebar({ area, projectId, onHide }: { area: ProjectsTab
 
       <nav className={s.area} aria-label={t("projects.sbLabel")}>
         {nav.map((n) => (
-          <Link key={n.key} href={href(n.href)} className={s.row} aria-current={!open && area === n.key ? "page" : undefined}>
+          <Link key={n.key} href={href(n.href)} className={s.row} aria-current={!openId && area === n.key ? "page" : undefined}>
             <span className={s.slot}><AreaIcon k={n.key} /></span>
             <span className={s.label}>{t(n.labelKey)}</span>
             {n.key === "decisions" && waiting > 0 && <span className={s.count} data-tone="brand">{waiting}</span>}
@@ -62,10 +82,12 @@ export function ProjectsSidebar({ area, projectId, onHide }: { area: ProjectsTab
       </nav>
 
       <div className={s.lower}>
-        {layer2 && open ? (
-          <ProjectPages p={open} onBack={() => setListFor(open.id)} />
+        {layer2 && project ? (
+          <ProjectPages p={project} onBack={() => setListFor(project.id)} />
+        ) : layer2 && idea ? (
+          <IdeaPages c={idea} facts={ideas.find((i) => i.id === idea.id) ?? null} yourMove={myMove(idea)} onBack={() => setListFor(idea.id)} />
         ) : (
-          <ProjectList list={all} query={query} openId={open?.id ?? null} />
+          <List ideas={ideas} projects={projects} query={query} openId={openId} />
         )}
       </div>
     </div>
@@ -74,63 +96,145 @@ export function ProjectsSidebar({ area, projectId, onHide }: { area: ProjectsTab
 
 // ── Layer 1 ─────────────────────────────────────────────────────────────────────────────────────────
 
-function ProjectList({ list, query, openId }: { list: ReducedProject[]; query: string; openId: string | null }) {
+function List({ ideas, projects, query, openId }: { ideas: SidebarIdea[]; projects: ReducedProject[]; query: string; openId: string | null }) {
   const { href } = useDemo();
   const t = useT();
-  const rows = sidebarProjects(list, query);
+  const rows = sidebarProjects(projects, query);
+  const shownIdeas = query ? ideas : ideas.slice(0, MAX_IDEAS);
+  const stages: IdeaStage[] = ["lead", "decision"];
   return (
     <div className={s.layer}>
-      <span className={s.group}>{t("projects.sbYourProjects")}</span>
-      {rows.slice(0, query ? undefined : MAX_ROWS).map((p) => (
-        <Link key={p.id} href={href("/projects/" + p.id)} className={s.row} data-project aria-current={p.id === openId ? "page" : undefined}>
-          <span className={s.slot}><RingMark ring={ringOf(p.status)} /></span>
-          <span className={s.label}>{p.title}</span>
-          {p.overdue && <span className={s.late} title={t("projects.sbLateHint")} aria-label={t("projects.sbLateHint")} />}
-          <span className={s.chev} aria-hidden="true"><Svg size={14}><path d="M5.4 3.2L9.2 7L5.4 10.8" /></Svg></span>
-        </Link>
-      ))}
-      {!rows.length && <span className={s.empty}>{query ? t("projects.sbNoMatches") : t("projects.sbNone")}</span>}
-      {!query && list.length > 0 && (
-        <Link href={href("/projects")} className={s.row} data-quiet>
-          <span className={s.slot}><Svg size={12} fill><circle cx="2.4" cy="6" r="1.1" /><circle cx="6" cy="6" r="1.1" /><circle cx="9.6" cy="6" r="1.1" /></Svg></span>
-          <span className={s.label}>{t("projects.sbAll", { count: list.length })}</span>
-        </Link>
-      )}
+      {stages.map((stage) => {
+        const list = shownIdeas.filter((i) => i.stage === stage);
+        if (!list.length) return null;
+        return (
+          <div key={stage} className={s.block}>
+            <span className={s.group}>{t(stage === "lead" ? "projects.sbIdeasLead" : "projects.sbIdeasDecision")}</span>
+            {list.map((i) => (
+              <Link key={i.id} href={href("/idea?id=" + encodeURIComponent(i.id))} className={s.row} data-project aria-current={i.id === openId ? "page" : undefined}>
+                <span className={s.slot}><StageMark stage={i.stage} /></span>
+                <span className={s.label}>{i.title}</span>
+                <EndDot late={i.late} move={i.yourMove} />
+                <span className={s.chev} aria-hidden="true"><Svg size={14}><path d="M5.4 3.2L9.2 7L5.4 10.8" /></Svg></span>
+              </Link>
+            ))}
+          </div>
+        );
+      })}
+      <div className={s.block}>
+        <span className={s.group}>{t("projects.sbProjects")}</span>
+        {rows.slice(0, query ? undefined : MAX_ROWS).map((p) => (
+          <Link key={p.id} href={href("/projects/" + p.id)} className={s.row} data-project aria-current={p.id === openId ? "page" : undefined}>
+            <span className={s.slot}><RingMark ring={ringOf(p.status)} /></span>
+            <span className={s.label}>{p.title}</span>
+            <EndDot late={p.overdue} move={false} />
+            <span className={s.chev} aria-hidden="true"><Svg size={14}><path d="M5.4 3.2L9.2 7L5.4 10.8" /></Svg></span>
+          </Link>
+        ))}
+        {!rows.length && <span className={s.empty}>{query ? t("projects.sbNoMatches") : t("projects.sbNone")}</span>}
+        {!query && projects.length > 0 && (
+          <Link href={href("/projects")} className={s.row} data-quiet>
+            <span className={s.slot}><Svg size={12} fill><circle cx="2.4" cy="6" r="1.1" /><circle cx="6" cy="6" r="1.1" /><circle cx="9.6" cy="6" r="1.1" /></Svg></span>
+            <span className={s.label}>{t("projects.sbAll", { count: projects.length })}</span>
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
 
+/** The dot at a row's end: orange when late, blue when it is this person's move. */
+function EndDot({ late, move }: { late: boolean; move: boolean }) {
+  const t = useT();
+  if (!late && !move) return null;
+  const label = late ? t("projects.sbLateHint") : t("projects.sbYourMove");
+  return <span className={s.late} data-tone={late ? "late" : "move"} title={label} aria-label={label} />;
+}
+
 // ── Layer 2 ─────────────────────────────────────────────────────────────────────────────────────────
 
-type Menu = { kind: "add" } | { kind: "page"; id: string; icons: boolean; sure: boolean };
-
 function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) {
-  const ctx = useDemo();
-  const { S, href, tenant } = ctx;
+  const { S, href } = useDemo();
   const t = useT();
-  const router = useRouter();
   const params = useSearchParams();
   const editor = useRights(p).addStep; // the project's team (lead, members, a manager); viewers only read
-  const [pages, setPages] = useProjectPages(tenant.slug, p.id);
-  const entries = pageList(pages);
-  const tab = projectTabOf(params.get("tab") ?? undefined);
-  const pageId = params.get("page");
-  const currentKey = pageId && pages.pages.some((x) => x.id === pageId) ? pageId : tab;
+  const late = daysLate(p, S.day);
+  const base = href("/projects/" + p.id);
+  const counts: Partial<Record<ProjectTab, number>> = { board: p.steps.length, team: p.members.length + 1 };
+  const source = p.sources[0] ?? null;
+  return (
+    <PageLayer storeId={p.id} from={source ? ideaPagesId(source) : null} tabs={PROJECT_TABS} base={base} pageUrl={(id) => base + "?page=" + id} editor={editor}
+      current={params.get("page") ?? projectTabOf(params.get("tab") ?? undefined)}
+      tabUrl={(k) => base + tabQuery(k as ProjectTab)}
+      tabInfo={(k) => ({ label: t(("projects.tab_" + k) as "projects.tab_overview"), icon: <TabIcon k={k} />, count: counts[k as ProjectTab] })}
+      back={t("projects.sbBack")} onBack={onBack}
+      head={<Head mark={<RingMark ring={ringOf(p.status)} />} title={p.title} status={t(("projects.status_" + p.status) as "projects.status_planning")}
+        note={late > 0 ? { text: t("projects.sbLate", { count: late }), tone: "late" } : null} />} />
+  );
+}
 
+function IdeaPages({ c, facts, yourMove, onBack }: { c: ReducedCase; facts: SidebarIdea | null; yourMove: boolean; onBack: () => void }) {
+  const { href, log, me, role } = useDemo();
+  const t = useT();
+  const params = useSearchParams();
+  const editor = mayEditIdeaPages(c, { userId: me.userId, manager: role === "manager", holdsDesk: holdsRole(me, c.assigneeRoleId) });
+  const base = href("/idea?id=" + encodeURIComponent(c.id));
+  const stage: IdeaStage = c.status === "discussion" ? "decision" : "lead";
+  const counts: Record<string, number | undefined> = { files: raisedWith(c).attachments || undefined, chats: commentsOn(log, c.id).length || undefined };
+  const late = facts?.late ?? c.overdue;
+  const move = facts?.yourMove ?? yourMove;
+  return (
+    <PageLayer storeId={ideaPagesId(c.id)} from={null} tabs={IDEA_TABS} base={base} pageUrl={(id) => base + "&page=" + id} editor={editor}
+      current={params.get("page") ?? "overview"}
+      tabUrl={(k) => (k === "overview" ? base : base + "&page=" + k)}
+      tabInfo={(k) => ({ label: t(("projects.idea_" + k) as "projects.idea_overview"), icon: k === "chats" ? <PageGlyph icon="chat" /> : <TabIcon k={k} />, count: counts[k] })}
+      back={t("projects.sbBack")} onBack={onBack}
+      head={<Head mark={<StageMark stage={stage} />} title={c.title} status={t(stage === "lead" ? "projects.sbStageLead" : "projects.sbStageDecision")}
+        note={late ? { text: t("projects.sbLateHint"), tone: "late" } : move ? { text: t("projects.sbYourMove"), tone: "move" } : null} />} />
+  );
+}
+
+function Head({ mark, title, status, note }: { mark: React.ReactNode; title: string; status: string; note: { text: string; tone: "late" | "move" } | null }) {
+  return (
+    <div className={s.head}>
+      <span className={s.headSlot}>{mark}</span>
+      <span className={s.headText}>
+        <span className={s.headTitle}>{title}</span>
+        <span className={s.headMeta}>
+          {status}
+          {note && <><span className={s.dotSep} aria-hidden="true" /><span className={s.noteText} data-tone={note.tone}>{note.text}</span></>}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+type Menu = { kind: "add" } | { kind: "page"; id: string; icons: boolean; sure: boolean };
+type TabInfo = { label: string; icon: React.ReactNode; count?: number };
+
+/** Layer 2's list of pages, for a project or an idea: the standard ones and the added ones, in the dragged order. */
+function PageLayer({ storeId, from, tabs, base, pageUrl, current, tabUrl, tabInfo, editor, head, back, onBack }: {
+  storeId: string; from: string | null; tabs: readonly string[]; base: string; pageUrl: (id: string) => string; current: string;
+  tabUrl: (key: string) => string; tabInfo: (key: string) => TabInfo; editor: boolean;
+  head: React.ReactNode; back: string; onBack: () => void;
+}) {
+  const { tenant } = useDemo();
+  const t = useT();
+  const router = useRouter();
+  const [pages, setPages] = useProjectPages(tenant.slug, storeId, from);
+  const entries = pageList(pages, tabs);
+  const currentKey = pages.pages.some((x) => x.id === current) || tabs.includes(current) ? current : tabs[0];
   const [menu, setMenu] = useState<(Menu & { x: number; y: number }) | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ id: string; over: string | null; before: boolean } | null>(null);
-  const late = daysLate(p, S.day);
   useEffect(() => {
     if (!menu) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenu(null); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [menu]);
-  const base = href("/projects/" + p.id);
-  const urlOf = (e: PageEntry) => (e.kind === "tab" ? base + tabQuery(e.key) : base + "?page=" + e.page.id);
+  const urlOf = (e: PageEntry) => (e.kind === "tab" ? tabUrl(e.key) : pageUrl(e.page.id));
   const keyOf = (e: PageEntry) => (e.kind === "tab" ? e.key : e.page.id);
-  const counts: Partial<Record<ProjectTab, number>> = { board: p.steps.length, team: p.members.length + 1 };
 
   const openMenu = (m: Menu, el: HTMLElement) => {
     const r = el.getBoundingClientRect();
@@ -138,17 +242,17 @@ function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) 
   };
   const add = (kind: PageKind) => {
     const id = newPageId();
-    setPages((st) => addPage(st, kind, id, t(("projects.kind_" + kind) as "projects.kind_page")));
+    setPages((st) => addPage(st, kind, id, t(("projects.kind_" + kind) as "projects.kind_page"), tabs));
     setMenu(null);
     setRenaming(id);
-    router.push(base + "?page=" + id);
+    router.push(pageUrl(id));
   };
   const drop = () => {
     if (!drag?.over) return setDrag(null);
     const keys = entries.map(keyOf);
     const at = keys.indexOf(drag.over);
     const before = drag.before ? drag.over : keys[at + 1] ?? null;
-    setPages((st) => movePage(st, drag.id, before === drag.id ? keys[at + 2] ?? null : before));
+    setPages((st) => movePage(st, drag.id, before === drag.id ? keys[at + 2] ?? null : before, tabs));
     setDrag(null);
   };
 
@@ -156,26 +260,17 @@ function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) 
     <div className={s.layer}>
       <button type="button" className={s.back} onClick={onBack}>
         <span className={s.slot}><Svg size={14}><path d="M8.6 3.2L4.8 7L8.6 10.8" /></Svg></span>
-        <span className={s.label}>{t("projects.sbYourProjects")}</span>
+        <span className={s.label}>{back}</span>
       </button>
-      <div className={s.head}>
-        <span className={s.headSlot}><RingMark ring={ringOf(p.status)} /></span>
-        <span className={s.headText}>
-          <span className={s.headTitle}>{p.title}</span>
-          <span className={s.headMeta}>
-            {t(("projects.status_" + p.status) as "projects.status_planning")}
-            {late > 0 && <><span className={s.dotSep} aria-hidden="true" /><span className={s.lateText}>{t("projects.sbLate", { count: late })}</span></>}
-          </span>
-        </span>
-      </div>
+      {head}
 
       <span className={s.group}>{t("projects.sbPages")}</span>
-      <nav className={s.pages} aria-label={t("projects.tabsLabel")} onDragEnd={() => setDrag(null)}>
+      <nav className={s.pages} aria-label={t("projects.sbPages")} onDragEnd={() => setDrag(null)}>
         {entries.map((e) => {
           const k = keyOf(e);
           const custom = e.kind === "custom" ? e.page : null;
-          const label = e.kind === "custom" ? e.page.title : t(("projects.tab_" + e.key) as "projects.tab_overview");
-          const count = e.kind === "tab" ? counts[e.key] : undefined;
+          const info = e.kind === "tab" ? tabInfo(e.key) : null;
+          const label = e.kind === "custom" ? e.page.title : info?.label ?? k;
           const dropAt = drag && drag.over === k && drag.id !== k ? (drag.before ? "before" : "after") : undefined;
           if (renaming === k && custom) {
             return <RenameRow key={k} page={custom} onDone={(title) => { if (title !== null) setPages((st) => updatePage(st, k, { title })); setRenaming(null); }} />;
@@ -193,11 +288,11 @@ function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) 
               onDrop={(ev) => { ev.preventDefault(); drop(); }}>
               <Link href={urlOf(e)} className={s.row} aria-current={currentKey === k ? "page" : undefined} draggable={false}>
                 <span className={s.slot}>
-                  <span className={s.icon}>{custom ? <PageGlyph icon={custom.icon} /> : <TabIcon k={e.kind === "tab" ? e.key : "overview"} />}</span>
+                  <span className={s.icon}>{custom ? <PageGlyph icon={custom.icon} /> : info?.icon}</span>
                   {editor && <span className={s.grip} title={t("projects.sbDrag")}><Svg size={16} fill><circle cx="6" cy="4" r="1.1" /><circle cx="10" cy="4" r="1.1" /><circle cx="6" cy="8" r="1.1" /><circle cx="10" cy="8" r="1.1" /><circle cx="6" cy="12" r="1.1" /><circle cx="10" cy="12" r="1.1" /></Svg></span>}
                 </span>
                 <span className={s.label}>{label}</span>
-                {count !== undefined && <span className={s.count}>{count}</span>}
+                {info?.count !== undefined && <span className={s.count}>{info.count}</span>}
               </Link>
               {editor && custom && (
                 <button type="button" className={s.more} data-open={menu?.kind === "page" && menu.id === k || undefined} aria-label={t("projects.sbMore", { page: label })}
@@ -249,6 +344,16 @@ function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) 
         </>
       )}
     </div>
+  );
+}
+
+/** An idea's stage: three dashes, a small copy of the Overview table's stage dashes - one filled at the team lead, two on the way to a decision. */
+function StageMark({ stage }: { stage: IdeaStage }) {
+  const on = stage === "lead" ? 1 : 2;
+  return (
+    <svg className={s.stage} width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      {[0, 5.75, 11.5].map((x, k) => <rect key={x} x={x} y="6" width="4.5" height="4" rx="1.2" data-on={k < on || undefined} />)}
+    </svg>
   );
 }
 
@@ -326,7 +431,7 @@ function AreaIcon({ k }: { k: string }) {
 
 const People = () => <Svg size={16}><circle cx="6" cy="5.8" r="2.3" /><path d="M2 13C2.4 10.9 4 9.8 6 9.8C8 9.8 9.6 10.9 10 13" /><path d="M10.6 3.8C11.8 4 12.6 4.9 12.6 6C12.6 7.1 11.8 8 10.6 8.2M12 9.9C13.2 10.3 13.9 11.4 14.1 12.6" /></Svg>;
 
-function TabIcon({ k }: { k: (typeof PROJECT_TABS)[number] }) {
+function TabIcon({ k }: { k: string }) {
   switch (k) {
     case "board": return <Svg size={16}><rect x="2.5" y="2.5" width="11" height="11" rx="2" /><path d="M6.2 2.5V13.5M9.8 2.5V13.5" /></Svg>;
     case "team": return <People />;

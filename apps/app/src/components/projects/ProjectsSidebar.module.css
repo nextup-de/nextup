@@ -50,6 +50,12 @@
 .ring[data-ring="measured"] { color: var(--nh-ok); }
 .ring[data-ring="stopped"] { color: var(--nh-mute-2); }
 .late { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--nh-problem); }
+.late[data-tone="move"] { background: var(--nh-brand); }
+.block { display: flex; flex-direction: column; gap: 1px; padding-bottom: 10px; }
+.block:last-child { padding-bottom: 0; }
+/* An idea's stage: three dashes, filled up to where it stands. */
+.stage rect { fill: var(--nh-fill-3); }
+.stage rect[data-on] { fill: var(--nh-ink-2); }
 .chev { flex: none; width: 14px; display: none; color: var(--nh-ink-2); }
 .row[data-project]:hover .chev { display: flex; }
 .row[data-project][aria-current="page"] { font-weight: 400; }
@@ -63,7 +69,8 @@
 .headTitle { font-size: var(--nh-fs-md); line-height: 20px; font-weight: 600; color: var(--nh-ink); overflow-wrap: anywhere; }
 .headMeta { display: flex; align-items: center; gap: 6px; font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-ink-2); }
 .dotSep { width: 3px; height: 3px; border-radius: 50%; background: var(--nh-mute-2); }
-.lateText { color: var(--nh-problem); }
+.noteText[data-tone="late"] { color: var(--nh-problem); }
+.noteText[data-tone="move"] { color: var(--nh-brand); }
 
 .pages { display: flex; flex-direction: column; gap: 1px; }
 .pageRow { position: relative; display: flex; align-items: center; border-radius: var(--radius-xs, 6px); }

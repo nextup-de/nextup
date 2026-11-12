@@ -1,23 +1,21 @@
 "use client";
-// A page a project's team added from the sidebar (?page=): a page of notes, a checklist, a table or a link.
-// The team edits it in place; viewers read it. Stand-in storage (projectPagesPreview.ts).
+// A page the people of a project or an idea added from the sidebar (?page=): notes, a checklist, a table or
+// a link. They edit it in place; viewers read it. Stand-in storage (projectPagesPreview.ts).
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { updatePage, type CustomPage } from "@/features/projects/sidebar";
-import type { ReducedProject } from "@/features/projects/types";
 import { useT } from "@/i18n/client";
-import { useRights } from "./parts";
 import { PageGlyph } from "./ProjectsSidebar";
 import { useProjectPages } from "./projectPagesPreview";
 import s from "./CustomPageView.module.css";
 
 const webUrl = (v: string) => /^https?:\/\/\S+$/i.test(v.trim());
 
-export function CustomPageView({ p, page }: { p: ReducedProject; page: CustomPage }) {
+/** `storeId`/`from`: whose pages (projectPagesPreview.ts); `editor`: added and not only a viewer. */
+export function CustomPageView({ storeId, from = null, page, editor }: { storeId: string; from?: string | null; page: CustomPage; editor: boolean }) {
   const { tenant } = useDemo();
   const t = useT();
-  const editor = useRights(p).addStep;
-  const [, setPages] = useProjectPages(tenant.slug, p.id);
+  const [, setPages] = useProjectPages(tenant.slug, storeId, from);
   const save = (patch: Partial<Omit<CustomPage, "id" | "kind">>) => setPages((st) => updatePage(st, page.id, patch));
 
   return (
@@ -107,5 +105,29 @@ function LinkPage({ page, editor, save }: Part) {
         : <span className={ok ? s.url : s.empty}>{ok ? page.url : t("projects.pgEmpty")}</span>}
       {ok && <a className="nh-btn nh-btn-primary nh-btn-sm" href={page.url.trim()} target="_blank" rel="noreferrer noopener">{t("projects.pgOpen")}</a>}
     </div>
+  );
+}
+
+/** An idea's files (the projects sidebar's "Files" page): what was attached when it was raised, then the screenshots kept in this browser. */
+export function FilesCard({ title, files, empty }: { title: string; files: { name: string; ext: string; meta: string }[]; empty: string }) {
+  return (
+    <section className={s.page} aria-label={title}>
+      <div className={s.head}>
+        <span className={s.glyph}><PageGlyph icon="box" /></span>
+        <h2 className={s.title}>{title}</h2>
+        <span className={s.count}>{files.length}</span>
+      </div>
+      {files.length === 0 ? <p className={s.empty}>{empty}</p> : (
+        <ul className={s.files}>
+          {files.map((f, k) => (
+            <li key={f.name + k} className={s.file} title={f.name}>
+              <span className={s.ext}>{f.ext}</span>
+              <span className={s.fileName}>{f.name}</span>
+              <span className={s.fileMeta}>{f.meta}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

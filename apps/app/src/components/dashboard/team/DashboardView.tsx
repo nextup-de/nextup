@@ -12,7 +12,7 @@
 // back - and that page is this view with `caseId` open. Otherwise the open case stays on this page and
 // the address says what it is: /idea?id=<id>, the same page. Closing goes back to where the table was.
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { useT } from "@/i18n/client";
@@ -38,6 +38,10 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
 import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
+import { CustomPageView, FilesCard } from "@/components/projects/CustomPageView";
+import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
+import { holdsRole } from "@/features/auth/identity";
+import { mayEditIdeaPages } from "@/features/projects/sidebar";
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 // A phone gets its own case layout (OverviewPhone), like the inbox's IdeaDetailPhone.
@@ -118,6 +122,9 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const [tablePath] = useState(() => (pathname === ideaPath ? href(flag("projects") ? "/projects" : "/overview") : pathname));
   useIdInUrl(linkCases ? null : sel, setSel, "id", linkCases ? undefined : { open: ideaPath, closed: tablePath });
   const [mode, setMode] = useState<IdeaMode>("idea");
+  // The open idea's page the projects sidebar picked (&page=): its files, its chats, or one its people added; none is the overview.
+  const pageParam = useSearchParams().get("page");
+  const [ideaPages] = useProjectPages(tenant.slug, ideaPagesId(sel ?? "-"));
   const [pg, setPg] = useState({ key: "", n: 1 }); // the page the table is on, forgotten when the list changes
   const paneRef = useRef<HTMLDivElement>(null);
   const prevSel = useRef<string | null>(null);
@@ -246,10 +253,19 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
           nav={{ index: at, count: ids.length, onPrev: () => at > 0 && openCase(ids[at - 1]), onNext: () => at < ids.length - 1 && openCase(ids[at + 1]) }} />
       );
     } else {
+      const addedPage = pageParam ? ideaPages.pages.find((x) => x.id === pageParam) : undefined;
+      const view = addedPage ? "added" : pageParam === "files" || pageParam === "chats" ? pageParam : "idea";
+      const editsPages = mayEditIdeaPages(c, { userId: me.userId, manager: role === "manager", holdsDesk: holdsRole(me, c.assigneeRoleId) });
       return (
-        <div className={s.root} data-open="true">
+        <div className={s.root} data-open="true" data-view={view}>
           <div className={s.div20}>
-            <div className={s.div21} ref={paneRef}><OverviewIdea key={c.id} {...ideaProps} /></div>
+            {view !== "chats" && (
+              <div className={s.div21} ref={paneRef}>
+                {view === "idea" && <OverviewIdea key={c.id} {...ideaProps} />}
+                {view === "files" && <FilesCard title={t("projects.idea_files")} files={ideaProps.files} empty={t("team.ideaNoAttachments")} />}
+                {view === "added" && addedPage && <CustomPageView storeId={ideaPagesId(c.id)} page={addedPage} editor={editsPages} />}
+              </div>
+            )}
             {chats}
           </div>
           {pop}

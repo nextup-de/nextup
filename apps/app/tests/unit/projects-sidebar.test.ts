@@ -1,7 +1,7 @@
 // The Projects sidebar (features/projects/sidebar.ts): which projects layer 1 lists, and the editable
 // list of pages in layer 2.
 import { describe, expect, it } from "vitest";
-import { NO_PAGES, addPage, daysLate, movePage, pageList, projectIdAt, removePage, ringOf, sidebarProjects, updatePage } from "@/features/projects/sidebar";
+import { IDEA_TABS, NO_PAGES, addPage, caseIdAt, daysLate, mayEditIdeaPages, movePage, pageList, projectIdAt, removePage, ringOf, sidebarIdeas, sidebarProjects, updatePage } from "@/features/projects/sidebar";
 import type { ReducedProject } from "@/features/projects/types";
 
 const proj = (number: number, status: ReducedProject["status"], overdue = false, title = "P" + number) =>
@@ -63,5 +63,42 @@ describe("project pages", () => {
     const s = addPage(NO_PAGES, "link", "l", "Jira");
     expect(keys(removePage(s, "l"))).not.toContain("l");
     expect(removePage(s, "board")).toBe(s);
+  });
+});
+
+describe("ideas in the sidebar", () => {
+  const row = (id: string, o: Partial<Parameters<typeof sidebarIdeas>[0][number]> = {}) =>
+    ({ id, title: id, open: true, paused: false, overdue: false, talk: false, status: "waiting", archive: null, sortDay: 0, ...o });
+
+  it("finds an idea's page", () => {
+    expect(caseIdAt("/cases/c7")).toBe("c7");
+    expect(caseIdAt("/cases")).toBeNull();
+  });
+
+  it("lists the open ones by stage: late first, then your move, then the newest", () => {
+    const list = sidebarIdeas([
+      row("old", { sortDay: 1 }), row("new", { sortDay: 5 }), row("mine", { sortDay: 0 }), row("late", { overdue: true }),
+      row("talk", { talk: true, sortDay: 3 }), row("done", { open: false }), row("project", { archive: "project" }),
+    ], (id) => id === "mine");
+    expect(list.map((i) => i.id)).toEqual(["late", "mine", "new", "talk", "old"]);
+    expect(list.find((i) => i.id === "talk")?.stage).toBe("decision");
+    expect(list.find((i) => i.id === "new")?.stage).toBe("lead");
+  });
+
+  it("lets everyone added to an idea edit its pages, not a viewer", () => {
+    const c = { fromUserId: "u1", discussion: { invitedUserIds: ["u2"] } };
+    const who = (userId: string | null, o: { manager?: boolean; holdsDesk?: boolean } = {}) => ({ userId, manager: false, holdsDesk: false, ...o });
+    expect(mayEditIdeaPages(c, who("u1"))).toBe(true);
+    expect(mayEditIdeaPages(c, who("u2"))).toBe(true);
+    expect(mayEditIdeaPages(c, who("u3", { holdsDesk: true }))).toBe(true);
+    expect(mayEditIdeaPages(c, who("u4", { manager: true }))).toBe(true);
+    expect(mayEditIdeaPages(c, who("u5"))).toBe(false);
+    expect(mayEditIdeaPages(c, who(null))).toBe(false);
+  });
+
+  it("gives an idea Overview, Files and Chats, and adds pages after them", () => {
+    const s = addPage(NO_PAGES, "page", "n", "Notes", IDEA_TABS);
+    expect(pageList(s, IDEA_TABS).map((e) => (e.kind === "tab" ? e.key : e.page.id))).toEqual(["overview", "files", "chats", "n"]);
+    expect(pageList(movePage(s, "n", "files", IDEA_TABS), IDEA_TABS).map((e) => (e.kind === "tab" ? e.key : e.page.id))).toEqual(["overview", "n", "files", "chats"]);
   });
 });

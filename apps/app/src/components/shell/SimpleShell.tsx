@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { adminMenuLinks, sectionTabAt, simpleNavFor, type ProjectsTabKey } from "@/config/nav";
 import { ProjectsFrame } from "@/components/projects/ProjectsFrame";
-import { projectIdAt } from "@/features/projects/sidebar";
+import { caseIdAt, projectIdAt } from "@/features/projects/sidebar";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxCount, mineRows } from "@/components/dashboard/derive";
@@ -30,8 +30,9 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const area = sectionTabAt(pathname.slice(tenant.prefix.length), { role, serverMode: ctx.serverMode, flag: ctx.flag });
   // The Projects area (its tabs and every project's page) sits next to the projects sidebar, which then carries the tabs.
   const projectId = ctx.flag("projects") ? projectIdAt(pathname.slice(tenant.prefix.length)) : null;
+  const caseId = ctx.flag("projects") ? caseIdAt(pathname.slice(tenant.prefix.length)) : null; // an idea opens next to the sidebar too
   const projectsArea = area?.section === "projects" ? (area.tab as ProjectsTabKey) : null;
-  const inProjects = projectsArea !== null || projectId !== null;
+  const inProjects = projectsArea !== null || projectId !== null || caseId !== null;
   // The blue thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -138,7 +139,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
       {area && !inProjects && <SectionTabs section={area.section} active={area.tab} />}
 
       <main className={styles.content}>
-        <div className={styles.contentInner}>{inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId}>{children}</ProjectsFrame> : children}</div>
+        <div className={styles.contentInner}>{inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId} caseId={caseId}>{children}</ProjectsFrame> : children}</div>
       </main>
 
       {pop && <div className={styles.backdrop} onClick={() => setPop(null)} />}

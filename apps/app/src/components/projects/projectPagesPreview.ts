@@ -1,19 +1,21 @@
 "use client";
-// STAND-IN (PROJECT-PAGES-FOR-KEVIN.txt): the pages a team adds to a project, their order and their
+// STAND-IN (PROJECT-PAGES-FOR-KEVIN.txt): the pages a team adds to a project or an idea, their order and their
 // content live in this browser's localStorage until the event log can record them (a project.page.*
 // event is Kevin's call). Every component that shows them reads the same store, so the sidebar and the
 // page stay in step. The rules themselves are pure (features/projects/sidebar.ts).
 import { useCallback, useSyncExternalStore } from "react";
 import { NO_PAGES, type PagesState } from "@/features/projects/sidebar";
 
-const keyOf = (company: string, projectId: string) => `nh.projectPages.${company}.${projectId}`;
+const keyOf = (company: string, ownerId: string) => `nh.projectPages.${company}.${ownerId}`;
+/** The store id of an idea's pages (a project's is its own id). */
+export const ideaPagesId = (caseId: string) => "case:" + caseId;
 const listeners = new Set<() => void>();
 const cache = new Map<string, { raw: string | null; value: PagesState }>();
 
-function read(key: string): PagesState {
+function read(key: string, fallback: string | null = null): PagesState {
   if (typeof window === "undefined") return NO_PAGES;
   let raw: string | null = null;
-  try { raw = window.localStorage.getItem(key); } catch { /* storage off: no pages of its own */ }
+  try { raw = window.localStorage.getItem(key) ?? (fallback ? window.localStorage.getItem(fallback) : null); } catch { /* storage off: no pages of its own */ }
   const hit = cache.get(key);
   if (hit && hit.raw === raw) return hit.value; // the same object while nothing changed (useSyncExternalStore needs that)
   let value = NO_PAGES;
@@ -32,14 +34,18 @@ function subscribe(fn: () => void) {
   return () => { listeners.delete(fn); window.removeEventListener("storage", onStorage); };
 }
 
-/** One project's pages and a setter that takes the next state from the current one. */
-export function useProjectPages(company: string, projectId: string): [PagesState, (next: (s: PagesState) => PagesState) => void] {
-  const key = keyOf(company, projectId);
-  const state = useSyncExternalStore(subscribe, () => read(key), () => NO_PAGES);
+/**
+ * One project's or idea's pages and a setter that takes the next state from the current one. `from`: the
+ * store id to start from while this one has none yet - a project starts with the pages of the idea it grew from.
+ */
+export function useProjectPages(company: string, ownerId: string, from: string | null = null): [PagesState, (next: (s: PagesState) => PagesState) => void] {
+  const key = keyOf(company, ownerId);
+  const fallback = from ? keyOf(company, from) : null;
+  const state = useSyncExternalStore(subscribe, () => read(key, fallback), () => NO_PAGES);
   const set = useCallback((next: (s: PagesState) => PagesState) => {
-    try { window.localStorage.setItem(key, JSON.stringify(next(read(key)))); } catch { return; }
+    try { window.localStorage.setItem(key, JSON.stringify(next(read(key, fallback)))); } catch { return; }
     listeners.forEach((fn) => fn());
-  }, [key]);
+  }, [key, fallback]);
   return [state, set];
 }
 

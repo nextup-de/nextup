@@ -28,7 +28,7 @@ import { BaselinePanel, MeasurePanel, RewardPanel } from "./ProjectMeasure";
 import { ActivityPanel, TeamPanel, ToolsPanel } from "./ProjectTeam";
 import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } from "./parts";
 import { CustomPageView } from "./CustomPageView";
-import { useProjectPages } from "./projectPagesPreview";
+import { ideaPagesId, useProjectPages } from "./projectPagesPreview";
 import styles from "./Projects.module.css";
 
 /** `jira`: the company's Jira as the server read it (null: static demo, or no database). `tab`: from ?tab=. */
@@ -75,7 +75,8 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
   const escalatedToMe = holdsRole(ctx.me, p.escalated?.toRoleId ?? null);
   // A page the team added (?page=, from the sidebar) takes the place of the tabs' content.
   const pageId = useSearchParams().get("page");
-  const [pages] = useProjectPages(ctx.tenant.slug, p.id);
+  const pagesFrom = p.sources[0] ? ideaPagesId(p.sources[0]) : null; // a project starts with the pages its idea had
+  const [pages] = useProjectPages(ctx.tenant.slug, p.id, pagesFrom);
   const custom = pageId ? pages.pages.find((x) => x.id === pageId) : undefined;
   const shown: ProjectTab | null = custom ? null : tab;
 
@@ -85,7 +86,7 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
         <Header p={p} jira={row} />
         <Tabs p={p} tab={tab} />
       </div>
-      {custom && <CustomPageView p={p} page={custom} />}
+      {custom && <CustomPageView storeId={p.id} from={pagesFrom} page={custom} editor={r.addStep} />}
       {shown === "overview" && (
         <div className={styles.tabLayout}>
           <div className={styles.tabCards}>

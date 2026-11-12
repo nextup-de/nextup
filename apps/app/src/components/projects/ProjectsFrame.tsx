@@ -16,7 +16,7 @@ const listeners = new Set<() => void>();
 const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "hidden" ? "hidden" : "open"; } catch { return "open"; } };
 const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
-export function ProjectsFrame({ area, projectId, children }: { area: ProjectsTabKey | null; projectId: string | null; children: React.ReactNode }) {
+export function ProjectsFrame({ area, projectId, caseId, children }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; children: React.ReactNode }) {
   const t = useT();
   const sb = useSyncExternalStore(subscribeSb, readSb, () => "open" as const);
   const set = (v: "open" | "hidden") => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
@@ -24,7 +24,7 @@ export function ProjectsFrame({ area, projectId, children }: { area: ProjectsTab
   return (
     <div className={s.root} data-wide="true" data-psb={sb}>
       <aside className={s.side} aria-label={t("projects.sbLabel")} inert={sb === "hidden"}>
-        <ProjectsSidebar area={area} projectId={projectId} onHide={() => set("hidden")} />
+        <ProjectsSidebar area={area} projectId={projectId} caseId={caseId} onHide={() => set("hidden")} />
       </aside>
       <div className={s.main}>
         {sb === "hidden" && (
