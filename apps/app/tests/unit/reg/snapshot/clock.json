@@ -1,5 +1,6 @@
 {
   "dueKinds": [
+    "appeal",
     "checkin",
     "confirm",
     "deadline",
@@ -10,8 +11,10 @@
     "lead",
     "measure",
     "question",
+    "revisit",
     "start",
     "triage",
-    "unanswered"
+    "unanswered",
+    "view"
   ]
 }

@@ -155,7 +155,7 @@ describe("REG demo acts split", () => {
 
     it("exposes exactly the case acts, none of the core ones", () => {
       expect(Object.keys(caseActs(deps().d)).sort()).toEqual(
-        ["accept", "affect", "answer", "ask", "checkin", "comment", "decide", "discuss", "hand", "invite", "override", "raise", "raiseDraft", "read", "rescore", "revise", "withdraw"]);
+        ["accept", "affect", "answer", "appeal", "answerAppeal", "ask", "checkin", "comment", "declineInvite", "decide", "discuss", "hand", "invite", "no", "override", "pass", "raise", "raiseDraft", "read", "rescore", "revise", "withdraw"].sort());
     });
   });
 

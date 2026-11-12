@@ -10,14 +10,20 @@ import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { byClock } from "@/features/clock/actor";
 import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
+import type { AnyNoCategory } from "./no";
 import type { Idea, Problem, Route, SeedCase } from "@/features/demo/types";
 import { loopRules, type LoopRules } from "@/features/loop/rules";
 import { applyProjectEvent, finishProjects, newBook, openOrJoin, seedProject } from "@/features/projects/reduce";
 import type { ReducedProject, SeedProject } from "@/features/projects/types";
 
 // A yes that names a project opens it (or adds this idea to it): the idea is archived from then on.
-export type Decision = { answer: "yes" | "no"; reason: string; note: string; by: string; day: number; projectId?: string | null; lead?: string | null; byUserId?: string | null };
-export type HandOver = { from: string; fromUserId: string | null; to: string; toSeatId: string | null; why: string; day: number };
+export type Decision = {
+  answer: "yes" | "no"; reason: string; note: string; by: string; day: number; projectId?: string | null; lead?: string | null; byUserId?: string | null;
+  // The reasoned no (plan NOR): the category of a no, what would make it a yes, the day it comes back, the case or project it duplicates.
+  category: AnyNoCategory | null; changeIf: string; revisitDay: number | null; duplicateOf: string | null;
+};
+/** `fromSeatId`: the seat the case came from (Not mine goes back to it); `back` and `up`: the pass was Not mine / Send up (plan NOR, D13). */
+export type HandOver = { from: string; fromUserId: string | null; to: string; toSeatId: string | null; why: string; day: number; fromSeatId: string | null; back: boolean; up: boolean };
 export type Answer = { text: string; by: string; byUserId: string | null; day: number };
 /** `unanswered`: the day the clock gave the case back to the desk without an answer; null while it waits or once answered. */
 export type Question = { text: string; by: string; byUserId: string | null; day: number; answer: Answer | null; unanswered: number | null };
@@ -35,6 +41,8 @@ export type Discussion = {
   // derived: the round under way (the next check-in ends it), whether the last check-in said "decide",
   // and the day the last allowed round ends
   round: number; ready: boolean; lastDay: number;
+  /** People who said the discussion is not for them (case.invite.declined, plan NOR D14). */
+  declinedUserIds: string[];
 };
 // v1 is the case as raised; each case.revised adds the next one.
 export type Version = { version: number; day: number; by: string; byUserId?: string | null; title: string; body: string; overall: number | null };
@@ -42,6 +50,15 @@ export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building
 
 /** The raiser took the idea back before anyone decided it (decision Q1.14). */
 export type Withdrawal = { day: number; by: string; byUserId: string | null; note: string };
+
+/** The raiser's second look at a no (plan NOR, D18). `seatId`: the desk the server set, null when no occupied seat could take it; `decided`: its answer. */
+export type Appeal = {
+  text: string; day: number; by: string; byUserId: string | null; seatId: string | null;
+  decided: { uphold: boolean; reason: string; by: string; byUserId: string | null; day: number } | null;
+};
+
+/** The case is open on a desk again (plan NOR, D12): a no came back on its revisit day, a second look was not upheld, or a stopped project's idea went back. */
+export type Reopen = { why: "revisit" | "appeal" | "stopped"; day: number; by: string };
 
 export type ReducedCase = {
   id: string; seed: boolean; kind: CaseKind; title: string; body: string; from: string; fromDept: string;
@@ -51,6 +68,12 @@ export type ReducedCase = {
   status: CaseStatus; read: number | null; decided: Decision | null; withdrawn: Withdrawal | null; question: Question | null; handed: HandOver[];
   building: Building | null; shipped: Shipped | null; override: Override | null;
   discussion: Discussion | null; versions: Version[];
+  // The reasoned no (plan NOR): every decision of the case, oldest first (`decided` is the latest live one), the passes people
+  // made, the not-now in a row, the second look, the reopens, the day the current cycle began and the floor of the answer date.
+  decisions: Decision[]; passes: number; notNowInRow: number; appeal: Appeal | null; reopens: Reopen[]; cycleStartDay: number; dueFloor: number | null;
+  // Event order (D12, review of 12 Nov): the place in `history` of the latest reopen and of the latest decision, null when none.
+  // Two events of one day have a total order only by this place; see features/cases/no.ts decisionKey and cycleEvents.
+  reopenSeq: number | null; decidedSeq: number | null;
   pausedDays: number; pausedSince: number | null; history: CaseEvent[];
   // derived once every event is applied. `open` = still on a desk, waiting for a move: open or in discussion.
   // `archived` = decided either way, or withdrawn by the raiser; a yes then lives on as `decided.projectId`.
@@ -104,7 +127,9 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       routeId: row.routeId ?? null, assignee: row.assignee, raisedDay: row.raisedDay ?? 0,
       reason: row.reason ?? "", upside: row.upside ?? "", linkedIdea: row.linkedIdea ?? null,
       status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [], building: null, shipped: null,
-      override: null, discussion: null, versions: [], pausedDays: 0, pausedSince: null, history: [],
+      override: null, discussion: null, versions: [],
+      decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: row.raisedDay ?? 0, dueFloor: null, reopenSeq: null, decidedSeq: null,
+      pausedDays: 0, pausedSince: null, history: [],
       route: null, age: 0, clock: 0, open: true, archived: false, overdue: false, dueDay: 0, escalated: null,
     };
     c.versions.push({ version: 1, day: c.raisedDay, by: c.from, byUserId: c.fromUserId, title: c.title, body: c.body, overall: null });
@@ -163,6 +188,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         c.decided = {
           answer, reason: pl.reason ?? "", note: pl.note ?? "", by: ev.actor, byUserId: uid, day: d,
           projectId: project ? project.id : c.decided?.projectId ?? null, lead: project ? project.lead : c.decided?.lead ?? null,
+          category: null, changeIf: "", revisitDay: null, duplicateOf: null, // NOR-A1 fills these
         };
         c.status = "decided";
         c.history.push(ev);
@@ -174,7 +200,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (c.read === null) c.read = d;
         c.discussion = {
           startedDay: d, by: ev.actor, byUserId: uid, invited: uniq(pl.invited ?? []), invitedUserIds: uniqIds(pl.invitedUserIds ?? []), missing: pl.missing ?? "", rounds: [],
-          round: 1, ready: false, lastDay: 0,
+          round: 1, ready: false, lastDay: 0, declinedUserIds: [],
         };
         c.status = "discussion";
         c.history.push(ev);
@@ -212,7 +238,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (!c || (c.status !== "open" && c.status !== "discussion") || !pl.to) break;
         if (c.read === null) c.read = d;
         const toSeat = pl.toRoleHolderId ?? null;
-        c.handed.push({ from: ev.actor, fromUserId: uid, to: pl.to, toSeatId: toSeat, why: pl.why ?? "", day: d });
+        c.handed.push({ from: ev.actor, fromUserId: uid, to: pl.to, toSeatId: toSeat, why: pl.why ?? "", day: d, fromSeatId: null, back: false, up: false }); // NOR-A1 fills fromSeatId, back and up
         c.assignee = pl.to;
         c.assigneeSeatId = toSeat;
         c.assigneeRoleId = roleOfSeat(toSeat);
