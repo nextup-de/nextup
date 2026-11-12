@@ -4,7 +4,7 @@
 // the leader inbox uses; every other item goes to its own page. Same for every role, in the demo and on a company.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
 import { IdeaDetailPhone } from "@/components/dashboard/leader/IdeaDetailPhone";
@@ -13,6 +13,7 @@ import { PageHeader, SectionCard } from "@/components/ui/elements";
 import { inboxCounts, inboxItems, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
+import { showInboxCase } from "@/lib/demo-controls";
 import { useIdInUrl } from "@/lib/use-url-id";
 import { markNoticesReadAction } from "@/server/actions/notices";
 import { useOpenItem } from "./useOpenItem";
@@ -26,6 +27,7 @@ const ASK_TITLE: Record<InboxAsk, MessageKey> = { decide: "inbox.askDecide", con
 const KIND: Record<InboxKind, MessageKey> = {
   case: "inbox.kindCase", idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
   reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindMove", invitation: "inbox.kindView", approval: "inbox.kindConfirm",
+  stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "inbox.kindCase",
 };
 // A decide item is opened by the id of its case or idea (the ?id= of its link).
 const openId = (i: InboxItem) => i.caseId ?? i.id.slice(i.id.indexOf(":") + 1);
@@ -48,6 +50,8 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const isOpen = cid !== null && detail !== null;
   // The open item is in the address (?id=), so a link, a reload and Back land on it.
   useIdInUrl(cid, (id) => setCid(id));
+  // The static demo's controls follow along: a case opened here by hand is a step they pass over.
+  useEffect(() => showInboxCase(isOpen ? cid : null), [isOpen, cid]);
 
   if (!ready) return <PageSkeleton kind="inbox" />;
 
