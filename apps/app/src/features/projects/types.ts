@@ -215,6 +215,9 @@ export type ReducedProject = {
   rewardDueDay: number | null;
   /** Every project.help.asked (D19). */
   helpAsks: HelpAsk[];
+  // Review and approvals (plan GAT). Optional so no project constructor changes: read it as `p.waitsForApproval ?? false`.
+  /** The draft waits for an approval run (D21): the draft shows 'Waits for approval' and Start is refused. */
+  waitsForApproval?: boolean;
 };
 
 /** One 'ask the sponsor' on a step: the ask's id is its event's id. */

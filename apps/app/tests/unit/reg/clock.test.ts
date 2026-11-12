@@ -37,7 +37,8 @@ describe("REG clock split", () => {
     expect(new Set(DUE_KINDS).size).toBe(DUE_KINDS.length);
     expect([...CASE_DUE_KINDS]).toEqual(["deadline", "checkin", "handover", "escalation", "question", "unanswered", "triage", "revisit", "appeal", "view"]);
     expect([...PROJECT_DUE_KINDS]).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant", "reward"]);
-    for (const none of [AGENT_DUE_KINDS, APPROVAL_DUE_KINDS, OVERLOAD_DUE_KINDS]) expect(none).toEqual([]);
+    for (const none of [AGENT_DUE_KINDS, OVERLOAD_DUE_KINDS]) expect(none).toEqual([]);
+    expect([...APPROVAL_DUE_KINDS]).toEqual(["review", "approval", "council"]); // plan GAT: the kinds exist, approvalDues gives nothing until GAT-C1
   });
 
   it("each area has its Dues function and its AfterFacts predicate; the stubs give nothing", () => {
