@@ -171,7 +171,7 @@ describe("the author's line through the whole life", () => {
     expect(steps[2]).toEqual({ label: "In discussion", when: "round 1 of 3 · check-in d3", tone: "now" });
     const row = mineRow(c, 0, f, PROMISE_DAYS, 14, { rules: RULES, project: null });
     expect(row.status).toBe("In discussion");
-    expect(row.clock).toBe("In discussion · round 1 of 3 · next check-in d3.");
+    expect(row.clock).toBe("In discussion · round 1 of 3 · Decision expected by d9."); // SEE D13: the day the decision is expected, not the check-in
     expect(row.reply).toBe("Still missing: A quote");
   });
   it("after a yes the project's steps follow: planning, in progress (x of y), done, measured, recognised", () => {

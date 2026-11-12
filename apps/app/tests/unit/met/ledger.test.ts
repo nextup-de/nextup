@@ -29,7 +29,7 @@ const cases: LedgerCase[] = [
   base({ caseId: "f", open: true, status: "discussion", raisedDay: 95, dueDay: 100, lastDay: 99 }), // handed over only: no response
   g,
 ];
-const input: LedgerInput = { cases, facts: facts(0.3), org: { units: [], roles: [] }, promiseDays: 5, today: 100, demoClock: true };
+const input: LedgerInput = { cases, facts: facts(0.3), org: { units: [], roles: [] }, promiseDays: 5, today: 100, demoClock: true, stalled: [] };
 const period = { from: 71, to: 100 };
 const tile = (tiles: Tile[], id: TileId) => tiles.find((t) => t.id === id)!;
 

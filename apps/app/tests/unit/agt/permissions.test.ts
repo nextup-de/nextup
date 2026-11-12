@@ -110,7 +110,7 @@ describe("AGT rights", () => {
     it("the draft is seen by the desk, managers and the people invited to the discussion; the raiser only learns that it exists", () => {
       const s = openCase();
       const c = kase(s);
-      c.discussion = { startedDay: 12, by: "T. Vogel", byUserId: "u_tv", invited: ["C. Ilg"], invitedUserIds: ["u_ci"], declinedUserIds: [], missing: "", rounds: [], round: 1, ready: false, lastDay: 20 };
+      c.discussion = { startedDay: 12, by: "T. Vogel", byUserId: "u_tv", invited: ["C. Ilg"], invitedUserIds: ["u_ci"], missing: "", rounds: [], round: 1, ready: false, lastDay: 20, declinedUserIds: [] };
       for (const who of [DESK, MANAGER, MEMBER]) expect(maySeePlan(who, c, SEATS), who.userId ?? "").toEqual(OK);
       for (const who of [RAISER, LEAD, { userId: null, role: "member" }]) expect(maySeePlan(who, c, SEATS).ok, who.userId ?? "nobody").toBe(false);
       expect(maySeePlanExists(RAISER, { ...c, fromUserId: "u_js" }, SEATS)).toBe(true);
