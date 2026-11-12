@@ -1,8 +1,6 @@
 // NOR-D1 (B2): the clock writes what a not-now, a second look and a discussion bring, once each, against a real Postgres
-// (plan NOR, D12, D14, D18). The revisit and the second look need the reducer of NOR-A1 (it fills `decided.revisitDay` and the
-// appeal from the events); until that is merged the two skip, and the view, which the reducer already reads, still runs.
+// (plan NOR, D12, D14, D18), through the real reducer (NOR-A1).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { reduce } from "@/features/cases/reducer";
 import { DEFAULT_CALENDAR } from "@/features/clock";
 import { dateOfWorkday, workdayOf } from "@/features/clock/calendar";
 import { getDb } from "@/lib/db/client";
@@ -17,18 +15,7 @@ const TODAY = workdayOf(now, DEFAULT_CALENDAR);
 const at = (day: number): Date => new Date(`${dateOfWorkday(day, DEFAULT_CALENDAR)}T09:00:00+02:00`);
 let box: { id: string; seedJson: unknown };
 let routeId: string;
-
-/** Does the reducer know a not-now's revisit day and a second look (NOR-A1)? */
-const reducerKnowsNo = (() => {
-  const log = {
-    day: 10,
-    events: [
-      { id: "p0", ts: 0, day: 0, type: "case.raised", actor: "A", actorUserId: null, target: "c", payload: { title: "t", routeId: null } },
-      { id: "p1", ts: 0, day: 1, type: "case.decided", actor: "B", actorUserId: null, target: "c", payload: { answer: "no", category: "not-now", reason: "later", revisitDay: 9 } },
-    ],
-  } as unknown as Parameters<typeof reduce>[1];
-  return reduce({ cases: [], ideas: [], problems: [], routes: [], promiseDays: 5 }, log).cases[0]?.decided?.revisitDay === 9;
-})();
+let seedPromise: number;
 
 const write = (id: string, type: string, target: string, payload: object, day: number, actor = "T. Vogel") =>
   appendEventRow(box.id, { id, day: 0, type, actor, targetId: target, payload } as never, { now: at(day) });
@@ -44,6 +31,7 @@ beforeAll(async () => {
   box = await company("nor-box", "sandbox");
   const seed = await companySeed({ id: box.id, seedJson: box.seedJson, stage: "sandbox" });
   routeId = seed.routes.find((r) => r.ownerSeatId)!.id;
+  seedPromise = seed.promiseDays;
 });
 
 afterAll(async () => {
@@ -52,7 +40,7 @@ afterAll(async () => {
 });
 
 describe("NOR clock writes", () => {
-  it.skipIf(!reducerKnowsNo)("a not-now comes back on its day: one case.reopened with why revisit and a new date, as the clock, when run twice", async () => {
+  it("a not-now comes back on its day: one case.reopened with why revisit and a new date, as the clock, when run twice", async () => {
     await write("nor-rev-raised", "case.raised", "nor-rev", { title: "Later", routeId }, TODAY - 6, "J. Schmidt");
     await write("nor-rev-no", "case.decided", "nor-rev", { answer: "no", category: "not-now", reason: "Not this quarter", revisitDay: TODAY }, TODAY - 5);
     await runClockOnce(at(TODAY - 1));
@@ -61,7 +49,7 @@ describe("NOR clock writes", () => {
     const reopened = await rows("nor-rev", "case.reopened");
     expect(reopened).toHaveLength(1);
     expect(reopened[0]).toMatchObject({ actor: "system:clock", actorUserId: null, source: "clock" });
-    expect(reopened[0].payload).toMatchObject({ why: "revisit", dueDay: TODAY + 5 });
+    expect(reopened[0].payload).toMatchObject({ why: "revisit", dueDay: TODAY + seedPromise });
     expect((reopened[0].payload as { toRoleHolderId?: string | null }).toRoleHolderId).toBeTruthy();
     expect(reopened[0].idemKey).toMatch(/^clk:revisit:nor-rev:\d+:0$/);
     // The reopened case is open on the desk again: no second reopen however often the clock runs later.
@@ -69,7 +57,7 @@ describe("NOR clock writes", () => {
     expect(await rows("nor-rev", "case.reopened")).toHaveLength(1);
   });
 
-  it.skipIf(!reducerKnowsNo)("a second look nobody answered is chased: one appeal fact on the answer date, one with check 2 escalation_days later", async () => {
+  it("a second look nobody answered is chased: one appeal fact on the answer date, one with check 2 escalation_days later", async () => {
     await write("nor-app-raised", "case.raised", "nor-app", { title: "Again", routeId }, TODAY - 9, "J. Schmidt");
     await write("nor-app-no", "case.decided", "nor-app", { answer: "no", category: "no-fit", reason: "Not our scope" }, TODAY - 6);
     await write("nor-app-appeal", "case.appealed", "nor-app", { text: "Please look again, the facts changed.", toRoleHolderId: null }, TODAY - 5, "J. Schmidt");

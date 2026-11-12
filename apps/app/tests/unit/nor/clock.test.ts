@@ -103,10 +103,10 @@ describe("NOR clock", () => {
       const given = (extra: CaseClockExtra) => caseDues(world(log, 30, decidedNo(1, decision(), gone)), 30, above, extra)[0];
       expect(given({ fallbackSeatId: "seat_dep" })).toMatchObject({ kind: "revisit", toRoleHolderId: "seat_dep" });
       expect(given({ fallbackSeatId: null })).toMatchObject({ kind: "revisit", toRoleHolderId: null });
-      // ... else the head of the chain above the desk the case sat on.
-      expect(dues(world(log, 30, decidedNo(1, decision(), gone)))[0]).toMatchObject({ kind: "revisit", toRoleHolderId: "seat_head" });
+      // ... and without one (a company with no org chart) nobody: the reducer then decides.
+      expect(dues(world(log, 30, decidedNo(1, decision(), gone)))[0]).toMatchObject({ kind: "revisit", toRoleHolderId: null });
       const empty = SEED.seats?.map((s) => (s.id === "seat_tv" ? { ...s, userId: null } : s));
-      expect(dues(world(log, 30, decidedNo(1), { ...SEED, seats: empty }))[0]).toMatchObject({ kind: "revisit", toRoleHolderId: "seat_head" });
+      expect(caseDues(world(log, 30, decidedNo(1), { ...SEED, seats: empty }), 30, above, { fallbackSeatId: "seat_head" })[0]).toMatchObject({ kind: "revisit", toRoleHolderId: "seat_head" });
     });
 
     it("the revisit goes behind the facts, as the other events the clock writes", () => {

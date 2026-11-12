@@ -21,13 +21,13 @@ export const QUESTION_REMIND_DAYS = 3;
 export const QUESTION_RETURN_DAYS = 5;
 
 /**
- * Company values the reduced State does not carry; the scheduler passes them when it has them (plan NOR, NOR-D1). Without them the reducer's own default
- * answer length (5 working days) and the head of the chain above the desk stand in.
+ * Company values the reduced State does not carry; the scheduler passes them from the company's seed (plan NOR, NOR-D1). A caller without a company
+ * (a unit test) passes none: the answer length is then the reducer's own default and a gone route has no fallback desk.
  */
 export type CaseClockExtra = {
   /** The company's answer length in working days (seed.promiseDays): a second look is due this long after it was asked. */
   promiseDays?: number;
-  /** The fallback desk of the company's org chart (features/cases/stamp.ts fallbackSeat): where a revisit goes when its route is gone. */
+  /** The fallback desk of the company's org chart (features/cases/stamp.ts fallbackSeat): where a revisit goes when its route is gone; null when there is none. */
   fallbackSeatId?: string | null;
 };
 /** The reducer's answer length when a company has none (reducer.ts). */
@@ -75,23 +75,9 @@ function escalation(c: ReducedCase, days: number, today: number, above: SeatAbov
   return { kind: "handover", why: "escalation", target: c.id, dueDay: c.dueDay, toRoleHolderId: to, idemKey: cycleKey(`clk:escalate:${c.id}:handover`, c) };
 }
 
-/** The seat a revisit reopens the case on: the route owner's first occupied seat, else the org's fallback desk (D12). */
-function revisitSeat(state: State, c: ReducedCase, above: SeatAbove, extra: CaseClockExtra): string | null {
-  const owner = targetSeat(state, c.route, false);
-  if (owner !== null) return owner;
-  if (extra.fallbackSeatId !== undefined) return extra.fallbackSeatId;
-  // No fallback given: the head of the chain above the desk the case sat on (the top of the org chart that desk belongs to).
-  const seen = new Set<string>();
-  let seat: string | null = null;
-  let role: string | null = c.assigneeRoleId;
-  while (role !== null && !seen.has(role)) {
-    seen.add(role);
-    const up = above(role, []);
-    if (up === null) break;
-    seat = up;
-    role = state.seats.find((s) => s.id === up)?.roleId ?? null;
-  }
-  return seat;
+/** The seat a revisit reopens the case on: the route owner's first occupied seat, else the org's fallback desk (D12), else nobody (the reducer then picks the desk). */
+function revisitSeat(state: State, c: ReducedCase, extra: CaseClockExtra): string | null {
+  return targetSeat(state, c.route, false) ?? extra.fallbackSeatId ?? null;
 }
 
 /** Invitees (user ids) with no view in the round that is under way: neither a comment since it began nor a decline since they were last asked (D14). */
@@ -178,7 +164,7 @@ export function caseDues(state: State, today: number, above: SeatAbove, extra: C
   for (const c of state.cases) {
     const d = c.decided;
     if (d === null || d.answer !== "no" || d.revisitDay === null || d.revisitDay > today || !decidedThisCycle(c)) continue;
-    out.push({ kind: "revisit", target: c.id, dueDay: d.revisitDay, toRoleHolderId: revisitSeat(state, c, above, extra), idemKey: `clk:revisit:${decisionKey(c)}:${cycleOf(c)}` });
+    out.push({ kind: "revisit", target: c.id, dueDay: d.revisitDay, toRoleHolderId: revisitSeat(state, c, extra), idemKey: `clk:revisit:${decisionKey(c)}:${cycleOf(c)}` });
   }
 
   // A second look nobody answered (D18): the desk is reminded when the answer is due, the seat above escalation_days later.
