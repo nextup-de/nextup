@@ -3,7 +3,7 @@
 //  1. before the start a reward is possible, so the baseline waits for a second person (D16): the lead's start is refused; the lead and who
 //     typed the number may not confirm it, the sponsor does in the UI; then the lead starts the project;
 //     where the lead is the only holder of the route's deputy seat that seat counts as empty (D30), and a manager confirms instead;
-//  2. two steps on the board; the Done sheet refuses Done until one step is finished and the other dropped with a reason (D13), and so does the server;
+//  2. two steps on the board (the dropped one counts in no total: the overview reads 1 / 1, D31); the Done sheet refuses Done until one step is finished and the other dropped with a reason (D13), and so does the server;
 //  3. at the first check the lead types a number; the deputy of the route sends it back with a reason (D14), the lead hears of it and enters it again;
 //     a confirmation that names the number before the replacement is refused; the sponsor confirms the new number (D15): the lead and the raiser
 //     hear of it and the project's reward falls due (D17);
@@ -318,6 +318,9 @@ test.describe("RES acceptance: a result that closes properly", () => {
       expect((await eventsOf("project.done", projectId))[0]).toMatchObject({
         actorUserId: id.lead, payload: { openSteps: [{ stepId: "s_done", end: "done" }, { stepId: "s_drop", end: "dropped", why: DROP_WHY }] },
       });
+      // D31: the dropped step counts in no total, so the overview reads 1 / 1 and not 1 / 2.
+      await page.goto(`/${SLUG}/projects/${projectId}`);
+      await expect(page.getByRole("region", { name: "Where it stands" }).locator("div").filter({ has: page.getByText("Steps done", { exact: true }) }).first()).toContainText("1 / 1");
       await page.context().close();
     });
 

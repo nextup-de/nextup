@@ -71,7 +71,7 @@ A result closes in one short loop. Everything below is an event on the project; 
    baseline it confirms. A project already started is never touched. Who may confirm finds an item "baseline" in `/inbox`.
 2. **Done with open steps (D13).** The Done sheet makes the lead finish or drop every step that is not done, each drop with a reason
    (1 to 400 characters), and shows the goal's done-when. The server takes `project.done` only with every open step listed once in
-   `openSteps`. A dropped step stays on the board, struck through, and counts in no "x of y".
+   `openSteps`. A dropped step stays on the board, struck through, and counts in no "x of y" anywhere (D31): not in the overview, the project line, the summary or the raiser panel.
 3. **Send it back (D14, D15).** Whoever may confirm a typed result (the sponsor, the route's deputy, a manager; never the lead or who
    typed it) may send it back with a reason (`project.measure.questioned`). The first time the check counts as not measured, the lead is
    told and enters it again once (`project.measured` for the same check); the old number stays in the history. A second questioning of
