@@ -38,6 +38,14 @@ function areaRouteId(seed: Pick<Seed, "routes" | "seats">, areaRoleId: string): 
   return seed.routes.find((r) => r.ownerSeatId != null && seats.some((s) => s.id === r.ownerSeatId && s.roleId === areaRoleId))?.id ?? null;
 }
 
+/** The deputy role of the route the area's role owns (plan OVL, D23): the first route, in the seed's order, that names it as owner by role or by seat; null when none does or it has no deputy role. */
+function deputyRoleOf(seed: Pick<Seed, "routes" | "seats">, areaRoleId: string): string | null {
+  const seats = seed.seats ?? [];
+  const owns = seed.routes.find((r) => r.ownerRoleId === areaRoleId || (r.ownerSeatId != null && seats.some((s) => s.id === r.ownerSeatId && s.roleId === areaRoleId)));
+  const deputy = owns?.deputyRoleId ?? null;
+  return deputy === areaRoleId ? null : deputy;
+}
+
 export async function raiseFromFloor(
   slug: string,
   input: FloorRaiseInput,
@@ -99,9 +107,21 @@ export async function raiseFromFloor(
       holders.map((h) => ({ id: h.id, label: h.name, userId: h.userId, sort: h.sort })),
       active.map((u) => u.id),
     );
-    // A role nobody sits in (decision Q1.10): the seat above it takes the raise. With nobody above, nothing is written.
-    const above = seat ? null : seatAbove(await loadKnowledge(companyId), area.roleId);
-    landed = seat ?? (above ? { id: above.id, label: above.name } : null);
+    // A role nobody sits in (decisions Q1.10, OVL D23): the first seat with a user of the deputy role of the route it owns takes the raise, else the seat above
+    // it. Only with neither is it refused.
+    const deputyRole = seat ? null : deputyRoleOf(seed, area.roleId);
+    const deputyHolders = deputyRole === null ? [] : await db.orgRoleHolder.findMany({
+      where: { companyId, roleId: deputyRole },
+      orderBy: { sort: "asc" },
+      select: { id: true, name: true, userId: true, sort: true },
+    });
+    const deputyUsers = deputyHolders.flatMap((h) => (h.userId === null ? [] : [h.userId]));
+    const deputyActive = deputyUsers.length ? await db.user.findMany({ where: { companyId, id: { in: deputyUsers }, active: true }, select: { id: true } }) : [];
+    const deputyIds = new Set(deputyActive.map((u) => u.id));
+    const deputyFound = deputyHolders.find((h) => h.userId !== null && deputyIds.has(h.userId)); // a deputy seat counts only with an active user
+    const deputy = deputyFound ? { id: deputyFound.id, label: deputyFound.name } : null;
+    const above = seat || deputy ? null : seatAbove(await loadKnowledge(companyId), area.roleId);
+    landed = seat ?? deputy ?? (above ? { id: above.id, label: above.name } : null);
     if (!landed) return { ok: false, reason: "vacant" };
   }
 

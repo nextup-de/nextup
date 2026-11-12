@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { approvalConfigRows } from "@/features/approvals/config";
+import { EMPTY_APPROVAL_CONFIG } from "@/features/approvals/types";
 import { meFor } from "@/features/auth/identity";
 import { onDeskOf } from "@/features/cases/selectors";
 import { reduce } from "@/features/cases/reducer";
@@ -39,6 +41,8 @@ let unitId = "";
 let roleId = "";
 let userId = "";
 let vacantRoleId = "";
+// OVL floor vacant (plan OVL, D23): vacant areas of their own, in a unit of their own so the people counts of the tests above stay as they are.
+const ovl: Record<string, string> = {};
 
 const events = () => db.caseEvent.findMany({ where: { companyId, type: "case.raised" }, orderBy: { seq: "asc" } });
 
@@ -66,6 +70,37 @@ beforeAll(async () => {
   await area("paused", { anonymous: true, on: false });
   await area("empty", { anonymous: true, roleId: vacantRoleId });
   await area("busy", { anonymous: true });
+
+  const ovlUnit = await db.orgUnit.create({ data: { companyId, key: "OVL", name: "Overload", kind: "dept", sort: 1 } });
+  const mkRole = async (key: string, title: string, reportsToId: string | null) =>
+    (ovl[key] = (await db.orgRole.create({ data: { companyId, orgUnitId: ovlUnit.id, title, reportsToId, decides: [], sort: 2 }, select: { id: true } })).id);
+  const person = async (key: string, active = true) =>
+    (await db.user.create({ data: { companyId, name: `Ovl ${key}`, email: `ovl-${key}@flr.example`, role: "leader", active }, select: { id: true } })).id;
+  const seatOf = (key: string, roleKey: string, userId: string) =>
+    db.orgRoleHolder.create({ data: { companyId, roleId: ovl[roleKey], name: `Seat ${key}`, userId, sort: 0 }, select: { id: true } }).then((h) => (ovl["seat-" + key] = h.id));
+  await mkRole("boss", "Plant manager", null);
+  await mkRole("deputy", "Line lead", null);
+  await mkRole("deputy-gone", "Former lead", null);
+  await mkRole("review", "Quality review", null);
+  await mkRole("with-deputy", "Vacant with a deputy", ovl.boss);
+  await mkRole("with-above", "Vacant with a boss", ovl.boss);
+  await mkRole("with-neither", "Vacant alone", null);
+  await mkRole("gone-deputy", "Vacant with an empty deputy", ovl.boss);
+  await seatOf("boss", "boss", await person("boss"));
+  await seatOf("deputy", "deputy", await person("deputy"));
+  await seatOf("deputy-gone", "deputy-gone", await person("gone", false));
+  await seatOf("review", "review", await person("review"));
+  // Routes: the first has a deputy desk, the second none, the third a deputy desk nobody active sits at.
+  const rule = (key: string, owner: string, deputy: string | null, sort: number) =>
+    db.routingRule.create({ data: { companyId, key, type: key, keywords: [key], ownerRoleId: ovl[owner], deputyRoleId: deputy === null ? null : ovl[deputy], sort } });
+  await rule("ovl-dep", "with-deputy", "deputy", 10);
+  await rule("ovl-above", "with-above", null, 11);
+  await rule("ovl-none", "gone-deputy", "deputy-gone", 12);
+  const ovlArea = (key: string, roleKey: string) => saveArea(companyId, { key, name: "Line " + key, unitId: ovlUnit.id, roleId: ovl[roleKey], anonymous: true }, null);
+  await ovlArea("ovl-dep", "with-deputy");
+  await ovlArea("ovl-above", "with-above");
+  await ovlArea("ovl-neither", "with-neither");
+  await ovlArea("ovl-gone", "gone-deputy");
 });
 beforeEach(() => jar.clear());
 afterAll(async () => {
@@ -168,4 +203,41 @@ describe("FLR raise from an area", () => {
     expect(await raiseFromFloor("flr-raise", input("open"), { userId: member.id }, fresh("five-b"))).toMatchObject({ ok: true });
     expect(await last()).toMatchObject({ actor: "Anonymous #7001", payload: { fromDept: "Montage" } });
   });
+});
+
+// The floor accepts a raise to a vacant desk (plan OVL, D23, Q1.10): the first seat with a user of the deputy role of the route the area's role owns, else the seat above.
+const ovlDevice = (name: string) => ({ key: `a:ovl-${name}`, deviceId: null });
+const lastRaise = async () => (await events()).slice(-1)[0];
+
+it("OVL floor vacant lands a raise to a vacant area on the deputy seat", async () => {
+  const res = await raiseFromFloor("flr-raise", input("ovl-dep"), "anonymous", ovlDevice("dep"));
+  expect(res).toMatchObject({ ok: true, duplicate: false });
+  expect((await lastRaise()).payload).toMatchObject({ assigneeRoleHolderId: ovl["seat-deputy"], assignee: "Seat deputy" });
+});
+
+it("OVL floor vacant lands it on the seat above without a deputy", async () => {
+  expect(await raiseFromFloor("flr-raise", input("ovl-above"), "anonymous", ovlDevice("above"))).toMatchObject({ ok: true, duplicate: false });
+  expect((await lastRaise()).payload).toMatchObject({ assigneeRoleHolderId: ovl["seat-boss"] });
+  // A deputy desk nobody active sits at is no deputy: the seat above takes it.
+  expect(await raiseFromFloor("flr-raise", input("ovl-gone"), "anonymous", ovlDevice("gone"))).toMatchObject({ ok: true });
+  expect((await lastRaise()).payload).toMatchObject({ assigneeRoleHolderId: ovl["seat-boss"] });
+});
+
+it("OVL floor vacant refuses it as vacant when neither exists", async () => {
+  const before = (await events()).length;
+  expect(await raiseFromFloor("flr-raise", input("ovl-neither"), "anonymous", ovlDevice("neither"))).toEqual({ ok: false, reason: "vacant" });
+  expect((await events()).length).toBe(before);
+});
+
+it("OVL floor vacant sends a reviewed route raise to the review seat first", async () => {
+  await db.companyRule.createMany({ data: approvalConfigRows({ ...EMPTY_APPROVAL_CONFIG, review: { ...EMPTY_APPROVAL_CONFIG.review, on: true, roleId: ovl.review } }).map((r) => ({ companyId, key: r.key, value: r.value as never })) });
+  try {
+    expect(await raiseFromFloor("flr-raise", input("ovl-dep"), "anonymous", ovlDevice("review"))).toMatchObject({ ok: true });
+    expect((await lastRaise()).payload).toMatchObject({ assigneeRoleHolderId: ovl["seat-review"], review: true });
+    // Also where nobody could take it by the vacant rule: review comes first.
+    expect(await raiseFromFloor("flr-raise", input("ovl-neither"), "anonymous", ovlDevice("review2"))).toMatchObject({ ok: true });
+    expect((await lastRaise()).payload).toMatchObject({ assigneeRoleHolderId: ovl["seat-review"], review: true });
+  } finally {
+    await db.companyRule.deleteMany({ where: { companyId, key: { in: approvalConfigRows(EMPTY_APPROVAL_CONFIG).map((r) => r.key) } } });
+  }
 });

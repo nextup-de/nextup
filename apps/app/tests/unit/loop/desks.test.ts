@@ -57,6 +57,11 @@ describe("LOOP desk suggestions", () => {
     expect(otherDesks(routes, seats, "", "en").find((x) => x.roleId === "role-ehs")?.deputies).toEqual([]);
   });
 
+  it("a desk carries no answer yet: the caller that has the state fills it (plan OVL, D25)", () => {
+    expect(desksFor({ ...base, text: "safety guard and budget" }, "en").map((d) => d.answer)).toEqual([null, null]);
+    expect(otherDesks(routes, seats, "", "en").every((d) => d.answer === null)).toBe(true);
+  });
+
   it("a role without a seat holding a user is vacant", () => {
     const d = desksFor({ ...base, text: "safety budget laptop" }, "en");
     const by = (id: string) => d.find((x) => x.roleId === id);
