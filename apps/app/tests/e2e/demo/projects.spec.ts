@@ -23,6 +23,27 @@ async function plus30(page: Page, times = 1) {
   await page.keyboard.press("Escape");
 }
 
+/** Dev panel -> "Inbox of" a desk: the leader persona acts as that seat's holder. */
+async function actAs(page: Page, seat: string) {
+  await page.getByRole("button", { name: "Dev" }).click();
+  await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: new RegExp("^" + seat.replace(".", "\\.")) }).click();
+  await page.keyboard.press("Escape");
+}
+
+/**
+ * Where a reward is possible the baseline waits for a second person before the start (RES D16, D29). On P-4 the route's deputy is M. Roth: the
+ * demo plays him through the dev panel, confirms the number and hands back to the lead, who starts the project.
+ */
+async function deputyConfirmsBaseline(page: Page) {
+  // Switching the desk sends the leader to their inbox: come back to the project page (the demo's log stays in this browser).
+  await actAs(page, "M. Roth");
+  await page.goto("/acme/projects/pj4");
+  await page.getByRole("button", { name: "Confirm the baseline" }).click();
+  await expect(page.getByTestId("baseline-confirmed")).toContainText("Confirmed by M. Roth");
+  await actAs(page, "T. Vogel");
+  await page.goto("/acme/projects/pj4");
+}
+
 // The project page; its state ("P-4 · Running") is in the header, the baseline in its section and the summary.
 const head = (page: Page) => page.getByRole("main");
 
@@ -71,6 +92,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await page.getByLabel("Lower is better").check();
     await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
     await page.getByRole("button", { name: "Save the baseline" }).click();
+    await deputyConfirmsBaseline(page);
     await expect(head(page)).toContainText("25 minutes");
     await expect(head(page)).toContainText("Deburring queue · lower is better");
     await page.getByRole("button", { name: "Start the project" }).click();
