@@ -8,7 +8,7 @@ import type { ReducedProject } from "@/features/projects/types";
 import type { Due, DueKind, SeatAbove } from "../due";
 import { hasFact, idemKeyOf, targetSeat } from "./shared";
 
-export const PROJECT_DUE_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"] as const;
+export const PROJECT_DUE_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant", "reward"] as const;
 export type ProjectDueKind = (typeof PROJECT_DUE_KINDS)[number];
 
 /** A draft's lead has not answered: a reminder after this many working days ... */
@@ -37,6 +37,9 @@ export const VACANT_DAYS = 5;
 export const PAUSE_MAX_DAYS = 20;
 /** A started project without a goal date is done by this many working days after its start (D19). */
 export const DONE_BY_DEFAULT_DAYS = 30;
+// A result that closes properly (plan RES, D17): the logic is RES-E1's.
+/** A reward still due this many working days after the confirmation that made it due: one reminder to every manager. */
+export const REWARD_REMIND_DAYS = 10;
 /** A step on Blocked tells the lead after this many working days when the company set no blocked_days (D18). */
 export const BLOCKED_DAYS_DEFAULT = 3;
 

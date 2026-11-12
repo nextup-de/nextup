@@ -1,12 +1,17 @@
 // TMS-D1 (D7, D12, D14, D17): the bot endpoint against a real Postgres and the fake Bot Framework.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { POST } from "@/app/api/[company]/teams/messages/route";
+import { reduce } from "@/features/cases/reducer";
+import { dateOfWorkday, isWorkday, workdayOf } from "@/features/clock/calendar";
+import { seedFor } from "@/features/demo";
 import { templateWrites } from "@/features/demo/content";
 import { toSeedJson } from "@/features/demo/parse";
 import { companySeed } from "@/lib/db/companies";
 import { bindDemoCompany } from "@/lib/db/demo-identity";
 import { invalidateFlags } from "@/features/flags";
-import { appendEventRow } from "@/lib/db/events";
+import { loadCalendar } from "@/lib/db/calendar";
+import { appendEventRow, loadLog } from "@/lib/db/events";
+import { passFromCard } from "@/server/teams/card-actions";
 import { getDb } from "@/lib/db/client";
 import { writeStructure } from "@/lib/db/structure-writes";
 import { resetBotKeyCache } from "@/server/teams/auth";
@@ -56,7 +61,7 @@ async function raiseCase(id: string): Promise<void> {
   );
 }
 
-const events = (type: string, targetId: string) => db.caseEvent.findMany({ where: { companyId, type, targetId, source: "teams" } });
+const events = (type: string, targetId: string) => db.caseEvent.findMany({ where: { companyId, type, targetId, source: "teams" }, orderBy: { seq: "asc" } });
 const lastCardText = () => JSON.stringify(fake.activities.at(-1)?.activity ?? "");
 
 beforeAll(async () => {
@@ -146,10 +151,10 @@ describe("TMS bot endpoint", () => {
 
   it("no with text appends case.decided no with the reason", async () => {
     await raiseCase("tb-no");
-    await post(SLUG, submit(OWNER_AAD, { kind: "answer", caseId: "tb-no", cardId: "c1", answer: "no", text: "Too costly" }), fake.mintToken());
+    await post(SLUG, submit(OWNER_AAD, { kind: "answer", caseId: "tb-no", cardId: "c1", answer: "no", category: "no-budget", text: "Too costly this quarter, the budget for tools is already spent." }), fake.mintToken());
     const rows = await events("case.decided", "tb-no");
     expect(rows).toHaveLength(1);
-    expect(rows[0].payload).toMatchObject({ answer: "no", reason: "Too costly" });
+    expect(rows[0].payload).toMatchObject({ answer: "no", category: "no-budget", reason: "Too costly this quarter, the budget for tools is already spent." });
   });
 
   it("ask appends case.asked", async () => {
@@ -240,10 +245,147 @@ describe("SET Teams yes opens a draft", () => {
 
   it("a no keeps its behaviour with projects on", async () => {
     await raiseCase("tb-draft-no");
-    await post(SLUG, submit(OWNER_AAD, { kind: "answer", caseId: "tb-draft-no", cardId: "c1", answer: "no", text: "Too costly" }), fake.mintToken());
+    await post(SLUG, submit(OWNER_AAD, { kind: "answer", caseId: "tb-draft-no", cardId: "c1", answer: "no", category: "no-budget", text: "Too costly this quarter, the budget for tools is already spent." }), fake.mintToken());
     const rows = await events("case.decided", "tb-draft-no");
     expect(rows).toHaveLength(1);
-    expect(rows[0].payload).toMatchObject({ answer: "no", reason: "Too costly" });
+    expect(rows[0].payload).toMatchObject({ answer: "no", category: "no-budget", reason: "Too costly this quarter, the budget for tools is already spent." });
     expect(rows[0].payload).not.toHaveProperty("draft");
+  });
+});
+
+describe("NOR Teams no", () => {
+  const REASON = "The budget for this year is already spent on the new line.";
+  const no = (caseId: string, extra: Record<string, unknown>, aad = OWNER_AAD) =>
+    post(SLUG, submit(aad, { kind: "answer", caseId, cardId: "c1", answer: "no", ...extra }), fake.mintToken());
+  /** The company's date `ahead` working days from today, and today's working-day number. */
+  async function when(ahead: number) {
+    const cal = await loadCalendar(companyId);
+    const today = workdayOf(new Date(), cal);
+    return { cal, today, iso: dateOfWorkday(today + ahead, cal) };
+  }
+  const written = (id: string) => db.caseEvent.count({ where: { companyId, targetId: id, type: "case.decided" } });
+
+  it("a no with a category and a reason of 40 characters or more writes the NOR payload, with what would make it a yes and the revisit day as a working-day number", async () => {
+    expect(REASON.length).toBeGreaterThanOrEqual(40);
+    await raiseCase("tn-no");
+    const { today, iso } = await when(5);
+    await no("tn-no", { category: "not-now", text: REASON, changeIf: "A quote under 5000 euro", revisitDay: iso });
+    const rows = await events("case.decided", "tn-no");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].payload).toEqual({ answer: "no", category: "not-now", reason: REASON, changeIf: "A quote under 5000 euro", revisitDay: today + 5 });
+    expect(lastCardText()).toContain("You said no");
+    // Without a date or what would make it a yes, and for a category that needs no date, only what was given is written.
+    await raiseCase("tn-plain");
+    await no("tn-plain", { category: "no-fit", text: REASON });
+    expect((await events("case.decided", "tn-plain"))[0].payload).toEqual({ answer: "no", category: "no-fit", reason: REASON });
+    await raiseCase("tn-budget");
+    await no("tn-budget", { category: "no-budget", text: REASON, revisitDay: (await when(3)).iso });
+    expect((await events("case.decided", "tn-budget"))[0].payload).toMatchObject({ category: "no-budget", revisitDay: (await when(3)).today + 3 });
+  });
+
+  it("a short reason, a missing category and a not-now without a date are refused on the card, and nothing is written", async () => {
+    await raiseCase("tn-refuse");
+    const { iso } = await when(5);
+    const refused: [string, Record<string, unknown>, string][] = [
+      ["a reason one character short", { category: "no-fit", text: REASON.slice(0, 39) }, "at least 40 characters"],
+      ["no reason", { category: "no-fit" }, "at least 40 characters"],
+      ["no category", { text: REASON }, "Pick why you say no"],
+      ["not-now without a date", { category: "not-now", text: REASON }, "needs the date it should come back"],
+      ["a date on a category that cannot come back", { category: "risk", text: REASON, revisitDay: iso }, "Only Not now and No budget"],
+    ];
+    for (const [name, extra, why] of refused) {
+      fake.activities.length = 0;
+      expect((await no("tn-refuse", extra)).status, name).toBe(200);
+      expect(await written("tn-refuse"), name).toBe(0);
+      expect(lastCardText(), name).toContain("did not go through");
+      expect(lastCardText(), name).toContain(why);
+    }
+  });
+
+  it("refuses a revisit date that is no working day after today within 250 working days, and one that is no date at all", async () => {
+    await raiseCase("tn-dates");
+    const cal = await loadCalendar(companyId);
+    const today = workdayOf(new Date(), cal);
+    // The first Saturday after today: a day of the calendar, but no working day.
+    let saturday = new Date(`${dateOfWorkday(today + 3, cal)}T12:00:00Z`);
+    while (isWorkday(saturday.toISOString().slice(0, 10), cal) || saturday.getUTCDay() !== 6) saturday = new Date(saturday.getTime() + 864e5);
+    const bad: [string, string][] = [
+      ["a Saturday", saturday.toISOString().slice(0, 10)],
+      ["a working day before today", dateOfWorkday(today - 1, cal)],
+      ["too far ahead", dateOfWorkday(today + 251, cal)],
+      ["not a date", "next spring"],
+    ];
+    for (const [name, revisitDay] of bad) {
+      fake.activities.length = 0;
+      await no("tn-dates", { category: "not-now", text: REASON, revisitDay });
+      expect(await written("tn-dates"), name).toBe(0);
+      expect(lastCardText(), name).toContain("did not go through");
+    }
+    // The last day that counts: 250 working days ahead.
+    await no("tn-dates", { category: "not-now", text: REASON, revisitDay: dateOfWorkday(today + 250, cal) });
+    expect((await events("case.decided", "tn-dates"))[0].payload).toMatchObject({ revisitDay: today + 250 });
+  });
+
+  it("names the latest decision of the current cycle: a decided case refuses the card, a reopened one lets it decide again", async () => {
+    await raiseCase("tn-reopen");
+    const { iso, today } = await when(4);
+    await no("tn-reopen", { category: "not-now", text: REASON, revisitDay: iso });
+    expect(await written("tn-reopen")).toBe(1);
+    fake.activities.length = 0;
+    await no("tn-reopen", { category: "no-fit", text: REASON });
+    expect(await written("tn-reopen")).toBe(1);
+    expect(lastCardText()).toContain("already answered by");
+
+    // The clock brings it back on the owner's desk (case.reopened, D12): the first no is no longer the case's decision.
+    const row = await db.company.findUniqueOrThrow({ where: { id: companyId } });
+    const seed = await companySeed({ id: companyId, seedJson: row.seedJson, stage: "sandbox" });
+    const seat = seed.routes.find((r) => r.ownerSeatId && seed.seats.find((x) => x.id === r.ownerSeatId)?.userId === ownerUserId)!.ownerSeatId;
+    const r = await appendEventRow(companyId, { id: "tn-reopen-back", day: 0, type: "case.reopened", actor: "system:clock", targetId: "tn-reopen", payload: { why: "revisit", dueDay: today + 10, toRoleHolderId: seat } } as never, { source: "clock" });
+    expect(r.ok).toBe(true);
+    fake.activities.length = 0;
+    await no("tn-reopen", { category: "no-fit", text: REASON });
+    const rows = await events("case.decided", "tn-reopen");
+    expect(rows).toHaveLength(2);
+    expect(rows[1].payload).toEqual({ answer: "no", category: "no-fit", reason: REASON });
+    expect(lastCardText()).toContain("You said no");
+  });
+
+  it("a hand-over needs a why of 8 characters and carries the route of the seat it goes to", async () => {
+    await raiseCase("tn-hand-short");
+    await post(SLUG, submit(OWNER_AAD, { kind: "handover", caseId: "tn-hand-short", cardId: "c1", toSeatId: handTo, why: "Too few" }), fake.mintToken());
+    expect(await events("case.handed", "tn-hand-short")).toHaveLength(0);
+    expect(lastCardText()).toContain("at least 8 characters");
+
+    await raiseCase("tn-hand-route");
+    await post(SLUG, submit(OWNER_AAD, { kind: "handover", caseId: "tn-hand-route", cardId: "c1", toSeatId: handTo, why: "This is for the other desk" }), fake.mintToken());
+    const rows = await events("case.handed", "tn-hand-route");
+    expect(rows).toHaveLength(1);
+    const seed = await seedFor(SLUG);
+    const route = seed.routes.find((x) => x.ownerSeatId === handTo) ?? seed.routes.find((x) => x.deputySeatId === handTo);
+    expect(rows[0].payload).toMatchObject({ toRoleHolderId: handTo, why: "This is for the other desk" });
+    expect((rows[0].payload as Record<string, unknown>).routeId).toBe(route?.id);
+    expect(rows[0].payload).not.toHaveProperty("keepsQuestion");
+  });
+
+  it("passFromCard stamps keepsQuestion on an asked case, the answer-date floor and the route, and stops a non-manager at the pass limit", async () => {
+    await raiseCase("tn-asked");
+    await post(SLUG, submit(OWNER_AAD, { kind: "answer", caseId: "tn-asked", cardId: "c1", answer: "ask", text: "Which line is it?" }), fake.mintToken());
+    const seed = await seedFor(SLUG);
+    const state = reduce(seed, await loadLog(companyId));
+    const kase = state.cases.find((c) => c.id === "tn-asked")!;
+    expect(kase.status).toBe("asked");
+    const submitted = { toSeatId: handTo, why: "The question belongs to the other desk" };
+    const asked = passFromCard(kase, state, seed, "leader", submitted);
+    expect(asked).toMatchObject({ ok: true, payload: { toRoleHolderId: handTo, keepsQuestion: true } });
+    // The new desk gets at least two working days: a nearer answer date is moved out; a farther one stays.
+    const near = passFromCard({ ...kase, status: "open", dueDay: state.day + 1 }, state, seed, "leader", submitted);
+    expect(near).toMatchObject({ ok: true, payload: { dueDay: state.day + 2 } });
+    const far = passFromCard({ ...kase, status: "open", dueDay: state.day + 5 }, state, seed, "leader", submitted);
+    expect(far.ok && far.payload).not.toHaveProperty("dueDay");
+    // Two passes already: a leader stops (and is pointed to NextUp), a manager does not stop.
+    expect(passFromCard({ ...kase, status: "open", passes: 2 }, state, seed, "leader", submitted)).toMatchObject({ ok: false, error: "teams.errorPassLimit", limit: true });
+    expect(passFromCard({ ...kase, status: "open", passes: 2 }, state, seed, "manager", submitted).ok).toBe(true);
+    // A why under 8 characters never goes through, whoever sends it.
+    expect(passFromCard({ ...kase, status: "open" }, state, seed, "manager", { toSeatId: handTo, why: "Too few" })).toMatchObject({ ok: false, error: "teams.errorWhyShort" });
   });
 });

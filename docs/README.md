@@ -47,6 +47,7 @@ is on their first line.
 | [ASSISTANT.md](ASSISTANT.md) | the raise-page assistant |
 | [COMPANY_KNOWLEDGE.md](COMPANY_KNOWLEDGE.md) | company knowledge tables |
 | [IDEAS.md](IDEAS.md) | the idea studio |
+| [DESIGN_RULES.md](DESIGN_RULES.md) | the fixed design rules every screen follows (calm, quiet, privacy, copy, colour) and where each is tested |
 | [RESPONSIVE.md](RESPONSIVE.md) | layout rules |
 | [DEPLOY.md](DEPLOY.md) | running it on a laptop |
 | [audit/gap-register.md](audit/gap-register.md) | gaps to the pilot, by phase |
