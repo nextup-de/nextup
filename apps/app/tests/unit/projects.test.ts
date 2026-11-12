@@ -190,6 +190,8 @@ describe("projects: measure and reward", () => {
     expect(p.checks).toEqual([]);
     expect(p.verdict).toBe("not measured");
     expect(p.status).toBe("measured");
+    // Deliberate change (MOV D24): with no number to measure it closes at done, under a reward rule too.
+    expect(p.closed).toBe(true);
     expect(S.ledger.unmeasured).toBe(1);
   });
 

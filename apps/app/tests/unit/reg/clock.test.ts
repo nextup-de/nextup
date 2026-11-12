@@ -1,6 +1,6 @@
 // REG-B1: the clock split into one file per area changes nothing: the same Dues, in the same order (REG/D5).
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { CaseEvent } from "@/features/cases/events";
 import { DRAFT_UP_DAYS, DUE_KINDS, dueNow, hasFact, idemKeyOf, INVITE_LAPSE_DAYS, INVITE_REMIND_DAYS, LEAD_REMIND_DAYS, LEAD_RETURN_DAYS, QUESTION_REMIND_DAYS, QUESTION_RETURN_DAYS, targetSeat, TRIAGE_REMIND_DAYS, type Due } from "@/features/clock/due";
 import { AGENT_DUE_KINDS, agentAfterFacts, agentDues } from "@/features/clock/kinds/agent";
@@ -17,6 +17,10 @@ import { beforeProjectRun, writeProjectDue } from "@/server/scheduler/writers/pr
 import { clockDuePayload, type WriterCtx } from "@/server/scheduler/writers/shared";
 import { above, FIXTURES, SEATS, TODAY } from "./clock-fixture";
 
+// beforeProjectRun writes MOV's release day (MOV D17): its call is checked here, the row in tests/db/mov-clock.test.ts.
+const movSince = vi.hoisted(() => vi.fn(async () => 0));
+vi.mock("@/lib/db/rules", () => ({ ensureMovSinceDay: movSince }));
+
 const due = (d: Partial<Due> & Pick<Due, "kind">): Due => ({ target: "x", dueDay: 4, idemKey: "clk:test", ...d });
 const ctx: WriterCtx = { state: FIXTURES[0].state, today: TODAY, companyId: "co" };
 const event = (payload: Record<string, unknown>): CaseEvent => ({ id: "e", ts: 0, type: "clock.due", actor: "system:clock", actorUserId: null, target: "x", payload, day: 0 }) as CaseEvent;
@@ -32,7 +36,7 @@ describe("REG clock split", () => {
     expect([...DUE_KINDS].sort()).toEqual([...snapshot.dueKinds].sort());
     expect(new Set(DUE_KINDS).size).toBe(DUE_KINDS.length);
     expect([...CASE_DUE_KINDS]).toEqual(["deadline", "checkin", "handover", "escalation", "question", "unanswered", "triage", "revisit", "appeal", "view"]);
-    expect([...PROJECT_DUE_KINDS]).toEqual(["start", "measure", "confirm", "lead", "invite", "draft"]);
+    expect([...PROJECT_DUE_KINDS]).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"]);
     for (const none of [AGENT_DUE_KINDS, APPROVAL_DUE_KINDS, OVERLOAD_DUE_KINDS]) expect(none).toEqual([]);
   });
 
@@ -86,15 +90,17 @@ describe("REG clock split", () => {
     expect(writeProjectDue(due({ kind: "lead", lapse: true, askId: "y1", userId: "u_lead" }), ctx)).toEqual({ type: "project.lead.answered", payload: { take: false, lapsed: true, askId: "y1" } });
     expect(writeProjectDue(due({ kind: "lead", lapse: true }), ctx)).toEqual({ type: "project.lead.answered", payload: { take: false, lapsed: true } });
     expect(writeProjectDue(due({ kind: "invite", lapse: true, inviteId: "i1", userId: "u_x" }), ctx)).toEqual({ type: "project.invite.answered", payload: { inviteId: "i1", userId: "u_x", take: false, lapsed: true } });
-    for (const kind of ["lead", "invite", "draft", "start", "measure", "confirm"] as const) expect(writeProjectDue(due({ kind }), ctx), kind).toBeNull();
+    for (const kind of ["lead", "invite", "draft", "start", "measure", "confirm", "late", "blocked", "quiet", "stalled", "update", "vacant"] as const) expect(writeProjectDue(due({ kind }), ctx), kind).toBeNull();
     for (const kind of ["handover", "unanswered", "deadline"] as const) expect(writeProjectDue(due({ kind }), ctx), kind).toBeNull();
   });
 
-  it("the stub writers return null and their hooks do nothing", async () => {
+  it("the stub writers return null and their hooks do nothing, but the project hook fixes MOV's release day", async () => {
     for (const write of [writeAgentDue, writeApprovalDue, writeOverloadDue]) {
       for (const kind of ["handover", "unanswered", "lead", "invite", "deadline"] as const) expect(write(due({ kind, lapse: true }), ctx)).toBeNull();
     }
     for (const before of [beforeCaseRun, beforeProjectRun, beforeAgentRun, beforeApprovalRun, beforeOverloadRun]) await expect(before("co", 3)).resolves.toBeUndefined();
+    expect(movSince).toHaveBeenCalledTimes(1);
+    expect(movSince).toHaveBeenCalledWith("co", 3);
   });
 
   it("clockDuePayload copies every set optional field, and leaves out target, idemKey and what is not set", () => {
