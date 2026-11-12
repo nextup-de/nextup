@@ -31,7 +31,9 @@ const KIND: Record<InboxKind, MessageKey> = {
   reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindMove", invitation: "inbox.kindView", approval: "inbox.kindConfirm",
   stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "inbox.kindCase",
 };
-// A decide item is opened by the id of its case or idea (the ?id= of its link).
+// A decide item is opened by the id of its case or idea (the ?id= of its link). A project's own decide item (a stalled project, one with no
+// lead) has no case detail: its row is the link to the project page (plan MOV, D28).
+const opensInPlace = (i: InboxItem) => i.projectId === undefined;
 const openId = (i: InboxItem) => i.caseId ?? i.id.slice(i.id.indexOf(":") + 1);
 
 const PHONE = "(max-width: 760px)";
@@ -67,7 +69,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     return d ? `${moveLabel(d.move, locale)} · ${t(d.why === "confirmUp" ? "projects.deskConfirmLate" : "projects.deskSecondPerson")}` : null;
   };
   const counts = inboxCounts(items);
-  const decide = items.filter((i) => i.ask === "decide");
+  const decide = items.filter((i) => i.ask === "decide" && opensInPlace(i));
   const navIds = decide.map(openId);
   const at = cid ? navIds.indexOf(cid) : -1;
   const pick = (id: string) => setCid(id);
@@ -115,7 +117,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
               <SectionCard key={ask} title={t(ASK_TITLE[ask])} name={`inbox-${ask}`}>
                 <ul className={styles.list}>
                   {list.map((i) => {
-                    const open = ask === "decide" && cid === openId(i);
+                    const open = ask === "decide" && opensInPlace(i) && cid === openId(i);
                     const body = (
                       <>
                         <span className={styles.rowMain}>
@@ -127,7 +129,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
                     );
                     return (
                       <li key={i.id}>
-                        {ask === "decide"
+                        {ask === "decide" && opensInPlace(i)
                           ? <button type="button" className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined} data-active={open ? "true" : undefined} aria-current={open ? "true" : undefined} onClick={() => pick(openId(i))}>{body}</button>
                           : <Link href={href(i.href)} className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined}>{body}</Link>}
                       </li>
