@@ -42,7 +42,8 @@ import { CustomPageView, FilesCard } from "@/components/projects/CustomPageView"
 import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
 import { holdsRole } from "@/features/auth/identity";
 import { mayEditIdeaPages } from "@/features/projects/sidebar";
-import { applyIdeaEdits } from "@/features/ideas/edits";
+import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/edits";
+import { IdeaPage } from "@/components/projects/IdeaPage";
 import { useIdeaEdits } from "./ideaEditsPreview";
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
@@ -275,7 +276,24 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
           <div className={s.div20}>
             {view !== "chats" && (
               <div className={s.div21} ref={paneRef}>
-                {view === "idea" && <OverviewIdea key={c.id} {...ideaProps} />}
+                {view === "idea" && (flag("projects") ? (
+                  // In the projects frame the idea reads like a project page and edits like the raise card (Paper "Idea · editing", P1-P3).
+                  <IdeaPage key={c.id}
+                    content={applyPageEdits(ideaContent(brief, c.title, ideaProps.files, { worth: t("brief.worth"), routedAs: t("brief.flaggedAs"), drop: [t("brief.ownerOnMap"), t("brief.openFor"), t("brief.history")] }), ideaEdits)}
+                    meta={[t("team.ideaRaised", { raised: ideaProps.raised, dept: ideaProps.dept }), ideaProps.steps.find((x) => x.tone === "now")?.label, ideaProps.wait.text].filter(Boolean).join(" · ")}
+                    who={{ raisedBy: brief.author.name, team: brief.author.dept || null, routing: brief.routing.map((r) => ({ name: r.name, role: r.role ?? "", why: r.why ?? "" })) }}
+                    depts={seed.depts.map((d) => d.name)} nextVersion={c.versions.length + 1}
+                    edit={ideaProps.edit ? {
+                      onSave: (ch) => {
+                        const { title, description, ...rest } = ch;
+                        if (Object.keys(rest).length) addIdeaEdits(rest);
+                        if (title !== undefined || description !== undefined) {
+                          act.revise(c.id, description ?? c.body, title);
+                          ctx.showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 }));
+                        }
+                      },
+                    } : null} />
+                ) : <OverviewIdea key={c.id} {...ideaProps} />)}
                 {view === "files" && <FilesCard title={t("projects.idea_files")} files={ideaProps.files} empty={t("team.ideaNoAttachments")} />}
                 {view === "added" && addedPage && <CustomPageView storeId={ideaPagesId(c.id)} page={addedPage} editor={editsPages} />}
               </div>

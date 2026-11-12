@@ -3,7 +3,10 @@
 // browser's localStorage until an event can record it. The title and the text are real (case.revised).
 // The overlay itself is pure (features/ideas/edits.ts).
 import { useCallback, useSyncExternalStore } from "react";
-import type { IdeaEdits } from "@/features/ideas/edits";
+import type { IdeaEdits as CardEdits, PageEdits } from "@/features/ideas/edits";
+
+/** Both the older card's edits and the idea page's (they share affects and context). */
+type IdeaEdits = CardEdits & PageEdits;
 
 const keyOf = (company: string, caseId: string) => `nh.ideaEdits.${company}.${caseId}`;
 const listeners = new Set<() => void>();
