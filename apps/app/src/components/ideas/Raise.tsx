@@ -41,7 +41,9 @@ import { adviceFromReading, dialsFromReading, gapsFromReading, latestReading, pr
 import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicLabel, topicsOf, dayGroup, whenGroup, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
+import { seatAboveRole } from "@/features/cases/sheets";
 import { desksFor, otherDesks, type Desk } from "@/features/ideas/desks";
+import { answeringDesk } from "@/features/overload/answer";
 import { raiseTarget } from "@/features/ideas/raise-actions";
 import { addWorkdays } from "@/features/clock/calendar";
 import { saveShots, shrinkImage } from "@/lib/shots";
@@ -454,6 +456,13 @@ function RaisePage({ script = false }: { script?: boolean }) {
     setTimeout(() => { setPrepping(false); nav({ view: "preview" }); }, 1000);
   };
 
+  // Who really answers a raise to this desk (plan OVL, D25): known where the page holds the company's reduced state (server mode); the demo keeps today's line.
+  const withAnswer = (d: Desk): Desk => {
+    if (!serverMode) return d;
+    const answer = answeringDesk(S, d.routeId, S.day, (roleId) => seatAboveRole(seed.seats ?? [], seed.roles ?? [], roleId)?.id ?? null);
+    return answer ? { ...d, answer: { why: answer.why, names: answer.names } } : d;
+  };
+
   // "Publish idea": the button says what NextUp does - reads the idea, asks the router, checks the org
   // chart, lists the desks - then the author picks where it goes (RaisePublish.tsx).
   const askDesk = async () => {
@@ -465,7 +474,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     const plan = await step(setPubStep, t("ideas.pageStepRanking"), "weaving", () => {
       const proposal = evaluate({ kind: "idea", text, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, brain).payload.proposal;
       const desks = desksFor({ text, routes: seed.routes, seats: seed.seats, proposal, myDept: who.line.split(",")[0].trim(), affected, spendLimitEur: seed.spend?.limitEur ?? null }, locale);
-      return { desks, aiOff: proposal.source === "keywords" };
+      return { desks: desks.map(withAnswer), aiOff: proposal.source === "keywords" };
     }, 450);
     setPubStep(plan);
   };
@@ -506,7 +515,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       if (!kept) showToast(t("ideas.pageToastShotsFull"));
     }
     setBusy(false); setPubWork(null);
-    setSent({ role: to.title, names: to.holders, deputies: to.deputies, date: dueLabel() }); // the window stays, now saying who owes an answer by when
+    setSent({ role: to.title, names: to.answer?.names ?? to.holders, deputies: to.deputies, date: dueLabel(), why: to.answer?.why, nobody: serverMode && to.answer === null }); // the window stays, now saying who owes an answer by when
     go("chat"); // published: back to the conversation, where the case is offered
     void studio.open(draft.id);
   };
@@ -832,7 +841,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       </div>
       <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label={t("ideas.pageCloseSidebar")} />
       {pubStep && "desks" in pubStep && (
-        <DeskDialog desks={pubStep.desks} aiOff={pubStep.aiOff} search={(q) => otherDesks(seed.routes, seed.seats, q, locale)} work={pubWork} sent={sent} casesHref={href("/team")}
+        <DeskDialog desks={pubStep.desks} aiOff={pubStep.aiOff} search={(q) => otherDesks(seed.routes, seed.seats, q, locale).map(withAnswer)} work={pubWork} sent={sent} casesHref={href("/team")}
           onCancel={() => { setPubStep(null); setSent(null); }} onConfirm={(to) => void publish(to)} />
       )}
       {prepping && <PreviewLoading />}
