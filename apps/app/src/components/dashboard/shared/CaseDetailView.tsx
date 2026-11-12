@@ -19,6 +19,9 @@ import { useRelatedCase, type Related } from "@/components/cases/useRelatedCase"
 import { MoveToDesk } from "@/components/cases/MoveToDesk";
 import { seesRouting } from "@/features/cases/routing-trail";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
+import { ApprovalsBlock } from "@/components/cases/ApprovalsBlock";
+import { CostField } from "@/components/cases/CostField";
+import { ReviewBlock } from "@/components/cases/ReviewBlock";
 import { roundState } from "@/features/cases/discussion";
 import type { CaseEvent } from "@/features/cases/events";
 import { actorLabel, type ActorLabels } from "@/features/cases/actor-label";
@@ -186,6 +189,9 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
           </span>
         </div>
         {seesRouting(c, me, role) && <CaseRouting c={c} />}
+        <ReviewBlock c={c} />
+        <CostField c={c} />
+        <ApprovalsBlock c={c} />
         <div className={styles.tiles}>
           <div className={styles.tile}><div className={styles.tileTitle}>{c.assignee}</div><div className={styles.tileL}>{t("dashboard.detailOnDesk")}{c.escalated ? " " + t("dashboard.detailAlso", { to: c.escalated.to }) : ""}</div></div>
           <div className={styles.tile}><div className={styles.tileTitle}>{c.route ? c.route.type : t("dashboard.detailNoRoute")}</div><div className={styles.tileL}>{c.route ? t("dashboard.detailDeputyBuddy", { deputy: c.route.deputy, buddy: c.route.buddy }) : t("dashboard.detailTriage")}</div></div>

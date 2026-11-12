@@ -1,12 +1,15 @@
 // The company's rules: promise and outcome days, the spend rule, and the loop rules. Company
 // admins only (companyAdminOf).
 import { notFound } from "next/navigation";
+import { FallbackRoleForm } from "@/components/settings/FallbackRoleForm";
 import { GoalsEditor } from "@/components/settings/GoalsEditor";
 import { RulesForm } from "@/components/settings/RulesForm";
 import { SettingsHead } from "@/components/settings/SettingsParts";
+import { SAMPLE_APPROVAL_CONFIG, roleOptionsOf } from "@/features/approvals/settings-form";
 import { SAMPLE_COMPANY, SAMPLE_KNOWLEDGE, SAMPLE_RULES } from "@/features/settings/demo";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { getT } from "@/i18n/server";
+import { loadApprovalConfig } from "@/lib/db/approvals-config";
 import { loadKnowledge } from "@/lib/db/knowledge";
 import { loadLoopRules } from "@/lib/db/loop";
 import { loadCompanyRules } from "@/lib/db/rules";
@@ -25,21 +28,24 @@ export default async function RulesSettingsPage({ params }: { params: Promise<{ 
       <>
         {head(SAMPLE_COMPANY.name)}
         <RulesForm slug={company} values={SAMPLE_RULES} demo />
+        <FallbackRoleForm slug={company} roleId={SAMPLE_APPROVAL_CONFIG.fallbackRoleId} reviewOn={SAMPLE_APPROVAL_CONFIG.review.on} roles={roleOptionsOf(SAMPLE_KNOWLEDGE)} demo />
         <GoalsEditor slug={company} goals={SAMPLE_KNOWLEDGE.goals} units={SAMPLE_KNOWLEDGE.units} />
       </>
     );
   const admin = await companyAdminOf(company);
   if (!admin) notFound();
-  const [rules, loop, knowledge, row] = await Promise.all([
+  const [rules, loop, knowledge, approvals, row] = await Promise.all([
     loadCompanyRules(admin.companyId),
     loadLoopRules(admin.companyId),
     loadKnowledge(admin.companyId),
+    loadApprovalConfig(admin.companyId),
     getDb().company.findUnique({ where: { id: admin.companyId }, select: { name: true } }),
   ]);
   return (
     <>
       {head(row?.name ?? "")}
       <RulesForm slug={company} values={{ rules, loop }} />
+      <FallbackRoleForm slug={company} roleId={approvals.fallbackRoleId} reviewOn={approvals.review.on} roles={roleOptionsOf(knowledge)} />
       <GoalsEditor slug={company} goals={knowledge.goals} units={knowledge.units} />
     </>
   );

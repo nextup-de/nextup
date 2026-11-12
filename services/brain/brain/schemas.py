@@ -383,7 +383,8 @@ class AgentStep(Strict):
 
 
 class AgentFact(Strict):
-    id: str = Field(min_length=1, max_length=60)
+    # The clock fact's event id: about 65 characters with the app's own ids, so the cap is well above that.
+    id: str = Field(min_length=1, max_length=200)
     kind: RideKind
     step_id: str | None = Field(None, max_length=40)
     day: int
