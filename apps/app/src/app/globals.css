@@ -12,6 +12,12 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
 /* Round corners (dev panel → Design): unset the radius tokens so every var(--radius-*, <old>) falls
    back to the pre-Square-Corners value. */
 html[data-corners="round"] { --radius-xs: initial; --radius-sm: initial; --radius-md: initial; }
+/* Black accent (dev panel → Design): the accent before the move to blue. The --nh-brand* tokens
+   point at the ink and greys, so every button, selected state and link follows. Blue is the default. */
+html[data-accent="black"] {
+  --nh-brand: var(--nh-ink); --nh-brand-hover: #000000; --nh-brand-active: #000000; --nh-brand-deep: var(--nh-ink);
+  --nh-brand-ink: var(--nh-ink); --nh-brand-tint: var(--nh-fill); --nh-brand-line: var(--nh-line-2);
+}
 body {
   margin: 0;
   background: var(--nh-ground);
