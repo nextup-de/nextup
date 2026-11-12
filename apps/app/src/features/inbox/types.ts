@@ -5,7 +5,7 @@ import type { State } from "@/features/cases/reducer";
 /** What the person is asked to do: decide it, confirm it, or do their part of it. */
 export type InboxAsk = "decide" | "confirm" | "part";
 
-export type InboxKind = "case" | "idea" | "view" | "question" | "confirm" | "reward" | "move" | "lead" | "invitation" | "approval";
+export type InboxKind = "case" | "idea" | "view" | "question" | "confirm" | "reward" | "move" | "lead" | "invitation" | "approval" | "stalled" | "vacant" | "update" | "appeal";
 
 export type InboxItem = {
   id: string;
