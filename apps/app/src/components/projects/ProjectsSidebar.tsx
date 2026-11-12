@@ -85,7 +85,7 @@ export function ProjectsSidebar({ area, projectId, caseId, onHide }: { area: Pro
         {layer2 && project ? (
           <ProjectPages p={project} onBack={() => setListFor(project.id)} />
         ) : layer2 && idea ? (
-          <IdeaPages c={idea} facts={ideas.find((i) => i.id === idea.id) ?? null} yourMove={myMove(idea)} onBack={() => setListFor(idea.id)} />
+          <IdeaPages c={idea} onBack={() => setListFor(idea.id)} />
         ) : (
           <List ideas={ideas} projects={projects} query={query} openId={openId} />
         )}
@@ -173,7 +173,7 @@ function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) 
   );
 }
 
-function IdeaPages({ c, facts, yourMove, onBack }: { c: ReducedCase; facts: SidebarIdea | null; yourMove: boolean; onBack: () => void }) {
+function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
   const { href, log, me, role } = useDemo();
   const t = useT();
   const params = useSearchParams();
@@ -181,29 +181,29 @@ function IdeaPages({ c, facts, yourMove, onBack }: { c: ReducedCase; facts: Side
   const base = href("/idea?id=" + encodeURIComponent(c.id));
   const stage: IdeaStage = c.status === "discussion" ? "decision" : "lead";
   const counts: Record<string, number | undefined> = { files: raisedWith(c).attachments || undefined, chats: commentsOn(log, c.id).length || undefined };
-  const late = facts?.late ?? c.overdue;
-  const move = facts?.yourMove ?? yourMove;
   return (
     <PageLayer storeId={ideaPagesId(c.id)} from={null} tabs={IDEA_TABS} base={base} pageUrl={(id) => base + "&page=" + id} editor={editor}
       current={params.get("page") ?? "overview"}
       tabUrl={(k) => (k === "overview" ? base : base + "&page=" + k)}
       tabInfo={(k) => ({ label: t(("projects.idea_" + k) as "projects.idea_overview"), icon: k === "chats" ? <PageGlyph icon="chat" /> : <TabIcon k={k} />, count: counts[k] })}
       back={t("projects.sbBack")} onBack={onBack}
-      head={<Head mark={<StageMark stage={stage} />} title={c.title} status={t(stage === "lead" ? "projects.sbStageLead" : "projects.sbStageDecision")}
-        note={late ? { text: t("projects.sbLateHint"), tone: "late" } : move ? { text: t("projects.sbYourMove"), tone: "move" } : null} />} />
+      head={<Head mark={<StageMark stage={stage} />} title={c.title} />} />
   );
 }
 
-function Head({ mark, title, status, note }: { mark: React.ReactNode; title: string; status: string; note: { text: string; tone: "late" | "move" } | null }) {
+/** The open project's or idea's title; a project also says where it stands (an idea's stage is its mark). */
+function Head({ mark, title, status, note = null }: { mark: React.ReactNode; title: string; status?: string; note?: { text: string; tone: "late" | "move" } | null }) {
   return (
     <div className={s.head}>
       <span className={s.headSlot}>{mark}</span>
       <span className={s.headText}>
         <span className={s.headTitle}>{title}</span>
-        <span className={s.headMeta}>
-          {status}
-          {note && <><span className={s.dotSep} aria-hidden="true" /><span className={s.noteText} data-tone={note.tone}>{note.text}</span></>}
-        </span>
+        {status && (
+          <span className={s.headMeta}>
+            {status}
+            {note && <><span className={s.dotSep} aria-hidden="true" /><span className={s.noteText} data-tone={note.tone}>{note.text}</span></>}
+          </span>
+        )}
       </span>
     </div>
   );

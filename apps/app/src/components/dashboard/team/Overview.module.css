@@ -590,4 +590,6 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
 @media (min-width: 761px) {
   :global([data-psb]) .root[data-open="true"] { width: auto; margin-left: -16px; margin-right: -16px; }
   :global([data-psb]) .root[data-open="true"] .div20 { padding: 0 8px; }
+  /* The chats have their own page in the sidebar (Chats): the idea's overview is the idea alone. */
+  :global([data-psb="open"]) .root[data-view="idea"] .div72 { display: none; }
 }
