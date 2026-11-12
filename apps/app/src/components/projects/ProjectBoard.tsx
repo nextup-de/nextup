@@ -15,6 +15,8 @@ import { useFormat, useLocale, useT } from "@/i18n/client";
 import { teamOf, useRights, useSend, withIds, type Person } from "./parts";
 import { StepDetail } from "./StepDetail";
 import styles from "./Projects.module.css";
+import roleStyles from "./ProjectBoard.module.css";
+import { stepRoleLabel } from "@/features/projects/step-role";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 
 /** Where a dragged card would land: above `before`, or at the foot of `col`. */
@@ -285,6 +287,7 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
   const tool = s.external ? toolOf(s.external.system) : null;
   const href = safeUrl(s.external?.url);
   const close = () => { setWhy(""); onAsked(); };
+  const roleKey = stepRoleLabel(s);
 
   return (
     <article
@@ -316,6 +319,7 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
           </span>
         )}
       </div>
+      {roleKey && <span className={roleStyles.roleLabel}>{t(roleKey)}</span>}
       {s.column === "blocked" && s.why && <div className={styles.blockedWhy}>{s.why}</div>}
       <div className={styles.stepFoot}>
         {s.owner ? <span className={styles.owner}><PersonFace name={s.owner} size="sm" /><span>{s.owner}</span></span> : <span className={styles.noOwner}>{t("projects.noOwner")}</span>}
