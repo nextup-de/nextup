@@ -12,6 +12,8 @@ export const PROJECT_LOOP_TYPES = [
   "project.lead.answered", "project.invited", "project.invite.answered", "project.start.moved",
   // A project that keeps moving (plan MOV, D23).
   "project.doneby.moved", "project.paused", "project.resumed", "project.howwework", "project.update", "project.lead.vacated", "project.lead.changed",
+  // A result that closes properly (plan RES, D18): a claim told nobody before (Q2.14). RES-E1 adds the recipients and the render entries.
+  "project.measure.questioned", "project.baseline.confirmed", "project.help.asked", "project.claimed",
 ] as const satisfies readonly CaseEventType[];
 
 /** The loop templates of the project events, as the profile's switches name them. */
@@ -31,6 +33,10 @@ export const PROJECT_FOLLOWS: Record<string, string> = {
   "loop.project.lead.changed": "loop.project.member",
   "reminder.late": "reminder.start", "reminder.blocked": "reminder.start", "reminder.quiet": "reminder.start",
   "reminder.stalled": "reminder.start", "reminder.update": "reminder.start", "reminder.vacant": "reminder.start",
+  // A result that closes properly (plan RES): an opt-out of the result notices covers the new ones; the reward reminder follows the confirm reminder.
+  "loop.project.measure.questioned": "loop.project.measured", "loop.project.baseline.confirmed": "loop.project.measured",
+  "loop.project.help.asked": "loop.project.measured", "loop.project.claimed": "loop.project.measured",
+  "reminder.reward": "reminder.confirm",
 };
 
 export const PROJECT_REMINDER_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"] as const;

@@ -1,6 +1,8 @@
 // What a reporter without a name may read about the case behind their reference (plan FLR, D12).
 // Pure: a reduced case in, plain facts out. Never a person's name, handle, comment or the raiser.
+import { noCategoryLabel, noCategoryOf } from "@/features/cases/no";
 import type { ReducedCase } from "@/features/cases/reducer";
+import type { MessageKey } from "@/i18n";
 
 export type StatusStep = "sent" | "read" | "asked" | "decided" | "handed";
 
@@ -11,7 +13,8 @@ export type StatusView = {
   step: StatusStep;
   /** The title of the role that holds the case now. */
   roleTitle: string | null;
-  decision: { answer: "yes" | "no"; reason: string } | null;
+  /** The answer and, for a no, the message key of its category label (D25): the desk's own text never leaves the server (D12). */
+  decision: { answer: "yes" | "no"; reason: MessageKey | null } | null;
   /** The open question of the desk, with the id of the event a reply answers. */
   question: { eventId: string; text: string } | null;
 };
@@ -48,7 +51,9 @@ export function statusView(kase: ReducedCase, ctx: StatusContext): StatusView {
     raisedDay: kase.raisedDay,
     step,
     roleTitle: ctx.roleTitleOf(kase.assigneeRoleId),
-    decision: kase.decided ? { answer: kase.decided.answer, reason: kase.decided.reason } : null,
+    decision: kase.decided
+      ? { answer: kase.decided.answer, reason: kase.decided.answer === "no" ? noCategoryLabel(noCategoryOf(kase.decided) ?? "other") : null }
+      : null,
     question,
   };
 }

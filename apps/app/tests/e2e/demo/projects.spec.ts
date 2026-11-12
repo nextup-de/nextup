@@ -351,3 +351,68 @@ test("only the lead (or a manager) gets the Jira buttons", async ({ page }) => {
   await expect(tools).toContainText("Two-way sync");
   await expect(tools.getByRole("button", { name: /Send to Jira|Stop syncing/ })).toHaveCount(0);
 });
+
+test("MOV demo: the lead moves the done-by date, pauses, resumes and sends the weekly update", async ({ page }) => {
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/projects/pj4");
+
+  await test.step("the lead takes the baseline and starts P-4", async () => {
+    await page.getByLabel("What is measured").fill("Deburring queue");
+    await page.getByLabel(/Today.s number/).fill("25");
+    await page.getByLabel("Unit").fill("minutes");
+    await page.getByLabel("Lower is better").check();
+    await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
+    await page.getByRole("button", { name: "Save the baseline" }).click();
+    await page.getByRole("button", { name: "Start the project" }).click();
+    await expect(head(page)).toContainText("P-4 · Running");
+  });
+
+  await test.step("the head shows the done-by date; the lead moves it once, with why", async () => {
+    const line = page.getByTestId("done-by-line");
+    await expect(line).toContainText("Done by");
+    const before = await line.innerText();
+    await page.getByRole("button", { name: "Move", exact: true }).click();
+    const form = page.getByRole("form", { name: "Move the done-by date" });
+    await form.getByLabel(/in how many working days/).fill("45");
+    await form.getByLabel("Why").fill("The second bench arrives late");
+    await form.getByRole("button", { name: "Move the date" }).click();
+    await expect(line).not.toHaveText(before);
+    // The lead has used their one move: the sheet is the sponsor's or a manager's from here.
+    await expect(page.getByRole("button", { name: "Move", exact: true })).toHaveCount(0);
+  });
+
+  await test.step("the lead pauses the project, the banner says until when and why, and Resume ends it", async () => {
+    await page.getByRole("button", { name: "Pause…" }).click();
+    const form = page.getByRole("form", { name: "Pause the project" });
+    await form.getByLabel(/For how many working days/).fill("3");
+    await form.getByLabel("Why").fill("Shutdown week");
+    await form.getByRole("button", { name: "Pause the project" }).click();
+    const banner = page.getByTestId("paused-banner");
+    await expect(banner).toContainText("Paused until");
+    await expect(banner).toContainText("Shutdown week");
+    await page.getByRole("button", { name: "Resume now" }).click();
+    await expect(page.getByTestId("paused-banner")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Pause…" })).toBeVisible();
+  });
+
+  await test.step("the weekly update is offered as an offline draft; the lead edits it and sends it", async () => {
+    const update = page.getByTestId("weekly-update");
+    const text = update.getByLabel("The update");
+    await expect(text).toHaveValue(/This week on P-4/);
+    await expect(update).toContainText("Built from the board since the last check-in");
+    await text.fill("The bench is ordered; the floor is marked.");
+    await update.getByRole("button", { name: "Send the update" }).click();
+    await expect(page.getByTestId("latest-update")).toContainText("The bench is ordered; the floor is marked.");
+    // Sent for this week: the form is gone until the next check-in.
+    await expect(update.getByRole("button", { name: "Send the update" })).toHaveCount(0);
+  });
+
+  await test.step("how we work: the lead sets the weekday and a note", async () => {
+    const how = page.getByTestId("how-we-work");
+    await how.getByLabel("Weekly check-in on").selectOption({ label: "Friday" });
+    await how.getByLabel(/A note on how the team works/).fill("Standing meeting at the bench, ten minutes");
+    await how.getByRole("button", { name: "Save" }).click();
+    await expect(how).toContainText("Saved.");
+  });
+});

@@ -56,13 +56,14 @@ const kase = (id: string, over: Partial<ReducedCase> = {}): ReducedCase => ({
   id, seed: false, kind: "problem", title: "Case " + id, body: "", from: "Raiser", fromDept: "", fromUserId: "u_raiser", assigneeSeatId: "s_own1", assigneeRoleId: "role_owner",
   routeId: "r2", assignee: "Owner One", raisedDay: 0, reason: "triage", upside: "", linkedIdea: null,
   status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [], building: null, shipped: null, override: null,
-  discussion: null, versions: [], pausedDays: 0, pausedSince: null, history: [raisedEv(id)],
+  discussion: null, versions: [], decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: 0, dueFloor: null, reopenSeq: null, decidedSeq: null, follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [], pausedDays: 0, pausedSince: null, history: [raisedEv(id)],
   route, age: 1, clock: 1, open: true, archived: false, overdue: false, dueDay: 5, escalated: null, ...over,
 });
 
 const measure: Measure = {
   check: 30, value: 30, source: "typed", note: "", day: 31, by: "Lead One", byUserId: "u_lead", sourceKind: "typed", sourceInfo: { kind: "typed" }, impact: null,
   confirmed: false, confirmedByUserId: null, confirmedDay: null, verdict: "better", changePct: -28,
+  sentBack: false, reentered: false, managerOnly: false, questions: [], previous: [],
 };
 
 const project = (id: string, over: Partial<ReducedProject> = {}): ReducedProject => ({
@@ -72,7 +73,7 @@ const project = (id: string, over: Partial<ReducedProject> = {}): ReducedProject
   reward: null, claimed: null, status: "planning", closed: false, rewardDue: false, dueDay: 5, overdue: false, escalated: null, history: [],
   draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [], goal: null, startDay: null,
   approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
-  doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null, ...over,
+  doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null, rewardDueDay: null, helpAsks: [], ...over,
 });
 
 const step = (id: string, text: string, owner: string | null) => ({
@@ -94,7 +95,7 @@ export const FIXTURE_STATE: State = {
       status: "discussion",
       discussion: {
         startedDay: 1, by: "Owner One", byUserId: "u_own1", invited: ["H. Sander"], invitedUserIds: ["u_hs"], missing: "The saving",
-        rounds: [{ round: 1, day: 3, by: "Owner One", byUserId: "u_own1", next: "decide", open: ["Cost"], note: "Quote is in" }], round: 1, ready: true, lastDay: 6,
+        rounds: [{ round: 1, day: 3, by: "Owner One", byUserId: "u_own1", next: "decide", open: ["Cost"], note: "Quote is in" }], round: 1, ready: true, lastDay: 6, declinedUserIds: [],
       },
     }),
     kase("c_ask", { status: "asked", question: { text: "Which line?", by: "Owner One", byUserId: "u_own1", day: 1, answer: null, unanswered: null } }),
@@ -102,10 +103,10 @@ export const FIXTURE_STATE: State = {
     kase("c_unans", { question: { text: "Which line?", by: "Owner One", byUserId: "u_own1", day: 1, answer: null, unanswered: 5 } }),
     kase("c_wd", { status: "withdrawn", open: false, archived: true, withdrawn: { day: 2, by: "Raiser", byUserId: "u_raiser", note: "Changed my mind" } }),
     kase("c_hand", { assigneeSeatId: "s_dep", assigneeRoleId: "role_deputy", assignee: "Deputy" }),
-    kase("c_no", { status: "decided", open: false, archived: true, decided: { answer: "no", reason: "not now", note: "", by: "Owner One", byUserId: "u_own1", day: 1 } }),
-    kase("c_yes", { status: "decided", open: false, archived: true, decided: { answer: "yes", reason: "", note: "", by: "Owner One", byUserId: "u_own1", day: 1, projectId: "p_one", lead: "Lead One" } }),
-    kase("c_yesd", { status: "decided", open: false, archived: true, decided: { answer: "yes", reason: "", note: "", by: "Owner One", byUserId: "u_own1", day: 1, projectId: "p_draft", lead: "Lead One" } }),
-    kase("c_yesn", { status: "decided", open: false, archived: true, decided: { answer: "yes", reason: "", note: "", by: "Owner One", byUserId: "u_own1", day: 1, projectId: null, lead: null } }),
+    kase("c_no", { status: "decided", open: false, archived: true, decided: { answer: "no", reason: "not now", note: "", by: "Owner One", byUserId: "u_own1", day: 1, category: null, changeIf: "", revisitDay: null, duplicateOf: null } }),
+    kase("c_yes", { status: "decided", open: false, archived: true, decided: { answer: "yes", reason: "", note: "", by: "Owner One", byUserId: "u_own1", day: 1, projectId: "p_one", lead: "Lead One", category: null, changeIf: "", revisitDay: null, duplicateOf: null } }),
+    kase("c_yesd", { status: "decided", open: false, archived: true, decided: { answer: "yes", reason: "", note: "", by: "Owner One", byUserId: "u_own1", day: 1, projectId: "p_draft", lead: "Lead One", category: null, changeIf: "", revisitDay: null, duplicateOf: null } }),
+    kase("c_yesn", { status: "decided", open: false, archived: true, decided: { answer: "yes", reason: "", note: "", by: "Owner One", byUserId: "u_own1", day: 1, projectId: null, lead: null, category: null, changeIf: "", revisitDay: null, duplicateOf: null } }),
   ],
   ideas: [], problems: [],
   projects: [

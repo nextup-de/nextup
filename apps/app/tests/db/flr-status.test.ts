@@ -63,7 +63,7 @@ describe("FLR status by reference", () => {
     const caseId = await caseOf(aId);
     await desk(aId, caseId, "case.decided", { answer: "yes", reason: "Seal is changed on Monday" });
     const after = await floorStatus("flr-status-a", reference, devKey());
-    expect(after).toMatchObject({ ok: true, view: { step: "decided", decision: { answer: "yes", reason: "Seal is changed on Monday" } } });
+    expect(after).toMatchObject({ ok: true, view: { step: "decided", decision: { answer: "yes", reason: null } } }); // NOR D25: the floor shows the answer, never the desk's text
     expect(JSON.stringify(after)).not.toContain("Lena");
   });
 
