@@ -97,11 +97,16 @@ export async function handleSubmit(company: BotCompany, person: BotPerson, activ
   // A refusal that sends the person to the case in NextUp (the pass limit, a not-now that is used up).
   const refusedOpen = (reason: string) => textCard({ subject: "NextUp", text: t("teams.refused", { reason }), link: caseLink }, locale);
 
-  let type: "case.decided" | "case.asked" | "case.handed";
+  let type: "case.decided" | "case.asked" | "case.handed" | "case.answered";
   let payload: EventPayload;
-  let outcome: "yes" | "no" | "ask" | "handed";
+  let outcome: "yes" | "no" | "ask" | "handed" | "replied";
   let draftId: string | null = null;
-  if (submit.kind === "answer") {
+  if (submit.kind === "reply") {
+    // The answer to the desk's question, from the question's card: the same event the case page writes (case.answered).
+    type = "case.answered";
+    payload = { text: submit.text ?? "" };
+    outcome = "replied";
+  } else if (submit.kind === "answer") {
     if (submit.answer === "yes") {
       type = "case.decided";
       // With projects on, a yes opens a draft like the app's: the person answering is the decider and sets it up (D19).

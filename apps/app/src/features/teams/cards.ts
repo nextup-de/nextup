@@ -1,7 +1,10 @@
 // What Teams shows (TMS D11; page spec 06 § Teams). Adaptive Cards 1.5, built as plain data. Pure: no I/O.
 // Every text comes from the `teams` namespace in the recipient's locale. The caller hands in dates and names
 // already formatted for the recipient; a card never looks anything up.
+import type { Actor } from "@/features/auth/identity";
 import { noCategoryLabel, PASS_REASON_MIN, type NoCategory } from "@/features/cases/no";
+import { mayAppend } from "@/features/cases/permissions";
+import type { State } from "@/features/cases/reducer";
 import { createT, INTL_LOCALE, type Locale, type MessageKey } from "@/i18n";
 
 /** When an earlier answer was given, for the caller to hand in: the time on the same day, else date and time. */
@@ -63,7 +66,7 @@ export type CardInput = {
   visibility?: "everyone" | "private";
   sandbox?: boolean;
   /** confirmCard: what happened. Default "raised". */
-  outcome?: "raised" | "yes" | "no" | "ask" | "handed" | "answeredBy";
+  outcome?: "raised" | "yes" | "no" | "ask" | "handed" | "answeredBy" | "replied";
   time?: string;
   name?: string;
   /** notSetUpCard. Default "off". */
@@ -72,8 +75,11 @@ export type CardInput = {
   noReasonMin?: number;
 };
 
+/** The submits of a raised case's and a reminder's card: a decision and a hand-over. */
 export const SUBMIT_KINDS = ["answer", "handover"] as const;
-export type SubmitKind = (typeof SUBMIT_KINDS)[number];
+/** What a card sends back: those two, and the answer to a question from the question's own card (REM-T1). */
+export type SubmitKind = (typeof SUBMIT_KINDS)[number] | "reply";
+const PARSED_KINDS: readonly SubmitKind[] = [...SUBMIT_KINDS, "reply"];
 
 export const MAX_CARD_BYTES = 28 * 1024;
 export const MAX_SEATS = 150;
@@ -260,6 +266,85 @@ export function reminderCard(input: CardInput, locale: Locale): Card {
   return card(body, answerActions(input, t));
 }
 
+// ── loop notices as cards (REM-T1; INB D6 sent them as plain text) ─────────────────────────────────────────────────────
+
+/** The loop templates that have a card, and what each is about: a case passed on, a question to the raiser, a yes or no, a step that asks for help. */
+const LOOP_CARDS = {
+  "loop.case.handed": "passed",
+  "loop.case.asked": "asked",
+  "loop.case.decided": "decided",
+  "loop.project.help.asked": "step",
+} as const;
+export type LoopCardKind = (typeof LOOP_CARDS)[keyof typeof LOOP_CARDS];
+
+/** The card kind of a template, or null: a template without a card stays the plain text card. */
+export function loopCardKind(template: string): LoopCardKind | null {
+  return Object.hasOwn(LOOP_CARDS, template) ? LOOP_CARDS[template as keyof typeof LOOP_CARDS] : null;
+}
+
+/** What the receiver may do with the case, as the web's rules say (mayAppend): the buttons of a card are exactly these. */
+export type LoopRights = { answer: boolean; handOver: boolean; reply: boolean };
+export const NO_LOOP_RIGHTS: LoopRights = { answer: false, handOver: false, reply: false };
+
+/**
+ * The receiver's rights on a case, asked of the same function the web asks (features/cases/permissions mayAppend) against the reduced state, with a probe event
+ * for each action: a decision (a question or a yes), a hand-over to a seat of another desk, an answer to a question. Nothing is granted by the card: the
+ * submit is checked again when it arrives (server/teams/card-actions.ts).
+ */
+export function loopRights(who: Actor, caseId: string, state: State): LoopRights {
+  const ok = (type: string, payload: Record<string, unknown>): boolean => mayAppend(who, { type, target: caseId, payload }, state).ok;
+  const seat = state.seats.find((s) => !who.me.seatIds.includes(s.id));
+  const asked = state.cases.find((c) => c.id === caseId)?.status === "asked";
+  return {
+    answer: ok("case.asked", { text: "?" }) || ok("case.decided", { answer: "yes" }),
+    handOver: seat !== undefined && ok("case.handed", { to: seat.label, toRoleHolderId: seat.id, why: "x".repeat(PASS_REASON_MIN) }),
+    // An answer is for a question that is open: mayAppend lets the raiser write one at any time, and the reducer ignores it then.
+    reply: asked && ok("case.answered", { text: "?" }),
+  };
+}
+
+/** What a loop card shows: the case or project, the reason (the pass's why, the question, the no's reason, the help asked), where it leads. */
+export type LoopNotice = Omit<CardInput, "reason"> & {
+  loop: LoopCardKind;
+  /** The reason: the pass's why, the question, the no's reason, the help asked. */
+  reasonText?: string;
+  /** decided: which answer. */
+  decision?: "yes" | "no";
+  /** step: the step's text. */
+  step?: string;
+};
+
+const LOOP_HEADERS = { passed: "teams.kindLoopPassed", asked: "teams.kindLoopAsked", step: "teams.kindLoopStep" } as const satisfies Record<string, MessageKey>;
+
+function replyForm(input: CardInput, t: Tr): CardNode {
+  return inner(
+    [{ type: "Input.Text", id: "text", label: t("teams.replyLabel"), isMultiline: true, isRequired: true, maxLength: ANSWER_TEXT_MAX, errorMessage: t("teams.errorNoText") }],
+    [{ type: "Action.Submit", title: t("teams.replySend"), style: "positive", data: { kind: "reply", ...ids(input) } }],
+  );
+}
+
+/**
+ * A loop notice as a card: the title, the reason and 'Open in NextUp' always; the buttons only for what the receiver may do (`rights`): Answer and Pass on on a
+ * case passed to a desk, Answer on a question to the raiser. A yes, a no and a step's help ask carry no buttons.
+ */
+export function loopCard(n: LoopNotice, rights: LoopRights, locale: Locale): Card {
+  const t = createT(locale);
+  const headerKey = n.loop === "decided" ? (n.decision === "no" ? "teams.kindLoopNo" : "teams.kindLoopYes") : LOOP_HEADERS[n.loop];
+  const reasonLabel = n.loop === "asked" ? "teams.factQuestion" : n.loop === "step" ? "teams.factHelp" : "teams.factReason";
+  const body: CardNode[] = [header(t(headerKey), n.markUrl), titleBlock(n.title)];
+  if (n.step) body.push(factSet([[t("teams.factStep"), clamp(n.step, SHOWN_LABEL_MAX)]]));
+  if (n.reasonText) body.push(tb(t(reasonLabel), { size: "small", isSubtle: true }), tb(clamp(n.reasonText, SHOWN_BODY_MAX), { maxLines: 5 }));
+  const actions: CardNode[] = [];
+  if (n.loop === "passed") {
+    if (rights.answer) actions.push({ type: "Action.ShowCard", title: t("teams.actionAnswer"), style: "positive", card: answerForm(n, t) });
+    if (rights.handOver) actions.push({ type: "Action.ShowCard", title: t("teams.actionHandOver"), card: handOverForm(n, t) });
+  } else if (n.loop === "asked" && rights.reply) {
+    actions.push({ type: "Action.ShowCard", title: t("teams.actionAnswer"), style: "positive", card: replyForm(n, t) });
+  }
+  if (n.link) actions.push(openUrl(t("teams.actionOpen"), n.link, actions.length === 0));
+  return card(body, actions);
+}
+
 /** Every other template: the subject, the text and a link. */
 export function textCard(input: CardInput, locale: Locale): Card {
   const t = createT(locale);
@@ -330,6 +415,7 @@ const RESULT_KEYS = {
   ask: "teams.resultAsk",
   handed: "teams.resultHanded",
   answeredBy: "teams.resultAnsweredBy",
+  replied: "teams.resultReplied",
 } as const satisfies Record<string, MessageKey>;
 
 /** After a raise, an answer or a hand-over. */
@@ -433,7 +519,7 @@ function optionalCategory(v: unknown): CardNoCategory | undefined | null {
 /** The data a card sends back, checked; null when it is not one of ours. */
 export function parseSubmit(value: unknown): Submit | null {
   if (!isRecord(value)) return null;
-  const kind = (SUBMIT_KINDS as readonly unknown[]).includes(value.kind) ? (value.kind as SubmitKind) : null;
+  const kind = (PARSED_KINDS as readonly unknown[]).includes(value.kind) ? (value.kind as SubmitKind) : null;
   const caseId = idOf(value.caseId);
   const cardId = idOf(value.cardId);
   if (!kind || !caseId || !cardId) return null;
@@ -453,6 +539,10 @@ export function parseSubmit(value: unknown): Submit | null {
       ...(no && changeIf !== undefined ? { changeIf } : {}),
       ...(no && revisitDay !== undefined ? { revisitDay } : {}),
     };
+  }
+  if (kind === "reply") {
+    const text = optionalText(value.text, ANSWER_TEXT_MAX);
+    return text ? { kind, caseId, cardId, text } : null;
   }
   const toSeatId = idOf(value.toSeatId);
   const why = optionalText(value.why, WHY_MAX);
