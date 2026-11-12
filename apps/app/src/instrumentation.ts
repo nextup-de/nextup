@@ -34,6 +34,9 @@ export async function register() {
   // The company context draft a person started in setup, under a lease per company (a no-op without a database).
   const { startContextRuns } = await import("@/server/scheduler/context-run");
   startContextRuns();
+  // The project agent's daily run: expiries and suggestions, under a lock per company (a no-op without a database).
+  const { startAgentRuns } = await import("@/server/agent/daily");
+  startAgentRuns();
   // Errors counted in memory go to the ErrorGroup table once a minute.
   const { startErrorFlush } = await import("@/server/errors");
   startErrorFlush();

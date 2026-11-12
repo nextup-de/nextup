@@ -2,7 +2,8 @@
 // NOR-B1: what the server decides about a person's pass and second look, whatever the client sent (the destination of Not mine and
 // Send up, the route and the date floor of a pass, the desk of a second look), and the link of a no that says Already solved or in work.
 // SEE-B1 (D23): a raise keeps the case it looked like, the cases related to it and the case it follows up only when they are the
-// person's to see; a merge and a link name a second case the person must be able to open, and the note of a merge is cut.
+// person's to see; a merge and a link name a second case the person must be able to open, and the note of a merge is cut; a case that
+// another case was merged into is not merged on itself (D25).
 // It runs before mayAppend, which then checks the stamped payload against the same state.
 import { mayFollow, MERGE_NOTE_MAX } from "@/features/cases/links";
 import { reduce, type ReducedCase } from "@/features/cases/reducer";
@@ -40,6 +41,8 @@ export type CaseAppendDeps = {
   openable: (companyId: string, viewer: LogViewer, id: string) => Promise<boolean>;
   /** The cases as the log says they stand now, reduced together (a merge or a link of one is known to the other). */
   reducedCases: (c: AppendCtx, ids: readonly string[]) => Promise<ReducedCase[]>;
+  /** Was another case of this company merged into this one? True when a case.merged event with `into` = this case exists (SEE D25). */
+  mergedInto: (companyId: string, caseId: string) => Promise<boolean>;
 };
 
 const dbDeps: CaseAppendDeps = {
@@ -48,6 +51,8 @@ const dbDeps: CaseAppendDeps = {
     const state = reduce(c.seed, await loadLogAround(c.companyId, c.seed, ids));
     return state.cases.filter((x) => ids.includes(x.id));
   },
+  mergedInto: async (companyId, caseId) =>
+    (await getDb().caseEvent.count({ where: { companyId, type: "case.merged", payload: { path: ["into"], equals: caseId } } })) > 0,
 };
 
 export async function prepareCaseAppend(c: AppendCtx, deps: CaseAppendDeps = dbDeps): Promise<AppendHook> {
@@ -88,6 +93,9 @@ export async function prepareCaseAppend(c: AppendCtx, deps: CaseAppendDeps = dbD
   // company's and an unknown id are the same missing case to them (mayAppend refuses it as one); the other case comes from the log as it stands.
   if (c.type === "case.merged" || c.type === "case.linked") {
     if (!kase?.seed && c.target && !(await deps.openable(c.companyId, viewer, c.target))) return refuse("cases.permNoCase");
+    // A case another case was merged into stays the destination (no chain, SEE D25). That merge is on the other case's log, which the two
+    // cases read below do not hold, so it is looked up here, in this company.
+    if (c.type === "case.merged" && c.target && (await deps.mergedInto(c.companyId, c.target))) return refuse("cases.permMerge");
     const named = c.payload[c.type === "case.merged" ? "into" : "to"];
     const other = await known(named);
     if (other && c.target) {

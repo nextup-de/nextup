@@ -231,6 +231,22 @@ describe("RES rights", () => {
       expect(yesFor("sponsor", "project.baseline.confirmed", confirm, planning({ sponsorUserId: null }, noDeputy))).toBe(false);
     });
 
+    it("a deputy desk whose holders are all the lead or the typist counts as empty: a manager confirms then (D30)", () => {
+      const onlyHolder = (userId: string) => SEATS.map((s) => (s.roleId === "role_deputy" ? { ...s, userId } : s));
+      // the deputy seat is held by the lead
+      expect(yesFor("manager", "project.baseline.confirmed", confirm, planning({ sponsorUserId: null }, onlyHolder("u_lead")))).toBe(true);
+      // the deputy seat is held by who typed the baseline
+      const typedByDeputy = (seats: SeatRow[]) => planning({ sponsorUserId: null, baseline: { ...planning().projects[0].baseline!, byUserId: "u_dep" } as ReducedProject["baseline"] }, seats);
+      expect(yesFor("manager", "project.baseline.confirmed", confirm, typedByDeputy(SEATS))).toBe(true);
+      // one holder who is neither: the desk is staffed, a manager may not
+      const two = [...SEATS, { id: "s_dep2", roleId: "role_deputy", label: "Deputy two", userId: "u_dep2", sort: 9 }];
+      expect(yesFor("manager", "project.baseline.confirmed", confirm, planning({ sponsorUserId: null }, two.map((s) => (s.id === "s_dep" ? { ...s, userId: "u_lead" } : s))))).toBe(false);
+      // an accepted sponsor still comes first: a manager may not while one exists
+      expect(yesFor("manager", "project.baseline.confirmed", confirm, planning({}, onlyHolder("u_lead")))).toBe(false);
+      // and the lead who holds the deputy seat still does not confirm their own baseline
+      expect(yesFor("lead", "project.baseline.confirmed", confirm, planning({ sponsorUserId: null }, onlyHolder("u_lead")))).toBe(false);
+    });
+
     it("needs a number baseline that is not confirmed, in planning; and the revision the person saw", () => {
       const base = planning().projects[0].baseline!;
       expect(errorOf("sponsor", "project.baseline.confirmed", confirm, planning({ baseline: null }))).toContain("no baseline number waiting");

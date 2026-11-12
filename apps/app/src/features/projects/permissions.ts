@@ -294,13 +294,15 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
     }
 
     case "project.baseline.confirmed": {
-      // A second person confirms the baseline number before the start (D16): the accepted sponsor or the route's deputy, managers when neither exists.
+      // A second person confirms the baseline number before the start (D16): the accepted sponsor or the route's deputy, managers when neither exists (a deputy desk whose holders are all the lead or the typist counts as none, D30).
       const b = p.baseline;
       if (b === null || b.none || b.confirmed || p.status !== "planning" || !live || !revisionMatches(pl.baselineEventId, b.eventId)) return no("projectResult.permBaselineNothing");
       if (isMe(p.leadUserId) || isMe(b.byUserId ?? null)) return no("projectResult.permBaselineConfirmWho");
       const deputyRoleId = state.routes.find((r) => r.id === p.routeId)?.deputyRoleId ?? null;
       if (sponsor || holds(deputyRoleId)) return OK;
-      const deputyStaffed = deputyRoleId !== null && seatsOfRole(state.seats, deputyRoleId).some((x) => x.userId !== null);
+      // A deputy desk counts as empty when none of its holders may confirm: each is the lead or who typed the baseline (D30). Then a manager does.
+      const deputyStaffed = deputyRoleId !== null
+        && seatsOfRole(state.seats, deputyRoleId).some((x) => x.userId !== null && x.userId !== p.leadUserId && x.userId !== (b.byUserId ?? null));
       // An accepted sponsor who leads it counts as none (D26).
       const hasSponsor = p.sponsorUserId !== null && p.sponsorUserId !== p.leadUserId;
       return isManager && !hasSponsor && !deputyStaffed ? OK : no("projectResult.permBaselineConfirmWho");

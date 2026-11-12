@@ -291,7 +291,8 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
 
   return (
     <article
-      className={styles.step} aria-label={s.text} draggable={canDrag} data-step={s.id} data-col={s.column}
+      className={styles.step} aria-label={s.text} draggable={canDrag} data-step={s.id} data-col={s.column} data-dropped={s.dropped ? "true" : undefined}
+      title={s.dropped ? t("projectResult.dropped", { why: s.dropped.why }) : undefined}
       data-dragging={dragging ? "true" : undefined} data-mine={mine ? "true" : undefined} data-late={late ? "true" : undefined}
       onDragStart={(e) => { if (!canDrag) return; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", s.id); onDragStart(); }}
       onDragEnd={onDragEnd} onDragOver={onDragOver}
