@@ -44,7 +44,7 @@ describe("REG notices split", () => {
     for (const mod of [agent, approval, overload]) {
       for (const value of Object.values(mod)) expect(Array.isArray(value) ? value : Object.keys(value as object)).toEqual([]);
     }
-    expect(kase.CASE_REMINDER_KINDS).toEqual(["deadline", "checkin", "escalation", "question", "triage"]);
+    expect(kase.CASE_REMINDER_KINDS).toEqual(["deadline", "checkin", "escalation", "question", "triage", "appeal", "view"]);
     expect(project.PROJECT_REMINDER_KINDS).toEqual(["start", "measure", "confirm", "lead", "invite", "draft"]);
     expect(Object.keys(kase.CASE_REMINDER_AUDIENCE).sort()).toEqual([...kase.CASE_REMINDER_KINDS].sort());
     expect(Object.keys(project.PROJECT_REMINDER_TEXTS).sort()).toEqual(project.PROJECT_REMINDER_KINDS.map((k) => `reminder.${k}`).sort());

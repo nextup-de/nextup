@@ -79,6 +79,7 @@
     "reminder.view": "reminder.checkin"
   },
   "reminderKinds": [
+    "appeal",
     "checkin",
     "confirm",
     "deadline",
@@ -89,7 +90,8 @@
     "measure",
     "question",
     "start",
-    "triage"
+    "triage",
+    "view"
   ],
   "dutyTemplates": [
     "raised",
