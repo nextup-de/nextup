@@ -41,6 +41,8 @@ export type CaseAppendDeps = {
   openable: (companyId: string, viewer: LogViewer, id: string) => Promise<boolean>;
   /** The cases as the log says they stand now, reduced together (a merge or a link of one is known to the other). */
   reducedCases: (c: AppendCtx, ids: readonly string[]) => Promise<ReducedCase[]>;
+  /** Was another case of this company merged into this one? True when a case.merged event with `into` = this case exists (SEE D25). */
+  mergedInto: (companyId: string, caseId: string) => Promise<boolean>;
 };
 
 const dbDeps: CaseAppendDeps = {
@@ -49,6 +51,8 @@ const dbDeps: CaseAppendDeps = {
     const state = reduce(c.seed, await loadLogAround(c.companyId, c.seed, ids));
     return state.cases.filter((x) => ids.includes(x.id));
   },
+  mergedInto: async (companyId, caseId) =>
+    (await getDb().caseEvent.count({ where: { companyId, type: "case.merged", payload: { path: ["into"], equals: caseId } } })) > 0,
 };
 
 export async function prepareCaseAppend(c: AppendCtx, deps: CaseAppendDeps = dbDeps): Promise<AppendHook> {
@@ -91,9 +95,7 @@ export async function prepareCaseAppend(c: AppendCtx, deps: CaseAppendDeps = dbD
     if (!kase?.seed && c.target && !(await deps.openable(c.companyId, viewer, c.target))) return refuse("cases.permNoCase");
     // A case another case was merged into stays the destination (no chain, SEE D25). That merge is on the other case's log, which the two
     // cases read below do not hold, so it is looked up here, in this company.
-    if (c.type === "case.merged" && c.target && (await getDb().caseEvent.count({ where: { companyId: c.companyId, type: "case.merged", payload: { path: ["into"], equals: c.target } } })) > 0) {
-      return refuse("cases.permMerge");
-    }
+    if (c.type === "case.merged" && c.target && (await deps.mergedInto(c.companyId, c.target))) return refuse("cases.permMerge");
     const named = c.payload[c.type === "case.merged" ? "into" : "to"];
     const other = await known(named);
     if (other && c.target) {
