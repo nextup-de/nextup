@@ -12,7 +12,7 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { BulkBar } from "@/components/overload/BulkBar";
 import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
 import { PageHeader, SectionCard } from "@/components/ui/elements";
-import { inboxCounts, inboxItems, type AgentInboxInput, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
+import { inboxCounts, inboxItems, type CommentsInboxInput, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
 import { agentForInbox } from "@/features/inbox/sources/agent";
 import { deskLoads } from "@/features/overload/load";
 import { triageFor } from "@/features/overload/bulk";
@@ -35,7 +35,7 @@ const KIND: Record<InboxKind, MessageKey> = {
   case: "inbox.kindCase", idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
   reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindMove", invitation: "inbox.kindView", approval: "inbox.kindConfirm",
   stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "caseNo.secondLook",
-  help: "inbox.kindMove", baseline: "inbox.kindConfirm", suggestion: "inbox.kindMove",
+  help: "inbox.kindMove", baseline: "inbox.kindConfirm", suggestion: "inbox.kindMove", comment: "inbox.kindComment",
 };
 /** Why a case is back on the list (plan NOR, D26). */
 const CAUSE: Record<NonNullable<InboxItem["cause"]>, MessageKey> = {
@@ -74,9 +74,10 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
 
   if (!ready) return <PageSkeleton kind="inbox" />;
 
-  const input: AgentInboxInput & { role: typeof role } = {
+  const input: CommentsInboxInput & { role: typeof role } = {
     state: S, me, seats: seed.seats ?? [], today: S.day, demo, role, flags: { projects: flag("projects"), discussion: flag("discussion") },
     agent: agentForInbox(ctx.log, S, { flagOn: flag("agent"), serverMode, demo }),
+    events: ctx.log.events, // the unread comments are read from the log (plan REM, I1)
   };
   const items = inboxItems(input);
   // A result to confirm says what is asked and why it is on this desk (decision Q6.15), as the project desk words it.
@@ -85,6 +86,15 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     const d = i.kind === "confirm" ? desk.find((x) => x.move === "confirm" && x.project.id === i.projectId) : undefined;
     return d ? `${moveLabel(d.move, locale)} · ${t(d.why === "confirmUp" ? "projects.deskConfirmLate" : "projects.deskSecondPerson")}` : null;
   };
+  // Why a case is back on the list: a pass says who passed it and why (plan REM, I1), the others their plain cause.
+  const causeText = (i: InboxItem): string | null => {
+    if (!i.cause) return null;
+    if (i.cause !== "passed") return t(CAUSE[i.cause]);
+    if (i.fromRole) return i.why ? t("inbox.passedBy", { role: i.fromRole, why: i.why }) : t("inbox.passedByNoWhy", { role: i.fromRole });
+    return i.why ? t("inbox.passedWhy", { why: i.why }) : t(CAUSE.passed);
+  };
+  // A comment row says how many are new, instead of its kind alone.
+  const kindText = (i: InboxItem): string => (i.kind === "comment" ? t(i.count === 1 ? "inbox.commentOne" : "inbox.commentMany", { n: i.count ?? 0 }) : t(KIND[i.kind]));
   const counts = inboxCounts(items);
   const decide = items.filter((i) => i.ask === "decide" && opensInPlace(i));
   const navIds = decide.map(openId);
@@ -163,7 +173,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
                       <>
                         <span className={styles.rowMain}>
                           <span className={styles.rowTitle}>{i.title}</span>
-                          <span className={styles.rowKind}>{i.cause ? <span className={styles.cause} data-testid="inbox-cause" data-cause={i.cause}>{t(CAUSE[i.cause])} · </span> : null}{confirmNote(i) ?? t(KIND[i.kind])}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
+                          <span className={styles.rowKind}>{i.cause ? <span className={styles.cause} data-testid="inbox-cause" data-cause={i.cause}>{causeText(i)} · </span> : null}{confirmNote(i) ?? kindText(i)}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
                         </span>
                         {i.late ? <span className={styles.badge} data-tone="late">{t("inbox.late")}</span> : i.dueSoon ? <span className={styles.badge} data-tone="soon">{t("inbox.dueSoon")}</span> : null}
                       </>
