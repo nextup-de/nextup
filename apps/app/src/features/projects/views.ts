@@ -32,9 +32,18 @@ export function onDraft(p: ReducedProject, userId: string | null): boolean {
     || p.invites.some((i) => i.userId === userId && (i.state === "pending" || i.state === "accepted"));
 }
 
-/** A draft is only for the people on it and, unless the idea is private, managers (D13). `privateIdea`: the raiser made the idea private. */
+/**
+ * The viewer holds the seat a late draft went to while that escalation is live (D15, D22): that seat keeps, hands on or stops
+ * the draft, so its holder reads it whatever their app role and whether or not the idea is private. By seat id, from `me`.
+ */
+export function escalatedToViewer(p: ReducedProject, v: IdViewer): boolean {
+  const e = p.escalated;
+  return e !== null && e.what === "draft" && e.live && e.toSeatId !== null && v.me?.seatIds.includes(e.toSeatId) === true;
+}
+
+/** A draft is only for the people on it, the holder of the seat it was escalated to and, unless the idea is private, managers (D13). `privateIdea`: the raiser made the idea private. */
 export function mayReadDraft(p: ReducedProject, v: IdViewer, privateIdea: boolean): boolean {
-  return onDraft(p, v.userId) || (v.role === "manager" && !privateIdea);
+  return onDraft(p, v.userId) || escalatedToViewer(p, v) || (v.role === "manager" && !privateIdea);
 }
 
 /** A draft that has not started: the only kind D13 hides. A legacy project and a started one are as before. */
@@ -48,7 +57,7 @@ export function visibleProjectsFor(state: Pick<State, "projects"> & { cases?: St
   if (v.role !== "member") return open;
   const id = v.userId;
   if (id === null) return [];
-  return open.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id) || onDraft(p, id));
+  return open.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id) || onDraft(p, id) || (isOpenDraft(p) && escalatedToViewer(p, v)));
 }
 
 /** The line a viewer who may not read a draft gets (D13): the lead's seat role and the start day; `roleTitle` says a role's label. */
