@@ -61,6 +61,9 @@ export function hasClosedAudience(c: Pick<ReducedCase, "history">): boolean {
   return visibility === "private" || visibility === "custom";
 }
 
+/** The raiser made the idea private: managers do not see it either (D13). */
+export const isPrivateIdea = (c: Pick<ReducedCase, "history">): boolean => choiceOf(c as ReducedCase).visibility === "private";
+
 /** Every key that opens this case. */
 export function accessKeys(c: ReducedCase, ctx: VisCtx): string[] {
   const keys = new Set<string>();
@@ -76,6 +79,9 @@ export function accessKeys(c: ReducedCase, ctx: VisCtx): string[] {
     user(p.leadUserId);
     for (const id of p.memberUserIds) user(id);
     for (const id of p.authorUserIds) user(id);
+    // A draft's invited people (not declined, not lapsed) and followers read the idea (SET, Q5.14).
+    for (const i of p.invites) if (i.state === "pending" || i.state === "accepted") user(i.userId);
+    for (const id of p.followerUserIds) user(id);
   }
 
   const { visibility, userIds, unitIds } = choiceOf(c);

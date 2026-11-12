@@ -23,7 +23,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname, useRouter } from "next/navigation";
 import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
 import { FLAGS, type FlagKey } from "@/config/flags";
-import type { SeedProject, StepColumn, SyncSystem } from "@/features/projects/types";
+import type { InviteRole, SeedProject, StepColumn, SyncSystem } from "@/features/projects/types";
+import type { TemplateKey } from "@/features/templates/library";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
 import { meFor, meOfSeat, type Me } from "@/features/auth/identity";
 import { appendEvent, emptyLog, newId, type CaseEvent, type EventLog, type EventPayload } from "@/features/cases/events";
@@ -110,6 +111,18 @@ export type ProjectAct = {
   reward: (projectId: string, rule: string, amount?: number, note?: string) => void;
   claim: (projectId: string) => void;
   stop: (projectId: string, why: string) => void;
+  // The project draft (plan SET): each one event, appended through the same path as the others.
+  /** The lead takes the draft, or declines it with the reason (D11). */
+  answerLead: (projectId: string, take: boolean, reason?: string) => void;
+  /** Seeds the board from that exact template version; `title` renames the project (D16). */
+  pickTemplate: (projectId: string, key: TemplateKey, version: number, title?: string) => void;
+  /** The lead or a manager invites a person by user id and role (D12). */
+  invite: (projectId: string, userId: string, role: InviteRole) => void;
+  /** The invitee takes or declines their own invitation; `inviteId` is the project.invited event. */
+  answerInvite: (projectId: string, inviteId: string, userId: string, take: boolean, reason?: string) => void;
+  setGoal: (projectId: string, g: { goal: string; doneWhen: string; doneBy?: number; brief?: string }) => void;
+  /** The seat above keeps a late draft with a new start day (D15). */
+  moveStart: (projectId: string, dueDay: number, why: string) => void;
 };
 
 export type DemoContext = {
@@ -544,6 +557,12 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
       reward: (id, rule, amount, note) => emit("project.rewarded", id, { rule, amount, note }),
       claim: (id) => emit("project.claimed", id),
       stop: (id, why) => emit("project.stopped", id, { why }),
+      answerLead: (id, take, reason) => emit("project.lead.answered", id, { take, ...(!take && reason ? { reason } : {}) }),
+      pickTemplate: (id, key, version, title) => emit("project.template", id, { key, version, ...(title ? { title } : {}) }),
+      invite: (id, userId, role) => emit("project.invited", id, { userId, role }),
+      answerInvite: (id, inviteId, userId, take, reason) => emit("project.invite.answered", id, { inviteId, userId, take, ...(!take && reason ? { reason } : {}) }),
+      setGoal: (id, g) => emit("project.goal", id, { goal: g.goal, doneWhen: g.doneWhen, ...(g.doneBy !== undefined ? { doneBy: g.doneBy } : {}), ...(g.brief ? { brief: g.brief } : {}) }),
+      moveStart: (id, dueDay, why) => emit("project.start.moved", id, { dueDay, why }),
     },
   }), [emit, seed.seats, S.ideas, S.projects, actor, actorUserId, slug, serverMode, log]);
 
