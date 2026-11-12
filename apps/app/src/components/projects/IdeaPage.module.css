@@ -10,6 +10,14 @@
 .page button { font-family: inherit; }
 .grow { flex: 1; }
 
+/* The parts inside the Overview's idea card (team/OverviewIdea). Nothing changes on hover. */
+.sections { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.tintList { display: flex; flex-direction: column; padding: 0 16px; border-radius: var(--radius-sm, 12px); background: var(--tint); }
+.tintRow { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-top: 0.5px solid var(--tint-line); }
+.tintRow:first-child { border-top: 0; }
+.why { display: block; font-size: var(--nh-fs-sm); font-weight: 400; line-height: 1.45; color: var(--nh-mute); }
+.tintRow .why { display: inline; }
+
 /* Reading */
 .title { margin: 0; font-size: var(--nh-fs-3xl); line-height: 34px; font-weight: 700; letter-spacing: -0.02em; color: var(--nh-ink); text-wrap: pretty; }
 .metaRow { display: flex; align-items: center; gap: 10px; margin-top: -12px; }
@@ -50,13 +58,8 @@
 .fileSub { font-size: var(--nh-fs-xs); color: var(--nh-mute-2); }
 .hidden { display: none; }
 
-/* What may be double-clicked shows it on hover. */
-[data-editable="true"].title, [data-editable="true"].desc, [data-editable="true"].sec { cursor: text; transition: box-shadow 160ms ease, background 160ms ease; }
-[data-editable="true"].title:hover, [data-editable="true"].desc:hover { border-radius: 8px; background: var(--nh-fill); box-shadow: 0 0 0 6px var(--nh-fill); }
-[data-editable="true"].sec:hover { box-shadow: 0 0 0 6px var(--nh-fill); }
-
 /* Editing: the raise card's fields */
-.bar { display: flex; align-items: center; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--nh-line-soft); }
+.bar { display: inline-flex; align-items: center; gap: 8px; }
 .barTitle { display: inline-flex; align-items: center; gap: 8px; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
 .barNote { font-size: var(--nh-fs-sm); color: var(--nh-mute-2); }
 .own { display: inline-flex; gap: 6px; }

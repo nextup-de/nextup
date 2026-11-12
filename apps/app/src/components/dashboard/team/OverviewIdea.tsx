@@ -12,7 +12,8 @@ import { useT } from "@/i18n/client";
 import type { OverviewStep } from "@/features/cases/rows";
 import type { DeskLabel } from "@/features/overview/rows";
 import type { IdeaBrief, NumberedBlock } from "@/features/ideas/brief";
-import { changesOf, type IdeaChanges } from "@/features/ideas/edits";
+import { changesOf, type IdeaChanges, type IdeaContent, type PageChanges } from "@/features/ideas/edits";
+import { EditControls, IdeaSections, IdeaTitle, useIdeaEditor, type IdeaWho } from "@/components/projects/IdeaPage";
 import s from "./Overview.module.css";
 import { avatarTone } from "@/lib/avatar";
 import { DeptChip, PersonFace } from "@/components/ui/elements";
@@ -40,7 +41,14 @@ export type OverviewIdeaProps = {
   onOpenScore?: (i: number) => void;
   /** The people on it, before the decision: where a saved edit goes (null: read only). */
   edit?: { onSave: (changes: IdeaChanges) => void } | null;
+  /**
+   * In the projects frame (Paper "Idea · editing"): the idea's parts in the raise card's order, Who last and
+   * read only, edited the raise card's way (components/projects/IdeaPage). Everything else stays as it is.
+   */
+  page?: { content: IdeaContent; who: IdeaWho; depts: readonly string[]; nextVersion: number; onSave: ((changes: PageChanges) => void) | null } | null;
 };
+
+const NO_CONTENT: IdeaContent = { title: "", description: "", affects: [], context: "", lines: [], files: [], worth: null, routedAs: null };
 
 export const Cites = ({ ns, dark }: { ns: number[]; dark?: boolean }) => <>{ns.map((c) => <a key={c} className={dark ? s.c2 : s.c} href="#aisrc">{c}</a>)}</>;
 const Star = ({ size }: { size: number }) => (
@@ -51,6 +59,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
   const t = useT();
   const { brief } = p;
   const [openScore, setOpenScore] = useState<number | null>(null);
+  const ed = useIdeaEditor(p.page?.content ?? NO_CONTENT, p.page?.onSave ?? null);
   const files = p.files;
   const affects = [...brief.depts.map((d) => d.name), ...brief.people.map((x) => x.name)];
   // Editing: the sections being written (a missing key is not being edited) - one by double-click, all by the pencil.
@@ -83,6 +92,32 @@ export function OverviewIdea(p: OverviewIdeaProps) {
   const view = p.mode;
   const desk = p.desk;
 
+  // The raiser's versions and what was added since: after the attachments, in either layout.
+  const extras = (
+    <>
+      {p.versions.length > 0 && (
+        <div className={s.sec}>
+          <span className={s.dept}>{t("overview.versionsHeading")}</span>
+          <ul className={s.list}>
+            {p.versions.map((v) => (
+              <li key={v.n} className={s.li}>
+                <span className={s.liMain}><span className={s.liTitle}>{v.title}</span><span className={s.liSub}>{t("overview.versionRow", { n: v.n, when: v.when })}</span></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {p.added.length > 0 && (
+        <div className={s.sec}>
+          <span className={s.dept}>{t("team.ideaAddedSince")}</span>
+          {p.added.map((a, k) => (
+            <div key={k} className={s.div45}><span className={s.text2}>{a.text}</span><span className={s.when}>{a.when}</span></div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className={s.div22}>
       <div className={s.div23}>
@@ -95,7 +130,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
               </button>
             )}
           </div>
-          {editing("title") ? (
+          {p.page ? <IdeaTitle ed={ed} className={s.title2} /> : editing("title") ? (
             <input className={s.titleInput} value={draft?.title ?? ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label={t("team.ideaEditTitle")} maxLength={200} autoFocus onKeyDown={(e) => keys(e, true)} />
           ) : (
             <h1 className={s.title2} data-editable={editable ? "true" : undefined} title={editable} onDoubleClick={() => open("title")}>{p.title}</h1>
@@ -137,14 +172,15 @@ export function OverviewIdea(p: OverviewIdeaProps) {
               <button type="button" role="tab" aria-selected={p.mode === "idea"} className={s.setManual} onClick={flip}>{t("team.ideaTab")}</button>
               <button type="button" role="tab" aria-selected={p.mode === "ai"} className={s.setChat} onClick={flip}><Star size={11} />{t("team.ideaTabAi")}</button>
             </div>
-            {draft && view === "idea" && (
+            {p.page && view === "idea" && <EditControls ed={ed} nextVersion={p.page.nextVersion} />}
+            {!p.page && draft && view === "idea" && (
               <div className={s.div34}>
                 <button type="button" className={s.cancelEdit} onClick={cancel}>{t("team.ideaEditCancel")}</button>
                 <button type="button" className={s.saveEdit} onClick={save} disabled={!dirty}>{t("team.ideaEditSave")}</button>
               </div>
             )}
             <div className={s.div35}>
-              {!draft && view === "idea" && p.edit && (
+              {!p.page && !draft && view === "idea" && p.edit && (
                 <button type="button" className={s.startEdit} onClick={startEdit} title={t("team.ideaEdit")} aria-label={t("team.ideaEdit")}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" /></svg>
                 </button>
@@ -152,7 +188,11 @@ export function OverviewIdea(p: OverviewIdeaProps) {
             </div>
           </div>
 
-          {view === "idea" ? (
+          {view === "idea" && p.page ? (
+            <div className={s.div36}>
+              <IdeaSections ed={ed} who={p.page.who} depts={p.page.depts} whyOf={whyOf} after={extras} />
+            </div>
+          ) : view === "idea" ? (
             <div className={s.div36}>
               {editing("body") ? (
                 <textarea className={s.textarea} value={draft?.body ?? ""} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={5} aria-label={t("team.ideaEditText")} placeholder={t("team.ideaEditText")} autoFocus={!editing("title")}
@@ -238,26 +278,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                   </ul>
                 )}
               </div>
-              {p.versions.length > 0 && (
-                <div className={s.sec}>
-                  <span className={s.dept}>{t("overview.versionsHeading")}</span>
-                  <ul className={s.list}>
-                    {p.versions.map((v) => (
-                      <li key={v.n} className={s.li}>
-                        <span className={s.liMain}><span className={s.liTitle}>{v.title}</span><span className={s.liSub}>{t("overview.versionRow", { n: v.n, when: v.when })}</span></span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {p.added.length > 0 && (
-                <div className={s.sec}>
-                  <span className={s.dept}>{t("team.ideaAddedSince")}</span>
-                  {p.added.map((a, k) => (
-                    <div key={k} className={s.div45}><span className={s.text2}>{a.text}</span><span className={s.when}>{a.when}</span></div>
-                  ))}
-                </div>
-              )}
+              {extras}
             </div>
           ) : (
             <div className={s.div46}>
