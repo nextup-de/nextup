@@ -41,8 +41,8 @@
 
 /* The shared stats strip as the card's head: same type, no box of its own, semibold numbers, grey labels. */
 .card .stats { flex: none; border: 0; border-bottom: 1px solid var(--c-sep-head); border-radius: 0; background: transparent; padding: 4px 0; }
-/* Four columns sized to their labels (the leftover width shared out), so each label keeps one line. */
-@media (min-width: 761px) { .card .stats { grid-template-columns: repeat(4, auto); } }
+/* One column per number shown (up to four), sized to its label (the leftover width shared out), so each label keeps one line. */
+@media (min-width: 761px) { .card .stats { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: auto; } }
 .card .stat { padding: 14px 18px 13px; border-left-color: var(--c-sep-head); }
 .card .stat:first-child { padding-left: 22px; }
 .card .statV { font-size: var(--nh-fs-2xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: var(--c-ink); font-variant-numeric: tabular-nums; }
@@ -94,6 +94,8 @@
 .hl { position: absolute; top: 0; left: 0; width: 0; height: 0; background: var(--p-hl); border-radius: var(--radius-sm, 12px); opacity: 0; pointer-events: none; box-shadow: 0 4px 12px rgb(10 132 255 / 0.28); will-change: transform; }
 .page:not([data-open="true"]) .hl { display: none; }
 .list { list-style: none; margin: 0; padding: 0; }
+.showAll { margin: 4px 0 12px 16px; } /* "Show all" under the rows, in line with the avatars */
+.page[data-tucked="true"] .showAll { display: none; }
 .row { position: relative; z-index: 1; display: flex; gap: 12px; width: 100%; padding: 0 0 0 16px; border: 0; background: transparent; text-align: left; font: inherit; color: inherit; cursor: pointer; transition: background-color 380ms var(--ease), padding 380ms var(--ease), gap 380ms var(--ease); }
 .row:hover { background: var(--c-hover); }
 .row:focus-visible { outline: 2px solid var(--c-left); outline-offset: -2px; }

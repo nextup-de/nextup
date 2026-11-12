@@ -11,11 +11,11 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useCaseNames } from "@/components/cases/useCaseNames";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen, visibleTo } from "@/components/dashboard/derive";
-import { DeptChip, PersonFace } from "@/components/ui/elements";
+import { DeptChip, PersonFace, ShowAll, useCapped } from "@/components/ui/elements";
 import { deptTone } from "@/lib/dept-tone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { archiveOf, inView, type ListView } from "@/features/cases/discussion";
-import { deptChips, FEED_SORT_KEY, feedCover, feedStage, inDept, inSite, inUnit, latestActivity, siteFilters, sortFeed, isMe as isBacker, supportLine, supportSummary, unitFilters, type Activity, type Backer, type FeedSort } from "@/features/cases/feed";
+import { deptChips, FEED_SORT_KEY, FEED_SORTS, feedCover, feedStage, inDept, inSite, inUnit, latestActivity, siteFilters, sortFeed, isMe as isBacker, supportLine, supportSummary, unitFilters, type Activity, type Backer, type FeedSort } from "@/features/cases/feed";
 import { MIN_GROUP } from "@/features/metrics/types";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { dashboardRow, overviewSteps, raisedWith } from "@/features/cases/rows";
@@ -32,6 +32,8 @@ const ALL_SITES = "*"; // the "every site" filter value; shown as feedAllSites
 const ALL_UNITS = "*"; // the "every unit" filter value; shown as feed.allUnits
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
 const isHandle = (name: string) => name.startsWith("Anonymous");
+// A count beside a label: nothing at 0 (lib/utils/quiet.ts).
+const quietCount = (n: number, className: string) => (n > 0 ? <span className={className}>{n}</span> : null);
 const ago = (t: T, days: number) => (days <= 0 ? t("common.today") : days === 1 ? t("common.yesterday") : t("team.feedDaysAgo", { count: days }));
 
 function UpArrow({ size, w }: { size: number; w: number }) {
@@ -43,7 +45,7 @@ function Check({ size }: { size: number }) {
 // One case as the Feed needs it: facts from the log, nothing invented.
 type Item = {
   c: ReducedCase; mine: boolean; backing: Backer[]; supported: boolean; tags: string[];
-  site: string | null; raisedDay: number; lastDay: number; activity: Activity | null; backers: number; comments: number;
+  site: string | null; raisedDay: number; lastDay: number; activity: Activity | null; backers: number; comments: number; own: boolean;
 };
 
 export function FeedView({ initialId }: { initialId?: string } = {}) {
@@ -56,7 +58,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const [dept, setDept] = useState("All");
   const [site, setSite] = useState(ALL_SITES);
   const [unit, setUnit] = useState(ALL_UNITS);
-  const [sort, setSort] = useState<FeedSort>("support");
+  const [sort, setSort] = useState<FeedSort>("relevant");
   const [menu, setMenu] = useState<"dept" | "site" | "unit" | "sort" | null>(null);
   const [openId, setOpenId] = useState<string | null>(initialId ?? null);
   useIdInUrl(openId, setOpenId); // the opened card is in the address (?id=)
@@ -74,6 +76,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const siteOf = (name: string) => (isHandle(name) ? null : profileOf(name).location);
   const top = () => rootRef.current?.scrollIntoView({ block: "start", behavior: motion ? "smooth" : "auto" });
 
+  const myDept = deptNameOf(ctx.persona.who.name); // the reader's own unit: its ideas weigh a little more (feedRelevance)
   const itemOf = (c: ReducedCase): Item => {
     const row = dashboardRow(c, P, me, log);
     const activity = latestActivity(c.id, log, seed.seats, tenant.actorLabels);
@@ -85,7 +88,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     const tags = [...new Set([c.fromDept, ...(routeDept ? [routeDept] : []), ...row.affected.filter((n) => deptNames.includes(n))])];
     return {
       c, mine: row.mine, backing, supported: backing.some((b) => isBacker(b, me)), tags,
-      site: siteOf(c.from), raisedDay: c.raisedDay, lastDay: activity?.day ?? c.raisedDay, activity, backers: backing.length, comments: commentsOn(log, c.id).filter((m) => !m.rescore).length,
+      site: siteOf(c.from), raisedDay: c.raisedDay, lastDay: activity?.day ?? c.raisedDay, activity, backers: backing.length, comments: commentsOn(log, c.id).filter((m) => !m.rescore).length, own: !!myDept && tags.includes(myDept),
     };
   };
   // With projects on, the feed shows what is still moving; what was decided sits in the Archive.
@@ -96,7 +99,8 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const sites = siteFilters(seed), units = site === ALL_SITES ? [] : unitFilters(seed, site);
   const inSites = (x: Item, id: string) => id === ALL_SITES || inSite(seed, unitIdOf(x.c), id);
   const bySite = visible.filter((x) => inSites(x, site) && (unit === ALL_UNITS || inUnit(unitIdOf(x.c), unit)));
-  const list = sortFeed(bySite.filter((x) => inDept(x.tags, dept)), sort);
+  const list = sortFeed(bySite.filter((x) => inDept(x.tags, dept)), sort, log.day);
+  const cards = useCapped(list, [view, dept, site, unit, sort].join("|"));
   const siteName = sites.find((x) => x.id === site)?.name ?? t("team.feedAllSites");
   const unitName = units.find((x) => x.id === unit)?.name ?? t("feed.allUnits");
   const deptCount = (d: string) => bySite.filter((x) => x.tags.includes(d)).length;
@@ -171,7 +175,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
           <div className={s.chips}>
             {chips.map((d) => (
               <button key={d} type="button" className={s.pick2} data-dept-tone={d === "All" ? undefined : deptTone(d)} data-on={dept === d ? "true" : undefined} aria-pressed={dept === d} onClick={() => setDept(d)}>
-                {d === "All" ? t("team.feedAll") : d}<span className={s.count2}>{d === "All" ? bySite.length : deptCount(d)}</span>
+                {d === "All" ? t("team.feedAll") : d}{quietCount(d === "All" ? bySite.length : deptCount(d), s.count2)}
               </button>
             ))}
             {moreDepts.length > 0 && (
@@ -206,7 +210,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                   {[{ id: ALL_SITES, name: t("team.feedAllSites") }, ...sites].map((x) => (
                     <button key={x.id} type="button" role="menuitemradio" aria-checked={site === x.id} className={s.pick} data-on={site === x.id ? "true" : undefined} onClick={() => { setSite(x.id); setUnit(ALL_UNITS); setMenu(null); }}>
                       <span className={s.label}>{x.name}</span>
-                      <span className={s.count}>{visible.filter((v) => inSites(v, x.id)).length}</span>
+                      {quietCount(visible.filter((v) => inSites(v, x.id)).length, s.count)}
                       <span className={s.check}>{site === x.id ? "✓" : ""}</span>
                     </button>
                   ))}
@@ -223,7 +227,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                     {[{ id: ALL_UNITS, name: t("feed.allUnits") }, ...units].map((x) => (
                       <button key={x.id} type="button" role="menuitemradio" aria-checked={unit === x.id} className={s.pick} data-on={unit === x.id ? "true" : undefined} onClick={() => { setUnit(x.id); setMenu(null); }}>
                         <span className={s.label}>{x.name}</span>
-                        <span className={s.count}>{visible.filter((v) => inSites(v, site) && (x.id === ALL_UNITS || inUnit(unitIdOf(v.c), x.id))).length}</span>
+                        {quietCount(visible.filter((v) => inSites(v, site) && (x.id === ALL_UNITS || inUnit(unitIdOf(v.c), x.id))).length, s.count)}
                         <span className={s.check}>{unit === x.id ? "✓" : ""}</span>
                       </button>
                     ))}
@@ -238,7 +242,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
               </button>
               {menu === "sort" && (
                 <div className={s.div7} role="menu">
-                  {(["support", "latest"] as const).map((k) => (
+                  {FEED_SORTS.map((k) => (
                     <button key={k} type="button" role="menuitemradio" aria-checked={sort === k} className={s.pick} data-on={sort === k ? "true" : undefined} onClick={() => { setSort(k); setMenu(null); }}>
                       <span className={s.label}>{t(FEED_SORT_KEY[k])}</span>
                       <span className={s.check}>{sort === k ? "✓" : ""}</span>
@@ -250,14 +254,14 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             {split && (
               <button type="button" className={s.toggleArchive} onClick={() => { setView(otherView); setMenu(null); }}>
                 {view === "open" ? t("dashboard.archiveArchive") : t("feed.backToOpen")}
-                <span className={s.count}>{everything.filter((x) => inView(archiveOf(x.c), otherView)).length}</span>
+                {quietCount(everything.filter((x) => inView(archiveOf(x.c), otherView)).length, s.count)}
               </button>
             )}
           </div>
         </div>
 
         <div className={s.div9}>
-          {list.map((x, k) => {
+          {cards.shown.map((x, k) => {
             const { c } = x, st = feedStage(c, ctx.locale);
             // Until covers are generated per idea (docs/AI_COVERS.md): the sample idea's own picture and
             // text, else a library picture with its text (features/cases/thumbs.ts).
@@ -298,12 +302,12 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                   </div>
                   <button type="button" className={s.toggleSupport} data-on={x.supported ? "true" : undefined} aria-pressed={x.supported}
                     onClick={(e) => { e.stopPropagation(); support(x); }}>
-                    {x.supported ? <Check size={13} /> : <UpArrow size={13} w={2.6} />}{x.supported ? t("team.feedSupported") : t("team.feedSupport")}<span className={s.supCount}>{x.backing.length}</span>
+                    {x.supported ? <Check size={13} /> : <UpArrow size={13} w={2.6} />}{x.supported ? t("team.feedSupported") : t("team.feedSupport")}{quietCount(x.backing.length, s.supCount)}
                   </button>
-                  <span className={s.commentCount}>
+                  {x.comments > 0 && <span className={s.commentCount}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z" /></svg>
                     {x.comments}
-                  </span>
+                  </span>}
                   <span className={s.label} />
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nh-ghost)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
                 </div>
@@ -311,6 +315,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             );
           })}
         </div>
+        <ShowAll list={cards} showAll={(count) => t("common.showAll", { count })} showLess={t("common.showLess")} />
         {!list.length && <div className={s.div16}>{visible.length ? t("team.feedNoMatch") : split && view === "archive" ? t("team.feedNoArchive") : t("feed.emptyFeed")}</div>}
         <p className={s.windowNote}>{t("feed.windowFooter")}</p>
       </div>
@@ -326,7 +331,6 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     const draft = drafts[c.id] ?? "";
     const nameOf = (m: { by: string; byUserId?: string | null }) => (isMe(m.byUserId) ? t("team.feedYou") : m.by);
     const count = item.backing.length;
-    const myDept = deptNameOf(ctx.persona.who.name);
     const fromMine = item.backing.filter((b) => !isBacker(b, me) && deptNameOf(b.name) === myDept).length + (item.supported ? 1 : 0);
     const iTalked = cs.some((m) => isMe(m.byUserId));
     const anon = isHandle(c.from);
@@ -511,7 +515,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
             </div>
             <div className={s.div49}>
               <span className={s.comments}>{t("team.feedComments")}</span>
-              <span className={s.affects}>{cs.length}</span>
+              {quietCount(cs.length, s.affects)}
             </div>
             <div className={s.div50}>
               {!cs.length && <span className={s.span3}>{t("team.feedNoComments")}</span>}

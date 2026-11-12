@@ -22,14 +22,15 @@ import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith, sentLabel } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
 import { badgeTone, briefFor, briefForCase, personFor } from "@/features/ideas/brief";
-import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./InboxView.module.css";
 import { IdeaDetail } from "./IdeaDetail";
 import type { IdeaProps } from "./IdeaParts";
 import { IdeaDetailPhone } from "./IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
-import { DeptChip } from "@/components/ui/elements";
+import { DeptChip, ShowAll, useCapped } from "@/components/ui/elements";
+import { StatStrip, type Stat } from "@/components/dashboard/shared/primitives";
+import { LIST_TOP } from "@/lib/utils/quiet";
 import { showInboxCase } from "@/lib/demo-controls";
 import { useIdInUrl } from "@/lib/use-url-id";
 import { ProjectDesk } from "@/components/projects/ProjectDesk";
@@ -187,12 +188,14 @@ export function InboxView({ initialId }: { initialId?: string }) {
   // The two desk numbers belong to the desk's holders (me.roleIds) and show only with 5 holders and 5 answered cases.
   const holders = new Set(me.roleIds.flatMap((r) => usersOfRole(S.seats, r))).size;
   const ds = deskStats(ctx.D.cases, me.roleIds, holders, P);
-  const stats = [
-    { v: String(desk.length + ideas.length), l: openList.length === desk.length ? t("leader.statOnDesk") : t("leader.statOnDeskPaused", { count: desk.length - openList.length }) },
-    { v: String(overdue), l: t("leader.statPastPromise", { days: P }), hot: overdue > 0 },
+  // A number that is 0 or missing is left out (StatStrip); the count on the desk alone repeats the Inbox badge.
+  const median = ds.median === null ? null : Math.round(ds.median * 10) / 10;
+  const stats: Stat[] = [
+    { n: desk.length + ideas.length, l: openList.length === desk.length ? t("leader.statOnDesk") : t("leader.statOnDeskPaused", { count: desk.length - openList.length }), echo: openList.length === desk.length },
+    { n: overdue, l: t("leader.statPastPromise", { days: P }), hot: true },
     ...(me.roleIds.length === 0 ? [] : [
-      { v: ds.median === null ? "–" : t("common.days", { count: Math.round(ds.median * 10) / 10 }), l: t("leader.statMedian") },
-      { v: ds.withinPct === null ? "–" : ds.withinPct + "%", l: t("leader.statWithin") },
+      { n: median, v: median === null ? null : t("common.days", { count: median }), l: t("leader.statMedian") },
+      { n: ds.withinPct, v: ds.withinPct + "%", l: t("leader.statWithin") },
     ]),
   ];
 
@@ -305,6 +308,8 @@ export function InboxView({ initialId }: { initialId?: string }) {
     };
   })();
   const navIds = shown.map((r) => r.id), at = cid ? navIds.indexOf(cid) : -1;
+  // A long list shows its most urgent few; an open item further down keeps it open.
+  const rowsShown = useCapped(shown, filter + "|" + sort, isOpen && at >= LIST_TOP);
 
   // Filter and Sort: beside the page title, or in the list's own head once an item is open.
   const tools = (
@@ -345,14 +350,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
               {tools}
             </div>
           ) : (
-            <div className={`${ui.stats} ${styles.stats}`}>
-              {stats.map((k) => (
-                <div key={k.l} className={`${ui.stat} ${styles.stat}`}>
-                  <div className={`${ui.statV} ${styles.statV}`} data-hot={k.hot ? "true" : undefined}>{k.v}</div>
-                  <div className={`${ui.statL} ${styles.statL}`}>{k.l}</div>
-                </div>
-              ))}
-            </div>
+            <StatStrip stats={stats} cls={{ strip: styles.stats, stat: styles.stat, v: styles.statV, l: styles.statL }} />
           )}
 
           <div className={styles.scroll} ref={listRef} data-selected={isOpen && cid ? cid : ""}>
@@ -363,7 +361,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
               <div className={styles.empty}>{t("leader.noIdeasMatch")}</div>
             ) : (
               <ul className={styles.list}>
-                {shown.map((r) => {
+                {rowsShown.shown.map((r) => {
                   const on = isOpen && cid === r.id;
                   return (
                     <li key={r.id}>
@@ -384,6 +382,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
                 })}
               </ul>
             )}
+            <ShowAll list={rowsShown} className={styles.showAll} showAll={(count) => t("common.showAll", { count })} showLess={t("common.showLess")} />
           </div>
         </section>
 
