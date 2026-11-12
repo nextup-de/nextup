@@ -72,6 +72,18 @@ After the routing (docs/plans/2026-10-15_idea-to-project.md, 15 Oct 2026), in th
   `reduce()` returns `projects` (`src/features/projects`), and the verdict of a measure is computed
   (`verdict.ts`), never sent. The company's rhythm, measure days and reward rule are `CompanyConfig`
   fields, read into `Seed.loop` (`src/features/loop/rules.ts`).
+- **The project draft** (plan SET): a `case.decided {answer: "yes", projectId, ..., draft: true, raiserNote?}`
+  opens the project as a draft (status stays `planning`, `ReducedProject.draft`); a yes without `draft`
+  behaves as before. Six more `project.*` events: `project.lead.answered {take, reason?, lapsed?}` (the
+  lead takes the draft or declines; `lapsed` when the clock wrote it), `project.template {key, version,
+  title?}` (seeds the board steps from that exact template version), `project.invited {userId, role}` (role
+  sponsor, member, contributor or follower; the event's own id is the invitation's identity,
+  `Invite.id`), `project.invite.answered {inviteId, userId, take, reason?, lapsed?}` (a legacy answer
+  without `inviteId` counts only when the person has exactly one pending invitation), `project.goal
+  {goal, doneWhen, doneBy?, brief?}` and `project.start.moved {dueDay, why}`. `clock.due` gains the kinds
+  `lead`, `invite` and `draft`, with `userId`, `inviteId`, `askId` and `lapse` so each cycle of an ask or an
+  invitation has its own idempotency key. The company rule `project_start_days` (`{days}`, 1 to 60, default
+  10) is the working days a draft has to start.
 
 Pages render `reduceCases(seed, events)` from `features/cases/reducer.ts`. Rule carried over from the demo:
 **never store display text as state.** Store who / which day / which route; build the sentence at
