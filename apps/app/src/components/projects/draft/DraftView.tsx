@@ -128,6 +128,7 @@ export function DraftView({ p }: { p: ReducedProject }) {
           </>
         )}
         {broken && <p className={approvalStyles.note} data-tone="hold" data-testid="draft-approver-missing">{t("approvals.approverMissing", { rule: unmet.broken.map(ruleText).join("; ") })}</p>}
+        {view.baselineWaits && <p className={styles.hint} data-testid="draft-baseline-waits">{t("projectResult.baselineWaits")}</p>}
         {!view.canStart && !waits && !lacks && !broken && <p className={styles.hint}>{t("projectDraft.startWait")}</p>}
       </section>
     </div>

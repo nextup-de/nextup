@@ -118,9 +118,9 @@ describe("MOV move view", () => {
     expect(view("lead", 7, sent).update).toBeNull();
     // An update for the earlier week does not stop this week's from being due.
     expect(view("lead", 7, (p) => { p.latestUpdate = { text: "Earlier", week: 1, day: 2, byUserId: "u_lead" }; }).update?.week).toBe(6);
-    // The lead and managers send it (the server's rule); nobody else, and nothing before the start or on a project that is not running.
+    // The lead, managers and the accepted sponsor send it (the server's rule, AGT D15); nobody else, and nothing before the start or on a project that is not running.
     expect(view("manager", 7).update?.week).toBe(6);
-    expect(view("sponsor", 7, draftProject).update).toBeNull();
+    expect(view("sponsor", 7, draftProject).update?.week).toBe(6);
     expect(view("member", 7).update).toBeNull();
     expect(view("lead", 7, (p) => { p.status = "measuring"; }).update).toBeNull();
     expect(view("lead", 7, (p) => { p.startedDay = null; }).update).toBeNull();
