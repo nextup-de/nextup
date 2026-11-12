@@ -185,7 +185,10 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
   const r = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   if (!(AI_PROVIDER_CHOICES as readonly unknown[]).includes(r.choice)) return { ok: false, code: "invalid", detail: "choice" };
   const picked = r.choice as AiProviderChoice;
-  const endpointRaw = text(r.endpoint, 300);
+  // The model on this stack (Q8.4) takes no endpoint, model, deployment or key: whatever the form still holds from
+  // another choice is dropped, so nothing saved could point outside the stack. The prices still apply.
+  const local = picked === "local";
+  const endpointRaw = local ? "" : text(r.endpoint, 300);
   const endpoint = endpointRaw ? normalizeSiteUrl(endpointRaw) : null;
   if (endpointRaw && !endpoint) return { ok: false, code: "invalid", detail: "endpoint" };
   const needsEndpoint = picked === "azure-openai" || picked === "openai-compatible";
@@ -198,14 +201,14 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
   const prices = Object.keys(priced.prices).length ? priced.prices : undefined;
   const settings: AiSettings = {
     choice: picked,
-    region: text(r.region, 40) || DEFAULT_REGION,
-    model: text(r.model, 120),
+    region: (local ? "" : text(r.region, 40)) || DEFAULT_REGION,
+    model: local ? "" : text(r.model, 120),
     endpoint,
-    deployment: text(r.deployment, 120) || null,
-    brainModel: cleanBrainModel(r.brainModel),
+    deployment: local ? null : text(r.deployment, 120) || null,
+    brainModel: local ? null : cleanBrainModel(r.brainModel),
     ...(prices ? { prices } : {}),
   };
-  const key = text(r.key, 500);
+  const key = local ? "" : text(r.key, 500);
   if (key && !vaultKey()) return { ok: false, code: "no-vault" };
   if (needsEndpoint && !key && !(await integrationSecrets(d.c.companyId, AI_SYSTEM))?.secretSealed) return { ok: false, code: "no-token" };
   const actor = await consoleActor();

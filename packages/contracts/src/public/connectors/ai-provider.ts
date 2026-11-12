@@ -5,8 +5,11 @@ import { z } from "zod";
 import { PublicId } from "../primitives";
 import type { Connector } from "./base";
 
-/** `off` is a valid company setting with no adapter behind it (D8). */
-export const AI_PROVIDER_CHOICES = ["bedrock", "azure-openai", "openai-compatible", "off"] as const;
+/**
+ * `off` is a valid company setting with no adapter behind it (D8). `local` is the model on the company's own stack,
+ * behind its brain service: no endpoint, no key, nothing leaves the stack (Q8.4).
+ */
+export const AI_PROVIDER_CHOICES = ["bedrock", "azure-openai", "openai-compatible", "off", "local"] as const;
 export const AiProviderChoice = z.enum(AI_PROVIDER_CHOICES);
 export type AiProviderChoice = z.infer<typeof AiProviderChoice>;
 

@@ -128,7 +128,12 @@ function connectorLines(input: GoLiveInput, it: ItFacts, checks: readonly GoLive
       : { key: "jira", status: "notUsed", line: "settingsSetupPhases.lineJiraOff" },
   ];
   const agreement = check(checks, "ai");
-  if (ai === "needs") lines.push({ key: "ai", status: "yourTurn", line: "settingsSetupPhases.lineAiNeedsKey" });
+  // The model on this stack needs no key and no agreement, only the stack's brain (go-live.ts says whether it answers).
+  if (input.ai.choice === "local") {
+    lines.push(agreement.state === "done" ? { key: "ai", status: "done", line: "settingsSetupPhases.lineAiLocal" }
+      : agreement.state === "unknown" ? { key: "ai", status: "problem", line: "settingsSetupPhases.lineAiLocalDown" }
+      : { key: "ai", status: "yourTurn", line: "settingsSetupPhases.lineAiLocalNoBrain" });
+  } else if (ai === "needs") lines.push({ key: "ai", status: "yourTurn", line: "settingsSetupPhases.lineAiNeedsKey" });
   else if (agreement.state === "done" && ai === "off") lines.push({ key: "ai", status: "notUsed", line: "settingsSetupPhases.lineAiOff" });
   else if (agreement.state === "done") lines.push({ key: "ai", status: "done", line: "settingsSetupPhases.lineAiOn", values: agreement.values });
   else lines.push({ key: "ai", status: "yourTurn", line: input.ai.choice === "mock" ? "settingsSetupPhases.lineAiMock" : "settingsSetupPhases.lineAiNoAgreement" });
