@@ -9,6 +9,7 @@
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { byClock } from "@/features/clock/actor";
 import type { SeatRow } from "@/features/auth/identity";
+import { EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo, type CaseApprovals, type CaseCost, type CaseReview } from "@/features/approvals/types";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import { cycleEvents, noCategoryOf, type AnyNoCategory } from "./no";
 import { fallbackSeat } from "./stamp";
@@ -47,7 +48,7 @@ export type Discussion = {
 };
 // v1 is the case as raised; each case.revised adds the next one.
 export type Version = { version: number; day: number; by: string; byUserId?: string | null; title: string; body: string; overall: number | null };
-export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building" | "shipped" | "withdrawn" | "merged";
+export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building" | "shipped" | "withdrawn" | "merged" | "approval";
 
 /** The raiser took the idea back before anyone decided it (decision Q1.14). */
 export type Withdrawal = { day: number; by: string; byUserId: string | null; note: string };
@@ -83,6 +84,9 @@ export type ReducedCase = {
   // `mergedIn` carries user ids for the reducer's readers (the affected count by user id); a page shows only the count.
   follows: string | null; followedBy: string[]; sameAs: string | null; related: string[]; merged: Merge | null;
   mergedIn: { id: string; userId: string | null; day: number }[]; links: string[];
+  // Review and approvals (plan GAT, D12, D14, D18, D21, D32, D33): the review of the raise, the latest cost estimate, the active approval
+  // run and the finished ones, and the id of the run whose final yes decided the case. null, null, null, [] and null until GAT's events.
+  review: CaseReview | null; cost: CaseCost | null; approvals: CaseApprovals | null; approvalRuns: CaseApprovals[]; openingRunId: string | null;
   pausedDays: number; pausedSince: number | null; history: CaseEvent[];
   // derived once every event is applied. `open` = still on a desk, waiting for a move: open or in discussion.
   // `archived` = decided either way, or withdrawn by the raiser; a yes then lives on as `decided.projectId`.
@@ -103,12 +107,15 @@ export type LedgerCounts = {
 export type State = {
   day: number; cases: ReducedCase[]; ideas: ReducedIdea[]; problems: ReducedProblem[]; projects: ReducedProject[];
   ledger: LedgerCounts; rules: LoopRules; seats: SeatRow[]; routes: Route[]; clock: ClockSpec;
+  /** The company's review and approval settings and its roles' titles and spend limits, as the seed carried them (plan GAT, D27); the empty config and no roles without. */
+  approvals: ApprovalConfig & { roles: ApprovalRoleInfo[] };
 };
 
 export type ReduceSeed = {
   cases: SeedCase[]; ideas: Idea[]; problems: Problem[]; routes: Route[]; promiseDays: number;
   projects?: SeedProject[]; loop?: Partial<LoopRules>; seats?: SeatRow[];
-  roles?: readonly SeedRole[]; // the org chart, read for the fallback desk of a reopened case (plan NOR, D12)
+  roles?: readonly SeedRole[]; // the org chart, read for the fallback desk of a reopened case (plan NOR, D12) and, with their title and spend limit, by GAT
+  approvals?: ApprovalConfig; // the company's review and approval settings (plan GAT, D27); missing = the empty config
   clock?: ClockSpec; // missing = demo (render-time escalation); workdays = escalation only from clock.due facts (CLK/D11)
 };
 
@@ -143,6 +150,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       override: null, discussion: null, versions: [],
       decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: row.raisedDay ?? 0, dueFloor: null, reopenSeq: null, decidedSeq: null,
       follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [],
+      review: null, cost: null, approvals: null, approvalRuns: [], openingRunId: null,
       pausedDays: 0, pausedSince: null, history: [],
       route: null, age: 0, clock: 0, open: true, archived: false, overdue: false, dueDay: 0, escalated: null,
     };
@@ -566,6 +574,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     seats: seed.seats ?? [],
     routes,
     clock,
+    approvals: { ...(seed.approvals ?? EMPTY_APPROVAL_CONFIG), roles: (seed.roles ?? []).map((r) => ({ id: r.id, title: r.title ?? "", reportsToId: r.reportsToId, spendLimitEur: r.spendLimitEur ?? null })) },
   };
 }
 
