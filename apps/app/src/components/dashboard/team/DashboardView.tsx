@@ -153,7 +153,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       el.animate([{ opacity: 0, transform: "translateY(18px)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: EASE, delay: 60 * k, fill: "backwards" });
     });
   }, [sel, motion]);
-  if (!ready) return <PageSkeleton kind="dashboard" delay />;
+  if (!ready) return <PageSkeleton kind="dashboard" />;
 
   const P = seed.promiseDays;
   const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, t };

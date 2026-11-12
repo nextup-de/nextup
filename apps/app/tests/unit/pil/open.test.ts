@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { goLiveChecks, type GoLiveInput } from "@/features/pilot/go-live";
+import { blockers, goLiveChecks, type GoLiveInput } from "@/features/pilot/go-live";
 import { canOpen, isSetupPerson, signInEntry } from "@/features/pilot/open";
 
 const NOW = new Date("2026-11-05T10:00:00Z");
+/** The agreements an AI that is off needs (Q9.4): the DPA, and no works council. */
+const AGREEMENTS: GoLiveInput["agreements"] = {
+  dpa: { kind: "dpa", status: "signed", date: "2026-10-01", signer: "Managing director", at: "2026-10-01T09:00:00.000Z" },
+  works: { kind: "works", status: "notNeeded", reason: "No works council", at: "2026-10-01T09:00:00.000Z" },
+};
 const READY: GoLiveInput = {
   now: NOW,
   units: [{ name: "Engineering" }],
@@ -20,12 +25,21 @@ const READY: GoLiveInput = {
   directory: null,
   recipients: 0,
   baseline: false,
+  agreements: AGREEMENTS,
 };
 const checks = (over: Partial<GoLiveInput> = {}) => goLiveChecks({ ...READY, ...over });
 
 describe("canOpen", () => {
   it("opens when every step and every needed check is done, whatever the recommended ones say", () => {
     expect(canOpen({ openedAt: null, step: "done", checks: checks() })).toEqual({ ok: true });
+  });
+
+  it("does not wait for reminders and the digest, which only the move to pilot needs (Q9.7)", () => {
+    const c = checks({ notifications: false });
+    expect(canOpen({ openedAt: null, step: "done", checks: c })).toEqual({ ok: true });
+    expect(blockers(c)).toEqual([]);
+    expect(blockers(c, "pilot").map((x) => x.key)).toEqual(["notifications"]);
+    expect(blockers(checks({ notifications: true }), "pilot")).toEqual([]);
   });
 
   it("refuses while a needed check is open, with no way around it", () => {

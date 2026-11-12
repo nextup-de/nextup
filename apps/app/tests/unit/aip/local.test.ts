@@ -46,8 +46,9 @@ describe("Q8.4 gate", () => {
   it("keeps the other switches and the monthly budget", () => {
     expect(aiGate({ ...pilot, stackBrain: true, aiRouting: false }).on).toBe(false);
     expect(aiGate({ ...pilot, stackBrain: true, purpose: "assist", assistantOn: false }).on).toBe(false);
-    expect(aiGate({ ...pilot, stackBrain: true, budget: { ...BUDGET, tokensUnpriced: 1000 } })).toEqual({ on: false, why: expect.stringContaining("token limit") });
-    expect(aiGate({ ...pilot, stackBrain: true, purpose: "assist", budget: { ...BUDGET, spentEur: 50 } })).toEqual({ on: false, why: expect.stringContaining("used up") });
+    expect(aiGate({ ...pilot, stackBrain: true, budget: { ...BUDGET, tokensUnpriced: 1200 } })).toEqual({ on: false, why: expect.stringContaining("token limit") });
+    expect(aiGate({ ...pilot, stackBrain: true, purpose: "assist", budget: { ...BUDGET, spentEur: 60 } })).toEqual({ on: false, why: expect.stringContaining("used up") });
+    expect(aiGate({ ...pilot, stackBrain: true, purpose: "brain", budget: { ...BUDGET, tokensUnpriced: 1000 } })).toEqual({ on: false, why: expect.stringContaining("token limit") });
   });
 
   it("leaves the other choices as they were: a brain does not stand in for their agreement", () => {
@@ -127,7 +128,7 @@ describe("Q8.4 console and go-live", () => {
     now: new Date("2026-11-11T12:00:00Z"), units: [{ name: "Plant" }], roles: [{ title: "Lead", holders: 1 }], routes: [{ key: "spend", ownerHasUser: true }],
     hasCalendar: true, people: { active: 2, canSignIn: 2 }, microsoftOn: true, managers: { withCode: 1, withTotp: 1 }, mail: "ok",
     ai: { choice: "local", dpaSignedAt: null, brain: "ok" }, backup: { at: new Date("2026-11-11T11:00:00Z"), offbox: true }, supportOpenUntil: null,
-    notifications: true, directory: null, recipients: 1, baseline: true,
+    notifications: true, directory: null, recipients: 1, baseline: true, agreements: {},
   };
   const ai = (brain?: "ok" | "none" | "down") => goLiveChecks({ ...GO, ai: { choice: "local", dpaSignedAt: null, ...(brain ? { brain } : {}) } }).find((c) => c.key === "ai");
 
@@ -141,7 +142,7 @@ describe("Q8.4 console and go-live", () => {
   it("the setup overview says the same, with no date to fill in", () => {
     const facts = (brain: "ok" | "none" | "down", status: "on" | "needs" | "error"): SetupFacts => ({
       viewer: "both", prefix: "/acme", goLive: { ...GO, ai: { choice: "local", dpaSignedAt: null, brain } },
-      it: { consoleBase: "/admin", admins: 1, connectors: { m365: "on", jira: "on", ai: status, directory: "on" } },
+      it: { consoleBase: "/admin", admins: 1, connectors: { m365: "on", jira: "on", ai: status, directory: "on", teams: "on" }, declined: {} },
       counts: { named: true, units: 1, seats: 1, routes: 1, members: 2 }, openedAt: null, context: "notUsed",
     });
     const line = (f: SetupFacts) => setupPhases(f).find((p) => p.key === "connectors")?.lines.find((l) => l.key === "ai");

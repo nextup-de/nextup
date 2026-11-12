@@ -147,7 +147,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
     return () => window.removeEventListener("keydown", h);
   }, []);
 
-  if (!ready) return <PageSkeleton kind="dashboard" delay />;
+  if (!ready) return <PageSkeleton kind="dashboard" />;
 
   if (current) {
     const { c } = current;

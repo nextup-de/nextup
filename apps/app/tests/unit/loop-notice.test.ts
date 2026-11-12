@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "@/features/cases/events";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
-import { loopMails, type Person } from "@/features/loop/notice";
+import { loopMails, loopNotices, type Person } from "@/features/loop/notice";
 
 const SEED: ReduceSeed = { cases: CASES, ideas: IDEAS, problems: PROBLEMS, routes: ROUTES, promiseDays: PROMISE_DAYS };
 // Mail goes to user ids (IDN/D2); names and handles only greet.
@@ -120,5 +120,31 @@ describe("loopMails", () => {
 
   it("other events send nothing", () => {
     expect(mails(ev("case.read", "T. Vogel", "c_m"))).toEqual([]);
+  });
+});
+
+describe("loopNotices", () => {
+  const asked = () => ev("case.asked", "T. Vogel", "c_m", { text: "Which line is it?" });
+  const noticesFor = (list: Parameters<typeof loopNotices>[0]["people"], last: CaseEvent) =>
+    loopNotices({ ev: last, state: reduce(SEED, { events: [raised, last], day: last.day }), people: list, baseUrl: "https://acme.sellux.ch" });
+
+  it("keeps a person without an address, by user id, where loopMails has nobody to write to", () => {
+    const last = asked();
+    const list = people.map((p) => (p.id === "u_js" ? { ...p, email: null } : p));
+    expect(noticesFor(list, last).map((x) => [x.userId, x.to])).toEqual([["u_js", null]]);
+    expect(loopMails({ ev: last, state: reduce(SEED, { events: [raised, last], day: 0 }), people: people.map((p) => (p.id === "u_js" ? { ...p, email: "" } : p)), baseUrl: "https://acme.sellux.ch" })).toEqual([]);
+  });
+
+  it("two people sharing an address each get a notice; the mail goes to the address once", () => {
+    const last = ev("case.discussion", "T. Vogel", "c_m", { invited: ["H. Sander", "L. Brandt"], invitedUserIds: ["u_hs", "u_lb"] });
+    const shared = people.map((p) => (p.id === "u_lb" ? { ...p, email: "hs@acme.test" } : p));
+    const state = reduce(SEED, { events: [raised, last], day: 0 });
+    expect(loopNotices({ ev: last, state, people: shared, baseUrl: "x" }).map((x) => x.userId)).toEqual(["u_hs", "u_lb", "u_js"]);
+    expect(loopMails({ ev: last, state, people: shared, baseUrl: "x" }).map((m) => m.to)).toEqual(["hs@acme.test", "js@acme.test"]);
+  });
+
+  it("never tells whoever did it, by id", () => {
+    const last = ev("case.asked", AUTHOR, "c_m", { text: "x" });
+    expect(noticesFor(people, last)).toEqual([]);
   });
 });

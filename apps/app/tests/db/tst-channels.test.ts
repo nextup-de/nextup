@@ -196,7 +196,7 @@ describe("TST channels", () => {
       await runClockOnce(at9(d));
       await flush(at9(d));
     }
-    const rows = (await db.outboxMessage.findMany({ where: { companyId, template: "reminder.deadline" } }))
+    const rows = (await db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, template: "reminder.deadline" } }))
       .filter((r) => (r.data as { subjectId?: string }).subjectId === "c_tstc-t1");
     const mine = rows.filter((r) => r.recipientUserId === route.deputyUserId);
     expect(mine).toHaveLength(1);
@@ -224,7 +224,7 @@ describe("TST channels", () => {
       await runClockOnce(at9(d));
       await flush(at9(d));
     }
-    const rows = await db.outboxMessage.findMany({ where: { companyId, recipientUserId: route.deputyUserId, template: "reminder.deadline" } });
+    const rows = await db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, recipientUserId: route.deputyUserId, template: "reminder.deadline" } });
     const mine = rows.filter((r) => (r.data as { subjectId?: string }).subjectId === "c_tstc-m1");
     expect(mine).toHaveLength(1);
     expect(mine[0]).toMatchObject({ channel: "mail", status: "sent" });
@@ -258,7 +258,7 @@ describe("TST channels", () => {
     // The desk of the Teams site is told on Teams, the others by mail.
     await flush(at9(41));
     for (const [site, area] of holderAreas) {
-      const rows = await db.outboxMessage.findMany({ where: { companyId, recipientUserId: area.deskUserId, template: "raised", subject: { contains: "Oil at " + site } } });
+      const rows = await db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, recipientUserId: area.deskUserId, template: "raised", subject: { contains: "Oil at " + site } } });
       expect(rows.length, site).toBeGreaterThanOrEqual(1);
       for (const r of rows) expect(r.channel, site).toBe(site === TEAMS_SITE ? "teams" : "mail");
     }
@@ -300,14 +300,14 @@ describe("TST channels", () => {
     await flush(at9(43));
     expect(await db.outboxMessage.count({ where: { companyId, channel: "teams" } })).toBe(teamsRowsBefore);
     expect(fake.activities.length).toBe(posted);
-    const rows = await db.outboxMessage.findMany({ where: { companyId, template: "raised", key: { startsWith: "notify:" } }, orderBy: { createdAt: "desc" }, take: 20 });
+    const rows = await db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, template: "raised", key: { startsWith: "notify:" } }, orderBy: { createdAt: "desc" }, take: 20 });
     const deskRows = rows.filter((r) => r.recipientUserId === area.deskUserId && r.subject.includes("Teams off at the press"));
     expect(deskRows).toHaveLength(1);
     expect(deskRows[0]).toMatchObject({ channel: "mail", status: "sent" });
     expect(mail.length).toBeGreaterThan(before);
     expect(mail.some((m) => m.recipient.userId === area.deskUserId && m.subject.includes("Teams off at the press"))).toBe(true);
     // The routed case's notice to its owner is a mail row too.
-    const ownerRows = await db.outboxMessage.findMany({ where: { companyId, recipientUserId: deskUser, template: "raised", key: { startsWith: "notify:tstc-off1" } } });
+    const ownerRows = await db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, recipientUserId: deskUser, template: "raised", key: { startsWith: "notify:tstc-off1" } } });
     expect(ownerRows.every((r) => r.channel === "mail")).toBe(true);
   }, 120_000);
 });

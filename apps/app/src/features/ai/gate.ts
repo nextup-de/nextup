@@ -8,12 +8,13 @@
 //   local        the model on this stack (Q8.4) needs the stack's brain service (stackBrain) wherever there is a
 //                database: every call goes there and nothing leaves the stack, so no agreement is asked.
 //   every stage  a real model is not called once the month's budget is used up (budget.ts, decision Q7.3), or
-//                once its models without a price used their monthly token cap (decision Q7.5);
+//                once its models without a price used their monthly token cap (decision Q7.5); the raise path
+//                (budget.ts RAISE_PATH_PURPOSES) goes on to GRACE_PCT of a cap first (decision Q7.4);
 //                the callers' fallbacks answer and the rest of the app goes on. The mock is spared only for the
 //                assistant, which it answers itself; with the mock chosen the brain's purposes still call the
 //                brain's own model (server/brain.ts llmFor), and that is counted and capped like any other.
 import { policyFor } from "@/features/admin/stages";
-import { usedUpBy, type GateBudget } from "./budget";
+import { GRACE_PCT, onRaisePath, usedUpBy, type GateBudget } from "./budget";
 import type { AiSettings } from "./settings";
 
 export type AiPurpose = "assist" | "routing" | "coach" | "brain";
@@ -38,13 +39,15 @@ export function aiGate(a: {
   // under "off" and "mock" alike, so they are counted and capped.
   const noModel = a.settings.choice === "off" || a.settings.choice === "mock";
   const free = (noModel && a.purpose === "assist") || (a.settings.choice === "off" && !demo);
-  const by = a.budget !== null && !free ? usedUpBy(a.budget) : null;
+  const grace = onRaisePath(a.purpose);
+  const by = a.budget !== null && !free ? usedUpBy(a.budget, grace) : null;
   const usedUp = by !== null;
+  const graceWords = grace ? `, the extra ${GRACE_PCT - 100} % for raising ideas included` : "";
   const USED_UP: AiGate = {
     on: false,
     why: by === "tokens"
-      ? "This month's AI budget for this company is used up: its models without a price reached their token limit."
-      : "This month's AI budget for this company is used up.",
+      ? `This month's AI budget for this company is used up: its models without a price reached their token limit${graceWords}.`
+      : `This month's AI budget for this company is used up${graceWords}.`,
   };
   if (!a.hasDatabase) {
     return demo ? { on: true, settings: { ...a.settings, choice: "mock" } } : { on: false, why: "The assistant needs the database for its audit trail." };

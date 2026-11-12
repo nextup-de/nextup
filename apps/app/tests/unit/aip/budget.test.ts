@@ -35,38 +35,41 @@ describe("AI budget", () => {
       { model: "eu.anthropic.claude-sonnet-5-5", tokensIn: 1_000_000, tokensOut: 1_000_000 }, // 12
       { model: "mock", tokensIn: 9_000_000, tokensOut: 9_000_000 },
       { model: "mistral-nemo", tokensIn: 5_000_000, tokensOut: 5_000_000 },
-      { model: "gpt-4.1-mini", tokensIn: 1, tokensOut: 1 },
+      { model: "gpt-4o-mini", tokensIn: 1, tokensOut: 1 },
     ]);
-    expect(s).toEqual({ spentEur: 12.6, unpriced: ["gpt-4.1-mini", "mistral-nemo"], tokensUnpriced: 10_000_002 });
+    expect(s).toEqual({ spentEur: 12.6, unpriced: ["gpt-4o-mini", "mistral-nemo"], tokensUnpriced: 10_000_002 });
     expect(spendOf([])).toEqual({ spentEur: 0, unpriced: [], tokensUnpriced: 0 });
   });
 
-  it("the levels: quiet below 70 %, a warning from 70 and from 90, used up at 100", () => {
-    expect([0, 34.99, 35, 44.99, 45, 49.99, 50, 80].map((n) => budgetLevel(of50(n)))).toEqual(["ok", "ok", "warn70", "warn70", "warn90", "warn90", "reached", "reached"]);
+  it("the levels: quiet below 70 %, a warning from 70 and from 90, used up at 100, stopped at 120", () => {
+    expect([0, 34.99, 35, 44.99, 45, 49.99, 50, 59.99, 60, 80].map((n) => budgetLevel(of50(n)))).toEqual(["ok", "ok", "warn70", "warn70", "warn90", "warn90", "reached", "reached", "stopped", "stopped"]);
     expect([0, 34.99, 35, 49.99, 50, 80].map((n) => budgetShare(of50(n)))).toEqual([0, 69, 70, 99, 100, 160]);
     // Whole percents without the float error of dividing first (57 / 100 * 100 = 56.99...).
     expect([29, 57, 58].map((n) => budgetShare({ capEur: 100, spentEur: n }))).toEqual([29, 57, 58]);
     expect(capReached(of50(49.9999))).toBe(false);
   });
 
-  it("a cap of 0 is used up from the first day", () => {
-    expect(budgetLevel({ capEur: 0, spentEur: 0 })).toBe("reached");
+  it("a cap of 0 is used up from the first day, with no grace", () => {
+    expect(budgetLevel({ capEur: 0, spentEur: 0 })).toBe("stopped");
     expect(budgetShare({ capEur: 0, spentEur: 0 })).toBe(100);
   });
 });
 
 describe("AI gate with the budget", () => {
-  it("open below the cap, closed at it, and the reason names the budget", () => {
-    expect(aiGate({ ...real, budget: of50(49.99) })).toEqual({ on: true, settings: bedrock });
-    expect(aiGate({ ...real, budget: of50(50) })).toEqual({ on: false, why: expect.stringContaining("budget") });
-    for (const purpose of ["assist", "routing", "coach", "brain"] as const) {
-      expect(aiGate({ ...real, purpose, budget: of50(51) }).on).toBe(false);
+  it("open below the cap, closed at it, and the reason names the budget; the raise path goes on to 120 %", () => {
+    expect(aiGate({ ...real, purpose: "brain", budget: of50(49.99) })).toEqual({ on: true, settings: bedrock });
+    expect(aiGate({ ...real, purpose: "brain", budget: of50(50) })).toEqual({ on: false, why: expect.stringContaining("budget") });
+    expect(aiGate({ ...real, purpose: "brain", budget: of50(51) }).on).toBe(false);
+    for (const purpose of ["assist", "routing", "coach"] as const) {
+      expect(aiGate({ ...real, purpose, budget: of50(51) }).on).toBe(true);
+      expect(aiGate({ ...real, purpose, budget: of50(60) })).toEqual({ on: false, why: expect.stringContaining("budget") });
     }
   });
 
   it("a demo company is held to the cap too: a real model costs the same there", () => {
     expect(aiGate({ ...real, stage: "demo", budget: of50(10) }).on).toBe(true);
-    expect(aiGate({ ...real, stage: "demo", dpaSignedAt: null, budget: of50(50) })).toEqual({ on: false, why: expect.stringContaining("budget") });
+    expect(aiGate({ ...real, stage: "demo", dpaSignedAt: null, purpose: "brain", budget: of50(50) })).toEqual({ on: false, why: expect.stringContaining("budget") });
+    expect(aiGate({ ...real, stage: "demo", dpaSignedAt: null, budget: of50(60) })).toEqual({ on: false, why: expect.stringContaining("budget") });
   });
 
   it("the mock assistant costs nothing and goes on; no database means nothing to count", () => {
@@ -92,7 +95,7 @@ describe("AI gate with the budget", () => {
     const mock = { ...bedrock, choice: "mock" as const };
     for (const purpose of ["routing", "coach", "brain"] as const) {
       expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: of50(10) }).on).toBe(true);
-      expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: of50(50) })).toEqual({ on: false, why: expect.stringContaining("budget") });
+      expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: of50(60) })).toEqual({ on: false, why: expect.stringContaining("budget") });
       // A cap of 0 stops them from the first day, as the form says.
       expect(aiGate({ ...real, stage: "demo", settings: mock, purpose, budget: { capEur: 0, spentEur: 0, ...NO_TOKENS } }).on).toBe(false);
     }
@@ -107,7 +110,8 @@ describe("AI gate with the budget", () => {
   it("the assistant's wrapper passes the budget on", () => {
     const base = { stage: "pilot", hasDatabase: true, configured: "bedrock" as const, enabled: true, dpaSignedAt: new Date("2026-10-01") };
     expect(assistGate({ ...base, budget: of50(10) })).toEqual({ on: true, provider: "bedrock" });
-    expect(assistGate({ ...base, budget: of50(50) }).on).toBe(false);
+    expect(assistGate({ ...base, budget: of50(50) }).on).toBe(true);
+    expect(assistGate({ ...base, budget: of50(60) }).on).toBe(false);
     expect(assistGate(base).on).toBe(true);
   });
 });

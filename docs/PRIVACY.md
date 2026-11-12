@@ -31,7 +31,9 @@ An entry holds when, the actor kind (`admin`, `console`, `break-glass`, `support
 before and after. A change never holds a name or an email, and a secret only as set, replaced or removed.
 
 Who reads it: company admins, in the audit view (newest first, 50 per page; filters by period, area, actor kind and
-one person) and as CSV (the export itself is audited). Entries are kept 24 months (730 days, fixed).
+one person) and as CSV (the export itself is audited). Entries are kept 24 months (730 days, fixed). The rows that are
+state rather than history stay longer: the agreements recorded on Go-live (`audit.company.agreement`) and the
+"We do not use this" of setup (`audit.connector.declined`, `audit.connector.reopened`); they hold no name and no address.
 
 ## Export
 
@@ -112,7 +114,7 @@ Set in Data and privacy, per company, as `RetentionRule` rows. Without a rule th
 | Assistant turns | 7-730 days | the company's assistant retention (90 days) |
 | Idea drafts (status draft; days after the last change) | 30-730 days | 180 days |
 | Closed cases | 360-3600 days (entered in months, 1 month = 30 days) or keep | keep |
-| Audit log | fixed | 730 days (24 months), no setting |
+| Audit log | fixed | 730 days (24 months), no setting; agreements and "we do not use this" are kept |
 | Finished notices (sent, failed, skipped) | fixed | 90 days, no setting; pending ones stay |
 | Teams link of someone inactive | fixed | removed at the next run; it comes back when they write to the bot |
 

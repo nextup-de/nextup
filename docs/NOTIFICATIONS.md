@@ -38,6 +38,7 @@ starts the cursor at its newest event, so history sends nothing.
 | `clock.due` (CLK) | `reminder.deadline`, `.checkin`, `.start`, `.measure`, `.escalation`, `.question`, `.triage`, `.confirm` | `rem:<eventId>:<userId>` |
 | public event (`case.raised`, `case.handed`, `case.answered`, `case.decided`, `project.started`, `project.done`, `project.stopped`) | `webhook` | `wh:<eventId>:<subscriptionId>` |
 | the daily digest | `digest` | `digest:<userId>:<workday number>` |
+| the month's AI spend first at 70, 90, 100 or 120 % of the cap (decision Q7.6, `server/notify/ai-budget.ts`) | `ai.budget` | `ai.budget:<companyId>:<YYYY-MM>:<level>` for the first recipient, `…:<level>:<userId>` for the rest |
 
 Reminder recipients: deadline, the users of the seat it escalates to and of the case's current seat; checkin, the users
 of the case's seat; start and measure, the project's lead; confirm, every manager and every holder of the route's deputy role, or for the second fact the holders of the seat above it names, never the lead or who typed the result; question, the raiser who has not answered; triage, the users of the desk a raise without a route sits on. The actor never gets a mail about their own event. A user
@@ -66,6 +67,7 @@ written, as `skipped` with the reason in `lastError`, so /admin and tests can se
 | `reminder.*`, `digest` | only when `CompanyConfig.notifications` is on, else "switched off" |
 | `webhook` | only when `CompanyConfig.n8n` is on (the automations switch), else "switched off" |
 | `NotifyPreference` with `on` false for the template or `*` | that user's mail is `skipped`, "opted out" |
+| `ai.budget` (an operations mail) | sent in pilot and live whatever the switch and the person's choice; `skipped` in a sandbox |
 
 ## Delivery and retries
 
@@ -114,6 +116,17 @@ acceptance test registers a recording `mail` channel; mail never goes to SMTP in
 Europe/Berlin, every person who switched the digest on and has at least one case on their desk gets one `digest` row.
 The key carries the workday number, so a second run that day writes nothing. Demo companies get none. The digest is
 also gated by `CompanyConfig.notifications`.
+
+## AI budget warning
+
+`warnAiBudget(companyId, now)` (`src/server/notify/ai-budget.ts`) runs after each `AiCall` is written, not awaited
+(`recordAiCall`, `src/lib/db/ai-usage.ts`), so a model call's request never waits for it. It reads the month's budget
+and, at 70, 90, 100 or 120 % of the euro cap or the token limit (`mailLevelOf`, `src/features/ai/budget-mail.ts`), writes
+one `ai.budget` mail per recipient unless the level's key exists for the month. Recipients: the active console admins
+(`isStackAdmin`) with an address; without one, the active managers with an address; with nobody, one row without a
+recipient, `failed` with "no console admin or manager with a mail address". The text, in the recipient's language
+(`mail.aiBudget*`), names the level, spent against the cap, what pauses, and links to `/admin/assistant`. Demo
+companies get none. docs/ASSISTANT.md, "The monthly budget", has the levels.
 
 ## Opt-in and opt-out
 

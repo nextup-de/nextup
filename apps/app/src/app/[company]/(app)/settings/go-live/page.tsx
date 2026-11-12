@@ -2,11 +2,13 @@
 import { notFound } from "next/navigation";
 import { GoLive, type GoLiveHistoryRow } from "@/components/settings/GoLive";
 import { SETTINGS_SECTIONS } from "@/features/settings/sections";
-import type { GoLiveCheck } from "@/features/pilot/go-live";
+import type { Agreements } from "@/features/pilot/agreements";
+import { goLiveChecks, type GoLiveCheck } from "@/features/pilot/go-live";
 import { companyPrefix } from "@/features/tenant/urls";
 import { getT } from "@/i18n/server";
 import { getDb, hasDatabase } from "@/lib/db/client";
-import { runGoLiveChecks, stageMoves } from "@/lib/db/go-live";
+import { loadAgreements } from "@/lib/db/agreements";
+import { loadGoLiveInput, stageMoves } from "@/lib/db/go-live";
 import { companyAdminOf } from "@/server/actions/settings/guard";
 import { readBackupStatus } from "@/server/backup-status";
 import { mailStatus } from "@/server/mail";
@@ -27,11 +29,17 @@ export default async function GoLivePage({ params }: { params: Promise<{ company
   if (!row) notFound();
 
   let checks: GoLiveCheck[] | null = null;
+  let agreements: Agreements = {};
+  let aiOn = false;
   if (row.stage !== "demo") {
     try {
-      checks = await runGoLiveChecks(admin.companyId, now, { mailStatus, readBackupStatus });
+      const input = await loadGoLiveInput(admin.companyId, now, { mailStatus, readBackupStatus });
+      checks = goLiveChecks(input);
+      agreements = input.agreements;
+      aiOn = input.ai.choice !== "off"; // as the agreements check counts it
     } catch {
       checks = null; // the page says so and offers Check again
+      agreements = await loadAgreements(admin.companyId).catch(() => ({}));
     }
   }
   const [moves, config] = await Promise.all([
@@ -58,6 +66,8 @@ export default async function GoLivePage({ params }: { params: Promise<{ company
       notifications={config?.notifications ?? false}
       links={links}
       history={history}
+      agreements={agreements}
+      aiOn={aiOn}
     />
   );
 }

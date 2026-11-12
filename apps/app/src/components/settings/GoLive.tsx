@@ -6,11 +6,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Banner, ConfirmDialog, SectionCard } from "@/components/ui/elements";
-import { checkName, goLiveView, type Line } from "@/features/pilot/go-live-view";
-import { blockers, type GoLiveCheck } from "@/features/pilot/go-live";
+import type { Agreements as AgreementsMap } from "@/features/pilot/agreements";
+import { checkName, checkValues, goLiveView, type Line } from "@/features/pilot/go-live-view";
+import { blockers, levelAt, type GoLiveCheck } from "@/features/pilot/go-live";
 import { useFormat, useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { checkGoLiveAction, moveStageAction } from "@/server/actions/settings/go-live";
+import { Agreements } from "./Agreements";
 import s from "./settings.module.css";
 import styles from "./GoLive.module.css";
 
@@ -29,6 +31,9 @@ type Props = {
   /** Section key -> where it is and what it is called. */
   links: Record<string, { href: string; label: string }>;
   history: GoLiveHistoryRow[];
+  /** The agreements recorded so far (Q9.4), and whether the AI counts as on for them. */
+  agreements: AgreementsMap;
+  aiOn: boolean;
 };
 
 const MARK: Record<GoLiveCheck["state"], string> = { done: "✓", needs: "▲", unknown: "✕", unset: "–" };
@@ -72,12 +77,7 @@ export function GoLive(p: Props) {
     if (typeof v.date === "string") v.date = f.date(v.date, "day");
     return t(l.key, v);
   };
-  const checkLine = (c: GoLiveCheck) => {
-    const v: Record<string, string | number> = { ...c.values };
-    if (typeof v.time === "string") v.time = f.date(v.time, "dateTime");
-    if (typeof v.date === "string") v.date = f.date(v.date, "day");
-    return t(c.line, v);
-  };
+  const checkLine = (c: GoLiveCheck) => t(c.line, checkValues(c, t, f.date));
 
   const recheck = () =>
     start(async () => {
@@ -98,7 +98,7 @@ export function GoLive(p: Props) {
         return;
       }
       if (r.checks) { setChecks(r.checks); setAt(new Date().toISOString()); }
-      const first = r.checks ? blockers(r.checks)[0] : undefined;
+      const first = r.checks ? blockers(r.checks, "pilot")[0] : undefined;
       setError(r.reason === "closed" ? t("settingsSetupOpen.stageClosed") : r.reason === "blocked" && first ? t("settingsGoLive.errChanged", { check: t(checkName(first)) }) : t("settingsGoLive.errFailed"));
       if (r.reason === "changed") router.refresh();
     });
@@ -115,8 +115,9 @@ export function GoLive(p: Props) {
     </div>
   ) : null;
 
+  // This page is about the move to pilot: a check the pilot needs sits with the needed ones (Q9.7).
   const rows = (level: GoLiveCheck["level"], count: { done: number; total: number }, label: MessageKey) => {
-    const list = (checks ?? []).filter((c) => c.level === level);
+    const list = (checks ?? []).filter((c) => levelAt(c, "pilot") === level);
     if (list.length === 0) return null;
     return (
       <div className={styles.group}>
@@ -126,7 +127,8 @@ export function GoLive(p: Props) {
         </div>
         <ul className={styles.rows}>
           {list.map((c) => {
-            const link = c.section ? p.links[c.section] : undefined;
+            // The agreements are recorded further down this page.
+            const link = c.key === "agreements" ? { href: "#agreements", label: t("settingsGoLive.agreementsTitle") } : c.section ? p.links[c.section] : undefined;
             return (
               <li key={c.key} className={styles.check} data-state={c.state} data-testid={`settings-golive-check-${c.key}`}>
                 <span className={styles.mark} aria-hidden="true">{MARK[c.state]}</span>
@@ -185,6 +187,8 @@ export function GoLive(p: Props) {
         {rows("needed", view.needed, "settingsGoLive.needed")}
         {rows("recommended", view.recommended, "settingsGoLive.recommended")}
       </SectionCard>
+
+      <Agreements slug={p.slug} agreements={p.agreements} aiOn={p.aiOn} onSaved={recheck} />
 
       <SectionCard name="history" title={t("settingsGoLive.historyTitle")}>
         {p.history.length === 0 ? (

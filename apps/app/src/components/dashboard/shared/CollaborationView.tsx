@@ -169,7 +169,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   // People window tools.
   const [hq, setHq] = useState(""), [hSort, setHSort] = useState<PersonSort>("name"), [hDept, setHDept] = useState("All"), [hScope, setHScope] = useState<PeopleScope>("linked"), [hPage, setHPage] = useState(0);
   const pSize = PROJECT_PAGE, hSize = PEOPLE_PAGE;
-  if (!ready) return <PageSkeleton kind="list" delay />;
+  if (!ready) return <PageSkeleton kind="list" />;
 
   // With projects on, the project window lists the real projects (features/projects), not the
   // made-up initiatives of the seed; stopped ones wait nowhere and are left out.

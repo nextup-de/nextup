@@ -19,6 +19,7 @@ vi.mock("@/features/auth/session", () => ({ getViewerFor: vi.fn(async (slug: str
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { getDb } from "@/lib/db/client";
+import { recordAgreement } from "@/lib/db/agreements";
 import { stageMoves } from "@/lib/db/go-live";
 import { checkGoLiveAction, moveStageAction } from "@/server/actions/settings/go-live";
 import { pullPlatformJobs } from "@/server/platform-jobs-sync";
@@ -38,6 +39,9 @@ async function make(slug: string, stage: string) {
   await db.routingRule.create({ data: { companyId: c.id, key: "safety", type: "safety", keywords: [], ownerRoleId: role.id, sort: 0 } });
   await db.companyCalendar.create({ data: { companyId: c.id } });
   await db.companyConfig.create({ data: { companyId: c.id, notifications: true } });
+  // The agreements check (Q9.4): the DPA, and no works council.
+  await recordAgreement(c.id, manager.id, { kind: "dpa", status: "signed", date: "2026-11-02", signer: "Managing director" });
+  await recordAgreement(c.id, manager.id, { kind: "works", status: "notNeeded", reason: "No works council" });
   ids[slug] = { companyId: c.id, managerId: manager.id };
 }
 
@@ -86,6 +90,20 @@ describe("PIL stage move", () => {
     expect(await stageOf("pil-sb")).toEqual({ stage: "sandbox", sessionEpoch: 0 });
     expect(await stageAudits("pil-sb")).toHaveLength(0);
     expect(await db.notifyPreference.count({ where: { companyId: ids["pil-sb"].companyId } })).toBe(0);
+  });
+
+  it("reminders and the digest off refuse the move to pilot, though they do not block Open (Q9.7)", async () => {
+    viewer = asAdmin("pil-sb");
+    const where = { companyId: ids["pil-sb"].companyId };
+    await db.companyConfig.update({ where, data: { notifications: false } });
+    try {
+      const r = await moveStageAction("pil-sb", "pilot");
+      expect(r).toMatchObject({ ok: false, reason: "blocked" });
+      if (!r.ok) expect(r.checks?.find((c) => c.key === "notifications")).toMatchObject({ level: "recommended", pilot: true, state: "needs" });
+      expect(await stageOf("pil-sb")).toEqual({ stage: "sandbox", sessionEpoch: 0 });
+    } finally {
+      await db.companyConfig.update({ where, data: { notifications: true } });
+    }
   });
 
   it("all green moves to pilot with an audit row, no epoch change and the managers as recipients", async () => {

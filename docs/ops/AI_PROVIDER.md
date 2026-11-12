@@ -55,7 +55,8 @@ This extends `docs/demo/AI_DEMO.md` (section 1: AWS account, Bedrock access, IAM
    It prints a table and the winner. It exits 1 when no provider qualifies.
 7. **Get the records to `main`.** Nothing records itself and no run is committed by an agent.
    Branch `chore/ai-provider-records`, commit the two files in `eval/recorded/` (not
-   `routing.json`, which stays as it is), open a PR and put the compare table in the description.
+   `routing.json`, which stays as it is, nor `chosen.json`, which follows the result), open a PR and put the compare
+   table in the description.
    Merging it answers Q2: the recordings are the evidence for the choice. Review them for a key or
    endpoint before you push.
 
@@ -119,3 +120,32 @@ release (`install.sh` moves both together when the instance runs a brain).
 Keep the AI off for the pilot (PILOT/HD8): `LLM_PROVIDER=mock`, as in `AI_DEMO.md`. Everything
 routes by the keyword router. Do not lower 0.80 or raise 8000 ms to fit a result. Try another
 model or deployment, record again, and compare again.
+
+## Result
+
+**Chosen 12 Nov 2026: Azure OpenAI, `gpt-4.1-mini-2025-04-14`, EU data zone.** Kevin chose Azure alone and did not
+record Bedrock (AIB D14), so `compare` ran on `eval/recorded/azure-openai.json` (recorded 5 Nov 2026) by itself.
+
+| Provider | Model | Accuracy | German | English | p50 | p95 | Errors | Cost of the run | Month at 2,000 raises |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Azure OpenAI | gpt-4.1-mini-2025-04-14 | 0.946 (87/92) | 0.941 (32/34) | 0.948 (55/58) | 1,919 ms | 2,590 ms | 0 | 0.079 USD | ≈ 1.72 USD |
+| Bedrock | — | not recorded | | | | | | | |
+
+It qualifies with room on both rules: 0.946 against 0.80, and 2,590 ms against 8,000 ms. The keyword router
+(`keywords-v2`) scores 0.783 on the same cases. Prices of the run: 0.484 USD in, 1.936 USD out per million tokens.
+The month figure is the routing call alone (0.079 USD / 92 cases × 2,000); the assistant, coach and read calls of a
+raise come on top, and the monthly budget (`docs/ASSISTANT.md`) counts all of them.
+
+**What guards it.** `eval/recorded/chosen.json` holds the chosen run's model, prompt version and answers with a
+threshold of 0.94 (its accuracy rounded down, never below 0.80). `tests/test_provider_choice.py` (CI `brain-tests`)
+recomputes the winner from the recordings in `eval/recorded/` and fails when it differs from `chosen.json` or scores
+below that threshold. `routing.json` stays the keyword router's answers, which `brain-eval` and the app's
+`tests/unit/routing.test.ts` hold to the app's matcher. A `bedrock.json` merged later takes part in the choice by
+itself: the test then names the cheaper qualifying provider, and `chosen.json` is updated in the same PR.
+
+**Price.** `features/ai/usage.ts` lists `gpt-4.1-mini` at the run's prices, so a company that has not entered its own
+price is counted at these in its monthly budget instead of against the token limit. The company's own price (on
+`/admin/connectors`) still wins.
+
+**Before customer text goes to Azure:** the data-processing agreement with Microsoft and an EU data zone deployment
+(PILOT/HQ11, above).

@@ -6,7 +6,7 @@
 // the card (Claude Design handoff "Inbox App"): the stats strip as its head, one row per item - who
 // sent it, what it is about, when it came in, the promise clock. Nothing is open until a row is
 // picked; then the title row folds away, the head turns into the list's title bar, the card docks
-// left (tucked to avatars on first open) and the item slides in
+// left, always tucked to avatars when an item opens, and the item slides in
 // beside it. ↑/↓ walk the list, Close / Escape puts the page back. Ideas and cases open in the same
 // view (IdeaDetail, IdeaDetailPhone on a phone): an idea with its written brief and five decisions,
 // a case with a brief built from its own facts and the four case actions.
@@ -47,9 +47,9 @@ const initialsOf = (name: string) => (name.startsWith("Anonymous") ? "?" : name.
 const raisedPhrase = (t: T, label: string) => (/\d:\d/.test(label) || label === "Today" ? t("leader.raisedToday") : label === "Yesterday" ? t("leader.raisedYesterday") : t("leader.raisedOn", { day: label }));
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
 const HL_EASE = "cubic-bezier(.3,1.25,.4,1)";
-// A phone gets its own idea layout (IdeaDetailPhone); a big monitor opens with the list showing,
-// anything smaller (a laptop) with it tucked to avatars.
-const PHONE = "(max-width: 760px)", BIG_SCREEN = "(min-width: 1600px)";
+// A phone gets its own idea layout (IdeaDetailPhone). On every bigger screen an open item starts with
+// the list tucked to avatars - also when the page loads with ?id= - and the tuck button shows it.
+const PHONE = "(max-width: 760px)";
 const onPhoneChange = (fn: () => void) => { const m = window.matchMedia(PHONE); m.addEventListener("change", fn); return () => m.removeEventListener("change", fn); };
 
 export function InboxView({ initialId }: { initialId?: string }) {
@@ -61,7 +61,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
   const [cid, setCid] = useState<string | null>(initialId ?? null);
   const [open, setOpen] = useState(!!initialId);
-  const [tucked, setTucked] = useState(false);
+  const [tucked, setTucked] = useState(true);
   const [sort, setSort] = useState<InboxSort>("urgent");
   const [filter, setFilter] = useState<Filter>("all");
   const [now] = useState(() => new Date()); // views render only once `ready`, so this never meets the server render
@@ -89,7 +89,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   // The static demo's controls follow along: a case opened here by hand is a step they pass over.
   useEffect(() => showInboxCase(isOpen ? cid : null), [isOpen, cid]);
   // The open item is in the address (?id=), so a link, a reload and Back land on it.
-  useIdInUrl(open ? cid : null, (id) => { if (id) { setCid(id); setOpen(true); } else { setOpen(false); setTucked(false); } });
+  useIdInUrl(open ? cid : null, (id) => { if (id) { setCid(id); setOpen(true); } else { setOpen(false); setTucked(true); } });
 
   // Keyboard: ↑/↓ walk the list (opening the pane if it is closed), Escape closes. The idea's
   // popovers handle their own keys first.
@@ -229,16 +229,15 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const shown = sortInbox(listed.filter((r) => filter === "all" || (filter === "late" ? r.due < 0 : r.due >= 0)), sort);
   const badgeOf = (r: (typeof rows)[number]) => r.tag ?? (r.paused ? t("leader.badgePaused") : r.due < 0 ? t("leader.badgeLate", { n: -r.due }) : t("leader.badgeLeft", { n: r.due }));
 
-  // Open a row; the open row again closes the pane. The first open tucks the list to its avatars.
+  // Open a row; the open row again closes the pane. Closing tucks the list again for the next open.
   const pick = (id: string) => {
-    if (isOpen && cid === id) { setOpen(false); setTucked(false); return; }
+    if (isOpen && cid === id) { setOpen(false); setTucked(true); return; }
     const c = inbox.find((x) => x.id === id);
     if (c && c.read === null) act.read(c.id);
-    if (!isOpen) setTucked(!phone && !window.matchMedia(BIG_SCREEN).matches);
     setOpen(true);
     setCid(id);
   };
-  const close = () => { setOpen(false); setTucked(false); };
+  const close = () => { setOpen(false); setTucked(true); };
   // The keyboard handler reads the current list through a ref, set after each render.
   useLayoutEffect(() => { navRef.current = { ids: shown.map((r) => r.id), pick, close: () => { if (isOpen) close(); } }; });
 
@@ -322,10 +321,10 @@ export function InboxView({ initialId }: { initialId?: string }) {
     </div>
   );
 
-  if (!ready) return <PageSkeleton kind="inbox" delay />;
+  if (!ready) return <PageSkeleton kind="inbox" />;
 
   return (
-    <div className={styles.page} data-open={isOpen && !phone ? "true" : undefined} data-layer={isOpen && phone ? "true" : undefined} data-tucked={isOpen && tucked ? "true" : undefined}>
+    <div className={styles.page} data-open={isOpen && !phone ? "true" : undefined} data-layer={isOpen && phone ? "true" : undefined} data-tucked={isOpen && tucked && !phone ? "true" : undefined}>
       <h1 className={styles.srOnly}>{t("leader.inbox")}</h1>
       <div className={styles.top} aria-hidden={isOpen || undefined}>
         <div className={styles.head}>

@@ -9,5 +9,5 @@ export const generateMetadata = setupMetadata;
 export default async function SetupIndexPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
   const { phases, poll } = await loadSetupOverview(company);
-  return <SetupOverview phases={phases} poll={poll} ledeKey="settingsSetupPhases.lede" />;
+  return <SetupOverview phases={phases} poll={poll} ledeKey="settingsSetupPhases.lede" slug={company} />;
 }

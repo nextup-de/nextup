@@ -70,8 +70,8 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
   const teamsIds = teamsOn ? await teamsUserIds(company.id) : new Set<string>();
 
   const [users, config, subs] = await Promise.all([
-    db.user.findMany({ where: { companyId: company.id }, select: { id: true, name: true, email: true, handle: true, role: true } }),
-    db.companyConfig.findUnique({ where: { companyId: company.id }, select: { notifications: true, n8n: true } }),
+    db.user.findMany({ where: { companyId: company.id, active: true }, select: { id: true, name: true, email: true, handle: true, role: true } }), // a leaver gets no notice (Q10.18)
+    db.companyConfig.findUnique({ where: { companyId: company.id }, select: { notifications: true, n8n: true, noticeChannels: true } }),
     db.webhookSubscription.findMany({ where: { companyId: company.id }, select: { id: true, events: true, on: true } }),
   ]);
   const people: PlanPerson[] = [];
@@ -87,6 +87,7 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
     subscriptions: subs,
     baseUrl: companyBaseUrl(company.slug),
     teamsOn,
+    noticeChannels: config?.noticeChannels,
     dateOfDay: (n: number) => dateOfCompanyDay(company, calendar, n),
   };
 
@@ -101,7 +102,8 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
     const ev: CaseEvent = log.events[i];
     try {
       const planCtx: PlanCtx = { ...ctx, state: reduce(seed, log) };
-      for (const d of planNotices(ev, planCtx)) drafts.push({ ...d, companyId: company.id });
+      // The in-app copy never leaves: written as sent, now (INB/D5).
+      for (const d of planNotices(ev, planCtx)) drafts.push({ ...d, companyId: company.id, ...(d.status === "sent" ? { sentAt: now } : {}) });
     } catch (e) {
       // One event that cannot be planned must not hold back the company's other notices.
       failure = `${ev.type} ${ev.id}: ${e instanceof Error ? e.message : String(e)}`;

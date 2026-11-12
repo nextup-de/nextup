@@ -1,6 +1,6 @@
 // The retention rules and the nightly run (GDP D16). Every delete names the company.
 import type { Prisma } from "@prisma/client";
-import { AUDIT_KEEP_DAYS, OUTBOX_KEEP_DAYS, checkRule, cutoff, effectiveRules, type RetentionKind } from "@/features/privacy/retention";
+import { AUDIT_KEEP_DAYS, AUDIT_KEPT_ACTIONS, OUTBOX_KEEP_DAYS, checkRule, cutoff, effectiveRules, type RetentionKind } from "@/features/privacy/retention";
 import { SYSTEM_ACTOR, recordAudit } from "@/server/audit/record";
 import { getDb } from "./client";
 
@@ -88,7 +88,7 @@ export async function runRetention(companyId: string, now = new Date()): Promise
       t.cases += views.count;
     }
   }
-  t.auditEvents = (await db.auditEvent.deleteMany({ where: { companyId, at: { lt: cutoff(AUDIT_KEEP_DAYS, now) } } })).count;
+  t.auditEvents = (await db.auditEvent.deleteMany({ where: { companyId, at: { lt: cutoff(AUDIT_KEEP_DAYS, now) }, action: { notIn: [...AUDIT_KEPT_ACTIONS] } } })).count;
   t.exports = (
     await db.dataExport.updateMany({
       where: { companyId, expiresAt: { lt: now }, OR: [{ file: { not: null } }, { status: "ready" }] },
