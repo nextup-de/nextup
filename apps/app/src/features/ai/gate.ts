@@ -10,14 +10,16 @@
 //   every stage  a real model is not called once the month's budget is used up (budget.ts, decision Q7.3), or
 //                once its models without a price used their monthly token cap (decision Q7.5); the raise path
 //                (budget.ts RAISE_PATH_PURPOSES) goes on to GRACE_PCT of a cap first (decision Q7.4);
-//                the callers' fallbacks answer and the rest of the app goes on. The mock is spared only for the
+//                the callers' fallbacks answer and the rest of the app goes on. The project agent (purpose `agent`, plan AGT, D21)
+//                has no switch of its own here (its flag is checked by its callers) and is not on the raise path: it follows
+//                the brain's rules and stops at 100 %. The mock is spared only for the
 //                assistant, which it answers itself; with the mock chosen the brain's purposes still call the
 //                brain's own model (server/brain.ts llmFor), and that is counted and capped like any other.
 import { policyFor } from "@/features/admin/stages";
 import { GRACE_PCT, onRaisePath, usedUpBy, type GateBudget } from "./budget";
 import type { AiSettings } from "./settings";
 
-export type AiPurpose = "assist" | "routing" | "coach" | "brain";
+export type AiPurpose = "assist" | "routing" | "coach" | "brain" | "agent";
 export type AiGate = { on: true; settings: AiSettings } | { on: false; why: string };
 
 export function aiGate(a: {

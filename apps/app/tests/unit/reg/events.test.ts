@@ -23,10 +23,11 @@ describe("REG events split", () => {
   it("every case.* app type is in CASE_EVENT_TYPES and every project.* one in PROJECT_EVENT_TYPES", () => {
     expect([...CASE_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("case.")));
     expect([...PROJECT_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("project.")));
-    expect([...CORE_APP_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => !t.startsWith("case.") && !t.startsWith("project.")));
+    expect([...CORE_APP_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => !t.startsWith("case.") && !t.startsWith("project.") && !t.startsWith("agent.")));
   });
-  it("the agent, approval and overload lists are empty until AGT, GAT and OVL", () => {
-    expect(AGENT_EVENT_TYPES).toEqual([]);
+  it("the agent list holds AGT's six types, the approval and overload lists are empty until GAT and OVL", () => {
+    expect([...AGENT_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("agent.")));
+    expect(AGENT_EVENT_TYPES).toEqual(["agent.switched", "agent.suggested", "agent.accepted", "agent.dismissed", "agent.planned", "agent.ran"]);
     expect(APPROVAL_EVENT_TYPES).toEqual([]);
     expect(OVERLOAD_EVENT_TYPES).toEqual([]);
   });

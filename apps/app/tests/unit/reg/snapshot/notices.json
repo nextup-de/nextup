@@ -1,5 +1,6 @@
 {
   "loopTypes": [
+    "agent.accepted",
     "case.answered",
     "case.appeal.decided",
     "case.appealed",
@@ -34,6 +35,7 @@
     "project.update"
   ],
   "loopTemplates": [
+    "loop.agent.accepted",
     "loop.case.answered",
     "loop.case.appeal.decided",
     "loop.case.appealed",
@@ -103,7 +105,8 @@
     "reminder.quiet": "reminder.start",
     "reminder.stalled": "reminder.start",
     "reminder.update": "reminder.start",
-    "reminder.vacant": "reminder.start"
+    "reminder.vacant": "reminder.start",
+    "loop.agent.accepted": "loop.project.member"
   },
   "reminderKinds": [
     "appeal",
@@ -142,6 +145,7 @@
     "reminder.vacant"
   ],
   "loopMailTypes": [
+    "agent.accepted",
     "case.answered",
     "case.appeal.decided",
     "case.appealed",

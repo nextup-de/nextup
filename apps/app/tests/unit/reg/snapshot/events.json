@@ -1,5 +1,11 @@
 {
   "appEventTypes": [
+    "agent.accepted",
+    "agent.dismissed",
+    "agent.planned",
+    "agent.ran",
+    "agent.suggested",
+    "agent.switched",
     "case.affected",
     "case.answered",
     "case.appeal.decided",
