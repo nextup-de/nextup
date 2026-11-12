@@ -2730,8 +2730,146 @@
   {
     "id": "fx_p_confirmed",
     "type": "project.measure.confirmed",
-    "teamsOff": [],
-    "teamsOn": []
+    "teamsOff": [
+      {
+        "key": "loop:fx_p_confirmed:u_lead",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_lead",
+        "address": "lead@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_lead:app",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_lead",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_raiser",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_raiser",
+        "address": "raiser@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_raiser:app",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_raiser",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      }
+    ],
+    "teamsOn": [
+      {
+        "key": "loop:fx_p_confirmed:u_lead",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_lead",
+        "address": null,
+        "channel": "teams",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_lead:app",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_lead",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_raiser",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_raiser",
+        "address": "raiser@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_raiser:app",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_raiser",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      }
+    ]
   },
   {
     "id": "fx_p_rewarded",

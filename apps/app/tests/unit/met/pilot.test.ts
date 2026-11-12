@@ -9,7 +9,7 @@ const kase = (o: Partial<LedgerCase> = {}): LedgerCase => ({
   reasoned: false, dueDay: 15, lastDay: 10, escalatedDay: null, raiserKey: null, raiserUnitId: null, ...o,
 });
 const facts = { answers: { yes: 0, yesProject: 0, question: 0, handed: 0, no: 0 }, override: { proposed: 0, overridden: 0, rate: null } };
-const input = (cases: LedgerCase[], today = 200): LedgerInput => ({ cases, facts, org: { units: [], roles: [] }, promiseDays: 5, today, demoClock: false });
+const input = (cases: LedgerCase[], today = 200): LedgerInput => ({ cases, facts, org: { units: [], roles: [] }, promiseDays: 5, today, demoClock: false, stalled: [] });
 const period = { from: 0, to: 100 };
 type Args = Parameters<typeof pilotMetrics>[0];
 const run = (cases: LedgerCase[], extra: Partial<Args> = {}) =>
