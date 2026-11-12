@@ -159,9 +159,12 @@ hand-over depend on reminders (Q9.7). On Go-live it is listed with the needed ch
 | People can sign in | needed | Microsoft sign-in is on for the company, or every active person has a login code | Settings, Sign-in; Members |
 | Managers' second factor | needed | every active manager who uses a login code has a confirmed second factor | Members |
 | Mail can leave | needed | `SMTP_URL` is set and the relay answers | Notifications; the stack's `.env` |
-| AI | needed | off, or on with a recorded data-processing agreement date; a test model never passes | the console's AI settings |
+| AI | needed | off, or on with a recorded date for the AI provider's agreement; a test model never passes | the console's AI settings (`/admin/assistant`) |
 | Backups | needed | the last successful backup is off the server and less than 26 hours old | the operator (`stack/backup.sh`), not an app page |
 | Support access | needed | no support grant is open | Settings, Support access |
+| Restore test | needed | `stack/backup.sh <slug> restore-test` passed within the last 30 days; it writes `restore-test.json` (time and seconds) next to the backup status file, and the line shows both | the operator (`stack/backup.sh`), not an app page |
+| Security findings | recommended | nothing records the open findings of the test phase on a stack yet, so the line says "Not recorded on this stack" and never blocks; a recorded count above zero would block | the operator, see the list below |
+| Emergency access | needed | the break-glass window (`stack/break-glass.sh`) is closed | the operator (`stack/break-glass.sh <slug> close`) |
 | Agreements | needed | the data-processing agreement with NextUp is recorded as signed; the works agreement too, unless "no works council" is recorded; with the AI on, the information to employees about the AI | Settings, Go-live, Agreements card |
 | Reminders and digest | recommended for Open, needed for the switch | `notifications` is on | Settings, Notifications |
 | Directory sync | recommended | the last run is less than 24 hours old and without an error | the connector settings |
@@ -225,9 +228,9 @@ missing, an imported company simply shows its steps as done, and it serves a com
 |---|---|---|
 | Signed agreements | The data-processing agreement is signed by both sides; with the AI on, the AI provider's agreement too. Dates are on the paper and match the Agreements card on Go-live. The documents in `docs/compliance/` are drafts for legal review, not signed. | Customer's legal signatory and NextUp |
 | Works council | Where the customer has one, the works agreement is signed before any real person is in the pilot, and recorded on the Agreements card; without one, "no works council" is recorded there. Directory sync and the pilot report need it. | Customer |
-| Restore test | `stack/backup.sh <slug> snapshots`, then `stack/backup.sh <slug> restore-test <id>`. The seconds are under 3,600 (`docs/ops/RPO_RTO.md`). Read the last backup log for a failed attempt: the Backups check would not show it. | NextUp's operator |
+| Restore test | `stack/backup.sh <slug> snapshots`, then `stack/backup.sh <slug> restore-test <id>`. The seconds are under 3,600 (`docs/ops/RPO_RTO.md`) and the Restore test check shows them. Read the last backup log for a failed attempt: the Backups check would not show it. | NextUp's operator |
 | Open TST findings | Every finding in `docs/test-phase/findings/` is, in Kevin's written record, fixed, deferred with an owner and a date, or a blocker. A merged task or a passed gate does not replace this. A deferred finding is not an accepted risk for the customer: the customer is told. | Kevin |
-| Residual access | No support grant open (Settings, Support access); `stack/break-glass.sh <slug> status` shows closed; the deploy key is the forced-command key only; test accounts, tokens and tunnels are removed; the `--codes` file is deleted; the database port is closed. | NextUp's operator and the customer's IT |
+| Residual access | No support grant open and the break-glass window closed (both are checks now); the deploy key is the forced-command key only; test accounts, tokens and tunnels are removed; the `--codes` file is deleted; the database port is closed. | NextUp's operator and the customer's IT |
 
 If anything on this list is unclear, say so out loud and stop. A green checklist does not authorise a pilot.
 

@@ -75,7 +75,7 @@ describe("the agreements check", () => {
     now: today, units: [{ name: "Plant" }], roles: [{ title: "Lead", holders: 1 }], routes: [{ key: "r", ownerHasUser: true }],
     hasCalendar: true, people: { active: 2, canSignIn: 2 }, microsoftOn: false, managers: { withCode: 1, withTotp: 1 }, mail: "ok",
     ai: { choice: "off", dpaSignedAt: null }, backup: { at: today, offbox: true }, supportOpenUntil: null, notifications: true,
-    directory: null, recipients: 1, baseline: true, agreements: {},
+    directory: null, recipients: 1, baseline: true, restore: { at: new Date(today.getTime() - 86_400_000), seconds: 300 }, findings: null, breakGlassUntil: null, agreements: {},
   };
   const check = (i: Partial<GoLiveInput>) => goLiveChecks({ ...input, ...i }).find((c) => c.key === "agreements");
 

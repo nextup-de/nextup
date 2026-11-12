@@ -128,7 +128,7 @@ export function GoLive(p: Props) {
         <ul className={styles.rows}>
           {list.map((c) => {
             // The agreements are recorded further down this page.
-            const link = c.key === "agreements" ? { href: "#agreements", label: t("settingsGoLive.agreementsTitle") } : c.section ? p.links[c.section] : undefined;
+            const link = c.key === "agreements" ? { href: "#agreements", label: t("settingsGoLive.agreementsTitle") } : c.console ? { href: c.console, label: t("settingsGoLive.linkConsoleAssistant") } : c.section ? p.links[c.section] : undefined;
             return (
               <li key={c.key} className={styles.check} data-state={c.state} data-testid={`settings-golive-check-${c.key}`}>
                 <span className={styles.mark} aria-hidden="true">{MARK[c.state]}</span>

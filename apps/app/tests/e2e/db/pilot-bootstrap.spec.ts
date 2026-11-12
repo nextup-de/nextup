@@ -23,8 +23,9 @@ const STAMP = Date.now().toString(36);
 const SLUG = `pil-${STAMP}`;
 const OTHER = `pil2-${STAMP}`;
 const OTHER_ADMIN = "Zora Quillfeather";
-const NEEDED = ["structure", "routes", "calendar", "signIn", "secondFactor", "mail", "ai", "backups", "support", "agreements"] as const;
-const RECOMMENDED = ["notifications", "directory", "recipients", "baseline"] as const;
+const NEEDED = ["structure", "routes", "calendar", "signIn", "secondFactor", "mail", "ai", "backups", "restore", "support", "breakGlass", "agreements"] as const;
+// The findings of the test phase are not recorded on a stack: information only, so recommended (REM-O3, REM D13).
+const RECOMMENDED = ["notifications", "directory", "recipients", "baseline", "findings"] as const;
 const SMALL_UNIT_BELOW = 5;
 
 // A click or a check that misses fails in half a minute, not after the whole test's time.
@@ -85,6 +86,7 @@ test("PIL acceptance: bootstrap to pilot stage and first report", async ({ brows
   let smtp: FakeSmtp | null = null;
   const db = getDb();
   rmSync(path.join(backupDir, "last.json"), { force: true }); // a retry starts with no backup report, like the first run
+  rmSync(path.join(backupDir, "restore-test.json"), { force: true }); // nor a restore test
 
   try {
     // The sample: 1,000 people, exactly one manager, a unit under 5 people.
@@ -164,6 +166,7 @@ test("PIL acceptance: bootstrap to pilot stage and first report", async ({ brows
     await test.step("go-live: backups, mail relay, agreements and reminders make every check the pilot needs green", async () => {
       mkdirSync(backupDir, { recursive: true });
       writeFileSync(path.join(backupDir, "last.json"), JSON.stringify({ at: new Date().toISOString(), offbox: true }));
+      writeFileSync(path.join(backupDir, "restore-test.json"), JSON.stringify({ at: new Date().toISOString(), seconds: 300 })); // the restore test is a needed check too (REM-O3)
       smtp = await startFakeSmtp(Number(smtpUrl.port));
 
       await vis(page, "settings-agreement-edit-dpa").click();

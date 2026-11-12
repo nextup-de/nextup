@@ -1,5 +1,5 @@
 "use client";
-// The last step of the setup process: the go-live checks, the hand list the app cannot check, and "Open
+// The last step of the setup process: the go-live checks and "Open
 // NextUp". Paper: "setup-step-open". The page's last check is shown, but the server runs the checks again before
 // it opens; a refusal comes back with fresh checks and replaces the list.
 import Link from "next/link";
@@ -37,8 +37,6 @@ type Props = {
 };
 
 const MARK: Record<GoLiveCheck["state"], string> = { done: "✓", needs: "▲", unknown: "✕", unset: "–" };
-// The agreements and the works council are a check now (Q9.4); these stay outside the app.
-const HAND: MessageKey[] = ["settingsSetupOpen.handRestore", "settingsSetupOpen.handFindings", "settingsSetupOpen.handAccess"];
 
 export function OpenStep({ slug, company, prefix, openedAt, checks: first, checkedAt, held, links, demo }: Props) {
   const t = useT();
@@ -118,7 +116,8 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
         <h3 className={s.subLabel}>{t(label)}</h3>
         <ul className={o.rows}>
           {list.map((c) => {
-            const found = c.section ? links[c.section] : undefined;
+            // A check the console fixes (the AI) points there; the console is the operator's and sits at the stack's root, not under the company.
+            const found = c.console ? { href: c.console, label: t("settingsGoLive.linkConsoleAssistant") } : c.section ? links[c.section] : undefined;
             const link = found && c.key === "agreements" ? { ...found, href: `${found.href}#agreements` } : found;
             return (
               <li key={c.key} className={o.row} data-state={c.state} data-testid={`setup-open-check-${c.key}`}>
@@ -170,7 +169,6 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
         <ConfirmDialog
           title={t("settingsSetupOpen.dialogTitle", { company })}
           text={t("settingsSetupOpen.dialogIntro")}
-          lines={HAND.map((k) => t(k))}
           confirmLabel={t("settingsSetupOpen.dialogConfirm")}
           cancelLabel={t("settingsGoLive.cancel")}
           onConfirm={openNow}

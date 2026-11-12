@@ -14,6 +14,8 @@ vi.mock("@/server/mail", () => ({
   mailConfigured: () => true,
 }));
 vi.mock("@/server/backup-status", () => ({ readBackupStatus: vi.fn(async () => mocks.backup) }));
+// The restore test is a needed check too (REM-O3): one that passed a day ago.
+vi.mock("@/server/restore-status", () => ({ readRestoreStatus: vi.fn(async () => ({ at: new Date(Date.now() - 86_400_000), seconds: 300 })) }));
 let viewer: Viewer | null = null;
 vi.mock("@/features/auth/session", () => ({ getViewerFor: vi.fn(async (slug: string) => (viewer && viewer.companySlug === slug ? viewer : null)) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
