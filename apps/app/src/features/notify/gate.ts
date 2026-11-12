@@ -1,5 +1,6 @@
 // Whether a message may leave (NTF/D8). Pure: the company's stage and switches and the person's choice in,
 // a verdict out. A skipped message is still written, as `skipped` with its reason, so /admin can show it.
+import { isDuty } from "./channels";
 
 export type GateCompany = { stage: string; notifications: boolean; n8n: boolean };
 
@@ -34,11 +35,14 @@ export function prefOf(rows: readonly { userId: string; template: string; on: bo
 }
 
 export function gateOf(company: GateCompany, channel: string, template: string, pref: Pref = NO_PREF): Gate {
+  // The in-app copy never leaves the stack, so no stage, switch or choice stops it (INB/D5).
+  if (channel === "inapp") return { send: true };
   if (company.stage === "sandbox") return { send: false, reason: "sandbox" };
   if (channel === "webhook" || template === "webhook") return company.n8n ? { send: true } : { send: false, reason: "switched off" };
   if (OPERATIONS(template)) return { send: true };
   if (!ALWAYS(template) && !company.notifications) return { send: false, reason: "switched off" };
   // The person's own choice for this template wins over "*", which wins over the default.
-  const on = pref.template ?? pref.all ?? DEFAULT_ON(template);
+  // A duty notice cannot be switched off, only moved between Teams and mail (INB/D8).
+  const on = isDuty(template) || (pref.template ?? pref.all ?? DEFAULT_ON(template));
   return on ? { send: true } : { send: false, reason: "opted out" };
 }
