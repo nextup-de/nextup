@@ -2,7 +2,7 @@
 // the track, the meaning rows, the switch and the dialog lines out. No rule lives here: the server decides
 // (moveStageAction), so a switch shown here is a courtesy and a refusal there is the answer.
 import type { MessageKey } from "@/i18n";
-import { blockers, type GoLiveCheck } from "./go-live";
+import { blockers, levelAt, type GoLiveCheck } from "./go-live";
 
 export type TrackStage = "sandbox" | "pilot" | "live";
 export type TrackStep = { stage: TrackStage; label: MessageKey; state: "past" | "current" | "next" | "later" };
@@ -64,8 +64,9 @@ export type GoLiveViewInput = {
   now: Date;
 };
 
+// Go-live is about the move to pilot: a check the pilot needs counts as needed here (Q9.7).
 const count = (cs: readonly GoLiveCheck[], level: GoLiveCheck["level"]) => {
-  const of = cs.filter((c) => c.level === level);
+  const of = cs.filter((c) => levelAt(c, "pilot") === level);
   return { done: of.filter((c) => c.state === "done").length, total: of.length };
 };
 
@@ -75,7 +76,7 @@ export function goLiveView(i: GoLiveViewInput): GoLiveView {
   if (!stage) return { kind: "demo" }; // unknown stage: show nothing that can move it
   const at = ORDER.indexOf(stage);
   const track: TrackStep[] = ORDER.map((s, n) => ({ stage: s, label: NAME[s], state: n < at ? "past" : n === at ? "current" : n === at + 1 ? "next" : "later" }));
-  const open = blockers(i.checks).length;
+  const open = blockers(i.checks, "pilot").length;
 
   let sw: SwitchView | null = null;
   if (i.admin && stage === "sandbox") {
@@ -121,5 +122,15 @@ const CHECK_NAME: Record<GoLiveCheck["key"], MessageKey> = {
   ai: "settingsGoLive.checkAi", backups: "settingsGoLive.checkBackups", support: "settingsGoLive.checkSupport",
   notifications: "settingsGoLive.checkNotifications", directory: "settingsGoLive.checkDirectory",
   recipients: "settingsGoLive.checkRecipients", baseline: "settingsGoLive.checkBaseline",
+  agreements: "settingsGoLive.checkAgreements",
 };
 export const checkName = (c: GoLiveCheck): MessageKey => CHECK_NAME[c.key];
+
+/** A check's values for its sentence: times and dates formatted, the agreements' names translated. */
+export function checkValues(c: GoLiveCheck, t: (k: MessageKey) => string, date: (iso: string, style: "dateTime" | "day") => string): Record<string, string | number> {
+  const v: Record<string, string | number> = { ...c.values };
+  if (typeof v.time === "string") v.time = date(v.time, "dateTime");
+  if (typeof v.date === "string") v.date = date(v.date, "day");
+  if (typeof v.agreementKeys === "string") v.agreements = v.agreementKeys.split(",").map((k) => t(k as MessageKey)).join(", ");
+  return v;
+}

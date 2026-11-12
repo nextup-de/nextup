@@ -177,6 +177,15 @@ test.describe.serial("ITC acceptance", () => {
     await expect(statusOf(it, "connectors")).toHaveText("Your turn");
     await expect(linkOf(it, "connectors")).toHaveAttribute("href", "/admin/connectors");
 
+    // "We do not use this" (Q9.1): Jira gets a decision with a reason, and "Use it after all" takes it back.
+    await vis(it, "setup-decline-jira").click();
+    await vis(it, "setup-decline-reason-jira").fill("Projects stay in SAP PS");
+    await vis(it, "setup-decline-save-jira").click();
+    await expect(vis(it, "setup-line-jira")).toContainText("Jira: not used, decided");
+    await expect(vis(it, "setup-line-jira")).toContainText("Projects stay in SAP PS");
+    await vis(it, "setup-reopen-jira").click();
+    await expect(vis(it, "setup-line-jira")).toContainText("Jira is off.");
+
     // The rest is not their turn and has nowhere to go.
     await expect(statusOf(it, "company")).toHaveText("Open");
     for (const key of ["context", "company", "open"]) await expect(linkOf(it, key)).toHaveCount(0);

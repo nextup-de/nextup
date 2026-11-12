@@ -1,12 +1,12 @@
 # Pilot runbook: from an empty VM to stage pilot
 
-> **Updated 2026-11-05.** For NextUp's operator (Kevin or whoever Kevin names). One customer, one stack, one VM. Every
+> **Updated 2026-11-11.** For NextUp's operator (Kevin or whoever Kevin names). One customer, one stack, one VM. Every
 > command here exists on `main`; where something is not built yet it says *planned for the pilot*. Commands are
 > explained once in the stack, ops and customer docs; this runbook gives the order and links there.
 
 **A green checklist does not authorise a pilot.** The Go-live page checks what the app can see. It cannot see a signed
-agreement, a works council decision, a restore test, an open security finding or an access key someone forgot. Those are
-checked by hand in the joint setup session ([below](#joint-setup-session)) and nobody opens the company or moves it to
+agreement (only that someone recorded it on the Agreements card), a restore test, an open security finding or an access
+key someone forgot. Those are checked by hand in the joint setup session ([below](#joint-setup-session)) and nobody opens the company or moves it to
 pilot before they are. The app can show ready while a contract is missing.
 
 **A new company is closed.** Until someone presses "Open NextUp" (`/<company>/setup/open`), only active managers and
@@ -147,7 +147,9 @@ Exit codes:
 
 The bootstrap ends with one line per check, `[state] level key: text`. The same checks are on
 `/<company>/setup/open` and `/<company>/settings/go-live`, where each row links to the page that fixes it. *Needed*
-checks block Open and the switch; a check that cannot run (`unknown`) blocks too. *Recommended* checks do not.
+checks block Open and the switch; a check that cannot run (`unknown`) blocks too. *Recommended* checks do not, except
+*Reminders and digest*: recommended for Open, needed for the switch to pilot, because the promise and the deputy
+hand-over depend on reminders (Q9.7). On Go-live it is listed with the needed checks.
 
 | Check | Needed? | Done when | Fixed on |
 |---|---|---|---|
@@ -160,7 +162,8 @@ checks block Open and the switch; a check that cannot run (`unknown`) blocks too
 | AI | needed | off, or on with a recorded data-processing agreement date; a test model never passes | the console's AI settings |
 | Backups | needed | the last successful backup is off the server and less than 26 hours old | the operator (`stack/backup.sh`), not an app page |
 | Support access | needed | no support grant is open | Settings, Support access |
-| Reminders and digest | recommended | `notifications` is on | Settings, Notifications |
+| Agreements | needed | the data-processing agreement with NextUp is recorded as signed; the works agreement too, unless "no works council" is recorded; with the AI on, the information to employees about the AI | Settings, Go-live, Agreements card |
+| Reminders and digest | recommended for Open, needed for the switch | `notifications` is on | Settings, Notifications |
 | Directory sync | recommended | the last run is less than 24 hours old and without an error | the connector settings |
 | Report recipients | recommended | at least one person gets the weekly email | Settings, Pilot report |
 | Baseline | recommended | a baseline is set | the Dashboard |
@@ -173,8 +176,11 @@ What the checks do **not** do:
   A failed attempt and the restore test are therefore separate steps by hand (the list below).
 - **People can sign in** counts Microsoft being on as enough. People created at first Microsoft sign-in do not exist
   before it, so there is nobody to count.
-- There is no evidence file and no check for signed agreements, the works council, the restore test, open security
-  findings or residual access. They are on the hand list below.
+- **Agreements** checks that a company admin recorded each needed agreement with its date and the signer's role (or
+  "no works council" with a reason). It does not see the paper. The IT security approval and the DPIA are recorded on
+  the same card and are not part of the check.
+- There is no evidence file and no check for the restore test, open security findings or residual access. They are on
+  the hand list below.
 
 ## Joint setup session
 
@@ -217,8 +223,8 @@ missing, an imported company simply shows its steps as done, and it serves a com
 
 | Item | How | Who confirms |
 |---|---|---|
-| Signed agreements | The data-processing agreement is signed by both sides; with the AI on, the AI provider's agreement too. Dates are on the paper. The documents in `docs/compliance/` are drafts for legal review, not signed. | Customer's legal signatory and NextUp |
-| Works council | Where the customer has one, the works agreement is signed before any real person is in the pilot. Directory sync and the pilot report need it. | Customer |
+| Signed agreements | The data-processing agreement is signed by both sides; with the AI on, the AI provider's agreement too. Dates are on the paper and match the Agreements card on Go-live. The documents in `docs/compliance/` are drafts for legal review, not signed. | Customer's legal signatory and NextUp |
+| Works council | Where the customer has one, the works agreement is signed before any real person is in the pilot, and recorded on the Agreements card; without one, "no works council" is recorded there. Directory sync and the pilot report need it. | Customer |
 | Restore test | `stack/backup.sh <slug> snapshots`, then `stack/backup.sh <slug> restore-test <id>`. The seconds are under 3,600 (`docs/ops/RPO_RTO.md`). Read the last backup log for a failed attempt: the Backups check would not show it. | NextUp's operator |
 | Open TST findings | Every finding in `docs/test-phase/findings/` is, in Kevin's written record, fixed, deferred with an owner and a date, or a blocker. A merged task or a passed gate does not replace this. A deferred finding is not an accepted risk for the customer: the customer is told. | Kevin |
 | Residual access | No support grant open (Settings, Support access); `stack/break-glass.sh <slug> status` shows closed; the deploy key is the forced-command key only; test accounts, tokens and tunnels are removed; the `--codes` file is deleted; the database port is closed. | NextUp's operator and the customer's IT |

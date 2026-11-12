@@ -54,11 +54,11 @@ describe("the server phase", () => {
   const goLive: GoLiveInput = {
     now: AT, units: [], roles: [], routes: [], hasCalendar: false, people: { active: 1, canSignIn: 1 }, microsoftOn: true,
     managers: { withCode: 1, withTotp: 1 }, mail: "ok", ai: { choice: "off", dpaSignedAt: null }, backup: null,
-    supportOpenUntil: null, notifications: false, directory: null, recipients: 0, baseline: false,
+    supportOpenUntil: null, notifications: false, directory: null, recipients: 0, baseline: false, agreements: {},
   };
   const facts: SetupFacts = {
     viewer: "console", prefix: "/acme", goLive, openedAt: null, context: "notUsed",
-    it: { consoleBase: "/admin", admins: 1, connectors: { m365: "off", jira: "off", ai: "off", directory: "off" } },
+    it: { consoleBase: "/admin", admins: 1, connectors: { m365: "off", jira: "off", ai: "off", directory: "off", teams: "off" }, declined: {} },
     counts: { named: false, units: 0, seats: 0, routes: 0, members: 1 },
   };
   const server = (f: Partial<SetupFacts>) => setupPhases({ ...facts, ...f }).find((p) => p.key === "server");

@@ -35,6 +35,15 @@ shows "Error". In both cases no model is called and raise and routing work by ke
 Assistant counts these calls too: give the stack's model a price (0 is allowed) or it is held to the token limit.
 Setup: docs/ops/AI_PROVIDER.md, "Model on this stack".
 
+## Setup and "We do not use this"
+
+`/admin/setup` shows the company's setup overview read-only (docs/SETTINGS.md, The overview), also to a support
+session. The IT phases 2 and 3 list Microsoft sign-in, the directory sync, Microsoft 365 search, Teams, Jira and the AI
+provider. A system the company decided against reads "not used, decided <date>" with its reason. That decision is made
+on the company's own `/setup` page, by a stack admin signed in to the app, never in the console: **We do not use this**
+with a one-line reason writes `audit.connector.declined`, **Use it after all** writes `audit.connector.reopened`. Neither
+blocks or opens anything, and both show in the audit log. A system switched on in Connectors shows as on again.
+
 ## Who can enter
 
 Every page and every action calls `consoleCompany()` (`src/server/console-guard.ts`) first. A page

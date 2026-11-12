@@ -9,6 +9,7 @@ import type { BrainState } from "@/features/ai/settings";
 import { brainHealth } from "@/server/brain-health";
 import { settingsActor, recordAudit } from "@/server/audit/record";
 import { listAudit } from "./audit";
+import { loadAgreements } from "./agreements";
 import { loadAiSettings } from "./ai";
 import { loadBaseline } from "./baseline";
 import { getDb } from "./client";
@@ -28,7 +29,7 @@ export type GoLiveDeps = {
 export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLiveDeps): Promise<GoLiveInput> {
   const db = getDb();
   const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, entraTenantId: true } });
-  const [units, roles, rules, seats, calendar, users, config, ai, grant, directory, recipients, baseline, mail, backup] = await Promise.all([
+  const [units, roles, rules, seats, calendar, users, config, ai, grant, directory, recipients, baseline, agreements, mail, backup] = await Promise.all([
     db.orgUnit.findMany({ where: { companyId }, orderBy: [{ sort: "asc" }, { name: "asc" }], select: { name: true } }),
     db.orgRole.findMany({ where: { companyId }, orderBy: [{ sort: "asc" }, { title: "asc" }], select: { title: true, _count: { select: { holders: true } } } }),
     db.routingRule.findMany({ where: { companyId }, orderBy: { sort: "asc" }, select: { key: true, ownerRoleId: true } }),
@@ -41,6 +42,7 @@ export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLive
     loadDirectoryStatus(companyId),
     db.notifyPreference.count({ where: { companyId, template: PILOT_REPORT_TEMPLATE, on: true } }),
     loadBaseline(companyId),
+    loadAgreements(companyId),
     deps.mailStatus().catch(() => ({ configured: true, reachable: false as boolean | null })),
     deps.readBackupStatus().catch(() => null),
   ]);
@@ -66,6 +68,7 @@ export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLive
     directory: { on: directory.on, lastRunAt: directory.lastRunAt, lastOkAt: directory.lastOkAt, lastError: directory.lastError },
     recipients,
     baseline: baseline !== null,
+    agreements,
   };
 }
 
@@ -78,7 +81,8 @@ export type MoveResult =
   | { ok: false; reason: "refused" | "closed" | "blocked" | "changed"; checks?: GoLiveCheck[] };
 
 /**
- * D8: sandbox -> pilot only when the company is open and no needed check is open after a fresh run; pilot ->
+ * D8: sandbox -> pilot only when the company is open and no check the pilot needs is open after a fresh run (the
+ * needed ones and, Q9.7, reminders and the digest); pilot ->
  * sandbox with no checks.
  * Everything else is refused. One transaction: the stage, the epoch (signsOutOnMove), the audit row and, when
  * the company never had a pilot.report row, an `on` row for each active manager.
@@ -93,7 +97,7 @@ export async function moveStage(companyId: string, to: Stage, byUserId: string, 
   if (to === "pilot") {
     if (!company.openedAt) return { ok: false, reason: "closed" }; // Open comes first: a pilot nobody can sign in to counts nothing
     const checks = await runGoLiveChecks(companyId, now, deps);
-    if (blockers(checks).length > 0) return { ok: false, reason: "blocked", checks };
+    if (blockers(checks, "pilot").length > 0) return { ok: false, reason: "blocked", checks };
   }
   return db.$transaction(async (tx) => {
     const { count } = await tx.company.updateMany({

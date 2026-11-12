@@ -4,6 +4,11 @@ import { blockers, goLiveChecks, type CheckKey, type GoLiveInput } from "@/featu
 const now = new Date("2026-11-04T12:00:00Z");
 const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000);
 
+/** The agreements an AI that is off needs (Q9.4): the DPA, and no works council. */
+const AGREEMENTS: GoLiveInput["agreements"] = {
+  dpa: { kind: "dpa", status: "signed", date: "2026-10-01", signer: "Managing director", at: "2026-10-01T09:00:00.000Z" },
+  works: { kind: "works", status: "notNeeded", reason: "No works council", at: "2026-10-01T09:00:00.000Z" },
+};
 const GREEN: GoLiveInput = {
   now,
   units: [{ name: "Assembly" }, { name: "Quality" }],
@@ -21,6 +26,7 @@ const GREEN: GoLiveInput = {
   directory: { on: true, lastRunAt: hoursAgo(2), lastOkAt: hoursAgo(2), lastError: null },
   recipients: 2,
   baseline: true,
+  agreements: AGREEMENTS,
 };
 
 const stateOf = (i: GoLiveInput, key: CheckKey) => goLiveChecks(i).find((c) => c.key === key)?.state;
@@ -30,7 +36,7 @@ describe("PIL go-live checks", () => {
     const checks = goLiveChecks(GREEN);
     expect(checks.every((c) => c.state === "done")).toBe(true);
     expect(blockers(checks)).toEqual([]);
-    expect(checks.filter((c) => c.level === "needed")).toHaveLength(9);
+    expect(checks.filter((c) => c.level === "needed")).toHaveLength(10);
     expect(checks.filter((c) => c.level === "recommended")).toHaveLength(4);
   });
 

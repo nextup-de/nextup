@@ -104,5 +104,9 @@ export function sampleOpenInput(now: Date): GoLiveInput {
     directory: null,
     recipients: 0,
     baseline: false,
+    agreements: {
+      dpa: { kind: "dpa", status: "signed", date: "2026-10-28", signer: "Managing director", at: "2026-10-29T09:00:00.000Z" },
+      works: { kind: "works", status: "notNeeded", reason: "The plant has no works council.", at: "2026-10-29T09:00:00.000Z" },
+    },
   };
 }

@@ -128,6 +128,20 @@ describe("NTF dispatcher", () => {
     expect((await rowsOf("notify:r2")).length).toBe(ownerEmails.length);
     expect((await cursor()).leaseUntil).toBeNull();
   });
+
+  it("plans nothing for a person who left (Q10.18)", async () => {
+    const gone = ownerEmails[0];
+    await db.user.updateMany({ where: { companyId, email: gone }, data: { active: false } });
+    try {
+      await raise("gone1");
+      await dispatchOnce();
+      const rows = await rowsOf("notify:gone1");
+      expect(rows.map((r) => r.address)).not.toContain(gone);
+      expect(rows.length).toBe(ownerEmails.length - 1);
+    } finally {
+      await db.user.updateMany({ where: { companyId, email: gone }, data: { active: true } });
+    }
+  });
 });
 
 describe("NTF old senders off", () => {
