@@ -108,11 +108,41 @@ async function vacateProjects(companyId: string, userIds: string[], now: Date): 
   return written;
 }
 
+/**
+ * The seats a leaver leaves empty (OVL, D23, D30): for each seat a user actually switched off held, when no other seat of its role has an active user,
+ * org.seat.vacant { seatId, roleId, userId } as the directory, so the company admins are told at once (the Org page marks the seat already). The key
+ * carries the number of org.seat.vacant already in the log for that seat and user, so leaving again after a reactivation writes again; a retry of the
+ * same departure finds nobody switched off and writes nothing. Returns how many were newly written.
+ */
+async function markVacantSeats(companyId: string, off: { users: string[]; seatIds: Map<string, string[]> }, now: Date): Promise<number> {
+  if (off.users.length === 0) return 0;
+  const db = getDb();
+  const active = new Set((await db.user.findMany({ where: { companyId, active: true }, select: { id: true } })).map((u) => u.id));
+  let written = 0;
+  for (const userId of off.users) {
+    for (const seatId of off.seatIds.get(userId) ?? []) {
+      const seat = await db.orgRoleHolder.findFirst({ where: { companyId, id: seatId }, select: { roleId: true } });
+      if (!seat) continue;
+      const others = await db.orgRoleHolder.findMany({ where: { companyId, roleId: seat.roleId, id: { not: seatId } }, select: { userId: true } });
+      if (others.some((o) => o.userId !== null && active.has(o.userId))) continue;
+      const n = await db.caseEvent.count({ where: { companyId, type: "org.seat.vacant", targetId: seatId, payload: { path: ["userId"], equals: userId } } });
+      const r = await appendEventRow(
+        companyId,
+        { id: crypto.randomUUID(), day: 0, type: "org.seat.vacant", actor: ACTOR, targetId: seatId, payload: { seatId, roleId: seat.roleId, userId } },
+        { source: "directory", idemKey: `dir:seat-vacant:${seatId}:${userId}:${n}`, now },
+      );
+      if (r.ok && !r.duplicate) written++;
+    }
+  }
+  return written;
+}
+
 /** One user leaves: inactive, seats vacated, open cases on them handed. Zero counts when they were inactive already. */
 export async function deactivateUser(companyId: string, userId: string, now: Date = new Date(), alsoInTx?: (tx: Tx) => Promise<void>): Promise<Pick<DirectoryCounts, "deactivated" | "handed">> {
   const off = await switchOff(companyId, [userId], now, alsoInTx);
   const handed = await handCases(companyId, [...off.seatIds.values()].flat(), now);
   await vacateProjects(companyId, off.users, now);
+  await markVacantSeats(companyId, off, now);
   return { deactivated: off.users.length, handed };
 }
 
@@ -184,6 +214,7 @@ export async function applyDirectoryDelta(
   const off = await switchOff(companyId, plan.leavers, now);
   const handed = await handCases(companyId, [...off.seatIds.values()].flat(), now);
   await vacateProjects(companyId, off.users, now);
+  await markVacantSeats(companyId, off, now);
   // An update that only came back from leaving is an update, a leaver is not.
   return { added: plan.creates.length, updated: plan.updates.length, deactivated: off.users.length, handed, held: heldOf(plan) };
 }
