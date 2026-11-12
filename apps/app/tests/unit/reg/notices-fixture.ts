@@ -6,6 +6,7 @@ import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/events";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import type { Route } from "@/features/demo/types";
+import { LOOP_DEFAULTS } from "@/features/loop/rules";
 import type { PlanCtx, PlanEvent, PlanPerson } from "@/features/notify/plan";
 import type { Measure, ReducedProject } from "@/features/projects/types";
 
@@ -134,6 +135,7 @@ export const FIXTURE_STATE: State = {
   ],
   ledger: { handedOver: 0, escalated: 0, overrides: 0, projectsEscalated: 0, measuresOwed: 0, unmeasured: 0 },
   rules: {
+    ...LOOP_DEFAULTS,
     discussEveryDays: 3, discussMaxRounds: 3, measureDays: [30, 90], tolerancePct: 2, fastLaneEur: 5000,
     reward: { kind: "thanks", amount: null, sharePct: null, capEur: null }, deadlineHandover: true, escalationDays: 3, projectStartDays: 10, measure: true, recognition: true,
   },
