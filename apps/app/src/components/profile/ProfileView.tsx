@@ -10,6 +10,8 @@ import styles from "./ProfileView.module.css";
 import { M365Card } from "./M365Card";
 import { NotifySettings } from "./NotifySettings";
 import type { M365Card as M365CardData } from "@/server/m365-profile";
+import { AwayCard } from "@/components/overload/AwayCard";
+import { AwayForOthers } from "@/components/overload/AwayForOthers";
 import { Banner, DeptChip, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
 import { setLocale } from "@/i18n/actions";
 import { useLocale, useT } from "@/i18n/client";
@@ -90,6 +92,10 @@ export function ProfileView({ m365, mailPrefs }: { m365?: M365CardData | null; m
         </SectionCard>
 
         <Link href={href("/team")} className={styles.myCases}><span><strong>{t("profile.followSent")}</strong><small>{t("profile.followSentSub")}</small></span><span aria-hidden="true">→</span></Link>
+
+        {/* Absence (plan OVL, D19, D31): the own span and what to take back, then the people the viewer may set away; both are hidden in the demo. */}
+        <AwayCard />
+        <AwayForOthers />
       </div>
 
       <aside className={styles.sideColumn} aria-label={t("profile.detailsLabel")}>
