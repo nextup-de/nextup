@@ -54,6 +54,8 @@ const viewAskedNotice: NoticeBuilder = ({ ev, state, pl, kase, send, caseLink, a
   if (ev.type === "case.discussion") {
     send(authorOf(kase), (t) => t("mail.discussionSubject", { title: kase.title }), (t) => [
       t("mail.discussionIntro", { actor: ev.actor, n: state.rules.discussEveryDays }),
+      // The day the decision is expected, in the date layout the revisit date has (SEE D13).
+      ...(talk.lastDay > 0 ? ["", t("caseSee.decisionExpected", { date: dateOf(t, state, talk.lastDay) })] : []),
       ...(talk.missing ? ["", t("mail.stillMissing", { text: talk.missing })] : []),
       "", t("mail.discussionAddVersion", { url: caseLink(kase) }),
     ]);
