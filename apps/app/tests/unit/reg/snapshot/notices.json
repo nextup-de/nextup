@@ -119,7 +119,6 @@
     "loop.project.baseline.confirmed": "loop.project.measured",
     "loop.project.help.asked": "loop.project.measured",
     "loop.project.claimed": "loop.project.measured",
-    "reminder.reward": "reminder.confirm"
     "reminder.reward": "reminder.confirm",
     "loop.agent.accepted": "loop.project.member"
   },
