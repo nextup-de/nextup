@@ -2,6 +2,8 @@
 
 > **4 Nov 2026, colour changed.** Black is no longer the action colour. White and the soft blue background stay, buttons and selected states use `--nh-brand`, and no fill is black. `apps/app/src/styles/tokens.css` is the source: change the blue there and every page follows, and lint blocks black fills and hardcoded blues. Where this text says otherwise about colour, the tokens win.
 
+> **Fixed design rules** (calm start, quiet numbers, privacy, copy, colour) are in `docs/DESIGN_RULES.md`; where this file disagrees, that file wins.
+
 NextUp answers one question for a company: **who owns this decision, and what is waiting on whom?** An employee raises an idea or a problem in one field, develops it with an AI coach until it scores high enough to publish, and it lands on a named leader's desk with a clock ("answer within 5 days"). The leader says yes, no and why, hands it over, or asks one question. Managers see the wait ledger. Customers are manufacturing companies (plants, lines, shifts, changeovers, MES).
 
 Tagline: *Who owns this decision?* · Description: *One field to raise it, one inbox with a clock, one wait ledger.*

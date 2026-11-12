@@ -169,6 +169,16 @@ export function RulesForm({ slug, values, demo }: { slug: string; values: Values
         <Row id="projectStartDays" label={t("settingsCompany.projectStartDays")} wide help={t("settingsCompany.projectStartHelp")} error={err("projectStartDays")}>
           <div className={s.inline}><Num id="projectStartDays" tid="project-start-days" value={rules.projectStartDays ?? LOOP_DEFAULTS.projectStartDays} invalid={Boolean(err("projectStartDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
         </Row>
+        {/* The reasoned no (plan NOR, D23). */}
+        <Row id="noReasonMin" label={t("settingsCompany.noReasonMin")} wide help={t("settingsCompany.noReasonMinHelp")} error={err("noReasonMin")}>
+          <div className={s.inline}><Num id="noReasonMin" tid="no-reason-min" value={rules.noReasonMin ?? LOOP_DEFAULTS.noReasonMin} invalid={Boolean(err("noReasonMin"))} /><span className={s.unit}>{t("settingsCompany.charactersUnit")}</span></div>
+        </Row>
+        <Row id="appealDays" label={t("settingsCompany.appealDays")} wide help={t("settingsCompany.appealDaysHelp")} error={err("appealDays")}>
+          <div className={s.inline}><Num id="appealDays" tid="appeal-days" value={rules.appealDays ?? LOOP_DEFAULTS.appealDays} invalid={Boolean(err("appealDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
+        </Row>
+        <Row id="questionDays" label={t("settingsCompany.questionDays")} wide help={t("settingsCompany.questionDaysHelp")} error={err("questionDays")}>
+          <div className={s.inline}><Num id="questionDays" tid="question-days" value={rules.questionDays ?? LOOP_DEFAULTS.questionDays} invalid={Boolean(err("questionDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
+        </Row>
         {foot()}
       </Card>
 
