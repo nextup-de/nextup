@@ -35,9 +35,9 @@ describe("AI budget", () => {
       { model: "eu.anthropic.claude-sonnet-5-5", tokensIn: 1_000_000, tokensOut: 1_000_000 }, // 12
       { model: "mock", tokensIn: 9_000_000, tokensOut: 9_000_000 },
       { model: "mistral-nemo", tokensIn: 5_000_000, tokensOut: 5_000_000 },
-      { model: "gpt-4.1-mini", tokensIn: 1, tokensOut: 1 },
+      { model: "gpt-4o-mini", tokensIn: 1, tokensOut: 1 },
     ]);
-    expect(s).toEqual({ spentEur: 12.6, unpriced: ["gpt-4.1-mini", "mistral-nemo"], tokensUnpriced: 10_000_002 });
+    expect(s).toEqual({ spentEur: 12.6, unpriced: ["gpt-4o-mini", "mistral-nemo"], tokensUnpriced: 10_000_002 });
     expect(spendOf([])).toEqual({ spentEur: 0, unpriced: [], tokensUnpriced: 0 });
   });
 

@@ -1,8 +1,12 @@
-// What the assistant costs: Anthropic list prices in US dollars per million tokens (AID D4).
+// What the assistant costs: list prices in US dollars per million tokens (AID D4). A model matches the first key its
+// name contains.
 export const AI_PRICES_USD_PER_MTOK: Record<string, { in: number; out: number }> = {
   "claude-haiku-5-5": { in: 0.1, out: 0.5 },
   "claude-sonnet-5-5": { in: 2, out: 10 },
   "claude-opus-5-5": { in: 4, out: 20 },
+  // Azure OpenAI, EU data zone: the prices of the recorded eval run of 2026-11-05, chosen for the pilot on 2026-11-12
+  // (AIB-Z2, docs/ops/AI_PROVIDER.md "Result").
+  "gpt-4.1-mini": { in: 0.484, out: 1.936 },
 };
 
 /**
