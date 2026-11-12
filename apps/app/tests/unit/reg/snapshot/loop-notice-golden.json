@@ -502,6 +502,11 @@
         "to": "lb@acme.test",
         "subject": "Sie leiten P-4: Changeover cart",
         "text": "L. Brandt,\n\nT. Vogel hat Ihnen dieses Projekt übergeben.\n\nYou know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "L. Brandt leitet jetzt P-4: Changeover cart",
+        "text": "J. Schmidt,\n\nL. Brandt leitet jetzt P-4.\n\nWarum: You know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
       }
     ],
     "en": [
@@ -509,6 +514,11 @@
         "to": "lb@acme.test",
         "subject": "You lead P-4: Changeover cart",
         "text": "L. Brandt,\n\nT. Vogel handed this project to you.\n\nYou know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "L. Brandt now leads P-4: Changeover cart",
+        "text": "J. Schmidt,\n\nL. Brandt now leads P-4.\n\nWhy: You know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
       }
     ]
   },

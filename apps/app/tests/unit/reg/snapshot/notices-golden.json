@@ -1944,6 +1944,74 @@
         "address": null,
         "status": "sent",
         "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_hs",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_hs",
+        "address": "hs@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_hs:app",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_hs",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_raiser",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_raiser",
+        "address": "raiser@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_raiser:app",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_raiser",
+        "address": null,
+        "status": "sent",
+        "lastError": null
       }
     ],
     "teamsOn": [
@@ -1977,6 +2045,74 @@
         },
         "channel": "inapp",
         "recipientUserId": "u_lead",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_hs",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_hs",
+        "address": "hs@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_hs:app",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_hs",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_raiser",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_raiser",
+        "address": "raiser@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_raiser:app",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_raiser",
         "address": null,
         "status": "sent",
         "lastError": null
@@ -2238,6 +2374,40 @@
         "address": null,
         "status": "sent",
         "lastError": null
+      },
+      {
+        "key": "loop:fx_p_done:u_hs",
+        "template": "loop.project.done",
+        "locale": "en",
+        "subject": "P-1 is done: Project p_one",
+        "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_done",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_hs",
+        "address": "hs@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_done:u_hs:app",
+        "template": "loop.project.done",
+        "locale": "en",
+        "subject": "P-1 is done: Project p_one",
+        "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_done",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_hs",
+        "address": null,
+        "status": "sent",
+        "lastError": null
       }
     ],
     "teamsOn": [
@@ -2271,6 +2441,40 @@
         },
         "channel": "inapp",
         "recipientUserId": "u_raiser",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_done:u_hs",
+        "template": "loop.project.done",
+        "locale": "en",
+        "subject": "P-1 is done: Project p_one",
+        "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_done",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_hs",
+        "address": "hs@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_done:u_hs:app",
+        "template": "loop.project.done",
+        "locale": "en",
+        "subject": "P-1 is done: Project p_one",
+        "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_done",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_hs",
         "address": null,
         "status": "sent",
         "lastError": null

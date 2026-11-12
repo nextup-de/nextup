@@ -2,7 +2,8 @@
 // opens with the case.decided yes that names it, and changes only through project.* events.
 // Pure like the case reducer: state in, state out, nothing stored.
 import type { SeatRow } from "@/features/auth/identity";
-import type { CaseEvent } from "@/features/cases/events";
+import type { CaseEvent, CaseEventType } from "@/features/cases/events";
+import { DONE_BY_DEFAULT_DAYS } from "@/features/clock/kinds/project";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
 import { templateSteps } from "@/features/templates/library";
@@ -39,6 +40,7 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
     status: "planning", closed: false, rewardDue: false, dueDay: null, overdue: false, escalated: null, history: [],
     draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
     goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
+    doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null,
   };
   book.byId[id] = project;
   book.order.push(id);
@@ -114,6 +116,40 @@ function placeStep(p: ReducedProject, stepId: string, before: string | null): vo
   else p.steps.splice(at, 0, s);
 }
 
+/** Frees the open steps of a user who left the team or the company: they have no owner now (MOV D22). Done steps keep theirs. */
+function freeSteps(p: ReducedProject, userId: string): void {
+  p.steps.forEach((x) => { if (x.column !== "done" && x.ownerUserId === userId) { x.owner = null; x.ownerUserId = null; } });
+}
+
+/** The events that count as the project moving (MOV D12): the quiet and stalled clocks start over after each of them. */
+const ACTIVITY_TYPES: ReadonlySet<CaseEventType> = new Set<CaseEventType>([
+  "project.step.added", "project.step.moved", "project.step.edited", "project.update", "project.resumed", "project.handed", "project.lead.changed",
+]);
+/** What ends a standing stalled escalation: activity, a new done-by date, a pause (MOV D12; a new lead is an activity above). Done and stop end the running status itself. */
+const STALLED_ENDERS: ReadonlySet<CaseEventType> = new Set<CaseEventType>([...ACTIVITY_TYPES, "project.doneby.moved", "project.paused"]);
+
+/**
+ * The working day the latest pause ends or ended, read off the history alone (never off today): its untilDay, or the day a
+ * project.resumed ended it early. For a pause still running that is its untilDay, and the caller compares it with today. Null when
+ * the project was never paused. Quiet counts from the day after this one (MOV D20). A later pause does not hide an earlier one's end:
+ * each pause is closed by the next resume, the next pause or its own untilDay.
+ */
+export function pauseEndedDay(history: readonly CaseEvent[]): number | null {
+  let until: number | null = null;
+  let ended: number | null = null;
+  for (const e of history) {
+    if (e.type === "project.paused" && typeof e.payload.untilDay === "number") {
+      // A pause that is still open when the next one starts ran to its own untilDay.
+      if (until !== null) ended = Math.min(until, e.day | 0);
+      until = e.payload.untilDay;
+    } else if (e.type === "project.resumed" && until !== null) {
+      ended = Math.min(until, e.day | 0);
+      until = null;
+    }
+  }
+  return until !== null ? until : ended;
+}
+
 const INVITE_ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
 
 /** The lead takes the draft on day `d`: its start window opens, and template steps without a day get theirs. */
@@ -146,6 +182,12 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (pl.on === false) {
         p.memberUserIds = p.memberUserIds.filter((u) => u !== userId);
         if (name) p.members = p.members.filter((m) => m !== name); // the shown list only
+        if (pl.unassign === true) {
+          // A leaver (MOV D22): no owner on their open steps, and no longer sponsor or follower. Without it, nothing of this happens.
+          freeSteps(p, userId);
+          if (p.sponsorUserId === userId) p.sponsorUserId = null;
+          p.followerUserIds = p.followerUserIds.filter((u) => u !== userId);
+        }
       } else if (!p.memberUserIds.includes(userId)) {
         p.memberUserIds.push(userId);
         if (name) p.members.push(name);
@@ -368,6 +410,53 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
     case "project.stopped":
       if (live && p.reward === null) p.stopped = { day: d, by: ev.actor, why: pl.why ?? "" };
       break;
+    case "project.doneby.moved": {
+      if (p.startedDay === null || p.doneDay !== null || !live || typeof pl.doneBy !== "number" || !Number.isInteger(pl.doneBy)) break;
+      p.doneByMoves.push({ day: d, doneBy: pl.doneBy, why: pl.why?.trim() ?? "", byUserId: ev.actorUserId ?? null, byLead: p.leadUserId !== null && ev.actorUserId === p.leadUserId });
+      break;
+    }
+    case "project.paused": {
+      if (p.startedDay === null || p.doneDay !== null || !live || typeof pl.untilDay !== "number" || !Number.isInteger(pl.untilDay)) break;
+      p.pausedUntil = pl.untilDay;
+      p.pauseWhy = pl.why?.trim() ?? "";
+      break;
+    }
+    case "project.resumed":
+      if (live) { p.pausedUntil = null; p.pauseWhy = ""; }
+      break;
+    case "project.howwework": {
+      const weekday = pl.checkInWeekday;
+      if (!live || p.doneDay !== null || typeof weekday !== "number" || !Number.isInteger(weekday) || weekday < 1 || weekday > 5) break;
+      p.checkInWeekday = weekday;
+      p.howWeWorkNote = pl.note?.trim() ?? "";
+      break;
+    }
+    case "project.update": {
+      const text = pl.text?.trim();
+      if (p.startedDay === null || !live || !text || typeof pl.week !== "number") break;
+      p.latestUpdate = { text, week: pl.week, day: d, byUserId: ev.actorUserId ?? null };
+      break;
+    }
+    case "project.lead.vacated": {
+      const userId = pl.userId;
+      if (!live || !userId || userId !== p.leadUserId) break;
+      // The label stays for the timeline; the page shows "No lead" from leadUserId.
+      p.leadUserId = null;
+      p.leadVacatedDay = d;
+      freeSteps(p, userId);
+      break;
+    }
+    case "project.lead.changed": {
+      const toUserId = pl.toUserId ?? null;
+      if (!live || p.leadVacatedDay === null || toUserId === null) break;
+      const to = pl.to?.trim() ?? "";
+      p.memberUserIds = p.memberUserIds.filter((u) => u !== toUserId);
+      if (to) p.members = p.members.filter((m) => m !== to);
+      if (to) p.lead = to;
+      p.leadUserId = toUserId;
+      p.leadVacatedDay = null;
+      break;
+    }
     case "project.commented":
     default:
       break;
@@ -405,7 +494,15 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, project
     const counts = rules.measure && last !== undefined && last.confirmed;
     p.rewardDue = p.status === "measured" && rules.recognition && rules.reward.kind !== "none" && counts && last.verdict === "better";
     const noRewardPossible = rules.reward.kind === "none" || !rules.recognition || !rules.measure || (counts && last.verdict !== "better");
-    p.closed = p.status === "stopped" || p.status === "recognised" || (p.status === "measured" && noRewardPossible);
+    // A project done without a baseline number is "not measured" and closes at done, also under a reward rule (MOV D24).
+    p.closed = p.status === "stopped" || p.status === "recognised" || (p.status === "measured" && (noRewardPossible || p.baseline?.none === true));
+
+    // The done-by date: the latest move, else the goal's, else the default after the start (MOV D19).
+    const moved = p.doneByMoves[p.doneByMoves.length - 1];
+    p.doneBy = p.startedDay === null ? null : moved?.doneBy ?? p.goal?.doneBy ?? p.startedDay + DONE_BY_DEFAULT_DAYS;
+    // The latest day of the project moving (MOV D12). A pause ends by itself once `day` is past pausedUntil; the field is kept
+    // as it is (paused means day <= pausedUntil), so the clock reads the end from it and from the history (pauseEndedDay).
+    p.lastActivityDay = p.startedDay === null ? null : p.history.reduce((m, e) => (ACTIVITY_TYPES.has(e.type) ? Math.max(m, e.day | 0) : m), p.startedDay);
 
     const nextCheck = p.checks.find((c) => !c.measured);
     // A draft in planning has the start day of D14, none while the lead has not taken it; every other project keeps today's rule.
@@ -438,6 +535,19 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, project
       const seat = fact ? seats.find((s) => s.id === fact.payload.toRoleHolderId) : undefined;
       p.escalated = fact && seat && p.leadState === "taken"
         ? { to: seat.label, toSeatId: seat.id, toRoleId: seat.roleId, from: p.lead, day: (fact.payload.dueDay ?? p.dueDay ?? 0) + 1, live: facts.movedAt < at, what: "draft" }
+        : null;
+      return;
+    }
+    if (p.status === "running") {
+      // A stalled fact (MOV D12) stands until something after it, in the order of the log (not by day alone), moved the project:
+      // activity, a new done-by date, a pause or a new lead. Done and stop leave the running status.
+      const at = p.history.findLastIndex((e) => e.type === "clock.due" && e.payload.kind === "stalled");
+      const fact = at >= 0 ? p.history[at] : undefined;
+      const seat = fact ? seats.find((x) => x.id === fact.payload.toRoleHolderId) : undefined;
+      const toUserId = fact?.payload.userId ?? null;
+      const standing = fact !== undefined && (seat !== undefined || toUserId !== null) && !p.history.some((e, i) => i > at && STALLED_ENDERS.has(e.type));
+      p.escalated = standing && fact
+        ? { to: seat?.label ?? "", toSeatId: seat?.id ?? null, toRoleId: seat?.roleId ?? null, toUserId, from: p.lead, day: fact.payload.dueDay ?? 0, live: true, what: "stalled" }
         : null;
       return;
     }
