@@ -1,0 +1,23 @@
+/* The parts of the project page for a project that keeps moving (plan MOV-U1): the done-by line, a pause, No lead, how we
+   work and the weekly update. Tokens from src/styles/tokens.css; late is the one red the board uses. */
+.line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
+.doneBy { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); font-variant-numeric: tabular-nums; }
+.doneBy[data-late="true"] { color: var(--nh-danger); }
+.stack { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.block { padding: 16px 0 18px; border-top: 1px solid var(--nh-line); min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.title { font-size: var(--nh-fs-lg); font-weight: 600; line-height: 22px; color: var(--nh-ink); letter-spacing: -0.01em; margin: 0; }
+.form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; max-width: 520px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.label { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); }
+.input { height: 38px; font-size: var(--nh-fs-sm); padding: 0 11px; }
+.short { width: 120px; max-width: 100%; }
+.textarea { min-height: 120px; font-size: var(--nh-fs-sm); padding: 9px 11px; line-height: 1.5; }
+.row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.hint { font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.45; margin: 0; }
+.quiet { background: none; border: 0; padding: 0; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); cursor: pointer; }
+.quiet:hover { color: var(--nh-ink); }
+.latest { margin: 0; padding: 10px 12px; border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .form { max-width: none; }
+  .short { width: 100%; }
+}

@@ -9,6 +9,7 @@ import { draftView } from "@/features/projects/draft";
 import type { ReducedProject } from "@/features/projects/types";
 import { useT } from "@/i18n/client";
 import { BaselinePanel } from "../ProjectMeasure";
+import { HowWeWork } from "../move/HowWeWork";
 import { actorOf, useRights, useSend } from "../parts";
 import { DraftGoal } from "./DraftGoal";
 import { InvitePanel } from "./DraftInvites";
@@ -62,6 +63,7 @@ export function DraftView({ p }: { p: ReducedProject }) {
       <DraftTemplate p={p} view={view} />
       <InvitePanel p={p} />
       <DraftGoal p={p} view={view} />
+      <HowWeWork p={p} className={styles.section} />
 
       {p.steps.length > 0 || stepHints.length > 0 ? (
         <section className={styles.section} aria-labelledby={"steps-" + p.id}>

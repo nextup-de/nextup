@@ -162,7 +162,7 @@ describe("REG demo acts split", () => {
   describe("project acts", () => {
     it("member, hand, baseline, start and comment emit what they did", () => {
       expect(only((d) => projectActs(d).member("p_1", { userId: "u_hs", name: "H. Sander" }, true))).toStrictEqual(["project.member", "p_1", { name: "H. Sander", userId: "u_hs", on: true }]);
-      expect(only((d) => projectActs(d).member("p_1", { userId: "u_hs", name: "H. Sander" }, false))).toStrictEqual(["project.member", "p_1", { name: "H. Sander", userId: "u_hs", on: false }]);
+      expect(only((d) => projectActs(d).member("p_1", { userId: "u_hs", name: "H. Sander" }, false))).toStrictEqual(["project.member", "p_1", { name: "H. Sander", userId: "u_hs", on: false, unassign: true }]); // MOV D22: leaving the team frees the open steps
       expect(only((d) => projectActs(d).hand("p_1", { userId: "u_hs", name: "H. Sander" }, "Moving on"))).toStrictEqual(["project.handed", "p_1", { to: "H. Sander", toUserId: "u_hs", why: "Moving on" }]);
       expect(only((d) => projectActs(d).hand("p_1", { userId: "u_hs", name: "H. Sander" }))).toStrictEqual(["project.handed", "p_1", { to: "H. Sander", toUserId: "u_hs", why: undefined }]);
       expect(only((d) => projectActs(d).baseline("p_1", { metric: "Scrap", unit: "%", value: 9, better: "down", source: "QMS" }))).toStrictEqual(["project.baseline", "p_1", { metric: "Scrap", unit: "%", value: 9, better: "down", source: "QMS" }]);
@@ -241,9 +241,20 @@ describe("REG demo acts split", () => {
       expect(only((d) => projectActs(d).moveStart("p_1", 12, "Waiting for the line"))).toStrictEqual(["project.start.moved", "p_1", { dueDay: 12, why: "Waiting for the line" }]);
     });
 
+    it("the MOV acts each emit one event: done-by, pause, resume, how we work, update and a new lead", () => {
+      expect(only((d) => projectActs(d).moveDoneBy("p_1", 40, "Parts late"))).toStrictEqual(["project.doneby.moved", "p_1", { doneBy: 40, why: "Parts late" }]);
+      expect(only((d) => projectActs(d).pause("p_1", "Shutdown", 8))).toStrictEqual(["project.paused", "p_1", { why: "Shutdown", untilDay: 8 }]);
+      expect(only((d) => projectActs(d).resume("p_1"))).toStrictEqual(["project.resumed", "p_1", undefined]);
+      expect(only((d) => projectActs(d).howWeWork("p_1", 3, "Short and standing"))).toStrictEqual(["project.howwework", "p_1", { checkInWeekday: 3, note: "Short and standing" }]);
+      expect(only((d) => projectActs(d).howWeWork("p_1", 3))).toStrictEqual(["project.howwework", "p_1", { checkInWeekday: 3 }]);
+      expect(only((d) => projectActs(d).update("p_1", "All well", 6))).toStrictEqual(["project.update", "p_1", { text: "All well", week: 6 }]);
+      expect(only((d) => projectActs(d).changeLead("p_1", { userId: "u_hs", name: "H. Sander" }, "Agreed"))).toStrictEqual(["project.lead.changed", "p_1", { to: "H. Sander", toUserId: "u_hs", why: "Agreed" }]);
+      expect(only((d) => projectActs(d).changeLead("p_1", { userId: "u_hs", name: "H. Sander" }))).toStrictEqual(["project.lead.changed", "p_1", { to: "H. Sander", toUserId: "u_hs" }]);
+    });
+
     it("exposes exactly the project acts", () => {
       expect(Object.keys(projectActs(deps().d)).sort()).toEqual(
-        ["addStep", "answerInvite", "answerLead", "baseline", "claim", "comment", "done", "editStep", "hand", "invite", "link", "measure", "member", "moveStart", "moveStep", "pickTemplate", "reward", "setGoal", "start", "stop", "sync"]);
+        ["addStep", "answerInvite", "answerLead", "baseline", "changeLead", "claim", "comment", "done", "editStep", "hand", "howWeWork", "invite", "link", "measure", "member", "moveDoneBy", "moveStart", "moveStep", "pause", "pickTemplate", "resume", "reward", "setGoal", "start", "stop", "sync", "update"]);
     });
   });
 });
