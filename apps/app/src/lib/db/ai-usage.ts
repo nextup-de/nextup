@@ -23,14 +23,30 @@ export type AiCallInput = {
 };
 
 /**
- * Stores what one brain call used. Never throws and never delays the answer: the write is not
- * awaited, a failure is logged and nothing else changes for the caller.
+ * After a call is stored: the budget warning mail, if the month just reached a level (decision Q7.6). Imported when
+ * first needed, because server/notify/ai-budget.ts reads the budget from this file. Never throws.
+ */
+async function warnAfterRecord(companyId: string): Promise<void> {
+  try {
+    const { warnAiBudget } = await import("@/server/notify/ai-budget");
+    await warnAiBudget(companyId);
+  } catch (err) {
+    console.warn("[ai-usage] budget warning not checked", err instanceof Error ? err.name : "failed");
+  }
+}
+
+/**
+ * Stores what one brain call used, then checks the budget warning. Never throws and never delays
+ * the answer: neither is awaited, a failure is logged and nothing else changes for the caller.
  */
 export function recordAiCall(companyId: string, call: AiCallInput): void {
   try {
     void getDb()
       .aiCall.create({ data: { companyId, purpose: call.purpose, model: call.model, tokensIn: call.tokensIn, tokensOut: call.tokensOut, latencyMs: call.latencyMs, ...(call.at ? { createdAt: call.at } : {}) } })
-      .catch((err: unknown) => console.error("[ai-usage] record failed", err instanceof Error ? err.name : "failed"));
+      .then(
+        () => warnAfterRecord(companyId),
+        (err: unknown) => console.error("[ai-usage] record failed", err instanceof Error ? err.name : "failed"),
+      );
   } catch (err) {
     console.error("[ai-usage] record failed", err instanceof Error ? err.name : "failed");
   }

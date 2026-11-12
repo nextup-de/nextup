@@ -17,7 +17,7 @@ export function ProgressView() {
   const { S, demo, ready, flag } = ctx;
   const t = useT();
   const fmt = useFormat();
-  if (!ready) return <PageSkeleton kind="list" delay />;
+  if (!ready) return <PageSkeleton kind="list" />;
   const on = flag("projects");
   const list = on ? visibleProjectsFor(S, idViewerOf(ctx), demo) : [];
   const L = projectLedger(list, S.day);

@@ -33,7 +33,7 @@ export function ProjectView({ projectId, jira, tab }: { projectId: string; jira:
   const ctx = useDemo();
   const t = useT();
   const { S, ready, demo, flag, href } = ctx;
-  if (!ready) return <PageSkeleton kind="list" delay />;
+  if (!ready) return <PageSkeleton kind="list" />;
   if (!flag("projects")) return <ProjectsOff />;
   const p = visibleProjectsFor(S, idViewerOf(ctx), demo).find((x) => x.id === projectId);
   if (!p) {

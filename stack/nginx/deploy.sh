@@ -11,6 +11,12 @@
 #   release <sha>   every other stack gets it - only a sha that `stage` moved before
 #   status          what runs where, and the last staged and released sha
 #
+# And the PR previews (RUNBOOK "PR previews"; .github/workflows/preview.yml, with its own key that
+# may run only these two and status - authorized_keys: command="~/nextup/stack/nginx/deploy.sh --previews-only"):
+#
+#   preview <pr> <sha>   a fresh demo stack of that PR's commit in a preview slot (previewN.sellux.ch)
+#   unpreview <pr>       the PR's slot emptied
+#
 # CI runs:        ssh hetzner stage <sha>, later ssh hetzner release <sha>, ssh hetzner status
 #                 (.github/workflows/images.yml + deploy.yml: the release waits for Kevin's approval)
 # By hand:        ~/nextup/stack/nginx/deploy.sh promote demo a16bc06
@@ -42,7 +48,12 @@ staged_list="${NEXTUP_STAGED:-$HOME/nextup/staged}"
 released_list="${NEXTUP_RELEASED:-$HOME/nextup/released}"
 lock_file="${NEXTUP_DEPLOY_LOCK:-$HOME/nextup/deploy.lock}"
 
-usage() { echo "usage: stage <sha> | release <sha> | deploy <main|sha> | promote <slug> <sha> | status" >&2; exit 2; }
+usage() { echo "usage: stage <sha> | release <sha> | deploy <main|sha> | promote <slug> <sha> | preview <pr> <sha> | unpreview <pr> | status" >&2; exit 2; }
+
+# The PR preview key runs this script as `deploy.sh --previews-only` (its authorized_keys line):
+# it may fill and empty the preview slots and read status, nothing else - no customer stack.
+only=""
+if [ "${1:-}" = --previews-only ]; then only=previews; shift; fi
 
 # Forced command: the client's words arrive in SSH_ORIGINAL_COMMAND, never as a shell - and
 # exactly as many as the verb takes.
@@ -50,8 +61,11 @@ if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
   read -r -a args <<< "$SSH_ORIGINAL_COMMAND"
   # `deploy` skips the gate, so the CI key can't use it: stage, then release.
   [ "${args[0]:-}" != deploy ] || { echo "deploy: not over ssh - use stage <sha>, then release <sha>" >&2; exit 2; }
-  case "${args[0]:-}:${#args[@]}" in status:1|stage:2|release:2|promote:3) ;; *) usage ;; esac
+  case "${args[0]:-}:${#args[@]}" in status:1|stage:2|release:2|promote:3|preview:3|unpreview:2) ;; *) usage ;; esac
 else args=("$@"); fi
+if [ "$only" = previews ]; then
+  case "${args[0]:-}" in preview|unpreview|status) ;; *) echo "this key may only preview, unpreview or status" >&2; exit 2 ;; esac
+fi
 action="${args[0]:-}" tag="${args[1]:-}"
 
 repo="${NEXTUP_REPO:-nextup-de/nextup}"
@@ -231,6 +245,44 @@ prune_images() {
   echo "images pruned; disk: $(df -h / | awk 'NR==2 { print $4 " free" }')"
 }
 
+# ── PR previews (RUNBOOK "PR previews") ─────────────────────────────────────────────────────────
+# A fixed set of slots: the ports.md rows with stage `preview`. Each keeps its nginx site and
+# certificate for good (made once, by the root helper); a PR borrows a slot, and every push gives
+# it a fresh demo stack (acme's demo data) at the PR's commit, from that commit's own stack/.
+# Stage, release and deploy never see the slots (known() lists only demo and real rows), and
+# backup.sh and health.sh skip a stack.conf with PREVIEW_PR. Closing the PR empties its slot. With
+# every slot taken, the one updated longest ago goes to the new PR.
+preview_min_disk_mb="${NEXTUP_PREVIEW_MIN_DISK_MB:-8000}"
+site_helper="${NEXTUP_SITE_HELPER:-/usr/local/sbin/nextup-site}"
+slots() { awk -F'|' 'NF>5 { for (i=2;i<=4;i++) gsub(/ /,"",$i); if ($4=="preview") print $2, $3 }' "$here/ports.md"; }
+conf_val() { sed -n -E "s/^$2=(.*)$/\1/p" "$NEXTUP_INSTANCES/$1/stack.conf" 2>/dev/null | tail -1 || true; }
+slot_of() {  # pr -> "slot port" of the slot that holds it
+  local s p
+  while read -r s p; do [ "$(conf_val "$s" PREVIEW_PR)" = "$1" ] && { echo "$s $p"; return 0; }; done < <(slots)
+  return 1
+}
+pick_slot() {  # pr -> "slot port evicted-pr": its own slot, else a free one, else the oldest
+  local s p at oldest="" best=""
+  slot_of "$1" && return 0
+  while read -r s p; do
+    if [ -z "$(conf_val "$s" PREVIEW_PR)" ]; then echo "$s $p"; return 0; fi
+    at="$(conf_val "$s" PREVIEW_AT)"; at="${at:-0}"
+    if [ -z "$oldest" ] || [ "$at" -lt "$oldest" ]; then oldest="$at"; best="$s $p $(conf_val "$s" PREVIEW_PR)"; fi
+  done < <(slots)
+  [ -n "$best" ] && echo "$best"
+}
+# Containers, volumes and the slot's folder away (its .env with them): the next preview is a new
+# install. The nginx site and certificate stay with the slot.
+preview_wipe() {  # slot
+  local dir="$NEXTUP_INSTANCES/$1" compose="$stack_root/compose.yml"
+  if [ -f "$dir/.env" ]; then
+    [ -f "$dir/stack/compose.yml" ] && compose="$dir/stack/compose.yml"
+    docker compose -f "$compose" --env-file "$dir/.env" down -v --remove-orphans </dev/null >/dev/null 2>&1 || true
+  fi
+  rm -rf "${dir:?}"
+}
+free_disk_mb() { df -Pm "${DOCKER_ROOT:-/var/lib/docker}" 2>/dev/null | awk 'NR==2 { print $4 }' | grep -E '^[0-9]+$' || df -Pm / | awk 'NR==2 { print $4 }'; }
+
 by="${SSH_CONNECTION:-local}"
 case "$action" in
   status)
@@ -239,6 +291,10 @@ case "$action" in
       if [ -n "$pin" ]; then mark="  (pinned)"; elif [ "$tr" = main ]; then mark="  (main)"; fi
       printf '%-10s %s%s\n' "$s" "$(grep '^NEXTUP_APP_IMAGE=' "$NEXTUP_INSTANCES/$s/.env" | cut -d= -f2)" "$mark"
       "$here/../ctl.sh" "$s" ps --format '  {{.Service}} {{.Status}}'
+    done
+    slots | while read -r s _; do
+      pr="$(conf_val "$s" PREVIEW_PR)"
+      if [ -n "$pr" ]; then printf '%-10s PR #%s at %s\n' "$s" "$pr" "$(conf_val "$s" PREVIEW_SHA)"; else printf '%-10s free\n' "$s"; fi
     done
     echo "staged:   $(last_in "$staged_list")"
     echo "released: $(last_in "$released_list")" ;;
@@ -321,5 +377,53 @@ case "$action" in
     [ "$rc" -eq 0 ] || bail "$slug did not come up at $tag${was:+ - to go back: promote $slug $was}"
     echo "$(date -u +%FT%TZ) promote $slug $tag done" >> "$log"
     echo "$slug is pinned at $tag${was:+ (was $was; to go back: promote $slug $was)}" ;;
+  preview)
+    # A fresh demo stack of PR <pr> at <sha> in a preview slot. Any sha CI published (images.yml
+    # pushes a PR's images only when it carries the label `preview`); the slot is never a customer.
+    pr="$tag"; tag="${args[2]:-}"
+    [[ "$pr" =~ ^[1-9][0-9]{0,5}$ ]] && [[ "$tag" =~ ^[0-9a-f]{7}$ ]] \
+      || { echo "usage: preview <pr number> <7-char commit sha>" >&2; exit 2; }
+    take_lock
+    read -r slot port evicted < <(pick_slot "$pr") || true
+    [ -n "${slot:-}" ] || { echo "!! no preview slots (rows with stage preview in ports.md)"; exit 1; }
+    echo "$(date -u +%FT%TZ) preview #$pr $tag in $slot${evicted:+ (was #$evicted)} by ${by%% *}" >> "$log"
+    bail() { echo "!! $1"; echo "$(date -u +%FT%TZ) preview #$pr $tag failed: $1" >> "$log"; exit 1; }
+    disk="$(free_disk_mb)"
+    if [ "${disk:-0}" -lt "$preview_min_disk_mb" ]; then
+      prune_images; disk="$(free_disk_mb)"
+      [ "${disk:-0}" -ge "$preview_min_disk_mb" ] || bail "only ${disk} MB disk free, a preview needs $preview_min_disk_mb MB"
+    fi
+    pull_images "sha-$tag" || bail "no images for $tag (does the PR carry the label preview?)"
+    preview_wipe "$slot"
+    own_copy "$slot" "$tag" || bail "stack/ at $tag not fetched"
+    set_conf "$slot" "$port" demo PREVIEW_PR "$pr"
+    set_conf "$slot" "$port" demo PREVIEW_SHA "$tag"
+    set_conf "$slot" "$port" demo PREVIEW_AT "$(date +%s)"
+    echo "== $slot -> PR #$pr at $tag${evicted:+ (slot taken from PR #$evicted)}"
+    rc=0
+    "$NEXTUP_INSTANCES/$slot/stack/nginx/add-stack.sh" "$slot" "$port" demo --images "$tag" --app-replicas 1 \
+      </dev/null 2>&1 | hide_codes || rc=$?
+    # A half-started stack would restart forever: take it out again, slot free.
+    [ "$rc" -eq 0 ] || { preview_wipe "$slot"; bail "the stack did not come up - slot $slot is free again"; }
+    # The slot's nginx site and certificate: made by the root helper the first time, then kept.
+    if ! sudo -n "$site_helper" check "$slot" </dev/null >/dev/null 2>&1; then
+      sudo -n "$site_helper" add "$slot" "$port" </dev/null 2>&1 \
+        || bail "the stack runs, but nginx does not serve $slot yet: install $site_helper (stack/provision/nextup-site.sh)"
+    fi
+    prune_images
+    echo "$(date -u +%FT%TZ) preview #$pr $tag in $slot done" >> "$log"
+    # Read by .github/workflows/preview.yml.
+    echo "PREVIEW_URL=https://$slot.${NEXTUP_DOMAIN:-sellux.ch}"
+    [ -z "${evicted:-}" ] || echo "PREVIEW_EVICTED=$evicted" ;;
+  unpreview)
+    pr="$tag"
+    [[ "$pr" =~ ^[1-9][0-9]{0,5}$ ]] || { echo "usage: unpreview <pr number>" >&2; exit 2; }
+    take_lock
+    read -r slot _ < <(slot_of "$pr") || true
+    [ -n "${slot:-}" ] || { echo "PR #$pr has no preview - nothing to do"; exit 0; }
+    echo "$(date -u +%FT%TZ) unpreview #$pr from $slot by ${by%% *}" >> "$log"
+    preview_wipe "$slot"
+    prune_images
+    echo "PR #$pr's preview is gone; $slot is free" ;;
   *) usage ;;
 esac
