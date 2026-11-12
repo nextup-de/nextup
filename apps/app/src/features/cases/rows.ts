@@ -2,15 +2,17 @@
 // Nothing here is stored - every string is rebuilt from the reduced case at render time.
 import type { Me } from "@/features/auth/identity";
 import { scoreCase, type Score } from "@/features/scoring";
-import type { LoopRules } from "@/features/loop/rules";
+import { LOOP_DEFAULTS, type LoopRules } from "@/features/loop/rules";
 import { projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { CLOCK_EPOCH, dateOfWorkday } from "@/features/clock/calendar";
 import { archiveOf, type ArchiveOutcome } from "./discussion";
 import type { CaseKind, EventLog, Visibility } from "./events";
+import { noCategoryLabel } from "./no";
+import { noBlockOf, expectedByDay, decidedWhileAsked } from "./raiser-view";
 import type { ReducedCase, ReducedIdea } from "./reducer";
-import { affectedOn, rescoresOn } from "./selectors";
+import { affectedOn, rescoresOn, type JourneyStage } from "./selectors";
 import { createT, DEFAULT_LOCALE, INTL_LOCALE, translate, type Locale, type MessageKey, type T } from "@/i18n";
 import { days, formatDate } from "@/i18n/format";
 
@@ -20,7 +22,7 @@ const withLocale = (locale: Locale): LT => Object.assign(createT(locale), { loca
 
 export type StepTone = "done" | "now" | "late" | "todo";
 export type Step = { label: string; when: string; tone: StepTone };
-export type MineStatus = "Shipped" | "Building" | "Approved" | "Declined" | "Question for you" | "Sent" | LifeStatus | ReducedIdea["status"];
+export type MineStatus = "Shipped" | "Building" | "Approved" | "Declined" | "Question for you" | "Sent" | "Merged" | LifeStatus | ReducedIdea["status"];
 // The second half of the loop (docs/plans/2026-10-15_idea-to-project.md): a discussion before the
 // decision, and the project a yes opens - planned, worked on, done, measured, recognised (or stopped).
 export type LifeStatus = "In discussion" | "Planning" | "In progress" | "Done" | "Measured" | "Recognised" | "Stopped" | "Withdrawn";
@@ -49,7 +51,7 @@ export type MineRow = {
 };
 
 // What mineRow needs to follow a case past the decision: the company's rules and the project, if any.
-export type MineLoop = { rules: Pick<LoopRules, "discussMaxRounds">; project: ReducedProject | null };
+export type MineLoop = { rules: Pick<LoopRules, "discussMaxRounds"> & Partial<Pick<LoopRules, "appealDays">>; project: ReducedProject | null };
 
 // A day offset (0 = demo today) as a short date; 'today' / 'yesterday' near now.
 export type DayFmt = (d: number) => string;
@@ -101,8 +103,22 @@ function answeredClock(t: LT, c: ReducedCase, dec: NonNullable<ReducedCase["deci
   return t(dec.reason ? "cases.clockAnsweredWhy" : "cases.clockAnswered", params);
 }
 
-function decidedReply(t: LT, dec: NonNullable<ReducedCase["decided"]>): string {
-  return dec.note || (dec.answer === "yes" ? t("cases.replyYes") : dec.reason ? t("cases.replyNoWhy", { reason: dec.reason }) : t("cases.replyNo"));
+/**
+ * The reply of a decision, one line per fact (SEE D12, D14): "Decided before your answer" when the desk did not wait for it; a yes in the desk's own
+ * words; a no as its category and reason, what would make it a yes, the day it comes back and where the second look stands (features/cases/raiser-view).
+ */
+function decidedReply(t: LT, c: ReducedCase, dec: NonNullable<ReducedCase["decided"]>, f: DayFmt, day: number, appealDays: number): string {
+  const lines: string[] = decidedWhileAsked(c) ? [t("caseSee.decidedBeforeAnswer")] : [];
+  if (dec.answer === "yes") return [...lines, dec.note || t("cases.replyYes")].join("\n");
+  const nb = noBlockOf(c, day, appealDays);
+  if (nb === null) return [...lines, dec.reason ? t("cases.replyNoWhy", { reason: dec.reason }) : t("cases.replyNo")].join("\n");
+  lines.push(`${t(nb.categoryLabel)}${nb.reason.trim() ? ": " + nb.reason.trim() : ""}`);
+  if (nb.changeIf.trim()) lines.push(`${t("caseNo.changeIfLabel")}: ${nb.changeIf.trim()}`);
+  if (nb.revisitDay !== null) lines.push(t("caseSee.revisitOn", { date: f(nb.revisitDay) }));
+  const sl = nb.secondLook;
+  if (sl.state === "asked" && sl.askedDay !== null) lines.push(t("caseSee.secondLookAsked", { date: f(sl.askedDay) }));
+  else if (sl.answer !== null) lines.push(sl.answer.uphold ? t("caseSee.secondLookKept", { reason: sl.answer.reason }) : t("caseSee.secondLookReopened"));
+  return lines.join("\n");
 }
 
 // One case, seen by the person who raised it.
@@ -111,6 +127,8 @@ export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: num
   const t = withLocale(locale);
   // The whole life, once the loop is on - except old seed cases that went straight to a build.
   if (c.withdrawn) return withdrawnRow(c, f, t);
+  if (c.merged) return mergedRow(c, f, t);
+  const appealDays = loop?.rules.appealDays ?? LOOP_DEFAULTS.appealDays;
   if (loop && !c.building && !c.shipped) return lifeRow(c, day, f, P, loop, t);
   const deputy = c.route ? (c.assigneeRoleId !== null && c.assigneeRoleId === c.route.ownerRoleId ? c.route.deputy : c.route.owner.name) : t("cases.deputyFallback");
   const q = c.question, dec = c.decided, b = c.building, sh = c.shipped;
@@ -133,7 +151,7 @@ export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: num
         : waitingClock(t, c, f, P, q);
   const answered = !!(q && q.answer && !dec);
   const last = c.handed[c.handed.length - 1];
-  const reply = dec ? decidedReply(t, dec)
+  const reply = dec ? decidedReply(t, c, dec, f, day, appealDays)
     : c.status === "asked" && q ? t("cases.quoted", { text: q.text || t("cases.replyQuestionDefault") })
       : answered && q && q.answer ? t("cases.replyAnswered", { question: q.text || t("cases.replyQuestionShort"), answer: q.answer.text })
         : q && q.unanswered !== null ? t("cases.replyUnanswered", { question: q.text || t("cases.replyQuestionShort") })
@@ -208,6 +226,49 @@ export function lifeSteps(c: ReducedCase, f: DayFmt, loop: MineLoop, locale: Loc
   return steps;
 }
 
+export type JourneyNames = { roleTitle: (roleId: string | null) => string; caseTitle?: (id: string) => string | null };
+
+const STAGE_LABEL: Record<JourneyStage["id"], MessageKey> = {
+  raised: "caseSee.stageRaised", desk: "caseSee.stageDesk", discussion: "caseSee.stageDiscussion", decision: "caseSee.stageDecision", project: "caseSee.stageProject",
+};
+const PROJECT_LABEL: Record<Extract<NonNullable<JourneyStage["outcome"]>, { kind: "project" }>["status"], MessageKey> = {
+  settingUp: "caseSee.projectSettingUp", started: "caseSee.projectStarted", done: "caseSee.projectDone", measured: "caseSee.projectMeasured",
+  recognised: "caseSee.projectRecognised", stopped: "caseSee.projectStopped",
+};
+
+/**
+ * The track of My cases for one case (SEE D11, D13): one step per stage of the journey - raised, the desk with its role, the discussion, the decision with its
+ * outcome or the day it is expected, the project with its status. A stage that does not apply reads "Not needed"; the words come from the catalog.
+ */
+export function journeySteps(stages: readonly JourneyStage[], f: DayFmt, names: JourneyNames, locale: Locale = DEFAULT_LOCALE): Step[] {
+  const t = withLocale(locale);
+  const talk = stages.find((x) => x.id === "discussion");
+  return stages.map((s): Step => {
+    const role = s.roleId !== null ? names.roleTitle(s.roleId) : "";
+    const label = role ? `${t(STAGE_LABEL[s.id])} · ${role}` : t(STAGE_LABEL[s.id]);
+    const tone: StepTone = s.state === "skipped" ? "todo" : s.state;
+    const o = s.outcome;
+    let when: string;
+    if (s.state === "skipped") when = t("caseSee.outcomeNotNeeded");
+    else if (o?.kind === "cameBack") when = t("caseSee.outcomeCameBack", { date: f(o.day) });
+    else if (o?.kind === "yes") when = `${t("caseSee.outcomeYes")} · ${f(s.day ?? 0)}`;
+    else if (o?.kind === "no") when = `${t("caseSee.outcomeNo", { category: t(noCategoryLabel(o.category)) })} · ${f(s.day ?? 0)}`;
+    else if (o?.kind === "withdrawn") when = `${t("caseSee.outcomeWithdrawn")} · ${f(s.day ?? 0)}`;
+    else if (o?.kind === "merged") when = `${t("caseSee.outcomeMerged", { title: names.caseTitle?.(o.into) ?? o.into })} · ${f(s.day ?? 0)}`;
+    else if (o?.kind === "project") when = `${t(PROJECT_LABEL[o.status])}${s.day !== null ? " · " + f(s.day) : ""}`;
+    else if (s.id === "raised") when = f(s.day ?? 0);
+    else if (s.id === "decision" && s.state !== "done" && s.dueDay !== null && talk && (talk.state === "now" || talk.state === "late" || (talk.state === "done" && s.state === "now"))) {
+      when = t(talk.state === "late" ? "caseSee.decisionExpectedLate" : "caseSee.decisionExpected", { date: f(s.dueDay) });
+    }
+    else if (s.id === "discussion" && s.day !== null) when = s.state === "done" ? f(s.day) : t("cases.whenSince", { date: f(s.day) });
+    else if (s.state === "done") when = s.day !== null ? f(s.day) : "—";
+    else if (s.state === "late") when = t("cases.whenOverdue");
+    else if (s.dueDay !== null) when = t("cases.whenDue", { date: f(s.dueDay) });
+    else when = "—";
+    return step(label, when, tone);
+  });
+}
+
 /** An idea the raiser took back (decision Q1.14): the steps up to that day, then "Withdrawn". */
 function withdrawnRow(c: ReducedCase, f: DayFmt, t: LT): MineRow {
   const w = c.withdrawn as NonNullable<ReducedCase["withdrawn"]>;
@@ -222,6 +283,30 @@ function withdrawnRow(c: ReducedCase, f: DayFmt, t: LT): MineRow {
       step(t("cases.statusWithdrawn"), f(w.day), "done"),
     ],
     reply: w.note ? t("cases.quoted", { text: w.note }) : t("cases.replyWithdrawn"), replyBy: w.by + " · " + f(w.day),
+    outcome: "—", outcomeNote: "", project: null,
+  };
+}
+
+/** "Decision expected by {date}", or past that day "Decision was expected by {date}" (D13). */
+function expectedLine(t: LT, c: ReducedCase, day: number, f: DayFmt): string {
+  const by = expectedByDay(c) ?? c.dueDay;
+  return t(day > by ? "caseSee.decisionExpectedLate" : "caseSee.decisionExpected", { date: f(by) });
+}
+
+/** A case closed as a duplicate of another (SEE D17): the steps up to the merge day, then "Merged". The target's title is the caller's to name. */
+function mergedRow(c: ReducedCase, f: DayFmt, t: LT, title: string = c.merged?.into ?? ""): MineRow {
+  const m = c.merged as NonNullable<ReducedCase["merged"]>;
+  return {
+    id: c.id, kind: "case", sortDay: c.raisedDay, title: c.title, status: "Merged", overdue: false,
+    canReply: false, replyTo: "",
+    submitted: t("cases.submitted", { date: f(c.raisedDay), from: c.from }),
+    clock: t("caseSee.mergedInto", { title }),
+    steps: [
+      step(t("cases.statusSent"), f(c.raisedDay), "done"),
+      ...(c.read !== null ? [step(t("cases.statusReadByHuman"), f(c.read), "done")] : []),
+      step(t("caseSee.statusMerged"), f(m.day), "done"),
+    ],
+    reply: m.note ? t("cases.quoted", { text: m.note }) : t("caseSee.mergedInto", { title }), replyBy: m.by + " · " + f(m.day),
     outcome: "—", outcomeNote: "", project: null,
   };
 }
@@ -242,11 +327,12 @@ function lifeRow(c: ReducedCase, day: number, f: DayFmt, P: number, loop: MineLo
       : t("cases.clockProject", { date: f(dec.day), by: dec.by, named, status: translate(locale, PROJECT_STATUS_LOWER[p.status]), progress, lead: p.lead }))
     : dec ? answeredClock(t, c, dec)
       : talk ? (talk.ready ? t("cases.clockTalkReady", { who: c.assignee })
-        : c.overdue ? t("cases.clockTalkLate", { round, date: f(c.dueDay), late: days(locale, day - c.dueDay) }) : t("cases.clockTalk", { round, date: f(c.dueDay) }))
+        // The raiser reads the day the decision is expected, not the next check-in (SEE D13).
+        : `${t("cases.statusInDiscussion")} · ${round} · ${expectedLine(t, c, day, f)}.`)
         : waitingClock(t, c, f, P, q);
   const answered = !!(q && q.answer && !dec);
   const hand = c.handed[c.handed.length - 1];
-  const reply = dec ? decidedReply(t, dec)
+  const reply = dec ? decidedReply(t, c, dec, f, day, loop.rules.appealDays ?? LOOP_DEFAULTS.appealDays)
     : last ? last.note || (last.next === "decide" ? t("cases.replyReady") : t("cases.replyAnotherRound"))
       : talk ? (talk.missing ? t("cases.replyMissing", { text: talk.missing }) : t("cases.replyAsked", { count: talk.invited.length }))
         : c.status === "asked" && q ? t("cases.quoted", { text: q.text || t("cases.replyQuestionDefault") })
