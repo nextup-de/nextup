@@ -30,7 +30,7 @@ const project = (over: Partial<ReducedProject> = {}): ReducedProject => ({
   status: "planning", closed: false, rewardDue: false, dueDay: 5, overdue: false, escalated: null, history: [],
   draft: true, leadState: "taken", leadAskedDay: 0, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
   goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: DECIDER,
-  doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null,
+  doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null, rewardDueDay: null, helpAsks: [],
   ...over,
 });
 
