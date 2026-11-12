@@ -11,6 +11,7 @@ import { askSheet, dayOfDate, noSheet, passSheet, type NoProblem } from "@/featu
 import type { Route } from "@/features/demo/types";
 import { projectLabel } from "@/features/projects/selectors";
 import type { T } from "@/i18n";
+import { ReasonHint } from "@/components/agent/ReasonHint";
 import { Btn } from "@/components/dashboard/shared/primitives";
 import { useT } from "@/i18n/client";
 import { PersonFace } from "@/components/ui/elements";
@@ -108,6 +109,7 @@ function NoSheet({ c }: { c: ReducedCase }) {
 
       <div className={styles.textLabel}>{t("shell.noReasonLabel", { from: c.from })}</div>
       <textarea className={styles.textarea} value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder={t("shell.noReasonPlaceholder")} aria-label={t("shell.noReasonLabel", { from: c.from })} />
+      <ReasonHint caseId={c.id} category={category} reason={reason} />
       <div className={styles.counter} data-ok={count >= min ? "true" : undefined} data-testid="no-reason-count">{t("shell.noReasonCount", { count, min })}</div>
 
       <div className={styles.textLabel}>{t("shell.noChangeIfLabel")}</div>
