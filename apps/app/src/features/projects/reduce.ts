@@ -41,6 +41,7 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
     draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
     goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
     doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null,
+    rewardDueDay: null, helpAsks: [],
   };
   book.byId[id] = project;
   book.order.push(id);
@@ -250,7 +251,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
         if (p.steps.some((x) => x.id === id)) return;
         p.steps.push({
           id, text: t.text, owner: null, ownerUserId: null, dueDay: f.takenDay === null ? null : f.takenDay + t.day, column: "todo", why: "", note: "",
-          addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d, startedDay: null, doneDay: null, external: null, role: t.role,
+          addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d, startedDay: null, doneDay: null, external: null, role: t.role, dropped: null,
         });
       });
       p.template = { key, version };
@@ -307,9 +308,9 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
     }
     case "project.baseline": {
       if (p.startedDay !== null || !live) break; // taken before the start, never after
-      if (pl.none) p.baseline = { none: true, why: pl.why ?? "", day: d, by: ev.actor };
+      if (pl.none) p.baseline = { none: true, why: pl.why ?? "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null, eventId: ev.id, confirmed: null };
       else if (typeof pl.value === "number" && Number.isFinite(pl.value) && pl.metric)
-        p.baseline = { none: false, metric: pl.metric, unit: pl.unit ?? "", value: pl.value, better: pl.better === "up" ? "up" : "down", source: typeof pl.source === "string" ? pl.source : "", day: d, by: ev.actor };
+        p.baseline = { none: false, metric: pl.metric, unit: pl.unit ?? "", value: pl.value, better: pl.better === "up" ? "up" : "down", source: typeof pl.source === "string" ? pl.source : "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null, eventId: ev.id, confirmed: null };
       break;
     }
     case "project.started":
@@ -325,7 +326,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
         id: stepId, text, owner: pl.owner?.trim() || null, ownerUserId: pl.ownerUserId ?? null, dueDay: typeof pl.dueDay === "number" ? pl.dueDay : null,
         column, why: "", note: pl.note?.trim() ?? "", addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d,
         startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
-        external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null,
+        external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null, dropped: null,
       });
       break;
     }
@@ -389,6 +390,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       p.measures.push({
         check, value: pl.value, source: sourceLabel(src), note: pl.note ?? "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null,
         sourceKind: src.kind, sourceInfo: src, impact: readImpact(pl.impact), confirmed: false, confirmedByUserId: null, confirmedDay: null, ...v,
+        eventId: ev.id, sentBack: false, reentered: false, managerOnly: false, questions: [], previous: [],
       });
       p.measures.sort((a, b) => a.check - b.check);
       break;

@@ -5,7 +5,11 @@ import type { State } from "@/features/cases/reducer";
 /** What the person is asked to do: decide it, confirm it, or do their part of it. */
 export type InboxAsk = "decide" | "confirm" | "part";
 
-export type InboxKind = "case" | "idea" | "view" | "question" | "confirm" | "reward" | "move" | "lead" | "invitation" | "approval" | "stalled" | "vacant" | "update" | "appeal";
+export type InboxKind = "case" | "idea" | "view" | "question" | "confirm" | "reward" | "move" | "lead" | "invitation" | "approval" | "stalled" | "vacant" | "update" | "appeal"
+  // A result that closes properly (plan RES, D20) and an agent's suggestion (plan AGT).
+  | "help" // an open 'ask the sponsor' on a step (RES, D19): for the asked person or the holders of the asked role
+  | "baseline" // a baseline that waits for a second person's confirmation before the start (RES, D16)
+  | "suggestion"; // an agent's suggestion (AGT fills it; RES writes none)
 
 export type InboxItem = {
   id: string;
