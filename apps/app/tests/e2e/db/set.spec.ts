@@ -36,6 +36,7 @@ const ABOVE = "Paula Plantbridge"; // leader (no manager) on the Plant manager s
 const MEMBER = "Max Memberfield"; // member on an Operator seat: invited as a member
 const SPONSOR = "Sven Sponsorfield"; // leader on an Operator seat: named sponsor after the start
 const OUTSIDER = "Olga Outsider"; // member with no seat and no part in the draft
+const MANAGER = "Mona Managerfield"; // manager with no seat: confirms the baseline before the start (RES D16, D30)
 const UNIT = "QA";
 const OWNER_ROLE = "Quality lead";
 const LINE_ROLE = "Line lead";
@@ -58,8 +59,8 @@ const codes = new Map<string, string>();
 let companyId = "";
 let routeKey = "r-set";
 let n = 0;
-const id: Record<"raiser" | "desk" | "lead" | "above" | "member" | "sponsor" | "outsider", string> = {
-  raiser: "", desk: "", lead: "", above: "", member: "", sponsor: "", outsider: "",
+const id: Record<"raiser" | "desk" | "lead" | "above" | "member" | "sponsor" | "outsider" | "manager", string> = {
+  raiser: "", desk: "", lead: "", above: "", member: "", sponsor: "", outsider: "", manager: "",
 };
 
 async function signIn(browser: Browser, name: string): Promise<Page> {
@@ -156,6 +157,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
         { name: MEMBER, role: "member", dept: UNIT, email: emailOf(MEMBER, SLUG) },
         { name: SPONSOR, role: "leader", dept: UNIT, email: emailOf(SPONSOR, SLUG) },
         { name: OUTSIDER, role: "member", dept: UNIT, email: emailOf(OUTSIDER, SLUG) },
+        { name: MANAGER, role: "manager", dept: UNIT, email: emailOf(MANAGER, SLUG) },
       ],
     });
     for (const [name, code] of made) codes.set(name, code);
@@ -167,6 +169,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
     id.member = await userId(MEMBER);
     id.sponsor = await userId(SPONSOR);
     id.outsider = await userId(OUTSIDER);
+    id.manager = await userId(MANAGER);
 
     // The structure: the Quality lead desk and the Line lead report to the Plant manager (the seat above), who is a leader,
     // not a manager. The people who may be invited need a seat. The route's deputy is the Line lead, so the Plant manager
@@ -359,6 +362,12 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await page.getByLabel("Where the number comes from").filter({ visible: true }).fill("Stopwatch on three changeovers");
       await page.getByRole("button", { name: "Save the baseline" }).click();
       await expect.poll(async () => (await eventsOf("project.baseline", projectA)).length).toBe(1);
+
+      // Where a reward is possible the number waits for a second person before the start (RES D16). The route's deputy desk is held by the lead, so
+      // it counts as empty (D30) and the manager confirms; there is no accepted sponsor yet. The confirmation is written as the manager's own event.
+      await append("project.baseline.confirmed", MANAGER, id.manager, projectA, {});
+      await expect.poll(async () => (await eventsOf("project.baseline.confirmed", projectA)).length).toBe(1);
+      await page.reload();
 
       const start = page.getByRole("button", { name: "Start the project" });
       await expect(start).toBeEnabled();

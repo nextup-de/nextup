@@ -1,0 +1,26 @@
+/* The ends of a project (plan RES-U1): the Done sheet, the stop choice and the raiser's panel. Tokens from src/styles/tokens.css. */
+.sheet { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; max-width: 560px; padding: 14px 16px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 8px); background: var(--nh-bg); }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.label { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); }
+.input { height: 38px; font-size: var(--nh-fs-sm); padding: 0 11px; }
+.hint { font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.45; margin: 0; }
+.row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.quiet { background: none; border: 0; padding: 0; font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); cursor: pointer; }
+.quiet:hover { color: var(--nh-ink); }
+.doneWhen { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.5; overflow-wrap: anywhere; }
+.steps { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.step { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 10px 0 0; border: 0; border-top: 1px solid var(--nh-line); min-width: 0; }
+.stepText { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); padding: 0; overflow-wrap: anywhere; }
+.choices { display: inline-flex; gap: 16px; flex-wrap: wrap; }
+.choice { display: inline-flex; align-items: center; gap: 6px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); cursor: pointer; }
+.error { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-danger); line-height: 1.45; }
+.panel { display: flex; flex-direction: column; gap: 14px; max-width: 640px; margin-top: 18px; }
+.panelBlock { padding-top: 14px; border-top: 1px solid var(--nh-line); display: flex; flex-direction: column; gap: 6px; }
+.panelTitle { margin: 0; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); }
+.panelText { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+.results { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.result { font-size: var(--nh-fs-sm); color: var(--nh-ink); font-variant-numeric: tabular-nums; }
+.muted { color: var(--nh-mute); }
+@media (max-width: 760px) {
+  .sheet { max-width: none; }
+}
