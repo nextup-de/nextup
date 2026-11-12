@@ -1,0 +1,17 @@
+{
+  "companyRuleKeys": [
+    "appeal_days",
+    "blocked_days",
+    "deadline_handover",
+    "escalation_days",
+    "loop_steps",
+    "no_reason_min",
+    "outcome_days",
+    "posting",
+    "project_start_days",
+    "promise_days",
+    "question_days",
+    "spend"
+  ],
+  "movSinceKey": "mov_since_day"
+}
