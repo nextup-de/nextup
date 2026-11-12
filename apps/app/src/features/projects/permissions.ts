@@ -5,12 +5,13 @@ import type { Actor, Verdict } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import { translate, DEFAULT_LOCALE, type Locale, type MessageKey } from "@/i18n";
-import { holdsRole, type Me } from "@/features/auth/identity";
+import { holdsRole, seatsOfRole, type Me } from "@/features/auth/identity";
 import type { Route } from "@/features/demo/types";
 import { byClock } from "@/features/clock/actor";
 import { PAUSE_MAX_DAYS } from "@/features/clock/kinds/project";
 import { TEMPLATES } from "@/features/templates/library";
 import { mayConfirm, unconfirmedOf } from "./confirm";
+import { baselineNeedsConfirm, DROP_WHY_MAX, HELP_TEXT_MAX, openStepsOf, QUESTION_WHY_MAX, revisionMatches } from "./result";
 import { isMeasureSource, readImpact } from "./measure-source";
 import { checkInDayOf, previousCheckInDayOf } from "./rhythm";
 import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole, type ReducedProject } from "./types";
@@ -183,7 +184,9 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       // A draft starts only once the lead has taken it, the goal is set and the baseline is taken (D17).
       if (draft && p.leadState === "pending") return no("projects.permStartLeadPending");
       if (draft && !p.goal) return no("projects.permStartNeedsGoal");
-      return p.baseline ? OK : no("projects.permStartNeedsBaseline");
+      if (!p.baseline) return no("projects.permStartNeedsBaseline");
+      // Where a reward is possible a number baseline waits for a second person first (plan RES, D16).
+      return baselineNeedsConfirm(p, state.rules) ? no("projectResult.permStartNeedsConfirm") : OK;
 
     case "project.step.added":
       if (!onTeam) return no("projects.permStepTeamAdd");
@@ -230,15 +233,32 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!(SYNC_SYSTEMS as readonly unknown[]).includes(pl.system)) return no("projects.permSyncWhat", { systems: SYNC_SYSTEMS.join(", ") });
       return typeof pl.on === "boolean" ? OK : no("projects.permSyncOnOff");
 
-    case "project.done":
+    case "project.done": {
       if (!isLead) return no("projects.permLeadOnly");
-      return p.status === "running" ? OK : no("projects.permOnlyRunningDone");
+      if (p.status !== "running") return no("projects.permOnlyRunningDone");
+      // Every step not in Done is finished or dropped on the Done sheet (plan RES, D13): each listed once, none unknown. A step that
+      // appeared after the sheet loaded is missing from the list, so a stale payload is refused.
+      const open = openStepsOf(p);
+      const listed = pl.openSteps;
+      if (listed === undefined && open.length === 0) return OK;
+      if (!Array.isArray(listed)) return no("projectResult.permDoneOpenSteps");
+      const ids = listed.map((x) => (x !== null && typeof x === "object" ? x.stepId : undefined));
+      if (ids.length !== open.length || new Set(ids).size !== ids.length || !open.every((x) => ids.includes(x.id))) return no("projectResult.permDoneOpenSteps");
+      for (const x of listed) {
+        if (x.end !== "done" && x.end !== "dropped") return no("projectResult.permDoneOpenSteps");
+        if (x.end === "dropped" && !text(x.why, DROP_WHY_MAX)) return no("projectResult.permDropWhy");
+      }
+      return OK;
+    }
 
     case "project.measured": {
       if (!isLead) return no("projects.permLeadOnly");
       const check = p.checks.find((c) => c.check === pl.check);
       if (!check) return no("projects.permNoCheck");
-      if (check.measured) return no("projects.permCheckRecorded");
+      // A sent-back check may be entered once more (plan RES, D14), for the revision that was sent back; any other recorded check is closed.
+      const sentBack = p.measures.find((m) => m.check === check.check && m.sentBack && !m.reentered);
+      if (sentBack && !revisionMatches(pl.measureEventId, sentBack.eventId)) return no("projectResult.permReenterOnce");
+      if (check.measured && !sentBack) return no(p.measures.some((m) => m.check === check.check && m.reentered) ? "projectResult.permReenterOnce" : "projects.permCheckRecorded");
       if (state.day < check.opensDay) return no("projects.permCheckOpens");
       if (!(typeof pl.value === "number" && Number.isFinite(pl.value))) return no("projects.permMeasureNumber");
       // A string is an old-style typed source; an object must be valid and never a client-made system source.
@@ -252,12 +272,47 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
 
     case "project.measure.confirmed": {
       const m = p.measures.find((x) => x.check === pl.check);
-      if (!m || m.confirmed || m.sourceKind === "system") return no("projects.permNothingToConfirm");
+      // A sent-back result waits for the lead, and a confirmation names the revision it saw: a replaced number is never confirmed by it (RES review).
+      if (!m || m.confirmed || m.sourceKind === "system" || m.sentBack || !revisionMatches(pl.measureEventId, m.eventId)) return no("projects.permNothingToConfirm");
       if (isMe(p.leadUserId) || isMe(m.byUserId)) return no("projects.permConfirmSecondPerson");
       const deputyRoleId = state.routes.find((r) => r.id === p.routeId)?.deputyRoleId ?? null;
       // A stopped project waits for nobody (unconfirmedOf), but its number can still be confirmed as before.
       const waiting = unconfirmedOf(p).find((x) => x.check === m.check) ?? { check: m.check, measure: m, dueDay: m.day, upSeatId: null };
       return mayConfirm(p, waiting, { userId: uid, manager: isManager, me: actor.me }, deputyRoleId, state.seats) ? OK : no("projects.permConfirmWho");
+    }
+
+    case "project.measure.questioned": {
+      // Sending a typed result back (plan RES, D14): by someone who may confirm it, at most twice, never a result a manager alone confirms.
+      const m = p.measures.find((x) => x.check === pl.check);
+      if (!m || m.confirmed || m.sourceKind !== "typed" || m.sentBack || !revisionMatches(pl.measureEventId, m.eventId)) return no("projectResult.permQuestionNothing");
+      if (m.managerOnly) return no("projectResult.permManagerOnly");
+      if (m.questions.length >= 2) return no("projectResult.permQuestionTwice");
+      if (!text(pl.why, QUESTION_WHY_MAX)) return no("projectResult.permQuestionWhy");
+      const deputyRoleId = state.routes.find((r) => r.id === p.routeId)?.deputyRoleId ?? null;
+      const waiting = unconfirmedOf(p).find((x) => x.check === m.check) ?? { check: m.check, measure: m, dueDay: m.day, upSeatId: null };
+      return mayConfirm(p, waiting, { userId: uid, manager: isManager, me: actor.me }, deputyRoleId, state.seats) ? OK : no("projectResult.permQuestionWho");
+    }
+
+    case "project.baseline.confirmed": {
+      // A second person confirms the baseline number before the start (D16): the accepted sponsor or the route's deputy, managers when neither exists.
+      const b = p.baseline;
+      if (b === null || b.none || b.confirmed || p.status !== "planning" || !live || !revisionMatches(pl.baselineEventId, b.eventId)) return no("projectResult.permBaselineNothing");
+      if (isMe(p.leadUserId) || isMe(b.byUserId ?? null)) return no("projectResult.permBaselineConfirmWho");
+      const deputyRoleId = state.routes.find((r) => r.id === p.routeId)?.deputyRoleId ?? null;
+      if (sponsor || holds(deputyRoleId)) return OK;
+      const deputyStaffed = deputyRoleId !== null && seatsOfRole(state.seats, deputyRoleId).some((x) => x.userId !== null);
+      // An accepted sponsor who leads it counts as none (D26).
+      const hasSponsor = p.sponsorUserId !== null && p.sponsorUserId !== p.leadUserId;
+      return isManager && !hasSponsor && !deputyStaffed ? OK : no("projectResult.permBaselineConfirmWho");
+    }
+
+    case "project.help.asked": {
+      // The lead or a member asks the sponsor for help on a step that is still open (D19).
+      if (!onTeam) return no("projectResult.permHelpTeam");
+      if (p.status !== "running") return no("projectResult.permRunningOnly");
+      const step = p.steps.find((x) => x.id === pl.stepId);
+      if (!step || step.column === "done" || step.dropped) return no("projectResult.permHelpStep");
+      return text(pl.text, HELP_TEXT_MAX) ? OK : no("projectResult.permHelpText");
     }
 
     case "project.rewarded":
@@ -302,7 +357,8 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       return pl.note === undefined || (typeof pl.note === "string" && pl.note.length <= 400) ? OK : no("projectMove.permHowNote");
 
     case "project.update": {
-      if (!isLead) return no("projectMove.permSponsorOrLead");
+      // The lead, a manager or the accepted sponsor (AGT D15). Nothing in the payload, an AI draft flag included, grants a right.
+      if (!(isLead || sponsor)) return no("projectMove.permSponsorOrLead");
       if (!live || p.startedDay === null) return no("projectMove.permRunningOnly");
       if (!text(pl.text, 4000)) return no("projectMove.permUpdateText");
       // The week is the project's due check-in day in the company calendar, nothing else: not an old week, not a future one,
