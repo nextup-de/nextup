@@ -223,3 +223,27 @@ it("GAT server lets approvers load the draft and nobody else", async () => {
   expect(await loaded(logViewer("Sam Shift", "leader"), "gv-v-case")).toContain(SECRET);
   expect(await loaded(logViewer("Ray Raiser"), "gv-v-case")).not.toContain(SECRET);
 });
+
+it("GAT server stores the council members as approvers in the access keys", async () => {
+  // A council with the review role as member and the finance role as secretary; the case's yes needs that council.
+  await setConfig({ ...EMPTY_APPROVAL_CONFIG, councils: [{ id: "k-gat", name: "Investment council", memberRoleIds: [role.review], secretaryRoleId: role.finance, everyDays: 14, firstDay: 0 }] });
+  const { appendEventRow } = await import("@/lib/db/events");
+  const append = async (id: string, type: string, who: string, targetId: string, payload: Record<string, unknown>) => {
+    const r = await appendEventRow(companyId, { id, day: 0, type, actor: who, targetId, payload } as never, { actorUserId: user[who] });
+    if (!r.ok) throw new Error(r.error);
+  };
+  for (const [k, visibility] of [["c", "everyone"], ["d", "private"]] as const) {
+    await append(`gc-${k}-raised`, "case.raised", "Ray Raiser", `gc-${k}-case`, { kind: "idea", title: `Idea ${k}`, routeId: "r-shift", assigneeRoleHolderId: seat.shift, visibility });
+    await append(`gc-${k}-prov`, "case.provisional", "Sam Shift", `gc-${k}-case`, {
+      projectId: `p_c${k}`, lead: "Sam Shift", leadUserId: user["Sam Shift"], title: `Project ${k}`, draft: true,
+      approvals: [{ kind: "council", councilId: "k-gat" }], decidingRoleId: role.shift, costEur: null, stepDueDay: 99,
+    });
+  }
+  const keys = async (caseId: string) => (await db.caseView.findUniqueOrThrow({ where: { companyId_caseId: { companyId, caseId } } })).accessKeys;
+  const open = await keys("gc-c-case");
+  expect(open).toContain("r:" + role.review);
+  expect(open).toContain("r:" + role.finance);
+  const hidden = await keys("gc-d-case");
+  expect(hidden).not.toContain("r:" + role.review);
+  expect(hidden).not.toContain("r:" + role.finance);
+});
