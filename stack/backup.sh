@@ -89,7 +89,7 @@ restic() {
   # As the calling user, so restored files and a local repository stay ours, not root's.
   docker run --rm --user "$(id -u):$(id -g)" -e RESTIC_CACHE_DIR=/tmp/restic-cache \
     -e RESTIC_PASSWORD -e RESTIC_REPOSITORY="$target" ${s3_env[@]+"${s3_env[@]}"} --hostname "nextup-$slug" \
-    "${mounts[@]}" "${extra_mounts[@]}" "$restic_image" "$@"
+    ${mounts[@]+"${mounts[@]}"} ${extra_mounts[@]+"${extra_mounts[@]}"} "$restic_image" "$@"
 }
 extra_mounts=()
 

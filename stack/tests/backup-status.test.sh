@@ -27,7 +27,7 @@ esac
 exit 0
 F
 chmod +x "$tmp/bin/docker"
-real_path="$PATH"
+real_path="$PATH"; real_home="$HOME"
 export PATH="$tmp/bin:$PATH"
 export NEXTUP_INSTANCES="$tmp/instances" HOME="$tmp/home"
 
@@ -90,7 +90,8 @@ APP_ORIGIN=http://localhost:8080
 SITE_ADDRESS=:80
 N8N_ENCRYPTION_KEY=k
 ENV
-if docker compose -f stack/compose.yml --env-file "$(wp "$tmp/render.env")" config --format json > "$tmp/c.json" 2>"$tmp/err"; then
+# The real HOME, so the docker CLI finds its compose plugin (~/.docker/cli-plugins on macOS).
+if HOME="$real_home" docker compose -f stack/compose.yml --env-file "$(wp "$tmp/render.env")" config --format json > "$tmp/c.json" 2>"$tmp/err"; then
   got="$(node -e '
     const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).services.app;
     const v = (c.volumes || []).find((x) => x.target === "/run/nextup/backup-status");
