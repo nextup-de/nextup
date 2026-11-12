@@ -9,7 +9,7 @@
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { byClock } from "@/features/clock/actor";
 import type { SeatRow } from "@/features/auth/identity";
-import { EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo, type CaseApprovals, type CaseCost, type CaseReview } from "@/features/approvals/types";
+import { COST_BASIS_MAX, COST_EUR_MAX, EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo, type CaseApprovals, type CaseCost, type CaseReview } from "@/features/approvals/types";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import { cycleEvents, noCategoryOf, type AnyNoCategory } from "./no";
 import { fallbackSeat } from "./stamp";
@@ -205,6 +205,9 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     }
   };
 
+  // The review of a raise ends when the case leaves the review seat's hands for another reason than the forward (plan GAT, D13).
+  const endReview = (c: ReducedCase) => { if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, state: "ended" }; };
+
   const apply = (ev: CaseEvent) => {
     if (applyProjectEvent(book, ev, rules)) return;
     const pl = ev.payload ?? {};
@@ -223,6 +226,11 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         }
         if (known(pl.proposal?.sameAs)) c.sameAs = pl.proposal.sameAs;
         c.related = [...new Set((pl.proposal?.related ?? []).filter(known))];
+        // A raise the server stamped as reviewed starts a pending review on its seat; without the stamp the case has none (plan GAT, D12, D14).
+        if (pl.review === true) {
+          const dueDay = Number.isInteger(pl.reviewDueDay) ? (pl.reviewDueDay as number) : d;
+          c.review = { state: "pending", seatId, since: d, dueDay, forwardFrom: dueDay, waitsOn: null, auto: false };
+        }
         c.history.push(ev);
         break;
       }
@@ -253,6 +261,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
           duplicateOf: typeof pl.duplicateOf === "string" && pl.duplicateOf !== "" ? pl.duplicateOf : null,
         };
         c.notNowInRow = category === "not-now" ? c.notNowInRow + 1 : 0;
+        endReview(c);
         c.decisions.push(decision);
         c.decided = decision;
         c.status = "decided";
@@ -312,6 +321,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         c.assignee = pl.to;
         c.assigneeSeatId = toSeat;
         c.assigneeRoleId = roleOfSeat(toSeat);
+        endReview(c);
         // The case's route moves with the pass; the new desk gets at least the date the writer asked for (Q4.9, Q4.10).
         if (typeof pl.routeId === "string" && routeOf(pl.routeId) !== null) c.routeId = pl.routeId;
         if (Number.isInteger(pl.dueDay)) c.dueFloor = Math.max(c.dueFloor ?? -Infinity, pl.dueDay as number);
@@ -370,6 +380,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (c.mergedIn.length > 0) break;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
         c.merged = { into: destId, day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 300) };
+        endReview(c);
         c.status = "merged";
         dest?.mergedIn.push({ id: c.id, userId: c.fromUserId, day: d });
         c.history.push(ev);
@@ -391,6 +402,8 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (!c || c.status !== "open") break;
         if (c.read === null) c.read = d;
         c.question = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d, answer: null, unanswered: null };
+        // The clock never forwards a review while the case waits on the raiser (D14).
+        if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, waitsOn: "raiser" };
         c.status = "asked";
         c.pausedSince = d;
         c.history.push(ev);
@@ -400,6 +413,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "asked" || !c.question) break;
         c.question.answer = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d };
+        if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, forwardFrom: Math.max(c.review.dueDay, d + 1), waitsOn: null };
         c.pausedDays += d - (c.pausedSince ?? d);
         c.pausedSince = null;
         c.status = "open";
@@ -413,6 +427,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (c.status !== "open" && c.status !== "discussion" && c.status !== "asked") break;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
         c.withdrawn = { day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 500) };
+        endReview(c);
         c.status = "withdrawn";
         c.history.push(ev);
         break;
@@ -422,6 +437,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "asked" || !c.question || !byClock(ev)) break;
         c.question.unanswered = d;
+        if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, forwardFrom: Math.max(c.review.dueDay, d + 1), waitsOn: null };
         c.pausedDays += d - (c.pausedSince ?? d);
         c.pausedSince = null;
         c.status = "open";
@@ -453,6 +469,33 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
           c.routeId = chosen.id; c.assignee = chosen.owner.name;
           c.assigneeSeatId = chosen.ownerSeatId ?? null; c.assigneeRoleId = roleOfSeat(c.assigneeSeatId);
         }
+        endReview(c);
+        c.history.push(ev);
+        break;
+      }
+      case "case.reviewed": {
+        // The review seat sends the raise on to its desk (plan GAT, D12, D13), or the clock does when nobody did (D14). The route and the seat move
+        // as a hand-over moves them, but this is no pass and no hand-over, and the answer date does not move.
+        const c = cases[target];
+        if (!c || c.review === null || c.review.state !== "pending" || pl.outcome !== "forward") break;
+        if (!(c.status === "open" || c.status === "asked")) break;
+        if (c.read === null) c.read = d;
+        const toSeat = pl.toRoleHolderId ?? null;
+        const seat = toSeat === null ? null : seats.find((s) => s.id === toSeat) ?? null;
+        if (typeof pl.routeId === "string" && routeOf(pl.routeId) !== null) c.routeId = pl.routeId;
+        c.assignee = pl.to ?? seat?.label ?? c.assignee;
+        c.assigneeSeatId = toSeat;
+        c.assigneeRoleId = roleOfSeat(toSeat);
+        c.review = { ...c.review, state: "forwarded", auto: Boolean(pl.auto) };
+        c.history.push(ev);
+        break;
+      }
+      case "case.costed": {
+        // The cost estimate, the latest one counts (D18). Who may write it is the server's call; a case that is gone takes none.
+        const c = cases[target];
+        if (!c || c.withdrawn !== null || c.merged !== null) break;
+        if (!Number.isInteger(pl.eur) || (pl.eur as number) < 0 || (pl.eur as number) > COST_EUR_MAX) break;
+        c.cost = { eur: pl.eur as number, basis: (pl.basis ?? "").trim().slice(0, COST_BASIS_MAX), day: d, by: ev.actor, byUserId: uid };
         c.history.push(ev);
         break;
       }
