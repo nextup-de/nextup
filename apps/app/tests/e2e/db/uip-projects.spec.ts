@@ -12,7 +12,7 @@ import { rebuildProjections } from "../../../src/lib/db/projections/case-view";
 const SLUG = "uip-projects";
 const PROJECT = "pj-uip";
 const CASE = "c-uip";
-const TABS = ["overview", "board", "team", "results", "activity", "files"] as const;
+const TABS = ["overview", "board", "team", "results", "activity", "files", "agent"] as const; // agent: the manager sees the Agent tab (plan AGT, D15)
 test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL");
 
 const MANAGER = { name: "Mara Sweep", email: `mara@${SLUG}.test`, role: "manager" as const };
@@ -67,11 +67,11 @@ test("UIP project area", async ({ page }) => {
   await sweepPages(page, [`/${SLUG}/projects`], { marker: "projects-tabs", title: false }); // the tab names the page
   await sweepPages(page, TABS.map((tab) => `${base}?tab=${tab}`), { marker: "page-header" });
 
-  await test.step("the tabs are the Overview, Board, Team, Results, Activity and Files; no Agent tab", async () => {
+  await test.step("the tabs are the Overview, Board, Team, Results, Activity, Files and, for a manager, Agent (AGT D15)", async () => {
     await page.goto(base);
     const tabs = page.getByRole("navigation", { name: "Project sections" });
     await expect(tabs.getByRole("link")).toHaveCount(TABS.length);
-    await expect(tabs.getByRole("link", { name: /agent/i })).toHaveCount(0);
+    await expect(tabs.getByRole("link", { name: "Agent", exact: true })).toHaveCount(1); // the lead, the sponsor and managers see it (D15)
     for (const name of ["Overview", "Board", "Team", "Results"]) {
       await tabs.getByRole("link", { name: new RegExp("^" + name) }).click();
       await expect(tabs.getByRole("link", { name: new RegExp("^" + name) })).toHaveAttribute("aria-current", "page");
