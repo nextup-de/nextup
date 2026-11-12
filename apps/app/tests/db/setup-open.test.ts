@@ -169,7 +169,7 @@ describe("Open", () => {
     expect(code).not.toBe(old);
     expect((await db.user.findFirstOrThrow({ where: { id: ids.leader, companyId } })).loginCodeHash).toBe(hashLoginCode(code));
     codes.leader = code;
-    expect(await login("leader")).toBe(`REDIRECT /${SLUG}/leader`);
+    expect(await login("leader")).toBe(`REDIRECT /${SLUG}/inbox`);
     codes.leader = old;
     expect(await login("leader")).toEqual({ error: expect.any(String) });
     codes.leader = code;

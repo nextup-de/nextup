@@ -41,7 +41,7 @@ async function openStep(page: Page, text: string) {
 test("a lead plans, runs and measures a project; no reward is due on unconfirmed measures", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await expect(page).toHaveURL(/\/acme\/leader$/);
+  await expect(page).toHaveURL(/\/acme\/inbox$/);
 
   await test.step("the lead finds P-4 under Planning", async () => {
     await page.getByRole("link", { name: "Projects", exact: true }).click();

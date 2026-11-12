@@ -10,6 +10,7 @@ import { isIssueKey, jiraIssueUrl } from "@/features/integrations/jira/settings"
 import type { ReducedProject } from "@/features/projects/types";
 import { connectionsOf, safeUrl, systemFrom, timelineOf, toolName, toolOf, toolWhat, type JiraRow, type ToolId } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
+import { InvitePanel } from "./draft/DraftInvites";
 import { peopleOf, teamOf, useRights, useSend, withIds } from "./parts";
 import styles from "./Projects.module.css";
 
@@ -66,6 +67,8 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
           {to && <span className={styles.actionRow}><button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm">{t("projects.handOver")}</button></span>}
         </form>
       )}
+      {/* A project a draft opened keeps inviting after the start (P6.5): a sponsor can still be named, an invitee still answers. */}
+      {p.draft && live && <InvitePanel p={p} />}
     </section>
   );
 }
