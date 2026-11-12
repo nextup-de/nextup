@@ -5,7 +5,8 @@ import type { Actor, Verdict } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import { translate, DEFAULT_LOCALE, type Locale, type MessageKey } from "@/i18n";
-import { holdsRole, seatsOfRole } from "@/features/auth/identity";
+import { holdsRole, seatsOfRole, type Me } from "@/features/auth/identity";
+import type { Route } from "@/features/demo/types";
 import { byClock } from "@/features/clock/actor";
 import { PAUSE_MAX_DAYS } from "@/features/clock/kinds/project";
 import { TEMPLATES } from "@/features/templates/library";
@@ -48,6 +49,25 @@ function dueCheckInDay(p: ReducedProject, state: State): number | null {
   const current = checkInDayOf(p, state.day, state.clock);
   if (current === null) return null;
   return current <= state.day ? current : previousCheckInDayOf(p, current, state.clock);
+}
+
+/**
+ * Who may name a new lead for a project that has none (D14, D31): its accepted sponsor (a sponsor who leads it counts as none, D26),
+ * a holder of the route's owner or deputy role (the desk that said yes), the decider, a manager, and the holder of the seat the
+ * vacant fact (clock.due kind vacant, written after the lead left) escalated to. The project.lead.changed rule and the inbox item
+ * both ask here, so no one is shown an action they cannot append.
+ */
+export function mayNameLead(p: ReducedProject, route: Route | null | undefined, who: { userId: string | null; me?: Me; manager: boolean }): boolean {
+  if (p.leadVacatedDay === null) return false;
+  if (who.manager) return true;
+  const holds = (roleId: string | null) => who.me !== undefined && holdsRole(who.me, roleId);
+  if (who.userId !== null && (p.deciderUserId === who.userId || (p.sponsorUserId === who.userId && p.sponsorUserId !== p.leadUserId))) return true;
+  if (route && (holds(route.ownerRoleId ?? null) || holds(route.deputyRoleId ?? null))) return true;
+  // The seat of the vacant fact that belongs to this vacancy: the latest one after the lead left.
+  const left = p.history.findLastIndex((e) => e.type === "project.lead.vacated");
+  const fact = p.history.findLast((e, i) => i > left && e.type === "clock.due" && e.payload.kind === "vacant");
+  const seatId = fact?.payload.toRoleHolderId ?? null;
+  return seatId !== null && who.me !== undefined && who.me.seatIds.includes(seatId);
 }
 
 export function mayAppendProject(actor: Actor, ev: { type: string; target: string | null; payload: EventPayload }, state: State, locale: Locale = DEFAULT_LOCALE): Verdict {
@@ -347,12 +367,10 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
     }
 
     case "project.lead.changed": {
-      // A new lead is named only while there is none: by the sponsor, the desk that said yes, the decider or a manager (D14).
+      // A new lead is named only while there is none, by whom mayNameLead says (D14, D31).
       if (p.leadVacatedDay === null) return no("projectMove.permLeadPresent");
       if (!live) return no("projects.permClosed");
-      const route = state.routes.find((r) => r.id === p.routeId);
-      const desk = route !== undefined && (holds(route.ownerRoleId ?? null) || holds(route.deputyRoleId ?? null));
-      if (!(sponsor || desk || isMe(p.deciderUserId) || isManager)) return no("projectMove.permNameLead");
+      if (!mayNameLead(p, state.routes.find((r) => r.id === p.routeId), { userId: uid, me: actor.me, manager: isManager })) return no("projectMove.permNameLead");
       return typeof pl.toUserId === "string" && pl.toUserId !== "" ? OK : no("projectMove.permLeadTarget");
     }
 

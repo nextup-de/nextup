@@ -6,7 +6,8 @@ import { byClock } from "../actor";
 import type { Due, SeatAbove } from "../due";
 import { hasFact, idemKeyOf, targetSeat } from "./shared";
 
-export const CASE_DUE_KINDS = ["deadline", "checkin", "handover", "escalation", "question", "unanswered", "triage"] as const;
+// revisit: a no comes back on its day; appeal: the second look is due (check 2: the seat above is brought in); view: an invitee's view is due by the next check-in (plan NOR, D12, D14, D18; the logic is NOR-D1's).
+export const CASE_DUE_KINDS = ["deadline", "checkin", "handover", "escalation", "question", "unanswered", "triage", "revisit", "appeal", "view"] as const;
 export type CaseDueKind = (typeof CASE_DUE_KINDS)[number];
 
 /** A raise no route owns sits on the fallback desk (features/cases/stamp.ts): after this many working days it is reminded to pass it on (decision Q2.1). */

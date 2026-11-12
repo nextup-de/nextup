@@ -41,7 +41,7 @@ export function NextPanel({ p }: { p: ReducedProject }) {
                   </span>
                 </span>
                 <span className={styles.nextOwner}>
-                  {s.owner ? <><PersonFace name={s.owner} size="sm" /><span>{s.owner}</span></> : <span className={styles.muted}>{t("projects.noOwnerYet")}</span>}
+                  {s.owner ? <><PersonFace name={s.owner} size="sm" /><span>{s.owner}</span></> : <span className={styles.muted}>{t("projectMove.noOwner")}</span>}
                 </span>
                 <span className={styles.nextDue} data-late={late ? "true" : undefined}>
                   {s.dueDay === null ? "" : late ? t("projects.lateShort") + " · " + f(s.dueDay) : f(s.dueDay)}
