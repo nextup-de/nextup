@@ -49,9 +49,13 @@ describe("FLR status view", () => {
     expect(view.step).toBe("read");
   });
 
-  it("decided yes and no show the answer and the reason", () => {
-    expect(viewAfter(desk("case.decided", { answer: "no", reason: "Not this year" })).view).toMatchObject({ step: "decided", decision: { answer: "no", reason: "Not this year" } });
-    expect(viewAfter(desk("case.decided", { answer: "yes", reason: "Fixing it" })).view.decision).toEqual({ answer: "yes", reason: "Fixing it" });
+  it("decided yes and no show the answer and, for a no, the label of its category - never the text (NOR D25)", () => {
+    // The free text of an old no is its category "other"; the desk's own words never reach the floor.
+    const no = viewAfter(desk("case.decided", { answer: "no", reason: "Not this year" }));
+    expect(no.view).toMatchObject({ step: "decided", decision: { answer: "no", reason: "caseNo.catOther" } });
+    expect(no.json).not.toContain("Not this year");
+    expect(viewAfter(desk("case.decided", { answer: "no", reason: "no time", note: "Plan is full" })).view.decision).toEqual({ answer: "no", reason: "shell.noNoTime" });
+    expect(viewAfter(desk("case.decided", { answer: "yes", reason: "Fixing it" })).view.decision).toEqual({ answer: "yes", reason: null });
   });
 
   it("handed shows the new role title", () => {

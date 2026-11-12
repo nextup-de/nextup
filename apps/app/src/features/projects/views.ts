@@ -126,7 +126,8 @@ export function projectDeskFor(list: readonly ReducedProject[], day: number, v: 
     if (move === "reward") {
       if (v.role === "manager") out.push({ project: p, move, why: "reward" });
     } else if (v.userId !== null && p.leadUserId === v.userId) out.push({ project: p, move, why: "lead" });
-    else if (v.me && holdsRole(v.me, p.escalated?.toRoleId ?? null)) out.push({ project: p, move, why: "escalated" });
+    // A stalled project is on its seat's inbox as a stalled item (features/inbox/sources/project-move.ts), so it is not listed twice.
+    else if (p.escalated?.what !== "stalled" && v.me && holdsRole(v.me, p.escalated?.toRoleId ?? null)) out.push({ project: p, move, why: "escalated" });
   }
   return sortDesk(out, day);
 }

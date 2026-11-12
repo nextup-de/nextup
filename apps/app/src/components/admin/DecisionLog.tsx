@@ -1,6 +1,7 @@
 // /admin/decisions: every raise, what the router proposed, and whether people agreed. The summary
 // says how often the proposal holds; the table says where it did not. Props in, JSX out.
 import type { DecisionRow, DecisionSummary, Verdict } from "@/features/admin/decisions";
+import { noCategoryLabel } from "@/features/cases/no";
 import type { MessageKey, T } from "@/i18n";
 import { DataTable, PageHeader, SectionCard } from "@/components/ui/elements";
 import { SearchTable } from "./SearchTable";
@@ -96,6 +97,8 @@ export function DecisionLog({ rows, summary: s, routeNames, exportHref, t }: Pro
                 <>
                   {r.title || <em>{t("adminPrivacy.untitled")}</em>}
                   <span className={c.sub}>{r.answer ? t("adminPrivacy.answered", { answer: t(r.answer === "yes" ? "adminPrivacy.answerYes" : "adminPrivacy.answerNo") }) : t("adminPrivacy.noAnswer")}</span>
+                  {/* A no: its category and its text, an old one by its picked id (plan NOR, D25). */}
+                  {r.category ? <span className={c.sub} data-testid="decision-no">{t(noCategoryLabel(r.category))}{r.reasonText ? ": " + r.reasonText : ""}</span> : null}
                 </>
               ),
             },
