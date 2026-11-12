@@ -46,8 +46,9 @@ describe("Q8.4 gate", () => {
   it("keeps the other switches and the monthly budget", () => {
     expect(aiGate({ ...pilot, stackBrain: true, aiRouting: false }).on).toBe(false);
     expect(aiGate({ ...pilot, stackBrain: true, purpose: "assist", assistantOn: false }).on).toBe(false);
-    expect(aiGate({ ...pilot, stackBrain: true, budget: { ...BUDGET, tokensUnpriced: 1000 } })).toEqual({ on: false, why: expect.stringContaining("token limit") });
-    expect(aiGate({ ...pilot, stackBrain: true, purpose: "assist", budget: { ...BUDGET, spentEur: 50 } })).toEqual({ on: false, why: expect.stringContaining("used up") });
+    expect(aiGate({ ...pilot, stackBrain: true, budget: { ...BUDGET, tokensUnpriced: 1200 } })).toEqual({ on: false, why: expect.stringContaining("token limit") });
+    expect(aiGate({ ...pilot, stackBrain: true, purpose: "assist", budget: { ...BUDGET, spentEur: 60 } })).toEqual({ on: false, why: expect.stringContaining("used up") });
+    expect(aiGate({ ...pilot, stackBrain: true, purpose: "brain", budget: { ...BUDGET, tokensUnpriced: 1000 } })).toEqual({ on: false, why: expect.stringContaining("token limit") });
   });
 
   it("leaves the other choices as they were: a brain does not stand in for their agreement", () => {

@@ -8,8 +8,14 @@ export type Pref = { template: boolean | null; all: boolean | null };
 
 export type Gate = { send: true } | { send: false; reason: "sandbox" | "switched off" | "opted out" };
 
+/**
+ * Operations mails: what the people who run the company's NextUp must know (ai.budget, decision Q7.6). They go out in
+ * every real stage whatever the notifications switch or a person's choice; a sandbox still sends nothing.
+ */
+const OPERATIONS = (template: string) => template === "ai.budget";
+
 /** The mail templates that go out in every real stage (pilot.report: admins chose it, PIL D12). Everything else needs the company's notifications switch. */
-const ALWAYS = (template: string) => template === "raised" || template === "pilot.report" || template.startsWith("loop.");
+const ALWAYS = (template: string) => template === "raised" || template === "pilot.report" || template.startsWith("loop.") || OPERATIONS(template);
 
 /** Off until the person turns it on; every other template is on by default. */
 const DEFAULT_ON = (template: string) => template !== "digest";
@@ -30,6 +36,7 @@ export function prefOf(rows: readonly { userId: string; template: string; on: bo
 export function gateOf(company: GateCompany, channel: string, template: string, pref: Pref = NO_PREF): Gate {
   if (company.stage === "sandbox") return { send: false, reason: "sandbox" };
   if (channel === "webhook" || template === "webhook") return company.n8n ? { send: true } : { send: false, reason: "switched off" };
+  if (OPERATIONS(template)) return { send: true };
   if (!ALWAYS(template) && !company.notifications) return { send: false, reason: "switched off" };
   // The person's own choice for this template wins over "*", which wins over the default.
   const on = pref.template ?? pref.all ?? DEFAULT_ON(template);

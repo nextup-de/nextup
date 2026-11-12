@@ -42,7 +42,7 @@ import { deptName as deptNameOf } from "@/lib/utils/format";
 import { trackCaseEvent } from "@/lib/test-analytics";
 import { DEFAULT_POST_AS, eventLabel } from "@/features/ideas/posting";
 import { loadCaseLog } from "@/server/actions/case-log";
-import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction } from "@/server/actions/events";
+import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction, type AppendOutcome } from "@/server/actions/events";
 import { signOut } from "@/server/actions/auth";
 import { useLocale, useT } from "@/i18n/client";
 import type { Locale } from "@/i18n";
@@ -53,6 +53,8 @@ export type Sheet = { kind: SheetKind; id: string; text: string; picked: string 
 
 export type Act = {
   raise: (p: EventPayload, id?: string) => string; // id: minted by the caller when it has to be known first (the idea studio publishes with it)
+  /** The idea studio's raise: publishes draft `draftId` with case `id`, or neither (Q1.11). Resolves with the server's answer. */
+  raiseDraft: (p: EventPayload, id: string, draftId: string) => Promise<AppendOutcome>;
   read: (id: string) => void;
   decide: (id: string, answer: "yes" | "no", reason?: string, note?: string) => void;
   hand: (id: string, seatId: string, why?: string) => void; // the seat id; its label rides along as `to` (IDN/D5, D13)
@@ -426,7 +428,8 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
 
   // One append. Local mode writes straight to localStorage; server mode renders the event
   // optimistically (synchronously, so act.raise can return its id) and then persists it.
-  const emit = useCallback((type: AppEventType, target: string | null, payload?: EventPayload, id?: string) => {
+  // Resolves with the server's answer once it has one (at once in local mode); most callers do not wait for it.
+  const emit = useCallback((type: AppEventType, target: string | null, payload?: EventPayload, id?: string, draftId?: string): Promise<AppendOutcome> => {
     trackCaseEvent(type, payload); // a user test's funnel step; a no-op outside one (lib/test-analytics.ts)
     // The label this event goes out under, by the server's rule: a raise as the member chose (decision Q1.7), their
     // own case under the label it was raised with. In server mode the server decides again; this is the optimistic copy.
@@ -435,7 +438,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     const label = eventLabel(poster, { type, payload: payload ?? {} }, own, seed.postAs ?? DEFAULT_POST_AS);
     if (!serverMode) {
       updateLog(slug, (prev) => appendEvent(prev, { type, actor: label, actorUserId, target, payload }));
-      return;
+      return Promise.resolve({ ok: true });
     }
     const ev: CaseEvent = {
       id: id ?? newId("e"),
@@ -449,21 +452,27 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     };
     if (isSampleId(target)) {
       updateLog(slug, (prev) => ({ ...prev, events: prev.events.concat([ev]) }));
-      return;
+      return Promise.resolve({ ok: true });
     }
     setPending((p) => p.concat([ev]));
-    startTransition(async () => {
-      const res = await appendEventAction({ slug, id: ev.id, type, target, payload: ev.payload });
-      if (!res.ok) {
-        setPending((p) => p.filter((x) => x.id !== ev.id));
-        showToast(res.error);
+    return new Promise<AppendOutcome>((resolve) => startTransition(async () => {
+      let res: AppendOutcome = { ok: false, error: "" };
+      try {
+        res = await appendEventAction({ slug, id: ev.id, type, target, payload: ev.payload, draftId });
+        if (!res.ok) {
+          setPending((p) => p.filter((x) => x.id !== ev.id));
+          showToast(res.error);
+        }
+      } finally {
+        resolve(res);
       }
-    });
+    }));
   }, [serverMode, slug, S.cases, persona, seed.postAs, actorUserId, log.day, showToast]);
 
   const act = useMemo<Act>(() => ({
     // Stays synchronous and still returns the id: the idea studio hands it straight to saveShots().
     raise: (p, id = newId("c")) => { emit("case.raised", id, p); return id; },
+    raiseDraft: (p, id, draftId) => emit("case.raised", id, p, undefined, draftId),
     read: (id) => emit("case.read", id),
     decide: (id, answer, reason, note) => emit("case.decided", id, { answer, reason, note }),
     hand: (id, seatId, why) => emit("case.handed", id, handPayload(seed.seats, seatId, why)),

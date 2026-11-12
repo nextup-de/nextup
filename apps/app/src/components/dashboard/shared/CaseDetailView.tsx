@@ -68,7 +68,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const [withdrawing, setWithdrawing] = useState(false); // the raiser's "Withdraw" line is open (decision Q1.14)
   const [withdrawWhy, setWithdrawWhy] = useState("");
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
-  if (!ready) return <PageSkeleton kind="detail" delay />;
+  if (!ready) return <PageSkeleton kind="detail" />;
   const c = S.cases.find((x) => x.id === caseId);
   // Someone else's case reads exactly like a missing one - the title is not leaked either way.
   if (!c || !canOpen(ctx, c)) {

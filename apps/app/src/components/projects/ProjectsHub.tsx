@@ -18,7 +18,7 @@ export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases
   const ctx = useDemo();
   const t = useT();
   const { S, ready, demo, flag } = ctx;
-  if (!ready) return <PageSkeleton kind={tab === "ideas" ? "dashboard" : "list"} delay />;
+  if (!ready) return <PageSkeleton kind={tab === "ideas" ? "dashboard" : "list"} />;
   if (!flag("projects")) return <DashboardView linkCases={linkCases} />;
   const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
 

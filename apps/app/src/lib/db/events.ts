@@ -5,6 +5,7 @@ import { dateOfWorkday, workdayOf } from "@/features/clock/calendar";
 import { DEFAULT_CALENDAR, type CalendarSpec } from "@/features/clock";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
+import type { Tx } from "./integrations";
 import { projectCases } from "./projections/case-view";
 import { relabelRows } from "./pseudonymise";
 
@@ -78,11 +79,14 @@ export type AppendResult = { ok: true; duplicate: boolean } | { ok: false; error
  *
  * The id is minted by the caller, so a retried action collides on the primary key instead of
  * writing a second row. That collision is reported as `duplicate`, not as an error.
+ *
+ * `along`: a write that must land with the event or not at all (the idea draft a raise publishes, Q1.11).
+ * It runs in the same transaction; when it throws, neither is kept and its message is the error.
  */
 export async function appendEventRow(
   companyId: string,
   event: NewEventRow,
-  opts: { actorUserId?: string | null; source?: string; idemKey?: string | null; now?: Date } = {},
+  opts: { actorUserId?: string | null; source?: string; idemKey?: string | null; now?: Date; along?: (tx: Tx) => Promise<void> } = {},
 ): Promise<AppendResult> {
   const db = getDb();
   try {
@@ -110,6 +114,7 @@ export async function appendEventRow(
         const by = typeof event.payload.by === "number" ? event.payload.by : 1;
         await tx.company.update({ where: { id: companyId }, data: { demoDay: { increment: by } } });
       }
+      if (opts.along) await opts.along(tx);
     });
   } catch (err) {
     if (isUniqueViolation(err)) return { ok: true, duplicate: true };

@@ -324,7 +324,8 @@ export function useIdeaStudio(slug: string, serverMode: boolean, owner: string, 
     if (ok) { startNew(); void refresh(); }
   }, [draft, slug, serverMode, mine, refresh, startNew]);
 
-  // Asks for the publish; the page appends case.raised with `caseId` only when this says yes.
+  // Asks for the publish; the page appends case.raised with `caseId` only when this says yes. In server mode that
+  // case.raised publishes the draft (Q1.11); the local demo marks it here, as its raise cannot be refused.
   // Then asks the brain for the routing row (null where the stack has none or it did not answer).
   const publish = useCallback(async (caseId: string): Promise<{ ok: true; title: string; body: string; brain: BrainProposal | null } | { ok: false; reason: string }> => {
     if (!draft) return { ok: false, reason: "Write the idea first." };
