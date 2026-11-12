@@ -4,6 +4,7 @@
 // "Nothing outside the app ever touches the database." n8n reads the event log through GET and
 // writes back only by appending, through a narrow allow-list.
 import type { EventPayload } from "@/features/cases/events";
+import { PASS_REASON_MIN } from "@/features/cases/no";
 import { CLOCK_REASONS, isClockReason } from "@/features/clock/actor";
 import type { Verdict } from "@/features/cases/permissions";
 import type { State } from "@/features/cases/reducer";
@@ -117,6 +118,17 @@ export function parseInbound(body: unknown, idempotencyKey?: string | null): Par
   // FX8: the app's own clock hands a case over when its deadline passes. A connector never writes that reason.
   if (b.type === "case.handed" && isClockReason((payload as EventPayload).why)) {
     return { ok: false, error: `case.handed payload.why may not be one of ${CLOCK_REASONS.join(", ")}: the app's clock sets those.` };
+  }
+  // Plan NOR (D13): a connector's pass says why in at least PASS_REASON_MIN characters, and it never claims what only a person on the desk
+  // can: Not mine and Send up need the app's rights and the question that stays open needs the case's state.
+  if (b.type === "case.handed") {
+    const pass = payload as EventPayload;
+    if (typeof pass.why !== "string" || pass.why.trim().length < PASS_REASON_MIN) {
+      return { ok: false, error: `case.handed needs payload.why of at least ${PASS_REASON_MIN} characters.` };
+    }
+    for (const flag of ["back", "up", "keepsQuestion"] as const) {
+      if (pass[flag] !== undefined) return { ok: false, error: `case.handed payload.${flag} is for people on the desk: a connector may not send it.` };
+    }
   }
   if (b.type === "case.commented" && typeof (payload as EventPayload).text !== "string") {
     return { ok: false, error: "case.commented needs payload.text." };

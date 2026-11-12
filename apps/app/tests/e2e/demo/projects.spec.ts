@@ -128,6 +128,62 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 });
 
+test("RES demo: the lead finishes and drops open steps at done, and a stop returns the idea to its desk", async ({ page }) => {
+  const DROP_WHY = "Not needed after the trial";
+  const IDEA = "A second deburring bench next to the 4-series press";
+  await page.goto("/acme");
+  await viewAs(page, "Team leader");
+  await page.goto("/acme/projects/pj4");
+
+  await test.step("the lead starts P-4 with two steps still open", async () => {
+    await tab(page, "Board");
+    await page.getByRole("button", { name: "Add step: " + FIRST }).click();
+    await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
+    await page.getByRole("button", { name: "Add step", exact: true }).click();
+    await expect(page.getByRole("group", { name: "To do" }).getByRole("article")).toHaveCount(2);
+    await tab(page, "Overview");
+    await page.getByLabel("What is measured").fill("Deburring queue");
+    await page.getByLabel(/Today.s number/).fill("25");
+    await page.getByLabel("Unit").fill("minutes");
+    await page.getByLabel("Lower is better").check();
+    await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
+    await page.getByRole("button", { name: "Save the baseline" }).click();
+    await page.getByRole("button", { name: "Start the project" }).click();
+    await expect(head(page)).toContainText("P-4 · Running");
+  });
+
+  await test.step("done waits until every open step is finished or dropped with a reason", async () => {
+    await page.getByRole("button", { name: "Mark it done…" }).click();
+    const sheet = page.getByRole("form", { name: "Mark the project done" });
+    await expect(sheet).toContainText("No done-when was set");
+    const submit = sheet.getByRole("button", { name: "Mark it done", exact: true });
+    await expect(submit).toBeDisabled();
+    await sheet.getByRole("group", { name: FIRST }).getByLabel("Done", { exact: true }).check();
+    await expect(submit).toBeDisabled(); // the other step has no end yet
+    await sheet.getByRole("group", { name: TYPED }).getByLabel("Drop", { exact: true }).check();
+    await expect(submit).toBeDisabled(); // a drop needs its reason
+    await sheet.getByLabel("Why is “" + TYPED + "” dropped?").fill(DROP_WHY);
+    await expect(submit).toBeEnabled();
+    await sheet.getByRole("textbox", { name: "What is done" }).fill("The bench is in use");
+    await submit.click();
+    await expect(head(page)).toContainText("P-4 · Measuring");
+    await tab(page, "Board");
+    await expect(page.getByRole("group", { name: "Done" })).toContainText(FIRST);
+  });
+
+  await test.step("a stop with 'Return the idea to its desk' puts the idea back in the inbox", async () => {
+    await page.getByRole("button", { name: "Stop the project" }).click();
+    const form = page.getByRole("form", { name: "Stop the project" });
+    await form.getByRole("textbox", { name: "Why does it stop?" }).fill("The queue went away by itself");
+    await expect(form.getByLabel("Keep the idea archived")).toBeChecked(); // the default
+    await form.getByLabel("Return the idea to its desk").check();
+    await form.getByRole("button", { name: "Stop it" }).click();
+    await expect(head(page)).toContainText("P-4 · Stopped");
+    await page.goto("/acme/inbox");
+    await expect(page.getByTestId("inbox-row").filter({ hasText: IDEA })).toHaveCount(1);
+  });
+});
+
 test("projects and ideas sit side by side on one page", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
