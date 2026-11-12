@@ -69,6 +69,7 @@ export const teams = defineMessages({
 
     // ── result lines
     resultYes: "You answered yes · {time}",
+    draftOpened: "You answered yes · {time}. The draft is open and you set it up: add the team, goal and baseline there.",
     resultNo: "You said no · {time}",
     resultAsk: "You asked a question · {time}",
     resultHanded: "You handed it to {role} · {time}",
@@ -152,6 +153,7 @@ export const teams = defineMessages({
     tooManyRoles: "Mehr als 150 Rollen: Geben Sie ihn in NextUp weiter.",
 
     resultYes: "Sie haben mit Ja geantwortet · {time}",
+    draftOpened: "Sie haben mit Ja geantwortet · {time}. Der Entwurf ist eröffnet und Sie setzen ihn auf: Team, Ziel und Ausgangswert dort ergänzen.",
     resultNo: "Sie haben Nein gesagt · {time}",
     resultAsk: "Sie haben eine Frage gestellt · {time}",
     resultHanded: "Sie haben ihn an {role} weitergegeben · {time}",

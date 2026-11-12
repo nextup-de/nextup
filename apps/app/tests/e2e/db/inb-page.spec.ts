@@ -114,7 +114,7 @@ test.describe.serial("INB page", () => {
     await test.step("the existing decide sheets work: a yes opens the project and the case leaves the list", async () => {
       await page.goto(`/${SLUG}/inbox?id=${CASE_ID}`);
       await page.getByRole("button", { name: "Yes, do it" }).click();
-      await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
+      await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
       await expect.poll(() => getDb().caseEvent.count({ where: { companyId, type: "case.decided", targetId: CASE_ID } })).toBe(1);
       await page.goto(`/${SLUG}/inbox`);
       await expect(page.getByTestId("inbox-today-decide")).toHaveText("0 to decide");
