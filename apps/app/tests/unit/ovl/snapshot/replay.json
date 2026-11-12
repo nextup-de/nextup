@@ -1,0 +1,1034 @@
+{
+  "day": 14,
+  "cases": [
+    {
+      "id": "c_a",
+      "seed": false,
+      "kind": "idea",
+      "title": "Shorter changeover",
+      "body": "Pre-stage the tools, second version.",
+      "from": "Anonymous #4471",
+      "fromDept": "Line 3",
+      "fromUserId": "u_js",
+      "assigneeSeatId": "s_dep",
+      "assigneeRoleId": "role_deputy",
+      "routeId": "r1",
+      "assignee": "Deputy",
+      "raisedDay": 0,
+      "reason": "triage",
+      "upside": "",
+      "linkedIdea": null,
+      "status": "decided",
+      "read": 0,
+      "decided": {
+        "answer": "yes",
+        "reason": "",
+        "note": "",
+        "by": "T. Vogel",
+        "byUserId": "u_tv",
+        "day": 5,
+        "projectId": "p_one",
+        "lead": "L. Brandt",
+        "category": null,
+        "changeIf": "",
+        "revisitDay": null,
+        "duplicateOf": null
+      },
+      "withdrawn": null,
+      "question": null,
+      "handed": [
+        {
+          "from": "T. Vogel",
+          "fromUserId": "u_tv",
+          "to": "Deputy",
+          "toSeatId": "s_dep",
+          "why": "Their machine",
+          "day": 4,
+          "fromSeatId": "s_vogel",
+          "back": false,
+          "up": false
+        }
+      ],
+      "building": null,
+      "shipped": null,
+      "override": {
+        "proposed": "r1",
+        "chosen": "r2",
+        "day": 4,
+        "by": "T. Vogel",
+        "byUserId": "u_tv"
+      },
+      "discussion": {
+        "startedDay": 1,
+        "by": "T. Vogel",
+        "byUserId": "u_tv",
+        "invited": [
+          "H. Sander",
+          "M. Roth"
+        ],
+        "invitedUserIds": [
+          "u_hs",
+          "u_mr"
+        ],
+        "missing": "The saving",
+        "rounds": [
+          {
+            "round": 1,
+            "day": 3,
+            "by": "T. Vogel",
+            "byUserId": "u_tv",
+            "next": "decide",
+            "open": [
+              "Cost"
+            ],
+            "note": "Quote is in"
+          }
+        ],
+        "round": 1,
+        "ready": true,
+        "lastDay": 0,
+        "declinedUserIds": []
+      },
+      "versions": [
+        {
+          "version": 1,
+          "day": 0,
+          "by": "Anonymous #4471",
+          "byUserId": "u_js",
+          "title": "Shorter changeover",
+          "body": "Pre-stage the tools.",
+          "overall": null
+        },
+        {
+          "version": 2,
+          "day": 2,
+          "by": "Anonymous #4471",
+          "byUserId": "u_js",
+          "title": "Shorter changeover",
+          "body": "Pre-stage the tools, second version.",
+          "overall": 72
+        }
+      ],
+      "decisions": [
+        {
+          "answer": "yes",
+          "reason": "",
+          "note": "",
+          "by": "T. Vogel",
+          "byUserId": "u_tv",
+          "day": 5,
+          "projectId": "p_one",
+          "lead": "L. Brandt",
+          "category": null,
+          "changeIf": "",
+          "revisitDay": null,
+          "duplicateOf": null
+        }
+      ],
+      "passes": 1,
+      "notNowInRow": 0,
+      "appeal": null,
+      "reopens": [],
+      "cycleStartDay": 0,
+      "dueFloor": null,
+      "reopenSeq": null,
+      "decidedSeq": 8,
+      "follows": null,
+      "followedBy": [],
+      "sameAs": null,
+      "related": [],
+      "merged": null,
+      "mergedIn": [],
+      "links": [],
+      "review": null,
+      "cost": null,
+      "approvals": null,
+      "approvalRuns": [],
+      "openingRunId": null,
+      "pausedDays": 0,
+      "pausedSince": null,
+      "history": [
+        {
+          "id": "ev_001",
+          "ts": 1790000001000,
+          "day": 0,
+          "type": "case.raised",
+          "actor": "Anonymous #4471",
+          "actorUserId": "u_js",
+          "target": "c_a",
+          "payload": {
+            "kind": "idea",
+            "title": "Shorter changeover",
+            "body": "Pre-stage the tools.",
+            "routeId": "r1",
+            "assignee": "T. Vogel",
+            "assigneeRoleHolderId": "s_vogel",
+            "fromDept": "Line 3",
+            "visibility": "custom",
+            "seenByUserIds": [
+              "u_hs"
+            ],
+            "seenByUnitIds": [
+              "unit_l3"
+            ],
+            "asName": true,
+            "attachments": 1,
+            "proposal": {
+              "routeId": "r1",
+              "confidence": 80,
+              "source": "keywords",
+              "version": "kw-1"
+            }
+          }
+        },
+        {
+          "id": "ev_002",
+          "ts": 1790000002000,
+          "day": 0,
+          "type": "case.read",
+          "actor": "T. Vogel",
+          "actorUserId": "u_tv",
+          "target": "c_a",
+          "payload": {}
+        },
+        {
+          "id": "ev_003",
+          "ts": 1790000003000,
+          "day": 1,
+          "type": "case.discussion",
+          "actor": "T. Vogel",
+          "actorUserId": "u_tv",
+          "target": "c_a",
+          "payload": {
+            "invited": [
+              "H. Sander"
+            ],
+            "invitedUserIds": [
+              "u_hs"
+            ],
+            "missing": "The saving"
+          }
+        },
+        {
+          "id": "ev_004",
+          "ts": 1790000004000,
+          "day": 1,
+          "type": "case.invited",
+          "actor": "T. Vogel",
+          "actorUserId": "u_tv",
+          "target": "c_a",
+          "payload": {
+            "invited": [
+              "M. Roth"
+            ],
+            "invitedUserIds": [
+              "u_mr"
+            ]
+          }
+        },
+        {
+          "id": "ev_005",
+          "ts": 1790000005000,
+          "day": 2,
+          "type": "case.revised",
+          "actor": "Anonymous #4471",
+          "actorUserId": "u_js",
+          "target": "c_a",
+          "payload": {
+            "body": "Pre-stage the tools, second version.",
+            "title": "Shorter changeover",
+            "overall": 72
+          }
+        },
+        {
+          "id": "ev_006",
+          "ts": 1790000006000,
+          "day": 3,
+          "type": "case.checkin",
+          "actor": "T. Vogel",
+          "actorUserId": "u_tv",
+          "target": "c_a",
+          "payload": {
+            "next": "decide",
+            "open": [
+              "Cost"
+            ],
+            "note": "Quote is in"
+          }
+        },
+        {
+          "id": "ev_013",
+          "ts": 1790000013000,
+          "day": 4,
+          "type": "case.override",
+          "actor": "T. Vogel",
+          "actorUserId": "u_tv",
+          "target": "c_a",
+          "payload": {
+            "proposed": "r1",
+            "chosen": "r2"
+          }
+        },
+        {
+          "id": "ev_014",
+          "ts": 1790000014000,
+          "day": 4,
+          "type": "case.handed",
+          "actor": "T. Vogel",
+          "actorUserId": "u_tv",
+          "target": "c_a",
+          "payload": {
+            "to": "Deputy",
+            "toRoleHolderId": "s_dep",
+            "why": "Their machine"
+          }
+        },
+        {
+          "id": "ev_015",
+          "ts": 1790000015000,
+          "day": 5,
+          "type": "case.decided",
+          "actor": "T. Vogel",
+          "actorUserId": "u_tv",
+          "target": "c_a",
+          "payload": {
+            "answer": "yes",
+            "projectId": "p_one",
+            "lead": "L. Brandt",
+            "leadUserId": "u_lb",
+            "title": "Changeover cart",
+            "draft": true,
+            "raiserNote": "Thank you, set it up."
+          }
+        },
+        {
+          "id": "ev_044",
+          "ts": 1790000044000,
+          "day": 44,
+          "type": "clock.due",
+          "actor": "system:clock",
+          "actorUserId": null,
+          "target": "c_a",
+          "payload": {
+            "kind": "deadline",
+            "dueDay": 8,
+            "toRoleHolderId": "s_dep"
+          }
+        }
+      ],
+      "route": {
+        "id": "r1",
+        "type": "Type",
+        "keys": [
+          "k"
+        ],
+        "owner": {
+          "name": "T. Vogel",
+          "role": "Owner",
+          "dept": "PRD"
+        },
+        "deputy": "H. Sander",
+        "buddy": "B",
+        "wait": "2 days",
+        "ownerSeatId": "s_vogel",
+        "ownerRoleId": "role_owner",
+        "deputySeatId": "s_dep",
+        "deputyRoleId": "role_deputy"
+      },
+      "age": 14,
+      "clock": 5,
+      "open": false,
+      "archived": true,
+      "overdue": false,
+      "dueDay": 5,
+      "escalated": null
+    }
+  ],
+  "ideas": [],
+  "problems": [],
+  "projects": [
+    {
+      "id": "p_one",
+      "number": 1,
+      "title": "Quick win",
+      "sources": [
+        "c_a"
+      ],
+      "authors": [
+        "Anonymous #4471"
+      ],
+      "routeId": "r1",
+      "lead": "H. Sander",
+      "members": [],
+      "leadUserId": "u_hs",
+      "memberUserIds": [],
+      "authorUserIds": [
+        "u_js"
+      ],
+      "openedDay": 5,
+      "openedBy": "T. Vogel",
+      "seed": false,
+      "startedDay": 8,
+      "doneDay": 10,
+      "doneNote": "Live on line 3",
+      "stopped": null,
+      "baseline": {
+        "none": false,
+        "metric": "Changeover time",
+        "unit": "min",
+        "value": 42,
+        "better": "down",
+        "source": "MES weekly",
+        "day": 6,
+        "by": "L. Brandt",
+        "byUserId": "u_lb",
+        "eventId": "ev_024",
+        "confirmed": null
+      },
+      "steps": [
+        {
+          "id": "t:quick-win:1:0",
+          "text": "Try it at one station",
+          "owner": null,
+          "ownerUserId": null,
+          "dueDay": 10,
+          "column": "todo",
+          "why": "",
+          "note": "",
+          "addedDay": 6,
+          "by": "L. Brandt",
+          "byUserId": "u_lb",
+          "movedDay": 6,
+          "startedDay": null,
+          "doneDay": null,
+          "external": null,
+          "role": "lead",
+          "dropped": null
+        },
+        {
+          "id": "t:quick-win:1:1",
+          "text": "Ask the people who work with it",
+          "owner": null,
+          "ownerUserId": null,
+          "dueDay": 14,
+          "column": "todo",
+          "why": "",
+          "note": "",
+          "addedDay": 6,
+          "by": "L. Brandt",
+          "byUserId": "u_lb",
+          "movedDay": 6,
+          "startedDay": null,
+          "doneDay": null,
+          "external": null,
+          "role": "team",
+          "dropped": null
+        },
+        {
+          "id": "t:quick-win:1:2",
+          "text": "Make it the standard, with a photo",
+          "owner": null,
+          "ownerUserId": null,
+          "dueDay": 17,
+          "column": "todo",
+          "why": "",
+          "note": "",
+          "addedDay": 6,
+          "by": "L. Brandt",
+          "byUserId": "u_lb",
+          "movedDay": 6,
+          "startedDay": null,
+          "doneDay": null,
+          "external": null,
+          "role": "lead",
+          "dropped": null
+        },
+        {
+          "id": "t:quick-win:1:3",
+          "text": "Tell the other shifts what changed",
+          "owner": null,
+          "ownerUserId": null,
+          "dueDay": 19,
+          "column": "todo",
+          "why": "",
+          "note": "",
+          "addedDay": 6,
+          "by": "L. Brandt",
+          "byUserId": "u_lb",
+          "movedDay": 6,
+          "startedDay": null,
+          "doneDay": null,
+          "external": null,
+          "role": "lead",
+          "dropped": null
+        },
+        {
+          "id": "s1",
+          "text": "Pre-stage all tools",
+          "owner": null,
+          "ownerUserId": "u_hs",
+          "dueDay": null,
+          "column": "done",
+          "why": "Finished",
+          "note": "On line 3",
+          "addedDay": 8,
+          "by": "L. Brandt",
+          "byUserId": "u_lb",
+          "movedDay": 9,
+          "startedDay": 9,
+          "doneDay": 9,
+          "external": {
+            "system": "jira",
+            "key": "CHG-1",
+            "url": "https://example.test/browse/CHG-1"
+          },
+          "dropped": null
+        }
+      ],
+      "links": [
+        {
+          "system": "jira",
+          "url": "https://example.test/browse/CHG-1",
+          "key": "CHG-1",
+          "stepId": "s1",
+          "day": 9
+        }
+      ],
+      "sync": {
+        "system": "jira",
+        "on": true,
+        "day": 9,
+        "by": "L. Brandt"
+      },
+      "measures": [
+        {
+          "check": 30,
+          "value": 31,
+          "source": "MES weekly",
+          "note": "Better",
+          "day": 40,
+          "by": "L. Brandt",
+          "byUserId": "u_lb",
+          "sourceKind": "typed",
+          "sourceInfo": {
+            "kind": "typed",
+            "note": "MES weekly"
+          },
+          "impact": null,
+          "confirmed": true,
+          "confirmedByUserId": "u_bh",
+          "confirmedDay": 41,
+          "verdict": "better",
+          "changePct": -26.2,
+          "eventId": "ev_039",
+          "sentBack": false,
+          "reentered": false,
+          "managerOnly": false,
+          "questions": [],
+          "previous": []
+        }
+      ],
+      "checks": [
+        {
+          "check": 30,
+          "opensDay": 40,
+          "dueDay": 45,
+          "measured": true,
+          "late": false
+        },
+        {
+          "check": 90,
+          "opensDay": 100,
+          "dueDay": 105,
+          "measured": false,
+          "late": false
+        }
+      ],
+      "verdict": "better",
+      "reward": {
+        "rule": "fixed",
+        "amount": 500,
+        "note": "Thank you",
+        "day": 42,
+        "by": "B. Hartmann"
+      },
+      "claimed": {
+        "by": "Anonymous #4471",
+        "day": 43
+      },
+      "status": "recognised",
+      "closed": true,
+      "rewardDue": false,
+      "dueDay": null,
+      "overdue": false,
+      "escalated": null,
+      "history": [
+        {
+          "id": "ev_015",
+          "ts": 1790000015000,
+          "day": 5,
+          "type": "case.decided",
+          "actor": "T. Vogel",
+          "actorUserId": "u_tv",
+          "target": "c_a",
+          "payload": {
+            "answer": "yes",
+            "projectId": "p_one",
+            "lead": "L. Brandt",
+            "leadUserId": "u_lb",
+            "title": "Changeover cart",
+            "draft": true,
+            "raiserNote": "Thank you, set it up."
+          }
+        },
+        {
+          "id": "ev_022",
+          "ts": 1790000022000,
+          "day": 6,
+          "type": "project.member",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "name": "H. Sander",
+            "userId": "u_hs",
+            "on": true
+          }
+        },
+        {
+          "id": "ev_023",
+          "ts": 1790000023000,
+          "day": 6,
+          "type": "project.handed",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "to": "H. Sander",
+            "toUserId": "u_hs",
+            "why": "New line"
+          }
+        },
+        {
+          "id": "ev_024",
+          "ts": 1790000024000,
+          "day": 6,
+          "type": "project.baseline",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "metric": "Changeover time",
+            "unit": "min",
+            "value": 42,
+            "better": "down",
+            "source": "MES weekly"
+          }
+        },
+        {
+          "id": "ev_025",
+          "ts": 1790000025000,
+          "day": 6,
+          "type": "project.template",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "key": "quick-win",
+            "version": 1,
+            "title": "Quick win"
+          }
+        },
+        {
+          "id": "ev_026",
+          "ts": 1790000026000,
+          "day": 6,
+          "type": "project.invited",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "userId": "u_mr",
+            "role": "sponsor"
+          }
+        },
+        {
+          "id": "ev_027",
+          "ts": 1790000027000,
+          "day": 7,
+          "type": "project.invite.answered",
+          "actor": "M. Roth",
+          "actorUserId": "u_mr",
+          "target": "p_one",
+          "payload": {
+            "inviteId": "ev_025",
+            "userId": "u_mr",
+            "take": false,
+            "reason": "No time",
+            "lapsed": false
+          }
+        },
+        {
+          "id": "ev_028",
+          "ts": 1790000028000,
+          "day": 7,
+          "type": "project.lead.answered",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "take": true
+          }
+        },
+        {
+          "id": "ev_029",
+          "ts": 1790000029000,
+          "day": 7,
+          "type": "project.goal",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "goal": "Faster changeover",
+            "doneWhen": "Under 30 minutes",
+            "doneBy": 40,
+            "brief": "Why and what."
+          }
+        },
+        {
+          "id": "ev_030",
+          "ts": 1790000030000,
+          "day": 7,
+          "type": "project.start.moved",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "dueDay": 14,
+            "why": "Waiting for the part"
+          }
+        },
+        {
+          "id": "ev_031",
+          "ts": 1790000031000,
+          "day": 8,
+          "type": "project.started",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {}
+        },
+        {
+          "id": "ev_032",
+          "ts": 1790000032000,
+          "day": 8,
+          "type": "project.step.added",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "stepId": "s1",
+            "text": "Pre-stage the tools",
+            "owner": "H. Sander",
+            "ownerUserId": "u_hs",
+            "dueDay": 12,
+            "note": "On line 3",
+            "to": "todo"
+          }
+        },
+        {
+          "id": "ev_033",
+          "ts": 1790000033000,
+          "day": 9,
+          "type": "project.step.moved",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "stepId": "s1",
+            "to": "done",
+            "why": "Finished",
+            "before": null
+          }
+        },
+        {
+          "id": "ev_034",
+          "ts": 1790000034000,
+          "day": 9,
+          "type": "project.step.edited",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "stepId": "s1",
+            "text": "Pre-stage all tools",
+            "owner": "",
+            "dueDay": null,
+            "removed": false
+          }
+        },
+        {
+          "id": "ev_035",
+          "ts": 1790000035000,
+          "day": 9,
+          "type": "project.linked",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "system": "jira",
+            "url": "https://example.test/browse/CHG-1",
+            "key": "CHG-1",
+            "stepId": "s1"
+          }
+        },
+        {
+          "id": "ev_036",
+          "ts": 1790000036000,
+          "day": 9,
+          "type": "project.sync",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "system": "jira",
+            "on": true
+          }
+        },
+        {
+          "id": "ev_037",
+          "ts": 1790000037000,
+          "day": 9,
+          "type": "project.commented",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "text": "Cart is on site."
+          }
+        },
+        {
+          "id": "ev_038",
+          "ts": 1790000038000,
+          "day": 10,
+          "type": "project.done",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "note": "Live on line 3"
+          }
+        },
+        {
+          "id": "ev_039",
+          "ts": 1790000039000,
+          "day": 40,
+          "type": "project.measured",
+          "actor": "L. Brandt",
+          "actorUserId": "u_lb",
+          "target": "p_one",
+          "payload": {
+            "check": 30,
+            "value": 31,
+            "source": "MES weekly",
+            "note": "Better",
+            "impact": {
+              "yearlySavingEur": 12000
+            }
+          }
+        },
+        {
+          "id": "ev_040",
+          "ts": 1790000040000,
+          "day": 41,
+          "type": "project.measure.confirmed",
+          "actor": "B. Hartmann",
+          "actorUserId": "u_bh",
+          "target": "p_one",
+          "payload": {
+            "check": 30
+          }
+        },
+        {
+          "id": "ev_041",
+          "ts": 1790000041000,
+          "day": 42,
+          "type": "project.rewarded",
+          "actor": "B. Hartmann",
+          "actorUserId": "u_bh",
+          "target": "p_one",
+          "payload": {
+            "rule": "fixed",
+            "amount": 500,
+            "note": "Thank you"
+          }
+        },
+        {
+          "id": "ev_042",
+          "ts": 1790000042000,
+          "day": 43,
+          "type": "project.claimed",
+          "actor": "Anonymous #4471",
+          "actorUserId": "u_js",
+          "target": "p_one",
+          "payload": {}
+        }
+      ],
+      "draft": true,
+      "leadState": "taken",
+      "leadAskedDay": 6,
+      "template": {
+        "key": "quick-win",
+        "version": 1
+      },
+      "invites": [
+        {
+          "id": "ev_026",
+          "userId": "u_mr",
+          "role": "sponsor",
+          "state": "pending",
+          "day": 6,
+          "reason": ""
+        }
+      ],
+      "sponsorUserId": null,
+      "followerUserIds": [],
+      "goal": {
+        "goal": "Faster changeover",
+        "doneWhen": "Under 30 minutes",
+        "doneBy": 40,
+        "brief": "Why and what."
+      },
+      "startDay": 14,
+      "approvalsPendingSince": null,
+      "raiserNote": "Thank you, set it up.",
+      "deciderUserId": "u_tv",
+      "doneBy": 40,
+      "doneByMoves": [],
+      "pausedUntil": null,
+      "pauseWhy": "",
+      "lastActivityDay": 9,
+      "checkInWeekday": null,
+      "howWeWorkNote": "",
+      "leadVacatedDay": null,
+      "latestUpdate": null,
+      "rewardDueDay": null,
+      "helpAsks": []
+    }
+  ],
+  "ledger": {
+    "handedOver": 1,
+    "escalated": 0,
+    "overrides": 1,
+    "projectsEscalated": 0,
+    "measuresOwed": 0,
+    "unmeasured": 0
+  },
+  "rules": {
+    "discussEveryDays": 3,
+    "discussMaxRounds": 3,
+    "measureDays": [
+      30,
+      90
+    ],
+    "tolerancePct": 2,
+    "fastLaneEur": 5000,
+    "reward": {
+      "kind": "thanks",
+      "amount": null,
+      "sharePct": null,
+      "capEur": null
+    },
+    "deadlineHandover": true,
+    "escalationDays": 3,
+    "projectStartDays": 10,
+    "blockedDays": 3,
+    "noReasonMin": 40,
+    "appealDays": 10,
+    "questionDays": 5,
+    "movSinceDay": 0,
+    "measure": true,
+    "recognition": true
+  },
+  "seats": [
+    {
+      "id": "s_vogel",
+      "roleId": "role_owner",
+      "label": "T. Vogel",
+      "userId": "u_tv",
+      "sort": 0
+    },
+    {
+      "id": "s_dep",
+      "roleId": "role_deputy",
+      "label": "H. Sander",
+      "userId": "u_hs",
+      "sort": 1
+    },
+    {
+      "id": "s_head",
+      "roleId": "role_head",
+      "label": "K. Head",
+      "userId": "u_head",
+      "sort": 2
+    }
+  ],
+  "routes": [
+    {
+      "id": "r1",
+      "type": "Type",
+      "keys": [
+        "k"
+      ],
+      "owner": {
+        "name": "T. Vogel",
+        "role": "Owner",
+        "dept": "PRD"
+      },
+      "deputy": "H. Sander",
+      "buddy": "B",
+      "wait": "2 days",
+      "ownerSeatId": "s_vogel",
+      "ownerRoleId": "role_owner",
+      "deputySeatId": "s_dep",
+      "deputyRoleId": "role_deputy"
+    }
+  ],
+  "clock": {
+    "mode": "demo"
+  },
+  "approvals": {
+    "review": {
+      "on": false,
+      "roleId": null,
+      "days": 2,
+      "deputyRoleId": null,
+      "routes": {}
+    },
+    "triageRoleId": null,
+    "fallbackRoleId": null,
+    "approvalDays": 5,
+    "rules": [],
+    "councils": [],
+    "roles": [
+      {
+        "id": "role_head",
+        "title": "",
+        "reportsToId": null,
+        "spendLimitEur": null
+      },
+      {
+        "id": "role_owner",
+        "title": "",
+        "reportsToId": "role_head",
+        "spendLimitEur": null
+      },
+      {
+        "id": "role_deputy",
+        "title": "",
+        "reportsToId": "role_owner",
+        "spendLimitEur": null
+      }
+    ]
+  }
+}
