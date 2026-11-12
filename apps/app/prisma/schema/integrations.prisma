@@ -256,3 +256,18 @@ model AiCall {
 
   @@index([companyId, createdAt])
 }
+
+// The words of an agent suggestion or planning draft (plan AGT D23): redacted, roles not names, no user id. The event keeps the id and
+// the text lives here so the company's AI-text retention (assist_turns) can delete it; what a person accepted lives on in the notice,
+// update or step. A company's table, not in a person's export.
+model AgentText {
+  id        String   @id @default(cuid())
+  companyId String
+  kind      String // suggestion | plan
+  text      String
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+}
