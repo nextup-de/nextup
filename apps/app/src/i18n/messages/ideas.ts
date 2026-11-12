@@ -581,7 +581,7 @@ export const ideas = defineMessages({
     benchFoundStep: "Nennt einen ersten Schritt",
     benchMissStep: "Was ist der kleinste erste Schritt - ein Pilot, ein Test über eine Woche?",
     benchFoundNew: "Noch nicht eingebracht",
-    benchMissRaised: "Schon eingereicht: „{title}“. Sag, was an deiner anders ist; der Entscheider sieht beide und kann sie zusammenlegen.",
+    benchMissRaised: "Schon eingereicht: „{title}“. Sagen Sie, was an Ihrer anders ist; der Entscheider sieht beide und kann sie zusammenlegen.",
     benchFoundLong: "Mit mehr als einer Zeile beschrieben",
     benchMissLong: "Sagen Sie etwas mehr: Was genau würde sich ändern?",
     benchFoundDetailed: "Ausführlich",
