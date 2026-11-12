@@ -6,9 +6,11 @@ import type { Role } from "@/config/roles";
 import { meFor } from "@/features/auth/identity";
 import type { EventLog, EventPayload } from "@/features/cases/events";
 import { logFromRows, type EventRow } from "@/features/cases/persist";
-import type { ReducedCase } from "@/features/cases/reducer";
+import { reduce, type ReducedCase } from "@/features/cases/reducer";
 import { canOpen, membersForViewer, unitsOf, viewerKeys, type VisMember } from "@/features/cases/visibility";
 import type { ReducedProject } from "@/features/projects/types";
+import { isOpenDraft, mayReadDraft } from "@/features/projects/views";
+import { isPrivateIdea } from "@/features/cases/visibility";
 import type { Seed, SeedCase } from "@/features/demo/types";
 import type { SeedProject } from "@/features/projects/types";
 import { loadCalendar } from "./calendar";
@@ -80,6 +82,46 @@ async function eventsOf(companyId: string, caseIds: string[], seed: Seed, shared
   return { rows: [...await relabelRows(companyId, rows)], projectIds };
 }
 
+/** What a viewer who may open a draft's case but not read the draft keeps of the draft's own events (D13): who leads it and when it should start. No reasons. */
+const DRAFT_SUMMARY: Record<string, readonly string[]> = {
+  "project.handed": ["to", "toUserId"],
+  "project.lead.answered": ["take", "lapsed", "askId"],
+  "project.start.moved": ["dueDay"],
+};
+/** ... and the raiser of the case, not on the draft, also keeps what the lead wrote down of the goal (D20). */
+const RAISER_SUMMARY: Record<string, readonly string[]> = { ...DRAFT_SUMMARY, "project.goal": ["goal", "doneWhen", "doneBy", "brief"] };
+
+const pick = (payload: unknown, keys: readonly string[]): EventPayload => {
+  const from = (payload ?? {}) as Record<string, unknown>;
+  return Object.fromEntries(keys.filter((k) => from[k] !== undefined).map((k) => [k, from[k]])) as EventPayload;
+};
+
+/**
+ * The boundary of a draft (SET D13, D20): a viewer who may open the idea but is not on the draft does not receive the
+ * draft's steps, invitations, comments or any other event of it, only the summary events above. The reducer then rebuilds
+ * a draft that visibleProjectsFor hides and the case page describes as "being set up". Pure over the rows; the case
+ * events themselves are untouched, so a project that has started, and every legacy project, passes unchanged.
+ */
+export async function cutDrafts(companyId: string, viewer: LogViewer, rows: EventRow[], seed: Seed, day: number): Promise<EventRow[]> {
+  const drafts = new Set(rows.flatMap((r) => (r.type === "case.decided" && (r.payload as EventPayload | null)?.draft === true ? projectIdOf(r.payload) : [])));
+  if (drafts.size === 0) return rows;
+  const state = reduce({ ...seed, seats: await loadSeats(companyId) }, logFromRows(rows, day));
+  const cut = new Map<string, readonly string[]>();
+  for (const p of state.projects) {
+    if (!drafts.has(p.id) || !isOpenDraft(p)) continue;
+    const cases = state.cases.filter((c) => p.sources.includes(c.id));
+    if (mayReadDraft(p, viewer, cases.some(isPrivateIdea))) continue;
+    cut.set(p.id, cases.some((c) => c.fromUserId === viewer.userId) ? Object.keys(RAISER_SUMMARY) : Object.keys(DRAFT_SUMMARY));
+  }
+  if (cut.size === 0) return rows;
+  return rows.flatMap((r) => {
+    const keep = r.targetId === null ? undefined : cut.get(r.targetId);
+    if (keep === undefined) return [r];
+    if (!keep.includes(r.type)) return [];
+    return [{ ...r, payload: pick(r.payload, (keep.includes("project.goal") ? RAISER_SUMMARY : DRAFT_SUMMARY)[r.type]) }];
+  });
+}
+
 /**
  * The log for one viewer (VIS/D8). A company without CaseView rows (not projected yet) gets the
  * full log, so nothing disappears before the first rebuild. A caller that already holds the company seed passes it,
@@ -96,8 +138,9 @@ export async function loadLogFor(companyId: string, viewer: LogViewer, now: Date
   const cal = company.stage === "demo" ? null : await loadCalendar(companyId);
   const day = cal ? companyDay(company, cal, now) : company.demoDay;
   const caseIds = await visibleCaseIds(companyId, keys, { sinceDay: day - WINDOW_DAYS, limit: WINDOW_CASES });
-  const { rows, projectIds } = await eventsOf(companyId, caseIds, seed ?? (await seedOf(companyId)), true);
-  return { log: logFromRows(rows, day), caseIds, projectIds };
+  const full = seed ?? (await seedOf(companyId));
+  const { rows, projectIds } = await eventsOf(companyId, caseIds, full, true);
+  return { log: logFromRows(await cutDrafts(companyId, viewer, rows, full, day), day), caseIds, projectIds };
 }
 
 /** The seed with only these cases and projects; everything else in it stays. */
@@ -121,8 +164,10 @@ export async function loadCaseFor(companyId: string, viewer: LogViewer, caseId: 
   if (!row.accessKeys.some((k) => mine.has(k))) return null;
   const seed = await seedOf(companyId);
   const { rows, projectIds } = await eventsOf(companyId, [caseId], seed, false);
+  const company = await memo("stage", companyId, () => getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } }));
+  const day = company.stage === "demo" ? company.demoDay : companyDay(company, await loadCalendar(companyId), new Date());
   return {
-    events: rows,
+    events: await cutDrafts(companyId, viewer, rows, seed, day),
     seedCase: seed.cases.find((c) => c.id === caseId) ?? null,
     seedProjects: (seed.projects ?? []).filter((p) => projectIds.includes(p.id)),
   };
