@@ -21,14 +21,15 @@ import snapshot from "./snapshot/events.json";
 describe("REG events split", () => {
   const recorded: string[] = snapshot.appEventTypes;
   it("every case.* app type is in CASE_EVENT_TYPES and every project.* one in PROJECT_EVENT_TYPES", () => {
-    expect([...CASE_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("case.")));
+    // GAT's four types are case.* by name and live in the approval area.
+    expect([...CASE_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("case.") && !(APPROVAL_EVENT_TYPES as readonly string[]).includes(t)));
     expect([...PROJECT_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("project.")));
     expect([...CORE_APP_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => !t.startsWith("case.") && !t.startsWith("project.") && !t.startsWith("agent.")));
   });
-  it("the agent list holds AGT's six types, the approval and overload lists are empty until GAT and OVL", () => {
+  it("the agent list holds AGT's six types, GAT's four types are the approval list, the overload list is empty until OVL", () => {
     expect([...AGENT_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("agent.")));
     expect(AGENT_EVENT_TYPES).toEqual(["agent.switched", "agent.suggested", "agent.accepted", "agent.dismissed", "agent.planned", "agent.ran"]);
-    expect(APPROVAL_EVENT_TYPES).toEqual([]);
+    expect(APPROVAL_EVENT_TYPES).toEqual(["case.reviewed", "case.costed", "case.provisional", "case.approval"]);
     expect(OVERLOAD_EVENT_TYPES).toEqual([]);
   });
   it("APP_EVENT_TYPES as a set equals the snapshot recorded before the split, with no type twice", () => {
