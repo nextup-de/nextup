@@ -105,6 +105,7 @@ model Company {
   notifyCursor         NotifyCursor?
   teamsConversations   TeamsConversation[]
   aiCalls              AiCall[]
+  agentTexts           AgentText[]
 
   // -- ops --
   tickets       Ticket[]
