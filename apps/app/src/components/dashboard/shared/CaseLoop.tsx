@@ -8,6 +8,11 @@ import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { standingOn, versionsOf } from "@/components/dashboard/derive";
 import { useLocale, useT } from "@/i18n/client";
+import { NoBlock } from "@/components/cases/NoBlock";
+import { SecondLook } from "@/components/cases/SecondLook";
+import { useRelatedCase } from "@/components/cases/useRelatedCase";
+import { caseActions, questionOpen, reviseThenAnswer } from "@/features/cases/case-actions";
+import { noBlockOf } from "@/features/cases/raiser-view";
 import { roundState, scoreVersions, versionReader } from "@/features/cases/discussion";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { projectStatus, raisedWith } from "@/features/cases/rows";
@@ -20,7 +25,8 @@ import { useCaseNames } from "@/components/cases/useCaseNames";
 import { PersonFace, SectionCard } from "@/components/ui/elements";
 import styles from "./CaseLoop.module.css";
 
-// "Accepted on 14 Oct by T. Vogel → P-12 Shorter changeover · In progress" - or the no and its why.
+// "Accepted on 14 Oct by T. Vogel → P-12 Shorter changeover · In progress" - or the no with its block (plan SEE, D12) - or, for a merged case,
+// where it went (D17).
 // A draft the viewer may not read is "Accepted · being set up by {role}, start expected {date}" and no link (D13);
 // one they may read is "Draft → P-12 title" (SET).
 export function ArchiveBanner({ c }: { c: ReducedCase }) {
@@ -28,6 +34,33 @@ export function ArchiveBanner({ c }: { c: ReducedCase }) {
   const t = useT();
   const locale = useLocale();
   const names = useCaseNames();
+  const related = useRelatedCase();
+  // A no, also one a second look reopened (the case then has no live decision, but its no still tells what happened).
+  const block = noBlockOf(c, S.day, S.rules.appealDays);
+  if (c.merged !== null) {
+    const into = related.ofCase(c.merged.into);
+    return (
+      <div className={styles.banner} data-tone="no" role="note" aria-label={t("caseSee.statusMerged")} data-testid="merged-into">
+        <span className={styles.bannerTag}>{t("caseSee.statusMerged")}</span>
+        <span>{into.to ? <Link href={into.to} className={styles.bannerLink}>{t("caseSee.mergedInto", { title: into.title ?? "" })}</Link> : t("caseSee.mergedInto", { title: t("loopCase.aCase") })}{c.merged.note ? " — " + c.merged.note : ""}</span>
+      </div>
+    );
+  }
+  if (block !== null) {
+    const no = c.decided ?? c.decisions[c.decisions.length - 1];
+    const ago = no.day - S.day;
+    const noWhen = ago === 0 || ago === -1 ? f(no.day) : t("dashboard.loopWhenOn", { day: f(no.day) });
+    return (
+      <>
+      <div className={styles.banner} data-tone="no" role="note" aria-label={t("dashboard.loopArchived")}>
+        <span className={styles.bannerTag}>{t("dashboard.loopArchived")}</span>
+        <span data-testid="archived-no">{t("dashboard.loopDeclined", { when: noWhen, by: no.by })}</span>
+      </div>
+      <NoBlock c={c} block={block} />
+      <SecondLook c={c} />
+      </>
+    );
+  }
   const dec = c.decided;
   if (!c.archived || !dec) return null;
   const p = dec.answer === "yes" ? projectOfCase(S, c) : undefined;
@@ -49,9 +82,7 @@ export function ArchiveBanner({ c }: { c: ReducedCase }) {
           {draft ? t("projectDraft.title") : t("dashboard.loopAccepted", { when, by: dec.by })}
           {p ? <> → <Link href={href("/projects/" + p.id)} className={styles.bannerLink}>{projectLabel(p)} {p.title}</Link> · {projectStatus(p.status, locale)}</> : null}
         </span>
-      ) : (
-        <span>{t("dashboard.loopDeclined", { when, by: dec.by })}{dec.reason ? " — " + dec.reason : ""}{dec.note ? t("dashboard.evNoteSuffix", { note: dec.note }) : ""}</span>
-      )}
+      ) : null}
     </div>
     {draft && panel?.show && <RaiserDraftPanel projectId={draft.id} panel={panel} comment={act.project.comment} />}
     </>
@@ -79,8 +110,10 @@ function RaiserDraftPanel({ projectId, panel, comment }: { projectId: string; pa
 
 // Who is in, where the rounds stand, and every check-in with what it left open.
 export function DiscussionPanel({ c }: { c: ReducedCase }) {
-  const { S, f, role, me, openSheet } = useDemo();
+  const { S, f, role, me, openSheet, act } = useDemo();
   const t = useT();
+  const [leaving, setLeaving] = useState(false);
+  const [leaveWhy, setLeaveWhy] = useState("");
   const d = c.discussion;
   const rs = roundState(c, S.rules, S.day);
   if (!d || !rs) return null;
@@ -113,6 +146,17 @@ export function DiscussionPanel({ c }: { c: ReducedCase }) {
           ))}
         </ol>
       )}
+      {live && caseActions(c, me, role, S).declineInvite && (
+        <div className={styles.actions}>
+          {!leaving ? <button type="button" className={styles.soft} data-testid="discussion-not-for-me" onClick={() => setLeaving(true)}>{t("loopCase.notForMe")}</button> : (
+            <>
+              <input className={styles.field} value={leaveWhy} onChange={(e) => setLeaveWhy(e.target.value)} maxLength={300} aria-label={t("loopCase.notForMeWhy")} placeholder={t("loopCase.notForMeWhy")} autoFocus />
+              <button type="button" className={styles.primary} data-testid="discussion-not-for-me-send" onClick={() => { act.declineInvite(c.id, leaveWhy.trim() || undefined); setLeaving(false); setLeaveWhy(""); }}>{t("loopCase.notForMeSend")}</button>
+              <button type="button" className={styles.soft} onClick={() => setLeaving(false)}>{t("common.cancel")}</button>
+            </>
+          )}
+        </div>
+      )}
       {holder && (
         <div className={styles.actions}>
           {!rs.ready && <button type="button" className={styles.primary} onClick={() => openSheet("checkin", c.id)}>{t("dashboard.loopCheckIn")}</button>}
@@ -133,16 +177,22 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
   const [title, setTitle] = useState(c.title);
   const [body, setBody] = useState(c.body);
   const versions = versionsOf(ctx, c);
-  const canRevise = mine && !c.decided;
+  // The raiser of an undecided case that is neither withdrawn nor merged (D18); a discussion has the same Revise here.
+  const canRevise = (caseActions(c, ctx.me, ctx.role, ctx.S).revise || (mine && c.status === "discussion" && !c.decided && c.withdrawn === null && c.merged === null));
   if (versions.length < 2 && !canRevise) return null;
   const now = versions[versions.length - 1];
   // The draft scored live, against the version it would follow.
   const read = versionReader(ideaContext(ctx.seed.routes, ctx.seed.goals, ctx.S.cases, ctx.seed.spend), c.id, { affected: standingOn(ctx, c), attachments: raisedWith(c).attachments });
   const draft = editing ? scoreVersions([now, { ...now, version: now.version + 1, title, body, overall: null }], read)[1] : null;
   const changed = body.trim() !== c.body.trim() || title.trim() !== c.title.trim();
-  const post = () => {
+  const post = async () => {
     if (!draft || !changed || !body.trim()) return;
-    act.revise(c.id, body.trim(), title.trim() !== c.title ? title.trim() : undefined, draft.score);
+    // A new version while a question is open also answers it, once the revision went through (D20).
+    const ok = await reviseThenAnswer(
+      { revise: () => act.revise(c.id, body.trim(), title.trim() !== c.title ? title.trim() : undefined, draft.score), answer: (text) => act.answer(c.id, text) },
+      draft.version, questionOpen(c),
+    );
+    if (!ok) return;
     setEditing(false);
     showToast(t("dashboard.loopPosted", { version: draft.version, from: now.score, to: draft.score }));
   };
