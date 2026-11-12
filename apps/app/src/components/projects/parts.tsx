@@ -136,8 +136,9 @@ export function nextLine(p: ReducedProject, day: number, f: (d: number) => strin
   if (move && lead) return moveLabel(move, locale);
   if (p.status === "planning") return p.baseline ? t("projects.nextPlanningReady") : t("projects.nextPlanningBaseline");
   if (p.status === "running") {
-    const done = p.steps.filter((s) => s.column === "done").length;
-    return p.steps.length ? t("projects.stepsDoneOf", { done, total: p.steps.length }) : t("projects.nextRunningNoSteps");
+    const counted = p.steps.filter((s) => !s.dropped); // D31: a dropped step counts in no total
+    const done = counted.filter((s) => s.column === "done").length;
+    return counted.length ? t("projects.stepsDoneOf", { done, total: counted.length }) : t("projects.nextRunningNoSteps");
   }
   if (p.status === "measured") return p.rewardDue ? t("projects.nextMeasuredReward") : t("projects.nextMeasured");
   if (p.status === "measuring") {
