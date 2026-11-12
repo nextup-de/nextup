@@ -1,0 +1,27 @@
+/* The load of the desks on the Dashboard (plan OVL-U1, D3, D28): one row per desk, never a person. Tokens from src/styles/tokens.css. */
+.card { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--nh-line); border-radius: 12px; background: #fff; min-width: 0; }
+.head { display: flex; flex-direction: column; gap: 2px; }
+.title { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; color: var(--nh-ink); }
+.lede { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
+.table { width: 100%; border-collapse: collapse; font-size: var(--nh-fs-sm); }
+.table th { text-align: left; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); padding: 4px 8px 6px 0; }
+.table td { padding: 8px 8px 8px 0; border-top: 1px solid var(--nh-line); color: var(--nh-ink); font-variant-numeric: tabular-nums; vertical-align: top; }
+.desk { font-weight: 600; overflow-wrap: anywhere; }
+.level { display: inline-block; padding: 2px 8px; border-radius: 10px; background: var(--nh-fill); font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-ink-2); }
+.level[data-level="up"], .level[data-level="overflow"] { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; }
+.button { height: 30px; padding-inline: 10px; border: 0; border-radius: 8px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-xs); font-weight: 600; cursor: pointer; }
+.button:hover { background: var(--nh-brand-line); }
+.button:disabled { opacity: 0.5; cursor: default; }
+.button:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.link { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-brand-ink); text-decoration: underline; text-underline-offset: 2px; }
+.select { height: 30px; padding-inline: 8px; border: 1px solid var(--nh-line); border-radius: 6px; background: #fff; font: inherit; font-size: var(--nh-fs-xs); color: var(--nh-ink); }
+.panel { margin-top: 8px; }
+.note { margin: 0; font-size: var(--nh-fs-xs); color: var(--nh-mute); }
+.error { margin: 0; font-size: var(--nh-fs-xs); color: var(--nh-danger); }
+@media (max-width: 760px) {
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table thead { display: none; }
+  .table td { border-top: 0; padding: 2px 0; }
+  .table tr { border-top: 1px solid var(--nh-line); padding: 8px 0; }
+}

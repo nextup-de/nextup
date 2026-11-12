@@ -10,6 +10,7 @@ import { sectionTabsFor } from "@/config/nav";
 import { BaselineDialog } from "@/components/dashboard/shared/BaselineDialog";
 import { BreakdownCard } from "@/components/dashboard/shared/BreakdownCard";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
 import { DeptChip } from "@/components/ui/elements";
 import { barHeights, dashboardFromInput, shares, tileViews, trendLabels, type TileView } from "@/features/metrics/dashboard";
 import { breakdownCsv, csvFileName } from "@/features/metrics/csv";
@@ -328,6 +329,9 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
         )}
 
         {!nothing && <BreakdownCard units={data.units} roles={data.roles} view={view} onView={setView} demoClock={data.demoClock} />}
+
+        {/* The load of the desks (plan OVL, D3): the rows the viewer may see - an admin every desk, the seat above its desk - and nothing for anyone else. */}
+        <DeskLoadCard />
 
         {!nothing && (answerTotal > 0 || projects.length > 0) && (
           <div className={s.pair}>
