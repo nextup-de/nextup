@@ -113,16 +113,34 @@ async function settle<T>(rows: () => Promise<T[]>, message: string): Promise<T[]
   return found;
 }
 
-/** Everything the server sent this browser for one page: the document and every fetch it made. */
+/**
+ * Everything the server sent this browser for one page: the document and every fetch it made.
+ * A fetch the page itself cancelled (the router drops the prefetches of the nav links, and the poll that refreshes the page, when a
+ * navigation or a newer fetch overtakes them) never finishes its body: Playwright's `response.text()` then waits for ever, and the
+ * whole test with it until its timeout. So a fetch body is read for at most FETCH_BODY_MS; a body that has not come by then was
+ * cancelled and holds nothing the browser could have used. The document is never skipped: its body always ends, and the page is
+ * checked only if it was read.
+ */
+const FETCH_BODY_MS = 10_000;
 async function payloadOf(page: Page, path: string): Promise<string> {
   const bodies: Promise<string>[] = [];
+  let documents = 0;
   const onResponse = (r: { request(): { resourceType(): string }; text(): Promise<string> }) => {
-    if (["document", "fetch", "xhr"].includes(r.request().resourceType())) bodies.push(r.text().catch(() => ""));
+    const kind = r.request().resourceType();
+    if (kind === "document") {
+      documents++;
+      bodies.push(r.text().catch(() => ""));
+    } else if (kind === "fetch" || kind === "xhr") {
+      const read = r.text().catch(() => "");
+      const cancelled = new Promise<string>((done) => setTimeout(() => done(""), FETCH_BODY_MS));
+      bodies.push(Promise.race([read, cancelled]));
+    }
   };
   page.on("response", onResponse);
   await page.goto(path);
   await page.waitForLoadState("networkidle");
   page.off("response", onResponse);
+  expect(documents, `the document of ${path} was read`).toBeGreaterThan(0);
   return (await Promise.all(bodies)).join("\n");
 }
 
