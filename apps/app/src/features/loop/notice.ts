@@ -7,6 +7,7 @@
 import { usersOfRole } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import type { NoticeMail } from "@/features/cases/notice";
+import { hasClosedAudience } from "@/features/cases/visibility";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import { byClock } from "@/features/clock/actor";
 import { closingEvent } from "@/features/projects/close";
@@ -35,6 +36,13 @@ const NO_REASONS: Record<string, MessageKey> = {
   "not now": "shell.noNotNow", "wrong department": "shell.noWrongDept", "not responsible": "shell.noNobody",
   "no time": "shell.noNoTime", "is it important": "shell.noNoRank",
 };
+
+/** The roles an invitation is for, as the catalog names them. */
+const INVITE_ROLES: Record<"sponsor" | "member" | "contributor" | "follower", MessageKey> = {
+  sponsor: "mail.inviteRoleSponsor", member: "mail.inviteRoleMember", contributor: "mail.inviteRoleContributor", follower: "mail.inviteRoleFollower",
+};
+/** How many of a draft's steps the kickoff mail lists. */
+const KICKOFF_STEPS = 6;
 
 const inDays = (t: T, n: number) => (n <= 0 ? t("mail.inToday") : n === 1 ? t("mail.inTomorrow") : t("mail.inDays", { n }));
 
@@ -217,6 +225,22 @@ export function loopNotices({ ev, state, people, baseUrl }: { ev: EventArg; stat
         send(authorOf(kase), (t) => t("mail.acceptedSubject", { title: kase.title }), (t) => [t("mail.acceptedPlain", { actor: ev.actor }), "", caseLink(kase)]);
         break;
       }
+      // A yes that opened a draft (SET/D8, D10, D11): the raiser hears who sets it up and the decider's line; a lead who is
+      // not the decider is asked to take it. A yes that joined a project already open, and every legacy yes, are told as before.
+      if (p.draft && pl.draft === true && p.sources[0] === kase.id) {
+        const note = p.raiserNote;
+        send(authorOf(kase), (t) => t("mail.acceptedSubject", { title: kase.title }), (t) => [
+          t("mail.acceptedDraftIntro", { actor: ev.actor, label: projectLabel(p), title: p.title, lead: p.lead }),
+          ...(note ? ["", t("mail.acceptedNote", { actor: ev.actor, note })] : []),
+          "", t("mail.acceptedNext"), "", projectLink(p),
+        ]);
+        if (p.leadState === "pending") {
+          send(p.leadUserId, (t) => t("mail.draftLeadSubject", { title: p.title }), (t) => [
+            t("mail.draftLeadIntro", { actor: ev.actor, label: projectLabel(p) }), "", `  ${p.title}`, "", t("mail.draftLeadNext"), projectLink(p),
+          ]);
+        }
+        break;
+      }
       send(authorOf(kase), (t) => t("mail.acceptedSubject", { title: kase.title }), (t) => [
         t("mail.acceptedIntro", { actor: ev.actor, label: projectLabel(p), title: p.title, lead: p.lead }),
         "", t("mail.acceptedNext"), "", projectLink(p),
@@ -242,6 +266,60 @@ export function loopNotices({ ev, state, people, baseUrl }: { ev: EventArg; stat
           t("mail.stoppedIntro", { actor: ev.actor }), "", `  ${why}`, "", t("mail.stoppedIdea"), "", projectLink(project),
         ]);
       }
+      break;
+    }
+    case "project.lead.answered": {
+      // A decline, or a lapse the clock wrote: the draft is back with the decider, who leads it now (D11).
+      if (!project?.draft || pl.take !== false || project.deciderUserId === null || project.leadUserId !== project.deciderUserId) break;
+      const who = pl.lapsed === true ? null : ev.actor;
+      send(project.deciderUserId, (t) => t("mail.draftBackSubject", { label: projectLabel(project), title: project.title }), (t) => [
+        who === null ? t("mail.draftBackLapsed") : t("mail.draftBackDeclined", { name: who }),
+        ...(pl.reason ? ["", t("mail.draftBackReason", { why: pl.reason })] : []), "", projectLink(project),
+      ]);
+      break;
+    }
+    case "project.invited": {
+      if (!project?.draft || !pl.userId) break;
+      const role = pl.role;
+      // Only an invitation the reducer took (a refused one is not told).
+      if (role === "follower") {
+        if (!project.followerUserIds.includes(pl.userId)) break;
+        send(pl.userId, (t) => t("mail.followSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.followIntro", { actor: ev.actor }), "", `  ${project.title}`, "", projectLink(project)]);
+        break;
+      }
+      const invite = project.invites.find((i) => i.userId === pl.userId && i.role === role && (ev.id === undefined || i.id === ev.id));
+      if (!invite) break;
+      // Inviting on a private or custom idea lets the person read it (Q5.14): the mail says so.
+      const closed = project.sources.some((id) => { const c = state.cases.find((x) => x.id === id); return c !== undefined && hasClosedAudience(c); });
+      send(invite.userId, (t) => t("mail.inviteSubject", { label: projectLabel(project), title: project.title }), (t) => [
+        t("mail.inviteIntro", { actor: ev.actor, label: projectLabel(project), title: project.title, role: t(INVITE_ROLES[invite.role]) }),
+        ...(closed ? ["", t("mail.inviteReadsIdea")] : []), "", t("mail.inviteNext"), projectLink(project),
+      ]);
+      break;
+    }
+    case "project.invite.answered": {
+      // A decline or a lapse: the lead hears it, with the reason (D12).
+      if (!project?.draft) break;
+      const invite = project.invites.find((i) => (pl.inviteId !== undefined ? i.id === pl.inviteId : i.userId === pl.userId && (i.state === "declined" || i.state === "lapsed")));
+      if (!invite || (invite.state !== "declined" && invite.state !== "lapsed")) break;
+      const name = find(invite.userId)?.name ?? "";
+      send(project.leadUserId, (t) => t(invite.state === "lapsed" ? "mail.inviteLapsedSubject" : "mail.inviteDeclinedSubject", { label: projectLabel(project), title: project.title }), (t) => {
+        const who = name || t("mail.someone");
+        const role = t(INVITE_ROLES[invite.role]);
+        return [
+          invite.state === "lapsed" ? t("mail.inviteLapsedIntro", { name: who, role }) : t("mail.inviteDeclinedIntro", { name: who, role }),
+          ...(invite.state === "declined" && invite.reason ? ["", t("mail.inviteReason", { why: invite.reason })] : []), "", projectLink(project),
+        ];
+      });
+      break;
+    }
+    case "project.start.moved": {
+      // The seat above kept the draft with a new start day: the lead is told which (D15).
+      if (!project?.draft || typeof pl.dueDay !== "number" || project.startDay !== pl.dueDay) break;
+      const days = pl.dueDay - state.day;
+      send(project.leadUserId, (t) => t("mail.startMovedSubject", { label: projectLabel(project), title: project.title }), (t) => [
+        t("mail.startMovedIntro", { actor: ev.actor, when: inDays(t, days) }), ...(pl.why ? ["", t("mail.startMovedWhy", { why: pl.why })] : []), "", projectLink(project),
+      ]);
       break;
     }
     case "project.member":
@@ -286,6 +364,19 @@ export function loopNotices({ ev, state, people, baseUrl }: { ev: EventArg; stat
       }
       if (closes) summary();
       for (const a of project.authorUserIds) send(a, (t) => t("mail.stepSubject", { label: projectLabel(project), step: t(step), title: project.title }), (t) => [t("mail.stepIntro", { what: what(t) }), "", projectLink(project)]);
+      // The kickoff of a draft (SET/D18): the team, the sponsor and the followers hear the goal and the first steps with their owners.
+      if (ev.type === "project.started" && project.draft && project.startedDay !== null) {
+        const g = project.goal;
+        const first = project.steps.slice(0, KICKOFF_STEPS);
+        for (const who of [...project.memberUserIds, project.sponsorUserId, ...project.followerUserIds]) {
+          send(who, (t) => t("mail.kickoffSubject", { label: projectLabel(project), title: project.title }), (t) => [
+            t("mail.kickoffIntro", { actor: ev.actor }), "", `  ${project.title}`,
+            ...(g ? ["", t("mail.kickoffGoal", { goal: g.goal }), t("mail.kickoffDoneWhen", { doneWhen: g.doneWhen })] : []),
+            ...(first.length ? ["", t("mail.kickoffSteps"), ...first.map((s) => t("mail.kickoffStep", { text: s.text, owner: s.owner ?? t("mail.kickoffNoOwner") }))] : []),
+            "", projectLink(project),
+          ]);
+        }
+      }
       break;
     }
     default:
