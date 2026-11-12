@@ -1,5 +1,7 @@
 # The company clock
 
+Phase additions after REG: see [docs/process/](process/README.md).
+
 Every event carries a `day`, and the log carries today's `day`. What that number means depends on the company's stage.
 
 ## Two modes

@@ -1,5 +1,7 @@
 # Notifications
 
+Phase additions after REG: see [docs/process/](process/README.md).
+
 Every message NextUp sends leaves through one outbox: mails to people and signed webhooks to a company's own systems.
 A message is written once, sent through a channel, retried on a schedule, and kept when it fails. Design:
 `docs/adr/0004-webhook-and-outbox.md`; the proof is `apps/app/tests/db/outbox.test.ts` (NTF-Z1).

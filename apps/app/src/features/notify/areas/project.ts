@@ -4,7 +4,7 @@
 import type { CaseEventType } from "@/features/cases/events";
 import { DRAFT_UP_DAYS } from "@/features/clock/due";
 import { confirmerIds, unconfirmedOf } from "@/features/projects/confirm";
-import type { ReminderAudienceFn, ReminderTextFn } from "./shared";
+import type { PlanEvent, ReminderAudienceFn, ReminderCtx, ReminderTextFn } from "./shared";
 
 /** The project events that become loop notices (`loop.<type>`). */
 export const PROJECT_LOOP_TYPES = [
@@ -12,6 +12,8 @@ export const PROJECT_LOOP_TYPES = [
   "project.lead.answered", "project.invited", "project.invite.answered", "project.start.moved",
   // A project that keeps moving (plan MOV, D23).
   "project.doneby.moved", "project.paused", "project.resumed", "project.howwework", "project.update", "project.lead.vacated", "project.lead.changed",
+  // A result that closes properly (plan RES, D18): a claim told nobody before (Q2.14). RES-E1 adds the recipients and the render entries.
+  "project.measure.questioned", "project.baseline.confirmed", "project.help.asked", "project.claimed",
 ] as const satisfies readonly CaseEventType[];
 
 /** The loop templates of the project events, as the profile's switches name them. */
@@ -31,9 +33,13 @@ export const PROJECT_FOLLOWS: Record<string, string> = {
   "loop.project.lead.changed": "loop.project.member",
   "reminder.late": "reminder.start", "reminder.blocked": "reminder.start", "reminder.quiet": "reminder.start",
   "reminder.stalled": "reminder.start", "reminder.update": "reminder.start", "reminder.vacant": "reminder.start",
+  // A result that closes properly (plan RES): an opt-out of the result notices covers the new ones; the reward reminder follows the confirm reminder.
+  "loop.project.measure.questioned": "loop.project.measured", "loop.project.baseline.confirmed": "loop.project.measured",
+  "loop.project.help.asked": "loop.project.measured", "loop.project.claimed": "loop.project.measured",
+  "reminder.reward": "reminder.confirm",
 };
 
-export const PROJECT_REMINDER_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft"] as const;
+export const PROJECT_REMINDER_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"] as const;
 type ProjectReminderKind = (typeof PROJECT_REMINDER_KINDS)[number];
 
 /** The render entries of the project reminders. */
@@ -53,14 +59,59 @@ export const PROJECT_REMINDER_TEXTS: Record<`reminder.${ProjectReminderKind}`, R
     input.reader === "above"
       ? compose(t("mail.reminderDraftAboveSubject", { title }), t("mail.reminderDraftAbove", { when }), t("mail.reminderOpenProject", { url }))
       : compose(t("mail.reminderDraftSubject", { title }), t("mail.reminderDraftLead", { when }), t("mail.reminderOpenProject", { url })),
+  // A project that keeps moving (plan MOV, D23). The step and its reason come from the audience below, never from a label.
+  "reminder.late": (input, t, compose, { title, when, url }) =>
+    compose(t("projectMove.reminderLateSubject", { step: input.step ?? "" }), t("projectMove.reminderLateIntro", { step: input.step ?? "", project: title, when }), t("mail.reminderOpenProject", { url }), false),
+  "reminder.blocked": (input, t, compose, { title, when, url }) =>
+    compose(t("projectMove.reminderBlockedSubject", { step: input.step ?? "" }), t("projectMove.reminderBlockedIntro", { step: input.step ?? "", project: title, when, why: input.why ?? "" }), t("mail.reminderOpenProject", { url }), false),
+  "reminder.quiet": (_i, t, compose, { title, url }) =>
+    compose(t("projectMove.reminderQuietSubject", { title }), t("projectMove.reminderQuietIntro", { project: title }), t("mail.reminderOpenProject", { url }), false),
+  "reminder.stalled": (_i, t, compose, { title, url }) =>
+    compose(t("projectMove.reminderStalledSubject", { title }), t("projectMove.reminderStalledIntro", { project: title }), t("mail.reminderOpenProject", { url }), false),
+  "reminder.update": (_i, t, compose, { title, url }) =>
+    compose(t("projectMove.reminderUpdateSubject", { title }), t("projectMove.reminderUpdateIntro", { project: title }), t("mail.reminderOpenProject", { url }), false),
+  "reminder.vacant": (_i, t, compose, { title, url }) =>
+    compose(t("projectMove.reminderVacantSubject", { title }), t("projectMove.reminderVacantIntro", { project: title }), t("mail.reminderOpenProject", { url }), false),
+};
+
+/** The people a MOV fact names: its user and the users of its seat (D23), once each. */
+const factPeople = (ev: PlanEvent, { usersOfSeat, uniq }: ReminderCtx): string[] =>
+  uniq([...(ev.payload.userId ? [ev.payload.userId] : []), ...usersOfSeat(ev.payload.toRoleHolderId)]);
+
+/** The reminders of a project that keeps moving (D23): late, blocked, quiet, stalled, update and vacant. */
+export const PROJECT_MOVE_REMINDER_AUDIENCE: Record<"late" | "blocked" | "quiet" | "stalled" | "update" | "vacant", ReminderAudienceFn> = {
+  late: (ev, ctx) => {
+    const { project, projectLink } = ctx;
+    if (!project) return null;
+    // The step the fact names, while it is still open; its due day is the one the text says was missed.
+    const step = project.steps.find((s) => s.id === ev.payload.stepId);
+    return {
+      users: step && step.column !== "done" ? factPeople(ev, ctx) : [], title: project.title, link: projectLink(project.id),
+      day: step?.dueDay ?? ev.payload.dueDay, varsFor: () => ({ step: step?.text ?? "" }),
+    };
+  },
+  blocked: (ev, ctx) => {
+    const { project, projectLink } = ctx;
+    if (!project) return null;
+    const step = project.steps.find((s) => s.id === ev.payload.stepId);
+    return {
+      users: step && step.column === "blocked" ? factPeople(ev, ctx) : [], title: project.title, link: projectLink(project.id),
+      day: step?.movedDay ?? ev.payload.dueDay, varsFor: () => ({ step: step?.text ?? "", why: step?.why ?? "" }),
+    };
+  },
+  quiet: (ev, ctx) => (ctx.project ? { users: factPeople(ev, ctx), title: ctx.project.title, link: ctx.projectLink(ctx.project.id), day: ctx.project.doneBy ?? ev.payload.dueDay } : null),
+  stalled: (ev, ctx) => (ctx.project ? { users: factPeople(ev, ctx), title: ctx.project.title, link: ctx.projectLink(ctx.project.id), day: ctx.project.doneBy ?? ev.payload.dueDay } : null),
+  update: (ev, ctx) => (ctx.project ? { users: factPeople(ev, ctx), title: ctx.project.title, link: ctx.projectLink(ctx.project.id) } : null),
+  vacant: (ev, ctx) => (ctx.project ? { users: factPeople(ev, ctx), title: ctx.project.title, link: ctx.projectLink(ctx.project.id) } : null),
 };
 
 /** Who gets each project reminder, with which title, link and text input. */
 export const PROJECT_REMINDER_AUDIENCE: Record<ProjectReminderKind, ReminderAudienceFn> = {
-  start: (_ev, { project, projectLink }) =>
-    project ? { users: project.leadUserId ? [project.leadUserId] : [], title: project.title, link: projectLink(project.id) } : null,
-  measure: (_ev, { project, projectLink }) =>
-    project ? { users: project.leadUserId ? [project.leadUserId] : [], title: project.title, link: projectLink(project.id) } : null,
+  // The lead, and when the clock escalated a late one the users of the seat it named (F3, D23).
+  start: (ev, { project, projectLink, usersOfSeat, uniq }) =>
+    project ? { users: uniq([...(project.leadUserId ? [project.leadUserId] : []), ...usersOfSeat(ev.payload.toRoleHolderId)]), title: project.title, link: projectLink(project.id) } : null,
+  measure: (ev, { project, projectLink, usersOfSeat, uniq }) =>
+    project ? { users: uniq([...(project.leadUserId ? [project.leadUserId] : []), ...usersOfSeat(ev.payload.toRoleHolderId)]), title: project.title, link: projectLink(project.id) } : null,
   confirm: (ev, { state, people, project, projectLink }) => {
     if (!project) return null;
     // A result nobody confirmed in time: who may confirm it, or the seat above the clock passed it up to.
@@ -96,6 +147,7 @@ export const PROJECT_REMINDER_AUDIENCE: Record<ProjectReminderKind, ReminderAudi
       varsFor: (userId) => ({ reader: above.includes(userId) ? "above" : "lead" }),
     };
   },
+  ...PROJECT_MOVE_REMINDER_AUDIENCE,
 };
 
 /** The project notices a person cannot switch off, only move between Teams and mail (INB D8; SET: a person waited for, or a start that is late; MOV D23: a project that stalled or has no lead). */

@@ -5,7 +5,7 @@
 import type { State } from "@/features/cases/reducer";
 import { AGENT_DUE_KINDS, agentAfterFacts, agentDues, type AgentDueKind } from "./kinds/agent";
 import { APPROVAL_DUE_KINDS, approvalAfterFacts, approvalDues, type ApprovalDueKind } from "./kinds/approval";
-import { CASE_DUE_KINDS, caseAfterFacts, caseDues, type CaseDueKind } from "./kinds/case";
+import { CASE_DUE_KINDS, caseAfterFacts, caseDues, type CaseClockExtra, type CaseDueKind } from "./kinds/case";
 import { OVERLOAD_DUE_KINDS, overloadAfterFacts, overloadDues, type OverloadDueKind } from "./kinds/overload";
 import { PROJECT_DUE_KINDS, projectAfterFacts, projectDues, type ProjectDueKind } from "./kinds/project";
 
@@ -48,9 +48,9 @@ export type SeatAbove = (roleId: string, skip: readonly string[]) => string | nu
  * Each area lists its Dues in its own loop order; the ones an area marks as going after every fact (the events
  * the scheduler writes: hand-overs, the unanswered return, the lapses) are moved behind all others, stably.
  */
-export function dueNow(state: State, today: number, above: SeatAbove = () => null): Due[] {
+export function dueNow(state: State, today: number, above: SeatAbove = () => null, extra?: CaseClockExtra): Due[] {
   if (state.clock.mode !== "workdays") return [];
-  const all = [...caseDues(state, today, above), ...projectDues(state, today, above), ...agentDues(state, today, above), ...approvalDues(state, today, above), ...overloadDues(state, today, above)];
+  const all = [...caseDues(state, today, above, extra), ...projectDues(state, today, above), ...agentDues(state, today, above), ...approvalDues(state, today, above), ...overloadDues(state, today, above)];
   const after = (d: Due) => caseAfterFacts(d) || projectAfterFacts(d) || agentAfterFacts(d) || approvalAfterFacts(d) || overloadAfterFacts(d);
   return [...all.filter((d) => !after(d)), ...all.filter(after)];
 }

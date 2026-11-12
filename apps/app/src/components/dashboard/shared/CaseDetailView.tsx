@@ -13,12 +13,18 @@ import { translate, type MessageKey, type T } from "@/i18n";
 import { reasonTone, statusTone, type Tone } from "@/components/dashboard/shared/primitives";
 import { DeptChip, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
 import { AnswerPromise } from "@/components/cases/AnswerPromise";
+import { CaseRelations } from "@/components/cases/CaseRelations";
 import { CaseRouting } from "@/components/cases/CaseRouting";
+import { useRelatedCase, type Related } from "@/components/cases/useRelatedCase";
+import { MoveToDesk } from "@/components/cases/MoveToDesk";
 import { seesRouting } from "@/features/cases/routing-trail";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
 import { roundState } from "@/features/cases/discussion";
 import type { CaseEvent } from "@/features/cases/events";
 import { actorLabel, type ActorLabels } from "@/features/cases/actor-label";
+import { caseActions } from "@/features/cases/case-actions";
+import { followHref } from "@/features/cases/links";
+import { isHandle } from "@/features/projects/views";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import { isOpenDraft, mayReadDraft } from "@/features/projects/views";
 import { isPrivateIdea } from "@/features/cases/visibility";
@@ -30,13 +36,13 @@ import { loadShots } from "@/lib/shots";
 import styles from "./CaseDetailView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
-const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped", withdrawn: "dashboard.statusWithdrawn" } as const satisfies Record<string, MessageKey>;
+const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped", withdrawn: "dashboard.statusWithdrawn", merged: "caseSee.statusMerged" } as const satisfies Record<string, MessageKey>;
 
 // The status and reason chips in soft tints: a case that waits is amber, a result is green, the rest stays grey.
 const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", ink: "green", ok: "green", grey: "grey", soft: "grey", ghost: "grey", none: "grey", purple: "grey" };
 
 // Facts in, one sentence out - nothing here is stored.
-function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined): string {
+function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined, other: (id: string | undefined) => Related | null): string {
   const p = e.payload;
   const actor = actorLabel(e, labels);
   switch (e.type) {
@@ -55,12 +61,17 @@ function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined): string {
     case "case.building": return t("dashboard.evBuilding", { actor }) + (p.expected ? " " + t("dashboard.evExpected", { x: p.expected }) : "") + (p.days ? t("dashboard.evDaysSuffix", { n: p.days }) : "");
     case "case.shipped": return t("dashboard.evShipped", { actor, outcome: p.outcome ?? "" }) + (p.outcomeNote ? " " + t("dashboard.evParen", { note: p.outcomeNote }) : "");
     case "case.override": return t("dashboard.evOverride", { actor });
+    // The other case's title only when the viewer may open it; a stripped or hidden target reads as "another one" (plan SEE, D17).
+    case "case.merged": { const r = other(p.into); return (r?.title ? t("loopCase.evMergedInto", { actor, title: r.title }) : t("loopCase.evMerged", { actor })) + (p.note ? t("dashboard.evNoteSuffix", { note: p.note }) : ""); }
+    case "case.linked": { const r = other(p.to); return r?.title ? t("loopCase.evLinked", { actor, title: r.title }) : t("loopCase.evLinkedOther", { actor }); }
     default: return actor + " · " + e.type;
   }
 }
 
-export function CaseDetailView({ caseId }: { caseId: string }) {
+/** `raiserInactive`: the server says the person who raised it by name has left (D20); false in the demo and without a database. */
+export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: string; raiserInactive?: boolean }) {
   const ctx = useDemo();
+  const related = useRelatedCase();
   const { S, log, href, ready, f, me, role, act, openSheet, showToast, tenant, flag } = ctx;
   const router = useRouter();
   const t = useT();
@@ -148,7 +159,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </div>
         <div className={styles.quote}>
           {c.body && <div className={styles.quoteText}>{c.body}</div>}
-          <div className={styles.quoteBy}><PersonFace name={c.from} size="sm" /> {c.from}{c.fromDept ? <> · <DeptChip name={c.fromDept} /></> : null}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
+          <div className={styles.quoteBy}><PersonFace name={c.from} size="sm" /> {c.from}{raiserInactive && !isHandle(c.from) && <> <span className={styles.inactive} data-testid="raiser-inactive">({t("caseSee.inactive")})</span></>}{c.fromDept ? <> · <DeptChip name={c.fromDept} /></> : null}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
           {shots.length > 0 && (
             <div className={styles.shots}>
               {shots.map((s, i) => (
@@ -161,6 +172,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           )}
           {extra.attachments > 0 && shots.length === 0 && <div className={styles.shotsGone}>{t("dashboard.detailShotsGone")}</div>}
         </div>
+        <CaseRelations c={c} />
         <div className={styles.desks}>
           <span className={styles.label}>{t("dashboard.detailDesks")}</span>
           <span className={styles.chain}>
@@ -182,7 +194,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </div>
       </SectionCard>
       {talk && <DiscussionPanel c={c} />}
-      {talk && <VersionsPanel c={c} mine={mine} />}
+      <VersionsPanel c={c} mine={mine} />
       </div>
 
       <div className={styles.stack}>
@@ -209,7 +221,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           {mine && !c.decided && (c.open || c.status === "asked") && !withdrawing && (
             <button type="button" className={styles.soft} data-testid="case-withdraw" onClick={() => setWithdrawing(true)}>{t("dashboard.detailWithdraw")}</button>
           )}
-          {!c.open && <Link href={href("/raise")} className={styles.soft}>{t("dashboard.detailFollowUp")}</Link>}
+          {!c.open && (caseActions(c, me, role, S).betterIdea
+            ? <Link href={href(followHref(c.id))} className={styles.soft} data-testid="start-better-top">{t("caseSee.startBetter")}</Link>
+            : <Link href={href("/raise")} className={styles.soft}>{t("dashboard.detailFollowUp")}</Link>)}
+          <MoveToDesk c={c} />
         </div>
         {withdrawing && mine && !c.decided && (
           <div className={styles.whyRow} role="group" aria-label={t("dashboard.detailWithdraw")}>
@@ -268,7 +283,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             <li key={e.id} className={styles.event}>
               <span className={styles.dot} data-seed={e.seed ? "true" : undefined} />
               <div className={styles.eventBody}>
-                <div className={styles.eventText}>{sentence(e, t, tenant.actorLabels)}</div>
+                <div className={styles.eventText}>{sentence(e, t, tenant.actorLabels, (id) => (id ? related.ofCase(id) : null))}</div>
                 <div className={styles.eventWhen}>{f(e.day)}</div>
               </div>
             </li>
