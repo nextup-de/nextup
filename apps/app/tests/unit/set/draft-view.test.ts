@@ -93,6 +93,8 @@ describe("SET draft view", () => {
   it("once taken, only the lead (and a manager) start it; a member and a stranger may do nothing", () => {
     const s = stateOf([take, goal, baseline, invited], 2);
     const p = s.projects[0];
+    // A reward is possible by default (plan RES, D16), so the start also needs the second person's confirmation of the baseline number.
+    if (p.baseline && !p.baseline.none) p.baseline.confirmed = { byUserId: "u_mr", day: 2 };
     expect(draftView(p, as("u_lb"), s).may).toMatchObject({ answerLead: false, pickTemplate: true, invite: true, setGoal: true, setBaseline: true, start: true });
     expect(draftView(p, as("u_tv"), s).may).toMatchObject({ pickTemplate: false, setGoal: false, setBaseline: false, invite: false, start: false });
     expect(draftView(p, as("u_hs"), s).may).toEqual({ answerLead: false, pickTemplate: false, invite: false, answerInvite: false, setGoal: false, setBaseline: false, start: false, moveStart: false });
