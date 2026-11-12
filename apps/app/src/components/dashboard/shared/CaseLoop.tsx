@@ -8,7 +8,10 @@ import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { standingOn, versionsOf } from "@/components/dashboard/derive";
 import { useLocale, useT } from "@/i18n/client";
+import { SecondLook } from "@/components/cases/SecondLook";
+import { caseActions, questionOpen, reviseThenAnswer } from "@/features/cases/case-actions";
 import { roundState, scoreVersions, versionReader } from "@/features/cases/discussion";
+import { noCategoryLabel, noCategoryOf, noReasonOf } from "@/features/cases/no";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { projectStatus, raisedWith } from "@/features/cases/rows";
 import { onDeskOf } from "@/features/cases/selectors";
@@ -50,9 +53,10 @@ export function ArchiveBanner({ c }: { c: ReducedCase }) {
           {p ? <> → <Link href={href("/projects/" + p.id)} className={styles.bannerLink}>{projectLabel(p)} {p.title}</Link> · {projectStatus(p.status, locale)}</> : null}
         </span>
       ) : (
-        <span>{t("dashboard.loopDeclined", { when, by: dec.by })}{dec.reason ? " — " + dec.reason : ""}{dec.note ? t("dashboard.evNoteSuffix", { note: dec.note }) : ""}</span>
+        <span data-testid="archived-no">{t("dashboard.loopDeclined", { when, by: dec.by })} — {t(noCategoryLabel(noCategoryOf(dec) ?? "other"))}{noReasonOf(dec) ? ": " + noReasonOf(dec) : ""}</span>
       )}
     </div>
+    {dec.answer === "no" && <SecondLook c={c} />}
     {draft && panel?.show && <RaiserDraftPanel projectId={draft.id} panel={panel} comment={act.project.comment} />}
     </>
   );
@@ -79,8 +83,10 @@ function RaiserDraftPanel({ projectId, panel, comment }: { projectId: string; pa
 
 // Who is in, where the rounds stand, and every check-in with what it left open.
 export function DiscussionPanel({ c }: { c: ReducedCase }) {
-  const { S, f, role, me, openSheet } = useDemo();
+  const { S, f, role, me, openSheet, act } = useDemo();
   const t = useT();
+  const [leaving, setLeaving] = useState(false);
+  const [leaveWhy, setLeaveWhy] = useState("");
   const d = c.discussion;
   const rs = roundState(c, S.rules, S.day);
   if (!d || !rs) return null;
@@ -113,6 +119,17 @@ export function DiscussionPanel({ c }: { c: ReducedCase }) {
           ))}
         </ol>
       )}
+      {live && caseActions(c, me, role, S).declineInvite && (
+        <div className={styles.actions}>
+          {!leaving ? <button type="button" className={styles.soft} data-testid="discussion-not-for-me" onClick={() => setLeaving(true)}>{t("loopCase.notForMe")}</button> : (
+            <>
+              <input className={styles.field} value={leaveWhy} onChange={(e) => setLeaveWhy(e.target.value)} maxLength={300} aria-label={t("loopCase.notForMeWhy")} placeholder={t("loopCase.notForMeWhy")} autoFocus />
+              <button type="button" className={styles.primary} data-testid="discussion-not-for-me-send" onClick={() => { act.declineInvite(c.id, leaveWhy.trim() || undefined); setLeaving(false); setLeaveWhy(""); }}>{t("loopCase.notForMeSend")}</button>
+              <button type="button" className={styles.soft} onClick={() => setLeaving(false)}>{t("common.cancel")}</button>
+            </>
+          )}
+        </div>
+      )}
       {holder && (
         <div className={styles.actions}>
           {!rs.ready && <button type="button" className={styles.primary} onClick={() => openSheet("checkin", c.id)}>{t("dashboard.loopCheckIn")}</button>}
@@ -140,9 +157,14 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
   const read = versionReader(ideaContext(ctx.seed.routes, ctx.seed.goals, ctx.S.cases, ctx.seed.spend), c.id, { affected: standingOn(ctx, c), attachments: raisedWith(c).attachments });
   const draft = editing ? scoreVersions([now, { ...now, version: now.version + 1, title, body, overall: null }], read)[1] : null;
   const changed = body.trim() !== c.body.trim() || title.trim() !== c.title.trim();
-  const post = () => {
+  const post = async () => {
     if (!draft || !changed || !body.trim()) return;
-    act.revise(c.id, body.trim(), title.trim() !== c.title ? title.trim() : undefined, draft.score);
+    // A new version while a question is open also answers it, once the revision went through (D20).
+    const ok = await reviseThenAnswer(
+      { revise: () => act.revise(c.id, body.trim(), title.trim() !== c.title ? title.trim() : undefined, draft.score), answer: (text) => act.answer(c.id, text) },
+      draft.version, questionOpen(c),
+    );
+    if (!ok) return;
     setEditing(false);
     showToast(t("dashboard.loopPosted", { version: draft.version, from: now.score, to: draft.score }));
   };
