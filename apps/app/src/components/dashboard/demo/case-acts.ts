@@ -33,6 +33,22 @@ export type CaseActs = {
   // "Yes, do it" that opens a draft (features/projects/accept, D10) - or adds the idea to the open project `join`.
   // The deciding person, the case title and a new project id are filled in here. Returns the project id.
   accept: (caseId: string, p: { lead?: AcceptPerson; join?: string; raiserNote?: string }) => string;
+  // The reasoned no (plan NOR): thin wrappers, the sheets build the payloads (features/cases/no.ts, hand.ts).
+  /** A no: `case.decided` with answer "no" and the payload's category, reason, changeIf, revisitDay, duplicateOf. */
+  no: (caseId: string, p: EventPayload) => void;
+  /** A pass: `case.handed` with the payload of features/cases/hand.ts passPayload. */
+  pass: (caseId: string, p: EventPayload) => void;
+  /** The raiser asks for a second look at a no. */
+  appeal: (caseId: string, text: string) => void;
+  /** The second look's answer: uphold keeps the no, otherwise the case reopens. */
+  answerAppeal: (caseId: string, uphold: boolean, reason: string) => void;
+  /** An invited person says the discussion is not for them. */
+  declineInvite: (caseId: string, why?: string) => void;
+  // The raiser sees the whole way (plan SEE): thin wrappers over emit. The raise needs no new act: raiseDraft passes `follows` and `proposal` as they are.
+  /** The desk closes this undecided case as a duplicate of `into`. */
+  merge: (caseId: string, into: string, note?: string) => void;
+  /** The desk marks this case and `to` as related. */
+  link: (caseId: string, to: string) => void;
 };
 
 export function caseActs(d: ActDeps): CaseActs {
@@ -76,5 +92,12 @@ export function caseActs(d: ActDeps): CaseActs {
       emit("case.decided", caseId, payload);
       return payload.projectId as string;
     },
+    no: (caseId, p) => emit("case.decided", caseId, { ...p, answer: "no" }),
+    pass: (caseId, p) => emit("case.handed", caseId, p),
+    appeal: (caseId, text) => emit("case.appealed", caseId, { text }),
+    answerAppeal: (caseId, uphold, reason) => emit("case.appeal.decided", caseId, { uphold, reason }),
+    declineInvite: (caseId, why) => emit("case.invite.declined", caseId, why ? { why } : {}),
+    merge: (caseId, into, note) => emit("case.merged", caseId, { into, ...(note ? { note } : {}) }),
+    link: (caseId, to) => emit("case.linked", caseId, { to }),
   };
 }

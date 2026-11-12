@@ -180,21 +180,21 @@ describe("MET acceptance: dashboard numbers match the fixture", () => {
 
   it("gives the unit and role breakdown with the 3-person unit hidden", async () => {
     const data = await dashboardData(companyId, input);
-    const hiddenRow = { cases: null, firstReasonedAnswer: null, onTimePct: null, pastPromise: null, escalated: null, hidden: true };
+    const hiddenRow = { cases: null, firstReasonedAnswer: null, onTimePct: null, pastPromise: null, escalated: null, stalled: null, hidden: true };
     const pick = (rows: typeof data.units) => rows.map(({ id: _id, ...rest }) => rest);
     // Assembly (7 people): 7 cases raised (N1 N2 N5 N7 N9 N10 N11); reasoned waits 2,1,2,1 -> 1.5;
     // on time N1 N2 N5 N9 N11 = 5 of 6 (N7 late, N10 left out) = 83; open past promise B8 and N7 = 2; escalated N7 = 1.
     // Quality (3 people) is hidden; its only sibling that stays visible would let a viewer subtract it, so Logistics (6, the smaller) is hidden too.
     expect(pick(data.units)).toEqual([
-      { kind: "unit", label: "Assembly", depth: 0, cases: 7, firstReasonedAnswer: 1.5, onTimePct: 83, pastPromise: 2, escalated: 1, hidden: false },
+      { kind: "unit", label: "Assembly", depth: 0, cases: 7, firstReasonedAnswer: 1.5, onTimePct: 83, pastPromise: 2, escalated: 1, stalled: 0, hidden: false },
       { kind: "unit", label: "Logistics", depth: 0, ...hiddenRow },
       { kind: "unit", label: "Quality", depth: 0, ...hiddenRow },
     ]);
     // Desk Assembly (7): the same seven cases. Desk Logistics (6): N3 N4 N8 N12 = 4 cases; reasoned 6 and 8 -> 7;
     // on time N3 ok, N4 late, N8 and N12 left out = 1 of 2 = 50; open past promise B4 = 1; escalated 0. Desk Quality (3) is hidden.
     expect(pick(data.roles)).toEqual([
-      { kind: "role", label: "Desk Assembly", depth: 0, cases: 7, firstReasonedAnswer: 1.5, onTimePct: 83, pastPromise: 2, escalated: 1, hidden: false },
-      { kind: "role", label: "Desk Logistics", depth: 0, cases: 4, firstReasonedAnswer: 7, onTimePct: 50, pastPromise: 1, escalated: 0, hidden: false },
+      { kind: "role", label: "Desk Assembly", depth: 0, cases: 7, firstReasonedAnswer: 1.5, onTimePct: 83, pastPromise: 2, escalated: 1, stalled: null, hidden: false },
+      { kind: "role", label: "Desk Logistics", depth: 0, cases: 4, firstReasonedAnswer: 7, onTimePct: 50, pastPromise: 1, escalated: 0, stalled: null, hidden: false },
       { kind: "role", label: "Desk Quality", depth: 0, ...hiddenRow },
     ]);
   });

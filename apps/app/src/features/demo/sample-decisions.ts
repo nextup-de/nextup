@@ -1,5 +1,6 @@
 // The decision log's lines from the reduced state, for the sample data: the server's log reads stored rows,
 // and the sample data is in none. Same filters, newest first. Pure.
+import { noCategoryOf, noReasonOf } from "@/features/cases/no";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import type { DayFmt } from "@/features/cases/rows";
 import { projectOfCase } from "@/features/projects/selectors";
@@ -21,7 +22,9 @@ export function sampleDecisionLines(cases: readonly ReducedCase[], S: State, rol
     if (filters.project === "without" && project) return [];
     if (q && ![c.title, d.reason, d.note].join(" ").toLowerCase().includes(q)) return [];
     return [{
-      caseId: c.id, title: c.title, kind: c.kind, dateLabel: fmt(d.day), answer: d.answer, reason: d.reason, note: d.note, sortDay: d.day,
+      caseId: c.id, title: c.title, kind: c.kind, dateLabel: fmt(d.day), answer: d.answer, reason: d.reason, note: d.note,
+      // A no: its category and its text, an old one mapped by its picked id (D25).
+      category: noCategoryOf(d), reasonText: d.answer === "no" ? noReasonOf(d) : "", sortDay: d.day,
       roleTitle: roles.find((r) => r.id === c.assigneeRoleId)?.title ?? null, roleFormer: false, personName: d.by,
       project: project ? { id: project.id, label: project.title } : null,
     }];

@@ -87,7 +87,18 @@ describe("parseInbound", () => {
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.error).toContain("clock");
     }
-    expect(parseInbound({ ...handed, payload: { to: "M. Roth" } }).ok).toBe(true);
+    expect(parseInbound({ ...handed, payload: { to: "M. Roth", why: "The owner is away" } }).ok).toBe(true);
+  });
+
+  it("refuses a connector's hand-over without a why of 8 characters, or with Not mine, Send up or the flag that keeps a question (NOR, D13)", () => {
+    for (const payload of [{ to: "M. Roth" }, { to: "M. Roth", why: "Too few" }, { to: "M. Roth", why: "     short  " }]) {
+      expect(parseInbound({ ...handed, payload }).ok, JSON.stringify(payload)).toBe(false);
+    }
+    for (const flag of ["back", "up", "keepsQuestion"]) {
+      const r = parseInbound({ ...handed, payload: { to: "M. Roth", why: "The owner is away", [flag]: true } });
+      expect(r.ok, flag).toBe(false);
+      if (!r.ok) expect(r.error).toContain(flag);
+    }
   });
 
   it("requires the fields each type's sentence is built from", () => {

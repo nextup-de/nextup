@@ -9,6 +9,7 @@ import type { ReminderAudienceFn, ReminderTextFn } from "./shared";
 export const CASE_LOOP_TYPES = [
   "case.discussion", "case.invited", "case.checkin", "case.decided",
   "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
+  "case.reopened", "case.appealed", "case.appeal.decided", "case.override",
 ] as const satisfies readonly CaseEventType[];
 
 /** The loop templates of the case events, as the profile's switches name them. */
@@ -18,10 +19,14 @@ export const CASE_LOOP_TEMPLATES: readonly string[] = CASE_LOOP_TYPES.map((t) =>
 export const CASE_FOLLOWS: Record<string, string> = {
   "loop.case.asked": "loop.case.decided", "loop.case.answered": "loop.case.decided", "loop.case.handed": "loop.case.decided",
   "loop.case.unanswered": "loop.case.decided", "loop.case.withdrawn": "loop.case.decided",
+  "loop.case.reopened": "loop.case.decided", "loop.case.appealed": "loop.case.decided", "loop.case.appeal.decided": "loop.case.decided",
+  "loop.case.override": "loop.case.decided",
   "reminder.question": "reminder.deadline", "reminder.triage": "reminder.deadline",
+  "reminder.appeal": "reminder.deadline", "reminder.view": "reminder.checkin",
 };
 
-export const CASE_REMINDER_KINDS = ["deadline", "checkin", "escalation", "question", "triage"] as const;
+// appeal and view: the second look and an invitee view (plan NOR, D14, D18). A revisit has no reminder: the clock writes case.reopened.
+export const CASE_REMINDER_KINDS = ["deadline", "checkin", "escalation", "question", "triage", "appeal", "view"] as const;
 type CaseReminderKind = (typeof CASE_REMINDER_KINDS)[number];
 
 /** The render entries of the case reminders. */
@@ -32,6 +37,12 @@ export const CASE_REMINDER_TEXTS: Record<`reminder.${CaseReminderKind}`, Reminde
     compose(t("mail.reminderCheckinSubject", { title }), t("mail.reminderCheckinIntro"), t("mail.reminderOpenCase", { url })),
   "reminder.triage": (_i, t, compose, { title, when, url }) =>
     compose(t("mail.reminderTriageSubject", { title }), t("mail.reminderTriageIntro", { when }), t("mail.reminderOpenCase", { url })),
+  "reminder.appeal": (input, t, compose, { title, when, url }) =>
+    input.reader === "above"
+      ? compose(t("caseNo.reminderAppealAboveSubject", { title }), t("caseNo.reminderAppealAbove", { when }), t("mail.reminderOpenCase", { url }))
+      : compose(t("caseNo.reminderAppealSubject", { title }), t("caseNo.reminderAppealIntro", { when }), t("mail.reminderOpenCase", { url })),
+  "reminder.view": (_i, t, compose, { title, url }) =>
+    compose(t("caseNo.reminderViewSubject", { title }), t("caseNo.reminderViewIntro"), t("mail.reminderOpenCase", { url })),
   "reminder.question": (_i, t, compose, { title, days, url }) =>
     compose(t("mail.reminderQuestionSubject", { title }), t("mail.reminderQuestionIntro", { days }), t("mail.reminderQuestionOpen", { url })),
   "reminder.escalation": (input, t, compose, { title, when, url }) => {
@@ -70,13 +81,32 @@ export const CASE_REMINDER_AUDIENCE: Record<CaseReminderKind, ReminderAudienceFn
     const raiser = kase.fromUserId ?? kase.history.find((h) => h.type === "case.raised")?.actorUserId ?? null;
     return { users: raiser ? [raiser] : [], title: kase.title, link: caseLink(kase.id), varsFor: () => ({ days: QUESTION_RETURN_DAYS - QUESTION_REMIND_DAYS }) };
   },
+  appeal: (ev, { kase, caseLink, usersOfSeat }) => {
+    if (!kase) return null;
+    // The deciding desk of a second look nobody has answered; on check 2 the seat above it. Never the person who said no (D18).
+    const a = kase.appeal;
+    if (!a || a.decided !== null) return { users: [], title: kase.title, link: caseLink(kase.id) };
+    const noSayer = kase.decided?.answer === "no" ? kase.decided.byUserId ?? null : null;
+    const above = ev.payload.check === 2;
+    const users = usersOfSeat(above ? ev.payload.toRoleHolderId : a.seatId).filter((id) => id !== noSayer);
+    return { users, title: kase.title, link: caseLink(kase.id), varsFor: () => ({ reader: above ? "above" : "desk" }) };
+  },
+  view: (_ev, { kase, caseLink }) => {
+    if (!kase?.discussion) return null;
+    // Every invitee who has neither said it is not for them nor commented since the round began (D14, Q3.9).
+    const talk = kase.discussion;
+    const round = kase.history.findLastIndex((e) => e.type === "case.discussion" || e.type === "case.checkin");
+    const heard = new Set(kase.history.slice(round + 1).filter((e) => e.type === "case.commented").map((e) => e.actorUserId ?? ""));
+    const users = talk.invitedUserIds.filter((id) => !talk.declinedUserIds.includes(id) && !heard.has(id));
+    return { users, title: kase.title, link: caseLink(kase.id) };
+  },
   triage: (_ev, { kase, caseLink, usersOfSeat }) =>
     // The day it names is the answer date the raiser was promised.
     kase ? { users: usersOfSeat(kase.assigneeSeatId), title: kase.title, link: caseLink(kase.id), day: kase.dueDay } : null,
 };
 
 /** The case notices a person cannot switch off, only move between Teams and mail (INB D8). */
-export const CASE_DUTY_TEMPLATES = ["reminder.deadline", "reminder.escalation", "reminder.triage"] as const;
+export const CASE_DUTY_TEMPLATES = ["reminder.deadline", "reminder.escalation", "reminder.triage", "reminder.appeal"] as const;
 
 /** The case events server/loop-notice.ts mails. */
 export const CASE_LOOP_MAIL_TYPES: readonly CaseEventType[] = CASE_LOOP_TYPES;

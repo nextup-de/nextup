@@ -42,6 +42,8 @@ export const TENANT_MODELS = new Set([
   "TeamsConversation",
   // What the brain's calls cost, no text and no person - plan AIB D9
   "AiCall",
+  // The words of an agent suggestion or planning draft, no person - plan AGT D23
+  "AgentText",
 ]);
 
 /** Operations that must narrow by company through `where`. */

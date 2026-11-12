@@ -160,6 +160,8 @@
 /* ── by unit and role ── */
 .table { display: flex; flex-direction: column; font-size: var(--nh-fs-sm); }
 .tr { display: grid; grid-template-columns: minmax(0, 2.2fr) repeat(2, minmax(0, 0.8fr)) minmax(0, 1.3fr) repeat(2, minmax(0, 0.8fr)); gap: 12px; align-items: center; min-height: 44px; padding: 4px 8px; border-radius: 10px; }
+/* The unit table has one more column, the stalled projects (plan RES, D22); the role table keeps its six. */
+.tr[data-stalled="true"] { grid-template-columns: minmax(0, 2.2fr) repeat(2, minmax(0, 0.8fr)) minmax(0, 1.3fr) repeat(3, minmax(0, 0.8fr)); }
 .tr + .tr { border-top: 1px solid var(--nh-line-soft); }
 .tr:not([data-head]):hover { background: var(--nh-app-ground); }
 .tr[data-head="true"] { min-height: 32px; color: var(--nh-mute); font-weight: 600; font-size: var(--nh-fs-xs); }
@@ -211,7 +213,7 @@
   .tile { padding: 14px; }
   .tileValue { font-size: var(--nh-fs-2xl); }
   .overlay { inset: 8px; width: calc(100% - 16px); max-height: calc(100% - 16px); padding: 18px 16px; }
-  .tr { grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.6fr) minmax(0, 1.2fr); padding: 4px 0; }
+  .tr, .tr[data-stalled="true"] { grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.6fr) minmax(0, 1.2fr); padding: 4px 0; }
   .tr > :nth-child(3), .tr > :nth-child(n + 5) { display: none; }
   .meter { display: none; }
   .onTime { justify-content: flex-end; }

@@ -49,3 +49,5 @@
   .notice { flex-wrap: wrap; }
   .noticeActions { width: 100%; padding-left: 18px; }
 }
+
+.cause { font-weight: 600; color: var(--nh-ink-2); }

@@ -268,3 +268,74 @@ describe("TMS cards", () => {
     expect(t("teams.refusedAnswered", { name: "Julia Rossi", time: "01:10" })).toBe("Dieser Fall wurde schon von Julia Rossi um 01:10 beantwortet.");
   });
 });
+
+describe("NOR card", () => {
+  const find = (c: Card, id: string) => walk(c).find((n) => n.id === id) as Node | undefined;
+  const choiceValues = (c: Card, id: string) => (find(c, id)?.choices as Node[]).map((x) => x.value);
+  const answerCard = (over: Partial<CardInput> = {}, locale: "en" | "de" = "en") => raisedCard({ ...input, ...over }, locale);
+  const ok = { kind: "answer", caseId: "c", cardId: "o", answer: "no" };
+
+  it("the answer form offers Yes, No and Ask, a category choice without Already solved or in work, the reason, what would make it a yes and a revisit date", () => {
+    const c = answerCard();
+    expect(choiceValues(c, "answer")).toEqual(["yes", "no", "ask"]);
+    expect(choiceValues(c, "category")).toEqual(["not-now", "no-budget", "no-fit", "risk", "not-feasible"]);
+    expect(choiceValues(c, "category")).not.toContain("duplicate");
+    // The labels are the caseNo ones, in the reader's language.
+    expect((find(c, "category")?.choices as Node[]).map((x) => x.title)).toEqual(["Not now", "No budget this year", "Does not fit a goal or a standard", "Risk, safety or quality concern", "Not feasible as described"]);
+    expect((find(answerCard({}, "de"), "category")?.choices as Node[])[0].title).toBe("Nicht jetzt");
+    expect(find(c, "text")).toMatchObject({ type: "Input.Text", maxLength: 1000 });
+    expect(find(c, "changeIf")).toMatchObject({ type: "Input.Text", maxLength: 400 });
+    expect(find(c, "revisitDay")).toMatchObject({ type: "Input.Date" });
+    expect(find(c, "revisitDay")?.label).toContain("needed for Not now");
+  });
+
+  it("the reason's hint names the company's fewest characters, 40 unless the rule says otherwise", () => {
+    expect(JSON.stringify(answerCard())).toContain("at least 40 characters");
+    expect(JSON.stringify(answerCard({ noReasonMin: 25 }))).toContain("at least 25 characters");
+    expect(JSON.stringify(answerCard({ noReasonMin: 25 }, "de"))).toContain("mindestens 25 Zeichen");
+  });
+
+  it("the answer form has one Open in NextUp button, to the case, for everything else", () => {
+    const form = (c: Card) => (c.actions?.[0] as Node).card as Card;
+    const opens = (c: Card) => (form(c).actions ?? []).filter((a) => a.type === "Action.OpenUrl" && a.title === "Open in NextUp");
+    expect(opens(answerCard())).toHaveLength(1);
+    expect(opens(answerCard())[0]).toMatchObject({ url: input.link });
+    expect(opens(answerCard({ kind: "idea" }))).toHaveLength(1);
+    expect(opens(answerCard({ link: undefined }))).toHaveLength(0);
+    // The one submit is still the answer; Already solved or in work, Discuss first and Send up are no choice of the card.
+    expect((form(answerCard()).actions ?? []).filter((a) => a.type === "Action.Submit")).toHaveLength(1);
+    expect(JSON.stringify(answerCard())).not.toMatch(/Already solved|Discuss first|Send up/);
+  });
+
+  it("the hand-over form requires a why of at least 8 characters", () => {
+    const why = find(answerCard(), "why");
+    expect(why).toMatchObject({ type: "Input.Text", isRequired: true });
+    expect(new RegExp(why?.regex as string).test("short")).toBe(false);
+    expect(new RegExp(why?.regex as string).test("12345678")).toBe(true);
+    expect(new RegExp(why?.regex as string).test("a longer reason\nover two lines")).toBe(true);
+    expect(why?.errorMessage).toContain("at least 8 characters");
+    expect(JSON.stringify(answerCard({}, "de"))).toContain("mindestens 8 Zeichen");
+  });
+
+  it("parseSubmit keeps the category, the reason, what would make it a yes and the revisit date of a no", () => {
+    expect(parseSubmit({ ...ok, category: "not-now", text: "  The budget is spent this year, ask again in spring.  ", changeIf: " A quote under 5000 ", revisitDay: "2026-12-14" })).toEqual({
+      kind: "answer", caseId: "c", cardId: "o", answer: "no", category: "not-now", text: "The budget is spent this year, ask again in spring.", changeIf: "A quote under 5000", revisitDay: "2026-12-14",
+    });
+    // Blank optional fields are not carried; a yes and a question carry none of the no's fields.
+    expect(parseSubmit({ ...ok, category: "no-fit", text: "Not a goal", changeIf: "  ", revisitDay: "" })).toEqual({ kind: "answer", caseId: "c", cardId: "o", answer: "no", category: "no-fit", text: "Not a goal" });
+    expect(parseSubmit({ ...ok, answer: "yes", category: "not-now", changeIf: "x", revisitDay: "2026-12-14" })).toEqual({ kind: "answer", caseId: "c", cardId: "o", answer: "yes" });
+    expect(parseSubmit({ ...ok, answer: "ask", text: "Which line?", category: "risk" })).toEqual({ kind: "answer", caseId: "c", cardId: "o", answer: "ask", text: "Which line?" });
+  });
+
+  it("parseSubmit refuses an unknown category, Already solved or in work, a long what-would-make-it-a-yes and a date that is none", () => {
+    for (const bad of [
+      { category: "maybe" }, { category: "duplicate" }, { category: 7 }, { category: ["not-now"] },
+      { changeIf: "x".repeat(401) }, { changeIf: 5 },
+      { revisitDay: "tomorrow" }, { revisitDay: "2026-13-01" }, { revisitDay: "2026-02-30" }, { revisitDay: "14.12.2026" }, { revisitDay: "2026-12-14T00:00:00Z" }, { revisitDay: 20261214 },
+    ]) {
+      expect(parseSubmit({ ...ok, text: "A reason", ...bad }), JSON.stringify(bad)).toBeNull();
+    }
+    expect(parseSubmit({ ...ok, text: "A reason", changeIf: "x".repeat(400) })).not.toBeNull();
+    expect(parseSubmit({ ...ok, text: "A reason", revisitDay: "2028-02-29" })).not.toBeNull(); // a real leap day
+  });
+});
