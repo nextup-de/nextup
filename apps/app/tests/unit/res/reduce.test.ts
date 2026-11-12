@@ -8,7 +8,6 @@ import { LOCAL_SEED } from "@/features/demo";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS } from "@/features/demo/seed";
 import { closingEvent } from "@/features/projects/close";
 import type { LoopRules } from "@/features/loop/rules";
-import type { ReducedProject } from "@/features/projects/types";
 
 const UID: Record<string, string> = { "T. Vogel": "u_tv", "H. Sander": "u_hs", "L. Brandt": "u_lb", "B. Hartmann": "u_bh", "C. Ilg": "u_ci", "Anonymous #4471": "u_js" };
 const seats: SeatRow[] = [
@@ -219,7 +218,7 @@ describe("RES handover", () => {
     const edited = world(started(b1, confirmed, b2)).project.baseline;
     expect(edited).toMatchObject({ value: 40, eventId: b2.id, confirmed: null });
     // the old start: no confirmation anywhere, a reward possible: the reducer still starts it
-    const old = world(started(b1, P("project.started", {}, 3)), { reward: { kind: "gift", amount: 50, sharePct: null, capEur: null }, recognition: true, measure: true }).project;
+    const old = world(started(b1, P("project.started", {}, 3)), { reward: { kind: "fixed", amount: 50, sharePct: null, capEur: null }, recognition: true, measure: true }).project;
     expect(old).toMatchObject({ status: "running", startedDay: 3 });
     expect(old.baseline).toMatchObject({ confirmed: null });
   });
