@@ -1,4 +1,5 @@
 // The project area of the loop mails (REG/D10): one builder per project.* event type. MOV and RES add theirs here, never in notice.ts.
+import { usersOfRole } from "@/features/auth/identity";
 import { hasClosedAudience } from "@/features/cases/visibility";
 import { closingEvent } from "@/features/projects/close";
 import { CONFIRM_DAYS, confirmerIds, unconfirmedOf } from "@/features/projects/confirm";
@@ -38,17 +39,28 @@ function measured(t: T, p: ReducedProject, check: number | undefined): string {
   return t("mail.whatMeasured", { days: m.check, verdict: m.verdict, numbers });
 }
 
-const projectHandedNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink }) => {
-  if (project) send(project.leadUserId, (t) => t("mail.leadSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.handedIntro", { actor: ev.actor }), ...(pl.why ? ["", pl.why] : []), "", projectLink(project)]);
+/** The people a project's mails name by role (D23): the team is the lead and the members, the raiser is whoever raised the idea. */
+const teamOf = (p: ReducedProject): (string | null)[] => [p.leadUserId, ...p.memberUserIds];
+
+const projectHandedNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink, find }) => {
+  if (!project) return;
+  send(project.leadUserId, (t) => t("mail.leadSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.handedIntro", { actor: ev.actor }), ...(pl.why ? ["", pl.why] : []), "", projectLink(project)]);
+  // The team (the old lead among them), the sponsor and the raiser hear who leads now, with the why (D23).
+  const name = find(project.leadUserId)?.name || pl.to || project.lead;
+  for (const who of [...project.memberUserIds, project.sponsorUserId, ...project.authorUserIds]) {
+    send(who, (t) => t("projectMove.handedOthersSubject", { name, label: projectLabel(project), title: project.title }), (t) => [
+      t("projectMove.handedOthersIntro", { name, label: projectLabel(project) }), ...(pl.why ? ["", t("projectMove.handedWhy", { why: pl.why })] : []), "", projectLink(project),
+    ]);
+  }
 };
 
 const projectStoppedNotice: NoticeBuilder = ({ ev, project, send, projectLink }) => {
-  // Decision Q6.21: the lead, the team and who raised the idea hear that it stopped, and why. Only the stop that
+  // Decisions Q6.21 and D16: the lead, the team, who raised the idea and the sponsor hear that it stopped, and why. Only the stop that
   // took effect: one after the reward, or a second one, changed nothing (features/projects/reduce.ts).
   const stop = project?.history.find((e) => e.type === "project.stopped");
   if (!project?.stopped || (ev.id !== undefined && stop?.id !== ev.id)) return;
   const why = project.stopped.why;
-  for (const who of [project.leadUserId, ...project.memberUserIds, ...project.authorUserIds]) {
+  for (const who of [project.leadUserId, ...project.memberUserIds, ...project.authorUserIds, project.sponsorUserId]) {
     send(who, (t) => t("mail.stoppedSubject", { label: projectLabel(project), title: project.title }), (t) => [
       t("mail.stoppedIntro", { actor: ev.actor }), "", `  ${why}`, "", t("mail.stoppedIdea"), "", projectLink(project),
     ]);
@@ -109,17 +121,24 @@ const projectStartMovedNotice: NoticeBuilder = ({ ev, state, pl, project, send, 
   ]);
 };
 
-const projectMemberNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink }) => {
+const projectMemberNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink, find }) => {
+  // Someone left the team with their open steps unassigned: the lead hears it once (D22).
+  if (project && pl.on === false && pl.unassign === true) {
+    const name = find(pl.userId)?.name || pl.name || "";
+    send(project.leadUserId, (t) => t("projectMove.leftSubject", { name, label: projectLabel(project), title: project.title }), (t) => [t("projectMove.leftIntro", { name }), "", projectLink(project)]);
+    return;
+  }
   if (project && pl.on !== false && pl.userId) send(pl.userId, (t) => t("mail.memberSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.memberIntro", { actor: ev.actor }), "", projectLink(project)]);
 };
 
 const projectStepNotice: NoticeBuilder = ({ ev, state, pl, project, send, projectLink, people }) => {
   if (!project) return;
-  // The event that closes the project (decision Q6.20): one summary to the lead, the team and who raised the
-  // idea, in place of the author's step mail for the same event.
+  // The event that closes the project (decision Q6.20): one summary to the lead, the team, who raised the
+  // idea, the sponsor and the followers, in place of the author's step mail for the same event.
   const closes = ev.id !== undefined && closingEvent(project, state.rules)?.id === ev.id;
   const summary = () => {
-    for (const who of [project.leadUserId, ...project.memberUserIds, ...project.authorUserIds]) {
+    // D15: the lead, the team, the raiser, the sponsor and the followers.
+    for (const who of [project.leadUserId, ...project.memberUserIds, ...project.authorUserIds, project.sponsorUserId, ...project.followerUserIds]) {
       send(who, (t) => t("mail.closedSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.closedIntro"), "", ...closedLines(t, project), "", projectLink(project)]);
     }
   };
@@ -148,6 +167,12 @@ const projectStepNotice: NoticeBuilder = ({ ev, state, pl, project, send, projec
   }
   if (closes) summary();
   for (const a of project.authorUserIds) send(a, (t) => t("mail.stepSubject", { label: projectLabel(project), step: t(step), title: project.title }), (t) => [t("mail.stepIntro", { what: what(t) }), "", projectLink(project)]);
+  // Done: the team and the sponsor hear it too (D23); the raiser has the step mail above, so one mail each.
+  if (ev.type === "project.done") {
+    for (const who of [...teamOf(project), project.sponsorUserId]) {
+      send(who, (t) => t("projectMove.doneSubject", { label: projectLabel(project), title: project.title }), (t) => [t("projectMove.doneIntro", { actor: ev.actor, label: projectLabel(project) }), "", projectLink(project)]);
+    }
+  }
   // The kickoff of a draft (SET/D18): the team, the sponsor and the followers hear the goal and the first steps with their owners.
   if (ev.type === "project.started" && project.draft && project.startedDay !== null) {
     const g = project.goal;
@@ -160,6 +185,65 @@ const projectStepNotice: NoticeBuilder = ({ ev, state, pl, project, send, projec
         "", projectLink(project),
       ]);
     }
+  }
+};
+
+/** A new done-by date: the sponsor and the lead hear it, never whoever moved it (D23). */
+const projectDoneByMovedNotice: NoticeBuilder = ({ ev, state, pl, project, send, projectLink }) => {
+  if (!project || typeof pl.doneBy !== "number") return;
+  const days = pl.doneBy - state.day;
+  for (const who of [project.sponsorUserId, project.leadUserId]) {
+    send(who, (t) => t("projectMove.donebySubject", { label: projectLabel(project), title: project.title }), (t) => [
+      t("projectMove.donebyIntro", { actor: ev.actor, label: projectLabel(project), when: inDays(t, days) }), ...(pl.why ? ["", t("projectMove.donebyWhy", { why: pl.why })] : []), "", projectLink(project),
+    ]);
+  }
+};
+
+/** A pause, with why and until when: the sponsor hears it (D20, D23). */
+const projectPausedNotice: NoticeBuilder = ({ ev, state, pl, project, send, projectLink }) => {
+  if (!project || typeof pl.untilDay !== "number") return;
+  const days = pl.untilDay - state.day;
+  send(project.sponsorUserId, (t) => t("projectMove.pausedSubject", { label: projectLabel(project), title: project.title }), (t) => [
+    t("projectMove.pausedIntro", { actor: ev.actor, label: projectLabel(project), when: inDays(t, days) }), ...(pl.why ? ["", t("projectMove.pausedWhy", { why: pl.why })] : []), "", projectLink(project),
+  ]);
+};
+
+/** A pause ended early: the sponsor hears it. */
+const projectResumedNotice: NoticeBuilder = ({ ev, project, send, projectLink }) => {
+  if (!project) return;
+  send(project.sponsorUserId, (t) => t("projectMove.resumedSubject", { label: projectLabel(project), title: project.title }), (t) => [
+    t("projectMove.resumedIntro", { actor: ev.actor, label: projectLabel(project) }), "", projectLink(project),
+  ]);
+};
+
+/**
+ * The lead's weekly update (D21): a draft's sponsor, followers and raiser, a legacy project's team and raiser; never its
+ * writer (send leaves the actor out), with the text itself in the mail.
+ */
+const projectUpdateNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink }) => {
+  const text = pl.text?.trim();
+  if (!project || !text) return;
+  const audience = project.draft ? [project.sponsorUserId, ...project.followerUserIds, ...project.authorUserIds] : [...teamOf(project), ...project.authorUserIds];
+  for (const who of audience) {
+    send(who, (t) => t("projectMove.updateSubject", { label: projectLabel(project), title: project.title }), (t) => [
+      t("projectMove.updateIntro", { actor: ev.actor, label: projectLabel(project) }), "", ...text.split(/\r?\n/).map((l) => `  ${l}`), "", projectLink(project),
+    ]);
+  }
+};
+
+/**
+ * A leaver left a project without a lead: the sponsor, or without one the users of the desk that said yes (D14), and the
+ * team hear that a new lead is needed. The desk is the route's owner role when someone holds it, else its deputy role.
+ */
+const projectLeadVacatedNotice: NoticeBuilder = ({ state, pl, project, send, projectLink }) => {
+  if (!project) return;
+  const route = state.routes.find((r) => r.id === project.routeId);
+  const desk = [route?.ownerRoleId, route?.deputyRoleId].flatMap((roleId) => (roleId ? [usersOfRole(state.seats, roleId)] : [])).find((users) => users.length > 0) ?? [];
+  const bySponsor = project.sponsorUserId !== null;
+  for (const who of [...(bySponsor ? [project.sponsorUserId] : desk), ...project.memberUserIds.filter((u) => u !== pl.userId)]) {
+    send(who, (t) => t("projectMove.vacatedSubject", { label: projectLabel(project), title: project.title }), (t) => [
+      t(bySponsor ? "projectMove.vacatedIntroSponsor" : "projectMove.vacatedIntroDesk", { label: projectLabel(project) }), "", projectLink(project),
+    ]);
   }
 };
 
@@ -176,4 +260,11 @@ export const PROJECT_NOTICES: NoticeBuilders = {
   "project.measured": projectStepNotice,
   "project.measure.confirmed": projectStepNotice,
   "project.rewarded": projectStepNotice,
+  // A project that keeps moving (plan MOV, D23). project.howwework tells nobody.
+  "project.lead.changed": projectHandedNotice,
+  "project.doneby.moved": projectDoneByMovedNotice,
+  "project.paused": projectPausedNotice,
+  "project.resumed": projectResumedNotice,
+  "project.update": projectUpdateNotice,
+  "project.lead.vacated": projectLeadVacatedNotice,
 };

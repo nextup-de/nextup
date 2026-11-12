@@ -92,17 +92,23 @@
     "reminder.vacant": "reminder.start"
   },
   "reminderKinds": [
+    "blocked",
     "checkin",
     "confirm",
     "deadline",
     "draft",
     "escalation",
     "invite",
+    "late",
     "lead",
     "measure",
     "question",
+    "quiet",
+    "stalled",
     "start",
-    "triage"
+    "triage",
+    "update",
+    "vacant"
   ],
   "dutyTemplates": [
     "raised",
