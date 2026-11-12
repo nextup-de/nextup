@@ -109,7 +109,7 @@ test("the leader's and manager's steps taken on the page itself: the controls fo
     await page.getByRole("main").getByRole("button", { name: new RegExp(TITLE) }).first().click();
     await expect(step("Accept it")).toBeEnabled();
     await page.getByRole("button", { name: /^Yes, do it/ }).click();
-    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
+    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
     await expect(step("Open the project")).toBeEnabled();
   });
 

@@ -14,31 +14,66 @@ import { projectStatus, raisedWith } from "@/features/cases/rows";
 import { onDeskOf } from "@/features/cases/selectors";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
+import { beingSetUpLine, isOpenDraft, mayReadDraft, raiserDraftPanel, type RaiserDraftPanel as RaiserDraftPanelData } from "@/features/projects/views";
+import { isPrivateIdea } from "@/features/cases/visibility";
+import { useCaseNames } from "@/components/cases/useCaseNames";
 import { PersonFace, SectionCard } from "@/components/ui/elements";
 import styles from "./CaseLoop.module.css";
 
 // "Accepted on 14 Oct by T. Vogel → P-12 Shorter changeover · In progress" - or the no and its why.
+// A draft the viewer may not read is "Accepted · being set up by {role}, start expected {date}" and no link (D13);
+// one they may read is "Draft → P-12 title" (SET).
 export function ArchiveBanner({ c }: { c: ReducedCase }) {
-  const { S, f, href } = useDemo();
+  const { S, f, href, role, actorUserId, seed, act } = useDemo();
   const t = useT();
   const locale = useLocale();
+  const names = useCaseNames();
   const dec = c.decided;
   if (!c.archived || !dec) return null;
   const p = dec.answer === "yes" ? projectOfCase(S, c) : undefined;
   const rel = dec.day - S.day; // today and yesterday read as words, older days as a date
   const when = rel === 0 || rel === -1 ? f(dec.day) : t("dashboard.loopWhenOn", { day: f(dec.day) });
+  const draft = p && isOpenDraft(p) ? p : undefined;
+  const viewer = { role, userId: actorUserId };
+  const hidden = draft !== undefined && !mayReadDraft(draft, viewer, S.cases.some((x) => draft.sources.includes(x.id) && isPrivateIdea(x)));
+  const line = draft && hidden ? beingSetUpLine(draft, seed.seats, names.roleTitle) : null;
+  const panel = draft ? raiserDraftPanel(draft, actorUserId, c.fromUserId) : null;
   return (
+    <>
     <div className={styles.banner} data-tone={dec.answer === "yes" ? "yes" : "no"} role="note" aria-label={t("dashboard.loopArchived")}>
       <span className={styles.bannerTag}>{t("dashboard.loopArchived")}</span>
-      {dec.answer === "yes" ? (
+      {line && draft ? (
+        <span data-testid="draft-being-set-up">{t("projectDraft.beingSetUp", { role: line.role || draft.lead, date: line.startDay === null ? t("loopCase.draftNoStart") : f(line.startDay) })}</span>
+      ) : dec.answer === "yes" ? (
         <span>
-          {t("dashboard.loopAccepted", { when, by: dec.by })}
+          {draft ? t("projectDraft.title") : t("dashboard.loopAccepted", { when, by: dec.by })}
           {p ? <> → <Link href={href("/projects/" + p.id)} className={styles.bannerLink}>{projectLabel(p)} {p.title}</Link> · {projectStatus(p.status, locale)}</> : null}
         </span>
       ) : (
         <span>{t("dashboard.loopDeclined", { when, by: dec.by })}{dec.reason ? " — " + dec.reason : ""}{dec.note ? t("dashboard.evNoteSuffix", { note: dec.note }) : ""}</span>
       )}
     </div>
+    {draft && panel?.show && <RaiserDraftPanel projectId={draft.id} panel={panel} comment={act.project.comment} />}
+    </>
+  );
+}
+
+// The raiser of the case, not on the draft (D20): what the lead wrote down of the goal, and one comment box.
+function RaiserDraftPanel({ projectId, panel, comment }: { projectId: string; panel: RaiserDraftPanelData; comment: (projectId: string, text: string) => void }) {
+  const t = useT();
+  const [text, setText] = useState("");
+  const rows = ([[t("loopCase.draftGoal"), panel.goal], [t("loopCase.draftDoneWhen"), panel.doneWhen], [t("loopCase.draftBrief"), panel.brief]] as [string, string | null][]).filter(([, v]) => v);
+  return (
+    <section aria-label={t("loopCase.draftPanel")} data-testid="draft-raiser-panel">
+      {rows.map(([k, v]) => <p key={k} className={styles.missing}><span className={styles.k}>{k}</span>{v}</p>)}
+      {panel.canComment && (
+        <form onSubmit={(e) => { e.preventDefault(); const v = text.trim(); if (!v) return; comment(projectId, v); setText(""); }}>
+          <label htmlFor={"draft-comment-" + projectId} className={styles.k}>{t("loopCase.draftComment")}</label>
+          <textarea id={"draft-comment-" + projectId} className={`${styles.field} ${styles.area}`} value={text} onChange={(e) => setText(e.target.value)} rows={3} />
+          <button type="submit" className="nh-btn nh-btn-secondary nh-btn-sm" disabled={!text.trim()}>{t("loopCase.draftSend")}</button>
+        </form>
+      )}
+    </section>
   );
 }
 

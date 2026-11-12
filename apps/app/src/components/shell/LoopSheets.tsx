@@ -19,6 +19,7 @@ import { SCORE_LABELS } from "@/features/ideas/brief";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { ideaContext } from "@/features/ideas/drafts";
 import { railOf } from "@/features/ideas/raise";
+import { joinableProjects, RAISER_NOTE_MAX } from "@/features/projects/accept";
 import { projectById, projectLabel } from "@/features/projects/selectors";
 import { useFormat, useT } from "@/i18n/client";
 import { PersonFace } from "@/components/ui/elements";
@@ -262,35 +263,36 @@ function CheckinSheet({ c }: { c: ReducedCase }) {
 // ── Yes, do it ──
 
 function AcceptSheet({ c }: { c: ReducedCase }) {
-  const { S, seed, actorUserId, act, href, closeSheet, showToast } = useDemo();
+  const { S, seed, actorUserId, demo, act, href, closeSheet, showToast } = useDemo();
   const t = useT();
   const fmt = useFormat();
-  // The lead is a user id; the names only label the options.
+  // The one who sets it up is a user id; the names only label the options.
   const people = peopleOf(seed.seats);
   const seatUser = (seatId: string | null | undefined) => seed.seats.find((s) => s.id === seatId)?.userId ?? null;
   const [leadId, setLeadId] = useState(actorUserId ?? people[0]?.userId ?? "");
-  const lead = people.find((p) => p.userId === leadId)?.name ?? "";
-  const [title, setTitle] = useState(c.title);
-  const [step, setStep] = useState("");
-  const [opened, setOpened] = useState<string | null>(null); // the project id, once the yes is sent
-  const ok = !!leadId && title.trim().length >= 3;
+  const lead = people.find((p) => p.userId === leadId);
+  // A new draft, or an open project the decider leads or is on the team of (D10).
+  const joinable = joinableProjects(S.projects, actorUserId, demo);
+  const [join, setJoin] = useState("");
+  const [note, setNote] = useState("");
+  const [opened, setOpened] = useState<{ id: string; joined: boolean } | null>(null); // the project id, once the yes is sent
+  const ok = !!lead;
   // The decider first, then the route's owner and deputy, then the rest of the directory.
   const first = [actorUserId, seatUser(c.route?.ownerSeatId), seatUser(c.route?.deputySeatId)].filter((x): x is string => x !== null && people.some((p) => p.userId === x));
   const order = [...new Set([...first, ...people.map((p) => p.userId)])];
   const roleOf = (id: string, name: string) => (id === actorUserId ? t("shell.acceptYou") : seed.people.find((p) => p.name === name)?.role ?? "");
   const confirm = () => {
-    if (!ok || opened) return;
-    const id = act.accept(c.id, { lead, leadUserId: leadId, title: title.trim() });
-    if (step.trim()) act.project.addStep(id, step.trim());
-    setOpened(id);
-    showToast(t("shell.acceptDone", { days: fmt.days(c.clock), from: c.from }));
+    if (!lead || opened) return;
+    const id = act.accept(c.id, { lead: { userId: lead.userId, name: lead.name }, join: join || undefined, raiserNote: note });
+    setOpened({ id, joined: join !== "" });
+    showToast(t(join ? "shell.acceptDoneJoin" : "shell.acceptDone", { days: fmt.days(c.clock), from: c.from }));
   };
   if (opened) {
-    const p = projectById(S, opened);
+    const p = projectById(S, opened.id);
     const name = p ? projectLabel(p) : t("shell.acceptTheProject");
     return (
-      <Frame label={t("shell.acceptLabel")} title={t("shell.acceptIsOpen", { name })} sub={t("shell.acceptOpenSub", { title: p?.title ?? title, lead })}
-        actions={<><Link href={href("/projects/" + opened)} className={styles.go} onClick={closeSheet}>{t("shell.acceptOpen", { name })}</Link><Btn fixed onClick={closeSheet}>{t("shell.done")}</Btn></>} />
+      <Frame label={t("shell.acceptLabel")} title={t(opened.joined ? "shell.acceptIsJoined" : "shell.acceptIsOpen", { name })} sub={t("shell.acceptOpenSub", { title: p?.title ?? c.title, lead: lead?.name ?? "" })}
+        actions={<><Link href={href("/projects/" + opened.id)} className={styles.go} onClick={closeSheet}>{t("shell.acceptOpen", { name })}</Link><Btn fixed onClick={closeSheet}>{t("shell.done")}</Btn></>} />
     );
   }
   return (
@@ -300,10 +302,18 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
       <select id="accept-lead" className={`nh-input nh-select ${styles.field}`} value={leadId} onChange={(e) => setLeadId(e.target.value)}>
         {order.map((id) => { const p = people.find((x) => x.userId === id)!; return <option key={id} value={id}>{p.name}{roleOf(id, p.name) ? " · " + roleOf(id, p.name) : ""}</option>; })}
       </select>
-      <label className={base.textLabel} htmlFor="accept-title">{t("shell.acceptTitle")}</label>
-      <input id="accept-title" className={`nh-input ${styles.field}`} value={title} onChange={(e) => setTitle(e.target.value)} />
-      <label className={base.textLabel} htmlFor="accept-step">{t("shell.acceptStep")}</label>
-      <input id="accept-step" className={`nh-input ${styles.field}`} value={step} onChange={(e) => setStep(e.target.value)} placeholder={t("shell.acceptStepPlaceholder")} />
+      {leadId !== actorUserId && <div className={styles.none}>{t("shell.acceptLeadHint")}</div>}
+      {joinable.length > 0 && (
+        <>
+          <label className={base.textLabel} htmlFor="accept-join">{t("shell.acceptJoin")}</label>
+          <select id="accept-join" className={`nh-input nh-select ${styles.field}`} value={join} onChange={(e) => setJoin(e.target.value)}>
+            <option value="">{t("shell.acceptJoinNew")}</option>
+            {joinable.map((p) => <option key={p.id} value={p.id}>{t("shell.acceptJoinTo", { name: projectLabel(p), title: p.title })}</option>)}
+          </select>
+        </>
+      )}
+      <label className={base.textLabel} htmlFor="accept-note">{t("shell.acceptNote")}</label>
+      <input id="accept-note" className={`nh-input ${styles.field}`} value={note} onChange={(e) => setNote(e.target.value.slice(0, RAISER_NOTE_MAX))} maxLength={RAISER_NOTE_MAX} placeholder={t("shell.acceptNotePlaceholder")} />
     </Frame>
   );
 }
