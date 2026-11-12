@@ -41,7 +41,8 @@ const ON = { stage: "pilot", notifications: true, n8n: true };
 function ctx(events: CaseEvent[], over: Partial<PlanCtx> = {}): PlanCtx {
   return { companyId: "co1", state: reduce(seed, { events, day: 1 }), people, prefs: [], company: ON, subscriptions: [], baseUrl: "https://app.test/acme", ...over };
 }
-const plan = (events: CaseEvent[], over: Partial<PlanCtx> = {}) => planNotices(events[events.length - 1], ctx(events, over));
+// The in-app copy of each notice (INB/D5) is tested in tests/unit/inb/channels.test.ts; here only the outside rows count.
+const plan = (events: CaseEvent[], over: Partial<PlanCtx> = {}) => planNotices(events[events.length - 1], ctx(events, over)).filter((d) => d.channel !== "inapp");
 const users = (d: { recipientUserId: string | null }[]) => d.map((x) => x.recipientUserId).sort();
 
 describe("NTF planner", () => {
@@ -87,7 +88,7 @@ describe("NTF planner", () => {
     const events = [raise(), due("c_a", { kind: "deadline", dueDay: 3, toRoleHolderId: "s_dep" })];
     const subscriptions = [{ id: "sub1", events: ["case.raised"], on: true }];
     const sandbox = { ...ON, stage: "sandbox" };
-    const all = [...planNotices(events[0], ctx(events, { company: sandbox, subscriptions })), ...planNotices(events[1], ctx(events, { company: sandbox }))];
+    const all = [...planNotices(events[0], ctx(events, { company: sandbox, subscriptions })), ...planNotices(events[1], ctx(events, { company: sandbox }))].filter((d) => d.channel !== "inapp");
     expect(all.length).toBeGreaterThan(3);
     expect(all.every((x) => x.status === "skipped" && x.lastError === "sandbox")).toBe(true);
   });
@@ -119,7 +120,8 @@ describe("NTF planner", () => {
   it("an opt-out for * or a template skips only that user; digest is off until turned on", () => {
     const r = raise();
     const d = plan([r], { prefs: [{ userId: "u_o2", template: "*", on: false }] });
-    expect(d.map((x) => [x.recipientUserId, x.status, x.lastError])).toEqual([["u_o1", "pending", null], ["u_o2", "skipped", "opted out"]]);
+    // `raised` is a duty (INB/D8): an opt-out does not stop it.
+    expect(d.map((x) => [x.recipientUserId, x.status, x.lastError])).toEqual([["u_o1", "pending", null], ["u_o2", "pending", null]]);
     const f = due("c_a", { kind: "checkin", dueDay: 4 });
     const d2 = plan([r, f], { prefs: [{ userId: "u_o1", template: "reminder.checkin", on: false }] });
     expect(d2.map((x) => [x.recipientUserId, x.status])).toEqual([["u_o1", "skipped"], ["u_o2", "pending"]]);
@@ -198,9 +200,9 @@ describe("NTF planner", () => {
     // Off a desk nobody sits at, the clock's hand-over has no reminder: the new desk and the raiser get a loop row.
     const vacant = ev("case.handed", "system:clock", null, "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "vacant" });
     expect(loop([raise(), vacant])).toEqual([["loop.case.handed", "u_dep"], ["loop.case.handed", "u_raiser"]]);
-    // The clock's hand-over is told by its reminder, not twice.
+    // The clock's hand-over is told to the desk by its reminder, not twice; the raiser hears it here (INB/D17).
     const late = ev("case.handed", "system:clock", null, "c_a", { to: "Deputy", toRoleHolderId: "s_dep", why: "deadline" });
-    expect(loop([raise(), late])).toEqual([]);
+    expect(loop([raise(), late])).toEqual([["loop.case.handed", "u_raiser"]]);
   });
 
   it("an opt-out made before the new notices existed still covers them, until the person chooses again", () => {
