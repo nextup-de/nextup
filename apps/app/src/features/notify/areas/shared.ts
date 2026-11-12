@@ -32,6 +32,10 @@ export type TemplateInput = {
   holder?: string;
   /** Escalation only: the case moved to `holder`; false = nobody is above, it stays where it is. */
   moved?: boolean;
+  /** A project step's text (the late and blocked reminders, MOV D23); read from the project by the fact's stepId. */
+  step?: string;
+  /** Why a step is blocked (the blocked reminder): the step's own reason. */
+  why?: string;
 };
 
 export type Rendered = { subject: string; text: string; link: string };
