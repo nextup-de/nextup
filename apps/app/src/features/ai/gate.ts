@@ -7,7 +7,7 @@
 //                the signed data-processing agreement; assist needs the assistant switch, routing needs aiRouting.
 //   local        the model on this stack (Q8.4) needs the stack's brain service (stackBrain) wherever there is a
 //                database: every call goes there and nothing leaves the stack, so no agreement is asked.
-//   every stage  a real model is not called once the month's budget is used up (budget.ts, decision Q7.3), or
+//   every stage  Bedrock needs the brain's model for every purpose but the assistant (plan REM, reason `no_model`); a real model is not called once the month's budget is used up (budget.ts, decision Q7.3), or
 //                once its models without a price used their monthly token cap (decision Q7.5); the raise path
 //                (budget.ts RAISE_PATH_PURPOSES) goes on to GRACE_PCT of a cap first (decision Q7.4);
 //                the callers' fallbacks answer and the rest of the app goes on. The project agent (purpose `agent`, plan AGT, D21)
@@ -17,10 +17,14 @@
 //                brain's own model (server/brain.ts llmFor), and that is counted and capped like any other.
 import { policyFor } from "@/features/admin/stages";
 import { GRACE_PCT, onRaisePath, usedUpBy, type GateBudget } from "./budget";
-import type { AiSettings } from "./settings";
+import { noBrainModel, type AiSettings } from "./settings";
+
+/** What a closed gate says when Bedrock is chosen and the brain has no model (the project agent used the same words before the gate asked). */
+export const NO_MODEL_WORDS = "Choose a brain model for Bedrock";
 
 export type AiPurpose = "assist" | "routing" | "coach" | "brain" | "agent";
-export type AiGate = { on: true; settings: AiSettings } | { on: false; why: string };
+/** `reason` names why a gate is closed where a caller or a test needs to tell it from the others: `no_model`, Bedrock is chosen and no brain model is set. */
+export type AiGate = { on: true; settings: AiSettings } | { on: false; why: string; reason?: "no_model" };
 
 export function aiGate(a: {
   stage: string;
@@ -56,6 +60,11 @@ export function aiGate(a: {
   }
   if (a.settings.choice === "local" && !a.stackBrain) {
     return { on: false, why: "The model on this stack is chosen, but this stack runs no brain service." };
+  }
+  // No call without a model (plan REM): the brain's purposes - routing, the studio's read and coach, plans, check-ins, the project agent - call the model the company
+  // named. Bedrock without one would fall back to whatever the brain service has loaded, a model nobody chose and nobody priced.
+  if (a.purpose !== "assist" && noBrainModel(a.settings)) {
+    return { on: false, reason: "no_model", why: NO_MODEL_WORDS };
   }
   if (demo) return usedUp ? USED_UP : { on: true, settings: a.settings };
   if (a.settings.choice === "off") return { on: false, why: "AI is switched off for this company." };

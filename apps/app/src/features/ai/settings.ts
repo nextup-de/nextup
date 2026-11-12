@@ -35,6 +35,9 @@ export const AI_OFF: AiSettings = { choice: "off", region: DEFAULT_REGION, model
 const str = (v: unknown, fallback: string): string => (typeof v === "string" && v.trim() ? v.trim() : fallback);
 const strOrNull = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 
+/** Bedrock is the choice and no model is set for the brain (plan REM): the brain's purposes have nothing to call. Every other choice names its own or runs on this stack. */
+export const noBrainModel = (s: Pick<AiSettings, "choice" | "brainModel">): boolean => s.choice === "bedrock" && !s.brainModel;
+
 /**
  * A row wins (an unknown choice, or a row switched off, is off). Without a row a demo company keeps
  * the environment rule (LLM_PROVIDER=bedrock with LLM_MODEL: bedrock in LLM_REGION, else the mock);
@@ -59,6 +62,7 @@ export function aiSettings(row: AiRow | null, env: Record<string, string | undef
   if (!policyFor(stage).demoData) return AI_OFF;
   const region = env.LLM_REGION || DEFAULT_REGION;
   const model = env.LLM_MODEL || "";
-  if (env.LLM_PROVIDER === "bedrock" && model) return { choice: "bedrock", region, model, endpoint: null, deployment: null };
+  // The environment's one model serves the brain as well: a demo company has no row to name another.
+  if (env.LLM_PROVIDER === "bedrock" && model) return { choice: "bedrock", region, model, endpoint: null, deployment: null, brainModel: model };
   return { choice: "mock", region, model: "mock", endpoint: null, deployment: null };
 }
