@@ -14,12 +14,14 @@ describe("projectTabOf", () => {
     expect(projectTabOf("board")).toBe("board");
     expect(projectTabOf(["results", "team"])).toBe("results");
     expect(projectTabOf(undefined)).toBe("overview");
-    expect(projectTabOf("agent")).toBe("overview");
+    expect(projectTabOf("agent")).toBe("agent"); // the page opens the Overview for a person who has no Agent tab (features/agent/view.ts)
+    expect(projectTabOf("nope")).toBe("overview");
   });
 
   it("gives the Overview no query", () => {
     expect(tabQuery("overview")).toBe("");
     expect(tabQuery("files")).toBe("?tab=files");
+    expect(tabQuery("agent")).toBe("?tab=agent");
   });
 });
 

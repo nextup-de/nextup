@@ -17,6 +17,9 @@ import type { ReducedProject } from "@/features/projects/types";
 import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";
+import { AgentTab } from "./agent/AgentTab";
+import { PlanDraftLink } from "./agent/PlanDraftLink";
+import { useAgentTab } from "./agent/useAgentTab";
 import { DraftView } from "./draft/DraftView";
 import { DoneByLine } from "./move/DoneByLine";
 import { HowWeWork } from "./move/HowWeWork";
@@ -54,11 +57,11 @@ export function ProjectView({ projectId, jira, tab }: { projectId: string; jira:
     );
   }
   // A draft that has not started is set up on its own page (plan SET); the board comes with the start.
-  if (p.draft && p.status === "planning") return <DraftView p={p} />;
+  if (p.draft && p.status === "planning") return <><PlanDraftLink p={p} /><DraftView p={p} /></>;
   return <Project p={p} jira={jira} tab={tab} />;
 }
 
-function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | null; tab: ProjectTab }) {
+function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusView | null; tab: ProjectTab }) {
   const ctx = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -69,6 +72,9 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
   const r = useRights(p);
   const planning = p.status === "planning";
   const { stepHints, baseHint } = useProjectHints(p);
+  // The Agent tab is there for who may see it; a ?tab=agent that is not theirs opens the Overview (plan AGT, D15).
+  const agent = useAgentTab(p, asked === "agent");
+  const tab: ProjectTab = asked === "agent" && agent.view === null ? "overview" : asked;
   const move = nextMove(p, S.day);
   // The lead's own move (a manager may act as lead too, but it is not on their desk), or a reward a manager records.
   const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);
@@ -88,7 +94,7 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
     <div className={styles.projectPage} data-wide="true">
       <div className={styles.top}>
         <Header p={p} jira={row} />
-        <Tabs p={p} tab={tab} />
+        <Tabs p={p} tab={tab} agent={agent.view !== null} />
       </div>
       {tab === "overview" && (
         <div className={styles.tabLayout}>
@@ -131,6 +137,11 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
           <ActivityPanel p={p} />
         </div>
       )}
+      {tab === "agent" && agent.view && (
+        <div className={styles.tabCards}>
+          <AgentTab p={p} view={agent.view} failed={agent.failed} />
+        </div>
+      )}
       {tab === "files" && (
         <div className={styles.tabLayout}>
           <div className={styles.tabCards}>
@@ -147,13 +158,13 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
 }
 
 /** One link per tab; the Board and Team links carry their counts. */
-function Tabs({ p, tab }: { p: ReducedProject; tab: ProjectTab }) {
+function Tabs({ p, tab, agent }: { p: ReducedProject; tab: ProjectTab; agent: boolean }) {
   const { href } = useDemo();
   const t = useT();
   const counts: Partial<Record<ProjectTab, number>> = { board: p.steps.length, team: p.members.length + 1 };
-  const items = PROJECT_TABS.map((k) => ({
+  const items = PROJECT_TABS.filter((k) => k !== "agent" || agent).map((k) => ({
     key: k,
-    label: t(("projects.tab_" + k) as "projects.tab_overview"),
+    label: k === "agent" ? t("projectAgent.tab") : t(("projects.tab_" + k) as "projects.tab_overview"),
     href: href("/projects/" + p.id) + tabQuery(k),
     count: counts[k],
   }));
