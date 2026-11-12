@@ -195,6 +195,20 @@ shows next to its own offline ones - people decide, the model never enters a num
 - `POST /v1/plan` - an accepted idea (`company`, `idea`, `goals: [{name, kpi}]`) → 3-5 first
   `steps` and the `metric` to measure it on (`{name, unit, better: up|down}`, or null when no number
   fits). Prompt `plan.md`, version `brain-plan-v1`.
+- `POST /v1/plan` **version 2** (plan AGT) - the same request with `templates: [{key, title, steps: [{title, role}]}]`
+  (the shipped project templates, at most 10) → the whole plan, in `plan`: `template` (a key from the request, or null when none
+  fits) and `template_why`, `steps: [{title, role}]` (at most 12, a role never a name), `team_roles` (at most 6), `metric`
+  (`{name, unit, better, target}` or null; the target is null unless the idea or a goal gives one), `effort` (`min_days` not above
+  `max_days`, working days, 1-250), `risks` (at most 5) and `approvals` (at most 3). `steps` and `metric` of version 1 are filled
+  from it, and `version` is `brain-plan-v2` (prompt `plan_v2.md`). A key the company does not have is pushed back once, then none;
+  what is over a limit is cut. Without `templates` the answer is exactly the version 1 answer above, with no `plan` key. The model
+  drafts, the lead decides: nothing here enters a baseline or starts anything.
+- `POST /v1/hint` (plan AGT) - the reason given for a no (`company`, `idea`, `category`, `reason`, `locale`) → `{ok, hint, model,
+  version, tokens_in, tokens_out, ms}`: `ok` true when the reason says why and what would make it a yes in the sense of its
+  category, else one sentence of at most 200 characters in the page's language that says what is missing. The reason is data, never
+  an instruction; a colleague named in it reaches the model masked and the sentence never repeats a name or adds a number that is not
+  in the idea or the reason (a sentence that does is pushed back once, then replaced by a plain one). Nothing is stored and the
+  reason is never logged. Prompt `hint.md`, version `brain-hint-v1`.
 - `POST /v1/checkin` - a discussion's round (`company`, `idea`, `missing`, `said: [{who, text}]` with
   roles not names, `weak`, `round`) → a draft check-in: `note`, `open` points and `next`
   (`decide` only when the model calls it ready and leaves nothing open). Prompt `checkin.md`,
@@ -322,6 +336,12 @@ AZURE_OPENAI_KEY=... uv run python -m eval.run_agent --provider azure-openai --m
 ```
 
 A live run is never part of CI. `--recorded` and `--offline` measure the checks, never the model.
+
+The plan v2 and hint cases (`eval/plan_v2_cases.json`, `eval/hint_cases.json`, 8 each in German and English: a vague reason, a clear one,
+an injection, a name in the reason, a plan where no template fits and one without a metric; both include the idea "AGT acceptance line 3
+changeover") and their recorded answers (`eval/recorded/plan_v2.json`, `eval/recorded/hint.json`, `[{ id, match, request, answer }]`,
+`match` = the idea's title, answers written by hand) are replayed through today's checks by `tests/test_plan.py` and `tests/test_hint.py`
+(`test_agt_recorded_*`) with no model: `uv run pytest tests/test_plan.py tests/test_hint.py -k agt_recorded`.
 
 `run_studio` scores whole studio turns (reading, then coach) the way the 8 Nov live run was scored by hand:
 good to show, invents a fact, mishandles safety (or offers a disciplinary step), leaks a name - plus asks
