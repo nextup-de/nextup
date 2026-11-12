@@ -1,0 +1,13 @@
+/* The planning run under a case: a quiet section, the draft in the house look with its AI label. */
+.panel { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: var(--nh-max); margin: 16px auto 0; min-width: 0; }
+.ask { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.button { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding-inline: 14px; border: 0; border-radius: 8px; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.button:hover { background: var(--nh-brand-line); }
+.button:disabled { opacity: 0.5; cursor: default; }
+.button:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.small { font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); margin: 0; }
+.draft { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 8px; background: var(--nh-surface); min-width: 0; }
+.ai { align-self: flex-start; padding: 2px 8px; border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-xs); font-weight: 600; }
+.title { margin: 0; font-size: var(--nh-fs-md); font-weight: 700; color: var(--nh-ink); }
+.row { margin: 0; font-size: var(--nh-fs-sm); line-height: 20px; color: var(--nh-ink); overflow-wrap: anywhere; }
+.list { margin: 4px 0 0; padding-left: 20px; }

@@ -5,6 +5,7 @@ import type { State } from "@/features/cases/reducer";
 import type { CaseEvent } from "@/features/cases/events";
 import { DEFAULT_CALENDAR, DEMO_CLOCK } from "@/features/clock";
 import type { SeatAbove } from "@/features/clock/due";
+import { EMPTY_APPROVAL_CONFIG } from "@/features/approvals/types";
 
 export const TODAY = 20;
 
@@ -46,7 +47,7 @@ const project = (p: Lit): Lit => ({
   leadState: "taken", leadAskedDay: null, invites: [], startDay: null, deciderUserId: "u_dec", ...p,
 });
 const state = (mode: "workdays" | "demo", r: ReturnType<typeof rules>, cases: Lit[], projects: Lit[]): State =>
-  ({ day: TODAY, cases, projects, ideas: [], problems: [], ledger: {}, rules: r, seats: SEATS, routes: ROUTES, clock: mode === "workdays" ? { mode, calendar: DEFAULT_CALENDAR } : DEMO_CLOCK }) as unknown as State;
+  ({ day: TODAY, cases, projects, ideas: [], problems: [], ledger: {}, rules: r, seats: SEATS, routes: ROUTES, clock: mode === "workdays" ? { mode, calendar: DEFAULT_CALENDAR } : DEMO_CLOCK, approvals: { ...EMPTY_APPROVAL_CONFIG, roles: [] } }) as unknown as State;
 
 const dl = (id: string, dueDay: number) => fact(id, { kind: "deadline", dueDay, toRoleHolderId: "seat_dep" });
 
