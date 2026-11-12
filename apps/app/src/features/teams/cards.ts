@@ -1,6 +1,7 @@
 // What Teams shows (TMS D11; page spec 06 § Teams). Adaptive Cards 1.5, built as plain data. Pure: no I/O.
 // Every text comes from the `teams` namespace in the recipient's locale. The caller hands in dates and names
 // already formatted for the recipient; a card never looks anything up.
+import { noCategoryLabel, PASS_REASON_MIN, type NoCategory } from "@/features/cases/no";
 import { createT, INTL_LOCALE, type Locale, type MessageKey } from "@/i18n";
 
 /** When an earlier answer was given, for the caller to hand in: the time on the same day, else date and time. */
@@ -67,6 +68,8 @@ export type CardInput = {
   name?: string;
   /** notSetUpCard. Default "off". */
   reason?: "unknown" | "off" | "notSetUp";
+  /** The fewest characters a reason for a no needs (company rule no_reason_min); the hint on the card says it. Default 40. */
+  noReasonMin?: number;
 };
 
 export const SUBMIT_KINDS = ["answer", "handover"] as const;
@@ -76,13 +79,21 @@ export const MAX_CARD_BYTES = 28 * 1024;
 export const MAX_SEATS = 150;
 export const ANSWER_TEXT_MAX = 1000;
 export const WHY_MAX = 500;
+/** What would make it a yes: up to this many characters (plan NOR, D17). */
+export const CHANGE_IF_MAX = 400;
+/** The company rule's default, for a card built without it. */
+const NO_REASON_MIN_DEFAULT = 40;
+/** The categories the card offers for a no: Already solved or in work needs a link to the case or project, so it is in NextUp (D22). */
+export const CARD_NO_CATEGORIES = ["not-now", "no-budget", "no-fit", "risk", "not-feasible"] as const satisfies readonly NoCategory[];
+export type CardNoCategory = (typeof CARD_NO_CATEGORIES)[number];
 export const RAISE_TITLE_MAX = 120;
 export const RAISE_BODY_MAX = 2000;
 
 const SCHEMA = "http://adaptivecards.io/schemas/adaptive-card.json";
 const ID_MAX = 128;
 const SHOWN_TITLE_MAX = 200;
-const SHOWN_BODY_MAX = 1000;
+// The body shows five lines (maxLines below): this many characters are more than the card can show, and keep a card with 150 seats under the limit.
+const SHOWN_BODY_MAX = 600;
 const SHOWN_LABEL_MAX = 100;
 
 const clamp = (s: string, max: number): string => {
@@ -135,21 +146,31 @@ function ids(input: CardInput): Ids {
 
 function answerForm(input: CardInput, t: Tr): CardNode {
   const idea = input.kind === "idea";
+  const min = input.noReasonMin ?? NO_REASON_MIN_DEFAULT;
   const choices = [
     ...(idea ? [] : [{ title: t("teams.choiceYes"), value: "yes" }]),
     { title: t("teams.choiceNo"), value: "no" },
     { title: t("teams.choiceAsk"), value: "ask" },
   ];
+  // The fields of a no sit with the rest: a card cannot hide them until No is picked. The card checks them when it is sent.
   const body: CardNode[] = [
     { type: "Input.ChoiceSet", id: "answer", label: t("teams.answerLabel"), style: "expanded", isRequired: true, errorMessage: t("teams.errorNoText"), choices },
+    {
+      type: "Input.ChoiceSet", id: "category", label: t("teams.categoryLabel"), style: "compact", placeholder: t("teams.categoryPlaceholder"),
+      choices: CARD_NO_CATEGORIES.map((c) => ({ title: t(noCategoryLabel(c)), value: c })),
+    },
     { type: "Input.Text", id: "text", label: t("teams.textLabel"), isMultiline: true, maxLength: ANSWER_TEXT_MAX, errorMessage: t("teams.errorNoText") },
-    tb(t("teams.textHint"), { size: "small", isSubtle: true }),
+    tb(t("teams.textHint", { n: min }), { size: "small", isSubtle: true }),
+    { type: "Input.Text", id: "changeIf", label: t("teams.changeIfLabel"), isMultiline: true, maxLength: CHANGE_IF_MAX },
+    { type: "Input.Date", id: "revisitDay", label: t("teams.revisitLabel") },
   ];
   if (idea) body.push(tb(t("teams.ideaLine"), { size: "small", isSubtle: true }));
+  // Discuss first, Already solved or in work and Send up are not on the card (D22): one button leads to the case.
   const actions: CardNode[] = [
     { type: "Action.Submit", title: t("teams.sendAnswer"), style: "positive", data: { kind: "answer", ...ids(input) } },
   ];
   if (idea && input.link) actions.push(openUrl(t("teams.actionSayYes"), input.link));
+  if (input.link) actions.push(openUrl(t("teams.actionOpen"), input.link));
   return inner(body, actions);
 }
 
@@ -170,8 +191,11 @@ function handOverForm(input: CardInput, t: Tr): CardNode {
         placeholder: t("teams.searchPlaceholder"),
         choices: seats.map((s) => ({ title: clamp(s.label, SHOWN_LABEL_MAX), value: s.id })),
       },
-      { type: "Input.Text", id: "why", label: t("teams.whyLabel"), isMultiline: true, maxLength: WHY_MAX },
-      tb(t("teams.handOverHint"), { size: "small", isSubtle: true }),
+      {
+        type: "Input.Text", id: "why", label: t("teams.whyLabel"), isMultiline: true, maxLength: WHY_MAX, isRequired: true,
+        regex: `^[\\s\\S]{${PASS_REASON_MIN},}$`, errorMessage: t("teams.errorWhyShort", { n: PASS_REASON_MIN }),
+      },
+      tb(t("teams.handOverHint", { n: PASS_REASON_MIN }), { size: "small", isSubtle: true }),
     ],
     [{ type: "Action.Submit", title: t("teams.handOverButton"), style: "positive", data: { kind: "handover", ...ids(input) } }],
   );
@@ -359,7 +383,14 @@ export type Submit = {
   caseId: string;
   cardId: string;
   answer?: "yes" | "no" | "ask";
+  /** The reason of a no, or the question. */
   text?: string;
+  /** A no's category: one the card offers. */
+  category?: CardNoCategory;
+  /** What would make it a yes. */
+  changeIf?: string;
+  /** The date the no comes back, as the card's date input sends it (YYYY-MM-DD): a real calendar date; the caller checks it against the company calendar. */
+  revisitDay?: string;
   toSeatId?: string;
   why?: string;
 };
@@ -379,6 +410,26 @@ function optionalText(v: unknown, max: number): string | undefined | null {
   return s === "" ? undefined : s;
 }
 
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** A date input's value: absent or blank → undefined; anything but a real calendar date YYYY-MM-DD → null (refuse). */
+function optionalDate(v: unknown): string | undefined | null {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  if (s === "") return undefined;
+  const m = ISO_DATE.exec(s);
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.toISOString().slice(0, 10) === s ? s : null;
+}
+
+/** A no's category: absent or blank → undefined; one the card offers → it; anything else (also Already solved or in work, which the card cannot carry) → null (refuse). */
+function optionalCategory(v: unknown): CardNoCategory | undefined | null {
+  if (v === undefined || v === null || v === "") return undefined;
+  return (CARD_NO_CATEGORIES as readonly unknown[]).includes(v) ? (v as CardNoCategory) : null;
+}
+
 /** The data a card sends back, checked; null when it is not one of ours. */
 export function parseSubmit(value: unknown): Submit | null {
   if (!isRecord(value)) return null;
@@ -390,8 +441,18 @@ export function parseSubmit(value: unknown): Submit | null {
     const answer = value.answer;
     if (answer !== "yes" && answer !== "no" && answer !== "ask") return null;
     const text = optionalText(value.text, ANSWER_TEXT_MAX);
-    if (text === null) return null;
-    return { kind, caseId, cardId, answer, ...(text !== undefined ? { text } : {}) };
+    const category = optionalCategory(value.category);
+    const changeIf = optionalText(value.changeIf, CHANGE_IF_MAX);
+    const revisitDay = optionalDate(value.revisitDay);
+    if (text === null || category === null || changeIf === null || revisitDay === null) return null;
+    // The fields of a no mean nothing on a yes or a question: they are not carried along.
+    const no = answer === "no";
+    return {
+      kind, caseId, cardId, answer, ...(text !== undefined ? { text } : {}),
+      ...(no && category !== undefined ? { category } : {}),
+      ...(no && changeIf !== undefined ? { changeIf } : {}),
+      ...(no && revisitDay !== undefined ? { revisitDay } : {}),
+    };
   }
   const toSeatId = idOf(value.toSeatId);
   const why = optionalText(value.why, WHY_MAX);
