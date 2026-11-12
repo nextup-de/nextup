@@ -352,11 +352,12 @@ test.describe("SEE acceptance: the raiser follows the idea and sees why", () => 
       expect(forged, "the same answer as for a case that is not there").toEqual(missing);
       expect(await eventsOf("case.merged", d3)).toHaveLength(0);
 
-      // dup1 absorbed dup2. A merge back into dup2 would be a cycle, and the same merge again a repeat: both are refused. dup1 itself is not merged
-      // away (no chain): the rule is the reducer's, so the server may keep the line as an event, but the case stays open and dup2 stays in it.
+      // dup1 absorbed dup2. A merge back into dup2 would be a cycle, the same merge again a repeat, and merging dup1 itself on into another case a
+      // chain (D25): all three are refused and write nothing.
       expect((await resend(page, template, { target: dup1, into: dup2 })).ok, "a merge back into the merged case").toBe(false);
       expect((await resend(page, template, { target: dup2, into: dup1 })).ok, "the same merge again").toBe(false);
-      await resend(page, template, { target: dup1, into: d3 });
+      expect((await resend(page, template, { target: dup1, into: d3 })).ok, "a case that absorbed another is merged on").toBe(false);
+      expect(await eventsOf("case.merged", dup1)).toHaveLength(0);
       expect(await eventsOf("case.merged", dup2), "dup2's merge is the only one that counts").toHaveLength(1);
       expect(await statusOf(dup1)).toBe("open");
       expect(await statusOf(d3)).toBe("open");
