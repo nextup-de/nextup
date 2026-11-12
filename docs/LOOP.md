@@ -4,6 +4,8 @@
 > The proof of the whole loop is `apps/app/tests/e2e/db/loop.spec.ts`. Since plan SET (SET-Z1) a yes opens a draft; its
 > proof is `apps/app/tests/e2e/db/set.spec.ts`, described in "The yes opens a project draft" below.
 
+Phase additions after REG: see [docs/process/](process/README.md).
+
 The loop: an idea is **raised to a desk**, the desk owes an **answer by a date**, a breached date **hands the case to the
 deputy**, the author sees the **routing**, every yes and no lands in the **decision log**, a yes opens a **project draft** that
 the lead sets up and starts, the project is **measured** with a result a second person **confirms**, and a better confirmed result makes a **reward** due.
