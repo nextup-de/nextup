@@ -9,7 +9,7 @@ import { logFromRows, type EventRow } from "@/features/cases/persist";
 import { reduce, type ReducedCase } from "@/features/cases/reducer";
 import { canOpen, membersForViewer, unitsOf, viewerKeys, type VisMember } from "@/features/cases/visibility";
 import type { ReducedProject } from "@/features/projects/types";
-import { isOpenDraft, mayReadDraft } from "@/features/projects/views";
+import { approverOfDraft, isOpenDraft, mayReadDraft } from "@/features/projects/views";
 import { isPrivateIdea } from "@/features/cases/visibility";
 import type { Seed, SeedCase } from "@/features/demo/types";
 import type { SeedProject } from "@/features/projects/types";
@@ -113,25 +113,32 @@ function holdsDraftEscalation(p: ReducedProject, viewer: LogViewer, seats: reado
  * events themselves are untouched, so a project that has started, and every legacy project, passes unchanged.
  */
 export async function cutDrafts(companyId: string, viewer: LogViewer, rows: EventRow[], seed: Seed, day: number): Promise<EventRow[]> {
-  const drafts = new Set(rows.flatMap((r) => (r.type === "case.decided" && (r.payload as EventPayload | null)?.draft === true ? projectIdOf(r.payload) : [])));
+  // A draft opens with a yes that carries `draft: true`, or with a provisional yes (GAT D21), whose project is the one it names or p_<its event id>.
+  const drafts = new Set(rows.flatMap((r) => {
+    const pl = r.payload as EventPayload | null;
+    if (r.type === "case.decided" && pl?.draft === true) return projectIdOf(r.payload);
+    if (r.type === "case.provisional" && pl?.supplement !== true) return projectIdOf(r.payload).length > 0 ? projectIdOf(r.payload) : [`p_${r.id}`];
+    return [];
+  }));
   if (drafts.size === 0) return rows;
   const seats = await loadSeats(companyId);
   const state = reduce({ ...seed, seats }, logFromRows(rows, day));
+  const me = meFor(viewer.userId, seats);
   const cut = new Map<string, readonly string[]>();
   for (const p of state.projects) {
     if (!drafts.has(p.id) || !isOpenDraft(p)) continue;
     const cases = state.cases.filter((c) => p.sources.includes(c.id));
-    if (mayReadDraft(p, viewer, cases.some(isPrivateIdea)) || holdsDraftEscalation(p, viewer, seats)) continue;
+    if (mayReadDraft(p, viewer, cases.some(isPrivateIdea), approverOfDraft(cases, { role: viewer.role, userId: viewer.userId, me }, state)) || holdsDraftEscalation(p, viewer, seats)) continue;
     cut.set(p.id, cases.some((c) => c.fromUserId === viewer.userId) ? Object.keys(RAISER_SUMMARY) : Object.keys(DRAFT_SUMMARY));
   }
   // The desk's line to the raiser (D23) is for the raiser and the people on the draft, not for everyone who may read the case.
   const noteHeld = (r: EventRow): boolean => {
     const pl = r.payload as EventPayload | null;
-    if (r.type !== "case.decided" || pl?.draft !== true || pl.raiserNote === undefined) return true;
-    const p = state.projects.find((x) => projectIdOf(r.payload).includes(x.id));
+    if ((r.type !== "case.decided" && r.type !== "case.provisional") || (r.type === "case.decided" && pl?.draft !== true) || pl?.raiserNote === undefined) return true;
+    const p = state.projects.find((x) => projectIdOf(r.payload).includes(x.id) || x.id === `p_${r.id}`);
     const cases = state.cases.filter((c) => c.id === r.targetId);
     if (cases.some((c) => c.fromUserId === viewer.userId)) return true;
-    return p !== undefined && (mayReadDraft(p, viewer, cases.some(isPrivateIdea)) || holdsDraftEscalation(p, viewer, seats));
+    return p !== undefined && (mayReadDraft(p, viewer, cases.some(isPrivateIdea), approverOfDraft(cases, { role: viewer.role, userId: viewer.userId, me }, state)) || holdsDraftEscalation(p, viewer, seats));
   };
   const stripped = new Set(rows.filter((r) => !noteHeld(r)).map((r) => r.id));
   if (cut.size === 0 && stripped.size === 0) return rows;

@@ -120,7 +120,6 @@ export function DraftView({ p }: { p: ReducedProject }) {
             <button type="button" className="nh-btn nh-btn-primary" disabled={!view.canStart || !view.may.start || waits || lacks || broken} onClick={() => send("project.started", {}, () => act.project.start(p.id))}>{t("projectDraft.startAction")}</button>
           </span>
         )}
-        {view.baselineWaits && <p className={styles.hint} data-testid="draft-baseline-waits">{t("projectResult.baselineWaits")}</p>}
         {waits && <p className={approvalStyles.note} data-tone="hold" data-testid="draft-start-waits">{t("approvals.permStartWaits")}</p>}
         {lacks && (
           <>
@@ -129,6 +128,7 @@ export function DraftView({ p }: { p: ReducedProject }) {
           </>
         )}
         {broken && <p className={approvalStyles.note} data-tone="hold" data-testid="draft-approver-missing">{t("approvals.approverMissing", { rule: unmet.broken.map(ruleText).join("; ") })}</p>}
+        {view.baselineWaits && <p className={styles.hint} data-testid="draft-baseline-waits">{t("projectResult.baselineWaits")}</p>}
         {!view.canStart && !waits && !lacks && !broken && <p className={styles.hint}>{t("projectDraft.startWait")}</p>}
       </section>
     </div>
