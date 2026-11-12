@@ -3,6 +3,7 @@
 // the ideas list with pinned ones on top, one line per idea: a dashed circle after the title marks a draft, and a title too long
 // for the row glides left on hover so it can be read in full. Collapsible; a drawer on phones. Props in, JSX out.
 import { useRef, useState } from "react";
+import type { WhenGroup } from "@/features/ideas/raise";
 import { useT } from "@/i18n/client";
 import { Icon, Search, Solid } from "./raiseIcons";
 import { Working, type Work } from "./RaisePublish";
@@ -10,7 +11,9 @@ import { PersonButton } from "./RaisePerson";
 import type { Chip } from "./RaiseComposer";
 import s from "./Raise.module.css";
 
-export type IdeaRow = { id: string; title: string; when: string; preview: string; published: boolean; pinned: boolean; current: boolean };
+export type IdeaRow = { id: string; title: string; when: string; group: WhenGroup; preview: string; published: boolean; pinned: boolean; current: boolean };
+
+const GROUPS = [["today", "ideas.sideToday"], ["week", "ideas.sideThisWeek"], ["earlier", "ideas.sideEarlier"]] as const;
 export type DraftCard = {
   title: string; published: boolean; canPublish: boolean; pubHint: string;
   onPublish: () => void; working: Work | null; onRename: (title: string) => void;
@@ -47,11 +50,18 @@ export function RaiseSidebar({ query, onQuery, onHide, card, rows, loaded, onPic
         <button type="button" className={s.newIdea} onClick={onNew}><span className={s.plus}><Icon name="plus" size={7.5} stroke="var(--nh-on-brand)" width={3} /></span>{t("ideas.sideNew")}</button>
       </div>
       <div className={s.ideas}>
-        {/* The "Ideas" heading above names the list; group labels only appear once something is pinned. */}
+        {/* Pinned ones on top, then the rest under small time labels (Today, This week, Earlier) instead of a date per row. */}
         {pinned.length > 0 && <span className={s.group}>{t("ideas.sidePinned")}</span>}
         {pinned.map((r) => <Row key={r.id} r={r} onPick={onPick} onPin={onPin} />)}
-        {pinned.length > 0 && <span className={s.group}>{t("ideas.sideRecent")}</span>}
-        {recent.map((r) => <Row key={r.id} r={r} onPick={onPick} onPin={onPin} />)}
+        {GROUPS.map(([g, label]) => {
+          const inGroup = recent.filter((r) => r.group === g);
+          return inGroup.length > 0 && (
+            <div key={g} className={s.timeGroup} role="group" aria-label={t(label)}>
+              <span className={s.group}>{t(label)}</span>
+              {inGroup.map((r) => <Row key={r.id} r={r} onPick={onPick} onPin={onPin} />)}
+            </div>
+          );
+        })}
         {loaded && !rows.length && <span className={s.ideasEmpty}>{query ? t("ideas.publishNoMatches") : t("ideas.sideEmpty")}</span>}
       </div>
     </div>

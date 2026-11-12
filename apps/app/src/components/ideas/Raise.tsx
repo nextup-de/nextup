@@ -38,7 +38,7 @@ import { useLocale, useT } from "@/i18n/client";
 import { formatDate } from "@/i18n/format";
 import { DEFAULT_LOCALE, LOCALES, translate, type MessageKey } from "@/i18n";
 import { adviceFromReading, dialsFromReading, gapsFromReading, latestReading, proposalOf } from "@/features/ideas/reading";
-import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicLabel, topicsOf, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
+import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicLabel, topicsOf, dayGroup, whenGroup, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { desksFor, otherDesks, type Desk } from "@/features/ideas/desks";
@@ -649,13 +649,13 @@ function RaisePage({ script = false }: { script?: boolean }) {
       const current = stage === "chat" && d.id === draft?.id;
       const last = current ? turns[turns.length - 1] : undefined;
       return {
-        id: d.id, title: d.title, when: whenLabel(d.updatedAt, now, locale), current, pinned: preview.pinned.includes(d.id), published: d.status === "published",
+        id: d.id, title: d.title, when: whenLabel(d.updatedAt, now, locale), group: whenGroup(d.updatedAt, now), current, pinned: preview.pinned.includes(d.id), published: d.status === "published",
         preview: last ? stripTags(last.text) : d.status === "published" ? t("ideas.pageRowPublished") : t("ideas.pageRowContinue"),
       };
     })
     // The Demo data switch: the sample cases this person raised. They have no draft behind them, so a click opens the case.
     .concat(!sampleData ? [] : mineOf(S, me).filter((c) => isSampleId(c.id) && (!needle || c.title.toLowerCase().includes(needle))).map((c) => ({
-      id: c.id, title: c.title, when: f(c.raisedDay), current: false, pinned: false, published: true, preview: t("ideas.pageRowPublished"),
+      id: c.id, title: c.title, when: f(c.raisedDay), group: dayGroup(S.day - c.raisedDay), current: false, pinned: false, published: true, preview: t("ideas.pageRowPublished"),
     })));
 
   const composerChat = (
