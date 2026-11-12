@@ -78,7 +78,8 @@ describe("CLK second level (escalation_days)", () => {
     const out = dues(ORG, DUE + N + 1, first, (roleId, skip) => { asked.push([roleId, skip]); return "seat_head"; });
     expect(out).toEqual([{ kind: "escalation", target: "c_a", dueDay: DUE, toRoleHolderId: "seat_head", idemKey: "clk:escalate:c_a" }]);
     // Above the desk that owes the answer, never the role that holds the case now.
-    expect(asked).toEqual([["role_owner", ["role_deputy"]]]);
+    // The overload area computes the case area's Dues again to leave its hand-overs alone (plan OVL, D29), so the same question comes twice: asked once, answered the same.
+    expect([...new Set(asked.map((a) => JSON.stringify(a)))].map((a) => JSON.parse(a))).toEqual([["role_owner", ["role_deputy"]]]);
   });
 
   it("the fact first, the hand-over a run later, then nothing: once per case", () => {
