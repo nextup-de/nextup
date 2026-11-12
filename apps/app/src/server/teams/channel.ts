@@ -45,6 +45,7 @@ async function cardFor(message: NotifyMessage): Promise<Card> {
     fromUnit: kase.fromDept || kase.from,
     routeLabel: kase.route?.type,
     seats: state.seats.filter((s) => !mine.roleIds.includes(s.roleId)).map((s) => ({ id: s.id, label: s.label })),
+    noReasonMin: state.rules.noReasonMin,
   };
   if (isRaised) return raisedCard(input, message.locale);
   const escalated = kase.escalated;
