@@ -153,12 +153,12 @@ export function useDemo(): DemoContext {
   return c;
 }
 
-// First visit: the URL says which role the visitor meant (/dashboard, /manager or /settings -> manager, /leader -> leader).
+// First visit: the URL says which role the visitor meant (/dashboard, /manager or /settings -> manager, /inbox or /leader -> leader: the one inbox is the leader's home, plan INB D3).
 // Everything else - the front door /[company] included - starts as the employee: the login sends
 // people in there, and the employee's Raise page is where every case begins.
 function roleFromPath(path: string): Role {
   if (path === "/dashboard" || path.startsWith("/dashboard/") || path === "/manager" || path.startsWith("/manager/") || path === "/settings" || path.startsWith("/settings/")) return "manager";
-  if (path === "/leader" || path.startsWith("/leader/")) return "leader";
+  if (path === "/leader" || path.startsWith("/leader/") || path === "/inbox" || path.startsWith("/inbox/")) return "leader";
   return "member";
 }
 
