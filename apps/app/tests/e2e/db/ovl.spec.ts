@@ -8,8 +8,8 @@
 //  2. overflow at 30: desk O (one holder, 30 open cases, route deputy desk D2 held by K2) is at 30 per holder after one clock run; a member raises a new idea
 //     to O on the raise page, whose sent line names K2; one more clock run hands the new case to K2's seat with why "overflow", and the older ones stay;
 //  3. the seat above at 20: desk B (two holders, 40 open cases) is at 20 per holder; the clock writes desk.overloaded once and the holder U of the seat above
-//     (app role member, no seat of B) gets the mail; U sees B on the desk load card in the Inbox with open, per holder and state and no name, passes two of B's cases in
-//     bulk with one why and appoints a cover seat (desk.covered);
+//     (app role member, no seat of B) gets the mail; U sees B on the desk load card in the Inbox with open, per holder and state and no name, appoints a cover seat
+//     (desk.covered) and passes two of B's cases in bulk with one why;
 //  4. triage at 10: desk T (one holder, 10 open cases) shows the triage banner to its holder, who selects two cases and passes them in bulk with one why;
 //  5. pinned: a case the clock escalated to the seat above desk C and nobody touched since is first in the inbox of the holder of that seat, marked, and
 //     counted as pinned on that desk's row of the card; an admin sees every loaded desk on the Dashboard card;
@@ -17,9 +17,9 @@
 //  7. away for someone else (D31): the holder of the seat directly above member M finds M under "Set someone away" on their own profile and sets M away
 //     from today to the next working day; M is told who set it; a company admin ends it from their own profile.
 //
-// Steps 3 (the card, bulk pass, cover), 4 and 5 (the banner, the bulk bar, the pinned mark and the card) and the manager's card use the screens of OVL-U1: the card
-// is on the Dashboard for a company admin and in the Inbox for a leader or member who holds the seat above a desk (OVL D36). They are found by
-// the texts of the overload catalog (i18n/messages/overload.ts) and wait for U1's merge (D35). Everything else is on main with OVL-A1, C1, N1 and R1.
+// The desk load card is on the Dashboard for a company admin and in the Inbox for a leader or member who holds the seat above a desk that can share its load
+// (OVL D36). The seat above appoints the cover first: its two passes take desk B from 20 to 19 per holder, and the seat above may share only while it is up (D28),
+// so the card, and with it the bulk bar's "Done" line, is gone once they went through; the spec reads the passes from the log.
 //
 // Set up in the database where the UI is not the point: the org, the open cases of each desk and the facts of an escalation. What matters for what it shows
 // goes through the UI: the away spans, the take back, the raise to the overflowing desk, the bulk passes, the cover and the profile. Own company, made straight
@@ -414,46 +414,70 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       await m.context().close();
     });
 
-    // ── OVL-U1's screens: the Dashboard card, the triage banner, the bulk bar and the pinned mark ───────────────────
-    // Found by the texts of the catalog (overload.ts); they pass once OVL-U1 is merged (D35).
-    await test.step("U1: the seat above sees desk B on the Inbox card without names, passes two of its cases in bulk and appoints a cover", async () => {
+    // ── OVL-U1's screens: the desk load card, the triage banner, the bulk bar and the pinned mark ──────────────────
+    const cardOf = (page: Page) => page.getByTestId("desk-load");
+    const rowOf = (page: Page, roleId: string) => cardOf(page).locator(`[data-testid="desk-load-row"][data-role="${roleId}"]`);
+    /** The cells of a desk's row: open, per holder, late, pinned. */
+    const cellsOf = (row: ReturnType<typeof rowOf>) => row.locator("td");
+    const noNames = async (page: Page) => {
+      for (const p of PEOPLE) await expect(cardOf(page), `the card names no person (${p.name})`).not.toContainText(p.name);
+    };
+
+    await test.step("the seat above sees desk B on the Inbox card without names, passes two of its cases in bulk and appoints a cover", async () => {
       const page = await signIn(browser, ABOVE);
       // A member cannot open the Dashboard (OVL D36): whoever holds the seat above a desk finds the card for the desks below them in the Inbox.
       await page.goto(`/${SLUG}/dashboard`);
       await expect(page, "the Dashboard stays for managers").not.toHaveURL(/\/dashboard/);
       await page.goto(`/${SLUG}/inbox`);
-      const card = page.locator("section, article, div").filter({ has: page.getByText("Load per desk", { exact: true }) }).last();
-      await expect(card).toBeVisible();
-      const row = card.locator("li, tr, article").filter({ hasText: ROLE.b }).first();
-      await expect(row).toContainText("40");
-      await expect(row).toContainText("20");
+      await expect(cardOf(page)).toBeVisible();
+      const row = rowOf(page, role.b);
+      await expect(row).toHaveAttribute("data-level", "up");
+      await expect(cellsOf(row).nth(1)).toHaveText("40"); // open
+      await expect(cellsOf(row).nth(2)).toHaveText("20"); // per holder
       await expect(row).toContainText("Up");
-      for (const name of PEOPLE.map((p) => p.name)) await expect(card, `the card names no person (${name})`).not.toContainText(name);
-      await expect(card.getByText(ROLE.t), "a desk the viewer is not above is not listed").toHaveCount(0);
+      await noNames(page);
+      await expect(cardOf(page).locator("[data-testid=desk-load-row]"), "only the desk the viewer may share the load of").toHaveCount(1);
 
-      await row.getByRole("button", { name: "Pass cases on in one go" }).click();
-      await bulkPass(page, 2, ROLE.x, PASS_WHY_B);
-      await expect.poll(async () => (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[ABOVE]).length, { message: "two passes under the seat above's name" }).toBe(2);
-      const passed = (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[ABOVE]);
-      for (const e of passed) expect(e.payload).toMatchObject({ why: PASS_WHY_B, toRoleHolderId: seat.x });
-      for (const e of passed) expect(await seatOfCase(e.targetId as string)).toBe(seat.x);
-
-      await row.getByRole("button", { name: "Appoint a cover for the desk" }).click();
-      await page.getByRole("combobox").selectOption({ label: ROLE.d });
-      await page.getByRole("button", { name: "Appoint a cover for the desk" }).last().click();
+      // The cover first: two passes take the desk from 20 to 19 per holder, below "up", and the seat above may share the load only while it is up (D28).
+      await row.getByTestId("desk-appoint-cover").click();
+      await row.getByTestId("desk-cover-seat").selectOption(seat.d);
+      await row.getByTestId("desk-cover-save").click();
       await expect(page.getByText("The cover is set.")).toBeVisible();
       const cover = await eventsOf("desk.covered");
       expect(cover).toHaveLength(1);
       expect(cover[0]).toMatchObject({ actorUserId: id[ABOVE], payload: { roleId: role.b, seatId: seat.d } });
+
+      await row.getByTestId("desk-pass-bulk").click();
+      const bar = row.getByTestId("bulk-bar");
+      await bar.getByRole("checkbox").nth(0).check();
+      await bar.getByRole("checkbox").nth(1).check();
+      await expect(bar.getByTestId("bulk-count")).toHaveText("2");
+      await bar.getByTestId("bulk-seat").selectOption(seat.x);
+      await bar.getByTestId("bulk-text").fill(PASS_WHY_B);
+      await bar.getByTestId("bulk-send").click();
+      // The card goes with the desk's load: once the two passes took it under 20 per holder nothing is left to share, so its "Done" line is gone too.
+      await expect.poll(async () => (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[ABOVE]).length, { message: "two passes under the seat above's name" }).toBe(2);
+      const passed = (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[ABOVE]);
+      for (const e of passed) expect(e.payload).toMatchObject({ why: PASS_WHY_B, toRoleHolderId: seat.x });
+      for (const e of passed) expect(await seatOfCase(e.targetId as string)).toBe(seat.x);
       await page.context().close();
     });
 
-    await test.step("U1: the only holder of desk T sees the triage banner, selects two cases and passes them in bulk with one why", async () => {
+    await test.step("the only holder of desk T sees the triage banner, selects two cases and passes them in bulk with one why", async () => {
       const page = await signIn(browser, TRIAGE);
       await page.goto(`/${SLUG}/inbox`);
-      await expect(page.getByText("Triage the desk's open items")).toBeVisible();
-      await page.getByRole("button", { name: "Select", exact: true }).click();
-      await bulkPass(page, 2, ROLE.x, PASS_WHY_T);
+      await expect(page.getByTestId("inbox-triage")).toContainText("Triage the desk's open items");
+      await expect(page.getByTestId("inbox-triage")).toHaveAttribute("data-level", "triage");
+      await expect(cardOf(page), "a holder of the desk has no share of the load to offer").toHaveCount(0);
+      await page.getByTestId("inbox-select").click();
+      const boxes = page.locator('[data-testid="inbox-row"][data-select="true"] input[type="checkbox"]');
+      await boxes.nth(0).check();
+      await boxes.nth(1).check();
+      const bar = page.getByTestId("bulk-bar");
+      await expect(bar.getByTestId("bulk-count")).toHaveText("2");
+      await bar.getByTestId("bulk-seat").selectOption(seat.x);
+      await bar.getByTestId("bulk-text").fill(PASS_WHY_T);
+      await bar.getByTestId("bulk-send").click();
       await expect.poll(async () => (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[TRIAGE]).length, { message: "two passes under the holder's name" }).toBe(2);
       const passed = (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[TRIAGE]);
       for (const e of passed) expect(e.payload).toMatchObject({ why: PASS_WHY_T, toRoleHolderId: seat.x });
@@ -461,44 +485,27 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       await page.context().close();
     });
 
-    await test.step("U1: the case the seat above left alone is first in its holder's inbox with the pinned mark, and counted as pinned on the desk's row", async () => {
+    await test.step("the case the seat above left alone is first in its holder's inbox with the pinned mark", async () => {
       expect((await stateNow()).cases.find((c) => c.id === pinned)?.assigneeSeatId).toBe(seat.s2);
       const page = await signIn(browser, PIN_ABOVE);
       await page.goto(`/${SLUG}/inbox`);
-      const first = page.getByTestId("inbox-row").first();
+      const first = page.getByTestId("inbox-row").first().locator("xpath=ancestor::li[1]");
       await expect(first).toContainText("Scaffold case");
-      await expect(first).toContainText("Left alone by the seat above");
-      const card = page.locator("section, article, div").filter({ has: page.getByText("Load per desk", { exact: true }) }).last();
-      const row = card.locator("li, tr, article").filter({ hasText: ROLE.s2 }).first();
-      await expect(row).toContainText("Pinned");
-      await expect(row).toContainText("1");
+      await expect(first.getByTestId("inbox-pinned")).toContainText("Left alone by the seat above");
+      await expect(page.getByTestId("inbox-pinned"), "only that case is pinned").toHaveCount(1);
       await page.context().close();
     });
 
-    await test.step("U1: a company admin sees the desk load card on the Dashboard, every loaded desk, without a name", async () => {
+    await test.step("a company admin sees every loaded desk on the Dashboard card, the pinned case counted on its desk, without a name", async () => {
       const page = await signIn(browser, ADMIN);
       await page.goto(`/${SLUG}/dashboard`);
-      const card = page.locator("section, article, div").filter({ has: page.getByText("Load per desk", { exact: true }) }).last();
-      await expect(card).toBeVisible();
-      for (const title of [ROLE.b, ROLE.o, ROLE.t, ROLE.s2]) await expect(card.locator("li, tr, article").filter({ hasText: title }).first(), `desk ${title}`).toBeVisible();
-      for (const p of PEOPLE) await expect(card, `the card names no person (${p.name})`).not.toContainText(p.name);
+      await expect(cardOf(page)).toBeVisible();
+      for (const r of [role.b, role.o, role.t, role.s2]) await expect(rowOf(page, r), `the row of ${r}`).toBeVisible();
+      await expect(rowOf(page, role.o)).toHaveAttribute("data-level", "overflow");
+      await expect(cellsOf(rowOf(page, role.s2)).nth(4), "the pinned case is counted on the desk it sits on").toHaveText("1");
+      await expect(cellsOf(rowOf(page, role.b)).nth(4)).toHaveText("0");
+      await noNames(page);
       await page.context().close();
     });
   });
 });
-
-/**
- * U1's bulk bar: `count` cases selected, Pass on to the desk, one why, confirmed. The bar answers with "Done".
- * The cases are ticked in the list that is open (the inbox in selection mode, or the card's list of the desk's cases).
- */
-async function bulkPass(page: Page, count: number, desk: string, why: string) {
-  const boxes = page.getByRole("checkbox");
-  for (let i = 0; i < count; i++) await boxes.nth(i).check();
-  await page.getByRole("button", { name: "Pass on", exact: true }).click();
-  const picker = page.getByRole("combobox").first();
-  if (await picker.isVisible()) await picker.selectOption({ label: desk });
-  else await page.getByRole("radio", { name: new RegExp(desk) }).first().click();
-  await page.getByLabel("Why", { exact: true }).fill(why);
-  await page.getByRole("button", { name: "Pass on", exact: true }).last().click();
-  await expect(page.getByText("Done", { exact: true }).first()).toBeVisible();
-}
