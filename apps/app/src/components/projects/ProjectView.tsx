@@ -15,11 +15,11 @@ import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { holdsRole } from "@/features/auth/identity";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
-import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, suggestedBaseline, suggestedSteps, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
+import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
-import { withBrainSteps } from "@/features/projects/brain";
-import { useBrainPlan } from "@/lib/use-brain";
 import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";
+import { DraftView } from "./draft/DraftView";
+import { useProjectHints } from "./draft/useProjectHints";
 import { ProjectBoard } from "./ProjectBoard";
 import { NextPanel } from "./ProjectNext";
 import { ProjectSummary } from "./ProjectSummary";
@@ -47,6 +47,8 @@ export function ProjectView({ projectId, jira, tab }: { projectId: string; jira:
       </div>
     );
   }
+  // A draft that has not started is set up on its own page (plan SET); the board comes with the start.
+  if (p.draft && p.status === "planning") return <DraftView p={p} />;
   return <Project p={p} jira={jira} tab={tab} />;
 }
 
@@ -59,16 +61,8 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
   const [now] = useState(() => Date.now());
   const row = jiraRowOf(p, jira ?? (ctx.serverMode ? null : demoJiraView(now)), now, locale);
   const r = useRights(p);
-  // The brief the yes came from: the first source that is a case. An idea gives its KPI instead.
-  const source = S.cases.find((c) => p.sources.includes(c.id));
-  const idea = S.ideas.find((i) => p.sources.includes(i.id));
   const planning = p.status === "planning";
-  // The brain's steps and metric join the brief's own (server mode only); people pick, as with the brief's.
-  const brain = useBrainPlan(ctx.tenant.slug, source?.id ?? null, planning && ctx.serverMode);
-  const stepHints = planning && source ? withBrainSteps(suggestedSteps(source.body, p.steps, locale), brain?.steps ?? [], p.steps) : [];
-  const baseHint = planning
-    ? suggestedBaseline(source?.body ?? "", idea?.criteria.kpi, locale) ?? (brain?.metric ? { metric: brain.metric.name, unit: brain.metric.unit, better: brain.metric.better, goal: "" } : null)
-    : null;
+  const { stepHints, baseHint } = useProjectHints(p);
   const move = nextMove(p, S.day);
   // The lead's own move (a manager may act as lead too, but it is not on their desk), or a reward a manager records.
   const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);

@@ -5,12 +5,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { adminMenuLinks, sectionTabAt, simpleNavFor, type ProjectsTabKey } from "@/config/nav";
+import { adminMenuLinks, sectionTabAt, visibleSimpleNav, type ProjectsTabKey } from "@/config/nav";
 import { ProjectsFrame } from "@/components/projects/ProjectsFrame";
 import { caseIdAt, projectIdAt } from "@/features/projects/sidebar";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { inboxCount, mineRows } from "@/components/dashboard/derive";
+import { inboxTotal, mineRows } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
 import { NavSearch, navLabel } from "./NavSearch";
 import { decisionsWaiting } from "@/features/metrics";
@@ -55,7 +55,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const mine = mineRows(ctx);
   const shipped = mine.filter((m) => m.status === "Shipped").length;
   // Badges: what is waiting on this person right now.
-  const counts = { inbox: inboxCount(ctx), decisions: decisionsWaiting(D).length };
+  const counts = { inbox: inboxTotal(ctx), decisions: decisionsWaiting(D).length };
   // Profile numbers per role: what this person sent (member), what sits on their desk and what they
   // decided (leader), what waits on them (manager). A manager raises nothing, so "0 raised" is noise.
   const decided = D.cases.filter((c) => ctx.actorUserId !== null && c.decided?.byUserId === ctx.actorUserId).length;
@@ -79,7 +79,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
         <NavSearch>{(searchOpen) => (
         <nav ref={navRef} className={styles.nav} aria-label={t("shell.navMain")} inert={searchOpen} aria-hidden={searchOpen}>
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
-          {simpleNavFor(role, ctx.flag).map((n) => {
+          {visibleSimpleNav(role, ctx.flag, counts).map((n) => {
             const href = tenant.prefix + n.href;
             // A case opens from the Overview, so its page counts as the Overview - a tab of Projects while that is on.
             const inOverview = pathname === tenant.prefix + "/overview" || pathname === tenant.prefix + "/idea" || pathname.startsWith(tenant.prefix + "/cases/");
@@ -110,7 +110,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
               </div>
               <div className={styles.meStats}>
                 <span><strong>{persona.role.label}</strong></span>
-                {stats.map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
+                {stats.filter(([n]) => n > 0).map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
               </div>
               {/* Only worth showing when it differs from the header: the employee posts under a handle. */}
               {anon && (

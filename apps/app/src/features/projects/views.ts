@@ -3,9 +3,10 @@
 // facts (and the short sentences built from them) out. The shapes and rules are ./types, ./reduce,
 // ./selectors and ./permissions; this file only reads them.
 import type { Role } from "@/config/roles";
-import { holdsRole, type Me } from "@/features/auth/identity";
+import { holdsRole, type Me, type SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
+import { isPrivateIdea } from "@/features/cases/visibility";
 import type { Initiative, InitiativeStatus } from "@/features/demo/types";
 import { splitBody } from "@/features/ideas/brief";
 import { DEFAULT_LOCALE, translate, type Locale, type T } from "@/i18n";
@@ -24,13 +25,45 @@ export type IdViewer = { role: Role; userId: string | null; me?: Me };
 /** A handle, not a name: the author posted anonymously and stays that way. */
 export const isHandle = (who: string) => who.startsWith("Anonymous");
 
-/** The projects this person may see: a member sees the projects they lead, are on, or whose idea they raised. */
-export function visibleProjectsFor(state: Pick<State, "projects">, v: IdViewer, demo = true): ReducedProject[] {
+/** On the draft itself (D13): its decider, lead, sponsor, followers, members and people invited who have not declined or lapsed. */
+export function onDraft(p: ReducedProject, userId: string | null): boolean {
+  if (userId === null) return false;
+  return p.deciderUserId === userId || p.leadUserId === userId || p.sponsorUserId === userId || p.followerUserIds.includes(userId) || p.memberUserIds.includes(userId)
+    || p.invites.some((i) => i.userId === userId && (i.state === "pending" || i.state === "accepted"));
+}
+
+/** A draft is only for the people on it and, unless the idea is private, managers (D13). `privateIdea`: the raiser made the idea private. */
+export function mayReadDraft(p: ReducedProject, v: IdViewer, privateIdea: boolean): boolean {
+  return onDraft(p, v.userId) || (v.role === "manager" && !privateIdea);
+}
+
+/** A draft that has not started: the only kind D13 hides. A legacy project and a started one are as before. */
+export const isOpenDraft = (p: ReducedProject): boolean => p.draft && p.status === "planning";
+
+/** The projects this person may see: a member sees the projects they lead, are on, or whose idea they raised; a draft only who is on it (D13). */
+export function visibleProjectsFor(state: Pick<State, "projects"> & { cases?: State["cases"] }, v: IdViewer, demo = true): ReducedProject[] {
   const all = demo ? state.projects : state.projects.filter((p) => !p.seed);
-  if (v.role !== "member") return all;
+  const privateIdea = (p: ReducedProject) => p.sources.some((id) => { const c = state.cases?.find((x) => x.id === id); return c !== undefined && isPrivateIdea(c); });
+  const open = all.filter((p) => !isOpenDraft(p) || mayReadDraft(p, v, privateIdea(p)));
+  if (v.role !== "member") return open;
   const id = v.userId;
   if (id === null) return [];
-  return all.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id));
+  return open.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id) || onDraft(p, id));
+}
+
+/** The line a viewer who may not read a draft gets (D13): the lead's seat role and the start day; `roleTitle` says a role's label. */
+export function beingSetUpLine(p: ReducedProject, seats: readonly SeatRow[], roleTitle: (roleId: string) => string = () => ""): { role: string; startDay: number | null } {
+  const seat = p.leadUserId === null ? undefined : seats.find((s) => s.userId === p.leadUserId);
+  return { role: seat ? roleTitle(seat.roleId) : "", startDay: p.startDay };
+}
+
+export type RaiserDraftPanel = { show: boolean; goal: string | null; doneWhen: string | null; brief: string | null; canComment: boolean };
+
+/** What the raiser of the case sees of a draft they are not on (D20): its goal, done-when and brief once set, and one comment box. Nothing for anyone else. */
+export function raiserDraftPanel(p: ReducedProject, viewerUserId: string | null, caseAuthorUserId: string | null): RaiserDraftPanel {
+  const show = isOpenDraft(p) && viewerUserId !== null && viewerUserId === caseAuthorUserId && !onDraft(p, viewerUserId);
+  if (!show) return { show: false, goal: null, doneWhen: null, brief: null, canComment: false };
+  return { show, goal: p.goal?.goal ?? null, doneWhen: p.goal?.doneWhen ?? null, brief: p.goal?.brief || null, canComment: true };
 }
 
 export type ProjectGroup = { key: string; label: string; projects: ReducedProject[] };
@@ -43,12 +76,19 @@ const GROUPS: { key: "planning" | "running" | "measuring" | "measured" | "stoppe
   { key: "stopped", has: ["stopped"] },
 ];
 
-/** The list's groups, in the order a project moves through them. Late ones first, then by number. Empty groups stay (the page hides them). */
-export function groupProjects(list: readonly ReducedProject[], locale: Locale = DEFAULT_LOCALE): ProjectGroup[] {
+/**
+ * The list's groups, in the order a project moves through them. Inside a group the most relevant first: the
+ * reader's own (lead or on the team, by `userId`), then late ones, then the next move due soonest, then by
+ * number. Empty groups stay (the page hides them).
+ */
+export function groupProjects(list: readonly ReducedProject[], locale: Locale = DEFAULT_LOCALE, userId: string | null = null): ProjectGroup[] {
+  const mine = (p: ReducedProject) => userId !== null && (p.leadUserId === userId || p.memberUserIds.includes(userId));
+  const due = (p: ReducedProject) => p.dueDay ?? Infinity;
   return GROUPS.map((g) => ({
     key: g.key,
     label: translate(locale, ("projects.group_" + g.key) as "projects.group_planning"),
-    projects: list.filter((p) => g.has.includes(p.status)).sort((a, b) => Number(b.overdue) - Number(a.overdue) || a.number - b.number),
+    projects: list.filter((p) => g.has.includes(p.status))
+      .sort((a, b) => Number(mine(b)) - Number(mine(a)) || Number(b.overdue) - Number(a.overdue) || due(a) - due(b) || a.number - b.number),
   }));
 }
 

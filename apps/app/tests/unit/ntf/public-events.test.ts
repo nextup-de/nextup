@@ -46,13 +46,10 @@ describe("NTF public events", () => {
     expect(map(answered).map((p) => p.type)).toEqual(["case.answered"]);
   });
 
-  it("a yes that opens a project gives two public events; a no gives one", () => {
-    const yesEvents = map(yes);
-    expect(yesEvents.map((p) => [p.type, p.subject])).toEqual([
-      ["case.decided", { kind: "case", id: "c_a" }],
-      ["project.started", { kind: "project", id: "p_one" }],
+  it("a yes that opens a project and a no each give one public event (the kickoff is project.started, D18)", () => {
+    expect(map(yes).map((p) => [p.type, p.subject, p.data])).toEqual([
+      ["case.decided", { kind: "case", id: "c_a" }, { answer: "yes", projectId: "p_one" }],
     ]);
-    expect(new Set(yesEvents.map((p) => p.id)).size).toBe(2);
     expect(map(no).map((p) => [p.type, p.data])).toEqual([["case.decided", { answer: "no", projectId: null }]]);
   });
 
@@ -71,7 +68,7 @@ describe("NTF public events", () => {
       ...map(raise), ...map(handed), ...map(answered), ...map(yes), ...map(no),
       ...map(started, yes), ...map(done, yes, started), ...map(stopped, yes),
     ];
-    expect(all.length).toBe(9);
+    expect(all.length).toBe(8);
     for (const p of all) expect(() => PublicEvent.parse(p)).not.toThrow();
     const json = JSON.stringify(all);
     const labels = [
@@ -81,5 +78,30 @@ describe("NTF public events", () => {
       "Secret Title", "Somebody Else", "Bob", "Free ", "Lead Label",
     ].filter(Boolean);
     for (const label of labels) expect(json).not.toContain(label);
+  });
+});
+
+describe("SET public kickoff", () => {
+  const draftYes = ev("case.decided", "Owner Label", "u_own", "c_a", { answer: "yes", projectId: "p_one", lead: "Lead Label", leadUserId: "u_raiser", title: "P", draft: true, raiserNote: "Please lead it" });
+
+  it("a yes, draft or not, emits only the public case.decided", () => {
+    for (const e of [yes, draftYes]) {
+      expect(map(e).map((p) => [p.type, p.subject.kind, p.data])).toEqual([["case.decided", "case", { answer: "yes", projectId: "p_one" }]]);
+    }
+  });
+
+  it("project.started is emitted at the project.started event, for a legacy project and for a draft", () => {
+    for (const first of [yes, draftYes]) {
+      const out = map(started, first);
+      expect(out.map((p) => [p.type, p.subject, p.typeVersion, p.id])).toEqual([["project.started", { kind: "project", id: "p_one" }, 1, started.id]]);
+      expect(out[0].data).toEqual({ leadUserId: "u_raiser" });
+      expect(() => PublicEvent.parse(out[0])).not.toThrow();
+    }
+  });
+
+  it("the draft's own events are not public", () => {
+    for (const type of ["project.lead.answered", "project.invited", "project.invite.answered", "project.template", "project.goal", "project.start.moved"] as const) {
+      expect(map(ev(type, "Raiser Label", "u_raiser", "p_one", { take: true, userId: "u_x", role: "member" }), draftYes)).toEqual([]);
+    }
   });
 });
