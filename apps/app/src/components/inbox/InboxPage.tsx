@@ -10,6 +10,7 @@ import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
 import { IdeaDetailPhone } from "@/components/dashboard/leader/IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { BulkBar } from "@/components/overload/BulkBar";
+import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
 import { PageHeader, SectionCard } from "@/components/ui/elements";
 import { inboxCounts, inboxItems, type AgentInboxInput, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
 import { agentForInbox } from "@/features/inbox/sources/agent";
@@ -131,6 +132,8 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
         <span data-testid="inbox-today-part">{t("inbox.todayPart", { n: counts.waiting })}</span>
       </p>
 
+      {/* The seat above a loaded desk cannot open the Dashboard (OVL D36): the same card, for the desks it may share the load of, sits here. */}
+      <DeskLoadCard shareOnly />
       {triage.map((d) => (
         <p key={d.roleId} className={styles.triage} data-testid="inbox-triage" data-level={d.level} role="status">
           <span>{t(d.key)}</span>

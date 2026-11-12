@@ -19,10 +19,15 @@ import styles from "./DeskLoadCard.module.css";
 
 const LEVEL: Record<DeskLevel, MessageKey> = { normal: "overload.load.normal", triage: "overload.load.triage", up: "overload.load.up", overflow: "overload.load.overflow" };
 
-export function DeskLoadCard() {
+/**
+ * `shareOnly`: the card in the Inbox of someone who cannot open the Dashboard (OVL D36): only the desks the viewer may share the load of (`mayShareLoad`, the same
+ * rule that enables the actions), and only on a company with a database, where the actions exist. Nobody without that right sees it there.
+ */
+export function DeskLoadCard({ shareOnly = false }: { shareOnly?: boolean }) {
   const t = useT();
   const { S, seed, role, actorUserId, serverMode, href, showToast } = useDemo();
-  const rows = deskRows(deskLoads(S, S.day), { userId: actorUserId, role }, S, (roleId) => seatAboveRole(seed.seats, seed.roles ?? [], roleId)?.id ?? null);
+  const all = deskRows(deskLoads(S, S.day), { userId: actorUserId, role }, S, (roleId) => seatAboveRole(seed.seats, seed.roles ?? [], roleId)?.id ?? null);
+  const rows = shareOnly ? (serverMode ? all.filter((r) => r.canShare) : []) : all;
   if (rows.length === 0) return null;
   return (
     <section className={styles.card} data-testid="desk-load">
