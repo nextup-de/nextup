@@ -1,7 +1,7 @@
 "use client";
 // Dev panel (bottom-right): switch the persona, view the inbox as another desk holder, advance
 // the demo clock, fill the raise page with a sample idea, demo data on for this tab, delete what this browser added, reset - and, on its own Design
-// page, the design tweaks under review (animations on/off, old round corners, the dot grid - which
+// page, the design tweaks under review (animations on/off, old round corners, blue or black accent, the dot grid - which
 // localhost can save as the default for every device). It stays open
 // while settings change; a click anywhere else or Escape closes it. Demo only - sessions replace it.
 // On the static demo the demo controls sit right under it (DemoControls.tsx).
@@ -18,7 +18,7 @@ import styles from "./DevPanel.module.css";
 
 export function DevPanel() {
   const ctx = useDemo();
-  const { seed, S, role, persona, demo, dev, setDev, leadAs, motion, setMotion, roundCorners, setRoundCorners, dots, dotsCustom, setDots, resetDots } = ctx;
+  const { seed, S, role, persona, demo, dev, setDev, leadAs, motion, setMotion, roundCorners, setRoundCorners, blackAccent, setBlackAccent, dots, dotsCustom, setDots, resetDots } = ctx;
   const [page, setPage] = useState<"demo" | "design">("demo");
   const [saved, setSaved] = useState<string | null>(null); // the "Set as default" outcome
   const canSave = process.env.NODE_ENV === "development"; // the default is a source file: localhost writes it
@@ -69,6 +69,11 @@ export function DevPanel() {
           <button type="button" className={styles.rowBtn} onClick={() => setRoundCorners(!roundCorners)} aria-pressed={roundCorners}>
             <span className={styles.rowTitle}>Round corners (old)</span>
             <span className={styles.track} data-on={roundCorners ? "true" : undefined}><span className={styles.knob} /></span>
+          </button>
+
+          <button type="button" className={styles.rowBtn} onClick={() => setBlackAccent(!blackAccent)} aria-pressed={blackAccent}>
+            <span className={styles.rowTitle}>Black accent (old)</span>
+            <span className={styles.track} data-on={blackAccent ? "true" : undefined}><span className={styles.knob} /></span>
           </button>
 
           <div className={styles.subLabel}>Dot grid</div>

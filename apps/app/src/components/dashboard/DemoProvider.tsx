@@ -123,6 +123,7 @@ export type DemoContext = {
   sampleData: boolean; // the Demo data switch is on and this tab shows the sample data (features/demo/sample-data.ts)
   motion: boolean; setMotion: (on: boolean) => void; // animations on/off, from the dev panel (html[data-motion])
   roundCorners: boolean; setRoundCorners: (on: boolean) => void; // old round corners, from the dev panel (html[data-corners])
+  blackAccent: boolean; setBlackAccent: (on: boolean) => void; // the old black accent instead of blue, from the dev panel (html[data-accent])
   dots: Dots; dotsCustom: boolean; setDots: (patch: Partial<Dots>) => void; resetDots: () => void; // the Ground's dot grid, from the dev panel
   dept: string; setDept: (id: string) => void; matches: (depts: readonly string[]) => boolean; deptName: (id: string) => string;
   q: string; setQ: (q: string) => void;
@@ -315,6 +316,12 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     if (roundCorners) document.documentElement.dataset.corners = "round";
     else delete document.documentElement.dataset.corners;
   }, [roundCorners]);
+  // Black accent is page-wide too: globals.css points the --nh-brand* tokens at black under it.
+  const blackAccent = persisted.prefs.blackAccent ?? false;
+  useEffect(() => {
+    if (blackAccent) document.documentElement.dataset.accent = "black";
+    else delete document.documentElement.dataset.accent;
+  }, [blackAccent]);
   // The dot grid: this browser's values when it has any, else the config default the Ground carries.
   const { dotsStrength, dotSpacing } = persisted.prefs;
   const dotsCustom = dotsStrength !== undefined || dotSpacing !== undefined;
@@ -669,6 +676,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     demo, toggleDemo: () => setPrefs(slug, { demo: !demo }), sampleData,
     motion, setMotion: (on) => setPrefs(slug, { motion: on }),
     roundCorners, setRoundCorners: (on) => setPrefs(slug, { roundCorners: on }),
+    blackAccent, setBlackAccent: (on) => setPrefs(slug, { blackAccent: on }),
     dots, dotsCustom, setDots: (patch) => setPrefs(slug, normalizeDots({ ...dots, ...patch })), resetDots: () => setPrefs(slug, { dotsStrength: undefined, dotSpacing: undefined }),
     dept, setDept: (id) => { setPrefs(slug, { dept: id }); setMenu(false); }, matches: (depts) => dept === "All" || depts.includes(dept), deptName,
     q, setQ, pop, setPop, togglePop: (p) => setPop((cur) => (cur === p ? null : p)),
