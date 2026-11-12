@@ -28,9 +28,8 @@ import type { IdeaProps } from "./IdeaParts";
 import { IdeaDetailPhone } from "./IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
-import { DeptChip, ShowAll, useCapped } from "@/components/ui/elements";
+import { DeptChip } from "@/components/ui/elements";
 import { StatStrip, type Stat } from "@/components/dashboard/shared/primitives";
-import { LIST_TOP } from "@/lib/utils/quiet";
 import { showInboxCase } from "@/lib/demo-controls";
 import { useIdInUrl } from "@/lib/use-url-id";
 import { ProjectDesk } from "@/components/projects/ProjectDesk";
@@ -308,8 +307,6 @@ export function InboxView({ initialId }: { initialId?: string }) {
     };
   })();
   const navIds = shown.map((r) => r.id), at = cid ? navIds.indexOf(cid) : -1;
-  // A long list shows its most urgent few; an open item further down keeps it open.
-  const rowsShown = useCapped(shown, filter + "|" + sort, isOpen && at >= LIST_TOP);
 
   // Filter and Sort: beside the page title, or in the list's own head once an item is open.
   const tools = (
@@ -361,7 +358,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
               <div className={styles.empty}>{t("leader.noIdeasMatch")}</div>
             ) : (
               <ul className={styles.list}>
-                {rowsShown.shown.map((r) => {
+                {shown.map((r) => {
                   const on = isOpen && cid === r.id;
                   return (
                     <li key={r.id}>
@@ -382,7 +379,6 @@ export function InboxView({ initialId }: { initialId?: string }) {
                 })}
               </ul>
             )}
-            <ShowAll list={rowsShown} className={styles.showAll} showAll={(count) => t("common.showAll", { count })} showLess={t("common.showLess")} />
           </div>
         </section>
 

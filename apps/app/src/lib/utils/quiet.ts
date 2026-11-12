@@ -1,6 +1,6 @@
 // The two quiet rules every page follows. A number that is 0 or missing is not shown at all - no "0", no
 // dash. A list longer than LIST_FITS shows its LIST_TOP most relevant items, in the order it was given,
-// and says how many more there are.
+// and says how many more there are. Not the Inbox: every item there carries a promise, so all of it shows.
 
 export const LIST_FITS = 7;
 export const LIST_TOP = 5;

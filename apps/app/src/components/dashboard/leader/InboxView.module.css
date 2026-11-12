@@ -94,8 +94,6 @@
 .hl { position: absolute; top: 0; left: 0; width: 0; height: 0; background: var(--p-hl); border-radius: var(--radius-sm, 12px); opacity: 0; pointer-events: none; box-shadow: 0 4px 12px rgb(10 132 255 / 0.28); will-change: transform; }
 .page:not([data-open="true"]) .hl { display: none; }
 .list { list-style: none; margin: 0; padding: 0; }
-.showAll { margin: 4px 0 12px 16px; } /* "Show all" under the rows, in line with the avatars */
-.page[data-tucked="true"] .showAll { display: none; }
 .row { position: relative; z-index: 1; display: flex; gap: 12px; width: 100%; padding: 0 0 0 16px; border: 0; background: transparent; text-align: left; font: inherit; color: inherit; cursor: pointer; transition: background-color 380ms var(--ease), padding 380ms var(--ease), gap 380ms var(--ease); }
 .row:hover { background: var(--c-hover); }
 .row:focus-visible { outline: 2px solid var(--c-left); outline-offset: -2px; }
