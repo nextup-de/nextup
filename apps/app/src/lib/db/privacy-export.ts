@@ -127,6 +127,25 @@ export async function exportFile(companyId: string, id: string, now: Date): Prom
   return row.status === "ready" && row.file ? Buffer.from(row.file) : null;
 }
 
+/** Of these exports, the ones whose file was downloaded at least once (by the audit log). */
+export async function downloadedExportIds(companyId: string, ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const rows = await getDb().auditEvent.findMany({
+    where: { companyId, action: "audit.privacy.downloaded", targetKind: "export", targetId: { in: ids } },
+    select: { targetId: true }, distinct: ["targetId"],
+  });
+  return new Set(rows.map((r) => r.targetId).filter((id): id is string => id !== null));
+}
+
+/** Marks an admin-only person copy as handed over, once: lands only on a row not marked yet. 1 if it did, else 0. */
+export async function markDelivered(client: ExportClient, companyId: string, id: string, a: { byUserId: string; note: string | null; at: Date }): Promise<number> {
+  const r = await client.dataExport.updateMany({
+    where: { companyId, id, kind: "person", deliverTo: "admin", deliveredAt: null },
+    data: { deliveredAt: a.at, deliveredByUserId: a.byUserId, deliveryNote: a.note },
+  });
+  return r.count;
+}
+
 /** Writes outbox rows through the caller's client, so the mail commits with the export. Same idempotency as enqueue. */
 export async function enqueueIn(client: ExportClient, companyId: string, drafts: OutboxDraft[]): Promise<number> {
   if (drafts.length === 0) return 0;

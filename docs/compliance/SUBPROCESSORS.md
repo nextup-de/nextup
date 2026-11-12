@@ -1,4 +1,4 @@
-Updated 2026-11-04 · Draft for legal review, not legal advice.
+Updated 2026-11-11 · Draft for legal review, not legal advice.
 
 # Sub-processors
 
@@ -21,6 +21,10 @@ masked before it is sent (`docs/ASSISTANT.md`); this reduces risk and is not a g
 
 ## Not sub-processors
 
+- The choice `local`, the model on the company's own stack (`docs/ops/AI_PROVIDER.md`): every model call goes to the
+  stack's brain service and the model server next to it. Nothing leaves the stack, so no DPA date is asked. It counts
+  as hosting of the stack above; a stack whose brain is pointed at a model server elsewhere (`BRAIN_LLM_URL`) adds that
+  server's operator, named per customer.
 - The company's own integrations (Microsoft 365 and Entra at `graph.microsoft.com` and `login.microsoftonline.com`,
   Jira, Teams, SuccessFactors). The customer connects them with its own accounts and it is the customer's decision.
 - NextUp's own platform at admin.sellux.ch: a stack can report bug reports and health to it when `OPS_URL` is set.

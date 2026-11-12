@@ -1,11 +1,12 @@
 // What the console's connectors page reads, for one company id (the guard's). Not a "use server" module.
 import { vaultKey } from "@/features/connectors/vault";
-import { AI_SYSTEM, aiSettings } from "@/features/ai/settings";
+import { AI_SYSTEM, aiSettings, type BrainState } from "@/features/ai/settings";
 import { loadAiBudget } from "@/lib/db/ai-usage";
 import { getDb } from "@/lib/db/client";
 import { M365, countConnections, m365SearchOn } from "@/lib/db/connections";
 import { loadDirectoryStatus } from "@/lib/db/directory-run";
 import { getIntegration, JIRA } from "@/lib/db/integrations";
+import { brainHealth, brainTarget } from "@/server/brain-health";
 import { microsoftEnabledFor } from "@/server/microsoft-login";
 import {
   aiBlockView, directoryBlockView, jiraBlockView, m365BlockView,
@@ -31,10 +32,14 @@ export async function loadConnectors(company: { companyId: string; slug: string 
     // Only for the list of models without a price: the page loads without it.
     loadAiBudget(companyId).catch(() => null),
   ]);
+  const ai = aiSettings(aiRow ? { on: aiRow.on, settings: aiRow.settings } : null, process.env, stage?.stage ?? "demo");
+  // The model on this stack: is the brain there and answering? Asked live only while it is the saved choice;
+  // for the others only whether the stack has one, for the hint when someone picks it.
+  const brain: BrainState = ai.choice === "local" ? await brainHealth() : brainTarget() ? "ok" : "none";
   return {
     jira: jiraBlockView(jiraRow, vault),
     m365: m365BlockView({ on, connected, lastSearchAt: last._max.lastUsedAt, microsoft, vault }),
-    ai: aiBlockView(aiSettings(aiRow ? { on: aiRow.on, settings: aiRow.settings } : null, process.env, stage?.stage ?? "demo"), aiRow?.hasSecret === true, vault, budget?.unpriced ?? []),
+    ai: aiBlockView(ai, aiRow?.hasSecret === true, vault, budget?.unpriced ?? [], brain),
     directory: directoryBlockView(dir, { settings: sfRow?.settings ?? null, hasSecret: sfRow?.hasSecret === true, vault }),
   };
 }

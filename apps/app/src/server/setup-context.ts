@@ -11,6 +11,7 @@ import { loadAiRouting, loadAssistSettings, type AssistSettings } from "@/lib/db
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { connectionStatus } from "@/lib/db/connections";
 import { loadContextRun } from "@/lib/db/context-run";
+import { brainTarget } from "@/server/brain-health";
 import { knowledgeSourcesFor } from "@/server/connectors/knowledge";
 
 export type ContextFacts = { gate: AiGate; key: string | null; assist: AssistSettings; sources: KnowledgeSource[] };
@@ -24,7 +25,7 @@ export async function contextFacts(companyId: string): Promise<ContextFacts | nu
   ]);
   const gate = aiGate({
     stage: company.stage, hasDatabase: true, settings: ai.settings, dpaSignedAt: assist.dpaSignedAt,
-    purpose: "brain", assistantOn: assist.enabled, aiRouting, budget,
+    purpose: "brain", assistantOn: assist.enabled, aiRouting, budget, stackBrain: brainTarget() !== null,
   });
   return { gate, key: ai.key, assist, sources };
 }

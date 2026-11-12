@@ -2,6 +2,8 @@
 //   openai-compatible  POST <endpoint>/chat/completions         Authorization: Bearer <key>
 //   azure-openai       POST https://<endpoint>/openai/v1/chat/completions   api-key: <key>,
 //                      the deployment is the model
+//   local              POST <BRAIN_URL>/v1/chat/completions     x-api-key: <BRAIN_API_KEY>: the model on this stack,
+//                      the brain answers with its own model whatever the body names (services/brain, brain/chat.py)
 // 30 s per request, one retry on a network error, a timeout or a 5xx. Server only.
 import type { AiRequest, AiResponse } from "@nextup/contracts/public";
 import type { Provider, ProviderRun, ProviderResult } from "@/features/assist";
@@ -14,7 +16,10 @@ const MAX_TOKENS = 4000;
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 export type Net = { fetch?: FetchLike; timeoutMs?: number };
 
-type Kind = "azure-openai" | "openai-compatible";
+type Kind = "azure-openai" | "openai-compatible" | "local";
+
+/** The model name sent to the stack's brain: it answers with its own model, whatever the request names. */
+export const STACK_MODEL = "stack";
 
 export function chatUrl(kind: Kind, endpoint: string | null): string {
   if (!endpoint) throw new Error(`The ${kind} endpoint is not set.`);
@@ -22,16 +27,19 @@ export function chatUrl(kind: Kind, endpoint: string | null): string {
     const host = endpoint.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
     return `https://${host}/openai/v1/chat/completions`;
   }
+  if (kind === "local") return `${endpoint.trim().replace(/\/+$/, "")}/v1/chat/completions`;
   return `${endpoint.trim().replace(/\/+$/, "")}/chat/completions`;
 }
 
 export function modelFor(kind: Kind, s: AiSettings): string {
+  if (kind === "local") return STACK_MODEL;
   return kind === "azure-openai" ? s.deployment || s.model : s.model;
 }
 
 function headers(kind: Kind, key: string | null): Record<string, string> {
   if (!key) throw new Error("The API key is not set.");
-  return { "content-type": "application/json", ...(kind === "azure-openai" ? { "api-key": key } : { authorization: `Bearer ${key}` }) };
+  const auth: Record<string, string> = kind === "azure-openai" ? { "api-key": key } : kind === "local" ? { "x-api-key": key } : { authorization: `Bearer ${key}` };
+  return { "content-type": "application/json", ...auth };
 }
 
 class ClientError extends Error {}

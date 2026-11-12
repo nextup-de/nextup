@@ -3,8 +3,10 @@
 //
 //   no database  the local demo: the mock only, and only in a demo stage.
 //   demo stage   our made-up content: on, with the settings.
-//   real stages  the choice must not be off; anything but the mock needs the signed data-processing
-//                agreement; assist needs the assistant switch, routing needs aiRouting.
+//   real stages  the choice must not be off; anything but the mock and the model on this stack (`local`) needs
+//                the signed data-processing agreement; assist needs the assistant switch, routing needs aiRouting.
+//   local        the model on this stack (Q8.4) needs the stack's brain service (stackBrain) wherever there is a
+//                database: every call goes there and nothing leaves the stack, so no agreement is asked.
 //   every stage  a real model is not called once the month's budget is used up (budget.ts, decision Q7.3), or
 //                once its models without a price used their monthly token cap (decision Q7.5);
 //                the callers' fallbacks answer and the rest of the app goes on. The mock is spared only for the
@@ -27,6 +29,8 @@ export function aiGate(a: {
   aiRouting: boolean;
   /** The month's caps and sums (lib/db/ai-usage.ts loadAiBudget); null only where there is no database to count in. */
   budget: GateBudget | null;
+  /** This stack runs the brain service (server/brain.ts brainConfigured). Only `local` asks; left out, there is none. */
+  stackBrain?: boolean;
 }): AiGate {
   const demo = policyFor(a.stage).demoData;
   // Free: the assistant on the mock (the demo stage answers "off" with the mock too), and "off" outside the demo
@@ -45,11 +49,14 @@ export function aiGate(a: {
   if (!a.hasDatabase) {
     return demo ? { on: true, settings: { ...a.settings, choice: "mock" } } : { on: false, why: "The assistant needs the database for its audit trail." };
   }
+  if (a.settings.choice === "local" && !a.stackBrain) {
+    return { on: false, why: "The model on this stack is chosen, but this stack runs no brain service." };
+  }
   if (demo) return usedUp ? USED_UP : { on: true, settings: a.settings };
   if (a.settings.choice === "off") return { on: false, why: "AI is switched off for this company." };
   if (a.purpose === "assist" && !a.assistantOn) return { on: false, why: "The assistant is switched off for this company." };
   if (a.purpose === "routing" && !a.aiRouting) return { on: false, why: "AI routing is switched off for this company." };
-  if (a.settings.choice !== "mock" && !a.dpaSignedAt) return { on: false, why: "The assistant waits for the data-processing agreement." };
+  if (a.settings.choice !== "mock" && a.settings.choice !== "local" && !a.dpaSignedAt) return { on: false, why: "The assistant waits for the data-processing agreement." };
   if (usedUp) return USED_UP;
   return { on: true, settings: a.settings };
 }

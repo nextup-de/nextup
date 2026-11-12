@@ -5,6 +5,7 @@ import type { MessageKey } from "@/i18n";
 import type { ConnectorStatus } from "@/features/connectors/status";
 import { blockers, goLiveChecks, type CheckKey, type GoLiveCheck, type GoLiveInput, type LineValues } from "@/features/pilot/go-live";
 import { SYSTEM_NAME, type Declinable, type Declined } from "./declined";
+import type { HandOver } from "./hand-over";
 import { setupStep, type SetupCounts, type SetupStep } from "./sections";
 
 export type PhaseKey = "server" | "signIn" | "connectors" | "context" | "company" | "open";
@@ -59,6 +60,8 @@ export type SetupFacts = {
   counts: SetupCounts;
   openedAt: Date | null;
   context: ContextStatus;
+  /** The customer's IT confirmed the hand-over on /admin/setup (Q8.6); absent or null while it has not. */
+  handedOver?: HandOver | null;
 };
 
 const canAct = (viewer: SetupViewer, side: "it" | "company") =>
@@ -90,9 +93,19 @@ function unused(it: ItFacts, system: Declinable, line: PhaseLine): PhaseLine {
     : { ...line, decline: { system, declined: false } };
 }
 
-/** Phase 1. The install happens before the app runs, so this only confirms the result. */
-function serverLines(input: GoLiveInput, checks: readonly GoLiveCheck[]): PhaseLine[] {
+/**
+ * Phase 1. The install happens before the app runs, so this only confirms the result. A confirmed hand-over
+ * adds a line that is done; it never holds the phase back, so the server phase can be checked before it.
+ */
+function serverLines(input: GoLiveInput, checks: readonly GoLiveCheck[], handedOver: HandOver | null): PhaseLine[] {
   const backup = check(checks, "backups");
+  const handOver: PhaseLine[] = handedOver
+    ? [{
+      key: "handedOver", status: "done",
+      line: handedOver.by === "entra" ? "settingsSetupPhases.lineHandedOverEntra" : "settingsSetupPhases.lineHandedOverStackAdmin",
+      values: { date: handedOver.at.toISOString() },
+    }]
+    : [];
   return [
     { key: "app", status: "done", line: "settingsSetupPhases.lineAppUp" },
     fromCheck("mail", input.mail === "ok" ? "done" : input.mail === "notConfigured" ? "yourTurn" : "problem", check(checks, "mail")),
@@ -100,6 +113,7 @@ function serverLines(input: GoLiveInput, checks: readonly GoLiveCheck[]): PhaseL
     backup.state === "done" ? fromCheck("backup", "done", backup)
       : input.backup === null ? { key: "backup", status: "waiting", line: "settingsSetupPhases.lineBackupWaiting" }
       : fromCheck("backup", "problem", backup),
+    ...handOver,
   ];
 }
 
@@ -138,7 +152,12 @@ function connectorLines(input: GoLiveInput, it: ItFacts, checks: readonly GoLive
       : unused(it, "jira", { key: "jira", status: "notUsed", line: "settingsSetupPhases.lineJiraOff" }),
   ];
   const agreement = check(checks, "ai");
-  if (ai === "needs") lines.push({ key: "ai", status: "yourTurn", line: "settingsSetupPhases.lineAiNeedsKey" });
+  // The model on this stack needs no key and no agreement, only the stack's brain (go-live.ts says whether it answers).
+  if (input.ai.choice === "local") {
+    lines.push(agreement.state === "done" ? { key: "ai", status: "done", line: "settingsSetupPhases.lineAiLocal" }
+      : agreement.state === "unknown" ? { key: "ai", status: "problem", line: "settingsSetupPhases.lineAiLocalDown" }
+      : { key: "ai", status: "yourTurn", line: "settingsSetupPhases.lineAiLocalNoBrain" });
+  } else if (ai === "needs") lines.push({ key: "ai", status: "yourTurn", line: "settingsSetupPhases.lineAiNeedsKey" });
   // Only an AI that is really off can be declined: a test model or a missing agreement still blocks Open.
   else if (agreement.state === "done" && ai === "off") lines.push(unused(it, "ai", { key: "ai", status: "notUsed", line: "settingsSetupPhases.lineAiOff" }));
   else if (agreement.state === "done") lines.push({ key: "ai", status: "done", line: "settingsSetupPhases.lineAiOn", values: agreement.values });
@@ -190,7 +209,7 @@ export function setupPhases(f: SetupFacts): SetupPhase[] {
     const itPhase = (key: PhaseKey, owner: PhaseOwner, lines: PhaseLine[], path: string | null): SetupPhase =>
       ({ key, owner, lines, status: rollUp(lines), canAct: canAct(f.viewer, "it"), href: path ? itLink(path) : null });
     // Nothing in the app changes the server: the install is in the runbook, so phase 1 has no link.
-    out.push(itPhase("server", "nextupAndIt", serverLines(f.goLive, checks), null));
+    out.push(itPhase("server", "nextupAndIt", serverLines(f.goLive, checks, f.handedOver ?? null), null));
     // Each link goes to the block that has the missing thing: the tenant is on Access, the agreement on Assistant.
     out.push(itPhase("signIn", "customerIt", signInLines(f.goLive, it, checks), f.goLive.microsoftOn ? "/connectors#directory" : "/people#microsoft"));
     const needsAgreement = it.connectors.ai === "on" && check(checks, "ai").state !== "done";

@@ -1,0 +1,24 @@
+/* The hand-over card below the setup phases on /admin/setup. Same card as the phase list. */
+
+.card { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: 0 6px 20px rgb(40 60 100 / 6%); }
+.title { margin: 0; font-size: var(--nh-fs-md); line-height: 20px; font-weight: 600; color: var(--nh-ink); }
+.lead, .note, .done, .error { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; }
+.lead { color: var(--nh-ink-2); }
+.note { color: var(--nh-mute); }
+.done { width: fit-content; padding: 8px 12px; border-radius: 8px; background: var(--nh-ok-tint); color: var(--nh-ok); font-weight: 600; }
+.error { color: var(--nh-danger); }
+
+.end { display: flex; justify-content: flex-end; }
+.primary {
+  display: inline-flex; align-items: center; justify-content: center; height: 36px; padding-inline: 14px; border: 0; border-radius: 8px;
+  background: var(--nh-brand); color: var(--nh-on-brand); font: inherit; font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+.primary:hover { background: var(--nh-brand-hover); }
+.primary:disabled { opacity: 0.6; cursor: default; }
+.primary:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+
+@media (max-width: 760px) {
+  .card { padding: 16px; }
+  .end { justify-content: stretch; }
+  .primary { flex: 1; }
+}

@@ -10,8 +10,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
+from brain.chat import ChatFailed, ChatIn, chat, chat_stream
 from brain.coach import coach
 from brain.config import get_settings
 from brain.llm import LLMClient, LLMOutputError
@@ -115,6 +116,23 @@ async def post_checkin(body: CheckinIn, request: Request) -> CheckinOut:
         log.error("checkin failed: %s", e)
         raise HTTPException(502, "The language model returned invalid output. Please retry.")
     log.info("checkin round=%d said=%d next=%s open=%d ms=%d", body.round, len(body.said), out.next, len(out.open), out.ms)
+    return out
+
+
+@app.post("/v1/chat/completions")
+async def post_chat(body: ChatIn, request: Request):
+    """The model on this stack for the app's free calls (assistant, context draft). Never logs their text."""
+    llm: LLMClient = request.app.state.llm
+    try:
+        if body.stream:
+            events = await run_in_threadpool(chat_stream, llm, body)
+            log.info("chat stream messages=%d tools=%d", len(body.messages), len(body.tools or []))
+            return StreamingResponse(events, media_type="text/event-stream", headers={"cache-control": "no-store"})
+        out = await run_in_threadpool(chat, llm, body)
+    except ChatFailed as e:
+        log.error("chat failed: %s", e)
+        raise HTTPException(502, "The language model did not answer. Please retry.")
+    log.info("chat messages=%d tools=%d", len(body.messages), len(body.tools or []))
     return out
 
 

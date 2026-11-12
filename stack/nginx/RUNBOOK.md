@@ -54,11 +54,11 @@ stores the passwords in admin's vault; see `stack/provision/README.md`. By hand:
    ~/nextup/stack/nginx/add-stack.sh globex 3111 demo
    ```
    It writes `.env` with new secrets on the first run, starts the stack and waits until it's
-   healthy. It prints the admin code, and on the demo stage the demo login codes: every demo
+   healthy. On the demo stage it prints the admin code and the demo login codes: every demo
    stack is seeded with the demo people under its own slug (`--name "Initech GmbH"` sets the name).
 3. The first time only, run the three `sudo` lines it prints (nginx site + certificate).
-4. **Real stage:** open `https://<slug>.sellux.ch/admin` and create the company with the
-   same slug.
+4. **Real stage:** the stack has created the company at its first start; nobody creates it in
+   `/admin`. The console opens with Microsoft, or with a window from `stack/break-glass.sh`.
 
 Running `add-stack.sh` again restarts the stack. It keeps the secrets and picks up new images.
 

@@ -11,7 +11,7 @@ import { loadAiSettings } from "@/lib/db/ai";
 import { loadAiBudget } from "@/lib/db/ai-usage";
 import { loadAiRouting, loadAssistSettings } from "@/lib/db/assist";
 import { getDb, hasDatabase } from "@/lib/db/client";
-import { askBrain } from "@/server/brain";
+import { askBrain, brainConfigured } from "@/server/brain";
 
 const DEFAULT_RAISE_TIMEOUT_MS = 8000;
 
@@ -37,7 +37,7 @@ async function brainProposal(slug: string, companyId: string, payload: EventPayl
   const [ai, assist, aiRouting, budget] = await Promise.all([loadAiSettings(companyId, company.stage), loadAssistSettings(companyId), loadAiRouting(companyId), loadAiBudget(companyId)]);
   const gate = aiGate({
     stage: company.stage, hasDatabase: true, settings: ai.settings,
-    dpaSignedAt: assist.dpaSignedAt, purpose: "routing", assistantOn: assist.enabled, aiRouting, budget,
+    dpaSignedAt: assist.dpaSignedAt, purpose: "routing", assistantOn: assist.enabled, aiRouting, budget, stackBrain: brainConfigured(),
   });
   if (!gate.on) return null;
   const answer = await ask(

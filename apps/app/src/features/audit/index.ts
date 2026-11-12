@@ -49,6 +49,7 @@ export const AUDIT_ACTIONS = [
   "audit.directory.run",
   "audit.directory.scim",
   "audit.access.break_glass",
+  "audit.access.console_signin",
   "audit.access.entra_tenant",
   "audit.access.stack_admin",
   "audit.access.support_granted",
@@ -57,25 +58,30 @@ export const AUDIT_ACTIONS = [
   "audit.access.support_extended",
   "audit.privacy.exported",
   "audit.privacy.downloaded",
+  "audit.privacy.delivered",
   "audit.privacy.pseudonymised",
   "audit.privacy.retention",
   "audit.privacy.retention_run",
   "audit.privacy.screenshots",
   "audit.privacy.audit_exported",
+  "audit.setup.handed_over",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-export const AUDIT_AREAS = ["company", "settings", "member", "token", "connector", "assistant", "directory", "access", "privacy"] as const;
+export const AUDIT_AREAS = ["company", "settings", "member", "token", "connector", "assistant", "directory", "access", "privacy", "setup"] as const;
 export type AuditArea = (typeof AUDIT_AREAS)[number];
 
-/** Who did it. There is no kind for a model (D6). */
-export type ActorKind = "admin" | "console" | "break-glass" | "support" | "platform" | "system" | "directory" | "api-token";
-export const ACTOR_KINDS: readonly ActorKind[] = ["admin", "console", "break-glass", "support", "platform", "system", "directory", "api-token"];
+/**
+ * Who did it. There is no kind for a model (D6). `install` is the stack's first start on the host
+ * (prisma/bootstrap-company.ts, from the values stack/install.sh wrote): nobody is signed in yet.
+ */
+export type ActorKind = "admin" | "console" | "break-glass" | "support" | "platform" | "system" | "directory" | "api-token" | "install";
+export const ACTOR_KINDS: readonly ActorKind[] = ["admin", "console", "break-glass", "support", "platform", "system", "directory", "api-token", "install"];
 
 /** Where the change was made. */
-export type AuditSource = "settings" | "console" | "platform" | "scheduler" | "directory" | "api";
-export const AUDIT_SOURCES: readonly AuditSource[] = ["settings", "console", "platform", "scheduler", "directory", "api"];
+export type AuditSource = "settings" | "console" | "platform" | "scheduler" | "directory" | "api" | "install";
+export const AUDIT_SOURCES: readonly AuditSource[] = ["settings", "console", "platform", "scheduler", "directory", "api", "install"];
 
 export function isAuditAction(s: unknown): s is AuditAction {
   return typeof s === "string" && (AUDIT_ACTIONS as readonly string[]).includes(s);

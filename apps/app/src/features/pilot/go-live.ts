@@ -1,6 +1,7 @@
 // The go-live checks (PIL D9). Pure: lib/db/go-live.ts reads the rows into a GoLiveInput, this file
 // decides. Lines give counts and the names of units, roles and routes, never of people (D3, D4).
 // Dates in `values` are ISO strings; the page formats them.
+import type { BrainState } from "@/features/ai/settings";
 import type { MessageKey } from "@/i18n";
 import type { SettingsSectionKey } from "@/features/settings/sections";
 import { AGREEMENT_NAME, missingAgreements, type Agreements } from "./agreements";
@@ -44,7 +45,8 @@ export type GoLiveInput = {
   /** Active managers who have a login code, and those of them with a confirmed second factor. */
   managers: { withCode: number; withTotp: number };
   mail: "ok" | "notConfigured" | "unreachable";
-  ai: { choice: string; dpaSignedAt: Date | null };
+  /** `brain`: the stack's brain, read only for the model on this stack (`local`); left out it counts as none. */
+  ai: { choice: string; dpaSignedAt: Date | null; brain?: BrainState };
   backup: { at: Date; offbox: boolean } | null;
   supportOpenUntil: Date | null;
   notifications: boolean;
@@ -99,6 +101,12 @@ export function goLiveChecks(i: GoLiveInput): GoLiveCheck[] {
   // ai
   if (i.ai.choice === "off") out.push(check("ai", "needed", "done", "lineAiOff", {}, "signIn"));
   else if (i.ai.choice === "mock") out.push(check("ai", "needed", "needs", "lineAiNeedsMock", {}, "signIn"));
+  // The model on this stack: nothing leaves, so no agreement; it needs the stack's brain, answering (Q8.4).
+  else if (i.ai.choice === "local") {
+    if (i.ai.brain === "ok") out.push(check("ai", "needed", "done", "lineAiLocal", {}, null));
+    else if (i.ai.brain === "down") out.push(check("ai", "needed", "unknown", "lineAiLocalDown", {}, null));
+    else out.push(check("ai", "needed", "needs", "lineAiLocalNoBrain", {}, null));
+  }
   else if (i.ai.dpaSignedAt) out.push(check("ai", "needed", "done", "lineAiDone", { date: iso(i.ai.dpaSignedAt) }, "signIn"));
   else out.push(check("ai", "needed", "needs", "lineAiNeedsAgreement", {}, "signIn"));
 

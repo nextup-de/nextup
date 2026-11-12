@@ -13,7 +13,8 @@
 #   --slug SLUG        the company, e.g. acme (lowercase, digits, dashes; 2-32 chars)
 #   --origin URL       where people reach it: http://localhost:8080, https://acme.sellux.ch
 #   --stage demo|real  demo seeds the demo company, turns on the demo login list and mailpit;
-#                      real starts empty - create the company in /admin with the same slug
+#                      real starts with the company alone: the stack creates it at its first start
+#                      (empty, closed, no people) under --slug and --name
 #   --landing URL      the public site, linked from /admin (optional)
 #   --name NAME        the company's display name; a demo stack is seeded under it (default: slug)
 #   --ops-url URL      admin.sellux.ch, where the bug icon sends tickets. The stack's token comes
@@ -29,7 +30,11 @@
 #   --entra-client-id ID  turn on "Continue with Microsoft": the Entra app registration's client ID.
 #                      The secret comes from the environment variable NEXTUP_ENTRA_CLIENT_SECRET, never
 #                      the command line. Also works on an existing instance: sets the two lines in
-#                      its .env. The company's tenant ID is set afterwards in /admin.
+#                      its .env. The company's tenant ID comes from --entra-tenant-id, or from /admin.
+#   --entra-tenant-id ID  the customer's Entra tenant (Directory) ID. A real stage copies it into its
+#                      company once, at the first start (audited, actor "install"); never over a tenant
+#                      set or removed in /admin. Also works on an existing instance whose company has no
+#                      tenant yet. A demo stage ignores it: its company comes from the seed.
 #   --teams-app-id ID  turn on the Teams bot (ops/teams/README.md): the Azure Bot's Microsoft App ID.
 #   --teams-tenant-id ID  the bot's tenant ID. Both flags go together, and the bot's client secret comes
 #                      from the environment variable NEXTUP_TEAMS_APP_PASSWORD, never the command line.
@@ -52,7 +57,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-slug="" origin="" stage="demo" landing="" n8n=false brain=false brain_cloud=false build=false dir="" proxy_port="" images="" app_replicas="" name="" ops_url="" entra_id="" teams_id="" teams_tenant=""
+slug="" origin="" stage="demo" landing="" n8n=false brain=false brain_cloud=false build=false dir="" proxy_port="" images="" app_replicas="" name="" ops_url="" entra_id="" entra_tenant="" teams_id="" teams_tenant=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --slug) slug="$2"; shift 2 ;;
@@ -62,6 +67,7 @@ while [ $# -gt 0 ]; do
     --name) name="$2"; shift 2 ;;
     --ops-url) ops_url="${2%/}"; shift 2 ;;
     --entra-client-id) entra_id="$2"; shift 2 ;;
+    --entra-tenant-id) entra_tenant="$(printf '%s' "$2" | tr 'A-F' 'a-f')"; shift 2 ;;
     --teams-app-id) teams_id="$2"; shift 2 ;;
     --teams-tenant-id) teams_tenant="$2"; shift 2 ;;
     --n8n) n8n=true; shift ;;
@@ -72,7 +78,7 @@ while [ $# -gt 0 ]; do
     --behind-proxy) proxy_port="$2"; shift 2 ;;
     --images) images="$2"; shift 2 ;;
     --app-replicas) app_replicas="$2"; shift 2 ;;
-    -h|--help) sed -n '2,49p' "$0"; exit 0 ;;
+    -h|--help) awk 'NR > 1 && /^set -euo pipefail/ { exit } NR > 1' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -109,6 +115,11 @@ if [ -n "$entra_id" ]; then
   case "$entra_secret" in
     *'$'* | *'`'* | *'"'* | *"'"* | *\\* | *' '* | *$'\n'* | *$'\r'*) die "NEXTUP_ENTRA_CLIENT_SECRET must not contain \$, quotes, a backtick, a backslash, a space or a line break" ;;
   esac
+fi
+if [ -n "$entra_tenant" ]; then
+  # Same rule as isTenantId() in apps/app/src/features/auth/entra.ts.
+  [[ "$entra_tenant" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] \
+    || die "--entra-tenant-id must be the customer's Directory (tenant) ID (a GUID)"
 fi
 teams_password="${NEXTUP_TEAMS_APP_PASSWORD:-}"
 if [ -n "$teams_id" ] || [ -n "$teams_tenant" ]; then
@@ -295,8 +306,25 @@ fi
 if [ -n "$entra_id" ]; then
   sed -i '/^ENTRA_CLIENT_ID=/d;/^ENTRA_CLIENT_SECRET=/d' "$env_file"
   printf 'ENTRA_CLIENT_ID=%s\nENTRA_CLIENT_SECRET=%s\n' "$entra_id" "$entra_secret" >> "$env_file"
-  echo "Set the Entra app in $env_file - add the company's tenant ID in /admin, and this callback to the app registration:"
+  if [ -n "$entra_tenant" ] || grep -q '^ENTRA_TENANT_ID=.' "$env_file"; then
+    echo "Set the Entra app in $env_file - add this callback to the app registration:"
+  else
+    echo "Set the Entra app in $env_file - add the company's tenant ID (--entra-tenant-id, or /admin), and this callback to the app registration:"
+  fi
   echo "  $origin/login/microsoft/callback"
+fi
+
+# The company's Entra tenant, new or existing instance: the line is set (or replaced) in the .env. The
+# migrate service copies it into the company once (apps/app/src/lib/db/bootstrap-company.ts); a tenant
+# set or removed in /admin is never overwritten. A demo stage's company comes from the seed instead.
+if [ -n "$entra_tenant" ]; then
+  if grep -q '^SEED_DEMO=true$' "$env_file"; then
+    echo "Not setting the Entra tenant: a demo stack's company comes from the seed. Set it in /admin -> Access."
+  else
+    sed -i '/^ENTRA_TENANT_ID=/d' "$env_file"
+    printf 'ENTRA_TENANT_ID=%s\n' "$entra_tenant" >> "$env_file"
+    echo "Set the Entra tenant in $env_file - the company takes it at this start unless /admin already set or removed one."
+  fi
 fi
 
 # The Teams bot, new or existing instance: the three lines are set (or replaced) in the .env, the
@@ -345,7 +373,14 @@ echo
 get() { grep -E "^$1=" "$env_file" | cut -d= -f2-; }
 echo
 echo "NextUp for '$slug' is up:  $(get APP_ORIGIN)"
-echo "  Admin:        $(get APP_ORIGIN)/admin   code: $(get ADMIN_ACCESS_CODE)"
+# The shared code opens /admin on a demo stage only (adminSignIn); a real stage never shows it.
+if [ "$(get SEED_DEMO)" = true ]; then
+  echo "  Admin:        $(get APP_ORIGIN)/admin   code: $(get ADMIN_ACCESS_CODE)"
+else
+  echo "  Admin:        $(get APP_ORIGIN)/admin   with Microsoft (Entra role NextUp.Admin) or a console admin's code"
+  echo "                no way in yet? the host's operator opens a window:"
+  echo "                stack/break-glass.sh $slug open --hours 2 --reason \"<why>\""
+fi
 if [ "$(get SEED_DEMO)" = true ]; then
   "${compose[@]}" logs --no-log-prefix migrate 2>/dev/null | sed -n '/^login codes/,$p' | sed 's/^/  /' || true
 fi

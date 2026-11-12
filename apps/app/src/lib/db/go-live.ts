@@ -5,6 +5,8 @@ import { signsOutOnMove, type Stage } from "@/features/admin/stages";
 import { blockers, goLiveChecks, type GoLiveCheck, type GoLiveInput } from "@/features/pilot/go-live";
 import { canOpen, type OpenRefusal } from "@/features/pilot/open";
 import { setupStep } from "@/features/settings/sections";
+import type { BrainState } from "@/features/ai/settings";
+import { brainHealth } from "@/server/brain-health";
 import { settingsActor, recordAudit } from "@/server/audit/record";
 import { listAudit } from "./audit";
 import { loadAgreements } from "./agreements";
@@ -20,6 +22,8 @@ export const PILOT_REPORT_TEMPLATE = "pilot.report";
 export type GoLiveDeps = {
   mailStatus: () => Promise<{ configured: boolean; reachable: boolean | null }>;
   readBackupStatus: () => Promise<{ at: Date; offbox: boolean } | null>;
+  /** The stack's brain, asked only when the company chose the model on this stack. Left out: server/brain-health.ts. */
+  brainStatus?: () => Promise<BrainState>;
 };
 
 export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLiveDeps): Promise<GoLiveInput> {
@@ -42,6 +46,7 @@ export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLive
     deps.mailStatus().catch(() => ({ configured: true, reachable: false as boolean | null })),
     deps.readBackupStatus().catch(() => null),
   ]);
+  const brain = ai.settings.choice === "local" ? await (deps.brainStatus ?? brainHealth)().catch((): BrainState => "down") : undefined;
   // A deactivated person does not own a route: only holders whose user is active count.
   const activeIds = new Set(users.map((u) => u.id));
   const withUser = new Set(seats.filter((s) => s.userId !== null && activeIds.has(s.userId)).map((s) => s.roleId));
@@ -56,7 +61,7 @@ export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLive
     microsoftOn: company.entraTenantId !== null,
     managers: { withCode: managers.length, withTotp: managers.filter((u) => u.totpEnabledAt).length },
     mail: !mail.configured ? "notConfigured" : mail.reachable === true ? "ok" : "unreachable",
-    ai: { choice: ai.settings.choice, dpaSignedAt: config?.dpaSignedAt ?? null },
+    ai: { choice: ai.settings.choice, dpaSignedAt: config?.dpaSignedAt ?? null, ...(brain ? { brain } : {}) },
     backup,
     supportOpenUntil: grant?.expiresAt ?? null,
     notifications: config?.notifications ?? false,

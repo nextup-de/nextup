@@ -56,6 +56,7 @@ import { teams } from "./messages/teams";
 import { settingsTeams } from "./messages/settingsTeams";
 import { settingsSignIn } from "./messages/settingsSignIn";
 import { ssoLogin } from "./messages/ssoLogin";
+import { inbox } from "./messages/inbox";
 
 export const en = {
   common: common.en,
@@ -115,4 +116,5 @@ export const en = {
   settingsSupport: settingsSupport.en,
   settingsGoLive: settingsGoLive.en,
   settingsPilotReport: settingsPilotReport.en,
+  inbox: inbox.en,
 } as const;
