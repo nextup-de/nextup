@@ -11,7 +11,7 @@ const names: PromiseNames = { holderRole: "Quality lead Süd", holderPeople: ["L
 
 const base: AnswerPromise = {
   dueDay: 10, dueDate: "2026-03-11", state: "waiting", holder: "owner", holderRoleId: "r", holderSeatId: "s",
-  handedDay: null, escalatedRoleId: null, answeredDay: null,
+  handedDay: null, escalatedRoleId: null, answeredDay: null, expectedBy: null,
 };
 
 describe("LOOP promise text", () => {
