@@ -112,11 +112,11 @@ describe("NTF digest and opt-in", () => {
 
   it("the profile action's logic stores the pref for the viewer only and switches a template off", async () => {
     const viewer = { userId: pilot.other, companySlug: pilot.slug };
-    const c = prefChange(viewer, pilot.slug, "reminder.deadline", false);
+    const c = prefChange(viewer, pilot.slug, "reminder.checkin", false);
     expect(c.ok).toBe(true);
     if (c.ok) await setPref(pilot.id, c.userId, c.template, c.on);
     const stored = await prefsOf(pilot.id, [pilot.other, pilot.ownerId]);
-    expect(stored.find((r) => r.userId === pilot.other)).toEqual({ userId: pilot.other, template: "reminder.deadline", on: false });
+    expect(stored.find((r) => r.userId === pilot.other)).toEqual({ userId: pilot.other, template: "reminder.checkin", on: false });
     // Nothing was written for the owner by the other person's choice.
     expect(stored.filter((r) => r.userId === pilot.ownerId)).toEqual([{ userId: pilot.ownerId, template: "digest", on: true }]);
     // Another company's slug, no session or a template that is not switchable stores nothing.
