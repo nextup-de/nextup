@@ -161,12 +161,12 @@ describe("TMS acceptance", () => {
     expect(await db.outboxMessage.count({ where: { companyId, recipientUserId: holderId, channel: "mail", template: "reminder.deadline" } })).toBe(0);
 
     // 4. The holder answers no on the card: one case.decided with the reason.
-    const answer = { ...envelope(HOLDER_AAD, "personal"), type: "message", value: { kind: "answer", caseId: "c_tmsz-r1", cardId: "card-1", answer: "no", text: "Too costly this quarter" } };
+    const answer = { ...envelope(HOLDER_AAD, "personal"), type: "message", value: { kind: "answer", caseId: "c_tmsz-r1", cardId: "card-1", answer: "no", category: "no-budget", text: "Too costly this quarter, the budget for tools is already spent." } };
     expect((await post(answer)).status).toBe(200);
     const decided = await db.caseEvent.findMany({ where: { companyId, type: "case.decided", targetId: "c_tmsz-r1" } });
     expect(decided).toHaveLength(1);
     expect(decided[0]).toMatchObject({ actorUserId: holderId, source: "teams" });
-    expect(decided[0].payload).toMatchObject({ answer: "no", reason: "Too costly this quarter" });
+    expect(decided[0].payload).toMatchObject({ answer: "no", category: "no-budget", reason: "Too costly this quarter, the budget for tools is already spent." });
 
     // 5. The member raises from the message extension: fetchTask, then submitAction.
     const invoke = (name: string, value: unknown) => ({ ...envelope(MEMBER_AAD, "groupChat"), type: "invoke", name, value });
