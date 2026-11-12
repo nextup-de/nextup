@@ -2,6 +2,7 @@
 // Teams, Jira and Microsoft 365 off (D4). One test, one project, the steps of the plan:
 //  1. before the start a reward is possible, so the baseline waits for a second person (D16): the lead's start is refused; the lead and who
 //     typed the number may not confirm it, the sponsor does in the UI; then the lead starts the project;
+//     where the lead is the only holder of the route's deputy seat that seat counts as empty (D30), and a manager confirms instead;
 //  2. two steps on the board; the Done sheet refuses Done until one step is finished and the other dropped with a reason (D13), and so does the server;
 //  3. at the first check the lead types a number; the deputy of the route sends it back with a reason (D14), the lead hears of it and enters it again;
 //     a confirmation that names the number before the replacement is refused; the sponsor confirms the new number (D15): the lead and the raiser
@@ -51,6 +52,7 @@ const DEPUTY_ROLE = "Line lead";
 const LEAD_ROLE = "Setter";
 const TEAM_ROLE = "Operator";
 const TOP_ROLE = "Plant manager";
+const SOLO_ROLE = "Solo deputy"; // the deputy role of the second route, held by the lead alone
 
 const TITLE = "Crane queue at the changeover";
 const STEP_DONE = "Measure the crane queue";
@@ -65,6 +67,7 @@ const SECOND = 28; // the number the lead enters again, and the sponsor confirms
 const codes = new Map<string, string>();
 let companyId = "";
 let routeKey = "r-res";
+let soloRouteKey = "r-res-solo";
 let n = 0;
 type Person = "raiser" | "desk" | "deputy" | "lead" | "sponsor" | "member" | "manager";
 const id: Record<Person, string> = { raiser: "", desk: "", deputy: "", lead: "", sponsor: "", member: "", manager: "" };
@@ -166,6 +169,11 @@ test.describe("RES acceptance: a result that closes properly", () => {
     for (const [name, uid] of [[MEMBER, id.member], [SPONSOR, id.sponsor]] as const) await addSeat(companyId, teamRole, name, uid);
     routeKey = "r-res";
     await saveRoute(companyId, "res-z1", { key: routeKey, type: "Changeover", keywords: ["changeover", "crane"], ownerRoleId: ownerRole, deputyRoleId: deputyRole, buddyRoleId: null, wait: "3 d" });
+    // A second route whose deputy desk is held by the lead alone (D30): nobody on that desk may confirm the lead's baseline.
+    const soloRole = await role(SOLO_ROLE, topRole);
+    await addSeat(companyId, soloRole, LEAD, id.lead);
+    soloRouteKey = "r-res-solo";
+    await saveRoute(companyId, "res-z1", { key: soloRouteKey, type: "Packing", keywords: ["packing", "pallet"], ownerRoleId: ownerRole, deputyRoleId: soloRole, buddyRoleId: null, wait: "3 d" });
 
     // The rules: a reward is possible (measure and recognition on, the default thanks), and one measure check, so one result settles the project.
     await saveLoopRules(companyId, { ...(await loadLoopRules(companyId)), measureDays: [CHECK_DAYS] });
@@ -207,6 +215,16 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await append("project.goal", LEAD, id.lead, projectId, { goal: `${TITLE}: halve the waiting`, doneWhen: "Three shifts in a row without waiting for the crane" });
     const baselineId = await append("project.baseline", LEAD, id.lead, projectId, { metric: "Waiting", unit: "min", value: BASELINE, better: "down", source: "Stopwatch" });
 
+    // ── a second draft: the lead holds the route's deputy desk alone (D30) ───────────────────────────────────────────────
+    const soloCase = `${SLUG}-case-solo`;
+    const soloProject = `${SLUG}-p-solo`;
+    const SOLO_TITLE = "Pallet labels at goods out";
+    await append("case.raised", RAISER, id.raiser, soloCase, { kind: "idea", title: SOLO_TITLE, body: "The labels peel off in the cold store.", assignee: DESK, fromDept: UNIT, routeId: soloRouteKey, visibility: "everyone" });
+    await append("case.decided", DESK, id.desk, soloCase, { answer: "yes", projectId: soloProject, lead: LEAD, leadUserId: id.lead, title: SOLO_TITLE, draft: true });
+    await append("project.lead.answered", LEAD, id.lead, soloProject, { take: true });
+    await append("project.goal", LEAD, id.lead, soloProject, { goal: `${SOLO_TITLE}: labels that stay`, doneWhen: "No label comes off in a week" });
+    const soloBaseline = await append("project.baseline", LEAD, id.lead, soloProject, { metric: "Labels lost", unit: "per week", value: 12, better: "down", source: "Count" });
+
     // ── the baseline waits for a second person ─────────────────────────────────────────────────────────────────────────
     await test.step("the lead cannot start: the baseline waits for the sponsor or the route's deputy, and neither the lead nor who typed it may confirm it", async () => {
       page = await signIn(browser, LEAD);
@@ -221,6 +239,34 @@ test.describe("RES acceptance: a result that closes properly", () => {
       expect(await verdictFor(lead, "project.baseline.confirmed", projectId, { baselineEventId: baselineId }), "the lead confirms the baseline").toMatchObject({ ok: false });
       expect(await verdictFor(lead, "project.started", projectId, {}), "the start before the confirmation").toMatchObject({ ok: false });
       expect(await eventsOf("project.started", projectId)).toHaveLength(0);
+    });
+
+    await test.step("D30: the lead is the only holder of the route's deputy seat and there is no sponsor, so the seat counts as empty and a manager confirms the baseline", async () => {
+      const other = { name: DEPUTY, id: id.deputy, role: "leader" as const }; // holds the other route's deputy seat, not this one
+      const manager = { name: MANAGER, id: id.manager, role: "manager" as const };
+      const lead = { name: LEAD, id: id.lead, role: "leader" as const };
+      expect(await verdictFor(lead, "project.baseline.confirmed", soloProject, { baselineEventId: soloBaseline }), "the lead holds the seat but may not confirm").toMatchObject({ ok: false });
+      expect(await verdictFor(other, "project.baseline.confirmed", soloProject, { baselineEventId: soloBaseline }), "the deputy of another route").toMatchObject({ ok: false });
+      expect(await verdictFor(manager, "project.baseline.confirmed", soloProject, { baselineEventId: soloBaseline }), "a manager, the deputy desk being empty").toMatchObject({ ok: true });
+      // And the manager does not confirm where the deputy desk is staffed by somebody else (the first project).
+      expect(await verdictFor(manager, "project.baseline.confirmed", projectId, { baselineEventId: baselineId }), "a manager where the deputy and the sponsor exist").toMatchObject({ ok: false });
+
+      page = await signIn(browser, LEAD);
+      await page.goto(`/${SLUG}/projects/${soloProject}`);
+      await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
+      await page.context().close();
+
+      page = await signIn(browser, MANAGER);
+      await page.goto(`/${SLUG}/projects/${soloProject}`);
+      await page.getByTestId("baseline-confirm").click();
+      await expect.poll(async () => (await eventsOf("project.baseline.confirmed", soloProject)).length).toBe(1);
+      expect((await eventsOf("project.baseline.confirmed", soloProject))[0]).toMatchObject({ actorUserId: id.manager });
+      await page.context().close();
+
+      page = await signIn(browser, LEAD);
+      await page.goto(`/${SLUG}/projects/${soloProject}`);
+      await expect(page.getByRole("button", { name: "Start the project" })).toBeEnabled();
+      await page.context().close();
     });
 
     await test.step("the sponsor confirms the baseline in the UI; the lead is told and starts the project", async () => {
