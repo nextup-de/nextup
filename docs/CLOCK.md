@@ -1,5 +1,7 @@
 # The company clock
 
+Phase additions after REG: see [docs/process/](process/README.md).
+
 Every event carries a `day`, and the log carries today's `day`. What that number means depends on the company's stage.
 
 ## Two modes
@@ -24,6 +26,28 @@ result's date (the day it was typed plus `CONFIRM_DAYS`, 5) and has no seat: it 
 falls due `CONFIRM_ESCALATE_DAYS` (3) later and names the seat above the deputy's desk in `toRoleHolderId`; that seat's
 role may confirm from then on. It is only written when someone sits above, and never names the desk of the lead or of
 who typed the number. Keys: `clk:confirm:<project>:<dueDay>:<check>`. A confirmed result, or a stopped project, is not chased.
+
+## A project draft
+
+A yes that opened a draft (plan SET) has three clocks, all derived from the draft's history (`draftDue`,
+`features/clock/kinds/project.ts`). A legacy project (no `draft`) gets none of them.
+
+| Kind | Falls due | What it does |
+|---|---|---|
+| `lead` | `LEAD_REMIND_DAYS` (2) working days after the lead was asked (the yes, or a hand-over that changed the lead) | a fact: reminds the lead to take or decline |
+| `lead`, `lapse` | `LEAD_RETURN_DAYS` (4) after the ask | the scheduler writes `project.lead.answered {take: false, lapsed: true, askId}` as `system:clock`: the draft goes back to the decider, who leads it |
+| `invite` | `INVITE_REMIND_DAYS` (2) after an invitation | a fact: reminds the person to accept or decline (not for a follower) |
+| `invite`, `lapse` | `INVITE_LAPSE_DAYS` (5) after it | the scheduler writes `project.invite.answered {take: false, lapsed: true}`; the lead may invite someone else |
+| `draft` | the draft's start day: the company rule `project_start_days` (default 10) working days after the lead took it | a fact with `toRoleHolderId`: the lead is told and the draft goes to the seat above the lead's seat |
+| `draft`, `check` 3 | `DRAFT_UP_DAYS` (3) working days after the start day | one more fact, to that seat only |
+
+The lead's lapse and an invitation's lapse are events, so they are written after the facts of the same run
+(`projectAfterFacts`). Waiting for the lead's answer does not count against the lead: before the lead takes the draft it
+has no start day. Every fact belongs to one cycle (the ask, the invitation, the start day). A new ask, a new invitation or a
+moved start (`project.start.moved`) gets its own deadlines, and an old fact neither stops nor brings forward the new one.
+Keys: `clk:lead:<project>:<ask id>` and `clk:invite:<project>:<invite id>`, each with a `:lapse` twin, and
+`clk:draft:<project>:<start day>` (`:3` for the second), with `:m<event id>` after a new cycle. A started, stopped or recognised
+project is not chased. An invitation after the start is chased the same way.
 
 ## A desk nobody sits at
 

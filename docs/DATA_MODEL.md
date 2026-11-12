@@ -2,6 +2,8 @@
 
 > **Updated 2026-11-06** · reference. The source of truth is `apps/app/prisma/schema/` (one file per area, see `adr/0007-areas.md`); the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
 
+Phase additions after REG: see [docs/process/](process/README.md). The event types are declared per area in `apps/app/src/features/cases/events/` (`case`, `project`, `agent`, `approval`, `overload`).
+
 Everything is scoped by company. Today (Phase 1) the only store is
 `src/features/tenant/demo-companies.ts`: `slug, name, mark, anonymousHandles, users[]` with
 users `id, name, email, role (manager|leader|member), dept, handle?`. TypeScript types for the
