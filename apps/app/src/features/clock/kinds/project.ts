@@ -7,7 +7,7 @@ import type { ReducedProject } from "@/features/projects/types";
 import type { Due, DueKind, SeatAbove } from "../due";
 import { hasFact, idemKeyOf, targetSeat } from "./shared";
 
-export const PROJECT_DUE_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft"] as const;
+export const PROJECT_DUE_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"] as const;
 export type ProjectDueKind = (typeof PROJECT_DUE_KINDS)[number];
 
 /** A draft's lead has not answered: a reminder after this many working days ... */
@@ -20,6 +20,24 @@ export const INVITE_REMIND_DAYS = 2;
 export const INVITE_LAPSE_DAYS = 5;
 /** A draft past its start day went to the seat above: one more reminder to that seat this many working days later (decision D15). */
 export const DRAFT_UP_DAYS = 3;
+
+// A project that keeps moving (plan MOV, D27): working days, the logic is MOV-D1's.
+/** A step is late for its lead this many working days after its due day. */
+export const LATE_LEAD_DAYS = 2;
+/** A running project with no activity for this many working days: a reminder to the lead (D12). */
+export const QUIET_DAYS = 5;
+/** Still nothing this many working days after the quiet fact: the sponsor's desk (D12). */
+export const STALLED_DAYS = 3;
+/** No weekly update this many working days after the check-in day: one reminder to the lead (D21). */
+export const UPDATE_REMIND_DAYS = 2;
+/** Still no lead this many working days after project.lead.vacated (D14). */
+export const VACANT_DAYS = 5;
+/** A pause lasts at most this many working days (D20). */
+export const PAUSE_MAX_DAYS = 20;
+/** A started project without a goal date is done by this many working days after its start (D19). */
+export const DONE_BY_DEFAULT_DAYS = 30;
+/** A step on Blocked tells the lead after this many working days when the company set no blocked_days (D18). */
+export const BLOCKED_DAYS_DEFAULT = 3;
 
 /** Has this cycle's fact been written: a clock.due of that kind and day, with the payload fields in `match` (the ask, the invitation), appended at or after history index `since`. */
 const hasCycleFact = (history: readonly CaseEvent[], kind: DueKind, dueDay: number, match: Partial<EventPayload>, since = 0, check?: number): boolean =>

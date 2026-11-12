@@ -32,7 +32,7 @@ describe("REG clock split", () => {
     expect([...DUE_KINDS].sort()).toEqual([...snapshot.dueKinds].sort());
     expect(new Set(DUE_KINDS).size).toBe(DUE_KINDS.length);
     expect([...CASE_DUE_KINDS]).toEqual(["deadline", "checkin", "handover", "escalation", "question", "unanswered", "triage", "revisit", "appeal", "view"]);
-    expect([...PROJECT_DUE_KINDS]).toEqual(["start", "measure", "confirm", "lead", "invite", "draft"]);
+    expect([...PROJECT_DUE_KINDS]).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"]);
     for (const none of [AGENT_DUE_KINDS, APPROVAL_DUE_KINDS, OVERLOAD_DUE_KINDS]) expect(none).toEqual([]);
   });
 
