@@ -148,6 +148,68 @@ export async function cutDrafts(companyId: string, viewer: LogViewer, rows: Even
 }
 
 /**
+ * The edges between cases (plan SEE, D15 to D17): the case a raise follows or looked like, the case a merge closed into and its note, the
+ * case a link names. A viewer's log keeps an edge only when the viewer may open the case at its far end: a person who may open A but not B
+ * must not receive B's id, nor the desk's note about it, and opening A never grants B (a follow, a merge or a link widens nobody's access).
+ * The reducer builds the other side (followedBy, mergedIn, links) from the events it is given, so an edge from a case the viewer cannot
+ * open is not in the log at all. Pure over the rows: `visible` holds the ids the viewer may open.
+ */
+export function cutRelations(rows: EventRow[], visible: ReadonlySet<string>): EventRow[] {
+  const shown = (id: unknown): boolean => typeof id === "string" && visible.has(id);
+  return rows.flatMap((r): EventRow[] => {
+    const pl = (r.payload ?? {}) as EventPayload;
+    if (r.type === "case.raised") {
+      const proposal = pl.proposal;
+      const hidden = (pl.follows !== undefined && !shown(pl.follows)) || (proposal !== undefined && ((proposal.sameAs != null && !shown(proposal.sameAs)) || (proposal.related ?? []).some((id) => !shown(id))));
+      if (!hidden) return [r];
+      const next: EventPayload = { ...pl };
+      if (pl.follows !== undefined && !shown(pl.follows)) delete next.follows;
+      if (proposal !== undefined) {
+        const { sameAs, related, ...route } = proposal;
+        next.proposal = { ...route, ...(sameAs !== undefined ? { sameAs: sameAs === null || shown(sameAs) ? sameAs : null } : {}), ...(related !== undefined ? { related: related.filter(shown) } : {}) };
+      }
+      return [{ ...r, payload: next }];
+    }
+    if (r.type === "case.merged" && !shown(pl.into)) {
+      // The target and the note about it: what is left is that the desk closed the case as a duplicate.
+      const { into, note, ...rest } = pl;
+      void into; void note;
+      return [{ ...r, payload: rest }];
+    }
+    if (r.type === "case.linked" && !shown(pl.to)) return [];
+    return [r];
+  });
+}
+
+/** The ids among `ids` this viewer may open, by the CaseView rows of this company only (a foreign or unknown id is never among them). */
+async function openableAmong(companyId: string, viewer: LogViewer, ids: readonly string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const mine = new Set(await keysOf(companyId, viewer));
+  const rows = await getDb().caseView.findMany({ where: { companyId, caseId: { in: [...ids] } }, select: { caseId: true, accessKeys: true } });
+  return new Set(rows.filter((r) => r.accessKeys.some((k) => mine.has(k))).map((r) => r.caseId));
+}
+
+/** Every case id the relation fields of these rows name. */
+function relationTargets(rows: readonly EventRow[]): string[] {
+  const out = new Set<string>();
+  for (const r of rows) {
+    const pl = (r.payload ?? {}) as EventPayload;
+    if (r.type === "case.raised") {
+      for (const id of [pl.follows, pl.proposal?.sameAs, ...(pl.proposal?.related ?? [])]) if (typeof id === "string") out.add(id);
+    } else if (r.type === "case.merged" && typeof pl.into === "string") out.add(pl.into);
+    else if (r.type === "case.linked" && typeof pl.to === "string") out.add(pl.to);
+  }
+  return [...out];
+}
+
+/** The rows with every relation edge cut to the cases the viewer may open; `known` are ids already known to be openable. */
+async function withRelationsCut(companyId: string, viewer: LogViewer, rows: EventRow[], known: ReadonlySet<string>): Promise<EventRow[]> {
+  const unknown = relationTargets(rows).filter((id) => !known.has(id));
+  const visible = new Set([...known, ...(await openableAmong(companyId, viewer, unknown))]);
+  return cutRelations(rows, visible);
+}
+
+/**
  * The log for one viewer (VIS/D8). A company without CaseView rows (not projected yet) gets the
  * full log, so nothing disappears before the first rebuild. A caller that already holds the company seed passes it,
  * so the structure is not read twice in one request.
@@ -165,7 +227,8 @@ export async function loadLogFor(companyId: string, viewer: LogViewer, now: Date
   const caseIds = await visibleCaseIds(companyId, keys, { sinceDay: day - WINDOW_DAYS, limit: WINDOW_CASES });
   const full = seed ?? (await seedOf(companyId));
   const { rows, projectIds } = await eventsOf(companyId, caseIds, full, true);
-  return { log: logFromRows(await cutDrafts(companyId, viewer, rows, full, day), day), caseIds, projectIds };
+  const cut = await withRelationsCut(companyId, viewer, await cutDrafts(companyId, viewer, rows, full, day), new Set(caseIds));
+  return { log: logFromRows(cut, day), caseIds, projectIds };
 }
 
 /** The seed with only these cases and projects; everything else in it stays. */
@@ -192,7 +255,7 @@ export async function loadCaseFor(companyId: string, viewer: LogViewer, caseId: 
   const company = await memo("stage", companyId, () => getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } }));
   const day = company.stage === "demo" ? company.demoDay : companyDay(company, await loadCalendar(companyId), new Date());
   return {
-    events: await cutDrafts(companyId, viewer, rows, seed, day),
+    events: await withRelationsCut(companyId, viewer, await cutDrafts(companyId, viewer, rows, seed, day), new Set([caseId])),
     seedCase: seed.cases.find((c) => c.id === caseId) ?? null,
     seedProjects: (seed.projects ?? []).filter((p) => projectIds.includes(p.id)),
   };
