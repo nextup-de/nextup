@@ -249,5 +249,178 @@ test.describe("NOR acceptance: a no has a reason, a date and a second look", () 
       const desk = await settle(() => noticesOf(id.desk, "loop.case.reopened", "mail"), "the desk is told the case is back");
       expect(desk[0]).toMatchObject({ status: "skipped", address: emailOf(DESK, SLUG) });
     });
+
+    // ── passes: the third is Send up ────────────────────────────────────────────────────────────────────────────────
+    const passed = `${SLUG}-case-pass`;
+    await raise(passed, "Gauge calibration on line 3 belongs to nobody");
+
+    await test.step("the desk passes it to the deputy with a reason", async () => {
+      const page = await signIn(browser, DESK);
+      await page.goto(`/${SLUG}/inbox`);
+      await page.getByRole("main").getByText("Gauge calibration on line 3").first().click();
+      await page.getByRole("button", { name: /^Pass to/ }).click();
+      await page.getByRole("dialog").getByRole("button", { name: new RegExp(DEPUTY) }).click();
+      await page.locator("textarea").fill(WHY_PASS);
+      await page.getByRole("dialog").getByRole("button", { name: `Pass to ${DEPUTY}` }).click();
+      await expect.poll(async () => (await eventsOf("case.handed", passed)).length).toBe(1);
+      expect((await eventsOf("case.handed", passed))[0]).toMatchObject({ actorUserId: id.desk, payload: { why: WHY_PASS, toRoleHolderId: seat.deputy } });
+      await page.context().close();
+    });
+
+    await test.step("the deputy sends it back as Not mine, which counts as a pass", async () => {
+      const page = await signIn(browser, DEPUTY);
+      await page.goto(`/${SLUG}/inbox`);
+      await page.getByRole("main").getByText("Gauge calibration on line 3").first().click();
+      await page.getByRole("button", { name: /^Pass to/ }).click();
+      await page.getByRole("dialog").getByRole("button", { name: /Not mine: send it back/ }).click();
+      await page.locator("textarea").fill(WHY_BACK);
+      await page.getByRole("dialog").getByRole("button", { name: /^Send it back to/ }).click();
+      await expect.poll(async () => (await eventsOf("case.handed", passed)).length).toBe(2);
+      expect((await eventsOf("case.handed", passed))[1]).toMatchObject({ actorUserId: id.deputy, payload: { back: true, toRoleHolderId: seat.desk, why: WHY_BACK } });
+      await page.context().close();
+    });
+
+    await test.step("two passes by people are the limit: the third can only go up, to the seat above, which then has it", async () => {
+      const page = await signIn(browser, DESK);
+      await page.goto(`/${SLUG}/inbox`);
+      await page.getByRole("main").getByText("Gauge calibration on line 3").first().click();
+      await page.getByRole("button", { name: /^Pass to/ }).click();
+      await expect(page.getByTestId("hand-up-line")).toContainText(ABOVE); // no list of people any more: the seat above the desk
+      await page.locator("textarea").fill(WHY_UP);
+      await page.getByRole("dialog").getByRole("button", { name: "Send it up" }).click();
+      await expect.poll(async () => (await eventsOf("case.handed", passed)).length).toBe(3);
+      expect((await eventsOf("case.handed", passed))[2]).toMatchObject({ actorUserId: id.desk, payload: { up: true, toRoleHolderId: seat.above, why: WHY_UP } });
+      await page.context().close();
+      const top = await signIn(browser, ABOVE);
+      await top.goto(`/${SLUG}/inbox`);
+      await expect(top.getByRole("main").getByText("Gauge calibration on line 3").first()).toBeVisible();
+      await top.context().close();
+      const mail = await settle(() => noticesOf(id.above, "loop.case.handed", "mail"), "the seat above is told");
+      expect(mail[0]).toMatchObject({ status: "skipped", lastError: "sandbox", address: emailOf(ABOVE, SLUG) });
+    });
+
+    // ── a form opened before the second pass is refused by the server ───────────────────────────────────────────────
+    const stale = `${SLUG}-case-stale`;
+    await raise(stale, "Crane booking for the changeover is first come first served");
+    await test.step("an ordinary pass sent from a form that was opened before the second pass is refused, and nothing is written", async () => {
+      const page = await signIn(browser, DESK);
+      await page.goto(`/${SLUG}/inbox`);
+      await page.getByRole("main").getByText("Crane booking for the changeover").first().click();
+      await page.getByRole("button", { name: /^Pass to/ }).click();
+      await page.getByRole("dialog").getByRole("button", { name: new RegExp(DEPUTY) }).click();
+      await page.locator("textarea").fill(WHY_PASS);
+      // The page learns nothing more from now on (it refreshes itself every few seconds): its form stays the one of a first pass.
+      await page.route(/_rsc=/, (route) => route.abort());
+      await append("case.handed", DESK, id.desk, stale, { to: DEPUTY, toRoleHolderId: seat.deputy, why: WHY_PASS });
+      await append("case.handed", DEPUTY, id.deputy, stale, { to: DESK, toRoleHolderId: seat.desk, why: WHY_BACK, back: true });
+      await page.getByRole("dialog").getByRole("button", { name: `Pass to ${DEPUTY}` }).click();
+      await expect(page.getByText(/Send it up, or ask a manager/)).toBeVisible();
+      expect(await eventsOf("case.handed", stale), "only the two passes of the setup").toHaveLength(2);
+      await page.context().close();
+    });
+
+    // ── a check-in left late goes to the deputy, then to the seat above ────────────────────────────────────────────
+    const late = `${SLUG}-case-late`;
+    await test.step("a discussion whose check-in is escalation_days late is handled like a late answer: the deputy, then the seat above", async () => {
+      await raise(late, "Torque wrench calibration interval is not written down anywhere", 21);
+      await append("case.discussion", DESK, id.desk, late, { invited: [], missing: "Which interval the standard names" }, 21);
+      const deadline = await settle(async () => (await eventsOf("clock.due", late)).filter((e) => (e.payload as { kind?: string }).kind === "deadline"), "the late check-in gets a deadline fact");
+      expect(deadline[0].payload).toMatchObject({ kind: "deadline", toRoleHolderId: seat.deputy });
+      const toDeputy = await settle(async () => (await eventsOf("case.handed", late)).filter((e) => (e.payload as { why?: string }).why === "deadline"), "the deputy takes the case");
+      expect(toDeputy[0]).toMatchObject({ actor: "system:clock", payload: { toRoleHolderId: seat.deputy } });
+      const above = await settle(async () => (await eventsOf("case.handed", late)).filter((e) => (e.payload as { why?: string }).why === "escalation"), "the seat above takes the case");
+      expect(above[0]).toMatchObject({ actor: "system:clock", payload: { toRoleHolderId: seat.above } });
+      const reminder = await settle(() => noticesOf(id.above, "reminder.escalation", "mail"), "the seat above is reminded");
+      expect(reminder[0]).toMatchObject({ status: "skipped", lastError: "sandbox", address: emailOf(ABOVE, SLUG) });
+    });
+
+    // ── the second look, answered by the deputy, never by who said no ───────────────────────────────────────────────
+    const again = `${SLUG}-case-again`;
+    const AGAIN = "Gauge standard for the torque wrench is needed before the next audit";
+    await raise(again, AGAIN);
+    await test.step("the desk says no (does not fit); the raiser asks for a second look, which reaches the deputy and not the one who said no", async () => {
+      const page = await signIn(browser, DESK);
+      await openNoSheet(page, AGAIN);
+      await sendNo(page, /Does not fit a goal/, REASON_NO_FIT, false);
+      await expect.poll(async () => (await eventsOf("case.decided", again)).length).toBe(1);
+      await page.context().close();
+
+      const raiser = await signIn(browser, RAISER);
+      await raiser.goto(`/${SLUG}/cases/${again}`);
+      await expect(raiser.getByTestId("no-block")).toContainText("Does not fit a goal or a standard");
+      await expect(raiser.getByTestId("no-block")).toContainText(REASON_NO_FIT);
+      await raiser.getByTestId("second-look-ask").click();
+      await raiser.locator(`#appeal-text-${again}`).fill(APPEAL);
+      await raiser.getByRole("button", { name: "Send the request" }).click();
+      await expect.poll(async () => (await eventsOf("case.appealed", again)).length).toBe(1);
+      expect((await eventsOf("case.appealed", again))[0]).toMatchObject({ actorUserId: id.raiser, payload: { text: APPEAL, toRoleHolderId: seat.deputy } });
+      await raiser.context().close();
+
+      const mail = await settle(() => noticesOf(id.deputy, "loop.case.appealed", "mail"), "the deputy is asked");
+      expect(mail[0]).toMatchObject({ status: "skipped", lastError: "sandbox", address: emailOf(DEPUTY, SLUG) });
+      expect(mail[0].text).toContain(APPEAL);
+      expect(await noticesOf(id.desk, "loop.case.appealed"), "the one who said no is not asked").toHaveLength(0);
+    });
+
+    await test.step("the one who said no cannot answer it, not even once they hold the deputy's role too", async () => {
+      const page = await signIn(browser, DESK);
+      await page.goto(`/${SLUG}/cases/${again}`);
+      await expect(page.getByTestId("second-look-asked")).toBeVisible();
+      await expect(page.getByTestId("second-look-answer-open")).toHaveCount(0);
+      const extra = await addSeat(companyId, deputyRoleId, DESK, id.desk);
+      await page.reload();
+      await expect(page.getByTestId("second-look-asked")).toBeVisible();
+      await expect(page.getByTestId("second-look-answer-open")).toHaveCount(0);
+      // A role the one who said no holds is struck from the desk (D18): the seat goes again, so the deputy answers next.
+      await getDb().orgRoleHolder.deleteMany({ where: { companyId, id: extra } });
+      await page.context().close();
+    });
+
+    let secondNoDate = "";
+    await test.step("the deputy reopens the case; the desk decides again the same day with a not-now", async () => {
+      const page = await signIn(browser, DEPUTY);
+      await page.goto(`/${SLUG}/cases/${again}`);
+      await page.getByTestId("second-look-answer-open").click();
+      await page.getByLabel("Reopen the case").check();
+      await page.locator(`#appeal-reason-${again}`).fill(REASON_SECOND);
+      await page.getByRole("button", { name: "Send the answer" }).click();
+      await expect.poll(async () => (await eventsOf("case.appeal.decided", again)).length).toBe(1);
+      expect((await eventsOf("case.appeal.decided", again))[0]).toMatchObject({ actorUserId: id.deputy, payload: { uphold: false, reason: REASON_SECOND } });
+      await page.context().close();
+      const raiser = await settle(() => noticesOf(id.raiser, "loop.case.appeal.decided", "mail"), "the raiser is told the second look reopened it");
+      expect(raiser[0]).toMatchObject({ status: "skipped", lastError: "sandbox", address: emailOf(RAISER, SLUG) });
+      expect(raiser[0].text).toContain(REASON_SECOND);
+
+      // The case is open on the owner's desk again: the desk decides again, the same day.
+      const desk = await signIn(browser, DESK);
+      await openNoSheet(desk, AGAIN);
+      secondNoDate = (await sendNo(desk, /^Not now/, REASON_AGAIN, true)) ?? "";
+      await expect.poll(async () => (await eventsOf("case.decided", again)).length).toBe(2);
+      const days = new Set([...(await eventsOf("case.decided", again)), ...(await eventsOf("case.appeal.decided", again))].map((e) => e.day));
+      expect(days.size, "the no, the reopen and the new no are one day, told apart by their place in the log").toBe(1);
+      await desk.context().close();
+    });
+
+    await test.step("the new not-now comes back on its date, once: the first no, a no longer standing, does not", async () => {
+      const day = new Date(`${secondNoDate}T12:00:00Z`);
+      await runClockOnce(day);
+      await runClockOnce(day);
+      await runClockOnce(new Date(day.getTime() + 3 * 86_400_000));
+      const reopened = await eventsOf("case.reopened", again);
+      expect(reopened).toHaveLength(1);
+      expect(reopened[0]).toMatchObject({ actor: "system:clock", payload: { why: "revisit" } });
+      expect(reopened[0].idemKey, "the second cycle of the case").toMatch(/^clk:revisit:.+:1$/);
+    });
+
+    // ── a sandbox sends nothing outside ─────────────────────────────────────────────────────────────────────────────
+    await test.step("a sandbox sent no mail and no Teams message: every outside row is skipped, every in-app row is sent", async () => {
+      await dispatchOnce();
+      const rows = await db().outboxMessage.findMany({ where: { companyId } });
+      expect(rows.filter((r) => r.channel === "teams" || r.channel === "webhook"), "Teams and webhook rows").toHaveLength(0);
+      const outside = rows.filter((r) => r.channel !== "inapp");
+      expect(outside.length).toBeGreaterThan(0);
+      expect(outside.every((r) => r.status === "skipped" && r.lastError === "sandbox"), "every outside row is skipped").toBe(true);
+      expect(rows.filter((r) => r.channel === "inapp").every((r) => r.status === "sent" && r.sentAt !== null && r.address === null)).toBe(true);
+    });
   });
 });
