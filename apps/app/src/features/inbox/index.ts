@@ -1,6 +1,7 @@
 // The one inbox (plan INB): every role's items in three asks and one order.
 import { markDue, orderItems } from "./order";
 import { agentItems, type AgentInboxInput } from "./sources/agent";
+import { approvalItems } from "./sources/approvals";
 import { caseItems } from "./sources/cases";
 import { projectDraftItems } from "./sources/project-draft";
 import { projectMoveItems } from "./sources/project-move";
@@ -17,7 +18,7 @@ export type { AgentInboxInput } from "./sources/agent";
  * once, marked late or due soon, in the inbox's order. `role` is only read for what a manager alone is asked.
  */
 export function inboxItems(input: AgentInboxInput): InboxItem[] {
-  const all = [...caseItems(input), ...projectItems(input), ...projectDraftItems(input), ...projectMoveItems(input), ...projectResultItems(input), ...agentItems(input)];
+  const all = [...caseItems(input), ...projectItems(input), ...projectDraftItems(input), ...projectMoveItems(input), ...projectResultItems(input), ...approvalItems(input), ...agentItems(input)];
   // A case that became an idea waiting in the same inbox says the same thing twice: the idea stays, the case goes.
   const ideaIds = new Set(all.filter((i) => i.kind === "idea").map((i) => i.id.slice("idea:".length)));
   const linked = new Set(input.state.cases.filter((c) => c.linkedIdea !== null && ideaIds.has(c.linkedIdea)).map((c) => c.id));
