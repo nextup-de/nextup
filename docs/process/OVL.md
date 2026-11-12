@@ -62,8 +62,40 @@ The clock kinds are `away`, `overflow`, `overloaded` and `cleared` (`features/cl
 
 ## Loop
 
+Roles, not people (D3): every count is per desk (a role), shown only to the desk's holders, the holders of the seat above it and the company's admins (app role manager); no list, card or mail sorts or compares people by load, speed or absence.
+
+- **Away (D19, D31).** A person sets their own absence, or the holder of the seat directly above them, or a company admin, sets it for them (Profile → Set someone away). An absence is a span of working days with no reason and no free text; it is at most 120 working days; `person.back` ends it today. While it runs the person is not counted as a holder of their desks, and the clock hands the cases on their seat to a cover (below). The person is told who set it.
+- **Take back (D19).** After the absence, the cases the clock handed away from the person's seat that nobody has touched since come back with one click (`system:cover`, `why: "takeback"`, no pass of anybody).
+- **The four levels (D18).** A desk's load is its open work divided by the present holders, rounded up: *normal*; *triage* from 10 per holder or 3 late items (the holders triage in bulk); *up* from 20 (the seat above is told and may share the load); *overflow* from 30 (new cases overflow to the deputy desk, and the raiser's sent line says so). Overflow ends when the desk is under 20. The numbers are the company rule `overload_at`.
+- **Bulk for holders (D21).** On the inbox a holder whose desk is at triage or above sees the triage banner (with the number of late items). Any holder may press **Select**, tick several cases to decide of one desk and **Pass them on** (one target desk, one why for all) or **Ask the authors** (one question for all). Each case is sent one by one through the path a single pass or ask takes (`appendEventAction`; the demo's `act.pass` and `act.ask`), so every case keeps its own rights, NOR's pass limit and why rule. The bar says how many went and lists each case that was refused with its error. There is **no bulk no** (each needs its reason) and no bulk discussion. No new event exists for bulk.
+- **The seat above shares the load (D28).** For a desk at *up* or *overflow*, the holder of the seat directly above it and the company's admins see on the Dashboard (Load per desk) three actions: add a holder (Settings → Org, at that role), **appoint a cover** (a present seat of another role, by its label: `desk.covered`) and **pass cases on in bulk** (`passForDesk`: one `case.handed` per case under their own name, each checked by `mayAppend` with the seat above treated as manager for that one hand-over). Appointing a cover never sets anybody away. A holder of the desk itself, at any load, has none of these.
+- **Overflow (D24).** While a desk is at overflow, or at up with an appointed cover, every case raised since the episode began that sits on that desk and was never handed by a person goes to the cover, else the first present seat of the route's deputy role, once (one hop: no seat above, no third level). The case stays and is counted when nobody is present.
+- **Pinned (D12, D20).** A case the clock handed up on escalation and nobody has acted on for `escalation_days` is pinned: it sits first on the inbox of every holder of the desk it now sits on ("Left alone by the seat above: it stays here until someone acts on it") and is counted on that desk. There is no third level and no more mail.
+- **Who sees what (D3).** A holder sees their own desk; the seat above sees the desks below it; an admin sees every desk. A member who is none of these sees no desk row and no count. A row holds a desk's title and its numbers, never a user id or a name.
+
+In the demo (D8) the clock does not run and there is no server: the away card, Take back, Appoint a cover and the seat above's Pass in bulk are hidden. The holders' triage banner, bulk pass and ask, and the Dashboard's desk rows work, because they use the existing acts and the pure `deskLoads`.
+
 ## Clock
+
+The clock's four kinds are `away`, `overflow`, `overloaded` and `cleared` (D26). The scheduler computes **every Due of a run from one reduced snapshot** and writes them in order (D29):
+
+- one snapshot per run, with no refresh in between: loads are counted on the snapshot, so a desk that crosses 30 writes its `desk.overloaded` and starts overflowing in the same run (since = today), and its counts drop by the cases handed only on the next run (one run of lag, accepted);
+- **one hand-over per case and run**: a case the case area hands over in the same run (a deadline, escalation or vacant hand-over) gets no OVL hand-over, the case area first; within OVL, away comes before overflow for the same case;
+- **one hop**: a hand-over goes to the cover or deputy seat, never on from there in the same run;
+- `away` hands the open cases on a seat whose person is away to the seat `awayCoverSeat` gives (idemKey `ovl:away:<caseId>:<awayId>`); `overflow` hands the cases of D24 (`ovl:overflow:<caseId>:<since>`); `overloaded` writes `desk.overloaded` with the load numbers when a desk reaches up or overflow with no open episode at that level; `cleared` writes `desk.cleared` when a desk with an open episode is under up. A hand-over to a seat that is gone is skipped.
+- the clock's `away` and `overflow` hand-overs send no case notice of their own, as the deadline hand-over today.
 
 ## Notices
 
-## Release note
+All notices are in the existing opt-out group `loop` (the templates `loop.person.away`, `loop.desk.overloaded`, `loop.desk.covered` and `loop.desk.cleared` follow `loop.case.decided`), so no new group, profile switch or preference value exists (D22):
+
+- `person.away` set by someone else tells the person; it also tells the holders of every seat `awayCoverSeat` gives for the seats the person holds alone (who covers, from, to; never why);
+- `desk.overloaded` at 20 tells the holders of the seat above; at 30 it tells the seat above and the holders of the deputy seat that new cases now come to them;
+- `desk.covered` tells the holders of the cover seat; `desk.cleared` tells the same people once the desk is over it;
+- `org.seat.vacant` (a holder left, D30) tells the company's admins at once and is a **duty** template: it cannot be switched off.
+
+Pinning sends no mail.
+
+## Release note: OVL
+
+> **Overload and absence (OVL).** On the first clock run after this release, a live company's desk that has **more than 20 open items per holder** tells the **seat above it**, and a desk over **30** overflows new cases to its deputy desk, with the raiser's sent line saying who answers. The seat above may **pass that desk's cases on and appoint a cover** while it is over 20; nobody is ranked, and counts are per desk, never per person. **Away spans hold no reason**: a person, the seat above them or an admin sets only the days. The floor now **accepts a raise to a vacant desk**: it waits there, and the raiser's line says so. The limits are the company rule `overload_at`; a pilot tunes them through support.

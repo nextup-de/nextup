@@ -9,9 +9,12 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
 import { IdeaDetailPhone } from "@/components/dashboard/leader/IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { BulkBar } from "@/components/overload/BulkBar";
 import { PageHeader, SectionCard } from "@/components/ui/elements";
 import { inboxCounts, inboxItems, type AgentInboxInput, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
 import { agentForInbox } from "@/features/inbox/sources/agent";
+import { deskLoads } from "@/features/overload/load";
+import { triageFor } from "@/features/overload/bulk";
 import { projectDesk } from "@/features/inbox/sources/projects";
 import { moveLabel } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
@@ -56,6 +59,9 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
   const [readIds, setReadIds] = useState<ReadonlySet<string>>(new Set());
   const [failed, setFailed] = useState(false);
+  // Selection mode (plan OVL, D21): decide items of one desk are ticked, then passed on or asked in bulk.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [pending, start] = useTransition();
   const topRef = useRef<HTMLDivElement>(null);
   const detail = useOpenItem(cid, () => setCid(null));
@@ -81,6 +87,15 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const counts = inboxCounts(items);
   const decide = items.filter((i) => i.ask === "decide" && opensInPlace(i));
   const navIds = decide.map(openId);
+  // A case to decide on a desk may be selected; one desk at a time, the first selection fixes it.
+  const selectable = (i: InboxItem) => i.ask === "decide" && i.kind === "case" && i.caseId !== undefined && i.projectId === undefined;
+  const deskOf = (i: InboxItem) => i.deskRoleId ?? "-";
+  const anySelectable = items.some(selectable);
+  const firstPicked = items.find((i) => selectable(i) && selected.has(i.caseId!));
+  const selectedCases = S.cases.filter((c) => selected.has(c.id));
+  const triage = triageFor(deskLoads(S, S.day), me);
+  const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const leaveSelecting = () => { setSelecting(false); setSelected(new Set()); };
   const at = cid ? navIds.indexOf(cid) : -1;
   const pick = (id: string) => setCid(id);
   const unread = notices.filter((n) => !n.read && !readIds.has(n.id));
@@ -116,6 +131,19 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
         <span data-testid="inbox-today-part">{t("inbox.todayPart", { n: counts.waiting })}</span>
       </p>
 
+      {triage.map((d) => (
+        <p key={d.roleId} className={styles.triage} data-testid="inbox-triage" data-level={d.level} role="status">
+          <span>{t(d.key)}</span>
+          {d.lateKey ? <span className={styles.triageLate}>{t(d.lateKey, { count: d.late })}</span> : null}
+        </p>
+      ))}
+      {anySelectable && (
+        <div className={styles.toolbar}>
+          <button type="button" className={styles.select} aria-pressed={selecting} onClick={() => (selecting ? leaveSelecting() : setSelecting(true))} data-testid="inbox-select">{t("overload.inbox.select")}</button>
+        </div>
+      )}
+      {selecting && <div className={styles.bulk}><BulkBar cases={selectedCases} onDone={() => setSelected(new Set())} /></div>}
+
       <div className={styles.body} data-open={isOpen ? "true" : undefined}>
         <div className={styles.lists}>
           {items.length === 0 ? (
@@ -137,11 +165,19 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
                         {i.late ? <span className={styles.badge} data-tone="late">{t("inbox.late")}</span> : i.dueSoon ? <span className={styles.badge} data-tone="soon">{t("inbox.dueSoon")}</span> : null}
                       </>
                     );
+                    const choosable = selecting && selectable(i);
+                    const blocked = choosable && firstPicked !== undefined && deskOf(firstPicked) !== deskOf(i);
                     return (
                       <li key={i.id}>
-                        {ask === "decide" && opensInPlace(i)
+                        {choosable ? (
+                          <label className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-select="true" data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined}>
+                            <input type="checkbox" className={styles.check} checked={selected.has(i.caseId!)} disabled={blocked} onChange={() => toggle(i.caseId!)} aria-label={i.title} />
+                            {body}
+                          </label>
+                        ) : ask === "decide" && opensInPlace(i)
                           ? <button type="button" className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined} data-active={open ? "true" : undefined} aria-current={open ? "true" : undefined} onClick={() => pick(openId(i))}>{body}</button>
                           : <Link href={href(i.href)} className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined}>{body}</Link>}
+                        {i.pinned ? <span className={styles.pinned} data-testid="inbox-pinned">{t("overload.inbox.pinned")}</span> : null}
                       </li>
                     );
                   })}
