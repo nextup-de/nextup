@@ -36,7 +36,7 @@ import { loadShots } from "@/lib/shots";
 import styles from "./CaseDetailView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
-const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped", withdrawn: "dashboard.statusWithdrawn", merged: "caseSee.statusMerged" } as const satisfies Record<string, MessageKey>;
+const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped", withdrawn: "dashboard.statusWithdrawn", merged: "caseSee.statusMerged", approval: "approvals.waitsForApproval" } as const satisfies Record<string, MessageKey>;
 
 // The status and reason chips in soft tints: a case that waits is amber, a result is green, the rest stays grey.
 const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", ink: "green", ok: "green", grey: "grey", soft: "grey", ghost: "grey", none: "grey", purple: "grey" };

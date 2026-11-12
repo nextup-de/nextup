@@ -2,6 +2,7 @@
 // built with reduce() or from a seed run through the reducer, so a phase that merges later (SET, INB, MOV, NOR) cannot change
 // what the golden of tests/unit/reg/notices.test.ts records. Shapes follow the helpers of tests/unit/ntf/plan.test.ts and
 // tests/unit/set/notice.test.ts.
+import { EMPTY_APPROVAL_CONFIG } from "@/features/approvals/types";
 import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/events";
 import type { ReducedCase, State } from "@/features/cases/reducer";
@@ -56,7 +57,7 @@ const kase = (id: string, over: Partial<ReducedCase> = {}): ReducedCase => ({
   id, seed: false, kind: "problem", title: "Case " + id, body: "", from: "Raiser", fromDept: "", fromUserId: "u_raiser", assigneeSeatId: "s_own1", assigneeRoleId: "role_owner",
   routeId: "r2", assignee: "Owner One", raisedDay: 0, reason: "triage", upside: "", linkedIdea: null,
   status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [], building: null, shipped: null, override: null,
-  discussion: null, versions: [], decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: 0, dueFloor: null, reopenSeq: null, decidedSeq: null, follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [], pausedDays: 0, pausedSince: null, history: [raisedEv(id)],
+  discussion: null, versions: [], decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: 0, dueFloor: null, reopenSeq: null, decidedSeq: null, follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [], review: null, cost: null, approvals: null, approvalRuns: [], openingRunId: null, pausedDays: 0, pausedSince: null, history: [raisedEv(id)],
   route, age: 1, clock: 1, open: true, archived: false, overdue: false, dueDay: 5, escalated: null, ...over,
 });
 
@@ -141,6 +142,7 @@ export const FIXTURE_STATE: State = {
     reward: { kind: "thanks", amount: null, sharePct: null, capEur: null }, deadlineHandover: true, escalationDays: 3, projectStartDays: 10, measure: true, recognition: true,
   },
   seats, routes: [route], clock: { mode: "demo" },
+  approvals: { ...EMPTY_APPROVAL_CONFIG, roles: [] },
 };
 
 /** One of each type the planner turns into loop notices, one clock.due per reminder kind, and a raise. Ids and times are fixed. */
