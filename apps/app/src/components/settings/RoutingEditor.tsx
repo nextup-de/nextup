@@ -3,19 +3,25 @@
 // A test box shows which row the keywords would propose. A drawer adds or edits a route; the row
 // menu moves or deletes it. Every change calls an action from src/server/actions/settings/org.ts.
 import Link from "next/link";
-import { useState, useTransition, type FormEvent } from "react";
+import { useActionState, useState, useTransition, type FormEvent } from "react";
+import type { ApprovalConfig } from "@/features/approvals/types";
 import { holdersOfRole, type Knowledge, type RoleRow, type RuleRow } from "@/features/knowledge";
 import { keywordHits, propose } from "@/features/routing";
 import { routeKeyFor, routingSummary, seatLine } from "@/features/settings/routing-view";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
+import { saveRoutingReviewAction } from "@/server/actions/settings/approvals";
+import type { SettingsFormState } from "@/server/actions/settings/company";
 import { moveRouteAction, removeRouteAction, saveRouteAction, type OrgResult } from "@/server/actions/settings/org";
 import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { SettingsHead } from "./SettingsParts";
 import s from "./settings.module.css";
 import r from "./RoutingEditor.module.css";
 
-type Props = { slug: string; knowledge: Knowledge; demo?: boolean; showHead?: boolean };
+/** `approvals`: the company's review settings (plan GAT); without it the triage role and the review column are not shown. */
+type Props = { slug: string; knowledge: Knowledge; demo?: boolean; showHead?: boolean; approvals?: ApprovalConfig };
+
+const REVIEW_FORM = "routing-review-form";
 
 const text = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const orNull = (v: string) => (v === "" ? null : v);
@@ -59,8 +65,9 @@ export function KeywordInput({ initial, invalid }: { initial: string[]; invalid:
   );
 }
 
-export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Props) {
+export function RoutingEditor({ slug, knowledge: k, demo, showHead = true, approvals }: Props) {
   const t = useT();
+  const [reviewState, reviewAct, reviewPending] = useActionState<SettingsFormState, FormData>(saveRoutingReviewAction, {});
   const [error, setError] = useState<MessageKey | null>(null);
   const [pending, start] = useTransition();
   const [open, setOpen] = useState<RuleRow | "new" | null>(null);
@@ -143,6 +150,29 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
       {demo ? <p className={s.cardHint} data-testid="settings-demo-note">{t("settingsCompany.demoData")}</p> : null}
       {error && !open ? <p className={s.fieldError} role="alert" data-testid="settings-routing-error">{t(error)}</p> : null}
 
+      {approvals ? (
+        <form id={REVIEW_FORM} action={reviewAct} className={s.card} data-testid="settings-routing-review-form">
+          <input type="hidden" name="slug" value={slug} />
+          <div className={s.cardHead}>
+            <h2 className={s.cardTitle}>{t("approvals.triageRole")}</h2>
+          </div>
+          {approvals.review.on ? (
+            <select className={s.input} id="triageRole" disabled aria-label={t("approvals.triageRole")} data-testid="settings-routing-triage"><option>{t("approvals.reviewRole")}</option></select>
+          ) : (
+            <select className={s.input} id="triageRole" name="triageRole" defaultValue={approvals.triageRoleId ?? ""} aria-label={t("approvals.triageRole")} data-testid="settings-routing-triage">
+              <option value="">{t("settingsOrg.routeNone")}</option>
+              {k.roles.map((x) => <option key={x.id} value={x.id}>{roleLabel(x)}</option>)}
+            </select>
+          )}
+          <p className={s.help}>{t("approvals.triageHint")}</p>
+          {reviewState.error ? <p className={s.fieldError} role="alert" data-testid="settings-routing-review-error">{t(reviewState.error)}</p> : null}
+          <div className={r.reviewFoot}>
+            {reviewState.ok ? <span className={r.note} role="status" data-testid="settings-routing-review-saved">{t("approvals.saved")}</span> : demo ? <span className={r.note}>{t("approvals.demoOff")}</span> : <span />}
+            <button type="submit" className={s.save} disabled={reviewPending || demo} data-testid="settings-routing-review-save">{reviewPending ? t("settingsCompany.saving") : t("settingsCompany.save")}</button>
+          </div>
+        </form>
+      ) : null}
+
       <section className={s.card}>
         <div className={s.cardHead}>
           <h2 className={s.cardTitle}>{t("settingsOrg.routeTestTitle")}</h2>
@@ -174,16 +204,17 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
       ) : (
         <section className={`${s.card} ${r.tableCard}`}>
           <div className={r.table} role="table" aria-label={t("settingsOrg.routingTitle")}>
-            <div className={`${r.tr} ${r.th}`} role="row">
+            <div className={`${r.tr} ${r.th}`} role="row" data-review={approvals ? "" : undefined}>
               <span role="columnheader">{t("settingsOrg.colType")}</span>
               <span role="columnheader">{t("settingsOrg.colOwner")}</span>
               <span role="columnheader">{t("settingsOrg.colDeputy")}</span>
               <span role="columnheader">{t("settingsOrg.colBuddy")}</span>
+              {approvals ? <span role="columnheader">{t("approvals.routeReview")}</span> : null}
               <span role="columnheader">{t("settingsOrg.colWait")}</span>
               <span />
             </div>
             {rules.map((rule, i) => (
-              <div key={`${rule.id}:${rule.sort}`} className={r.tr} role="row" data-testid={`settings-routing-row-${rule.key}`}>
+              <div key={`${rule.id}:${rule.sort}`} className={r.tr} role="row" data-review={approvals ? "" : undefined} data-testid={`settings-routing-row-${rule.key}`}>
                 <div role="cell" className={r.typeCell}>
                   <button type="button" className={r.typeName} onClick={() => openDrawer(rule)}>{rule.type}</button>
                   <span className={r.kw}>
@@ -194,6 +225,16 @@ export function RoutingEditor({ slug, knowledge: k, demo, showHead = true }: Pro
                 <div role="cell" className={r.cell} data-label={t("settingsOrg.colOwner")}>{who(rule.ownerRoleId, "")}</div>
                 <div role="cell" className={r.cell} data-label={t("settingsOrg.colDeputy")}>{who(rule.deputyRoleId, t("settingsOrg.managerChain"))}</div>
                 <div role="cell" className={r.cell} data-label={t("settingsOrg.colBuddy")}>{who(rule.buddyRoleId, "")}</div>
+                {approvals ? (
+                  <div role="cell" className={r.cell} data-label={t("approvals.routeReview")}>
+                    <select className={s.input} form={REVIEW_FORM} name={`review.${rule.key}`} defaultValue={approvals.review.routes[rule.key] ?? "company"} disabled={demo}
+                      aria-label={`${t("approvals.routeReview")}: ${rule.type}`} data-testid={`settings-routing-review-${rule.key}`}>
+                      <option value="company">{t("approvals.routeReviewCompany")}</option>
+                      <option value="always">{t("approvals.routeReviewAlways")}</option>
+                      <option value="never">{t("approvals.routeReviewNever")}</option>
+                    </select>
+                  </div>
+                ) : null}
                 <div role="cell" className={r.wait} data-label={t("settingsOrg.colWait")}>{rule.wait || "–"}</div>
                 <details className={s.rowMenu}>
                   <summary aria-label={t("settingsOrg.routeMenu", { name: rule.type })} data-testid={`settings-routing-menu-${rule.key}`}>···</summary>
