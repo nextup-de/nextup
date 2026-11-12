@@ -1,0 +1,400 @@
+[
+  {
+    "id": "p_one",
+    "number": 1,
+    "title": "Project p_one",
+    "sources": [
+      "c_a"
+    ],
+    "authors": [
+      "Anonymous #4471"
+    ],
+    "routeId": "r1",
+    "lead": "L. Brandt",
+    "members": [
+      "H. Sander"
+    ],
+    "leadUserId": "u_lb",
+    "memberUserIds": [
+      "u_hs"
+    ],
+    "authorUserIds": [
+      "u_js"
+    ],
+    "openedDay": 0,
+    "openedBy": "T. Vogel",
+    "seed": false,
+    "startedDay": 1,
+    "doneDay": 3,
+    "doneNote": "Live on line 3",
+    "stopped": null,
+    "baseline": {
+      "none": false,
+      "metric": "Changeover",
+      "unit": "min",
+      "value": 42,
+      "better": "down",
+      "source": "MES",
+      "day": 0,
+      "by": "L. Brandt"
+    },
+    "steps": [
+      {
+        "id": "s2",
+        "text": "Train the shift",
+        "owner": "H. Sander",
+        "ownerUserId": "u_hs",
+        "dueDay": null,
+        "column": "todo",
+        "why": "",
+        "note": "",
+        "addedDay": 1,
+        "by": "L. Brandt",
+        "byUserId": "u_lb",
+        "movedDay": 1,
+        "startedDay": null,
+        "doneDay": null,
+        "external": null
+      },
+      {
+        "id": "s1",
+        "text": "Pre-stage the tools",
+        "owner": null,
+        "ownerUserId": null,
+        "dueDay": 3,
+        "column": "done",
+        "why": "",
+        "note": "",
+        "addedDay": 1,
+        "by": "L. Brandt",
+        "byUserId": "u_lb",
+        "movedDay": 2,
+        "startedDay": 2,
+        "doneDay": 2,
+        "external": null
+      }
+    ],
+    "links": [
+      {
+        "system": "jira",
+        "url": "https://example.test/OPS-1",
+        "key": "OPS-1",
+        "stepId": null,
+        "day": 2
+      }
+    ],
+    "sync": null,
+    "measures": [
+      {
+        "check": 30,
+        "value": 30,
+        "source": "MES weekly",
+        "note": "first month",
+        "day": 33,
+        "by": "L. Brandt",
+        "byUserId": "u_lb",
+        "sourceKind": "typed",
+        "sourceInfo": {
+          "kind": "typed",
+          "note": "MES weekly"
+        },
+        "impact": null,
+        "confirmed": true,
+        "confirmedByUserId": "u_bh",
+        "confirmedDay": 34,
+        "verdict": "better",
+        "changePct": -28.6
+      }
+    ],
+    "checks": [
+      {
+        "check": 30,
+        "opensDay": 33,
+        "dueDay": 38,
+        "measured": true,
+        "late": false
+      }
+    ],
+    "verdict": "better",
+    "reward": {
+      "rule": "gift",
+      "amount": 50,
+      "note": "",
+      "day": 35,
+      "by": "B. Hartmann"
+    },
+    "claimed": {
+      "by": "Anonymous #4471",
+      "day": 36
+    },
+    "status": "recognised",
+    "closed": true,
+    "rewardDue": false,
+    "dueDay": null,
+    "overdue": false,
+    "escalated": null,
+    "history": [
+      "y1",
+      "y2",
+      "y3",
+      "y4",
+      "y5",
+      "y6",
+      "y7",
+      "y8",
+      "y9",
+      "y10",
+      "y11",
+      "y12",
+      "y13",
+      "y14",
+      "y15"
+    ],
+    "draft": false,
+    "leadState": "taken",
+    "leadAskedDay": null,
+    "template": null,
+    "invites": [],
+    "sponsorUserId": null,
+    "followerUserIds": [],
+    "goal": null,
+    "startDay": null,
+    "approvalsPendingSince": null,
+    "raiserNote": "",
+    "deciderUserId": null,
+    "doneBy": 31,
+    "doneByMoves": [],
+    "pausedUntil": null,
+    "pauseWhy": "",
+    "lastActivityDay": 2,
+    "checkInWeekday": null,
+    "howWeWorkNote": "",
+    "leadVacatedDay": null,
+    "latestUpdate": null
+  },
+  {
+    "id": "p_two",
+    "number": 2,
+    "title": "Project p_two",
+    "sources": [
+      "c_b"
+    ],
+    "authors": [
+      "Anonymous #4471"
+    ],
+    "routeId": "r1",
+    "lead": "L. Brandt",
+    "members": [],
+    "leadUserId": "u_lb",
+    "memberUserIds": [],
+    "authorUserIds": [
+      "u_js"
+    ],
+    "openedDay": 0,
+    "openedBy": "T. Vogel",
+    "seed": false,
+    "startedDay": 1,
+    "doneDay": 4,
+    "doneNote": "",
+    "stopped": null,
+    "baseline": {
+      "none": false,
+      "metric": "Quote time",
+      "unit": "h",
+      "value": 48,
+      "better": "down",
+      "source": "",
+      "day": 1,
+      "by": "L. Brandt"
+    },
+    "steps": [],
+    "links": [],
+    "sync": null,
+    "measures": [
+      {
+        "check": 30,
+        "value": 40,
+        "source": "",
+        "note": "",
+        "day": 34,
+        "by": "L. Brandt",
+        "byUserId": "u_lb",
+        "sourceKind": "typed",
+        "sourceInfo": {
+          "kind": "typed"
+        },
+        "impact": null,
+        "confirmed": false,
+        "confirmedByUserId": null,
+        "confirmedDay": null,
+        "verdict": "better",
+        "changePct": -16.7
+      }
+    ],
+    "checks": [
+      {
+        "check": 30,
+        "opensDay": 34,
+        "dueDay": 39,
+        "measured": true,
+        "late": false
+      }
+    ],
+    "verdict": "better",
+    "reward": null,
+    "claimed": null,
+    "status": "measured",
+    "closed": false,
+    "rewardDue": false,
+    "dueDay": null,
+    "overdue": false,
+    "escalated": null,
+    "history": [
+      "y17",
+      "y18",
+      "y19",
+      "y20",
+      "y21"
+    ],
+    "draft": false,
+    "leadState": "taken",
+    "leadAskedDay": null,
+    "template": null,
+    "invites": [],
+    "sponsorUserId": null,
+    "followerUserIds": [],
+    "goal": null,
+    "startDay": null,
+    "approvalsPendingSince": null,
+    "raiserNote": "",
+    "deciderUserId": null,
+    "doneBy": 31,
+    "doneByMoves": [],
+    "pausedUntil": null,
+    "pauseWhy": "",
+    "lastActivityDay": 1,
+    "checkInWeekday": null,
+    "howWeWorkNote": "",
+    "leadVacatedDay": null,
+    "latestUpdate": null
+  },
+  {
+    "id": "p_three",
+    "number": 3,
+    "title": "Project p_three",
+    "sources": [
+      "c_c"
+    ],
+    "authors": [
+      "Anonymous #4471"
+    ],
+    "routeId": "r1",
+    "lead": "L. Brandt",
+    "members": [
+      "C. Ilg"
+    ],
+    "leadUserId": "u_lb",
+    "memberUserIds": [
+      "u_ci"
+    ],
+    "authorUserIds": [
+      "u_js"
+    ],
+    "openedDay": 0,
+    "openedBy": "T. Vogel",
+    "seed": false,
+    "startedDay": 3,
+    "doneDay": null,
+    "doneNote": "",
+    "stopped": {
+      "day": 6,
+      "by": "L. Brandt",
+      "why": "Priorities changed"
+    },
+    "baseline": {
+      "none": true,
+      "why": "nothing to measure yet",
+      "day": 2,
+      "by": "L. Brandt"
+    },
+    "steps": [
+      {
+        "id": "t1",
+        "text": "Map the flow",
+        "owner": null,
+        "ownerUserId": null,
+        "dueDay": null,
+        "column": "todo",
+        "why": "",
+        "note": "",
+        "addedDay": 2,
+        "by": "L. Brandt",
+        "byUserId": "u_lb",
+        "movedDay": 2,
+        "startedDay": null,
+        "doneDay": null,
+        "external": null
+      }
+    ],
+    "links": [],
+    "sync": null,
+    "measures": [],
+    "checks": [],
+    "verdict": null,
+    "reward": null,
+    "claimed": null,
+    "status": "stopped",
+    "closed": true,
+    "rewardDue": false,
+    "dueDay": null,
+    "overdue": false,
+    "escalated": null,
+    "history": [
+      "y23",
+      "y24",
+      "y25",
+      "y26",
+      "y27",
+      "y28",
+      "y29",
+      "y30",
+      "y31",
+      "y32"
+    ],
+    "draft": true,
+    "leadState": "taken",
+    "leadAskedDay": 0,
+    "template": null,
+    "invites": [
+      {
+        "id": "y25",
+        "userId": "u_hs",
+        "role": "sponsor",
+        "state": "accepted",
+        "day": 1,
+        "reason": ""
+      }
+    ],
+    "sponsorUserId": "u_hs",
+    "followerUserIds": [],
+    "goal": {
+      "goal": "Faster quotes",
+      "doneWhen": "Median under 24 hours",
+      "doneBy": 55,
+      "brief": ""
+    },
+    "startDay": null,
+    "approvalsPendingSince": null,
+    "raiserNote": "",
+    "deciderUserId": "u_tv",
+    "doneBy": 55,
+    "doneByMoves": [],
+    "pausedUntil": null,
+    "pauseWhy": "",
+    "lastActivityDay": 3,
+    "checkInWeekday": null,
+    "howWeWorkNote": "",
+    "leadVacatedDay": null,
+    "latestUpdate": null
+  }
+]

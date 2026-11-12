@@ -144,6 +144,10 @@ const projectStepNotice: NoticeBuilder = ({ ev, state, pl, project, send, projec
   };
   if (ev.type === "project.measure.confirmed") {
     if (closes) summary();
+    // The lead and the raiser hear every confirmation (RES D18); one mail each, so the summary above already told them when it closed the project.
+    for (const who of [project.leadUserId, ...project.authorUserIds]) {
+      send(who, (t) => t("projectResult.mailConfirmedSubject", { label: projectLabel(project), title: project.title }), (t) => [t("projectResult.mailConfirmedIntro", { label: projectLabel(project), what: measured(t, project, pl.check) }), "", projectLink(project)]);
+    }
     return;
   }
   const step = ev.type === "project.started" ? "mail.stepStarted" : ev.type === "project.done" ? "mail.stepDone" : ev.type === "project.measured" ? "mail.stepMeasured" : "mail.stepRewarded";
@@ -247,6 +251,50 @@ const projectLeadVacatedNotice: NoticeBuilder = ({ state, pl, project, send, pro
   }
 };
 
+/** A claim of the reward (RES D18): every manager hears it, and nobody hears who - an anonymous raiser stays anonymous. */
+const projectClaimedNotice: NoticeBuilder = ({ project, people, send, projectLink }) => {
+  if (!project) return;
+  for (const m of people.filter((p) => p.manager)) {
+    send(m.id, (t) => t("projectResult.mailClaimedSubject", { label: projectLabel(project), title: project.title }), (t) => [t("projectResult.mailClaimedIntro", { label: projectLabel(project) }), "", projectLink(project)]);
+  }
+};
+
+/** A result sent back (RES D14, D18): the lead is told what to enter again and why; the second time every manager is, who confirm it now. */
+const projectQuestionedNotice: NoticeBuilder = ({ pl, project, people, send, projectLink }) => {
+  if (!project) return;
+  const managerOnly = project.measures.find((m) => m.check === pl.check)?.managerOnly === true;
+  const why = (pl.why ?? "").trim();
+  send(project.leadUserId, (t) => t("projectResult.mailQuestionedSubject", { label: projectLabel(project), title: project.title }), (t) => [
+    t(managerOnly ? "projectResult.mailQuestionedAgain" : "projectResult.mailQuestionedIntro", { days: pl.check ?? "", label: projectLabel(project) }), ...(why ? ["", t("projectResult.mailWhy", { why })] : []), "", projectLink(project),
+  ]);
+  if (!managerOnly) return;
+  for (const m of people.filter((p) => p.manager)) {
+    send(m.id, (t) => t("projectResult.mailQuestionedSubject", { label: projectLabel(project), title: project.title }), (t) => [
+      t("projectResult.mailQuestionedManager", { days: pl.check ?? "", label: projectLabel(project) }), ...(why ? ["", t("projectResult.mailWhy", { why })] : []), "", projectLink(project),
+    ]);
+  }
+};
+
+/** "Ask the sponsor" (RES D19): the asked person, else the users of the asked role's seats, with what is needed. */
+const projectHelpAskedNotice: NoticeBuilder = ({ ev, state, pl, project, send, projectLink }) => {
+  if (!project) return;
+  const ask = project.helpAsks.find((a) => ev.id !== undefined && a.id === ev.id) ?? project.helpAsks.findLast((a) => a.stepId === pl.stepId);
+  if (!ask) return;
+  const step = project.steps.find((s) => s.id === ask.stepId)?.text ?? "";
+  const who = ask.toUserId !== null ? [ask.toUserId] : ask.toRoleId !== null ? usersOfRole(state.seats, ask.toRoleId) : [];
+  for (const to of who) {
+    send(to, (t) => t("projectResult.mailHelpSubject", { label: projectLabel(project), title: project.title }), (t) => [
+      t("projectResult.mailHelpIntro", { actor: ev.actor, label: projectLabel(project), step }), "", `  ${ask.text}`, "", projectLink(project),
+    ]);
+  }
+};
+
+/** A baseline confirmed by a second person (RES D16): the lead may start. */
+const projectBaselineConfirmedNotice: NoticeBuilder = ({ ev, project, send, projectLink }) => {
+  if (!project) return;
+  send(project.leadUserId, (t) => t("projectResult.mailBaselineSubject", { label: projectLabel(project), title: project.title }), (t) => [t("projectResult.mailBaselineIntro", { actor: ev.actor, label: projectLabel(project) }), "", projectLink(project)]);
+};
+
 export const PROJECT_NOTICES: NoticeBuilders = {
   "project.handed": projectHandedNotice,
   "project.stopped": projectStoppedNotice,
@@ -267,4 +315,9 @@ export const PROJECT_NOTICES: NoticeBuilders = {
   "project.resumed": projectResumedNotice,
   "project.update": projectUpdateNotice,
   "project.lead.vacated": projectLeadVacatedNotice,
+  // A result that closes properly (plan RES, D18). project.measure.confirmed is projectStepNotice's.
+  "project.claimed": projectClaimedNotice,
+  "project.measure.questioned": projectQuestionedNotice,
+  "project.help.asked": projectHelpAskedNotice,
+  "project.baseline.confirmed": projectBaselineConfirmedNotice,
 };

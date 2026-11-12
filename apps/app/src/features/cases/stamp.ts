@@ -5,6 +5,9 @@ import type { SeatRow } from "@/features/auth/identity";
 import type { Seed, SeedRole } from "@/features/demo/types";
 import { MIN_GROUP } from "@/features/metrics/types";
 import type { EventPayload } from "./events";
+import { routeOfSeat } from "./hand";
+import { passDueDay } from "./no";
+import type { ReducedCase, State } from "./reducer";
 
 /**
  * The desk for a raise that no route owns (decisions Q2.1 and Q1.9): the head of the org chart, which passes it
@@ -38,6 +41,94 @@ export function stampEvent(type: string, payload: EventPayload, seed: Pick<Seed,
   if (owner !== null) return { ...payload, assigneeRoleHolderId: owner };
   const fallback = fallbackSeat(seed);
   return fallback ? { ...payload, assignee: fallback.label, assigneeRoleHolderId: fallback.id } : { ...payload, assigneeRoleHolderId: null };
+}
+
+// ── What the server decides about a pass and a second look (plan NOR, NOR-B1) ──────────────────────
+
+/** The seat above a role, not counting the roles in `skip` (features/knowledge seatAbove); null when nobody is. */
+export type SeatAboveFn = (roleId: string, skip: readonly string[]) => { id: string; label: string } | null;
+
+/**
+ * The desk a second look goes to (D18): the first occupied seat of the route's deputy role, unless the person who said no holds that role
+ * (by user id) or nobody sits there; then the seat above that role, never in a role the no-sayer holds. null when no one can take it: a
+ * manager answers then. The client's idea of the desk is never read.
+ */
+export function appealDeskSeat(
+  kase: Pick<ReducedCase, "decided" | "routeId" | "assigneeRoleId">,
+  state: Pick<State, "seats" | "routes">,
+  above: SeatAboveFn,
+): { id: string; label: string } | null {
+  const noSayer = kase.decided?.answer === "no" ? kase.decided.byUserId ?? null : null;
+  const held = new Set(state.seats.filter((x) => noSayer !== null && x.userId === noSayer).map((x) => x.roleId));
+  const route = state.routes.find((r) => r.id === kase.routeId);
+  const deputyRole = route?.deputyRoleId ?? null;
+  if (deputyRole !== null && !held.has(deputyRole)) {
+    const seat = [...state.seats].sort((a, b) => a.sort - b.sort).find((x) => x.roleId === deputyRole && x.userId !== null);
+    if (seat) return { id: seat.id, label: seat.label };
+  }
+  const from = deputyRole ?? route?.ownerRoleId ?? kase.assigneeRoleId;
+  return from ? above(from, [...held]) : null;
+}
+
+/**
+ * The payload a person's event is written with, whatever the client sent. A pass: the destination of Not mine from the recorded pass
+ * it answers, of Send up from the desk hierarchy; the flag that keeps a question only on an asked case; the new desk's date floor from
+ * the rule, even when omitted or forged; the route of the seat it goes to when none came. A second look: the desk from D18, never the
+ * client's seat. A second look's answer and a stopped project's reopen: no seat and no date of the client's. Every other type passes unchanged.
+ * A send-up with nobody above comes back without a seat (the caller refuses it).
+ */
+export function stampNor(
+  type: string,
+  payload: EventPayload,
+  kase: ReducedCase | undefined,
+  state: Pick<State, "seats" | "routes" | "day">,
+  above: SeatAboveFn,
+): EventPayload {
+  if (!kase) return payload;
+  if (type === "case.handed") {
+    const next: EventPayload = { ...payload };
+    const label = (seatId: string) => state.seats.find((x) => x.id === seatId)?.label ?? "";
+    const last = kase.handed[kase.handed.length - 1];
+    if (payload.back === true && payload.up !== true && last?.fromSeatId) {
+      next.toRoleHolderId = last.fromSeatId;
+      next.to = label(last.fromSeatId);
+      delete next.routeId;
+    } else if (payload.up === true && payload.back !== true) {
+      const seat = kase.assigneeRoleId ? above(kase.assigneeRoleId, [kase.assigneeRoleId]) : null;
+      delete next.routeId;
+      if (seat) {
+        next.toRoleHolderId = seat.id;
+        next.to = seat.label;
+      } else {
+        delete next.toRoleHolderId;
+        delete next.to;
+      }
+    } else if (next.routeId === undefined && typeof next.toRoleHolderId === "string") {
+      const route = routeOfSeat([...state.routes], next.toRoleHolderId);
+      if (route) next.routeId = route.id;
+    }
+    if (kase.status === "asked") {
+      if (payload.keepsQuestion === true) next.keepsQuestion = true;
+    } else delete next.keepsQuestion;
+    const floor = passDueDay(kase, state.day);
+    if (floor !== null) next.dueDay = floor;
+    else delete next.dueDay;
+    return next;
+  }
+  if (type === "case.appealed") {
+    const next: EventPayload = { ...payload };
+    const desk = appealDeskSeat(kase, state, above);
+    if (desk) next.toRoleHolderId = desk.id;
+    else delete next.toRoleHolderId;
+    return next;
+  }
+  if (type === "case.appeal.decided" || type === "case.reopened") {
+    const next: EventPayload = { ...payload };
+    delete next.toRoleHolderId;
+    delete next.dueDay;
+    return next;
+  }
+  return payload;
 }
 
 // ── The department on an anonymous raise ─────────────────────────────────────────────────────────

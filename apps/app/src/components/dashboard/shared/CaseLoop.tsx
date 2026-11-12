@@ -8,10 +8,12 @@ import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { standingOn, versionsOf } from "@/components/dashboard/derive";
 import { useLocale, useT } from "@/i18n/client";
+import { NoBlock } from "@/components/cases/NoBlock";
 import { SecondLook } from "@/components/cases/SecondLook";
+import { useRelatedCase } from "@/components/cases/useRelatedCase";
 import { caseActions, questionOpen, reviseThenAnswer } from "@/features/cases/case-actions";
+import { noBlockOf } from "@/features/cases/raiser-view";
 import { roundState, scoreVersions, versionReader } from "@/features/cases/discussion";
-import { noCategoryLabel, noCategoryOf, noReasonOf } from "@/features/cases/no";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { projectStatus, raisedWith } from "@/features/cases/rows";
 import { onDeskOf } from "@/features/cases/selectors";
@@ -23,7 +25,8 @@ import { useCaseNames } from "@/components/cases/useCaseNames";
 import { PersonFace, SectionCard } from "@/components/ui/elements";
 import styles from "./CaseLoop.module.css";
 
-// "Accepted on 14 Oct by T. Vogel → P-12 Shorter changeover · In progress" - or the no and its why.
+// "Accepted on 14 Oct by T. Vogel → P-12 Shorter changeover · In progress" - or the no with its block (plan SEE, D12) - or, for a merged case,
+// where it went (D17).
 // A draft the viewer may not read is "Accepted · being set up by {role}, start expected {date}" and no link (D13);
 // one they may read is "Draft → P-12 title" (SET).
 export function ArchiveBanner({ c }: { c: ReducedCase }) {
@@ -31,6 +34,33 @@ export function ArchiveBanner({ c }: { c: ReducedCase }) {
   const t = useT();
   const locale = useLocale();
   const names = useCaseNames();
+  const related = useRelatedCase();
+  // A no, also one a second look reopened (the case then has no live decision, but its no still tells what happened).
+  const block = noBlockOf(c, S.day, S.rules.appealDays);
+  if (c.merged !== null) {
+    const into = related.ofCase(c.merged.into);
+    return (
+      <div className={styles.banner} data-tone="no" role="note" aria-label={t("caseSee.statusMerged")} data-testid="merged-into">
+        <span className={styles.bannerTag}>{t("caseSee.statusMerged")}</span>
+        <span>{into.to ? <Link href={into.to} className={styles.bannerLink}>{t("caseSee.mergedInto", { title: into.title ?? "" })}</Link> : t("caseSee.mergedInto", { title: t("loopCase.aCase") })}{c.merged.note ? " — " + c.merged.note : ""}</span>
+      </div>
+    );
+  }
+  if (block !== null) {
+    const no = c.decided ?? c.decisions[c.decisions.length - 1];
+    const ago = no.day - S.day;
+    const noWhen = ago === 0 || ago === -1 ? f(no.day) : t("dashboard.loopWhenOn", { day: f(no.day) });
+    return (
+      <>
+      <div className={styles.banner} data-tone="no" role="note" aria-label={t("dashboard.loopArchived")}>
+        <span className={styles.bannerTag}>{t("dashboard.loopArchived")}</span>
+        <span data-testid="archived-no">{t("dashboard.loopDeclined", { when: noWhen, by: no.by })}</span>
+      </div>
+      <NoBlock c={c} block={block} />
+      <SecondLook c={c} />
+      </>
+    );
+  }
   const dec = c.decided;
   if (!c.archived || !dec) return null;
   const p = dec.answer === "yes" ? projectOfCase(S, c) : undefined;
@@ -52,11 +82,8 @@ export function ArchiveBanner({ c }: { c: ReducedCase }) {
           {draft ? t("projectDraft.title") : t("dashboard.loopAccepted", { when, by: dec.by })}
           {p ? <> → <Link href={href("/projects/" + p.id)} className={styles.bannerLink}>{projectLabel(p)} {p.title}</Link> · {projectStatus(p.status, locale)}</> : null}
         </span>
-      ) : (
-        <span data-testid="archived-no">{t("dashboard.loopDeclined", { when, by: dec.by })} — {t(noCategoryLabel(noCategoryOf(dec) ?? "other"))}{noReasonOf(dec) ? ": " + noReasonOf(dec) : ""}</span>
-      )}
+      ) : null}
     </div>
-    {dec.answer === "no" && <SecondLook c={c} />}
     {draft && panel?.show && <RaiserDraftPanel projectId={draft.id} panel={panel} comment={act.project.comment} />}
     </>
   );
@@ -150,7 +177,8 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
   const [title, setTitle] = useState(c.title);
   const [body, setBody] = useState(c.body);
   const versions = versionsOf(ctx, c);
-  const canRevise = mine && !c.decided;
+  // The raiser of an undecided case that is neither withdrawn nor merged (D18); a discussion has the same Revise here.
+  const canRevise = (caseActions(c, ctx.me, ctx.role, ctx.S).revise || (mine && c.status === "discussion" && !c.decided && c.withdrawn === null && c.merged === null));
   if (versions.length < 2 && !canRevise) return null;
   const now = versions[versions.length - 1];
   // The draft scored live, against the version it would follow.

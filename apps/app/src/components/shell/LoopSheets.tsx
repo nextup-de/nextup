@@ -10,6 +10,7 @@ import { canOpen, standingOn, versionsOf } from "@/components/dashboard/derive";
 import { Btn } from "@/components/dashboard/shared/primitives";
 import { peopleOf } from "@/components/projects/parts";
 import { checkinDraft, inviteSuggestions, roundState, versionText, type InviteSuggestion } from "@/features/cases/discussion";
+import { checkinSheet } from "@/features/cases/sheets";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn } from "@/features/cases/selectors";
@@ -41,7 +42,7 @@ export function LoopSheet() {
   return null;
 }
 
-function Frame({ label, title, sub, children, actions }: { label: string; title: string; sub: string; children?: React.ReactNode; actions: React.ReactNode }) {
+export function Frame({ label, title, sub, children, actions }: { label: string; title: string; sub: string; children?: React.ReactNode; actions: React.ReactNode }) {
   const { closeSheet } = useDemo();
   return (
     <>
@@ -205,7 +206,16 @@ function CheckinSheet({ c }: { c: ReducedCase }) {
     const versions = versionsOf(ctx, c);
     return checkinDraft(c, versions, commentsOn(log, c.id), versions[versions.length - 1].dials);
   });
-  const blocked = !!rs?.last && role !== "manager"; // one more round past the last needs a manager
+  // One more round past the last needs a manager; after the discussion's last day nothing is added to it (D19).
+  const sheetFacts = checkinSheet(c, commentsOn(log, c.id), S.day);
+  const lastDayPassed = !sheetFacts.roundAllowed;
+  const blocked = (!!rs?.last && role !== "manager") || lastDayPassed;
+  // Who gave no view yet (D14): the role of their seat, else the name on it.
+  const roleTitleOf = (roleId: string) => ctx.seed.roles?.find((r) => r.id === roleId)?.title;
+  const noView = sheetFacts.noViewYet.map((u) => {
+    const seat = ctx.seed.seats.find((x) => x.userId === u);
+    return (seat && roleTitleOf(seat.roleId)) || seat?.label || u;
+  });
   const [next, setNext] = useState<"round" | "decide">(blocked || !draft.open.length ? "decide" : "round");
   const [open, setOpen] = useState<string[]>(draft.open);
   const [note, setNote] = useState(draft.note);
@@ -241,11 +251,19 @@ function CheckinSheet({ c }: { c: ReducedCase }) {
           <div className={base.optionLabel}>{t("shell.checkinReady")}</div>
           <div className={base.optionSub}>{t("shell.checkinReadySub")}</div>
         </button>
-        <button type="button" className={base.option} data-on={next === "round" ? "true" : undefined} onClick={() => { if (!blocked) { mark(); setNext("round"); } }} disabled={blocked} aria-disabled={blocked}>
-          <div className={base.optionLabel}>{t("shell.checkinAnother")}</div>
-          <div className={base.optionSub}>{blocked ? t("shell.checkinLastRound") : t("shell.checkinNextDue", { days: S.rules.discussEveryDays })}</div>
-        </button>
+        {!lastDayPassed && (
+          <button type="button" className={base.option} data-on={next === "round" ? "true" : undefined} onClick={() => { if (!blocked) { mark(); setNext("round"); } }} disabled={blocked} aria-disabled={blocked}>
+            <div className={base.optionLabel}>{t("shell.checkinAnother")}</div>
+            <div className={base.optionSub}>{blocked ? t("shell.checkinLastRound") : t("shell.checkinNextDue", { days: S.rules.discussEveryDays })}</div>
+          </button>
+        )}
       </div>
+      {lastDayPassed && <div className={styles.none} data-testid="checkin-last-day">{t("shell.checkinLastDayPassed", { date: f(c.discussion?.lastDay ?? S.day) })}</div>}
+      {noView.length > 0 && (
+        <div className={styles.noView} data-testid="checkin-no-view">
+          {noView.map((who) => <div key={who}>{t("shell.checkinNoViewYet", { who })}</div>)}
+        </div>
+      )}
       <div className={base.textLabel}>{t("shell.checkinStillOpen")}</div>
       <div className={styles.points}>
         {points.map((p) => {

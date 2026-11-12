@@ -44,6 +44,8 @@ export type LedgerInput = {
   promiseDays: number;
   today: number;
   demoClock: boolean;
+  /** The projects whose stalled escalation stands today, with the unit they count in (plan RES, D22): the unit of their first source case. */
+  stalled: { projectId: string; unitId: string | null }[];
 };
 
 export type TileId = "firstReasonedAnswer" | "onTime" | "ideaToDecision" | "pastPromise" | "escalated" | "overruled";
@@ -67,6 +69,8 @@ export type BreakdownRow = {
   onTimePct: number | null;
   pastPromise: number | null;
   escalated: number | null;
+  /** The projects whose stalled escalation stands today, rolled up like the other columns; null for role rows, past periods and hidden rows (plan RES, D22). */
+  stalled: number | null;
   /** Also marks complementary suppression needed to stop a viewer rebuilding a hidden row from roll-ups. */
   hidden: boolean;
 };

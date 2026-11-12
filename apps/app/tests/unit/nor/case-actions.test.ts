@@ -97,7 +97,7 @@ describe("NOR case actions", () => {
     const gone = stateOf(3, ev("case.withdrawn", { note: "Solved" }, "u_au"));
     expect(caseOf(gone).withdrawn).not.toBeNull();
     for (const [user, role] of [["u_au", "member"], ["u_own", "leader"], ["u_dep", "leader"], ["u_boss", "manager"]] as const) {
-      expect(may(gone, user, role), user).toEqual({ appeal: null, answerAppeal: false, declineInvite: false, moveToDesk: false });
+      expect(may(gone, user, role), user).toEqual({ appeal: null, answerAppeal: false, declineInvite: false, moveToDesk: false, merge: false, link: false, betterIdea: false, revise: false, maybeSame: null });
     }
   });
 
