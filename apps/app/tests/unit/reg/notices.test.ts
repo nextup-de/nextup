@@ -34,18 +34,25 @@ describe("REG notices split", () => {
     expect(sorted(LOOP_MAIL_TYPES)).toEqual(snapshot.loopMailTypes);
   });
 
-  it("each area file exports the names of D10, and the stubs are empty", () => {
+  it("each area file exports the names of D10, and the stubs (approval, overload) are empty", () => {
     const areas = { CASE: kase, PROJECT: project, AGENT: agent, APPROVAL: approval, OVERLOAD: overload } as Record<string, Record<string, unknown>>;
     for (const [name, mod] of Object.entries(areas)) {
       for (const part of ["LOOP_TYPES", "LOOP_TEMPLATES", "FOLLOWS", "REMINDER_KINDS", "REMINDER_TEXTS", "REMINDER_AUDIENCE", "DUTY_TEMPLATES", "LOOP_MAIL_TYPES"]) {
         expect(mod, `${name}_${part}`).toHaveProperty(`${name}_${part}`);
       }
     }
-    for (const mod of [agent, approval, overload]) {
+    for (const mod of [approval, overload]) {
       for (const value of Object.values(mod)) expect(Array.isArray(value) ? value : Object.keys(value as object)).toEqual([]);
     }
+    // The agent area (plan AGT): one loop notice, an accepted Unblock; no reminders, no duty notices.
+    expect(agent.AGENT_LOOP_TYPES).toEqual(["agent.accepted"]);
+    expect(agent.AGENT_LOOP_TEMPLATES).toEqual(["loop.agent.accepted"]);
+    expect(agent.AGENT_LOOP_MAIL_TYPES).toEqual(["agent.accepted"]);
+    expect(agent.AGENT_FOLLOWS).toEqual({ "loop.agent.accepted": "loop.project.member" });
+    for (const none of [agent.AGENT_REMINDER_KINDS, agent.AGENT_DUTY_TEMPLATES]) expect(none).toEqual([]);
+    for (const none of [agent.AGENT_REMINDER_TEXTS, agent.AGENT_REMINDER_AUDIENCE]) expect(Object.keys(none)).toEqual([]);
     expect(kase.CASE_REMINDER_KINDS).toEqual(["deadline", "checkin", "escalation", "question", "triage", "appeal", "view"]);
-    expect(project.PROJECT_REMINDER_KINDS).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"]);
+    expect(project.PROJECT_REMINDER_KINDS).toEqual(["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant", "reward"]);
     expect(Object.keys(kase.CASE_REMINDER_AUDIENCE).sort()).toEqual([...kase.CASE_REMINDER_KINDS].sort());
     expect(Object.keys(project.PROJECT_REMINDER_TEXTS).sort()).toEqual(project.PROJECT_REMINDER_KINDS.map((k) => `reminder.${k}`).sort());
     // A kind, a loop type and a duty template live in one area only.

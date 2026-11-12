@@ -3,6 +3,7 @@
 // never to the composers (plan.ts, digest.ts, templates.ts, channels.ts, server/loop-notice.ts).
 import type { CaseEventType } from "@/features/cases/events";
 import { DRAFT_UP_DAYS } from "@/features/clock/due";
+import { rewardEpisodeOf } from "@/features/clock/kinds/project";
 import { confirmerIds, unconfirmedOf } from "@/features/projects/confirm";
 import type { PlanEvent, ReminderAudienceFn, ReminderCtx, ReminderTextFn } from "./shared";
 
@@ -12,6 +13,8 @@ export const PROJECT_LOOP_TYPES = [
   "project.lead.answered", "project.invited", "project.invite.answered", "project.start.moved",
   // A project that keeps moving (plan MOV, D23).
   "project.doneby.moved", "project.paused", "project.resumed", "project.howwework", "project.update", "project.lead.vacated", "project.lead.changed",
+  // A result that closes properly (plan RES, D18): a claim told nobody before (Q2.14). RES-E1 adds the recipients and the render entries.
+  "project.measure.questioned", "project.baseline.confirmed", "project.help.asked", "project.claimed",
 ] as const satisfies readonly CaseEventType[];
 
 /** The loop templates of the project events, as the profile's switches name them. */
@@ -31,9 +34,13 @@ export const PROJECT_FOLLOWS: Record<string, string> = {
   "loop.project.lead.changed": "loop.project.member",
   "reminder.late": "reminder.start", "reminder.blocked": "reminder.start", "reminder.quiet": "reminder.start",
   "reminder.stalled": "reminder.start", "reminder.update": "reminder.start", "reminder.vacant": "reminder.start",
+  // A result that closes properly (plan RES): an opt-out of the result notices covers the new ones; the reward reminder follows the confirm reminder.
+  "loop.project.measure.questioned": "loop.project.measured", "loop.project.baseline.confirmed": "loop.project.measured",
+  "loop.project.help.asked": "loop.project.measured", "loop.project.claimed": "loop.project.measured",
+  "reminder.reward": "reminder.confirm",
 };
 
-export const PROJECT_REMINDER_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant"] as const;
+export const PROJECT_REMINDER_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant", "reward"] as const;
 type ProjectReminderKind = (typeof PROJECT_REMINDER_KINDS)[number];
 
 /** The render entries of the project reminders. */
@@ -66,6 +73,9 @@ export const PROJECT_REMINDER_TEXTS: Record<`reminder.${ProjectReminderKind}`, R
     compose(t("projectMove.reminderUpdateSubject", { title }), t("projectMove.reminderUpdateIntro", { project: title }), t("mail.reminderOpenProject", { url }), false),
   "reminder.vacant": (_i, t, compose, { title, url }) =>
     compose(t("projectMove.reminderVacantSubject", { title }), t("projectMove.reminderVacantIntro", { project: title }), t("mail.reminderOpenProject", { url }), false),
+  // A result that closes properly (plan RES, D17): a reward that fell due is still waiting; every manager is reminded once.
+  "reminder.reward": (_i, t, compose, { title, when, url }) =>
+    compose(t("projectResult.reminderRewardSubject", { title }), t("projectResult.reminderRewardIntro", { project: title, when }), t("mail.reminderOpenProject", { url }), false),
 };
 
 /** The people a MOV fact names: its user and the users of its seat (D23), once each. */
@@ -97,6 +107,17 @@ export const PROJECT_MOVE_REMINDER_AUDIENCE: Record<"late" | "blocked" | "quiet"
   stalled: (ev, ctx) => (ctx.project ? { users: factPeople(ev, ctx), title: ctx.project.title, link: ctx.projectLink(ctx.project.id), day: ctx.project.doneBy ?? ev.payload.dueDay } : null),
   update: (ev, ctx) => (ctx.project ? { users: factPeople(ev, ctx), title: ctx.project.title, link: ctx.projectLink(ctx.project.id) } : null),
   vacant: (ev, ctx) => (ctx.project ? { users: factPeople(ev, ctx), title: ctx.project.title, link: ctx.projectLink(ctx.project.id) } : null),
+};
+
+/**
+ * The reward reminder (RES D17, D18): every manager, while the episode it was written for still stands - the reward is due, the project
+ * runs on, and the result that made it due is still the latest. A fact of an episode that ended (paid, sent back, replaced) mails nobody.
+ */
+const rewardAudience: ReminderAudienceFn = (ev, { project, people, projectLink }) => {
+  if (!project) return null;
+  const standing = project.rewardDue && project.rewardDueDay !== null && project.status !== "stopped" && project.status !== "recognised"
+    && (ev.payload.originEventId === undefined || ev.payload.originEventId === rewardEpisodeOf(project));
+  return { users: standing ? people.filter((p) => p.manager).map((p) => p.id) : [], title: project.title, link: projectLink(project.id), day: project.rewardDueDay };
 };
 
 /** Who gets each project reminder, with which title, link and text input. */
@@ -142,6 +163,7 @@ export const PROJECT_REMINDER_AUDIENCE: Record<ProjectReminderKind, ReminderAudi
     };
   },
   ...PROJECT_MOVE_REMINDER_AUDIENCE,
+  reward: rewardAudience,
 };
 
 /** The project notices a person cannot switch off, only move between Teams and mail (INB D8; SET: a person waited for, or a start that is late; MOV D23: a project that stalled or has no lead). */

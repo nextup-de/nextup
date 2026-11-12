@@ -30,6 +30,7 @@ const KIND: Record<InboxKind, MessageKey> = {
   case: "inbox.kindCase", idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
   reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindMove", invitation: "inbox.kindView", approval: "inbox.kindConfirm",
   stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "caseNo.secondLook",
+  help: "inbox.kindMove", baseline: "inbox.kindConfirm", suggestion: "inbox.kindMove",
 };
 /** Why a case is back on the list (plan NOR, D26). */
 const CAUSE: Record<NonNullable<InboxItem["cause"]>, MessageKey> = {

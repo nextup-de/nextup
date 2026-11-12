@@ -1,5 +1,7 @@
 # Notifications
 
+Phase additions after REG: see [docs/process/](process/README.md).
+
 Every message NextUp sends leaves through one outbox: mails to people and signed webhooks to a company's own systems.
 A message is written once, sent through a channel, retried on a schedule, and kept when it fails. Design:
 `docs/adr/0004-webhook-and-outbox.md`; the proof is `apps/app/tests/db/outbox.test.ts` (NTF-Z1).
@@ -155,6 +157,30 @@ person with a bot chat now gets them in Teams.
 A person can ask for mail as well where the rule chose Teams: a `NotifyPreference` row with template `+mail:<group>`
 (`ADD_MAIL_PREFIX`) and `on` true, one per group. It adds a mail row next to the Teams row; it changes nothing when the
 rule is `mail` or `both`.
+
+## The project draft's notices
+
+Plan SET adds these to the project area (`features/notify/areas/project.ts`, `features/loop/notice/project.ts`). Each is one
+row per outside channel the company's rule chose, plus the in-app copy, and never goes to the person who did it.
+
+| Template | Sent when | To |
+|---|---|---|
+| `loop.case.decided` (a yes that opened a draft) | the desk says yes | the raiser: who sets it up, the decider's line, what comes next. A lead who is not the decider gets "Lead a project" |
+| `loop.project.lead.answered` | the lead declines, or the clock lapsed the ask | the decider, who leads the draft now, with the reason |
+| `loop.project.invited` | an invitation (also after the start) | the person invited; a follower gets the follow mail. A private idea adds that they will read it |
+| `loop.project.invite.answered` | an invitation is declined or lapses | the lead, with the reason |
+| `loop.project.start.moved` | the seat above kept the draft with a new date | the lead, with the new date and the reason |
+| `loop.project.started` (the kickoff of a draft) | the lead starts the draft | the team, the sponsor and the followers: the goal, done-when and first steps with owners; the raiser the usual "started" mail |
+| `loop.project.stopped` | a draft or project is stopped | the lead, the team and the raiser, with the reason |
+| `reminder.lead` | 2 working days after the lead was asked | the lead, while the draft still waits for the answer |
+| `reminder.invite` | 2 working days after an invitation | the person invited, while it is open |
+| `reminder.draft` | the draft's start day, and 3 working days later | the lead (first only) and the seat above the lead's seat; the text differs for the two |
+
+The new loop templates follow `loop.project.member` and the new reminders follow `reminder.start` in a person's switches, so an
+opt-out of the old ones covers them until the person chooses again (`PROJECT_FOLLOWS`). `reminder.lead`, `reminder.invite` and
+`reminder.draft` are duty notices (below). The public event `project.started` is emitted at the kickoff only, never at the
+yes, for drafts and legacy projects alike. A sandbox writes the outside rows `skipped` ("sandbox"); `set.spec.ts` asserts their
+recipients and text and the sent in-app copies, not delivered mail.
 
 ## Duty notices
 

@@ -3,8 +3,8 @@ import type { CaseEventType, EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import type { Due } from "@/features/clock/due";
 
-/** What a writer sees: the reduced state the Dues were computed from, today, and the company. */
-export type WriterCtx = { state: State; today: number; companyId: string };
+/** What a writer sees: the reduced state the Dues were computed from, today, the company, and its answer length in working days (seed.promiseDays; the case area dates a reopened case with it). */
+export type WriterCtx = { state: State; today: number; companyId: string; promiseDays?: number };
 
 /** An event to append for a Due, `{ skip: true }` to write nothing (a hand-over to a gone seat), or null when this area does not write it. */
 export type WriterResult = { type: CaseEventType; payload: EventPayload } | { skip: true } | null;
