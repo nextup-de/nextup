@@ -141,7 +141,7 @@ describe("SEE case actions", () => {
 
     it("a withdrawn case offers nothing", () => {
       const s = stateOf(3, ev("case.withdrawn", {}, "u_au", 2));
-      expect(may(s, "u_x", "manager")).toEqual({ appeal: null, answerAppeal: false, declineInvite: false, moveToDesk: false, merge: false, link: false, betterIdea: false, revise: false, maybeSame: null });
+      expect(may(s, "u_x", "manager")).toEqual({ appeal: null, answerAppeal: false, declineInvite: false, moveToDesk: false, merge: false, link: false, betterIdea: false, revise: false, maybeSame: null, forward: null, back: false, no: false, yes: false, cost: false, answer: null, approve: false, approveConditions: false, sendBack: false, refuse: false });
     });
   });
 });

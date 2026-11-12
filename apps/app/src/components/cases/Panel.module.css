@@ -12,3 +12,29 @@
   .rows dd { margin-bottom: 6px; }
   .hint { grid-column: 1; }
 }
+
+/* Review and approvals on the case page (plan GAT): the review block, the cost field and the approvals block. */
+.block { display: grid; gap: 10px; margin: 0; padding: 12px 14px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-md); }
+.blockTitle { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
+.blockText { margin: 0; color: var(--nh-ink); overflow-wrap: anywhere; }
+.flag { margin: 0; font-size: var(--nh-fs-sm); color: #8a5d00; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.field { flex: 1; min-width: 0; box-sizing: border-box; height: 36px; padding-inline: 12px; border: 1px solid var(--nh-line); border-radius: 8px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.area { width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--nh-line); border-radius: 8px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); resize: vertical; }
+.field:focus, .area:focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
+.runs { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.steps { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.step { display: grid; gap: 2px; padding: 8px 10px; border-radius: 8px; background: #fff; border: 1px solid var(--nh-line); }
+.stepHead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; font-weight: 600; color: var(--nh-ink); }
+.stepState { font-weight: 400; color: var(--nh-mute); }
+.stepState[data-state="yes"], .stepState[data-state="conditions"] { color: var(--nh-ok, #1a7f4b); }
+.stepState[data-state="no"] { color: #a12b2b; }
+.stepNote { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); overflow-wrap: anywhere; }
+.past > summary { cursor: pointer; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.form { display: grid; gap: 8px; padding: 10px 12px; border-radius: 8px; background: #fff; border: 1px solid var(--nh-line); }
+.formLabel { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
+.options { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 760px) {
+  .field { height: 44px; font-size: var(--nh-fs-input); }
+  .row > button { min-height: 44px; }
+}

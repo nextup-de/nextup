@@ -23,6 +23,10 @@ function decisionExpectedText(day: number, names: PromiseNames, t: T): string {
 // Every day goes through names.date, on the demo clock too: a demo day is an offset from today and
 // can be zero or negative, so the raw number ("day -1 of the demo") is never shown.
 function answerByText(p: AnswerPromise, names: PromiseNames, t: T): string {
+  // A case waiting for approval has no answer date: its clock is stopped (GAT D21). While the review is pending the raiser reads who has it and by when
+  // it is answered (GAT D15).
+  if (p.stage === "approval") return t("approvals.waitsForApproval");
+  if (p.stage === "review") return t("approvals.reviewPromise", { role: roleOrNone(names.holderRole, t), date: names.date(p.dueDay) });
   // In a discussion the raiser reads the day the decision is expected, not the answer date (D13); past it, it reads as late.
   if (p.expectedBy !== null) return decisionExpectedText(p.expectedBy, names, t);
   const date = names.date(p.dueDay);
@@ -53,6 +57,8 @@ export function promiseText(p: AnswerPromise, names: PromiseNames, t: T): Promis
 
 /** My cases: "They owe you an answer by {date}" - or what happened to it - without the note. */
 export function owedLine(p: AnswerPromise, names: PromiseNames, t: T): string {
+  if (p.stage === "approval") return t("approvals.waitsForApproval");
+  if (p.stage === "review" && p.answeredDay === null) return t("approvals.reviewPromise", { role: roleOrNone(names.holderRole, t), date: names.date(p.dueDay) });
   if (p.expectedBy !== null && p.answeredDay === null) return decisionExpectedText(p.expectedBy, names, t);
   if (p.answeredDay !== null) return t("loopCase.owedAnswered", { date: names.date(p.answeredDay) });
   if (p.state === "due-today") return t("loopCase.owedByToday");

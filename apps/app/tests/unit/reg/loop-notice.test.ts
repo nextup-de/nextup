@@ -33,11 +33,11 @@ describe("REG loop notice split", () => {
     for (const type of projectTypes) expect(typeof (PROJECT_NOTICES as Record<string, unknown>)[type], type).toBe("function");
   });
 
-  it("the approval area is empty until its phase fills it; the overload area has OVL's five notices (OVL-N1); the agent area has the one notice of an accepted nudge (AGT-K1)", () => {
-    expect(APPROVAL_NOTICES).toEqual({});
+  it("the overload area has OVL's five notices (OVL-N1), the agent area the one notice of an accepted nudge (AGT-K1), the approval area GAT's three builders", () => {
     expect(Object.keys(OVERLOAD_NOTICES)).toEqual(["person.away", "desk.overloaded", "desk.covered", "desk.cleared", "org.seat.vacant"]);
     expect(Object.keys(AGENT_NOTICES)).toEqual(["agent.accepted"]);
     expect(typeof (AGENT_NOTICES as Record<string, unknown>)["agent.accepted"]).toBe("function");
+    expect(Object.keys(APPROVAL_NOTICES)).toEqual(["case.reviewed", "case.provisional", "case.approval"]);
   });
 
   it("a type that is no own key of a map (an inherited name) sends nothing", () => {
