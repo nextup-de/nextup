@@ -293,8 +293,32 @@ function vacantDues(state: State, today: number, since: number, above: SeatAbove
 }
 
 /**
+ * The reward-due episode of a project (RES review, 12 Nov): the event that made its reward due, the latest result event - a typed one that
+ * was confirmed, or a system or imported one that counts at once. A replacement measure, or a result sent back and entered again, is
+ * another event and so another episode; the reminder belongs to one episode only.
+ */
+export const rewardEpisodeOf = (p: Pick<ReducedProject, "history">): string | undefined =>
+  p.history.findLast((e) => e.type === "project.measure.confirmed" || e.type === "project.measured")?.id;
+
+/**
+ * A reward still due REWARD_REMIND_DAYS working days after it fell due (D17): one fact for the episode, no seat and no user - the
+ * recipients are the managers. Nothing for a stopped or recognised project, for a reward that fell due before MOV's release day, or while
+ * the reward is not due (paid, sent back, replaced by a measure that is not confirmed yet): a fact written for an episode that has since
+ * ended is not mailed (the audience checks the episode), and the next episode gets its own fact.
+ */
+function rewardDues(state: State, today: number, since: number, out: Due[]): void {
+  for (const p of state.projects) {
+    if (p.status === "stopped" || p.status === "recognised" || !p.rewardDue || p.rewardDueDay === null || p.rewardDueDay < since) continue;
+    const dueDay = p.rewardDueDay + REWARD_REMIND_DAYS;
+    const episode = rewardEpisodeOf(p);
+    if (today < dueDay || hasProjectFact(p, "reward", dueDay, undefined, undefined, episode)) continue;
+    out.push({ kind: "reward", target: p.id, dueDay, originEventId: episode, idemKey: projectIdemKey("reward", p.id, dueDay, undefined, undefined, episode) });
+  }
+}
+
+/**
  * Order of the project facts (OVL takes this over): start, measure, SET's draft facts (lead, invite, draft), confirm,
- * then MOV's late, blocked, quiet, stalled, update, vacant. A new kind goes at the end of the list it belongs to, never between.
+ * then MOV's late, blocked, quiet, stalled, update, vacant, then RES's reward. A new kind goes at the end of the list it belongs to, never between.
  */
 export function projectDues(state: State, today: number, above: SeatAbove): Due[] {
   const out: Due[] = [];
@@ -342,6 +366,7 @@ export function projectDues(state: State, today: number, above: SeatAbove): Due[
     stalledDues(state, today, since, out);
     updateDues(state, today, since, out);
     vacantDues(state, today, since, above, out);
+    rewardDues(state, today, since, out);
   }
   return out;
 }
