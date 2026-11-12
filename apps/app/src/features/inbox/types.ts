@@ -22,6 +22,8 @@ export type InboxItem = {
   pinned: boolean;
   /** The desk (role) the item sits on when the person holds it as a role holder, else null. */
   deskRoleId: string | null;
+  /** Why a case is back on the list (plan NOR): reopened, passed on, sent back, taken up a level, or its date moved. Absent on every other item. */
+  cause?: "reopened" | "passed" | "back" | "up" | "moved";
 };
 
 export type InboxInput = {
