@@ -6,6 +6,7 @@ import type { State } from "@/features/cases/reducer";
 import type { CaseEvent, EventPayload } from "@/features/cases/events";
 import { byClock } from "./actor";
 import type { Route } from "@/features/demo/types";
+import type { ReducedProject } from "@/features/projects/types";
 import { CONFIRM_ESCALATE_DAYS, unconfirmedOf } from "@/features/projects/confirm";
 
 export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation" | "question" | "unanswered" | "triage" | "confirm" | "lead" | "invite" | "draft";
@@ -94,6 +95,45 @@ const hasCycleFact = (history: readonly CaseEvent[], kind: DueKind, dueDay: numb
     && (Object.keys(match) as (keyof EventPayload)[]).every((k) => e.payload[k] === match[k]) && Boolean(e.payload.lapse) === Boolean(match.lapse));
 
 /**
+ * Where a draft's current cycle began, read off its history the way the reducer reads it: the event that asked the lead
+ * (the yes, or a hand-over that changed the lead), and the index of the latest event that restarted the start window (a hand-over,
+ * the lead's answer, a moved start). Facts before `since` belong to an earlier cycle.
+ */
+function draftCycle(p: ReducedProject): { askId: string | undefined; since: number; sinceId: string | undefined } {
+  let lead: string | null = null;
+  let askId: string | undefined;
+  let sinceId: string | undefined;
+  let since = -1;
+  let pending = false;
+  p.history.forEach((e, i) => {
+    const pl = e.payload;
+    if (e.type === "case.decided" && pl.answer === "yes" && askId === undefined) {
+      askId = e.id;
+      sinceId = e.id;
+      lead = pl.leadUserId ?? e.actorUserId ?? null;
+      pending = pl.draft === true && lead !== null && lead !== (e.actorUserId ?? null);
+    } else if (e.type === "project.handed") {
+      const to = pl.toUserId ?? null;
+      if (to === null || to === lead) return;
+      lead = to;
+      askId = e.id;
+      sinceId = e.id;
+      since = i;
+      pending = to !== (e.actorUserId ?? null);
+    } else if (e.type === "project.lead.answered" && pending && (pl.askId === undefined || pl.askId === askId)) {
+      pending = false;
+      if (pl.take !== true) lead = p.deciderUserId;
+      sinceId = e.id;
+      since = i;
+    } else if (e.type === "project.start.moved" && !pending) {
+      sinceId = e.id;
+      since = i;
+    }
+  });
+  return { askId, since, sinceId };
+}
+
+/**
  * The project draft's clock (plan SET, D11, D12, D15): the lead's answer, each invitation's answer, the start day.
  * Every fact belongs to one cycle (the ask, the invitation, the start day), so a new ask, a new invitation or a moved
  * start gets its own deadlines; an old fact of another cycle neither stops nor brings forward the new one. A lapse is the
@@ -106,8 +146,7 @@ function draftDue(state: State, today: number, above: SeatAbove, out: Due[], han
 
     // The lead has not answered. The ask is the latest yes or hand-over on the draft; before the lead takes it there is no start day.
     if (planning && p.leadState === "pending" && p.leadAskedDay !== null) {
-      const ask = [...p.history].reverse().find((e) => e.type === "project.handed" || (e.type === "case.decided" && e.payload.answer === "yes"));
-      const askId = ask?.id;
+      const { askId } = draftCycle(p);
       const key = `clk:lead:${p.id}:${askId ?? "d" + p.leadAskedDay}`;
       const cycle: Partial<EventPayload> = askId === undefined ? {} : { askId };
       const userId = p.leadUserId ?? undefined;
@@ -128,10 +167,10 @@ function draftDue(state: State, today: number, above: SeatAbove, out: Due[], han
     }
 
     // Past its start day and not started: the seat above the lead's seat is told, and again DRAFT_UP_DAYS later. Nothing stops.
-    // A moved start (project.start.moved) is a new cycle: only facts after the latest move count, and the key names it.
+    // A moved start, a new lead or the lead's answer is a new cycle: only facts after it count, and the key names it.
     if (planning && p.leadState === "taken" && p.startDay !== null && today >= p.startDay) {
-      const at = p.history.map((e) => e.type).lastIndexOf("project.start.moved");
-      const moved = at < 0 ? "" : `:m${p.history[at].id}`;
+      const { since: at, sinceId } = draftCycle(p);
+      const moved = at < 0 ? "" : `:m${sinceId}`;
       const leadRole = state.seats.find((s) => s.userId !== null && s.userId === p.leadUserId)?.roleId ?? null;
       const to = leadRole === null ? null : above(leadRole, []);
       const first = p.startDay;
