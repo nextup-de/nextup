@@ -7,7 +7,7 @@ export type NavItem = { label: string; href: string; roles: readonly Role[]; fla
 // Left rail. Filtered by role in the app shell layout. hrefs are relative to /[company].
 export const NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", roles: ["manager"] },
-  { label: "Inbox", href: "/leader", roles: ["leader", "manager"] },
+  { label: "Inbox", href: "/inbox", roles: ["leader", "manager"] },
   { label: "My cases", href: "/team", roles: ["member", "leader", "manager"] },
   { label: "Feed", href: "/feed", roles: ["member", "leader", "manager"] },
   { label: "Decisions", href: "/decisions", roles: ["member", "leader", "manager"] },
@@ -20,17 +20,19 @@ export const NAV: NavItem[] = [
 // The simple shell (SHELL[role] === "simple"): two or three places and a profile button, per role.
 // hrefs relative to /[company]. `count` names what the badge next to the label counts.
 // `unlessFlag`: shown only while that flag is off (the Overview, once Projects carries it as a tab).
-export type SimpleNavItem = { label: string; href: string; count?: "inbox" | "decisions"; flag?: FlagKey; unlessFlag?: FlagKey };
+// `hideWhenEmpty`: shown only while its count is above 0 (a member sees the Inbox only while something waits for them).
+export type SimpleNavItem = { label: string; href: string; count?: "inbox" | "decisions"; flag?: FlagKey; unlessFlag?: FlagKey; hideWhenEmpty?: boolean };
 export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
   member: [
     { label: "Ideas", href: "/raise" },
+    { label: "Inbox", href: "/inbox", count: "inbox", hideWhenEmpty: true },
     { label: "Feed", href: "/feed" },
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
   leader: [
     { label: "Ideas", href: "/raise" },
-    { label: "Inbox", href: "/leader", count: "inbox" },
+    { label: "Inbox", href: "/inbox", count: "inbox" },
     { label: "Feed", href: "/feed" },
     { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of Projects while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
@@ -38,7 +40,7 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
   ],
   manager: [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "Inbox", href: "/leader", count: "inbox" }, // tentative: what sits on the manager's own desk (escalations, routes they own)
+    { label: "Inbox", href: "/inbox", count: "inbox" }, // what is asked of the manager: their desk, results to confirm, rewards due
     { label: "Feed", href: "/feed" },
     { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of Projects while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
@@ -130,4 +132,12 @@ export function navFor(role: Role, flag: (key: FlagKey) => boolean = () => true)
 /** The simple shell's places for a role, flagged ones only while their flag is on. */
 export function simpleNavFor(role: Role, flag: (key: FlagKey) => boolean): SimpleNavItem[] {
   return NAV_SIMPLE[role].filter((n) => (!n.flag || flag(n.flag)) && (!n.unlessFlag || !flag(n.unlessFlag)));
+}
+
+/**
+ * The places the simple shell shows a role: flagged ones only while their flag is on, and an item with `hideWhenEmpty`
+ * only while its count is above 0. `counts` are what the badges count (SimpleShell).
+ */
+export function visibleSimpleNav(role: Role, flag: (key: FlagKey) => boolean, counts: Record<"inbox" | "decisions", number>): SimpleNavItem[] {
+  return simpleNavFor(role, flag).filter((n) => !n.hideWhenEmpty || (n.count !== undefined && counts[n.count] > 0));
 }
