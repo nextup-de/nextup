@@ -64,7 +64,7 @@ export function mayAppend(
       }
       // A question on a decided case would put it back to "asked" and hide the decision (K3).
       if (ev.type === "case.asked" && kase.decided) return no(t, "cases.permAlreadyDecided");
-      return ev.type === "case.decided" ? mayDecide(ev.payload as EventPayload, kase, state, t) : OK;
+      return ev.type === "case.decided" ? mayDecide(ev.payload as EventPayload, kase, state, t, userId) : OK;
     }
 
     // The discussion stage (docs/plans/2026-10-15_idea-to-project.md).
@@ -140,13 +140,19 @@ export function mayAppend(
  * One decision per case (K3): a second one, from the app, the API or a card still open in Teams, would replace the
  * first in the reducer. A yes that names a project opens it, or joins one that is still open.
  */
-function mayDecide(pl: EventPayload, kase: State["cases"][number], state: State, t: T): Verdict {
+function mayDecide(pl: EventPayload, kase: State["cases"][number], state: State, t: T, userId: string | null): Verdict {
   if (kase.decided) return no(t, "cases.permAlreadyDecided");
+  // Plan SET (D8, D10): a yes may open a draft and carry one line to the raiser; a yes without `draft` keeps its rules.
+  if (pl.draft !== undefined && typeof pl.draft !== "boolean") return no(t, "cases.permDraftFlag");
+  if (pl.raiserNote !== undefined && !(typeof pl.raiserNote === "string" && pl.raiserNote.length <= 300)) return no(t, "cases.permRaiserNote");
+  if (pl.draft === true && pl.projectId === undefined) return no(t, "cases.permDraftNeedsProject");
   if (pl.projectId === undefined) return OK;
   if (pl.answer !== "yes") return no(t, "cases.permYesOpensProject");
   if (!isProjectId(pl.projectId)) return no(t, "cases.permProjectId");
   if (typeof pl.lead !== "string" || !pl.lead.trim() || pl.lead.length > 120) return no(t, "cases.permProjectLead");
   const project = state.projects.find((p) => p.id === pl.projectId);
   if (project && (project.status === "stopped" || project.status === "recognised")) return no(t, "cases.permProjectClosed");
+  // A draft joins an open project only when the decider leads it or is on its team (D10).
+  if (pl.draft === true && project && !(userId !== null && (project.leadUserId === userId || project.memberUserIds.includes(userId)))) return no(t, "cases.permDraftJoinWho");
   return OK;
 }

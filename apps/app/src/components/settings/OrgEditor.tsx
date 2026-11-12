@@ -175,7 +175,7 @@ export function OrgEditor({ slug, knowledge: k, members, demo, showHead = true, 
                     <button type="button" className={o.twisty} data-open={open.has(u.id) || query ? "" : undefined} aria-label={t("settingsOrg.toggleUnit", { name: u.name })} aria-expanded={open.has(u.id)} onClick={() => toggle(u.id)}>▸</button>
                   ) : <span className={o.twisty} />}
                   <button type="button" className={o.treeName} data-top={depth === 0 ? "" : undefined} onClick={() => setPicked(u.key)} data-testid={`settings-org-unit-${u.key}`}><DeptChip name={u.name} /></button>
-                  <span className={o.people} title={t("settingsOrg.unitPeople", { n: fmt.number(peopleOf(u)) })} data-testid={`settings-org-people-${u.key}`}>{fmt.number(peopleOf(u))}</span>
+                  <span className={o.people} title={t("settingsOrg.unitPeople", { n: fmt.number(peopleOf(u)) })} data-testid={`settings-org-people-${u.key}`}>{peopleOf(u) > 0 ? fmt.number(peopleOf(u)) : ""}</span>
                   {vacancy.has(u.id) ? <span className={o.dot} title={t("settingsOrg.vacantSeats")} aria-label={t("settingsOrg.vacantSeats")} /> : null}
                 </li>
               ))}

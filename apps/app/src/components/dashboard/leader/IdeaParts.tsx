@@ -163,7 +163,7 @@ export function Sources({ id, list }: { id: string; list: Numbered[] }) {
       <summary className={styles.srcSummary}>
         <span className={styles.label}>{t("leader.sources")}</span>
         <span className={styles.srcPeek} aria-hidden="true">{list.slice(0, 5).map((s) => <span key={s.n} className={styles.srcDot} data-tone={tagTone(s.ext)}>{s.ext.slice(0, 1)}</span>)}</span>
-        <span className={styles.count}>{list.length}</span>
+        {list.length > 0 && <span className={styles.count}>{list.length}</span>}
         <span className={styles.srcChevron}><Chevron /></span>
       </summary>
       <ol className={styles.srcList} id={id}>
@@ -314,8 +314,9 @@ export function FeedBody({ brief, feed, open = null, onPerson, onComment }: { br
   return (
     <>
       <div className={styles.feedStats}>
-        <div className={styles.feedStat}><span className={styles.feedNum}>{brief.feed.supporters}</span><span className={styles.panelSub}>{t("leader.supporters")}</span></div>
-        <div className={styles.feedStat}><span className={styles.feedNum}>{feed.length}</span><span className={styles.panelSub}>{t("leader.comments")}</span></div>
+        {/* Only the counts above 0 (lib/utils/quiet.ts); "no comments yet" below says the rest. */}
+        {brief.feed.supporters > 0 && <div className={styles.feedStat}><span className={styles.feedNum}>{brief.feed.supporters}</span><span className={styles.panelSub}>{t("leader.supporters")}</span></div>}
+        {feed.length > 0 && <div className={styles.feedStat}><span className={styles.feedNum}>{feed.length}</span><span className={styles.panelSub}>{t("leader.comments")}</span></div>}
       </div>
       <span className={styles.sentiment}>{brief.feed.sentiment}</span>
       {feed.length === 0 && <span className={styles.small}>{t("leader.noComments")}</span>}
