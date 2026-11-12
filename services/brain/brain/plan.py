@@ -10,10 +10,13 @@ lead adds the steps they want and takes the baseline themselves; the desk holder
 import time
 
 from brain.llm import LLMClient
-from brain.schemas import CheckinDraft, CheckinIn, CheckinOut, PlanDraft, PlanIn, PlanMetric, PlanOut
+from brain.schemas import CheckinDraft, CheckinIn, CheckinOut, PlanDraft, PlanEffort, PlanIn, PlanMetric, PlanMetricV2, PlanOut, PlanStepV2, PlanV2, PlanV2Draft
 
 # Stored with what the app keeps of an answer. Bump whenever a prompt or the rules below change.
 PLAN_VERSION = "brain-plan-v1"
+PLAN_V2_VERSION = "brain-plan-v2"
+MAX_STEPS, MAX_TEAM, MAX_RISKS, MAX_APPROVALS = 12, 6, 5, 3
+EFFORT_MIN, EFFORT_MAX = 1, 250
 CHECKIN_VERSION = "brain-checkin-v1"
 
 
@@ -28,6 +31,9 @@ def _clean(items: list[str], limit: int) -> list[str]:
 
 
 def plan(llm: LLMClient, body: PlanIn) -> PlanOut:
+    """A request with templates gets the whole plan (version 2); one without gets the first steps and the metric, exactly as before (version 1)."""
+    if body.templates is not None:
+        return plan_v2(llm, body)
     started = time.perf_counter()
 
     def check(d: PlanDraft) -> None:
@@ -46,6 +52,62 @@ def plan(llm: LLMClient, body: PlanIn) -> PlanOut:
         metric=PlanMetric(name=metric[:80], unit=d.unit.strip()[:20], better=d.better) if metric else None,
         model=llm.model_used, tokens_in=llm.tokens_in, tokens_out=llm.tokens_out,
         version=PLAN_VERSION,
+        ms=round((time.perf_counter() - started) * 1000),
+    )
+
+
+def plan_v2(llm: LLMClient, body: PlanIn) -> PlanOut:
+    """The whole plan for an accepted idea (plan AGT, D19): the fitting template and why, steps with roles, the team's roles, a metric with a target,
+    an effort range in working days, risks and likely approvals. People decide what to keep; the model enters no baseline and decides nothing."""
+    started = time.perf_counter()
+    templates = body.templates or []
+    keys = {t.key for t in templates}
+
+    pushed_back = {"once": False}
+
+    def check(d: PlanV2Draft) -> None:
+        # Pushed back once; a key the company does not have is still none afterwards, in code below.
+        if d.template is not None and d.template not in keys and not pushed_back["once"]:
+            pushed_back["once"] = True
+            raise ValueError("template must be one of the keys in the request, or null when none fits: " + ", ".join(sorted(keys)))
+        if not [x for x in d.steps if x.title.strip() and x.role.strip()]:
+            raise ValueError("steps must name at least one action with the role that does it")
+
+    goals = "\n".join(f"- {g.name}" + (f" (measured on: {g.kpi})" if g.kpi else "") for g in body.goals) or "(none)"
+    shown = "\n".join(
+        f"- {t.key}: {t.title}\n" + "\n".join(f"    {i + 1}. {x.title} ({x.role})" for i, x in enumerate(t.steps)) for t in templates) or "(none)"
+    d = llm.structured("plan_v2", PlanV2Draft, {
+        "company": body.company,
+        "idea": body.idea.title + ("\n" + body.idea.body if body.idea.body else ""),
+        "goals": goals,
+        "templates": shown,
+        "keys": ", ".join(sorted(keys)) or "(none)",
+    }, check=check)
+
+    # What the retry did not fix is fixed here: the answer holds whatever the model did.
+    steps: list[PlanStepV2] = []
+    for x in d.steps:
+        title, role = " ".join(x.title.split()).strip(" -*")[:200], " ".join(x.role.split())[:80]
+        if title and role and title.lower() not in (s.title.lower() for s in steps):
+            steps.append(PlanStepV2(title=title, role=role))
+    steps = steps[:MAX_STEPS]
+    metric = None
+    if d.metric is not None and d.metric.name.strip():
+        metric = PlanMetricV2(name=" ".join(d.metric.name.split())[:100], unit=" ".join(d.metric.unit.split())[:30], better=d.metric.better, target=d.metric.target)
+    low, high = sorted((d.effort.min_days, d.effort.max_days))
+    effort = PlanEffort(min_days=min(max(low, EFFORT_MIN), EFFORT_MAX), max_days=min(max(high, EFFORT_MIN), EFFORT_MAX))
+    template = d.template if d.template in keys else None
+    v2 = PlanV2(
+        template=template, template_why=" ".join(d.template_why.split())[:300], steps=steps, team_roles=_clean(d.team_roles, MAX_TEAM), metric=metric,
+        effort=effort, risks=[r[:300] for r in _clean(d.risks, MAX_RISKS)], approvals=[a[:120] for a in _clean(d.approvals, MAX_APPROVALS)],
+    )
+    return PlanOut(
+        # The v1 fields, from the plan: the first five steps and the metric without its target.
+        steps=[x.title[:120] for x in steps[:5]],
+        metric=PlanMetric(name=metric.name[:80], unit=metric.unit[:20], better=metric.better) if metric else None,
+        plan=v2,
+        model=llm.model_used, tokens_in=llm.tokens_in, tokens_out=llm.tokens_out,
+        version=PLAN_V2_VERSION,
         ms=round((time.perf_counter() - started) * 1000),
     )
 
