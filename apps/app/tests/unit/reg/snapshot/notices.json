@@ -15,6 +15,7 @@
     "case.provisional",
     "case.reopened",
     "case.reviewed",
+    "case.revised",
     "case.unanswered",
     "case.withdrawn",
     "desk.cleared",
@@ -62,6 +63,7 @@
     "loop.case.provisional",
     "loop.case.reopened",
     "loop.case.reviewed",
+    "loop.case.revised",
     "loop.case.unanswered",
     "loop.case.withdrawn",
     "loop.desk.cleared",
@@ -144,7 +146,8 @@
     "loop.person.away": "loop.case.decided",
     "loop.desk.overloaded": "loop.case.decided",
     "loop.desk.covered": "loop.case.decided",
-    "loop.desk.cleared": "loop.case.decided"
+    "loop.desk.cleared": "loop.case.decided",
+    "loop.case.revised": "loop.case.decided"
   },
   "reminderKinds": [
     "appeal",
@@ -206,6 +209,7 @@
     "case.provisional",
     "case.reopened",
     "case.reviewed",
+    "case.revised",
     "case.unanswered",
     "case.withdrawn",
     "desk.cleared",

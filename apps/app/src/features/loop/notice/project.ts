@@ -1,6 +1,7 @@
 // The project area of the loop mails (REG/D10): one builder per project.* event type. MOV and RES add theirs here, never in notice.ts.
 import { usersOfRole } from "@/features/auth/identity";
 import { hasClosedAudience } from "@/features/cases/visibility";
+import { isHandle } from "@/features/projects/views";
 import { closingEvent } from "@/features/projects/close";
 import { CONFIRM_DAYS, confirmerIds, unconfirmedOf } from "@/features/projects/confirm";
 import { projectLabel } from "@/features/projects/selectors";
@@ -12,6 +13,8 @@ import { inDays, type NoticeBuilder, type NoticeBuilders } from "./shared";
 const INVITE_ROLES: Record<"sponsor" | "member" | "contributor" | "follower", MessageKey> = {
   sponsor: "mail.inviteRoleSponsor", member: "mail.inviteRoleMember", contributor: "mail.inviteRoleContributor", follower: "mail.inviteRoleFollower",
 };
+/** The weekdays of a check-in, Monday to Friday (project.howwework). */
+const WEEKDAYS: Record<number, MessageKey> = { 1: "projectMove.weekday1", 2: "projectMove.weekday2", 3: "projectMove.weekday3", 4: "projectMove.weekday4", 5: "projectMove.weekday5" };
 /** How many of a draft's steps the kickoff mail lists. */
 const KICKOFF_STEPS = 6;
 
@@ -96,12 +99,23 @@ const projectInvitedNotice: NoticeBuilder = ({ ev, state, pl, project, send, pro
   ]);
 };
 
-const projectInviteAnsweredNotice: NoticeBuilder = ({ pl, project, send, projectLink, find }) => {
-  // A decline or a lapse: the lead hears it, with the reason (D12).
+const projectInviteAnsweredNotice: NoticeBuilder = ({ pl, state, project, send, projectLink, find }) => {
+  // A decline or a lapse: the lead hears it, with the reason (D12). An acceptance: the raiser hears who joined (REM, Q5.14), unless they raised it
+  // under a handle: an anonymous raiser stays anonymous and is not mailed.
   if (!project?.draft) return;
-  const invite = project.invites.find((i) => (pl.inviteId !== undefined ? i.id === pl.inviteId : i.userId === pl.userId && (i.state === "declined" || i.state === "lapsed")));
-  if (!invite || (invite.state !== "declined" && invite.state !== "lapsed")) return;
+  const invite = project.invites.find((i) => (pl.inviteId !== undefined ? i.id === pl.inviteId : i.userId === pl.userId && i.state !== "pending"));
+  if (!invite) return;
   const name = find(invite.userId)?.name ?? "";
+  if (invite.state === "accepted") {
+    for (const c of state.cases) {
+      if (!project.sources.includes(c.id) || isHandle(c.from)) continue;
+      send(c.fromUserId, (t) => t("mail.inviteAcceptedSubject", { label: projectLabel(project), title: project.title }), (t) => [
+        t("mail.inviteAcceptedIntro", { name: name || t("mail.someone"), role: t(INVITE_ROLES[invite.role]) }), "", projectLink(project),
+      ]);
+    }
+    return;
+  }
+  if (invite.state !== "declined" && invite.state !== "lapsed") return;
   send(project.leadUserId, (t) => t(invite.state === "lapsed" ? "mail.inviteLapsedSubject" : "mail.inviteDeclinedSubject", { label: projectLabel(project), title: project.title }), (t) => {
     const who = name || t("mail.someone");
     const role = t(INVITE_ROLES[invite.role]);
@@ -184,6 +198,8 @@ const projectStepNotice: NoticeBuilder = ({ ev, state, pl, project, send, projec
     for (const who of [...project.memberUserIds, project.sponsorUserId, ...project.followerUserIds]) {
       send(who, (t) => t("mail.kickoffSubject", { label: projectLabel(project), title: project.title }), (t) => [
         t("mail.kickoffIntro", { actor: ev.actor }), "", `  ${project.title}`,
+        // The weekday the team agreed to check in on (project.howwework), when one was set (REM, P5.4).
+        ...(project.checkInWeekday !== null && WEEKDAYS[project.checkInWeekday] ? [t("mail.kickoffRhythm", { weekday: t(WEEKDAYS[project.checkInWeekday]) })] : []),
         ...(g ? ["", t("mail.kickoffGoal", { goal: g.goal }), t("mail.kickoffDoneWhen", { doneWhen: g.doneWhen })] : []),
         ...(first.length ? ["", t("mail.kickoffSteps"), ...first.map((s) => t("mail.kickoffStep", { text: s.text, owner: s.owner ?? t("mail.kickoffNoOwner") }))] : []),
         "", projectLink(project),
@@ -224,13 +240,18 @@ const projectResumedNotice: NoticeBuilder = ({ ev, project, send, projectLink })
  * The lead's weekly update (D21): a draft's sponsor, followers and raiser, a legacy project's team and raiser; never its
  * writer (send leaves the actor out), with the text itself in the mail.
  */
-const projectUpdateNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink }) => {
+const projectUpdateNotice: NoticeBuilder = ({ ev, state, pl, project, send, projectLink }) => {
   const text = pl.text?.trim();
   if (!project || !text) return;
   const audience = project.draft ? [project.sponsorUserId, ...project.followerUserIds, ...project.authorUserIds] : [...teamOf(project), ...project.authorUserIds];
+  // The update of an accepted Report was drafted by the agent: the mail says so, and which role sent it (REM, Q7.16). The role is the sender's seat role, by id.
+  const sentBy = state.seats.find((s) => s.userId !== null && s.userId === (ev.actorUserId ?? null));
+  const role = sentBy === undefined ? "" : state.approvals.roles.find((r) => r.id === sentBy.roleId)?.title ?? "";
   for (const who of audience) {
     send(who, (t) => t("projectMove.updateSubject", { label: projectLabel(project), title: project.title }), (t) => [
-      t("projectMove.updateIntro", { actor: ev.actor, label: projectLabel(project) }), "", ...text.split(/\r?\n/).map((l) => `  ${l}`), "", projectLink(project),
+      t("projectMove.updateIntro", { actor: ev.actor, label: projectLabel(project) }),
+      ...(pl.aiDrafted === true ? [t(role ? "mail.updateDrafted" : "mail.updateDraftedPlain", { role })] : []),
+      "", ...text.split(/\r?\n/).map((l) => `  ${l}`), "", projectLink(project),
     ]);
   }
 };
