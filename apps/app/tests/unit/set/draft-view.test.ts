@@ -30,6 +30,11 @@ const raised = ev("case.raised", "c_a", { kind: "idea", title: "Idea", body: "te
 const yes = ev("case.decided", "c_a", { answer: "yes", projectId: "p_one", lead: "L. Brandt", leadUserId: "u_lb", draft: true }, 0, "u_tv");
 
 const stateOf = (events: CaseEvent[], day: number): State => reduce(SEED, { events: [raised, yes, ...events], day });
+/** A reward is possible by default (plan RES, D16): a number baseline then waits for a second person. These SET cases are about the draft, so they take that confirmation as given. */
+const confirmed = (s: State): State => {
+  for (const p of s.projects) if (p.baseline && !p.baseline.none) p.baseline.confirmed = { byUserId: "u_hs", day: 2 };
+  return s;
+};
 const as = (userId: string, role: Role = "member"): Actor => ({ role, userId, me: meFor(userId, seats), name: NAME[userId] ?? userId, handle: "" });
 
 const take = P("project.lead.answered", { take: true }, 1, "u_lb");
@@ -49,7 +54,7 @@ describe("SET draft view", () => {
   });
 
   it("the checklist follows lead taken, template, team, goal and baseline", () => {
-    const s = stateOf([take, template, invited, P("project.invite.answered", { inviteId: invited.id, userId: "u_mr", take: true }, 2, "u_mr"), goal, baseline], 2);
+    const s = confirmed(stateOf([take, template, invited, P("project.invite.answered", { inviteId: invited.id, userId: "u_mr", take: true }, 2, "u_mr"), goal, baseline], 2));
     expect(draftView(s.projects[0], as("u_lb"), s).checklist).toEqual({ lead: "done", template: "done", team: "done", goal: "done", baseline: "done" });
     // an invitation nobody answered yet does not make the team done
     const pending = stateOf([take, template, invited], 2);
@@ -57,7 +62,7 @@ describe("SET draft view", () => {
   });
 
   it("canStart only when the lead has taken it and goal and baseline are set", () => {
-    const can = (events: CaseEvent[]) => { const s = stateOf(events, 2); return draftView(s.projects[0], as("u_lb"), s).canStart; };
+    const can = (events: CaseEvent[]) => { const s = confirmed(stateOf(events, 2)); return draftView(s.projects[0], as("u_lb"), s).canStart; };
     expect(can([goal, baseline])).toBe(false); // the lead has not taken it
     expect(can([take, baseline])).toBe(false); // no goal
     expect(can([take, goal])).toBe(false); // no baseline
@@ -68,7 +73,7 @@ describe("SET draft view", () => {
 
   it("the start day is the day the lead took it plus the start window; late once today is past it", () => {
     const events = [take, goal, baseline];
-    const early = stateOf(events, 5);
+    const early = confirmed(stateOf(events, 5));
     const v = draftView(early.projects[0], as("u_lb"), early);
     expect(v.startDay).toBe(early.projects[0].startDay);
     expect(v.startDay).toBe(1 + 10);
@@ -97,7 +102,7 @@ describe("SET draft view", () => {
     if (p.baseline && !p.baseline.none) p.baseline.confirmed = { byUserId: "u_mr", day: 2 };
     expect(draftView(p, as("u_lb"), s).may).toMatchObject({ answerLead: false, pickTemplate: true, invite: true, setGoal: true, setBaseline: true, start: true });
     expect(draftView(p, as("u_tv"), s).may).toMatchObject({ pickTemplate: false, setGoal: false, setBaseline: false, invite: false, start: false });
-    expect(draftView(p, as("u_hs"), s).may).toEqual({ answerLead: false, pickTemplate: false, invite: false, answerInvite: false, setGoal: false, setBaseline: false, start: false, moveStart: false });
+    expect(draftView(p, as("u_hs"), s).may).toEqual({ answerLead: false, pickTemplate: false, invite: false, answerInvite: false, setGoal: false, setBaseline: false, confirmBaseline: false, start: false, moveStart: false });
     expect(draftView(p, as("u_mgr", "manager"), s).may).toMatchObject({ pickTemplate: true, invite: true, start: true });
   });
 
@@ -125,5 +130,67 @@ describe("SET draft view", () => {
     expect(draftView(s.projects[0], as("u_hs"), s).may).toMatchObject({ setGoal: true, setBaseline: false, invite: false });
     expect(draftView(s.projects[0], as("u_mgr", "manager"), s).may.moveStart).toBe(true);
     expect(draftView(s.projects[0], as("u_lb"), s).may.moveStart).toBe(false);
+  });
+});
+
+// Plan RES, RES-U2 (B2): the draft's baseline waits for a second person where a reward is possible (D16); the start waits with it.
+describe("RES draft baseline", () => {
+  const sponsorInvite = P("project.invited", { userId: "u_hs", role: "sponsor" }, 1, "u_lb");
+  const sponsorTakes = P("project.invite.answered", { inviteId: sponsorInvite.id, userId: "u_hs", take: true }, 2, "u_hs");
+  const ready = [take, goal, baseline, sponsorInvite, sponsorTakes];
+
+  it("a number baseline is open on the checklist while it waits for a second person, and the draft cannot start", () => {
+    const s = stateOf(ready, 3);
+    const v = draftView(s.projects[0], as("u_lb"), s);
+    expect(s.projects[0].baseline).toMatchObject({ none: false, byUserId: "u_lb", confirmed: null });
+    expect(v.baselineWaits).toBe(true);
+    expect(v.checklist).toMatchObject({ lead: "done", goal: "done", baseline: "open" });
+    expect(v.canStart).toBe(false);
+    expect(v.may.start).toBe(false);
+  });
+
+  it("once the sponsor confirmed it the baseline is done, the draft can start and the lead may press start", () => {
+    const s = stateOf([...ready, P("project.baseline.confirmed", {}, 3, "u_hs")], 3);
+    const v = draftView(s.projects[0], as("u_lb"), s);
+    expect(s.projects[0].baseline).toMatchObject({ confirmed: { byUserId: "u_hs", day: 3 } });
+    expect(v).toMatchObject({ baselineWaits: false, canStart: true });
+    expect(v.checklist.baseline).toBe("done");
+    expect(v.may).toMatchObject({ start: true, confirmBaseline: false });
+  });
+
+  it("a new baseline takes the confirmation back: the checklist opens again and the start waits again", () => {
+    const again = P("project.baseline", { metric: "Complaints", unit: "per month", value: 8, better: "down", source: "QMS" }, 4, "u_lb");
+    const s = stateOf([...ready, P("project.baseline.confirmed", {}, 3, "u_hs"), again], 4);
+    const v = draftView(s.projects[0], as("u_lb"), s);
+    expect(s.projects[0].baseline).toMatchObject({ value: 8, confirmed: null });
+    expect(v).toMatchObject({ baselineWaits: true, canStart: false });
+    expect(v.checklist.baseline).toBe("open");
+  });
+
+  it("the sponsor may confirm it, the lead and who typed it may not, nor a stranger or the deputy's colleague without the role", () => {
+    const s = stateOf(ready, 3);
+    const may = (userId: string, role: Role = "member") => draftView(s.projects[0], as(userId, role), s).may.confirmBaseline;
+    expect(may("u_hs", "leader")).toBe(true);
+    expect(may("u_lb", "leader")).toBe(false);
+    expect(may("u_tv", "leader")).toBe(false);
+    expect(may("u_mr")).toBe(false);
+    // a manager confirms only where there is no accepted sponsor and the deputy's desk has nobody on it
+    expect(may("u_mgr", "manager")).toBe(false);
+  });
+
+  it("a manager confirms when there is no sponsor and the route's deputy desk is empty", () => {
+    const s = stateOf([take, goal, baseline], 3);
+    s.routes = s.routes.map((r) => ({ ...r, deputyRoleId: null, deputySeatId: null }));
+    expect(draftView(s.projects[0], as("u_mgr", "manager"), s).may.confirmBaseline).toBe(true);
+    expect(draftView(s.projects[0], as("u_lb"), s).may.confirmBaseline).toBe(false);
+  });
+
+  it("a baseline with no number, and a company that gives no reward, never wait", () => {
+    const none = stateOf([take, goal, P("project.baseline", { none: true, why: "nothing to measure" }, 1, "u_lb")], 2);
+    expect(draftView(none.projects[0], as("u_lb"), none)).toMatchObject({ baselineWaits: false, canStart: true });
+    const noReward = stateOf([take, goal, baseline], 2);
+    noReward.rules = { ...noReward.rules, reward: { ...noReward.rules.reward, kind: "none" } };
+    expect(draftView(noReward.projects[0], as("u_lb"), noReward)).toMatchObject({ baselineWaits: false, canStart: true });
+    expect(draftView(noReward.projects[0], as("u_lb"), noReward).checklist.baseline).toBe("done");
   });
 });
