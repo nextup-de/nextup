@@ -19,6 +19,15 @@ export async function loadMovSinceDay(companyId: string): Promise<number | null>
   return row ? movSinceOf([row]) : null;
 }
 
+/**
+ * Write the day MOV went live for the company, once: the row is inserted when absent and never updated, so the same state
+ * and day always give the same clock facts (MOV D17). Returns the stored day, which is the first one written.
+ */
+export async function ensureMovSinceDay(companyId: string, day: number): Promise<number> {
+  await getDb().companyRule.createMany({ data: [{ companyId, key: MOV_SINCE_KEY, value: { day } as Prisma.InputJsonValue }], skipDuplicates: true });
+  return (await loadMovSinceDay(companyId)) ?? day;
+}
+
 /** Replace a company's rules wholesale, in one transaction. `by` is who saved it. */
 export async function saveCompanyRules(companyId: string, rules: CompanyRules, by: string | null = null, tx?: Tx): Promise<void> {
   const write = async (db: Tx) => {
