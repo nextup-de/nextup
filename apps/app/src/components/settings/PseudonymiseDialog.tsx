@@ -51,6 +51,8 @@ export function PseudonymiseDialog({ slug, member, onClose, onDone }: Props) {
           <li>{t("privacyPerson.pseudonymisePoint2")}</li>
           <li>{t("privacyPerson.pseudonymisePoint3")}</li>
           <li>{t("privacyPerson.pseudonymisePoint4")}</li>
+          <li>{t("privacyPerson.pseudonymisePoint5")}</li>
+          <li>{t("privacyPerson.pseudonymisePoint6")}</li>
         </ul>
         <label className={s.field}>
           <span className={s.label}>{t("privacyPerson.pseudonymiseConfirm")}</span>

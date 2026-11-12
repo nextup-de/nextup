@@ -38,6 +38,7 @@ is on their first line.
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | folders and layers |
 | [ROUTES.md](ROUTES.md) | every URL and its file |
+| [INBOX.md](INBOX.md) | the one inbox for every role: what it holds, the order, the Today line, the notices (plan INB) |
 | [DATA_MODEL.md](DATA_MODEL.md) | tables and events |
 | [SECURITY.md](SECURITY.md) | stages, doors, the list before real customers |
 | [INTEGRATIONS.md](INTEGRATIONS.md) | events API, tokens, stages, n8n |
