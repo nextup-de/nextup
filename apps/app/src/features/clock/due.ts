@@ -8,7 +8,7 @@ import { byClock } from "./actor";
 import type { Route } from "@/features/demo/types";
 import { CONFIRM_ESCALATE_DAYS, unconfirmedOf } from "@/features/projects/confirm";
 
-export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation" | "question" | "unanswered" | "triage" | "confirm";
+export type DueKind = "deadline" | "checkin" | "start" | "measure" | "handover" | "escalation" | "question" | "unanswered" | "triage" | "confirm" | "lead" | "invite" | "draft";
 
 /** A raise no route owns sits on the fallback desk (features/cases/stamp.ts): after this many working days it is reminded to pass it on (decision Q2.1). */
 export const TRIAGE_REMIND_DAYS = 1;
@@ -18,13 +18,32 @@ export const QUESTION_REMIND_DAYS = 3;
 /** ... and after this many the case is open on the desk again, without an answer (decision Q4.3). */
 export const QUESTION_RETURN_DAYS = 5;
 
+/** A draft's lead has not answered: a reminder after this many working days ... */
+export const LEAD_REMIND_DAYS = 2;
+/** ... and after this many the draft goes back to the decider, who becomes the lead (decision D11). */
+export const LEAD_RETURN_DAYS = 4;
+/** A person invited to a draft has not answered: a reminder after this many working days ... */
+export const INVITE_REMIND_DAYS = 2;
+/** ... and after this many the invitation lapses and the lead may invite someone else (decision D12). */
+export const INVITE_LAPSE_DAYS = 5;
+/** A draft past its start day went to the seat above: one more reminder to that seat this many working days later (decision D15). */
+export const DRAFT_UP_DAYS = 3;
+
 export type Due = {
   kind: DueKind;
   target: string; // the case or project id
   dueDay: number;
-  check?: number; // measure and confirm
+  check?: number; // measure and confirm; draft: DRAFT_UP_DAYS for the second reminder
   toRoleHolderId?: string | null; // the seat the fact escalates to
   why?: "escalation" | "vacant"; // handover only: the second level's hand-over, or off a desk nobody sits at; missing = the deadline's
+  /** lead and invite: the person the clock waits for (the lead, the invitee). */
+  userId?: string;
+  /** lead and invite: the fact that leads to the lapse (the answer the clock writes), not the reminder before it. */
+  lapse?: boolean;
+  /** invite: the project.invited event, the invitation's identity (Invite.id); a second invitation of the same person is another cycle. */
+  inviteId?: string;
+  /** lead: the event that asked the lead (the yes, or a project.handed on the draft), so a new ask is a new cycle. */
+  askId?: string;
   idemKey: string;
 };
 

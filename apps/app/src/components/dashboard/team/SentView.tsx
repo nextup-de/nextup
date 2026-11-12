@@ -46,7 +46,7 @@ export function SentView() {
   const label = (map: Partial<Record<string, MessageKey>>, k: string) => { const key = map[k]; return key ? t(key) : k; };
   const { seed, S, ready, href, openSheet, f } = ctx;
   const names = useCaseNames();
-  if (!ready) return <PageSkeleton kind="list" delay />;
+  if (!ready) return <PageSkeleton kind="list" />;
 
   const P = seed.promiseDays;
   const mine = mineRows(ctx);

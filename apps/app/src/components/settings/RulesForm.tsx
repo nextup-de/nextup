@@ -166,6 +166,9 @@ export function RulesForm({ slug, values, demo }: { slug: string; values: Values
         <Row id="escalationDays" label={t("settingsCompany.escalateAfter")} wide help={t("settingsCompany.escalateHelp")} error={err("escalationDays")}>
           <div className={s.inline}><Num id="escalationDays" tid="escalation-days" value={rules.escalationDays ?? LOOP_DEFAULTS.escalationDays} invalid={Boolean(err("escalationDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
         </Row>
+        <Row id="projectStartDays" label={t("settingsCompany.projectStartDays")} wide help={t("settingsCompany.projectStartHelp")} error={err("projectStartDays")}>
+          <div className={s.inline}><Num id="projectStartDays" tid="project-start-days" value={rules.projectStartDays ?? LOOP_DEFAULTS.projectStartDays} invalid={Boolean(err("projectStartDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
+        </Row>
         {foot()}
       </Card>
 

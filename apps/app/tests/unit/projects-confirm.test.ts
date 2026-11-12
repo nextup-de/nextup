@@ -147,14 +147,15 @@ describe("who is told", () => {
   });
 
   it("the clock's reminder goes to the same people, the second one to the seat above only", () => {
-    const first = planNotices(reminded, ctx(at(DUE + 1, reminded)));
+    // The in-app copies (INB/D5) are covered in tests/unit/inb/channels.test.ts.
+    const first = planNotices(reminded, ctx(at(DUE + 1, reminded))).filter((d) => d.channel !== "inapp");
     expect(first.map((d) => [d.recipientUserId, d.template, d.key, d.status])).toEqual([
       ["u_hs", "reminder.confirm", `rem:${reminded.id}:u_hs`, "pending"],
       ["u_mg", "reminder.confirm", `rem:${reminded.id}:u_mg`, "pending"],
     ]);
     expect(first[0].subject).toBe("Result to confirm: Shorter changeover");
     expect(first[0].text).toContain("still waits for a second person");
-    const second = planNotices(passedUp, ctx(at(UP + 1, reminded, passedUp)));
+    const second = planNotices(passedUp, ctx(at(UP + 1, reminded, passedUp))).filter((d) => d.channel !== "inapp");
     expect(second.map((d) => [d.recipientUserId, d.template, d.locale])).toEqual([["u_head", "reminder.confirm", "de"]]);
     expect(second[0].text).toContain("Niemand hat das Ergebnis der Messung nach 30 Tagen");
     // Confirmed in the meantime: the reminder reaches nobody.

@@ -45,7 +45,7 @@ config="${NEXTUP_PROVISION_ENV:-$home_dir/provision/.env}"
 export NEXTUP_INSTANCES="${NEXTUP_INSTANCES:-$home_dir/instances}"
 export NEXTUP_SITES="${NEXTUP_SITES:-$home_dir/nginx}"
 domain="${NEXTUP_DOMAIN:-sellux.ch}"
-RESERVED=" www admin api n8n mail automation ops status app static assets _next login signup pricing contact imprint privacy forgot-password invite demo landing staging "
+RESERVED=" www admin api n8n mail automation ops status app static assets _next login signup pricing contact imprint privacy forgot-password invite demo landing staging preview1 preview2 preview3 "
 
 say() { echo "$(date -u +%FT%TZ) $*"; }
 die() { say "agent: $*" >&2; exit 1; }

@@ -38,7 +38,7 @@ import { useLocale, useT } from "@/i18n/client";
 import { formatDate } from "@/i18n/format";
 import { DEFAULT_LOCALE, LOCALES, translate, type MessageKey } from "@/i18n";
 import { adviceFromReading, dialsFromReading, gapsFromReading, latestReading, proposalOf } from "@/features/ideas/reading";
-import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicLabel, topicsOf, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
+import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicLabel, topicsOf, dayGroup, whenGroup, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { desksFor, otherDesks, type Desk } from "@/features/ideas/desks";
@@ -338,7 +338,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     return () => clearTimeout(t);
   }, [pubStep]);
 
-  if (!ready) return <PageSkeleton kind="raise" delay />;
+  if (!ready) return <PageSkeleton kind="raise" />;
 
   // The chat shows NextUp's reply with its short read; the full analysis opens only when asked for.
   const shownView = view === "preview" ? "chat" : view; // the last look opens over the chat
@@ -472,7 +472,9 @@ function RaisePage({ script = false }: { script?: boolean }) {
     // The demo script's case carries its main points instead of the raw conversation.
     const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     const body = mine ? bodyOf(mine) : made.body;
-    await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raise({ ...e.payload, ...(choosesPosting({ role, name: who.name, handle: who.handle ?? null }) ? { asName: postsByName } : {}), title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId }, caseId), 600);
+    // The raise publishes the draft with it, or neither (Q1.11): refused, the draft stays open and the toast says why.
+    const raised = await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raiseDraft({ ...e.payload, ...(choosesPosting({ role, name: who.name, handle: who.handle ?? null }) ? { asName: postsByName } : {}), title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId }, caseId, draft.id), 600);
+    if (!raised.ok) { setBusy(false); setPubWork(null); setPubStep(null); return; }
     // Everything the raise page worked out goes with the case: the document, the dials, every file (not only the images).
     saveRaised(tenant.slug, caseId, briefOfDoc({ ...finalDoc, receiver: to.title }, {
       files: myFiles.map((f) => ({ name: f.name, size: f.file.size ? sizeOf(f.file.size) : "" })), affected, categories: cats, receiverRole: to.title, depts: seed.depts, people: seed.people,
@@ -649,13 +651,13 @@ function RaisePage({ script = false }: { script?: boolean }) {
       const current = stage === "chat" && d.id === draft?.id;
       const last = current ? turns[turns.length - 1] : undefined;
       return {
-        id: d.id, title: d.title, when: whenLabel(d.updatedAt, now, locale), current, pinned: preview.pinned.includes(d.id), published: d.status === "published",
+        id: d.id, title: d.title, when: whenLabel(d.updatedAt, now, locale), group: whenGroup(d.updatedAt, now), current, pinned: preview.pinned.includes(d.id), published: d.status === "published",
         preview: last ? stripTags(last.text) : d.status === "published" ? t("ideas.pageRowPublished") : t("ideas.pageRowContinue"),
       };
     })
     // The Demo data switch: the sample cases this person raised. They have no draft behind them, so a click opens the case.
     .concat(!sampleData ? [] : mineOf(S, me).filter((c) => isSampleId(c.id) && (!needle || c.title.toLowerCase().includes(needle))).map((c) => ({
-      id: c.id, title: c.title, when: f(c.raisedDay), current: false, pinned: false, published: true, preview: t("ideas.pageRowPublished"),
+      id: c.id, title: c.title, when: f(c.raisedDay), group: dayGroup(S.day - c.raisedDay), current: false, pinned: false, published: true, preview: t("ideas.pageRowPublished"),
     })));
 
   const composerChat = (
