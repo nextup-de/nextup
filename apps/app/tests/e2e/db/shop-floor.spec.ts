@@ -2,7 +2,7 @@
 // on a phone, the desk of the area's role decides it, and the reference on the status page shows the answer.
 // The reference never travels in a URL (D8). Own company, deleted at the end, like structure.spec.ts.
 import { devices, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { confirmSheet, expect, passSecondFactor, sheet, test, vis } from "../helpers";
+import { expect, passSecondFactor, sheet, test, vis } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
 
@@ -107,8 +107,10 @@ test.describe.serial("FLR acceptance", () => {
       await page.getByRole("main").getByText(TITLE).first().click();
       await page.getByRole("button", { name: "No, and why" }).click();
       await sheet(page).getByRole("button", { name: "Pick a reason" }).waitFor();
-      await sheet(page).getByRole("button", { name: /No time this quarter/ }).click();
-      await confirmSheet(page, REASON, "Send the no");
+      await sheet(page).getByRole("button", { name: /No budget this year/ }).click();
+      await sheet(page).getByRole("textbox", { name: /Your reason/ }).fill(REASON);
+      await sheet(page).getByRole("button", { name: "Send the no" }).click();
+      await expect(sheet(page)).toBeHidden();
       await expect(page.getByText(/Answered “no”/)).toBeVisible();
       await context.close();
     });
@@ -119,9 +121,9 @@ test.describe.serial("FLR acceptance", () => {
       await vis(mobile, "floor-keypad-action").click();
       const decision = vis(mobile, "floor-status-decision");
       await expect(decision).toBeVisible();
-      // The answer and the picked reason show; the desk's free-text comment never does (D12).
+      // The answer and the category's label show; the desk's reason text never does (D12, NOR D25).
       await expect(decision).toContainText(/^No/);
-      await expect(decision).toContainText(/no time/i);
+      await expect(decision).toContainText(/no budget this year/i);
       const text = await mobile.locator("body").innerText();
       expect(text).not.toContain(REASON);
       expect(text).not.toContain(LEADER);
