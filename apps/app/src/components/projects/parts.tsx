@@ -9,6 +9,7 @@ import { Pill, type Tone } from "@/components/dashboard/shared/primitives";
 import { PageHeader, ProgressBar } from "@/components/ui/elements";
 import type { EventPayload } from "@/features/cases/events";
 import type { Actor } from "@/features/cases/permissions";
+import { updateWeekOf } from "@/features/projects/move-view";
 import { mayAppendProject } from "@/features/projects/permissions";
 import { board, nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject, Step, VerdictWord } from "@/features/projects/types";
@@ -77,6 +78,13 @@ export function useRights(p: ReducedProject) {
     confirm: (check: number) => can("project.measure.confirmed", { check }),
     reward: can("project.rewarded"),
     claim: can("project.claimed"),
+    // A project that keeps moving (plan MOV): asked of the same rules, with a probe payload that is valid but sends nothing.
+    moveDoneBy: can("project.doneby.moved", { doneBy: ctx.S.day + 1, why: "-" }),
+    pause: can("project.paused", { why: "-", untilDay: ctx.S.day + 1 }),
+    resume: can("project.resumed"),
+    howWeWork: can("project.howwework", { checkInWeekday: 1 }),
+    update: updateWeekOf(p, ctx.S, can) !== null,
+    nameLead: can("project.lead.changed", { toUserId: "-", to: "-" }),
   };
 }
 

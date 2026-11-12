@@ -46,12 +46,25 @@ export type ProjectAct = {
   setGoal: (projectId: string, g: { goal: string; doneWhen: string; doneBy?: number; brief?: string }) => void;
   /** The seat above keeps a late draft with a new start day (D15). */
   moveStart: (projectId: string, dueDay: number, why: string) => void;
+  // A project that keeps moving (plan MOV): each one event.
+  /** A new done-by working day, with why (D19). */
+  moveDoneBy: (projectId: string, doneBy: number, why: string) => void;
+  /** Pause until a working day (D20). */
+  pause: (projectId: string, why: string, untilDay: number) => void;
+  resume: (projectId: string) => void;
+  /** The weekly check-in weekday (1 = Monday ... 5 = Friday) and a short note on how the team works (D21). */
+  howWeWork: (projectId: string, checkInWeekday: number, note?: string) => void;
+  /** The lead's weekly update; `week` is the check-in day number it is for (the demo's rule is rhythm.ts checkInDayOf). */
+  update: (projectId: string, text: string, week: number) => void;
+  /** A new lead while the project has none (D14). */
+  changeLead: (projectId: string, to: { userId: string; name: string }, why?: string) => void;
 };
 
 export function projectActs(d: ActDeps): ProjectAct {
   const { emit, S, serverMode } = d;
   return {
-    member: (id, who, on) => emit("project.member", id, { name: who.name, userId: who.userId, on }),
+    // Taking a person off the team also frees their open steps (D22).
+    member: (id, who, on) => emit("project.member", id, { name: who.name, userId: who.userId, on, ...(on ? {} : { unassign: true }) }),
     hand: (id, to, why) => emit("project.handed", id, { to: to.name, toUserId: to.userId, why }),
     baseline: (id, b) => emit("project.baseline", id, "none" in b ? { none: true, why: b.why } : { ...b }),
     start: (id) => emit("project.started", id),
@@ -87,5 +100,11 @@ export function projectActs(d: ActDeps): ProjectAct {
     answerInvite: (id, inviteId, userId, take, reason) => emit("project.invite.answered", id, { inviteId, userId, take, ...(!take && reason ? { reason } : {}) }),
     setGoal: (id, g) => emit("project.goal", id, { goal: g.goal, doneWhen: g.doneWhen, ...(g.doneBy !== undefined ? { doneBy: g.doneBy } : {}), ...(g.brief ? { brief: g.brief } : {}) }),
     moveStart: (id, dueDay, why) => emit("project.start.moved", id, { dueDay, why }),
+    moveDoneBy: (id, doneBy, why) => emit("project.doneby.moved", id, { doneBy, why }),
+    pause: (id, why, untilDay) => emit("project.paused", id, { why, untilDay }),
+    resume: (id) => emit("project.resumed", id),
+    howWeWork: (id, checkInWeekday, note) => emit("project.howwework", id, { checkInWeekday, ...(note ? { note } : {}) }),
+    update: (id, text, week) => emit("project.update", id, { text, week }),
+    changeLead: (id, to, why) => emit("project.lead.changed", id, { to: to.name, toUserId: to.userId, ...(why ? { why } : {}) }),
   };
 }

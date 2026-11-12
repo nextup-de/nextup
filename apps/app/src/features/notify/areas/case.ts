@@ -9,6 +9,7 @@ import type { ReminderAudienceFn, ReminderTextFn } from "./shared";
 export const CASE_LOOP_TYPES = [
   "case.discussion", "case.invited", "case.checkin", "case.decided",
   "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
+  "case.reopened", "case.appealed", "case.appeal.decided", "case.override",
 ] as const satisfies readonly CaseEventType[];
 
 /** The loop templates of the case events, as the profile's switches name them. */
@@ -18,7 +19,10 @@ export const CASE_LOOP_TEMPLATES: readonly string[] = CASE_LOOP_TYPES.map((t) =>
 export const CASE_FOLLOWS: Record<string, string> = {
   "loop.case.asked": "loop.case.decided", "loop.case.answered": "loop.case.decided", "loop.case.handed": "loop.case.decided",
   "loop.case.unanswered": "loop.case.decided", "loop.case.withdrawn": "loop.case.decided",
+  "loop.case.reopened": "loop.case.decided", "loop.case.appealed": "loop.case.decided", "loop.case.appeal.decided": "loop.case.decided",
+  "loop.case.override": "loop.case.decided",
   "reminder.question": "reminder.deadline", "reminder.triage": "reminder.deadline",
+  "reminder.appeal": "reminder.deadline", "reminder.view": "reminder.checkin",
 };
 
 export const CASE_REMINDER_KINDS = ["deadline", "checkin", "escalation", "question", "triage"] as const;
@@ -76,7 +80,7 @@ export const CASE_REMINDER_AUDIENCE: Record<CaseReminderKind, ReminderAudienceFn
 };
 
 /** The case notices a person cannot switch off, only move between Teams and mail (INB D8). */
-export const CASE_DUTY_TEMPLATES = ["reminder.deadline", "reminder.escalation", "reminder.triage"] as const;
+export const CASE_DUTY_TEMPLATES = ["reminder.deadline", "reminder.escalation", "reminder.triage", "reminder.appeal"] as const;
 
 /** The case events server/loop-notice.ts mails. */
 export const CASE_LOOP_MAIL_TYPES: readonly CaseEventType[] = CASE_LOOP_TYPES;
