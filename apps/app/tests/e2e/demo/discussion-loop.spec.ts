@@ -29,7 +29,7 @@ const decision = (page: Page) => page.getByRole("region", { name: "Your decision
 
 /** The leader's inbox with the idea open. */
 async function openInInbox(page: Page) {
-  await page.goto("/acme/leader");
+  await page.goto("/acme/inbox");
   await page.getByRole("main").getByText(TITLE).first().click();
 }
 
@@ -104,9 +104,10 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await expect(sheet).toContainText(/P-\d+ is open/);
     await expect(sheet.getByRole("link", { name: /^Open P-\d+$/ })).toHaveAttribute("href", /\/acme\/projects\/p_/);
     await sheet.getByRole("button", { name: "Done" }).click();
-    // Out of the inbox's list - and on the desk as the project T. Vogel now leads (it keeps the idea's title).
-    await expect(page.getByRole("region", { name: "Fresh ideas" }).getByText(TITLE)).toHaveCount(0);
-    await expect(page.getByRole("region", { name: "Projects waiting on you" })).toContainText(TITLE);
+    // Out of Decide - and under Do my part as the project T. Vogel now leads (it keeps the idea's title).
+    const section = (name: string) => page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name, exact: true }) });
+    await expect(section("Decide").getByTestId("inbox-row").filter({ hasText: TITLE })).toHaveCount(0);
+    await expect(section("Do my part")).toContainText(TITLE);
   });
 
   await test.step("the author's line says Planning, and the idea is in the Archive as a project", async () => {
