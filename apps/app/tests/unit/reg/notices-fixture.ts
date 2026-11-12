@@ -56,7 +56,7 @@ const kase = (id: string, over: Partial<ReducedCase> = {}): ReducedCase => ({
   id, seed: false, kind: "problem", title: "Case " + id, body: "", from: "Raiser", fromDept: "", fromUserId: "u_raiser", assigneeSeatId: "s_own1", assigneeRoleId: "role_owner",
   routeId: "r2", assignee: "Owner One", raisedDay: 0, reason: "triage", upside: "", linkedIdea: null,
   status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [], building: null, shipped: null, override: null,
-  discussion: null, versions: [], decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: 0, dueFloor: null, reopenSeq: null, decidedSeq: null, pausedDays: 0, pausedSince: null, history: [raisedEv(id)],
+  discussion: null, versions: [], decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: 0, dueFloor: null, reopenSeq: null, decidedSeq: null, follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [], pausedDays: 0, pausedSince: null, history: [raisedEv(id)],
   route, age: 1, clock: 1, open: true, archived: false, overdue: false, dueDay: 5, escalated: null, ...over,
 });
 
