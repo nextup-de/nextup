@@ -3,7 +3,7 @@
 import { createT, type Locale } from "@/i18n";
 import { formatDate } from "@/i18n/format";
 
-export const REMINDER_KINDS = ["deadline", "checkin", "start", "measure", "escalation", "question", "triage", "confirm"] as const;
+export const REMINDER_KINDS = ["deadline", "checkin", "start", "measure", "escalation", "question", "triage", "confirm", "lead", "invite", "draft"] as const;
 export type ReminderKind = (typeof REMINDER_KINDS)[number];
 
 export type ReminderTemplate = `reminder.${ReminderKind}`;
@@ -23,7 +23,7 @@ export type TemplateInput = {
   /** The case or project page, or for the digest the inbox. */
   link: string;
   /** Escalation: who reads it - the seat above that gets the case, the desk that had it, or the raiser. Confirm: "above" is the seat the clock passed the result up to. */
-  reader?: "above" | "desk" | "raiser";
+  reader?: "above" | "desk" | "raiser" | "lead";
   /** Escalation only: the seat label of who has the case from now on. */
   holder?: string;
   /** Escalation only: the case moved to `holder`; false = nobody is above, it stays where it is. */
@@ -64,6 +64,15 @@ export function renderTemplate(template: NoticeTemplate, locale: Locale, input: 
       return compose(t("mail.reminderTriageSubject", { title }), t("mail.reminderTriageIntro", { when }), t("mail.reminderOpenCase", { url }));
     case "reminder.question":
       return compose(t("mail.reminderQuestionSubject", { title }), t("mail.reminderQuestionIntro", { days }), t("mail.reminderQuestionOpen", { url }));
+    case "reminder.lead":
+      return compose(t("mail.reminderLeadSubject", { title }), t("mail.reminderLeadIntro"), t("mail.reminderOpenProject", { url }));
+    case "reminder.invite":
+      return compose(t("mail.reminderInviteSubject", { title }), t("mail.reminderInviteIntro"), t("mail.reminderOpenProject", { url }));
+    case "reminder.draft":
+      // The lead is told the start day has passed; the seat above is asked what to do with the draft (D15).
+      return input.reader === "above"
+        ? compose(t("mail.reminderDraftAboveSubject", { title }), t("mail.reminderDraftAbove", { when }), t("mail.reminderOpenProject", { url }))
+        : compose(t("mail.reminderDraftSubject", { title }), t("mail.reminderDraftLead", { when }), t("mail.reminderOpenProject", { url }));
     case "reminder.escalation": {
       const holder = input.holder ?? "";
       const open = t("mail.reminderOpenCase", { url });

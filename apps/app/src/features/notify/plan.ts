@@ -6,7 +6,7 @@ import { usersOfRole, type SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
 import { composeNoticeMail, noticeKey, type RaisedNotice } from "@/features/cases/notice";
 import type { State } from "@/features/cases/reducer";
-import { QUESTION_REMIND_DAYS, QUESTION_RETURN_DAYS } from "@/features/clock/due";
+import { DRAFT_UP_DAYS, QUESTION_REMIND_DAYS, QUESTION_RETURN_DAYS } from "@/features/clock/due";
 import { hasClosedAudience } from "@/features/cases/visibility";
 import { byClock } from "@/features/clock/actor";
 import { loopNotices } from "@/features/loop/notice";
@@ -192,6 +192,8 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): PlannedDraft[] {
     // Escalation only: each reader gets their own sentence, and nobody but the raiser is told who raised it.
     let escalated: { holder: string; moved: boolean; readerOf: (userId: string) => "above" | "desk" | "raiser" } | undefined;
     let confirmAbove = false;
+    // A draft's reminder: the seat above reads it differently from the lead (D15).
+    let draftAbove: string[] = [];
     if (kind === "escalation" && kase) {
       const toSeat = state.seats.find((s: SeatRow) => s.id === ev.payload.toRoleHolderId);
       const above = toSeat ? usersOfSeat(toSeat.id) : [];
@@ -224,6 +226,21 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): PlannedDraft[] {
       confirmAbove = !!ev.payload.toRoleHolderId;
       users = u ? confirmerIds(project, u, deputyRoleId, state.seats, managers, confirmAbove ? "above" : "desk") : [];
       title = project.title; link = projectLink(project.id);
+    } else if (kind === "lead" && project) {
+      // Only while the draft still waits for the lead's answer.
+      users = project.draft && project.startedDay === null && project.stopped === null && project.leadState === "pending" && project.leadUserId ? [project.leadUserId] : [];
+      title = project.title; link = projectLink(project.id);
+    } else if (kind === "invite" && project) {
+      // The invitation the fact names, while nobody answered it; a fact without an id names the person's one open invitation.
+      const open = project.invites.filter((i) => i.state === "pending" && i.userId === ev.payload.userId && (ev.payload.inviteId === undefined || i.id === ev.payload.inviteId));
+      users = open.length === 1 ? [open[0].userId] : [];
+      title = project.title; link = projectLink(project.id);
+    } else if (kind === "draft" && project) {
+      // The lead and the seat the clock gave the draft to; the second reminder (check 3) goes to the seat only.
+      draftAbove = usersOfSeat(ev.payload.toRoleHolderId);
+      const lead = project.leadUserId && ev.payload.check !== DRAFT_UP_DAYS ? [project.leadUserId] : [];
+      users = project.draft && project.startedDay === null && project.stopped === null ? uniq([...lead, ...draftAbove]) : [];
+      title = project.title; link = projectLink(project.id);
     } else if ((kind === "start" || kind === "measure") && project) {
       users = project.leadUserId ? [project.leadUserId] : [];
       title = project.title; link = projectLink(project.id);
@@ -232,7 +249,7 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): PlannedDraft[] {
     const shownDay = kind === "triage" && kase ? kase.dueDay : ev.payload.dueDay;
     for (const userId of users) {
       mailTo(userId, template, `rem:${ev.id}:${userId}:app`, (p) => {
-        const r = renderTemplate(template, p.locale, { name: p.name, title, day: shownDay, dueDate: typeof shownDay === "number" ? ctx.dateOfDay?.(shownDay) ?? null : null, days: kind === "question" ? QUESTION_RETURN_DAYS - QUESTION_REMIND_DAYS : ev.payload.check, link, ...(escalated ? { reader: escalated.readerOf(userId), holder: escalated.holder, moved: escalated.moved } : {}), ...(confirmAbove ? { reader: "above" as const } : {}) });
+        const r = renderTemplate(template, p.locale, { name: p.name, title, day: shownDay, dueDate: typeof shownDay === "number" ? ctx.dateOfDay?.(shownDay) ?? null : null, days: kind === "question" ? QUESTION_RETURN_DAYS - QUESTION_REMIND_DAYS : ev.payload.check, link, ...(escalated ? { reader: escalated.readerOf(userId), holder: escalated.holder, moved: escalated.moved } : {}), ...(confirmAbove ? { reader: "above" as const } : {}), ...(kind === "draft" ? { reader: draftAbove.includes(userId) ? "above" as const : "lead" as const } : {}) });
         return { key: `rem:${ev.id}:${userId}`, template, locale: p.locale, subject: r.subject, text: r.text, link: r.link, data: { eventId: ev.id, subjectId: ev.target, kind } };
       });
     }
