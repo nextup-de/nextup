@@ -1,9 +1,10 @@
 // The project page in tabs (docs/plans/2026-11-03_project-area.md): one question per tab, picked by
 // ?tab= on /projects/[projectId]. The Overview says which tab needs the viewer; it lists the few open
-// steps that matter now, blocked first.
+// steps that matter now, blocked first. The Agent tab (plan AGT, D15) is there only for who may see it: the page asks features/agent/view.ts and
+// opens the Overview for a ?tab=agent that is not theirs.
 import type { Step } from "./types";
 
-export const PROJECT_TABS = ["overview", "board", "team", "results", "activity", "files"] as const;
+export const PROJECT_TABS = ["overview", "board", "team", "results", "activity", "files", "agent"] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number];
 
 /** The tab a ?tab= value asks for; anything unknown is the Overview. */
