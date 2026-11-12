@@ -3,14 +3,16 @@
 // markup and classes 1:1 (dc-convert -> Overview.module.css). The head card (meta, title, the five
 // steps, whose desk and how much of the promise is used), then Idea | AI: the idea as it was raised
 // and its revisions, or the five scores - one opens into its reasoning - and what the AI found.
-// Props in, JSX out. The raiser may edit it until it is decided: the pencil opens the title and the text,
-// Save posts the next version (case.revised, a real event - not the old in-place stand-in MET D17 removed).
+// Props in, JSX out. The people on it may edit it until it is decided: double-click a section (the title,
+// the text, Affects, Context) to edit that one, or the pencil for all of them. The title and the text go
+// out as the next version (case.revised); Affects and Context are a stand-in until they have an event.
 import { Fragment, useState } from "react";
 import { initialsOf } from "@/components/dashboard/leader/IdeaParts";
 import { useT } from "@/i18n/client";
 import type { OverviewStep } from "@/features/cases/rows";
 import type { DeskLabel } from "@/features/overview/rows";
 import type { IdeaBrief, NumberedBlock } from "@/features/ideas/brief";
+import { changesOf, type IdeaChanges } from "@/features/ideas/edits";
 import s from "./Overview.module.css";
 import { avatarTone } from "@/lib/avatar";
 import { DeptChip, PersonFace } from "@/components/ui/elements";
@@ -36,8 +38,8 @@ export type OverviewIdeaProps = {
   // scores as a row of rings - a tap opens the reasoning in a sheet (onOpenScore).
   variant?: "desk" | "phone";
   onOpenScore?: (i: number) => void;
-  /** The raiser, before the decision: the text as it stands and where a saved edit goes (null: read only). */
-  edit?: { title: string; body: string; onSave: (title: string, body: string) => void } | null;
+  /** The people on it, before the decision: where a saved edit goes (null: read only). */
+  edit?: { onSave: (changes: IdeaChanges) => void } | null;
 };
 
 export const Cites = ({ ns, dark }: { ns: number[]; dark?: boolean }) => <>{ns.map((c) => <a key={c} className={dark ? s.c2 : s.c} href="#aisrc">{c}</a>)}</>;
@@ -49,12 +51,27 @@ export function OverviewIdea(p: OverviewIdeaProps) {
   const t = useT();
   const { brief } = p;
   const [openScore, setOpenScore] = useState<number | null>(null);
-  const [draft, setDraft] = useState<{ title: string; body: string } | null>(null); // editing: the title and text being written
-  const startEdit = () => p.edit && setDraft({ title: p.edit.title, body: p.edit.body });
-  const changed = !!draft && !!p.edit && (draft.title.trim() !== p.edit.title.trim() || draft.body.trim() !== p.edit.body.trim());
-  const save = () => { if (!draft || !p.edit || !draft.body.trim() || !changed) return; p.edit.onSave(draft.title.trim() || p.edit.title, draft.body.trim()); setDraft(null); };
   const files = p.files;
   const affects = [...brief.depts.map((d) => d.name), ...brief.people.map((x) => x.name)];
+  // Editing: the sections being written (a missing key is not being edited) - one by double-click, all by the pencil.
+  const [draft, setDraft] = useState<IdeaChanges | null>(null);
+  const [adding, setAdding] = useState(""); // a team or person being added to Affects
+  const startOf = (k: keyof IdeaChanges): IdeaChanges => ({
+    title: { title: p.title }, body: { body: brief.description }, affects: { affects }, context: { context: brief.context ?? "" },
+    prompts: { prompts: Object.fromEntries(brief.prompts.map((pr) => [pr.label, pr.text])) },
+  })[k];
+  const editing = (k: keyof IdeaChanges) => !!draft && draft[k] !== undefined;
+  const open = (...ks: (keyof IdeaChanges)[]) => { if (!p.edit || p.mode !== "idea") return; setDraft(Object.assign({}, draft, ...ks.filter((k) => !editing(k)).map(startOf))); };
+  const startEdit = () => open("title", "body", "affects", "context", "prompts");
+  const changes = draft ? changesOf(brief, p.title, draft) : {};
+  const dirty = Object.keys(changes).length > 0;
+  const save = () => { if (p.edit && dirty) p.edit.onSave(changes); setDraft(null); setAdding(""); };
+  const cancel = () => { setDraft(null); setAdding(""); };
+  const keys = (e: React.KeyboardEvent, enterSaves: boolean) => {
+    if (e.key === "Escape") { e.preventDefault(); cancel(); }
+    if (e.key === "Enter" && (enterSaves || e.metaKey || e.ctrlKey)) { e.preventDefault(); save(); }
+  };
+  const editable = !!p.edit && p.mode === "idea" ? t("team.ideaDoubleClick") : undefined; // the hint on what may be double-clicked
   const deptNames = new Set(brief.depts.map((d) => d.name));
   // Why each team or person is affected, where the raise page's analysis said so.
   const whyOf = (name: string) => [...brief.depts, ...brief.people].find((x) => x.name === name)?.why ?? null;
@@ -78,7 +95,11 @@ export function OverviewIdea(p: OverviewIdeaProps) {
               </button>
             )}
           </div>
-          <h1 className={s.title2}>{p.title}</h1>
+          {editing("title") ? (
+            <input className={s.titleInput} value={draft?.title ?? ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label={t("team.ideaEditTitle")} maxLength={200} autoFocus onKeyDown={(e) => keys(e, true)} />
+          ) : (
+            <h1 className={s.title2} data-editable={editable ? "true" : undefined} title={editable} onDoubleClick={() => open("title")}>{p.title}</h1>
+          )}
           <div className={s.div26}>
             {p.steps.map((st, i) => (
               <div key={st.label} className={s.div27}>
@@ -118,8 +139,8 @@ export function OverviewIdea(p: OverviewIdeaProps) {
             </div>
             {draft && view === "idea" && (
               <div className={s.div34}>
-                <button type="button" className={s.cancelEdit} onClick={() => setDraft(null)}>{t("team.ideaEditCancel")}</button>
-                <button type="button" className={s.saveEdit} onClick={save} disabled={!changed || !draft.body.trim()}>{t("team.ideaEditSave")}</button>
+                <button type="button" className={s.cancelEdit} onClick={cancel}>{t("team.ideaEditCancel")}</button>
+                <button type="button" className={s.saveEdit} onClick={save} disabled={!dirty}>{t("team.ideaEditSave")}</button>
               </div>
             )}
             <div className={s.div35}>
@@ -133,13 +154,10 @@ export function OverviewIdea(p: OverviewIdeaProps) {
 
           {view === "idea" ? (
             <div className={s.div36}>
-              {draft ? (
-                <div className={s.editFields}>
-                  <input className={s.editTitle} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label={t("team.ideaEditTitle")} placeholder={t("team.ideaEditTitle")} maxLength={200} />
-                  <textarea className={s.textarea} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={6} aria-label={t("team.ideaEditText")} placeholder={t("team.ideaEditText")} autoFocus
-                    onKeyDown={(e) => { if (e.key === "Escape") setDraft(null); if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save(); }} />
-                </div>
-              ) : <p className={s.description}>{brief.description}</p>}
+              {editing("body") ? (
+                <textarea className={s.textarea} value={draft?.body ?? ""} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={5} aria-label={t("team.ideaEditText")} placeholder={t("team.ideaEditText")} autoFocus={!editing("title")}
+                  onKeyDown={(e) => keys(e, false)} />
+              ) : <p className={s.description} data-editable={editable ? "true" : undefined} title={editable} onDoubleClick={() => open("body")}>{brief.description}</p>}
               <div className={s.sec} data-tone="who">
                 <span className={s.dept}>{t("team.ideaWho")}</span>
                 <div className={s.kv}>
@@ -159,9 +177,23 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                   ))}
                 </div>
               </div>
-              <div className={s.sec} data-tone="affects">
+              <div className={s.sec} data-tone="affects" data-editable={editable && !editing("affects") ? "true" : undefined} title={editing("affects") ? undefined : editable} onDoubleClick={() => open("affects")}>
                 <span className={s.dept}>{t("team.ideaAffects")}</span>
-                {/* One row per team or person, with why it is affected where the analysis said so. */}
+                {editing("affects") ? (
+                  <div className={s.editChips}>
+                    {(draft?.affects ?? []).map((a, k) => (
+                      <span key={a + k} className={s.editChip}>{a}
+                        <button type="button" className={s.editChipX} aria-label={t("team.ideaRemoveAffected", { name: a })} onClick={() => setDraft({ ...draft, affects: (draft?.affects ?? []).filter((_, j) => j !== k) })}>×</button>
+                      </span>
+                    ))}
+                    <input className={s.editChipInput} value={adding} onChange={(e) => setAdding(e.target.value)} placeholder={t("team.ideaAddAffected")} aria-label={t("team.ideaAddAffected")} autoFocus={!editing("title") && !editing("body")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && adding.trim()) { e.preventDefault(); setDraft({ ...draft, affects: [...(draft?.affects ?? []), adding.trim()] }); setAdding(""); return; }
+                        keys(e, false);
+                      }} />
+                  </div>
+                ) : (
+                /* One row per team or person, with why it is affected where the analysis said so. */
                 <ul className={s.list}>
                   {affects.map((a, k) => (
                     <li key={a + k} className={s.li}>
@@ -169,15 +201,24 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                     </li>
                   ))}
                 </ul>
+                )}
               </div>
               {/* The context and its facts are one section: the paragraph, then the grouped facts. */}
-              <div className={s.sec} data-tone="context">
+              <div className={s.sec} data-tone="context" data-editable={editable && !editing("context") ? "true" : undefined} title={editing("context") ? undefined : editable} onDoubleClick={() => open("context", "prompts")}>
                 <span className={s.dept}>{t("team.ideaContext")}</span>
-                {brief.context && <p className={s.context}>{brief.context}</p>}
+                {editing("context") ? (
+                  <textarea className={s.textarea2} value={draft?.context ?? ""} onChange={(e) => setDraft({ ...draft, context: e.target.value })} rows={3} aria-label={t("team.ideaContext")} placeholder={t("team.ideaContext")}
+                    autoFocus={!editing("title") && !editing("body") && !editing("affects")} onKeyDown={(e) => keys(e, false)} />
+                ) : brief.context && <p className={s.context}>{brief.context}</p>}
                 {brief.prompts.length > 0 && (
                   <div className={s.kv}>
                     {brief.prompts.map((pr, k) => (
-                      <Fragment key={pr.label + k}><span className={s.label4}>{pr.label}</span><span className={s.text}>{pr.text}</span></Fragment>
+                      <Fragment key={pr.label + k}><span className={s.label4}>{pr.label}</span>
+                        {editing("prompts")
+                          ? <input className={s.editPrompt} value={draft?.prompts?.[pr.label] ?? pr.text} aria-label={pr.label} onKeyDown={(e) => keys(e, false)}
+                              onChange={(e) => setDraft({ ...draft, prompts: { ...(draft?.prompts ?? {}), [pr.label]: e.target.value } })} />
+                          : <span className={s.text}>{pr.text}</span>}
+                      </Fragment>
                     ))}
                   </div>
                 )}

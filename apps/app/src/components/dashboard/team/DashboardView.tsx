@@ -42,6 +42,8 @@ import { CustomPageView, FilesCard } from "@/components/projects/CustomPageView"
 import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
 import { holdsRole } from "@/features/auth/identity";
 import { mayEditIdeaPages } from "@/features/projects/sidebar";
+import { applyIdeaEdits } from "@/features/ideas/edits";
+import { useIdeaEdits } from "./ideaEditsPreview";
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 // A phone gets its own case layout (OverviewPhone), like the inbox's IdeaDetailPhone.
@@ -125,6 +127,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   // The open idea's page the projects sidebar picked (&page=): its files, its chats, or one its people added; none is the overview.
   const pageParam = useSearchParams().get("page");
   const [ideaPages] = useProjectPages(tenant.slug, ideaPagesId(sel ?? "-"));
+  const [ideaEdits, addIdeaEdits] = useIdeaEdits(tenant.slug, sel ?? "-"); // Affects and Context as edited (a stand-in)
   const [pg, setPg] = useState({ key: "", n: 1 }); // the page the table is on, forgotten when the list changes
   const paneRef = useRef<HTMLDivElement>(null);
   const prevSel = useRef<string | null>(null);
@@ -212,10 +215,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     const raised = raisedWith(c);
     const added = rescoresOn(log, c.id);
     // The written brief when there is one: the static demo's, or what the raise page saved when it was published here.
-    const brief = briefForCase(c, { ...briefCtx, briefs: { ...seed.briefs, ...loadRaised(tenant.slug) } }, {
+    const brief = applyIdeaEdits(briefForCase(c, { ...briefCtx, briefs: { ...seed.briefs, ...loadRaised(tenant.slug) } }, {
       promiseDays: P, viewer: me, affected: row.affected, attachments: raised.attachments, updates: added.length,
       passTo: "", history: "", side: onDeskOf(c, me) && !row.mine ? "desk" : "raiser",
-    });
+    }), ideaEdits);
     const late = row.open && row.overdue;
     // The first chat is with whoever holds it (the role, then its holders) - or, for the holder, with whoever raised it.
     const talk = onDeskOf(c, me) && !row.mine ? { name: c.from, sub: c.fromDept } : { name: deskNameOf(desk), sub: deskSubOf(desk) };
@@ -237,12 +240,15 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       versions: c.versions.length > 1 ? c.versions.map((v) => ({ n: v.version, when: f(v.day), title: v.title })) : [],
       mode, onMode: setMode, onClose: closeCase,
-      // The raiser edits it until it is decided: Save posts the next version (case.revised; the rules say who may).
-      edit: row.mine && !c.decided && !c.withdrawn ? {
-        title: c.title, body: c.body,
-        onSave: (title, body) => {
-          act.revise(c.id, body, title !== c.title ? title : undefined);
-          ctx.showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 }));
+      // The people on it edit it until it is decided (the rule in features/cases/permissions.ts): the title and
+      // text go out as the next version (case.revised); Affects and Context stay in this browser for now.
+      edit: !c.decided && !c.withdrawn && mayEditIdeaPages(c, { userId: me.userId, manager: role === "manager", holdsDesk: holdsRole(me, c.assigneeRoleId) }) ? {
+        onSave: (ch) => {
+          if (ch.affects || ch.context !== undefined || ch.prompts) addIdeaEdits({ ...(ch.affects ? { affects: ch.affects } : {}), ...(ch.context !== undefined ? { context: ch.context } : {}), ...(ch.prompts ? { prompts: ch.prompts } : {}) });
+          if (ch.title !== undefined || ch.body !== undefined) {
+            act.revise(c.id, ch.body ?? c.body, ch.title);
+            ctx.showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 }));
+          }
         },
       } : null,
     };

@@ -174,7 +174,7 @@ function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) 
 }
 
 function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
-  const { href, log, me, role } = useDemo();
+  const { href, log, me, role, act, showToast } = useDemo();
   const t = useT();
   const params = useSearchParams();
   const editor = mayEditIdeaPages(c, { userId: me.userId, manager: role === "manager", holdsDesk: holdsRole(me, c.assigneeRoleId) });
@@ -187,17 +187,32 @@ function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
       tabUrl={(k) => (k === "overview" ? base : base + "&page=" + k)}
       tabInfo={(k) => ({ label: t(("projects.idea_" + k) as "projects.idea_overview"), icon: k === "chats" ? <PageGlyph icon="chat" /> : <TabIcon k={k} />, count: counts[k] })}
       back={t("projects.sbBack")} onBack={onBack}
-      head={<Head mark={<StageMark stage={stage} />} title={c.title} />} />
+      head={<Head mark={<StageMark stage={stage} />} title={c.title}
+        // Double-click the title to rename the idea: it goes out as its next version, as on the page.
+        onRename={editor && !c.decided && !c.withdrawn ? (title) => { act.revise(c.id, c.body, title); showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 })); } : undefined} />} />
   );
 }
 
-/** The open project's or idea's title; a project also says where it stands (an idea's stage is its mark). */
-function Head({ mark, title, status, note = null }: { mark: React.ReactNode; title: string; status?: string; note?: { text: string; tone: "late" | "move" } | null }) {
+/** The open project's or idea's title; a project also says where it stands (an idea's stage is its mark). `onRename`: a double-click edits the title. */
+function Head({ mark, title, status, note = null, onRename }: { mark: React.ReactNode; title: string; status?: string; note?: { text: string; tone: "late" | "move" } | null; onRename?: (title: string) => void }) {
+  const t = useT();
+  const [draft, setDraft] = useState<string | null>(null);
+  const finish = (keep: boolean) => {
+    if (keep && onRename && draft !== null && draft.trim() && draft.trim() !== title) onRename(draft.trim());
+    setDraft(null);
+  };
   return (
     <div className={s.head}>
       <span className={s.headSlot}>{mark}</span>
       <span className={s.headText}>
-        <span className={s.headTitle}>{title}</span>
+        {draft !== null ? (
+          <textarea className={s.headInput} value={draft} rows={2} autoFocus aria-label={t("team.ideaEditTitle")} maxLength={200}
+            onFocus={(e) => e.currentTarget.select()} onChange={(e) => setDraft(e.target.value)} onBlur={() => finish(true)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); finish(true); } if (e.key === "Escape") { e.preventDefault(); finish(false); } }} />
+        ) : (
+          <span className={s.headTitle} data-editable={onRename ? "true" : undefined} title={onRename ? t("team.ideaDoubleClick") : undefined}
+            onDoubleClick={onRename ? () => setDraft(title) : undefined}>{title}</span>
+        )}
         {status && (
           <span className={s.headMeta}>
             {status}
