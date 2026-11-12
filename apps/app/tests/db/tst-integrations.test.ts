@@ -562,7 +562,7 @@ describe("TST integrations", () => {
     expect((await reduced()).cases.find((c) => c.id === id)!.assigneeSeatId).toBe(route.ownerSeatId);
     expect(await send(people.owner, "case.asked", id, { text: "Which line?" })).toEqual({ ok: true });
     expect(await send(people.raiser, "case.answered", id, { text: "Line B." })).toEqual({ ok: true });
-    expect(await send(people.owner, "case.decided", id, { answer: "no", reason: "Covered", note: "See the plan." })).toEqual({ ok: true });
+    expect(await send(people.owner, "case.decided", id, { answer: "no", category: "no-fit", reason: "Covered by the yard system and the maintenance plan that is already running." })).toEqual({ ok: true });
     expect((await reduced()).cases.find((c) => c.id === id)!.decided).toMatchObject({ answer: "no" });
 
     // SCIM answers 403, the sign-in buttons are gone, the exporters and dispatcher send nothing.

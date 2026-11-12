@@ -141,7 +141,7 @@ describe("TST core loop", () => {
     expect(await send(people.owner, "case.answered", "core-loop", { text: "me" })).toMatchObject({ ok: false }); // only the raiser answers
     expect(await send(people.raiser, "case.answered", "core-loop", { text: "Late shift, line B." })).toEqual({ ok: true });
     expect(await send(people.raiser, "case.decided", "core-loop", { answer: "yes", reason: "mine" })).toMatchObject({ ok: false });
-    expect(await send(people.owner, "case.decided", "core-loop", { answer: "no", reason: "Covered by the yard system", note: "See maintenance plan." })).toEqual({ ok: true });
+    expect(await send(people.owner, "case.decided", "core-loop", { answer: "no", category: "no-fit", reason: "Covered by the yard system and the maintenance plan that is already running." })).toEqual({ ok: true });
     const c = await caseOf("core-loop");
     expect(c.decided).toMatchObject({ answer: "no" });
     expect(c.open).toBe(false);
@@ -150,7 +150,7 @@ describe("TST core loop", () => {
   it("records the decision in the decision log for those who may open the case, and not for others", async () => {
     const manager = await decisionLog(companyId, await visibleTo(companyId, people.manager.id), { q: "core-loop" });
     expect(manager.rows.map((r) => r.caseId)).toEqual(["core-loop"]);
-    expect(manager.rows[0]).toMatchObject({ answer: "no", reason: "Covered by the yard system", deciderUserId: people.owner.id });
+    expect(manager.rows[0]).toMatchObject({ answer: "no", reason: "Covered by the yard system and the maintenance plan that is already running.", deciderUserId: people.owner.id });
     const raiser = await decisionLog(companyId, await visibleTo(companyId, people.raiser.id), { q: "core-loop" });
     expect(raiser.total).toBe(1);
     const other = await decisionLog(companyId, await visibleTo(companyId, people.otherMember.id), { q: "core-loop" });
