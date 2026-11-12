@@ -7,6 +7,8 @@ import { handPayload } from "@/features/cases/hand";
 import { mayAppend } from "@/features/cases/permissions";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
+import { flagsFor } from "@/features/flags";
+import { acceptPayload } from "@/features/projects/accept";
 import { confirmCard, decidedAt, parseSubmit, textCard, type Card } from "@/features/teams/cards";
 import { createT, INTL_LOCALE, type Locale } from "@/i18n";
 import { appendEventRow, hasIdemKey, loadLog } from "@/lib/db/events";
@@ -48,10 +50,15 @@ export async function handleSubmit(company: BotCompany, person: BotPerson, activ
   let type: "case.decided" | "case.asked" | "case.handed";
   let payload: EventPayload;
   let outcome: "yes" | "no" | "ask" | "handed";
+  let draftId: string | null = null;
   if (submit.kind === "answer") {
     if (submit.answer === "yes") {
       type = "case.decided";
-      payload = { answer: "yes" };
+      // With projects on, a yes opens a draft like the app's: the person answering is the decider and sets it up (D19).
+      if (kase && (await flagsFor(company.slug)).projects) {
+        payload = acceptPayload({ caseTitle: kase.title, decider: { userId: person.id, name: person.name } });
+        draftId = payload.projectId as string;
+      } else payload = { answer: "yes" };
       outcome = "yes";
     } else if (submit.answer === "no") {
       if (!submit.text) return refused(t("teams.errorNoText"));
@@ -82,12 +89,18 @@ export async function handleSubmit(company: BotCompany, person: BotPerson, activ
   if (result.duplicate) return null;
   if (type === "case.decided") kickJira(company.slug);
 
+  const time = new Intl.DateTimeFormat(INTL_LOCALE[locale], { hour: "2-digit", minute: "2-digit" }).format(new Date());
+  // The yes opened a draft: the card says so and leads to it.
+  if (draftId) {
+    return textCard({ subject: "NextUp", title: kase?.title ?? "", text: t("teams.draftOpened", { time }), link: `${companyBaseUrl(company.slug)}/projects/${encodeURIComponent(draftId)}` }, locale);
+  }
+
   return confirmCard(
     {
       outcome,
       title: kase?.title ?? "",
       role: outcome === "handed" ? payload.to : undefined,
-      time: new Intl.DateTimeFormat(INTL_LOCALE[locale], { hour: "2-digit", minute: "2-digit" }).format(new Date()),
+      time,
       link: `${companyBaseUrl(company.slug)}/cases/${submit.caseId}`,
       sandbox: company.stage === "sandbox",
     },

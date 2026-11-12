@@ -89,8 +89,8 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     // The open case is in the address (?id=), so the reload lands on it; a click on its row would close it.
     await expect(leader.getByRole("main").getByText(title).first()).toBeVisible();
     await leader.getByRole("button", { name: "Yes, do it" }).click();
-    // Projects are on by default, so the yes opens a sheet that names the project's lead.
-    await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
+    // Projects are on by default, so the yes opens a sheet that names who sets the draft up.
+    await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
 
     await member.reload();
     await expect(member.getByRole("article", { name: title })).toContainText("Approved");

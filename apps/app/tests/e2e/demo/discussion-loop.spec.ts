@@ -95,12 +95,11 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await expect(decision(page)).toContainText("Ready to decide");
   });
 
-  await test.step("yes opens a project with a lead and a first step; the idea leaves the inbox", async () => {
+  await test.step("yes opens a draft with the decider as lead; the idea leaves the inbox", async () => {
     await page.getByRole("button", { name: /^Yes, do it/ }).click();
     const sheet = page.getByRole("dialog", { name: "Yes, do it" });
-    await expect(sheet.getByRole("combobox", { name: "Who leads it" }).locator("option:checked")).toHaveText(/^T. Vogel/); // the value is a user id
-    await sheet.getByRole("textbox", { name: "First step (optional)" }).fill("Build one cart for line 3");
-    await sheet.getByRole("button", { name: "Say yes and open the project" }).click();
+    await expect(sheet.getByRole("combobox", { name: "Who sets it up" }).locator("option:checked")).toHaveText(/^T. Vogel/); // the value is a user id
+    await sheet.getByRole("button", { name: "Say yes and open the draft" }).click();
     await expect(sheet).toContainText(/P-\d+ is open/);
     await expect(sheet.getByRole("link", { name: /^Open P-\d+$/ })).toHaveAttribute("href", /\/acme\/projects\/p_/);
     await sheet.getByRole("button", { name: "Done" }).click();
@@ -117,7 +116,7 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await expect(card).toContainText("Planning");
     await expect(card.getByRole("link", { name: /P-\d+/ })).toBeVisible();
     await card.getByRole("link", { name: /Full history/ }).click();
-    await expect(page.getByRole("note", { name: "Archived" })).toContainText(/Accepted today by T\. Vogel → P-\d+/);
+    await expect(page.getByRole("note", { name: "Archived" })).toContainText(/Accepted · being set up by .+, start expected/); // the raiser is not on the draft (D13)
 
     // The page shows the projects beside the ideas: the new project carries the title, the open ideas no longer do.
     await page.goto("/acme/overview");
