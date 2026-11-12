@@ -130,6 +130,21 @@ describe("SEE server boundaries", () => {
     expect(await statusOf("y-b")).toBe("open");
   });
 
+  it("a case that another case was merged into is not merged on: no chain, whichever case it would go into (D25)", async () => {
+    await raise("c-a", ids.raiser, "Raiser", ids.deskSeat);
+    await raise("c-b", ids.raiser, "Raiser", ids.deskSeat);
+    await raise("c-c", ids.raiser, "Raiser", ids.deskSeat);
+    const desk = as(ids.desk, "Desk Lead", "leader");
+    expect(await send(desk, "case.merged", "c-a", { into: "c-b" })).toEqual({ ok: true });
+    // c-b absorbed c-a: it cannot be merged into c-c, and nothing is written for the try.
+    expect(await send(desk, "case.merged", "c-b", { into: "c-c" })).toMatchObject({ ok: false });
+    expect(await db.caseEvent.count({ where: { companyId: ids.company, type: "case.merged", targetId: "c-b" } })).toBe(0);
+    expect(await statusOf("c-b")).toBe("open");
+    // c-c, which absorbed nothing, still may be merged, and c-b still takes repeats.
+    expect(await send(desk, "case.merged", "c-c", { into: "c-b" })).toEqual({ ok: true });
+    expect(await statusOf("c-c")).toBe("merged");
+  });
+
   it("a raise with someone else's follows is stored without it, and with the person's own no kept", async () => {
     await raise("w-theirs", ids.third, "Third", ids.deskSeat);
     await setup(ids.company, "case.decided", "Desk Lead", ids.desk, "w-theirs", { answer: "no", category: "no-fit", reason: REASON });
