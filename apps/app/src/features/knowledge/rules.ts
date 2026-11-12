@@ -3,7 +3,7 @@
 import type { SpendRule } from "@/features/demo/types";
 import { DEFAULT_POST_AS, postAsOf, type PostAs } from "@/features/ideas/posting";
 
-export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps", "posting"] as const;
+export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps", "posting", "project_start_days"] as const;
 export type CompanyRuleKey = (typeof COMPANY_RULE_KEYS)[number];
 
 export type LoopSteps = { discussion: boolean; projects: boolean; measure: boolean; recognition: boolean };
@@ -14,6 +14,8 @@ export type CompanyRules = {
   deadlineHandover: boolean;
   /** Working days after the answer date until the case goes one level up; 0 = never. Missing (no row) = the default of features/loop/rules.ts. */
   escalationDays?: number;
+  /** Working days a project draft has to start, counted from the lead taking it (1 to 60); missing (no row) = the default of features/loop/rules.ts. */
+  projectStartDays?: number;
   steps: LoopSteps;
   /** Who a member's raise is preselected as on the last look (decision Q1.7); the member can change it per raise. */
   postAs: PostAs;
@@ -28,6 +30,8 @@ export const DEFAULT_RULES: CompanyRules = {
 };
 /** The most working days an escalation may wait, as promise_days. */
 export const ESCALATION_DAYS_MAX = 60;
+/** The most working days a project draft may have to start. */
+export const PROJECT_START_DAYS_MAX = 60;
 
 export type RuleRow = { key: string; value: unknown };
 
@@ -73,6 +77,10 @@ export function rulesFromRows(rows: readonly RuleRow[]): CompanyRules {
       const n = days(value, ESCALATION_DAYS_MAX, 0);
       if (n !== null) out.escalationDays = n;
     }
+    else if (key === "project_start_days") {
+      const n = days(value, PROJECT_START_DAYS_MAX);
+      if (n !== null) out.projectStartDays = n;
+    }
     else if (key === "loop_steps") out.steps = stepsOf(value);
     else if (key === "posting") out.postAs = postAsOf(isObj(value) ? value.as : undefined);
   }
@@ -88,6 +96,7 @@ export function rowsFromRules(r: CompanyRules): RuleRow[] {
     { key: "posting", value: { as: r.postAs } },
   ];
   if (r.escalationDays !== undefined) rows.push({ key: "escalation_days", value: { days: r.escalationDays } });
+  if (r.projectStartDays !== undefined) rows.push({ key: "project_start_days", value: { days: r.projectStartDays } });
   if (r.spend) rows.push({ key: "spend", value: { limitEur: r.spend.limitEur, text: r.spend.text } });
   return rows;
 }

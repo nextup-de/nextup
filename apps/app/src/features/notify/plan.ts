@@ -62,6 +62,7 @@ const LOOP_TYPES = new Set([
   "case.discussion", "case.invited", "case.checkin", "case.decided",
   "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
   "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded", "project.stopped",
+  "project.lead.answered", "project.invited", "project.invite.answered", "project.start.moved",
 ]);
 
 const isReminder = (k: unknown): k is ReminderKind => (REMINDER_KINDS as readonly unknown[]).includes(k);
