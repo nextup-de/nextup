@@ -182,7 +182,19 @@ export function roundState(c: Pick<ReducedCase, "discussion" | "dueDay" | "overd
 
 /** Invited to a discussion that is still running (and so asked for their view), by user id. */
 export const invitedTo = (c: Pick<ReducedCase, "status" | "discussion">, me: Me): boolean =>
-  me.userId !== null && c.status === "discussion" && !!c.discussion && c.discussion.invitedUserIds.includes(me.userId);
+  me.userId !== null && c.status === "discussion" && !!c.discussion && c.discussion.invitedUserIds.includes(me.userId) && !c.discussion.declinedUserIds.includes(me.userId);
+
+/**
+ * The invitees (user ids) who have not given their view yet (D14): neither a comment since the round began - the last check-in,
+ * else the start of the discussion - nor a "not for me". The check-in lists them; nobody is escalated.
+ */
+export function noViewYet(c: Pick<ReducedCase, "discussion">, comments: readonly Pick<Comment, "byUserId" | "day">[]): string[] {
+  const d = c.discussion;
+  if (!d) return [];
+  const since = d.rounds.length ? d.rounds[d.rounds.length - 1].day : d.startedDay;
+  const said = new Set(comments.filter((m) => m.day >= since).flatMap((m) => (m.byUserId ? [m.byUserId] : [])));
+  return d.invitedUserIds.filter((u) => !said.has(u) && !d.declinedUserIds.includes(u));
+}
 
 // ── The check-in draft ────────────────────────────────────────────────────────────────────────
 

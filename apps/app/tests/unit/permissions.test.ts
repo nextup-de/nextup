@@ -25,7 +25,9 @@ describe("mayAppend", () => {
 
   it("keeps deciding, handing and asking with the person the case sits with", () => {
     for (const type of ["case.decided", "case.handed", "case.asked", "case.read"]) {
-      const payload = type === "case.handed" ? { toRoleHolderId: state.seats[0].id } : {};
+      // The no and the pass carry what the rules of plan NOR ask: a category and a reason, a why.
+      const payload = type === "case.handed" ? { toRoleHolderId: state.seats[0].id, why: "It belongs to the other desk" }
+        : type === "case.decided" ? { answer: "no", category: "no-fit", reason: "The budget for this year is already spent on the new line." } : {};
       expect(mayAppend(leader("Holder", holderMe), ev(type, open.id, payload), state).ok).toBe(true);
       expect(mayAppend(member, ev(type, open.id, payload), state).ok).toBe(false);
       expect(mayAppend(leader("Somebody Else"), ev(type, open.id, payload), state).ok).toBe(false);
@@ -58,12 +60,16 @@ describe("mayAppend", () => {
     expect(mayAppend(leader("Holder", holderMe), ev("case.handed", open.id, { ...to, why: "deadline" }), state, "de")).toMatchObject({ ok: false, error: expect.stringContaining("Frist") });
     // A reason in the person's own words is theirs to give, also when it mentions the deadline.
     expect(mayAppend(leader("Holder", holderMe), ev("case.handed", open.id, { ...to, why: "The deadline is close and I am away" }), state).ok).toBe(true);
-    expect(mayAppend(leader("Holder", holderMe), ev("case.handed", open.id, to), state).ok).toBe(true);
+    expect(mayAppend(leader("Holder", holderMe), ev("case.handed", open.id, { ...to, why: "Eight ok" }), state).ok).toBe(true);
+    // Every pass by a person says why, in at least eight characters (D13).
+    expect(mayAppend(leader("Holder", holderMe), ev("case.handed", open.id, to), state).ok).toBe(false);
   });
 
   it("Q4.21 pass refused while a question is open", () => {
     const holder = leader("Holder", holderMe);
     const pass = handPayload(state.seats, state.seats[0].id, "Belongs to purchasing");
+    // The question stays open for the new holder when the pass says so (Q4.21).
+    const keeping = { ...pass, keepsQuestion: true };
     const asked = appendEvent({ day: 0, events: [] }, {
       type: "case.asked", actor: "Holder", actorUserId: holderMe.userId, target: open.id, payload: { text: "Which machine?" },
     });
@@ -73,6 +79,7 @@ describe("mayAppend", () => {
       expect(mayAppend(who, ev("case.handed", open.id, pass), waiting)).toEqual({ ok: false, error: "A question on this case is still open. Pass it on once it is answered." });
     }
     expect(mayAppend(holder, ev("case.handed", open.id, pass), waiting, "de")).toMatchObject({ ok: false, error: expect.stringContaining("Frage") });
+    expect(mayAppend(holder, ev("case.handed", open.id, keeping), waiting).ok).toBe(true);
     // The reducer would have dropped it: a pass accepted here used to change nothing.
     const dropped = reduce(LOCAL_SEED, appendEvent(asked, { type: "case.handed", actor: "Holder", actorUserId: holderMe.userId, target: open.id, payload: pass }));
     expect(dropped.cases.find((c) => c.id === open.id)?.handed).toEqual([]);
@@ -91,7 +98,8 @@ describe("mayAppend", () => {
 
   it("keeps re-routing with managers and approving ideas away from members", () => {
     expect(mayAppend(leader("Holder", holderMe), ev("case.override", open.id), state).ok).toBe(false);
-    expect(mayAppend(manager, ev("case.override", open.id), state).ok).toBe(true);
+    expect(mayAppend(manager, ev("case.override", open.id, { chosen: state.routes[0].id }), state).ok).toBe(true);
+    expect(mayAppend(manager, ev("case.override", open.id), state).ok).toBe(false); // to which desk?
     expect(mayAppend(member, ev("idea.funded", idea.id), state).ok).toBe(false);
     expect(mayAppend(leader("T. Vogel"), ev("idea.approved", idea.id), state).ok).toBe(true);
   });
