@@ -42,6 +42,8 @@ if [ "$slug" = all ]; then
   failed=0
   for env in "$instances"/*/.env; do
     [ -f "$env" ] || continue
+    # A PR preview slot (deploy.sh preview) is a throwaway demo stack, wiped on every push.
+    grep -qE '^PREVIEW_PR=' "$(dirname "$env")/stack.conf" 2>/dev/null && continue
     "$0" "$(basename "$(dirname "$env")")" "$action" || failed=1
   done
   exit "$failed"
