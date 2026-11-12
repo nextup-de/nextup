@@ -1,7 +1,11 @@
 // What the server decides about a raise, whatever the client sent (IDN/D13). Pure: the seed or the
 // org in, the payload out.
+import { fallbackSeatFor, reviewApplies, reviewSeatFor, triageSeat } from "@/features/approvals/rules";
+import { appealSeatWithReview } from "@/features/approvals/rights";
+import { EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo } from "@/features/approvals/types";
 import { HANDLE_PREFIX } from "@/features/auth/handle";
 import type { SeatRow } from "@/features/auth/identity";
+import { workdayOf } from "@/features/clock/calendar";
 import type { Seed, SeedRole } from "@/features/demo/types";
 import { MIN_GROUP } from "@/features/metrics/types";
 import type { EventPayload } from "./events";
@@ -30,17 +34,48 @@ export function fallbackSeat(seed: { seats?: readonly SeatRow[]; roles?: readonl
   return heads.sort((a, b) => b.below - a.below || a.seat.sort - b.seat.sort)[0]?.seat ?? null;
 }
 
+/** What the raise placement reads of the company besides the routes: the seats, the roles with their boss and limit, the review and approval settings, the managers. */
+export type StampSeed = Pick<Seed, "routes"> & {
+  clock?: Seed["clock"];
+  seats?: readonly SeatRow[];
+  roles?: readonly SeedRole[];
+  approvals?: ApprovalConfig;
+  managerUserIds?: readonly string[];
+};
+
+/** The roles as the review and approval rules read them (the same mapping the reducer makes for `State.approvals.roles`). */
+const roleInfos = (roles: readonly SeedRole[] | undefined): ApprovalRoleInfo[] =>
+  (roles ?? []).map((r) => ({ id: r.id, title: r.title ?? "", reportsToId: r.reportsToId, spendLimitEur: r.spendLimitEur ?? null }));
+
+/** The company's working day now, from the seed's clock; 0 on the demo clock, which has no calendar here (the caller passes `today` then). */
+const clockDayOf = (seed: Pick<StampSeed, "clock">): number => (seed.clock?.mode === "workdays" ? workdayOf(new Date(), seed.clock.calendar) : 0);
+
 /**
- * case.raised: assigneeRoleHolderId is the owner seat of the route the payload names. A raise without a route,
- * or onto a route without an owner seat, goes to the fallback desk and carries that seat's label. null only
- * when there is no fallback either. Whatever the client sent there is dropped. Every other type passes unchanged.
+ * case.raised: the seat the raise lands on, whatever the client sent (plan GAT, D12, D16). A raise that review applies to goes to the review
+ * seat that the raiser does not hold, with `review: true` and `reviewDueDay` = the raise day + the review's days; else a raise without a route
+ * goes to the triage seat, a raise onto a route without an owner seat to the fallback seat (each the review seat while the company's review is on, else
+ * the seat the setting names, else the first manager role's seat, else the head of the org chart), and a route with an owner seat keeps it. A seat
+ * label rides along. null only when there is no seat at all. `review` and `reviewDueDay` are the server's: the client's are dropped. Every other
+ * type passes unchanged.
  */
-export function stampEvent(type: string, payload: EventPayload, seed: Pick<Seed, "routes"> & { seats?: readonly SeatRow[]; roles?: readonly SeedRole[] }): EventPayload {
+export function stampEvent(type: string, payload: EventPayload, seed: StampSeed, ctx: { raiserUserId?: string | null; today?: number } = {}): EventPayload {
   if (type !== "case.raised") return payload;
-  const owner = seed.routes.find((r) => r.id === payload.routeId)?.ownerSeatId ?? null;
-  if (owner !== null) return { ...payload, assigneeRoleHolderId: owner };
-  const fallback = fallbackSeat(seed);
-  return fallback ? { ...payload, assignee: fallback.label, assigneeRoleHolderId: fallback.id } : { ...payload, assigneeRoleHolderId: null };
+  const { review: _review, reviewDueDay: _due, ...base } = payload;
+  void _review;
+  void _due;
+  const config = seed.approvals ?? EMPTY_APPROVAL_CONFIG;
+  const route = seed.routes.find((r) => r.id === payload.routeId) ?? null;
+  const input = {
+    config, seats: seed.seats ?? [], roles: roleInfos(seed.roles), managerUserIds: new Set(seed.managerUserIds ?? []), raiserUserId: ctx.raiserUserId ?? null,
+  };
+  if (reviewApplies(config, route?.id ?? null)) {
+    const seat = reviewSeatFor(input);
+    if (seat) return { ...base, assignee: seat.label, assigneeRoleHolderId: seat.id, review: true, reviewDueDay: (ctx.today ?? clockDayOf(seed)) + config.review.days };
+  }
+  const owner = route?.ownerSeatId ?? null;
+  if (owner !== null) return { ...base, assigneeRoleHolderId: owner };
+  const seat = route === null ? triageSeat(input) : fallbackSeatFor(input);
+  return seat ? { ...base, assignee: seat.label, assigneeRoleHolderId: seat.id } : { ...base, assigneeRoleHolderId: null };
 }
 
 // ── What the server decides about a pass and a second look (plan NOR, NOR-B1) ──────────────────────
@@ -81,7 +116,7 @@ export function stampNor(
   type: string,
   payload: EventPayload,
   kase: ReducedCase | undefined,
-  state: Pick<State, "seats" | "routes" | "day">,
+  state: Pick<State, "seats" | "routes" | "day"> & Partial<Pick<State, "approvals">>,
   above: SeatAboveFn,
 ): EventPayload {
   if (!kase) return payload;
@@ -117,7 +152,9 @@ export function stampNor(
   }
   if (type === "case.appealed") {
     const next: EventPayload = { ...payload };
-    const desk = appealDeskSeat(kase, state, above);
+    // When review applies to the case's route the second look goes to the review seat (GAT D17); NOR's rule when that gives none, also when the no-sayer holds the review role.
+    const reviewSeat = state.approvals ? appealSeatWithReview(kase, { seats: state.seats, approvals: state.approvals }, kase.decided?.answer === "no" ? kase.decided.byUserId ?? null : null) : null;
+    const desk = reviewSeat ? { id: reviewSeat.id, label: reviewSeat.label } : appealDeskSeat(kase, state, above);
     if (desk) next.toRoleHolderId = desk.id;
     else delete next.toRoleHolderId;
     return next;

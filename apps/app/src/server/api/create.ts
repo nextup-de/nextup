@@ -60,7 +60,7 @@ export async function createCase(
   };
   const proposal = await proposeOnRaise(slug, companyId, base);
   const hinted = body.routeHint !== null && seed.routes.some((r) => r.id === body.routeHint) ? body.routeHint : null;
-  const stamped = stampEvent("case.raised", { ...base, routeId: hinted ?? proposal.routeId }, seed);
+  const stamped = stampEvent("case.raised", { ...base, routeId: hinted ?? proposal.routeId }, seed, { raiserUserId: body.raisedByUserId });
 
   const result = await appendEventRow(
     companyId,

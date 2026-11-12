@@ -11,6 +11,8 @@
 // That is written as keys: accessKeys(case) holds every key that opens it, viewerKeys(me) every key a
 // viewer carries, and canOpen is "they share one".
 import type { Role } from "@/config/roles";
+import { approverRoleIds } from "@/features/approvals/rights";
+import { EMPTY_APPROVAL_CONFIG, type ApprovalConfig } from "@/features/approvals/types";
 import type { Me, SeatRow } from "@/features/auth/identity";
 import type { ReducedProject } from "@/features/projects/types";
 import type { ReducedCase } from "./reducer";
@@ -19,7 +21,8 @@ import type { Visibility } from "./events";
 export type VisRole = { id: string; orgUnitId: string; reportsToId: string | null };
 /** A person without a seat: the unit their department names and their active manager. */
 export type VisMember = { userId: string; unitId: string | null; managerId: string | null };
-export type VisCtx = { seats: SeatRow[]; roles: VisRole[]; projects: ReducedProject[]; members?: VisMember[] };
+/** `approvals`: the company's councils, so a council step's secretary and member roles count as approvers (plan GAT, D24); missing = role steps only. */
+export type VisCtx = { seats: SeatRow[]; roles: VisRole[]; projects: ReducedProject[]; members?: VisMember[]; approvals?: Pick<ApprovalConfig, "councils"> };
 export type VisViewer = { me: Me; role: Role; unitIds: string[] };
 
 /** What the raiser chose when raising: the choice and, for custom, the ids; the old labels are never read. */
@@ -85,6 +88,16 @@ export function accessKeys(c: ReducedCase, ctx: VisCtx): string[] {
   }
 
   const { visibility, userIds, unitIds } = choiceOf(c);
+  // The approvers (GAT D24): from the provisional yes until the project starts or stops, the holders of every step's role read the idea and its
+  // draft, unless it is private. A project that started or stopped no longer needs them.
+  if (visibility !== "private") {
+    const run = c.approvals ?? c.approvalRuns[c.approvalRuns.length - 1] ?? null;
+    const project = run?.projectId ? ctx.projects.find((p) => p.id === run.projectId) : undefined;
+    const closed = project !== undefined && (project.startedDay !== null || project.status === "stopped" || project.status === "recognised");
+    if (run !== null && !closed) {
+      for (const id of approverRoleIds(c, { seats: ctx.seats, approvals: { ...EMPTY_APPROVAL_CONFIG, councils: ctx.approvals?.councils ?? [], roles: [] } })) role(id);
+    }
+  }
   if (visibility === "everyone") keys.add("all");
   if (visibility === "custom") {
     for (const id of userIds) user(id);
