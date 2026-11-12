@@ -321,6 +321,8 @@ test.describe("RES acceptance: a result that closes properly", () => {
       // D31: the dropped step counts in no total, so the overview reads 1 / 1 and not 1 / 2.
       await page.goto(`/${SLUG}/projects/${projectId}`);
       await expect(page.getByRole("region", { name: "Where it stands" }).locator("div").filter({ has: page.getByText("Steps done", { exact: true }) }).first()).toContainText("1 / 1");
+      await page.goto(`/${SLUG}/projects/${projectId}?tab=board`);
+      await expect(page.getByText("1 of 1 done", { exact: true }), "the board header counts the dropped step in no total").toBeVisible();
       await page.context().close();
     });
 
