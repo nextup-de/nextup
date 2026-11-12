@@ -10,6 +10,7 @@ import { LOCAL_SEED } from "@/features/demo";
 import { PEOPLE, PROBLEMS, PROMISE_DAYS, ROLES, ROUTES } from "@/features/demo/seed";
 import type { Seed } from "@/features/demo/types";
 import { evaluate } from "@/features/evaluate";
+import { translate } from "@/i18n";
 import type { BrainProposal } from "@/features/routing/brain";
 import { prepareCaseAppend, type CaseAppendDeps } from "@/server/actions/append/case";
 import type { AppendCtx } from "@/server/actions/append/shared";
@@ -36,10 +37,11 @@ const events: CaseEvent[] = [
 const state: State = reduce(SEED, { events, day: 1 });
 const seed = { ...LOCAL_SEED, seats } as Seed;
 
-/** The database as two functions: the viewer may open every case but c_private, and the reduced case is the state's. */
-const deps = (blocked: readonly string[] = ["c_private"]): CaseAppendDeps => ({
+/** The database as three functions: the viewer may open every case but c_private, the reduced case is the state's, and `absorbing` are the cases another case was merged into. */
+const deps = (blocked: readonly string[] = ["c_private"], absorbing: readonly string[] = []): CaseAppendDeps => ({
   openable: async (_company, _viewer, id) => state.cases.some((c) => c.id === id) && !blocked.includes(id),
   reducedCases: async (_c, ids) => state.cases.filter((c) => ids.includes(c.id)),
+  mergedInto: async (_company, caseId) => absorbing.includes(caseId),
 });
 const ctx = (type: AppendCtx["type"], target: string | null, payload: EventPayload, s: State = state): AppendCtx =>
   ({ companyId: "co", viewer: { userId: "u_me", role: "member" }, type, target, payload, state: s, seed, locale: "en" });
@@ -138,6 +140,16 @@ describe("SEE append and raise", () => {
       expect((await merge("   " + "y".repeat(400))).note).toBe("y".repeat(300));
       expect(await merge("   ")).not.toHaveProperty("note");
       expect((await merge(undefined)).note).toBeUndefined();
+    });
+
+    it("refuses to merge a case that another case was merged into, with the merge message (D25)", async () => {
+      const merge = () => prepareCaseAppend(ctx("case.merged", "c_myopen", { into: "c_theirs" }), deps(["c_private"], ["c_myopen"]));
+      expect(await merge()).toEqual({ ok: false, error: translate("en", "cases.permMerge") });
+      // Nothing absorbed: the same merge goes through, and a case that absorbed another is still a fine destination.
+      expect((await prepareCaseAppend(ctx("case.merged", "c_myopen", { into: "c_theirs" }), deps())).ok).toBe(true);
+      expect((await prepareCaseAppend(ctx("case.merged", "c_myopen", { into: "c_theirs" }), deps(["c_private"], ["c_theirs"]))).ok).toBe(true);
+      // A link is not a merge: it is not refused for it.
+      expect((await prepareCaseAppend(ctx("case.linked", "c_myopen", { to: "c_theirs" }), deps(["c_private"], ["c_myopen"]))).ok).toBe(true);
     });
 
     it("adds the other case to the state only when the person may open it, so mayAppend finds the same nothing for every other", async () => {

@@ -49,7 +49,19 @@ export type CaseActs = {
   merge: (caseId: string, into: string, note?: string) => void;
   /** The desk marks this case and `to` as related. */
   link: (caseId: string, to: string) => void;
+  // Review and approvals (plan GAT, D8): thin wrappers over emit, so a demo can be driven by hand. Never named `approve`: CoreActs.approve(ideaId, team, note) exists
+  // and the composed Act spreads the case acts after the core acts.
+  /** The review seat forwards a new idea to its desk (D12); `routeId` null keeps the proposed route. */
+  review: (caseId: string, routeId: string | null) => void;
+  /** The cost estimate of a case, whole euros and how it was estimated (D18). */
+  cost: (caseId: string, eur: number, basis: string) => void;
+  /** A yes that waits for approval: the payload of a yes with the steps the server computed (D21). */
+  provisional: (caseId: string, p: EventPayload) => void;
+  /** One answer of the current step of an approval run (D22). `fields`: dueRev, step, reason, conditions, present, and a no's category, changeIf and revisitDay. */
+  answerApproval: (caseId: string, runId: string, stepId: string, answer: "yes" | "conditions" | "back" | "no", fields?: ApprovalAnswerFields) => void;
 };
+
+export type ApprovalAnswerFields = Pick<EventPayload, "dueRev" | "step" | "reason" | "conditions" | "present" | "category" | "changeIf" | "revisitDay">;
 
 export function caseActs(d: ActDeps): CaseActs {
   const { emit, S, seed, serverMode, slug, actor, actorUserId, log } = d;
@@ -99,5 +111,9 @@ export function caseActs(d: ActDeps): CaseActs {
     declineInvite: (caseId, why) => emit("case.invite.declined", caseId, why ? { why } : {}),
     merge: (caseId, into, note) => emit("case.merged", caseId, { into, ...(note ? { note } : {}) }),
     link: (caseId, to) => emit("case.linked", caseId, { to }),
+    review: (caseId, routeId) => emit("case.reviewed", caseId, { outcome: "forward", ...(routeId ? { routeId } : {}) }),
+    cost: (caseId, eur, basis) => emit("case.costed", caseId, { eur, basis }),
+    provisional: (caseId, p) => emit("case.provisional", caseId, p),
+    answerApproval: (caseId, runId, stepId, answer, fields = {}) => emit("case.approval", caseId, { ...fields, runId, stepId, approvalAnswer: answer }),
   };
 }
