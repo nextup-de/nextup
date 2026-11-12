@@ -106,6 +106,7 @@
     "reminder.vacant": "reminder.start"
   },
   "reminderKinds": [
+    "appeal",
     "blocked",
     "checkin",
     "confirm",
@@ -122,7 +123,8 @@
     "start",
     "triage",
     "update",
-    "vacant"
+    "vacant",
+    "view"
   ],
   "dutyTemplates": [
     "raised",
