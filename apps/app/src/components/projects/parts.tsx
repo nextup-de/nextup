@@ -11,6 +11,8 @@ import type { EventPayload } from "@/features/cases/events";
 import type { Actor } from "@/features/cases/permissions";
 import { updateWeekOf } from "@/features/projects/move-view";
 import { mayAppendProject } from "@/features/projects/permissions";
+import { openStepsOf } from "@/features/projects/result";
+import { stopChoice } from "@/features/projects/stop-choice";
 import { board, nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject, Step, VerdictWord } from "@/features/projects/types";
 import { columnLabel, moveLabel, verdictWord, type IdViewer } from "@/features/projects/views";
@@ -71,8 +73,11 @@ export function useRights(p: ReducedProject) {
     removeStep: (s: Step) => can("project.step.edited", { stepId: s.id, removed: true }),
     baseline: can("project.baseline", { none: true, why: "-" }),
     start: can("project.started"),
-    done: can("project.done"),
+    // The Done sheet lists every step still open (plan RES, D13): asked with that list, a valid probe that sends nothing.
+    done: can("project.done", openStepsOf(p).length > 0 ? { openSteps: openStepsOf(p).map((s) => ({ stepId: s.id, end: "done" as const })) } : {}),
     stop: can("project.stopped", { why: "-" }),
+    // Stopping may send the idea back to its desk (D24): the stopper reopens their own stop's source cases, so it is offered when there are any.
+    stopReturn: can("project.stopped", { why: "-" }) && stopChoice(p, ctx.S).cases.length > 0,
     link: can("project.linked", { key: "-" }), // a key, not an address: the rules accept only real http(s) addresses
     measure: (check: number) => can("project.measured", { check, value: 0 }),
     confirm: (check: number) => can("project.measure.confirmed", { check }),
@@ -131,8 +136,9 @@ export function nextLine(p: ReducedProject, day: number, f: (d: number) => strin
   if (move && lead) return moveLabel(move, locale);
   if (p.status === "planning") return p.baseline ? t("projects.nextPlanningReady") : t("projects.nextPlanningBaseline");
   if (p.status === "running") {
-    const done = p.steps.filter((s) => s.column === "done").length;
-    return p.steps.length ? t("projects.stepsDoneOf", { done, total: p.steps.length }) : t("projects.nextRunningNoSteps");
+    const counted = p.steps.filter((s) => !s.dropped); // D31: a dropped step counts in no total
+    const done = counted.filter((s) => s.column === "done").length;
+    return counted.length ? t("projects.stepsDoneOf", { done, total: counted.length }) : t("projects.nextRunningNoSteps");
   }
   if (p.status === "measured") return p.rewardDue ? t("projects.nextMeasuredReward") : t("projects.nextMeasured");
   if (p.status === "measuring") {

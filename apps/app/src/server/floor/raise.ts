@@ -7,12 +7,17 @@ import { usableSecret } from "@/features/admin/environment";
 import { FLOOR_ANON_COOKIE, FLOOR_DEVICE_COOKIE, FLOOR_USER_COOKIE, verifyFloorCookie } from "@/features/floor/cookies";
 import { companyPrefix, servedOverHttps } from "@/features/tenant/urls";
 import { actorLabel } from "@/features/auth/identity";
-import { deptIsBigEnough, underHandle } from "@/features/cases/stamp";
+import { reviewApplies, reviewSeatFor } from "@/features/approvals/rules";
+import { EMPTY_APPROVAL_CONFIG } from "@/features/approvals/types";
+import { workdayOf } from "@/features/clock/calendar";
+import type { Seed } from "@/features/demo/types";
+import { deptIsBigEnough, stampEvent, underHandle } from "@/features/cases/stamp";
 import { loadUnitPeople } from "@/lib/db/pseudonymise";
 import type { Role } from "@/config/roles";
 import { checkRaise, floorRaisePayload, newReference, pickSeat, type RaiseInput } from "@/features/floor/raise";
 import { seatAbove } from "@/features/knowledge";
 import { getDb } from "@/lib/db/client";
+import { companySeed } from "@/lib/db/companies";
 import { loadKnowledge } from "@/lib/db/knowledge";
 import { appendEventRow } from "@/lib/db/events";
 import { deviceByToken, findArea, hashFloor, saveReference, touchDevice } from "@/lib/db/floor";
@@ -27,6 +32,12 @@ export type FloorRaiseResult =
 
 const REFERENCE_TRIES = 8;
 
+/** The route a floor area's raises belong to (plan GAT, D34): the first route, in the seed's order, whose owner seat is a seat of the area's role; none when no route is owned by it. */
+function areaRouteId(seed: Pick<Seed, "routes" | "seats">, areaRoleId: string): string | null {
+  const seats = seed.seats ?? [];
+  return seed.routes.find((r) => r.ownerSeatId != null && seats.some((s) => s.id === r.ownerSeatId && s.roleId === areaRoleId))?.id ?? null;
+}
+
 export async function raiseFromFloor(
   slug: string,
   input: FloorRaiseInput,
@@ -38,7 +49,7 @@ export async function raiseFromFloor(
   if (!checked.ok || !/^[A-Za-z0-9_-]{8,64}$/.test(input.nonce)) return { ok: false, reason: "invalid" };
 
   const db = getDb();
-  const company = await db.company.findUnique({ where: { slug }, select: { id: true, openedAt: true } });
+  const company = await db.company.findUnique({ where: { slug }, select: { id: true, openedAt: true, seedJson: true, stage: true, demoDay: true } });
   if (!company) return { ok: false, reason: "unknown" };
   if (!company.openedAt) return { ok: false, reason: "paused" }; // closed until opened: no cases from the floor yet
   const companyId = company.id;
@@ -60,23 +71,39 @@ export async function raiseFromFloor(
     actorUserId = user.id;
   }
 
-  const holders = await db.orgRoleHolder.findMany({
-    where: { companyId, roleId: area.roleId },
-    orderBy: { sort: "asc" },
-    select: { id: true, name: true, userId: true, sort: true },
-  });
-  const userIds = holders.flatMap((h) => (h.userId === null ? [] : [h.userId]));
-  const active = userIds.length
-    ? await db.user.findMany({ where: { companyId, id: { in: userIds }, active: true }, select: { id: true } })
-    : [];
-  const seat = pickSeat(
-    holders.map((h) => ({ id: h.id, label: h.name, userId: h.userId, sort: h.sort })),
-    active.map((u) => u.id),
-  );
-  // A role nobody sits in (decision Q1.10): the seat above it takes the raise. With nobody above, nothing is written.
-  const above = seat ? null : seatAbove(await loadKnowledge(companyId), area.roleId);
-  const landed = seat ?? (above ? { id: above.id, label: above.name } : null);
-  if (!landed) return { ok: false, reason: "vacant" };
+  // Review comes first (plan GAT, D34: the same review as the web, whatever the channel). When review applies to the area's route and a review seat is
+  // free of the raiser, the raise is placed on that seat: the area's own role is not asked, so a vacant area is no obstacle.
+  const seed = await companySeed({ id: companyId, seedJson: company.seedJson, stage: company.stage });
+  const config = seed.approvals ?? EMPTY_APPROVAL_CONFIG;
+  const routeId = areaRouteId(seed, area.roleId);
+  const today = seed.clock.mode === "workdays" ? workdayOf(new Date(), seed.clock.calendar) : company.demoDay;
+  const reviewSeat = reviewApplies(config, routeId)
+    ? reviewSeatFor({
+        config, seats: seed.seats ?? [], raiserUserId: actorUserId,
+        roles: (seed.roles ?? []).map((r) => ({ id: r.id, title: r.title ?? "", reportsToId: r.reportsToId, spendLimitEur: r.spendLimitEur ?? null })),
+      })
+    : null;
+
+  let landed: { id: string; label: string } | null = null;
+  if (reviewSeat === null) {
+    const holders = await db.orgRoleHolder.findMany({
+      where: { companyId, roleId: area.roleId },
+      orderBy: { sort: "asc" },
+      select: { id: true, name: true, userId: true, sort: true },
+    });
+    const userIds = holders.flatMap((h) => (h.userId === null ? [] : [h.userId]));
+    const active = userIds.length
+      ? await db.user.findMany({ where: { companyId, id: { in: userIds }, active: true }, select: { id: true } })
+      : [];
+    const seat = pickSeat(
+      holders.map((h) => ({ id: h.id, label: h.name, userId: h.userId, sort: h.sort })),
+      active.map((u) => u.id),
+    );
+    // A role nobody sits in (decision Q1.10): the seat above it takes the raise. With nobody above, nothing is written.
+    const above = seat ? null : seatAbove(await loadKnowledge(companyId), area.roleId);
+    landed = seat ?? (above ? { id: above.id, label: above.name } : null);
+    if (!landed) return { ok: false, reason: "vacant" };
+  }
 
   const limited =
     (await throttle("floorRaise", `${device.key}|${area.id}`)) ??
@@ -98,7 +125,9 @@ export async function raiseFromFloor(
       type: "case.raised",
       actor,
       targetId: caseId,
-      payload: floorRaisePayload({ ...checked.value, seat: landed, unitName, anonymous: who === "anonymous" }),
+      payload: reviewSeat === null
+        ? floorRaisePayload({ ...checked.value, seat: landed as { id: string; label: string }, unitName, anonymous: who === "anonymous" })
+        : stampEvent("case.raised", { ...floorRaisePayload({ ...checked.value, seat: reviewSeat, unitName, anonymous: who === "anonymous" }), routeId }, seed, { raiserUserId: actorUserId, today }),
     },
     { actorUserId, source: "floor", idemKey: `floor:${input.nonce}` },
   );

@@ -120,7 +120,7 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   const actor = eventLabel(viewer, { type, payload }, own, seed.postAs ?? DEFAULT_POST_AS);
 
   // The seat a raise lands on is the server's call, whatever the client sent (features/cases/stamp.ts).
-  let stored = await stampAudience(viewer.companyId, type, stampEvent(type, payload, seed));
+  let stored = await stampAudience(viewer.companyId, type, stampEvent(type, payload, seed, { raiserUserId: viewer.userId, today: state.day }));
   // The choice is kept as a fact only where it took effect: a member who posted by name.
   if (type === "case.raised") {
     const rest = { ...stored };
