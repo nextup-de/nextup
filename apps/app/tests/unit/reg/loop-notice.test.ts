@@ -33,8 +33,9 @@ describe("REG loop notice split", () => {
     for (const type of projectTypes) expect(typeof (PROJECT_NOTICES as Record<string, unknown>)[type], type).toBe("function");
   });
 
-  it("the approval and overload areas are empty until their phases fill them; the agent area has the one notice of an accepted nudge (AGT-K1)", () => {
-    for (const map of [APPROVAL_NOTICES, OVERLOAD_NOTICES]) expect(map).toEqual({});
+  it("the approval area is empty until its phase fills it; the overload area has OVL's five notices (OVL-N1); the agent area has the one notice of an accepted nudge (AGT-K1)", () => {
+    expect(APPROVAL_NOTICES).toEqual({});
+    expect(Object.keys(OVERLOAD_NOTICES)).toEqual(["person.away", "desk.overloaded", "desk.covered", "desk.cleared", "org.seat.vacant"]);
     expect(Object.keys(AGENT_NOTICES)).toEqual(["agent.accepted"]);
     expect(typeof (AGENT_NOTICES as Record<string, unknown>)["agent.accepted"]).toBe("function");
   });
