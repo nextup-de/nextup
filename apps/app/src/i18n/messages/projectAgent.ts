@@ -51,6 +51,10 @@ export const projectAgent = defineMessages({
     permPlanState: "A planning draft can be asked for on an accepted idea that has no project yet.",
     permText: "Say it in a few words (up to 600 characters).",
     permWeekSent: "This week's update is already sent.",
+    acceptStale: "This suggestion no longer fits the project. Nothing was sent or changed.",
+    // The notice an accepted Unblock sends (D12): one to the step's owner or the people of its role, with the nudge as the lead sent it.
+    nudgeSubject: "A nudge on your step: {step}",
+    nudgeProject: "On the project {label}: {title}",
   },
   de: {
     title: "Orchestrator",
@@ -95,5 +99,8 @@ export const projectAgent = defineMessages({
     permPlanState: "Einen Planungsentwurf gibt es für eine angenommene Idee, die noch kein Projekt hat.",
     permText: "Sagen Sie es in wenigen Worten (höchstens 600 Zeichen).",
     permWeekSent: "Das Update dieser Woche ist schon gesendet.",
+    acceptStale: "Dieser Vorschlag passt nicht mehr zum Projekt. Es wurde nichts gesendet oder geändert.",
+    nudgeSubject: "Ein Anstoss zu Ihrem Schritt: {step}",
+    nudgeProject: "Im Projekt {label}: {title}",
   },
 });

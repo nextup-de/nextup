@@ -31,6 +31,10 @@ import { FilesPanel, OriginPanel } from "./ProjectOrigin";
 import { BaselinePanel, MeasurePanel, RewardPanel } from "./ProjectMeasure";
 import { ActivityPanel, TeamPanel, ToolsPanel } from "./ProjectTeam";
 import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } from "./parts";
+import { DoneSheet } from "./result/DoneSheet";
+import { RaiserPanel } from "./result/RaiserPanel";
+import { StopChoice } from "./result/StopChoice";
+import { resultView } from "@/features/projects/result-view";
 import styles from "./Projects.module.css";
 
 /** `jira`: the company's Jira as the server read it (null: static demo, or no database). `tab`: from ?tab=. */
@@ -69,6 +73,16 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
   // The lead's own move (a manager may act as lead too, but it is not on their desk), or a reward a manager records.
   const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);
   const escalatedToMe = holdsRole(ctx.me, p.escalated?.toRoleId ?? null);
+  // A raiser who is not on the team sees how it is going and nothing else (plan RES, D21).
+  const view = resultView(p, S, idViewerOf(ctx), S.day, locale);
+  if (view.panel) {
+    return (
+      <div className={styles.projectPage} data-wide="true">
+        <RaiserHeader p={p} />
+        <RaiserPanel panel={view.panel} />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.projectPage} data-wide="true">
@@ -192,6 +206,22 @@ function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   );
 }
 
+/** The raiser's page head: where to go back to, the status and the title; nothing else of the project is on it. */
+function RaiserHeader({ p }: { p: ReducedProject }) {
+  const { href } = useDemo();
+  const t = useT();
+  return (
+    <div className={styles.hero}>
+      <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
+      <div className={styles.heroTop}>
+        <span className={styles.status}><span className={styles.code}>{projectLabel(p)}</span> · {t(("projects.status_" + p.status) as "projects.status_planning")}</span>
+        <span className={styles.chips}><VerdictChip verdict={p.verdict} /></span>
+      </div>
+      <PageHeader title={p.title} />
+    </div>
+  );
+}
+
 /** The tools the work lives in, at the top: one chip per connected tool, its key, and whether it syncs. Details in the rail. */
 function ToolChips({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const r = useRights(p);
@@ -221,19 +251,20 @@ function ToolChips({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   );
 }
 
-// Start, done and stop: the moves that change the project's state.
+// Start, done and stop: the moves that change the project's state. Done and stop are the sheets of plan RES (components/projects/result).
 function Actions({ p }: { p: ReducedProject }) {
-  const { act } = useDemo();
-  const t = useT();
+  const { act, S } = useDemo();
+  const ctx = useDemo();
+  const locale = useLocale();
   const r = useRights(p);
   const send = useSend(p);
-  const [note, setNote] = useState("");
-  const [stopping, setStopping] = useState<string | null>(null);
-  const [finishing, setFinishing] = useState(false);
-  const boardDone = p.steps.every((s) => s.column === "done");
+  const t = useT();
+  const view = resultView(p, S, idViewerOf(ctx), S.day, locale);
   const planning = p.status === "planning";
   const showStart = planning && r.lead;
-  if (!showStart && !r.done && !r.stop) return null;
+  const done = view.done !== null && view.done.can;
+  const stop = view.stop !== null && view.stop.can;
+  if (!showStart && !done && !stop) return null;
 
   return (
     <div className={styles.actions}>
@@ -245,28 +276,8 @@ function Actions({ p }: { p: ReducedProject }) {
           {!p.baseline && <span className={styles.hint}>{t("projects.permStartNeedsBaseline")}</span>}
         </span>
       )}
-      {/* While steps are still open, "done" is a quiet link; it becomes the main button once the board is done. */}
-      {r.done && !boardDone && !finishing && (
-        <button type="button" className={styles.quiet} onClick={() => setFinishing(true)}>{t("projects.markDoneEllipsis")}</button>
-      )}
-      {r.done && (boardDone || finishing) && (
-        <form className={styles.actionRow} onSubmit={(e) => { e.preventDefault(); if (send("project.done", { note }, () => act.project.done(p.id, note.trim() || undefined))) setNote(""); }}>
-          <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.doneNotePlaceholder")} aria-label={t("projects.doneNoteLabel")} autoFocus={finishing} />
-          <button type="submit" className={`nh-btn ${boardDone ? "nh-btn-primary" : "nh-btn-ghost"} nh-btn-sm`}>{t("projects.move_done")}</button>
-          {!boardDone && <span className={styles.hint}>{t("projects.stepsStillOpen", { count: p.steps.filter((s) => s.column !== "done").length })}</span>}
-          {finishing && <button type="button" className={styles.quiet} onClick={() => setFinishing(false)}>{t("common.cancel")}</button>}
-        </form>
-      )}
-      {r.stop && stopping === null && (
-        <button type="button" className={styles.quiet} onClick={() => setStopping("")}>{t("projects.stopProject")}</button>
-      )}
-      {r.stop && stopping !== null && (
-        <form className={styles.actionRow} onSubmit={(e) => { e.preventDefault(); if (send("project.stopped", { why: stopping }, () => act.project.stop(p.id, stopping.trim()))) setStopping(null); }}>
-          <input className={`nh-input ${styles.input}`} value={stopping} onChange={(e) => setStopping(e.target.value)} placeholder={t("projects.stopWhy")} aria-label={t("projects.stopWhy")} autoFocus />
-          <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!stopping.trim()}>{t("projects.stopIt")}</button>
-          <button type="button" className={styles.quiet} onClick={() => setStopping(null)}>{t("common.cancel")}</button>
-        </form>
-      )}
+      {view.done && <DoneSheet p={p} done={view.done} />}
+      {view.stop && <StopChoice p={p} stop={view.stop} />}
     </div>
   );
 }
