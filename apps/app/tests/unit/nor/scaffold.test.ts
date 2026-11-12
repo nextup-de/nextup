@@ -70,13 +70,13 @@ describe("NOR scaffold", () => {
     expect(c.raisedDay).toBe(3);
   });
 
-  it("a decision, a hand-over and a discussion still carry the new fields empty until NOR-A1 fills them", () => {
+  it("a decision, a hand-over and a discussion carry their new fields", () => {
     let log = appendEvent(emptyLog(), { type: "case.raised", actor: "J. Schmidt", target: "c_a", payload: { title: "A", routeId: "r1", assignee: "T. Vogel" } });
     log = appendEvent(log, { type: "case.discussion", actor: "T. Vogel", target: "c_a", payload: { invited: ["H. Sander"], missing: "x" } });
     expect(reduce(SEED, log).cases[0].discussion?.declinedUserIds).toEqual([]);
     log = appendEvent(emptyLog(), { type: "case.raised", actor: "J. Schmidt", target: "c_b", payload: { title: "B", routeId: "r1", assignee: "T. Vogel" } });
     log = appendEvent(log, { type: "case.decided", actor: "T. Vogel", target: "c_b", payload: { answer: "no", reason: "not now", note: "later" } });
-    expect(reduce(SEED, log).cases[0].decided).toMatchObject({ answer: "no", category: null, changeIf: "", revisitDay: null, duplicateOf: null });
+    expect(reduce(SEED, log).cases[0].decided).toMatchObject({ answer: "no", category: "not-now", changeIf: "", revisitDay: null, duplicateOf: null }); // an old no maps its picked id (NOR-A1)
   });
 
   describe("demo acts", () => {
