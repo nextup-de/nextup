@@ -87,6 +87,9 @@ it("OVL answer picks the sent line key for each why", () => {
       if (why !== "above") expect(line, `${locale} ${why}`).toContain("NAMES");
     }
   }
+  // Nobody who can answer has a line of its own (it waits), in both languages and without a date or a name.
+  expect(translate("en", "ideas.deskSentNobody", { role: "Quality lead" })).toBe("Sent to Quality lead. Nobody can answer this yet; it waits until the desk is staffed.");
+  expect(translate("de", "ideas.deskSentNobody", { role: "Qualitätsleitung" })).toContain("Ihnen"); // the formal Sie, as everywhere
   // The corrected line says who answers a vacant desk, not that it waits.
   expect(translate("en", "ideas.deskSentVacant", { role: "Quality lead", date: "3 Mar" })).toBe("Nobody holds Quality lead right now; the person above it answers by 3 Mar.");
 });

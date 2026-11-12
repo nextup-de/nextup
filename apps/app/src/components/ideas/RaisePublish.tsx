@@ -33,7 +33,8 @@ export function Working({ work }: { work: Work }) {
 const PAGE = 5;
 
 /** `why`: who really answers (plan OVL, D25), known only where the page has the reduced state; without it the line is the one of the demo. */
-export type Sent = { role: string; names: string[]; deputies: string[]; date: string; why?: AnswerWhy };
+export type Sent = { role: string; names: string[]; deputies: string[]; date: string; why?: AnswerWhy; nobody?: boolean };
+// `nobody`: the page knows the desks and nobody can answer (answeringDesk gave null); the line says it waits instead of naming a desk.
 
 export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCancel, onConfirm }: {
   desks: Desk[];
@@ -105,7 +106,8 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
 
         {sent ? (
           <div className={s.rcvs} data-testid="raise-sent" role="status">
-            <p className={s.rcvName}>{sent.why ? t(SENT_LINE[sent.why], { role: sent.role, names: sent.names.join(", "), date: sent.date })
+            <p className={s.rcvName}>{sent.nobody ? t("ideas.deskSentNobody", { role: sent.role })
+              : sent.why ? t(SENT_LINE[sent.why], { role: sent.role, names: sent.names.join(", "), date: sent.date })
               : sent.names.length ? t("ideas.deskSent", { role: sent.role, names: sent.names.join(", "), date: sent.date })
                 : sent.deputies.length ? t("ideas.deskSentDeputy", { role: sent.role, names: sent.deputies.join(", "), date: sent.date })
                   : t("ideas.deskSentVacant", { role: sent.role, date: sent.date })}</p>
