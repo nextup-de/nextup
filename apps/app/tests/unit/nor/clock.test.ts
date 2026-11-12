@@ -141,7 +141,8 @@ describe("NOR clock", () => {
       asked.length = 0;
       const out = dues(world([...log, fact("c_a", { kind: "appeal", dueDay: FIRST, toRoleHolderId: "seat_dep" }, FIRST)], SECOND, pending), SECOND);
       expect(out).toEqual([{ kind: "appeal", target: "c_a", dueDay: SECOND, check: 2, toRoleHolderId: "seat_head", idemKey: `clk:appeal:c_a:${SECOND}:2` }]);
-      expect(asked).toEqual([["role_deputy", ["role_owner"]]]);
+      // The overload area computes the case area's Dues again (plan OVL, D29): the same question comes twice.
+      expect([...new Set(asked.map((a) => JSON.stringify(a)))].map((a) => JSON.parse(a))).toEqual([["role_deputy", ["role_owner"]]]);
       const both = dues(world(log, SECOND, pending), SECOND);
       expect(both.map((d) => [d.dueDay, d.check ?? null])).toEqual([[FIRST, null], [SECOND, 2]]);
       expect(dues(world([...log, fact("c_a", { kind: "appeal", dueDay: FIRST, toRoleHolderId: "seat_dep" }), fact("c_a", { kind: "appeal", dueDay: SECOND, check: 2 })], SECOND + 3, pending), SECOND + 3)).toEqual([]);
@@ -152,7 +153,8 @@ describe("NOR clock", () => {
       asked.length = 0;
       const out = dues(world(log, SECOND, (c) => { decidedNo(1)(c); c.appeal = appealOn(10, null); }), SECOND).filter((d) => d.check === 2);
       expect(out[0]).toMatchObject({ toRoleHolderId: "seat_head" });
-      expect(asked).toEqual([["role_deputy", ["role_owner"]]]);
+      // The overload area computes the case area's Dues again (plan OVL, D29): the same question comes twice.
+      expect([...new Set(asked.map((a) => JSON.stringify(a)))].map((a) => JSON.parse(a))).toEqual([["role_deputy", ["role_owner"]]]);
       const answered = (c: ReducedCase) => { decidedNo(1)(c); c.appeal = { ...appealOn(), decided: { uphold: true, reason: "r", by: "H. Sander", byUserId: "u_hs", day: 12 } }; };
       expect(dues(world(log, SECOND + 5, answered))).toEqual([]);
       expect(dues(world(log, SECOND + 5, (c) => { pending(c); c.decided = null; }))).toEqual([]);
