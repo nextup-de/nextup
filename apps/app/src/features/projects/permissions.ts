@@ -5,11 +5,15 @@ import type { Actor, Verdict } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import { translate, DEFAULT_LOCALE, type Locale, type MessageKey } from "@/i18n";
+import { holdsRole, type Me } from "@/features/auth/identity";
+import type { Route } from "@/features/demo/types";
 import { byClock } from "@/features/clock/actor";
+import { PAUSE_MAX_DAYS } from "@/features/clock/kinds/project";
 import { TEMPLATES } from "@/features/templates/library";
 import { mayConfirm, unconfirmedOf } from "./confirm";
 import { isMeasureSource, readImpact } from "./measure-source";
-import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole } from "./types";
+import { checkInDayOf, previousCheckInDayOf } from "./rhythm";
+import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole, type ReducedProject } from "./types";
 
 const OK: Verdict = { ok: true };
 
@@ -30,6 +34,40 @@ const templateExists = (key: unknown, version: unknown): boolean =>
 
 /** Ids a client mints for a project or a step (features/cases/events newId). */
 export const isProjectId = (v: unknown): v is string => typeof v === "string" && ID.test(v);
+
+/** True only for the accepted sponsor of the project (plan MOV, D13); nobody when it has none. */
+export function isSponsor(p: Pick<ReducedProject, "sponsorUserId">, userId: string | null): boolean {
+  return userId !== null && p.sponsorUserId === userId;
+}
+
+/**
+ * The check-in day an update may be for: the latest check-in of the project that has arrived (D21). The current week's when its
+ * day is today or past, else the nearest earlier week's; null before the start or when there is none.
+ */
+function dueCheckInDay(p: ReducedProject, state: State): number | null {
+  const current = checkInDayOf(p, state.day, state.clock);
+  if (current === null) return null;
+  return current <= state.day ? current : previousCheckInDayOf(p, current, state.clock);
+}
+
+/**
+ * Who may name a new lead for a project that has none (D14, D31): its accepted sponsor (a sponsor who leads it counts as none, D26),
+ * a holder of the route's owner or deputy role (the desk that said yes), the decider, a manager, and the holder of the seat the
+ * vacant fact (clock.due kind vacant, written after the lead left) escalated to. The project.lead.changed rule and the inbox item
+ * both ask here, so no one is shown an action they cannot append.
+ */
+export function mayNameLead(p: ReducedProject, route: Route | null | undefined, who: { userId: string | null; me?: Me; manager: boolean }): boolean {
+  if (p.leadVacatedDay === null) return false;
+  if (who.manager) return true;
+  const holds = (roleId: string | null) => who.me !== undefined && holdsRole(who.me, roleId);
+  if (who.userId !== null && (p.deciderUserId === who.userId || (p.sponsorUserId === who.userId && p.sponsorUserId !== p.leadUserId))) return true;
+  if (route && (holds(route.ownerRoleId ?? null) || holds(route.deputyRoleId ?? null))) return true;
+  // The seat of the vacant fact that belongs to this vacancy: the latest one after the lead left.
+  const left = p.history.findLastIndex((e) => e.type === "project.lead.vacated");
+  const fact = p.history.findLast((e, i) => i > left && e.type === "clock.due" && e.payload.kind === "vacant");
+  const seatId = fact?.payload.toRoleHolderId ?? null;
+  return seatId !== null && who.me !== undefined && who.me.seatIds.includes(seatId);
+}
 
 export function mayAppendProject(actor: Actor, ev: { type: string; target: string | null; payload: EventPayload }, state: State, locale: Locale = DEFAULT_LOCALE): Verdict {
   const no = (key: MessageKey, params?: Record<string, string | number>): Verdict => ({ ok: false, error: translate(locale, key, params) });
@@ -52,6 +90,14 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
   const escalatedSeat = draft && planning && p.escalated !== null && p.escalated.what === "draft" && p.escalated.live ? p.escalated.toSeatId : null;
   const escalatedHolder = escalatedSeat !== null && isMe(state.seats.find((s) => s.id === escalatedSeat)?.userId ?? null);
   const clock = byClock({ actor: actor.name, actorUserId: uid });
+  // A project that keeps moving (plan MOV). A sponsor who is also the lead counts as no sponsor (D26); a stalled escalation
+  // that stands gives its seat's role the sponsor's rights (D13).
+  const sponsor = isSponsor(p, uid) && p.sponsorUserId !== p.leadUserId;
+  const holds = (roleId: string | null) => actor.me !== undefined && holdsRole(actor.me, roleId);
+  const upSeat = p.escalated !== null && p.escalated.what === "stalled" && p.escalated.live && holds(p.escalated.toRoleId);
+  const answers = isLead || sponsor || upSeat;
+  const paused = p.pausedUntil !== null && state.day <= p.pausedUntil;
+  const whole = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
 
   switch (ev.type) {
     case "project.commented":
@@ -120,7 +166,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       return typeof pl.userId === "string" && pl.userId !== "" ? OK : no("projects.permMemberWhom");
 
     case "project.handed":
-      if (!(isLead || escalatedHolder)) return no("projects.permLeadOnly");
+      if (!(answers || escalatedHolder)) return no("projectMove.permSponsorOrLead");
       if (!live) return no("projects.permClosed");
       return typeof pl.toUserId === "string" && pl.toUserId !== "" ? OK : no("projects.permHandWhom");
 
@@ -153,6 +199,9 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       // An unowned step is the team's: anyone on it may pick it up and move it.
       if (!(isLead || isMe(step.ownerUserId ?? null) || ((step.ownerUserId ?? null) === null && onTeam))) return no("projects.permStepMoveOwner");
       if (pl.before != null && !p.steps.some((s) => s.id === pl.before)) return no("projects.permNoStepAbove");
+      // F5 (D18): a step goes to Blocked with its reason, whoever moves it.
+      const column = pl.to;
+      if (column === "blocked" && !text(pl.why, 400)) return no("projectMove.permBlockedWhy");
       return typeof pl.to === "string" && (STEP_COLUMNS as readonly string[]).includes(pl.to) ? OK : no("projects.permMoveWhere");
     }
 
@@ -220,9 +269,58 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       return p.reward && !p.claimed ? OK : no("projects.permNoRewardToClaim");
 
     case "project.stopped":
-      if (!(isLead || escalatedHolder)) return no("projects.permLeadOnly");
+      if (!(answers || escalatedHolder)) return no("projectMove.permSponsorOrLead");
       if (!live) return no("projects.permAlreadyClosed");
       return text(pl.why) ? OK : no("projects.permStopWhy");
+
+    case "project.doneby.moved": {
+      // The lead once; the sponsor, a stalled seat's holder and a manager whenever (D19).
+      const lead = isMe(p.leadUserId);
+      const mayAnytime = sponsor || upSeat || isManager;
+      if (!(mayAnytime || lead)) return no("projectMove.permSponsorOrLead");
+      if (p.status !== "running") return no("projectMove.permRunningOnly");
+      if (!whole(pl.doneBy) || pl.doneBy <= state.day) return no("projectMove.permDoneByDay");
+      if (!text(pl.why, 400)) return no("projectMove.permWhy");
+      return mayAnytime || !p.doneByMoves.some((m) => m.byLead) ? OK : no("projectMove.permDoneByOnce");
+    }
+
+    case "project.paused":
+      if (!isLead) return no("projectMove.permSponsorOrLead");
+      if (p.status !== "running") return no("projectMove.permRunningOnly");
+      if (paused) return no("projectMove.permPaused");
+      if (!whole(pl.untilDay) || pl.untilDay <= state.day || pl.untilDay > state.day + PAUSE_MAX_DAYS) return no("projectMove.permPauseDays");
+      return text(pl.why, 400) ? OK : no("projectMove.permWhy");
+
+    case "project.resumed":
+      if (!(isLead || sponsor)) return no("projectMove.permSponsorOrLead");
+      return paused ? OK : no("projectMove.permNotPaused");
+
+    case "project.howwework":
+      if (!isLead) return no("projectMove.permSponsorOrLead");
+      if (!(p.status === "planning" || p.status === "running")) return no("projectMove.permRunningOnly");
+      if (!whole(pl.checkInWeekday) || pl.checkInWeekday < 1 || pl.checkInWeekday > 5) return no("projectMove.permCheckInDay");
+      return pl.note === undefined || (typeof pl.note === "string" && pl.note.length <= 400) ? OK : no("projectMove.permHowNote");
+
+    case "project.update": {
+      if (!isLead) return no("projectMove.permSponsorOrLead");
+      if (!live || p.startedDay === null) return no("projectMove.permRunningOnly");
+      if (!text(pl.text, 4000)) return no("projectMove.permUpdateText");
+      // The week is the project's due check-in day in the company calendar, nothing else: not an old week, not a future one,
+      // none before the start. Sending it again for the same week is a revision of that update, not another weekly send.
+      return pl.week !== undefined && pl.week === dueCheckInDay(p, state) ? OK : no("projectMove.permUpdateWeek");
+    }
+
+    case "project.lead.changed": {
+      // A new lead is named only while there is none, by whom mayNameLead says (D14, D31).
+      if (p.leadVacatedDay === null) return no("projectMove.permLeadPresent");
+      if (!live) return no("projects.permClosed");
+      if (!mayNameLead(p, state.routes.find((r) => r.id === p.routeId), { userId: uid, me: actor.me, manager: isManager })) return no("projectMove.permNameLead");
+      return typeof pl.toUserId === "string" && pl.toUserId !== "" ? OK : no("projectMove.permLeadTarget");
+    }
+
+    case "project.lead.vacated":
+      // Only the leaver path writes it, on the server (D14).
+      return no("projectMove.permSystemOnly");
 
     default:
       return no("projects.permNotAllowed");

@@ -17,7 +17,7 @@ function mk(over: Partial<ReducedCase> = {}, history: CaseEvent[] = []): Reduced
     id: "c1", seed: false, kind: "problem", title: "t", body: "", from: "A", fromDept: "", fromUserId: "u1",
     assigneeSeatId: "seat-owner", assigneeRoleId: "role-owner", routeId: "r1", assignee: "Owner", raisedDay: FRIDAY,
     reason: "", upside: "", linkedIdea: null, status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [],
-    building: null, shipped: null, override: null, discussion: null, versions: [], pausedDays: 0, pausedSince: null,
+    building: null, shipped: null, override: null, discussion: null, versions: [], decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: FRIDAY, dueFloor: null, reopenSeq: null, decidedSeq: null, follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [], pausedDays: 0, pausedSince: null,
     history, route: null, age: 0, clock: 0, open: true, archived: false, overdue: false, dueDay: FRIDAY + 2, escalated: null,
     ...over,
   };

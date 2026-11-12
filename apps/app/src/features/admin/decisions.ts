@@ -12,6 +12,7 @@
 //   open              not answered yet, not overruled - no label yet
 // A hand-off from the first desk to the route's owner is the normal path and changes nothing.
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
+import { noCategoryOf, noReasonOf, type AnyNoCategory } from "@/features/cases/no";
 
 export type Verdict = "agreed" | "overridden" | "handed elsewhere" | "no route" | "open";
 
@@ -51,6 +52,9 @@ export type DecisionRow = {
   verdict: Verdict;
   handoffs: number;
   answer: "yes" | "no" | null;
+  /** A no: its category (a new one's own, an old one's mapped, D25) and its text; null and "" for a yes or no answer yet. */
+  category: AnyNoCategory | null;
+  reasonText: string;
   noticeAt: string | null;
 };
 
@@ -62,6 +66,8 @@ export function toDecision(d: DecisionInput): DecisionRow {
   const chosen = overrides.length ? overrides[overrides.length - 1].payload.chosen ?? null : proposed;
   const decided = d.later.filter((e) => e.type === "case.decided").pop();
   const answer = decided?.payload.answer ?? null;
+  // The latest decision's category label and text: an old no maps by its picked id (D25).
+  const no = decided && answer === "no" ? { reason: decided.payload.reason ?? "", note: decided.payload.note ?? "", category: decided.payload.category ?? null } : null;
 
   const handed = d.later.filter((e) => e.type === "case.handed");
   const elsewhere = handed.filter((e) => e.payload.to && !d.desks.includes(e.payload.to));
@@ -89,6 +95,8 @@ export function toDecision(d: DecisionInput): DecisionRow {
     verdict,
     handoffs: handed.length,
     answer,
+    category: no ? noCategoryOf({ answer: "no", ...no }) : null,
+    reasonText: no ? noReasonOf(no) : "",
     noticeAt: d.noticeAt,
   };
 }

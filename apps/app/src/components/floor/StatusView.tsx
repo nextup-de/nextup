@@ -90,7 +90,7 @@ export function StatusView({ slug }: { slug: string }) {
       {view.decision ? (
         <div className={floor.panel} data-testid="floor-status-decision">
           <p className={styles.answer}>{view.decision.answer === "yes" ? t("floor.statusYes") : t("floor.statusNo")}</p>
-          {view.decision.reason ? <p className={floor.body}>{view.decision.reason}</p> : null}
+          {view.decision.reason ? <p className={floor.body}>{t(view.decision.reason)}</p> : null}
           {role ? <p className={floor.hint}>{role}</p> : null}
         </div>
       ) : view.question ? (
