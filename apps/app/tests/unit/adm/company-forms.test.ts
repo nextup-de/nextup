@@ -85,3 +85,31 @@ describe("ADM company forms", () => {
     }
   });
 });
+
+describe("SET start days", () => {
+  const of = (projectStartDays?: string) => parseRulesForm({ ...goodRules, projectStartDays });
+  const days = (v?: string) => { const r = of(v); return r.ok ? r.value.rules.projectStartDays : "refused"; };
+
+  it("takes a whole number of working days from 1 to 60 and saves it into the company rules", () => {
+    expect([days("10"), days("1"), days("60"), days(" 25 ")]).toEqual([10, 1, 60, 25]);
+  });
+
+  it("refuses 0 and 61, and anything that is not a whole number, with a message on the field", () => {
+    for (const bad of ["0", "61", "-1", "2.5", "soon"]) {
+      expect(of(bad)).toMatchObject({ ok: false, error: "settingsCompany.errProjectStartDays", field: "projectStartDays" });
+    }
+  });
+
+  it("takes an empty field as no rule, so the default applies", () => {
+    expect([days(""), days(undefined)]).toEqual([undefined, undefined]);
+    const r = of("");
+    expect(r.ok && "projectStartDays" in r.value.rules).toBe(false);
+  });
+
+  it("has the message and the labels in German and English", () => {
+    for (const k of ["errProjectStartDays", "projectStartDays", "projectStartHelp"] as const) {
+      expect(en.settingsCompany[k]).toBeTruthy();
+      expect(de.settingsCompany[k]).toBeTruthy();
+    }
+  });
+});

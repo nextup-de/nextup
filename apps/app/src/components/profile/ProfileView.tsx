@@ -51,6 +51,7 @@ export function ProfileView({ m365, mailPrefs }: { m365?: M365CardData | null; m
   const initiatives = D.initiatives.filter((i) => i.members.some((m) => m.name === name));
   const cases = D.cases.filter((c) => ctx.actorUserId !== null && c.fromUserId === ctx.actorUserId);
   const ideaCount = ideas.length + cases.filter((c) => c.kind === "idea" && !c.linkedIdea).length;
+  const profileStats = ([[cases.length, t("profile.casesYouRaised")], [ideaCount, t("profile.ideas")], [initiatives.length, t("profile.collaborations")]] as const).filter(([n]) => n > 0);
   const manager = org?.reportsTo && org.reportsTo !== name ? seed.people.find((p) => p.name === org.reportsTo) : null;
   // A colleague is listed only when their seat belongs to a user with a person page (personLinks).
   const linkOf = (personName: string) => { const userId = seed.seats.find((s) => s.label === personName)?.userId; return userId ? personHref(tenant, userId) : null; };
@@ -77,13 +78,14 @@ export function ProfileView({ m365, mailPrefs }: { m365?: M365CardData | null; m
       </section>
     </SectionCard>
 
-    <section className={styles.stats} aria-label={t("profile.statsLabel")}><div><strong>{cases.length}</strong><span>{t("profile.casesYouRaised")}</span></div><div><strong>{ideaCount}</strong><span>{t("profile.ideas")}</span></div><div><strong>{initiatives.length}</strong><span>{t("profile.collaborations")}</span></div></section>
+    {/* Only the numbers above 0 (lib/utils/quiet.ts); none, no strip. */}
+    {profileStats.length > 0 && <section className={styles.stats} aria-label={t("profile.statsLabel")}>{profileStats.map(([n, label]) => <div key={label}><strong>{n}</strong><span>{label}</span></div>)}</section>}
 
     <div className={styles.columns}>
       <div className={styles.mainColumn}>
         {anonymous && <section className={styles.privacy}><Banner tone="info"><span><strong>{t("profile.howSeen")}</strong> {t("profile.seenAs")} <strong>{ctx.actor}</strong>. {t("profile.seenHidden")}</span></Banner></section>}
 
-        <SectionCard title={t("profile.yourWork")} name="work" action={<span className={styles.count}>{work.length}</span>}>
+        <SectionCard title={t("profile.yourWork")} name="work" action={work.length ? <span className={styles.count}>{work.length}</span> : undefined}>
           {work.length ? <div className={styles.workList}>{work.map((item) => <Link className={styles.workItem} href={item.href} key={item.type + item.id}><span className={styles.workIcon}>{item.type === "problemRaised" ? "P" : item.type === "collaboration" ? "↗" : "✳"}</span><span className={styles.workText}><strong>{item.title}</strong><small>{t(WORK_LABEL[item.type])}</small></span><span className={styles.status}>{item.status}</span><span className={styles.arrow} aria-hidden="true">→</span></Link>)}</div> : <div className={styles.empty}>{t("profile.noWork")}</div>}
         </SectionCard>
 

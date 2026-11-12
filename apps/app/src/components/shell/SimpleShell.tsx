@@ -103,7 +103,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
               </div>
               <div className={styles.meStats}>
                 <span><strong>{persona.role.label}</strong></span>
-                {stats.map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
+                {stats.filter(([n]) => n > 0).map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
               </div>
               {/* Only worth showing when it differs from the header: the employee posts under a handle. */}
               {anon && (
