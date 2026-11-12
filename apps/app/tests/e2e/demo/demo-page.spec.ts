@@ -68,9 +68,9 @@ test("the demo controls click through the whole story: raise, publish, accept, d
 
   await test.step("the team leader opens it, says yes and opens the project; then the manager's Dashboard", async () => {
     await take("Switch to team leader");
-    await expect(page).toHaveURL(/\/demo\/leader$/);
+    await expect(page).toHaveURL(/\/demo\/inbox$/);
     await take("Open the idea");
-    await expect(page).toHaveURL(/\/demo\/leader\?id=/);
+    await expect(page).toHaveURL(/\/demo\/inbox\?id=/);
     await expect(page.getByRole("main")).toContainText(TITLE);
     await take("Accept it");
     await take("Open the project");
