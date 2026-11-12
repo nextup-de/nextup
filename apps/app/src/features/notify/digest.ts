@@ -8,6 +8,11 @@ import type { State } from "@/features/cases/reducer";
 import { inboxItems } from "@/features/inbox";
 import { createT, type Locale } from "@/i18n";
 import type { OutboxDraft } from "@/lib/db/outbox";
+import { AGENT_FOLLOWS, AGENT_LOOP_TEMPLATES } from "./areas/agent";
+import { APPROVAL_FOLLOWS, APPROVAL_LOOP_TEMPLATES } from "./areas/approval";
+import { CASE_FOLLOWS, CASE_LOOP_TEMPLATES } from "./areas/case";
+import { OVERLOAD_FOLLOWS, OVERLOAD_LOOP_TEMPLATES } from "./areas/overload";
+import { PROJECT_FOLLOWS, PROJECT_LOOP_TEMPLATES } from "./areas/project";
 import { ADD_MAIL_PREFIX, isDuty } from "./channels";
 import { REMINDER_KINDS } from "./templates";
 
@@ -52,13 +57,13 @@ export function digestFor(userId: string, state: State, seats: readonly SeatRow[
 
 // ── what a person can switch (profile page): groups of templates, one switch each ──────────────────────────
 
-/** The loop templates, as features/notify/plan.ts names them (`loop.<event type>`). */
-const LOOP_TEMPLATES = [
-  "case.discussion", "case.invited", "case.checkin", "case.decided",
-  "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
-  "project.handed", "project.member", "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded", "project.stopped",
-  "project.lead.answered", "project.invited", "project.invite.answered", "project.start.moved",
-].map((t) => `loop.${t}`);
+/**
+ * The loop templates, as features/notify/plan.ts names them (`loop.<event type>`), composed from the areas in their order.
+ * Composer (docs/process/README.md): a phase adds to its file under areas/, never here.
+ */
+export const LOOP_TEMPLATES: readonly string[] = [
+  ...CASE_LOOP_TEMPLATES, ...PROJECT_LOOP_TEMPLATES, ...AGENT_LOOP_TEMPLATES, ...APPROVAL_LOOP_TEMPLATES, ...OVERLOAD_LOOP_TEMPLATES,
+];
 const REMINDER_TEMPLATES = REMINDER_KINDS.map((k) => `reminder.${k}`);
 
 export type NotifyGroup = "raised" | "loop" | "reminders" | "digest";
@@ -77,16 +82,7 @@ const ADD_MAIL = new Set(Object.keys(NOTIFY_GROUPS).map((g) => `${ADD_MAIL_PREFI
  * person has no row for it (features/notify/gate.ts prefOf). The profile switch writes a row for every template of
  * its group, so the next time the person uses the switch the new template gets its own.
  */
-const FOLLOWS: Record<string, string> = {
-  "loop.case.asked": "loop.case.decided", "loop.case.answered": "loop.case.decided", "loop.case.handed": "loop.case.decided",
-  "loop.case.unanswered": "loop.case.decided", "loop.case.withdrawn": "loop.case.decided", "reminder.question": "reminder.deadline", "reminder.triage": "reminder.deadline",
-  "reminder.confirm": "reminder.measure", "loop.project.measure.confirmed": "loop.project.measured",
-  "loop.project.stopped": "loop.project.done",
-  // The project draft (plan SET): an opt-out of the project mails covers the new ones until the person chooses again.
-  "loop.project.lead.answered": "loop.project.member", "loop.project.invited": "loop.project.member",
-  "loop.project.invite.answered": "loop.project.member", "loop.project.start.moved": "loop.project.member",
-  "reminder.lead": "reminder.start", "reminder.invite": "reminder.start", "reminder.draft": "reminder.start",
-};
+export const FOLLOWS: Record<string, string> = { ...CASE_FOLLOWS, ...PROJECT_FOLLOWS, ...AGENT_FOLLOWS, ...APPROVAL_FOLLOWS, ...OVERLOAD_FOLLOWS };
 export const followsTemplate = (template: string): string | null => FOLLOWS[template] ?? null;
 
 export type PrefChange = { ok: true; userId: string; template: string; on: boolean } | { ok: false; error: "not signed in" | "unknown template" | "duty" };
