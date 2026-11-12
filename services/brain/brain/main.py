@@ -13,13 +13,14 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from brain.chat import ChatFailed, ChatIn, chat, chat_stream
+from brain.agent import agent
 from brain.coach import coach
 from brain.config import get_settings
 from brain.llm import LLMClient, LLMOutputError
 from brain.plan import checkin, plan
 from brain.read import read_idea
 from brain.route import route
-from brain.schemas import CheckinIn, CheckinOut, CoachIn, CoachOut, PlanIn, PlanOut, ReadIn, ReadOut, RouteIn, RouteOut
+from brain.schemas import AgentIn, AgentOut, CheckinIn, CheckinOut, CoachIn, CoachOut, PlanIn, PlanOut, ReadIn, ReadOut, RouteIn, RouteOut
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -116,6 +117,19 @@ async def post_checkin(body: CheckinIn, request: Request) -> CheckinOut:
         log.error("checkin failed: %s", e)
         raise HTTPException(502, "The language model returned invalid output. Please retry.")
     log.info("checkin round=%d said=%d next=%s open=%d ms=%d", body.round, len(body.said), out.next, len(out.open), out.ms)
+    return out
+
+
+@app.post("/v1/agent", response_model=AgentOut)
+async def post_agent(body: AgentIn, request: Request) -> AgentOut:
+    """A running project: at most three suggestions, one per wanted kind. The agent drafts; people decide."""
+    try:
+        out = await run_in_threadpool(agent, request.app.state.llm.for_request(body.llm), body)
+    except LLMOutputError as e:
+        log.error("agent failed: %s", e)
+        raise HTTPException(502, "The language model returned invalid output. Please retry.")
+    log.info("agent steps=%d facts=%d kinds=%s suggestions=%d ms=%d",
+             len(body.project.steps), len(body.project.facts), ",".join(body.kinds), len(out.suggestions), out.ms)
     return out
 
 
