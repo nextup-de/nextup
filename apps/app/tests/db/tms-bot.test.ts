@@ -5,6 +5,7 @@ import { templateWrites } from "@/features/demo/content";
 import { toSeedJson } from "@/features/demo/parse";
 import { companySeed } from "@/lib/db/companies";
 import { bindDemoCompany } from "@/lib/db/demo-identity";
+import { invalidateFlags } from "@/features/flags";
 import { appendEventRow } from "@/lib/db/events";
 import { getDb } from "@/lib/db/client";
 import { writeStructure } from "@/lib/db/structure-writes";
@@ -199,5 +200,50 @@ describe("TMS bot endpoint", () => {
     } finally {
       await db.integration.update({ where: { companyId_system: { companyId, system: "teams" } }, data: { on: true } });
     }
+  });
+});
+
+describe("SET Teams yes opens a draft", () => {
+  it("with projects on, a yes writes a draft yes: a new project id, the answering person as lead, and the card links to the draft", async () => {
+    await raiseCase("tb-draft");
+    expect((await post(SLUG, submit(OWNER_AAD, { kind: "answer", caseId: "tb-draft", cardId: "c1", answer: "yes" }), fake.mintToken())).status).toBe(200);
+    const rows = await events("case.decided", "tb-draft");
+    expect(rows).toHaveLength(1);
+    const payload = rows[0].payload as Record<string, unknown>;
+    expect(payload).toMatchObject({ answer: "yes", draft: true, leadUserId: ownerUserId, title: "Case tb-draft" });
+    expect(payload.projectId).toMatch(/^p_[A-Za-z0-9]+$/);
+    expect(rows[0].actorUserId).toBe(ownerUserId);
+    const card = lastCardText();
+    expect(card).toContain(`/projects/${payload.projectId}`);
+    expect(card).not.toContain("/cases/tb-draft");
+  });
+
+  it("with projects off it stays a plain yes and the card links to the case", async () => {
+    await db.featureFlag.upsert({
+      where: { companyId_key: { companyId, key: "projects" } },
+      create: { companyId, key: "projects", enabled: false, updatedAt: new Date() },
+      update: { enabled: false },
+    });
+    invalidateFlags(SLUG);
+    try {
+      await raiseCase("tb-plain");
+      expect((await post(SLUG, submit(OWNER_AAD, { kind: "answer", caseId: "tb-plain", cardId: "c1", answer: "yes" }), fake.mintToken())).status).toBe(200);
+      const rows = await events("case.decided", "tb-plain");
+      expect(rows).toHaveLength(1);
+      expect(rows[0].payload).toEqual({ answer: "yes" });
+      expect(lastCardText()).toContain("/cases/tb-plain");
+    } finally {
+      await db.featureFlag.deleteMany({ where: { companyId, key: "projects" } });
+      invalidateFlags(SLUG);
+    }
+  });
+
+  it("a no keeps its behaviour with projects on", async () => {
+    await raiseCase("tb-draft-no");
+    await post(SLUG, submit(OWNER_AAD, { kind: "answer", caseId: "tb-draft-no", cardId: "c1", answer: "no", text: "Too costly" }), fake.mintToken());
+    const rows = await events("case.decided", "tb-draft-no");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].payload).toMatchObject({ answer: "no", reason: "Too costly" });
+    expect(rows[0].payload).not.toHaveProperty("draft");
   });
 });
