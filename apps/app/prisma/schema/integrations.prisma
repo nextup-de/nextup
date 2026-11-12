@@ -1,4 +1,4 @@
-// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document, OutboxMessage, WebhookSubscription, NotifyPreference, NotifyCursor, TeamsConversation, AiCall. Changed only by: CON, NTF, TMS, AIB. Every migration is its own folder under prisma/migrations.
+// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document, OutboxMessage, WebhookSubscription, NotifyPreference, NotifyCursor, TeamsConversation, AiCall. Changed only by: CON, NTF, TMS, AIB, INB. Every migration is its own folder under prisma/migrations.
 
 // Which integrations are on for this company. docs/INTEGRATIONS.md: flipped only by an event, so
 // the change is a fact with an actor, not a silent edit.
@@ -50,6 +50,11 @@ model CompanyConfig {
   m365Search Boolean @default(false)
 
   defaultLocale String? // de | en (src/i18n). Null: English.
+
+  // Per notice group (raised | loop | reminders | digest) how the company wants it delivered: {group: rule} with the
+  // rule teams-else-mail | mail | both (decision D6 of plan INB, features/notify/channels.ts). A missing group
+  // means teams-else-mail.
+  noticeChannels Json @default("{}")
 }
 
 // A person's own connection to a source NextUp reads on their behalf - today only Microsoft 365
@@ -169,9 +174,12 @@ model OutboxMessage {
   lastError String?
   sentAt    DateTime?
   createdAt DateTime  @default(now())
+  // When the person read the notice; only an `inapp` row has one (decision D5 of plan INB).
+  readAt    DateTime?
 
   @@unique([companyId, key])
   @@index([status, nextAt])
+  @@index([companyId, recipientUserId, channel])
 }
 
 // Where a company's public events are posted. The secrets are sealed (features/connectors/vault.ts,
