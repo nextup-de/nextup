@@ -92,7 +92,10 @@ export type Reward = { rule: string; amount: number | null; note: string; day: n
 export type ProjectStatus = "planning" | "running" | "measuring" | "measured" | "recognised" | "stopped";
 
 /** Late start or late measure: on the deputy's desk too, like a late decision. */
-export type ProjectEscalation = { to: string; toSeatId: string | null; toRoleId: string | null; from: string; day: number; live: boolean; what: "start" | "measure" | "draft" };
+export type ProjectEscalation = {
+  to: string; toSeatId: string | null; toRoleId: string | null; from: string; day: number; live: boolean; what: "start" | "measure" | "draft" | "stalled";
+  /** stalled: the sponsor the escalation went to (D12); null when it went to a seat. */
+  toUserId?: string | null };
 
 export type ReducedProject = {
   id: string;
@@ -162,7 +165,27 @@ export type ReducedProject = {
   raiserNote: string;
   /** Who said yes (the decider's user id); null on a legacy log without one. */
   deciderUserId: string | null;
+  // A project that keeps moving (plan MOV). A project nobody touched with those events has the empty values.
+  /** The done-by working day: the goal's, else startedDay + DONE_BY_DEFAULT_DAYS, replaced by the latest project.doneby.moved; null before the start. */
+  doneBy: number | null;
+  /** Every project.doneby.moved, in order. */
+  doneByMoves: DoneByMove[];
+  /** The last day of a pause; null when not paused. */
+  pausedUntil: number | null;
+  pauseWhy: string;
+  /** The latest day the project saw activity (D12). */
+  lastActivityDay: number | null;
+  /** project.howwework: 1-5 (Monday to Friday); null = the weekday of startedDay. */
+  checkInWeekday: number | null;
+  howWeWorkNote: string;
+  /** The day project.lead.vacated emptied the lead seat; null while there is a lead. */
+  leadVacatedDay: number | null;
+  /** The latest project.update. */
+  latestUpdate: { text: string; week: number; day: number; byUserId: string | null } | null;
 };
+
+/** One project.doneby.moved: byLead says the mover was the lead at that event (the lead may move it once). */
+export type DoneByMove = { day: number; doneBy: number; why: string; byUserId: string | null; byLead: boolean };
 
 /** A project in a company's seed, for demo data in every state. Its history is seed events. */
 export type SeedProject = {
