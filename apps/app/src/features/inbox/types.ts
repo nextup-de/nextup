@@ -9,7 +9,8 @@ export type InboxKind = "case" | "idea" | "view" | "question" | "confirm" | "rew
   // A result that closes properly (plan RES, D20) and an agent's suggestion (plan AGT).
   | "help" // an open 'ask the sponsor' on a step (RES, D19): for the asked person or the holders of the asked role
   | "baseline" // a baseline that waits for a second person's confirmation before the start (RES, D16)
-  | "suggestion"; // an agent's suggestion (AGT fills it; RES writes none)
+  | "suggestion" // an agent's suggestion (AGT fills it; RES writes none)
+  | "comment"; // unread comments on a case the person follows, one item per case (plan REM, I1)
 
 export type InboxItem = {
   id: string;
@@ -28,6 +29,11 @@ export type InboxItem = {
   deskRoleId: string | null;
   /** Why a case is back on the list (plan NOR): reopened, passed on, sent back, taken up a level, or its date moved. Absent on every other item. */
   cause?: "reopened" | "passed" | "back" | "up" | "moved";
+  /** Who passed the case and why (plan REM, I1): the title of the passing seat's role, and the reason the passer gave. Only on a case whose cause is `passed`; each one only when the pass says it. */
+  fromRole?: string;
+  why?: string;
+  /** How many comments by others are unread on the case (plan REM, I1). Only on a `comment` item. */
+  count?: number;
 };
 
 export type InboxInput = {
