@@ -219,8 +219,11 @@ the certificate. `nextup-site` refuses the slug `demo`, so those are run by hand
   `backup.sh demo restore <snapshot>` (the one taken in step 2).
 - **Change it only with `promote`.** `add-stack.sh demo ...` would start it from the shared
   `~/nextup/stack` again.
-- **Any stack can be pinned** the same way. To put one back on its track, delete the `PINNED=`
-  line from its `stack.conf`; the next `stage` or `release` moves it.
+- **Every stack follows its track by default; pinning is always by hand.** Any release-track stack
+  can be pinned the same way (`promote`, or admin's Version card: **Pin to this version**). To put
+  one back on its track: `deploy.sh unpin <slug>`, or **Follow releases again** on its Version card.
+  It takes a backup, moves the stack to the last released sha at once (a main-track stack: the last
+  staged one), removes `PINNED=` and its own copy of `stack/`; every later release moves it.
 - **Memory:** one more stack is an app, a Postgres, a Caddy and a mailpit. Check `free -m` first
   (see "When something is wrong").
 

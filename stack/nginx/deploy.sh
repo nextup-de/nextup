@@ -20,6 +20,7 @@
 # CI runs:        ssh hetzner stage <sha>, later ssh hetzner release <sha>, ssh hetzner status
 #                 (.github/workflows/images.yml + deploy.yml: the release waits for Kevin's approval)
 # By hand:        ~/nextup/stack/nginx/deploy.sh promote demo a16bc06
+#                 ~/nextup/stack/nginx/deploy.sh unpin musterwerk  (back onto its track)
 #                 ~/nextup/stack/nginx/deploy.sh deploy main     (both tracks at once, no gate;
 #                                                                 refused over ssh)
 #
@@ -32,8 +33,10 @@
 # a pinned one does: staging is usually ahead of the release, and its compose file and scripts
 # must be as new as its images, without touching everyone else's.
 #
-# A pinned stack (PINNED=<sha> in its instances/<slug>/stack.conf) is left alone by both, so
-# what is shown in an interview never changes by itself. Only `promote <slug> <sha>` moves it.
+# Every stack follows its track unless someone pinned it by hand: a pinned stack (PINNED=<sha> in
+# its instances/<slug>/stack.conf) is left alone by both, so what is shown in an interview never
+# changes by itself. Only `promote <slug> <sha>` moves (and pins) it; `unpin <slug>` puts it back
+# on its track at once - the last released sha (staged, for a main-track stack).
 #
 # Every move takes a backup first (stage, release, deploy and promote): `backup.sh <slug>
 # pre-migrate <sha>`, before the new commit's migrations run. A stack whose backup fails is not
@@ -48,7 +51,7 @@ staged_list="${NEXTUP_STAGED:-$HOME/nextup/staged}"
 released_list="${NEXTUP_RELEASED:-$HOME/nextup/released}"
 lock_file="${NEXTUP_DEPLOY_LOCK:-$HOME/nextup/deploy.lock}"
 
-usage() { echo "usage: stage <sha> | release <sha> | deploy <main|sha> | promote <slug> <sha> | preview <pr> <sha> | unpreview <pr> | status" >&2; exit 2; }
+usage() { echo "usage: stage <sha> | release <sha> | deploy <main|sha> | promote <slug> <sha> | unpin <slug> | preview <pr> <sha> | unpreview <pr> | status" >&2; exit 2; }
 
 # The PR preview key runs this script as `deploy.sh --previews-only` (its authorized_keys line):
 # it may fill and empty the preview slots and read status, nothing else - no customer stack.
@@ -59,7 +62,8 @@ if [ "${1:-}" = --previews-only ]; then only=previews; shift; fi
 # exactly as many as the verb takes.
 if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
   read -r -a args <<< "$SSH_ORIGINAL_COMMAND"
-  # `deploy` skips the gate, so the CI key can't use it: stage, then release.
+  # `deploy` skips the gate, so the CI key can't use it: stage, then release. `unpin` is not in
+  # the list either: only the box agent (admin's Version card) and a person on the box run it.
   [ "${args[0]:-}" != deploy ] || { echo "deploy: not over ssh - use stage <sha>, then release <sha>" >&2; exit 2; }
   case "${args[0]:-}:${#args[@]}" in status:1|stage:2|release:2|promote:3|preview:3|unpreview:2) ;; *) usage ;; esac
 else args=("$@"); fi
@@ -377,6 +381,46 @@ case "$action" in
     [ "$rc" -eq 0 ] || bail "$slug did not come up at $tag${was:+ - to go back: promote $slug $was}"
     echo "$(date -u +%FT%TZ) promote $slug $tag done" >> "$log"
     echo "$slug is pinned at $tag${was:+ (was $was; to go back: promote $slug $was)}" ;;
+  unpin)
+    # Back onto its track, now: the last released sha (a main-track stack: the last staged one),
+    # backup first, then the stack runs from the shared stack/ (or its track's own copy) again
+    # and every later stage or release moves it. Pinning it again is a `promote`.
+    slug="$tag"
+    [[ "$slug" =~ ^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$ ]] || { echo "usage: unpin <slug>" >&2; exit 2; }
+    read -r _ port stage track < <(known | awk -v s="$slug" '$1 == s') || true
+    [ -n "${port:-}" ] || { echo "unpin: '$slug' is neither in ports.md nor in a stack.conf" >&2; exit 2; }
+    [ -f "$NEXTUP_INSTANCES/$slug/.env" ] || { echo "unpin: $slug is not installed" >&2; exit 2; }
+    take_lock
+    was="$(pinned "$slug")"
+    [ -n "$was" ] || { echo "$slug is not pinned - it already follows its track ($track)"; exit 0; }
+    if [ "$track" = main ]; then to="$(last_in "$staged_list")"; else to="$(last_in "$released_list")"; fi
+    [[ "$to" =~ ^[0-9a-f]{7}$ ]] || { echo "unpin: no sha on track $track yet - $slug stays pinned at $was" >&2; exit 1; }
+    dir="$NEXTUP_INSTANCES/$slug"
+    echo "$(date -u +%FT%TZ) unpin $slug -> $to (was pinned at $was) by ${by%% *}" >> "$log"
+    bail() { echo "!! $1 - $slug stays pinned at $was"; echo "$(date -u +%FT%TZ) unpin $slug failed: $1" >> "$log"; exit 1; }
+    pull_images "sha-$to" || bail "no images for $to"
+    if [ "$track" = main ]; then
+      backup_before "$slug" "$to" "$dir/stack" || bail "backup failed"
+      own_copy "$slug" "$to" || bail "stack/ at $to not fetched"
+      set_conf "$slug" "$port" "$stage" PINNED
+      set_conf "$slug" "$port" "$stage" TRACK main
+      runner="$dir/stack/nginx/add-stack.sh"
+    else
+      backup_before "$slug" "$to" "$stack_root" || bail "backup failed"
+      set_conf "$slug" "$port" "$stage" PINNED
+      # Its own copy of stack/ goes: from now on it runs from the shared ~/nextup/stack (ctl.sh).
+      rm -rf "${dir:?}/stack"
+      runner="$here/add-stack.sh"
+    fi
+    echo "== $slug -> $to (follows track $track again; was pinned at $was)"
+    rc=0
+    "$runner" "$slug" "$port" "$stage" --images "$to" </dev/null 2>&1 | hide_codes || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      echo "!! $slug did not come up at $to - it is no longer pinned; to pin it back: promote $slug $was"
+      echo "$(date -u +%FT%TZ) unpin $slug failed: did not come up at $to" >> "$log"; exit 1
+    fi
+    echo "$(date -u +%FT%TZ) unpin $slug done" >> "$log"
+    echo "$slug follows track $track again, at $to (to pin it back: promote $slug $was)" ;;
   preview)
     # A fresh demo stack of PR <pr> at <sha> in a preview slot. Any sha CI published (images.yml
     # pushes a PR's images only when it carries the label `preview`); the slot is never a customer.
