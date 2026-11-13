@@ -4,7 +4,8 @@ The exit criteria of gate G4 are in `docs/plans/2026-11-01_pilot-readiness.md` (
 each with the test or drill that proves it and its result (D12). Medium and low findings and wishes are in `LATER.md` (D2).
 Findings: `findings/<task>.md`. A high finding is open until its section says `- **Status:** fixed`.
 
-**Status 13 Nov 2026: 0 of 8 signed off.** Criteria 1, 3 and 5 hold on their proofs and wait for Kevin's signature.
+**Status 13 Nov 2026: 3 of 8 signed off.** Kevin signed criteria 1, 3 and 5 on 13 Nov on the pilot release candidate
+`pilot-rc1` = `52ee2e8`; signatures are given on a release candidate, not on `main`.
 Criteria 2 and 6 wait for the test server (`tst.sellux.ch` is not set up), 4 for a live re-run, 7 for a pentest or a
 scan of a real stack (CI's ZAP baseline of the demo app passes), 8 for two weeks of internal use. The overview of all three pilot tracks is in
 `docs/plans/2026-11-01_pilot-readiness.md` § "Where it stands".
