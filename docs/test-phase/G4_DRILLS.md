@@ -3,33 +3,36 @@
 Gate G4 still needs criterion 2 (2,000 accounts, p95 under 1 s) and criterion 6 (restore within the target time;
 install from scratch). Three drills show them. This page is the order to run them in once the test server exists
 (plan `nextup-context/plans/2026-11-08_test-server-setup.md`, parts 1 and 2), and what result counts as a pass.
+
+**The commit under test is the pilot release candidate `pilot-rc1` = `52ee2e8`** (13 Nov 2026, the last `main` with all CI
+jobs green; its images are on ghcr.io under the short sha). The scripts take the 7-character sha, not the tag name. A new
+release candidate gets a new tag (`pilot-rc2`, …); then re-run the load drill if it changed the database, the stack or how
+pages load, and the install drill if it changed `stack/`. Until 13 Nov this page named `b9e7c0f` (6 Nov), which predates
+the process phases.
 The mechanics of `ops/tst/vm-run.sh` are in [RUNBOOK.md](RUNBOOK.md).
 
 | Drill | Where it runs | Command | Pass |
 |---|---|---|---|
-| Load (criterion 2) | your Mac, against VM 1 | `TST_K6_RUN=apps/app/tests/load/k6/g4-stages.sh ops/tst/vm-run.sh deploy@tst.sellux.ch b9e7c0f` | the load report says **Criterion 2: PASS** |
+| Load (criterion 2) | your Mac, against VM 1 | `TST_K6_RUN=apps/app/tests/load/k6/g4-stages.sh ops/tst/vm-run.sh deploy@tst.sellux.ch 52ee2e8` | the load report says **Criterion 2: PASS** |
 | Restore (criterion 6) | VM 1, as `deploy` | `~/nextup/restore-drill.sh --slug tst` | **Result PASS**, restore time within the target |
-| Install (criterion 6) | VM 2, as `root`, fresh | `./install-drill.sh --slug drill --origin https://drill.sellux.ch --images b9e7c0f --backup-repo s3:…/drill` | **Result PASS**, no manual fix (or each one written up) |
+| Install (criterion 6) | VM 2, as `root`, fresh | `./install-drill.sh --slug drill --origin https://drill.sellux.ch --images 52ee2e8 --backup-repo s3:…/drill` | **Result PASS**, no manual fix (or each one written up) |
 
 All three print a markdown report. Copy them into `docs/test-phase/results/` with the run's results file and commit
 them on a `chore/` branch, as RUNBOOK.md says. Neither report holds a secret; read them once before committing anyway.
 
 ## 0. Before the first drill (once, on your Mac)
 
-1. A clean checkout of the commit **under test** for the load run (the plan: `b9e7c0f`), `npm ci`, `npx playwright install
-   chromium` in `apps/app`. The drill scripts are newer than `b9e7c0f`, so take them from `main` (or this branch) and put
-   them in that checkout: `apps/app/tests/load/k6/g4-stages.sh`, and `ops/tst/vm-run.sh` + `ops/tst/lib.sh` (see the
-   next point). They only drive the run; the product under test stays `b9e7c0f`.
-2. **`/bin/bash` on the Mac is 3.2.** `vm-run.sh` used `declare -A` (bash 4) until this change and stopped at its first
-   line there. Use the `vm-run.sh` of this change or later, or run it with a newer bash (`brew install bash`).
-3. The environment of the plan's step 3.2 (`DEPLOY_SSH_KEY_FILE`, `TST_SSH_KEY_FILE`, `TST_REMOTE`, `TST_GEN_IMAGE`,
+1. A clean checkout of the commit **under test**: tag `pilot-rc1` (`git checkout pilot-rc1`), `npm ci`, `npx playwright
+   install chromium` in `apps/app`. It already holds the drill scripts and the bash-3.2 `vm-run.sh`, so nothing is copied
+   in from `main`.
+2. The environment of the plan's step 3.2 (`DEPLOY_SSH_KEY_FILE`, `TST_SSH_KEY_FILE`, `TST_REMOTE`, `TST_GEN_IMAGE`,
    `TST_GENERATOR`), Docker running (k6 runs in the pinned `grafana/k6` image), `jq`.
 
 ## 1. Rehearsal, small (about 10 minutes)
 
 ```bash
 TST_K6_RUN=apps/app/tests/load/k6/g4-stages.sh TST_K6_DURATION=1m \
-  ops/tst/vm-run.sh deploy@tst.sellux.ch b9e7c0f --people 150 --weeks 2
+  ops/tst/vm-run.sh deploy@tst.sellux.ch 52ee2e8 --people 150 --weeks 2
 ```
 
 All nine steps should say `ok`. The load report (`apps/app/test-results/load/g4-load-<time>.md`) shows three stages at
@@ -39,7 +42,7 @@ tunnel, the generator, the cookies and k6 from your Mac.
 ## 2. Load: the run of record (about 45 minutes)
 
 ```bash
-TST_K6_RUN=apps/app/tests/load/k6/g4-stages.sh ops/tst/vm-run.sh deploy@tst.sellux.ch b9e7c0f
+TST_K6_RUN=apps/app/tests/load/k6/g4-stages.sh ops/tst/vm-run.sh deploy@tst.sellux.ch 52ee2e8
 ```
 
 2,000 people, 8 weeks, seed 1, then the scenario spec, then k6 in three stages of 5 minutes each, then the throwaway
@@ -74,7 +77,7 @@ Read with it:
 On your Mac, then on VM 1 as `deploy` (admin key):
 
 ```bash
-scp stack/tests/restore-drill.sh deploy@tst.sellux.ch:nextup/      # the released stack/ (b9e7c0f) predates it
+scp stack/tests/restore-drill.sh deploy@tst.sellux.ch:nextup/      # not part of the released stack/; copy it from the pilot-rc1 checkout
 ssh deploy@tst.sellux.ch
 ~/nextup/restore-drill.sh --slug tst                                # asks you to type the slug before it wipes
 ```
@@ -108,7 +111,7 @@ Start the clock when VM 2 exists. From your Mac, then on VM 2 as root:
 scp stack/tests/install-drill.sh root@drill.sellux.ch:
 ssh root@drill.sellux.ch
 export BACKUP_S3_ACCESS_KEY_ID=... BACKUP_S3_SECRET_ACCESS_KEY=...   # from the password manager, typed in your terminal
-./install-drill.sh --slug drill --origin https://drill.sellux.ch --images b9e7c0f \
+./install-drill.sh --slug drill --origin https://drill.sellux.ch --images 52ee2e8 \
     --backup-repo s3:https://<location>.your-objectstorage.com/nextup-tst-backups/drill
 ```
 
