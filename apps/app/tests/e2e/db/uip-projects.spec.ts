@@ -1,6 +1,6 @@
 // UIP-P1: the Projects list and a project's tabs have the house look: every tab passes the page sweep at
 // desktop and phone width, there is no Agent tab, and a step can still be added and taken off the board.
-import { expect, test } from "../helpers";
+import { expect, projectPages, test } from "../helpers";
 import { createTestCompany, deleteTestCompany, type TestCompany } from "../../db/test-company";
 import { signIn, sweepPages } from "./fixtures/page-sweep";
 import type { CaseEventType } from "../../../src/features/cases/events";
@@ -71,7 +71,7 @@ test("UIP project area", async ({ page }) => {
     // The sweep ends at phone width, and a phone has no sidebar: its pages are read on a laptop.
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(base);
-    const tabs = page.getByRole("navigation", { name: "Pages" }); // the sidebar carries the project's pages
+    const tabs = await projectPages(page); // the sidebar carries the project's pages
     await expect(tabs.getByRole("link")).toHaveCount(TABS.length);
     await expect(tabs.getByRole("link", { name: "Agent", exact: true })).toHaveCount(1); // the lead, the sponsor and managers see it (D15)
     for (const name of ["Overview", "Board", "Team", "Results"]) {

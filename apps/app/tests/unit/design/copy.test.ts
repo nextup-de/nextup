@@ -13,10 +13,6 @@ const INFORMAL = /\b(du|dich|dir|dein|deine|deinen|deinem|deiner|deines|euch|eue
 
 /** German strings that still say du. Each is a draft of plan SET written before the rule was checked; the list can only shrink. */
 const INFORMAL_ALLOWED: Record<string, string> = {
-  "projectDraft.leadAsk": "SET draft copy: 'bittet dich', 'Übernimm'",
-  "projectDraft.templateLede": "SET draft copy: 'du kannst'",
-  "projectDraft.teamWarn": "SET draft copy: 'die du einlädst'",
-  "projectDraft.inviteYou": "SET draft copy: 'Du bist … eingeladen', 'Nimm an'",
 };
 
 describe("DESIGN copy", () => {

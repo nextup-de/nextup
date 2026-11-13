@@ -1,9 +1,60 @@
-/* The project draft page and the invitation part (plan SET). Tokens from src/styles/tokens.css; corners from the
-   --radius-* scale. One column that reads the same on a phone. */
-.page { display: flex; flex-direction: column; gap: 4px; max-width: 760px; margin: 0 auto; padding: 0 0 48px; min-width: 0; }
+/* The project draft page and the invitation part (plan SET; design: Paper "Project draft · setup"). Tokens from
+   src/styles/tokens.css; corners from the --radius-* scale. White cards on the frame's ground, separated by space; the
+   setup is a process (Kevin, 13 Nov 2026): the status lines on top, one step under them, Back and Next at its foot. */
+.page { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 860px; margin: 0 auto; padding: 0 0 48px; min-width: 0; container-type: inline-size; }
 .back { display: inline-block; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); margin: 0 0 12px; text-decoration: none; }
 .back:hover { color: var(--nh-brand-ink); }
-.top { margin: 0 0 4px; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
+.top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 4px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.draftChip { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-brand-ink); background: var(--nh-brand-tint); border: 1px solid var(--nh-brand-line); border-radius: var(--radius-sm, 8px); padding: 2px 8px; }
+
+/* Cards: every part of the draft page is one; parts drawn by other components (baseline, how we work) are wrapped. */
+.page .section, .card { padding: 20px 22px 22px; border-radius: var(--radius-md, 12px); background: var(--nh-card); box-shadow: var(--nh-card-shadow); border: 0; }
+.card:empty { display: none; }
+.card > section { padding: 0; border-top: 0; }
+/* The step shown under the lines, and Back / Next at its foot. */
+.stepBox { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; min-width: 0; }
+.stepBox > .ask, .stepBox > .late, .stepBox > .notice { margin: 0; }
+.stepCount { font-size: var(--nh-fs-sm); color: var(--nh-mute); margin-bottom: -6px; }
+.stepFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
+.stepGap { flex: 1; }
+
+/* Getting ready: the status lines - the five checks and the start in a row, the next one in blue, the one shown on a
+   grey ground; a list on a narrow page. A line is a button that shows its step. */
+.progress { margin-top: 12px; }
+.steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.step { min-width: 0; }
+.stepBody { width: 100%; display: flex; flex-direction: column; gap: 2px; margin: -6px; padding: 6px; box-sizing: content-box; border: 0; background: transparent; font: inherit; text-align: left; color: inherit; cursor: pointer; border-radius: var(--radius-xs, 6px); }
+.stepBody:hover .stepLabel { color: var(--nh-brand-ink); }
+.stepBody[aria-current="step"] { background: var(--nh-fill); }
+.stepBody:focus-visible { outline: 2px solid var(--nh-brand-focus); outline-offset: 0; }
+.track { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.mark { width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--nh-line-2); background: var(--nh-card); display: grid; place-items: center; }
+.rule { flex: 1; height: 2px; border-radius: 2px; background: var(--nh-line); }
+.stepLabel { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); }
+.stepSub { font-size: var(--nh-fs-xs); color: var(--nh-mute); overflow-wrap: anywhere; }
+.step[data-state="done"] .mark { border-color: var(--nh-brand); background: var(--nh-brand) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.3 2.3 4.7-5' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat; }
+.step[data-state="done"] .rule { background: var(--nh-brand); }
+.step[data-state="done"] .stepLabel { color: var(--nh-ink); }
+.step[data-state="next"] .mark { border-color: var(--nh-brand); }
+.step[data-state="next"] .mark::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--nh-brand); }
+.step[data-state="next"] .stepLabel, .step[data-state="next"] .stepSub { color: var(--nh-brand-ink); }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+@container (max-width: 559px) {
+  .steps { grid-template-columns: 1fr; gap: 10px; }
+  .stepBody { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 10px; row-gap: 0; }
+  .track { grid-row: span 2; margin: 0; }
+  .rule { display: none; }
+}
+
+/* The start card. */
+.startCard { display: flex; flex-direction: column; gap: 14px; }
+.startCard .h2 { margin-bottom: 2px; }
+.needed { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: var(--radius-sm, 8px); background: var(--nh-surface); }
+.neededTitle { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
+.neededList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.neededList button { display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--nh-fs-sm); color: var(--nh-ink); text-align: left; cursor: pointer; }
+.neededList button:hover { color: var(--nh-brand-ink); }
+.startBtn { align-self: flex-start; }
 
 .section { padding: 16px 0 18px; border-top: 1px solid var(--nh-line); min-width: 0; }
 .head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
@@ -20,6 +71,7 @@
 .quiet:hover { color: var(--nh-ink); }
 .actionRow { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.inline > .input { width: auto; min-width: 140px; }
 .form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .field { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .label { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); }
@@ -29,18 +81,24 @@
 .notice { margin: 8px 0; padding: 10px 14px; border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); }
 .warn { margin: 10px 0 0; padding: 9px 12px; border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 1.45; }
 
-.checks, .list, .templates, .chips { list-style: none; margin: 8px 0 0; padding: 0; }
-.check { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); }
-.dot { width: 10px; height: 10px; flex: none; border-radius: 50%; border: 2px solid var(--nh-line); }
-.check[data-state="done"] .dot { background: var(--nh-brand); border-color: var(--nh-brand); }
+.list, .templates, .chips { list-style: none; margin: 8px 0 0; padding: 0; }
+.dot { width: 14px; height: 14px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--nh-line-2); }
 
-.templates { display: flex; flex-direction: column; gap: 10px; }
-.template { padding: 12px 14px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 8px); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-.template[data-active="true"] { border-color: var(--nh-brand); }
-.template .head { width: 100%; }
-.tplSteps { margin: 6px 0 0; padding-left: 20px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.5; }
+/* Template tiles: three side by side while picking, the one in use on its own with every step. */
+.templates { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.templates[data-picking="true"] { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.template { padding: 16px; border: 1px solid var(--nh-line); border-radius: var(--radius-md, 12px); background: var(--nh-card); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.template[data-active="true"] { border-color: var(--nh-brand); box-shadow: 0 0 0 1px var(--nh-brand); }
+.tplHead { display: flex; flex-direction: column; gap: 4px; padding-bottom: 12px; border-bottom: 1px solid var(--nh-line-soft); }
+.tplDesc { margin: 0; font-size: var(--nh-fs-sm); line-height: 1.4; color: var(--nh-ink-2); }
+.inUse { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-brand-ink); background: var(--nh-brand-tint); border-radius: var(--radius-sm, 8px); padding: 2px 8px; }
+.tplUse { margin-top: auto; width: 100%; justify-content: center; }
+.tplSteps { margin: 0; padding-left: 20px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.5; }
+.tplSteps li::marker { color: var(--nh-mute-2); }
+.template > .hint { margin-top: -6px; padding-left: 20px; }
+.avatar { width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-size: var(--nh-fs-xs); font-weight: 600; display: grid; place-items: center; }
 
-.row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); flex-wrap: wrap; }
+.row { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); flex-wrap: wrap; }
 .rowBlock { padding: 4px 0; border-radius: var(--radius-sm, 8px); }
 .rowBlock[data-focus="true"] { background: var(--nh-brand-tint); padding: 4px 10px; }
 .state { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }

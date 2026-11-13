@@ -17,7 +17,7 @@
 // working days once the project is marked done (see `moveHistoryBack`): the check then opens today. Own company, made straight in the database
 // and deleted at the end, like mov.spec.ts, set.spec.ts and loop.spec.ts. Run on any weekday.
 import type { Browser, Page } from "@playwright/test";
-import { expect, passSecondFactor, test } from "../helpers";
+import { expect, passSecondFactor, setupStep, test } from "../helpers";
 import { meFor, type Actor } from "../../../src/features/auth/identity";
 import { reduce } from "../../../src/features/cases/reducer";
 import { DEFAULT_CALENDAR } from "../../../src/features/clock";
@@ -229,8 +229,10 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the lead cannot start: the baseline waits for the sponsor or the route's deputy, and neither the lead nor who typed it may confirm it", async () => {
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}`);
+      await setupStep(page, "Start");
       await expect(page.getByTestId("draft-baseline-waits")).toBeVisible();
       await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
+      await setupStep(page, "Baseline");
       await expect(page.getByTestId("baseline-confirm"), "the lead has no confirm button").toHaveCount(0);
       await expect(page.getByTestId("baseline-waits")).toContainText("The sponsor or the route's deputy confirms it");
       await page.context().close();
@@ -253,11 +255,13 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${soloProject}`);
+      await setupStep(page, "Start");
       await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
       await page.context().close();
 
       page = await signIn(browser, MANAGER);
       await page.goto(`/${SLUG}/projects/${soloProject}`);
+      await setupStep(page, "Baseline");
       await page.getByTestId("baseline-confirm").click();
       await expect.poll(async () => (await eventsOf("project.baseline.confirmed", soloProject)).length).toBe(1);
       expect((await eventsOf("project.baseline.confirmed", soloProject))[0]).toMatchObject({ actorUserId: id.manager });
@@ -265,6 +269,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${soloProject}`);
+      await setupStep(page, "Start");
       await expect(page.getByRole("button", { name: "Start the project" })).toBeEnabled();
       await page.context().close();
     });
@@ -272,6 +277,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the sponsor confirms the baseline in the UI; the lead is told and starts the project", async () => {
       page = await signIn(browser, SPONSOR);
       await page.goto(`/${SLUG}/projects/${projectId}`);
+      await setupStep(page, "Baseline");
       await page.getByTestId("baseline-confirm").click();
       await expect.poll(async () => (await eventsOf("project.baseline.confirmed", projectId)).length).toBe(1);
       expect((await eventsOf("project.baseline.confirmed", projectId))[0]).toMatchObject({ actorUserId: id.sponsor });
@@ -283,6 +289,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}`);
+      await setupStep(page, "Start");
       await expect(page.getByTestId("draft-baseline-waits")).toHaveCount(0);
       await page.getByRole("button", { name: "Start the project" }).click();
       await expect.poll(async () => (await eventsOf("project.started", projectId)).length).toBe(1);

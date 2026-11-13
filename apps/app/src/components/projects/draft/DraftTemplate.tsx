@@ -6,15 +6,18 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import type { DraftView } from "@/features/projects/draft";
 import type { ReducedProject } from "@/features/projects/types";
 import { latestTemplate, type TemplateKey } from "@/features/templates/library";
+import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import { useSend } from "../parts";
 import styles from "./Draft.module.css";
 
-const KEYS: readonly { key: TemplateKey; name: "projectDraft.tpl_quickWin" | "projectDraft.tpl_eightD" | "projectDraft.tpl_investment" }[] = [
-  { key: "quick-win", name: "projectDraft.tpl_quickWin" },
-  { key: "8d", name: "projectDraft.tpl_eightD" },
-  { key: "investment", name: "projectDraft.tpl_investment" },
+const KEYS: readonly { key: TemplateKey; name: MessageKey; desc: MessageKey }[] = [
+  { key: "quick-win", name: "projectDraft.tpl_quickWin", desc: "projectDraft.tplDesc_quickWin" },
+  { key: "8d", name: "projectDraft.tpl_eightD", desc: "projectDraft.tplDesc_eightD" },
+  { key: "investment", name: "projectDraft.tpl_investment", desc: "projectDraft.tplDesc_investment" },
 ];
+/** While picking, a tile shows this many steps and counts the rest. */
+const PREVIEW = 4;
 
 export function DraftTemplate({ p, view }: { p: ReducedProject; view: DraftView }) {
   const { act } = useDemo();
@@ -45,26 +48,33 @@ export function DraftTemplate({ p, view }: { p: ReducedProject; view: DraftView 
           <input className={`nh-input ${styles.input}`} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
         </label>
       )}
-      <ul className={styles.templates}>
+      <ul className={styles.templates} data-picking={picking ? "true" : undefined}>
         {KEYS.filter((k) => picking || p.template?.key === k.key).map((k) => {
           const tpl = latestTemplate(k.key);
           if (!tpl) return null;
           const inUse = p.template?.key === k.key;
+          const days = Math.max(0, ...tpl.steps.map((s) => s.day));
+          const shown = picking ? tpl.steps.slice(0, PREVIEW) : tpl.steps;
           return (
             <li key={k.key} className={styles.template} data-active={inUse ? "true" : undefined}>
-              <div className={styles.head}>
-                <h3 className={styles.h3}>{t(k.name)}</h3>
-                <span className={styles.muted}>{inUse ? t("projectDraft.templateInUse") : t("projectDraft.templateStepCount", { count: tpl.steps.length })}</span>
+              <div className={styles.tplHead}>
+                <div className={styles.head}>
+                  <h3 className={styles.h3}>{t(k.name)}</h3>
+                  {inUse && <span className={styles.inUse}>{t("projectDraft.templateInUse")}</span>}
+                </div>
+                <p className={styles.tplDesc}>{t(k.desc)}</p>
+                <span className={styles.hint}>{t("projectDraft.templateMeta", { count: tpl.steps.length, days })}</span>
               </div>
               <ol className={styles.tplSteps}>
-                {tpl.steps.map((s, i) => (
+                {shown.map((s, i) => (
                   <li key={i}>
                     <span>{s.text}</span>
-                    <span className={styles.muted}> · {t(("projectDraft.stepRole_" + s.role) as "projectDraft.stepRole_lead")} · {t("projectDraft.templateStepDay", { day: s.day })}</span>
+                    {!picking && <span className={styles.muted}> · {t(("projectDraft.stepRole_" + s.role) as "projectDraft.stepRole_lead")} · {t("projectDraft.templateStepDay", { day: s.day })}</span>}
                   </li>
                 ))}
               </ol>
-              {may && picking && !inUse && <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => pick(k.key)}>{t("projectDraft.templateUse")}</button>}
+              {shown.length < tpl.steps.length && <span className={styles.hint}>{t("projectDraft.templateMore", { count: tpl.steps.length - shown.length })}</span>}
+              {may && picking && !inUse && <button type="button" className={`nh-btn nh-btn-ghost nh-btn-sm ${styles.tplUse}`} onClick={() => pick(k.key)}>{t("projectDraft.templateUse")}</button>}
             </li>
           );
         })}
