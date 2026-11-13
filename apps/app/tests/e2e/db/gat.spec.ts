@@ -13,7 +13,7 @@
 // Set up in the database where the UI is not the point: the org, and the raises that only need to exist. The clock is moved by running it with a later
 // `now`, as tests/db/gat-clock.test.ts does. Own company, made straight in the database and deleted at the end, like nor.spec.ts and res.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { expect, passSecondFactor, publishIdea, test } from "../helpers";
+import { expect, passSecondFactor, publishIdea, test, vis } from "../helpers";
 import { DEFAULT_CALENDAR } from "../../../src/features/clock";
 import { dateOfWorkday, workdayOf } from "../../../src/features/clock/calendar";
 import { getDb } from "../../../src/lib/db/client";
@@ -231,27 +231,29 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
     await test.step("an admin sets the review role, a council and a role rule for the route on Settings -> Approvals", async () => {
       const page = await signIn(browser, PLANT);
       await page.goto(`/${SLUG}/settings/approvals`);
-      await page.getByTestId("settings-approvals-review-on").check();
-      await page.getByTestId("settings-approvals-review-role").selectOption(role.review);
+      // The switch is mounted once: the hidden copy a streamed page holds for a moment after a load goes, and one is left.
+      await expect(page.getByTestId("settings-approvals-review-on")).toHaveCount(1);
+      await vis(page, "settings-approvals-review-on").check();
+      await vis(page, "settings-approvals-review-role").selectOption(role.review);
       // The council first: the rules below can name it before it is saved.
-      await page.getByTestId("settings-approvals-add-council").click();
-      const council = page.getByTestId("settings-approvals-council-0");
+      await vis(page, "settings-approvals-add-council").click();
+      const council = vis(page, "settings-approvals-council-0");
       await council.locator('[name="council.0.name"]').fill(COUNCIL);
       await council.locator('[name="council.0.secretary"]').selectOption(role.secretary);
       await council.locator('[name="council.0.every"]').fill("10");
       await council.locator('[name="council.0.first"]').fill(dateOfWorkday(MEETING, DEFAULT_CALENDAR));
       await council.locator('[name="council.0.members"]').selectOption([role.plant, role.secretary]);
-      await page.getByTestId("settings-approvals-add-rule").click();
-      const first = page.getByTestId("settings-approvals-rule-0");
+      await vis(page, "settings-approvals-add-rule").click();
+      const first = vis(page, "settings-approvals-rule-0");
       const councilOption = first.locator('[name="rule.0.approver"] option').filter({ hasText: COUNCIL });
       await first.locator('[name="rule.0.approver"]').selectOption((await councilOption.getAttribute("value")) ?? "");
       await first.locator('[name="rule.0.route"]').selectOption(ROUTE.key);
-      await page.getByTestId("settings-approvals-add-rule").click();
-      const second = page.getByTestId("settings-approvals-rule-1");
+      await vis(page, "settings-approvals-add-rule").click();
+      const second = vis(page, "settings-approvals-rule-1");
       await second.locator('[name="rule.1.approver"]').selectOption(`role:${role.safety}`);
       await second.locator('[name="rule.1.route"]').selectOption(ROUTE.key);
-      await page.getByTestId("settings-approvals-save").click();
-      await expect(page.getByTestId("settings-approvals-saved")).toBeVisible();
+      await vis(page, "settings-approvals-save").click();
+      await expect(vis(page, "settings-approvals-saved")).toBeVisible();
 
       const rows = await db().companyRule.findMany({ where: { companyId, key: { in: ["review", "approval_rules", "councils"] } } });
       const value = (key: string) => rows.find((r) => r.key === key)?.value as Record<string, unknown> & unknown[];
@@ -276,10 +278,10 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
 
       const page = await signIn(browser, IDEA_MANAGER);
       await page.goto(`/${SLUG}/cases/${first}`);
-      await expect(page.getByTestId("review-block")).toBeVisible();
+      await expect(vis(page, "review-block")).toBeVisible();
       await expect(page.getByRole("button", { name: "Yes, do it" }), "the review forwards, the desk says yes").toHaveCount(0);
-      await page.getByTestId("review-route").selectOption(ROUTE.key);
-      await page.getByTestId("review-forward").click();
+      await vis(page, "review-route").selectOption(ROUTE.key);
+      await vis(page, "review-forward").click();
       await expect.poll(async () => (await eventsOf("case.reviewed", first)).length).toBe(1);
       expect((await eventsOf("case.reviewed", first))[0].payload).toMatchObject({ outcome: "forward", routeId: ROUTE.key, toRoleHolderId: seat.desk });
       await page.context().close();
@@ -290,10 +292,10 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
     await test.step("the desk records a 12k cost, sees the flag and can only say 'Yes, if approved', with the approvers named", async () => {
       const page = await signIn(browser, DESK);
       await page.goto(`/${SLUG}/cases/${first}`);
-      await page.getByTestId("case-cost-eur").fill("12000");
-      await page.getByTestId("case-cost-basis").fill(COST_BASIS);
-      await page.getByTestId("case-cost-save").click();
-      await expect(page.getByTestId("case-cost-flag")).toBeVisible();
+      await vis(page, "case-cost-eur").fill("12000");
+      await vis(page, "case-cost-basis").fill(COST_BASIS);
+      await vis(page, "case-cost-save").click();
+      await expect(vis(page, "case-cost-flag")).toBeVisible();
       await expect.poll(async () => (await eventsOf("case.costed", first)).length).toBe(1);
       expect((await eventsOf("case.costed", first))[0].payload).toMatchObject({ eur: 12_000, basis: COST_BASIS });
 
@@ -342,7 +344,7 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       await inboxOf(plant);
       await expect(approvalRow(plant, FIRST_IDEA)).toHaveCount(1);
       await openFromInbox(plant, FIRST_IDEA, first);
-      await plant.getByTestId("approval-approve").click();
+      await vis(plant, "approval-approve").click();
       await expect.poll(async () => (await eventsOf("case.approval", first)).length).toBe(1);
       expect((await eventsOf("case.approval", first))[0].payload).toMatchObject({ approvalAnswer: "yes", step: 0, dueRev: 0 });
       await inboxOf(plant);
@@ -354,10 +356,10 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       await inboxOf(secretary);
       await expect(approvalRow(secretary, FIRST_IDEA)).toHaveCount(1);
       await openFromInbox(secretary, FIRST_IDEA, first);
-      await secretary.getByTestId("approval-present").fill("7");
-      await secretary.getByTestId("approval-conditions").click();
-      await secretary.getByTestId("approval-text").fill(CONDITIONS);
-      await secretary.getByTestId("approval-send").click();
+      await vis(secretary, "approval-present").fill("7");
+      await vis(secretary, "approval-conditions").click();
+      await vis(secretary, "approval-text").fill(CONDITIONS);
+      await vis(secretary, "approval-send").click();
       await expect.poll(async () => (await eventsOf("case.approval", first)).length).toBe(2);
       expect((await eventsOf("case.approval", first))[1].payload).toMatchObject({ approvalAnswer: "conditions", step: 1, present: 7, conditions: CONDITIONS });
       s = await stateNow();
@@ -368,7 +370,7 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       await inboxOf(safety);
       await expect(approvalRow(safety, FIRST_IDEA)).toHaveCount(1);
       await openFromInbox(safety, FIRST_IDEA, first);
-      await safety.getByTestId("approval-approve").click();
+      await vis(safety, "approval-approve").click();
       await expect.poll(async () => (await eventsOf("case.decided", first)).length).toBe(1);
       const yes = (await eventsOf("case.decided", first))[0];
       expect(yes).toMatchObject({ actor: "system:approvals" });
@@ -426,10 +428,10 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       await plant.goto(`/${SLUG}/inbox`);
       await plant.waitForLoadState("networkidle");
       await openFromInbox(plant, THIRD_IDEA, third);
-      await plant.getByTestId("approval-refuse").click();
+      await vis(plant, "approval-refuse").click();
       await plant.getByRole("button", { name: /Does not fit a goal/ }).first().click();
-      await plant.getByTestId("approval-text").fill(REFUSAL);
-      await plant.getByTestId("approval-send").click();
+      await vis(plant, "approval-text").fill(REFUSAL);
+      await vis(plant, "approval-send").click();
       await expect.poll(async () => (await eventsOf("case.decided", third)).length).toBe(1);
       const no = (await eventsOf("case.decided", third))[0];
       expect(no).toMatchObject({ actor: "system:approvals" });
@@ -443,10 +445,10 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
 
       const raiser = await signIn(browser, RAISER);
       await raiser.goto(`/${SLUG}/cases/${third}`);
-      const block = raiser.getByTestId("no-block");
+      const block = vis(raiser, "no-block");
       await expect(block.getByTestId("no-category")).toContainText("Does not fit a goal");
       await expect(block.getByTestId("no-reason")).toHaveText(REFUSAL);
-      await raiser.getByTestId("second-look-ask").click();
+      await vis(raiser, "second-look-ask").click();
       await raiser.locator(`#appeal-text-${third}`).fill(APPEAL);
       await raiser.getByRole("button", { name: "Send the request" }).click();
       await expect.poll(async () => (await eventsOf("case.appealed", third)).length).toBe(1);

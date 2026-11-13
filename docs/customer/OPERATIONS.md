@@ -23,8 +23,8 @@ NextUp publishes images per commit. A release moves your one stack to a commit. 
 [`stack/remote/README.md`](../../stack/remote/README.md):
 
 - **The customer release job** (section 8 there): the GitHub workflow `release-customer` runs against your environment
-  `customer-<slug>`. The environment holds your host, the deploy key and the host key. Required reviewers on the
-  environment mean nothing is released without an approval from the person you name.
+  `customer-<slug>`. The environment holds your host, the deploy key and the host key. The environment's required reviewer is Kevin (NextUp):
+  nothing is released without his approval.
 - **By hand:** `stack/deploy-remote.sh deploy@<host> <sha>` and `stack/deploy-remote.sh deploy@<host> status`
   (sections 6 and 7 there).
 
@@ -42,15 +42,17 @@ restic and hold the database, the stack's `.env` and, if used, n8n's data. Full 
 - Set `BACKUP_OFFBOX=required` so the script refuses a repository on the VM's own disk.
 - Keep `RESTIC_PASSWORD` in your password manager. A VM that dies takes its `.env` with it.
 
-The drill, once a year, on a spare VM or the live one:
+The drill, once a year, is a real `restore` on a **spare VM**. On the live VM run only `restore-test`, which restores the latest snapshot into a
+throwaway database and checks it:
 
 ```bash
 stack/backup.sh <slug> snapshots
-stack/backup.sh <slug> restore-test <id>
+stack/backup.sh <slug> restore-test <id>     # live VM: a throwaway database, nothing is replaced
 ```
 
-Write down how many seconds the test logged; it fails over one hour. To actually restore, `stack/backup.sh <slug> restore <id>`
-replaces the live database after you type the slug. On a new host, put the stack's `.env` back first.
+Write down how many seconds the test logged; it fails over one hour. On the spare VM put the stack's `.env` back first, then
+`stack/backup.sh <slug> restore <id>`. `restore` replaces the live database after you type the slug, so never run it on the VM that serves people
+unless you mean to restore it.
 
 ## Monitoring
 

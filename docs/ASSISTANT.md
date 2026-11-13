@@ -31,19 +31,20 @@ browser ── POST /api/<company>/assist (same origin, session cookie) ──�
 n8n ── POST /api/<company>/knowledge/documents (Bearer, knowledge:write) ──▶ Document (tsvector)
 ```
 
-- **Provider** (`src/server/assist/provider.ts`): `bedrock` is Claude on Amazon Bedrock through the
-  `AnthropicBedrockMantle` client in `LLM_REGION` (default `eu-central-1`). `mock` has no model. It
-  strings the tool results into an answer, and it is what demo, e2e and local dev use. The mock is
-  chosen whenever `LLM_PROVIDER`/`LLM_MODEL` are unset.
-- **Gate** (`features/assist/gate.ts`), which fails closed:
+- **Provider.** The assistant streams to the company's AI choice (`features/ai/settings.ts`): `bedrock` (Claude on Amazon Bedrock in `LLM_REGION`,
+  default `eu-central-1`), `azure-openai` or `openai-compatible` (an endpoint and a sealed key), or `local` (the model on this stack), through
+  `streamingFor` (`server/ai/index.ts`, called by `app/api/[company]/assist/route.ts`). The mock has no model: it strings the tool results into
+  an answer, and it is what the demo, e2e and local dev use and what answers when nothing is chosen (`LLM_PROVIDER`/`LLM_MODEL` unset). The
+  pilot runs on Azure OpenAI.
+- **Gate** (`features/ai/gate.ts`; `features/assist/gate.ts` is its thin wrapper for the assistant), which fails closed:
 
   | Situation | What answers |
   |---|---|
-  | demo stage | configured provider |
+  | demo stage | the configured choice |
   | real stage, assistant switched off | nobody (the page raises directly, as before) |
-  | real stage, on, no DPA date | mock only, no model call |
-  | real stage, on, DPA date recorded | configured provider |
-  | no database (no audit trail) | mock only |
+  | real stage, on, a choice other than the mock or the model on this stack, no DPA date | nobody: off, "waits for the data-processing agreement" |
+  | real stage, on, DPA date recorded | the company's choice |
+  | no database (no audit trail) | the mock only, and only in a demo stage |
 
 - **Streaming** shows only finished sentences, each already through `checkAnswer`, so a
   half-streamed name or number is never on screen.
@@ -61,31 +62,31 @@ retention, sub-processors and incident handling (see *Before a pilot*).
 | Ceiling on what the assistant may read (default internal; strictly confidential never) | `CompanyConfig.classificationCeiling`, enforced in SQL (`searchDocuments`) **and** again in the tool |
 | Questions marked "streng vertraulich" / "confidential" above the ceiling are not sent | `redact.ts markerOf` + `assist()` |
 | Data minimisation: known names, personal data and secrets are masked before the model | `redact.ts`: names become roles; email, phone, IBAN, card, VIN, keys and passwords are masked; company patterns come from `redactPatterns`. **Risk reduction, not a guarantee**: pattern matching misses free-text context ("the colleague who was off sick in May"). If a customer needs a guarantee, the assistant stays off for them |
-| EU processing | Bedrock called in `eu-central-1`. With an EU geographic inference profile the request can be served by other EU regions; Frankfurt-only needs a single-region model. The browser never talks to a third party (CSP `connect-src 'self'` unchanged) |
+| EU processing | Where the company's choice runs: Bedrock in `eu-central-1` (with an EU geographic inference profile other EU regions may serve it; Frankfurt-only needs a single-region model), Azure OpenAI in its resource's region (the pilot: Sweden Central), an OpenAI-compatible endpoint where it is, or the model on this stack, which sends nothing out. The browser never talks to a third party (CSP `connect-src 'self'` unchanged) |
 | Company rules | `CompanyProfile.complianceRules`, put into the system prompt after the fixed guardrails |
 | No decisions about people | Guardrails in `prompt.ts`. The assistant points to roles; it proposes, never decides |
 | Audit trail | `AssistTurn`: redacted text, cited sources, masked-item counts, model, prompt version, tokens, latency |
 | Retention | `CompanyConfig.retentionDays` (default 90). The assist route purges hourly per company |
-| Kill switch | `/admin/knowledge` → Assistant → Off |
+| Kill switch | `/admin/assistant` → Assistant → Off |
 | Works council (BetrVG §87) | Admin sees counts only (answers, solved, raised anyway, unsourced, blocked). There is no per-person view |
 | Abuse / cost | Throttles `assistAsk` (20 per 10 min per person) and `assistAskAll` (600 per 10 min per company); a monthly budget per company closes the gate when it is used up (see "The monthly budget") |
 
-For the customer's records: the processing record names AWS (Bedrock, EU regions per the chosen routing) as sub-processor
-for redacted question text and knowledge snippets, and for the redacted whole text of short company documents (see
-Documents below). The DPA date in `/admin` is the switch that
-allows model calls for real people.
+For the customer's records: the processing record names the sub-processor of the company's choice (AWS for Bedrock, Microsoft for Azure OpenAI;
+none for the model on this stack) for redacted question text and knowledge snippets, and for the redacted whole text of short company documents (see
+Documents below). The DPA date on `/admin/assistant` is the switch that allows model calls for real people.
 
 ## Operating it
 
-- **Turn on** in `/admin/knowledge` → Assistant: On, ceiling, DPA date, rules, extra patterns.
+- **Turn on** on `/admin/assistant`: the assistant switch, the ceiling, the DPA date, retention, the budget, the rules and the extra patterns. The
+  AI provider and its prices are on `/admin/connectors` → AI provider.
 - **Budget**: `/admin/assistant` → "AI budget per month (EUR)", 50 by default, and "Token limit per month for models
   without a price", 20 million by default. The page shows what the month has cost and warns from 70 %; the console
   admins also get a mail at 70, 90, 100 and 120 % (see "The monthly budget").
 - **Prices**: `/admin/connectors` → AI provider → "Prices per model", one line per model: name, EUR per million input
   tokens, EUR per million output tokens. The form lists the models called this month that have no price yet.
-- **Model**: set `LLM_PROVIDER=bedrock`, `LLM_MODEL` (default `anthropic.claude-opus-5`),
-  `LLM_REGION`, and AWS credentials in the stack's `.env`. Enable the model in the AWS account's
-  Bedrock console for that region first.
+- **Model**: pick the provider on `/admin/connectors` → AI provider (Bedrock, Azure OpenAI, OpenAI-compatible, the model on this stack, or off). For
+  Bedrock, enable the model in the AWS account's Bedrock console for that region first; the stack's `.env` (`LLM_PROVIDER=bedrock`, `LLM_MODEL`,
+  `LLM_REGION`, AWS credentials) is only the default for a company without a saved choice.
 - **Documents**: `ops/n8n/erp-knowledge-sync.json`, described in `ops/n8n/README.md`. Tokens made in `/admin` carry
   `knowledge:write`. A company document of at most 4,000 characters reaches the model whole (redacted, up to 8,000
   characters per search, `WHOLE_DOC_CHARS` and `WHOLE_TEXT_BUDGET` in `features/assist/tools.ts`), unless its text is
@@ -100,14 +101,14 @@ In order: mock provider → a sandbox company on a controlled Bedrock test → a
       geographic vs single-region routing agreed with the customer.
 - [ ] Bedrock data retention and logging settings of that AWS account checked and written down.
 - [ ] Customer compliance owner has approved the processing (purpose, data categories, access,
-      retention, sub-processor AWS, incidents); DPA date recorded in `/admin`.
+      retention, sub-processor AWS, incidents); DPA date recorded on `/admin/assistant`.
 - [ ] Audit rows reviewed on the sandbox: redacted text only, blocked turns recorded without the original.
 
 ## Not done yet
 
 - Embeddings (pgvector). Search is Postgres full-text (`simple` config). `searchDocuments` is the one place to
   change.
-- Editing a single document in `/admin`. Removing one works (`/admin/knowledge` → Documents →
+- Editing a single document in `/admin`. Removing one works (`/admin/assistant` → Documents →
   Remove); n8n re-adds it on its next run if the source still has it.
 - n8n follow-up actions (e.g. open an ERP ticket) after the employee confirms. The model never
   triggers n8n itself.
@@ -115,8 +116,8 @@ In order: mock provider → a sandbox company on a controlled Bedrock test → a
 
 ## The AI choice per company
 
-Each company picks its own provider in `/admin` (its Integration row with system `ai`, `features/ai/settings.ts`):
-`off`, `bedrock`, `azure-openai` or `openai-compatible`. Demo companies without a row use the mock. The API key
+Each company picks its own provider on `/admin/connectors` → AI provider (its Integration row with system `ai`, `features/ai/settings.ts`), and switches the assistant on `/admin/assistant`; `/admin/knowledge` only redirects to Company data. The choices are:
+`off`, `bedrock`, `azure-openai`, `openai-compatible` or `local` (the model on this stack). Demo companies without a row use the mock. The API key
 of azure-openai and openai-compatible is sealed with the vault and bound to the company; it leaves the vault only
 to be sent to the brain with one request (`lib/db/ai.ts`, `server/brain.ts llmFor`).
 

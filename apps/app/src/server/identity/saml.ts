@@ -74,7 +74,8 @@ const textOf = (v: unknown): string | null => {
 function assertionFacts(xml: string): { id: string; notOnOrAfter: Date | null } | null {
   const doc = new DOMParser().parseFromString(xml, "text/xml");
   const root = doc.documentElement;
-  const id = root?.getAttribute("ID");
+  if (!root) return null;
+  const id = root.getAttribute("ID");
   if (!id) return null;
   const conditions = root.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:assertion", "Conditions")[0];
   const when = conditions?.getAttribute("NotOnOrAfter");

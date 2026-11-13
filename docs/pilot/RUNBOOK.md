@@ -80,7 +80,7 @@ The config is a JSON file; `apps/app/prisma/generators/pilot/README.md` lists ev
 {
   "slug": "acme-pilot",
   "name": "Acme GmbH",
-  "admin": { "name": "Erika Muster", "email": "erika.muster@acme.example" },
+  "admin": { "name": "Erika Muster", "email": "erika.muster@acme.example", "stackAdmin": true },
   "calendar": "de-by",
   "promiseDays": 5,
   "ai": { "choice": "off" },
@@ -89,6 +89,9 @@ The config is a JSON file; `apps/app/prisma/generators/pilot/README.md` lists ev
 }
 ```
 
+- `"stackAdmin": true` on the admin makes that person the **stack admin** of the new stack: the one person who signs in to
+  its console (`/admin/login`, with the login code and an authenticator code). Leave it out and the admin is only the
+  company admin. There is exactly one: a company that already has another active stack admin is refused (section 4).
 - No secret goes in this file. A key that is not listed is refused, and so is anything that looks like a key, token or
   password. Mail, directory and sign-in settings are set in the console or in the stack's environment.
 - The four CSV files are `units.csv`, `roles.csv`, `members.csv` and `routes.csv` in `structureDir`. The customer's pilot
@@ -127,6 +130,13 @@ npx tsx prisma/generators/pilot/run.ts bootstrap --config pilot.json --codes cod
   this run. An existing file is refused before anything is written, so pick a new name every time. Codes never reach the
   screen, `--json` or a log. Hand the file over through a channel the customer's IT trusts, then delete it. A customer
   that signs in with Microsoft needs no codes for its people.
+- **The stack admin and the break-glass session.** With `"stackAdmin": true` the bootstrap writes `isStackAdmin` for the
+  config's admin only, with an audit row (`audit.access.stack_admin`); a rerun makes an existing admin the stack admin and
+  never anyone else, and a company that already has a different active stack admin is refused before the first write
+  (exit 2). That person is the one console session of the stack. The only other way into the console is the break-glass
+  window (`stack/break-glass.sh <slug> open`): a time-limited code from the customer's operator with no person behind
+  it, closed again with `close`, and the Go-live check "Emergency access" needs it closed. More stack admins are
+  granted later in the console (Access), never by the bootstrap.
 - **A rerun is safe.** It keeps users, code hashes, preferences, AI settings and everything the config does not name,
   never rotates a code, and resumes an interrupted run without duplicates. The CSV files still win for what they name.
   An import never deletes. A code made by an interrupted run that never reached the file is lost: issue a new one in the

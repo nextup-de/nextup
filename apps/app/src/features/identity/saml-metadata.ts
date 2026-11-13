@@ -43,7 +43,7 @@ export function parseIdpMetadata(xml: string): Parsed<IdpMetadata> {
   let doc: Document;
   try {
     const problems: string[] = [];
-    doc = new DOMParser({ errorHandler: { warning: () => undefined, error: (m: string) => void problems.push(m), fatalError: (m: string) => void problems.push(m) } })
+    doc = new DOMParser({ errorHandler: (level: string, msg: unknown) => { if (level !== "warning") problems.push(String(msg)); } }) // warnings pass, errors and fatal errors fail the parse
       .parseFromString(xml, "text/xml") as unknown as Document;
     if (problems.length || !doc.documentElement) return fail("metadata is not well-formed XML");
   } catch {

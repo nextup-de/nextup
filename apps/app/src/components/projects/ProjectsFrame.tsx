@@ -25,7 +25,8 @@ export function ProjectsFrame({ area, projectId, caseId, children }: { area: Pro
   return (
     <div className={s.root} data-wide="true" data-psb={sb}>
       <aside className={s.side} aria-label={t("projects.sbLabel")} inert={sb === "hidden"}>
-        <ProjectsSidebar area={area} projectId={projectId} caseId={caseId} onHide={() => set("hidden")} />
+        {/* Hidden, it draws nothing: no search field, list or links left in the page for a reader or a test. */}
+        {sb === "open" && <ProjectsSidebar area={area} projectId={projectId} caseId={caseId} onHide={() => set("hidden")} />}
       </aside>
       <div className={s.main}>
         {sb === "hidden" && (

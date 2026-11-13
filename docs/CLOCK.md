@@ -11,9 +11,10 @@ Every event carries a `day`, and the log carries today's `day`. What that number
 
 ## An unanswered question
 
-A case that is `asked` is paused, so its answer date never falls due. `dueNow` looks at the question itself: 3 working
-days after it was asked it yields one `clock.due` fact of kind `question` (the reminder to the raiser), and after 5 a
-due of kind `unanswered`, which the scheduler writes as the event `case.unanswered` with actor `system:clock`. The
+A case that is `asked` is paused, so its answer date never falls due. `dueNow` looks at the question itself: it yields one `clock.due` fact of
+kind `question` (the reminder to the raiser) `min(3, question_days - 1)` working days after it was asked, and after `question_days` working days a
+due of kind `unanswered`, which the scheduler writes as the event `case.unanswered` with actor `system:clock`. `question_days` is a company rule
+(Settings → Rules, default 5, 2 to 30; `QUESTION_REMIND_DAYS` is 3). The
 reducer accepts that event from the clock only; it opens the case, adds the paused days and keeps the question with
 `unanswered` set to the day. Idempotency keys: `clk:question:<case>:<asked day>` and `clk:unanswered:<case>:<asked day>`,
 so a second question on the same case counts again from its own day.
@@ -48,6 +49,21 @@ moved start (`project.start.moved`) gets its own deadlines, and an old fact neit
 Keys: `clk:lead:<project>:<ask id>` and `clk:invite:<project>:<invite id>`, each with a `:lapse` twin, and
 `clk:draft:<project>:<start day>` (`:3` for the second), with `:m<event id>` after a new cycle. A started, stopped or recognised
 project is not chased. An invitation after the start is chased the same way.
+
+## A late answer
+
+An open case past its answer date gets, in this order (`caseDues`, `features/clock/kinds/case.ts`):
+
+1. A `clock.due` fact of kind `deadline` on the day after the answer date, with the reminder `reminder.deadline` to the deputy desk. With the
+   company rule `deadline_handover` on (the default), the next run hands the case to the deputy seat: one `case.handed` with `why: "deadline"`.
+2. The second level, `escalation_days` working days after the answer date (Settings → Rules, "Then one level up after", default 3, 0 switches it
+   off): one `clock.due` of kind `escalation` to the seat above the desk that owes the answer (`clk:escalate:<case>`), and a run later one
+   `case.handed` with `why: "escalation"` to that seat (`clk:escalate:<case>:handover`). The fact is written also when nobody sits above, so the
+   reminders still go out; then there is no hand-over. Once the second level has started the deputy no longer takes the case.
+   `reminder.escalation` tells the seat above, the desk and the raiser (docs/NOTIFICATIONS.md).
+
+Both are once per cycle: a case that comes back (a revisit, a second look not upheld) is escalated again from its new answer date. A discussion
+whose check-in is `escalation_days` late is handled the same way.
 
 ## A desk nobody sits at
 

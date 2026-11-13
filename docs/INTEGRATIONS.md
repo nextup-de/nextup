@@ -131,7 +131,7 @@ per `(companyId, system)`, system `"jira"`:
 | `pushedSeq`, `pulledAt` | the cursors: the last event sequence pushed out, and when Jira was last read |
 | `leaseUntil`, `lastRunAt`, `lastOkAt`, `lastError` | one runner per company; what the admin page shows |
 
-`JiraSettings`: `flavor` (`cloud`, or `dc` as a seam only), `siteUrl`, `email`, `projectKey`,
+`JiraSettings`: `flavor` (`cloud` or `dc`; Data Center is built, `server/jira/dc.ts`, REST v2 with a personal access token as Bearer, and tested against a fake Jira only), `siteUrl`, `email`, `projectKey`,
 `epicTypeId` and `stepTypeId` (ids, because "Epic" is "Epos" on a German site), `autoEpic`,
 `pullNewIssues`, `pullComments`, and optional `statusFor` (column → Jira status id).
 
@@ -268,8 +268,10 @@ What Phase 2 adds so many companies can share one deployment:
   `src/config/flags.ts` (the list, with owner and remove-by date), `src/features/flags` (stage
   default unless admin.sellux.ch set it for the company). Every flag is on for `demo` companies,
   our test stacks; a unit test refuses one that isn't. The company never sees those.
-- **One codebase, one database, one n8n.** A customer who demands their own deployment is a
-  later, priced exception - not the default.
+- **One codebase, one stack per legal entity.** Each customer legal entity or data boundary gets its own stack (app, database, brain,
+  n8n) with one company (`TENANT_MODE=single`, `COMPANY_SLUG`; `server/console-guard.ts`); plants are units inside that company, not
+  companies. The code can serve many companies from one deployment (`TENANT_MODE=multi`: the guard above and the demo and test stacks), but a
+  customer's stack does not share its database or its n8n with another customer.
 
 ## Stages - a customer's phase is a flag set, not a branch
 
