@@ -4,10 +4,19 @@
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import type { ReducedProject } from "@/features/projects/types";
+import type { CaseEvent } from "@/features/cases/events";
 import { useT } from "@/i18n/client";
 import { useSend } from "../parts";
 import styles from "./Move.module.css";
 import { useMoveView } from "./useMoveView";
+
+/** Was the update in view drafted by the agent: the project.update of its week that carries `aiDrafted` (plan REM, Q7.16). A person's own update, or an edited one sent by the lead, does not. */
+export function isAiDrafted(p: Pick<ReducedProject, "latestUpdate" | "history">): boolean {
+  const u = p.latestUpdate;
+  if (!u) return false;
+  const sent = (p.history as readonly CaseEvent[]).findLast((e) => e.type === "project.update" && e.payload.week === u.week && e.payload.text?.trim() === u.text);
+  return sent?.payload.aiDrafted === true;
+}
 
 export function WeeklyUpdate({ p }: { p: ReducedProject }) {
   const t = useT();
@@ -19,7 +28,7 @@ export function WeeklyUpdate({ p }: { p: ReducedProject }) {
       <h2 id={"update-" + p.id} className={styles.title}>{t("projectMove.updateTitle")}</h2>
       {/* Keyed by the week, so the draft of the next check-in starts fresh while an edit of this one is kept. */}
       {v.update && <UpdateForm key={v.update.week} p={p} week={v.update.week} draft={v.update.draft} />}
-      {latest && <LatestUpdate text={latest.text} day={latest.day} />}
+      {latest && <LatestUpdate text={latest.text} day={latest.day} ai={isAiDrafted(p)} />}
     </section>
   );
 }
@@ -43,13 +52,14 @@ function UpdateForm({ p, week, draft }: { p: ReducedProject; week: number; draft
   );
 }
 
-function LatestUpdate({ text, day }: { text: string; day: number }) {
+function LatestUpdate({ text, day, ai }: { text: string; day: number; ai: boolean }) {
   const { f } = useDemo();
   const t = useT();
   return (
     <div className={styles.stack} data-testid="latest-update">
       <p className={styles.hint}>{t("projectMove.updateLatest", { date: f(day) })}</p>
       <p className={styles.latest}>{text}</p>
+      {ai && <p className={styles.hint} data-testid="update-ai-drafted">{t("projectMove.updateAiDrafted")}</p>}
     </div>
   );
 }
