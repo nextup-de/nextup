@@ -129,11 +129,13 @@ static files by their extension, not every path with a dot, so a person's page
    ends every session they had, Microsoft ones included; "New demo codes" ends a demo's sessions.
    Offboarding is deleting the person.
 3. **Admin as people, not a shared code.** One `ADMIN_ACCESS_CODE` for everyone means no audit of
-   who did what. Named admin users (magic link or SSO) plus 2FA. Started: on a company stack, a
-   Microsoft account with the Entra app role `NextUp.Admin` opens `/admin`; the cookie carries who
-   (shown in the header, logged at sign-in) and the break-glass use is logged. The shared code is off on every stage but `demo`. Still open:
-   2FA of our own, naming the admin on each action (item 4), and
-   the platform admin on admin.sellux.ch. Customer setup: `docs/customer/ENTRA_SETUP.md`.
+   who did what. Done for the company stack: a Microsoft account with the Entra app role `NextUp.Admin` opens `/admin`, and so does a person with
+   `isStackAdmin` who signs in on `/admin/login` with their personal login code plus an authenticator (TOTP) code; a lost authenticator is reset
+   on Access (`server/actions/admin.ts`, `features/auth/totp.ts`). The cookie carries who (shown in the header, written to the server log at
+   sign-in), each sign-in writes `audit.access.console_signin`, and break-glass use is logged. The shared code is off on every stage but `demo`.
+   Still open: the audit log records a console write as the actor `console` and not by name (the console cookie holds a sign-in name, not a user id,
+   GDP D9), so it shows that the console did it and which sign-in kind, not which admin (item 4); and the platform admin on admin.sellux.ch stays
+   open. Customer setup: `docs/customer/ENTRA_SETUP.md`.
 4. ~~**Audit log for admin actions.**~~ Done (GDP): every admin, console and system change to a company is written to an append-only
    `AuditEvent` in the same transaction, readable by company admins in Settings → Audit log and as CSV, kept 24 months.
    See [PRIVACY.md](PRIVACY.md).

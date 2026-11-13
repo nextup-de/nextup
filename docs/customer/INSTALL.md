@@ -81,11 +81,13 @@ demo stage. If nobody can get in yet, the host's operator opens a time-limited w
 
 ## 4. Secrets and backups
 
-The install writes `~/nextup/instances/<slug>/.env` with freshly generated secrets (database password, `AUTH_SECRET`,
-`CONNECTOR_VAULT_KEY`, `RESTIC_PASSWORD`). The file never leaves the VM.
+The install writes `~/nextup/instances/<slug>/.env` with freshly generated secrets (the database password, `AUTH_SECRET` and
+`CONNECTOR_VAULT_KEY`). The file never leaves the VM. The restic settings are not part of it: `RESTIC_REPOSITORY` and `RESTIC_PASSWORD` are added to
+`.env` by the first `stack/backup.sh <slug> backup` run (or by `stack/tests/install-clean.sh --backup-repo` for an off-box repository), and never
+changed after that.
 
-- Copy `RESTIC_PASSWORD` and `CONNECTOR_VAULT_KEY` into your password manager now. Without the restic password no backup
-  can be read; without the vault key everyone's Microsoft 365 connection has to be made again.
+- Copy `CONNECTOR_VAULT_KEY` into your password manager now, and `RESTIC_PASSWORD` as soon as the first backup has run and written it. Without the
+  restic password no backup can be read; without the vault key everyone's Microsoft 365 connection has to be made again.
 - Set up the nightly backup and the weekly restore test with the cron lines in
   [`stack/remote/README.md`](../../stack/remote/README.md), section 5, and the health checks with
   `~/nextup/stack/health.sh install`. Details: [`OPERATIONS.md`](OPERATIONS.md).
