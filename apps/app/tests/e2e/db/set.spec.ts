@@ -259,7 +259,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await expect(page).toHaveURL(new RegExp(`/projects/${projectA}$`));
       await expect(page.getByTestId("draft-top-line")).toContainText("once"); // no start day before the lead takes it
       await page.getByRole("button", { name: "Take it" }).click();
-      await expect(page.getByTestId("draft-top-line")).toContainText(/start expected \S/);
+      await expect(page.getByTestId("draft-top-line")).toContainText(/Start expected \S/);
       await expect(page.getByTestId("draft-top-line")).not.toContainText("once");
       await expect.poll(async () => (await eventsOf("project.lead.answered", projectA)).length).toBe(1);
       expect((await eventsOf("project.lead.answered", projectA))[0]).toMatchObject({ actorUserId: id.lead, payload: { take: true } });

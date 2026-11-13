@@ -102,7 +102,7 @@ export async function projectPages(page: Page): Promise<Locator> {
 
 /** A project draft's setup step ("Lead", "Template", "Team", "Goal", "Baseline", "Start"): the page shows one step at a time. */
 export async function setupStep(page: Page, name: "Lead" | "Template" | "Team" | "Goal" | "Baseline" | "Start") {
-  const line = page.getByRole("navigation", { name: "Setting up" }).getByRole("button", { name: new RegExp("^" + name) });
+  const line = page.getByTestId("draft-progress").getByRole("button", { name: new RegExp("^" + name) });
   await line.click();
   await expect(line).toHaveAttribute("aria-current", "step");
 }

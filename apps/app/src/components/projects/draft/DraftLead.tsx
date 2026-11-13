@@ -16,9 +16,9 @@ export function DraftLead({ p, view }: { p: ReducedProject; view: DraftView }) {
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
   if (p.leadState !== "pending") return null;
-  if (!view.may.answerLead) return <p className={styles.notice} role="status">{t("projectDraft.leadWaiting", { name: p.lead })}</p>;
+  if (!view.may.answerLead) return <p id={"lead-" + p.id} className={styles.notice} role="status">{t("projectDraft.leadWaiting", { name: p.lead })}</p>;
   return (
-    <section className={styles.ask} aria-label={t("projectDraft.leadAsk", { name: p.openedBy })}>
+    <section id={"lead-" + p.id} className={styles.ask} aria-label={t("projectDraft.leadAsk", { name: p.openedBy })}>
       <p className={styles.strong}>{t("projectDraft.leadAsk", { name: p.openedBy })}</p>
       {!declining ? (
         <span className={styles.actionRow}>
