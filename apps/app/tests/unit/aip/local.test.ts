@@ -52,7 +52,7 @@ describe("Q8.4 gate", () => {
   });
 
   it("leaves the other choices as they were: a brain does not stand in for their agreement", () => {
-    const bedrock: AiSettings = { ...LOCAL, choice: "bedrock", model: "m" };
+    const bedrock: AiSettings = { ...LOCAL, choice: "bedrock", model: "m", brainModel: "bm" };
     expect(aiGate({ ...pilot, settings: bedrock, stackBrain: true })).toEqual({ on: false, why: expect.stringContaining("data-processing agreement") });
   });
 });
@@ -128,7 +128,7 @@ describe("Q8.4 console and go-live", () => {
     now: new Date("2026-11-11T12:00:00Z"), units: [{ name: "Plant" }], roles: [{ title: "Lead", holders: 1 }], routes: [{ key: "spend", ownerHasUser: true }],
     hasCalendar: true, people: { active: 2, canSignIn: 2 }, microsoftOn: true, managers: { withCode: 1, withTotp: 1 }, mail: "ok",
     ai: { choice: "local", dpaSignedAt: null, brain: "ok" }, backup: { at: new Date("2026-11-11T11:00:00Z"), offbox: true }, supportOpenUntil: null,
-    notifications: true, directory: null, recipients: 1, baseline: true, agreements: {},
+    notifications: true, directory: null, recipients: 1, baseline: true, restore: { at: new Date("2026-11-10T12:00:00Z"), seconds: 300 }, findings: null, breakGlassUntil: null, agreements: {},
   };
   const ai = (brain?: "ok" | "none" | "down") => goLiveChecks({ ...GO, ai: { choice: "local", dpaSignedAt: null, ...(brain ? { brain } : {}) } }).find((c) => c.key === "ai");
 

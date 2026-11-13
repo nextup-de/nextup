@@ -1,0 +1,23 @@
+/* The bulk bar (plan OVL-U1, D21): pass several cases of one desk on with one why, or ask their authors one question. Tokens from src/styles/tokens.css. */
+.bar { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--nh-line); border-radius: 10px; background: var(--nh-surface); min-width: 0; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.count { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding-inline: 8px; border-radius: 12px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-size: var(--nh-fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; }
+.modes { display: inline-flex; gap: 6px; }
+.button { height: 32px; padding-inline: 12px; border: 0; border-radius: 8px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
+.button:hover { background: var(--nh-brand-line); }
+.button[aria-pressed="true"] { background: var(--nh-brand); color: var(--nh-on-brand); }
+.button:disabled { opacity: 0.5; cursor: default; }
+.button:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.primary { background: var(--nh-brand); color: var(--nh-on-brand); }
+.primary:hover { background: var(--nh-brand-hover); }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); min-width: 0; }
+.input { min-height: 34px; padding: 6px 10px; border: 1px solid var(--nh-line); border-radius: 6px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.input:focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
+.choose { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.choice { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-sm); color: var(--nh-ink); overflow-wrap: anywhere; }
+.result { display: flex; flex-direction: column; gap: 4px; font-size: var(--nh-fs-sm); color: var(--nh-ink); }
+.refused { margin: 0; padding-left: 18px; color: var(--nh-danger); }
+.error { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-danger); }
+@media (max-width: 760px) {
+  .bar { padding: 10px; }
+}

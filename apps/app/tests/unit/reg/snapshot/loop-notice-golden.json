@@ -267,7 +267,7 @@
       {
         "to": "js@acme.test",
         "subject": "Ihre Idee wurde abgelehnt: Shorter changeover",
-        "text": "J. Schmidt,\n\nT. Vogel hat Nein gesagt. Grund: Jetzt nicht\n\nhttps://acme.sellux.ch/cases/c_no_0"
+        "text": "J. Schmidt,\n\nT. Vogel hat Nein gesagt. Grund: Nicht jetzt\n\nhttps://acme.sellux.ch/cases/c_no_0"
       }
     ],
     "en": [
@@ -502,6 +502,11 @@
         "to": "lb@acme.test",
         "subject": "Sie leiten P-4: Changeover cart",
         "text": "L. Brandt,\n\nT. Vogel hat Ihnen dieses Projekt übergeben.\n\nYou know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "L. Brandt leitet jetzt P-4: Changeover cart",
+        "text": "J. Schmidt,\n\nL. Brandt leitet jetzt P-4.\n\nWarum: You know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
       }
     ],
     "en": [
@@ -509,6 +514,11 @@
         "to": "lb@acme.test",
         "subject": "You lead P-4: Changeover cart",
         "text": "L. Brandt,\n\nT. Vogel handed this project to you.\n\nYou know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "L. Brandt now leads P-4: Changeover cart",
+        "text": "J. Schmidt,\n\nL. Brandt now leads P-4.\n\nWhy: You know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
       }
     ]
   },
@@ -900,8 +910,30 @@
   },
   {
     "name": "project.measure.confirmed, does not close",
-    "de": [],
-    "en": []
+    "de": [
+      {
+        "to": "lb@acme.test",
+        "subject": "P-14: Ergebnis bestätigt - Changeover cart",
+        "text": "L. Brandt,\n\nEine zweite Person hat das Ergebnis von P-14 bestätigt, das wurde nach 30 Tagen gemessen: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-14: Ergebnis bestätigt - Changeover cart",
+        "text": "J. Schmidt,\n\nEine zweite Person hat das Ergebnis von P-14 bestätigt, das wurde nach 30 Tagen gemessen: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      }
+    ],
+    "en": [
+      {
+        "to": "lb@acme.test",
+        "subject": "P-14: result confirmed - Changeover cart",
+        "text": "L. Brandt,\n\nA second person confirmed the result of P-14, which was measured after 30 days: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-14: result confirmed - Changeover cart",
+        "text": "J. Schmidt,\n\nA second person confirmed the result of P-14, which was measured after 30 days: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      }
+    ]
   },
   {
     "name": "project.rewarded, closes",

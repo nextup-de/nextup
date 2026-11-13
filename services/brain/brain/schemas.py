@@ -221,10 +221,23 @@ class CoachOut(BaseModel):
 # ---------------------------------------------------------------- after the decision (docs/plans/2026-10-15_idea-to-project.md)
 # Plan: an accepted idea in, the first steps and what to measure out. The lead adds what fits; the
 # number itself is always taken by people, never by the model.
+class PlanTemplateStep(Strict):
+    title: str = Field(max_length=200)
+    role: str = Field(max_length=80, description="lead, sponsor or team")
+
+
+class PlanTemplate(Strict):
+    key: str = Field(min_length=1, max_length=40)
+    title: str = Field(max_length=120)
+    steps: list[PlanTemplateStep] = Field(max_length=20)
+
+
 class PlanIn(Strict):
     company: str = Field(min_length=1, max_length=120)
     idea: Idea
     goals: list[Goal] = Field(default=[], max_length=20)
+    # Present: a whole plan against these templates (version 2, brain-plan-v2). Absent: the first steps and the metric, as before (v1).
+    templates: list[PlanTemplate] | None = Field(None, max_length=10)
     llm: LlmOverride | BedrockOverride | None = None
 
 
@@ -241,9 +254,76 @@ class PlanMetric(BaseModel):
     better: Literal["up", "down"]
 
 
+# Plan v2 (plan AGT, D19): the whole plan a request with templates gets. Shapes fixed in apps/app/src/features/agent/contract.ts (PlanV2Reply).
+class PlanStepV2(Strict):
+    title: str = Field(max_length=200, description="One action a person can finish, at most 15 words, no names, no numbers you made up")
+    role: str = Field(max_length=80, description="The role that does it, never a name: lead, sponsor, team or a role of the company")
+
+
+class PlanMetricV2(Strict):
+    name: str = Field(max_length=100)
+    unit: str = Field(max_length=30)
+    better: Literal["up", "down"]
+    target: float | None = Field(description="The number to reach, or null when none can be justified")
+
+
+class PlanEffort(Strict):
+    min_days: int = Field(description="Working days at the least")
+    max_days: int = Field(description="Working days at the most")
+
+
+class PlanV2Draft(Strict):
+    template: str | None = Field(description="The key of the fitting template from the request, or null when none fits")
+    template_why: str = Field(max_length=300, description="One sentence: why this template, or why none fits")
+    steps: list[PlanStepV2] = Field(min_length=1, max_length=20, description="The plan's steps in order, with roles, at most 12")
+    team_roles: list[str] = Field(max_length=10, description="The roles the team needs, at most 6")
+    metric: PlanMetricV2 | None
+    effort: PlanEffort
+    risks: list[str] = Field(max_length=10, description="What could go wrong, at most 5, each one sentence")
+    approvals: list[str] = Field(max_length=10, description="The approvals this likely needs, at most 3; empty if none")
+
+
+class PlanV2(BaseModel):
+    template: str | None
+    template_why: str
+    steps: list[PlanStepV2]
+    team_roles: list[str]
+    metric: PlanMetricV2 | None
+    effort: PlanEffort
+    risks: list[str]
+    approvals: list[str]
+
+
 class PlanOut(BaseModel):
     steps: list[str]
     metric: PlanMetric | None
+    model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    version: str
+    ms: int
+    # Only on a version 2 answer; a version 1 answer is exactly as before (the endpoint leaves an unset field out).
+    plan: PlanV2 | None = None
+
+
+# ---------------------------------------------------------------- the hint on a no's reason (brain/hint.py, plan AGT, D24)
+class HintIn(Strict):
+    company: str = Field(min_length=1, max_length=120)
+    idea: str = Field(max_length=5000)
+    category: str = Field(max_length=80)
+    reason: str = Field(max_length=2000)
+    locale: Locale
+    llm: LlmOverride | BedrockOverride | None = None
+
+
+class HintDraft(Strict):
+    ok: bool = Field(description="True when the reason says why and what would make it a yes, in the sense of its category")
+    hint: str = Field(max_length=400, description="When not ok: one sentence on what is missing; empty when ok")
+
+
+class HintOut(BaseModel):
+    ok: bool
+    hint: str
     model: str
     tokens_in: int = 0
     tokens_out: int = 0
@@ -277,6 +357,101 @@ class CheckinOut(BaseModel):
     next: Literal["round", "decide"]
     open: list[str]
     note: str
+    model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    version: str
+    ms: int
+
+
+# ---------------------------------------------------------------- the project agent (brain/agent.py, plan AGT)
+# The shapes are fixed in apps/app/src/features/agent/contract.ts (AgentRequest, AgentReply): a change goes to both. A step's owner is a
+# role or "no owner", never a name; the brain stores nothing and sees only the reduced project.
+AgentKind = Literal["unblock", "report", "plan"]
+AgentColumn = Literal["todo", "doing", "blocked", "done"]
+RideKind = Literal["quiet", "stalled", "late", "blocked"]
+
+
+class AgentStep(Strict):
+    id: str = Field(min_length=1, max_length=40)
+    title: str = Field(max_length=200)
+    role: str | None = Field(None, max_length=80, description="The role the step waits on, or null")
+    column: AgentColumn
+    due_day: int | None = None
+    owner: str = Field(max_length=80, description="A role, or 'no owner': never a name")
+    blocked_why: str | None = Field(None, max_length=400)
+
+
+class AgentFact(Strict):
+    # The clock fact's event id: about 65 characters with the app's own ids, so the cap is well above that.
+    id: str = Field(min_length=1, max_length=200)
+    kind: RideKind
+    step_id: str | None = Field(None, max_length=40)
+    day: int
+
+
+class AgentUpdate(Strict):
+    week: int
+    day: int
+
+
+class AgentProject(Strict):
+    id: str = Field(min_length=1, max_length=40)
+    title: str = Field(max_length=300)
+    goal: str | None = Field(None, max_length=400)
+    done_when: str | None = Field(None, max_length=400)
+    done_by: int | None = None
+    paused_until: int | None = None
+    last_activity_day: int | None = None
+    latest_update: AgentUpdate | None = None
+    check_in_day: int | None = None
+    week_sent: bool
+    steps: list[AgentStep] = Field(max_length=60)
+    facts: list[AgentFact] = Field(max_length=40)
+
+
+class AgentIn(Strict):
+    company: str = Field(min_length=1, max_length=120)
+    locale: Locale
+    today: int
+    project: AgentProject
+    kinds: list[AgentKind] = Field(max_length=3, description="The kinds the app can take today")
+    llm: LlmOverride | BedrockOverride | None = None
+
+
+class AgentStepProposal(Strict):
+    title: str = Field(max_length=120, description="The one missing step, one action, at most 15 words")
+    role: str = Field(max_length=80, description="The role that should do it, never a name")
+    due_in_days: int = Field(ge=1, le=60, description="Working days from today")
+
+
+# The why comes before the draft: the model says why before it writes.
+class AgentSuggestionDraft(Strict):
+    kind: AgentKind
+    step_id: str | None = Field(description="unblock: the open step it is about; otherwise null")
+    fact_id: str | None = Field(description="unblock: the id of the clock fact it rides on; otherwise null")
+    title: str = Field(max_length=120, description="A short line naming what is suggested")
+    why: str = Field(max_length=300, description="One or two sentences: why now, from what the project shows")
+    draft: str = Field(max_length=1500, description="unblock: the nudge to the role the step waits on; report: the week's update; plan: one sentence on why the step is missing")
+    step: AgentStepProposal | None = Field(description="plan: the step to add; otherwise null")
+
+
+class AgentDraft(Strict):
+    suggestions: list[AgentSuggestionDraft] = Field(max_length=3, description="At most one per kind; empty when there is nothing to say")
+
+
+class AgentSuggestion(BaseModel):
+    kind: AgentKind
+    step_id: str | None
+    fact_id: str | None
+    title: str
+    why: str
+    draft: str
+    step: AgentStepProposal | None
+
+
+class AgentOut(BaseModel):
+    suggestions: list[AgentSuggestion]
     model: str
     tokens_in: int = 0
     tokens_out: int = 0

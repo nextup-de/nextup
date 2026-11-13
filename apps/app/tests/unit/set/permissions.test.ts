@@ -1,5 +1,6 @@
 // SET-B1: who may answer, invite, edit and start a draft, and what a yes may carry. Rights are checked at append
 // time (mayAppend), never in the reducer, so the drafts here are built directly from the SET-G1 types.
+import { EMPTY_APPROVAL_CONFIG } from "@/features/approvals/types";
 import { describe, expect, it } from "vitest";
 import { CLOCK_ACTOR } from "@/features/clock/actor";
 import { mayAppend, type Actor } from "@/features/cases/permissions";
@@ -30,6 +31,7 @@ const project = (over: Partial<ReducedProject> = {}): ReducedProject => ({
   status: "planning", closed: false, rewardDue: false, dueDay: 5, overdue: false, escalated: null, history: [],
   draft: true, leadState: "taken", leadAskedDay: 0, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
   goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: DECIDER,
+  doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null, rewardDueDay: null, helpAsks: [],
   ...over,
 });
 
@@ -38,7 +40,7 @@ const SEATS = [
   { id: "s_other", roleId: "r_other", label: "Head of sales", userId: OTHER_HOLDER, sort: 2 },
   { id: "s_former", roleId: "r_former", label: "Former head", userId: FORMER_HOLDER, sort: 3 },
 ];
-const state = (...projects: ReducedProject[]): State => ({ projects, seats: SEATS, cases: [], ideas: [], day: 10 }) as unknown as State;
+const state = (...projects: ReducedProject[]): State => ({ projects, seats: SEATS, cases: [], ideas: [], day: 10, approvals: { ...EMPTY_APPROVAL_CONFIG, roles: [] }, rules: { fastLaneEur: 0 } }) as unknown as State;
 const ask = (actor: Actor, type: string, payload: Record<string, unknown>, ...projects: ReducedProject[]) =>
   mayAppend(actor, { type, target: "p1", payload }, state(...(projects.length ? projects : [project()])));
 const ok = { ok: true };

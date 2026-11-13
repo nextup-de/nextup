@@ -3,13 +3,13 @@
 // with no target. The reducer runs on this smaller log unchanged - an absent case is simply not there.
 import { cache } from "react";
 import type { Role } from "@/config/roles";
-import { meFor } from "@/features/auth/identity";
+import { meFor, type SeatRow } from "@/features/auth/identity";
 import type { EventLog, EventPayload } from "@/features/cases/events";
 import { logFromRows, type EventRow } from "@/features/cases/persist";
 import { reduce, type ReducedCase } from "@/features/cases/reducer";
 import { canOpen, membersForViewer, unitsOf, viewerKeys, type VisMember } from "@/features/cases/visibility";
 import type { ReducedProject } from "@/features/projects/types";
-import { isOpenDraft, mayReadDraft } from "@/features/projects/views";
+import { approverOfDraft, isOpenDraft, mayReadDraft } from "@/features/projects/views";
 import { isPrivateIdea } from "@/features/cases/visibility";
 import type { Seed, SeedCase } from "@/features/demo/types";
 import type { SeedProject } from "@/features/projects/types";
@@ -97,29 +97,123 @@ const pick = (payload: unknown, keys: readonly string[]): EventPayload => {
 };
 
 /**
+ * The person who holds the seat a late draft was given to reads it like the people on it, while that escalation is live
+ * (D15, D22): they keep, hand on or stop it, which they cannot do blind. By seat and user id, never by name.
+ */
+function holdsDraftEscalation(p: ReducedProject, viewer: LogViewer, seats: readonly SeatRow[]): boolean {
+  const up = p.escalated;
+  if (up === null || up.what !== "draft" || !up.live || up.toSeatId === null) return false;
+  return seats.some((s) => s.id === up.toSeatId && s.userId === viewer.userId);
+}
+
+/**
  * The boundary of a draft (SET D13, D20): a viewer who may open the idea but is not on the draft does not receive the
  * draft's steps, invitations, comments or any other event of it, only the summary events above. The reducer then rebuilds
  * a draft that visibleProjectsFor hides and the case page describes as "being set up". Pure over the rows; the case
  * events themselves are untouched, so a project that has started, and every legacy project, passes unchanged.
  */
 export async function cutDrafts(companyId: string, viewer: LogViewer, rows: EventRow[], seed: Seed, day: number): Promise<EventRow[]> {
-  const drafts = new Set(rows.flatMap((r) => (r.type === "case.decided" && (r.payload as EventPayload | null)?.draft === true ? projectIdOf(r.payload) : [])));
+  // A draft opens with a yes that carries `draft: true`, or with a provisional yes (GAT D21), whose project is the one it names or p_<its event id>.
+  const drafts = new Set(rows.flatMap((r) => {
+    const pl = r.payload as EventPayload | null;
+    if (r.type === "case.decided" && pl?.draft === true) return projectIdOf(r.payload);
+    if (r.type === "case.provisional" && pl?.supplement !== true) return projectIdOf(r.payload).length > 0 ? projectIdOf(r.payload) : [`p_${r.id}`];
+    return [];
+  }));
   if (drafts.size === 0) return rows;
-  const state = reduce({ ...seed, seats: await loadSeats(companyId) }, logFromRows(rows, day));
+  const seats = await loadSeats(companyId);
+  const state = reduce({ ...seed, seats }, logFromRows(rows, day));
+  const me = meFor(viewer.userId, seats);
   const cut = new Map<string, readonly string[]>();
   for (const p of state.projects) {
     if (!drafts.has(p.id) || !isOpenDraft(p)) continue;
     const cases = state.cases.filter((c) => p.sources.includes(c.id));
-    if (mayReadDraft(p, viewer, cases.some(isPrivateIdea))) continue;
+    if (mayReadDraft(p, viewer, cases.some(isPrivateIdea), approverOfDraft(cases, { role: viewer.role, userId: viewer.userId, me }, state)) || holdsDraftEscalation(p, viewer, seats)) continue;
     cut.set(p.id, cases.some((c) => c.fromUserId === viewer.userId) ? Object.keys(RAISER_SUMMARY) : Object.keys(DRAFT_SUMMARY));
   }
-  if (cut.size === 0) return rows;
+  // The desk's line to the raiser (D23) is for the raiser and the people on the draft, not for everyone who may read the case.
+  const noteHeld = (r: EventRow): boolean => {
+    const pl = r.payload as EventPayload | null;
+    if ((r.type !== "case.decided" && r.type !== "case.provisional") || (r.type === "case.decided" && pl?.draft !== true) || pl?.raiserNote === undefined) return true;
+    const p = state.projects.find((x) => projectIdOf(r.payload).includes(x.id) || x.id === `p_${r.id}`);
+    const cases = state.cases.filter((c) => c.id === r.targetId);
+    if (cases.some((c) => c.fromUserId === viewer.userId)) return true;
+    return p !== undefined && (mayReadDraft(p, viewer, cases.some(isPrivateIdea), approverOfDraft(cases, { role: viewer.role, userId: viewer.userId, me }, state)) || holdsDraftEscalation(p, viewer, seats));
+  };
+  const stripped = new Set(rows.filter((r) => !noteHeld(r)).map((r) => r.id));
+  if (cut.size === 0 && stripped.size === 0) return rows;
   return rows.flatMap((r) => {
+    if (stripped.has(r.id)) {
+      const rest = Object.entries((r.payload ?? {}) as Record<string, unknown>).filter(([k]) => k !== "raiserNote");
+      return [{ ...r, payload: Object.fromEntries(rest) as EventPayload }];
+    }
     const keep = r.targetId === null ? undefined : cut.get(r.targetId);
     if (keep === undefined) return [r];
     if (!keep.includes(r.type)) return [];
     return [{ ...r, payload: pick(r.payload, (keep.includes("project.goal") ? RAISER_SUMMARY : DRAFT_SUMMARY)[r.type]) }];
   });
+}
+
+/**
+ * The edges between cases (plan SEE, D15 to D17): the case a raise follows or looked like, the case a merge closed into and its note, the
+ * case a link names. A viewer's log keeps an edge only when the viewer may open the case at its far end: a person who may open A but not B
+ * must not receive B's id, nor the desk's note about it, and opening A never grants B (a follow, a merge or a link widens nobody's access).
+ * The reducer builds the other side (followedBy, mergedIn, links) from the events it is given, so an edge from a case the viewer cannot
+ * open is not in the log at all. Pure over the rows: `visible` holds the ids the viewer may open.
+ */
+export function cutRelations(rows: EventRow[], visible: ReadonlySet<string>): EventRow[] {
+  const shown = (id: unknown): boolean => typeof id === "string" && visible.has(id);
+  return rows.flatMap((r): EventRow[] => {
+    const pl = (r.payload ?? {}) as EventPayload;
+    if (r.type === "case.raised") {
+      const proposal = pl.proposal;
+      const hidden = (pl.follows !== undefined && !shown(pl.follows)) || (proposal !== undefined && ((proposal.sameAs != null && !shown(proposal.sameAs)) || (proposal.related ?? []).some((id) => !shown(id))));
+      if (!hidden) return [r];
+      const next: EventPayload = { ...pl };
+      if (pl.follows !== undefined && !shown(pl.follows)) delete next.follows;
+      if (proposal !== undefined) {
+        const { sameAs, related, ...route } = proposal;
+        next.proposal = { ...route, ...(sameAs !== undefined ? { sameAs: sameAs === null || shown(sameAs) ? sameAs : null } : {}), ...(related !== undefined ? { related: related.filter(shown) } : {}) };
+      }
+      return [{ ...r, payload: next }];
+    }
+    if (r.type === "case.merged" && !shown(pl.into)) {
+      // The target and the note about it: what is left is that the desk closed the case as a duplicate.
+      const { into, note, ...rest } = pl;
+      void into; void note;
+      return [{ ...r, payload: rest }];
+    }
+    if (r.type === "case.linked" && !shown(pl.to)) return [];
+    return [r];
+  });
+}
+
+/** The ids among `ids` this viewer may open, by the CaseView rows of this company only (a foreign or unknown id is never among them). */
+async function openableAmong(companyId: string, viewer: LogViewer, ids: readonly string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const mine = new Set(await keysOf(companyId, viewer));
+  const rows = await getDb().caseView.findMany({ where: { companyId, caseId: { in: [...ids] } }, select: { caseId: true, accessKeys: true } });
+  return new Set(rows.filter((r) => r.accessKeys.some((k) => mine.has(k))).map((r) => r.caseId));
+}
+
+/** Every case id the relation fields of these rows name. */
+function relationTargets(rows: readonly EventRow[]): string[] {
+  const out = new Set<string>();
+  for (const r of rows) {
+    const pl = (r.payload ?? {}) as EventPayload;
+    if (r.type === "case.raised") {
+      for (const id of [pl.follows, pl.proposal?.sameAs, ...(pl.proposal?.related ?? [])]) if (typeof id === "string") out.add(id);
+    } else if (r.type === "case.merged" && typeof pl.into === "string") out.add(pl.into);
+    else if (r.type === "case.linked" && typeof pl.to === "string") out.add(pl.to);
+  }
+  return [...out];
+}
+
+/** The rows with every relation edge cut to the cases the viewer may open; `known` are ids already known to be openable. */
+async function withRelationsCut(companyId: string, viewer: LogViewer, rows: EventRow[], known: ReadonlySet<string>): Promise<EventRow[]> {
+  const unknown = relationTargets(rows).filter((id) => !known.has(id));
+  const visible = new Set([...known, ...(await openableAmong(companyId, viewer, unknown))]);
+  return cutRelations(rows, visible);
 }
 
 /**
@@ -140,7 +234,8 @@ export async function loadLogFor(companyId: string, viewer: LogViewer, now: Date
   const caseIds = await visibleCaseIds(companyId, keys, { sinceDay: day - WINDOW_DAYS, limit: WINDOW_CASES });
   const full = seed ?? (await seedOf(companyId));
   const { rows, projectIds } = await eventsOf(companyId, caseIds, full, true);
-  return { log: logFromRows(await cutDrafts(companyId, viewer, rows, full, day), day), caseIds, projectIds };
+  const cut = await withRelationsCut(companyId, viewer, await cutDrafts(companyId, viewer, rows, full, day), new Set(caseIds));
+  return { log: logFromRows(cut, day), caseIds, projectIds };
 }
 
 /** The seed with only these cases and projects; everything else in it stays. */
@@ -167,7 +262,7 @@ export async function loadCaseFor(companyId: string, viewer: LogViewer, caseId: 
   const company = await memo("stage", companyId, () => getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { stage: true, demoDay: true } }));
   const day = company.stage === "demo" ? company.demoDay : companyDay(company, await loadCalendar(companyId), new Date());
   return {
-    events: await cutDrafts(companyId, viewer, rows, seed, day),
+    events: await withRelationsCut(companyId, viewer, await cutDrafts(companyId, viewer, rows, seed, day), new Set([caseId])),
     seedCase: seed.cases.find((c) => c.id === caseId) ?? null,
     seedProjects: (seed.projects ?? []).filter((p) => projectIds.includes(p.id)),
   };

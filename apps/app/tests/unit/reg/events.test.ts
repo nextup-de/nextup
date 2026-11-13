@@ -21,14 +21,18 @@ import snapshot from "./snapshot/events.json";
 describe("REG events split", () => {
   const recorded: string[] = snapshot.appEventTypes;
   it("every case.* app type is in CASE_EVENT_TYPES and every project.* one in PROJECT_EVENT_TYPES", () => {
-    expect([...CASE_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("case.")));
+    // GAT's four types are case.* by name and live in the approval area.
+    expect([...CASE_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("case.") && !(APPROVAL_EVENT_TYPES as readonly string[]).includes(t)));
     expect([...PROJECT_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("project.")));
-    expect([...CORE_APP_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => !t.startsWith("case.") && !t.startsWith("project.")));
+    expect([...CORE_APP_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => !t.startsWith("case.") && !t.startsWith("project.") && !t.startsWith("agent.") && !(OVERLOAD_EVENT_TYPES as readonly string[]).includes(t)));
   });
-  it("the agent, approval and overload lists are empty until AGT, GAT and OVL", () => {
-    expect(AGENT_EVENT_TYPES).toEqual([]);
-    expect(APPROVAL_EVENT_TYPES).toEqual([]);
-    expect(OVERLOAD_EVENT_TYPES).toEqual([]);
+  it("the agent list holds AGT's six types, GAT's four types are the approval list, the overload list holds OVL's three app types", () => {
+    expect([...AGENT_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("agent.")));
+    expect(AGENT_EVENT_TYPES).toEqual(["agent.switched", "agent.suggested", "agent.accepted", "agent.dismissed", "agent.planned", "agent.ran"]);
+    expect(APPROVAL_EVENT_TYPES).toEqual(["case.reviewed", "case.costed", "case.provisional", "case.approval"]);
+    // OVL's app types are the ones its own server actions write; desk.overloaded, desk.cleared and org.seat.vacant are internal and are not in the list.
+    expect(OVERLOAD_EVENT_TYPES).toEqual(["person.away", "person.back", "desk.covered"]);
+    expect([...OVERLOAD_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("person.") || t.startsWith("desk.")));
   });
   it("APP_EVENT_TYPES as a set equals the snapshot recorded before the split, with no type twice", () => {
     expect([...APP_EVENT_TYPES].sort()).toEqual(recorded);

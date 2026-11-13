@@ -9,8 +9,13 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
 import { IdeaDetailPhone } from "@/components/dashboard/leader/IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { BulkBar } from "@/components/overload/BulkBar";
+import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
 import { PageHeader, SectionCard } from "@/components/ui/elements";
-import { inboxCounts, inboxItems, type InboxAsk, type InboxInput, type InboxItem, type InboxKind } from "@/features/inbox";
+import { inboxCounts, inboxItems, type CommentsInboxInput, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
+import { agentForInbox } from "@/features/inbox/sources/agent";
+import { deskLoads } from "@/features/overload/load";
+import { triageFor } from "@/features/overload/bulk";
 import { projectDesk } from "@/features/inbox/sources/projects";
 import { moveLabel } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
@@ -29,8 +34,17 @@ const ASK_TITLE: Record<InboxAsk, MessageKey> = { decide: "inbox.askDecide", con
 const KIND: Record<InboxKind, MessageKey> = {
   case: "inbox.kindCase", idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
   reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindMove", invitation: "inbox.kindView", approval: "inbox.kindConfirm",
+  stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "caseNo.secondLook",
+  help: "inbox.kindMove", baseline: "inbox.kindConfirm", suggestion: "inbox.kindMove", comment: "inbox.kindComment",
 };
-// A decide item is opened by the id of its case or idea (the ?id= of its link).
+/** Why a case is back on the list (plan NOR, D26). */
+const CAUSE: Record<NonNullable<InboxItem["cause"]>, MessageKey> = {
+  reopened: "caseNo.cameBack", passed: "caseNo.passedToYou", back: "inbox.causeBack", up: "inbox.causeUp", moved: "caseNo.movedToYou",
+};
+// A decide item is opened by the id of its case or idea (the ?id= of its link). A project's own decide item (a stalled project, one with no
+// lead) has no case detail: its row is the link to the project page (plan MOV, D28).
+// A second look is answered on its case page (a link), not in this list's pane.
+const opensInPlace = (i: InboxItem) => i.projectId === undefined && i.kind !== "appeal";
 const openId = (i: InboxItem) => i.caseId ?? i.id.slice(i.id.indexOf(":") + 1);
 
 const PHONE = "(max-width: 760px)";
@@ -46,6 +60,9 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
   const [readIds, setReadIds] = useState<ReadonlySet<string>>(new Set());
   const [failed, setFailed] = useState(false);
+  // Selection mode (plan OVL, D21): decide items of one desk are ticked, then passed on or asked in bulk.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [pending, start] = useTransition();
   const topRef = useRef<HTMLDivElement>(null);
   const detail = useOpenItem(cid, () => setCid(null));
@@ -57,7 +74,11 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
 
   if (!ready) return <PageSkeleton kind="inbox" />;
 
-  const input: InboxInput & { role: typeof role } = { state: S, me, seats: seed.seats ?? [], today: S.day, demo, role, flags: { projects: flag("projects"), discussion: flag("discussion") } };
+  const input: CommentsInboxInput & { role: typeof role } = {
+    state: S, me, seats: seed.seats ?? [], today: S.day, demo, role, flags: { projects: flag("projects"), discussion: flag("discussion") },
+    agent: agentForInbox(ctx.log, S, { flagOn: flag("agent"), serverMode, demo }),
+    events: ctx.log.events, // the unread comments are read from the log (plan REM, I1)
+  };
   const items = inboxItems(input);
   // A result to confirm says what is asked and why it is on this desk (decision Q6.15), as the project desk words it.
   const desk = projectDesk(input);
@@ -65,9 +86,27 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     const d = i.kind === "confirm" ? desk.find((x) => x.move === "confirm" && x.project.id === i.projectId) : undefined;
     return d ? `${moveLabel(d.move, locale)} · ${t(d.why === "confirmUp" ? "projects.deskConfirmLate" : "projects.deskSecondPerson")}` : null;
   };
+  // Why a case is back on the list: a pass says who passed it and why (plan REM, I1), the others their plain cause.
+  const causeText = (i: InboxItem): string | null => {
+    if (!i.cause) return null;
+    if (i.cause !== "passed") return t(CAUSE[i.cause]);
+    if (i.fromRole) return i.why ? t("inbox.passedBy", { role: i.fromRole, why: i.why }) : t("inbox.passedByNoWhy", { role: i.fromRole });
+    return i.why ? t("inbox.passedWhy", { why: i.why }) : t(CAUSE.passed);
+  };
+  // A comment row says how many are new, instead of its kind alone.
+  const kindText = (i: InboxItem): string => (i.kind === "comment" ? t(i.count === 1 ? "inbox.commentOne" : "inbox.commentMany", { n: i.count ?? 0 }) : t(KIND[i.kind]));
   const counts = inboxCounts(items);
-  const decide = items.filter((i) => i.ask === "decide");
+  const decide = items.filter((i) => i.ask === "decide" && opensInPlace(i));
   const navIds = decide.map(openId);
+  // A case to decide on a desk may be selected; one desk at a time, the first selection fixes it.
+  const selectable = (i: InboxItem) => i.ask === "decide" && i.kind === "case" && i.caseId !== undefined && i.projectId === undefined;
+  const deskOf = (i: InboxItem) => i.deskRoleId ?? "-";
+  const anySelectable = items.some(selectable);
+  const firstPicked = items.find((i) => selectable(i) && selected.has(i.caseId!));
+  const selectedCases = S.cases.filter((c) => selected.has(c.id));
+  const triage = triageFor(deskLoads(S, S.day), me);
+  const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const leaveSelecting = () => { setSelecting(false); setSelected(new Set()); };
   const at = cid ? navIds.indexOf(cid) : -1;
   const pick = (id: string) => setCid(id);
   const unread = notices.filter((n) => !n.read && !readIds.has(n.id));
@@ -103,6 +142,21 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
         <span data-testid="inbox-today-part">{t("inbox.todayPart", { n: counts.waiting })}</span>
       </p>
 
+      {/* The seat above a loaded desk cannot open the Dashboard (OVL D36): the same card, for the desks it may share the load of, sits here. */}
+      <DeskLoadCard shareOnly />
+      {triage.map((d) => (
+        <p key={d.roleId} className={styles.triage} data-testid="inbox-triage" data-level={d.level} role="status">
+          <span>{t(d.key)}</span>
+          {d.lateKey ? <span className={styles.triageLate}>{t(d.lateKey, { count: d.late })}</span> : null}
+        </p>
+      ))}
+      {anySelectable && (
+        <div className={styles.toolbar}>
+          <button type="button" className={styles.select} aria-pressed={selecting} onClick={() => (selecting ? leaveSelecting() : setSelecting(true))} data-testid="inbox-select">{t("overload.inbox.select")}</button>
+        </div>
+      )}
+      {selecting && <div className={styles.bulk}><BulkBar cases={selectedCases} onDone={() => setSelected(new Set())} /></div>}
+
       <div className={styles.body} data-open={isOpen ? "true" : undefined}>
         <div className={styles.lists}>
           {items.length === 0 ? (
@@ -114,21 +168,29 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
               <SectionCard key={ask} title={t(ASK_TITLE[ask])} name={`inbox-${ask}`}>
                 <ul className={styles.list}>
                   {list.map((i) => {
-                    const open = ask === "decide" && cid === openId(i);
+                    const open = ask === "decide" && opensInPlace(i) && cid === openId(i);
                     const body = (
                       <>
                         <span className={styles.rowMain}>
                           <span className={styles.rowTitle}>{i.title}</span>
-                          <span className={styles.rowKind}>{confirmNote(i) ?? t(KIND[i.kind])}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
+                          <span className={styles.rowKind}>{i.cause ? <span className={styles.cause} data-testid="inbox-cause" data-cause={i.cause}>{causeText(i)} · </span> : null}{confirmNote(i) ?? kindText(i)}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
                         </span>
                         {i.late ? <span className={styles.badge} data-tone="late">{t("inbox.late")}</span> : i.dueSoon ? <span className={styles.badge} data-tone="soon">{t("inbox.dueSoon")}</span> : null}
                       </>
                     );
+                    const choosable = selecting && selectable(i);
+                    const blocked = choosable && firstPicked !== undefined && deskOf(firstPicked) !== deskOf(i);
                     return (
                       <li key={i.id}>
-                        {ask === "decide"
+                        {choosable ? (
+                          <label className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-select="true" data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined}>
+                            <input type="checkbox" className={styles.check} checked={selected.has(i.caseId!)} disabled={blocked} onChange={() => toggle(i.caseId!)} aria-label={i.title} />
+                            {body}
+                          </label>
+                        ) : ask === "decide" && opensInPlace(i)
                           ? <button type="button" className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined} data-active={open ? "true" : undefined} aria-current={open ? "true" : undefined} onClick={() => pick(openId(i))}>{body}</button>
                           : <Link href={href(i.href)} className={styles.row} data-testid="inbox-row" data-ask={ask} data-kind={i.kind} data-late={i.late ? "true" : undefined} data-soon={i.dueSoon ? "true" : undefined}>{body}</Link>}
+                        {i.pinned ? <span className={styles.pinned} data-testid="inbox-pinned">{t("overload.inbox.pinned")}</span> : null}
                       </li>
                     );
                   })}

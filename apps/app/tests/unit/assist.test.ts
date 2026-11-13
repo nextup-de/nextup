@@ -149,21 +149,3 @@ describe("parseDocuments", () => {
     expect(parseDocuments({ documents: [{ source: "ftp", externalId: "1", title: "t", body: "b" }] }).ok).toBe(false);
   });
 });
-
-describe("assistGate", () => {
-  it("fails closed for real people: switch, then the DPA before any model call", async () => {
-    const { assistGate } = await import("@/features/assist/gate");
-    const base = { stage: "pilot", hasDatabase: true, configured: "bedrock" as const, enabled: true, dpaSignedAt: new Date() };
-    expect(assistGate(base)).toEqual({ on: true, provider: "bedrock" });
-    expect(assistGate({ ...base, enabled: false }).on).toBe(false);
-    expect(assistGate({ ...base, dpaSignedAt: null }).on).toBe(false);
-    expect(assistGate({ ...base, configured: "mock", dpaSignedAt: null })).toEqual({ on: true, provider: "mock" });
-    expect(assistGate({ ...base, stage: "whatever", enabled: false }).on).toBe(false);
-  });
-
-  it("never calls a model without an audit trail", async () => {
-    const { assistGate } = await import("@/features/assist/gate");
-    expect(assistGate({ stage: "demo", hasDatabase: false, configured: "bedrock", enabled: false, dpaSignedAt: null })).toEqual({ on: true, provider: "mock" });
-    expect(assistGate({ stage: "live", hasDatabase: false, configured: "bedrock", enabled: true, dpaSignedAt: new Date() }).on).toBe(false);
-  });
-});

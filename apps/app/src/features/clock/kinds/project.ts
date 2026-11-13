@@ -3,11 +3,12 @@
 import type { State } from "@/features/cases/reducer";
 import type { CaseEvent, EventPayload } from "@/features/cases/events";
 import { CONFIRM_ESCALATE_DAYS, unconfirmedOf } from "@/features/projects/confirm";
+import { checkInDayOf, previousCheckInDayOf } from "@/features/projects/rhythm";
 import type { ReducedProject } from "@/features/projects/types";
 import type { Due, DueKind, SeatAbove } from "../due";
 import { hasFact, idemKeyOf, targetSeat } from "./shared";
 
-export const PROJECT_DUE_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft"] as const;
+export const PROJECT_DUE_KINDS = ["start", "measure", "confirm", "lead", "invite", "draft", "late", "blocked", "quiet", "stalled", "update", "vacant", "reward"] as const;
 export type ProjectDueKind = (typeof PROJECT_DUE_KINDS)[number];
 
 /** A draft's lead has not answered: a reminder after this many working days ... */
@@ -20,6 +21,27 @@ export const INVITE_REMIND_DAYS = 2;
 export const INVITE_LAPSE_DAYS = 5;
 /** A draft past its start day went to the seat above: one more reminder to that seat this many working days later (decision D15). */
 export const DRAFT_UP_DAYS = 3;
+
+// A project that keeps moving (plan MOV, D27): working days, the logic is MOV-D1's.
+/** A step is late for its lead this many working days after its due day. */
+export const LATE_LEAD_DAYS = 2;
+/** A running project with no activity for this many working days: a reminder to the lead (D12). */
+export const QUIET_DAYS = 5;
+/** Still nothing this many working days after the quiet fact: the sponsor's desk (D12). */
+export const STALLED_DAYS = 3;
+/** No weekly update this many working days after the check-in day: one reminder to the lead (D21). */
+export const UPDATE_REMIND_DAYS = 2;
+/** Still no lead this many working days after project.lead.vacated (D14). */
+export const VACANT_DAYS = 5;
+/** A pause lasts at most this many working days (D20). */
+export const PAUSE_MAX_DAYS = 20;
+/** A started project without a goal date is done by this many working days after its start (D19). */
+export const DONE_BY_DEFAULT_DAYS = 30;
+// A result that closes properly (plan RES, D17): the logic is RES-E1's.
+/** A reward still due this many working days after the confirmation that made it due: one reminder to every manager. */
+export const REWARD_REMIND_DAYS = 10;
+/** A step on Blocked tells the lead after this many working days when the company set no blocked_days (D18). */
+export const BLOCKED_DAYS_DEFAULT = 3;
 
 /** Has this cycle's fact been written: a clock.due of that kind and day, with the payload fields in `match` (the ask, the invitation), appended at or after history index `since`. */
 const hasCycleFact = (history: readonly CaseEvent[], kind: DueKind, dueDay: number, match: Partial<EventPayload>, since = 0, check?: number): boolean =>
@@ -118,7 +140,186 @@ function draftDue(state: State, today: number, above: SeatAbove, out: Due[]): vo
 /** True for the Dues that go behind every fact: the lapses of a lead and of an invitation (they are events, not facts). */
 export const projectAfterFacts = (d: Due): boolean => d.lapse === true;
 
-/** Everything that falls due on a project, in the order the loops ran in dueNow. */
+// ── A project that keeps moving (plan MOV, D11 D12 D14 D18 D20 D21 D26 D27 D29) ──
+
+/** The idempotency key of a MOV fact: `clk:<kind>:<target>:<dueDay>[:<check>][:<stepId>][:<originEventId>]`. Pre-MOV keys stay as idemKeyOf makes them. */
+export const projectIdemKey = (kind: DueKind, target: string, dueDay: number, check?: number, stepId?: string, originEventId?: string): string =>
+  idemKeyOf(kind, target, dueDay, check, stepId) + (originEventId === undefined ? "" : `:${originEventId}`);
+
+/** Is this MOV fact stored: a clock.due of that kind and day whose check, step and origin event are exactly the ones given (none given: none stored). */
+export const hasProjectFact = (p: Pick<ReducedProject, "history">, kind: DueKind, dueDay: number, check?: number, stepId?: string, originEventId?: string): boolean =>
+  p.history.some((e) => e.type === "clock.due" && e.payload.kind === kind && e.payload.dueDay === dueDay
+    && e.payload.check === check && e.payload.stepId === stepId && e.payload.originEventId === originEventId);
+
+/** The id of the latest event of this type on the project that satisfies `by`: the occurrence a repeatable fact belongs to. */
+const lastEventId = (p: Pick<ReducedProject, "history">, type: CaseEvent["type"], by: (e: CaseEvent) => boolean = () => true): string | undefined =>
+  p.history.findLast((e) => e.type === type && by(e))?.id;
+
+/**
+ * A running project: started, not done, not stopped (D12). The facts below look at no other. A start before working day 1 is a
+ * demo seed's history (a company made from the template carries it): it has no check-in and nobody to remind.
+ */
+const running = (p: ReducedProject): boolean => p.status === "running" && typeof p.startedDay === "number" && p.startedDay >= 1;
+
+/** Paused on this working day (D20): the pause's last day is still part of it. */
+const pausedOn = (p: ReducedProject, today: number): boolean => p.pausedUntil !== null && today <= p.pausedUntil;
+
+/** The seat a project's second-level facts go to: the route owner role's first occupied seat, else the deputy's (the seat rule of the start clock). */
+const deskSeat = (state: State, p: ReducedProject): string | null => {
+  const route = state.routes.find((r) => r.id === p.routeId) ?? null;
+  return targetSeat(state, route, false) ?? targetSeat(state, route, true);
+};
+
+/** The lead holds the route's owner role by user id (the reducer's rule): then the deputy's desk is the one above. */
+const leadHoldsOwner = (state: State, p: ReducedProject): boolean => {
+  const route = state.routes.find((r) => r.id === p.routeId) ?? null;
+  const ownerUser = route?.ownerSeatId ? state.seats.find((s) => s.id === route.ownerSeatId)?.userId ?? null : null;
+  return p.leadUserId !== null && ownerUser === p.leadUserId;
+};
+
+/** The day the quiet count starts from: the latest activity (D12), MOV's release day, the day after a pause that ran out. An early resume is an activity of its own. */
+const quietBase = (p: ReducedProject, since: number): number =>
+  Math.max(p.lastActivityDay ?? p.startedDay ?? 0, since, p.pausedUntil !== null ? p.pausedUntil + 1 : 0);
+
+/** The done-by date the quiet clock watches: the project's own, else the default after its start (D19). */
+const doneByOf = (p: ReducedProject): number | null => p.doneBy ?? (p.startedDay !== null ? p.startedDay + DONE_BY_DEFAULT_DAYS : null);
+
+/** Late steps (D11): the owner (else the lead) the day after the due day, the lead 2 working days later; with no lead only the owner. */
+function lateDues(state: State, today: number, since: number, out: Due[]): void {
+  for (const p of state.projects) {
+    if (!running(p) || pausedOn(p, today)) continue;
+    const noLead = p.leadVacatedDay !== null;
+    for (const s of p.steps) {
+      if (s.column === "done" || s.dueDay === null || s.dueDay < since) continue;
+      const owner = s.ownerUserId ?? null;
+      const first = s.dueDay + 1;
+      const to = owner ?? (noLead ? null : p.leadUserId);
+      if (to !== null && today >= first && !hasProjectFact(p, "late", s.dueDay, undefined, s.id)) {
+        out.push({ kind: "late", target: p.id, dueDay: s.dueDay, stepId: s.id, userId: to, idemKey: projectIdemKey("late", p.id, s.dueDay, undefined, s.id) });
+      }
+      const second = first + LATE_LEAD_DAYS;
+      if (owner !== null && p.leadUserId !== null && owner !== p.leadUserId && !noLead && today >= second && !hasProjectFact(p, "late", s.dueDay, 2, s.id)) {
+        out.push({ kind: "late", target: p.id, dueDay: s.dueDay, check: 2, stepId: s.id, userId: p.leadUserId, idemKey: projectIdemKey("late", p.id, s.dueDay, 2, s.id) });
+      }
+    }
+  }
+}
+
+/** A step on Blocked for blocked_days working days (D18): the lead once per block; the block is the move that put the step there. */
+function blockedDues(state: State, today: number, since: number, out: Due[]): void {
+  for (const p of state.projects) {
+    if (!running(p) || pausedOn(p, today) || p.leadVacatedDay !== null || p.leadUserId === null) continue;
+    for (const s of p.steps) {
+      if (s.column !== "blocked") continue;
+      const dueDay = Math.max(s.movedDay, since) + state.rules.blockedDays;
+      const origin = lastEventId(p, "project.step.moved", (e) => e.payload.stepId === s.id && e.payload.to === "blocked");
+      if (today < dueDay || hasProjectFact(p, "blocked", dueDay, undefined, s.id, origin)) continue;
+      out.push({ kind: "blocked", target: p.id, dueDay, stepId: s.id, userId: p.leadUserId, originEventId: origin, idemKey: projectIdemKey("blocked", p.id, dueDay, undefined, s.id, origin) });
+    }
+  }
+}
+
+/** Quiet (D12): nothing for QUIET_DAYS working days since the base, and once past the done-by date; a reminder to the lead per such day. */
+function quietDues(state: State, today: number, since: number, out: Due[]): void {
+  for (const p of state.projects) {
+    if (!running(p) || pausedOn(p, today) || p.leadVacatedDay !== null || p.leadUserId === null) continue;
+    const days: number[] = [quietBase(p, since) + QUIET_DAYS];
+    const doneBy = doneByOf(p);
+    if (doneBy !== null && doneBy >= since) days.push(doneBy + 1);
+    for (const q of days) {
+      if (today < q || hasProjectFact(p, "quiet", q)) continue;
+      out.push({ kind: "quiet", target: p.id, dueDay: q, userId: p.leadUserId, idemKey: projectIdemKey("quiet", p.id, q) });
+    }
+  }
+}
+
+/**
+ * Stalled (D12, D26): STALLED_DAYS after the latest quiet fact, when nothing happened since it - no activity, no moved done-by date, no
+ * pause that ended after it. To the sponsor, else to the route owner's seat (the deputy's when the lead holds the owner role).
+ */
+function stalledDues(state: State, today: number, since: number, out: Due[]): void {
+  for (const p of state.projects) {
+    if (!running(p) || pausedOn(p, today) || p.leadVacatedDay !== null) continue;
+    const activity = Math.max(p.lastActivityDay ?? p.startedDay ?? 0, since);
+    const pauseEnd = p.pausedUntil !== null ? p.pausedUntil + 1 : 0;
+    const doneBy = doneByOf(p);
+    // The quiet days this project can be on now, newest last; only one that was written (a fact) and that nothing has overtaken counts.
+    const quiet = [quietBase(p, since) + QUIET_DAYS, ...(doneBy !== null && doneBy >= since ? [doneBy + 1] : [])]
+      .filter((q) => hasProjectFact(p, "quiet", q) && activity <= q && pauseEnd <= q && !p.doneByMoves.some((m) => m.day > q));
+    if (quiet.length === 0) continue;
+    const q = Math.max(...quiet);
+    const dueDay = q + STALLED_DAYS;
+    if (today < dueDay || hasProjectFact(p, "stalled", dueDay)) continue;
+    const sponsor = p.sponsorUserId !== null && p.sponsorUserId !== p.leadUserId ? p.sponsorUserId : null;
+    const route = state.routes.find((r) => r.id === p.routeId) ?? null;
+    if (sponsor !== null) out.push({ kind: "stalled", target: p.id, dueDay, userId: sponsor, idemKey: projectIdemKey("stalled", p.id, dueDay) });
+    else out.push({ kind: "stalled", target: p.id, dueDay, toRoleHolderId: targetSeat(state, route, leadHoldsOwner(state, p)), idemKey: projectIdemKey("stalled", p.id, dueDay) });
+  }
+}
+
+/** The weekly update (D21): UPDATE_REMIND_DAYS after a check-in day that has no update, once; also while paused (D20). The week that just ended counts while its reminder day is still ahead of it (a Friday check-in). */
+function updateDues(state: State, today: number, since: number, out: Due[]): void {
+  for (const p of state.projects) {
+    if (!running(p) || p.leadVacatedDay !== null || p.leadUserId === null) continue;
+    const now = checkInDayOf(p, today, state.clock);
+    if (now === null) continue;
+    const before = previousCheckInDayOf(p, now, state.clock);
+    for (const c of before === null ? [now] : [before, now]) {
+      const dueDay = c + UPDATE_REMIND_DAYS;
+      if (c < since || today < dueDay || p.latestUpdate?.week === c || hasProjectFact(p, "update", dueDay)) continue;
+      out.push({ kind: "update", target: p.id, dueDay, userId: p.leadUserId, idemKey: projectIdemKey("update", p.id, dueDay) });
+    }
+  }
+}
+
+/**
+ * No lead for VACANT_DAYS (D14): one fact per vacancy, the event that emptied the seat being its identity. With a sponsor it goes to the desk's seat,
+ * without one to the seat above the desk; a project with no such seat (no route, nobody on the desk or above it) still gets the fact, with no seat,
+ * so its inbox item stays and a manager sees it (D26): the diagnostic is the missing `toRoleHolderId`, and a desk assigned later gets the routed fact too.
+ */
+function vacantDues(state: State, today: number, since: number, above: SeatAbove, out: Due[]): void {
+  for (const p of state.projects) {
+    if (p.status === "stopped" || p.status === "recognised" || typeof p.leadVacatedDay !== "number" || p.leadVacatedDay < since) continue;
+    const dueDay = p.leadVacatedDay + VACANT_DAYS;
+    if (today < dueDay) continue;
+    const route = state.routes.find((r) => r.id === p.routeId) ?? null;
+    const sponsor = p.sponsorUserId !== null && p.sponsorUserId !== p.leadUserId;
+    const to = sponsor ? deskSeat(state, p) : route?.ownerRoleId ? above(route.ownerRoleId, []) : null;
+    const origin = lastEventId(p, "project.lead.vacated");
+    const stored = p.history.filter((e) => e.type === "clock.due" && e.payload.kind === "vacant" && e.payload.dueDay === dueDay && e.payload.originEventId === origin);
+    if (to === null ? stored.length > 0 : stored.some((e) => e.payload.toRoleHolderId)) continue;
+    out.push({ kind: "vacant", target: p.id, dueDay, toRoleHolderId: to, originEventId: origin, idemKey: projectIdemKey("vacant", p.id, dueDay, undefined, undefined, origin) + (to === null ? ":unrouted" : "") });
+  }
+}
+
+/**
+ * The reward-due episode of a project (RES review, 12 Nov): the event that made its reward due, the latest result event - a typed one that
+ * was confirmed, or a system or imported one that counts at once. A replacement measure, or a result sent back and entered again, is
+ * another event and so another episode; the reminder belongs to one episode only.
+ */
+export const rewardEpisodeOf = (p: Pick<ReducedProject, "history">): string | undefined =>
+  p.history.findLast((e) => e.type === "project.measure.confirmed" || e.type === "project.measured")?.id;
+
+/**
+ * A reward still due REWARD_REMIND_DAYS working days after it fell due (D17): one fact for the episode, no seat and no user - the
+ * recipients are the managers. Nothing for a stopped or recognised project, for a reward that fell due before MOV's release day, or while
+ * the reward is not due (paid, sent back, replaced by a measure that is not confirmed yet): a fact written for an episode that has since
+ * ended is not mailed (the audience checks the episode), and the next episode gets its own fact.
+ */
+function rewardDues(state: State, today: number, since: number, out: Due[]): void {
+  for (const p of state.projects) {
+    if (p.status === "stopped" || p.status === "recognised" || !p.rewardDue || p.rewardDueDay === null || p.rewardDueDay < since) continue;
+    const dueDay = p.rewardDueDay + REWARD_REMIND_DAYS;
+    const episode = rewardEpisodeOf(p);
+    if (today < dueDay || hasProjectFact(p, "reward", dueDay, undefined, undefined, episode)) continue;
+    out.push({ kind: "reward", target: p.id, dueDay, originEventId: episode, idemKey: projectIdemKey("reward", p.id, dueDay, undefined, undefined, episode) });
+  }
+}
+
+/**
+ * Order of the project facts (OVL takes this over): start, measure, SET's draft facts (lead, invite, draft), confirm,
+ * then MOV's late, blocked, quiet, stalled, update, vacant, then RES's reward. A new kind goes at the end of the list it belongs to, never between.
+ */
 export function projectDues(state: State, today: number, above: SeatAbove): Due[] {
   const out: Due[] = [];
   for (const p of state.projects) {
@@ -155,6 +356,17 @@ export function projectDues(state: State, today: number, above: SeatAbove): Due[
       const to = above(desk, own);
       if (to !== null) out.push({ kind: "confirm", target: p.id, dueDay: upDay, check: u.check, toRoleHolderId: to, idemKey: idemKeyOf("confirm", p.id, upDay, u.check) });
     }
+  }
+  // MOV: workdays mode only, from MOV's release day on (D17); the demo clock fires nothing.
+  if (state.clock.mode === "workdays") {
+    const since = state.rules.movSinceDay;
+    lateDues(state, today, since, out);
+    blockedDues(state, today, since, out);
+    quietDues(state, today, since, out);
+    stalledDues(state, today, since, out);
+    updateDues(state, today, since, out);
+    vacantDues(state, today, since, above, out);
+    rewardDues(state, today, since, out);
   }
   return out;
 }

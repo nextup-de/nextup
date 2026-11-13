@@ -4,6 +4,7 @@
 // The text comes from the message catalog.
 import type { Role } from "@/config/roles";
 import { meFor, type SeatRow } from "@/features/auth/identity";
+import type { CaseEvent } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import { inboxItems } from "@/features/inbox";
 import { createT, type Locale } from "@/i18n";
@@ -21,8 +22,8 @@ export const DIGEST_TEMPLATE = "digest";
 /** The key of one person's digest on one working day: a second run that day writes nothing new. */
 export const digestKey = (userId: string, workday: number): string => `digest:${userId}:${workday}`;
 
-/** The company's loop steps as the inbox reads them, and the person's role (only read for what a manager alone is asked). */
-export type DigestOpts = { flags: { projects: boolean; discussion: boolean }; role?: Role };
+/** The company's loop steps as the inbox reads them, the person's role (only read for what a manager alone is asked), and the log's events, which the unread comments are read from (plan REM, I1). */
+export type DigestOpts = { flags: { projects: boolean; discussion: boolean }; role?: Role; events?: readonly CaseEvent[] };
 
 /**
  * The digest of this person, or null when the inbox has nothing for them. It lists what `inboxItems` lists, in that
@@ -31,13 +32,13 @@ export type DigestOpts = { flags: { projects: boolean; discussion: boolean }; ro
  * The address is the runner's to fill in (it is not known here), and so is the channel.
  */
 export function digestFor(userId: string, state: State, seats: readonly SeatRow[], locale: Locale, baseUrl: string, opts: DigestOpts): OutboxDraft | null {
-  const items = inboxItems({ state, me: meFor(userId, seats), seats, today: state.day, demo: false, flags: opts.flags, role: opts.role });
+  const items = inboxItems({ state, me: meFor(userId, seats), seats, today: state.day, demo: false, flags: opts.flags, role: opts.role, events: opts.events });
   if (items.length === 0) return null;
   const t = createT(locale);
   const inbox = `${baseUrl}/inbox`;
   const paused = (i: (typeof items)[number]) => i.kind === "case" && state.cases.find((c) => c.id === i.caseId)?.status === "asked";
   const lines = items.filter((i) => !paused(i)).flatMap((i) => [
-    `  ${i.title}${i.late ? ` - ${t("mail.digestLate")}` : i.dueSoon ? ` - ${t("mail.digestDueTomorrow")}` : ""}`,
+    `  ${i.title}${i.late ? ` - ${t("mail.digestLate")}` : i.dueSoon ? ` - ${t("mail.digestDueTomorrow")}` : i.kind === "comment" ? ` - ${t(i.count === 1 ? "inbox.commentOne" : "inbox.commentMany", { n: i.count ?? 0 })}` : ""}`,
     `  ${baseUrl}${i.href}`,
   ]);
   const waiting = items.filter(paused).map((i) => i.title);

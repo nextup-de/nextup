@@ -5,6 +5,7 @@ import type { State } from "@/features/cases/reducer";
 import type { CaseEvent } from "@/features/cases/events";
 import { DEFAULT_CALENDAR, DEMO_CLOCK } from "@/features/clock";
 import type { SeatAbove } from "@/features/clock/due";
+import { EMPTY_APPROVAL_CONFIG } from "@/features/approvals/types";
 
 export const TODAY = 20;
 
@@ -34,16 +35,19 @@ const fact = (target: string, payload: Record<string, unknown>) => event("clock.
 const yes = (target: string, id: string, leadUserId: string): CaseEvent =>
   ({ ...event("case.decided", "T. Decider", "u_dec", "c_" + target, { answer: "yes", projectId: target, lead: "L. Lead", leadUserId, draft: true }), id });
 
-const rules = (deadlineHandover: boolean, escalationDays: number) => ({ deadlineHandover, escalationDays });
+// questionDays is the default of LoopRules (D23): NOR-D1 reads it, and a state without it would have no return day.
+const rules = (deadlineHandover: boolean, escalationDays: number) => ({ deadlineHandover, escalationDays, questionDays: 5 });
 
 type Lit = Record<string, unknown>;
-const kase = (c: Lit): Lit => ({ open: true, status: "open", route: ROUTES[0], assigneeSeatId: "seat_owner", assigneeRoleId: "role_owner", discussion: null, question: null, handed: [], raisedDay: 1, history: [], ...c });
+const kase = (c: Lit): Lit => ({ open: true, status: "open", route: ROUTES[0], assigneeSeatId: "seat_owner", assigneeRoleId: "role_owner", discussion: null, question: null, handed: [], raisedDay: 1, history: [],
+  // The reasoned no (plan NOR): none of it has happened to these cases.
+  decided: null, appeal: null, reopens: [], reopenSeq: null, decidedSeq: null, ...c });
 const project = (p: Lit): Lit => ({
   status: "planning", draft: false, routeId: "r1", leadUserId: "u_lead", dueDay: null, checks: [], measures: [], stopped: null, history: [],
   leadState: "taken", leadAskedDay: null, invites: [], startDay: null, deciderUserId: "u_dec", ...p,
 });
 const state = (mode: "workdays" | "demo", r: ReturnType<typeof rules>, cases: Lit[], projects: Lit[]): State =>
-  ({ day: TODAY, cases, projects, ideas: [], problems: [], ledger: {}, rules: r, seats: SEATS, routes: ROUTES, clock: mode === "workdays" ? { mode, calendar: DEFAULT_CALENDAR } : DEMO_CLOCK }) as unknown as State;
+  ({ day: TODAY, cases, projects, ideas: [], problems: [], ledger: {}, rules: r, seats: SEATS, routes: ROUTES, clock: mode === "workdays" ? { mode, calendar: DEFAULT_CALENDAR } : DEMO_CLOCK, approvals: { ...EMPTY_APPROVAL_CONFIG, roles: [] } }) as unknown as State;
 
 const dl = (id: string, dueDay: number) => fact(id, { kind: "deadline", dueDay, toRoleHolderId: "seat_dep" });
 

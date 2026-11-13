@@ -27,7 +27,7 @@ esac
 exit 0
 F
 chmod +x "$tmp/bin/docker"
-real_path="$PATH"
+real_path="$PATH"; real_home="$HOME"
 export PATH="$tmp/bin:$PATH"
 export NEXTUP_INSTANCES="$tmp/instances" HOME="$tmp/home"
 
@@ -77,6 +77,25 @@ out="$(run d backup 2>&1)"; rc=$?
 t_eq "an unwritable folder does not fail the backup" 0 "$rc"
 t_ok "it logs a warning" bash -c '[[ "$1" == *warning* ]]' _ "$out"
 
+# restore-test.json (REM-O3): written like last.json by write_restore_status, which restore-test calls once it passed. The restore itself needs a real docker, so the function is
+# run on its own: it takes the seconds, writes a UTC time with them, leaves no temp file, and an unwritable folder is a warning, not a failure.
+eval "$(sed -n '/^write_restore_status() {/,/^}/p' stack/backup.sh)"
+inst_r="$tmp/inst-r"; mkdir -p "$inst_r"
+get() { [ "$1" = INSTANCE_DIR ] && echo "$inst_r"; }
+log() { echo "$*"; }
+write_restore_status 412
+rf="$inst_r/backup-status/restore-test.json"
+t_ok "restore-test.json holds a UTC time and the seconds" grep -Eq '^\{"at": "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z", "seconds": 412\}$' "$rf"
+t_eq "no temp file is left next to it" 1 "$(ls -A "$inst_r/backup-status" | wc -l | tr -d ' ')"
+t_ok "backup.sh calls it after restore-test OK" bash -c 'grep -A1 "restore-test OK" stack/backup.sh | grep -q "write_restore_status \"\$seconds\""'
+inst_u="$tmp/inst-u"; mkdir -p "$inst_u"; : > "$inst_u/backup-status"
+get() { [ "$1" = INSTANCE_DIR ] && echo "$inst_u"; }
+out="$(write_restore_status 3 2>&1)"; rc=$?
+t_eq "an unwritable folder does not fail" 0 "$rc"
+t_ok "it logs a warning" bash -c '[[ "$1" == *warning* ]]' _ "$out"
+get() { return 0; }
+t_eq "without INSTANCE_DIR nothing is written" 0 "$(write_restore_status 3 >/dev/null 2>&1; echo $?)"
+
 # Rendered compose, with the real docker.
 export PATH="$real_path"
 wp() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else echo "$1"; fi; }
@@ -90,7 +109,8 @@ APP_ORIGIN=http://localhost:8080
 SITE_ADDRESS=:80
 N8N_ENCRYPTION_KEY=k
 ENV
-if docker compose -f stack/compose.yml --env-file "$(wp "$tmp/render.env")" config --format json > "$tmp/c.json" 2>"$tmp/err"; then
+# The real HOME, so the docker CLI finds its compose plugin (~/.docker/cli-plugins on macOS).
+if HOME="$real_home" docker compose -f stack/compose.yml --env-file "$(wp "$tmp/render.env")" config --format json > "$tmp/c.json" 2>"$tmp/err"; then
   got="$(node -e '
     const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).services.app;
     const v = (c.volumes || []).find((x) => x.target === "/run/nextup/backup-status");

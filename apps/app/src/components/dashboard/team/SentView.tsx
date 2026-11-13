@@ -13,6 +13,10 @@ import { PageHeader, SectionCard } from "@/components/ui/elements";
 import { useCaseNames } from "@/components/cases/useCaseNames";
 import { answerPromise } from "@/features/cases/promise";
 import { owedLine, promiseText } from "@/features/cases/promise-text";
+import { followHref, mayFollow } from "@/features/cases/links";
+import { journeySteps } from "@/features/cases/rows";
+import { journeyOf } from "@/features/cases/selectors";
+import { projectOfCase } from "@/features/projects/selectors";
 import { roundState } from "@/features/cases/discussion";
 import type { MineRow, MineStatus } from "@/features/cases/rows";
 import styles from "./SentView.module.css";
@@ -25,11 +29,11 @@ const STATUS_LABEL: Partial<Record<MineStatus, MessageKey>> = {
   Sent: "team.sentStatusSent", Approved: "team.sentStatusApproved", Declined: "team.sentStatusDeclined", Building: "team.sentStatusBuilding", Shipped: "team.sentStatusShipped",
   "Question for you": "team.sentStatusQuestion", "Awaiting decision": "team.sentStatusAwaiting", "In trial": "team.sentStatusTrial", "In discussion": "team.sentStatusDiscussion",
   Planning: "team.sentStatusPlanning", "In progress": "team.sentStatusInProgress", Done: "team.sentStatusDone", Measured: "team.sentStatusMeasured", Recognised: "team.sentStatusRecognised", Stopped: "team.sentStatusStopped",
-  Withdrawn: "team.sentStatusWithdrawn",
+  Withdrawn: "team.sentStatusWithdrawn", Merged: "caseSee.statusMerged",
 };
 // The second half of the life: still moving is the accent, a result is green, the rest stays quiet.
 const LIFE_TONE: Partial<Record<MineStatus, Tone>> = {
-  "In discussion": "accent", Planning: "ok", "In progress": "ok", Done: "ok", Measured: "ink", Recognised: "ink", Stopped: "ghost", Withdrawn: "ghost",
+  "In discussion": "accent", Planning: "ok", "In progress": "ok", Done: "ok", Measured: "ink", Recognised: "ink", Stopped: "ghost", Withdrawn: "ghost", Merged: "ghost",
 };
 
 // The status chip in a soft tint: still waiting is amber, a result is green, the rest stays grey.
@@ -44,7 +48,7 @@ export function SentView() {
   const t = useT();
   const ctx = useDemo();
   const label = (map: Partial<Record<string, MessageKey>>, k: string) => { const key = map[k]; return key ? t(key) : k; };
-  const { seed, S, ready, href, openSheet, f } = ctx;
+  const { seed, S, ready, href, openSheet, f, flag, me, locale } = ctx;
   const names = useCaseNames();
   if (!ready) return <PageSkeleton kind="list" />;
 
@@ -97,12 +101,26 @@ export function SentView() {
       )}
 
       <div className={styles.cards}>
-        {mine.map((m) => (
+        {mine.map((m) => {
+          // My own case, with the rest of its journey: the track, the cases it follows or is followed by, the one it was merged into (SEE D11, D15, D17).
+          const c = m.kind === "case" ? S.cases.find((x) => x.id === m.id) : undefined;
+          // An old seed case that went straight to a build keeps its four steps; every other case draws its journey.
+          const track = c && !c.building && !c.shipped
+            ? journeySteps(journeyOf(c, projectOfCase(S, c) ?? null, { discussion: flag("discussion"), projects: flag("projects"), today: S.day, seats: S.seats, councils: S.approvals.councils }), f, { roleTitle: names.roleTitle, caseTitle: (id) => S.cases.find((x) => x.id === id)?.title ?? null }, locale)
+            : m.steps;
+          const titleOf = (id: string) => S.cases.find((x) => x.id === id)?.title ?? null;
+          const merged = c?.merged ? titleOf(c.merged.into) : null;
+          const clock = c?.merged ? t("caseSee.mergedInto", { title: merged ?? c.merged.into }) : m.clock;
+          const linked = c ? [
+            ...(c.follows !== null && titleOf(c.follows) !== null ? [{ id: c.follows, text: t("caseSee.followsUp", { title: titleOf(c.follows) ?? "" }) }] : []),
+            ...c.followedBy.flatMap((id) => (titleOf(id) !== null ? [{ id, text: t("caseSee.followedBy", { title: titleOf(id) ?? "" }) }] : [])),
+          ] : [];
+          return (
           <article key={m.kind + m.id} aria-label={m.title}>
           <SectionCard title={m.title} hint={m.submitted} name={m.id} action={<span className={styles.chip} data-tone={CHIP_TONE[LIFE_TONE[m.status] ?? statusTone(m.status)]}>{label(STATUS_LABEL, m.status)}</span>}>
-            <ol className={styles.steps} aria-label={t("team.sentProgress")} data-long={m.steps.length > 4 ? "true" : undefined}>
-              {m.steps.map((s) => (
-                <li key={s.label} className={styles.step} data-tone={s.tone}>
+            <ol className={styles.steps} aria-label={t("team.sentProgress")} data-long={track.length > 4 ? "true" : undefined}>
+              {track.map((s, i) => (
+                <li key={i + s.label} className={styles.step} data-tone={s.tone}>
                   <span className={styles.stepBar} />
                   <span className={styles.stepLabel}>{label(STEP_LABEL, s.label)}</span>
                   <span className={styles.stepWhen}>{s.when}</span>
@@ -124,11 +142,17 @@ export function SentView() {
                 </p>
               );
             })()}
-            <p className={styles.now} data-overdue={m.overdue ? "true" : undefined}>{m.clock}</p>
+            <p className={styles.now} data-overdue={m.overdue ? "true" : undefined}>{clock}</p>
             <div className={styles.reply}>
               <p className={styles.replyText}>{m.reply}</p>
               <p className={styles.replyBy}>{m.replyBy}</p>
             </div>
+            {(linked.length > 0 || (c && mayFollow(c, me.userId))) && (
+              <ul className={styles.links} data-testid="sent-links">
+                {linked.map((l) => <li key={l.id}><Link href={href("/cases/" + l.id)} className={styles.link}>{l.text}</Link></li>)}
+                {c && mayFollow(c, me.userId) && <li><Link href={href(followHref(c.id))} className={styles.link} data-testid="sent-start-better">{t("caseSee.startBetter")}</Link></li>}
+              </ul>
+            )}
 
             {hasOutcome(m) && (
               <p className={styles.outcome}>
@@ -146,7 +170,8 @@ export function SentView() {
             </div>
           </SectionCard>
           </article>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -280,7 +280,10 @@ decision", `CompanyConfig` → `Seed.loop`, `features/loop/rules.ts`).
   (v1 → v2, ▲ on the dials that got better). A check-in every `discussEveryDays` (3) ends a round:
   another round, or ready to decide - drafted offline from the new versions, comments and weak dials,
   or by the brain (`/v1/checkin`) where the stack has one. After `discussMaxRounds` (3) the decision
-  is due; one more round needs a manager. A late check-in goes to the deputy, like a late decision.
+  is due; one more round needs a manager. A check-in left `escalation_days` (3) late is handled like a late
+  answer: a reminder, then the deputy takes the case (when the hand-over rule is on), then the seat above (Q3.8). After the
+  last day nothing is added to the discussion any more - no invitation, check-in, new version or comment; a decision, a
+  pass and a question stay possible.
   An idea within the team's spend authority (`fastLaneEur`) keeps Yes as the main button.
 - **Yes, do it** opens a project: lead (the decider by default), title, an optional first step. The
   idea is archived - read-only, out of the open lists, in the Archive tab - and points to P-n. A no

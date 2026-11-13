@@ -25,6 +25,7 @@ const READY: GoLiveInput = {
   directory: null,
   recipients: 0,
   baseline: false,
+  restore: { at: new Date(NOW.getTime() - 86_400_000), seconds: 300 }, findings: null, breakGlassUntil: null,
   agreements: AGREEMENTS,
 };
 const checks = (over: Partial<GoLiveInput> = {}) => goLiveChecks({ ...READY, ...over });

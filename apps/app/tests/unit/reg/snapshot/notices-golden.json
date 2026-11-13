@@ -222,7 +222,7 @@
         "template": "loop.case.discussion",
         "locale": "en",
         "subject": "Your idea goes into a discussion: Case c_disc",
-        "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
+        "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nDecision expected by day 6\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
         "link": null,
         "data": {
           "eventId": "fx_discussion",
@@ -239,7 +239,7 @@
         "template": "loop.case.discussion",
         "locale": "en",
         "subject": "Your idea goes into a discussion: Case c_disc",
-        "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
+        "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nDecision expected by day 6\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
         "link": null,
         "data": {
           "eventId": "fx_discussion",
@@ -258,7 +258,7 @@
         "template": "loop.case.discussion",
         "locale": "en",
         "subject": "Your idea goes into a discussion: Case c_disc",
-        "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
+        "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nDecision expected by day 6\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
         "link": null,
         "data": {
           "eventId": "fx_discussion",
@@ -275,7 +275,7 @@
         "template": "loop.case.discussion",
         "locale": "en",
         "subject": "Your idea goes into a discussion: Case c_disc",
-        "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
+        "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nDecision expected by day 6\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
         "link": null,
         "data": {
           "eventId": "fx_discussion",
@@ -1204,7 +1204,7 @@
         "template": "loop.case.decided",
         "locale": "en",
         "subject": "Your idea was declined: Case c_no",
-        "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nhttps://fx.test/acme/cases/c_no",
+        "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nYou may ask for a second look until day 11.\n\nhttps://fx.test/acme/cases/c_no",
         "link": null,
         "data": {
           "eventId": "fx_no",
@@ -1221,7 +1221,7 @@
         "template": "loop.case.decided",
         "locale": "en",
         "subject": "Your idea was declined: Case c_no",
-        "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nhttps://fx.test/acme/cases/c_no",
+        "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nYou may ask for a second look until day 11.\n\nhttps://fx.test/acme/cases/c_no",
         "link": null,
         "data": {
           "eventId": "fx_no",
@@ -1274,7 +1274,7 @@
         "template": "loop.case.decided",
         "locale": "en",
         "subject": "Your idea was declined: Case c_no",
-        "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nhttps://fx.test/acme/cases/c_no",
+        "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nYou may ask for a second look until day 11.\n\nhttps://fx.test/acme/cases/c_no",
         "link": null,
         "data": {
           "eventId": "fx_no",
@@ -1291,7 +1291,7 @@
         "template": "loop.case.decided",
         "locale": "en",
         "subject": "Your idea was declined: Case c_no",
-        "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nhttps://fx.test/acme/cases/c_no",
+        "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nYou may ask for a second look until day 11.\n\nhttps://fx.test/acme/cases/c_no",
         "link": null,
         "data": {
           "eventId": "fx_no",
@@ -1944,6 +1944,74 @@
         "address": null,
         "status": "sent",
         "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_hs",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_hs",
+        "address": "hs@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_hs:app",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_hs",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_raiser",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_raiser",
+        "address": "raiser@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_raiser:app",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_raiser",
+        "address": null,
+        "status": "sent",
+        "lastError": null
       }
     ],
     "teamsOn": [
@@ -1977,6 +2045,74 @@
         },
         "channel": "inapp",
         "recipientUserId": "u_lead",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_hs",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_hs",
+        "address": "hs@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_hs:app",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_hs",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_raiser",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_raiser",
+        "address": "raiser@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_handed:u_raiser:app",
+        "template": "loop.project.handed",
+        "locale": "en",
+        "subject": "Lead One now leads P-1: Project p_one",
+        "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_handed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_raiser",
         "address": null,
         "status": "sent",
         "lastError": null
@@ -2238,6 +2374,40 @@
         "address": null,
         "status": "sent",
         "lastError": null
+      },
+      {
+        "key": "loop:fx_p_done:u_hs",
+        "template": "loop.project.done",
+        "locale": "en",
+        "subject": "P-1 is done: Project p_one",
+        "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_done",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_hs",
+        "address": "hs@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_done:u_hs:app",
+        "template": "loop.project.done",
+        "locale": "en",
+        "subject": "P-1 is done: Project p_one",
+        "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_done",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_hs",
+        "address": null,
+        "status": "sent",
+        "lastError": null
       }
     ],
     "teamsOn": [
@@ -2271,6 +2441,40 @@
         },
         "channel": "inapp",
         "recipientUserId": "u_raiser",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_done:u_hs",
+        "template": "loop.project.done",
+        "locale": "en",
+        "subject": "P-1 is done: Project p_one",
+        "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_done",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_hs",
+        "address": "hs@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_done:u_hs:app",
+        "template": "loop.project.done",
+        "locale": "en",
+        "subject": "P-1 is done: Project p_one",
+        "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_done",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_hs",
         "address": null,
         "status": "sent",
         "lastError": null
@@ -2526,8 +2730,146 @@
   {
     "id": "fx_p_confirmed",
     "type": "project.measure.confirmed",
-    "teamsOff": [],
-    "teamsOn": []
+    "teamsOff": [
+      {
+        "key": "loop:fx_p_confirmed:u_lead",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_lead",
+        "address": "lead@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_lead:app",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_lead",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_raiser",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_raiser",
+        "address": "raiser@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_raiser:app",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_raiser",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      }
+    ],
+    "teamsOn": [
+      {
+        "key": "loop:fx_p_confirmed:u_lead",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_lead",
+        "address": null,
+        "channel": "teams",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_lead:app",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_lead",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_raiser",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "recipientUserId": "u_raiser",
+        "address": "raiser@fx.test",
+        "channel": "mail",
+        "status": "pending",
+        "lastError": null
+      },
+      {
+        "key": "loop:fx_p_confirmed:u_raiser:app",
+        "template": "loop.project.measure.confirmed",
+        "locale": "en",
+        "subject": "P-1: result confirmed - Project p_one",
+        "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
+        "link": null,
+        "data": {
+          "eventId": "fx_p_confirmed",
+          "subjectId": "p_one"
+        },
+        "channel": "inapp",
+        "recipientUserId": "u_raiser",
+        "address": null,
+        "status": "sent",
+        "lastError": null
+      }
+    ]
   },
   {
     "id": "fx_p_rewarded",

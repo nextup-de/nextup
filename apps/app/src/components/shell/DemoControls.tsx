@@ -166,12 +166,12 @@ export function DemoControls() {
   const history = () => router.back(); // the screen before, from the browser's history (the raise page's URL names its screens)
   const inbox = () => { if (published?.assigneeSeatId) ctx.setLeadAs(published.assigneeSeatId); };
   const openCase = () => { if (published) router.push(href("/leader?id=" + encodeURIComponent(published.id))); };
-  // "Yes, do it": with projects on, the yes opens a project led by the receiver, named after the idea.
+  // "Yes, do it": with projects on, the yes opens a draft the receiver sets up, as the yes sheet does.
   const accept = () => {
     if (!published) return;
-    if (ctx.flag("projects")) ctx.act.accept(published.id, { lead: published.assignee, leadUserId: ctx.seed.seats.find((s) => s.id === published.assigneeSeatId)?.userId ?? null, title: published.title });
+    if (ctx.flag("projects")) ctx.act.accept(published.id, { lead: { userId: ctx.seed.seats.find((s) => s.id === published.assigneeSeatId)?.userId ?? null, name: published.assignee } });
     else ctx.act.decide(published.id, "yes");
-    ctx.showToast("Yes. " + published.from + " has been told" + (ctx.flag("projects") ? "; the project is open." : "."));
+    ctx.showToast("Yes. " + published.from + " has been told" + (ctx.flag("projects") ? "; the draft is open." : "."));
   };
   // The project that yes opened, on the team leader's screen; the manager's view comes only after it.
   const project = published?.decided?.answer === "yes" ? projectOfCase(S, published) : undefined;

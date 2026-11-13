@@ -1,7 +1,7 @@
 // SET-F1: who sees a draft (D13) and what the raiser sees of it (D20). Projects are built from the SET-G1 types, so this
 // does not wait for the reducer.
 import { describe, expect, it } from "vitest";
-import type { SeatRow } from "@/features/auth/identity";
+import { meFor, type SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/events";
 import { reduce, type ReduceSeed, type State } from "@/features/cases/reducer";
 import { accessKeys, isPrivateIdea, type VisCtx } from "@/features/cases/visibility";
@@ -14,6 +14,7 @@ import { beingSetUpLine, isOpenDraft, mayReadDraft, raiserDraftPanel, visiblePro
 const seats: SeatRow[] = [
   { id: "seat_tv", roleId: "role_owner", label: "T. Vogel", userId: "u_tv", sort: 0 },
   { id: "seat_lb", roleId: "role_lead", label: "L. Brandt", userId: "u_lb", sort: 1 },
+  { id: "seat_h", roleId: "role_head", label: "K. Head", userId: "u_h", sort: 2 },
 ];
 const SEED: ReduceSeed = { cases: [], ideas: [], problems: PROBLEMS, routes: LOCAL_SEED.routes, promiseDays: PROMISE_DAYS, seats, clock: { mode: "workdays", calendar: DEFAULT_CALENDAR } };
 
@@ -102,5 +103,41 @@ describe("SET visibility", () => {
     const k = accessKeys(priv.cases[0], { seats, roles: [], projects: priv.projects });
     expect(k).toContain("u:u_p");
     expect(k).not.toContain("m");
+  });
+
+  // D15, D22: the seat a late draft went to keeps it, so its holder reads it whatever their app role and whether or not the idea is private.
+  describe("the holder of a late draft's escalated seat", () => {
+    const escalated = (over: Partial<NonNullable<ReducedProject["escalated"]>> = {}): Partial<ReducedProject> => ({
+      escalated: { to: "K. Head", toSeatId: "seat_h", toRoleId: "role_head", from: "L. Brandt", day: 15, live: true, what: "draft", ...over },
+    });
+    const holder = (role: IdViewer["role"] = "member"): IdViewer => ({ role, userId: "u_h", me: meFor("u_h", seats) });
+
+    it("reads the draft, as a member, a leader or a manager of a private idea", () => {
+      const s = world(escalated());
+      expect(sees(s, holder("member"))).toEqual(["p_one"]);
+      expect(sees(s, holder("leader"))).toEqual(["p_one"]);
+      expect(mayReadDraft(s.projects[0], holder("member"), false)).toBe(true);
+      const priv = world(escalated(), "private");
+      expect(sees(priv, holder("manager"))).toEqual(["p_one"]);
+      expect(sees(priv, holder("member"))).toEqual(["p_one"]);
+    });
+
+    it("does not once the escalation ended, for another kind of escalation, for another seat or without a seat", () => {
+      expect(sees(world(escalated({ live: false })), holder())).toEqual([]);
+      expect(sees(world(escalated({ what: "start" })), holder())).toEqual([]);
+      expect(sees(world(escalated({ toSeatId: "seat_tv" })), holder())).toEqual([]);
+      expect(sees(world(escalated({ toSeatId: null })), holder())).toEqual([]);
+      expect(sees(world({ escalated: null }), holder())).toEqual([]);
+      // the same person without their seats (a viewer built from a role and an id alone) is not the holder
+      expect(sees(world(escalated()), as("u_h"))).toEqual([]);
+      // someone who does not hold the seat
+      expect(sees(world(escalated()), { role: "member", userId: "u_other", me: meFor("u_other", seats) })).toEqual([]);
+    });
+
+    it("reads only an open draft: a started project is as before, and the raiser's panel stays theirs", () => {
+      expect(sees(world({ ...escalated(), status: "running" }), holder("member"))).toEqual([]);
+      const p = world(escalated()).projects[0];
+      expect(raiserDraftPanel(p, "u_h", "u_js").show).toBe(false);
+    });
   });
 });

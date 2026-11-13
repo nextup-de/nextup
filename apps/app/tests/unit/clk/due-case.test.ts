@@ -50,11 +50,12 @@ describe("CLK dueNow", () => {
 
   it("a discussion past its check-in day yields a checkin Due, once", () => {
     const disc = ev("case.discussion", "T. Vogel", "c_a", { invited: [], missing: "x" }, 0);
-    const S = reduce(WD, logAt(20, raise("c_a"), disc));
-    const c = find(S.cases, "c_a");
-    expect(dueNow(S, 20)).toEqual([{ kind: "checkin", target: "c_a", dueDay: c.dueDay, idemKey: `clk:checkin:c_a:${c.dueDay}` }]);
-    const S2 = reduce(WD, logAt(20, raise("c_a"), disc, fact("c_a", { kind: "checkin", dueDay: c.dueDay })));
-    expect(dueNow(S2, 20)).toEqual([]);
+    // The day after the check-in day: the reminder only. Far later (NOR D11) the case is also handled like a late answer (see tests/unit/nor/clock.test.ts).
+    const dueDay = find(reduce(WD, logAt(20, raise("c_a"), disc)).cases, "c_a").dueDay;
+    const S = reduce(WD, logAt(dueDay + 1, raise("c_a"), disc));
+    expect(dueNow(S, dueDay + 1)).toEqual([{ kind: "checkin", target: "c_a", dueDay, idemKey: `clk:checkin:c_a:${dueDay}` }]);
+    const S2 = reduce(WD, logAt(dueDay + 1, raise("c_a"), disc, fact("c_a", { kind: "checkin", dueDay })));
+    expect(dueNow(S2, dueDay + 1)).toEqual([]);
   });
 });
 
@@ -77,7 +78,8 @@ describe("CLK second level (escalation_days)", () => {
     const out = dues(ORG, DUE + N + 1, first, (roleId, skip) => { asked.push([roleId, skip]); return "seat_head"; });
     expect(out).toEqual([{ kind: "escalation", target: "c_a", dueDay: DUE, toRoleHolderId: "seat_head", idemKey: "clk:escalate:c_a" }]);
     // Above the desk that owes the answer, never the role that holds the case now.
-    expect(asked).toEqual([["role_owner", ["role_deputy"]]]);
+    // The overload area computes the case area's Dues again to leave its hand-overs alone (plan OVL, D29), so the same question comes twice: asked once, answered the same.
+    expect([...new Set(asked.map((a) => JSON.stringify(a)))].map((a) => JSON.parse(a))).toEqual([["role_owner", ["role_deputy"]]]);
   });
 
   it("the fact first, the hand-over a run later, then nothing: once per case", () => {

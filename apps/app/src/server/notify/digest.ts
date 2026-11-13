@@ -66,13 +66,14 @@ export async function runDigests(now: Date = new Date()): Promise<number> {
         orderBy: { seq: "asc" },
         select: { id: true, seq: true, day: true, ts: true, type: true, actor: true, actorUserId: true, targetId: true, payload: true },
       });
-      const state = reduce(seed, logFromRows(await relabelRows(company.id, rows), workdayOf(now, cal)));
+      const log = logFromRows(await relabelRows(company.id, rows), workdayOf(now, cal));
+      const state = reduce(seed, log);
       const baseUrl = companyBaseUrl(company.slug);
       const flags = await flagsFor(company.slug);
       const drafts: DigestRow[] = [];
       for (const u of wanting) {
         const role = ROLES.find((r): r is Role => r === u.role);
-        const d = digestFor(u.id, state, seed.seats, await localeForUser(company.id, u.id), baseUrl, { flags: { projects: flags.projects, discussion: flags.discussion }, role });
+        const d = digestFor(u.id, state, seed.seats, await localeForUser(company.id, u.id), baseUrl, { flags: { projects: flags.projects, discussion: flags.discussion }, role, events: log.events });
         if (!d) continue;
         const email = u.email.trim() || null;
         const viaTeams = teamsOn && teamsIds.has(u.id);

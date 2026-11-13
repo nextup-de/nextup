@@ -67,7 +67,7 @@ async function submitAction(company: BotCompany, person: BotPerson, activity: Bo
   const base: EventPayload = { title: input.title, body: input.body, kind: input.kind, fromDept, visibility };
   const proposal = await proposeOnRaise(company.slug, company.id, base);
   const route = seed.routes.find((r) => r.id === proposal.routeId);
-  const stamped = stampEvent("case.raised", { ...base, routeId: proposal.routeId, assignee: route?.owner.name ?? "" }, seed);
+  const stamped = stampEvent("case.raised", { ...base, routeId: proposal.routeId, assignee: route?.owner.name ?? "" }, seed, { raiserUserId: person.id });
 
   const result = await appendEventRow(
     company.id,

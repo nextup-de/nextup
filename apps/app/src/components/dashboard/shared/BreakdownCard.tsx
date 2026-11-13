@@ -60,19 +60,20 @@ export function BreakdownCard({ units, roles, view, onView, demoClock }: {
         )}
       </div>
       <div className={s.table} role="table" aria-label={t("metrics.bdTitle")}>
-        <div className={s.tr} role="row" data-head="true">
+        <div className={s.tr} role="row" data-head="true" data-stalled={mode === "unit" ? "true" : undefined}>
           <span role="columnheader">{t(mode === "unit" ? "metrics.bdUnitCol" : "metrics.bdRoleCol")}</span>
           <span className={s.num} role="columnheader">{t("metrics.bdCases")}</span>
           <span className={s.num} role="columnheader">{t("metrics.bdFirst")} ({demoClock ? t("metrics.dashLeadSimulated") : t("metrics.bdFirstUnit")})</span>
           <span role="columnheader">{t("metrics.bdOnTime")}</span>
           <span className={s.num} role="columnheader">{t("metrics.bdPast")}</span>
           <span className={s.num} role="columnheader">{t("metrics.bdEsc")}</span>
+          {mode === "unit" && <span className={s.num} role="columnheader" title={t("projectResult.stalledHint")}>{t("projectResult.stalledColumn")}</span>}
         </div>
         {shown.map(({ row: r, hasKids, figures }) => {
           const isOpen = open.has(r.id);
           const label = r.kind === "unit" ? <DeptChip name={r.label} /> : <span className={s.roleName}>{r.label}</span>;
           return (
-            <div key={r.kind + r.id} className={s.tr} role="row" data-testid="dashboard-row" data-depth={Math.min(r.depth, 3)} data-group={figures ? undefined : "true"}>
+            <div key={r.kind + r.id} className={s.tr} role="row" data-testid="dashboard-row" data-depth={Math.min(r.depth, 3)} data-group={figures ? undefined : "true"} data-stalled={mode === "unit" ? "true" : undefined}>
               <span className={s.rowName} role="cell">
                 {mode === "unit" && hasKids ? (
                   <button type="button" className={s.twisty} aria-expanded={isOpen} onClick={() => toggle(r.id)}
@@ -96,6 +97,7 @@ export function BreakdownCard({ units, roles, view, onView, demoClock }: {
                   </span>
                   <span className={s.num} role="cell">{r.pastPromise ? <span className={s.badge} data-tone="late">{num(r.pastPromise)}</span> : null}</span>
                   <span className={s.num} role="cell">{r.escalated ? <span className={s.badge} data-tone="esc">{num(r.escalated)}</span> : null}</span>
+                  {mode === "unit" && <span className={s.num} role="cell" data-testid="dashboard-stalled">{r.stalled ? <span className={s.badge} data-tone="esc">{num(r.stalled)}</span> : null}</span>}
                 </>
               ) : <span className={s.groupCell} role="cell" />}
             </div>
