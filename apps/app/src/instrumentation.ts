@@ -37,6 +37,9 @@ export async function register() {
   // The project agent's daily run: expiries and suggestions, under a lock per company (a no-op without a database).
   const { startAgentRuns } = await import("@/server/agent/daily");
   startAgentRuns();
+  // The generated demo company Musterwerk keeps living: new ideas, decisions and project moves each working day (a no-op elsewhere).
+  const { startLife } = await import("@/server/scheduler/life");
+  startLife();
   // Errors counted in memory go to the ErrorGroup table once a minute.
   const { startErrorFlush } = await import("@/server/errors");
   startErrorFlush();

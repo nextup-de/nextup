@@ -58,6 +58,14 @@ export const FLAGS = {
     added: "2026-11-12",
     removeBy: "2027-06-30",
   },
+  // server/scheduler/life.ts: the generated demo company keeps living (features/demo/life)
+  musterwerkLife: {
+    description: "Musterwerk only: each working day new ideas come in, colleagues decide them around the promise and yes ideas become projects that move. Nobody gets mail from it",
+    owner: "Kevin",
+    defaults: { demo: true, sandbox: false, pilot: false, live: false },
+    added: "2026-11-13",
+    removeBy: "2027-06-30",
+  },
 } as const satisfies Record<string, FlagDef>;
 
 export type FlagKey = keyof typeof FLAGS;
