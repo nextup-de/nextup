@@ -12,13 +12,15 @@
 }
 .root[data-psb="hidden"] .side { width: 0; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; padding: 20px 32px 40px; }
-.show { align-self: flex-start; width: 32px; height: 32px; margin: -8px 0 -6px -16px; padding: 0; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.show { position: absolute; top: 12px; left: 12px; z-index: 7; width: 32px; height: 32px; padding: 0; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .show:hover { background: var(--nh-fill-2); color: var(--nh-ink); }
 .tabs { margin: -20px -32px 0; }
 
-/* With the sidebar open, the area's strip of tabs steps aside: the sidebar has them. */
+/* On a laptop or monitor the sidebar carries the area's tabs, open or hidden: no strip repeats them.
+   Hidden, the page keeps a gutter on the left so the button never sits on a title. */
 @media (min-width: 761px) {
-  .root[data-psb="open"] .tabs { display: none; }
+  .tabs { display: none; }
+  .root[data-psb="hidden"] .main { padding-left: 60px; }
 }
 /* Phones keep the strips of tabs and the page gets the whole width. */
 @media (max-width: 760px) {

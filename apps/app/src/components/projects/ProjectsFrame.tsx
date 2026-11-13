@@ -1,8 +1,9 @@
 "use client";
 // The Projects area with its sidebar (Paper page "Projects page"): the sidebar on the left, edge to edge
-// under the bar, the page on the right. On a laptop or monitor the sidebar carries the area's tabs and a
-// project's pages, so the two strips of tabs step aside; with the sidebar hidden (how it starts) or on a
-// phone the strips are there. The shell (SimpleShell) wraps every page of the area in this.
+// under the bar, the page on the right. On a laptop or monitor the sidebar is the area's only navigation:
+// its tabs, a project's pages and the way back. No strip of tabs and no back link repeat it, open or
+// hidden (Kevin, 13 Nov 2026). Hidden, one button at the top left brings it back. A phone has no sidebar,
+// so it keeps the strips. The shell (SimpleShell) wraps every page of the area in this.
 import { useSyncExternalStore } from "react";
 import type { ProjectsTabKey } from "@/config/nav";
 import { SectionTabs } from "@/components/shell/SectionTabs";
@@ -11,19 +12,18 @@ import { ProjectsSidebar } from "./ProjectsSidebar";
 import s from "./ProjectsFrame.module.css";
 
 const KEY = "nh.projectsSidebar";
-// Open or hidden, remembered in this browser. It starts hidden, the calm start the raise page has too
-// (docs/DESIGN_RULES.md): the strips of tabs stay until someone opens the sidebar. The server draws it hidden.
+// Open or hidden, remembered in this browser. It starts open: it is the navigation. The server draws it open.
 const listeners = new Set<() => void>();
-const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "open" ? "open" : "hidden"; } catch { return "hidden"; } };
+const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "hidden" ? "hidden" : "open"; } catch { return "open"; } };
 const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
 export function ProjectsFrame({ area, projectId, caseId, children }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; children: React.ReactNode }) {
   const t = useT();
-  const sb = useSyncExternalStore(subscribeSb, readSb, () => "hidden" as const);
+  const sb = useSyncExternalStore(subscribeSb, readSb, () => "open" as const);
   const set = (v: "open" | "hidden") => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
 
   return (
-    <div className={s.root} data-wide="true" data-psb={sb}>
+    <div className={s.root} data-wide="true" data-psb={sb} data-testid="projects-area">
       <aside className={s.side} aria-label={t("projects.sbLabel")} inert={sb === "hidden"}>
         {/* Hidden, it draws nothing: no search field, list or links left in the page for a reader or a test. */}
         {sb === "open" && <ProjectsSidebar area={area} projectId={projectId} caseId={caseId} onHide={() => set("hidden")} />}

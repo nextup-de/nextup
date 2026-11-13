@@ -48,7 +48,7 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
 /** The project page's Results tab: the measure card and the reward panel are there. */
 async function openResults(page: Page) {
   await page.goto(`/${SLUG}/projects/${projectId}`);
-  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /^Results/ }).click();
+  await page.getByRole("navigation", { name: "Pages" }).getByRole("link", { name: /^Results/ }).click(); // the sidebar's pages
   await expect(page).toHaveURL(/tab=results/);
 }
 

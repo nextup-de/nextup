@@ -53,18 +53,32 @@ form .due { white-space: normal; }
 .hero .back { align-self: flex-start; margin-bottom: 0; }
 .heroTop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; background: var(--nh-fill); font-size: var(--nh-fs-sm); font-weight: 500; color: var(--nh-ink-2); }
-.heroMeta { margin: -6px 0 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-mute); overflow-wrap: anywhere; }
-.faces { display: flex; align-items: center; gap: 10px; flex: none; }
 .faceStack { display: inline-flex; }
 .faceStack > * { margin-left: -6px; box-shadow: 0 0 0 2px var(--nh-card); }
 .faceStack > *:first-child { margin-left: 0; }
-.faceText { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .chips { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .link { color: var(--nh-brand); font-weight: 600; text-decoration: none; }
 .link:hover { text-decoration: underline; }
 .muted { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
 .strong { font-weight: 600; color: var(--nh-ink); }
 .hint { font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.45; }
+
+/* The (i) next to the title: the project's details, shown when asked for (Kevin, 13 Nov 2026). */
+.info { position: relative; }
+.infoBtn { list-style: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--nh-ink-2); cursor: pointer; transition: background 160ms ease; }
+.infoBtn::-webkit-details-marker { display: none; }
+.infoBtn:hover, .info[open] .infoBtn { background: var(--nh-fill-2); color: var(--nh-ink); }
+.infoBtn:focus-visible { outline: 2px solid var(--nh-brand-focus); outline-offset: 2px; }
+.infoPop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 360px; max-width: calc(var(--nh-screen-w) - 2 * var(--nh-page-x));
+  padding: 16px 18px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-md, 18px); box-shadow: 0 6px 20px rgb(40 60 100 / 6%);
+}
+.infoList { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 16px; margin: 0; font-size: var(--nh-fs-sm); line-height: 20px; }
+.infoList dt { color: var(--nh-mute); }
+.infoList dd { margin: 0; min-width: 0; color: var(--nh-ink); overflow-wrap: anywhere; }
+.infoStatus { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.infoTeam { display: flex; align-items: center; gap: 8px; }
+.infoPop .toolChips { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--nh-line-soft); }
 
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 8px; }
 .actionRow { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -127,15 +141,19 @@ a.toolChip:hover { background: var(--nh-surface); }
 .railSection:first-child { border-top: 0; }
 .railSection > .hint:last-child { margin: 10px 0 0; }
 
-/* The head and the tabs sit on one white band from screen edge to screen edge, up to the bar: the shadow
-   paints the sides, the clip keeps it to the band's height (.content clips sideways at the screen). */
-.top {
-  position: relative; display: flex; flex-direction: column; gap: 16px;
-  margin-top: -20px; padding-top: 20px; /* the shell's top padding (SimpleShell .content) */
-  background: var(--nh-card); box-shadow: 0 0 0 100vmax var(--nh-card); clip-path: inset(0 -100vmax);
+/* The head: the title and its one action on the page's ground, no band (Kevin, 13 Nov 2026). On a phone the
+   head and the tabs sit on one white band from screen edge to screen edge, up to the bar (.content clips
+   sideways at the screen); the band is drawn behind, so the details under the (i) may hang below it. */
+.top { position: relative; display: flex; flex-direction: column; gap: 16px; }
+@media (max-width: 760px) {
+  .top { z-index: 2; margin-top: -16px; padding-top: 16px; } /* the frame's top padding on a phone (ProjectsFrame .main) */
+  .top::before { content: ""; position: absolute; top: 0; bottom: 0; left: -100vmax; right: -100vmax; z-index: -1; background: var(--nh-card); }
+  .top::after { content: ""; position: absolute; left: -100vmax; right: -100vmax; bottom: 0; height: 1px; background: var(--nh-line); }
+  .top > nav { position: relative; z-index: 1; border-bottom: 0; }
+  .hero > header { flex-direction: row; } /* the (i) stays next to the title, not on a line of its own */
+  .info { position: static; }
+  .infoPop { left: 0; right: 0; width: auto; max-width: none; }
 }
-.top::after { content: ""; position: absolute; left: -100vmax; right: -100vmax; bottom: 0; height: 1px; background: var(--nh-line); }
-.top > nav { position: relative; z-index: 1; border-bottom: 0; }
 
 /* The tabs under the head are the Tabs element (features/projects/tabs.ts: one question per tab). */
 .tabLayout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 24px; align-items: start; }
@@ -410,9 +428,10 @@ a.key:hover { text-decoration: underline; }
 }
 
 
-/* Next to the projects sidebar (ProjectsFrame) the sidebar lists the project's pages and the way back: the strip of tabs and the back link step aside. Phones and a hidden sidebar keep them. */
+/* Next to the projects sidebar (ProjectsFrame) the sidebar lists the project's pages and the way back, open or
+   hidden: the strip of tabs and the back link step aside. Phones keep them. */
 @media (min-width: 761px) {
-  :global([data-psb="open"]) .top > nav, :global([data-psb="open"]) .hero > .back { display: none; }
+  :global([data-psb]) .top > nav, :global([data-psb]) .hero > .back { display: none; }
 }
 /* The sidebar takes 256px: the Overview's two columns stack 256px sooner than they do without it. */
 @media (min-width: 761px) and (max-width: 1356px) {
