@@ -29,6 +29,7 @@ const INPUT: GoLiveInput = {
   directory: { on: false, lastRunAt: null, lastOkAt: null, lastError: null },
   recipients: 1,
   baseline: true,
+  restore: { at: new Date(now.getTime() - 86_400_000), seconds: 300 }, findings: null, breakGlassUntil: null,
   agreements: AGREEMENTS,
 };
 

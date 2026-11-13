@@ -45,6 +45,7 @@ process.env.E2E_SMTP_SINK = `http://127.0.0.1:${SINK_PORT}`; // the spec reads w
 const backupDir = path.join(tmpdir(), `nextup-e2e-backup-${SETUP_PORT}`);
 mkdirSync(backupDir, { recursive: true });
 writeFileSync(path.join(backupDir, "last.json"), JSON.stringify({ at: new Date().toISOString(), offbox: true }));
+writeFileSync(path.join(backupDir, "restore-test.json"), JSON.stringify({ at: new Date().toISOString(), seconds: 300 })); // the restore test is a needed check too (REM-O3)
 
 export default defineConfig({
   testDir: "tests/e2e/db",

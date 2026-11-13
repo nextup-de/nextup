@@ -126,6 +126,7 @@ const SAMPLE_GO_LIVE: GoLiveInput = {
   directory: { on: true, lastRunAt: null, lastOkAt: null, lastError: null },
   recipients: 0,
   baseline: false,
+  restore: null, findings: null, breakGlassUntil: null,
   agreements: {},
 };
 

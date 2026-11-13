@@ -29,6 +29,7 @@ const GO_LIVE: GoLiveInput = {
   directory: { on: true, lastRunAt: NOW, lastOkAt: new Date(NOW.getTime() - HOUR), lastError: null },
   recipients: 1,
   baseline: true,
+  restore: { at: new Date(NOW.getTime() - 86_400_000), seconds: 300 }, findings: null, breakGlassUntil: null,
   agreements: AGREEMENTS,
 };
 const IT: ItFacts = { consoleBase: "/admin", admins: 1, connectors: { m365: "on", jira: "on", ai: "on", directory: "on", teams: "on" }, declined: {} };

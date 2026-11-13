@@ -26,6 +26,7 @@ const GREEN: GoLiveInput = {
   directory: { on: true, lastRunAt: hoursAgo(2), lastOkAt: hoursAgo(2), lastError: null },
   recipients: 2,
   baseline: true,
+  restore: { at: new Date(now.getTime() - 86_400_000), seconds: 300 }, findings: { open: 0 }, breakGlassUntil: null,
   agreements: AGREEMENTS,
 };
 
@@ -36,7 +37,7 @@ describe("PIL go-live checks", () => {
     const checks = goLiveChecks(GREEN);
     expect(checks.every((c) => c.state === "done")).toBe(true);
     expect(blockers(checks)).toEqual([]);
-    expect(checks.filter((c) => c.level === "needed")).toHaveLength(10);
+    expect(checks.filter((c) => c.level === "needed")).toHaveLength(13); // the restore test, the findings (where a stack records them) and the break-glass window are needed too (REM-O3)
     expect(checks.filter((c) => c.level === "recommended")).toHaveLength(4);
   });
 
