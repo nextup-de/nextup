@@ -68,6 +68,8 @@ test("UIP project area", async ({ page }) => {
   await sweepPages(page, TABS.map((tab) => `${base}?tab=${tab}`), { marker: "page-header" });
 
   await test.step("the pages are the Overview, Board, Team, Results, Activity, Files and, for a manager, Agent (AGT D15)", async () => {
+    // The sweep ends at phone width, and a phone has no sidebar: its pages are read on a laptop.
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(base);
     const tabs = page.getByRole("navigation", { name: "Pages" }); // the sidebar carries the project's pages
     await expect(tabs.getByRole("link")).toHaveCount(TABS.length);
