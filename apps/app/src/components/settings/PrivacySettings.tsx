@@ -159,6 +159,12 @@ export function PrivacySettings({ slug, companyName, data }: Props) {
             </div>
           </Row>
           <Row label={t("settingsPrivacy.ruleAudit")} wide><span>{t("settingsPrivacy.ruleAuditValue")}</span></Row>
+          {data.lastFailure ? (
+            <p className={s.fieldError} role="alert" data-testid="settings-privacy-last-failure">
+              {t("settingsPrivacy.lastFailure", { date: data.lastFailure.at ? f.date(data.lastFailure.at, "dateTime") : "-", error: data.lastFailure.error })}
+              {data.lastFailure.warn ? ` ${t("settingsPrivacy.lastFailureWarn")}` : ""}
+            </p>
+          ) : null}
           <Foot status={status?.text} tone={status?.error ? "error" : undefined} statusTestId="settings-privacy-status">
             <p className={s.status} data-testid="settings-privacy-last-run">
               {lr?.at
