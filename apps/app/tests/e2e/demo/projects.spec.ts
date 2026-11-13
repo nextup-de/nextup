@@ -4,7 +4,7 @@
 // measure check; then the manager finds no reward due on the unconfirmed typed measures. Demo mode: one browser
 // plays every person via the dev panel, on acme's seeded P-4 (T. Vogel's, from c9's yes).
 import type { Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { expect, projectPages, test } from "../helpers";
 
 const FIRST = "Move the spare bench from line 1 next to the press for two weeks";
 const TYPED = "Time the queue at five shift starts";
@@ -49,8 +49,7 @@ const head = (page: Page) => page.getByRole("main");
 
 /** Open one of the project page's tabs (the head stays on every tab). */
 async function tab(page: Page, name: "Overview" | "Board" | "Team" | "Results" | "Activity" | "Files and tools") {
-  // The sidebar's pages on a laptop; the strip of tabs on a phone.
-  const nav = page.locator('nav[aria-label="Pages"]:visible, nav[aria-label="Project sections"]:visible');
+  const nav = await projectPages(page);
   await nav.getByRole("link", { name: new RegExp("^" + name) }).click();
   await expect(nav.getByRole("link", { name: new RegExp("^" + name) })).toHaveAttribute("aria-current", "page");
 }

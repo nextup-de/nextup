@@ -92,6 +92,22 @@ export async function showSidebar(page: Page) {
 }
 
 /**
+ * A project's pages: on a laptop the projects sidebar's "Pages" (the sidebar starts hidden, so it is opened first),
+ * on a phone the strip of tabs under the title.
+ */
+export async function projectPages(page: Page): Promise<Locator> {
+  if ((page.viewportSize()?.width ?? 1280) > 760) await showSidebar(page);
+  return page.locator('nav[aria-label="Pages"]:visible, nav[aria-label="Project sections"]:visible');
+}
+
+/** A project draft's setup step ("Lead", "Template", "Team", "Goal", "Baseline", "Start"): the page shows one step at a time. */
+export async function setupStep(page: Page, name: "Lead" | "Template" | "Team" | "Goal" | "Baseline" | "Start") {
+  const line = page.getByRole("navigation", { name: "Setting up" }).getByRole("button", { name: new RegExp("^" + name) });
+  await line.click();
+  await expect(line).toHaveAttribute("aria-current", "step");
+}
+
+/**
  * "Publish idea", the last look before it goes out (its preview window) and "Choose a desk",
  * then "Where should it go?": pick the desk whose title or holders name `to`, or find it under "Choose another desk".
  * Waits until the case is raised (the chat offers "Open the case").

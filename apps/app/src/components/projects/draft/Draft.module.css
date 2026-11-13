@@ -29,10 +29,26 @@
 .notice { margin: 8px 0; padding: 10px 14px; border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); }
 .warn { margin: 10px 0 0; padding: 9px 12px; border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 1.45; }
 
-.checks, .list, .templates, .chips { list-style: none; margin: 8px 0 0; padding: 0; }
-.check { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); }
-.dot { width: 10px; height: 10px; flex: none; border-radius: 50%; border: 2px solid var(--nh-line); }
-.check[data-state="done"] .dot { background: var(--nh-brand); border-color: var(--nh-brand); }
+.list, .templates, .chips { list-style: none; margin: 8px 0 0; padding: 0; }
+
+/* Setting up as a process: one thin line per step on top, then the step alone, Back and Next under it. */
+.lines { list-style: none; margin: 16px 0 8px; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.line { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0 0 4px; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.line:focus-visible { outline: 2px solid var(--nh-brand-focus); outline-offset: 4px; border-radius: 4px; }
+.lineBar { display: block; width: 100%; height: 4px; margin-bottom: 8px; border-radius: 999px; background: var(--nh-line); transition: background 200ms ease; }
+li[data-state="done"] .lineBar { background: var(--nh-brand); }
+.line[aria-current="step"] .lineBar { box-shadow: 0 0 0 2px var(--nh-brand-tint); }
+li[data-state="open"] .line[aria-current="step"] .lineBar { background: var(--nh-brand-line); }
+.lineLabel { max-width: 100%; font-size: var(--nh-fs-sm); font-weight: 500; color: var(--nh-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+li[data-state="done"] .lineLabel { color: var(--nh-ink-2); }
+.line[aria-current="step"] .lineLabel { color: var(--nh-ink); font-weight: 600; }
+.line:hover .lineLabel { color: var(--nh-ink); }
+.lineState { min-height: 16px; font-size: var(--nh-fs-xs); color: var(--nh-mute-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.step { display: flex; flex-direction: column; min-width: 0; padding-top: 12px; }
+.stepCount { font-size: var(--nh-fs-sm); color: var(--nh-mute); margin-bottom: 6px; }
+.step > section:first-of-type { border-top: 0; padding-top: 0; } /* the lines above already divide */
+.stepFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 16px; border-top: 1px solid var(--nh-line); }
+.stepGap { flex: 1; }
 
 .templates { display: flex; flex-direction: column; gap: 10px; }
 .template { padding: 12px 14px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 8px); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
@@ -59,9 +75,12 @@
   .page { padding-bottom: 32px; }
   .short { width: 100%; }
   .inline > .input, .inline > select { flex: 1 1 100%; }
+  .lines { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 10px; }
 }
 
 /* Next to the projects sidebar (ProjectsFrame) the sidebar is the way back; phones keep the link. */
 @media (min-width: 761px) {
   :global([data-psb]) .back { display: none; }
 }
+
+@media (prefers-reduced-motion: reduce) { .lineBar { transition: none; } }

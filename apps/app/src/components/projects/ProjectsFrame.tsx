@@ -12,14 +12,15 @@ import { ProjectsSidebar } from "./ProjectsSidebar";
 import s from "./ProjectsFrame.module.css";
 
 const KEY = "nh.projectsSidebar";
-// Open or hidden, remembered in this browser. It starts open: it is the navigation. The server draws it open.
+// Open or hidden, remembered in this browser. It starts hidden, the calm start (Kevin, 13 Nov 2026): a project
+// page leads through its steps by itself, and the button at the top left opens the rest. The server draws it hidden.
 const listeners = new Set<() => void>();
-const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "hidden" ? "hidden" : "open"; } catch { return "open"; } };
+const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "open" ? "open" : "hidden"; } catch { return "hidden"; } };
 const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
 export function ProjectsFrame({ area, projectId, caseId, children }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; children: React.ReactNode }) {
   const t = useT();
-  const sb = useSyncExternalStore(subscribeSb, readSb, () => "open" as const);
+  const sb = useSyncExternalStore(subscribeSb, readSb, () => "hidden" as const);
   const set = (v: "open" | "hidden") => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
 
   return (
