@@ -43,6 +43,8 @@ import { CustomPageView, FilesCard } from "@/components/projects/CustomPageView"
 import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
 import { holdsRole } from "@/features/auth/identity";
 import { mayEditIdeaPages } from "@/features/projects/sidebar";
+import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/edits";
+import { useIdeaEdits } from "./ideaEditsPreview";
 
 // A count beside a menu label: nothing at 0 (lib/utils/quiet.ts).
 const quietCount = (n: number) => (n > 0 ? <span className={s.count}>{n}</span> : null);
@@ -129,6 +131,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   // The open idea's page the projects sidebar picked (&page=): its files, its chats, or one its people added; none is the overview.
   const pageParam = useSearchParams().get("page");
   const [ideaPages] = useProjectPages(tenant.slug, ideaPagesId(sel ?? "-"));
+  const [ideaEdits, addIdeaEdits] = useIdeaEdits(tenant.slug, sel ?? "-"); // Affects and Context as edited (a stand-in)
   const [pg, setPg] = useState({ key: "", n: 1 }); // the page the table is on, forgotten when the list changes
   const paneRef = useRef<HTMLDivElement>(null);
   const prevSel = useRef<string | null>(null);
@@ -216,10 +219,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     const raised = raisedWith(c);
     const added = rescoresOn(log, c.id);
     // The written brief when there is one: the static demo's, or what the raise page saved when it was published here.
-    const brief = briefForCase(c, { ...briefCtx, briefs: { ...seed.briefs, ...loadRaised(tenant.slug) } }, {
+    const brief = applyIdeaEdits(briefForCase(c, { ...briefCtx, briefs: { ...seed.briefs, ...loadRaised(tenant.slug) } }, {
       promiseDays: P, viewer: me, affected: row.affected, attachments: raised.attachments, updates: added.length,
       passTo: "", history: "", side: onDeskOf(c, me) && !row.mine ? "desk" : "raiser",
-    });
+    }), ideaEdits);
     const late = row.open && row.overdue;
     // The first chat is with whoever holds it (the role, then its holders) - or, for the holder, with whoever raised it.
     const talk = onDeskOf(c, me) && !row.mine ? { name: c.from, sub: c.fromDept } : { name: deskNameOf(desk), sub: deskSubOf(desk) };
@@ -241,7 +244,42 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       versions: c.versions.length > 1 ? c.versions.map((v) => ({ n: v.version, when: f(v.day), title: v.title })) : [],
       mode, onMode: setMode, onClose: closeCase,
+      // Who raised it edits it until it is decided (features/cases/permissions.ts: only the raiser revises): the
+      // title and text go out as the next version (case.revised); Affects and Context stay in this browser for now.
+      edit: !c.decided && !c.withdrawn && c.fromUserId !== null && c.fromUserId === me.userId ? {
+        onSave: (ch) => {
+          if (ch.affects || ch.context !== undefined || ch.prompts) addIdeaEdits({ ...(ch.affects ? { affects: ch.affects } : {}), ...(ch.context !== undefined ? { context: ch.context } : {}), ...(ch.prompts ? { prompts: ch.prompts } : {}) });
+          if (ch.title !== undefined || ch.body !== undefined) {
+            act.revise(c.id, ch.body ?? c.body, ch.title);
+            ctx.showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 }));
+          }
+        },
+      } : null,
     };
+    // In the projects frame the idea's parts follow the raise card and are edited its way (Paper "Idea · editing"):
+    // the author's lines stay in Context, the system's move to Who, which is read only.
+    if (flag("projects")) {
+      const sys = { worth: t("brief.worth"), routedAs: t("brief.flaggedAs"), drop: [t("brief.ownerOnMap"), t("brief.openFor"), t("brief.history")] };
+      const relabel = (label: string) => (label === sys.worth ? t("team.ideaWorth") : label === sys.routedAs ? t("team.ideaRoutedAs") : label);
+      ideaProps.page = {
+        content: applyPageEdits(ideaContent(brief, c.title, ideaProps.files, sys), ideaEdits),
+        who: {
+          raisedBy: brief.author.name + (!brief.author.anonymous && brief.author.role && brief.author.role !== brief.author.dept ? " · " + brief.author.role : ""),
+          team: brief.author.dept || null,
+          routing: brief.routing.map((r) => ({ name: r.name, role: r.role ?? "", why: r.why ?? "" })),
+          lines: brief.prompts.filter((x) => [sys.worth, sys.routedAs, ...sys.drop].includes(x.label)).map((x) => ({ label: relabel(x.label), text: x.text })),
+        },
+        depts: seed.depts.map((d) => d.name), nextVersion: c.versions.length + 1,
+        onSave: ideaProps.edit ? (ch) => {
+          const { title, description, ...rest } = ch;
+          if (Object.keys(rest).length) addIdeaEdits(rest);
+          if (title !== undefined || description !== undefined) {
+            act.revise(c.id, description ?? c.body, title);
+            ctx.showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 }));
+          }
+        } : null,
+      };
+    }
     const chats = (
           <OverviewChats key={c.id} me={me} talk={talk} status={row.status} yourMove={yourMove(row)} entries={deskThread(c, log, seed.seats)} f={f}
             canAnswer={canAnswer} onSend={(text) => (canAnswer ? act.answer(c.id, text) : act.comment(c.id, text))}
