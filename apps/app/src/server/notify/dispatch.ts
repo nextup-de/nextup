@@ -24,6 +24,7 @@ import { prefsOf } from "@/lib/db/notify-prefs";
 import { teamsUserIds } from "@/lib/db/teams";
 import { TEAMS_SYSTEM, teamsApp } from "@/features/teams/config";
 import { companyBaseUrl } from "@/server/case-notice";
+import { LIFE_SOURCE } from "@/features/demo/life/plan";
 
 /** A run that dies without releasing loses its lease after this. */
 export const LEASE_MS = 5 * 60_000;
@@ -56,7 +57,7 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
   const rows = await db.caseEvent.findMany({
     where: { companyId: company.id },
     orderBy: { seq: "asc" },
-    select: { id: true, seq: true, day: true, ts: true, type: true, actor: true, actorUserId: true, targetId: true, payload: true },
+    select: { id: true, seq: true, day: true, ts: true, type: true, actor: true, actorUserId: true, targetId: true, payload: true, source: true },
   });
   const firstNew = rows.findIndex((r) => r.seq > cursor.seq);
   if (firstNew === -1) return { events: 0, rows: 0 };
@@ -100,10 +101,12 @@ async function planCompany(company: { id: string; slug: string; stage: string; d
   for (let i = firstNew; i < upto; i++) {
     const log = logFromRows(named.slice(0, i + 1), day);
     const ev: CaseEvent = log.events[i];
+    // Musterwerk's simulated day (server/scheduler/life.ts) stays inside the app: the in-app copy only, no mail, no Teams.
+    const inAppOnly = rows[i].source === LIFE_SOURCE;
     try {
       const planCtx: PlanCtx = { ...ctx, state: reduce(seed, log) };
       // The in-app copy never leaves: written as sent, now (INB/D5).
-      for (const d of planNotices(ev, planCtx)) drafts.push({ ...d, companyId: company.id, ...(d.status === "sent" ? { sentAt: now } : {}) });
+      for (const d of planNotices(ev, planCtx)) if (!inAppOnly || d.channel === "inapp") drafts.push({ ...d, companyId: company.id, ...(d.status === "sent" ? { sentAt: now } : {}) });
     } catch (e) {
       // One event that cannot be planned must not hold back the company's other notices.
       failure = `${ev.type} ${ev.id}: ${e instanceof Error ? e.message : String(e)}`;

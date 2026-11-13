@@ -9,6 +9,7 @@
 import type { CaseEventType, EventPayload } from "../../../src/features/cases/events";
 import { isWorkday, berlinDate, workdayOf } from "../../../src/features/clock/calendar";
 import type { CalendarSpec } from "../../../src/features/clock";
+import { ideasFor } from "../../../src/features/demo/life/catalog";
 import type { HolderRow, Knowledge } from "../../../src/features/knowledge";
 import type { UserRow } from "./people";
 import type { Rng } from "./rng";
@@ -101,7 +102,11 @@ export function musterwerkHistory(rng: Rng, ctx: HistoryCtx, weeks: number, now:
     const owner = seatUser(ownerH);
     const dep = seatUser(depH);
     const raiser = r.pick(raisers);
-    const [title, body] = r.pick(TITLES[rule.key] ?? [["Anliegen", "Bitte prüfen."] as [string, string]]);
+    // A case that becomes a project is an improvement idea from the catalogue the live company draws from (features/demo/life),
+    // with that idea's measure and steps; the others are the everyday problems below.
+    const becomesProject = fate === "project" || fate === "started" || fate === "done" || fate === "measured";
+    const idea = becomesProject ? r.pick(ideasFor(rule.key)) : null;
+    const [title, body] = idea ? [idea.title, idea.body] : r.pick(TITLES[rule.key] ?? [["Anliegen", "Bitte prüfen."] as [string, string]]);
     const id = `${ctx.slug}-c${i}`;
     const projectId = `${ctx.slug}-pr${i}`;
     const list: Step[] = [];
@@ -109,22 +114,24 @@ export function musterwerkHistory(rng: Rng, ctx: HistoryCtx, weeks: number, now:
 
     add(0, raiser, "case.raised", {
       title, body, routeId: rule.key, assignee: owner.name, assigneeRoleHolderId: ownerH.id, fromDept: raiser.dept,
-      kind: r.chance(0.8) ? "problem" : "idea", reason: "keywords",
+      kind: idea ? "idea" : r.chance(0.8) ? "problem" : "idea", reason: "keywords", ...(idea ? { upside: idea.upside } : {}),
       proposal: { routeId: rule.key, confidence: r.int(60, 95), source: "keywords", version: "musterwerk" },
     });
 
+    const pj = idea?.project;
+    const baseline = pj ? Math.round((pj.base[0] + r.next() * (pj.base[1] - pj.base[0])) * 10) / 10 : 0;
     const project = (decideOff: number) => {
-      add(decideOff, owner, "case.decided", { answer: "yes", reason: "Passt zu unseren Zielen", projectId, lead: owner.name, leadUserId: owner.id, title });
-      add(decideOff, owner, "project.baseline", { metric: "Stillstand pro Woche", unit: "min", value: r.int(180, 300), better: "down", source: "manual" }, projectId);
+      add(decideOff, owner, "case.decided", { answer: "yes", note: "Gute Idee, das machen wir.", projectId, lead: owner.name, leadUserId: owner.id, title });
+      add(decideOff, owner, "project.baseline", { metric: pj!.metric, unit: pj!.unit, value: baseline, better: pj!.better, source: "manual" }, projectId);
     };
     const started = () => {
       add(3, owner, "project.started", {}, projectId);
-      add(3, owner, "project.step.added", { stepId: `${projectId}-s1`, text: "Ursache eingrenzen", owner: owner.name, ownerUserId: owner.id }, projectId);
+      pj!.steps.forEach((text, k) => add(3, owner, "project.step.added", { stepId: `${projectId}-s${k + 1}`, text, owner: owner.name, ownerUserId: owner.id }, projectId));
       add(3, owner, "project.step.moved", { stepId: `${projectId}-s1`, to: "doing" }, projectId);
     };
     const done = () => {
-      add(5, owner, "project.step.moved", { stepId: `${projectId}-s1`, to: "done" }, projectId);
-      add(5, owner, "project.done", { note: "Umgesetzt" }, projectId);
+      for (let k = 1; k <= pj!.steps.length; k++) add(5, owner, "project.step.moved", { stepId: `${projectId}-s${k}`, to: "done" }, projectId);
+      add(5, owner, "project.done", { note: "Alle Schritte umgesetzt." }, projectId);
     };
 
     switch (fate) {
@@ -173,7 +180,7 @@ export function musterwerkHistory(rng: Rng, ctx: HistoryCtx, weeks: number, now:
         project(1);
         started();
         done();
-        add(6, owner, "project.measured", { check: 30, value: r.int(90, 160), source: "manual", note: "Gemessen laut Wartungsprotokoll" }, projectId);
+        add(6, owner, "project.measured", { check: 30, value: Math.round(baseline * (pj!.better === "down" ? 1 - pj!.gain : 1 + pj!.gain) * 10) / 10, source: "manual", note: "Gemessen wie die Ausgangslage." }, projectId);
         break;
     }
     list.forEach((step, k) => steps.push({ step, raise, seq: seq++, caseNo: i, k }));
