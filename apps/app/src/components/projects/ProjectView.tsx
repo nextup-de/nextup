@@ -7,6 +7,7 @@
 // act.project.* event, shown only when the rules would let it through.
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { Banner, PageHeader, PersonFace, Tabs as TabBar } from "@/components/ui/elements";
@@ -34,6 +35,8 @@ import { FilesPanel, OriginPanel } from "./ProjectOrigin";
 import { BaselinePanel, MeasurePanel, RewardPanel } from "./ProjectMeasure";
 import { ActivityPanel, TeamPanel, ToolsPanel } from "./ProjectTeam";
 import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } from "./parts";
+import { CustomPageView } from "./CustomPageView";
+import { ideaPagesId, useProjectPages } from "./projectPagesPreview";
 import { DoneSheet } from "./result/DoneSheet";
 import { RaiserPanel } from "./result/RaiserPanel";
 import { StopChoice } from "./result/StopChoice";
@@ -79,6 +82,12 @@ function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusV
   // The lead's own move (a manager may act as lead too, but it is not on their desk), or a reward a manager records.
   const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);
   const escalatedToMe = holdsRole(ctx.me, p.escalated?.toRoleId ?? null);
+  // A page the team added (?page=, from the sidebar) takes the place of the tabs' content.
+  const pageId = useSearchParams().get("page");
+  const pagesFrom = p.sources[0] ? ideaPagesId(p.sources[0]) : null; // a project starts with the pages its idea had
+  const [pages] = useProjectPages(ctx.tenant.slug, p.id, pagesFrom);
+  const custom = pageId ? pages.pages.find((x) => x.id === pageId) : undefined;
+  const shown: ProjectTab | null = custom ? null : tab;
   // A raiser who is not on the team sees how it is going and nothing else (plan RES, D21).
   const view = resultView(p, S, idViewerOf(ctx), S.day, locale);
   if (view.panel) {
@@ -96,7 +105,8 @@ function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusV
         <Header p={p} jira={row} />
         <Tabs p={p} tab={tab} agent={agent.view !== null} />
       </div>
-      {tab === "overview" && (
+      {custom && <CustomPageView storeId={p.id} from={pagesFrom} page={custom} editor={r.addStep} />}
+      {shown === "overview" && (
         <div className={styles.tabLayout}>
           <div className={styles.tabCards}>
             {(mine || escalatedToMe) && move && (
@@ -119,30 +129,30 @@ function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusV
           </aside>
         </div>
       )}
-      {tab === "board" && <ProjectBoard p={p} hints={stepHints} jira={row} />}
-      {tab === "team" && (
+      {shown === "board" && <ProjectBoard p={p} hints={stepHints} jira={row} />}
+      {shown === "team" && (
         <div className={styles.tabNarrow}>
           <div className={styles.tabRail}><TeamPanel p={p} /></div>
         </div>
       )}
-      {tab === "results" && (
+      {shown === "results" && (
         <div className={styles.tabCards}>
           <BaselinePanel p={p} hint={planning ? baseHint : null} />
           {(p.doneDay !== null || p.measures.length > 0) && <MeasurePanel p={p} />}
           <RewardPanel p={p} />
         </div>
       )}
-      {tab === "activity" && (
+      {shown === "activity" && (
         <div className={styles.tabCards}>
           <ActivityPanel p={p} />
         </div>
       )}
-      {tab === "agent" && agent.view && (
+      {shown === "agent" && agent.view && (
         <div className={styles.tabCards}>
           <AgentTab p={p} view={agent.view} failed={agent.failed} />
         </div>
       )}
-      {tab === "files" && (
+      {shown === "files" && (
         <div className={styles.tabLayout}>
           <div className={styles.tabCards}>
             <OriginPanel p={p} />

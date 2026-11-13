@@ -1,0 +1,29 @@
+/* The Projects area with its sidebar. The frame fills the shell below its bar edge to edge (the shell's
+   content box is centred and padded, the same way the raise page breaks out of it). */
+.root {
+  position: relative; display: flex; align-items: stretch; min-width: 0;
+  width: var(--nh-screen-w); min-height: calc(var(--nh-screen-h) - var(--nh-bar-h));
+  margin: -20px 0 -40px calc((min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x)) - var(--nh-screen-w)) / 2);
+}
+.side {
+  flex: none; width: 256px; overflow: hidden; z-index: 6;
+  position: sticky; top: var(--nh-bar-h); height: calc(var(--nh-screen-h) - var(--nh-bar-h));
+  transition: width 420ms cubic-bezier(.2,.8,.2,1);
+}
+.root[data-psb="hidden"] .side { width: 0; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; padding: 20px 32px 40px; }
+.show { align-self: flex-start; width: 32px; height: 32px; margin: -8px 0 -6px -16px; padding: 0; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.show:hover { background: var(--nh-fill-2); color: var(--nh-ink); }
+.tabs { margin: -20px -32px 0; }
+
+/* With the sidebar open, the area's strip of tabs steps aside: the sidebar has them. */
+@media (min-width: 761px) {
+  .root[data-psb="open"] .tabs { display: none; }
+}
+/* Phones keep the strips of tabs and the page gets the whole width. */
+@media (max-width: 760px) {
+  .side, .show { display: none; }
+  .main { padding: 16px var(--nh-page-x) 32px; }
+  .tabs { margin: -16px calc(-1 * var(--nh-page-x)) 0; }
+}
+@media (prefers-reduced-motion: reduce) { .side { transition: none; } }

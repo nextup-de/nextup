@@ -1,0 +1,119 @@
+/* The Projects sidebar (Paper page "Projects page", C1-C6). The same parts as the ideas sidebar
+   (ideas/Raise.module.css): 256px on the grey app ground, 34px rows, a fixed 16px mark slot so every
+   title starts in one lane, the grey highlight for the current row. */
+
+.sb {
+  width: 256px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0;
+  background: var(--nh-app-ground); border-right: 1px solid var(--nh-line);
+  font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--nh-ink); -webkit-font-smoothing: antialiased;
+}
+.sb * { scrollbar-width: none; }
+.sb button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+.sb button:focus { outline: none; }
+.sb :is(a, button, input):focus-visible { outline: 2px solid var(--nh-brand-line); outline-offset: -2px; }
+
+.top { flex: none; display: flex; align-items: center; gap: 6px; padding: 12px 10px 8px; }
+.search { flex: 1; min-width: 0; box-sizing: border-box; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-xs, 6px); color: var(--nh-mute); }
+.search svg { flex-shrink: 0; }
+.searchInput { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; font-size: var(--nh-fs-sm); color: var(--nh-ink); }
+.searchInput::placeholder { color: var(--nh-mute); }
+.iconBtn { width: 32px; height: 32px; flex: none; padding: 0; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 160ms ease; }
+.iconBtn:hover { background: var(--nh-fill-2); color: var(--nh-ink); }
+
+.area { flex: none; display: flex; flex-direction: column; gap: 1px; padding: 0 10px 8px; }
+.lower { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 10px; border-top: 1px solid var(--nh-line); padding: 8px 0 12px; }
+.layer { display: flex; flex-direction: column; gap: 1px; animation: sbIn 260ms cubic-bezier(.2,.8,.2,1) backwards; }
+@keyframes sbIn { from { opacity: 0; transform: translateX(6px); } }
+
+/* One row: mark slot, title, then the trailing bits (count, late dot, chevron, ···). */
+.row {
+  display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 8px; box-sizing: border-box; width: 100%;
+  border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink); text-decoration: none; text-align: left;
+  font-size: var(--nh-fs-sm); line-height: 18px; cursor: pointer; transition: background 160ms ease;
+}
+.row:hover { background: var(--nh-fill); }
+.row[aria-current="page"] { background: var(--nh-fill-2); font-weight: 600; }
+.row[aria-current="page"] .slot { color: var(--nh-ink); }
+.row[data-quiet] { color: var(--nh-mute); }
+.row[data-quiet] .slot { color: var(--nh-mute); }
+.slot { position: relative; flex: none; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; color: var(--nh-ink-2); }
+.label { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.count { flex: none; font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); font-weight: 400; }
+.count[data-tone="brand"] { color: var(--nh-brand); font-weight: 600; }
+
+.group { font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); padding: 4px 8px 6px; }
+.empty { font-size: var(--nh-fs-sm); color: var(--nh-mute); padding: 6px 8px; }
+
+/* Layer 1: the ring says the status, an orange dot says late, a › on hover says it opens a layer deeper. */
+.ring[data-ring="planning"] { color: var(--nh-mute-2); }
+.ring[data-ring="running"], .ring[data-ring="measuring"] { color: var(--nh-brand); }
+.ring[data-ring="measured"] { color: var(--nh-ok); }
+.ring[data-ring="stopped"] { color: var(--nh-mute-2); }
+.late { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--nh-problem); }
+.late[data-tone="move"] { background: var(--nh-brand); }
+.block { display: flex; flex-direction: column; gap: 1px; padding-bottom: 10px; }
+.block:last-child { padding-bottom: 0; }
+/* An idea's stage: three dashes, filled up to where it stands. */
+.stage rect { fill: var(--nh-fill-3); }
+.stage rect[data-on] { fill: var(--nh-ink-2); }
+.chev { flex: none; width: 14px; display: none; color: var(--nh-ink-2); }
+.row[data-project]:hover .chev { display: flex; }
+.row[data-project][aria-current="page"] { font-weight: 400; }
+
+/* Layer 2: back, the project's head, its pages. */
+.back { composes: row; color: var(--nh-mute); min-height: 30px; }
+.back .slot { color: var(--nh-mute); }
+.head { display: flex; align-items: flex-start; gap: 10px; padding: 8px 8px 12px; }
+.headSlot { flex: none; width: 16px; height: 20px; display: flex; align-items: center; justify-content: center; }
+.headText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.headTitle { font-size: var(--nh-fs-md); line-height: 20px; font-weight: 600; color: var(--nh-ink); overflow-wrap: anywhere; }
+.headMeta { display: flex; align-items: center; gap: 6px; font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-ink-2); }
+.dotSep { width: 3px; height: 3px; border-radius: 50%; background: var(--nh-mute-2); }
+.noteText[data-tone="late"] { color: var(--nh-problem); }
+.noteText[data-tone="move"] { color: var(--nh-brand); }
+
+.pages { display: flex; flex-direction: column; gap: 1px; }
+.pageRow { position: relative; display: flex; align-items: center; border-radius: var(--radius-xs, 6px); }
+.pageRow > .row { flex: 1; min-width: 0; }
+.pageRow[draggable="true"] { cursor: grab; }
+.pageRow[data-dragging] { opacity: .35; }
+/* The blue line where the dragged page will land. */
+.pageRow[data-drop]::after { content: ""; position: absolute; left: 0; right: 0; height: 2px; border-radius: 2px; background: var(--nh-brand); pointer-events: none; }
+.pageRow[data-drop="before"]::after { top: -1.5px; }
+.pageRow[data-drop="after"]::after { bottom: -1.5px; }
+/* On hover a page's icon turns into the grip (team members only: the grip is only rendered for them). */
+.icon, .grip { display: flex; align-items: center; justify-content: center; }
+.grip { position: absolute; inset: 0; display: none; color: var(--nh-ink-2); }
+.pageRow:hover .grip { display: flex; }
+.pageRow:hover .slot:has(.grip) .icon { visibility: hidden; }
+.more { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; padding: 0; border: none; border-radius: 5px; background: transparent; color: var(--nh-ink-2); display: none; align-items: center; justify-content: center; cursor: pointer; }
+.pageRow:hover .more, .more[data-open] { display: flex; }
+.more:hover, .more[data-open] { background: var(--nh-fill-3); }
+.pageRow:hover > .row .count { visibility: hidden; }
+.rename { flex: 1; min-width: 0; height: 26px; box-sizing: border-box; padding: 0 6px; margin-left: -6px; border: 1px solid var(--nh-brand-line); border-radius: 5px; background: var(--nh-card); font: inherit; font-size: var(--nh-fs-sm); color: var(--nh-ink); outline: none; }
+.row[data-editing] { background: var(--nh-fill-2); cursor: default; }
+
+/* The menus: fixed next to the row that opened them, over the page. */
+.scrim { position: fixed; inset: 0; z-index: 60; border: none; padding: 0; background: transparent; cursor: default; }
+.menu {
+  position: fixed; left: var(--mx); top: var(--my); z-index: 61; width: 220px; box-sizing: border-box; display: flex; flex-direction: column; gap: 1px; padding: 6px;
+  background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: 10px; box-shadow: 0 8px 24px rgb(20 20 20 / 10%), 0 1px 3px rgb(20 20 20 / 6%);
+  animation: sbIn 180ms cubic-bezier(.2,.8,.2,1) backwards;
+}
+.menu[data-kind="add"] { width: 280px; }
+.menuHead { padding: 8px 10px 6px; font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); }
+.kind, .item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink); text-align: left; cursor: pointer; }
+.kind:hover, .item:hover { background: var(--nh-fill); }
+.kind .slot { color: var(--nh-ink-2); }
+.kindText { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.kindName { font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 600; }
+.kindSub { font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-ink-2); }
+.item { min-height: 32px; padding: 0 10px; font-size: var(--nh-fs-sm); }
+.item[data-danger] { color: var(--nh-danger); }
+.item[data-danger] .slot { color: var(--nh-danger); }
+.sep { height: 1px; background: var(--nh-line-soft); margin: 4px 0; }
+.icons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 2px 6px 6px; }
+.iconPick { height: 32px; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.iconPick:hover { background: var(--nh-fill); color: var(--nh-ink); }
+
+@media (prefers-reduced-motion: reduce) { .sb *, .menu { animation: none !important; transition: none !important; } }

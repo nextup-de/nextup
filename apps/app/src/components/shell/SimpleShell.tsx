@@ -5,7 +5,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { adminMenuLinks, sectionTabAt, visibleSimpleNav } from "@/config/nav";
+import { adminMenuLinks, sectionTabAt, visibleSimpleNav, type ProjectsTabKey } from "@/config/nav";
+import { ProjectsFrame } from "@/components/projects/ProjectsFrame";
+import { caseIdAt, projectIdAt } from "@/features/projects/sidebar";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxTotal, mineRows } from "@/components/dashboard/derive";
@@ -26,6 +28,11 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const who = persona.who;
   // On a page of a section with several pages, the strip of its tabs hangs under the bar.
   const area = sectionTabAt(pathname.slice(tenant.prefix.length), { role, serverMode: ctx.serverMode, flag: ctx.flag });
+  // The Projects area (its tabs and every project's page) sits next to the projects sidebar, which then carries the tabs.
+  const projectId = ctx.flag("projects") ? projectIdAt(pathname.slice(tenant.prefix.length)) : null;
+  const caseId = ctx.flag("projects") ? caseIdAt(pathname.slice(tenant.prefix.length)) : null; // an idea opens next to the sidebar too
+  const projectsArea = area?.section === "projects" ? (area.tab as ProjectsTabKey) : null;
+  const inProjects = projectsArea !== null || projectId !== null || caseId !== null;
   // The blue thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -129,10 +136,10 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </header>
-      {area && <SectionTabs section={area.section} active={area.tab} />}
+      {area && !inProjects && <SectionTabs section={area.section} active={area.tab} />}
 
       <main className={styles.content}>
-        <div className={styles.contentInner}>{children}</div>
+        <div className={styles.contentInner}>{inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId} caseId={caseId}>{children}</ProjectsFrame> : children}</div>
       </main>
 
       {pop && <div className={styles.backdrop} onClick={() => setPop(null)} />}

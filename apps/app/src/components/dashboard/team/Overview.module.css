@@ -584,3 +584,12 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
 .pagerInfo { font-size: var(--nh-fs-sm); color: var(--nh-mute); font-variant-numeric: tabular-nums; margin-right: 4px; }
 .pagerBtn { width: 32px; height: 32px; border-radius: 50%; border: 0; background: #fff; color: var(--nh-ink); font-size: var(--nh-fs-lg); line-height: 1; cursor: pointer; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1); }
 .pagerBtn:disabled { opacity: .35; cursor: default; }
+/* The projects sidebar's "Chats" page for an open idea: the chats take the room the idea had. */
+.root[data-view="chats"] .div72 { flex: 1 1 auto; max-width: 820px; margin: 0 auto; }
+/* Next to the projects sidebar (ProjectsFrame) the open case fills the room beside it, not the whole screen. */
+@media (min-width: 761px) {
+  :global([data-psb]) .root[data-open="true"] { width: auto; margin-left: -16px; margin-right: -16px; }
+  :global([data-psb]) .root[data-open="true"] .div20 { padding: 0 8px; }
+  /* The chats have their own page in the sidebar (Chats): the idea's overview is the idea alone. */
+  :global([data-psb="open"]) .root[data-view="idea"] .div72 { display: none; }
+}

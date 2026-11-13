@@ -449,7 +449,9 @@ test.describe("RES acceptance: a result that closes properly", () => {
       await expect(panel.getByTestId("raiser-results")).toContainText("Confirmed by a second person");
       await expect(page.getByRole("main")).toContainText("Recognised");
       for (const text of [STEP_DONE, STEP_DROP, DROP_WHY, BACK_WHY]) await expect(page.getByRole("main"), `"${text}" is not on the raiser's page`).not.toContainText(text);
-      await expect(page.getByRole("main").getByRole("button"), "no buttons on the raiser's page").toHaveCount(0);
+      // The projects sidebar and its "Show sidebar" control are navigation, not actions on this project: count the project's own buttons only.
+      const actions = page.getByRole("main").locator('button:not(aside[aria-label="Projects"] *):not([aria-label="Show sidebar"])').filter({ visible: true });
+      await expect(actions, "no buttons on the raiser's page").toHaveCount(0);
       await expect(page.getByRole("main").getByRole("textbox"), "no entry on the raiser's page").toHaveCount(0);
       await page.context().close();
 
