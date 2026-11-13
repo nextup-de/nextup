@@ -80,6 +80,9 @@
 .postingName { font-weight: 600; color: var(--nh-ink); }
 .postingSub { color: var(--nh-mute); }
 .postingHelp { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.stillOpen { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: var(--radius-md, 16px); background: var(--nh-card); }
+.stillOpenLabel { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink-2); }
+.stillOpenList { margin: 0; padding-left: 18px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .ai { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md, 16px); border: 1px dashed var(--nh-ghost); }
 .aiIcon { width: 32px; height: 32px; flex: none; border-radius: var(--radius-sm, 10px); background: var(--nh-line); display: flex; align-items: center; justify-content: center; }
 .aiText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }

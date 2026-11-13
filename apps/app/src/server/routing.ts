@@ -7,6 +7,7 @@ import { aiGate } from "@/features/ai/gate";
 import type { EventPayload, RouteProposal } from "@/features/cases/events";
 import type { CaseProposal } from "@/features/cases/events/case";
 import { seedFor } from "@/features/demo";
+import { routingTextHash } from "@/features/ideas/drafts";
 import { propose, ROUTER_VERSION } from "@/features/routing";
 import { loadAiSettings } from "@/lib/db/ai";
 import { loadAiBudget } from "@/lib/db/ai-usage";
@@ -60,10 +61,30 @@ function withLooksLike(proposal: RouteProposal, payload: EventPayload): CaseProp
 }
 
 /**
+ * The proposal the raiser saw (plan REM, R1): the raise page sends it as payload.proposal with `textHash`, the fingerprint of the text it was
+ * made for. It is reused only when that fingerprint is the one of the title and body being raised, so an edit since asks again, and only
+ * when it is a proposal this server could have made: a known route or none, a confidence of 0 to 100, one of the two sources. Null otherwise.
+ */
+async function shownProposal(slug: string, payload: EventPayload): Promise<RouteProposal | null> {
+  const sent: unknown = payload.proposal;
+  if (typeof sent !== "object" || sent === null) return null;
+  const { textHash, routeId, confidence, source, version } = sent as Record<string, unknown>;
+  if (typeof textHash !== "string" || textHash !== routingTextHash(payload.title ?? "", payload.body ?? "")) return null;
+  if (typeof confidence !== "number" || !Number.isFinite(confidence) || confidence < 0 || confidence > 100) return null;
+  if (source !== "keywords" && source !== "llm") return null;
+  if (typeof version !== "string" || version.length === 0 || version.length > 64) return null;
+  if (routeId !== null && typeof routeId !== "string") return null;
+  if (typeof routeId === "string" && !(await seedFor(slug)).routes.some((r) => r.id === routeId)) return null;
+  return { routeId, confidence, source, version };
+}
+
+/**
  * What is stored as payload.proposal of a case.raised. Never throws and never waits longer than
- * the timeout: any failure is the keyword proposal.
+ * the timeout: any failure is the keyword proposal. A proposal the raiser saw for this same text is kept as it was, without asking again.
  */
 export async function proposeOnRaise(slug: string, companyId: string, payload: EventPayload, opts: ProposeOptions = {}): Promise<CaseProposal> {
+  const shown = await shownProposal(slug, payload).catch(() => null);
+  if (shown) return withLooksLike(shown, payload);
   const ask = opts.ask ?? askBrain;
   const timeoutMs = opts.timeoutMs ?? raiseTimeout();
   let timer: ReturnType<typeof setTimeout> | undefined;
