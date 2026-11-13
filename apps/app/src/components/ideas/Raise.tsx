@@ -32,7 +32,7 @@ import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
 import type { ExportAnalysis, ExportIdea } from "@/features/ideas/export";
 import { splitBody } from "@/features/ideas/brief";
-import { ideaContext } from "@/features/ideas/drafts";
+import { ideaContext, routingTextHash, turnLimitReached, type ShownProposal } from "@/features/ideas/drafts";
 import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, SCRIPT_MOVES, scriptDials, scriptOverall, scriptRail, scriptStep } from "@/features/ideas/demo-script";
 import { useLocale, useT } from "@/i18n/client";
 import { formatDate } from "@/i18n/format";
@@ -42,6 +42,7 @@ import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, idea
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
 import { seatAboveRole } from "@/features/cases/sheets";
+import type { CaseProposal } from "@/features/cases/events/case";
 import { desksFor, otherDesks, type Desk } from "@/features/ideas/desks";
 import { answeringDesk } from "@/features/overload/answer";
 import { raiseTarget } from "@/features/ideas/raise-actions";
@@ -181,6 +182,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [prepping, setPrepping] = useState(false); // the second between "Publish" and the last look (PreviewLoading)
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
+  const shownRouting = useRef<{ proposal: CaseProposal; hash: string } | null>(null); // the proposal the desk window showed, and the text it was made for
   const caretRef = useRef<Caret | null>(null); // where a block from the mini bar lands
   const fillRef = useRef<(fixed?: boolean) => void>(() => {});
   const chatField = useRef<HTMLTextAreaElement>(null);
@@ -225,8 +227,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // own pace: the idea and the two answers the controls fill (FILLED_ANSWERS).
   const said = turns.filter((t) => t.role === "user").length;
   const scripted = story && scriptAt >= MIN_EXCHANGES;
+  // At the turn limit no further question can be asked: the rail counts as done, and the last look lists what is still open (plan REM, R1).
+  const atLimit = turnLimitReached(turns.length);
   const railDone = scriptAt >= 1 ? said >= MIN_EXCHANGES
-    : turns.some((t) => t.role === "assistant") && (openCount(gaps) === 0 || (reading !== null && said >= MIN_EXCHANGES));
+    : turns.some((t) => t.role === "assistant") && (openCount(gaps) === 0 || (reading !== null && said >= MIN_EXCHANGES) || atLimit);
+  const stillOpen = atLimit && !published ? gaps.filter((g) => g.status === "open" || g.status === "active").map((g) => g.label) : [];
   const canFinalize = turns.length > 0 && !busy && !sending && (railDone || published);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
@@ -457,9 +462,17 @@ function RaisePage({ script = false }: { script?: boolean }) {
   };
 
   // Who really answers a raise to this desk (plan OVL, D25): known where the page holds the company's reduced state (server mode); the demo keeps today's line.
+  // The page never waits on it: where working it out fails, the desk is offered as it is, without an answer.
+  const answerOf = (d: Desk) => {
+    if (!serverMode) return undefined;
+    try {
+      return answeringDesk(S, d.routeId, S.day, (roleId) => seatAboveRole(seed.seats ?? [], seed.roles ?? [], roleId)?.id ?? null);
+    } catch {
+      return undefined;
+    }
+  };
   const withAnswer = (d: Desk): Desk => {
-    if (!serverMode) return d;
-    const answer = answeringDesk(S, d.routeId, S.day, (roleId) => seatAboveRole(seed.seats ?? [], seed.roles ?? [], roleId)?.id ?? null);
+    const answer = answerOf(d);
     return answer ? { ...d, answer: { why: answer.why, names: answer.names } } : d;
   };
 
@@ -468,11 +481,14 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const askDesk = async () => {
     if (!draft || busy || published || pubStep) return;
     setMenu(null); setSent(null);
+    shownRouting.current = null;
     const text = await step(setPubStep, t("ideas.pageStepReading"), "working", () => (mine ? mine.title + "\n\n" + bodyOf(mine) : idea.text), 450);
     const brain = await step(setPubStep, t("ideas.pageStepRouter"), "searching", () => (script ? null : brainProposalAction({ slug: tenant.slug, title: idea.title, body: idea.body }).catch(() => null)), 650);
     await step(setPubStep, t("ideas.pageStepOrg"), "connecting", () => null, 500);
     const plan = await step(setPubStep, t("ideas.pageStepRanking"), "weaving", () => {
       const proposal = evaluate({ kind: "idea", text, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, brain).payload.proposal;
+      // The routing the author is about to see, with the fingerprint of the title and body it was made for: the raise sends both (plan REM, R1).
+      if (mine && !script) shownRouting.current = { proposal, hash: routingTextHash(mine.title.trim(), bodyOf(mine)) };
       const desks = desksFor({ text, routes: seed.routes, seats: seed.seats, proposal, myDept: who.line.split(",")[0].trim(), affected, spendLimitEur: seed.spend?.limitEur ?? null }, locale);
       return { desks: desks.map(withAnswer), aiOff: proposal.source === "keywords" };
     }, 450);
@@ -499,8 +515,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
     // The demo script's case carries its main points instead of the raw conversation.
     const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     const body = mine ? bodyOf(mine) : made.body;
+    // The routing the author saw goes with the raise, with the fingerprint of its text: the server keeps it when the text is the same, else it asks again (plan REM, R1).
+    const shown = shownRouting.current;
+    const proposal: ShownProposal | CaseProposal | undefined = shown && shown.hash === routingTextHash(title, body) ? { ...shown.proposal, textHash: shown.hash } : e.payload.proposal;
     // The raise publishes the draft with it, or neither (Q1.11): refused, the draft stays open and the toast says why.
-    const raised = await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raiseDraft({ ...e.payload, ...(choosesPosting({ role, name: who.name, handle: who.handle ?? null }) ? { asName: postsByName } : {}), title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId, ...(follows ? { follows: follows.id } : {}) }, caseId, draft.id), 600);
+    const raised = await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raiseDraft({ ...e.payload, proposal, ...(choosesPosting({ role, name: who.name, handle: who.handle ?? null }) ? { asName: postsByName } : {}), title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId, ...(follows ? { follows: follows.id } : {}) }, caseId, draft.id), 600);
     if (!raised.ok) { setBusy(false); setPubWork(null); setPubStep(null); return; }
     // Everything the raise page worked out goes with the case: the document, the dials, every file (not only the images).
     saveRaised(tenant.slug, caseId, briefOfDoc({ ...finalDoc, receiver: to.title }, {
@@ -515,7 +534,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       if (!kept) showToast(t("ideas.pageToastShotsFull"));
     }
     setBusy(false); setPubWork(null);
-    setSent({ role: to.title, names: to.answer?.names ?? to.holders, deputies: to.deputies, date: dueLabel(), why: to.answer?.why, nobody: serverMode && to.answer === null }); // the window stays, now saying who owes an answer by when
+    setSent({ role: to.title, names: to.answer?.names ?? to.holders, deputies: to.deputies, date: dueLabel(), why: to.answer?.why, nobody: to.answer === null && answerOf(to) === null }); // the window stays, now saying who owes an answer by when; `nobody`: it is known that nobody can answer, not that working it out failed
     go("chat"); // published: back to the conversation, where the case is offered
     void studio.open(draft.id);
   };
@@ -846,7 +865,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       )}
       {prepping && <PreviewLoading />}
       {looking && shownLook && draft && !published && (
-        <PublishPreview look={shownLook} onLook={setLook}
+        <PublishPreview look={shownLook} onLook={setLook} stillOpen={stillOpen}
           affected={affected} depts={seed.depts.map((d) => d.name)} onAffected={setAffected}
           files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile}
           aiLine={t("ideas.pageAiLine", { n: sources.length })}

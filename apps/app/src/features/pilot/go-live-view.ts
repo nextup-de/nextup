@@ -122,7 +122,7 @@ const CHECK_NAME: Record<GoLiveCheck["key"], MessageKey> = {
   ai: "settingsGoLive.checkAi", backups: "settingsGoLive.checkBackups", support: "settingsGoLive.checkSupport",
   notifications: "settingsGoLive.checkNotifications", directory: "settingsGoLive.checkDirectory",
   recipients: "settingsGoLive.checkRecipients", baseline: "settingsGoLive.checkBaseline",
-  agreements: "settingsGoLive.checkAgreements",
+  agreements: "settingsGoLive.checkAgreements", restore: "settingsGoLive.checkRestore", findings: "settingsGoLive.checkFindings", breakGlass: "settingsGoLive.checkBreakGlass",
 };
 export const checkName = (c: GoLiveCheck): MessageKey => CHECK_NAME[c.key];
 

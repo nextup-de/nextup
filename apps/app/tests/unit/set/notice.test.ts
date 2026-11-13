@@ -166,9 +166,9 @@ describe("SET notices", () => {
     const lapsed = mails(lapse, [draftYes()], draft({ invites: [{ ...inv, state: "lapsed" }] }));
     expect(lapsed.map((m) => [m.to, m.subject])).toEqual([["lb@acme.test", "Invitation lapsed: P-1 Changeover cart"]]);
     expect(lapsed[0].text).toContain("H. Sander did not answer the invitation as member in time");
-    // An acceptance tells nobody.
+    // An acceptance tells the lead nothing; the raiser hears who joined (plan REM, Q5.14).
     const yesAnswer = P("project.invite.answered", "H. Sander", { inviteId: "inv1", userId: "u_hs", take: true }, 3);
-    expect(mails(yesAnswer, [draftYes()], draft({ invites: [{ ...inv, state: "accepted" }] }))).toEqual([]);
+    expect(mails(yesAnswer, [draftYes()], draft({ invites: [{ ...inv, state: "accepted" }] })).map((m) => m.to)).toEqual(["js@acme.test"]);
   });
 
   it("the kickoff tells team, sponsor and followers the goal and first steps, and the raiser today's started mail", () => {

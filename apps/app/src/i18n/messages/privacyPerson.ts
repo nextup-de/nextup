@@ -44,6 +44,11 @@ export const privacyPerson = defineMessages({
     pseudonymiseCancel: "Cancel",
     pseudonymiseSubmit: "Pseudonymise",
     pseudonymised: "{name} is now {label}.",
+    replyTitle: "Reply for {name}",
+    replyHint: "Send this to the person. It says what stays.",
+    replyText: "Hello {name},\n\nYour personal data in NextUp has been pseudonymised. Where NextUp showed your name it now shows a pseudonym, and your email, department and sign-in data are removed.\n\nWhat stays: the events of cases, projects and decisions you took part in stay in the log, pseudonymised, without your name. Copies outside NextUp are not changed: mails already sent, Jira issues, Teams messages and earlier exports. Free text that others wrote about you stays as written. Backups keep the old data until they age out, about 6 months; a restore repeats the erasure.",
+    replyCopy: "Copy the text",
+    replyCopied: "Copied",
   },
   de: {
     pseudonym: "Ehemaliges Mitglied #{n}",
@@ -87,5 +92,10 @@ export const privacyPerson = defineMessages({
     pseudonymiseCancel: "Abbrechen",
     pseudonymiseSubmit: "Pseudonymisieren",
     pseudonymised: "{name} ist jetzt {label}.",
+    replyTitle: "Antwort für {name}",
+    replyHint: "Senden Sie diesen Text an die Person. Er sagt, was bleibt.",
+    replyText: "Guten Tag {name},\n\nIhre personenbezogenen Daten in NextUp pseudonymisiert. Wo NextUp Ihren Namen angezeigt hat, steht jetzt ein Pseudonym, und Ihre E-Mail, Abteilung und Anmeldedaten sind entfernt.\n\nWas bleibt: die Ereignisse von Fällen, Projekten und Entscheidungen, an denen Sie beteiligt waren, bleiben pseudonymisiert und ohne Ihren Namen im Protokoll. Kopien außerhalb von NextUp bleiben unverändert: bereits verschickte Mails, Jira-Vorgänge, Teams-Nachrichten und frühere Exporte. Freitext, den andere über Sie geschrieben haben, bleibt, wie er geschrieben wurde. Backups behalten die alten Daten, bis sie nach etwa 6 Monaten ablaufen; eine Wiederherstellung wiederholt die Löschung.",
+    replyCopy: "Text kopieren",
+    replyCopied: "Kopiert",
   },
 });

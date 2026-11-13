@@ -22,7 +22,7 @@ beforeAll(async () => {
   await db.company.deleteMany({});
   sandbox = await db.company.create({ data: { slug: "aip-sb", name: "SB", stage: "sandbox", seedJson: toSeedJson(SEED) as object } });
   await replaceKnowledge(sandbox.id, rowsFromSeed(SEED, DEMO_GOALS, () => randomUUID()));
-  await saveAiSettings(sandbox.id, { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null }, null, "t");
+  await saveAiSettings(sandbox.id, { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null, brainModel: "bm" }, null, "t");
 });
 
 afterAll(async () => {

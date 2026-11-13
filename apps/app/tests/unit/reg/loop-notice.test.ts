@@ -18,7 +18,7 @@ describe("REG loop notice split", () => {
   });
 
   it("every case.* type the old switch handled has a builder in CASE_NOTICES, and every project.* one in PROJECT_NOTICES", () => {
-    const caseTypes = ["case.discussion", "case.invited", "case.checkin", "case.asked", "case.answered", "case.unanswered", "case.withdrawn", "case.handed", "case.decided", "case.reopened", "case.appealed", "case.appeal.decided", "case.override"];
+    const caseTypes = ["case.discussion", "case.invited", "case.checkin", "case.asked", "case.answered", "case.unanswered", "case.withdrawn", "case.handed", "case.decided", "case.reopened", "case.appealed", "case.appeal.decided", "case.override", "case.revised"];
     const projectTypes = [
       "project.handed", "project.stopped", "project.lead.answered", "project.invited", "project.invite.answered", "project.start.moved", "project.member",
       "project.started", "project.done", "project.measured", "project.measure.confirmed", "project.rewarded",

@@ -6,8 +6,9 @@ A console admin (`isStackAdmin`) finds the console under "IT console" in their a
 people, not for NextUp staff. It exists only in a one-company stack (`TENANT_MODE=single` with
 `COMPANY_SLUG` set); with `TENANT_MODE=multi` every `/admin` path answers 404.
 
-The managers' business setup is a different place: `/<company>/settings` (company, rules, calendar,
-org, routing, members, goals, notifications, setup). The console holds what IT and privacy own.
+The managers' business setup is a different place: `/<company>/settings`, 19 sections (docs/SETTINGS.md): Go-live, Company, Rules, Approvals,
+Calendar, Org, Routing, Members, Import and export, Notifications, Sign-in, Support access, Microsoft Teams, Areas, Data and privacy, Audit log,
+Pilot report, and Webhooks and API tokens out of the menu. The console holds what IT and privacy own.
 
 ## The sections
 
@@ -15,12 +16,12 @@ The list is `CONSOLE_SECTIONS` in `apps/app/src/features/admin/nav.ts`, in this 
 
 1. **Overview** (`/admin`): who can get in, what is switched on, whether support access is open.
 2. **Setup** (`/admin/setup`): the setup phases, read-only, and the hand-over (below).
-3. **Access** (`/admin/people`): people, console admins, authenticator reset.
-4. **Connectors** (`/admin/connectors`): Jira Cloud and Data Center, Microsoft 365, the AI provider, directory status. Connectors exist only here.
+3. **Access** (`/admin/people`): people, console admins, authenticator reset, and the company's Microsoft tenant id (Settings → Sign-in only shows it).
+4. **Connectors** (`/admin/connectors`): Jira Cloud and Data Center, Microsoft 365, the AI provider, directory status. These connectors are set only here. Microsoft Teams and the OIDC, SAML and SCIM cards are not: they live in the company's Settings (Microsoft Teams, Sign-in).
 5. **Assistant and data protection** (`/admin/assistant`): what the assistant may read.
 6. **Company data** (`/admin/company-data`): what is stored, and exports.
 7. **Routing review** (`/admin/decisions`): the log of routing decisions.
-8. **Support access** (`/admin/support`): open or revoke a code for NextUp support; the last 20 sign-ins (time only).
+8. **Support access** (`/admin/support`): open or revoke a code for NextUp support, valid 24 hours; the last 20 sign-ins (time only). A company admin can also grant access in Settings (below).
 
 ### The AI provider on Connectors
 
@@ -81,10 +82,14 @@ person.
 
 ## Support access
 
-A console admin who came in via Microsoft or as stack admin opens support access on `/admin/support`.
-It makes one code of 12 characters (`A-H J-N P-Z 2-9`), shown once and stored only as an scrypt hash,
-valid 24 hours or until revoked, at most one open per company. NextUp support enters it in the
-"Support code" field on `/admin/login`.
+There are two places to grant NextUp's team access, and they differ in how long it lasts.
+
+- **The console** (`/admin/support`). A console admin who came in via Microsoft or as stack admin opens it. It makes one code of 12
+  characters (`A-H J-N P-Z 2-9`), shown once and stored only as an scrypt hash, valid 24 hours (`SUPPORT_GRANT_HOURS`) or until revoked, at
+  most one open per company. NextUp support enters it in the "Support code" field on `/admin/login`.
+- **Settings** (`/<company>/settings/support-access`). A company admin chooses 1, 4, 24 or 72 hours (4 is shown first) and may extend the open grant,
+  never past 72 hours from now. The page also shows the grant's log and the break-glass window (`features/admin/support-code.ts`,
+  `lib/db/support-grants.ts`).
 
 The session is read-only: every console write returns `support-read-only`, and the console shows the
 banner "NextUp support until <time>". Each sign-in logs `[admin] support <ISO time>` without personal

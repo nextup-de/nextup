@@ -216,9 +216,9 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await manager.goto(`/${SLUG}/setup/open`);
     await expect(vis(manager, "setup-open-check-agreements")).toHaveAttribute("data-state", "done");
 
-    // Open repeats the hand list, then opens. The held invitation goes out with a code that works.
+    // Open asks once more, then opens. The held invitation goes out with a code that works.
     await vis(manager, "setup-open-button").click();
-    await expect(manager.getByTestId("setup-open-dialog")).toContainText("Restore test");
+    await expect(manager.getByTestId("setup-open-dialog")).toContainText("Every needed check is done");
     await manager.getByRole("button", { name: "Yes, open NextUp" }).click();
     await expect(vis(manager, "setup-open-opened")).toBeVisible({ timeout: 30_000 });
     await expect(vis(manager, "setup-open-sent")).toContainText("1 invitation sent");

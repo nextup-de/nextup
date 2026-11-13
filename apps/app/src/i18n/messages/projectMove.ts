@@ -79,6 +79,7 @@ export const projectMove = defineMessages({
     updateLabel: "The update",
     updateSend: "Send the update",
     updateLatest: "Last update, sent {date}:",
+    updateAiDrafted: "Drafted with AI",
     // The mails of the project events (D23) and the reminders of the clock's facts, built in features/loop/notice/project.ts and features/notify/areas/project.ts.
     handedOthersSubject: "{name} now leads {label}: {title}",
     handedOthersIntro: "{name} now leads {label}.",
@@ -182,6 +183,7 @@ export const projectMove = defineMessages({
     updateLabel: "Das Update",
     updateSend: "Update senden",
     updateLatest: "Letztes Update, gesendet am {date}:",
+    updateAiDrafted: "Mit KI entworfen",
     handedOthersSubject: "{name} leitet jetzt {label}: {title}",
     handedOthersIntro: "{name} leitet jetzt {label}.",
     handedWhy: "Warum: {why}",

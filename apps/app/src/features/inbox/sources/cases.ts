@@ -37,6 +37,17 @@ const oldestFirst = (a: ReducedCase, b: ReducedCase) => a.raisedDay - b.raisedDa
 const deskRoleOf = (c: ReducedCase, input: InboxInput): string | null =>
   c.assigneeRoleId !== null && input.me.roleIds.includes(c.assigneeRoleId) ? c.assigneeRoleId : c.escalated?.toRoleId ?? null;
 
+/** What the last pass says (plan REM, I1), for a pass by a person: the title of the role of the seat the case was passed from, else the seat's label, and the passer's reason. Each only when there is one. */
+function passOf(c: ReducedCase, state: InboxInput["state"]): { fromRole?: string; why?: string } {
+  const pass = c.handed.at(-1);
+  // The clock's hand-overs (deadline, away, overflow) are no person's pass and their reason is a code, not words: nothing to say about them.
+  if (!pass || pass.fromUserId === null) return {};
+  const seat = state.seats.find((s) => s.id === pass.fromSeatId);
+  const role = seat ? state.approvals.roles.find((r) => r.id === seat.roleId)?.title || seat.label : "";
+  const why = pass.why.trim();
+  return { ...(role ? { fromRole: role } : {}), ...(why ? { why } : {}) };
+}
+
 export function caseItems(input: InboxSourceInput): InboxItem[] {
   const { state, me } = input;
   const out: InboxItem[] = [];
@@ -44,7 +55,7 @@ export function caseItems(input: InboxSourceInput): InboxItem[] {
 
   for (const c of deskOf(state, me).sort(oldestFirst)) {
     const cause = causeOf(c, input);
-    out.push({ id: `case:${c.id}`, ask: "decide", kind: "case", caseId: c.id, title: c.title, href: `/inbox?id=${encodeURIComponent(c.id)}`, dueDay: c.dueDay, late: false, dueSoon: false, pinned: false, deskRoleId: deskRoleOf(c, input), ...(cause ? { cause } : {}) });
+    out.push({ id: `case:${c.id}`, ask: "decide", kind: "case", caseId: c.id, title: c.title, href: `/inbox?id=${encodeURIComponent(c.id)}`, dueDay: c.dueDay, late: false, dueSoon: false, pinned: false, deskRoleId: deskRoleOf(c, input), ...(cause ? { cause } : {}), ...(cause === "passed" ? passOf(c, state) : {}) });
   }
 
   // A second look waits for the holders of its desk roles (D18). A manager is asked only when nobody else can answer it; they

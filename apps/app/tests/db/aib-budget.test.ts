@@ -118,7 +118,7 @@ describe("a raise when the budget is used up", () => {
   const payload = { title: "The scanner at gate 3 does not read", body: "It fails on every second pallet.", kind: "problem" as const };
 
   it("the brain is asked below the cap and in the grace to 120 %, not past it; the keyword proposal answers instead", async () => {
-    await saveAiSettings(b.id, { choice: "bedrock", region: "eu-central-1", model: HAIKU, endpoint: null, deployment: null }, null, "t");
+    await saveAiSettings(b.id, { choice: "bedrock", region: "eu-central-1", model: HAIKU, endpoint: null, deployment: null, brainModel: HAIKU }, null, "t");
     // b spent 150 this month (the Sonnet call above) against the default of 50: raise it first.
     await db.companyConfig.upsert({ where: { companyId: b.id }, create: { companyId: b.id, aiRouting: true, aiMonthlyCapEur: 1000 }, update: { aiRouting: true, aiMonthlyCapEur: 1000 } });
     await call(b.id, HAIKU, 1, 1, new Date());

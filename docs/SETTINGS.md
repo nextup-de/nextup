@@ -12,17 +12,30 @@ no settings; they sign in with their code (or Microsoft) as before.
 
 ## Sections
 
-In this order. Setup is not a section: it has its own pages, and while the company is closed the menu shows a pill that leads there.
+Settings has 19 sections: 17 in the menu and two out of it. They are `SETTINGS_SECTIONS` in `apps/app/src/features/settings/sections.ts`, in this
+order. Setup is not a section: it has its own pages, and while the company is closed the menu shows a pill that leads there.
 
 | Section | Path | What it does |
 |---|---|---|
+| Go-live | `settings/go-live` | The stage, the go-live checks and the Agreements card (below). |
 | Company | `settings/company` | Name, mark, vision, mission, principles, business model, compliance rules. |
-| Rules | `settings/rules` | Spend text, reward, measure days, who a member's idea is preselected as on the last look (handle or name; CompanyRule `posting`), and the company goals (title, KPI, target, period, keywords, unit). |
+| Rules | `settings/rules` | Spend text, reward, measure days, the day counts of the loop (`no_reason_min`, `appeal_days`, `question_days`, the answer promise), who a member's idea is preselected as on the last look (handle or name; CompanyRule `posting`), the fallback desk role, and the company goals (title, KPI, target, period, keywords, unit). |
+| Approvals | `settings/approvals` | The review role and its days, the approval rules and the councils (docs/process/GAT.md). |
 | Calendar | `settings/calendar` | Region, workdays, extra holidays and extra workdays (one calendar per company). |
 | Org | `settings/org` | Units, roles under a unit, seats under a role, and linking a seat to a member. |
-| Routing | `settings/routing` | Request types with keywords, owner / deputy / buddy role, wait, and order. |
+| Routing | `settings/routing` | Request types with keywords, owner / deputy / buddy role, wait, and order; the triage role and a review column per route. |
 | Members | `settings/members` | Add or invite people, new login codes, roles, seats, deactivate or delete, reset a manager's second factor. |
+| Import and export | `settings/import-export` | Bring the structure in from spreadsheets, or take it out. |
 | Notifications | `settings/notifications` | The company's switch, opt-out counts, failed outbox rows with Retry. |
+| Sign-in | `settings/sign-in` | How people sign in and how their accounts arrive: the Microsoft tenant id (shown here, set in the console on `/admin/people`), the OIDC and SAML cards, SCIM, and where the audit log goes. |
+| Support access | `settings/support-access` | The grant NextUp's team needs: a company admin opens it for 1, 4, 24 or 72 hours (4 is shown first) and may extend it, never past 72 hours from now; its log and the server's break-glass window. |
+| Microsoft Teams | `settings/teams` | The Teams switch (needs the stack's bot registration and the tenant id), the app package, a test card and the last card delivered. |
+| Areas | `settings/areas` | Areas and QR codes for raising from the shop floor. |
+| Data and privacy | `settings/privacy` | How long NextUp keeps what, and the company export (a person's export starts on Members). |
+| Audit log | `settings/audit` | Every change made to the company's setup; entries cannot be edited and are kept for 24 months. |
+| Pilot report | `settings/pilot-report` | The weekly pilot report. |
+| Webhooks | `settings/webhooks` | Out of the menu since the 6 Nov decision (CSV import stays); still at this path. |
+| API tokens | `settings/api-tokens` | Out of the menu like Webhooks; still at this path. |
 
 Test ids are `settings-<section>-<thing>`; the setup steps are `setup-step-<key>`.
 

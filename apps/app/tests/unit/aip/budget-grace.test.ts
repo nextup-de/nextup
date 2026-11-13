@@ -8,7 +8,7 @@ import type { AiSettings } from "@/features/ai/settings";
 import { gateOf, NO_PREF } from "@/features/notify/gate";
 import { adminUrl } from "@/features/tenant/urls";
 
-const bedrock: AiSettings = { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null };
+const bedrock: AiSettings = { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null, brainModel: "bm" };
 const real = { stage: "pilot", hasDatabase: true, settings: bedrock, dpaSignedAt: new Date("2026-10-01"), assistantOn: true, aiRouting: true };
 const PURPOSES: AiPurpose[] = ["assist", "routing", "coach", "brain"];
 const euros = (pct: number): AiBudget => ({ capEur: 100, spentEur: pct, unpriced: [], tokensUnpriced: 0, tokenCap: 20_000_000 });
