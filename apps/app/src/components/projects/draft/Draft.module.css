@@ -60,3 +60,8 @@
   .short { width: 100%; }
   .inline > .input, .inline > select { flex: 1 1 100%; }
 }
+
+/* Next to the projects sidebar (ProjectsFrame) the sidebar is the way back; phones keep the link. */
+@media (min-width: 761px) {
+  :global([data-psb]) .back { display: none; }
+}

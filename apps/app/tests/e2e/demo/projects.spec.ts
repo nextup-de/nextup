@@ -49,8 +49,17 @@ const head = (page: Page) => page.getByRole("main");
 
 /** Open one of the project page's tabs (the head stays on every tab). */
 async function tab(page: Page, name: "Overview" | "Board" | "Team" | "Results" | "Activity" | "Files and tools") {
-  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: new RegExp("^" + name) }).click();
-  await expect(page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: new RegExp("^" + name) })).toHaveAttribute("aria-current", "page");
+  // The sidebar's pages on a laptop; the strip of tabs on a phone.
+  const nav = page.locator('nav[aria-label="Pages"]:visible, nav[aria-label="Project sections"]:visible');
+  await nav.getByRole("link", { name: new RegExp("^" + name) }).click();
+  await expect(nav.getByRole("link", { name: new RegExp("^" + name) })).toHaveAttribute("aria-current", "page");
+}
+
+/** The details behind the (i) next to the title: status, origin, team and the tools in use. */
+async function about(page: Page) {
+  const info = page.locator('summary[aria-label="About this project"]');
+  if (!(await page.getByRole("dialog", { name: "About this project" }).isVisible())) await info.click();
+  return page.getByRole("dialog", { name: "About this project" });
 }
 
 /** Open a card's sheet - where its moves, owner, due day and details are. */
@@ -364,8 +373,8 @@ test("the project page shows the idea it came from and its connected tools", asy
   await expect(tools.getByRole("link", { name: "FS-9" })).toBeVisible();
   await expect(tools).toContainText("Microsoft Teams");
   await expect(tools).toContainText("SharePoint");
-  // The tools in use also sit under the title, so they show without scrolling.
-  await expect(page.getByLabel("Tools in use").getByRole("link", { name: /Jira FS-9/ })).toBeVisible();
+  // The tools in use also sit behind the (i) next to the title.
+  await expect((await about(page)).getByLabel("Tools in use").getByRole("link", { name: /Jira FS-9/ })).toBeVisible();
 });
 
 test("the lead sends a project to Jira, links an issue and stops the sync - all simulated, no network", async ({ page }) => {
@@ -385,7 +394,8 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
   await test.step("Send to Jira shows the epic and the issue keys, with the sync chip", async () => {
     await tools.getByRole("button", { name: "Send to Jira" }).click();
     await expect(tools.getByRole("status")).toContainText(/Synced · NUP-1 · checked (just now|1 min ago)/);
-    await expect(page.getByLabel("Tools in use")).toContainText("Sync");
+    await expect((await about(page)).getByLabel("Tools in use")).toContainText("Sync");
+    await page.keyboard.press("Escape");
     await expect(tools.getByRole("button", { name: "Send to Jira" })).toHaveCount(0);
     await tab(page, "Board");
     await expect(page.getByRole("article", { name: FIRST })).toContainText("NUP-2");

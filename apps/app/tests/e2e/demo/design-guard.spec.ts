@@ -20,7 +20,11 @@ const PAGES: Record<Persona, string[]> = {
   Manager: [...EVERYONE, "decisions", "dashboard"],
 };
 
+// On a laptop the projects sidebar is the navigation; the strip of tabs is a phone's.
+const PHONE = { width: 390, height: 844 };
+
 test("a tab strip has no vertical scrollbar", async ({ page }) => {
+  await page.setViewportSize(PHONE);
   await page.goto("/acme/projects");
   const strip = page.getByTestId("projects-tabs").getByRole("navigation");
   await expect(strip).toBeVisible();
@@ -31,10 +35,11 @@ test("a tab strip has no vertical scrollbar", async ({ page }) => {
 test("changing one token changes the blue of the nav, the tabs and a button", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "the nav thumb is measured on desktop");
   await page.goto("/acme/projects");
-  await expect(page.getByTestId("projects-tabs")).toBeVisible();
   await page.addStyleTag({ content: `:root { --nh-brand: ${SWAP}; }` });
   const thumb = await page.locator("[class*=navThumb]").first().evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(thumb).toBe(SWAP);
+  await page.setViewportSize(PHONE);
+  await expect(page.getByTestId("projects-tabs")).toBeVisible();
   const underline = await page.getByTestId("projects-tabs").locator('[aria-current="page"]').evaluate((el) => getComputedStyle(el).borderBottomColor);
   expect(underline).toBe(SWAP);
   // A filled selected control, when the page has one (the ideas column's Open | Archive tabs became a menu).

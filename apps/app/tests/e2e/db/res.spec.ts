@@ -452,7 +452,8 @@ test.describe("RES acceptance: a result that closes properly", () => {
       // The projects sidebar and its "Show sidebar" control are navigation, not actions on this project: count the project's own buttons only.
       const actions = page.getByRole("main").locator('button:not(aside[aria-label="Projects"] *):not([aria-label="Show sidebar"])').filter({ visible: true });
       await expect(actions, "no buttons on the raiser's page").toHaveCount(0);
-      await expect(page.getByRole("main").getByRole("textbox"), "no entry on the raiser's page").toHaveCount(0);
+      const entries = page.getByRole("main").locator('input:not(aside[aria-label="Projects"] *), textarea:not(aside[aria-label="Projects"] *)').filter({ visible: true }); // the sidebar's search is navigation
+      await expect(entries, "no entry on the raiser's page").toHaveCount(0);
       await page.context().close();
 
       // Q1's current default: this is a presentation only. The browser's log still carries the project's events - the board, the numbers,

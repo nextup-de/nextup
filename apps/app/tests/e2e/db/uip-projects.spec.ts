@@ -64,12 +64,12 @@ test.afterAll(async () => {
 test("UIP project area", async ({ page }) => {
   await signIn(page, company, MANAGER.name);
   const base = `/${SLUG}/projects/${PROJECT}`;
-  await sweepPages(page, [`/${SLUG}/projects`], { marker: "projects-tabs", title: false }); // the tab names the page
+  await sweepPages(page, [`/${SLUG}/projects`], { marker: "projects-area", title: false }); // the sidebar names the page
   await sweepPages(page, TABS.map((tab) => `${base}?tab=${tab}`), { marker: "page-header" });
 
-  await test.step("the tabs are the Overview, Board, Team, Results, Activity, Files and, for a manager, Agent (AGT D15)", async () => {
+  await test.step("the pages are the Overview, Board, Team, Results, Activity, Files and, for a manager, Agent (AGT D15)", async () => {
     await page.goto(base);
-    const tabs = page.getByRole("navigation", { name: "Project sections" });
+    const tabs = page.getByRole("navigation", { name: "Pages" }); // the sidebar carries the project's pages
     await expect(tabs.getByRole("link")).toHaveCount(TABS.length);
     await expect(tabs.getByRole("link", { name: "Agent", exact: true })).toHaveCount(1); // the lead, the sponsor and managers see it (D15)
     for (const name of ["Overview", "Board", "Team", "Results"]) {

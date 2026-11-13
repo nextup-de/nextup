@@ -5,7 +5,7 @@
 // Board: the work, full width. Team, Results (baseline, measure checks, reward), Activity, and Files
 // and tools (the connected tools, the files, the idea it grew from). Every button is one
 // act.project.* event, shown only when the rules would let it through.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
@@ -181,9 +181,40 @@ function Tabs({ p, tab, agent }: { p: ReducedProject; tab: ProjectTab; agent: bo
   return <TabBar items={items} current={tab} label={t("projects.tabsLabel")} />;
 }
 
+/** The head says what the project is and the one thing to do: the title, an (i) that opens the details on
+ *  request (status, due date, where it came from, who leads it, the tools), the states that need a move, and
+ *  the actions. On a laptop or monitor the sidebar is the way back; a phone keeps the back link. */
 function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
+  const { href } = useDemo();
+  const t = useT();
+  return (
+    <div className={styles.hero}>
+      <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
+      <PageHeader title={p.title} action={<ProjectInfo p={p} jira={jira} />} />
+      {/* A project that keeps moving (plan MOV): the done-by date, a pause, and No lead when the lead left. */}
+      <DoneByLine p={p} />
+      <PausePanel p={p} />
+      <NoLeadBanner p={p} />
+      <Actions p={p} />
+    </div>
+  );
+}
+
+/** The details behind the (i): asked for, not on the page. Closes on Escape and on a click outside. */
+function ProjectInfo({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const { S, href, f } = useDemo();
   const t = useT();
+  const box = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const close = (e: Event) => {
+      const d = box.current;
+      if (!d?.open) return;
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !d.contains(e.target as Node)) d.open = false;
+    };
+    document.addEventListener("keydown", close);
+    document.addEventListener("pointerdown", close);
+    return () => { document.removeEventListener("keydown", close); document.removeEventListener("pointerdown", close); };
+  }, []);
   const sourceOf = (id: string) => {
     const c = S.cases.find((x) => x.id === id);
     if (c) return { title: c.title, to: href("/cases/" + id) };
@@ -191,39 +222,39 @@ function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
     return i ? { title: i.title, to: href("/ideas?id=" + id) } : { title: id, to: null };
   };
   const team = [p.lead, ...p.members];
-
   return (
-    <div className={styles.hero}>
-      <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
-      <div className={styles.heroTop}>
-        <span className={styles.status}><span className={styles.code}>{projectLabel(p)}</span> · {t(("projects.status_" + p.status) as "projects.status_planning")}</span>
-        <span className={styles.chips}><VerdictChip verdict={p.verdict} /><DueBadge p={p} /></span>
-      </div>
-      <PageHeader
-        title={p.title}
-        action={
-          <div className={styles.faces} aria-label={p.members.length ? t("projects.facesLabelTeam", { lead: p.lead, team: p.members.join(", ") }) : t("projects.facesLabel", { lead: p.lead })}>
+    <details ref={box} className={styles.info}>
+      <summary className={styles.infoBtn} aria-label={t("projects.about")} title={t("projects.about")}>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><circle cx="9" cy="9" r="7.3" /><path d="M9 8v4.6" strokeLinecap="round" /><circle cx="9" cy="5.6" r=".5" fill="currentColor" /></svg>
+      </summary>
+      <div className={styles.infoPop} role="dialog" aria-label={t("projects.about")}>
+        <dl className={styles.infoList}>
+          <dt>{t("projects.aboutStatus")}</dt>
+          <dd className={styles.infoStatus}>
+            <span><span className={styles.code}>{projectLabel(p)}</span> · {t(("projects.status_" + p.status) as "projects.status_planning")}</span>
+            <VerdictChip verdict={p.verdict} /><DueBadge p={p} />
+          </dd>
+          <dt>{t("projects.heroFrom")}</dt>
+          <dd>
+            {p.sources.map((id, k) => {
+              const src = sourceOf(id);
+              return <span key={id}>{k > 0 && ", "}{src.to ? <Link href={src.to} className={styles.link}>{src.title}</Link> : src.title}</span>;
+            })}
+          </dd>
+          {/* As they posted: a handle stays a handle. */}
+          <dt>{t("projects.aboutRaised")}</dt>
+          <dd>{p.authors.join(", ")}</dd>
+          <dt>{t("projects.aboutOpened")}</dt>
+          <dd>{t("projects.aboutOpenedOn", { day: f(p.openedDay), name: p.openedBy })}</dd>
+          <dt>{t("projects.tab_team")}</dt>
+          <dd className={styles.infoTeam}>
             <span className={styles.faceStack}>{team.slice(0, 5).map((n) => <PersonFace key={n} name={n} size="sm" />)}</span>
-            <span className={styles.faceText}><span className={styles.strong}>{p.lead}</span> {t("projects.leadsSuffix")}{p.members.length ? " · " + t("projects.onTheTeam", { count: p.members.length + 1 }) : ""}</span>
-          </div>
-        }
-      />
-      <p className={styles.heroMeta}>
-        {t("projects.heroFrom")}{" "}
-        {p.sources.map((id, k) => {
-          const s = sourceOf(id);
-          return <span key={id}>{k > 0 && ", "}{s.to ? <Link href={s.to} className={styles.link}>{s.title}</Link> : s.title}</span>;
-        })}
-        {/* As they posted: a handle stays a handle. */}
-        <span className={styles.muted}> · {t("projects.heroRaised", { authors: p.authors.join(", "), day: f(p.openedDay), name: p.openedBy })}</span>
-      </p>
-      <ToolChips p={p} jira={jira} />
-      {/* A project that keeps moving (plan MOV): the done-by date, a pause, and No lead when the lead left. */}
-      <DoneByLine p={p} />
-      <PausePanel p={p} />
-      <NoLeadBanner p={p} />
-      <Actions p={p} />
-    </div>
+            <span>{t("projects.facesLabel", { lead: p.lead })}{p.members.length ? " · " + t("projects.onTheTeam", { count: p.members.length + 1 }) : ""}</span>
+          </dd>
+        </dl>
+        <ToolChips p={p} jira={jira} />
+      </div>
+    </details>
   );
 }
 
@@ -291,10 +322,10 @@ function Actions({ p }: { p: ReducedProject }) {
     <div className={styles.actions}>
       {showStart && (
         <span className={styles.actionRow}>
-          <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!p.baseline} onClick={() => send("project.started", {}, () => act.project.start(p.id))}>
+          {/* Without a baseline the button waits; the move above the stepper says what to do, the tooltip says why. */}
+          <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!p.baseline} title={p.baseline ? undefined : t("projects.permStartNeedsBaseline")} onClick={() => send("project.started", {}, () => act.project.start(p.id))}>
             {t("projects.move_start")}
           </button>
-          {!p.baseline && <span className={styles.hint}>{t("projects.permStartNeedsBaseline")}</span>}
         </span>
       )}
       {view.done && <DoneSheet p={p} done={view.done} />}
