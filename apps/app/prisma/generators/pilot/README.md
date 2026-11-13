@@ -17,7 +17,7 @@ npx tsx prisma/generators/pilot/run.ts report --slug acme-pilot --now 2026-11-09
 {
   "slug": "acme-pilot",
   "name": "Acme GmbH",
-  "admin": { "name": "Erika Muster", "email": "erika.muster@acme.example" },
+  "admin": { "name": "Erika Muster", "email": "erika.muster@acme.example", "stackAdmin": true },
   "calendar": "de-by",
   "promiseDays": 5,
   "flags": { "discussion": true },
@@ -27,6 +27,7 @@ npx tsx prisma/generators/pilot/run.ts report --slug acme-pilot --now 2026-11-09
 }
 ```
 
+- `admin.stackAdmin`: only `true` is a value. It makes the first admin the stack admin as well, the one person who signs in to the console of a one-company stack (`isStackAdmin`, written with an audit row). There is exactly one: a company that already has another active stack admin is refused (exit 2, nothing written). Left out, the admin is only the company admin, as before.
 - `calendar`: `"de"`, `"de-by"` or `{ "workdays": [1,2,3,4,5], "holidays": ["2026-12-24"] }`.
 - `structureDir`: a folder with `units.csv`, `roles.csv`, `members.csv`, `routes.csv`, relative to the config file.
 - `directory`: runs the directory sync once, only when that source is configured in the console or the environment.
