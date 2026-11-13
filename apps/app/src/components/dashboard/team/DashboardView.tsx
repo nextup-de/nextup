@@ -395,8 +395,11 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             const st = shownStatus(r);
             const badgeTone = st === "move" ? "move" : st === "replied" ? "replied" : undefined;
             const days = running(r) ? r.openDays : r.clock;
+            // Past the promise, the cell says only how far past it is: the days open would repeat the same clock.
+            const whenMain = late ? (os.date ? t("overview.pastPromise", { count: os.pastPromise }) : t("team.dashPastPromise"))
+              : os.date ? t("overview.workdays", { count: days }) : t("team.dashDaysShort", { n: days });
             const whenSub = !running(r) ? t("team.dashAnswered")
-              : late ? (os.date ? t("overview.pastPromise", { count: os.pastPromise }) : t("team.dashPastPromise"))
+              : late ? null
               : r.paused ? t("team.dashClockPaused")
               : os.date ? t("overview.sinceDate", { date: formatDate(ctx.locale, new Date(os.date + "T12:00:00Z"), "dayMonth") })
               : t("team.dashDaysLeft", { n: P - r.clock });
@@ -425,8 +428,8 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
                   <div className={s.div16}><span className={s.dept}>{r.mine ? null : r.from + " · "}{r.fromDept ? <DeptChip name={r.fromDept} /> : null}</span></div>
                 </div>
                 <div className={s.div17} role="cell" data-tone={late ? "late" : !running(r) ? "done" : undefined}>
-                  <span className={s.wait}>{os.date ? t("overview.workdays", { count: days }) : t("team.dashDaysShort", { n: days })}</span>
-                  <span className={s.waitSub}>{whenSub}</span>
+                  <span className={s.wait}>{whenMain}</span>
+                  {whenSub && <span className={s.waitSub}>{whenSub}</span>}
                 </div>
                 <div className={s.div18} role="cell">
                   <span className={s.stage}>{stepLabel(t, r.step)}</span>
