@@ -265,6 +265,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       expect((await eventsOf("project.lead.answered", projectA))[0]).toMatchObject({ actorUserId: id.lead, payload: { take: true } });
 
       await test.step("picks the Quick win template", async () => {
+        await setupStep(page, "Template");
         const quick = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Quick win" }) });
         await quick.getByRole("button", { name: "Use this template" }).click();
         await expect(quick.getByText("In use")).toBeVisible();
@@ -273,6 +274,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       });
 
       await test.step("invites Max as a member", async () => {
+        await setupStep(page, "Team");
         const invite = page.getByRole("form", { name: "Invite" });
         await invite.getByLabel("Person").selectOption(id.member);
         await invite.getByLabel("Role").selectOption("member");

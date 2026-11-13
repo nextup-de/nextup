@@ -1,8 +1,8 @@
 "use client";
 // A project draft as a page (plan SET, D9 to D17): what a yes opened, before it starts. Design: Paper "Project draft ·
 // setup"; set up as a process (Kevin, 13 Nov 2026): the status lines on top (lead, template, team, goal, baseline, start)
-// and under them one step at a time. It opens on the first open step, a saved step moves on to the next open one, and
-// Back and Next walk the steps when one needs a second look or can wait. Every control is one act.project.* event,
+// and under them one step at a time. It opens on the first open step; Next moves on (the main button once the step is
+// done), Back goes back when one needs a second look, and a line shows its step. Every control is one act.project.* event,
 // shown only when the server's rules would let it through (features/projects/draft).
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
@@ -64,14 +64,15 @@ export function DraftView({ p }: { p: ReducedProject }) {
   const missing = NEEDED.filter(([k]) => view.checklist[k] !== "done");
   const optionalOpen = view.checklist.template !== "done" || view.checklist.team !== "done";
 
-  // The step shown: the first one still open (the start once all are done). One picked by hand (a line, Back, Next)
-  // holds until a save changes which step is the first open one; a link to an invitation (#invite-…) opens the team.
+  // The step shown: it opens on the first one still open (the start once all are done), or on the team for a link to an
+  // invitation (#invite-…). A save keeps the step on screen, so what was saved shows; Next (then the main button) moves on.
   const firstOpen: SetupStep = STEPS.find((k) => k !== "start" && view.checklist[k] !== "done") ?? "start";
-  const [look, setLook] = useState<{ at: SetupStep; from: SetupStep } | null>(null);
+  const [opened] = useState<SetupStep>(firstOpen);
+  const [picked, setPicked] = useState<SetupStep | null>(null);
   const invited = useSyncExternalStore(onHash, () => window.location.hash.startsWith("#invite-"), () => false);
-  const step: SetupStep = look && look.from === firstOpen ? look.at : invited ? "team" : firstOpen;
+  const step: SetupStep = picked ?? (invited ? "team" : opened);
   const at = STEPS.indexOf(step);
-  const pick = (k: SetupStep) => setLook({ at: k, from: firstOpen });
+  const pick = (k: SetupStep) => setPicked(k);
   const stepDone = step !== "start" && view.checklist[step] === "done";
 
   return (

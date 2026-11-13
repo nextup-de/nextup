@@ -96,8 +96,16 @@ export async function showSidebar(page: Page) {
  * on a phone the strip of tabs under the title.
  */
 export async function projectPages(page: Page): Promise<Locator> {
-  if ((page.viewportSize()?.width ?? 1280) > 760) await showSidebar(page);
-  return page.locator('nav[aria-label="Pages"]:visible, nav[aria-label="Project sections"]:visible');
+  const nav = page.locator('nav[aria-label="Pages"]:visible, nav[aria-label="Project sections"]:visible');
+  // Right after a load the Show button can be there before the page listens to it: click until the pages show.
+  await expect(async () => {
+    if ((await nav.count()) === 0) {
+      const show = page.getByRole("button", { name: "Show sidebar" });
+      if (await show.isVisible()) await show.click();
+    }
+    await expect(nav.first()).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  return nav;
 }
 
 /** A project draft's setup step ("Lead", "Template", "Team", "Goal", "Baseline", "Start"): the page shows one step at a time. */
