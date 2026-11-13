@@ -5,12 +5,14 @@ import { PUBLIC_CONTRACT_VERSION, type NotifyChannel, type NotifyMessage, type N
 import { meFor } from "@/features/auth/identity";
 import { NOTICE_ACTOR, noticeKey, noticeText } from "@/features/cases/notice";
 import { reduce, type State } from "@/features/cases/reducer";
-import { attachment, raisedCard, reminderCard, textCard, type Card, type CardInput } from "@/features/teams/cards";
+import type { EventPayload } from "@/features/cases/events";
+import { attachment, loopCard, loopCardKind, loopRights, NO_LOOP_RIGHTS, raisedCard, reminderCard, textCard, type Card, type CardInput, type LoopCardKind } from "@/features/teams/cards";
 import { teamsApp } from "@/features/teams/config";
 import { companySeed } from "@/lib/db/companies";
 import { getDb } from "@/lib/db/client";
 import { appendEventRow, loadLog } from "@/lib/db/events";
 import { conversationOf } from "@/lib/db/teams";
+import { companyBaseUrl } from "@/server/case-notice";
 import { retryableStatus, sendActivity } from "./connector";
 
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
@@ -23,8 +25,54 @@ async function stateOf(companyId: string): Promise<State | null> {
   return reduce(await companySeed(company), await loadLog(companyId));
 }
 
+/**
+ * A loop notice as a card (REM-T1): the case's or project's title, the reason from the event the notice is about, a link to it, and the buttons this receiver may
+ * use, asked of mayAppend against the state as it is now. Null when the notice's case, project or event cannot be found: the caller sends the text card.
+ */
+async function loopCardFor(message: NotifyMessage, kind: LoopCardKind): Promise<Card | null> {
+  const subjectId = str(message.data.subjectId) ?? str(message.data.caseId);
+  const eventId = str(message.data.eventId);
+  const userId = message.recipient.userId;
+  if (!subjectId || !eventId || !userId) return null;
+  const db = getDb();
+  const company = await db.company.findUnique({ where: { id: message.companyId }, select: { id: true, slug: true, seedJson: true, stage: true } });
+  const person = await db.user.findFirst({ where: { id: userId, companyId: message.companyId }, select: { role: true, name: true, handle: true } });
+  if (!company || !person) return null;
+  const log = await loadLog(message.companyId);
+  const state = reduce(await companySeed(company), log);
+  const ev = log.events.find((e) => e.id === eventId);
+  if (!ev) return null;
+  const pl: EventPayload = ev.payload;
+  const base = companyBaseUrl(company.slug);
+  const mine = meFor(userId, state.seats);
+
+  if (kind === "step") {
+    const project = state.projects.find((p) => p.id === subjectId);
+    const ask = project?.helpAsks.find((a) => a.id === eventId) ?? project?.helpAsks.findLast((a) => a.stepId === pl.stepId);
+    if (!project || !ask) return null;
+    const step = project.steps.find((s) => s.id === ask.stepId)?.text;
+    return loopCard({ loop: kind, title: project.title, reasonText: ask.text, step, link: `${base}/projects/${encodeURIComponent(project.id)}` }, NO_LOOP_RIGHTS, message.locale);
+  }
+
+  const kase = state.cases.find((c) => c.id === subjectId);
+  if (!kase) return null;
+  const who = { role: person.role as "manager" | "leader" | "member", userId, me: mine, name: person.name, handle: person.handle };
+  const reason = kind === "passed" ? pl.why : kind === "asked" ? pl.text : pl.answer === "no" ? pl.reason : pl.note;
+  return loopCard(
+    {
+      loop: kind, decision: pl.answer === "no" ? "no" : "yes", title: kase.title, reasonText: reason ?? undefined, link: `${base}/cases/${encodeURIComponent(kase.id)}`,
+      caseId: kase.id, cardId: message.id, kind: kase.kind, noReasonMin: state.rules.noReasonMin,
+      seats: state.seats.filter((s) => !mine.roleIds.includes(s.roleId)).map((s) => ({ id: s.id, label: s.label })),
+    },
+    kind === "decided" ? NO_LOOP_RIGHTS : loopRights(who, kase.id, state),
+    message.locale,
+  );
+}
+
 async function cardFor(message: NotifyMessage): Promise<Card> {
   const base: CardInput = { title: undefined, link: message.link ?? undefined, subject: message.subject, text: message.text };
+  const loop = loopCardKind(message.template);
+  if (loop) return (await loopCardFor(message, loop)) ?? textCard(base, message.locale);
   const caseId = str(message.data.caseId) ?? str(message.data.subjectId);
   const isRaised = message.template === "raised";
   const isDeadline = message.template === "reminder.deadline";
