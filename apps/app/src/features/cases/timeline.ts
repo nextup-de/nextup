@@ -29,6 +29,8 @@ export function timelineSentence(e: CaseEvent, t: T, facts: TimelineFacts): stri
   const reason = (text: string | undefined) => (text ? " " + t("dashboard.evReasonSuffix", { reason: text }) : "");
   const quote = (text: string | undefined) => (text ? t("dashboard.evNoteSuffix", { note: text }) : "");
   const why = (text: string | undefined) => (text ? " " + t("dashboard.evHandedWhy", { why: text }) : "");
+  // The lead is named when it is someone else than the one who said yes; by user id, never by label (IDN/D2).
+  const otherLead = p.lead && !(p.leadUserId && p.leadUserId === e.actorUserId) ? p.lead : null;
   switch (e.type) {
     case "case.raised": return t("dashboard.evRaised", { actor });
     case "case.read": return t("dashboard.evRead", { actor });
@@ -37,7 +39,7 @@ export function timelineSentence(e: CaseEvent, t: T, facts: TimelineFacts): stri
       const no = p.answer === "no" && isNewCategory(p.category) ? t(noCategoryLabel(p.category)) : null;
       const because = no ? (p.reason ? `${no}: ${p.reason}` : no) : p.reason;
       return t("dashboard.evDecided", { actor, answer: p.answer ?? t("common.yes").toLowerCase() }) + reason(because) + quote(p.note)
-        + (p.projectId ? " " + t("dashboard.evOpenedProject") + (p.lead && p.lead !== actor ? " " + t("dashboard.evLedBy", { lead: p.lead }) : "") : "");
+        + (p.projectId ? " " + t("dashboard.evOpenedProject") + (otherLead ? " " + t("dashboard.evLedBy", { lead: otherLead }) : "") : "");
     }
     case "case.discussion": return t("dashboard.evDiscussion", { actor }) + (p.invited?.length ? " " + t("dashboard.evWith", { names: p.invited.join(", ") }) : "") + (p.missing ? " " + t("dashboard.evMissing", { missing: p.missing }) : "");
     case "case.invited": return t("dashboard.evInvited", { actor, names: (p.invited ?? []).join(", ") });
@@ -72,7 +74,7 @@ export function timelineSentence(e: CaseEvent, t: T, facts: TimelineFacts): stri
       const head = p.supplement
         ? (approvers ? t("dashboard.evSupplement", { actor, approvers }) : t("dashboard.evSupplementNoNames", { actor }))
         : (approvers ? t("dashboard.evProvisional", { actor, approvers }) : t("dashboard.evProvisionalNoNames", { actor }));
-      return head + quote(p.note) + (!p.supplement && p.lead && p.lead !== actor ? " " + t("dashboard.evDraftLedBy", { lead: p.lead }) : "");
+      return head + quote(p.note) + (!p.supplement && otherLead ? " " + t("dashboard.evDraftLedBy", { lead: otherLead }) : "");
     }
     case "case.approval": {
       const answer = p.approvalAnswer ? t(ANSWER_KEY[p.approvalAnswer]) : "";
