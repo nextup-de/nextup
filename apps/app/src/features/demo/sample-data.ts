@@ -177,6 +177,8 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
   const desk = holdsDesk ? me : "M. Hoffmann";
   const ev = (type: SeedEvent["type"], n: number, actor: string, payload?: SeedEvent["payload"]): SeedEvent =>
     ({ type, day: day(n), actor, actorUserId: actor === me || actor === raiser ? uid : null, ...(payload ? { payload } : {}) });
+  // An event on the project a seeded yes opens: it rides on the case row, since that project has no row of its own.
+  const onProject = (projectId: string, e: SeedEvent): SeedEvent => ({ ...e, target: projectId });
 
   const seats: SeatRow[] = [
     { id: "sample-seat-plant", roleId: "sample-role-plant", label: BOSS, userId: null, sort: 900 },
@@ -201,9 +203,15 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
     { id: "sample-c1", title: "Seam-sealing robot 14 drips after every nozzle change", from: "Anonymous #3187", fromDept: "Paint shop, shift B",
       routeId: "sample-r1", assignee: desk, assigneeRoleHolderId: onSeat("desk"), raisedDay: day(-6), reason: "no time", upside: "≈ 40 min rework per shift",
       body: "After each nozzle change the robot leaves a run of sealer on the rear wheel arch for the next three bodies. We wipe it by hand before the oven, off-plan." },
-    { id: "sample-c2", title: "Wiring harness arrives out of sequence twice a week", from: "N. Demir", fromDept: "Logistics, hall 5",
-      routeId: "sample-r4", assignee: desk, assigneeRoleHolderId: onSeat("desk"), raisedDay: day(-3), reason: "wrong department", upside: "≈ 45 min line stop a week",
-      body: "The rack sequence and the build sequence drift apart when a body is pulled for rework. Station 31 finds out when the wrong harness is already in the car." },
+    // Raised to Logistics, passed on to the desk with a reason (plan NOR: the inbox says who passed it and why).
+    { id: "sample-c2", title: "Wiring harness arrives out of sequence twice a week", from: "J. Fischer", fromDept: "Logistics, hall 5",
+      routeId: "sample-r4", assignee: "N. Demir", assigneeRoleHolderId: onSeat("log"), raisedDay: day(-3), reason: "wrong department", upside: "≈ 45 min line stop a week",
+      body: "The rack sequence and the build sequence drift apart when a body is pulled for rework. Station 31 finds out when the wrong harness is already in the car.",
+      seedEvents: [
+        ev("case.read", -3, "N. Demir"),
+        { ...ev("case.handed", -2, "N. Demir", { to: desk, toRoleHolderId: onSeat("desk"), routeId: "sample-r1",
+          why: "Our racks leave in build order. The drift starts when final assembly pulls a body for rework at station 31." }), actorUserId: "sample-user-demir" },
+      ] },
     { id: "sample-c3", kind: "idea", title: "Scan battery-tray torque values instead of typing them", from: "L. Becker", fromDept: "Battery pack line",
       routeId: "sample-r3", assignee: desk, assigneeRoleHolderId: onSeat("desk"), raisedDay: day(-1), reason: "is it important", upside: "≈ 15 min per shift, no typing errors",
       body: "The torque tools already store each bolt's value, and we still type 24 numbers into the quality record per tray.\n\n" +
@@ -243,15 +251,64 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
       body: "A fourth gate before the customer audit would catch sealing and trim faults that pass the current checks.",
       seedEvents: [
         ev("case.read", -38, "K. Yilmaz"),
-        ev("case.decided", -36, "K. Yilmaz", { answer: "no", reason: "A gate finds the fault later, it does not stop it. We fix the sealing at the source instead." }),
+        ev("case.decided", -36, "K. Yilmaz", { answer: "no", category: "no-fit", reason: "A gate finds the fault later, it does not stop it. We fix the sealing at the source instead.",
+          changeIf: "If the sealing fix has not brought the audit findings down by the end of the quarter." }),
+        // The raiser asks for a second look (plan NOR, D18): it waits for whoever may answer it.
+        ev("case.appealed", -3, "T. Richter", { text: "The sealing fix moved the audit findings by 2 % in five weeks. Please look at the gate again." }),
       ] },
     { id: "sample-c9", kind: "idea", title: "Returnable trays for door-module deliveries", from: "J. Fischer", fromDept: "Logistics",
       routeId: "sample-r4", assignee: "N. Demir", assigneeRoleHolderId: onSeat("log"), raisedDay: day(-12), reason: "no time", upside: "≈ €95k a year in one-way packaging",
       body: "Door modules arrive in cardboard we pay to dispose of, and our Tier-1 already runs returnable trays for another plant.",
       seedEvents: [
         ev("case.read", -11, "N. Demir"),
-        ev("case.decided", -2, "N. Demir", { answer: "yes", note: "Yes. Agree the tray count with the supplier first.", projectId: "sample-pj2", lead: me, leadUserId: uid, title: "Returnable trays for door modules" }),
+        // A yes that opens a draft and asks the viewer to lead it (plan SET, D8 to D11).
+        ev("case.decided", -2, "N. Demir", { answer: "yes", note: "Yes. Agree the tray count with the supplier first.", projectId: "sample-pj2", lead: me, leadUserId: uid,
+          title: "Returnable trays for door modules", draft: true, raiserNote: "Your tray idea is a go. The lead sets it up with the supplier now." }),
       ] },
+
+    // Raised by the viewer and answered with a reasoned no: not now, what would change it, and the day it comes back (plan NOR).
+    { id: "sample-c10", kind: "idea", title: "A heated rest area at the goods-in dock", from: raiser, fromUserId: uid, fromDept: "Body & Assembly",
+      routeId: "sample-r4", assignee: "N. Demir", assigneeRoleHolderId: onSeat("log"), raisedDay: day(-30), reason: "no time", upside: "fewer sick days in winter",
+      body: "The drivers and the goods-in team take their breaks in an unheated container. In January it is 6 °C in there.",
+      seedEvents: [
+        ev("case.read", -29, "N. Demir"),
+        ev("case.decided", -26, "N. Demir", { answer: "no", category: "not-now", reason: "The dock is rebuilt next spring, and the rest area moves into the new building.",
+          changeIf: "If the rebuild slips past April, we heat the current room this winter.", revisitDay: day(18) }),
+      ] },
+    // Raised by the viewer while the same problem was already open: Logistics closed it into that case (plan SEE, D17).
+    { id: "sample-c11", title: "Harness racks out of order after a rework pull", from: raiser, fromUserId: uid, fromDept: "Body & Assembly",
+      routeId: "sample-r4", assignee: "N. Demir", assigneeRoleHolderId: onSeat("log"), raisedDay: day(-3), reason: "wrong department", upside: "line stops at station 31",
+      body: "Whenever a body leaves the line for rework, the next harness rack no longer matches the car in front of station 31.",
+      seedEvents: [ev("case.merged", -2, "N. Demir", { into: "sample-c2", note: "Same drift as the open case from J. Fischer: one answer for both." })] },
+    // A yes that waits for an approval: the cost is above Quality's limit, so final assembly's budget holder answers first (plan GAT, D21, D22).
+    { id: "sample-c12", kind: "idea", title: "Leak-test fixtures for the second pack line", from: "L. Becker", fromDept: "Battery pack line",
+      routeId: "sample-r3", assignee: "K. Yilmaz", assigneeRoleHolderId: onSeat("qua"), raisedDay: day(-7), reason: "no time", upside: "≈ 6 retests a day on line 2",
+      body: "Line 2 shares one leak-test fixture with line 1, so packs queue for it at every shift start. Two fixtures of its own end the queue.",
+      seedEvents: [
+        ev("case.read", -6, "K. Yilmaz"),
+        ev("case.costed", -5, "K. Yilmaz", { eur: 4800, basis: "Supplier quote for two fixtures; our maintenance fits them" }),
+        ev("case.provisional", -3, "K. Yilmaz", {
+          approvals: [{ kind: "budget", roleId: "sample-role-desk", coversUpToEur: 5000 }], stepDueDay: day(2), costEur: 4800, decidingRoleId: "sample-role-qua",
+          projectId: "sample-pj7", lead: "L. Becker", title: "Leak-test fixtures, line 2", note: "Yes from Quality, if final assembly's budget carries the €4,800.",
+        }),
+      ] },
+    // A draft someone else leads and is setting up: template, goal and baseline are in, and the viewer is invited onto the team (plan SET, D12 to D17).
+    { id: "sample-c13", kind: "idea", title: "A gauge check at the start of every paint-shop shift", from: "A. Schulz", fromDept: "Paint shop, shift B",
+      routeId: "sample-r3", assignee: "K. Yilmaz", assigneeRoleHolderId: onSeat("qua"), raisedDay: day(-15), reason: "is it important", upside: "film-thickness faults found an hour earlier",
+      body: "The film-thickness gauge drifts over a shift, and we only notice at the weekly audit. A two-minute check against the reference plate at shift start would catch it.",
+      seedEvents: [
+        ev("case.read", -14, "K. Yilmaz"),
+        ev("case.decided", -6, "K. Yilmaz", { answer: "yes", note: "Yes. T. Richter sets it up with the paint shop.", projectId: "sample-pj5", lead: "T. Richter", title: "Gauge check at every paint-shop shift start", draft: true }),
+        onProject("sample-pj5", ev("project.template", -5, "T. Richter", { key: "quick-win", version: 1 })),
+        onProject("sample-pj5", ev("project.goal", -5, "T. Richter", { goal: "Find a drifting film-thickness gauge within the shift it drifts.", doneWhen: "Every shift in the paint shop checks the gauge at start for four weeks.", doneBy: day(30) })),
+        onProject("sample-pj5", ev("project.baseline", -4, "T. Richter", { metric: "film-thickness faults found at the weekly audit", unit: "per week", value: 9, better: "down", source: "Paint-shop audit log, 8 weeks" })),
+        ...(uid ? [onProject("sample-pj5", ev("project.invited", -2, "T. Richter", { userId: uid, role: "member" }))] : []),
+      ] },
+    // Decided long ago; the project it became is the viewer's to lead (below).
+    { id: "sample-c14", kind: "idea", title: "Pick-to-light for the clip boxes at station 18", from: "L. Becker", fromDept: "Battery pack line",
+      routeId: "sample-r1", assignee: BOSS, assigneeRoleHolderId: onSeat("plant"), raisedDay: day(-40), reason: "no time", upside: "≈ 1 wrong clip a shift",
+      body: "Station 18 picks from fourteen look-alike clip boxes. A light over the right box would end the wrong picks.",
+      seedEvents: [ev("case.read", -38, BOSS), ev("case.decided", -30, BOSS, { answer: "yes", note: "Yes. Start with one station and count the wrong picks before and after." })] },
   ];
 
   const ideas: Idea[] = [
@@ -300,7 +357,14 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
         ev("project.step.moved", -8, "C. Vogt", { stepId: "s2", to: "done" }),
         ev("project.step.moved", -5, "A. Schulz", { stepId: "s3", to: "blocked", why: "Waiting for the machine-safety review slot" }),
         ev("project.linked", -40, "C. Vogt", { system: "jira", key: "BS-41", url: "https://jira.example.com/browse/BS-41" }),
+        // How the team works and what it reports each week (plan MOV, D16 to D19).
+        ev("project.howwework", -53, "A. Schulz", { checkInWeekday: 2, note: "Ten minutes at cell 12 after the morning start-up." }),
+        ev("project.update", -9, "A. Schulz", { week: day(-9), text: "Standby routine written and tested on the bench. Next: the safety review of the restart." }),
         ev("project.commented", -5, "A. Schulz", { text: "The routine works on the bench: back at cycle time in 40 seconds. Only the safety review is left before the trial." }),
+        // The blocked step asks the desk above for help, and the done-by date moves once, with its reason (plan RES, D19; MOV, D15).
+        ev("project.help.asked", -4, "A. Schulz", { stepId: "s3", text: "Can you get us a machine-safety review slot this month? The next free one is in five weeks." }),
+        ev("project.doneby.moved", -4, "A. Schulz", { doneBy: day(28), why: "The safety review slot moves the trial by two weeks." }),
+        ev("project.update", -4, "A. Schulz", { week: day(-4), text: "Blocked on the safety review slot. Asked for help to get one sooner; done-by moved two weeks." }),
       ] },
     // Measuring: the 30-day check came out better, the 90-day one is still to come.
     { id: "sample-pj3", title: "Digital shift handover, final assembly", sources: ["sample-i4"], authors: ["M. Hoffmann"], authorUserIds: [], routeId: "sample-r1",
@@ -309,10 +373,13 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
         ev("project.baseline", -108, "M. Hoffmann", { metric: "time to first full cycle after handover", unit: "min", value: 12, better: "down", source: "Line 2 start-of-shift timing, 20 shifts" }),
         ev("project.step.added", -108, "M. Hoffmann", { stepId: "s1", text: "Tablet form for open faults at two stations", owner: "C. Vogt" }),
         ev("project.step.added", -108, "M. Hoffmann", { stepId: "s2", text: "Run all three shifts on it for four weeks", owner: "M. Hoffmann" }),
+        ev("project.step.added", -107, "M. Hoffmann", { stepId: "s3", text: "Add station 3 of line 2", owner: "C. Vogt" }),
         ev("project.started", -105, "M. Hoffmann"),
         ev("project.step.moved", -80, "C. Vogt", { stepId: "s1", to: "done" }),
         ev("project.step.moved", -40, "M. Hoffmann", { stepId: "s2", to: "done" }),
-        ev("project.done", -34, "M. Hoffmann", { note: "Live on two stations of line 2" }),
+        // Done with one step dropped, and why (plan RES, D13).
+        ev("project.done", -34, "M. Hoffmann", { note: "Live on two stations of line 2",
+          openSteps: [{ stepId: "s3", end: "dropped", why: "Station 3 is rebuilt in spring and gets the tablet then." }] }),
         ev("project.measured", -4, "M. Hoffmann", { check: 30, value: 5, source: "Line 2 start-of-shift timing, 18 shifts" }),
       ] },
     // Finished, measured twice and recognised.
@@ -329,6 +396,44 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
         ev("project.measured", -120, "K. Yilmaz", { check: 30, value: 5, source: "Pack line rework log, 4 weeks" }),
         ev("project.measured", -60, "K. Yilmaz", { check: 90, value: 4, source: "Pack line rework log, 12 weeks" }),
         ev("project.rewarded", -55, BOSS, { rule: "thanks", note: "Thanked at the plant meeting" }),
+      ] },
+    // Running and led by the viewer: today is the check-in, so this week's update is due (plan MOV, D18), and one step is late.
+    { id: "sample-pj6", title: "Pick-to-light at station 18", sources: ["sample-c14"], authors: ["L. Becker"], authorUserIds: [], routeId: "sample-r1",
+      lead: me, members: ["C. Vogt", "L. Becker"], leadUserId: uid, memberUserIds: [], openedDay: day(-30), openedBy: BOSS,
+      seedEvents: [
+        ev("project.baseline", -28, me, { metric: "wrong clips picked at station 18", unit: "per week", value: 11, better: "down", source: "End-of-line findings, station 18, six weeks" }),
+        ev("project.step.added", -28, me, { stepId: "s1", text: "Mount the light bar over the 14 clip boxes", owner: "C. Vogt" }),
+        ev("project.step.added", -28, me, { stepId: "s2", text: "Link the lights to the build sequence", owner: "C. Vogt", dueDay: day(-2) }),
+        ev("project.step.added", -28, me, { stepId: "s3", text: "Two weeks on all shifts, count the wrong picks", owner: "L. Becker", dueDay: day(14) }),
+        ev("project.howwework", -21, me, { checkInWeekday: 4, note: "Stand-up at station 18 at the shift change." }),
+        ev("project.started", -20, me),
+        ev("project.step.moved", -19, "C. Vogt", { stepId: "s1", to: "doing" }),
+        ev("project.step.moved", -12, "C. Vogt", { stepId: "s1", to: "done" }),
+        ev("project.step.moved", -11, "C. Vogt", { stepId: "s2", to: "doing" }),
+        ev("project.update", -5, me, { week: day(-5), text: "Light bar is up. The sequence link needs a field from the MES that IT is adding." }),
+        ev("project.commented", -3, "C. Vogt", { text: "The MES field is live in the test system. Production follows on Monday." }),
+      ] },
+    // Paused until the oven is back from its service (plan MOV, D17).
+    { id: "sample-pj8", title: "Energy meter on the paint-shop ovens", sources: [], authors: ["A. Schulz"], authorUserIds: [], routeId: "sample-r1",
+      lead: "A. Schulz", members: ["C. Vogt"], leadUserId: null, memberUserIds: [], openedDay: day(-45), openedBy: BOSS,
+      seedEvents: [
+        ev("project.baseline", -43, "A. Schulz", { metric: "energy per body in the paint ovens", unit: "kWh", value: 41, better: "down", source: "Monthly energy bill, split by hall" }),
+        ev("project.step.added", -43, "A. Schulz", { stepId: "s1", text: "Meter on oven 1", owner: "C. Vogt" }),
+        ev("project.step.added", -43, "A. Schulz", { stepId: "s2", text: "Meter on oven 2", owner: "C. Vogt" }),
+        ev("project.started", -40, "A. Schulz"),
+        ev("project.step.moved", -30, "C. Vogt", { stepId: "s1", to: "done" }),
+        ev("project.doneby.moved", -6, "A. Schulz", { doneBy: day(20), why: "The yearly service of oven 2 moves its meter by three weeks." }),
+        ev("project.paused", -6, "A. Schulz", { why: "Oven 2 is down for its yearly service; the meter goes in when it is back.", untilDay: day(9) }),
+      ] },
+    // Stopped, with the reason on the project (plan RES).
+    { id: "sample-pj9", title: "Driverless tugger for door modules", sources: [], authors: ["J. Fischer"], authorUserIds: [], routeId: "sample-r4",
+      lead: "N. Demir", members: ["J. Fischer"], leadUserId: null, memberUserIds: [], openedDay: day(-70), openedBy: "N. Demir",
+      seedEvents: [
+        ev("project.baseline", -68, "N. Demir", { metric: "tugger trips to station 42", unit: "per shift", value: 26, better: "down", source: "Tugger log, four weeks" }),
+        ev("project.step.added", -68, "N. Demir", { stepId: "s1", text: "Trial route with the rented tugger", owner: "J. Fischer" }),
+        ev("project.started", -66, "N. Demir"),
+        ev("project.step.moved", -50, "J. Fischer", { stepId: "s1", to: "doing" }),
+        ev("project.stopped", -10, "N. Demir", { why: "The returnable trays halve the trips it was meant to automate. We stop here and look again once they run." }),
       ] },
   ];
 
