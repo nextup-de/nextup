@@ -18,7 +18,9 @@ const Calendar = z.union([
 export const PilotConfig = z.strictObject({
   slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "lower-case letters, digits and hyphens").min(2).max(40),
   name: z.string().trim().min(1).max(120),
-  admin: z.strictObject({ name: z.string().trim().min(1).max(120), email: z.string().trim().toLowerCase().email().max(200) }),
+  // `stackAdmin`: the first admin is also the stack admin (REM-O2): the one person who signs in to the console of the new stack. Only `true` is a value, and only
+  // this entry has it, so there is exactly one; a company that already has a different one is refused (stackAdminProblems).
+  admin: z.strictObject({ name: z.string().trim().min(1).max(120), email: z.string().trim().toLowerCase().email().max(200), stackAdmin: z.literal(true).optional() }),
   calendar: Calendar,
   promiseDays: z.number().int().min(1).max(60).optional(),
   flags: z.record(z.string(), z.boolean()).optional(),
@@ -82,6 +84,20 @@ export function parsePilotConfig(text: string): ConfigResult {
     for (const k of unknown) problems.push(`config.flags.${k}: unknown flag`);
   }
   return problems.length > 0 || !parsed.success ? { ok: false, problems } : { ok: true, config: parsed.data };
+}
+
+/** Does the config make its first admin the stack admin. */
+export const wantsStackAdmin = (c: Pick<PilotConfig, "admin">): boolean => c.admin.stackAdmin === true;
+
+/**
+ * Exactly one stack admin comes out of a bootstrap (REM-O2): the config's first admin. `existing` are the active stack admins the company has now (their emails);
+ * one that is not the config's admin would make two, so the bootstrap stops before it writes. The console's own grant (Access) is how a second one is added later.
+ */
+export function stackAdminProblems(c: Pick<PilotConfig, "admin">, existing: readonly { email: string }[]): string[] {
+  if (!wantsStackAdmin(c)) return [];
+  const mail = c.admin.email.toLowerCase();
+  const others = existing.filter((e) => e.email.toLowerCase() !== mail);
+  return others.length === 0 ? [] : [`config.admin.stackAdmin: the company has a stack admin already (${others.map((o) => o.email).join(", ")}); a bootstrap makes exactly one, so remove "stackAdmin" or grant the second one in the console`];
 }
 
 /** `de` and `de-by` are the product's regions; an own list is a Monday-to-Friday style week with the given holidays. */
