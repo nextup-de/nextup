@@ -80,6 +80,9 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
   const [pseudonymising, setPseudonymising] = useState<MemberRow | null>(null);
   const [editing, setEditing] = useState<MemberRow | null>(null);
   const [privacyMsg, setPrivacyMsg] = useState<string | null>(null);
+  // After an erasure the admin gets the text to send the person, which says what stays (plan REM, C1); nothing of it is stored.
+  const [reply, setReply] = useState<{ name: string } | null>(null);
+  const [replyCopied, setReplyCopied] = useState(false);
   const [askingTotp, setAskingTotp] = useState<MemberRow | null>(null);
   const [totpMsg, setTotpMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [resetting, startReset] = useTransition();
@@ -89,6 +92,10 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
     enrolledManagersAction(slug).then((ids) => { if (live) setEnrolled(ids); }, () => {});
     return () => { live = false; };
   }, [slug, members, demo]);
+  // The clipboard may be refused (no permission, an insecure page): then the text stays on screen to select by hand.
+  const copyReply = (text: string) => {
+    navigator.clipboard?.writeText(text).then(() => setReplyCopied(true), () => setReplyCopied(false));
+  };
   const resetTotp = (m: MemberRow) => {
     setAskingTotp(null);
     startReset(async () => {
@@ -154,6 +161,14 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
       {roled.error ? <p className={s.fieldError} role="alert">{roled.error}</p> : null}
       {totpMsg ? <p className={totpMsg.ok ? s.cardHint : s.fieldError} role={totpMsg.ok ? "status" : "alert"}>{totpMsg.text}</p> : null}
       {privacyMsg ? <p className={s.cardHint} role="status" data-testid="member-privacy-status">{privacyMsg}</p> : null}
+      {reply ? (
+        <div className={s.card} data-testid="member-erasure-reply">
+          <h2 className={s.cardTitle}>{t("privacyPerson.replyTitle", { name: reply.name })}</h2>
+          <p className={s.cardHint}>{t("privacyPerson.replyHint")}</p>
+          {t("privacyPerson.replyText", { name: reply.name }).split("\n\n").map((para) => <p key={para} className={s.dialogText}>{para}</p>)}
+          <button type="button" className={s.soft} data-testid="member-erasure-reply-copy" onClick={() => copyReply(t("privacyPerson.replyText", { name: reply.name }))}>{t(replyCopied ? "privacyPerson.replyCopied" : "privacyPerson.replyCopy")}</button>
+        </div>
+      ) : null}
       {roled.saved ? <p className={s.cardHint} role="status">{roled.saved}</p> : null}
 
       <div className={styles.toolbar}>
@@ -362,7 +377,7 @@ export function MembersView({ slug, me, members, freeSeats, demo, showHead = tru
       ) : null}
       {pseudonymising ? (
         <PseudonymiseDialog slug={slug} member={pseudonymising}
-          onClose={() => setPseudonymising(null)} onDone={(msg) => { setPseudonymising(null); setPrivacyMsg(msg); }} />
+          onClose={() => setPseudonymising(null)} onDone={(msg) => { setReply({ name: pseudonymising.name }); setReplyCopied(false); setPseudonymising(null); setPrivacyMsg(msg); }} />
       ) : null}
 
       {askingTotp ? (
