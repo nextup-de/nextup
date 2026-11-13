@@ -9,7 +9,7 @@ import type { ReminderAudienceFn, ReminderTextFn } from "./shared";
 export const CASE_LOOP_TYPES = [
   "case.discussion", "case.invited", "case.checkin", "case.decided",
   "case.asked", "case.answered", "case.unanswered", "case.handed", "case.withdrawn",
-  "case.reopened", "case.appealed", "case.appeal.decided", "case.override",
+  "case.reopened", "case.appealed", "case.appeal.decided", "case.override", "case.revised",
 ] as const satisfies readonly CaseEventType[];
 
 /** The loop templates of the case events, as the profile's switches name them. */
@@ -20,7 +20,7 @@ export const CASE_FOLLOWS: Record<string, string> = {
   "loop.case.asked": "loop.case.decided", "loop.case.answered": "loop.case.decided", "loop.case.handed": "loop.case.decided",
   "loop.case.unanswered": "loop.case.decided", "loop.case.withdrawn": "loop.case.decided",
   "loop.case.reopened": "loop.case.decided", "loop.case.appealed": "loop.case.decided", "loop.case.appeal.decided": "loop.case.decided",
-  "loop.case.override": "loop.case.decided",
+  "loop.case.override": "loop.case.decided", "loop.case.revised": "loop.case.decided",
   "reminder.question": "reminder.deadline", "reminder.triage": "reminder.deadline",
   "reminder.appeal": "reminder.deadline", "reminder.view": "reminder.checkin",
 };
