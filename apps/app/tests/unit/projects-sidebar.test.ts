@@ -38,8 +38,8 @@ describe("sidebarProjects", () => {
 });
 
 describe("project pages", () => {
-  it("starts with the six standard pages", () => {
-    expect(keys(NO_PAGES)).toEqual(["overview", "board", "team", "results", "activity", "files"]);
+  it("starts with the standard pages (the seven tabs, Agent included)", () => {
+    expect(keys(NO_PAGES)).toEqual(["overview", "board", "team", "results", "activity", "files", "agent"]);
   });
 
   it("adds a page at the end, renames it and keeps the old title when the new one is empty", () => {
@@ -54,7 +54,7 @@ describe("project pages", () => {
   it("moves any page by dragging, standard ones too", () => {
     let s = addPage(NO_PAGES, "page", "x", "Supplier contacts");
     s = movePage(s, "x", "board");
-    expect(keys(s)).toEqual(["overview", "x", "board", "team", "results", "activity", "files"]);
+    expect(keys(s)).toEqual(["overview", "x", "board", "team", "results", "activity", "files", "agent"]);
     s = movePage(s, "overview", null);
     expect(keys(s).at(-1)).toBe("overview");
   });
