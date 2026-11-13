@@ -73,5 +73,6 @@ describe("case timeline sentences", () => {
   it("names a reasoned no's category before its reason; an old no reads as before", () => {
     expect(say("case.decided", { answer: "no", category: "not-now", reason: "After the audit." })).toBe("K. Yilmaz answered “no” — Not now: After the audit.");
     expect(say("case.decided", { answer: "no", reason: "A gate finds it later." })).toBe("K. Yilmaz answered “no” — A gate finds it later.");
+    expect(say("case.decided", { answer: "no", reason: "Später." }, "de")).toBe("K. Yilmaz hat mit „nein“ geantwortet — Grund: Später.");
   });
 });

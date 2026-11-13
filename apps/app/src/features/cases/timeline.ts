@@ -38,7 +38,7 @@ export function timelineSentence(e: CaseEvent, t: T, facts: TimelineFacts): stri
       // A reasoned no names its category before its reason (plan NOR, D17); an old no has none and reads as before.
       const no = p.answer === "no" && isNewCategory(p.category) ? t(noCategoryLabel(p.category)) : null;
       const because = no ? (p.reason ? `${no}: ${p.reason}` : no) : p.reason;
-      return t("dashboard.evDecided", { actor, answer: p.answer ?? t("common.yes").toLowerCase() }) + reason(because) + quote(p.note)
+      return t("dashboard.evDecided", { actor, answer: t(p.answer === "no" ? "common.no" : "common.yes").toLowerCase() }) + reason(because) + quote(p.note)
         + (p.projectId ? " " + t("dashboard.evOpenedProject") + (otherLead ? " " + t("dashboard.evLedBy", { lead: otherLead }) : "") : "");
     }
     case "case.discussion": return t("dashboard.evDiscussion", { actor }) + (p.invited?.length ? " " + t("dashboard.evWith", { names: p.invited.join(", ") }) : "") + (p.missing ? " " + t("dashboard.evMissing", { missing: p.missing }) : "");
