@@ -44,6 +44,8 @@ export function PublishPreview(p: {
   affected: string[]; depts: readonly string[]; onAffected: (names: string[]) => void;
   files: readonly { id: string; name: string }[]; onAddFiles: (list: FileList | null) => void; onRemoveFile: (id: string) => void;
   aiLine: string;
+  /** What the rail still had open when the draft reached its turn limit (plan REM, R1); empty otherwise. */
+  stillOpen?: readonly string[];
   onClose: () => void; onConfirm: () => void;
   onExport: () => void; // the export view (RaiseExport.tsx): the A4 page, copied, saved as .doc or PDF
   /** A member with a handle chooses who it is posted as (decision Q1.7); missing for everyone else, who posts by name. */
@@ -98,6 +100,13 @@ export function PublishPreview(p: {
               </div>
               <p className={s.postingHelp}>{p.posting.asName ? t("ideas.pubPostedNameHelp") : t("ideas.pubPostedHandleHelp")}</p>
             </fieldset>
+          )}
+
+          {p.stillOpen && p.stillOpen.length > 0 && (
+            <div className={s.stillOpen} data-testid="raise-still-open">
+              <span className={s.stillOpenLabel}>{t("ideas.dialStillOpen")}</span>
+              <ul className={s.stillOpenList}>{p.stillOpen.map((x) => <li key={x}>{x}</li>)}</ul>
+            </div>
           )}
 
           <div className={s.ai}>
