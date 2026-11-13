@@ -121,9 +121,7 @@ export function mayAppend(
 
     case ev.type === "case.revised":
       if (!kase) return no(t, "cases.permNoCase");
-      // Everyone on the idea who is not only a viewer writes its next version: who raised it, who holds
-      // its desk, who was invited to talk it over, a manager (the projects sidebar's rule for its pages too).
-      if (!isRaiser(kase) && !onMyDesk(kase) && !isManager && !(userId !== null && (kase.discussion?.invitedUserIds ?? []).includes(userId))) return no(t, "cases.permReviseOwner");
+      if (!isRaiser(kase)) return no(t, "cases.permReviseOwner");
       if (kase.decided) return no(t, "cases.permIdeaDecided");
       if (afterLastDay(kase, state)) return no(t, "cases.permLastDay");
       return typeof ev.payload.body === "string" && ev.payload.body.trim() ? OK : no(t, "cases.permReviseText");

@@ -192,8 +192,8 @@ function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
       tabInfo={(k) => ({ label: t(("projects.idea_" + k) as "projects.idea_overview"), icon: k === "chats" ? <PageGlyph icon="chat" /> : <TabIcon k={k} />, count: counts[k] })}
       back={t("projects.sbBack")} onBack={onBack}
       head={<Head mark={<StageMark stage={stage} />} title={c.title}
-        // Double-click the title to rename the idea: it goes out as its next version, as on the page.
-        onRename={editor && !c.decided && !c.withdrawn ? (title) => { act.revise(c.id, c.body, title); showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 })); } : undefined} />} />
+        // Who raised it double-clicks the title to rename it: it goes out as its next version, as on the page.
+        onRename={c.fromUserId !== null && c.fromUserId === me.userId && !c.decided && !c.withdrawn ? (title) => { act.revise(c.id, c.body, title); showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 })); } : undefined} />} />
   );
 }
 

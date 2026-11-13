@@ -244,9 +244,9 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       versions: c.versions.length > 1 ? c.versions.map((v) => ({ n: v.version, when: f(v.day), title: v.title })) : [],
       mode, onMode: setMode, onClose: closeCase,
-      // The people on it edit it until it is decided (the rule in features/cases/permissions.ts): the title and
-      // text go out as the next version (case.revised); Affects and Context stay in this browser for now.
-      edit: !c.decided && !c.withdrawn && mayEditIdeaPages(c, { userId: me.userId, manager: role === "manager", holdsDesk: holdsRole(me, c.assigneeRoleId) }) ? {
+      // Who raised it edits it until it is decided (features/cases/permissions.ts: only the raiser revises): the
+      // title and text go out as the next version (case.revised); Affects and Context stay in this browser for now.
+      edit: !c.decided && !c.withdrawn && c.fromUserId !== null && c.fromUserId === me.userId ? {
         onSave: (ch) => {
           if (ch.affects || ch.context !== undefined || ch.prompts) addIdeaEdits({ ...(ch.affects ? { affects: ch.affects } : {}), ...(ch.context !== undefined ? { context: ch.context } : {}), ...(ch.prompts ? { prompts: ch.prompts } : {}) });
           if (ch.title !== undefined || ch.body !== undefined) {

@@ -128,11 +128,9 @@ describe("discussion stage: who may", () => {
     expect(mayAppend(manager, p("case.checkin", { next: "round" }), last).ok).toBe(true);
   });
 
-  it("the people on it revise (raiser, desk holder, a manager), nobody else, and only before the decision", () => {
+  it("only the raiser revises, and only before the decision", () => {
     expect(mayAppend(author, p("case.revised", { body: "v2" }), talking).ok).toBe(true);
-    expect(mayAppend(leader("T. Vogel"), p("case.revised", { body: "v2" }), talking).ok).toBe(true);
-    expect(mayAppend(manager, p("case.revised", { body: "v2" }), talking).ok).toBe(true);
-    expect(mayAppend(leader("H. Sander"), p("case.revised", { body: "v2" }), talking).ok).toBe(false);
+    expect(mayAppend(leader("T. Vogel"), p("case.revised", { body: "v2" }), talking).ok).toBe(false);
     expect(mayAppend(author, p("case.revised", { body: " " }), talking).ok).toBe(false);
     const decided = reduce(SEED, logAt(1, raised, ev("case.decided", "T. Vogel", "c_talk", { answer: "no" }, 1)));
     expect(mayAppend(author, p("case.revised", { body: "v2" }), decided).ok).toBe(false);

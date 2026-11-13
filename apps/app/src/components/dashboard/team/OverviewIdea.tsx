@@ -3,7 +3,7 @@
 // markup and classes 1:1 (dc-convert -> Overview.module.css). The head card (meta, title, the five
 // steps, whose desk and how much of the promise is used), then Idea | AI: the idea as it was raised
 // and its revisions, or the five scores - one opens into its reasoning - and what the AI found.
-// Props in, JSX out. The people on it may edit it until it is decided: double-click a section (the title,
+// Props in, JSX out. Who raised it may edit it until it is decided: double-click a section (the title,
 // the text, Affects, Context) to edit that one, or the pencil for all of them. The title and the text go
 // out as the next version (case.revised); Affects and Context are a stand-in until they have an event.
 import { Fragment, useState } from "react";
