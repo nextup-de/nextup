@@ -222,7 +222,9 @@ This replaces the `idea.action.*` events that `docs/IDEAS.md` mentions. "Closed"
 
 **The clock after the yes.** The lead has `promiseDays` (5) to set the baseline and start, or to
 say why not. After that the project shows on the deputy's and the manager's desk, exactly like a
-late decision. Steps can have a due day on the board, but there are no per-person overdue counts.
+late decision. Steps can have a due day on the board, and a late step is chased: the day after its due day it reminds
+its owner (else the lead), two working days later the lead, and a project that has gone quiet reaches the sponsor
+([MOV.md](../process/MOV.md)). The counts are per desk, not per person.
 
 **The brain** (Victor, `brain-plan-v1`, redacted like every model call):
 - On the yes, it proposes 3-5 first steps from the brief's lines (First step, Then, Cost, Still

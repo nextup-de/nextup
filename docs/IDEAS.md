@@ -9,8 +9,8 @@ the whiteboard sessions of 28 Sep 2026: idea → AI → feedback ⇄ develop →
 drafts (left)        the chat with the coach (middle)          score + actions (right)
 New idea             you: one line                              ring of four coloured quarters
 Draft A · 42         coach: what got better + one question      meter with the publish tick
-Draft B · 71         [four benchmark bars, ▲/▼, gaps as chips]  Publish idea (locked below the line)
-Published ✓          you: the answer …                          Save as draft · Rename · Affected
+Draft B · 71         [four benchmark bars, ▲/▼, gaps as chips]  Publish idea (opens once the rail is done)
+Published ✓          you: the answer …                          Saved 22:19 · Rename · Affected
                                                                 Attach evidence · Already raised · Discard
 ```
 
@@ -83,23 +83,21 @@ Each bar also lists what is `missing`; the coach asks about the weakest one.
    localStorage (`src/lib/idea-drafts.ts`, same shapes). The coach's turn carries the reading it was
    written from (`IdeaTurn.reading`, "The reading" below). In server mode the next message sends the
    latest one back as the brain's "last reading"; the local demo sends none.
-4. **Publish idea** is available from the first answer on - the author decides when it is ready; the
-   company's threshold (`CompanyConfig.publishThreshold`, default 70, set on `/admin/knowledge`)
-   drives the analysis' advice (Approve at the line) only where no model read the idea; with a
-   reading, the advice is the model's. The page mints the case id and asks the server
+4. **Publish idea** opens only once the rail is done: NextUp has replied and every topic on the rail is answered, checked off or "not sure"; with an AI
+   reading it opens after the idea plus two answers (`MIN_EXCHANGES`), never from the first answer (`railDone` and `canFinalize` in
+   `components/ideas/Raise.tsx`). Drafts save automatically on every turn: the row shows "Saved <time>", or "Published <time>" once it is raised, and
+   "Save as draft" shows only before the first save (`saveLabel`). The company's threshold (`CompanyConfig.publishThreshold`, default 70) is set in the
+   console under Company data (`/admin/company-data`, the idea studio card; `/admin/knowledge` only redirects there) and only drives the keyword
+   advice (Approve at the line) where no model read the idea; with a reading, the advice is the model's. The page mints the case id and asks the server
    (`publishIdeaDraftAction`), which checks the draft is still open and recomputes the benchmark from
    the stored turns; the overall it stores and returns is the latest reading's when there is one (the
    number the author was shown), else the benchmark's. Only then does the page append the usual
    `case.raised` (kind `idea`).
-   Before that, the page asks who should receive it: the button says each step as it runs ("Asking
-   the router…", our thinking orb in front), then "Who should get this?" offers 2-3 people
-   (`features/ideas/receivers.ts`): the router's proposal, the route owners the idea's words match,
-   the team lead, the lead's manager when fewer than two. Each has a match % built only from facts
-   that are also listed as its "why": where they start (the routing row's keyword score, or their
-   place in the org), the idea landing in their area, being able to approve its spend, and answering
-   the last cases on their desk within the promised days.
-   The author picks one or anyone from the directory; the case is raised with that person as its
-   `assignee`, the router's own proposal kept in the payload.
+   Before that, the page asks where it should go ("Where should it go?"). It offers desks, not people (`features/ideas/desks.ts`): a desk is a role
+   that owns a route, shown with its holders (a vacant desk says who answers instead), at most three: the router's proposal first, then the routes
+   whose keywords the idea's words match. There is no match % and no score of a person. The reasons are facts of the route and the role: it owns the
+   type, the idea mentions its keywords, the area is theirs, the spend fits its limit. The author picks one, or searches "Choose another desk" for any
+   route-owning role; the case is raised to that desk, and the router's own proposal stays in the payload.
 5. Where the stack runs the brain (`services/brain`, `BRAIN_URL`), the page asks it for the routing
    row and "raised before?" between the server's yes and `case.raised` (`brainProposalAction`).
    It gets the routing rows (owner's role and department, never a name), the company's cases and
@@ -328,8 +326,8 @@ decision", `CompanyConfig` → `Seed.loop`, `features/loop/rules.ts`).
 
 - **The brain following a project** after its start (reminders, spotting a stuck step): it only
   proposes the first steps and the metric for now.
-- **Escalating a late step**: a step's due day shows on the board, but nothing moves on its own -
-  no per-person overdue counts, for the works council.
+- **A late step** reminds its owner (the lead when it has none) the day after its due day, and the lead two working days later; a quiet project goes
+  on to the sponsor (docs/process/MOV.md). Counts are per desk, never per person, for the works council.
 - Customer feedback and market research as inputs to opportunity detection.
 - Similarity by embeddings (pgvector) instead of shared words; connecting authors of close ideas.
 - `AssistAnswer` / `src/lib/use-assist.ts` (the old "ask first, then raise") are no longer used by

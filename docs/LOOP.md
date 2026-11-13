@@ -18,8 +18,11 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
    tagged "Proposed" and the line "Routed by keywords - the AI is off for this company." says where it came from. The reasons
    are facts about the route and the role, never a score or a person's track record. "Choose another desk" lists every
    route-owning role. The send names the role and a date.
-   A raise that no route owns, or whose route has no owner seat, lands on the **fallback desk**: the occupied seat at
-   the head of the org chart (`fallbackSeat`, `features/cases/stamp.ts`), set by the server like every seat of a raise.
+   A raise that no route owns, or whose route has no owner seat, lands on the **fallback desk** (`fallbackSeatFor`, `features/approvals/rules.ts`,
+   set by the server like every seat of a raise): the review seat while review is on, else the first occupied seat of the company's fallback desk role
+   (Settings → Rules), else the first manager role's seat, and only without any of them the occupied seat at the head of the org chart
+   (`fallbackSeat`, `features/cases/stamp.ts`). A raise without a route at all goes to the triage seat the same way (the triage role, Settings →
+   Routing).
    Its holder passes it on or answers it; a manager can still give it a route (`case.override`). It has the same answer
    date as any case, and the desk is reminded to pass it on after one working day. Without an org chart it lands on no
    desk, as before, and only a manager can pick it up.
@@ -29,9 +32,9 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
 2. **Answer promise.** The case page (and "My cases") shows "Answer by {date}" and "With · {role} · {people}"
    (`answerPromise`, `features/cases/promise.ts`). The date counts working days of the company calendar. A yes, a no or a
    question answers; a hand-over does not. A question pauses the answer date until the raiser replies. If no reply
-   comes, the raiser is reminded after 3 working days, and after 5 the clock writes `case.unanswered`: the case is open
+   comes, the raiser is reminded after 3 working days, and after `question_days` (5 by default) the clock writes `case.unanswered`: the case is open
    on the desk again, the question stays on it marked "no answer", and the answer date runs on
-   (`QUESTION_REMIND_DAYS`, `QUESTION_RETURN_DAYS` in `features/clock/due.ts`; fixed numbers, not company rules yet).
+   (`features/clock/kinds/case.ts`). The day counts are company rules in Settings → Rules, not fixed numbers: `question_days` (default 5, 2 to 30) is how long a question waits before the case comes back, and the reminder comes after `QUESTION_REMIND_DAYS` (3) working days, at the latest one day before; `no_reason_min` (the fewest characters a reason for a no needs, default 40) and `appeal_days` (how long the raiser may ask for a second look, default 10) are company rules too (plan NOR, D23).
    Demo companies have no scheduler, so there a question waits.
    While nobody has decided, the raiser can **withdraw** the idea on the case page, with one optional line why
    (`case.withdrawn`, decision Q1.14). It is archived with status "Withdrawn", its clock stops, it leaves the desk, and
@@ -40,6 +43,10 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
 3. **Hand-over rule.** With the company rule `deadline_handover` on (default for new companies), a breached answer date
    writes one `case.handed` with `why: "deadline"` to the deputy seat; the submitter sees the date and who holds the case. With
    the rule off, the deputy role is told and the owner keeps the case.
+   **A second level.** `escalation_days` working days after the answer date (Settings → Rules, "Then one level up after", default 3, 0 switches it
+   off), a case still open goes to the seat above the desk that owes the answer, once per answer date: the clock writes a `clock.due` of kind
+   `escalation` and, a run later, one `case.handed` with `why: "escalation"` to that seat (`escalation`, `features/clock/kinds/case.ts`). The
+   reminder `reminder.escalation` tells the seat above, the desk and the raiser, each in their own sentence (docs/CLOCK.md, "A late answer").
 4. **Routing panel.** The raiser, the holders of the desk or its escalation role and managers see "Proposed and sent to
    {role} · by keywords" (or "by the AI"), then one row per move, with the destination and the day only (`routingTrail`).
 5. **Decision log.** `/<company>/decisions`, in the nav after Feed: every yes and no a person may open, newest first, with the
@@ -73,6 +80,8 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
 | Step `measure` | Settings → Rules | company manager | A project opens no checks, closes at done with status measured, no verdict, no reward. |
 | Step `recognition` | Settings → Rules | company manager | No reward ever falls due. |
 | `deadline_handover` | Settings → Rules | company manager | The deputy is told, the owner keeps the case. |
+| `escalation_days` | Settings → Rules | company manager | No second level: the case stays with the deputy. 0 switches it off. |
+| `question_days`, `no_reason_min`, `appeal_days` | Settings → Rules | company manager | Company rules, not switches: how long a question waits, the fewest characters of a no's reason, how long a no may be appealed. |
 | Measure days, tolerance, reward rule, fast lane | Settings → Rules | company manager | Company rules read by the project reducer. |
 
 `flagsFor(slug)` returns the rollout flag AND the company's step.

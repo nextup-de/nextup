@@ -299,16 +299,17 @@ council (what is and is not stored about a council's vote).
 join or support a project next to it. Worked out in detail in
 [the project workflows plan](2026-11-08_project-workflows.md).
 
-- **Five workflow modes:** Board (today's, for quick wins), External tool (Jira now, Azure DevOps, Planner and
+- **Four workflow modes:** Board (today's, for quick wins), External tool (Jira now, Azure DevOps, Planner and
   Polarion later; NextUp keeps decision, setup, measure and recognition), Stage gate (investments: stages closed by
-  approvals from phase 4), Fixed procedure (8D, ECR/ECN, safety: fixed steps with their own deadlines), and
-  AI-orchestrated (large projects, with the agent of phase 7).
+  approvals from phase 4), Fixed procedure (8D, ECR/ECN, safety: fixed steps with their own deadlines). The
+  agent of phase 7 is not a mode but a per-project switch, `agent.switched { on }`, in every mode.
 - **Templates per department.** NextUp ships a library (Quick win, 8D, Investment request, IT change, …, in DE and
   EN); a company copies and adapts them, limits them to departments and routes, and names a role per department
   that owns them. Templates are versioned; a running project keeps its version.
-- **Choosing.** The Yes sheets propose the route's default template, else the department's template that fits the
-  kind and the cost, else the brain's suggestion; a person confirms. Applying it writes `project.template`,
-  `project.mode` and the steps as ordinary `project.step.added` events with roles, not people.
+- **Choosing.** The project lead picks the template on the project draft, before Start; the draft proposes the
+  route's default template, else the department's template that fits the kind and the cost. Picking it writes
+  `project.template { key, version }` (refused after the start) and the steps as ordinary `project.step.added` events
+  with roles, not people. `project.mode` is not built; every project runs as Board until it is.
 - **Sales.** The shipped templates also form a public gallery: a buyer sees their 8D, KVP and investment request ready
   on day one.
 - **Joining.** The data already lets a yes join an open project (`openOrJoin` in `features/projects/reduce.ts`). The
@@ -362,12 +363,13 @@ assistant that drafts and nudges, under the company's ceiling. It is a paid add-
   **Unblock** (a nudge to the role a step waits on, with draft text), **Report** (the weekly `project.update` for the
   sponsor and the raiser), **Plan** (a missing step learned from earlier projects of the same template). An ask box
   answers questions about the project.
-- **Rights.** The company admin sets a ceiling; the lead sets what the agent may do below it. Read, draft and suggest
-  are on; send without asking and move steps are off and stay off in the pilot.
+- **Rights.** The company's `agent` flag allows it; the lead or a manager switches the agent on or off per project
+  (`agent.switched { on }`). There are no send or move switches: the agent drafts and suggests, and never sends,
+  moves a step, closes, decides, approves or enters a number (AGT D22, `server/agent/actions.ts`).
 - **What came of it.** Each suggestion is accepted or dismissed by a person; the project shows the list.
 
 **Events.** `agent.suggested { kind, text, refs }`, `agent.accepted { id }`, `agent.dismissed { id, why? }`,
-`project.agent { read, draft, suggest }`; the planning run as `case.planned { draft, version }`. All AI text is
+`agent.switched { on }`; the planning run as `agent.planned { textId, brainModel, brainVersion }` on the case. All AI text is
 redacted and labelled as AI, like the raise assistant.
 
 **Code.** `services/brain/brain/plan.py` (extend `/v1/plan` with templates, roles, effort, approvals), a new daily job
