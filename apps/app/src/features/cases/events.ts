@@ -86,7 +86,8 @@ export type CaseEvent = {
 };
 
 // History carried on a seed row; the reducer applies it before live events.
-export type SeedEvent = { type: CaseEventType; day: number; actor: string; actorUserId?: string | null; payload?: EventPayload };
+// `target`: the row the event is about when it is not the row it rides on - the project a seeded yes opens, which has no row of its own.
+export type SeedEvent = { type: CaseEventType; day: number; actor: string; actorUserId?: string | null; payload?: EventPayload; target?: string };
 
 // The log: the events that happened in this browser plus the demo clock.
 export type EventLog = { events: CaseEvent[]; day: number };
