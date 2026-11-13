@@ -38,11 +38,11 @@
 | `/api/client-errors` | `api/client-errors/route.ts` | - | - | A browser's script error (`navigator.sendBeacon` from `components/report/error-reporter.ts`), counted by kind with the server's errors (`server/errors.ts`). Same origin only, 8 KB, 204 |
 
 Role rules are data in `src/config/roles.ts` (`ROLE_HOME`, `ROLE_ACCESS`, `canAccess()`, `SHELL`) and nav
-per role in `src/config/nav.ts`. `SHELL[role]` picks the chrome: members get the simple bar
-(logo, Ideas | Dashboard, profile - `SimpleShell`), leaders and managers the rail + top bar. Enforcement (`src/proxy.ts` + the `(app)` layout) arrives with
-sessions in Phase 2; until then every app page renders with the demo tenant as manager.
+per role in `src/config/nav.ts`. `SHELL` gives every role (manager, leader and member) the simple shell (`SimpleShell`: logo, the nav and the profile in a
+top bar); the rail plus top bar (`"rail"`) exists in the config only and no role uses it, and `(app)/layout.tsx` always renders `SimpleShell`. Enforcement
+is `src/proxy.ts` and the `(app)` layout, per request, from the session.
 
 Layouts nest: `app/layout.tsx` (html, fonts) ->
-`[company]/layout.tsx` (resolve tenant, 404) -> `(app)/layout.tsx` (AppShell: rail + top bar)
+`[company]/layout.tsx` (resolve tenant, 404) -> `(app)/layout.tsx` (`SimpleShell`)
 -> `settings/layout.tsx` (sub-nav). `[company]/setup/layout.tsx` is the setup frame, beside `(app)`. Auth pages compose
 `AuthShell` themselves.
