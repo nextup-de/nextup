@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest";
 import { budgetLevel, budgetShare, capOf, capReached, DEFAULT_MONTHLY_CAP_EUR, MAX_MONTHLY_CAP_EUR, monthOf, spendOf } from "@/features/ai/budget";
 import { aiGate } from "@/features/ai/gate";
 import type { AiSettings } from "@/features/ai/settings";
-import { assistGate } from "@/features/assist/gate";
 
-const bedrock: AiSettings = { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null };
+const bedrock: AiSettings = { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null, brainModel: "bm" };
 const real = { stage: "pilot", hasDatabase: true, settings: bedrock, dpaSignedAt: new Date("2026-10-01"), purpose: "assist" as const, assistantOn: true, aiRouting: true };
 const NO_TOKENS = { tokensUnpriced: 0, tokenCap: 20_000_000 };
 const of50 = (spentEur: number) => ({ capEur: 50, spentEur, ...NO_TOKENS });
@@ -107,11 +106,11 @@ describe("AI gate with the budget", () => {
     expect(aiGate({ ...real, dpaSignedAt: null, budget: of50(500) })).toEqual({ on: false, why: expect.stringContaining("agreement") });
   });
 
-  it("the assistant's wrapper passes the budget on", () => {
-    const base = { stage: "pilot", hasDatabase: true, configured: "bedrock" as const, enabled: true, dpaSignedAt: new Date("2026-10-01") };
-    expect(assistGate({ ...base, budget: of50(10) })).toEqual({ on: true, provider: "bedrock" });
-    expect(assistGate({ ...base, budget: of50(50) }).on).toBe(true);
-    expect(assistGate({ ...base, budget: of50(60) }).on).toBe(false);
-    expect(assistGate(base).on).toBe(true);
+  it("the assistant's purpose passes the budget on", () => {
+    const ask = (budget?: ReturnType<typeof of50>) => aiGate({ stage: "pilot", hasDatabase: true, settings: { ...bedrock }, dpaSignedAt: new Date("2026-10-01"), purpose: "assist", assistantOn: true, aiRouting: true, budget: budget ?? null });
+    expect(ask(of50(10)).on).toBe(true);
+    expect(ask(of50(50)).on).toBe(true);
+    expect(ask(of50(60)).on).toBe(false);
+    expect(ask().on).toBe(true);
   });
 });

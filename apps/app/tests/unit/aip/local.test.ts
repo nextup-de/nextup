@@ -52,7 +52,7 @@ describe("Q8.4 gate", () => {
   });
 
   it("leaves the other choices as they were: a brain does not stand in for their agreement", () => {
-    const bedrock: AiSettings = { ...LOCAL, choice: "bedrock", model: "m" };
+    const bedrock: AiSettings = { ...LOCAL, choice: "bedrock", model: "m", brainModel: "bm" };
     expect(aiGate({ ...pilot, settings: bedrock, stackBrain: true })).toEqual({ on: false, why: expect.stringContaining("data-processing agreement") });
   });
 });
