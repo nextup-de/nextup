@@ -12,7 +12,7 @@ const GREEN: GoLiveInput = {
   now, units: [{ name: "Assembly" }], roles: [{ title: "Lead", holders: 1 }], routes: [{ key: "safety", ownerHasUser: true }],
   hasCalendar: true, people: { active: 2, canSignIn: 2 }, microsoftOn: false, managers: { withCode: 1, withTotp: 1 }, mail: "ok",
   ai: { choice: "off", dpaSignedAt: null }, backup: { at: now, offbox: true }, supportOpenUntil: null, notifications: true,
-  directory: null, recipients: 1, baseline: true, agreements: AGREEMENTS,
+  directory: null, recipients: 1, baseline: true, restore: { at: new Date(now.getTime() - 86_400_000), seconds: 300 }, findings: null, breakGlassUntil: null, agreements: AGREEMENTS,
 };
 const view = (o: Partial<GoLiveViewInput> & { input?: GoLiveInput }) =>
   goLiveView({ stage: "sandbox", admin: true, checks: goLiveChecks(o.input ?? GREEN), notifications: true, now, ...o });
@@ -54,6 +54,6 @@ describe("PIL go-live view", () => {
     expect(sw(view({}))?.dialog.lines.find((l) => l.key === "settingsGoLive.toPilotReport")?.values?.week).toBe(46);
     const v = view({ stage: "pilot" });
     expect(v.kind === "stage" && v.checklistTitle).toBe("settingsGoLive.stillReadyTitle");
-    expect(v.kind === "stage" && v.needed).toEqual({ done: 11, total: 11 }); // 10 needed and the reminders
+    expect(v.kind === "stage" && v.needed).toEqual({ done: 13, total: 13 }); // 10 needed, the reminders, the restore test and the break-glass window (the findings are not recorded here: information only)
   });
 });

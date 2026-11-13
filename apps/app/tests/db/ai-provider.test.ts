@@ -10,7 +10,6 @@ import { aiGate } from "@/features/ai/gate";
 import { emptyLog, type EventPayload } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { stampEvent } from "@/features/cases/stamp";
-import { assistGate } from "@/features/assist/gate";
 import { DEMO_GOALS } from "@/features/demo/structure";
 import { toSeedJson } from "@/features/demo/parse";
 import { SEED } from "@/features/demo/seed";
@@ -158,7 +157,7 @@ describe("AIP acceptance: proposal made on the server, off works, DPA gate holds
     expect(ai.settings.choice).toBe("openai-compatible");
     const routing = aiGate({ stage: "sandbox", hasDatabase: true, settings: ai.settings, dpaSignedAt: assist.dpaSignedAt, purpose: "routing", assistantOn: assist.enabled, aiRouting, budget: null });
     expect(routing).toEqual({ on: false, why: expect.stringContaining("data-processing agreement") });
-    const gate = assistGate({ stage: "sandbox", hasDatabase: true, configured: "bedrock", enabled: assist.enabled, dpaSignedAt: assist.dpaSignedAt });
+    const gate = aiGate({ stage: "sandbox", hasDatabase: true, settings: { choice: "bedrock", region: "eu-central-1", model: "", endpoint: null, deployment: null }, dpaSignedAt: assist.dpaSignedAt, purpose: "assist", assistantOn: assist.enabled, aiRouting: true, budget: null });
     expect(gate.on).toBe(false);
     expect(gate.on ? "" : gate.why).toContain("data-processing agreement");
   });

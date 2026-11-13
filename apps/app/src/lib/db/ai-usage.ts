@@ -1,6 +1,7 @@
 // The assistant's and the brain's tokens and estimated cost per company and period (AID D5, AIB D10).
 // Totals only: no user id, no text, no per-person number leaves this function.
-import { capOf, monthOf, spendOf, tokenCapOf, type AiBudget } from "@/features/ai/budget";
+import { capOf, monthOf, onRaisePath, spendOf, tokenCapOf, usedUpBy, type AiBudget } from "@/features/ai/budget";
+import type { AiPurpose } from "@/features/ai/gate";
 import { pricesOf } from "@/features/ai/prices";
 import { AI_SYSTEM } from "@/features/ai/settings";
 import { aiCost } from "@/features/ai/usage";
@@ -137,4 +138,44 @@ export async function loadAiBudget(companyId: string, now: Date = new Date()): P
   ]);
   const settings = ai?.settings && typeof ai.settings === "object" ? (ai.settings as Record<string, unknown>) : {};
   return { capEur: capOf(cfg?.aiMonthlyCapEur), tokenCap: tokenCapOf(cfg?.aiMonthlyTokenCap), ...spendOf(usage.byModel, pricesOf(settings.prices)) };
+}
+
+/** What a call may use at most, before it is made: the model it will be billed as and the most tokens it can take in and give out. */
+export type AiEstimate = { model: string; tokensIn: number; tokensOut: number };
+
+/** A word for the lock: the same company always maps to the same number, whatever the purpose (the agent's calls and the brain's share one budget). */
+const lockKey = (companyId: string): string => `ai:budget:${companyId}`;
+
+/**
+ * Reserves a call's estimated cost against the month's cap (plan REM, AGT D21): under one lock per company the estimate is added to what the stored calls
+ * cost so far, and when that would use the cap up the answer is null and no call is made. Otherwise the estimate is stored as an AiCall row of the
+ * purpose, so every check that follows - the gate's too - counts it at once, and its id is returned. A raise-path purpose (routing, the studio's read and
+ * coach) goes on to the grace share first, as the gate lets it (Q7.4). Throws when the database does: the caller treats that as a closed budget.
+ */
+export async function reserveAiCall(companyId: string, purpose: string, estimate: AiEstimate, now: Date = new Date()): Promise<string | null> {
+  const grace = onRaisePath((purpose === "read" ? "coach" : purpose) as AiPurpose);
+  return getDb().$transaction(async (tx) => {
+    // One reservation at a time per company: the next one reads the sum after this one is committed.
+    await tx.$executeRaw`select pg_advisory_xact_lock(hashtextextended(${lockKey(companyId)}, 0))`;
+    const [budget, ai] = await Promise.all([loadAiBudget(companyId, now), getIntegration(companyId, AI_SYSTEM)]);
+    const settings = ai?.settings && typeof ai.settings === "object" ? (ai.settings as Record<string, unknown>) : {};
+    const planned = spendOf([estimate], pricesOf(settings.prices));
+    const after = { capEur: budget.capEur, tokenCap: budget.tokenCap, spentEur: budget.spentEur + planned.spentEur, tokensUnpriced: budget.tokensUnpriced + planned.tokensUnpriced };
+    if (usedUpBy(after, grace) !== null) return null;
+    const row = await tx.aiCall.create({
+      data: { companyId, purpose, model: estimate.model, tokensIn: estimate.tokensIn, tokensOut: estimate.tokensOut, latencyMs: 0, createdAt: now },
+      select: { id: true },
+    });
+    return row.id;
+  });
+}
+
+/** What the provider reported replaces the estimate of a reserved call. */
+export async function settleAiCall(companyId: string, id: string, data: { model?: string; tokensIn?: number; tokensOut?: number; latencyMs?: number }): Promise<void> {
+  await getDb().aiCall.updateMany({ where: { id, companyId }, data });
+}
+
+/** A reserved call that billed nothing (the brain refused before any model ran): its row goes. */
+export async function releaseAiCall(companyId: string, id: string): Promise<void> {
+  await getDb().aiCall.deleteMany({ where: { id, companyId } });
 }

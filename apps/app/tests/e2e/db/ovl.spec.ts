@@ -25,7 +25,7 @@
 // goes through the UI: the away spans, the take back, the raise to the overflowing desk, the bulk passes, the cover and the profile. Own company, made straight
 // in the database and deleted at the end, like see.spec.ts and res.spec.ts. Run on any weekday.
 import type { Browser, Page } from "@playwright/test";
-import { expect, passSecondFactor, raiseLine, answerCoach, answerRail, showSidebar, DEVELOP, test } from "../helpers";
+import { expect, passSecondFactor, raiseLine, answerCoach, answerRail, showSidebar, vis, DEVELOP, test } from "../helpers";
 import { reduce } from "../../../src/features/cases/reducer";
 import { DEFAULT_CALENDAR } from "../../../src/features/clock";
 import { dateOfWorkday, workdayOf } from "../../../src/features/clock/calendar";
@@ -251,7 +251,7 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
     await append("clock.due", "system:clock", null, pinned, { kind: "deadline", dueDay: due, toRoleHolderId: null }, { at: D - 8, idemKey: `clk:deadline:${pinned}:${due}`, ...clock });
     await append("clock.due", "system:clock", null, pinned, { kind: "escalation", dueDay: due, toRoleHolderId: seat.s2 }, { at: D - 6, idemKey: `clk:escalate:${pinned}`, ...clock });
     await append("case.handed", "system:clock", null, pinned, { to: PIN_ABOVE, toRoleHolderId: seat.s2, why: "escalation" }, { at: D - 5, idemKey: `clk:escalate:${pinned}:handover`, ...clock });
-    expect(await seatOfCase(pinned)).toBe(seat.s2);
+    await expect.poll(() => seatOfCase(pinned), { message: "the case is on that seat" }).toBe(seat.s2);
 
     // ── the open work of each desk ─────────────────────────────────────────────────────────────────────────────────
     // Raised yesterday, so none of it counts as new when desk O reaches its limit (overflow takes only cases raised from then on, D24). Desk A has two cases.
@@ -267,14 +267,14 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
     await test.step("the only holder of desk A sets away from today to the next working day; one clock run puts both open cases on the deputy desk's seat", async () => {
       hugo = await signIn(browser, HOLDER_A);
       await hugo.goto(`/${SLUG}/profile`);
-      await expect(hugo.getByTestId("away-card")).toBeVisible();
-      await expect(hugo.getByTestId("away-takeback-none")).toBeVisible();
-      await hugo.getByTestId("away-open").click();
+      await expect(vis(hugo, "away-card")).toBeVisible();
+      await expect(vis(hugo, "away-takeback-none")).toBeVisible();
+      await vis(hugo, "away-open").click();
       await hugo.getByTestId("away-from").fill(iso(D));
       await hugo.getByTestId("away-to").fill(iso(D + 1));
       await expect(hugo.getByText("No reason is asked or kept.")).toBeVisible();
       await hugo.getByTestId("away-save").click();
-      await expect(hugo.getByTestId("away-now")).toBeVisible();
+      await expect(vis(hugo, "away-now")).toBeVisible();
       const spans = await eventsOf("person.away");
       expect(spans).toHaveLength(1);
       expect(spans[0]).toMatchObject({ actorUserId: id[HOLDER_A], payload: { userId: id[HOLDER_A], from: D, to: D + 1, setBy: id[HOLDER_A] } });
@@ -285,8 +285,8 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       for (const e of away) {
         expect(e).toMatchObject({ actor: "system:clock", actorUserId: null, source: "clock", payload: { why: "away", toRoleHolderId: seat.d } });
       }
-      expect(await seatOfCase(a1)).toBe(seat.d);
-      expect(await seatOfCase(a2)).toBe(seat.d);
+      await expect.poll(() => seatOfCase(a1), { message: "the case is on that seat" }).toBe(seat.d);
+      await expect.poll(() => seatOfCase(a2), { message: "the case is on that seat" }).toBe(seat.d);
       // The case page says who has it now (the deputy desk's holder) and that the clock handed it there because of the absence, with no more than that.
       await openCase(hugo, a1);
       await expect(hugo.getByText(`system:clock handed it to ${COVER_K}`)).toBeVisible();
@@ -298,15 +298,15 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
     await test.step("the holder ends the span, sees both cases under Take back and takes one back: it is on her seat again, its passes are 0", async () => {
       const page = hugo!;
       await page.goto(`/${SLUG}/profile`);
-      await page.getByTestId("away-end").click();
-      await expect(page.getByTestId("away-now")).toBeHidden();
+      await vis(page, "away-end").click();
+      await expect(vis(page, "away-now")).toBeHidden();
       expect((await eventsOf("person.back")).map((e) => e.payload)).toMatchObject([{ userId: id[HOLDER_A] }]);
-      const list = page.getByTestId("away-takeback");
+      const list = vis(page, "away-takeback");
       await expect(list).toBeVisible();
       await expect(list.getByRole("listitem")).toHaveCount(2);
       await page.getByTestId(`away-takeback-${a1}`).click();
       await expect.poll(() => seatOfCase(a1), { message: "the taken back case is on her seat" }).toBe(seat.a);
-      expect(await seatOfCase(a2), "the case she left stays with the cover").toBe(seat.d);
+      await expect.poll(() => seatOfCase(a2), { message: "the case she left stays with the cover" }).toBe(seat.d);
       const back = (await eventsOf("case.handed", a1)).at(-1)!;
       expect(back).toMatchObject({ actor: "system:cover", payload: { why: "takeback", takenBy: id[HOLDER_A], toRoleHolderId: seat.a } });
       const state = await stateNow();
@@ -345,8 +345,8 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       const over = await settle(() => handedWhy("overflow"), "the clock hands the new case to the deputy desk", 1);
       expect(over.map((e) => [e.targetId, e.actor])).toEqual([[newId, "system:clock"]]);
       expect(over[0].payload).toMatchObject({ why: "overflow", toRoleHolderId: seat.d2 });
-      expect(await seatOfCase(newId)).toBe(seat.d2);
-      expect(await seatOfCase(`${SLUG}-o0`), "an older case stays on desk O").toBe(seat.o);
+      await expect.poll(() => seatOfCase(newId), { message: "the case is on that seat" }).toBe(seat.d2);
+      await expect.poll(() => seatOfCase(`${SLUG}-o0`), { message: "an older case stays on desk O" }).toBe(seat.o);
     });
 
     // ── the seat above at 20: the mail, and the card without names ─────────────────────────────────────────────────
@@ -378,7 +378,7 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
     await test.step("the holder of the seat directly above member M sets M away on their own profile; M is told who did; a company admin ends it", async () => {
       const lead = await signIn(browser, TEAM_LEAD);
       await lead.goto(`/${SLUG}/profile`);
-      const section = lead.getByTestId("away-others");
+      const section = vis(lead, "away-others");
       await expect(section).toBeVisible();
       await expect(section.getByTestId(`away-other-${id[MEMBER_M]}`)).toContainText(MEMBER_M);
       await expect(section.getByRole("listitem"), "only the person directly below is listed").toHaveCount(1);
@@ -398,7 +398,7 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
 
       const admin = await signIn(browser, ADMIN);
       await admin.goto(`/${SLUG}/profile`);
-      const all = admin.getByTestId("away-others");
+      const all = vis(admin, "away-others");
       await expect(all.getByTestId(`away-other-${id[MEMBER_M]}`)).toContainText("Away until");
       await all.getByTestId(`away-other-end-${id[MEMBER_M]}`).click();
       await expect(all.getByTestId(`away-other-${id[MEMBER_M]}`)).not.toContainText("Away until");
@@ -409,13 +409,14 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
 
       const m = await signIn(browser, MEMBER_M);
       await m.goto(`/${SLUG}/profile`);
-      await expect(m.getByTestId("away-card")).toBeVisible();
-      await expect(m.getByTestId("away-now"), "M's span shows as ended").toBeHidden();
+      await expect(vis(m, "away-card")).toBeVisible();
+      await expect(vis(m, "away-now"), "M's span shows as ended").toBeHidden();
       await m.context().close();
     });
 
     // ── OVL-U1's screens: the desk load card, the triage banner, the bulk bar and the pinned mark ──────────────────
-    const cardOf = (page: Page) => page.getByTestId("desk-load");
+    // vis: the streamed page holds a hidden second copy for a moment after a load (helpers.ts)
+    const cardOf = (page: Page) => vis(page, "desk-load");
     const rowOf = (page: Page, roleId: string) => cardOf(page).locator(`[data-testid="desk-load-row"][data-role="${roleId}"]`);
     /** The cells of a desk's row: open, per holder, late, pinned. */
     const cellsOf = (row: ReturnType<typeof rowOf>) => row.locator("td");
@@ -459,7 +460,7 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       await expect.poll(async () => (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[ABOVE]).length, { message: "two passes under the seat above's name" }).toBe(2);
       const passed = (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[ABOVE]);
       for (const e of passed) expect(e.payload).toMatchObject({ why: PASS_WHY_B, toRoleHolderId: seat.x });
-      for (const e of passed) expect(await seatOfCase(e.targetId as string)).toBe(seat.x);
+      for (const e of passed) await expect.poll(() => seatOfCase(e.targetId as string), { message: "the case is on that seat" }).toBe(seat.x);
       await page.context().close();
     });
 
@@ -481,7 +482,7 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       await expect.poll(async () => (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[TRIAGE]).length, { message: "two passes under the holder's name" }).toBe(2);
       const passed = (await eventsOf("case.handed")).filter((e) => e.actorUserId === id[TRIAGE]);
       for (const e of passed) expect(e.payload).toMatchObject({ why: PASS_WHY_T, toRoleHolderId: seat.x });
-      for (const e of passed) expect(await seatOfCase(e.targetId as string)).toBe(seat.x);
+      for (const e of passed) await expect.poll(() => seatOfCase(e.targetId as string), { message: "the case is on that seat" }).toBe(seat.x);
       await page.context().close();
     });
 

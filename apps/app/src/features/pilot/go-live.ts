@@ -8,11 +8,15 @@ import { AGREEMENT_NAME, missingAgreements, type Agreements } from "./agreements
 
 export const BACKUP_MAX_AGE_HOURS = 26;
 export const DIRECTORY_MAX_AGE_HOURS = 24;
+/** A restore test counts for this many days (REM-O3): the backups are only as good as the last time somebody restored one. */
+export const RESTORE_MAX_AGE_DAYS = 30;
+/** Where the AI is switched on and the provider's agreement is dated: the console's assistant section, not a company setting. */
+export const AI_CONSOLE_PATH = "/admin/assistant";
 const HOUR = 3_600_000;
 
 export type CheckKey =
   | "structure" | "routes" | "calendar" | "signIn" | "secondFactor" | "mail" | "ai" | "backups" | "support" | "agreements"
-  | "notifications" | "directory" | "recipients" | "baseline";
+  | "notifications" | "directory" | "recipients" | "baseline" | "restore" | "findings" | "breakGlass";
 export type CheckLevel = "needed" | "recommended";
 /** What a check is asked for: Open, or the move to pilot (which also asks for every check Open asks for). */
 export type CheckGate = "open" | "pilot";
@@ -26,6 +30,8 @@ export type GoLiveCheck = {
   line: MessageKey;
   values: LineValues;
   section: SettingsSectionKey | null;
+  /** The console page that fixes it, when it is not a settings section (the console is the operator's, not the company's). */
+  console?: string;
   /** Recommended for Open, but needed for the move to pilot (Q9.7). */
   pilot?: true;
 };
@@ -55,14 +61,20 @@ export type GoLiveInput = {
   baseline: boolean;
   /** The agreements recorded on Go-live (Q9.4). */
   agreements: Agreements;
+  /** The last restore test that passed, with how long it took; null when this stack records none. */
+  restore: { at: Date; seconds: number } | null;
+  /** The open findings of the test phase (TST); null when this stack records none (nothing records them on a stack yet: the line is information only). */
+  findings: { open: number } | null;
+  /** Until when the break-glass window is open; null when it is closed (a missing or unreadable file is closed). */
+  breakGlassUntil: Date | null;
 };
 
 const K = (k: string): MessageKey => `settingsGoLive.${k}` as MessageKey;
 const iso = (d: Date) => d.toISOString();
 const names = (xs: string[]) => xs.join(", ");
 
-function check(key: CheckKey, level: CheckLevel, state: CheckState, line: string, values: LineValues, section: SettingsSectionKey | null): GoLiveCheck {
-  return { key, level, state, line: K(line), values, section };
+function check(key: CheckKey, level: CheckLevel, state: CheckState, line: string, values: LineValues, section: SettingsSectionKey | null, console?: string): GoLiveCheck {
+  return { key, level, state, line: K(line), values, section, ...(console ? { console } : {}) };
 }
 
 export function goLiveChecks(i: GoLiveInput): GoLiveCheck[] {
@@ -99,16 +111,16 @@ export function goLiveChecks(i: GoLiveInput): GoLiveCheck[] {
   else out.push(check("mail", "needed", "unknown", "lineMailUnknown", {}, "notifications"));
 
   // ai
-  if (i.ai.choice === "off") out.push(check("ai", "needed", "done", "lineAiOff", {}, "signIn"));
-  else if (i.ai.choice === "mock") out.push(check("ai", "needed", "needs", "lineAiNeedsMock", {}, "signIn"));
+  if (i.ai.choice === "off") out.push(check("ai", "needed", "done", "lineAiOff", {}, null, AI_CONSOLE_PATH));
+  else if (i.ai.choice === "mock") out.push(check("ai", "needed", "needs", "lineAiNeedsMock", {}, null, AI_CONSOLE_PATH));
   // The model on this stack: nothing leaves, so no agreement; it needs the stack's brain, answering (Q8.4).
   else if (i.ai.choice === "local") {
     if (i.ai.brain === "ok") out.push(check("ai", "needed", "done", "lineAiLocal", {}, null));
     else if (i.ai.brain === "down") out.push(check("ai", "needed", "unknown", "lineAiLocalDown", {}, null));
     else out.push(check("ai", "needed", "needs", "lineAiLocalNoBrain", {}, null));
   }
-  else if (i.ai.dpaSignedAt) out.push(check("ai", "needed", "done", "lineAiDone", { date: iso(i.ai.dpaSignedAt) }, "signIn"));
-  else out.push(check("ai", "needed", "needs", "lineAiNeedsAgreement", {}, "signIn"));
+  else if (i.ai.dpaSignedAt) out.push(check("ai", "needed", "done", "lineAiDone", { date: iso(i.ai.dpaSignedAt) }, null, AI_CONSOLE_PATH));
+  else out.push(check("ai", "needed", "needs", "lineAiNeedsAgreement", {}, null, AI_CONSOLE_PATH));
 
   // backups
   const b = i.backup;
@@ -120,6 +132,24 @@ export function goLiveChecks(i: GoLiveInput): GoLiveCheck[] {
 
   // support
   out.push(i.supportOpenUntil ? check("support", "needed", "needs", "lineSupportNeeds", { time: iso(i.supportOpenUntil) }, "supportAccess") : check("support", "needed", "done", "lineSupportDone", {}, "supportAccess"));
+
+  // restore: a restore test within the last 30 days (REM-O3; it was a line on the hand list). The seconds are shown with its time.
+  const r = i.restore;
+  const restoreAge = r ? i.now.getTime() - r.at.getTime() : 0;
+  if (!r || -restoreAge > 5 * 60_000) out.push(check("restore", "needed", "unknown", "lineRestoreUnknown", {}, null));
+  else if (restoreAge > RESTORE_MAX_AGE_DAYS * 24 * HOUR) out.push(check("restore", "needed", "needs", "lineRestoreNeeds", { time: iso(r.at), days: RESTORE_MAX_AGE_DAYS }, null));
+  else out.push(check("restore", "needed", "done", "lineRestoreDone", { time: iso(r.at), seconds: r.seconds }, null));
+
+  // findings: no open finding of the test phase (REM-O3, REM D13). Where this stack records none the line says so and never blocks: it is recommended, and
+  // only a recorded count makes it a check for live.
+  if (!i.findings) out.push(check("findings", "recommended", "unset", "lineFindingsUnknown", {}, null));
+  else if (i.findings.open > 0) out.push(check("findings", "needed", "needs", "lineFindingsNeeds", { count: i.findings.open }, null));
+  else out.push(check("findings", "needed", "done", "lineFindingsDone", {}, null));
+
+  // breakGlass: the operator's emergency window is closed (REM-O3; it was "leftover access" on the hand list)
+  out.push(i.breakGlassUntil && i.breakGlassUntil.getTime() > i.now.getTime()
+    ? check("breakGlass", "needed", "needs", "lineBreakGlassNeeds", { time: iso(i.breakGlassUntil) }, null)
+    : check("breakGlass", "needed", "done", "lineBreakGlassDone", {}, null));
 
   // agreements: signed outside the software, recorded on Go-live. The AI counts as on unless it is off.
   const missing = missingAgreements(i.agreements, i.ai.choice !== "off");

@@ -273,6 +273,18 @@ const caseAppealDecidedNotice: NoticeBuilder = (c) => {
   ]);
 };
 
+/** A new version of an idea (REM, Q2.13): the desk that holds it and everyone invited who has not declined hear it; never whoever wrote it (send leaves the actor out). */
+const caseRevisedNotice: NoticeBuilder = ({ ev, pl, kase, send, caseLink, invitedOf, deskOf }) => {
+  // Only the version this event wrote: the reducer ignores a revision of a decided case or without a text.
+  const v = kase?.versions[kase.versions.length - 1];
+  if (!kase || !v || v.body !== (pl.body ?? "")) return;
+  for (const who of [...deskOf(kase.assigneeSeatId), ...stillInvited(kase, invitedOf(kase))]) {
+    send(who, (t) => t("mail.revisedSubject", { title: kase.title }), (t) => [
+      t("mail.revisedIntro", { actor: ev.actor, version: v.version }), "", `  ${kase.title}`, "", t("mail.revisedNext", { url: caseLink(kase) }),
+    ]);
+  }
+};
+
 const caseOverrideNotice: NoticeBuilder = ({ ev, state, pl, kase, send, caseLink, authorOf, deskOf }) => {
   // Move to a desk (Q2.7): the new route's owner desk gets the pass-desk mail, the raiser one line.
   if (!kase || !kase.override || kase.override.chosen !== (pl.chosen ?? "")) return;
@@ -301,4 +313,5 @@ export const CASE_NOTICES: NoticeBuilders = {
   "case.appealed": caseAppealedNotice,
   "case.appeal.decided": caseAppealDecidedNotice,
   "case.override": caseOverrideNotice,
+  "case.revised": caseRevisedNotice,
 };

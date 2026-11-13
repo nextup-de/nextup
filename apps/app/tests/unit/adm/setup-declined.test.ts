@@ -24,6 +24,7 @@ const GO_LIVE: GoLiveInput = {
   directory: { on: true, lastRunAt: NOW, lastOkAt: new Date(NOW.getTime() - HOUR), lastError: null },
   recipients: 1,
   baseline: true,
+  restore: { at: new Date(NOW.getTime() - 86_400_000), seconds: 300 }, findings: null, breakGlassUntil: null,
   agreements: {
     dpa: { kind: "dpa", status: "signed", date: "2026-10-01", signer: "Managing director", at: "2026-10-01T09:00:00.000Z" },
     works: { kind: "works", status: "notNeeded", reason: "No works council", at: "2026-10-01T09:00:00.000Z" },

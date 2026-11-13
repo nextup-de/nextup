@@ -20,7 +20,7 @@ import { checkinRequest, planRequest, roundSaid, type CheckinProposal, type Plan
 import { brainRequest, fromBrain, type BrainItem, type BrainProposal } from "@/features/routing/brain";
 import { findTenant } from "@/features/tenant";
 import { getDb, hasDatabase } from "@/lib/db/client";
-import { recordAiCall } from "@/lib/db/ai-usage";
+import { dbLedger, type Estimate, type Ledger, type Unknown } from "@/server/agent/ledger";
 import { brainTarget } from "@/server/brain-health";
 import { loadLogForSlug } from "@/lib/db/events";
 import { casesFor, type Audience } from "@/server/ideas";
@@ -156,44 +156,99 @@ export type Counted = { model: string; tokens_in: number; tokens_out: number };
 /** What a call needs of the company: the loaded name, routes, redaction and reduced state (the agent reads `clean` and `cleanAll`). */
 export type BrainCompany = NonNullable<Awaited<ReturnType<typeof companyFor>>>;
 
-// What a successful call used goes to AiCall. No database or no company: nothing is recorded; a
-// failure is logged and changes nothing for the caller.
-function record(slug: string, purpose: string, answer: Counted, latencyMs: number): void {
-  if (!hasDatabase()) return;
-  void getDb().company.findUnique({ where: { slug }, select: { id: true } })
-    .then((c) => { if (c) recordAiCall(c.id, { purpose, model: answer.model, tokensIn: answer.tokens_in, tokensOut: answer.tokens_out, latencyMs }); })
-    .catch((err: unknown) => console.error("[brain]", slug, "usage not recorded", err instanceof Error ? err.name : "failed"));
+/** The brain's own model, when the request names none (a `local` choice, a mock or a demo company): what the estimate is priced as. The agent's calls use the same word. */
+const STACK_MODEL = "brain-stack";
+
+/** The most a purpose's answer can run to, in tokens, for the estimate that is reserved before the call (plan REM): generous, since the cap is a ceiling on what is reserved. */
+const MAX_OUT_TOKENS: Record<string, number> = { routing: 600, read: 1500, coach: 2500, plan: 1200, checkin: 1200 };
+const DEFAULT_MAX_OUT_TOKENS = 2000;
+
+/** The usage a failed or invalid answer may still carry: the counts the brain reported before it failed. */
+function countsOf(raw: unknown): { model: string; tokensIn: number; tokensOut: number } | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const n = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null);
+  const tokensIn = n(r.tokens_in);
+  const tokensOut = n(r.tokens_out);
+  return tokensIn === null || tokensOut === null ? null : { model: typeof r.model === "string" ? r.model.slice(0, 200) : "", tokensIn, tokensOut };
 }
 
-/** `timeoutMs`: how long this call waits; left out, BRAIN_TIMEOUT_MS or the default (AGT's longer calls pass their own). */
-export async function post<T extends Counted>(slug: string, purpose: string, path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal, doFetch: typeof fetch = fetch, timeoutMs?: number): Promise<T | null> {
+/** What a call may cost at most: the model the request names (the company's own) or the brain's, the request's size in tokens and the purpose's longest answer. */
+function estimateOf(purpose: string, body: unknown): Estimate {
+  const llm = typeof body === "object" && body !== null ? (body as { llm?: { model?: unknown } }).llm : undefined;
+  return {
+    model: typeof llm?.model === "string" && llm.model !== "" ? llm.model : STACK_MODEL,
+    tokensIn: Math.ceil(JSON.stringify(body).length / 3),
+    tokensOut: MAX_OUT_TOKENS[purpose] ?? DEFAULT_MAX_OUT_TOKENS,
+  };
+}
+
+/**
+ * `timeoutMs`: how long this call waits; left out, BRAIN_TIMEOUT_MS or the default (AGT's longer calls pass their own).
+ *
+ * No call without a reserved budget (plan REM, AGT D21): on a database the estimate is reserved first under the company's lock, and a call that would use the
+ * month's cap up is refused (null, nothing is sent). Afterwards the reservation is settled with what the brain reported, released when the brain refused
+ * before any model ran (a 4xx without counts), or kept as the month's cost when the usage is unknown (a timeout, a 5xx, an unreadable answer). Without a
+ * database nothing is counted anywhere, so nothing is reserved. `ledger`: for tests.
+ */
+export async function post<T extends Counted>(slug: string, purpose: string, path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal, doFetch: typeof fetch = fetch, timeoutMs?: number, ledger: Ledger = dbLedger): Promise<T | null> {
   const url = process.env.BRAIN_URL, key = process.env.BRAIN_API_KEY;
   if (!url || !key) return null;
+  let reservation: Awaited<ReturnType<Ledger["reserve"]>> = null;
+  if (hasDatabase()) {
+    const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } }).catch(() => null);
+    if (!company) return null; // without the company there is nothing to count the call against
+    reservation = await ledger.reserve(company.id, purpose, estimateOf(purpose, body));
+    if (!reservation) {
+      console.error("[brain]", slug, path, "no budget left for this call");
+      return null;
+    }
+  }
   const started = Date.now();
+  const spent = () => Date.now() - started;
+  const keep = (why: Unknown) => reservation?.keep(spent(), why).catch(() => undefined);
   const timeout = AbortSignal.timeout(timeoutMs ?? (Number(process.env.BRAIN_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS));
+  let res: Response;
   try {
-    const res = await doFetch(url.replace(/\/$/, "") + path, {
+    res = await doFetch(url.replace(/\/$/, "") + path, {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": key },
       body: JSON.stringify(body),
       cache: "no-store",
       signal: signal ? AbortSignal.any([timeout, signal]) : timeout,
     });
-    if (!res.ok) {
-      console.error("[brain]", slug, path, "status", res.status);
-      return null;
-    }
-    const answer = schema.safeParse(await res.json());
-    if (!answer.success) {
-      console.error("[brain]", slug, path, "unexpected answer");
-      return null;
-    }
-    record(slug, purpose, answer.data, Date.now() - started);
-    return answer.data;
   } catch (err) {
+    const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
     console.error("[brain]", slug, path, err instanceof Error ? err.name : "failed");
+    await keep(timedOut ? "timeout" : "disconnect");
     return null;
   }
+  let raw: unknown = null;
+  try {
+    raw = await res.json();
+  } catch {
+    raw = null;
+  }
+  if (!res.ok) {
+    console.error("[brain]", slug, path, "status", res.status);
+    const counts = countsOf(raw);
+    if (counts) await reservation?.settle({ ...counts, latencyMs: spent() }).catch(() => undefined);
+    else if (res.status >= 400 && res.status < 500) await reservation?.release().catch(() => undefined);
+    else await keep("server-error");
+    return null;
+  }
+  const answer = schema.safeParse(raw);
+  if (!answer.success) {
+    console.error("[brain]", slug, path, "unexpected answer");
+    const counts = countsOf(raw);
+    if (counts) await reservation?.settle({ ...counts, latencyMs: spent() }).catch(() => undefined);
+    else await keep("unreadable");
+    return null;
+  }
+  await reservation?.settle({ model: answer.data.model, tokensIn: answer.data.tokens_in, tokensOut: answer.data.tokens_out, latencyMs: spent() }).catch((err: unknown) => {
+    console.error("[brain]", slug, path, "usage not settled", err instanceof Error ? err.name : "failed");
+  });
+  return answer.data;
 }
 
 // At publish: the routing row that owns the idea and whether it was raised before.

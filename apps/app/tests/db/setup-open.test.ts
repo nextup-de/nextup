@@ -11,6 +11,8 @@ const sendMail = vi.fn<(msg: { to: string; subject: string; text: string }) => P
 vi.mock("@/server/issue-session", () => ({ issueSession, clearSession: vi.fn(), secureCookies: () => false }));
 vi.mock("@/server/mail", () => ({ sendMail, mailStatus: vi.fn(async () => ({ configured: true, reachable: true })), mailConfigured: () => true }));
 vi.mock("@/server/backup-status", () => ({ readBackupStatus: vi.fn(async () => ({ at: new Date(), offbox: true })) }));
+// The restore test is a needed check too (REM-O3): one that passed a day ago.
+vi.mock("@/server/restore-status", () => ({ readRestoreStatus: vi.fn(async () => ({ at: new Date(Date.now() - 86_400_000), seconds: 300 })) }));
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ "x-forwarded-for": "203.0.113.20" }),
   cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }),

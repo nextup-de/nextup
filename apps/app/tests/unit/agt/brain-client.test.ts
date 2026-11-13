@@ -178,7 +178,7 @@ describe("AGT brain client", () => {
     const f = reply(ANSWER);
     for (const purpose of ["agent", "brain"] as const) {
       const closed = gateOf(purpose, bedrock());
-      expect(closed).toEqual({ on: false, why: BEDROCK_MODEL_WORDS });
+      expect(closed).toEqual({ on: false, reason: "no_model", why: BEDROCK_MODEL_WORDS });
       expect(await askBrainAgent(closed, "acme", REQUEST, policy, opts(f))).toBeNull();
       expect(await askBrainHint(closed, "acme", { idea: "i", category: "c", reason: "r", locale: "en" }, policy, opts(f))).toBeNull();
       expect(gateOf(purpose, bedrock("eu.anthropic.claude-haiku-5-5")).on).toBe(true);

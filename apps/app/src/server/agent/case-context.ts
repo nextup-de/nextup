@@ -4,7 +4,7 @@
 // returns generated text, so a right the viewer lost is lost for what they get back. Not a "use server" module.
 import { meFor, type Me, type SeatRow } from "@/features/auth/identity";
 import { agentStateOf } from "@/features/agent/reduce";
-import type { AgentViewer } from "@/features/agent/permissions";
+import { holdsOpenStep, type AgentViewer } from "@/features/agent/permissions";
 import type { AgentState } from "@/features/agent/types";
 import { getViewerFor } from "@/features/auth/session";
 import { reduce, type ReducedCase } from "@/features/cases/reducer";
@@ -38,8 +38,10 @@ export async function caseContext(slug: string, caseId: string): Promise<CaseCon
   const state = reduce(seed, log);
   const kase = state.cases.find((c) => c.id === caseId);
   if (!kase) return null;
+  const me = meFor(v.userId, state.seats);
   return {
     companyId: company.id, slug, userName: v.name, kase, seats: state.seats, agent: agentStateOf(log, state),
-    viewer: { userId: v.userId, role: v.role, me: meFor(v.userId, state.seats) },
+    // The holders of the case's open approval step may read its planning draft (REM Q7.10): worked out here, from the state just reduced.
+    viewer: { userId: v.userId, role: v.role, me, approver: holdsOpenStep(me, kase, state) },
   };
 }
