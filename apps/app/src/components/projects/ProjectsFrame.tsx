@@ -1,8 +1,8 @@
 "use client";
 // The Projects area with its sidebar (Paper page "Projects page"): the sidebar on the left, edge to edge
 // under the bar, the page on the right. On a laptop or monitor the sidebar carries the area's tabs and a
-// project's pages, so the two strips of tabs step aside; hide the sidebar (or open it on a phone) and the
-// strips are back. The shell (SimpleShell) wraps every page of the area in this.
+// project's pages, so the two strips of tabs step aside; with the sidebar hidden (how it starts) or on a
+// phone the strips are there. The shell (SimpleShell) wraps every page of the area in this.
 import { useSyncExternalStore } from "react";
 import type { ProjectsTabKey } from "@/config/nav";
 import { SectionTabs } from "@/components/shell/SectionTabs";
@@ -11,14 +11,15 @@ import { ProjectsSidebar } from "./ProjectsSidebar";
 import s from "./ProjectsFrame.module.css";
 
 const KEY = "nh.projectsSidebar";
-// Open or hidden, remembered in this browser (the server always draws it open).
+// Open or hidden, remembered in this browser. It starts hidden, the calm start the raise page has too
+// (docs/DESIGN_RULES.md): the strips of tabs stay until someone opens the sidebar. The server draws it hidden.
 const listeners = new Set<() => void>();
-const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "hidden" ? "hidden" : "open"; } catch { return "open"; } };
+const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "open" ? "open" : "hidden"; } catch { return "hidden"; } };
 const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
 export function ProjectsFrame({ area, projectId, caseId, children }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; children: React.ReactNode }) {
   const t = useT();
-  const sb = useSyncExternalStore(subscribeSb, readSb, () => "open" as const);
+  const sb = useSyncExternalStore(subscribeSb, readSb, () => "hidden" as const);
   const set = (v: "open" | "hidden") => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
 
   return (

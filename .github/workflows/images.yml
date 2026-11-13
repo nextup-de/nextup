@@ -27,6 +27,12 @@
 
 name: images
 
+# A deploy run (workflow_run) is named after the commit CI tested, the one it stages and releases.
+# GitHub gives it main's tip at the moment CI ended as head_sha, which a later merge may have moved:
+# on 12 Nov admin's Releases page showed #736's release on #729, whose CI was red. Admin reads this
+# name. Every other event keeps GitHub's own name (a whitespace-only run-name falls back to it).
+run-name: ${{ github.event_name == 'workflow_run' && format('deploy {0}', github.event.workflow_run.head_sha) || ' ' }}
+
 on:
   # The build starts with the push, so it does not wait for CI.
   push:

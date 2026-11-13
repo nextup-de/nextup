@@ -54,7 +54,7 @@ describe("the server phase", () => {
   const goLive: GoLiveInput = {
     now: AT, units: [], roles: [], routes: [], hasCalendar: false, people: { active: 1, canSignIn: 1 }, microsoftOn: true,
     managers: { withCode: 1, withTotp: 1 }, mail: "ok", ai: { choice: "off", dpaSignedAt: null }, backup: null,
-    supportOpenUntil: null, notifications: false, directory: null, recipients: 0, baseline: false, agreements: {},
+    supportOpenUntil: null, notifications: false, directory: null, recipients: 0, baseline: false, restore: null, findings: null, breakGlassUntil: null, agreements: {},
   };
   const facts: SetupFacts = {
     viewer: "console", prefix: "/acme", goLive, openedAt: null, context: "notUsed",

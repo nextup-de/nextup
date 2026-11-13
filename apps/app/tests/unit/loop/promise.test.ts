@@ -4,6 +4,9 @@ import { workdayOf } from "@/features/clock/calendar";
 import type { CaseEvent } from "@/features/cases/events";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { answerPromise } from "@/features/cases/promise";
+import { promiseText } from "@/features/cases/promise-text";
+import { createT } from "@/i18n";
+import type { CaseReview } from "@/features/approvals/types";
 
 const CAL = { ...DEFAULT_CALENDAR, extraHolidays: ["2026-03-09"] }; // the Monday after Friday 2026-03-06
 const WORKDAYS: ClockSpec = { mode: "workdays", calendar: CAL };
@@ -17,7 +20,7 @@ function mk(over: Partial<ReducedCase> = {}, history: CaseEvent[] = []): Reduced
     id: "c1", seed: false, kind: "problem", title: "t", body: "", from: "A", fromDept: "", fromUserId: "u1",
     assigneeSeatId: "seat-owner", assigneeRoleId: "role-owner", routeId: "r1", assignee: "Owner", raisedDay: FRIDAY,
     reason: "", upside: "", linkedIdea: null, status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [],
-    building: null, shipped: null, override: null, discussion: null, versions: [], pausedDays: 0, pausedSince: null,
+    building: null, shipped: null, override: null, discussion: null, versions: [], decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: FRIDAY, dueFloor: null, reopenSeq: null, decidedSeq: null, follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [], review: null, cost: null, approvals: null, approvalRuns: [], openingRunId: null, pausedDays: 0, pausedSince: null,
     history, route: null, age: 0, clock: 0, open: true, archived: false, overdue: false, dueDay: FRIDAY + 2, escalated: null,
     ...over,
   };
@@ -92,4 +95,33 @@ describe("LOOP answer promise", () => {
     expect(p.dueDay).toBe(5);
     expect(p.state).toBe("waiting");
   });
+});
+
+// GAT-U1 (B2): the answer promise while a raise is reviewed and while a yes waits for its approval (plan GAT, D15, D21). Flat top-level tests (D36).
+const names = { holderRole: "Quality lead", holderPeople: ["L. Brandt"], escalatedRole: null, date: (d: number) => `D${d}`, today: FRIDAY + 1 };
+const review: CaseReview = { state: "pending", seatId: "seat-owner", since: FRIDAY, dueDay: FRIDAY + 1, forwardFrom: FRIDAY + 1, waitsOn: null, auto: false };
+
+it("GAT promise reads With role while in review", () => {
+  const p = answerPromise(mk({ review }), { today: FRIDAY + 1, clock: WORKDAYS });
+  expect(p.stage).toBe("review");
+  expect(promiseText(p, names, createT("en")).answerBy).toBe(`With Quality lead · answer by D${FRIDAY + 2}`);
+  expect(promiseText(p, names, createT("de")).answerBy).toContain(`D${FRIDAY + 2}`);
+  // The answer date is the promise, not the review's own day; a forwarded or ended review reads as an ordinary promise again.
+  expect(promiseText(p, { ...names, holderRole: "" }, createT("en")).answerBy).toBe(`With no desk yet · answer by D${FRIDAY + 2}`);
+  for (const state of ["forwarded", "ended"] as const) {
+    const after = answerPromise(mk({ review: { ...review, state } }), { today: FRIDAY + 1, clock: WORKDAYS });
+    expect(after.stage).toBeUndefined();
+    expect(promiseText(after, names, createT("en")).answerBy).toBe("D" + (FRIDAY + 2) + " · 1 working day left");
+  }
+  expect(answerPromise(mk(), { today: FRIDAY + 1, clock: WORKDAYS }).stage).toBeUndefined();
+});
+
+it("GAT promise reads Waits for approval while in approval", () => {
+  const c = mk({ status: "approval", open: false });
+  const p = answerPromise(c, { today: FRIDAY + 4, clock: WORKDAYS });
+  expect(p.stage).toBe("approval");
+  expect(promiseText(p, names, createT("en")).answerBy).toBe("Waits for approval");
+  expect(promiseText(p, names, createT("de")).answerBy).toBe("Wartet auf Freigabe");
+  // It is no answer date and never late, even past the day the promise would have run out.
+  expect(promiseText(answerPromise(c, { today: FRIDAY + 40, clock: WORKDAYS }), { ...names, today: FRIDAY + 40 }, createT("en")).answerBy).toBe("Waits for approval");
 });

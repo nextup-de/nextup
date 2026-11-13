@@ -68,9 +68,9 @@ test("the demo controls click through the whole story: raise, publish, accept, d
 
   await test.step("the team leader opens it, says yes and opens the project; then the manager's Dashboard", async () => {
     await take("Switch to team leader");
-    await expect(page).toHaveURL(/\/demo\/leader$/);
+    await expect(page).toHaveURL(/\/demo\/inbox$/);
     await take("Open the idea");
-    await expect(page).toHaveURL(/\/demo\/leader\?id=/);
+    await expect(page).toHaveURL(/\/demo\/inbox\?id=/);
     await expect(page.getByRole("main")).toContainText(TITLE);
     await take("Accept it");
     await take("Open the project");
@@ -109,7 +109,7 @@ test("the leader's and manager's steps taken on the page itself: the controls fo
     await page.getByRole("main").getByRole("button", { name: new RegExp(TITLE) }).first().click();
     await expect(step("Accept it")).toBeEnabled();
     await page.getByRole("button", { name: /^Yes, do it/ }).click();
-    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
+    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
     await expect(step("Open the project")).toBeEnabled();
   });
 

@@ -9,15 +9,25 @@
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { byClock } from "@/features/clock/actor";
 import type { SeatRow } from "@/features/auth/identity";
+import { applyOverload, emptyOverload } from "@/features/overload/reduce";
+import type { OverloadState } from "@/features/overload/types";
+import { COST_BASIS_MAX, COST_EUR_MAX, EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo, type ApprovalStep, type CaseApprovals, type CaseCost, type CaseReview } from "@/features/approvals/types";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
-import type { Idea, Problem, Route, SeedCase } from "@/features/demo/types";
+import { cycleEvents, noCategoryOf, type AnyNoCategory } from "./no";
+import { fallbackSeat } from "./stamp";
+import type { Idea, Problem, Route, SeedCase, SeedRole } from "@/features/demo/types";
 import { loopRules, type LoopRules } from "@/features/loop/rules";
-import { applyProjectEvent, finishProjects, newBook, openOrJoin, seedProject } from "@/features/projects/reduce";
+import { addCondition, applyProjectEvent, approvalGiven, finishProjects, newBook, openOrJoin, seedProject, setWaitingForApproval } from "@/features/projects/reduce";
 import type { ReducedProject, SeedProject } from "@/features/projects/types";
 
 // A yes that names a project opens it (or adds this idea to it): the idea is archived from then on.
-export type Decision = { answer: "yes" | "no"; reason: string; note: string; by: string; day: number; projectId?: string | null; lead?: string | null; byUserId?: string | null };
-export type HandOver = { from: string; fromUserId: string | null; to: string; toSeatId: string | null; why: string; day: number };
+export type Decision = {
+  answer: "yes" | "no"; reason: string; note: string; by: string; day: number; projectId?: string | null; lead?: string | null; byUserId?: string | null;
+  // The reasoned no (plan NOR): the category of a no, what would make it a yes, the day it comes back, the case or project it duplicates.
+  category: AnyNoCategory | null; changeIf: string; revisitDay: number | null; duplicateOf: string | null;
+};
+/** `fromSeatId`: the seat the case came from (Not mine goes back to it); `back` and `up`: the pass was Not mine / Send up (plan NOR, D13). */
+export type HandOver = { from: string; fromUserId: string | null; to: string; toSeatId: string | null; why: string; day: number; fromSeatId: string | null; back: boolean; up: boolean };
 export type Answer = { text: string; by: string; byUserId: string | null; day: number };
 /** `unanswered`: the day the clock gave the case back to the desk without an answer; null while it waits or once answered. */
 export type Question = { text: string; by: string; byUserId: string | null; day: number; answer: Answer | null; unanswered: number | null };
@@ -35,13 +45,27 @@ export type Discussion = {
   // derived: the round under way (the next check-in ends it), whether the last check-in said "decide",
   // and the day the last allowed round ends
   round: number; ready: boolean; lastDay: number;
+  /** People who said the discussion is not for them (case.invite.declined, plan NOR D14). */
+  declinedUserIds: string[];
 };
 // v1 is the case as raised; each case.revised adds the next one.
 export type Version = { version: number; day: number; by: string; byUserId?: string | null; title: string; body: string; overall: number | null };
-export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building" | "shipped" | "withdrawn";
+export type CaseStatus = "open" | "discussion" | "decided" | "asked" | "building" | "shipped" | "withdrawn" | "merged" | "approval";
 
 /** The raiser took the idea back before anyone decided it (decision Q1.14). */
 export type Withdrawal = { day: number; by: string; byUserId: string | null; note: string };
+
+/** The raiser's second look at a no (plan NOR, D18). `seatId`: the desk the server set, null when no occupied seat could take it; `decided`: its answer. */
+export type Appeal = {
+  text: string; day: number; by: string; byUserId: string | null; seatId: string | null;
+  decided: { uphold: boolean; reason: string; by: string; byUserId: string | null; day: number } | null;
+};
+
+/** The desk closed the case as a duplicate of `into` (plan SEE, D17): archived, off the desk, its clock stopped on `day`. */
+export type Merge = { into: string; day: number; by: string; byUserId: string | null; note: string };
+
+/** The case is open on a desk again (plan NOR, D12): a no came back on its revisit day, a second look was not upheld, or a stopped project's idea went back. */
+export type Reopen = { why: "revisit" | "appeal" | "stopped"; day: number; by: string };
 
 export type ReducedCase = {
   id: string; seed: boolean; kind: CaseKind; title: string; body: string; from: string; fromDept: string;
@@ -51,6 +75,20 @@ export type ReducedCase = {
   status: CaseStatus; read: number | null; decided: Decision | null; withdrawn: Withdrawal | null; question: Question | null; handed: HandOver[];
   building: Building | null; shipped: Shipped | null; override: Override | null;
   discussion: Discussion | null; versions: Version[];
+  // The reasoned no (plan NOR): every decision of the case, oldest first (`decided` is the latest live one), the passes people
+  // made, the not-now in a row, the second look, the reopens, the day the current cycle began and the floor of the answer date.
+  decisions: Decision[]; passes: number; notNowInRow: number; appeal: Appeal | null; reopens: Reopen[]; cycleStartDay: number; dueFloor: number | null;
+  // Event order (D12, review of 12 Nov): the place in `history` of the latest reopen and of the latest decision, null when none.
+  // Two events of one day have a total order only by this place; see features/cases/no.ts decisionKey and cycleEvents.
+  reopenSeq: number | null; decidedSeq: number | null;
+  // The raiser sees the whole way (plan SEE): the case this one follows up and the cases that follow it (D15), the cases the
+  // raise looked like (D16), the merge into another case and the raisers merged into this one (D17), the cases linked as related.
+  // `mergedIn` carries user ids for the reducer's readers (the affected count by user id); a page shows only the count.
+  follows: string | null; followedBy: string[]; sameAs: string | null; related: string[]; merged: Merge | null;
+  mergedIn: { id: string; userId: string | null; day: number }[]; links: string[];
+  // Review and approvals (plan GAT, D12, D14, D18, D21, D32, D33): the review of the raise, the latest cost estimate, the active approval
+  // run and the finished ones, and the id of the run whose final yes decided the case. null, null, null, [] and null until GAT's events.
+  review: CaseReview | null; cost: CaseCost | null; approvals: CaseApprovals | null; approvalRuns: CaseApprovals[]; openingRunId: string | null;
   pausedDays: number; pausedSince: number | null; history: CaseEvent[];
   // derived once every event is applied. `open` = still on a desk, waiting for a move: open or in discussion.
   // `archived` = decided either way, or withdrawn by the raiser; a yes then lives on as `decided.projectId`.
@@ -71,17 +109,24 @@ export type LedgerCounts = {
 export type State = {
   day: number; cases: ReducedCase[]; ideas: ReducedIdea[]; problems: ReducedProblem[]; projects: ReducedProject[];
   ledger: LedgerCounts; rules: LoopRules; seats: SeatRow[]; routes: Route[]; clock: ClockSpec;
+  /** The company's review and approval settings and its roles' titles and spend limits, as the seed carried them (plan GAT, D27); the empty config and no roles without. */
+  approvals: ApprovalConfig & { roles: ApprovalRoleInfo[] };
+  /** Absences and desk episodes (plan OVL, D16). Absent = empty: read it through overloadOf(state), so State literals in tests stay valid. */
+  overload?: OverloadState;
 };
 
 export type ReduceSeed = {
   cases: SeedCase[]; ideas: Idea[]; problems: Problem[]; routes: Route[]; promiseDays: number;
   projects?: SeedProject[]; loop?: Partial<LoopRules>; seats?: SeatRow[];
+  roles?: readonly SeedRole[]; // the org chart, read for the fallback desk of a reopened case (plan NOR, D12) and, with their title and spend limit, by GAT
+  approvals?: ApprovalConfig; // the company's review and approval settings (plan GAT, D27); missing = the empty config
   clock?: ClockSpec; // missing = demo (render-time escalation); workdays = escalation only from clock.due facts (CLK/D11)
 };
 
 type CaseRow = { kind?: CaseKind; title: string; body?: string; from: string; fromDept?: string; routeId?: string | null; assignee: string; raisedDay?: number; reason?: string; upside?: string; linkedIdea?: string; fromUserId?: string | null; seatId?: string | null };
 
 export function reduce(seed: ReduceSeed, log: EventLog): State {
+  const overload = emptyOverload();
   const day = log.day | 0;
   const routes = seed.routes;
   const routeOf = (id: string | null) => routes.find((r) => r.id === id) ?? null;
@@ -96,6 +141,9 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
   const problems: Record<string, ReducedProblem> = {};
   const rules = loopRules(seed.loop);
   const book = newBook();
+  // The answer date a reopen carried (case.reopened dueDay): the new cycle's own, when the clock gave one.
+  const cycleDue = new Map<string, number>();
+  const occupiedSeat = (seatId: string | null | undefined) => (seatId ? seats.find((x) => x.id === seatId && x.userId !== null) ?? null : null);
 
   const freshCase = (id: string, row: CaseRow, isSeed: boolean): ReducedCase => {
     const c: ReducedCase = {
@@ -104,7 +152,11 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       routeId: row.routeId ?? null, assignee: row.assignee, raisedDay: row.raisedDay ?? 0,
       reason: row.reason ?? "", upside: row.upside ?? "", linkedIdea: row.linkedIdea ?? null,
       status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [], building: null, shipped: null,
-      override: null, discussion: null, versions: [], pausedDays: 0, pausedSince: null, history: [],
+      override: null, discussion: null, versions: [],
+      decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: row.raisedDay ?? 0, dueFloor: null, reopenSeq: null, decidedSeq: null,
+      follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [],
+      review: null, cost: null, approvals: null, approvalRuns: [], openingRunId: null,
+      pausedDays: 0, pausedSince: null, history: [],
       route: null, age: 0, clock: 0, open: true, archived: false, overdue: false, dueDay: 0, escalated: null,
     };
     c.versions.push({ version: 1, day: c.raisedDay, by: c.from, byUserId: c.fromUserId, title: c.title, body: c.body, overall: null });
@@ -131,16 +183,77 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
   (seed.projects ?? []).forEach((row) => (row.seedEvents ?? []).forEach(pushSeed(row.id)));
   seedEvents.sort((a, b) => a.day - b.day);
 
+  /**
+   * The case is open on a desk again, in a new cycle from today (D12). The event is already in the history: its place is the
+   * boundary every later reader uses, so two events of one day stay in order. The seat: the one the event named when it is
+   * occupied, else the route owner's, else the fallback desk (features/cases/stamp.ts) - never an empty seat.
+   */
+  const reopen = (c: ReducedCase, ev: CaseEvent, why: Reopen["why"], seatHint: string | null, dueDay: number | null | undefined) => {
+    const d = ev.day | 0;
+    c.reopens.push({ why, day: d, by: ev.actor });
+    c.reopenSeq = c.history.length - 1;
+    c.decided = null;
+    c.status = "open";
+    c.question = null;
+    c.discussion = null;
+    c.cycleStartDay = d;
+    c.pausedDays = 0;
+    c.pausedSince = null;
+    c.dueFloor = null;
+    if (Number.isInteger(dueDay) && (dueDay as number) >= d) cycleDue.set(c.id, dueDay as number);
+    else cycleDue.delete(c.id);
+    const seat = occupiedSeat(seatHint) ?? occupiedSeat(routeOf(c.routeId)?.ownerSeatId) ?? fallbackSeat({ seats, roles: seed.roles });
+    if (seat) {
+      c.assignee = seat.label;
+      c.assigneeSeatId = seat.id;
+      c.assigneeRoleId = seat.roleId;
+    }
+  };
+
+  // The review of a raise ends when the case leaves the review seat's hands for another reason than the forward (plan GAT, D13).
+  const endReview = (c: ReducedCase) => { if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, state: "ended" }; };
+
+  // ── Approval runs (plan GAT, D21 to D23, D32, D33) ───────────────────────────────────────────────────────────────────────────────────
+  const stepDone = (st: ApprovalStep) => st.state === "yes" || st.state === "conditions";
+  /** The step waiting for an answer: the lowest one not yet yes or conditions. */
+  const currentOf = (run: CaseApprovals): ApprovalStep | null => (run.done ? null : run.steps.find((st) => st.state === "pending") ?? null);
+  /** Who a step is named after in the conditions line: the role's title or the council's name, else whoever answered. */
+  const approverOf = (st: ApprovalStep, by: string): string => {
+    const name = st.kind === "council" ? seed.approvals?.councils.find((k) => k.id === st.councilId)?.name : seed.roles?.find((r) => r.id === st.roleId)?.title;
+    return name || by;
+  };
+  /** A run that is over leaves the case's place for the next one and is kept in the history of runs (D32). */
+  const finishRun = (c: ReducedCase, run: CaseApprovals, outcome: "yes" | "no") => {
+    run.done = true;
+    run.outcome = outcome;
+    c.approvalRuns.push(run);
+    c.approvals = null;
+  };
+
   const apply = (ev: CaseEvent) => {
     if (applyProjectEvent(book, ev, rules)) return;
     const pl = ev.payload ?? {};
     const d = ev.day | 0;
+    if (applyOverload(overload, ev, d)) return; // OVL's six events reach no other branch (plan OVL, D16)
     const target = ev.target ?? "";
     const uid = ev.actorUserId ?? null;
     switch (ev.type) {
       case "case.raised": {
         const seatId = pl.assigneeRoleHolderId ?? routeOf(pl.routeId ?? null)?.ownerSeatId ?? null;
         const c = freshCase(target, { kind: pl.kind === "problem" || pl.kind === "idea" ? pl.kind : undefined, title: pl.title ?? "Untitled", body: pl.body, from: ev.actor, fromUserId: uid, fromDept: pl.fromDept, routeId: pl.routeId, assignee: pl.assignee ?? "Triage desk", raisedDay: d, reason: pl.reason ?? "triage", upside: pl.upside ?? "", seatId }, false);
+        // The cases this raise follows up and looked like, when they exist and are not this one (plan SEE, D15, D16).
+        const known = (id: unknown): id is string => typeof id === "string" && id !== target && cases[id] !== undefined;
+        if (known(pl.follows)) {
+          c.follows = pl.follows;
+          if (!cases[pl.follows].followedBy.includes(target)) cases[pl.follows].followedBy.push(target);
+        }
+        if (known(pl.proposal?.sameAs)) c.sameAs = pl.proposal.sameAs;
+        c.related = [...new Set((pl.proposal?.related ?? []).filter(known))];
+        // A raise the server stamped as reviewed starts a pending review on its seat; without the stamp the case has none (plan GAT, D12, D14).
+        if (pl.review === true) {
+          const dueDay = Number.isInteger(pl.reviewDueDay) ? (pl.reviewDueDay as number) : d;
+          c.review = { state: "pending", seatId, since: d, dueDay, forwardFrom: dueDay, waitsOn: null, auto: false };
+        }
         c.history.push(ev);
         break;
       }
@@ -153,19 +266,53 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       }
       case "case.decided": {
         const c = cases[target];
-        if (!c) break;
+        if (!c || c.status === "merged") break; // a merged case is closed (plan SEE)
+        // A case waiting for approval is decided only by the settle operation, once, from its run (plan GAT, D21, D32); nobody else's decision counts,
+        // and the settle operation decides nothing else. A supplement run decides nothing (D33): its last yes ends the run in case.approval.
+        const run = c.approvals;
+        const bySettle = uid === null && ev.actor.startsWith("system:approvals");
+        const settling = c.status === "approval" && run !== null && !run.supplement && bySettle;
+        if ((c.status === "approval" || bySettle) && !settling) break;
+        if (settling && run !== null && pl.answer !== "no" && !run.steps.every(stepDone)) break;
         if (c.read === null) c.read = d;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
-        const first = c.decided === null;
         const answer = pl.answer === "no" ? "no" : "yes";
-        // Only the first yes opens a project: a decision cannot fork an idea into two projects.
-        const project = first && answer === "yes" ? openOrJoin(book, ev, { id: c.id, from: c.from, fromUserId: c.fromUserId, routeId: c.routeId, title: c.title }) : null;
-        c.decided = {
+        // Only the first yes opens a project: a decision cannot fork an idea into two projects. After a reopen the case may
+        // open a new one, unless an earlier decision's project is still open (not stopped).
+        const stillOpen = c.decisions.some((x) => x.projectId != null && book.byId[x.projectId] !== undefined && !book.byId[x.projectId].stopped);
+        const first = settling || (c.decided === null && !stillOpen);
+        const source = { id: c.id, from: c.from, fromUserId: c.fromUserId, routeId: c.routeId, title: c.title };
+        // The run's draft is already open: the yes decides onto it, no second project. A join links the case to the project now (D21).
+        const project = !first || answer !== "yes" ? null
+          : settling && run !== null ? (run.opened ? book.byId[run.projectId ?? ""] ?? null : openOrJoin(book, { ...ev, payload: { ...pl, projectId: run.projectId ?? undefined } }, source))
+          : openOrJoin(book, ev, source);
+        const category = noCategoryOf({ answer, reason: pl.reason ?? "", category: pl.category });
+        const decision: Decision = {
           answer, reason: pl.reason ?? "", note: pl.note ?? "", by: ev.actor, byUserId: uid, day: d,
+          // A decision of this cycle keeps what an earlier decision of the same cycle had; a new cycle starts from nothing.
           projectId: project ? project.id : c.decided?.projectId ?? null, lead: project ? project.lead : c.decided?.lead ?? null,
+          category, changeIf: (pl.changeIf ?? "").trim(), revisitDay: Number.isInteger(pl.revisitDay) ? (pl.revisitDay as number) : null,
+          duplicateOf: typeof pl.duplicateOf === "string" && pl.duplicateOf !== "" ? pl.duplicateOf : null,
         };
+        c.notNowInRow = category === "not-now" ? c.notNowInRow + 1 : 0;
+        endReview(c);
+        c.decisions.push(decision);
+        c.decided = decision;
         c.status = "decided";
         c.history.push(ev);
+        c.decidedSeq = c.history.length - 1;
+        if (settling && run !== null) {
+          const onProject = run.projectId === null ? undefined : book.byId[run.projectId];
+          if (answer === "yes") {
+            c.openingRunId = run.runId;
+            if (onProject) {
+              if (run.opened) approvalGiven(onProject, d);
+              // A join takes the conditions its approvers named into the brief of the project it joined, now that the case is linked to it (D22).
+              else run.steps.forEach((st) => { const said = st.answers.at(-1); if (st.state === "conditions" && said?.conditions) addCondition(onProject, `Conditions (${approverOf(st, said.by)}): ${said.conditions}`); });
+            }
+          } else if (onProject && run.opened) setWaitingForApproval(onProject, false);
+          finishRun(c, run, answer);
+        }
         break;
       }
       case "case.discussion": {
@@ -174,7 +321,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (c.read === null) c.read = d;
         c.discussion = {
           startedDay: d, by: ev.actor, byUserId: uid, invited: uniq(pl.invited ?? []), invitedUserIds: uniqIds(pl.invitedUserIds ?? []), missing: pl.missing ?? "", rounds: [],
-          round: 1, ready: false, lastDay: 0,
+          round: 1, ready: false, lastDay: 0, declinedUserIds: [],
         };
         c.status = "discussion";
         c.history.push(ev);
@@ -209,13 +356,90 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       }
       case "case.handed": {
         const c = cases[target];
-        if (!c || (c.status !== "open" && c.status !== "discussion") || !pl.to) break;
+        // A pass on an asked case is ignored, unless it says the open question stays open for the new holder (plan NOR, D13).
+        const keeps = pl.keepsQuestion === true;
+        if (!c || !(c.status === "open" || c.status === "discussion" || (c.status === "asked" && keeps)) || !pl.to) break;
         if (c.read === null) c.read = d;
         const toSeat = pl.toRoleHolderId ?? null;
-        c.handed.push({ from: ev.actor, fromUserId: uid, to: pl.to, toSeatId: toSeat, why: pl.why ?? "", day: d });
+        c.handed.push({ from: ev.actor, fromUserId: uid, to: pl.to, toSeatId: toSeat, why: pl.why ?? "", day: d, fromSeatId: c.assigneeSeatId, back: pl.back === true, up: pl.up === true });
+        // The people's passes only: not the clock's, not a system actor's. Managers count too (the reducer knows no app roles).
+        if (uid !== null && !byClock(ev) && !ev.actor.startsWith("system:")) c.passes += 1;
         c.assignee = pl.to;
         c.assigneeSeatId = toSeat;
         c.assigneeRoleId = roleOfSeat(toSeat);
+        endReview(c);
+        // The case's route moves with the pass; the new desk gets at least the date the writer asked for (Q4.9, Q4.10).
+        if (typeof pl.routeId === "string" && routeOf(pl.routeId) !== null) c.routeId = pl.routeId;
+        if (Number.isInteger(pl.dueDay)) c.dueFloor = Math.max(c.dueFloor ?? -Infinity, pl.dueDay as number);
+        c.history.push(ev);
+        break;
+      }
+      case "case.reopened": {
+        // The case is open on a desk again (D12): a no came back on its revisit day (only the clock says so), or a stopped project's idea went back (a person).
+        const c = cases[target];
+        if (!c || c.status !== "decided" || c.decided === null) break;
+        if (pl.why === "revisit") {
+          if (!byClock(ev) || c.decided.answer !== "no") break;
+        } else if (pl.why === "stopped") {
+          if (byClock(ev)) break;
+        } else break;
+        c.history.push(ev);
+        reopen(c, ev, pl.why, pl.toRoleHolderId ?? null, pl.dueDay);
+        break;
+      }
+      case "case.appealed": {
+        // The raiser's second look: once per case, at a no (D18).
+        const c = cases[target];
+        if (!c || c.status !== "decided" || c.decided?.answer !== "no" || c.appeal !== null) break;
+        c.appeal = { text: (pl.text ?? "").trim(), day: d, by: ev.actor, byUserId: uid, seatId: pl.toRoleHolderId ?? null, decided: null };
+        c.history.push(ev);
+        break;
+      }
+      case "case.appeal.decided": {
+        const c = cases[target];
+        if (!c || c.status !== "decided" || c.appeal === null || c.appeal.decided !== null || typeof pl.uphold !== "boolean") break;
+        c.appeal.decided = { uphold: pl.uphold, reason: (pl.reason ?? "").trim(), by: ev.actor, byUserId: uid, day: d };
+        c.history.push(ev);
+        // Not upheld: the case is open again on the route owner's desk, with a new answer date.
+        if (!pl.uphold) reopen(c, ev, "appeal", null, undefined);
+        break;
+      }
+      case "case.invite.declined": {
+        // An invitee says the discussion is not for them (D14): off the list.
+        const c = cases[target];
+        if (!c || c.status !== "discussion" || !c.discussion || uid === null || !c.discussion.invitedUserIds.includes(uid)) break;
+        if (!c.discussion.declinedUserIds.includes(uid)) c.discussion.declinedUserIds.push(uid);
+        c.history.push(ev);
+        break;
+      }
+      case "case.merged": {
+        // The desk closes an undecided case as a duplicate of another (plan SEE, D17). The reducer does not check who wrote it (the server does).
+        const c = cases[target];
+        const destId = pl.into;
+        const dest = typeof destId === "string" ? cases[destId] : undefined;
+        // The target may be missing from a reader's log (viewer-log cuts a case they may not open, SEE D24): the merged case is still marked merged,
+        // and only the target's side is skipped. A target the log does hold keeps every rule below.
+        if (!c || typeof destId !== "string" || destId === c.id || dest === c) break;
+        if (!(c.status === "open" || c.status === "asked" || c.status === "discussion") || c.decided !== null || c.withdrawn !== null || c.merged !== null) break;
+        if (dest && (dest.merged !== null || dest.withdrawn !== null)) break;
+        // A case that absorbed repeats stays the destination: it is not merged again, so every merge points at a case that stays and no chain or cycle can form.
+        if (c.mergedIn.length > 0) break;
+        if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
+        c.merged = { into: destId, day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 300) };
+        endReview(c);
+        c.status = "merged";
+        dest?.mergedIn.push({ id: c.id, userId: c.fromUserId, day: d });
+        c.history.push(ev);
+        break;
+      }
+      case "case.linked": {
+        // Two cases marked as related: both stay as they are (plan SEE, D17).
+        const c = cases[target];
+        const peerId = pl.to;
+        const other = typeof peerId === "string" ? cases[peerId] : undefined;
+        if (!c || !other || other === c || c.merged !== null || other.merged !== null || c.withdrawn !== null || c.links.includes(other.id)) break;
+        c.links.push(other.id);
+        other.links.push(c.id);
         c.history.push(ev);
         break;
       }
@@ -224,6 +448,8 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (!c || c.status !== "open") break;
         if (c.read === null) c.read = d;
         c.question = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d, answer: null, unanswered: null };
+        // The clock never forwards a review while the case waits on the raiser (D14).
+        if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, waitsOn: "raiser" };
         c.status = "asked";
         c.pausedSince = d;
         c.history.push(ev);
@@ -233,6 +459,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "asked" || !c.question) break;
         c.question.answer = { text: pl.text ?? "", by: ev.actor, byUserId: uid, day: d };
+        if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, forwardFrom: Math.max(c.review.dueDay, d + 1), waitsOn: null };
         c.pausedDays += d - (c.pausedSince ?? d);
         c.pausedSince = null;
         c.status = "open";
@@ -246,6 +473,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         if (c.status !== "open" && c.status !== "discussion" && c.status !== "asked") break;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
         c.withdrawn = { day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 500) };
+        endReview(c);
         c.status = "withdrawn";
         c.history.push(ev);
         break;
@@ -255,6 +483,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         if (!c || c.status !== "asked" || !c.question || !byClock(ev)) break;
         c.question.unanswered = d;
+        if (c.review !== null && c.review.state === "pending") c.review = { ...c.review, forwardFrom: Math.max(c.review.dueDay, d + 1), waitsOn: null };
         c.pausedDays += d - (c.pausedSince ?? d);
         c.pausedSince = null;
         c.status = "open";
@@ -286,6 +515,110 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
           c.routeId = chosen.id; c.assignee = chosen.owner.name;
           c.assigneeSeatId = chosen.ownerSeatId ?? null; c.assigneeRoleId = roleOfSeat(c.assigneeSeatId);
         }
+        endReview(c);
+        c.history.push(ev);
+        break;
+      }
+      case "case.provisional": {
+        // A yes that waits for approval starts a run whose id is this event's (plan GAT, D21, D32). The server stamped the steps, their limits, the first
+        // due day, the deciding role and the cost into the event; nothing is read from the configuration here.
+        const c = cases[target];
+        const steps = Array.isArray(pl.approvals) ? pl.approvals : [];
+        const supplement = pl.supplement === true;
+        if (!c || c.approvals !== null || c.withdrawn !== null || c.status === "merged" || steps.length === 0) break;
+        if (supplement ? c.decided?.answer !== "yes" : c.decided !== null) break;
+        // A supplement asks what the decided case still lacks, for the draft it opened (D33). It needs that draft, not started and not stopped.
+        const decidedProject = supplement ? book.byId[c.decided?.projectId ?? ""] : undefined;
+        if (supplement && (!decidedProject || decidedProject.stopped !== null || decidedProject.startedDay !== null)) break;
+        const named = typeof pl.projectId === "string" && pl.projectId !== "" ? pl.projectId : null;
+        const joins = !supplement && named !== null && book.byId[named] !== undefined;
+        const projectId = supplement ? decidedProject?.id ?? null : joins ? named : named ?? `p_${ev.id}`;
+        if (!supplement && !joins) {
+          // A new draft opens exactly as SET's yes with a draft does; the decider is the actor.
+          openOrJoin(book, { ...ev, payload: { ...pl, projectId: projectId ?? undefined, draft: true } }, { id: c.id, from: c.from, fromUserId: c.fromUserId, routeId: c.routeId, title: c.title });
+        }
+        const opened = !joins;
+        const project = projectId === null ? undefined : book.byId[projectId];
+        if (opened && project) setWaitingForApproval(project, true);
+        c.approvals = {
+          runId: ev.id, deciderUserId: uid, decidingRoleId: pl.decidingRoleId ?? null, since: d, projectId, opened, supplement, costEur: typeof pl.costEur === "number" ? pl.costEur : null,
+          steps: steps.map((a, i): ApprovalStep => ({ ...a, id: `${ev.id}:${i}`, state: "pending", dueDay: i === 0 && typeof pl.stepDueDay === "number" ? pl.stepDueDay : null, dueRev: 0, seatId: null, answers: [] })),
+          done: false, outcome: null,
+        };
+        if (!supplement) {
+          // The case leaves the desk and its promise clock stops until the run decides it (D21).
+          if (c.read === null) c.read = d;
+          if (c.pausedSince !== null) c.pausedDays += d - c.pausedSince;
+          c.pausedSince = d;
+          c.status = "approval";
+        }
+        c.history.push(ev);
+        break;
+      }
+      case "case.approval": {
+        // One answer of the current step (plan GAT, D22). An answer for another run, another step or an older revision of the step (a form opened before
+        // a send-back) is ignored; the server refuses it before it is written.
+        const c = cases[target];
+        const run = c?.approvals ?? null;
+        if (!c || run === null || run.done || pl.runId !== run.runId) break;
+        const step = currentOf(run);
+        const answer = pl.approvalAnswer;
+        if (step === null || step.id !== pl.stepId || step.dueRev !== (pl.dueRev ?? 0)) break;
+        if (answer !== "yes" && answer !== "conditions" && answer !== "back" && answer !== "no") break;
+        const conditions = (pl.conditions ?? "").trim();
+        step.answers.push({
+          answer, reason: pl.reason ?? "", conditions: conditions === "" ? null : conditions, present: Number.isInteger(pl.present) ? (pl.present as number) : null,
+          day: d, by: ev.actor, byUserId: uid,
+        });
+        const index = run.steps.indexOf(step);
+        const project = run.projectId === null ? undefined : book.byId[run.projectId];
+        if (answer === "back") {
+          step.dueRev += 1;
+          if (typeof pl.nextStepDueDay === "number") step.dueDay = pl.nextStepDueDay;
+        } else if (answer === "no") {
+          step.state = "no";
+          if (run.supplement) {
+            // A refused supplement ends its run; the decision and the draft stay, and Start stays held by what is still missing (D33).
+            finishRun(c, run, "no");
+            if (project) setWaitingForApproval(project, false);
+          }
+        } else {
+          step.state = answer;
+          if (answer === "conditions" && conditions !== "" && run.opened && project) addCondition(project, `Conditions (${approverOf(step, ev.actor)}): ${conditions}`);
+          const next = run.steps[index + 1];
+          if (next) next.dueDay = typeof pl.nextStepDueDay === "number" ? pl.nextStepDueDay : null;
+          else if (run.supplement) {
+            // The last yes of a supplement adds coverage and ends the run; no case.decided follows (D33).
+            finishRun(c, run, "yes");
+            if (project) approvalGiven(project, d);
+          }
+        }
+        c.history.push(ev);
+        break;
+      }
+      case "case.reviewed": {
+        // The review seat sends the raise on to its desk (plan GAT, D12, D13), or the clock does when nobody did (D14). The route and the seat move
+        // as a hand-over moves them, but this is no pass and no hand-over, and the answer date does not move.
+        const c = cases[target];
+        if (!c || c.review === null || c.review.state !== "pending" || pl.outcome !== "forward") break;
+        if (!(c.status === "open" || c.status === "asked")) break;
+        if (c.read === null) c.read = d;
+        const toSeat = pl.toRoleHolderId ?? null;
+        const seat = toSeat === null ? null : seats.find((s) => s.id === toSeat) ?? null;
+        if (typeof pl.routeId === "string" && routeOf(pl.routeId) !== null) c.routeId = pl.routeId;
+        c.assignee = pl.to ?? seat?.label ?? c.assignee;
+        c.assigneeSeatId = toSeat;
+        c.assigneeRoleId = roleOfSeat(toSeat);
+        c.review = { ...c.review, state: "forwarded", auto: Boolean(pl.auto) };
+        c.history.push(ev);
+        break;
+      }
+      case "case.costed": {
+        // The cost estimate, the latest one counts (D18). Who may write it is the server's call; a case that is gone takes none.
+        const c = cases[target];
+        if (!c || c.withdrawn !== null || c.merged !== null) break;
+        if (!Number.isInteger(pl.eur) || (pl.eur as number) < 0 || (pl.eur as number) > COST_EUR_MAX) break;
+        c.cost = { eur: pl.eur as number, basis: (pl.basis ?? "").trim().slice(0, COST_BASIS_MAX), day: d, by: ev.actor, byUserId: uid };
         c.history.push(ev);
         break;
       }
@@ -323,7 +656,17 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       case "clock.due": {
         // A fact the scheduler stored (CLK/D10). It stays in the case's history; the escalation reads it below.
         const c = cases[target];
-        if (c) c.history.push(ev);
+        if (c) {
+          c.history.push(ev);
+          // An approval fact counts only for the current step at its current revision (plan GAT, D23): a late hand-over names the seat that answers it now,
+          // a council that did not meet moves the step to its next meeting.
+          const run = c.approvals;
+          const step = run === null ? null : currentOf(run);
+          if (run !== null && step !== null && pl.originEventId === run.runId && pl.stepId === `${step.id}@${step.dueRev}`) {
+            if (pl.kind === "approval" && pl.check === 2 && typeof pl.toRoleHolderId === "string") step.seatId = pl.toRoleHolderId;
+            else if (pl.kind === "council" && typeof pl.dueDay === "number") step.dueDay = pl.dueDay;
+          }
+        }
         break;
       }
       case "day.advanced":
@@ -343,11 +686,12 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     const route = routeOf(c.routeId);
     c.route = route;
     c.age = day - c.raisedDay;
-    const stopDay = c.decided ? c.decided.day : c.withdrawn ? c.withdrawn.day : c.building ? c.building.day : c.shipped ? c.shipped.day : null;
+    const stopDay = c.decided ? c.decided.day : c.withdrawn ? c.withdrawn.day : c.merged ? c.merged.day : c.building ? c.building.day : c.shipped ? c.shipped.day : null;
     const paused = c.pausedDays + (c.pausedSince !== null ? day - c.pausedSince : 0);
-    c.clock = Math.max(0, (stopDay !== null ? stopDay : day) - c.raisedDay - paused);
+    // The answer date and the clock count from the cycle's start: the raise day, until the case is reopened (D12).
+    c.clock = Math.max(0, (stopDay !== null ? stopDay : day) - c.cycleStartDay - paused);
     c.open = c.status === "open" || c.status === "discussion";
-    c.archived = c.status === "decided" || c.status === "withdrawn";
+    c.archived = c.status === "decided" || c.status === "withdrawn" || c.status === "merged";
     const talk = c.status === "discussion" ? c.discussion : null;
     if (talk) {
       // In a discussion the next check-in is what is due - or, once it said "decide", the decision.
@@ -357,8 +701,9 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       c.dueDay = (last ? last.day : talk.startedDay) + rules.discussEveryDays;
       c.overdue = day > c.dueDay;
     } else {
-      c.overdue = c.open && c.clock > promise;
-      c.dueDay = c.raisedDay + promise + paused;
+      c.dueDay = Math.max((cycleDue.get(c.id) ?? c.cycleStartDay + promise) + paused, c.dueFloor ?? -Infinity);
+      // A pass that gave the new desk more time moves the date it is late on.
+      c.overdue = c.open && (c.dueFloor === null && !cycleDue.has(c.id) ? c.clock > promise : day > c.dueDay);
     }
     // The route's owner takes it if the case sat with someone else, otherwise the owner's deputy.
     // The original owner keeps it too - both can act.
@@ -371,17 +716,19 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       c.escalated = c.overdue && to ? { to, from: c.assignee, day: c.dueDay + 1, live: c.dueDay + 1 >= 0, toSeatId, toRoleId } : null;
     } else {
       // Workdays (D11): only the latest stored deadline fact escalates, and only while the case is open.
-      const fact = c.open ? [...c.history].reverse().find((e) => e.type === "clock.due" && e.payload.kind === "deadline") : undefined;
+      // Per cycle (D24): only the facts after the case's last reopen count.
+      const cycle = cycleEvents(c);
+      const fact = c.open ? [...cycle].reverse().find((e) => e.type === "clock.due" && e.payload.kind === "deadline") : undefined;
       const seat = fact ? seats.find((s) => s.id === fact.payload.toRoleHolderId) : undefined;
       // LOOP-R1 (D17): a deadline hand-over after the latest fact ends the escalation; the seat now holds the case.
-      const handedAfter = fact !== undefined && c.history.indexOf(fact) < c.history.findLastIndex((e) => e.type === "case.handed" && e.payload.why === "deadline");
+      const handedAfter = fact !== undefined && cycle.indexOf(fact) < cycle.findLastIndex((e) => e.type === "case.handed" && e.payload.why === "deadline");
       c.escalated = fact && seat && !handedAfter
         ? { to: seat.label, from: c.assignee, day: (fact.payload.dueDay ?? c.dueDay) + 1, live: true, toSeatId: seat.id, toRoleId: seat.roleId }
         : null;
     }
   });
 
-  const projects = finishProjects(book, { day, promise, rules, routeOf, seats: seed.seats ?? [], workdays });
+  const projects = finishProjects(book, { day, promise, rules, projectStartDays: rules.projectStartDays, routeOf, seats: seed.seats ?? [], workdays });
 
   const ledger: LedgerCounts = {
     handedOver: order.reduce((a, id) => a + cases[id].handed.length, 0),
@@ -403,6 +750,8 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     seats: seed.seats ?? [],
     routes,
     clock,
+    overload,
+    approvals: { ...(seed.approvals ?? EMPTY_APPROVAL_CONFIG), roles: (seed.roles ?? []).map((r) => ({ id: r.id, title: r.title ?? "", reportsToId: r.reportsToId, spendLimitEur: r.spendLimitEur ?? null })) },
   };
 }
 

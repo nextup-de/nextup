@@ -107,10 +107,12 @@ describe("the close summary", () => {
     const w = world({}, worse, c1, c2);
     expect(w.mails(c1)).toEqual([["lb@acme.test", SUMMARY], ["hs@acme.test", SUMMARY], ["js@acme.test", SUMMARY]]);
     expect(w.text(c1)).toContain("Result after 30 days: worse. Changeover: 42 → 45 min");
-    expect(w.mails(c2)).toEqual([]);
-    // A confirmation that closes nothing (the reward is due) sends nothing either.
+    // RES D18: a confirmation that closes nothing new still tells the lead and the raiser, with a short note of its own.
+    const CONFIRMED = "P-1: result confirmed - Changeover cart";
+    expect(w.mails(c2)).toEqual([["lb@acme.test", CONFIRMED], ["js@acme.test", CONFIRMED]]);
+    // A confirmation that closes nothing (the reward is due) tells them the same.
     const open = confirm();
-    expect(world({}, better, open).mails(open)).toEqual([]);
+    expect(world({}, better, open).mails(open)).toEqual([["lb@acme.test", CONFIRMED], ["js@acme.test", CONFIRMED]]);
   });
 
   it("a last result that closes it says when nobody confirmed it; the author gets the summary, not the step mail too", () => {

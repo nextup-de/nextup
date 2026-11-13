@@ -23,8 +23,9 @@ const STAMP = Date.now().toString(36);
 const SLUG = `pil-${STAMP}`;
 const OTHER = `pil2-${STAMP}`;
 const OTHER_ADMIN = "Zora Quillfeather";
-const NEEDED = ["structure", "routes", "calendar", "signIn", "secondFactor", "mail", "ai", "backups", "support"] as const;
-const RECOMMENDED = ["notifications", "directory", "recipients", "baseline"] as const;
+const NEEDED = ["structure", "routes", "calendar", "signIn", "secondFactor", "mail", "ai", "backups", "restore", "support", "breakGlass", "agreements"] as const;
+// The findings of the test phase are not recorded on a stack: information only, so recommended (REM-O3, REM D13).
+const RECOMMENDED = ["notifications", "directory", "recipients", "baseline", "findings"] as const;
 const SMALL_UNIT_BELOW = 5;
 
 // A click or a check that misses fails in half a minute, not after the whole test's time.
@@ -85,6 +86,7 @@ test("PIL acceptance: bootstrap to pilot stage and first report", async ({ brows
   let smtp: FakeSmtp | null = null;
   const db = getDb();
   rmSync(path.join(backupDir, "last.json"), { force: true }); // a retry starts with no backup report, like the first run
+  rmSync(path.join(backupDir, "restore-test.json"), { force: true }); // nor a restore test
 
   try {
     // The sample: 1,000 people, exactly one manager, a unit under 5 people.
@@ -133,7 +135,7 @@ test("PIL acceptance: bootstrap to pilot stage and first report", async ({ brows
       expect(lines.filter((l) => l.level === "needed").map((l) => l.key).sort()).toEqual([...NEEDED].sort());
       expect(lines.filter((l) => l.level === "recommended").map((l) => l.key).sort()).toEqual([...RECOMMENDED].sort());
       const open = lines.filter((l) => l.level === "needed" && l.state !== "done").map((l) => l.key);
-      expect(open).toEqual(expect.arrayContaining(["backups", "mail", "secondFactor"]));
+      expect(open).toEqual(expect.arrayContaining(["backups", "mail", "secondFactor", "agreements"]));
       expect(out).toContain(`needed and open: ${open.join(", ")}`);
       expect(out).not.toMatch(/login code[^\n]*[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}/); // the codes stay in the file
       codes = new Map(readFileSync(codesFile, "utf8").trim().split("\n").map((l) => l.split("\t") as [string, string]));
@@ -154,16 +156,38 @@ test("PIL acceptance: bootstrap to pilot stage and first report", async ({ brows
       await expect(vis(page, "settings-golive-blocked")).toBeVisible();
       await expect(vis(page, "settings-golive-check-backups")).toHaveAttribute("data-state", "unknown");
       await expect(vis(page, "settings-golive-check-mail")).not.toHaveAttribute("data-state", "done");
+      await expect(vis(page, "settings-golive-check-agreements")).toHaveAttribute("data-state", "needs");
       expect(await page.locator('[data-testid^="settings-golive-check-"]:not([data-state="done"])').count()).toBeGreaterThan(1);
     });
 
-    // 3. The backup status file and the relay appear; every needed check is green.
-    await test.step("go-live: backup status and mail relay make every needed check green", async () => {
+    // 3. The backup status file and the relay appear, the admin records the agreements (the AI is off, so the DPA and
+    // the works agreement are what is needed) and turns reminders on, which the move to pilot needs (#726, Q9.4, Q9.7):
+    // every check the pilot gate needs is green.
+    await test.step("go-live: backups, mail relay, agreements and reminders make every check the pilot needs green", async () => {
       mkdirSync(backupDir, { recursive: true });
       writeFileSync(path.join(backupDir, "last.json"), JSON.stringify({ at: new Date().toISOString(), offbox: true }));
+      writeFileSync(path.join(backupDir, "restore-test.json"), JSON.stringify({ at: new Date().toISOString(), seconds: 300 })); // the restore test is a needed check too (REM-O3)
       smtp = await startFakeSmtp(Number(smtpUrl.port));
+
+      await vis(page, "settings-agreement-edit-dpa").click();
+      await vis(page, "settings-agreement-date-dpa").fill(berlinDate(new Date()));
+      await vis(page, "settings-agreement-signer-dpa").fill("Managing director");
+      await vis(page, "settings-agreement-save-dpa").click();
+      await expect(vis(page, "settings-agreement-dpa")).toHaveAttribute("data-state", "done");
+      await vis(page, "settings-agreement-edit-works").click();
+      await vis(page, "settings-agreement-notneeded-works").check();
+      await vis(page, "settings-agreement-reason-works").fill("This site has no works council.");
+      await vis(page, "settings-agreement-save-works").click();
+      await expect(vis(page, "settings-agreement-works")).toHaveAttribute("data-state", "done");
+
+      await page.goto(`/${SLUG}/settings/notifications`);
+      await vis(page, "settings-notifications-switch").check();
+      await vis(page, "settings-notifications-save").click();
+      await expect(vis(page, "settings-notifications-saved")).toBeVisible();
+
+      await page.goto(`/${SLUG}/settings/go-live`);
       await vis(page, "settings-golive-recheck").click();
-      for (const key of NEEDED) await expect(vis(page, `settings-golive-check-${key}`), key).toHaveAttribute("data-state", "done");
+      for (const key of [...NEEDED, "notifications"]) await expect(vis(page, `settings-golive-check-${key}`), key).toHaveAttribute("data-state", "done");
       await expect(vis(page, "settings-golive-switch")).toBeEnabled();
     });
 

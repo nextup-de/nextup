@@ -9,7 +9,7 @@ import { newId } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
 import { parseKpiCsv, pickForCheck } from "@/features/projects/measure-import";
-import { loadLogForSlug } from "@/lib/db/events";
+import { loadLogAround } from "@/lib/db/events";
 import { appendEventAction } from "./events";
 
 export type ImportCode = "too-large" | "no-rows" | "no-metric" | "not-allowed" | "closed-check";
@@ -27,9 +27,9 @@ export async function importMeasuresAction(
   const viewer = await getViewerFor(slug);
   if (!viewer) return { ok: false, code: "not-allowed" };
 
-  const log = await loadLogForSlug(slug);
-  if (!log) return { ok: false, code: "not-allowed" };
-  const state = reduce(await seedFor(slug), log);
+  // The project's part of the log is enough to read its baseline and checks (lib/db/events.ts loadLogAround).
+  const seed = await seedFor(slug);
+  const state = reduce(seed, await loadLogAround(viewer.companyId, seed, [projectId]));
   const project = state.projects.find((p) => p.id === projectId);
   if (!project) return { ok: false, code: "not-allowed" };
 

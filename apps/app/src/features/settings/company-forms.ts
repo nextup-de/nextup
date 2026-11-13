@@ -4,7 +4,7 @@
 import { postAsOf } from "@/features/ideas/posting";
 import { calendarSpec, REGIONS, type CalendarSpec, type Region } from "@/features/clock";
 import { loopRules, type LoopRules, type RewardKind } from "@/features/loop/rules";
-import { DEFAULT_RULES, ESCALATION_DAYS_MAX, type CompanyRules } from "@/features/knowledge/rules";
+import { DEFAULT_RULES, ESCALATION_DAYS_MAX, PROJECT_START_DAYS_MAX, type CompanyRules } from "@/features/knowledge/rules";
 import type { MessageKey } from "@/i18n";
 
 /** The raw form: a field is one string, or a list of strings (checkboxes). */
@@ -77,6 +77,21 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
   const escalation = text(f, "escalationDays");
   const escalationDays = escalation === "" ? undefined : wholeIn(escalation, 0, ESCALATION_DAYS_MAX);
   if (escalationDays === null) return fail("escalationDays", "settingsCompany.errEscalationDays");
+  // Working days a project draft has to start (1 to 60); an empty field stores no rule, so the default applies.
+  const startDaysText = text(f, "projectStartDays");
+  const projectStartDays = startDaysText === "" ? undefined : wholeIn(startDaysText, 1, PROJECT_START_DAYS_MAX);
+  if (projectStartDays === null) return fail("projectStartDays", "settingsCompany.errProjectStartDays");
+  // The reasoned no (plan NOR, D23): the shortest reason, the days to ask for a second look and the days a question waits. An empty
+  // field stores no rule, so the default applies.
+  const reasonText = text(f, "noReasonMin");
+  const noReasonMin = reasonText === "" ? undefined : wholeIn(reasonText, 20, 400);
+  if (noReasonMin === null) return fail("noReasonMin", "settingsCompany.errNoReasonMin");
+  const appealText = text(f, "appealDays");
+  const appealDays = appealText === "" ? undefined : wholeIn(appealText, 1, 60);
+  if (appealDays === null) return fail("appealDays", "settingsCompany.errAppealDays");
+  const questionText = text(f, "questionDays");
+  const questionDays = questionText === "" ? undefined : wholeIn(questionText, 2, 30);
+  if (questionDays === null) return fail("questionDays", "settingsCompany.errQuestionDays");
 
   // The spend rule: an empty limit means no rule; a limit needs its sentence.
   let spend: CompanyRules["spend"] = null;
@@ -125,6 +140,10 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
       rules: {
         ...DEFAULT_RULES, promiseDays, outcomeDays, spend,
         deadlineHandover: on(f, "deadlineHandover"), ...(escalationDays === undefined ? {} : { escalationDays }),
+        ...(projectStartDays === undefined ? {} : { projectStartDays }),
+        ...(noReasonMin === undefined ? {} : { noReasonMin }),
+        ...(appealDays === undefined ? {} : { appealDays }),
+        ...(questionDays === undefined ? {} : { questionDays }),
         // Who a member's raise is preselected as (decision Q1.7); anything but "name" keeps the handle.
         postAs: postAsOf(text(f, "postAs")),
         steps: { discussion: on(f, "stepDiscussion"), projects: on(f, "stepProjects"), measure: on(f, "stepMeasure"), recognition: on(f, "stepRecognition") },

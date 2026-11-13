@@ -32,7 +32,7 @@ test("UIP kpis and profile", async ({ page }) => {
   await test.step("the profile shows the person and a mail switch saves and goes back", async () => {
     await page.goto(`/${SLUG}/profile`);
     await expect(page.getByRole("heading", { name: MANAGER.name })).toBeVisible();
-    const mails = page.getByRole("switch", { name: /A case is raised to me/ });
+    const mails = page.getByRole("switch", { name: /Discussions and projects/ });
     const before = await mails.isChecked();
     await mails.click();
     await expect(mails).toBeChecked({ checked: !before });

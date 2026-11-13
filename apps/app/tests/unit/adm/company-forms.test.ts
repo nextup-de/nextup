@@ -85,3 +85,73 @@ describe("ADM company forms", () => {
     }
   });
 });
+
+describe("SET start days", () => {
+  const of = (projectStartDays?: string) => parseRulesForm({ ...goodRules, projectStartDays });
+  const days = (v?: string) => { const r = of(v); return r.ok ? r.value.rules.projectStartDays : "refused"; };
+
+  it("takes a whole number of working days from 1 to 60 and saves it into the company rules", () => {
+    expect([days("10"), days("1"), days("60"), days(" 25 ")]).toEqual([10, 1, 60, 25]);
+  });
+
+  it("refuses 0 and 61, and anything that is not a whole number, with a message on the field", () => {
+    for (const bad of ["0", "61", "-1", "2.5", "soon"]) {
+      expect(of(bad)).toMatchObject({ ok: false, error: "settingsCompany.errProjectStartDays", field: "projectStartDays" });
+    }
+  });
+
+  it("takes an empty field as no rule, so the default applies", () => {
+    expect([days(""), days(undefined)]).toEqual([undefined, undefined]);
+    const r = of("");
+    expect(r.ok && "projectStartDays" in r.value.rules).toBe(false);
+  });
+
+  it("has the message and the labels in German and English", () => {
+    for (const k of ["errProjectStartDays", "projectStartDays", "projectStartHelp"] as const) {
+      expect(en.settingsCompany[k]).toBeTruthy();
+      expect(de.settingsCompany[k]).toBeTruthy();
+    }
+  });
+});
+
+// Plan NOR, NOR-C1 (B3): the three rules of the reasoned no, each a whole number in its range, an empty field no rule.
+describe("NOR rules form", () => {
+  const FIELDS = [
+    { id: "noReasonMin", min: 20, max: 400, error: "settingsCompany.errNoReasonMin" },
+    { id: "appealDays", min: 1, max: 60, error: "settingsCompany.errAppealDays" },
+    { id: "questionDays", min: 2, max: 30, error: "settingsCompany.errQuestionDays" },
+  ] as const;
+  const of = (id: string, value?: string) => parseRulesForm({ ...goodRules, [id]: value });
+  const read = (id: (typeof FIELDS)[number]["id"], value?: string) => { const r = of(id, value); return r.ok ? r.value.rules[id] : "refused"; };
+
+  it("reads noReasonMin from 20 to 400, appealDays from 1 to 60 and questionDays from 2 to 30 into the company rules", () => {
+    for (const f of FIELDS) {
+      expect([read(f.id, String(f.min)), read(f.id, String(f.max)), read(f.id, ` ${f.min + 1} `)], f.id).toEqual([f.min, f.max, f.min + 1]);
+    }
+    const all = parseRulesForm({ ...goodRules, noReasonMin: "60", appealDays: "14", questionDays: "7" });
+    expect(all.ok && all.value.rules).toMatchObject({ noReasonMin: 60, appealDays: 14, questionDays: 7 });
+  });
+
+  it("refuses a value outside the range, or not a whole number, with the field's message", () => {
+    for (const f of FIELDS) {
+      for (const bad of [String(f.min - 1), String(f.max + 1), "-1", "2.5", "many"]) {
+        expect(of(f.id, bad), `${f.id} ${bad}`).toMatchObject({ ok: false, error: f.error, field: f.id });
+      }
+    }
+  });
+
+  it("takes an empty field as no rule, so the default applies", () => {
+    for (const f of FIELDS) {
+      expect([read(f.id, ""), read(f.id, undefined)], f.id).toEqual([undefined, undefined]);
+      const r = of(f.id, "");
+      expect(r.ok && f.id in r.value.rules).toBe(false);
+    }
+  });
+
+  it("has the labels, the help and the messages in German and English", () => {
+    for (const k of ["noReasonMin", "noReasonMinHelp", "appealDays", "appealDaysHelp", "questionDays", "questionDaysHelp", "charactersUnit", "errNoReasonMin", "errAppealDays", "errQuestionDays"] as const) {
+      expect(en.settingsCompany[k], k).toBeTruthy();
+      expect(de.settingsCompany[k], k).toBeTruthy();
+    }
+  });
+});

@@ -4,6 +4,11 @@
 // from Prisma's generated types so that tests/unit/ can cover this without pulling a database
 // client into the DB-free suite.
 import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "./events";
+import { AGENT_EVENT_TYPES } from "./events/agent";
+import { APPROVAL_EVENT_TYPES } from "./events/approval";
+import { CASE_EVENT_TYPES } from "./events/case";
+import { OVERLOAD_EVENT_TYPES } from "./events/overload";
+import { PROJECT_EVENT_TYPES } from "./events/project";
 
 /** One row as the database hands it back. */
 export type EventRow = {
@@ -61,8 +66,12 @@ export function cursorOf(rows: readonly EventRow[], since: number): number {
   return rows.reduce((max, r) => (r.seq > max ? r.seq : max), since);
 }
 
+/** The core event types the app may append: the idea.* events and day.advanced. The areas list their own (events/<area>.ts). */
+export const CORE_APP_EVENT_TYPES = ["idea.cosigned", "idea.uncosigned", "idea.asked", "idea.approved", "idea.funded", "day.advanced"] as const;
+
 /**
- * The event types the app itself may append.
+ * The event types the app itself may append: the core ones, then each area's in area order (case, project, agent,
+ * approval, overload). Nothing depends on the order.
  *
  * `case.building` and `case.shipped` are missing on purpose: they only ever appear as seed
  * history inside Company.seedJson, describing what happened before day 0. Nothing in the UI
@@ -71,15 +80,7 @@ export function cursorOf(rows: readonly EventRow[], since: number): number {
  * What a *system* actor (n8n) may append is a different, smaller list - see features/integrations.
  */
 export const APP_EVENT_TYPES = [
-  "case.raised", "case.read", "case.decided", "case.handed", "case.asked", "case.answered",
-  "case.override", "case.affected", "case.unaffected", "case.commented",
-  "idea.cosigned", "idea.uncosigned", "idea.asked", "idea.approved", "idea.funded",
-  // The discussion stage and projects (docs/plans/2026-10-15_idea-to-project.md), each behind its flag.
-  "case.discussion", "case.invited", "case.revised", "case.checkin",
-  "case.withdrawn",
-  "project.member", "project.handed", "project.baseline", "project.started", "project.step.added", "project.step.moved",
-  "project.step.edited", "project.linked", "project.sync", "project.commented", "project.done", "project.measured", "project.measure.confirmed","project.rewarded", "project.claimed", "project.stopped",
-  "day.advanced",
+  ...CORE_APP_EVENT_TYPES, ...CASE_EVENT_TYPES, ...PROJECT_EVENT_TYPES, ...AGENT_EVENT_TYPES, ...APPROVAL_EVENT_TYPES, ...OVERLOAD_EVENT_TYPES,
 ] as const;
 
 /** The events behind the `discussion` flag. */

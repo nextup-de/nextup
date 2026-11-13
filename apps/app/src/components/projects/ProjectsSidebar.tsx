@@ -28,6 +28,7 @@ import type { ReducedCase } from "@/features/cases/reducer";
 import { useT } from "@/i18n/client";
 import { idViewerOf, useRights } from "./parts";
 import { ideaPagesId, newPageId, useProjectPages } from "./projectPagesPreview";
+import { useAgentTab } from "./agent/useAgentTab";
 import s from "./ProjectsSidebar.module.css";
 
 const MAX_ROWS = 8; // layer 1 shows this many projects; "All n projects" opens the rest
@@ -162,11 +163,14 @@ function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) 
   const base = href("/projects/" + p.id);
   const counts: Partial<Record<ProjectTab, number>> = { board: p.steps.length, team: p.members.length + 1 };
   const source = p.sources[0] ?? null;
+  // The Agent tab only for who may see it, as on the page's own strip of tabs (plan AGT, D15).
+  const agent = useAgentTab(p, false).view !== null;
+  const tabs = PROJECT_TABS.filter((k) => k !== "agent" || agent);
   return (
-    <PageLayer storeId={p.id} from={source ? ideaPagesId(source) : null} tabs={PROJECT_TABS} base={base} pageUrl={(id) => base + "?page=" + id} editor={editor}
+    <PageLayer storeId={p.id} from={source ? ideaPagesId(source) : null} tabs={tabs} base={base} pageUrl={(id) => base + "?page=" + id} editor={editor}
       current={params.get("page") ?? projectTabOf(params.get("tab") ?? undefined)}
       tabUrl={(k) => base + tabQuery(k as ProjectTab)}
-      tabInfo={(k) => ({ label: t(("projects.tab_" + k) as "projects.tab_overview"), icon: <TabIcon k={k} />, count: counts[k as ProjectTab] })}
+      tabInfo={(k) => ({ label: k === "agent" ? t("projectAgent.tab") : t(("projects.tab_" + k) as "projects.tab_overview"), icon: <TabIcon k={k} />, count: counts[k as ProjectTab] })}
       back={t("projects.sbBack")} onBack={onBack}
       head={<Head mark={<RingMark ring={ringOf(p.status)} />} title={p.title} status={t(("projects.status_" + p.status) as "projects.status_planning")}
         note={late > 0 ? { text: t("projects.sbLate", { count: late }), tone: "late" } : null} />} />

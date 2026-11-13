@@ -2,13 +2,52 @@
 // opens with the case.decided yes that names it, and changes only through project.* events.
 // Pure like the case reducer: state in, state out, nothing stored.
 import type { SeatRow } from "@/features/auth/identity";
-import type { CaseEvent } from "@/features/cases/events";
+import type { CaseEvent, CaseEventType } from "@/features/cases/events";
+import { DONE_BY_DEFAULT_DAYS } from "@/features/clock/kinds/project";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
-import type { CheckDue, ReducedProject, SeedProject, StepColumn } from "./types";
+import { templateSteps } from "@/features/templates/library";
+import type { CheckDue, Invite, InviteRole, ReducedProject, SeedProject, Step, StepColumn } from "./types";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 import { readImpact, readSource, sourceLabel } from "./measure-source";
+import { revisionMatches } from "./result";
 import { verdictOf } from "./verdict";
+
+/**
+ * What a draft needs beyond its public fields, derived from the log as it replays (never from today's day): the event
+ * that asked the lead, the day the lead took it, a start day the seat above moved it to, and where in the project's
+ * history the lead last changed (an escalation or a moved day before that no longer counts). Kept beside the project,
+ * so the reduced shape has no field for it.
+ */
+type DraftFacts = { askId: string | null; takenDay: number | null; movedStart: number | null; movedAt: number; reassignedAt: number };
+const draftFacts = new WeakMap<ReducedProject, DraftFacts>();
+const factsOf = (p: ReducedProject): DraftFacts => {
+  let f = draftFacts.get(p);
+  if (!f) draftFacts.set(p, (f = { askId: null, takenDay: null, movedStart: null, movedAt: -1, reassignedAt: -1 }));
+  return f;
+};
+/** Template steps nobody moved, edited or linked: the ones a changed template may swap (Q5.5). */
+const touchedSteps = new WeakSet<Step>();
+/** The paragraphs approvers added to the brief as conditions (plan GAT, D22), in the order given; joined to the goal's brief when the project is finished. */
+const conditionsOf = new WeakMap<ReducedProject, string[]>();
+
+/** A new draft waits for the last approval (plan GAT, D21): no start day, no draft escalation and no start until it is answered. A project the run did not open is left alone. */
+export function setWaitingForApproval(p: ReducedProject, waiting: boolean): void {
+  p.waitsForApproval = waiting;
+}
+
+/** The run's last yes decided the case on day `d`: the draft no longer waits, and its start day counts from the later of the lead taking it and this day (SET D14). */
+export function approvalGiven(p: ReducedProject, d: number): void {
+  p.waitsForApproval = false;
+  p.approvalsPendingSince = Math.max(p.approvalsPendingSince ?? d, d);
+}
+
+/** An approver said yes with conditions: one more paragraph of the project's brief (D22). */
+export function addCondition(p: ReducedProject, text: string): void {
+  const list = conditionsOf.get(p) ?? [];
+  list.push(text);
+  conditionsOf.set(p, list);
+}
 
 export type ProjectBook = { byId: Record<string, ReducedProject>; order: string[] };
 
@@ -20,6 +59,10 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
     startedDay: null, doneDay: null, doneNote: "", stopped: null, baseline: null,
     steps: [], links: [], sync: null, measures: [], checks: [], verdict: null, reward: null, claimed: null,
     status: "planning", closed: false, rewardDue: false, dueDay: null, overdue: false, escalated: null, history: [],
+    draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
+    goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
+    doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null,
+    rewardDueDay: null, helpAsks: [],
   };
   book.byId[id] = project;
   book.order.push(id);
@@ -65,6 +108,20 @@ export function openOrJoin(book: ProjectBook, ev: CaseEvent, source: Source): Re
     lead, members: [], leadUserId: pl.leadUserId ?? ev.actorUserId ?? null, memberUserIds: [],
     authorUserIds: source.fromUserId ? [source.fromUserId] : [], openedDay: ev.day | 0, openedBy: ev.actor, seed: Boolean(ev.seed),
   });
+  if (pl.draft === true) {
+    // A draft (D8, D10, D11): the decider asks the lead to take it, unless they lead it themselves.
+    const f = factsOf(p);
+    p.draft = true;
+    p.raiserNote = pl.raiserNote?.trim() ?? "";
+    p.deciderUserId = ev.actorUserId ?? null;
+    f.askId = ev.id;
+    if (p.leadUserId !== null && p.leadUserId !== (ev.actorUserId ?? null)) {
+      p.leadState = "pending";
+      p.leadAskedDay = ev.day | 0;
+    } else {
+      f.takenDay = ev.day | 0;
+    }
+  }
   p.history.push(ev);
   return p;
 }
@@ -79,6 +136,55 @@ function placeStep(p: ReducedProject, stepId: string, before: string | null): vo
   const at = before && before !== stepId ? p.steps.findIndex((x) => x.id === before) : -1;
   if (at < 0) p.steps.push(s);
   else p.steps.splice(at, 0, s);
+}
+
+/** Frees the open steps of a user who left the team or the company: they have no owner now (MOV D22). Done steps keep theirs. */
+function freeSteps(p: ReducedProject, userId: string): void {
+  p.steps.forEach((x) => { if (x.column !== "done" && x.ownerUserId === userId) { x.owner = null; x.ownerUserId = null; } });
+}
+
+/** The events that count as the project moving (MOV D12): the quiet and stalled clocks start over after each of them. */
+const ACTIVITY_TYPES: ReadonlySet<CaseEventType> = new Set<CaseEventType>([
+  "project.step.added", "project.step.moved", "project.step.edited", "project.update", "project.resumed", "project.handed", "project.lead.changed",
+]);
+/** What ends a standing stalled escalation: activity, a new done-by date, a pause (MOV D12; a new lead is an activity above). Done and stop end the running status itself. */
+const STALLED_ENDERS: ReadonlySet<CaseEventType> = new Set<CaseEventType>([...ACTIVITY_TYPES, "project.doneby.moved", "project.paused"]);
+
+/**
+ * The working day the latest pause ends or ended, read off the history alone (never off today): its untilDay, or the day a
+ * project.resumed ended it early. For a pause still running that is its untilDay, and the caller compares it with today. Null when
+ * the project was never paused. Quiet counts from the day after this one (MOV D20). A later pause does not hide an earlier one's end:
+ * each pause is closed by the next resume, the next pause or its own untilDay.
+ */
+export function pauseEndedDay(history: readonly CaseEvent[]): number | null {
+  let until: number | null = null;
+  let ended: number | null = null;
+  for (const e of history) {
+    if (e.type === "project.paused" && typeof e.payload.untilDay === "number") {
+      // A pause that is still open when the next one starts ran to its own untilDay.
+      if (until !== null) ended = Math.min(until, e.day | 0);
+      until = e.payload.untilDay;
+    } else if (e.type === "project.resumed" && until !== null) {
+      ended = Math.min(until, e.day | 0);
+      until = null;
+    }
+  }
+  return until !== null ? until : ended;
+}
+
+const INVITE_ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
+
+/** The lead takes the draft on day `d`: its start window opens, and template steps without a day get theirs. */
+function takeLead(p: ReducedProject, f: DraftFacts, d: number): void {
+  p.leadState = "taken";
+  f.takenDay = d;
+  const t = p.template;
+  if (!t) return;
+  const steps = templateSteps(t.key, t.version);
+  p.steps.forEach((x) => {
+    const at = x.id.startsWith(`t:${t.key}:${t.version}:`) ? Number(x.id.slice(`t:${t.key}:${t.version}:`.length)) : -1;
+    if (at >= 0 && at < steps.length && x.dueDay === null && !touchedSteps.has(x)) x.dueDay = d + steps[at].day;
+  });
 }
 
 /** One project.* event. Returns false when the event is not a project event at all. */
@@ -98,6 +204,12 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (pl.on === false) {
         p.memberUserIds = p.memberUserIds.filter((u) => u !== userId);
         if (name) p.members = p.members.filter((m) => m !== name); // the shown list only
+        if (pl.unassign === true) {
+          // A leaver (MOV D22): no owner on their open steps, and no longer sponsor or follower. Without it, nothing of this happens.
+          freeSteps(p, userId);
+          if (p.sponsorUserId === userId) p.sponsorUserId = null;
+          p.followerUserIds = p.followerUserIds.filter((u) => u !== userId);
+        }
       } else if (!p.memberUserIds.includes(userId)) {
         p.memberUserIds.push(userId);
         if (name) p.members.push(name);
@@ -108,8 +220,9 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const toUserId = pl.toUserId ?? null;
       const to = pl.to?.trim() ?? "";
       if (!live || toUserId === null || toUserId === p.leadUserId) break;
-      // The old lead joins the team (by id; the label list only follows for display).
-      if (p.leadUserId !== null && !p.memberUserIds.includes(p.leadUserId)) {
+      const draftAsk = p.draft && p.startedDay === null;
+      // The old lead joins the team (by id; the label list only follows for display). A draft lead who never took it does not.
+      if (p.leadUserId !== null && !(draftAsk && p.leadState === "pending") && !p.memberUserIds.includes(p.leadUserId)) {
         p.memberUserIds.push(p.leadUserId);
         if (p.lead) p.members.push(p.lead);
       }
@@ -117,17 +230,129 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (to) p.members = p.members.filter((m) => m !== to);
       p.leadUserId = toUserId;
       if (to) p.lead = to;
+      if (draftAsk) {
+        // The new lead is asked again, unless the one handing it over is the new lead (D11); a new window starts.
+        const f = factsOf(p);
+        f.askId = ev.id;
+        f.movedStart = null;
+        f.reassignedAt = p.history.length;
+        if (toUserId === (ev.actorUserId ?? null)) takeLead(p, f, d);
+        else { p.leadState = "pending"; p.leadAskedDay = d; f.takenDay = null; }
+      }
+      break;
+    }
+    case "project.lead.answered": {
+      const f = factsOf(p);
+      if (!p.draft || p.startedDay !== null || !live || p.leadState !== "pending") break;
+      if (pl.askId !== undefined && pl.askId !== f.askId) break; // an answer to an earlier ask
+      if (pl.take === true) takeLead(p, f, d);
+      else {
+        // Declined, or nobody answered: it goes back to the decider, who leads it from this day (D11).
+        p.leadUserId = p.deciderUserId;
+        p.lead = p.openedBy;
+        p.memberUserIds = p.memberUserIds.filter((u) => u !== p.leadUserId);
+        f.movedStart = null;
+        f.reassignedAt = p.history.length;
+        takeLead(p, f, d);
+      }
+      break;
+    }
+    case "project.template": {
+      if (!p.draft || p.startedDay !== null || !live) break;
+      const key = typeof pl.key === "string" ? pl.key : "";
+      const version = typeof pl.version === "number" ? pl.version : 0;
+      const steps = templateSteps(key, version);
+      if (steps.length === 0) break;
+      const f = factsOf(p);
+      // Steps of the old template nobody touched go; touched ones stay (Q5.5).
+      const old = p.template;
+      if (old) p.steps = p.steps.filter((x) => !x.id.startsWith(`t:${old.key}:${old.version}:`) || touchedSteps.has(x));
+      steps.forEach((t, i) => {
+        const id = `t:${key}:${version}:${i}`;
+        if (p.steps.some((x) => x.id === id)) return;
+        p.steps.push({
+          id, text: t.text, owner: null, ownerUserId: null, dueDay: f.takenDay === null ? null : f.takenDay + t.day, column: "todo", why: "", note: "",
+          addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d, startedDay: null, doneDay: null, external: null, role: t.role, dropped: null,
+        });
+      });
+      p.template = { key, version };
+      const title = pl.title?.trim();
+      if (title) p.title = title;
+      break;
+    }
+    case "project.invited": {
+      if (!p.draft || !live || p.reward !== null) break;
+      const userId = pl.userId;
+      const role = INVITE_ROLES.find((r) => r === pl.role);
+      if (!userId || !role) break;
+      if (role === "follower") {
+        if (!p.followerUserIds.includes(userId)) p.followerUserIds.push(userId);
+        break;
+      }
+      // An open invitation stays; a declined or lapsed one is replaced by a new one (a new generation, its own id).
+      const same = p.invites.find((i) => i.userId === userId && i.role === role && i.state !== "declined" && i.state !== "lapsed");
+      if (same) break;
+      p.invites = p.invites.filter((i) => !(i.userId === userId && i.role === role));
+      p.invites.push({ id: ev.id, userId, role, state: "pending", day: d, reason: "" });
+      break;
+    }
+    case "project.invite.answered": {
+      if (!p.draft || !live || p.reward !== null) break;
+      const userId = pl.userId;
+      // The answer names its invitation. One without (a legacy write) counts only when the person has exactly one pending.
+      const pending = p.invites.filter((i) => i.userId === userId && i.state === "pending");
+      const invite: Invite | undefined = pl.inviteId !== undefined ? pending.find((i) => i.id === pl.inviteId) : pending.length === 1 ? pending[0] : undefined;
+      if (!invite) break;
+      invite.reason = pl.reason?.trim() ?? "";
+      if (pl.take === true) {
+        invite.state = "accepted";
+        if (invite.role === "sponsor") p.sponsorUserId = invite.userId;
+        else if ((invite.role === "member" || invite.role === "contributor") && invite.userId !== p.leadUserId && !p.memberUserIds.includes(invite.userId)) p.memberUserIds.push(invite.userId);
+      } else invite.state = pl.lapsed === true ? "lapsed" : "declined";
+      break;
+    }
+    case "project.goal": {
+      if (!p.draft || p.startedDay !== null || !live) break;
+      const goal = pl.goal?.trim();
+      const doneWhen = pl.doneWhen?.trim();
+      if (!goal || !doneWhen) break;
+      p.goal = { goal, doneWhen, doneBy: typeof pl.doneBy === "number" ? pl.doneBy : null, brief: pl.brief?.trim() ?? "" };
+      break;
+    }
+    case "project.start.moved": {
+      const f = factsOf(p);
+      if (!p.draft || p.startedDay !== null || !live || p.leadState !== "taken" || typeof pl.dueDay !== "number") break;
+      f.movedStart = pl.dueDay;
+      f.movedAt = p.history.length;
+      p.startDay = pl.dueDay;
       break;
     }
     case "project.baseline": {
       if (p.startedDay !== null || !live) break; // taken before the start, never after
-      if (pl.none) p.baseline = { none: true, why: pl.why ?? "", day: d, by: ev.actor };
+      if (pl.none) p.baseline = { none: true, why: pl.why ?? "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null, eventId: ev.id, confirmed: null };
       else if (typeof pl.value === "number" && Number.isFinite(pl.value) && pl.metric)
-        p.baseline = { none: false, metric: pl.metric, unit: pl.unit ?? "", value: pl.value, better: pl.better === "up" ? "up" : "down", source: typeof pl.source === "string" ? pl.source : "", day: d, by: ev.actor };
+        p.baseline = { none: false, metric: pl.metric, unit: pl.unit ?? "", value: pl.value, better: pl.better === "up" ? "up" : "down", source: typeof pl.source === "string" ? pl.source : "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null, eventId: ev.id, confirmed: null };
+      break;
+    }
+    case "project.baseline.confirmed": {
+      // A second person confirms the number that stands (RES D16): the one named, while the project has not started. A new baseline cleared the confirmation.
+      const b = p.baseline;
+      if (!b || b.none || b.confirmed || p.startedDay !== null || !live || !revisionMatches(pl.baselineEventId, b.eventId)) break;
+      b.confirmed = { byUserId: ev.actorUserId ?? null, day: d };
+      break;
+    }
+    case "project.help.asked": {
+      // 'Ask the sponsor' (RES D19): a step still to do on a running project. The sponsor is the addressee; without one the role is filled in by finishProjects.
+      const s = p.steps.find((x) => x.id === pl.stepId);
+      const text = pl.text?.trim();
+      if (!s || !text || s.column === "done" || s.dropped || p.startedDay === null || p.doneDay !== null || !live) break;
+      const toUserId = p.sponsorUserId !== null && p.sponsorUserId !== p.leadUserId ? p.sponsorUserId : null;
+      p.helpAsks.push({ id: ev.id, stepId: s.id, text, day: d, byUserId: ev.actorUserId ?? null, toUserId, toRoleId: null, answeredDay: null });
       break;
     }
     case "project.started":
-      if (p.baseline && p.startedDay === null && live) p.startedDay = d;
+      // A draft that waits for its approval does not start (plan GAT, D21); the server refuses it too.
+      if (p.baseline && p.startedDay === null && live && !(p.waitsForApproval ?? false)) p.startedDay = d;
       break;
     case "project.step.added": {
       const stepId = pl.stepId;
@@ -139,13 +364,14 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
         id: stepId, text, owner: pl.owner?.trim() || null, ownerUserId: pl.ownerUserId ?? null, dueDay: typeof pl.dueDay === "number" ? pl.dueDay : null,
         column, why: "", note: pl.note?.trim() ?? "", addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d,
         startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
-        external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null,
+        external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null, dropped: null,
       });
       break;
     }
     case "project.step.moved": {
       const s = p.steps.find((x) => x.id === pl.stepId);
       if (!s || !isColumn(pl.to)) break;
+      touchedSteps.add(s);
       const changed = s.column !== pl.to;
       s.column = pl.to;
       // A reorder inside the column keeps its day (and, without a new one, its reason).
@@ -162,6 +388,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const s = p.steps.find((x) => x.id === pl.stepId);
       if (!s) break;
       if (pl.removed) { p.steps = p.steps.filter((x) => x !== s); break; }
+      touchedSteps.add(s);
       const text = pl.text?.trim();
       if (text) s.text = text;
       if (pl.owner !== undefined) s.owner = pl.owner.trim() || null;
@@ -177,7 +404,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const stepId = pl.stepId ?? null;
       p.links.push({ system: pl.system ?? "url", url, key: pl.key ?? "", stepId, day: d });
       const s = stepId ? p.steps.find((x) => x.id === stepId) : undefined;
-      if (s && pl.key) s.external = { system: pl.system ?? "url", key: pl.key, url: url || undefined };
+      if (s && pl.key) { s.external = { system: pl.system ?? "url", key: pl.key, url: url || undefined }; touchedSteps.add(s); }
       break;
     }
     case "project.sync": {
@@ -188,26 +415,71 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       break;
     }
     case "project.done":
-      if (p.startedDay !== null && p.doneDay === null && live) { p.doneDay = d; p.doneNote = pl.note ?? ""; }
+      if (p.startedDay !== null && p.doneDay === null && live) {
+        p.doneDay = d;
+        p.doneNote = pl.note ?? "";
+        // The Done sheet (RES D13, D28): each open step ends as done or as dropped with its reason. A step the list does not know, or that is
+        // done already, is left alone; without the list (every old log) nothing else changes.
+        if (Array.isArray(pl.openSteps)) {
+          for (const o of pl.openSteps) {
+            const s = p.steps.find((x) => x.id === o.stepId);
+            if (!s || s.column === "done") continue;
+            touchedSteps.add(s);
+            if (o.end === "done") {
+              s.column = "done";
+              s.movedDay = d;
+              s.doneDay = d;
+              if (s.startedDay === null) s.startedDay = d;
+            } else if (o.end === "dropped" && !s.dropped) {
+              s.dropped = { why: o.why?.trim() ?? "", day: d, byUserId: ev.actorUserId ?? null };
+            }
+          }
+        }
+      }
       break;
     case "project.measured": {
       const check = pl.check;
       if (p.doneDay === null || typeof check !== "number" || !rules.measureDays.includes(check)) break;
-      if (typeof pl.value !== "number" || p.measures.some((m) => m.check === check)) break;
+      if (typeof pl.value !== "number") break;
+      const have = p.measures.find((m) => m.check === check);
+      // A second result for a check is taken once, and only as the re-entry of a number that was sent back (RES D14); it names the revision it replaces.
+      if (have && !(have.sentBack && !have.reentered && revisionMatches(pl.measureEventId, have.eventId))) break;
       // No trusted system importer exists yet: a client-supplied system source is refused (LOOP/D18).
       if (typeof pl.source === "object" && pl.source !== null && pl.source.kind === "system") break;
       const src = readSource(pl.source);
       const v = verdictOf(p.baseline, pl.value, rules.tolerancePct);
+      if (have) {
+        // The replacement is a new revision: it has the re-entry's own identity, and nothing confirmed or questioned about the old number carries over.
+        have.previous.push({ value: have.value, day: have.day, byUserId: have.byUserId });
+        Object.assign(have, {
+          value: pl.value, source: sourceLabel(src), note: pl.note ?? "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null,
+          sourceKind: src.kind, sourceInfo: src, impact: readImpact(pl.impact), confirmed: false, confirmedByUserId: null, confirmedDay: null, ...v,
+          eventId: ev.id, sentBack: false, reentered: true,
+        });
+        break;
+      }
       p.measures.push({
         check, value: pl.value, source: sourceLabel(src), note: pl.note ?? "", day: d, by: ev.actor, byUserId: ev.actorUserId ?? null,
         sourceKind: src.kind, sourceInfo: src, impact: readImpact(pl.impact), confirmed: false, confirmedByUserId: null, confirmedDay: null, ...v,
+        eventId: ev.id, sentBack: false, reentered: false, managerOnly: false, questions: [], previous: [],
       });
       p.measures.sort((a, b) => a.check - b.check);
       break;
     }
+    case "project.measure.questioned": {
+      const m = p.measures.find((x) => x.check === pl.check);
+      if (!m || m.confirmed || m.sourceKind === "system" || m.managerOnly || m.sentBack || !revisionMatches(pl.measureEventId, m.eventId)) break;
+      // The first questioning sends the check back; one after the re-entry leaves it to the managers (RES D14); any other is ignored.
+      if (m.reentered) m.managerOnly = true;
+      else if (m.questions.length === 0) m.sentBack = true;
+      else break;
+      m.questions.push({ day: d, why: pl.why?.trim() ?? "", byUserId: ev.actorUserId ?? null });
+      break;
+    }
     case "project.measure.confirmed": {
       const m = p.measures.find((x) => x.check === pl.check);
-      if (!m || m.confirmed || m.sourceKind === "system") break;
+      // A number that was sent back is not confirmed, and a confirmation names the revision it is for: one for a replaced number never confirms its replacement (RES review).
+      if (!m || m.confirmed || m.sentBack || m.sourceKind === "system" || !revisionMatches(pl.measureEventId, m.eventId)) break;
       m.confirmed = true;
       m.confirmedByUserId = ev.actorUserId ?? null;
       m.confirmedDay = d;
@@ -222,6 +494,53 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
     case "project.stopped":
       if (live && p.reward === null) p.stopped = { day: d, by: ev.actor, why: pl.why ?? "" };
       break;
+    case "project.doneby.moved": {
+      if (p.startedDay === null || p.doneDay !== null || !live || typeof pl.doneBy !== "number" || !Number.isInteger(pl.doneBy)) break;
+      p.doneByMoves.push({ day: d, doneBy: pl.doneBy, why: pl.why?.trim() ?? "", byUserId: ev.actorUserId ?? null, byLead: p.leadUserId !== null && ev.actorUserId === p.leadUserId });
+      break;
+    }
+    case "project.paused": {
+      if (p.startedDay === null || p.doneDay !== null || !live || typeof pl.untilDay !== "number" || !Number.isInteger(pl.untilDay)) break;
+      p.pausedUntil = pl.untilDay;
+      p.pauseWhy = pl.why?.trim() ?? "";
+      break;
+    }
+    case "project.resumed":
+      if (live) { p.pausedUntil = null; p.pauseWhy = ""; }
+      break;
+    case "project.howwework": {
+      const weekday = pl.checkInWeekday;
+      if (!live || p.doneDay !== null || typeof weekday !== "number" || !Number.isInteger(weekday) || weekday < 1 || weekday > 5) break;
+      p.checkInWeekday = weekday;
+      p.howWeWorkNote = pl.note?.trim() ?? "";
+      break;
+    }
+    case "project.update": {
+      const text = pl.text?.trim();
+      if (p.startedDay === null || !live || !text || typeof pl.week !== "number") break;
+      p.latestUpdate = { text, week: pl.week, day: d, byUserId: ev.actorUserId ?? null };
+      break;
+    }
+    case "project.lead.vacated": {
+      const userId = pl.userId;
+      if (!live || !userId || userId !== p.leadUserId) break;
+      // The label stays for the timeline; the page shows "No lead" from leadUserId.
+      p.leadUserId = null;
+      p.leadVacatedDay = d;
+      freeSteps(p, userId);
+      break;
+    }
+    case "project.lead.changed": {
+      const toUserId = pl.toUserId ?? null;
+      if (!live || p.leadVacatedDay === null || toUserId === null) break;
+      const to = pl.to?.trim() ?? "";
+      p.memberUserIds = p.memberUserIds.filter((u) => u !== toUserId);
+      if (to) p.members = p.members.filter((m) => m !== to);
+      if (to) p.lead = to;
+      p.leadUserId = toUserId;
+      p.leadVacatedDay = null;
+      break;
+    }
     case "project.commented":
     default:
       break;
@@ -230,10 +549,34 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
   return true;
 }
 
-type Finish = { day: number; promise: number; rules: LoopRules; routeOf: (id: string | null) => Route | null; seats?: readonly SeatRow[]; workdays?: boolean };
+type Finish = { day: number; promise: number; rules: LoopRules; projectStartDays?: number; routeOf: (id: string | null) => Route | null; seats?: readonly SeatRow[]; workdays?: boolean };
+
+/**
+ * The help asks of a project once its log is replayed (RES D19). An ask with no sponsor goes to a role: the route's owner role, or the deputy's when
+ * the lead holds the owner seat (`toRoleId`, the same rule the stalled escalation uses; no route, no role). It is answered by the asked person's next
+ * project.commented (the sponsor, or a holder of a seat of that role) in the log's order, and it stops waiting when its step is done, dropped or
+ * removed, or the project is no longer running.
+ */
+function finishHelpAsks(p: ReducedProject, roleId: string | null, seats: readonly SeatRow[], day: number): void {
+  for (const ask of p.helpAsks) {
+    ask.toRoleId = ask.toUserId === null ? roleId : null;
+    const at = p.history.findIndex((e) => e.id === ask.id);
+    const asked = (e: CaseEvent) => e.actorUserId != null && (e.actorUserId === ask.toUserId
+      || (ask.toRoleId !== null && seats.some((s) => s.roleId === ask.toRoleId && s.userId === e.actorUserId)));
+    const answered = p.history.find((e, i) => i > at && e.type === "project.commented" && asked(e))?.day;
+    const step = p.steps.find((x) => x.id === ask.stepId);
+    const ended = !step ? p.history.find((e) => e.type === "project.step.edited" && e.payload.stepId === ask.stepId && e.payload.removed)?.day ?? day
+      : step.dropped ? step.dropped.day
+      : step.column === "done" ? step.doneDay ?? day
+      : p.status !== "running" ? p.stopped?.day ?? p.doneDay ?? p.reward?.day ?? day
+      : undefined;
+    const days = [answered, ended].filter((x): x is number => x !== undefined);
+    ask.answeredDay = days.length > 0 ? Math.min(...days) : null;
+  }
+}
 
 /** Derived per project once every event is applied: status, checks, due day, escalation. */
-export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf, seats = [], workdays = false }: Finish): ReducedProject[] {
+export function finishProjects(book: ProjectBook, { day, promise, rules, projectStartDays = rules.projectStartDays, routeOf, seats = [], workdays = false }: Finish): ReducedProject[] {
   const list = book.order.map((id) => book.byId[id]);
   list.forEach((p, k) => {
     p.number = k + 1;
@@ -241,8 +584,11 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf
     p.checks = p.doneDay !== null && counted
       ? rules.measureDays.map((check): CheckDue => {
           const opensDay = (p.doneDay as number) + check;
-          const measured = p.measures.some((m) => m.check === check);
-          return { check, opensDay, dueDay: opensDay + promise, measured, late: !measured && day > opensDay + promise };
+          // A number that was sent back counts as not measured; it is due again `promise` working days after the latest questioning (RES D14).
+          const measured = p.measures.some((m) => m.check === check && !m.sentBack);
+          const back = p.measures.find((m) => m.check === check && m.sentBack)?.questions.at(-1);
+          const dueDay = Math.max(opensDay + promise, back ? back.day + promise : 0);
+          return { check, opensDay, dueDay, measured, late: !measured && day > dueDay };
         })
       : [];
     const allMeasured = p.checks.every((c) => c.measured);
@@ -253,16 +599,40 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf
       : p.startedDay !== null ? "running"
       : "planning";
 
-    const last = p.measures[p.measures.length - 1];
+    // The latest result that stands: a number sent back is not one (RES D14).
+    const standing = p.measures.filter((m) => !m.sentBack);
+    const last = standing[standing.length - 1];
     p.verdict = !rules.measure ? null : last ? last.verdict : p.doneDay !== null && !counted ? "not measured" : null;
     // A reward falls due only on a confirmed latest measure with verdict better (LOOP/D18).
     const counts = rules.measure && last !== undefined && last.confirmed;
     p.rewardDue = p.status === "measured" && rules.recognition && rules.reward.kind !== "none" && counts && last.verdict === "better";
+    // The day the confirmation made the reward due (RES D17): the later of the result's day and its confirmation's.
+    p.rewardDueDay = p.rewardDue && last ? Math.max(last.day, last.confirmedDay ?? last.day) : null;
     const noRewardPossible = rules.reward.kind === "none" || !rules.recognition || !rules.measure || (counts && last.verdict !== "better");
-    p.closed = p.status === "stopped" || p.status === "recognised" || (p.status === "measured" && noRewardPossible);
+    // A project done without a baseline number is "not measured" and closes at done, also under a reward rule (MOV D24).
+    p.closed = p.status === "stopped" || p.status === "recognised" || (p.status === "measured" && (noRewardPossible || p.baseline?.none === true));
+
+    // The done-by date: the latest move, else the goal's, else the default after the start (MOV D19).
+    const moved = p.doneByMoves[p.doneByMoves.length - 1];
+    p.doneBy = p.startedDay === null ? null : moved?.doneBy ?? p.goal?.doneBy ?? p.startedDay + DONE_BY_DEFAULT_DAYS;
+    // The latest day of the project moving (MOV D12). A pause ends by itself once `day` is past pausedUntil; the field is kept
+    // as it is (paused means day <= pausedUntil), so the clock reads the end from it and from the history (pauseEndedDay).
+    p.lastActivityDay = p.startedDay === null ? null : p.history.reduce((m, e) => (ACTIVITY_TYPES.has(e.type) ? Math.max(m, e.day | 0) : m), p.startedDay);
 
     const nextCheck = p.checks.find((c) => !c.measured);
-    p.dueDay = p.status === "planning" ? p.openedDay + promise : p.status === "measuring" && nextCheck ? nextCheck.dueDay : null;
+    // A draft in planning has the start day of D14, none while the lead has not taken it; every other project keeps today's rule.
+    const draftPlanning = p.draft && p.status === "planning";
+    const facts = draftPlanning ? factsOf(p) : null;
+    // The conditions approvers named join the brief the lead wrote (GAT D22); the goal's own text stays what it was written as.
+    const conditions = conditionsOf.get(p) ?? [];
+    if (p.goal !== null && conditions.length > 0) p.goal = { ...p.goal, brief: [p.goal.brief, ...conditions].filter(Boolean).join("\n\n") };
+    // A draft that waits for approval has no start day, like one whose lead has not taken it (GAT D21).
+    const waiting = p.waitsForApproval ?? false;
+    if (facts) {
+      const taken = p.leadState === "taken" && !waiting ? facts.takenDay : null;
+      p.startDay = taken === null ? null : facts.movedStart ?? Math.max(taken, p.approvalsPendingSince ?? taken) + projectStartDays;
+    }
+    p.dueDay = facts ? p.startDay : p.status === "planning" ? p.openedDay + promise : p.status === "measuring" && nextCheck ? nextCheck.dueDay : null;
     p.overdue = p.dueDay !== null && day > p.dueDay;
     const route = routeOf(p.routeId);
     // The lead is the route owner when the owner seat's user is the lead's user (by id, never by name).
@@ -271,9 +641,34 @@ export function finishProjects(book: ProjectBook, { day, promise, rules, routeOf
     const to = route ? (leadIsOwner ? route.deputy : route.owner.name) : null;
     const toSeatId = route ? (leadIsOwner ? route.deputySeatId : route.ownerSeatId) ?? null : null;
     const toRoleId = route ? (leadIsOwner ? route.deputyRoleId : route.ownerRoleId) ?? null : null;
+    finishHelpAsks(p, toRoleId, seats, day);
     if (!workdays) {
       p.escalated = p.overdue && to && p.dueDay !== null
-        ? { to, toSeatId, toRoleId, from: p.lead, day: p.dueDay + 1, live: p.dueDay + 1 >= 0, what: p.status === "planning" ? "start" : "measure" }
+        ? { to, toSeatId, toRoleId, from: p.lead, day: p.dueDay + 1, live: p.dueDay + 1 >= 0, what: draftPlanning ? "draft" : p.status === "planning" ? "start" : "measure" }
+        : null;
+      return;
+    }
+    if (facts) {
+      // A draft (D15): the latest draft fact since the lead last changed, for the lead now; it ends when the start day is moved.
+      const from = facts.reassignedAt + 1;
+      const at = p.history.findLastIndex((e, i) => i >= from && e.type === "clock.due" && e.payload.kind === "draft" && (e.payload.userId === undefined || e.payload.userId === null || e.payload.userId === p.leadUserId));
+      const fact = at >= 0 ? p.history[at] : undefined;
+      const seat = fact ? seats.find((s) => s.id === fact.payload.toRoleHolderId) : undefined;
+      p.escalated = fact && seat && p.leadState === "taken" && !waiting
+        ? { to: seat.label, toSeatId: seat.id, toRoleId: seat.roleId, from: p.lead, day: (fact.payload.dueDay ?? p.dueDay ?? 0) + 1, live: facts.movedAt < at, what: "draft" }
+        : null;
+      return;
+    }
+    if (p.status === "running") {
+      // A stalled fact (MOV D12) stands until something after it, in the order of the log (not by day alone), moved the project:
+      // activity, a new done-by date, a pause or a new lead. Done and stop leave the running status.
+      const at = p.history.findLastIndex((e) => e.type === "clock.due" && e.payload.kind === "stalled");
+      const fact = at >= 0 ? p.history[at] : undefined;
+      const seat = fact ? seats.find((x) => x.id === fact.payload.toRoleHolderId) : undefined;
+      const toUserId = fact?.payload.userId ?? null;
+      const standing = fact !== undefined && (seat !== undefined || toUserId !== null) && !p.history.some((e, i) => i > at && STALLED_ENDERS.has(e.type));
+      p.escalated = standing && fact
+        ? { to: seat?.label ?? "", toSeatId: seat?.id ?? null, toRoleId: seat?.roleId ?? null, toUserId, from: p.lead, day: fact.payload.dueDay ?? 0, live: true, what: "stalled" }
         : null;
       return;
     }

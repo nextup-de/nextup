@@ -23,16 +23,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname, useRouter } from "next/navigation";
 import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
 import { FLAGS, type FlagKey } from "@/config/flags";
-import type { SeedProject, StepColumn, SyncSystem } from "@/features/projects/types";
-import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
+import type { SeedProject } from "@/features/projects/types";
 import { meFor, meOfSeat, type Me } from "@/features/auth/identity";
 import { appendEvent, emptyLog, newId, type CaseEvent, type EventLog, type EventPayload } from "@/features/cases/events";
-import { handPayload } from "@/features/cases/hand";
 import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
 import { dayFormatter, type DayFmt } from "@/features/cases/rows";
-import { affectedOn, exportSnippet } from "@/features/cases/selectors";
-import { isSampleId, SAMPLE_PREFIX, sampleDataOn, withSampleData } from "@/features/demo/sample-data";
+import { exportSnippet } from "@/features/cases/selectors";
+import { isSampleId, sampleDataOn, withSampleData } from "@/features/demo/sample-data";
 import type { Persona, RolePersona, Seed, SeedCase } from "@/features/demo/types";
 import { normalizeDots, type Dots } from "@/features/design/dots";
 import { counts, demoData, type Counts, type DemoData } from "@/features/metrics";
@@ -44,6 +42,9 @@ import { DEFAULT_POST_AS, eventLabel } from "@/features/ideas/posting";
 import { loadCaseLog } from "@/server/actions/case-log";
 import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction, type AppendOutcome } from "@/server/actions/events";
 import { signOut } from "@/server/actions/auth";
+import type { ActDeps } from "./demo/act-deps";
+import { caseActs, type CaseActs } from "./demo/case-acts";
+import { projectActs, type ProjectAct } from "./demo/project-acts";
 import { useLocale, useT } from "@/i18n/client";
 import type { Locale } from "@/i18n";
 
@@ -51,66 +52,19 @@ export type Pop = "search" | "decisions" | "me" | "sort" | "filter";
 export type SheetKind = "no" | "ask" | "reply" | "hand" | "assign" | "askIdea" | "discuss" | "invite" | "checkin" | "accept"; // the last four: components/shell/LoopSheets.tsx
 export type Sheet = { kind: SheetKind; id: string; text: string; picked: string | null; people: string[] };
 
-export type Act = {
-  raise: (p: EventPayload, id?: string) => string; // id: minted by the caller when it has to be known first (the idea studio publishes with it)
-  /** The idea studio's raise: publishes draft `draftId` with case `id`, or neither (Q1.11). Resolves with the server's answer. */
-  raiseDraft: (p: EventPayload, id: string, draftId: string) => Promise<AppendOutcome>;
-  read: (id: string) => void;
-  decide: (id: string, answer: "yes" | "no", reason?: string, note?: string) => void;
-  hand: (id: string, seatId: string, why?: string) => void; // the seat id; its label rides along as `to` (IDN/D5, D13)
-  ask: (id: string, text: string) => void;
-  answer: (id: string, text: string) => void;
-  /** The raiser takes back an idea nobody decided yet (decision Q1.14); `note` is the optional line why. */
-  withdraw: (id: string, note: string) => void;
-  override: (id: string, proposed: string | null, chosen: string) => void;
+/** The acts that are no case's and no project's: the idea's co-sign, its approval and funding, the clock. */
+export type CoreActs = {
   cosign: (ideaId: string) => boolean; // true when the co-sign was added, false when withdrawn
-  affect: (caseId: string, why?: string) => boolean; // "this affects me too" (+ why, from a lead) - true when added, false when withdrawn
-  comment: (caseId: string, text: string) => void;
-  rescore: (caseId: string, text: string) => void; // new information: the score is re-evaluated with it
   askIdea: (ideaId: string, text: string) => void;
   approve: (ideaId: string, team: string[], note: string) => void;
   fund: (ideaId: string, team: string[], note: string) => void;
   advanceDay: (by?: number) => void;
-  // The discussion stage (docs/plans/2026-10-15_idea-to-project.md)
-  // `invited` are the labels shown, `invitedUserIds` who is asked (the ids decide, IDN/D2).
-  discuss: (caseId: string, invited: string[], missing: string, invitedUserIds: string[]) => void;
-  invite: (caseId: string, invited: string[], invitedUserIds: string[]) => void;
-  revise: (caseId: string, body: string, title?: string, overall?: number) => void;
-  checkin: (caseId: string, next: "round" | "decide", open: string[], note: string) => void;
-  // "Yes, do it" that opens a project - or joins `projectId` when that one is already open. Returns the project id.
-  accept: (caseId: string, p: { lead: string; leadUserId?: string | null; title: string; note?: string; projectId?: string }) => string;
-  project: ProjectAct;
 };
 
-/** A change to a step: only the fields given change. owner "" and dueDay null clear them; removed takes it off the board. */
-export type StepChange = { text?: string; owner?: string; ownerUserId?: string | null; dueDay?: number | null; note?: string; removed?: boolean };
+export type Act = CoreActs & CaseActs & { project: ProjectAct };
 
-export type BaselineInput = { metric: string; unit: string; value: number; better: "up" | "down"; source: string } | { none: true; why: string };
-
-// Everything done to a project, each one event (features/projects). Ids are minted here when the caller needs them back.
-export type ProjectAct = {
-  /** Team changes name the person by user id; the label rides along for the timeline. */
-  member: (projectId: string, who: { userId: string; name: string }, on: boolean) => void;
-  hand: (projectId: string, to: { userId: string; name: string }, why?: string) => void;
-  baseline: (projectId: string, b: BaselineInput) => void;
-  start: (projectId: string) => void;
-  addStep: (projectId: string, text: string, owner?: string, dueDay?: number, to?: StepColumn, note?: string, ownerUserId?: string | null) => string;
-  /** before: the card it lands above; null puts it at the bottom of the column. */
-  moveStep: (projectId: string, stepId: string, to: StepColumn, why?: string, before?: string | null) => void;
-  editStep: (projectId: string, stepId: string, change: StepChange) => void;
-  link: (projectId: string, url: string, system?: string, key?: string, stepId?: string) => void;
-  /**
-   * Send the project to a tool, or stop syncing (project.sync). Server mode: the connector does the rest.
-   * The local demo has no Jira: it plays the connector itself, with the same project.linked events and no network.
-   */
-  sync: (projectId: string, on: boolean, system?: SyncSystem) => void;
-  comment: (projectId: string, text: string) => void;
-  done: (projectId: string, note?: string) => void;
-  measure: (projectId: string, check: number, value: number, source: string, note?: string) => void;
-  reward: (projectId: string, rule: string, amount?: number, note?: string) => void;
-  claim: (projectId: string) => void;
-  stop: (projectId: string, why: string) => void;
-};
+export type { ProjectAct, StepChange, BaselineInput } from "./demo/project-acts";
+export type { CaseActs } from "./demo/case-acts";
 
 export type DemoContext = {
   tenant: TenantInfo;
@@ -153,12 +107,12 @@ export function useDemo(): DemoContext {
   return c;
 }
 
-// First visit: the URL says which role the visitor meant (/dashboard, /manager or /settings -> manager, /leader -> leader).
+// First visit: the URL says which role the visitor meant (/dashboard, /manager or /settings -> manager, /inbox or /leader -> leader: the one inbox is the leader's home, plan INB D3).
 // Everything else - the front door /[company] included - starts as the employee: the login sends
 // people in there, and the employee's Raise page is where every case begins.
 function roleFromPath(path: string): Role {
   if (path === "/dashboard" || path.startsWith("/dashboard/") || path === "/manager" || path.startsWith("/manager/") || path === "/settings" || path.startsWith("/settings/")) return "manager";
-  if (path === "/leader" || path.startsWith("/leader/")) return "leader";
+  if (path === "/leader" || path.startsWith("/leader/") || path === "/inbox" || path.startsWith("/inbox/")) return "leader";
   return "member";
 }
 
@@ -469,83 +423,22 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     }));
   }, [serverMode, slug, S.cases, persona, seed.postAs, actorUserId, log.day, showToast]);
 
-  const act = useMemo<Act>(() => ({
-    // Stays synchronous and still returns the id: the idea studio hands it straight to saveShots().
-    raise: (p, id = newId("c")) => { emit("case.raised", id, p); return id; },
-    raiseDraft: (p, id, draftId) => emit("case.raised", id, p, undefined, draftId),
-    read: (id) => emit("case.read", id),
-    decide: (id, answer, reason, note) => emit("case.decided", id, { answer, reason, note }),
-    hand: (id, seatId, why) => emit("case.handed", id, handPayload(seed.seats, seatId, why)),
-    ask: (id, text) => emit("case.asked", id, { text }),
-    answer: (id, text) => emit("case.answered", id, { text }),
-    withdraw: (id, note) => emit("case.withdrawn", id, note ? { note } : {}),
-    override: (id, proposed, chosen) => emit("case.override", id, { proposed, chosen }),
-    cosign: (ideaId) => {
-      const already = actorUserId !== null && (S.ideas.find((x) => x.id === ideaId)?.cosigners.some((x) => x.userId === actorUserId) ?? false);
-      emit(already ? "idea.uncosigned" : "idea.cosigned", ideaId);
-      return !already;
-    },
-    affect: (caseId, why) => {
-      // Decided against the log as it is at that moment, so a double click toggles cleanly.
-      if (serverMode) {
-        const added = !affectedOn(log, caseId).some((a) => actorUserId !== null && a.userId === actorUserId);
-        emit(added ? "case.affected" : "case.unaffected", caseId, added && why ? { why } : undefined);
-        return added;
-      }
-      let added = true;
-      updateLog(slug, (prev) => {
-        added = !affectedOn(prev, caseId).some((a) => actorUserId !== null && a.userId === actorUserId);
-        return appendEvent(prev, { type: added ? "case.affected" : "case.unaffected", actor, actorUserId, target: caseId, payload: added && why ? { why } : undefined });
-      });
-      return added;
-    },
-    comment: (caseId, text) => emit("case.commented", caseId, { text }),
-    rescore: (caseId, text) => emit("case.commented", caseId, { text, rescore: true }),
-    askIdea: (ideaId, text) => emit("idea.asked", ideaId, { text }),
-    approve: (ideaId, team, note) => emit("idea.approved", ideaId, { team, note }),
-    fund: (ideaId, team, note) => emit("idea.funded", ideaId, { team, note }),
-    advanceDay: (by) => emit("day.advanced", null, { by: by ?? 1 }),
-    discuss: (caseId, invited, missing, invitedUserIds) => emit("case.discussion", caseId, { invited, invitedUserIds, missing }),
-    invite: (caseId, invited, invitedUserIds) => emit("case.invited", caseId, { invited, invitedUserIds }),
-    revise: (caseId, body, title, overall) => emit("case.revised", caseId, { body, title, overall }),
-    checkin: (caseId, next, open, note) => emit("case.checkin", caseId, { next, open, note }),
-    accept: (caseId, { lead, leadUserId, title, note, projectId = (isSampleId(caseId) ? SAMPLE_PREFIX : "") + newId("p") }) => {
-      emit("case.decided", caseId, { answer: "yes", projectId, lead, ...(leadUserId ? { leadUserId } : {}), title, note });
-      return projectId;
-    },
-    project: {
-      member: (id, who, on) => emit("project.member", id, { name: who.name, userId: who.userId, on }),
-      hand: (id, to, why) => emit("project.handed", id, { to: to.name, toUserId: to.userId, why }),
-      baseline: (id, b) => emit("project.baseline", id, "none" in b ? { none: true, why: b.why } : { ...b }),
-      start: (id) => emit("project.started", id),
-      addStep: (id, text, owner, dueDay, to, note, ownerUserId) => { const stepId = newId("s"); emit("project.step.added", id, { stepId, text, owner, ...(ownerUserId ? { ownerUserId } : {}), dueDay, to, note }); return stepId; },
-      moveStep: (id, stepId, to, why, before) => emit("project.step.moved", id, { stepId, to, why, ...(before !== undefined ? { before } : {}) }),
-      editStep: (id, stepId, change) => emit("project.step.edited", id, { stepId, ...change }),
-      link: (id, url, system = "url", key, stepId) => emit("project.linked", id, { url, system, key, stepId }),
-      sync: (id, on, system = "jira") => {
-        emit("project.sync", id, { system, on });
-        const p = S.projects.find((x) => x.id === id);
-        if (serverMode || !on || !p) return;
-        // The demo's stand-in for the connector: an epic, then an issue for each step that has none.
-        const url = (key: string) => DEMO_JIRA_SITE + "/browse/" + key;
-        let n = S.projects.reduce((sum, x) => sum + x.links.filter((l) => l.system === system && l.key.startsWith(DEMO_JIRA_KEY + "-")).length, 0);
-        if (!p.links.some((l) => l.system === system && l.stepId === null && l.key)) {
-          const key = DEMO_JIRA_KEY + "-" + ++n;
-          emit("project.linked", id, { system, key, url: url(key) });
-        }
-        for (const st of p.steps.filter((x) => !x.external)) {
-          const key = DEMO_JIRA_KEY + "-" + ++n;
-          emit("project.linked", id, { system, key, url: url(key), stepId: st.id });
-        }
+  // Composer (docs/process/README.md): a phase adds acts to demo/<area>-acts.ts, never here.
+  const act = useMemo<Act>(() => {
+    const deps: ActDeps = { emit, S, seed, serverMode, slug, actor, actorUserId, log };
+    const coreActs: CoreActs = {
+      cosign: (ideaId) => {
+        const already = actorUserId !== null && (S.ideas.find((x) => x.id === ideaId)?.cosigners.some((x) => x.userId === actorUserId) ?? false);
+        emit(already ? "idea.uncosigned" : "idea.cosigned", ideaId);
+        return !already;
       },
-      comment: (id, text) => emit("project.commented", id, { text }),
-      done: (id, note) => emit("project.done", id, { note }),
-      measure: (id, check, value, source, note) => emit("project.measured", id, { check, value, source, note }),
-      reward: (id, rule, amount, note) => emit("project.rewarded", id, { rule, amount, note }),
-      claim: (id) => emit("project.claimed", id),
-      stop: (id, why) => emit("project.stopped", id, { why }),
-    },
-  }), [emit, seed.seats, S.ideas, S.projects, actor, actorUserId, slug, serverMode, log]);
+      askIdea: (ideaId, text) => emit("idea.asked", ideaId, { text }),
+      approve: (ideaId, team, note) => emit("idea.approved", ideaId, { team, note }),
+      fund: (ideaId, team, note) => emit("idea.funded", ideaId, { team, note }),
+      advanceDay: (by) => emit("day.advanced", null, { by: by ?? 1 }),
+    };
+    return { ...coreActs, ...caseActs(deps), project: projectActs(deps) };
+  }, [emit, S, seed, serverMode, slug, actor, actorUserId, log]);
 
   const flags = tenant.flags;
   const flag = useCallback((key: FlagKey) => flags?.[key] ?? FLAGS[key].defaults.demo, [flags]);

@@ -8,44 +8,112 @@ import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { standingOn, versionsOf } from "@/components/dashboard/derive";
 import { useLocale, useT } from "@/i18n/client";
+import { NoBlock } from "@/components/cases/NoBlock";
+import { SecondLook } from "@/components/cases/SecondLook";
+import { useRelatedCase } from "@/components/cases/useRelatedCase";
+import { caseActions, questionOpen, reviseThenAnswer } from "@/features/cases/case-actions";
+import { noBlockOf } from "@/features/cases/raiser-view";
 import { roundState, scoreVersions, versionReader } from "@/features/cases/discussion";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { projectStatus, raisedWith } from "@/features/cases/rows";
 import { onDeskOf } from "@/features/cases/selectors";
 import { ideaContext } from "@/features/ideas/drafts";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
+import { beingSetUpLine, isOpenDraft, mayReadDraft, raiserDraftPanel, type RaiserDraftPanel as RaiserDraftPanelData } from "@/features/projects/views";
+import { isPrivateIdea } from "@/features/cases/visibility";
+import { useCaseNames } from "@/components/cases/useCaseNames";
 import { PersonFace, SectionCard } from "@/components/ui/elements";
 import styles from "./CaseLoop.module.css";
 
-// "Accepted on 14 Oct by T. Vogel → P-12 Shorter changeover · In progress" - or the no and its why.
+// "Accepted on 14 Oct by T. Vogel → P-12 Shorter changeover · In progress" - or the no with its block (plan SEE, D12) - or, for a merged case,
+// where it went (D17).
+// A draft the viewer may not read is "Accepted · being set up by {role}, start expected {date}" and no link (D13);
+// one they may read is "Draft → P-12 title" (SET).
 export function ArchiveBanner({ c }: { c: ReducedCase }) {
-  const { S, f, href } = useDemo();
+  const { S, f, href, role, actorUserId, seed, act } = useDemo();
   const t = useT();
   const locale = useLocale();
+  const names = useCaseNames();
+  const related = useRelatedCase();
+  // A no, also one a second look reopened (the case then has no live decision, but its no still tells what happened).
+  const block = noBlockOf(c, S.day, S.rules.appealDays);
+  if (c.merged !== null) {
+    const into = related.ofCase(c.merged.into);
+    return (
+      <div className={styles.banner} data-tone="no" role="note" aria-label={t("caseSee.statusMerged")} data-testid="merged-into">
+        <span className={styles.bannerTag}>{t("caseSee.statusMerged")}</span>
+        <span>{into.to ? <Link href={into.to} className={styles.bannerLink}>{t("caseSee.mergedInto", { title: into.title ?? "" })}</Link> : t("caseSee.mergedInto", { title: t("loopCase.aCase") })}{c.merged.note ? " — " + c.merged.note : ""}</span>
+      </div>
+    );
+  }
+  if (block !== null) {
+    const no = c.decided ?? c.decisions[c.decisions.length - 1];
+    const ago = no.day - S.day;
+    const noWhen = ago === 0 || ago === -1 ? f(no.day) : t("dashboard.loopWhenOn", { day: f(no.day) });
+    return (
+      <>
+      <div className={styles.banner} data-tone="no" role="note" aria-label={t("dashboard.loopArchived")}>
+        <span className={styles.bannerTag}>{t("dashboard.loopArchived")}</span>
+        <span data-testid="archived-no">{t("dashboard.loopDeclined", { when: noWhen, by: no.by })}</span>
+      </div>
+      <NoBlock c={c} block={block} />
+      <SecondLook c={c} />
+      </>
+    );
+  }
   const dec = c.decided;
   if (!c.archived || !dec) return null;
   const p = dec.answer === "yes" ? projectOfCase(S, c) : undefined;
   const rel = dec.day - S.day; // today and yesterday read as words, older days as a date
   const when = rel === 0 || rel === -1 ? f(dec.day) : t("dashboard.loopWhenOn", { day: f(dec.day) });
+  const draft = p && isOpenDraft(p) ? p : undefined;
+  const viewer = { role, userId: actorUserId };
+  const hidden = draft !== undefined && !mayReadDraft(draft, viewer, S.cases.some((x) => draft.sources.includes(x.id) && isPrivateIdea(x)));
+  const line = draft && hidden ? beingSetUpLine(draft, seed.seats, names.roleTitle) : null;
+  const panel = draft ? raiserDraftPanel(draft, actorUserId, c.fromUserId) : null;
   return (
+    <>
     <div className={styles.banner} data-tone={dec.answer === "yes" ? "yes" : "no"} role="note" aria-label={t("dashboard.loopArchived")}>
       <span className={styles.bannerTag}>{t("dashboard.loopArchived")}</span>
-      {dec.answer === "yes" ? (
+      {line && draft ? (
+        <span data-testid="draft-being-set-up">{t("projectDraft.beingSetUp", { role: line.role || draft.lead, date: line.startDay === null ? t("loopCase.draftNoStart") : f(line.startDay) })}</span>
+      ) : dec.answer === "yes" ? (
         <span>
-          {t("dashboard.loopAccepted", { when, by: dec.by })}
+          {draft ? t("projectDraft.title") : t("dashboard.loopAccepted", { when, by: dec.by })}
           {p ? <> → <Link href={href("/projects/" + p.id)} className={styles.bannerLink}>{projectLabel(p)} {p.title}</Link> · {projectStatus(p.status, locale)}</> : null}
         </span>
-      ) : (
-        <span>{t("dashboard.loopDeclined", { when, by: dec.by })}{dec.reason ? " — " + dec.reason : ""}{dec.note ? t("dashboard.evNoteSuffix", { note: dec.note }) : ""}</span>
-      )}
+      ) : null}
     </div>
+    {draft && panel?.show && <RaiserDraftPanel projectId={draft.id} panel={panel} comment={act.project.comment} />}
+    </>
+  );
+}
+
+// The raiser of the case, not on the draft (D20): what the lead wrote down of the goal, and one comment box.
+function RaiserDraftPanel({ projectId, panel, comment }: { projectId: string; panel: RaiserDraftPanelData; comment: (projectId: string, text: string) => void }) {
+  const t = useT();
+  const [text, setText] = useState("");
+  const rows = ([[t("loopCase.draftGoal"), panel.goal], [t("loopCase.draftDoneWhen"), panel.doneWhen], [t("loopCase.draftBrief"), panel.brief]] as [string, string | null][]).filter(([, v]) => v);
+  return (
+    <section aria-label={t("loopCase.draftPanel")} data-testid="draft-raiser-panel">
+      {rows.map(([k, v]) => <p key={k} className={styles.missing}><span className={styles.k}>{k}</span>{v}</p>)}
+      {panel.canComment && (
+        <form onSubmit={(e) => { e.preventDefault(); const v = text.trim(); if (!v) return; comment(projectId, v); setText(""); }}>
+          <label htmlFor={"draft-comment-" + projectId} className={styles.k}>{t("loopCase.draftComment")}</label>
+          <textarea id={"draft-comment-" + projectId} className={`${styles.field} ${styles.area}`} value={text} onChange={(e) => setText(e.target.value)} rows={3} />
+          <button type="submit" className="nh-btn nh-btn-secondary nh-btn-sm" disabled={!text.trim()}>{t("loopCase.draftSend")}</button>
+        </form>
+      )}
+    </section>
   );
 }
 
 // Who is in, where the rounds stand, and every check-in with what it left open.
 export function DiscussionPanel({ c }: { c: ReducedCase }) {
-  const { S, f, role, me, openSheet } = useDemo();
+  const { S, f, role, me, openSheet, act } = useDemo();
   const t = useT();
+  const [leaving, setLeaving] = useState(false);
+  const [leaveWhy, setLeaveWhy] = useState("");
   const d = c.discussion;
   const rs = roundState(c, S.rules, S.day);
   if (!d || !rs) return null;
@@ -78,6 +146,17 @@ export function DiscussionPanel({ c }: { c: ReducedCase }) {
           ))}
         </ol>
       )}
+      {live && caseActions(c, me, role, S).declineInvite && (
+        <div className={styles.actions}>
+          {!leaving ? <button type="button" className={styles.soft} data-testid="discussion-not-for-me" onClick={() => setLeaving(true)}>{t("loopCase.notForMe")}</button> : (
+            <>
+              <input className={styles.field} value={leaveWhy} onChange={(e) => setLeaveWhy(e.target.value)} maxLength={300} aria-label={t("loopCase.notForMeWhy")} placeholder={t("loopCase.notForMeWhy")} autoFocus />
+              <button type="button" className={styles.primary} data-testid="discussion-not-for-me-send" onClick={() => { act.declineInvite(c.id, leaveWhy.trim() || undefined); setLeaving(false); setLeaveWhy(""); }}>{t("loopCase.notForMeSend")}</button>
+              <button type="button" className={styles.soft} onClick={() => setLeaving(false)}>{t("common.cancel")}</button>
+            </>
+          )}
+        </div>
+      )}
       {holder && (
         <div className={styles.actions}>
           {!rs.ready && <button type="button" className={styles.primary} onClick={() => openSheet("checkin", c.id)}>{t("dashboard.loopCheckIn")}</button>}
@@ -98,16 +177,22 @@ export function VersionsPanel({ c, mine }: { c: ReducedCase; mine: boolean }) {
   const [title, setTitle] = useState(c.title);
   const [body, setBody] = useState(c.body);
   const versions = versionsOf(ctx, c);
-  const canRevise = mine && !c.decided;
+  // The raiser of an undecided case that is neither withdrawn nor merged (D18); a discussion has the same Revise here.
+  const canRevise = (caseActions(c, ctx.me, ctx.role, ctx.S).revise || (mine && c.status === "discussion" && !c.decided && c.withdrawn === null && c.merged === null));
   if (versions.length < 2 && !canRevise) return null;
   const now = versions[versions.length - 1];
   // The draft scored live, against the version it would follow.
   const read = versionReader(ideaContext(ctx.seed.routes, ctx.seed.goals, ctx.S.cases, ctx.seed.spend), c.id, { affected: standingOn(ctx, c), attachments: raisedWith(c).attachments });
   const draft = editing ? scoreVersions([now, { ...now, version: now.version + 1, title, body, overall: null }], read)[1] : null;
   const changed = body.trim() !== c.body.trim() || title.trim() !== c.title.trim();
-  const post = () => {
+  const post = async () => {
     if (!draft || !changed || !body.trim()) return;
-    act.revise(c.id, body.trim(), title.trim() !== c.title ? title.trim() : undefined, draft.score);
+    // A new version while a question is open also answers it, once the revision went through (D20).
+    const ok = await reviseThenAnswer(
+      { revise: () => act.revise(c.id, body.trim(), title.trim() !== c.title ? title.trim() : undefined, draft.score), answer: (text) => act.answer(c.id, text) },
+      draft.version, questionOpen(c),
+    );
+    if (!ok) return;
     setEditing(false);
     showToast(t("dashboard.loopPosted", { version: draft.version, from: now.score, to: draft.score }));
   };

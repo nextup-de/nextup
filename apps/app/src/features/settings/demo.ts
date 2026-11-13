@@ -72,13 +72,13 @@ export const SAMPLE_MEMBERS: { id: string; name: string }[] = [
 ];
 
 /** The sample Members table: who signs in how, and the seats they hold. */
-export type SampleMember = Member & { dept: string; codeIssuedAt: string | null; microsoft: boolean; active: boolean; hasEmail: boolean; pseudonymisedAt: string | null; seats: { id: string; label: string }[]; held: boolean };
+export type SampleMember = Member & { dept: string; codeIssuedAt: string | null; microsoft: boolean; active: boolean; hasEmail: boolean; pseudonymisedAt: string | null; seats: { id: string; label: string }[]; held: boolean; fromDirectory: boolean };
 export const SAMPLE_MEMBER_ROWS: SampleMember[] = [
-  { id: "demo-hs", name: "Hanna Sander", email: "h.sander@acme.example", role: "manager", dept: "Werk Süd", codeIssuedAt: "2026-10-12T09:00:00Z", microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-1", label: "Plant manager" }], held: false },
-  { id: "demo-ak", name: "Aylin Kaya", email: "a.kaya@acme.example", role: "leader", dept: "Quality", codeIssuedAt: null, microsoft: true, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-3", label: "Quality lead" }], held: false },
-  { id: "demo-jw", name: "Jonas Weber", email: "j.weber@acme.example", role: "leader", dept: "Assembly", codeIssuedAt: "2026-10-20T09:00:00Z", microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-2", label: "Assembly lead" }], held: false },
-  { id: "demo-df", name: "Dario Ferraro", email: "d.ferraro@acme.example", role: "member", dept: "Assembly", codeIssuedAt: null, microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [], held: false },
-  { id: "demo-mk", name: "Mira Keller", email: "m.keller@acme.example", role: "member", dept: "Logistics", codeIssuedAt: null, microsoft: false, active: false, hasEmail: true, pseudonymisedAt: null, seats: [], held: false },
+  { id: "demo-hs", name: "Hanna Sander", email: "h.sander@acme.example", role: "manager", dept: "Werk Süd", codeIssuedAt: "2026-10-12T09:00:00Z", microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-1", label: "Plant manager" }], held: false, fromDirectory: false },
+  { id: "demo-ak", name: "Aylin Kaya", email: "a.kaya@acme.example", role: "leader", dept: "Quality", codeIssuedAt: null, microsoft: true, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-3", label: "Quality lead" }], held: false, fromDirectory: true },
+  { id: "demo-jw", name: "Jonas Weber", email: "j.weber@acme.example", role: "leader", dept: "Assembly", codeIssuedAt: "2026-10-20T09:00:00Z", microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [{ id: "h-2", label: "Assembly lead" }], held: false, fromDirectory: false },
+  { id: "demo-df", name: "Dario Ferraro", email: "d.ferraro@acme.example", role: "member", dept: "Assembly", codeIssuedAt: null, microsoft: false, active: true, hasEmail: true, pseudonymisedAt: null, seats: [], held: false, fromDirectory: false },
+  { id: "demo-mk", name: "Mira Keller", email: "m.keller@acme.example", role: "member", dept: "Logistics", codeIssuedAt: null, microsoft: false, active: false, hasEmail: true, pseudonymisedAt: null, seats: [], held: false, fromDirectory: false },
 ];
 
 /** The signed-in sample manager, and the seat nobody holds yet. */
@@ -104,6 +104,7 @@ export function sampleOpenInput(now: Date): GoLiveInput {
     directory: null,
     recipients: 0,
     baseline: false,
+    restore: { at: new Date(now.getTime() - 3 * 86_400_000), seconds: 412 }, findings: null, breakGlassUntil: null,
     agreements: {
       dpa: { kind: "dpa", status: "signed", date: "2026-10-28", signer: "Managing director", at: "2026-10-29T09:00:00.000Z" },
       works: { kind: "works", status: "notNeeded", reason: "The plant has no works council.", at: "2026-10-29T09:00:00.000Z" },

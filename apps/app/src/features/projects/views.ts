@@ -3,9 +3,11 @@
 // facts (and the short sentences built from them) out. The shapes and rules are ./types, ./reduce,
 // ./selectors and ./permissions; this file only reads them.
 import type { Role } from "@/config/roles";
-import { holdsRole, type Me } from "@/features/auth/identity";
+import { holdsRole, type Me, type SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
-import type { State } from "@/features/cases/reducer";
+import { approverRoleIds } from "@/features/approvals/rights";
+import type { ReducedCase, State } from "@/features/cases/reducer";
+import { isPrivateIdea } from "@/features/cases/visibility";
 import type { Initiative, InitiativeStatus } from "@/features/demo/types";
 import { splitBody } from "@/features/ideas/brief";
 import { DEFAULT_LOCALE, translate, type Locale, type T } from "@/i18n";
@@ -24,13 +26,70 @@ export type IdViewer = { role: Role; userId: string | null; me?: Me };
 /** A handle, not a name: the author posted anonymously and stays that way. */
 export const isHandle = (who: string) => who.startsWith("Anonymous");
 
-/** The projects this person may see: a member sees the projects they lead, are on, or whose idea they raised. */
-export function visibleProjectsFor(state: Pick<State, "projects">, v: IdViewer, demo = true): ReducedProject[] {
+/** On the draft itself (D13): its decider, lead, sponsor, followers, members and people invited who have not declined or lapsed. */
+export function onDraft(p: ReducedProject, userId: string | null): boolean {
+  if (userId === null) return false;
+  return p.deciderUserId === userId || p.leadUserId === userId || p.sponsorUserId === userId || p.followerUserIds.includes(userId) || p.memberUserIds.includes(userId)
+    || p.invites.some((i) => i.userId === userId && (i.state === "pending" || i.state === "accepted"));
+}
+
+/**
+ * The viewer holds the seat a late draft went to while that escalation is live (D15, D22): that seat keeps, hands on or stops
+ * the draft, so its holder reads it whatever their app role and whether or not the idea is private. By seat id, from `me`.
+ */
+export function escalatedToViewer(p: ReducedProject, v: IdViewer): boolean {
+  const e = p.escalated;
+  return e !== null && e.what === "draft" && e.live && e.toSeatId !== null && v.me?.seatIds.includes(e.toSeatId) === true;
+}
+
+/**
+ * The viewer holds the role of a step of an approval run of the draft's case, a council's secretary or member role, or the role of a seat a late step
+ * was handed to (plan GAT, D24). By role id from `me`, never by name. `cases` are the cases the draft came from.
+ */
+export function approverOfDraft(cases: readonly ReducedCase[], v: IdViewer, state: Pick<State, "seats" | "approvals">): boolean {
+  const me = v.me;
+  if (me === undefined) return false;
+  return cases.some((c) => approverRoleIds(c, state).some((r) => me.roleIds.includes(r)));
+}
+
+/**
+ * A draft is only for the people on it, the holder of the seat it was escalated to and, unless the idea is private, managers and the approvers of
+ * its yes (D13, GAT D24). `privateIdea`: the raiser made the idea private. `approver`: see approverOfDraft.
+ */
+export function mayReadDraft(p: ReducedProject, v: IdViewer, privateIdea: boolean, approver = false): boolean {
+  return onDraft(p, v.userId) || escalatedToViewer(p, v) || ((v.role === "manager" || approver) && !privateIdea);
+}
+
+/** A draft that has not started: the only kind D13 hides. A legacy project and a started one are as before. */
+export const isOpenDraft = (p: ReducedProject): boolean => p.draft && p.status === "planning";
+
+/** The projects this person may see: a member sees the projects they lead, are on, or whose idea they raised; a draft only who is on it (D13). */
+export function visibleProjectsFor(state: Pick<State, "projects"> & { cases?: State["cases"]; seats?: State["seats"]; approvals?: State["approvals"] }, v: IdViewer, demo = true): ReducedProject[] {
   const all = demo ? state.projects : state.projects.filter((p) => !p.seed);
-  if (v.role !== "member") return all;
+  const casesOf = (p: ReducedProject) => (state.cases ?? []).filter((c) => p.sources.includes(c.id));
+  const privateIdea = (p: ReducedProject) => casesOf(p).some(isPrivateIdea);
+  // The approvers of the draft's yes read it too (GAT D24); without the company's roles and seats there are none to know.
+  const approver = (p: ReducedProject) => state.seats !== undefined && state.approvals !== undefined && approverOfDraft(casesOf(p), v, { seats: state.seats, approvals: state.approvals });
+  const open = all.filter((p) => !isOpenDraft(p) || mayReadDraft(p, v, privateIdea(p), approver(p)));
+  if (v.role !== "member") return open;
   const id = v.userId;
   if (id === null) return [];
-  return all.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id));
+  return open.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id) || onDraft(p, id) || (isOpenDraft(p) && (escalatedToViewer(p, v) || (!privateIdea(p) && approver(p)))));
+}
+
+/** The line a viewer who may not read a draft gets (D13): the lead's seat role and the start day; `roleTitle` says a role's label. */
+export function beingSetUpLine(p: ReducedProject, seats: readonly SeatRow[], roleTitle: (roleId: string) => string = () => ""): { role: string; startDay: number | null } {
+  const seat = p.leadUserId === null ? undefined : seats.find((s) => s.userId === p.leadUserId);
+  return { role: seat ? roleTitle(seat.roleId) : "", startDay: p.startDay };
+}
+
+export type RaiserDraftPanel = { show: boolean; goal: string | null; doneWhen: string | null; brief: string | null; canComment: boolean };
+
+/** What the raiser of the case sees of a draft they are not on (D20): its goal, done-when and brief once set, and one comment box. Nothing for anyone else. */
+export function raiserDraftPanel(p: ReducedProject, viewerUserId: string | null, caseAuthorUserId: string | null): RaiserDraftPanel {
+  const show = isOpenDraft(p) && viewerUserId !== null && viewerUserId === caseAuthorUserId && !onDraft(p, viewerUserId);
+  if (!show) return { show: false, goal: null, doneWhen: null, brief: null, canComment: false };
+  return { show, goal: p.goal?.goal ?? null, doneWhen: p.goal?.doneWhen ?? null, brief: p.goal?.brief || null, canComment: true };
 }
 
 export type ProjectGroup = { key: string; label: string; projects: ReducedProject[] };
@@ -43,12 +102,19 @@ const GROUPS: { key: "planning" | "running" | "measuring" | "measured" | "stoppe
   { key: "stopped", has: ["stopped"] },
 ];
 
-/** The list's groups, in the order a project moves through them. Late ones first, then by number. Empty groups stay (the page hides them). */
-export function groupProjects(list: readonly ReducedProject[], locale: Locale = DEFAULT_LOCALE): ProjectGroup[] {
+/**
+ * The list's groups, in the order a project moves through them. Inside a group the most relevant first: the
+ * reader's own (lead or on the team, by `userId`), then late ones, then the next move due soonest, then by
+ * number. Empty groups stay (the page hides them).
+ */
+export function groupProjects(list: readonly ReducedProject[], locale: Locale = DEFAULT_LOCALE, userId: string | null = null): ProjectGroup[] {
+  const mine = (p: ReducedProject) => userId !== null && (p.leadUserId === userId || p.memberUserIds.includes(userId));
+  const due = (p: ReducedProject) => p.dueDay ?? Infinity;
   return GROUPS.map((g) => ({
     key: g.key,
     label: translate(locale, ("projects.group_" + g.key) as "projects.group_planning"),
-    projects: list.filter((p) => g.has.includes(p.status)).sort((a, b) => Number(b.overdue) - Number(a.overdue) || a.number - b.number),
+    projects: list.filter((p) => g.has.includes(p.status))
+      .sort((a, b) => Number(mine(b)) - Number(mine(a)) || Number(b.overdue) - Number(a.overdue) || due(a) - due(b) || a.number - b.number),
   }));
 }
 
@@ -86,7 +152,8 @@ export function projectDeskFor(list: readonly ReducedProject[], day: number, v: 
     if (move === "reward") {
       if (v.role === "manager") out.push({ project: p, move, why: "reward" });
     } else if (v.userId !== null && p.leadUserId === v.userId) out.push({ project: p, move, why: "lead" });
-    else if (v.me && holdsRole(v.me, p.escalated?.toRoleId ?? null)) out.push({ project: p, move, why: "escalated" });
+    // A stalled project is on its seat's inbox as a stalled item (features/inbox/sources/project-move.ts), so it is not listed twice.
+    else if (p.escalated?.what !== "stalled" && v.me && holdsRole(v.me, p.escalated?.toRoleId ?? null)) out.push({ project: p, move, why: "escalated" });
   }
   return sortDesk(out, day);
 }
@@ -324,10 +391,12 @@ export type BoardStats = {
 };
 
 export function boardStats(p: Pick<ReducedProject, "steps">, day: number): BoardStats {
+  // A step dropped on the Done sheet counts in no x/y total, no percentage and no list of open work (plan RES, D31).
+  const steps = p.steps.filter((s) => !s.dropped);
   const by: Record<StepColumn, number> = { todo: 0, doing: 0, blocked: 0, done: 0 };
-  for (const s of p.steps) by[s.column]++;
-  const open = p.steps.filter((s) => s.column !== "done");
-  const cycles = p.steps
+  for (const s of steps) by[s.column]++;
+  const open = steps.filter((s) => s.column !== "done");
+  const cycles = steps
     .filter((s) => s.column === "done" && s.startedDay !== null && s.doneDay !== null)
     .map((s) => (s.doneDay as number) - (s.startedDay as number));
   let stalest: BoardStats["stalest"] = null;
@@ -337,11 +406,11 @@ export function boardStats(p: Pick<ReducedProject, "steps">, day: number): Board
     if (!stalest || days > stalest.days) stalest = { step: s, days };
   }
   return {
-    total: p.steps.length, by,
-    pct: p.steps.length ? Math.round((by.done / p.steps.length) * 100) : 0,
+    total: steps.length, by,
+    pct: steps.length ? Math.round((by.done / steps.length) * 100) : 0,
     late: open.filter((s) => s.dueDay !== null && day > s.dueDay).length,
     unowned: open.filter((s) => !s.owner).length,
-    doneWeek: p.steps.filter((s) => s.column === "done" && s.doneDay !== null && day - s.doneDay <= 7).length,
+    doneWeek: steps.filter((s) => s.column === "done" && s.doneDay !== null && day - s.doneDay <= 7).length,
     cycleDays: median(cycles),
     stalest,
   };
@@ -502,9 +571,10 @@ export function asInitiatives(list: readonly ReducedProject[], deptOf: (name: st
     const team = [p.lead, ...p.members];
     const depts = [...new Set(team.map(deptOf).filter((d): d is string => !!d))];
     const blocked = p.steps.find((s) => s.column === "blocked");
-    const done = p.steps.filter((s) => s.column === "done").length;
+    const counted = p.steps.filter((s) => !s.dropped); // D31: a dropped step counts in no total
+    const done = counted.filter((s) => s.column === "done").length;
     const stage = p.status === "planning" ? (p.overdue ? t("projects.stagePlanningLate") : t("projects.stagePlanning"))
-      : p.status === "running" ? t("projects.stepsDoneOf", { done, total: p.steps.length })
+      : p.status === "running" ? t("projects.stepsDoneOf", { done, total: counted.length })
       : p.status === "measuring" ? t("projects.stageDoneMeasuring")
       : p.verdict ? t("projects.stageMeasuredVerdict", { verdict: verdictWord(p.verdict, locale) }) : t("projects.stageMeasuredPlain");
     out.push({

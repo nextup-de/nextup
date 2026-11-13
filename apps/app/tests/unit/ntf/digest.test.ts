@@ -13,33 +13,35 @@ const raised: CaseEvent = {
 };
 const state = reduce({ ...LOCAL_SEED, seats }, { events: [raised], day: 3 });
 const BASE = "https://app.test/acme";
+const OPTS = { flags: { projects: true, discussion: true } };
 
 describe("NTF digest content", () => {
-  it("a second holder of r2's owner role gets r2's open cases with title, age and link", () => {
-    const d = digestFor("u_second", state, seats, "en", BASE);
+  it("a second holder of r2's owner role gets r2's open cases with title and link into the inbox", () => {
+    const d = digestFor("u_second", state, seats, "en", BASE, OPTS);
     expect(d).not.toBeNull();
     expect(d!.template).toBe("digest");
     expect(d!.key).toBe(digestKey("u_second", 3));
     expect(d!.recipientUserId).toBe("u_second");
     expect(d!.subject).toBe("Your NextUp digest");
     expect(d!.text).toContain("Test rig is double booked");
-    expect(d!.text).toContain(`${BASE}/cases/c_new`);
-    expect(d!.text).toMatch(/waiting \d+ d/);
+    expect(d!.text).toContain(`${BASE}/inbox?id=c_new`);
+    expect(d!.text).toContain(`Open your inbox: ${BASE}/inbox`);
+    expect(d!.link).toBe(`${BASE}/inbox`);
     for (const c of state.cases.filter((x) => x.open && x.assigneeRoleId === "local-15")) expect(d!.text).toContain(c.title);
-    expect((d!.data as { caseIds: string[] }).caseIds).toContain("c_new");
+    expect((d!.data as { itemIds: string[] }).itemIds).toContain("case:c_new");
   });
 
   it("a user without a seat, and a holder of a role with nothing open, get null", () => {
-    expect(digestFor("u_nobody", state, seats, "en", BASE)).toBeNull();
-    expect(digestFor("demo-u-1", reduce({ ...LOCAL_SEED, seats }, { events: [], day: 3 }), [{ id: "s", roleId: "role_x", label: "X", userId: "demo-u-1", sort: 0 }], "en", BASE)).toBeNull();
+    expect(digestFor("u_nobody", state, seats, "en", BASE, OPTS)).toBeNull();
+    expect(digestFor("demo-u-1", reduce({ ...LOCAL_SEED, seats }, { events: [], day: 3 }), [{ id: "s", roleId: "role_x", label: "X", userId: "demo-u-1", sort: 0 }], "en", BASE, OPTS)).toBeNull();
   });
 
   it("German locale gives German text", () => {
-    const d = digestFor("u_second", state, seats, "de", BASE)!;
+    const d = digestFor("u_second", state, seats, "de", BASE, OPTS)!;
     expect(d.locale).toBe("de");
     expect(d.subject).toBe("Ihre NextUp-Zusammenfassung");
     expect(d.text).toContain("Das wartet auf Sie:");
-    expect(d.text).toContain("wartet seit");
+    expect(d.text).toContain(`Posteingang öffnen: ${BASE}/inbox`);
     expect(d.text).not.toContain("waiting");
   });
 
@@ -53,5 +55,18 @@ describe("NTF digest content", () => {
     expect(prefChange(viewer, "other", "digest", true).ok).toBe(false);
     expect(prefChange(null, "acme", "digest", true).ok).toBe(false);
     expect(prefChange(viewer, "acme", "webhook", true).ok).toBe(false);
+  });
+
+  it("a duty notice cannot be switched off, only on; the add-mail choice is stored per group (INB/D7, D8)", () => {
+    const viewer = { userId: "u1", companySlug: "acme" };
+    for (const t of ["raised", "reminder.deadline", "reminder.escalation", "reminder.triage", "reminder.confirm", "reminder.start", "reminder.measure"]) {
+      expect(prefChange(viewer, "acme", t, false)).toEqual({ ok: false, error: "duty" });
+      expect(prefChange(viewer, "acme", t, true).ok).toBe(true);
+    }
+    expect(prefChange(viewer, "acme", "reminder.checkin", false).ok).toBe(true);
+    for (const g of ["raised", "loop", "reminders", "digest"]) {
+      expect(prefChange(viewer, "acme", `+mail:${g}`, true)).toEqual({ ok: true, userId: "u1", template: `+mail:${g}`, on: true });
+    }
+    expect(prefChange(viewer, "acme", "+mail:other", true)).toEqual({ ok: false, error: "unknown template" });
   });
 });

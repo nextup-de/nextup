@@ -34,6 +34,20 @@ export type LoopRules = {
   deadlineHandover: boolean;
   /** Working days after the answer date until the case goes one level up; 0 = never (company rule escalation_days). */
   escalationDays: number;
+  /** Working days a project draft has to start, counted from the lead taking it (company rule project_start_days). */
+  projectStartDays: number;
+  /** Working days a blocked step may stand before the project counts as stalled (company rule blocked_days; plan MOV). */
+  blockedDays: number;
+  /** The fewest characters a reason for a no needs (company rule no_reason_min; plan NOR). */
+  noReasonMin: number;
+  /** Working days the raiser has to appeal a no (company rule appeal_days; plan NOR). */
+  appealDays: number;
+  /** Working days a question to the raiser waits for an answer (company rule question_days; plan NOR). */
+  questionDays: number;
+  /** The thresholds of an overloaded desk (company rule overload_at; plan OVL, D17). Optional, so LoopRules literals stay valid: read it through overloadAtOf(rules). */
+  overloadAt?: { triage: number; up: number; overflow: number; late: number };
+  /** The working day MOV went live for the company; projects older than it are not judged by MOV's rules (not a company rule: lib/db/rules.ts loadMovSinceDay; plan MOV). */
+  movSinceDay: number;
   /** The measure step is on (company rule loop_steps). */
   measure: boolean;
   /** The recognition step is on (company rule loop_steps). */
@@ -49,9 +63,21 @@ export const LOOP_DEFAULTS: LoopRules = {
   reward: { kind: "thanks", amount: null, sharePct: null, capEur: null },
   deadlineHandover: true,
   escalationDays: 3,
+  projectStartDays: 10,
+  blockedDays: 3,
+  noReasonMin: 40,
+  appealDays: 10,
+  questionDays: 5,
+  movSinceDay: 0,
   measure: true,
   recognition: true,
 };
+
+/** What a desk counts as overloaded without a rule (plan OVL, D17): triage from 10 open items per present holder, up from 20, overflow from 30, or 3 late ones. */
+export const OVERLOAD_AT_DEFAULT = { triage: 10, up: 20, overflow: 30, late: 3 } as const;
+
+/** The overload thresholds of these rules, the defaults when the company set none. */
+export const overloadAtOf = (rules: Pick<LoopRules, "overloadAt">): { triage: number; up: number; overflow: number; late: number } => rules.overloadAt ?? OVERLOAD_AT_DEFAULT;
 
 const REWARD_KINDS: readonly RewardKind[] = ["none", "thanks", "fixed", "share"];
 
@@ -83,6 +109,13 @@ export function loopRules(p?: Partial<LoopRules> | null): LoopRules {
     },
     deadlineHandover: typeof p.deadlineHandover === "boolean" ? p.deadlineHandover : d.deadlineHandover,
     escalationDays: int(p.escalationDays, 0, 60, d.escalationDays),
+    projectStartDays: int(p.projectStartDays, 1, 60, d.projectStartDays),
+    blockedDays: int(p.blockedDays, 1, 10, d.blockedDays),
+    noReasonMin: int(p.noReasonMin, 20, 400, d.noReasonMin),
+    appealDays: int(p.appealDays, 1, 60, d.appealDays),
+    questionDays: int(p.questionDays, 2, 30, d.questionDays),
+    ...(p.overloadAt ? { overloadAt: p.overloadAt } : {}),
+    movSinceDay: int(p.movSinceDay, 0, 100_000, d.movSinceDay),
     measure: typeof p.measure === "boolean" ? p.measure : d.measure,
     recognition: typeof p.recognition === "boolean" ? p.recognition : d.recognition,
   };

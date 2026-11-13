@@ -15,11 +15,19 @@ import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { holdsRole } from "@/features/auth/identity";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
-import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, suggestedBaseline, suggestedSteps, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
+import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
-import { withBrainSteps } from "@/features/projects/brain";
-import { useBrainPlan } from "@/lib/use-brain";
 import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";
+import { AgentTab } from "./agent/AgentTab";
+import { PlanDraftLink } from "./agent/PlanDraftLink";
+import { useAgentTab } from "./agent/useAgentTab";
+import { DraftView } from "./draft/DraftView";
+import { DoneByLine } from "./move/DoneByLine";
+import { HowWeWork } from "./move/HowWeWork";
+import { NoLeadBanner } from "./move/NoLeadBanner";
+import { PausePanel } from "./move/PausePanel";
+import { WeeklyUpdate } from "./move/WeeklyUpdate";
+import { useProjectHints } from "./draft/useProjectHints";
 import { ProjectBoard } from "./ProjectBoard";
 import { NextPanel } from "./ProjectNext";
 import { ProjectSummary } from "./ProjectSummary";
@@ -29,6 +37,10 @@ import { ActivityPanel, TeamPanel, ToolsPanel } from "./ProjectTeam";
 import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } from "./parts";
 import { CustomPageView } from "./CustomPageView";
 import { ideaPagesId, useProjectPages } from "./projectPagesPreview";
+import { DoneSheet } from "./result/DoneSheet";
+import { RaiserPanel } from "./result/RaiserPanel";
+import { StopChoice } from "./result/StopChoice";
+import { resultView } from "@/features/projects/result-view";
 import styles from "./Projects.module.css";
 
 /** `jira`: the company's Jira as the server read it (null: static demo, or no database). `tab`: from ?tab=. */
@@ -47,10 +59,12 @@ export function ProjectView({ projectId, jira, tab }: { projectId: string; jira:
       </div>
     );
   }
+  // A draft that has not started is set up on its own page (plan SET); the board comes with the start.
+  if (p.draft && p.status === "planning") return <><PlanDraftLink p={p} /><DraftView p={p} /></>;
   return <Project p={p} jira={jira} tab={tab} />;
 }
 
-function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | null; tab: ProjectTab }) {
+function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusView | null; tab: ProjectTab }) {
   const ctx = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -59,16 +73,11 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
   const [now] = useState(() => Date.now());
   const row = jiraRowOf(p, jira ?? (ctx.serverMode ? null : demoJiraView(now)), now, locale);
   const r = useRights(p);
-  // The brief the yes came from: the first source that is a case. An idea gives its KPI instead.
-  const source = S.cases.find((c) => p.sources.includes(c.id));
-  const idea = S.ideas.find((i) => p.sources.includes(i.id));
   const planning = p.status === "planning";
-  // The brain's steps and metric join the brief's own (server mode only); people pick, as with the brief's.
-  const brain = useBrainPlan(ctx.tenant.slug, source?.id ?? null, planning && ctx.serverMode);
-  const stepHints = planning && source ? withBrainSteps(suggestedSteps(source.body, p.steps, locale), brain?.steps ?? [], p.steps) : [];
-  const baseHint = planning
-    ? suggestedBaseline(source?.body ?? "", idea?.criteria.kpi, locale) ?? (brain?.metric ? { metric: brain.metric.name, unit: brain.metric.unit, better: brain.metric.better, goal: "" } : null)
-    : null;
+  const { stepHints, baseHint } = useProjectHints(p);
+  // The Agent tab is there for who may see it; a ?tab=agent that is not theirs opens the Overview (plan AGT, D15).
+  const agent = useAgentTab(p, asked === "agent");
+  const tab: ProjectTab = asked === "agent" && agent.view === null ? "overview" : asked;
   const move = nextMove(p, S.day);
   // The lead's own move (a manager may act as lead too, but it is not on their desk), or a reward a manager records.
   const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);
@@ -79,12 +88,22 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
   const [pages] = useProjectPages(ctx.tenant.slug, p.id, pagesFrom);
   const custom = pageId ? pages.pages.find((x) => x.id === pageId) : undefined;
   const shown: ProjectTab | null = custom ? null : tab;
+  // A raiser who is not on the team sees how it is going and nothing else (plan RES, D21).
+  const view = resultView(p, S, idViewerOf(ctx), S.day, locale);
+  if (view.panel) {
+    return (
+      <div className={styles.projectPage} data-wide="true">
+        <RaiserHeader p={p} />
+        <RaiserPanel panel={view.panel} />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.projectPage} data-wide="true">
       <div className={styles.top}>
         <Header p={p} jira={row} />
-        <Tabs p={p} tab={tab} />
+        <Tabs p={p} tab={tab} agent={agent.view !== null} />
       </div>
       {custom && <CustomPageView storeId={p.id} from={pagesFrom} page={custom} editor={r.addStep} />}
       {shown === "overview" && (
@@ -102,6 +121,8 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
             {/* While planned, the start waits for the baseline: it sits where the move says so. */}
             {planning && <BaselinePanel p={p} hint={baseHint} />}
             <NextPanel p={p} />
+            {p.status === "running" && <WeeklyUpdate p={p} />}
+            <HowWeWork p={p} />
           </div>
           <aside className={styles.tabRail} aria-label={t("projects.railLabel")}>
             <TeamPanel p={p} />
@@ -126,6 +147,11 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
           <ActivityPanel p={p} />
         </div>
       )}
+      {shown === "agent" && agent.view && (
+        <div className={styles.tabCards}>
+          <AgentTab p={p} view={agent.view} failed={agent.failed} />
+        </div>
+      )}
       {shown === "files" && (
         <div className={styles.tabLayout}>
           <div className={styles.tabCards}>
@@ -142,13 +168,13 @@ function Project({ p, jira, tab }: { p: ReducedProject; jira: JiraStatusView | n
 }
 
 /** One link per tab; the Board and Team links carry their counts. */
-function Tabs({ p, tab }: { p: ReducedProject; tab: ProjectTab }) {
+function Tabs({ p, tab, agent }: { p: ReducedProject; tab: ProjectTab; agent: boolean }) {
   const { href } = useDemo();
   const t = useT();
   const counts: Partial<Record<ProjectTab, number>> = { board: p.steps.length, team: p.members.length + 1 };
-  const items = PROJECT_TABS.map((k) => ({
+  const items = PROJECT_TABS.filter((k) => k !== "agent" || agent).map((k) => ({
     key: k,
-    label: t(("projects.tab_" + k) as "projects.tab_overview"),
+    label: k === "agent" ? t("projectAgent.tab") : t(("projects.tab_" + k) as "projects.tab_overview"),
     href: href("/projects/" + p.id) + tabQuery(k),
     count: counts[k],
   }));
@@ -192,7 +218,27 @@ function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
         <span className={styles.muted}> · {t("projects.heroRaised", { authors: p.authors.join(", "), day: f(p.openedDay), name: p.openedBy })}</span>
       </p>
       <ToolChips p={p} jira={jira} />
+      {/* A project that keeps moving (plan MOV): the done-by date, a pause, and No lead when the lead left. */}
+      <DoneByLine p={p} />
+      <PausePanel p={p} />
+      <NoLeadBanner p={p} />
       <Actions p={p} />
+    </div>
+  );
+}
+
+/** The raiser's page head: where to go back to, the status and the title; nothing else of the project is on it. */
+function RaiserHeader({ p }: { p: ReducedProject }) {
+  const { href } = useDemo();
+  const t = useT();
+  return (
+    <div className={styles.hero}>
+      <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
+      <div className={styles.heroTop}>
+        <span className={styles.status}><span className={styles.code}>{projectLabel(p)}</span> · {t(("projects.status_" + p.status) as "projects.status_planning")}</span>
+        <span className={styles.chips}><VerdictChip verdict={p.verdict} /></span>
+      </div>
+      <PageHeader title={p.title} />
     </div>
   );
 }
@@ -226,19 +272,20 @@ function ToolChips({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   );
 }
 
-// Start, done and stop: the moves that change the project's state.
+// Start, done and stop: the moves that change the project's state. Done and stop are the sheets of plan RES (components/projects/result).
 function Actions({ p }: { p: ReducedProject }) {
-  const { act } = useDemo();
-  const t = useT();
+  const { act, S } = useDemo();
+  const ctx = useDemo();
+  const locale = useLocale();
   const r = useRights(p);
   const send = useSend(p);
-  const [note, setNote] = useState("");
-  const [stopping, setStopping] = useState<string | null>(null);
-  const [finishing, setFinishing] = useState(false);
-  const boardDone = p.steps.every((s) => s.column === "done");
+  const t = useT();
+  const view = resultView(p, S, idViewerOf(ctx), S.day, locale);
   const planning = p.status === "planning";
   const showStart = planning && r.lead;
-  if (!showStart && !r.done && !r.stop) return null;
+  const done = view.done !== null && view.done.can;
+  const stop = view.stop !== null && view.stop.can;
+  if (!showStart && !done && !stop) return null;
 
   return (
     <div className={styles.actions}>
@@ -250,28 +297,8 @@ function Actions({ p }: { p: ReducedProject }) {
           {!p.baseline && <span className={styles.hint}>{t("projects.permStartNeedsBaseline")}</span>}
         </span>
       )}
-      {/* While steps are still open, "done" is a quiet link; it becomes the main button once the board is done. */}
-      {r.done && !boardDone && !finishing && (
-        <button type="button" className={styles.quiet} onClick={() => setFinishing(true)}>{t("projects.markDoneEllipsis")}</button>
-      )}
-      {r.done && (boardDone || finishing) && (
-        <form className={styles.actionRow} onSubmit={(e) => { e.preventDefault(); if (send("project.done", { note }, () => act.project.done(p.id, note.trim() || undefined))) setNote(""); }}>
-          <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.doneNotePlaceholder")} aria-label={t("projects.doneNoteLabel")} autoFocus={finishing} />
-          <button type="submit" className={`nh-btn ${boardDone ? "nh-btn-primary" : "nh-btn-ghost"} nh-btn-sm`}>{t("projects.move_done")}</button>
-          {!boardDone && <span className={styles.hint}>{t("projects.stepsStillOpen", { count: p.steps.filter((s) => s.column !== "done").length })}</span>}
-          {finishing && <button type="button" className={styles.quiet} onClick={() => setFinishing(false)}>{t("common.cancel")}</button>}
-        </form>
-      )}
-      {r.stop && stopping === null && (
-        <button type="button" className={styles.quiet} onClick={() => setStopping("")}>{t("projects.stopProject")}</button>
-      )}
-      {r.stop && stopping !== null && (
-        <form className={styles.actionRow} onSubmit={(e) => { e.preventDefault(); if (send("project.stopped", { why: stopping }, () => act.project.stop(p.id, stopping.trim()))) setStopping(null); }}>
-          <input className={`nh-input ${styles.input}`} value={stopping} onChange={(e) => setStopping(e.target.value)} placeholder={t("projects.stopWhy")} aria-label={t("projects.stopWhy")} autoFocus />
-          <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!stopping.trim()}>{t("projects.stopIt")}</button>
-          <button type="button" className={styles.quiet} onClick={() => setStopping(null)}>{t("common.cancel")}</button>
-        </form>
-      )}
+      {view.done && <DoneSheet p={p} done={view.done} />}
+      {view.stop && <StopChoice p={p} stop={view.stop} />}
     </div>
   );
 }

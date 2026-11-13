@@ -99,13 +99,27 @@ function recordResponses(page: Page): { bodies: string[]; actions: string[] } {
   return { bodies, actions };
 }
 
+/**
+ * How long the page at `path` takes to load, from the browser's own navigation entry. `path` is the address the page is served at: a path that
+ * redirects (/leader, which sends everyone to /inbox) starts a second navigation after the first has loaded, and a read in between lands on a page
+ * that is going away. So it waits for the page to settle, and reads again when the page it was reading was replaced.
+ */
 async function loadTime(page: Page, path: string): Promise<number> {
-  await page.goto(`/${SLUG}${path}`, { waitUntil: "load" });
-  const t = await page.evaluate(() => {
-    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
-    return { ttfb: Math.round(nav.responseStart), resp: Math.round(nav.responseEnd), dcl: Math.round(nav.domContentLoadedEventEnd), load: Math.round(nav.loadEventEnd - nav.startTime), size: nav.encodedBodySize };
-  });
-  return t.load;
+  const url = `/${SLUG}${path}`;
+  await page.goto(url, { waitUntil: "load" });
+  await page.waitForLoadState("networkidle");
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const t = await page.evaluate(() => {
+        const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
+        return { ttfb: Math.round(nav.responseStart), resp: Math.round(nav.responseEnd), dcl: Math.round(nav.domContentLoadedEventEnd), load: Math.round(nav.loadEventEnd - nav.startTime), size: nav.encodedBodySize };
+      });
+      return t.load;
+    } catch (error) {
+      if (attempt >= 2 || !/Execution context was destroyed|navigat/i.test(String(error))) throw error;
+      await page.waitForLoadState("load");
+    }
+  }
 }
 
 test.describe.serial("VIS acceptance: a member receives only visible cases and pages stay fast with 50,000 events", () => {
@@ -162,11 +176,11 @@ test.describe.serial("VIS acceptance: a member receives only visible cases and p
     test(`${who}: the inbox and a case page load in under ${LIMIT_MS} ms`, async ({ browser }) => {
       test.setTimeout(180_000);
       const page = await signIn(browser, who);
-      await loadTime(page, "/leader"); // warm-up
+      await loadTime(page, "/inbox"); // warm-up
       await loadTime(page, `/cases/${M_SHARED.id}`);
       // Best of three after the warm-up: one slow sample on a busy machine is noise, not the page.
       const best = async (path: string) => Math.min(await loadTime(page, path), await loadTime(page, path), await loadTime(page, path));
-      const inbox = await best("/leader");
+      const inbox = await best("/inbox");
       const casePage = await best(`/cases/${M_SHARED.id}`);
       await expect(page.getByText(M_SHARED.title).first()).toBeVisible();
       expect(inbox, `${who} inbox load`).toBeLessThan(LIMIT_MS);

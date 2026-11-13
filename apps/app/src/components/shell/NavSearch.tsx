@@ -152,7 +152,7 @@ export function NavSearch({ children }: { children: (open: boolean) => React.Rea
           <div className={styles.sFilters} role="group" aria-label={t("shell.searchShow")}>
             {FILTERS.map(([f, label]) => (
               <button key={f} type="button" className={styles.sFilter} aria-pressed={filter === f} onClick={() => choose(f)}>
-                {t(label)}{query && <span className={styles.sCount}>{count(f)}</span>}
+                {t(label)}{query && count(f) > 0 && <span className={styles.sCount}>{count(f)}</span>}
               </button>
             ))}
           </div>

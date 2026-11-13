@@ -15,6 +15,8 @@ import { useFormat, useLocale, useT } from "@/i18n/client";
 import { teamOf, useRights, useSend, withIds, type Person } from "./parts";
 import { StepDetail } from "./StepDetail";
 import styles from "./Projects.module.css";
+import roleStyles from "./ProjectBoard.module.css";
+import { stepRoleLabel } from "@/features/projects/step-role";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 
 /** Where a dragged card would land: above `before`, or at the foot of `col`. */
@@ -27,6 +29,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
   const r = useRights(p);
   const send = useSend(p);
   const cols = board(p);
+  const counted = p.steps.filter((s) => !s.dropped).length; // D31: a dropped step counts in no total
   const team = teamOf(p, seed.seats);
   const mine = (s: Step) => actorUserId !== null && s.ownerUserId === actorUserId;
   const [filter, setFilter] = useState("all"); // "all" | "mine" | "unowned" | an owner's user id
@@ -126,7 +129,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
       <div className={styles.boardHead}>
         <div className={styles.boardTitle}>
           <h2 id={"board-" + p.id} className={styles.h2}>{t("projects.boardTitle")}</h2>
-          <span className={styles.muted}>{p.steps.length ? t("projects.boardDone", { done: cols.done.length, total: p.steps.length }) : t("projects.boardNoSteps")}</span>
+          <span className={styles.muted}>{counted ? t("projects.boardDone", { done: cols.done.length, total: counted }) : t("projects.boardNoSteps")}</span>
         </div>
         {p.steps.length > 0 && (
           <div className={styles.filters} role="group" aria-label={t("projects.filterLabel")}>
@@ -181,7 +184,7 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
               <div className={styles.colHead}>
                 <span className={styles.colDot} aria-hidden="true" />
                 <span className={styles.colName}>{columnLabel(col, locale)}</span>
-                <span className={styles.count}>{cols[col].length}</span>
+                {cols[col].length > 0 && <span className={styles.count}>{cols[col].length}</span>}
               </div>
               <div className={styles.colCards}>
                 {list.map((s) => (
@@ -285,10 +288,12 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
   const tool = s.external ? toolOf(s.external.system) : null;
   const href = safeUrl(s.external?.url);
   const close = () => { setWhy(""); onAsked(); };
+  const roleKey = stepRoleLabel(s);
 
   return (
     <article
-      className={styles.step} aria-label={s.text} draggable={canDrag} data-step={s.id} data-col={s.column}
+      className={styles.step} aria-label={s.text} draggable={canDrag} data-step={s.id} data-col={s.column} data-dropped={s.dropped ? "true" : undefined}
+      title={s.dropped ? t("projectResult.dropped", { why: s.dropped.why }) : undefined}
       data-dragging={dragging ? "true" : undefined} data-mine={mine ? "true" : undefined} data-late={late ? "true" : undefined}
       onDragStart={(e) => { if (!canDrag) return; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", s.id); onDragStart(); }}
       onDragEnd={onDragEnd} onDragOver={onDragOver}
@@ -316,6 +321,7 @@ function StepCard({ p, s, dragging, mine, onDragStart, onDragEnd, onDragOver, on
           </span>
         )}
       </div>
+      {roleKey && <span className={roleStyles.roleLabel}>{t(roleKey)}</span>}
       {s.column === "blocked" && s.why && <div className={styles.blockedWhy}>{s.why}</div>}
       <div className={styles.stepFoot}>
         {s.owner ? <span className={styles.owner}><PersonFace name={s.owner} size="sm" /><span>{s.owner}</span></span> : <span className={styles.noOwner}>{t("projects.noOwner")}</span>}

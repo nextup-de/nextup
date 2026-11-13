@@ -6,7 +6,10 @@ import { blockers, goLiveChecks, type GoLiveCheck, type GoLiveInput } from "@/fe
 import { canOpen, type OpenRefusal } from "@/features/pilot/open";
 import { setupStep } from "@/features/settings/sections";
 import type { BrainState } from "@/features/ai/settings";
+import { windowOpen, type BreakGlassWindow } from "@/features/admin/break-glass";
+import { readBreakGlassWindow } from "@/server/break-glass-window";
 import { brainHealth } from "@/server/brain-health";
+import { readRestoreStatus } from "@/server/restore-status";
 import { settingsActor, recordAudit } from "@/server/audit/record";
 import { listAudit } from "./audit";
 import { loadAgreements } from "./agreements";
@@ -24,6 +27,12 @@ export type GoLiveDeps = {
   readBackupStatus: () => Promise<{ at: Date; offbox: boolean } | null>;
   /** The stack's brain, asked only when the company chose the model on this stack. Left out: server/brain-health.ts. */
   brainStatus?: () => Promise<BrainState>;
+  /** The last restore test that passed (REM-O3). Left out: server/restore-status.ts reads the file the restore test writes. */
+  readRestoreStatus?: () => Promise<{ at: Date; seconds: number } | null>;
+  /** The open TST findings; null where none are recorded. Left out: none are recorded on a stack, so null. */
+  readFindings?: () => Promise<{ open: number } | null>;
+  /** The break-glass window. Left out: server/break-glass-window.ts. */
+  readBreakGlass?: () => Promise<BreakGlassWindow | null>;
 };
 
 export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLiveDeps): Promise<GoLiveInput> {
@@ -45,6 +54,11 @@ export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLive
     loadAgreements(companyId),
     deps.mailStatus().catch(() => ({ configured: true, reachable: false as boolean | null })),
     deps.readBackupStatus().catch(() => null),
+  ]);
+  const [restore, findings, window] = await Promise.all([
+    (deps.readRestoreStatus ?? readRestoreStatus)().catch(() => null),
+    (deps.readFindings ?? (async () => null))().catch(() => null),
+    (deps.readBreakGlass ?? readBreakGlassWindow)().catch(() => null),
   ]);
   const brain = ai.settings.choice === "local" ? await (deps.brainStatus ?? brainHealth)().catch((): BrainState => "down") : undefined;
   // A deactivated person does not own a route: only holders whose user is active count.
@@ -69,6 +83,9 @@ export async function loadGoLiveInput(companyId: string, now: Date, deps: GoLive
     recipients,
     baseline: baseline !== null,
     agreements,
+    restore,
+    findings,
+    breakGlassUntil: windowOpen(window, now) ? window.until : null,
   };
 }
 

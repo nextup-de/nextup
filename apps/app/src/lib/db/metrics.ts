@@ -3,18 +3,22 @@
 // is selected; the raiser is only ever an opaque key that is counted (D2). Nothing here reads a model value (D5).
 import { createHash } from "node:crypto";
 import type { CaseEvent } from "@/features/cases/events";
+import { reduce } from "@/features/cases/reducer";
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { dateOfWorkday } from "@/features/clock/calendar";
 import { breakdown } from "@/features/metrics/breakdown";
-import { hiddenTiles, periodRange, scopeCases, waitLedger } from "@/features/metrics/ledger";
+import { hiddenTiles, periodRange, scopeCases, unitSubtree, waitLedger } from "@/features/metrics/ledger";
+import { stalledOf } from "@/features/metrics/stalled";
 import type { DashboardData, LedgerCase, LedgerFacts, LedgerInput, MetricsOrg, Period } from "@/features/metrics/types";
 import { overrideRate } from "@/features/routing/override";
 import { loadAiSettings } from "./ai";
 import { loadBaseline } from "./baseline";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
+import { loadSeed } from "./companies";
+import { loadSeats } from "./holders";
 import { loadMembers } from "./knowledge";
-import { companyDay } from "./events";
+import { companyDay, loadLog } from "./events";
 import { loadCompanyRules } from "./rules";
 
 export type DashboardInput = { unitId: string | null; kind: "30d" | "quarter" | "golive" };
@@ -187,7 +191,19 @@ export async function ledgerInputs(companyId: string, period: Period): Promise<L
       raiserUnitId: raiserRole ? unitOfRole.get(raiserRole) ?? null : v.fromUserId ? unitOfMember.get(v.fromUserId) ?? null : null,
     });
   }
-  return { cases, facts, org, promiseDays: rules.promiseDays, today, demoClock: clock.mode === "demo" };
+  return { cases, facts, org, promiseDays: rules.promiseDays, today, demoClock: clock.mode === "demo", stalled: await stalledProjects(companyId, cases) };
+}
+
+/**
+ * The projects whose stalled escalation stands today (plan RES, D22), from the company's log reduced once as the pages and the
+ * pilot report reduce it, each in the unit its first source case counts in. Only a count per unit leaves this reader.
+ */
+async function stalledProjects(companyId: string, cases: LedgerCase[]): Promise<LedgerInput["stalled"]> {
+  const company = await getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { slug: true } });
+  const [seed, seats, log] = await Promise.all([loadSeed(company.slug), loadSeats(companyId), loadLog(companyId)]);
+  if (!seed) return [];
+  const unitOfCase = new Map(cases.map((c) => [c.caseId, c.unitId]));
+  return stalledOf(reduce({ ...seed, seats }, log).projects, (id) => unitOfCase.get(id) ?? null);
 }
 
 const NO_FACTS: LedgerFacts = { answers: { yes: 0, yesProject: 0, question: 0, handed: 0, no: 0 }, override: { proposed: 0, overridden: 0, rate: null } };
@@ -203,7 +219,11 @@ export async function dashboardData(companyId: string, input: DashboardInput): P
 
   const scope = scopeCases(now, input.unitId);
   // The facts are the company's; they are not split by unit, so a unit view carries none (D6).
-  const scoped: LedgerInput = { ...now, cases: scope.cases, facts: input.unitId === null ? now.facts : NO_FACTS };
+  const inScope = input.unitId === null ? null : unitSubtree(now, input.unitId);
+  const scoped: LedgerInput = {
+    ...now, cases: scope.cases, facts: input.unitId === null ? now.facts : NO_FACTS,
+    stalled: inScope === null ? now.stalled : now.stalled.filter((s) => s.unitId !== null && inScope.has(s.unitId)),
+  };
   const scopedBefore =
     baseline && before ? { period: { from: baseline.fromDay, to: baseline.toDay }, input: { ...before, cases: scopeCases(before, input.unitId).cases } } : null;
   const ledger = waitLedger(scoped, period, scopedBefore, baseline?.imported ?? {});

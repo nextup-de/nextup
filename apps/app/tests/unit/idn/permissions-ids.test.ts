@@ -21,11 +21,13 @@ const seatId = LOCAL_SEED.seats[0].id;
 describe("IDN permissions on ids", () => {
   it("a leader holding the owner role decides and hands over; the same name without the seat may not", () => {
     const holder = act("Anyone", ownerMe.userId, ownerMe);
-    expect(mayAppend(holder, ev("case.decided", { answer: "no" }), state).ok).toBe(true);
-    expect(mayAppend(holder, ev("case.handed", { to: "B", toRoleHolderId: seatId }), state).ok).toBe(true);
+    const no = { answer: "no", category: "no-fit", reason: "The budget for this year is already spent on the new line." };
+    const pass = { to: "B", toRoleHolderId: seatId, why: "It is the other desk's area" };
+    expect(mayAppend(holder, ev("case.decided", no), state).ok).toBe(true);
+    expect(mayAppend(holder, ev("case.handed", pass), state).ok).toBe(true);
     const sameName = act(r2.owner.name, null, NOBODY);
-    expect(mayAppend(sameName, ev("case.decided", { answer: "no" }), state).ok).toBe(false);
-    expect(mayAppend(sameName, ev("case.handed", { to: "B", toRoleHolderId: seatId }), state).ok).toBe(false);
+    expect(mayAppend(sameName, ev("case.decided", no), state).ok).toBe(false);
+    expect(mayAppend(sameName, ev("case.handed", pass), state).ok).toBe(false);
   });
 
   it("the raiser by user id answers and revises; another user with the same label may not", () => {

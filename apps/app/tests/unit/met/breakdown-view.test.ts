@@ -3,7 +3,7 @@ import { shownRows } from "@/features/metrics/breakdown-view";
 import type { BreakdownRow } from "@/features/metrics/types";
 
 const row = (id: string, depth: number, over: Partial<BreakdownRow> = {}): BreakdownRow => ({
-  kind: "unit", id, label: id, depth, cases: 0, firstReasonedAnswer: null, onTimePct: null, pastPromise: 0, escalated: 0, hidden: false, ...over,
+  kind: "unit", id, label: id, depth, cases: 0, firstReasonedAnswer: null, onTimePct: null, pastPromise: 0, escalated: 0, stalled: null, hidden: false, ...over,
 });
 const ids = (r: ReturnType<typeof shownRows>) => r.rows.map((x) => x.row.id);
 

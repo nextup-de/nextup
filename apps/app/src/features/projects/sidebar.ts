@@ -1,6 +1,6 @@
 // The Projects sidebar (Paper page "Projects page", frames C1-C6, D1-D2): which ideas and projects layer 1
 // lists and in what order, the mark each one draws, and the pages layer 2 shows for one of them - the
-// standard pages (six for a project; Overview, Files and Chats for an idea) plus the pages a team adds
+// standard pages (its tabs for a project; Overview, Files and Chats for an idea) plus the pages a team adds
 // itself, in the order the team dragged them. Pure: state in, plain facts out.
 import { PROJECT_TABS } from "./tabs";
 import type { ProjectStatus, ReducedProject } from "./types";

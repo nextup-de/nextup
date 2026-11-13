@@ -106,7 +106,9 @@
 .newIdea:active { transform: scale(.97); }
 .plus { width: 16px; height: 16px; flex: none; border-radius: 50%; background: var(--nh-brand); display: flex; align-items: center; justify-content: center; }
 .ideas { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 2px 10px 8px; display: flex; flex-direction: column; gap: 1px; }
-.group { font-size: var(--nh-fs-xs); font-weight: 500; color: var(--nh-mute); padding: 10px 8px 6px; }
+.group { font-size: var(--nh-fs-xs); font-weight: 400; color: var(--nh-mute); padding: 12px 8px 4px; } /* the small group labels: Pinned, Today, This week, Earlier */
+.timeGroup { display: flex; flex-direction: column; gap: 1px; }
+.ideas > .group:first-child, .ideas > .timeGroup:first-child > .group { padding-top: 4px; }
 .idea { display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: var(--radius-xs, 9px); background: transparent; cursor: pointer; min-height: 34px; box-sizing: border-box; border: none; width: 100%; text-align: left; font-family: inherit; transition: background 180ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); animation: affFade 420ms cubic-bezier(.2,.8,.2,1) backwards; }
 .idea:active { transform: scale(.985); }
 .idea:hover { background: var(--nh-fill); }
@@ -693,3 +695,6 @@ a.quickBtn { text-decoration: none; }
   .dlgCancel { flex: none; }
   .dlg .pickInput { font-size: var(--nh-fs-input); }
 }
+
+/* "Follows up on “{title}”" above the start composer (plan SEE, D15). */
+.follows { margin: 0 0 10px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.4; text-align: center; }

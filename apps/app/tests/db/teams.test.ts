@@ -150,7 +150,7 @@ describe("TMS acceptance", () => {
       await dispatchOnce(d);
       await deliverOnce(d);
     }
-    const reminders = (await db.outboxMessage.findMany({ where: { companyId, template: "reminder.deadline", recipientUserId: holderId } }))
+    const reminders = (await db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, template: "reminder.deadline", recipientUserId: holderId } }))
       .filter((r) => (r.data as { subjectId?: string }).subjectId === "c_tmsz-r1");
     expect(reminders).toHaveLength(1);
     expect(reminders[0]).toMatchObject({ channel: "teams", status: "sent" });
@@ -161,12 +161,12 @@ describe("TMS acceptance", () => {
     expect(await db.outboxMessage.count({ where: { companyId, recipientUserId: holderId, channel: "mail", template: "reminder.deadline" } })).toBe(0);
 
     // 4. The holder answers no on the card: one case.decided with the reason.
-    const answer = { ...envelope(HOLDER_AAD, "personal"), type: "message", value: { kind: "answer", caseId: "c_tmsz-r1", cardId: "card-1", answer: "no", text: "Too costly this quarter" } };
+    const answer = { ...envelope(HOLDER_AAD, "personal"), type: "message", value: { kind: "answer", caseId: "c_tmsz-r1", cardId: "card-1", answer: "no", category: "no-budget", text: "Too costly this quarter, the budget for tools is already spent." } };
     expect((await post(answer)).status).toBe(200);
     const decided = await db.caseEvent.findMany({ where: { companyId, type: "case.decided", targetId: "c_tmsz-r1" } });
     expect(decided).toHaveLength(1);
     expect(decided[0]).toMatchObject({ actorUserId: holderId, source: "teams" });
-    expect(decided[0].payload).toMatchObject({ answer: "no", reason: "Too costly this quarter" });
+    expect(decided[0].payload).toMatchObject({ answer: "no", category: "no-budget", reason: "Too costly this quarter, the budget for tools is already spent." });
 
     // 5. The member raises from the message extension: fetchTask, then submitAction.
     const invoke = (name: string, value: unknown) => ({ ...envelope(MEMBER_AAD, "groupChat"), type: "invoke", name, value });
@@ -190,7 +190,7 @@ describe("TMS acceptance", () => {
     await db.integration.update({ where: { companyId_system: { companyId, system: "teams" } }, data: { on: false } });
     await raise("tmsz-r2", at9(20), holderSeatId);
     await dispatchOnce(at9(20));
-    const rows = await db.outboxMessage.findMany({ where: { companyId, recipientUserId: holderId, key: { startsWith: "notify:tmsz-r2" } } });
+    const rows = await db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, recipientUserId: holderId, key: { startsWith: "notify:tmsz-r2" } } });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ channel: "mail", template: "raised" });
     expect(rows[0].address).toMatch(/@tmsz-co\.example$/);

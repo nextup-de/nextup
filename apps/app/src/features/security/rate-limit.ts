@@ -27,6 +27,15 @@ export function hit(store: Map<string, Window>, key: string, rule: Rule, now: nu
   return { ok: true, remaining: rule.limit - w.count };
 }
 
+/**
+ * Give back one attempt counted against `key` in a live window - the attempt turned out not to be a guess
+ * (a right login code), so it should not use up a limit that is there to slow guessing. Mutates `store`.
+ */
+export function refund(store: Map<string, Window>, key: string, now: number): void {
+  const w = store.get(key);
+  if (w && w.resetAt > now && w.count > 0) w.count -= 1;
+}
+
 /** Forget a key - after a successful login, so a typo or two earlier do not linger. */
 export function clear(store: Map<string, Window>, key: string): void {
   store.delete(key);
