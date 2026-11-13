@@ -25,22 +25,26 @@ import { stripTags } from "@/features/assist/check";
 import { newId } from "@/features/cases/events";
 import { closest, evaluate } from "@/features/evaluate";
 import { audienceOf } from "@/features/ideas/audience";
+import { choosesPosting } from "@/features/ideas/posting";
 import { benchmark } from "@/features/ideas/benchmarks";
 import { finishTitle, ideaFromTurns } from "@/features/ideas/coach";
 import { briefOfDoc, ideaDoc } from "@/features/ideas/finalize";
 import { companyRead } from "@/features/ideas/company-read";
 import type { ExportAnalysis, ExportIdea } from "@/features/ideas/export";
 import { splitBody } from "@/features/ideas/brief";
-import { ideaContext } from "@/features/ideas/drafts";
+import { ideaContext, routingTextHash, turnLimitReached, type ShownProposal } from "@/features/ideas/drafts";
 import { DEMO_CASE, DEMO_SCRIPT, FILLED_ANSWERS, SCRIPT_MOVES, scriptDials, scriptOverall, scriptRail, scriptStep } from "@/features/ideas/demo-script";
 import { useLocale, useT } from "@/i18n/client";
 import { formatDate } from "@/i18n/format";
 import { DEFAULT_LOCALE, LOCALES, translate, type MessageKey } from "@/i18n";
 import { adviceFromReading, dialsFromReading, gapsFromReading, latestReading, proposalOf } from "@/features/ideas/reading";
-import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicLabel, topicsOf, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
+import { adviceOf, clockLabel, dialsMoved, dialsOf, greetName, IDEA_UPDATE, ideaNow, initials, isUnsure, gapsOf, answeredOf, MAX_TOPICS, openCount, splitIdea, topicIn, splitUpdate, topicLabel, topicsOf, dayGroup, whenGroup, whenLabel, type Dial, type DialKey, type Topic } from "@/features/ideas/raise";
 import { registerRaiseHooks } from "@/lib/demo-controls";
 import { DEV_SAMPLES, registerDevFill } from "@/lib/dev-fill";
+import { seatAboveRole } from "@/features/cases/sheets";
+import type { CaseProposal } from "@/features/cases/events/case";
 import { desksFor, otherDesks, type Desk } from "@/features/ideas/desks";
+import { answeringDesk } from "@/features/overload/answer";
 import { raiseTarget } from "@/features/ideas/raise-actions";
 import { addWorkdays } from "@/features/clock/calendar";
 import { saveShots, shrinkImage } from "@/lib/shots";
@@ -52,6 +56,7 @@ import type { Chip } from "./RaiseComposer";
 import { RaiseComposer } from "./RaiseComposer";
 import { actionsOf, RaiseActions, RaiseMenu, type MenuView } from "./RaiseMenu";
 import { PromptBody, PromptTray, type BodyFocus } from "./RaisePrompts";
+import { followDraft, mayFollow } from "@/features/cases/links";
 import { EMPTY_BODY, insertBlock, promptContext, segsContext, splitPrompts, splitSegs, type Caret, type Seg } from "@/features/ideas/prompts";
 import { DeskDialog, type Sent, type Work } from "./RaisePublish";
 import { PreviewLoading, PublishPreview, type Look } from "./PublishPreview";
@@ -114,11 +119,20 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const preview = useRaisePreview(scope);
   const { draft, live, threshold, sending } = studio;
   const who = persona.who;
+  // Who the idea goes out as (decision Q1.7): the company preselects, the member can change it on the last look.
+  const [asName, setAsName] = useState<boolean | null>(null);
+  const postsByName = asName ?? seed.postAs === "name";
 
   const [keptStage, setStage] = useKept<"start" | "chat">(scope, "stage", "start");
   const [openId, setOpenId] = useKept<string | null>(scope, "open", null); // the draft open in the chat, reopened on the next visit
   const pathname = usePathname(), params = useSearchParams();
   const urlIdea = params.get("idea");
+  // "Start a better idea from it" (plan SEE, D15): /raise?follows=<case>. Only the raiser of a no may follow it up; any other value is ignored and the page works as without it.
+  const urlFollows = params.get("follows");
+  const follows = useMemo(() => {
+    const c = urlFollows ? S.cases.find((x) => x.id === urlFollows) : undefined;
+    return c && mayFollow(c, me.userId) ? c : null;
+  }, [urlFollows, S.cases, me.userId]);
   const urlView = params.get("view") ?? "";
   // An idea in the URL that this person cannot open (wiped by the demo's fresh start, or someone else's when the
   // back button replays a page as another person): the start page shows, and the URL is left as the history has it.
@@ -143,6 +157,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [sb, setSb] = useKept<"auto" | "open" | "hidden">(scope, "sb", "hidden"); // closed until asked for. auto, after a pick from an open one: stays open on screens, the drawer closes on phones (CSS)
   const [query, setQuery] = useState("");
   const [startText, setStartText] = useKept(scope, "startText", "");
+  const followed = useRef<string | null>(null); // the follow-up whose start was filled in: once, so a person's own edits are never overwritten
   const [segs, setSegs] = useKept<Seg[]>(scope, "segs", EMPTY_BODY); // the start composer's text and blocks under the headline
   const [bodyFocus, setBodyFocus] = useState<BodyFocus | null>(null);
   const [startAff, setStartAff] = useKept<string[]>(scope, "startAff", []);
@@ -167,6 +182,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const [prepping, setPrepping] = useState(false); // the second between "Publish" and the last look (PreviewLoading)
   const [now, setNow] = useState(() => new Date());
   const startField = useRef<HTMLTextAreaElement>(null);
+  const shownRouting = useRef<{ proposal: CaseProposal; hash: string } | null>(null); // the proposal the desk window showed, and the text it was made for
   const caretRef = useRef<Caret | null>(null); // where a block from the mini bar lands
   const fillRef = useRef<(fixed?: boolean) => void>(() => {});
   const chatField = useRef<HTMLTextAreaElement>(null);
@@ -211,8 +227,11 @@ function RaisePage({ script = false }: { script?: boolean }) {
   // own pace: the idea and the two answers the controls fill (FILLED_ANSWERS).
   const said = turns.filter((t) => t.role === "user").length;
   const scripted = story && scriptAt >= MIN_EXCHANGES;
+  // At the turn limit no further question can be asked: the rail counts as done, and the last look lists what is still open (plan REM, R1).
+  const atLimit = turnLimitReached(turns.length);
   const railDone = scriptAt >= 1 ? said >= MIN_EXCHANGES
-    : turns.some((t) => t.role === "assistant") && (openCount(gaps) === 0 || (reading !== null && said >= MIN_EXCHANGES));
+    : turns.some((t) => t.role === "assistant") && (openCount(gaps) === 0 || (reading !== null && said >= MIN_EXCHANGES) || atLimit);
+  const stillOpen = atLimit && !published ? gaps.filter((g) => g.status === "open" || g.status === "active").map((g) => g.label) : [];
   const canFinalize = turns.length > 0 && !busy && !sending && (railDone || published);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t); }, []);
@@ -292,6 +311,16 @@ function RaisePage({ script = false }: { script?: boolean }) {
     return closest(idea.text, S.cases.filter((c) => c.open && c.id !== draft?.caseId), (c) => c.title);
   }, [idea.text, S.cases, draft?.caseId]);
 
+  // The follow-up starts with the old title as its line and the editable context about the answer, while both are empty (D15).
+  useEffect(() => {
+    if (!follows || followed.current === follows.id || stage !== "start") return;
+    followed.current = follows.id;
+    if (startText.trim() || segsContext(segs).trim()) return;
+    const start = followDraft(follows, t);
+    setStartText(start.text);
+    setSegs(splitSegs(start.context));
+  }, [follows, stage, startText, segs, t, setStartText, setSegs]);
+
   // The dev panel's "Fill a sample idea", offered while the start view is open (lib/dev-fill.ts).
   useEffect(() => (stage === "start" ? registerDevFill(() => fillRef.current()) : undefined), [stage]);
   // `fixed`: the demo controls' fill - the same sample every time.
@@ -334,7 +363,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     return () => clearTimeout(t);
   }, [pubStep]);
 
-  if (!ready) return <PageSkeleton kind="raise" delay />;
+  if (!ready) return <PageSkeleton kind="raise" />;
 
   // The chat shows NextUp's reply with its short read; the full analysis opens only when asked for.
   const shownView = view === "preview" ? "chat" : view; // the last look opens over the chat
@@ -432,18 +461,36 @@ function RaisePage({ script = false }: { script?: boolean }) {
     setTimeout(() => { setPrepping(false); nav({ view: "preview" }); }, 1000);
   };
 
+  // Who really answers a raise to this desk (plan OVL, D25): known where the page holds the company's reduced state (server mode); the demo keeps today's line.
+  // The page never waits on it: where working it out fails, the desk is offered as it is, without an answer.
+  const answerOf = (d: Desk) => {
+    if (!serverMode) return undefined;
+    try {
+      return answeringDesk(S, d.routeId, S.day, (roleId) => seatAboveRole(seed.seats ?? [], seed.roles ?? [], roleId)?.id ?? null);
+    } catch {
+      return undefined;
+    }
+  };
+  const withAnswer = (d: Desk): Desk => {
+    const answer = answerOf(d);
+    return answer ? { ...d, answer: { why: answer.why, names: answer.names } } : d;
+  };
+
   // "Publish idea": the button says what NextUp does - reads the idea, asks the router, checks the org
   // chart, lists the desks - then the author picks where it goes (RaisePublish.tsx).
   const askDesk = async () => {
     if (!draft || busy || published || pubStep) return;
     setMenu(null); setSent(null);
+    shownRouting.current = null;
     const text = await step(setPubStep, t("ideas.pageStepReading"), "working", () => (mine ? mine.title + "\n\n" + bodyOf(mine) : idea.text), 450);
     const brain = await step(setPubStep, t("ideas.pageStepRouter"), "searching", () => (script ? null : brainProposalAction({ slug: tenant.slug, title: idea.title, body: idea.body }).catch(() => null)), 650);
     await step(setPubStep, t("ideas.pageStepOrg"), "connecting", () => null, 500);
     const plan = await step(setPubStep, t("ideas.pageStepRanking"), "weaving", () => {
       const proposal = evaluate({ kind: "idea", text, affected, attachments: myFiles.length, who }, { ...seed, cases: S.cases }, brain).payload.proposal;
+      // The routing the author is about to see, with the fingerprint of the title and body it was made for: the raise sends both (plan REM, R1).
+      if (mine && !script) shownRouting.current = { proposal, hash: routingTextHash(mine.title.trim(), bodyOf(mine)) };
       const desks = desksFor({ text, routes: seed.routes, seats: seed.seats, proposal, myDept: who.line.split(",")[0].trim(), affected, spendLimitEur: seed.spend?.limitEur ?? null }, locale);
-      return { desks, aiOff: proposal.source === "keywords" };
+      return { desks: desks.map(withAnswer), aiOff: proposal.source === "keywords" };
     }, 450);
     setPubStep(plan);
   };
@@ -468,7 +515,12 @@ function RaisePage({ script = false }: { script?: boolean }) {
     // The demo script's case carries its main points instead of the raw conversation.
     const made = scripted ? DEMO_CASE : { body: r.body, upside: e.payload.upside };
     const body = mine ? bodyOf(mine) : made.body;
-    await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raise({ ...e.payload, title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId }, caseId), 600);
+    // The routing the author saw goes with the raise, with the fingerprint of its text: the server keeps it when the text is the same, else it asks again (plan REM, R1).
+    const shown = shownRouting.current;
+    const proposal: ShownProposal | CaseProposal | undefined = shown && shown.hash === routingTextHash(title, body) ? { ...shown.proposal, textHash: shown.hash } : e.payload.proposal;
+    // The raise publishes the draft with it, or neither (Q1.11): refused, the draft stays open and the toast says why.
+    const raised = await step(setPubWork, t("ideas.pageStepRaising", { name: to.title }), "composing", () => act.raiseDraft({ ...e.payload, proposal, ...(choosesPosting({ role, name: who.name, handle: who.handle ?? null }) ? { asName: postsByName } : {}), title, body, upside: made.upside, assignee: seed.routes.find((r) => r.id === to.routeId)?.owner.name ?? e.payload.assignee, routeId: raiseTarget(to).routeId ?? e.payload.routeId, ...(follows ? { follows: follows.id } : {}) }, caseId, draft.id), 600);
+    if (!raised.ok) { setBusy(false); setPubWork(null); setPubStep(null); return; }
     // Everything the raise page worked out goes with the case: the document, the dials, every file (not only the images).
     saveRaised(tenant.slug, caseId, briefOfDoc({ ...finalDoc, receiver: to.title }, {
       files: myFiles.map((f) => ({ name: f.name, size: f.file.size ? sizeOf(f.file.size) : "" })), affected, categories: cats, receiverRole: to.title, depts: seed.depts, people: seed.people,
@@ -482,7 +534,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       if (!kept) showToast(t("ideas.pageToastShotsFull"));
     }
     setBusy(false); setPubWork(null);
-    setSent({ role: to.title, names: to.holders, date: dueLabel() }); // the window stays, now saying who owes an answer by when
+    setSent({ role: to.title, names: to.answer?.names ?? to.holders, deputies: to.deputies, date: dueLabel(), why: to.answer?.why, nobody: to.answer === null && answerOf(to) === null }); // the window stays, now saying who owes an answer by when; `nobody`: it is known that nobody can answer, not that working it out failed
     go("chat"); // published: back to the conversation, where the case is offered
     void studio.open(draft.id);
   };
@@ -645,13 +697,13 @@ function RaisePage({ script = false }: { script?: boolean }) {
       const current = stage === "chat" && d.id === draft?.id;
       const last = current ? turns[turns.length - 1] : undefined;
       return {
-        id: d.id, title: d.title, when: whenLabel(d.updatedAt, now, locale), current, pinned: preview.pinned.includes(d.id), published: d.status === "published",
+        id: d.id, title: d.title, when: whenLabel(d.updatedAt, now, locale), group: whenGroup(d.updatedAt, now), current, pinned: preview.pinned.includes(d.id), published: d.status === "published",
         preview: last ? stripTags(last.text) : d.status === "published" ? t("ideas.pageRowPublished") : t("ideas.pageRowContinue"),
       };
     })
     // The Demo data switch: the sample cases this person raised. They have no draft behind them, so a click opens the case.
     .concat(!sampleData ? [] : mineOf(S, me).filter((c) => isSampleId(c.id) && (!needle || c.title.toLowerCase().includes(needle))).map((c) => ({
-      id: c.id, title: c.title, when: f(c.raisedDay), current: false, pinned: false, published: true, preview: t("ideas.pageRowPublished"),
+      id: c.id, title: c.title, when: f(c.raisedDay), group: dayGroup(S.day - c.raisedDay), current: false, pinned: false, published: true, preview: t("ideas.pageRowPublished"),
     })));
 
   const composerChat = (
@@ -772,6 +824,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const main = stage === "start" ? (
     <RaiseStart name={greetName(who.name)}
       composer={
+        <>
+        {follows && <p className={s.follows} data-testid="raise-follows">{t("caseSee.followsUp", { title: follows.title })}</p>}
         <RaiseComposer value={startText} onChange={setStartText} onSubmit={startRaise} fieldRef={startField} sendLabel={t("ideas.pageAskNextUp")}
           placeholder={t("ideas.pageSharePlaceholder")} canSend={startText.trim().length >= 3 && !evaluating}
           chips={[...chips, ...fileChips]} strip
@@ -779,6 +833,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
           body={<PromptBody segs={segs} onSegs={setSegs} caretRef={caretRef} focus={bodyFocus} onFocus={setBodyFocus} headRef={startField} />}
           tray={<PromptTray onAdd={(p) => { const r = insertBlock(segs, caretRef.current, p); setSegs(r.segs); setBodyFocus({ seg: r.at, on: p.custom ? "label" : "text" }); }} />}
           onUnsupported={() => showToast(t("ideas.pageToastNoDictation"))} />
+        </>
       } />
   ) : shownView === "idea" ? (
     <IdeaSheet key={draft?.id ?? "none"} initial={ideaLook} card={cardProps} locked={published} onChange={editLook}
@@ -805,17 +860,18 @@ function RaisePage({ script = false }: { script?: boolean }) {
       </div>
       <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label={t("ideas.pageCloseSidebar")} />
       {pubStep && "desks" in pubStep && (
-        <DeskDialog desks={pubStep.desks} aiOff={pubStep.aiOff} search={(q) => otherDesks(seed.routes, seed.seats, q, locale)} work={pubWork} sent={sent} casesHref={href("/team")}
+        <DeskDialog desks={pubStep.desks} aiOff={pubStep.aiOff} search={(q) => otherDesks(seed.routes, seed.seats, q, locale).map(withAnswer)} work={pubWork} sent={sent} casesHref={href("/team")}
           onCancel={() => { setPubStep(null); setSent(null); }} onConfirm={(to) => void publish(to)} />
       )}
       {prepping && <PreviewLoading />}
       {looking && shownLook && draft && !published && (
-        <PublishPreview look={shownLook} onLook={setLook}
+        <PublishPreview look={shownLook} onLook={setLook} stillOpen={stillOpen}
           affected={affected} depts={seed.depts.map((d) => d.name)} onAffected={setAffected}
           files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile}
           aiLine={t("ideas.pageAiLine", { n: sources.length })}
           onClose={() => go("chat")} onConfirm={confirmLook}
-          onExport={() => { if (!mine && shownLook) setLook(shownLook); go("export"); }} />
+          onExport={() => { if (!mine && shownLook) setLook(shownLook); go("export"); }}
+          posting={choosesPosting({ role, name: who.name, handle: who.handle ?? null }) && who.handle ? { handle: who.handle, name: who.name, asName: postsByName, onChange: setAsName } : undefined} />
       )}
       <div className={s.main}>
         <div className={s.showSb}><button type="button" className={s.iconBtn} onClick={() => setSb("open")} title={t("ideas.pageShowSidebar")} aria-label={t("ideas.pageShowSidebar")}><Icon name="sidebar" size={12} /></button></div>

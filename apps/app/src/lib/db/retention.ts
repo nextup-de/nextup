@@ -1,10 +1,11 @@
 // The retention rules and the nightly run (GDP D16). Every delete names the company.
 import type { Prisma } from "@prisma/client";
-import { AUDIT_KEEP_DAYS, OUTBOX_KEEP_DAYS, checkRule, cutoff, effectiveRules, type RetentionKind } from "@/features/privacy/retention";
+import { AUDIT_KEEP_DAYS, AUDIT_KEPT_ACTIONS, OUTBOX_KEEP_DAYS, checkRule, cutoff, effectiveRules, type RetentionKind } from "@/features/privacy/retention";
 import { SYSTEM_ACTOR, recordAudit } from "@/server/audit/record";
+import { countAgentTextsBefore, deleteAgentTextsBefore } from "./agent-text";
 import { getDb } from "./client";
 
-export type RetentionTotals = { assistTurns: number; drafts: number; cases: number; events: number; auditEvents: number; exports: number; outbox: number; teamsLinks: number };
+export type RetentionTotals = { assistTurns: number; agentTexts: number; drafts: number; cases: number; events: number; auditEvents: number; exports: number; outbox: number; teamsLinks: number };
 
 export type RetentionState = {
   rules: Record<RetentionKind, number | null>;
@@ -57,7 +58,8 @@ export async function countRemovable(companyId: string, kind: RetentionKind, kee
   if (keepDays === null) return 0;
   const db = getDb();
   const before = cutoff(keepDays, now);
-  if (kind === "assist_turns") return db.assistTurn.count({ where: { companyId, createdAt: { lt: before } } });
+  // The AI-text rule covers the assistant's turns and the agent's words (plan AGT, D23).
+  if (kind === "assist_turns") return (await db.assistTurn.count({ where: { companyId, createdAt: { lt: before } } })) + (await countAgentTextsBefore(companyId, before));
   if (kind === "idea_drafts") return db.ideaDraft.count({ where: { companyId, status: "draft", updatedAt: { lt: before } } });
   return (await closedCasesBefore(companyId, before)).length;
 }
@@ -68,10 +70,12 @@ const CHUNK = 1000;
 export async function runRetention(companyId: string, now = new Date()): Promise<RetentionTotals> {
   const db = getDb();
   const { rules } = await loadRetention(companyId);
-  const t: RetentionTotals = { assistTurns: 0, drafts: 0, cases: 0, events: 0, auditEvents: 0, exports: 0, outbox: 0, teamsLinks: 0 };
+  const t: RetentionTotals = { assistTurns: 0, agentTexts: 0, drafts: 0, cases: 0, events: 0, auditEvents: 0, exports: 0, outbox: 0, teamsLinks: 0 };
 
   if (rules.assist_turns !== null) {
     t.assistTurns = (await db.assistTurn.deleteMany({ where: { companyId, createdAt: { lt: cutoff(rules.assist_turns, now) } } })).count;
+    // The agent's suggestions and planning drafts are AI text too: an event that points at one then finds it removed.
+    t.agentTexts = await deleteAgentTextsBefore(companyId, cutoff(rules.assist_turns, now));
   }
   if (rules.idea_drafts !== null) {
     t.drafts = (await db.ideaDraft.deleteMany({ where: { companyId, status: "draft", updatedAt: { lt: cutoff(rules.idea_drafts, now) } } })).count;
@@ -88,7 +92,7 @@ export async function runRetention(companyId: string, now = new Date()): Promise
       t.cases += views.count;
     }
   }
-  t.auditEvents = (await db.auditEvent.deleteMany({ where: { companyId, at: { lt: cutoff(AUDIT_KEEP_DAYS, now) } } })).count;
+  t.auditEvents = (await db.auditEvent.deleteMany({ where: { companyId, at: { lt: cutoff(AUDIT_KEEP_DAYS, now) }, action: { notIn: [...AUDIT_KEPT_ACTIONS] } } })).count;
   t.exports = (
     await db.dataExport.updateMany({
       where: { companyId, expiresAt: { lt: now }, OR: [{ file: { not: null } }, { status: "ready" }] },

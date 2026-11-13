@@ -56,6 +56,11 @@ export function adminBase(env: Env = process.env): string {
   return tenantMode(env) === "subdomain" ? "" : "/admin";
 }
 
+/** An /admin page, absolute, for a mail: "/assistant" -> https://admin.<domain>/assistant or <origin>/admin/assistant. */
+export function adminUrl(path: string, env: Env = process.env): string {
+  return tenantMode(env) === "subdomain" ? hostOrigin(`admin.${rootDomain(env)}`, env) + path : appOrigin(env) + "/admin" + path;
+}
+
 function hostOrigin(host: string, env: Env): string {
   const scheme = env.APP_ORIGIN ? new URL(appOrigin(env)).protocol.replace(":", "") : env.PUBLIC_SCHEME ?? "http";
   return `${scheme}://${host}`;

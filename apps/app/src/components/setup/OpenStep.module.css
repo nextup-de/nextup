@@ -10,6 +10,7 @@
 .row[data-state="unknown"] .mark { color: var(--nh-danger); }
 .text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink-2); overflow-wrap: anywhere; }
 .text strong { font-weight: 600; color: var(--nh-ink); }
+.text .pilot { font-size: var(--nh-fs-xs); line-height: 16px; font-weight: 600; color: var(--nh-warn); }
 .waiting { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 @media (max-width: 760px) {

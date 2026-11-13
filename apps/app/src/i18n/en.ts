@@ -56,6 +56,15 @@ import { teams } from "./messages/teams";
 import { settingsTeams } from "./messages/settingsTeams";
 import { settingsSignIn } from "./messages/settingsSignIn";
 import { ssoLogin } from "./messages/ssoLogin";
+import { inbox } from "./messages/inbox";
+import { projectDraft } from "./messages/projectDraft";
+import { projectMove } from "./messages/projectMove";
+import { caseNo } from "./messages/caseNo";
+import { caseSee } from "./messages/caseSee";
+import { projectResult } from "./messages/projectResult";
+import { projectAgent } from "./messages/projectAgent";
+import { approvals } from "./messages/approvals";
+import { overload } from "./messages/overload";
 
 export const en = {
   common: common.en,
@@ -115,4 +124,14 @@ export const en = {
   settingsSupport: settingsSupport.en,
   settingsGoLive: settingsGoLive.en,
   settingsPilotReport: settingsPilotReport.en,
+  inbox: inbox.en,
+  projectDraft: projectDraft.en,
+  // Composer: a phase adds keys only to its own namespace, never here.
+  projectMove: projectMove.en,
+  caseNo: caseNo.en,
+  caseSee: caseSee.en,
+  projectResult: projectResult.en,
+  projectAgent: projectAgent.en,
+  approvals: approvals.en,
+  overload: overload.en,
 } as const;

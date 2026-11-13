@@ -5,7 +5,7 @@
 //     appendEventRow. Source 'teams', idemKey `teams:<activity id>`. One step; no separate proposal step (Q2).
 import { createHash } from "node:crypto";
 import type { CaseRef } from "@nextup/contracts/public";
-import { actorLabel } from "@/features/auth/identity";
+import { DEFAULT_POST_AS, raiseLabel } from "@/features/ideas/posting";
 import type { EventPayload } from "@/features/cases/events";
 import { raiserDept, stampEvent } from "@/features/cases/stamp";
 import { seedFor } from "@/features/demo";
@@ -59,13 +59,15 @@ async function submitAction(company: BotCompany, person: BotPerson, activity: Bo
 
   const visibility = formData(activity.value).visibility === "private" ? "private" : "everyone";
   const seed = await seedFor(company.slug);
-  const actor = actorLabel({ role: person.role as "manager" | "leader" | "member", name: person.name, handle: person.handle });
+  // A card has no last look: the company's preselection decides (decision Q1.7).
+  const poster = { role: person.role as "manager" | "leader" | "member", name: person.name, handle: person.handle };
+  const actor = raiseLabel(poster, undefined, seed.postAs ?? DEFAULT_POST_AS);
   // The raiser's department, as the web raise names it (and hides it next to a handle in a small unit).
   const fromDept = raiserDept(person.dept, { label: actor, userId: person.id }, await loadUnitPeople(company.id));
   const base: EventPayload = { title: input.title, body: input.body, kind: input.kind, fromDept, visibility };
   const proposal = await proposeOnRaise(company.slug, company.id, base);
   const route = seed.routes.find((r) => r.id === proposal.routeId);
-  const stamped = stampEvent("case.raised", { ...base, routeId: proposal.routeId, assignee: route?.owner.name ?? "" }, seed);
+  const stamped = stampEvent("case.raised", { ...base, routeId: proposal.routeId, assignee: route?.owner.name ?? "" }, seed, { raiserUserId: person.id });
 
   const result = await appendEventRow(
     company.id,

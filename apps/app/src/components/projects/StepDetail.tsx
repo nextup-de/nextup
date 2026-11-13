@@ -3,12 +3,18 @@
 // lives in, everything that happened to it, and the moves - the way to move a card without dragging
 // (keyboard, phone). Each change is one project.step.* event; text and details save together.
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { useCaseNames } from "@/components/cases/useCaseNames";
+import { newId } from "@/features/cases/events";
+import { helpView } from "@/features/projects/measure-view";
+import { HELP_TEXT_MAX } from "@/features/projects/result";
+import { appendEventAction } from "@/server/actions/events";
 import { PersonFace } from "@/components/ui/elements";
 import { STEP_COLUMNS, type ReducedProject, type Step, type StepColumn } from "@/features/projects/types";
 import { columnLabel, safeUrl, systemFrom, timelineOf, toolName, toolOf, TOOLS, type JiraRow } from "@/features/projects/views";
 import { useFormat, useLocale, useT } from "@/i18n/client";
-import { teamOf, useRights, useSend, withIds } from "./parts";
+import { idViewerOf, teamOf, useRights, useSend, withIds } from "./parts";
 import styles from "./Projects.module.css";
 
 const DUE_QUICK = [
@@ -16,7 +22,10 @@ const DUE_QUICK = [
 ] as const;
 
 export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step; jira: JiraRow; onClose: () => void }) {
-  const { act, S, f, seed, actorUserId } = useDemo();
+  const ctx = useDemo();
+  const { act, S, f, seed, actorUserId, serverMode, tenant, showToast } = ctx;
+  const router = useRouter();
+  const names = useCaseNames();
   const t = useT();
   const locale = useLocale();
   const fmt = useFormat();
@@ -29,6 +38,8 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
   const [why, setWhy] = useState<string | null>(null);
   const [inDays, setInDays] = useState("");
   const [removing, setRemoving] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [askText, setAskText] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkKey, setLinkKey] = useState("");
   const panel = useRef<HTMLDivElement>(null);
@@ -55,6 +66,20 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
   const tool = s.external ? toolOf(s.external.system) : null;
   const href = safeUrl(s.external?.url);
   const badUrl = linkUrl.trim() !== "" && !safeUrl(linkUrl);
+  // Ask the sponsor (plan RES, D19): the team asks for help on a step that is still open; every ask of this step and whether it was answered.
+  const help = helpView(p, s, S, idViewerOf(ctx), names.roleTitle);
+  const askSponsor = () => {
+    const body = askText.trim();
+    if (!body) return;
+    const payload = { stepId: s.id, text: body };
+    const went = send("project.help.asked", payload, () => {
+      if (!serverMode) { act.project.askHelp(p.id, s.id, body); return; }
+      void appendEventAction({ slug: tenant.slug, id: newId("e"), type: "project.help.asked", target: p.id, payload }).then((res) => {
+        if (res.ok) router.refresh(); else showToast(res.error);
+      });
+    });
+    if (went) { setAskText(""); setAsking(false); }
+  };
   // Everything that happened to this card, oldest first.
   const ids = new Set(p.history.filter((e) => e.payload?.stepId === s.id).map((e) => e.id));
   const story = timelineOf(p, locale).filter((l) => ids.has(l.id));
@@ -173,6 +198,27 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
               </form>
             )}
           </div>
+
+          {(help.canAsk || help.asks.length > 0) && (
+            <div className={styles.sheetField} data-testid="step-help">
+              {help.asks.map((a) => (
+                <p key={a.day + a.text} className={styles.muted}>
+                  {t("projectResult.askSponsorSent", { who: a.toName, date: f(a.day) })}: {a.text}
+                  {a.answeredDay !== null && " · " + t("projectResult.askSponsorAnswered", { date: f(a.answeredDay) })}
+                </p>
+              ))}
+              {help.canAsk && !asking && <button type="button" className={styles.quiet} onClick={() => setAsking(true)}>{t("projectResult.askSponsor")}</button>}
+              {help.canAsk && asking && (
+                <form className={styles.inline} aria-label={t("projectResult.askSponsor")} onSubmit={(e) => { e.preventDefault(); askSponsor(); }}>
+                  <textarea className={`nh-input nh-textarea ${styles.textarea}`} value={askText} onChange={(e) => setAskText(e.target.value)} maxLength={HELP_TEXT_MAX} aria-label={t("projectResult.askSponsorText")} placeholder={t("projectResult.askSponsorText")} autoFocus />
+                  <span className={styles.actionRow}>
+                    <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!askText.trim()}>{t("projectResult.askSponsorSend")}</button>
+                    <button type="button" className={styles.quiet} onClick={() => { setAsking(false); setAskText(""); }}>{t("common.cancel")}</button>
+                  </span>
+                </form>
+              )}
+            </div>
+          )}
 
           <dl className={styles.stepFacts}>
             <dt>{t("projects.added")}</dt><dd>{t("projects.addedBy", { day: f(s.addedDay), name: s.by })}</dd>

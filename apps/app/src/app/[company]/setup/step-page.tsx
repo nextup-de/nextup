@@ -19,7 +19,7 @@ export async function SetupStepPage({ params, searchParams, step }: SetupPagePro
   const { resume } = await searchParams;
   const { data, demo, ready, facts, opened } = await loadSetupPage(company, step);
   const prefix = companyPrefix(company);
-  if (step === "done") return <SetupDone prefix={prefix} data={data} facts={facts} opened={opened} />;
+  if (step === "done") return <SetupDone prefix={prefix} backHref={`${prefix}/setup/${SETUP_FORM_STEPS[SETUP_FORM_STEPS.length - 1]}`} data={data} facts={facts} opened={opened} />;
   return (
     <SetupStepView base={`${prefix}/setup`} slug={company} steps={SETUP_FORM_STEPS} step={step} data={data} ready={ready} resume={resume !== undefined} demo={demo} />
   );

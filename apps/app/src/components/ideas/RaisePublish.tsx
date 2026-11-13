@@ -7,8 +7,10 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { OrbState } from "thinking-orbs/engine";
 import Link from "next/link";
 import { useT } from "@/i18n/client";
+import type { MessageKey } from "@/i18n";
 import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
 import type { Desk } from "@/features/ideas/desks";
+import { SENT_LINE, type AnswerWhy } from "@/features/overload/answer";
 import { Icon } from "./raiseIcons";
 import s from "./Raise.module.css";
 
@@ -31,7 +33,20 @@ export function Working({ work }: { work: Work }) {
 
 const PAGE = 5;
 
-export type Sent = { role: string; names: string[]; date: string };
+/** `why`: who really answers (plan OVL, D25), known only where the page has the reduced state; without it the line is the one of the demo. */
+export type Sent = { role: string; names: string[]; deputies: string[]; date: string; why?: AnswerWhy; nobody?: boolean };
+// `nobody`: the page knows the desks and nobody can answer (answeringDesk gave null); the line says it waits instead of naming a desk.
+
+/**
+ * Who a desk's row says holds it: its holders; on a vacant desk who gets it instead - the deputy role's holders, else the seat above (plan REM, R1,
+ * plan OVL D25: a raise to a vacant desk is accepted and the person above answers) - else that it waits until someone sits there.
+ */
+export function deskWho(d: Desk, t: (key: MessageKey, params?: Record<string, string | number>) => string): string {
+  if (!d.vacant) return d.holders.join(", ");
+  if (d.deputies.length) return t("ideas.deskVacantDeputy", { names: d.deputies.join(", ") });
+  if (d.answer?.why === "above" && d.answer.names.length) return t("ideas.deskVacantDeputy", { names: d.answer.names.join(", ") });
+  return t("ideas.deskVacant");
+}
 
 export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCancel, onConfirm }: {
   desks: Desk[];
@@ -64,7 +79,7 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
   const found = search(q).filter((d) => !taken.has(d.roleId)).slice(0, PAGE);
   const pick = (d: Desk) => { setCustom(d); setChosen(d); setSearching(false); setQ(""); };
   const select = (d: Desk) => { if (!busy) { setChosen(d); setSearching(false); } };
-  const who = (d: Desk) => (d.vacant ? t("ideas.deskVacant") : d.holders.join(", "));
+  const who = (d: Desk) => deskWho(d, t);
   const tag = (d: Desk) => (d.proposedBy === "ai" ? t("ideas.deskProposedAi") : d.proposedBy === "keywords" ? t("ideas.deskProposed") : "");
 
   const row = (d: Desk) => {
@@ -103,7 +118,11 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
 
         {sent ? (
           <div className={s.rcvs} data-testid="raise-sent" role="status">
-            <p className={s.rcvName}>{sent.names.length ? t("ideas.deskSent", { role: sent.role, names: sent.names.join(", "), date: sent.date }) : t("ideas.deskSentVacant", { role: sent.role, date: sent.date })}</p>
+            <p className={s.rcvName}>{sent.nobody ? t("ideas.deskSentNobody", { role: sent.role })
+              : sent.why ? t(SENT_LINE[sent.why], { role: sent.role, names: sent.names.join(", "), date: sent.date })
+              : sent.names.length ? t("ideas.deskSent", { role: sent.role, names: sent.names.join(", "), date: sent.date })
+                : sent.deputies.length ? t("ideas.deskSentDeputy", { role: sent.role, names: sent.deputies.join(", "), date: sent.date })
+                  : t("ideas.deskSentVacant", { role: sent.role, date: sent.date })}</p>
             <Link href={casesHref} className={s.rcvRole}>{t("ideas.deskFollow")}</Link>
           </div>
         ) : (

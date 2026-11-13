@@ -1,6 +1,7 @@
 // The view builders of the console's connectors page (ITC-A1). Pure: rows and counts in, plain props
 // out. A key or token never goes through here - only "set" or "not set" (ITC/D11).
-import type { AiSettings } from "@/features/ai/settings";
+import { priceLines } from "@/features/ai/prices";
+import type { AiSettings, BrainState } from "@/features/ai/settings";
 import { formFromSettings } from "@/features/admin/jira-admin";
 import type { JiraForm } from "@/features/admin/jira-admin";
 import type { DirectoryCounts, DirectorySourceKind } from "@/features/directory";
@@ -61,8 +62,14 @@ export type AiBlockView = {
   deployment: string;
   /** The brain's model; empty means the assistant's model (plan AIB D8). */
   brainModel: string;
+  /** The company's own prices as the form's text, one model per line (features/ai/prices.ts). */
+  prices: string;
+  /** Models called this month that have neither a company price nor a list price: the names to price. */
+  unpriced: string[];
   key: SecretState;
   vault: boolean;
+  /** The stack's brain, for the model on this stack: asked live only while that is the saved choice (load.ts). */
+  brain: BrainState;
 };
 
 export const BRAIN_MODEL_MAX = 120;
@@ -72,10 +79,11 @@ export function cleanBrainModel(v: unknown): string | null {
   return typeof v === "string" ? v.trim().slice(0, BRAIN_MODEL_MAX).trim() || null : null;
 }
 
-export function aiBlockView(settings: AiSettings, hasKey: boolean, vault: boolean): AiBlockView {
+export function aiBlockView(settings: AiSettings, hasKey: boolean, vault: boolean, unpriced: readonly string[] = [], brain: BrainState = "none"): AiBlockView {
   return {
     choice: settings.choice, region: settings.region, endpoint: settings.endpoint ?? "", model: settings.model,
-    deployment: settings.deployment ?? "", brainModel: settings.brainModel ?? "", key: secretState(hasKey), vault,
+    deployment: settings.deployment ?? "", brainModel: settings.brainModel ?? "", prices: priceLines(settings.prices),
+    unpriced: [...unpriced], key: secretState(hasKey), vault, brain,
   };
 }
 

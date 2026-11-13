@@ -10,15 +10,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
+from brain.chat import ChatFailed, ChatIn, chat, chat_stream
+from brain.agent import agent
 from brain.coach import coach
+from brain.hint import hint
 from brain.config import get_settings
 from brain.llm import LLMClient, LLMOutputError
 from brain.plan import checkin, plan
 from brain.read import read_idea
 from brain.route import route
-from brain.schemas import CheckinIn, CheckinOut, CoachIn, CoachOut, PlanIn, PlanOut, ReadIn, ReadOut, RouteIn, RouteOut
+from brain.schemas import AgentIn, AgentOut, CheckinIn, CheckinOut, CoachIn, CoachOut, HintIn, HintOut, PlanIn, PlanOut, ReadIn, ReadOut, RouteIn, RouteOut
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -94,15 +97,27 @@ async def post_coach(body: CoachIn, request: Request) -> CoachOut:
     return out
 
 
-@app.post("/v1/plan", response_model=PlanOut)
+@app.post("/v1/plan", response_model=PlanOut, response_model_exclude_unset=True)
 async def post_plan(body: PlanIn, request: Request) -> PlanOut:
-    """An accepted idea: its first steps and the number to measure it on. The lead picks."""
+    """An accepted idea: its first steps and the number to measure it on (v1), or with templates the whole plan (v2). The lead picks."""
     try:
         out = await run_in_threadpool(plan, request.app.state.llm.for_request(body.llm), body)
     except LLMOutputError as e:
         log.error("plan failed: %s", e)
         raise HTTPException(502, "The language model returned invalid output. Please retry.")
-    log.info("plan steps=%d metric=%s ms=%d", len(out.steps), out.metric is not None, out.ms)
+    log.info("plan steps=%d metric=%s v2=%s ms=%d", len(out.steps), out.metric is not None, out.plan is not None, out.ms)
+    return out
+
+
+@app.post("/v1/hint", response_model=HintOut)
+async def post_hint(body: HintIn, request: Request) -> HintOut:
+    """The reason given for a no: ok, or one sentence on what is missing. Nothing is stored; the reason is never logged."""
+    try:
+        out = await run_in_threadpool(hint, request.app.state.llm.for_request(body.llm), body)
+    except LLMOutputError as e:
+        log.error("hint failed: %s", e)
+        raise HTTPException(502, "The language model returned invalid output. Please retry.")
+    log.info("hint category=%s ok=%s ms=%d", body.category, out.ok, out.ms)
     return out
 
 
@@ -115,6 +130,36 @@ async def post_checkin(body: CheckinIn, request: Request) -> CheckinOut:
         log.error("checkin failed: %s", e)
         raise HTTPException(502, "The language model returned invalid output. Please retry.")
     log.info("checkin round=%d said=%d next=%s open=%d ms=%d", body.round, len(body.said), out.next, len(out.open), out.ms)
+    return out
+
+
+@app.post("/v1/agent", response_model=AgentOut)
+async def post_agent(body: AgentIn, request: Request) -> AgentOut:
+    """A running project: at most three suggestions, one per wanted kind. The agent drafts; people decide."""
+    try:
+        out = await run_in_threadpool(agent, request.app.state.llm.for_request(body.llm), body)
+    except LLMOutputError as e:
+        log.error("agent failed: %s", e)
+        raise HTTPException(502, "The language model returned invalid output. Please retry.")
+    log.info("agent steps=%d facts=%d kinds=%s suggestions=%d ms=%d",
+             len(body.project.steps), len(body.project.facts), ",".join(body.kinds), len(out.suggestions), out.ms)
+    return out
+
+
+@app.post("/v1/chat/completions")
+async def post_chat(body: ChatIn, request: Request):
+    """The model on this stack for the app's free calls (assistant, context draft). Never logs their text."""
+    llm: LLMClient = request.app.state.llm
+    try:
+        if body.stream:
+            events = await run_in_threadpool(chat_stream, llm, body)
+            log.info("chat stream messages=%d tools=%d", len(body.messages), len(body.tools or []))
+            return StreamingResponse(events, media_type="text/event-stream", headers={"cache-control": "no-store"})
+        out = await run_in_threadpool(chat, llm, body)
+    except ChatFailed as e:
+        log.error("chat failed: %s", e)
+        raise HTTPException(502, "The language model did not answer. Please retry.")
+    log.info("chat messages=%d tools=%d", len(body.messages), len(body.tools or []))
     return out
 
 

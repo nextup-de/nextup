@@ -59,7 +59,7 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     const member = await signIn(browser, "J. Schmidt");
     await expect(member).toHaveURL(new RegExp(`/${SLUG}/raise$`));
     const leader = await signIn(browser, "T. Vogel");
-    await expect(leader).toHaveURL(new RegExp(`/${SLUG}/leader$`));
+    await expect(leader).toHaveURL(new RegExp(`/${SLUG}/inbox$`));
   });
 
   test("a real company shows no demo controls and keeps members out of settings", async ({ browser }) => {
@@ -89,8 +89,8 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     // The open case is in the address (?id=), so the reload lands on it; a click on its row would close it.
     await expect(leader.getByRole("main").getByText(title).first()).toBeVisible();
     await leader.getByRole("button", { name: "Yes, do it" }).click();
-    // Projects are on by default, so the yes opens a sheet that names the project's lead.
-    await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
+    // Projects are on by default, so the yes opens a sheet that names who sets the draft up.
+    await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
 
     await member.reload();
     await expect(member.getByRole("article", { name: title })).toContainText("Approved");
@@ -114,6 +114,6 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     codes.set("S. Dahl", (await box.locator("span").first().innerText()).trim());
 
     const added = await signIn(browser, "S. Dahl");
-    await expect(added).toHaveURL(new RegExp(`/${SLUG}/leader$`));
+    await expect(added).toHaveURL(new RegExp(`/${SLUG}/inbox$`));
   });
 });

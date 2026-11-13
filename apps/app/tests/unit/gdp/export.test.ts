@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  EXPORT_DENY, buildCompanyExport, buildPersonExport, composeExportMail, hasVerifiedEmail, isDenied, stripDenied,
+  DELIVERY_NOTE_MAX, EXPORT_DENY, buildCompanyExport, buildPersonExport, canMarkDelivered, cleanDeliveryNote, composeExportMail,
+  hasVerifiedEmail, isDenied, stripDenied,
   type ExportRows, type Row,
 } from "@/features/privacy/export";
 
@@ -154,5 +155,22 @@ describe("GDP export shape", () => {
     expect(hasVerifiedEmail({ email: "a@b.co", entraOid: null, directorySyncedAt: T0 })).toBe(true);
     expect(hasVerifiedEmail({ email: "a@b.co", entraOid: null, directorySyncedAt: null })).toBe(false);
     expect(hasVerifiedEmail({ email: "nope", entraOid: "o", directorySyncedAt: null })).toBe(false);
+  });
+
+  it("lets only a downloaded, unmarked admin-only person copy be marked as delivered (Q10.13)", () => {
+    const copy = { kind: "person", deliverTo: "admin", deliveredAt: null, downloaded: true };
+    expect(canMarkDelivered(copy)).toBe(true);
+    expect(canMarkDelivered({ ...copy, downloaded: false })).toBe(false);
+    expect(canMarkDelivered({ ...copy, deliveredAt: T0 })).toBe(false);
+    expect(canMarkDelivered({ ...copy, deliverTo: "person" })).toBe(false); // NextUp mailed it: nothing to hand over
+    expect(canMarkDelivered({ ...copy, kind: "company" })).toBe(false);
+  });
+
+  it("keeps the channel note to one trimmed line of at most 200 characters", () => {
+    expect(cleanDeliveryNote("  by HR,\n 12 Nov ")).toBe("by HR, 12 Nov");
+    expect(cleanDeliveryNote("   ")).toBeNull();
+    expect(cleanDeliveryNote(undefined)).toBeNull();
+    expect(cleanDeliveryNote(42)).toBeNull();
+    expect(cleanDeliveryNote("x".repeat(300))).toHaveLength(DELIVERY_NOTE_MAX);
   });
 });

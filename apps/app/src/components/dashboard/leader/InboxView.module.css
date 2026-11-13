@@ -41,8 +41,8 @@
 
 /* The shared stats strip as the card's head: same type, no box of its own, semibold numbers, grey labels. */
 .card .stats { flex: none; border: 0; border-bottom: 1px solid var(--c-sep-head); border-radius: 0; background: transparent; padding: 4px 0; }
-/* Four columns sized to their labels (the leftover width shared out), so each label keeps one line. */
-@media (min-width: 761px) { .card .stats { grid-template-columns: repeat(4, auto); } }
+/* One column per number shown (up to four), sized to its label (the leftover width shared out), so each label keeps one line. */
+@media (min-width: 761px) { .card .stats { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: auto; } }
 .card .stat { padding: 14px 18px 13px; border-left-color: var(--c-sep-head); }
 .card .stat:first-child { padding-left: 22px; }
 .card .statV { font-size: var(--nh-fs-2xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: var(--c-ink); font-variant-numeric: tabular-nums; }

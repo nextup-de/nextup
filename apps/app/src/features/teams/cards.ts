@@ -1,6 +1,10 @@
 // What Teams shows (TMS D11; page spec 06 § Teams). Adaptive Cards 1.5, built as plain data. Pure: no I/O.
 // Every text comes from the `teams` namespace in the recipient's locale. The caller hands in dates and names
 // already formatted for the recipient; a card never looks anything up.
+import type { Actor } from "@/features/auth/identity";
+import { noCategoryLabel, PASS_REASON_MIN, type NoCategory } from "@/features/cases/no";
+import { mayAppend } from "@/features/cases/permissions";
+import type { State } from "@/features/cases/reducer";
 import { createT, INTL_LOCALE, type Locale, type MessageKey } from "@/i18n";
 
 /** When an earlier answer was given, for the caller to hand in: the time on the same day, else date and time. */
@@ -62,27 +66,40 @@ export type CardInput = {
   visibility?: "everyone" | "private";
   sandbox?: boolean;
   /** confirmCard: what happened. Default "raised". */
-  outcome?: "raised" | "yes" | "no" | "ask" | "handed" | "answeredBy";
+  outcome?: "raised" | "yes" | "no" | "ask" | "handed" | "answeredBy" | "replied";
   time?: string;
   name?: string;
   /** notSetUpCard. Default "off". */
   reason?: "unknown" | "off" | "notSetUp";
+  /** The fewest characters a reason for a no needs (company rule no_reason_min); the hint on the card says it. Default 40. */
+  noReasonMin?: number;
 };
 
+/** The submits of a raised case's and a reminder's card: a decision and a hand-over. */
 export const SUBMIT_KINDS = ["answer", "handover"] as const;
-export type SubmitKind = (typeof SUBMIT_KINDS)[number];
+/** What a card sends back: those two, and the answer to a question from the question's own card (REM-T1). */
+export type SubmitKind = (typeof SUBMIT_KINDS)[number] | "reply";
+const PARSED_KINDS: readonly SubmitKind[] = [...SUBMIT_KINDS, "reply"];
 
 export const MAX_CARD_BYTES = 28 * 1024;
 export const MAX_SEATS = 150;
 export const ANSWER_TEXT_MAX = 1000;
 export const WHY_MAX = 500;
+/** What would make it a yes: up to this many characters (plan NOR, D17). */
+export const CHANGE_IF_MAX = 400;
+/** The company rule's default, for a card built without it. */
+const NO_REASON_MIN_DEFAULT = 40;
+/** The categories the card offers for a no: Already solved or in work needs a link to the case or project, so it is in NextUp (D22). */
+export const CARD_NO_CATEGORIES = ["not-now", "no-budget", "no-fit", "risk", "not-feasible"] as const satisfies readonly NoCategory[];
+export type CardNoCategory = (typeof CARD_NO_CATEGORIES)[number];
 export const RAISE_TITLE_MAX = 120;
 export const RAISE_BODY_MAX = 2000;
 
 const SCHEMA = "http://adaptivecards.io/schemas/adaptive-card.json";
 const ID_MAX = 128;
 const SHOWN_TITLE_MAX = 200;
-const SHOWN_BODY_MAX = 1000;
+// The body shows five lines (maxLines below): this many characters are more than the card can show, and keep a card with 150 seats under the limit.
+const SHOWN_BODY_MAX = 600;
 const SHOWN_LABEL_MAX = 100;
 
 const clamp = (s: string, max: number): string => {
@@ -135,21 +152,31 @@ function ids(input: CardInput): Ids {
 
 function answerForm(input: CardInput, t: Tr): CardNode {
   const idea = input.kind === "idea";
+  const min = input.noReasonMin ?? NO_REASON_MIN_DEFAULT;
   const choices = [
     ...(idea ? [] : [{ title: t("teams.choiceYes"), value: "yes" }]),
     { title: t("teams.choiceNo"), value: "no" },
     { title: t("teams.choiceAsk"), value: "ask" },
   ];
+  // The fields of a no sit with the rest: a card cannot hide them until No is picked. The card checks them when it is sent.
   const body: CardNode[] = [
     { type: "Input.ChoiceSet", id: "answer", label: t("teams.answerLabel"), style: "expanded", isRequired: true, errorMessage: t("teams.errorNoText"), choices },
+    {
+      type: "Input.ChoiceSet", id: "category", label: t("teams.categoryLabel"), style: "compact", placeholder: t("teams.categoryPlaceholder"),
+      choices: CARD_NO_CATEGORIES.map((c) => ({ title: t(noCategoryLabel(c)), value: c })),
+    },
     { type: "Input.Text", id: "text", label: t("teams.textLabel"), isMultiline: true, maxLength: ANSWER_TEXT_MAX, errorMessage: t("teams.errorNoText") },
-    tb(t("teams.textHint"), { size: "small", isSubtle: true }),
+    tb(t("teams.textHint", { n: min }), { size: "small", isSubtle: true }),
+    { type: "Input.Text", id: "changeIf", label: t("teams.changeIfLabel"), isMultiline: true, maxLength: CHANGE_IF_MAX },
+    { type: "Input.Date", id: "revisitDay", label: t("teams.revisitLabel") },
   ];
   if (idea) body.push(tb(t("teams.ideaLine"), { size: "small", isSubtle: true }));
+  // Discuss first, Already solved or in work and Send up are not on the card (D22): one button leads to the case.
   const actions: CardNode[] = [
     { type: "Action.Submit", title: t("teams.sendAnswer"), style: "positive", data: { kind: "answer", ...ids(input) } },
   ];
   if (idea && input.link) actions.push(openUrl(t("teams.actionSayYes"), input.link));
+  if (input.link) actions.push(openUrl(t("teams.actionOpen"), input.link));
   return inner(body, actions);
 }
 
@@ -170,8 +197,11 @@ function handOverForm(input: CardInput, t: Tr): CardNode {
         placeholder: t("teams.searchPlaceholder"),
         choices: seats.map((s) => ({ title: clamp(s.label, SHOWN_LABEL_MAX), value: s.id })),
       },
-      { type: "Input.Text", id: "why", label: t("teams.whyLabel"), isMultiline: true, maxLength: WHY_MAX },
-      tb(t("teams.handOverHint"), { size: "small", isSubtle: true }),
+      {
+        type: "Input.Text", id: "why", label: t("teams.whyLabel"), isMultiline: true, maxLength: WHY_MAX, isRequired: true,
+        regex: `^[\\s\\S]{${PASS_REASON_MIN},}$`, errorMessage: t("teams.errorWhyShort", { n: PASS_REASON_MIN }),
+      },
+      tb(t("teams.handOverHint", { n: PASS_REASON_MIN }), { size: "small", isSubtle: true }),
     ],
     [{ type: "Action.Submit", title: t("teams.handOverButton"), style: "positive", data: { kind: "handover", ...ids(input) } }],
   );
@@ -234,6 +264,85 @@ export function reminderCard(input: CardInput, locale: Locale): Card {
   }
   if (input.fromUnit) body.push(factSet([[t("teams.factFrom"), input.fromUnit]]));
   return card(body, answerActions(input, t));
+}
+
+// ── loop notices as cards (REM-T1; INB D6 sent them as plain text) ─────────────────────────────────────────────────────
+
+/** The loop templates that have a card, and what each is about: a case passed on, a question to the raiser, a yes or no, a step that asks for help. */
+const LOOP_CARDS = {
+  "loop.case.handed": "passed",
+  "loop.case.asked": "asked",
+  "loop.case.decided": "decided",
+  "loop.project.help.asked": "step",
+} as const;
+export type LoopCardKind = (typeof LOOP_CARDS)[keyof typeof LOOP_CARDS];
+
+/** The card kind of a template, or null: a template without a card stays the plain text card. */
+export function loopCardKind(template: string): LoopCardKind | null {
+  return Object.hasOwn(LOOP_CARDS, template) ? LOOP_CARDS[template as keyof typeof LOOP_CARDS] : null;
+}
+
+/** What the receiver may do with the case, as the web's rules say (mayAppend): the buttons of a card are exactly these. */
+export type LoopRights = { answer: boolean; handOver: boolean; reply: boolean };
+export const NO_LOOP_RIGHTS: LoopRights = { answer: false, handOver: false, reply: false };
+
+/**
+ * The receiver's rights on a case, asked of the same function the web asks (features/cases/permissions mayAppend) against the reduced state, with a probe event
+ * for each action: a decision (a question or a yes), a hand-over to a seat of another desk, an answer to a question. Nothing is granted by the card: the
+ * submit is checked again when it arrives (server/teams/card-actions.ts).
+ */
+export function loopRights(who: Actor, caseId: string, state: State): LoopRights {
+  const ok = (type: string, payload: Record<string, unknown>): boolean => mayAppend(who, { type, target: caseId, payload }, state).ok;
+  const seat = state.seats.find((s) => !who.me.seatIds.includes(s.id));
+  const asked = state.cases.find((c) => c.id === caseId)?.status === "asked";
+  return {
+    answer: ok("case.asked", { text: "?" }) || ok("case.decided", { answer: "yes" }),
+    handOver: seat !== undefined && ok("case.handed", { to: seat.label, toRoleHolderId: seat.id, why: "x".repeat(PASS_REASON_MIN) }),
+    // An answer is for a question that is open: mayAppend lets the raiser write one at any time, and the reducer ignores it then.
+    reply: asked && ok("case.answered", { text: "?" }),
+  };
+}
+
+/** What a loop card shows: the case or project, the reason (the pass's why, the question, the no's reason, the help asked), where it leads. */
+export type LoopNotice = Omit<CardInput, "reason"> & {
+  loop: LoopCardKind;
+  /** The reason: the pass's why, the question, the no's reason, the help asked. */
+  reasonText?: string;
+  /** decided: which answer. */
+  decision?: "yes" | "no";
+  /** step: the step's text. */
+  step?: string;
+};
+
+const LOOP_HEADERS = { passed: "teams.kindLoopPassed", asked: "teams.kindLoopAsked", step: "teams.kindLoopStep" } as const satisfies Record<string, MessageKey>;
+
+function replyForm(input: CardInput, t: Tr): CardNode {
+  return inner(
+    [{ type: "Input.Text", id: "text", label: t("teams.replyLabel"), isMultiline: true, isRequired: true, maxLength: ANSWER_TEXT_MAX, errorMessage: t("teams.errorNoText") }],
+    [{ type: "Action.Submit", title: t("teams.replySend"), style: "positive", data: { kind: "reply", ...ids(input) } }],
+  );
+}
+
+/**
+ * A loop notice as a card: the title, the reason and 'Open in NextUp' always; the buttons only for what the receiver may do (`rights`): Answer and Pass on on a
+ * case passed to a desk, Answer on a question to the raiser. A yes, a no and a step's help ask carry no buttons.
+ */
+export function loopCard(n: LoopNotice, rights: LoopRights, locale: Locale): Card {
+  const t = createT(locale);
+  const headerKey = n.loop === "decided" ? (n.decision === "no" ? "teams.kindLoopNo" : "teams.kindLoopYes") : LOOP_HEADERS[n.loop];
+  const reasonLabel = n.loop === "asked" ? "teams.factQuestion" : n.loop === "step" ? "teams.factHelp" : "teams.factReason";
+  const body: CardNode[] = [header(t(headerKey), n.markUrl), titleBlock(n.title)];
+  if (n.step) body.push(factSet([[t("teams.factStep"), clamp(n.step, SHOWN_LABEL_MAX)]]));
+  if (n.reasonText) body.push(tb(t(reasonLabel), { size: "small", isSubtle: true }), tb(clamp(n.reasonText, SHOWN_BODY_MAX), { maxLines: 5 }));
+  const actions: CardNode[] = [];
+  if (n.loop === "passed") {
+    if (rights.answer) actions.push({ type: "Action.ShowCard", title: t("teams.actionAnswer"), style: "positive", card: answerForm(n, t) });
+    if (rights.handOver) actions.push({ type: "Action.ShowCard", title: t("teams.actionHandOver"), card: handOverForm(n, t) });
+  } else if (n.loop === "asked" && rights.reply) {
+    actions.push({ type: "Action.ShowCard", title: t("teams.actionAnswer"), style: "positive", card: replyForm(n, t) });
+  }
+  if (n.link) actions.push(openUrl(t("teams.actionOpen"), n.link, actions.length === 0));
+  return card(body, actions);
 }
 
 /** Every other template: the subject, the text and a link. */
@@ -306,6 +415,7 @@ const RESULT_KEYS = {
   ask: "teams.resultAsk",
   handed: "teams.resultHanded",
   answeredBy: "teams.resultAnsweredBy",
+  replied: "teams.resultReplied",
 } as const satisfies Record<string, MessageKey>;
 
 /** After a raise, an answer or a hand-over. */
@@ -359,7 +469,14 @@ export type Submit = {
   caseId: string;
   cardId: string;
   answer?: "yes" | "no" | "ask";
+  /** The reason of a no, or the question. */
   text?: string;
+  /** A no's category: one the card offers. */
+  category?: CardNoCategory;
+  /** What would make it a yes. */
+  changeIf?: string;
+  /** The date the no comes back, as the card's date input sends it (YYYY-MM-DD): a real calendar date; the caller checks it against the company calendar. */
+  revisitDay?: string;
   toSeatId?: string;
   why?: string;
 };
@@ -379,10 +496,30 @@ function optionalText(v: unknown, max: number): string | undefined | null {
   return s === "" ? undefined : s;
 }
 
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** A date input's value: absent or blank → undefined; anything but a real calendar date YYYY-MM-DD → null (refuse). */
+function optionalDate(v: unknown): string | undefined | null {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  if (s === "") return undefined;
+  const m = ISO_DATE.exec(s);
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.toISOString().slice(0, 10) === s ? s : null;
+}
+
+/** A no's category: absent or blank → undefined; one the card offers → it; anything else (also Already solved or in work, which the card cannot carry) → null (refuse). */
+function optionalCategory(v: unknown): CardNoCategory | undefined | null {
+  if (v === undefined || v === null || v === "") return undefined;
+  return (CARD_NO_CATEGORIES as readonly unknown[]).includes(v) ? (v as CardNoCategory) : null;
+}
+
 /** The data a card sends back, checked; null when it is not one of ours. */
 export function parseSubmit(value: unknown): Submit | null {
   if (!isRecord(value)) return null;
-  const kind = (SUBMIT_KINDS as readonly unknown[]).includes(value.kind) ? (value.kind as SubmitKind) : null;
+  const kind = (PARSED_KINDS as readonly unknown[]).includes(value.kind) ? (value.kind as SubmitKind) : null;
   const caseId = idOf(value.caseId);
   const cardId = idOf(value.cardId);
   if (!kind || !caseId || !cardId) return null;
@@ -390,8 +527,22 @@ export function parseSubmit(value: unknown): Submit | null {
     const answer = value.answer;
     if (answer !== "yes" && answer !== "no" && answer !== "ask") return null;
     const text = optionalText(value.text, ANSWER_TEXT_MAX);
-    if (text === null) return null;
-    return { kind, caseId, cardId, answer, ...(text !== undefined ? { text } : {}) };
+    const category = optionalCategory(value.category);
+    const changeIf = optionalText(value.changeIf, CHANGE_IF_MAX);
+    const revisitDay = optionalDate(value.revisitDay);
+    if (text === null || category === null || changeIf === null || revisitDay === null) return null;
+    // The fields of a no mean nothing on a yes or a question: they are not carried along.
+    const no = answer === "no";
+    return {
+      kind, caseId, cardId, answer, ...(text !== undefined ? { text } : {}),
+      ...(no && category !== undefined ? { category } : {}),
+      ...(no && changeIf !== undefined ? { changeIf } : {}),
+      ...(no && revisitDay !== undefined ? { revisitDay } : {}),
+    };
+  }
+  if (kind === "reply") {
+    const text = optionalText(value.text, ANSWER_TEXT_MAX);
+    return text ? { kind, caseId, cardId, text } : null;
   }
   const toSeatId = idOf(value.toSeatId);
   const why = optionalText(value.why, WHY_MAX);

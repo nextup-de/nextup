@@ -15,8 +15,8 @@ describe("feedStage", () => {
   });
   it("a question out, a decision, building and shipped each get their own pill", () => {
     expect(feedStage({ ...base, status: "asked" }).label).toBe("Needs info");
-    expect(feedStage({ ...base, decided: { answer: "yes", reason: "", note: "", by: "M. Roth", day: 2 } })).toEqual({ label: "Approved", tone: "approved" });
-    expect(feedStage({ ...base, decided: { answer: "no", reason: "", note: "", by: "M. Roth", day: 2 } }).label).toBe("Not now");
+    expect(feedStage({ ...base, decided: { answer: "yes", reason: "", note: "", by: "M. Roth", day: 2, category: null, changeIf: "", revisitDay: null, duplicateOf: null } })).toEqual({ label: "Approved", tone: "approved" });
+    expect(feedStage({ ...base, decided: { answer: "no", reason: "", note: "", by: "M. Roth", day: 2, category: null, changeIf: "", revisitDay: null, duplicateOf: null } }).label).toBe("Not now");
     const c = reduce(SEED, emptyLog()).cases.find((x) => x.shipped);
     if (c) expect(feedStage(c).label).toBe("Shipped");
   });
@@ -82,6 +82,16 @@ describe("filters and sorts", () => {
     const quiet = [{ id: "old", backers: 0, raisedDay: 1, comments: 0, lastDay: 1 }, { id: "new", backers: 0, raisedDay: 9, comments: 0, lastDay: 9 }, { id: "talked", backers: 0, raisedDay: 5, comments: 2, lastDay: 7 }];
     expect(sortFeed(quiet, "support").map((x) => x.id)).toEqual(["talked", "old", "new"]);
     expect(sortFeed(quiet, "latest").map((x) => x.id)).toEqual(["new", "talked", "old"]);
+  });
+
+  it("puts what matters now first under Most relevant: support fades with quiet weeks, the reader's unit weighs more", () => {
+    const list = [
+      { id: "oldHit", backers: 6, raisedDay: 1, comments: 2, lastDay: 1 }, // 8 points, 8 weeks quiet
+      { id: "fresh", backers: 2, raisedDay: 55, comments: 0, lastDay: 57 },
+      { id: "mine", backers: 1, raisedDay: 50, comments: 0, lastDay: 56, own: true },
+    ];
+    expect(sortFeed(list, "relevant", 57).map((x) => x.id)).toEqual(["fresh", "mine", "oldHit"]);
+    expect(sortFeed(list, "support", 57).map((x) => x.id)).toEqual(["oldHit", "fresh", "mine"]);
   });
 });
 

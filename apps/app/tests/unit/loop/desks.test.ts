@@ -48,6 +48,20 @@ describe("LOOP desk suggestions", () => {
     expect(d.length).toBeLessThanOrEqual(3);
     expect(d.map((x) => x.routeId)).not.toContain("r-orphan");
   });
+  it("a vacant desk names who gets it instead: the holders of the route's deputy role", () => {
+    const withDeputy = routes.map((r) => (r.id === "r-safety" ? { ...r, deputyRoleId: "role-fin" } : r.id === "r-budget" ? { ...r, deputyRoleId: "role-it" } : r));
+    const by = (roleId: string) => otherDesks(withDeputy, seats, "", "en").find((x) => x.roleId === roleId);
+    expect(by("role-ehs")).toMatchObject({ vacant: true, deputies: ["Finance 1"] });
+    // A desk someone sits at keeps its raises, and a vacant one without a deputy role names nobody.
+    expect(by("role-fin")).toMatchObject({ vacant: false, deputies: [] });
+    expect(otherDesks(routes, seats, "", "en").find((x) => x.roleId === "role-ehs")?.deputies).toEqual([]);
+  });
+
+  it("a desk carries no answer yet: the caller that has the state fills it (plan OVL, D25)", () => {
+    expect(desksFor({ ...base, text: "safety guard and budget" }, "en").map((d) => d.answer)).toEqual([null, null]);
+    expect(otherDesks(routes, seats, "", "en").every((d) => d.answer === null)).toBe(true);
+  });
+
   it("a role without a seat holding a user is vacant", () => {
     const d = desksFor({ ...base, text: "safety budget laptop" }, "en");
     const by = (id: string) => d.find((x) => x.roleId === id);

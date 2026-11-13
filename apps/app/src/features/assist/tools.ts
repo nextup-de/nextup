@@ -8,13 +8,27 @@
 //     out here are accepted later (check.ts) - a made-up citation is dropped.
 import type { Knowledge, Profile } from "@/features/knowledge";
 import { canUse, type Level } from "./classify";
+import { markerOf } from "./redact";
 
 export type SourceKind = "profile" | "goal" | "role" | "route" | "doc";
 /** `url` is set for a file read live from Microsoft 365 - the only thing stored of it besides its title. */
 export type Source = { tag: string; kind: SourceKind; label: string; level: Level; url?: string };
 
-/** `url` is set for a hit from Microsoft 365 (source "m365"); company documents have none. */
-export type DocHit = { id: string; title: string; snippet: string; classification: string; source: string; url?: string };
+/**
+ * `url` is set for a hit from Microsoft 365 (source "m365"); company documents have none.
+ * `text` is a company document's whole text, set by the search only when it is at most WHOLE_DOC_CHARS
+ * long; Microsoft 365 hits never carry it (Graph gives a snippet).
+ */
+export type DocHit = { id: string; title: string; snippet: string; classification: string; source: string; url?: string; text?: string | null };
+
+/**
+ * A company document this short goes to the model whole instead of as an excerpt: a 60-word excerpt of an
+ * ERP table is two or three rows, and the model answered from the rows it happened to see
+ * (docs/test-phase/findings/AIT-live-2026-11-09.md, F1). The `api/` extracts of the test pack are 1-2.4 KB.
+ */
+export const WHOLE_DOC_CHARS = 4000;
+/** Most whole-document text one search hands the model (about 2,500 tokens); later hits stay excerpts. */
+export const WHOLE_TEXT_BUDGET = 8000;
 
 /** What the history keeps of a source (decision 8): title and link, never text from the file. */
 export const storedSource = ({ tag, kind, label, level, url }: Source): Source => ({ tag, kind, label, level, ...(url ? { url } : {}) });
@@ -59,7 +73,7 @@ export const TOOLS: ToolDef[] = [
   { name: "get_role", description: "What a role decides, its spend limit, its skills and whom it reports to. Look up by (part of) the role title.", input_schema: { type: "object", properties: { title: { type: "string" } }, required: ["title"] } },
   { name: "get_goals", description: "The company's goals with KPI, target and period. Optionally filtered by a query.", input_schema: { type: "object", properties: q } },
   { name: "get_company_profile", description: "Vision, mission, principles and business model.", input_schema: { type: "object", properties: {} } },
-  { name: "search_documents", description: "Search the company's documents and the person's Microsoft 365 files (policies, handbooks, process descriptions, checklists, reports, minutes, ERP extracts). Returns titles and snippets. Use the document's own words; German and English both work.", input_schema: { type: "object", properties: q, required: ["query"] } },
+  { name: "search_documents", description: "Search the company's documents and the person's Microsoft 365 files (policies, handbooks, process descriptions, checklists, reports, minutes, ERP extracts). Returns each hit's title with the whole text of a short company document, or an excerpt of a longer one or of a Microsoft 365 file. Use the document's own words; German and English both work.", input_schema: { type: "object", properties: q, required: ["query"] } },
 ];
 
 const WORD = /[\p{L}\p{N}€-]{3,}/gu;
@@ -72,6 +86,18 @@ function score(query: string, keywords: readonly string[], text: string): number
   const kw = keywords.filter((k) => k && ql.includes(k.toLowerCase())).length;
   const shared = [...words(text)].filter((x) => w.has(x)).length;
   return kw * 2 + shared;
+}
+
+/**
+ * A company document's whole text when it may go to the model whole, otherwise null (its excerpt goes).
+ * Never for Microsoft 365, never beyond WHOLE_DOC_CHARS or what is left of the search's budget, and never
+ * when the text is marked above the ceiling - a marker an excerpt could miss sends only the excerpt, as before.
+ */
+export function wholeText(d: DocHit, ceiling: Level, budget: number): string | null {
+  const t = d.url ? "" : (d.text ?? "").trim();
+  if (!t || t.length > WHOLE_DOC_CHARS || t.length > budget) return null;
+  const marker = markerOf(t);
+  return marker && !canUse(marker, ceiling) ? null : t;
 }
 
 const str = (input: unknown, key: string): string => {
@@ -144,9 +170,14 @@ export async function runTool(name: string, input: unknown, ctx: ToolContext, sr
       // line before the text reaches the model.
       const hits = (await ctx.searchDocuments(query, DOC_HITS)).filter((d) => canUse(d.classification, ctx.ceiling));
       if (!hits.length) return "No document matches.";
+      let budget = WHOLE_TEXT_BUDGET;
       return hits.map((d) => {
         const tag = src.add("doc", d.id, d.title, d.classification as Level, d.url);
-        return `[${tag}] ${d.title} (${sourceLabel(d)}): ${d.snippet}`;
+        const whole = wholeText(d, ctx.ceiling, budget);
+        if (whole === null) return `[${tag}] ${d.title} (${sourceLabel(d)}): ${d.snippet}`;
+        budget -= whole.length;
+        // Its own lines, so a table keeps its rows; the blank line ends it before the next hit.
+        return `[${tag}] ${d.title} (${sourceLabel(d)}), whole document:\n${whole}\n`;
       }).join("\n");
     }
     default:

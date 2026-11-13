@@ -22,10 +22,12 @@ import { stripTags } from "@/features/assist/check";
 import { hasDatabase } from "@/lib/db/client";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
 import { loadAiSettings } from "@/lib/db/ai";
+import { loadAiBudget, recordAiCall } from "@/lib/db/ai-usage";
 import { loadAssistSettings, purgeAssistTurns, recordTurns, type AssistSettings } from "@/lib/db/assist";
 import { searchDocumentsFor } from "@/server/assist-search";
 import { clientKey, throttle } from "@/server/throttle";
 import { streamingFor } from "@/server/ai";
+import { brainTarget } from "@/server/brain-health";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +78,8 @@ export async function POST(request: Request, { params }: Ctx) {
   const settings = audited ? await loadAssistSettings(viewer.companyId) : LOCAL;
   const stage = tenant.stage ?? "demo";
   const ai = audited ? await loadAiSettings(viewer.companyId, stage) : { settings: aiSettings(null, process.env, stage), key: null };
-  const gate = aiGate({ stage, hasDatabase: audited, settings: ai.settings, dpaSignedAt: settings.dpaSignedAt, purpose: "assist", assistantOn: settings.enabled, aiRouting: false });
+  const budget = audited ? await loadAiBudget(viewer.companyId) : null;
+  const gate = aiGate({ stage, hasDatabase: audited, settings: ai.settings, dpaSignedAt: settings.dpaSignedAt, purpose: "assist", assistantOn: settings.enabled, aiRouting: false, budget, stackBrain: brainTarget() !== null });
   if (!gate.on) return json({ error: gate.why, off: true }, 403);
 
   const seed = await seedFor(tenant.slug);
@@ -129,6 +132,9 @@ export async function POST(request: Request, { params }: Ctx) {
                   latencyMs: Date.now() - started, tokensIn: out.tokensIn, tokensOut: out.tokensOut,
                 },
               ]);
+          // The same answer as a call without person or text: retention and pseudonymising delete the turn, the month's
+          // budget must still count it. Stamped with the start, so it lies before its turn (lib/db/ai-usage.ts aiUsage).
+          if (!out.blocked) recordAiCall(viewer.companyId, { purpose: "assist", model: out.model, tokensIn: out.tokensIn, tokensOut: out.tokensOut, latencyMs: Date.now() - started, at: new Date(started) });
         }
         send("done", out.blocked
           ? { turnId, blocked: true, reason: out.reason, text: "", sources: [], unsourced: true, retentionDays }

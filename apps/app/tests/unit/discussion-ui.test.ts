@@ -171,7 +171,7 @@ describe("the author's line through the whole life", () => {
     expect(steps[2]).toEqual({ label: "In discussion", when: "round 1 of 3 · check-in d3", tone: "now" });
     const row = mineRow(c, 0, f, PROMISE_DAYS, 14, { rules: RULES, project: null });
     expect(row.status).toBe("In discussion");
-    expect(row.clock).toBe("In discussion · round 1 of 3 · next check-in d3.");
+    expect(row.clock).toBe("In discussion · round 1 of 3 · Decision expected by d9."); // SEE D13: the day the decision is expected, not the check-in
     expect(row.reply).toBe("Still missing: A quote");
   });
   it("after a yes the project's steps follow: planning, in progress (x of y), done, measured, recognised", () => {
@@ -197,7 +197,7 @@ describe("the author's line through the whole life", () => {
     expect(lifeSteps(c, f, { rules: RULES, project: null }).map((s) => s.label)).toEqual(["Sent", "Read", "Declined"]);
   });
   it("the measure reads as the verdict with before → after", () => {
-    expect(measuredLabel({ baseline: { none: false, metric: "m", unit: "min", value: 42, better: "down", source: "", day: 0, by: "" }, measures: [{ check: 30, value: 31, source: "", note: "", day: 0, by: "", byUserId: null, sourceKind: "typed", sourceInfo: { kind: "typed" }, impact: null, confirmed: true, confirmedByUserId: null, confirmedDay: null, verdict: "better", changePct: -26 }], verdict: "better" })).toBe("better (42 → 31 min)");
+    expect(measuredLabel({ baseline: { none: false, metric: "m", unit: "min", value: 42, better: "down", source: "", day: 0, by: "" }, measures: [{ check: 30, value: 31, source: "", note: "", day: 0, by: "", byUserId: null, sourceKind: "typed", sourceInfo: { kind: "typed" }, impact: null, confirmed: true, confirmedByUserId: null, confirmedDay: null, verdict: "better", changePct: -26, sentBack: false, reentered: false, managerOnly: false, questions: [], previous: [] }], verdict: "better" })).toBe("better (42 → 31 min)");
     expect(measuredLabel({ baseline: null, measures: [], verdict: null })).toBe("not measured");
   });
   it("old seed cases that went to a build keep their four steps", () => {

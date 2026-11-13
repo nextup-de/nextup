@@ -5,12 +5,15 @@
 // choice and is never touched. Not a "use server" module: server/actions/events.ts calls it.
 import { aiGate } from "@/features/ai/gate";
 import type { EventPayload, RouteProposal } from "@/features/cases/events";
+import type { CaseProposal } from "@/features/cases/events/case";
 import { seedFor } from "@/features/demo";
+import { routingTextHash } from "@/features/ideas/drafts";
 import { propose, ROUTER_VERSION } from "@/features/routing";
 import { loadAiSettings } from "@/lib/db/ai";
+import { loadAiBudget } from "@/lib/db/ai-usage";
 import { loadAiRouting, loadAssistSettings } from "@/lib/db/assist";
 import { getDb, hasDatabase } from "@/lib/db/client";
-import { askBrain } from "@/server/brain";
+import { askBrain, brainConfigured } from "@/server/brain";
 
 const DEFAULT_RAISE_TIMEOUT_MS = 8000;
 
@@ -33,10 +36,10 @@ async function brainProposal(slug: string, companyId: string, payload: EventPayl
   if (!hasDatabase()) return null;
   const company = await getDb().company.findUnique({ where: { id: companyId }, select: { stage: true } });
   if (!company) return null;
-  const [ai, assist, aiRouting] = await Promise.all([loadAiSettings(companyId, company.stage), loadAssistSettings(companyId), loadAiRouting(companyId)]);
+  const [ai, assist, aiRouting, budget] = await Promise.all([loadAiSettings(companyId, company.stage), loadAssistSettings(companyId), loadAiRouting(companyId), loadAiBudget(companyId)]);
   const gate = aiGate({
     stage: company.stage, hasDatabase: true, settings: ai.settings,
-    dpaSignedAt: assist.dpaSignedAt, purpose: "routing", assistantOn: assist.enabled, aiRouting,
+    dpaSignedAt: assist.dpaSignedAt, purpose: "routing", assistantOn: assist.enabled, aiRouting, budget, stackBrain: brainConfigured(),
   });
   if (!gate.on) return null;
   const answer = await ask(
@@ -47,19 +50,50 @@ async function brainProposal(slug: string, companyId: string, payload: EventPayl
 }
 
 /**
- * What is stored as payload.proposal of a case.raised. Never throws and never waits longer than
- * the timeout: any failure is the keyword proposal.
+ * The "raised before?" answer a raise keeps (plan SEE, D16): the case it looked like and the cases related to it. Routing is the server's
+ * own, but these are not routing: append/case.ts has already kept only those the person may open, so they ride along. A writer that does
+ * not go through that hook (Teams, API v1) has none to carry.
  */
-export async function proposeOnRaise(slug: string, companyId: string, payload: EventPayload, opts: ProposeOptions = {}): Promise<RouteProposal> {
+function withLooksLike(proposal: RouteProposal, payload: EventPayload): CaseProposal {
+  const sent = payload.proposal;
+  const related = Array.isArray(sent?.related) ? sent.related.filter((id): id is string => typeof id === "string") : [];
+  return { ...proposal, ...(typeof sent?.sameAs === "string" && sent.sameAs ? { sameAs: sent.sameAs } : {}), ...(related.length ? { related } : {}) };
+}
+
+/**
+ * The proposal the raiser saw (plan REM, R1): the raise page sends it as payload.proposal with `textHash`, the fingerprint of the text it was
+ * made for. It is reused only when that fingerprint is the one of the title and body being raised, so an edit since asks again, and only
+ * when it is a proposal this server could have made: a known route or none, a confidence of 0 to 100, one of the two sources. Null otherwise.
+ */
+async function shownProposal(slug: string, payload: EventPayload): Promise<RouteProposal | null> {
+  const sent: unknown = payload.proposal;
+  if (typeof sent !== "object" || sent === null) return null;
+  const { textHash, routeId, confidence, source, version } = sent as Record<string, unknown>;
+  if (typeof textHash !== "string" || textHash !== routingTextHash(payload.title ?? "", payload.body ?? "")) return null;
+  if (typeof confidence !== "number" || !Number.isFinite(confidence) || confidence < 0 || confidence > 100) return null;
+  if (source !== "keywords" && source !== "llm") return null;
+  if (typeof version !== "string" || version.length === 0 || version.length > 64) return null;
+  if (routeId !== null && typeof routeId !== "string") return null;
+  if (typeof routeId === "string" && !(await seedFor(slug)).routes.some((r) => r.id === routeId)) return null;
+  return { routeId, confidence, source, version };
+}
+
+/**
+ * What is stored as payload.proposal of a case.raised. Never throws and never waits longer than
+ * the timeout: any failure is the keyword proposal. A proposal the raiser saw for this same text is kept as it was, without asking again.
+ */
+export async function proposeOnRaise(slug: string, companyId: string, payload: EventPayload, opts: ProposeOptions = {}): Promise<CaseProposal> {
+  const shown = await shownProposal(slug, payload).catch(() => null);
+  if (shown) return withLooksLike(shown, payload);
   const ask = opts.ask ?? askBrain;
   const timeoutMs = opts.timeoutMs ?? raiseTimeout();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const slow = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), timeoutMs); });
     const brain = await Promise.race([brainProposal(slug, companyId, payload, ask).catch(() => null), slow]);
-    if (brain) return brain;
+    if (brain) return withLooksLike(brain, payload);
   } finally {
     clearTimeout(timer);
   }
-  return keywordProposal(slug, payload);
+  return withLooksLike(await keywordProposal(slug, payload), payload);
 }

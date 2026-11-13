@@ -116,11 +116,11 @@ test("the interview script: employee raises, team leader finds it, manager sees 
   await test.step("team leader: a second window, and the raise is in the inbox", async () => {
     await open(leader, home + "/raise");
     await viewAs(leader, "Team leader");
-    await expect(leader).toHaveURL(/\/leader$/);
+    await expect(leader).toHaveURL(/\/inbox$/);
     await expect(leader.getByRole("heading", { name: "Inbox", level: 1 })).toBeVisible();
     // A live company can already hold this title: an earlier attempt, or a run that overlapped this one.
     // The inbox lists the most urgent first and equal rows oldest first, so the last row is this run's.
-    const row = leader.getByRole("region", { name: "Fresh ideas" }).getByRole("button", { name: new RegExp("^" + SHOWN) }).last();
+    const row = leader.getByTestId("section-card").filter({ has: leader.getByRole("heading", { name: "Decide", exact: true }) }).getByRole("button", { name: new RegExp("^" + SHOWN) }).last();
     await expect(row).toBeVisible();
     await row.click();
   });

@@ -1,5 +1,5 @@
 "use client";
-// The last step of the setup process: the go-live checks, the hand list the app cannot check, and "Open
+// The last step of the setup process: the go-live checks and "Open
 // NextUp". Paper: "setup-step-open". The page's last check is shown, but the server runs the checks again before
 // it opens; a refusal comes back with fresh checks and replaces the list.
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { useState, useTransition } from "react";
 import { Banner, ConfirmDialog } from "@/components/ui/elements";
 import { SettingsHead } from "@/components/settings/SettingsParts";
 import { blockers, type GoLiveCheck } from "@/features/pilot/go-live";
-import { checkName } from "@/features/pilot/go-live-view";
+import { checkName, checkValues } from "@/features/pilot/go-live-view";
 import { useFormat, useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { checkGoLiveAction } from "@/server/actions/settings/go-live";
@@ -37,10 +37,6 @@ type Props = {
 };
 
 const MARK: Record<GoLiveCheck["state"], string> = { done: "✓", needs: "▲", unknown: "✕", unset: "–" };
-const HAND: MessageKey[] = [
-  "settingsSetupOpen.handAgreements", "settingsSetupOpen.handCouncil", "settingsSetupOpen.handRestore",
-  "settingsSetupOpen.handFindings", "settingsSetupOpen.handAccess",
-];
 
 export function OpenStep({ slug, company, prefix, openedAt, checks: first, checkedAt, held, links, demo }: Props) {
   const t = useT();
@@ -76,8 +72,11 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
         </section>
         {error ? <Banner tone="error">{error}</Banner> : null}
         <div className={s.doneFoot}>
-          <Link className={s.back} href={`${prefix}/settings/go-live`} data-testid="setup-open-golive">{t("settingsSetupOpen.toGoLive")}</Link>
-          <Link className={s.next} href={`${prefix}/leader`} data-testid="setup-to-inbox">{t("settingsSetup.toInbox")}</Link>
+          <Link className={s.back} href={`${prefix}/setup/done`} data-testid="setup-back">← {t("settingsSetup.back")}</Link>
+          <span className={s.doneEnd}>
+            <Link className={s.back} href={`${prefix}/settings/go-live`} data-testid="setup-open-golive">{t("settingsSetupOpen.toGoLive")}</Link>
+            <Link className={s.next} href={`${prefix}/leader`} data-testid="setup-to-inbox">{t("settingsSetup.toInbox")}</Link>
+          </span>
         </div>
       </section>
     );
@@ -85,12 +84,7 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
 
   const open = checks ? blockers(checks).length : 0;
   const ready = checks !== null && open === 0 && !demo;
-  const line = (c: GoLiveCheck) => {
-    const v: Record<string, string | number> = { ...c.values };
-    if (typeof v.time === "string") v.time = f.date(v.time, "dateTime");
-    if (typeof v.date === "string") v.date = f.date(v.date, "day");
-    return t(c.line, v);
-  };
+  const line = (c: GoLiveCheck) => t(c.line, checkValues(c, t, f.date));
   const recheck = () => start(async () => {
     const r = await checkGoLiveAction(slug);
     if (!r.ok) return setError(t("settingsSetupOpen.checksFailed"));
@@ -122,13 +116,16 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
         <h3 className={s.subLabel}>{t(label)}</h3>
         <ul className={o.rows}>
           {list.map((c) => {
-            const link = c.section ? links[c.section] : undefined;
+            // A check the console fixes (the AI) points there; the console is the operator's and sits at the stack's root, not under the company.
+            const found = c.console ? { href: c.console, label: t("settingsGoLive.linkConsoleAssistant") } : c.section ? links[c.section] : undefined;
+            const link = found && c.key === "agreements" ? { ...found, href: `${found.href}#agreements` } : found;
             return (
               <li key={c.key} className={o.row} data-state={c.state} data-testid={`setup-open-check-${c.key}`}>
                 <span className={o.mark} aria-hidden="true">{MARK[c.state]}</span>
                 <span className={o.text}>
                   <strong>{t(checkName(c))}</strong>
                   <span>{line(c)}</span>
+                  {c.pilot && c.state !== "done" ? <span className={o.pilot} data-testid="setup-open-pilot-needed">{t("settingsGoLive.pilotNeeded")}</span> : null}
                 </span>
                 {link && c.state !== "done" ? <Link className={s.textBtn} href={link.href}>{link.label}</Link> : <span />}
               </li>
@@ -172,7 +169,6 @@ export function OpenStep({ slug, company, prefix, openedAt, checks: first, check
         <ConfirmDialog
           title={t("settingsSetupOpen.dialogTitle", { company })}
           text={t("settingsSetupOpen.dialogIntro")}
-          lines={HAND.map((k) => t(k))}
           confirmLabel={t("settingsSetupOpen.dialogConfirm")}
           cancelLabel={t("settingsGoLive.cancel")}
           onConfirm={openNow}

@@ -252,3 +252,9 @@ limits, each asked twice:
 - **F3** unchanged: q06, q10, q17, q21.
 - q06, q10, q14 need the ceiling set to `confidential` for one run, then back to `internal`.
 - F9 needs one server log.
+
+## Run on `0db9d91` with the Musterwerk documents (2026-11-09)
+
+Julia's 15 questions once more, after #626 and #632: **11 of 15 pass** (q01 and q02 pass now; q12 found nothing this
+time), with q08 from the run above **12 of 21**, 0 leaks, 5 not run. Per question and the log window for q11, q12, q18
+and q19: `AIT-live-2026-11-09.md`.

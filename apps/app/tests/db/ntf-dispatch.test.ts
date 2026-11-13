@@ -44,7 +44,8 @@ async function raise(id: string): Promise<void> {
   expect(r.ok).toBe(true);
 }
 
-const rowsOf = (prefix: string) => db.outboxMessage.findMany({ where: { companyId, key: { startsWith: prefix } }, orderBy: { key: "asc" } });
+// The in-app copies (INB/D5) are tested in tests/db/inb-notices.test.ts; here only the outside rows.
+const rowsOf = (prefix: string) => db.outboxMessage.findMany({ where: { companyId, channel: { not: "inapp" }, key: { startsWith: prefix } }, orderBy: { key: "asc" } });
 const seqOf = async (id: string) => (await db.caseEvent.findFirstOrThrow({ where: { companyId, id } })).seq;
 const cursor = () => db.notifyCursor.findUniqueOrThrow({ where: { companyId } });
 
@@ -127,6 +128,20 @@ describe("NTF dispatcher", () => {
     await dispatchOnce();
     expect((await rowsOf("notify:r2")).length).toBe(ownerEmails.length);
     expect((await cursor()).leaseUntil).toBeNull();
+  });
+
+  it("plans nothing for a person who left (Q10.18)", async () => {
+    const gone = ownerEmails[0];
+    await db.user.updateMany({ where: { companyId, email: gone }, data: { active: false } });
+    try {
+      await raise("gone1");
+      await dispatchOnce();
+      const rows = await rowsOf("notify:gone1");
+      expect(rows.map((r) => r.address)).not.toContain(gone);
+      expect(rows.length).toBe(ownerEmails.length - 1);
+    } finally {
+      await db.user.updateMany({ where: { companyId, email: gone }, data: { active: true } });
+    }
   });
 });
 

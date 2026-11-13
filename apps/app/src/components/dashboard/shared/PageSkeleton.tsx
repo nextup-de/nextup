@@ -35,9 +35,11 @@ export function skeletonKindForPathname(pathname: string): SkeletonKind {
   return skeletonKindFor("/" + app.join("/"));
 }
 
-// `delay`: stay invisible for the first 400ms, so a fast device never sees the skeleton flash.
-// The views pass it (they wait for hydration); loading.tsx does not - on navigation the old page
-// is already gone, so a delayed skeleton would only mean a blank. CSS-only, so it runs pre-hydration.
+// `delay`: stay invisible for the first 400ms, so a fast answer never flashes the skeleton. Only for
+// waits that start on an already drawn page (a fetch, a Suspense inside the view). Not for a view
+// waiting for hydration: on a page load it replaces the skeleton loading.tsx was already showing, so
+// a delay there blanks the page for 400ms and the boxes come back - the page seems to load twice.
+// CSS-only, so it runs pre-hydration.
 export function PageSkeleton({ kind = "list", delay = false }: { kind?: SkeletonKind; delay?: boolean }) {
   const t = useT();
   const body =

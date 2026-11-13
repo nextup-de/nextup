@@ -306,6 +306,16 @@ export function whenLabel(iso: string, now: Date, locale: Locale = DEFAULT_LOCAL
   if (days < 7) return translate(locale, DAYS[d.getDay()]);
   return translate(locale, "ideas.whenDate", { day: d.getDate(), month: translate(locale, MONTHS[d.getMonth()]) });
 }
+// The sidebar's time groups: "today", "week" (the six days before) or "earlier", by calendar day like
+// whenLabel. Days back from the demo clock work too (dayGroup), for the sample cases that carry no date.
+export type WhenGroup = "today" | "week" | "earlier";
+export const dayGroup = (daysAgo: number): WhenGroup => (daysAgo <= 0 ? "today" : daysAgo < 7 ? "week" : "earlier");
+export function whenGroup(iso: string, now: Date): WhenGroup {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "earlier";
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  return dayGroup(Math.round((day(now) - day(d)) / 86_400_000));
+}
 export const clockLabel = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : clock(d); };
 
 // "Raise it, Sam": the first name when there is one, the whole name when it starts with an initial.

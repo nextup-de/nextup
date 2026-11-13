@@ -58,6 +58,7 @@ default for that key (`DEFAULT_RULES`):
 | `promise_days` | `{ days: int 1-60 }` | 5 |
 | `outcome_days` | `{ days: int 1-365 }` | 14 |
 | `spend` | `{ limitEur: int >= 0, text: string 1-200 }` | none |
+| `posting` | `{ as: "handle" \| "name" }`: who a member's idea is preselected as on the last look (decision Q1.7) | `handle` |
 
 **What `seedJson` still holds:** demo content only - problems, ideas, initiatives, outcomes,
 cases, waitingOn, stall, ledger, metrics, views, briefs, projects, personas, leaders, buddies.

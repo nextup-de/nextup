@@ -3,7 +3,7 @@
 // which Prisma cannot express) names it in SQL and re-applies the classification ceiling there.
 import { LEVELS, ceilingOf, rank, type Level } from "@/features/assist/classify";
 import { expandTerms, stem } from "@/features/assist/terms";
-import type { DocHit, Source } from "@/features/assist/tools";
+import { WHOLE_DOC_CHARS, type DocHit, type Source } from "@/features/assist/tools";
 import type { Hits } from "@/features/assist/redact";
 import { effectiveRules } from "@/features/privacy/retention";
 import { getDb } from "./client";
@@ -60,16 +60,21 @@ const MAX_TERMS = 20;
 /** Most hits one search returns. The assistant asks for 8 (features/assist/tools.ts). */
 export const MAX_DOC_HITS = 10;
 
-type DocRow = { id: string; title: string; snippet: string; classification: string; source: string };
+type DocRow = { id: string; title: string; snippet: string; classification: string; source: string; text: string | null };
 
-/** Best match first; on a tie the shorter title, so "Richtlinie" comes before its "Richtlinie - Kopie". */
+/**
+ * Best match first; on a tie the shorter title, so "Richtlinie" comes before its "Richtlinie - Kopie".
+ * Each hit carries an excerpt around the search words, and its whole text when the document is at most
+ * WHOLE_DOC_CHARS long (the tool decides whether that goes to the model, features/assist/tools.ts).
+ */
 export async function searchDocuments(companyId: string, ceiling: Level, text: string, limit = 4): Promise<DocHit[]> {
   const q = tsQuery(text);
   if (!q) return [];
   const allowed = LEVELS.filter((l) => rank(l) <= rank(ceilingOf(ceiling)));
   return getDb().$queryRaw<DocRow[]>`
     SELECT "id", "title", "classification", "source",
-           ts_headline('simple', "body", to_tsquery('simple', ${q}), 'MaxWords=60, MinWords=20, StartSel="", StopSel=""') AS "snippet"
+           ts_headline('simple', "body", to_tsquery('simple', ${q}), 'MaxWords=60, MinWords=20, StartSel="", StopSel=""') AS "snippet",
+           CASE WHEN length("body") <= ${WHOLE_DOC_CHARS} THEN "body" END AS "text"
     FROM "Document"
     WHERE "companyId" = ${companyId}
       AND "classification" = ANY(${allowed}::text[])

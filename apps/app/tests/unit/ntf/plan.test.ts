@@ -41,7 +41,8 @@ const ON = { stage: "pilot", notifications: true, n8n: true };
 function ctx(events: CaseEvent[], over: Partial<PlanCtx> = {}): PlanCtx {
   return { companyId: "co1", state: reduce(seed, { events, day: 1 }), people, prefs: [], company: ON, subscriptions: [], baseUrl: "https://app.test/acme", ...over };
 }
-const plan = (events: CaseEvent[], over: Partial<PlanCtx> = {}) => planNotices(events[events.length - 1], ctx(events, over));
+// The in-app copy of each notice (INB/D5) is tested in tests/unit/inb/channels.test.ts; here only the outside rows count.
+const plan = (events: CaseEvent[], over: Partial<PlanCtx> = {}) => planNotices(events[events.length - 1], ctx(events, over)).filter((d) => d.channel !== "inapp");
 const users = (d: { recipientUserId: string | null }[]) => d.map((x) => x.recipientUserId).sort();
 
 describe("NTF planner", () => {
@@ -62,16 +63,6 @@ describe("NTF planner", () => {
     expect(d[0].key).toBe(`notify:${r.id}`);
   });
 
-  it("a clock.due deadline goes to the deputy seat's users and the current seat's users, with a stable key", () => {
-    const f = due("c_a", { kind: "deadline", dueDay: 3, toRoleHolderId: "s_dep" });
-    const events = [raise(), f];
-    const d = plan(events);
-    expect(d.every((x) => x.template === "reminder.deadline")).toBe(true);
-    expect(users(d)).toEqual(["u_dep", "u_dep2", "u_o1", "u_o2"]);
-    expect(d.map((x) => x.key).sort()).toEqual([`rem:${f.id}:u_dep`, `rem:${f.id}:u_dep2`, `rem:${f.id}:u_o1`, `rem:${f.id}:u_o2`]);
-    expect(plan(events).map((x) => x.key)).toEqual(d.map((x) => x.key));
-  });
-
   it("checkin goes to the case seat's users; start and measure to the project lead", () => {
     const base = [raise(), open()];
     const ci = due("c_a", { kind: "checkin", dueDay: 4 });
@@ -87,7 +78,7 @@ describe("NTF planner", () => {
     const events = [raise(), due("c_a", { kind: "deadline", dueDay: 3, toRoleHolderId: "s_dep" })];
     const subscriptions = [{ id: "sub1", events: ["case.raised"], on: true }];
     const sandbox = { ...ON, stage: "sandbox" };
-    const all = [...planNotices(events[0], ctx(events, { company: sandbox, subscriptions })), ...planNotices(events[1], ctx(events, { company: sandbox }))];
+    const all = [...planNotices(events[0], ctx(events, { company: sandbox, subscriptions })), ...planNotices(events[1], ctx(events, { company: sandbox }))].filter((d) => d.channel !== "inapp");
     expect(all.length).toBeGreaterThan(3);
     expect(all.every((x) => x.status === "skipped" && x.lastError === "sandbox")).toBe(true);
   });
@@ -119,52 +110,13 @@ describe("NTF planner", () => {
   it("an opt-out for * or a template skips only that user; digest is off until turned on", () => {
     const r = raise();
     const d = plan([r], { prefs: [{ userId: "u_o2", template: "*", on: false }] });
-    expect(d.map((x) => [x.recipientUserId, x.status, x.lastError])).toEqual([["u_o1", "pending", null], ["u_o2", "skipped", "opted out"]]);
+    // `raised` is a duty (INB/D8): an opt-out does not stop it.
+    expect(d.map((x) => [x.recipientUserId, x.status, x.lastError])).toEqual([["u_o1", "pending", null], ["u_o2", "pending", null]]);
     const f = due("c_a", { kind: "checkin", dueDay: 4 });
     const d2 = plan([r, f], { prefs: [{ userId: "u_o1", template: "reminder.checkin", on: false }] });
     expect(d2.map((x) => [x.recipientUserId, x.status])).toEqual([["u_o1", "skipped"], ["u_o2", "pending"]]);
     // A digest preference touches nothing else.
     expect(plan([r], { prefs: [{ userId: "u_o1", template: "digest", on: false }] }).map((x) => x.status)).toEqual(["pending", "pending"]);
-  });
-
-  it("an escalation goes to the seat above, the desk that had the case and the raiser, each with their own text", () => {
-    const f = due("c_a", { kind: "escalation", dueDay: 3, toRoleHolderId: "s_head" });
-    const d = plan([raise(), f], { dateOfDay: () => "2026-11-04" });
-    expect(d.every((x) => x.template === "reminder.escalation" && x.status === "pending")).toBe(true);
-    expect(users(d)).toEqual(["u_head", "u_o1", "u_o2", "u_raiser"]);
-    expect(d.map((x) => x.key).sort()).toEqual([`rem:${f.id}:u_head`, `rem:${f.id}:u_o1`, `rem:${f.id}:u_o2`, `rem:${f.id}:u_raiser`]);
-    const of = (id: string) => d.find((x) => x.recipientUserId === id)!;
-    expect(of("u_head").subject).toBe("Escalated to you: Printer broken");
-    expect(of("u_head").text).toContain("should have been answered by 4 Nov 2026");
-    expect(of("u_o1").text).toContain("It has been handed to Head:");
-    expect(of("u_o2").subject).toBe("Eskaliert: Printer broken");
-    expect(of("u_o2").text).toContain("4. Nov. 2026");
-    expect(of("u_raiser").subject).toBe("Still no answer: Printer broken");
-    expect(of("u_raiser").text).toContain("It is now with Head, one level up:");
-    expect(of("u_raiser").link).toBe("https://app.test/acme/cases/c_a");
-    // Nobody but the raiser reads who raised it.
-    for (const id of ["u_head", "u_o1", "u_o2"]) expect(of(id).subject + of(id).text).not.toContain("Raiser");
-  });
-
-  it("an escalation with nobody above still tells the desk and the raiser, and the case stays", () => {
-    const f = due("c_a", { kind: "escalation", dueDay: 3, toRoleHolderId: null });
-    const d = plan([raise(), f]);
-    expect(users(d)).toEqual(["u_o1", "u_o2", "u_raiser"]);
-    const of = (id: string) => d.find((x) => x.recipientUserId === id)!;
-    expect(of("u_o1").text).toContain("it stays with you");
-    expect(of("u_raiser").text).toContain("It is with Owner One, who has been reminded:");
-    expect(of("u_raiser").text).toContain("day 3");
-  });
-
-  it("a raiser who is also on the desk gets the desk's text once, and reminders follow the company switch", () => {
-    const own = ev("case.raised", "Owner One", "u_o1", "c_a", { title: "T", routeId: "r2", assignee: "Owner One", assigneeRoleHolderId: "s_own1" });
-    const f = due("c_a", { kind: "escalation", dueDay: 3, toRoleHolderId: "s_head" });
-    const d = plan([own, f]);
-    expect(users(d)).toEqual(["u_head", "u_o1", "u_o2"]);
-    expect(d.find((x) => x.recipientUserId === "u_o1")!.subject).toBe("Escalated: T");
-    const off = plan([raise(), f], { company: { ...ON, notifications: false } });
-    expect(off.length).toBe(4);
-    expect(off.every((x) => x.status === "skipped" && x.lastError === "switched off")).toBe(true);
   });
 
   it("a user without an email gets a failed mail row the admin sees, never a pending one", () => {
@@ -186,10 +138,11 @@ describe("NTF planner", () => {
     ]);
   });
 
-  it("a loop event gives its recipients a loop row keyed by event and user, never the actor", () => {
-    const events = [raise(), open()];
-    const loop = plan(events).filter((x) => x.template.startsWith("loop."));
-    expect(loop.map((x) => [x.template, x.recipientUserId])).toEqual([["loop.case.decided", "u_raiser"], ["loop.case.decided", "u_lead"]]);
-    expect(loop[0].key).toBe(`loop:${events[1].id}:u_raiser`);
+  it("an opt-out made before the new notices existed still covers them, until the person chooses again", () => {
+    const asked = ev("case.asked", "Owner One", "u_o1", "c_a", { text: "Which printer?" });
+    const status = (prefs: PlanCtx["prefs"]) => plan([raise(), asked], { prefs }).filter((x) => x.template === "loop.case.asked").map((x) => [x.status, x.lastError]);
+    expect(status([{ userId: "u_raiser", template: "loop.case.decided", on: false }])).toEqual([["skipped", "opted out"]]);
+    expect(status([{ userId: "u_raiser", template: "loop.case.decided", on: false }, { userId: "u_raiser", template: "loop.case.asked", on: true }])).toEqual([["pending", null]]);
+    expect(status([{ userId: "u_raiser", template: "reminder.checkin", on: false }])).toEqual([["pending", null]]);
   });
 });

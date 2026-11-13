@@ -12,17 +12,30 @@ no settings; they sign in with their code (or Microsoft) as before.
 
 ## Sections
 
-In this order. Setup is not a section: it has its own pages, and while the company is closed the menu shows a pill that leads there.
+Settings has 19 sections: 17 in the menu and two out of it. They are `SETTINGS_SECTIONS` in `apps/app/src/features/settings/sections.ts`, in this
+order. Setup is not a section: it has its own pages, and while the company is closed the menu shows a pill that leads there.
 
 | Section | Path | What it does |
 |---|---|---|
+| Go-live | `settings/go-live` | The stage, the go-live checks and the Agreements card (below). |
 | Company | `settings/company` | Name, mark, vision, mission, principles, business model, compliance rules. |
-| Rules | `settings/rules` | Spend text, reward, measure days, and the company goals (title, KPI, target, period, keywords, unit). |
+| Rules | `settings/rules` | Spend text, reward, measure days, the day counts of the loop (`no_reason_min`, `appeal_days`, `question_days`, the answer promise), who a member's idea is preselected as on the last look (handle or name; CompanyRule `posting`), the fallback desk role, and the company goals (title, KPI, target, period, keywords, unit). |
+| Approvals | `settings/approvals` | The review role and its days, the approval rules and the councils (docs/process/GAT.md). |
 | Calendar | `settings/calendar` | Region, workdays, extra holidays and extra workdays (one calendar per company). |
 | Org | `settings/org` | Units, roles under a unit, seats under a role, and linking a seat to a member. |
-| Routing | `settings/routing` | Request types with keywords, owner / deputy / buddy role, wait, and order. |
+| Routing | `settings/routing` | Request types with keywords, owner / deputy / buddy role, wait, and order; the triage role and a review column per route. |
 | Members | `settings/members` | Add or invite people, new login codes, roles, seats, deactivate or delete, reset a manager's second factor. |
+| Import and export | `settings/import-export` | Bring the structure in from spreadsheets, or take it out. |
 | Notifications | `settings/notifications` | The company's switch, opt-out counts, failed outbox rows with Retry. |
+| Sign-in | `settings/sign-in` | How people sign in and how their accounts arrive: the Microsoft tenant id (shown here, set in the console on `/admin/people`), the OIDC and SAML cards, SCIM, and where the audit log goes. |
+| Support access | `settings/support-access` | The grant NextUp's team needs: a company admin opens it for 1, 4, 24 or 72 hours (4 is shown first) and may extend it, never past 72 hours from now; its log and the server's break-glass window. |
+| Microsoft Teams | `settings/teams` | The Teams switch (needs the stack's bot registration and the tenant id), the app package, a test card and the last card delivered. |
+| Areas | `settings/areas` | Areas and QR codes for raising from the shop floor. |
+| Data and privacy | `settings/privacy` | How long NextUp keeps what, and the company export (a person's export starts on Members). |
+| Audit log | `settings/audit` | Every change made to the company's setup; entries cannot be edited and are kept for 24 months. |
+| Pilot report | `settings/pilot-report` | The weekly pilot report. |
+| Webhooks | `settings/webhooks` | Out of the menu since the 6 Nov decision (CSV import stays); still at this path. |
+| API tokens | `settings/api-tokens` | Out of the menu like Webhooks; still at this path. |
 
 Test ids are `settings-<section>-<thing>`; the setup steps are `setup-step-<key>`.
 
@@ -54,8 +67,9 @@ created, and a company that existed before this rule stays open. While closed:
   Members. Their first code was never seen by anyone; Open mails a new one. Issuing a code by hand ends the wait.
 - The move to pilot is refused: Open comes first.
 
-`setup/open` shows the go-live checks and a dialog repeating the runbook's hand list. *Open NextUp* runs the checks again
-on the server (`canOpen`): every step and every needed check done, the same rule as the move to pilot, with no override.
+`setup/open` shows the go-live checks and a dialog repeating what is left of the runbook's hand list (restore test,
+security findings, leftover access). *Open NextUp* runs the checks again on the server (`canOpen`): every step and every
+needed check done, with no override. The move to pilot asks the same and, on top, reminders and the digest (below).
 It stores the time, writes `audit.company.opened`, then sends the held invitations. A mail that fails stays held, and the
 page offers to send again. The stage does not move and nobody is signed out.
 A case reaches a route's owner through the seat: a seat a leader is linked to puts the case in that leader's inbox,
@@ -71,7 +85,7 @@ status is one of done, your turn, waiting, problem or not used. `setupPhases(fac
 |---|---|---|---|
 | 1 | Server | NextUp and customer IT | mail relay, first good off-server backup |
 | 2 | Sign-in and directory | Customer IT | Microsoft sign-in, first good directory sync |
-| 3 | Connectors and AI | Customer IT | Microsoft 365, Jira, AI provider, signed agreement |
+| 3 | Connectors and AI | Customer IT | Microsoft 365, Teams, Jira, AI provider, signed agreement (none for the model on this stack, which waits on the stack's brain instead) |
 | 4 | Company context | System, started by a person | the background run |
 | 5 | Company to Members | Pilot lead | the five steps above |
 | 6 | Check and open | Customer admin | the five steps, the needed go-live checks, then opening |
@@ -87,13 +101,48 @@ status is one of done, your turn, waiting, problem or not used. `setupPhases(fac
   draft is reviewed on the Company step.
 - **Waiting.** The page refreshes itself every 15 seconds while phase 1 to 5 waits, and not at all otherwise. A hidden
   tab does not poll. Open's own waiting does not count: it waits for people, or for a backup phase 1 already waits for.
-- **Optional things.** No line in phases 2 and 3 stops Open by itself: only the go-live checks do. A company that decides
-  against Microsoft sign-in or every connector keeps "your turn" there, because nothing records that decision.
+- **Optional things.** No line in phases 2 and 3 stops Open by itself: only the go-live checks do. Each optional line
+  that is not in use (Microsoft sign-in, the directory sync, Microsoft 365 search, Teams, Jira, an AI that is off) has
+  **We do not use this** for a stack admin, with a one-line reason (Q9.1). It writes `audit.connector.declined
+  {system, reason}` and the line reads "<system>: not used, decided <date>. Reason: …"; **Use it after all** writes
+  `audit.connector.reopened`. The newest row per system decides (`features/settings/declined.ts`); there is no table.
+  A decision never blocks or passes a go-live check, is ignored once the system is on, and is not offered for a failing
+  Jira or an AI that still blocks Open (test model, missing agreement). "Nothing is connected yet" goes once every
+  system of phase 3 that is off has a decision. The console shows the decisions without the buttons.
+- **Teams.** Phase 3 has a Teams line: on when the switch is on, the stack's bot is set up and the tenant is known (as
+  the dispatcher decides), otherwise off, and every notice goes by mail. The switch itself is Settings → Microsoft Teams.
 - **NextUp's view.** `/admin/setup`, behind `consoleCompany()`, shows the same overview read-only, also to a support
   session. It only links to console pages, which keep their own rule for support.
 
-Tests: `apps/app/tests/unit/adm/setup-phases.test.ts`, `apps/app/tests/e2e/db/setup-overview.spec.ts`, and the stack
-admin and support session in `apps/app/tests/e2e/db/itc-console.spec.ts`.
+Tests: `apps/app/tests/unit/adm/setup-phases.test.ts`, `apps/app/tests/unit/adm/setup-declined.test.ts`,
+`apps/app/tests/db/setup-declined.test.ts`, `apps/app/tests/e2e/db/setup-overview.spec.ts`, and the stack admin and support
+session in `apps/app/tests/e2e/db/itc-console.spec.ts`.
+
+### Go-live: agreements and the move to pilot
+
+Settings → Go-live has an **Agreements** card (Q9.4) for what is signed outside NextUp: the data-processing agreement
+with NextUp, the works agreement, the IT security approval, the DPIA, and the information to employees about the AI.
+Each takes the date it was signed and the signer's role (a role, never a name), or "not needed" with a one-line reason;
+for the works agreement that reads **No works council**. The DPA and the AI information have no "not needed". A save
+writes `audit.company.agreement {kind, status, date, signer | reason}`; the newest row per kind is the record
+(`features/pilot/agreements.ts`), there is no table.
+
+The go-live check **Agreements** is needed, so it blocks Open and the move to pilot: the DPA always, the works agreement
+unless "no works council" is recorded, and the AI information while the AI is not off. The IT security approval and the
+DPIA are recorded, not checked.
+
+**Reminders and digest** (`CompanyConfig.notifications`) is recommended for Open and needed for the move to pilot
+(Q9.7), because the promise and the deputy hand-over depend on reminders. The Open step marks it "needed for the move to
+pilot"; Go-live lists it with the needed checks (`levelAt(check, "pilot")`, `blockers(checks, "pilot")`).
+
+The retention run keeps the rows of the agreements and of "We do not use this" past the audit log's 24 months
+(`AUDIT_KEPT_ACTIONS` in `features/privacy/retention.ts`): they are state, not history.
+
+Settings → Data and privacy names the date stored with the AI settings "AI provider's agreement": it is the AI provider's
+agreement, not the DPA with NextUp, which is on the Agreements card.
+
+Tests: `apps/app/tests/unit/pil/agreements.test.ts`, `apps/app/tests/unit/pil/open.test.ts`, `apps/app/tests/db/setup-open.test.ts`,
+`apps/app/tests/db/pil-stage.test.ts`, and the card in `apps/app/tests/e2e/db/admin-setup.spec.ts`.
 
 ## Second factor and break-glass
 
@@ -108,8 +157,10 @@ admin and support session in `apps/app/tests/e2e/db/itc-console.spec.ts`.
   sealed secret, logs `[auth] totp reset <ISO time>` without personal data, and the person enrols again at their next
   login. Nobody resets their own.
 - **Stack admin (`/admin`).** Opens for a Microsoft sign-in with the `NextUp.Admin` role, or for a user with
-  `isStackAdmin` who signs in with code and TOTP. `ADMIN_ACCESS_CODE` still opens it as **break-glass**: every use
-  writes `[admin] break-glass <ISO time>` and `/admin` shows the banner "Opened with the shared code" for that session.
+  `isStackAdmin` who signs in with code and TOTP. **Break-glass** on a real stage is a window the host's operator opens
+  with `stack/break-glass.sh` (its code works until the window closes); `ADMIN_ACCESS_CODE` opens it on a demo stage
+  only. Every use writes `[admin] break-glass <ISO time>` and an `audit.access.break_glass` row, and `/admin` shows the
+  banner for that session.
   After a company is created, `/admin` is not needed to configure it.
 
 ## ADM gaps
@@ -135,4 +186,4 @@ Open items from the plan's questions, decided by their defaults:
 
 Acceptance: `apps/app/tests/e2e/db/admin-setup.spec.ts` creates an empty closed company, and its manager enrols TOTP,
 runs the steps and links the leader to the seat on Members. A member cannot sign in; Open is refused until the calendar is
-saved; after Open the leader's held invitation goes out, and a member's case about the rig reaches that leader.
+saved and the DPA and "no works council" are recorded on Go-live; after Open the leader's held invitation goes out, and a member's case about the rig reaches that leader.

@@ -2,7 +2,8 @@
 // record the outcome. claimDue counts the attempt and leases the row, so two runs never send one row twice.
 import type { NotifyMessage, NotifyResult } from "@nextup/contracts/public";
 import { getDb } from "@/lib/db/client";
-import { claimDue, markFailed, markRetry, markSent, markSkipped, type OutboxRow } from "@/lib/db/outbox";
+import { claimDue, enqueue, markFailed, markRetry, markSent, markSkipped, type OutboxRow } from "@/lib/db/outbox";
+import { failedWithMail, mailInstead, TEAMS_ATTEMPTS } from "@/features/notify/fallback";
 import { PILOT_REPORT_TEMPLATE } from "@/features/pilot/report-mail";
 import { MAIL_WAITING } from "./channels/mail";
 import { channelFor } from "./registry";
@@ -52,6 +53,26 @@ async function pilotReportBlock(row: OutboxRow): Promise<string | null> {
   return null;
 }
 
+/**
+ * A Teams card that could not be delivered: write the mail for the same notice (decision Q2.11). True when the
+ * person has an address, so a mail row for this notice exists; its key stops a second one. Never throws: the
+ * card is settled either way.
+ */
+async function writeMailInstead(row: OutboxRow): Promise<boolean> {
+  if (row.channel !== "teams" || !row.recipientUserId) return false;
+  try {
+    // Scoped by the row's company: a user of another company is simply not found. Someone who left gets no mail.
+    const user = await getDb().user.findFirst({ where: { id: row.recipientUserId, companyId: row.companyId, active: true }, select: { email: true } });
+    const draft = mailInstead(row, user?.email ?? null);
+    if (!draft) return false;
+    await enqueue(row.companyId, [draft]);
+    return true;
+  } catch (e) {
+    console.warn("[notify] teams", row.id, "failed, and no mail could be written instead:", e instanceof Error ? e.message : String(e));
+    return false;
+  }
+}
+
 export async function deliverOnce(now: Date = new Date()): Promise<DeliverCount> {
   const count: DeliverCount = { sent: 0, retried: 0, failed: 0, waiting: 0 };
   const rows = await claimDue(now, DELIVER_BATCH);
@@ -85,12 +106,19 @@ export async function deliverOnce(now: Date = new Date()): Promise<DeliverCount>
         data: { attempt: row.attempt - 1, nextAt: new Date(now.getTime() + WAIT_MS), status: "pending" },
       });
       count.waiting++;
-    } else if (!result.retryable || row.attempt >= MAX_ATTEMPTS) {
-      await markFailed(row.id, result.error);
-      count.failed++;
     } else {
-      await markRetry(row.id, new Date(now.getTime() + BACKOFF_MS[row.attempt - 1]), result.error);
-      count.retried++;
+      // A card is given up early for the mail (TEAMS_ATTEMPTS), but only when there is a mail to write: a person
+      // without an address keeps the whole ladder.
+      const over = !result.retryable || row.attempt >= MAX_ATTEMPTS;
+      const tryMail = row.channel === "teams" && (over || row.attempt >= TEAMS_ATTEMPTS);
+      const mailed = tryMail ? await writeMailInstead(row) : false;
+      if (over || mailed) {
+        await markFailed(row.id, mailed ? failedWithMail(result.error) : result.error);
+        count.failed++;
+      } else {
+        await markRetry(row.id, new Date(now.getTime() + BACKOFF_MS[row.attempt - 1]), result.error);
+        count.retried++;
+      }
     }
   }
   return count;

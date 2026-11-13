@@ -17,7 +17,7 @@ export function ProgressView() {
   const { S, demo, ready, flag } = ctx;
   const t = useT();
   const fmt = useFormat();
-  if (!ready) return <PageSkeleton kind="list" delay />;
+  if (!ready) return <PageSkeleton kind="list" />;
   const on = flag("projects");
   const list = on ? visibleProjectsFor(S, idViewerOf(ctx), demo) : [];
   const L = projectLedger(list, S.day);
@@ -43,9 +43,10 @@ export function ProgressView() {
                     <div className={ui.rowMeta}>{t("progress.startWaitSub", { count: L.notStarted })}</div>
                   </div>}
                   {L.measureMedian !== null && <div className={ui.tile}><div className={styles.bigV}>{days(L.measureMedian)}</div><div className={ui.tileL}>{t("progress.measureWait")}</div></div>}
-                  <div className={ui.tile}><div className={styles.bigV}>{L.moved}</div><div className={ui.tileL}>{t("progress.moved")}</div></div>
-                  <div className={ui.tile}><div className={styles.bigV} data-hot={L.measuresOwed > 0 ? "true" : undefined}>{L.measuresOwed}</div><div className={ui.tileL}>{t("progress.owed")}</div></div>
-                  <div className={ui.tile}><div className={styles.bigV}>{L.withoutNumber}</div><div className={ui.tileL}>{t("progress.withoutNumber")}</div></div>
+                  {/* The counts show only above 0 (lib/utils/quiet.ts). */}
+                  {L.moved > 0 && <div className={ui.tile}><div className={styles.bigV}>{L.moved}</div><div className={ui.tileL}>{t("progress.moved")}</div></div>}
+                  {L.measuresOwed > 0 && <div className={ui.tile}><div className={styles.bigV} data-hot="true">{L.measuresOwed}</div><div className={ui.tileL}>{t("progress.owed")}</div></div>}
+                  {L.withoutNumber > 0 && <div className={ui.tile}><div className={styles.bigV}>{L.withoutNumber}</div><div className={ui.tileL}>{t("progress.withoutNumber")}</div></div>}
                 </div>
               )}
             </SectionCard>

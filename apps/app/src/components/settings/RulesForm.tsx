@@ -3,7 +3,7 @@
 // cards; any Save sends all of it.
 import { useActionState, useState } from "react";
 import type { RulesForm as Values } from "@/features/settings/company-forms";
-import { LOOP_DEFAULTS, type RewardKind } from "@/features/loop/rules";
+import { LOOP_DEFAULTS, overloadAtOf, type RewardKind } from "@/features/loop/rules";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { saveRulesAction, type SettingsFormState } from "@/server/actions/settings/company";
@@ -14,10 +14,10 @@ const REWARDS: RewardKind[] = ["none", "thanks", "fixed", "share"];
 const STEPS = ["discussion", "projects", "measure", "recognition"] as const;
 const rewardLabel = (k: RewardKind) => `settingsCompany.reward${k[0].toUpperCase()}${k.slice(1)}` as MessageKey;
 
-function Num({ id, tid, value, size = "num", invalid }: { id: string; tid: string; value: number | string; size?: "num" | "money"; invalid?: boolean }) {
+function Num({ id, tid, value, size = "num", invalid, label }: { id: string; tid: string; value: number | string; size?: "num" | "money"; invalid?: boolean; label?: string }) {
   return (
     <input className={s.input} data-size={size} id={id} name={id} type="number" inputMode="numeric" defaultValue={value}
-      aria-invalid={invalid || undefined} data-testid={`settings-rules-${tid}`} />
+      aria-invalid={invalid || undefined} aria-label={label} data-testid={`settings-rules-${tid}`} />
   );
 }
 
@@ -65,6 +65,7 @@ export function RulesForm({ slug, values, demo }: { slug: string; values: Values
   const err = (f: string) => (state.field === f && state.error ? t(state.error) : undefined);
   const { rules, loop } = values;
   const days = t("settingsCompany.daysUnit");
+  const overload = overloadAtOf(rules);
   const formError = state.error && !state.field ? t(state.error) : undefined;
   const status = formError ?? (state.ok ? t("settingsCompany.saved") : demo ? t("settingsCompany.demoData") : undefined);
   const foot = (last?: boolean) => (
@@ -166,6 +167,50 @@ export function RulesForm({ slug, values, demo }: { slug: string; values: Values
         <Row id="escalationDays" label={t("settingsCompany.escalateAfter")} wide help={t("settingsCompany.escalateHelp")} error={err("escalationDays")}>
           <div className={s.inline}><Num id="escalationDays" tid="escalation-days" value={rules.escalationDays ?? LOOP_DEFAULTS.escalationDays} invalid={Boolean(err("escalationDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
         </Row>
+        <Row id="projectStartDays" label={t("settingsCompany.projectStartDays")} wide help={t("settingsCompany.projectStartHelp")} error={err("projectStartDays")}>
+          <div className={s.inline}><Num id="projectStartDays" tid="project-start-days" value={rules.projectStartDays ?? LOOP_DEFAULTS.projectStartDays} invalid={Boolean(err("projectStartDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
+        </Row>
+        {/* The reasoned no (plan NOR, D23). */}
+        <Row id="noReasonMin" label={t("settingsCompany.noReasonMin")} wide help={t("settingsCompany.noReasonMinHelp")} error={err("noReasonMin")}>
+          <div className={s.inline}><Num id="noReasonMin" tid="no-reason-min" value={rules.noReasonMin ?? LOOP_DEFAULTS.noReasonMin} invalid={Boolean(err("noReasonMin"))} /><span className={s.unit}>{t("settingsCompany.charactersUnit")}</span></div>
+        </Row>
+        <Row id="appealDays" label={t("settingsCompany.appealDays")} wide help={t("settingsCompany.appealDaysHelp")} error={err("appealDays")}>
+          <div className={s.inline}><Num id="appealDays" tid="appeal-days" value={rules.appealDays ?? LOOP_DEFAULTS.appealDays} invalid={Boolean(err("appealDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
+        </Row>
+        <Row id="questionDays" label={t("settingsCompany.questionDays")} wide help={t("settingsCompany.questionDaysHelp")} error={err("questionDays")}>
+          <div className={s.inline}><Num id="questionDays" tid="question-days" value={rules.questionDays ?? LOOP_DEFAULTS.questionDays} invalid={Boolean(err("questionDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
+        </Row>
+        {/* Plan REM (Q6.2): the thresholds of a busy desk (OVL D17) and the days a blocked step may stand (MOV). */}
+        <Row id="overloadTriage" label={t("settingsCompany.overloadAt")} wide help={t("settingsCompany.overloadAtHelp")} error={err("overloadAt")}>
+          <div className={s.inline}>
+            {([["overloadTriage", "triage", "triage"], ["overloadUp", "up", "up"], ["overloadOverflow", "overflow", "overflow"], ["overloadLate", "late", "late"]] as const).map(([id, key, tid]) => (
+              <span key={id} className={s.inline}>
+                <Num id={id} tid={`overload-${tid}`} value={overload[key]} label={t(`settingsCompany.${id}` as MessageKey)} invalid={Boolean(err("overloadAt"))} />
+                <span className={s.unit}>{t(`settingsCompany.${id}` as MessageKey)}</span>
+              </span>
+            ))}
+          </div>
+        </Row>
+        <Row id="blockedDays" label={t("settingsCompany.blockedDays")} wide help={t("settingsCompany.blockedDaysHelp")} error={err("blockedDays")}>
+          <div className={s.inline}><Num id="blockedDays" tid="blocked-days" value={rules.blockedDays ?? LOOP_DEFAULTS.blockedDays} invalid={Boolean(err("blockedDays"))} /><span className={s.unit}>{t("settingsCompany.workingDaysUnit")}</span></div>
+        </Row>
+        {foot()}
+      </Card>
+
+      {/* Decision Q1.7: who a member's raise is preselected as. The member can change it per raise on the last look. */}
+      <Card title={t("settingsCompany.cardPosting")}>
+        <fieldset className={s.radioGroup}>
+          <legend className={s.help}>{t("settingsCompany.postAsLegend")}</legend>
+          <label className={s.radio}>
+            <input type="radio" name="postAs" value="handle" defaultChecked={rules.postAs !== "name"} data-testid="settings-rules-post-handle" />
+            {t("settingsCompany.postAsHandle")}
+          </label>
+          <label className={s.radio}>
+            <input type="radio" name="postAs" value="name" defaultChecked={rules.postAs === "name"} data-testid="settings-rules-post-name" />
+            {t("settingsCompany.postAsName")}
+          </label>
+        </fieldset>
+        <p className={s.help}>{t("settingsCompany.postAsHelp")}</p>
         {foot(true)}
       </Card>
     </form>

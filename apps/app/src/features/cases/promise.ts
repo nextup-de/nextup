@@ -2,6 +2,7 @@
 // that held, and who holds the case now. Pure: today is passed in, never read from the system clock.
 import { dateOfWorkday } from "@/features/clock/calendar";
 import type { ClockSpec } from "@/features/clock";
+import { expectedByDay } from "./raiser-view";
 import type { ReducedCase } from "./reducer";
 
 export type AnswerPromiseState = "waiting" | "due-today" | "late" | "answered-on-time" | "answered-late";
@@ -16,6 +17,10 @@ export type AnswerPromise = {
   handedDay: number | null; // the deadline hand-over
   escalatedRoleId: string | null; // the deputy role told while the owner keeps the case
   answeredDay: number | null;
+  /** While the case is in a discussion: the day the decision is expected (D13), shown in place of the answer date; null otherwise. */
+  expectedBy: number | null;
+  /** The case is in review (the answer date still runs, D15) or waits for approval (its clock is stopped, D21); absent on every other case. */
+  stage?: "review" | "approval";
 };
 
 export function answerPromise(c: ReducedCase, ctx: { today: number; clock: ClockSpec }): AnswerPromise {
@@ -40,5 +45,7 @@ export function answerPromise(c: ReducedCase, ctx: { today: number; clock: Clock
     handedDay,
     escalatedRoleId: holder === "owner" ? c.escalated?.toRoleId ?? null : null,
     answeredDay,
+    expectedBy: expectedByDay(c),
+    ...(c.status === "approval" ? { stage: "approval" as const } : c.review?.state === "pending" ? { stage: "review" as const } : {}),
   };
 }

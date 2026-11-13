@@ -5,7 +5,7 @@ export type Role = (typeof ROLES)[number];
 // Where each role lands after login (relative to /[company]).
 export const ROLE_HOME: Record<Role, string> = {
   manager: "/dashboard", // Dashboard
-  leader: "/leader", // Inbox
+  leader: "/inbox", // Inbox (one page for every role: /inbox has no entry in ROLE_ACCESS below)
   member: "/raise", // Raise a problem or an idea
 };
 

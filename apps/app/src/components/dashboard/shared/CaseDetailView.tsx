@@ -13,13 +13,24 @@ import { translate, type MessageKey, type T } from "@/i18n";
 import { reasonTone, statusTone, type Tone } from "@/components/dashboard/shared/primitives";
 import { DeptChip, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
 import { AnswerPromise } from "@/components/cases/AnswerPromise";
+import { CaseRelations } from "@/components/cases/CaseRelations";
 import { CaseRouting } from "@/components/cases/CaseRouting";
+import { useRelatedCase, type Related } from "@/components/cases/useRelatedCase";
+import { MoveToDesk } from "@/components/cases/MoveToDesk";
 import { seesRouting } from "@/features/cases/routing-trail";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
+import { ApprovalsBlock } from "@/components/cases/ApprovalsBlock";
+import { CostField } from "@/components/cases/CostField";
+import { ReviewBlock } from "@/components/cases/ReviewBlock";
 import { roundState } from "@/features/cases/discussion";
 import type { CaseEvent } from "@/features/cases/events";
 import { actorLabel, type ActorLabels } from "@/features/cases/actor-label";
+import { caseActions } from "@/features/cases/case-actions";
+import { followHref } from "@/features/cases/links";
+import { isHandle } from "@/features/projects/views";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
+import { isOpenDraft, mayReadDraft } from "@/features/projects/views";
+import { isPrivateIdea } from "@/features/cases/visibility";
 import { raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
 import { readableComment } from "@/features/cases/notice";
@@ -28,13 +39,13 @@ import { loadShots } from "@/lib/shots";
 import styles from "./CaseDetailView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
-const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped" } as const satisfies Record<string, MessageKey>;
+const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.statusInDiscussion", asked: "dashboard.statusQuestion", decided: "dashboard.statusDecided", building: "dashboard.statusBuilding", shipped: "dashboard.statusShipped", withdrawn: "dashboard.statusWithdrawn", merged: "caseSee.statusMerged", approval: "approvals.waitsForApproval" } as const satisfies Record<string, MessageKey>;
 
 // The status and reason chips in soft tints: a case that waits is amber, a result is green, the rest stays grey.
 const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", ink: "green", ok: "green", grey: "grey", soft: "grey", ghost: "grey", none: "grey", purple: "grey" };
 
 // Facts in, one sentence out - nothing here is stored.
-function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined): string {
+function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined, other: (id: string | undefined) => Related | null): string {
   const p = e.payload;
   const actor = actorLabel(e, labels);
   switch (e.type) {
@@ -45,26 +56,35 @@ function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined): string {
     case "case.invited": return t("dashboard.evInvited", { actor, names: (p.invited ?? []).join(", ") });
     case "case.revised": return t("dashboard.evRevised", { actor }) + (typeof p.overall === "number" ? " " + t("dashboard.evScore", { n: p.overall }) : "");
     case "case.checkin": return t("dashboard.evCheckin", { actor, next: p.next === "decide" ? t("dashboard.evReadyToDecide") : t("dashboard.evAnotherRound") }) + (p.open?.length ? " " + t("dashboard.evOpenList", { list: p.open.join(", ") }) : "");
-    case "case.handed": return t("dashboard.evHanded", { actor, to: p.to ?? "" }) + (p.why ? " " + t("dashboard.evHandedWhy", { why: p.why }) : "");
+    case "case.handed": return p.why === "vacant" ? t("dashboard.evHandedVacant", { to: p.to ?? "" }) : t("dashboard.evHanded", { actor, to: p.to ?? "" }) + (p.why ? " " + t("dashboard.evHandedWhy", { why: p.why }) : "");
     case "case.asked": return t("dashboard.evAsked", { actor, text: p.text || t("dashboard.evOneQuestion") });
     case "case.answered": return t("dashboard.evAnswered", { actor, text: p.text ?? "" });
+    case "case.unanswered": return t("dashboard.evUnanswered");
+    case "case.withdrawn": return p.note ? t("dashboard.evWithdrawnWhy", { actor, why: p.note }) : t("dashboard.evWithdrawn", { actor });
     case "case.building": return t("dashboard.evBuilding", { actor }) + (p.expected ? " " + t("dashboard.evExpected", { x: p.expected }) : "") + (p.days ? t("dashboard.evDaysSuffix", { n: p.days }) : "");
     case "case.shipped": return t("dashboard.evShipped", { actor, outcome: p.outcome ?? "" }) + (p.outcomeNote ? " " + t("dashboard.evParen", { note: p.outcomeNote }) : "");
     case "case.override": return t("dashboard.evOverride", { actor });
+    // The other case's title only when the viewer may open it; a stripped or hidden target reads as "another one" (plan SEE, D17).
+    case "case.merged": { const r = other(p.into); return (r?.title ? t("loopCase.evMergedInto", { actor, title: r.title }) : t("loopCase.evMerged", { actor })) + (p.note ? t("dashboard.evNoteSuffix", { note: p.note }) : ""); }
+    case "case.linked": { const r = other(p.to); return r?.title ? t("loopCase.evLinked", { actor, title: r.title }) : t("loopCase.evLinkedOther", { actor }); }
     default: return actor + " · " + e.type;
   }
 }
 
-export function CaseDetailView({ caseId }: { caseId: string }) {
+/** `raiserInactive`: the server says the person who raised it by name has left (D20); false in the demo and without a database. */
+export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: string; raiserInactive?: boolean }) {
   const ctx = useDemo();
+  const related = useRelatedCase();
   const { S, log, href, ready, f, me, role, act, openSheet, showToast, tenant, flag } = ctx;
   const router = useRouter();
   const t = useT();
   const [note, setNote] = useState("");
   const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
   const [asking, setAsking] = useState(false); // the why field is open
+  const [withdrawing, setWithdrawing] = useState(false); // the raiser's "Withdraw" line is open (decision Q1.14)
+  const [withdrawWhy, setWithdrawWhy] = useState("");
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
-  if (!ready) return <PageSkeleton kind="detail" delay />;
+  if (!ready) return <PageSkeleton kind="detail" />;
   const c = S.cases.find((x) => x.id === caseId);
   // Someone else's case reads exactly like a missing one - the title is not leaked either way.
   if (!c || !canOpen(ctx, c)) {
@@ -112,7 +132,12 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     : c.status === "discussion" && rs ? (rs.ready ? t("dashboard.evReadyToDecide") : t("dashboard.detailRound", { round: rs.round, of: rs.of, tail: rs.late ? t("dashboard.detailCheckinLate", { n: -rs.left }) : t("dashboard.detailCheckinOn", { date: f(rs.dueDay) }) }))
       : c.open ? (c.overdue ? t("dashboard.detailPastPromise", { n: c.clock - P }) : t("dashboard.detailLeftPromise", { n: P - c.clock })) : t("dashboard.detailAnsweredIn", { n: c.clock });
   // Archived and a project: read-only here, the conversation goes on at the project.
-  const project = c.archived && flag("projects") ? projectOfCase(S, c) : undefined;
+  const accepted = c.archived && flag("projects") ? projectOfCase(S, c) : undefined;
+  // A draft is for the people on it, the holder of its escalated seat and (unless the idea is private) managers (SET D13): anyone else gets the
+  // banner's "being set up" line and no link here, and no comment box either, since the conversation goes on at the draft.
+  const hiddenDraft = accepted !== undefined && isOpenDraft(accepted)
+    && !mayReadDraft(accepted, { role, userId: ctx.actorUserId }, S.cases.some((x) => accepted.sources.includes(x.id) && isPrivateIdea(x)));
+  const project = hiddenDraft ? undefined : accepted;
   const talk = flag("discussion");
 
   return (
@@ -128,7 +153,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     <div className={styles.split}>
       <div className={styles.stack}>
       <SectionCard name="case">
-        {seesRouting(c, me, role) && <AnswerPromise c={c} />}
+        {/* A withdrawn idea promises no answer any more (decision Q1.14). */}
+        {seesRouting(c, me, role) && !c.withdrawn && <AnswerPromise c={c} />}
         <div className={styles.meta}>
           <span className={styles.chip} data-tone={CHIP_TONE[statusTone(translate("en", STATUS_LABEL[c.status]))]}>{t(STATUS_LABEL[c.status])}</span>
           <span className={styles.chip} data-tone={CHIP_TONE[reasonTone(c.reason)]}>{c.reason}</span>
@@ -136,7 +162,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </div>
         <div className={styles.quote}>
           {c.body && <div className={styles.quoteText}>{c.body}</div>}
-          <div className={styles.quoteBy}><PersonFace name={c.from} size="sm" /> {c.from}{c.fromDept ? <> · <DeptChip name={c.fromDept} /></> : null}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
+          <div className={styles.quoteBy}><PersonFace name={c.from} size="sm" /> {c.from}{raiserInactive && !isHandle(c.from) && <> <span className={styles.inactive} data-testid="raiser-inactive">({t("caseSee.inactive")})</span></>}{c.fromDept ? <> · <DeptChip name={c.fromDept} /></> : null}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
           {shots.length > 0 && (
             <div className={styles.shots}>
               {shots.map((s, i) => (
@@ -149,6 +175,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           )}
           {extra.attachments > 0 && shots.length === 0 && <div className={styles.shotsGone}>{t("dashboard.detailShotsGone")}</div>}
         </div>
+        <CaseRelations c={c} />
         <div className={styles.desks}>
           <span className={styles.label}>{t("dashboard.detailDesks")}</span>
           <span className={styles.chain}>
@@ -162,6 +189,9 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           </span>
         </div>
         {seesRouting(c, me, role) && <CaseRouting c={c} />}
+        <ReviewBlock c={c} />
+        <CostField c={c} />
+        <ApprovalsBlock c={c} />
         <div className={styles.tiles}>
           <div className={styles.tile}><div className={styles.tileTitle}>{c.assignee}</div><div className={styles.tileL}>{t("dashboard.detailOnDesk")}{c.escalated ? " " + t("dashboard.detailAlso", { to: c.escalated.to }) : ""}</div></div>
           <div className={styles.tile}><div className={styles.tileTitle}>{c.route ? c.route.type : t("dashboard.detailNoRoute")}</div><div className={styles.tileL}>{c.route ? t("dashboard.detailDeputyBuddy", { deputy: c.route.deputy, buddy: c.route.buddy }) : t("dashboard.detailTriage")}</div></div>
@@ -170,7 +200,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </div>
       </SectionCard>
       {talk && <DiscussionPanel c={c} />}
-      {talk && <VersionsPanel c={c} mine={mine} />}
+      <VersionsPanel c={c} mine={mine} />
       </div>
 
       <div className={styles.stack}>
@@ -193,8 +223,27 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             <button type="button" className={styles.primary} aria-expanded={asking} onClick={() => setAsking((v) => !v)}>{t("dashboard.detailReevaluate")}</button>
           )}
           {mine && c.status === "asked" && <button type="button" className={styles.primary} onClick={() => openSheet("reply", c.id)}>{t("dashboard.detailAnswerQuestion")}</button>}
-          {!c.open && <Link href={href("/raise")} className={styles.soft}>{t("dashboard.detailFollowUp")}</Link>}
+          {/* Decision Q1.14: the raiser takes the idea back while nobody has decided it. */}
+          {mine && !c.decided && (c.open || c.status === "asked") && !withdrawing && (
+            <button type="button" className={styles.soft} data-testid="case-withdraw" onClick={() => setWithdrawing(true)}>{t("dashboard.detailWithdraw")}</button>
+          )}
+          {!c.open && (caseActions(c, me, role, S).betterIdea
+            ? <Link href={href(followHref(c.id))} className={styles.soft} data-testid="start-better-top">{t("caseSee.startBetter")}</Link>
+            : <Link href={href("/raise")} className={styles.soft}>{t("dashboard.detailFollowUp")}</Link>)}
+          <MoveToDesk c={c} />
         </div>
+        {withdrawing && mine && !c.decided && (
+          <div className={styles.whyRow} role="group" aria-label={t("dashboard.detailWithdraw")}>
+            <input className={styles.note} value={withdrawWhy} onChange={(e) => setWithdrawWhy(e.target.value)} maxLength={500} autoFocus
+              aria-label={t("dashboard.detailWithdrawWhy")} placeholder={t("dashboard.detailWithdrawWhy")}
+              onKeyDown={(e) => { if (e.key === "Escape") setWithdrawing(false); }} />
+            <button type="button" className={styles.primary} data-testid="case-withdraw-confirm"
+              onClick={() => { act.withdraw(c.id, withdrawWhy.trim()); setWithdrawing(false); setWithdrawWhy(""); showToast(t("dashboard.detailWithdrawDone")); }}>
+              {t("dashboard.detailWithdrawConfirm")}
+            </button>
+            <button type="button" className={styles.soft} onClick={() => setWithdrawing(false)}>{t("common.cancel")}</button>
+          </div>
+        )}
         {asking && c.open && (
           <div className={styles.whyRow}>
             <input className={styles.note} value={why} onChange={(e) => setWhy(e.target.value)} autoFocus aria-label={lead ? t("dashboard.detailWhyAffects") : t("dashboard.detailWhatIsNew")}
@@ -224,7 +273,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           ))}
           {project ? (
             <div className={styles.moved}>{t("dashboard.detailArchivedMoved")} <Link href={href("/projects/" + project.id)}>{projectLabel(project)} {project.title} →</Link></div>
-          ) : (
+          ) : hiddenDraft ? null : (
           <div className={styles.noteRow}>
             <input className={styles.note} value={note} onChange={(e) => setNote(e.target.value)} placeholder={comments.length ? t("dashboard.detailAddThread") : t("dashboard.detailAddKnow")} aria-label={t("dashboard.detailComment")}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendNote(); } }} />
@@ -240,7 +289,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             <li key={e.id} className={styles.event}>
               <span className={styles.dot} data-seed={e.seed ? "true" : undefined} />
               <div className={styles.eventBody}>
-                <div className={styles.eventText}>{sentence(e, t, tenant.actorLabels)}</div>
+                <div className={styles.eventText}>{sentence(e, t, tenant.actorLabels, (id) => (id ? related.ofCase(id) : null))}</div>
                 <div className={styles.eventWhen}>{f(e.day)}</div>
               </div>
             </li>

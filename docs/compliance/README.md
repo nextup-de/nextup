@@ -14,6 +14,7 @@ the code, and nothing is signed: signatures, dates and party names are filled in
 | `RECORD_OF_PROCESSING.md` | Record of processing activities (Art. 30), NextUp as processor | NextUp keeps it; the customer copies what it needs into its own record |
 | `DPIA.md` | Data protection impact assessment (Art. 35): routing, metrics, AI proposals, SSO and SCIM data, audit export | The customer's data protection officer decides; NextUp supplies the facts |
 | `WORKS_AGREEMENT_TEMPLATE.md` | Works agreement for BetrVG § 87(1) no. 6 | Employer and works council |
+| `AI_INFORMATION.md` | The information to employees about the AI (AI Act Art. 26(7) and 50), which the Agreements card on Go-live asks for while the AI is on. **Draft, Marc to review** | The employer hands it out; Marc reviews it before anyone does |
 | `VDA_ISA_SELF_ASSESSMENT.md` | Self-assessment against the VDA ISA 6 chapters, with an honest maturity per control | NextUp's head engineer; a customer may ask for evidence |
 | `SUBPROCESSORS.md` | Where data can be sent: hosting, mail relay, AI providers a company chooses | Listed in the DPA annex; the customer approves changes |
 

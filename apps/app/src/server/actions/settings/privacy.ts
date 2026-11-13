@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { auditChanges } from "@/features/audit";
 import { getViewerFor } from "@/features/auth/session";
 import { formErrors, type FormErrorKey, type RuleInput } from "@/features/privacy/privacy-form";
+import { retentionHealth } from "@/features/privacy/retention-health";
 import { RETENTION_KINDS, checkRule, effectiveRules, isRetentionKind, type RetentionKind } from "@/features/privacy/retention";
 import { companyPrefix } from "@/features/tenant/urls";
 import { getDb } from "@/lib/db/client";
@@ -20,10 +21,12 @@ export type PrivacyPageData = {
   rules: RuleInput;
   /** Date and company totals of the last retention run; null before the first run. */
   lastRun: { at: string | null; removed: Partial<RetentionTotals> } | null;
+  /** The last run failed (plan REM, Q10.15): when and why, and whether it has failed two nights in a row; null when it did not. */
+  lastFailure: { at: string | null; error: string; warn: boolean } | null;
   dpaSignedAt: string | null;
   reportScreenshots: boolean;
   exports: ExportListItem[];
-  /** Display names for the requester of each export, by user id. */
+  /** Display names for the requester of each export, whoever marked one as delivered, and the admin, by user id. */
   names: Record<string, string>;
 };
 
@@ -41,12 +44,15 @@ export async function loadPrivacyPage(slug: string): Promise<PrivacyPageData | n
     listExportsAction(slug),
   ]);
   const list = exports ?? [];
-  const ids = [...new Set(list.map((e) => e.requestedByUserId))];
+  const ids = [...new Set([admin.userId, ...list.flatMap((e) => [e.requestedByUserId, e.delivered?.byUserId ?? admin.userId])])];
   const users = ids.length ? await getDb().user.findMany({ where: { companyId, id: { in: ids } }, select: { id: true, name: true } }) : [];
   return {
     rules: retention.rules,
     lastRun: retention.lastRun
       ? { at: (retention.lastRun.lastOkAt ?? retention.lastRun.lastRunAt)?.toISOString() ?? null, removed: retention.lastRun.removed }
+      : null,
+    lastFailure: retention.lastRun?.lastError
+      ? { at: retention.lastRun.lastRunAt?.toISOString() ?? null, error: retention.lastRun.lastError, warn: retentionHealth([retention.lastRun]).status === "warn" }
       : null,
     dpaSignedAt: config?.dpaSignedAt ? config.dpaSignedAt.toISOString() : null,
     reportScreenshots: policy.reportScreenshots,

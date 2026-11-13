@@ -17,4 +17,5 @@ export const DEMO_RULES: CompanyRules = {
   spend: { limitEur: 5000, text: "team-level authority up to €5k, no controlling sign-off" },
   deadlineHandover: true,
   steps: { discussion: true, projects: true, measure: true, recognition: true },
+  postAs: "handle",
 };

@@ -24,14 +24,16 @@ The actions (`AUDIT_ACTIONS`, `src/features/audit/index.ts`), by area:
 | assistant | assistant settings saved, idea settings saved |
 | directory | switched on, switched off, run, SCIM |
 | access | break-glass code used, Entra tenant, stack admin, support access granted, revoked, sign-in, extended |
-| privacy | exported, downloaded, pseudonymised, retention changed, retention run, screenshot switch, audit log exported |
+| privacy | exported, downloaded, marked as delivered, pseudonymised, retention changed, retention run, screenshot switch, audit log exported |
 
 An entry holds when, the actor kind (`admin`, `console`, `break-glass`, `support`, `platform`, `system`,
 `directory`, `api-token`) and the person if there is one, the action, the target, and the changed fields with
 before and after. A change never holds a name or an email, and a secret only as set, replaced or removed.
 
 Who reads it: company admins, in the audit view (newest first, 50 per page; filters by period, area, actor kind and
-one person) and as CSV (the export itself is audited). Entries are kept 24 months (730 days, fixed).
+one person) and as CSV (the export itself is audited). Entries are kept 24 months (730 days, fixed). The rows that are
+state rather than history stay longer: the agreements recorded on Go-live (`audit.company.agreement`) and the
+"We do not use this" of setup (`audit.connector.declined`, `audit.connector.reopened`); they hold no name and no address.
 
 ## Export
 
@@ -55,7 +57,22 @@ Who gets the file:
   for sandbox companies) that links to a page in the app, never to the file; they sign in and download.
 - **Admin-only copy**: the requesting admin downloads it. For a member who is deactivated this is the only choice;
   it is labelled admin-only, the reason is recorded in the audit log, and it is **not delivery to the person and not
-  the fulfilment of their request**. NextUp does not yet provide a secure way to deliver data to a former member.
+  the fulfilment of their request** by itself.
+
+**A former member gets their data through the company, never from NextUp** (Q10.13). They cannot sign in, and
+NextUp has no download for anyone who is not a member. The steps:
+
+1. A company admin makes the admin-only copy (Members → ⋯ → Export data…) and downloads it.
+2. The company hands it over through its own channel: HR, the data-protection officer, its usual secure transfer.
+3. A company admin opens Data and privacy → Exports and clicks **Mark as delivered** on that row, with an optional
+   note of the channel ("by HR, 12 Nov"; no addresses or other personal details). Any company admin may mark it,
+   not only the one who downloaded it.
+
+The button shows only on an admin-only copy of one person that was downloaded at least once. A row is marked once
+and the mark cannot be undone; the row then shows the date, the admin and the note. The mark and its audit entry
+(`audit.privacy.delivered`: export id, date, note; the person as target; area Data protection in the audit view)
+commit together. The mark stays on the row after the file expires. A copy NextUp mailed to an active member
+and a company export cannot be marked.
 
 Events in an export show the actor from the person's current identity, never a stale display name stored with the
 event.
@@ -97,7 +114,7 @@ Set in Data and privacy, per company, as `RetentionRule` rows. Without a rule th
 | Assistant turns | 7-730 days | the company's assistant retention (90 days) |
 | Idea drafts (status draft; days after the last change) | 30-730 days | 180 days |
 | Closed cases | 360-3600 days (entered in months, 1 month = 30 days) or keep | keep |
-| Audit log | fixed | 730 days (24 months), no setting |
+| Audit log | fixed | 730 days (24 months), no setting; agreements and "we do not use this" are kept |
 | Finished notices (sent, failed, skipped) | fixed | 90 days, no setting; pending ones stay |
 | Teams link of someone inactive | fixed | removed at the next run; it comes back when they write to the bot |
 

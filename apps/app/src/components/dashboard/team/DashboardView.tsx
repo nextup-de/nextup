@@ -31,6 +31,7 @@ import { formatDate } from "@/i18n/format";
 import { loadRaised } from "@/lib/raised";
 import { loadShots } from "@/lib/shots";
 import s from "./Overview.module.css";
+
 import { OverviewChats } from "./OverviewChats";
 import { OverviewIdea, type IdeaMode, type OverviewIdeaProps } from "./OverviewIdea";
 import { OverviewPhone } from "./OverviewPhone";
@@ -38,6 +39,9 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
 import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
+
+// A count beside a menu label: nothing at 0 (lib/utils/quiet.ts).
+const quietCount = (n: number) => (n > 0 ? <span className={s.count}>{n}</span> : null);
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 // A phone gets its own case layout (OverviewPhone), like the inbox's IdeaDetailPhone.
@@ -149,7 +153,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       el.animate([{ opacity: 0, transform: "translateY(18px)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: EASE, delay: 60 * k, fill: "backwards" });
     });
   }, [sel, motion]);
-  if (!ready) return <PageSkeleton kind="dashboard" delay />;
+  if (!ready) return <PageSkeleton kind="dashboard" />;
 
   const P = seed.promiseDays;
   const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, t };
@@ -272,7 +276,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             {split && (
               <div className={s.div11}>
                 <button type="button" className={s.toggleFilter} onClick={() => setMenu(menu === "status" ? null : "status")} aria-expanded={menu === "status"} aria-haspopup="menu">
-                  {statusLabelOf(status)}<span className={s.count}>{statusCount(status)}</span>
+                  {statusLabelOf(status)}{quietCount(statusCount(status))}
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
                 </button>
                 {menu === "status" && (
@@ -280,7 +284,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
                     {LIST_STATUSES.map((k) => (
                       <button key={k} type="button" role="menuitemradio" aria-checked={status === k} className={s.pick} data-on={status === k ? "true" : undefined} onClick={() => { setStatus(k); setMenu(null); }}>
                         <span className={s.label}>{statusLabelOf(k)}</span>
-                        <span className={s.count}>{statusCount(k)}</span>
+                        {quietCount(statusCount(k))}
                         <span className={s.check}>{status === k ? "✓" : ""}</span>
                       </button>
                     ))}
@@ -298,7 +302,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
                   {filters.map((k) => (
                     <button key={k} type="button" role="menuitemradio" aria-checked={filter === k} className={s.pick} data-on={filter === k ? "true" : undefined} onClick={() => { setFilter(k); setMenu(null); }}>
                       <span className={s.label}>{t(FILTER_LABEL[k])}</span>
-                      <span className={s.count}>{rows.filter(test[k]).length}</span>
+                      {quietCount(rows.filter(test[k]).length)}
                       <span className={s.check}>{filter === k ? "✓" : ""}</span>
                     </button>
                   ))}

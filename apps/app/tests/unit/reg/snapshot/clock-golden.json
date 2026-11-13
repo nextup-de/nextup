@@ -1,0 +1,181 @@
+[
+  {
+    "name": "all kinds, handover on",
+    "dues": [
+      {
+        "kind": "deadline",
+        "target": "c_deadline",
+        "dueDay": 10,
+        "toRoleHolderId": "seat_dep",
+        "idemKey": "clk:deadline:c_deadline:10"
+      },
+      {
+        "kind": "deadline",
+        "target": "c_deadline_vacant",
+        "dueDay": 11,
+        "toRoleHolderId": null,
+        "idemKey": "clk:deadline:c_deadline_vacant:11"
+      },
+      {
+        "kind": "checkin",
+        "target": "c_checkin",
+        "dueDay": 12,
+        "idemKey": "clk:checkin:c_checkin:12"
+      },
+      {
+        "kind": "triage",
+        "target": "c_triage",
+        "dueDay": 19,
+        "idemKey": "clk:triage:c_triage:19"
+      },
+      {
+        "kind": "question",
+        "target": "c_question",
+        "dueDay": 19,
+        "idemKey": "clk:question:c_question:16"
+      },
+      {
+        "kind": "start",
+        "target": "p_start",
+        "dueDay": 12,
+        "toRoleHolderId": "seat_owner",
+        "idemKey": "clk:start:p_start:12"
+      },
+      {
+        "kind": "measure",
+        "target": "p_measure",
+        "dueDay": 15,
+        "check": 1,
+        "toRoleHolderId": "seat_owner",
+        "idemKey": "clk:measure:p_measure:15:1"
+      },
+      {
+        "kind": "lead",
+        "target": "p_lead_remind",
+        "dueDay": 19,
+        "userId": "u_lead",
+        "askId": "y_remind",
+        "idemKey": "clk:lead:p_lead_remind:y_remind"
+      },
+      {
+        "kind": "invite",
+        "target": "p_invites",
+        "dueDay": 19,
+        "userId": "u_x",
+        "inviteId": "inv_sponsor",
+        "idemKey": "clk:invite:p_invites:inv_sponsor"
+      },
+      {
+        "kind": "draft",
+        "target": "p_draft",
+        "dueDay": 16,
+        "toRoleHolderId": "seat_up",
+        "idemKey": "clk:draft:p_draft:16"
+      },
+      {
+        "kind": "draft",
+        "target": "p_draft",
+        "dueDay": 19,
+        "check": 3,
+        "toRoleHolderId": "seat_up",
+        "idemKey": "clk:draft:p_draft:19:3"
+      },
+      {
+        "kind": "confirm",
+        "target": "p_confirm",
+        "dueDay": 10,
+        "check": 1,
+        "idemKey": "clk:confirm:p_confirm:10:1"
+      },
+      {
+        "kind": "confirm",
+        "target": "p_confirm",
+        "dueDay": 13,
+        "check": 1,
+        "toRoleHolderId": "seat_owner",
+        "idemKey": "clk:confirm:p_confirm:13:1"
+      },
+      {
+        "kind": "handover",
+        "target": "c_handover",
+        "dueDay": 9,
+        "toRoleHolderId": "seat_dep",
+        "idemKey": "clk:handover:c_handover"
+      },
+      {
+        "kind": "handover",
+        "why": "vacant",
+        "target": "c_vacant_desk",
+        "dueDay": 30,
+        "toRoleHolderId": "seat_dep",
+        "idemKey": "clk:vacant:c_vacant_desk:seat_vac"
+      },
+      {
+        "kind": "unanswered",
+        "target": "c_unanswered",
+        "dueDay": 15,
+        "idemKey": "clk:unanswered:c_unanswered:10"
+      },
+      {
+        "kind": "lead",
+        "target": "p_lead_lapse",
+        "dueDay": 19,
+        "lapse": true,
+        "userId": "u_lead",
+        "askId": "y_lapse",
+        "idemKey": "clk:lead:p_lead_lapse:y_lapse:lapse"
+      },
+      {
+        "kind": "invite",
+        "target": "p_invites",
+        "dueDay": 19,
+        "lapse": true,
+        "userId": "u_x",
+        "inviteId": "inv_contrib",
+        "idemKey": "clk:invite:p_invites:inv_contrib:lapse"
+      }
+    ]
+  },
+  {
+    "name": "second level off, deadline handover off: the escalation fact",
+    "dues": [
+      {
+        "kind": "escalation",
+        "target": "c_esc",
+        "dueDay": 5,
+        "toRoleHolderId": null,
+        "idemKey": "clk:escalate:c_esc"
+      }
+    ]
+  },
+  {
+    "name": "second level: its handover a run after the fact",
+    "dues": [
+      {
+        "kind": "handover",
+        "why": "escalation",
+        "target": "c_esc_handover",
+        "dueDay": 5,
+        "toRoleHolderId": "seat_up",
+        "idemKey": "clk:escalate:c_esc_handover:handover"
+      }
+    ]
+  },
+  {
+    "name": "reminders already stored: only the second draft fact is left",
+    "dues": [
+      {
+        "kind": "draft",
+        "target": "p_draft_stored",
+        "dueDay": 19,
+        "check": 3,
+        "toRoleHolderId": "seat_up",
+        "idemKey": "clk:draft:p_draft_stored:19:3"
+      }
+    ]
+  },
+  {
+    "name": "demo mode: nothing",
+    "dues": []
+  }
+]

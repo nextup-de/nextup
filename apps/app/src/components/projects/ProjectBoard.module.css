@@ -1,0 +1,19 @@
+/* The small role label on a board step card (a template step's lead, sponsor or team). */
+.roleLabel {
+  display: inline-block;
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: var(--nh-fs-xs);
+  font-weight: 600;
+  color: var(--nh-ink-2);
+  background: var(--nh-fill);
+  border-radius: var(--radius-xs, 6px);
+  padding: 1px 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A step dropped on the Done sheet (plan RES, D13) stays in its column, struck through; its title says why. */
+.step[data-dropped="true"] { opacity: 0.7; }
+.step[data-dropped="true"] .stepOpen { text-decoration: line-through; }

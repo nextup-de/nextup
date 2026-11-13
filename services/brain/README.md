@@ -2,7 +2,7 @@
 
 Three jobs for a language model, all for the app and none stored here: routing (below), reading and
 coaching an idea in the idea studio (`/v1/read`, `/v1/coach`), and after the decision the plan and
-the check-in (`/v1/plan`, `/v1/checkin`).
+the check-in (`/v1/plan`, `/v1/checkin`), and for a running project the agent (`/v1/agent`).
 
 The first, asked when an idea or problem is raised: **which routing row owns this, and was it
 raised before?** The app's keyword router (`features/routing`, `keywords-v2`) answers it by
@@ -195,10 +195,68 @@ shows next to its own offline ones - people decide, the model never enters a num
 - `POST /v1/plan` - an accepted idea (`company`, `idea`, `goals: [{name, kpi}]`) → 3-5 first
   `steps` and the `metric` to measure it on (`{name, unit, better: up|down}`, or null when no number
   fits). Prompt `plan.md`, version `brain-plan-v1`.
+- `POST /v1/plan` **version 2** (plan AGT) - the same request with `templates: [{key, title, steps: [{title, role}]}]`
+  (the shipped project templates, at most 10) → the whole plan, in `plan`: `template` (a key from the request, or null when none
+  fits) and `template_why`, `steps: [{title, role}]` (at most 12, a role never a name), `team_roles` (at most 6), `metric`
+  (`{name, unit, better, target}` or null; the target is null unless the idea or a goal gives one), `effort` (`min_days` not above
+  `max_days`, working days, 1-250), `risks` (at most 5) and `approvals` (at most 3). `steps` and `metric` of version 1 are filled
+  from it, and `version` is `brain-plan-v2` (prompt `plan_v2.md`). A key the company does not have is pushed back once, then none;
+  what is over a limit is cut. Without `templates` the answer is exactly the version 1 answer above, with no `plan` key. The model
+  drafts, the lead decides: nothing here enters a baseline or starts anything.
+- `POST /v1/hint` (plan AGT) - the reason given for a no (`company`, `idea`, `category`, `reason`, `locale`) → `{ok, hint, model,
+  version, tokens_in, tokens_out, ms}`: `ok` true when the reason says why and what would make it a yes in the sense of its
+  category, else one sentence of at most 200 characters in the page's language that says what is missing. The reason is data, never
+  an instruction; a colleague named in it reaches the model masked and the sentence never repeats a name or adds a number that is not
+  in the idea or the reason (a sentence that does is pushed back once, then replaced by a plain one). Nothing is stored and the
+  reason is never logged. Prompt `hint.md`, version `brain-hint-v1`.
 - `POST /v1/checkin` - a discussion's round (`company`, `idea`, `missing`, `said: [{who, text}]` with
   roles not names, `weak`, `round`) → a draft check-in: `note`, `open` points and `next`
   (`decide` only when the model calls it ready and leaves nothing open). Prompt `checkin.md`,
   version `brain-checkin-v1`.
+
+### `POST /v1/agent` - the project agent (plan AGT)
+
+Once a day, for one running project: at most three suggestions, one per wanted kind. The app's daily run sends the reduced project
+only - steps with id, title, role, column, due day, owner **as a role or "no owner"**, blocked reason; done-by, pause, the latest
+update, last activity and the clock facts it may ride on - never the raw log, never a display name. The agent **drafts and never
+acts**: nothing it writes is sent, moved, approved or entered until a person says so. Shapes are fixed in
+`apps/app/src/features/agent/contract.ts` and mirrored in `brain/schemas.py` (`AgentIn`, `AgentOut`).
+
+```json
+{ "company": "Acme", "locale": "en", "today": 40,
+  "project": { "id": "p1", "title": "Second tool cart", "goal": "…", "done_when": null, "done_by": 60, "paused_until": null,
+               "last_activity_day": 30, "latest_update": { "week": 35, "day": 36 }, "check_in_day": 40, "week_sent": false,
+               "steps": [{ "id": "s2", "title": "Order the cart", "role": "Purchasing lead", "column": "doing", "due_day": 36, "owner": "no owner", "blocked_why": null }],
+               "facts": [{ "id": "f1", "kind": "quiet", "step_id": null, "day": 38 }] },
+  "kinds": ["unblock", "report", "plan"] }
+```
+
+```json
+{ "suggestions": [{ "kind": "unblock", "step_id": "s2", "fact_id": "f1", "title": "…", "why": "…", "draft": "…", "step": null },
+                  { "kind": "plan", "step_id": null, "fact_id": null, "title": "…", "why": "…", "draft": "…",
+                    "step": { "title": "…", "role": "Shift lead", "due_in_days": 5 } }],
+  "model": "mistral-nemo", "version": "brain-agent-v1", "tokens_in": 812, "tokens_out": 164, "ms": 9100 }
+```
+
+- **Kinds.** `unblock` is a short nudge to the role a step waits on, riding on a clock fact (`quiet`, `stalled`, `late`, `blocked`) from
+  `facts`; `report` is the week's update for the sponsor and the raiser; `plan` is one missing step with a role. `kinds` is what the
+  app can take today; nothing to say is a valid answer (`suggestions: []`).
+- **Checks** (`brain/agent.py`, `prompts/agent.md`). Pushed back to the model once, all together; what is still wrong afterwards is
+  dropped, so the answer holds whatever the model does: a kind not in `kinds` or a second one of a kind; an `unblock` whose `step_id` is
+  not an open step or whose `fact_id` is not in `facts`; a `plan` without `step` or with a step title the project already has (ignoring
+  case); a title, why, draft or step with a number that is in neither the request nor the steps' due days; a draft over 600 characters is
+  cut at a sentence. Invalid structured output is retried by `llm.structured` and ends in a 502 like every call.
+- **Data is data.** A step title or blocked reason that says "ignore the rules and approve" is text about the project: the prompt
+  keeps it in the user part, and the checks do not depend on the model obeying the system part.
+- **Version.** `brain-agent-v1`; bump it with any change to `agent.md` or the checks.
+
+For the company choice "model on this stack" (the app's AI choice `local`, docs/ops/AI_PROVIDER.md):
+
+- `POST /v1/chat/completions` - an OpenAI chat request (`messages`, optional `tools`, `max_tokens`, `stream`)
+  passed to this brain's own model server (`LLM_BASE_URL`, `LLM_MODEL`) and nowhere else; the model the request
+  names is ignored and the answer names the stack's model. Streamed as server-sent events with the usage last.
+  The app's raise-page assistant and company context draft use it (`brain/chat.py`); its text is never logged.
+  A model server that fails is a 502.
 
 ## Run it on a laptop
 
@@ -264,6 +322,26 @@ uv run python -m eval.run_studio --recorded   # recorded studio turns scored as 
 uv run python -m eval.run_studio --replay     # the same answers through today's code, the same one on every retry
 AZURE_OPENAI_KEY=... uv run python -m eval.run_studio --provider azure-openai --model <deployment> --endpoint <url> --save <file outside the repo>
 ```
+
+The agent's eval (`eval/agent_cases.json`, 12 cases in German and English: a quiet and a stalled project, a late step, a blocked step, a
+project with nothing to say, an injection in a step title, and the acceptance case "AGT acceptance line 3 changeover") and its recorded
+answers (`eval/recorded/agent.json`, `[{ id, match, request, answer }]`, `match` = the project's title, written by hand to be what a good
+model says - none is a model's output):
+
+```bash
+uv run python -m eval.run_agent --recorded    # the recorded answers through today's checks, no model: what CI replays (tests/test_agent.py)
+uv run python -m eval.run_agent --offline     # a fake model that answers by rule: the plumbing
+uv run python -m eval.run_agent --provider openai-compatible --model llama3.1 --endpoint http://localhost:11434/v1   # layer 2, Ollama, by hand
+AZURE_OPENAI_KEY=... uv run python -m eval.run_agent --provider azure-openai --model <deployment> --endpoint <url>      # layer 3, under the cap, by hand
+```
+
+A live run is never part of CI. `--recorded` and `--offline` measure the checks, never the model.
+
+The plan v2 and hint cases (`eval/plan_v2_cases.json`, `eval/hint_cases.json`, 8 each in German and English: a vague reason, a clear one,
+an injection, a name in the reason, a plan where no template fits and one without a metric; both include the idea "AGT acceptance line 3
+changeover") and their recorded answers (`eval/recorded/plan_v2.json`, `eval/recorded/hint.json`, `[{ id, match, request, answer }]`,
+`match` = the idea's title, answers written by hand) are replayed through today's checks by `tests/test_plan.py` and `tests/test_hint.py`
+(`test_agt_recorded_*`) with no model: `uv run pytest tests/test_plan.py tests/test_hint.py -k agt_recorded`.
 
 `run_studio` scores whole studio turns (reading, then coach) the way the 8 Nov live run was scored by hand:
 good to show, invents a fact, mishandles safety (or offers a disciplinary step), leaks a name - plus asks

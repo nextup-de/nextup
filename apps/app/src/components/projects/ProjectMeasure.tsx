@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { newId, type EventPayload } from "@/features/cases/events";
+import { CONFIRM_DAYS } from "@/features/projects/confirm";
 import { suggestedReward } from "@/features/loop/rules";
 import { parseKpiCsv } from "@/features/projects/measure-import";
 import type { MeasureImpact } from "@/features/projects/measure-source";
@@ -15,7 +16,9 @@ import { baselineText, betterText, changeText, euros, fmtNumber, impactLines, me
 import { useLocale, useT } from "@/i18n/client";
 import { appendEventAction } from "@/server/actions/events";
 import { importMeasuresAction, type ImportCode } from "@/server/actions/measures";
-import { useRights, useSend, VerdictChip } from "./parts";
+import { measureView, type MeasureFlags } from "@/features/projects/measure-view";
+import { QUESTION_WHY_MAX } from "@/features/projects/result";
+import { idViewerOf, useRights, useSend, VerdictChip } from "./parts";
 import styles from "./Projects.module.css";
 
 const num = (s: string): number | null => {
@@ -24,12 +27,25 @@ const num = (s: string): number | null => {
 };
 
 export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHint | null }) {
-  const { act, f } = useDemo();
+  const ctx = useDemo();
+  const { act, f, S, serverMode, tenant, showToast, actorUserId } = ctx;
   const t = useT();
   const locale = useLocale();
   const r = useRights(p);
   const send = useSend(p);
+  const router = useRouter();
   const b = p.baseline;
+  // Where a reward is possible the number waits for a second person before the start (plan RES, D16).
+  const bv = measureView(p, S, idViewerOf(ctx), S.day, locale).baseline;
+  const confirmBaseline = () => {
+    const payload: EventPayload = bv.revisionId ? { baselineEventId: bv.revisionId } : {};
+    send("project.baseline.confirmed", payload, () => {
+      if (!serverMode) { act.project.confirmBaseline(p.id); return; }
+      void appendEventAction({ slug: tenant.slug, id: newId("e"), type: "project.baseline.confirmed", target: p.id, payload }).then((res) => {
+        if (res.ok) router.refresh(); else showToast(res.error);
+      });
+    });
+  };
   const [editing, setEditing] = useState(false);
   const [none, setNone] = useState(false);
   const [metric, setMetric] = useState("");
@@ -67,6 +83,17 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
           <div className={styles.big}>{b.none ? t("projects.noNumberPossible") : fmtNumber(b.value, locale) + (b.unit ? " " + b.unit : "")}</div>
           <div className={styles.muted}>{b.none ? b.why : baselineText(b, locale).split(" · ").slice(1).join(" · ") + (b.source ? " · " + t("projects.baselineSourceIs", { source: b.source }) : "")}</div>
           {r.baseline && !editing && <button type="button" className={styles.quiet} onClick={() => setEditing(true)}>{t("projects.takeAgain")}</button>}
+        </div>
+      )}
+      {b && !b.none && bv.confirmed && (
+        <p className={styles.muted} data-testid="baseline-confirmed">{t("projectResult.baselineConfirmed", { name: bv.confirmed.byName, date: f(bv.confirmed.day) })}</p>
+      )}
+      {b && bv.needsConfirm && (
+        <div data-testid="baseline-waits">
+          <p className={styles.muted}>{t("projectResult.baselineWaits")}</p>
+          {bv.canConfirm
+            ? <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" data-testid="baseline-confirm" onClick={confirmBaseline}>{t("projectResult.baselineConfirm")}</button>
+            : actorUserId !== null && (actorUserId === p.leadUserId || actorUserId === b.byUserId) && <p className={styles.muted}>{t("projectResult.baselineNotYou")}</p>}
         </div>
       )}
       {!b && !r.baseline && <p className={styles.emptyLine}>{t("projects.baselineNotTaken")}</p>}
@@ -127,8 +154,10 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
 }
 
 export function MeasurePanel({ p }: { p: ReducedProject }) {
-  const { S } = useDemo();
+  const ctx = useDemo();
+  const { S } = ctx;
   const t = useT();
+  const view = measureView(p, S, idViewerOf(ctx), S.day);
   const days = S.rules.measureDays.join(" " + t("projects.andWord") + " ");
   if (!measureShown(S.rules)) return null;
   return (
@@ -143,7 +172,7 @@ export function MeasurePanel({ p }: { p: ReducedProject }) {
       {p.checks.length === 0 && !(p.baseline?.none && p.doneDay !== null) && (
         <p className={styles.emptyLine}>{p.stopped ? t("projects.stoppedBeforeMeasured") : t("projects.checksOpen", { days })}</p>
       )}
-      {p.checks.map((c) => <Check key={c.check} p={p} c={c} />)}
+      {p.checks.map((c) => <Check key={c.check} p={p} c={c} flags={view.measures.find((x) => x.check === c.check)} />)}
     </section>
   );
 }
@@ -163,7 +192,7 @@ const IMPACT_FIELDS = [
   ["scrapPartsPerYear", "projects.impactScrapField"],
 ] as const;
 
-function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
+function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: MeasureFlags | undefined }) {
   const { act, S, f, serverMode, tenant, seed, showToast } = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -175,8 +204,14 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
   const [impact, setImpact] = useState<Record<string, string>>({});
   const [mode, setMode] = useState<"type" | "import" | null>(serverMode ? null : "type"); // demo mode has only one way in, so the form is open
   const [confirming, setConfirming] = useState(false);
+  const [sendingBack, setSendingBack] = useState(false);
+  const [backWhy, setBackWhy] = useState("");
   const [importMsg, setImportMsg] = useState<string[]>([]);
   const m = p.measures.find((x) => x.check === c.check);
+  // A number that was sent back is not a result: the lead enters the check again (RES D14).
+  const resultStands = m !== undefined && !m.sentBack;
+  const lastQuestion = m?.questions[m.questions.length - 1];
+  const unit = p.baseline && !p.baseline.none && p.baseline.unit ? " " + p.baseline.unit : "";
   const isOpen = S.day >= c.opensDay;
   const v = num(value);
   const preview = v !== null ? verdictOf(p.baseline, v, S.rules.tolerancePct) : null;
@@ -199,7 +234,7 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
     const figures = serverMode ? impactOf() : null;
     if (figures === "bad") { showToast(t("projects.impactBad")); return; }
     const source = { kind: "typed" as const, ...(note.trim() ? { note: note.trim() } : {}) };
-    const payload: EventPayload = { check: c.check, value: v ?? Number.NaN, source, ...(figures ? { impact: figures } : {}) };
+    const payload: EventPayload = { check: c.check, value: v ?? Number.NaN, source, ...(figures ? { impact: figures } : {}), ...(m?.sentBack && m.eventId ? { measureEventId: m.eventId } : {}) };
     const went = send("project.measured", payload, () => {
       if (!serverMode) { act.project.measure(p.id, c.check, v as number, note.trim()); return; }
       void appendEventAction({ slug: tenant.slug, id: newId("e"), type: "project.measured", target: p.id, payload }).then((res) => {
@@ -223,8 +258,21 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
     }
   };
 
+  const sendBack = (x: Measure) => {
+    const why = backWhy.trim();
+    if (!why) return;
+    const payload: EventPayload = { check: x.check, why, ...(x.eventId ? { measureEventId: x.eventId } : {}) };
+    const went = send("project.measure.questioned", payload, () => {
+      if (!serverMode) { act.project.question(p.id, x.check, why); return; }
+      void appendEventAction({ slug: tenant.slug, id: newId("e"), type: "project.measure.questioned", target: p.id, payload }).then((res) => {
+        if (res.ok) router.refresh(); else showToast(res.error);
+      });
+    });
+    if (went) { setSendingBack(false); setBackWhy(""); }
+  };
+
   const confirm = (x: Measure) => {
-    const payload: EventPayload = { check: x.check };
+    const payload: EventPayload = { check: x.check, ...(x.eventId ? { measureEventId: x.eventId } : {}) };
     send("project.measure.confirmed", payload, () => {
       void appendEventAction({ slug: tenant.slug, id: newId("e"), type: "project.measure.confirmed", target: p.id, payload }).then((res) => {
         if (res.ok) router.refresh(); else showToast(res.error);
@@ -240,15 +288,34 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
         <span className={styles.muted}>{t("projects.checkDates", { opens: f(c.opensDay), due: f(c.dueDay) })}</span>
         {c.late && <span className={styles.due} data-late="true">{p.escalated?.what === "measure" ? t("projects.checkLateWith", { name: p.escalated.to }) : t("projects.checkLate")}</span>}
       </div>
-      {m ? (
+      {m?.sentBack && (
+        <div className={styles.result} data-testid={"measure-sentback-" + c.check}>
+          <span className={styles.muted}>{t("projectResult.measureSentBack", { date: f(lastQuestion?.day ?? m.day), why: lastQuestion?.why ?? "" })}</span>
+        </div>
+      )}
+      {resultStands ? (
         <div className={styles.result}>
           <span className={styles.big}>{movement(p.baseline, m, locale)}</span>
-          {m.confirmed ? <VerdictChip verdict={m.verdict} /> : <span className={styles.muted}>{t("projects.verdictNotConfirmed")}</span>}
+          {m.confirmed ? <VerdictChip verdict={m.verdict} /> : (
+            <span className={styles.muted} data-testid={"measure-waiting-" + c.check}>
+              {/* A second person has CONFIRM_DAYS working days (decision Q6.15); the demo has no second person. */}
+              {!serverMode || m.sourceKind === "system" ? t("projects.verdictNotConfirmed")
+                : S.day > m.day + CONFIRM_DAYS ? t("projects.verdictWaitingLate", { day: f(m.day + CONFIRM_DAYS) })
+                : t("projects.verdictWaiting", { day: f(m.day + CONFIRM_DAYS) })}
+            </span>
+          )}
           {m.changePct !== null && <span className={styles.change} data-verdict={m.verdict}>{changeText(m.changePct, locale)}</span>}
           <span className={styles.muted} data-testid={"measure-source-" + c.check}>
             {measureSourceLine(m, { by: label(m.byUserId, m.by), confirmedBy: label(m.confirmedByUserId, ""), day: f }, t)}
           </span>
           {impactLines(m.impact, locale).map((line) => <span key={line} className={styles.muted}>{line}</span>)}
+          {m.reentered && m.previous.length > 0 && (
+            <span className={styles.muted} data-testid={"measure-reentered-" + c.check}>
+              {t("projectResult.measureReentered", { date: f(m.day), value: fmtNumber(m.previous[m.previous.length - 1].value, locale) + unit })}
+            </span>
+          )}
+          {m.managerOnly && !m.confirmed && <span className={styles.muted} data-testid={"measure-manageronly-" + c.check}>{t("projectResult.measureManagerOnly")}</span>}
+          {flags?.sponsorMay && serverMode && <span className={styles.muted}>{t("projectResult.measureSponsorMay")}</span>}
           {serverMode && !m.confirmed && r.confirm(c.check) && (
             confirming ? (
               <span className={styles.actionRow} role="group">
@@ -260,13 +327,27 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
               <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-confirm-" + c.check} onClick={() => setConfirming(true)}>{t("projects.confirmResult")}</button>
             )
           )}
+          {flags?.canQuestion && !m.confirmed && (
+            sendingBack ? (
+              <form className={styles.actionRow} aria-label={t("projectResult.measureSendBack")} onSubmit={(e) => { e.preventDefault(); sendBack(m); }}>
+                <label className="nh-field">
+                  <span className="nh-label">{t("projectResult.measureSendBackWhy")}</span>
+                  <input className={`nh-input ${styles.input}`} value={backWhy} maxLength={QUESTION_WHY_MAX} onChange={(e) => setBackWhy(e.target.value)} autoFocus />
+                </label>
+                <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!backWhy.trim()}>{t("projectResult.measureSendBack")}</button>
+                <button type="button" className={styles.quiet} onClick={() => { setSendingBack(false); setBackWhy(""); }}>{t("common.cancel")}</button>
+              </form>
+            ) : (
+              <button type="button" className={styles.quiet} data-testid={"measure-sendback-" + c.check} onClick={() => setSendingBack(true)}>{t("projectResult.measureSendBack")}</button>
+            )
+          )}
         </div>
       ) : !isOpen ? (
         <p className={styles.muted}>{t("projects.opensDay", { day: f(c.opensDay) })}</p>
       ) : r.measure(c.check) ? (
         <div>
           <span className={styles.actionRow}>
-            <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-type-" + c.check} aria-expanded={mode === "type"} onClick={() => setMode(mode === "type" ? null : "type")}>{t("projects.typeNumber")}</button>
+            <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-type-" + c.check} aria-expanded={mode === "type"} onClick={() => setMode(mode === "type" ? null : "type")}>{m?.sentBack ? t("projectResult.measureReenter") : t("projects.typeNumber")}</button>
             {serverMode && (
               <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-import-" + c.check} aria-expanded={mode === "import"} onClick={() => setMode(mode === "import" ? null : "import")}>{t("projects.importFromFile")}</button>
             )}
@@ -313,7 +394,8 @@ function Check({ p, c }: { p: ReducedProject; c: CheckDue }) {
 }
 
 export function RewardPanel({ p }: { p: ReducedProject }) {
-  const { act, S, f, persona, actorUserId } = useDemo();
+  const ctx = useDemo();
+  const { act, S, f, persona, actorUserId } = ctx;
   const t = useT();
   const locale = useLocale();
   const r = useRights(p);
@@ -330,6 +412,8 @@ export function RewardPanel({ p }: { p: ReducedProject }) {
   const takesAmount = rule.kind === "fixed" || rule.kind === "share";
   const shown = amount ?? (suggested !== null ? String(suggested) : "");
   const handle = persona.who.handle;
+  // While a reward is due, recognition is due by a date (D17).
+  const recognitionDay = measureView(p, S, idViewerOf(ctx), S.day).recognitionDueDay;
 
   return (
     <section className={styles.panel} aria-labelledby={"reward-" + p.id}>
@@ -337,6 +421,7 @@ export function RewardPanel({ p }: { p: ReducedProject }) {
         <h2 id={"reward-" + p.id} className={styles.h2}>{t("projects.rewardTitle")}</h2>
         <span className={styles.muted}>{t("projects.rewardSub")}</span>
       </div>
+      {!p.reward && recognitionDay !== null && <p className={styles.muted} data-testid="recognition-due">{t("projectResult.recognitionDue", { date: f(recognitionDay) })}</p>}
       {p.reward ? (
         <div className={styles.baseline}>
           <div className={styles.strong}>{p.reward.amount !== null ? euros(p.reward.amount, locale) : p.reward.rule === "thanks" ? t("projects.ruleThanks") : p.reward.rule}</div>

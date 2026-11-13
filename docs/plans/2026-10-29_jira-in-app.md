@@ -153,8 +153,9 @@ name must be confirmed on the real site.
 
 ## UI
 
-**Admin page `/admin/integrations`** (new, company scope, linked in `features/admin/nav.ts`, following the
-company-picking pattern of `/admin/assistant`). It has:
+**Admin page `/admin/connectors`, the Jira block** (company scope; the console section `connectors` in
+`CONSOLE_SECTIONS` of `features/admin/nav.ts`, `components/admin/connectors/JiraBlock.tsx`; it started as a planned
+`/admin/integrations` page and ended up as one block of the Connectors section). It has:
 
 - a Cloud/DC choice, with DC disabled and marked "later";
 - site URL, email, and the token (write-only);
@@ -205,7 +206,7 @@ Then three packages in parallel:
   - the unit tests
   - `tests/fake-jira/*`
 - **WP-B, admin:**
-  - `app/admin/integrations/page.tsx` and `components/admin/JiraAdmin.tsx`
+  - `app/admin/connectors/page.tsx` and `components/admin/connectors/JiraBlock.tsx`
   - `server/actions/jira-admin.ts` and `server/jira-admin.ts`
   - `nav.ts` and its test, and `admin.module.css`
 - **WP-C, the lead UI:**
@@ -254,7 +255,7 @@ through `integrationSecrets`, the lease (one claimant, expiry, release), cursors
 - `node tests/fake-jira/server.mjs --port 4010` for local work (`siteUrl` accepts plain `http://127.0.0.1`).
 
 **e2e-db** (`tests/e2e/db/jira-sync.spec.ts`, with the fake as a second Playwright webServer and
-`JIRA_SYNC_INTERVAL_MS=2000`). It sets Jira up in `/admin/integrations`, then checks:
+`JIRA_SYNC_INTERVAL_MS=2000`). It sets Jira up in `/admin/connectors` (Jira block), then checks:
 
 1. "Yes, do it" creates an epic.
 2. Adding a step creates an issue.

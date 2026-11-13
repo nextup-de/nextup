@@ -2,6 +2,8 @@
 
 > **Updated 2026-11-06** · reference. The source of truth is `apps/app/prisma/schema/` (one file per area, see `adr/0007-areas.md`); the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
 
+Phase additions after REG: see [docs/process/](process/README.md). The event types are declared per area in `apps/app/src/features/cases/events/` (`case`, `project`, `agent`, `approval`, `overload`).
+
 Everything is scoped by company. Today (Phase 1) the only store is
 `src/features/tenant/demo-companies.ts`: `slug, name, mark, anonymousHandles, users[]` with
 users `id, name, email, role (manager|leader|member), dept, handle?`. TypeScript types for the
@@ -50,7 +52,9 @@ It holds no company data by construction - scrubbed message, route pattern - so 
 days (`src/lib/db/errors.ts`).
 
 Event types (`src/features/cases/events.ts`), as in the demo:
-  `case.read, case.decided, case.handed, case.asked, case.answered, case.override, case.shipped,
+  `case.read, case.decided, case.handed, case.asked, case.answered, case.unanswered` (the clock's own, when a
+  question got no answer in time), `case.withdrawn` (the raiser takes back an idea nobody decided; status
+  `withdrawn`, archived, no decision), `case.override, case.shipped,
   idea.cosigned, idea.approved, idea.funded` - plus, new here: `member.invited, member.role,
   route.upsert, dept.upsert` so settings pages also store facts, not edited copies of the seed.
 
@@ -70,6 +74,18 @@ After the routing (docs/plans/2026-10-15_idea-to-project.md, 15 Oct 2026), in th
   `reduce()` returns `projects` (`src/features/projects`), and the verdict of a measure is computed
   (`verdict.ts`), never sent. The company's rhythm, measure days and reward rule are `CompanyConfig`
   fields, read into `Seed.loop` (`src/features/loop/rules.ts`).
+- **The project draft** (plan SET): a `case.decided {answer: "yes", projectId, ..., draft: true, raiserNote?}`
+  opens the project as a draft (status stays `planning`, `ReducedProject.draft`); a yes without `draft`
+  behaves as before. Six more `project.*` events: `project.lead.answered {take, reason?, lapsed?}` (the
+  lead takes the draft or declines; `lapsed` when the clock wrote it), `project.template {key, version,
+  title?}` (seeds the board steps from that exact template version), `project.invited {userId, role}` (role
+  sponsor, member, contributor or follower; the event's own id is the invitation's identity,
+  `Invite.id`), `project.invite.answered {inviteId, userId, take, reason?, lapsed?}` (a legacy answer
+  without `inviteId` counts only when the person has exactly one pending invitation), `project.goal
+  {goal, doneWhen, doneBy?, brief?}` and `project.start.moved {dueDay, why}`. `clock.due` gains the kinds
+  `lead`, `invite` and `draft`, with `userId`, `inviteId`, `askId` and `lapse` so each cycle of an ask or an
+  invitation has its own idempotency key. The company rule `project_start_days` (`{days}`, 1 to 60, default
+  10) is the working days a draft has to start.
 
 Pages render `reduceCases(seed, events)` from `features/cases/reducer.ts`. Rule carried over from the demo:
 **never store display text as state.** Store who / which day / which route; build the sentence at

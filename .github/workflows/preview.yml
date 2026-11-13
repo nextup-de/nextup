@@ -1,0 +1,160 @@
+# PR previews on the Hetzner box (stack/nginx/RUNBOOK.md, "PR previews").
+#
+# A PR with the label `preview` gets its own demo stack - acme's demo data, the PR's commit - at
+# https://previewN.sellux.ch, and a comment on the PR with the link:
+#
+#   up    images.yml (job `preview`) calls this after it pushed the PR's images: every push to a
+#         labelled PR, and adding the label. The box wipes the slot and installs the new commit.
+#   down  closing the PR (merged or not) or removing the label: the slot is emptied.
+#
+# There are three slots (ports.md, stage `preview`). With all three taken, the one updated longest
+# ago goes to the new PR and its PR's comment says so; a push there takes one back.
+#
+# Configuration (Settings -> Environments -> `preview`, no reviewers, any branch):
+#   secret PREVIEW_SSH_KEY      private half of the preview key (ed25519). Its authorized_keys line on
+#                               the box runs `deploy.sh --previews-only`: preview, unpreview and status,
+#                               never a customer stack - a PR's own workflow runs with this key.
+#   secret DEPLOY_KNOWN_HOSTS   the box's host key line(s), as in `hetzner`
+#   var    DEPLOY_HOST          as in `hetzner`
+#   var    DEPLOY_USER          as in `hetzner`
+# Until PREVIEW_SSH_KEY is set the job skips itself with a notice instead of failing.
+#
+# Kevin owns this file.
+
+name: preview
+
+on:
+  workflow_call:
+    inputs:
+      action:
+        description: "up or down"
+        type: string
+        required: true
+      pr:
+        description: "the PR number"
+        type: number
+        required: true
+      commit:
+        description: "the PR's head commit (up only)"
+        type: string
+        required: false
+        default: ""
+  pull_request:
+    branches: [main]
+    types: [closed, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  box:
+    name: preview ${{ inputs.action || 'down' }} · PR ${{ inputs.pr || github.event.pull_request.number }}
+    # Called (up), or the PR closed with the label on, or the label taken off. Never for a fork.
+    if: >-
+      inputs.action == 'up' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       ((github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'preview')) ||
+        (github.event.action == 'unlabeled' && github.event.label.name == 'preview')))
+    # One move per PR at a time, never cancelled halfway (a stack mid-install). The box's own lock
+    # (deploy.sh) keeps previews, stage and release apart.
+    concurrency:
+      group: preview-pr-${{ inputs.pr || github.event.pull_request.number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: preview
+    env:
+      KEY: ${{ secrets.PREVIEW_SSH_KEY }}
+      KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      HOST: ${{ vars.DEPLOY_HOST }}
+      USER_NAME: ${{ vars.DEPLOY_USER }}
+      ACTION: ${{ inputs.action || 'down' }}
+      PR: ${{ inputs.pr || github.event.pull_request.number }}
+      COMMIT: ${{ inputs.commit }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Check the inputs
+        shell: bash
+        run: |
+          [[ "$ACTION" =~ ^(up|down)$ ]] || { echo "::error::action must be up or down, got '$ACTION'"; exit 1; }
+          [[ "$PR" =~ ^[1-9][0-9]{0,5}$ ]] || { echo "::error::bad PR number '$PR'"; exit 1; }
+          [ "$ACTION" = down ] || [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::up needs the full head sha, got '$COMMIT'"; exit 1; }
+
+      - name: Configured?
+        id: ready
+        shell: bash
+        run: |
+          if [ -z "$KEY" ] || [ -z "$KNOWN_HOSTS" ] || [ -z "$HOST" ] || [ -z "$USER_NAME" ]; then
+            echo "::notice::Preview skipped: the 'preview' environment is not configured yet (see the header of preview.yml)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: SSH key and pinned host key
+        if: steps.ready.outputs.ok == 'true'
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/preview_key && chmod 600 ~/.ssh/preview_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+
+      # Through env, never ${{ }} inside the script: the values were checked above.
+      - name: ${{ env.ACTION }} on the box
+        id: box
+        if: steps.ready.outputs.ok == 'true'
+        shell: bash
+        run: |
+          if [ "$ACTION" = up ]; then set -- preview "$PR" "${COMMIT::7}"; else set -- unpreview "$PR"; fi
+          rc=0
+          ssh -i ~/.ssh/preview_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=15 -o BatchMode=yes -o ServerAliveInterval=30 \
+              "$USER_NAME@$HOST" "$@" 2>&1 | tee box.log || rc=$?
+          url="$(sed -n -E 's#^PREVIEW_URL=(https://[a-z0-9.-]+)$#\1#p' box.log | tail -1)"
+          evicted="$(sed -n -E 's/^PREVIEW_EVICTED=([0-9]{1,6})$/\1/p' box.log | tail -1)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "evicted=$evicted" >> "$GITHUB_OUTPUT"
+          exit "$rc"
+
+      # One comment per PR, edited in place (found by its marker).
+      - name: Comment on the PR
+        if: always() && steps.ready.outputs.ok == 'true'
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.box.outcome }}
+          URL: ${{ steps.box.outputs.url }}
+          EVICTED: ${{ steps.box.outputs.evicted }}
+        run: |
+          marker='<!-- nextup-preview -->'
+          comment() {  # pr body
+            local id
+            id="$(gh api "repos/$GH_REPO/issues/$1/comments" --paginate \
+                    --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | tail -1)"
+            if [ -n "$id" ]; then gh api -X PATCH "repos/$GH_REPO/issues/comments/$id" -f body="$2" >/dev/null
+            else gh api "repos/$GH_REPO/issues/$1/comments" -f body="$2" >/dev/null; fi
+          }
+          short="${COMMIT::7}"
+          if [ "$ACTION" = down ]; then
+            [ "$OUTCOME" = success ] && body="Preview removed: the PR is closed or lost its \`preview\` label." \
+                                     || body="Removing the preview failed - [run]($RUN_URL)."
+          elif [ "$OUTCOME" = success ] && [ -n "$URL" ]; then
+            body="**Preview:** $URL - commit \`$short\`, a fresh copy of acme's demo data. Sign in from the demo login list.
+
+          Every push to this PR replaces it. It goes away when the PR closes or loses the \`preview\` label."
+          else
+            body="Preview of \`$short\` failed - [run]($RUN_URL)."
+          fi
+          comment "$PR" "$marker
+          $body"
+          if [ -n "$EVICTED" ]; then
+            comment "$EVICTED" "$marker
+          Preview taken: all slots were in use, and this PR's went to #$PR. Push again (or remove and re-add the \`preview\` label) to get one back."
+          fi
+
+      - name: Forget the key
+        if: always()
+        shell: bash
+        run: rm -f ~/.ssh/preview_key

@@ -13,7 +13,8 @@ and metrics show how the process runs. The facts of the processing are in `RECOR
 ## 2. Necessity and proportion
 
 Purpose: a faster, traceable improvement process. Data is limited to what a case needs: a person is identified by
-user id, an anonymous raise keeps an anonymous handle, and display names are not used to decide who someone is
+user id, an anonymous raise keeps an anonymous handle (a member may post a single idea by name, their choice per
+idea; the handle is preselected unless the company chose otherwise), and display names are not used to decide who someone is
 (`docs/IDENTITY.md`). **[The controller states why this is needed and why a less intrusive way is not enough.]**
 
 ## 3. Risks and what answers them

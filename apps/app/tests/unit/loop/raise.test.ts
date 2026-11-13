@@ -6,7 +6,7 @@ import { NO_EXTRAS, readExtras } from "@/components/ideas/raisePreview";
 
 const desk: Desk = {
   roleId: "role-fin", routeId: "r-budget", title: "Finance lead", dept: "Finance", type: "Budget",
-  holders: ["Finance 1"], vacant: false, proposedBy: "keywords", reasons: [], recommended: true,
+  holders: ["Finance 1"], vacant: false, deputies: [], answer: null, proposedBy: "keywords", reasons: [], recommended: true,
 };
 
 describe("LOOP raise to a desk", () => {

@@ -6,6 +6,8 @@ import type { Page } from "@playwright/test";
 import { confirmSheet, expect, publishIdea, sheet, test } from "../helpers";
 
 const TITLE = "The Friday shift plan leaves line 3 with no overtime hours for the changeover";
+// The reason of a no: at least 40 characters, as the company's rule asks (NOR, D17).
+const NO_REASON = "Q4 at the earliest - the fixture team is on the 4-series until then";
 const SHOWN = "The Friday shift plan leaves line 3 with no overtime"; // the title NextUp makes of it: cut at a natural break (features/ideas/coach.ts finishTitle)
 
 /** Dev panel -> "Viewing as". Switching person also sends you to that person's home page. */
@@ -28,7 +30,7 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
 
   await test.step("it is in the team leader's inbox at 0 days", async () => {
     await viewAs(page, "Team leader");
-    await expect(page).toHaveURL(/\/acme\/leader$/);
+    await expect(page).toHaveURL(/\/acme\/inbox$/);
     const row = page.getByRole("main").getByText(SHOWN).first();
     await expect(row).toBeVisible();
     await row.click();
@@ -59,9 +61,13 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
     await expect(page.getByRole("button", { name: "Yes, do it" })).toBeVisible();
     await page.getByRole("button", { name: "No, and why" }).click();
     await expect(sheet(page).getByRole("button", { name: "Pick a reason" })).toBeVisible();
-    await sheet(page).getByRole("button", { name: /No time this quarter/ }).click();
-    await confirmSheet(page, "Q4 at the earliest - the fixture team is on the 4-series until then", "Send the no");
-    await expect(page.getByText(/Answered “no” in 0 days — no time\./)).toBeVisible();
+    // A category, then the reason; the sheet is ready only with both (the button names what is missing).
+    await sheet(page).getByRole("button", { name: /No budget this year/ }).click();
+    await expect(sheet(page).getByRole("button", { name: /Write the reason/ })).toBeVisible();
+    await sheet(page).getByRole("textbox", { name: /Your reason/ }).fill(NO_REASON);
+    await sheet(page).getByRole("button", { name: "Send the no" }).click();
+    await expect(sheet(page)).toBeHidden();
+    await expect(page.getByText(/Answered “no” in 0 days — No budget this year\./)).toBeVisible();
   });
 
   await test.step("the employee sees the no, the reason and who said it - also after a reload", async () => {
@@ -69,8 +75,9 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
     await page.goto("/acme/team");
     const card = page.getByRole("article", { name: SHOWN });
     await expect(card).toContainText("Answered: no");
-    await expect(card).toContainText("Answered “no” in 0 days — no time.");
-    await expect(card).toContainText("Q4 at the earliest - the fixture team is on the 4-series until then");
+    await expect(card).toContainText(`Answered “no” in 0 days — ${NO_REASON}.`);
+    // SEE D12: the reply is the category and the reason in the desk's own words.
+    await expect(card).toContainText(`No budget this year: ${NO_REASON}`);
     await expect(card).toContainText("T. Vogel · today");
     await page.reload();
     await expect(page.getByRole("article", { name: SHOWN })).toContainText("Answered: no");
@@ -80,7 +87,7 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
 test("each person lands on their own home page", async ({ page }) => {
   await expect(page).toHaveURL(/\/acme\/raise$/);
   await viewAs(page, "Team leader");
-  await expect(page).toHaveURL(/\/acme\/leader$/);
+  await expect(page).toHaveURL(/\/acme\/inbox$/);
   await viewAs(page, "Manager");
   await expect(page).toHaveURL(/\/acme\/dashboard$/);
 });
@@ -108,7 +115,7 @@ test("IDN inbox by seat", async ({ page }) => {
     await page.keyboard.press("Escape");
   };
   await viewAs(page, "Team leader");
-  await expect(page).toHaveURL(/\/acme\/leader$/);
+  await expect(page).toHaveURL(/\/acme\/inbox$/);
   await expect(page.getByRole("main").getByText(R1_CASE).first()).toBeVisible();
 
   await inboxOf("M. Roth");

@@ -3,6 +3,8 @@
 > **Updated 2026-11-09.** Every file starts with an `Updated` or `Plan` line that gives its date.
 > What is built and live today, and what is not: the team report "Where we stand" v1.4 (nextup-context `reports/2026-11-08_where-we-stand/`, status board in section 1). Where a plan below disagrees with it, the report wins.
 
+Phase additions after REG: see [docs/process/](process/README.md).
+
 ## Plans (`plans/`, newest first)
 
 File names start with the date the plan was made, so the newest plan sorts last in the folder.
@@ -10,6 +12,7 @@ Each one's status line says how much of it is done.
 
 | Date | Plan | Status |
 |---|---|---|
+| 2026-11-10 | [Close the holes in today's loop](plans/2026-11-10_loop-holes.md) | in progress; block A of the build order: eleven small fixes decided with the process charts of 10 Nov; items 1 (who is told about a question, a pass and a no), 2 (a question nobody answers), 3 (a raise no desk owns), 4 (a desk nobody sits at), 5 (a Teams card that does not arrive), 6 (a result nobody confirms), 7 (a project that closes without a word), 8 (a project that stops in silence), 9 (an idea the raiser wants back) and 10 (anonymous or by name, per idea) built |
 | 2026-11-08 | [Project workflows and templates per department](plans/2026-11-08_project-workflows.md) | decided 8 Nov (planned 7–8 Nov), roadmap after funding; phase TPL of the master plan in detail: five modes (board, external tool, stage gate, fixed procedure, AI-orchestrated), shipped library, department templates; waits for W1–W8 |
 | 2026-11-08 | [Master plan: review, approvals, a reasoned no, the raiser's view, recognition and the project agent](plans/2026-11-08_decision-stages.md) | decided 8 Nov (planned 7–8 Nov), roadmap after funding, not demo or pilot scope; seven phases NOR, SEE, SET, GAT, TPL, REC, AGT; nothing built; waits for Kevin's decisions D1–D12 |
 | 2026-11-03 | [Project setup: from "Yes" to "Start"](plans/2026-11-03_project-setup.md) | draft, waits for review; setup checklist, project roles, asking for new people, goal, brief, kickoff; Sam's part in spec 12 |
@@ -37,12 +40,14 @@ is on their first line.
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | folders and layers |
 | [ROUTES.md](ROUTES.md) | every URL and its file |
+| [INBOX.md](INBOX.md) | the one inbox for every role: what it holds, the order, the Today line, the notices (plan INB) |
 | [DATA_MODEL.md](DATA_MODEL.md) | tables and events |
 | [SECURITY.md](SECURITY.md) | stages, doors, the list before real customers |
 | [INTEGRATIONS.md](INTEGRATIONS.md) | events API, tokens, stages, n8n |
 | [ASSISTANT.md](ASSISTANT.md) | the raise-page assistant |
 | [COMPANY_KNOWLEDGE.md](COMPANY_KNOWLEDGE.md) | company knowledge tables |
 | [IDEAS.md](IDEAS.md) | the idea studio |
+| [DESIGN_RULES.md](DESIGN_RULES.md) | the fixed design rules every screen follows (calm, quiet, privacy, copy, colour) and where each is tested |
 | [RESPONSIVE.md](RESPONSIVE.md) | layout rules |
 | [DEPLOY.md](DEPLOY.md) | running it on a laptop |
 | [audit/gap-register.md](audit/gap-register.md) | gaps to the pilot, by phase |

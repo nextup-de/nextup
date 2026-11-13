@@ -54,11 +54,11 @@ stores the passwords in admin's vault; see `stack/provision/README.md`. By hand:
    ~/nextup/stack/nginx/add-stack.sh globex 3111 demo
    ```
    It writes `.env` with new secrets on the first run, starts the stack and waits until it's
-   healthy. It prints the admin code, and on the demo stage the demo login codes: every demo
+   healthy. On the demo stage it prints the admin code and the demo login codes: every demo
    stack is seeded with the demo people under its own slug (`--name "Initech GmbH"` sets the name).
 3. The first time only, run the three `sudo` lines it prints (nginx site + certificate).
-4. **Real stage:** open `https://<slug>.sellux.ch/admin` and create the company with the
-   same slug.
+4. **Real stage:** the stack has created the company at its first start; nobody creates it in
+   `/admin`. The console opens with Microsoft, or with a window from `stack/break-glass.sh`.
 
 Running `add-stack.sh` again restarts the stack. It keeps the secrets and picks up new images.
 
@@ -223,6 +223,54 @@ the certificate. `nextup-site` refuses the slug `demo`, so those are run by hand
   line from its `stack.conf`; the next `stage` or `release` moves it.
 - **Memory:** one more stack is an app, a Postgres, a Caddy and a mailpit. Check `free -m` first
   (see "When something is wrong").
+
+## PR previews (preview1-3.sellux.ch)
+
+A PR with the label **`preview`** gets its own demo stack at the PR's commit: acme's demo company
+and people, signed in from the demo login list, at `https://previewN.sellux.ch`. A comment on the
+PR has the link. It replaced the Vercel previews (gone since #136, 29 Sep: the app moved to this box).
+
+- **Start one:** add the label. Every later push to the PR builds its images and replaces the
+  stack (images.yml pushes a PR's images only with the label; job `preview` calls preview.yml).
+- **Gone:** when the PR closes, merged or not, or loses the label (preview.yml).
+- **Three slots** (`ports.md`, stage `preview`). With all three taken, the slot updated longest ago
+  goes to the new PR; the old PR's comment says so, and a push there takes one back.
+- **Every push is a new install**: containers, volumes and `.env` of the slot are wiped first, so
+  a PR's migrations always run on fresh demo data. Nothing in a slot is kept or backed up.
+- **What it runs:** the PR's own images and its own `stack/` (`instances/previewN/stack`), as
+  staging does. Stage, release and promote never touch a slot, and the slots never reach
+  `staged`/`released`. backup.sh and health.sh skip them (`PREVIEW_PR=` in their stack.conf).
+- **Cost on the box:** each slot is an app, a Postgres, a Caddy and a mailpit, plus its images
+  (~3.3 GB until pruned). A preview refuses to start below 8 GB free disk (after pruning).
+
+```bash
+~/nextup/stack/nginx/deploy.sh status               # previewN: PR #123 at abc1234, or free
+~/nextup/stack/nginx/deploy.sh preview 123 abc1234  # by hand: what CI does
+~/nextup/stack/nginx/deploy.sh unpreview 123        # by hand: empty PR #123's slot
+```
+
+### Set up previews (once)
+
+Each slot keeps one nginx site and one certificate; the first preview in a slot makes them with
+the root helper the box agent already uses (`/usr/local/sbin/nextup-site add previewN PORT`;
+unchanged, nothing to reinstall). The new verbs exist on the box once this commit is **released**
+(`~/nextup/stack` is the released commit). Then a key that can do nothing but previews:
+
+```bash
+# on the laptop: a new key, only for previews
+ssh-keygen -t ed25519 -N '' -C nextup-preview -f nextup-preview
+# on the box, one line in ~/.ssh/authorized_keys:
+command="~/nextup/stack/nginx/deploy.sh --previews-only",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA... nextup-preview
+```
+
+GitHub → Settings → Environments → **`preview`** (no reviewers, any branch - PR runs use it):
+secret `PREVIEW_SSH_KEY` (the private half), secret `DEPLOY_KNOWN_HOSTS`, vars `DEPLOY_HOST` and
+`DEPLOY_USER` - the same values as in `hetzner`. Until the key is set, preview.yml skips itself
+with a notice. Then create the label `preview` (Issues → Labels) and put it on a PR.
+
+A PR's workflow runs with this key, so anyone who can push a branch can use it - which is why it
+is its own key and `--previews-only`: it can fill and empty the preview slots and read `status`,
+never move a customer stack. It does run the PR's code on this box, in its own containers.
 
 ## Backups
 

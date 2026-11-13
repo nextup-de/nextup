@@ -108,7 +108,7 @@ describe("the raise records its proposal", () => {
       { kind: "problem", text: "Night shift cannot order a €300 replacement part", affected: [], attachments: 0, who: { name: "J. Schmidt", line: "Production, Line 3", handle: null } },
       { routes: SEED.routes, people: SEED.people, personas: SEED.personas, problems: SEED.problems, cases: [], promiseDays: SEED.promiseDays, goals: SEED.goals, spend: SEED.spend },
     );
-    expect(ev.payload.proposal).toEqual({ routeId: ev.route?.id ?? null, confidence: ev.confidence, source: "keywords", version: ROUTER_VERSION });
+    expect(ev.payload.proposal).toEqual({ routeId: ev.route?.id ?? null, confidence: ev.confidence, source: "keywords", version: ROUTER_VERSION, sameAs: null, related: [] });
     expect(ev.payload.proposal.routeId).toBe("r1");
   });
 });

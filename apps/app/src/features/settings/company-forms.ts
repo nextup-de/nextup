@@ -1,9 +1,10 @@
 // Parsing and checking the company, rules and calendar forms of /settings (ADM-A1). Pure: form
 // fields in, the values the stores take out, or the message key of the first thing wrong. The
 // server actions call these; nothing here touches the database or React.
+import { postAsOf } from "@/features/ideas/posting";
 import { calendarSpec, REGIONS, type CalendarSpec, type Region } from "@/features/clock";
-import { loopRules, type LoopRules, type RewardKind } from "@/features/loop/rules";
-import { DEFAULT_RULES, ESCALATION_DAYS_MAX, type CompanyRules } from "@/features/knowledge/rules";
+import { loopRules, OVERLOAD_AT_DEFAULT, type LoopRules, type RewardKind } from "@/features/loop/rules";
+import { DEFAULT_RULES, ESCALATION_DAYS_MAX, PROJECT_START_DAYS_MAX, rulesFromRows, type CompanyRules } from "@/features/knowledge/rules";
 import type { MessageKey } from "@/i18n";
 
 /** The raw form: a field is one string, or a list of strings (checkboxes). */
@@ -67,6 +68,32 @@ export function parseCompanyForm(f: FormFields): Parsed<CompanyForm> {
 
 const REWARD_KINDS: readonly RewardKind[] = ["none", "thanks", "fixed", "share"];
 
+const OVERLOAD_FIELDS = [["triage", "overloadTriage"], ["up", "overloadUp"], ["overflow", "overloadOverflow"], ["late", "overloadLate"]] as const;
+
+/**
+ * The overload thresholds of the four fields (plan REM, Q6.2; rule overload_at, plan OVL D17). All four empty stores no rule, so the default
+ * applies; a single empty one takes its default. Whether the numbers are valid is the rule parser's call (rulesFromRows), so the form never
+ * accepts what the parser would ignore.
+ */
+function overloadAtOfForm(f: FormFields): CompanyRules["overloadAt"] | undefined | null {
+  const raw = OVERLOAD_FIELDS.map(([, field]) => text(f, field));
+  if (raw.every((v) => v === "")) return undefined;
+  const value: Record<string, number> = {};
+  for (const [i, [key]] of OVERLOAD_FIELDS.entries()) {
+    const n = raw[i] === "" ? OVERLOAD_AT_DEFAULT[key] : whole(raw[i]!);
+    if (n === null) return null;
+    value[key] = n;
+  }
+  return rulesFromRows([{ key: "overload_at", value }]).overloadAt ?? null;
+}
+
+/** The working days a blocked step may stand, or undefined for an empty field and null for one the rule parser would ignore. */
+function blockedDaysOfForm(raw: string): number | undefined | null {
+  if (raw === "") return undefined;
+  const n = whole(raw);
+  return n === null ? null : (rulesFromRows([{ key: "blocked_days", value: { days: n } }]).blockedDays ?? null);
+}
+
 export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
   const promiseDays = wholeIn(text(f, "promiseDays"), 1, 60);
   if (promiseDays === null) return fail("promiseDays", "settingsCompany.errPromiseDays");
@@ -76,6 +103,27 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
   const escalation = text(f, "escalationDays");
   const escalationDays = escalation === "" ? undefined : wholeIn(escalation, 0, ESCALATION_DAYS_MAX);
   if (escalationDays === null) return fail("escalationDays", "settingsCompany.errEscalationDays");
+  // Working days a project draft has to start (1 to 60); an empty field stores no rule, so the default applies.
+  const startDaysText = text(f, "projectStartDays");
+  const projectStartDays = startDaysText === "" ? undefined : wholeIn(startDaysText, 1, PROJECT_START_DAYS_MAX);
+  if (projectStartDays === null) return fail("projectStartDays", "settingsCompany.errProjectStartDays");
+  // The reasoned no (plan NOR, D23): the shortest reason, the days to ask for a second look and the days a question waits. An empty
+  // field stores no rule, so the default applies.
+  const reasonText = text(f, "noReasonMin");
+  const noReasonMin = reasonText === "" ? undefined : wholeIn(reasonText, 20, 400);
+  if (noReasonMin === null) return fail("noReasonMin", "settingsCompany.errNoReasonMin");
+  const appealText = text(f, "appealDays");
+  const appealDays = appealText === "" ? undefined : wholeIn(appealText, 1, 60);
+  if (appealDays === null) return fail("appealDays", "settingsCompany.errAppealDays");
+  const questionText = text(f, "questionDays");
+  const questionDays = questionText === "" ? undefined : wholeIn(questionText, 2, 30);
+  if (questionDays === null) return fail("questionDays", "settingsCompany.errQuestionDays");
+
+  // The overload thresholds and the blocked-step days (plan REM): an empty field stores no rule, so the default applies.
+  const overloadAt = overloadAtOfForm(f);
+  if (overloadAt === null) return fail("overloadAt", "settingsCompany.errOverloadAt");
+  const blockedDays = blockedDaysOfForm(text(f, "blockedDays"));
+  if (blockedDays === null) return fail("blockedDays", "settingsCompany.errBlockedDays");
 
   // The spend rule: an empty limit means no rule; a limit needs its sentence.
   let spend: CompanyRules["spend"] = null;
@@ -124,6 +172,14 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
       rules: {
         ...DEFAULT_RULES, promiseDays, outcomeDays, spend,
         deadlineHandover: on(f, "deadlineHandover"), ...(escalationDays === undefined ? {} : { escalationDays }),
+        ...(projectStartDays === undefined ? {} : { projectStartDays }),
+        ...(noReasonMin === undefined ? {} : { noReasonMin }),
+        ...(appealDays === undefined ? {} : { appealDays }),
+        ...(questionDays === undefined ? {} : { questionDays }),
+        ...(overloadAt === undefined ? {} : { overloadAt }),
+        ...(blockedDays === undefined ? {} : { blockedDays }),
+        // Who a member's raise is preselected as (decision Q1.7); anything but "name" keeps the handle.
+        postAs: postAsOf(text(f, "postAs")),
         steps: { discussion: on(f, "stepDiscussion"), projects: on(f, "stepProjects"), measure: on(f, "stepMeasure"), recognition: on(f, "stepRecognition") },
       },
       loop: loopRules({ discussEveryDays, discussMaxRounds, fastLaneEur, measureDays: measure as number[], tolerancePct, reward: { kind, amount, sharePct, capEur } }),

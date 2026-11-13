@@ -23,15 +23,19 @@ export function RowMenu({ label, actions, testId }: { label: string; actions: re
   );
 }
 
-/** Closes on Escape and moves the focus into the panel when it opens. */
+/** Closes on Escape and moves the focus into the panel when it opens, once: a new `onClose` on a
+ *  re-render (an inline arrow) must not pull the focus out of a field the person is typing in. A field
+ *  with autoFocus inside keeps it. */
 function usePanel(onClose: () => void) {
   const panel = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  useEffect(() => { close.current = onClose; }, [onClose]);
   useEffect(() => {
-    panel.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close.current(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
   return panel;
 }
 

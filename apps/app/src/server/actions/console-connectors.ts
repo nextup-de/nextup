@@ -10,6 +10,7 @@ import { auditChanges } from "@/features/audit";
 import { readJiraForm, settingsFromForm } from "@/features/admin/jira-admin";
 import { vaultKey } from "@/features/connectors/vault";
 import { cleanBrainModel } from "@/components/admin/connectors/views";
+import { parsePriceLines } from "@/features/ai/prices";
 import { AI_SYSTEM, DEFAULT_REGION, type AiSettings } from "@/features/ai/settings";
 import { normalizeSiteUrl, parseJiraSettings } from "@/features/integrations/jira/settings";
 import type { JiraAccount, JiraCheck, JiraIssueType } from "@/features/integrations/jira/types";
@@ -184,27 +185,37 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
   const r = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   if (!(AI_PROVIDER_CHOICES as readonly unknown[]).includes(r.choice)) return { ok: false, code: "invalid", detail: "choice" };
   const picked = r.choice as AiProviderChoice;
-  const endpointRaw = text(r.endpoint, 300);
+  // The model on this stack (Q8.4) takes no endpoint, model, deployment or key: whatever the form still holds from
+  // another choice is dropped, so nothing saved could point outside the stack. The prices still apply.
+  const local = picked === "local";
+  const endpointRaw = local ? "" : text(r.endpoint, 300);
   const endpoint = endpointRaw ? normalizeSiteUrl(endpointRaw) : null;
   if (endpointRaw && !endpoint) return { ok: false, code: "invalid", detail: "endpoint" };
   const needsEndpoint = picked === "azure-openai" || picked === "openai-compatible";
   if (needsEndpoint && !endpoint) return { ok: false, code: "invalid", detail: "endpoint" };
+  // The company's own prices, one model per line (features/ai/prices.ts); a line that does not read is refused by number.
+  const pricesText = typeof r.prices === "string" ? r.prices : "";
+  if (pricesText.length > 5000) return { ok: false, code: "invalid", detail: "prices" };
+  const priced = parsePriceLines(pricesText);
+  if (!priced.ok) return { ok: false, code: "invalid", detail: `prices, line ${priced.line}` };
+  const prices = Object.keys(priced.prices).length ? priced.prices : undefined;
   const settings: AiSettings = {
     choice: picked,
-    region: text(r.region, 40) || DEFAULT_REGION,
-    model: text(r.model, 120),
+    region: (local ? "" : text(r.region, 40)) || DEFAULT_REGION,
+    model: local ? "" : text(r.model, 120),
     endpoint,
-    deployment: text(r.deployment, 120) || null,
-    brainModel: cleanBrainModel(r.brainModel),
+    deployment: local ? null : text(r.deployment, 120) || null,
+    brainModel: local ? null : cleanBrainModel(r.brainModel),
+    ...(prices ? { prices } : {}),
   };
-  const key = text(r.key, 500);
+  const key = local ? "" : text(r.key, 500);
   if (key && !vaultKey()) return { ok: false, code: "no-vault" };
   if (needsEndpoint && !key && !(await integrationSecrets(d.c.companyId, AI_SYSTEM))?.secretSealed) return { ok: false, code: "no-token" };
   const actor = await consoleActor();
   const by = await who();
   const beforeRow = await getIntegration(d.c.companyId, AI_SYSTEM);
   const beforeSettings = beforeRow && typeof beforeRow.settings === "object" && beforeRow.settings !== null ? (beforeRow.settings as Record<string, unknown>) : null;
-  const savedSettings = { choice: picked, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment, brainModel: settings.brainModel };
+  const savedSettings = { choice: picked, region: settings.region, model: settings.model, endpoint: settings.endpoint, deployment: settings.deployment, brainModel: settings.brainModel, prices: prices ?? null };
   const hadKey = beforeRow?.hasSecret ? "sealed" : null;
   const changes = auditChanges(
     beforeRow ? { ...beforeSettings, key: hadKey } : null,

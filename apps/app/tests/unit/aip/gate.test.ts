@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { aiGate } from "@/features/ai/gate";
 import { aiSettings, type AiSettings } from "@/features/ai/settings";
-import { assistGate } from "@/features/assist/gate";
 
-const bedrock: AiSettings = { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null };
+const bedrock: AiSettings = { choice: "bedrock", region: "eu-central-1", model: "m", endpoint: null, deployment: null, brainModel: "bm" };
 const off: AiSettings = { ...bedrock, choice: "off" };
 const DPA = new Date("2026-10-01");
-const real = { stage: "pilot", hasDatabase: true, settings: bedrock, dpaSignedAt: DPA, purpose: "assist" as const, assistantOn: true, aiRouting: true };
+const real = { stage: "pilot", hasDatabase: true, settings: bedrock, dpaSignedAt: DPA, purpose: "assist" as const, assistantOn: true, aiRouting: true, budget: null };
 
 describe("AIP gate", () => {
   it("settings: a demo company without a row follows the environment, any other stage is off", () => {
@@ -48,14 +47,16 @@ describe("AIP gate", () => {
     expect(aiGate({ ...real, purpose: "coach", assistantOn: false, aiRouting: false }).on).toBe(true);
   });
 
-  it("assistGate answers as before for assist", () => {
+  it("the assistant's answers, as the assist route asks the one gate", () => {
+    const ask = (a: { stage: string; hasDatabase: boolean; configured: "bedrock" | "mock"; enabled: boolean; dpaSignedAt: Date | null }) =>
+      aiGate({ stage: a.stage, hasDatabase: a.hasDatabase, settings: { choice: a.configured, region: "eu-central-1", model: "", endpoint: null, deployment: null }, dpaSignedAt: a.dpaSignedAt, purpose: "assist", assistantOn: a.enabled, aiRouting: true, budget: null });
     const base = { stage: "pilot", hasDatabase: true, configured: "bedrock" as const, enabled: true, dpaSignedAt: new Date() };
-    expect(assistGate(base)).toEqual({ on: true, provider: "bedrock" });
-    expect(assistGate({ ...base, enabled: false }).on).toBe(false);
-    expect(assistGate({ ...base, dpaSignedAt: null }).on).toBe(false);
-    expect(assistGate({ ...base, configured: "mock", dpaSignedAt: null })).toEqual({ on: true, provider: "mock" });
-    expect(assistGate({ ...base, stage: "whatever", enabled: false }).on).toBe(false);
-    expect(assistGate({ stage: "demo", hasDatabase: false, configured: "bedrock", enabled: false, dpaSignedAt: null })).toEqual({ on: true, provider: "mock" });
-    expect(assistGate({ stage: "live", hasDatabase: false, configured: "bedrock", enabled: true, dpaSignedAt: new Date() }).on).toBe(false);
+    expect(ask(base).on).toBe(true);
+    expect(ask({ ...base, enabled: false }).on).toBe(false);
+    expect(ask({ ...base, dpaSignedAt: null }).on).toBe(false);
+    expect(ask({ ...base, configured: "mock", dpaSignedAt: null }).on).toBe(true);
+    expect(ask({ ...base, stage: "whatever", enabled: false }).on).toBe(false);
+    expect(ask({ stage: "demo", hasDatabase: false, configured: "bedrock", enabled: false, dpaSignedAt: null })).toMatchObject({ on: true, settings: { choice: "mock" } });
+    expect(ask({ stage: "live", hasDatabase: false, configured: "bedrock", enabled: true, dpaSignedAt: new Date() }).on).toBe(false);
   });
 });

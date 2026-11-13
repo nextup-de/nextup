@@ -6,10 +6,12 @@ import { aiGate, type AiGate } from "@/features/ai/gate";
 import { contextStatusOf, type ContextDraft, type ContextError, type ContextStatus } from "@/features/settings/context-draft";
 import { companyPrefix } from "@/features/tenant/urls";
 import { loadAiSettings } from "@/lib/db/ai";
+import { loadAiBudget } from "@/lib/db/ai-usage";
 import { loadAiRouting, loadAssistSettings, type AssistSettings } from "@/lib/db/assist";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { connectionStatus } from "@/lib/db/connections";
 import { loadContextRun } from "@/lib/db/context-run";
+import { brainTarget } from "@/server/brain-health";
 import { knowledgeSourcesFor } from "@/server/connectors/knowledge";
 
 export type ContextFacts = { gate: AiGate; key: string | null; assist: AssistSettings; sources: KnowledgeSource[] };
@@ -18,12 +20,12 @@ export type ContextFacts = { gate: AiGate; key: string | null; assist: AssistSet
 export async function contextFacts(companyId: string): Promise<ContextFacts | null> {
   const company = await getDb().company.findUnique({ where: { id: companyId }, select: { stage: true } });
   if (!company) return null;
-  const [ai, assist, aiRouting, sources] = await Promise.all([
-    loadAiSettings(companyId, company.stage), loadAssistSettings(companyId), loadAiRouting(companyId), knowledgeSourcesFor(companyId),
+  const [ai, assist, aiRouting, sources, budget] = await Promise.all([
+    loadAiSettings(companyId, company.stage), loadAssistSettings(companyId), loadAiRouting(companyId), knowledgeSourcesFor(companyId), loadAiBudget(companyId),
   ]);
   const gate = aiGate({
     stage: company.stage, hasDatabase: true, settings: ai.settings, dpaSignedAt: assist.dpaSignedAt,
-    purpose: "brain", assistantOn: assist.enabled, aiRouting,
+    purpose: "brain", assistantOn: assist.enabled, aiRouting, budget, stackBrain: brainTarget() !== null,
   });
   return { gate, key: ai.key, assist, sources };
 }

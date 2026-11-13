@@ -2,19 +2,25 @@
 
 // Requesting and listing data exports (GDP D14). Company admins only. The ready file, its audit row and, for
 // a copy to the person, the mail commit in one transaction: nothing is reported ready without its audit row.
+// An admin-only copy the company handed over itself is marked as delivered here (Q10.13).
+import { revalidatePath } from "next/cache";
 import { gateOf, prefOf } from "@/features/notify/gate";
 import {
-  EXPORT_TTL_DAYS, addDays, buildCompanyExport, buildPersonExport, composeExportMail, hasVerifiedEmail, serializeExport,
+  EXPORT_TTL_DAYS, addDays, buildCompanyExport, buildPersonExport, canMarkDelivered, cleanDeliveryNote, composeExportMail,
+  hasVerifiedEmail, serializeExport,
 } from "@/features/privacy/export";
+import { companyPrefix } from "@/features/tenant/urls";
 import { createT, DEFAULT_LOCALE } from "@/i18n";
 import { localeForUser } from "@/i18n/server";
 import { getDb } from "@/lib/db/client";
 import type { OutboxDraft } from "@/lib/db/outbox";
 import {
-  companyExportRows, createExport, enqueueIn, listExports, markFailed, markReady, personExportRows,
+  companyExportRows, createExport, downloadedExportIds, enqueueIn, getExport, listExports, markDelivered, markFailed, markReady,
+  personExportRows,
 } from "@/lib/db/privacy-export";
 import { recordAudit, settingsActor } from "@/server/audit/record";
 import { companyBaseUrl } from "@/server/case-notice";
+import { audited } from "@/server/actions/settings/audited";
 import { companyAdminOf } from "@/server/actions/settings/guard";
 
 export type ExportInput = {
@@ -41,7 +47,13 @@ export type ExportListItem = {
   createdAt: string;
   /** The signed-in admin can download it here: an admin copy they asked for, ready and not expired. */
   downloadable: boolean;
+  /** Handed over by the company through its own channel (Q10.13): when, which admin marked it, the channel note. */
+  delivered: { at: string; byUserId: string | null; note: string | null } | null;
+  /** A company admin can mark it as handed over now: an admin-only person copy, downloaded, not marked yet. */
+  markable: boolean;
 };
+
+export type MarkDeliveredResult = { ok: true } | { ok: false; error: string };
 
 const MAX_REASON = 300;
 
@@ -135,7 +147,10 @@ export async function listExportsAction(slug: string): Promise<ExportListItem[] 
   const admin = await companyAdminOf(slug);
   if (!admin) return null;
   const now = Date.now();
-  return (await listExports(admin.companyId)).map((e) => ({
+  const list = await listExports(admin.companyId);
+  const open = list.filter((e) => e.kind === "person" && e.deliverTo === "admin" && !e.deliveredAt).map((e) => e.id);
+  const downloaded = await downloadedExportIds(admin.companyId, open);
+  return list.map((e) => ({
     id: e.id,
     kind: e.kind === "person" ? "person" : "company",
     subjectUserId: e.subjectUserId,
@@ -147,5 +162,49 @@ export async function listExportsAction(slug: string): Promise<ExportListItem[] 
     expiresAt: e.expiresAt.toISOString(),
     createdAt: e.createdAt.toISOString(),
     downloadable: e.deliverTo === "admin" && e.requestedByUserId === admin.userId && e.status === "ready" && e.expiresAt.getTime() > now,
+    delivered: e.deliveredAt ? { at: e.deliveredAt.toISOString(), byUserId: e.deliveredByUserId, note: e.deliveryNote } : null,
+    markable: canMarkDelivered({ ...e, downloaded: downloaded.has(e.id) }),
   }));
+}
+
+/**
+ * Marks an admin-only copy of one person's data as handed over by the company (DPO, HR), with an optional note of
+ * the channel (Q10.13). Company admins only; once per export; the mark and its audit row commit together.
+ */
+export async function markExportDelivered(slug: string, exportId: string, note?: string): Promise<MarkDeliveredResult> {
+  let t = createT(DEFAULT_LOCALE);
+  const fail = (error: string): MarkDeliveredResult => ({ ok: false, error });
+  const admin = await companyAdminOf(slug);
+  if (!admin) return fail(t("settingsPrivacy.errorForbidden"));
+  const { companyId } = admin;
+  t = createT(await localeForUser(companyId, admin.userId));
+
+  const row = typeof exportId === "string" ? await getExport(companyId, exportId) : null;
+  if (!row) return fail(t("settingsPrivacy.errorDeliveredRefused"));
+  if (row.deliveredAt) return fail(t("settingsPrivacy.errorDeliveredAlready"));
+  const downloaded = (await downloadedExportIds(companyId, [row.id])).has(row.id);
+  const subjectId = row.subjectUserId;
+  if (!subjectId || !canMarkDelivered({ ...row, downloaded })) return fail(t("settingsPrivacy.errorDeliveredRefused"));
+
+  const clean = cleanDeliveryNote(note);
+  const at = new Date();
+  const saved = await audited<number>(
+    companyId,
+    (n) => (n === 0 ? null : {
+      actor: settingsActor(admin),
+      action: "audit.privacy.delivered",
+      target: { kind: "user", id: subjectId },
+      changes: {
+        exportId: { before: null, after: row.id },
+        deliveredAt: { before: null, after: at.toISOString() },
+        ...(clean ? { note: { before: null, after: clean } } : {}),
+      },
+      source: "settings",
+    }),
+    (tx) => markDelivered(tx, companyId, row.id, { byUserId: admin.userId, note: clean, at }),
+  );
+  if (!saved.ok) return fail(t("settingsPrivacy.errorAuditFailed"));
+  if (saved.value === 0) return fail(t("settingsPrivacy.errorDeliveredAlready"));
+  revalidatePath(`${companyPrefix(slug)}/settings/privacy`);
+  return { ok: true };
 }

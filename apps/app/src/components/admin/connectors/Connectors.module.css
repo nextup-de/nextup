@@ -34,7 +34,7 @@
 .row { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 16px; align-items: start; }
 .label { padding-top: 9px; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.hint { font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); }
+.hint { font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); overflow-wrap: anywhere; }
 .input { box-sizing: border-box; width: 100%; height: 34px; padding-inline: 12px; border: 1px solid var(--nh-line); border-radius: 6px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); }
 .input:focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
 .input:disabled { background: var(--nh-surface); color: var(--nh-mute); }
@@ -42,6 +42,7 @@
 .secret > .input { flex: 1; }
 .mono { font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-sm); }
 .input[data-size="short"] { max-width: 140px; }
+.area { height: auto; min-height: 76px; padding-block: 8px; resize: vertical; line-height: 1.5; }
 select.input { max-width: 360px; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .seg { display: inline-flex; align-self: flex-start; padding: 3px; border-radius: 8px; background: var(--nh-fill); }

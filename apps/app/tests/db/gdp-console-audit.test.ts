@@ -119,6 +119,15 @@ describe("GDP console audit", () => {
     expect(ai).toHaveLength(1);
     expect(ai[0]).toMatchObject({ actorKind: "console", targetKind: "connector" });
     expect((ai[0].changes as Record<string, { after: unknown }>).key.after).toBe("set");
+
+    // Prices per model (decision Q7.5) are audited before and after; the same prices saved again change nothing.
+    const priced = { choice: "azure-openai", region: "eu", model: "gpt", endpoint: "https://aoai.acme.example", deployment: "d1", key: "", prices: "gpt-4.1-mini 0.42 1.68" };
+    expect(await saveConsoleAi(priced)).toEqual({ ok: true });
+    expect(await saveConsoleAi(priced)).toEqual({ ok: true });
+    const later = (await rowsOf(acme, "audit.connector.saved")).filter((r) => r.targetId === "ai");
+    expect(later).toHaveLength(3);
+    expect(later[1].changes).toEqual({ prices: { before: null, after: { "gpt-4.1-mini": { in: 0.42, out: 1.68 } } } });
+    expect(Object.keys(later[2].changes as object)).not.toContain("prices");
   });
 
   it("Microsoft 365 on/off and disconnect everyone", async () => {
@@ -147,6 +156,51 @@ describe("GDP console audit", () => {
     expect(saved[0]).toMatchObject({ actorKind: "console", targetKind: "assistant" });
     expect(Object.keys(saved[0].changes as object)).not.toContain("retentionDays");
     expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).retentionDays).not.toBe(30);
+
+    // The month's AI budget (decision Q7.3): saved and audited when the form sends it, left alone when it does not.
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBeNull();
+    // The page always sends the cap it shows; the default sent back unchanged stays "follow the default".
+    form.set("monthlyCapEur", "50");
+    expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBeNull();
+    const same = await rowsOf(acme, "audit.assistant.saved");
+    expect(same).toHaveLength(2);
+    expect(Object.keys(same[1].changes as object)).not.toContain("aiMonthlyCapEur");
+    form.set("monthlyCapEur", "80");
+    expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBe(80);
+    const again = await rowsOf(acme, "audit.assistant.saved");
+    expect(again).toHaveLength(3);
+    expect(again[2].changes).toEqual({ aiMonthlyCapEur: { before: null, after: 80 } });
+    form.delete("monthlyCapEur");
+    expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBe(80);
+    // Once a cap is stored, 50 is a choice like any other, and 0 stops every call.
+    for (const [sent, kept] of [["50", 50], ["0", 0]] as const) {
+      form.set("monthlyCapEur", sent);
+      expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+      expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyCapEur).toBe(kept);
+    }
+    for (const bad of ["-1", "12.5", "100001", "abc"]) {
+      form.set("monthlyCapEur", bad);
+      expect(await saveAssistSettingsAction({}, form)).toEqual({ ok: false, code: "invalid" });
+    }
+    form.delete("monthlyCapEur");
+    // The token limit for models without a price (decision Q7.5): the same rules.
+    form.set("monthlyTokenCap", "20000000");
+    expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyTokenCap).toBeNull();
+    form.set("monthlyTokenCap", "5000000");
+    expect((await saveAssistSettingsAction({}, form)).ok).toBe(true);
+    expect((await db.companyConfig.findUniqueOrThrow({ where: { companyId: acme } })).aiMonthlyTokenCap).toBe(5_000_000);
+    const tokenRows = await rowsOf(acme, "audit.assistant.saved");
+    expect(tokenRows[tokenRows.length - 1].changes).toEqual({ aiMonthlyTokenCap: { before: null, after: 5_000_000 } });
+    for (const bad of ["-1", "1.5", "2000000001", "abc"]) {
+      form.set("monthlyTokenCap", bad);
+      expect(await saveAssistSettingsAction({}, form)).toEqual({ ok: false, code: "invalid" });
+    }
+    form.delete("monthlyTokenCap");
+    await db.auditEvent.deleteMany({ where: { companyId: acme, action: "audit.assistant.saved", NOT: { id: saved[0].id } } });
 
     const ideas = new FormData();
     ideas.set("publishThreshold", "55");

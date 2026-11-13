@@ -1,11 +1,85 @@
 # The company clock
 
+Phase additions after REG: see [docs/process/](process/README.md).
+
 Every event carries a `day`, and the log carries today's `day`. What that number means depends on the company's stage.
 
 ## Two modes
 
 - **Demo** (stage `demo`): `day` is the simulated counter `Company.demoDay`. `day.advanced` moves it, the reducer escalates at render time, the scheduler skips these companies.
 - **Workdays** (any other stage): `day` is a working-day number. `appendEventRow` stamps `workdayOf(now, calendar)`, `loadLog` sets `log.day` to the same, and `Company.demoDay` is ignored. `companyDay()` in `lib/db/events.ts` is the one place that chooses.
+
+## An unanswered question
+
+A case that is `asked` is paused, so its answer date never falls due. `dueNow` looks at the question itself: it yields one `clock.due` fact of
+kind `question` (the reminder to the raiser) `min(3, question_days - 1)` working days after it was asked, and after `question_days` working days a
+due of kind `unanswered`, which the scheduler writes as the event `case.unanswered` with actor `system:clock`. `question_days` is a company rule
+(Settings → Rules, default 5, 2 to 30; `QUESTION_REMIND_DAYS` is 3). The
+reducer accepts that event from the clock only; it opens the case, adds the paused days and keeps the question with
+`unanswered` set to the day. Idempotency keys: `clk:question:<case>:<asked day>` and `clk:unanswered:<case>:<asked day>`,
+so a second question on the same case counts again from its own day.
+
+## A result nobody confirmed
+
+A typed result that still has no second person (`unconfirmedOf`, `features/projects/confirm.ts`) is chased with two
+`clock.due` facts of kind `confirm`, each with the measure's `check`. The first falls due the working day after the
+result's date (the day it was typed plus `CONFIRM_DAYS`, 5) and has no seat: it reminds who may confirm. The second
+falls due `CONFIRM_ESCALATE_DAYS` (3) later and names the seat above the deputy's desk in `toRoleHolderId`; that seat's
+role may confirm from then on. It is only written when someone sits above, and never names the desk of the lead or of
+who typed the number. Keys: `clk:confirm:<project>:<dueDay>:<check>`. A confirmed result, or a stopped project, is not chased.
+
+## A project draft
+
+A yes that opened a draft (plan SET) has three clocks, all derived from the draft's history (`draftDue`,
+`features/clock/kinds/project.ts`). A legacy project (no `draft`) gets none of them.
+
+| Kind | Falls due | What it does |
+|---|---|---|
+| `lead` | `LEAD_REMIND_DAYS` (2) working days after the lead was asked (the yes, or a hand-over that changed the lead) | a fact: reminds the lead to take or decline |
+| `lead`, `lapse` | `LEAD_RETURN_DAYS` (4) after the ask | the scheduler writes `project.lead.answered {take: false, lapsed: true, askId}` as `system:clock`: the draft goes back to the decider, who leads it |
+| `invite` | `INVITE_REMIND_DAYS` (2) after an invitation | a fact: reminds the person to accept or decline (not for a follower) |
+| `invite`, `lapse` | `INVITE_LAPSE_DAYS` (5) after it | the scheduler writes `project.invite.answered {take: false, lapsed: true}`; the lead may invite someone else |
+| `draft` | the draft's start day: the company rule `project_start_days` (default 10) working days after the lead took it | a fact with `toRoleHolderId`: the lead is told and the draft goes to the seat above the lead's seat |
+| `draft`, `check` 3 | `DRAFT_UP_DAYS` (3) working days after the start day | one more fact, to that seat only |
+
+The lead's lapse and an invitation's lapse are events, so they are written after the facts of the same run
+(`projectAfterFacts`). Waiting for the lead's answer does not count against the lead: before the lead takes the draft it
+has no start day. Every fact belongs to one cycle (the ask, the invitation, the start day). A new ask, a new invitation or a
+moved start (`project.start.moved`) gets its own deadlines, and an old fact neither stops nor brings forward the new one.
+Keys: `clk:lead:<project>:<ask id>` and `clk:invite:<project>:<invite id>`, each with a `:lapse` twin, and
+`clk:draft:<project>:<start day>` (`:3` for the second), with `:m<event id>` after a new cycle. A started, stopped or recognised
+project is not chased. An invitation after the start is chased the same way.
+
+## A late answer
+
+An open case past its answer date gets, in this order (`caseDues`, `features/clock/kinds/case.ts`):
+
+1. A `clock.due` fact of kind `deadline` on the day after the answer date, with the reminder `reminder.deadline` to the deputy desk. With the
+   company rule `deadline_handover` on (the default), the next run hands the case to the deputy seat: one `case.handed` with `why: "deadline"`.
+2. The second level, `escalation_days` working days after the answer date (Settings → Rules, "Then one level up after", default 3, 0 switches it
+   off): one `clock.due` of kind `escalation` to the seat above the desk that owes the answer (`clk:escalate:<case>`), and a run later one
+   `case.handed` with `why: "escalation"` to that seat (`clk:escalate:<case>:handover`). The fact is written also when nobody sits above, so the
+   reminders still go out; then there is no hand-over. Once the second level has started the deputy no longer takes the case.
+   `reminder.escalation` tells the seat above, the desk and the raiser (docs/NOTIFICATIONS.md).
+
+Both are once per cycle: a case that comes back (a revisit, a second look not upheld) is escalated again from its new answer date. A discussion
+whose check-in is `escalation_days` late is handled the same way.
+
+## A desk nobody sits at
+
+An open case whose desk has no occupied seat of its role is handed on at once: `dueNow` yields a hand-over with
+`why: "vacant"` to the route's other desk (the deputy's, or back to the owner's) when someone sits there, else to the
+seat above; with nobody there either it stays. The key is `clk:vacant:<case>:<seat it leaves>`, so each seat is left
+once. `vacant` is one of the clock's own reasons (`CLOCK_REASONS`): a person cannot write it. It also catches a desk
+that empties later, when its last holder is taken off the seat. A seat whose user is deactivated still counts as
+occupied here.
+
+## A raise without a route
+
+A case with no route used to be skipped by `dueNow`. It now gets the deadline fact of any case once it sits on a desk
+(its hand-over seat is nobody, because a route names the deputy) and, after `escalation_days`, the second level to the
+seat above its desk. While it still sits on the fallback desk, one working day after the raise `dueNow` yields a fact of
+kind `triage` (`clk:triage:<case>:<day>`), the reminder to pass it on. A case on no desk at all still yields nothing.
 
 ## Working-day numbers and the epoch
 

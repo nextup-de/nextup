@@ -1,4 +1,4 @@
-// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document, OutboxMessage, WebhookSubscription, NotifyPreference, NotifyCursor, TeamsConversation, AiCall. Changed only by: CON, NTF, TMS, AIB. Every migration is its own folder under prisma/migrations.
+// Area integrations (docs/adr/0007-areas.md). Models: CompanyConfig, Connection, Integration, Document, OutboxMessage, WebhookSubscription, NotifyPreference, NotifyCursor, TeamsConversation, AiCall. Changed only by: CON, NTF, TMS, AIB, INB. Every migration is its own folder under prisma/migrations.
 
 // Which integrations are on for this company. docs/INTEGRATIONS.md: flipped only by an event, so
 // the change is a fact with an actor, not a silent edit.
@@ -22,6 +22,12 @@ model CompanyConfig {
   dpaSignedAt           DateTime?
   // Company patterns masked before anything reaches the model (regex source), e.g. prototype codes.
   redactPatterns        String[]
+  // The month's budget for model calls in euros (features/ai/budget.ts); the gate closes when it is used up.
+  // NULL = the default (DEFAULT_MONTHLY_CAP_EUR).
+  aiMonthlyCapEur       Int?
+  // Input and output tokens per month of models that have no price (decision Q7.5); the gate closes when they reach
+  // it. NULL = the default (DEFAULT_MONTHLY_TOKEN_CAP).
+  aiMonthlyTokenCap     Int?
 
   // The idea studio (docs/IDEAS.md): the benchmark score an idea needs before it can be published.
   publishThreshold Int @default(70)
@@ -44,6 +50,11 @@ model CompanyConfig {
   m365Search Boolean @default(false)
 
   defaultLocale String? // de | en (src/i18n). Null: English.
+
+  // Per notice group (raised | loop | reminders | digest) how the company wants it delivered: {group: rule} with the
+  // rule teams-else-mail | mail | both (decision D6 of plan INB, features/notify/channels.ts). A missing group
+  // means teams-else-mail.
+  noticeChannels Json @default("{}")
 }
 
 // A person's own connection to a source NextUp reads on their behalf - today only Microsoft 365
@@ -163,9 +174,12 @@ model OutboxMessage {
   lastError String?
   sentAt    DateTime?
   createdAt DateTime  @default(now())
+  // When the person read the notice; only an `inapp` row has one (decision D5 of plan INB).
+  readAt    DateTime?
 
   @@unique([companyId, key])
   @@index([status, nextAt])
+  @@index([companyId, recipientUserId, channel])
 }
 
 // Where a company's public events are posted. The secrets are sealed (features/connectors/vault.ts,
@@ -231,11 +245,26 @@ model TeamsConversation {
 model AiCall {
   id        String   @id @default(cuid())
   companyId String
-  purpose   String // routing | read | coach | plan | checkin
+  purpose   String // routing | read | coach | plan | checkin | context | assist (each assistant answer, beside its AssistTurn)
   model     String
   tokensIn  Int
   tokensOut Int
   latencyMs Int
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+}
+
+// The words of an agent suggestion or planning draft (plan AGT D23): redacted, roles not names, no user id. The event keeps the id and
+// the text lives here so the company's AI-text retention (assist_turns) can delete it; what a person accepted lives on in the notice,
+// update or step. A company's table, not in a person's export.
+model AgentText {
+  id        String   @id @default(cuid())
+  companyId String
+  kind      String // suggestion | plan
+  text      String
   createdAt DateTime @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)

@@ -51,7 +51,7 @@ test("employee: what happened to what I sent", async ({ page }) => {
 test("team leader: the inbox with an item open", async ({ page }, info) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await expect(page).toHaveURL(/\/acme\/leader$/);
+  await expect(page).toHaveURL(/\/acme\/inbox$/);
   await page.getByRole("region", { name: "Fresh ideas" }).getByRole("button", { name: /^Rework on the 4-series housing/ }).click();
   await expect(page.getByRole("heading", { name: /Rework on the 4-series housing/, level: 1 })).toBeVisible();
   if (info.project.name !== "phone") {

@@ -104,6 +104,7 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     // Step units: Next stays closed until the first unit is there.
     await expect(vis(manager, "setup-step-units")).toBeVisible();
     await expect(vis(manager, "setup-next")).toBeDisabled();
+    await vis(manager, "setup-unit-new").click();
     await vis(manager, "setup-unit-name").fill("Engineering");
     await vis(manager, "setup-unit-key").fill("ENG");
     await vis(manager, "setup-unit-add").click();
@@ -112,6 +113,7 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
 
     // Step roles: a role with two seats. The manager holds one, the other stays vacant for the leader.
     await expect(vis(manager, "setup-step-roles")).toBeVisible();
+    await vis(manager, "setup-role-new").click();
     await vis(manager, "setup-role-title").fill("Engineering lead");
     await vis(manager, "setup-seat-add").click();
     await manager.getByTestId("setup-seat-link").nth(1).selectOption({ label: MANAGER.name });
@@ -121,18 +123,23 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
 
     // Step routes.
     await expect(vis(manager, "setup-step-routes")).toBeVisible();
+    await vis(manager, "setup-route-new").click();
     await vis(manager, "setup-route-type").fill("Test rig time");
     await vis(manager, "settings-routing-keywords").fill("rig, test");
     await vis(manager, "setup-route-owner").selectOption({ index: 1 });
     await vis(manager, "setup-route-add").click();
     await expect(manager.locator('li[data-testid^="setup-route-"]')).toHaveCount(1);
-    // Next never saves a half-filled form: it asks first, and Discard moves on.
+    // A half-filled form stays in its drawer, over Next: closing the drawer drops it, and nothing is saved.
+    await vis(manager, "setup-route-new").click();
     await vis(manager, "setup-route-type").fill("Half a route");
+    await manager.keyboard.press("Escape");
+    await expect(manager.getByTestId("setup-route-drawer")).toHaveCount(0);
+    await expect(manager.locator('li[data-testid^="setup-route-"]')).toHaveCount(1);
     await next(manager);
-    await vis(manager, "setup-unsaved-discard").click();
 
     // Step members: invite the leader. One more person than the admin and Setup is done.
     await expect(vis(manager, "setup-step-members")).toBeVisible();
+    await vis(manager, "setup-member-new").click();
     await vis(manager, "setup-member-name").fill(LEADER.name);
     await vis(manager, "setup-member-email").fill(LEADER.email);
     await vis(manager, "setup-member-role").selectOption("leader");
@@ -191,9 +198,27 @@ test.describe.serial("ADM acceptance: an empty company is configured in the app 
     await expect(vis(manager, "setup-open-check-calendar")).toHaveAttribute("data-state", "done");
     await expect(vis(manager, "setup-open-held")).toBeVisible();
 
-    // Open repeats the hand list, then opens. The held invitation goes out with a code that works.
+    // The agreements are a needed check too (Q9.4): record the DPA and "no works council" on Go-live.
+    await expect(vis(manager, "setup-open-check-agreements")).toHaveAttribute("data-state", "needs");
+    await expect(vis(manager, "setup-open-button")).toBeDisabled();
+    await manager.goto(`/${SLUG}/settings/go-live`);
+    await vis(manager, "settings-agreement-edit-dpa").click();
+    await vis(manager, "settings-agreement-date-dpa").fill("2026-11-02");
+    await vis(manager, "settings-agreement-signer-dpa").fill("Managing director");
+    await vis(manager, "settings-agreement-save-dpa").click();
+    await expect(vis(manager, "settings-agreement-state-dpa")).toContainText("Managing director");
+    await vis(manager, "settings-agreement-edit-works").click();
+    await vis(manager, "settings-agreement-notneeded-works").check();
+    await vis(manager, "settings-agreement-reason-works").fill("The plant has no works council");
+    await vis(manager, "settings-agreement-save-works").click();
+    await expect(vis(manager, "settings-agreement-state-works")).toContainText("No works council");
+    await expect(vis(manager, "settings-golive-check-agreements")).toHaveAttribute("data-state", "done");
+    await manager.goto(`/${SLUG}/setup/open`);
+    await expect(vis(manager, "setup-open-check-agreements")).toHaveAttribute("data-state", "done");
+
+    // Open asks once more, then opens. The held invitation goes out with a code that works.
     await vis(manager, "setup-open-button").click();
-    await expect(manager.getByTestId("setup-open-dialog")).toContainText("Works council");
+    await expect(manager.getByTestId("setup-open-dialog")).toContainText("Every needed check is done");
     await manager.getByRole("button", { name: "Yes, open NextUp" }).click();
     await expect(vis(manager, "setup-open-opened")).toBeVisible({ timeout: 30_000 });
     await expect(vis(manager, "setup-open-sent")).toContainText("1 invitation sent");

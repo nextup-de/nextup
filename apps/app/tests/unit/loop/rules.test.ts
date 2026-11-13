@@ -58,4 +58,12 @@ describe("LOOP company rules", () => {
     expect(loopRules({ measure: false }).measure).toBe(false);
     expect(loopRules({ deadlineHandover: false }).deadlineHandover).toBe(false);
   });
+  it("overload_at: no row means the default, a valid row is carried by loopRules, a bad one is no rule (plan OVL, D17)", () => {
+    const at = { triage: 8, up: 15, overflow: 25, late: 2 };
+    expect(rulesFromRows([]).overloadAt).toBeUndefined();
+    expect(rulesFromRows([{ key: "overload_at", value: at }]).overloadAt).toEqual(at);
+    expect(rulesFromRows([{ key: "overload_at", value: { ...at, up: 5 } }]).overloadAt).toBeUndefined(); // up must be above triage
+    expect(loopRules({ overloadAt: at }).overloadAt).toEqual(at);
+    expect(loopRules({}).overloadAt).toBeUndefined();
+  });
 });

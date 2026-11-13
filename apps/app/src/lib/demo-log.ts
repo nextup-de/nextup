@@ -7,8 +7,9 @@ import type { Role } from "@/config/roles";
 
 // Design tweaks from the dev panel's Design page: motion = animations on (default) or off;
 // roundCorners = the old pill/round corners instead of the square ones (default off);
+// blackAccent = the old black accent instead of the blue one (default off: blue);
 // dotsStrength / dotSpacing = this browser's dot grid, unset = the config default (features/design/dots).
-export type DemoPrefs = { role?: Role; leadAs?: string | null; demo?: boolean; dept?: string; motion?: boolean; roundCorners?: boolean; dotsStrength?: number; dotSpacing?: number };
+export type DemoPrefs = { role?: Role; leadAs?: string | null; demo?: boolean; dept?: string; motion?: boolean; roundCorners?: boolean; blackAccent?: boolean; dotsStrength?: number; dotSpacing?: number };
 export type Persisted = { log: EventLog; prefs: DemoPrefs; loaded: boolean };
 
 const logKey = (slug: string) => "nextup." + slug + ".log.v1";

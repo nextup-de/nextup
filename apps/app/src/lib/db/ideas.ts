@@ -6,6 +6,7 @@ import { DEFAULT_PUBLISH_THRESHOLD } from "@/features/ideas/benchmarks";
 import type { DraftStatus, DraftSummary, DraftView } from "@/features/ideas/drafts";
 import { readingOf, type Reading } from "@/features/ideas/reading";
 import { getDb } from "./client";
+import type { Tx } from "./integrations";
 
 const status = (s: string): DraftStatus => (s === "published" || s === "discarded" ? s : "draft");
 const summary = (d: { id: string; title: string; status: string; overall: number; updatedAt: Date; caseId: string | null }): DraftSummary =>
@@ -73,8 +74,9 @@ export async function discardDraft(companyId: string, userId: string, id: string
 }
 
 /** Only an open draft can be published, and only once. */
-export async function markPublished(companyId: string, userId: string, id: string, caseId: string, snap: Snapshot): Promise<boolean> {
-  const r = await getDb().ideaDraft.updateMany({
+/** `tx`: inside the transaction that appends the case.raised, so the draft is published only with its case (Q1.11). */
+export async function markPublished(companyId: string, userId: string, id: string, caseId: string, snap: Snapshot, tx?: Tx): Promise<boolean> {
+  const r = await (tx ?? getDb()).ideaDraft.updateMany({
     where: { companyId, userId, id, status: "draft" },
     data: { status: "published", caseId, publishedAt: new Date(), title: snap.title, overall: snap.overall, scores: snap.scores },
   });

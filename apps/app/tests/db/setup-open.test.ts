@@ -11,6 +11,8 @@ const sendMail = vi.fn<(msg: { to: string; subject: string; text: string }) => P
 vi.mock("@/server/issue-session", () => ({ issueSession, clearSession: vi.fn(), secureCookies: () => false }));
 vi.mock("@/server/mail", () => ({ sendMail, mailStatus: vi.fn(async () => ({ configured: true, reachable: true })), mailConfigured: () => true }));
 vi.mock("@/server/backup-status", () => ({ readBackupStatus: vi.fn(async () => ({ at: new Date(), offbox: true })) }));
+// The restore test is a needed check too (REM-O3): one that passed a day ago.
+vi.mock("@/server/restore-status", () => ({ readRestoreStatus: vi.fn(async () => ({ at: new Date(Date.now() - 86_400_000), seconds: 300 })) }));
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ "x-forwarded-for": "203.0.113.20" }),
   cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }),
@@ -28,6 +30,7 @@ const { moveStage, openCompany } = await import("@/lib/db/go-live");
 const { mailStatus } = await import("@/server/mail");
 const { readBackupStatus } = await import("@/server/backup-status");
 const { countHeldInvitations, entryFor, loadOpenedAt, sendHeldInvitations } = await import("@/server/setup-open");
+const { recordAgreement } = await import("@/lib/db/agreements");
 
 const db = getDb();
 const SLUG = "setup-open";
@@ -110,6 +113,7 @@ describe("while the company is closed", () => {
     await nearlyReady();
     const r = await openCompany(companyId, ids.manager, new Date(), deps);
     expect(r).toMatchObject({ ok: false, reason: "blocked" });
+    if (!r.ok) expect(r.checks?.filter((c) => c.level === "needed" && c.state !== "done").map((c) => c.key).sort()).toEqual(["agreements", "calendar"]);
     expect(await loadOpenedAt(companyId)).toBeNull();
     expect(await db.auditEvent.count({ where: { companyId, action: "audit.company.opened" } })).toBe(0);
   });
@@ -127,8 +131,19 @@ describe("while the company is closed", () => {
 });
 
 describe("Open", () => {
-  it("opens once the checks pass, writes the audit row, leaves the stage alone and signs nobody out", async () => {
+  it("waits for the agreements: the DPA alone is not enough while a works council is possible (Q9.4)", async () => {
     await db.companyCalendar.create({ data: { companyId } });
+    await recordAgreement(companyId, ids.manager, { kind: "dpa", status: "signed", date: "2026-11-02", signer: "Managing director" });
+    const r = await openCompany(companyId, ids.manager, new Date(), deps);
+    expect(r).toMatchObject({ ok: false, reason: "blocked" });
+    if (!r.ok) expect(r.checks?.find((c) => c.key === "agreements")).toMatchObject({ state: "needs", values: { count: 1, agreementKeys: "settingsGoLive.agreementWorks" } });
+    await recordAgreement(companyId, ids.manager, { kind: "works", status: "notNeeded", reason: "No works council at this plant" });
+    const rows = await db.auditEvent.findMany({ where: { companyId, action: "audit.company.agreement" }, orderBy: { at: "asc" } });
+    expect(rows.map((x) => [x.actorUserId, x.targetKind, x.targetId])).toEqual([[ids.manager, "agreement", "dpa"], [ids.manager, "agreement", "works"]]);
+    expect(rows[0].changes).toEqual({ kind: "dpa", status: "signed", date: "2026-11-02", signer: "Managing director" });
+  });
+
+  it("opens once the checks pass, writes the audit row, leaves the stage alone and signs nobody out", async () => {
     const before = await db.company.findUniqueOrThrow({ where: { id: companyId } });
     const now = new Date();
     const r = await openCompany(companyId, ids.manager, now, deps);
@@ -156,7 +171,7 @@ describe("Open", () => {
     expect(code).not.toBe(old);
     expect((await db.user.findFirstOrThrow({ where: { id: ids.leader, companyId } })).loginCodeHash).toBe(hashLoginCode(code));
     codes.leader = code;
-    expect(await login("leader")).toBe(`REDIRECT /${SLUG}/leader`);
+    expect(await login("leader")).toBe(`REDIRECT /${SLUG}/inbox`);
     codes.leader = old;
     expect(await login("leader")).toEqual({ error: expect.any(String) });
     codes.leader = code;

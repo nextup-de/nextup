@@ -42,6 +42,8 @@ if [ "$slug" = all ]; then
   failed=0
   for env in "$instances"/*/.env; do
     [ -f "$env" ] || continue
+    # A PR preview slot (deploy.sh preview) is a throwaway demo stack, wiped on every push.
+    grep -qE '^PREVIEW_PR=' "$(dirname "$env")/stack.conf" 2>/dev/null && continue
     "$0" "$(basename "$(dirname "$env")")" "$action" || failed=1
   done
   exit "$failed"
@@ -87,7 +89,7 @@ restic() {
   # As the calling user, so restored files and a local repository stay ours, not root's.
   docker run --rm --user "$(id -u):$(id -g)" -e RESTIC_CACHE_DIR=/tmp/restic-cache \
     -e RESTIC_PASSWORD -e RESTIC_REPOSITORY="$target" ${s3_env[@]+"${s3_env[@]}"} --hostname "nextup-$slug" \
-    "${mounts[@]}" "${extra_mounts[@]}" "$restic_image" "$@"
+    ${mounts[@]+"${mounts[@]}"} ${extra_mounts[@]+"${extra_mounts[@]}"} "$restic_image" "$@"
 }
 extra_mounts=()
 
@@ -125,6 +127,21 @@ write_status() {
     return 0
   fi
   log "warning: could not write $dir/backup-status/last.json"
+  return 0
+}
+
+# After a restore test that passed: $INSTANCE_DIR/backup-status/restore-test.json for the app's Restore test check (REM-O3), written like last.json:
+# to a temp file and moved, a folder that cannot be written is a warning, and nothing is written when INSTANCE_DIR is unset. $1 is the seconds it took.
+write_restore_status() {
+  local dir; dir="$(get INSTANCE_DIR)"
+  [ -n "$dir" ] || return 0
+  local part="$dir/backup-status/.restore-test.json.$$"
+  if mkdir -p "$dir/backup-status" 2>/dev/null \
+     && printf '{"at": "%s", "seconds": %s}\n' "$(date -u +%FT%TZ)" "$1" > "$part" 2>/dev/null \
+     && mv -f "$part" "$dir/backup-status/restore-test.json" 2>/dev/null; then
+    return 0
+  fi
+  log "warning: could not write $dir/backup-status/restore-test.json"
   return 0
 }
 
@@ -182,6 +199,7 @@ case "$action" in
     [ "$migrations" -gt 0 ] && [ "$has_env" = yes ] || die "restore-test FAILED"
     [ "$seconds" -le "$rto" ] || die "restore-test FAILED: $seconds s over RTO $rto s"
     log "restore-test OK"
+    write_restore_status "$seconds"
     ;;
 
   restore)

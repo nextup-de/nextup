@@ -1,0 +1,19 @@
+/* The away card on the profile (plan OVL, D19): the person's own span, the dialog to set one, and the cases to take back. White section card like the profile's. */
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.lede { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
+.now { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
+.button { height: 32px; padding-inline: 12px; border: 0; border-radius: 8px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
+.button:hover { background: var(--nh-brand-line); }
+.button:disabled { opacity: 0.5; cursor: default; }
+.button:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.primary { background: var(--nh-brand); color: var(--nh-on-brand); }
+.primary:hover { background: var(--nh-brand-hover); }
+.error { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-danger); }
+.fields { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
+.input { height: 34px; padding-inline: 10px; border: 1px solid var(--nh-line); border-radius: 6px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.input:focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
+.list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-md); color: var(--nh-ink); overflow-wrap: anywhere; }
+.sub { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
+.none { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }

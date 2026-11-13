@@ -147,12 +147,12 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await page.context().close();
   });
 
-  test("the quality lead says yes and the project opens", async ({ browser }) => {
+  test("the quality lead says yes and a draft opens", async ({ browser }) => {
     const page = await signIn(browser, LEAD);
-    await expect(page).toHaveURL(new RegExp(`/${SLUG}/leader$`));
+    await expect(page).toHaveURL(new RegExp(`/${SLUG}/inbox$`));
     await page.getByRole("main").getByText(TITLE).first().click();
     await page.getByRole("button", { name: "Yes, do it" }).click();
-    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the project" }).click();
+    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
 
     await expect.poll(async () => {
       const row = await getDb().caseEvent.findFirst({ where: { companyId, type: "case.decided" } });
@@ -162,13 +162,18 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     }, { message: "the yes carries the id of the project it opened" }).not.toBeNull();
     await page.goto(`/${SLUG}/projects/${projectId}`);
     await expect(page.getByRole("main")).toContainText(TITLE);
-    await expect(page.getByRole("main")).toContainText("Planning");
+    await expect(page.getByTestId("draft-top-line")).toContainText("Draft"); // the yes opens a draft, not a running project
     await page.context().close();
   });
 
-  test("the lead sets the baseline; the start and done are written 31 working days back so the 30-day check is open", async ({ browser }) => {
+  test("the lead sets the goal and the baseline on the draft; the start and done are written 31 working days back so the 30-day check is open", async ({ browser }) => {
     const page = await signIn(browser, LEAD);
     await page.goto(`/${SLUG}/projects/${projectId}`);
+    // The decider is the lead (the default of the yes sheet), so the draft is theirs from the yes: goal, then baseline.
+    await page.getByRole("textbox", { name: "Goal", exact: true }).fill("Less scrap on line 3");
+    await page.getByRole("textbox", { name: "Done when", exact: true }).fill("Scrap under 2 percent for a month");
+    await page.getByRole("button", { name: "Save the goal" }).click();
+    await expect.poll(() => getDb().caseEvent.count({ where: { companyId, type: "project.goal", targetId: projectId } })).toBe(1);
     await page.getByLabel("What is measured").filter({ visible: true }).fill(BASELINE.metric);
     await page.getByLabel(/Today.s number/).filter({ visible: true }).fill(BASELINE.value);
     await page.getByLabel("Unit").filter({ visible: true }).fill(BASELINE.unit);
@@ -206,7 +211,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await page.getByRole("button", { name: "Record the measure" }).click();
 
     await expect(vis(page, "measure-source-30")).toContainText(`Typed by ${LEAD} · not confirmed`); // the page names the holder's seat label (the person), not the role
-    await expect(page.getByRole("main")).toContainText("Not confirmed yet");
+    await expect(vis(page, "measure-waiting-30")).toContainText("Waiting for a second person until"); // decision Q6.15: it has a date
     await expect(page.getByRole("main")).toContainText(/1[ ,.’']?200/); // the CO₂ figure
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.reload();
@@ -217,8 +222,13 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
 
   test("the second manager confirms; the verdict is better, the reward is due and a manager records it", async ({ browser }) => {
     const page = await signIn(browser, SECOND);
+    // Decision Q6.15: the result waits on the desk of who may confirm it, with its date.
+    await page.goto(`/${SLUG}/leader`);
+    const waiting = page.getByRole("link", { name: /Confirm the result/ }).filter({ visible: true });
+    await expect(waiting).toContainText("a second person checks the number");
+    await expect(waiting).toContainText(/Due /);
     await openResults(page);
-    await expect(page.getByRole("main")).toContainText("Not confirmed yet");
+    await expect(vis(page, "measure-waiting-30")).toContainText("Waiting for a second person until");
     await vis(page, "measure-confirm-30").click();
     await page.getByRole("button", { name: "Yes, the number is right" }).click();
 

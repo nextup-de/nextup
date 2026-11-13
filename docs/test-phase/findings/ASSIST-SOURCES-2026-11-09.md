@@ -10,6 +10,10 @@ Work for the pilot targets on the raise-page assistant and Microsoft 365 search,
 Everything here was measured offline: the recorded question sets, a local Postgres, the mock provider. Nothing was
 deployed and nothing was run on Musterwerk or the test tenant; the live re-run is phase 2.
 
+**Phase 2 ran on 2026-11-09** (`AIT-live-2026-11-09.md`): 23 of 26 answerable questions with a source, 19 of 19 English
+questions in English, 0 leaks; but only 13 of 26 answered correctly (ERP tables reach the model as a 60-word excerpt),
+and Microsoft 365 at 12 of 21.
+
 ## Against the targets
 
 | Target | Before | After (offline) | Still open |

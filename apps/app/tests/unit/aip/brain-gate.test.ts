@@ -6,7 +6,7 @@ import { askBrain, askBrainPlan } from "@/server/brain";
 const compatible: AiSettings = { choice: "openai-compatible", region: "eu-central-1", model: "llama-x", endpoint: "https://llm.example/v1", deployment: null };
 const azure: AiSettings = { choice: "azure-openai", region: "eu-central-1", model: "gpt", endpoint: "https://res.openai.azure.com/", deployment: "dep1" };
 const DPA = new Date("2026-10-01");
-const base = { stage: "pilot", hasDatabase: true, dpaSignedAt: DPA, assistantOn: true, aiRouting: true };
+const base = { stage: "pilot", hasDatabase: true, dpaSignedAt: DPA, assistantOn: true, aiRouting: true, budget: null };
 const policy = { patterns: [], ceiling: "confidential" as const };
 const ROUTE = { route_id: null, confidence: 0, reason: "-", same_as: null, related: null, model: "m", version: "v" };
 const PLAN = { steps: ["a"], metric: null, model: "m", version: "v" };
@@ -74,5 +74,43 @@ describe("AIP brain gate", () => {
     await askBrain(gate, "acme", { title: "Gauge reads off", body: "x" }, policy, { fetch: f });
     expect(calls).toHaveLength(1);
     expect("llm" in calls[0].body).toBe(false);
+  });
+});
+
+// Plan AGT, D21: the project agent's purpose follows the brain's rules, not the raise path's.
+describe("AGT purpose", () => {
+  const settings = compatible;
+  const BUDGET = { capEur: 50, spentEur: 0, tokensUnpriced: 0, tokenCap: 1000 };
+  const at = (pct: number) => ({ ...BUDGET, spentEur: (BUDGET.capEur * pct) / 100 });
+
+  it("on a real stage with a signed DPA the gate is on for agent, as for brain", () => {
+    const agent = aiGate({ ...base, settings, purpose: "agent" });
+    expect(agent).toEqual({ on: true, settings });
+    expect(aiGate({ ...base, settings, purpose: "brain" })).toEqual(agent);
+  });
+
+  it("agent has no switch of its own: the assistant and routing switches do not close it", () => {
+    expect(aiGate({ ...base, settings, purpose: "agent", assistantOn: false, aiRouting: false }).on).toBe(true);
+  });
+
+  it("without the DPA the gate is closed for agent, with the words of every other purpose", () => {
+    const g = aiGate({ ...base, settings, purpose: "agent", dpaSignedAt: null });
+    expect(g).toEqual({ on: false, why: expect.stringContaining("data-processing agreement") });
+  });
+
+  it("at 100 % of the month's budget it is off for agent and brain and on for routing until 120 %", () => {
+    expect(aiGate({ ...base, settings, purpose: "agent", budget: at(99) }).on).toBe(true);
+    for (const purpose of ["agent", "brain"] as const) {
+      const g = aiGate({ ...base, settings, purpose, budget: at(100) });
+      expect(g, purpose).toEqual({ on: false, why: expect.stringContaining("used up") });
+      expect(aiGate({ ...base, settings, purpose, budget: at(110) }).on, purpose).toBe(false);
+    }
+    expect(aiGate({ ...base, settings, purpose: "routing", budget: at(100) }).on).toBe(true);
+    expect(aiGate({ ...base, settings, purpose: "routing", budget: at(119) }).on).toBe(true);
+    expect(aiGate({ ...base, settings, purpose: "routing", budget: at(120) }).on).toBe(false);
+  });
+
+  it("the token cap of a model without a price stops agent too", () => {
+    expect(aiGate({ ...base, settings, purpose: "agent", budget: { ...BUDGET, tokensUnpriced: 1000 } })).toEqual({ on: false, why: expect.stringContaining("token limit") });
   });
 });

@@ -7,6 +7,7 @@ import { deptTone } from "@/lib/dept-tone";
 import s from "./elements.module.css";
 
 export { ConfirmDialog, EditDrawer, RowMenu, SecretOnce } from "./interactive";
+export { ShowAll, useCapped, type Capped } from "./capped";
 
 /** A page's title: the same size and test id as SettingsHead, for pages outside Settings. */
 export function PageHeader({ title, lede, action }: { title: string; lede?: string; action?: React.ReactNode }) {
@@ -50,7 +51,7 @@ export function Tabs({ items, current, label }: { items: readonly TabItem[]; cur
       {items.map((tab) => (
         <Link key={tab.key} href={tab.href} className={s.tab} aria-current={tab.key === current ? "page" : undefined}>
           {tab.label}
-          {tab.count === undefined ? null : <span className={s.tabCount}>{tab.count}</span>}
+          {tab.count ? <span className={s.tabCount}>{tab.count}</span> : null}
         </Link>
       ))}
     </nav>

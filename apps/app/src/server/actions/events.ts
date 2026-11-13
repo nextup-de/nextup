@@ -6,7 +6,8 @@
 // decides who the actor is. A client cannot post as somebody else, and cannot pick the day.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { actorLabel, meFor, type Actor } from "@/features/auth/identity";
+import { meFor, type Actor } from "@/features/auth/identity";
+import { choosesPosting, DEFAULT_POST_AS, eventLabel } from "@/features/ideas/posting";
 import { getViewerFor } from "@/features/auth/session";
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
 import { APP_EVENT_TYPES, DISCUSSION_EVENT_TYPES, needsProjectsFlag } from "@/features/cases/persist";
@@ -14,11 +15,19 @@ import { isEnabled } from "@/features/flags";
 import { mayAppend, needsCaseAccess } from "@/features/cases/permissions";
 import { reduce } from "@/features/cases/reducer";
 import { seedFor } from "@/features/demo";
-import { appendEventRow, deleteEventsForTargets, loadLogForSlug, resetCompanyLog } from "@/lib/db/events";
+import { appendEventRow, deleteEventsForTargets, loadLogAround, resetCompanyLog } from "@/lib/db/events";
+import { markPublished } from "@/lib/db/ideas";
+import type { Tx } from "@/lib/db/integrations";
+import { draftToPublish } from "@/server/ideas";
 import { stampAudience } from "@/lib/db/audience";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { loadMembers } from "@/lib/db/knowledge";
 import { issueSession } from "@/server/issue-session";
+import { prepareAgentAppend } from "./append/agent";
+import { prepareApprovalAppend } from "./append/approval";
+import { prepareCaseAppend } from "./append/case";
+import { prepareOverloadAppend } from "./append/overload";
+import { prepareProjectAppend } from "./append/project";
 import { entryFor } from "@/server/setup-open";
 import { policyFor } from "@/features/admin/stages";
 import { stampDept, stampEvent, underHandle } from "@/features/cases/stamp";
@@ -41,6 +50,8 @@ const Input = z.object({
   type: z.enum(APP_EVENT_TYPES),
   target: z.string().min(1).max(64).nullable(),
   payload: Payload,
+  /** A case.raised from the idea studio: the draft it publishes, with the case or not at all (Q1.11). */
+  draftId: z.string().min(1).max(64).optional(),
 });
 
 export type AppendInput = z.input<typeof Input>;
@@ -65,7 +76,9 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
 
   const parsed = Input.safeParse(input);
   if (!parsed.success) return { ok: false, error: t("cases.actionBadEvent") };
-  const { slug, id, type, target, payload } = parsed.data;
+  const { slug, id, type, target, draftId } = parsed.data;
+  let { payload } = parsed.data;
+  if (draftId && type !== "case.raised") return { ok: false, error: t("cases.actionBadEvent") };
 
   const viewer = await getViewerFor(slug);
   if (!viewer) return { ok: false, error: t("cases.actionSessionExpired") };
@@ -79,35 +92,61 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   }
 
   // Who may do this to this case? Answered against the reduced log, the same state every browser
-  // renders - the buttons the UI hides are hidden here too (features/cases/permissions.ts).
-  const log = await loadLogForSlug(slug);
-  if (!log) return { ok: false, error: t("cases.actionSessionExpired") };
+  // renders - the buttons the UI hides are hidden here too (features/cases/permissions.ts). Only the part of
+  // the log that decides this target and the project it names: the same state for them, without replaying
+  // the company's whole history on every click (lib/db/events.ts loadLogAround).
   const seed = await seedFor(slug);
+  const log = await loadLogAround(viewer.companyId, seed, [target, typeof payload.projectId === "string" ? payload.projectId : null]);
   const who: Actor = { role: viewer.role, userId: viewer.userId, me: meFor(viewer.userId, seed.seats), name: viewer.name, handle: viewer.handle };
   const access = needsCaseAccess(type) ? { roles: seed.roles ?? [], members: await loadMembers(viewer.companyId) } : undefined;
-  const verdict = mayAppend(who, { type, target, payload }, reduce(seed, log), locale, access);
+  const state = reduce(seed, log);
+  // Composer (docs/process/README.md): a phase checks or stamps its events in append/<area>.ts, never here.
+  for (const prepare of [prepareCaseAppend, prepareProjectAppend, prepareAgentAppend, prepareApprovalAppend, prepareOverloadAppend]) {
+    const hook = await prepare({ companyId: viewer.companyId, viewer: { userId: viewer.userId, role: viewer.role }, type, target, payload, state, seed, locale });
+    if (!hook.ok) return { ok: false, error: hook.error };
+    payload = hook.payload;
+  }
+  const verdict = mayAppend(who, { type, target, payload }, state, locale, access);
   if (!verdict.ok) return verdict;
 
   if (type === "day.advanced" && !(await mayRewriteHistory(viewer.companyId))) {
     return { ok: false, error: t("cases.actionRealCompany") };
   }
 
-  // The actor is derived here, never taken from the client: a member posts under their handle,
-  // everyone else by name. Same rule the demo had.
-  const actor = actorLabel(viewer);
+  // The actor is derived here, never taken from the client: a member posts under their handle, or by name when they
+  // chose so for this raise (decision Q1.7); everyone else by name. On their own case a raiser keeps the label they
+  // raised it with, so a handle and a name never meet on one case (features/ideas/posting.ts).
+  const own = target ? state.cases.find((c) => c.id === target) : undefined;
+  const actor = eventLabel(viewer, { type, payload }, own, seed.postAs ?? DEFAULT_POST_AS);
 
   // The seat a raise lands on is the server's call, whatever the client sent (features/cases/stamp.ts).
-  let stored = await stampAudience(viewer.companyId, type, stampEvent(type, payload, seed));
+  let stored = await stampAudience(viewer.companyId, type, stampEvent(type, payload, seed, { raiserUserId: viewer.userId, today: state.day }));
+  // The choice is kept as a fact only where it took effect: a member who posted by name.
+  if (type === "case.raised") {
+    const rest = { ...stored };
+    delete rest.asName;
+    stored = choosesPosting(viewer) && actor === viewer.name ? { ...rest, asName: true } : rest;
+  }
   // So is the department next to a handle: kept only when the raiser's own unit is big enough to hide in.
   if (type === "case.raised" && underHandle(actor) && stored.fromDept) {
     stored = stampDept(type, stored, { label: actor, userId: viewer.userId }, await loadUnitPeople(viewer.companyId));
   }
   // So is the routing proposal: the brain's or the keywords', whatever the browser sent (server/routing.ts).
   if (type === "case.raised") stored = { ...stored, proposal: await proposeOnRaise(slug, viewer.companyId, stored) };
+
+  // A raise from a draft publishes it in the same transaction, so a refused raise leaves the draft open and a
+  // published draft always has its case (Q1.11). Another tab that published it first makes this raise fail too.
+  const pub = draftId ? await draftToPublish(slug, viewer, draftId) : null;
+  if (draftId && !pub) return { ok: false, error: t("cases.actionDraftClosed") };
+  const along = draftId && pub && target
+    ? async (tx: Tx) => {
+        if (!(await markPublished(viewer.companyId, viewer.userId, draftId, target, pub, tx))) throw new Error(t("cases.actionDraftClosed"));
+      }
+    : undefined;
   const result = await appendEventRow(
     viewer.companyId,
     { id, day: 0, type: type as CaseEventType, actor, targetId: target, payload: stored },
-    { actorUserId: viewer.userId },
+    { actorUserId: viewer.userId, along },
   );
   if (!result.ok) return { ok: false, error: result.error };
 

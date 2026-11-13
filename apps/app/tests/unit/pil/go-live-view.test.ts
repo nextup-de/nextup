@@ -3,11 +3,16 @@ import { goLiveChecks, type GoLiveInput } from "@/features/pilot/go-live";
 import { goLiveView, isoWeek, type GoLiveViewInput } from "@/features/pilot/go-live-view";
 
 const now = new Date("2026-11-04T12:00:00Z"); // Wednesday, ISO week 45
+/** The agreements an AI that is off needs (Q9.4): the DPA, and no works council. */
+const AGREEMENTS: GoLiveInput["agreements"] = {
+  dpa: { kind: "dpa", status: "signed", date: "2026-10-01", signer: "Managing director", at: "2026-10-01T09:00:00.000Z" },
+  works: { kind: "works", status: "notNeeded", reason: "No works council", at: "2026-10-01T09:00:00.000Z" },
+};
 const GREEN: GoLiveInput = {
   now, units: [{ name: "Assembly" }], roles: [{ title: "Lead", holders: 1 }], routes: [{ key: "safety", ownerHasUser: true }],
   hasCalendar: true, people: { active: 2, canSignIn: 2 }, microsoftOn: false, managers: { withCode: 1, withTotp: 1 }, mail: "ok",
   ai: { choice: "off", dpaSignedAt: null }, backup: { at: now, offbox: true }, supportOpenUntil: null, notifications: true,
-  directory: null, recipients: 1, baseline: true,
+  directory: null, recipients: 1, baseline: true, restore: { at: new Date(now.getTime() - 86_400_000), seconds: 300 }, findings: null, breakGlassUntil: null, agreements: AGREEMENTS,
 };
 const view = (o: Partial<GoLiveViewInput> & { input?: GoLiveInput }) =>
   goLiveView({ stage: "sandbox", admin: true, checks: goLiveChecks(o.input ?? GREEN), notifications: true, now, ...o });
@@ -25,7 +30,7 @@ describe("PIL go-live view", () => {
   it("disables the move to pilot with the count of needed checks open", () => {
     expect(sw(view({}))).toMatchObject({ disabled: false, open: 0 });
     const bad = { ...GREEN, hasCalendar: false, mail: "unreachable" as const, notifications: false };
-    expect(sw(view({ input: bad }))).toMatchObject({ disabled: true, open: 2 });
+    expect(sw(view({ input: bad }))).toMatchObject({ disabled: true, open: 3 }); // reminders are needed for the pilot (Q9.7)
     expect(sw(view({ stage: "pilot", input: bad }))).toMatchObject({ disabled: false, open: 0 });
   });
 
@@ -49,6 +54,6 @@ describe("PIL go-live view", () => {
     expect(sw(view({}))?.dialog.lines.find((l) => l.key === "settingsGoLive.toPilotReport")?.values?.week).toBe(46);
     const v = view({ stage: "pilot" });
     expect(v.kind === "stage" && v.checklistTitle).toBe("settingsGoLive.stillReadyTitle");
-    expect(v.kind === "stage" && v.needed).toEqual({ done: 9, total: 9 });
+    expect(v.kind === "stage" && v.needed).toEqual({ done: 13, total: 13 }); // 10 needed, the reminders, the restore test and the break-glass window (the findings are not recorded here: information only)
   });
 });

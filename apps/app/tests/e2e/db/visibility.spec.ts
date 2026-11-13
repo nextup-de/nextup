@@ -67,10 +67,17 @@ async function writeProofCases(companyId: string, now: Date) {
     id: `${c.id}-e0`, companyId, ts: now, day, type: "case.raised", actor: by, actorUserId: id(by), targetId: c.id, source: "app",
     payload: { title: c.title, body: `${c.title}, in detail.`, assigneeRoleHolderId: seat.id, assignee: LEADER, fromDept: "Production", kind: "problem", visibility } as object,
   });
+  // Outside the window: closed long ago, so it is past the window's days and the clock leaves it alone. (An open
+  // case on a desk gets a deadline fact from the clock, which makes it recent again; decision Q2.1.)
+  const closedLongAgo = {
+    id: `${M_PRIVATE.id}-e1`, companyId, ts: now, day: today - 199, type: "case.decided", actor: LEADER, actorUserId: id(LEADER), targetId: M_PRIVATE.id, source: "app",
+    payload: { answer: "no", reason: "not now", note: "Not this year." } as object,
+  };
   await db.caseEvent.createMany({
     data: [
       row(OTHER_PRIVATE, OTHER, "private", today - 3),
-      row(M_PRIVATE, M, "private", today - 200), // outside the window: its page asks loadCaseLog
+      row(M_PRIVATE, M, "private", today - 200), // its page asks loadCaseLog
+      closedLongAgo,
       row(M_SHARED, M, "everyone", today - 2),
     ],
   });
@@ -92,13 +99,27 @@ function recordResponses(page: Page): { bodies: string[]; actions: string[] } {
   return { bodies, actions };
 }
 
+/**
+ * How long the page at `path` takes to load, from the browser's own navigation entry. `path` is the address the page is served at: a path that
+ * redirects (/leader, which sends everyone to /inbox) starts a second navigation after the first has loaded, and a read in between lands on a page
+ * that is going away. So it waits for the page to settle, and reads again when the page it was reading was replaced.
+ */
 async function loadTime(page: Page, path: string): Promise<number> {
-  await page.goto(`/${SLUG}${path}`, { waitUntil: "load" });
-  const t = await page.evaluate(() => {
-    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
-    return { ttfb: Math.round(nav.responseStart), resp: Math.round(nav.responseEnd), dcl: Math.round(nav.domContentLoadedEventEnd), load: Math.round(nav.loadEventEnd - nav.startTime), size: nav.encodedBodySize };
-  });
-  return t.load;
+  const url = `/${SLUG}${path}`;
+  await page.goto(url, { waitUntil: "load" });
+  await page.waitForLoadState("networkidle");
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const t = await page.evaluate(() => {
+        const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
+        return { ttfb: Math.round(nav.responseStart), resp: Math.round(nav.responseEnd), dcl: Math.round(nav.domContentLoadedEventEnd), load: Math.round(nav.loadEventEnd - nav.startTime), size: nav.encodedBodySize };
+      });
+      return t.load;
+    } catch (error) {
+      if (attempt >= 2 || !/Execution context was destroyed|navigat/i.test(String(error))) throw error;
+      await page.waitForLoadState("load");
+    }
+  }
 }
 
 test.describe.serial("VIS acceptance: a member receives only visible cases and pages stay fast with 50,000 events", () => {
@@ -128,8 +149,11 @@ test.describe.serial("VIS acceptance: a member receives only visible cases and p
     await page.goto(`/${SLUG}/projects`);
     await page.goto(`/${SLUG}/cases/${M_SHARED.id}`);
     await expect(page.getByText(M_SHARED.title).first()).toBeVisible();
-    // Outside the window: the page fetches it with loadCaseLog.
+    // Outside the window: the page asks loadCaseLog for it and shows it once that answered (LoadCase). The answer's
+    // body is not read: Chromium may drop it before the recorder below gets to it.
+    const loaded = page.waitForResponse((r) => r.request().method() === "POST" && !!r.request().headers()["next-action"] && r.url().includes(M_PRIVATE.id));
     await page.goto(`/${SLUG}/cases/${M_PRIVATE.id}`);
+    expect((await loaded).ok(), "loadCaseLog answered for the member's own old case").toBe(true);
     await expect(page.getByText(M_PRIVATE.title).first()).toBeVisible({ timeout: 30_000 });
     const before = seen.bodies.join("\n");
     // The other member's private case: not shipped, not loadable. (Asking for its address puts that
@@ -140,7 +164,6 @@ test.describe.serial("VIS acceptance: a member receives only visible cases and p
 
     const all = seen.bodies.join("\n");
     expect(all, "the recording caught the layout's payload").toContain(M_SHARED.title);
-    expect(seen.actions.some((a) => a.includes(M_PRIVATE.title)), "loadCaseLog returned the member's own old case").toBe(true);
     expect(before, "no other private case id in the responses before its address was asked for").not.toContain(OTHER_PRIVATE.id);
     expect(seen.actions.join("\n"), "loadCaseLog never answered with the other private case").not.toContain(OTHER_PRIVATE.id);
     expect(all, "no other private case title in any response").not.toContain(OTHER_PRIVATE.title);
@@ -153,11 +176,11 @@ test.describe.serial("VIS acceptance: a member receives only visible cases and p
     test(`${who}: the inbox and a case page load in under ${LIMIT_MS} ms`, async ({ browser }) => {
       test.setTimeout(180_000);
       const page = await signIn(browser, who);
-      await loadTime(page, "/leader"); // warm-up
+      await loadTime(page, "/inbox"); // warm-up
       await loadTime(page, `/cases/${M_SHARED.id}`);
       // Best of three after the warm-up: one slow sample on a busy machine is noise, not the page.
       const best = async (path: string) => Math.min(await loadTime(page, path), await loadTime(page, path), await loadTime(page, path));
-      const inbox = await best("/leader");
+      const inbox = await best("/inbox");
       const casePage = await best(`/cases/${M_SHARED.id}`);
       await expect(page.getByText(M_SHARED.title).first()).toBeVisible();
       expect(inbox, `${who} inbox load`).toBeLessThan(LIMIT_MS);

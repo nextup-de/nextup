@@ -1,0 +1,970 @@
+[
+  {
+    "name": "case.discussion",
+    "de": [
+      {
+        "to": "hs@acme.test",
+        "subject": "Ihre Sicht ist gefragt: Shorter changeover",
+        "text": "H. Sander,\n\nT. Vogel fragt nach Ihrer Sicht auf diese Idee, bevor sie entschieden wird:\n\n  Shorter changeover\n\nEs fehlt noch: The saving\n\nDer nächste Check-in ist in 3 Tagen. Sagen Sie am Fall, was Sie wissen: https://acme.sellux.ch/cases/c_disc"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee geht in eine Diskussion: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel möchte vor der Entscheidung noch ein paar Sichtweisen hören, mit einem Check-in alle 3 Tage.\n\nEs fehlt noch: The saving\n\nSie können am Fall eine neue Fassung hinzufügen: https://acme.sellux.ch/cases/c_disc"
+      }
+    ],
+    "en": [
+      {
+        "to": "hs@acme.test",
+        "subject": "Your view is asked: Shorter changeover",
+        "text": "H. Sander,\n\nT. Vogel asks for your view on this idea before it is decided:\n\n  Shorter changeover\n\nStill missing: The saving\n\nThe next check-in is in 3 days. Say what you know on the case: https://acme.sellux.ch/cases/c_disc"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea goes into a discussion: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel wants a few more views before deciding, with a check-in every 3 days.\n\nStill missing: The saving\n\nYou can add a new version on the case: https://acme.sellux.ch/cases/c_disc"
+      }
+    ]
+  },
+  {
+    "name": "case.invited",
+    "de": [
+      {
+        "to": "hs@acme.test",
+        "subject": "Ihre Sicht ist gefragt: Shorter changeover",
+        "text": "H. Sander,\n\nT. Vogel fragt nach Ihrer Sicht auf diese Idee, bevor sie entschieden wird:\n\n  Shorter changeover\n\nEs fehlt noch: The saving\n\nDer nächste Check-in ist in 3 Tagen. Sagen Sie am Fall, was Sie wissen: https://acme.sellux.ch/cases/c_disc"
+      }
+    ],
+    "en": [
+      {
+        "to": "hs@acme.test",
+        "subject": "Your view is asked: Shorter changeover",
+        "text": "H. Sander,\n\nT. Vogel asks for your view on this idea before it is decided:\n\n  Shorter changeover\n\nStill missing: The saving\n\nThe next check-in is in 3 days. Say what you know on the case: https://acme.sellux.ch/cases/c_disc"
+      }
+    ]
+  },
+  {
+    "name": "case.checkin ready",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Zwischenstand: Shorter changeover",
+        "text": "J. Schmidt,\n\nRunde 1 ist abgeschlossen, und die Idee ist bereit zur Entscheidung.\n\nNoch offen: Cost\n\nQuote is in\n\nhttps://acme.sellux.ch/cases/c_disc"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "Zwischenstand: Shorter changeover",
+        "text": "H. Sander,\n\nRunde 1 ist abgeschlossen, und die Idee ist bereit zur Entscheidung.\n\nNoch offen: Cost\n\nQuote is in\n\nhttps://acme.sellux.ch/cases/c_disc"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Check-in: Shorter changeover",
+        "text": "J. Schmidt,\n\nRound 1 is done and the idea is ready to decide.\n\nStill open: Cost\n\nQuote is in\n\nhttps://acme.sellux.ch/cases/c_disc"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "Check-in: Shorter changeover",
+        "text": "H. Sander,\n\nRound 1 is done and the idea is ready to decide.\n\nStill open: Cost\n\nQuote is in\n\nhttps://acme.sellux.ch/cases/c_disc"
+      }
+    ]
+  },
+  {
+    "name": "case.checkin next",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Zwischenstand: Shorter changeover",
+        "text": "J. Schmidt,\n\nRunde 2 ist abgeschlossen; der nächste Check-in ist in 3 Tagen.\n\nhttps://acme.sellux.ch/cases/c_disc_next"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "Zwischenstand: Shorter changeover",
+        "text": "H. Sander,\n\nRunde 2 ist abgeschlossen; der nächste Check-in ist in 3 Tagen.\n\nhttps://acme.sellux.ch/cases/c_disc_next"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Check-in: Shorter changeover",
+        "text": "J. Schmidt,\n\nRound 2 is done; the next check-in is in 3 days.\n\nhttps://acme.sellux.ch/cases/c_disc_next"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "Check-in: Shorter changeover",
+        "text": "H. Sander,\n\nRound 2 is done; the next check-in is in 3 days.\n\nhttps://acme.sellux.ch/cases/c_disc_next"
+      }
+    ]
+  },
+  {
+    "name": "case.asked",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Eine Frage zu Ihrer Idee: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel fragt vor der Entscheidung:\n\n  Which line?\n\nDie Antwortfrist wartet auf Ihre Antwort: https://acme.sellux.ch/cases/c_asked"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "A question about your idea: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel asks before deciding:\n\n  Which line?\n\nThe answer date waits for your reply: https://acme.sellux.ch/cases/c_asked"
+      }
+    ]
+  },
+  {
+    "name": "case.answered",
+    "de": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Ihre Frage wurde beantwortet: Shorter changeover",
+        "text": "T. Vogel,\n\nAnonymous #4471 hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist in 3 Tagen fällig: https://acme.sellux.ch/cases/c_answered"
+      }
+    ],
+    "en": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Your question was answered: Shorter changeover",
+        "text": "T. Vogel,\n\nAnonymous #4471 answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due in 3 days: https://acme.sellux.ch/cases/c_answered"
+      }
+    ]
+  },
+  {
+    "name": "case.unanswered",
+    "de": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Keine Antwort auf Ihre Frage: Shorter changeover",
+        "text": "T. Vogel,\n\nJ. Schmidt hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist in 3 Tagen fällig: https://acme.sellux.ch/cases/c_unanswered"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee geht ohne Ihre Antwort weiter: Shorter changeover",
+        "text": "J. Schmidt,\n\nSie haben diese Frage nicht rechtzeitig beantwortet. Ihre Idee liegt deshalb wieder auf dem Tisch und wird ohne die Antwort entschieden:\n\n  Which line?\n\nWas Sie wissen, können Sie weiterhin an der Idee ergänzen: https://acme.sellux.ch/cases/c_unanswered"
+      }
+    ],
+    "en": [
+      {
+        "to": "tv@acme.test",
+        "subject": "No answer from the raiser: Shorter changeover",
+        "text": "T. Vogel,\n\nJ. Schmidt did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due in 3 days: https://acme.sellux.ch/cases/c_unanswered"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea goes on without your answer: Shorter changeover",
+        "text": "J. Schmidt,\n\nYou did not answer this question in time, so your idea is back on the desk and will be decided without it:\n\n  Which line?\n\nYou can still write what you know on the idea: https://acme.sellux.ch/cases/c_unanswered"
+      }
+    ]
+  },
+  {
+    "name": "case.withdrawn",
+    "de": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Idee zurückgezogen: Shorter changeover",
+        "text": "T. Vogel,\n\nJ. Schmidt hat diese Idee zurückgezogen, bevor sie entschieden war:\n\n  Shorter changeover\n\nWarum: Not needed any more\n\nVon Ihnen ist nichts mehr fällig. Der Fall bleibt lesbar: https://acme.sellux.ch/cases/c_withdrawn"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "Idee zurückgezogen: Shorter changeover",
+        "text": "H. Sander,\n\nJ. Schmidt hat diese Idee zurückgezogen, bevor sie entschieden war:\n\n  Shorter changeover\n\nWarum: Not needed any more\n\nVon Ihnen ist nichts mehr fällig. Der Fall bleibt lesbar: https://acme.sellux.ch/cases/c_withdrawn"
+      }
+    ],
+    "en": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Idea withdrawn: Shorter changeover",
+        "text": "T. Vogel,\n\nJ. Schmidt withdrew this idea before it was decided:\n\n  Shorter changeover\n\nWhy: Not needed any more\n\nNothing is due from you any more. The case stays readable: https://acme.sellux.ch/cases/c_withdrawn"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "Idea withdrawn: Shorter changeover",
+        "text": "H. Sander,\n\nJ. Schmidt withdrew this idea before it was decided:\n\n  Shorter changeover\n\nWhy: Not needed any more\n\nNothing is due from you any more. The case stays readable: https://acme.sellux.ch/cases/c_withdrawn"
+      }
+    ]
+  },
+  {
+    "name": "case.withdrawn plain",
+    "de": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Idee zurückgezogen: Shorter changeover",
+        "text": "T. Vogel,\n\nJ. Schmidt hat diese Idee zurückgezogen, bevor sie entschieden war:\n\n  Shorter changeover\n\nVon Ihnen ist nichts mehr fällig. Der Fall bleibt lesbar: https://acme.sellux.ch/cases/c_withdrawn_plain"
+      }
+    ],
+    "en": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Idea withdrawn: Shorter changeover",
+        "text": "T. Vogel,\n\nJ. Schmidt withdrew this idea before it was decided:\n\n  Shorter changeover\n\nNothing is due from you any more. The case stays readable: https://acme.sellux.ch/cases/c_withdrawn_plain"
+      }
+    ]
+  },
+  {
+    "name": "case.handed by a person",
+    "de": [
+      {
+        "to": "hs@acme.test",
+        "subject": "An Ihren Tisch weitergegeben: Shorter changeover",
+        "text": "H. Sander,\n\nT. Vogel hat diese Idee an Ihren Tisch weitergegeben:\n\n  Shorter changeover\n\nGrund: Out of office\n\nDie Antwortfrist bleibt; die Antwort ist in 3 Tagen fällig: https://acme.sellux.ch/cases/c_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde weitergegeben: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Ihre Idee an H. Sander weitergegeben. Die Antwortfrist bleibt.\n\nGrund: Out of office\n\nhttps://acme.sellux.ch/cases/c_handed"
+      }
+    ],
+    "en": [
+      {
+        "to": "hs@acme.test",
+        "subject": "Passed to your desk: Shorter changeover",
+        "text": "H. Sander,\n\nT. Vogel passed this idea to your desk:\n\n  Shorter changeover\n\nWhy: Out of office\n\nThe answer date stays; it is due in 3 days: https://acme.sellux.ch/cases/c_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was passed on: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel passed your idea to H. Sander. The answer date stays.\n\nWhy: Out of office\n\nhttps://acme.sellux.ch/cases/c_handed"
+      }
+    ]
+  },
+  {
+    "name": "case.handed vacant",
+    "de": [
+      {
+        "to": "hs@acme.test",
+        "subject": "An Ihren Tisch weitergegeben: Shorter changeover",
+        "text": "H. Sander,\n\nDer Tisch, an den das eingereicht wurde, ist gerade nicht besetzt. Deshalb liegt es bei Ihnen:\n\n  Shorter changeover\n\nDie Antwortfrist bleibt; die Antwort ist in 3 Tagen fällig: https://acme.sellux.ch/cases/c_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde weitergegeben: Shorter changeover",
+        "text": "J. Schmidt,\n\nDer Tisch, an den Sie das eingereicht haben, ist gerade nicht besetzt. Deshalb liegt es bei H. Sander. Die Antwortfrist bleibt.\n\nhttps://acme.sellux.ch/cases/c_handed"
+      }
+    ],
+    "en": [
+      {
+        "to": "hs@acme.test",
+        "subject": "Passed to your desk: Shorter changeover",
+        "text": "H. Sander,\n\nNobody holds the desk this was raised to right now, so it is on yours:\n\n  Shorter changeover\n\nThe answer date stays; it is due in 3 days: https://acme.sellux.ch/cases/c_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was passed on: Shorter changeover",
+        "text": "J. Schmidt,\n\nNobody holds the desk you raised this to right now, so H. Sander has it. The answer date stays.\n\nhttps://acme.sellux.ch/cases/c_handed"
+      }
+    ]
+  },
+  {
+    "name": "case.handed deadline",
+    "de": [],
+    "en": []
+  },
+  {
+    "name": "case.decided no, reason id 0",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde abgelehnt: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Nein gesagt. Grund: Nicht jetzt\n\nhttps://acme.sellux.ch/cases/c_no_0"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was declined: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said no. Reason: Not now\n\nhttps://acme.sellux.ch/cases/c_no_0"
+      }
+    ]
+  },
+  {
+    "name": "case.decided no, reason id 1",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde abgelehnt: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Nein gesagt. Grund: Falsche Abteilung\n\nhttps://acme.sellux.ch/cases/c_no_1"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was declined: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said no. Reason: Wrong department\n\nhttps://acme.sellux.ch/cases/c_no_1"
+      }
+    ]
+  },
+  {
+    "name": "case.decided no, reason id 2",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde abgelehnt: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Nein gesagt. Grund: Niemand ist zuständig\n\nhttps://acme.sellux.ch/cases/c_no_2"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was declined: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said no. Reason: Nobody owns this\n\nhttps://acme.sellux.ch/cases/c_no_2"
+      }
+    ]
+  },
+  {
+    "name": "case.decided no, reason id 3",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde abgelehnt: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Nein gesagt. Grund: Keine Zeit in diesem Quartal\n\nhttps://acme.sellux.ch/cases/c_no_3"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was declined: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said no. Reason: No time this quarter\n\nhttps://acme.sellux.ch/cases/c_no_3"
+      }
+    ]
+  },
+  {
+    "name": "case.decided no, reason id 4",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde abgelehnt: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Nein gesagt. Grund: Hat keinen Vorrang\n\nhttps://acme.sellux.ch/cases/c_no_4"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was declined: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said no. Reason: Does not rank\n\nhttps://acme.sellux.ch/cases/c_no_4"
+      }
+    ]
+  },
+  {
+    "name": "case.decided no, free reason",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde abgelehnt: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Nein gesagt. Grund: Too expensive - Maybe next year\n\nhttps://acme.sellux.ch/cases/c_no_free"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was declined: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said no. Reason: Too expensive - Maybe next year\n\nhttps://acme.sellux.ch/cases/c_no_free"
+      }
+    ]
+  },
+  {
+    "name": "case.decided no, no reason",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde abgelehnt: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Nein gesagt. Grund: keiner angegeben\n\nhttps://acme.sellux.ch/cases/c_no_none"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was declined: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said no. Reason: none given\n\nhttps://acme.sellux.ch/cases/c_no_none"
+      }
+    ]
+  },
+  {
+    "name": "case.decided yes, no project",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde angenommen: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Ja gesagt.\n\nhttps://acme.sellux.ch/cases/c_yes_plain"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was accepted: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said yes.\n\nhttps://acme.sellux.ch/cases/c_yes_plain"
+      }
+    ]
+  },
+  {
+    "name": "case.decided yes, legacy project",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde angenommen: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Ja gesagt. Sie ist jetzt P-1 „Changeover cart“, unter der Leitung von L. Brandt.\n\nSie erfahren, wann es losgeht, wann es fertig ist und was es verändert hat.\n\nhttps://acme.sellux.ch/projects/p_legacy"
+      },
+      {
+        "to": "lb@acme.test",
+        "subject": "Sie leiten P-1: Changeover cart",
+        "text": "L. Brandt,\n\nT. Vogel hat diese Idee angenommen und Sie zur Leitung bestimmt.\n\nNehmen Sie die Zahl auf, an der gemessen wird, und starten Sie dann - fällig in 5 Tagen.\n\nhttps://acme.sellux.ch/projects/p_legacy"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was accepted: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said yes. It is now P-1 \"Changeover cart\", led by L. Brandt.\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://acme.sellux.ch/projects/p_legacy"
+      },
+      {
+        "to": "lb@acme.test",
+        "subject": "You lead P-1: Changeover cart",
+        "text": "L. Brandt,\n\nT. Vogel accepted this idea and named you as its lead.\n\nTake the number to measure it against, then start it - due in 5 days.\n\nhttps://acme.sellux.ch/projects/p_legacy"
+      }
+    ]
+  },
+  {
+    "name": "case.decided yes, draft, lead asked",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde angenommen: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Ja gesagt. Es ist jetzt P-2 „Draft project“ und wird von L. Brandt aufgesetzt.\n\nT. Vogel ergänzt: Thanks, you do the first draft\n\nSie erfahren, wann es losgeht, wann es fertig ist und was es verändert hat.\n\nhttps://acme.sellux.ch/projects/p_draft"
+      },
+      {
+        "to": "lb@acme.test",
+        "subject": "Ein Projekt leiten: Draft project",
+        "text": "L. Brandt,\n\nT. Vogel hat diese Idee angenommen und bittet Sie, sie als P-2 zu leiten.\n\n  Draft project\n\nÜbernehmen Sie es oder lehnen Sie ab. Das Projekt wartet auf Ihre Antwort:\nhttps://acme.sellux.ch/projects/p_draft"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was accepted: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said yes. It is now P-2 \"Draft project\" and is being set up by L. Brandt.\n\nT. Vogel adds: Thanks, you do the first draft\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://acme.sellux.ch/projects/p_draft"
+      },
+      {
+        "to": "lb@acme.test",
+        "subject": "Lead a project: Draft project",
+        "text": "L. Brandt,\n\nT. Vogel accepted this idea and asks you to lead it as P-2.\n\n  Draft project\n\nTake it or decline it. The project waits for your answer:\nhttps://acme.sellux.ch/projects/p_draft"
+      }
+    ]
+  },
+  {
+    "name": "case.decided yes, draft, lead taken",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde angenommen: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Ja gesagt. Es ist jetzt P-3 „Draft taken“ und wird von T. Vogel aufgesetzt.\n\nSie erfahren, wann es losgeht, wann es fertig ist und was es verändert hat.\n\nhttps://acme.sellux.ch/projects/p_draft_taken"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was accepted: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said yes. It is now P-3 \"Draft taken\" and is being set up by T. Vogel.\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://acme.sellux.ch/projects/p_draft_taken"
+      }
+    ]
+  },
+  {
+    "name": "case.decided yes, joined a draft",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "Ihre Idee wurde angenommen: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel hat Ja gesagt. Sie ist jetzt P-2 „Draft project“, unter der Leitung von L. Brandt.\n\nSie erfahren, wann es losgeht, wann es fertig ist und was es verändert hat.\n\nhttps://acme.sellux.ch/projects/p_draft"
+      },
+      {
+        "to": "lb@acme.test",
+        "subject": "Sie leiten P-2: Draft project",
+        "text": "L. Brandt,\n\nT. Vogel hat diese Idee angenommen und Sie zur Leitung bestimmt.\n\nNehmen Sie die Zahl auf, an der gemessen wird, und starten Sie dann - fällig in 5 Tagen.\n\nhttps://acme.sellux.ch/projects/p_draft"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "Your idea was accepted: Shorter changeover",
+        "text": "J. Schmidt,\n\nT. Vogel said yes. It is now P-2 \"Draft project\", led by L. Brandt.\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://acme.sellux.ch/projects/p_draft"
+      },
+      {
+        "to": "lb@acme.test",
+        "subject": "You lead P-2: Draft project",
+        "text": "L. Brandt,\n\nT. Vogel accepted this idea and named you as its lead.\n\nTake the number to measure it against, then start it - due in 5 days.\n\nhttps://acme.sellux.ch/projects/p_draft"
+      }
+    ]
+  },
+  {
+    "name": "project.handed",
+    "de": [
+      {
+        "to": "lb@acme.test",
+        "subject": "Sie leiten P-4: Changeover cart",
+        "text": "L. Brandt,\n\nT. Vogel hat Ihnen dieses Projekt übergeben.\n\nYou know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "L. Brandt leitet jetzt P-4: Changeover cart",
+        "text": "J. Schmidt,\n\nL. Brandt leitet jetzt P-4.\n\nWarum: You know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
+      }
+    ],
+    "en": [
+      {
+        "to": "lb@acme.test",
+        "subject": "You lead P-4: Changeover cart",
+        "text": "L. Brandt,\n\nT. Vogel handed this project to you.\n\nYou know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "L. Brandt now leads P-4: Changeover cart",
+        "text": "J. Schmidt,\n\nL. Brandt now leads P-4.\n\nWhy: You know the line\n\nhttps://acme.sellux.ch/projects/p_handed"
+      }
+    ]
+  },
+  {
+    "name": "project.stopped",
+    "de": [
+      {
+        "to": "hs@acme.test",
+        "subject": "P-5 gestoppt: Changeover cart",
+        "text": "H. Sander,\n\nL. Brandt hat dieses Projekt gestoppt. Der angegebene Grund:\n\n  No budget\n\nDie Idee, aus der es entstanden ist, bleibt im Archiv.\n\nhttps://acme.sellux.ch/projects/p_stopped"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-5 gestoppt: Changeover cart",
+        "text": "J. Schmidt,\n\nL. Brandt hat dieses Projekt gestoppt. Der angegebene Grund:\n\n  No budget\n\nDie Idee, aus der es entstanden ist, bleibt im Archiv.\n\nhttps://acme.sellux.ch/projects/p_stopped"
+      }
+    ],
+    "en": [
+      {
+        "to": "hs@acme.test",
+        "subject": "P-5 stopped: Changeover cart",
+        "text": "H. Sander,\n\nL. Brandt stopped this project. The reason given:\n\n  No budget\n\nThe idea it came from stays in the archive.\n\nhttps://acme.sellux.ch/projects/p_stopped"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-5 stopped: Changeover cart",
+        "text": "J. Schmidt,\n\nL. Brandt stopped this project. The reason given:\n\n  No budget\n\nThe idea it came from stays in the archive.\n\nhttps://acme.sellux.ch/projects/p_stopped"
+      }
+    ]
+  },
+  {
+    "name": "project.lead.answered declined",
+    "de": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Wieder bei Ihnen: P-6 Changeover cart",
+        "text": "T. Vogel,\n\nL. Brandt hat die Leitung abgelehnt. Sie leiten es jetzt.\n\nDer angegebene Grund: No time\n\nhttps://acme.sellux.ch/projects/p_back"
+      }
+    ],
+    "en": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Back with you: P-6 Changeover cart",
+        "text": "T. Vogel,\n\nL. Brandt declined to lead it. You lead it now.\n\nThe reason given: No time\n\nhttps://acme.sellux.ch/projects/p_back"
+      }
+    ]
+  },
+  {
+    "name": "project.lead.answered lapsed",
+    "de": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Wieder bei Ihnen: P-6 Changeover cart",
+        "text": "T. Vogel,\n\nNiemand hat rechtzeitig geantwortet. Sie leiten es jetzt.\n\nhttps://acme.sellux.ch/projects/p_back"
+      }
+    ],
+    "en": [
+      {
+        "to": "tv@acme.test",
+        "subject": "Back with you: P-6 Changeover cart",
+        "text": "T. Vogel,\n\nNobody answered in time. You lead it now.\n\nhttps://acme.sellux.ch/projects/p_back"
+      }
+    ]
+  },
+  {
+    "name": "project.lead.answered taken",
+    "de": [],
+    "en": []
+  },
+  {
+    "name": "project.invited contributor",
+    "de": [
+      {
+        "to": "inv@acme.test",
+        "subject": "Einladung zu P-7: Changeover cart",
+        "text": "I. Invitee,\n\nL. Brandt lädt Sie zu P-7 „Changeover cart“ ein, als Mitwirkende.\n\nNehmen Sie an oder lehnen Sie ab, in Ihrem Posteingang:\nhttps://acme.sellux.ch/projects/p_inv"
+      }
+    ],
+    "en": [
+      {
+        "to": "inv@acme.test",
+        "subject": "You are invited to P-7: Changeover cart",
+        "text": "I. Invitee,\n\nL. Brandt invites you to P-7 \"Changeover cart\" as contributor.\n\nAccept or decline in your inbox:\nhttps://acme.sellux.ch/projects/p_inv"
+      }
+    ]
+  },
+  {
+    "name": "project.invited follower",
+    "de": [
+      {
+        "to": "fol@acme.test",
+        "subject": "Sie verfolgen P-7: Changeover cart",
+        "text": "F. Follower,\n\nL. Brandt hat Sie als Beobachter hinzugefügt. Sie erfahren von jedem Schritt.\n\n  Changeover cart\n\nhttps://acme.sellux.ch/projects/p_inv"
+      }
+    ],
+    "en": [
+      {
+        "to": "fol@acme.test",
+        "subject": "You follow P-7: Changeover cart",
+        "text": "F. Follower,\n\nL. Brandt added you as a follower. You hear about each step.\n\n  Changeover cart\n\nhttps://acme.sellux.ch/projects/p_inv"
+      }
+    ]
+  },
+  {
+    "name": "project.invited on a private idea",
+    "de": [
+      {
+        "to": "inv@acme.test",
+        "subject": "Einladung zu P-8: Changeover cart",
+        "text": "I. Invitee,\n\nL. Brandt lädt Sie zu P-8 „Changeover cart“ ein, als Sponsor.\n\nDie Idee dahinter ist nicht für alle offen. Mit der Einladung können Sie sie lesen.\n\nNehmen Sie an oder lehnen Sie ab, in Ihrem Posteingang:\nhttps://acme.sellux.ch/projects/p_inv_closed"
+      }
+    ],
+    "en": [
+      {
+        "to": "inv@acme.test",
+        "subject": "You are invited to P-8: Changeover cart",
+        "text": "I. Invitee,\n\nL. Brandt invites you to P-8 \"Changeover cart\" as sponsor.\n\nThe idea behind it is not open to everyone. Being invited lets you read it.\n\nAccept or decline in your inbox:\nhttps://acme.sellux.ch/projects/p_inv_closed"
+      }
+    ]
+  },
+  {
+    "name": "project.invite.answered declined",
+    "de": [
+      {
+        "to": "lb@acme.test",
+        "subject": "Einladung abgelehnt: P-9 Changeover cart",
+        "text": "L. Brandt,\n\nI. Invitee hat abgelehnt, Teammitglied zu sein.\n\nDer angegebene Grund: No time this quarter\n\nhttps://acme.sellux.ch/projects/p_inv_ans"
+      }
+    ],
+    "en": [
+      {
+        "to": "lb@acme.test",
+        "subject": "Invitation declined: P-9 Changeover cart",
+        "text": "L. Brandt,\n\nI. Invitee declined to be member.\n\nThe reason given: No time this quarter\n\nhttps://acme.sellux.ch/projects/p_inv_ans"
+      }
+    ]
+  },
+  {
+    "name": "project.invite.answered lapsed",
+    "de": [
+      {
+        "to": "lb@acme.test",
+        "subject": "Einladung verfallen: P-9 Changeover cart",
+        "text": "L. Brandt,\n\nH. Sander hat die Einladung als Sponsor nicht rechtzeitig beantwortet. Sie ist verfallen; Sie können jemand anderen einladen.\n\nhttps://acme.sellux.ch/projects/p_inv_ans"
+      }
+    ],
+    "en": [
+      {
+        "to": "lb@acme.test",
+        "subject": "Invitation lapsed: P-9 Changeover cart",
+        "text": "L. Brandt,\n\nH. Sander did not answer the invitation as sponsor in time. It lapsed; you can invite someone else.\n\nhttps://acme.sellux.ch/projects/p_inv_ans"
+      }
+    ]
+  },
+  {
+    "name": "project.start.moved",
+    "de": [
+      {
+        "to": "lb@acme.test",
+        "subject": "Neuer Starttag: P-10 Changeover cart",
+        "text": "L. Brandt,\n\nT. Vogel hat den Starttag dieses Projekts verschoben: in 12 Tagen.\n\nDer angegebene Grund: Waiting for the part\n\nhttps://acme.sellux.ch/projects/p_moved"
+      }
+    ],
+    "en": [
+      {
+        "to": "lb@acme.test",
+        "subject": "New start day: P-10 Changeover cart",
+        "text": "L. Brandt,\n\nT. Vogel moved the start day of this project: in 12 days.\n\nThe reason given: Waiting for the part\n\nhttps://acme.sellux.ch/projects/p_moved"
+      }
+    ]
+  },
+  {
+    "name": "project.member",
+    "de": [
+      {
+        "to": "hs@acme.test",
+        "subject": "Sie sind dabei bei P-11: Changeover cart",
+        "text": "H. Sander,\n\nL. Brandt hat Sie zum Team hinzugefügt.\n\nhttps://acme.sellux.ch/projects/p_member"
+      }
+    ],
+    "en": [
+      {
+        "to": "hs@acme.test",
+        "subject": "You are on P-11: Changeover cart",
+        "text": "H. Sander,\n\nL. Brandt added you to the team.\n\nhttps://acme.sellux.ch/projects/p_member"
+      }
+    ]
+  },
+  {
+    "name": "project.member off",
+    "de": [],
+    "en": []
+  },
+  {
+    "name": "project.started",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-12 – gestartet: Changeover cart",
+        "text": "J. Schmidt,\n\nWas aus Ihrer Idee geworden ist, ist gestartet.\n\nhttps://acme.sellux.ch/projects/p_started"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-12 started: Changeover cart",
+        "text": "J. Schmidt,\n\nWhat your idea became has started.\n\nhttps://acme.sellux.ch/projects/p_started"
+      }
+    ]
+  },
+  {
+    "name": "project.started, draft kickoff",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-19 – gestartet: Changeover cart",
+        "text": "J. Schmidt,\n\nWas aus Ihrer Idee geworden ist, ist gestartet.\n\nhttps://acme.sellux.ch/projects/p_kickoff"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "P-19 ist gestartet: Changeover cart",
+        "text": "H. Sander,\n\nL. Brandt hat das Projekt gestartet.\n\n  Changeover cart\n\nZiel: Faster changeover\nFertig, wenn: Under 30 minutes\n\nErste Schritte:\n  Measure today - Zuständig: L. Brandt\n  Order the cart - Zuständig: noch niemand\n\nhttps://acme.sellux.ch/projects/p_kickoff"
+      },
+      {
+        "to": "sp@acme.test",
+        "subject": "P-19 ist gestartet: Changeover cart",
+        "text": "S. Sponsor,\n\nL. Brandt hat das Projekt gestartet.\n\n  Changeover cart\n\nZiel: Faster changeover\nFertig, wenn: Under 30 minutes\n\nErste Schritte:\n  Measure today - Zuständig: L. Brandt\n  Order the cart - Zuständig: noch niemand\n\nhttps://acme.sellux.ch/projects/p_kickoff"
+      },
+      {
+        "to": "fol@acme.test",
+        "subject": "P-19 ist gestartet: Changeover cart",
+        "text": "F. Follower,\n\nL. Brandt hat das Projekt gestartet.\n\n  Changeover cart\n\nZiel: Faster changeover\nFertig, wenn: Under 30 minutes\n\nErste Schritte:\n  Measure today - Zuständig: L. Brandt\n  Order the cart - Zuständig: noch niemand\n\nhttps://acme.sellux.ch/projects/p_kickoff"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-19 started: Changeover cart",
+        "text": "J. Schmidt,\n\nWhat your idea became has started.\n\nhttps://acme.sellux.ch/projects/p_kickoff"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "P-19 has started: Changeover cart",
+        "text": "H. Sander,\n\nL. Brandt started the project.\n\n  Changeover cart\n\nGoal: Faster changeover\nDone when: Under 30 minutes\n\nFirst steps:\n  Measure today - L. Brandt\n  Order the cart - nobody yet\n\nhttps://acme.sellux.ch/projects/p_kickoff"
+      },
+      {
+        "to": "sp@acme.test",
+        "subject": "P-19 has started: Changeover cart",
+        "text": "S. Sponsor,\n\nL. Brandt started the project.\n\n  Changeover cart\n\nGoal: Faster changeover\nDone when: Under 30 minutes\n\nFirst steps:\n  Measure today - L. Brandt\n  Order the cart - nobody yet\n\nhttps://acme.sellux.ch/projects/p_kickoff"
+      },
+      {
+        "to": "fol@acme.test",
+        "subject": "P-19 has started: Changeover cart",
+        "text": "F. Follower,\n\nL. Brandt started the project.\n\n  Changeover cart\n\nGoal: Faster changeover\nDone when: Under 30 minutes\n\nFirst steps:\n  Measure today - L. Brandt\n  Order the cart - nobody yet\n\nhttps://acme.sellux.ch/projects/p_kickoff"
+      }
+    ]
+  },
+  {
+    "name": "project.started, bare draft kickoff",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-20 – gestartet: Changeover cart",
+        "text": "J. Schmidt,\n\nWas aus Ihrer Idee geworden ist, ist gestartet.\n\nhttps://acme.sellux.ch/projects/p_kickoff_bare"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "P-20 ist gestartet: Changeover cart",
+        "text": "H. Sander,\n\nL. Brandt hat das Projekt gestartet.\n\n  Changeover cart\n\nhttps://acme.sellux.ch/projects/p_kickoff_bare"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-20 started: Changeover cart",
+        "text": "J. Schmidt,\n\nWhat your idea became has started.\n\nhttps://acme.sellux.ch/projects/p_kickoff_bare"
+      },
+      {
+        "to": "hs@acme.test",
+        "subject": "P-20 has started: Changeover cart",
+        "text": "H. Sander,\n\nL. Brandt started the project.\n\n  Changeover cart\n\nhttps://acme.sellux.ch/projects/p_kickoff_bare"
+      }
+    ]
+  },
+  {
+    "name": "project.done, closes",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-13 abgeschlossen: Changeover cart",
+        "text": "J. Schmidt,\n\nDieses Projekt ist abgeschlossen. So ist es ausgegangen:\n\n  Es wurde nicht gemessen.\n\nhttps://acme.sellux.ch/projects/p_done"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-13 closed: Changeover cart",
+        "text": "J. Schmidt,\n\nThis project is closed. This is how it ended:\n\n  It was not measured.\n\nhttps://acme.sellux.ch/projects/p_done"
+      }
+    ]
+  },
+  {
+    "name": "project.measured better",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-14 – gemessen: Changeover cart",
+        "text": "J. Schmidt,\n\nWas aus Ihrer Idee geworden ist, wurde nach 30 Tagen gemessen: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-14 measured: Changeover cart",
+        "text": "J. Schmidt,\n\nWhat your idea became was measured after 30 days: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      }
+    ]
+  },
+  {
+    "name": "project.measured worse",
+    "de": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-15 – gemessen: Changeover cart",
+        "text": "J. Schmidt,\n\nWas aus Ihrer Idee geworden ist, wurde nach 30 Tagen gemessen: worse. minutes: 42 → 55 min\n\nhttps://acme.sellux.ch/projects/p_measured_worse"
+      }
+    ],
+    "en": [
+      {
+        "to": "js@acme.test",
+        "subject": "P-15 measured: Changeover cart",
+        "text": "J. Schmidt,\n\nWhat your idea became was measured after 30 days: worse. minutes: 42 → 55 min\n\nhttps://acme.sellux.ch/projects/p_measured_worse"
+      }
+    ]
+  },
+  {
+    "name": "project.measured, waits for a second person",
+    "de": [
+      {
+        "to": "bh@acme.test",
+        "subject": "P-16 – Ergebnis bestätigen: Changeover cart",
+        "text": "B. Hartmann,\n\nL. Brandt hat das Ergebnis der Messung nach 30 Tagen eingetippt. Es zählt erst, wenn eine zweite Person die Zahl bestätigt hat. Bitte prüfen Sie es innerhalb von 5 Arbeitstagen.\n\nhttps://acme.sellux.ch/projects/p_measured_open"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-16 – gemessen: Changeover cart",
+        "text": "J. Schmidt,\n\nWas aus Ihrer Idee geworden ist, wurde nach 30 Tagen gemessen: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_open"
+      }
+    ],
+    "en": [
+      {
+        "to": "bh@acme.test",
+        "subject": "P-16 result to confirm: Changeover cart",
+        "text": "B. Hartmann,\n\nL. Brandt typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://acme.sellux.ch/projects/p_measured_open"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-16 measured: Changeover cart",
+        "text": "J. Schmidt,\n\nWhat your idea became was measured after 30 days: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_open"
+      }
+    ]
+  },
+  {
+    "name": "project.measure.confirmed, closes",
+    "de": [
+      {
+        "to": "lb@acme.test",
+        "subject": "P-17 abgeschlossen: Changeover cart",
+        "text": "L. Brandt,\n\nDieses Projekt ist abgeschlossen. So ist es ausgegangen:\n\n  Ergebnis nach 30 Tagen: besser. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_closed_confirm"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-17 abgeschlossen: Changeover cart",
+        "text": "J. Schmidt,\n\nDieses Projekt ist abgeschlossen. So ist es ausgegangen:\n\n  Ergebnis nach 30 Tagen: besser. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_closed_confirm"
+      }
+    ],
+    "en": [
+      {
+        "to": "lb@acme.test",
+        "subject": "P-17 closed: Changeover cart",
+        "text": "L. Brandt,\n\nThis project is closed. This is how it ended:\n\n  Result after 30 days: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_closed_confirm"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-17 closed: Changeover cart",
+        "text": "J. Schmidt,\n\nThis project is closed. This is how it ended:\n\n  Result after 30 days: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_closed_confirm"
+      }
+    ]
+  },
+  {
+    "name": "project.measure.confirmed, does not close",
+    "de": [
+      {
+        "to": "lb@acme.test",
+        "subject": "P-14: Ergebnis bestätigt - Changeover cart",
+        "text": "L. Brandt,\n\nEine zweite Person hat das Ergebnis von P-14 bestätigt, das wurde nach 30 Tagen gemessen: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-14: Ergebnis bestätigt - Changeover cart",
+        "text": "J. Schmidt,\n\nEine zweite Person hat das Ergebnis von P-14 bestätigt, das wurde nach 30 Tagen gemessen: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      }
+    ],
+    "en": [
+      {
+        "to": "lb@acme.test",
+        "subject": "P-14: result confirmed - Changeover cart",
+        "text": "L. Brandt,\n\nA second person confirmed the result of P-14, which was measured after 30 days: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-14: result confirmed - Changeover cart",
+        "text": "J. Schmidt,\n\nA second person confirmed the result of P-14, which was measured after 30 days: better. minutes: 42 → 30 min\n\nhttps://acme.sellux.ch/projects/p_measured_better"
+      }
+    ]
+  },
+  {
+    "name": "project.rewarded, closes",
+    "de": [
+      {
+        "to": "lb@acme.test",
+        "subject": "P-18 abgeschlossen: Changeover cart",
+        "text": "L. Brandt,\n\nDieses Projekt ist abgeschlossen. So ist es ausgegangen:\n\n  Ergebnis nach 30 Tagen: besser. minutes: 42 → 30 min\n  Würdigung: Danke - Well done.\n\nhttps://acme.sellux.ch/projects/p_recognised"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-18 abgeschlossen: Changeover cart",
+        "text": "J. Schmidt,\n\nDieses Projekt ist abgeschlossen. So ist es ausgegangen:\n\n  Ergebnis nach 30 Tagen: besser. minutes: 42 → 30 min\n  Würdigung: Danke - Well done.\n\nhttps://acme.sellux.ch/projects/p_recognised"
+      }
+    ],
+    "en": [
+      {
+        "to": "lb@acme.test",
+        "subject": "P-18 closed: Changeover cart",
+        "text": "L. Brandt,\n\nThis project is closed. This is how it ended:\n\n  Result after 30 days: better. minutes: 42 → 30 min\n  Recognition: thank you - Well done.\n\nhttps://acme.sellux.ch/projects/p_recognised"
+      },
+      {
+        "to": "js@acme.test",
+        "subject": "P-18 closed: Changeover cart",
+        "text": "J. Schmidt,\n\nThis project is closed. This is how it ended:\n\n  Result after 30 days: better. minutes: 42 → 30 min\n  Recognition: thank you - Well done.\n\nhttps://acme.sellux.ch/projects/p_recognised"
+      }
+    ]
+  },
+  {
+    "name": "a type the notices do not handle",
+    "de": [],
+    "en": []
+  }
+]

@@ -1,11 +1,14 @@
 # The case loop on a real company
 
 > **Updated 2026-11-04.** Plan LOOP «Case loop v1» (LOOP-Z1). Describes what runs on `main` for a non-demo company.
-> The proof of the whole loop is `apps/app/tests/e2e/db/loop.spec.ts`.
+> The proof of the whole loop is `apps/app/tests/e2e/db/loop.spec.ts`. Since plan SET (SET-Z1) a yes opens a draft; its
+> proof is `apps/app/tests/e2e/db/set.spec.ts`, described in "The yes opens a project draft" below.
+
+Phase additions after REG: see [docs/process/](process/README.md).
 
 The loop: an idea is **raised to a desk**, the desk owes an **answer by a date**, a breached date **hands the case to the
-deputy**, the author sees the **routing**, every yes and no lands in the **decision log**, a yes opens a **project**, the
-project is **measured** with a result a second person **confirms**, and a better confirmed result makes a **reward** due.
+deputy**, the author sees the **routing**, every yes and no lands in the **decision log**, a yes opens a **project draft** that
+the lead sets up and starts, the project is **measured** with a result a second person **confirms**, and a better confirmed result makes a **reward** due.
 It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
 
 ## The loop step by step
@@ -15,24 +18,57 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
    tagged "Proposed" and the line "Routed by keywords - the AI is off for this company." says where it came from. The reasons
    are facts about the route and the role, never a score or a person's track record. "Choose another desk" lists every
    route-owning role. The send names the role and a date.
+   A raise that no route owns, or whose route has no owner seat, lands on the **fallback desk** (`fallbackSeatFor`, `features/approvals/rules.ts`,
+   set by the server like every seat of a raise): the review seat while review is on, else the first occupied seat of the company's fallback desk role
+   (Settings → Rules), else the first manager role's seat, and only without any of them the occupied seat at the head of the org chart
+   (`fallbackSeat`, `features/cases/stamp.ts`). A raise without a route at all goes to the triage seat the same way (the triage role, Settings →
+   Routing).
+   Its holder passes it on or answers it; a manager can still give it a route (`case.override`). It has the same answer
+   date as any case, and the desk is reminded to pass it on after one working day. Without an org chart it lands on no
+   desk, as before, and only a manager can pick it up.
+   A raise onto a desk nobody sits at does not wait: within a minute the clock writes `case.handed` with
+   `why: "vacant"` to the route's deputy desk, or to the seat above when that desk is vacant too (`features/clock/due.ts`).
+   The desk card and the sent line of the raise already name who gets it. The new desk and the raiser are told.
 2. **Answer promise.** The case page (and "My cases") shows "Answer by {date}" and "With · {role} · {people}"
    (`answerPromise`, `features/cases/promise.ts`). The date counts working days of the company calendar. A yes, a no or a
-   question answers; a hand-over does not.
+   question answers; a hand-over does not. A question pauses the answer date until the raiser replies. If no reply
+   comes, the raiser is reminded after 3 working days, and after `question_days` (5 by default) the clock writes `case.unanswered`: the case is open
+   on the desk again, the question stays on it marked "no answer", and the answer date runs on
+   (`features/clock/kinds/case.ts`). The day counts are company rules in Settings → Rules, not fixed numbers: `question_days` (default 5, 2 to 30) is how long a question waits before the case comes back, and the reminder comes after `QUESTION_REMIND_DAYS` (3) working days, at the latest one day before; `no_reason_min` (the fewest characters a reason for a no needs, default 40) and `appeal_days` (how long the raiser may ask for a second look, default 10) are company rules too (plan NOR, D23).
+   Demo companies have no scheduler, so there a question waits.
+   While nobody has decided, the raiser can **withdraw** the idea on the case page, with one optional line why
+   (`case.withdrawn`, decision Q1.14). It is archived with status "Withdrawn", its clock stops, it leaves the desk, and
+   it is not in the decision log. The desk's holders and everyone invited to its discussion get a mail naming the raiser
+   as they posted it. After a yes only the project can be stopped.
 3. **Hand-over rule.** With the company rule `deadline_handover` on (default for new companies), a breached answer date
    writes one `case.handed` with `why: "deadline"` to the deputy seat; the submitter sees the date and who holds the case. With
    the rule off, the deputy role is told and the owner keeps the case.
+   **A second level.** `escalation_days` working days after the answer date (Settings → Rules, "Then one level up after", default 3, 0 switches it
+   off), a case still open goes to the seat above the desk that owes the answer, once per answer date: the clock writes a `clock.due` of kind
+   `escalation` and, a run later, one `case.handed` with `why: "escalation"` to that seat (`escalation`, `features/clock/kinds/case.ts`). The
+   reminder `reminder.escalation` tells the seat above, the desk and the raiser, each in their own sentence (docs/CLOCK.md, "A late answer").
 4. **Routing panel.** The raiser, the holders of the desk or its escalation role and managers see "Proposed and sent to
    {role} · by keywords" (or "by the AI"), then one row per move, with the destination and the day only (`routingTrail`).
 5. **Decision log.** `/<company>/decisions`, in the nav after Feed: every yes and no a person may open, newest first, with the
    deciding desk's role (never the decider's user id) and, while projects are on, the project it opened.
-6. **Projects.** A yes opens a project with the person who said yes as lead. The lead takes the baseline (metric, unit, which
-   way is better, source), starts the project, works the board and marks it done.
+6. **Projects.** A yes opens a project **draft** (next section); the lead takes the baseline (metric, unit, which way is
+   better, source) and the goal, starts the project, works the board and marks it done. A yes that does not carry
+   `draft: true` (every old log, seed, API or integration write) behaves as before: a project with the person who said yes
+   as lead, a start date of the promise days, and the baseline as the only gate (decision D8).
 7. **Measure and confirmation.** The check opens 30 days (or the company's days) after done. The lead types the result,
-   optionally with saving, CO₂, energy and scrap figures; the card reads "Typed by … · not confirmed" and "Not confirmed yet".
-   A manager or a holder of the route's deputy role confirms ("Confirm result"); never the lead and never the person who typed
-   it. A file import is provenance only and is confirmed the same way; a trusted system source is not available to people.
+   optionally with saving, CO₂, energy and scrap figures; the card reads "Typed by … · not confirmed" and "Waiting for a
+   second person until {date}". A manager or a holder of the route's deputy role confirms ("Confirm result"); never the lead
+   and never the person who typed it. The confirmation has a desk and a date (decision Q6.15, `features/projects/confirm.ts`):
+   who may confirm is mailed when the result is typed, finds "Confirm the result" under "Projects waiting on you" in the
+   inbox, and has 5 working days. After that the clock reminds them once; 3 working days later it asks the seat above the
+   deputy's desk, whose holders may confirm from then on. A file import is provenance only and is confirmed the same way; a trusted system source is not available to people.
 8. **Recognition.** Only a confirmed latest result with the verdict *better* makes the reward due, by the company's reward
    rule; a manager records it. Same or worse closes the project without a reward.
+9. **Stopped.** The lead or a manager stops a project at any time before its reward, with a reason. The lead, the team
+   and who raised the idea get a mail with who stopped it and why (decision Q6.21); the idea stays in the archive.
+10. **Closed.** Still derived, never an event. The event that closes the project sends one summary to the lead, the team
+   and who raised the idea: the latest result against the baseline and the recognition (decision Q6.20,
+   `features/projects/close.ts`, `docs/NOTIFICATIONS.md`).
 
 ## Switches per company, and who sets them
 
@@ -44,6 +80,8 @@ It works with the AI, n8n, Jira and Microsoft 365 all off (D2).
 | Step `measure` | Settings → Rules | company manager | A project opens no checks, closes at done with status measured, no verdict, no reward. |
 | Step `recognition` | Settings → Rules | company manager | No reward ever falls due. |
 | `deadline_handover` | Settings → Rules | company manager | The deputy is told, the owner keeps the case. |
+| `escalation_days` | Settings → Rules | company manager | No second level: the case stays with the deputy. 0 switches it off. |
+| `question_days`, `no_reason_min`, `appeal_days` | Settings → Rules | company manager | Company rules, not switches: how long a question waits, the fewest characters of a no's reason, how long a no may be appealed. |
 | Measure days, tolerance, reward rule, fast lane | Settings → Rules | company manager | Company rules read by the project reducer. |
 
 `flagsFor(slug)` returns the rollout flag AND the company's step.
@@ -59,11 +97,41 @@ with no AI, n8n, Jira or Microsoft 365; "db" tests run against a company in the 
 | The deputy hand-over: a breached date hands the case to the deputy once | db `tests/db/loop-handover.test.ts` (one `case.handed`, also when run twice; none with the rule off); unit `tests/unit/loop/handover.test.ts`, `handover-reducer.test.ts`. Not exercised in the e2e: a sandbox clock cannot be moved to breach a date. |
 | Desks, not people: ideas go to a role, with no score or track record of a person | e2e (the desk "Quality lead" with its holder, tagged "Proposed", reasons from the keywords); unit `tests/unit/loop/desks.test.ts` ("no score, no person, no answered-case count"). |
 | The score does not count model output | unit `tests/unit/loop/truth.test.ts`. Not exercised in the e2e: with the AI off no model proposes a route. |
-| Verified outcomes: a measured result counts only with a second person's confirmation | e2e (the lead's result is "Not confirmed yet" and the lead finds no confirm button; the second manager confirms); unit `tests/unit/loop/measure.test.ts`; db `tests/db/loop-measure-import.test.ts`. |
+| Verified outcomes: a measured result counts only with a second person's confirmation | e2e (the lead's result is "Waiting for a second person until …" and the lead finds no confirm button; the second manager finds it on the desk and confirms); unit `tests/unit/projects-confirm.test.ts`; unit `tests/unit/loop/measure.test.ts`; db `tests/db/loop-measure-import.test.ts`. |
 | Reward only after a better result | e2e (verdict better, then the reward is due and recorded); unit `tests/unit/loop/measure.test.ts` ("a confirmed same or worse latest verdict gives no reward"; "recognition off"). |
 
 Also proved in the e2e: the decision log lists the yes for a manager and for the raiser, and a manager who switches
 Projects off removes Projects from the member's nav.
+
+## The yes opens a project draft
+
+Plan SET, six decisions (Q5.1, Q5.3, Q5.7, Q5.13, Q5.16, Q5.17). Only a yes that carries `draft: true` follows them; the yes
+sheet and the Teams yes send it. The draft page is `/<company>/projects/<id>` while the project is still `planning`.
+
+1. **The yes asks who sets it up (Q5.1).** The decider picks the lead (default: themself), a new draft or an open project
+   they lead or are on, and an optional line to the raiser. Title, template, team, goal and baseline belong to the draft.
+2. **A lead who is not the decider must take it (Q5.3).** The inbox shows "Lead a project" with Take or Decline (with a
+   reason): `project.lead.answered`. A reminder after 2 working days, after 4 the clock writes the answer
+   `take: false, lapsed: true` and the draft goes back to the decider, who leads it. A decline does the same at once.
+   A hand-over on the draft to someone other than the actor asks the new lead again. When the decider names themself the
+   lead is taken at the yes.
+3. **The lead invites a team (Q5.7, Q5.8).** `project.invited {userId, role}` with the role sponsor, member, contributor or
+   follower. Sponsor, member and contributor accept or decline in the inbox; a follower is added at once. A reminder after 2
+   working days, a lapse after 5; pending invitations never block the start. An accepted sponsor replaces the old one.
+   Invitations stay possible after the start on the Team tab, with the same answer in the inbox.
+4. **Who sees the draft (Q5.13).** The decider, the lead, the people invited (pending or accepted), the followers and,
+   unless the idea is private, managers. Anyone else who may read the idea sees only "Accepted · being set up by {role},
+   start expected {date}" and no draft page. The raiser, if not on the draft, also reads its goal, done-when and brief and
+   may comment (D20). The cut happens on the server before the log is serialised (`cutDrafts`, `lib/db/viewer-log.ts`), so
+   the steps, comments and invitations of a draft never reach a browser that may not read it.
+5. **A draft has `project_start_days` working days (Q5.16).** The company rule (default 10, 1-60) counts from the day the
+   lead took it; before that there is no start day. The lead starts the project (`project.started`, the kickoff) when the
+   lead has taken it, the goal with its done-when is set and the baseline is taken. The kickoff mails the team, the sponsor
+   and the followers the goal and first steps, and the raiser the usual "started" mail.
+6. **A late draft goes to the seat above (Q5.17).** On the start day the clock tells the lead and gives the draft to the seat
+   above the lead's seat; 3 working days later it reminds that seat once more. That person, whether or not a manager,
+   keeps it with a new date (`project.start.moved`), hands the lead on (`project.handed`) or stops it with a reason
+   (`project.stopped`); the raiser is told the reason. Nothing stops on its own.
 
 ## What the acceptance does, and its limits
 
@@ -72,6 +140,15 @@ Projects off removes Projects from the member's nav.
   measured only when every check has a result, and the 90-day check cannot be reached on a clock that does not move.
 - A sandbox clock cannot be moved, so `project.started` and `project.done` are written as `CaseEvent` rows dated 31 working
   days back; the baseline, the result, the confirmation and the reward go through the UI.
+- SET-Z1 (`set.spec.ts`) is the same kind of company, with the AI, Teams, Jira and Microsoft 365 off. The desk's yes, the
+  lead's take, the template, the invitation and its answer in the inbox, the goal, the baseline and the start, the
+  sponsor named on the Team tab after the start, and the seat above's keep, hand-over and stop go through the UI. The org,
+  the raised ideas, the steps and comments only the people on the draft may read, and three drafts left past their start
+  day (events dated 21 calendar days back, because a sandbox clock does not move and a draft is late against the company's
+  real day) are written in the database, and the planner and the clock are run by the test. It reads the server payload a
+  reader outside the draft receives, not only the page.
+- A sandbox sends no mail: every outside row is written `skipped` with the reason `sandbox`, to the right person and with
+  the right text, and the in-app copy is `sent`. The test asserts those rows, not delivered mail.
 - The card names the person who typed the result ("Typed by {name} · not confirmed"), because the seat label is the holder's
   name; the decision log and the case page name the desk's role.
 

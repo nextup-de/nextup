@@ -12,7 +12,8 @@
 | `/[company]/login` | `[company]/login/page.tsx` | - | - | Company-branded login |
 | `/[company]` | `[company]/(app)/page.tsx` | yes | any | Redirect to `ROLE_HOME[role]` |
 | `/[company]/manager` | `.../(app)/manager/page.tsx` | yes | manager | Overview |
-| `/[company]/leader` | `.../(app)/leader/page.tsx` | yes | leader, manager | Inbox |
+| `/[company]/inbox` | `.../(app)/inbox/page.tsx` | yes | every role | The one inbox: what is asked of you (Decide, Approve or confirm, Do my part) and your notices. The leader's home. A member sees it in the nav only while something waits (plan INB, D3) |
+| `/[company]/leader` | `.../(app)/leader/page.tsx` | yes | leader, manager | Redirects to `/inbox`, keeping `?id=` |
 | `/[company]/raise` | `.../(app)/raise/page.tsx` | yes | any | Idea studio: develop an idea with the coach, publish at the threshold (member home, docs/IDEAS.md) |
 | `/api/[company]/ideas/turn` | `app/api/[company]/ideas/turn/route.ts` | yes | any | One message in the idea studio (SSE): the server's benchmark and, where the brain is on, the model's reading of the idea, then the coach's reply. Events `status` (`reading`, then `coaching`: which step the brain is on), `scores` (overall, benchmark bars, suggested answers, `reading` or null), `replies` (brain only), `text`, `done`, `error`; docs/IDEAS.md |
 | `/[company]/dashboard` | `.../(app)/dashboard/page.tsx` | yes | manager | The wait ledger (docs/METRICS.md): six tiles with baseline and trend, stages, answers, the unit and role breakdown with groups under 5 people hidden, CSV export. Query: `unit` and `period` (`30d`, `quarter`, `golive`). No person is named or counted |
@@ -32,16 +33,16 @@
 | `/[company]/setup/*` | `.../setup/{company,units,roles,routes,members,done,open}/page.tsx` | yes | manager | The setup process: own frame, one page per step, outside the app shell. `/setup/open` holds the go-live checks and "Open NextUp"; `/settings/setup` redirects to `/setup` (docs/SETTINGS.md) |
 | `/[company]/setup` | `.../setup/page.tsx` | yes | manager, stack admin | The setup overview: every phase, its owner and status, derived on every load. Anyone else gets a 404 (docs/SETTINGS.md) |
 | `/admin/*` | `admin/{page,setup,people,connectors,assistant,company-data,decisions,support,login}` | own cookie | console admin | The company's IT and privacy console, one-company stacks only (`TENANT_MODE=single`; 404 in multi mode). Eight sections in `CONSOLE_SECTIONS`. Who enters: Microsoft sign-in with the `NextUp.Admin` role, a stack admin (personal code + authenticator code), the logged break-glass code, or a read-only support session. No platform pages: `/admin/companies`, `/requests`, `/tickets`, `/connections` are 404 (docs/ADMIN.md) |
-| `/demo/*` | `demo/{raise,dashboard,cases/[caseId],projects/[projectId],leader,manager,…}/page.tsx` | - | - | Static demo: made-up data, no company, no login, nothing leaves the browser; `/demo` opens `/demo/raise`, a case opens at `/demo/cases/<id>`. On a stack whose company is `demo` (demo.sellux.ch) it is the whole host, at the root (docs/IDEAS.md, "The demo page") |
+| `/demo/*` | `demo/{raise,dashboard,cases/[caseId],projects/[projectId],inbox,leader (redirects to inbox),manager,…}/page.tsx` | - | - | Static demo: made-up data, no company, no login, nothing leaves the browser; `/demo` opens `/demo/raise`, a case opens at `/demo/cases/<id>`. On a stack whose company is `demo` (demo.sellux.ch) it is the whole host, at the root (docs/IDEAS.md, "The demo page") |
 | `/api/health` | `api/health/route.ts` | - | - | Uptime check |
 | `/api/client-errors` | `api/client-errors/route.ts` | - | - | A browser's script error (`navigator.sendBeacon` from `components/report/error-reporter.ts`), counted by kind with the server's errors (`server/errors.ts`). Same origin only, 8 KB, 204 |
 
 Role rules are data in `src/config/roles.ts` (`ROLE_HOME`, `ROLE_ACCESS`, `canAccess()`, `SHELL`) and nav
-per role in `src/config/nav.ts`. `SHELL[role]` picks the chrome: members get the simple bar
-(logo, Ideas | Dashboard, profile - `SimpleShell`), leaders and managers the rail + top bar. Enforcement (`src/proxy.ts` + the `(app)` layout) arrives with
-sessions in Phase 2; until then every app page renders with the demo tenant as manager.
+per role in `src/config/nav.ts`. `SHELL` gives every role (manager, leader and member) the simple shell (`SimpleShell`: logo, the nav and the profile in a
+top bar); the rail plus top bar (`"rail"`) exists in the config only and no role uses it, and `(app)/layout.tsx` always renders `SimpleShell`. Enforcement
+is `src/proxy.ts` and the `(app)` layout, per request, from the session.
 
 Layouts nest: `app/layout.tsx` (html, fonts) ->
-`[company]/layout.tsx` (resolve tenant, 404) -> `(app)/layout.tsx` (AppShell: rail + top bar)
+`[company]/layout.tsx` (resolve tenant, 404) -> `(app)/layout.tsx` (`SimpleShell`)
 -> `settings/layout.tsx` (sub-nav). `[company]/setup/layout.tsx` is the setup frame, beside `(app)`. Auth pages compose
 `AuthShell` themselves.

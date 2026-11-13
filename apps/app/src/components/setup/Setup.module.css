@@ -31,7 +31,7 @@
   background: var(--nh-brand); color: var(--nh-on-brand); font-family: var(--nh-mono); font-size: var(--nh-fs-xs);
 }
 
-.column { position: relative; width: 100%; max-width: 752px; margin: 0 auto; padding: 40px 16px 64px; }
+.column { position: relative; width: 100%; max-width: 752px; margin: 0 auto; padding: 40px 16px 128px; }
 .page { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .hint { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); }
 
@@ -50,7 +50,12 @@
 .stepOf { margin: 0; font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-mute); }
 .resume { width: fit-content; margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--nh-fill); font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-ink-2); }
 
-.footer { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-top: 4px; }
+/* Back / Next are pinned to the bottom of the screen at every width, so a long step never hides them. The bar
+   is full width; its padding lines the buttons up with the column (752px less its 16px sides). */
+.footer {
+  position: fixed; inset: auto 0 0; z-index: 40; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 12px max(16px, calc((100% - 720px) / 2)); background: var(--nh-card); border-top: 1px solid var(--nh-line-soft);
+}
 .forward { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .back, .next {
   display: inline-flex; align-items: center; justify-content: center; height: 36px; padding-inline: 14px; border: 0; border-radius: 8px;
@@ -66,13 +71,17 @@
 .nextHint { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-mute); text-align: right; }
 
 .card { display: flex; flex-direction: column; gap: 16px; padding: var(--nh-pad-card); border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: 0 6px 20px rgb(40 60 100 / 6%); }
-.cardHead { display: flex; flex-direction: column; gap: 6px; }
+.cardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.cardHeadText { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .cardTitle { margin: 0; font-size: var(--nh-fs-lg); line-height: 22px; font-weight: 600; color: var(--nh-ink); }
 .cardText { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink-2); }
 .subLabel { margin: 0; font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; color: var(--nh-mute); }
 .mono { font-family: var(--nh-mono); }
 
 .added { display: flex; flex-direction: column; margin: 0; padding: 6px 16px; border-radius: 8px; background: var(--nh-fill); list-style: none; }
+/* A list that grows with the company ("Added so far", vacant seats) scrolls in its own box, so Back / Next
+   stay on screen instead of below hundreds of rows. */
+.scrollBox { flex-shrink: 0; max-height: 50vh; overflow-y: auto; overscroll-behavior: contain; }
 .addedRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 36px; padding-block: 6px; font-size: var(--nh-fs-sm); line-height: 16px; }
 .addedName { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .addedName strong { font-weight: 500; color: var(--nh-ink); }
@@ -89,8 +98,6 @@
 
 .form { display: flex; flex-direction: column; gap: 16px; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.fieldSide { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: start; gap: 16px; }
-.fieldSide > .fieldLabel { padding-top: 9px; }
 .fieldLabel { font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; color: var(--nh-ink); }
 .fieldBody { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .fieldHelp { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-mute); }
@@ -99,7 +106,6 @@
 .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .refusal { margin: 0; font-size: var(--nh-fs-sm); line-height: 16px; color: var(--nh-danger); }
 .formFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--nh-line-soft); }
-.formButtons { display: flex; flex-shrink: 0; gap: 8px; }
 .secondary, .submit {
   display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; height: 36px; padding-inline: 14px; border: 0; border-radius: 8px;
   font: inherit; font-size: var(--nh-fs-sm); line-height: 16px; font-weight: 600; cursor: pointer;
@@ -132,6 +138,7 @@
 .checks { display: flex; flex-direction: column; border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: 0 6px 20px rgb(40 60 100 / 6%); overflow: hidden; }
 .isDefault { color: var(--nh-mute); }
 .doneFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 4px; }
+.doneEnd { display: flex; align-items: center; gap: 8px; }
 .check { display: grid; grid-template-columns: 126px minmax(0, 1fr) 20px; gap: 12px; align-items: center; padding: 16px 20px; border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-md); color: var(--nh-ink-2); text-decoration: none; }
 .check:first-child { border-top: 0; }
 .check strong { color: var(--nh-ink); }
@@ -141,22 +148,17 @@
   .column { padding: 20px 16px 96px; }
   .steps { gap: 4px; }
   .step span, .step a { display: none; }
-  .footer {
-    position: fixed; inset: auto 0 0; z-index: 40; align-items: center; min-height: 64px; padding: 12px 16px;
-    background: var(--nh-card); border-top: 1px solid var(--nh-line-soft);
-  }
+  .footer { align-items: center; min-height: 64px; padding: 12px 16px; }
   .footer > :first-child { flex: 1; }
   .footer > :last-child { flex: 2; }
   .forward { align-items: stretch; }
   .nextHint { display: none; }
   .card { padding: var(--nh-pad-card-sm); }
-  .fieldSide { display: flex; flex-direction: column; gap: 6px; }
-  .fieldSide > .fieldLabel { padding-top: 0; }
+  .cardHead { flex-direction: column; align-items: stretch; }
   .pair { grid-template-columns: minmax(0, 1fr); }
   .formFoot { flex-direction: column; align-items: stretch; }
-  .formButtons > * { flex: 1; }
   .vacantSeat { grid-template-columns: minmax(0, 1fr); gap: 6px; }
-  .doneFoot { flex-direction: column-reverse; align-items: stretch; }
+  .doneFoot, .doneEnd { flex-direction: column-reverse; align-items: stretch; }
   .check { grid-template-columns: minmax(0, 1fr) 20px; }
   .check > span:nth-child(2) { grid-column: 1; grid-row: 2; }
 }
