@@ -16,12 +16,13 @@ import {
   PlatformJobsResponse,
 } from "@nextup/contracts";
 import { isStage, signsOutOnMove } from "@/features/admin/stages";
-import { checkPlatformJob, type PlatformJobInput } from "@/features/admin/platform-jobs";
+import { checkPlatformJob, type PlatformJobCheck, type PlatformJobInput } from "@/features/admin/platform-jobs";
+import type { TenantMode } from "@/features/auth/request";
 import { generateLoginCode, hashLoginCode } from "@/features/auth/login-code";
 import { toSeedJson } from "@/features/demo/parse";
 import { templateWrites } from "@/features/demo/content";
 import { initialsOf, markFor } from "@/features/tenant/create";
-import { companyUrl } from "@/features/tenant/urls";
+import { companyUrl, tenantMode } from "@/features/tenant/urls";
 import { getDb } from "@/lib/db/client";
 import { bindDemoCompany } from "@/lib/db/demo-identity";
 import { writeStructure } from "@/lib/db/structure-writes";
@@ -36,6 +37,17 @@ const g = globalThis as unknown as {
 
 type Code = NonNullable<PlatformJobResult["code"]>;
 const fail = (id: string, code: Code): PlatformJobResult => ({ id, ok: false, code });
+
+/**
+ * A stack never leaves demo by a platform job unless it is single-tenant (plan REM, Q9.5): from `demo` to anything else, and from `sandbox` to a real stage, only when
+ * the stack serves one company (TENANT_MODE single). A shared stack holds other companies' data next to this one; their move to real people is the stack's operator's
+ * to make, not a job from admin. Moves that stay in demo or sandbox are no leaving. Pure; `mode` is the stack's tenant mode.
+ */
+export function checkStageGuard(current: string, target: string, mode: TenantMode): PlatformJobCheck {
+  const leavesDemo = current === "demo" && target !== "demo";
+  const leavesSandbox = current === "sandbox" && target !== "sandbox" && target !== "demo";
+  return (leavesDemo || leavesSandbox) && mode !== "single" ? { ok: false, code: "bad-stage" } : { ok: true };
+}
 
 async function createCompany(job: Extract<PlatformJob, { action: "create_company" }>): Promise<PlatformJobResult> {
   const { id, slug, name, template, stage, adminEmail } = job;
@@ -137,7 +149,8 @@ async function handle(raw: unknown): Promise<PlatformJobResult | null> {
   try {
     const slug = typeof input.slug === "string" ? input.slug : null;
     const current = slug ? ((await getDb().company.findUnique({ where: { slug }, select: { stage: true } }))?.stage ?? null) : null;
-    const checked = checkPlatformJob(input, current);
+    let checked = checkPlatformJob(input, current);
+    if (checked.ok && input.action === "set_stage" && current !== null && typeof input.stage === "string") checked = checkStageGuard(current, input.stage, tenantMode());
     if (!checked.ok) {
       result = fail(id, checked.code);
     } else {
