@@ -1,9 +1,35 @@
 # Master plan: from today's build to a pilot-ready product
 
-> **Plan · 2026-11-01 · in progress. Status 9 Nov, from the team report "Where we stand" v1.4 (nextup-context `reports/2026-11-08_where-we-stand/`): gates G1–G3 are done in effect (1–4 Nov), gate G4 (test phase) is open with 0 of 8 exit criteria formally signed off, G5 (pilot review) has not started. Phase 0 (audit) is done: the gap register is in [../audit/gap-register.md](../audit/gap-register.md).**
+> **Plan · 2026-11-01 · in progress. Status 13 Nov: the software for the pilot is built (see "Where it stands" below); gate G4 (test phase) is still open with 0 of 8 exit criteria signed off, and no pilot customer is signed. G1–G3 are done in effect (1–4 Nov), G5 (pilot review) has not started. Phase 0 (audit) is done: the gap register is in [../audit/gap-register.md](../audit/gap-register.md).**
 > The rough plan (L0) for everything between `main` as of 1 Nov (984f3b0, #249) and the first pilot with a company
 > of 1,000–2,000 employees. Each phase below gets its own detailed plan before it is built. Why this order and
 > this segment: [2026-11-01_segment-analysis.md](2026-11-01_segment-analysis.md).
+
+## Where it stands (13 Nov 2026)
+
+Checked against `main` at `04ed101f` (13 Nov), the orch plans and nextup-context. The pilot needs three tracks
+(nextup-context `plans/2026-11-11_process-build-plan.md` § 2); only the first is done.
+
+| Track | State | What is left |
+| --- | --- | --- |
+| **1 · Software** | **Built.** Hauptplan PILOT (28 phases), block A, the AI cost cap, block S (#721, #723–#726) and every process phase (INB, SET, REG, MOV, NOR, SEE, RES, AGT, GAT, OVL, REM) are merged and proven on `main` (orch run finished 13 Nov). The pilot-check fix list FX1–FX9 is merged; FX10 (e2e and e2e-db required on `main`) is not, on purpose. The 6 Nov pilot-check decisions (Sie, floor reports desk-only, webhooks and tokens out of the menu) are built. The Go-live page checks restore test, open findings and break-glass (#847). | #722 block S texts (draft, Marc reads). PRs #862, #863 (Musterwerk sample data). The process remainder was not recounted after REM. |
+| **2 · Gate G4** | **0 of 8 signed off.** 3 hold on proof and can be signed now, 2 hold in part, 3 are not run; the rest waits on runs that only Kevin can start. See [the criteria](../test-phase/README.md). | Test server (VMs, bucket, DNS: nextup-context `plans/2026-11-08_test-server-setup.md` part 1; `tst.sellux.ch` does not answer); pentest or ZAP; M365 re-run; two weeks of internal use. |
+| **3 · Customer** | **Not started.** No pilot customer signed. The pilot package (`docs/pilot/`) and the data protection drafts (`docs/compliance/`) exist, unreviewed by a lawyer. | Contract and DPA, works agreement (Marc reads § 3 on anonymity), price (`ONE_PAGER.md`), support owners (Q10.7, `SUPPORT.md` has 6 open marks), restore time (Q10.4, open since 9 Nov), break-glass annex (Q8.7), our cloud model's DPA (#659) or not offering it. |
+
+Gate G4, criterion by criterion:
+
+| # | Criterion | 13 Nov | Next step |
+| --- | --- | --- | --- |
+| 1 | All suites green in CI | CI green on `main`; `e2e-db` runs but is not required | Kevin signs |
+| 2 | 2,000 accounts, p95 under 1 s | 200 accounts at once on a developer PC: p95 557 / 541 ms. Not run at 2,000 | Test server, then the load drill in [G4_DRILLS.md](../test-phase/G4_DRILLS.md) |
+| 3 | Deadlines fire on the real clock | Holds (TST-S1 12/12; OVL and MOV acceptance add away, overload and stalled) | Kevin signs |
+| 4 | 21/21 ground truth live, nothing leaked | Recorded 21/21. Live on Musterwerk 12 of 21, 0 leaks, 5 not run (MFA for Ben and Fiona) | Fix the MFA accounts, re-run ([TST-M365-LIVE](../test-phase/findings/TST-M365-LIVE.md)) |
+| 5 | Rights checked on the server | Holds (`tst-core`, `visibility.spec`, `musterwerk.spec`) | Kevin signs |
+| 6 | Restore within RTO; install from scratch | Not run: no test server. RTO 1 h or 4 h still undecided | Test server, restore and install drills; decide Q10.4 |
+| 7 | No open high finding from pentest or ZAP | In-repo findings: none high open. CI's ZAP baseline scan of the demo app passes (fails on any High). No pentest, no scan of a real stack | Book a pentest, or scan the test server's stack |
+| 8 | Two weeks of internal use without a data-loss or access bug | Not started | Pick a start date; Musterwerk (stage `pilot`) is the obvious stack |
+
+The first live reminder on Musterwerk is due Mon 16 Nov ~00:01 ([checklist](../test-phase/REMINDER_CHECKLIST_2026-11-16.md)).
 
 ## Executable version: orch Hauptplan PILOT
 
