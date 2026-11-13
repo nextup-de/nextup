@@ -3,6 +3,8 @@
 import { projectDeskFor, type DeskItem } from "@/features/projects/views";
 import type { InboxItem } from "../types";
 import type { InboxSourceInput } from "./cases";
+import { projectDraftItems } from "./project-draft";
+import { projectMoveItems } from "./project-move";
 
 const kindOf = (d: DeskItem): InboxItem["kind"] => (d.why === "confirm" || d.why === "confirmUp" ? "confirm" : d.why === "reward" ? "reward" : "move");
 
@@ -15,8 +17,22 @@ export function projectDesk(input: InboxSourceInput): DeskItem[] {
   return projectDeskFor(projects, input.today, { role: input.role ?? "leader", userId: me.userId, me }, { routes: state.routes, seats: [...input.seats] });
 }
 
+/**
+ * The lead's move is said once. A lead who has not taken the draft yet is asked "Will you lead it?" (the lead item): its baseline or start is
+ * theirs only after the yes. A running project whose weekly update is due has the update item: working the board is the same visit. "Mark it
+ * done" stays next to the update, it is a move of its own.
+ */
+function saidElsewhere(input: InboxSourceInput): (d: DeskItem) => boolean {
+  const asked = new Set(projectDraftItems(input).filter((i) => i.kind === "lead").map((i) => i.projectId));
+  const updates = new Set(projectMoveItems(input).filter((i) => i.kind === "update").map((i) => i.projectId));
+  return (d) => d.why === "lead" && (asked.has(d.project.id) || (d.move === "steps" && updates.has(d.project.id)));
+}
+
 export function projectItems(input: InboxSourceInput): InboxItem[] {
-  return projectDesk(input).map((d) => {
+  const desk = projectDesk(input);
+  if (desk.length === 0) return [];
+  const dup = saidElsewhere(input);
+  return desk.filter((d) => !dup(d)).map((d) => {
     const kind = kindOf(d);
     return {
       id: `${kind}:${d.project.id}`,

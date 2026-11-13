@@ -31,11 +31,12 @@ export type NoticeView = { id: string; subject: string; text: string; link: stri
 
 const ASKS: readonly InboxAsk[] = ["decide", "confirm", "part"];
 const ASK_TITLE: Record<InboxAsk, MessageKey> = { decide: "inbox.askDecide", confirm: "inbox.sectionConfirm", part: "inbox.askPart" };
+/** Every kind says what it asks for; a project move is named by its move on the row itself (kindText). */
 const KIND: Record<InboxKind, MessageKey> = {
   case: "inbox.kindCase", idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
-  reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindMove", invitation: "inbox.kindView", approval: "inbox.kindConfirm",
-  stalled: "inbox.kindMove", vacant: "inbox.kindMove", update: "inbox.kindMove", appeal: "caseNo.secondLook",
-  help: "inbox.kindMove", baseline: "inbox.kindConfirm", suggestion: "inbox.kindMove", comment: "inbox.kindComment",
+  reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindLead", invitation: "inbox.kindInvitation", approval: "inbox.kindApproval",
+  stalled: "inbox.kindStalled", vacant: "inbox.kindVacant", update: "inbox.kindUpdate", appeal: "inbox.kindAppeal",
+  help: "inbox.kindHelp", baseline: "inbox.kindBaseline", suggestion: "inbox.kindSuggestion", comment: "inbox.kindComment",
 };
 /** Why a case is back on the list (plan NOR, D26). */
 const CAUSE: Record<NonNullable<InboxItem["cause"]>, MessageKey> = {
@@ -93,8 +94,13 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     if (i.fromRole) return i.why ? t("inbox.passedBy", { role: i.fromRole, why: i.why }) : t("inbox.passedByNoWhy", { role: i.fromRole });
     return i.why ? t("inbox.passedWhy", { why: i.why }) : t(CAUSE.passed);
   };
-  // A comment row says how many are new, instead of its kind alone.
-  const kindText = (i: InboxItem): string => (i.kind === "comment" ? t(i.count === 1 ? "inbox.commentOne" : "inbox.commentMany", { n: i.count ?? 0 }) : t(KIND[i.kind]));
+  // A comment row says how many are new, a project move which move it is ("Take the baseline"), every other row its kind.
+  const moveOf = (i: InboxItem) => (i.kind === "move" ? desk.find((x) => x.project.id === i.projectId && (x.why === "lead" || x.why === "escalated")) : undefined);
+  const kindText = (i: InboxItem): string => {
+    if (i.kind === "comment") return t(i.count === 1 ? "inbox.commentOne" : "inbox.commentMany", { n: i.count ?? 0 });
+    const d = moveOf(i);
+    return d ? moveLabel(d.move, locale) : t(KIND[i.kind]);
+  };
   const counts = inboxCounts(items);
   const decide = items.filter((i) => i.ask === "decide" && opensInPlace(i));
   const navIds = decide.map(openId);

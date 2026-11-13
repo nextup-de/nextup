@@ -9,13 +9,13 @@ import { createPortal } from "react-dom";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
-import { translate, type MessageKey, type T } from "@/i18n";
+import { translate, type MessageKey } from "@/i18n";
 import { reasonTone, statusTone, type Tone } from "@/components/dashboard/shared/primitives";
 import { DeptChip, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
 import { AnswerPromise } from "@/components/cases/AnswerPromise";
 import { CaseRelations } from "@/components/cases/CaseRelations";
 import { CaseRouting } from "@/components/cases/CaseRouting";
-import { useRelatedCase, type Related } from "@/components/cases/useRelatedCase";
+import { useRelatedCase } from "@/components/cases/useRelatedCase";
 import { MoveToDesk } from "@/components/cases/MoveToDesk";
 import { seesRouting } from "@/features/cases/routing-trail";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
@@ -23,8 +23,9 @@ import { ApprovalsBlock } from "@/components/cases/ApprovalsBlock";
 import { CostField } from "@/components/cases/CostField";
 import { ReviewBlock } from "@/components/cases/ReviewBlock";
 import { roundState } from "@/features/cases/discussion";
-import type { CaseEvent } from "@/features/cases/events";
-import { actorLabel, type ActorLabels } from "@/features/cases/actor-label";
+import { timelineSentence, type TimelineFacts } from "@/features/cases/timeline";
+import { stepLabel } from "@/features/approvals/steps";
+import { formatEuro } from "@/i18n/format";
 import { caseActions } from "@/features/cases/case-actions";
 import { followHref } from "@/features/cases/links";
 import { isHandle } from "@/features/projects/views";
@@ -43,33 +44,6 @@ const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.stat
 
 // The status and reason chips in soft tints: a case that waits is amber, a result is green, the rest stays grey.
 const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", ink: "green", ok: "green", grey: "grey", soft: "grey", ghost: "grey", none: "grey", purple: "grey" };
-
-// Facts in, one sentence out - nothing here is stored.
-function sentence(e: CaseEvent, t: T, labels: ActorLabels | undefined, other: (id: string | undefined) => Related | null): string {
-  const p = e.payload;
-  const actor = actorLabel(e, labels);
-  switch (e.type) {
-    case "case.raised": return t("dashboard.evRaised", { actor });
-    case "case.read": return t("dashboard.evRead", { actor });
-    case "case.decided": return t("dashboard.evDecided", { actor, answer: p.answer ?? t("common.yes").toLowerCase() }) + (p.reason ? " " + t("dashboard.evReasonSuffix", { reason: p.reason }) : "") + (p.note ? t("dashboard.evNoteSuffix", { note: p.note }) : "") + (p.projectId ? " " + t("dashboard.evOpenedProject") + (p.lead && p.lead !== actor ? " " + t("dashboard.evLedBy", { lead: p.lead }) : "") : "");
-    case "case.discussion": return t("dashboard.evDiscussion", { actor }) + (p.invited?.length ? " " + t("dashboard.evWith", { names: p.invited.join(", ") }) : "") + (p.missing ? " " + t("dashboard.evMissing", { missing: p.missing }) : "");
-    case "case.invited": return t("dashboard.evInvited", { actor, names: (p.invited ?? []).join(", ") });
-    case "case.revised": return t("dashboard.evRevised", { actor }) + (typeof p.overall === "number" ? " " + t("dashboard.evScore", { n: p.overall }) : "");
-    case "case.checkin": return t("dashboard.evCheckin", { actor, next: p.next === "decide" ? t("dashboard.evReadyToDecide") : t("dashboard.evAnotherRound") }) + (p.open?.length ? " " + t("dashboard.evOpenList", { list: p.open.join(", ") }) : "");
-    case "case.handed": return p.why === "vacant" ? t("dashboard.evHandedVacant", { to: p.to ?? "" }) : t("dashboard.evHanded", { actor, to: p.to ?? "" }) + (p.why ? " " + t("dashboard.evHandedWhy", { why: p.why }) : "");
-    case "case.asked": return t("dashboard.evAsked", { actor, text: p.text || t("dashboard.evOneQuestion") });
-    case "case.answered": return t("dashboard.evAnswered", { actor, text: p.text ?? "" });
-    case "case.unanswered": return t("dashboard.evUnanswered");
-    case "case.withdrawn": return p.note ? t("dashboard.evWithdrawnWhy", { actor, why: p.note }) : t("dashboard.evWithdrawn", { actor });
-    case "case.building": return t("dashboard.evBuilding", { actor }) + (p.expected ? " " + t("dashboard.evExpected", { x: p.expected }) : "") + (p.days ? t("dashboard.evDaysSuffix", { n: p.days }) : "");
-    case "case.shipped": return t("dashboard.evShipped", { actor, outcome: p.outcome ?? "" }) + (p.outcomeNote ? " " + t("dashboard.evParen", { note: p.outcomeNote }) : "");
-    case "case.override": return t("dashboard.evOverride", { actor });
-    // The other case's title only when the viewer may open it; a stripped or hidden target reads as "another one" (plan SEE, D17).
-    case "case.merged": { const r = other(p.into); return (r?.title ? t("loopCase.evMergedInto", { actor, title: r.title }) : t("loopCase.evMerged", { actor })) + (p.note ? t("dashboard.evNoteSuffix", { note: p.note }) : ""); }
-    case "case.linked": { const r = other(p.to); return r?.title ? t("loopCase.evLinked", { actor, title: r.title }) : t("loopCase.evLinkedOther", { actor }); }
-    default: return actor + " · " + e.type;
-  }
-}
 
 /** `raiserInactive`: the server says the person who raised it by name has left (D20); false in the demo and without a database. */
 export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: string; raiserInactive?: boolean }) {
@@ -138,6 +112,18 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
   const hiddenDraft = accepted !== undefined && isOpenDraft(accepted)
     && !mayReadDraft(accepted, { role, userId: ctx.actorUserId }, S.cases.some((x) => accepted.sources.includes(x.id) && isPrivateIdea(x)));
   const project = hiddenDraft ? undefined : accepted;
+  // What the timeline's sentences name beyond the event itself: another case's title, euros, and approvers by their role or council.
+  const approver: TimelineFacts["approver"] = (step) => stepLabel(step, S.approvals, S.approvals.roles).name;
+  const facts: TimelineFacts = {
+    labels: tenant.actorLabels,
+    other: (id) => (id ? related.ofCase(id) : null),
+    money: (eur) => formatEuro(ctx.locale, eur),
+    approver,
+    answeredStep: (runId, stepId) => {
+      const step = [c.approvals, ...c.approvalRuns].find((r) => r !== null && r.runId === runId)?.steps.find((s) => s.id === stepId);
+      return step ? approver(step) : "";
+    },
+  };
   const talk = flag("discussion");
 
   return (
@@ -289,7 +275,7 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
             <li key={e.id} className={styles.event}>
               <span className={styles.dot} data-seed={e.seed ? "true" : undefined} />
               <div className={styles.eventBody}>
-                <div className={styles.eventText}>{sentence(e, t, tenant.actorLabels, (id) => (id ? related.ofCase(id) : null))}</div>
+                <div className={styles.eventText}>{timelineSentence(e, t, facts)}</div>
                 <div className={styles.eventWhen}>{f(e.day)}</div>
               </div>
             </li>
