@@ -59,6 +59,11 @@ has no reminder, so the new desk and the raiser get a `loop.case.handed` mail fo
 every holder of the desk and who asked are told that it can be decided without the answer, and the raiser that it goes on. A reminder has the key of the `clock.due` fact, and the clock writes each
 fact once, so a deadline gives each recipient one reminder however many days or restarts follow.
 
+**A late answer's second level.** `escalation_days` working days after the answer date (company rule, default 3, 0 = off; docs/CLOCK.md, "A late
+answer") the clock writes a `clock.due` fact of kind `escalation`, and `reminder.escalation` goes to the seat above the desk that owes the answer, to
+the desk and to the raiser, each with their own sentence (`CASE_REMINDER_AUDIENCE.escalation`, `features/notify/areas/case.ts`). It is a duty
+notice.
+
 ## Gating
 
 `gateOf(company, channel, template, pref)` (`src/features/notify/gate.ts`, pure). A message that may not leave is still

@@ -32,7 +32,7 @@ import { PLATFORM_ACTOR, recordAudit } from "../../../src/server/audit/record";
 import { defaultSourceFor, runDirectoryCompany, type SourceFor } from "../../../src/server/directory/sync";
 import { readBackupStatus } from "../../../src/server/backup-status";
 import { mailStatus } from "../../../src/server/mail";
-import { calendarOf, type PilotConfig } from "./config";
+import { calendarOf, stackAdminProblems, wantsStackAdmin, type PilotConfig } from "./config";
 
 export type CsvProblem = { file: FileKind; line: number; column: string; text: string };
 export type CheckLine = GoLiveCheck & { text: string };
@@ -104,6 +104,11 @@ export async function bootstrapPilot(opts: BootstrapOptions): Promise<BootstrapR
     steps.push(`company ${config.slug} is in stage ${existing.stage}; a bootstrap only works on a sandbox company`);
     return { ...result, status: "refused" };
   }
+  // Exactly one stack admin comes out of this run (REM-O2): another active one on the company stops it before the first write.
+  if (existing && wantsStackAdmin(config)) {
+    const stackAdmins = await db.user.findMany({ where: { companyId: existing.id, isStackAdmin: true, active: true }, select: { email: true } });
+    result.problems.push(...stackAdminProblems(config, stackAdmins));
+  }
   if (opts.codesFile) {
     if (existsSync(opts.codesFile)) result.problems.push(`--codes ${opts.codesFile} exists already; it is never overwritten, pick a new file name`);
     else if (!existsSync(path.dirname(path.resolve(opts.codesFile)))) result.problems.push(`--codes ${opts.codesFile}: its folder does not exist`);
@@ -151,27 +156,40 @@ export async function bootstrapPilot(opts: BootstrapOptions): Promise<BootstrapR
           users: {
             create: [{
               name: config.admin.name, email: config.admin.email, role: "manager", dept: "", ini: initialsOf(config.admin.name),
-              handle: null, loginCodeHash: hashLoginCode(code), loginCodeAt: now,
+              handle: null, loginCodeHash: hashLoginCode(code), loginCodeAt: now, isStackAdmin: wantsStackAdmin(config),
             }],
           },
         },
+        include: { users: { select: { id: true } } },
       });
+      if (wantsStackAdmin(config)) await recordAudit(c.id, { actor: PLATFORM_ACTOR, action: "audit.access.stack_admin", target: { kind: "user", id: c.users[0].id }, changes: { isStackAdmin: { before: false, after: true } }, source: "platform" }, tx);
       await recordAudit(c.id, { actor: PLATFORM_ACTOR, action: "audit.company.created", target: { kind: "company", id: c.id }, changes: { stage: { before: null, after: "sandbox" }, template: { before: null, after: "empty" } }, source: "platform" }, tx);
       return c;
     });
     companyId = created.id;
     result.created = true;
     codes.push({ email: config.admin.email, code });
-    steps.push(`created company ${config.slug} in stage sandbox with its first admin`);
+    steps.push(`created company ${config.slug} in stage sandbox with its first admin${wantsStackAdmin(config) ? ", who is the stack admin" : ""}`);
   }
   result.companyId = companyId;
 
   // The admin of an existing company: added when the email is not there yet.
   if (existing) {
-    const admin = await db.user.findFirst({ where: { companyId, email: { equals: config.admin.email, mode: "insensitive" } }, select: { id: true } });
+    const admin = await db.user.findFirst({ where: { companyId, email: { equals: config.admin.email, mode: "insensitive" } }, select: { id: true, isStackAdmin: true } });
+    const stack = wantsStackAdmin(config);
+    const grant = async (userId: string) => recordAudit(companyId, { actor: PLATFORM_ACTOR, action: "audit.access.stack_admin", target: { kind: "user", id: userId }, changes: { isStackAdmin: { before: false, after: true } }, source: "platform" });
     if (!admin) {
-      say("added the admin", "add the admin");
-      if (!dry) await db.user.create({ data: { companyId, name: config.admin.name, email: config.admin.email, role: "manager", dept: "", ini: initialsOf(config.admin.name), handle: null } });
+      say(`added the admin${stack ? " as the stack admin" : ""}`, `add the admin${stack ? " as the stack admin" : ""}`);
+      if (!dry) {
+        const made = await db.user.create({ data: { companyId, name: config.admin.name, email: config.admin.email, role: "manager", dept: "", ini: initialsOf(config.admin.name), handle: null, isStackAdmin: stack }, select: { id: true } });
+        if (stack) await grant(made.id);
+      }
+    } else if (stack && !admin.isStackAdmin) {
+      say("made the admin the stack admin", "make the admin the stack admin");
+      if (!dry) {
+        await db.user.updateMany({ where: { id: admin.id, companyId }, data: { isStackAdmin: true } });
+        await grant(admin.id);
+      }
     }
   }
 

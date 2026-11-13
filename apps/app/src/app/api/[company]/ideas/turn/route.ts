@@ -160,7 +160,7 @@ export async function POST(request: Request, { params }: Ctx) {
         send("scores", { overall, parts: now.parts, sameAs: now.sameAs, threshold, delta, replies, reading });
 
         // prev as it was: after a "not sure" the coach asks the next question fresh, not "I still need this".
-        let reply = reading ? readingReply(reading) : coachMock(prev, askNow, threshold, body.text, 0); // the raise page shows no suggested answers, so the coach does not point to them
+        let reply = reading ? readingReply(reading) : coachMock(prev, askNow, threshold, body.text, 0, locale); // the raise page shows no suggested answers, so the coach does not point to them; the viewer's locale, as the benchmarks were made in it
         let model = "mock", promptVersion = IDEA_PROMPT_VERSION;
         const ask = reading !== null && !signal.aborted;
         if (ask) send("status", { step: "coaching" });
