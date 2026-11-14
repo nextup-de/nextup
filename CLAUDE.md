@@ -87,6 +87,12 @@ src/lib/            db client, small utils.   src/server/actions/  server action
   docs/ASSISTANT.md), and Microsoft by name: `login.microsoftonline.com` (sign-in
   and token refresh) and `graph.microsoft.com` (live Microsoft 365 search, server-side,
   as the signed-in person; docs/plans/2026-10-22_sso-and-data-access.md, decision 9).
+  Also the AI provider a company chooses in its connector settings, server-side only
+  (docs/ops/AI_PROVIDER.md): its own Azure OpenAI resource or OpenAI-compatible endpoint
+  (`src/server/ai/openai.ts` and the brain), only behind the AI gate and its signed
+  data-processing agreement; and Anthropic's own API (api.anthropic.com,
+  `src/server/ai/anthropic.ts` and the brain) when a company chooses "Claude API": demo
+  companies only, the AI gate refuses it in every other stage.
   No analytics, no third-party scripts, no other fetch to outside APIs.
 - No secrets in code, ever — not even "just for testing".
 
