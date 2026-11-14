@@ -1,0 +1,45 @@
+.overview { display: flex; flex-direction: column; gap: var(--nh-gap); min-width: 0; }
+.head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--nh-gap); }
+.title { margin: 0; font-size: var(--nh-fs-xl); font-weight: 600; }
+.actions { display: flex; align-items: center; gap: var(--nh-space); }
+.status { margin: 0; min-height: 0; color: var(--nh-mute); font-size: var(--nh-fs-sm); }
+.status:empty { display: none; }
+.muted { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
+.rangeWrap { position: relative; }
+.rangeButton { white-space: nowrap; }
+.menu { position: absolute; z-index: 10; top: 100%; left: 0; display: flex; flex-direction: column; min-width: calc(var(--nh-space) * 30); margin-top: var(--nh-space); padding: var(--nh-space); border: 1px solid var(--nh-line); border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+.menuItem { display: flex; align-items: center; gap: var(--nh-space); padding: var(--nh-space) var(--nh-gap); border: 0; border-radius: var(--nh-r-sm); background: transparent; color: var(--nh-ink); font: inherit; text-align: left; cursor: pointer; }
+.menuItem:hover, .menuItem:focus-visible { background: var(--nh-ground); outline: none; }
+.menuItem:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: -2px; }
+.check { display: inline-block; width: var(--nh-gap); }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--nh-gap); }
+.tile, .card { padding: var(--nh-pad-card); border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: var(--nh-card-shadow); color: var(--nh-ink); min-width: 0; }
+.tile { display: flex; flex-direction: column; gap: var(--nh-space); }
+.tile[data-hot="true"] .num { color: var(--nh-progress-blocked); }
+.num { font-size: var(--nh-fs-xl); font-weight: 600; overflow-wrap: anywhere; }
+.card { display: flex; flex-direction: column; gap: var(--nh-gap); }
+.cardTitle { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; }
+.card p { margin: 0; }
+.chartHead { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--nh-space); }
+.stack { display: flex; height: var(--nh-gap); border-radius: var(--nh-r-sm); overflow: hidden; background: var(--nh-fill); }
+.seg, .dot { background: var(--nh-progress-open); }
+.seg[data-column="doing"], .dot[data-column="doing"] { background: var(--nh-progress-doing); }
+.seg[data-column="blocked"], .dot[data-column="blocked"] { background: var(--nh-progress-blocked); }
+.seg[data-column="done"], .dot[data-column="done"] { background: var(--nh-progress-done); }
+.legend { display: flex; flex-wrap: wrap; gap: var(--nh-gap); margin: 0; padding: 0; list-style: none; font-size: var(--nh-fs-sm); }
+.dot { display: inline-block; width: var(--nh-space); height: var(--nh-space); margin-right: var(--nh-space); border-radius: 50%; }
+.rows { display: flex; flex-direction: column; gap: var(--nh-space); margin: 0; padding: 0; list-style: none; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: var(--nh-gap); font-size: var(--nh-fs-sm); }
+.columns { display: flex; align-items: flex-end; gap: var(--nh-space); margin: 0; padding: 0; list-style: none; }
+.col { display: flex; flex: 1; flex-direction: column; align-items: center; gap: var(--nh-space); min-width: 0; font-size: var(--nh-fs-sm); }
+.colTrack { display: flex; align-items: flex-end; width: 100%; height: calc(var(--nh-space) * 12); border-radius: var(--nh-r-sm); background: var(--nh-fill); overflow: hidden; }
+.colFill { display: block; width: 100%; background: var(--nh-progress-done); }
+.bars { display: flex; flex-direction: column; gap: var(--nh-gap); }
+.barRow { display: grid; grid-template-columns: calc(var(--nh-space) * 16) minmax(0, 1fr) calc(var(--nh-space) * 10); align-items: center; gap: var(--nh-space); font-size: var(--nh-fs-sm); }
+.barRow strong { text-align: right; }
+.track { height: var(--nh-space); border-radius: var(--nh-r-sm); background: var(--nh-fill); overflow: hidden; }
+.fill { display: block; height: 100%; background: var(--nh-progress-blocked); border-radius: inherit; }
+@media (max-width: 760px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .barRow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+}
