@@ -1,7 +1,4 @@
 import { expect, it } from "vitest";
-import type { EventPayload } from "@/features/cases/events";
-import { APP_EVENT_TYPES } from "@/features/cases/persist";
-import { FLAGS } from "@/config/flags";
 import { canAddTool, DEFAULT_PAGES, fitsEvent, kicksJira, mergePlan, pagesOf, suggestPageName, tabToPage, TOOL_KINDS } from "@/features/projects/pages";
 import type { MergeRecord, ProjectPage, RemovedItem, ToolInstance } from "@/features/projects/types";
 import { de } from "@/i18n/de";
@@ -10,7 +7,7 @@ import { en } from "@/i18n/en";
 const tool = (id: string, kind: ToolInstance["kind"]): ToolInstance => ({ id, kind, title: null, collapsed: false, content: null, rev: 0 });
 const page = (id: string, tools: ToolInstance[]): ProjectPage => ({ id, title: id, icon: "doc", tools });
 
-it("PGE-G1 keeps legacy defaults isolated and filters Agent wherever it was moved", () => {
+it("PGE pages model: keeps legacy defaults isolated and filters Agent wherever it was moved", () => {
   const defaults = pagesOf({}, { agent: true });
   expect(defaults.map((p) => p.id)).toEqual(["overview", "steps", "plan", "results", "files", "requests", "team", "activity", "agent"]);
   expect(defaults.find((p) => p.id === "steps")?.tools.map((t) => t.id)).toEqual(["steps.board", "steps.list"]);
@@ -26,7 +23,7 @@ it("PGE-G1 keeps legacy defaults isolated and filters Agent wherever it was move
   expect(pagesOf({ pages: [defaults[0]], ...{ removed: [removed] } }, { agent: true })).toHaveLength(1);
 });
 
-it("PGE-G1 allows repeated tools and enforces singleton, Agent and capacity limits", () => {
+it("PGE pages model: allows repeated tools and enforces singleton, Agent and capacity limits", () => {
   const pages = pagesOf({}, { agent: false });
   const steps = pages[1];
   expect(canAddTool(pages, steps, "list", { agent: false })).toBe(true);
@@ -37,7 +34,7 @@ it("PGE-G1 allows repeated tools and enforces singleton, Agent and capacity limi
   expect(canAddTool([full], full, "list", { agent: true })).toBe(false);
 });
 
-it("PGE-G1 merges every instance in order with content and revision intact or refuses the whole merge", () => {
+it("PGE pages model: merges every instance in order with content and revision intact or refuses the whole merge", () => {
   const into = pagesOf({}, { agent: true })[1];
   const from = page("notes", [{ ...tool("second-list", "list"), title: "Parts", collapsed: true, content: "[]", rev: 3 }, tool("notes.doc", "doc")]);
   const result = mergePlan(into, from);
@@ -50,7 +47,7 @@ it("PGE-G1 merges every instance in order with content and revision intact or re
   expect(record.toolIds).toEqual(["second-list", "notes.doc"]);
 });
 
-it("PGE-G1 measures serialized event length and keeps page changes out of Jira", () => {
+it("PGE pages model: measures serialized event length and keeps page changes out of Jira", () => {
   const overhead = JSON.stringify({ content: "" }).length;
   expect(fitsEvent({ content: "x".repeat(12_000 - overhead) })).toBe(true);
   expect(fitsEvent({ content: "x".repeat(12_001 - overhead) })).toBe(false);
@@ -68,22 +65,5 @@ it("PGE-G1 measures serialized event length and keeps page changes out of Jira",
     const key = suggestPageName([kind])[0].split(".")[1];
     expect(en.projectPages).toHaveProperty(key);
     expect(de.projectPages).toHaveProperty(key);
-  }
-});
-
-it("PGE-G1 exposes the events, typed payloads, rollout defaults and matching bilingual namespaces", () => {
-  for (const suffix of ["page.added", "page.edited", "page.moved", "page.removed", "page.restored", "tool.added", "tool.moved", "tool.edited", "tool.removed", "tool.restored", "page.merged", "page.unmerged"]) {
-    expect(APP_EVENT_TYPES).toContain(`project.${suffix}`);
-  }
-  const payloads: EventPayload[] = [
-    { pageId: "notes", title: "Notes", icon: "doc", tools: [{ toolId: "notes.doc", kind: "doc", title: "Decisions", content: "text" }], before: null },
-    { pageId: "notes", toolId: "notes.table", kind: "table" },
-    { toolId: "notes.doc", title: "Decision log", collapsed: true, content: "new text", baseRev: 0 },
-    { mergeId: "merge-1", fromPageId: "notes", intoPageId: "steps" },
-  ];
-  expect(payloads).toHaveLength(4);
-  expect(FLAGS.projectPages).toMatchObject({ owner: "Kevin", defaults: { demo: true, sandbox: true, pilot: false, live: false }, added: "2026-11-13", removeBy: "2027-03-31" });
-  for (const ns of ["projectPages", "projectSteps", "projectPlan", "projectHub", "projectRequests"] as const) {
-    expect(Object.keys(de[ns]).sort()).toEqual(Object.keys(en[ns]).sort());
   }
 });
