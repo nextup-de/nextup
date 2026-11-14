@@ -112,8 +112,8 @@ test("FIL acceptance: open Files, grid, folder, search, link, upload, request an
     await page.goto("/acme/projects/pj2?page=steps");
     await expect(head.getByRole("heading", { level: 1, name: "Steps" })).toBeVisible();
     await expect(head.getByRole("button", { name: /Add step/ })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Board", exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("region", { name: "List", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Board", exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "List", exact: true })).toBeVisible();
   });
 
   await test.step("at 375 px the pages fit the screen", async () => {
