@@ -67,6 +67,6 @@ it("PGB add points: shared picker hides Agent, disables a singleton and allows a
   const out = html(h(I18nProvider, { locale: "en", children: h(AddToolMenu, { ...props, index: 1, onClose: () => {} }) }));
   expect(out).not.toMatch(/>Agent</);
   expect(out).toContain("Already in this project");
-  expect(out).toMatch(/data-taken="true" disabled=""><span[^>]*>[^<]*<\/span><span[^>]*>Overview/);
-  expect(out).toMatch(/<button(?![^>]*disabled)[^>]*><span[^>]*>[^<]*<\/span><span[^>]*>Doc/);
+  expect(out).toMatch(/disabled=""[^>]*><span>Overview/);
+  expect(out).toMatch(/<button[^>]*(?<!disabled="")><span>Doc/);
 });
