@@ -16,6 +16,7 @@ import { FileToolbar } from "./FileToolbar";
 import { FolderPanel } from "./FolderPanel";
 import { FolderPicker } from "./FolderPicker";
 import { HistoryPanel } from "./HistoryPanel";
+import { JiraAttachments } from "./JiraAttachments";
 import { LinkStepDialog } from "./LinkStepDialog";
 import { RequestDialog } from "./RequestDialog";
 import { RowMenu } from "./RowMenu";
@@ -91,6 +92,7 @@ export function FilesView({ p, load, editor }: { p: ReducedProject; load: FilesL
       <FileStates {...part} />
       {answer !== "loading" && answer.state === "ok" && (view === "list" ? <FileList {...part} /> : <FileGrid {...part} />)}
       <UploadProgress {...part} />
+      <JiraAttachments p={p} />
     </section>
     <aside className={styles.side} data-testid="files-side">
       {selected ? <FilePanel {...part} /> : <FolderPanel {...part} />}
