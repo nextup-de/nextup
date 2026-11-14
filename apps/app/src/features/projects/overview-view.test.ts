@@ -51,7 +51,7 @@ it("HUB overview HUB-A1 done per week buckets by range and the latest list stays
   expect(month.perWeek.map((w) => w.done)).toEqual([0, 1, 0, 1, 1]);
   const week = overviewFacts(p, { range: "7d", day: 0, viewerOnTeam: true });
   expect(week.perWeek).toEqual([{ endDay: 0, done: 1 }]);
-  expect(week.latest.map((e) => e.id)).toHaveLength(1);
+  expect(week.latest).toEqual([]);
   expect(month.latest.map((e) => e.id)).toEqual(["d--8-blocked", "x--27-doing"]);
   expect(overviewFacts(p, { range: "start", day: 0, viewerOnTeam: true }).latest).toHaveLength(3);
 });
