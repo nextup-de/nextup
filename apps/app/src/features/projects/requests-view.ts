@@ -1,5 +1,4 @@
 // What the Requests tool shows (plan REQ, D4, D6). Pure: the reduced project in, plain rows out.
-import type { Locale } from "@/i18n";
 import { untouchedStepOf } from "./reduce";
 import { fieldsOf, type Form, type FormField, type ReducedProject, type Request, type StepColumn } from "./types";
 import type { MessageKey } from "@/i18n";
