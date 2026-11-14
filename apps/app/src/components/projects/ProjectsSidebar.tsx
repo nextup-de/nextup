@@ -23,7 +23,13 @@ import {
   type CustomPage, type IdeaStage, type PageEntry, type PageIcon, type PageKind, type Ring, type SidebarIdea,
 } from "@/features/projects/sidebar";
 import { visibleProjectsFor } from "@/features/projects/views";
-import type { ReducedProject } from "@/features/projects/types";
+import { dropIntent, pageRowMenu } from "@/features/projects/page-drag";
+import { DEFAULT_PAGES, LIMITS, PAGE_ICON_KEYS, pagesOf, tabToPage } from "@/features/projects/pages";
+import type { MessageKey } from "@/i18n";
+import { AddPageDialog } from "./page/AddPageDialog";
+import { MergeDialog } from "./page/MergeDialog";
+import { usePageActs, type PageActOutcome } from "./page/usePageActs";
+import type { PageIconKey, ProjectPage, ReducedProject } from "@/features/projects/types";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { useT } from "@/i18n/client";
 import { idViewerOf, useRights } from "./parts";
@@ -155,7 +161,7 @@ function EndDot({ late, move }: { late: boolean; move: boolean }) {
 // ── Layer 2 ─────────────────────────────────────────────────────────────────────────────────────────
 
 function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) {
-  const { S, href } = useDemo();
+  const { S, href, flag } = useDemo();
   const t = useT();
   const params = useSearchParams();
   const editor = useRights(p).addStep; // the project's team (lead, members, a manager); viewers only read
@@ -165,6 +171,7 @@ function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) 
   const source = p.sources[0] ?? null;
   // The Agent tab only for who may see it, as on the page's own strip of tabs (plan AGT, D15).
   const agent = useAgentTab(p, false).view !== null;
+  if (flag("projectPages")) return <LoggedProjectPages key={p.id} p={p} onBack={onBack} agent={agent} editor={editor} />;
   const tabs = PROJECT_TABS.filter((k) => k !== "agent" || agent);
   return (
     <PageLayer storeId={p.id} from={source ? ideaPagesId(source) : null} tabs={tabs} base={base} pageUrl={(id) => base + "?page=" + id} editor={editor}
@@ -175,6 +182,136 @@ function ProjectPages({ p, onBack }: { p: ReducedProject; onBack: () => void }) 
       head={<Head mark={<RingMark ring={ringOf(p.status)} />} title={p.title} status={t(("projects.status_" + p.status) as "projects.status_planning")}
         note={late > 0 ? { text: t("projects.sbLate", { count: late }), tone: "late" } : null} />} />
   );
+}
+
+type PageDrop = { id: string; over: string | null; intent: ReturnType<typeof dropIntent> };
+
+/** Event-backed project pages. The legacy layer remains shared only by ideas and flag-off projects. */
+export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedProject; onBack: () => void; agent: boolean; editor: boolean }) {
+  const { S, href } = useDemo();
+  const t = useT();
+  const router = useRouter();
+  const params = useSearchParams();
+  const acts = usePageActs(p);
+  const pages = pagesOf(p, { agent });
+  const base = href("/projects/" + p.id);
+  const pageUrl = (id: string) => base + "?page=" + encodeURIComponent(id);
+  const requested = params.get("page") ?? tabToPage(params.get("tab") ?? "");
+  const current = pages.find((page) => page.id === requested)?.id ?? pages[0]?.id;
+  const title = (page: ProjectPage) => DEFAULT_PAGES.some((entry) => entry.id === page.id && entry.title === page.title) ? t(page.title as MessageKey) : page.title;
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number; section?: "rename" | "icons" | "merge" | "removed" } | null>(null);
+  const [draft, setDraft] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [merging, setMerging] = useState<{ from: string; into: string } | null>(null);
+  const [newPages, setNewPages] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const menuPanel = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [removedToast, setRemovedToast] = useState<{ id: string; title: string } | null>(null);
+  const [drag, setDrag] = useState<PageDrop | null>(null);
+  const pointer = useRef<{ id: string; x: number; y: number; active: boolean; drop: PageDrop } | null>(null);
+  const suppressClick = useRef(false);
+  const selected = pages.find((page) => page.id === menu?.id);
+  const choices = selected ? pageRowMenu(pages, selected, { editor }) : null;
+  const removed = p.removed.filter((item) => item.page && S.day - item.day <= LIMITS.removedDays && (agent || item.page.tools.every((tool) => tool.kind !== "agent")));
+  useEffect(() => {
+    if (!menu) return;
+    const previous = document.activeElement;
+    menuPanel.current?.querySelector<HTMLElement>("input, button:not(:disabled)")?.focus();
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape" && !pending.current) setMenu(null); };
+    window.addEventListener("keydown", escape);
+    return () => { window.removeEventListener("keydown", escape); if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
+  }, [menu]);
+  const send = async (go: () => Promise<PageActOutcome>, done?: () => void) => {
+    if (pending.current) return;
+    pending.current = true; setBusy(true); setError(null);
+    try {
+      const result = await go();
+      if (result.ok) { done?.(); setMenu(null); }
+      else setError(result.error);
+    } catch { setError(t("projectPages.notSaved")); }
+    finally { pending.current = false; setBusy(false); }
+  };
+  const finishDrag = () => {
+    const source = pointer.current;
+    pointer.current = null; setDrag(null);
+    if (!source?.active) return;
+    suppressClick.current = true;
+    window.setTimeout(() => { suppressClick.current = false; }, 0);
+    const { id, over, intent } = source.drop;
+    if (!over || !intent) return;
+    if (intent === "into") { setMerging({ from: id, into: over }); return; }
+    const rest = pages.filter((page) => page.id !== id);
+    const at = rest.findIndex((page) => page.id === over);
+    if (at >= 0) void send(() => acts.move(id, intent === "before" ? over : rest[at + 1]?.id ?? null));
+  };
+  const late = daysLate(p, S.day);
+  return <div className={s.layer}>
+    <button type="button" className={s.back} onClick={onBack}><span className={s.slot}>‹</span><span className={s.label}>{t("projects.sbBack")}</span></button>
+    <Head mark={<RingMark ring={ringOf(p.status)} />} title={p.title} status={t(("projects.status_" + p.status) as "projects.status_planning")}
+      note={late > 0 ? { text: t("projects.sbLate", { count: late }), tone: "late" } : null} />
+    <span className={s.group}>{t("projectPages.pages")}</span>
+    <nav className={s.pages} aria-label={t("projectPages.pageNavigationLabel")} aria-busy={busy}
+      onClickCapture={(event) => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}
+      onPointerMove={(event) => {
+        const source = pointer.current;
+        if (!source || !editor || busy) return;
+        if (!source.active && Math.hypot(event.clientX - source.x, event.clientY - source.y) < 5) return;
+        source.active = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        const row = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-page-id]");
+        const over = row?.dataset.pageId ?? null;
+        const rect = row?.getBoundingClientRect();
+        const intent = rect ? dropIntent(rect.top, rect.height, event.clientY, source.id === over, source.id === "overview") : null;
+        source.drop = { id: source.id, over, intent }; setDrag(source.drop);
+      }}
+      onPointerUp={finishDrag} onPointerCancel={() => { pointer.current = null; setDrag(null); }}>
+      {pages.map((page) => <div key={page.id} className={s.pageRow} data-page-id={page.id} data-editor={editor || undefined}
+        data-drop={drag?.over === page.id ? drag.intent ?? undefined : undefined} data-dragging={drag?.id === page.id || undefined}
+        onPointerDown={(event) => {
+          suppressClick.current = false;
+          if (!editor || busy || event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
+          event.preventDefault(); // Keep native link dragging from taking over the pointer gesture.
+          pointer.current = { id: page.id, x: event.clientX, y: event.clientY, active: false, drop: { id: page.id, over: null, intent: null } };
+        }}>
+        <Link href={pageUrl(page.id)} className={s.row} draggable={false} aria-current={current === page.id ? "page" : undefined}>
+          <span className={s.slot}><span className={s.icon}><PageGlyph icon={page.icon} /></span>{editor && <span className={s.grip} title={t("projectPages.dragPageLabel", { page: title(page) })}>⠿</span>}</span>
+          <span className={s.label}>{title(page)}</span>
+          {newPages.includes(page.id) && <span className={s.newTag}>{t("projectPages.newTag")}</span>}
+        </Link>
+        {editor && <button type="button" className={s.more} disabled={busy} data-open={menu?.id === page.id || undefined} aria-label={t("projectPages.pageMenuLabel", { page: title(page) })}
+          onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setError(null); setMenu({ id: page.id, x: rect.right + 6, y: Math.max(8, Math.min(rect.top, window.innerHeight - 300)) }); }}>⋯</button>}
+      </div>)}
+      {editor && <button type="button" className={s.row} data-quiet disabled={busy} onClick={() => setAdding(true)}><span className={s.slot}>+</span><span className={s.label}>{t("projectPages.addPage")}</span></button>}
+    </nav>
+    {drag?.intent && drag.over && <span className={s.dropHint} role="status">{t(drag.intent === "into" ? "projectPages.dropToMerge" : "projectPages.dropToReorder", { count: pages.find((page) => page.id === drag.id)?.tools.length ?? 0, page: title(pages.find((page) => page.id === drag.over)!) })}</span>}
+    {!menu && error && <span className={s.pageError} role="alert">{error}</span>}
+    {removedToast && <div className={s.pageToast} role="status">{t("projectPages.pageRemoved", { page: removedToast.title })} · <button type="button" disabled={busy} onClick={() => void send(() => acts.restore(removedToast.id), () => setRemovedToast(null))}>{t("projectPages.undo")}</button></div>}
+    {menu && selected && choices && <>
+      <button type="button" className={s.scrim} disabled={busy} aria-label={t("common.cancel")} onClick={() => setMenu(null)} />
+      <div ref={menuPanel} className={`${s.menu} ${s.loggedMenu}`} role="menu" aria-label={t("projectPages.pageMenuLabel", { page: title(selected) })} aria-busy={busy} style={{ "--mx": menu.x + "px", "--my": menu.y + "px" } as React.CSSProperties}>
+        {menu.section === "rename" ? <form onSubmit={(event) => { event.preventDefault(); if (draft.trim()) void send(() => acts.edit(selected.id, { title: draft.trim() })); }}>
+          <input className={s.rename} autoFocus aria-label={t("projectPages.pageName")} value={draft} maxLength={LIMITS.titleMax} disabled={busy} onChange={(event) => setDraft(event.target.value)} />
+          <button type="submit" className={s.item} disabled={busy || !draft.trim()}>{t(busy ? "projectPages.saving" : "projectPages.save")}</button>
+        </form> : menu.section === "icons" ? <div className={s.icons}>{PAGE_ICON_KEYS.map((icon) => <button key={icon} type="button" className={s.iconPick} disabled={busy} aria-label={t("projectPages.chooseIconLabel", { icon })} onClick={() => void send(() => acts.edit(selected.id, { icon }))}><PageGlyph icon={icon} /></button>)}</div>
+          : menu.section === "merge" ? <>{choices.mergeInto.map((target) => <button key={target.id} type="button" role="menuitem" className={s.item} onClick={() => { setMerging({ from: selected.id, into: target.id }); setMenu(null); }}>{title(target)}</button>)}</>
+            : menu.section === "removed" ? <><span className={s.menuHead}>{t("projectPages.recentlyRemovedHint")}</span>{removed.length === 0 && <span className={s.empty}>{t("projectPages.noRemovedPages")}</span>}{removed.map((item) => <button key={item.pageId} type="button" role="menuitem" className={s.item} disabled={busy} onClick={() => void send(() => acts.restore(item.pageId))}>{t("projectPages.restore")} · {title(item.page!)}</button>)}</>
+              : <>
+                <button type="button" role="menuitem" className={s.item} disabled={busy || !choices.rename} onClick={() => { setDraft(title(selected)); setMenu({ ...menu, section: "rename" }); }}>{t("projectPages.renamePage")}</button>
+                <button type="button" role="menuitem" className={s.item} disabled={busy || !choices.icon} onClick={() => setMenu({ ...menu, section: "icons" })}>{t("projects.sbIcon")}</button>
+                <button type="button" role="menuitem" className={s.item} disabled={busy || !choices.moveUp} onClick={() => void send(() => acts.move(selected.id, pages[pages.findIndex((page) => page.id === selected.id) - 1].id))}>{t("projectPages.moveUp")}</button>
+                <button type="button" role="menuitem" className={s.item} disabled={busy || !choices.moveDown} onClick={() => void send(() => acts.move(selected.id, pages[pages.findIndex((page) => page.id === selected.id) + 2]?.id ?? null))}>{t("projectPages.moveDown")}</button>
+                <button type="button" role="menuitem" className={s.item} disabled={busy || choices.mergeInto.length === 0} onClick={() => setMenu({ ...menu, section: "merge" })}>{t("projectPages.mergeInto")}</button>
+                <button type="button" role="menuitem" className={s.item} data-danger disabled={busy || !choices.remove} onClick={() => void send(() => acts.remove(selected.id), () => { setRemovedToast({ id: selected.id, title: title(selected) }); if (current === selected.id) router.push(pageUrl(pages.find((page) => page.id !== selected.id)!.id)); })}>{t("projectPages.removePage")}</button>
+                <button type="button" role="menuitem" className={s.item} disabled={busy} onClick={() => setMenu({ ...menu, section: "removed" })}>{t("projectPages.recentlyRemoved")}</button>
+              </>}
+        {error && <span className={s.pageError} role="alert">{error}</span>}
+      </div>
+    </>}
+    <AddPageDialog p={p} open={adding} onClose={() => setAdding(false)} onCreated={(id) => { setNewPages((ids) => [...ids, id]); router.push(pageUrl(id)); }} />
+    {merging && <MergeDialog p={p} open fromPageId={merging.from} intoPageId={merging.into} onClose={() => setMerging(null)} onMerged={(id) => { setMerging(null); router.push(pageUrl(id)); }} />}
+  </div>;
 }
 
 function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
@@ -461,8 +598,18 @@ function TabIcon({ k }: { k: string }) {
   }
 }
 
-export function PageGlyph({ icon }: { icon: PageIcon }) {
+export function PageGlyph({ icon }: { icon: PageIcon | PageIconKey }) {
   switch (icon) {
+    case "home": return <TabIcon k="overview" />;
+    case "board": return <TabIcon k="board" />;
+    case "target": return <TabIcon k="results" />;
+    case "folder": return <TabIcon k="files" />;
+    case "people": return <People />;
+    case "pulse": return <TabIcon k="activity" />;
+    case "list": return <Svg size={16}><path d="M6 4H13M6 8H13M6 12H13M3 4H3.1M3 8H3.1M3 12H3.1" /></Svg>;
+    case "calendar": return <Svg size={16}><rect x="2.5" y="3.5" width="11" height="10" rx="2" /><path d="M2.5 6.5H13.5M5.5 2V5M10.5 2V5" /></Svg>;
+    case "timeline": return <Svg size={16}><path d="M3 3V13M3 5H9M6 8H13M5 11H10" /></Svg>;
+    case "inbox": return <Svg size={16}><path d="M2.5 9.5L4 3.5H12L13.5 9.5V13H2.5ZM2.5 9.5H5.5L6.5 11H9.5L10.5 9.5H13.5" /></Svg>;
     case "checklist": return <Svg size={16}><path d="M2.8 4.6L4 5.8L6 3.6M2.8 10.2L4 11.4L6 9.2" /><path d="M8.2 4.8H13.2M8.2 10.4H13.2" /></Svg>;
     case "table": return <Svg size={16}><rect x="2.5" y="3" width="11" height="10" rx="1.6" /><path d="M2.5 6.4H13.5M2.5 9.7H13.5M6.4 6.4V13" /></Svg>;
     case "link": return <Svg size={16}><path d="M6.8 9.2L9.2 6.8M7.6 4.6L8.6 3.6C9.8 2.4 11.6 2.4 12.6 3.4C13.6 4.4 13.6 6.2 12.4 7.4L11.4 8.4M8.4 11.4L7.4 12.4C6.2 13.6 4.4 13.6 3.4 12.6C2.4 11.6 2.4 9.8 3.6 8.6L4.6 7.6" /></Svg>;
